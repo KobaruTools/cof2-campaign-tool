@@ -16,3 +16,9 @@
 - Caractéristiques : saisie libre uniquement (les dés sont lancés en vrai à la table — aucune génération simulée).
 - Wizard bloquant (création + montée de niveau) ; fiche éditable permissive avec avertissements non bloquants.
 - Ne jamais deviner une règle de CO2 : toute donnée vient du PDF avec sa page source (`sourcePage`) ; en cas de doute, marquer `TODO(extraction)` et demander.
+- Caractéristiques (PRD décision #13) : SCORE saisi (-10 à +10) → MODIFICATEUR calculé (1→+0, 6→+3, 10→+5). La progression modifie le score ; les formules consomment le modificateur. Le livre, lui, exprime directement des « valeurs » (= modificateurs).
+
+## Lire le PDF
+
+L'outil Read ne voit pas poppler (PATH figé) : rendre les pages en PNG puis lire les images.
+`pdftoppm -png -r 200 -f <début> -l <fin> "CBHS_06_Chroniques_Oubliees_2_web_v2.pdf" ".pdf-pages\p"` → `.pdf-pages/p-NNN.png` (dossier gitignoré). Le numéro de page PDF = numéro imprimé dans le livre.

@@ -22,20 +22,32 @@ export type SourcePage = number;
 
 /**
  * Les 7 caractéristiques de CO2 : 4 physiques (AGI, CON, FOR, PER) et
- * 3 mentales (CHA, INT, VOL). Ce sont directement des modificateurs
- * (échelle -3 à +5, création de -2 à +5) — pas de score 3-18.
+ * 3 mentales (CHA, INT, VOL).
+ *
+ * Système de la table (décision propriétaire du 2026-06-12, PRD §3 #13) :
+ * chaque caractéristique est un SCORE (-10 à +10, saisie libre) dont on
+ * CALCULE le modificateur (score 1 → +0, 6 → +3, 10 → +5). Toute
+ * progression (« +1 en CON » d'un peuple ou d'une capacité) s'applique au
+ * score ; les formules dérivées consomment le modificateur.
+ *
+ * NB : le livre de base exprime directement des « valeurs » (-3 à +5,
+ * p. 27) ajoutées au d20 (p. 202) ; ces « valeurs » correspondent au
+ * modificateur de la table. La fonction score → modificateur vit dans le
+ * moteur de calcul.
  */
 export const CARAC_IDS = ['AGI', 'CON', 'FOR', 'PER', 'CHA', 'INT', 'VOL'] as const;
 export type CaracId = (typeof CARAC_IDS)[number];
 
-/** Plage indicative affichée à la saisie libre (jamais bloquante) — p. 27. */
-export const CARAC_MIN = -3;
-export const CARAC_MAX = 5;
+/** Plage indicative du SCORE à la saisie libre (jamais bloquante). */
+export const SCORE_MIN = -10;
+export const SCORE_MAX = 10;
 
 /**
  * Séries de valeurs officielles proposées à la création (Polyvalent, Expert,
  * Spécialiste) — p. 27. Affichées à titre informatif dans le wizard, la
- * saisie restant libre (décision PRD #5).
+ * saisie restant libre (décision PRD #5). NB : le livre les exprime en
+ * « valeurs » (= modificateurs) ; non utilisées par la table, qui lance
+ * ses scores aux dés.
  */
 export interface SerieDeValeurs {
   id: string;
@@ -83,8 +95,9 @@ export interface Famille {
 // ---------------------------------------------------------------------------
 
 /**
- * Modificateur de caractéristique offert par un peuple. `caracs` liste les
- * caractéristiques admissibles : un seul élément = modificateur fixe,
+ * Ajustement de caractéristique offert par un peuple. `valeur` s'applique
+ * au SCORE (jamais au modificateur calculé). `caracs` liste les
+ * caractéristiques admissibles : un seul élément = ajustement fixe,
  * plusieurs = choix du joueur (ex. demi-elfe « +1 PER ou CHA » — p. 46).
  */
 export interface ModificateurCarac {

@@ -47,6 +47,7 @@ Mots d'ordre : **très simple, facile à utiliser**. Pas de fonctionnalité au-d
 | 10 | Sortie | **Écran uniquement.** Pas de vue imprimable (réimprimer à chaque montée de niveau est inacceptable). Génération d'un vrai PDF type feuille officielle : hors scope, éventuellement bien plus tard. | La fiche à l'écran est la source de vérité. |
 | 11 | UI | **MUI** (Material UI), comme `fellowship-builder`. Customisation/ambiance médiéval-fantasy : éventuellement plus tard, composant par composant. | Vitesse de développement prioritaire. |
 | 12 | Appareils | **Desktop-first, responsive "passif"** : on développe pour grand écran en utilisant systématiquement les primitives responsive de MUI (`Grid`, `Stack`), sans largeurs figées ni tableaux intraversables. Pas de polish mobile en phase 1. | Consultation mobile "lisible mais pas jolie" suffit jusqu'à la phase 2. |
+| 13 | Caractéristiques : score vs modificateur (validé le 2026-06-12) | Chaque caractéristique est un **SCORE** (-10 à +10, saisi librement) dont le **MODIFICATEUR est calculé** (score 1 → +0, 6 → +3, 10 → +5). Toute progression ("+1 en CON" d'un peuple ou d'une capacité) s'applique au **score** ; les formules dérivées (DEF, attaques, PV, DR, PC, PM, init) consomment le **modificateur**. | Système utilisé à la table. NB : le livre de base exprime directement des "valeurs" (-3 à +5, p. 27) ajoutées au d20 (p. 202) — elles correspondent au modificateur. |
 
 ---
 
@@ -79,7 +80,7 @@ Hors scope phase 1 : comptes utilisateurs, partage en ligne, gestion en cours de
 
 1. **Peuple** : choix dans la liste extraite du livre ; affichage des modificateurs et traits raciaux ; application automatique.
 2. **Profil** : choix du profil ; affichage dé de vie, armes/armures autorisées, voies associées.
-3. **Caractéristiques** : champs de **saisie libre** (l'utilisateur reporte ses jets de dés réels). Les modificateurs dérivés s'affichent en direct. Aucune contrainte de méthode ; une simple indication de plage plausible peut être affichée à titre informatif sans bloquer.
+3. **Caractéristiques** : champs de **saisie libre** des **scores** (-10 à +10 — l'utilisateur reporte ses jets de dés réels). Les **modificateurs calculés** (décision #13) s'affichent en direct. Aucune contrainte de méthode ; une simple indication de plage plausible peut être affichée à titre informatif sans bloquer.
 4. **Voies et capacités de niveau 1** : sélection des capacités de départ selon les règles exactes du livre (nombre de points/choix au niveau 1 — à confirmer à l'extraction). Seuls les choix légaux sont proposés.
 5. **Équipement** : équipement de départ du profil + ajustements depuis le catalogue armes/armures/équipement.
 6. **Identité et finitions** : nom, sexe/âge/description libre, et tout champ d'identité prévu par le livre.
