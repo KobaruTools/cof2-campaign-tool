@@ -26,9 +26,10 @@ export type SourcePage = number;
  *
  * Système de la table (décision propriétaire du 2026-06-12, PRD §3 #13) :
  * chaque caractéristique est un SCORE (-10 à +10, saisie libre) dont on
- * CALCULE le modificateur (score 1 → +0, 6 → +3, 10 → +5). Toute
- * progression (« +1 en CON » d'un peuple ou d'une capacité) s'applique au
- * score ; les formules dérivées consomment le modificateur.
+ * CALCULE le modificateur : mod = ⌊score / 2⌋, arrondi vers le bas comme
+ * en D&D (1 → +0, 6 → +3, 10 → +5, -3 → -2). Toute progression
+ * (« +1 en CON » d'un peuple ou d'une capacité) s'applique au score ; les
+ * formules dérivées consomment le modificateur.
  *
  * NB : le livre de base exprime directement des « valeurs » (-3 à +5,
  * p. 27) ajoutées au d20 (p. 202) ; ces « valeurs » correspondent au
