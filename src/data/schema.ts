@@ -47,6 +47,18 @@ export interface SerieDeValeurs {
   sourcePage: SourcePage;
 }
 
+/**
+ * Entrée de la table d20 « Idéaux héroïques / Travers » utilisée à la touche
+ * finale de la création — p. 33. Purement indicative (tirage réel à la table
+ * ou choix libre).
+ */
+export interface IdealTravers {
+  d20: number;
+  ideal: string;
+  travers: string;
+  sourcePage: SourcePage;
+}
+
 // ---------------------------------------------------------------------------
 // Dés
 // ---------------------------------------------------------------------------
@@ -275,9 +287,17 @@ interface EquipementBase {
   sourcePage: SourcePage;
 }
 
-/** Catégories d'armes — p. 184. */
-export const CATEGORIES_ARME = ['legere', 'uneOuDeuxMains', 'deuxMains'] as const;
+/**
+ * Catégories d'armes — p. 184. Le livre ne nomme que trois catégories
+ * (légère / à une ou deux mains / à deux mains) ; `uneMain` couvre les armes
+ * « standard » des tables p. 183 et 185 sans mention de catégorie.
+ */
+export const CATEGORIES_ARME = ['legere', 'uneMain', 'uneOuDeuxMains', 'deuxMains'] as const;
 export type CategorieArme = (typeof CATEGORIES_ARME)[number];
+
+/** Types de DM provoqués par les armes — p. 183 (colonne « Type de DM »). */
+export const TYPES_DM = ['contondants', 'perforants', 'tranchants'] as const;
+export type TypeDm = (typeof TYPES_DM)[number];
 
 export interface Arme extends EquipementBase {
   categorie: 'arme';
@@ -337,7 +357,7 @@ export interface ReglesProgression {
   /** Coût en points : rangs 1-2 → 1 point, rangs 3+ → 2 points — p. 39. */
   coutParRang: Record<number, number>;
   /**
-   * Niveau minimum requis par rang (1→1, 2→1, 3→3, 4→5, 5→7, 6→9, 7→11,
+   * Niveau minimum requis par rang (1→1, 2→2, 3→3, 4→5, 5→7, 6→9, 7→11,
    * 8→13) — table p. 39. L'exception mage (rang 2 dès la création, « 2* »)
    * est portée par le moteur.
    */
