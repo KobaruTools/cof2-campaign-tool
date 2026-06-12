@@ -159,8 +159,10 @@ export interface Profil {
   /** Les 5 voies du profil, dans l'ordre du livre — ex. table p. 61. */
   voieIds: string[];
   /**
-   * Les 3 caractéristiques conseillées (« vos trois meilleures valeurs ») —
-   * p. 27. TODO(extraction) : vérifier où le livre les liste par profil.
+   * Caractéristiques « les plus utiles au personnage », par ordre
+   * d'importance, telles qu'indiquées entre crochets dans le résumé des
+   * profils p. 24-25 (souvent 3 ; le druide a un 3e choix « CON ou AGI »,
+   * encodé en 4 entrées). Sert à suggérer une série au wizard.
    */
   caracsConseillees: CaracId[];
   sourcePage: SourcePage;

@@ -10,8 +10,9 @@ import type { Profil, VoieDeProfil, Capacite } from '../schema';
  * mage en remplacement de la voie de peuple (voir p. 60). Les sorts sont
  * signalés par un astérisque (*) accolé à leur nom.
  *
- * TODO(extraction): p. 92-111 — les caractéristiques conseillées ne sont
- * pas listées par profil dans ce chapitre. caracsConseillees laissé vide.
+ * caracsConseillees : caractéristiques « les plus utiles au personnage par
+ * ordre d'importance », indiquées entre crochets dans la liste des profils
+ * p. 24-25 du livre de base (et non sur les pages de profil 92-111).
  */
 
 export const profilsMages: Profil[] = [
@@ -30,7 +31,7 @@ export const profilsMages: Profil[] = [
       { itemId: 'dague', libelle: 'dague (DM d4) ou autre arme maîtrisée au choix', quantite: 1 },
     ],
     voieIds: ['air', 'divination', 'envouteur', 'illusions', 'invocation'],
-    caracsConseillees: [],
+    caracsConseillees: ['CHA', 'VOL', 'AGI'],
     sourcePage: 92,
   },
   {
@@ -49,7 +50,7 @@ export const profilsMages: Profil[] = [
       { itemId: 'marteau', libelle: 'marteau (DM 1d6)', quantite: 1 },
     ],
     voieIds: ['artefacts', 'elixirs', 'metal', 'golem', 'runes'],
-    caracsConseillees: [],
+    caracsConseillees: ['INT', 'VOL', 'CON'],
     sourcePage: 97,
   },
   {
@@ -74,7 +75,7 @@ export const profilsMages: Profil[] = [
       'magie-protectrice',
       'magie-universelle',
     ],
-    caracsConseillees: [],
+    caracsConseillees: ['INT', 'VOL', 'AGI'],
     sourcePage: 102,
   },
   {
@@ -97,7 +98,7 @@ export const profilsMages: Profil[] = [
       },
     ],
     voieIds: ['demon', 'mort', 'outre-tombe', 'sang', 'sombre-magie'],
-    caracsConseillees: [],
+    caracsConseillees: ['INT', 'VOL', 'CON'],
     sourcePage: 107,
   },
 ];

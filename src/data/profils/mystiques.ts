@@ -5,11 +5,9 @@ import type { Profil, VoieDeProfil, Capacite } from '../schema';
  * Source : livre de base CO2 (CBHS_06_Chroniques_Oubliees_2_web_v2.pdf), p. 112-125.
  * Textes verbatim. Capacités : `*` → estSort ; (A)/(L)/(G)/(M) → typesAction.
  *
- * caracsConseillees : les pages 112-125 ne listent pas de caractéristiques
- * conseillées par profil pour la famille des mystiques (cf. p. 27 pour la règle
- * générale). Laissées vides en attendant confirmation.
- * TODO(extraction): p. 112-125 — aucune caractéristique conseillée par profil
- * indiquée dans le chapitre mystiques ; vérifier d'éventuels prétirés (p. 349).
+ * caracsConseillees : caractéristiques « les plus utiles au personnage par
+ * ordre d'importance », indiquées entre crochets dans la liste des profils
+ * p. 25 du livre de base (et non sur les pages de profil 112-125).
  */
 
 // ---------------------------------------------------------------------------
@@ -36,7 +34,9 @@ export const profilsMystiques: Profil[] = [
       { itemId: 'cuir-simple', libelle: 'armure de cuir (DEF +2)', quantite: 1 },
     ],
     voieIds: ['animaux', 'fauve', 'nature', 'protecteur', 'vegetaux'],
-    caracsConseillees: [],
+    // p. 25 : [Perception, Volonté, Constitution ou Agilité] — la 3e place
+    // est un choix « CON ou AGI » ; les deux sont listées ici dans cet ordre.
+    caracsConseillees: ['PER', 'VOL', 'CON', 'AGI'],
     sourcePage: 113,
   },
   {
@@ -51,7 +51,7 @@ export const profilsMystiques: Profil[] = [
     bouclierAutorise: false,
     equipementDepart: [{ itemId: 'baton', libelle: 'Bâton (DM 1d6)', quantite: 1 }],
     voieIds: ['energie-vitale', 'maitrise', 'meditation', 'poing', 'vent'],
-    caracsConseillees: [],
+    caracsConseillees: ['VOL', 'PER', 'AGI'],
     sourcePage: 118,
   },
   {
@@ -72,7 +72,7 @@ export const profilsMystiques: Profil[] = [
       { itemId: 'chemise-de-mailles', libelle: 'chemise de mailles (DEF +4)', quantite: 1 },
     ],
     voieIds: ['foi', 'guerre-sainte', 'priere', 'soins', 'spiritualite'],
-    caracsConseillees: [],
+    caracsConseillees: ['CHA', 'VOL', 'FOR'],
     sourcePage: 122,
   },
 ];

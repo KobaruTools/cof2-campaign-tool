@@ -9,12 +9,14 @@ import type { ReglesProgression } from './schema';
 
 export const progression: ReglesProgression = {
   /**
-   * TODO(extraction): pages 19-43 — aucun niveau maximum jouable explicite.
-   * Indices relevés : la table des rangs s'arrête au niveau 13 (p. 39), les
-   * valeurs d'attaque plafonnent au niveau 10 (p. 39), les dés évolutifs
-   * vont jusqu'à « 15+ » (p. 43), et le livre évoque en aparté un héros qui
-   * « passe du niveau 1 à niveau 12 ! » (p. 38). Valeur 20 posée par défaut
-   * en attendant confirmation ailleurs dans le livre.
+   * Niveau maximum jouable. Le livre ne le fixe pas explicitement (la table
+   * des rangs s'arrête au niveau 13 p. 39, l'attaque plafonne au niveau 10
+   * p. 39, les dés évolutifs vont jusqu'à « 15+ » p. 43).
+   *
+   * Décision propriétaire (2026-06-12) : on garde 20 comme plafond souple ;
+   * il n'y a de toute façon pas de niveau max strict dans CO2. Le moteur (J3)
+   * traitera cette valeur comme une borne d'UI, pas comme une règle du livre
+   * — ne désactiver la montée de niveau qu'à titre indicatif.
    */
   niveauMax: 20,
 

@@ -64,6 +64,8 @@ Cas d'usage phase 1 :
 
 Hors scope phase 1 : comptes utilisateurs, partage en ligne, gestion en cours de partie (PV courants, états, jets), impression, PDF, Le Compagnon, contenu hors livre de base, multilingue.
 
+**Hors scope phase 1, à ne pas oublier (décidé le 2026-06-12)** : le *système du prêtre spécialiste et des religions d'Osgild* (tables des armes sacrées et capacités divines par divinité, livre de base p. 126-127) n'est **pas** modélisé en phase 1. Les pages ont été lues mais aucune entité « divinité » n'existe dans le schéma. Le prêtre reste jouable via ses voies normales ; seul le sous-système « spécialiste d'un dieu » est reporté. À rouvrir explicitement si la table en a besoin.
+
 ---
 
 ## 5. Spécifications fonctionnelles

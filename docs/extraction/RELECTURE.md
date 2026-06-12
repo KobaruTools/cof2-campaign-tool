@@ -43,10 +43,9 @@ chaque entité porte sa `sourcePage`. Le Compagnon n'a jamais été ouvert.
 
 ## Points qui demandent ton œil (par ordre d'importance)
 
-1. **Niveau maximum jouable — `niveauMax: 20` provisoire** (`progression.ts`).
-   Le livre ne le donne nulle part explicitement (indices : table des rangs
-   jusqu'au niveau 13, attaque plafonnée au niveau 10, dés évolutifs « 15+ »,
-   un aparté évoque « niveau 12 »). **Quel est le niveau max à ta table ?**
+1. ~~Niveau maximum jouable~~ **→ TRANCHÉ (2026-06-12).** `niveauMax: 20` est
+   conservé comme **plafond souple** ; CO2 n'impose pas de niveau max strict.
+   Le moteur traitera cette valeur comme une borne d'UI, pas comme une règle.
 
 2. **Anomalies du livre conservées telles quelles** (signalées en avertissement) :
    - *Voie de prestige du familier fantastique* : sa 1re capacité est au **rang 3**
@@ -57,10 +56,11 @@ chaque entité porte sa `sourcePage`. Le Compagnon n'a jamais été ouvert.
    - Détails des **12 familiers fantastiques** (statblocs p. 133-136) : non
      extraits comme entités (réservés à une itération si besoin).
 
-3. **`caracsConseillees` vide pour tous les profils.** Le livre ne liste pas de
-   caractéristiques conseillées sur les pages de profil. Source possible : les
-   prétirés (p. 349) ou les séries par profil (p. 27). À compléter si tu veux
-   que le wizard suggère une série adaptée.
+3. ~~`caracsConseillees` vide~~ **→ RÉSOLU.** Les caractéristiques conseillées
+   sont listées entre crochets dans le résumé des profils p. 24-25 (et non sur
+   les pages de profil). Les 14 profils sont renseignés. Cas du druide : 3e
+   place « CON ou AGI » → encodé `['PER','VOL','CON','AGI']` (le « ou » sera
+   géré par le wizard).
 
 4. **Objets de départ hors catalogue de prix** (`itemId: null`, libellé conservé) :
    grimoire de sorts (magicien/sorcier), instrument de musique (barde). Le bâton
@@ -70,10 +70,10 @@ chaque entité porte sa `sourcePage`. Le Compagnon n'a jamais été ouvert.
    jusqu'à… » : à confirmer profil par profil (notamment chevalier =
    `armure-de-plaques`, la plaque complète exigeant une capacité).
 
-6. **Système prêtre / religions d'Osgild** (tables p. 126-127 : armes sacrées,
-   capacités divines par dieu) : lues mais **non** modélisées — le schéma actuel
-   n'a pas d'entité « divinité ». À décider si le prêtre spécialiste entre dans
-   le périmètre phase 1.
+6. ~~Système prêtre / religions d'Osgild~~ **→ TRANCHÉ (2026-06-12) : HORS SCOPE
+   phase 1.** Tables p. 126-127 (armes sacrées, capacités divines par dieu) non
+   modélisées ; le prêtre reste jouable via ses voies normales. Reporté et
+   consigné dans le PRD (§4, encadré « à ne pas oublier ») pour ne pas l'oublier.
 
 7. **Coquilles du livre** rencontrées et conservées verbatim (ex. « DM se sa
    cible », « +1 en attaque lorsqu'il l'utilise une arme »). Marquées localement.

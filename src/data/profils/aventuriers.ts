@@ -9,11 +9,9 @@ import type { Profil, VoieDeProfil, Capacite } from '../schema';
  *
  * Textes verbatim ; ids en slugs ASCII. Voir conventions du projet.
  *
- * caracsConseillees : le livre ne liste pas de caractéristiques conseillées
- * sur les pages de profil de cette famille.
- * TODO(extraction): p. 61-77 — aucune liste de caractéristiques conseillées
- * par profil sur ces pages (cf. règle générale « vos trois meilleures
- * valeurs » p. 27) ; laissé à [].
+ * caracsConseillees : caractéristiques « les plus utiles au personnage par
+ * ordre d'importance », indiquées entre crochets dans la liste des profils
+ * p. 24-25 du livre de base (et non sur les pages de profil elles-mêmes).
  */
 
 export const profilsAventuriers: Profil[] = [
@@ -34,7 +32,7 @@ export const profilsAventuriers: Profil[] = [
       { itemId: 'cuir-renforce-broigne', libelle: 'cuir renforcé (DEF +3)', quantite: 1 },
     ],
     voieIds: ['artilleur', 'explosifs', 'mercenaire', 'pistolero', 'precision'],
-    caracsConseillees: [],
+    caracsConseillees: ['AGI', 'INT', 'CON'],
     sourcePage: 62,
   },
   {
@@ -55,7 +53,7 @@ export const profilsAventuriers: Profil[] = [
       { itemId: 'cuir-simple', libelle: 'armure de cuir (DEF +2)', quantite: 1 },
     ],
     voieIds: ['escrime', 'musicien', 'saltimbanque', 'seduction', 'vagabond'],
-    caracsConseillees: [],
+    caracsConseillees: ['CHA', 'AGI', 'VOL'],
     sourcePage: 66,
   },
   {
@@ -80,7 +78,7 @@ export const profilsAventuriers: Profil[] = [
       { itemId: 'cuir-renforce-broigne', libelle: 'armure de cuir renforcé (DEF +3)', quantite: 1 },
     ],
     voieIds: ['archer', 'compagnon-animal', 'survie', 'traqueur', 'combat-a-deux-armes'],
-    caracsConseillees: [],
+    caracsConseillees: ['AGI', 'PER', 'CON'],
     sourcePage: 70,
   },
   {
@@ -101,7 +99,7 @@ export const profilsAventuriers: Profil[] = [
       { itemId: 'corde-15-m', libelle: 'une corde de 10 m', quantite: 1 },
     ],
     voieIds: ['assassin', 'aventurier', 'deplacement', 'roublard', 'spadassin'],
-    caracsConseillees: [],
+    caracsConseillees: ['AGI', 'INT', 'CHA'],
     sourcePage: 74,
   },
 ];

@@ -16,9 +16,9 @@ import type { Profil, VoieDeProfil, Capacite } from '../schema';
 // Profils
 // ---------------------------------------------------------------------------
 
-// TODO(extraction): les caractéristiques conseillées par profil ne figurent
-// pas sur les pages 78-90 (la p. 27 parle seulement de « vos trois meilleures
-// valeurs ») — à compléter si une autre page du livre les liste.
+// caracsConseillees : caractéristiques « les plus utiles au personnage par
+// ordre d'importance », indiquées entre crochets dans la liste des profils
+// p. 24 du livre de base (et non sur les pages de profil 78-90).
 // TODO(extraction): aligner `armureMaxId` et les `itemId` d'équipement sur les
 // slugs définitifs du catalogue d'équipement (table des armures p. 188).
 
@@ -46,7 +46,7 @@ export const profilsCombattants: Profil[] = [
       { itemId: 'cuir-simple', libelle: 'armure de cuir (DEF +2)', quantite: 1 },
     ],
     voieIds: ['brute', 'pagne', 'pourfendeur', 'primitif', 'rage'],
-    caracsConseillees: [],
+    caracsConseillees: ['FOR', 'CON', 'AGI'],
     sourcePage: 79,
   },
   {
@@ -69,7 +69,7 @@ export const profilsCombattants: Profil[] = [
       { itemId: 'cotte-de-mailles', libelle: 'cotte de mailles (DEF +5)', quantite: 1 },
     ],
     voieIds: ['cavalier', 'guerre', 'preux', 'meneur-d-hommes', 'noblesse'],
-    caracsConseillees: [],
+    caracsConseillees: ['FOR', 'CHA', 'CON'],
     sourcePage: 83,
   },
   {
@@ -92,7 +92,7 @@ export const profilsCombattants: Profil[] = [
       { itemId: 'chemise-de-mailles', libelle: 'chemise de mailles (DEF +4)', quantite: 1 },
     ],
     voieIds: ['bouclier', 'combat', 'maitre-d-armes', 'resistance', 'soldat'],
-    caracsConseillees: [],
+    caracsConseillees: ['FOR', 'CON', 'AGI'],
     sourcePage: 87,
   },
 ];
