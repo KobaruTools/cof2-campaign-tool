@@ -57,6 +57,7 @@ import {
 import type { AbilityId, AbilityModifier, Armor, CharacterClass, Weapon } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { deriveStats, checkCompliance, type RulesContext } from '@/lib/engine';
+import type { Sex } from '@/lib/character/types';
 import {
   initialChoices,
   modifierDeltas,
@@ -940,10 +941,17 @@ export function IdentityStep({ draft, patch }: StepProps) {
       />
       <Stack direction="row" spacing={2}>
         <TextField
+          select
           label="Sexe"
           value={draft.identity.sex ?? ''}
-          onChange={(e) => patch({ identity: { ...draft.identity, sex: e.target.value } })}
-        />
+          onChange={(e) =>
+            patch({ identity: { ...draft.identity, sex: (e.target.value || undefined) as Sex | undefined } })
+          }
+          sx={{ minWidth: 140 }}
+        >
+          <MenuItem value="male">Homme</MenuItem>
+          <MenuItem value="female">Femme</MenuItem>
+        </TextField>
         <TextField
           label="Âge"
           value={draft.identity.age ?? ''}

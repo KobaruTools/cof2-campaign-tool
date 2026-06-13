@@ -36,9 +36,12 @@ export type DerivedStatId =
   | 'rangedAttack'
   | 'magicAttack';
 
+/** Sexe du personnage (code interne, affiché en français). */
+export type Sex = 'male' | 'female';
+
 /** Champs d'identité libres (PRD §5.2 étape 6). */
 export interface Identity {
-  sex?: string;
+  sex?: Sex;
   age?: string;
   height?: string;
   weight?: string;
