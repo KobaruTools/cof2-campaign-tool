@@ -931,6 +931,8 @@ export function EquipmentStep({ draft, patch }: StepProps) {
 // ---------------------------------------------------------------------------
 
 export function IdentityStep({ draft, patch }: StepProps) {
+  const ancestry = ancestryById.get(draft.ancestryId);
+  const physical = ancestry?.physical;
   return (
     <Stack spacing={2}>
       <TextField
@@ -970,7 +972,25 @@ export function IdentityStep({ draft, patch }: StepProps) {
           label="Âge"
           value={draft.identity.age ?? ''}
           onChange={(e) => patch({ identity: { ...draft.identity, age: e.target.value } })}
+          placeholder={physical?.startingAge}
           fullWidth
+          slotProps={
+            physical
+              ? {
+                  input: {
+                    endAdornment: (
+                      <InfoHint page={ancestry?.sourcePage}>
+                        <>
+                          Âge de départ conseillé : <strong>{physical.startingAge}</strong>.
+                          <br />
+                          Espérance de vie : <strong>{physical.lifeExpectancy}</strong>.
+                        </>
+                      </InfoHint>
+                    ),
+                  },
+                }
+              : undefined
+          }
         />
       </Stack>
       <TextField
