@@ -32,6 +32,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Radio from '@mui/material/Radio';
@@ -957,6 +958,11 @@ function NameHintContent({ names }: { names: AncestryNames }) {
   );
 }
 
+/** Ne conserve que les chiffres et la virgule décimale (âge, taille, poids). */
+function digitsOnly(value: string): string {
+  return value.replace(/[^0-9,]/g, '');
+}
+
 export function IdentityStep({ draft, patch }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const physical = ancestry?.physical;
@@ -1013,7 +1019,7 @@ export function IdentityStep({ draft, patch }: StepProps) {
         <TextField
           label="Âge"
           value={draft.identity.age ?? ''}
-          onChange={(e) => patch({ identity: { ...draft.identity, age: e.target.value } })}
+          onChange={(e) => patch({ identity: { ...draft.identity, age: digitsOnly(e.target.value) } })}
           placeholder={physical?.startingAge}
           fullWidth
           slotProps={
@@ -1037,46 +1043,26 @@ export function IdentityStep({ draft, patch }: StepProps) {
         <TextField
           label="Taille"
           value={draft.identity.height ?? ''}
-          onChange={(e) => patch({ identity: { ...draft.identity, height: e.target.value } })}
+          onChange={(e) => patch({ identity: { ...draft.identity, height: digitsOnly(e.target.value) } })}
           placeholder={physical?.height}
           fullWidth
-          slotProps={
-            physical
-              ? {
-                  input: {
-                    endAdornment: (
-                      <InfoHint page={ancestry?.sourcePage}>
-                        <>
-                          Taille typique : <strong>{physical.height}</strong>.
-                        </>
-                      </InfoHint>
-                    ),
-                  },
-                }
-              : undefined
-          }
+          slotProps={{
+            input: {
+              endAdornment: <InputAdornment position="end">m</InputAdornment>,
+            },
+          }}
         />
         <TextField
           label="Poids"
           value={draft.identity.weight ?? ''}
-          onChange={(e) => patch({ identity: { ...draft.identity, weight: e.target.value } })}
+          onChange={(e) => patch({ identity: { ...draft.identity, weight: digitsOnly(e.target.value) } })}
           placeholder={physical?.weight}
           fullWidth
-          slotProps={
-            physical
-              ? {
-                  input: {
-                    endAdornment: (
-                      <InfoHint page={ancestry?.sourcePage}>
-                        <>
-                          Poids typique : <strong>{physical.weight}</strong>.
-                        </>
-                      </InfoHint>
-                    ),
-                  },
-                }
-              : undefined
-          }
+          slotProps={{
+            input: {
+              endAdornment: <InputAdornment position="end">kg</InputAdornment>,
+            },
+          }}
         />
       </Stack>
       <TextField
