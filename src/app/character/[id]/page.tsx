@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
@@ -15,6 +15,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { ancestryById, classById, families, featureById } from '@/data';
 import type { DerivedInput } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
@@ -40,6 +41,35 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const character = useCharactersStore((s) => s.characters.find((c) => c.id === id));
   const upsert = useCharactersStore((s) => s.upsert);
   const [editing, setEditing] = useState(false);
+
+  // Parallax léger sur les illustrations de l'en-tête. Pour rester fluide, on
+  // écrit le transform directement sur le DOM (pas de state React → pas de
+  // re-render à chaque pixel) et on throttle via requestAnimationFrame.
+  const ancestryImgRef = useRef<HTMLImageElement>(null);
+  const classImgRef = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const y = window.scrollY;
+      // On conserve les transforms de base (centrage) et on y ajoute le décalage.
+      if (ancestryImgRef.current) {
+        ancestryImgRef.current.style.transform = `translateY(calc(-50% + ${y * 0.5}px))`;
+      }
+      if (classImgRef.current) {
+        classImgRef.current.style.transform = `translateX(-50%) translateY(${y * 0.5}px)`;
+      }
+    };
+    const onScroll = () => {
+      if (!raf) raf = window.requestAnimationFrame(update);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    update(); // position initiale
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, []);
 
   if (!hasHydrated) {
     return (
@@ -108,15 +138,69 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>
-          {/* En-tête : nom + peuple · profil · niveau */}
-          <Box>
-            <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
+          {/* En-tête : nom + peuple · profil · niveau, encadré par les illustrations
+              du peuple (gauche) et du profil (droite), en filigrane semi-transparent */}
+          <Box sx={{ position: 'relative' }}>
+            {ancestry && (
+              <Box
+                component="img"
+                ref={ancestryImgRef}
+                src={`/ancestries/${ancestry.id}-vitruve.webp`}
+                alt=""
+                aria-hidden
+                sx={{
+                  position: 'absolute',
+                  top: '75%',
+                  right: '100%',
+                  mr: -4,
+                  transform: 'translateY(-50%)',
+                  willChange: 'transform',
+                  height: '300%',
+                  width: 'auto',
+                  opacity: 0.4,
+                  pointerEvents: 'none',
+                  zIndex: -1,
+                }}
+              />
+            )}
+            {characterClass && (
+              <Box
+                component="img"
+                ref={classImgRef}
+                src={`/classes/${characterClass.id}.webp`}
+                alt=""
+                aria-hidden
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '100%',
+                  transform: 'translateX(-50%)',
+                  willChange: 'transform',
+                  height: 600,
+                  width: 'auto',
+                  opacity: 0.4,
+                  pointerEvents: 'none',
+                  zIndex: -1,
+                }}
+              />
+            )}
+            <Typography
+              variant="h4"
+              component="h2"
+              sx={{ fontWeight: 'bold', position: 'relative', zIndex: 1 }}
+            >
               {character.name || 'Sans nom'}
             </Typography>
             <Stack
               direction="row"
               spacing={0.75}
-              sx={{ alignItems: 'center', color: 'text.secondary', flexWrap: 'wrap' }}
+              sx={{
+                alignItems: 'center',
+                color: 'text.secondary',
+                flexWrap: 'wrap',
+                position: 'relative',
+                zIndex: 1,
+              }}
             >
               <Typography variant="body1" component="span">
                 {ancestry?.name ?? 'Peuple à définir'} ·
@@ -138,7 +222,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             </Stack>
           </Box>
 
-          <SheetSection title="Caractéristiques">
+          <SheetSection
+            title="Caractéristiques"
+            sx={(theme) => ({ bgcolor: alpha(theme.palette.background.default, 0.75) })}
+          >
             <AbilitiesGrid
               abilities={character.abilities}
               onChange={editing ? setAbility : undefined}
