@@ -20,8 +20,10 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { ancestryById, classById, families, featureById } from '@/data';
 import type { DerivedInput } from '@/lib/engine';
+import { checkCompliance } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
-import type { Character, EquipmentLine, Identity } from '@/lib/character/types';
+import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
+import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { ClassIcon } from '@/components/ClassIcon';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
@@ -32,6 +34,7 @@ import { FeaturesByPath } from '@/components/sheet/FeaturesByPath';
 import { EquipmentList } from '@/components/sheet/EquipmentList';
 import { IdentityFields } from '@/components/sheet/IdentityFields';
 import { IdentityEditor } from '@/components/sheet/IdentityEditor';
+import { ComplianceWarnings } from '@/components/sheet/ComplianceWarnings';
 import { useCharactersStore } from '@/stores/characters';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
@@ -107,6 +110,18 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     update({ identity: { ...character.identity, ...identityPatch } });
   const setEquipment = (equipment: EquipmentLine[]) => update({ equipment });
   const setFeatureIds = (featureIds: string[]) => update({ featureIds });
+  // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
+  // supprime la clé et rétablit le calcul automatique.
+  const setOverride = (key: DerivedStatId, value: number | null) => {
+    const next = { ...character.overrides };
+    if (value === null) delete next[key];
+    else next[key] = value;
+    update({ overrides: next });
+  };
+
+  // Conformité aux règles : recalculée à chaque rendu (donc en direct pendant
+  // l'édition). Non bloquante — simple aide affichée (PER-47).
+  const warnings = checkCompliance(character, rulesContext);
 
   const derivedInput: DerivedInput | null = family
     ? {
@@ -245,6 +260,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             )}
           </Box>
 
+          <ComplianceWarnings warnings={warnings} />
+
           <SheetSection
             title="Caractéristiques"
             sx={(theme) => ({ bgcolor: alpha(theme.palette.background.default, 0.75) })}
@@ -257,7 +274,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <SheetSection title="Statistiques dérivées">
             {derivedInput ? (
-              <DerivedStatsGrid input={derivedInput} />
+              <DerivedStatsGrid
+                input={derivedInput}
+                overrides={character.overrides}
+                onOverride={editing ? setOverride : undefined}
+              />
             ) : (
               <Typography variant="body2" color="text.secondary">
                 Profil incomplet : statistiques dérivées indisponibles.
