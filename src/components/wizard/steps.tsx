@@ -47,12 +47,12 @@ import {
   ancestries,
   classes,
   classById,
-  progression,
   pathById,
 } from '@/data';
 import type { AbilityId, AbilityModifier, AncestryNames, Armor, CharacterClass, Weapon } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
-import { checkCompliance, type RulesContext } from '@/lib/engine';
+import { checkCompliance } from '@/lib/engine';
+import { rulesContext } from '@/lib/character/rulesContext';
 import type { Sex } from '@/lib/character/types';
 import {
   initialChoices,
@@ -1103,14 +1103,6 @@ export function IdentityStep({ draft, patch }: StepProps) {
 // Étape 7 — Récapitulatif
 // ---------------------------------------------------------------------------
 
-const rulesCtx: RulesContext = {
-  featureById,
-  pathById,
-  classById,
-  familyById,
-  progression,
-};
-
 export function SummaryStep({ draft }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const characterClass = classById.get(draft.classId);
@@ -1130,7 +1122,7 @@ export function SummaryStep({ draft }: StepProps) {
     spellCount,
   };
   const preview = materializeDraft(draft, ancestry, draft.createdAt);
-  const warnings = checkCompliance(preview, rulesCtx);
+  const warnings = checkCompliance(preview, rulesContext);
 
   return (
     <Stack spacing={3}>
