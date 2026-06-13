@@ -12,7 +12,7 @@ Le fichier `map.tsv` associe chaque `id` de profil à son fichier source
 ## Régénérer
 
 ```sh
-cd scripts/gen-class-icons
+cd scripts/game-icons/classes
 # 1. (re)télécharger les SVG bruts dans ./gi-raw/
 while IFS=$'\t' read -r id path; do
   [ -z "$id" ] && continue
@@ -21,7 +21,7 @@ done < map.tsv
 # 2. générer le fichier TS
 node gen.mjs
 # 3. copier le résultat
-cp classIcons.ts ../../src/lib/ui/classIcons.ts
+cp classIcons.ts ../../../src/lib/ui/classIcons.ts
 ```
 
 Toute nouvelle icône doit venir de game-icons.net (source unique, licence unique)

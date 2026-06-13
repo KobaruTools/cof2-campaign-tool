@@ -9,7 +9,7 @@ Auteurs : **Lorc** et **Delapouite** (https://game-icons.net).
 
 Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
 `src/lib/ui/classIcons.ts`. La correspondance profil → fichier source est conservée
-dans `CLASS_ICON_SOURCES` (même fichier) et dans `scripts/gen-class-icons/map.tsv`.
+dans `CLASS_ICON_SOURCES` (même fichier) et dans `scripts/game-icons/classes/map.tsv`.
 
 | Profil | Fichier game-icons.net | Auteur |
 | --- | --- | --- |
@@ -17,13 +17,85 @@ dans `CLASS_ICON_SOURCES` (même fichier) et dans `scripts/gen-class-icons/map.t
 | Barde | `lorc/lyre.svg` | Lorc |
 | Rôdeur | `lorc/high-shot.svg` | Lorc |
 | Voleur | `lorc/hood.svg` | Lorc |
-| Barbare | `delapouite/barbarian.svg` | Delapouite |
+| Barbare | `lorc/battle-axe.svg` | Lorc |
 | Chevalier | `delapouite/knight-banner.svg` | Delapouite |
 | Guerrier | `lorc/crossed-swords.svg` | Lorc |
 | Ensorceleur | `lorc/fire-ray.svg` | Lorc |
 | Forgesort | `lorc/anvil-impact.svg` | Lorc |
-| Magicien | `lorc/wizard-staff.svg` | Lorc |
-| Sorcier | `delapouite/spell-book.svg` | Delapouite |
+| Magicien | `lorc/book-cover.svg` | Lorc |
+| Sorcier | `lorc/imp.svg` | Lorc |
 | Druide | `delapouite/oak-leaf.svg` | Delapouite |
 | Moine | `lorc/meditation.svg` | Lorc |
 | Prêtre | `lorc/holy-symbol.svg` | Lorc |
+
+## Icônes des statistiques dérivées
+
+Les icônes des statistiques dérivées (PV, Défense, Initiative, etc.) proviennent
+également de [game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteurs : **Lorc**, **Sbed**, **Skoll** et **Delapouite** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/derivedStatIcons.ts`. La correspondance statistique → fichier source
+est conservée dans `DERIVED_STAT_ICON_SOURCES` (même fichier) et dans
+`scripts/game-icons/derived-stats/map.tsv`. L'affichage passe par le composant commun
+`src/components/DerivedStatIcon.tsx`, qui cercle l'icône.
+
+| Statistique | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Points de vigueur | `skoll/hearts.svg` | Skoll |
+| Défense | `sbed/shield.svg` | Sbed |
+| Initiative | `lorc/sprint.svg` | Lorc |
+| Points de chance | `lorc/clover.svg` | Lorc |
+| Dés de récupération | `sbed/health-normal.svg` | Sbed |
+| Points de mana | `sbed/water-drop.svg` | Sbed |
+| Attaque contact | `lorc/broadsword.svg` | Lorc |
+| Attaque distance | `lorc/pocket-bow.svg` | Lorc |
+| Attaque magique | `delapouite/falling-star.svg` | Delapouite |
+
+## Icônes des dés
+
+Les icônes des dés polyédriques (d4, d6, d8, d10, d12, d20) proviennent également
+de [game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteurs : **Skoll** et **Delapouite** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/diceIcons.ts`. La correspondance dé → fichier source est conservée
+dans `DIE_ICON_SOURCES` (même fichier) et dans `scripts/game-icons/dice/map.tsv`.
+L'affichage passe par le composant commun `src/components/DieIcon.tsx`.
+
+| Dé | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| d4 | `skoll/d4.svg` | Skoll |
+| d6 | `delapouite/dice-six-faces-six.svg` | Delapouite |
+| d8 | `delapouite/dice-eight-faces-eight.svg` | Delapouite |
+| d10 | `skoll/d10.svg` | Skoll |
+| d12 | `skoll/d12.svg` | Skoll |
+| d20 | `delapouite/dice-twenty-faces-twenty.svg` | Delapouite |
+
+## Icônes des caractéristiques
+
+Les icônes des 7 caractéristiques (AGI, CON, FOR, PER, CHA, INT, VOL) proviennent
+également de [game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteurs : **Lorc** et **Delapouite** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/abilityIcons.ts`. La correspondance caractéristique → fichier source
+est conservée dans `ABILITY_ICON_SOURCES` (même fichier) et dans
+`scripts/game-icons/abilities/map.tsv`. L'affichage passe par le composant commun
+`src/components/AbilityIcon.tsx`.
+
+| Caractéristique | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Agilité (AGI) | `lorc/barefoot.svg` | Lorc |
+| Constitution (CON) | `delapouite/muscular-torso.svg` | Delapouite |
+| Force (FOR) | `delapouite/biceps.svg` | Delapouite |
+| Perception (PER) | `delapouite/eye-target.svg` | Delapouite |
+| Charisme (CHA) | `delapouite/public-speaker.svg` | Delapouite |
+| Intelligence (INT) | `lorc/brain.svg` | Lorc |
+| Volonté (VOL) | `lorc/inner-self.svg` | Lorc |

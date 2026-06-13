@@ -1,0 +1,9 @@
+maxHp	skoll/hearts.svg
+defense	sbed/shield.svg
+initiative	lorc/sprint.svg
+luckPoints	lorc/clover.svg
+recoveryDice	sbed/health-normal.svg
+manaPoints	sbed/water-drop.svg
+meleeAttack	lorc/broadsword.svg
+rangedAttack	lorc/pocket-bow.svg
+magicAttack	delapouite/falling-star.svg

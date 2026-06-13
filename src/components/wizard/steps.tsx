@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
@@ -75,9 +75,14 @@ import {
 } from './helpers';
 import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors';
 import { classColor } from '@/lib/ui/classColors';
-import { ABILITY_ICONS, ABILITY_NAMES } from '@/lib/ui/ability';
+import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { DERIVED_STAT_NAMES, type DerivedStatId } from '@/lib/ui/derivedStats';
 import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
+import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
+import { DerivedStatIcon } from '@/components/DerivedStatIcon';
+import { DerivedStatHint } from '@/components/DerivedStatHint';
+import { DieIcon } from '@/components/DieIcon';
 import { InfoHint } from '@/components/InfoHint';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
@@ -700,11 +705,10 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
         {ABILITY_IDS.map((id) => {
           const total = draft.baseAbilities[id] + deltas[id];
           const color = abilityTotalColor(total);
-          const Icon = ABILITY_ICONS[id];
           return (
             <Grid key={id} size={12}>
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                <Icon sx={{ color: 'text.secondary' }} />
+                <AbilityIcon ability={id} title size={24} sx={{ color: 'text.secondary' }} />
                 <TextField
                   label={id}
                   type="number"
@@ -1092,26 +1096,35 @@ export function SummaryStep({ draft }: StepProps) {
   const abilities = finalAbilities(draft, ancestry);
   const featureIds = level1FeatureIds(draft);
   const spellCount = featureIds.filter((id) => featureById.get(id)?.isSpell).length;
-  const stats = deriveStats({
+  const derivedInput = {
     abilities,
     level: 1,
     family,
     defenseEquipment: defenseFromEquipment(draft.equipment),
     spellCount,
-  });
+  };
+  const stats = deriveStats(derivedInput);
   const preview = materializeDraft(draft, ancestry, draft.createdAt);
   const warnings = checkCompliance(preview, rulesCtx);
 
-  const statLines: Array<[string, string | number]> = [
-    ['Points de vigueur', stats.maxHp],
-    ['Défense', stats.defense],
-    ['Initiative', stats.initiative],
-    ['Points de chance', stats.luckPoints],
-    ['Dés de récupération', `${stats.recoveryDiceCount} ${stats.recoveryDie}`],
-    ['Points de mana', stats.manaPoints ?? '—'],
-    ['Attaque contact', stats.meleeAttack],
-    ['Attaque distance', stats.rangedAttack],
-    ['Attaque magique', stats.magicAttack],
+  const statLines: Array<{ id: DerivedStatId; value: ReactNode }> = [
+    { id: 'maxHp', value: stats.maxHp },
+    { id: 'defense', value: stats.defense },
+    { id: 'initiative', value: stats.initiative },
+    { id: 'luckPoints', value: stats.luckPoints },
+    {
+      id: 'recoveryDice',
+      value: (
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+          {stats.recoveryDiceCount}
+          <DieIcon die={stats.recoveryDie} size={28} />
+        </Box>
+      ),
+    },
+    { id: 'manaPoints', value: stats.manaPoints ?? '—' },
+    { id: 'meleeAttack', value: stats.meleeAttack },
+    { id: 'rangedAttack', value: stats.rangedAttack },
+    { id: 'magicAttack', value: stats.magicAttack },
   ];
 
   return (
@@ -1120,9 +1133,26 @@ export function SummaryStep({ draft }: StepProps) {
         <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
           {draft.name || 'Nouveau personnage'}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {ancestry.name} · {characterClass.name} · niveau 1
-        </Typography>
+        <Stack
+          direction="row"
+          spacing={0.75}
+          sx={{ alignItems: 'center', color: 'text.secondary' }}
+        >
+          <Typography variant="body2" component="span">
+            {ancestry.name} ·
+          </Typography>
+          <ClassIcon classId={characterClass.id} size={18} />
+          <Typography
+            variant="body2"
+            component="span"
+            sx={{ color: classColor(characterClass.id), fontWeight: 600 }}
+          >
+            {characterClass.name}
+          </Typography>
+          <Typography variant="body2" component="span">
+            · niveau 1
+          </Typography>
+        </Stack>
       </Box>
 
       <Box>
@@ -1133,7 +1163,6 @@ export function SummaryStep({ draft }: StepProps) {
           {ABILITY_IDS.map((id) => {
             const total = abilities[id];
             const color = abilityTotalColor(total);
-            const Icon = ABILITY_ICONS[id];
             return (
               <Box
                 key={id}
@@ -1153,7 +1182,7 @@ export function SummaryStep({ draft }: StepProps) {
                   bgcolor: alpha(color, 0.15),
                 }}
               >
-                <Icon fontSize="large" sx={{ color: 'text.secondary' }} />
+                <AbilityIcon ability={id} title size={32} sx={{ color: 'text.secondary' }} />
                 <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
                   {id}
                 </Typography>
@@ -1172,14 +1201,29 @@ export function SummaryStep({ draft }: StepProps) {
           Statistiques dérivées
         </Typography>
         <Grid container spacing={1}>
-          {statLines.map(([label, value]) => (
-            <Grid key={label} size={{ xs: 6, sm: 4 }}>
-              <Card variant="outlined">
-                <CardContent sx={{ py: 1, textAlign: 'center' }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    {label}
-                  </Typography>
-                  <Typography variant="h6">{value}</Typography>
+          {statLines.map(({ id, value }) => (
+            <Grid key={id} size={{ xs: 6, sm: 4 }}>
+              <Card variant="outlined" sx={{ height: '100%' }}>
+                <CardContent
+                  sx={{
+                    py: 1,
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    '&:last-child': { pb: 1 },
+                  }}
+                >
+                  <DerivedStatIcon statId={id} title size={40} />
+                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
+                      {DERIVED_STAT_NAMES[id]}
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                      {value}
+                    </Typography>
+                  </Box>
+                  <DerivedStatHint statId={id} input={derivedInput} sx={{ alignSelf: 'flex-start' }} />
                 </CardContent>
               </Card>
             </Grid>
@@ -1194,7 +1238,7 @@ export function SummaryStep({ draft }: StepProps) {
         <Typography variant="subtitle2" gutterBottom>
           Capacités acquises
         </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+        <Grid container spacing={1}>
           {featureIds.map((id) => {
             const feature = featureById.get(id);
             const path = feature ? pathById.get(feature.pathId) : undefined;
@@ -1202,29 +1246,45 @@ export function SummaryStep({ draft }: StepProps) {
             // Voie de peuple / du mage : pas de profil → bordure neutre.
             const color = path?.type === 'class' ? classColor(characterClass.id) : null;
             return (
-              <Box
-                key={id}
-                sx={{
-                  px: 1.5,
-                  py: 0.75,
-                  borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: color ?? 'divider',
-                  bgcolor: color ? alpha(color, 0.15) : 'transparent',
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {feature?.name ?? id}
-                </Typography>
-                {path && (
-                  <Typography variant="caption" color="text.secondary">
-                    {path.name}
-                  </Typography>
-                )}
-              </Box>
+              <Grid key={id} size={{ xs: 6, sm: 3 }}>
+                <Box
+                  sx={{
+                    height: '100%',
+                    px: 1.5,
+                    py: 0.75,
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: color ?? 'divider',
+                    bgcolor: color ? alpha(color, 0.15) : 'transparent',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: 1,
+                  }}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {feature?.name ?? id}
+                    </Typography>
+                    {path && (
+                      <Typography variant="caption" color="text.secondary">
+                        {path.name}
+                      </Typography>
+                    )}
+                  </Box>
+                  {color && (
+                    <ClassIcon
+                      classId={characterClass.id}
+                      size={20}
+                      color="#fff"
+                      sx={{ mt: 0.25 }}
+                    />
+                  )}
+                </Box>
+              </Grid>
             );
           })}
-        </Box>
+        </Grid>
       </Box>
 
       {warnings.length > 0 && (

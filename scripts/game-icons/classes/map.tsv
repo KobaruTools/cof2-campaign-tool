@@ -2,13 +2,13 @@ arquebusier	lorc/blunderbuss.svg
 barde	lorc/lyre.svg
 rodeur	lorc/high-shot.svg
 voleur	lorc/hood.svg
-barbare	delapouite/barbarian.svg
+barbare	lorc/battle-axe.svg
 chevalier	delapouite/knight-banner.svg
 guerrier	lorc/crossed-swords.svg
 ensorceleur	lorc/fire-ray.svg
 forgesort	lorc/anvil-impact.svg
-magicien	lorc/wizard-staff.svg
-sorcier	delapouite/spell-book.svg
+magicien	lorc/book-cover.svg
+sorcier	lorc/imp.svg
 druide	delapouite/oak-leaf.svg
 moine	lorc/meditation.svg
 pretre	lorc/holy-symbol.svg
