@@ -43,6 +43,7 @@ function validRaw(): Record<string, unknown> {
     ancestryId: 'humain',
     classId: 'barbare',
     level: 1,
+    portraitVariant: 'default',
     abilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
     ancestryPathId: 'humain',
     featureIds: [],
@@ -125,12 +126,31 @@ describe('migrateCharacter', () => {
       { custom: true, name: 'Cape de voyage', quantity: 2 },
     ]);
     expect(c.overrides).toEqual({ maxHp: 30, def: 12, luckPoints: 4, meleeAttack: 5 });
+    // v3 : illustration de profil par défaut pour un personnage migré.
+    expect(c.portraitVariant).toBe('default');
     // Plus aucune clé française résiduelle.
     expect(c).not.toHaveProperty('peupleId');
     expect(c).not.toHaveProperty('caracteristiques');
   });
 
-  it('expose la migration 1→2 dans le registre', () => {
+  it('migre un personnage v2 vers v3 (portraitVariant par défaut)', () => {
+    const v2 = validRaw();
+    v2.schemaVersion = 2;
+    delete v2.portraitVariant;
+    const c = migrateCharacter(v2);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.portraitVariant).toBe('default');
+  });
+
+  it('préserve une variante d’illustration déjà choisie en v3', () => {
+    const v2 = validRaw();
+    v2.schemaVersion = 2;
+    v2.portraitVariant = 'alt';
+    expect(migrateCharacter(v2).portraitVariant).toBe('alt');
+  });
+
+  it('expose les migrations 1→2 et 2→3 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
+    expect(typeof MIGRATIONS[2]).toBe('function');
   });
 });

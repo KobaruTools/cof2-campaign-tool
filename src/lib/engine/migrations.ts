@@ -93,11 +93,23 @@ function migrateV1toV2(data: Record<string, unknown>): Record<string, unknown> {
 }
 
 /**
+ * v2 → v3 : ajout de `portraitVariant` (choix de l'illustration de profil).
+ * Les personnages existants n'avaient pas ce champ → illustration standard.
+ */
+function migrateV2toV3(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (next.portraitVariant !== 'alt') next.portraitVariant = 'default';
+  next.schemaVersion = 3;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
+  2: migrateV2toV3,
 };
 
 export class MigrationError extends Error {}

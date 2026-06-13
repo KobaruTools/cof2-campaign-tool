@@ -17,8 +17,9 @@ import type { AbilityId } from '@/data/schema';
  * Version courante du schéma de personnage. Incrémenter à chaque évolution.
  * v2 : passage des clés du modèle en anglais (migration depuis v1 dans
  * `src/lib/engine/migrations.ts`).
+ * v3 : ajout de `portraitVariant` (choix de l'illustration de profil).
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * Statistiques dérivées surchargeables manuellement (règle maison, cf. PRD
@@ -38,6 +39,13 @@ export type DerivedStatId =
 
 /** Sexe du personnage (code interne, affiché en français). */
 export type Sex = 'male' | 'female';
+
+/**
+ * Variante d'illustration du profil : chaque profil dispose d'une illustration
+ * standard (`default` → `/classes/<id>.webp`) et d'une alternative
+ * (`alt` → `/classes/<id>-2.webp`). Choix purement esthétique.
+ */
+export type PortraitVariant = 'default' | 'alt';
 
 /** Champs d'identité libres (PRD §5.2 étape 6). */
 export interface Identity {
@@ -84,6 +92,9 @@ export interface Character {
   ancestryId: string;
   classId: string;
   level: number;
+
+  /** Variante d'illustration de profil retenue (esthétique). */
+  portraitVariant: PortraitVariant;
 
   /**
    * Valeurs des 7 caractéristiques telles qu'elles figurent sur la fiche

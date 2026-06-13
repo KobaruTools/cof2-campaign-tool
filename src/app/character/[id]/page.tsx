@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -14,6 +15,7 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { ancestryById, classById, families, featureById } from '@/data';
@@ -167,7 +169,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               <Box
                 component="img"
                 ref={classImgRef}
-                src={`/classes/${characterClass.id}.webp`}
+                src={`/classes/${characterClass.id}${
+                  character.portraitVariant === 'alt' ? '-2' : ''
+                }.webp`}
                 alt=""
                 aria-hidden
                 sx={{
@@ -220,6 +224,25 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 · niveau {character.level}
               </Typography>
             </Stack>
+
+            {/* Bascule entre l'illustration de profil standard et son alternative
+                (-2), uniquement en mode édition. */}
+            {editing && characterClass && (
+              <Tooltip title="Changer l’illustration du profil">
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    update({
+                      portraitVariant:
+                        character.portraitVariant === 'alt' ? 'default' : 'alt',
+                    })
+                  }
+                  sx={{ position: 'absolute', top: 0, right: 0, zIndex: 2 }}
+                >
+                  <SwapHorizIcon />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
 
           <SheetSection
