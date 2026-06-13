@@ -35,6 +35,11 @@ export const fighterClasses: CharacterClass[] = [
       'Les voies de barbare limitent l’armure au cuir renforcé. Le barbare peut en revanche utiliser tous les boucliers.',
     maxArmorId: 'cuir-renforce-broigne',
     shieldAllowed: true,
+    meleeAccess: 'all',
+    rangedAccess: 'all',
+    allowedWeaponIds: [],
+    excludedWeaponIds: ['arbalete-de-poing', 'arbalete-legere', 'arbalete-lourde'],
+    weaponNotes: "Sauf les arbalètes et les armes d'une technologie trop complexe.",
     startingEquipment: [
       {
         itemId: null,
@@ -61,6 +66,10 @@ export const fighterClasses: CharacterClass[] = [
       'Les voies de chevalier limitent l’armure à celle de plaque (l’armure de plaque complète nécessite une capacité particulière). Il peut utiliser tous les boucliers.',
     maxArmorId: 'armure-de-plaques',
     shieldAllowed: true,
+    meleeAccess: 'all',
+    rangedAccess: 'none',
+    allowedWeaponIds: [],
+    weaponNotes: 'Dédaigne les armes à distance (considérées comme des armes de couard).',
     startingEquipment: [
       { itemId: 'epee-longue', label: 'Épée longue (DM 1d8)', quantity: 1 },
       { itemId: 'grand-bouclier', label: 'grand bouclier (DEF +2)', quantity: 1 },
@@ -84,6 +93,9 @@ export const fighterClasses: CharacterClass[] = [
       'Les voies de guerrier limitent l’armure à la cotte de mailles. Il peut utiliser tous les boucliers.',
     maxArmorId: 'cotte-de-mailles',
     shieldAllowed: true,
+    meleeAccess: 'all',
+    rangedAccess: 'all',
+    allowedWeaponIds: [],
     startingEquipment: [
       { itemId: 'epee-longue', label: 'Épée longue (DM 1d8)', quantity: 1 },
       { itemId: null, label: 'épée ou hache à deux mains (DM 2d6)', quantity: 1 },

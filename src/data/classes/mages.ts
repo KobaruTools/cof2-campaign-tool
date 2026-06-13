@@ -26,6 +26,11 @@ export const mageClasses: CharacterClass[] = [
       "L’ensorceleur sait manier la dague et le bâton ferré. De plus, chaque ensorceleur peut choisir une arme supplémentaire de son choix qu’il a appris à utiliser, sans dépasser 1d6 DM (malgré ses DM de 2d4, l’arbalète légère est aussi une arme éligible). Les voies d’ensorceleur interdisent de porter une armure ou d’utiliser un bouclier.",
     maxArmorId: null,
     shieldAllowed: false,
+    meleeAccess: 'none',
+    rangedAccess: 'none',
+    allowedWeaponIds: ['dague', 'baton-ferre'],
+    weaponNotes:
+      "+ une arme supplémentaire au choix (≤ 1d6 DM ; l'arbalète légère est éligible malgré ses 2d4).",
     startingEquipment: [
       { itemId: 'baton-ferre', label: 'Bâton ferré (DM 1d6)', quantity: 1 },
       { itemId: 'dague', label: 'dague (DM d4) ou autre arme maîtrisée au choix', quantity: 1 },
@@ -44,6 +49,9 @@ export const mageClasses: CharacterClass[] = [
       "Le forgesort sait manier la dague, le bâton, le marteau et l’arbalète légère. Les voies de forgesort limitent l’armure au cuir simple et interdisent d’utiliser un bouclier.",
     maxArmorId: 'cuir-simple',
     shieldAllowed: false,
+    meleeAccess: 'none',
+    rangedAccess: 'none',
+    allowedWeaponIds: ['dague', 'baton', 'marteau', 'arbalete-legere'],
     startingEquipment: [
       { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
       { itemId: 'baton-ferre', label: 'bâton ferré (DM 1d6)', quantity: 1 },
@@ -63,6 +71,9 @@ export const mageClasses: CharacterClass[] = [
       "Le magicien sait manier la dague et le bâton. Les voies de magicien interdisent de porter une armure ou d’utiliser un bouclier.",
     maxArmorId: null,
     shieldAllowed: false,
+    meleeAccess: 'none',
+    rangedAccess: 'none',
+    allowedWeaponIds: ['dague', 'baton'],
     startingEquipment: [
       { itemId: 'baton-ferre', label: 'Bâton ferré (DM 1d6)', quantity: 1 },
       { itemId: 'dague', label: 'dague (DM 1d4)', quantity: 1 },
@@ -88,6 +99,9 @@ export const mageClasses: CharacterClass[] = [
       "Le sorcier sait manier la dague et le bâton. Les voies de sorcier interdisent de porter une armure ou d’utiliser un bouclier.",
     maxArmorId: null,
     shieldAllowed: false,
+    meleeAccess: 'none',
+    rangedAccess: 'none',
+    allowedWeaponIds: ['dague', 'baton'],
     startingEquipment: [
       { itemId: 'baton-ferre', label: 'Bâton ferré (DM 1d6)', quantity: 1 },
       { itemId: 'dague', label: 'dague (DM 1d4)', quantity: 1 },

@@ -139,6 +139,17 @@ export interface Ancestry {
 // Profils — chap. 4-7, p. 61-127
 // ---------------------------------------------------------------------------
 
+/**
+ * Accès d'un profil à une catégorie d'armes, interprété depuis le texte
+ * « Armes & armures maîtrisées » (extraction validée) :
+ * - `all` : toutes les armes de la catégorie ;
+ * - `oneHanded` (contact seulement) : armes utilisables à une main — légères,
+ *   à une main, et « une ou deux mains » tenues à une main ;
+ * - `none` : aucune au titre de l'accès global ; seules celles listées dans
+ *   `allowedWeaponIds` sont maîtrisées.
+ */
+export type WeaponAccess = 'all' | 'oneHanded' | 'none';
+
 export interface CharacterClass {
   id: string;
   name: string;
@@ -154,6 +165,26 @@ export interface CharacterClass {
   maxArmorId: string | null;
   /** Le profil autorise-t-il le bouclier ? — ex. arquebusier : non (p. 62). */
   shieldAllowed: boolean;
+  /** Accès aux armes de contact — voir `WeaponAccess`. Interprété du verbatim. */
+  meleeAccess: WeaponAccess;
+  /** Accès aux armes à distance : `all` (hors poudre, cf. `powderAllowed`) ou `none`. */
+  rangedAccess: 'all' | 'none';
+  /**
+   * Armes précises maîtrisées en plus des accès globaux ; constitue la liste
+   * complète quand `meleeAccess`/`rangedAccess` valent `none`
+   * (ex. magicien : dague, bâton). Réfère des ids du catalogue d'armes.
+   */
+  allowedWeaponIds: string[];
+  /** Armes retirées d'un accès `all` (ex. barbare : les arbalètes). */
+  excludedWeaponIds?: string[];
+  /**
+   * Le profil maîtrise les armes à poudre — p.185 : « seul l'arquebusier
+   * maîtrise les armes à poudre » par défaut. N'a d'effet que si les armes à
+   * feu sont autorisées dans la partie (notion de campagne à venir).
+   */
+  powderAllowed?: boolean;
+  /** Nuances verbatim non structurables (choix du joueur, exceptions…). */
+  weaponNotes?: string;
   /** Équipement de départ — ex. p. 62. */
   startingEquipment: StartingEquipmentRef[];
   /** Les 5 voies du profil, dans l'ordre du livre — ex. table p. 61. */

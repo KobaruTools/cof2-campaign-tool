@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -29,6 +30,7 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
+import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
@@ -44,7 +46,7 @@ import {
   progression,
   pathById,
 } from '@/data';
-import type { AbilityId, AbilityModifier, Armor, CharacterClass } from '@/data/schema';
+import type { AbilityId, AbilityModifier, Armor, CharacterClass, Weapon } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { deriveStats, checkCompliance, type RulesContext } from '@/lib/engine';
 import {
@@ -76,6 +78,14 @@ const familyById = new Map(families.map((f) => [f.id, f]));
 const ARMORS: Armor[] = equipment
   .filter((it): it is Armor => it.category === 'armor')
   .sort((a, b) => a.def - b.def);
+
+/** Armes à poudre — p.185 (aucun drapeau structuré ; ids connus du catalogue). */
+const POWDER_WEAPON_IDS = ['petoire', 'mousquet'];
+
+/** DM affichés d'une arme (ex. « 1d6 » ou « 1d6/1d10 » à une/deux mains). */
+function weaponDamage(w: Weapon): string {
+  return w.twoHandedDamage ? `${w.damage}/${w.twoHandedDamage}` : w.damage;
+}
 
 /**
  * Découpe la description d'un peuple à la section « Interpréter un … » : le
@@ -180,14 +190,31 @@ export function AncestryStep({ draft, patch }: StepProps) {
       </FormControl>
 
       {ancestry && (
-        <Card variant="outlined">
+        <Card variant="outlined" sx={{ position: 'relative' }}>
           <CardMedia
             component="img"
             image={`/ancestries/${ancestry.id}.webp`}
             alt={`Illustration du peuple ${ancestry.name}`}
             sx={{ maxHeight: 320, objectFit: 'cover', objectPosition: 'center' }}
           />
-          <CardContent>
+          {/* Filigrane « homme de vitruve » du peuple, décalé hors du coin bas-droite */}
+          <Box
+            component="img"
+            src={`/ancestries/${ancestry.id}-vitruve.webp`}
+            alt=""
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              bottom: -24,
+              right: -24,
+              width: { xs: 160, sm: 220 },
+              opacity: 0.75,
+              pointerEvents: 'none',
+              userSelect: 'none',
+              zIndex: 0,
+            }}
+          />
+          <CardContent sx={{ position: 'relative', zIndex: 1, pb: { xs: 14, sm: 18 } }}>
             <Typography variant="subtitle1" gutterBottom>
               {ancestry.name}
             </Typography>
@@ -300,9 +327,45 @@ function RestrictionBlock({
  */
 function ClassRestrictions({ characterClass }: { characterClass: CharacterClass }) {
   const theme = useTheme();
+  // TODO(campaign) : remonter ce réglage au scope de la campagne (les armes à
+  // feu ne conviennent qu'à certains univers — p.185). Local au wizard pour
+  // l'instant, activé par défaut pour la classe qui les maîtrise (arquebusier).
+  const [includeFirearms, setIncludeFirearms] = useState(true);
+
   const maxArmor = characterClass.maxArmorId ? equipmentById.get(characterClass.maxArmorId) : null;
   const maxDef = maxArmor && maxArmor.category === 'armor' ? maxArmor.def : null;
   const allowedArmors = maxDef != null ? ARMORS.filter((a) => a.def <= maxDef) : [];
+
+  const weaponBlocks: React.ReactNode[] = [];
+  if (characterClass.meleeAccess === 'all') {
+    weaponBlocks.push(<RestrictionBlock key="melee" label="Toutes les armes de contact" />);
+  } else if (characterClass.meleeAccess === 'oneHanded') {
+    weaponBlocks.push(<RestrictionBlock key="melee" label="Armes de contact à une main" />);
+  }
+  if (characterClass.rangedAccess === 'all') {
+    weaponBlocks.push(<RestrictionBlock key="ranged" label="Toutes les armes à distance" />);
+  }
+  for (const id of characterClass.allowedWeaponIds) {
+    const w = equipmentById.get(id);
+    if (w && w.category === 'weapon') {
+      weaponBlocks.push(<RestrictionBlock key={id} label={`${w.name} (DM ${weaponDamage(w)})`} />);
+    }
+  }
+  if (characterClass.powderAllowed && includeFirearms) {
+    const names = POWDER_WEAPON_IDS.map((id) => equipmentById.get(id)?.name ?? id).join(', ');
+    weaponBlocks.push(
+      <RestrictionBlock
+        key="powder"
+        label={`Armes à feu (${names})`}
+        color={theme.palette.warning.main}
+      />,
+    );
+  }
+  if (weaponBlocks.length === 0) {
+    weaponBlocks.push(
+      <RestrictionBlock key="none" label="Aucune arme" color={theme.palette.error.main} />,
+    );
+  }
 
   return (
     <Box sx={{ mb: 1.5 }}>
@@ -335,12 +398,33 @@ function ClassRestrictions({ characterClass }: { characterClass: CharacterClass 
         />
       </Stack>
 
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-        <SportsKabaddiOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mt: 0.25 }} />
-        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-          {characterClass.weaponsAndArmor}
-        </Typography>
+      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
+          <SportsKabaddiOutlinedIcon fontSize="small" />
+          <Typography variant="body2">Armes</Typography>
+        </Stack>
+        {weaponBlocks}
       </Stack>
+
+      {characterClass.weaponNotes && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+          {characterClass.weaponNotes}
+        </Typography>
+      )}
+
+      {characterClass.powderAllowed && (
+        <FormControlLabel
+          sx={{ mt: 0.5 }}
+          control={
+            <Switch
+              size="small"
+              checked={includeFirearms}
+              onChange={(e) => setIncludeFirearms(e.target.checked)}
+            />
+          }
+          label={<Typography variant="body2">Armes à feu autorisées</Typography>}
+        />
+      )}
     </Box>
   );
 }

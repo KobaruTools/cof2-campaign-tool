@@ -105,6 +105,10 @@ for (const p of classes) {
   if (p.maxArmorId && !equipmentById.has(p.maxArmorId)) itemMiss.add(p.maxArmorId);
   for (const e of p.startingEquipment)
     if (e.itemId && !equipmentById.has(e.itemId)) itemMiss.add(e.itemId);
+  for (const wid of p.allowedWeaponIds)
+    if (!equipmentById.has(wid)) itemMiss.add(wid);
+  for (const wid of p.excludedWeaponIds ?? [])
+    if (!equipmentById.has(wid)) itemMiss.add(wid);
 }
 if (itemMiss.size)
   warn(`[équipement] ${itemMiss.size} slug(s) référencés par les profils absents du catalogue : ${[...itemMiss].sort().join(', ')}`);
