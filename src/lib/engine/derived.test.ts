@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { families } from '@/data/families';
+import { progression } from '@/data/progression';
 import type { Family } from '@/data/schema';
 import {
   meleeAttack,
@@ -10,6 +11,7 @@ import {
   deriveStats,
   initiative,
   recoveryDiceCount,
+  scalingDie,
   luckPoints,
   manaPoints,
   maxHp,
@@ -63,6 +65,22 @@ describe('dés de récupération', () => {
     expect(mages.recoveryDie).toBe('d6');
     expect(aventuriers.recoveryDie).toBe('d8');
     expect(mystiques.recoveryDie).toBe('d8');
+  });
+});
+
+describe('dés évolutifs (d4°)', () => {
+  it('suit la table p. 43 par paliers', () => {
+    expect(scalingDie(1, progression)).toBe('d4');
+    expect(scalingDie(5, progression)).toBe('d4');
+    expect(scalingDie(6, progression)).toBe('d6');
+    expect(scalingDie(8, progression)).toBe('d6');
+    expect(scalingDie(9, progression)).toBe('d8');
+    expect(scalingDie(12, progression)).toBe('d10');
+    expect(scalingDie(15, progression)).toBe('d12');
+  });
+
+  it('reste sur le dernier palier au-delà (15+)', () => {
+    expect(scalingDie(20, progression)).toBe('d12');
   });
 });
 

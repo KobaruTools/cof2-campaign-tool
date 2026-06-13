@@ -14,7 +14,7 @@
  * fourni par l'appelant (saisies, surcharges, ou future couche d'effets
  * structurés). Il ne tente jamais d'interpréter le texte d'une capacité.
  */
-import type { AbilityId, Die, Family } from '@/data/schema';
+import type { AbilityId, Die, Family, ProgressionRules } from '@/data/schema';
 
 export type Abilities = Record<AbilityId, number>;
 
@@ -74,6 +74,25 @@ export function recoveryDiceCount(con: number, family: Family, mods: DerivedMods
 /** Type du dé de récupération (déterminé par la famille). */
 export function recoveryDie(family: Family): Die {
   return family.recoveryDie;
+}
+
+// ---------------------------------------------------------------------------
+// Dés évolutifs (d4°) — table p. 43
+// ---------------------------------------------------------------------------
+
+/**
+ * Valeur courante d'un dé évolutif (« d4° ») pour un niveau donné, d'après la
+ * table p. 43 (`progression.scalingDice` : 1-5 d4, 6-8 d6, 9-11 d8, 12-14 d10,
+ * 15+ d12). Le dé affiché n'est jamais « d4° » mais le dé concret atteint au
+ * niveau ; le marqueur « ° » de l'UI sert seulement à signaler qu'il évoluera.
+ * Retourne le dé du seuil le plus élevé dont `minLevel` est atteint.
+ */
+export function scalingDie(level: number, progression: ProgressionRules): Die {
+  let die = progression.scalingDice[0]?.die ?? 'd4';
+  for (const tier of progression.scalingDice) {
+    if (level >= tier.minLevel) die = tier.die;
+  }
+  return die;
 }
 
 // ---------------------------------------------------------------------------
