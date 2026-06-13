@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={roboto.variable}>
+    <html lang="fr" className={roboto.variable} style={{ colorScheme: 'dark' }}>
       <body>
         <Providers>{children}</Providers>
       </body>
