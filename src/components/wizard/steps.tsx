@@ -249,11 +249,50 @@ export function AncestryStep({ draft, patch }: StepProps) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Bloc carré (même langage visuel que `AbilityBadge`) pour un repère de
+ * restriction : icône + libellé, bordure et fond teintés par `color`.
+ */
+function RestrictionBlock({
+  icon,
+  label,
+  color,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  color?: string;
+}) {
+  return (
+    <Box
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.5,
+        px: 1,
+        py: 0.5,
+        borderRadius: 1,
+        border: 1,
+        borderColor: color ?? 'divider',
+        bgcolor: color ? `color-mix(in srgb, ${color} 18%, transparent)` : 'action.hover',
+        color: color ?? 'text.primary',
+        fontSize: '0.78rem',
+        fontWeight: 600,
+        lineHeight: 1.4,
+        '& svg': { fontSize: '1.05rem' },
+      }}
+    >
+      {icon}
+      {label}
+    </Box>
+  );
+}
+
+/**
  * Repères visuels des restrictions d'un profil. Armure et bouclier sont des
- * données structurées (chips avec code couleur vert/rouge) ; les armes ne le
+ * données structurées (blocs avec code couleur vert/rouge) ; les armes ne le
  * sont pas (texte nuancé par profil), conservées en dessous avec une icône.
  */
 function ClassRestrictions({ characterClass }: { characterClass: CharacterClass }) {
+  const theme = useTheme();
   const arm = characterClass.maxArmorId ? equipmentById.get(characterClass.maxArmorId) : null;
   const armDef = arm && arm.category === 'armor' ? arm.def : null;
   const armorLabel = arm
@@ -266,19 +305,15 @@ function ClassRestrictions({ characterClass }: { characterClass: CharacterClass 
         Restrictions
       </Typography>
       <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1, mb: 1 }}>
-        <Chip
+        <RestrictionBlock
           icon={<CheckroomOutlinedIcon />}
           label={armorLabel}
-          color={arm ? 'default' : 'error'}
-          variant="outlined"
-          size="small"
+          color={arm ? undefined : theme.palette.error.main}
         />
-        <Chip
+        <RestrictionBlock
           icon={<ShieldOutlinedIcon />}
           label={characterClass.shieldAllowed ? 'Bouclier autorisé' : 'Bouclier interdit'}
-          color={characterClass.shieldAllowed ? 'success' : 'error'}
-          variant="outlined"
-          size="small"
+          color={characterClass.shieldAllowed ? theme.palette.success.main : theme.palette.error.main}
         />
       </Stack>
       <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
