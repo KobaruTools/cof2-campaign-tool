@@ -4,8 +4,8 @@ import { useState } from 'react';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
-import SportsKabaddiOutlinedIcon from '@mui/icons-material/SportsKabaddiOutlined';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
@@ -344,10 +344,13 @@ function RestrictionRow({
   icon,
   label,
   children,
+  valueAlign = 'start',
 }: {
   icon: React.ReactNode;
   label: string;
   children: React.ReactNode;
+  /** Alignement vertical de la cellule de droite : `start` (défaut) ou `center`. */
+  valueAlign?: 'start' | 'center';
 }) {
   return (
     <>
@@ -355,7 +358,10 @@ function RestrictionRow({
         {icon}
         <Typography variant="body2">{label}</Typography>
       </Stack>
-      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.75 }}>
+      <Stack
+        direction="row"
+        sx={{ alignSelf: valueAlign, alignItems: 'center', flexWrap: 'wrap', gap: 0.75 }}
+      >
         {children}
       </Stack>
     </>
@@ -447,7 +453,11 @@ function ClassRestrictions({ characterClass }: { characterClass: CharacterClass 
         </RestrictionRow>
 
         {characterClass.weaponNotes && (
-          <RestrictionRow icon={<SportsKabaddiOutlinedIcon fontSize="small" />} label="Détail">
+          <RestrictionRow
+            icon={<MenuBookOutlinedIcon fontSize="small" />}
+            label="Détail"
+            valueAlign="center"
+          >
             <Typography variant="caption" color="text.secondary">
               {characterClass.weaponNotes}
             </Typography>
