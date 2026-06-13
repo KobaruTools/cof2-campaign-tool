@@ -32,6 +32,7 @@ const halfElf: Ancestry = {
   name: 'Demi-elfe',
   description: '',
   physical: { startingAge: '', lifeExpectancy: '', height: '', weight: '', traits: '' },
+  names: { note: '', male: [], female: [], sourcePage: 45 },
   abilityModifiers: [
     { value: 1, abilities: ['PER', 'CHA'] },
     { value: -1, abilities: ['FOR', 'CON'] },
@@ -46,6 +47,7 @@ const dwarf: Ancestry = {
   name: 'Nain',
   description: '',
   physical: { startingAge: '', lifeExpectancy: '', height: '', weight: '', traits: '' },
+  names: { note: '', male: [], female: [], sourcePage: 58 },
   abilityModifiers: [
     { value: 1, abilities: ['CON', 'VOL'] },
     { value: -1, abilities: ['AGI'] },

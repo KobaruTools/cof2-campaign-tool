@@ -2,8 +2,9 @@
  * Peuples de CO2 — chapitre 3 (p. 44-60), table « Modificateur de peuple » p. 28.
  *
  * Descriptions verbatim : paragraphes descriptifs principaux + section
- * « Interpréter un … » (les sections « Dans les Terres d'Osgild » et
- * « Noms typiques » ne sont pas reprises). Les césures de fin de ligne du
+ * « Interpréter un … » (la section « Dans les Terres d'Osgild » n'est pas
+ * reprise). La section « Noms typiques » est extraite dans `names` (conseils +
+ * listes par sexe, pour le générateur de nom). Les césures de fin de ligne du
  * livre sont recollées, sans autre modification.
  */
 
@@ -28,6 +29,15 @@ export const ancestries: Ancestry[] = [
       height: '1,50 m à 1,90 m',
       weight: '40 à 80 kg',
       traits: 'grâce naturelle, oreilles légèrement pointues, pilosité faible.',
+    },
+    // p. 46 : pas de liste — le demi-elfe compose un prénom elfique (voies elfe
+    // haut p. 49 / sylvain p. 51) et un nom de famille humain (p. 56).
+    names: {
+      note:
+        'Les noms des personnages demi-elfes reflètent souvent leur double nature et ils se composent d’un prénom elfique et d’un nom de famille humain (voir pages 51 et 56). L’inverse est plus rare car les elfes n’acceptent pas qu’une créature avec une durée de vie aussi brève porte le nom de leur lignée.',
+      male: [],
+      female: [],
+      sourcePage: 46,
     },
     // p. 28 et p. 46 : « +1 PER ou CHA, -1 FOR ou CON ».
     abilityModifiers: [
@@ -55,6 +65,15 @@ export const ancestries: Ancestry[] = [
       traits:
         'grand et athlétique. Peau verdâtre qui tend parfois vers un vert plus franc, mâchoire large, front bas, petits yeux.',
     },
+    // p. 47 : prénoms humains, ou prénoms orcs (courts, gutturaux). Féminin =
+    // masculin + « a » final.
+    names: {
+      note:
+        'Les demi-orcs utilisent des prénoms humains, à moins qu’ils aient été élevés chez les orcs. Certains se choisissent aussi un prénom orc à l’âge adulte, en réaction à l’ostracisme dont ils sont victimes. Les noms orcs sont courts et gutturaux, privilégiez les lettres R, G et K, évitez une voyelle douce comme le E et préférez le O. Les noms féminins sont généralement les mêmes que les noms masculins mais avec la lettre A en plus à la fin.',
+      male: ['Aog', 'Bargul', 'Carok', 'Drog', 'Erok', 'Farg', 'Gorog', 'Hurl', 'Jorgul', 'Krok', 'Krush', 'Lugn', 'Mog', 'Norok', 'Rork', 'Urdu'],
+      female: ['Aoga', 'Bargula', 'Caroka', 'Droga', 'Eroka', 'Farga', 'Goroga', 'Hurla', 'Jorgula', 'Kroka', 'Krusha', 'Lugna', 'Moga', 'Noroka', 'Rorka', 'Urdua'],
+      sourcePage: 47,
+    },
     // p. 28 et p. 48 : « +1 FOR ou CON et -1 CHA ou INT ».
     abilityModifiers: [
       { value: 1, abilities: ['FOR', 'CON'] },
@@ -77,6 +96,14 @@ export const ancestries: Ancestry[] = [
       weight: '40 à 70 kg',
       traits:
         'élancé, svelte et gracieux. Jeunesse éternelle. Oreilles pointues, yeux en amandes (verts, violets), cheveux parfois blancs, argent ou or.',
+    },
+    // p. 49 : sonorités douces et complexes, voyelles doublées.
+    names: {
+      note:
+        'Les elfes hauts privilégient les noms aux sonorités douces mais complexes. L, W, N et M sont les consonnes dominantes et les voyelles sont souvent doublées (ie, aë). Les noms féminins finissent par -wen, -wë, -ië, -aël ou -aëlle. Ceux des hommes par des terminaisons aux sonorités plus tranchées comme -dir, -dur, -dor ou -dil.',
+      male: ['Arwendil', 'Caëldwendir', 'Eldwyndor', 'Elberenhdir', 'Elendur', 'Gilgalendil', 'Irwildur', 'Laurelith', 'Linaëndir', 'Laendoril', 'Nennendir'],
+      female: ['Elberenh', 'Elidhwen', 'Ellenûviel', 'Laurelinn', 'Linaëwen', 'Laendorië', 'Maelwë', 'Maerwen', 'Nennenvaël', 'Ninwelotë', 'Tintaëlle'],
+      sourcePage: 49,
     },
     // p. 28 et p. 50 : « +1 INT ou CHA, -1 FOR ».
     abilityModifiers: [
@@ -101,6 +128,14 @@ export const ancestries: Ancestry[] = [
       traits:
         'menu, svelte. Oreilles pointues, yeux en amandes (verts, violets), cheveux sombres (bruns, noirs, roux), tatouages, pilosité absente.',
     },
+    // p. 51 : proches des elfes hauts, en plus simple.
+    names: {
+      note:
+        'Les elfes des bois ont des noms assez similaires à ceux des elfes hauts, quoique ceux des sylvains soient plus simples. Chez les femmes, la dernière consonne ou la dernière voyelle est doublée. Chez les hommes, les terminaisons -din, -dor, -ion sont privilégiées.',
+      male: ['Aëdin', 'Caëndor', 'Cirion', 'Doralion', 'Ealdor', 'Findalion', 'Glorfindor', 'Haëldion', 'Laurendor', 'Morwendir', 'Raëldirion'],
+      female: ['Aëldill', 'Aluinill', 'Aliann', 'Dianaë', 'Eilinelle', 'Elenwëe', 'Lúthill', 'Nínielle', 'Nolwaënn', 'Mírielle', 'Keltienn'],
+      sourcePage: 51,
+    },
     // p. 28 et p. 51 : « +1 AGI ou PER, -1 FOR ».
     abilityModifiers: [
       { value: 1, abilities: ['AGI', 'PER'] },
@@ -123,6 +158,15 @@ export const ancestries: Ancestry[] = [
       weight: '30 à 50 kg',
       traits:
         'Petit et rondouillard, gros nez. Moustaches et rouflaquettes pour les gnomes, couettes pour les gnomettes. Oreilles un peu pointues ou grandes et rondes.',
+    },
+    // p. 53 : prénom « désuet » + nom de famille long aux consonances
+    // germaniques (les entrées sont donc des noms complets).
+    names: {
+      note:
+        'Les gnomes aiment les prénoms que les humains jugent désuets. Ils ont aussi un nom de famille compliqué et long, qu’ils accolent toujours à ce prénom. Un habitant de notre monde pourrait trouver que ces noms ont des consonances germaniques et étranges.',
+      male: ['Albert Blumdenplick', 'Eustache Dimtigballen', 'Firmin Vondemacht', 'Isidore Kolerbiltag', 'Nestor Wurmenship'],
+      female: ['Thérèse Aliserwilp', 'Huguette Uhldimmerstelp', 'Rose Molkenpulp', 'Eugénie Bimpbelinedor'],
+      sourcePage: 53,
     },
     // p. 28 et p. 53 : « +1 en INT ou PER, -1 en FOR ».
     abilityModifiers: [
@@ -147,6 +191,16 @@ export const ancestries: Ancestry[] = [
       weight: '20 à 30 kg',
       traits: 'petit et vif. Pieds poilus, regard espiègle.',
     },
+    // p. 54-55 : prénoms masculins courts (diminutifs), féminins inspirés des
+    // fleurs/fruits, + nom de famille lié au lieu de naissance.
+    names: {
+      note:
+        'Les halfelins mâles utilisent des prénoms courts qui ressemblent à des diminutifs. Les prénoms féminins sont le plus souvent inspirés des fleurs et des fruits. Ils ont généralement un nom en rapport avec leur lieu de naissance.',
+      male: ['Bill', 'Bern', 'Don', 'Duky', 'Eckel', 'Fili', 'Ged', 'Gerry', 'Hek', 'Hicks', 'Jack', 'Karl', 'Litle', 'Luky', 'Mike', 'Polo', 'Sam', 'Titi'],
+      female: ['Églantine', 'Lila', 'Jacinthe', 'Marguerite', 'Muguette', 'Pâquerette', 'Prune', 'Rose'],
+      surnames: ['Sur-le-pont', 'Dubois', 'Sous-colline', 'Moulinbas'],
+      sourcePage: 54,
+    },
     // p. 28 et p. 55 : « +1 AGI ou VOL, -1 FOR ».
     abilityModifiers: [
       { value: 1, abilities: ['AGI', 'VOL'] },
@@ -169,6 +223,14 @@ export const ancestries: Ancestry[] = [
       weight: '40 à 120 kg',
       traits:
         'toute la diversité possible à l’exception des couleurs trop exotiques (cheveux violets, etc.).',
+    },
+    // p. 56 : très variés ; inspiration médiévale/scandinave/franque/celtique.
+    names: {
+      note:
+        'Les humains ont des prénoms et des noms les plus variés qu’il soit. Vous pouvez vous inspirer d’anciens prénoms médiévaux, scandinaves, francs ou celtiques et les modifier légèrement pour leur donner une consonance plus fantastique. Pour les femmes, les noms de minéraux, de fleurs ou de couleurs peuvent aussi être utilisés.',
+      male: ['Adalrik', 'Arn', 'Bernulf', 'Brand', 'Edwald', 'Ketil', 'Ferwin', 'Gerulf', 'Godfred', 'Gunter', 'Halfdan', 'Ingvar', 'Knud', 'Lothar', 'Osvald', 'Roderick', 'Rurik', 'Sigfred', 'Sigmar', 'Sigvald', 'Stig', 'Svenn', 'Thorsten'],
+      female: ['Annia', 'Alaina', 'Berthille', 'Bérénia', 'Télinne', 'Koralie', 'Floraline', 'Gadrielle', 'Jocynthe', 'Kéline', 'Myrthinne', 'Marille', 'Naelwen', 'Natasha', 'Odaelle', 'Prescille', 'Sorsha', 'Véronelle', 'Wendoline'],
+      sourcePage: 56,
     },
     /**
      * p. 57 : « Un personnage humain gagne +1 à la valeur d'une de ses deux
@@ -196,6 +258,15 @@ export const ancestries: Ancestry[] = [
       weight: '50 à 100 kg',
       traits:
         'robuste et trapu. Pilosité très développée, tresses dans les cheveux et la barbe, bijoux et piercing. Non, les naines n’ont pas de barbe, tout juste un fin duvet avec l’âge.',
+    },
+    // p. 58 : prénoms courts et percutants + nom de clan traduit (entrées
+    // masculines = noms complets). Féminin : terminaisons -hild ou -id.
+    names: {
+      note:
+        'Les nains ont des prénoms courts et percutants, les principales terminaisons sont en -in, -un, -ik, ou -ir, mais il en existe d’autres. Suit généralement le nom de leur clan, qu’ils traduisent en langue commune pour mettre en avant l’idée qu’il véhicule. Chez les femmes, la terminaison en -hild ou -id est la plus courante.',
+      male: ['Gloin Mâchefer', 'Krorin Briseroc', 'Thorin Forgefer', 'Buldur Tranchetroll', 'Trorin Cassegranit', 'Orik Briselame', 'Durok Écu-de-chêne', 'Guerann Marteleur', 'Korik Peau-de-pierre'],
+      female: ['Astrid', 'Arnhild', 'Berthild', 'Brynild', 'Eldrid', 'Ermenhild', 'Frida', 'Gerda', 'Grimhild', 'Gudrun', 'Helga', 'Hilda', 'Ingrid', 'Klothild', 'Sigrid', 'Strida'],
+      sourcePage: 58,
     },
     // p. 28 et p. 59 : « +1 en CON ou VOL, -1 en AGI ».
     abilityModifiers: [

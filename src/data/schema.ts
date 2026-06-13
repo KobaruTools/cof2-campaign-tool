@@ -116,12 +116,40 @@ export interface PhysicalProfile {
   traits: string;
 }
 
+/**
+ * Suggestions de noms d'un peuple — section « Noms typiques » du livre. Sert
+ * d'aide au joueur et de source à un générateur de nom simple, d'où la
+ * séparation par sexe.
+ */
+export interface AncestryNames {
+  /**
+   * Conseils de composition verbatim (sonorités, terminaisons, usages). Donne
+   * le contexte des listes, et la règle quand le livre n'en fournit pas.
+   */
+  note: string;
+  /**
+   * Prénoms (ou noms complets) masculins proposés par le livre. Vide quand le
+   * livre ne liste rien mais décrit une règle de composition (ex. demi-elfe).
+   */
+  male: string[];
+  /** Prénoms (ou noms complets) féminins proposés. Vide si aucune liste. */
+  female: string[];
+  /**
+   * Noms de famille proposés indépendamment du sexe, quand le livre les
+   * distingue explicitement des prénoms (ex. halfelin). Absent sinon.
+   */
+  surnames?: string[];
+  sourcePage: SourcePage;
+}
+
 export interface Ancestry {
   id: string;
   name: string;
   /** Description / interprétation (verbatim ou condensé fidèle). */
   description: string;
   physical: PhysicalProfile;
+  /** Suggestions de noms « Noms typiques » — séparées par sexe. */
+  names: AncestryNames;
   /**
    * La plupart des peuples ont 2 modificateurs ; les humains un seul — p. 26.
    */
