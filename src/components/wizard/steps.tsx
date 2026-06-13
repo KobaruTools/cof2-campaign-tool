@@ -1,19 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
-import PsychologyIcon from '@mui/icons-material/Psychology';
-import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
-import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
@@ -44,7 +37,7 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 import {
   featureById,
   equipment,
@@ -82,7 +75,7 @@ import {
 } from './helpers';
 import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors';
 import { classColor } from '@/lib/ui/classColors';
-import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { ABILITY_ICONS, ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
 import { InfoHint } from '@/components/InfoHint';
 
@@ -592,17 +585,6 @@ export function ClassStep({ draft, patch }: StepProps) {
 // ---------------------------------------------------------------------------
 // Étape 3 — Caractéristiques
 // ---------------------------------------------------------------------------
-
-/** Icône MUI illustrant chaque caractéristique. */
-const ABILITY_ICONS: Record<AbilityId, typeof DirectionsRunIcon> = {
-  AGI: DirectionsRunIcon, // pied / course
-  CON: AccessibilityNewIcon, // corps
-  FOR: FitnessCenterIcon, // bras
-  PER: VisibilityIcon, // œil
-  CHA: RecordVoiceOverIcon, // bouche
-  INT: PsychologyIcon, // cerveau
-  VOL: SelfImprovementIcon, // maîtrise de soi
-};
 
 /** Terme qualitatif associé à une valeur de caractéristique
  * (table « Échelle des valeurs de caractéristiques », p. 27). */
@@ -1126,7 +1108,9 @@ export function SummaryStep({ draft }: StepProps) {
   return (
     <Stack spacing={3}>
       <Box>
-        <Typography variant="subtitle1">{draft.name || 'Nouveau personnage'}</Typography>
+        <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
+          {draft.name || 'Nouveau personnage'}
+        </Typography>
         <Typography variant="body2" color="text.secondary">
           {ancestry.name} · {characterClass.name} · niveau 1
         </Typography>
@@ -1136,10 +1120,41 @@ export function SummaryStep({ draft }: StepProps) {
         <Typography variant="subtitle2" gutterBottom>
           Caractéristiques
         </Typography>
-        <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
-          {ABILITY_IDS.map((id) => (
-            <Chip key={id} label={`${id} ${abilities[id] > 0 ? '+' : ''}${abilities[id]}`} />
-          ))}
+        <Stack direction="row" spacing={1}>
+          {ABILITY_IDS.map((id) => {
+            const total = abilities[id];
+            const color = abilityTotalColor(total);
+            const Icon = ABILITY_ICONS[id];
+            return (
+              <Box
+                key={id}
+                title={ABILITY_NAMES[id]}
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 0.25,
+                  px: 0.5,
+                  py: 1,
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: color,
+                  bgcolor: alpha(color, 0.15),
+                }}
+              >
+                <Icon fontSize="large" sx={{ color: 'text.secondary' }} />
+                <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                  {id}
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                  {total > 0 ? '+' : ''}
+                  {total}
+                </Typography>
+              </Box>
+            );
+          })}
         </Stack>
       </Box>
 
