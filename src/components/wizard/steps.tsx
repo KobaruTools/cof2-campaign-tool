@@ -77,6 +77,7 @@ import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors
 import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_ICONS, ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
+import { ClassIcon } from '@/components/ClassIcon';
 import { InfoHint } from '@/components/InfoHint';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
@@ -542,7 +543,12 @@ export function ClassStep({ draft, patch }: StepProps) {
                                 sx={{ color: color, '&.Mui-checked': { color: color } }}
                               />
                             }
-                            label={p.name}
+                            label={
+                              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                                <ClassIcon classId={p.id} size={22} />
+                                <span>{p.name}</span>
+                              </Stack>
+                            }
                           />
                         </Grid>
                       );
@@ -561,9 +567,12 @@ export function ClassStep({ draft, patch }: StepProps) {
           sx={{ borderLeft: 5, borderLeftColor: classColor(characterClass.id) }}
         >
           <CardContent>
-            <Typography variant="subtitle1" gutterBottom sx={{ color: classColor(characterClass.id) }}>
-              {characterClass.name}
-            </Typography>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
+              <ClassIcon classId={characterClass.id} size={28} />
+              <Typography variant="subtitle1" sx={{ color: classColor(characterClass.id) }}>
+                {characterClass.name}
+              </Typography>
+            </Stack>
             <Box sx={{ mb: 1.5 }}>
               <Typography
                 variant="caption"
@@ -1185,11 +1194,37 @@ export function SummaryStep({ draft }: StepProps) {
         <Typography variant="subtitle2" gutterBottom>
           Capacités acquises
         </Typography>
-        <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
-          {featureIds.map((id) => (
-            <Chip key={id} label={featureById.get(id)?.name ?? id} size="small" />
-          ))}
-        </Stack>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {featureIds.map((id) => {
+            const feature = featureById.get(id);
+            const path = feature ? pathById.get(feature.pathId) : undefined;
+            // Capacité liée à un profil = voie de classe → couleur du profil.
+            // Voie de peuple / du mage : pas de profil → bordure neutre.
+            const color = path?.type === 'class' ? classColor(characterClass.id) : null;
+            return (
+              <Box
+                key={id}
+                sx={{
+                  px: 1.5,
+                  py: 0.75,
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: color ?? 'divider',
+                  bgcolor: color ? alpha(color, 0.15) : 'transparent',
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {feature?.name ?? id}
+                </Typography>
+                {path && (
+                  <Typography variant="caption" color="text.secondary">
+                    {path.name}
+                  </Typography>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
       </Box>
 
       {warnings.length > 0 && (
