@@ -1,11 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
+import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
@@ -68,6 +75,7 @@ import {
   distributeValueSet,
   valueSets,
 } from './helpers';
+import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors';
 import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
@@ -579,6 +587,35 @@ export function ClassStep({ draft, patch }: StepProps) {
 // Étape 3 — Caractéristiques
 // ---------------------------------------------------------------------------
 
+/** Icône MUI illustrant chaque caractéristique. */
+const ABILITY_ICONS: Record<AbilityId, typeof DirectionsRunIcon> = {
+  AGI: DirectionsRunIcon, // pied / course
+  CON: AccessibilityNewIcon, // corps
+  FOR: FitnessCenterIcon, // bras
+  PER: VisibilityIcon, // œil
+  CHA: RecordVoiceOverIcon, // bouche
+  INT: PsychologyIcon, // cerveau
+  VOL: SelfImprovementIcon, // maîtrise de soi
+};
+
+/** Terme qualitatif associé à une valeur de caractéristique
+ * (table « Échelle des valeurs de caractéristiques », p. 27). */
+function abilityTotalLabel(total: number): string {
+  const clamped = Math.max(-3, Math.min(5, total));
+  const labels: Record<number, string> = {
+    [-3]: 'Catastrophique',
+    [-2]: 'Très faible',
+    [-1]: 'Faible',
+    [0]: 'Moyen',
+    [1]: 'Supérieur',
+    [2]: 'Bon',
+    [3]: 'Très bon',
+    [4]: 'Excellent',
+    [5]: 'Extraordinaire',
+  };
+  return labels[clamped];
+}
+
 export function AbilitiesStep({ draft, patch }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const characterClass = classById.get(draft.classId);
@@ -652,23 +689,55 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
       )}
 
       <Grid container spacing={2}>
+        <Grid size={12}>
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+            <Box sx={{ width: 24 }} />
+            <Typography variant="overline" color="text.secondary" sx={{ width: 130 }}>
+              Jet de dés
+            </Typography>
+            <Typography variant="overline" color="text.secondary" sx={{ width: 130 }}>
+              Total
+            </Typography>
+          </Stack>
+        </Grid>
         {ABILITY_IDS.map((id) => {
           const total = draft.baseAbilities[id] + deltas[id];
+          const color = abilityTotalColor(total);
+          const Icon = ABILITY_ICONS[id];
           return (
-            <Grid key={id} size={{ xs: 12, sm: 6 }}>
+            <Grid key={id} size={12}>
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                <Icon sx={{ color: 'text.secondary' }} />
                 <TextField
-                  label={ABILITY_NAMES[id]}
+                  label={id}
                   type="number"
                   size="small"
                   value={draft.baseAbilities[id]}
                   onChange={(e) => setBase(id, Number(e.target.value) || 0)}
                   sx={{ width: 130 }}
                 />
-                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-                  {deltas[id] !== 0 ? `peuple ${deltas[id] > 0 ? '+' : ''}${deltas[id]}` : ''}
-                </Typography>
-                <Chip label={`= ${total > 0 ? '+' : ''}${total}`} />
+                <TextField
+                  label={abilityTotalLabel(total)}
+                  size="small"
+                  disabled
+                  value={`${total > 0 ? '+' : ''}${total}`}
+                  sx={{
+                    width: 130,
+                    '& .MuiInputBase-input.Mui-disabled': {
+                      WebkitTextFillColor: color,
+                      fontWeight: 600,
+                    },
+                    '& .MuiInputLabel-root.Mui-disabled': {
+                      color,
+                    },
+                  }}
+                />
+                {deltas[id] !== 0 && (
+                  <Typography variant="caption" sx={{ color: ancestryModifierColor(deltas[id]) }}>
+                    {ancestry.name} {deltas[id] > 0 ? '+' : ''}
+                    {deltas[id]}
+                  </Typography>
+                )}
               </Stack>
             </Grid>
           );
