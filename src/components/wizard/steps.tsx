@@ -44,7 +44,7 @@ import {
   progression,
   pathById,
 } from '@/data';
-import type { AbilityId, AbilityModifier, CharacterClass } from '@/data/schema';
+import type { AbilityId, AbilityModifier, Armor, CharacterClass } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { deriveStats, checkCompliance, type RulesContext } from '@/lib/engine';
 import {
@@ -70,6 +70,12 @@ import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
+
+/** Échelle des armures, triée par défense croissante — pour lister les armures
+ * autorisées d'une classe (toutes celles ≤ la plus protectrice permise). */
+const ARMORS: Armor[] = equipment
+  .filter((it): it is Armor => it.category === 'armor')
+  .sort((a, b) => a.def - b.def);
 
 /**
  * Découpe la description d'un peuple à la section « Interpréter un … » : le
@@ -257,7 +263,7 @@ function RestrictionBlock({
   label,
   color,
 }: {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   label: string;
   color?: string;
 }) {
@@ -287,35 +293,48 @@ function RestrictionBlock({
 }
 
 /**
- * Repères visuels des restrictions d'un profil. Armure et bouclier sont des
- * données structurées (blocs avec code couleur vert/rouge) ; les armes ne le
- * sont pas (texte nuancé par profil), conservées en dessous avec une icône.
+ * Repères visuels des restrictions d'un profil. L'armure liste toutes les
+ * protections autorisées (≤ la plus protectrice permise) et le bouclier est un
+ * oui/non ; les deux sont des données structurées (blocs avec code couleur).
+ * Les armes ne le sont pas (texte nuancé par profil), gardées en dessous.
  */
 function ClassRestrictions({ characterClass }: { characterClass: CharacterClass }) {
   const theme = useTheme();
-  const arm = characterClass.maxArmorId ? equipmentById.get(characterClass.maxArmorId) : null;
-  const armDef = arm && arm.category === 'armor' ? arm.def : null;
-  const armorLabel = arm
-    ? `Armure max : ${arm.name}${armDef != null ? ` (DEF +${armDef})` : ''}`
-    : 'Aucune armure';
+  const maxArmor = characterClass.maxArmorId ? equipmentById.get(characterClass.maxArmorId) : null;
+  const maxDef = maxArmor && maxArmor.category === 'armor' ? maxArmor.def : null;
+  const allowedArmors = maxDef != null ? ARMORS.filter((a) => a.def <= maxDef) : [];
 
   return (
     <Box sx={{ mb: 1.5 }}>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
         Restrictions
       </Typography>
-      <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1, mb: 1 }}>
+
+      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
+          <CheckroomOutlinedIcon fontSize="small" />
+          <Typography variant="body2">Armures</Typography>
+        </Stack>
+        {allowedArmors.length > 0 ? (
+          allowedArmors.map((a) => (
+            <RestrictionBlock key={a.id} label={`${a.name} (DEF +${a.def})`} />
+          ))
+        ) : (
+          <RestrictionBlock label="Aucune armure autorisée" color={theme.palette.error.main} />
+        )}
+      </Stack>
+
+      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
+          <ShieldOutlinedIcon fontSize="small" />
+          <Typography variant="body2">Bouclier</Typography>
+        </Stack>
         <RestrictionBlock
-          icon={<CheckroomOutlinedIcon />}
-          label={armorLabel}
-          color={arm ? undefined : theme.palette.error.main}
-        />
-        <RestrictionBlock
-          icon={<ShieldOutlinedIcon />}
-          label={characterClass.shieldAllowed ? 'Bouclier autorisé' : 'Bouclier interdit'}
+          label={characterClass.shieldAllowed ? 'Autorisé' : 'Interdit'}
           color={characterClass.shieldAllowed ? theme.palette.success.main : theme.palette.error.main}
         />
       </Stack>
+
       <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
         <SportsKabaddiOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mt: 0.25 }} />
         <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
