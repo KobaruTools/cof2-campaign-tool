@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
+import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
@@ -40,6 +41,7 @@ import Stack from '@mui/material/Stack';
 import SvgIcon, { type SvgIconProps } from '@mui/material/SvgIcon';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import {
@@ -54,7 +56,7 @@ import {
   progression,
   pathById,
 } from '@/data';
-import type { AbilityId, AbilityModifier, Armor, CharacterClass, Weapon } from '@/data/schema';
+import type { AbilityId, AbilityModifier, AncestryNames, Armor, CharacterClass, Weapon } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { deriveStats, checkCompliance, type RulesContext } from '@/lib/engine';
 import type { Sex } from '@/lib/character/types';
@@ -69,6 +71,7 @@ import {
   materializeDraft,
   type WizardDraft,
 } from '@/lib/character/wizard';
+import { pickName } from '@/lib/character/names';
 import {
   defenseFromEquipment,
   initialEquipment,
@@ -930,6 +933,30 @@ export function EquipmentStep({ draft, patch }: StepProps) {
 // Étape 6 — Identité
 // ---------------------------------------------------------------------------
 
+/**
+ * Contenu de l'infobulle du champ Nom : conseils « Noms typiques » du peuple
+ * choisi, suivis des listes proposées par le livre (par sexe + noms de famille).
+ */
+function NameHintContent({ names }: { names: AncestryNames }) {
+  const lists: Array<[string, string[]]> = [
+    ['Masculins', names.male],
+    ['Féminins', names.female],
+    ['Noms de famille', names.surnames ?? []],
+  ];
+  return (
+    <>
+      {names.note}
+      {lists
+        .filter(([, items]) => items.length > 0)
+        .map(([label, items]) => (
+          <Typography key={label} variant="body2" sx={{ mt: 1 }}>
+            <strong>{label} :</strong> {items.join(', ')}
+          </Typography>
+        ))}
+    </>
+  );
+}
+
 export function IdentityStep({ draft, patch }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const physical = ancestry?.physical;
@@ -943,15 +970,25 @@ export function IdentityStep({ draft, patch }: StepProps) {
         fullWidth
         slotProps={{
           input: {
-            endAdornment: (
-              <InfoHint section="Touche finale" page={33}>
-                Il ne vous reste plus qu&apos;à donner un nom et un peu
-                d&apos;épaisseur à votre personnage pour vous lancer à
-                l&apos;aventure et le faire entrer dans la légende. Vous pouvez le
-                créer en partant de zéro ou l&apos;imaginer en vous inspirant de
-                personnages connus de BD, de films ou de romans.
-              </InfoHint>
-            ),
+            endAdornment: ancestry ? (
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                <Tooltip title="Générer un nom" arrow>
+                  <IconButton
+                    size="small"
+                    aria-label="Générer un nom"
+                    onClick={() => {
+                      const name = pickName(ancestry, draft.identity.sex);
+                      if (name) patch({ name });
+                    }}
+                  >
+                    <CasinoOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <InfoHint page={ancestry.names.sourcePage}>
+                  <NameHintContent names={ancestry.names} />
+                </InfoHint>
+              </Stack>
+            ) : undefined,
           },
         }}
       />

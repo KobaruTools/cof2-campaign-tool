@@ -29,7 +29,7 @@ export function InfoHint({ children, page, section, fontSize = 'small', sx }: In
   const hasSource = page != null || section != null;
   const title = (
     <Box sx={{ py: 0.5 }}>
-      <Typography variant="body2" sx={{ mb: hasSource ? 1 : 0 }}>
+      <Typography variant="body2" component="div" sx={{ mb: hasSource ? 1 : 0 }}>
         {children}
       </Typography>
       {hasSource && <SourceRef page={page} section={section} />}
