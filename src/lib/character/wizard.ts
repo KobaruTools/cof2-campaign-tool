@@ -129,6 +129,8 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     level: 1,
     portraitVariant: 'default',
     abilities: finalAbilities(draft, ancestry),
+    baseAbilities: draft.baseAbilities,
+    ancestryChoices: draft.ancestryChoices,
     ancestryPathId: effectiveAncestryPath(draft),
     featureIds,
     levelUpHistory: [{ level: 1, chosenFeatureIds: featureIds }],

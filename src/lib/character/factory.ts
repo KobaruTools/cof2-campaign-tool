@@ -38,6 +38,8 @@ export function createBlankCharacter(
     level: 1,
     portraitVariant: 'default',
     abilities: abilitiesZero(),
+    baseAbilities: abilitiesZero(),
+    ancestryChoices: [],
     ancestryPathId: null,
     featureIds: [],
     levelUpHistory: [],

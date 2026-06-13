@@ -45,6 +45,8 @@ function validRaw(): Record<string, unknown> {
     level: 1,
     portraitVariant: 'default',
     abilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
+    baseAbilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
+    ancestryChoices: ['AGI'],
     ancestryPathId: 'humain',
     featureIds: [],
     levelUpHistory: [],
@@ -149,8 +151,40 @@ describe('migrateCharacter', () => {
     expect(migrateCharacter(v2).portraitVariant).toBe('alt');
   });
 
-  it('expose les migrations 1→2 et 2→3 dans le registre', () => {
+  it('migre un personnage v3 vers v4 (base + choix de peuple reconstruits)', () => {
+    const v3 = validRaw();
+    v3.schemaVersion = 3;
+    delete v3.baseAbilities;
+    delete v3.ancestryChoices;
+    // Demi-elfe : « +1 PER ou CHA » puis « -1 FOR ou CON ».
+    v3.ancestryId = 'demi-elfe';
+    v3.abilities = { AGI: 0, CON: 0, FOR: -1, PER: 2, CHA: 0, INT: 0, VOL: 0 };
+    const c = migrateCharacter(v3);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    // Choix reconstruits sur la première option de chaque modificateur.
+    expect(c.ancestryChoices).toEqual(['PER', 'FOR']);
+    // Invariant : base + modificateurs = valeur finale (inchangée).
+    expect(c.abilities).toEqual({ AGI: 0, CON: 0, FOR: -1, PER: 2, CHA: 0, INT: 0, VOL: 0 });
+    expect(c.baseAbilities.PER).toBe(1); // 2 - (+1)
+    expect(c.baseAbilities.FOR).toBe(0); // -1 - (-1)
+    expect(c.baseAbilities.AGI).toBe(0);
+  });
+
+  it('v3→v4 sans peuple connu : base = valeurs finales, sans modificateur', () => {
+    const v3 = validRaw();
+    v3.schemaVersion = 3;
+    delete v3.baseAbilities;
+    delete v3.ancestryChoices;
+    v3.ancestryId = 'inconnu';
+    v3.abilities = { AGI: 1, CON: 1, FOR: 1, PER: 1, CHA: 1, INT: 1, VOL: 1 };
+    const c = migrateCharacter(v3);
+    expect(c.ancestryChoices).toEqual([]);
+    expect(c.baseAbilities).toEqual(c.abilities);
+  });
+
+  it('expose les migrations 1→2, 2→3 et 3→4 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
+    expect(typeof MIGRATIONS[3]).toBe('function');
   });
 });

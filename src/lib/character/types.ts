@@ -12,14 +12,18 @@
  *    sauf surcharges manuelles explicites (`overrides`).
  */
 import type { AbilityId } from '@/data/schema';
+import type { AncestryChoice } from './ancestry';
 
 /**
  * Version courante du schéma de personnage. Incrémenter à chaque évolution.
  * v2 : passage des clés du modèle en anglais (migration depuis v1 dans
  * `src/lib/engine/migrations.ts`).
  * v3 : ajout de `portraitVariant` (choix de l'illustration de profil).
+ * v4 : ajout de `baseAbilities` + `ancestryChoices` (valeurs de base saisies à
+ *   la création et résolution des modificateurs de peuple), pour afficher le
+ *   détail « base + peuple = total » d'une caractéristique sur la fiche.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
  * Statistiques dérivées surchargeables manuellement (règle maison, cf. PRD
@@ -102,6 +106,24 @@ export interface Character {
    * ce sont directement les « valeurs » du livre, -3 à +5 à la création).
    */
   abilities: Record<AbilityId, number>;
+
+  /**
+   * Valeurs de base saisies à la création, **avant** modificateurs de peuple.
+   * Sert uniquement à expliquer d'où vient chaque caractéristique (détail
+   * « base + peuple = total »). Invariant maintenu : `baseAbilities[x]` +
+   * modificateurs de peuple résolus = `abilities[x]` ; l'édition d'une valeur
+   * finale sur la fiche réajuste la base en conséquence.
+   */
+  baseAbilities: Record<AbilityId, number>;
+
+  /**
+   * Résolution des modificateurs de peuple, dans le même ordre que
+   * `ancestry.abilityModifiers` : indique quelle caractéristique reçoit chaque
+   * modificateur (utile pour les peuples « au choix », ex. demi-elfe
+   * « +1 PER ou CHA »). Permet d'attribuer le bonus/malus à la bonne ligne du
+   * détail.
+   */
+  ancestryChoices: AncestryChoice;
 
   /**
    * Voie de peuple effectivement retenue (le demi-elfe choisit ; un mage peut

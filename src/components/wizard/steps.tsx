@@ -77,6 +77,7 @@ import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors
 import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
+import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
@@ -1178,10 +1179,17 @@ export function SummaryStep({ draft }: StepProps) {
                 <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
                   {id}
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color }}>
-                  {total > 0 ? '+' : ''}
-                  {total}
-                </Typography>
+                <AbilityBreakdownTooltip
+                  abilityId={id}
+                  baseAbilities={draft.baseAbilities}
+                  ancestry={ancestry}
+                  ancestryChoices={draft.ancestryChoices}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color, cursor: 'help' }}>
+                    {total > 0 ? '+' : ''}
+                    {total}
+                  </Typography>
+                </AbilityBreakdownTooltip>
               </Box>
             );
           })}

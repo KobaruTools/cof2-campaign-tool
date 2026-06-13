@@ -23,6 +23,7 @@ import type { DerivedInput } from '@/lib/engine';
 import { checkCompliance } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
 import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
+import { modifierDeltas } from '@/lib/character/ancestry';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -104,8 +105,16 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Sauvegarde permissive : chaque modification persiste immédiatement (le store
   // applique `updatedAt`). La fiche n'empêche aucun écart aux règles (PER-45).
   const update = (patch: Partial<Character>) => upsert({ ...character, ...patch });
-  const setAbility = (abilityId: AbilityId, value: number) =>
-    update({ abilities: { ...character.abilities, [abilityId]: value } });
+  // Édition d'une caractéristique finale : on réajuste la valeur de base pour
+  // conserver l'invariant « base + modificateurs de peuple = total » (le détail
+  // affiché reste exact). Le modificateur de peuple, lui, ne bouge pas.
+  const setAbility = (abilityId: AbilityId, value: number) => {
+    const delta = ancestry ? modifierDeltas(ancestry, character.ancestryChoices)[abilityId] : 0;
+    update({
+      abilities: { ...character.abilities, [abilityId]: value },
+      baseAbilities: { ...character.baseAbilities, [abilityId]: value - delta },
+    });
+  };
   const setIdentity = (identityPatch: Partial<Identity>) =>
     update({ identity: { ...character.identity, ...identityPatch } });
   const setEquipment = (equipment: EquipmentLine[]) => update({ equipment });
@@ -269,6 +278,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             <AbilitiesGrid
               abilities={character.abilities}
               onChange={editing ? setAbility : undefined}
+              baseAbilities={character.baseAbilities}
+              ancestry={ancestry}
+              ancestryChoices={character.ancestryChoices}
             />
           </SheetSection>
 

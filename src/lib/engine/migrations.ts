@@ -9,7 +9,9 @@
  * migrations sont conservées dans le code dès la première évolution du schéma.
  */
 import { SCHEMA_VERSION, type Character } from '@/lib/character/types';
-import { ABILITY_IDS } from '@/data/schema';
+import { ABILITY_IDS, type AbilityId } from '@/data/schema';
+import { ancestryById } from '@/data';
+import { modifierDeltas, type AncestryChoice } from '@/lib/character/ancestry';
 
 /** Transforme un objet de la version `from` vers `from + 1`. */
 export type Migration = (data: Record<string, unknown>) => Record<string, unknown>;
@@ -104,12 +106,57 @@ function migrateV2toV3(data: Record<string, unknown>): Record<string, unknown> {
 }
 
 /**
+ * v3 → v4 : ajout de `baseAbilities` (valeurs de base avant modificateurs de
+ * peuple) et `ancestryChoices` (résolution de ces modificateurs), pour afficher
+ * le détail « base + peuple = total » d'une caractéristique.
+ *
+ * Les personnages d'avant v4 ne stockaient que les valeurs finales et pas le
+ * choix de peuple : on les reconstruit au mieux. Chaque modificateur est résolu
+ * vers sa caractéristique fixe quand il n'y a pas de choix, sinon vers sa
+ * première option (impossible de retrouver le choix d'origine). La base est
+ * alors déduite par soustraction, de sorte que l'invariant
+ * « base + modificateurs = valeur finale » tienne toujours et que le total
+ * affiché reste exact ; seule l'attribution d'un modificateur « au choix » peut
+ * différer du choix réel fait à la création.
+ */
+function migrateV3toV4(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  const abilities = asRecord(next.abilities);
+  const ancestry = typeof next.ancestryId === 'string' ? ancestryById.get(next.ancestryId) : undefined;
+
+  if (abilities && ancestry) {
+    // Reconstruit les choix : carac fixe imposée, sinon première option proposée.
+    const choices: AncestryChoice = ancestry.abilityModifiers.map((mod) => mod.abilities[0] ?? null);
+    const deltas = modifierDeltas(ancestry, choices);
+    const base = ABILITY_IDS.reduce(
+      (acc, id) => {
+        const final = typeof abilities[id] === 'number' ? (abilities[id] as number) : 0;
+        acc[id] = final - deltas[id];
+        return acc;
+      },
+      {} as Record<AbilityId, number>,
+    );
+    next.baseAbilities = base;
+    next.ancestryChoices = choices;
+  } else {
+    // Peuple/caractéristiques absents ou inconnus : base = valeurs finales, sans
+    // modificateur attribué (la fiche permissive tolère cet écart).
+    next.baseAbilities = abilities ?? {};
+    next.ancestryChoices = [];
+  }
+
+  next.schemaVersion = 4;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
 export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
   2: migrateV2toV3,
+  3: migrateV3toV4,
 };
 
 export class MigrationError extends Error {}
