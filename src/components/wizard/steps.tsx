@@ -992,6 +992,50 @@ export function IdentityStep({ draft, patch }: StepProps) {
               : undefined
           }
         />
+        <TextField
+          label="Taille"
+          value={draft.identity.height ?? ''}
+          onChange={(e) => patch({ identity: { ...draft.identity, height: e.target.value } })}
+          placeholder={physical?.height}
+          fullWidth
+          slotProps={
+            physical
+              ? {
+                  input: {
+                    endAdornment: (
+                      <InfoHint page={ancestry?.sourcePage}>
+                        <>
+                          Taille typique : <strong>{physical.height}</strong>.
+                        </>
+                      </InfoHint>
+                    ),
+                  },
+                }
+              : undefined
+          }
+        />
+        <TextField
+          label="Poids"
+          value={draft.identity.weight ?? ''}
+          onChange={(e) => patch({ identity: { ...draft.identity, weight: e.target.value } })}
+          placeholder={physical?.weight}
+          fullWidth
+          slotProps={
+            physical
+              ? {
+                  input: {
+                    endAdornment: (
+                      <InfoHint page={ancestry?.sourcePage}>
+                        <>
+                          Poids typique : <strong>{physical.weight}</strong>.
+                        </>
+                      </InfoHint>
+                    ),
+                  },
+                }
+              : undefined
+          }
+        />
       </Stack>
       <TextField
         label="Description"
