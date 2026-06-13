@@ -79,6 +79,25 @@ export const useCharactersStore = create<CharactersState>()(
       name: 'cof2-characters',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ characters: state.characters }),
+      // À chaque relecture du localStorage, on migre les personnages vers le
+      // schéma courant (PRD §7). Le store ne le faisait qu'à l'import JSON :
+      // un personnage créé sous un schéma antérieur arrivait donc sans les
+      // champs récents (ex. `baseAbilities`/`ancestryChoices`). On migre
+      // défensivement, en conservant l'original si la migration échoue (pas de
+      // perte de données).
+      merge: (persisted, current) => {
+        const stored = (persisted as { characters?: unknown[] } | undefined)?.characters;
+        const characters = Array.isArray(stored)
+          ? stored.map((raw) => {
+              try {
+                return migrateCharacter(raw);
+              } catch {
+                return raw as Character;
+              }
+            })
+          : current.characters;
+        return { ...current, characters };
+      },
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },
