@@ -1,12 +1,17 @@
 'use client';
 
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import CardMedia from '@mui/material/CardMedia';
 import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
@@ -67,6 +72,37 @@ const CARAC_NOMS: Record<CaracId, string> = {
   VOL: 'Volonté',
 };
 
+/**
+ * Découpe la description d'un peuple à la section « Interpréter un … » : le
+ * texte avant reste affiché, la section et son corps partent dans un accordéon.
+ */
+function decouperDescription(desc: string): {
+  intro: string;
+  interpretationTitre: string | null;
+  interpretationCorps: string;
+} {
+  const idx = desc.search(/^Interpréter /m);
+  if (idx === -1) return { intro: desc.trim(), interpretationTitre: null, interpretationCorps: '' };
+  const reste = desc.slice(idx);
+  const nl = reste.indexOf('\n');
+  return {
+    intro: desc.slice(0, idx).trim(),
+    interpretationTitre: (nl === -1 ? reste : reste.slice(0, nl)).trim(),
+    interpretationCorps: nl === -1 ? '' : reste.slice(nl).trim(),
+  };
+}
+
+/** Libellé lisible d'un modificateur de peuple (ex. « +1 Perception ou Charisme »). */
+function libelleModificateur(mod: { valeur: number; caracs: CaracId[] }): string {
+  const signe = mod.valeur > 0 ? '+' : '';
+  // Cas humain : les 7 caracs listées = « +1 à une des deux plus faibles ».
+  if (mod.caracs.length === CARAC_IDS.length) {
+    return `${signe}${mod.valeur} à une de vos deux plus faibles caractéristiques (au choix)`;
+  }
+  const noms = mod.caracs.map((c) => CARAC_NOMS[c]).join(' ou ');
+  return `${signe}${mod.valeur} ${noms}`;
+}
+
 export interface StepProps {
   draft: WizardDraft;
   patch: (partial: Partial<WizardDraft>) => void;
@@ -78,6 +114,7 @@ export interface StepProps {
 
 export function PeupleStep({ draft, patch }: StepProps) {
   const peuple = peupleParId.get(draft.peupleId);
+  const desc = peuple ? decouperDescription(peuple.description) : null;
 
   const choisirPeuple = (id: string) => {
     const p = peupleParId.get(id);
@@ -106,14 +143,57 @@ export function PeupleStep({ draft, patch }: StepProps) {
 
       {peuple && (
         <Card variant="outlined">
+          <CardMedia
+            component="img"
+            image={`/peuples/${peuple.id}.webp`}
+            alt={`Illustration du peuple ${peuple.nom}`}
+            sx={{ maxHeight: 320, objectFit: 'cover', objectPosition: 'center' }}
+          />
           <CardContent>
             <Typography variant="subtitle1" gutterBottom>
               {peuple.nom}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
-              {peuple.description.slice(0, 400)}
-              {peuple.description.length > 400 ? '…' : ''}
+              {desc?.intro}
             </Typography>
+
+            {desc?.interpretationTitre && (
+              <Accordion
+                disableGutters
+                elevation={0}
+                sx={{ mb: 2, border: 1, borderColor: 'divider', '&::before': { display: 'none' } }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2">{desc.interpretationTitre}</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ whiteSpace: 'pre-line' }}
+                  >
+                    {desc.interpretationCorps}
+                  </Typography>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Modificateurs de caractéristiques
+              </Typography>
+              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                {peuple.modificateurs.map((mod, i) => (
+                  <Chip
+                    key={i}
+                    label={libelleModificateur(mod)}
+                    color={mod.valeur > 0 ? 'success' : 'error'}
+                    variant="outlined"
+                    size="small"
+                  />
+                ))}
+              </Stack>
+            </Box>
 
             {peuple.voieDePeupleIds.length > 1 && (
               <FormControl sx={{ mt: 1, minWidth: 260 }} size="small">
