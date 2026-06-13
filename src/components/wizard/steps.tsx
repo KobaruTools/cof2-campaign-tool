@@ -30,6 +30,7 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
+import SvgIcon, { type SvgIconProps } from '@mui/material/SvgIcon';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -85,6 +86,15 @@ const POWDER_WEAPON_IDS = ['petoire', 'mousquet'];
 /** DM affichés d'une arme (ex. « 1d6 » ou « 1d6/1d10 » à une/deux mains). */
 function weaponDamage(w: Weapon): string {
   return w.twoHandedDamage ? `${w.damage}/${w.twoHandedDamage}` : w.damage;
+}
+
+/** Icône épée (MUI n'en fournit pas) — tracé Material Design Icons « sword ». */
+function SwordIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M6.92,5H5L14,14L15,13.06M19.96,19.12L19.12,19.96C18.73,20.35 18.1,20.35 17.71,19.96L14.59,16.84L11.91,19.5L10.5,18.09L11.92,16.67L3,7.75V3H7.75L16.67,11.92L18.09,10.5L19.5,11.91L16.83,14.58L19.95,17.7C20.35,18.1 20.35,18.73 19.96,19.12Z" />
+    </SvgIcon>
+  );
 }
 
 /**
@@ -214,7 +224,13 @@ export function AncestryStep({ draft, patch }: StepProps) {
               zIndex: 0,
             }}
           />
-          <CardContent sx={{ position: 'relative', zIndex: 1, pb: { xs: 14, sm: 18 } }}>
+          <CardContent
+            sx={{
+              position: 'relative',
+              zIndex: 1,
+              '&:last-child': { pb: { xs: 15, sm: 21 } },
+            }}
+          >
             <Typography variant="subtitle1" gutterBottom>
               {ancestry.name}
             </Typography>
@@ -320,6 +336,33 @@ function RestrictionBlock({
 }
 
 /**
+ * Ligne d'une grille de restrictions : libellé (icône + mot) dans une colonne
+ * de largeur constante, valeur(s) dans la colonne suivante. Rend deux cellules
+ * de grille (via fragment) pour que tous les libellés s'alignent.
+ */
+function RestrictionRow({
+  icon,
+  label,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, color: 'text.secondary', pt: '5px' }}>
+        {icon}
+        <Typography variant="body2">{label}</Typography>
+      </Stack>
+      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.75 }}>
+        {children}
+      </Stack>
+    </>
+  );
+}
+
+/**
  * Repères visuels des restrictions d'un profil. L'armure liste toutes les
  * protections autorisées (≤ la plus protectrice permise) et le bouclier est un
  * oui/non ; les deux sont des données structurées (blocs avec code couleur).
@@ -373,44 +416,44 @@ function ClassRestrictions({ characterClass }: { characterClass: CharacterClass 
         Restrictions
       </Typography>
 
-      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1 }}>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
-          <CheckroomOutlinedIcon fontSize="small" />
-          <Typography variant="body2">Armures</Typography>
-        </Stack>
-        {allowedArmors.length > 0 ? (
-          allowedArmors.map((a) => (
-            <RestrictionBlock key={a.id} label={`${a.name} (DEF +${a.def})`} />
-          ))
-        ) : (
-          <RestrictionBlock label="Aucune armure autorisée" color={theme.palette.error.main} />
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'auto 1fr',
+          columnGap: 1.5,
+          rowGap: 1,
+          alignItems: 'start',
+        }}
+      >
+        <RestrictionRow icon={<CheckroomOutlinedIcon fontSize="small" />} label="Armures">
+          {allowedArmors.length > 0 ? (
+            allowedArmors.map((a) => (
+              <RestrictionBlock key={a.id} label={`${a.name} (DEF +${a.def})`} />
+            ))
+          ) : (
+            <RestrictionBlock label="Aucune armure autorisée" color={theme.palette.error.main} />
+          )}
+        </RestrictionRow>
+
+        <RestrictionRow icon={<ShieldOutlinedIcon fontSize="small" />} label="Bouclier">
+          <RestrictionBlock
+            label={characterClass.shieldAllowed ? 'Autorisé' : 'Interdit'}
+            color={characterClass.shieldAllowed ? theme.palette.success.main : theme.palette.error.main}
+          />
+        </RestrictionRow>
+
+        <RestrictionRow icon={<SwordIcon fontSize="small" />} label="Armes">
+          {weaponBlocks}
+        </RestrictionRow>
+
+        {characterClass.weaponNotes && (
+          <RestrictionRow icon={<SportsKabaddiOutlinedIcon fontSize="small" />} label="Détail">
+            <Typography variant="caption" color="text.secondary">
+              {characterClass.weaponNotes}
+            </Typography>
+          </RestrictionRow>
         )}
-      </Stack>
-
-      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1 }}>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
-          <ShieldOutlinedIcon fontSize="small" />
-          <Typography variant="body2">Bouclier</Typography>
-        </Stack>
-        <RestrictionBlock
-          label={characterClass.shieldAllowed ? 'Autorisé' : 'Interdit'}
-          color={characterClass.shieldAllowed ? theme.palette.success.main : theme.palette.error.main}
-        />
-      </Stack>
-
-      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
-          <SportsKabaddiOutlinedIcon fontSize="small" />
-          <Typography variant="body2">Armes</Typography>
-        </Stack>
-        {weaponBlocks}
-      </Stack>
-
-      {characterClass.weaponNotes && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          {characterClass.weaponNotes}
-        </Typography>
-      )}
+      </Box>
 
       {characterClass.powderAllowed && (
         <FormControlLabel
