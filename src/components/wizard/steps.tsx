@@ -28,6 +28,7 @@ import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { useTheme } from '@mui/material/styles';
 import {
   capaciteParId,
   equipement,
@@ -39,7 +40,7 @@ import {
   progression,
   voieParId,
 } from '@/data';
-import type { CaracId } from '@/data/schema';
+import type { CaracId, ModificateurCarac } from '@/data/schema';
 import { CARAC_IDS } from '@/data/schema';
 import { deriveStats, verifierConformite, type MoteurContexte } from '@/lib/engine';
 import {
@@ -60,17 +61,11 @@ import {
   repartirSerie,
   series,
 } from './helpers';
+import { couleurProfil } from '@/lib/ui/profilColors';
+import { CARAC_NOMS } from '@/lib/ui/carac';
+import { CaracBadge, CaracBadgeList } from '@/components/CaracBadge';
 
 const familleParId = new Map(familles.map((f) => [f.id, f]));
-const CARAC_NOMS: Record<CaracId, string> = {
-  AGI: 'Agilité',
-  CON: 'Constitution',
-  FOR: 'Force',
-  PER: 'Perception',
-  CHA: 'Charisme',
-  INT: 'Intelligence',
-  VOL: 'Volonté',
-};
 
 /**
  * Découpe la description d'un peuple à la section « Interpréter un … » : le
@@ -92,15 +87,48 @@ function decouperDescription(desc: string): {
   };
 }
 
-/** Libellé lisible d'un modificateur de peuple (ex. « +1 Perception ou Charisme »). */
-function libelleModificateur(mod: { valeur: number; caracs: CaracId[] }): string {
-  const signe = mod.valeur > 0 ? '+' : '';
-  // Cas humain : les 7 caracs listées = « +1 à une des deux plus faibles ».
-  if (mod.caracs.length === CARAC_IDS.length) {
-    return `${signe}${mod.valeur} à une de vos deux plus faibles caractéristiques (au choix)`;
-  }
-  const noms = mod.caracs.map((c) => CARAC_NOMS[c]).join(' ou ');
-  return `${signe}${mod.valeur} ${noms}`;
+/**
+ * Affichage inline d'un modificateur de peuple : la valeur signée puis les
+ * caractéristiques concernées sous forme de badges (ex. « +1 [PER] ou [CHA] »).
+ * Cas humain (les 7 caracs listées) : « +1 à une de vos deux plus faibles ».
+ */
+function ModificateurPeuple({ mod }: { mod: ModificateurCarac }) {
+  const theme = useTheme();
+  const bonus = mod.valeur > 0;
+  const signe = bonus ? '+' : '';
+  const teinte = bonus ? theme.palette.success.main : theme.palette.error.main;
+  const estFaibles = mod.caracs.length === CARAC_IDS.length;
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+      <Chip
+        label={`${signe}${mod.valeur}`}
+        color={bonus ? 'success' : 'error'}
+        variant="outlined"
+        size="small"
+        sx={{ minWidth: 48, fontWeight: 700, '& .MuiChip-label': { px: 0 } }}
+      />
+      {estFaibles ? (
+        <Typography variant="body2" color="text.secondary">
+          à une de vos deux plus faibles caractéristiques (au choix)
+        </Typography>
+      ) : (
+        mod.caracs.map((c, j) => (
+          <Box
+            component="span"
+            key={c}
+            sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}
+          >
+            {j > 0 && (
+              <Typography component="span" variant="body2" color="text.secondary">
+                ou
+              </Typography>
+            )}
+            <CaracBadge carac={c} color={teinte} />
+          </Box>
+        ))
+      )}
+    </Stack>
+  );
 }
 
 export interface StepProps {
@@ -182,15 +210,9 @@ export function PeupleStep({ draft, patch }: StepProps) {
               <Typography variant="subtitle2" gutterBottom>
                 Modificateurs de caractéristiques
               </Typography>
-              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
+              <Stack spacing={1}>
                 {peuple.modificateurs.map((mod, i) => (
-                  <Chip
-                    key={i}
-                    label={libelleModificateur(mod)}
-                    color={mod.valeur > 0 ? 'success' : 'error'}
-                    variant="outlined"
-                    size="small"
-                  />
+                  <ModificateurPeuple key={i} mod={mod} />
                 ))}
               </Stack>
             </Box>
@@ -242,30 +264,71 @@ export function ProfilStep({ draft, patch }: StepProps) {
       <FormControl>
         <FormLabel>Profil</FormLabel>
         <RadioGroup value={draft.profilId} onChange={(e) => choisirProfil(e.target.value)}>
-          <Grid container spacing={1}>
-            {profils.map((p) => (
-              <Grid key={p.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                <FormControlLabel
-                  value={p.id}
-                  control={<Radio />}
-                  label={`${p.nom} (${familleParId.get(p.familleId)?.nom ?? p.familleId})`}
-                />
-              </Grid>
-            ))}
-          </Grid>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {familles.map((famille) => {
+              const profilsFamille = profils.filter((p) => p.familleId === famille.id);
+              if (profilsFamille.length === 0) return null;
+              return (
+                <Box key={famille.id}>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    sx={{ textTransform: 'uppercase', letterSpacing: 0.5, mb: 0.5 }}
+                  >
+                    {famille.nom}
+                  </Typography>
+                  <Divider sx={{ mb: 1 }} />
+                  <Grid container spacing={1}>
+                    {profilsFamille.map((p) => {
+                      const couleur = couleurProfil(p.id);
+                      return (
+                        <Grid key={p.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                          <FormControlLabel
+                            value={p.id}
+                            sx={{
+                              m: 0,
+                              pl: 1,
+                              borderLeft: 3,
+                              borderColor: couleur,
+                              borderRadius: 1,
+                            }}
+                            control={
+                              <Radio
+                                sx={{ color: couleur, '&.Mui-checked': { color: couleur } }}
+                              />
+                            }
+                            label={p.nom}
+                          />
+                        </Grid>
+                      );
+                    })}
+                  </Grid>
+                </Box>
+              );
+            })}
+          </Stack>
         </RadioGroup>
       </FormControl>
 
       {profil && (
-        <Card variant="outlined">
+        <Card
+          variant="outlined"
+          sx={{ borderLeft: 5, borderLeftColor: couleurProfil(profil.id) }}
+        >
           <CardContent>
-            <Typography variant="subtitle1" gutterBottom>
+            <Typography variant="subtitle1" gutterBottom sx={{ color: couleurProfil(profil.id) }}>
               {profil.nom}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Caractéristiques conseillées :{' '}
-              {profil.caracsConseillees.map((c) => CARAC_NOMS[c]).join(', ') || '—'}
-            </Typography>
+            <Box sx={{ mb: 1.5 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mb: 0.5 }}
+              >
+                Caractéristiques conseillées
+              </Typography>
+              <CaracBadgeList caracs={profil.caracsConseillees} />
+            </Box>
             <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
               {profil.armesEtArmures}
             </Typography>
