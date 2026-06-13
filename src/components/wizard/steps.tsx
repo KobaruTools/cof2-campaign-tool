@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
@@ -52,7 +52,7 @@ import {
 } from '@/data';
 import type { AbilityId, AbilityModifier, AncestryNames, Armor, CharacterClass, Weapon } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
-import { deriveStats, checkCompliance, type RulesContext } from '@/lib/engine';
+import { checkCompliance, type RulesContext } from '@/lib/engine';
 import type { Sex } from '@/lib/character/types';
 import {
   initialChoices,
@@ -76,13 +76,10 @@ import {
 import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors';
 import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
-import { DERIVED_STAT_NAMES, type DerivedStatId } from '@/lib/ui/derivedStats';
 import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
-import { DerivedStatIcon } from '@/components/DerivedStatIcon';
-import { DerivedStatHint } from '@/components/DerivedStatHint';
-import { DieIcon } from '@/components/DieIcon';
+import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { InfoHint } from '@/components/InfoHint';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
@@ -1131,29 +1128,8 @@ export function SummaryStep({ draft }: StepProps) {
     defenseEquipment: defenseFromEquipment(draft.equipment),
     spellCount,
   };
-  const stats = deriveStats(derivedInput);
   const preview = materializeDraft(draft, ancestry, draft.createdAt);
   const warnings = checkCompliance(preview, rulesCtx);
-
-  const statLines: Array<{ id: DerivedStatId; value: ReactNode }> = [
-    { id: 'maxHp', value: stats.maxHp },
-    { id: 'defense', value: stats.defense },
-    { id: 'initiative', value: stats.initiative },
-    { id: 'luckPoints', value: stats.luckPoints },
-    {
-      id: 'recoveryDice',
-      value: (
-        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
-          {stats.recoveryDiceCount}
-          <DieIcon die={stats.recoveryDie} size={28} />
-        </Box>
-      ),
-    },
-    { id: 'manaPoints', value: stats.manaPoints ?? '—' },
-    { id: 'meleeAttack', value: stats.meleeAttack },
-    { id: 'rangedAttack', value: stats.rangedAttack },
-    { id: 'magicAttack', value: stats.magicAttack },
-  ];
 
   return (
     <Stack spacing={3}>
@@ -1223,35 +1199,7 @@ export function SummaryStep({ draft }: StepProps) {
         <Typography variant="subtitle2" gutterBottom>
           Statistiques dérivées
         </Typography>
-        <Grid container spacing={1}>
-          {statLines.map(({ id, value }) => (
-            <Grid key={id} size={{ xs: 6, sm: 4 }}>
-              <Card variant="outlined" sx={{ height: '100%' }}>
-                <CardContent
-                  sx={{
-                    py: 1,
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5,
-                    '&:last-child': { pb: 1 },
-                  }}
-                >
-                  <DerivedStatIcon statId={id} title size={40} />
-                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
-                      {DERIVED_STAT_NAMES[id]}
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                      {value}
-                    </Typography>
-                  </Box>
-                  <DerivedStatHint statId={id} input={derivedInput} sx={{ alignSelf: 'flex-start' }} />
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        <DerivedStatsGrid input={derivedInput} />
         <Typography variant="caption" color="text.secondary">
           (Les bonus apportés par les capacités ne sont pas encore appliqués automatiquement.)
         </Typography>

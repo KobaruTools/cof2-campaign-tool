@@ -9,15 +9,16 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
-import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import { families, ancestryById, classById } from '@/data';
-import { deriveStats } from '@/lib/engine';
+import { families, ancestryById, classById, featureById } from '@/data';
+import type { DerivedInput } from '@/lib/engine';
+import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
+import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { useCharactersStore } from '@/stores/characters';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
@@ -54,14 +55,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
   const ancestry = ancestryById.get(character.ancestryId);
 
-  const stats = family
-    ? deriveStats({
+  const derivedInput: DerivedInput | null = family
+    ? {
         abilities: character.abilities,
         level: character.level,
         family,
-        defenseEquipment: { defBonus: 0, maxAgi: null },
-        spellCount: 0,
-      })
+        defenseEquipment: defenseFromEquipment(character.equipment),
+        spellCount: character.featureIds.filter((id) => featureById.get(id)?.isSpell).length,
+      }
     : null;
 
   return (
@@ -109,31 +110,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         <Typography variant="h6" gutterBottom>
           Statistiques dérivées
         </Typography>
-        {stats ? (
-          <Grid container spacing={2}>
-            {(
-              [
-                ['Points de vigueur', stats.maxHp],
-                ['Défense', stats.defense],
-                ['Initiative', stats.initiative],
-                ['Points de chance', stats.luckPoints],
-                ['Dés de récupération', `${stats.recoveryDiceCount} ${stats.recoveryDie}`],
-                ['Points de mana', stats.manaPoints ?? '—'],
-                ['Attaque au contact', stats.meleeAttack],
-                ['Attaque à distance', stats.rangedAttack],
-                ['Attaque magique', stats.magicAttack],
-              ] as const
-            ).map(([label, value]) => (
-              <Grid key={label} size={{ xs: 6, sm: 4 }}>
-                <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    {label}
-                  </Typography>
-                  <Typography variant="h6">{value}</Typography>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
+        {derivedInput ? (
+          <DerivedStatsGrid input={derivedInput} />
         ) : (
           <Alert severity="warning">
             Choisissez un profil (à venir dans le wizard) pour calculer les statistiques dérivées.
