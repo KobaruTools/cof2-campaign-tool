@@ -80,6 +80,7 @@ import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
+import { FeatureLabel } from '@/components/FeatureLabel';
 import { InfoHint } from '@/components/InfoHint';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
@@ -1235,7 +1236,7 @@ export function SummaryStep({ draft }: StepProps) {
                 >
                   <Box sx={{ minWidth: 0 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {feature?.name ?? id}
+                      {feature ? <FeatureLabel feature={feature} /> : id}
                     </Typography>
                     {path && (
                       <Typography variant="caption" color="text.secondary">
