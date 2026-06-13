@@ -507,7 +507,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'petoire',
-    name: 'Pétoire',
+    name: 'Pétoire ou arbalète de poing',
     category: 'weapon',
     weaponCategory: 'oneHand',
     melee: false,
@@ -516,12 +516,12 @@ export const weapons: Weapon[] = [
     range: '20 m',
     price: { amount: 50, unit: 'pa' },
     properties:
-      'Type de DM : perforants. Armes à poudre, soumises à l’autorisation du MJ (voir encadré), nécessite une action limitée pour être rechargée. Les armes à poudre ne conviennent pas à tous les univers de jeu, elles sont soumises à l’autorisation du MJ. Par défaut, même si ce n’est pas précisé dans les autres profils, seul l’arquebusier maîtrise les armes à poudre. Lorsqu’un personnage utilise une arme à poudre sans la maîtriser, non seulement, il subit un dé malus en attaque, mais de plus, s’il obtient 1 ou 2 au d20, la poudre explose de façon imprévue : elle lui inflige 1d4° DM et l’arme ne peut plus être utilisée pour le reste du combat.',
+      'Type de DM : perforants. Armes à poudre, soumises à l’autorisation du MJ (voir encadré), nécessite une action limitée pour être rechargée. Les armes à poudre ne conviennent pas à tous les univers de jeu, elles sont soumises à l’autorisation du MJ. Par défaut, même si ce n’est pas précisé dans les autres profils, seul l’arquebusier maîtrise les armes à poudre. Lorsqu’un personnage utilise une arme à poudre sans la maîtriser, non seulement, il subit un dé malus en attaque, mais de plus, s’il obtient 1 ou 2 au d20, la poudre explose de façon imprévue : elle lui inflige 1d4° DM et l’arme ne peut plus être utilisée pour le reste du combat. Si les armes à poudre sont interdites dans l’univers de jeu, la pétoire est remplacée par une arbalète de poing (p. 62).',
     sourcePage: 185,
   },
   {
     id: 'mousquet',
-    name: 'Mousquet',
+    name: 'Mousquet ou arbalète lourde',
     category: 'weapon',
     weaponCategory: 'twoHands',
     melee: false,
@@ -530,7 +530,7 @@ export const weapons: Weapon[] = [
     range: '50 m',
     price: { amount: 100, unit: 'pa' },
     properties:
-      'Type de DM : perforants. Armes à poudre, soumises à l’autorisation du MJ (voir encadré), nécessite une action limitée pour être rechargée, arme tenue à deux mains. (Halfelins et gobelins peuvent utiliser des armes de plus petit calibre aux dés de DM réduits : pétoire 1d8 et mousquet 1d12.)',
+      'Type de DM : perforants. Armes à poudre, soumises à l’autorisation du MJ (voir encadré), nécessite une action limitée pour être rechargée, arme tenue à deux mains. (Halfelins et gobelins peuvent utiliser des armes de plus petit calibre aux dés de DM réduits : pétoire 1d8 et mousquet 1d12.) Si les armes à poudre sont interdites dans l’univers de jeu, le mousquet est remplacé par une arbalète lourde (p. 62).',
     sourcePage: 185,
   },
 ];

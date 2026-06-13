@@ -82,12 +82,12 @@ export const progression: ProgressionRules = {
   // existe. « torche » reste null (le catalogue ne vend que des lots de 3,
   // `torches-x3`), de même qu'« outre », « gamelle » et la bourse (non vendus).
   adventurerPack: [
-    { itemId: 'couverture', label: 'une couverture', quantity: 1 },
-    { itemId: null, label: 'une torche', quantity: 1 },
-    { itemId: 'briquet-a-silex', label: 'un briquet à silex', quantity: 1 },
-    { itemId: null, label: 'une outre', quantity: 1 },
-    { itemId: null, label: 'une gamelle', quantity: 1 },
-    { itemId: null, label: 'une bourse de 2d6 pa', quantity: 1 },
+    { itemId: 'couverture', label: 'Couverture', quantity: 1 },
+    { itemId: null, label: 'Torche', quantity: 1 },
+    { itemId: 'briquet-a-silex', label: 'Briquet à silex', quantity: 1 },
+    { itemId: null, label: 'Outre', quantity: 1 },
+    { itemId: null, label: 'Gamelle', quantity: 1 },
+    { itemId: null, label: 'Bourse de 2d6 pa', quantity: 1 },
   ],
 
   // Page de la table centrale des rangs ; les autres pages sources sont

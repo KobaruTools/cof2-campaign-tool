@@ -33,7 +33,7 @@ export const mageClasses: CharacterClass[] = [
       "+ une arme supplémentaire au choix (≤ 1d6 DM ; l'arbalète légère est éligible malgré ses 2d4).",
     startingEquipment: [
       { itemId: 'baton-ferre', label: 'Bâton ferré (DM 1d6)', quantity: 1 },
-      { itemId: 'dague', label: 'dague (DM d4) ou autre arme maîtrisée au choix', quantity: 1 },
+      { itemId: 'dague', label: 'Dague (DM d4) ou autre arme maîtrisée au choix', quantity: 1 },
     ],
     pathIds: ['air', 'divination', 'envouteur', 'illusions', 'invocation'],
     recommendedAbilities: ['CHA', 'VOL', 'AGI'],
@@ -54,8 +54,8 @@ export const mageClasses: CharacterClass[] = [
     allowedWeaponIds: ['dague', 'baton', 'marteau', 'arbalete-legere'],
     startingEquipment: [
       { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
-      { itemId: 'baton-ferre', label: 'bâton ferré (DM 1d6)', quantity: 1 },
-      { itemId: 'marteau', label: 'marteau (DM 1d6)', quantity: 1 },
+      { itemId: 'baton-ferre', label: 'Bâton ferré (DM 1d6)', quantity: 1 },
+      { itemId: 'marteau', label: 'Marteau (DM 1d6)', quantity: 1 },
     ],
     pathIds: ['artefacts', 'elixirs', 'metal', 'golem', 'runes'],
     recommendedAbilities: ['INT', 'VOL', 'CON'],
@@ -76,8 +76,8 @@ export const mageClasses: CharacterClass[] = [
     allowedWeaponIds: ['dague', 'baton'],
     startingEquipment: [
       { itemId: 'baton-ferre', label: 'Bâton ferré (DM 1d6)', quantity: 1 },
-      { itemId: 'dague', label: 'dague (DM 1d4)', quantity: 1 },
-      { itemId: null /* TODO(extraction): grimoire non listé dans le catalogue de prix */, label: 'grimoire de sorts', quantity: 1 },
+      { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
+      { itemId: null /* TODO(extraction): grimoire non listé dans le catalogue de prix */, label: 'Grimoire de sorts', quantity: 1 },
     ],
     pathIds: [
       'magie-des-arcanes',
@@ -104,10 +104,10 @@ export const mageClasses: CharacterClass[] = [
     allowedWeaponIds: ['dague', 'baton'],
     startingEquipment: [
       { itemId: 'baton-ferre', label: 'Bâton ferré (DM 1d6)', quantity: 1 },
-      { itemId: 'dague', label: 'dague (DM 1d4)', quantity: 1 },
+      { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
       {
         itemId: null /* TODO(extraction): grimoire non listé dans le catalogue de prix */,
-        label: 'grimoire de sorts ou parchemins anciens',
+        label: 'Grimoire de sorts ou parchemins anciens',
         quantity: 1,
       },
     ],

@@ -33,9 +33,9 @@ export const mysticClasses: CharacterClass[] = [
       // Le livre précise « bâton noueux (équivalent au bâton ferré) » (p. 113).
       { itemId: 'baton-ferre', label: 'Bâton noueux (DM 1d6)', quantity: 1 },
       { itemId: 'epieu', label: 'ou épieu (DM 1d6 ou 1d10)', quantity: 1 },
-      { itemId: 'dague', label: 'dague (DM 1d4)', quantity: 1 },
-      { itemId: 'arc-court', label: 'arc court (DM 1d6, portée 30 m)', quantity: 1 },
-      { itemId: 'cuir-simple', label: 'armure de cuir (DEF +2)', quantity: 1 },
+      { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
+      { itemId: 'arc-court', label: 'Arc court (DM 1d6, portée 30 m)', quantity: 1 },
+      { itemId: 'cuir-simple', label: 'Armure de cuir (DEF +2)', quantity: 1 },
     ],
     pathIds: ['animaux', 'fauve', 'nature', 'protecteur', 'vegetaux'],
     // p. 25 : [Perception, Volonté, Constitution ou Agilité] — la 3e place
@@ -80,10 +80,10 @@ export const mysticClasses: CharacterClass[] = [
       "Armes contondantes à une main + bâton ferré ; pas d'armes tranchantes ou perçantes (raisons religieuses). L'arme sacrée du spécialiste fait exception.",
     startingEquipment: [
       { itemId: 'masse', label: 'Masse', quantity: 1 },
-      { itemId: 'marteau', label: 'marteau de guerre (DM 1d6)', quantity: 1 },
+      { itemId: 'marteau', label: 'Marteau de guerre (DM 1d6)', quantity: 1 },
       { itemId: 'baton-ferre', label: 'ou bâton ferré (DM 1d6, à deux mains)', quantity: 1 },
-      { itemId: 'petit-bouclier', label: 'petit bouclier (DEF +1)', quantity: 1 },
-      { itemId: 'chemise-de-mailles', label: 'chemise de mailles (DEF +4)', quantity: 1 },
+      { itemId: 'petit-bouclier', label: 'Petit bouclier (DEF +1)', quantity: 1 },
+      { itemId: 'chemise-de-mailles', label: 'Chemise de mailles (DEF +4)', quantity: 1 },
     ],
     pathIds: ['foi', 'guerre-sainte', 'priere', 'soins', 'spiritualite'],
     recommendedAbilities: ['CHA', 'VOL', 'FOR'],
