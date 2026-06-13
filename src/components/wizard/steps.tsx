@@ -1175,18 +1175,13 @@ export function SummaryStep({ draft }: StepProps) {
                   alignItems: 'center',
                   gap: 0.25,
                   px: 0.5,
-                  py: 1,
-                  borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: color,
-                  bgcolor: alpha(color, 0.15),
                 }}
               >
                 <AbilityIcon ability={id} title size={32} sx={{ color: 'text.secondary' }} />
                 <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
                   {id}
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color }}>
                   {total > 0 ? '+' : ''}
                   {total}
                 </Typography>
