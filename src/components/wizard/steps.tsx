@@ -960,6 +960,8 @@ function NameHintContent({ names }: { names: AncestryNames }) {
 export function IdentityStep({ draft, patch }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const physical = ancestry?.physical;
+  // Le générateur a besoin du sexe pour choisir la bonne liste de noms.
+  const sexChosen = draft.identity.sex != null;
   return (
     <Stack spacing={2}>
       <TextField
@@ -972,17 +974,20 @@ export function IdentityStep({ draft, patch }: StepProps) {
           input: {
             endAdornment: ancestry ? (
               <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                <Tooltip title="Générer un nom" arrow>
-                  <IconButton
-                    size="small"
-                    aria-label="Générer un nom"
-                    onClick={() => {
-                      const name = pickName(ancestry, draft.identity.sex);
-                      if (name) patch({ name });
-                    }}
-                  >
-                    <CasinoOutlinedIcon fontSize="small" />
-                  </IconButton>
+                <Tooltip title={sexChosen ? 'Générer un nom' : 'Choisissez d’abord le sexe'} arrow>
+                  <span>
+                    <IconButton
+                      size="small"
+                      aria-label="Générer un nom"
+                      disabled={!sexChosen}
+                      onClick={() => {
+                        const name = pickName(ancestry, draft.identity.sex);
+                        if (name) patch({ name });
+                      }}
+                    >
+                      <CasinoOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </span>
                 </Tooltip>
                 <InfoHint page={ancestry.names.sourcePage}>
                   <NameHintContent names={ancestry.names} />
