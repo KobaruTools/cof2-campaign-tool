@@ -80,6 +80,7 @@ import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors
 import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
+import { InfoHint } from '@/components/InfoHint';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
@@ -931,13 +932,26 @@ export function EquipmentStep({ draft, patch }: StepProps) {
 
 export function IdentityStep({ draft, patch }: StepProps) {
   return (
-    <Stack spacing={2} sx={{ maxWidth: 520 }}>
+    <Stack spacing={2}>
       <TextField
         label="Nom"
         required
         value={draft.name}
         onChange={(e) => patch({ name: e.target.value })}
         fullWidth
+        slotProps={{
+          input: {
+            endAdornment: (
+              <InfoHint section="Touche finale" page={33}>
+                Il ne vous reste plus qu&apos;à donner un nom et un peu
+                d&apos;épaisseur à votre personnage pour vous lancer à
+                l&apos;aventure et le faire entrer dans la légende. Vous pouvez le
+                créer en partant de zéro ou l&apos;imaginer en vous inspirant de
+                personnages connus de BD, de films ou de romans.
+              </InfoHint>
+            ),
+          },
+        }}
       />
       <Stack direction="row" spacing={2}>
         <TextField
@@ -947,7 +961,7 @@ export function IdentityStep({ draft, patch }: StepProps) {
           onChange={(e) =>
             patch({ identity: { ...draft.identity, sex: (e.target.value || undefined) as Sex | undefined } })
           }
-          sx={{ minWidth: 140 }}
+          fullWidth
         >
           <MenuItem value="male">Homme</MenuItem>
           <MenuItem value="female">Femme</MenuItem>
@@ -956,12 +970,14 @@ export function IdentityStep({ draft, patch }: StepProps) {
           label="Âge"
           value={draft.identity.age ?? ''}
           onChange={(e) => patch({ identity: { ...draft.identity, age: e.target.value } })}
+          fullWidth
         />
       </Stack>
       <TextField
         label="Description"
         multiline
-        minRows={3}
+        minRows={6}
+        placeholder="Décrivez votre héros : allure, caractère, passé, ce qui le pousse à l'aventure…"
         value={draft.identity.description ?? ''}
         onChange={(e) => patch({ identity: { ...draft.identity, description: e.target.value } })}
         fullWidth
