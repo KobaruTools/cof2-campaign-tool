@@ -35,6 +35,8 @@ interface StepDef {
   label: string;
   Component: (props: StepProps) => React.ReactNode;
   valid: (d: WizardDraft) => boolean;
+  /** Résumé des choix faits, affiché en petit sous le libellé de l'étape. */
+  summary?: (d: WizardDraft) => string | null;
 }
 
 const STEPS: StepDef[] = [
@@ -45,11 +47,13 @@ const STEPS: StepDef[] = [
       const p = ancestryById.get(d.ancestryId);
       return !!p && d.ancestryPathId !== null;
     },
+    summary: (d) => ancestryById.get(d.ancestryId)?.name ?? null,
   },
   {
     label: 'Profil',
     Component: ClassStep,
     valid: (d) => classById.has(d.classId),
+    summary: (d) => classById.get(d.classId)?.name ?? null,
   },
   {
     label: 'Caractéristiques',
@@ -131,11 +135,24 @@ export default function CreatePage() {
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stepper activeStep={step} alternativeLabel sx={{ mb: 4 }}>
-          {STEPS.map((s) => (
-            <Step key={s.label}>
-              <StepLabel>{s.label}</StepLabel>
-            </Step>
-          ))}
+          {STEPS.map((s) => {
+            const choice = s.summary?.(draft) ?? null;
+            return (
+              <Step key={s.label}>
+                <StepLabel
+                  optional={
+                    choice ? (
+                      <Typography variant="caption" color="text.secondary">
+                        ({choice})
+                      </Typography>
+                    ) : undefined
+                  }
+                >
+                  {s.label}
+                </StepLabel>
+              </Step>
+            );
+          })}
         </Stepper>
 
         <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
