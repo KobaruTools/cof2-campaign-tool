@@ -569,16 +569,44 @@ export function ClassStep({ draft, patch }: StepProps) {
       {characterClass && (
         <Card
           variant="outlined"
-          sx={{ borderLeft: 5, borderLeftColor: classColor(characterClass.id) }}
+          sx={{
+            position: 'relative',
+            overflow: 'hidden',
+            borderLeft: 5,
+            borderLeftColor: classColor(characterClass.id),
+          }}
         >
-          <CardContent>
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
+          {/* Illustration du profil, centrée verticalement et débordant légèrement à droite */}
+          <Box
+            component="img"
+            src={`/classes/${characterClass.id}.webp`}
+            alt={`Illustration du profil ${characterClass.name}`}
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              right: -16,
+              transform: 'translateY(-50%)',
+              height: '110%',
+              objectFit: 'contain',
+              objectPosition: 'center',
+              opacity: 0.3,
+              pointerEvents: 'none',
+              userSelect: 'none',
+              zIndex: 0,
+            }}
+          />
+          <CardContent sx={{ position: 'relative', zIndex: 1 }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: 'center', mb: 0.5, pr: { xs: 13, sm: 17 } }}
+            >
               <ClassIcon classId={characterClass.id} size={28} />
               <Typography variant="subtitle1" sx={{ color: classColor(characterClass.id) }}>
                 {characterClass.name}
               </Typography>
             </Stack>
-            <Box sx={{ mb: 1.5 }}>
+            <Box sx={{ mb: 1.5, pr: { xs: 13, sm: 17 } }}>
               <Typography
                 variant="caption"
                 color="text.secondary"
