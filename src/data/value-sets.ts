@@ -13,25 +13,25 @@
  * spécialiste +5.
  */
 
-import type { SerieDeValeurs } from './schema';
+import type { ValueSet } from './schema';
 
-export const series: SerieDeValeurs[] = [
+export const valueSets: ValueSet[] = [
   {
     id: 'polyvalent',
-    nom: 'Polyvalent',
-    valeurs: [2, 2, 2, 1, 1, 0, -1],
+    name: 'Polyvalent',
+    values: [2, 2, 2, 1, 1, 0, -1],
     sourcePage: 27,
   },
   {
     id: 'expert',
-    nom: 'Expert',
-    valeurs: [3, 2, 1, 1, 0, 0, -1],
+    name: 'Expert',
+    values: [3, 2, 1, 1, 0, 0, -1],
     sourcePage: 27,
   },
   {
     id: 'specialiste',
-    nom: 'Spécialiste',
-    valeurs: [4, 2, 1, 0, 0, -1, -1],
+    name: 'Spécialiste',
+    values: [4, 2, 1, 0, 0, -1, -1],
     sourcePage: 27,
   },
 ];

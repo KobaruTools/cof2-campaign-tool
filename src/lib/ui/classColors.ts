@@ -7,7 +7,7 @@
  *
  * Choisies pour rester lisibles sur fond sombre (thème par défaut).
  */
-export const PROFIL_COULEURS: Record<string, string> = {
+export const CLASS_COLORS: Record<string, string> = {
   // Aventuriers
   arquebusier: '#fb8c00', // orange
   barde: '#ec407a', // rose
@@ -29,6 +29,6 @@ export const PROFIL_COULEURS: Record<string, string> = {
 };
 
 /** Couleur d'un profil, avec repli neutre si l'id est inconnu. */
-export function couleurProfil(profilId: string): string {
-  return PROFIL_COULEURS[profilId] ?? '#90a4ae';
+export function classColor(classId: string): string {
+  return CLASS_COLORS[classId] ?? '#90a4ae';
 }

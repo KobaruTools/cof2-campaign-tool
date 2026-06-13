@@ -13,67 +13,67 @@
  * par niveau (+CON) — pvParNiveau = pvBase pour les quatre familles.
  */
 
-import type { Famille } from './schema';
+import type { Family } from './schema';
 
-export const familles: Famille[] = [
+export const families: Family[] = [
   {
-    id: 'aventuriers',
-    nom: 'Aventuriers',
+    id: 'adventurers',
+    name: 'Aventuriers',
     // p. 30 : « Aventuriers : 8 + CON » au niveau 1.
-    pvBase: 4,
+    baseHp: 4,
     // p. 39 : « Aventuriers : 4 + CON » par niveau.
-    pvParNiveau: 4,
+    hpPerLevel: 4,
     // p. 30 : « Aventuriers : d8 ».
-    deRecuperation: 'd8',
-    bonusDrCreation: 0,
+    recoveryDie: 'd8',
+    bonusRecoveryDiceOnCreation: 0,
     // p. 30 : « les PJ de la famille des aventuriers gagnent 1 PC de plus
     // que les autres profils » (aussi p. 24 : « 1 point de chance (PC)
     // de plus »).
-    bonusPcCreation: 1,
+    bonusLuckPointsOnCreation: 1,
     sourcePage: 30,
   },
   {
-    id: 'combattants',
-    nom: 'Combattants',
+    id: 'fighters',
+    name: 'Combattants',
     // p. 30 : « Combattants : 10 + CON » au niveau 1.
-    pvBase: 5,
+    baseHp: 5,
     // p. 39 : « Combattants : 5 + CON » par niveau.
-    pvParNiveau: 5,
+    hpPerLevel: 5,
     // p. 30 : « Combattants : d10 ».
-    deRecuperation: 'd10',
-    bonusDrCreation: 0,
-    bonusPcCreation: 0,
+    recoveryDie: 'd10',
+    bonusRecoveryDiceOnCreation: 0,
+    bonusLuckPointsOnCreation: 0,
     sourcePage: 30,
   },
   {
     id: 'mages',
-    nom: 'Mages',
+    name: 'Mages',
     // p. 30 : « Mages : 6 + CON » au niveau 1.
-    pvBase: 3,
+    baseHp: 3,
     // p. 39 : « Mages : 3 + CON » par niveau.
-    pvParNiveau: 3,
+    hpPerLevel: 3,
     // p. 30 : « Mages : d6 ».
-    deRecuperation: 'd6',
-    bonusDrCreation: 0,
-    bonusPcCreation: 0,
+    recoveryDie: 'd6',
+    bonusRecoveryDiceOnCreation: 0,
+    bonusLuckPointsOnCreation: 0,
     sourcePage: 30,
     // NB : le bonus propre aux mages (« 1 capacité de rang 2
     // supplémentaire » à la création — p. 24, 29) n'est pas un champ de
     // Famille ; il est porté par le moteur (règle « Mages », p. 29).
   },
   {
-    id: 'mystiques',
-    nom: 'Mystiques',
+    id: 'mystics',
+    name: 'Mystiques',
     // p. 30 : « Mystiques : 8 + CON » au niveau 1.
-    pvBase: 4,
+    baseHp: 4,
     // p. 39 : « Mystiques : 4 + CON » par niveau.
-    pvParNiveau: 4,
+    hpPerLevel: 4,
     // p. 30 : « Mystiques : d8 ».
-    deRecuperation: 'd8',
+    recoveryDie: 'd8',
     // p. 30 : « les mystiques reçoivent 1 DR de plus que les autres profils
     // à la création, soit [3 + CON] DR ».
-    bonusDrCreation: 1,
-    bonusPcCreation: 0,
+    bonusRecoveryDiceOnCreation: 1,
+    bonusLuckPointsOnCreation: 0,
     sourcePage: 30,
   },
 ];

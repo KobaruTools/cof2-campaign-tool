@@ -9,93 +9,93 @@
  * `scripts/validate-data.ts`.
  */
 import type {
-  Arme,
-  Armure,
-  Bouclier,
-  Capacite,
-  EquipementItem,
-  Famille,
-  IdealTravers,
-  Materiel,
-  Peuple,
-  Profil,
-  ReglesProgression,
-  SerieDeValeurs,
-  Voie,
-  VoieDePeuple,
-  VoieDePrestige,
-  VoieDeProfil,
-  VoieDuMage,
+  Weapon,
+  Armor,
+  Shield,
+  Feature,
+  EquipmentItem,
+  Family,
+  IdealFlaw,
+  Gear,
+  Ancestry,
+  CharacterClass,
+  ProgressionRules,
+  ValueSet,
+  Path,
+  AncestryPath,
+  PrestigePath,
+  ClassPath,
+  MagePath,
 } from './schema';
 
-import { familles } from './familles';
-import { series } from './series';
+import { families } from './families';
+import { valueSets } from './value-sets';
 import { progression } from './progression';
-import { ideauxTravers } from './ideaux-travers';
-import { peuples } from './peuples';
-import { voiesDePeuple, voieDuMage, capacitesPeuples } from './voies-peuples';
-import { profilsAventuriers, voiesAventuriers, capacitesAventuriers } from './profils/aventuriers';
-import { profilsCombattants, voiesCombattants, capacitesCombattants } from './profils/combattants';
-import { profilsMages, voiesMages, capacitesMages } from './profils/mages';
-import { profilsMystiques, voiesMystiques, capacitesMystiques } from './profils/mystiques';
-import { voiesPrestige1, capacitesPrestige1 } from './voies-prestige/partie1';
-import { voiesPrestige2, capacitesPrestige2 } from './voies-prestige/partie2';
-import { armes, armures, boucliers, materiel } from './equipement';
+import { idealsFlaws } from './ideals-flaws';
+import { ancestries } from './ancestries';
+import { ancestryPaths, magePath, ancestryFeatures } from './ancestry-paths';
+import { adventurerClasses, adventurerPaths, adventurerFeatures } from './classes/adventurers';
+import { fighterClasses, fighterPaths, fighterFeatures } from './classes/fighters';
+import { mageClasses, magePaths, mageFeatures } from './classes/mages';
+import { mysticClasses, mysticPaths, mysticFeatures } from './classes/mystics';
+import { prestigePaths1, prestigeFeatures1 } from './prestige-paths/part1';
+import { prestigePaths2, prestigeFeatures2 } from './prestige-paths/part2';
+import { weapons, armors, shields, gear } from './equipment';
 
 // --- Règles transverses ------------------------------------------------------
-export { familles, series, progression, ideauxTravers };
+export { families, valueSets, progression, idealsFlaws };
 
 // --- Peuples -----------------------------------------------------------------
-export { peuples };
+export { ancestries };
 
 // --- Profils (concaténés, ordre des familles) --------------------------------
-export const profils: Profil[] = [
-  ...profilsAventuriers,
-  ...profilsCombattants,
-  ...profilsMages,
-  ...profilsMystiques,
+export const classes: CharacterClass[] = [
+  ...adventurerClasses,
+  ...fighterClasses,
+  ...mageClasses,
+  ...mysticClasses,
 ];
 
 // --- Voies -------------------------------------------------------------------
-export const voiesDeProfil: VoieDeProfil[] = [
-  ...voiesAventuriers,
-  ...voiesCombattants,
-  ...voiesMages,
-  ...voiesMystiques,
+export const classPaths: ClassPath[] = [
+  ...adventurerPaths,
+  ...fighterPaths,
+  ...magePaths,
+  ...mysticPaths,
 ];
 
-export const voiesDePrestige: VoieDePrestige[] = [...voiesPrestige1, ...voiesPrestige2];
+export const prestigePaths: PrestigePath[] = [...prestigePaths1, ...prestigePaths2];
 
-export { voiesDePeuple, voieDuMage };
+export { ancestryPaths, magePath };
 
 /** Toutes les voies, tous types confondus. */
-export const voies: Voie[] = [
-  ...voiesDeProfil,
-  ...voiesDePeuple,
-  voieDuMage,
-  ...voiesDePrestige,
+export const paths: Path[] = [
+  ...classPaths,
+  ...ancestryPaths,
+  magePath,
+  ...prestigePaths,
 ];
 
 // --- Capacités (toutes voies confondues) -------------------------------------
-export const capacites: Capacite[] = [
-  ...capacitesPeuples,
-  ...capacitesAventuriers,
-  ...capacitesCombattants,
-  ...capacitesMages,
-  ...capacitesMystiques,
-  ...capacitesPrestige1,
-  ...capacitesPrestige2,
+export const features: Feature[] = [
+  ...ancestryFeatures,
+  ...adventurerFeatures,
+  ...fighterFeatures,
+  ...mageFeatures,
+  ...mysticFeatures,
+  ...prestigeFeatures1,
+  ...prestigeFeatures2,
 ];
 
 // --- Équipement --------------------------------------------------------------
-export { armes, armures, boucliers, materiel };
-export const equipement: EquipementItem[] = [...armes, ...armures, ...boucliers, ...materiel];
+export { weapons, armors, shields, gear };
+export const equipment: EquipmentItem[] = [...weapons, ...armors, ...shields, ...gear];
 
 // --- Index de lookup par id --------------------------------------------------
-export const peupleParId = new Map<string, Peuple>(peuples.map((p) => [p.id, p]));
-export const profilParId = new Map<string, Profil>(profils.map((p) => [p.id, p]));
-export const voieParId = new Map<string, Voie>(voies.map((v) => [v.id, v]));
-export const capaciteParId = new Map<string, Capacite>(capacites.map((c) => [c.id, c]));
-export const equipementParId = new Map<string, EquipementItem>(equipement.map((e) => [e.id, e]));
+export const ancestryById = new Map<string, Ancestry>(ancestries.map((p) => [p.id, p]));
+export const classById = new Map<string, CharacterClass>(classes.map((p) => [p.id, p]));
+export const pathById = new Map<string, Path>(paths.map((v) => [v.id, v]));
+export const featureById = new Map<string, Feature>(features.map((c) => [c.id, c]));
+export const equipmentById = new Map<string, EquipmentItem>(equipment.map((e) => [e.id, e]));
 
-export type { Famille, ReglesProgression, SerieDeValeurs, IdealTravers, Arme, Armure, Bouclier, Materiel };
+export type { Family, ProgressionRules, ValueSet, IdealFlaw, Weapon, Armor, Shield, Gear };

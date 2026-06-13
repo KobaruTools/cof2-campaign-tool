@@ -8,6 +8,7 @@
 
 ## Points critiques
 
+- **Langue : le CODE est en ANGLAIS, le TEXTE affiché est en FRANÇAIS.** Règle absolue, sans exception. Tout ce qui relève du code et de la logique s'écrit en anglais : noms de types/interfaces, variables, fonctions, **clés d'objets/JSON**, valeurs d'énumérations fermées, noms de fichiers, dossiers et routes. Tout ce qui est montré au joueur reste en français : **valeurs** de chaînes (noms de peuples, descriptions, textes de règles verbatim, libellés d'UI). Les commentaires restent en français. Exceptions volontaires conservées en français : les **slugs d'`id`** des entités (`'demi-elfe'`, `'epee-longue'`, `'artilleur-r1'`…) car ce sont des clés de contenu persistées (référencées dans les personnages sauvegardés) ; les codes neutres `AGI/CON/FOR/PER/CHA/INT/VOL` et `d4…d20`. Ne jamais réintroduire de français dans le code (incident corrigé le 2026-06-13 : tout le code avait dérivé en français et a été retraduit ; modèle `Character` migré v1→v2 pour les clés renommées, voir `src/lib/engine/migrations.ts`).
 - **Source de règles unique** : `CBHS_06_Chroniques_Oubliees_2_web_v2.pdf` (livre de base CO2, ~358 pages, à la racine de ce dossier).
 - **`[COF2_40]--Le-Compagnon_web_v0b.pdf` est HORS SCOPE** : ne pas l'ouvrir, ne pas en extraire de données, sauf demande explicite de l'utilisateur.
 - Les deux PDF ne doivent jamais entrer dans le bundle ni dans git.

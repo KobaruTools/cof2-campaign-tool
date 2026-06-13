@@ -1,7 +1,10 @@
 'use client';
 
+import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import SportsKabaddiOutlinedIcon from '@mui/icons-material/SportsKabaddiOutlined';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
@@ -30,60 +33,61 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import {
-  capaciteParId,
-  equipement,
-  familles,
-  peupleParId,
-  peuples,
-  profils,
-  profilParId,
+  featureById,
+  equipment,
+  equipmentById,
+  families,
+  ancestryById,
+  ancestries,
+  classes,
+  classById,
   progression,
-  voieParId,
+  pathById,
 } from '@/data';
-import type { CaracId, ModificateurCarac } from '@/data/schema';
-import { CARAC_IDS } from '@/data/schema';
-import { deriveStats, verifierConformite, type MoteurContexte } from '@/lib/engine';
+import type { AbilityId, AbilityModifier, CharacterClass } from '@/data/schema';
+import { ABILITY_IDS } from '@/data/schema';
+import { deriveStats, checkCompliance, type RulesContext } from '@/lib/engine';
 import {
-  choixInitiaux,
-  deltasModificateurs,
-  deuxPlusFaibles,
-} from '@/lib/character/peuple';
+  initialChoices,
+  modifierDeltas,
+  twoLowest,
+} from '@/lib/character/ancestry';
 import {
-  caracsFinales,
-  capaciteIdsNiveau1,
+  finalAbilities,
+  level1FeatureIds,
   materializeDraft,
   type WizardDraft,
 } from '@/lib/character/wizard';
 import {
-  defenseDepuisEquipement,
-  equipementInitial,
-  libelleEquipement,
-  repartirSerie,
-  series,
+  defenseFromEquipment,
+  initialEquipment,
+  equipmentLabel,
+  distributeValueSet,
+  valueSets,
 } from './helpers';
-import { couleurProfil } from '@/lib/ui/profilColors';
-import { CARAC_NOMS } from '@/lib/ui/carac';
-import { CaracBadge, CaracBadgeList } from '@/components/CaracBadge';
+import { classColor } from '@/lib/ui/classColors';
+import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
 
-const familleParId = new Map(familles.map((f) => [f.id, f]));
+const familyById = new Map(families.map((f) => [f.id, f]));
 
 /**
  * Découpe la description d'un peuple à la section « Interpréter un … » : le
  * texte avant reste affiché, la section et son corps partent dans un accordéon.
  */
-function decouperDescription(desc: string): {
+function splitDescription(desc: string): {
   intro: string;
-  interpretationTitre: string | null;
-  interpretationCorps: string;
+  interpretationTitle: string | null;
+  interpretationBody: string;
 } {
   const idx = desc.search(/^Interpréter /m);
-  if (idx === -1) return { intro: desc.trim(), interpretationTitre: null, interpretationCorps: '' };
-  const reste = desc.slice(idx);
-  const nl = reste.indexOf('\n');
+  if (idx === -1) return { intro: desc.trim(), interpretationTitle: null, interpretationBody: '' };
+  const rest = desc.slice(idx);
+  const nl = rest.indexOf('\n');
   return {
     intro: desc.slice(0, idx).trim(),
-    interpretationTitre: (nl === -1 ? reste : reste.slice(0, nl)).trim(),
-    interpretationCorps: nl === -1 ? '' : reste.slice(nl).trim(),
+    interpretationTitle: (nl === -1 ? rest : rest.slice(0, nl)).trim(),
+    interpretationBody: nl === -1 ? '' : rest.slice(nl).trim(),
   };
 }
 
@@ -92,27 +96,27 @@ function decouperDescription(desc: string): {
  * caractéristiques concernées sous forme de badges (ex. « +1 [PER] ou [CHA] »).
  * Cas humain (les 7 caracs listées) : « +1 à une de vos deux plus faibles ».
  */
-function ModificateurPeuple({ mod }: { mod: ModificateurCarac }) {
+function AncestryModifier({ mod }: { mod: AbilityModifier }) {
   const theme = useTheme();
-  const bonus = mod.valeur > 0;
-  const signe = bonus ? '+' : '';
-  const teinte = bonus ? theme.palette.success.main : theme.palette.error.main;
-  const estFaibles = mod.caracs.length === CARAC_IDS.length;
+  const bonus = mod.value > 0;
+  const sign = bonus ? '+' : '';
+  const tint = bonus ? theme.palette.success.main : theme.palette.error.main;
+  const isLowest = mod.abilities.length === ABILITY_IDS.length;
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
       <Chip
-        label={`${signe}${mod.valeur}`}
+        label={`${sign}${mod.value}`}
         color={bonus ? 'success' : 'error'}
         variant="outlined"
         size="small"
         sx={{ minWidth: 48, fontWeight: 700, '& .MuiChip-label': { px: 0 } }}
       />
-      {estFaibles ? (
+      {isLowest ? (
         <Typography variant="body2" color="text.secondary">
           à une de vos deux plus faibles caractéristiques (au choix)
         </Typography>
       ) : (
-        mod.caracs.map((c, j) => (
+        mod.abilities.map((c, j) => (
           <Box
             component="span"
             key={c}
@@ -123,7 +127,7 @@ function ModificateurPeuple({ mod }: { mod: ModificateurCarac }) {
                 ou
               </Typography>
             )}
-            <CaracBadge carac={c} color={teinte} />
+            <AbilityBadge ability={c} color={tint} />
           </Box>
         ))
       )}
@@ -140,17 +144,17 @@ export interface StepProps {
 // Étape 1 — Peuple
 // ---------------------------------------------------------------------------
 
-export function PeupleStep({ draft, patch }: StepProps) {
-  const peuple = peupleParId.get(draft.peupleId);
-  const desc = peuple ? decouperDescription(peuple.description) : null;
+export function AncestryStep({ draft, patch }: StepProps) {
+  const ancestry = ancestryById.get(draft.ancestryId);
+  const desc = ancestry ? splitDescription(ancestry.description) : null;
 
-  const choisirPeuple = (id: string) => {
-    const p = peupleParId.get(id);
+  const chooseAncestry = (id: string) => {
+    const p = ancestryById.get(id);
     if (!p) return;
     patch({
-      peupleId: id,
-      peupleChoix: choixInitiaux(p),
-      voieDePeupleId: p.voieDePeupleIds.length === 1 ? p.voieDePeupleIds[0] : null,
+      ancestryId: id,
+      ancestryChoices: initialChoices(p),
+      ancestryPathId: p.ancestryPathIds.length === 1 ? p.ancestryPathIds[0] : null,
     });
   };
 
@@ -158,41 +162,41 @@ export function PeupleStep({ draft, patch }: StepProps) {
     <Stack spacing={3}>
       <FormControl>
         <FormLabel>Peuple</FormLabel>
-        <RadioGroup value={draft.peupleId} onChange={(e) => choisirPeuple(e.target.value)}>
+        <RadioGroup value={draft.ancestryId} onChange={(e) => chooseAncestry(e.target.value)}>
           <Grid container spacing={1}>
-            {peuples.map((p) => (
+            {ancestries.map((p) => (
               <Grid key={p.id} size={{ xs: 12, sm: 6 }}>
-                <FormControlLabel value={p.id} control={<Radio />} label={p.nom} />
+                <FormControlLabel value={p.id} control={<Radio />} label={p.name} />
               </Grid>
             ))}
           </Grid>
         </RadioGroup>
       </FormControl>
 
-      {peuple && (
+      {ancestry && (
         <Card variant="outlined">
           <CardMedia
             component="img"
-            image={`/peuples/${peuple.id}.webp`}
-            alt={`Illustration du peuple ${peuple.nom}`}
+            image={`/ancestries/${ancestry.id}.webp`}
+            alt={`Illustration du peuple ${ancestry.name}`}
             sx={{ maxHeight: 320, objectFit: 'cover', objectPosition: 'center' }}
           />
           <CardContent>
             <Typography variant="subtitle1" gutterBottom>
-              {peuple.nom}
+              {ancestry.name}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
               {desc?.intro}
             </Typography>
 
-            {desc?.interpretationTitre && (
+            {desc?.interpretationTitle && (
               <Accordion
                 disableGutters
                 elevation={0}
                 sx={{ mb: 2, border: 1, borderColor: 'divider', '&::before': { display: 'none' } }}
               >
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="subtitle2">{desc.interpretationTitre}</Typography>
+                  <Typography variant="subtitle2">{desc.interpretationTitle}</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <Typography
@@ -200,7 +204,7 @@ export function PeupleStep({ draft, patch }: StepProps) {
                     color="text.secondary"
                     sx={{ whiteSpace: 'pre-line' }}
                   >
-                    {desc.interpretationCorps}
+                    {desc.interpretationBody}
                   </Typography>
                 </AccordionDetails>
               </Accordion>
@@ -211,23 +215,23 @@ export function PeupleStep({ draft, patch }: StepProps) {
                 Modificateurs de caractéristiques
               </Typography>
               <Stack spacing={1}>
-                {peuple.modificateurs.map((mod, i) => (
-                  <ModificateurPeuple key={i} mod={mod} />
+                {ancestry.abilityModifiers.map((mod, i) => (
+                  <AncestryModifier key={i} mod={mod} />
                 ))}
               </Stack>
             </Box>
 
-            {peuple.voieDePeupleIds.length > 1 && (
+            {ancestry.ancestryPathIds.length > 1 && (
               <FormControl sx={{ mt: 1, minWidth: 260 }} size="small">
                 <InputLabel>Voie de peuple</InputLabel>
                 <Select
                   label="Voie de peuple"
-                  value={draft.voieDePeupleId ?? ''}
-                  onChange={(e) => patch({ voieDePeupleId: e.target.value })}
+                  value={draft.ancestryPathId ?? ''}
+                  onChange={(e) => patch({ ancestryPathId: e.target.value })}
                 >
-                  {peuple.voieDePeupleIds.map((vid) => (
+                  {ancestry.ancestryPathIds.map((vid) => (
                     <MenuItem key={vid} value={vid}>
-                      {voieParId.get(vid)?.nom ?? vid}
+                      {pathById.get(vid)?.name ?? vid}
                     </MenuItem>
                   ))}
                 </Select>
@@ -244,18 +248,61 @@ export function PeupleStep({ draft, patch }: StepProps) {
 // Étape 2 — Profil
 // ---------------------------------------------------------------------------
 
-export function ProfilStep({ draft, patch }: StepProps) {
-  const profil = profilParId.get(draft.profilId);
+/**
+ * Repères visuels des restrictions d'un profil. Armure et bouclier sont des
+ * données structurées (chips avec code couleur vert/rouge) ; les armes ne le
+ * sont pas (texte nuancé par profil), conservées en dessous avec une icône.
+ */
+function ClassRestrictions({ characterClass }: { characterClass: CharacterClass }) {
+  const arm = characterClass.maxArmorId ? equipmentById.get(characterClass.maxArmorId) : null;
+  const armDef = arm && arm.category === 'armor' ? arm.def : null;
+  const armorLabel = arm
+    ? `Armure max : ${arm.name}${armDef != null ? ` (DEF +${armDef})` : ''}`
+    : 'Aucune armure';
 
-  const choisirProfil = (id: string) => {
-    const p = profilParId.get(id);
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+        Restrictions
+      </Typography>
+      <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1, mb: 1 }}>
+        <Chip
+          icon={<CheckroomOutlinedIcon />}
+          label={armorLabel}
+          color={arm ? 'default' : 'error'}
+          variant="outlined"
+          size="small"
+        />
+        <Chip
+          icon={<ShieldOutlinedIcon />}
+          label={characterClass.shieldAllowed ? 'Bouclier autorisé' : 'Bouclier interdit'}
+          color={characterClass.shieldAllowed ? 'success' : 'error'}
+          variant="outlined"
+          size="small"
+        />
+      </Stack>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+        <SportsKabaddiOutlinedIcon fontSize="small" sx={{ color: 'text.secondary', mt: 0.25 }} />
+        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
+          {characterClass.weaponsAndArmor}
+        </Typography>
+      </Stack>
+    </Box>
+  );
+}
+
+export function ClassStep({ draft, patch }: StepProps) {
+  const characterClass = classById.get(draft.classId);
+
+  const chooseClass = (id: string) => {
+    const p = classById.get(id);
     if (!p) return;
     patch({
-      profilId: id,
-      voiesChoisies: [],
-      slotVoieDuMage: false,
+      classId: id,
+      chosenPaths: [],
+      magePathSlot: false,
       mageBonus: null,
-      equipment: equipementInitial(p),
+      equipment: initialEquipment(p),
     });
   };
 
@@ -263,24 +310,24 @@ export function ProfilStep({ draft, patch }: StepProps) {
     <Stack spacing={3}>
       <FormControl>
         <FormLabel>Profil</FormLabel>
-        <RadioGroup value={draft.profilId} onChange={(e) => choisirProfil(e.target.value)}>
+        <RadioGroup value={draft.classId} onChange={(e) => chooseClass(e.target.value)}>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            {familles.map((famille) => {
-              const profilsFamille = profils.filter((p) => p.familleId === famille.id);
-              if (profilsFamille.length === 0) return null;
+            {families.map((family) => {
+              const familyClasses = classes.filter((p) => p.familyId === family.id);
+              if (familyClasses.length === 0) return null;
               return (
-                <Box key={famille.id}>
+                <Box key={family.id}>
                   <Typography
                     variant="subtitle2"
                     color="text.secondary"
                     sx={{ textTransform: 'uppercase', letterSpacing: 0.5, mb: 0.5 }}
                   >
-                    {famille.nom}
+                    {family.name}
                   </Typography>
                   <Divider sx={{ mb: 1 }} />
                   <Grid container spacing={1}>
-                    {profilsFamille.map((p) => {
-                      const couleur = couleurProfil(p.id);
+                    {familyClasses.map((p) => {
+                      const color = classColor(p.id);
                       return (
                         <Grid key={p.id} size={{ xs: 12, sm: 6, md: 4 }}>
                           <FormControlLabel
@@ -289,15 +336,15 @@ export function ProfilStep({ draft, patch }: StepProps) {
                               m: 0,
                               pl: 1,
                               borderLeft: 3,
-                              borderColor: couleur,
+                              borderColor: color,
                               borderRadius: 1,
                             }}
                             control={
                               <Radio
-                                sx={{ color: couleur, '&.Mui-checked': { color: couleur } }}
+                                sx={{ color: color, '&.Mui-checked': { color: color } }}
                               />
                             }
-                            label={p.nom}
+                            label={p.name}
                           />
                         </Grid>
                       );
@@ -310,14 +357,14 @@ export function ProfilStep({ draft, patch }: StepProps) {
         </RadioGroup>
       </FormControl>
 
-      {profil && (
+      {characterClass && (
         <Card
           variant="outlined"
-          sx={{ borderLeft: 5, borderLeftColor: couleurProfil(profil.id) }}
+          sx={{ borderLeft: 5, borderLeftColor: classColor(characterClass.id) }}
         >
           <CardContent>
-            <Typography variant="subtitle1" gutterBottom sx={{ color: couleurProfil(profil.id) }}>
-              {profil.nom}
+            <Typography variant="subtitle1" gutterBottom sx={{ color: classColor(characterClass.id) }}>
+              {characterClass.name}
             </Typography>
             <Box sx={{ mb: 1.5 }}>
               <Typography
@@ -327,11 +374,9 @@ export function ProfilStep({ draft, patch }: StepProps) {
               >
                 Caractéristiques conseillées
               </Typography>
-              <CaracBadgeList caracs={profil.caracsConseillees} />
+              <AbilityBadgeList abilities={characterClass.recommendedAbilities} />
             </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-              {profil.armesEtArmures}
-            </Typography>
+            <ClassRestrictions characterClass={characterClass} />
           </CardContent>
         </Card>
       )}
@@ -343,26 +388,26 @@ export function ProfilStep({ draft, patch }: StepProps) {
 // Étape 3 — Caractéristiques
 // ---------------------------------------------------------------------------
 
-export function CaracsStep({ draft, patch }: StepProps) {
-  const peuple = peupleParId.get(draft.peupleId);
-  const profil = profilParId.get(draft.profilId);
-  if (!peuple) return <Alert severity="warning">Choisissez d’abord un peuple.</Alert>;
+export function AbilitiesStep({ draft, patch }: StepProps) {
+  const ancestry = ancestryById.get(draft.ancestryId);
+  const characterClass = classById.get(draft.classId);
+  if (!ancestry) return <Alert severity="warning">Choisissez d’abord un peuple.</Alert>;
 
-  const deltas = deltasModificateurs(peuple, draft.peupleChoix);
-  const faibles = deuxPlusFaibles(draft.caracsBase);
+  const deltas = modifierDeltas(ancestry, draft.ancestryChoices);
+  const lowest = twoLowest(draft.baseAbilities);
 
-  const appliquerSerie = (valeurs: number[]) => {
-    patch({ caracsBase: repartirSerie(valeurs, profil?.caracsConseillees ?? []) });
+  const applyValueSet = (values: number[]) => {
+    patch({ baseAbilities: distributeValueSet(values, characterClass?.recommendedAbilities ?? []) });
   };
 
-  const setBase = (id: CaracId, value: number) => {
-    patch({ caracsBase: { ...draft.caracsBase, [id]: value } });
+  const setBase = (id: AbilityId, value: number) => {
+    patch({ baseAbilities: { ...draft.baseAbilities, [id]: value } });
   };
 
-  const setChoix = (index: number, carac: CaracId) => {
-    const next = [...draft.peupleChoix];
-    next[index] = carac;
-    patch({ peupleChoix: next });
+  const setChoice = (index: number, ability: AbilityId) => {
+    const next = [...draft.ancestryChoices];
+    next[index] = ability;
+    patch({ ancestryChoices: next });
   };
 
   return (
@@ -373,35 +418,35 @@ export function CaracsStep({ draft, patch }: StepProps) {
           proposées comme point de départ.
         </Typography>
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-          {series.map((s) => (
-            <Button key={s.id} size="small" variant="outlined" onClick={() => appliquerSerie(s.valeurs)}>
-              {s.nom} ({s.valeurs.join(', ')})
+          {valueSets.map((s) => (
+            <Button key={s.id} size="small" variant="outlined" onClick={() => applyValueSet(s.values)}>
+              {s.name} ({s.values.join(', ')})
             </Button>
           ))}
         </Stack>
       </Box>
 
       {/* Résolution des modificateurs de peuple à choix */}
-      {peuple.modificateurs.some((m) => m.caracs.length > 1) && (
+      {ancestry.abilityModifiers.some((m) => m.abilities.length > 1) && (
         <Card variant="outlined">
           <CardContent>
             <Typography variant="subtitle2" gutterBottom>
-              Modificateurs de {peuple.nom}
+              Modificateurs de {ancestry.name}
             </Typography>
             <Stack spacing={2}>
-              {peuple.modificateurs.map((mod, i) =>
-                mod.caracs.length === 1 ? null : (
+              {ancestry.abilityModifiers.map((mod, i) =>
+                mod.abilities.length === 1 ? null : (
                   <FormControl key={i} size="small" sx={{ minWidth: 260 }}>
-                    <InputLabel>{`${mod.valeur > 0 ? '+' : ''}${mod.valeur} à`}</InputLabel>
+                    <InputLabel>{`${mod.value > 0 ? '+' : ''}${mod.value} à`}</InputLabel>
                     <Select
-                      label={`${mod.valeur > 0 ? '+' : ''}${mod.valeur} à`}
-                      value={draft.peupleChoix[i] ?? ''}
-                      onChange={(e) => setChoix(i, e.target.value as CaracId)}
+                      label={`${mod.value > 0 ? '+' : ''}${mod.value} à`}
+                      value={draft.ancestryChoices[i] ?? ''}
+                      onChange={(e) => setChoice(i, e.target.value as AbilityId)}
                     >
-                      {(mod.caracs.length === CARAC_IDS.length ? CARAC_IDS : mod.caracs).map((c) => (
+                      {(mod.abilities.length === ABILITY_IDS.length ? ABILITY_IDS : mod.abilities).map((c) => (
                         <MenuItem key={c} value={c}>
-                          {CARAC_NOMS[c]}
-                          {mod.caracs.length === CARAC_IDS.length && faibles.includes(c)
+                          {ABILITY_NAMES[c]}
+                          {mod.abilities.length === ABILITY_IDS.length && lowest.includes(c)
                             ? ' (faible)'
                             : ''}
                         </MenuItem>
@@ -416,16 +461,16 @@ export function CaracsStep({ draft, patch }: StepProps) {
       )}
 
       <Grid container spacing={2}>
-        {CARAC_IDS.map((id) => {
-          const total = draft.caracsBase[id] + deltas[id];
+        {ABILITY_IDS.map((id) => {
+          const total = draft.baseAbilities[id] + deltas[id];
           return (
             <Grid key={id} size={{ xs: 12, sm: 6 }}>
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
                 <TextField
-                  label={CARAC_NOMS[id]}
+                  label={ABILITY_NAMES[id]}
                   type="number"
                   size="small"
-                  value={draft.caracsBase[id]}
+                  value={draft.baseAbilities[id]}
                   onChange={(e) => setBase(id, Number(e.target.value) || 0)}
                   sx={{ width: 130 }}
                 />
@@ -446,55 +491,55 @@ export function CaracsStep({ draft, patch }: StepProps) {
 // Étape 4 — Voies & capacités
 // ---------------------------------------------------------------------------
 
-export function VoiesStep({ draft, patch }: StepProps) {
-  const profil = profilParId.get(draft.profilId);
-  if (!profil) return <Alert severity="warning">Choisissez d’abord un profil.</Alert>;
-  const estMage = profil.familleId === 'mages';
-  const peuple = peupleParId.get(draft.peupleId);
+export function PathsStep({ draft, patch }: StepProps) {
+  const characterClass = classById.get(draft.classId);
+  if (!characterClass) return <Alert severity="warning">Choisissez d’abord un profil.</Alert>;
+  const isMage = characterClass.familyId === 'mages';
+  const ancestry = ancestryById.get(draft.ancestryId);
 
-  const toggleVoie = (voieId: string) => {
-    const has = draft.voiesChoisies.includes(voieId);
+  const togglePath = (pathId: string) => {
+    const has = draft.chosenPaths.includes(pathId);
     let next: string[];
-    if (has) next = draft.voiesChoisies.filter((v) => v !== voieId);
-    else if (draft.voiesChoisies.length >= 2) return; // max 2
-    else next = [...draft.voiesChoisies, voieId];
+    if (has) next = draft.chosenPaths.filter((v) => v !== pathId);
+    else if (draft.chosenPaths.length >= 2) return; // max 2
+    else next = [...draft.chosenPaths, pathId];
     // si le bonus de mage ciblait une voie retirée, on le réinitialise
     const mageBonus =
-      draft.mageBonus?.type === 'profil-rang2' && !next.includes(draft.mageBonus.voieId)
+      draft.mageBonus?.type === 'class-rank2' && !next.includes(draft.mageBonus.pathId)
         ? null
         : draft.mageBonus;
-    patch({ voiesChoisies: next, mageBonus });
+    patch({ chosenPaths: next, mageBonus });
   };
 
   return (
     <Stack spacing={3}>
       <Box>
         <Typography variant="subtitle2" gutterBottom>
-          Choisissez 2 voies de profil ({draft.voiesChoisies.length}/2)
+          Choisissez 2 voies de profil ({draft.chosenPaths.length}/2)
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           Vous recevez gratuitement la capacité de rang 1 de chaque voie choisie, ainsi que le
           rang 1 de votre voie de peuple.
         </Typography>
         <Stack>
-          {profil.voieIds.map((vid) => {
-            const voie = voieParId.get(vid);
-            const checked = draft.voiesChoisies.includes(vid);
-            const disabled = !checked && draft.voiesChoisies.length >= 2;
+          {characterClass.pathIds.map((vid) => {
+            const path = pathById.get(vid);
+            const checked = draft.chosenPaths.includes(vid);
+            const disabled = !checked && draft.chosenPaths.length >= 2;
             return (
               <FormControlLabel
                 key={vid}
                 control={
-                  <Checkbox checked={checked} disabled={disabled} onChange={() => toggleVoie(vid)} />
+                  <Checkbox checked={checked} disabled={disabled} onChange={() => togglePath(vid)} />
                 }
-                label={voie?.nom ?? vid}
+                label={path?.name ?? vid}
               />
             );
           })}
         </Stack>
       </Box>
 
-      {estMage && (
+      {isMage && (
         <Card variant="outlined">
           <CardContent>
             <Typography variant="subtitle2" gutterBottom>
@@ -504,18 +549,18 @@ export function VoiesStep({ draft, patch }: StepProps) {
             <FormControl sx={{ mb: 2 }}>
               <FormLabel>Emplacement de la voie de peuple</FormLabel>
               <RadioGroup
-                value={draft.slotVoieDuMage ? 'mage' : 'peuple'}
+                value={draft.magePathSlot ? 'mage' : 'peuple'}
                 onChange={(e) => {
                   const slot = e.target.value === 'mage';
                   const mageBonus =
-                    !slot && draft.mageBonus?.type === 'mage-rang2' ? null : draft.mageBonus;
-                  patch({ slotVoieDuMage: slot, mageBonus });
+                    !slot && draft.mageBonus?.type === 'mage-rank2' ? null : draft.mageBonus;
+                  patch({ magePathSlot: slot, mageBonus });
                 }}
               >
                 <FormControlLabel
                   value="peuple"
                   control={<Radio />}
-                  label={`Voie de peuple${peuple ? ` (${peuple.nom})` : ''}`}
+                  label={`Voie de peuple${ancestry ? ` (${ancestry.name})` : ''}`}
                 />
                 <FormControlLabel
                   value="mage"
@@ -529,29 +574,29 @@ export function VoiesStep({ draft, patch }: StepProps) {
               <FormLabel>Capacité de rang 2 supplémentaire</FormLabel>
               <RadioGroup
                 value={
-                  draft.mageBonus?.type === 'mage-rang2'
+                  draft.mageBonus?.type === 'mage-rank2'
                     ? 'mage'
-                    : draft.mageBonus?.type === 'profil-rang2'
-                      ? draft.mageBonus.voieId
+                    : draft.mageBonus?.type === 'class-rank2'
+                      ? draft.mageBonus.pathId
                       : ''
                 }
                 onChange={(e) => {
                   const v = e.target.value;
                   patch({
                     mageBonus:
-                      v === 'mage' ? { type: 'mage-rang2' } : { type: 'profil-rang2', voieId: v },
+                      v === 'mage' ? { type: 'mage-rank2' } : { type: 'class-rank2', pathId: v },
                   });
                 }}
               >
-                {draft.voiesChoisies.map((vid) => (
+                {draft.chosenPaths.map((vid) => (
                   <FormControlLabel
                     key={vid}
                     value={vid}
                     control={<Radio />}
-                    label={`Rang 2 — ${voieParId.get(vid)?.nom ?? vid}`}
+                    label={`Rang 2 — ${pathById.get(vid)?.name ?? vid}`}
                   />
                 ))}
-                {draft.slotVoieDuMage && (
+                {draft.magePathSlot && (
                   <FormControlLabel
                     value="mage"
                     control={<Radio />}
@@ -571,12 +616,12 @@ export function VoiesStep({ draft, patch }: StepProps) {
 // Étape 5 — Équipement
 // ---------------------------------------------------------------------------
 
-export function EquipementStep({ draft, patch }: StepProps) {
-  const retirer = (index: number) => {
+export function EquipmentStep({ draft, patch }: StepProps) {
+  const remove = (index: number) => {
     patch({ equipment: draft.equipment.filter((_, i) => i !== index) });
   };
-  const ajouter = (itemId: string) => {
-    patch({ equipment: [...draft.equipment, { itemId, quantite: 1 }] });
+  const add = (itemId: string) => {
+    patch({ equipment: [...draft.equipment, { itemId, quantity: 1 }] });
   };
 
   return (
@@ -586,13 +631,13 @@ export function EquipementStep({ draft, patch }: StepProps) {
       </Typography>
 
       <Stack divider={<Divider />}>
-        {draft.equipment.map((ligne, i) => (
+        {draft.equipment.map((line, i) => (
           <Stack key={i} direction="row" sx={{ alignItems: 'center', py: 0.5 }}>
             <Typography sx={{ flexGrow: 1 }}>
-              {libelleEquipement(ligne)}
-              {ligne.quantite > 1 ? ` ×${ligne.quantite}` : ''}
+              {equipmentLabel(line)}
+              {line.quantity > 1 ? ` ×${line.quantity}` : ''}
             </Typography>
-            <IconButton size="small" color="error" onClick={() => retirer(i)}>
+            <IconButton size="small" color="error" onClick={() => remove(i)}>
               <DeleteOutlineIcon fontSize="small" />
             </IconButton>
           </Stack>
@@ -605,11 +650,11 @@ export function EquipementStep({ draft, patch }: StepProps) {
       </Stack>
 
       <Autocomplete
-        options={equipement}
-        getOptionLabel={(o) => o.nom}
+        options={equipment}
+        getOptionLabel={(o) => o.name}
         renderInput={(params) => <TextField {...params} label="Ajouter un objet du catalogue" />}
         onChange={(_, value) => {
-          if (value) ajouter(value.id);
+          if (value) add(value.id);
         }}
         value={null}
         blurOnSelect
@@ -623,7 +668,7 @@ export function EquipementStep({ draft, patch }: StepProps) {
 // Étape 6 — Identité
 // ---------------------------------------------------------------------------
 
-export function IdentiteStep({ draft, patch }: StepProps) {
+export function IdentityStep({ draft, patch }: StepProps) {
   return (
     <Stack spacing={2} sx={{ maxWidth: 520 }}>
       <TextField
@@ -636,8 +681,8 @@ export function IdentiteStep({ draft, patch }: StepProps) {
       <Stack direction="row" spacing={2}>
         <TextField
           label="Sexe"
-          value={draft.identity.sexe ?? ''}
-          onChange={(e) => patch({ identity: { ...draft.identity, sexe: e.target.value } })}
+          value={draft.identity.sex ?? ''}
+          onChange={(e) => patch({ identity: { ...draft.identity, sex: e.target.value } })}
         />
         <TextField
           label="Âge"
@@ -661,45 +706,45 @@ export function IdentiteStep({ draft, patch }: StepProps) {
 // Étape 7 — Récapitulatif
 // ---------------------------------------------------------------------------
 
-const moteurCtx: MoteurContexte = {
-  capaciteParId,
-  voieParId,
-  profilParId,
-  familleParId,
+const rulesCtx: RulesContext = {
+  featureById,
+  pathById,
+  classById,
+  familyById,
   progression,
 };
 
-export function RecapStep({ draft }: StepProps) {
-  const peuple = peupleParId.get(draft.peupleId);
-  const profil = profilParId.get(draft.profilId);
-  const famille = profil ? familleParId.get(profil.familleId) : undefined;
-  if (!peuple || !profil || !famille) {
+export function SummaryStep({ draft }: StepProps) {
+  const ancestry = ancestryById.get(draft.ancestryId);
+  const characterClass = classById.get(draft.classId);
+  const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
+  if (!ancestry || !characterClass || !family) {
     return <Alert severity="warning">Récapitulatif indisponible : étapes incomplètes.</Alert>;
   }
 
-  const caracs = caracsFinales(draft, peuple);
-  const capaciteIds = capaciteIdsNiveau1(draft);
-  const nbSorts = capaciteIds.filter((id) => capaciteParId.get(id)?.estSort).length;
+  const abilities = finalAbilities(draft, ancestry);
+  const featureIds = level1FeatureIds(draft);
+  const spellCount = featureIds.filter((id) => featureById.get(id)?.isSpell).length;
   const stats = deriveStats({
-    caracs,
-    niveau: 1,
-    famille,
-    defenseEquipement: defenseDepuisEquipement(draft.equipment),
-    nbSorts,
+    abilities,
+    level: 1,
+    family,
+    defenseEquipment: defenseFromEquipment(draft.equipment),
+    spellCount,
   });
-  const preview = materializeDraft(draft, peuple, draft.createdAt);
-  const avertissements = verifierConformite(preview, moteurCtx);
+  const preview = materializeDraft(draft, ancestry, draft.createdAt);
+  const warnings = checkCompliance(preview, rulesCtx);
 
-  const statLignes: Array<[string, string | number]> = [
-    ['Points de vigueur', stats.pvMax],
+  const statLines: Array<[string, string | number]> = [
+    ['Points de vigueur', stats.maxHp],
     ['Défense', stats.defense],
     ['Initiative', stats.initiative],
-    ['Points de chance', stats.pointsChance],
-    ['Dés de récupération', `${stats.nbDesRecuperation} ${stats.deRecuperation}`],
-    ['Points de mana', stats.pointsMana ?? '—'],
-    ['Attaque contact', stats.attaqueContact],
-    ['Attaque distance', stats.attaqueDistance],
-    ['Attaque magique', stats.attaqueMagique],
+    ['Points de chance', stats.luckPoints],
+    ['Dés de récupération', `${stats.recoveryDiceCount} ${stats.recoveryDie}`],
+    ['Points de mana', stats.manaPoints ?? '—'],
+    ['Attaque contact', stats.meleeAttack],
+    ['Attaque distance', stats.rangedAttack],
+    ['Attaque magique', stats.magicAttack],
   ];
 
   return (
@@ -707,7 +752,7 @@ export function RecapStep({ draft }: StepProps) {
       <Box>
         <Typography variant="subtitle1">{draft.name || 'Nouveau personnage'}</Typography>
         <Typography variant="body2" color="text.secondary">
-          {peuple.nom} · {profil.nom} · niveau 1
+          {ancestry.name} · {characterClass.name} · niveau 1
         </Typography>
       </Box>
 
@@ -716,8 +761,8 @@ export function RecapStep({ draft }: StepProps) {
           Caractéristiques
         </Typography>
         <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
-          {CARAC_IDS.map((id) => (
-            <Chip key={id} label={`${id} ${caracs[id] > 0 ? '+' : ''}${caracs[id]}`} />
+          {ABILITY_IDS.map((id) => (
+            <Chip key={id} label={`${id} ${abilities[id] > 0 ? '+' : ''}${abilities[id]}`} />
           ))}
         </Stack>
       </Box>
@@ -727,7 +772,7 @@ export function RecapStep({ draft }: StepProps) {
           Statistiques dérivées
         </Typography>
         <Grid container spacing={1}>
-          {statLignes.map(([label, value]) => (
+          {statLines.map(([label, value]) => (
             <Grid key={label} size={{ xs: 6, sm: 4 }}>
               <Card variant="outlined">
                 <CardContent sx={{ py: 1, textAlign: 'center' }}>
@@ -750,15 +795,15 @@ export function RecapStep({ draft }: StepProps) {
           Capacités acquises
         </Typography>
         <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
-          {capaciteIds.map((id) => (
-            <Chip key={id} label={capaciteParId.get(id)?.nom ?? id} size="small" />
+          {featureIds.map((id) => (
+            <Chip key={id} label={featureById.get(id)?.name ?? id} size="small" />
           ))}
         </Stack>
       </Box>
 
-      {avertissements.length > 0 && (
+      {warnings.length > 0 && (
         <Alert severity="warning">
-          {avertissements.map((a) => a.message).join(' ')}
+          {warnings.map((a) => a.message).join(' ')}
         </Alert>
       )}
     </Stack>

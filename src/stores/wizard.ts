@@ -9,7 +9,7 @@
  */
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { nouvelId } from '@/lib/character/factory';
+import { newId } from '@/lib/character/factory';
 import { createDraft, type WizardDraft } from '@/lib/character/wizard';
 
 interface WizardState {
@@ -35,7 +35,7 @@ export const useWizardStore = create<WizardState>()(
       setHasHydrated: (v) => set({ hasHydrated: v }),
 
       start: () => {
-        const draft = createDraft(nouvelId(), new Date().toISOString());
+        const draft = createDraft(newId(), new Date().toISOString());
         set({ draft });
         return draft;
       },

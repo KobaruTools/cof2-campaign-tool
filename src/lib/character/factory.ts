@@ -1,22 +1,22 @@
 /**
  * Fabrique de personnages — création d'un personnage neuf et duplication.
  */
-import type { CaracId } from '@/data/schema';
-import { CARAC_IDS } from '@/data/schema';
+import type { AbilityId } from '@/data/schema';
+import { ABILITY_IDS } from '@/data/schema';
 import { SCHEMA_VERSION, type Character } from './types';
 
-function caracsZero(): Record<CaracId, number> {
-  return CARAC_IDS.reduce(
+function abilitiesZero(): Record<AbilityId, number> {
+  return ABILITY_IDS.reduce(
     (acc, id) => {
       acc[id] = 0;
       return acc;
     },
-    {} as Record<CaracId, number>,
+    {} as Record<AbilityId, number>,
   );
 }
 
 /** Identifiant unique (uuid v4 via l'API Web Crypto, dispo navigateur + Node 19+). */
-export function nouvelId(): string {
+export function newId(): string {
   return crypto.randomUUID();
 }
 
@@ -30,15 +30,15 @@ export function createBlankCharacter(
   const now = options.now ?? new Date().toISOString();
   return {
     schemaVersion: SCHEMA_VERSION,
-    id: nouvelId(),
+    id: newId(),
     name: options.name ?? 'Nouveau personnage',
     identity: {},
-    peupleId: '',
-    profilId: '',
-    niveau: 1,
-    caracteristiques: caracsZero(),
-    voieDePeupleId: null,
-    capaciteIds: [],
+    ancestryId: '',
+    classId: '',
+    level: 1,
+    abilities: abilitiesZero(),
+    ancestryPathId: null,
+    featureIds: [],
     levelUpHistory: [],
     equipment: [],
     overrides: {},
@@ -56,7 +56,7 @@ export function duplicateCharacter(source: Character, now?: string): Character {
   const ts = now ?? new Date().toISOString();
   return {
     ...structuredClone(source),
-    id: nouvelId(),
+    id: newId(),
     name: `${source.name} (copie)`,
     createdAt: ts,
     updatedAt: ts,

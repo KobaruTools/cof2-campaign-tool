@@ -6,21 +6,99 @@
  * une validation structurelle qui refuse proprement un fichier invalide.
  *
  * Une migration `N` transforme un objet de version N en version N+1. Les
- * migrations sont conservées dans le code dès la première évolution du schéma
- * (ici : aucune, le schéma en est à la v1).
+ * migrations sont conservées dans le code dès la première évolution du schéma.
  */
 import { SCHEMA_VERSION, type Character } from '@/lib/character/types';
-import { CARAC_IDS } from '@/data/schema';
+import { ABILITY_IDS } from '@/data/schema';
 
 /** Transforme un objet de la version `from` vers `from + 1`. */
 export type Migration = (data: Record<string, unknown>) => Record<string, unknown>;
 
+/** Renomme une clé d'un objet (si présente), en préservant la valeur. */
+function renameKey(obj: Record<string, unknown>, from: string, to: string): void {
+  if (Object.prototype.hasOwnProperty.call(obj, from)) {
+    obj[to] = obj[from];
+    delete obj[from];
+  }
+}
+
+const asRecord = (v: unknown): Record<string, unknown> | null =>
+  typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+
 /**
- * Registre des migrations, indexé par version de départ. Vide tant que le
- * schéma n'a pas évolué au-delà de la v1. Exemple futur :
- *   { 1: (d) => ({ ...d, schemaVersion: 2, nouveauChamp: valeurParDefaut }) }
+ * v1 → v2 : passage des clés du modèle de personnage du français à l'anglais
+ * (PR « réécriture du code en anglais »). Aucune VALEUR n'est traduite — les
+ * slugs (`ancestryId: 'humain'`, ids de capacités, etc.) restent identiques ;
+ * seuls les NOMS de champs changent. Les stats dérivées surchargées
+ * (`overrides`) sont remappées vers les nouveaux `DerivedStatId` anglais.
  */
-export const MIGRATIONS: Record<number, Migration> = {};
+function migrateV1toV2(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+
+  renameKey(next, 'peupleId', 'ancestryId');
+  renameKey(next, 'profilId', 'classId');
+  renameKey(next, 'niveau', 'level');
+  renameKey(next, 'caracteristiques', 'abilities');
+  renameKey(next, 'voieDePeupleId', 'ancestryPathId');
+  renameKey(next, 'capaciteIds', 'featureIds');
+
+  const identity = asRecord(next.identity);
+  if (identity) {
+    renameKey(identity, 'sexe', 'sex');
+    renameKey(identity, 'taille', 'height');
+    renameKey(identity, 'poids', 'weight');
+    next.identity = identity;
+  }
+
+  if (Array.isArray(next.levelUpHistory)) {
+    next.levelUpHistory = next.levelUpHistory.map((entry) => {
+      const e = asRecord(entry);
+      if (!e) return entry;
+      const ne = { ...e };
+      renameKey(ne, 'niveau', 'level');
+      renameKey(ne, 'choixCapaciteIds', 'chosenFeatureIds');
+      return ne;
+    });
+  }
+
+  if (Array.isArray(next.equipment)) {
+    next.equipment = next.equipment.map((line) => {
+      const l = asRecord(line);
+      if (!l) return line;
+      const nl = { ...l };
+      renameKey(nl, 'quantite', 'quantity');
+      renameKey(nl, 'nom', 'name'); // objets personnalisés (CustomItem)
+      return nl;
+    });
+  }
+
+  const overrides = asRecord(next.overrides);
+  if (overrides) {
+    const overrideKeyMap: Record<string, string> = {
+      pvMax: 'maxHp',
+      pointsChance: 'luckPoints',
+      pointsMana: 'manaPoints',
+      nbDesRecuperation: 'recoveryDiceCount',
+      attaqueContact: 'meleeAttack',
+      attaqueDistance: 'rangedAttack',
+      attaqueMagique: 'magicAttack',
+      // `def` et `initiative` étaient déjà en anglais.
+    };
+    for (const [from, to] of Object.entries(overrideKeyMap)) renameKey(overrides, from, to);
+    next.overrides = overrides;
+  }
+
+  next.schemaVersion = 2;
+  return next;
+}
+
+/**
+ * Registre des migrations, indexé par version de départ. Une entrée `N`
+ * transforme un objet v`N` en v`N+1`.
+ */
+export const MIGRATIONS: Record<number, Migration> = {
+  1: migrateV1toV2,
+};
 
 export class MigrationError extends Error {}
 export class ValidationError extends Error {}
@@ -32,19 +110,19 @@ export class ValidationError extends Error {}
 export function runMigrations(
   raw: Record<string, unknown>,
   migrations: Record<number, Migration>,
-  cible: number,
+  target: number,
 ): Record<string, unknown> {
   const version = raw.schemaVersion;
   if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
     throw new MigrationError('schemaVersion absent ou invalide.');
   }
-  if (version > cible) {
+  if (version > target) {
     throw new MigrationError(
-      `Version ${version} plus récente que la version supportée (${cible}). Mettez à jour l'application.`,
+      `Version ${version} plus récente que la version supportée (${target}). Mettez à jour l'application.`,
     );
   }
   let data = raw;
-  for (let v = version; v < cible; v++) {
+  for (let v = version; v < target; v++) {
     const migration = migrations[v];
     if (!migration) throw new MigrationError(`Migration manquante pour la version ${v}.`);
     data = migration(data);
@@ -69,19 +147,19 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
 
   if (!isString(data.id)) fail('Champ « id » manquant ou invalide.');
   if (!isString(data.name)) fail('Champ « name » manquant ou invalide.');
-  if (!isString(data.peupleId)) fail('Champ « peupleId » manquant ou invalide.');
-  if (!isString(data.profilId)) fail('Champ « profilId » manquant ou invalide.');
-  if (!isFiniteNumber(data.niveau)) fail('Champ « niveau » manquant ou invalide.');
+  if (!isString(data.ancestryId)) fail('Champ « ancestryId » manquant ou invalide.');
+  if (!isString(data.classId)) fail('Champ « classId » manquant ou invalide.');
+  if (!isFiniteNumber(data.level)) fail('Champ « level » manquant ou invalide.');
 
-  const caracs = data.caracteristiques;
-  if (typeof caracs !== 'object' || caracs === null) fail('Champ « caracteristiques » manquant.');
-  for (const id of CARAC_IDS) {
-    if (!isFiniteNumber((caracs as Record<string, unknown>)[id])) {
+  const abilities = data.abilities;
+  if (typeof abilities !== 'object' || abilities === null) fail('Champ « abilities » manquant.');
+  for (const id of ABILITY_IDS) {
+    if (!isFiniteNumber((abilities as Record<string, unknown>)[id])) {
       fail(`Caractéristique « ${id} » manquante ou invalide.`);
     }
   }
 
-  if (!Array.isArray(data.capaciteIds)) fail('Champ « capaciteIds » manquant ou invalide.');
+  if (!Array.isArray(data.featureIds)) fail('Champ « featureIds » manquant ou invalide.');
   if (!Array.isArray(data.equipment)) fail('Champ « equipment » manquant ou invalide.');
   if (!Array.isArray(data.levelUpHistory)) fail('Champ « levelUpHistory » manquant ou invalide.');
 }

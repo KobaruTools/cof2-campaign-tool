@@ -9,5 +9,5 @@
  * La fiche et le wizard consomment ce module — une seule source de vérité.
  */
 export * from './derived';
-export * from './legalite';
+export * from './legality';
 export * from './migrations';

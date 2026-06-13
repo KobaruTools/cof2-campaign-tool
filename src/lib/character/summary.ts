@@ -2,27 +2,27 @@
  * Helpers d'affichage d'un personnage dans les listes (résout les ids de
  * règles en libellés lisibles).
  */
-import { peupleParId, profilParId } from '@/data';
+import { ancestryById, classById } from '@/data';
 import type { Character } from './types';
 
 export interface CharacterSummary {
   id: string;
   name: string;
-  peuple: string;
-  profil: string;
-  niveau: number;
+  ancestry: string;
+  characterClass: string;
+  level: number;
   updatedAt: string;
 }
 
-const tiret = '—';
+const dash = '—';
 
 export function summarize(character: Character): CharacterSummary {
   return {
     id: character.id,
     name: character.name || 'Sans nom',
-    peuple: peupleParId.get(character.peupleId)?.nom ?? tiret,
-    profil: profilParId.get(character.profilId)?.nom ?? tiret,
-    niveau: character.niveau,
+    ancestry: ancestryById.get(character.ancestryId)?.name ?? dash,
+    characterClass: classById.get(character.classId)?.name ?? dash,
+    level: character.level,
     updatedAt: character.updatedAt,
   };
 }

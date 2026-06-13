@@ -35,7 +35,7 @@ interface CharactersState {
   importCharacter: (raw: unknown) => Character;
 }
 
-const horodate = (c: Character): Character => ({ ...c, updatedAt: new Date().toISOString() });
+const withTimestamp = (c: Character): Character => ({ ...c, updatedAt: new Date().toISOString() });
 
 export const useCharactersStore = create<CharactersState>()(
   persist(
@@ -46,7 +46,7 @@ export const useCharactersStore = create<CharactersState>()(
 
       upsert: (character) =>
         set((state) => {
-          const stamped = horodate(character);
+          const stamped = withTimestamp(character);
           const i = state.characters.findIndex((c) => c.id === stamped.id);
           if (i === -1) return { characters: [...state.characters, stamped] };
           const next = state.characters.slice();
@@ -71,7 +71,7 @@ export const useCharactersStore = create<CharactersState>()(
         const character = migrateCharacter(raw); // lève si invalide
         const exists = get().characters.some((c) => c.id === character.id);
         const toAdd = exists ? { ...character, id: crypto.randomUUID() } : character;
-        set((state) => ({ characters: [...state.characters, horodate(toAdd)] }));
+        set((state) => ({ characters: [...state.characters, withTimestamp(toAdd)] }));
         return toAdd;
       },
     }),

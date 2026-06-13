@@ -15,19 +15,19 @@ import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import { peupleParId, profilParId } from '@/data';
-import { choixComplets } from '@/lib/character/peuple';
+import { ancestryById, classById } from '@/data';
+import { choicesComplete } from '@/lib/character/ancestry';
 import { materializeDraft, type WizardDraft } from '@/lib/character/wizard';
 import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
 import {
-  CaracsStep,
-  EquipementStep,
-  IdentiteStep,
-  PeupleStep,
-  ProfilStep,
-  RecapStep,
-  VoiesStep,
+  AbilitiesStep,
+  EquipmentStep,
+  IdentityStep,
+  AncestryStep,
+  ClassStep,
+  SummaryStep,
+  PathsStep,
   type StepProps,
 } from '@/components/wizard/steps';
 
@@ -40,45 +40,45 @@ interface StepDef {
 const STEPS: StepDef[] = [
   {
     label: 'Peuple',
-    Component: PeupleStep,
+    Component: AncestryStep,
     valid: (d) => {
-      const p = peupleParId.get(d.peupleId);
-      return !!p && d.voieDePeupleId !== null;
+      const p = ancestryById.get(d.ancestryId);
+      return !!p && d.ancestryPathId !== null;
     },
   },
   {
     label: 'Profil',
-    Component: ProfilStep,
-    valid: (d) => profilParId.has(d.profilId),
+    Component: ClassStep,
+    valid: (d) => classById.has(d.classId),
   },
   {
     label: 'Caractéristiques',
-    Component: CaracsStep,
+    Component: AbilitiesStep,
     valid: (d) => {
-      const p = peupleParId.get(d.peupleId);
-      return !!p && choixComplets(p, d.peupleChoix);
+      const p = ancestryById.get(d.ancestryId);
+      return !!p && choicesComplete(p, d.ancestryChoices);
     },
   },
   {
     label: 'Voies & capacités',
-    Component: VoiesStep,
+    Component: PathsStep,
     valid: (d) => {
-      if (d.voiesChoisies.length !== 2) return false;
-      const profil = profilParId.get(d.profilId);
-      if (profil?.familleId === 'mages') return d.mageBonus !== null;
+      if (d.chosenPaths.length !== 2) return false;
+      const characterClass = classById.get(d.classId);
+      if (characterClass?.familyId === 'mages') return d.mageBonus !== null;
       return true;
     },
   },
-  { label: 'Équipement', Component: EquipementStep, valid: () => true },
+  { label: 'Équipement', Component: EquipmentStep, valid: () => true },
   {
     label: 'Identité',
-    Component: IdentiteStep,
+    Component: IdentityStep,
     valid: (d) => d.name.trim().length > 0,
   },
-  { label: 'Récapitulatif', Component: RecapStep, valid: () => true },
+  { label: 'Récapitulatif', Component: SummaryStep, valid: () => true },
 ];
 
-export default function CreerPage() {
+export default function CreatePage() {
   const router = useRouter();
   const hasHydrated = useWizardStore((s) => s.hasHydrated);
   const draft = useWizardStore((s) => s.draft);
@@ -108,12 +108,12 @@ export default function CreerPage() {
   const canNext = current.valid(draft);
 
   const finish = () => {
-    const peuple = peupleParId.get(draft.peupleId);
-    if (!peuple) return;
-    const character = materializeDraft(draft, peuple, new Date().toISOString());
+    const ancestry = ancestryById.get(draft.ancestryId);
+    if (!ancestry) return;
+    const character = materializeDraft(draft, ancestry, new Date().toISOString());
     upsert(character);
     clear();
-    router.push(`/personnage/${character.id}`);
+    router.push(`/character/${character.id}`);
   };
 
   return (

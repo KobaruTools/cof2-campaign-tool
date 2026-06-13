@@ -14,35 +14,35 @@
  * fourni par l'appelant (saisies, surcharges, ou future couche d'effets
  * structurés). Il ne tente jamais d'interpréter le texte d'une capacité.
  */
-import type { CaracId, De, Famille } from '@/data/schema';
+import type { AbilityId, Die, Family } from '@/data/schema';
 
-export type Caracs = Record<CaracId, number>;
+export type Abilities = Record<AbilityId, number>;
 
 /** Plafond du niveau pris en compte par les valeurs d'attaque (p. 39). */
-export const NIVEAU_MAX_ATTAQUE = 10;
+export const MAX_ATTACK_LEVEL = 10;
 
 /**
  * Modificateurs plats apportés par les capacités/équipement/surcharges,
  * sommés par-dessus les formules de base. Tous optionnels, défaut 0.
  */
 export interface DerivedMods {
-  pvMax?: number;
+  maxHp?: number;
   def?: number;
   initiative?: number;
-  pointsChance?: number;
-  pointsMana?: number;
-  nbDesRecuperation?: number;
-  attaqueContact?: number;
-  attaqueDistance?: number;
-  attaqueMagique?: number;
+  luckPoints?: number;
+  manaPoints?: number;
+  recoveryDiceCount?: number;
+  meleeAttack?: number;
+  rangedAttack?: number;
+  magicAttack?: number;
 }
 
 /** Contribution de l'équipement porté au calcul de la défense. */
-export interface DefenseEquipement {
+export interface DefenseEquipment {
   /** Somme des bonus de DEF (armure + bouclier). */
-  bonusDef: number;
+  defBonus: number;
   /** AGI maximale exploitable imposée par l'armure (p. 188) ; null = aucune. */
-  agiMax: number | null;
+  maxAgi: number | null;
 }
 
 const m = (v: number | undefined): number => v ?? 0;
@@ -52,14 +52,14 @@ const m = (v: number | undefined): number => v ?? 0;
 // ---------------------------------------------------------------------------
 
 /**
- * PV maximum. Niveau 1 = 2 × pvBase + CON ; chaque niveau suivant ajoute
- * pvParNiveau + CON. La CON courante s'applique rétroactivement à tous les
+ * PV maximum. Niveau 1 = 2 × baseHp + CON ; chaque niveau suivant ajoute
+ * hpPerLevel + CON. La CON courante s'applique rétroactivement à tous les
  * niveaux (p. 39) — on recalcule toujours depuis la CON du moment.
  */
-export function pvMax(niveau: number, famille: Famille, con: number, mods: DerivedMods = {}): number {
-  const base = 2 * famille.pvBase + con;
-  const parNiveaux = Math.max(0, niveau - 1) * (famille.pvParNiveau + con);
-  return base + parNiveaux + m(mods.pvMax);
+export function maxHp(level: number, family: Family, con: number, mods: DerivedMods = {}): number {
+  const base = 2 * family.baseHp + con;
+  const perLevels = Math.max(0, level - 1) * (family.hpPerLevel + con);
+  return base + perLevels + m(mods.maxHp);
 }
 
 // ---------------------------------------------------------------------------
@@ -67,13 +67,13 @@ export function pvMax(niveau: number, famille: Famille, con: number, mods: Deriv
 // ---------------------------------------------------------------------------
 
 /** Nombre de dés de récupération = 2 + CON + bonus de famille, plancher 0. */
-export function nbDesRecuperation(con: number, famille: Famille, mods: DerivedMods = {}): number {
-  return Math.max(0, 2 + con + famille.bonusDrCreation + m(mods.nbDesRecuperation));
+export function recoveryDiceCount(con: number, family: Family, mods: DerivedMods = {}): number {
+  return Math.max(0, 2 + con + family.bonusRecoveryDiceOnCreation + m(mods.recoveryDiceCount));
 }
 
 /** Type du dé de récupération (déterminé par la famille). */
-export function deRecuperation(famille: Famille): De {
-  return famille.deRecuperation;
+export function recoveryDie(family: Family): Die {
+  return family.recoveryDie;
 }
 
 // ---------------------------------------------------------------------------
@@ -81,8 +81,8 @@ export function deRecuperation(famille: Famille): De {
 // ---------------------------------------------------------------------------
 
 /** PC = 2 + CHA + bonus de famille (aventuriers +1), plancher 0. */
-export function pointsChance(cha: number, famille: Famille, mods: DerivedMods = {}): number {
-  return Math.max(0, 2 + cha + famille.bonusPcCreation + m(mods.pointsChance));
+export function luckPoints(cha: number, family: Family, mods: DerivedMods = {}): number {
+  return Math.max(0, 2 + cha + family.bonusLuckPointsOnCreation + m(mods.luckPoints));
 }
 
 // ---------------------------------------------------------------------------
@@ -92,11 +92,11 @@ export function pointsChance(cha: number, famille: Famille, mods: DerivedMods = 
 /**
  * PM = VOL + nombre de capacités de sorts connues — uniquement si le
  * personnage possède au moins un sort (sinon il n'a pas de réserve de mana).
- * Retourne null quand nbSorts vaut 0.
+ * Retourne null quand spellCount vaut 0.
  */
-export function pointsMana(vol: number, nbSorts: number, mods: DerivedMods = {}): number | null {
-  if (nbSorts <= 0) return null;
-  return Math.max(0, vol + nbSorts + m(mods.pointsMana));
+export function manaPoints(vol: number, spellCount: number, mods: DerivedMods = {}): number | null {
+  if (spellCount <= 0) return null;
+  return Math.max(0, vol + spellCount + m(mods.manaPoints));
 }
 
 // ---------------------------------------------------------------------------
@@ -116,9 +116,9 @@ export function initiative(per: number, mods: DerivedMods = {}): number {
  * DEF = 10 + AGI + bonus d'armure/bouclier (+ modificateurs). L'AGI prise en
  * compte est plafonnée par l'« AGI maximale » de l'armure portée (p. 188).
  */
-export function defense(agi: number, equip: DefenseEquipement, mods: DerivedMods = {}): number {
-  const agiEffective = equip.agiMax === null ? agi : Math.min(agi, equip.agiMax);
-  return 10 + agiEffective + equip.bonusDef + m(mods.def);
+export function defense(agi: number, equip: DefenseEquipment, mods: DerivedMods = {}): number {
+  const effectiveAgi = equip.maxAgi === null ? agi : Math.min(agi, equip.maxAgi);
+  return 10 + effectiveAgi + equip.defBonus + m(mods.def);
 }
 
 // ---------------------------------------------------------------------------
@@ -126,23 +126,23 @@ export function defense(agi: number, equip: DefenseEquipement, mods: DerivedMods
 // ---------------------------------------------------------------------------
 
 /** Valeur de base d'attaque = niveau, plafonnée au niveau 10 (p. 39). */
-export function baseAttaque(niveau: number): number {
-  return Math.min(niveau, NIVEAU_MAX_ATTAQUE);
+export function baseAttack(level: number): number {
+  return Math.min(level, MAX_ATTACK_LEVEL);
 }
 
 /** Attaque au contact = base + FOR. */
-export function attaqueContact(niveau: number, force: number, mods: DerivedMods = {}): number {
-  return baseAttaque(niveau) + force + m(mods.attaqueContact);
+export function meleeAttack(level: number, strength: number, mods: DerivedMods = {}): number {
+  return baseAttack(level) + strength + m(mods.meleeAttack);
 }
 
 /** Attaque à distance = base + AGI. */
-export function attaqueDistance(niveau: number, agi: number, mods: DerivedMods = {}): number {
-  return baseAttaque(niveau) + agi + m(mods.attaqueDistance);
+export function rangedAttack(level: number, agi: number, mods: DerivedMods = {}): number {
+  return baseAttack(level) + agi + m(mods.rangedAttack);
 }
 
 /** Attaque magique = base + VOL. */
-export function attaqueMagique(niveau: number, vol: number, mods: DerivedMods = {}): number {
-  return baseAttaque(niveau) + vol + m(mods.attaqueMagique);
+export function magicAttack(level: number, vol: number, mods: DerivedMods = {}): number {
+  return baseAttack(level) + vol + m(mods.magicAttack);
 }
 
 // ---------------------------------------------------------------------------
@@ -150,44 +150,44 @@ export function attaqueMagique(niveau: number, vol: number, mods: DerivedMods = 
 // ---------------------------------------------------------------------------
 
 export interface DerivedInput {
-  caracs: Caracs;
-  niveau: number;
-  famille: Famille;
+  abilities: Abilities;
+  level: number;
+  family: Family;
   /** Contribution de l'équipement porté à la DEF. */
-  defenseEquipement: DefenseEquipement;
+  defenseEquipment: DefenseEquipment;
   /** Nombre de capacités de sorts connues (pour les PM). */
-  nbSorts: number;
+  spellCount: number;
   /** Modificateurs plats issus des capacités/surcharges. */
   mods?: DerivedMods;
 }
 
 export interface DerivedStats {
-  pvMax: number;
-  nbDesRecuperation: number;
-  deRecuperation: De;
-  pointsChance: number;
-  pointsMana: number | null;
+  maxHp: number;
+  recoveryDiceCount: number;
+  recoveryDie: Die;
+  luckPoints: number;
+  manaPoints: number | null;
   initiative: number;
   defense: number;
-  attaqueContact: number;
-  attaqueDistance: number;
-  attaqueMagique: number;
+  meleeAttack: number;
+  rangedAttack: number;
+  magicAttack: number;
 }
 
 /** Calcule toutes les statistiques dérivées d'un personnage. */
 export function deriveStats(input: DerivedInput): DerivedStats {
-  const { caracs, niveau, famille, defenseEquipement, nbSorts } = input;
+  const { abilities, level, family, defenseEquipment, spellCount } = input;
   const mods = input.mods ?? {};
   return {
-    pvMax: pvMax(niveau, famille, caracs.CON, mods),
-    nbDesRecuperation: nbDesRecuperation(caracs.CON, famille, mods),
-    deRecuperation: deRecuperation(famille),
-    pointsChance: pointsChance(caracs.CHA, famille, mods),
-    pointsMana: pointsMana(caracs.VOL, nbSorts, mods),
-    initiative: initiative(caracs.PER, mods),
-    defense: defense(caracs.AGI, defenseEquipement, mods),
-    attaqueContact: attaqueContact(niveau, caracs.FOR, mods),
-    attaqueDistance: attaqueDistance(niveau, caracs.AGI, mods),
-    attaqueMagique: attaqueMagique(niveau, caracs.VOL, mods),
+    maxHp: maxHp(level, family, abilities.CON, mods),
+    recoveryDiceCount: recoveryDiceCount(abilities.CON, family, mods),
+    recoveryDie: recoveryDie(family),
+    luckPoints: luckPoints(abilities.CHA, family, mods),
+    manaPoints: manaPoints(abilities.VOL, spellCount, mods),
+    initiative: initiative(abilities.PER, mods),
+    defense: defense(abilities.AGI, defenseEquipment, mods),
+    meleeAttack: meleeAttack(level, abilities.FOR, mods),
+    rangedAttack: rangedAttack(level, abilities.AGI, mods),
+    magicAttack: magicAttack(level, abilities.VOL, mods),
   };
 }

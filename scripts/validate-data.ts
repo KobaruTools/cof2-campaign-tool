@@ -16,18 +16,18 @@
  * (les avertissements n'échouent pas le script).
  */
 import {
-  peuples,
-  profils,
-  voies,
-  voiesDeProfil,
-  voiesDePeuple,
-  voiesDePrestige,
-  voieDuMage,
-  capacites,
-  equipement,
-  equipementParId,
-  capaciteParId,
-  voieParId,
+  ancestries,
+  classes,
+  paths,
+  classPaths,
+  ancestryPaths,
+  prestigePaths,
+  magePath,
+  features,
+  equipment,
+  equipmentById,
+  featureById,
+  pathById,
 } from '../src/data/index';
 
 const errors: string[] = [];
@@ -43,83 +43,83 @@ function checkUnique(label: string, ids: string[]) {
     seen.add(id);
   }
 }
-checkUnique('peuples', peuples.map((p) => p.id));
-checkUnique('profils', profils.map((p) => p.id));
-checkUnique('voies', voies.map((v) => v.id));
-checkUnique('capacites', capacites.map((c) => c.id));
-checkUnique('equipement', equipement.map((e) => e.id));
+checkUnique('peuples', ancestries.map((p) => p.id));
+checkUnique('profils', classes.map((p) => p.id));
+checkUnique('voies', paths.map((v) => v.id));
+checkUnique('capacites', features.map((c) => c.id));
+checkUnique('equipement', equipment.map((e) => e.id));
 
 // --- Voie ↔ capacités --------------------------------------------------------
-for (const v of voies) {
-  for (const cid of v.capaciteIds) {
-    const c = capaciteParId.get(cid);
+for (const v of paths) {
+  for (const cid of v.featureIds) {
+    const c = featureById.get(cid);
     if (!c) err(`[voie ${v.id}] capaciteId inexistante : ${cid}`);
-    else if (c.voieId !== v.id) err(`[voie ${v.id}] capacité ${cid} pointe vers voieId=${c.voieId}`);
+    else if (c.pathId !== v.id) err(`[voie ${v.id}] capacité ${cid} pointe vers voieId=${c.pathId}`);
   }
 }
-for (const c of capacites) {
-  const v = voieParId.get(c.voieId);
-  if (!v) err(`[capacite ${c.id}] voieId inexistante : ${c.voieId}`);
-  else if (!v.capaciteIds.includes(c.id)) err(`[capacite ${c.id}] absente des capaciteIds de ${v.id}`);
+for (const c of features) {
+  const v = pathById.get(c.pathId);
+  if (!v) err(`[capacite ${c.id}] voieId inexistante : ${c.pathId}`);
+  else if (!v.featureIds.includes(c.id)) err(`[capacite ${c.id}] absente des capaciteIds de ${v.id}`);
 }
 
 // --- Rangs -------------------------------------------------------------------
-const prestigeIds = new Set(voiesDePrestige.map((v) => v.id));
-for (const c of capacites) {
-  const isPrestige = prestigeIds.has(c.voieId);
+const prestigeIds = new Set(prestigePaths.map((v) => v.id));
+for (const c of features) {
+  const isPrestige = prestigeIds.has(c.pathId);
   const lo = isPrestige ? 4 : 1;
   const hi = isPrestige ? 8 : 5;
-  if (c.rang < lo || c.rang > hi)
-    warn(`[capacite ${c.id}] rang ${c.rang} hors plage attendue ${lo}-${hi} (${isPrestige ? 'prestige' : 'normale'})`);
+  if (c.rank < lo || c.rank > hi)
+    warn(`[capacite ${c.id}] rang ${c.rank} hors plage attendue ${lo}-${hi} (${isPrestige ? 'prestige' : 'normale'})`);
 }
 
 // --- Nb de capacités par voie ------------------------------------------------
-for (const v of voies) {
-  const n = v.capaciteIds.length;
+for (const v of paths) {
+  const n = v.featureIds.length;
   if (n !== 5) warn(`[voie ${v.id}] ${n} capacité(s) (5 attendues)`);
 }
 
 // --- profil → voieIds --------------------------------------------------------
-const voieProfilIds = new Set(voiesDeProfil.map((v) => v.id));
-for (const p of profils) {
-  if (p.voieIds.length !== 5) warn(`[profil ${p.id}] ${p.voieIds.length} voie(s) (5 attendues)`);
-  for (const vid of p.voieIds)
-    if (!voieProfilIds.has(vid)) err(`[profil ${p.id}] voieId inexistante : ${vid}`);
+const classPathIds = new Set(classPaths.map((v) => v.id));
+for (const p of classes) {
+  if (p.pathIds.length !== 5) warn(`[profil ${p.id}] ${p.pathIds.length} voie(s) (5 attendues)`);
+  for (const vid of p.pathIds)
+    if (!classPathIds.has(vid)) err(`[profil ${p.id}] voieId inexistante : ${vid}`);
 }
 
 // --- peuple → voieDePeupleIds ------------------------------------------------
-const voiePeupleIds = new Set(voiesDePeuple.map((v) => v.id));
-for (const p of peuples)
-  for (const vid of p.voieDePeupleIds)
-    if (!voiePeupleIds.has(vid)) err(`[peuple ${p.id}] voieDePeupleId inexistante : ${vid}`);
+const ancestryPathIds = new Set(ancestryPaths.map((v) => v.id));
+for (const p of ancestries)
+  for (const vid of p.ancestryPathIds)
+    if (!ancestryPathIds.has(vid)) err(`[peuple ${p.id}] voieDePeupleId inexistante : ${vid}`);
 
 // --- Cohérence inverse voiesDePeuple.peupleIds -------------------------------
-const peupleIds = new Set(peuples.map((p) => p.id));
-for (const v of voiesDePeuple)
-  for (const pid of v.peupleIds)
-    if (!peupleIds.has(pid)) err(`[voie de peuple ${v.id}] peupleId inexistant : ${pid}`);
+const ancestryIds = new Set(ancestries.map((p) => p.id));
+for (const v of ancestryPaths)
+  for (const pid of v.ancestryIds)
+    if (!ancestryIds.has(pid)) err(`[voie de peuple ${v.id}] peupleId inexistant : ${pid}`);
 
 // --- Références équipement (AVERTISSEMENTS) ----------------------------------
 const itemMiss = new Set<string>();
-for (const p of profils) {
-  if (p.armureMaxId && !equipementParId.has(p.armureMaxId)) itemMiss.add(p.armureMaxId);
-  for (const e of p.equipementDepart)
-    if (e.itemId && !equipementParId.has(e.itemId)) itemMiss.add(e.itemId);
+for (const p of classes) {
+  if (p.maxArmorId && !equipmentById.has(p.maxArmorId)) itemMiss.add(p.maxArmorId);
+  for (const e of p.startingEquipment)
+    if (e.itemId && !equipmentById.has(e.itemId)) itemMiss.add(e.itemId);
 }
 if (itemMiss.size)
   warn(`[équipement] ${itemMiss.size} slug(s) référencés par les profils absents du catalogue : ${[...itemMiss].sort().join(', ')}`);
 
 // --- Rapport -----------------------------------------------------------------
-const sorts = capacites.filter((c) => c.estSort).length;
+const spells = features.filter((c) => c.isSpell).length;
 console.log('=== Comptages ===');
-console.log(`peuples            : ${peuples.length}`);
-console.log(`profils            : ${profils.length}`);
-console.log(`voies (total)      : ${voies.length}`);
-console.log(`  · de profil      : ${voiesDeProfil.length}`);
-console.log(`  · de peuple      : ${voiesDePeuple.length} (+ voie du mage : ${voieDuMage.id})`);
-console.log(`  · de prestige    : ${voiesDePrestige.length}`);
-console.log(`capacités (total)  : ${capacites.length}  (dont sorts * : ${sorts})`);
-console.log(`équipement (total) : ${equipement.length}`);
+console.log(`peuples            : ${ancestries.length}`);
+console.log(`profils            : ${classes.length}`);
+console.log(`voies (total)      : ${paths.length}`);
+console.log(`  · de profil      : ${classPaths.length}`);
+console.log(`  · de peuple      : ${ancestryPaths.length} (+ voie du mage : ${magePath.id})`);
+console.log(`  · de prestige    : ${prestigePaths.length}`);
+console.log(`capacités (total)  : ${features.length}  (dont sorts * : ${spells})`);
+console.log(`équipement (total) : ${equipment.length}`);
 console.log('');
 console.log(`=== Avertissements (${warnings.length}) ===`);
 warnings.forEach((w) => console.log('  ⚠ ' + w));

@@ -5,9 +5,9 @@
  * Une seule instance : le moteur de calcul est l'unique consommateur.
  */
 
-import type { ReglesProgression } from './schema';
+import type { ProgressionRules } from './schema';
 
-export const progression: ReglesProgression = {
+export const progression: ProgressionRules = {
   /**
    * Niveau maximum jouable. Le livre ne le fixe pas explicitement (la table
    * des rangs s'arrête au niveau 13 p. 39, l'attaque plafonne au niveau 10
@@ -18,18 +18,18 @@ export const progression: ReglesProgression = {
    * traitera cette valeur comme une borne d'UI, pas comme une règle du livre
    * — ne désactiver la montée de niveau qu'à titre indicatif.
    */
-  niveauMax: 20,
+  maxLevel: 20,
 
   // p. 38 : « À chaque passage de niveau, le personnage : […] gagne
   // 2 points de capacité » (repris p. 39 : « À chaque passage de niveau,
   // le personnage gagne 2 points de capacité supplémentaires. »).
   // p. 39 : « Il n'est pas possible de mettre de côté des points de
   // capacités, ils doivent être immédiatement dépensés. »
-  pointsCapaciteParNiveau: 2,
+  featurePointsPerLevel: 2,
 
   // p. 39 : « les capacités de rang 1 et 2 coûtent chacune 1 point de
   // capacité ; les capacités de rang 3 et plus coûtent chacune 2 points ».
-  coutParRang: { 1: 1, 2: 1, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2 },
+  costPerRank: { 1: 1, 2: 1, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2 },
 
   /**
    * Table « Rang / Niveau requis » — p. 39 :
@@ -47,32 +47,32 @@ export const progression: ReglesProgression = {
    * Cohérent avec la table « Voies de prestige – niveau requis » p. 42
    * (rangs 4 à 8 → niveaux 5, 7, 9, 11, 13).
    */
-  niveauMinParRang: { 1: 1, 2: 2, 3: 3, 4: 5, 5: 7, 6: 9, 7: 11, 8: 13 },
+  minLevelPerRank: { 1: 1, 2: 2, 3: 3, 4: 5, 5: 7, 6: 9, 7: 11, 8: 13 },
 
   // p. 39 (NB sous la table) : « Les capacités de rang 6 à 8 sont
   // réservées aux voies de prestige. »
-  rangsPrestigeUniquement: [6, 7, 8],
+  prestigeOnlyRanks: [6, 7, 8],
 
   // p. 42 : « À partir du niveau 5, un personnage peut choisir une voie de
   // prestige. » (confirmé p. 128, vérifié par l'orchestrateur).
-  niveauAccesPrestige: 5,
+  prestigeAccessLevel: 5,
 
   // p. 39 : « Au niveau 1, la valeur de base des différentes attaques est
   // égale à +1, celle-ci est augmentée de +1 à chaque niveau. Toutefois,
   // elle cesse d'augmenter à partir du niveau 10. Le personnage a atteint
   // son niveau maximal de compétence en attaque. »
-  niveauMaxAttaque: 10,
+  maxAttackLevel: 10,
 
   // Table « Niveau d'acquisition des dés évolutifs » — p. 43 :
   // niveaux 1-5 : d4, 6-8 : d6, 9-11 : d8, 12-14 : d10, 15+ : d12.
   // (p. 38 : « à partir du niveau 6 et tous les 3 niveaux, son dé évolutif
   // (d4°) est augmenté ».)
-  desEvolutifs: [
-    { niveauMin: 1, de: 'd4' },
-    { niveauMin: 6, de: 'd6' },
-    { niveauMin: 9, de: 'd8' },
-    { niveauMin: 12, de: 'd10' },
-    { niveauMin: 15, de: 'd12' },
+  scalingDice: [
+    { minLevel: 1, die: 'd4' },
+    { minLevel: 6, die: 'd6' },
+    { minLevel: 9, die: 'd8' },
+    { minLevel: 12, die: 'd10' },
+    { minLevel: 15, die: 'd12' },
   ],
 
   // p. 31 : « Votre personnage débute avec un sac d'aventurier qui
@@ -81,13 +81,13 @@ export const progression: ReglesProgression = {
   // itemId raccordé au catalogue (chap. 10) quand une correspondance 1-pour-1
   // existe. « torche » reste null (le catalogue ne vend que des lots de 3,
   // `torches-x3`), de même qu'« outre », « gamelle » et la bourse (non vendus).
-  sacAventurier: [
-    { itemId: 'couverture', libelle: 'une couverture', quantite: 1 },
-    { itemId: null, libelle: 'une torche', quantite: 1 },
-    { itemId: 'briquet-a-silex', libelle: 'un briquet à silex', quantite: 1 },
-    { itemId: null, libelle: 'une outre', quantite: 1 },
-    { itemId: null, libelle: 'une gamelle', quantite: 1 },
-    { itemId: null, libelle: 'une bourse de 2d6 pa', quantite: 1 },
+  adventurerPack: [
+    { itemId: 'couverture', label: 'une couverture', quantity: 1 },
+    { itemId: null, label: 'une torche', quantity: 1 },
+    { itemId: 'briquet-a-silex', label: 'un briquet à silex', quantity: 1 },
+    { itemId: null, label: 'une outre', quantity: 1 },
+    { itemId: null, label: 'une gamelle', quantity: 1 },
+    { itemId: null, label: 'une bourse de 2d6 pa', quantity: 1 },
   ],
 
   // Page de la table centrale des rangs ; les autres pages sources sont

@@ -1,10 +1,10 @@
-import type { CaracId } from '@/data/schema';
+import type { AbilityId } from '@/data/schema';
 
 /**
  * Libellés français complets des caractéristiques, indexés par id court.
  * Source unique réutilisée par l'UI (badges, libellés, tooltips).
  */
-export const CARAC_NOMS: Record<CaracId, string> = {
+export const ABILITY_NAMES: Record<AbilityId, string> = {
   AGI: 'Agilité',
   CON: 'Constitution',
   FOR: 'Force',

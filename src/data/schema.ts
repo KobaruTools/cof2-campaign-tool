@@ -28,22 +28,22 @@ export type SourcePage = number;
  * formules dérivées. Pas de couche score → modificateur (PRD §3 #13,
  * vérifié contre le livre : prétirés p. 349).
  */
-export const CARAC_IDS = ['AGI', 'CON', 'FOR', 'PER', 'CHA', 'INT', 'VOL'] as const;
-export type CaracId = (typeof CARAC_IDS)[number];
+export const ABILITY_IDS = ['AGI', 'CON', 'FOR', 'PER', 'CHA', 'INT', 'VOL'] as const;
+export type AbilityId = (typeof ABILITY_IDS)[number];
 
 /** Plage indicative affichée à la saisie libre (jamais bloquante) — p. 27. */
-export const CARAC_MIN = -3;
-export const CARAC_MAX = 5;
+export const ABILITY_MIN = -3;
+export const ABILITY_MAX = 5;
 
 /**
  * Séries de valeurs officielles proposées à la création (Polyvalent, Expert,
  * Spécialiste) — p. 27. Affichées à titre informatif dans le wizard, la
  * saisie restant libre (décision PRD #5).
  */
-export interface SerieDeValeurs {
+export interface ValueSet {
   id: string;
-  nom: string;
-  valeurs: number[]; // 7 valeurs à répartir
+  name: string;
+  values: number[]; // 7 valeurs à répartir
   sourcePage: SourcePage;
 }
 
@@ -52,10 +52,10 @@ export interface SerieDeValeurs {
  * finale de la création — p. 33. Purement indicative (tirage réel à la table
  * ou choix libre).
  */
-export interface IdealTravers {
+export interface IdealFlaw {
   d20: number;
   ideal: string;
-  travers: string;
+  flaw: string;
   sourcePage: SourcePage;
 }
 
@@ -63,33 +63,33 @@ export interface IdealTravers {
 // Dés
 // ---------------------------------------------------------------------------
 
-export type De = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20';
+export type Die = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20';
 
 // ---------------------------------------------------------------------------
 // Familles de profils — p. 30-31, 61, 78, 91, 112
 // ---------------------------------------------------------------------------
 
-export const FAMILLE_IDS = ['aventuriers', 'combattants', 'mages', 'mystiques'] as const;
-export type FamilleId = (typeof FAMILLE_IDS)[number];
+export const FAMILY_IDS = ['adventurers', 'fighters', 'mages', 'mystics'] as const;
+export type FamilyId = (typeof FAMILY_IDS)[number];
 
 /**
  * Une famille regroupe des profils et détermine PV, dé de récupération et
- * bonus éventuels. PV niveau 1 = (2 × pvBase) + CON (p. 30) ;
- * gain par niveau = pvParNiveau + CON (p. 39).
+ * bonus éventuels. PV niveau 1 = (2 × baseHp) + CON (p. 30) ;
+ * gain par niveau = hpPerLevel + CON (p. 39).
  */
-export interface Famille {
-  id: FamilleId;
-  nom: string;
+export interface Family {
+  id: FamilyId;
+  name: string;
   /** PV de base de la famille (aventuriers 4, combattants 5, mages 3, mystiques 4) — p. 30. */
-  pvBase: number;
+  baseHp: number;
   /** Gain de PV par montée de niveau, avant ajout de CON — p. 39. */
-  pvParNiveau: number;
+  hpPerLevel: number;
   /** Type du dé de récupération (d8 / d10 / d6 / d8) — p. 30. */
-  deRecuperation: De;
+  recoveryDie: Die;
   /** DR supplémentaires à la création (mystiques : +1) — p. 30. */
-  bonusDrCreation: number;
+  bonusRecoveryDiceOnCreation: number;
   /** PC supplémentaires à la création (aventuriers : +1) — p. 30. */
-  bonusPcCreation: number;
+  bonusLuckPointsOnCreation: number;
   sourcePage: SourcePage;
 }
 
@@ -98,40 +98,40 @@ export interface Famille {
 // ---------------------------------------------------------------------------
 
 /**
- * Ajustement de caractéristique offert par un peuple. `caracs` liste les
+ * Ajustement de caractéristique offert par un peuple. `abilities` liste les
  * caractéristiques admissibles : un seul élément = ajustement fixe,
  * plusieurs = choix du joueur (ex. demi-elfe « +1 PER ou CHA » — p. 46).
  */
-export interface ModificateurCarac {
-  valeur: number;
-  caracs: CaracId[];
+export interface AbilityModifier {
+  value: number;
+  abilities: AbilityId[];
 }
 
 /** Repères physiques d'un peuple (encadré « Repères ») — ex. p. 46. */
-export interface ReperesPeuple {
-  ageDepart: string;
-  esperanceVie: string;
-  taille: string;
-  poids: string;
+export interface PhysicalProfile {
+  startingAge: string;
+  lifeExpectancy: string;
+  height: string;
+  weight: string;
   traits: string;
 }
 
-export interface Peuple {
+export interface Ancestry {
   id: string;
-  nom: string;
+  name: string;
   /** Description / interprétation (verbatim ou condensé fidèle). */
   description: string;
-  reperes: ReperesPeuple;
+  physical: PhysicalProfile;
   /**
    * La plupart des peuples ont 2 modificateurs ; les humains un seul — p. 26.
    */
-  modificateurs: ModificateurCarac[];
+  abilityModifiers: AbilityModifier[];
   /**
    * Voies de peuple accessibles. Un seul id en général ; plusieurs si le
    * peuple laisse le choix (demi-elfe : voie de l'humain, de l'elfe haut ou
    * de l'elfe sylvain — p. 46).
    */
-  voieDePeupleIds: string[];
+  ancestryPathIds: string[];
   sourcePage: SourcePage;
 }
 
@@ -139,44 +139,44 @@ export interface Peuple {
 // Profils — chap. 4-7, p. 61-127
 // ---------------------------------------------------------------------------
 
-export interface Profil {
+export interface CharacterClass {
   id: string;
-  nom: string;
-  familleId: FamilleId;
+  name: string;
+  familyId: FamilyId;
   description: string;
   /** Texte verbatim « Armes & armures maîtrisées » — ex. p. 62. */
-  armesEtArmures: string;
+  weaponsAndArmor: string;
   /**
    * Restriction d'armure exprimée par le livre sous la forme « peut porter
    * jusqu'à X » : id de l'armure la plus protectrice autorisée, null si
    * aucune armure (à confirmer profil par profil à l'extraction) — p. 31, 188.
    */
-  armureMaxId: string | null;
+  maxArmorId: string | null;
   /** Le profil autorise-t-il le bouclier ? — ex. arquebusier : non (p. 62). */
-  bouclierAutorise: boolean;
+  shieldAllowed: boolean;
   /** Équipement de départ — ex. p. 62. */
-  equipementDepart: EquipementDepartRef[];
+  startingEquipment: StartingEquipmentRef[];
   /** Les 5 voies du profil, dans l'ordre du livre — ex. table p. 61. */
-  voieIds: string[];
+  pathIds: string[];
   /**
    * Caractéristiques « les plus utiles au personnage », par ordre
    * d'importance, telles qu'indiquées entre crochets dans le résumé des
    * profils p. 24-25 (souvent 3 ; le druide a un 3e choix « CON ou AGI »,
    * encodé en 4 entrées). Sert à suggérer une série au wizard.
    */
-  caracsConseillees: CaracId[];
+  recommendedAbilities: AbilityId[];
   sourcePage: SourcePage;
 }
 
 /**
  * Ligne d'équipement de départ d'un profil. `itemId` pointe vers le
- * catalogue quand l'objet y figure ; `libelle` conserve le texte du livre
+ * catalogue quand l'objet y figure ; `label` conserve le texte du livre
  * (ex. « pétoire (DM 1d10, portée 20 m) » — p. 62).
  */
-export interface EquipementDepartRef {
+export interface StartingEquipmentRef {
   itemId: string | null;
-  libelle: string;
-  quantite: number;
+  label: string;
+  quantity: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,41 +185,41 @@ export interface EquipementDepartRef {
 
 /** Catégories des voies de prestige — table récapitulative p. 128. */
 export const PRESTIGE_CATEGORIES = [
-  'generique',
-  'aventurier',
-  'combattant',
+  'generic',
+  'adventurer',
+  'fighter',
   'mage',
-  'mystique',
+  'mystic',
 ] as const;
-export type PrestigeCategorie = (typeof PRESTIGE_CATEGORIES)[number];
+export type PrestigeCategory = (typeof PRESTIGE_CATEGORIES)[number];
 
-interface VoieBase {
+interface PathBase {
   id: string;
-  nom: string;
+  name: string;
   /** Capacités de la voie, ordonnées par rang croissant. */
-  capaciteIds: string[];
+  featureIds: string[];
   /** Encadré ou note spécifique à la voie (verbatim), le cas échéant. */
   note?: string;
   sourcePage: SourcePage;
 }
 
 /** Voie appartenant aux 5 voies d'un (ou plusieurs) profil(s). Rangs 1-5. */
-export interface VoieDeProfil extends VoieBase {
-  type: 'profil';
-  profilIds: string[];
+export interface ClassPath extends PathBase {
+  type: 'class';
+  classIds: string[];
 }
 
 /** Voie de peuple : rang 1 gratuit à la création — p. 39. Rangs 1-5. */
-export interface VoieDePeuple extends VoieBase {
-  type: 'peuple';
-  peupleIds: string[];
+export interface AncestryPath extends PathBase {
+  type: 'ancestry';
+  ancestryIds: string[];
 }
 
 /**
  * Voie du mage (p. 60) : remplace la voie de peuple pour les profils de la
  * famille des mages, au choix du joueur. Rangs 1-5.
  */
-export interface VoieDuMage extends VoieBase {
+export interface MagePath extends PathBase {
   type: 'mage';
 }
 
@@ -227,15 +227,15 @@ export interface VoieDuMage extends VoieBase {
  * Voie de prestige — chap. 8, p. 128+ : accessible à partir du niveau 5,
  * une seule par personnage, capacités de rangs 4 à 8.
  */
-export interface VoieDePrestige extends VoieBase {
+export interface PrestigePath extends PathBase {
   type: 'prestige';
-  categorie: PrestigeCategorie;
+  category: PrestigeCategory;
   /** Prérequis en texte verbatim (ex. voie de l'expert — p. 129). */
-  prerequis: string;
+  prerequisites: string;
 }
 
-export type Voie = VoieDeProfil | VoieDePeuple | VoieDuMage | VoieDePrestige;
-export type VoieType = Voie['type'];
+export type Path = ClassPath | AncestryPath | MagePath | PrestigePath;
+export type PathType = Path['type'];
 
 // ---------------------------------------------------------------------------
 // Capacités
@@ -248,24 +248,24 @@ export type VoieType = Voie['type'];
  * TODO(extraction) : confirmer le libellé exact de chaque lettre au chap.
  * combat (p. 209-210) et relever les cas composés (« (M) ou (L) » — p. 343).
  */
-export const TYPES_ACTION = ['A', 'L', 'G', 'M'] as const;
-export type TypeAction = (typeof TYPES_ACTION)[number];
+export const ACTION_TYPES = ['A', 'L', 'G', 'M'] as const;
+export type ActionType = (typeof ACTION_TYPES)[number];
 
-export interface Capacite {
+export interface Feature {
   id: string;
-  nom: string;
-  voieId: string;
+  name: string;
+  pathId: string;
   /** Rang dans la voie : 1-5 (voies normales), 4-8 (voies de prestige). */
-  rang: number;
+  rank: number;
   /** Sort : capacité signalée par un astérisque (*) — p. 227. */
-  estSort: boolean;
+  isSpell: boolean;
   /**
    * Types d'action requis. Liste car certaines capacités en offrent
    * plusieurs (« Malédiction (M) ou (L)* » — p. 343). Vide = passive.
    */
-  typesAction: TypeAction[];
+  actionTypes: ActionType[];
   /** Texte de règles complet, verbatim. */
-  texte: string;
+  text: string;
   sourcePage: SourcePage;
 }
 
@@ -278,64 +278,64 @@ export interface Capacite {
  * TODO(extraction) : relever le système monétaire complet (p. 181+) et
  * normaliser l'unité de ce champ. null = prix non indiqué.
  */
-export type Prix = { montant: number; unite: string } | null;
+export type Price = { amount: number; unit: string } | null;
 
-interface EquipementBase {
+interface EquipmentBase {
   id: string;
-  nom: string;
-  prix: Prix;
+  name: string;
+  price: Price;
   /** Règles particulières (verbatim), ex. armes en italique p. 184+. */
-  proprietes?: string;
+  properties?: string;
   sourcePage: SourcePage;
 }
 
 /**
  * Catégories d'armes — p. 184. Le livre ne nomme que trois catégories
- * (légère / à une ou deux mains / à deux mains) ; `uneMain` couvre les armes
+ * (légère / à une ou deux mains / à deux mains) ; `oneHand` couvre les armes
  * « standard » des tables p. 183 et 185 sans mention de catégorie.
  */
-export const CATEGORIES_ARME = ['legere', 'uneMain', 'uneOuDeuxMains', 'deuxMains'] as const;
-export type CategorieArme = (typeof CATEGORIES_ARME)[number];
+export const WEAPON_CATEGORIES = ['light', 'oneHand', 'oneOrTwoHands', 'twoHands'] as const;
+export type WeaponCategory = (typeof WEAPON_CATEGORIES)[number];
 
 /** Types de DM provoqués par les armes — p. 183 (colonne « Type de DM »). */
-export const TYPES_DM = ['contondants', 'perforants', 'tranchants'] as const;
-export type TypeDm = (typeof TYPES_DM)[number];
+export const DAMAGE_TYPES = ['bludgeoning', 'piercing', 'slashing'] as const;
+export type DamageType = (typeof DAMAGE_TYPES)[number];
 
-export interface Arme extends EquipementBase {
-  categorie: 'arme';
-  categorieArme: CategorieArme;
+export interface Weapon extends EquipmentBase {
+  category: 'weapon';
+  weaponCategory: WeaponCategory;
   /** L'arme est-elle une arme de contact, à distance, ou les deux (lancer) ? */
-  contact: boolean;
-  distance: boolean;
+  melee: boolean;
+  ranged: boolean;
   /** Dés de dommages, notation du livre (ex. « 1d8 », « 5d4° + INT »). */
-  dm: string;
+  damage: string;
   /** DM à deux mains pour les armes à une ou deux mains (ex. « 1d6/1d10 »). */
-  dmDeuxMains?: string;
+  twoHandedDamage?: string;
   /** Portée, notation du livre (ex. « 20 m », « 1d6 à 10 m » pour le lancer). */
-  portee?: string;
+  range?: string;
 }
 
-export interface Armure extends EquipementBase {
-  categorie: 'armure';
+export interface Armor extends EquipmentBase {
+  category: 'armor';
   /** Bonus de défense — table p. 188. */
   def: number;
   /** Valeur maximale d'AGI exploitable avec cette armure — p. 188. */
-  agiMax: number | null;
+  maxAgi: number | null;
 }
 
-export interface Bouclier extends EquipementBase {
-  categorie: 'bouclier';
+export interface Shield extends EquipmentBase {
+  category: 'shield';
   def: number;
 }
 
 /** Matériel d'aventurier, autres biens, équipement de qualité/exotique. */
-export interface Materiel extends EquipementBase {
-  categorie: 'materiel';
+export interface Gear extends EquipmentBase {
+  category: 'gear';
   description?: string;
 }
 
-export type EquipementItem = Arme | Armure | Bouclier | Materiel;
-export type CategorieEquipement = EquipementItem['categorie'];
+export type EquipmentItem = Weapon | Armor | Shield | Gear;
+export type EquipmentCategory = EquipmentItem['category'];
 
 // ---------------------------------------------------------------------------
 // Règles de progression — chap. 1 (p. 29-33) et chap. 2 (p. 38-43)
@@ -346,36 +346,36 @@ export type CategorieEquipement = EquipementItem['categorie'];
  * objet vivra dans `src/data/` ; le moteur de calcul est l'unique
  * consommateur.
  */
-export interface ReglesProgression {
+export interface ProgressionRules {
   /**
    * Niveau maximum jouable.
    * TODO(extraction) : non explicité dans les pages déjà lues (les dés
    * évolutifs vont jusqu'à « 15+ » p. 43, la table des rangs jusqu'au
    * niveau 13 p. 39, les valeurs d'attaque plafonnent au niveau 10 p. 39).
    */
-  niveauMax: number;
+  maxLevel: number;
   /** Points de capacité gagnés à chaque niveau (2) — p. 38. */
-  pointsCapaciteParNiveau: number;
+  featurePointsPerLevel: number;
   /** Coût en points : rangs 1-2 → 1 point, rangs 3+ → 2 points — p. 39. */
-  coutParRang: Record<number, number>;
+  costPerRank: Record<number, number>;
   /**
    * Niveau minimum requis par rang (1→1, 2→2, 3→3, 4→5, 5→7, 6→9, 7→11,
    * 8→13) — table p. 39. L'exception mage (rang 2 dès la création, « 2* »)
    * est portée par le moteur.
    */
-  niveauMinParRang: Record<number, number>;
+  minLevelPerRank: Record<number, number>;
   /** Rangs réservés aux voies de prestige (6 à 8) — p. 39. */
-  rangsPrestigeUniquement: number[];
+  prestigeOnlyRanks: number[];
   /** Niveau d'accès aux voies de prestige (5) — p. 128. */
-  niveauAccesPrestige: number;
+  prestigeAccessLevel: number;
   /** Plafond d'augmentation des valeurs d'attaque (+1/niveau jusqu'à 10) — p. 39. */
-  niveauMaxAttaque: number;
+  maxAttackLevel: number;
   /**
    * Dés évolutifs (d4°) : valeur du dé selon le niveau — table p. 43
    * (1-5 : d4, 6-8 : d6, 9-11 : d8, 12-14 : d10, 15+ : d12).
    */
-  desEvolutifs: Array<{ niveauMin: number; de: De }>;
+  scalingDice: Array<{ minLevel: number; die: Die }>;
   /** Contenu du sac d'aventurier remis à la création — p. 31. */
-  sacAventurier: EquipementDepartRef[];
+  adventurerPack: StartingEquipmentRef[];
   sourcePage: SourcePage;
 }

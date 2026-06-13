@@ -11,10 +11,14 @@
  *  - les valeurs dérivées ne sont **pas** stockées (recalculées à l'affichage),
  *    sauf surcharges manuelles explicites (`overrides`).
  */
-import type { CaracId } from '@/data/schema';
+import type { AbilityId } from '@/data/schema';
 
-/** Version courante du schéma de personnage. Incrémenter à chaque évolution. */
-export const SCHEMA_VERSION = 1;
+/**
+ * Version courante du schéma de personnage. Incrémenter à chaque évolution.
+ * v2 : passage des clés du modèle en anglais (migration depuis v1 dans
+ * `src/lib/engine/migrations.ts`).
+ */
+export const SCHEMA_VERSION = 2;
 
 /**
  * Statistiques dérivées surchargeables manuellement (règle maison, cf. PRD
@@ -22,50 +26,50 @@ export const SCHEMA_VERSION = 1;
  * réversible (suppression de la clé = retour au calcul automatique).
  */
 export type DerivedStatId =
-  | 'pvMax'
+  | 'maxHp'
   | 'def'
   | 'initiative'
-  | 'pointsChance'
-  | 'pointsMana'
-  | 'nbDesRecuperation'
-  | 'attaqueContact'
-  | 'attaqueDistance'
-  | 'attaqueMagique';
+  | 'luckPoints'
+  | 'manaPoints'
+  | 'recoveryDiceCount'
+  | 'meleeAttack'
+  | 'rangedAttack'
+  | 'magicAttack';
 
 /** Champs d'identité libres (PRD §5.2 étape 6). */
 export interface Identity {
-  sexe?: string;
+  sex?: string;
   age?: string;
-  taille?: string;
-  poids?: string;
+  height?: string;
+  weight?: string;
   description?: string;
 }
 
 /** Ligne d'équipement référençant le catalogue. */
-export interface EquipementRef {
+export interface EquipmentRef {
   itemId: string;
-  quantite: number;
+  quantity: number;
 }
 
 /**
  * Objet personnalisé hors catalogue (saisie libre sur la fiche permissive).
- * `custom: true` discrimine de `EquipementRef`.
+ * `custom: true` discrimine de `EquipmentRef`.
  */
 export interface CustomItem {
   custom: true;
-  nom: string;
-  quantite: number;
+  name: string;
+  quantity: number;
   /** Notes libres (DM, DEF, propriétés…). */
   details?: string;
 }
 
-export type EquipementLigne = EquipementRef | CustomItem;
+export type EquipmentLine = EquipmentRef | CustomItem;
 
 /** Entrée d'historique : ce qui a été choisi à un niveau donné. */
 export interface LevelUpEntry {
-  niveau: number;
+  level: number;
   /** Ids des capacités acquises à ce niveau (et autres choix sérialisables). */
-  choixCapaciteIds: string[];
+  chosenFeatureIds: string[];
 }
 
 export interface Character {
@@ -74,31 +78,31 @@ export interface Character {
   name: string;
   identity: Identity;
 
-  peupleId: string;
-  profilId: string;
-  niveau: number;
+  ancestryId: string;
+  classId: string;
+  level: number;
 
   /**
    * Valeurs des 7 caractéristiques telles qu'elles figurent sur la fiche
    * (saisie libre, modificateurs de peuple déjà appliqués — décision PRD #13 :
    * ce sont directement les « valeurs » du livre, -3 à +5 à la création).
    */
-  caracteristiques: Record<CaracId, number>;
+  abilities: Record<AbilityId, number>;
 
   /**
    * Voie de peuple effectivement retenue (le demi-elfe choisit ; un mage peut
    * prendre la voie du mage à la place). `null` tant que non déterminée.
    */
-  voieDePeupleId: string | null;
+  ancestryPathId: string | null;
 
   /** Ids des capacités acquises (toutes voies confondues). */
-  capaciteIds: string[];
+  featureIds: string[];
 
   /** Historique des montées de niveau (permet « qu'ai-je pris au niveau N ? »). */
   levelUpHistory: LevelUpEntry[];
 
   /** Équipement possédé (références catalogue + objets personnalisés). */
-  equipment: EquipementLigne[];
+  equipment: EquipmentLine[];
 
   /** Surcharges manuelles de valeurs dérivées (réversibles). */
   overrides: Partial<Record<DerivedStatId, number>>;
@@ -111,6 +115,6 @@ export interface Character {
 }
 
 /** Garde de type : distingue un objet personnalisé d'une référence catalogue. */
-export function isCustomItem(ligne: EquipementLigne): ligne is CustomItem {
-  return 'custom' in ligne && ligne.custom === true;
+export function isCustomItem(line: EquipmentLine): line is CustomItem {
+  return 'custom' in line && line.custom === true;
 }

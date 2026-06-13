@@ -51,7 +51,7 @@ export default function HomePage() {
   const [toast, setToast] = useState<string | null>(null);
 
   const handleCreate = () => {
-    router.push('/creer');
+    router.push('/create');
   };
 
   const handleExport = (id: string) => {
@@ -125,7 +125,7 @@ export default function HomePage() {
             sx={{ mb: 3 }}
             action={
               <>
-                <Button color="inherit" size="small" onClick={() => router.push('/creer')}>
+                <Button color="inherit" size="small" onClick={() => router.push('/create')}>
                   Reprendre
                 </Button>
                 <Button color="inherit" size="small" onClick={() => clearDraft()}>
@@ -165,13 +165,13 @@ export default function HomePage() {
                 {rows.map((r) => (
                   <TableRow key={r.id} hover>
                     <TableCell>{r.name}</TableCell>
-                    <TableCell>{r.peuple}</TableCell>
-                    <TableCell>{r.profil}</TableCell>
-                    <TableCell align="center">{r.niveau}</TableCell>
+                    <TableCell>{r.ancestry}</TableCell>
+                    <TableCell>{r.characterClass}</TableCell>
+                    <TableCell align="center">{r.level}</TableCell>
                     <TableCell>{formatDate(r.updatedAt)}</TableCell>
                     <TableCell align="right">
                       <Tooltip title="Ouvrir">
-                        <IconButton onClick={() => router.push(`/personnage/${r.id}`)}>
+                        <IconButton onClick={() => router.push(`/character/${r.id}`)}>
                           <OpenInNewIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>

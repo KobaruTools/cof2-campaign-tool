@@ -4,11 +4,11 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import type { SxProps, Theme } from '@mui/material/styles';
-import type { CaracId } from '@/data/schema';
-import { CARAC_NOMS } from '@/lib/ui/carac';
+import type { AbilityId } from '@/data/schema';
+import { ABILITY_NAMES } from '@/lib/ui/ability';
 
-export interface CaracBadgeProps {
-  carac: CaracId;
+export interface AbilityBadgeProps {
+  ability: AbilityId;
   /** Taille du badge — `sm` (défaut) pour l'inline, `md` pour les en-têtes. */
   size?: 'sm' | 'md';
   /**
@@ -21,7 +21,7 @@ export interface CaracBadgeProps {
   sx?: SxProps<Theme>;
 }
 
-const TAILLES = {
+const SIZES = {
   sm: { px: 0.75, py: 0.125, fontSize: '0.72rem', minWidth: 34 },
   md: { px: 1, py: 0.375, fontSize: '0.85rem', minWidth: 40 },
 } as const;
@@ -31,10 +31,10 @@ const TAILLES = {
  * le nom complet en infobulle. Composant réutilisable partout où une carac doit
  * apparaître de façon compacte (profils, capacités, fiche…).
  */
-export function CaracBadge({ carac, size = 'sm', color, sx }: CaracBadgeProps) {
-  const t = TAILLES[size];
+export function AbilityBadge({ ability, size = 'sm', color, sx }: AbilityBadgeProps) {
+  const t = SIZES[size];
   return (
-    <Tooltip title={CARAC_NOMS[carac]} arrow>
+    <Tooltip title={ABILITY_NAMES[ability]} arrow>
       <Box
         component="span"
         sx={{
@@ -58,28 +58,28 @@ export function CaracBadge({ carac, size = 'sm', color, sx }: CaracBadgeProps) {
           ...sx,
         }}
       >
-        {carac}
+        {ability}
       </Box>
     </Tooltip>
   );
 }
 
-export interface CaracBadgeListProps {
-  caracs: CaracId[];
+export interface AbilityBadgeListProps {
+  abilities: AbilityId[];
   size?: 'sm' | 'md';
-  /** Couleur d'accent appliquée à tous les badges (cf. `CaracBadge`). */
+  /** Couleur d'accent appliquée à tous les badges (cf. `AbilityBadge`). */
   color?: string;
   /** Affiché quand la liste est vide. */
-  vide?: React.ReactNode;
+  empty?: React.ReactNode;
 }
 
 /** Rangée de badges de caractéristiques, à retour à la ligne automatique. */
-export function CaracBadgeList({ caracs, size = 'sm', color, vide = '—' }: CaracBadgeListProps) {
-  if (caracs.length === 0) return <>{vide}</>;
+export function AbilityBadgeList({ abilities, size = 'sm', color, empty = '—' }: AbilityBadgeListProps) {
+  if (abilities.length === 0) return <>{empty}</>;
   return (
     <Stack direction="row" component="span" sx={{ flexWrap: 'wrap', gap: 0.5 }}>
-      {caracs.map((c, i) => (
-        <CaracBadge key={`${c}-${i}`} carac={c} size={size} color={color} />
+      {abilities.map((c, i) => (
+        <AbilityBadge key={`${c}-${i}`} ability={c} size={size} color={color} />
       ))}
     </Stack>
   );

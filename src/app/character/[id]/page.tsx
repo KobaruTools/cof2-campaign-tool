@@ -16,13 +16,13 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import { familles, peupleParId, profilParId } from '@/data';
+import { families, ancestryById, classById } from '@/data';
 import { deriveStats } from '@/lib/engine';
 import { useCharactersStore } from '@/stores/characters';
 
-const familleParId = new Map(familles.map((f) => [f.id, f]));
+const familyById = new Map(families.map((f) => [f.id, f]));
 
-export default function FichePage({ params }: { params: Promise<{ id: string }> }) {
+export default function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
@@ -50,17 +50,17 @@ export default function FichePage({ params }: { params: Promise<{ id: string }> 
     );
   }
 
-  const profil = profilParId.get(character.profilId);
-  const famille = profil ? familleParId.get(profil.familleId) : undefined;
-  const peuple = peupleParId.get(character.peupleId);
+  const characterClass = classById.get(character.classId);
+  const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
+  const ancestry = ancestryById.get(character.ancestryId);
 
-  const stats = famille
+  const stats = family
     ? deriveStats({
-        caracs: character.caracteristiques,
-        niveau: character.niveau,
-        famille,
-        defenseEquipement: { bonusDef: 0, agiMax: null },
-        nbSorts: 0,
+        abilities: character.abilities,
+        level: character.level,
+        family,
+        defenseEquipment: { defBonus: 0, maxAgi: null },
+        spellCount: 0,
       })
     : null;
 
@@ -94,14 +94,14 @@ export default function FichePage({ params }: { params: Promise<{ id: string }> 
             <TextField
               label="Niveau"
               type="number"
-              value={character.niveau}
+              value={character.level}
               onChange={(e) =>
-                upsert({ ...character, niveau: Math.max(1, Number(e.target.value) || 1) })
+                upsert({ ...character, level: Math.max(1, Number(e.target.value) || 1) })
               }
               sx={{ width: 160 }}
             />
             <Typography variant="body2" color="text.secondary">
-              Peuple : {peuple?.nom ?? 'à définir'} · Profil : {profil?.nom ?? 'à définir'}
+              Peuple : {ancestry?.name ?? 'à définir'} · Profil : {characterClass?.name ?? 'à définir'}
             </Typography>
           </Stack>
         </Paper>
@@ -113,15 +113,15 @@ export default function FichePage({ params }: { params: Promise<{ id: string }> 
           <Grid container spacing={2}>
             {(
               [
-                ['Points de vigueur', stats.pvMax],
+                ['Points de vigueur', stats.maxHp],
                 ['Défense', stats.defense],
                 ['Initiative', stats.initiative],
-                ['Points de chance', stats.pointsChance],
-                ['Dés de récupération', `${stats.nbDesRecuperation} ${stats.deRecuperation}`],
-                ['Points de mana', stats.pointsMana ?? '—'],
-                ['Attaque au contact', stats.attaqueContact],
-                ['Attaque à distance', stats.attaqueDistance],
-                ['Attaque magique', stats.attaqueMagique],
+                ['Points de chance', stats.luckPoints],
+                ['Dés de récupération', `${stats.recoveryDiceCount} ${stats.recoveryDie}`],
+                ['Points de mana', stats.manaPoints ?? '—'],
+                ['Attaque au contact', stats.meleeAttack],
+                ['Attaque à distance', stats.rangedAttack],
+                ['Attaque magique', stats.magicAttack],
               ] as const
             ).map(([label, value]) => (
               <Grid key={label} size={{ xs: 6, sm: 4 }}>
