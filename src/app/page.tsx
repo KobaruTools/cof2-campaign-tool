@@ -8,6 +8,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import UploadIcon from '@mui/icons-material/Upload';
+import Alert from '@mui/material/Alert';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -31,27 +32,26 @@ import TableRow from '@mui/material/TableRow';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { createBlankCharacter } from '@/lib/character/factory';
 import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
 import { useCharactersStore } from '@/stores/characters';
+import { useWizardStore } from '@/stores/wizard';
 
 export default function HomePage() {
   const router = useRouter();
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const characters = useCharactersStore((s) => s.characters);
-  const upsert = useCharactersStore((s) => s.upsert);
   const duplicate = useCharactersStore((s) => s.duplicate);
   const remove = useCharactersStore((s) => s.remove);
   const importCharacter = useCharactersStore((s) => s.importCharacter);
+  const draft = useWizardStore((s) => s.draft);
+  const clearDraft = useWizardStore((s) => s.clear);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const handleCreate = () => {
-    const c = createBlankCharacter();
-    upsert(c);
-    router.push(`/personnage/${c.id}`);
+    router.push('/creer');
   };
 
   const handleExport = (id: string) => {
@@ -118,6 +118,25 @@ export default function HomePage() {
             }}
           />
         </Stack>
+
+        {draft && (
+          <Alert
+            severity="info"
+            sx={{ mb: 3 }}
+            action={
+              <>
+                <Button color="inherit" size="small" onClick={() => router.push('/creer')}>
+                  Reprendre
+                </Button>
+                <Button color="inherit" size="small" onClick={() => clearDraft()}>
+                  Abandonner
+                </Button>
+              </>
+            }
+          >
+            Un brouillon de création est en cours.
+          </Alert>
+        )}
 
         {!hasHydrated ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
