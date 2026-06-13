@@ -1,24 +1,34 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import Alert from '@mui/material/Alert';
+import DoneIcon from '@mui/icons-material/Done';
+import EditIcon from '@mui/icons-material/Edit';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
 import IconButton from '@mui/material/IconButton';
-import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import { families, ancestryById, classById, featureById } from '@/data';
+import { ancestryById, classById, families, featureById } from '@/data';
 import type { DerivedInput } from '@/lib/engine';
+import type { AbilityId } from '@/data/schema';
+import type { Character, EquipmentLine, Identity } from '@/lib/character/types';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
+import { ClassIcon } from '@/components/ClassIcon';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
+import { classColor } from '@/lib/ui/classColors';
+import { SheetSection } from '@/components/sheet/SheetSection';
+import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
+import { FeaturesByPath } from '@/components/sheet/FeaturesByPath';
+import { EquipmentList } from '@/components/sheet/EquipmentList';
+import { IdentityFields } from '@/components/sheet/IdentityFields';
+import { IdentityEditor } from '@/components/sheet/IdentityEditor';
 import { useCharactersStore } from '@/stores/characters';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
@@ -29,6 +39,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const character = useCharactersStore((s) => s.characters.find((c) => c.id === id));
   const upsert = useCharactersStore((s) => s.upsert);
+  const [editing, setEditing] = useState(false);
 
   if (!hasHydrated) {
     return (
@@ -55,13 +66,23 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
   const ancestry = ancestryById.get(character.ancestryId);
 
+  // Sauvegarde permissive : chaque modification persiste immédiatement (le store
+  // applique `updatedAt`). La fiche n'empêche aucun écart aux règles (PER-45).
+  const update = (patch: Partial<Character>) => upsert({ ...character, ...patch });
+  const setAbility = (abilityId: AbilityId, value: number) =>
+    update({ abilities: { ...character.abilities, [abilityId]: value } });
+  const setIdentity = (identityPatch: Partial<Identity>) =>
+    update({ identity: { ...character.identity, ...identityPatch } });
+  const setEquipment = (equipment: EquipmentLine[]) => update({ equipment });
+  const setFeatureIds = (featureIds: string[]) => update({ featureIds });
+
   const derivedInput: DerivedInput | null = family
     ? {
         abilities: character.abilities,
         level: character.level,
         family,
         defenseEquipment: defenseFromEquipment(character.equipment),
-        spellCount: character.featureIds.filter((id) => featureById.get(id)?.isSpell).length,
+        spellCount: character.featureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
       }
     : null;
 
@@ -75,48 +96,114 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
             {character.name || 'Sans nom'}
           </Typography>
+          <Button
+            color="inherit"
+            startIcon={editing ? <DoneIcon /> : <EditIcon />}
+            onClick={() => setEditing((v) => !v)}
+          >
+            {editing ? 'Terminer' : 'Modifier'}
+          </Button>
         </Toolbar>
       </AppBar>
 
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Fiche provisoire (jalon J4). Le wizard de création et la fiche éditable complète
-          arrivent aux jalons suivants. Les valeurs ci-dessous sont déjà calculées par le moteur.
-        </Alert>
-
-        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-          <Stack spacing={2}>
-            <TextField
-              label="Nom"
-              value={character.name}
-              onChange={(e) => upsert({ ...character, name: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Niveau"
-              type="number"
-              value={character.level}
-              onChange={(e) =>
-                upsert({ ...character, level: Math.max(1, Number(e.target.value) || 1) })
-              }
-              sx={{ width: 160 }}
-            />
-            <Typography variant="body2" color="text.secondary">
-              Peuple : {ancestry?.name ?? 'à définir'} · Profil : {characterClass?.name ?? 'à définir'}
+        <Stack spacing={3}>
+          {/* En-tête : nom + peuple · profil · niveau */}
+          <Box>
+            <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
+              {character.name || 'Sans nom'}
             </Typography>
-          </Stack>
-        </Paper>
+            <Stack
+              direction="row"
+              spacing={0.75}
+              sx={{ alignItems: 'center', color: 'text.secondary', flexWrap: 'wrap' }}
+            >
+              <Typography variant="body1" component="span">
+                {ancestry?.name ?? 'Peuple à définir'} ·
+              </Typography>
+              {characterClass && <ClassIcon classId={characterClass.id} size={20} />}
+              <Typography
+                variant="body1"
+                component="span"
+                sx={{
+                  color: characterClass ? classColor(characterClass.id) : 'text.secondary',
+                  fontWeight: 600,
+                }}
+              >
+                {characterClass?.name ?? 'Profil à définir'}
+              </Typography>
+              <Typography variant="body1" component="span">
+                · niveau {character.level}
+              </Typography>
+            </Stack>
+          </Box>
 
-        <Typography variant="h6" gutterBottom>
-          Statistiques dérivées
-        </Typography>
-        {derivedInput ? (
-          <DerivedStatsGrid input={derivedInput} />
-        ) : (
-          <Alert severity="warning">
-            Choisissez un profil (à venir dans le wizard) pour calculer les statistiques dérivées.
-          </Alert>
-        )}
+          <SheetSection title="Caractéristiques">
+            <AbilitiesGrid
+              abilities={character.abilities}
+              onChange={editing ? setAbility : undefined}
+            />
+          </SheetSection>
+
+          <SheetSection title="Statistiques dérivées">
+            {derivedInput ? (
+              <DerivedStatsGrid input={derivedInput} />
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Profil incomplet : statistiques dérivées indisponibles.
+              </Typography>
+            )}
+          </SheetSection>
+
+          <SheetSection title="Voies & capacités">
+            <FeaturesByPath
+              featureIds={character.featureIds}
+              classId={character.classId}
+              onChange={editing ? setFeatureIds : undefined}
+            />
+          </SheetSection>
+
+          <SheetSection title="Équipement">
+            <EquipmentList
+              equipment={character.equipment}
+              onChange={editing ? setEquipment : undefined}
+            />
+          </SheetSection>
+
+          <SheetSection title="Identité">
+            {editing ? (
+              <IdentityEditor
+                name={character.name}
+                level={character.level}
+                identity={character.identity}
+                onName={(name) => update({ name })}
+                onLevel={(level) => update({ level })}
+                onIdentity={setIdentity}
+              />
+            ) : (
+              <IdentityFields identity={character.identity} />
+            )}
+          </SheetSection>
+
+          {(editing || character.notes) && (
+            <SheetSection title="Notes">
+              {editing ? (
+                <TextField
+                  multiline
+                  minRows={3}
+                  fullWidth
+                  placeholder="Notes libres du joueur…"
+                  value={character.notes}
+                  onChange={(e) => update({ notes: e.target.value })}
+                />
+              ) : (
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                  {character.notes}
+                </Typography>
+              )}
+            </SheetSection>
+          )}
+        </Stack>
       </Container>
     </>
   );
