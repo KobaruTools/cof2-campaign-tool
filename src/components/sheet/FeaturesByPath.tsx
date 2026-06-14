@@ -43,12 +43,8 @@ const PATH_TYPE_ORDER: Record<Path['type'], number> = {
 /** Nombre de colonnes affichées (6 voies maximum, cf. règles CO2). */
 const PATH_COLUMN_COUNT = 6;
 
-/**
- * Hauteur réservée à l'en-tête de voie en vue colonne. Fixe pour que les blocs
- * s'alignent horizontalement même quand un nom tient sur deux lignes ou qu'une
- * colonne fantôme n'a pas de titre.
- */
-const PATH_HEADER_HEIGHT = 36;
+/** Nombre de rangs (lignes de capacités) par voie. */
+const PATH_RANK_COUNT = 5;
 
 export interface FeatureGroup {
   path: Path | undefined;
@@ -140,12 +136,15 @@ function PathBlock({
   classId,
   onRemove,
   compact = false,
+  gridColumn,
 }: {
   group: FeatureGroup;
   classId: string;
   onRemove?: (featureId: string) => void;
   /** Vue colonne : masque le rang de chaque capacité, le résume dans l'en-tête. */
   compact?: boolean;
+  /** Vue colonne : index de colonne (1-based) dans la grille subgrid. */
+  gridColumn?: number;
 }) {
   const { path, features } = group;
   const color = path?.type === 'class' ? classColor(classId) : null;
@@ -154,155 +153,110 @@ function PathBlock({
   // Vue colonne : la capacité ouverte dans la modale de détail (null = fermée).
   const [openFeature, setOpenFeature] = useState<Feature | null>(null);
 
-  return (
-    <Box>
-      <Stack
-        direction="row"
-        spacing={0.5}
+  const header = (
+    <Stack
+      direction="row"
+      spacing={0.5}
+      sx={{
+        alignItems: compact ? 'flex-start' : 'center',
+        mb: compact ? 0 : 1,
+        pl: compact ? 1 : 1.5,
+        borderLeft: 3,
+        borderColor: color ?? 'divider',
+      }}
+    >
+      <Typography
+        variant={compact ? 'body2' : 'subtitle1'}
         sx={{
-          alignItems: compact ? 'flex-start' : 'center',
-          minHeight: compact ? PATH_HEADER_HEIGHT : undefined,
-          mb: compact ? 0.5 : 1,
-          pl: compact ? 1 : 1.5,
-          borderLeft: 3,
-          borderColor: color ?? 'divider',
+          fontWeight: 600,
+          color: color ?? 'text.primary',
+          minWidth: 0,
+          lineHeight: 1.2,
+          wordBreak: 'break-word',
         }}
       >
+        {path?.name ?? group.pathId}
+      </Typography>
+      {compact && total != null && (
         <Typography
-          variant={compact ? 'body2' : 'subtitle1'}
-          sx={{
-            fontWeight: 600,
-            color: color ?? 'text.primary',
-            minWidth: 0,
-            lineHeight: 1.2,
-            wordBreak: 'break-word',
-          }}
+          variant="caption"
+          color="text.secondary"
+          sx={{ ml: 'auto', flexShrink: 0, fontWeight: 600 }}
         >
-          {path?.name ?? group.pathId}
+          {features.length}/{total}
         </Typography>
-        {compact && total != null && (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ ml: 'auto', flexShrink: 0, fontWeight: 600 }}
+      )}
+    </Stack>
+  );
+
+  // Vue colonne : la colonne est une subgrid → toutes les colonnes partagent
+  // les mêmes lignes (en-tête + rangs). En-têtes et blocs s'alignent donc
+  // automatiquement, même si un titre tient sur trois lignes ou plus.
+  if (compact) {
+    const ghostCount = total != null ? Math.max(0, total - features.length) : 0;
+    return (
+      <Box
+        sx={{
+          gridColumn,
+          gridRow: `1 / span ${PATH_RANK_COUNT + 1}`,
+          display: 'grid',
+          gridTemplateRows: 'subgrid',
+        }}
+      >
+        {header}
+        {features.map((feature) => (
+          // Ligne cliquable : le détail s'ouvre dans une modale.
+          <Box
+            key={feature.id}
+            onClick={() => setOpenFeature(feature)}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              px: 1,
+              py: 0.5,
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 1,
+              cursor: 'pointer',
+              bgcolor: color ? alpha(color, 0.06) : 'transparent',
+              '&:hover': { bgcolor: color ? alpha(color, 0.14) : 'action.hover' },
+              ...(onRemove
+                ? {
+                    '& .feature-remove': { opacity: 0, transition: 'opacity .15s' },
+                    '&:hover .feature-remove, &:focus-within .feature-remove': { opacity: 1 },
+                  }
+                : {}),
+            }}
           >
-            {features.length}/{total}
-          </Typography>
-        )}
-      </Stack>
-
-      <Stack spacing={0.5}>
-        {features.map((feature) =>
-          compact ? (
-            // Vue colonne : ligne cliquable, le détail s'ouvre dans une modale.
-            <Box
-              key={feature.id}
-              onClick={() => setOpenFeature(feature)}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 1,
-                py: 0.5,
-                minHeight: 56,
-                border: 1,
-                borderColor: 'divider',
-                borderRadius: 1,
-                cursor: 'pointer',
-                bgcolor: color ? alpha(color, 0.06) : 'transparent',
-                '&:hover': { bgcolor: color ? alpha(color, 0.14) : 'action.hover' },
-                ...(onRemove
-                  ? {
-                      '& .feature-remove': { opacity: 0, transition: 'opacity .15s' },
-                      '&:hover .feature-remove, &:focus-within .feature-remove': { opacity: 1 },
-                    }
-                  : {}),
-              }}
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 600, minWidth: 0, flexGrow: 1, wordBreak: 'break-word' }}
             >
-              <Typography
-                variant="body2"
-                sx={{ fontWeight: 600, minWidth: 0, flexGrow: 1, wordBreak: 'break-word' }}
-              >
-                <FeatureLabel feature={feature} />
-              </Typography>
-              {onRemove && (
-                <Tooltip title="Retirer la capacité" arrow>
-                  <IconButton
-                    className="feature-remove"
-                    size="small"
-                    color="error"
-                    sx={{ p: 0.25, flexShrink: 0 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemove(feature.id);
-                    }}
-                  >
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Box>
-          ) : (
-            <Accordion
-              key={feature.id}
-              disableGutters
-              elevation={0}
-              sx={{
-                border: 1,
-                borderColor: 'divider',
-                bgcolor: color ? alpha(color, 0.06) : 'transparent',
-                '&::before': { display: 'none' },
-              }}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  sx={{ alignItems: 'center', flexWrap: 'wrap', flexGrow: 1 }}
+              <FeatureLabel feature={feature} />
+            </Typography>
+            {onRemove && (
+              <Tooltip title="Retirer la capacité" arrow>
+                <IconButton
+                  className="feature-remove"
+                  size="small"
+                  color="error"
+                  sx={{ p: 0.25, flexShrink: 0 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(feature.id);
+                  }}
                 >
-                  <Chip
-                    label={`Rang ${feature.rank}`}
-                    size="small"
-                    variant="outlined"
-                    sx={{ fontWeight: 600 }}
-                  />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    <FeatureLabel feature={feature} />
-                  </Typography>
-                </Stack>
-                {onRemove && (
-                  <Tooltip title="Retirer la capacité" arrow>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      component="span"
-                      sx={{ mr: 1 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemove(feature.id);
-                      }}
-                    >
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </AccordionSummary>
-              <AccordionDetails>
-                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-                  {feature.text}
-                </Typography>
-              </AccordionDetails>
-            </Accordion>
-          ),
-        )}
-        {compact &&
-          total != null &&
-          Array.from({ length: Math.max(0, total - features.length) }).map((_, i) => (
-            <GhostBlock key={`ghost-${i}`} />
-          ))}
-      </Stack>
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+        ))}
+        {Array.from({ length: ghostCount }).map((_, i) => (
+          <GhostBlock key={`ghost-${i}`} />
+        ))}
 
-      {compact && (
         <Dialog
           open={openFeature != null}
           onClose={() => setOpenFeature(null)}
@@ -339,7 +293,68 @@ function PathBlock({
             </>
           )}
         </Dialog>
-      )}
+      </Box>
+    );
+  }
+
+  // Vue lignes : en-tête + accordéons dépliables (texte complet affiché en place).
+  return (
+    <Box>
+      {header}
+      <Stack spacing={0.5}>
+        {features.map((feature) => (
+          <Accordion
+            key={feature.id}
+            disableGutters
+            elevation={0}
+            sx={{
+              border: 1,
+              borderColor: 'divider',
+              bgcolor: color ? alpha(color, 0.06) : 'transparent',
+              '&::before': { display: 'none' },
+            }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ alignItems: 'center', flexWrap: 'wrap', flexGrow: 1 }}
+              >
+                <Chip
+                  label={`Rang ${feature.rank}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontWeight: 600 }}
+                />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  <FeatureLabel feature={feature} />
+                </Typography>
+              </Stack>
+              {onRemove && (
+                <Tooltip title="Retirer la capacité" arrow>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    component="span"
+                    sx={{ mr: 1 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(feature.id);
+                    }}
+                  >
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </AccordionSummary>
+            <AccordionDetails>
+              <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
+                {feature.text}
+              </Typography>
+            </AccordionDetails>
+          </Accordion>
+        ))}
+      </Stack>
     </Box>
   );
 }
@@ -361,16 +376,23 @@ function GhostBlock() {
 }
 
 /** Colonne fantôme : voie potentielle non encore choisie (vue colonne). */
-function GhostColumn() {
+function GhostColumn({ gridColumn }: { gridColumn: number }) {
   return (
-    <Box aria-hidden sx={{ opacity: 0.6 }}>
-      {/* Espace vide réservé à la hauteur d'un en-tête de voie, pour aligner les blocs. */}
-      <Box sx={{ mb: 0.5, height: PATH_HEADER_HEIGHT }} />
-      <Stack spacing={0.5}>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <GhostBlock key={i} />
-        ))}
-      </Stack>
+    <Box
+      aria-hidden
+      sx={{
+        gridColumn,
+        gridRow: `1 / span ${PATH_RANK_COUNT + 1}`,
+        display: 'grid',
+        gridTemplateRows: 'subgrid',
+        opacity: 0.6,
+      }}
+    >
+      {/* En-tête vide : occupe la ligne d'en-tête partagée, sans titre. */}
+      <Box />
+      {Array.from({ length: PATH_RANK_COUNT }).map((_, i) => (
+        <GhostBlock key={i} />
+      ))}
     </Box>
   );
 }
@@ -417,39 +439,36 @@ export function FeaturesByPath({ featureIds, classId, layout, onChange }: Featur
               xs: `repeat(${PATH_COLUMN_COUNT}, minmax(160px, 1fr))`,
               md: `repeat(${PATH_COLUMN_COUNT}, minmax(0, 1fr))`,
             },
+            // Lignes partagées par toutes les colonnes (subgrid) : en-tête + rangs.
+            // L'en-tête prend la hauteur du titre le plus haut, les rangs s'alignent.
+            gridTemplateRows: `auto repeat(${PATH_RANK_COUNT}, minmax(56px, auto))`,
             gap: 1,
-            alignItems: 'start',
             overflowX: { xs: 'auto', md: 'visible' },
             pb: { xs: 1, md: 0 },
           }}
         >
           {others.map((group, i) => (
-            <Box key={group.pathId} sx={{ gridColumn: i + 1 }}>
-              <PathBlock
-                group={group}
-                classId={classId}
-                onRemove={onChange ? remove : undefined}
-                compact
-              />
-            </Box>
+            <PathBlock
+              key={group.pathId}
+              group={group}
+              classId={classId}
+              onRemove={onChange ? remove : undefined}
+              compact
+              gridColumn={i + 1}
+            />
           ))}
           {ghostColumns.map((c) => (
-            <Box key={`ghost-col-${c}`} sx={{ gridColumn: c }}>
-              <GhostColumn />
-            </Box>
+            <GhostColumn key={`ghost-col-${c}`} gridColumn={c} />
           ))}
           {prestige.map((group, i) => (
-            <Box
+            <PathBlock
               key={group.pathId}
-              sx={{ gridColumn: PATH_COLUMN_COUNT - prestige.length + 1 + i }}
-            >
-              <PathBlock
-                group={group}
-                classId={classId}
-                onRemove={onChange ? remove : undefined}
-                compact
-              />
-            </Box>
+              group={group}
+              classId={classId}
+              onRemove={onChange ? remove : undefined}
+              compact
+              gridColumn={PATH_COLUMN_COUNT - prestige.length + 1 + i}
+            />
           ))}
         </Box>
       ) : (
