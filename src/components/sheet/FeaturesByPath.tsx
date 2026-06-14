@@ -30,6 +30,7 @@ import type { Feature, Path } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { classColor } from '@/lib/ui/classColors';
 import { FeatureLabel } from '@/components/FeatureLabel';
+import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
@@ -127,8 +128,9 @@ export interface FeaturesByPathProps {
  * Épingle : capacité ajoutée manuellement sur la fiche, hors wizard (PER-53).
  * `inline` la place dans le flux (vue lignes, à côté du rang) plutôt qu'en
  * absolu dans un coin de la carte (vue colonnes). En absolu, elle est ancrée en
- * BAS à droite : le coin supérieur droit est réservé à la goutte de coût en mana
- * des sorts (`SpellManaBadge`, PER-65).
+ * BAS à GAUCHE : les autres coins sont réservés — haut gauche aux marqueurs
+ * hexagonaux (`FeatureMarkerHexes`), haut droite à la goutte de coût en mana
+ * (`SpellManaBadge`, PER-65), bas droite au bouton de suppression.
  */
 function ManualPin({ inline = false }: { inline?: boolean }) {
   return (
@@ -139,7 +141,7 @@ function ManualPin({ inline = false }: { inline?: boolean }) {
           fontSize: 16,
           ...(inline
             ? { flexShrink: 0 }
-            : { position: 'absolute', bottom: 3, right: 3, zIndex: 1 }),
+            : { position: 'absolute', bottom: 3, left: 3, zIndex: 1 }),
         }}
       />
     </Tooltip>
@@ -317,12 +319,15 @@ function PathBlock({
             sx={{
               position: 'relative',
               display: 'flex',
-              alignItems: 'center',
-              gap: 0.5,
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
               px: 1,
-              py: 0.5,
-              // Coin supérieur droit réservé à la goutte de coût en mana des sorts.
-              pr: feature.isSpell ? 2.5 : 1,
+              // Le haut est dégagé pour laisser voir les hexagones, qui chevauchent
+              // la bordure supérieure (coins : marqueurs en haut gauche, goutte de
+              // mana en haut droite, suppression et épingle en bas).
+              pt: 1.75,
+              pb: 0.75,
               border: 1,
               borderColor: 'divider',
               borderRadius: 1,
@@ -337,6 +342,12 @@ function PathBlock({
                 : {}),
             }}
           >
+            {/* Marqueurs hexagonaux centrés sur la ligne du haut du bloc. */}
+            <FeatureMarkerHexes
+              feature={feature}
+              color={color ?? undefined}
+              sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
+            />
             <SpellManaBadge
               feature={feature}
               color={color ?? undefined}
@@ -345,9 +356,9 @@ function PathBlock({
             {manualFeatureIds?.has(feature.id) && <ManualPin />}
             <Typography
               variant="body2"
-              sx={{ fontWeight: 600, minWidth: 0, flexGrow: 1, wordBreak: 'break-word' }}
+              sx={{ fontWeight: 600, width: '100%', textAlign: 'left', wordBreak: 'break-word' }}
             >
-              <FeatureLabel feature={feature} />
+              {feature.name}
             </Typography>
             {onRemove && (
               <Tooltip title="Retirer la capacité" arrow>
@@ -355,7 +366,7 @@ function PathBlock({
                   className="feature-remove"
                   size="small"
                   color="error"
-                  sx={{ p: 0.25, flexShrink: 0 }}
+                  sx={{ position: 'absolute', bottom: 1, right: 1, p: 0.25, zIndex: 1 }}
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemove(feature.id);
