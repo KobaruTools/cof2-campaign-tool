@@ -32,7 +32,9 @@ import TableRow from '@mui/material/TableRow';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { ClassIcon } from '@/components/ClassIcon';
 import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
+import { classColor } from '@/lib/ui/classColors';
 import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
 
@@ -220,7 +222,14 @@ export default function HomePage() {
                     <TableRow key={r.id} hover>
                       <TableCell>{r.name}</TableCell>
                       <TableCell>{r.ancestry}</TableCell>
-                      <TableCell>{r.characterClass}</TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                          <ClassIcon classId={r.classId} size={20} />
+                          <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
+                            {r.characterClass}
+                          </Box>
+                        </Stack>
+                      </TableCell>
                       <TableCell align="center">{r.level}</TableCell>
                       <TableCell>{formatDate(r.updatedAt)}</TableCell>
                       <TableCell align="right">{rowActions(r)}</TableCell>
@@ -246,9 +255,20 @@ export default function HomePage() {
                       <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                         {r.name}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {r.ancestry} · {r.characterClass} · niveau {r.level}
-                      </Typography>
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+                      >
+                        <ClassIcon classId={r.classId} size={16} />
+                        <Typography variant="body2" color="text.secondary">
+                          {r.ancestry} ·{' '}
+                          <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
+                            {r.characterClass}
+                          </Box>{' '}
+                          · niveau {r.level}
+                        </Typography>
+                      </Stack>
                       <Typography variant="caption" color="text.secondary">
                         Modifié {formatDate(r.updatedAt)}
                       </Typography>

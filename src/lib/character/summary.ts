@@ -9,6 +9,8 @@ export interface CharacterSummary {
   id: string;
   name: string;
   ancestry: string;
+  /** Id du profil — pour l'icône et le code couleur (`ClassIcon`, `classColor`). */
+  classId: string;
   characterClass: string;
   level: number;
   updatedAt: string;
@@ -21,6 +23,7 @@ export function summarize(character: Character): CharacterSummary {
     id: character.id,
     name: character.name || 'Sans nom',
     ancestry: ancestryById.get(character.ancestryId)?.name ?? dash,
+    classId: character.classId,
     characterClass: classById.get(character.classId)?.name ?? dash,
     level: character.level,
     updatedAt: character.updatedAt,
