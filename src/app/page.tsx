@@ -48,7 +48,12 @@ export default function HomePage() {
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
+    null,
+  );
+
+  const notify = (message: string, severity: 'success' | 'error' = 'success') =>
+    setToast({ message, severity });
 
   const handleCreate = () => {
     router.push('/create');
@@ -64,21 +69,38 @@ export default function HomePage() {
     a.download = `${fileSlug(character.name)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    notify(`« ${character.name || 'Sans nom'} » exporté en JSON.`);
+  };
+
+  const handleDuplicate = (id: string) => {
+    const copy = duplicate(id);
+    if (copy) notify(`« ${copy.name || 'Sans nom'} » dupliqué.`);
   };
 
   const handleImportFile = async (file: File) => {
     try {
       const raw = JSON.parse(await file.text());
       const c = importCharacter(raw);
-      setToast(`« ${c.name} » importé.`);
+      notify(`« ${c.name || 'Sans nom'} » importé.`);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Fichier invalide.';
-      setToast(`Import impossible : ${message}`);
+      // On ne laisse jamais remonter de message technique brut : l'erreur de
+      // parsing JSON (SyntaxError, libellé en anglais) est reformulée ; les
+      // erreurs de migration/validation portent déjà un message français clair.
+      const message =
+        e instanceof SyntaxError
+          ? "Ce fichier n'est pas un JSON valide."
+          : e instanceof Error
+            ? e.message
+            : 'Fichier illisible.';
+      notify(`Import impossible : ${message}`, 'error');
     }
   };
 
   const confirmDelete = () => {
-    if (toDelete) remove(toDelete.id);
+    if (toDelete) {
+      remove(toDelete.id);
+      notify(`« ${toDelete.name || 'Sans nom'} » supprimé.`);
+    }
     setToDelete(null);
   };
 
@@ -93,7 +115,7 @@ export default function HomePage() {
         </IconButton>
       </Tooltip>
       <Tooltip title="Dupliquer">
-        <IconButton onClick={() => duplicate(r.id)}>
+        <IconButton onClick={() => handleDuplicate(r.id)}>
           <ContentCopyIcon fontSize="small" />
         </IconButton>
       </Tooltip>
@@ -262,9 +284,19 @@ export default function HomePage() {
         open={toast !== null}
         autoHideDuration={5000}
         onClose={() => setToast(null)}
-        message={toast ?? ''}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
+      >
+        {toast ? (
+          <Alert
+            severity={toast.severity}
+            variant="filled"
+            onClose={() => setToast(null)}
+            sx={{ width: '100%' }}
+          >
+            {toast.message}
+          </Alert>
+        ) : undefined}
+      </Snackbar>
     </>
   );
 }

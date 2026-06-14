@@ -112,7 +112,9 @@ export default function CreatePage() {
     const character = materializeDraft(draft, ancestry, new Date().toISOString());
     upsert(character);
     clear();
-    router.push(`/character/${character.id}`);
+    // `created=1` : la fiche affiche une confirmation de création puis nettoie
+    // l'URL (voir la page de fiche). Donne un retour clair en fin de wizard.
+    router.push(`/character/${character.id}?created=1`);
   };
 
   return (

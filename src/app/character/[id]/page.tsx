@@ -7,12 +7,14 @@ import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import UpgradeIcon from '@mui/icons-material/Upgrade';
+import Alert from '@mui/material/Alert';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
 import IconButton from '@mui/material/IconButton';
+import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
@@ -55,6 +57,23 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const [editing, setEditing] = useState(false);
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [voiesLayout, setVoiesLayout] = useState<FeaturesLayout>('columns');
+  const [createdToast, setCreatedToast] = useState(false);
+
+  // Confirmation « fin de wizard » : le wizard redirige avec `?created=1`. On
+  // affiche un retour clair puis on nettoie l'URL pour ne pas le rejouer au
+  // rechargement. Lecture directe de l'URL (pas de useSearchParams) pour éviter
+  // d'imposer une frontière Suspense au prerendu.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('created') === '1') {
+      // Lecture unique d'un paramètre d'URL côté client (impossible en
+      // initialiseur d'état sans décalage d'hydratation SSR) : synchronisation
+      // ponctuelle d'un système externe, pas une boucle de rendu.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCreatedToast(true);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
 
   // Parallax léger sur les illustrations de l'en-tête. Pour rester fluide, on
   // écrit le transform directement sur le DOM (pas de state React → pas de
@@ -412,6 +431,22 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           setLevelUpOpen(false);
         }}
       />
+
+      <Snackbar
+        open={createdToast}
+        autoHideDuration={5000}
+        onClose={() => setCreatedToast(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity="success"
+          variant="filled"
+          onClose={() => setCreatedToast(false)}
+          sx={{ width: '100%' }}
+        >
+          Personnage créé.
+        </Alert>
+      </Snackbar>
     </>
   );
 }
