@@ -101,6 +101,33 @@ describe('canAcquireFeature', () => {
     expect(r.legal).toBe(false);
     expect(r.reasons.join(' ')).toMatch(/niveau 5/);
   });
+
+  it('illégal : voie de profil d’un autre profil', () => {
+    // « combat » est une voie du guerrier, pas du barbare.
+    const c = makeCharacter({ classId: 'barbare', featureIds: [] });
+    const r = canAcquireFeature(c, 'combat-r1', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/n'est pas une voie de votre profil/);
+  });
+
+  it('illégal : voie de peuple d’un autre peuple', () => {
+    // Voie de peuple retenue = humain ; on ne peut pas progresser dans « nain ».
+    const c = makeCharacter({ ancestryPathId: 'humain', featureIds: [] });
+    const r = canAcquireFeature(c, 'nain-r1', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/n'est pas votre voie de peuple/);
+  });
+
+  it('légal : sa propre voie de peuple', () => {
+    const c = makeCharacter({ ancestryPathId: 'humain', featureIds: [] });
+    expect(canAcquireFeature(c, 'humain-r1', ctx).legal).toBe(true);
+  });
+
+  it('légal : ouvrir une autre voie de son propre profil', () => {
+    // Barbare : « brute » fait partie de ses 5 voies, ouvrable au rang 1.
+    const c = makeCharacter({ classId: 'barbare', featureIds: [] });
+    expect(canAcquireFeature(c, 'brute-r1', ctx).legal).toBe(true);
+  });
 });
 
 describe('checkCompliance', () => {

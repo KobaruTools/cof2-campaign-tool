@@ -6,6 +6,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import UpgradeIcon from '@mui/icons-material/Upgrade';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -18,12 +19,13 @@ import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { ancestryById, classById, families, featureById } from '@/data';
+import { ancestryById, classById, families, featureById, progression } from '@/data';
 import type { DerivedInput } from '@/lib/engine';
 import { checkCompliance } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
 import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { modifierDeltas } from '@/lib/character/ancestry';
+import { canUndoLastLevelUp, undoLastLevelUp } from '@/lib/character/levelUp';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -36,6 +38,8 @@ import { EquipmentList } from '@/components/sheet/EquipmentList';
 import { IdentityFields } from '@/components/sheet/IdentityFields';
 import { IdentityEditor } from '@/components/sheet/IdentityEditor';
 import { ComplianceWarnings } from '@/components/sheet/ComplianceWarnings';
+import { LevelUpDialog } from '@/components/sheet/LevelUpDialog';
+import { LevelHistory } from '@/components/sheet/LevelHistory';
 import { useCharactersStore } from '@/stores/characters';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
@@ -47,6 +51,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const character = useCharactersStore((s) => s.characters.find((c) => c.id === id));
   const upsert = useCharactersStore((s) => s.upsert);
   const [editing, setEditing] = useState(false);
+  const [levelUpOpen, setLevelUpOpen] = useState(false);
 
   // Parallax léger sur les illustrations de l'en-tête. Pour rester fluide, on
   // écrit le transform directement sur le DOM (pas de state React → pas de
@@ -249,6 +254,29 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               </Typography>
             </Stack>
 
+            {/* Montée de niveau (PER-49) : toujours accessible. Le niveau max (20)
+                est une borne d'UI souple — on désactive simplement le bouton. */}
+            <Box sx={{ mt: 1.5, position: 'relative', zIndex: 1 }}>
+              <Tooltip
+                title={
+                  character.level >= progression.maxLevel
+                    ? `Niveau maximum (${progression.maxLevel}) atteint`
+                    : ''
+                }
+              >
+                <span>
+                  <Button
+                    variant="contained"
+                    startIcon={<UpgradeIcon />}
+                    disabled={character.level >= progression.maxLevel}
+                    onClick={() => setLevelUpOpen(true)}
+                  >
+                    Monter au niveau suivant
+                  </Button>
+                </span>
+              </Tooltip>
+            </Box>
+
             {/* Bascule entre l'illustration de profil standard et son alternative
                 (-2), uniquement en mode édition. */}
             {editing && characterClass && (
@@ -346,8 +374,27 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               )}
             </SheetSection>
           )}
+
+          <SheetSection title="Historique des niveaux">
+            <LevelHistory
+              history={character.levelUpHistory}
+              canUndo={canUndoLastLevelUp(character)}
+              onUndo={() => upsert(undoLastLevelUp(character))}
+            />
+          </SheetSection>
         </Stack>
       </Container>
+
+      <LevelUpDialog
+        open={levelUpOpen}
+        character={character}
+        family={family}
+        onClose={() => setLevelUpOpen(false)}
+        onConfirm={(updated) => {
+          upsert(updated);
+          setLevelUpOpen(false);
+        }}
+      />
     </>
   );
 }

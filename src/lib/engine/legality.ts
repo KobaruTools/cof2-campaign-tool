@@ -149,7 +149,27 @@ export function canAcquireFeature(
   if (!path) {
     return { legal: false, reasons: [`Voie inconnue : ${feature.pathId}`] };
   }
+  const characterClass = ctx.classById.get(character.classId);
   const family = characterFamily(character, ctx);
+
+  // Accès à la voie selon son type (p. 39-40) :
+  //  - voie de profil : seulement les 5 voies du profil du personnage (on en
+  //    choisit 2 à la création, les autres s'ouvrent ensuite) ;
+  //  - voie de peuple / voie du mage : seulement la voie de peuple retenue
+  //    (`ancestryPathId`) — pas les autres voies du peuple ni d'un autre peuple ;
+  //  - voie de prestige : ouverte à tous (conditions de niveau/unicité ci-dessous).
+  // (Le mécanisme « Appel à une autre capacité », p. 40, qui permet de piocher
+  // ponctuellement dans une autre voie, est textuel et géré à la main sur la
+  // fiche permissive — il n'entre pas dans les choix proposés par le wizard.)
+  if (path.type === 'class') {
+    if (!characterClass?.pathIds.includes(path.id)) {
+      reasons.push(`« ${path.name} » n'est pas une voie de votre profil.`);
+    }
+  } else if (path.type === 'ancestry' || path.type === 'mage') {
+    if (character.ancestryPathId !== path.id) {
+      reasons.push(`« ${path.name} » n'est pas votre voie de peuple.`);
+    }
+  }
 
   // Ordre des rangs : tous les rangs inférieurs de la voie doivent être acquis.
   const ranks = ownedRanks(character, path.id, ctx);
