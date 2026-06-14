@@ -25,6 +25,7 @@ import { checkCompliance } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
 import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { modifierDeltas } from '@/lib/character/ancestry';
+import { familyHpGains } from '@/lib/character/hp';
 import { canUndoLastLevelUp, undoLastLevelUp } from '@/lib/character/levelUp';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
@@ -146,6 +147,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         family,
         defenseEquipment: defenseFromEquipment(character.equipment),
         spellCount: character.featureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
+        // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique à la
+        // formule mono-famille pour un profil classique.
+        hpFamilyGains: familyHpGains(character, rulesContext),
       }
     : null;
 

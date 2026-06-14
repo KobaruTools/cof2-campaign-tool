@@ -55,11 +55,26 @@ const m = (v: number | undefined): number => v ?? 0;
  * PV maximum. Niveau 1 = 2 × baseHp + CON ; chaque niveau suivant ajoute
  * hpPerLevel + CON. La CON courante s'applique rétroactivement à tous les
  * niveaux (p. 39) — on recalcule toujours depuis la CON du moment.
+ *
+ * `familyGains` (optionnel) : composante « famille » du gain de PV de chaque
+ * niveau (du 2 au niveau courant), pour les profils hybrides dont les niveaux
+ * mixtes ne rapportent pas tous le même nombre de PV (p. 177). Quand il est
+ * fourni, il remplace le terme `(niveau − 1) × hpPerLevel`. Absent → profil
+ * mono-famille : on retombe sur la formule fermée.
  */
-export function maxHp(level: number, family: Family, con: number, mods: DerivedMods = {}): number {
+export function maxHp(
+  level: number,
+  family: Family,
+  con: number,
+  mods: DerivedMods = {},
+  familyGains?: number[],
+): number {
   const base = 2 * family.baseHp + con;
-  const perLevels = Math.max(0, level - 1) * (family.hpPerLevel + con);
-  return base + perLevels + m(mods.maxHp);
+  const levelsAbove1 = Math.max(0, level - 1);
+  const familyHp = familyGains
+    ? familyGains.reduce((sum, g) => sum + g, 0)
+    : levelsAbove1 * family.hpPerLevel;
+  return base + familyHp + levelsAbove1 * con + m(mods.maxHp);
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +191,11 @@ export interface DerivedInput {
   defenseEquipment: DefenseEquipment;
   /** Nombre de capacités de sorts connues (pour les PM). */
   spellCount: number;
+  /**
+   * Composante « famille » du gain de PV par niveau (profils hybrides, p. 177).
+   * Voir `maxHp`. Absent pour un profil mono-famille.
+   */
+  hpFamilyGains?: number[];
   /** Modificateurs plats issus des capacités/surcharges. */
   mods?: DerivedMods;
 }
@@ -198,7 +218,7 @@ export function deriveStats(input: DerivedInput): DerivedStats {
   const { abilities, level, family, defenseEquipment, spellCount } = input;
   const mods = input.mods ?? {};
   return {
-    maxHp: maxHp(level, family, abilities.CON, mods),
+    maxHp: maxHp(level, family, abilities.CON, mods, input.hpFamilyGains),
     recoveryDiceCount: recoveryDiceCount(abilities.CON, family, mods),
     recoveryDie: recoveryDie(family),
     luckPoints: luckPoints(abilities.CHA, family, mods),

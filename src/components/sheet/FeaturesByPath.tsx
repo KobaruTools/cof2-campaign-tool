@@ -28,6 +28,7 @@ import { features as featureCatalog, featureById, pathById } from '@/data';
 import type { Feature, Path } from '@/data/schema';
 import { classColor } from '@/lib/ui/classColors';
 import { FeatureLabel } from '@/components/FeatureLabel';
+import { ClassIcon } from '@/components/ClassIcon';
 
 /**
  * Ordre d'affichage des voies par type, de gauche à droite sur la fiche :
@@ -54,19 +55,25 @@ export interface FeatureGroup {
 }
 
 /**
- * Regroupe les capacités d'un personnage par voie, triées par rang croissant,
- * les groupes ordonnés par type de voie puis par nom. Les ids inconnus sont
- * ignorés ici (signalés par les avertissements de conformité, PER-47).
+ * Regroupe les capacités d'un personnage par voie, triées par rang croissant.
+ * Les groupes sont ordonnés par type de voie (voie de peuple à gauche, voies de
+ * profil au milieu, voie de prestige à droite) puis, à l'intérieur d'un même
+ * type, dans l'**ordre d'acquisition** (première capacité acquise de la voie),
+ * et non par ordre alphabétique. Les ids inconnus sont ignorés ici (signalés par
+ * les avertissements de conformité, PER-47).
  */
 export function groupFeaturesByPath(featureIds: string[]): FeatureGroup[] {
   const byPath = new Map<string, Feature[]>();
+  const acquisitionOrder: string[] = [];
   for (const id of featureIds) {
     const feature = featureById.get(id);
     if (!feature) continue;
+    if (!byPath.has(feature.pathId)) acquisitionOrder.push(feature.pathId);
     const list = byPath.get(feature.pathId) ?? [];
     list.push(feature);
     byPath.set(feature.pathId, list);
   }
+  const acquisitionIndex = new Map(acquisitionOrder.map((pathId, i) => [pathId, i]));
   const groups: FeatureGroup[] = [...byPath.entries()].map(([pathId, features]) => ({
     pathId,
     path: pathById.get(pathId),
@@ -76,7 +83,7 @@ export function groupFeaturesByPath(featureIds: string[]): FeatureGroup[] {
     const ta = a.path ? PATH_TYPE_ORDER[a.path.type] : 99;
     const tb = b.path ? PATH_TYPE_ORDER[b.path.type] : 99;
     if (ta !== tb) return ta - tb;
-    return (a.path?.name ?? a.pathId).localeCompare(b.path?.name ?? b.pathId);
+    return (acquisitionIndex.get(a.pathId) ?? 0) - (acquisitionIndex.get(b.pathId) ?? 0);
   });
   return groups;
 }
@@ -184,7 +191,16 @@ function PathBlock({
   retainedPathName?: string;
 }) {
   const { path, features } = group;
-  const color = path?.type === 'class' ? classColor(classId) : null;
+  // Profil dont la voie est issue : le profil principal si la voie lui appartient
+  // (cas courant), sinon le profil d'origine de la voie (hybridation). Sert à la
+  // teinte ET à l'icône, pour distinguer les voies hybrides du profil principal.
+  const ownerClassId =
+    path?.type === 'class'
+      ? path.classIds.includes(classId)
+        ? classId
+        : path.classIds[0]
+      : null;
+  const color = ownerClassId ? classColor(ownerClassId) : null;
   // Progression dans la voie : capacités acquises sur le total de la voie.
   const total = path?.featureIds.length;
   // Vue colonne : la capacité ouverte dans la modale de détail (null = fermée).
@@ -214,14 +230,19 @@ function PathBlock({
       >
         {path?.name ?? group.pathId}
       </Typography>
-      {compact && total != null && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ ml: 'auto', flexShrink: 0, fontWeight: 600 }}
-        >
-          {features.length}/{total}
-        </Typography>
+      {compact ? (
+        // Vue colonne : icône de profil au-dessus du compteur de rangs.
+        <Stack spacing={0.25} sx={{ ml: 'auto', flexShrink: 0, alignItems: 'flex-end' }}>
+          {ownerClassId && <ClassIcon classId={ownerClassId} size={18} />}
+          {total != null && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+              {features.length}/{total}
+            </Typography>
+          )}
+        </Stack>
+      ) : (
+        // Vue liste : icône de profil juste à droite du titre.
+        ownerClassId && <ClassIcon classId={ownerClassId} size={18} sx={{ ml: 0.5 }} />
       )}
     </Stack>
   );

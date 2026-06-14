@@ -49,6 +49,7 @@ export type WarningCode =
   | 'TOO_MANY_PATHS'
   | 'MULTIPLE_PRESTIGE'
   | 'PRESTIGE_LEVEL_TOO_LOW'
+  | 'HYBRID_PROFILE'
   | 'UNKNOWN_FEATURE';
 
 export interface Warning {
@@ -56,10 +57,18 @@ export interface Warning {
   message: string;
   featureId?: string;
   pathId?: string;
+  /**
+   * 'warning' (défaut) = écart aux règles ; 'info' = simple information sur un
+   * choix pourtant légal (ex. profil hybride), à présenter différemment.
+   */
+  severity?: 'warning' | 'info';
 }
 
 /** Plafond de voies hors voie de peuple (p. 42 : « six voies, plus la voie de peuple »). */
 export const MAX_NON_ANCESTRY_PATHS = 6;
+
+/** Voie de l'expert (p. 129) : interdite aux profils hybrides multi-familles. */
+export const EXPERT_PATH_ID = 'prestige-expert';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -139,6 +148,48 @@ function startedPrestigePaths(character: Character, ctx: RulesContext): Set<stri
   return paths;
 }
 
+/** Famille du profil d'une voie de profil (via son premier profil rattaché). */
+export function classPathFamily(path: Path, ctx: RulesContext): FamilyId | undefined {
+  if (path.type !== 'class') return undefined;
+  const classId = path.classIds[0];
+  return classId ? ctx.classById.get(classId)?.familyId : undefined;
+}
+
+/**
+ * Familles de profil dans lesquelles le personnage a au moins une capacité de
+ * voie de profil (les voies de peuple/mage/prestige ne comptent pas). Sert à
+ * détecter l'hybridation (capacités de ≥ 2 familles, p. 176).
+ */
+export function classFamiliesWithFeatures(character: Character, ctx: RulesContext): Set<FamilyId> {
+  const families = new Set<FamilyId>();
+  for (const id of character.featureIds) {
+    const feature = ctx.featureById.get(id);
+    if (!feature) continue;
+    const path = ctx.pathById.get(feature.pathId);
+    if (!path) continue;
+    const family = classPathFamily(path, ctx);
+    if (family) families.add(family);
+  }
+  return families;
+}
+
+/** Profil hybride : capacités issues d'au moins deux familles de profils (p. 176). */
+export function isHybrid(character: Character, ctx: RulesContext): boolean {
+  return classFamiliesWithFeatures(character, ctx).size >= 2;
+}
+
+/**
+ * Le personnage peut-il ouvrir une voie hors de son profil principal (devenir
+ * hybride) ? Oui tant qu'au moins une des cinq voies du profil principal n'a
+ * reçu aucune capacité — la « règle de la voie vierge » (p. 176). Continuer une
+ * voie hybride déjà entamée reste toujours possible (vérifié en amont).
+ */
+export function canStartHybridPath(character: Character, ctx: RulesContext): boolean {
+  const characterClass = ctx.classById.get(character.classId);
+  if (!characterClass) return false;
+  return characterClass.pathIds.some((pathId) => ownedRanks(character, pathId, ctx).length === 0);
+}
+
 // ---------------------------------------------------------------------------
 // Légalité d'acquisition (wizard bloquant)
 // ---------------------------------------------------------------------------
@@ -167,9 +218,12 @@ export function canAcquireFeature(
   const characterClass = ctx.classById.get(character.classId);
   const family = characterFamily(character, ctx);
 
-  // Accès à la voie selon son type (p. 39-40) :
-  //  - voie de profil : seulement les 5 voies du profil du personnage (on en
+  // Accès à la voie selon son type (p. 39-40, 176) :
+  //  - voie de profil principal : les 5 voies du profil du personnage (on en
   //    choisit 2 à la création, les autres s'ouvrent ensuite) ;
+  //  - voie de profil HORS profil principal : ouverte tant qu'au moins une des
+  //    5 voies du profil principal est vierge (profil hybride, p. 176) ; une
+  //    voie hybride déjà entamée se poursuit librement ;
   //  - voie de peuple / voie du mage : seulement la voie de peuple retenue
   //    (`ancestryPathId`) — pas les autres voies du peuple ni d'un autre peuple ;
   //  - voie de prestige : ouverte à tous (conditions de niveau/unicité ci-dessous).
@@ -177,12 +231,31 @@ export function canAcquireFeature(
   // ponctuellement dans une autre voie, est textuel et géré à la main sur la
   // fiche permissive — il n'entre pas dans les choix proposés par le wizard.)
   if (path.type === 'class') {
-    if (!characterClass?.pathIds.includes(path.id)) {
-      reasons.push(`« ${path.name} » n'est pas une voie de votre profil.`);
+    const isMainProfilePath = characterClass?.pathIds.includes(path.id) ?? false;
+    if (!isMainProfilePath) {
+      const alreadyStarted = ownedRanks(character, path.id, ctx).length > 0;
+      if (!alreadyStarted && !canStartHybridPath(character, ctx)) {
+        reasons.push(
+          `« ${path.name} » appartient à un autre profil : profil hybride impossible, les cinq voies de votre profil principal sont déjà entamées (p. 176).`,
+        );
+      }
     }
   } else if (path.type === 'ancestry' || path.type === 'mage') {
     if (character.ancestryPathId !== path.id) {
       reasons.push(`« ${path.name} » n'est pas votre voie de peuple.`);
+    }
+  }
+
+  // Voie de l'expert : interdite si le personnage a déjà des capacités d'une
+  // autre famille que celle de son profil principal (p. 129).
+  if (path.id === EXPERT_PATH_ID && characterClass) {
+    const otherFamilies = [...classFamiliesWithFeatures(character, ctx)].filter(
+      (f) => f !== characterClass.familyId,
+    );
+    if (otherFamilies.length > 0) {
+      reasons.push(
+        "La voie de l'expert n'est pas accessible aux profils hybrides ayant des voies d'une autre famille que le profil principal (p. 129).",
+      );
     }
   }
 
@@ -287,6 +360,19 @@ export function checkCompliance(character: Character, ctx: RulesContext): Warnin
         });
       }
     }
+  }
+
+  // Profil hybride : capacités issues de plusieurs familles (p. 176-180).
+  // Informatif — rappelle au joueur les règles spécifiques (PV, armes/armures,
+  // voie de l'expert) qui ne sont pas toutes automatisées.
+  const families = classFamiliesWithFeatures(character, ctx);
+  if (families.size >= 2) {
+    const names = [...families].map((f) => ctx.familyById.get(f)?.name ?? f).join(', ');
+    warnings.push({
+      code: 'HYBRID_PROFILE',
+      severity: 'info',
+      message: `Profil hybride : capacités de ${families.size} familles de profils (${names}). Pensez aux règles spécifiques (PV des niveaux mixtes, armes/armures, voie de l'expert — p. 176-180).`,
+    });
   }
 
   // Plafond de voies.

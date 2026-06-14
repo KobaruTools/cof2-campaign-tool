@@ -116,12 +116,46 @@ describe('canAcquireFeature', () => {
     expect(r.reasons.join(' ')).toMatch(/niveau 3/);
   });
 
-  it('illégal : voie de profil d’un autre profil', () => {
-    // « combat » est une voie du guerrier, pas du barbare.
+  it('légal : voie hybride d’un autre profil tant qu’une voie du profil principal est vierge', () => {
+    // « combat » (guerrier) n’est pas une voie du barbare, mais l’hybridation
+    // est permise tant qu’une des 5 voies du profil principal est vierge (p. 176).
     const c = makeCharacter({ classId: 'barbare', featureIds: [] });
+    expect(canAcquireFeature(c, 'combat-r1', ctx).legal).toBe(true);
+  });
+
+  it('illégal : voie hybride quand les 5 voies du profil principal sont entamées', () => {
+    const c = makeCharacter({
+      classId: 'barbare',
+      level: 5,
+      featureIds: ['brute-r1', 'pagne-r1', 'pourfendeur-r1', 'primitif-r1', 'rage-r1'],
+    });
     const r = canAcquireFeature(c, 'combat-r1', ctx);
     expect(r.legal).toBe(false);
-    expect(r.reasons.join(' ')).toMatch(/n'est pas une voie de votre profil/);
+    expect(r.reasons.join(' ')).toMatch(/profil hybride impossible/);
+  });
+
+  it('légal : poursuivre une voie hybride déjà entamée même sans voie vierge', () => {
+    // Les 5 voies du profil principal sont entamées, mais « combat » l’est aussi
+    // (rang 1) → son rang 2 reste accessible.
+    const c = makeCharacter({
+      classId: 'barbare',
+      level: 5,
+      featureIds: ['brute-r1', 'pagne-r1', 'pourfendeur-r1', 'primitif-r1', 'rage-r1', 'combat-r1'],
+    });
+    expect(canAcquireFeature(c, 'combat-r2', ctx).legal).toBe(true);
+  });
+
+  it('illégal : voie de l’expert pour un hybride d’une autre famille', () => {
+    // Barbare (combattant) ayant pris une capacité de druide (mystique) — p. 129.
+    const c = makeCharacter({ classId: 'barbare', level: 5, featureIds: ['brute-r1', 'animaux-r1'] });
+    const r = canAcquireFeature(c, 'prestige-expert-r4', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/voie de l'expert/i);
+  });
+
+  it('légal : voie de l’expert pour un profil non hybride (ou hybride de même famille)', () => {
+    const c = makeCharacter({ classId: 'barbare', level: 5, featureIds: ['brute-r1'] });
+    expect(canAcquireFeature(c, 'prestige-expert-r4', ctx).legal).toBe(true);
   });
 
   it('illégal : voie de peuple d’un autre peuple', () => {
@@ -177,5 +211,21 @@ describe('checkCompliance', () => {
     const c = makeCharacter({ level: 1, featureIds: ['brute-r1', 'brute-r2', 'brute-r3'] });
     const codes = checkCompliance(c, ctx).map((a) => a.code);
     expect(codes).toContain('RANK_LEVEL_TOO_LOW');
+  });
+
+  it('signale un profil hybride (familles multiples) en information', () => {
+    // Barbare (combattant) + capacité de druide (mystique) = deux familles.
+    const c = makeCharacter({ classId: 'barbare', level: 3, featureIds: ['brute-r1', 'animaux-r1'] });
+    const hybrid = checkCompliance(c, ctx).find((a) => a.code === 'HYBRID_PROFILE');
+    expect(hybrid).toBeDefined();
+    expect(hybrid?.severity).toBe('info');
+  });
+
+  it('pas d’avertissement hybride pour une voie d’une même famille', () => {
+    // Barbare + voie de guerrier : même famille (combattant), pas d’hybridation
+    // au sens des PV / familles.
+    const c = makeCharacter({ classId: 'barbare', level: 3, featureIds: ['brute-r1', 'combat-r1'] });
+    const codes = checkCompliance(c, ctx).map((a) => a.code);
+    expect(codes).not.toContain('HYBRID_PROFILE');
   });
 });
