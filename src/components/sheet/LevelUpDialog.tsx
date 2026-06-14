@@ -4,6 +4,7 @@ import { useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
@@ -226,10 +227,18 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   };
   const groupName = (g: FeatureGroup) => g.path?.name ?? g.pathId;
 
-  // Voies des catégories 0-3, affichées à plat dans l'ordre de priorité.
+  // Voies des catégories 0-2 (peuple, entamées, profil principal), affichées à
+  // plat dans l'ordre de priorité.
   const flatGroups = availableGroups
-    .filter((g) => groupCategory(g) < 4)
+    .filter((g) => groupCategory(g) < 3)
     .sort((a, b) => groupCategory(a) - groupCategory(b) || groupName(a).localeCompare(groupName(b)));
+
+  // Voies de prestige (catégorie 3) réunies dans un accordéon dédié, comme les
+  // voies d'autres profils en hybride — un choix délibéré qu'on ne déploie qu'au
+  // besoin pour ne pas noyer la montée de niveau classique.
+  const prestigeGroups = availableGroups
+    .filter((g) => groupCategory(g) === 3)
+    .sort((a, b) => groupName(a).localeCompare(groupName(b)));
 
   // Voies hybrides (catégorie 4) regroupées par profil, pour les accordéons.
   const hybridByProfile = new Map<string, { classId: string; name: string; groups: FeatureGroup[] }>();
@@ -245,7 +254,8 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
     hybridByProfile.set(classId, entry);
   }
   const hybridProfiles = [...hybridByProfile.values()].sort((a, b) => a.name.localeCompare(b.name));
-  const hasAnyAvailable = flatGroups.length > 0 || hybridProfiles.length > 0;
+  const hasAnyAvailable =
+    flatGroups.length > 0 || prestigeGroups.length > 0 || hybridProfiles.length > 0;
 
   // Gain de PV du niveau : pour un profil hybride, il dépend de la famille des
   // capacités choisies ce niveau (moyenne des familles, p. 177). On simule
@@ -426,6 +436,43 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                     onAdd={add}
                   />
                 ))}
+
+                {prestigeGroups.length > 0 && (
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    sx={{
+                      border: 1,
+                      borderColor: 'divider',
+                      '&::before': { display: 'none' },
+                    }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <WorkspacePremiumOutlinedIcon
+                          fontSize="small"
+                          sx={{ color: 'text.secondary' }}
+                        />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                          Voies de prestige
+                        </Typography>
+                      </Stack>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Stack spacing={2}>
+                        {prestigeGroups.map((group) => (
+                          <AvailablePathGroup
+                            key={group.pathId}
+                            group={group}
+                            color={null}
+                            remaining={remaining}
+                            onAdd={add}
+                          />
+                        ))}
+                      </Stack>
+                    </AccordionDetails>
+                  </Accordion>
+                )}
 
                 {hybridProfiles.length > 0 && (
                   <Box>
