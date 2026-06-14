@@ -32,6 +32,10 @@ export interface StatBreakdown {
 
 const sum = (terms: BreakdownTerm[]) => terms.reduce((acc, t) => acc + t.value, 0);
 
+/** Nombre formaté à la française (virgule décimale), pour les demi-PV (ex. « 3,5 »). */
+const frenchNum = (n: number): string =>
+  Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ',');
+
 /**
  * Construit le détail d'une statistique dérivée à partir des mêmes entrées que
  * `deriveStats`. Les modificateurs plats (`mods`) ne sont inclus que s'ils sont
@@ -46,45 +50,83 @@ export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput)
 
   switch (statId) {
     case 'maxHp': {
-      // PV de base du niveau 1 : 2 × baseHp pour un profil standard, ou la somme
-      // des PV des deux familles pour un hybride créé au niveau 1 (p. 180).
-      const hybridFamilies = input.hpLevel1Families ?? [];
-      const isHybridLevel1 = hybridFamilies.length >= 2;
+      // Un profil hybride a un calcul de PV particulier (p. 177 et 180) : on le
+      // détaille niveau par niveau pour qu'il soit compréhensible ; un profil
+      // mono-famille garde l'affichage compact « 2 × base + (gain × niveaux) ».
+      const hybridLevel1Families = input.hpLevel1Families ?? [];
+      const isHybridLevel1 = hybridLevel1Families.length >= 2;
+      const levelGains = input.hpLevelGains ?? [];
+      const hasMixedLevel = levelGains.some((g) => g.familyIds.length >= 2);
+      const detailed = isHybridLevel1 || hasMixedLevel;
+      const con = abilities.CON;
+      const conLabel = con >= 0 ? `+ CON ${con}` : `− CON ${Math.abs(con)}`;
+      const familyName = (id: FamilyId): string => familyById.get(id)?.name ?? id;
       const terms: BreakdownTerm[] = [];
+
+      // --- Niveau 1 : PV de base ---
       if (isHybridLevel1) {
-        // Une sous-ligne par profil hybride : « Famille X — N PV de base ».
-        for (const familyId of hybridFamilies) {
+        // Un profil hybride additionne les PV de base de ses deux profils (p. 180).
+        for (const familyId of hybridLevel1Families) {
           const f = familyById.get(familyId);
           terms.push({
-            label: `Famille des ${f?.name ?? familyId} (PV de base du profil)`,
+            label: `Niveau 1 · ${familyName(familyId)} (PV de base du profil, p. 180)`,
             value: f?.baseHp ?? 0,
           });
         }
       } else {
         terms.push({
-          label: `Famille de profil (2 × ${family.baseHp} PV de base)`,
+          label: `Niveau 1 · Famille de profil (2 × ${family.baseHp} PV de base, p. 30)`,
           value: 2 * family.baseHp,
         });
       }
-      terms.push({ label: 'Constitution (CON)', value: abilities.CON });
+      terms.push({ label: 'Niveau 1 · Constitution (CON)', value: con });
+
+      // --- Niveaux 2 et suivants ---
       if (level > 1) {
-        // Composante « famille » des niveaux 2+ : gains hybrides s'ils sont
-        // fournis (niveaux mixtes, p. 177), sinon hpPerLevel × (niveau − 1).
-        const familyPart = input.hpFamilyGains
-          ? input.hpFamilyGains.reduce((s, g) => s + g, 0)
-          : family.hpPerLevel * (level - 1);
-        terms.push({
-          label: `Niveaux 2 à ${level} (famille + CON ${abilities.CON} par niveau)`,
-          value: familyPart + abilities.CON * (level - 1),
-        });
+        if (detailed) {
+          // Une ligne par niveau : gain de la famille (ou moyenne d'un niveau
+          // mixte) + CON, pour suivre exactement la règle p. 177.
+          for (const g of levelGains) {
+            let label: string;
+            if (g.familyIds.length >= 2) {
+              const values = g.familyIds.map((id) => familyById.get(id)?.hpPerLevel ?? 0);
+              const rawAverage = values.reduce((s, v) => s + v, 0) / values.length;
+              const detail = g.familyIds
+                .map((id, i) => `${familyName(id)} ${values[i]}`)
+                .join(' / ');
+              if (Number.isInteger(rawAverage)) {
+                label = `Niveau ${g.level} · niveau mixte : moyenne ${detail} = ${g.familyGain}, ${conLabel} (p. 177)`;
+              } else {
+                const direction = g.familyGain < rawAverage ? 'inférieur' : 'supérieur';
+                label = `Niveau ${g.level} · niveau mixte : moyenne ${detail} = ${frenchNum(rawAverage)} → arrondi à ${g.familyGain} (demi-PV ${direction}, alterné), ${conLabel} (p. 177)`;
+              }
+            } else {
+              label = `Niveau ${g.level} · ${familyName(g.familyIds[0])} (${g.familyGain} PV), ${conLabel} (p. 39)`;
+            }
+            terms.push({ label, value: g.familyGain + con });
+          }
+        } else {
+          // Mono-famille : gain constant par niveau, présenté de façon compacte.
+          const familyPart = levelGains.length
+            ? levelGains.reduce((s, g) => s + g.familyGain, 0)
+            : family.hpPerLevel * (level - 1);
+          terms.push({
+            label: `Niveaux 2 à ${level} (${family.hpPerLevel} PV de famille ${conLabel} par niveau, p. 39)`,
+            value: familyPart + con * (level - 1),
+          });
+        }
       }
+
       terms.push(...mod('Capacités / divers', mods.maxHp));
-      // En hybridation au niveau 1, renvoie vers la règle p. 180 (PV des deux
-      // profils additionnés) ; sinon la règle générale des PV (p. 30).
-      const note = isHybridLevel1
-        ? 'Profil hybride : au niveau 1, on additionne les PV de base de chaque profil au lieu de doubler ceux d’un seul (p. 180).'
-        : undefined;
-      return { terms, total: sum(terms), note, page: isHybridLevel1 ? 180 : 30 };
+
+      const note = detailed
+        ? "Profil hybride. Au niveau 1, on additionne les PV de base de chaque profil au lieu de doubler ceux d'un seul (p. 180). À chaque niveau suivant, on gagne les PV de la famille des capacités prises ce niveau-là ; si elles relèvent de deux familles différentes (« niveau mixte »), on prend la moyenne des deux, en arrondissant les demi-PV une fois à l'inférieur, une fois au supérieur, en alternance (p. 177). La Constitution s'ajoute à chaque niveau (p. 30 et 39)."
+        : "PV au niveau 1 = 2 × PV de base de la famille + CON (p. 30) ; chaque niveau suivant ajoute les PV de la famille + CON (p. 39).";
+      // Lien de source principal : niveaux mixtes (p. 177) s'il y en a, sinon
+      // base hybride du niveau 1 (p. 180), sinon règle générale (p. 30) ; les
+      // autres pages pertinentes sont citées dans la note ci-dessus.
+      const page = hasMixedLevel ? 177 : isHybridLevel1 ? 180 : 30;
+      return { terms, total: sum(terms), note, page };
     }
     case 'defense': {
       const cappedAgi =

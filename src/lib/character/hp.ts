@@ -17,7 +17,7 @@
  * est identique à la formule fermée de `maxHp`).
  */
 import type { FamilyId, Family } from '@/data/schema';
-import type { RulesContext } from '@/lib/engine';
+import type { HpLevelGain, RulesContext } from '@/lib/engine';
 import { classPathFamily } from '@/lib/engine';
 import type { Character } from './types';
 
@@ -51,11 +51,12 @@ function levelFamilies(
 }
 
 /**
- * Composante « famille » du gain de PV (hors CON) pour chaque niveau du 2 au
- * niveau courant, dans l'ordre — l'arrondi alterné des demi-PV en dépend.
- * Renvoie un tableau de longueur `level - 1` (vide au niveau 1).
+ * Composition du gain de PV de chaque niveau (du 2 au niveau courant), dans
+ * l'ordre — l'arrondi alterné des demi-PV en dépend. Pour chaque niveau : les
+ * familles concernées et le gain « famille » (hors CON). Source de vérité du
+ * calcul ; `familyHpGains` n'en extrait que les nombres. Vide au niveau 1.
  */
-export function familyHpGains(character: Character, ctx: RulesContext): number[] {
+export function hpLevelGains(character: Character, ctx: RulesContext): HpLevelGain[] {
   const mainFamily = mainFamilyOf(character, ctx);
   if (!mainFamily) return [];
 
@@ -67,28 +68,41 @@ export function familyHpGains(character: Character, ctx: RulesContext): number[]
     idsByLevel.set(entry.level, list);
   }
 
-  const gains: number[] = [];
+  const result: HpLevelGain[] = [];
   // Nombre de demi-PV déjà arrondis : pair → inférieur, impair → supérieur.
   let halfRoundings = 0;
   for (let level = 2; level <= character.level; level++) {
     const families = levelFamilies(idsByLevel.get(level) ?? [], mainFamily.id, ctx);
     if (families.size <= 1) {
       const only = families.size === 1 ? ctx.familyById.get([...families][0]) : undefined;
-      gains.push((only ?? mainFamily).hpPerLevel);
+      const family = only ?? mainFamily;
+      result.push({ level, familyIds: [family.id], familyGain: family.hpPerLevel });
       continue;
     }
     // Niveau mixte : moyenne des PV des familles concernées (au plus deux, vu le
     // budget de 2 points de capacité par niveau).
-    const values = [...families].map((f) => ctx.familyById.get(f)?.hpPerLevel ?? mainFamily.hpPerLevel);
+    const familyIds = [...families];
+    const values = familyIds.map((f) => ctx.familyById.get(f)?.hpPerLevel ?? mainFamily.hpPerLevel);
     const average = values.reduce((sum, v) => sum + v, 0) / values.length;
+    let familyGain: number;
     if (Number.isInteger(average)) {
-      gains.push(average);
+      familyGain = average;
     } else {
-      gains.push(halfRoundings % 2 === 0 ? Math.floor(average) : Math.ceil(average));
+      familyGain = halfRoundings % 2 === 0 ? Math.floor(average) : Math.ceil(average);
       halfRoundings++;
     }
+    result.push({ level, familyIds, familyGain });
   }
-  return gains;
+  return result;
+}
+
+/**
+ * Composante « famille » du gain de PV (hors CON) pour chaque niveau du 2 au
+ * niveau courant, dans l'ordre. Vue numérique de `hpLevelGains`, consommée par
+ * le moteur (`maxHp`). Renvoie un tableau de longueur `level - 1` (vide au niveau 1).
+ */
+export function familyHpGains(character: Character, ctx: RulesContext): number[] {
+  return hpLevelGains(character, ctx).map((g) => g.familyGain);
 }
 
 /**

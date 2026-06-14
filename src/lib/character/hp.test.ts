@@ -5,7 +5,7 @@ import { progression } from '@/data/progression';
 import type { FamilyId } from '@/data/schema';
 import { maxHp, type RulesContext } from '@/lib/engine';
 import { SCHEMA_VERSION, type Character, type LevelUpEntry } from './types';
-import { familyHpGains, level1FamilyHp, level1HybridFamilies } from './hp';
+import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from './hp';
 
 const ctx: RulesContext = {
   featureById,
@@ -175,5 +175,26 @@ describe('level1HybridFamilies', () => {
       levelUpHistory: history({ level: 1, chosenFeatureIds: ['rage-r1', 'pourfendeur-r1', 'humain-r1'] }),
     });
     expect(level1HybridFamilies(c, ctx)).toEqual([]);
+  });
+});
+
+describe('hpLevelGains', () => {
+  it('détaille chaque niveau : familles concernées + gain (niveau mixte → moyenne)', () => {
+    const c = makeCharacter({
+      classId: 'magicien',
+      level: 3,
+      levelUpHistory: history(
+        { level: 1, chosenFeatureIds: [] },
+        { level: 2, chosenFeatureIds: ['air-r1', 'artilleur-r1'] },
+        { level: 3, chosenFeatureIds: ['air-r2', 'artilleur-r2'] },
+      ),
+    });
+    const gains = hpLevelGains(c, ctx);
+    expect(gains).toEqual([
+      { level: 2, familyIds: ['mages', 'adventurers'], familyGain: 3 },
+      { level: 3, familyIds: ['mages', 'adventurers'], familyGain: 4 },
+    ]);
+    // Cohérence avec la vue numérique consommée par le moteur.
+    expect(gains.map((g) => g.familyGain)).toEqual(familyHpGains(c, ctx));
   });
 });

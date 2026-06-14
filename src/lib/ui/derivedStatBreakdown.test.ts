@@ -106,11 +106,32 @@ describe('derivedStatBreakdown ↔ deriveStats', () => {
       hpLevel1Family: 9,
       hpLevel1Families: ['fighters', 'mystics'],
     });
-    expect(bd.page).toBe(180);
+    expect(bd.page).toBe(180); // pas de niveau mixte → base hybride p. 180
     expect(bd.note).toBeTruthy();
-    // Deux sous-lignes de famille (5 et 4) + CON (2) = 11.
-    expect(bd.terms.filter((t) => t.label.startsWith('Famille des'))).toHaveLength(2);
+    // Deux sous-lignes « Niveau 1 · <famille> » (5 et 4) + CON (2) = 11.
+    expect(bd.terms.filter((t) => t.label.includes('PV de base du profil'))).toHaveLength(2);
     expect(bd.total).toBe(11);
+  });
+
+  it('PV hybrides niveau 2 mixte : une ligne par niveau, moyenne explicite, renvoi p. 177', () => {
+    // Cas du forgesort/combattant niveau 2 : base 3 + 5 + CON 2 = 10, puis un
+    // niveau mixte moyenne(Mages 3, Combattants 5) = 4, + CON 2 = 6. Total 16.
+    const bd = derivedStatBreakdown('maxHp', {
+      abilities: abilities({ CON: 2 }),
+      level: 2,
+      family: family('mages'),
+      defenseEquipment: { defBonus: 0, maxAgi: null },
+      spellCount: 0,
+      hpLevel1Family: 8,
+      hpLevel1Families: ['mages', 'fighters'],
+      hpFamilyGains: [4],
+      hpLevelGains: [{ level: 2, familyIds: ['mages', 'fighters'], familyGain: 4 }],
+    });
+    expect(bd.page).toBe(177); // niveau mixte → p. 177
+    const mixedLine = bd.terms.find((t) => t.label.includes('niveau mixte'));
+    expect(mixedLine?.label).toContain('moyenne');
+    expect(mixedLine?.value).toBe(6); // 4 (famille) + 2 (CON)
+    expect(bd.total).toBe(16);
   });
 
   it('mana : pas de détail ni de total quand aucun sort connu', () => {

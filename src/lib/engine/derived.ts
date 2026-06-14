@@ -37,6 +37,22 @@ export interface DerivedMods {
   magicAttack?: number;
 }
 
+/**
+ * Composition du gain de PV d'un niveau (≥ 2) pour un profil hybride, à des fins
+ * d'affichage uniquement (infobulle des PV). Voir `hpLevelGains` dans `hp.ts`.
+ */
+export interface HpLevelGain {
+  /** Niveau concerné (2 au niveau courant). */
+  level: number;
+  /**
+   * Familles de profil des capacités prises à ce niveau : une seule (gain = PV
+   * de cette famille) ou deux (niveau « mixte » → moyenne, p. 177).
+   */
+  familyIds: FamilyId[];
+  /** PV « famille » attribués à ce niveau, avant CON (moyenne arrondie si mixte). */
+  familyGain: number;
+}
+
 /** Contribution de l'équipement porté au calcul de la défense. */
 export interface DefenseEquipment {
   /** Somme des bonus de DEF (armure + bouclier). */
@@ -216,6 +232,14 @@ export interface DerivedInput {
    * Sa somme de `baseHp` doit valoir `hpLevel1Family`. Vide → profil standard.
    */
   hpLevel1Families?: FamilyId[];
+  /**
+   * Détail UNIQUEMENT pour l'affichage (infobulle) : composition du gain de PV
+   * de chaque niveau (du 2 au niveau courant), pour expliquer pas à pas le
+   * calcul d'un profil hybride (familles concernées, moyenne d'un niveau mixte,
+   * p. 177). N'entre pas dans le calcul du moteur (`hpFamilyGains` porte les
+   * nombres) ; ses `familyGain` doivent correspondre à `hpFamilyGains`.
+   */
+  hpLevelGains?: HpLevelGain[];
   /** Modificateurs plats issus des capacités/surcharges. */
   mods?: DerivedMods;
 }
