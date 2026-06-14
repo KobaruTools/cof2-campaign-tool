@@ -244,6 +244,11 @@ export interface ResolvedPart {
   symbol: string;
   /** Valeur numérique du terme (déjà multipliée par le coeff) ; `null` pour un dé. */
   value: number | null;
+  /**
+   * Multiplicateur du terme (ex. `CHA × 100` → 100), pour rendre la dérivation
+   * explicite à l'affichage (« 5 × 100 = 500 »). Absent = pas de multiplicateur.
+   */
+  coeff?: number;
   /** Présent si le terme est un dé, avec sa valeur concrète au niveau courant. */
   die?: { count: number; displayDie: Die; evolving: boolean };
 }
@@ -287,6 +292,7 @@ export function resolveExpr(
           label: `${ABILITY_NAMES[term.ability]} (${term.ability})`,
           symbol: withCoeff(term.ability, term.coeff),
           value: abilities[term.ability] * (term.coeff ?? 1),
+          coeff: term.coeff,
         };
       case 'rank':
         return {
@@ -295,6 +301,7 @@ export function resolveExpr(
           label: 'Rang',
           symbol: withCoeff('rang', term.coeff),
           value: rank * (term.coeff ?? 1),
+          coeff: term.coeff,
         };
       case 'level':
         return {
@@ -303,6 +310,7 @@ export function resolveExpr(
           label: 'Niveau',
           symbol: withCoeff('niveau', term.coeff),
           value: level * (term.coeff ?? 1),
+          coeff: term.coeff,
         };
       case 'number':
         return {

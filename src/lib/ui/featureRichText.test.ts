@@ -231,6 +231,8 @@ describe('resolveExpr — évaluation', () => {
     >;
     expect(resolveExpr(cha.terms, abilities, 1, progression).total).toBe(400); // CHA 4 × 100
     expect(resolveExpr(cha.terms, abilities, 1, progression).parts[0].symbol).toBe('CHA × 100');
+    // Le coeff est exposé pour expliciter la dérivation (« 5 × 100 ») dans l'info-bulle.
+    expect(resolveExpr(cha.terms, abilities, 1, progression).parts[0].coeff).toBe(100);
 
     const niv = parseRichText('[niveau × 5]')[0] as Extract<
       ReturnType<typeof parseRichText>[number],

@@ -159,14 +159,38 @@ function symbolicFormula(resolved: ResolvedExpr): string {
  * simple nombre — PAS comme un modificateur signé (« 5 minutes », pas
  * « CHA (+5) minutes »). L'info-bulle rappelle la dérivation (« CHA × 100 = 500 »).
  */
+/**
+ * Dérivation lisible d'une quantité, multiplicateur explicité (« 5 × 100 = 500 »)
+ * pour la clarté/accessibilité. Un seul terme nommé → libellé complet ; sinon une
+ * expression valuée.
+ */
+function quantityTooltip(resolved: ResolvedExpr): string {
+  // Valeur de base d'un terme (avant multiplicateur), pour montrer « 5 × 100 ».
+  const valued = (p: (typeof resolved.parts)[number]): string => {
+    if (p.kind === 'number') return String(p.value);
+    if (p.coeff !== undefined && p.value != null) {
+      return `${p.symbol.split(' × ')[0]} (${p.value / p.coeff}) × ${p.coeff}`;
+    }
+    return p.value != null ? `${p.symbol} (${p.value})` : p.symbol;
+  };
+  if (resolved.parts.length === 1) {
+    const p = resolved.parts[0];
+    if (p.kind === 'number') return String(p.value);
+    const detail =
+      p.coeff !== undefined && p.value != null ? ` : ${p.value / p.coeff} × ${p.coeff}` : '';
+    return `${p.label}${detail} = ${resolved.total}`;
+  }
+  const body = resolved.parts
+    .map((p, i) => (i > 0 ? `${p.sign === -1 ? ' − ' : ' + '}` : p.sign === -1 ? '− ' : '') + valued(p))
+    .join('');
+  return `${body} = ${resolved.total}`;
+}
+
 function QuantityValue({ resolved }: { resolved: ResolvedExpr }) {
   // Quantité déterministe attendue ; au cas (théorique) où un dé s'y glisse, on
   // se rabat sur la forme symbolique pour ne rien afficher de faux.
   const display = resolved.total != null ? String(resolved.total) : symbolicFormula(resolved);
-  const tooltip =
-    resolved.parts.length === 1 && resolved.parts[0].kind !== 'number'
-      ? `${resolved.parts[0].label} = ${resolved.total}`
-      : `${symbolicFormula(resolved)} = ${resolved.total}`;
+  const tooltip = resolved.total != null ? quantityTooltip(resolved) : symbolicFormula(resolved);
   return (
     <Tooltip title={tooltip} arrow>
       <Box
