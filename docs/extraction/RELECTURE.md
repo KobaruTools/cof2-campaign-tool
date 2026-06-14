@@ -26,7 +26,7 @@ chaque entité porte sa `sourcePage`. Le Compagnon n'a jamais été ouvert.
 | Agrégat | `src/data/index.ts` | Collections plates + index par id |
 
 **Totaux (rapportés par `scripts/validate-data.ts`)** : 8 peuples · 14 profils ·
-132 voies (70 profil + 7 peuple + voie du mage + 54 prestige) · 656 capacités
+132 voies (70 profil + 7 peuple + voie du mage + 54 prestige) · 660 capacités
 (dont 198 sorts) · 92 objets d'équipement.
 
 **Notes de règles pour le moteur (J3)**, dans `docs/extraction/` :

@@ -1,6 +1,6 @@
 # Inventaire et classification des capacités (PER-62)
 
-> Passe **purement analytique** sur les **656** capacités du catalogue (2 passes croisées, réconciliées).
+> Passe **purement analytique** sur les **660** capacités du catalogue (2 passes croisées, réconciliées).
 > Source machine : `src/data/feature-classification.ts`. Aucun code moteur, aucun changement de schéma de règles.
 
 ## Tags de nature
@@ -23,11 +23,11 @@
 | `flat-bonus` | 108 |
 | `choice` | 95 |
 | `mana-cost` | 14 |
-| `conditional` | 581 |
+| `conditional` | 580 |
 | `immunity` | 21 |
-| `pure-text` | 3 |
+| `pure-text` | 8 |
 
-**Sous-types conditionnels** (occurrences) : `condition` 443 · `temporary` 287 · `scaling` 262. 12 capacités `conditional` sans sous-type isolable (manœuvres actives).
+**Sous-types conditionnels** (occurrences) : `condition` 443 · `temporary` 287 · `scaling` 261. 12 capacités `conditional` sans sous-type isolable (manœuvres actives).
 
 ## Par famille
 
@@ -39,7 +39,7 @@
 | Mystiques (chap. 4, p. 61-77) | 75 | 20 | 6 | 2 | 67 | 2 | 0 |
 | Voies de peuple (chap. 3) + voie du mage (p. 60) | 40 | 18 | 8 | 1 | 22 | 2 | 0 |
 | Voies de prestige — partie 1 (chap. 8, p. 128+) | 85 | 15 | 19 | 1 | 72 | 0 | 1 |
-| Voies de prestige — partie 2 (chap. 8, p. 128+) | 181 | 9 | 32 | 6 | 165 | 12 | 2 |
+| Voies de prestige — partie 2 (chap. 8, p. 128+) | 185 | 9 | 32 | 6 | 164 | 12 | 7 |
 
 ## Capacités à immunité (21)
 
@@ -656,7 +656,11 @@
 | `prestige-elementaliste-r6` | Invocation d'élémentaire | `choice` `conditional` | `condition` `temporary` | 157 |
 | `prestige-elementaliste-r7` | Élément puissant | `conditional` | `condition` | 157 |
 | `prestige-elementaliste-r8` | Métamorphose élémentaire | `choice` `conditional` `immunity` | `condition` `temporary` | 157 |
-| `prestige-enchanteur-r4` | Enchantement | `conditional` | `scaling` | 157 |
+| `prestige-enchanteur-r4` | Enchantement | `pure-text` | — | 157 |
+| `prestige-enchanteur-r5` | Enchantement | `pure-text` | — | 157 |
+| `prestige-enchanteur-r6` | Enchantement | `pure-text` | — | 157 |
+| `prestige-enchanteur-r7` | Enchantement | `pure-text` | — | 157 |
+| `prestige-enchanteur-r8` | Enchantement | `pure-text` | — | 157 |
 | `prestige-gel-r4` | Verglas | `conditional` | `condition` `temporary` | 157 |
 | `prestige-gel-r5` | Cœur de glace | `immunity` | — | 157 |
 | `prestige-gel-r6` | Souffle glacial | `conditional` | `condition` | 157 |

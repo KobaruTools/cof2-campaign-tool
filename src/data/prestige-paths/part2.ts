@@ -276,8 +276,14 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'mage',
     prerequisites: 'Requis : au moins une voie de magie jusqu’au rang 4',
-    note: "Il est des mages qui se spécialisent dans la fabrication d'objets magiques (voir le chapitre « Objets magiques », page 242).\n\nCette voie est atypique : une seule capacité couvrant les rangs 4 à 8 (modélisée ici comme capacité de rang 4).",
-    featureIds: ['prestige-enchanteur-r4'],
+    note: "Il est des mages qui se spécialisent dans la fabrication d'objets magiques (voir le chapitre « Objets magiques », page 242).\n\nLa capacité « Enchantement » est identique à chaque rang ; seul le niveau de magie maximal des objets enchantables augmente (niveau de magie maximal = rang atteint dans la voie – 3).",
+    featureIds: [
+      'prestige-enchanteur-r4',
+      'prestige-enchanteur-r5',
+      'prestige-enchanteur-r6',
+      'prestige-enchanteur-r7',
+      'prestige-enchanteur-r8',
+    ],
     sourcePage: 157,
   },
   {
@@ -1524,6 +1530,8 @@ export const prestigeFeatures2: Feature[] = [
   },
 
   // ----- Voie de l'enchanteur (p. 157) -----
+  // La même capacité « Enchantement » à chaque rang ; seul le niveau de magie
+  // maximal des objets enchantables augmente (niveau = rang atteint – 3).
   {
     id: 'prestige-enchanteur-r4',
     name: 'Enchantement',
@@ -1532,7 +1540,51 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: false,
     actionTypes: [],
     text:
-      "Rangs 4 à 8 : Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à [rang atteint dans la voie – 3] (donc niveau de magie 1 au rang 4). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
+      "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à 1 (voir le chapitre « Objets magiques », page 242). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
+    sourcePage: 157,
+  },
+  {
+    id: 'prestige-enchanteur-r5',
+    name: 'Enchantement',
+    pathId: 'prestige-enchanteur',
+    rank: 5,
+    isSpell: false,
+    actionTypes: [],
+    text:
+      "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à 2 (voir le chapitre « Objets magiques », page 242). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
+    sourcePage: 157,
+  },
+  {
+    id: 'prestige-enchanteur-r6',
+    name: 'Enchantement',
+    pathId: 'prestige-enchanteur',
+    rank: 6,
+    isSpell: false,
+    actionTypes: [],
+    text:
+      "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à 3 (voir le chapitre « Objets magiques », page 242). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
+    sourcePage: 157,
+  },
+  {
+    id: 'prestige-enchanteur-r7',
+    name: 'Enchantement',
+    pathId: 'prestige-enchanteur',
+    rank: 7,
+    isSpell: false,
+    actionTypes: [],
+    text:
+      "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à 4 (voir le chapitre « Objets magiques », page 242). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
+    sourcePage: 157,
+  },
+  {
+    id: 'prestige-enchanteur-r8',
+    name: 'Enchantement',
+    pathId: 'prestige-enchanteur',
+    rank: 8,
+    isSpell: false,
+    actionTypes: [],
+    text:
+      "Le personnage peut enchanter des objets magiques dont le niveau de magie maximal est égal à 5 (voir le chapitre « Objets magiques », page 242). Si vous jouez avec le module high fantasy (voir Atlas d'Osgild & règles optionnelles), vous pouvez si vous le souhaitez doubler ce niveau.",
     sourcePage: 157,
   },
 

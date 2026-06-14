@@ -1,7 +1,7 @@
 /**
  * Inventaire et classification analytique des capacités — ticket PER-62.
  *
- * Passe PUREMENT ANALYTIQUE sur les 656 capacités du catalogue (toutes familles
+ * Passe PUREMENT ANALYTIQUE sur les 660 capacités du catalogue (toutes familles
  * confondues). Pour chaque capacité : un ou plusieurs tags de nature mécanique
  * (+ sous-types pour les effets conditionnels) et sa page source. Point de
  * contrôle « validation propriétaire » de la méthode du projet (schéma →
@@ -661,7 +661,11 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'prestige-elementaliste-r6', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 157 }, // Invocation d'élémentaire
   { id: 'prestige-elementaliste-r7', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 157 }, // Élément puissant
   { id: 'prestige-elementaliste-r8', tags: ['choice', 'conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 157 }, // Métamorphose élémentaire
-  { id: 'prestige-enchanteur-r4', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 157 }, // Enchantement
+  { id: 'prestige-enchanteur-r4', tags: ['pure-text'], sourcePage: 157 }, // Enchantement (niveau 1 — fabrication d'objets, hors stats)
+  { id: 'prestige-enchanteur-r5', tags: ['pure-text'], sourcePage: 157 }, // Enchantement (niveau 2 — fabrication d'objets, hors stats)
+  { id: 'prestige-enchanteur-r6', tags: ['pure-text'], sourcePage: 157 }, // Enchantement (niveau 3 — fabrication d'objets, hors stats)
+  { id: 'prestige-enchanteur-r7', tags: ['pure-text'], sourcePage: 157 }, // Enchantement (niveau 4 — fabrication d'objets, hors stats)
+  { id: 'prestige-enchanteur-r8', tags: ['pure-text'], sourcePage: 157 }, // Enchantement (niveau 5 — fabrication d'objets, hors stats)
   { id: 'prestige-gel-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 157 }, // Verglas
   { id: 'prestige-gel-r5', tags: ['immunity'], sourcePage: 157 }, // Cœur de glace
   { id: 'prestige-gel-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 157 }, // Souffle glacial
