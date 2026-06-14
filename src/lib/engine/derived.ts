@@ -14,7 +14,7 @@
  * fourni par l'appelant (saisies, surcharges, ou future couche d'effets
  * structurés). Il ne tente jamais d'interpréter le texte d'une capacité.
  */
-import type { AbilityId, DerivedStatId, Die, Family, FamilyId, ProgressionRules } from '@/data/schema';
+import type { AbilityId, DerivedStatId, Die, Family, FamilyId, Feature, ProgressionRules } from '@/data/schema';
 
 export type Abilities = Record<AbilityId, number>;
 
@@ -147,6 +147,28 @@ export function luckPoints(cha: number, family: Family, mods: DerivedMods = {}):
 export function manaPoints(vol: number, spellCount: number, mods: DerivedMods = {}): number | null {
   if (spellCount <= 0) return null;
   return Math.max(0, vol + spellCount + m(mods.manaPoints));
+}
+
+/**
+ * Coût de base, en points de mana, pour lancer un sort donné — pendant du calcul
+ * de la réserve (`manaPoints`) : la réserve est ce dont on dispose, ce coût est
+ * ce qu'on dépense à chaque lancement (p. 228).
+ *
+ * Règle (p. 228) : « Lancer un sort coûte un nombre de points de mana égal au
+ * rang de la capacité à laquelle il est associé. » Le coût se dérive donc du
+ * `rank` ; `feature.manaCost`, quand il est présent, porte la DÉROGATION
+ * verbatim du sort (coût fixe différent, ou 0 = gratuit — cf. `schema.ts`).
+ *
+ * Retourne `null` pour une capacité qui n'est pas un sort (elle ne dépense pas
+ * de mana). Ne modélise PAS les réductions dynamiques (Concentration, arme
+ * élémentaire…) ni le surcoût d'armure : celles-ci s'appliquent par-dessus ce
+ * coût de base, dans leurs couches dédiées.
+ */
+export function spellManaCost(
+  feature: Pick<Feature, 'isSpell' | 'rank' | 'manaCost'>,
+): number | null {
+  if (!feature.isSpell) return null;
+  return Math.max(0, feature.manaCost ?? feature.rank);
 }
 
 // ---------------------------------------------------------------------------

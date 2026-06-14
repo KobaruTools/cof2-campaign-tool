@@ -164,6 +164,18 @@ for (const c of features) {
   }
 }
 
+// --- Coût de base en mana (PER-65) -------------------------------------------
+// Dérogation explicite au coût standard (= rang du sort, p. 228). On vérifie
+// que le champ ne porte que des entiers >= 0 et n'apparaît que sur des sorts.
+let spellsWithManaCost = 0;
+for (const c of features) {
+  if (c.manaCost === undefined) continue;
+  spellsWithManaCost++;
+  if (!c.isSpell) err(`[capacite ${c.id}] manaCost défini sur une capacité qui n'est pas un sort`);
+  if (!Number.isInteger(c.manaCost) || c.manaCost < 0)
+    err(`[capacite ${c.id}] manaCost invalide : ${c.manaCost} (entier >= 0 attendu)`);
+}
+
 // --- Rapport -----------------------------------------------------------------
 const spells = features.filter((c) => c.isSpell).length;
 console.log('=== Comptages ===');
@@ -176,6 +188,7 @@ console.log(`  · de prestige    : ${prestigePaths.length}`);
 console.log(`capacités (total)  : ${features.length}  (dont sorts * : ${spells})`);
 console.log(`  · classées       : ${FEATURE_CLASSIFICATIONS.length}  (dont TODO(extraction) : ${classifTodos})`);
 console.log(`  · avec effects   : ${featuresWithEffects}`);
+console.log(`  · coût mana dérogé : ${spellsWithManaCost} (sinon = rang, p. 228)`);
 console.log(`équipement (total) : ${equipment.length}`);
 console.log('');
 console.log(`=== Avertissements (${warnings.length}) ===`);

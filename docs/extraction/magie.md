@@ -64,6 +64,7 @@
 - Coût en PM = rang de la capacité du sort.
 - L'exemple révèle la formule du capital de PM : somme des rangs des sorts connus + VOL (1 + 1 + 2 + 2 = 5). `TODO(extraction)` : la règle générale du calcul des PM max est définie ailleurs (chapitre création/caractéristiques) — à confirmer avec sa page source avant de coder.
 - PM insuffisants → lancement interdit (sauf brûlure de mana).
+- **Structuration (PER-65)** : le coût de base n'est PAS dupliqué dans les données — il se dérive du `rank` via `spellManaCost` (`src/lib/engine/derived.ts`). Seules les dérogations verbatim portent un champ `manaCost` sur la capacité (`schema.ts`) : coût fixe différent du rang (Rune de garde, rang 5 → « coûte seulement 3 PM » → `manaCost: 3`, p. 101), ou `0` pour un sort gratuit. Les réductions dynamiques (Concentration § 5, arme élémentaire, action de mouvement) et le surcoût d'armure (milestone Armures) se calculent par-dessus ce coût de base, jamais dedans.
 
 ### 4.1 Brûlure de mana
 

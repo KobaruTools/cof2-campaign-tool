@@ -15,9 +15,11 @@ import {
   scalingDie,
   luckPoints,
   manaPoints,
+  spellManaCost,
   maxHp,
   type Abilities,
 } from './derived';
+import { featureById } from '@/data';
 
 const family = (id: string): Family => {
   const f = families.find((x) => x.id === id);
@@ -108,6 +110,36 @@ describe('points de mana', () => {
 
   it('null si aucun sort connu', () => {
     expect(manaPoints(3, 0)).toBeNull();
+  });
+});
+
+describe('coût de base en mana d’un sort (p. 228)', () => {
+  it('= rang du sort par défaut', () => {
+    expect(spellManaCost({ isSpell: true, rank: 1 })).toBe(1);
+    expect(spellManaCost({ isSpell: true, rank: 2 })).toBe(2);
+    // Désintégration, rang 5 → 5 PM (exemple « 5 – 2 – 1 » du livre, p. 103).
+    expect(spellManaCost({ isSpell: true, rank: 5 })).toBe(5);
+  });
+
+  it('utilise la dérogation explicite quand elle est présente', () => {
+    // Rune de garde : rang 5 mais « coûte seulement 3 PM ».
+    expect(spellManaCost({ isSpell: true, rank: 5, manaCost: 3 })).toBe(3);
+    // Sort gratuit.
+    expect(spellManaCost({ isSpell: true, rank: 3, manaCost: 0 })).toBe(0);
+  });
+
+  it('null pour une capacité qui n’est pas un sort', () => {
+    expect(spellManaCost({ isSpell: false, rank: 2 })).toBeNull();
+    expect(spellManaCost({ isSpell: false, rank: 5, manaCost: 3 })).toBeNull();
+  });
+
+  it('preuve sur les données réelles : règle du rang + dérogation', () => {
+    const desintegration = featureById.get('magie-des-arcanes-r5');
+    const projectile = featureById.get('magie-des-arcanes-r1');
+    const runeDeGarde = featureById.get('runes-r5');
+    expect(desintegration && spellManaCost(desintegration)).toBe(5);
+    expect(projectile && spellManaCost(projectile)).toBe(1);
+    expect(runeDeGarde && spellManaCost(runeDeGarde)).toBe(3); // dérogation 3 PM
   });
 });
 

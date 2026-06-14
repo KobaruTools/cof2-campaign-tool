@@ -398,6 +398,26 @@ export interface Feature {
    * tickets aval (effets conditionnels, choix). Absent = aucun effet structuré.
    */
   effects?: FeatureEffect[];
+  /**
+   * Coût de base en points de mana pour LANCER ce sort — DÉROGATION explicite au
+   * coût standard (PER-65). La règle générale (p. 228) est : « Lancer un sort
+   * coûte un nombre de points de mana égal au rang de la capacité à laquelle il
+   * est associé. » On ne duplique donc PAS le rang ici : le coût de base se
+   * dérive du rang (cf. `spellManaCost`, `src/lib/engine/derived.ts`).
+   *
+   * Ce champ ne porte que les EXCEPTIONS énoncées verbatim dans le texte du
+   * sort :
+   * - coût fixe différent du rang (ex. Rune de garde, rang 5 : « coûte seulement
+   *   3 PM pour être lancé » → `manaCost: 3`) ;
+   * - sort gratuit (« aucun coût de mana » sur le lancement lui-même) →
+   *   `manaCost: 0`.
+   *
+   * Absent = le coût suit la règle du rang. N'a de sens que si `isSpell`.
+   * HORS PÉRIMÈTRE (ne PAS encoder ici) : les réductions DYNAMIQUES (Concentration,
+   * arme élémentaire, action de mouvement…) et le surcoût d'armure (milestone
+   * Armures) — ils se calculent par-dessus ce coût de base, pas dedans.
+   */
+  manaCost?: number;
   sourcePage: SourcePage;
 }
 

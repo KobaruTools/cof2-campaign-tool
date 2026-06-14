@@ -955,6 +955,9 @@ export const mageFeatures: Feature[] = [
     actionTypes: [],
     text:
       "En réalisant un rituel de 10 min, le forgesort inscrit des runes invisibles au sol. Il protège une zone allant jusqu’à 10 m de diamètre pendant 12 h. À chaque fois qu’une créature (de taille au moins très petite) pénètre dans la zone protégée, le sort produit un effet choisi (voir ci‑après) au moment où le sort est lancé. Les créatures présentes dans la zone pendant le rituel ne déclenchent pas le sort. Ce sort peut aussi être utilisé sur une porte ou un coffre. Il est automatiquement lancé avec la règle de concentration et coûte seulement 3 PM pour être lancé.\n Alarme : un puissant gong retentit et la cible est étourdie pendant 1 round à moins de réussir un test de CON difficulté 15.\n Feu : [3d4°+INT] DM de feu (un autre élément peut être choisi parmi foudre, froid, acide).",
+    // Dérogation au coût standard (rang 5 → 5 PM) : « coûte seulement 3 PM pour
+    // être lancé » (p. 101). Cf. `manaCost`, schema.ts, et PER-65.
+    manaCost: 3,
     sourcePage: 101,
   },
 
