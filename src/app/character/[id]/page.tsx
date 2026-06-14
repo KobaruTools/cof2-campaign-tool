@@ -33,7 +33,8 @@ import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
-import { FeaturesByPath } from '@/components/sheet/FeaturesByPath';
+import { FeaturesByPath, FeaturesLayoutToggle } from '@/components/sheet/FeaturesByPath';
+import type { FeaturesLayout } from '@/components/sheet/FeaturesByPath';
 import { EquipmentList } from '@/components/sheet/EquipmentList';
 import { IdentityFields } from '@/components/sheet/IdentityFields';
 import { IdentityEditor } from '@/components/sheet/IdentityEditor';
@@ -52,6 +53,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const upsert = useCharactersStore((s) => s.upsert);
   const [editing, setEditing] = useState(false);
   const [levelUpOpen, setLevelUpOpen] = useState(false);
+  const [voiesLayout, setVoiesLayout] = useState<FeaturesLayout>('columns');
 
   // Parallax léger sur les illustrations de l'en-tête. Pour rester fluide, on
   // écrit le transform directement sur le DOM (pas de state React → pas de
@@ -326,10 +328,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             )}
           </SheetSection>
 
-          <SheetSection title="Voies & capacités">
+          <SheetSection
+            title="Voies & capacités"
+            action={<FeaturesLayoutToggle value={voiesLayout} onChange={setVoiesLayout} />}
+          >
             <FeaturesByPath
               featureIds={character.featureIds}
               classId={character.classId}
+              layout={voiesLayout}
               onChange={editing ? setFeatureIds : undefined}
             />
           </SheetSection>

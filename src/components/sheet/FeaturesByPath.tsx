@@ -43,6 +43,13 @@ const PATH_TYPE_ORDER: Record<Path['type'], number> = {
 /** Nombre de colonnes affichées (6 voies maximum, cf. règles CO2). */
 const PATH_COLUMN_COUNT = 6;
 
+/**
+ * Hauteur réservée à l'en-tête de voie en vue colonne. Fixe pour que les blocs
+ * s'alignent horizontalement même quand un nom tient sur deux lignes ou qu'une
+ * colonne fantôme n'a pas de titre.
+ */
+const PATH_HEADER_HEIGHT = 36;
+
 export interface FeatureGroup {
   path: Path | undefined;
   pathId: string;
@@ -83,12 +90,48 @@ function featureOptionLabel(feature: Feature): string {
   return `${pathName} — Rang ${feature.rank} — ${feature.name}${feature.isSpell ? '*' : ''}`;
 }
 
+/** Disposition des voies : empilées (« Lignes ») ou en grille (« Tableau »). */
+export type FeaturesLayout = 'rows' | 'columns';
+
 export interface FeaturesByPathProps {
   featureIds: string[];
   /** Profil du personnage : sert à teinter les voies de profil. */
   classId: string;
+  /** Disposition d'affichage (contrôlée par le parent). */
+  layout: FeaturesLayout;
   /** Édition en place : si fourni, suppression et ajout de capacités. */
   onChange?: (featureIds: string[]) => void;
+}
+
+/** Bascule lignes / tableau, à placer dans l'en-tête de la section. */
+export function FeaturesLayoutToggle({
+  value,
+  onChange,
+}: {
+  value: FeaturesLayout;
+  onChange: (value: FeaturesLayout) => void;
+}) {
+  return (
+    <ToggleButtonGroup
+      value={value}
+      exclusive
+      size="small"
+      onChange={(_, next) => {
+        if (next) onChange(next);
+      }}
+    >
+      <ToggleButton value="rows" aria-label="Affichage en lignes">
+        <Tooltip title="Affichage en lignes" arrow>
+          <ViewStreamIcon fontSize="small" />
+        </Tooltip>
+      </ToggleButton>
+      <ToggleButton value="columns" aria-label="Affichage en colonnes">
+        <Tooltip title="Affichage en colonnes" arrow>
+          <ViewColumnIcon fontSize="small" />
+        </Tooltip>
+      </ToggleButton>
+    </ToggleButtonGroup>
+  );
 }
 
 /** Une voie et ses capacités acquises, chaque capacité dépliable (texte complet). */
@@ -118,6 +161,7 @@ function PathBlock({
         spacing={0.5}
         sx={{
           alignItems: compact ? 'flex-start' : 'center',
+          minHeight: compact ? PATH_HEADER_HEIGHT : undefined,
           mb: compact ? 0.5 : 1,
           pl: compact ? 1 : 1.5,
           borderLeft: 3,
@@ -309,9 +353,8 @@ function GhostBlock() {
         minHeight: 56,
         border: 1,
         borderStyle: 'dashed',
-        borderColor: 'divider',
+        borderColor: (theme) => alpha(theme.palette.text.primary, 0.22),
         borderRadius: 1,
-        opacity: 0.4,
       }}
     />
   );
@@ -320,9 +363,9 @@ function GhostBlock() {
 /** Colonne fantôme : voie potentielle non encore choisie (vue colonne). */
 function GhostColumn() {
   return (
-    <Box aria-hidden sx={{ opacity: 0.5 }}>
+    <Box aria-hidden sx={{ opacity: 0.6 }}>
       {/* Espace vide réservé à la hauteur d'un en-tête de voie, pour aligner les blocs. */}
-      <Box sx={{ mb: 0.5, height: 20 }} />
+      <Box sx={{ mb: 0.5, height: PATH_HEADER_HEIGHT }} />
       <Stack spacing={0.5}>
         {Array.from({ length: 5 }).map((_, i) => (
           <GhostBlock key={i} />
@@ -333,7 +376,7 @@ function GhostColumn() {
 }
 
 /** Toutes les voies acquises d'un personnage, regroupées et consultables / éditables. */
-export function FeaturesByPath({ featureIds, classId, onChange }: FeaturesByPathProps) {
+export function FeaturesByPath({ featureIds, classId, layout, onChange }: FeaturesByPathProps) {
   const groups = groupFeaturesByPath(featureIds);
   const owned = new Set(featureIds);
   const addable = onChange
@@ -346,10 +389,6 @@ export function FeaturesByPath({ featureIds, classId, onChange }: FeaturesByPath
   const add = (featureId: string) => {
     if (!owned.has(featureId)) onChange?.([...featureIds, featureId]);
   };
-
-  // Bascule entre l'affichage vertical historique (« Lignes ») et la grille en
-  // colonnes calquée sur la feuille de personnage (« Tableau »).
-  const [layout, setLayout] = useState<'rows' | 'columns'>('columns');
 
   // La voie de prestige (souvent unique) est épinglée aux dernières colonnes ;
   // les autres voies s'écoulent depuis la gauche (voie du peuple en premier).
@@ -364,27 +403,6 @@ export function FeaturesByPath({ featureIds, classId, onChange }: FeaturesByPath
 
   return (
     <Stack spacing={2.5}>
-      <ToggleButtonGroup
-        value={layout}
-        exclusive
-        size="small"
-        onChange={(_, value) => {
-          if (value) setLayout(value);
-        }}
-        sx={{ alignSelf: 'flex-end' }}
-      >
-        <ToggleButton value="rows" aria-label="Affichage en lignes">
-          <Tooltip title="Affichage en lignes" arrow>
-            <ViewStreamIcon fontSize="small" />
-          </Tooltip>
-        </ToggleButton>
-        <ToggleButton value="columns" aria-label="Affichage en colonnes">
-          <Tooltip title="Affichage en colonnes" arrow>
-            <ViewColumnIcon fontSize="small" />
-          </Tooltip>
-        </ToggleButton>
-      </ToggleButtonGroup>
-
       {groups.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
           Aucune capacité acquise.
