@@ -1,6 +1,6 @@
 # Recensement et format du rendu enrichi des capacités (PER-90)
 
-> Passe de **recensement des spécificités de mise en forme** des 656 capacités, en
+> Passe de **recensement des spécificités de mise en forme** des 660 capacités, en
 > amont de la population de masse (PER-69 à PER-74). But : figer le mini-langage de
 > `Feature.richText` pour qu'il sache exprimer **tous** les cas rencontrés dans le
 > livre, sans avoir à repasser sur des centaines de capacités déjà balisées.
@@ -153,13 +153,25 @@ L'**unité** (« minutes », « m », « km », « PV ») reste en texte littér
 après la quantité — non embarquée dans le balisage (évite la redondance et garde
 le `text` lisible).
 
-## Démos de référence
+## Démos de référence (modèle à copier pour la population)
 
-- **Serviteur invisible** (p. 96) : `… pendant [=CHA] minutes …` → « pendant 5
-  minutes » ; la `@FOR` du serviteur « égale au `[CHA]` » reste un mélange
-  référence + encadré (déjà en place depuis PER-64).
-- **Murmures dans le vent** (p. 93) : `… portée est de [=CHA × 100] m …` → « portée
-  est de 500 m ».
+Capacités déjà balisées à prendre comme **gabarit** lors de la population
+(PER-69 → PER-74). Toutes dans **`src/data/classes/mages.ts`** (chercher l'`id`) :
+
+- **`invocation-r1`** — Choc (p. 96) : formule avec dé évolutif + caractéristique
+  `[1d4° + CHA]`, et référence de stat `@FOR` (test contre la cible). *Démo
+  fondatrice PER-64* (dé, dé dynamique, encadré de formule, référence).
+- **`invocation-r2`** — Serviteur invisible (p. 96) : quantité brute
+  `pendant [=CHA] minutes` → « 5 minutes » ; et `@FOR` « égale au `[CHA]` »
+  (mélange référence + encadré). *Démo PER-90 (stat-quantité).*
+- **`air-r1`** — Murmures dans le vent (p. 93) : quantité avec multiplicateur
+  `portée est de [=CHA × 100] m` → « 500 m » (info-bulle « CHA × 100 = 500 »).
+  *Démo PER-90 (multiplicateur).*
+
+Règle d'or de la population : conserver `text` verbatim intact, **ajouter**
+`richText` ; en cas de cas de mise en forme non prévu par ce doc, le signaler
+(`TODO(extraction)`) plutôt que d'inventer une notation — le balisage non reconnu
+retombe de toute façon proprement en texte littéral.
 
 ## Stabilité
 
