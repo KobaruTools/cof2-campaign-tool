@@ -8,6 +8,7 @@
  */
 import type { AbilityId, Ancestry } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
+import { classById, pathById } from '@/data';
 import { applyModifiers, initialChoices, type AncestryChoice } from './ancestry';
 import { SCHEMA_VERSION, type Character, type EquipmentLine, type Identity } from './types';
 
@@ -34,6 +35,14 @@ export interface WizardDraft {
 
   // Étape voies & capacités
   chosenPaths: string[]; // 2 voies de profil
+  /**
+   * Profil hybride dès la création (p. 179-180) : les 2 voies peuvent provenir
+   * de n'importe quels profils et le profil principal (`classId`) est désigné
+   * parmi les deux profils concernés. Faux → création standard (2 voies du
+   * profil principal). Optionnel pour rester compatible avec un brouillon
+   * persisté avant l'ajout du champ (absent = standard).
+   */
+  hybrid?: boolean;
   /** Mages : la voie du mage remplace la voie de peuple comme « emplacement ». */
   magePathSlot: boolean;
   /** Mages : capacité de rang 2 supplémentaire reçue au niveau 1. */
@@ -73,6 +82,7 @@ export function createDraft(characterId: string, now: string): WizardDraft {
     baseAbilities: abilitiesZero(),
     ancestryChoices: [],
     chosenPaths: [],
+    hybrid: false,
     magePathSlot: false,
     mageBonus: null,
     equipment: [],
@@ -111,6 +121,41 @@ export function level1FeatureIds(draft: WizardDraft): string[] {
 /** Emplacement de voie de peuple effectif (voie du mage si choisie par un mage). */
 export function effectiveAncestryPath(draft: WizardDraft): string | null {
   return draft.magePathSlot ? MAGE_PATH_ID : draft.ancestryPathId;
+}
+
+/**
+ * Profils (ids de profil) dont sont issues les voies de profil choisies. Sert,
+ * pour un profil hybride, à proposer la désignation du profil principal et à
+ * vérifier que celui-ci est bien l'un des deux profils concernés (p. 180). Une
+ * voie partagée par plusieurs profils contribue chacun de ces profils.
+ */
+export function involvedClassIds(chosenPaths: string[]): string[] {
+  const ids = new Set<string>();
+  for (const pathId of chosenPaths) {
+    const path = pathById.get(pathId);
+    if (path?.type === 'class') for (const classId of path.classIds) ids.add(classId);
+  }
+  return [...ids];
+}
+
+/**
+ * L'étape « Voies & capacités » est-elle complète et conforme ? Deux voies
+ * doivent être choisies ; en création standard elles appartiennent au profil
+ * principal, en création hybride elles peuvent venir de n'importe quels profils
+ * mais le profil principal doit être l'un des deux profils concernés (p. 180).
+ * Un mage doit en outre avoir désigné sa capacité de rang 2 supplémentaire.
+ */
+export function pathsStepComplete(draft: WizardDraft): boolean {
+  if (draft.chosenPaths.length !== 2) return false;
+  const characterClass = classById.get(draft.classId);
+  if (!characterClass) return false;
+  if (draft.hybrid) {
+    if (!involvedClassIds(draft.chosenPaths).includes(draft.classId)) return false;
+  } else if (!draft.chosenPaths.every((pathId) => characterClass.pathIds.includes(pathId))) {
+    return false;
+  }
+  if (characterClass.familyId === 'mages') return draft.mageBonus !== null;
+  return true;
 }
 
 /**

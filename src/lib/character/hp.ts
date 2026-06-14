@@ -21,6 +21,11 @@ import type { RulesContext } from '@/lib/engine';
 import { classPathFamily } from '@/lib/engine';
 import type { Character } from './types';
 
+/** Capacités acquises au niveau 1 (entrée d'historique de création). */
+function level1FeatureIds(character: Character): string[] {
+  return character.levelUpHistory.find((e) => e.level === 1)?.chosenFeatureIds ?? [];
+}
+
 /** Famille du profil principal du personnage (via son profil de création). */
 function mainFamilyOf(character: Character, ctx: RulesContext): Family | undefined {
   const characterClass = ctx.classById.get(character.classId);
@@ -84,4 +89,60 @@ export function familyHpGains(character: Character, ctx: RulesContext): number[]
     }
   }
   return gains;
+}
+
+/**
+ * Composante « famille » des PV de base (niveau 1), pour `maxHp`.
+ *
+ * Profil standard : `2 × baseHp` de la famille du profil principal (formule du
+ * livre, p. 30). Profil hybride construit à la création (p. 180) : le
+ * personnage « ajoute les PV de chacun des deux profils dont sont issues ses
+ * capacités », soit la somme des `baseHp` des familles des **deux voies de
+ * profil** choisies au niveau 1 (exemple du livre : barbare 5 + druide 4 = 9).
+ *
+ * La détection se fait sur les voies de profil (`type === 'class'`) acquises au
+ * niveau 1 : voie de peuple et voie du mage ne comptent pas pour cette base.
+ * Tant qu'on ne distingue pas deux voies de profil au niveau 1 (personnages
+ * mono-profil, historique absent ou partiel), on retombe sur `2 × baseHp` —
+ * d'où une compatibilité parfaite avec les personnages standards existants (le
+ * cas standard a bien deux voies de la même famille, dont la somme vaut déjà
+ * `2 × baseHp`).
+ */
+/** Famille de chaque voie de profil distincte acquise au niveau 1, dans l'ordre. */
+function level1ClassPathFamilies(character: Character, ctx: RulesContext): FamilyId[] {
+  const familyByPath = new Map<string, FamilyId>();
+  for (const id of level1FeatureIds(character)) {
+    const feature = ctx.featureById.get(id);
+    if (!feature) continue;
+    const path = ctx.pathById.get(feature.pathId);
+    if (!path || path.type !== 'class') continue;
+    const family = classPathFamily(path, ctx);
+    if (family) familyByPath.set(path.id, family);
+  }
+  return [...familyByPath.values()];
+}
+
+export function level1FamilyHp(character: Character, ctx: RulesContext): number {
+  const mainFamily = mainFamilyOf(character, ctx);
+  if (!mainFamily) return 0;
+
+  const families = level1ClassPathFamilies(character, ctx);
+  // Moins de deux voies de profil identifiées → profil standard (2 × baseHp).
+  if (families.length < 2) return 2 * mainFamily.baseHp;
+
+  return families.reduce(
+    (total, family) => total + (ctx.familyById.get(family)?.baseHp ?? mainFamily.baseHp),
+    0,
+  );
+}
+
+/**
+ * Familles des voies de profil du niveau 1, **uniquement en cas d'hybridation**
+ * (au moins deux familles distinctes), pour détailler le calcul des PV de base
+ * dans l'infobulle. Profil standard (familles identiques ou non identifiées) →
+ * tableau vide : le détail retombe sur la ligne « 2 × PV de base » habituelle.
+ */
+export function level1HybridFamilies(character: Character, ctx: RulesContext): FamilyId[] {
+  const families = level1ClassPathFamilies(character, ctx);
+  return new Set(families).size >= 2 ? families : [];
 }

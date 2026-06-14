@@ -25,7 +25,7 @@ import { checkCompliance } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
 import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { modifierDeltas } from '@/lib/character/ancestry';
-import { familyHpGains } from '@/lib/character/hp';
+import { familyHpGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, undoLastLevelUp } from '@/lib/character/levelUp';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
@@ -150,6 +150,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique à la
         // formule mono-famille pour un profil classique.
         hpFamilyGains: familyHpGains(character, rulesContext),
+        // PV de base d'un profil hybride créé au niveau 1 (somme des deux
+        // familles, p. 180) ; identique à 2 × baseHp pour un profil classique.
+        hpLevel1Family: level1FamilyHp(character, rulesContext),
+        // Détail par famille pour l'infobulle (vide hors hybridation).
+        hpLevel1Families: level1HybridFamilies(character, rulesContext),
       }
     : null;
 

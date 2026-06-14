@@ -17,7 +17,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { ancestryById, classById } from '@/data';
 import { choicesComplete } from '@/lib/character/ancestry';
-import { materializeDraft, type WizardDraft } from '@/lib/character/wizard';
+import { materializeDraft, pathsStepComplete, type WizardDraft } from '@/lib/character/wizard';
 import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
 import {
@@ -66,12 +66,7 @@ const STEPS: StepDef[] = [
   {
     label: 'Voies & capacités',
     Component: PathsStep,
-    valid: (d) => {
-      if (d.chosenPaths.length !== 2) return false;
-      const characterClass = classById.get(d.classId);
-      if (characterClass?.familyId === 'mages') return d.mageBonus !== null;
-      return true;
-    },
+    valid: pathsStepComplete,
   },
   { label: 'Équipement', Component: EquipmentStep, valid: () => true },
   {

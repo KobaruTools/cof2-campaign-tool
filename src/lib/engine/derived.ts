@@ -14,7 +14,7 @@
  * fourni par l'appelant (saisies, surcharges, ou future couche d'effets
  * structurés). Il ne tente jamais d'interpréter le texte d'une capacité.
  */
-import type { AbilityId, Die, Family, ProgressionRules } from '@/data/schema';
+import type { AbilityId, Die, Family, FamilyId, ProgressionRules } from '@/data/schema';
 
 export type Abilities = Record<AbilityId, number>;
 
@@ -61,6 +61,13 @@ const m = (v: number | undefined): number => v ?? 0;
  * mixtes ne rapportent pas tous le même nombre de PV (p. 177). Quand il est
  * fourni, il remplace le terme `(niveau − 1) × hpPerLevel`. Absent → profil
  * mono-famille : on retombe sur la formule fermée.
+ *
+ * `level1FamilyHp` (optionnel) : composante « famille » des PV de base (niveau
+ * 1). Pour un profil standard elle vaut `2 × baseHp` (la valeur par défaut).
+ * Pour un profil hybride construit dès la création (p. 180), le personnage
+ * « ajoute les PV de chacun des deux profils dont sont issues ses capacités »,
+ * soit `baseHp(famille A) + baseHp(famille B)` — c'est cette somme qu'on passe
+ * ici pour remplacer le `2 × baseHp` par défaut.
  */
 export function maxHp(
   level: number,
@@ -68,8 +75,9 @@ export function maxHp(
   con: number,
   mods: DerivedMods = {},
   familyGains?: number[],
+  level1FamilyHp?: number,
 ): number {
-  const base = 2 * family.baseHp + con;
+  const base = (level1FamilyHp ?? 2 * family.baseHp) + con;
   const levelsAbove1 = Math.max(0, level - 1);
   const familyHp = familyGains
     ? familyGains.reduce((sum, g) => sum + g, 0)
@@ -196,6 +204,18 @@ export interface DerivedInput {
    * Voir `maxHp`. Absent pour un profil mono-famille.
    */
   hpFamilyGains?: number[];
+  /**
+   * Composante « famille » des PV de base au niveau 1 (hybride créé au niveau 1,
+   * p. 180). Voir `maxHp`. Absent → `2 × baseHp` (profil standard).
+   */
+  hpLevel1Family?: number;
+  /**
+   * Détail UNIQUEMENT pour l'affichage (infobulle) : familles des deux voies de
+   * profil du niveau 1 en cas d'hybridation, pour détailler le calcul des PV de
+   * base. N'entre pas dans le calcul du moteur (`hpLevel1Family` porte la somme).
+   * Sa somme de `baseHp` doit valoir `hpLevel1Family`. Vide → profil standard.
+   */
+  hpLevel1Families?: FamilyId[];
   /** Modificateurs plats issus des capacités/surcharges. */
   mods?: DerivedMods;
 }
@@ -218,7 +238,7 @@ export function deriveStats(input: DerivedInput): DerivedStats {
   const { abilities, level, family, defenseEquipment, spellCount } = input;
   const mods = input.mods ?? {};
   return {
-    maxHp: maxHp(level, family, abilities.CON, mods, input.hpFamilyGains),
+    maxHp: maxHp(level, family, abilities.CON, mods, input.hpFamilyGains, input.hpLevel1Family),
     recoveryDiceCount: recoveryDiceCount(abilities.CON, family, mods),
     recoveryDie: recoveryDie(family),
     luckPoints: luckPoints(abilities.CHA, family, mods),

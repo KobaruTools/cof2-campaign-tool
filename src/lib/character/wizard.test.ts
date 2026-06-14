@@ -13,6 +13,8 @@ import {
   createDraft,
   materializeDraft,
   effectiveAncestryPath,
+  involvedClassIds,
+  pathsStepComplete,
   type WizardDraft,
 } from './wizard';
 
@@ -129,6 +131,47 @@ describe('capacités de niveau 1', () => {
   it("voie du mage occupe l'emplacement de peuple", () => {
     expect(effectiveAncestryPath(base({ magePathSlot: true }))).toBe('mage');
     expect(effectiveAncestryPath(base())).toBe('humain');
+  });
+});
+
+describe('profil hybride à la création (p. 180)', () => {
+  const draft = (over: Partial<WizardDraft> = {}): WizardDraft => ({
+    ...createDraft('id-h', '2026-01-01T00:00:00.000Z'),
+    classId: 'barbare',
+    chosenPaths: ['rage', 'pourfendeur'],
+    ...over,
+  });
+
+  it('involvedClassIds : profils dont sont issues les voies choisies', () => {
+    // Voie du pagne (barbare) + voie des animaux (druide) — exemple du livre.
+    expect(involvedClassIds(['pagne', 'animaux'])).toEqual(['barbare', 'druide']);
+    expect(involvedClassIds([])).toEqual([]);
+  });
+
+  it('création standard : deux voies du profil principal', () => {
+    expect(pathsStepComplete(draft())).toBe(true);
+    // Une voie hors profil sans mode hybride → incomplet.
+    expect(pathsStepComplete(draft({ chosenPaths: ['rage', 'animaux'] }))).toBe(false);
+    // Moins de deux voies → incomplet.
+    expect(pathsStepComplete(draft({ chosenPaths: ['rage'] }))).toBe(false);
+  });
+
+  it('création hybride : profil principal doit être l’un des profils des voies', () => {
+    expect(
+      pathsStepComplete(draft({ hybrid: true, classId: 'barbare', chosenPaths: ['pagne', 'animaux'] })),
+    ).toBe(true);
+    // Profil principal absent des profils des voies choisies → incomplet.
+    expect(
+      pathsStepComplete(draft({ hybrid: true, classId: 'guerrier', chosenPaths: ['pagne', 'animaux'] })),
+    ).toBe(false);
+  });
+
+  it('mage : la capacité de rang 2 supplémentaire doit être désignée', () => {
+    const mage = draft({ classId: 'magicien', chosenPaths: ['magie-des-arcanes', 'magie-destructrice'] });
+    expect(pathsStepComplete(mage)).toBe(false);
+    expect(
+      pathsStepComplete({ ...mage, mageBonus: { type: 'class-rank2', pathId: 'magie-des-arcanes' } }),
+    ).toBe(true);
   });
 });
 

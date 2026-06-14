@@ -71,6 +71,18 @@ const cases: Array<{ name: string; input: DerivedInput }> = [
       spellCount: 1,
     },
   },
+  {
+    name: 'hybride niveau 1 (PV de base = somme des deux familles, p. 180)',
+    input: {
+      abilities: abilities({ CON: 2 }),
+      level: 1,
+      family: family('fighters'), // profil principal combattant
+      defenseEquipment: { defBonus: 0, maxAgi: null },
+      spellCount: 0,
+      hpLevel1Family: 9, // combattant 5 + mystique 4
+      hpLevel1Families: ['fighters', 'mystics'],
+    },
+  },
 ];
 
 describe('derivedStatBreakdown ↔ deriveStats', () => {
@@ -83,6 +95,23 @@ describe('derivedStatBreakdown ↔ deriveStats', () => {
       }
     });
   }
+
+  it('PV hybrides niveau 1 : une sous-ligne par famille + renvoi p. 180', () => {
+    const bd = derivedStatBreakdown('maxHp', {
+      abilities: abilities({ CON: 2 }),
+      level: 1,
+      family: family('fighters'),
+      defenseEquipment: { defBonus: 0, maxAgi: null },
+      spellCount: 0,
+      hpLevel1Family: 9,
+      hpLevel1Families: ['fighters', 'mystics'],
+    });
+    expect(bd.page).toBe(180);
+    expect(bd.note).toBeTruthy();
+    // Deux sous-lignes de famille (5 et 4) + CON (2) = 11.
+    expect(bd.terms.filter((t) => t.label.startsWith('Famille des'))).toHaveLength(2);
+    expect(bd.total).toBe(11);
+  });
 
   it('mana : pas de détail ni de total quand aucun sort connu', () => {
     const bd = derivedStatBreakdown('manaPoints', cases[0].input);

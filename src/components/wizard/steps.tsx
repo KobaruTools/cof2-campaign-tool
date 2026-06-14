@@ -61,10 +61,12 @@ import {
 } from '@/lib/character/ancestry';
 import {
   finalAbilities,
+  involvedClassIds,
   level1FeatureIds,
   materializeDraft,
   type WizardDraft,
 } from '@/lib/character/wizard';
+import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { pickName } from '@/lib/character/names';
 import {
   defenseFromEquipment,
@@ -779,11 +781,32 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
 // Étape 4 — Voies & capacités
 // ---------------------------------------------------------------------------
 
+/** Patch de changement de profil principal : équipement de départ et options de
+ * mage réinitialisés (cohérent avec le choix de profil de l'étape 2). */
+function mainProfilePatch(newClassId: string): Partial<WizardDraft> {
+  const newClass = classById.get(newClassId);
+  if (!newClass) return {};
+  return {
+    classId: newClassId,
+    equipment: initialEquipment(newClass),
+    magePathSlot: false,
+    mageBonus: null,
+  };
+}
+
+/** Famille du profil d'une voie de profil (via son premier profil rattaché). */
+function pathFamilyId(pathId: string): string | undefined {
+  const path = pathById.get(pathId);
+  if (path?.type !== 'class') return undefined;
+  return classById.get(path.classIds[0])?.familyId;
+}
+
 export function PathsStep({ draft, patch }: StepProps) {
   const characterClass = classById.get(draft.classId);
   if (!characterClass) return <Alert severity="warning">Choisissez d’abord un profil.</Alert>;
   const isMage = characterClass.familyId === 'mages';
   const ancestry = ancestryById.get(draft.ancestryId);
+  const hybrid = draft.hybrid ?? false;
 
   const togglePath = (pathId: string) => {
     const has = draft.chosenPaths.includes(pathId);
@@ -796,8 +819,65 @@ export function PathsStep({ draft, patch }: StepProps) {
       draft.mageBonus?.type === 'class-rank2' && !next.includes(draft.mageBonus.pathId)
         ? null
         : draft.mageBonus;
+    // Hybride : si le profil principal n'est plus l'un des profils des voies
+    // choisies, le rebascule sur le premier profil concerné (p. 180).
+    if (hybrid) {
+      const involved = involvedClassIds(next);
+      if (involved.length > 0 && !involved.includes(draft.classId)) {
+        patch({ chosenPaths: next, ...mainProfilePatch(involved[0]) });
+        return;
+      }
+    }
     patch({ chosenPaths: next, mageBonus });
   };
+
+  const setHybrid = (on: boolean) => {
+    if (on) {
+      patch({ hybrid: true });
+      return;
+    }
+    // Repli standard : ne conserver que les voies du profil principal.
+    const kept = draft.chosenPaths.filter((p) => characterClass.pathIds.includes(p));
+    const mageBonus =
+      draft.mageBonus?.type === 'class-rank2' && !kept.includes(draft.mageBonus.pathId)
+        ? null
+        : draft.mageBonus;
+    patch({ hybrid: false, chosenPaths: kept, mageBonus });
+  };
+
+  // Liste de cases à cocher pour les voies d'un profil donné.
+  const pathChecklist = (pathIds: string[]) => (
+    <Stack>
+      {pathIds.map((vid) => {
+        const path = pathById.get(vid);
+        const checked = draft.chosenPaths.includes(vid);
+        const disabled = !checked && draft.chosenPaths.length >= 2;
+        return (
+          <FormControlLabel
+            key={vid}
+            control={
+              <Checkbox checked={checked} disabled={disabled} onChange={() => togglePath(vid)} />
+            }
+            label={path?.name ?? vid}
+          />
+        );
+      })}
+    </Stack>
+  );
+
+  // Hybride : profils autres que le profil principal, avec leurs voies propres
+  // (les voies partagées avec le profil principal sont retirées pour éviter les
+  // doublons).
+  const otherClasses = classes
+    .filter((c) => c.id !== characterClass.id)
+    .map((c) => ({ characterClass: c, pathIds: c.pathIds.filter((p) => !characterClass.pathIds.includes(p)) }))
+    .filter((c) => c.pathIds.length > 0);
+
+  // Profils dont sont issues les voies choisies (pour désigner le principal).
+  const involved = involvedClassIds(draft.chosenPaths);
+  // Voies choisies appartenant à la famille des mages (pour le bonus de rang 2,
+  // « obligatoirement dans la voie de cette famille » — p. 180).
+  const mageRank2Paths = draft.chosenPaths.filter((p) => pathFamilyId(p) === 'mages');
 
   return (
     <Stack spacing={3}>
@@ -809,22 +889,91 @@ export function PathsStep({ draft, patch }: StepProps) {
           Vous recevez gratuitement la capacité de rang 1 de chaque voie choisie, ainsi que le
           rang 1 de votre voie de peuple.
         </Typography>
-        <Stack>
-          {characterClass.pathIds.map((vid) => {
-            const path = pathById.get(vid);
-            const checked = draft.chosenPaths.includes(vid);
-            const disabled = !checked && draft.chosenPaths.length >= 2;
-            return (
-              <FormControlLabel
-                key={vid}
-                control={
-                  <Checkbox checked={checked} disabled={disabled} onChange={() => togglePath(vid)} />
-                }
-                label={path?.name ?? vid}
-              />
-            );
-          })}
-        </Stack>
+
+        <FormControlLabel
+          sx={{ mb: 1 }}
+          control={<Switch size="small" checked={hybrid} onChange={(e) => setHybrid(e.target.checked)} />}
+          label={
+            <Typography variant="body2" color="text.secondary">
+              Profil hybride : voies d’autres profils dès la création (accord du MJ, p. 179-180)
+            </Typography>
+          }
+        />
+
+        {hybrid && (
+          <Typography
+            variant="subtitle2"
+            sx={{ color: classColor(characterClass.id), mt: 1 }}
+          >
+            {characterClass.name} (profil principal)
+          </Typography>
+        )}
+        {pathChecklist(characterClass.pathIds)}
+
+        {hybrid && (
+          <>
+            <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              Voies d’autres profils
+            </Typography>
+            <Stack spacing={1}>
+              {otherClasses.map(({ characterClass: c, pathIds }) => {
+                const color = classColor(c.id);
+                return (
+                  <Accordion
+                    key={c.id}
+                    disableGutters
+                    elevation={0}
+                    sx={{
+                      border: 1,
+                      borderColor: 'divider',
+                      borderLeft: 3,
+                      borderLeftColor: color,
+                      '&::before': { display: 'none' },
+                    }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <ClassIcon classId={c.id} size={20} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color }}>
+                          {c.name}
+                        </Typography>
+                      </Stack>
+                    </AccordionSummary>
+                    <AccordionDetails>{pathChecklist(pathIds)}</AccordionDetails>
+                  </Accordion>
+                );
+              })}
+            </Stack>
+
+            {involved.length > 0 && (
+              <FormControl sx={{ mt: 2 }}>
+                <FormLabel>Profil principal (parmi les profils des voies choisies, p. 180)</FormLabel>
+                <RadioGroup
+                  value={involved.includes(draft.classId) ? draft.classId : ''}
+                  onChange={(e) => patch(mainProfilePatch(e.target.value))}
+                >
+                  {involved.map((cid) => (
+                    <FormControlLabel
+                      key={cid}
+                      value={cid}
+                      control={<Radio />}
+                      label={
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                          <ClassIcon classId={cid} size={18} />
+                          <span>{classById.get(cid)?.name ?? cid}</span>
+                        </Stack>
+                      }
+                    />
+                  ))}
+                </RadioGroup>
+                <Typography variant="caption" color="text.secondary">
+                  Détermine le dé de récupération et l’avantage de famille ; les PV du niveau 1
+                  additionnent les PV des deux profils des voies choisies.
+                </Typography>
+              </FormControl>
+            )}
+          </>
+        )}
       </Box>
 
       {isMage && (
@@ -876,7 +1025,7 @@ export function PathsStep({ draft, patch }: StepProps) {
                   });
                 }}
               >
-                {draft.chosenPaths.map((vid) => (
+                {mageRank2Paths.map((vid) => (
                   <FormControlLabel
                     key={vid}
                     value={vid}
@@ -1115,14 +1264,19 @@ export function SummaryStep({ draft }: StepProps) {
   const abilities = finalAbilities(draft, ancestry);
   const featureIds = level1FeatureIds(draft);
   const spellCount = featureIds.filter((id) => featureById.get(id)?.isSpell).length;
+  const preview = materializeDraft(draft, ancestry, draft.createdAt);
   const derivedInput = {
     abilities,
     level: 1,
     family,
     defenseEquipment: defenseFromEquipment(draft.equipment),
     spellCount,
+    // PV de base d'un profil hybride créé au niveau 1 (somme des deux familles,
+    // p. 180) ; identique à 2 × baseHp pour un profil standard.
+    hpLevel1Family: level1FamilyHp(preview, rulesContext),
+    // Détail par famille pour l'infobulle (vide hors hybridation).
+    hpLevel1Families: level1HybridFamilies(preview, rulesContext),
   };
-  const preview = materializeDraft(draft, ancestry, draft.createdAt);
   const warnings = checkCompliance(preview, rulesContext);
 
   return (
@@ -1214,9 +1368,17 @@ export function SummaryStep({ draft }: StepProps) {
           {featureIds.map((id) => {
             const feature = featureById.get(id);
             const path = feature ? pathById.get(feature.pathId) : undefined;
-            // Capacité liée à un profil = voie de classe → couleur du profil.
-            // Voie de peuple / du mage : pas de profil → bordure neutre.
-            const color = path?.type === 'class' ? classColor(characterClass.id) : null;
+            // Capacité liée à un profil = voie de classe → couleur/icône de SON
+            // profil (pas du profil principal : en hybride, une voie peut venir
+            // d'un autre profil). Voie de peuple / du mage : pas de profil →
+            // bordure neutre.
+            const featureClassId =
+              path?.type === 'class'
+                ? characterClass.pathIds.includes(path.id)
+                  ? characterClass.id
+                  : path.classIds[0]
+                : null;
+            const color = featureClassId ? classColor(featureClassId) : null;
             return (
               <Grid key={id} size={{ xs: 6, sm: 3 }}>
                 <Box
@@ -1244,9 +1406,9 @@ export function SummaryStep({ draft }: StepProps) {
                       </Typography>
                     )}
                   </Box>
-                  {color && (
+                  {featureClassId && (
                     <ClassIcon
-                      classId={characterClass.id}
+                      classId={featureClassId}
                       size={20}
                       color="#fff"
                       sx={{ mt: 0.25 }}

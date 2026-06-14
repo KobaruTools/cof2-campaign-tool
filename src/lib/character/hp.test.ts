@@ -5,7 +5,7 @@ import { progression } from '@/data/progression';
 import type { FamilyId } from '@/data/schema';
 import { maxHp, type RulesContext } from '@/lib/engine';
 import { SCHEMA_VERSION, type Character, type LevelUpEntry } from './types';
-import { familyHpGains } from './hp';
+import { familyHpGains, level1FamilyHp, level1HybridFamilies } from './hp';
 
 const ctx: RulesContext = {
   featureById,
@@ -118,5 +118,62 @@ describe('maxHp avec gains hybrides', () => {
     // Mage : base 2×3 + CON(1) = 7. Deux niveaux mixtes à 3 et 4 PV famille,
     // + CON(1) chacun → 7 + (3+1) + (4+1) = 16.
     expect(maxHp(3, mages, 1, {}, [3, 4])).toBe(16);
+  });
+
+  it('PV de base hybride au niveau 1 : somme des deux familles + CON (p. 180)', () => {
+    // Exemple du livre : barbare (5) + druide (4) = 9 PV + CON.
+    expect(maxHp(1, fighters, 2, {}, undefined, 9)).toBe(11); // 9 + CON(2)
+    // Absent → 2 × baseHp (profil standard), rétro-compatible.
+    expect(maxHp(1, fighters, 2)).toBe(12); // 2×5 + 2
+  });
+});
+
+describe('level1FamilyHp', () => {
+  it('profil standard : 2 × PV de base de la famille principale', () => {
+    // Deux voies de combattant + voie de peuple → 5 + 5 = 10.
+    const c = makeCharacter({
+      classId: 'barbare',
+      ancestryPathId: 'humain',
+      levelUpHistory: history({
+        level: 1,
+        chosenFeatureIds: ['rage-r1', 'pourfendeur-r1', 'humain-r1'],
+      }),
+    });
+    expect(level1FamilyHp(c, ctx)).toBe(10);
+  });
+
+  it('hybride niveau 1 : somme des PV des deux familles (barbare 5 + druide 4 = 9, p. 180)', () => {
+    const c = makeCharacter({
+      classId: 'barbare',
+      ancestryPathId: 'humain',
+      levelUpHistory: history({
+        level: 1,
+        chosenFeatureIds: ['pagne-r1', 'animaux-r1', 'humain-r1'],
+      }),
+    });
+    expect(level1FamilyHp(c, ctx)).toBe(9);
+  });
+
+  it('historique absent : retombe sur 2 × famille principale (rétro-compatible)', () => {
+    const c = makeCharacter({ classId: 'barbare', levelUpHistory: [] });
+    expect(level1FamilyHp(c, ctx)).toBe(10);
+  });
+});
+
+describe('level1HybridFamilies', () => {
+  it('hybride : familles des deux voies de profil (combattant + mystique)', () => {
+    const c = makeCharacter({
+      classId: 'barbare',
+      levelUpHistory: history({ level: 1, chosenFeatureIds: ['pagne-r1', 'animaux-r1', 'humain-r1'] }),
+    });
+    expect(level1HybridFamilies(c, ctx)).toEqual(['fighters', 'mystics']);
+  });
+
+  it('profil standard (familles identiques) : aucun détail', () => {
+    const c = makeCharacter({
+      classId: 'barbare',
+      levelUpHistory: history({ level: 1, chosenFeatureIds: ['rage-r1', 'pourfendeur-r1', 'humain-r1'] }),
+    });
+    expect(level1HybridFamilies(c, ctx)).toEqual([]);
   });
 });
