@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -15,12 +16,23 @@ import type { EquipmentItem } from '@/data/schema';
 import type { EquipmentLine } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { equipmentLabel } from '@/components/wizard/helpers';
+import { DamageValue } from '@/components/DamageValue';
 
 /** Détail concis d'un objet du catalogue (DM des armes, DEF des protections). */
-function itemDetail(item: EquipmentItem): string | null {
+function itemDetail(item: EquipmentItem): ReactNode {
   switch (item.category) {
     case 'weapon':
-      return `DM ${item.twoHandedDamage ? `${item.damage}/${item.twoHandedDamage}` : item.damage}${item.range ? ` · portée ${item.range}` : ''}`;
+      return (
+        <>
+          DM <DamageValue damage={item.damage} />
+          {item.twoHandedDamage && (
+            <>
+              /<DamageValue damage={item.twoHandedDamage} />
+            </>
+          )}
+          {item.range && ` · portée ${item.range}`}
+        </>
+      );
     case 'armor':
     case 'shield':
       return `DEF +${item.def}`;

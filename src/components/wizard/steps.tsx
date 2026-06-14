@@ -49,7 +49,7 @@ import {
   classById,
   pathById,
 } from '@/data';
-import type { AbilityId, AbilityModifier, AncestryNames, Armor, CharacterClass, Weapon } from '@/data/schema';
+import type { AbilityId, AbilityModifier, AncestryNames, Armor, CharacterClass } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { checkCompliance } from '@/lib/engine';
 import { rulesContext } from '@/lib/character/rulesContext';
@@ -82,6 +82,7 @@ import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
+import { DamageValue } from '@/components/DamageValue';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { InfoHint } from '@/components/InfoHint';
@@ -96,11 +97,6 @@ const ARMORS: Armor[] = equipment
 
 /** Armes à poudre — p.185 (aucun drapeau structuré ; ids connus du catalogue). */
 const POWDER_WEAPON_IDS = ['petoire', 'mousquet'];
-
-/** DM affichés d'une arme (ex. « 1d6 » ou « 1d6/1d10 » à une/deux mains). */
-function weaponDamage(w: Weapon): string {
-  return w.twoHandedDamage ? `${w.damage}/${w.twoHandedDamage}` : w.damage;
-}
 
 /** Icône épée (MUI n'en fournit pas) — tracé Material Design Icons « sword ». */
 function SwordIcon(props: SvgIconProps) {
@@ -321,7 +317,7 @@ function RestrictionBlock({
   color,
 }: {
   icon?: React.ReactNode;
-  label: string;
+  label: React.ReactNode;
   color?: string;
 }) {
   return (
@@ -411,7 +407,22 @@ function ClassRestrictions({ characterClass }: { characterClass: CharacterClass 
   for (const id of characterClass.allowedWeaponIds) {
     const w = equipmentById.get(id);
     if (w && w.category === 'weapon') {
-      weaponBlocks.push(<RestrictionBlock key={id} label={`${w.name} (DM ${weaponDamage(w)})`} />);
+      weaponBlocks.push(
+        <RestrictionBlock
+          key={id}
+          label={
+            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+              {w.name} (DM <DamageValue damage={w.damage} size={16} />
+              {w.twoHandedDamage && (
+                <>
+                  /<DamageValue damage={w.twoHandedDamage} size={16} />
+                </>
+              )}
+              )
+            </Box>
+          }
+        />,
+      );
     }
   }
   if (characterClass.powderAllowed && includeFirearms) {
