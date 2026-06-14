@@ -128,9 +128,8 @@ export interface FeaturesByPathProps {
  * Épingle : capacité ajoutée manuellement sur la fiche, hors wizard (PER-53).
  * `inline` la place dans le flux (vue lignes, à côté du rang) plutôt qu'en
  * absolu dans un coin de la carte (vue colonnes). En absolu, elle est ancrée en
- * BAS à GAUCHE : les autres coins sont réservés — haut gauche aux marqueurs
- * hexagonaux (`FeatureMarkerHexes`), haut droite à la goutte de coût en mana
- * (`SpellManaBadge`, PER-65), bas droite au bouton de suppression.
+ * HAUT à DROITE, pivotée vers ce coin et superposée à la goutte de coût en mana
+ * qui occupe le même coin (`SpellManaBadge`, PER-65) — l'épingle passe au-dessus.
  */
 function ManualPin({ inline = false }: { inline?: boolean }) {
   return (
@@ -141,7 +140,15 @@ function ManualPin({ inline = false }: { inline?: boolean }) {
           fontSize: 16,
           ...(inline
             ? { flexShrink: 0 }
-            : { position: 'absolute', bottom: 3, left: 3, zIndex: 1 }),
+            : {
+                position: 'absolute',
+                // Centrée verticalement, collée au bord droit ; pivotée à 45°.
+                // zIndex 2 : passe AU-DESSUS de la goutte de mana (zIndex 1).
+                top: '50%',
+                right: -5,
+                transform: 'translateY(-50%) rotate(45deg)',
+                zIndex: 2,
+              }),
         }}
       />
     </Tooltip>
@@ -321,7 +328,7 @@ function PathBlock({
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'flex-start',
-              justifyContent: 'center',
+              justifyContent: 'flex-start',
               px: 1,
               // Le haut est dégagé pour laisser voir les hexagones, qui chevauchent
               // la bordure supérieure (coins : marqueurs en haut gauche, goutte de
