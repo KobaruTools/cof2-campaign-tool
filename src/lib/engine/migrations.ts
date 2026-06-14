@@ -164,6 +164,19 @@ function migrateV4toV5(data: Record<string, unknown>): Record<string, unknown> {
 }
 
 /**
+ * v5 → v6 : ajout de `effectToggles` (interrupteurs manuels des effets
+ * conditionnels / temporaires des capacités — PER-67). Les personnages d'avant
+ * v6 n'ont basculé aucun interrupteur : on initialise une table vide. Les effets
+ * conditionnels retombent alors sur leur état par défaut (`activeByDefault`).
+ */
+function migrateV5toV6(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.effectToggles) === null) next.effectToggles = {};
+  next.schemaVersion = 6;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -172,6 +185,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   2: migrateV2toV3,
   3: migrateV3toV4,
   4: migrateV4toV5,
+  5: migrateV5toV6,
 };
 
 export class MigrationError extends Error {}
@@ -236,6 +250,9 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   if (!Array.isArray(data.featureIds)) fail('Champ « featureIds » manquant ou invalide.');
   if (typeof data.featureChoices !== 'object' || data.featureChoices === null) {
     fail('Champ « featureChoices » manquant ou invalide.');
+  }
+  if (typeof data.effectToggles !== 'object' || data.effectToggles === null) {
+    fail('Champ « effectToggles » manquant ou invalide.');
   }
   if (!Array.isArray(data.equipment)) fail('Champ « equipment » manquant ou invalide.');
   if (!Array.isArray(data.levelUpHistory)) fail('Champ « levelUpHistory » manquant ou invalide.');

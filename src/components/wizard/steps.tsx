@@ -67,7 +67,7 @@ import {
   type WizardDraft,
 } from '@/lib/character/wizard';
 import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
-import { modsFromFeatures } from '@/lib/character/effects';
+import { effectContext, modsFromFeatures } from '@/lib/character/effects';
 import {
   effectiveFeatureIdsForMods,
   featureChoiceDefs,
@@ -1382,10 +1382,11 @@ export function SummaryStep({ draft, patch }: StepProps) {
     family,
     defenseEquipment: defenseFromEquipment(draft.equipment),
     spellCount,
-    // Bonus plats des capacités du niveau 1 (PER-63) + capacités empruntées par
-    // un choix « capacité d'une autre voie » (PER-66) ; `preview` porte déjà les
-    // choix faits dans le wizard.
-    mods: modsFromFeatures(effectiveFeatureIdsForMods(preview)),
+    // Bonus des capacités du niveau 1 (PER-63) + capacités empruntées par un
+    // choix « capacité d'une autre voie » (PER-66) ; `preview` porte déjà les
+    // choix faits dans le wizard. Le contexte (PER-67) résout les valeurs
+    // scalantes (ex. PV += FOR) ; aucun interrupteur n'est encore basculé.
+    mods: modsFromFeatures(effectiveFeatureIdsForMods(preview), effectContext(preview)),
     // PV de base d'un profil hybride créé au niveau 1 (somme des deux familles,
     // p. 180) ; identique à 2 × baseHp pour un profil standard.
     hpLevel1Family: level1FamilyHp(preview, rulesContext),
@@ -1469,7 +1470,11 @@ export function SummaryStep({ draft, patch }: StepProps) {
         <Typography variant="subtitle2" gutterBottom>
           Statistiques dérivées
         </Typography>
-        <DerivedStatsGrid input={derivedInput} featureIds={effectiveFeatureIdsForMods(preview)} />
+        <DerivedStatsGrid
+          input={derivedInput}
+          featureIds={effectiveFeatureIdsForMods(preview)}
+          effectContext={effectContext(preview)}
+        />
       </Box>
 
       <Box>

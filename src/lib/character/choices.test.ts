@@ -35,6 +35,7 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     ancestryPathId: 'demi-orc',
     featureIds: ['demi-orc-r1', 'demi-orc-r2'],
     featureChoices: {},
+    effectToggles: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},

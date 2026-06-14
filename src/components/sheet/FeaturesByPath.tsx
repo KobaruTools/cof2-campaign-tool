@@ -33,6 +33,7 @@ import type { Feature, Path } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import { featureChoiceDefs, hasUnmadeChoice } from '@/lib/character/choices';
+import { conditionalEffectsOf } from '@/lib/character/effects';
 import { classColor } from '@/lib/ui/classColors';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
@@ -40,6 +41,7 @@ import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
+import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
 
 /**
  * Ordre d'affichage des voies par type, de gauche à droite sur la fiche :
@@ -140,6 +142,12 @@ export interface FeaturesByPathProps {
    * sont affichés en lecture seule sous la description.
    */
   onChoiceChange?: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
+  /**
+   * Bascule d'un interrupteur d'effet conditionnel (PER-67). État de jeu
+   * transitoire, activable à tout moment (même hors mode édition). Absent (sans
+   * `character`) → interrupteurs désactivés.
+   */
+  onToggleEffect?: (featureId: string, index: number, active: boolean) => void;
 }
 
 /**
@@ -248,6 +256,7 @@ function PathBlock({
   retainedPathName,
   character,
   onChoiceChange,
+  onToggleEffect,
 }: {
   group: FeatureGroup;
   classId: string;
@@ -269,6 +278,8 @@ function PathBlock({
   character?: Character;
   /** Édition d'un choix porté par une capacité (fiche permissive). */
   onChoiceChange?: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
+  /** Bascule d'un interrupteur d'effet conditionnel (fiche permissive, PER-67). */
+  onToggleEffect?: (featureId: string, index: number, active: boolean) => void;
 }) {
   const { path, features } = group;
   // Profil dont la voie est issue : le profil principal si la voie lui appartient
@@ -319,6 +330,27 @@ function PathBlock({
   /** Vrai si la capacité porte un choix résoluble (pour les affordances d'UI). */
   const hasChoices = (feature: Feature) =>
     !!character && featureChoiceDefs(feature.id).length > 0;
+
+  /** Vrai si la capacité porte un effet conditionnel/temporaire (PER-67). */
+  const hasEffectToggles = (feature: Feature) =>
+    !!character && conditionalEffectsOf(feature.id).length > 0;
+
+  /**
+   * Interrupteurs des effets conditionnels (PER-67). Toujours basculables (état de
+   * jeu transitoire, même hors mode édition). `compact` rend l'interrupteur seul
+   * (vue colonne), le libellé complet passant en infobulle.
+   */
+  const renderEffectToggles = (feature: Feature, opts: { compact?: boolean } = {}) => {
+    if (!character || conditionalEffectsOf(feature.id).length === 0) return null;
+    return (
+      <FeatureEffectToggles
+        character={character}
+        featureId={feature.id}
+        compact={opts.compact}
+        onToggle={onToggleEffect}
+      />
+    );
+  };
 
   const header = (
     <Stack
@@ -425,6 +457,11 @@ function PathBlock({
             >
               {feature.name}
             </Typography>
+            {/* Interrupteurs des effets conditionnels, compacts (état de jeu, libellé
+                en infobulle) ; le détail cliquable héberge la version étiquetée. */}
+            {hasEffectToggles(feature) && (
+              <Box sx={{ mt: 0.5, width: '100%' }}>{renderEffectToggles(feature, { compact: true })}</Box>
+            )}
             {/* Choix porté par la capacité, poussé en bas du bloc : valeur retenue
                 (chip compact, lecture seule) + bouton crayon ouvrant la modale
                 d'édition (second niveau d'édition — PER-68). */}
@@ -542,6 +579,12 @@ function PathBlock({
                     )}
                   </>
                 )}
+                {hasEffectToggles(openFeature) && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    {renderEffectToggles(openFeature)}
+                  </>
+                )}
               </DialogContent>
             </>
           )}
@@ -655,6 +698,12 @@ function PathBlock({
                   {onChoiceChange ? renderChoiceEditor(feature) : renderChoiceDisplay(feature)}
                 </>
               )}
+              {hasEffectToggles(feature) && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  {renderEffectToggles(feature)}
+                </>
+              )}
             </AccordionDetails>
           </Accordion>
         ))}
@@ -712,6 +761,7 @@ export function FeaturesByPath({
   manualFeatureIds,
   character,
   onChoiceChange,
+  onToggleEffect,
 }: FeaturesByPathProps) {
   const groups = groupFeaturesByPath(featureIds);
 
@@ -793,6 +843,7 @@ export function FeaturesByPath({
               retainedPathName={group === mageGroup ? retainedPathName : undefined}
               character={character}
               onChoiceChange={onChoiceChange}
+              onToggleEffect={onToggleEffect}
             />
           ))}
           {ghostColumns.map((c) => (
@@ -811,6 +862,7 @@ export function FeaturesByPath({
               gridColumn={PATH_COLUMN_COUNT - prestige.length + 1 + i}
               character={character}
               onChoiceChange={onChoiceChange}
+              onToggleEffect={onToggleEffect}
             />
           ))}
         </Box>
@@ -829,6 +881,7 @@ export function FeaturesByPath({
               retainedPathName={group === mageGroup ? retainedPathName : undefined}
               character={character}
               onChoiceChange={onChoiceChange}
+              onToggleEffect={onToggleEffect}
             />
           ))}
         </Stack>

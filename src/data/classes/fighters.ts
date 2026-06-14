@@ -309,6 +309,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare ajoute sa FOR à son maximum de PV ainsi qu’à ses tests de CHA et à ceux de ses alliés au contact pour les tests de négociation, de persuasion ou d’intimidation. Allez savoir pourquoi, sa simple présence donne de la force aux arguments de ses alliés…',
+    // Part structurable (PER-67) : « ajoute sa FOR à son maximum de PV » → bonus
+    // permanent SCALANT (valeur = FOR). Le bonus aux tests de CHA (siens et alliés)
+    // n'est pas une stat dérivée → reste verbatim.
+    effects: [{ kind: 'stat-bonus', stat: 'maxHp', value: { scale: 'ability', ability: 'FOR' } }],
     sourcePage: 79,
   },
   {
@@ -570,6 +574,18 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       'Une fois par jour, le barbare entre dans une rage berserk pour le reste du combat, ce qui le rend particulièrement dangereux. Il obtient +1d4° DM sur ses attaques au contact, mais il subit -2 en DEF et ne peut fuir de son propre gré ou attaquer à distance. Enfin, il obtient un dé bonus pour tous les tests de VOL. S’il veut stopper la rage avant d’avoir éliminé tous les ennemis sur le terrain, le barbare doit réussir un test de VOL difficulté 15 (un seul essai, à la fin de son tour). S’il devient inconscient, la rage cesse. Le personnage peut entrer en rage une fois de plus par jour pour chaque capacité de rang 4 qu’il atteint dans une voie de barbare.',
+    // Part structurable (PER-67) : « il subit -2 en DEF » est un malus TEMPORAIRE
+    // (le temps de la rage) → effet conditionnel à interrupteur, inactif par
+    // défaut. Le +1d4° DM au contact, le malus de mouvement et le dé bonus de VOL
+    // ne touchent pas une stat dérivée → restent verbatim.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        stat: 'def',
+        value: -2,
+        activation: { kind: 'temporary', label: 'pendant la rage berserk', activeByDefault: false },
+      },
+    ],
     sourcePage: 82,
   },
   {

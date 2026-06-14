@@ -1157,6 +1157,26 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le rôdeur obtient un bonus de +1 en DEF lorsqu'il combat avec une arme dans chaque main. Ce bonus passe à +2 au rang 5 de la voie. Au début de son tour, s'il renonce à toute attaque de la main secondaire, il double ce bonus jusqu'à son prochain tour.",
+    // Part structurable (PER-67) : « +1 en DEF avec une arme dans chaque main,
+    // passe à +2 au rang 5 de la voie » → effet CONDITIONNEL (interrupteur :
+    // combat à deux armes) dont la valeur est SCALANTE par paliers de rang de
+    // voie. Le doublement temporaire « s'il renonce à l'attaque secondaire » est
+    // une condition supplémentaire non structurée → reste verbatim.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        stat: 'def',
+        value: {
+          scale: 'stepped',
+          by: 'path-rank',
+          steps: [
+            { min: 1, value: 1 },
+            { min: 5, value: 2 },
+          ],
+        },
+        activation: { kind: 'condition', label: 'une arme dans chaque main', activeByDefault: false },
+      },
+    ],
     sourcePage: 73,
   },
   {

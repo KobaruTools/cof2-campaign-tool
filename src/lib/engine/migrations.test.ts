@@ -50,6 +50,7 @@ function validRaw(): Record<string, unknown> {
     ancestryPathId: 'humain',
     featureIds: [],
     featureChoices: {},
+    effectToggles: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},
@@ -209,10 +210,37 @@ describe('migrateCharacter', () => {
     expect(() => migrateCharacter(raw)).toThrow(ValidationError);
   });
 
-  it('expose les migrations 1→2, 2→3, 3→4 et 4→5 dans le registre', () => {
+  it('migre un personnage v5 vers v6 (effectToggles initialisé à vide)', () => {
+    const v5 = validRaw();
+    v5.schemaVersion = 5;
+    delete v5.effectToggles;
+    const c = migrateCharacter(v5);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.effectToggles).toEqual({});
+  });
+
+  it('préserve les effectToggles déjà présents lors d’un chargement v6', () => {
+    const v6 = validRaw();
+    v6.effectToggles = { 'rage-r3': [true], 'combat-a-deux-armes-r2': [true] };
+    const c = migrateCharacter(v6);
+    expect(c.effectToggles).toEqual({
+      'rage-r3': [true],
+      'combat-a-deux-armes-r2': [true],
+    });
+  });
+
+  it('refuse un objet sans effectToggles à la version courante', () => {
+    const raw = validRaw();
+    delete raw.effectToggles;
+    raw.schemaVersion = SCHEMA_VERSION; // pas de migration : la validation doit échouer
+    expect(() => migrateCharacter(raw)).toThrow(ValidationError);
+  });
+
+  it('expose les migrations 1→2, 2→3, 3→4, 4→5 et 5→6 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
     expect(typeof MIGRATIONS[4]).toBe('function');
+    expect(typeof MIGRATIONS[5]).toBe('function');
   });
 });

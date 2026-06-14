@@ -13,6 +13,7 @@ import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { deriveStats, type DerivedInput } from '@/lib/engine';
+import type { EffectContext } from '@/lib/character/effects';
 import type { DerivedStatId as OverrideKey } from '@/lib/character/types';
 import { DERIVED_STAT_NAMES, type DerivedStatId } from '@/lib/ui/derivedStats';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
@@ -45,6 +46,12 @@ export interface DerivedStatsGridProps {
    * apporte quel bonus sous « Capacités / divers ». Absent → pas de sous-liste.
    */
   featureIds?: string[];
+  /**
+   * Contexte d'effets (PER-67) : transmis aux infobulles pour résoudre les
+   * valeurs scalantes et n'inclure que les effets conditionnels actifs dans le
+   * détail « Capacités / divers ». Absent → seuls les bonus plats constants.
+   */
+  effectContext?: EffectContext;
   /**
    * Tailles de colonne MUI Grid. Par défaut : une carte par ligne sur mobile
    * (les contrôles d'édition tiennent à l'aise), deux sur tablette, trois sur
@@ -79,6 +86,7 @@ interface StatLine {
 export function DerivedStatsGrid({
   input,
   featureIds,
+  effectContext,
   size = { xs: 12, sm: 6, md: 4 },
   overrides,
   onOverride,
@@ -190,6 +198,7 @@ export function DerivedStatsGrid({
                   statId={id}
                   input={input}
                   featureIds={featureIds}
+                  effectContext={effectContext}
                   sx={{ alignSelf: 'flex-start' }}
                 />
               </CardContent>

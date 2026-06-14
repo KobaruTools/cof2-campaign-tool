@@ -152,6 +152,31 @@ describe('derivedStatBreakdown ↔ deriveStats', () => {
     expect(bd.total).toBe(14); // 10 + PER 1 + mods 3 ; les sous-termes n'y entrent pas
   });
 
+  it('affiche « Capacités / divers » même quand les contributions s’annulent (net 0)', () => {
+    // Parade croisée +2 (conditionnel) et Rage du berserk −2 (temporaire) actives :
+    // la somme nette est 0, mais le détail doit rester visible pour ne pas laisser
+    // croire qu'un effet pourtant actif a disparu.
+    const input: DerivedInput = {
+      abilities: abilities(),
+      level: 5,
+      family: family('fighters'),
+      defenseEquipment: { defBonus: 6, maxAgi: null },
+      spellCount: 0,
+      mods: { def: 0 }, // +2 et −2 sommés par le moteur
+    };
+    const bd = derivedStatBreakdown('defense', input, {
+      def: [
+        { label: 'Parade croisée (conditionnel)', value: 2 },
+        { label: 'Rage du berserk (conditionnel)', value: -2 },
+      ],
+    });
+    const capLine = bd.terms.find((t) => t.label === 'Capacités / divers');
+    expect(capLine).toBeDefined();
+    expect(capLine?.value).toBe(0);
+    expect(capLine?.subTerms).toHaveLength(2);
+    expect(bd.total).toBe(18); // 10 + AGI 2 + armure 6 + capacités 0
+  });
+
   it('mana : pas de détail ni de total quand aucun sort connu', () => {
     const bd = derivedStatBreakdown('manaPoints', cases[0].input);
     expect(bd.total).toBeNull();

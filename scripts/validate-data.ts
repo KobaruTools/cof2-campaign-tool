@@ -32,7 +32,7 @@ import {
   FEATURE_NATURE_TAGS,
   CONDITIONAL_KINDS,
 } from '../src/data/index';
-import { DERIVED_STAT_IDS } from '../src/data/schema';
+import { ABILITY_IDS, DERIVED_STAT_IDS } from '../src/data/schema';
 
 const errors: string[] = [];
 const warnings: string[] = [];
@@ -145,20 +145,52 @@ for (const cl of FEATURE_CLASSIFICATIONS) {
   if (cl.note) classifTodos++;
 }
 
-// --- Effets structurés des capacités (PER-63) --------------------------------
-// Couche sémantique lue par le moteur : bonus plats vers une stat dérivée
-// connue. On vérifie le genre, la stat ciblée et la valeur ; le `text` verbatim
-// reste la source et n'est pas contrôlé ici.
+// --- Effets structurés des capacités (PER-63, étendu PER-67) -----------------
+// Couche sémantique lue par le moteur : bonus (constants, scalants, conditionnels
+// ou temporaires) vers une stat dérivée connue. On vérifie le genre, la stat
+// ciblée, la forme de la valeur et l'activation ; le `text` verbatim reste la
+// source et n'est pas contrôlé ici.
 const validStats = new Set<string>(DERIVED_STAT_IDS);
+const validAbilities = new Set<string>(ABILITY_IDS);
+const validActivationKinds = new Set(['condition', 'temporary']);
+
+/** Valide une `EffectValue` (constante ou scalante) ; renvoie un message ou null. */
+function effectValueError(value: unknown): string | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? null : 'valeur non finie';
+  if (typeof value !== 'object' || value === null) return 'valeur de forme inconnue';
+  const v = value as Record<string, unknown>;
+  if (v.scale === 'ability') {
+    if (!validAbilities.has(v.ability as string)) return `caractéristique inconnue : ${v.ability}`;
+    if (v.factor !== undefined && !Number.isFinite(v.factor)) return 'facteur non fini';
+    return null;
+  }
+  if (v.scale === 'stepped') {
+    if (v.by !== 'level' && v.by !== 'path-rank') return `échelle inconnue : ${v.by}`;
+    if (!Array.isArray(v.steps) || v.steps.length === 0) return 'paliers (steps) vides';
+    for (const s of v.steps as Array<Record<string, unknown>>) {
+      if (!Number.isFinite(s.min) || !Number.isFinite(s.value)) return 'palier { min, value } invalide';
+    }
+    return null;
+  }
+  return `échelle scalante inconnue : ${v.scale}`;
+}
+
 let featuresWithEffects = 0;
 for (const c of features) {
   if (!c.effects) continue;
   featuresWithEffects++;
   for (const e of c.effects) {
-    if (e.kind === 'stat-bonus') {
+    if (e.kind === 'stat-bonus' || e.kind === 'conditional-stat-bonus') {
       if (!validStats.has(e.stat)) err(`[capacite ${c.id}] effect: stat inconnue : ${e.stat}`);
-      if (!Number.isFinite(e.value)) err(`[capacite ${c.id}] effect: valeur non numérique pour ${e.stat}`);
-    } else {
+      const valueError = effectValueError(e.value);
+      if (valueError) err(`[capacite ${c.id}] effect: ${valueError} (${e.stat})`);
+    }
+    if (e.kind === 'conditional-stat-bonus') {
+      const a = e.activation;
+      if (!a || !validActivationKinds.has(a.kind))
+        err(`[capacite ${c.id}] effect: activation.kind invalide pour ${e.stat}`);
+      if (!a?.label) err(`[capacite ${c.id}] effect: activation.label manquant pour ${e.stat}`);
+    } else if (e.kind !== 'stat-bonus') {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }
   }

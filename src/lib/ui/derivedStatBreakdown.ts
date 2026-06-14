@@ -66,10 +66,14 @@ export function derivedStatBreakdown(
     value ? [{ label, value }] : [];
   // Ligne « Capacités / divers » d'une stat, assortie du détail par capacité
   // (sous-liste) quand l'appelant a fourni les sources pour cette clé moteur.
+  // On affiche la ligne dès qu'il existe des contributions de capacités, MÊME si
+  // leur somme nette est nulle (ex. un bonus conditionnel +2 et un malus
+  // temporaire −2 qui s'annulent) : sinon le détail « masquerait » des effets
+  // pourtant actifs, ce qui laisserait croire qu'un effet a disparu.
   const capacities = (key: keyof DerivedMods): BreakdownTerm[] => {
-    const value = mods[key];
-    if (!value) return [];
+    const value = mods[key] ?? 0;
     const subTerms = modSources[key];
+    if (!value && !subTerms?.length) return [];
     return [{ label: 'Capacités / divers', value, subTerms }];
   };
   const baseAttack = Math.min(level, MAX_ATTACK_LEVEL);

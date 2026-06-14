@@ -1,33 +1,156 @@
 /**
  * Agrégation des effets structurés des capacités vers le sac de modificateurs
- * plats du moteur (`DerivedMods`) — couche de câblage data → moteur (PER-63).
+ * plats du moteur (`DerivedMods`) — couche de câblage data → moteur (PER-63,
+ * étendue PER-67).
  *
  * Le moteur (`deriveStats`) reste pur : il ne connaît pas les capacités et se
  * contente de sommer un `mods` qu'on lui fournit. Ce module construit ce `mods`
- * à partir des `effects` (genre `stat-bonus`) des capacités acquises. C'est
- * l'unique point d'alimentation, consommé par la fiche et le récap du wizard.
+ * à partir des `effects` des capacités acquises. C'est l'unique point
+ * d'alimentation, consommé par la fiche et le récap du wizard.
+ *
+ * Trois sortes d'effets sont gérées :
+ *  - bonus plat constant (`stat-bonus` à valeur numérique) — toujours appliqué ;
+ *  - bonus SCALANT (`stat-bonus`/`conditional-stat-bonus` à `ScalingValue`) —
+ *    résolu depuis le personnage (niveau, caractéristique, rang dans la voie) ;
+ *  - bonus CONDITIONNEL / TEMPORAIRE (`conditional-stat-bonus`) — compté seulement
+ *    si l'interrupteur manuel du personnage l'active (`Character.effectToggles`).
+ *
+ * Les deux derniers exigent un contexte (`EffectContext`). Sans contexte, seul le
+ * cas plat constant est sommé (suffit aux appels « catalogue seul »).
  */
 import { featureById } from '@/data';
-import type { DerivedStatId } from '@/data/schema';
+import type {
+  AbilityId,
+  ConditionalStatBonusEffect,
+  DerivedStatId,
+  EffectValue,
+  FeatureEffect,
+} from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
+import type { Character } from './types';
 
 /**
- * Somme les bonus plats inconditionnels (`StatBonusEffect`) des capacités
- * acquises en un `DerivedMods`. Les ids inconnus et les capacités sans `effects`
- * sont ignorés. N'interprète jamais le `text` : seuls les `effects` structurés
- * comptent (les effets conditionnels / temporaires / scalants n'en font pas
- * partie et ne sont donc pas agrégés ici).
+ * Contexte de résolution des effets : tout ce qui ne se déduit pas du seul
+ * catalogue. `pathRanks` (rang max atteint par voie) est calculé en interne à
+ * partir de la liste de capacités fournie ; on ne porte ici que le strictement
+ * non dérivable.
  */
-export function modsFromFeatures(featureIds: string[]): DerivedMods {
-  const mods: DerivedMods = {};
+export interface EffectContext {
+  /** Niveau du personnage — pour les valeurs scalantes `by: 'level'`. */
+  level: number;
+  /** Caractéristiques — pour les valeurs scalantes `scale: 'ability'`. */
+  abilities: Record<AbilityId, number>;
+  /**
+   * Interrupteurs manuels (cf. `Character.effectToggles`) : `toggles[id][i]`
+   * aligné sur `feature.effects[i]`. Absent → état par défaut de l'effet.
+   */
+  toggles: Record<string, boolean[]>;
+}
+
+/** Construit le contexte d'effets d'un personnage. */
+export function effectContext(character: Character): EffectContext {
+  return {
+    level: character.level,
+    abilities: character.abilities,
+    toggles: character.effectToggles,
+  };
+}
+
+/**
+ * Rang le plus élevé atteint dans chaque voie (pathId → rang), d'après les
+ * capacités fournies — pour les valeurs scalantes `by: 'path-rank'` (« passe à
+ * +2 au rang 5 de la voie »). Les ids inconnus sont ignorés.
+ */
+export function pathRanksFromFeatures(featureIds: string[]): Record<string, number> {
+  const ranks: Record<string, number> = {};
   for (const id of featureIds) {
-    const effects = featureById.get(id)?.effects;
-    if (!effects) continue;
-    for (const effect of effects) {
-      if (effect.kind === 'stat-bonus') {
-        mods[effect.stat] = (mods[effect.stat] ?? 0) + effect.value;
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    ranks[feature.pathId] = Math.max(ranks[feature.pathId] ?? 0, feature.rank);
+  }
+  return ranks;
+}
+
+/**
+ * Résout une `EffectValue` en nombre. Une valeur scalante a besoin du contexte
+ * (et du rang atteint dans la voie hôte) ; sans contexte, seule une constante est
+ * résoluble → `null` pour signaler « non résoluble ici ».
+ */
+function resolveValue(
+  value: EffectValue,
+  pathId: string,
+  pathRanks: Record<string, number>,
+  ctx?: EffectContext,
+): number | null {
+  if (typeof value === 'number') return value;
+  if (!ctx) return null;
+  if (value.scale === 'ability') {
+    return ctx.abilities[value.ability] * (value.factor ?? 1);
+  }
+  // scale: 'stepped' — palier de plus haut seuil atteint (0 sous le premier).
+  const ref = value.by === 'level' ? ctx.level : (pathRanks[pathId] ?? 0);
+  let resolved = 0;
+  for (const step of value.steps) {
+    if (ref >= step.min) resolved = step.value;
+  }
+  return resolved;
+}
+
+/**
+ * Un effet conditionnel est-il actif ? L'interrupteur manuel du personnage prime ;
+ * à défaut, on retombe sur l'état par défaut déclaré (`activeByDefault`).
+ */
+function isConditionalActive(
+  effect: ConditionalStatBonusEffect,
+  featureId: string,
+  index: number,
+  ctx?: EffectContext,
+): boolean {
+  const toggled = ctx?.toggles[featureId]?.[index];
+  return toggled ?? effect.activation.activeByDefault ?? false;
+}
+
+/**
+ * Valeur d'un effet à intégrer au `mods`, ou `null` s'il ne doit pas compter
+ * (non résoluble sans contexte, ou conditionnel inactif).
+ */
+function effectContribution(
+  effect: FeatureEffect,
+  featureId: string,
+  pathId: string,
+  index: number,
+  pathRanks: Record<string, number>,
+  ctx?: EffectContext,
+): { stat: DerivedStatId; value: number } | null {
+  if (effect.kind === 'conditional-stat-bonus') {
+    if (!isConditionalActive(effect, featureId, index, ctx)) return null;
+  }
+  const value = resolveValue(effect.value, pathId, pathRanks, ctx);
+  if (value === null) return null;
+  return { stat: effect.stat, value };
+}
+
+/**
+ * Somme les bonus des capacités acquises en un `DerivedMods`. Les ids inconnus et
+ * les capacités sans `effects` sont ignorés. N'interprète jamais le `text`.
+ *
+ * Sans `ctx` : seuls les bonus PLATS CONSTANTS comptent (les valeurs scalantes et
+ * les effets conditionnels sont ignorés — ils exigent le contexte du personnage).
+ * Avec `ctx` : les valeurs scalantes sont résolues et les effets conditionnels
+ * actifs (interrupteur ou défaut) sont inclus.
+ */
+export function modsFromFeatures(featureIds: string[], ctx?: EffectContext): DerivedMods {
+  const mods: DerivedMods = {};
+  const pathRanks = pathRanksFromFeatures(featureIds);
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    feature.effects.forEach((effect, i) => {
+      const contribution = effectContribution(effect, id, feature.pathId, i, pathRanks, ctx);
+      if (contribution) {
+        mods[contribution.stat] = (mods[contribution.stat] ?? 0) + contribution.value;
       }
-    }
+    });
   }
   return mods;
 }
@@ -38,29 +161,120 @@ export interface FeatureModSource {
   /** Nom de la capacité (français), pour le détail affiché au joueur. */
   name: string;
   value: number;
+  /** Effet conditionnel / temporaire (vs bonus permanent) ? Pour le détail UI. */
+  conditional?: boolean;
 }
 
 /**
  * Détaille, par stat dérivée, QUELLES capacités apportent le modificateur (et
- * combien). Même balayage que `modsFromFeatures`, mais en conservant l'origine —
+ * combien). Même balayage que `modsFromFeatures` (et mêmes règles de contexte) —
  * sert à afficher l'inventaire sous la ligne « Capacités / divers » du détail.
  */
 export function featureModSources(
   featureIds: string[],
+  ctx?: EffectContext,
 ): Partial<Record<DerivedStatId, FeatureModSource[]>> {
   const sources: Partial<Record<DerivedStatId, FeatureModSource[]>> = {};
+  const pathRanks = pathRanksFromFeatures(featureIds);
   for (const id of featureIds) {
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
-    for (const effect of feature.effects) {
-      if (effect.kind === 'stat-bonus') {
-        (sources[effect.stat] ??= []).push({
-          featureId: id,
-          name: feature.name,
-          value: effect.value,
-        });
-      }
-    }
+    feature.effects.forEach((effect, i) => {
+      const contribution = effectContribution(effect, id, feature.pathId, i, pathRanks, ctx);
+      if (!contribution) return;
+      (sources[contribution.stat] ??= []).push({
+        featureId: id,
+        name: feature.name,
+        value: contribution.value,
+        conditional: effect.kind === 'conditional-stat-bonus',
+      });
+    });
   }
   return sources;
+}
+
+// ---------------------------------------------------------------------------
+// Interrupteurs des effets conditionnels (PER-67) — lecture / écriture
+// ---------------------------------------------------------------------------
+
+/** Un effet conditionnel d'une capacité, avec sa position dans `Feature.effects`. */
+export interface ConditionalEffectEntry {
+  index: number;
+  effect: ConditionalStatBonusEffect;
+}
+
+/**
+ * Effets conditionnels / temporaires portés par une capacité (vide si aucune /
+ * id inconnu), avec leur index d'origine dans `Feature.effects` — clé
+ * d'alignement avec `Character.effectToggles`.
+ */
+export function conditionalEffectsOf(featureId: string): ConditionalEffectEntry[] {
+  const effects = featureById.get(featureId)?.effects ?? [];
+  const entries: ConditionalEffectEntry[] = [];
+  effects.forEach((effect, index) => {
+    if (effect.kind === 'conditional-stat-bonus') entries.push({ index, effect });
+  });
+  return entries;
+}
+
+/**
+ * Valeur COURANTE (résolue) d'un effet conditionnel d'une capacité pour ce
+ * personnage — pour l'affichage (ex. « −2 DEF », « +2 DEF » au rang 5). Résout les
+ * valeurs scalantes (caractéristique, niveau, rang de voie). `null` si l'index ne
+ * pointe pas un effet conditionnel connu.
+ */
+export function conditionalEffectValue(
+  character: Character,
+  featureId: string,
+  index: number,
+): number | null {
+  const feature = featureById.get(featureId);
+  const effect = feature?.effects?.[index];
+  if (!feature || !effect || effect.kind !== 'conditional-stat-bonus') return null;
+  const pathRanks = pathRanksFromFeatures(character.featureIds);
+  return resolveValue(effect.value, feature.pathId, pathRanks, effectContext(character));
+}
+
+/** L'interrupteur du i-ème effet d'une capacité est-il actif pour ce personnage ? */
+export function isEffectActive(character: Character, featureId: string, index: number): boolean {
+  const effects = featureById.get(featureId)?.effects;
+  const effect = effects?.[index];
+  if (!effect || effect.kind !== 'conditional-stat-bonus') return false;
+  const toggled = character.effectToggles[featureId]?.[index];
+  return toggled ?? effect.activation.activeByDefault ?? false;
+}
+
+/**
+ * Renvoie une copie de `effectToggles` avec l'interrupteur du i-ème effet d'une
+ * capacité fixé à `active`. Le tableau est complété par des `false` si besoin
+ * pour atteindre l'index visé. Fonction pure (ne mute pas le personnage).
+ */
+export function setEffectToggle(
+  character: Character,
+  featureId: string,
+  index: number,
+  active: boolean,
+): Record<string, boolean[]> {
+  const next = { ...character.effectToggles };
+  const current = next[featureId] ? next[featureId].slice() : [];
+  while (current.length <= index) current.push(false);
+  current[index] = active;
+  next[featureId] = current;
+  return next;
+}
+
+/**
+ * Élague les interrupteurs orphelins : retire les entrées dont la capacité n'est
+ * plus acquise. À appeler quand on retire une capacité. Fonction pure.
+ */
+export function pruneEffectToggles(
+  effectToggles: Record<string, boolean[]>,
+  featureIds: string[],
+): Record<string, boolean[]> {
+  const owned = new Set(featureIds);
+  const next: Record<string, boolean[]> = {};
+  for (const [id, toggles] of Object.entries(effectToggles)) {
+    if (owned.has(id)) next[id] = toggles;
+  }
+  return next;
 }

@@ -29,7 +29,12 @@ import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/ch
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
-import { modsFromFeatures } from '@/lib/character/effects';
+import {
+  effectContext,
+  modsFromFeatures,
+  pruneEffectToggles,
+  setEffectToggle,
+} from '@/lib/character/effects';
 import { effectiveFeatureIdsForMods, pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
@@ -151,11 +156,19 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // L'édition des capacités élague les choix orphelins (capacité retirée → ses
   // choix persistés sont supprimés), pour ne pas conserver de choix fantôme.
   const setFeatureIds = (featureIds: string[]) =>
-    update({ featureIds, featureChoices: pruneFeatureChoices(character.featureChoices, featureIds) });
+    update({
+      featureIds,
+      featureChoices: pruneFeatureChoices(character.featureChoices, featureIds),
+      effectToggles: pruneEffectToggles(character.effectToggles, featureIds),
+    });
   // Résolution rétroactive d'un choix porté par une capacité (PER-66/68). La
   // fiche est permissive : on persiste sans bloquer (recalcul en direct).
   const setChoice = (featureId: string, index: number, value: FeatureChoiceSelection) =>
     update({ featureChoices: setFeatureChoice(character, featureId, index, value) });
+  // Bascule d'un interrupteur d'effet conditionnel/temporaire (PER-67). Recalcul
+  // en direct : le moteur n'inclut l'effet que lorsqu'il est actif.
+  const setEffectToggleValue = (featureId: string, index: number, active: boolean) =>
+    update({ effectToggles: setEffectToggle(character, featureId, index, active) });
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
   // supprime la clé et rétablit le calcul automatique.
   const setOverride = (key: DerivedStatId, value: number | null) => {
@@ -172,6 +185,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Capacités acquises + capacités empruntées par choix : base de l'agrégation
   // des bonus plats et du détail des stats dérivées (PER-66).
   const modFeatureIds = effectiveFeatureIdsForMods(character);
+  // Contexte d'effets (PER-67) : résout les valeurs scalantes et n'inclut que les
+  // effets conditionnels dont l'interrupteur est actif.
+  const effectCtx = effectContext(character);
 
   const derivedInput: DerivedInput | null = family
     ? {
@@ -180,9 +196,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         family,
         defenseEquipment: defenseFromEquipment(character.equipment),
         spellCount: character.featureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
-        // Bonus plats inconditionnels des capacités acquises (PER-63) ET des
-        // capacités empruntées par un choix « capacité d'une autre voie » (PER-66).
-        mods: modsFromFeatures(modFeatureIds),
+        // Bonus des capacités acquises (PER-63) ET des capacités empruntées par un
+        // choix « capacité d'une autre voie » (PER-66). Le contexte (PER-67) résout
+        // les valeurs scalantes et n'ajoute les effets conditionnels que s'ils sont
+        // activés.
+        mods: modsFromFeatures(modFeatureIds, effectCtx),
         // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique à la
         // formule mono-famille pour un profil classique.
         hpFamilyGains: familyHpGains(character, rulesContext),
@@ -384,6 +402,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               <DerivedStatsGrid
                 input={derivedInput}
                 featureIds={modFeatureIds}
+                effectContext={effectCtx}
                 overrides={character.overrides}
                 onOverride={editing ? setOverride : undefined}
               />
@@ -408,6 +427,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               manualFeatureIds={manualFeatureIds(character)}
               character={character}
               onChoiceChange={editing ? setChoice : undefined}
+              // Les interrupteurs d'effets conditionnels sont des ÉTATS DE JEU
+              // transitoires : activables à tout moment, y compris hors édition.
+              onToggleEffect={setEffectToggleValue}
             />
           </SheetSection>
 

@@ -24,8 +24,10 @@ import type { AncestryChoice } from './ancestry';
  *   détail « base + peuple = total » d'une caractéristique sur la fiche.
  * v5 : ajout de `featureChoices` (choix retenus pour les capacités qui en
  *   portent — sort d'une autre voie / caractéristique / option — PER-66).
+ * v6 : ajout de `effectToggles` (interrupteurs manuels des effets conditionnels /
+ *   temporaires portés par les capacités — PER-67).
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /**
  * Statistiques dérivées surchargeables manuellement (règle maison, cf. PRD
@@ -154,6 +156,21 @@ export interface Character {
    * `src/lib/character/choices.ts`).
    */
   featureChoices: Record<string, FeatureChoiceSelection[]>;
+
+  /**
+   * Interrupteurs manuels des effets conditionnels / temporaires portés par les
+   * capacités (PER-67). Clé = id de la capacité ; valeur = un booléen par entrée
+   * de `Feature.effects`, ALIGNÉ PAR POSITION (`effectToggles[id][i]` ↔
+   * `feature.effects[i]`). Un effet `conditional-stat-bonus` n'est compté par le
+   * moteur que s'il est actif ; case absente → on retombe sur
+   * `activation.activeByDefault`. Les effets non conditionnels ignorent leur case.
+   *
+   * Prolonge la philosophie de `overrides` (PER-48) : une déviation MANUELLE,
+   * réversible, persistée sur le personnage, que le moteur respecte — mais ciblée
+   * sur un effet précis (« cette condition est réunie ») plutôt que sur la valeur
+   * finale d'une stat. Une capacité sans effet conditionnel n'a pas d'entrée ici.
+   */
+  effectToggles: Record<string, boolean[]>;
 
   /** Historique des montées de niveau (permet « qu'ai-je pris au niveau N ? »). */
   levelUpHistory: LevelUpEntry[];

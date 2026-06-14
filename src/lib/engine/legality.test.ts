@@ -37,6 +37,7 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     ancestryPathId: 'humain',
     featureIds: [],
     featureChoices: {},
+    effectToggles: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},

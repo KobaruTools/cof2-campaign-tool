@@ -336,22 +336,118 @@ export type DerivedStatId = (typeof DERIVED_STAT_IDS)[number];
  * `kind` : on pourra introduire d'autres genres d'effets (ex. accès aux
  * armures modifié, milestone Armures) en ajoutant un membre à l'union, sans
  * rouvrir le schéma de `Feature`.
+ *
+ * Deux genres à ce jour :
+ *  - `stat-bonus` : bonus PERMANENT, toujours appliqué (valeur éventuellement
+ *    scalante, PER-67) ;
+ *  - `conditional-stat-bonus` : bonus CONDITIONNEL / TEMPORAIRE, compté seulement
+ *    quand l'interrupteur manuel du personnage l'active (PER-67).
  */
-export type FeatureEffect = StatBonusEffect;
+export type FeatureEffect = StatBonusEffect | ConditionalStatBonusEffect;
 
 /**
- * Bonus chiffré PERMANENT et INCONDITIONNEL à une statistique dérivée
- * (ex. « bonus permanent de +1 en Init. et en DEF » — voie de l'air r1, p. 93).
- * Hors périmètre : les bonus conditionnels / temporaires / scalants (un autre
- * genre d'effet, ticket dédié). Une capacité partiellement plate n'expose ici
- * que sa part plate inconditionnelle.
+ * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
+ * DEF »), soit une valeur SCALANTE calculée depuis le personnage (`ScalingValue`,
+ * ex. « ajoute sa FOR à ses PV », « passe à +2 au rang 5 de la voie »). La couche
+ * données ne porte que la DÉFINITION ; la résolution numérique est faite par le
+ * moteur, qui connaît le niveau, les caractéristiques et la progression dans les
+ * voies (cf. `src/lib/character/effects.ts`).
+ */
+export type EffectValue = number | ScalingValue;
+
+/** Valeur scalante (PER-67), discriminée par `scale`. */
+export type ScalingValue = SteppedScalingValue | AbilityScalingValue;
+
+/**
+ * Valeur par PALIERS selon la progression : on retient la valeur du palier de
+ * plus haut seuil atteint (≤ référence), 0 sous le premier seuil. Couvre les
+ * bonus qui « passent à +2 » à un certain rang/niveau (ex. Parade croisée :
+ * +1 en DEF, +2 au rang 5 de la voie — p. 73).
+ */
+export interface SteppedScalingValue {
+  scale: 'stepped';
+  /**
+   * Référence d'échelle :
+   *  - 'level' : niveau du personnage ;
+   *  - 'path-rank' : rang le plus élevé atteint dans la VOIE de la capacité hôte.
+   */
+  by: 'level' | 'path-rank';
+  /** Paliers `{ min, value }`, triés par seuil croissant. */
+  steps: Array<{ min: number; value: number }>;
+}
+
+/**
+ * Valeur égale à une CARACTÉRISTIQUE (× un facteur), ex. « le barbare ajoute sa
+ * FOR à son maximum de PV » (Argument de taille, p. 79) → `maxHp += FOR`.
+ */
+export interface AbilityScalingValue {
+  scale: 'ability';
+  ability: AbilityId;
+  /** Multiplicateur appliqué à la valeur de la caractéristique (défaut 1). */
+  factor?: number;
+}
+
+/**
+ * Bonus chiffré PERMANENT à une statistique dérivée, toujours appliqué par le
+ * moteur (ex. « bonus permanent de +1 en Init. et en DEF » — voie de l'air r1,
+ * p. 93). La valeur est le plus souvent une constante, mais peut être scalante
+ * (PER-67, ex. `maxHp += FOR`). Une capacité partiellement plate n'expose ici que
+ * sa part inconditionnelle ; sa part conditionnelle relève de
+ * `ConditionalStatBonusEffect`.
  */
 export interface StatBonusEffect {
   kind: 'stat-bonus';
   /** Stat dérivée visée (cf. `DERIVED_STAT_IDS`). */
   stat: DerivedStatId;
-  /** Valeur ajoutée (signée). */
-  value: number;
+  /** Valeur ajoutée (signée) : constante ou scalante. */
+  value: EffectValue;
+}
+
+/**
+ * Déclencheur d'un effet conditionnel / temporaire (PER-67). Côté moteur, les
+ * deux natures se ramènent à un INTERRUPTEUR on/off ; la distinction `kind` sert
+ * l'UI et la documentation. L'état courant n'est PAS dans la couche données
+ * (figée) : il est porté par un interrupteur manuel persistant sur le personnage
+ * (`Character.effectToggles`), dans la lignée de la surcharge manuelle des stats
+ * dérivées (`overrides`, PER-48).
+ */
+export interface EffectActivation {
+  /**
+   *  - 'condition' : situation de jeu (« une arme dans chaque main », « premier
+   *    tour », « contre une cible désignée »…) ;
+   *  - 'temporary' : effet de durée ou d'usage limité (« pendant la rage », « X
+   *    tours »).
+   */
+  kind: 'condition' | 'temporary';
+  /** Description française du déclencheur, ex. « une arme dans chaque main ». */
+  label: string;
+  /**
+   * L'effet compte-t-il tant que le joueur n'a pas explicitement basculé son
+   * interrupteur ? Défaut `false` (un effet conditionnel est inactif par défaut).
+   */
+  activeByDefault?: boolean;
+}
+
+/**
+ * Bonus à une statistique dérivée qui n'est compté QUE lorsqu'il est actif
+ * (PER-67) : effet conditionnel (« +1 en DEF avec une arme dans chaque main »)
+ * ou temporaire (« −2 en DEF pendant la rage »). La valeur suit les mêmes règles
+ * que `StatBonusEffect` (constante ou scalante). L'activation est manuelle (cf.
+ * `EffectActivation` et `Character.effectToggles`).
+ *
+ * FRONTIÈRE milestone Armures : ce genre fournit le MÉCANISME générique
+ * (condition + interrupteur). Les conditions spécifiques au PORT D'ARMURE
+ * (capacités désactivées en armure, etc.) seront câblées côté milestone Armures,
+ * qui réutilise cette couche — on ne modélise ici aucune sémantique d'armure.
+ */
+export interface ConditionalStatBonusEffect {
+  kind: 'conditional-stat-bonus';
+  /** Stat dérivée visée (cf. `DERIVED_STAT_IDS`). */
+  stat: DerivedStatId;
+  /** Valeur ajoutée (signée) lorsque l'effet est actif : constante ou scalante. */
+  value: EffectValue;
+  /** Déclencheur (condition / durée) et état par défaut de l'interrupteur. */
+  activation: EffectActivation;
 }
 
 // ---------------------------------------------------------------------------
