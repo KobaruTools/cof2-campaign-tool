@@ -611,6 +611,10 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Si l’ensorceleur réussit un test d’attaque magique réussi contre la DEF de son adversaire situé à une portée de 20 m, il lui inflige [1d4° + CHA] DM. Si la cible a un NC inférieur au rang atteint par l’ensorceleur dans la voie, elle doit réussir un test de FOR difficulté 10 pour ne pas être renversée.",
+    // Rendu enrichi (PER-64) : `[1d4° + CHA]` est rendu dé évolutif (au niveau
+    // courant) + CHA résolu ; `@FOR` est mise en avant comme référence de stat.
+    richText:
+      "Si l’ensorceleur réussit un test d’attaque magique réussi contre la DEF de son adversaire situé à une portée de 20 m, il lui inflige [1d4° + CHA] DM. Si la cible a un NC inférieur au rang atteint par l’ensorceleur dans la voie, elle doit réussir un test de @FOR difficulté 10 pour ne pas être renversée.",
     sourcePage: 96,
   },
   {
@@ -622,6 +626,11 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Ce sort crée une force invisible pendant CHA minutes. Le serviteur peut effectuer à distance des tâches simples ne nécessitant pas de test de réussite avec une AGI et une INT de +0 et une FOR égale au CHA de l’ensorceleur (portée 20 m). Il peut par exemple rapporter un objet ou actionner un levier, voire faire la vaisselle. Le serviteur invisible se déplace à la même vitesse que l’ensorceleur, ne pèse rien, ne parle pas, n’a pas vraiment d’existence et peut se déplacer dans toutes les directions. Concevez‑le davantage comme une force qui obéit aux injonctions télépathiques de son créateur que comme une créature. Il n’attaque pas et ne peut pas être combattu, mais il peut être dissipé grâce au sort de maîtrise de la magie.",
+    // Rendu enrichi (PER-64) : la @FOR du serviteur, « égale au [CHA] », mêle une
+    // référence de stat (@FOR/@AGI/@INT) et un encadré de formule calculé `[CHA]`.
+    // « CHA minutes » reste en texte brut (stat-quantité → PER-90).
+    richText:
+      "Ce sort crée une force invisible pendant CHA minutes. Le serviteur peut effectuer à distance des tâches simples ne nécessitant pas de test de réussite avec une @AGI et une @INT de +0 et une @FOR égale au [CHA] de l’ensorceleur (portée 20 m). Il peut par exemple rapporter un objet ou actionner un levier, voire faire la vaisselle. Le serviteur invisible se déplace à la même vitesse que l’ensorceleur, ne pèse rien, ne parle pas, n’a pas vraiment d’existence et peut se déplacer dans toutes les directions. Concevez‑le davantage comme une force qui obéit aux injonctions télépathiques de son créateur que comme une créature. Il n’attaque pas et ne peut pas être combattu, mais il peut être dissipé grâce au sort de maîtrise de la magie.",
     sourcePage: 96,
   },
   {

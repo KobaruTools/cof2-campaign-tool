@@ -367,8 +367,22 @@ export interface Feature {
    * plusieurs (« Malédiction (M) ou (L)* » — p. 343). Vide = passive.
    */
   actionTypes: ActionType[];
-  /** Texte de règles complet, verbatim. */
+  /** Texte de règles complet, verbatim. Reste la SOURCE, jamais perdu. */
   text: string;
+  /**
+   * Texte balisé pour l'affichage ENRICHI (PER-64), EN PLUS de `text` (qui reste
+   * la source). Couche de PRÉSENTATION uniquement (distincte de `effects`, qui
+   * nourrit le moteur). Mini-langage parsé par `parseRichText` (cf.
+   * `src/lib/ui/featureRichText.ts`) :
+   * - dé : `{1d4°}`, `{d6}`, `{2d6}` (entre accolades, notation du livre ; `°` =
+   *   dé évolutif rendu à sa valeur au niveau courant) ;
+   * - formule : `[FOR + 1]`, `[CHA]`, `[1d4° + CHA]` (entre crochets) — une suite
+   *   de termes (caractéristique, dé, nombre) séparés par `+`/`-`. Sans dé, la
+   *   formule est calculée et affichée en encadré avec son détail ; avec un dé,
+   *   elle est rendue dé(s) + caractéristiques résolues.
+   * Tout le reste est du texte littéral. Absent → on retombe sur `text` verbatim.
+   */
+  richText?: string;
   /**
    * Effets structurés lus par le moteur, EN PLUS du `text` verbatim (qui reste
    * la source). Optionnel et additif. Périmètre actuel (PER-63) : uniquement des

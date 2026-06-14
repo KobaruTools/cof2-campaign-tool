@@ -27,9 +27,11 @@ import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
 import { features as featureCatalog, featureById, pathById } from '@/data';
 import type { Feature, Path } from '@/data/schema';
+import type { Abilities } from '@/lib/engine';
 import { classColor } from '@/lib/ui/classColors';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { ClassIcon } from '@/components/ClassIcon';
+import { FeatureText } from '@/components/sheet/FeatureRichText';
 
 /**
  * Ordre d'affichage des voies par type, de gauche à droite sur la fiche :
@@ -104,6 +106,13 @@ export interface FeaturesByPathProps {
   classId: string;
   /** Disposition d'affichage (contrôlée par le parent). */
   layout: FeaturesLayout;
+  /**
+   * Caractéristiques et niveau du personnage : permettent le rendu ENRICHI des
+   * rangs (dés, dé évolutif au niveau courant, formules calculées — PER-64).
+   * Absents → on retombe sur le texte verbatim de chaque capacité.
+   */
+  abilities?: Abilities;
+  level?: number;
   /** Édition en place : si fourni, suppression et ajout de capacités. */
   onChange?: (featureIds: string[]) => void;
   /**
@@ -172,9 +181,13 @@ export function FeaturesLayoutToggle({
 function RetainedAncestryCapacity({
   feature,
   pathName,
+  abilities,
+  level,
 }: {
   feature: Feature;
   pathName?: string;
+  abilities?: Abilities;
+  level?: number;
 }) {
   return (
     <Box>
@@ -184,13 +197,9 @@ function RetainedAncestryCapacity({
       <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 0.25 }}>
         <FeatureLabel feature={feature} />
       </Typography>
-      <Typography
-        variant="body2"
-        color="text.secondary"
-        sx={{ whiteSpace: 'pre-line', mt: 0.25 }}
-      >
-        {feature.text}
-      </Typography>
+      <Box sx={{ mt: 0.25 }}>
+        <FeatureText feature={feature} abilities={abilities} level={level} />
+      </Box>
     </Box>
   );
 }
@@ -201,6 +210,8 @@ function PathBlock({
   classId,
   onRemove,
   manualFeatureIds,
+  abilities,
+  level,
   compact = false,
   gridColumn,
   retainedFeature,
@@ -211,6 +222,9 @@ function PathBlock({
   onRemove?: (featureId: string) => void;
   /** Capacités ajoutées manuellement (épingle). */
   manualFeatureIds?: Set<string>;
+  /** Contexte du personnage pour le rendu enrichi (PER-64). */
+  abilities?: Abilities;
+  level?: number;
   /** Vue colonne : masque le rang de chaque capacité, le résume dans l'en-tête. */
   compact?: boolean;
   /** Vue colonne : index de colonne (1-based) dans la grille subgrid. */
@@ -381,13 +395,13 @@ function PathBlock({
                     <RetainedAncestryCapacity
                       feature={retainedFeature}
                       pathName={retainedPathName}
+                      abilities={abilities}
+                      level={level}
                     />
                     <Divider sx={{ my: 1.5 }} />
                   </>
                 )}
-                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-                  {openFeature.text}
-                </Typography>
+                <FeatureText feature={openFeature} abilities={abilities} level={level} />
               </DialogContent>
             </>
           )}
@@ -453,13 +467,13 @@ function PathBlock({
                   <RetainedAncestryCapacity
                     feature={retainedFeature}
                     pathName={retainedPathName}
+                    abilities={abilities}
+                    level={level}
                   />
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
-              <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-                {feature.text}
-              </Typography>
+              <FeatureText feature={feature} abilities={abilities} level={level} />
             </AccordionDetails>
           </Accordion>
         ))}
@@ -511,6 +525,8 @@ export function FeaturesByPath({
   featureIds,
   classId,
   layout,
+  abilities,
+  level,
   onChange,
   manualFeatureIds,
 }: FeaturesByPathProps) {
@@ -586,6 +602,8 @@ export function FeaturesByPath({
               classId={classId}
               onRemove={onChange ? remove : undefined}
               manualFeatureIds={manualFeatureIds}
+              abilities={abilities}
+              level={level}
               compact
               gridColumn={i + 1}
               retainedFeature={group === mageGroup ? retainedFeature : undefined}
@@ -602,6 +620,8 @@ export function FeaturesByPath({
               classId={classId}
               onRemove={onChange ? remove : undefined}
               manualFeatureIds={manualFeatureIds}
+              abilities={abilities}
+              level={level}
               compact
               gridColumn={PATH_COLUMN_COUNT - prestige.length + 1 + i}
             />
@@ -616,6 +636,8 @@ export function FeaturesByPath({
               classId={classId}
               onRemove={onChange ? remove : undefined}
               manualFeatureIds={manualFeatureIds}
+              abilities={abilities}
+              level={level}
               retainedFeature={group === mageGroup ? retainedFeature : undefined}
               retainedPathName={group === mageGroup ? retainedPathName : undefined}
             />

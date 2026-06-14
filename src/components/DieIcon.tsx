@@ -22,6 +22,12 @@ export interface DieIconProps {
   evolving?: boolean;
   /** Niveau du personnage — enrichit l'info-bulle d'un dé évolutif. */
   level?: number;
+  /**
+   * Supprime l'info-bulle propre de l'icône. Utile quand le dé est intégré à un
+   * ensemble qui porte déjà sa propre info-bulle (ex. encadré de formule), pour
+   * éviter deux info-bulles concurrentes sur la même zone.
+   */
+  noTooltip?: boolean;
   sx?: SxProps<Theme>;
 }
 
@@ -35,7 +41,15 @@ export interface DieIconProps {
  * la valeur courante du dé, surmontée du marqueur « ° » (notation CO2 p. 43)
  * dans la couleur d'accent du thème.
  */
-export function DieIcon({ die, size = 24, color, evolving = false, level, sx }: DieIconProps) {
+export function DieIcon({
+  die,
+  size = 24,
+  color,
+  evolving = false,
+  level,
+  noTooltip = false,
+  sx,
+}: DieIconProps) {
   const markup = DIE_ICON_PATHS[die];
   if (!markup) return null;
 
@@ -61,35 +75,34 @@ export function DieIcon({ die, size = 24, color, evolving = false, level, sx }: 
     />
   );
 
-  return (
-    <Tooltip title={label}>
-      {evolving ? (
-        <Box
-          component="span"
-          sx={{ position: 'relative', display: 'inline-flex', flexShrink: 0, ...sx }}
-        >
-          {svg}
-          <Box
-            component="span"
-            aria-hidden
-            sx={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              transform: 'translate(40%, -25%)',
-              fontSize: Math.max(12, size * 0.55),
-              fontWeight: 700,
-              lineHeight: 1,
-              color: 'secondary.main',
-              pointerEvents: 'none',
-            }}
-          >
-            °
-          </Box>
-        </Box>
-      ) : (
-        svg
-      )}
-    </Tooltip>
+  const inner = evolving ? (
+    <Box component="span" sx={{ position: 'relative', display: 'inline-flex', flexShrink: 0, ...sx }}>
+      {svg}
+      <Box
+        component="span"
+        aria-hidden
+        sx={{
+          // Le glyphe « ° » se dessine en haut de sa case : on l'ancre au coin
+          // supérieur droit du dé sans le pousser vers le haut, pour un gros
+          // point proche du dé qui ne dépasse pas.
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          transform: 'translate(20%, 0)',
+          fontSize: Math.max(16, size * 0.85),
+          fontWeight: 700,
+          lineHeight: 1,
+          color: 'secondary.main',
+          pointerEvents: 'none',
+        }}
+      >
+        °
+      </Box>
+    </Box>
+  ) : (
+    svg
   );
+
+  if (noTooltip) return inner;
+  return <Tooltip title={label}>{inner}</Tooltip>;
 }

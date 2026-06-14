@@ -370,6 +370,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               featureIds={character.featureIds}
               classId={character.classId}
               layout={voiesLayout}
+              abilities={character.abilities}
+              level={character.level}
               onChange={editing ? setFeatureIds : undefined}
               manualFeatureIds={manualFeatureIds(character)}
             />
