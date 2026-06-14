@@ -68,6 +68,12 @@ import {
 } from '@/lib/character/wizard';
 import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { modsFromFeatures } from '@/lib/character/effects';
+import {
+  effectiveFeatureIdsForMods,
+  featureChoiceDefs,
+  setFeatureChoice,
+} from '@/lib/character/choices';
+import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { pickName } from '@/lib/character/names';
 import {
   defenseFromEquipment,
@@ -862,6 +868,15 @@ export function PathsStep({ draft, patch }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const hybrid = draft.hybrid ?? false;
 
+  // Choix portés par les capacités de rang 1 effectivement acquises (voie de
+  // peuple + voies choisies) — proposés ici, dès la sélection des voies (PER-68).
+  // `materializeDraft` fournit le personnage de travail pour résoudre les
+  // domaines et lire/écrire les choix retenus (`draft.featureChoices`).
+  const choicePreview = ancestry ? materializeDraft(draft, ancestry, draft.createdAt) : null;
+  const level1WithChoices = choicePreview
+    ? choicePreview.featureIds.filter((id) => featureChoiceDefs(id).length > 0)
+    : [];
+
   const togglePath = (pathId: string) => {
     const has = draft.chosenPaths.includes(pathId);
     let next: string[];
@@ -1099,6 +1114,40 @@ export function PathsStep({ draft, patch }: StepProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Choix portés par les capacités de rang 1 (PER-66/68) : proposés dès la
+          sélection des voies. Obligatoires — la création reste bloquée tant
+          qu'ils ne sont pas tous résolus (récapitulés à la dernière étape). */}
+      {choicePreview && level1WithChoices.length > 0 && (
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="subtitle2" gutterBottom>
+              Choix des capacités de rang 1
+            </Typography>
+            <Stack spacing={2}>
+              {level1WithChoices.map((id) => {
+                const feature = featureById.get(id);
+                return (
+                  <Box key={id}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      {feature ? <FeatureLabel feature={feature} /> : id}
+                    </Typography>
+                    <FeatureChoiceField
+                      character={choicePreview}
+                      featureId={id}
+                      mode="edit"
+                      blocking
+                      onChange={(fid, index, value) =>
+                        patch({ featureChoices: setFeatureChoice(choicePreview, fid, index, value) })
+                      }
+                    />
+                  </Box>
+                );
+              })}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
     </Stack>
   );
 }
@@ -1315,7 +1364,7 @@ export function IdentityStep({ draft, patch }: StepProps) {
 // Étape 7 — Récapitulatif
 // ---------------------------------------------------------------------------
 
-export function SummaryStep({ draft }: StepProps) {
+export function SummaryStep({ draft, patch }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const characterClass = classById.get(draft.classId);
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
@@ -1333,8 +1382,10 @@ export function SummaryStep({ draft }: StepProps) {
     family,
     defenseEquipment: defenseFromEquipment(draft.equipment),
     spellCount,
-    // Bonus plats inconditionnels apportés par les capacités du niveau 1 (PER-63).
-    mods: modsFromFeatures(featureIds),
+    // Bonus plats des capacités du niveau 1 (PER-63) + capacités empruntées par
+    // un choix « capacité d'une autre voie » (PER-66) ; `preview` porte déjà les
+    // choix faits dans le wizard.
+    mods: modsFromFeatures(effectiveFeatureIdsForMods(preview)),
     // PV de base d'un profil hybride créé au niveau 1 (somme des deux familles,
     // p. 180) ; identique à 2 × baseHp pour un profil standard.
     hpLevel1Family: level1FamilyHp(preview, rulesContext),
@@ -1418,7 +1469,7 @@ export function SummaryStep({ draft }: StepProps) {
         <Typography variant="subtitle2" gutterBottom>
           Statistiques dérivées
         </Typography>
-        <DerivedStatsGrid input={derivedInput} featureIds={featureIds} />
+        <DerivedStatsGrid input={derivedInput} featureIds={effectiveFeatureIdsForMods(preview)} />
       </Box>
 
       <Box>
@@ -1481,6 +1532,39 @@ export function SummaryStep({ draft }: StepProps) {
           })}
         </Grid>
       </Box>
+
+      {/* Choix portés par les capacités de niveau 1 (PER-66/68) — bloquant :
+          le bouton « Créer » reste désactivé tant qu'ils ne sont pas résolus. */}
+      {featureIds.some((id) => featureChoiceDefs(id).length > 0) && (
+        <Box>
+          <Typography variant="subtitle2" gutterBottom>
+            Choix à faire
+          </Typography>
+          <Stack spacing={2}>
+            {featureIds
+              .filter((id) => featureChoiceDefs(id).length > 0)
+              .map((id) => {
+                const feature = featureById.get(id);
+                return (
+                  <Box key={id}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      {feature ? <FeatureLabel feature={feature} /> : id}
+                    </Typography>
+                    <FeatureChoiceField
+                      character={preview}
+                      featureId={id}
+                      mode="edit"
+                      blocking
+                      onChange={(fid, index, value) =>
+                        patch({ featureChoices: setFeatureChoice(preview, fid, index, value) })
+                      }
+                    />
+                  </Box>
+                );
+              })}
+          </Stack>
+        </Box>
+      )}
 
       {warnings.length > 0 && (
         <Alert severity="warning">

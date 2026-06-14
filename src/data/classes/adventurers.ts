@@ -474,6 +474,14 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier choisit une capacité de rang 1 de son choix de guerrier, de voleur (armure de cuir) ou de rôdeur (armure de cuir renforcé). Il gagne aussi +1 en DEF.",
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 1 (guerrier, voleur ou rôdeur)',
+        allowedRanks: [1],
+        classIds: ['guerrier', 'voleur', 'rodeur'],
+      },
+    ],
     sourcePage: 64,
   },
   {

@@ -30,6 +30,7 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     ancestryChoices: [],
     ancestryPathId: 'humain',
     featureIds: [],
+    featureChoices: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},

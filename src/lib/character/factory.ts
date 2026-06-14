@@ -42,6 +42,7 @@ export function createBlankCharacter(
     ancestryChoices: [],
     ancestryPathId: null,
     featureIds: [],
+    featureChoices: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},

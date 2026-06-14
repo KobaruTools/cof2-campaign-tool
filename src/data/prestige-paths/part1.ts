@@ -307,6 +307,14 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Choisissez une capacité de rang 1 de n'importe quelle voie issue d'un profil de votre famille.",
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 1 (voie d’un profil de votre famille)',
+        allowedRanks: [1],
+        familyScope: 'same-family',
+      },
+    ],
     sourcePage: 129,
   },
   {
@@ -364,6 +372,16 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Lorsqu'il acquiert cette capacité, le personnage peut choisir entre deux propositions. Soit il gagne un bonus de +1 en attaque lorsqu'il utilise une capacité à définir. Soit il obtient un bonus de +5 sur une compétence acquise par une capacité (par exemple, discrétion).",
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Proposition retenue',
+        options: [
+          { id: 'attack-bonus', label: '+1 en attaque lorsqu’il utilise une capacité à définir' },
+          { id: 'skill-bonus', label: '+5 sur une compétence acquise par une capacité' },
+        ],
+      },
+    ],
     sourcePage: 129,
   },
   {

@@ -10,7 +10,13 @@ import type { AbilityId, Ancestry } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { classById, pathById } from '@/data';
 import { applyModifiers, initialChoices, type AncestryChoice } from './ancestry';
-import { SCHEMA_VERSION, type Character, type EquipmentLine, type Identity } from './types';
+import {
+  SCHEMA_VERSION,
+  type Character,
+  type EquipmentLine,
+  type FeatureChoiceSelection,
+  type Identity,
+} from './types';
 
 /** Bonus de capacité supplémentaire des mages au niveau 1 (p. 29). */
 export type MageBonus =
@@ -47,6 +53,13 @@ export interface WizardDraft {
   magePathSlot: boolean;
   /** Mages : capacité de rang 2 supplémentaire reçue au niveau 1. */
   mageBonus: MageBonus | null;
+
+  /**
+   * Choix portés par les capacités de niveau 1 (PER-66), résolus pendant le
+   * wizard. Même structure que `Character.featureChoices`. Optionnel pour
+   * rester compatible avec un brouillon persisté avant l'ajout du champ.
+   */
+  featureChoices?: Record<string, FeatureChoiceSelection[]>;
 
   // Étape équipement
   equipment: EquipmentLine[];
@@ -85,6 +98,7 @@ export function createDraft(characterId: string, now: string): WizardDraft {
     hybrid: false,
     magePathSlot: false,
     mageBonus: null,
+    featureChoices: {},
     equipment: [],
     name: '',
     identity: {},
@@ -178,6 +192,7 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     ancestryChoices: draft.ancestryChoices,
     ancestryPathId: effectiveAncestryPath(draft),
     featureIds,
+    featureChoices: draft.featureChoices ?? {},
     levelUpHistory: [{ level: 1, chosenFeatureIds: featureIds }],
     equipment: draft.equipment,
     overrides: {},

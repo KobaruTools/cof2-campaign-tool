@@ -30,6 +30,8 @@ import { modifierDeltas } from '@/lib/character/ancestry';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
 import { modsFromFeatures } from '@/lib/character/effects';
+import { effectiveFeatureIdsForMods, pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
+import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -146,7 +148,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const setIdentity = (identityPatch: Partial<Identity>) =>
     update({ identity: { ...character.identity, ...identityPatch } });
   const setEquipment = (equipment: EquipmentLine[]) => update({ equipment });
-  const setFeatureIds = (featureIds: string[]) => update({ featureIds });
+  // L'édition des capacités élague les choix orphelins (capacité retirée → ses
+  // choix persistés sont supprimés), pour ne pas conserver de choix fantôme.
+  const setFeatureIds = (featureIds: string[]) =>
+    update({ featureIds, featureChoices: pruneFeatureChoices(character.featureChoices, featureIds) });
+  // Résolution rétroactive d'un choix porté par une capacité (PER-66/68). La
+  // fiche est permissive : on persiste sans bloquer (recalcul en direct).
+  const setChoice = (featureId: string, index: number, value: FeatureChoiceSelection) =>
+    update({ featureChoices: setFeatureChoice(character, featureId, index, value) });
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
   // supprime la clé et rétablit le calcul automatique.
   const setOverride = (key: DerivedStatId, value: number | null) => {
@@ -160,6 +169,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // l'édition). Non bloquante — simple aide affichée (PER-47).
   const warnings = checkCompliance(character, rulesContext);
 
+  // Capacités acquises + capacités empruntées par choix : base de l'agrégation
+  // des bonus plats et du détail des stats dérivées (PER-66).
+  const modFeatureIds = effectiveFeatureIdsForMods(character);
+
   const derivedInput: DerivedInput | null = family
     ? {
         abilities: character.abilities,
@@ -167,8 +180,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         family,
         defenseEquipment: defenseFromEquipment(character.equipment),
         spellCount: character.featureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
-        // Bonus plats inconditionnels apportés par les capacités acquises (PER-63).
-        mods: modsFromFeatures(character.featureIds),
+        // Bonus plats inconditionnels des capacités acquises (PER-63) ET des
+        // capacités empruntées par un choix « capacité d'une autre voie » (PER-66).
+        mods: modsFromFeatures(modFeatureIds),
         // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique à la
         // formule mono-famille pour un profil classique.
         hpFamilyGains: familyHpGains(character, rulesContext),
@@ -252,13 +266,31 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 }}
               />
             )}
-            <Typography
-              variant="h4"
-              component="h2"
-              sx={{ fontWeight: 'bold', position: 'relative', zIndex: 1 }}
-            >
-              {character.name || 'Sans nom'}
-            </Typography>
+            {editing ? (
+              <TextField
+                value={character.name}
+                onChange={(e) => update({ name: e.target.value })}
+                placeholder="Sans nom"
+                variant="standard"
+                fullWidth
+                sx={{
+                  position: 'relative',
+                  zIndex: 1,
+                  '& .MuiInputBase-input': {
+                    fontSize: (theme) => theme.typography.h4.fontSize,
+                    fontWeight: 'bold',
+                  },
+                }}
+              />
+            ) : (
+              <Typography
+                variant="h4"
+                component="h2"
+                sx={{ fontWeight: 'bold', position: 'relative', zIndex: 1 }}
+              >
+                {character.name || 'Sans nom'}
+              </Typography>
+            )}
             <Stack
               direction="row"
               spacing={0.75}
@@ -351,7 +383,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             {derivedInput ? (
               <DerivedStatsGrid
                 input={derivedInput}
-                featureIds={character.featureIds}
+                featureIds={modFeatureIds}
                 overrides={character.overrides}
                 onOverride={editing ? setOverride : undefined}
               />
@@ -374,6 +406,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               level={character.level}
               onChange={editing ? setFeatureIds : undefined}
               manualFeatureIds={manualFeatureIds(character)}
+              character={character}
+              onChoiceChange={editing ? setChoice : undefined}
             />
           </SheetSection>
 

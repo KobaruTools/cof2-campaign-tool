@@ -11,7 +11,7 @@
  *  - les valeurs dérivées ne sont **pas** stockées (recalculées à l'affichage),
  *    sauf surcharges manuelles explicites (`overrides`).
  */
-import type { AbilityId, DerivedStatId } from '@/data/schema';
+import type { AbilityId, DerivedStatId, FeatureChoice } from '@/data/schema';
 import type { AncestryChoice } from './ancestry';
 
 /**
@@ -22,8 +22,10 @@ import type { AncestryChoice } from './ancestry';
  * v4 : ajout de `baseAbilities` + `ancestryChoices` (valeurs de base saisies à
  *   la création et résolution des modificateurs de peuple), pour afficher le
  *   détail « base + peuple = total » d'une caractéristique sur la fiche.
+ * v5 : ajout de `featureChoices` (choix retenus pour les capacités qui en
+ *   portent — sort d'une autre voie / caractéristique / option — PER-66).
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /**
  * Statistiques dérivées surchargeables manuellement (règle maison, cf. PRD
@@ -32,6 +34,19 @@ export const SCHEMA_VERSION = 4;
  * unique des clés dans `@/data/schema` (partagée avec `DerivedMods` du moteur).
  */
 export type { DerivedStatId };
+
+/**
+ * Valeur d'un choix retenu pour une capacité (PER-66). Toujours sérialisable en
+ * une chaîne, dont le SENS dépend du `kind` du choix correspondant côté
+ * définition (`Feature.choices`, aligné par position) :
+ *  - `ability` → un `AbilityId` (`'FOR'`, `'AGI'`…) ;
+ *  - `feature-from-path` → l'`id` de la capacité empruntée (`'pourfendeur-r1'`) ;
+ *  - `option` → l'`id` de l'option retenue (`FeatureChoiceOption.id`).
+ * `null` = choix pas encore fait (état explicite, à signaler dans l'UI).
+ */
+export type FeatureChoiceSelection = string | null;
+
+export type { FeatureChoice };
 
 /** Sexe du personnage (code interne, affiché en français). */
 export type Sex = 'male' | 'female';
@@ -125,6 +140,20 @@ export interface Character {
 
   /** Ids des capacités acquises (toutes voies confondues). */
   featureIds: string[];
+
+  /**
+   * Choix retenus pour les capacités qui en portent (PER-66). Clé = id de la
+   * capacité ; valeur = un tableau de sélections, une par entrée de
+   * `Feature.choices`, ALIGNÉ PAR POSITION (`featureChoices[id][i]` correspond à
+   * `feature.choices[i]`). `null` dans le tableau = choix pas encore fait.
+   *
+   * Champ DISTINCT de `featureIds` (acquisition) et `overrides` (surcharges de
+   * stats dérivées) : il enregistre, pour une capacité déjà acquise, COMMENT le
+   * joueur a résolu le choix qu'elle impose. Une capacité sans choix n'a pas
+   * d'entrée ici. Le moteur lit ces choix là où ils ont un impact (cf.
+   * `src/lib/character/choices.ts`).
+   */
+  featureChoices: Record<string, FeatureChoiceSelection[]>;
 
   /** Historique des montées de niveau (permet « qu'ai-je pris au niveau N ? »). */
   levelUpHistory: LevelUpEntry[];

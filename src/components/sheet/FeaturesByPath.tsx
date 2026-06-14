@@ -2,6 +2,7 @@
 
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
@@ -11,8 +12,10 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
@@ -28,12 +31,15 @@ import { useState } from 'react';
 import { features as featureCatalog, featureById, pathById } from '@/data';
 import type { Feature, Path } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
+import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
+import { featureChoiceDefs, hasUnmadeChoice } from '@/lib/character/choices';
 import { classColor } from '@/lib/ui/classColors';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
+import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 
 /**
  * Ordre d'affichage des voies par type, de gauche à droite sur la fiche :
@@ -122,6 +128,18 @@ export interface FeaturesByPathProps {
    * une épingle pour garder une trace de la saisie manuelle (PER-53).
    */
   manualFeatureIds?: Set<string>;
+  /**
+   * Personnage complet : requis pour afficher et résoudre les choix portés par
+   * les capacités (PER-66/68 — domaine des capacités empruntables, sélection
+   * retenue). Absent → les choix ne sont pas affichés.
+   */
+  character?: Character;
+  /**
+   * Édition d'un choix porté par une capacité (fiche permissive). Si fourni
+   * (avec `character`), les choix deviennent modifiables en place ; sinon ils
+   * sont affichés en lecture seule sous la description.
+   */
+  onChoiceChange?: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
 }
 
 /**
@@ -228,6 +246,8 @@ function PathBlock({
   gridColumn,
   retainedFeature,
   retainedPathName,
+  character,
+  onChoiceChange,
 }: {
   group: FeatureGroup;
   classId: string;
@@ -245,6 +265,10 @@ function PathBlock({
   retainedFeature?: Feature;
   /** Nom de la voie de peuple dont la capacité de rang 1 est conservée. */
   retainedPathName?: string;
+  /** Personnage : nécessaire pour afficher/résoudre les choix (PER-66/68). */
+  character?: Character;
+  /** Édition d'un choix porté par une capacité (fiche permissive). */
+  onChoiceChange?: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
 }) {
   const { path, features } = group;
   // Profil dont la voie est issue : le profil principal si la voie lui appartient
@@ -261,6 +285,40 @@ function PathBlock({
   const total = path?.featureIds.length;
   // Vue colonne : la capacité ouverte dans la modale de détail (null = fermée).
   const [openFeature, setOpenFeature] = useState<Feature | null>(null);
+  // Vue colonne : capacité dont on édite le choix dans une modale dédiée (le bloc
+  // est trop petit pour héberger un sélecteur — un bouton crayon l'ouvre, PER-68).
+  const [choiceEditFeature, setChoiceEditFeature] = useState<Feature | null>(null);
+
+  // Choix portés par une capacité (PER-66/68), en LECTURE SEULE : affichés sous
+  // la description (modale / bloc déployé) et en compact dans le bloc colonne.
+  // L'édition passe toujours par un sélecteur dédié (accordéon en vue liste,
+  // modale crayon en vue colonne), jamais inline dans le petit bloc.
+  const renderChoiceDisplay = (feature: Feature, opts: { compact?: boolean } = {}) => {
+    if (!character || featureChoiceDefs(feature.id).length === 0) return null;
+    return (
+      <FeatureChoiceField
+        character={character}
+        featureId={feature.id}
+        mode="display"
+        compact={opts.compact}
+      />
+    );
+  };
+
+  /** Sélecteur éditable des choix (mode édition uniquement). */
+  const renderChoiceEditor = (feature: Feature) =>
+    character && onChoiceChange ? (
+      <FeatureChoiceField
+        character={character}
+        featureId={feature.id}
+        mode="edit"
+        onChange={onChoiceChange}
+      />
+    ) : null;
+
+  /** Vrai si la capacité porte un choix résoluble (pour les affordances d'UI). */
+  const hasChoices = (feature: Feature) =>
+    !!character && featureChoiceDefs(feature.id).length > 0;
 
   const header = (
     <Stack
@@ -367,6 +425,41 @@ function PathBlock({
             >
               {feature.name}
             </Typography>
+            {/* Choix porté par la capacité, poussé en bas du bloc : valeur retenue
+                (chip compact, lecture seule) + bouton crayon ouvrant la modale
+                d'édition (second niveau d'édition — PER-68). */}
+            {hasChoices(feature) && (
+              <Box
+                sx={{
+                  mt: 'auto',
+                  pt: 0.75,
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  // Réserve la place du bouton de suppression (coin bas droite).
+                  pr: onRemove ? 2.5 : 0,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {onChoiceChange && (
+                  <Tooltip title="Modifier le choix" arrow>
+                    <IconButton
+                      size="small"
+                      color={hasUnmadeChoice(character!, feature.id) ? 'warning' : 'primary'}
+                      sx={{ p: 0.25, flexShrink: 0 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setChoiceEditFeature(feature);
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {renderChoiceDisplay(feature, { compact: true })}
+              </Box>
+            )}
             {onRemove && (
               <Tooltip title="Retirer la capacité" arrow>
                 <IconButton
@@ -430,7 +523,56 @@ function PathBlock({
                   </>
                 )}
                 <FeatureText feature={openFeature} abilities={abilities} level={level} />
+                {hasChoices(openFeature) && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    {renderChoiceDisplay(openFeature)}
+                    {onChoiceChange && (
+                      <Button
+                        size="small"
+                        startIcon={<EditIcon fontSize="small" />}
+                        sx={{ mt: 1 }}
+                        onClick={() => {
+                          setOpenFeature(null);
+                          setChoiceEditFeature(openFeature);
+                        }}
+                      >
+                        Modifier le choix
+                      </Button>
+                    )}
+                  </>
+                )}
               </DialogContent>
+            </>
+          )}
+        </Dialog>
+
+        {/* Modale d'édition du choix (vue colonne) : ouverte par le crayon, le
+            bloc étant trop petit pour héberger le sélecteur (PER-68). */}
+        <Dialog
+          open={choiceEditFeature != null}
+          onClose={() => setChoiceEditFeature(null)}
+          maxWidth="xs"
+          fullWidth
+        >
+          {choiceEditFeature && (
+            <>
+              <DialogTitle sx={{ pr: 6 }}>
+                <Box component="span" sx={{ fontWeight: 600 }}>
+                  <FeatureLabel feature={choiceEditFeature} />
+                </Box>
+                <IconButton
+                  aria-label="Fermer"
+                  onClick={() => setChoiceEditFeature(null)}
+                  sx={{ position: 'absolute', right: 8, top: 8 }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </DialogTitle>
+              <DialogContent dividers>{renderChoiceEditor(choiceEditFeature)}</DialogContent>
+              <DialogActions>
+                <Button onClick={() => setChoiceEditFeature(null)}>Terminer</Button>
+              </DialogActions>
             </>
           )}
         </Dialog>
@@ -507,6 +649,12 @@ function PathBlock({
                 </>
               )}
               <FeatureText feature={feature} abilities={abilities} level={level} />
+              {hasChoices(feature) && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  {onChoiceChange ? renderChoiceEditor(feature) : renderChoiceDisplay(feature)}
+                </>
+              )}
             </AccordionDetails>
           </Accordion>
         ))}
@@ -562,6 +710,8 @@ export function FeaturesByPath({
   level,
   onChange,
   manualFeatureIds,
+  character,
+  onChoiceChange,
 }: FeaturesByPathProps) {
   const groups = groupFeaturesByPath(featureIds);
 
@@ -641,6 +791,8 @@ export function FeaturesByPath({
               gridColumn={i + 1}
               retainedFeature={group === mageGroup ? retainedFeature : undefined}
               retainedPathName={group === mageGroup ? retainedPathName : undefined}
+              character={character}
+              onChoiceChange={onChoiceChange}
             />
           ))}
           {ghostColumns.map((c) => (
@@ -657,6 +809,8 @@ export function FeaturesByPath({
               level={level}
               compact
               gridColumn={PATH_COLUMN_COUNT - prestige.length + 1 + i}
+              character={character}
+              onChoiceChange={onChoiceChange}
             />
           ))}
         </Box>
@@ -673,6 +827,8 @@ export function FeaturesByPath({
               level={level}
               retainedFeature={group === mageGroup ? retainedFeature : undefined}
               retainedPathName={group === mageGroup ? retainedPathName : undefined}
+              character={character}
+              onChoiceChange={onChoiceChange}
             />
           ))}
         </Stack>

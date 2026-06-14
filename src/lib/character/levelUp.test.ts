@@ -39,6 +39,7 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     ancestryChoices: [],
     ancestryPathId: 'humain',
     featureIds: ['rage-r1'],
+    featureChoices: {},
     levelUpHistory: [{ level: 1, chosenFeatureIds: ['rage-r1'] }],
     equipment: [],
     overrides: {},

@@ -1005,6 +1005,20 @@ export const fighterFeatures: Feature[] = [
     // « lorsqu'il l'utilise une arme » : sic, coquille présente dans le livre.
     text:
       'Le guerrier choisit une catégorie d’armes de prédilection parmi épées, haches, mains nues, masses, lances (épieu, lance, pique) et enfin armes de jet (dague de lancer, javelot, etc.), et il gagne +1 en attaque lorsqu’il l’utilise une arme de cette catégorie. De plus, vous ajoutez votre rang + 2 à tous les tests destinés à estimer la valeur d’une arme ou la réputation martiale d’un adversaire.',
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Catégorie d’armes de prédilection',
+        options: [
+          { id: 'swords', label: 'Épées' },
+          { id: 'axes', label: 'Haches' },
+          { id: 'unarmed', label: 'Mains nues' },
+          { id: 'maces', label: 'Masses' },
+          { id: 'polearms', label: 'Lances (épieu, lance, pique)' },
+          { id: 'thrown', label: 'Armes de jet (dague de lancer, javelot, etc.)' },
+        ],
+      },
+    ],
     sourcePage: 88,
   },
   {

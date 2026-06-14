@@ -354,6 +354,85 @@ export interface StatBonusEffect {
   value: number;
 }
 
+// ---------------------------------------------------------------------------
+// Choix portés par une capacité — PER-66
+// ---------------------------------------------------------------------------
+
+/**
+ * Choix qu'une capacité fait faire au joueur — couche DÉFINITION (portée par
+ * `Feature.choices`), STRICTEMENT distincte de la VALEUR retenue, qui est
+ * persistée sur le personnage (`Character.featureChoices`, cf.
+ * `src/lib/character/types.ts`). Union discriminée par `kind`.
+ *
+ * Trois natures relevées à l'inventaire (PER-62, `feature-classification`) :
+ *  - `ability` : choisir une caractéristique (ex. « augmentez d'un point une
+ *    caractéristique au choix ») ;
+ *  - `feature-from-path` : emprunter une capacité à d'autres voies (ex. demi-orc
+ *    r2 — « une capacité de rang 1 de n'importe quelle voie de barbare ou de
+ *    guerrier ») ; la capacité retenue est effectivement acquise, donc ses
+ *    propres `effects` comptent côté moteur (cf. `modsFromFeatures`) ;
+ *  - `option` : choisir dans une liste énumérée explicitement (ex. maître
+ *    d'armes r1 — épées / haches / mains nues / masses / lances / armes de jet).
+ *
+ * Une capacité peut porter plusieurs choix (`Feature.choices`) ; chaque choix est
+ * identifié par sa POSITION dans le tableau (clé d'alignement avec la sélection
+ * persistée). On ne modélise ici QUE le domaine de valeurs autorisées ; l'effet
+ * mécanique d'un choix relève du moteur et des tickets d'effets.
+ */
+export type FeatureChoice = AbilityFeatureChoice | PathFeatureChoice | OptionFeatureChoice;
+export type FeatureChoiceKind = FeatureChoice['kind'];
+
+interface FeatureChoiceBase {
+  /** Invite affichée au joueur (français), ex. « Caractéristique à augmenter ». */
+  prompt: string;
+}
+
+/** Choix d'une caractéristique parmi un domaine autorisé. */
+export interface AbilityFeatureChoice extends FeatureChoiceBase {
+  kind: 'ability';
+  /** Caractéristiques admissibles ; absent = les 7. */
+  allowed?: AbilityId[];
+}
+
+/**
+ * Choix d'une capacité empruntée à d'autres voies. Le domaine est exprimé par
+ * CONTRAINTES (rangs, profils, voies, portée relative au personnage) plutôt
+ * qu'énuméré en dur : la liste réelle se calcule depuis le catalogue de voies
+ * (cf. `eligibleFeaturesForChoice`, `src/lib/character/choices.ts`).
+ */
+export interface PathFeatureChoice extends FeatureChoiceBase {
+  kind: 'feature-from-path';
+  /** Rangs autorisés pour la capacité empruntée (ex. `[1]` ou `[1, 2]`). */
+  allowedRanks: number[];
+  /**
+   * Restreint aux voies de ces profils (ids de `CharacterClass`). Absent (et
+   * `pathIds`/`familyScope` absents) = n'importe quelle voie de profil.
+   */
+  classIds?: string[];
+  /** Restreint à ces voies précises (ids de `Path`). */
+  pathIds?: string[];
+  /**
+   * Domaine RELATIF au personnage : `same-family` = voies des profils de la
+   * même famille que lui (ex. voie de l'expert, p. 129). Résolu par le moteur,
+   * qui connaît le personnage.
+   */
+  familyScope?: 'same-family';
+}
+
+/** Une option énumérée d'un `OptionFeatureChoice`. */
+export interface FeatureChoiceOption {
+  /** Id stable persisté sur le personnage (clé de contenu, en anglais). */
+  id: string;
+  /** Libellé affiché au joueur (français). */
+  label: string;
+}
+
+/** Choix d'une option dans une liste énumérée explicitement. */
+export interface OptionFeatureChoice extends FeatureChoiceBase {
+  kind: 'option';
+  options: FeatureChoiceOption[];
+}
+
 export interface Feature {
   id: string;
   name: string;
@@ -398,6 +477,13 @@ export interface Feature {
    * tickets aval (effets conditionnels, choix). Absent = aucun effet structuré.
    */
   effects?: FeatureEffect[];
+  /**
+   * Choix portés par cette capacité (PER-66), EN PLUS du `text` verbatim (qui
+   * reste la source). Une entrée par choix indépendant ; la valeur retenue est
+   * persistée sur le personnage (`Character.featureChoices`), alignée par
+   * POSITION sur ce tableau. Absent = la capacité n'impose aucun choix.
+   */
+  choices?: FeatureChoice[];
   /**
    * Coût de base en points de mana pour LANCER ce sort — DÉROGATION explicite au
    * coût standard (PER-65). La règle générale (p. 228) est : « Lancer un sort

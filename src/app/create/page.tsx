@@ -17,6 +17,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { ancestryById, classById } from '@/data';
 import { choicesComplete } from '@/lib/character/ancestry';
+import { featuresWithUnmadeChoices } from '@/lib/character/choices';
 import { materializeDraft, pathsStepComplete, type WizardDraft } from '@/lib/character/wizard';
 import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
@@ -66,7 +67,13 @@ const STEPS: StepDef[] = [
   {
     label: 'Voies & capacités',
     Component: PathsStep,
-    valid: pathsStepComplete,
+    // Voies choisies + tous les choix portés par les capacités de rang 1
+    // résolus (wizard bloquant — les choix sont proposés dans cette étape).
+    valid: (d) => {
+      if (!pathsStepComplete(d)) return false;
+      const a = ancestryById.get(d.ancestryId);
+      return !!a && featuresWithUnmadeChoices(materializeDraft(d, a, d.createdAt)).length === 0;
+    },
   },
   { label: 'Équipement', Component: EquipmentStep, valid: () => true },
   {
@@ -105,6 +112,15 @@ export default function CreatePage() {
   const StepComponent = current.Component;
   const isLast = step === STEPS.length - 1;
   const canNext = current.valid(draft);
+
+  // Choix de niveau 1 portés par les capacités (PER-66/68) : la création reste
+  // bloquée tant qu'ils ne sont pas tous résolus (doctrine wizard, bloquant).
+  const summaryAncestry = ancestryById.get(draft.ancestryId);
+  const previewForChoices = summaryAncestry
+    ? materializeDraft(draft, summaryAncestry, draft.createdAt)
+    : null;
+  const pendingChoices = previewForChoices ? featuresWithUnmadeChoices(previewForChoices) : [];
+  const canCreate = pendingChoices.length === 0;
 
   const finish = () => {
     const ancestry = ancestryById.get(draft.ancestryId);
@@ -161,7 +177,7 @@ export default function CreatePage() {
             Précédent
           </Button>
           {isLast ? (
-            <Button variant="contained" onClick={finish}>
+            <Button variant="contained" onClick={finish} disabled={!canCreate}>
               Créer le personnage
             </Button>
           ) : (

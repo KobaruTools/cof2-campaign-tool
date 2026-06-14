@@ -28,7 +28,7 @@ import type { Family, Feature } from '@/data/schema';
 import { featureCost, maxHp } from '@/lib/engine';
 import { familyHpGains } from '@/lib/character/hp';
 import { rulesContext } from '@/lib/character/rulesContext';
-import type { Character } from '@/lib/character/types';
+import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
   acquirableFeatures,
   applyLevelUp,
@@ -36,8 +36,15 @@ import {
   FEATURE_POINTS_PER_LEVEL,
   totalFeatureCost,
 } from '@/lib/character/levelUp';
+import {
+  featureChoiceDefs,
+  hasUnmadeChoice,
+  pruneFeatureChoices,
+  setFeatureChoice,
+} from '@/lib/character/choices';
 import { classColor } from '@/lib/ui/classColors';
 import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
+import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { ClassIcon } from '@/components/ClassIcon';
 
@@ -160,6 +167,9 @@ function AvailablePathGroup({
  */
 export function LevelUpDialog({ open, character, family, onClose, onConfirm }: LevelUpDialogProps) {
   const [picked, setPicked] = useState<string[]>([]);
+  // Choix portés par les capacités sélectionnées ce niveau (PER-66/68), à
+  // résoudre avant validation (doctrine wizard : bloquant).
+  const [pickedChoices, setPickedChoices] = useState<Record<string, FeatureChoiceSelection[]>>({});
   // Affichage des voies hors profil principal (profil hybride, p. 176) : masquées
   // par défaut pour ne pas noyer la montée de niveau classique — l'hybridation
   // est un choix délibéré (accord du MJ, cohérence narrative).
@@ -173,6 +183,9 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
     ...character,
     level: newLevel,
     featureIds: [...character.featureIds, ...picked],
+    // Choix déjà résolus dans cette montée de niveau, pour la résolution du
+    // domaine (ex. `same-family`) et l'état « choix à faire ».
+    featureChoices: { ...character.featureChoices, ...pickedChoices },
   };
   const available = acquirableFeatures(working, rulesContext);
 
@@ -258,15 +271,38 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   const remaining = budget - spent;
 
   const add = (featureId: string) => setPicked((prev) => [...prev, featureId]);
-  const remove = (featureId: string) => setPicked((prev) => deselectFeature(prev, featureId));
+  const remove = (featureId: string) =>
+    setPicked((prev) => {
+      const next = deselectFeature(prev, featureId);
+      // Élague les choix des capacités désélectionnées (deselectFeature peut en
+      // retirer plusieurs : rangs supérieurs de la même voie).
+      setPickedChoices((pc) => pruneFeatureChoices(pc, next));
+      return next;
+    });
+  const setChoice = (featureId: string, index: number, value: FeatureChoiceSelection) =>
+    setPickedChoices((pc) =>
+      setFeatureChoice({ ...working, featureChoices: pc }, featureId, index, value),
+    );
+
+  // Bloquant : toute capacité choisie portant un choix doit l'avoir résolu.
+  const choicesPending = picked.some((id) => hasUnmadeChoice(working, id));
 
   const close = () => {
     setPicked([]);
+    setPickedChoices({});
     onClose();
   };
   const confirm = () => {
-    onConfirm(applyLevelUp(character, picked));
+    const leveled = applyLevelUp(character, picked);
+    onConfirm({
+      ...leveled,
+      featureChoices: pruneFeatureChoices(
+        { ...leveled.featureChoices, ...pickedChoices },
+        leveled.featureIds,
+      ),
+    });
     setPicked([]);
+    setPickedChoices({});
   };
 
   return (
@@ -323,32 +359,41 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
             )}
 
             {pickedGroups.length > 0 && (
-              <Stack spacing={0.5} sx={{ mb: 2 }}>
+              <Stack spacing={1} sx={{ mb: 2 }}>
                 {pickedGroups.flatMap((group) =>
                   group.features.map((feature) => (
-                    <Stack
-                      key={feature.id}
-                      direction="row"
-                      spacing={1}
-                      sx={{ alignItems: 'center' }}
-                    >
-                      <Chip label={`Rang ${feature.rank}`} size="small" variant="outlined" />
-                      <Chip
-                        label={`${featureCost(feature, progression)} pt${featureCost(feature, progression) > 1 ? 's' : ''}`}
-                        size="small"
-                      />
-                      <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                        <Box component="span" sx={{ color: 'text.secondary' }}>
-                          {group.path?.name ?? group.pathId} —{' '}
+                    <Box key={feature.id}>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <Chip label={`Rang ${feature.rank}`} size="small" variant="outlined" />
+                        <Chip
+                          label={`${featureCost(feature, progression)} pt${featureCost(feature, progression) > 1 ? 's' : ''}`}
+                          size="small"
+                        />
+                        <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                          <Box component="span" sx={{ color: 'text.secondary' }}>
+                            {group.path?.name ?? group.pathId} —{' '}
+                          </Box>
+                          <FeatureLabel feature={feature} />
+                        </Typography>
+                        <Tooltip title="Retirer ce choix" arrow>
+                          <IconButton size="small" color="error" onClick={() => remove(feature.id)}>
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                      {/* Choix porté par la capacité : à résoudre (bloquant). */}
+                      {featureChoiceDefs(feature.id).length > 0 && (
+                        <Box sx={{ mt: 1, pl: 1 }}>
+                          <FeatureChoiceField
+                            character={working}
+                            featureId={feature.id}
+                            mode="edit"
+                            blocking
+                            onChange={setChoice}
+                          />
                         </Box>
-                        <FeatureLabel feature={feature} />
-                      </Typography>
-                      <Tooltip title="Retirer ce choix" arrow>
-                        <IconButton size="small" color="error" onClick={() => remove(feature.id)}>
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
+                      )}
+                    </Box>
                   )),
                 )}
               </Stack>
@@ -437,9 +482,16 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
       </DialogContent>
       <DialogActions>
         <Button onClick={close}>Annuler</Button>
-        <Button variant="contained" onClick={confirm}>
-          Valider le niveau {newLevel}
-        </Button>
+        <Tooltip
+          title={choicesPending ? 'Résolvez les choix des capacités sélectionnées' : ''}
+          arrow
+        >
+          <Box component="span">
+            <Button variant="contained" onClick={confirm} disabled={choicesPending}>
+              Valider le niveau {newLevel}
+            </Button>
+          </Box>
+        </Tooltip>
       </DialogActions>
     </Dialog>
   );

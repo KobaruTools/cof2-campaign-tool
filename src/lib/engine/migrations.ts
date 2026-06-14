@@ -150,6 +150,20 @@ function migrateV3toV4(data: Record<string, unknown>): Record<string, unknown> {
 }
 
 /**
+ * v4 → v5 : ajout de `featureChoices` (choix retenus pour les capacités qui en
+ * portent — PER-66). Les personnages d'avant v5 n'ont fait aucun choix
+ * structuré : on initialise une table vide. Les valeurs par défaut (choix « pas
+ * encore fait ») sont matérialisées à la demande par l'UI/le moteur ; on ne
+ * tente pas de reconstruire des choix passés (impossible à retrouver).
+ */
+function migrateV4toV5(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.featureChoices) === null) next.featureChoices = {};
+  next.schemaVersion = 5;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -157,6 +171,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   1: migrateV1toV2,
   2: migrateV2toV3,
   3: migrateV3toV4,
+  4: migrateV4toV5,
 };
 
 export class MigrationError extends Error {}
@@ -219,6 +234,9 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   }
 
   if (!Array.isArray(data.featureIds)) fail('Champ « featureIds » manquant ou invalide.');
+  if (typeof data.featureChoices !== 'object' || data.featureChoices === null) {
+    fail('Champ « featureChoices » manquant ou invalide.');
+  }
   if (!Array.isArray(data.equipment)) fail('Champ « equipment » manquant ou invalide.');
   if (!Array.isArray(data.levelUpHistory)) fail('Champ « levelUpHistory » manquant ou invalide.');
 }

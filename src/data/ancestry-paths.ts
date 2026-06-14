@@ -124,6 +124,14 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le joueur choisit une capacité de rang 1 de n’importe quelle voie de barbare ou de guerrier.',
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 1 (voie de barbare ou de guerrier)',
+        allowedRanks: [1],
+        classIds: ['barbare', 'guerrier'],
+      },
+    ],
     sourcePage: 48,
   },
   {
@@ -191,6 +199,14 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le joueur choisit une capacité de rang 1 de n’importe quelle voie de magicien ou d’ensorceleur. Il peut utiliser cette capacité en armure sans pénalité (mais pas une capacité qui offre un bonus de DEF). À la place, il peut choisir une capacité de rang 2, mais ne doit alors pas porter d’armure pour lancer le sort.',
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de magicien ou d’ensorceleur (rang 1, ou rang 2 sans armure)',
+        allowedRanks: [1, 2],
+        classIds: ['magicien', 'ensorceleur'],
+      },
+    ],
     sourcePage: 50,
   },
   {
@@ -406,6 +422,20 @@ export const ancestryFeatures: Feature[] = [
     // Part plate inconditionnelle seulement : +1 PC. Le +3 à deux domaines au
     // choix relève du ticket « choix » — non structuré ici.
     effects: [{ kind: 'stat-bonus', stat: 'luckPoints', value: 1 }],
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Origine géographique ou sociale',
+        options: [
+          { id: 'highlander', label: 'Montagnard (escalade et résistance au froid)' },
+          { id: 'city-dweller', label: 'Citadin (commerce et résistance aux maladies)' },
+          { id: 'countryman', label: 'Campagnard (météorologie et équitation)' },
+          { id: 'riverfolk', label: 'Riverain (natation et navigation)' },
+          { id: 'wildling', label: 'Sauvage (chasser et pister)' },
+          { id: 'nomad', label: 'Nomade (orientation et résistance à la chaleur ou au froid)' },
+        ],
+      },
+    ],
     sourcePage: 57,
   },
   {
@@ -428,6 +458,13 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le personnage obtient une capacité de rang 1 ou 2 de n’importe quel profil au choix du joueur. Si la capacité est de rang 2 ou accorde un bonus de DEF, il doit respecter les limitations d’armure.',
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 1 ou 2 (n’importe quel profil)',
+        allowedRanks: [1, 2],
+      },
+    ],
     sourcePage: 57,
   },
   {

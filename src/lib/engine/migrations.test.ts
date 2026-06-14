@@ -49,6 +49,7 @@ function validRaw(): Record<string, unknown> {
     ancestryChoices: ['AGI'],
     ancestryPathId: 'humain',
     featureIds: [],
+    featureChoices: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},
@@ -182,9 +183,36 @@ describe('migrateCharacter', () => {
     expect(c.baseAbilities).toEqual(c.abilities);
   });
 
-  it('expose les migrations 1→2, 2→3 et 3→4 dans le registre', () => {
+  it('migre un personnage v4 vers v5 (featureChoices initialisé à vide)', () => {
+    const v4 = validRaw();
+    v4.schemaVersion = 4;
+    delete v4.featureChoices;
+    const c = migrateCharacter(v4);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.featureChoices).toEqual({});
+  });
+
+  it('préserve les featureChoices déjà présents lors d’un chargement v5', () => {
+    const v5 = validRaw();
+    v5.featureChoices = { 'demi-orc-r2': ['brute-r1'], 'maitre-d-armes-r1': ['swords'] };
+    const c = migrateCharacter(v5);
+    expect(c.featureChoices).toEqual({
+      'demi-orc-r2': ['brute-r1'],
+      'maitre-d-armes-r1': ['swords'],
+    });
+  });
+
+  it('refuse un objet sans featureChoices à la version courante', () => {
+    const raw = validRaw();
+    delete raw.featureChoices;
+    raw.schemaVersion = SCHEMA_VERSION; // pas de migration : la validation doit échouer
+    expect(() => migrateCharacter(raw)).toThrow(ValidationError);
+  });
+
+  it('expose les migrations 1→2, 2→3, 3→4 et 4→5 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
+    expect(typeof MIGRATIONS[4]).toBe('function');
   });
 });
