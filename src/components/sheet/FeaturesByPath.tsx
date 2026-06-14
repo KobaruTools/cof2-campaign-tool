@@ -14,6 +14,7 @@ import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
@@ -130,6 +131,36 @@ export function FeaturesLayoutToggle({
   );
 }
 
+/**
+ * Capacité de peuple de rang 1 conservée par un mage, affichée à l'intérieur du
+ * bloc de rang 1 de la voie du mage (« Capacité de peuple + occultisme », p. 60).
+ */
+function RetainedAncestryCapacity({
+  feature,
+  pathName,
+}: {
+  feature: Feature;
+  pathName?: string;
+}) {
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+        Capacité de peuple conservée{pathName ? ` — ${pathName}` : ''}
+      </Typography>
+      <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 0.25 }}>
+        <FeatureLabel feature={feature} />
+      </Typography>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ whiteSpace: 'pre-line', mt: 0.25 }}
+      >
+        {feature.text}
+      </Typography>
+    </Box>
+  );
+}
+
 /** Une voie et ses capacités acquises, chaque capacité dépliable (texte complet). */
 function PathBlock({
   group,
@@ -137,6 +168,8 @@ function PathBlock({
   onRemove,
   compact = false,
   gridColumn,
+  retainedFeature,
+  retainedPathName,
 }: {
   group: FeatureGroup;
   classId: string;
@@ -145,6 +178,10 @@ function PathBlock({
   compact?: boolean;
   /** Vue colonne : index de colonne (1-based) dans la grille subgrid. */
   gridColumn?: number;
+  /** Voie du mage : capacité de peuple de rang 1 conservée, fusionnée au rang 1. */
+  retainedFeature?: Feature;
+  /** Nom de la voie de peuple dont la capacité de rang 1 est conservée. */
+  retainedPathName?: string;
 }) {
   const { path, features } = group;
   const color = path?.type === 'class' ? classColor(classId) : null;
@@ -286,6 +323,15 @@ function PathBlock({
                 </IconButton>
               </DialogTitle>
               <DialogContent dividers>
+                {retainedFeature && openFeature.rank === 1 && (
+                  <>
+                    <RetainedAncestryCapacity
+                      feature={retainedFeature}
+                      pathName={retainedPathName}
+                    />
+                    <Divider sx={{ my: 1.5 }} />
+                  </>
+                )}
                 <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
                   {openFeature.text}
                 </Typography>
@@ -348,6 +394,15 @@ function PathBlock({
               )}
             </AccordionSummary>
             <AccordionDetails>
+              {retainedFeature && feature.rank === 1 && (
+                <>
+                  <RetainedAncestryCapacity
+                    feature={retainedFeature}
+                    pathName={retainedPathName}
+                  />
+                  <Divider sx={{ my: 1.5 }} />
+                </>
+              )}
               <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
                 {feature.text}
               </Typography>
@@ -400,6 +455,23 @@ function GhostColumn({ gridColumn }: { gridColumn: number }) {
 /** Toutes les voies acquises d'un personnage, regroupées et consultables / éditables. */
 export function FeaturesByPath({ featureIds, classId, layout, onChange }: FeaturesByPathProps) {
   const groups = groupFeaturesByPath(featureIds);
+
+  // Voie du mage : elle remplace la voie de peuple mais le personnage conserve
+  // la capacité de rang 1 de son peuple (p. 60). On fusionne cette capacité dans
+  // le bloc de rang 1 de la voie du mage et on masque la voie de peuple, devenue
+  // une simple ligne isolée. On ne fusionne que si la voie de peuple se réduit
+  // bien à son seul rang 1 (sinon on préserve l'affichage pour ne rien perdre).
+  const mageGroup = groups.find((g) => g.path?.type === 'mage');
+  const ancestryGroup = mageGroup ? groups.find((g) => g.path?.type === 'ancestry') : undefined;
+  const retainedFeature =
+    ancestryGroup && ancestryGroup.features.length === 1
+      ? ancestryGroup.features.find((f) => f.rank === 1)
+      : undefined;
+  const retainedPathName = retainedFeature ? ancestryGroup?.path?.name : undefined;
+  const displayGroups = retainedFeature
+    ? groups.filter((g) => g !== ancestryGroup)
+    : groups;
+
   const owned = new Set(featureIds);
   const addable = onChange
     ? featureCatalog
@@ -414,8 +486,8 @@ export function FeaturesByPath({ featureIds, classId, layout, onChange }: Featur
 
   // La voie de prestige (souvent unique) est épinglée aux dernières colonnes ;
   // les autres voies s'écoulent depuis la gauche (voie du peuple en premier).
-  const prestige = groups.filter((g) => g.path?.type === 'prestige');
-  const others = groups.filter((g) => g.path?.type !== 'prestige');
+  const prestige = displayGroups.filter((g) => g.path?.type === 'prestige');
+  const others = displayGroups.filter((g) => g.path?.type !== 'prestige');
   // Colonnes vides entre les voies de gauche et la voie de prestige : remplies
   // par des colonnes fantômes (emplacements de voies non encore choisies).
   const ghostColumns: number[] = [];
@@ -425,7 +497,7 @@ export function FeaturesByPath({ featureIds, classId, layout, onChange }: Featur
 
   return (
     <Stack spacing={2.5}>
-      {groups.length === 0 ? (
+      {displayGroups.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
           Aucune capacité acquise.
         </Typography>
@@ -455,6 +527,8 @@ export function FeaturesByPath({ featureIds, classId, layout, onChange }: Featur
               onRemove={onChange ? remove : undefined}
               compact
               gridColumn={i + 1}
+              retainedFeature={group === mageGroup ? retainedFeature : undefined}
+              retainedPathName={group === mageGroup ? retainedPathName : undefined}
             />
           ))}
           {ghostColumns.map((c) => (
@@ -473,12 +547,14 @@ export function FeaturesByPath({ featureIds, classId, layout, onChange }: Featur
         </Box>
       ) : (
         <Stack spacing={2.5}>
-          {groups.map((group) => (
+          {displayGroups.map((group) => (
             <PathBlock
               key={group.pathId}
               group={group}
               classId={classId}
               onRemove={onChange ? remove : undefined}
+              retainedFeature={group === mageGroup ? retainedFeature : undefined}
+              retainedPathName={group === mageGroup ? retainedPathName : undefined}
             />
           ))}
         </Stack>
