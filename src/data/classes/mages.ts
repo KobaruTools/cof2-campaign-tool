@@ -378,6 +378,11 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       "L’ensorceleur chuchote un message d’une dizaine de mots qui voyage jusqu’à son destinataire. Il peut entendre sa réponse immédiatement. La portée est de CHA × 100 m et le personnage doit connaître la cible ou la voir. En plus de ce sort, l’ensorceleur gagne un bonus permanent de +1 en Init. et en DEF, car parfois une bourrasque venue de nulle part vient gêner son attaquant, dévier un projectile ou lui permettre d’entendre un adversaire.",
+    // Bonus permanent et inconditionnel « +1 en Init. et en DEF ».
+    effects: [
+      { kind: 'stat-bonus', stat: 'initiative', value: 1 },
+      { kind: 'stat-bonus', stat: 'def', value: 1 },
+    ],
     sourcePage: 93,
   },
   {

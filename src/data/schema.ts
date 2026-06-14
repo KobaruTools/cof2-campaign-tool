@@ -310,6 +310,50 @@ export type PathType = Path['type'];
 export const ACTION_TYPES = ['A', 'L', 'G', 'M'] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
 
+/**
+ * Statistiques dérivées qu'un effet de capacité peut cibler. SOURCE UNIQUE des
+ * clés partagées par le moteur (`DerivedMods`, sac de modificateurs plats) et
+ * par les surcharges manuelles de la fiche (`DerivedStatId` côté personnage).
+ * Définies ici, dans la couche données (la plus basse), pour que les `effects`
+ * structurés des capacités s'y réfèrent sans dépendance circulaire.
+ */
+export const DERIVED_STAT_IDS = [
+  'maxHp',
+  'def',
+  'initiative',
+  'luckPoints',
+  'manaPoints',
+  'recoveryDiceCount',
+  'meleeAttack',
+  'rangedAttack',
+  'magicAttack',
+] as const;
+export type DerivedStatId = (typeof DERIVED_STAT_IDS)[number];
+
+/**
+ * Effet structuré d'une capacité — couche SÉMANTIQUE lue par le moteur, en plus
+ * du `text` verbatim (toujours conservé et sourcé). Union discriminée par
+ * `kind` : on pourra introduire d'autres genres d'effets (ex. accès aux
+ * armures modifié, milestone Armures) en ajoutant un membre à l'union, sans
+ * rouvrir le schéma de `Feature`.
+ */
+export type FeatureEffect = StatBonusEffect;
+
+/**
+ * Bonus chiffré PERMANENT et INCONDITIONNEL à une statistique dérivée
+ * (ex. « bonus permanent de +1 en Init. et en DEF » — voie de l'air r1, p. 93).
+ * Hors périmètre : les bonus conditionnels / temporaires / scalants (un autre
+ * genre d'effet, ticket dédié). Une capacité partiellement plate n'expose ici
+ * que sa part plate inconditionnelle.
+ */
+export interface StatBonusEffect {
+  kind: 'stat-bonus';
+  /** Stat dérivée visée (cf. `DERIVED_STAT_IDS`). */
+  stat: DerivedStatId;
+  /** Valeur ajoutée (signée). */
+  value: number;
+}
+
 export interface Feature {
   id: string;
   name: string;
@@ -325,6 +369,15 @@ export interface Feature {
   actionTypes: ActionType[];
   /** Texte de règles complet, verbatim. */
   text: string;
+  /**
+   * Effets structurés lus par le moteur, EN PLUS du `text` verbatim (qui reste
+   * la source). Optionnel et additif. Périmètre actuel (PER-63) : uniquement des
+   * bonus plats permanents inconditionnels (`StatBonusEffect`). Une capacité
+   * partiellement structurable (ex. Réflexes éclair : +3 Init / +1 DEF plat,
+   * mais DEF +2 au rang 5) n'expose ici que sa part plate ; le reste relève des
+   * tickets aval (effets conditionnels, choix). Absent = aucun effet structuré.
+   */
+  effects?: FeatureEffect[];
   sourcePage: SourcePage;
 }
 

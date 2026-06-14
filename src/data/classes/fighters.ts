@@ -425,6 +425,13 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare ajoute son rang + 2 à tous les tests d’AGI destinés à esquiver (Explosion de feu, souffle, pièges, etc.). De plus, il gagne +3 en Init. et +1 en DEF. Le bonus de DEF passe à +2 au rang 5.',
+    // Part plate inconditionnelle seulement : +3 Init et +1 DEF. Le bonus d'AGI
+    // aux tests d'esquive (conditionnel) et le passage de la DEF à +2 au rang 5
+    // (scalant) relèvent des tickets aval — non structurés ici.
+    effects: [
+      { kind: 'stat-bonus', stat: 'initiative', value: 3 },
+      { kind: 'stat-bonus', stat: 'def', value: 1 },
+    ],
     sourcePage: 81,
   },
   {

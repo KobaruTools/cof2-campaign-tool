@@ -5,7 +5,7 @@
  * (`src/lib/engine/derived.ts`) — toute évolution des maths doit être répercutée
  * ici. Les pages citées renvoient au livre de base CO2.
  */
-import type { DerivedInput } from '@/lib/engine';
+import type { DerivedInput, DerivedMods } from '@/lib/engine';
 import { MAX_ATTACK_LEVEL } from '@/lib/engine';
 import { families } from '@/data';
 import type { FamilyId } from '@/data/schema';
@@ -17,7 +17,21 @@ const familyById = new Map<FamilyId, (typeof families)[number]>(families.map((f)
 export interface BreakdownTerm {
   label: string;
   value: number;
+  /**
+   * Sous-détail facultatif (affiché plus petit, en retrait) : décompose ce terme
+   * en ses contributions. Utilisé pour lister les capacités qui composent la
+   * ligne « Capacités / divers ». N'entre pas dans la somme (le terme parent
+   * porte déjà le total).
+   */
+  subTerms?: BreakdownTerm[];
 }
+
+/**
+ * Détail par stat des capacités contribuant au modificateur « Capacités /
+ * divers », indexé par clé moteur (`DerivedMods`). Fourni par l'appelant
+ * (l'UI connaît les capacités acquises) ; absent → aucune sous-liste.
+ */
+export type ModSources = Partial<Record<keyof DerivedMods, BreakdownTerm[]>>;
 
 export interface StatBreakdown {
   /** Termes additifs ; leur somme vaut `total`. */
@@ -41,11 +55,23 @@ const frenchNum = (n: number): string =>
  * `deriveStats`. Les modificateurs plats (`mods`) ne sont inclus que s'ils sont
  * non nuls, pour ne pas afficher de ligne « +0 ».
  */
-export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput): StatBreakdown {
+export function derivedStatBreakdown(
+  statId: DerivedStatId,
+  input: DerivedInput,
+  modSources: ModSources = {},
+): StatBreakdown {
   const { abilities, level, family, defenseEquipment, spellCount } = input;
   const mods = input.mods ?? {};
   const mod = (label: string, value: number | undefined): BreakdownTerm[] =>
     value ? [{ label, value }] : [];
+  // Ligne « Capacités / divers » d'une stat, assortie du détail par capacité
+  // (sous-liste) quand l'appelant a fourni les sources pour cette clé moteur.
+  const capacities = (key: keyof DerivedMods): BreakdownTerm[] => {
+    const value = mods[key];
+    if (!value) return [];
+    const subTerms = modSources[key];
+    return [{ label: 'Capacités / divers', value, subTerms }];
+  };
   const baseAttack = Math.min(level, MAX_ATTACK_LEVEL);
 
   switch (statId) {
@@ -117,7 +143,7 @@ export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput)
         }
       }
 
-      terms.push(...mod('Capacités / divers', mods.maxHp));
+      terms.push(...capacities('maxHp'));
 
       const note = detailed
         ? "Profil hybride. Au niveau 1, on additionne les PV de base de chaque profil au lieu de doubler ceux d'un seul (p. 180). À chaque niveau suivant, on gagne les PV de la famille des capacités prises ce niveau-là ; si elles relèvent de deux familles différentes (« niveau mixte »), on prend la moyenne des deux, en arrondissant les demi-PV une fois à l'inférieur, une fois au supérieur, en alternance (p. 177). La Constitution s'ajoute à chaque niveau (p. 30 et 39)."
@@ -137,7 +163,7 @@ export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput)
         { label: 'Base', value: 10 },
         { label: 'Agilité (AGI)', value: cappedAgi },
         ...mod('Armure / bouclier', defenseEquipment.defBonus),
-        ...mod('Capacités / divers', mods.def),
+        ...capacities('def'),
       ];
       const note =
         defenseEquipment.maxAgi !== null && abilities.AGI > defenseEquipment.maxAgi
@@ -149,7 +175,7 @@ export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput)
       const terms: BreakdownTerm[] = [
         { label: 'Base', value: 10 },
         { label: 'Perception (PER)', value: abilities.PER },
-        ...mod('Capacités / divers', mods.initiative),
+        ...capacities('initiative'),
       ];
       return { terms, total: sum(terms), page: 31 };
     }
@@ -158,7 +184,7 @@ export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput)
         { label: 'Base', value: 2 },
         { label: 'Charisme (CHA)', value: abilities.CHA },
         ...mod('Bonus de famille', family.bonusLuckPointsOnCreation),
-        ...mod('Capacités / divers', mods.luckPoints),
+        ...capacities('luckPoints'),
       ];
       return { terms, total: Math.max(0, sum(terms)), page: 30 };
     }
@@ -167,7 +193,7 @@ export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput)
         { label: 'Base', value: 2 },
         { label: 'Constitution (CON)', value: abilities.CON },
         ...mod('Bonus de famille', family.bonusRecoveryDiceOnCreation),
-        ...mod('Capacités / divers', mods.recoveryDiceCount),
+        ...capacities('recoveryDiceCount'),
       ];
       return {
         terms,
@@ -183,7 +209,7 @@ export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput)
       const terms: BreakdownTerm[] = [
         { label: 'Volonté (VOL)', value: abilities.VOL },
         { label: 'Sorts connus', value: spellCount },
-        ...mod('Capacités / divers', mods.manaPoints),
+        ...capacities('manaPoints'),
       ];
       return { terms, total: Math.max(0, sum(terms)), page: 31 };
     }
@@ -191,7 +217,7 @@ export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput)
       const terms: BreakdownTerm[] = [
         { label: `Niveau (max ${MAX_ATTACK_LEVEL})`, value: baseAttack },
         { label: 'Force (FOR)', value: abilities.FOR },
-        ...mod('Capacités / divers', mods.meleeAttack),
+        ...capacities('meleeAttack'),
       ];
       return { terms, total: sum(terms), page: 32 };
     }
@@ -199,7 +225,7 @@ export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput)
       const terms: BreakdownTerm[] = [
         { label: `Niveau (max ${MAX_ATTACK_LEVEL})`, value: baseAttack },
         { label: 'Agilité (AGI)', value: abilities.AGI },
-        ...mod('Capacités / divers', mods.rangedAttack),
+        ...capacities('rangedAttack'),
       ];
       return { terms, total: sum(terms), page: 32 };
     }
@@ -207,7 +233,7 @@ export function derivedStatBreakdown(statId: DerivedStatId, input: DerivedInput)
       const terms: BreakdownTerm[] = [
         { label: `Niveau (max ${MAX_ATTACK_LEVEL})`, value: baseAttack },
         { label: 'Volonté (VOL)', value: abilities.VOL },
-        ...mod('Capacités / divers', mods.magicAttack),
+        ...capacities('magicAttack'),
       ];
       return { terms, total: sum(terms), page: 32 };
     }

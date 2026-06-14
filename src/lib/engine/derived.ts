@@ -14,7 +14,7 @@
  * fourni par l'appelant (saisies, surcharges, ou future couche d'effets
  * structurés). Il ne tente jamais d'interpréter le texte d'une capacité.
  */
-import type { AbilityId, Die, Family, FamilyId, ProgressionRules } from '@/data/schema';
+import type { AbilityId, DerivedStatId, Die, Family, FamilyId, ProgressionRules } from '@/data/schema';
 
 export type Abilities = Record<AbilityId, number>;
 
@@ -23,19 +23,11 @@ export const MAX_ATTACK_LEVEL = 10;
 
 /**
  * Modificateurs plats apportés par les capacités/équipement/surcharges,
- * sommés par-dessus les formules de base. Tous optionnels, défaut 0.
+ * sommés par-dessus les formules de base. Tous optionnels, défaut 0. Les clés
+ * sont la source unique `DERIVED_STAT_IDS` (cf. `schema.ts`), partagée avec les
+ * `effects` des capacités et les surcharges manuelles.
  */
-export interface DerivedMods {
-  maxHp?: number;
-  def?: number;
-  initiative?: number;
-  luckPoints?: number;
-  manaPoints?: number;
-  recoveryDiceCount?: number;
-  meleeAttack?: number;
-  rangedAttack?: number;
-  magicAttack?: number;
-}
+export type DerivedMods = Partial<Record<DerivedStatId, number>>;
 
 /**
  * Composition du gain de PV d'un niveau (≥ 2) pour un profil hybride, à des fins

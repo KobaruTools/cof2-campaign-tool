@@ -27,17 +27,37 @@ export function BreakdownContent({ title, breakdown }: BreakdownContentProps) {
         {title}
       </Typography>
       {breakdown.terms.map((t, i) => (
-        <Box
-          key={i}
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 2,
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          <span>{t.label}</span>
-          <span style={{ fontWeight: 600 }}>{signed(t.value)}</span>
+        <Box key={i}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: 2,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            <span>{t.label}</span>
+            <span style={{ fontWeight: 600 }}>{signed(t.value)}</span>
+          </Box>
+          {/* Sous-détail (ex. inventaire des capacités composant « Capacités /
+              divers ») : plus petit, en retrait et en gris. */}
+          {t.subTerms?.map((s, j) => (
+            <Box
+              key={j}
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 2,
+                pl: 1.5,
+                fontVariantNumeric: 'tabular-nums',
+                color: 'text.secondary',
+                fontSize: '0.8em',
+              }}
+            >
+              <span>{s.label}</span>
+              <span>{signed(s.value)}</span>
+            </Box>
+          ))}
         </Box>
       ))}
       {breakdown.total !== null && breakdown.terms.length > 1 && (

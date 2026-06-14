@@ -11,7 +11,7 @@
  *  - les valeurs dérivées ne sont **pas** stockées (recalculées à l'affichage),
  *    sauf surcharges manuelles explicites (`overrides`).
  */
-import type { AbilityId } from '@/data/schema';
+import type { AbilityId, DerivedStatId } from '@/data/schema';
 import type { AncestryChoice } from './ancestry';
 
 /**
@@ -28,18 +28,10 @@ export const SCHEMA_VERSION = 4;
 /**
  * Statistiques dérivées surchargeables manuellement (règle maison, cf. PRD
  * §5.4). Une surcharge présente remplace la valeur calculée ; elle est
- * réversible (suppression de la clé = retour au calcul automatique).
+ * réversible (suppression de la clé = retour au calcul automatique). Source
+ * unique des clés dans `@/data/schema` (partagée avec `DerivedMods` du moteur).
  */
-export type DerivedStatId =
-  | 'maxHp'
-  | 'def'
-  | 'initiative'
-  | 'luckPoints'
-  | 'manaPoints'
-  | 'recoveryDiceCount'
-  | 'meleeAttack'
-  | 'rangedAttack'
-  | 'magicAttack';
+export type { DerivedStatId };
 
 /** Sexe du personnage (code interne, affiché en français). */
 export type Sex = 'male' | 'female';

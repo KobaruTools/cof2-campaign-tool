@@ -5,7 +5,7 @@ import {
   choicesComplete,
   initialChoices,
   modifierDeltas,
-  twoLowest,
+  lowestAbilities,
 } from './ancestry';
 import {
   level1FeatureIds,
@@ -91,7 +91,12 @@ describe('application des modificateurs', () => {
 
   it('trouve les deux caractéristiques les plus faibles', () => {
     const base = { AGI: 2, CON: 1, FOR: -1, PER: 3, CHA: 0, INT: -2, VOL: 1 };
-    expect(twoLowest(base)).toEqual(['INT', 'FOR']);
+    expect(lowestAbilities(base)).toEqual(['INT', 'FOR']);
+  });
+
+  it('inclut toutes les caractéristiques à égalité sur la valeur la plus faible', () => {
+    const base = { AGI: 1, CON: 2, FOR: 4, PER: 0, CHA: 0, INT: 0, VOL: 0 };
+    expect(lowestAbilities(base)).toEqual(['PER', 'CHA', 'INT', 'VOL']);
   });
 });
 

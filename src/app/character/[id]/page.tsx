@@ -29,6 +29,7 @@ import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/ch
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
+import { modsFromFeatures } from '@/lib/character/effects';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -166,6 +167,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         family,
         defenseEquipment: defenseFromEquipment(character.equipment),
         spellCount: character.featureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
+        // Bonus plats inconditionnels apportés par les capacités acquises (PER-63).
+        mods: modsFromFeatures(character.featureIds),
         // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique à la
         // formule mono-famille pour un profil classique.
         hpFamilyGains: familyHpGains(character, rulesContext),
@@ -348,6 +351,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             {derivedInput ? (
               <DerivedStatsGrid
                 input={derivedInput}
+                featureIds={character.featureIds}
                 overrides={character.overrides}
                 onOverride={editing ? setOverride : undefined}
               />

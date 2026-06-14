@@ -134,6 +134,24 @@ describe('derivedStatBreakdown ↔ deriveStats', () => {
     expect(bd.total).toBe(16);
   });
 
+  it('détaille les capacités sous « Capacités / divers » sans fausser le total', () => {
+    const input: DerivedInput = {
+      abilities: abilities(),
+      level: 1,
+      family: family('fighters'),
+      defenseEquipment: { defBonus: 0, maxAgi: null },
+      spellCount: 0,
+      mods: { initiative: 3 },
+    };
+    const bd = derivedStatBreakdown('initiative', input, {
+      initiative: [{ label: 'Réflexes éclair', value: 3 }],
+    });
+    const capLine = bd.terms.find((t) => t.label === 'Capacités / divers');
+    expect(capLine?.value).toBe(3);
+    expect(capLine?.subTerms).toEqual([{ label: 'Réflexes éclair', value: 3 }]);
+    expect(bd.total).toBe(14); // 10 + PER 1 + mods 3 ; les sous-termes n'y entrent pas
+  });
+
   it('mana : pas de détail ni de total quand aucun sort connu', () => {
     const bd = derivedStatBreakdown('manaPoints', cases[0].input);
     expect(bd.total).toBeNull();

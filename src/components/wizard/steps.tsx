@@ -57,7 +57,7 @@ import type { Sex } from '@/lib/character/types';
 import {
   initialChoices,
   modifierDeltas,
-  twoLowest,
+  lowestAbilities,
 } from '@/lib/character/ancestry';
 import {
   finalAbilities,
@@ -67,6 +67,7 @@ import {
   type WizardDraft,
 } from '@/lib/character/wizard';
 import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
+import { modsFromFeatures } from '@/lib/character/effects';
 import { pickName } from '@/lib/character/names';
 import {
   defenseFromEquipment,
@@ -664,7 +665,7 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
   if (!ancestry) return <Alert severity="warning">Choisissez d’abord un peuple.</Alert>;
 
   const deltas = modifierDeltas(ancestry, draft.ancestryChoices);
-  const lowest = twoLowest(draft.baseAbilities);
+  const lowest = lowestAbilities(draft.baseAbilities);
 
   const applyValueSet = (values: number[]) => {
     patch({ baseAbilities: distributeValueSet(values, characterClass?.recommendedAbilities ?? []) });
@@ -704,27 +705,63 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
               Modificateurs de {ancestry.name}
             </Typography>
             <Stack spacing={2}>
-              {ancestry.abilityModifiers.map((mod, i) =>
-                mod.abilities.length === 1 ? null : (
-                  <FormControl key={i} size="small" sx={{ minWidth: { xs: '100%', sm: 260 } }}>
-                    <InputLabel>{`${mod.value > 0 ? '+' : ''}${mod.value} à`}</InputLabel>
-                    <Select
-                      label={`${mod.value > 0 ? '+' : ''}${mod.value} à`}
-                      value={draft.ancestryChoices[i] ?? ''}
-                      onChange={(e) => setChoice(i, e.target.value as AbilityId)}
-                    >
-                      {(mod.abilities.length === ABILITY_IDS.length ? ABILITY_IDS : mod.abilities).map((c) => (
-                        <MenuItem key={c} value={c}>
-                          {ABILITY_NAMES[c]}
-                          {mod.abilities.length === ABILITY_IDS.length && lowest.includes(c)
-                            ? ' (faible)'
-                            : ''}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                ),
-              )}
+              {ancestry.abilityModifiers.map((mod, i) => {
+                if (mod.abilities.length === 1) return null;
+                // Cas humain : « +1 à une des deux plus faibles » (encodé avec les
+                // 7 caracs). Le choix reste libre dans le modèle ; l'UI conseille
+                // les plus faibles et alerte si une autre carac est retenue.
+                const isLowestMod = mod.abilities.length === ABILITY_IDS.length;
+                const chosen = draft.ancestryChoices[i];
+                const names = lowest.map((id) => ABILITY_NAMES[id]);
+                // « A, B et C » — énumération lisible (≥ 2 caracs éligibles).
+                const lowestNames =
+                  names.length > 1
+                    ? `${names.slice(0, -1).join(', ')} et ${names[names.length - 1]}`
+                    : names[0];
+                // « deux » seulement sans égalité ; sinon plusieurs caracs sont à
+                // égalité sur la valeur la plus faible (toutes éligibles).
+                const lowestPhrase =
+                  lowest.length === 2
+                    ? 'vos deux caractéristiques les plus faibles'
+                    : 'vos caractéristiques les plus faibles';
+                const deviates = isLowestMod && !!chosen && !lowest.includes(chosen);
+                return (
+                  <Box key={i}>
+                    <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 260 } }}>
+                      <InputLabel>{`${mod.value > 0 ? '+' : ''}${mod.value} à`}</InputLabel>
+                      <Select
+                        label={`${mod.value > 0 ? '+' : ''}${mod.value} à`}
+                        value={draft.ancestryChoices[i] ?? ''}
+                        onChange={(e) => setChoice(i, e.target.value as AbilityId)}
+                      >
+                        {(isLowestMod ? ABILITY_IDS : mod.abilities).map((c) => (
+                          <MenuItem key={c} value={c}>
+                            {ABILITY_NAMES[c]}
+                            {isLowestMod && lowest.includes(c) ? ' (faible)' : ''}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    {isLowestMod && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', mt: 0.5 }}
+                      >
+                        Règle de l’humain (p. 57) : ce +1 doit porter sur l’une de {lowestPhrase}
+                        {lowestNames ? ` (${lowestNames})` : ''}.
+                      </Typography>
+                    )}
+                    {deviates && chosen && (
+                      <Alert severity="warning" sx={{ mt: 1 }}>
+                        {ABILITY_NAMES[chosen]} ne fait pas partie de {lowestPhrase}
+                        {lowestNames ? ` (${lowestNames})` : ''} : vous dérogez à la règle de
+                        l’humain.
+                      </Alert>
+                    )}
+                  </Box>
+                );
+              })}
             </Stack>
           </CardContent>
         </Card>
@@ -1296,6 +1333,8 @@ export function SummaryStep({ draft }: StepProps) {
     family,
     defenseEquipment: defenseFromEquipment(draft.equipment),
     spellCount,
+    // Bonus plats inconditionnels apportés par les capacités du niveau 1 (PER-63).
+    mods: modsFromFeatures(featureIds),
     // PV de base d'un profil hybride créé au niveau 1 (somme des deux familles,
     // p. 180) ; identique à 2 × baseHp pour un profil standard.
     hpLevel1Family: level1FamilyHp(preview, rulesContext),
@@ -1379,10 +1418,7 @@ export function SummaryStep({ draft }: StepProps) {
         <Typography variant="subtitle2" gutterBottom>
           Statistiques dérivées
         </Typography>
-        <DerivedStatsGrid input={derivedInput} />
-        <Typography variant="caption" color="text.secondary">
-          (Les bonus apportés par les capacités ne sont pas encore appliqués automatiquement.)
-        </Typography>
+        <DerivedStatsGrid input={derivedInput} featureIds={featureIds} />
       </Box>
 
       <Box>

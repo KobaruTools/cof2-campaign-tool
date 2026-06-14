@@ -68,10 +68,15 @@ export function applyModifiers(
 }
 
 /**
- * Les deux caractéristiques les plus faibles d'un jeu de valeurs (pour
- * conseiller le bonus de l'humain). Retourne les ids triés par valeur
- * croissante puis ordre canonique.
+ * Caractéristiques éligibles au bonus de l'humain (« +1 à une des deux plus
+ * faibles », p. 57). En l'absence d'égalité, ce sont les deux plus faibles ;
+ * en cas d'égalité sur la valeur seuil (ex. quatre caracs à 0), toutes les
+ * caracs partageant cette valeur sont éligibles, pas seulement deux choisies
+ * arbitrairement. Retourne les ids triés par valeur croissante.
  */
-export function twoLowest(base: Record<AbilityId, number>): AbilityId[] {
-  return [...ABILITY_IDS].sort((a, b) => base[a] - base[b]).slice(0, 2);
+export function lowestAbilities(base: Record<AbilityId, number>): AbilityId[] {
+  const sorted = [...ABILITY_IDS].sort((a, b) => base[a] - base[b]);
+  // Valeur de la 2ᵉ plus faible carac : tout ce qui est ≤ ce seuil est éligible.
+  const threshold = base[sorted[1]];
+  return sorted.filter((id) => base[id] <= threshold);
 }

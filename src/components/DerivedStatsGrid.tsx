@@ -41,6 +41,11 @@ export interface DerivedStatsGridProps {
   /** Entrées du moteur — sert au calcul des stats et au détail des infobulles. */
   input: DerivedInput;
   /**
+   * Capacités acquises : transmis aux infobulles pour détailler quelle capacité
+   * apporte quel bonus sous « Capacités / divers ». Absent → pas de sous-liste.
+   */
+  featureIds?: string[];
+  /**
    * Tailles de colonne MUI Grid. Par défaut : une carte par ligne sur mobile
    * (les contrôles d'édition tiennent à l'aise), deux sur tablette, trois sur
    * desktop.
@@ -73,6 +78,7 @@ interface StatLine {
  */
 export function DerivedStatsGrid({
   input,
+  featureIds,
   size = { xs: 12, sm: 6, md: 4 },
   overrides,
   onOverride,
@@ -180,7 +186,12 @@ export function DerivedStatsGrid({
                     </Typography>
                   )}
                 </Box>
-                <DerivedStatHint statId={id} input={input} sx={{ alignSelf: 'flex-start' }} />
+                <DerivedStatHint
+                  statId={id}
+                  input={input}
+                  featureIds={featureIds}
+                  sx={{ alignSelf: 'flex-start' }}
+                />
               </CardContent>
             </Card>
           </Grid>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { families } from '@/data/families';
 import { progression } from '@/data/progression';
 import type { Family } from '@/data/schema';
+import { modsFromFeatures } from '@/lib/character/effects';
 import {
   meleeAttack,
   rangedAttack,
@@ -165,14 +166,15 @@ describe("valeurs d'attaque", () => {
 
 describe('cas en or — Ionas, ensorceleur niveau 1 (elfe haut)', () => {
   const abilities: Abilities = { AGI: 1, CON: 1, FOR: -2, PER: 0, CHA: 4, INT: 0, VOL: 2 };
-  // « Murmure dans le vent » (air rang 1) : +1 Init et +1 DEF (p. 93).
+  // « Murmures dans le vent » (air rang 1) : +1 Init et +1 DEF (p. 93). Bonus
+  // agrégé depuis les `effects` de la capacité, sans injection manuelle (PER-63).
   const stats = deriveStats({
     abilities,
     level: 1,
     family: mages,
     defenseEquipment: { defBonus: 0, maxAgi: null }, // bâton ferré, pas d'armure
-    spellCount: 3, // Murmure dans le vent, Choc, Serviteur invisible
-    mods: { initiative: 1, def: 1 },
+    spellCount: 3, // Murmures dans le vent, Choc, Serviteur invisible
+    mods: modsFromFeatures(['air-r1']),
   });
 
   it('reproduit exactement la fiche', () => {
@@ -192,14 +194,15 @@ describe('cas en or — Ionas, ensorceleur niveau 1 (elfe haut)', () => {
 describe('cas en or — Lhagva, barbare niveau 1 (humaine)', () => {
   const abilities: Abilities = { AGI: 1, CON: 2, FOR: 3, PER: 1, CHA: -1, INT: 0, VOL: 1 };
   // Réflexes éclair (pourfendeur r1) : +3 Init, +1 DEF. Diversité (humain r1) : +1 PC.
-  // Équipement : armure de cuir (+2) + grand bouclier (+2).
+  // Équipement : armure de cuir (+2) + grand bouclier (+2). Bonus agrégés depuis
+  // les `effects` des capacités, sans injection manuelle (PER-63).
   const stats = deriveStats({
     abilities,
     level: 1,
     family: combattants,
     defenseEquipment: { defBonus: 4, maxAgi: null },
     spellCount: 0,
-    mods: { initiative: 3, def: 1, luckPoints: 1 },
+    mods: modsFromFeatures(['pourfendeur-r1', 'humain-r1']),
   });
 
   it('reproduit la fiche pour les stats régies par les formules', () => {

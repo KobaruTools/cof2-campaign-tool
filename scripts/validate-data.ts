@@ -32,6 +32,7 @@ import {
   FEATURE_NATURE_TAGS,
   CONDITIONAL_KINDS,
 } from '../src/data/index';
+import { DERIVED_STAT_IDS } from '../src/data/schema';
 
 const errors: string[] = [];
 const warnings: string[] = [];
@@ -144,6 +145,25 @@ for (const cl of FEATURE_CLASSIFICATIONS) {
   if (cl.note) classifTodos++;
 }
 
+// --- Effets structurés des capacités (PER-63) --------------------------------
+// Couche sémantique lue par le moteur : bonus plats vers une stat dérivée
+// connue. On vérifie le genre, la stat ciblée et la valeur ; le `text` verbatim
+// reste la source et n'est pas contrôlé ici.
+const validStats = new Set<string>(DERIVED_STAT_IDS);
+let featuresWithEffects = 0;
+for (const c of features) {
+  if (!c.effects) continue;
+  featuresWithEffects++;
+  for (const e of c.effects) {
+    if (e.kind === 'stat-bonus') {
+      if (!validStats.has(e.stat)) err(`[capacite ${c.id}] effect: stat inconnue : ${e.stat}`);
+      if (!Number.isFinite(e.value)) err(`[capacite ${c.id}] effect: valeur non numérique pour ${e.stat}`);
+    } else {
+      err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
+    }
+  }
+}
+
 // --- Rapport -----------------------------------------------------------------
 const spells = features.filter((c) => c.isSpell).length;
 console.log('=== Comptages ===');
@@ -155,6 +175,7 @@ console.log(`  · de peuple      : ${ancestryPaths.length} (+ voie du mage : ${m
 console.log(`  · de prestige    : ${prestigePaths.length}`);
 console.log(`capacités (total)  : ${features.length}  (dont sorts * : ${spells})`);
 console.log(`  · classées       : ${FEATURE_CLASSIFICATIONS.length}  (dont TODO(extraction) : ${classifTodos})`);
+console.log(`  · avec effects   : ${featuresWithEffects}`);
 console.log(`équipement (total) : ${equipment.length}`);
 console.log('');
 console.log(`=== Avertissements (${warnings.length}) ===`);

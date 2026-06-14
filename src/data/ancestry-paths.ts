@@ -403,6 +403,9 @@ export const ancestryFeatures: Feature[] = [
       '6. Nomade (orientation et résistance à la chaleur ou au froid).\n\n' +
       'Le MJ peut en inventer d’autres selon les cultures présentes dans son univers de jeu (troglodyte, marais, etc.). Éventuellement, le joueur peut remplacer un des bonus d’origine géographique par un bonus en relation avec son origine sociale ou un gagne-pain de son choix (serrurier, forgeron, scribe, maçon, chasseur, cuisinier, acrobate, pickpocket, bibliothécaire, étudiant, etc.). Le gagne-pain ne peut pas être un profil et le bonus obtenu ne s’applique jamais à des tests de combat.\n\n' +
       'Exemple : Un citadin étudiant en magie pourrait obtenir un bonus de +3 aux tests de commerce et +3 aux tests d’érudition occulte, même si son personnage est finalement devenu guerrier.',
+    // Part plate inconditionnelle seulement : +1 PC. Le +3 à deux domaines au
+    // choix relève du ticket « choix » — non structuré ici.
+    effects: [{ kind: 'stat-bonus', stat: 'luckPoints', value: 1 }],
     sourcePage: 57,
   },
   {
