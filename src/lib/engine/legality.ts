@@ -91,6 +91,21 @@ export function minLevelForRank(
   return progression.minLevelPerRank[rank] ?? 1;
 }
 
+/**
+ * Rang le plus bas d'une voie (1 pour les voies de profil/peuple, 4 pour la
+ * plupart des voies de prestige, 3 pour la voie du familier fantastique, p. 132
+ * — anomalie assumée du livre). Sert à la fois à l'ordre des rangs et au niveau
+ * d'accès des voies de prestige.
+ */
+export function lowestRank(path: Path, ctx: RulesContext): number {
+  let min = Infinity;
+  for (const id of path.featureIds) {
+    const feature = ctx.featureById.get(id);
+    if (feature && feature.rank < min) min = feature.rank;
+  }
+  return Number.isFinite(min) ? min : 1;
+}
+
 /** Rangs effectivement possédés dans une voie, triés croissant. */
 export function ownedRanks(character: Character, pathId: string, ctx: RulesContext): number[] {
   return character.featureIds
@@ -171,9 +186,10 @@ export function canAcquireFeature(
     }
   }
 
-  // Ordre des rangs : tous les rangs inférieurs de la voie doivent être acquis.
+  // Ordre des rangs : tous les rangs inférieurs de la voie doivent être acquis
+  // (à partir du rang le plus bas réel de la voie).
   const ranks = ownedRanks(character, path.id, ctx);
-  for (let r = (path.type === 'prestige' ? 4 : 1); r < feature.rank; r++) {
+  for (let r = lowestRank(path, ctx); r < feature.rank; r++) {
     if (!ranks.includes(r)) {
       reasons.push(`Rang ${r} de « ${path.name} » non acquis (rangs dans l'ordre).`);
     }
@@ -185,10 +201,13 @@ export function canAcquireFeature(
     reasons.push(`Niveau ${requiredLevel} requis pour un rang ${feature.rank} (niveau actuel ${character.level}).`);
   }
 
-  // Règles spécifiques aux voies de prestige (p. 42).
+  // Règles spécifiques aux voies de prestige (p. 42, 128).
   if (path.type === 'prestige') {
-    if (character.level < ctx.progression.prestigeAccessLevel) {
-      reasons.push(`Voie de prestige accessible au niveau ${ctx.progression.prestigeAccessLevel}.`);
+    // Niveau d'accès = niveau requis par le rang le plus bas de la voie : rang 4
+    // → niveau 5 (cas général), familier fantastique rang 3 → niveau 3 (p. 132).
+    const accessLevel = minLevelForRank(lowestRank(path, ctx), family, ctx.progression);
+    if (character.level < accessLevel) {
+      reasons.push(`Voie de prestige accessible au niveau ${accessLevel}.`);
     }
     const startedPrestige = startedPrestigePaths(character, ctx);
     if (startedPrestige.size > 0 && !startedPrestige.has(path.id)) {
@@ -287,11 +306,19 @@ export function checkCompliance(character: Character, ctx: RulesContext): Warnin
       message: `${prestige.size} voies de prestige entamées ; une seule est autorisée.`,
     });
   }
-  if (prestige.size > 0 && character.level < ctx.progression.prestigeAccessLevel) {
-    warnings.push({
-      code: 'PRESTIGE_LEVEL_TOO_LOW',
-      message: `Voie de prestige entamée avant le niveau ${ctx.progression.prestigeAccessLevel}.`,
-    });
+  for (const pathId of prestige) {
+    const path = ctx.pathById.get(pathId);
+    if (!path) continue;
+    // Niveau d'accès propre à la voie (rang le plus bas) — cohérent avec
+    // `canAcquireFeature` : familier fantastique accessible au niveau 3.
+    const accessLevel = minLevelForRank(lowestRank(path, ctx), family, ctx.progression);
+    if (character.level < accessLevel) {
+      warnings.push({
+        code: 'PRESTIGE_LEVEL_TOO_LOW',
+        message: `« ${path.name} » : voie de prestige entamée avant le niveau ${accessLevel}.`,
+        pathId,
+      });
+    }
   }
 
   return warnings;

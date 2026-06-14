@@ -102,6 +102,20 @@ describe('canAcquireFeature', () => {
     expect(r.reasons.join(' ')).toMatch(/niveau 5/);
   });
 
+  it('légal : familier fantastique (rang 3) dès le niveau 3', () => {
+    // Anomalie p. 132 : cette voie de prestige commence au rang 3 → accessible
+    // au niveau 3 (niveau requis du rang le plus bas), pas au niveau 5.
+    const c = makeCharacter({ level: 3, featureIds: [] });
+    expect(canAcquireFeature(c, 'prestige-familier-fantastique-r3', ctx).legal).toBe(true);
+  });
+
+  it('illégal : familier fantastique avant le niveau 3', () => {
+    const c = makeCharacter({ level: 2, featureIds: [] });
+    const r = canAcquireFeature(c, 'prestige-familier-fantastique-r3', ctx);
+    expect(r.legal).toBe(false);
+    expect(r.reasons.join(' ')).toMatch(/niveau 3/);
+  });
+
   it('illégal : voie de profil d’un autre profil', () => {
     // « combat » est une voie du guerrier, pas du barbare.
     const c = makeCharacter({ classId: 'barbare', featureIds: [] });
