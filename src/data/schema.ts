@@ -370,16 +370,22 @@ export interface Feature {
   /** Texte de règles complet, verbatim. Reste la SOURCE, jamais perdu. */
   text: string;
   /**
-   * Texte balisé pour l'affichage ENRICHI (PER-64), EN PLUS de `text` (qui reste
-   * la source). Couche de PRÉSENTATION uniquement (distincte de `effects`, qui
-   * nourrit le moteur). Mini-langage parsé par `parseRichText` (cf.
-   * `src/lib/ui/featureRichText.ts`) :
+   * Texte balisé pour l'affichage ENRICHI (PER-64, étendu PER-90), EN PLUS de
+   * `text` (qui reste la source). Couche de PRÉSENTATION uniquement (distincte de
+   * `effects`, qui nourrit le moteur). Mini-langage parsé par `parseRichText`
+   * (cf. `src/lib/ui/featureRichText.ts` et `docs/extraction/rich-text-format.md`) :
    * - dé : `{1d4°}`, `{d6}`, `{2d6}` (entre accolades, notation du livre ; `°` =
    *   dé évolutif rendu à sa valeur au niveau courant) ;
-   * - formule : `[FOR + 1]`, `[CHA]`, `[1d4° + CHA]` (entre crochets) — une suite
-   *   de termes (caractéristique, dé, nombre) séparés par `+`/`-`. Sans dé, la
-   *   formule est calculée et affichée en encadré avec son détail ; avec un dé,
-   *   elle est rendue dé(s) + caractéristiques résolues.
+   * - formule de MODIFICATEUR : `[FOR + 1]`, `[CHA]`, `[1d4° + CHA]`, `[10 + rang]`,
+   *   `[niveau × 3]` (entre crochets) — une suite de termes (caractéristique, dé,
+   *   nombre, `rang`, `niveau`), chacun éventuellement multiplié par une constante
+   *   (`CHA × 100`), séparés par `+`/`-`. Sans dé : calculée et affichée en encadré
+   *   signé ; avec un dé : rendue dé(s) + variables résolues ;
+   * - QUANTITÉ : `[=CHA]`, `[=CHA × 100]`, `[=rang]`, `[=niveau × 5]` (crochets
+   *   préfixés de `=`) — même grammaire, mais rendue en VALEUR BRUTE (durée, portée,
+   *   nombre de cibles), sans signe : « pendant [=CHA] minutes » → « 5 minutes » ;
+   * - référence de stat : `@FOR`, `@CHA` — mise en avant sans calcul (renvoi, ou
+   *   stat d'une CIBLE qu'on ne peut pas évaluer).
    * Tout le reste est du texte littéral. Absent → on retombe sur `text` verbatim.
    */
   richText?: string;

@@ -378,6 +378,10 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       "L’ensorceleur chuchote un message d’une dizaine de mots qui voyage jusqu’à son destinataire. Il peut entendre sa réponse immédiatement. La portée est de CHA × 100 m et le personnage doit connaître la cible ou la voir. En plus de ce sort, l’ensorceleur gagne un bonus permanent de +1 en Init. et en DEF, car parfois une bourrasque venue de nulle part vient gêner son attaquant, dévier un projectile ou lui permettre d’entendre un adversaire.",
+    // Rendu enrichi (PER-90) : « portée est de [=CHA × 100] m » est une QUANTITÉ
+    // avec multiplicateur (→ « 500 m » ; info-bulle « CHA × 100 = 500 »).
+    richText:
+      "L’ensorceleur chuchote un message d’une dizaine de mots qui voyage jusqu’à son destinataire. Il peut entendre sa réponse immédiatement. La portée est de [=CHA × 100] m et le personnage doit connaître la cible ou la voir. En plus de ce sort, l’ensorceleur gagne un bonus permanent de +1 en Init. et en DEF, car parfois une bourrasque venue de nulle part vient gêner son attaquant, dévier un projectile ou lui permettre d’entendre un adversaire.",
     // Bonus permanent et inconditionnel « +1 en Init. et en DEF ».
     effects: [
       { kind: 'stat-bonus', stat: 'initiative', value: 1 },
@@ -626,11 +630,11 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Ce sort crée une force invisible pendant CHA minutes. Le serviteur peut effectuer à distance des tâches simples ne nécessitant pas de test de réussite avec une AGI et une INT de +0 et une FOR égale au CHA de l’ensorceleur (portée 20 m). Il peut par exemple rapporter un objet ou actionner un levier, voire faire la vaisselle. Le serviteur invisible se déplace à la même vitesse que l’ensorceleur, ne pèse rien, ne parle pas, n’a pas vraiment d’existence et peut se déplacer dans toutes les directions. Concevez‑le davantage comme une force qui obéit aux injonctions télépathiques de son créateur que comme une créature. Il n’attaque pas et ne peut pas être combattu, mais il peut être dissipé grâce au sort de maîtrise de la magie.",
-    // Rendu enrichi (PER-64) : la @FOR du serviteur, « égale au [CHA] », mêle une
-    // référence de stat (@FOR/@AGI/@INT) et un encadré de formule calculé `[CHA]`.
-    // « CHA minutes » reste en texte brut (stat-quantité → PER-90).
+    // Rendu enrichi (PER-64 + PER-90) : « pendant [=CHA] minutes » est une
+    // QUANTITÉ brute (→ « 5 minutes ») ; la @FOR du serviteur « égale au [CHA] »
+    // mêle une référence de stat (@FOR/@AGI/@INT) et un encadré de formule `[CHA]`.
     richText:
-      "Ce sort crée une force invisible pendant CHA minutes. Le serviteur peut effectuer à distance des tâches simples ne nécessitant pas de test de réussite avec une @AGI et une @INT de +0 et une @FOR égale au [CHA] de l’ensorceleur (portée 20 m). Il peut par exemple rapporter un objet ou actionner un levier, voire faire la vaisselle. Le serviteur invisible se déplace à la même vitesse que l’ensorceleur, ne pèse rien, ne parle pas, n’a pas vraiment d’existence et peut se déplacer dans toutes les directions. Concevez‑le davantage comme une force qui obéit aux injonctions télépathiques de son créateur que comme une créature. Il n’attaque pas et ne peut pas être combattu, mais il peut être dissipé grâce au sort de maîtrise de la magie.",
+      "Ce sort crée une force invisible pendant [=CHA] minutes. Le serviteur peut effectuer à distance des tâches simples ne nécessitant pas de test de réussite avec une @AGI et une @INT de +0 et une @FOR égale au [CHA] de l’ensorceleur (portée 20 m). Il peut par exemple rapporter un objet ou actionner un levier, voire faire la vaisselle. Le serviteur invisible se déplace à la même vitesse que l’ensorceleur, ne pèse rien, ne parle pas, n’a pas vraiment d’existence et peut se déplacer dans toutes les directions. Concevez‑le davantage comme une force qui obéit aux injonctions télépathiques de son créateur que comme une créature. Il n’attaque pas et ne peut pas être combattu, mais il peut être dissipé grâce au sort de maîtrise de la magie.",
     sourcePage: 96,
   },
   {

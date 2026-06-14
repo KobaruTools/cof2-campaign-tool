@@ -154,6 +154,43 @@ function symbolicFormula(resolved: ResolvedExpr): string {
 }
 
 /**
+ * QUANTITÉ (`[=CHA]`, `[=CHA × 100]`, `[=rang]`…) : une stat/un rang/un niveau
+ * utilisé comme valeur brute (durée, portée, nombre de cibles), affiché comme un
+ * simple nombre — PAS comme un modificateur signé (« 5 minutes », pas
+ * « CHA (+5) minutes »). L'info-bulle rappelle la dérivation (« CHA × 100 = 500 »).
+ */
+function QuantityValue({ resolved }: { resolved: ResolvedExpr }) {
+  // Quantité déterministe attendue ; au cas (théorique) où un dé s'y glisse, on
+  // se rabat sur la forme symbolique pour ne rien afficher de faux.
+  const display = resolved.total != null ? String(resolved.total) : symbolicFormula(resolved);
+  const tooltip =
+    resolved.parts.length === 1 && resolved.parts[0].kind !== 'number'
+      ? `${resolved.parts[0].label} = ${resolved.total}`
+      : `${symbolicFormula(resolved)} = ${resolved.total}`;
+  return (
+    <Tooltip title={tooltip} arrow>
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-block',
+          px: 0.5,
+          mx: 0.1,
+          borderRadius: 0.75,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          cursor: 'help',
+          color: 'text.primary',
+          bgcolor: (theme) => alpha(theme.palette.info.main, 0.12),
+          borderBottom: (theme) => `1px dashed ${alpha(theme.palette.info.main, 0.6)}`,
+        }}
+      >
+        {display}
+      </Box>
+    </Tooltip>
+  );
+}
+
+/**
  * Encadré d'une formule contenant un DÉ (non déterministe) : on ne calcule pas
  * de total (le dé est lancé à la table), on rend la suite dé(s) +
  * caractéristiques résolues à leur valeur courante. L'info-bulle décrit la
@@ -292,7 +329,9 @@ export function FeatureText({ feature, abilities, level }: FeatureTextProps) {
             />
           );
         }
-        const resolved = resolveExpr(seg.terms, abilities!, level!, progression);
+        // `rang` est résolu via le rang de la capacité dans sa voie.
+        const resolved = resolveExpr(seg.terms, abilities!, level!, progression, feature.rank);
+        if (seg.kind === 'quantity') return <QuantityValue key={i} resolved={resolved} />;
         return resolved.hasDie ? (
           <FormulaWithDie key={i} resolved={resolved} level={level!} />
         ) : (

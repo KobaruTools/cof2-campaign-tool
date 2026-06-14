@@ -101,10 +101,77 @@ describe('parseRichText — découpage', () => {
   });
 
   it('retombe en texte littéral si la formule contient un terme inconnu', () => {
-    // « rang du sort » n'est pas une caractéristique → crochets conservés.
+    // « du sort » n'est pas reconnaissable → crochets conservés (et « rang du
+    // sort » n'est PAS le terme `rang` seul).
     expect(parseRichText('[10 + rang du sort]')).toEqual([
       { kind: 'text', value: '[10 + rang du sort]' },
     ]);
+  });
+
+  it('reconnaît les termes rang et niveau dans une formule', () => {
+    expect(parseRichText('[10 + rang]')).toEqual([
+      {
+        kind: 'expr',
+        raw: '[10 + rang]',
+        terms: [
+          { kind: 'number', sign: 1, value: 10 },
+          { kind: 'rank', sign: 1 },
+        ],
+      },
+    ]);
+    expect(parseRichText('[niveau du druide × 4]')).toEqual([
+      { kind: 'text', value: '[niveau du druide × 4]' }, // « du druide » non reconnu
+    ]);
+    expect((parseRichText('[niveau × 4]')[0] as { terms: unknown }).terms).toEqual([
+      { kind: 'level', sign: 1, coeff: 4 },
+    ]);
+  });
+
+  it('reconnaît un multiplicateur sur une caractéristique (avec ou sans espaces)', () => {
+    const spaced = parseRichText('[CHA × 100]')[0] as { terms: unknown };
+    const tight = parseRichText('[CHA×100]')[0] as { terms: unknown };
+    const expected = [{ kind: 'ability', sign: 1, ability: 'CHA', coeff: 100 }];
+    expect(spaced.terms).toEqual(expected);
+    expect(tight.terms).toEqual(expected);
+  });
+
+  it('accepte le multiplicateur dans les deux ordres et avec * ASCII', () => {
+    expect((parseRichText('[2 × FOR]')[0] as { terms: unknown }).terms).toEqual([
+      { kind: 'ability', sign: 1, ability: 'FOR', coeff: 2 },
+    ]);
+    expect((parseRichText('[niveau * 3]')[0] as { terms: unknown }).terms).toEqual([
+      { kind: 'level', sign: 1, coeff: 3 },
+    ]);
+  });
+
+  it('reconnaît une quantité [=…] (valeur brute)', () => {
+    expect(parseRichText('pendant [=CHA] minutes')).toEqual([
+      { kind: 'text', value: 'pendant ' },
+      { kind: 'quantity', raw: '[=CHA]', terms: [{ kind: 'ability', sign: 1, ability: 'CHA' }] },
+      { kind: 'text', value: ' minutes' },
+    ]);
+  });
+
+  it('reconnaît une quantité avec multiplicateur', () => {
+    expect(parseRichText('[=CHA × 100]')).toEqual([
+      {
+        kind: 'quantity',
+        raw: '[=CHA × 100]',
+        terms: [{ kind: 'ability', sign: 1, ability: 'CHA', coeff: 100 }],
+      },
+    ]);
+  });
+
+  it('rejette un produit de deux variables', () => {
+    expect(parseRichText('[CHA × FOR]')).toEqual([{ kind: 'text', value: '[CHA × FOR]' }]);
+  });
+
+  it('rejette un dé multiplié', () => {
+    expect(parseRichText('[2 × 1d6]')).toEqual([{ kind: 'text', value: '[2 × 1d6]' }]);
+  });
+
+  it('rejette un opérateur final orphelin', () => {
+    expect(parseRichText('[FOR +]')).toEqual([{ kind: 'text', value: '[FOR +]' }]);
   });
 });
 
@@ -147,5 +214,43 @@ describe('resolveExpr — évaluation', () => {
     const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
     const r = resolveExpr(expr.terms, abilities, 12, progression);
     expect(r.parts[0].die).toEqual({ count: 2, displayDie: 'd6', evolving: false });
+  });
+
+  it('résout le terme rang via le rang passé en argument', () => {
+    const segs = parseRichText('[10 + rang]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    const r = resolveExpr(expr.terms, abilities, 1, progression, 3);
+    expect(r.total).toBe(13); // 10 + rang 3
+    expect(r.hasAbility).toBe(true); // une variable est présente
+  });
+
+  it('applique le multiplicateur d’un terme caractéristique/niveau', () => {
+    const cha = parseRichText('[=CHA × 100]')[0] as Extract<
+      ReturnType<typeof parseRichText>[number],
+      { kind: 'quantity' }
+    >;
+    expect(resolveExpr(cha.terms, abilities, 1, progression).total).toBe(400); // CHA 4 × 100
+    expect(resolveExpr(cha.terms, abilities, 1, progression).parts[0].symbol).toBe('CHA × 100');
+
+    const niv = parseRichText('[niveau × 5]')[0] as Extract<
+      ReturnType<typeof parseRichText>[number],
+      { kind: 'expr' }
+    >;
+    expect(resolveExpr(niv.terms, abilities, 6, progression).total).toBe(30); // niveau 6 × 5
+  });
+
+  it('évalue les deux démos de référence (PER-90)', () => {
+    // Serviteur invisible : « pendant [=CHA] minutes » → 4 (CHA).
+    const serviteur = parseRichText('[=CHA]')[0] as Extract<
+      ReturnType<typeof parseRichText>[number],
+      { kind: 'quantity' }
+    >;
+    expect(resolveExpr(serviteur.terms, abilities, 1, progression).total).toBe(4);
+    // Murmures dans le vent : « portée est de [=CHA × 100] m » → 400.
+    const murmures = parseRichText('[=CHA × 100]')[0] as Extract<
+      ReturnType<typeof parseRichText>[number],
+      { kind: 'quantity' }
+    >;
+    expect(resolveExpr(murmures.terms, abilities, 1, progression).total).toBe(400);
   });
 });

@@ -1,16 +1,24 @@
 /**
- * Couche de PRÉSENTATION parsable des capacités (PER-64) : transforme le texte
- * balisé `Feature.richText` en segments rendables (texte, dé, formule). Pur, sans
- * React, pour être testable isolément. Le rendu visuel vit dans
- * `src/components/sheet/FeatureRichText.tsx`.
+ * Couche de PRÉSENTATION parsable des capacités (PER-64, étendue PER-90) :
+ * transforme le texte balisé `Feature.richText` en segments rendables (texte, dé,
+ * formule, quantité). Pur, sans React, pour être testable isolément. Le rendu
+ * visuel vit dans `src/components/sheet/FeatureRichText.tsx`.
  *
- * Mini-langage (format « balisé », cf. doc de `Feature.richText`) :
+ * Mini-langage (format « balisé », cf. doc de `Feature.richText` et
+ * `docs/extraction/rich-text-format.md`) :
  * - `{1d4°}`, `{d6}`, `{2d6}` : un dé (accolades). `°` = dé évolutif (p. 43).
- * - `[FOR + 1]`, `[CHA]`, `[1d4° + CHA]` : une formule (crochets) — suite de
- *   termes (caractéristique / dé / nombre) séparés par `+` ou `-`.
+ * - `[FOR + 1]`, `[CHA]`, `[1d4° + CHA]`, `[10 + rang]`, `[niveau × 3]` : une
+ *   formule de MODIFICATEUR (crochets) — suite de termes séparés par `+`/`-`.
+ *   Un terme est une caractéristique / un dé / un nombre / `rang` / `niveau`,
+ *   éventuellement multiplié par une constante (`CHA × 100`, `2 × FOR`). Rendue
+ *   en encadré signé (total + détail).
+ * - `[=CHA]`, `[=CHA × 100]`, `[=rang]`, `[=niveau × 5]` : une QUANTITÉ (crochets
+ *   préfixés de `=`) — même grammaire, mais rendue en VALEUR BRUTE (une durée, une
+ *   portée, un nombre de cibles), sans signe. « pendant [=CHA] minutes » → « 5 ».
  * - `@FOR`, `@AGI`, … : une simple RÉFÉRENCE à une caractéristique (sigle `@`),
- *   mise en avant visuellement sans calcul de valeur (ex. « une @FOR égale
- *   au [CHA] »). Pour les sept codes `AGI/CON/FOR/PER/CHA/INT/VOL` uniquement.
+ *   mise en avant visuellement sans calcul de valeur (ex. « une @FOR égale au
+ *   [CHA] », ou la stat d'une CIBLE qu'on ne peut pas calculer). Pour les sept
+ *   codes `AGI/CON/FOR/PER/CHA/INT/VOL` uniquement.
  * - tout le reste : texte littéral.
  *
  * Robustesse : un `{…}` ou `[…]` dont le contenu n'est pas entièrement
@@ -36,27 +44,38 @@ export interface DieToken {
   evolving: boolean;
 }
 
-/** Un terme d'une formule, avec son signe (`+`/`-`). */
+/**
+ * Un terme d'une formule, avec son signe (`+`/`-`). Les termes « variables »
+ * (caractéristique, `rang`, `niveau`) peuvent porter un `coeff` multiplicateur
+ * (ex. `CHA × 100` → `coeff: 100`) ; absent = 1.
+ */
 export type ExprTerm =
-  | { kind: 'ability'; sign: 1 | -1; ability: AbilityId }
+  | { kind: 'ability'; sign: 1 | -1; ability: AbilityId; coeff?: number }
   | { kind: 'die'; sign: 1 | -1; token: DieToken }
-  | { kind: 'number'; sign: 1 | -1; value: number };
+  | { kind: 'number'; sign: 1 | -1; value: number }
+  | { kind: 'rank'; sign: 1 | -1; coeff?: number }
+  | { kind: 'level'; sign: 1 | -1; coeff?: number };
 
 /** Un fragment de `richText` prêt à rendre. */
 export type RichTextSegment =
   | { kind: 'text'; value: string }
   | { kind: 'die'; token: DieToken }
   | { kind: 'expr'; terms: ExprTerm[]; raw: string }
+  | { kind: 'quantity'; terms: ExprTerm[]; raw: string }
   | { kind: 'abilityRef'; ability: AbilityId };
 
 const DIE_RE = /^(\d*)d(4|6|8|10|12|20)(°?)$/;
 /**
- * Capture un `{…}` (dé), un `[…]` (formule) ou un `@CODE` (référence de
- * caractéristique) ; le reste est du texte.
+ * Capture un `{…}` (dé), un `[…]` (formule ou quantité) ou un `@CODE` (référence
+ * de caractéristique) ; le reste est du texte.
  */
 const TOKEN_RE = new RegExp(`\\{([^}]*)\\}|\\[([^\\]]*)\\]|@(${ABILITY_IDS.join('|')})\\b`, 'g');
-/** Un terme de formule : signe optionnel puis corps sans espace ni signe. */
-const TERM_RE = /([+-]?)\s*([^+\-\s]+)/g;
+/**
+ * Tokenise le corps d'une formule : soit un opérateur (`+ - × *`), soit un
+ * opérande (suite de caractères sans espace ni opérateur). Permet de gérer la
+ * multiplication même avec des espaces autour du `×`.
+ */
+const EXPR_TOKEN_RE = /([+\-×*])|([^\s+\-×*]+)/g;
 
 /** Parse une notation de dé (ex. `1d4°`, `d6`, `2d6`). `null` si invalide. */
 function parseDie(raw: string): DieToken | null {
@@ -69,37 +88,109 @@ function parseDie(raw: string): DieToken | null {
   };
 }
 
-/** Parse le contenu d'une formule en termes. `null` si un terme est inconnu. */
+/** Un atome d'expression (avant réduction en terme). */
+type ExprAtom =
+  | { kind: 'ability'; ability: AbilityId }
+  | { kind: 'die'; token: DieToken }
+  | { kind: 'number'; value: number }
+  | { kind: 'rank' }
+  | { kind: 'level' };
+
+/** Parse un opérande unique en atome. `null` si non reconnu. */
+function parseAtom(raw: string): ExprAtom | null {
+  const die = parseDie(raw);
+  if (die) return { kind: 'die', token: die };
+  if ((ABILITY_IDS as readonly string[]).includes(raw)) {
+    return { kind: 'ability', ability: raw as AbilityId };
+  }
+  if (/^rang$/i.test(raw)) return { kind: 'rank' };
+  if (/^niveau$/i.test(raw)) return { kind: 'level' };
+  if (/^\d+$/.test(raw)) return { kind: 'number', value: Number(raw) };
+  return null;
+}
+
+/**
+ * Réduit une liste de facteurs (séparés par `×`) en un seul terme. Un terme
+ * comporte au plus UNE variable (caractéristique / `rang` / `niveau`), les
+ * éventuels facteurs numériques se combinant en `coeff`. Un dé doit être seul
+ * (pas de multiplicateur). `null` si la combinaison est invalide.
+ */
+function reduceFactors(sign: 1 | -1, factors: ExprAtom[]): ExprTerm | null {
+  const dice = factors.filter((f) => f.kind === 'die');
+  if (dice.length > 0) {
+    if (factors.length !== 1) return null; // un dé ne se multiplie pas
+    return { kind: 'die', sign, token: (dice[0] as { token: DieToken }).token };
+  }
+  const numbers = factors.filter((f) => f.kind === 'number') as { value: number }[];
+  const vars = factors.filter((f) => f.kind === 'ability' || f.kind === 'rank' || f.kind === 'level');
+  if (vars.length > 1) return null; // pas de produit de deux variables
+  const coeffProduct = numbers.reduce((acc, n) => acc * n.value, 1);
+  if (vars.length === 0) {
+    return { kind: 'number', sign, value: coeffProduct };
+  }
+  const coeff = numbers.length > 0 ? coeffProduct : undefined;
+  const v = vars[0];
+  if (v.kind === 'ability') {
+    return coeff !== undefined
+      ? { kind: 'ability', sign, ability: v.ability, coeff }
+      : { kind: 'ability', sign, ability: v.ability };
+  }
+  if (v.kind === 'rank') {
+    return coeff !== undefined ? { kind: 'rank', sign, coeff } : { kind: 'rank', sign };
+  }
+  return coeff !== undefined ? { kind: 'level', sign, coeff } : { kind: 'level', sign };
+}
+
+/** Parse le contenu d'une formule en termes. `null` si une partie est inconnue. */
 function parseExpr(raw: string): ExprTerm[] | null {
   const terms: ExprTerm[] = [];
-  let consumed = 0;
-  TERM_RE.lastIndex = 0;
+  let sign: 1 | -1 = 1;
+  let factors: ExprAtom[] = [];
+  let pendingOperand = false; // un opérande est attendu (après `×`/`+`/`-`)
+  const flush = (): boolean => {
+    if (factors.length === 0) return false;
+    const term = reduceFactors(sign, factors);
+    if (!term) return false;
+    terms.push(term);
+    factors = [];
+    return true;
+  };
+  EXPR_TOKEN_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = TERM_RE.exec(raw)) !== null) {
-    // On ne compte que le signe et le corps (pas les espaces internes), pour
-    // vérifier ensuite que toute la formule a bien été reconnue.
-    consumed += m[1].length + m[2].length;
-    const sign: 1 | -1 = m[1] === '-' ? -1 : 1;
-    const body = m[2];
-    const die = parseDie(body);
-    if (die) {
-      terms.push({ kind: 'die', sign, token: die });
-    } else if ((ABILITY_IDS as readonly string[]).includes(body)) {
-      terms.push({ kind: 'ability', sign, ability: body as AbilityId });
-    } else if (/^\d+$/.test(body)) {
-      terms.push({ kind: 'number', sign, value: Number(body) });
+  let first = true;
+  while ((m = EXPR_TOKEN_RE.exec(raw)) !== null) {
+    if (m[1] !== undefined) {
+      const op = m[1];
+      if (op === '×' || op === '*') {
+        if (factors.length === 0) return null; // `×` sans opérande à gauche
+        pendingOperand = true;
+      } else {
+        if (factors.length > 0) {
+          if (!flush()) return null;
+        } else if (!first) {
+          return null; // deux opérateurs additifs de suite
+        }
+        sign = op === '-' ? -1 : 1;
+        pendingOperand = true;
+      }
     } else {
-      return null; // terme non reconnu → formule rejetée (rendue en littéral)
+      const atom = parseAtom(m[2]);
+      if (!atom) return null;
+      factors.push(atom);
+      pendingOperand = false;
     }
+    first = false;
   }
-  // Tout le contenu (hors espaces) doit avoir été consommé, sinon rejet.
-  if (terms.length === 0 || consumed !== raw.replace(/\s/g, '').length) return null;
+  if (pendingOperand && factors.length === 0) return null; // opérateur final orphelin
+  if (factors.length > 0 && !flush()) return null;
+  if (terms.length === 0) return null;
   return terms;
 }
 
 /**
  * Découpe `richText` en segments. Les `{…}`/`[…]` non reconnus retombent en
- * texte littéral (délimiteurs inclus).
+ * texte littéral (délimiteurs inclus). Un `[=…]` produit une quantité (valeur
+ * brute), un `[…]` une formule de modificateur.
  */
 export function parseRichText(richText: string): RichTextSegment[] {
   const segments: RichTextSegment[] = [];
@@ -120,9 +211,17 @@ export function parseRichText(richText: string): RichTextSegment[] {
       if (die) segments.push({ kind: 'die', token: die });
       else pushText(m[0]); // accolades non reconnues → littéral
     } else if (m[2] !== undefined) {
-      const terms = parseExpr(m[2]);
-      if (terms) segments.push({ kind: 'expr', terms, raw: m[0] });
-      else pushText(m[0]); // crochets non reconnus → littéral
+      const body = m[2];
+      const isQuantity = body.trimStart().startsWith('=');
+      const exprBody = isQuantity ? body.trimStart().slice(1) : body;
+      const terms = parseExpr(exprBody);
+      if (terms) {
+        segments.push(
+          isQuantity
+            ? { kind: 'quantity', terms, raw: m[0] }
+            : { kind: 'expr', terms, raw: m[0] },
+        );
+      } else pushText(m[0]); // crochets non reconnus → littéral
     } else {
       segments.push({ kind: 'abilityRef', ability: m[3] as AbilityId });
     }
@@ -133,27 +232,27 @@ export function parseRichText(richText: string): RichTextSegment[] {
 
 /** Un terme de formule résolu pour l'affichage. */
 export interface ResolvedPart {
-  /** Nature du terme (pour le rendu : caractéristique, nombre ou dé). */
+  /** Nature du terme (pour le rendu). */
   kind: ExprTerm['kind'];
   sign: 1 | -1;
-  /** Libellé complet du terme (ex. « Charisme (CHA) », « Bonus ») — info-bulle. */
+  /** Libellé complet du terme (ex. « Charisme (CHA) », « Rang », « Niveau ») — info-bulle. */
   label: string;
   /**
-   * Symbole court tel qu'écrit dans la formule (ex. « CHA », « 1 », « d4° ») :
-   * affiché dans l'encadré pour que la formule reste lisible (« CHA (+5) »).
+   * Symbole court tel qu'écrit dans la formule (ex. « CHA », « CHA × 100 »,
+   * « rang », « 1 », « d4° ») : affiché pour que la formule reste lisible.
    */
   symbol: string;
-  /** Valeur numérique du terme ; `null` pour un dé. */
+  /** Valeur numérique du terme (déjà multipliée par le coeff) ; `null` pour un dé. */
   value: number | null;
   /** Présent si le terme est un dé, avec sa valeur concrète au niveau courant. */
   die?: { count: number; displayDie: Die; evolving: boolean };
 }
 
-/** Résultat de l'évaluation d'une formule contre un personnage donné. */
+/** Résultat de l'évaluation d'une formule/quantité contre un personnage donné. */
 export interface ResolvedExpr {
   /** La formule contient au moins un dé → non déterministe (pas de total). */
   hasDie: boolean;
-  /** La formule contient au moins une caractéristique (→ on en montre le code). */
+  /** La formule contient au moins une variable (caractéristique / rang / niveau). */
   hasAbility: boolean;
   /** Total numérique si déterministe (`hasDie === false`), sinon `null`. */
   total: number | null;
@@ -161,17 +260,23 @@ export interface ResolvedExpr {
   parts: ResolvedPart[];
 }
 
+/** Symbole d'une variable, suffixé du multiplicateur éventuel (« CHA × 100 »). */
+function withCoeff(base: string, coeff?: number): string {
+  return coeff !== undefined ? `${base} × ${coeff}` : base;
+}
+
 /**
- * Évalue une formule contre les caractéristiques et le niveau du personnage.
- * Sans dé : on calcule le total (affiché en encadré avec son détail). Avec dé :
- * on résout les dés à leur valeur au niveau courant et les caractéristiques à
- * leur valeur, sans total (le dé sera lancé à la table).
+ * Évalue une formule (ou une quantité) contre les caractéristiques, le niveau et
+ * le rang du personnage. Sans dé : on calcule le total. Avec dé : on résout les
+ * dés à leur valeur au niveau courant et les variables à leur valeur, sans total
+ * (le dé sera lancé à la table).
  */
 export function resolveExpr(
   terms: ExprTerm[],
   abilities: Abilities,
   level: number,
   progression: ProgressionRules,
+  rank = 0,
 ): ResolvedExpr {
   const parts: ResolvedPart[] = terms.map((term) => {
     switch (term.kind) {
@@ -180,8 +285,24 @@ export function resolveExpr(
           kind: 'ability',
           sign: term.sign,
           label: `${ABILITY_NAMES[term.ability]} (${term.ability})`,
-          symbol: term.ability,
-          value: abilities[term.ability],
+          symbol: withCoeff(term.ability, term.coeff),
+          value: abilities[term.ability] * (term.coeff ?? 1),
+        };
+      case 'rank':
+        return {
+          kind: 'rank',
+          sign: term.sign,
+          label: 'Rang',
+          symbol: withCoeff('rang', term.coeff),
+          value: rank * (term.coeff ?? 1),
+        };
+      case 'level':
+        return {
+          kind: 'level',
+          sign: term.sign,
+          label: 'Niveau',
+          symbol: withCoeff('niveau', term.coeff),
+          value: level * (term.coeff ?? 1),
         };
       case 'number':
         return {
@@ -208,7 +329,7 @@ export function resolveExpr(
     }
   });
   const hasDie = parts.some((p) => p.die);
-  const hasAbility = terms.some((t) => t.kind === 'ability');
+  const hasAbility = terms.some((t) => t.kind === 'ability' || t.kind === 'rank' || t.kind === 'level');
   const total = hasDie
     ? null
     : parts.reduce((acc, p) => acc + p.sign * (p.value ?? 0), 0);
