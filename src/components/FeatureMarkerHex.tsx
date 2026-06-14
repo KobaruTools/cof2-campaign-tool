@@ -61,7 +61,7 @@ function Hex({
             // Le centrage géométrique laisse le glyphe visuellement un peu haut
             // (la boîte de ligne réserve de la place pour les jambages) : léger
             // décalage vers le bas pour recentrer l'œil.
-            transform: 'translateY(8%)',
+            transform: 'translateY(4%)',
             textShadow: '0 1px 2px rgba(0,0,0,0.7)',
             pointerEvents: 'none',
           }}
