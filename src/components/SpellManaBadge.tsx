@@ -24,7 +24,7 @@ function manaCostExplanation(feature: Feature, cost: number): string {
 
 export interface SpellManaBadgeProps {
   feature: Feature;
-  /** Diamètre de la goutte en pixels. Défaut 24. */
+  /** Diamètre de la goutte en pixels. Défaut 30. */
   size?: number;
   /**
    * Couleur de remplissage de la goutte (chaîne CSS) — typiquement la teinte du
@@ -42,7 +42,7 @@ export interface SpellManaBadgeProps {
  * (cf. `spellManaCost`, PER-65). Ne rend rien pour une capacité qui n'est pas un
  * sort (pas de coût de mana).
  */
-export function SpellManaBadge({ feature, size = 24, color, sx }: SpellManaBadgeProps) {
+export function SpellManaBadge({ feature, size = 30, color, sx }: SpellManaBadgeProps) {
   const cost = spellManaCost(feature);
   if (cost === null) return null;
   return (
@@ -78,8 +78,10 @@ export function SpellManaBadge({ feature, size = 24, color, sx }: SpellManaBadge
             transform: 'translateY(16%)',
             color: 'common.white',
             fontWeight: 800,
-            fontSize: size * 0.46,
+            fontSize: size * 0.55,
             lineHeight: 1,
+            // Ombre portée du chiffre : détache le blanc de la goutte teintée.
+            textShadow: '0 1px 2px rgba(0,0,0,0.7)',
             pointerEvents: 'none',
           }}
         >
