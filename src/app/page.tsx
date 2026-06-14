@@ -84,6 +84,32 @@ export default function HomePage() {
 
   const rows = characters.map(summarize).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
+  // Actions d'une ligne, partagées par le tableau (desktop) et les cartes (mobile).
+  const rowActions = (r: (typeof rows)[number]) => (
+    <>
+      <Tooltip title="Ouvrir">
+        <IconButton onClick={() => router.push(`/character/${r.id}`)}>
+          <OpenInNewIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Dupliquer">
+        <IconButton onClick={() => duplicate(r.id)}>
+          <ContentCopyIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Exporter en JSON">
+        <IconButton onClick={() => handleExport(r.id)}>
+          <DownloadIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Supprimer">
+        <IconButton color="error" onClick={() => setToDelete({ id: r.id, name: r.name })}>
+          <DeleteOutlineIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </>
+  );
+
   return (
     <>
       <AppBar position="static">
@@ -149,56 +175,70 @@ export default function HomePage() {
             </Typography>
           </Paper>
         ) : (
-          <TableContainer component={Paper} variant="outlined">
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Nom</TableCell>
-                  <TableCell>Peuple</TableCell>
-                  <TableCell>Profil</TableCell>
-                  <TableCell align="center">Niveau</TableCell>
-                  <TableCell>Modifié</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((r) => (
-                  <TableRow key={r.id} hover>
-                    <TableCell>{r.name}</TableCell>
-                    <TableCell>{r.ancestry}</TableCell>
-                    <TableCell>{r.characterClass}</TableCell>
-                    <TableCell align="center">{r.level}</TableCell>
-                    <TableCell>{formatDate(r.updatedAt)}</TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="Ouvrir">
-                        <IconButton onClick={() => router.push(`/character/${r.id}`)}>
-                          <OpenInNewIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Dupliquer">
-                        <IconButton onClick={() => duplicate(r.id)}>
-                          <ContentCopyIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Exporter en JSON">
-                        <IconButton onClick={() => handleExport(r.id)}>
-                          <DownloadIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Supprimer">
-                        <IconButton
-                          color="error"
-                          onClick={() => setToDelete({ id: r.id, name: r.name })}
-                        >
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
+          <>
+            {/* Desktop : tableau classique. Masqué sous md (illisible sur mobile). */}
+            <TableContainer
+              component={Paper}
+              variant="outlined"
+              sx={{ display: { xs: 'none', md: 'block' } }}
+            >
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Nom</TableCell>
+                    <TableCell>Peuple</TableCell>
+                    <TableCell>Profil</TableCell>
+                    <TableCell align="center">Niveau</TableCell>
+                    <TableCell>Modifié</TableCell>
+                    <TableCell align="right">Actions</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {rows.map((r) => (
+                    <TableRow key={r.id} hover>
+                      <TableCell>{r.name}</TableCell>
+                      <TableCell>{r.ancestry}</TableCell>
+                      <TableCell>{r.characterClass}</TableCell>
+                      <TableCell align="center">{r.level}</TableCell>
+                      <TableCell>{formatDate(r.updatedAt)}</TableCell>
+                      <TableCell align="right">{rowActions(r)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* Mobile : une carte empilée par personnage (PER-51). */}
+            <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
+              {rows.map((r) => (
+                <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
+                  >
+                    <Box
+                      sx={{ minWidth: 0, cursor: 'pointer' }}
+                      onClick={() => router.push(`/character/${r.id}`)}
+                    >
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        {r.name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {r.ancestry} · {r.characterClass} · niveau {r.level}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Modifié {formatDate(r.updatedAt)}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                  <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 0.5 }}>
+                    {rowActions(r)}
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          </>
         )}
       </Container>
 

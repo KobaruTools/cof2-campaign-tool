@@ -40,7 +40,11 @@ const OVERRIDE_KEY: Record<DerivedStatId, OverrideKey> = {
 export interface DerivedStatsGridProps {
   /** Entrées du moteur — sert au calcul des stats et au détail des infobulles. */
   input: DerivedInput;
-  /** Tailles de colonne MUI Grid, par défaut deux puis trois par ligne. */
+  /**
+   * Tailles de colonne MUI Grid. Par défaut : une carte par ligne sur mobile
+   * (les contrôles d'édition tiennent à l'aise), deux sur tablette, trois sur
+   * desktop.
+   */
   size?: Record<string, number>;
   /** Surcharges manuelles actives (clé présente = valeur forcée). PER-48. */
   overrides?: Partial<Record<OverrideKey, number>>;
@@ -69,7 +73,7 @@ interface StatLine {
  */
 export function DerivedStatsGrid({
   input,
-  size = { xs: 6, sm: 4 },
+  size = { xs: 12, sm: 6, md: 4 },
   overrides,
   onOverride,
 }: DerivedStatsGridProps) {

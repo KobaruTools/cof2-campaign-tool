@@ -281,7 +281,7 @@ export function AncestryStep({ draft, patch }: StepProps) {
             </Box>
 
             {ancestry.ancestryPathIds.length > 1 && (
-              <FormControl sx={{ mt: 1, minWidth: 260 }} size="small">
+              <FormControl sx={{ mt: 1, minWidth: { xs: '100%', sm: 260 } }} size="small">
                 <InputLabel>Voie de peuple</InputLabel>
                 <Select
                   label="Voie de peuple"
@@ -706,7 +706,7 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
             <Stack spacing={2}>
               {ancestry.abilityModifiers.map((mod, i) =>
                 mod.abilities.length === 1 ? null : (
-                  <FormControl key={i} size="small" sx={{ minWidth: 260 }}>
+                  <FormControl key={i} size="small" sx={{ minWidth: { xs: '100%', sm: 260 } }}>
                     <InputLabel>{`${mod.value > 0 ? '+' : ''}${mod.value} à`}</InputLabel>
                     <Select
                       label={`${mod.value > 0 ? '+' : ''}${mod.value} à`}
@@ -733,11 +733,11 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
       <Grid container spacing={2}>
         <Grid size={12}>
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-            <Box sx={{ width: 24 }} />
-            <Typography variant="overline" color="text.secondary" sx={{ width: 130 }}>
+            <Box sx={{ width: 24, flexShrink: 0 }} />
+            <Typography variant="overline" color="text.secondary" sx={{ flex: 1, maxWidth: 160 }}>
               Jet de dés
             </Typography>
-            <Typography variant="overline" color="text.secondary" sx={{ width: 130 }}>
+            <Typography variant="overline" color="text.secondary" sx={{ flex: 1, maxWidth: 160 }}>
               Total
             </Typography>
           </Stack>
@@ -747,15 +747,20 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
           const color = abilityTotalColor(total);
           return (
             <Grid key={id} size={12}>
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                <AbilityIcon ability={id} title size={24} sx={{ color: 'text.secondary' }} />
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                <AbilityIcon
+                  ability={id}
+                  title
+                  size={24}
+                  sx={{ color: 'text.secondary', flexShrink: 0 }}
+                />
                 <TextField
                   label={id}
                   type="number"
                   size="small"
                   value={draft.baseAbilities[id]}
                   onChange={(e) => setBase(id, Number(e.target.value) || 0)}
-                  sx={{ width: 130 }}
+                  sx={{ flex: 1, maxWidth: 160 }}
                 />
                 <TextField
                   label={abilityTotalLabel(total)}
@@ -763,7 +768,8 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
                   disabled
                   value={`${total > 0 ? '+' : ''}${total}`}
                   sx={{
-                    width: 130,
+                    flex: 1,
+                    maxWidth: 160,
                     '& .MuiInputBase-input.Mui-disabled': {
                       WebkitTextFillColor: color,
                       fontWeight: 600,
@@ -1185,68 +1191,76 @@ export function IdentityStep({ draft, patch }: StepProps) {
           },
         }}
       />
-      <Stack direction="row" spacing={2}>
-        <TextField
-          select
-          label="Sexe"
-          value={draft.identity.sex ?? ''}
-          onChange={(e) =>
-            patch({ identity: { ...draft.identity, sex: (e.target.value || undefined) as Sex | undefined } })
-          }
-          fullWidth
-        >
-          <MenuItem value="male">Homme</MenuItem>
-          <MenuItem value="female">Femme</MenuItem>
-        </TextField>
-        <TextField
-          label="Âge"
-          value={draft.identity.age ?? ''}
-          onChange={(e) => patch({ identity: { ...draft.identity, age: digitsOnly(e.target.value) } })}
-          placeholder={physical?.startingAge}
-          fullWidth
-          slotProps={
-            physical
-              ? {
-                  input: {
-                    endAdornment: (
-                      <InfoHint page={ancestry?.sourcePage}>
-                        <>
-                          Âge de départ conseillé : <strong>{physical.startingAge}</strong>.
-                          <br />
-                          Espérance de vie : <strong>{physical.lifeExpectancy}</strong>.
-                        </>
-                      </InfoHint>
-                    ),
-                  },
-                }
-              : undefined
-          }
-        />
-        <TextField
-          label="Taille"
-          value={draft.identity.height ?? ''}
-          onChange={(e) => patch({ identity: { ...draft.identity, height: digitsOnly(e.target.value) } })}
-          placeholder={physical?.height}
-          fullWidth
-          slotProps={{
-            input: {
-              endAdornment: <InputAdornment position="end">m</InputAdornment>,
-            },
-          }}
-        />
-        <TextField
-          label="Poids"
-          value={draft.identity.weight ?? ''}
-          onChange={(e) => patch({ identity: { ...draft.identity, weight: digitsOnly(e.target.value) } })}
-          placeholder={physical?.weight}
-          fullWidth
-          slotProps={{
-            input: {
-              endAdornment: <InputAdornment position="end">kg</InputAdornment>,
-            },
-          }}
-        />
-      </Stack>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <TextField
+            select
+            label="Sexe"
+            value={draft.identity.sex ?? ''}
+            onChange={(e) =>
+              patch({ identity: { ...draft.identity, sex: (e.target.value || undefined) as Sex | undefined } })
+            }
+            fullWidth
+          >
+            <MenuItem value="male">Homme</MenuItem>
+            <MenuItem value="female">Femme</MenuItem>
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <TextField
+            label="Âge"
+            value={draft.identity.age ?? ''}
+            onChange={(e) => patch({ identity: { ...draft.identity, age: digitsOnly(e.target.value) } })}
+            placeholder={physical?.startingAge}
+            fullWidth
+            slotProps={
+              physical
+                ? {
+                    input: {
+                      endAdornment: (
+                        <InfoHint page={ancestry?.sourcePage}>
+                          <>
+                            Âge de départ conseillé : <strong>{physical.startingAge}</strong>.
+                            <br />
+                            Espérance de vie : <strong>{physical.lifeExpectancy}</strong>.
+                          </>
+                        </InfoHint>
+                      ),
+                    },
+                  }
+                : undefined
+            }
+          />
+        </Grid>
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <TextField
+            label="Taille"
+            value={draft.identity.height ?? ''}
+            onChange={(e) => patch({ identity: { ...draft.identity, height: digitsOnly(e.target.value) } })}
+            placeholder={physical?.height}
+            fullWidth
+            slotProps={{
+              input: {
+                endAdornment: <InputAdornment position="end">m</InputAdornment>,
+              },
+            }}
+          />
+        </Grid>
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <TextField
+            label="Poids"
+            value={draft.identity.weight ?? ''}
+            onChange={(e) => patch({ identity: { ...draft.identity, weight: digitsOnly(e.target.value) } })}
+            placeholder={physical?.weight}
+            fullWidth
+            slotProps={{
+              input: {
+                endAdornment: <InputAdornment position="end">kg</InputAdornment>,
+              },
+            }}
+          />
+        </Grid>
+      </Grid>
       <TextField
         label="Description"
         multiline
