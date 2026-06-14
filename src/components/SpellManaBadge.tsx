@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
-import type { SxProps, Theme } from '@mui/material/styles';
+import { darken, type SxProps, type Theme } from '@mui/material/styles';
 import type { Feature } from '@/data/schema';
 import { spellManaCost } from '@/lib/engine';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
@@ -59,7 +59,9 @@ export function SpellManaBadge({ feature, size = 24, color, sx }: SpellManaBadge
           sx={{
             width: '100%',
             height: '100%',
-            fill: color ?? 'info.main',
+            // Teinte du profil assombrie (utilitaire MUI `darken`) pour contraster
+            // avec le chiffre blanc ; repli sur le bleu mana du thème sinon.
+            fill: color ? darken(color, 0.25) : 'info.main',
             filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.35))',
           }}
           dangerouslySetInnerHTML={{ __html: MANA_DROP_PATH }}
@@ -75,7 +77,7 @@ export function SpellManaBadge({ feature, size = 24, color, sx }: SpellManaBadge
             // centrer dans le bulbe plutôt qu'au milieu géométrique.
             transform: 'translateY(16%)',
             color: 'common.white',
-            fontWeight: 700,
+            fontWeight: 800,
             fontSize: size * 0.46,
             lineHeight: 1,
             pointerEvents: 'none',
