@@ -176,9 +176,10 @@ function quantityTooltip(resolved: ResolvedExpr): string {
   if (resolved.parts.length === 1) {
     const p = resolved.parts[0];
     if (p.kind === 'number') return String(p.value);
-    const detail =
-      p.coeff !== undefined && p.value != null ? ` : ${p.value / p.coeff} × ${p.coeff}` : '';
-    return `${p.label}${detail} = ${resolved.total}`;
+    // Dérivation TOUJOURS explicite, même sans multiplicateur (× 1), pour la clarté.
+    const coeff = p.coeff ?? 1;
+    const base = p.value != null ? p.value / coeff : 0;
+    return `${p.label} : ${base} × ${coeff} = ${resolved.total}`;
   }
   const body = resolved.parts
     .map((p, i) => (i > 0 ? `${p.sign === -1 ? ' − ' : ' + '}` : p.sign === -1 ? '− ' : '') + valued(p))
