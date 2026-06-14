@@ -322,7 +322,7 @@ function PathBlock({
               px: 1,
               py: 0.5,
               // Coin supérieur droit réservé à la goutte de coût en mana des sorts.
-              pr: feature.isSpell ? 4 : 1,
+              pr: feature.isSpell ? 2.5 : 1,
               border: 1,
               borderColor: 'divider',
               borderRadius: 1,
@@ -340,7 +340,7 @@ function PathBlock({
             <SpellManaBadge
               feature={feature}
               color={color ?? undefined}
-              sx={{ position: 'absolute', top: 3, right: 3, zIndex: 1 }}
+              sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
             />
             {manualFeatureIds?.has(feature.id) && <ManualPin />}
             <Typography
