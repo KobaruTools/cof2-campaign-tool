@@ -3,6 +3,7 @@
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PushPinIcon from '@mui/icons-material/PushPin';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import ViewStreamIcon from '@mui/icons-material/ViewStream';
 import Accordion from '@mui/material/Accordion';
@@ -105,6 +106,32 @@ export interface FeaturesByPathProps {
   layout: FeaturesLayout;
   /** Édition en place : si fourni, suppression et ajout de capacités. */
   onChange?: (featureIds: string[]) => void;
+  /**
+   * Capacités ajoutées manuellement sur la fiche (hors wizard) : affichées avec
+   * une épingle pour garder une trace de la saisie manuelle (PER-53).
+   */
+  manualFeatureIds?: Set<string>;
+}
+
+/**
+ * Épingle : capacité ajoutée manuellement sur la fiche, hors wizard (PER-53).
+ * `inline` la place dans le flux (vue lignes, à côté du rang) plutôt qu'en
+ * absolu dans le coin supérieur droit (vue colonnes, sur la carte).
+ */
+function ManualPin({ inline = false }: { inline?: boolean }) {
+  return (
+    <Tooltip title="Ajoutée manuellement sur la fiche (hors wizard)" arrow>
+      <PushPinIcon
+        color="warning"
+        sx={{
+          fontSize: 16,
+          ...(inline
+            ? { flexShrink: 0 }
+            : { position: 'absolute', top: 3, right: 3, zIndex: 1 }),
+        }}
+      />
+    </Tooltip>
+  );
 }
 
 /** Bascule lignes / tableau, à placer dans l'en-tête de la section. */
@@ -173,6 +200,7 @@ function PathBlock({
   group,
   classId,
   onRemove,
+  manualFeatureIds,
   compact = false,
   gridColumn,
   retainedFeature,
@@ -181,6 +209,8 @@ function PathBlock({
   group: FeatureGroup;
   classId: string;
   onRemove?: (featureId: string) => void;
+  /** Capacités ajoutées manuellement (épingle). */
+  manualFeatureIds?: Set<string>;
   /** Vue colonne : masque le rang de chaque capacité, le résume dans l'en-tête. */
   compact?: boolean;
   /** Vue colonne : index de colonne (1-based) dans la grille subgrid. */
@@ -268,6 +298,7 @@ function PathBlock({
             key={feature.id}
             onClick={() => setOpenFeature(feature)}
             sx={{
+              position: 'relative',
               display: 'flex',
               alignItems: 'center',
               gap: 0.5,
@@ -287,6 +318,7 @@ function PathBlock({
                 : {}),
             }}
           >
+            {manualFeatureIds?.has(feature.id) && <ManualPin />}
             <Typography
               variant="body2"
               sx={{ fontWeight: 600, minWidth: 0, flexGrow: 1, wordBreak: 'break-word' }}
@@ -393,6 +425,7 @@ function PathBlock({
                   variant="outlined"
                   sx={{ fontWeight: 600 }}
                 />
+                {manualFeatureIds?.has(feature.id) && <ManualPin inline />}
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   <FeatureLabel feature={feature} />
                 </Typography>
@@ -474,7 +507,13 @@ function GhostColumn({ gridColumn }: { gridColumn: number }) {
 }
 
 /** Toutes les voies acquises d'un personnage, regroupées et consultables / éditables. */
-export function FeaturesByPath({ featureIds, classId, layout, onChange }: FeaturesByPathProps) {
+export function FeaturesByPath({
+  featureIds,
+  classId,
+  layout,
+  onChange,
+  manualFeatureIds,
+}: FeaturesByPathProps) {
   const groups = groupFeaturesByPath(featureIds);
 
   // Voie du mage : elle remplace la voie de peuple mais le personnage conserve
@@ -546,6 +585,7 @@ export function FeaturesByPath({ featureIds, classId, layout, onChange }: Featur
               group={group}
               classId={classId}
               onRemove={onChange ? remove : undefined}
+              manualFeatureIds={manualFeatureIds}
               compact
               gridColumn={i + 1}
               retainedFeature={group === mageGroup ? retainedFeature : undefined}
@@ -561,6 +601,7 @@ export function FeaturesByPath({ featureIds, classId, layout, onChange }: Featur
               group={group}
               classId={classId}
               onRemove={onChange ? remove : undefined}
+              manualFeatureIds={manualFeatureIds}
               compact
               gridColumn={PATH_COLUMN_COUNT - prestige.length + 1 + i}
             />
@@ -574,6 +615,7 @@ export function FeaturesByPath({ featureIds, classId, layout, onChange }: Featur
               group={group}
               classId={classId}
               onRemove={onChange ? remove : undefined}
+              manualFeatureIds={manualFeatureIds}
               retainedFeature={group === mageGroup ? retainedFeature : undefined}
               retainedPathName={group === mageGroup ? retainedPathName : undefined}
             />

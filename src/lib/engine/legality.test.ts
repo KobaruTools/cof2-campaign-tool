@@ -6,6 +6,7 @@ import type { FamilyId } from '@/data/schema';
 import { SCHEMA_VERSION, type Character } from '@/lib/character/types';
 import {
   featureCost,
+  featurePointBudget,
   minLevelForRank,
   canAcquireFeature,
   checkCompliance,
@@ -52,6 +53,39 @@ describe('featureCost', () => {
     expect(featureCost(feature('brute-r2'), progression)).toBe(1);
     expect(featureCost(feature('brute-r3'), progression)).toBe(2);
     expect(featureCost(feature('brute-r5'), progression)).toBe(2);
+  });
+});
+
+describe('featurePointBudget', () => {
+  it('niveau 1 correctement créé : 0 disponible, 0 dépensé (tout gratuit)', () => {
+    const free = ['pourfendeur-r1', 'rage-r1', 'humain-r1'];
+    const c = makeCharacter({
+      level: 1,
+      featureIds: free,
+      levelUpHistory: [{ level: 1, chosenFeatureIds: free }],
+    });
+    const budget = featurePointBudget(c, ctx);
+    expect(budget).toEqual({ available: 0, spent: 0, known: true });
+  });
+
+  it('compte les capacités achetées (hors gratuites) et 2 points par niveau', () => {
+    const free = ['pourfendeur-r1', 'rage-r1', 'humain-r1'];
+    const c = makeCharacter({
+      level: 3,
+      featureIds: [...free, 'brute-r1', 'pagne-r1'], // 2 voies achetées, rang 1 → 2 points
+      levelUpHistory: [
+        { level: 1, chosenFeatureIds: free },
+        { level: 2, chosenFeatureIds: ['brute-r1'] },
+        { level: 3, chosenFeatureIds: ['pagne-r1'] },
+      ],
+    });
+    const budget = featurePointBudget(c, ctx);
+    expect(budget).toEqual({ available: 4, spent: 2, known: true });
+  });
+
+  it('inconnu si l’entrée de niveau 1 est absente (pas de faux gratuit)', () => {
+    const c = makeCharacter({ level: 1, featureIds: ['pourfendeur-r1'], levelUpHistory: [] });
+    expect(featurePointBudget(c, ctx).known).toBe(false);
   });
 });
 
@@ -227,5 +261,42 @@ describe('checkCompliance', () => {
     const c = makeCharacter({ classId: 'barbare', level: 3, featureIds: ['brute-r1', 'combat-r1'] });
     const codes = checkCompliance(c, ctx).map((a) => a.code);
     expect(codes).not.toContain('HYBRID_PROFILE');
+  });
+
+  it('niveau 1 créé via le wizard (historique présent) : pas de sur-dépense', () => {
+    const free = ['pourfendeur-r1', 'rage-r1', 'humain-r1'];
+    const c = makeCharacter({
+      level: 1,
+      featureIds: free,
+      levelUpHistory: [{ level: 1, chosenFeatureIds: free }],
+    });
+    const codes = checkCompliance(c, ctx).map((a) => a.code);
+    expect(codes).not.toContain('FEATURE_POINTS_OVERSPENT');
+  });
+
+  it('signale une sur-dépense de points de capacité', () => {
+    // Niveau 2 (2 points dispo) mais 3 voies achetées en plus du gratuit → 3 points.
+    const free = ['pourfendeur-r1', 'rage-r1', 'humain-r1'];
+    const c = makeCharacter({
+      level: 2,
+      featureIds: [...free, 'brute-r1', 'pagne-r1', 'primitif-r1'],
+      levelUpHistory: [{ level: 1, chosenFeatureIds: free }],
+    });
+    const codes = checkCompliance(c, ctx).map((a) => a.code);
+    expect(codes).toContain('FEATURE_POINTS_OVERSPENT');
+  });
+
+  it('pas de sur-dépense quand les points dépensés tiennent dans le budget', () => {
+    const free = ['pourfendeur-r1', 'rage-r1', 'humain-r1'];
+    const c = makeCharacter({
+      level: 2,
+      featureIds: [...free, 'brute-r1'], // 1 point dépensé pour 2 disponibles
+      levelUpHistory: [
+        { level: 1, chosenFeatureIds: free },
+        { level: 2, chosenFeatureIds: ['brute-r1'] },
+      ],
+    });
+    const codes = checkCompliance(c, ctx).map((a) => a.code);
+    expect(codes).not.toContain('FEATURE_POINTS_OVERSPENT');
   });
 });

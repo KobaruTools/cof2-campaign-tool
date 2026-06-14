@@ -45,6 +45,23 @@ export function totalFeatureCost(featureIds: string[], ctx: RulesContext): numbe
 }
 
 /**
+ * Capacités présentes sur la fiche mais absentes de tout l'historique de
+ * création/montée de niveau : elles ont donc été ajoutées « à la main » sur la
+ * fiche permissive, hors wizard. Sert à les marquer visuellement (épingle) pour
+ * garder une trace de ce qui a été saisi manuellement (PER-53). Si l'historique
+ * est entièrement vide (sauvegarde ancienne / fixture), on ne peut rien
+ * distinguer : on renvoie un ensemble vide plutôt que de tout marquer.
+ */
+export function manualFeatureIds(character: Character): Set<string> {
+  if (character.levelUpHistory.length === 0) return new Set();
+  const fromHistory = new Set<string>();
+  for (const entry of character.levelUpHistory) {
+    for (const id of entry.chosenFeatureIds) fromHistory.add(id);
+  }
+  return new Set(character.featureIds.filter((id) => !fromHistory.has(id)));
+}
+
+/**
  * Retire une capacité de la sélection en cours et, avec elle, toute capacité
  * sélectionnée de la même voie d'un rang supérieur (sinon on laisserait une
  * voie à trous, choix illégal). Conserve l'ordre d'ajout.

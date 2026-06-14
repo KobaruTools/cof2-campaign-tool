@@ -10,11 +10,11 @@
  *
  * Règles : `creation-progression.md` §11-13 (p. 39-42) et `progression.ts`.
  *
- * Hors périmètre de ce module (volontaire) : le budget exact de points de
- * capacité (gratuit vs acheté, bonus de mage, points orphelins). Il dépend de
- * l'historique de création/montée de niveau que le wizard renseignera ; tant
- * qu'il n'est pas fiable, on n'émet aucun avertissement « points » pour éviter
- * les faux positifs. Voir TODO en bas.
+ * Le budget de points de capacité (`featurePointBudget`) distingue le gratuit de
+ * l'acheté grâce à l'entrée d'historique de niveau 1 (les capacités de départ y
+ * sont journalisées) ; il ne signale que la **sur-dépense** — les points non
+ * dépensés sont légaux (point orphelin, p. 40). Si l'historique de niveau 1 est
+ * absent (sauvegarde ancienne), on s'abstient pour éviter tout faux positif.
  */
 import { ABILITY_MAX, ABILITY_MIN } from '@/data/schema';
 import type {
@@ -50,6 +50,7 @@ export type WarningCode =
   | 'MULTIPLE_PRESTIGE'
   | 'PRESTIGE_LEVEL_TOO_LOW'
   | 'HYBRID_PROFILE'
+  | 'FEATURE_POINTS_OVERSPENT'
   | 'UNKNOWN_FEATURE';
 
 export interface Warning {
@@ -77,6 +78,52 @@ export const EXPERT_PATH_ID = 'prestige-expert';
 /** Coût d'une capacité en points (rang 1-2 → 1, rang 3+ → 2 — p. 39). */
 export function featureCost(feature: Feature, progression: ProgressionRules): number {
   return progression.costPerRank[feature.rank] ?? (feature.rank <= 2 ? 1 : 2);
+}
+
+/**
+ * Capacités obtenues **gratuitement** à la création (niveau 1) : les 2 voies de
+ * profil de départ, le rang 1 de la voie de peuple et — pour les mages — le rang
+ * 1 de la voie du mage et le bonus de rang 2 (creation-progression.md §5, §11).
+ * Elles ne sont pas payées avec des points de capacité.
+ *
+ * Source fiable : l'entrée d'historique de niveau 1, que `materializeDraft`
+ * renseigne avec exactement ces capacités. On restreint aux capacités encore
+ * possédées. `known` est faux si cette entrée est absente (personnage construit à
+ * la main / sauvegarde antérieure à l'historique) : on ne peut alors pas
+ * distinguer le gratuit de l'acheté, et l'appelant s'abstient d'avertir.
+ */
+export function freeFeatureIds(character: Character): { ids: Set<string>; known: boolean } {
+  const level1 = character.levelUpHistory.find((entry) => entry.level === 1);
+  if (!level1) return { ids: new Set(), known: false };
+  const owned = new Set(character.featureIds);
+  return { ids: new Set(level1.chosenFeatureIds.filter((id) => owned.has(id))), known: true };
+}
+
+export interface FeaturePointBudget {
+  /** Points de capacité disponibles sur la carrière : 2 par niveau au-delà du niveau 1. */
+  available: number;
+  /** Points effectivement dépensés (coût des capacités achetées, gratuites exclues). */
+  spent: number;
+  /** Vrai si le gratuit est identifiable (entrée d'historique de niveau 1 présente). */
+  known: boolean;
+}
+
+/**
+ * Bilan des points de capacité du personnage : ce qu'il peut dépenser selon son
+ * niveau vs ce qu'il a réellement dépensé (capacités achetées, gratuites
+ * déduites). À la création (niveau 1) aucun point n'est dépensable : les
+ * capacités de départ sont gratuites (§5, §9).
+ */
+export function featurePointBudget(character: Character, ctx: RulesContext): FeaturePointBudget {
+  const available = ctx.progression.featurePointsPerLevel * Math.max(0, character.level - 1);
+  const { ids: free, known } = freeFeatureIds(character);
+  let spent = 0;
+  for (const id of character.featureIds) {
+    if (free.has(id)) continue;
+    const feature = ctx.featureById.get(id);
+    if (feature) spent += featureCost(feature, ctx.progression);
+  }
+  return { available, spent, known };
 }
 
 function characterFamily(character: Character, ctx: RulesContext): Family | undefined {
@@ -407,10 +454,17 @@ export function checkCompliance(character: Character, ctx: RulesContext): Warnin
     }
   }
 
+  // Budget de points de capacité (PER-53) : on ne signale que la **sur-dépense**.
+  // Les points non dépensés sont parfaitement légaux (point orphelin → chance /
+  // PV / dé de récupération, p. 40), donc pas d'avertissement de sous-dépense.
+  // On reste muet si le gratuit n'est pas identifiable (pas d'entrée niveau 1).
+  const budget = featurePointBudget(character, ctx);
+  if (budget.known && budget.spent > budget.available) {
+    warnings.push({
+      code: 'FEATURE_POINTS_OVERSPENT',
+      message: `Points de capacité dépassés : ${budget.spent} dépensé${budget.spent > 1 ? 's' : ''} pour ${budget.available} disponible${budget.available > 1 ? 's' : ''} (2 points par niveau au-delà du niveau 1, hors capacités gratuites de la création).`,
+    });
+  }
+
   return warnings;
 }
-
-// TODO(moteur, J5/J7) : avertissement de budget de points de capacité
-// (sur/sous-dépense) une fois que l'historique de création/montée de niveau
-// distingue les capacités gratuites (2 voies de rang 1, voie de peuple rang 1,
-// bonus de rang 2 des mages) des capacités achetées.

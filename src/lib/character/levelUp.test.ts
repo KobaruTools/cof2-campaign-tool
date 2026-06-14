@@ -11,6 +11,7 @@ import {
   canUndoLastLevelUp,
   deselectFeature,
   FEATURE_POINTS_PER_LEVEL,
+  manualFeatureIds,
   totalFeatureCost,
   undoLastLevelUp,
 } from './levelUp';
@@ -80,6 +81,34 @@ describe('totalFeatureCost', () => {
 
   it('budget par niveau = 2 points', () => {
     expect(FEATURE_POINTS_PER_LEVEL).toBe(2);
+  });
+});
+
+describe('manualFeatureIds', () => {
+  it('repère les capacités absentes de l’historique (ajout manuel sur la fiche)', () => {
+    const c = makeCharacter({
+      featureIds: ['rage-r1', 'brute-r1'], // brute-r1 ajouté hors wizard
+      levelUpHistory: [{ level: 1, chosenFeatureIds: ['rage-r1'] }],
+    });
+    const manual = manualFeatureIds(c);
+    expect(manual.has('brute-r1')).toBe(true);
+    expect(manual.has('rage-r1')).toBe(false);
+  });
+
+  it('rien de manuel quand tout vient de l’historique', () => {
+    const c = makeCharacter({
+      featureIds: ['rage-r1', 'brute-r1'],
+      levelUpHistory: [
+        { level: 1, chosenFeatureIds: ['rage-r1'] },
+        { level: 2, chosenFeatureIds: ['brute-r1'] },
+      ],
+    });
+    expect(manualFeatureIds(c).size).toBe(0);
+  });
+
+  it('ensemble vide si aucun historique (rien à distinguer)', () => {
+    const c = makeCharacter({ featureIds: ['rage-r1', 'brute-r1'], levelUpHistory: [] });
+    expect(manualFeatureIds(c).size).toBe(0);
   });
 });
 

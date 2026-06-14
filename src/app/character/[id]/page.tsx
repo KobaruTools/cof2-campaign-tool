@@ -28,7 +28,7 @@ import type { AbilityId } from '@/data/schema';
 import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
-import { canUndoLastLevelUp, undoLastLevelUp } from '@/lib/character/levelUp';
+import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -367,6 +367,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               classId={character.classId}
               layout={voiesLayout}
               onChange={editing ? setFeatureIds : undefined}
+              manualFeatureIds={manualFeatureIds(character)}
             />
           </SheetSection>
 
