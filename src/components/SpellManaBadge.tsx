@@ -10,16 +10,20 @@ const MANA_DROP_PATH = DERIVED_STAT_ICON_PATHS.manaPoints;
 
 /**
  * Texte d'infobulle du coût en mana : précise s'il suit la règle du rang
- * (p. 228) ou s'il s'agit d'une dérogation verbatim du sort (champ `manaCost`).
- * Rappelle que les réductions dynamiques (Concentration, armure…) ne sont pas
- * comptées dans ce coût de base.
+ * (p. 228) ou s'il s'agit d'une dérogation verbatim du sort (champ `manaCost`),
+ * puis rappelle, AVEC LEURS PAGES, les deux règles qui modifient ce coût à
+ * l'usage et ne sont pas comptées ici : la Concentration et le surcoût d'armure.
  */
 function manaCostExplanation(feature: Feature, cost: number): string {
   const base =
     feature.manaCost === undefined
       ? `Coût de base : ${cost} PM (= rang ${feature.rank} du sort, p. 228).`
       : `Coût de base : ${cost} PM — dérogation au coût standard (rang ${feature.rank}).`;
-  return `${base} Hors réductions dynamiques (Concentration, etc.) et surcoût d'armure.`;
+  return (
+    `${base}\n\nNon compté ici (modifie le coût à l'usage) :\n` +
+    `• Concentration : sort en (A) → −2 PM, devient (L) (p. 228).\n` +
+    `• Armure : un mage en armure paie +PM = bonus de DEF de l'armure (p. 178).`
+  );
 }
 
 export interface SpellManaBadgeProps {
@@ -46,7 +50,11 @@ export function SpellManaBadge({ feature, size = 30, color, sx }: SpellManaBadge
   const cost = spellManaCost(feature);
   if (cost === null) return null;
   return (
-    <Tooltip title={manaCostExplanation(feature, cost)} arrow>
+    <Tooltip
+      title={manaCostExplanation(feature, cost)}
+      arrow
+      slotProps={{ tooltip: { sx: { whiteSpace: 'pre-line', maxWidth: 300 } } }}
+    >
       <Box
         role="img"
         aria-label={`Coût : ${cost} points de mana`}

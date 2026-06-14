@@ -133,13 +133,15 @@ describe('coût de base en mana d’un sort (p. 228)', () => {
     expect(spellManaCost({ isSpell: false, rank: 5, manaCost: 3 })).toBeNull();
   });
 
-  it('preuve sur les données réelles : règle du rang + dérogation', () => {
+  it('preuve sur les données réelles : coût = rang', () => {
     const desintegration = featureById.get('magie-des-arcanes-r5');
     const projectile = featureById.get('magie-des-arcanes-r1');
     const runeDeGarde = featureById.get('runes-r5');
     expect(desintegration && spellManaCost(desintegration)).toBe(5);
     expect(projectile && spellManaCost(projectile)).toBe(1);
-    expect(runeDeGarde && spellManaCost(runeDeGarde)).toBe(3); // dérogation 3 PM
+    // Rune de garde : coût de base = rang 5. Le « 3 PM » du texte est le rang − 2
+    // dû à la Concentration automatique (réduction dynamique, hors coût de base).
+    expect(runeDeGarde && spellManaCost(runeDeGarde)).toBe(5);
   });
 });
 

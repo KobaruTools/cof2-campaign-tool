@@ -405,17 +405,22 @@ export interface Feature {
    * est associé. » On ne duplique donc PAS le rang ici : le coût de base se
    * dérive du rang (cf. `spellManaCost`, `src/lib/engine/derived.ts`).
    *
-   * Ce champ ne porte que les EXCEPTIONS énoncées verbatim dans le texte du
-   * sort :
-   * - coût fixe différent du rang (ex. Rune de garde, rang 5 : « coûte seulement
-   *   3 PM pour être lancé » → `manaCost: 3`) ;
-   * - sort gratuit (« aucun coût de mana » sur le lancement lui-même) →
-   *   `manaCost: 0`.
+   * Ce champ ne porte que les EXCEPTIONS INCONDITIONNELLES énoncées verbatim dans
+   * le texte du sort :
+   * - coût fixe différent du rang, sans condition ni mécanique dynamique ;
+   * - sort réellement gratuit (« aucun coût de mana » sur le lancement lui-même)
+   *   → `manaCost: 0`.
+   *
+   * À ce jour aucun sort du livre n'en a : les coûts « bizarres » rencontrés sont
+   * tous des réductions DYNAMIQUES (Concentration, arme élémentaire, action de
+   * mouvement, coût lié au NC de la cible…) qui se calculent PAR-DESSUS le coût de
+   * base. Piège typique : Rune de garde (rang 5) annonce « coûte seulement 3 PM »,
+   * mais c'est le rang − 2 dû à sa Concentration automatique (p. 228) — donc PAS
+   * de `manaCost`, son coût de base reste 5.
    *
    * Absent = le coût suit la règle du rang. N'a de sens que si `isSpell`.
-   * HORS PÉRIMÈTRE (ne PAS encoder ici) : les réductions DYNAMIQUES (Concentration,
-   * arme élémentaire, action de mouvement…) et le surcoût d'armure (milestone
-   * Armures) — ils se calculent par-dessus ce coût de base, pas dedans.
+   * HORS PÉRIMÈTRE (ne PAS encoder ici) : les réductions DYNAMIQUES ci-dessus et
+   * le surcoût d'armure (= bonus de DEF de l'armure, p. 178, milestone Armures).
    */
   manaCost?: number;
   sourcePage: SourcePage;
