@@ -28,6 +28,9 @@ import {
   equipmentById,
   featureById,
   pathById,
+  FEATURE_CLASSIFICATIONS,
+  FEATURE_NATURE_TAGS,
+  CONDITIONAL_KINDS,
 } from '../src/data/index';
 
 const errors: string[] = [];
@@ -113,6 +116,34 @@ for (const p of classes) {
 if (itemMiss.size)
   warn(`[équipement] ${itemMiss.size} slug(s) référencés par les profils absents du catalogue : ${[...itemMiss].sort().join(', ')}`);
 
+// --- Classification des capacités (PER-62) -----------------------------------
+// Couverture : exactement une classification par capacité, ids existants,
+// tags valides, 'pure-text' exclusif.
+const validTags = new Set<string>(FEATURE_NATURE_TAGS);
+const validKinds = new Set<string>(CONDITIONAL_KINDS);
+checkUnique('classifications', FEATURE_CLASSIFICATIONS.map((c) => c.id));
+const classifiedIds = new Set(FEATURE_CLASSIFICATIONS.map((c) => c.id));
+for (const c of features)
+  if (!classifiedIds.has(c.id)) err(`[classification] capacité non classée : ${c.id}`);
+let classifTodos = 0;
+for (const cl of FEATURE_CLASSIFICATIONS) {
+  if (!featureById.has(cl.id)) err(`[classification ${cl.id}] capacité inexistante`);
+  if (cl.tags.length === 0) err(`[classification ${cl.id}] aucun tag`);
+  for (const t of cl.tags)
+    if (!validTags.has(t)) err(`[classification ${cl.id}] tag inconnu : ${t}`);
+  if (cl.tags.includes('pure-text') && cl.tags.length > 1)
+    err(`[classification ${cl.id}] 'pure-text' doit être seul (tags: ${cl.tags.join(', ')})`);
+  if (cl.conditionalKinds) {
+    if (!cl.tags.includes('conditional'))
+      err(`[classification ${cl.id}] conditionalKinds sans tag 'conditional'`);
+    for (const k of cl.conditionalKinds)
+      if (!validKinds.has(k)) err(`[classification ${cl.id}] sous-type conditionnel inconnu : ${k}`);
+    if (cl.conditionalKinds.length === 0)
+      err(`[classification ${cl.id}] conditionalKinds vide (omettre le champ)`);
+  }
+  if (cl.note) classifTodos++;
+}
+
 // --- Rapport -----------------------------------------------------------------
 const spells = features.filter((c) => c.isSpell).length;
 console.log('=== Comptages ===');
@@ -123,6 +154,7 @@ console.log(`  · de profil      : ${classPaths.length}`);
 console.log(`  · de peuple      : ${ancestryPaths.length} (+ voie du mage : ${magePath.id})`);
 console.log(`  · de prestige    : ${prestigePaths.length}`);
 console.log(`capacités (total)  : ${features.length}  (dont sorts * : ${spells})`);
+console.log(`  · classées       : ${FEATURE_CLASSIFICATIONS.length}  (dont TODO(extraction) : ${classifTodos})`);
 console.log(`équipement (total) : ${equipment.length}`);
 console.log('');
 console.log(`=== Avertissements (${warnings.length}) ===`);

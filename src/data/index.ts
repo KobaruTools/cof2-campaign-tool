@@ -41,6 +41,14 @@ import { mysticClasses, mysticPaths, mysticFeatures } from './classes/mystics';
 import { prestigePaths1, prestigeFeatures1 } from './prestige-paths/part1';
 import { prestigePaths2, prestigeFeatures2 } from './prestige-paths/part2';
 import { weapons, armors, shields, gear } from './equipment';
+import {
+  FEATURE_CLASSIFICATIONS,
+  FEATURE_NATURE_TAGS,
+  CONDITIONAL_KINDS,
+  type FeatureClassification,
+  type FeatureNatureTag,
+  type ConditionalKind,
+} from './feature-classification';
 
 // --- Règles transverses ------------------------------------------------------
 export { families, valueSets, progression, idealsFlaws };
@@ -91,11 +99,18 @@ export const features: Feature[] = [
 export { weapons, armors, shields, gear };
 export const equipment: EquipmentItem[] = [...weapons, ...armors, ...shields, ...gear];
 
+// --- Classification analytique des capacités (PER-62) ------------------------
+export { FEATURE_CLASSIFICATIONS, FEATURE_NATURE_TAGS, CONDITIONAL_KINDS };
+
 // --- Index de lookup par id --------------------------------------------------
 export const ancestryById = new Map<string, Ancestry>(ancestries.map((p) => [p.id, p]));
 export const classById = new Map<string, CharacterClass>(classes.map((p) => [p.id, p]));
 export const pathById = new Map<string, Path>(paths.map((v) => [v.id, v]));
 export const featureById = new Map<string, Feature>(features.map((c) => [c.id, c]));
 export const equipmentById = new Map<string, EquipmentItem>(equipment.map((e) => [e.id, e]));
+export const featureClassificationById = new Map<string, FeatureClassification>(
+  FEATURE_CLASSIFICATIONS.map((c) => [c.id, c]),
+);
 
 export type { Family, ProgressionRules, ValueSet, IdealFlaw, Weapon, Armor, Shield, Gear };
+export type { FeatureClassification, FeatureNatureTag, ConditionalKind };
