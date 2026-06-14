@@ -30,6 +30,7 @@ import type { Feature, Path } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { classColor } from '@/lib/ui/classColors';
 import { FeatureLabel } from '@/components/FeatureLabel';
+import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 
@@ -125,7 +126,9 @@ export interface FeaturesByPathProps {
 /**
  * Épingle : capacité ajoutée manuellement sur la fiche, hors wizard (PER-53).
  * `inline` la place dans le flux (vue lignes, à côté du rang) plutôt qu'en
- * absolu dans le coin supérieur droit (vue colonnes, sur la carte).
+ * absolu dans un coin de la carte (vue colonnes). En absolu, elle est ancrée en
+ * BAS à droite : le coin supérieur droit est réservé à la goutte de coût en mana
+ * des sorts (`SpellManaBadge`, PER-65).
  */
 function ManualPin({ inline = false }: { inline?: boolean }) {
   return (
@@ -136,7 +139,7 @@ function ManualPin({ inline = false }: { inline?: boolean }) {
           fontSize: 16,
           ...(inline
             ? { flexShrink: 0 }
-            : { position: 'absolute', top: 3, right: 3, zIndex: 1 }),
+            : { position: 'absolute', bottom: 3, right: 3, zIndex: 1 }),
         }}
       />
     </Tooltip>
@@ -318,6 +321,8 @@ function PathBlock({
               gap: 0.5,
               px: 1,
               py: 0.5,
+              // Coin supérieur droit réservé à la goutte de coût en mana des sorts.
+              pr: feature.isSpell ? 4 : 1,
               border: 1,
               borderColor: 'divider',
               borderRadius: 1,
@@ -332,6 +337,11 @@ function PathBlock({
                 : {}),
             }}
           >
+            <SpellManaBadge
+              feature={feature}
+              color={color ?? undefined}
+              sx={{ position: 'absolute', top: 3, right: 3, zIndex: 1 }}
+            />
             {manualFeatureIds?.has(feature.id) && <ManualPin />}
             <Typography
               variant="body2"
@@ -444,6 +454,11 @@ function PathBlock({
                   <FeatureLabel feature={feature} />
                 </Typography>
               </Stack>
+              <SpellManaBadge
+                feature={feature}
+                color={color ?? undefined}
+                sx={{ alignSelf: 'center', mr: 1 }}
+              />
               {onRemove && (
                 <Tooltip title="Retirer la capacité" arrow>
                   <IconButton
