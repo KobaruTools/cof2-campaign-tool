@@ -1208,6 +1208,9 @@ export const mageFeatures: Feature[] = [
     text:
       "Le magicien choisit une cible visible située à moins de 30 m et lance sur elle un projectile d’énergie ésotérique pure, déformant la trame de la réalité. La cible subit automatiquement 1d4° DM. Si le joueur obtient le résultat maximal sur son dé de dommages, il peut le relancer et ajouter le nouveau résultat (une seule fois). Les DM du projectile de mana augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une voie de magicien jusqu’à un maximum égal à sa valeur d’INT.",
     // Rendu enrichi (PER-69) : DM de base {1d4°} ; la montée par rang reste en prose.
+    // TODO(cross-voie) : afficher le DM RÉEL « 1d4° + min(voies de magicien au rang 4, INT) »
+    // dans l'encadré de dé — reporté au lot « scaling par paliers de famille » (avec
+    // Divination / Armure de mana / Armure d'os). Pas de syntaxe de formule ad hoc ici.
     richText:
       "Le magicien choisit une cible visible située à moins de 30 m et lance sur elle un projectile d’énergie ésotérique pure, déformant la trame de la réalité. La cible subit automatiquement {1d4°} DM. Si le joueur obtient le résultat maximal sur son dé de dommages, il peut le relancer et ajouter le nouveau résultat (une seule fois). Les DM du projectile de mana augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une voie de magicien jusqu’à un maximum égal à sa valeur d’INT.",
     sourcePage: 103,
