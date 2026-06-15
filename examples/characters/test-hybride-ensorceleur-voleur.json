@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 6,
+  "id": "test-hybride-ensorceleur-voleur",
+  "name": "Test — Hybride Ensorceleur / Voleur (halfelin)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-69 (hybride) — Ensorceleur (mage) + Voie du roublard (voleur/aventuriers). À vérifier : avertissement « Profil hybride » (info), divination-r1 (+2 Init/DEF au rang 3), rendu enrichi des sorts d'invocation (Choc, Arme de mana, Serviteur invisible), dé évolutif d8 (niveau 11)."
+  },
+  "ancestryId": "halfelin",
+  "classId": "ensorceleur",
+  "level": 11,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 2,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 3
+  },
+  "baseAbilities": {
+    "AGI": 2,
+    "CON": 1,
+    "FOR": 1,
+    "PER": 1,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 2
+  },
+  "ancestryChoices": [
+    "VOL",
+    "FOR"
+  ],
+  "ancestryPathId": "halfelin",
+  "featureIds": [
+    "halfelin-r1",
+    "divination-r1",
+    "divination-r2",
+    "divination-r3",
+    "divination-r4",
+    "divination-r5",
+    "invocation-r1",
+    "invocation-r2",
+    "invocation-r3",
+    "invocation-r4",
+    "invocation-r5",
+    "roublard-r1",
+    "roublard-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "halfelin-r1",
+        "divination-r1",
+        "invocation-r1",
+        "divination-r2"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-69 (hybride) — Ensorceleur (mage) + Voie du roublard (voleur/aventuriers). À vérifier : avertissement « Profil hybride » (info), divination-r1 (+2 Init/DEF au rang 3), rendu enrichi des sorts d'invocation (Choc, Arme de mana, Serviteur invisible), dé évolutif d8 (niveau 11).",
+  "createdAt": "2026-06-15T00:00:00.000Z",
+  "updatedAt": "2026-06-15T00:00:00.000Z"
+}

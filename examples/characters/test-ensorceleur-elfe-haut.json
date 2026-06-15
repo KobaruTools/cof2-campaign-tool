@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 6,
+  "id": "test-ensorceleur-elfe-haut",
+  "name": "Test — Ensorceleur (haut-elfe)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-69 — toutes les voies d'ensorceleur au rang 5. À vérifier : rendu enrichi (Choc, Foudre, Serviteur invisible, Murmures…), effets permanents air-r1 (+1 Init/DEF) et divination-r1 (+2 Init/DEF au rang 3), divination-r4 (+PER aux PM). GAP connu : le scaling CROSS-VOIE de divination-r1 (+1 par voie d'ensorceleur au rang 5) n'est pas encore appliqué."
+  },
+  "ancestryId": "elfe-haut",
+  "classId": "ensorceleur",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 1,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "AGI": 1,
+    "CON": 0,
+    "FOR": 1,
+    "PER": 1,
+    "CHA": 3,
+    "INT": 1,
+    "VOL": 2
+  },
+  "ancestryChoices": [
+    "CHA",
+    "FOR"
+  ],
+  "ancestryPathId": "elfe-haut",
+  "featureIds": [
+    "elfe-haut-r1",
+    "air-r1",
+    "air-r2",
+    "air-r3",
+    "air-r4",
+    "air-r5",
+    "divination-r1",
+    "divination-r2",
+    "divination-r3",
+    "divination-r4",
+    "divination-r5",
+    "envouteur-r1",
+    "envouteur-r2",
+    "envouteur-r3",
+    "envouteur-r4",
+    "envouteur-r5",
+    "illusions-r1",
+    "illusions-r2",
+    "illusions-r3",
+    "illusions-r4",
+    "illusions-r5",
+    "invocation-r1",
+    "invocation-r2",
+    "invocation-r3",
+    "invocation-r4",
+    "invocation-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "elfe-haut-r1",
+        "air-r1",
+        "divination-r1",
+        "divination-r2"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-69 — toutes les voies d'ensorceleur au rang 5. À vérifier : rendu enrichi (Choc, Foudre, Serviteur invisible, Murmures…), effets permanents air-r1 (+1 Init/DEF) et divination-r1 (+2 Init/DEF au rang 3), divination-r4 (+PER aux PM). GAP connu : le scaling CROSS-VOIE de divination-r1 (+1 par voie d'ensorceleur au rang 5) n'est pas encore appliqué.",
+  "createdAt": "2026-06-15T00:00:00.000Z",
+  "updatedAt": "2026-06-15T00:00:00.000Z"
+}

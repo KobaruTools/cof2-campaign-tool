@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 6,
+  "id": "test-sorcier-humain",
+  "name": "Test — Sorcier (humain)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-69 — toutes les voies de sorcier au rang 5. À vérifier : Pacte démoniaque (demon-r3, +VOL aux dés de récupération), Aspect du démon (demon-r4, +5 DEF temporaire, pré-activé), Armure d'os (outre-tombe-r2, +3 DEF), Exsangue (sang-r3, +2→+3 DEF au rang 5 : ici +3), références de stat de CIBLE (@CON dans Saignements), profils démon/zombie (richText)."
+  },
+  "ancestryId": "humain",
+  "classId": "sorcier",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 0,
+    "CON": 2,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 3
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 2,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 2
+  },
+  "ancestryChoices": [
+    "VOL"
+  ],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "demon-r1",
+    "demon-r2",
+    "demon-r3",
+    "demon-r4",
+    "demon-r5",
+    "mort-r1",
+    "mort-r2",
+    "mort-r3",
+    "mort-r4",
+    "mort-r5",
+    "outre-tombe-r1",
+    "outre-tombe-r2",
+    "outre-tombe-r3",
+    "outre-tombe-r4",
+    "outre-tombe-r5",
+    "sang-r1",
+    "sang-r2",
+    "sang-r3",
+    "sang-r4",
+    "sang-r5",
+    "sombre-magie-r1",
+    "sombre-magie-r2",
+    "sombre-magie-r3",
+    "sombre-magie-r4",
+    "sombre-magie-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "demon-r4": [
+      true
+    ]
+  },
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "humain-r1",
+        "demon-r1",
+        "mort-r1",
+        "demon-r2"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-69 — toutes les voies de sorcier au rang 5. À vérifier : Pacte démoniaque (demon-r3, +VOL aux dés de récupération), Aspect du démon (demon-r4, +5 DEF temporaire, pré-activé), Armure d'os (outre-tombe-r2, +3 DEF), Exsangue (sang-r3, +2→+3 DEF au rang 5 : ici +3), références de stat de CIBLE (@CON dans Saignements), profils démon/zombie (richText).",
+  "createdAt": "2026-06-15T00:00:00.000Z",
+  "updatedAt": "2026-06-15T00:00:00.000Z"
+}

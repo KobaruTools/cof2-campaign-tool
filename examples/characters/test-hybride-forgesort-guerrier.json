@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 6,
+  "id": "test-hybride-forgesort-guerrier",
+  "name": "Test — Hybride Forgesort / Guerrier (demi-orc)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-69 (hybride) — Forgesort (mage) + Voie de la résistance (guerrier/combattants). À vérifier : avertissement « Profil hybride » (info), Runes de défense (runes-r1) avec sa clause profil hybride (interaction armure = milestone Armures), Magnétisme (metal-r3, pré-activé), agrégation des effets mage à côté d'une voie d'une autre famille, dé évolutif d10 (niveau 14)."
+  },
+  "ancestryId": "demi-orc",
+  "classId": "forgesort",
+  "level": 14,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 1,
+    "CON": 3,
+    "FOR": 1,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 3,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "AGI": 1,
+    "CON": 2,
+    "FOR": 1,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 2
+  },
+  "ancestryChoices": [
+    "CON",
+    "CHA"
+  ],
+  "ancestryPathId": "demi-orc",
+  "featureIds": [
+    "demi-orc-r1",
+    "metal-r1",
+    "metal-r2",
+    "metal-r3",
+    "metal-r4",
+    "metal-r5",
+    "runes-r1",
+    "runes-r2",
+    "runes-r3",
+    "runes-r4",
+    "runes-r5",
+    "golem-r1",
+    "golem-r2",
+    "resistance-r1",
+    "resistance-r2",
+    "resistance-r3"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "metal-r3": [
+      true
+    ]
+  },
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "demi-orc-r1",
+        "metal-r1",
+        "runes-r1",
+        "metal-r2"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-69 (hybride) — Forgesort (mage) + Voie de la résistance (guerrier/combattants). À vérifier : avertissement « Profil hybride » (info), Runes de défense (runes-r1) avec sa clause profil hybride (interaction armure = milestone Armures), Magnétisme (metal-r3, pré-activé), agrégation des effets mage à côté d'une voie d'une autre famille, dé évolutif d10 (niveau 14).",
+  "createdAt": "2026-06-15T00:00:00.000Z",
+  "updatedAt": "2026-06-15T00:00:00.000Z"
+}

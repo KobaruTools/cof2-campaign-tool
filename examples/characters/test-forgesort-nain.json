@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 6,
+  "id": "test-forgesort-nain",
+  "name": "Test — Forgesort (nain)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-69 — toutes les voies de forgesort au rang 5. À vérifier : choix Golem supérieur (golem-r5, option « Puissant »), interrupteur Magnétisme (metal-r3, +2 DEF conditionnel — pré-activé), Runes de défense (runes-r1, +2/+3/+4 DEF par rang : ici +4), Endurer (metal-r5, +CON aux PM), coûts mana des sorts, profils de golem (richText)."
+  },
+  "ancestryId": "nain",
+  "classId": "forgesort",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 1,
+    "CON": 3,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 3,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "AGI": 2,
+    "CON": 2,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 3,
+    "VOL": 2
+  },
+  "ancestryChoices": [
+    "CON",
+    "AGI"
+  ],
+  "ancestryPathId": "nain",
+  "featureIds": [
+    "nain-r1",
+    "artefacts-r1",
+    "artefacts-r2",
+    "artefacts-r3",
+    "artefacts-r4",
+    "artefacts-r5",
+    "elixirs-r1",
+    "elixirs-r2",
+    "elixirs-r3",
+    "elixirs-r4",
+    "elixirs-r5",
+    "metal-r1",
+    "metal-r2",
+    "metal-r3",
+    "metal-r4",
+    "metal-r5",
+    "golem-r1",
+    "golem-r2",
+    "golem-r3",
+    "golem-r4",
+    "golem-r5",
+    "runes-r1",
+    "runes-r2",
+    "runes-r3",
+    "runes-r4",
+    "runes-r5"
+  ],
+  "featureChoices": {
+    "golem-r5": [
+      "mighty"
+    ]
+  },
+  "effectToggles": {
+    "metal-r3": [
+      true
+    ]
+  },
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "nain-r1",
+        "artefacts-r1",
+        "metal-r1",
+        "metal-r2"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-69 — toutes les voies de forgesort au rang 5. À vérifier : choix Golem supérieur (golem-r5, option « Puissant »), interrupteur Magnétisme (metal-r3, +2 DEF conditionnel — pré-activé), Runes de défense (runes-r1, +2/+3/+4 DEF par rang : ici +4), Endurer (metal-r5, +CON aux PM), coûts mana des sorts, profils de golem (richText).",
+  "createdAt": "2026-06-15T00:00:00.000Z",
+  "updatedAt": "2026-06-15T00:00:00.000Z"
+}
