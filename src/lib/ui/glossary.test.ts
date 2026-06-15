@@ -58,4 +58,19 @@ describe('splitGlossary', () => {
   it('ne capte pas un acronyme collé dans un mot', () => {
     expect(splitGlossary('ADMINISTRER PVE')).toEqual([{ kind: 'text', value: 'ADMINISTRER PVE' }]);
   });
+
+  it('reconnaît une caractéristique en prose (catégorie ability)', () => {
+    expect(GLOSSARY.INT.category).toBe('ability');
+    expect(splitGlossary("égal à sa valeur d'INT")).toEqual([
+      { kind: 'text', value: "égal à sa valeur d'" },
+      { kind: 'term', term: 'INT', entry: GLOSSARY.INT },
+    ]);
+  });
+
+  it('reconnaît les caracs d’un bloc de profil de créature', () => {
+    const terms = splitGlossary('AGI ‑1 | CON +10 | FOR +1')
+      .filter((p) => p.kind === 'term')
+      .map((p) => (p.kind === 'term' ? p.term : ''));
+    expect(terms).toEqual(['AGI', 'CON', 'FOR']);
+  });
 });

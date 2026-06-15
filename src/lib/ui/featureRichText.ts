@@ -15,6 +15,12 @@
  * - `[=CHA]`, `[=CHA × 100]`, `[=rang]`, `[=niveau × 5]` : une QUANTITÉ (crochets
  *   préfixés de `=`) — même grammaire, mais rendue en VALEUR BRUTE (une durée, une
  *   portée, un nombre de cibles), sans signe. « pendant [=CHA] minutes » → « 5 ».
+ * - `[#rang]`, `[#niveau]` : un TERME NOMMÉ employé comme SUBSTANTIF dans la phrase
+ *   (« égal au rang », « son niveau ») — rendu en encadré « mot (valeur) »
+ *   (« rang (5) »), info-bulle « Rang atteint dans la voie = 5 ». À utiliser quand
+ *   la prose garde un déterminant qui réclame le nom (« au rang », « le rang …
+ *   atteint dans la voie ») là où `[=rang]` afficherait un nombre nu (« au 5 »).
+ *   Restreint à `rang`/`niveau` SEULS (ni multiplicateur ni opérateur).
  * - `@FOR`, `@AGI`, … : une simple RÉFÉRENCE à une caractéristique (sigle `@`),
  *   mise en avant visuellement sans calcul de valeur (ex. « une @FOR égale au
  *   [CHA] », ou la stat d'une CIBLE qu'on ne peut pas calculer). Pour les sept
@@ -62,6 +68,7 @@ export type RichTextSegment =
   | { kind: 'die'; token: DieToken }
   | { kind: 'expr'; terms: ExprTerm[]; raw: string }
   | { kind: 'quantity'; terms: ExprTerm[]; raw: string }
+  | { kind: 'term'; terms: ExprTerm[]; raw: string }
   | { kind: 'abilityRef'; ability: AbilityId };
 
 const DIE_RE = /^(\d*)d(4|6|8|10|12|20)(°?)$/;
@@ -188,9 +195,20 @@ function parseExpr(raw: string): ExprTerm[] | null {
 }
 
 /**
+ * Un `[#…]` (terme nommé) n'accepte qu'UN terme `rang` ou `niveau` nu — pas de
+ * multiplicateur, pas d'opérateur, pas de caractéristique : c'est un substantif
+ * rendu par son mot, pas une valeur calculée.
+ */
+function isBareNamedTerm(terms: ExprTerm[]): boolean {
+  if (terms.length !== 1) return false;
+  const t = terms[0];
+  return (t.kind === 'rank' || t.kind === 'level') && t.coeff === undefined;
+}
+
+/**
  * Découpe `richText` en segments. Les `{…}`/`[…]` non reconnus retombent en
  * texte littéral (délimiteurs inclus). Un `[=…]` produit une quantité (valeur
- * brute), un `[…]` une formule de modificateur.
+ * brute), un `[#…]` un terme nommé (le mot), un `[…]` une formule de modificateur.
  */
 export function parseRichText(richText: string): RichTextSegment[] {
   const segments: RichTextSegment[] = [];
@@ -212,14 +230,21 @@ export function parseRichText(richText: string): RichTextSegment[] {
       else pushText(m[0]); // accolades non reconnues → littéral
     } else if (m[2] !== undefined) {
       const body = m[2];
-      const isQuantity = body.trimStart().startsWith('=');
-      const exprBody = isQuantity ? body.trimStart().slice(1) : body;
+      const trimmed = body.trimStart();
+      const isQuantity = trimmed.startsWith('=');
+      const isTerm = trimmed.startsWith('#');
+      const exprBody = isQuantity || isTerm ? trimmed.slice(1) : body;
       const terms = parseExpr(exprBody);
-      if (terms) {
+      // Un TERME NOMMÉ (`[#…]`) est restreint à `rang`/`niveau` SEUL (sans
+      // multiplicateur ni opérateur) : c'est un substantif, pas une expression.
+      // Tout le reste (`[#CHA]`, `[#rang × 2]`, `[#10 + rang]`…) retombe en littéral.
+      if (terms && (!isTerm || isBareNamedTerm(terms))) {
         segments.push(
-          isQuantity
-            ? { kind: 'quantity', terms, raw: m[0] }
-            : { kind: 'expr', terms, raw: m[0] },
+          isTerm
+            ? { kind: 'term', terms, raw: m[0] }
+            : isQuantity
+              ? { kind: 'quantity', terms, raw: m[0] }
+              : { kind: 'expr', terms, raw: m[0] },
         );
       } else pushText(m[0]); // crochets non reconnus → littéral
     } else {

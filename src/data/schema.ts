@@ -584,6 +584,11 @@ export interface Feature {
    * - QUANTITÉ : `[=CHA]`, `[=CHA × 100]`, `[=rang]`, `[=niveau × 5]` (crochets
    *   préfixés de `=`) — même grammaire, mais rendue en VALEUR BRUTE (durée, portée,
    *   nombre de cibles), sans signe : « pendant [=CHA] minutes » → « 5 minutes » ;
+   * - TERME NOMMÉ : `[#rang]`, `[#niveau]` (crochets préfixés de `#`, `rang`/`niveau`
+   *   SEULS) — `rang`/`niveau` employé comme SUBSTANTIF, rendu en encadré « mot (valeur) »
+   *   (teinte verte) : « égal au [#rang] » → « égal au rang (5) ». À préférer à `[=rang]`
+   *   quand la prose garde un déterminant (« au rang », « le rang … atteint dans la
+   *   voie ») où un nombre nu (« au 5 ») se lirait mal ;
    * - référence de stat : `@FOR`, `@CHA` — mise en avant sans calcul (renvoi, ou
    *   stat d'une CIBLE qu'on ne peut pas évaluer).
    * Tout le reste est du texte littéral. Absent → on retombe sur `text` verbatim.

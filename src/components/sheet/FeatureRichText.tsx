@@ -78,6 +78,43 @@ function GlossaryMark({ label, title }: { label: string; title: string }) {
 }
 
 /**
+ * TERME NOMMÉ employé comme SUBSTANTIF (`[#rang]`, `[#niveau]`) : encadré « mot
+ * (valeur) » (« rang (5) ») — le MOT pour que la phrase se lise naturellement
+ * (« égal au rang »), suivi de sa valeur résolue sur le personnage. Encadré
+ * comme les autres blocs, en teinte VERTE (`success`), distinct de la quantité
+ * numérique (`[=…]`, bleu) et de la formule de modificateur (primaire). Info-bulle
+ * = libellé complet (« Rang atteint dans la voie = 5 »).
+ */
+function TermWord({ word, value, title }: { word: string; value: number; title: string }) {
+  return (
+    <Tooltip title={title} arrow>
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          verticalAlign: 'middle',
+          minHeight: '22px',
+          whiteSpace: 'nowrap',
+          px: 0.6,
+          mx: 0.15,
+          lineHeight: 1,
+          borderRadius: 1,
+          fontWeight: 600,
+          fontVariantNumeric: 'tabular-nums',
+          cursor: 'help',
+          bgcolor: (theme) => alpha(theme.palette.success.main, 0.12),
+          border: 1,
+          borderColor: (theme) => alpha(theme.palette.success.main, 0.4),
+        }}
+      >
+        {word} ({value})
+      </Box>
+    </Tooltip>
+  );
+}
+
+/**
  * Rend une portion de TEXTE LITTÉRAL en mettant en avant les acronymes du glossaire
  * (stats dérivées → puce ; jargon → souligné). Le reste est du texte brut (les
  * sauts de ligne sont préservés par le conteneur `pre-line`). Utilisé pour les
@@ -89,6 +126,8 @@ function RichTextRun({ value }: { value: string }) {
       {splitGlossary(value).map((piece, i) =>
         piece.kind === 'text' ? (
           <Fragment key={i}>{piece.value}</Fragment>
+        ) : piece.entry.category === 'ability' ? (
+          <RefChip key={i} label={piece.term} title={piece.entry.label} tone="ability" />
         ) : piece.entry.category === 'derived' ? (
           <RefChip key={i} label={piece.term} title={piece.entry.label} tone="derived" />
         ) : (
@@ -425,6 +464,15 @@ export function FeatureText({ feature, abilities, level, pathRank }: FeatureText
         // `rang` = rang ATTEINT dans la voie hôte (pathRank, le plus haut rang acquis,
         // donc « son rang » dynamique) ; repli sur le rang figé de la capacité si non fourni.
         const resolved = resolveExpr(seg.terms, abilities!, level!, progression, pathRank ?? feature.rank);
+        if (seg.kind === 'term') {
+          // `[#rang]`/`[#niveau]` : un seul terme nommé nu (cf. `isBareNamedTerm`).
+          const part = resolved.parts[0];
+          const title =
+            part.kind === 'rank'
+              ? `Rang atteint dans la voie = ${part.value ?? 0}`
+              : `Niveau = ${part.value ?? 0}`;
+          return <TermWord key={i} word={part.symbol} value={part.value ?? 0} title={title} />;
+        }
         if (seg.kind === 'quantity') return <QuantityValue key={i} resolved={resolved} />;
         return resolved.hasDie ? (
           <FormulaWithDie key={i} resolved={resolved} level={level!} />

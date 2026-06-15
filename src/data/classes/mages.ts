@@ -661,11 +661,12 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "L’ensorceleur lance un sort d’attaque qui n’est qu’une illusion. Il inflige [3d4°+CHA] DM contre une seule cible ou [2d4°+CHA] DM contre un maximum de cibles égal au rang atteint. Le joueur peut décrire la nature du sort à sa guise (une Explosion de feu, une nuée de criquets, une lance de glace, etc.), son imagination demeurant sa seule limite. Chaque cible peut faire un test de PER difficulté [10 + CHA de l’ensorceleur] pour ne subir aucun DM. Les créatures sans esprit (créatures artificielles, certaines plantes et morts‑vivants) sont immunisées à ce sort. Les PV perdus de cette façon se récupèrent normalement.",
-    // Rendu enrichi (PER-69) : DM [3d4° + CHA] / [2d4° + CHA] ; « maximum de cibles égal
-    // au rang atteint » → quantité [=rang] ; le test de @PER est celui des CIBLES ;
+    // Rendu enrichi (PER-69) : DM [3d4° + CHA] / [2d4° + CHA] ; « maximum de cibles
+    // égal au rang atteint » → terme nommé [#rang] (substantif, le déterminant « au »
+    // réclame le mot, pas un nombre nu) ; le test de @PER est celui des CIBLES ;
     // difficulté [10 + CHA] (CHA du joueur).
     richText:
-      "L’ensorceleur lance un sort d’attaque qui n’est qu’une illusion. Il inflige [3d4° + CHA] DM contre une seule cible ou [2d4° + CHA] DM contre un maximum de cibles égal au [=rang]. Le joueur peut décrire la nature du sort à sa guise (une Explosion de feu, une nuée de criquets, une lance de glace, etc.), son imagination demeurant sa seule limite. Chaque cible peut faire un test de @PER difficulté [10 + CHA] pour ne subir aucun DM. Les créatures sans esprit (créatures artificielles, certaines plantes et morts‑vivants) sont immunisées à ce sort. Les PV perdus de cette façon se récupèrent normalement.",
+      "L’ensorceleur lance un sort d’attaque qui n’est qu’une illusion. Il inflige [3d4° + CHA] DM contre une seule cible ou [2d4° + CHA] DM contre un maximum de cibles égal au [#rang]. Le joueur peut décrire la nature du sort à sa guise (une Explosion de feu, une nuée de criquets, une lance de glace, etc.), son imagination demeurant sa seule limite. Chaque cible peut faire un test de @PER difficulté [10 + CHA] pour ne subir aucun DM. Les créatures sans esprit (créatures artificielles, certaines plantes et morts‑vivants) sont immunisées à ce sort. Les PV perdus de cette façon se récupèrent normalement.",
     sourcePage: 95,
   },
   {
@@ -1511,10 +1512,11 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le magicien désigne un objet à moins de 10 m. Celui‑ci produit de la lumière dans un rayon de 10 m pendant INT heures. Cette source de lumière n’émet pas de chaleur. Une fois par combat, le magicien peut lancer ce sort sur les yeux d’une créature dont le NC ne dépasse pas le rang atteint dans la voie. S’il réussit un test opposé d’attaque magique, elle est aveuglée pendant 1 round.",
-    // Rendu enrichi (PER-69) : durée [=INT] heures ; seuil de NC « le rang atteint dans la
-    // voie » → quantité [=rang].
+    // Rendu enrichi (PER-69) : durée [=INT] heures ; seuil de NC « le rang atteint dans
+    // la voie » → terme nommé [#rang] (substantif, « le … atteint dans la voie » réclame
+    // le mot, pas un nombre nu).
     richText:
-      "Le magicien désigne un objet à moins de 10 m. Celui‑ci produit de la lumière dans un rayon de 10 m pendant [=INT] heures. Cette source de lumière n’émet pas de chaleur. Une fois par combat, le magicien peut lancer ce sort sur les yeux d’une créature dont le NC ne dépasse pas le [=rang] atteint dans la voie. S’il réussit un test opposé d’attaque magique, elle est aveuglée pendant 1 round.",
+      "Le magicien désigne un objet à moins de 10 m. Celui‑ci produit de la lumière dans un rayon de 10 m pendant [=INT] heures. Cette source de lumière n’émet pas de chaleur. Une fois par combat, le magicien peut lancer ce sort sur les yeux d’une créature dont le NC ne dépasse pas le [#rang] atteint dans la voie. S’il réussit un test opposé d’attaque magique, elle est aveuglée pendant 1 round.",
     sourcePage: 106,
   },
   {

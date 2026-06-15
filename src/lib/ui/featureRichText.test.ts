@@ -162,6 +162,23 @@ describe('parseRichText — découpage', () => {
     ]);
   });
 
+  it('reconnaît un terme nommé [#rang]/[#niveau] (substantif)', () => {
+    expect(parseRichText('égal au [#rang]')).toEqual([
+      { kind: 'text', value: 'égal au ' },
+      { kind: 'term', raw: '[#rang]', terms: [{ kind: 'rank', sign: 1 }] },
+    ]);
+    expect(parseRichText('[#niveau]')).toEqual([
+      { kind: 'term', raw: '[#niveau]', terms: [{ kind: 'level', sign: 1 }] },
+    ]);
+  });
+
+  it('restreint [#…] à rang/niveau nus — le reste retombe en littéral', () => {
+    // Caractéristique, multiplicateur, opérateur : pas un substantif → littéral.
+    expect(parseRichText('[#CHA]')).toEqual([{ kind: 'text', value: '[#CHA]' }]);
+    expect(parseRichText('[#rang × 2]')).toEqual([{ kind: 'text', value: '[#rang × 2]' }]);
+    expect(parseRichText('[#10 + rang]')).toEqual([{ kind: 'text', value: '[#10 + rang]' }]);
+  });
+
   it('rejette un produit de deux variables', () => {
     expect(parseRichText('[CHA × FOR]')).toEqual([{ kind: 'text', value: '[CHA × FOR]' }]);
   });

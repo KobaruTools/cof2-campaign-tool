@@ -4,19 +4,24 @@
  * acronyme reçoit une catégorie et un libellé français (info-bulle). Le parser
  * de texte (`featureRichText`) et le rendu (`FeatureRichText.tsx`) le consomment.
  *
- * Les 7 CARACTÉRISTIQUES n'y figurent PAS : elles restent balisées `@CODE` dans
- * `richText` (cf. `featureRichText`) pour distinguer un CALCUL (`[CHA]`) d'un
- * simple RENVOI (`@FOR`). Le glossaire ne couvre que les termes auto-reconnus
- * dans le texte (aucun balisage), car ils ne sont jamais ambigus ni calculés.
- *
- * Deux catégories (retour propriétaire) :
+ * Trois catégories (retour propriétaire) :
+ *  - `ability` : une des 7 CARACTÉRISTIQUES → puce neutre (comme un renvoi `@CODE`) ;
  *  - `derived` : stat dérivée du personnage → puce mise en avant (couleur dédiée) ;
  *  - `jargon`  : terme de règle (ni carac ni stat du perso) → souligné pointillé.
+ *
+ * Les caractéristiques sont auto-reconnues EN PROSE (texte littéral) au même titre
+ * que les autres termes. Le balisage `@CODE` reste utile/équivalent pour forcer une
+ * puce (ex. renvoi d'une stat de CIBLE) ; il est traité par le parser, en amont, et
+ * ne passe donc pas par le glossaire. Dans une FORMULE `[CHA]`, la carac est un
+ * jeton calculé du parser, jamais du texte — aucun risque de double traitement.
  *
  * Termes relevés par balayage des 660 capacités (toutes familles). Ensemble fermé
  * et non ambigu (en majuscules dans les textes ; `Init`/`Init.` en casse mixte).
  */
-export type GlossaryCategory = 'derived' | 'jargon';
+import { ABILITY_IDS } from '@/data/schema';
+import { ABILITY_NAMES } from './ability';
+
+export type GlossaryCategory = 'ability' | 'derived' | 'jargon';
 
 export interface GlossaryEntry {
   /** Libellé complet affiché en info-bulle (français). */
@@ -24,7 +29,14 @@ export interface GlossaryEntry {
   category: GlossaryCategory;
 }
 
+/** Les 7 caractéristiques, libellées via la source unique `ABILITY_NAMES`. */
+const ABILITY_ENTRIES = Object.fromEntries(
+  ABILITY_IDS.map((id) => [id, { label: ABILITY_NAMES[id], category: 'ability' as const }]),
+) as Record<string, GlossaryEntry>;
+
 export const GLOSSARY: Record<string, GlossaryEntry> = {
+  // --- Caractéristiques (puce neutre) ---
+  ...ABILITY_ENTRIES,
   // --- Stats dérivées (puce dédiée) ---
   DEF: { label: 'Défense', category: 'derived' },
   PV: { label: 'Points de vie', category: 'derived' },

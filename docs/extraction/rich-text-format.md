@@ -163,6 +163,62 @@ L'**unité** (« minutes », « m », « km », « PV ») reste en texte littér
 après la quantité — non embarquée dans le balisage (évite la redondance et garde
 le `text` lisible).
 
+### d. Terme nommé (substantif) : `[# … ]`
+
+`rang`/`niveau` employé comme **substantif** dans la phrase (pas comme un compte) :
+rendu en **encadré « mot (valeur) »** (« rang (5) »), en teinte **verte**
+(`success`) pour le distinguer de la quantité bleue (`[=…]`) et de la formule de
+modificateur (primaire). Restreint à **`rang`/`niveau` seuls** (ni multiplicateur
+ni opérateur — sinon repli en littéral).
+
+| Balisage | Rendu inline | Info-bulle |
+|---|---|---|
+| `[#rang]` | `rang (5)` (encadré vert) | « Rang atteint dans la voie = 5 » |
+| `[#niveau]` | `niveau (5)` (encadré vert) | « Niveau = 5 » |
+
+**Règle d'usage : `[=rang]` vs `[#rang]`.** Le critère est le **rôle grammatical**
+du mot dans la phrase, signalé par le déterminant :
+
+- **`[=rang]` (quantité, nombre nu)** quand `rang`/`niveau` est un **compte / une
+  durée / une portée** suivi d'une unité, et que le mot peut disparaître :
+  « pendant `[=rang]` rounds » → « pendant **5** rounds » (lisible).
+- **`[#rang]` (terme nommé, le mot)** quand la prose conserve un **déterminant qui
+  réclame le nom** (« au rang », « le rang … atteint dans la voie », « son rang ») :
+  « égal au `[=rang]` » donnerait « égal au **5** » (cassé) → utiliser
+  « égal au `[#rang]` » → « égal au **rang** » (info-bulle « = 5 »).
+
+Cas de référence dans `src/data/classes/mages.ts` : `illusions-r3` (Sort illusoire,
+« maximum de cibles égal au `[#rang]` ») et le sort de lumière du magicien
+(« le `[#rang]` atteint dans la voie »). À comparer avec `invocation-r3` (Arme de
+mana, « pendant `[=rang]` rounds ») qui reste une quantité.
+
+## Glossaire des acronymes (auto-détecté, SANS balisage)
+
+Ajout post-PER-90 (population des mages). Source unique : `src/lib/ui/glossary.ts`
+(rendu par `RichTextRun` dans `FeatureRichText.tsx`). Certains acronymes de règles
+sont **reconnus automatiquement dans le texte littéral** — aussi bien les segments
+texte d'un `richText` que le `text` verbatim de repli — **sans aucun balisage à
+poser par le populateur**. Trois catégories :
+
+- **Caractéristique** (`ability`) → puce neutre (comme un renvoi `@CODE`) : les 7
+  codes `AGI`/`CON`/`FOR`/`PER`/`CHA`/`INT`/`VOL`.
+- **Stat dérivée** (`derived`) → puce mise en avant (couleur dédiée) : `DEF`, `PV`,
+  `PM`, `PC`, `DR`, `Init` (`Init`/`Init.` en casse mixte).
+- **Jargon de règle** (`jargon`) → souligné pointillé + info-bulle : `NC`, `RD`,
+  `DM`, `MJ`, `PJ`, `PNJ`.
+
+Casse **SENSIBLE** (majuscules ; « def » en minuscules dans une phrase n'est pas un
+acronyme). Ensemble **fermé et non ambigu**.
+
+> **Règle de population (glossaire).** NE PAS baliser ces acronymes : ils sont
+> rendus automatiquement, laisse-les en texte littéral. **Les 7 caractéristiques en
+> prose sont elles aussi auto-reconnues** (puce neutre) — `@CODE` reste cependant
+> utile et **équivalent** pour FORCER une puce, notamment pour le renvoi d'une stat
+> de CIBLE qu'on ne calcule pas (cf. § 5) ; et dans une FORMULE `[CHA]`/`[=CHA]` la
+> carac est un jeton **calculé** du parser, jamais du texte (aucun double
+> traitement). Si un acronyme de règle récurrent manque au glossaire, l'**ajouter
+> dans `glossary.ts`** plutôt que de le baliser au cas par cas.
+
 ## Démos de référence (modèle à copier pour la population)
 
 Capacités déjà balisées à prendre comme **gabarit** lors de la population
@@ -186,7 +242,23 @@ retombe de toute façon proprement en texte littéral.
 ## Stabilité
 
 Le format couvre désormais : dés (fixes/évolutifs), formules additives, références
-de stat, **quantités brutes**, **multiplicateurs**, **rang** et **niveau**. Les
-stats d'autres créatures restent volontairement non calculées (référence `@`). Les
-tickets de population PER-69 à PER-74 peuvent s'appuyer sur ce format sans risque de
-reprise.
+de stat, **quantités brutes**, **multiplicateurs**, **rang** et **niveau**, **termes
+nommés** (`[#…]`) et **glossaire** d'acronymes auto-détectés. Les stats d'autres
+créatures restent volontairement non calculées (référence `@`). Les tickets de
+population PER-69 à PER-74 peuvent s'appuyer sur ce format sans risque de reprise.
+
+### Journal des évolutions (post-figeage PER-90)
+
+PER-90 a figé le socle (dés, formules, quantités, multiplicateurs, `rang`/`niveau`,
+`@STAT`). Les ajouts suivants, faits pendant la **population des mages (PER-69)**,
+sont **rétrocompatibles** (aucun balisage existant à reprendre) — ce doc reste la
+**source de vérité unique** du format, à jour :
+
+- **Glossaire des acronymes** (auto-détecté, sans balisage) — voir § dédié.
+- **Terme nommé `[#rang]` / `[#niveau]`** (substantif, encadré « mot (valeur) »
+  vert) — voir § d ; corrige le « égal au 5 » de `[=rang]` quand la prose garde un
+  déterminant.
+
+Toute future extension du format se documente ICI (et dans `featureRichText.ts` +
+tests) ; les tickets de population pointent vers ce doc plutôt que de réénumérer les
+cas (qui dériveraient).
