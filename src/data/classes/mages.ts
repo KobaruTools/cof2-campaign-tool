@@ -1056,13 +1056,21 @@ export const mageFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le golem est une créature humanoïde fabriquée par le forgesort pour lui servir de serviteur et de garde du corps. Il comprend des ordres simples, comme suivre, attaquer, monter la garde, mais il est incapable d’actions complexes ou nécessitant une motricité fine (comme de la couture par exemple !).\n\nGOLEM\nCRÉATURE NON VIVANTE\n| AGI ‑1 | CON +10 | FOR +1 | PER ‑3 | | CHA ‑4 | INT ‑3 | VOL +4 |\n(S) Défense [10 + rang dans la voie] (V) Points de vigueur [niv. du forgesort × 5] (I) Initiative [Init. du forgesort]\nAttaque [attaque magique du forgesort] · DM 1d4°+1",
-    // Rendu enrichi (PER-69) : profil du GOLEM (créature, pas le joueur). Défense
-    // [10 + rang] (rang = Feature.rank, cf. format), PV [=niveau × 5] (niveau du forgesort),
-    // DM [1d4° + 1]. « Initiative [Init. du forgesort] » et « [attaque magique du
-    // forgesort] » renvoient à des stats dérivées non balisables (pas de jeton @) →
-    // retombent en littéral. Aucun `effects` (les stats sont celles du golem).
+    // Rendu enrichi (PER-69) : la prose seule ; le bloc de stats est porté par
+    // `creatureProfile` (mini-fiche `CreatureStatBlock`), pas recopié dans richText.
     richText:
-      "Le golem est une créature humanoïde fabriquée par le forgesort pour lui servir de serviteur et de garde du corps. Il comprend des ordres simples, comme suivre, attaquer, monter la garde, mais il est incapable d’actions complexes ou nécessitant une motricité fine (comme de la couture par exemple !).\n\nGOLEM\nCRÉATURE NON VIVANTE\n| AGI ‑1 | CON +10 | FOR +1 | PER ‑3 | | CHA ‑4 | INT ‑3 | VOL +4 |\n(S) Défense [10 + rang] (V) Points de vigueur [=niveau × 5] (I) Initiative [Init. du forgesort]\nAttaque [attaque magique du forgesort] · DM [1d4° + 1]",
+      "Le golem est une créature humanoïde fabriquée par le forgesort pour lui servir de serviteur et de garde du corps. Il comprend des ordres simples, comme suivre, attaquer, monter la garde, mais il est incapable d’actions complexes ou nécessitant une motricité fine (comme de la couture par exemple !).",
+    // Profil structuré du golem. Défense [10 + rang] (rang de la voie), PV [=niveau × 5]
+    // (niveau du forgesort), DM [1d4° + 1] ; Initiative et Attaque renvoient au maître.
+    creatureProfile: {
+      name: 'Golem',
+      type: 'Créature non vivante',
+      abilities: { AGI: -1, CON: 10, FOR: 1, PER: -3, CHA: -4, INT: -3, VOL: 4 },
+      defense: '[10 + rang]',
+      hitPoints: '[=niveau × 5]',
+      initiative: 'Init. du forgesort',
+      attack: { label: 'attaque magique du forgesort', damage: '[1d4° + 1]' },
+    },
     sourcePage: 100,
   },
   {
@@ -1550,11 +1558,21 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le magicien choisit un petit animal (écureuil, corbeau, chat, dragonnet). Il peut utiliser les sens de son familier (voir par ses yeux, entendre ce qu’il entend, etc.) et communiquer avec lui à distance illimitée. Il gagne +2 en Initiative et en DEF lorsque son familier est en vue.\nS’il est réduit à 0 PV, le familier disparaît dans un nuage de fumée et le personnage perd 1d4° PV en contrecoup. Toutefois, le maître pourra à nouveau invoquer son familier dès qu’il aura terminé une récupération complète (c’est toujours le même animal qui apparaît). Le familier récupère tous les PV perdus après une récupération rapide.\n\nFAMILIER\n| AGI +3* | CON 0 | FOR ‑4 | PER +2 | | CHA ‑2 | INT ‑2 | VOL +2 |\n(S) Défense [13 + rang dans la voie] (V) Points de vigueur [niveau du magicien] (I) Initiative [Init. du magicien]\nUn familier est une créature trop petite pour attaquer et infliger des dommages.",
-    // Rendu enrichi (PER-69) : contrecoup {1d4°} PV ; profil du FAMILIER — Défense
-    // [13 + rang], PV [=niveau] (niveau du magicien) ; « [Init. du magicien] » renvoie à une
-    // stat dérivée non balisable → littéral.
+    // Rendu enrichi (PER-69) : la prose seule (contrecoup {1d4°} PV) ; le profil du
+    // familier est porté par `creatureProfile` (mini-fiche), pas recopié ici.
     richText:
-      "Le magicien choisit un petit animal (écureuil, corbeau, chat, dragonnet). Il peut utiliser les sens de son familier (voir par ses yeux, entendre ce qu’il entend, etc.) et communiquer avec lui à distance illimitée. Il gagne +2 en Initiative et en DEF lorsque son familier est en vue.\nS’il est réduit à 0 PV, le familier disparaît dans un nuage de fumée et le personnage perd {1d4°} PV en contrecoup. Toutefois, le maître pourra à nouveau invoquer son familier dès qu’il aura terminé une récupération complète (c’est toujours le même animal qui apparaît). Le familier récupère tous les PV perdus après une récupération rapide.\n\nFAMILIER\n| AGI +3* | CON 0 | FOR ‑4 | PER +2 | | CHA ‑2 | INT ‑2 | VOL +2 |\n(S) Défense [13 + rang] (V) Points de vigueur [=niveau] (I) Initiative [Init. du magicien]\nUn familier est une créature trop petite pour attaquer et infliger des dommages.",
+      "Le magicien choisit un petit animal (écureuil, corbeau, chat, dragonnet). Il peut utiliser les sens de son familier (voir par ses yeux, entendre ce qu’il entend, etc.) et communiquer avec lui à distance illimitée. Il gagne +2 en Initiative et en DEF lorsque son familier est en vue.\nS’il est réduit à 0 PV, le familier disparaît dans un nuage de fumée et le personnage perd {1d4°} PV en contrecoup. Toutefois, le maître pourra à nouveau invoquer son familier dès qu’il aura terminé une récupération complète (c’est toujours le même animal qui apparaît). Le familier récupère tous les PV perdus après une récupération rapide.",
+    // Profil structuré du familier. Défense [13 + rang] (rang de la voie), PV [=niveau] ;
+    // Initiative renvoie au maître. Ne peut pas attaquer (note).
+    creatureProfile: {
+      name: 'Familier',
+      abilities: { AGI: 3, CON: 0, FOR: -4, PER: 2, CHA: -2, INT: -2, VOL: 2 },
+      starred: ['AGI'],
+      defense: '[13 + rang]',
+      hitPoints: '[=niveau]',
+      initiative: 'Init. du magicien',
+      note: 'Créature trop petite pour attaquer ou infliger des dommages.',
+    },
     // Bonus CONDITIONNEL +2 Init./DEF actif « lorsque son familier est en vue » →
     // interrupteur manuel (PER-67).
     effects: [
@@ -1693,11 +1711,21 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "En sacrifiant 1d4° PV, le sorcier invoque un démon à son service pour INT minutes. Ce démon possède l’apparence d’un humanoïde musclé d’environ 2,30 m doté d’une épée et d’ailes de chauve‑souris. Le démon divise par deux tous les DM non magiques subis, les sorts et les armes magiques lui infligent des DM normaux. Il est capable de voler à une vitesse équivalente à un déplacement normal. Lorsque le sorcier atteint le niveau 15, le démon devient capable d’attaquer deux fois à son tour, au prix d’une action limitée.\n\nDÉMON\n| AGI +2 | CON +4* | FOR +5* | PER +2 | | CHA +0 | INT +2 | VOL +4 |\n(S) Défense 18 (V) Points de vigueur [niveau du sorcier × 5] (I) Initiative [Init. du sorcier]\nAttaque au contact [attaque magique du sorcier] · DM 2d4°+5",
-    // Rendu enrichi (PER-69) : sacrifice {1d4°} PV ; durée [=INT] minutes ; profil du DÉMON —
-    // PV [=niveau × 5] (niveau du sorcier), DM [2d4° + 5] ; Défense 18 et « [Init. du sorcier] »
-    // restent littéraux (valeur fixe / stat dérivée non balisable).
+    // Rendu enrichi (PER-69) : la prose seule (sacrifice {1d4°} PV, durée [=INT] minutes) ;
+    // le profil du démon est porté par `creatureProfile` (mini-fiche).
     richText:
-      "En sacrifiant {1d4°} PV, le sorcier invoque un démon à son service pour [=INT] minutes. Ce démon possède l’apparence d’un humanoïde musclé d’environ 2,30 m doté d’une épée et d’ailes de chauve‑souris. Le démon divise par deux tous les DM non magiques subis, les sorts et les armes magiques lui infligent des DM normaux. Il est capable de voler à une vitesse équivalente à un déplacement normal. Lorsque le sorcier atteint le niveau 15, le démon devient capable d’attaquer deux fois à son tour, au prix d’une action limitée.\n\nDÉMON\n| AGI +2 | CON +4* | FOR +5* | PER +2 | | CHA +0 | INT +2 | VOL +4 |\n(S) Défense 18 (V) Points de vigueur [=niveau × 5] (I) Initiative [Init. du sorcier]\nAttaque au contact [attaque magique du sorcier] · DM [2d4° + 5]",
+      "En sacrifiant {1d4°} PV, le sorcier invoque un démon à son service pour [=INT] minutes. Ce démon possède l’apparence d’un humanoïde musclé d’environ 2,30 m doté d’une épée et d’ailes de chauve‑souris. Le démon divise par deux tous les DM non magiques subis, les sorts et les armes magiques lui infligent des DM normaux. Il est capable de voler à une vitesse équivalente à un déplacement normal. Lorsque le sorcier atteint le niveau 15, le démon devient capable d’attaquer deux fois à son tour, au prix d’une action limitée.",
+    // Profil structuré du démon. Défense 18 (fixe), PV [=niveau × 5] (niveau du sorcier),
+    // DM [2d4° + 5] ; Initiative et Attaque renvoient au maître.
+    creatureProfile: {
+      name: 'Démon',
+      abilities: { AGI: 2, CON: 4, FOR: 5, PER: 2, CHA: 0, INT: 2, VOL: 4 },
+      starred: ['CON', 'FOR'],
+      defense: '18',
+      hitPoints: '[=niveau × 5]',
+      initiative: 'Init. du sorcier',
+      attack: { label: 'attaque magique du sorcier (au contact)', damage: '[2d4° + 5]' },
+    },
     sourcePage: 107,
   },
 
@@ -1821,11 +1849,21 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le sorcier anime le cadavre d’un humanoïde de taille moyenne, décédé depuis moins d’INT jours. Le zombie comprend les ordres « Attaquer », « Suivre », « Garder » et « Pas bouger ». Le sorcier peut contrôler un seul zombie, plus un zombie chaque fois qu’il atteint le rang 5 dans une voie de sorcier. Un zombie réduit à 0 PV tombe en poussière.\n\nZOMBIE\n| AGI ‑1 | CON +1 | FOR +2 | PER ‑2 | | CHA ‑4 | INT ‑4 | VOL +6 |\n(S) Défense 10 (V) Points de vigueur [10 + niveau] (I) Initiative 8\nAttaque au contact [attaque magique du sorcier] · DM 1d4°+2 Le zombie se déplace de 5 m par action de mouvement.",
-    // Rendu enrichi (PER-69) : durée de péremption « moins d’[=INT] jours » ; profil du
-    // ZOMBIE — PV [=10 + niveau] (niveau du sorcier), DM [1d4° + 2] ; Défense 10 / Initiative 8
-    // restent littéraux (valeurs fixes).
+    // Rendu enrichi (PER-69) : la prose seule (péremption « moins d’[#INT] jours ») ;
+    // le profil du zombie est porté par `creatureProfile` (mini-fiche).
     richText:
-      "Le sorcier anime le cadavre d’un humanoïde de taille moyenne, décédé depuis moins d’[#INT] jours. Le zombie comprend les ordres « Attaquer », « Suivre », « Garder » et « Pas bouger ». Le sorcier peut contrôler un seul zombie, plus un zombie chaque fois qu’il atteint le rang 5 dans une voie de sorcier. Un zombie réduit à 0 PV tombe en poussière.\n\nZOMBIE\n| AGI ‑1 | CON +1 | FOR +2 | PER ‑2 | | CHA ‑4 | INT ‑4 | VOL +6 |\n(S) Défense 10 (V) Points de vigueur [=10 + niveau] (I) Initiative 8\nAttaque au contact [attaque magique du sorcier] · DM [1d4° + 2] Le zombie se déplace de 5 m par action de mouvement.",
+      "Le sorcier anime le cadavre d’un humanoïde de taille moyenne, décédé depuis moins d’[#INT] jours. Le zombie comprend les ordres « Attaquer », « Suivre », « Garder » et « Pas bouger ». Le sorcier peut contrôler un seul zombie, plus un zombie chaque fois qu’il atteint le rang 5 dans une voie de sorcier. Un zombie réduit à 0 PV tombe en poussière.",
+    // Profil structuré du zombie. Défense 10 et Initiative 8 (fixes), PV [=10 + niveau]
+    // (niveau du sorcier), DM [1d4° + 2] ; Attaque renvoie au maître.
+    creatureProfile: {
+      name: 'Zombie',
+      abilities: { AGI: -1, CON: 1, FOR: 2, PER: -2, CHA: -4, INT: -4, VOL: 6 },
+      defense: '10',
+      hitPoints: '[=10 + niveau]',
+      initiative: '8',
+      attack: { label: 'attaque magique du sorcier (au contact)', damage: '[1d4° + 2]' },
+      note: 'Se déplace de 5 m par action de mouvement.',
+    },
     sourcePage: 109,
   },
   {

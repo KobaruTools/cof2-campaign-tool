@@ -597,6 +597,44 @@ export interface OptionFeatureChoice extends FeatureChoiceBase {
   repeat?: ChoiceRepeat;
 }
 
+// ---------------------------------------------------------------------------
+// Profil de créature / compagnon invoqué — PER-69
+// ---------------------------------------------------------------------------
+
+/**
+ * Profil chiffré d'une CRÉATURE/compagnon octroyé(e) par une capacité (golem,
+ * familier, démon, zombie… et, à venir, le compagnon animal du rôdeur ou le
+ * familier fantastique). Mini-fiche structurée, rendue par le composant
+ * `CreatureStatBlock`, EN PLUS du `text` verbatim (qui reste la source) et en
+ * remplacement du bloc de stats recopié dans `richText`.
+ *
+ * Les champs dérivés sont des chaînes au FORMAT `richText` (dés, formules,
+ * `rang`/`niveau`), résolues à l'affichage contre le personnage — `rang` = rang de
+ * la VOIE HÔTE, `niveau` = niveau du personnage. Certaines valeurs renvoient au
+ * MAÎTRE (« Init. du forgesort », « attaque magique du sorcier ») : pas de jeton
+ * pour les stats dérivées d'autrui, elles restent donc en texte littéral.
+ */
+export interface CreatureProfile {
+  /** Nom de la créature (ex. « Golem »). */
+  name: string;
+  /** Mention de nature/type si le livre la donne (ex. « Créature non vivante »). */
+  type?: string;
+  /** Les 7 caractéristiques (valeurs fixes de la créature). */
+  abilities: Record<AbilityId, number>;
+  /** Caractéristiques marquées d'un « * » dans le livre (dé bonus), le cas échéant. */
+  starred?: AbilityId[];
+  /** Défense (S) : nombre fixe ou expression `richText` (« 10 + rang »). */
+  defense: string;
+  /** Points de vigueur (V) : expression `richText` (« niveau × 5 »). */
+  hitPoints: string;
+  /** Initiative (I) : nombre fixe ou renvoi au maître (« Init. du forgesort »). */
+  initiative: string;
+  /** Attaque + DM, si la créature attaque (libellé = renvoi maître, DM = dé). */
+  attack?: { label: string; damage: string };
+  /** Particularités libres (déplacement, « trop petit pour attaquer »…). */
+  note?: string;
+}
+
 export interface Feature {
   id: string;
   name: string;
@@ -682,6 +720,13 @@ export interface Feature {
    * le surcoût d'armure (= bonus de DEF de l'armure, p. 178, milestone Armures).
    */
   manaCost?: number;
+  /**
+   * Profil chiffré de la créature/compagnon octroyé(e) par la capacité (golem,
+   * familier, démon, zombie…), EN PLUS du `text` verbatim. Rendu en mini-fiche
+   * (`CreatureStatBlock`) plutôt qu'en bloc de stats recopié. Absent = la capacité
+   * n'invoque pas de créature.
+   */
+  creatureProfile?: CreatureProfile;
   sourcePage: SourcePage;
 }
 

@@ -397,6 +397,66 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
   );
 }
 
+/**
+ * Rend un texte balisé EN LIGNE (segments du mini-langage richText) contre un
+ * contexte de personnage. Cœur réutilisable du rendu enrichi : utilisé par la
+ * description d'une capacité (`FeatureText`) ET par les valeurs d'un profil de
+ * créature (`CreatureStatBlock`). `rank` = rang à substituer au terme `rang`
+ * (rang atteint dans la voie hôte).
+ */
+export function RichInline({
+  text,
+  abilities,
+  level,
+  rank,
+}: {
+  text: string;
+  abilities: Abilities;
+  level: number;
+  rank: number;
+}) {
+  return (
+    <>
+      {parseRichText(text).map((seg, i) => {
+        if (seg.kind === 'text') return <RichTextRun key={i} value={seg.value} />;
+        if (seg.kind === 'abilityRef')
+          return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
+        if (seg.kind === 'die') {
+          // Dé évolutif → valeur au niveau courant ; nombre de dés résolu au rang de voie.
+          const displayDie = seg.token.evolving ? scalingDie(level, progression) : seg.token.die;
+          return (
+            <DiePart
+              key={i}
+              count={dieCountAtRank(seg.token, rank)}
+              die={displayDie}
+              evolving={seg.token.evolving}
+              level={level}
+            />
+          );
+        }
+        const resolved = resolveExpr(seg.terms, abilities, level, progression, rank);
+        if (seg.kind === 'term') {
+          // `[#rang]`/`[#niveau]`/`[#CARAC]` : substantif « mot (valeur) ».
+          const part = resolved.parts[0];
+          const title =
+            part.kind === 'rank'
+              ? `Rang atteint dans la voie = ${part.value ?? 0}`
+              : part.kind === 'level'
+                ? `Niveau = ${part.value ?? 0}`
+                : `${part.label} = ${part.value ?? 0}`;
+          return <TermWord key={i} word={part.symbol} value={part.value ?? 0} title={title} />;
+        }
+        if (seg.kind === 'quantity') return <QuantityValue key={i} resolved={resolved} />;
+        return resolved.hasDie ? (
+          <FormulaWithDie key={i} resolved={resolved} level={level} />
+        ) : (
+          <FormulaTotal key={i} resolved={resolved} />
+        );
+      })}
+    </>
+  );
+}
+
 export interface FeatureTextProps {
   feature: Feature;
   /** Caractéristiques du personnage : requises pour le rendu enrichi. */
@@ -436,7 +496,6 @@ export function FeatureText({ feature, abilities, level, pathRank }: FeatureText
     );
   }
 
-  const segments = parseRichText(feature.richText!);
   return (
     <Typography
       variant="body2"
@@ -444,46 +503,7 @@ export function FeatureText({ feature, abilities, level, pathRank }: FeatureText
       component="div"
       sx={{ whiteSpace: 'pre-line', lineHeight: 1.9, fontSize: '1rem' }}
     >
-      {segments.map((seg, i) => {
-        if (seg.kind === 'text') return <RichTextRun key={i} value={seg.value} />;
-        if (seg.kind === 'abilityRef')
-          return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
-        if (seg.kind === 'die') {
-          // Dé évolutif → valeur concrète au niveau courant (p. 43) ; nombre de dés
-          // résolu au rang de voie atteint (paliers `countSteps`, ex. 1d4° → 2d4° au rang 4).
-          const displayDie = seg.token.evolving ? scalingDie(level!, progression) : seg.token.die;
-          return (
-            <DiePart
-              key={i}
-              count={dieCountAtRank(seg.token, pathRank ?? feature.rank)}
-              die={displayDie}
-              evolving={seg.token.evolving}
-              level={level!}
-            />
-          );
-        }
-        // `rang` = rang ATTEINT dans la voie hôte (pathRank, le plus haut rang acquis,
-        // donc « son rang » dynamique) ; repli sur le rang figé de la capacité si non fourni.
-        const resolved = resolveExpr(seg.terms, abilities!, level!, progression, pathRank ?? feature.rank);
-        if (seg.kind === 'term') {
-          // `[#rang]`/`[#niveau]`/`[#CARAC]` : un seul terme nommé nu (cf. `isBareNamedTerm`),
-          // rendu « mot (valeur) » pour que la phrase garde son déterminant.
-          const part = resolved.parts[0];
-          const title =
-            part.kind === 'rank'
-              ? `Rang atteint dans la voie = ${part.value ?? 0}`
-              : part.kind === 'level'
-                ? `Niveau = ${part.value ?? 0}`
-                : `${part.label} = ${part.value ?? 0}`; // caractéristique (« Charisme (CHA) = 5 »)
-          return <TermWord key={i} word={part.symbol} value={part.value ?? 0} title={title} />;
-        }
-        if (seg.kind === 'quantity') return <QuantityValue key={i} resolved={resolved} />;
-        return resolved.hasDie ? (
-          <FormulaWithDie key={i} resolved={resolved} level={level!} />
-        ) : (
-          <FormulaTotal key={i} resolved={resolved} />
-        );
-      })}
+      <RichInline text={feature.richText!} abilities={abilities} level={level} rank={pathRank ?? feature.rank} />
     </Typography>
   );
 }

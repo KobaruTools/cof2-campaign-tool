@@ -40,6 +40,7 @@ import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
+import { CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
 
@@ -565,6 +566,16 @@ function PathBlock({
                   </>
                 )}
                 <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={pathRank} />
+                {openFeature.creatureProfile && abilities && level != null && (
+                  <Box sx={{ mt: 1.5 }}>
+                    <CreatureStatBlock
+                      profile={openFeature.creatureProfile}
+                      abilities={abilities}
+                      level={level}
+                      rank={pathRank}
+                    />
+                  </Box>
+                )}
                 {hasChoices(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -697,6 +708,16 @@ function PathBlock({
                 </>
               )}
               <FeatureText feature={feature} abilities={abilities} level={level} pathRank={pathRank} />
+              {feature.creatureProfile && abilities && level != null && (
+                <Box sx={{ mt: 1.5 }}>
+                  <CreatureStatBlock
+                    profile={feature.creatureProfile}
+                    abilities={abilities}
+                    level={level}
+                    rank={pathRank}
+                  />
+                </Box>
+              )}
               {hasChoices(feature) && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
