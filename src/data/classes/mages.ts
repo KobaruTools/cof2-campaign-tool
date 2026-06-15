@@ -1100,14 +1100,17 @@ export const mageFeatures: Feature[] = [
         kind: 'option',
         prompt: 'Amélioration du golem',
         options: [
-          { id: 'armor', label: 'Armure : +5 en DEF' },
-          { id: 'feline-form', label: 'Forme de félin : +3 en AGI et en DEF, dé bonus en AGI' },
-          { id: 'ballista', label: 'Baliste : portée 20 m, 1d4°+AGI DM' },
-          { id: 'large', label: 'Grande taille : +2 PV par niveau et +1 en FOR et DM' },
-          { id: 'flight', label: 'Vol : des « sauts » de 40 m en action limitée' },
-          { id: 'enhanced-brain', label: 'Cerveau amélioré : +2 en INT, PER et CHA, doué de parole' },
-          { id: 'mighty', label: 'Puissant : +2 en FOR et aux DM, dé bonus en FOR' },
-          { id: 'two-handed-weapon', label: 'Arme à deux mains : +1d4° aux DM au contact' },
+          // Convention « Nom (détail) » (comme Diversité, voie de l'humain) : le rendu
+          // n'affiche que le NOM dans le badge et sort le détail entre parenthèses à
+          // côté (vue liste) ou le masque (vue colonne compacte).
+          { id: 'armor', label: 'Armure (+5 en DEF)' },
+          { id: 'feline-form', label: 'Forme de félin (+3 en AGI et en DEF, dé bonus en AGI)' },
+          { id: 'ballista', label: 'Baliste (portée 20 m, 1d4°+AGI DM)' },
+          { id: 'large', label: 'Grande taille (+2 PV par niveau et +1 en FOR et DM)' },
+          { id: 'flight', label: 'Vol (des « sauts » de 40 m en action limitée)' },
+          { id: 'enhanced-brain', label: 'Cerveau amélioré (+2 en INT, PER et CHA, doué de parole)' },
+          { id: 'mighty', label: 'Puissant (+2 en FOR et aux DM, dé bonus en FOR)' },
+          { id: 'two-handed-weapon', label: 'Arme à deux mains (+1d4° aux DM au contact)' },
         ],
       },
     ],
