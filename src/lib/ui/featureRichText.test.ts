@@ -172,11 +172,17 @@ describe('parseRichText — découpage', () => {
     ]);
   });
 
-  it('restreint [#…] à rang/niveau nus — le reste retombe en littéral', () => {
-    // Caractéristique, multiplicateur, opérateur : pas un substantif → littéral.
-    expect(parseRichText('[#CHA]')).toEqual([{ kind: 'text', value: '[#CHA]' }]);
+  it('reconnaît un terme nommé caractéristique [#INT] (substantif)', () => {
+    expect(parseRichText('égal à son [#INT]')).toEqual([
+      { kind: 'text', value: 'égal à son ' },
+      { kind: 'term', raw: '[#INT]', terms: [{ kind: 'ability', sign: 1, ability: 'INT' }] },
+    ]);
+  });
+
+  it('restreint [#…] à UN terme nu (rang/niveau/carac) — multiplicateur/opérateur → littéral', () => {
     expect(parseRichText('[#rang × 2]')).toEqual([{ kind: 'text', value: '[#rang × 2]' }]);
     expect(parseRichText('[#10 + rang]')).toEqual([{ kind: 'text', value: '[#10 + rang]' }]);
+    expect(parseRichText('[#CHA × 2]')).toEqual([{ kind: 'text', value: '[#CHA × 2]' }]);
   });
 
   it('rejette un produit de deux variables', () => {

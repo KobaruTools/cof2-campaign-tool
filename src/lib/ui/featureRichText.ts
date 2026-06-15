@@ -18,12 +18,12 @@
  * - `[=CHA]`, `[=CHA × 100]`, `[=rang]`, `[=niveau × 5]` : une QUANTITÉ (crochets
  *   préfixés de `=`) — même grammaire, mais rendue en VALEUR BRUTE (une durée, une
  *   portée, un nombre de cibles), sans signe. « pendant [=CHA] minutes » → « 5 ».
- * - `[#rang]`, `[#niveau]` : un TERME NOMMÉ employé comme SUBSTANTIF dans la phrase
- *   (« égal au rang », « son niveau ») — rendu en encadré « mot (valeur) »
- *   (« rang (5) »), info-bulle « Rang atteint dans la voie = 5 ». À utiliser quand
- *   la prose garde un déterminant qui réclame le nom (« au rang », « le rang …
- *   atteint dans la voie ») là où `[=rang]` afficherait un nombre nu (« au 5 »).
- *   Restreint à `rang`/`niveau` SEULS (ni multiplicateur ni opérateur).
+ * - `[#rang]`, `[#niveau]`, `[#INT]` : un TERME NOMMÉ employé comme SUBSTANTIF dans la
+ *   phrase (« égal au rang », « égal à son INT ») — rendu en encadré « mot (valeur) »
+ *   (« rang (5) », « INT (4) »), info-bulle « … = valeur ». À utiliser quand la prose
+ *   garde un déterminant qui réclame le nom (« au rang », « son INT », « par point de
+ *   CHA », « d'INT ») là où `[=…]` afficherait un nombre nu (« au 5 », « son 4 »).
+ *   Restreint à UN terme `rang`/`niveau`/caractéristique SEUL (ni multiplicateur ni opérateur).
  * - `@FOR`, `@AGI`, … : une simple RÉFÉRENCE à une caractéristique (sigle `@`),
  *   mise en avant visuellement sans calcul de valeur (ex. « une @FOR égale au
  *   [CHA] », ou la stat d'une CIBLE qu'on ne peut pas calculer). Pour les sept
@@ -232,14 +232,15 @@ function parseExpr(raw: string): ExprTerm[] | null {
 }
 
 /**
- * Un `[#…]` (terme nommé) n'accepte qu'UN terme `rang` ou `niveau` nu — pas de
- * multiplicateur, pas d'opérateur, pas de caractéristique : c'est un substantif
- * rendu par son mot, pas une valeur calculée.
+ * Un `[#…]` (terme nommé) n'accepte qu'UN terme NU — `rang`, `niveau` ou une
+ * caractéristique — sans multiplicateur ni opérateur : c'est un substantif rendu
+ * par son mot (+ valeur), pas une valeur calculée. Sert quand la prose garde un
+ * déterminant qui réclame le nom (« son INT », « par point de CHA », « d'INT »).
  */
 function isBareNamedTerm(terms: ExprTerm[]): boolean {
   if (terms.length !== 1) return false;
   const t = terms[0];
-  return (t.kind === 'rank' || t.kind === 'level') && t.coeff === undefined;
+  return (t.kind === 'rank' || t.kind === 'level' || t.kind === 'ability') && t.coeff === undefined;
 }
 
 /**

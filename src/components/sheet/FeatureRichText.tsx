@@ -466,12 +466,15 @@ export function FeatureText({ feature, abilities, level, pathRank }: FeatureText
         // donc « son rang » dynamique) ; repli sur le rang figé de la capacité si non fourni.
         const resolved = resolveExpr(seg.terms, abilities!, level!, progression, pathRank ?? feature.rank);
         if (seg.kind === 'term') {
-          // `[#rang]`/`[#niveau]` : un seul terme nommé nu (cf. `isBareNamedTerm`).
+          // `[#rang]`/`[#niveau]`/`[#CARAC]` : un seul terme nommé nu (cf. `isBareNamedTerm`),
+          // rendu « mot (valeur) » pour que la phrase garde son déterminant.
           const part = resolved.parts[0];
           const title =
             part.kind === 'rank'
               ? `Rang atteint dans la voie = ${part.value ?? 0}`
-              : `Niveau = ${part.value ?? 0}`;
+              : part.kind === 'level'
+                ? `Niveau = ${part.value ?? 0}`
+                : `${part.label} = ${part.value ?? 0}`; // caractéristique (« Charisme (CHA) = 5 »)
           return <TermWord key={i} word={part.symbol} value={part.value ?? 0} title={title} />;
         }
         if (seg.kind === 'quantity') return <QuantityValue key={i} resolved={resolved} />;

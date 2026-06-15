@@ -763,7 +763,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : « un allié par point de CHA » = un nombre d’alliés égal
     // à la CHA → quantité [=CHA].
     richText:
-      "L’ensorceleur se téléporte lui‑même et jusqu’à un allié par point de [=CHA] à une distance maximale de 60 m. Le lieu d’arrivée doit être en vue.",
+      "L’ensorceleur se téléporte lui‑même et jusqu’à un allié par point de [#CHA] à une distance maximale de 60 m. Le lieu d’arrivée doit être en vue.",
     sourcePage: 96,
   },
   {
@@ -1410,7 +1410,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : « un compagnon par point d’INT » = un nombre de compagnons
     // égal à l’INT → quantité [=INT]. La durée (10 minutes) est fixe → littéral.
     richText:
-      "Le magicien peut respirer sous l’eau pendant 10 minutes. Cette capacité peut être étendue à un compagnon par point d’[=INT].",
+      "Le magicien peut respirer sous l’eau pendant 10 minutes. Cette capacité peut être étendue à un compagnon par point d’[#INT].",
     sourcePage: 104,
   },
   {
@@ -1475,7 +1475,7 @@ export const mageFeatures: Feature[] = [
       "Le magicien peut désigner un nombre de cibles maximal (dont lui‑même) égal à son INT à une portée de 10 m, même en dehors de son tour. Les cibles peuvent chuter de n’importe quelle hauteur sans subir de dommages. En cas de chute inattendue, le magicien doit faire un test d’INT difficulté 15 pour chacun de ses compagnons afin d’avoir le temps de lancer le sort (réussite automatique sur lui‑même).",
     // Rendu enrichi (PER-69) : nombre de cibles « égal à son INT » → quantité [=INT].
     richText:
-      "Le magicien peut désigner un nombre de cibles maximal (dont lui‑même) égal à son [=INT] à une portée de 10 m, même en dehors de son tour. Les cibles peuvent chuter de n’importe quelle hauteur sans subir de dommages. En cas de chute inattendue, le magicien doit faire un test d’INT difficulté 15 pour chacun de ses compagnons afin d’avoir le temps de lancer le sort (réussite automatique sur lui‑même).",
+      "Le magicien peut désigner un nombre de cibles maximal (dont lui‑même) égal à son [#INT] à une portée de 10 m, même en dehors de son tour. Les cibles peuvent chuter de n’importe quelle hauteur sans subir de dommages. En cas de chute inattendue, le magicien doit faire un test d’INT difficulté 15 pour chacun de ses compagnons afin d’avoir le temps de lancer le sort (réussite automatique sur lui‑même).",
     sourcePage: 105,
   },
   {
@@ -1503,7 +1503,7 @@ export const mageFeatures: Feature[] = [
       "Le magicien peut tracer un cercle sur le sol (environ 2 m de diamètre) afin de se protéger et d’inclure à sa protection un nombre de personnes égal à son INT. Une fois par round, lorsqu’un sort prend pour cible un personnage protégé, le magicien fait un test d’attaque magique opposé avec l’auteur du sort. Si le test est réussi, le sort adverse est annulé et n’a aucun effet. De plus, toutes les créatures invoquées (élémentaires, démons) et les morts‑vivants qui veulent attaquer une créature dans le cercle subissent un dé malus en attaque. Si le magicien sort du cercle, le sort est dissipé.",
     // Rendu enrichi (PER-69) : nombre de personnes protégées « égal à son INT » → [=INT].
     richText:
-      "Le magicien peut tracer un cercle sur le sol (environ 2 m de diamètre) afin de se protéger et d’inclure à sa protection un nombre de personnes égal à son [=INT]. Une fois par round, lorsqu’un sort prend pour cible un personnage protégé, le magicien fait un test d’attaque magique opposé avec l’auteur du sort. Si le test est réussi, le sort adverse est annulé et n’a aucun effet. De plus, toutes les créatures invoquées (élémentaires, démons) et les morts‑vivants qui veulent attaquer une créature dans le cercle subissent un dé malus en attaque. Si le magicien sort du cercle, le sort est dissipé.",
+      "Le magicien peut tracer un cercle sur le sol (environ 2 m de diamètre) afin de se protéger et d’inclure à sa protection un nombre de personnes égal à son [#INT]. Une fois par round, lorsqu’un sort prend pour cible un personnage protégé, le magicien fait un test d’attaque magique opposé avec l’auteur du sort. Si le test est réussi, le sort adverse est annulé et n’a aucun effet. De plus, toutes les créatures invoquées (élémentaires, démons) et les morts‑vivants qui veulent attaquer une créature dans le cercle subissent un dé malus en attaque. Si le magicien sort du cercle, le sort est dissipé.",
     sourcePage: 105,
   },
   {
@@ -1517,7 +1517,7 @@ export const mageFeatures: Feature[] = [
       "Après avoir lancé ce sort, le personnage bénéficie d’INT rounds complets hors du temps durant lesquels il peut utiliser des sorts ou des objets (potions) sur lui‑même. Il ne peut interagir avec son environnement, ni se déplacer, seulement utiliser son propre équipement ou ses capacités sur lui‑même.",
     // Rendu enrichi (PER-69) : durée « bénéficie d’[=INT] rounds ».
     richText:
-      "Après avoir lancé ce sort, le personnage bénéficie d’[=INT] rounds complets hors du temps durant lesquels il peut utiliser des sorts ou des objets (potions) sur lui‑même. Il ne peut interagir avec son environnement, ni se déplacer, seulement utiliser son propre équipement ou ses capacités sur lui‑même.",
+      "Après avoir lancé ce sort, le personnage bénéficie d’[#INT] rounds complets hors du temps durant lesquels il peut utiliser des sorts ou des objets (potions) sur lui‑même. Il ne peut interagir avec son environnement, ni se déplacer, seulement utiliser son propre équipement ou ses capacités sur lui‑même.",
     sourcePage: 105,
   },
 
@@ -1825,7 +1825,7 @@ export const mageFeatures: Feature[] = [
     // ZOMBIE — PV [=10 + niveau] (niveau du sorcier), DM [1d4° + 2] ; Défense 10 / Initiative 8
     // restent littéraux (valeurs fixes).
     richText:
-      "Le sorcier anime le cadavre d’un humanoïde de taille moyenne, décédé depuis moins d’[=INT] jours. Le zombie comprend les ordres « Attaquer », « Suivre », « Garder » et « Pas bouger ». Le sorcier peut contrôler un seul zombie, plus un zombie chaque fois qu’il atteint le rang 5 dans une voie de sorcier. Un zombie réduit à 0 PV tombe en poussière.\n\nZOMBIE\n| AGI ‑1 | CON +1 | FOR +2 | PER ‑2 | | CHA ‑4 | INT ‑4 | VOL +6 |\n(S) Défense 10 (V) Points de vigueur [=10 + niveau] (I) Initiative 8\nAttaque au contact [attaque magique du sorcier] · DM [1d4° + 2] Le zombie se déplace de 5 m par action de mouvement.",
+      "Le sorcier anime le cadavre d’un humanoïde de taille moyenne, décédé depuis moins d’[#INT] jours. Le zombie comprend les ordres « Attaquer », « Suivre », « Garder » et « Pas bouger ». Le sorcier peut contrôler un seul zombie, plus un zombie chaque fois qu’il atteint le rang 5 dans une voie de sorcier. Un zombie réduit à 0 PV tombe en poussière.\n\nZOMBIE\n| AGI ‑1 | CON +1 | FOR +2 | PER ‑2 | | CHA ‑4 | INT ‑4 | VOL +6 |\n(S) Défense 10 (V) Points de vigueur [=10 + niveau] (I) Initiative 8\nAttaque au contact [attaque magique du sorcier] · DM [1d4° + 2] Le zombie se déplace de 5 m par action de mouvement.",
     sourcePage: 109,
   },
   {
@@ -1954,7 +1954,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée [=INT] minutes ; « rang + 2 » modificateur aux tests
     // (bonus de tests = PER-89, hors `effects`).
     richText:
-      "Le sorcier invoque une zone fixe de ténèbres magiques, de 10 m de diamètre, à une portée de 20 m pour une durée d’[=INT] minutes. Toutes les créatures, même celles capables de voir dans le noir, sont aveuglées dans cette zone. En plus de ce sort, le sorcier ajoute son [rang + 2] à tous les tests d’INT basés sur les savoirs sombres (démons, morts‑vivants, rituels impies, etc.).",
+      "Le sorcier invoque une zone fixe de ténèbres magiques, de 10 m de diamètre, à une portée de 20 m pour une durée d’[#INT] minutes. Toutes les créatures, même celles capables de voir dans le noir, sont aveuglées dans cette zone. En plus de ce sort, le sorcier ajoute son [rang + 2] à tous les tests d’INT basés sur les savoirs sombres (démons, morts‑vivants, rituels impies, etc.).",
     sourcePage: 110,
   },
   {
