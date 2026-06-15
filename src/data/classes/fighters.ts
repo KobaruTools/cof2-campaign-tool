@@ -581,8 +581,7 @@ export const fighterFeatures: Feature[] = [
     effects: [
       {
         kind: 'conditional-stat-bonus',
-        stat: 'def',
-        value: -2,
+        bonuses: [{ stat: 'def', value: -2 }],
         activation: { kind: 'temporary', label: 'pendant la rage berserk', activeByDefault: false },
       },
     ],

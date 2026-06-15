@@ -20,12 +20,12 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import type { ConditionalStatBonusEffect } from '@/data/schema';
+import type { ConditionalStatBonusEffect, DerivedStatId } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
-import { conditionalEffectsOf, conditionalEffectValue, isEffectActive } from '@/lib/character/effects';
+import { conditionalEffectsOf, conditionalEffectBonuses, isEffectActive } from '@/lib/character/effects';
 
 /** Libellés courts (français) des stats dérivées, indexés par clé moteur. */
-const STAT_SHORT: Record<ConditionalStatBonusEffect['stat'], string> = {
+const STAT_SHORT: Record<DerivedStatId, string> = {
   maxHp: 'PV',
   def: 'DEF',
   initiative: 'Init.',
@@ -41,8 +41,9 @@ const STAT_SHORT: Record<ConditionalStatBonusEffect['stat'], string> = {
 const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
 
 /**
- * Libellé d'un effet conditionnel : « −2 DEF — pendant la rage berserk ». La
- * valeur est RÉSOLUE pour le personnage (gère les paliers, ex. +2 au rang 5).
+ * Libellé d'un effet conditionnel : « −2 DEF — pendant la rage berserk », ou
+ * « +2 Init., +2 DEF — familier en vue » (plusieurs bonus sous un seul
+ * interrupteur). Les valeurs sont RÉSOLUES pour le personnage (paliers, etc.).
  */
 function effectLabel(
   character: Character,
@@ -50,8 +51,9 @@ function effectLabel(
   index: number,
   effect: ConditionalStatBonusEffect,
 ): string {
-  const value = conditionalEffectValue(character, featureId, index) ?? 0;
-  return `${signed(value)} ${STAT_SHORT[effect.stat]} — ${effect.activation.label}`;
+  const bonuses = conditionalEffectBonuses(character, featureId, index) ?? [];
+  const parts = bonuses.map((b) => `${signed(b.value)} ${STAT_SHORT[b.stat]}`).join(', ');
+  return `${parts} — ${effect.activation.label}`;
 }
 
 export interface FeatureEffectTogglesProps {

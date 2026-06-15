@@ -988,8 +988,7 @@ export const mageFeatures: Feature[] = [
     effects: [
       {
         kind: 'conditional-stat-bonus',
-        stat: 'def',
-        value: 2,
+        bonuses: [{ stat: 'def', value: 2 }],
         activation: { kind: 'condition', label: 'Magnétisme actif — contre les armes métalliques', activeByDefault: false },
       },
     ],
@@ -1451,14 +1450,18 @@ export const mageFeatures: Feature[] = [
     effects: [
       {
         kind: 'conditional-stat-bonus',
-        stat: 'def',
-        value: {
-          scale: 'sum',
-          parts: [
-            { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 3 }, { min: 3, value: 4 }] },
-            { scale: 'milestone-count', per: 1, rank: 5, classIds: ['magicien'], includeMagePath: true },
-          ],
-        },
+        bonuses: [
+          {
+            stat: 'def',
+            value: {
+              scale: 'sum',
+              parts: [
+                { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 3 }, { min: 3, value: 4 }] },
+                { scale: 'milestone-count', per: 1, rank: 5, classIds: ['magicien'], includeMagePath: true },
+              ],
+            },
+          },
+        ],
         activation: { kind: 'temporary', label: 'Armure de mana active', activeByDefault: false },
       },
     ],
@@ -1557,14 +1560,12 @@ export const mageFeatures: Feature[] = [
     effects: [
       {
         kind: 'conditional-stat-bonus',
-        stat: 'initiative',
-        value: 2,
-        activation: { kind: 'condition', label: 'familier en vue', activeByDefault: false },
-      },
-      {
-        kind: 'conditional-stat-bonus',
-        stat: 'def',
-        value: 2,
+        // « +2 en Initiative ET en DEF lorsque son familier est en vue » : un seul
+        // interrupteur pilote les deux bonus (pas deux toggles séparés).
+        bonuses: [
+          { stat: 'initiative', value: 2 },
+          { stat: 'def', value: 2 },
+        ],
         activation: { kind: 'condition', label: 'familier en vue', activeByDefault: false },
       },
     ],
@@ -1677,8 +1678,7 @@ export const mageFeatures: Feature[] = [
     effects: [
       {
         kind: 'conditional-stat-bonus',
-        stat: 'def',
-        value: 5,
+        bonuses: [{ stat: 'def', value: 5 }],
         activation: { kind: 'temporary', label: 'Aspect du démon actif', activeByDefault: false },
       },
     ],

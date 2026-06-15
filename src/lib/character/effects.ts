@@ -137,23 +137,30 @@ function isConditionalActive(
 }
 
 /**
- * Valeur d'un effet à intégrer au `mods`, ou `null` s'il ne doit pas compter
- * (non résoluble sans contexte, ou conditionnel inactif).
+ * Contributions d'un effet au `mods` : une par (stat, valeur) résoluble. Vide si
+ * l'effet ne compte pas (conditionnel inactif) ; un bonus non résoluble (sans
+ * contexte) est simplement omis. Un effet conditionnel porte PLUSIEURS bonus
+ * pilotés par un seul interrupteur (ex. Familier : +2 Init. et +2 DEF).
  */
-function effectContribution(
+function effectContributions(
   effect: FeatureEffect,
   featureId: string,
   pathId: string,
   index: number,
   pathRanks: Record<string, number>,
   ctx?: EffectContext,
-): { stat: DerivedStatId; value: number } | null {
+): Array<{ stat: DerivedStatId; value: number }> {
   if (effect.kind === 'conditional-stat-bonus') {
-    if (!isConditionalActive(effect, featureId, index, ctx)) return null;
+    if (!isConditionalActive(effect, featureId, index, ctx)) return [];
+    const out: Array<{ stat: DerivedStatId; value: number }> = [];
+    for (const b of effect.bonuses) {
+      const v = resolveValue(b.value, pathId, pathRanks, ctx);
+      if (v !== null) out.push({ stat: b.stat, value: v });
+    }
+    return out;
   }
   const value = resolveValue(effect.value, pathId, pathRanks, ctx);
-  if (value === null) return null;
-  return { stat: effect.stat, value };
+  return value === null ? [] : [{ stat: effect.stat, value }];
 }
 
 /**
@@ -172,9 +179,8 @@ export function modsFromFeatures(featureIds: string[], ctx?: EffectContext): Der
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
     feature.effects.forEach((effect, i) => {
-      const contribution = effectContribution(effect, id, feature.pathId, i, pathRanks, ctx);
-      if (contribution) {
-        mods[contribution.stat] = (mods[contribution.stat] ?? 0) + contribution.value;
+      for (const c of effectContributions(effect, id, feature.pathId, i, pathRanks, ctx)) {
+        mods[c.stat] = (mods[c.stat] ?? 0) + c.value;
       }
     });
   }
@@ -206,14 +212,14 @@ export function featureModSources(
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
     feature.effects.forEach((effect, i) => {
-      const contribution = effectContribution(effect, id, feature.pathId, i, pathRanks, ctx);
-      if (!contribution) return;
-      (sources[contribution.stat] ??= []).push({
-        featureId: id,
-        name: feature.name,
-        value: contribution.value,
-        conditional: effect.kind === 'conditional-stat-bonus',
-      });
+      for (const c of effectContributions(effect, id, feature.pathId, i, pathRanks, ctx)) {
+        (sources[c.stat] ??= []).push({
+          featureId: id,
+          name: feature.name,
+          value: c.value,
+          conditional: effect.kind === 'conditional-stat-bonus',
+        });
+      }
     });
   }
   return sources;
@@ -243,22 +249,32 @@ export function conditionalEffectsOf(featureId: string): ConditionalEffectEntry[
   return entries;
 }
 
+/** Un bonus d'effet conditionnel, résolu à sa valeur courante pour l'affichage. */
+export interface ResolvedConditionalBonus {
+  stat: DerivedStatId;
+  value: number;
+}
+
 /**
- * Valeur COURANTE (résolue) d'un effet conditionnel d'une capacité pour ce
- * personnage — pour l'affichage (ex. « −2 DEF », « +2 DEF » au rang 5). Résout les
- * valeurs scalantes (caractéristique, niveau, rang de voie). `null` si l'index ne
- * pointe pas un effet conditionnel connu.
+ * Bonus COURANTS (résolus) d'un effet conditionnel d'une capacité pour ce
+ * personnage — pour l'affichage de l'interrupteur (ex. « −2 DEF », « +2 Init., +2
+ * DEF »). Résout les valeurs scalantes (caractéristique, niveau, rang, paliers de
+ * famille). `null` si l'index ne pointe pas un effet conditionnel connu.
  */
-export function conditionalEffectValue(
+export function conditionalEffectBonuses(
   character: Character,
   featureId: string,
   index: number,
-): number | null {
+): ResolvedConditionalBonus[] | null {
   const feature = featureById.get(featureId);
   const effect = feature?.effects?.[index];
   if (!feature || !effect || effect.kind !== 'conditional-stat-bonus') return null;
   const pathRanks = pathRanksFromFeatures(character.featureIds);
-  return resolveValue(effect.value, feature.pathId, pathRanks, effectContext(character));
+  const ctx = effectContext(character);
+  return effect.bonuses.map((b) => ({
+    stat: b.stat,
+    value: resolveValue(b.value, feature.pathId, pathRanks, ctx) ?? 0,
+  }));
 }
 
 /** L'interrupteur du i-ème effet d'une capacité est-il actif pour ce personnage ? */

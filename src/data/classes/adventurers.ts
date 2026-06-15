@@ -1165,15 +1165,19 @@ export const adventurerFeatures: Feature[] = [
     effects: [
       {
         kind: 'conditional-stat-bonus',
-        stat: 'def',
-        value: {
-          scale: 'stepped',
-          by: 'path-rank',
-          steps: [
-            { min: 1, value: 1 },
-            { min: 5, value: 2 },
-          ],
-        },
+        bonuses: [
+          {
+            stat: 'def',
+            value: {
+              scale: 'stepped',
+              by: 'path-rank',
+              steps: [
+                { min: 1, value: 1 },
+                { min: 5, value: 2 },
+              ],
+            },
+          },
+        ],
         activation: { kind: 'condition', label: 'une arme dans chaque main', activeByDefault: false },
       },
     ],

@@ -475,12 +475,22 @@ export interface EffectActivation {
  * (capacités désactivées en armure, etc.) seront câblées côté milestone Armures,
  * qui réutilise cette couche — on ne modélise ici aucune sémantique d'armure.
  */
-export interface ConditionalStatBonusEffect {
-  kind: 'conditional-stat-bonus';
+/** Un bonus chiffré à une stat dérivée (valeur constante ou scalante). */
+export interface StatBonus {
   /** Stat dérivée visée (cf. `DERIVED_STAT_IDS`). */
   stat: DerivedStatId;
-  /** Valeur ajoutée (signée) lorsque l'effet est actif : constante ou scalante. */
+  /** Valeur ajoutée (signée) : constante ou scalante. */
   value: EffectValue;
+}
+
+export interface ConditionalStatBonusEffect {
+  kind: 'conditional-stat-bonus';
+  /**
+   * Bonus accordés ENSEMBLE lorsque l'effet est actif : un seul déclencheur /
+   * interrupteur les pilote tous. Ex. Familier (magie-universelle r2) : « +2 en
+   * Initiative ET en DEF lorsque son familier est en vue » → deux bonus, un toggle.
+   */
+  bonuses: StatBonus[];
   /** Déclencheur (condition / durée) et état par défaut de l'interrupteur. */
   activation: EffectActivation;
 }

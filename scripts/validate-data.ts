@@ -195,17 +195,24 @@ for (const c of features) {
   if (!c.effects) continue;
   featuresWithEffects++;
   for (const e of c.effects) {
-    if (e.kind === 'stat-bonus' || e.kind === 'conditional-stat-bonus') {
+    if (e.kind === 'stat-bonus') {
       if (!validStats.has(e.stat)) err(`[capacite ${c.id}] effect: stat inconnue : ${e.stat}`);
       const valueError = effectValueError(e.value);
       if (valueError) err(`[capacite ${c.id}] effect: ${valueError} (${e.stat})`);
-    }
-    if (e.kind === 'conditional-stat-bonus') {
+    } else if (e.kind === 'conditional-stat-bonus') {
+      // Un effet conditionnel porte une LISTE de bonus (un seul interrupteur les pilote).
+      if (!Array.isArray(e.bonuses) || e.bonuses.length === 0)
+        err(`[capacite ${c.id}] effect: conditionnel sans bonus`);
+      for (const b of e.bonuses ?? []) {
+        if (!validStats.has(b.stat)) err(`[capacite ${c.id}] effect: stat inconnue : ${b.stat}`);
+        const valueError = effectValueError(b.value);
+        if (valueError) err(`[capacite ${c.id}] effect: ${valueError} (${b.stat})`);
+      }
       const a = e.activation;
       if (!a || !validActivationKinds.has(a.kind))
-        err(`[capacite ${c.id}] effect: activation.kind invalide pour ${e.stat}`);
-      if (!a?.label) err(`[capacite ${c.id}] effect: activation.label manquant pour ${e.stat}`);
-    } else if (e.kind !== 'stat-bonus') {
+        err(`[capacite ${c.id}] effect: activation.kind invalide (${c.id})`);
+      if (!a?.label) err(`[capacite ${c.id}] effect: activation.label manquant (${c.id})`);
+    } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }
   }

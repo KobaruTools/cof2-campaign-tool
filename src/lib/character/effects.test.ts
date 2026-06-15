@@ -3,7 +3,7 @@ import type { AbilityId } from '@/data/schema';
 import type { Character } from './types';
 import {
   conditionalEffectsOf,
-  conditionalEffectValue,
+  conditionalEffectBonuses,
   effectContext,
   featureModSources,
   isEffectActive,
@@ -148,16 +148,31 @@ describe('interrupteurs des effets conditionnels', () => {
     expect(conditionalEffectsOf('id-inexistant')).toEqual([]);
   });
 
-  it('conditionalEffectValue résout la valeur courante (pour l’affichage)', () => {
+  it('conditionalEffectBonuses résout les bonus courants (pour l’affichage)', () => {
     // Rage du berserk : -2 DEF, constant.
-    expect(conditionalEffectValue(charWith({}), 'rage-r3', 0)).toBe(-2);
+    expect(conditionalEffectBonuses(charWith({}), 'rage-r3', 0)).toEqual([{ stat: 'def', value: -2 }]);
     // Parade croisée : +1 au rang 2 de la voie, +2 au rang 5 (selon featureIds).
     const rk2 = { featureIds: ['combat-a-deux-armes-r2'] } as Character;
     const rk5 = { featureIds: ['combat-a-deux-armes-r2', 'combat-a-deux-armes-r5'] } as Character;
-    expect(conditionalEffectValue(rk2, 'combat-a-deux-armes-r2', 0)).toBe(1);
-    expect(conditionalEffectValue(rk5, 'combat-a-deux-armes-r2', 0)).toBe(2);
+    expect(conditionalEffectBonuses(rk2, 'combat-a-deux-armes-r2', 0)).toEqual([{ stat: 'def', value: 1 }]);
+    expect(conditionalEffectBonuses(rk5, 'combat-a-deux-armes-r2', 0)).toEqual([{ stat: 'def', value: 2 }]);
+    // Familier : un seul effet, DEUX bonus résolus (init + def).
+    expect(conditionalEffectBonuses(charWith({}), 'magie-universelle-r2', 0)).toEqual([
+      { stat: 'initiative', value: 2 },
+      { stat: 'def', value: 2 },
+    ]);
     // Index ne pointant pas un effet conditionnel → null.
-    expect(conditionalEffectValue(charWith({}), 'air-r1', 0)).toBeNull();
+    expect(conditionalEffectBonuses(charWith({}), 'air-r1', 0)).toBeNull();
+  });
+
+  it('Familier : un seul interrupteur pilote +2 Init. ET +2 DEF (pas deux toggles)', () => {
+    // Un seul effet conditionnel → un seul interrupteur.
+    expect(conditionalEffectsOf('magie-universelle-r2')).toHaveLength(1);
+    expect(modsFromFeatures(['magie-universelle-r2'], ctx({ toggles: { 'magie-universelle-r2': [true] } }))).toEqual({
+      initiative: 2,
+      def: 2,
+    });
+    expect(modsFromFeatures(['magie-universelle-r2'], ctx())).toEqual({});
   });
 
   it("isEffectActive suit l'interrupteur, sinon l'état par défaut", () => {
