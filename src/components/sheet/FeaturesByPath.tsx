@@ -30,7 +30,7 @@ import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
 import { features as featureCatalog, featureById, pathById } from '@/data';
 import type { Feature, Path } from '@/data/schema';
-import type { Abilities } from '@/lib/engine';
+import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import { featureChoiceDefs, hasUnmadeChoice } from '@/lib/character/choices';
 import { conditionalEffectsOf } from '@/lib/character/effects';
@@ -124,6 +124,11 @@ export interface FeaturesByPathProps {
    */
   abilities?: Abilities;
   level?: number;
+  /**
+   * Stats dérivées du MAÎTRE — pour les mini-fiches de compagnons dont l'Init./attaque
+   * recopient le total du personnage (golem, familier, démon…). Absent → libellé de repli.
+   */
+  masterDerived?: DerivedStats;
   /** Édition en place : si fourni, suppression et ajout de capacités. */
   onChange?: (featureIds: string[]) => void;
   /**
@@ -252,6 +257,7 @@ function PathBlock({
   manualFeatureIds,
   abilities,
   level,
+  masterDerived,
   compact = false,
   gridColumn,
   retainedFeature,
@@ -268,6 +274,8 @@ function PathBlock({
   /** Contexte du personnage pour le rendu enrichi (PER-64). */
   abilities?: Abilities;
   level?: number;
+  /** Stats dérivées du maître (mini-fiches de compagnons : Init./attaque recopiées). */
+  masterDerived?: DerivedStats;
   /** Vue colonne : masque le rang de chaque capacité, le résume dans l'en-tête. */
   compact?: boolean;
   /** Vue colonne : index de colonne (1-based) dans la grille subgrid. */
@@ -573,6 +581,7 @@ function PathBlock({
                       abilities={abilities}
                       level={level}
                       rank={pathRank}
+                      masterDerived={masterDerived}
                     />
                   </Box>
                 )}
@@ -715,6 +724,7 @@ function PathBlock({
                     abilities={abilities}
                     level={level}
                     rank={pathRank}
+                    masterDerived={masterDerived}
                   />
                 </Box>
               )}
@@ -783,6 +793,7 @@ export function FeaturesByPath({
   layout,
   abilities,
   level,
+  masterDerived,
   onChange,
   manualFeatureIds,
   character,
@@ -863,6 +874,7 @@ export function FeaturesByPath({
               manualFeatureIds={manualFeatureIds}
               abilities={abilities}
               level={level}
+              masterDerived={masterDerived}
               compact
               gridColumn={i + 1}
               retainedFeature={group === mageGroup ? retainedFeature : undefined}
@@ -884,6 +896,7 @@ export function FeaturesByPath({
               manualFeatureIds={manualFeatureIds}
               abilities={abilities}
               level={level}
+              masterDerived={masterDerived}
               compact
               gridColumn={PATH_COLUMN_COUNT - prestige.length + 1 + i}
               character={character}
@@ -903,6 +916,7 @@ export function FeaturesByPath({
               manualFeatureIds={manualFeatureIds}
               abilities={abilities}
               level={level}
+              masterDerived={masterDerived}
               retainedFeature={group === mageGroup ? retainedFeature : undefined}
               retainedPathName={group === mageGroup ? retainedPathName : undefined}
               character={character}

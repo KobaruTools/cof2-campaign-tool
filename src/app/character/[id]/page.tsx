@@ -23,7 +23,7 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { ancestryById, classById, families, featureById, progression } from '@/data';
 import type { DerivedInput } from '@/lib/engine';
-import { checkCompliance } from '@/lib/engine';
+import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
 import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { modifierDeltas } from '@/lib/character/ancestry';
@@ -213,6 +213,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         hpLevelGains: hpLevelGains(character, rulesContext),
       }
     : null;
+
+  // Stats dérivées finales du MAÎTRE (mods inclus), avec surcharges manuelles pour les
+  // stats recopiées par les profils de créature (Init., attaque). Sert aux mini-fiches
+  // de compagnons (golem, familier, démon…), dont l'Init/attaque = celle du maître.
+  const masterDerived = derivedInput
+    ? (() => {
+        const s = deriveStats(derivedInput);
+        const ov = character.overrides;
+        return { ...s, initiative: ov.initiative ?? s.initiative, magicAttack: ov.magicAttack ?? s.magicAttack };
+      })()
+    : undefined;
 
   return (
     <>
@@ -430,6 +441,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Les interrupteurs d'effets conditionnels sont des ÉTATS DE JEU
               // transitoires : activables à tout moment, y compris hors édition.
               onToggleEffect={setEffectToggleValue}
+              // Stats du maître : Init./attaque des compagnons recopient ce total.
+              masterDerived={masterDerived}
             />
           </SheetSection>
 

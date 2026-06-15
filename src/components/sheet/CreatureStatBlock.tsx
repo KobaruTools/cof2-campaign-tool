@@ -3,10 +3,11 @@
 /**
  * Mini-fiche d'une CRÉATURE/compagnon octroyé(e) par une capacité (golem, familier,
  * démon, zombie… et, à venir, compagnon animal du rôdeur / familier fantastique).
- * Affiche le `CreatureProfile` structuré (PER-69) : caractéristiques + stats dérivées,
- * en réutilisant le rendu enrichi (`RichInline`) pour les valeurs au format richText
- * (dés, formules, `rang`/`niveau`). Les renvois au maître (« Init. du forgesort »)
- * restent littéraux. Conçu pour être INSÉRÉ partout où une capacité porte un profil.
+ * Affiche le `CreatureProfile` structuré (PER-69) : caractéristiques (avec icône) +
+ * stats dérivées. Réutilise le rendu enrichi (`RichInline`) pour les valeurs au format
+ * richText (DEF/PV/DM : dés, formules, `rang`/`niveau`). Les stats recopiées du MAÎTRE
+ * (Init., attaque) reprennent directement le total des statistiques dérivées du
+ * personnage. Conçu pour être INSÉRÉ partout où une capacité porte un profil.
  */
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -14,12 +15,30 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import type { ReactNode } from 'react';
-import { ABILITY_IDS, type CreatureProfile } from '@/data/schema';
-import type { Abilities } from '@/lib/engine';
+import { ABILITY_IDS, type CreatureProfile, type DerivedStatId, type MasterStatRef } from '@/data/schema';
+import type { Abilities, DerivedStats } from '@/lib/engine';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { AbilityIcon } from '@/components/AbilityIcon';
 import { RichInline } from './FeatureRichText';
 
 const signed = (n: number) => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
+
+/** Libellés des stats dérivées recopiées du maître (info-bulle). */
+const MASTER_STAT_LABEL: Partial<Record<DerivedStatId, string>> = {
+  initiative: 'Initiative',
+  magicAttack: 'Attaque magique',
+  meleeAttack: 'Attaque au contact',
+  rangedAttack: 'Attaque à distance',
+  def: 'Défense',
+  maxHp: 'Points de vie',
+};
+
+const isMasterRef = (v: string | MasterStatRef): v is MasterStatRef =>
+  typeof v === 'object' && v !== null && 'fromMaster' in v;
+
+/** Valeur d'une stat dérivée du maître (gère l'écart de nom `def` ↔ `defense`). */
+const masterValue = (derived: DerivedStats, stat: DerivedStatId): number =>
+  stat === 'def' ? derived.defense : (derived[stat] as number);
 
 /** Un libellé court + sa valeur (DEF, PV, Init., Attaque, DM). */
 function StatItem({ label, children }: { label: string; children: ReactNode }) {
@@ -35,6 +54,28 @@ function StatItem({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/**
+ * Stat recopiée du maître : son total dérivé (info-bulle « Initiative du maître »).
+ * Sans contexte de stats dérivées (ex. aperçu du wizard), repli sur un libellé.
+ */
+function MasterStatValue({ stat, masterDerived }: { stat: DerivedStatId; masterDerived?: DerivedStats }) {
+  const label = MASTER_STAT_LABEL[stat] ?? stat;
+  if (!masterDerived) {
+    return (
+      <Typography component="span" variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+        {label} du maître
+      </Typography>
+    );
+  }
+  return (
+    <Tooltip title={`${label} du maître`} arrow>
+      <Box component="span" sx={{ fontWeight: 700, cursor: 'help', fontVariantNumeric: 'tabular-nums' }}>
+        {masterValue(masterDerived, stat)}
+      </Box>
+    </Tooltip>
+  );
+}
+
 export interface CreatureStatBlockProps {
   profile: CreatureProfile;
   /** Caractéristiques du personnage MAÎTRE — pour résoudre les valeurs richText. */
@@ -43,9 +84,11 @@ export interface CreatureStatBlockProps {
   level: number;
   /** Rang atteint dans la voie hôte — pour le terme `rang` des stats de la créature. */
   rank: number;
+  /** Stats dérivées du maître — pour recopier Init./attaque (absent → libellé de repli). */
+  masterDerived?: DerivedStats;
 }
 
-export function CreatureStatBlock({ profile, abilities, level, rank }: CreatureStatBlockProps) {
+export function CreatureStatBlock({ profile, abilities, level, rank, masterDerived }: CreatureStatBlockProps) {
   const rich = (text: string) => <RichInline text={text} abilities={abilities} level={level} rank={rank} />;
   return (
     <Box
@@ -68,50 +111,49 @@ export function CreatureStatBlock({ profile, abilities, level, rank }: CreatureS
         )}
       </Stack>
 
-      {/* Caractéristiques de la créature (valeurs fixes). */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: 0.5,
-          mb: 0.75,
-        }}
-      >
-        {ABILITY_IDS.map((id) => {
-          const starred = profile.starred?.includes(id);
-          return (
-            <Tooltip key={id} title={`${ABILITY_NAMES[id]}${starred ? ' (dé bonus *)' : ''}`} arrow>
-              <Box
-                sx={{
-                  textAlign: 'center',
-                  borderRadius: 0.5,
-                  py: 0.25,
-                  cursor: 'help',
-                  bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
-                }}
-              >
-                <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.2 }}>
-                  {id}
-                </Typography>
-                <Typography variant="caption" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {signed(profile.abilities[id])}
-                  {starred ? '*' : ''}
-                </Typography>
-              </Box>
-            </Tooltip>
-          );
-        })}
+      {/* Caractéristiques de la créature (valeurs fixes), avec l'icône de la fiche. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 0.75 }}>
+        {ABILITY_IDS.map((id) => (
+          <Tooltip key={id} title={ABILITY_NAMES[id]} arrow>
+            <Stack
+              spacing={0.1}
+              sx={{
+                alignItems: 'center',
+                borderRadius: 0.5,
+                py: 0.4,
+                cursor: 'help',
+                bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
+              }}
+            >
+              <AbilityIcon ability={id} size={16} />
+              <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1 }}>
+                {id}
+              </Typography>
+              <Typography variant="caption" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                {signed(profile.abilities[id])}
+              </Typography>
+            </Stack>
+          </Tooltip>
+        ))}
       </Box>
 
       {/* Stats dérivées + attaque. */}
       <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}>
         <StatItem label="DEF">{rich(profile.defense)}</StatItem>
         <StatItem label="PV">{rich(profile.hitPoints)}</StatItem>
-        <StatItem label="Init.">{rich(profile.initiative)}</StatItem>
+        <StatItem label="Init.">
+          {isMasterRef(profile.initiative) ? (
+            <MasterStatValue stat={profile.initiative.fromMaster} masterDerived={masterDerived} />
+          ) : (
+            rich(profile.initiative)
+          )}
+        </StatItem>
       </Stack>
       {profile.attack && (
         <Stack direction="row" spacing={2} sx={{ mt: 0.5, flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}>
-          <StatItem label="Attaque">{rich(profile.attack.label)}</StatItem>
+          <StatItem label="Attaque">
+            <MasterStatValue stat={profile.attack.fromMaster} masterDerived={masterDerived} />
+          </StatItem>
           <StatItem label="DM">{rich(profile.attack.damage)}</StatItem>
         </Stack>
       )}

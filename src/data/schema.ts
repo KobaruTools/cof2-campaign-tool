@@ -614,6 +614,15 @@ export interface OptionFeatureChoice extends FeatureChoiceBase {
  * MAÎTRE (« Init. du forgesort », « attaque magique du sorcier ») : pas de jeton
  * pour les stats dérivées d'autrui, elles restent donc en texte littéral.
  */
+/**
+ * Stat dérivée du MAÎTRE (le personnage) recopiée dans le profil de la créature —
+ * ex. « Initiative [Init. du forgesort] » → l'initiative du golem EST celle de son
+ * maître. Résolu à l'affichage depuis les stats dérivées du personnage.
+ */
+export interface MasterStatRef {
+  fromMaster: DerivedStatId;
+}
+
 export interface CreatureProfile {
   /** Nom de la créature (ex. « Golem »). */
   name: string;
@@ -621,16 +630,14 @@ export interface CreatureProfile {
   type?: string;
   /** Les 7 caractéristiques (valeurs fixes de la créature). */
   abilities: Record<AbilityId, number>;
-  /** Caractéristiques marquées d'un « * » dans le livre (dé bonus), le cas échéant. */
-  starred?: AbilityId[];
   /** Défense (S) : nombre fixe ou expression `richText` (« 10 + rang »). */
   defense: string;
   /** Points de vigueur (V) : expression `richText` (« niveau × 5 »). */
   hitPoints: string;
-  /** Initiative (I) : nombre fixe ou renvoi au maître (« Init. du forgesort »). */
-  initiative: string;
-  /** Attaque + DM, si la créature attaque (libellé = renvoi maître, DM = dé). */
-  attack?: { label: string; damage: string };
+  /** Initiative (I) : nombre fixe (`richText`, ex. « 8 ») ou recopie d'une stat du maître. */
+  initiative: string | MasterStatRef;
+  /** Attaque, si la créature attaque : jet = stat dérivée du maître + DM (`richText`). */
+  attack?: { fromMaster: DerivedStatId; damage: string };
   /** Particularités libres (déplacement, « trop petit pour attaquer »…). */
   note?: string;
 }
