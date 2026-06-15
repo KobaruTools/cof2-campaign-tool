@@ -7,44 +7,95 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { Fragment } from 'react';
 import { progression } from '@/data';
-import type { AbilityId, Die, Feature } from '@/data/schema';
+import type { Die, Feature } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
 import { DieIcon } from '@/components/DieIcon';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
+import { splitGlossary } from '@/lib/ui/glossary';
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
 
+/** Tonalité d'une puce de référence : caractéristique (neutre) ou stat dérivée (teinte dédiée). */
+type RefTone = 'ability' | 'derived';
+
 /**
- * Simple RÉFÉRENCE à une caractéristique (ex. « FOR »), mise en avant comme un
- * petit bloc pour la lisibilité, sans valeur calculée (c'est un renvoi, pas un
- * modificateur — distinct des encadrés de formule). Info-bulle = nom complet.
+ * Référence mise en avant comme une petite puce, sans valeur calculée : une
+ * CARACTÉRISTIQUE (« FOR », renvoi `@CODE`) ou une STAT DÉRIVÉE (« DEF », « PV »…,
+ * reconnue via le glossaire). La tonalité distingue visuellement les deux familles
+ * (couleur légèrement différente pour les stats dérivées). Info-bulle = nom complet.
  */
-function AbilityRefChip({ ability }: { ability: AbilityId }) {
+function RefChip({ label, title, tone }: { label: string; title: string; tone: RefTone }) {
+  // Stat dérivée → ambre/orange pâle (`warning`), DISTINCT du bleu déjà utilisé par
+  // les quantités (`[=CHA]`) et les formules (`10 + CHA`). Caractéristique → neutre.
+  const accent = (theme: { palette: { warning: { main: string }; text: { primary: string } } }) =>
+    tone === 'derived' ? theme.palette.warning.main : theme.palette.text.primary;
   return (
-    <Tooltip title={ABILITY_NAMES[ability]} arrow>
+    <Tooltip title={title} arrow>
       <Box
         component="span"
         sx={{
           display: 'inline-block',
           verticalAlign: 'baseline',
-          px: 0.5,
-          mx: 0.15,
+          px: 0.6,
+          mx: 0.2,
           borderRadius: 0.75,
           fontWeight: 700,
-          fontSize: '0.85em',
+          fontSize: '0.95em',
           letterSpacing: 0.3,
           lineHeight: 1.4,
           cursor: 'help',
           color: 'text.primary',
-          bgcolor: (theme) => alpha(theme.palette.text.primary, 0.08),
+          bgcolor: (theme) => alpha(accent(theme), tone === 'derived' ? 0.12 : 0.08),
           border: 1,
-          borderColor: (theme) => alpha(theme.palette.text.primary, 0.2),
+          borderColor: (theme) => alpha(accent(theme), tone === 'derived' ? 0.4 : 0.2),
         }}
       >
-        {ability}
+        {label}
       </Box>
     </Tooltip>
+  );
+}
+
+/**
+ * Terme de JARGON (NC, RD, DM, MJ…) : ni caractéristique ni stat du personnage,
+ * juste un terme de règle. Souligné pointillé discret + info-bulle explicative.
+ */
+function GlossaryMark({ label, title }: { label: string; title: string }) {
+  return (
+    <Tooltip title={title} arrow>
+      <Box
+        component="span"
+        sx={{
+          cursor: 'help',
+          borderBottom: (theme) => `1px dotted ${alpha(theme.palette.text.secondary, 0.7)}`,
+        }}
+      >
+        {label}
+      </Box>
+    </Tooltip>
+  );
+}
+
+/**
+ * Rend une portion de TEXTE LITTÉRAL en mettant en avant les acronymes du glossaire
+ * (stats dérivées → puce ; jargon → souligné). Le reste est du texte brut (les
+ * sauts de ligne sont préservés par le conteneur `pre-line`). Utilisé pour les
+ * segments texte du rendu enrichi ET pour le `text` verbatim de repli.
+ */
+function RichTextRun({ value }: { value: string }) {
+  return (
+    <>
+      {splitGlossary(value).map((piece, i) =>
+        piece.kind === 'text' ? (
+          <Fragment key={i}>{piece.value}</Fragment>
+        ) : piece.entry.category === 'derived' ? (
+          <RefChip key={i} label={piece.term} title={piece.entry.label} tone="derived" />
+        ) : (
+          <GlossaryMark key={i} label={piece.term} title={piece.entry.label} />
+        ),
+      )}
+    </>
   );
 }
 
@@ -80,6 +131,17 @@ function DiePart({
  * sur le modèle de `derivedStatBreakdown`.
  */
 function FormulaTotal({ resolved }: { resolved: ResolvedExpr }) {
+  // Lecture claire : chaque variable résolue à sa valeur BRUTE entre parenthèses,
+  // opérateurs de la formule, puis « = total » — « 10 + CHA (4) = 14 ». Une formule
+  // à un seul terme variable s'affiche sans « = » (« CHA (4) »). Sans variable, on
+  // montre simplement le total signé.
+  const inline = resolved.parts
+    .map((p, i) => {
+      const connector = i > 0 ? ` ${p.sign === -1 ? '−' : '+'} ` : p.sign === -1 ? '− ' : '';
+      const body = p.kind === 'number' ? p.symbol : `${p.symbol} (${p.value ?? 0})`;
+      return connector + body;
+    })
+    .join('');
   const tooltip = (
     <Box sx={{ minWidth: 160 }}>
       {resolved.parts.map((p, i) => (
@@ -107,40 +169,35 @@ function FormulaTotal({ resolved }: { resolved: ResolvedExpr }) {
       )}
     </Box>
   );
+  // Style compact aligné sur l'encadré de dé ; couleur PRIMAIRE pour le distinguer
+  // d'une formule à dé (secondaire).
   return (
     <Tooltip title={tooltip} arrow>
       <Box
         component="span"
         sx={{
+          // Hauteur alignée sur l'encadré de dé (dont la hauteur est imposée par
+          // l'icône de dé, ~22 px) pour que les deux blocs s'accordent dans la phrase.
           display: 'inline-flex',
           alignItems: 'center',
+          verticalAlign: 'middle',
+          minHeight: '22px',
+          whiteSpace: 'nowrap',
           px: 0.6,
           mx: 0.15,
+          lineHeight: 1,
           borderRadius: 1,
-          fontWeight: 700,
+          fontWeight: 600,
           fontVariantNumeric: 'tabular-nums',
           cursor: 'help',
-          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
+          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
           border: 1,
-          borderColor: (theme) => alpha(theme.palette.primary.main, 0.4),
+          borderColor: (theme) => alpha(theme.palette.primary.main, 0.35),
         }}
       >
-        {resolved.hasAbility ? (
-          <>
-            {/* Formule symbolique (ex. « CHA », « FOR + 1 ») pour que la phrase
-                garde son sens, suivie du total calculé entre parenthèses. */}
-            <Box component="span" sx={{ fontWeight: 600 }}>
-              {resolved.parts
-                .map((p, i) => (i > 0 || p.sign === -1 ? `${p.sign === -1 ? '−' : '+'} ` : '') + p.symbol)
-                .join(' ')}
-            </Box>
-            <Box component="span" sx={{ ml: 0.5 }}>
-              ({signed(resolved.total ?? 0)})
-            </Box>
-          </>
-        ) : (
-          signed(resolved.total ?? 0)
-        )}
+        {resolved.hasAbility
+          ? `${inline}${resolved.parts.length > 1 ? ` = ${resolved.total}` : ''}`
+          : signed(resolved.total ?? 0)}
       </Box>
     </Tooltip>
   );
@@ -285,10 +342,10 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
                   noTooltip
                 />
               ) : p.kind === 'ability' ? (
-                // Règle générale : on montre toujours le code de la stat pour la
-                // lisibilité (ex. « CHA (+5) »).
+                // On montre toujours le code de la stat + sa valeur BRUTE entre
+                // parenthèses (ex. « CHA (4) »), cohérent avec les formules sans dé.
                 <Box component="span">
-                  {p.symbol} ({signed(p.value ?? 0)})
+                  {p.symbol} ({p.value ?? 0})
                 </Box>
               ) : (
                 <Box component="span">{p.value}</Box>
@@ -319,13 +376,16 @@ export interface FeatureTextProps {
 export function FeatureText({ feature, abilities, level }: FeatureTextProps) {
   const enriched = feature.richText && abilities && level != null;
   if (!enriched) {
+    // Repli : `text` verbatim, mais on met quand même en avant les acronymes du
+    // glossaire (stats dérivées, jargon) — ils ne dépendent pas du contexte du perso.
     return (
       <Typography
         variant="body2"
         color="text.secondary"
+        component="div"
         sx={{ whiteSpace: 'pre-line', fontSize: '1rem' }}
       >
-        {feature.text}
+        <RichTextRun value={feature.text} />
       </Typography>
     );
   }
@@ -339,8 +399,9 @@ export function FeatureText({ feature, abilities, level }: FeatureTextProps) {
       sx={{ whiteSpace: 'pre-line', lineHeight: 1.9, fontSize: '1rem' }}
     >
       {segments.map((seg, i) => {
-        if (seg.kind === 'text') return <Fragment key={i}>{seg.value}</Fragment>;
-        if (seg.kind === 'abilityRef') return <AbilityRefChip key={i} ability={seg.ability} />;
+        if (seg.kind === 'text') return <RichTextRun key={i} value={seg.value} />;
+        if (seg.kind === 'abilityRef')
+          return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
         if (seg.kind === 'die') {
           // Dé évolutif → valeur concrète au niveau courant (p. 43).
           const displayDie = seg.token.evolving ? scalingDie(level!, progression) : seg.token.die;
