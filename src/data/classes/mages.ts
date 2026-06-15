@@ -859,11 +859,12 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Un breuvage qui guérit immédiatement 1d4° PV et permet de gagner un dé bonus aux trois prochains tests effectués dans une période de 30 min. En plus de cette recette, grâce à ses études, le forgesort ajoute son rang + 2 aux tests d’alchimie et de chimie ou pour identifier une potion (test difficulté 10 + rang du sort).",
-    // Rendu enrichi (PER-69) : soin {1d4°} PV ; « rang + 2 » modificateur aux tests
-    // (bonus de tests = PER-89) ; difficulté d’identification [10 + rang] (« du sort »
-    // implicite, retiré). Le soin et le bonus aux tests ne sont pas des stats dérivées.
+    // Rendu enrichi (PER-69) : soin {1d4°} PV ; « son rang + 2 » = rang ATTEINT dans la
+    // voie → [rang + 2] (bonus de tests = PER-89). En revanche « 10 + rang du sort »
+    // (difficulté d’identification) désigne le rang DU SORT identifié, PAS la voie du
+    // forgesort → laissé en texte littéral (le terme `rang` baliserait le rang de voie).
     richText:
-      "Un breuvage qui guérit immédiatement {1d4°} PV et permet de gagner un dé bonus aux trois prochains tests effectués dans une période de 30 min. En plus de cette recette, grâce à ses études, le forgesort ajoute son [rang + 2] aux tests d’alchimie et de chimie ou pour identifier une potion (test difficulté [10 + rang]).",
+      "Un breuvage qui guérit immédiatement {1d4°} PV et permet de gagner un dé bonus aux trois prochains tests effectués dans une période de 30 min. En plus de cette recette, grâce à ses études, le forgesort ajoute son [rang + 2] aux tests d’alchimie et de chimie ou pour identifier une potion (test difficulté 10 + rang du sort).",
     sourcePage: 98,
   },
   {

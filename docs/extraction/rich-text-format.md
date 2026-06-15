@@ -122,8 +122,18 @@ Trois extensions, rétrocompatibles avec PER-64 :
 ### a. Nouveaux termes : `rang` et `niveau`
 
 Évaluables partout où une caractéristique l'est (formules `[…]` et quantités
-`[=…]`). `niveau` = niveau du personnage ; `rang` = rang de la capacité dans sa
-voie (`Feature.rank`). Exemples : `[10 + rang]`, `[niveau × 3]`.
+`[=…]`). `niveau` = niveau du personnage ; `rang` = **rang ATTEINT dans la voie
+hôte** (le plus haut rang acquis par le personnage dans cette voie), c.-à-d.
+« son rang » qui grandit avec la progression — et **non** le rang figé de la
+capacité (`Feature.rank`). Exemples : `[10 + rang]`, `[niveau × 3]`.
+
+> **Règle de population (rang).** Dans les textes, « son rang » / « rang dans la
+> voie » désigne toujours le rang ATTEINT dans la voie courante → baliser avec le
+> terme `rang` (résolu dynamiquement par le rendu via le rang de la voie). Si le
+> texte qualifie autrement (« rang **du sort** », « rang de la cible »…), ce n'est
+> PAS ce `rang`-là : laisser en texte littéral. Le rendu résout `rang` au plus
+> haut rang acquis dans la voie hôte (cf. `pathRank`, aligné sur la couche
+> `effects` `by: 'path-rank'`).
 
 ### b. Multiplicateur dans un terme
 

@@ -364,6 +364,13 @@ export interface FeatureTextProps {
   abilities?: Abilities;
   /** Niveau du personnage : requis pour le rendu enrichi (dé évolutif, formules). */
   level?: number;
+  /**
+   * Rang ATTEINT dans la voie hôte de la capacité (le plus haut rang acquis), pour
+   * résoudre le terme `rang` des formules/quantités — « son rang » = rang dans la
+   * voie courante, qui grandit avec la progression (et non le rang figé de la
+   * capacité). Absent → repli sur `feature.rank` (contextes sans personnage).
+   */
+  pathRank?: number;
 }
 
 /**
@@ -373,7 +380,7 @@ export interface FeatureTextProps {
  * Sinon, on retombe proprement sur le `text` verbatim — c'est le comportement
  * par défaut tant qu'une capacité n'a pas été réécrite (PER-64).
  */
-export function FeatureText({ feature, abilities, level }: FeatureTextProps) {
+export function FeatureText({ feature, abilities, level, pathRank }: FeatureTextProps) {
   const enriched = feature.richText && abilities && level != null;
   if (!enriched) {
     // Repli : `text` verbatim, mais on met quand même en avant les acronymes du
@@ -415,8 +422,9 @@ export function FeatureText({ feature, abilities, level }: FeatureTextProps) {
             />
           );
         }
-        // `rang` est résolu via le rang de la capacité dans sa voie.
-        const resolved = resolveExpr(seg.terms, abilities!, level!, progression, feature.rank);
+        // `rang` = rang ATTEINT dans la voie hôte (pathRank, le plus haut rang acquis,
+        // donc « son rang » dynamique) ; repli sur le rang figé de la capacité si non fourni.
+        const resolved = resolveExpr(seg.terms, abilities!, level!, progression, pathRank ?? feature.rank);
         if (seg.kind === 'quantity') return <QuantityValue key={i} resolved={resolved} />;
         return resolved.hasDie ? (
           <FormulaWithDie key={i} resolved={resolved} level={level!} />

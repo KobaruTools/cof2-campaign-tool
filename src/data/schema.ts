@@ -555,7 +555,9 @@ export interface Feature {
    *   `[niveau × 3]` (entre crochets) — une suite de termes (caractéristique, dé,
    *   nombre, `rang`, `niveau`), chacun éventuellement multiplié par une constante
    *   (`CHA × 100`), séparés par `+`/`-`. Sans dé : calculée et affichée en encadré
-   *   signé ; avec un dé : rendue dé(s) + variables résolues ;
+   *   signé ; avec un dé : rendue dé(s) + variables résolues. `niveau` = niveau du
+   *   personnage ; `rang` = rang ATTEINT dans la voie hôte (« son rang » dynamique),
+   *   pas le rang figé de la capacité — un « rang du sort/de la cible » reste littéral ;
    * - QUANTITÉ : `[=CHA]`, `[=CHA × 100]`, `[=rang]`, `[=niveau × 5]` (crochets
    *   préfixés de `=`) — même grammaire, mais rendue en VALEUR BRUTE (durée, portée,
    *   nombre de cibles), sans signe : « pendant [=CHA] minutes » → « 5 minutes » ;

@@ -236,7 +236,8 @@ function RetainedAncestryCapacity({
         <FeatureLabel feature={feature} />
       </Typography>
       <Box sx={{ mt: 0.25 }}>
-        <FeatureText feature={feature} abilities={abilities} level={level} />
+        {/* Capacité de peuple isolée : sa voie se réduit à son rang 1 conservé. */}
+        <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} />
       </Box>
     </Box>
   );
@@ -282,6 +283,10 @@ function PathBlock({
   onToggleEffect?: (featureId: string, index: number, active: boolean) => void;
 }) {
   const { path, features } = group;
+  // Rang ATTEINT dans la voie = plus haut rang acquis parmi ses capacités. Sert à
+  // résoudre le terme « rang » des textes enrichis (« son rang » = rang de la voie
+  // courante, dynamique), partagé par toutes les capacités du bloc.
+  const pathRank = features.reduce((max, f) => Math.max(max, f.rank), 0);
   // Profil dont la voie est issue : le profil principal si la voie lui appartient
   // (cas courant), sinon le profil d'origine de la voie (hybridation). Sert à la
   // teinte ET à l'icône, pour distinguer les voies hybrides du profil principal.
@@ -559,7 +564,7 @@ function PathBlock({
                     <Divider sx={{ my: 1.5 }} />
                   </>
                 )}
-                <FeatureText feature={openFeature} abilities={abilities} level={level} />
+                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={pathRank} />
                 {hasChoices(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -691,7 +696,7 @@ function PathBlock({
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
-              <FeatureText feature={feature} abilities={abilities} level={level} />
+              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={pathRank} />
               {hasChoices(feature) && (
                 <>
                   <Divider sx={{ my: 1.5 }} />

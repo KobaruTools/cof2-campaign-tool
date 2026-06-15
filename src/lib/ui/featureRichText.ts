@@ -272,9 +272,13 @@ function withCoeff(base: string, coeff?: number): string {
 
 /**
  * Évalue une formule (ou une quantité) contre les caractéristiques, le niveau et
- * le rang du personnage. Sans dé : on calcule le total. Avec dé : on résout les
- * dés à leur valeur au niveau courant et les variables à leur valeur, sans total
- * (le dé sera lancé à la table).
+ * le rang fournis. Sans dé : on calcule le total. Avec dé : on résout les dés à
+ * leur valeur au niveau courant et les variables à leur valeur, sans total (le dé
+ * sera lancé à la table).
+ *
+ * `rank` (terme `rang`) = rang ATTEINT dans la voie hôte de la capacité, fourni par
+ * l'appelant (« son rang » dynamique) — cf. `pathRank` côté `FeatureText`. Défaut 0
+ * pour les appels hors contexte de personnage.
  */
 export function resolveExpr(
   terms: ExprTerm[],
