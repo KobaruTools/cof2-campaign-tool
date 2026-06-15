@@ -18,7 +18,7 @@
  * Les deux derniers exigent un contexte (`EffectContext`). Sans contexte, seul le
  * cas plat constant est sommé (suffit aux appels « catalogue seul »).
  */
-import { featureById } from '@/data';
+import { featureById, pathById } from '@/data';
 import type {
   AbilityId,
   ConditionalStatBonusEffect,
@@ -84,16 +84,42 @@ function resolveValue(
 ): number | null {
   if (typeof value === 'number') return value;
   if (!ctx) return null;
-  if (value.scale === 'ability') {
-    return ctx.abilities[value.ability] * (value.factor ?? 1);
+  switch (value.scale) {
+    case 'ability':
+      return ctx.abilities[value.ability] * (value.factor ?? 1);
+    case 'stepped': {
+      // Palier de plus haut seuil atteint (0 sous le premier).
+      const ref = value.by === 'level' ? ctx.level : (pathRanks[pathId] ?? 0);
+      let resolved = 0;
+      for (const step of value.steps) {
+        if (ref >= step.min) resolved = step.value;
+      }
+      return resolved;
+    }
+    case 'milestone-count': {
+      // Paliers de FAMILLE (cross-voie) : `per` par voie de profil (des `classIds`,
+      // + la voie du mage si `includeMagePath`) ayant atteint `rank`.
+      let count = 0;
+      for (const [pid, maxRank] of Object.entries(pathRanks)) {
+        if (maxRank < value.rank) continue;
+        const path = pathById.get(pid);
+        if (!path) continue;
+        if (path.type === 'class' && path.classIds.some((c) => value.classIds.includes(c))) count++;
+        else if (path.type === 'mage' && value.includeMagePath) count++;
+      }
+      return count * value.per;
+    }
+    case 'sum': {
+      // Somme des composantes (base plate + palier in-voie + paliers de famille).
+      let total = 0;
+      for (const part of value.parts) {
+        const v = resolveValue(part, pathId, pathRanks, ctx);
+        if (v === null) return null;
+        total += v;
+      }
+      return total;
+    }
   }
-  // scale: 'stepped' — palier de plus haut seuil atteint (0 sous le premier).
-  const ref = value.by === 'level' ? ctx.level : (pathRanks[pathId] ?? 0);
-  let resolved = 0;
-  for (const step of value.steps) {
-    if (ref >= step.min) resolved = step.value;
-  }
-  return resolved;
 }
 
 /**

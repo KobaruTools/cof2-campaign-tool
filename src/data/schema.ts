@@ -356,7 +356,11 @@ export type FeatureEffect = StatBonusEffect | ConditionalStatBonusEffect;
 export type EffectValue = number | ScalingValue;
 
 /** Valeur scalante (PER-67), discriminée par `scale`. */
-export type ScalingValue = SteppedScalingValue | AbilityScalingValue;
+export type ScalingValue =
+  | SteppedScalingValue
+  | AbilityScalingValue
+  | MilestoneCountScalingValue
+  | SumScalingValue;
 
 /**
  * Valeur par PALIERS selon la progression : on retient la valeur du palier de
@@ -385,6 +389,37 @@ export interface AbilityScalingValue {
   ability: AbilityId;
   /** Multiplicateur appliqué à la valeur de la caractéristique (défaut 1). */
   factor?: number;
+}
+
+/**
+ * Valeur par PALIERS DE FAMILLE (cross-voie) : `per` points pour CHAQUE voie de
+ * profil (des profils `classIds`, et — si `includeMagePath` — la voie du mage) dont
+ * le personnage a atteint le rang `rank`. Couvre les bonus « +1 chaque fois que le
+ * personnage atteint le rang N dans une voie de <profil> » (ex. Armure de mana :
+ * +1 en DEF par voie de magicien — ou du mage — au rang 5, p. 104). Le moteur a
+ * besoin du rang atteint dans CHAQUE voie du personnage (cf. `effects.ts`).
+ */
+export interface MilestoneCountScalingValue {
+  scale: 'milestone-count';
+  /** Points octroyés par voie qualifiante (en général 1). */
+  per: number;
+  /** Rang à atteindre dans une voie pour qu'elle compte (ex. 5). */
+  rank: number;
+  /** Profils dont les voies de profil comptent (ex. `['magicien']`). */
+  classIds: string[];
+  /** Compter aussi la voie du mage si elle atteint `rank` (« ou dans la voie du mage »). */
+  includeMagePath?: boolean;
+}
+
+/**
+ * SOMME de plusieurs composantes — pour additionner une part plate / un palier
+ * IN-VOIE (`stepped` `path-rank`) et un palier de famille CROSS-VOIE
+ * (`milestone-count`). Ex. Armure de mana : base 3 → 4 au rang 3 de la voie
+ * (`stepped`) PLUS +1 par voie de magicien au rang 5 (`milestone-count`).
+ */
+export interface SumScalingValue {
+  scale: 'sum';
+  parts: EffectValue[];
 }
 
 /**

@@ -87,6 +87,32 @@ describe('modsFromFeatures — effets conditionnels / temporaires (PER-67)', () 
   });
 });
 
+describe('modsFromFeatures — paliers de famille CROSS-VOIE (milestone-count + sum)', () => {
+  it('Divination : base + palier in-voie + un par voie d’ensorceleur au rang 5', () => {
+    // Divination seule (voie au rang 1) : stepped → 1 ; milestone (voies au rang 5) → 0.
+    expect(modsFromFeatures(['divination-r1'], ctx())).toEqual({ initiative: 1, def: 1 });
+    // 5 voies d’ensorceleur au rang 5 → stepped (rang de voie 5) = 2, milestone = 5 → 7.
+    const five = ['divination-r1', 'divination-r5', 'air-r5', 'envouteur-r5', 'illusions-r5', 'invocation-r5'];
+    expect(modsFromFeatures(five, ctx())).toEqual({ initiative: 7, def: 7 });
+  });
+
+  it('Armure de mana : 4 (rang 3) + 5 (voies de magicien au rang 5) = 9, si interrupteur actif', () => {
+    const ids = [
+      'magie-protectrice-r1', 'magie-protectrice-r5', 'magie-des-arcanes-r5',
+      'magie-destructrice-r5', 'magie-elementaire-r5', 'magie-universelle-r5',
+    ];
+    expect(modsFromFeatures(ids, ctx({ toggles: { 'magie-protectrice-r1': [true] } }))).toEqual({ def: 9 });
+    // Interrupteur inactif → l’effet temporaire ne compte pas.
+    expect(modsFromFeatures(ids, ctx())).toEqual({});
+  });
+
+  it("Armure d'os : 3 + 5 (voies de sorcier au rang 4) = 8", () => {
+    const ids = ['outre-tombe-r2', 'outre-tombe-r4', 'demon-r4', 'mort-r4', 'sang-r4', 'sombre-magie-r4'];
+    // demon-r4 (Aspect du démon, +5 DEF) est conditionnel inactif → exclu.
+    expect(modsFromFeatures(ids, ctx())).toEqual({ def: 8 });
+  });
+});
+
 describe('featureModSources', () => {
   it('marque les contributions conditionnelles actives', () => {
     const sources = featureModSources(['rage-r3'], ctx({ toggles: { 'rage-r3': [true] } }));

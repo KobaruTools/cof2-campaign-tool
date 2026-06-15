@@ -172,6 +172,21 @@ function effectValueError(value: unknown): string | null {
     }
     return null;
   }
+  if (v.scale === 'milestone-count') {
+    if (!Number.isFinite(v.per)) return 'milestone-count : per non fini';
+    if (!Number.isFinite(v.rank)) return 'milestone-count : rank non fini';
+    if (!Array.isArray(v.classIds) || v.classIds.some((c) => typeof c !== 'string'))
+      return 'milestone-count : classIds invalide';
+    return null;
+  }
+  if (v.scale === 'sum') {
+    if (!Array.isArray(v.parts) || v.parts.length === 0) return 'sum : parts vide';
+    for (const part of v.parts) {
+      const e = effectValueError(part);
+      if (e) return `sum : ${e}`;
+    }
+    return null;
+  }
   return `échelle scalante inconnue : ${v.scale}`;
 }
 

@@ -463,22 +463,31 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "S’il emporte un test opposé d’attaque magique contre une créature de NC inférieur à son niveau (portée 10 m), l’ensorceleur devine son nom d’usage, son métier et quelques autres renseignements, tous de notoriété publique (si la cible agit sous couverture, ce sont les informations qui concernent la couverture que l’ensorceleur apprend). Si la cible du sort est volontaire et qu’il lit les lignes de sa main, il n’y a pas besoin de test et l’ensorceleur peut utiliser ce sort sur une créature de NC supérieur ou égal à son niveau. En plus de ce sort, l’ensorceleur gagne +1 en Init. et en DEF. Ce bonus augmente de +1 au rang 3 de la voie et de +1 chaque fois que le personnage atteint le rang 5 dans une voie d’ensorceleur.",
-    // Bonus permanent +1 Init./DEF, porté à +2 au rang 3 de CETTE voie (stepped
-    // par rang de voie hôte). TODO(extraction) : le « +1 chaque fois que le personnage
-    // atteint le rang 5 dans UNE voie d’ensorceleur » est un palier CROSS-VOIE
-    // (compte des voies de la famille au rang 5) ; non exprimable par `path-rank`
-    // (voie hôte uniquement) → à câbler quand le moteur saura compter les rangs par
-    // famille sur le personnage (extension de la couche scalante PER-67).
+    // Bonus permanent Init./DEF :
+    //  - base 1, porté à 2 au rang 3 de CETTE voie (stepped par rang de voie hôte) ;
+    //  - PLUS +1 par voie d’ensorceleur au rang 5 (milestone-count CROSS-VOIE).
     effects: [
       {
         kind: 'stat-bonus',
         stat: 'initiative',
-        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 3, value: 2 }] },
+        value: {
+          scale: 'sum',
+          parts: [
+            { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 3, value: 2 }] },
+            { scale: 'milestone-count', per: 1, rank: 5, classIds: ['ensorceleur'] },
+          ],
+        },
       },
       {
         kind: 'stat-bonus',
         stat: 'def',
-        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 3, value: 2 }] },
+        value: {
+          scale: 'sum',
+          parts: [
+            { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 3, value: 2 }] },
+            { scale: 'milestone-count', per: 1, rank: 5, classIds: ['ensorceleur'] },
+          ],
+        },
       },
     ],
     sourcePage: 93,
@@ -1434,17 +1443,22 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée [=INT] minutes ; la montée du bonus de DEF reste en prose.
     richText:
       "Le magicien fait apparaître une protection magique chatoyante qui recouvre son corps et produit des étincelles à chaque fois qu’il encaisse un coup. Pendant [=INT] minutes, la DEF du magicien augmente de +3. Cette valeur passe à +4 lorsque le personnage atteint le rang 3 dans la voie et augmente de +1 supplémentaire chaque fois que le personnage atteint le rang 5 dans une voie de magicien (ou dans la voie du mage). Ce sort ne se cumule jamais à une armure (il est considéré comme une armure).",
-    // Bonus de DEF TEMPORAIRE (sort à durée), à interrupteur manuel (PER-67) : +3, porté
-    // à +4 au rang 3 de CETTE voie (stepped par rang de voie hôte).
-    // TODO(extraction) : le « +1 par rang 5 dans une voie de magicien (ou du mage) » est un
-    // palier CROSS-VOIE non exprimable par `path-rank` → à câbler via le scope familial du
-    // personnage (extension PER-67).
+    // Bonus de DEF TEMPORAIRE (sort à durée), à interrupteur manuel (PER-67) :
+    //  - base 3, porté à 4 au rang 3 de CETTE voie (stepped par rang de voie hôte) ;
+    //  - PLUS +1 par voie de magicien (ou la voie du mage) au rang 5 (milestone-count
+    //    CROSS-VOIE). Ex. 5 voies de magicien au rang 5 → 4 + 5 = 9.
     // FRONTIÈRE milestone Armures : « ne se cumule jamais à une armure » → câblé côté Armures.
     effects: [
       {
         kind: 'conditional-stat-bonus',
         stat: 'def',
-        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 3 }, { min: 3, value: 4 }] },
+        value: {
+          scale: 'sum',
+          parts: [
+            { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 3 }, { min: 3, value: 4 }] },
+            { scale: 'milestone-count', per: 1, rank: 5, classIds: ['magicien'], includeMagePath: true },
+          ],
+        },
         activation: { kind: 'temporary', label: 'Armure de mana active', activeByDefault: false },
       },
     ],
@@ -1782,13 +1796,20 @@ export const mageFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le sorcier peut désormais porter une armure d’os (souvent camouflée sous une robe) qui lui offre un bonus de +3 en DEF et n’empêche pas l’utilisation des capacités de sorcier. Son bonus de DEF augmente de +1 chaque fois que le personnage atteint le rang 4 dans une voie de sorcier. Le sorcier doit confectionner cette armure lui‑même à partir d’ossements et l’entretenir par magie 10 min chaque jour. L’armure d’os n’inflige aucun malus d’AGI.",
-    // Bonus permanent +3 en DEF (armure d’os, portée en continu). Pas de richText : pas de
-    // jeton parsable.
-    // TODO(extraction) : le « +1 par rang 4 dans une voie de sorcier » est un palier
-    // CROSS-VOIE non exprimable par `path-rank` → scope familial (extension PER-67).
+    // Bonus permanent de DEF (armure d’os, portée en continu) : base 3, PLUS +1 par voie
+    // de sorcier au rang 4 (milestone-count CROSS-VOIE). Pas de richText : pas de jeton parsable.
     // FRONTIÈRE milestone Armures : l’armure d’os est une armure (n’empêche pas les
     // capacités, aucun malus d’AGI) → interaction avec le port d’armure câblée côté Armures.
-    effects: [{ kind: 'stat-bonus', stat: 'def', value: 3 }],
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: {
+          scale: 'sum',
+          parts: [3, { scale: 'milestone-count', per: 1, rank: 4, classIds: ['sorcier'] }],
+        },
+      },
+    ],
     sourcePage: 109,
   },
   {
