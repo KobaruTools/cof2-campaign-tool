@@ -1283,6 +1283,10 @@ export const mageFeatures: Feature[] = [
       "Des flammes jaillissent des doigts tendus du magicien. Jusqu’à 3 cibles au contact subissent [1d4°+INT] DM, les cibles peuvent faire un test d’AGI difficulté [10 + INT] pour ne subir que la moitié des DM. Les DM passent à 2d4° au rang 4.",
     // Rendu enrichi (PER-69) : DM [1d4° + INT] (puis {2d4°} au rang 4, en texte) ; le test
     // d’@AGI est celui des cibles ; difficulté [10 + INT] (INT du joueur).
+    // TODO(scaling-dé) : afficher le DM RÉEL dans l'encadré principal en faisant varier le
+    // NOMBRE DE DÉS selon le rang de voie (1d4° rangs 1-3, 2d4° au rang 4+) — IN-VOIE
+    // (path-rank), à traiter avec le lot « scaling des DM dans l'encadré » (cf. Feu grégeois
+    // 2d4°→3d4°→4d4°, etc.). Pas de notation de dé scalant aujourd'hui → reste en prose.
     richText:
       "Des flammes jaillissent des doigts tendus du magicien. Jusqu’à 3 cibles au contact subissent [1d4° + INT] DM, les cibles peuvent faire un test d’@AGI difficulté [10 + INT] pour ne subir que la moitié des DM. Les DM passent à {2d4°} au rang 4.",
     sourcePage: 103,
