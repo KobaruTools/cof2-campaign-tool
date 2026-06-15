@@ -877,10 +877,11 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le forgesort lance la fiole à une distance maximale de 10 m (réussite automatique). Le contenu explose dans un rayon de 3 m en infligeant 2d4° DM. Un test d’AGI difficulté [10 + INT du forgesort] réussi permet aux victimes de diviser les DM par deux. Les DM passent à 3d4° au rang 4 et 4d4° au rang 5.",
-    // Rendu enrichi (PER-69) : DM {2d4°} (puis {3d4°}/{4d4°} par paliers de rang, en
-    // texte) ; le test d’@AGI est celui des victimes ; difficulté [10 + INT] (INT du joueur).
+    // Rendu enrichi (PER-69) : DM principal {2d4°|3@4|4@5} — le NOMBRE DE DÉS suit le rang
+    // de voie (2d4° rangs 1-3, 3d4° au rang 4, 4d4° au rang 5) ; la phrase « passent à … »
+    // est gardée en explication. Test d’@AGI (victimes) ; difficulté [10 + INT] (INT du joueur).
     richText:
-      "Le forgesort lance la fiole à une distance maximale de 10 m (réussite automatique). Le contenu explose dans un rayon de 3 m en infligeant {2d4°} DM. Un test d’@AGI difficulté [10 + INT] réussi permet aux victimes de diviser les DM par deux. Les DM passent à {3d4°} au rang 4 et {4d4°} au rang 5.",
+      "Le forgesort lance la fiole à une distance maximale de 10 m (réussite automatique). Le contenu explose dans un rayon de 3 m en infligeant {2d4°|3@4|4@5} DM. Un test d’@AGI difficulté [10 + INT] réussi permet aux victimes de diviser les DM par deux. Les DM passent à {3d4°} au rang 4 et {4d4°} au rang 5.",
     sourcePage: 98,
   },
   {
@@ -1281,14 +1282,11 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Des flammes jaillissent des doigts tendus du magicien. Jusqu’à 3 cibles au contact subissent [1d4°+INT] DM, les cibles peuvent faire un test d’AGI difficulté [10 + INT] pour ne subir que la moitié des DM. Les DM passent à 2d4° au rang 4.",
-    // Rendu enrichi (PER-69) : DM [1d4° + INT] (puis {2d4°} au rang 4, en texte) ; le test
-    // d’@AGI est celui des cibles ; difficulté [10 + INT] (INT du joueur).
-    // TODO(scaling-dé) : afficher le DM RÉEL dans l'encadré principal en faisant varier le
-    // NOMBRE DE DÉS selon le rang de voie (1d4° rangs 1-3, 2d4° au rang 4+) — IN-VOIE
-    // (path-rank), à traiter avec le lot « scaling des DM dans l'encadré » (cf. Feu grégeois
-    // 2d4°→3d4°→4d4°, etc.). Pas de notation de dé scalant aujourd'hui → reste en prose.
+    // Rendu enrichi (PER-69) : DM [1d4°|2@4 + INT] — le NOMBRE DE DÉS passe à 2d4° au rang 4
+    // de la voie (palier IN-VOIE `|2@4`) ; la phrase « passent à 2d4° au rang 4 » est gardée
+    // en explication. Test d’@AGI (cibles) ; difficulté [10 + INT] (INT du joueur).
     richText:
-      "Des flammes jaillissent des doigts tendus du magicien. Jusqu’à 3 cibles au contact subissent [1d4° + INT] DM, les cibles peuvent faire un test d’@AGI difficulté [10 + INT] pour ne subir que la moitié des DM. Les DM passent à {2d4°} au rang 4.",
+      "Des flammes jaillissent des doigts tendus du magicien. Jusqu’à 3 cibles au contact subissent [1d4°|2@4 + INT] DM, les cibles peuvent faire un test d’@AGI difficulté [10 + INT] pour ne subir que la moitié des DM. Les DM passent à {2d4°} au rang 4.",
     sourcePage: 103,
   },
   {

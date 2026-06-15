@@ -192,6 +192,30 @@ Cas de référence dans `src/data/classes/mages.ts` : `illusions-r3` (Sort illus
 (« le `[#rang]` atteint dans la voie »). À comparer avec `invocation-r3` (Arme de
 mana, « pendant `[=rang]` rounds ») qui reste une quantité.
 
+### e. Dé scalant par rang de voie : `|C@R`
+
+Le **nombre de dés** d'un DM peut grandir avec le rang ATTEINT dans la voie (IN-VOIE).
+On ajoute au dé des **paliers `|C@R`** (« passe à C dés au rang R »), résolus au rang
+de voie courant (`dieCountAtRank`) — utilisable en dé autonome `{…}` comme en formule
+`[…]`. Triés par seuil croissant ; on retient le palier de plus haut seuil atteint.
+
+| Balisage | Rendu (selon le rang de voie) |
+|---|---|
+| `{1d4°\|2@4}` | `1d4°` aux rangs 1-3, `2d4°` au rang 4+ |
+| `[1d4°\|2@4 + INT]` | `1d4° + INT` aux rangs 1-3, `2d4° + INT` au rang 4+ |
+| `{2d4°\|3@4\|4@5}` | `2d4°` (1-3), `3d4°` (rang 4), `4d4°` (rang 5) |
+
+**Règle d'usage.** Pour un DM dont les dés montent par rang DANS CETTE VOIE
+(« les DM passent à 2d4° au rang 4 »), intégrer la montée au **dé principal** via
+`|C@R` (le joueur voit son DM réel) plutôt que de la laisser uniquement en prose. La
+phrase explicative peut être conservée. Cas de référence : `magie-destructrice-r1`
+(Arc de feu, `[1d4°|2@4 + INT]`) et `elixirs-r2` (Feu grégeois, `{2d4°|3@4|4@5}`).
+
+> **Limite (IN-VOIE seulement).** `|C@R` compte le rang de la VOIE HÔTE. Un scaling
+> CROSS-VOIE (« +1 par voie de magicien au rang 4 », ou plafonné par une stat, ex.
+> Projectile de mana) n'est PAS exprimable ainsi → reporté au lot « scaling par
+> paliers de famille » (voir les `TODO(cross-voie)` dans les données).
+
 ## Glossaire des acronymes (auto-détecté, SANS balisage)
 
 Ajout post-PER-90 (population des mages). Source unique : `src/lib/ui/glossary.ts`

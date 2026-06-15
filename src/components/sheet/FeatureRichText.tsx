@@ -11,7 +11,7 @@ import type { Die, Feature } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
 import { DieIcon } from '@/components/DieIcon';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
-import { parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
+import { dieCountAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
 import { splitGlossary } from '@/lib/ui/glossary';
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
@@ -449,12 +449,13 @@ export function FeatureText({ feature, abilities, level, pathRank }: FeatureText
         if (seg.kind === 'abilityRef')
           return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
         if (seg.kind === 'die') {
-          // Dé évolutif → valeur concrète au niveau courant (p. 43).
+          // Dé évolutif → valeur concrète au niveau courant (p. 43) ; nombre de dés
+          // résolu au rang de voie atteint (paliers `countSteps`, ex. 1d4° → 2d4° au rang 4).
           const displayDie = seg.token.evolving ? scalingDie(level!, progression) : seg.token.die;
           return (
             <DiePart
               key={i}
-              count={seg.token.count}
+              count={dieCountAtRank(seg.token, pathRank ?? feature.rank)}
               die={displayDie}
               evolving={seg.token.evolving}
               level={level!}

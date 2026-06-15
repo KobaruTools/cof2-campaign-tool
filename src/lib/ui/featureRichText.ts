@@ -6,7 +6,10 @@
  *
  * Mini-langage (format « balisé », cf. doc de `Feature.richText` et
  * `docs/extraction/rich-text-format.md`) :
- * - `{1d4°}`, `{d6}`, `{2d6}` : un dé (accolades). `°` = dé évolutif (p. 43).
+ * - `{1d4°}`, `{d6}`, `{2d6}` : un dé (accolades). `°` = dé évolutif (p. 43). Le
+ *   nombre de dés peut SCALER par rang de voie via des paliers `|C@R` (le compte
+ *   passe à C au rang R) : `{1d4°|2@4}`, `{2d4°|3@4|4@5}` — utilisable aussi en formule
+ *   (`[1d4°|2@4 + INT]`). Résolu au rang ATTEINT dans la voie (cf. `dieCountAtRank`).
  * - `[FOR + 1]`, `[CHA]`, `[1d4° + CHA]`, `[10 + rang]`, `[niveau × 3]` : une
  *   formule de MODIFICATEUR (crochets) — suite de termes séparés par `+`/`-`.
  *   Un terme est une caractéristique / un dé / un nombre / `rang` / `niveau`,
@@ -48,6 +51,13 @@ export interface DieToken {
   die: Die;
   /** Dé évolutif (« d4° », p. 43) : grandit avec le niveau. */
   evolving: boolean;
+  /**
+   * Paliers de NOMBRE DE DÉS selon le rang ATTEINT dans la voie (IN-VOIE) — ex.
+   * Arc de feu « 1d4° puis 2d4° au rang 4 », Feu grégeois « 2d4°→3d4°→4d4° ». Triés
+   * par seuil croissant ; on retient le palier de plus haut seuil atteint, sinon
+   * `count`. Notation : `1d4°|2@4`, `2d4°|3@4|4@5`. Absent = nombre fixe.
+   */
+  countSteps?: { minRank: number; count: number }[];
 }
 
 /**
@@ -71,7 +81,9 @@ export type RichTextSegment =
   | { kind: 'term'; terms: ExprTerm[]; raw: string }
   | { kind: 'abilityRef'; ability: AbilityId };
 
-const DIE_RE = /^(\d*)d(4|6|8|10|12|20)(°?)$/;
+// `(\d*)d<faces>(°?)` éventuellement suivi de paliers `|C@R` (le nombre de dés passe
+// à C au rang de voie R) : `1d4°|2@4`, `2d4°|3@4|4@5`.
+const DIE_RE = /^(\d*)d(4|6|8|10|12|20)(°?)((?:\|\d+@\d+)*)$/;
 /**
  * Capture un `{…}` (dé), un `[…]` (formule ou quantité) ou un `@CODE` (référence
  * de caractéristique) ; le reste est du texte.
@@ -84,15 +96,40 @@ const TOKEN_RE = new RegExp(`\\{([^}]*)\\}|\\[([^\\]]*)\\]|@(${ABILITY_IDS.join(
  */
 const EXPR_TOKEN_RE = /([+\-×*])|([^\s+\-×*]+)/g;
 
-/** Parse une notation de dé (ex. `1d4°`, `d6`, `2d6`). `null` si invalide. */
+/** Parse une notation de dé (ex. `1d4°`, `d6`, `2d6`, `1d4°|2@4`). `null` si invalide. */
 function parseDie(raw: string): DieToken | null {
   const m = DIE_RE.exec(raw.trim());
   if (!m) return null;
-  return {
+  const token: DieToken = {
     count: m[1] ? Number(m[1]) : 1,
     die: `d${m[2]}` as Die,
     evolving: m[3] === '°',
   };
+  if (m[4]) {
+    const steps = m[4]
+      .split('|')
+      .filter(Boolean)
+      .map((part) => {
+        const [count, rank] = part.split('@');
+        return { minRank: Number(rank), count: Number(count) };
+      })
+      .sort((a, b) => a.minRank - b.minRank);
+    token.countSteps = steps;
+  }
+  return token;
+}
+
+/**
+ * Nombre de dés au rang de voie atteint : palier de plus haut seuil ≤ `rank`,
+ * sinon le `count` de base. Pour un dé à nombre fixe (sans `countSteps`), renvoie
+ * simplement `count`.
+ */
+export function dieCountAtRank(token: DieToken, rank: number): number {
+  let count = token.count;
+  for (const step of token.countSteps ?? []) {
+    if (rank >= step.minRank) count = step.count;
+  }
+  return count;
 }
 
 /** Un atome d'expression (avant réduction en terme). */
@@ -353,14 +390,16 @@ export function resolveExpr(
         const displayDie = term.token.evolving
           ? scalingDie(level, progression)
           : term.token.die;
-        const prefix = term.token.count > 1 ? String(term.token.count) : '';
+        // Nombre de dés résolu au rang de voie atteint (paliers `countSteps`).
+        const count = dieCountAtRank(term.token, rank);
+        const prefix = count > 1 ? String(count) : '';
         return {
           kind: 'die',
           sign: term.sign,
           label: 'Dé',
           symbol: `${prefix}${term.token.die}${term.token.evolving ? '°' : ''}`,
           value: null,
-          die: { count: term.token.count, displayDie, evolving: term.token.evolving },
+          die: { count, displayDie, evolving: term.token.evolving },
         };
       }
     }

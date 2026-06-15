@@ -573,7 +573,9 @@ export interface Feature {
    * `effects`, qui nourrit le moteur). Mini-langage parsé par `parseRichText`
    * (cf. `src/lib/ui/featureRichText.ts` et `docs/extraction/rich-text-format.md`) :
    * - dé : `{1d4°}`, `{d6}`, `{2d6}` (entre accolades, notation du livre ; `°` =
-   *   dé évolutif rendu à sa valeur au niveau courant) ;
+   *   dé évolutif rendu à sa valeur au niveau courant). Le nombre de dés peut SCALER
+   *   par rang de voie via des paliers `|C@R` (« passe à C dés au rang R ») :
+   *   `{1d4°|2@4}`, `{2d4°|3@4|4@5}`, utilisable aussi en formule (`[1d4°|2@4 + INT]`) ;
    * - formule de MODIFICATEUR : `[FOR + 1]`, `[CHA]`, `[1d4° + CHA]`, `[10 + rang]`,
    *   `[niveau × 3]` (entre crochets) — une suite de termes (caractéristique, dé,
    *   nombre, `rang`, `niveau`), chacun éventuellement multiplié par une constante

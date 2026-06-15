@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { progression } from '@/data/progression';
 import type { Abilities } from '@/lib/engine';
-import { parseRichText, resolveExpr } from './featureRichText';
+import { dieCountAtRank, parseRichText, resolveExpr } from './featureRichText';
 
 const abilities: Abilities = { AGI: 1, CON: 2, FOR: 3, PER: 1, CHA: 4, INT: 0, VOL: -1 };
 
@@ -271,5 +271,41 @@ describe('resolveExpr — évaluation', () => {
       { kind: 'quantity' }
     >;
     expect(resolveExpr(murmures.terms, abilities, 1, progression).total).toBe(400);
+  });
+});
+
+describe('dé scalant par rang de voie (|C@R)', () => {
+  it('parse les paliers de nombre de dés', () => {
+    expect(parseRichText('{1d4°|2@4}')).toEqual([
+      { kind: 'die', token: { count: 1, die: 'd4', evolving: true, countSteps: [{ minRank: 4, count: 2 }] } },
+    ]);
+    expect(parseRichText('{2d4°|3@4|4@5}')).toEqual([
+      {
+        kind: 'die',
+        token: { count: 2, die: 'd4', evolving: true, countSteps: [{ minRank: 4, count: 3 }, { minRank: 5, count: 4 }] },
+      },
+    ]);
+  });
+
+  it('dieCountAtRank retient le palier de plus haut seuil atteint', () => {
+    const token = { count: 2, die: 'd4' as const, evolving: true, countSteps: [{ minRank: 4, count: 3 }, { minRank: 5, count: 4 }] };
+    expect(dieCountAtRank(token, 1)).toBe(2);
+    expect(dieCountAtRank(token, 3)).toBe(2);
+    expect(dieCountAtRank(token, 4)).toBe(3);
+    expect(dieCountAtRank(token, 5)).toBe(4);
+    // Dé à nombre fixe (sans paliers) : toujours son count.
+    expect(dieCountAtRank({ count: 1, die: 'd4', evolving: true }, 9)).toBe(1);
+  });
+
+  it('résout le nombre de dés au rang dans une formule (Arc de feu)', () => {
+    const segs = parseRichText('[1d4°|2@4 + INT]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    // rang 3 (5e arg) → 1 dé ; rang 4 → 2 dés.
+    expect(resolveExpr(expr.terms, abilities, 1, progression, 3).parts[0].die?.count).toBe(1);
+    expect(resolveExpr(expr.terms, abilities, 1, progression, 4).parts[0].die?.count).toBe(2);
+  });
+
+  it('un palier mal formé retombe en littéral', () => {
+    expect(parseRichText('{1d4°|2@}')).toEqual([{ kind: 'text', value: '{1d4°|2@}' }]);
   });
 });
