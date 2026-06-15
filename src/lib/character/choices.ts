@@ -15,8 +15,15 @@
  * figé) plutôt que de recevoir un contexte injecté : c'est un helper de contenu,
  * pas le moteur de calcul (qui, lui, reste pur et sans dépendance aux données).
  */
-import { classById, classes, featureById, paths } from '@/data';
-import { ABILITY_IDS, type AbilityId, type Feature, type FeatureChoice, type PathFeatureChoice } from '@/data/schema';
+import { classById, classes, featureById, pathById, paths } from '@/data';
+import {
+  ABILITY_IDS,
+  type AbilityId,
+  type Feature,
+  type FeatureChoice,
+  type OptionFeatureChoice,
+  type PathFeatureChoice,
+} from '@/data/schema';
 import type { Character, FeatureChoiceSelection } from './types';
 
 /** Définitions de choix portées par une capacité (vide si aucune / id inconnu). */
@@ -36,6 +43,46 @@ export function getSelection(
   index: number,
 ): FeatureChoiceSelection {
   return getSelections(character, featureId)[index] ?? null;
+}
+
+/**
+ * Sélections d'un choix `option` RÉPÉTABLE, normalisées en tableau d'ids (ordre
+ * conservé, doublons retirés). Tolère l'ancien format (une chaîne simple → tableau
+ * d'un élément) et l'absence (→ tableau vide). À utiliser pour tout choix `option`,
+ * répétable ou non (un choix simple renvoie alors 0 ou 1 id).
+ */
+export function getOptionSelections(
+  character: Character,
+  featureId: string,
+  index: number,
+): string[] {
+  const sel = getSelection(character, featureId, index);
+  const raw = sel == null ? [] : Array.isArray(sel) ? sel : [sel];
+  return [...new Set(raw.filter((id): id is string => typeof id === 'string'))];
+}
+
+/**
+ * Nombre d'options DISTINCTES qu'un choix `option` octroie au personnage : 1 pour
+ * un choix simple, ou — pour un choix répétable (`repeat`) — le nombre de voies de
+ * profil (des profils visés) dont le personnage a atteint le rang requis. Ex. Golem
+ * supérieur (`by: 'paths-at-rank'`, `classIds: ['forgesort']`, `rank: 5`) : une
+ * amélioration par voie de forgesort au rang 5 (p. 100).
+ */
+export function repeatableChoiceCount(character: Character, choice: OptionFeatureChoice): number {
+  if (!choice.repeat) return 1;
+  const { classIds, rank } = choice.repeat;
+  // Rang le plus haut atteint par le personnage dans chaque voie de profil visée.
+  const maxRankByPath = new Map<string, number>();
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    const path = pathById.get(feature.pathId);
+    if (path?.type !== 'class' || !path.classIds.some((c) => classIds.includes(c))) continue;
+    maxRankByPath.set(path.id, Math.max(maxRankByPath.get(path.id) ?? 0, feature.rank));
+  }
+  let count = 0;
+  for (const max of maxRankByPath.values()) if (max >= rank) count++;
+  return count;
 }
 
 /**
@@ -149,7 +196,8 @@ export function borrowedFeatureIds(character: Character): string[] {
     if (!owned.has(hostId)) continue;
     const defs = featureChoiceDefs(hostId);
     selections.forEach((sel, i) => {
-      if (defs[i]?.kind === 'feature-from-path' && sel && featureById.has(sel)) {
+      // Un emprunt (`feature-from-path`) est toujours une chaîne (jamais répétable).
+      if (defs[i]?.kind === 'feature-from-path' && typeof sel === 'string' && featureById.has(sel)) {
         borrowed.push(sel);
       }
     });
@@ -181,7 +229,11 @@ export function unmadeChoiceIndexes(character: Character, featureId: string): nu
   const selections = getSelections(character, featureId);
   const pending: number[] = [];
   defs.forEach((_, i) => {
-    if (selections[i] == null) pending.push(i);
+    const sel = selections[i] ?? null;
+    // Non fait = aucune valeur, OU (choix répétable) tableau vide. Un choix répétable
+    // PARTIEL (au moins une option retenue) n'est pas « à faire » — le « il en reste »
+    // est une simple indication, pas un manquement (fiche permissive).
+    if (sel == null || (Array.isArray(sel) && sel.length === 0)) pending.push(i);
   });
   return pending;
 }

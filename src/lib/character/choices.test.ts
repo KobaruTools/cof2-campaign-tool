@@ -10,14 +10,16 @@ import {
   eligibleFeaturesForChoice,
   featureChoiceDefs,
   featuresWithUnmadeChoices,
+  getOptionSelections,
   getSelection,
   getSelections,
   hasUnmadeChoice,
   pruneFeatureChoices,
+  repeatableChoiceCount,
   setFeatureChoice,
   unmadeChoiceIndexes,
 } from './choices';
-import type { PathFeatureChoice } from '@/data/schema';
+import type { OptionFeatureChoice, PathFeatureChoice } from '@/data/schema';
 
 function makeCharacter(over: Partial<Character> = {}): Character {
   return {
@@ -171,6 +173,50 @@ describe('état « choix à faire »', () => {
 
   it('une capacité sans choix n’est jamais « à faire »', () => {
     expect(hasUnmadeChoice(makeCharacter(), 'demi-orc-r1')).toBe(false);
+  });
+});
+
+describe('choix `option` répétable (Golem supérieur)', () => {
+  const forgesort = (over: Partial<Character> = {}) =>
+    makeCharacter({
+      classId: 'forgesort',
+      ancestryId: 'nain',
+      ancestryPathId: 'nain',
+      featureIds: ['golem-r5'],
+      ...over,
+    });
+  const golemChoice = featureChoiceDefs('golem-r5')[0] as OptionFeatureChoice;
+
+  it('golem-r5 porte bien un choix `option` répétable', () => {
+    expect(golemChoice.kind).toBe('option');
+    expect(golemChoice.repeat).toEqual({ by: 'paths-at-rank', classIds: ['forgesort'], rank: 5 });
+  });
+
+  it('getOptionSelections normalise chaîne / tableau / absence', () => {
+    expect(getOptionSelections(forgesort({ featureChoices: { 'golem-r5': ['mighty'] } }), 'golem-r5', 0)).toEqual([
+      'mighty',
+    ]);
+    expect(
+      getOptionSelections(forgesort({ featureChoices: { 'golem-r5': [['mighty', 'ballista']] } }), 'golem-r5', 0),
+    ).toEqual(['mighty', 'ballista']);
+    expect(getOptionSelections(forgesort(), 'golem-r5', 0)).toEqual([]);
+  });
+
+  it('repeatableChoiceCount = nombre de voies de forgesort au rang 5', () => {
+    expect(repeatableChoiceCount(forgesort({ featureIds: ['golem-r5'] }), golemChoice)).toBe(1);
+    expect(
+      repeatableChoiceCount(forgesort({ featureIds: ['golem-r5', 'metal-r5', 'runes-r5'] }), golemChoice),
+    ).toBe(3);
+    // Une voie d'une AUTRE famille au rang 5 ne compte pas (rage = barbare).
+    expect(repeatableChoiceCount(forgesort({ featureIds: ['golem-r5', 'rage-r5'] }), golemChoice)).toBe(1);
+  });
+
+  it('un choix répétable est « à faire » si vide, fait dès une option retenue', () => {
+    expect(unmadeChoiceIndexes(forgesort(), 'golem-r5')).toEqual([0]); // null
+    expect(unmadeChoiceIndexes(forgesort({ featureChoices: { 'golem-r5': [[]] } }), 'golem-r5')).toEqual([0]); // []
+    expect(
+      unmadeChoiceIndexes(forgesort({ featureChoices: { 'golem-r5': [['mighty']] } }), 'golem-r5'),
+    ).toEqual([]);
   });
 });
 

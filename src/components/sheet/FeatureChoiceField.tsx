@@ -23,13 +23,15 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { featureById, pathById } from '@/data';
-import type { FeatureChoice } from '@/data/schema';
+import type { FeatureChoice, OptionFeatureChoice } from '@/data/schema';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
   allowedAbilitiesForChoice,
   eligibleFeaturesForChoice,
   featureChoiceDefs,
+  getOptionSelections,
   getSelection,
+  repeatableChoiceCount,
 } from '@/lib/character/choices';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 
@@ -43,7 +45,7 @@ import { ABILITY_NAMES } from '@/lib/ui/ability';
  */
 export function choiceSelectionLabel(
   choice: FeatureChoice,
-  selection: FeatureChoiceSelection,
+  selection: string | null,
   short = false,
 ): string | null {
   if (selection == null) return null;
@@ -72,7 +74,7 @@ export function choiceSelectionLabel(
  */
 export function choiceSelectionComplement(
   choice: FeatureChoice,
-  selection: FeatureChoiceSelection,
+  selection: string | null,
 ): string | null {
   if (selection == null || choice.kind !== 'option') return null;
   const label = choice.options.find((o) => o.id === selection)?.label;
@@ -98,7 +100,11 @@ function ChoiceControl({
   onChange: (index: number, value: FeatureChoiceSelection) => void;
 }) {
   const selection = getSelection(character, featureId, index);
-  const missing = selection == null;
+  // Contrôles SIMPLES (ability / option simple / feature-from-path) : la sélection est
+  // une chaîne|null. Un choix `option` répétable (géré plus bas) lit ses ids via
+  // getOptionSelections — on neutralise donc un éventuel tableau ici.
+  const single = typeof selection === 'string' ? selection : null;
+  const missing = single == null;
 
   if (choice.kind === 'ability') {
     const allowed = allowedAbilitiesForChoice(choice);
@@ -108,7 +114,7 @@ function ChoiceControl({
         size="small"
         fullWidth
         label={choice.prompt}
-        value={selection ?? ''}
+        value={single ?? ''}
         error={blocking && missing}
         helperText={blocking && missing ? 'Choix obligatoire' : undefined}
         onChange={(e) => onChange(index, e.target.value || null)}
@@ -125,6 +131,38 @@ function ChoiceControl({
     );
   }
 
+  // Choix `option` RÉPÉTABLE : plusieurs options distinctes (Autocomplete multiple).
+  // Le nombre conseillé dépend de la progression (une par voie au rang requis).
+  if (choice.kind === 'option' && choice.repeat) {
+    const ids = getOptionSelections(character, featureId, index);
+    const allowed = repeatableChoiceCount(character, choice);
+    const over = ids.length > allowed;
+    const empty = ids.length === 0;
+    const help = blocking && empty
+      ? 'Choix obligatoire'
+      : `${ids.length}/${allowed} retenue(s) — une par voie au rang ${choice.repeat.rank}`;
+    return (
+      <Autocomplete
+        multiple
+        disableCloseOnSelect
+        size="small"
+        options={choice.options.map((o) => o.id)}
+        getOptionLabel={(id) => choice.options.find((o) => o.id === id)?.label ?? id}
+        value={ids}
+        isOptionEqualToValue={(opt, val) => opt === val}
+        onChange={(_, value) => onChange(index, value)}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label={choice.prompt}
+            error={(blocking && empty) || over}
+            helperText={over ? `${help} (au-delà du nombre conseillé)` : help}
+          />
+        )}
+      />
+    );
+  }
+
   if (choice.kind === 'option') {
     return (
       <TextField
@@ -132,7 +170,7 @@ function ChoiceControl({
         size="small"
         fullWidth
         label={choice.prompt}
-        value={selection ?? ''}
+        value={single ?? ''}
         error={blocking && missing}
         helperText={blocking && missing ? 'Choix obligatoire' : undefined}
         onChange={(e) => onChange(index, e.target.value || null)}
@@ -163,7 +201,7 @@ function ChoiceControl({
       options={eligible.map((f) => f.id)}
       groupBy={(id) => pathById.get(featureById.get(id)?.pathId ?? '')?.name ?? ''}
       getOptionLabel={(id) => optionLabel(id)}
-      value={selection}
+      value={single}
       isOptionEqualToValue={(opt, val) => opt === val}
       onChange={(_, value) => onChange(index, value ?? null)}
       renderInput={(params) => (
@@ -175,6 +213,105 @@ function ChoiceControl({
         />
       )}
     />
+  );
+}
+
+/** Style compact partagé des chips de choix (vue colonne, blocs étroits). */
+const COMPACT_CHIP_SX = {
+  maxWidth: '100%',
+  height: 18,
+  '& .MuiChip-label': { px: 0.75, fontSize: '0.62rem', fontWeight: 700 },
+} as const;
+
+/**
+ * Affichage (lecture seule) d'un choix `option` RÉPÉTABLE : un badge par option
+ * retenue (nom court ; détail entre parenthèses à côté en vue liste) + un compteur
+ * « retenues/autorisées ». « Choix à faire » si rien n'est encore retenu.
+ */
+function RepeatOptionDisplay({
+  choice,
+  character,
+  featureId,
+  index,
+  compact,
+}: {
+  choice: OptionFeatureChoice;
+  character: Character;
+  featureId: string;
+  index: number;
+  compact: boolean;
+}) {
+  const ids = getOptionSelections(character, featureId, index);
+  const allowed = repeatableChoiceCount(character, choice);
+  const counter = `${ids.length}/${allowed}`;
+
+  if (ids.length === 0) {
+    const chip = (
+      <Chip
+        label="Choix à faire"
+        size="small"
+        color="warning"
+        variant="outlined"
+        sx={compact ? COMPACT_CHIP_SX : undefined}
+      />
+    );
+    if (compact) return <Box>{chip}</Box>;
+    return (
+      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+          {choice.prompt} ({counter}) :
+        </Typography>
+        {chip}
+      </Stack>
+    );
+  }
+
+  if (compact) {
+    return (
+      <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+        {ids.map((id) => (
+          <Chip
+            key={id}
+            label={choiceSelectionLabel(choice, id, true)}
+            size="small"
+            variant="outlined"
+            color="primary"
+            sx={COMPACT_CHIP_SX}
+          />
+        ))}
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+          {counter}
+        </Typography>
+      </Stack>
+    );
+  }
+
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+        {choice.prompt} ({counter}) :
+      </Typography>
+      <Stack spacing={0.25} sx={{ mt: 0.25 }}>
+        {ids.map((id) => {
+          const complement = choiceSelectionComplement(choice, id);
+          return (
+            <Stack key={id} direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+              <Chip
+                label={choiceSelectionLabel(choice, id, true)}
+                size="small"
+                variant="outlined"
+                color="primary"
+              />
+              {complement && (
+                <Typography variant="caption" color="text.secondary">
+                  {complement}
+                </Typography>
+              )}
+            </Stack>
+          );
+        })}
+      </Stack>
+    </Box>
   );
 }
 
@@ -216,25 +353,36 @@ export function FeatureChoiceField({
     return (
       <Stack spacing={0.5}>
         {defs.map((choice, i) => {
-          const selection = getSelection(character, featureId, i);
+          // Choix `option` RÉPÉTABLE : plusieurs badges (un par option retenue) + compteur.
+          if (choice.kind === 'option' && choice.repeat) {
+            return (
+              <RepeatOptionDisplay
+                key={i}
+                choice={choice}
+                character={character}
+                featureId={featureId}
+                index={i}
+                compact={compact}
+              />
+            );
+          }
+          const raw = getSelection(character, featureId, i);
+          // Hors choix répétable, la sélection est une chaîne simple ; on la normalise
+          // pour les helpers (un éventuel tableau se réduit à sa première valeur).
+          const selection = Array.isArray(raw) ? (raw[0] ?? null) : raw;
           // Le chip ne porte que le nom court d'une option (le complément entre
           // parenthèses est sorti à côté). Une capacité empruntée garde, elle, son
           // libellé complet « voie — rang — nom » en mode long (pas de complément).
           const shortInChip = compact || choice.kind === 'option';
           const label = choiceSelectionLabel(choice, selection, shortInChip);
           const complement = compact ? null : choiceSelectionComplement(choice, selection);
-          const compactChipSx = {
-            maxWidth: '100%',
-            height: 18,
-            '& .MuiChip-label': { px: 0.75, fontSize: '0.62rem', fontWeight: 700 },
-          };
           const valueChip = label ? (
             <Chip
               label={label}
               size="small"
               variant="outlined"
               color="primary"
-              sx={compact ? compactChipSx : undefined}
+              sx={compact ? COMPACT_CHIP_SX : undefined}
             />
           ) : (
             <Chip
@@ -242,7 +390,7 @@ export function FeatureChoiceField({
               size="small"
               color="warning"
               variant="outlined"
-              sx={compact ? compactChipSx : undefined}
+              sx={compact ? COMPACT_CHIP_SX : undefined}
             />
           );
           if (compact) return <Box key={i}>{valueChip}</Box>;

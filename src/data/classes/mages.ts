@@ -1090,15 +1090,15 @@ export const mageFeatures: Feature[] = [
     // +{1d4°} (stats du GOLEM → pas d’`effects` joueur).
     richText:
       "Le forgesort peut améliorer son golem en choisissant une option parmi les suivantes. Le joueur peut choisir une option différente supplémentaire à chaque fois qu’il atteint le rang 5 dans une voie de forgesort.\n Armure : +5 en DEF\n Forme de félin : +3 en AGI et en DEF, dé bonus en AGI\n Baliste : portée 20 m, [1d4° + AGI] DM\n Grande taille : +2 PV par niveau et +1 en FOR et DM\n Vol : des « sauts » de 40 m en action limitée\n Cerveau amélioré : +2 en INT, PER et CHA, doué de parole\n Puissant : +2 en FOR et aux DM, dé bonus en FOR\n Arme à deux mains : +{1d4°} aux DM au contact",
-    // Choix DÉFINITIF d’une amélioration de golem (décision propriétaire PER-69 : on
-    // l’extrait comme choix). Une amélioration de plus est gagnée à chaque rang 5 atteint
-    // dans une voie de forgesort ; la sélection répétée n’est pas encore couverte par le
-    // schéma mono-sélection (PER-66) → un seul `OptionFeatureChoice` ici, multiplicité à
-    // gérer côté wizard/level-up (TODO suivi).
+    // Choix RÉPÉTABLE d’amélioration(s) de golem (p. 100) : une amélioration distincte
+    // par voie de forgesort au rang 5 (la voie du golem comprise) → `repeat`. Le moteur
+    // de choix résout le nombre autorisé depuis la progression (`repeatableChoiceCount`)
+    // et la sélection est un tableau d’ids d’options.
     choices: [
       {
         kind: 'option',
-        prompt: 'Amélioration du golem',
+        prompt: 'Amélioration(s) du golem',
+        repeat: { by: 'paths-at-rank', classIds: ['forgesort'], rank: 5 },
         options: [
           // Convention « Nom (détail) » (comme Diversité, voie de l'humain) : le rendu
           // n'affiche que le NOM dans le badge et sort le détail entre parenthèses à

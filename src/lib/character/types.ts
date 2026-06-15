@@ -38,15 +38,18 @@ export const SCHEMA_VERSION = 6;
 export type { DerivedStatId };
 
 /**
- * Valeur d'un choix retenu pour une capacité (PER-66). Toujours sérialisable en
- * une chaîne, dont le SENS dépend du `kind` du choix correspondant côté
- * définition (`Feature.choices`, aligné par position) :
+ * Valeur d'un choix retenu pour une capacité (PER-66). Sérialisable, son SENS
+ * dépend du `kind` du choix correspondant côté définition (`Feature.choices`,
+ * aligné par position) :
  *  - `ability` → un `AbilityId` (`'FOR'`, `'AGI'`…) ;
  *  - `feature-from-path` → l'`id` de la capacité empruntée (`'pourfendeur-r1'`) ;
- *  - `option` → l'`id` de l'option retenue (`FeatureChoiceOption.id`).
- * `null` = choix pas encore fait (état explicite, à signaler dans l'UI).
+ *  - `option` → l'`id` de l'option retenue (`FeatureChoiceOption.id`), ou — pour un
+ *    choix `option` RÉPÉTABLE (`OptionFeatureChoice.repeat`, ex. Golem supérieur) —
+ *    un TABLEAU d'ids d'options distinctes.
+ * `null` = choix pas encore fait (état explicite, à signaler dans l'UI). Pour un
+ * choix répétable, un tableau vide vaut « rien choisi ».
  */
-export type FeatureChoiceSelection = string | null;
+export type FeatureChoiceSelection = string | string[] | null;
 
 export type { FeatureChoice };
 

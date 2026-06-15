@@ -523,10 +523,33 @@ export interface FeatureChoiceOption {
   label: string;
 }
 
+/**
+ * Détermine COMBIEN d'options distinctes un choix répétable octroie. Une seule
+ * variante à ce jour : autant que de voies (de profils donnés) dont le personnage
+ * a atteint un rang — ex. Golem supérieur : « une amélioration de plus à chaque
+ * fois qu'il atteint le rang 5 dans une voie de forgesort » (p. 100). Le compte
+ * est DYNAMIQUE (dépend de la progression) ; il est résolu par le moteur de choix
+ * (`repeatableChoiceCount`, `src/lib/character/choices.ts`).
+ */
+export interface ChoiceRepeat {
+  by: 'paths-at-rank';
+  /** Profils dont les voies de profil sont comptées (ex. `['forgesort']`). */
+  classIds: string[];
+  /** Rang à atteindre dans une voie pour octroyer une sélection (ex. 5). */
+  rank: number;
+}
+
 /** Choix d'une option dans une liste énumérée explicitement. */
 export interface OptionFeatureChoice extends FeatureChoiceBase {
   kind: 'option';
   options: FeatureChoiceOption[];
+  /**
+   * Choix RÉPÉTABLE : le joueur retient PLUSIEURS options DISTINCTES, le nombre
+   * autorisé étant déterminé par la progression (`repeat`). Absent = choix simple
+   * (une seule option). La valeur persistée à cette position est alors un TABLEAU
+   * d'ids d'options (cf. `FeatureChoiceSelection`).
+   */
+  repeat?: ChoiceRepeat;
 }
 
 export interface Feature {

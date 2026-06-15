@@ -4,7 +4,7 @@
   "name": "Test — Forgesort (nain)",
   "identity": {
     "sex": "male",
-    "description": "PER-69 — toutes les voies de forgesort au rang 5. À vérifier : choix Golem supérieur (golem-r5, option « Puissant »), interrupteur Magnétisme (metal-r3, +2 DEF conditionnel — pré-activé), Runes de défense (runes-r1, +2/+3/+4 DEF par rang : ici +4), Endurer (metal-r5, +CON aux PM), coûts mana des sorts, profils de golem (richText)."
+    "description": "PER-69 — toutes les voies de forgesort au rang 5. À vérifier : choix Golem supérieur RÉPÉTABLE (golem-r5 : 3 améliorations choisies sur 5 — une par voie de forgesort au rang 5), interrupteur Magnétisme (metal-r3, +2 DEF conditionnel — pré-activé), Runes de défense (runes-r1, +2/+3/+4 DEF par rang : ici +4), Endurer (metal-r5, +CON aux PM), coûts mana des sorts, profils de golem (richText)."
   },
   "ancestryId": "nain",
   "classId": "forgesort",
@@ -63,7 +63,7 @@
   ],
   "featureChoices": {
     "golem-r5": [
-      "mighty"
+      ["mighty", "ballista", "feline-form"]
     ]
   },
   "effectToggles": {
@@ -84,7 +84,7 @@
   ],
   "equipment": [],
   "overrides": {},
-  "notes": "PER-69 — toutes les voies de forgesort au rang 5. À vérifier : choix Golem supérieur (golem-r5, option « Puissant »), interrupteur Magnétisme (metal-r3, +2 DEF conditionnel — pré-activé), Runes de défense (runes-r1, +2/+3/+4 DEF par rang : ici +4), Endurer (metal-r5, +CON aux PM), coûts mana des sorts, profils de golem (richText).",
+  "notes": "PER-69 — toutes les voies de forgesort au rang 5. À vérifier : choix Golem supérieur RÉPÉTABLE (golem-r5 : 3 améliorations choisies sur 5 — une par voie de forgesort au rang 5), interrupteur Magnétisme (metal-r3, +2 DEF conditionnel — pré-activé), Runes de défense (runes-r1, +2/+3/+4 DEF par rang : ici +4), Endurer (metal-r5, +CON aux PM), coûts mana des sorts, profils de golem (richText).",
   "createdAt": "2026-06-15T00:00:00.000Z",
   "updatedAt": "2026-06-15T00:00:00.000Z"
 }
