@@ -136,6 +136,7 @@ export default function HomePage() {
 
   return (
     <>
+      <title>Personnages — Éditeur de personnage CO2</title>
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>

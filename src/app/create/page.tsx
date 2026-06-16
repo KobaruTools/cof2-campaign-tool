@@ -135,6 +135,7 @@ export default function CreatePage() {
 
   return (
     <>
+      <title>Création de personnage — Éditeur de personnage CO2</title>
       <AppBar position="static">
         <Toolbar>
           <IconButton edge="start" color="inherit" onClick={() => router.push('/')} sx={{ mr: 1 }}>

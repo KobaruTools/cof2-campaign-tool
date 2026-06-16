@@ -123,6 +123,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   if (!character) {
     return (
       <Container maxWidth="sm" sx={{ py: 8, textAlign: 'center' }}>
+        <title>Personnage introuvable — Éditeur de personnage CO2</title>
         <Typography variant="h6" gutterBottom>
           Personnage introuvable
         </Typography>
@@ -227,6 +228,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
+      {/* Titre de l'onglet = nom du personnage. Rendu déclaratif (React 19 le
+          hisse dans le <head>) plutôt que document.title dans un effet : sinon
+          la métadonnée en streaming de Next réécrase le titre après hydratation
+          (clignotement nom → titre de base). Réactif : suit l'édition du nom. */}
+      <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
       <AppBar position="static">
         <Toolbar>
           <IconButton edge="start" color="inherit" onClick={() => router.push('/')} sx={{ mr: 1 }}>
