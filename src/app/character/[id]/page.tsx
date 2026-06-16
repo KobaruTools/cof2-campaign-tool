@@ -207,7 +207,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
   const derivedInput: DerivedInput | null = family
     ? {
-        abilities: character.abilities,
+        // Caractéristiques EFFECTIVES (saisie + modificateurs permanents de
+        // capacités, ex. Endurer +1 CON) — c'est la vraie carac qui alimente les
+        // stats dérivées (PV, dés de récup., DEF, attaques…). Cf. `effectiveAbilities`.
+        abilities: effectCtx.abilities,
         level: character.level,
         family,
         defenseEquipment: defenseFromEquipment(character.equipment),

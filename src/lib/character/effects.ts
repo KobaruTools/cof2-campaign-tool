@@ -27,7 +27,8 @@ import type {
   FeatureEffect,
 } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
-import type { Character } from './types';
+import { effectiveFeatureIdsForMods } from './choices';
+import type { Character, FeatureChoiceSelection } from './types';
 
 /**
  * Contexte de résolution des effets : tout ce qui ne se déduit pas du seul
@@ -45,14 +46,47 @@ export interface EffectContext {
    * aligné sur `feature.effects[i]`. Absent → état par défaut de l'effet.
    */
   toggles: Record<string, boolean[]>;
+  /**
+   * Options retenues (cf. `Character.featureChoices`) : `featureChoices[id][i]`
+   * aligné sur `feature.choices[i]`. Sert aux effets PILOTÉS PAR UN CHOIX, comme
+   * l'échange de caractéristique pour les PV (`hpAbilitySwapSources`). Optionnel :
+   * absent → aucun choix pris en compte (appels « catalogue seul »).
+   */
+  featureChoices?: Record<string, FeatureChoiceSelection[]>;
 }
 
-/** Construit le contexte d'effets d'un personnage. */
+/**
+ * Caractéristiques EFFECTIVES = valeur saisie (base + peuple) + modificateurs
+ * PERMANENTS apportés par les capacités (`ability-bonus`, ex. Endurer/metal-r5 :
+ * +1 CON). C'est la valeur réelle de la caractéristique du personnage (celle que
+ * la fiche affiche comme « total »), donc celle qui doit alimenter les statistiques
+ * dérivées (PV, dés de récupération, DEF, attaques…) et les effets scalants.
+ *
+ * Les capacités sont prises sur le même périmètre que les modificateurs dérivés
+ * (`effectiveFeatureIdsForMods` : acquises + empruntées par choix), pour rester
+ * cohérent avec l'inventaire affiché par `abilityModSources`.
+ */
+export function effectiveAbilities(character: Character): Record<AbilityId, number> {
+  const mods = abilityModsFromFeatures(effectiveFeatureIdsForMods(character));
+  const out: Record<AbilityId, number> = { ...character.abilities };
+  for (const [ability, value] of Object.entries(mods) as [AbilityId, number][]) {
+    out[ability] = (out[ability] ?? 0) + value;
+  }
+  return out;
+}
+
+/**
+ * Construit le contexte d'effets d'un personnage. Les caractéristiques exposées
+ * sont EFFECTIVES (cf. `effectiveAbilities`) : les valeurs scalantes (« PV += FOR »)
+ * et l'échange de carac des PV (`hpAbilitySwapSources`) s'appuient sur la vraie
+ * caractéristique, modificateurs permanents de capacités inclus.
+ */
 export function effectContext(character: Character): EffectContext {
   return {
     level: character.level,
-    abilities: character.abilities,
+    abilities: effectiveAbilities(character),
     toggles: character.effectToggles,
+    featureChoices: character.featureChoices,
   };
 }
 
@@ -189,7 +223,49 @@ export function modsFromFeatures(featureIds: string[], ctx?: EffectContext): Der
       }
     });
   }
+  // Échange de caractéristique pour les PV piloté par un choix (ex. Grosse tête) :
+  // s'agrège au modificateur `maxHp` au même titre qu'un bonus de capacité.
+  for (const s of hpAbilitySwapSources(featureIds, ctx)) {
+    mods.maxHp = (mods.maxHp ?? 0) + s.value;
+  }
   return mods;
+}
+
+/**
+ * Échange de caractéristique pour les PV octroyé par une OPTION retenue (champ
+ * `hpFromAbility`). La règle (ex. Grosse tête, golem-r1, p. 100) remplace la
+ * contribution de CON d'UN niveau par celle d'une autre caractéristique. Comme la
+ * CON s'applique uniformément et rétroactivement à chaque niveau (cf. `maxHp`),
+ * l'effet net est CONSTANT quel que soit le niveau de la prise : `+(carac − CON)`,
+ * appliqué une seule fois — d'où l'absence d'historique du niveau de prise.
+ *
+ * Lit les options retenues (`ctx.featureChoices`, aligné par position sur
+ * `Feature.choices`). Sans `ctx` (catalogue seul) ou sans choix : aucune source
+ * (la valeur dépend des caractéristiques courantes et du choix du joueur). Un
+ * échange net nul (carac = CON) est omis pour ne pas afficher de terme « +0 ».
+ */
+export function hpAbilitySwapSources(
+  featureIds: string[],
+  ctx?: EffectContext,
+): FeatureModSource[] {
+  if (!ctx?.featureChoices) return [];
+  const out: FeatureModSource[] = [];
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.choices) continue;
+    const selections = ctx.featureChoices[id] ?? [];
+    feature.choices.forEach((choice, i) => {
+      if (choice.kind !== 'option') return;
+      const sel = selections[i];
+      const chosenIds = Array.isArray(sel) ? sel : sel ? [sel] : [];
+      for (const opt of choice.options) {
+        if (!opt.hpFromAbility || !chosenIds.includes(opt.id)) continue;
+        const delta = ctx.abilities[opt.hpFromAbility] - ctx.abilities.CON;
+        if (delta !== 0) out.push({ featureId: id, name: feature.name, value: delta });
+      }
+    });
+  }
+  return out;
 }
 
 /** Contribution d'une capacité précise à un modificateur de stat dérivée. */
@@ -226,6 +302,11 @@ export function featureModSources(
         });
       }
     });
+  }
+  // Même source que `modsFromFeatures` pour l'échange de carac des PV : détaillé
+  // sous « Capacités / divers » des PV (le total de la ligne vient de `mods.maxHp`).
+  for (const s of hpAbilitySwapSources(featureIds, ctx)) {
+    (sources.maxHp ??= []).push(s);
   }
   return sources;
 }

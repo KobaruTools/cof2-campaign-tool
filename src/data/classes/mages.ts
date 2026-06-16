@@ -1045,9 +1045,9 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : « rang + 2 » modificateur aux tests (PER-89).
     // « il peut ajouter son INT à ses PV au lieu de la CON » : DÉCISION du joueur à la prise
     // de la capacité → modélisée en CHOIX d'option (capté, et signalé « non pris » par l'UI,
-    // cf. `hasUnmadeChoice`). L'APPLICATION au calcul des PV (un REMPLACEMENT de la
-    // contribution de CON, pas un bonus) relève des stats avancées à venir : la donnée du
-    // choix est posée dès maintenant, le moteur ne la consomme pas encore.
+    // cf. `hasUnmadeChoice`). L'APPLICATION au calcul des PV est un REMPLACEMENT de la
+    // contribution de CON (pas un bonus) : l'option `pv-from-int` porte `hpFromAbility: 'INT'`,
+    // consommé par `hpAbilitySwapSources` → effet net +(INT − CON) appliqué une seule fois.
     richText:
       "Le forgesort remplace la force brutale par un peu de réflexion. Il peut effectuer un test d’INT au lieu d’un test de FOR (par exemple, il utilise un levier pour déplacer une lourde charge). De plus, au niveau où il acquiert cette capacité, il peut ajouter son INT à ses PV au lieu de la CON. Il ajoute son [rang + 2] à tous les tests de bricolage ou de science.",
     choices: [
@@ -1056,7 +1056,7 @@ export const mageFeatures: Feature[] = [
         prompt: 'Caractéristique utilisée pour les PV (à la prise de cette capacité)',
         options: [
           { id: 'pv-from-con', label: 'PV basés sur la CON (par défaut)' },
-          { id: 'pv-from-int', label: 'PV basés sur l’INT (au lieu de la CON)' },
+          { id: 'pv-from-int', label: 'PV basés sur l’INT (au lieu de la CON)', hpFromAbility: 'INT' },
         ],
       },
     ],

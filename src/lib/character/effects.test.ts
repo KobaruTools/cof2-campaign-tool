@@ -9,7 +9,9 @@ import {
   conditionalEffectBonuses,
   creatureBonusDiceForPath,
   effectContext,
+  effectiveAbilities,
   featureModSources,
+  hpAbilitySwapSources,
   isEffectActive,
   modsFromFeatures,
   pathRanksFromFeatures,
@@ -28,7 +30,13 @@ const ctx = (over: Partial<EffectContext> = {}): EffectContext => ({
 
 /** Personnage minimal pour tester les helpers d'interrupteurs (lecture seule). */
 const charWith = (toggles: Record<string, boolean[]>): Character =>
-  ({ level: 5, abilities: ctx().abilities, featureIds: [] as string[], effectToggles: toggles }) as Character;
+  ({
+    level: 5,
+    abilities: ctx().abilities,
+    featureIds: [] as string[],
+    effectToggles: toggles,
+    featureChoices: {},
+  }) as Character;
 
 describe('modsFromFeatures — bonus plats constants (PER-63)', () => {
   it('aucune capacité → sac vide', () => {
@@ -201,6 +209,7 @@ describe('effectContext', () => {
       level: 5,
       abilities: c.abilities,
       toggles: { 'rage-r3': [true] },
+      featureChoices: {},
     });
   });
 });
@@ -252,5 +261,95 @@ describe('creatureBonusDiceForPath — dés bonus du golem selon les options ret
 
   it('une option sans dé bonus → aucun dé', () => {
     expect(creatureBonusDiceForPath('golem', golemChar(['armor']))).toEqual(new Set());
+  });
+});
+
+describe('hpAbilitySwapSources — Grosse tête (golem-r1) : PV basés sur l’INT au lieu de la CON', () => {
+  // Contexte de test : INT 4, CON 1 → échange net +(4 − 1) = +3 PV, une seule fois.
+  const swapCtx = (over: Partial<EffectContext> = {}): EffectContext =>
+    ctx({
+      abilities: { AGI: 0, CON: 1, FOR: 0, PER: 0, CHA: 0, INT: 4, VOL: 0 } as Record<AbilityId, number>,
+      ...over,
+    });
+
+  it('sans contexte (catalogue seul) → aucune source (dépend des caracs et du choix)', () => {
+    expect(hpAbilitySwapSources(['golem-r1'])).toEqual([]);
+  });
+
+  it("option par défaut (PV sur la CON) → aucun échange", () => {
+    const c = swapCtx({ featureChoices: { 'golem-r1': ['pv-from-con'] } });
+    expect(hpAbilitySwapSources(['golem-r1'], c)).toEqual([]);
+  });
+
+  it("choix pas encore fait (null) → aucun échange", () => {
+    const c = swapCtx({ featureChoices: { 'golem-r1': [null] } });
+    expect(hpAbilitySwapSources(['golem-r1'], c)).toEqual([]);
+  });
+
+  it("PV sur l’INT → échange net +(INT − CON), une seule fois", () => {
+    const c = swapCtx({ featureChoices: { 'golem-r1': ['pv-from-int'] } });
+    expect(hpAbilitySwapSources(['golem-r1'], c)).toEqual([
+      { featureId: 'golem-r1', name: 'Grosse tête', value: 3 },
+    ]);
+  });
+
+  it('INT inférieure à la CON → remplacement appliqué tel quel (delta négatif)', () => {
+    const c = swapCtx({
+      abilities: { AGI: 0, CON: 4, FOR: 0, PER: 0, CHA: 0, INT: 1, VOL: 0 } as Record<AbilityId, number>,
+      featureChoices: { 'golem-r1': ['pv-from-int'] },
+    });
+    expect(hpAbilitySwapSources(['golem-r1'], c)).toEqual([
+      { featureId: 'golem-r1', name: 'Grosse tête', value: -3 },
+    ]);
+  });
+
+  it('INT égale à la CON → échange net nul, source omise (pas de terme « +0 »)', () => {
+    const c = ctx({
+      abilities: { AGI: 0, CON: 2, FOR: 0, PER: 0, CHA: 0, INT: 2, VOL: 0 } as Record<AbilityId, number>,
+      featureChoices: { 'golem-r1': ['pv-from-int'] },
+    });
+    expect(hpAbilitySwapSources(['golem-r1'], c)).toEqual([]);
+  });
+
+  it("s'agrège au modificateur maxHp de `modsFromFeatures`", () => {
+    const c = swapCtx({ featureChoices: { 'golem-r1': ['pv-from-int'] } });
+    expect(modsFromFeatures(['golem-r1'], c)).toEqual({ maxHp: 3 });
+  });
+
+  it("apparaît dans `featureModSources` sous la stat maxHp (détail de l'infobulle)", () => {
+    const c = swapCtx({ featureChoices: { 'golem-r1': ['pv-from-int'] } });
+    expect(featureModSources(['golem-r1'], c).maxHp).toEqual([
+      { featureId: 'golem-r1', name: 'Grosse tête', value: 3 },
+    ]);
+  });
+});
+
+describe('effectiveAbilities — saisie + modificateurs permanents de capacités', () => {
+  const charWithFeatures = (
+    abilities: Record<AbilityId, number>,
+    featureIds: string[],
+    featureChoices: Record<string, (string | string[] | null)[]> = {},
+  ): Character => ({ level: 5, abilities, featureIds, featureChoices, effectToggles: {} }) as Character;
+
+  const ABILITIES_3 = { AGI: 0, CON: 3, FOR: 0, PER: 0, CHA: 0, INT: 3, VOL: 0 } as Record<AbilityId, number>;
+
+  it('sans capacité à bonus → caractéristiques inchangées', () => {
+    expect(effectiveAbilities(charWithFeatures(ABILITIES_3, ['air-r1']))).toEqual(ABILITIES_3);
+  });
+
+  it('replie le +1 CON permanent (Endurer/metal-r5) sur la saisie', () => {
+    const eff = effectiveAbilities(charWithFeatures(ABILITIES_3, ['metal-r5']));
+    expect(eff.CON).toBe(4);
+    expect(eff.INT).toBe(3);
+  });
+
+  it('effectContext expose les caractéristiques effectives', () => {
+    expect(effectContext(charWithFeatures(ABILITIES_3, ['metal-r5'])).abilities.CON).toBe(4);
+  });
+
+  it("scénario test-forgesort-nain : Endurer (+1 CON) rend l'échange Grosse tête→INT non nul", () => {
+    // Saisie CON 3 / INT 3 ; Endurer porte la CON effective à 4 → échange = INT 3 − CON 4 = −1.
+    const c = charWithFeatures(ABILITIES_3, ['metal-r5', 'golem-r1'], { 'golem-r1': ['pv-from-int'] });
+    expect(modsFromFeatures(['metal-r5', 'golem-r1'], effectContext(c)).maxHp).toBe(-1);
   });
 });

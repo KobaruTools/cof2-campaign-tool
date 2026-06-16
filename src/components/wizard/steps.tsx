@@ -67,7 +67,7 @@ import {
   type WizardDraft,
 } from '@/lib/character/wizard';
 import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
-import { effectContext, modsFromFeatures } from '@/lib/character/effects';
+import { effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
 import {
   effectiveFeatureIdsForMods,
   featureChoiceDefs,
@@ -1377,7 +1377,9 @@ export function SummaryStep({ draft, patch }: StepProps) {
   const spellCount = featureIds.filter((id) => featureById.get(id)?.isSpell).length;
   const preview = materializeDraft(draft, ancestry, draft.createdAt);
   const derivedInput = {
-    abilities,
+    // Caractéristiques effectives (saisie + peuple + modificateurs permanents de
+    // capacités du niveau 1) — cohérent avec la fiche. Cf. `effectiveAbilities`.
+    abilities: effectiveAbilities(preview),
     level: 1,
     family,
     defenseEquipment: defenseFromEquipment(draft.equipment),

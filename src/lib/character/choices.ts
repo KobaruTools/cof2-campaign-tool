@@ -192,7 +192,7 @@ export function eligibleFeaturesForChoice(
 export function borrowedFeatureIds(character: Character): string[] {
   const owned = new Set(character.featureIds);
   const borrowed: string[] = [];
-  for (const [hostId, selections] of Object.entries(character.featureChoices)) {
+  for (const [hostId, selections] of Object.entries(character.featureChoices ?? {})) {
     if (!owned.has(hostId)) continue;
     const defs = featureChoiceDefs(hostId);
     selections.forEach((sel, i) => {

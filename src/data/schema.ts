@@ -708,6 +708,16 @@ export interface FeatureChoiceOption {
    * (`CreatureStatBlock`). Voir `creatureBonusDiceForPath`.
    */
   creatureAbilityBonusDie?: AbilityId;
+  /**
+   * Caractéristique utilisée pour les PV À LA PLACE de la CON lorsque cette option
+   * est retenue (ex. Grosse tête, golem-r1 : « il peut ajouter son INT à ses PV au
+   * lieu de la CON », p. 100). La règle remplace la contribution de CON d'UN seul
+   * niveau (celui de la prise) par celle de cette caractéristique ; comme la CON
+   * s'applique uniformément et rétroactivement à chaque niveau (cf. `maxHp`),
+   * l'effet net est constant quel que soit le niveau de la prise : `+(carac − CON)`
+   * appliqué une seule fois. Voir `hpAbilitySwapSources`.
+   */
+  hpFromAbility?: AbilityId;
 }
 
 /**
