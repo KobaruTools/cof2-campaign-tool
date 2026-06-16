@@ -245,6 +245,32 @@ poser par le populateur**. Trois catégories :
 Casse **SENSIBLE** (majuscules ; « def » en minuscules dans une phrase n'est pas un
 acronyme). Ensemble **fermé et non ambigu**.
 
+### Notions de jeu en LOCUTIONS (auto-détectées, SANS balisage)
+
+Ajout post-PER-90 (recettage mages). En plus des acronymes, certaines **locutions**
+de règle sont reconnues automatiquement dans le texte littéral (source :
+`GAME_TERMS` dans `glossary.ts`, fonction `splitGameTerms`, rendu par `RichTextRun`).
+Contrairement aux acronymes, elles sont **insensibles à la casse** (un « Test » en
+début de phrase compte) et la casse d'origine est conservée. Deux catégories :
+
+- **Action de jet** (`action`) → **gras**, sans info-bulle : `test`, `tests`,
+  `test opposé`, `tests opposés` (le pluriel et la locution longue sont captés ; la
+  plus longue prime — « test opposé » ne se découpe pas en « test »).
+- **Jet d'attaque** (`attack`) → **puce de stat dérivée** (ambre, comme DEF/PV) avec
+  info-bulle : `attaque magique`, `attaque à distance`, `attaque au contact`,
+  `attaque de contact` (le livre emploie « au » ET « de » pour le contact). Ce sont
+  les stats dérivées `magicAttack`/`rangedAttack`/`meleeAttack` du moteur.
+
+Bornes Unicode (les locutions ont des accents : « opposé », « à ») : un mot collé
+(« tester », « attestation ») n'est PAS capté ; « attaque » seule (sans qualificatif)
+reste du texte brut. Les segments de texte restants repassent ensuite par le
+glossaire d'acronymes (« test de **PER** » → « **test** » gras + puce « PER »).
+
+> **Règle de population (notions de jeu).** NE PAS baliser ces locutions : elles sont
+> rendues automatiquement, laisse-les en texte littéral. Référence pour les prochains
+> tickets de population (toutes familles) : tout « test »/« test opposé » et tout jet
+> d'attaque nommé est mis en forme sans intervention du populateur.
+
 > **Règle de population (glossaire).** NE PAS baliser ces acronymes : ils sont
 > rendus automatiquement, laisse-les en texte littéral. **Les 7 caractéristiques en
 > prose sont elles aussi auto-reconnues** (puce neutre) — `@CODE` reste cependant

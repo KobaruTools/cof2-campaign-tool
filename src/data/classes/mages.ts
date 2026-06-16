@@ -1438,6 +1438,19 @@ export const mageFeatures: Feature[] = [
     // « 5 points » de DM est fixe → littéral.
     richText:
       "Pendant [=INT] minutes, le magicien retranche 5 points à tous les DM subis. Le sort prend fin dès qu’il a absorbé [=niveau × 3] DM. Cette réduction se cumule à celle offerte par la Maîtrise des éléments. Armure de pierre est incompatible avec le sort Déphasage (voie de la magie protectrice), il y met fin immédiatement.",
+    // Interrupteur MARQUEUR (aucun bonus de stat dérivée) : il ne porte que la durée
+    // du sort et l'exclusion mutuelle avec Déphasage (« incompatible… y met fin »).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Armure de pierre active', activeByDefault: false },
+        disablesFeatures: ['magie-protectrice-r3'],
+      },
+    ],
+    // RD plate de 5 sur TOUS les DM subis, avec plafond d'absorption niveau × 3
+    // (préparation « stats avancées » — non encore lue par le moteur).
+    damageReduction: { kind: 'flat', value: 5, absorptionCap: { scale: 'level', factor: 3 } },
     sourcePage: 104,
   },
 
@@ -1505,6 +1518,19 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée [1d4° + INT] rounds.
     richText:
       "Pendant [1d4° + INT] rounds, le corps du magicien se désincarne par intermittence, son image se brouille et tous les DM des attaques de contact ou à distance qu’il subit et qu’il inflige sont divisés par 2. Les DM des sorts ne sont pas réduits. Un personnage sous l’effet d’un sort d’armure de pierre ne peut se déphaser.",
+    // Interrupteur MARQUEUR : durée du sort + exclusion réciproque avec Armure de
+    // pierre (« un personnage sous armure de pierre ne peut se déphaser »).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Déphasage actif', activeByDefault: false },
+        disablesFeatures: ['magie-elementaire-r5'],
+      },
+    ],
+    // RD défensive : DM physiques (contact/distance) subis divisés par 2, hors sorts.
+    // La division des DM INFLIGÉS (malus offensif) sort du modèle RD → reste verbatim.
+    damageReduction: { kind: 'divide', value: 2, scopes: ['physical'] },
     sourcePage: 105,
   },
   {
@@ -1701,6 +1727,10 @@ export const mageFeatures: Feature[] = [
         kind: 'conditional-stat-bonus',
         bonuses: [{ stat: 'def', value: 5 }],
         activation: { kind: 'temporary', label: 'Aspect du démon actif', activeByDefault: false },
+        // « Ne se cumule pas avec la Beauté de la succube » : tant qu'Aspect du démon
+        // est actif, demon-r2 est grisée + désactivée. Lien À SENS UNIQUE (la Beauté
+        // de la succube, sans interrupteur, ne désactive rien en retour).
+        disablesFeatures: ['demon-r2'],
       },
     ],
     sourcePage: 107,

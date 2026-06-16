@@ -87,6 +87,8 @@ function resolveValue(
   switch (value.scale) {
     case 'ability':
       return ctx.abilities[value.ability] * (value.factor ?? 1);
+    case 'level':
+      return ctx.level * (value.factor ?? 1);
     case 'stepped': {
       // Palier de plus haut seuil atteint (0 sous le premier).
       const ref = value.by === 'level' ? ctx.level : (pathRanks[pathId] ?? 0);
@@ -290,9 +292,34 @@ export function isEffectActive(character: Character, featureId: string, index: n
 }
 
 /**
+ * Fixe l'interrupteur du i-ème effet d'une capacité à `active` DANS un dictionnaire
+ * d'interrupteurs (le tableau est complété par des `false` jusqu'à l'index visé).
+ * Fonction pure : renvoie une nouvelle copie, n'en mute aucune. Brique partagée par
+ * `setEffectToggle` (depuis un personnage) et la cascade d'exclusion.
+ */
+function setToggleIn(
+  toggles: Record<string, boolean[]>,
+  featureId: string,
+  index: number,
+  active: boolean,
+): Record<string, boolean[]> {
+  const next = { ...toggles };
+  const current = next[featureId] ? next[featureId].slice() : [];
+  while (current.length <= index) current.push(false);
+  current[index] = active;
+  next[featureId] = current;
+  return next;
+}
+
+/**
  * Renvoie une copie de `effectToggles` avec l'interrupteur du i-ème effet d'une
  * capacité fixé à `active`. Le tableau est complété par des `false` si besoin
  * pour atteindre l'index visé. Fonction pure (ne mute pas le personnage).
+ *
+ * Applique l'EXCLUSION MUTUELLE : ACTIVER un interrupteur qui déclare
+ * `disablesFeatures` éteint au passage TOUS les interrupteurs des capacités qu'il
+ * désactive (sécurité redondante — l'UI empêche déjà de les rallumer ; la situation
+ * « les deux actifs » ne devrait jamais survenir).
  */
 export function setEffectToggle(
   character: Character,
@@ -300,12 +327,38 @@ export function setEffectToggle(
   index: number,
   active: boolean,
 ): Record<string, boolean[]> {
-  const next = { ...character.effectToggles };
-  const current = next[featureId] ? next[featureId].slice() : [];
-  while (current.length <= index) current.push(false);
-  current[index] = active;
-  next[featureId] = current;
+  let next = setToggleIn(character.effectToggles, featureId, index, active);
+  if (!active) return next;
+  const effect = featureById.get(featureId)?.effects?.[index];
+  if (effect?.kind !== 'conditional-stat-bonus' || !effect.disablesFeatures) return next;
+  for (const targetId of effect.disablesFeatures) {
+    const targetEffects = featureById.get(targetId)?.effects ?? [];
+    targetEffects.forEach((te, ti) => {
+      if (te.kind === 'conditional-stat-bonus') next = setToggleIn(next, targetId, ti, false);
+    });
+  }
   return next;
+}
+
+/**
+ * Capacités actuellement DÉSACTIVÉES par l'exclusion mutuelle : ids des capacités
+ * qu'un interrupteur ACTIF d'une capacité ACQUISE déclare dans `disablesFeatures`
+ * (« ne se cumule pas avec X », « incompatible avec X »). L'UI grise ces capacités
+ * et rend leur interrupteur non-interactif (le détail reste consultable). Une cible
+ * peut être désactivée par plusieurs sources → union.
+ */
+export function disabledFeatureIds(character: Character): Set<string> {
+  const disabled = new Set<string>();
+  for (const id of character.featureIds) {
+    const effects = featureById.get(id)?.effects;
+    if (!effects) continue;
+    effects.forEach((effect, index) => {
+      if (effect.kind !== 'conditional-stat-bonus' || !effect.disablesFeatures) return;
+      if (!isEffectActive(character, id, index)) return;
+      for (const targetId of effect.disablesFeatures) disabled.add(targetId);
+    });
+  }
+  return disabled;
 }
 
 /**

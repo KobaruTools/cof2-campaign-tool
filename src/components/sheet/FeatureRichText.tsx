@@ -12,7 +12,7 @@ import { scalingDie, type Abilities } from '@/lib/engine';
 import { DieIcon } from '@/components/DieIcon';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { dieCountAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
-import { splitGlossary } from '@/lib/ui/glossary';
+import { splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
 
@@ -115,12 +115,26 @@ function TermWord({ word, value, title }: { word: string; value: number; title: 
 }
 
 /**
- * Rend une portion de TEXTE LITTÉRAL en mettant en avant les acronymes du glossaire
- * (stats dérivées → puce ; jargon → souligné). Le reste est du texte brut (les
- * sauts de ligne sont préservés par le conteneur `pre-line`). Utilisé pour les
+ * Action de jet (« test », « test opposé ») : simple mise en GRAS, sans info-bulle.
+ */
+function GameAction({ label }: { label: string }) {
+  return (
+    <Box component="strong" sx={{ fontWeight: 700 }}>
+      {label}
+    </Box>
+  );
+}
+
+/**
+ * Rend une portion de TEXTE LITTÉRAL en mettant en avant les notions de jeu :
+ *  - locutions de jeu auto-détectées (`splitGameTerms`) : action de jet → gras ;
+ *    jet d'attaque → puce de stat dérivée (ambre) ;
+ *  - dans le reste, les acronymes du glossaire (`splitGlossary`) : caractéristique
+ *    → puce neutre ; stat dérivée → puce ambre ; jargon → souligné.
+ * Les sauts de ligne sont préservés par le conteneur `pre-line`. Utilisé pour les
  * segments texte du rendu enrichi ET pour le `text` verbatim de repli.
  */
-function RichTextRun({ value }: { value: string }) {
+function GlossaryRun({ value }: { value: string }) {
   return (
     <>
       {splitGlossary(value).map((piece, i) =>
@@ -132,6 +146,22 @@ function RichTextRun({ value }: { value: string }) {
           <RefChip key={i} label={piece.term} title={piece.entry.label} tone="derived" />
         ) : (
           <GlossaryMark key={i} label={piece.term} title={piece.entry.label} />
+        ),
+      )}
+    </>
+  );
+}
+
+function RichTextRun({ value }: { value: string }) {
+  return (
+    <>
+      {splitGameTerms(value).map((piece, i) =>
+        piece.kind === 'text' ? (
+          <GlossaryRun key={i} value={piece.value} />
+        ) : piece.entry.category === 'attack' ? (
+          <RefChip key={i} label={piece.term} title={piece.entry.label} tone="derived" />
+        ) : (
+          <GameAction key={i} label={piece.term} />
         ),
       )}
     </>

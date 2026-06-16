@@ -367,6 +367,7 @@ export type EffectValue = number | ScalingValue;
 export type ScalingValue =
   | SteppedScalingValue
   | AbilityScalingValue
+  | LevelScalingValue
   | MilestoneCountScalingValue
   | SumScalingValue;
 
@@ -396,6 +397,16 @@ export interface AbilityScalingValue {
   scale: 'ability';
   ability: AbilityId;
   /** Multiplicateur appliqué à la valeur de la caractéristique (défaut 1). */
+  factor?: number;
+}
+
+/**
+ * Valeur égale au NIVEAU du personnage (× un facteur), ex. le plafond d'absorption
+ * d'Armure de pierre « niveau × 3 » (p. 104) → `{ scale: 'level', factor: 3 }`.
+ */
+export interface LevelScalingValue {
+  scale: 'level';
+  /** Multiplicateur appliqué au niveau (défaut 1). */
   factor?: number;
 }
 
@@ -500,11 +511,25 @@ export interface ConditionalStatBonusEffect {
    *
    * Peut être VIDE : l'effet n'est alors qu'un MARQUEUR D'ÉTAT on/off, sans
    * contribution chiffrée (ex. Invocation d'un démon, demon-r5 : le démon agit via
-   * sa propre mini-fiche, le toggle suit seulement son état d'invocation).
+   * sa propre mini-fiche, le toggle suit seulement son état d'invocation ;
+   * Armure de pierre / Déphasage : le toggle ne porte que l'exclusion mutuelle —
+   * la réduction de DM vit dans `Feature.damageReduction`).
    */
   bonuses: StatBonus[];
   /** Déclencheur (condition / durée) et état par défaut de l'interrupteur. */
   activation: EffectActivation;
+  /**
+   * EXCLUSION MUTUELLE entre capacités : ids des capacités que CET interrupteur,
+   * LORSQU'IL EST ACTIF, désactive. Le livre l'énonce verbatim (« ne se cumule pas
+   * avec X », « incompatible avec X… y met fin »). Côté UI, une capacité ainsi
+   * désactivée est grisée et son propre interrupteur est éteint + rendu
+   * non-interactif (mais son détail reste consultable). La réciprocité se déclare
+   * des DEUX côtés (ex. Armure de pierre `magie-elementaire-r5` ↔ Déphasage
+   * `magie-protectrice-r3`) ; un lien à sens unique est légitime (Aspect du démon
+   * `demon-r4` désactive Beauté de la succube `demon-r2`, pas l'inverse). Absent =
+   * la capacité n'en désactive aucune.
+   */
+  disablesFeatures?: string[];
 }
 
 /**
@@ -538,6 +563,70 @@ export interface AbilityBonusDieEffect {
   kind: 'ability-bonus-die';
   /** Caractéristique dont les tests bénéficient du dé bonus (cf. `ABILITY_IDS`). */
   ability: AbilityId;
+}
+
+// ---------------------------------------------------------------------------
+// Statistiques avancées — réduction de dégâts (préparation du terrain)
+// ---------------------------------------------------------------------------
+
+/**
+ * Types de dégâts auxquels une capacité peut RÉSISTER (réduire / annuler), au-delà
+ * de la catégorie physique des armes (`DAMAGE_TYPES` : tranchant/perforant/contondant,
+ * qui décrit l'arme, pas la résistance). Axe distinct : éléments (Maîtrise des éléments,
+ * p. 104), opposition magique / non-magique (Forme éthérée, Forme gazeuse, démon invoqué),
+ * physique global. Liste EXTENSIBLE : on ajoutera un type le jour où une capacité l'exige.
+ */
+export const RESISTIBLE_DAMAGE_TYPES = [
+  'physical',
+  'non-magical',
+  'magical',
+  'fire',
+  'cold',
+  'lightning',
+  'acid',
+] as const;
+export type ResistibleDamageType = (typeof RESISTIBLE_DAMAGE_TYPES)[number];
+
+/**
+ * RÉDUCTION DE DÉGÂTS (RD) accordée par une capacité — concept de règles nommé dans
+ * le livre (« les réductions de dommages (voie du colosse…) ne s'appliquent pas »,
+ * p. 105). PRÉPARATION DU TERRAIN : la couche données porte la DÉFINITION ; le moteur
+ * ne la consomme PAS encore (les « statistiques avancées », dont les DM, viendront
+ * dans un ticket dédié). On la pose dès maintenant pour ne pas perdre l'information.
+ *
+ * La DURÉE n'est pas portée ici : ces RD sont temporaires et suivent l'interrupteur
+ * de la capacité (`ConditionalStatBonusEffect`), ou sont permanentes (capacité passive).
+ * L'EXCLUSION mutuelle (Armure de pierre ↔ Déphasage) relève de `disablesFeatures`,
+ * pas de la RD.
+ *
+ * Inventaire des capacités mage concernées (peuplées vs à peupler) dans
+ * `docs/extraction/effets-conditionnels-cadrage.md`. Cas hors de ce modèle, laissés
+ * verbatim : la négation PROBABILISTE (Image décalée, illusions-r2 : « sur 5-6, pas de
+ * DM ») et la RD portée par une CRÉATURE invoquée (démon, demon-r5 → `CreatureProfile`).
+ */
+export interface DamageReduction {
+  /**
+   * Mode de réduction :
+   *  - 'flat' : retrait d'un nombre plat de DM (« retranche 5 », « rang + 2 ») ;
+   *  - 'divide' : division des DM (« divisés par 2 ») ;
+   *  - 'immunity' : aucun DM (« ne peut subir aucun DM physiques »).
+   */
+  kind: 'flat' | 'divide' | 'immunity';
+  /**
+   * 'flat' : DM retranchés (constante ou scalante, ex. 5, `[rang + 2]`) ;
+   * 'divide' : diviseur entier (2 = moitié) ; 'immunity' : omis.
+   */
+  value?: EffectValue;
+  /**
+   * Types de DM réduits ; ABSENT = tous les DM subis (ex. Armure de pierre).
+   * Plusieurs types = la RD couvre chacun (Maîtrise des éléments : les 4 éléments).
+   */
+  scopes?: ResistibleDamageType[];
+  /**
+   * Plafond TOTAL de DM absorbés avant dissipation de l'effet (Armure de pierre :
+   * `[niveau × 3]`) ; absent = pas de plafond (réduction continue tant qu'active).
+   */
+  absorptionCap?: EffectValue;
 }
 
 // ---------------------------------------------------------------------------
@@ -787,6 +876,13 @@ export interface Feature {
    * n'invoque pas de créature.
    */
   creatureProfile?: CreatureProfile;
+  /**
+   * Réduction de dégâts accordée par la capacité (« retranche 5 à tous les DM »,
+   * « DM divisés par 2 »…), EN PLUS du `text` verbatim. PRÉPARATION : posée dans les
+   * données, pas encore lue par le moteur (cf. `DamageReduction`). Absent = la
+   * capacité n'accorde aucune RD modélisée.
+   */
+  damageReduction?: DamageReduction;
   sourcePage: SourcePage;
 }
 

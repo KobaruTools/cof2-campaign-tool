@@ -65,6 +65,12 @@ export interface FeatureEffectTogglesProps {
   compact?: boolean;
   /** Bascule le i-ème effet de la capacité ; absent → interrupteurs désactivés. */
   onToggle?: (featureId: string, index: number, active: boolean) => void;
+  /**
+   * Capacité actuellement désactivée par exclusion mutuelle (un autre interrupteur
+   * actif la grise) : les interrupteurs sont rendus NON-INTERACTIFS. Indépendant de
+   * `onToggle` (le détail de la capacité reste, lui, consultable).
+   */
+  disabled?: boolean;
 }
 
 /**
@@ -76,6 +82,7 @@ export function FeatureEffectToggles({
   featureId,
   compact = false,
   onToggle,
+  disabled = false,
 }: FeatureEffectTogglesProps) {
   const entries = conditionalEffectsOf(featureId);
   if (entries.length === 0) return null;
@@ -90,7 +97,7 @@ export function FeatureEffectToggles({
             <Switch
               size="small"
               checked={isEffectActive(character, featureId, index)}
-              disabled={!onToggle}
+              disabled={!onToggle || disabled}
               onChange={(e) => onToggle?.(featureId, index, e.target.checked)}
             />
           </Tooltip>
@@ -111,7 +118,7 @@ export function FeatureEffectToggles({
             <Switch
               size="small"
               checked={isEffectActive(character, featureId, index)}
-              disabled={!onToggle}
+              disabled={!onToggle || disabled}
               onChange={(e) => onToggle?.(featureId, index, e.target.checked)}
             />
           }

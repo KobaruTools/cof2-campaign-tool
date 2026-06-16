@@ -91,3 +91,80 @@ export function splitGlossary(text: string): GlossaryPiece[] {
   pushText(text.slice(last));
   return pieces;
 }
+
+// ---------------------------------------------------------------------------
+// Termes de JEU (locutions) — auto-détectés, sans balisage (retour propriétaire)
+// ---------------------------------------------------------------------------
+
+/**
+ * Notions de règle exprimées en LOCUTIONS (pas des acronymes), reconnues
+ * automatiquement dans le texte littéral comme le glossaire :
+ *  - `action` : une ACTION DE JET (« test », « test opposé ») → mise en GRAS ;
+ *  - `attack` : un JET D'ATTAQUE, qui EST une stat dérivée du moteur
+ *    (`magicAttack`/`rangedAttack`/`meleeAttack`) → même puce que les autres stats
+ *    dérivées (teinte ambre `derived`), avec info-bulle.
+ *
+ * Insensible à la casse (un « Test » en début de phrase compte), contrairement aux
+ * acronymes. La casse d'origine est conservée à l'affichage. Le livre emploie deux
+ * formes pour le contact (« au contact » / « de contact ») : les deux sont captées.
+ */
+export type GameTermCategory = 'action' | 'attack';
+
+export interface GameTermEntry {
+  /** Libellé affiché en info-bulle (français). Vide pour `action` (gras sans bulle). */
+  label: string;
+  category: GameTermCategory;
+}
+
+export const GAME_TERMS: Record<string, GameTermEntry> = {
+  // --- Jets d'attaque (puce de stat dérivée, ambre) ---
+  'attaque magique': { label: 'Attaque magique', category: 'attack' },
+  'attaque à distance': { label: 'Attaque à distance', category: 'attack' },
+  'attaque au contact': { label: 'Attaque au contact', category: 'attack' },
+  'attaque de contact': { label: 'Attaque au contact', category: 'attack' },
+  // --- Action de jet (gras, sans info-bulle) ---
+  'test opposé': { label: '', category: 'action' },
+  'tests opposés': { label: '', category: 'action' },
+  test: { label: '', category: 'action' },
+  tests: { label: '', category: 'action' },
+};
+
+/** Un fragment de texte : texte brut, ou locution de jeu reconnue. */
+export type GameTermPiece =
+  | { kind: 'text'; value: string }
+  | { kind: 'game'; term: string; entry: GameTermEntry };
+
+// Locutions triées de la PLUS LONGUE à la plus courte pour que « test opposé » prime
+// sur « test » et « attaque magique » sur un éventuel « attaque ». Bornes Unicode
+// (`\p{L}\p{N}`, drapeau `u`) car les locutions contiennent des accents (« opposé »,
+// « à ») que `\b` (ASCII) ne délimite pas correctement. Insensible à la casse (`i`).
+const GAME_TERM_KEYS = Object.keys(GAME_TERMS).sort((a, b) => b.length - a.length);
+const GAME_TERMS_RE = new RegExp(
+  `(?<![\\p{L}\\p{N}])(?:${GAME_TERM_KEYS.join('|')})(?![\\p{L}\\p{N}])`,
+  'giu',
+);
+
+/**
+ * Découpe une chaîne en alternant texte brut et locutions de jeu reconnues. Les
+ * morceaux de texte restants sont destinés à repasser ensuite par `splitGlossary`
+ * (acronymes) côté rendu. Pur (sans React), testable isolément.
+ */
+export function splitGameTerms(text: string): GameTermPiece[] {
+  const pieces: GameTermPiece[] = [];
+  let last = 0;
+  GAME_TERMS_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  const pushText = (v: string) => {
+    if (v) pieces.push({ kind: 'text', value: v });
+  };
+  while ((m = GAME_TERMS_RE.exec(text)) !== null) {
+    const raw = m[0];
+    const entry = GAME_TERMS[raw.toLowerCase()];
+    if (!entry) continue; // garde-fou (ne devrait pas arriver)
+    pushText(text.slice(last, m.index));
+    pieces.push({ kind: 'game', term: raw, entry });
+    last = GAME_TERMS_RE.lastIndex;
+  }
+  pushText(text.slice(last));
+  return pieces;
+}

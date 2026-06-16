@@ -32,7 +32,7 @@ import {
   FEATURE_NATURE_TAGS,
   CONDITIONAL_KINDS,
 } from '../src/data/index';
-import { ABILITY_IDS, DERIVED_STAT_IDS } from '../src/data/schema';
+import { ABILITY_IDS, DERIVED_STAT_IDS, RESISTIBLE_DAMAGE_TYPES } from '../src/data/schema';
 
 const errors: string[] = [];
 const warnings: string[] = [];
@@ -164,6 +164,10 @@ function effectValueError(value: unknown): string | null {
     if (v.factor !== undefined && !Number.isFinite(v.factor)) return 'facteur non fini';
     return null;
   }
+  if (v.scale === 'level') {
+    if (v.factor !== undefined && !Number.isFinite(v.factor)) return 'level : facteur non fini';
+    return null;
+  }
   if (v.scale === 'stepped') {
     if (v.by !== 'level' && v.by !== 'path-rank') return `échelle inconnue : ${v.by}`;
     if (!Array.isArray(v.steps) || v.steps.length === 0) return 'paliers (steps) vides';
@@ -213,6 +217,12 @@ for (const c of features) {
       if (!a || !validActivationKinds.has(a.kind))
         err(`[capacite ${c.id}] effect: activation.kind invalide (${c.id})`);
       if (!a?.label) err(`[capacite ${c.id}] effect: activation.label manquant (${c.id})`);
+      // Exclusion mutuelle : les cibles désactivées doivent exister et ne pas être soi.
+      for (const target of e.disablesFeatures ?? []) {
+        if (!featureById.has(target))
+          err(`[capacite ${c.id}] effect: disablesFeatures cible inexistante : ${target}`);
+        if (target === c.id) err(`[capacite ${c.id}] effect: disablesFeatures s'auto-référence`);
+      }
     } else if (e.kind === 'ability-bonus') {
       // Modificateur permanent d'une caractéristique (« +1 en CON »).
       if (!validAbilities.has(e.ability)) err(`[capacite ${c.id}] effect: caractéristique inconnue : ${e.ability}`);
@@ -223,6 +233,34 @@ for (const c of features) {
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }
+  }
+}
+
+// --- Réduction de dégâts (préparation « stats avancées ») --------------------
+// Donnée posée mais pas encore lue par le moteur : on vérifie la forme (mode,
+// value selon le mode, types de dégâts connus, plafond résoluble).
+const validDamageScopes = new Set<string>(RESISTIBLE_DAMAGE_TYPES);
+let featuresWithDamageReduction = 0;
+for (const c of features) {
+  const dr = c.damageReduction;
+  if (!dr) continue;
+  featuresWithDamageReduction++;
+  if (dr.kind !== 'flat' && dr.kind !== 'divide' && dr.kind !== 'immunity')
+    err(`[capacite ${c.id}] damageReduction.kind inconnu : ${dr.kind}`);
+  if (dr.kind === 'immunity') {
+    if (dr.value !== undefined) err(`[capacite ${c.id}] damageReduction: 'immunity' ne porte pas de value`);
+  } else {
+    if (dr.value === undefined) err(`[capacite ${c.id}] damageReduction: '${dr.kind}' exige une value`);
+    else {
+      const ve = effectValueError(dr.value);
+      if (ve) err(`[capacite ${c.id}] damageReduction value: ${ve}`);
+    }
+  }
+  for (const s of dr.scopes ?? [])
+    if (!validDamageScopes.has(s)) err(`[capacite ${c.id}] damageReduction scope inconnu : ${s}`);
+  if (dr.absorptionCap !== undefined) {
+    const ce = effectValueError(dr.absorptionCap);
+    if (ce) err(`[capacite ${c.id}] damageReduction absorptionCap: ${ce}`);
   }
 }
 
@@ -250,6 +288,7 @@ console.log(`  · de prestige    : ${prestigePaths.length}`);
 console.log(`capacités (total)  : ${features.length}  (dont sorts * : ${spells})`);
 console.log(`  · classées       : ${FEATURE_CLASSIFICATIONS.length}  (dont TODO(extraction) : ${classifTodos})`);
 console.log(`  · avec effects   : ${featuresWithEffects}`);
+console.log(`  · avec RD        : ${featuresWithDamageReduction} (réduction de dégâts, non lue par le moteur)`);
 console.log(`  · coût mana dérogé : ${spellsWithManaCost} (sinon = rang, p. 228)`);
 console.log(`équipement (total) : ${equipment.length}`);
 console.log('');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { splitGlossary, GLOSSARY } from './glossary';
+import { splitGlossary, splitGameTerms, GLOSSARY } from './glossary';
 
 describe('splitGlossary', () => {
   it('renvoie un seul fragment texte sans terme connu', () => {
@@ -72,5 +72,55 @@ describe('splitGlossary', () => {
       .filter((p) => p.kind === 'term')
       .map((p) => (p.kind === 'term' ? p.term : ''));
     expect(terms).toEqual(['AGI', 'CON', 'FOR']);
+  });
+});
+
+describe('splitGameTerms', () => {
+  const games = (text: string) =>
+    splitGameTerms(text)
+      .filter((p) => p.kind === 'game')
+      .map((p) => (p.kind === 'game' ? { term: p.term, category: p.entry.category } : null));
+
+  it('texte sans notion de jeu → un seul fragment texte', () => {
+    expect(splitGameTerms('Le sorcier invoque un démon.')).toEqual([
+      { kind: 'text', value: 'Le sorcier invoque un démon.' },
+    ]);
+  });
+
+  it('« test » seul → action (gras)', () => {
+    expect(games('réussir un test de VOL')).toEqual([{ term: 'test', category: 'action' }]);
+  });
+
+  it('« test opposé » prime sur « test » (plus long d’abord)', () => {
+    expect(games('un test opposé d’attaque magique')).toEqual([
+      { term: 'test opposé', category: 'action' },
+      { term: 'attaque magique', category: 'attack' },
+    ]);
+  });
+
+  it('capte les pluriels « tests » et « tests opposés »', () => {
+    expect(games('deux tests de PER')[0]).toEqual({ term: 'tests', category: 'action' });
+    expect(games('des tests opposés')[0]).toEqual({ term: 'tests opposés', category: 'action' });
+  });
+
+  it('capte les trois jets d’attaque (contact « au » et « de »)', () => {
+    expect(games('une attaque au contact')[0]).toEqual({ term: 'attaque au contact', category: 'attack' });
+    expect(games('une attaque de contact')[0]).toEqual({ term: 'attaque de contact', category: 'attack' });
+    expect(games('une attaque à distance')[0]).toEqual({ term: 'attaque à distance', category: 'attack' });
+  });
+
+  it('insensible à la casse, conserve la casse d’origine', () => {
+    expect(games('Test d’attaque magique')).toEqual([
+      { term: 'Test', category: 'action' },
+      { term: 'attaque magique', category: 'attack' },
+    ]);
+  });
+
+  it('ne capte pas « test » collé dans un mot (tester, attestation)', () => {
+    expect(games('il peut tester son attestation')).toEqual([]);
+  });
+
+  it('« attaque » seul (sans qualificatif) reste du texte brut', () => {
+    expect(games('lors d’une attaque de mêlée classique')).toEqual([]);
   });
 });
