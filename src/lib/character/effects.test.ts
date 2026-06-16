@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { AbilityId } from '@/data/schema';
 import type { Character } from './types';
 import {
+  abilityBonusDiceFromFeatures,
+  abilityModSources,
+  abilityModsFromFeatures,
   conditionalEffectsOf,
   conditionalEffectBonuses,
+  creatureBonusDiceForPath,
   effectContext,
   featureModSources,
   isEffectActive,
@@ -198,5 +202,55 @@ describe('effectContext', () => {
       abilities: c.abilities,
       toggles: { 'rage-r3': [true] },
     });
+  });
+});
+
+describe('modificateurs permanents de caractéristiques (ability-bonus)', () => {
+  it('aucune capacité → aucun modificateur', () => {
+    expect(abilityModsFromFeatures([])).toEqual({});
+  });
+
+  it('agrège le +1 de carac (Endurer/metal-r5 : +1 CON, Perception héroïque/divination-r4 : +1 PER)', () => {
+    expect(abilityModsFromFeatures(['metal-r5'])).toEqual({ CON: 1 });
+    expect(abilityModsFromFeatures(['divination-r4'])).toEqual({ PER: 1 });
+  });
+
+  it('cumule deux sources sur la même carac (metal-r5 + sombre-magie-r5 : +2 CON)', () => {
+    expect(abilityModsFromFeatures(['metal-r5', 'sombre-magie-r5'])).toEqual({ CON: 2 });
+  });
+
+  it('détaille les capacités sources (pour le détail de la carac)', () => {
+    expect(abilityModSources(['metal-r5']).CON).toEqual([{ featureId: 'metal-r5', name: 'Endurer', value: 1 }]);
+  });
+});
+
+describe('dés bonus permanents aux tests (ability-bonus-die)', () => {
+  it('signale la carac et nomme la capacité source', () => {
+    expect(abilityBonusDiceFromFeatures(['sombre-magie-r5'])).toEqual({ CON: ['Pacte ténébreux'] });
+  });
+
+  it('aucune capacité concernée → vide', () => {
+    expect(abilityBonusDiceFromFeatures(['air-r1'])).toEqual({});
+  });
+});
+
+describe('creatureBonusDiceForPath — dés bonus du golem selon les options retenues', () => {
+  const golemChar = (selection: string[]): Character =>
+    ({
+      featureIds: ['golem-r2', 'golem-r5'],
+      featureChoices: { 'golem-r5': [selection] },
+    }) as unknown as Character;
+
+  it("« Forme de félin » octroie un dé bonus en AGI au golem", () => {
+    expect(creatureBonusDiceForPath('golem', golemChar(['feline-form']))).toEqual(new Set(['AGI']));
+  });
+
+  it('« Puissant » → FOR ; les deux ensemble → AGI + FOR', () => {
+    expect(creatureBonusDiceForPath('golem', golemChar(['mighty']))).toEqual(new Set(['FOR']));
+    expect(creatureBonusDiceForPath('golem', golemChar(['feline-form', 'mighty']))).toEqual(new Set(['AGI', 'FOR']));
+  });
+
+  it('une option sans dé bonus → aucun dé', () => {
+    expect(creatureBonusDiceForPath('golem', golemChar(['armor']))).toEqual(new Set());
   });
 });

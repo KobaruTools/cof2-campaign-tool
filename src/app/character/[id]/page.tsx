@@ -30,6 +30,9 @@ import { modifierDeltas } from '@/lib/character/ancestry';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
 import {
+  abilityBonusDiceFromFeatures,
+  abilityModSources,
+  abilityModsFromFeatures,
   effectContext,
   modsFromFeatures,
   pruneEffectToggles,
@@ -189,6 +192,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Contexte d'effets (PER-67) : résout les valeurs scalantes et n'inclut que les
   // effets conditionnels dont l'interrupteur est actif.
   const effectCtx = effectContext(character);
+  // Modificateurs permanents de caractéristiques et dés bonus apportés par les
+  // capacités (mécanique core) — appliqués PAR-DESSUS la valeur saisie des caracs.
+  const abilityMods = abilityModsFromFeatures(modFeatureIds);
+  const abilityModSrc = abilityModSources(modFeatureIds);
+  const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds);
 
   const derivedInput: DerivedInput | null = family
     ? {
@@ -411,6 +419,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               baseAbilities={character.baseAbilities}
               ancestry={ancestry}
               ancestryChoices={character.ancestryChoices}
+              abilityMods={abilityMods}
+              abilityModSources={abilityModSrc}
+              bonusDieSources={bonusDieSrc}
             />
           </SheetSection>
 

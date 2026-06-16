@@ -10,16 +10,26 @@ import type { BreakdownTerm, StatBreakdown } from './derivedStatBreakdown';
 
 const sum = (terms: BreakdownTerm[]) => terms.reduce((acc, t) => acc + t.value, 0);
 
+/** Modificateur de carac apporté par une capacité, pour le détail (ex. « +1 — Endurer »). */
+export interface AbilityFeatureTerm {
+  /** Nom de la capacité source (français). */
+  name: string;
+  value: number;
+}
+
 /**
- * Construit le détail d'une caractéristique : la valeur de base, puis chaque
- * modificateur de peuple qui cible cette caractéristique (résolu via `choices`
- * pour les modificateurs « au choix »). Le total vaut la valeur finale affichée.
+ * Construit le détail d'une caractéristique : la valeur de base, chaque modificateur
+ * de peuple qui cible cette caractéristique (résolu via `choices` pour les
+ * modificateurs « au choix »), puis les modificateurs PERMANENTS apportés par les
+ * capacités (`featureTerms`, ex. « +1 en CON » d'Endurer). Le total vaut la valeur
+ * finale affichée.
  */
 export function abilityBreakdown(
   abilityId: AbilityId,
   baseAbilities: Record<AbilityId, number>,
   ancestry: Ancestry,
   choices: AncestryChoice,
+  featureTerms: AbilityFeatureTerm[] = [],
 ): StatBreakdown {
   const terms: BreakdownTerm[] = [{ label: 'Valeur de base', value: baseAbilities[abilityId] ?? 0 }];
 
@@ -29,6 +39,10 @@ export function abilityBreakdown(
       terms.push({ label: `Peuple (${ancestry.name})`, value: mod.value });
     }
   });
+
+  for (const ft of featureTerms) {
+    terms.push({ label: `Capacité (${ft.name})`, value: ft.value });
+  }
 
   return { terms, total: sum(terms), page: 28 };
 }

@@ -33,7 +33,7 @@ import type { Feature, Path } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import { featureChoiceDefs, hasUnmadeChoice } from '@/lib/character/choices';
-import { conditionalEffectsOf } from '@/lib/character/effects';
+import { conditionalEffectsOf, creatureBonusDiceForPath } from '@/lib/character/effects';
 import { classColor } from '@/lib/ui/classColors';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
@@ -582,6 +582,9 @@ function PathBlock({
                       level={level}
                       rank={pathRank}
                       masterDerived={masterDerived}
+                      bonusDieAbilities={
+                        character ? creatureBonusDiceForPath(openFeature.pathId, character) : undefined
+                      }
                     />
                   </Box>
                 )}
@@ -725,6 +728,9 @@ function PathBlock({
                     level={level}
                     rank={pathRank}
                     masterDerived={masterDerived}
+                    bonusDieAbilities={
+                      character ? creatureBonusDiceForPath(feature.pathId, character) : undefined
+                    }
                   />
                 </Box>
               )}

@@ -15,10 +15,11 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import type { ReactNode } from 'react';
-import { ABILITY_IDS, type CreatureProfile, type DerivedStatId, type MasterStatRef } from '@/data/schema';
+import { ABILITY_IDS, type AbilityId, type CreatureProfile, type DerivedStatId, type MasterStatRef } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
+import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { RichInline } from './FeatureRichText';
 
 const signed = (n: number) => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
@@ -86,9 +87,22 @@ export interface CreatureStatBlockProps {
   rank: number;
   /** Stats dérivées du maître — pour recopier Init./attaque (absent → libellé de repli). */
   masterDerived?: DerivedStats;
+  /**
+   * Caractéristiques de la créature bénéficiant d'un DÉ BONUS (icône double-d20),
+   * octroyé par une amélioration retenue (ex. golem « Forme de félin » → AGI). Voir
+   * `creatureBonusDiceForPath`.
+   */
+  bonusDieAbilities?: Set<AbilityId>;
 }
 
-export function CreatureStatBlock({ profile, abilities, level, rank, masterDerived }: CreatureStatBlockProps) {
+export function CreatureStatBlock({
+  profile,
+  abilities,
+  level,
+  rank,
+  masterDerived,
+  bonusDieAbilities,
+}: CreatureStatBlockProps) {
   const rich = (text: string) => <RichInline text={text} abilities={abilities} level={level} rank={rank} />;
   return (
     <Box
@@ -129,9 +143,12 @@ export function CreatureStatBlock({ profile, abilities, level, rank, masterDeriv
               <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1 }}>
                 {id}
               </Typography>
-              <Typography variant="caption" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {signed(profile.abilities[id])}
-              </Typography>
+              <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
+                <Typography variant="caption" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {signed(profile.abilities[id])}
+                </Typography>
+                {bonusDieAbilities?.has(id) && <BonusDieBadge ability={id} size={12} />}
+              </Stack>
             </Stack>
           </Tooltip>
         ))}

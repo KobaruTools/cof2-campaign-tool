@@ -337,13 +337,21 @@ export type DerivedStatId = (typeof DERIVED_STAT_IDS)[number];
  * armures modifié, milestone Armures) en ajoutant un membre à l'union, sans
  * rouvrir le schéma de `Feature`.
  *
- * Deux genres à ce jour :
- *  - `stat-bonus` : bonus PERMANENT, toujours appliqué (valeur éventuellement
- *    scalante, PER-67) ;
- *  - `conditional-stat-bonus` : bonus CONDITIONNEL / TEMPORAIRE, compté seulement
- *    quand l'interrupteur manuel du personnage l'active (PER-67).
+ * Genres à ce jour :
+ *  - `stat-bonus` : bonus PERMANENT à une stat DÉRIVÉE, toujours appliqué (valeur
+ *    éventuellement scalante, PER-67) ;
+ *  - `conditional-stat-bonus` : bonus CONDITIONNEL / TEMPORAIRE à une stat dérivée,
+ *    compté seulement quand l'interrupteur manuel du personnage l'active (PER-67) ;
+ *  - `ability-bonus` : modificateur PERMANENT à une CARACTÉRISTIQUE (« +1 en CON »),
+ *    déterministe, qui s'ajoute au total de la carac PAR-DESSUS la valeur saisie ;
+ *  - `ability-bonus-die` : DÉ BONUS permanent aux tests d'une caractéristique
+ *    (« lance 2d20, garde le meilleur ») — mécanique core CO2, drapeau par carac.
  */
-export type FeatureEffect = StatBonusEffect | ConditionalStatBonusEffect;
+export type FeatureEffect =
+  | StatBonusEffect
+  | ConditionalStatBonusEffect
+  | AbilityBonusEffect
+  | AbilityBonusDieEffect;
 
 /**
  * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
@@ -489,10 +497,47 @@ export interface ConditionalStatBonusEffect {
    * Bonus accordés ENSEMBLE lorsque l'effet est actif : un seul déclencheur /
    * interrupteur les pilote tous. Ex. Familier (magie-universelle r2) : « +2 en
    * Initiative ET en DEF lorsque son familier est en vue » → deux bonus, un toggle.
+   *
+   * Peut être VIDE : l'effet n'est alors qu'un MARQUEUR D'ÉTAT on/off, sans
+   * contribution chiffrée (ex. Invocation d'un démon, demon-r5 : le démon agit via
+   * sa propre mini-fiche, le toggle suit seulement son état d'invocation).
    */
   bonuses: StatBonus[];
   /** Déclencheur (condition / durée) et état par défaut de l'interrupteur. */
   activation: EffectActivation;
+}
+
+/**
+ * Modificateur PERMANENT à une CARACTÉRISTIQUE du personnage (ex. « augmente sa CON
+ * de +1 » — Endurer/metal-r5, Pacte ténébreux/sombre-magie-r5, Perception
+ * héroïque/divination-r4). Déterministe (≠ dés lancés à la table) : il s'ajoute au
+ * total affiché et au détail de la carac, PAR-DESSUS la valeur saisie (qui reste
+ * la base + modificateurs de peuple, cf. `abilityBreakdown`). À distinguer des
+ * stats DÉRIVÉES (`StatBonusEffect`) : ici la cible est une `AbilityId`.
+ */
+export interface AbilityBonusEffect {
+  kind: 'ability-bonus';
+  /** Caractéristique visée (cf. `ABILITY_IDS`). */
+  ability: AbilityId;
+  /** Valeur ajoutée (signée) — constante (les cas du livre sont des +1). */
+  value: number;
+}
+
+/**
+ * DÉ BONUS permanent aux tests d'une caractéristique (« il obtient un dé bonus aux
+ * tests de CON »). Mécanique core CO2 : un test avec dé bonus se lance « 2d20, on
+ * garde le meilleur ». Drapeau par caractéristique, SANS valeur chiffrée — rendu
+ * par une icône double-d20 à côté du chiffre de la carac (fiche + mini-fiches de
+ * créatures). Le cumul ne s'empile pas : une carac n'affiche qu'un seul dé bonus.
+ *
+ * Règle de population : tout « dé bonus aux tests de [CARAC] » PERMANENT se balise
+ * ici ; les dés bonus TEMPORAIRES (pendant un sort, une transformation…) restent
+ * en texte verbatim (ils relèveront d'un interrupteur, pas d'un drapeau permanent).
+ */
+export interface AbilityBonusDieEffect {
+  kind: 'ability-bonus-die';
+  /** Caractéristique dont les tests bénéficient du dé bonus (cf. `ABILITY_IDS`). */
+  ability: AbilityId;
 }
 
 // ---------------------------------------------------------------------------
@@ -566,6 +611,14 @@ export interface FeatureChoiceOption {
   id: string;
   /** Libellé affiché au joueur (français). */
   label: string;
+  /**
+   * Dé bonus aux tests d'une caractéristique octroyé à la CRÉATURE de la même voie
+   * lorsque cette option est retenue (ex. Golem supérieur : « Forme de félin » →
+   * dé bonus en AGI du golem, « Puissant » → dé bonus en FOR). Mécanique core,
+   * affichée par une icône double-d20 sur la mini-fiche de la créature
+   * (`CreatureStatBlock`). Voir `creatureBonusDiceForPath`.
+   */
+  creatureAbilityBonusDie?: AbilityId;
 }
 
 /**

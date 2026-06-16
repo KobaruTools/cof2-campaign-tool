@@ -44,6 +44,8 @@ const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
  * Libellé d'un effet conditionnel : « −2 DEF — pendant la rage berserk », ou
  * « +2 Init., +2 DEF — familier en vue » (plusieurs bonus sous un seul
  * interrupteur). Les valeurs sont RÉSOLUES pour le personnage (paliers, etc.).
+ * Sans bonus (marqueur d'état pur, ex. « Démon invoqué »), seul le déclencheur
+ * s'affiche.
  */
 function effectLabel(
   character: Character,
@@ -53,7 +55,7 @@ function effectLabel(
 ): string {
   const bonuses = conditionalEffectBonuses(character, featureId, index) ?? [];
   const parts = bonuses.map((b) => `${signed(b.value)} ${STAT_SHORT[b.stat]}`).join(', ');
-  return `${parts} — ${effect.activation.label}`;
+  return parts ? `${parts} — ${effect.activation.label}` : effect.activation.label;
 }
 
 export interface FeatureEffectTogglesProps {

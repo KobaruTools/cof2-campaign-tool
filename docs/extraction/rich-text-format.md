@@ -113,6 +113,17 @@ rejette un terme inconnu comme « l'ensorceleur » et retomberait en littéral.)
   c'est une description de palier, pas une valeur à calculer à un instant donné.
 - **Bonus au choix**, coûts en mana, immunités : relèvent de `effects` / des
   tickets de population, pas de la couche de présentation `richText`.
+- **Dé bonus aux tests d'une carac** et **+N à une carac** (MÉCANIQUE CORE) :
+  relèvent de `effects`, pas de `richText`. Tout « il obtient un **dé bonus aux
+  tests de [CARAC]** » PERMANENT → effet `ability-bonus-die` (drapeau par carac,
+  rendu par une icône double-d20 à côté du chiffre — `BonusDieBadge`). Tout
+  « **augmente sa [CARAC] de +N** » → effet `ability-bonus` (déterministe, s'ajoute
+  au total de la carac PAR-DESSUS la valeur saisie, et apparaît dans son détail).
+  Les dés bonus **temporaires** (pendant un sort/une transformation) restent en
+  texte verbatim — ils relèveront d'un interrupteur, pas d'un drapeau permanent.
+  Pour une **créature** (golem…), le dé bonus porté par une amélioration choisie se
+  balise sur l'option (`creatureAbilityBonusDie`). Réfs : `divination-r4`,
+  `metal-r5`, `sombre-magie-r5`, options de `golem-r5`.
 - **Texte littéral** (« une AGI et une INT de +0 ») : déjà correct, pas de balisage.
 
 ## Format final (extensions PER-90)

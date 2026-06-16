@@ -532,12 +532,12 @@ export const mageFeatures: Feature[] = [
     text:
       "L’ensorceleur augmente sa valeur de PER de +1. Désormais, il obtient un dé bonus aux tests de PER, et il ajoute sa PER au nombre de PM dont il bénéficie.",
     // « ajoute sa PER au nombre de PM » → bonus permanent de mana égal à la PER.
-    // TODO(extraction) : le « +1 en PER » (augmentation de caractéristique) et le
-    // « dé bonus aux tests de PER » ne sont pas exprimables ici (DERIVED_STAT_IDS ne
-    // couvre pas les caractéristiques brutes ni les dés bonus aux tests — ce dernier
-    // relève de PER-89) ; conservés en texte verbatim.
+    // « augmente sa valeur de PER de +1 » → modificateur permanent de carac. « dé bonus
+    // aux tests de PER » → dé bonus permanent (mécanique core, icône double-d20).
     effects: [
       { kind: 'stat-bonus', stat: 'manaPoints', value: { scale: 'ability', ability: 'PER' } },
+      { kind: 'ability-bonus', ability: 'PER', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'PER' },
     ],
     sourcePage: 94,
   },
@@ -1019,11 +1019,14 @@ export const mageFeatures: Feature[] = [
     text:
       "Le forgesort est habitué aux travaux et à la chaleur de la forge. Il divise par deux tous les DM de feu subis et augmente sa CON de +1. Désormais, il obtient un dé bonus aux tests de CON. Finalement, il peut ajouter sa valeur de CON au nombre de PM qu’il obtient.",
     // « ajouter sa valeur de CON au nombre de PM » → bonus permanent de mana égal à la CON.
-    // TODO(extraction) : « +1 en CON », « dé bonus aux tests de CON » et « divise par deux
-    // les DM de feu » (réduction de DM) ne sont pas exprimables ici (caractéristique brute,
-    // bonus de tests = PER-89, réduction de DM hors DERIVED_STAT_IDS) → texte verbatim.
+    // « augmente sa CON de +1 » → modificateur permanent de carac. « dé bonus aux tests de
+    // CON » → dé bonus permanent (mécanique core, icône double-d20).
+    // TODO(extraction) : « divise par deux les DM de feu » (réduction de DM) reste hors
+    // DERIVED_STAT_IDS → texte verbatim.
     effects: [
       { kind: 'stat-bonus', stat: 'manaPoints', value: { scale: 'ability', ability: 'CON' } },
+      { kind: 'ability-bonus', ability: 'CON', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'CON' },
     ],
     sourcePage: 99,
   },
@@ -1122,12 +1125,13 @@ export const mageFeatures: Feature[] = [
           // n'affiche que le NOM dans le badge et sort le détail entre parenthèses à
           // côté (vue liste) ou le masque (vue colonne compacte).
           { id: 'armor', label: 'Armure (+5 en DEF)' },
-          { id: 'feline-form', label: 'Forme de félin (+3 en AGI et en DEF, dé bonus en AGI)' },
+          // Dé bonus du GOLEM (icône double-d20 sur sa mini-fiche) quand l'option est retenue.
+          { id: 'feline-form', label: 'Forme de félin (+3 en AGI et en DEF, dé bonus en AGI)', creatureAbilityBonusDie: 'AGI' },
           { id: 'ballista', label: 'Baliste (portée 20 m, 1d4°+AGI DM)' },
           { id: 'large', label: 'Grande taille (+2 PV par niveau et +1 en FOR et DM)' },
           { id: 'flight', label: 'Vol (des « sauts » de 40 m en action limitée)' },
           { id: 'enhanced-brain', label: 'Cerveau amélioré (+2 en INT, PER et CHA, doué de parole)' },
-          { id: 'mighty', label: 'Puissant (+2 en FOR et aux DM, dé bonus en FOR)' },
+          { id: 'mighty', label: 'Puissant (+2 en FOR et aux DM, dé bonus en FOR)', creatureAbilityBonusDie: 'FOR' },
           { id: 'two-handed-weapon', label: 'Arme à deux mains (+1d4° aux DM au contact)' },
         ],
       },
@@ -1714,6 +1718,17 @@ export const mageFeatures: Feature[] = [
     // le profil du démon est porté par `creatureProfile` (mini-fiche).
     richText:
       "En sacrifiant {1d4°} PV, le sorcier invoque un démon à son service pour [=INT] minutes. Ce démon possède l’apparence d’un humanoïde musclé d’environ 2,30 m doté d’une épée et d’ailes de chauve‑souris. Le démon divise par deux tous les DM non magiques subis, les sorts et les armes magiques lui infligent des DM normaux. Il est capable de voler à une vitesse équivalente à un déplacement normal. Lorsque le sorcier atteint le niveau 15, le démon devient capable d’attaquer deux fois à son tour, au prix d’une action limitée.",
+    // Interrupteur de présence (PER-69) : le démon invoqué n'accorde AUCUN bonus de
+    // stat dérivée au sorcier (il agit seul, cf. mini-fiche `creatureProfile`) ; le toggle
+    // sert uniquement à suivre son état d'invocation à la table. Effet conditionnel SANS
+    // bonus = marqueur d'état on/off (durée INT minutes).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Démon invoqué', activeByDefault: false },
+      },
+    ],
     // Profil structuré du démon. Défense 18 (fixe), PV [=niveau × 5] (niveau du sorcier),
     // DM [2d4° + 5] ; Initiative et Attaque renvoient au maître.
     creatureProfile: {
@@ -2047,11 +2062,15 @@ export const mageFeatures: Feature[] = [
     text:
       "Le sorcier augmente sa CON de +1. Désormais, il obtient un dé bonus aux tests de CON et voit dans le noir comme s’il s’agissait de pénombre. De plus, lorsqu’il lance un sort, il peut sacrifier 1d4° PV pour ajouter +2d4° aux DM de ce sort. S’il s’agit d’un sort dont les DM durent de round en round (comme strangulation), il peut sacrifier 1d4° PV chaque round.",
     // Rendu enrichi (PER-69) : sacrifice {1d4°} PV ; bonus de DM +{2d4°}.
-    // TODO(extraction) : « +1 en CON », « dé bonus aux tests de CON » et la vision dans le
-    // noir ne sont pas exprimables en `effects` (caractéristique brute, bonus de tests PER-89,
-    // sens narratif) → texte verbatim.
+    // « +1 en CON » → modificateur permanent de carac. « dé bonus aux tests de CON » → dé
+    // bonus permanent (mécanique core, icône double-d20).
+    // TODO(extraction) : la vision dans le noir (sens narratif) reste en texte verbatim.
     richText:
       "Le sorcier augmente sa CON de +1. Désormais, il obtient un dé bonus aux tests de CON et voit dans le noir comme s’il s’agissait de pénombre. De plus, lorsqu’il lance un sort, il peut sacrifier {1d4°} PV pour ajouter +{2d4°} aux DM de ce sort. S’il s’agit d’un sort dont les DM durent de round en round (comme strangulation), il peut sacrifier {1d4°} PV chaque round.",
+    effects: [
+      { kind: 'ability-bonus', ability: 'CON', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'CON' },
+    ],
     sourcePage: 110,
   },
 ];

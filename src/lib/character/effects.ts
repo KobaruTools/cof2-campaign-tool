@@ -159,6 +159,9 @@ function effectContributions(
     }
     return out;
   }
+  // Les genres ciblant une CARACTÉRISTIQUE (`ability-bonus`, `ability-bonus-die`) ne
+  // contribuent pas au sac de stats DÉRIVÉES — ils sont agrégés à part (cf. plus bas).
+  if (effect.kind !== 'stat-bonus') return [];
   const value = resolveValue(effect.value, pathId, pathRanks, ctx);
   return value === null ? [] : [{ stat: effect.stat, value }];
 }
@@ -319,4 +322,95 @@ export function pruneEffectToggles(
     if (owned.has(id)) next[id] = toggles;
   }
   return next;
+}
+
+// ---------------------------------------------------------------------------
+// Caractéristiques : modificateurs permanents et dés bonus (genres `ability-*`)
+// ---------------------------------------------------------------------------
+
+/** Une capacité qui apporte un modificateur permanent à une caractéristique. */
+export interface AbilityModSource {
+  featureId: string;
+  /** Nom de la capacité (français), pour le détail affiché au joueur. */
+  name: string;
+  value: number;
+}
+
+/**
+ * Modificateurs PERMANENTS de caractéristiques apportés par les capacités acquises
+ * (genre `ability-bonus`, ex. « +1 en CON » d'Endurer). Cumulés par caractéristique.
+ * Déterministes : viennent PAR-DESSUS la valeur saisie (base + peuple). Ids inconnus
+ * ignorés.
+ */
+export function abilityModsFromFeatures(featureIds: string[]): Partial<Record<AbilityId, number>> {
+  const mods: Partial<Record<AbilityId, number>> = {};
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const e of feature.effects) {
+      if (e.kind === 'ability-bonus') mods[e.ability] = (mods[e.ability] ?? 0) + e.value;
+    }
+  }
+  return mods;
+}
+
+/** Détaille, par caractéristique, QUELLES capacités apportent le modificateur. */
+export function abilityModSources(featureIds: string[]): Partial<Record<AbilityId, AbilityModSource[]>> {
+  const sources: Partial<Record<AbilityId, AbilityModSource[]>> = {};
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const e of feature.effects) {
+      if (e.kind === 'ability-bonus') {
+        (sources[e.ability] ??= []).push({ featureId: id, name: feature.name, value: e.value });
+      }
+    }
+  }
+  return sources;
+}
+
+/**
+ * Caractéristiques bénéficiant d'un DÉ BONUS permanent (genre `ability-bonus-die`),
+ * chacune avec le(s) nom(s) de capacité(s) source(s) — pour l'info-bulle de l'icône
+ * double-d20. Le dé bonus ne s'empile pas : une carac présente ici en bénéficie (peu
+ * importe le nombre de sources), mais on garde la liste pour l'attribuer à l'affichage.
+ */
+export function abilityBonusDiceFromFeatures(
+  featureIds: string[],
+): Partial<Record<AbilityId, string[]>> {
+  const dice: Partial<Record<AbilityId, string[]>> = {};
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const e of feature.effects) {
+      if (e.kind === 'ability-bonus-die') (dice[e.ability] ??= []).push(feature.name);
+    }
+  }
+  return dice;
+}
+
+/**
+ * Dés bonus octroyés à la CRÉATURE d'une voie par les options retenues du personnage
+ * (option `creatureAbilityBonusDie`, ex. Golem supérieur « Forme de félin » → AGI du
+ * golem). Lit `character.featureChoices` aligné par POSITION sur `Feature.choices`,
+ * pour les capacités de la voie `pathId`.
+ */
+export function creatureBonusDiceForPath(pathId: string, character: Character): Set<AbilityId> {
+  const out = new Set<AbilityId>();
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature || feature.pathId !== pathId || !feature.choices) continue;
+    const selections = character.featureChoices[id] ?? [];
+    feature.choices.forEach((choice, i) => {
+      if (choice.kind !== 'option') return;
+      const sel = selections[i];
+      const chosenIds = Array.isArray(sel) ? sel : sel ? [sel] : [];
+      for (const opt of choice.options) {
+        if (opt.creatureAbilityBonusDie && chosenIds.includes(opt.id)) {
+          out.add(opt.creatureAbilityBonusDie);
+        }
+      }
+    });
+  }
+  return out;
 }
