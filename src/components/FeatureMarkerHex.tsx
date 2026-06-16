@@ -7,6 +7,7 @@ import Tooltip from '@mui/material/Tooltip';
 import { darken, type SxProps, type Theme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import type { Feature } from '@/data/schema';
+import { canConcentrate } from '@/lib/engine';
 import { ACTION_TYPE_LABELS } from '@/components/FeatureLabel';
 
 /**
@@ -23,11 +24,14 @@ function Hex({
   fill,
   size,
   label,
+  glow = false,
   children,
 }: {
   fill: string;
   size: number;
   label: string;
+  /** Halo bleu mana autour de l'hexagone : signale une transformation de concentration. */
+  glow?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -35,7 +39,19 @@ function Hex({
       <Box
         role="img"
         aria-label={label}
-        sx={{ position: 'relative', width: size, height: size * HEX_RATIO, flexShrink: 0 }}
+        sx={{
+          position: 'relative',
+          width: size,
+          height: size * HEX_RATIO,
+          flexShrink: 0,
+          // Halo bleu mana diffus quand la concentration transforme le marqueur
+          // (même effet que la goutte de PM réduite, SpellManaBadge). À PORTER ICI,
+          // sur le conteneur SANS `clip-path` : appliqué sur l'hexagone découpé,
+          // le `clip-path` rogne le `filter` (appliqué avant lui) et masque le halo.
+          ...(glow
+            ? { filter: (theme) => `drop-shadow(0 0 4px ${theme.palette.info.main})` }
+            : {}),
+        }}
       >
         <Box
           aria-hidden
@@ -83,6 +99,12 @@ export interface FeatureMarkerHexesProps {
   color?: string;
   /** Largeur d'un hexagone en pixels. Défaut 20. */
   size?: number;
+  /**
+   * Concentration accrue active (état de jeu, p. 228) : pour un sort éligible
+   * (lancé en (A)), l'hexagone (A) devient (L) — la concentration transforme le
+   * sort en action limitée — avec un halo bleu mana. Sans effet sinon.
+   */
+  concentration?: boolean;
   sx?: SxProps<Theme>;
 }
 
@@ -93,9 +115,18 @@ export interface FeatureMarkerHexesProps {
  * Remplace les marqueurs textuels du `FeatureLabel`. Ne rend rien si la capacité
  * n'a ni la qualité de sort ni de type d'action.
  */
-export function FeatureMarkerHexes({ feature, color, size = 20, sx }: FeatureMarkerHexesProps) {
+export function FeatureMarkerHexes({
+  feature,
+  color,
+  size = 20,
+  concentration = false,
+  sx,
+}: FeatureMarkerHexesProps) {
   if (!feature.isSpell && feature.actionTypes.length === 0) return null;
   const fill = color ? darken(color, 0.25) : 'info.main';
+  // Concentration active ET sort éligible (lancé en (A) seulement) : son hexagone
+  // d'action (A) devient (L), avec halo (p. 228).
+  const concentrated = concentration && canConcentrate(feature);
   return (
     <Stack direction="row" spacing={0.25} sx={sx}>
       {feature.isSpell && (
@@ -103,11 +134,23 @@ export function FeatureMarkerHexes({ feature, color, size = 20, sx }: FeatureMar
           <EmergencyIcon sx={{ fontSize: size * 0.6, color: 'inherit' }} />
         </Hex>
       )}
-      {feature.actionTypes.map((a) => (
-        <Hex key={a} fill={fill} size={size} label={ACTION_TYPE_LABELS[a]}>
-          {a}
-        </Hex>
-      ))}
+      {feature.actionTypes.map((a) =>
+        concentrated && a === 'A' ? (
+          <Hex
+            key={a}
+            fill={fill}
+            size={size}
+            glow
+            label="Concentration : action limitée (L) au lieu de (A) (p. 228)"
+          >
+            L
+          </Hex>
+        ) : (
+          <Hex key={a} fill={fill} size={size} label={ACTION_TYPE_LABELS[a]}>
+            {a}
+          </Hex>
+        ),
+      )}
     </Stack>
   );
 }

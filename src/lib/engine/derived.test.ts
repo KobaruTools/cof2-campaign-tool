@@ -16,6 +16,8 @@ import {
   luckPoints,
   manaPoints,
   spellManaCost,
+  canConcentrate,
+  concentratedSpellManaCost,
   maxHp,
   type Abilities,
 } from './derived';
@@ -142,6 +144,43 @@ describe('coût de base en mana d’un sort (p. 228)', () => {
     // Rune de garde : coût de base = rang 5. Le « 3 PM » du texte est le rang − 2
     // dû à la Concentration automatique (réduction dynamique, hors coût de base).
     expect(runeDeGarde && spellManaCost(runeDeGarde)).toBe(5);
+  });
+});
+
+describe('Concentration accrue (p. 228)', () => {
+  it('canConcentrate : tout sort proposant un mode (A)', () => {
+    expect(canConcentrate({ isSpell: true, actionTypes: ['A'] })).toBe(true);
+    // Sorts purement (L)/(M)/(G) : « ne peuvent pas bénéficier de la concentration ».
+    expect(canConcentrate({ isSpell: true, actionTypes: ['L'] })).toBe(false);
+    expect(canConcentrate({ isSpell: true, actionTypes: ['M'] })).toBe(false);
+    expect(canConcentrate({ isSpell: true, actionTypes: ['G'] })).toBe(false);
+    // Sort à double mode incluant (A) (Arme élémentaire, Invisibilité, Peur) : le
+    // joueur peut se concentrer s'il lance en (A).
+    expect(canConcentrate({ isSpell: true, actionTypes: ['A', 'L'] })).toBe(true);
+    // Capacité qui n'est pas un sort.
+    expect(canConcentrate({ isSpell: false, actionTypes: ['A'] })).toBe(false);
+  });
+
+  it('concentratedSpellManaCost : −2 PM, plancher 0', () => {
+    // Rang 5 → 3 (cf. Rune de garde, rang 5 − 2 = 3 PM).
+    expect(concentratedSpellManaCost({ isSpell: true, rank: 5, actionTypes: ['A'] })).toBe(3);
+    // Sorts de rang 1 et 2 : réduits à 0 PM (plancher, p. 228).
+    expect(concentratedSpellManaCost({ isSpell: true, rank: 2, actionTypes: ['A'] })).toBe(0);
+    expect(concentratedSpellManaCost({ isSpell: true, rank: 1, actionTypes: ['A'] })).toBe(0);
+  });
+
+  it('concentratedSpellManaCost : coût de base inchangé si non éligible', () => {
+    // Sort en (L) : pas de réduction, coût = rang.
+    expect(concentratedSpellManaCost({ isSpell: true, rank: 4, actionTypes: ['L'] })).toBe(4);
+    // Non-sort : null comme spellManaCost.
+    expect(concentratedSpellManaCost({ isSpell: false, rank: 3, actionTypes: ['A'] })).toBeNull();
+  });
+
+  it('preuve sur les données réelles : sorts à double mode (A)|(L)', () => {
+    // Peur (rang 4, « (A) ou (L) ») : éligible via son mode (A), coût 4 − 2 = 2.
+    const peur = featureById.get('mort-r4');
+    expect(peur && canConcentrate(peur)).toBe(true);
+    expect(peur && concentratedSpellManaCost(peur)).toBe(2);
   });
 });
 

@@ -2,7 +2,7 @@ import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import { darken, type SxProps, type Theme } from '@mui/material/styles';
 import type { Feature } from '@/data/schema';
-import { spellManaCost } from '@/lib/engine';
+import { canConcentrate, concentratedSpellManaCost, spellManaCost } from '@/lib/engine';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 
 /** Tracé SVG de la goutte des points de mana (réutilisé de la grille de stats). */
@@ -26,8 +26,26 @@ function manaCostExplanation(feature: Feature, cost: number): string {
   );
 }
 
+/**
+ * Infobulle du coût quand la Concentration accrue est active (p. 228) : rappelle
+ * le coût de base, la réduction de 2 PM (plancher 0) et le passage en (L).
+ */
+function concentrationCostExplanation(baseCost: number, reducedCost: number): string {
+  return (
+    `Coût en concentration : ${reducedCost} PM (= ${baseCost} − 2, plancher 0, p. 228).\n\n` +
+    `Le sort est lancé en se concentrant plus longtemps : il devient une action limitée (L).`
+  );
+}
+
 export interface SpellManaBadgeProps {
   feature: Feature;
+  /**
+   * Concentration accrue active (état de jeu, p. 228) : pour un sort éligible
+   * (lancé en (A)), affiche le coût réduit de 2 PM (plancher 0) au lieu du coût
+   * de base, avec un repère visuel et une infobulle dédiée. Sans effet sur les
+   * sorts non éligibles (cf. `canConcentrate`).
+   */
+  concentration?: boolean;
   /** Diamètre de la goutte en pixels. Défaut 30. */
   size?: number;
   /**
@@ -46,18 +64,26 @@ export interface SpellManaBadgeProps {
  * (cf. `spellManaCost`, PER-65). Ne rend rien pour une capacité qui n'est pas un
  * sort (pas de coût de mana).
  */
-export function SpellManaBadge({ feature, size = 30, color, sx }: SpellManaBadgeProps) {
-  const cost = spellManaCost(feature);
-  if (cost === null) return null;
+export function SpellManaBadge({ feature, concentration = false, size = 30, color, sx }: SpellManaBadgeProps) {
+  const baseCost = spellManaCost(feature);
+  if (baseCost === null) return null;
+  // Concentration active ET sort éligible (lancé en (A)) : on affiche le coût
+  // réduit. Sinon la pastille montre le coût de base inchangé.
+  const concentrated = concentration && canConcentrate(feature);
+  const cost = concentrated ? (concentratedSpellManaCost(feature) ?? baseCost) : baseCost;
   return (
     <Tooltip
-      title={manaCostExplanation(feature, cost)}
+      title={concentrated ? concentrationCostExplanation(baseCost, cost) : manaCostExplanation(feature, cost)}
       arrow
       slotProps={{ tooltip: { sx: { whiteSpace: 'pre-line', maxWidth: 300 } } }}
     >
       <Box
         role="img"
-        aria-label={`Coût : ${cost} points de mana`}
+        aria-label={
+          concentrated
+            ? `Coût en concentration : ${cost} points de mana`
+            : `Coût : ${cost} points de mana`
+        }
         sx={{ position: 'relative', width: size, height: size, flexShrink: 0, lineHeight: 0, ...sx }}
       >
         <Box
@@ -70,7 +96,12 @@ export function SpellManaBadge({ feature, size = 30, color, sx }: SpellManaBadge
             // Teinte du profil assombrie (utilitaire MUI `darken`) pour contraster
             // avec le chiffre blanc ; repli sur le bleu mana du thème sinon.
             fill: color ? darken(color, 0.25) : 'info.main',
-            filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.35))',
+            // Concentration : halo bleu mana épousant la goutte pour signaler le
+            // coût réduit ; ombre portée simple sinon.
+            filter: concentrated
+              ? (theme) =>
+                  `drop-shadow(0 1px 1px rgba(0,0,0,0.35)) drop-shadow(0 0 4px ${theme.palette.info.main})`
+              : 'drop-shadow(0 1px 1px rgba(0,0,0,0.35))',
           }}
           dangerouslySetInnerHTML={{ __html: MANA_DROP_PATH }}
         />

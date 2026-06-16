@@ -5,6 +5,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PushPinIcon from '@mui/icons-material/PushPin';
+import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import ViewStreamIcon from '@mui/icons-material/ViewStream';
 import Accordion from '@mui/material/Accordion';
@@ -33,7 +34,11 @@ import type { Feature, Path } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import { featureChoiceDefs, hasUnmadeChoice } from '@/lib/character/choices';
-import { conditionalEffectsOf, creatureBonusDiceForPath } from '@/lib/character/effects';
+import {
+  conditionalEffectsOf,
+  creatureBonusDiceForPath,
+  disabledFeatureIds,
+} from '@/lib/character/effects';
 import { classColor } from '@/lib/ui/classColors';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
@@ -117,6 +122,11 @@ export interface FeaturesByPathProps {
   classId: string;
   /** Disposition d'affichage (contrôlée par le parent). */
   layout: FeaturesLayout;
+  /**
+   * Concentration accrue active (état de jeu, p. 228) : affiche pour les sorts
+   * éligibles (lancés en (A)) leur coût réduit de 2 PM et leur passage en (L).
+   */
+  concentration?: boolean;
   /**
    * Caractéristiques et niveau du personnage : permettent le rendu ENRICHI des
    * rangs (dés, dé évolutif au niveau courant, formules calculées — PER-64).
@@ -219,6 +229,46 @@ export function FeaturesLayoutToggle({
 }
 
 /**
+ * Interrupteur « Concentration accrue » (p. 228), à placer dans l'en-tête de la
+ * section à côté de la bascule d'affichage. État de jeu transitoire : quand il
+ * est actif, les sorts lancés en action d'attaque (A) affichent leur coût réduit
+ * de 2 PM (plancher 0) et passent en action limitée (L). Sans effet sur les sorts
+ * déjà en (L), (M) ou (G), qui ne peuvent pas en bénéficier.
+ */
+export function ConcentrationToggle({
+  value,
+  onChange,
+}: {
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <ToggleButton
+      value="concentration"
+      selected={value}
+      size="small"
+      aria-label="Concentration accrue"
+      aria-pressed={value}
+      onChange={() => onChange(!value)}
+      sx={
+        // Actif : halo bleu mana diffus, rappel visuel des marqueurs de concentration
+        // (goutte de PM réduite, hexagone (L)).
+        value
+          ? { boxShadow: (theme) => `0 0 6px ${theme.palette.info.main}`, color: 'info.main' }
+          : undefined
+      }
+    >
+      <Tooltip
+        title="Concentration accrue : les sorts en (A) coûtent 2 PM de moins (plancher 0) et deviennent une action limitée (L) (p. 228)"
+        arrow
+      >
+        <SelfImprovementIcon fontSize="small" />
+      </Tooltip>
+    </ToggleButton>
+  );
+}
+
+/**
  * Capacité de peuple de rang 1 conservée par un mage, affichée à l'intérieur du
  * bloc de rang 1 de la voie du mage (« Capacité de peuple + occultisme », p. 60).
  */
@@ -265,6 +315,8 @@ function PathBlock({
   character,
   onChoiceChange,
   onToggleEffect,
+  disabledIds,
+  concentration = false,
 }: {
   group: FeatureGroup;
   classId: string;
@@ -290,6 +342,13 @@ function PathBlock({
   onChoiceChange?: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
   /** Bascule d'un interrupteur d'effet conditionnel (fiche permissive, PER-67). */
   onToggleEffect?: (featureId: string, index: number, active: boolean) => void;
+  /**
+   * Capacités désactivées par exclusion mutuelle (un interrupteur actif les grise) :
+   * rendues semi-transparentes + grisées, interrupteur non-interactif, détail conservé.
+   */
+  disabledIds?: Set<string>;
+  /** Concentration accrue active (p. 228) : coût réduit + (A)→(L) pour les sorts éligibles. */
+  concentration?: boolean;
 }) {
   const { path, features } = group;
   // Rang ATTEINT dans la voie = plus haut rang acquis parmi ses capacités. Sert à
@@ -349,10 +408,18 @@ function PathBlock({
   const hasEffectToggles = (feature: Feature) =>
     !!character && conditionalEffectsOf(feature.id).length > 0;
 
+  /** Vrai si la capacité est désactivée par exclusion mutuelle (grisage + interrupteur figé). */
+  const isDisabled = (feature: Feature) => disabledIds?.has(feature.id) ?? false;
+
+  /** Style « capacité désactivée » : semi-transparente + grisée (le clic reste). */
+  const disabledSx = (feature: Feature) =>
+    isDisabled(feature) ? { opacity: 0.5, filter: 'grayscale(1)' } : null;
+
   /**
    * Interrupteurs des effets conditionnels (PER-67). Toujours basculables (état de
    * jeu transitoire, même hors mode édition). `compact` rend l'interrupteur seul
-   * (vue colonne), le libellé complet passant en infobulle.
+   * (vue colonne), le libellé complet passant en infobulle. Désactivés (non
+   * interactifs) si la capacité est exclue par une autre active.
    */
   const renderEffectToggles = (feature: Feature, opts: { compact?: boolean } = {}) => {
     if (!character || conditionalEffectsOf(feature.id).length === 0) return null;
@@ -362,6 +429,7 @@ function PathBlock({
         featureId={feature.id}
         compact={opts.compact}
         onToggle={onToggleEffect}
+        disabled={isDisabled(feature)}
       />
     );
   };
@@ -451,16 +519,21 @@ function PathBlock({
                     '&:hover .feature-remove, &:focus-within .feature-remove': { opacity: 1 },
                   }
                 : {}),
+              // Désactivée par exclusion mutuelle : grisée + transparente, mais le
+              // clic d'ouverture du détail reste actif.
+              ...(disabledSx(feature) ?? {}),
             }}
           >
             {/* Marqueurs hexagonaux centrés sur la ligne du haut du bloc. */}
             <FeatureMarkerHexes
               feature={feature}
               color={color ?? undefined}
+              concentration={concentration}
               sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
             />
             <SpellManaBadge
               feature={feature}
+              concentration={concentration}
               color={color ?? undefined}
               sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
             />
@@ -550,7 +623,7 @@ function PathBlock({
                     sx={{ fontWeight: 600 }}
                   />
                   <Box component="span" sx={{ fontWeight: 600 }}>
-                    <FeatureLabel feature={openFeature} />
+                    <FeatureLabel feature={openFeature} concentration={concentration} />
                   </Box>
                 </Stack>
                 <IconButton
@@ -666,6 +739,9 @@ function PathBlock({
               borderColor: 'divider',
               bgcolor: color ? alpha(color, 0.06) : 'transparent',
               '&::before': { display: 'none' },
+              // Désactivée par exclusion mutuelle : grisée + transparente, mais
+              // toujours dépliable (détail conservé).
+              ...(disabledSx(feature) ?? {}),
             }}
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -682,11 +758,12 @@ function PathBlock({
                 />
                 {manualFeatureIds?.has(feature.id) && <ManualPin inline />}
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  <FeatureLabel feature={feature} />
+                  <FeatureLabel feature={feature} concentration={concentration} />
                 </Typography>
               </Stack>
               <SpellManaBadge
                 feature={feature}
+                concentration={concentration}
                 color={color ?? undefined}
                 sx={{ alignSelf: 'center', mr: 1 }}
               />
@@ -805,6 +882,7 @@ export function FeaturesByPath({
   character,
   onChoiceChange,
   onToggleEffect,
+  concentration = false,
 }: FeaturesByPathProps) {
   const groups = groupFeaturesByPath(featureIds);
 
@@ -823,6 +901,10 @@ export function FeaturesByPath({
   const displayGroups = retainedFeature
     ? groups.filter((g) => g !== ancestryGroup)
     : groups;
+
+  // Capacités désactivées par exclusion mutuelle (un interrupteur actif les grise,
+  // ex. Aspect du démon → Beauté de la succube ; Armure de pierre ↔ Déphasage).
+  const disabled = character ? disabledFeatureIds(character) : undefined;
 
   const owned = new Set(featureIds);
   const addable = onChange
@@ -888,6 +970,8 @@ export function FeaturesByPath({
               character={character}
               onChoiceChange={onChoiceChange}
               onToggleEffect={onToggleEffect}
+              disabledIds={disabled}
+              concentration={concentration}
             />
           ))}
           {ghostColumns.map((c) => (
@@ -908,6 +992,8 @@ export function FeaturesByPath({
               character={character}
               onChoiceChange={onChoiceChange}
               onToggleEffect={onToggleEffect}
+              disabledIds={disabled}
+              concentration={concentration}
             />
           ))}
         </Box>
@@ -928,6 +1014,8 @@ export function FeaturesByPath({
               character={character}
               onChoiceChange={onChoiceChange}
               onToggleEffect={onToggleEffect}
+              disabledIds={disabled}
+              concentration={concentration}
             />
           ))}
         </Stack>

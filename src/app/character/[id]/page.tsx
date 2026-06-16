@@ -47,7 +47,11 @@ import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
-import { FeaturesByPath, FeaturesLayoutToggle } from '@/components/sheet/FeaturesByPath';
+import {
+  ConcentrationToggle,
+  FeaturesByPath,
+  FeaturesLayoutToggle,
+} from '@/components/sheet/FeaturesByPath';
 import type { FeaturesLayout } from '@/components/sheet/FeaturesByPath';
 import { EquipmentList } from '@/components/sheet/EquipmentList';
 import { IdentityFields } from '@/components/sheet/IdentityFields';
@@ -68,6 +72,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const [editing, setEditing] = useState(false);
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [voiesLayout, setVoiesLayout] = useState<FeaturesLayout>('columns');
+  // Concentration accrue (p. 228) : état de jeu transitoire (non persisté), comme
+  // l'affichage des voies. Quand actif, les sorts en (A) montrent leur coût réduit.
+  const [concentration, setConcentration] = useState(false);
   const [createdToast, setCreatedToast] = useState(false);
 
   // Confirmation « fin de wizard » : le wizard redirige avec `?created=1`. On
@@ -443,12 +450,18 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <SheetSection
             title="Voies & capacités"
-            action={<FeaturesLayoutToggle value={voiesLayout} onChange={setVoiesLayout} />}
+            action={
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <ConcentrationToggle value={concentration} onChange={setConcentration} />
+                <FeaturesLayoutToggle value={voiesLayout} onChange={setVoiesLayout} />
+              </Stack>
+            }
           >
             <FeaturesByPath
               featureIds={character.featureIds}
               classId={character.classId}
               layout={voiesLayout}
+              concentration={concentration}
               abilities={character.abilities}
               level={character.level}
               onChange={editing ? setFeatureIds : undefined}

@@ -171,6 +171,43 @@ export function spellManaCost(
   return Math.max(0, feature.manaCost ?? feature.rank);
 }
 
+/**
+ * Réduction de coût en mana accordée par la Concentration accrue (p. 228).
+ * Le plancher de coût reste 0 (les sorts de rang 1 et 2 tombent ainsi à 0 PM).
+ */
+export const CONCENTRATION_MANA_REDUCTION = 2;
+
+/**
+ * Vrai si un sort peut bénéficier de la Concentration accrue (p. 228) : la règle
+ * la réserve aux sorts lancés en **action d'attaque (A)**. Il suffit donc que le
+ * sort PROPOSE un mode de lancement en `(A)` — y compris les sorts à double mode
+ * « (A) ou (L) » (Arme élémentaire, Invisibilité, Peur) : le joueur qui choisit
+ * de lancer en (A) peut se concentrer (le mode (L) natif, lui, est un autre
+ * lancement, non concerné). Faux pour une capacité qui n'est pas un sort, ou un
+ * sort qui n'offre aucun mode (A) (purement (L)/(M)/(G)).
+ */
+export function canConcentrate(
+  feature: Pick<Feature, 'isSpell' | 'actionTypes'>,
+): boolean {
+  return feature.isSpell && feature.actionTypes.includes('A');
+}
+
+/**
+ * Coût en mana d'un sort lancé en se concentrant (Concentration accrue, p. 228) :
+ * coût de base − 2 PM, plancher 0. Si le sort ne peut pas en bénéficier (capacité
+ * non-sort, ou sort qui ne se lance pas en (A)), retourne le coût de base
+ * inchangé (`null` pour un non-sort). Réduction dynamique appliquée par-dessus le
+ * coût de base (`spellManaCost`) : ne touche pas ce dernier.
+ */
+export function concentratedSpellManaCost(
+  feature: Pick<Feature, 'isSpell' | 'rank' | 'manaCost' | 'actionTypes'>,
+): number | null {
+  const base = spellManaCost(feature);
+  if (base === null) return null;
+  if (!canConcentrate(feature)) return base;
+  return Math.max(0, base - CONCENTRATION_MANA_REDUCTION);
+}
+
 // ---------------------------------------------------------------------------
 // Initiative — p. 31
 // ---------------------------------------------------------------------------
