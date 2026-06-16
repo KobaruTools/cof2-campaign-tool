@@ -39,7 +39,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   ...ABILITY_ENTRIES,
   // --- Stats dérivées (puce dédiée) ---
   DEF: { label: 'Défense', category: 'derived' },
-  PV: { label: 'Points de vie', category: 'derived' },
+  PV: { label: 'Points de vigueur', category: 'derived' },
   PM: { label: 'Points de mana', category: 'derived' },
   PC: { label: 'Points de chance', category: 'derived' },
   DR: { label: 'Dés de récupération', category: 'derived' },

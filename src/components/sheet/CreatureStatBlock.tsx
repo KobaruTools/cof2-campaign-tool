@@ -31,7 +31,7 @@ const MASTER_STAT_LABEL: Partial<Record<DerivedStatId, string>> = {
   meleeAttack: 'Attaque au contact',
   rangedAttack: 'Attaque à distance',
   def: 'Défense',
-  maxHp: 'Points de vie',
+  maxHp: 'Points de vigueur',
 };
 
 const isMasterRef = (v: string | MasterStatRef): v is MasterStatRef =>
