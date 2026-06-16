@@ -951,7 +951,7 @@ export const mageFeatures: Feature[] = [
       "Au prix d’une action de mouvement, le forgesort peut enflammer son bâton ou son marteau pendant INT minutes et ajoute +2 DM de feu sur les attaques au contact réalisées avec cette arme. Ce bonus augmente de +1 chaque fois que le personnage atteint le rang 4 dans une voie de forgesort. L’arme s’éteint immédiatement s’il la lâche. En plus de ce sort, le forgesort ajoute son rang + 2 aux tests d’orfèvrerie ou de forge.",
     // Rendu enrichi (PER-69) : durée [=INT] minutes ; « rang + 2 » modificateur aux tests
     // (PER-89). Le « +2 DM de feu » (+ scaling cross-voie au rang 4 de forgesort) est un
-    // bonus aux DM d’arme, hors stats dérivées → texte.
+    // bonus aux DM d’arme, hors stats dérivées → texte. Affichage du DM réel : TODO(PER-92).
     richText:
       "Au prix d’une action de mouvement, le forgesort peut enflammer son bâton ou son marteau pendant [=INT] minutes et ajoute +2 DM de feu sur les attaques au contact réalisées avec cette arme. Ce bonus augmente de +1 chaque fois que le personnage atteint le rang 4 dans une voie de forgesort. L’arme s’éteint immédiatement s’il la lâche. En plus de ce sort, le forgesort ajoute son [rang + 2] aux tests d’orfèvrerie ou de forge.",
     sourcePage: 99,
@@ -1021,8 +1021,9 @@ export const mageFeatures: Feature[] = [
     // « ajouter sa valeur de CON au nombre de PM » → bonus permanent de mana égal à la CON.
     // « augmente sa CON de +1 » → modificateur permanent de carac. « dé bonus aux tests de
     // CON » → dé bonus permanent (mécanique core, icône double-d20).
-    // TODO(extraction) : « divise par deux les DM de feu » (réduction de DM) reste hors
-    // DERIVED_STAT_IDS → texte verbatim.
+    // « divise par deux les DM de feu » → réduction de dégâts (type `fire`, moitié).
+    // TODO(résistances) : porter par `Feature.damageReduction` lors de la passe « stats
+    // avancées » (la couche données existe ; le moteur ne la consomme pas encore).
     effects: [
       { kind: 'stat-bonus', stat: 'manaPoints', value: { scale: 'ability', ability: 'CON' } },
       { kind: 'ability-bonus', ability: 'CON', value: 1 },
@@ -1042,12 +1043,23 @@ export const mageFeatures: Feature[] = [
     text:
       "Le forgesort remplace la force brutale par un peu de réflexion. Il peut effectuer un test d’INT au lieu d’un test de FOR (par exemple, il utilise un levier pour déplacer une lourde charge). De plus, au niveau où il acquiert cette capacité, il peut ajouter son INT à ses PV au lieu de la CON. Il ajoute son rang + 2 à tous les tests de bricolage ou de science.",
     // Rendu enrichi (PER-69) : « rang + 2 » modificateur aux tests (PER-89).
-    // TODO(extraction) : « ajouter son INT à ses PV AU LIEU DE la CON » est un REMPLACEMENT
-    // de la contribution de CON aux PV (pas un simple bonus), et la portée temporelle
-    // (« au niveau où il acquiert cette capacité ») est ambiguë → non modélisé en `effects`,
-    // à trancher avec le propriétaire.
+    // « il peut ajouter son INT à ses PV au lieu de la CON » : DÉCISION du joueur à la prise
+    // de la capacité → modélisée en CHOIX d'option (capté, et signalé « non pris » par l'UI,
+    // cf. `hasUnmadeChoice`). L'APPLICATION au calcul des PV (un REMPLACEMENT de la
+    // contribution de CON, pas un bonus) relève des stats avancées à venir : la donnée du
+    // choix est posée dès maintenant, le moteur ne la consomme pas encore.
     richText:
       "Le forgesort remplace la force brutale par un peu de réflexion. Il peut effectuer un test d’INT au lieu d’un test de FOR (par exemple, il utilise un levier pour déplacer une lourde charge). De plus, au niveau où il acquiert cette capacité, il peut ajouter son INT à ses PV au lieu de la CON. Il ajoute son [rang + 2] à tous les tests de bricolage ou de science.",
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Caractéristique utilisée pour les PV (à la prise de cette capacité)',
+        options: [
+          { id: 'pv-from-con', label: 'PV basés sur la CON (par défaut)' },
+          { id: 'pv-from-int', label: 'PV basés sur l’INT (au lieu de la CON)' },
+        ],
+      },
+    ],
     sourcePage: 100,
   },
   {
@@ -1229,8 +1241,8 @@ export const mageFeatures: Feature[] = [
     text:
       "Le magicien choisit une cible visible située à moins de 30 m et lance sur elle un projectile d’énergie ésotérique pure, déformant la trame de la réalité. La cible subit automatiquement 1d4° DM. Si le joueur obtient le résultat maximal sur son dé de dommages, il peut le relancer et ajouter le nouveau résultat (une seule fois). Les DM du projectile de mana augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une voie de magicien jusqu’à un maximum égal à sa valeur d’INT.",
     // Rendu enrichi (PER-69) : DM de base {1d4°} ; la montée par rang reste en prose.
-    // TODO(cross-voie) : afficher le DM RÉEL « 1d4° + min(voies de magicien au rang 4, INT) »
-    // dans l'encadré de dé — reporté au lot « scaling par paliers de famille » (avec
+    // TODO(cross-voie, PER-92) : afficher le DM RÉEL « 1d4° + min(voies de magicien au rang 4,
+    // INT) » dans l'encadré de dé — reporté au lot « scaling par paliers de famille » (avec
     // Divination / Armure de mana / Armure d'os). Pas de syntaxe de formule ad hoc ici.
     richText:
       "Le magicien choisit une cible visible située à moins de 30 m et lance sur elle un projectile d’énergie ésotérique pure, déformant la trame de la réalité. La cible subit automatiquement {1d4°} DM. Si le joueur obtient le résultat maximal sur son dé de dommages, il peut le relancer et ajouter le nouveau résultat (une seule fois). Les DM du projectile de mana augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une voie de magicien jusqu’à un maximum égal à sa valeur d’INT.",
