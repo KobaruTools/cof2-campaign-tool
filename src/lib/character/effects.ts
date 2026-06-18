@@ -548,3 +548,162 @@ export function creatureBonusDiceForPath(pathId: string, character: Character): 
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Bonus de compétence aux domaines de test (PER-89)
+// ---------------------------------------------------------------------------
+
+/**
+ * Catégorie de cumul d'un bonus de compétence (p. 203), déduite de la voie hôte :
+ * profil (`class`), peuple (`ancestry` + voie du `mage`), prestige. Deux bonus de MÊME
+ * catégorie ne se cumulent pas (on garde le plus fort) ; entre catégories ils
+ * s'additionnent, le total étant plafonné à +15.
+ */
+export type CompetenceCategory = 'class' | 'ancestry' | 'prestige';
+
+/** Plafond absolu du bonus de compétence sur un test (p. 203). */
+export const COMPETENCE_BONUS_CAP = 15;
+
+/** Libellé français d'une catégorie de source, pour le détail affiché. */
+export const COMPETENCE_CATEGORY_LABEL: Record<CompetenceCategory, string> = {
+  class: 'Voie de profil',
+  ancestry: 'Voie de peuple',
+  prestige: 'Voie de prestige',
+};
+
+/** Catégorie de cumul de la voie hôte d'une capacité (null si voie inconnue). */
+function competenceCategoryOf(pathId: string): CompetenceCategory | null {
+  const path = pathById.get(pathId);
+  if (!path) return null;
+  switch (path.type) {
+    case 'class':
+      return 'class';
+    case 'prestige':
+      return 'prestige';
+    case 'ancestry':
+    case 'mage':
+      return 'ancestry';
+  }
+}
+
+/**
+ * Valeur par défaut d'un bonus de compétence selon la catégorie (p. 203), quand l'effet
+ * n'en porte pas : peuple = +3 fixe ; profil / prestige évolutif = `2 + rang atteint dans
+ * la voie`, plafonné au rang 5 (→ +7).
+ */
+function defaultCompetenceValue(category: CompetenceCategory, pathRank: number): number {
+  return category === 'ancestry' ? 3 : 2 + Math.min(pathRank, 5);
+}
+
+/** Contribution retenue d'une capacité à un domaine (le max de sa catégorie). */
+export interface TestDomainSource {
+  featureId: string;
+  /** Nom de la capacité (français), pour le détail affiché. */
+  name: string;
+  /** Catégorie de source (profil / peuple / prestige). */
+  category: CompetenceCategory;
+  value: number;
+}
+
+/** Bonus de compétence total d'un domaine pour un personnage, après cumul. */
+export interface TestDomainBonus {
+  /** Id du domaine (cf. `src/data/test-domains.ts`). */
+  domain: string;
+  /** Total après cumul (max par catégorie, sommés) et plafond +15. */
+  total: number;
+  /** Le total brut dépassait-il le plafond +15 ? */
+  capped: boolean;
+  /** Contribution retenue par catégorie (le max de chacune), pour le détail. */
+  sources: TestDomainSource[];
+}
+
+/** Une contribution BRUTE (avant cumul) à un domaine. */
+interface RawTestContribution extends TestDomainSource {
+  domain: string;
+}
+
+/**
+ * Récolte toutes les contributions BRUTES aux domaines de test : effets `test-bonus`
+ * statiques ET domaines pilotés par une option retenue (`testBonusDomains`, ex.
+ * `humain-r1`). La valeur suit l'effet (si présente, résolue dans le contexte) ou, à
+ * défaut, la catégorie de la voie hôte. Sans `ctx`, les domaines pilotés par option et
+ * les valeurs scalantes ne sont pas résolus.
+ */
+function rawTestContributions(featureIds: string[], ctx?: EffectContext): RawTestContribution[] {
+  const pathRanks = pathRanksFromFeatures(featureIds);
+  const out: RawTestContribution[] = [];
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    const category = competenceCategoryOf(feature.pathId);
+    if (!category) continue;
+    const pathRank = pathRanks[feature.pathId] ?? feature.rank;
+    const fallback = defaultCompetenceValue(category, pathRank);
+
+    // (a) effets `test-bonus` statiques (barbare, chevalier, mages…).
+    for (const effect of feature.effects ?? []) {
+      if (effect.kind !== 'test-bonus') continue;
+      const value =
+        effect.value === undefined
+          ? fallback
+          : resolveValue(effect.value, feature.pathId, pathRanks, ctx);
+      if (value === null) continue; // valeur scalante non résoluble sans contexte
+      for (const domain of effect.domains)
+        out.push({ domain, featureId: id, name: feature.name, category, value });
+    }
+
+    // (b) domaines octroyés par une OPTION retenue (ex. humain-r1 : origine → 2 domaines).
+    const selections = ctx?.featureChoices?.[id] ?? [];
+    (feature.choices ?? []).forEach((choice, i) => {
+      if (choice.kind !== 'option') return;
+      const sel = selections[i];
+      const chosenIds = Array.isArray(sel) ? sel : sel ? [sel] : [];
+      for (const opt of choice.options) {
+        if (!opt.testBonusDomains || !chosenIds.includes(opt.id)) continue;
+        for (const domain of opt.testBonusDomains)
+          out.push({ domain, featureId: id, name: feature.name, category, value: fallback });
+      }
+    });
+  }
+  return out;
+}
+
+/**
+ * Bonus de compétence PAR DOMAINE pour un personnage, AVEC détail de provenance —
+ * applique la règle du livre (p. 203) : par domaine, MAX par catégorie de source, maxima
+ * ADDITIONNÉS, total plafonné à +15. Un domaine sans contribution n'apparaît pas. Sur le
+ * modèle de `featureModSources`. Sans `ctx`, les bonus pilotés par option et les valeurs
+ * scalantes sont ignorés (suffit aux appels « catalogue seul »).
+ */
+export function testBonusSources(featureIds: string[], ctx?: EffectContext): TestDomainBonus[] {
+  const byDomain = new Map<string, RawTestContribution[]>();
+  for (const c of rawTestContributions(featureIds, ctx)) {
+    const list = byDomain.get(c.domain);
+    if (list) list.push(c);
+    else byDomain.set(c.domain, [c]);
+  }
+  const result: TestDomainBonus[] = [];
+  for (const [domain, contribs] of byDomain) {
+    // Max par catégorie : deux bonus de même type ne se cumulent pas (p. 203).
+    const winnerByCat = new Map<CompetenceCategory, TestDomainSource>();
+    for (const c of contribs) {
+      const cur = winnerByCat.get(c.category);
+      if (!cur || c.value > cur.value)
+        winnerByCat.set(c.category, {
+          featureId: c.featureId,
+          name: c.name,
+          category: c.category,
+          value: c.value,
+        });
+    }
+    const sources = [...winnerByCat.values()];
+    const rawTotal = sources.reduce((sum, s) => sum + s.value, 0);
+    result.push({
+      domain,
+      total: Math.min(rawTotal, COMPETENCE_BONUS_CAP),
+      capped: rawTotal > COMPETENCE_BONUS_CAP,
+      sources,
+    });
+  }
+  return result;
+}

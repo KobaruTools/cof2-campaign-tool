@@ -564,10 +564,10 @@ export const mageFeatures: Feature[] = [
     text:
       "L’ensorceleur donne un ordre simple (mais pas suicidaire) de deux ou trois mots que la cible doit pouvoir comprendre. S’il réussit un test opposé d’attaque magique contre une cible à une portée de 20 m, la victime doit exécuter l’ordre pendant son prochain tour. En plus de ce sort, l’ensorceleur ajoute son rang + 2 aux tests de persuasion ou de séduction.",
     // Rendu enrichi (PER-69) : « rang + 2 » est un modificateur aux tests → [rang + 2].
-    // Le bonus aux tests de persuasion/séduction relève de PER-89 (effet « bonus aux
-    // tests / domaines de compétence »), hors `effects` de derived-stats → texte.
+    // Bonus de compétence (PER-89) : profil → valeur déduite (2 + rang).
     richText:
       "L’ensorceleur donne un ordre simple (mais pas suicidaire) de deux ou trois mots que la cible doit pouvoir comprendre. S’il réussit un test opposé d’attaque magique contre une cible à une portée de 20 m, la victime doit exécuter l’ordre pendant son prochain tour. En plus de ce sort, l’ensorceleur ajoute son [rang + 2] aux tests de persuasion ou de séduction.",
+    effects: [{ kind: 'test-bonus', domains: ['persuasion', 'seduction'] }],
     sourcePage: 94,
   },
   {
@@ -641,10 +641,12 @@ export const mageFeatures: Feature[] = [
     text:
       "L’ensorceleur crée une illusion visuelle et sonore immobile d’une durée de CHA minutes. Le volume maximal de l’illusion est de 2 m de côté par rang dans la voie (portée 50 m). À partir du rang 4, l’illusion peut être animée, mais dans ce cas sa durée est exprimée en rounds. En plus de ce sort, l’ensorceleur ajoute son rang + 2 aux tests de supercherie ou à tout test qui lui servirait à mentir.",
     // Rendu enrichi (PER-69) : durée [=CHA] minutes ; « 2 m de côté par rang » est une
-    // quantité avec multiplicateur → [=2 × rang] m ; « rang + 2 » modificateur aux tests
-    // (bonus de tests = PER-89, hors `effects`).
+    // quantité avec multiplicateur → [=2 × rang] m ; « rang + 2 » modificateur aux tests.
+    // Bonus de compétence (PER-89) : domaine net = supercherie ; la queue « ou à tout test
+    // qui lui servirait à mentir » est une extension situationnelle → laissée en texte.
     richText:
       "L’ensorceleur crée une illusion visuelle et sonore immobile d’une durée de [=CHA] minutes. Le volume maximal de l’illusion est de [=2 × rang] m de côté (portée 50 m). À partir du rang 4, l’illusion peut être animée, mais dans ce cas sa durée est exprimée en rounds. En plus de ce sort, l’ensorceleur ajoute son [rang + 2] aux tests de supercherie ou à tout test qui lui servirait à mentir.",
+    effects: [{ kind: 'test-bonus', domains: ['deception'] }],
     sourcePage: 95,
   },
   {
@@ -875,6 +877,9 @@ export const mageFeatures: Feature[] = [
     // forgesort → laissé en texte littéral (le terme `rang` baliserait le rang de voie).
     richText:
       "Un breuvage qui guérit immédiatement {1d4°} PV et permet de gagner un dé bonus aux trois prochains tests effectués dans une période de 30 min. En plus de cette recette, grâce à ses études, le forgesort ajoute son [rang + 2] aux tests d’alchimie et de chimie ou pour identifier une potion (test difficulté 10 + rang du sort).",
+    // Bonus de compétence (PER-89) : domaines = alchimie, chimie ; « identifier une potion »
+    // (avec sa difficulté propre) est une extension situationnelle → laissée en texte.
+    effects: [{ kind: 'test-bonus', domains: ['alchemy', 'chemistry'] }],
     sourcePage: 98,
   },
   {
@@ -954,6 +959,8 @@ export const mageFeatures: Feature[] = [
     // bonus aux DM d’arme, hors stats dérivées → texte. Affichage du DM réel : TODO(PER-92).
     richText:
       "Au prix d’une action de mouvement, le forgesort peut enflammer son bâton ou son marteau pendant [=INT] minutes et ajoute +2 DM de feu sur les attaques au contact réalisées avec cette arme. Ce bonus augmente de +1 chaque fois que le personnage atteint le rang 4 dans une voie de forgesort. L’arme s’éteint immédiatement s’il la lâche. En plus de ce sort, le forgesort ajoute son [rang + 2] aux tests d’orfèvrerie ou de forge.",
+    // Bonus de compétence (PER-89) : domaines = orfèvrerie, forge.
+    effects: [{ kind: 'test-bonus', domains: ['goldsmithing', 'smithing'] }],
     sourcePage: 99,
   },
   {
@@ -1050,6 +1057,9 @@ export const mageFeatures: Feature[] = [
     // consommé par `hpAbilitySwapSources` → effet net +(INT − CON) appliqué une seule fois.
     richText:
       "Le forgesort remplace la force brutale par un peu de réflexion. Il peut effectuer un test d’INT au lieu d’un test de FOR (par exemple, il utilise un levier pour déplacer une lourde charge). De plus, au niveau où il acquiert cette capacité, il peut ajouter son INT à ses PV au lieu de la CON. Il ajoute son [rang + 2] à tous les tests de bricolage ou de science.",
+    // Bonus de compétence (PER-89) : domaines = bricolage, science (gouvernés par l'INT,
+    // cohérent avec « un test d'INT au lieu d'un test de FOR » de cette capacité).
+    effects: [{ kind: 'test-bonus', domains: ['tinkering', 'science'] }],
     choices: [
       {
         kind: 'option',
@@ -2044,10 +2054,12 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le sorcier invoque une zone fixe de ténèbres magiques, de 10 m de diamètre, à une portée de 20 m pour une durée d’INT minutes. Toutes les créatures, même celles capables de voir dans le noir, sont aveuglées dans cette zone. En plus de ce sort, le sorcier ajoute son rang + 2 à tous les tests d’INT basés sur les savoirs sombres (démons, morts‑vivants, rituels impies, etc.).",
-    // Rendu enrichi (PER-69) : durée [=INT] minutes ; « rang + 2 » modificateur aux tests
-    // (bonus de tests = PER-89, hors `effects`).
+    // Rendu enrichi (PER-69) : durée [=INT] minutes ; « rang + 2 » modificateur aux tests.
+    // Bonus de compétence (PER-89) : domaine = érudition occulte (le texte précise « tests
+    // d'INT basés sur les savoirs sombres » → carac gouvernante INT assurée).
     richText:
       "Le sorcier invoque une zone fixe de ténèbres magiques, de 10 m de diamètre, à une portée de 20 m pour une durée d’[#INT] minutes. Toutes les créatures, même celles capables de voir dans le noir, sont aveuglées dans cette zone. En plus de ce sort, le sorcier ajoute son [rang + 2] à tous les tests d’INT basés sur les savoirs sombres (démons, morts‑vivants, rituels impies, etc.).",
+    effects: [{ kind: 'test-bonus', domains: ['occult-lore'] }],
     sourcePage: 110,
   },
   {

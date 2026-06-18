@@ -17,6 +17,7 @@ import {
   pathRanksFromFeatures,
   pruneEffectToggles,
   setEffectToggle,
+  testBonusSources,
   type EffectContext,
 } from './effects';
 
@@ -322,6 +323,58 @@ describe('hpAbilitySwapSources — Grosse tête (golem-r1) : PV basés sur l’I
       { featureId: 'golem-r1', name: 'Grosse tête', value: 3 },
     ]);
   });
+});
+
+describe('testBonusSources — bonus de compétence par domaine (PER-89)', () => {
+  it('aucune capacité → aucun domaine', () => {
+    expect(testBonusSources([])).toEqual([]);
+  });
+
+  it('ignore les ids inconnus et les capacités sans bonus de test', () => {
+    expect(testBonusSources(['id-inexistant', 'air-r1'])).toEqual([]);
+  });
+
+  it('effet statique mage : Injonction (envouteur-r1) → persuasion & séduction, +3 (profil, rang 1)', () => {
+    const byDomain = Object.fromEntries(testBonusSources(['envouteur-r1']).map((r) => [r.domain, r.total]));
+    expect(byDomain).toEqual({ persuasion: 3, seduction: 3 });
+  });
+
+  it('valeur de profil DYNAMIQUE : 2 + rang atteint dans la voie (envouteur au rang 5 → +7)', () => {
+    // envouteur-r5 n'octroie aucun bonus de test mais porte le rang de la voie à 5.
+    const res = testBonusSources(['envouteur-r1', 'envouteur-r5']);
+    expect(res.find((r) => r.domain === 'persuasion')?.total).toBe(7);
+  });
+
+  it('détail de provenance : capacité + catégorie + valeur (Ténèbres → érudition occulte)', () => {
+    expect(testBonusSources(['sombre-magie-r1'])).toEqual([
+      {
+        domain: 'occult-lore',
+        total: 3,
+        capped: false,
+        sources: [{ featureId: 'sombre-magie-r1', name: 'Ténèbres', category: 'class', value: 3 }],
+      },
+    ]);
+  });
+
+  it('domaines pilotés par une option (humain-r1 « Montagnard ») → escalade & résist. froid, +3 (peuple)', () => {
+    const c = ctx({ featureChoices: { 'humain-r1': ['highlander'] } });
+    const byDomain = Object.fromEntries(testBonusSources(['humain-r1'], c).map((r) => [r.domain, r.total]));
+    expect(byDomain).toEqual({ climbing: 3, 'cold-resistance': 3 });
+    const climbing = testBonusSources(['humain-r1'], c).find((r) => r.domain === 'climbing');
+    expect(climbing?.sources[0]).toMatchObject({ category: 'ancestry', name: 'Diversité', value: 3 });
+  });
+
+  it('sans contexte, les domaines pilotés par option ne sont pas résolus', () => {
+    expect(testBonusSources(['humain-r1'])).toEqual([]);
+  });
+
+  it('origine non choisie (ctx sans sélection) → aucun domaine de peuple', () => {
+    expect(testBonusSources(['humain-r1'], ctx())).toEqual([]);
+  });
+
+  // NOTE cumul CROSS-CATÉGORIE + plafond +15 : non atteignable avec les seules familles
+  // peuplées ici (mages = profil, humain = peuple, sans domaine commun). Couvert quand un
+  // ticket de population aval ajoutera un domaine partagé entre catégories (PER-70→74).
 });
 
 describe('effectiveAbilities — saisie + modificateurs permanents de capacités', () => {

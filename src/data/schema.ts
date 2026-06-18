@@ -345,13 +345,17 @@ export type DerivedStatId = (typeof DERIVED_STAT_IDS)[number];
  *  - `ability-bonus` : modificateur PERMANENT à une CARACTÉRISTIQUE (« +1 en CON »),
  *    déterministe, qui s'ajoute au total de la carac PAR-DESSUS la valeur saisie ;
  *  - `ability-bonus-die` : DÉ BONUS permanent aux tests d'une caractéristique
- *    (« lance 2d20, garde le meilleur ») — mécanique core CO2, drapeau par carac.
+ *    (« lance 2d20, garde le meilleur ») — mécanique core CO2, drapeau par carac ;
+ *  - `test-bonus` : BONUS DE COMPÉTENCE à un ou plusieurs DOMAINES de test nommés
+ *    (« +3 aux tests de discrétion », « rang + 2 aux tests de persuasion ou de
+ *    séduction ») — axe distinct des stats dérivées et des caractéristiques (PER-89).
  */
 export type FeatureEffect =
   | StatBonusEffect
   | ConditionalStatBonusEffect
   | AbilityBonusEffect
-  | AbilityBonusDieEffect;
+  | AbilityBonusDieEffect
+  | TestBonusEffect;
 
 /**
  * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
@@ -565,6 +569,62 @@ export interface AbilityBonusDieEffect {
   ability: AbilityId;
 }
 
+/**
+ * BONUS DE COMPÉTENCE à un ou plusieurs DOMAINES de test nommés (« +3 aux tests de
+ * discrétion », « rang + 2 aux tests de persuasion ou de séduction ») — concept de
+ * règles nommé (p. 202-203). Axe distinct des stats DÉRIVÉES (`StatBonusEffect`) et des
+ * CARACTÉRISTIQUES (`ability-bonus`/`ability-bonus-die`). PER-89.
+ *
+ * PÉRIMÈTRE : domaines NOMMÉS, INCONDITIONNELS, sur le PORTEUR. Hors périmètre, laissés
+ * verbatim : bonus aux tests de CARAC chiffrés (« +3 aux tests de FOR »), SITUATIONNELS
+ * (« pour résister à la peur »), aux ALLIÉS, et CONDITIONNELS / temporaires (→ PER-67).
+ *
+ * CUMUL (≠ somme) : le moteur applique la règle du livre — par domaine, MAX par catégorie
+ * de source (voie de profil/prestige évolutive `2 + min(rang, 5)` ≤ +7 ; voie de peuple
+ * +3 ; voie de prestige fixe +5 ; objet magique), maxima ADDITIONNÉS entre catégories,
+ * total PLAFONNÉ à +15. La catégorie est DÉDUITE de la voie hôte (`Path.type` ; `mage`
+ * compte comme peuple), pas stockée ici (cf. `src/lib/character/effects.ts`).
+ */
+/**
+ * Domaine de compétence du catalogue (`src/data/test-domains.ts`) — PER-89. CO2 ne
+ * fournit PAS de liste fermée : le livre donne des EXEMPLES (p. 202, regroupés par
+ * caractéristique gouvernante) et autorise le MJ à en inventer (`humain-r1`, p. 57).
+ * Ce catalogue est donc une liste OUVERTE et VIVANTE de SUGGESTIONS + des domaines
+ * NOMMÉS dans les capacités (référencés par `TestBonusEffect.domains` /
+ * `FeatureChoiceOption.testBonusDomains`), enrichie famille par famille.
+ */
+export interface TestDomain {
+  /** Id stable (slug anglais) — clé de contenu référencée par les effets. */
+  id: string;
+  /** Libellé affiché au joueur (français). */
+  label: string;
+  /**
+   * Caractéristique(s) gouvernante(s) : un test = d20 + carac + bonus de compétence.
+   * PLUSIEURS quand le livre teste le domaine sur des caracs différentes selon la
+   * situation (ex. équitation : CON pour l'endurance, CHA pour mener la monture — p. 233).
+   * Le modificateur affiché retient alors la MEILLEURE carac du personnage (choix joueur).
+   */
+  abilities: AbilityId[];
+  /** Page source quand le domaine provient d'un exemple/d'une capacité sourcé(e). */
+  sourcePage?: SourcePage;
+}
+
+export interface TestBonusEffect {
+  kind: 'test-bonus';
+  /**
+   * Domaines visés (ids du catalogue `src/data/test-domains.ts`). Plusieurs car le livre
+   * groupe souvent (« course, saut ou escalade ») : même valeur pour chacun, l'agrégation
+   * dé-plie ensuite par domaine. Intégrité référentielle vérifiée par `validate:data`.
+   */
+  domains: string[];
+  /**
+   * Valeur du bonus. ABSENT → déduite de la catégorie de source de la voie hôte (profil
+   * `2 + min(rang, 5)`, peuple +3). PRÉSENT → override explicite, requis pour le prestige
+   * fixe (+5) et les rares exceptions. Constante ou scalante (`EffectValue`).
+   */
+  value?: EffectValue;
+}
+
 // ---------------------------------------------------------------------------
 // Statistiques avancées — réduction de dégâts (préparation du terrain)
 // ---------------------------------------------------------------------------
@@ -718,6 +778,14 @@ export interface FeatureChoiceOption {
    * appliqué une seule fois. Voir `hpAbilitySwapSources`.
    */
   hpFromAbility?: AbilityId;
+  /**
+   * Domaines de compétence (ids du catalogue `src/data/test-domains.ts`) octroyés par cette
+   * option lorsqu'elle est retenue (ex. `humain-r1` : origine « Montagnard » → escalade +
+   * résistance au froid). La VALEUR suit la catégorie de la voie hôte (peuple → +3), comme
+   * un `TestBonusEffect` sans `value`. Agrégé par `testBonusSources` (PER-89), au même titre
+   * que les effets `test-bonus` statiques. Voir le précédent `hpFromAbility`.
+   */
+  testBonusDomains?: string[];
 }
 
 /**

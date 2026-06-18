@@ -28,6 +28,8 @@ import {
   equipmentById,
   featureById,
   pathById,
+  testDomains,
+  testDomainById,
   FEATURE_CLASSIFICATIONS,
   FEATURE_NATURE_TAGS,
   CONDITIONAL_KINDS,
@@ -230,9 +232,42 @@ for (const c of features) {
     } else if (e.kind === 'ability-bonus-die') {
       // Dé bonus permanent aux tests d'une caractéristique (drapeau, sans valeur).
       if (!validAbilities.has(e.ability)) err(`[capacite ${c.id}] effect: caractéristique inconnue : ${e.ability}`);
+    } else if (e.kind === 'test-bonus') {
+      // Bonus de compétence à un/des domaine(s) nommé(s) (PER-89). `domains` non vide,
+      // chaque id présent dans le catalogue ; `value` optionnelle (sinon déduite).
+      if (!Array.isArray(e.domains) || e.domains.length === 0)
+        err(`[capacite ${c.id}] effect: test-bonus domains vide`);
+      for (const d of e.domains ?? [])
+        if (!testDomainById.has(d)) err(`[capacite ${c.id}] effect: domaine inconnu : ${d}`);
+      if (e.value !== undefined) {
+        const valueError = effectValueError(e.value);
+        if (valueError) err(`[capacite ${c.id}] effect: test-bonus ${valueError}`);
+      }
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }
+  }
+}
+
+// --- Catalogue des domaines de compétence (PER-89) ---------------------------
+// Ids uniques ; au moins une caractéristique gouvernante, toutes valides.
+checkUnique('domaines', testDomains.map((d) => d.id));
+for (const d of testDomains) {
+  if (!Array.isArray(d.abilities) || d.abilities.length === 0)
+    err(`[domaine ${d.id}] aucune caractéristique gouvernante`);
+  for (const a of d.abilities ?? [])
+    if (!validAbilities.has(a)) err(`[domaine ${d.id}] caractéristique inconnue : ${a}`);
+}
+
+// --- Domaines de compétence pilotés par une option (PER-89) ------------------
+// Les domaines octroyés par une option retenue (`testBonusDomains`, ex. humain-r1)
+// doivent référencer des ids existants du catalogue, comme les effets `test-bonus`.
+for (const c of features) {
+  for (const choice of c.choices ?? []) {
+    if (choice.kind !== 'option') continue;
+    for (const opt of choice.options)
+      for (const d of opt.testBonusDomains ?? [])
+        if (!testDomainById.has(d)) err(`[capacite ${c.id}] option ${opt.id}: domaine inconnu : ${d}`);
   }
 }
 

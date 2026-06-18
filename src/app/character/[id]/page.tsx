@@ -37,6 +37,7 @@ import {
   modsFromFeatures,
   pruneEffectToggles,
   setEffectToggle,
+  testBonusSources,
 } from '@/lib/character/effects';
 import { effectiveFeatureIdsForMods, pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
@@ -47,6 +48,7 @@ import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
+import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
 import {
   ConcentrationToggle,
   FeaturesByPath,
@@ -204,6 +206,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const abilityMods = abilityModsFromFeatures(modFeatureIds);
   const abilityModSrc = abilityModSources(modFeatureIds);
   const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds);
+  // Bonus de compétence par domaine de test (PER-89) — règle de cumul du livre (p. 203).
+  const testBonuses = testBonusSources(modFeatureIds, effectCtx);
 
   const derivedInput: DerivedInput | null = family
     ? {
@@ -450,6 +454,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               </Typography>
             )}
           </SheetSection>
+
+          <TestDomainsPanel bonuses={testBonuses} abilities={effectCtx.abilities} />
 
           <SheetSection
             title="Voies & capacités"

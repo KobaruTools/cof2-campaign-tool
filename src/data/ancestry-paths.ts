@@ -419,20 +419,23 @@ export const ancestryFeatures: Feature[] = [
       '6. Nomade (orientation et résistance à la chaleur ou au froid).\n\n' +
       'Le MJ peut en inventer d’autres selon les cultures présentes dans son univers de jeu (troglodyte, marais, etc.). Éventuellement, le joueur peut remplacer un des bonus d’origine géographique par un bonus en relation avec son origine sociale ou un gagne-pain de son choix (serrurier, forgeron, scribe, maçon, chasseur, cuisinier, acrobate, pickpocket, bibliothécaire, étudiant, etc.). Le gagne-pain ne peut pas être un profil et le bonus obtenu ne s’applique jamais à des tests de combat.\n\n' +
       'Exemple : Un citadin étudiant en magie pourrait obtenir un bonus de +3 aux tests de commerce et +3 aux tests d’érudition occulte, même si son personnage est finalement devenu guerrier.',
-    // Part plate inconditionnelle seulement : +1 PC. Le +3 à deux domaines au
-    // choix relève du ticket « choix » — non structuré ici.
+    // Part plate inconditionnelle : +1 PC (`luckPoints`). Le +3 aux deux domaines de
+    // l'origine relève du bonus de compétence (PER-89) : chaque option porte ses deux
+    // domaines (`testBonusDomains`) ; la valeur (+3) est déduite de la catégorie « voie de
+    // peuple ». L'agrégation est faite par `testBonusSources`. La saisie LIBRE d'un
+    // gagne-pain et le remplacement d'un domaine d'origine (p. 57) relèvent de PER-68.
     effects: [{ kind: 'stat-bonus', stat: 'luckPoints', value: 1 }],
     choices: [
       {
         kind: 'option',
         prompt: 'Origine géographique ou sociale',
         options: [
-          { id: 'highlander', label: 'Montagnard (escalade et résistance au froid)' },
-          { id: 'city-dweller', label: 'Citadin (commerce et résistance aux maladies)' },
-          { id: 'countryman', label: 'Campagnard (météorologie et équitation)' },
-          { id: 'riverfolk', label: 'Riverain (natation et navigation)' },
-          { id: 'wildling', label: 'Sauvage (chasser et pister)' },
-          { id: 'nomad', label: 'Nomade (orientation et résistance à la chaleur ou au froid)' },
+          { id: 'highlander', label: 'Montagnard (escalade et résistance au froid)', testBonusDomains: ['climbing', 'cold-resistance'] },
+          { id: 'city-dweller', label: 'Citadin (commerce et résistance aux maladies)', testBonusDomains: ['commerce', 'disease-resistance'] },
+          { id: 'countryman', label: 'Campagnard (météorologie et équitation)', testBonusDomains: ['meteorology', 'riding'] },
+          { id: 'riverfolk', label: 'Riverain (natation et navigation)', testBonusDomains: ['swimming', 'navigation'] },
+          { id: 'wildling', label: 'Sauvage (chasser et pister)', testBonusDomains: ['hunting', 'tracking'] },
+          { id: 'nomad', label: 'Nomade (orientation et résistance à la chaleur ou au froid)', testBonusDomains: ['orientation', 'heat-resistance'] },
         ],
       },
     ],
