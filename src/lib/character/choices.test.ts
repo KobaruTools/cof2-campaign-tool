@@ -38,6 +38,8 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     featureIds: ['demi-orc-r1', 'demi-orc-r2'],
     featureChoices: {},
     effectToggles: {},
+    effectInputs: {},
+    usageCounters: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},

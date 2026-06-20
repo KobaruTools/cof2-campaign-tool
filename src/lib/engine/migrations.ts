@@ -177,6 +177,31 @@ function migrateV5toV6(data: Record<string, unknown>): Record<string, unknown> {
 }
 
 /**
+ * v6 → v7 : ajout de `effectInputs` (saisies libres d'état de jeu corrélées à un
+ * interrupteur — ex. l'animal pris par « Forme animale », PER-70). Les personnages
+ * d'avant v7 n'ont saisi aucune note : on initialise une table vide.
+ */
+function migrateV6toV7(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.effectInputs) === null) next.effectInputs = {};
+  next.schemaVersion = 7;
+  return next;
+}
+
+/**
+ * v7 → v8 : ajout de `usageCounters` (décompte des capacités à usages limités —
+ * ex. « Les sept vies du chat », PER-70). Les personnages d'avant v8 n'ont aucun
+ * décompte : on initialise une table vide (les compteurs partent alors de leur
+ * maximum déclaré).
+ */
+function migrateV7toV8(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.usageCounters) === null) next.usageCounters = {};
+  next.schemaVersion = 8;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -186,6 +211,8 @@ export const MIGRATIONS: Record<number, Migration> = {
   3: migrateV3toV4,
   4: migrateV4toV5,
   5: migrateV5toV6,
+  6: migrateV6toV7,
+  7: migrateV7toV8,
 };
 
 export class MigrationError extends Error {}
@@ -253,6 +280,12 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   }
   if (typeof data.effectToggles !== 'object' || data.effectToggles === null) {
     fail('Champ « effectToggles » manquant ou invalide.');
+  }
+  if (typeof data.effectInputs !== 'object' || data.effectInputs === null) {
+    fail('Champ « effectInputs » manquant ou invalide.');
+  }
+  if (typeof data.usageCounters !== 'object' || data.usageCounters === null) {
+    fail('Champ « usageCounters » manquant ou invalide.');
   }
   if (!Array.isArray(data.equipment)) fail('Champ « equipment » manquant ou invalide.');
   if (!Array.isArray(data.levelUpHistory)) fail('Champ « levelUpHistory » manquant ou invalide.');

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 6,
+  "id": "test-moine-halfelin",
+  "name": "Test — Moine (halfelin)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-70 — toutes les voies de moine au rang 5 + voie du peuple (halfelin) au rang 5. Profil SANS armure ni bouclier. À vérifier : agrégation Init/DEF (maitrise-r1 DEF +3, meditation-r3 Init += VOL / PV += VOL / DEF +3, vent-r1 +3 Init, vent-r2 DEF +2, poing-r2 DEF +3), héroïques cumulés (energie-vitale-r5 CON+1+dé, meditation-r4 VOL+1+dé, vent-r4 AGI+1+dé). Rendu enrichi : Poings de fer (poing-r1, dés d6→2d6 par rang, en prose), Projection du ki (energie-vitale-r2, scaling [1d4°|2@4 + VOL]), durées [=PER]/[=VOL]. Interrupteur : Pacifisme (meditation-r1, +5 DEF conditionnel — pré-activé). Bonus de compétence : acrobaties (maitrise-r1), empathie (meditation-r1), saut/course/escalade (vent-r1). « +1 à la plus faible carac » (maitrise-r5/meditation-r5/vent-r5) : laissé verbatim (non calculé)."
+  },
+  "ancestryId": "halfelin",
+  "classId": "moine",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": { "AGI": 4, "CON": 1, "FOR": 0, "PER": 2, "CHA": 0, "INT": 0, "VOL": 2 },
+  "baseAbilities": { "AGI": 3, "CON": 1, "FOR": 1, "PER": 2, "CHA": 0, "INT": 0, "VOL": 2 },
+  "ancestryChoices": ["AGI", "FOR"],
+  "ancestryPathId": "halfelin",
+  "featureIds": [
+    "halfelin-r1", "halfelin-r2", "halfelin-r3", "halfelin-r4", "halfelin-r5",
+    "energie-vitale-r1", "energie-vitale-r2", "energie-vitale-r3", "energie-vitale-r4", "energie-vitale-r5",
+    "maitrise-r1", "maitrise-r2", "maitrise-r3", "maitrise-r4", "maitrise-r5",
+    "meditation-r1", "meditation-r2", "meditation-r3", "meditation-r4", "meditation-r5",
+    "poing-r1", "poing-r2", "poing-r3", "poing-r4", "poing-r5",
+    "vent-r1", "vent-r2", "vent-r3", "vent-r4", "vent-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "meditation-r1": [false, true]
+  },
+  "levelUpHistory": [
+    { "level": 1, "chosenFeatureIds": ["halfelin-r1", "energie-vitale-r1", "maitrise-r1", "poing-r1"] }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-70 — relecture famille mystique (moine). Voies de moine + voie du peuple au rang 5. Voir identity.description.",
+  "createdAt": "2026-06-19T00:00:00.000Z",
+  "updatedAt": "2026-06-19T00:00:00.000Z"
+}

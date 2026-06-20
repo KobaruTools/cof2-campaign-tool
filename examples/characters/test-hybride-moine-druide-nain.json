@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 6,
+  "id": "test-hybride-moine-druide-nain",
+  "name": "Test — Hybride Moine / Druide (nain)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-70 (hybride intra-famille mystique) — Moine (poing + vent) et Druide (fauve), voie du peuple (nain) au rang 5, niveau 12 (dé évolutif d10). À vérifier : agrégation Init/DEF sur DEUX voies de moine + une voie de druide (vent-r1 +3 Init, vent-r2 DEF +2, poing-r2 DEF +3, fauve-r1 +3 Init / DEF +2 au rang 3), mini-fiches Panthère (fauve-r2) et Animal fabuleux (fauve-r4) avec leurs dés à d10, héroïque AGI (vent-r4). Le moine interdit armure/bouclier (cohérence avec le profil hybride). nain-r1 (+3 tests pierre/architecture…) reste verbatim (voie de peuple antérieure à PER-89). « +1 à la plus faible carac » (vent-r5) laissé verbatim."
+  },
+  "ancestryId": "nain",
+  "classId": "moine",
+  "level": 12,
+  "portraitVariant": "default",
+  "abilities": { "AGI": 2, "CON": 2, "FOR": 1, "PER": 2, "CHA": -1, "INT": 0, "VOL": 3 },
+  "baseAbilities": { "AGI": 3, "CON": 2, "FOR": 1, "PER": 2, "CHA": -1, "INT": 0, "VOL": 2 },
+  "ancestryChoices": ["VOL", "AGI"],
+  "ancestryPathId": "nain",
+  "featureIds": [
+    "nain-r1", "nain-r2", "nain-r3", "nain-r4", "nain-r5",
+    "poing-r1", "poing-r2", "poing-r3", "poing-r4", "poing-r5",
+    "vent-r1", "vent-r2", "vent-r3", "vent-r4", "vent-r5",
+    "fauve-r1", "fauve-r2", "fauve-r3", "fauve-r4", "fauve-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "levelUpHistory": [
+    { "level": 1, "chosenFeatureIds": ["nain-r1", "poing-r1", "vent-r1", "fauve-r1"] }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-70 — relecture famille mystique (hybride moine/druide). Cross-voie intra-famille + voie du peuple au rang 5, niveau 12 (d10). Voir identity.description.",
+  "createdAt": "2026-06-19T00:00:00.000Z",
+  "updatedAt": "2026-06-19T00:00:00.000Z"
+}

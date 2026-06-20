@@ -862,6 +862,23 @@ export interface CreatureProfile {
   note?: string;
 }
 
+/**
+ * Compteur d'USAGES LIMITÉS d'une capacité (PER-70) — concept de règles nommé
+ * (« cette capacité ne peut être utilisée que N fois »). DÉCLARATION côté données
+ * (le maximum) ; le décompte courant est un état de jeu porté par le personnage
+ * (`Character.usageCounters`, aligné par id de capacité). Le compteur démarre à
+ * `max` et descend jusqu'à 0 (épuisé). Cas du livre : Les sept vies du chat
+ * (fauve-r5, p. 115) — 6 usages, malgré le nom « sept vies » (le druide vit déjà
+ * l'une des sept). La sous-règle « pas plus d'une fois par niveau » n'est pas
+ * automatisable proprement → laissée en verbatim, le décrément restant manuel.
+ */
+export interface UsageCounter {
+  /** Nombre d'usages disponibles au départ (valeur la plus haute du compteur). */
+  max: number;
+  /** Libellé affiché (français). Défaut : « Usages restants ». */
+  label?: string;
+}
+
 export interface Feature {
   id: string;
   name: string;
@@ -961,6 +978,12 @@ export interface Feature {
    * capacité n'accorde aucune RD modélisée.
    */
   damageReduction?: DamageReduction;
+  /**
+   * Compteur d'usages limités (« utilisable N fois ») — déclare le maximum ; le
+   * décompte courant est un état de jeu du personnage (`Character.usageCounters`).
+   * Absent = la capacité n'a pas d'usage limité décompté.
+   */
+  usageCounter?: UsageCounter;
   sourcePage: SourcePage;
 }
 

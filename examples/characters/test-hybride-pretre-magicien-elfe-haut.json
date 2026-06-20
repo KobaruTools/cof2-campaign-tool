@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 6,
+  "id": "test-hybride-pretre-magicien-elfe-haut",
+  "name": "Test — Hybride Prêtre / Magicien (haut-elfe)",
+  "identity": {
+    "sex": "female",
+    "description": "PER-70 (hybride cross-famille mystique + mage) — Prêtre (prière + spiritualité) et Magicien (magie protectrice), voie du peuple (haut-elfe) au rang 5, niveau 16 (dé évolutif d12). À vérifier : agrégation des PM (base VOL du prêtre) avec des sorts de magicien, Armure de mana (magie-protectrice-r1) avec son scaling CROSS-VOIE milestone-count (1 voie de magicien au rang 5 → base 4 + 1 = +5 DEF, interrupteur pré-activé), deux héroïques cumulés (priere-r4 VOL+1+dé, spiritualite-r4 CHA+1+dé), bonus de compétence théologie/cosmologie (priere-r1), Vêtements sacrés (spiritualite-r1) verbatim. CHOIX NON FAIT volontaire : elfe-haut-r3 (Capacité de rang 1 d'ensorceleur/magicien) — vérifier le badge « choix à faire »."
+  },
+  "ancestryId": "elfe-haut",
+  "classId": "pretre",
+  "level": 16,
+  "portraitVariant": "default",
+  "abilities": { "AGI": 1, "CON": 1, "FOR": -1, "PER": 1, "CHA": 4, "INT": 3, "VOL": 2 },
+  "baseAbilities": { "AGI": 1, "CON": 1, "FOR": 0, "PER": 1, "CHA": 3, "INT": 3, "VOL": 2 },
+  "ancestryChoices": ["CHA", "FOR"],
+  "ancestryPathId": "elfe-haut",
+  "featureIds": [
+    "elfe-haut-r1", "elfe-haut-r2", "elfe-haut-r3", "elfe-haut-r4", "elfe-haut-r5",
+    "priere-r1", "priere-r2", "priere-r3", "priere-r4", "priere-r5",
+    "spiritualite-r1", "spiritualite-r2", "spiritualite-r3", "spiritualite-r4", "spiritualite-r5",
+    "magie-protectrice-r1", "magie-protectrice-r2", "magie-protectrice-r3", "magie-protectrice-r4", "magie-protectrice-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "magie-protectrice-r1": [true]
+  },
+  "levelUpHistory": [
+    { "level": 1, "chosenFeatureIds": ["elfe-haut-r1", "priere-r1", "spiritualite-r1", "magie-protectrice-r1"] }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-70 — relecture famille mystique (hybride prêtre/magicien). Cross-famille mage+mystique, voie du peuple au rang 5, niveau 16 (d12). Choix elfe-haut-r3 laissé ouvert exprès. Voir identity.description.",
+  "createdAt": "2026-06-19T00:00:00.000Z",
+  "updatedAt": "2026-06-19T00:00:00.000Z"
+}

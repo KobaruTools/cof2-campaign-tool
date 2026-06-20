@@ -38,6 +38,8 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     featureIds: [],
     featureChoices: {},
     effectToggles: {},
+    effectInputs: {},
+    usageCounters: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},

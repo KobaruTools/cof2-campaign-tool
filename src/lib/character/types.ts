@@ -26,8 +26,12 @@ import type { AncestryChoice } from './ancestry';
  *   portent — sort d'une autre voie / caractéristique / option — PER-66).
  * v6 : ajout de `effectToggles` (interrupteurs manuels des effets conditionnels /
  *   temporaires portés par les capacités — PER-67).
+ * v7 : ajout de `effectInputs` (saisies libres d'état de jeu corrélées à un
+ *   interrupteur — ex. l'animal pris par « Forme animale » — PER-70).
+ * v8 : ajout de `usageCounters` (décompte des capacités à usages limités — ex.
+ *   « Les sept vies du chat », 6 usages — PER-70).
  */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 8;
 
 /**
  * Statistiques dérivées surchargeables manuellement (règle maison, cf. PRD
@@ -174,6 +178,26 @@ export interface Character {
    * finale d'une stat. Une capacité sans effet conditionnel n'a pas d'entrée ici.
    */
   effectToggles: Record<string, boolean[]>;
+
+  /**
+   * Saisies LIBRES d'état de jeu corrélées à une capacité (PER-70). Clé = id de la
+   * capacité ; valeur = texte libre saisi par le joueur. Distinct de `featureChoices`
+   * (choix STRUCTURELS énumérés/validés, liés à la progression) : ici la valeur est
+   * une note transitoire associée à un interrupteur d'effet, non contrainte par un
+   * domaine. Cas actuel : l'animal pris par « Forme animale » (animaux-r5), corrélé à
+   * son interrupteur de transformation. Une capacité sans saisie n'a pas d'entrée.
+   */
+  effectInputs: Record<string, string>;
+
+  /**
+   * Décompte courant des capacités à USAGES LIMITÉS (PER-70). Clé = id de la
+   * capacité (qui doit déclarer un `Feature.usageCounter`) ; valeur = nombre
+   * d'usages RESTANTS. Absent → on retombe sur le maximum déclaré (`usageCounter.max`,
+   * compteur plein). État de jeu transitoire, comme `effectToggles`/`effectInputs` :
+   * modifiable à tout moment, hors mode édition. Cas actuel : « Les sept vies du
+   * chat » (fauve-r5, 6 usages). Une capacité sans usage limité n'a pas d'entrée.
+   */
+  usageCounters: Record<string, number>;
 
   /** Historique des montées de niveau (permet « qu'ai-je pris au niveau N ? »). */
   levelUpHistory: LevelUpEntry[];

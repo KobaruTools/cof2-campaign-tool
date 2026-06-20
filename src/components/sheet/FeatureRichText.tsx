@@ -5,13 +5,14 @@ import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { Fragment } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { progression } from '@/data';
 import type { Die, Feature } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
 import { DieIcon } from '@/components/DieIcon';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { dieCountAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
+import { splitNotes } from '@/lib/ui/featureNotes';
 import { splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
@@ -487,6 +488,29 @@ export function RichInline({
   );
 }
 
+/**
+ * Enveloppe une NOTE : légèrement plus petite et plus grise que le corps, pour
+ * la distinguer sans rompre le fil de lecture. Le balisage interne (puces de
+ * glossaire, dés…) reste rendu — il hérite simplement de la taille réduite.
+ */
+function NoteSpan({ children }: { children: ReactNode }) {
+  return (
+    <Box
+      component="div"
+      sx={{
+        // BLOC (pas span) : indispensable pour que `lineHeight` s'applique — un
+        // span inline hérite du strut du conteneur (1.9) et ignore son line-height.
+        mt: 0.75,
+        fontSize: '0.85em',
+        lineHeight: 1.45,
+        color: (theme) => alpha(theme.palette.text.secondary, 0.78),
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
 export interface FeatureTextProps {
   feature: Feature;
   /** Caractéristiques du personnage : requises pour le rendu enrichi. */
@@ -511,29 +535,37 @@ export interface FeatureTextProps {
  */
 export function FeatureText({ feature, abilities, level, pathRank }: FeatureTextProps) {
   const enriched = feature.richText && abilities && level != null;
-  if (!enriched) {
-    // Repli : `text` verbatim, mais on met quand même en avant les acronymes du
-    // glossaire (stats dérivées, jargon) — ils ne dépendent pas du contexte du perso.
-    return (
-      <Typography
-        variant="body2"
-        color="text.secondary"
-        component="div"
-        sx={{ whiteSpace: 'pre-line', fontSize: '1rem' }}
-      >
-        <RichTextRun value={feature.text} />
-      </Typography>
+  // Les « Note : » sont rendues plus petites/grises (`NoteSpan`), dans les deux
+  // modes ; le balisage interne (puces, dés, formules) reste actif.
+  const rank = pathRank ?? feature.rank;
+  const renderChunk = (value: string) =>
+    enriched ? (
+      <RichInline text={value} abilities={abilities!} level={level!} rank={rank} />
+    ) : (
+      <RichTextRun value={value} />
     );
-  }
+  const source = enriched ? feature.richText! : feature.text;
 
+  // Une NOTE est rendue en BLOC (`NoteSpan` = div) : c'est ce qui lui donne son
+  // propre interligne. En inline, la hauteur de ligne reste imposée par le « strut »
+  // du conteneur (lineHeight 1.9) et un line-height réduit n'a aucun effet visible.
+  // Le bloc gérant déjà sa séparation (marge), on retire les sauts de ligne autour
+  // de la note (sinon `pre-line` ajouterait une ligne vide superflue).
+  const chunks = splitNotes(source);
   return (
     <Typography
       variant="body2"
       color="text.secondary"
       component="div"
-      sx={{ whiteSpace: 'pre-line', lineHeight: 1.9, fontSize: '1rem' }}
+      sx={{ whiteSpace: 'pre-line', fontSize: '1rem', ...(enriched && { lineHeight: 1.9 }) }}
     >
-      <RichInline text={feature.richText!} abilities={abilities} level={level} rank={pathRank ?? feature.rank} />
+      {chunks.map((chunk, i) => {
+        if (chunk.kind === 'note') return <NoteSpan key={i}>{renderChunk(chunk.value)}</NoteSpan>;
+        let value = chunk.value;
+        if (chunks[i + 1]?.kind === 'note') value = value.replace(/\n+$/, '');
+        if (chunks[i - 1]?.kind === 'note') value = value.replace(/^\n+/, '');
+        return <Fragment key={i}>{renderChunk(value)}</Fragment>;
+      })}
     </Typography>
   );
 }

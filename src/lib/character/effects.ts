@@ -458,6 +458,38 @@ export function pruneEffectToggles(
   return next;
 }
 
+/**
+ * Élague les saisies libres (`effectInputs`, PER-70) dont la capacité n'est plus
+ * acquise — mêmes raisons que `pruneEffectToggles` (pas de note fantôme).
+ */
+export function pruneEffectInputs(
+  effectInputs: Record<string, string>,
+  featureIds: string[],
+): Record<string, string> {
+  const owned = new Set(featureIds);
+  const next: Record<string, string> = {};
+  for (const [id, value] of Object.entries(effectInputs)) {
+    if (owned.has(id)) next[id] = value;
+  }
+  return next;
+}
+
+/**
+ * Élague les compteurs d'usages (`usageCounters`, PER-70) dont la capacité n'est
+ * plus acquise — mêmes raisons que `pruneEffectToggles` (pas de décompte fantôme).
+ */
+export function pruneUsageCounters(
+  usageCounters: Record<string, number>,
+  featureIds: string[],
+): Record<string, number> {
+  const owned = new Set(featureIds);
+  const next: Record<string, number> = {};
+  for (const [id, value] of Object.entries(usageCounters)) {
+    if (owned.has(id)) next[id] = value;
+  }
+  return next;
+}
+
 // ---------------------------------------------------------------------------
 // Caractéristiques : modificateurs permanents et dés bonus (genres `ability-*`)
 // ---------------------------------------------------------------------------

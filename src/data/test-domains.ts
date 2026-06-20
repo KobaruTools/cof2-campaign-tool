@@ -29,6 +29,10 @@ export const testDomains: TestDomain[] = [
   { id: 'lockpicking', label: 'Crochetage', abilities: ['AGI'], sourcePage: 202 },
   { id: 'stealth', label: 'Discrétion', abilities: ['AGI'], sourcePage: 202 },
   { id: 'climbing', label: 'Escalade', abilities: ['AGI'], sourcePage: 202 },
+  // course (sprint) et saut : groupés avec l'escalade (AGI) par les voies du fauve
+  // (p. 115) et du vent (p. 121) — à distinguer de `long-running` (course longue, CON).
+  { id: 'running', label: 'Course', abilities: ['AGI'], sourcePage: 115 },
+  { id: 'jumping', label: 'Saut', abilities: ['AGI'], sourcePage: 115 },
 
   // --- FOR — exemples p. 202 -------------------------------------------------
   { id: 'breaking', label: 'Briser', abilities: ['FOR'], sourcePage: 202 },
@@ -45,6 +49,8 @@ export const testDomains: TestDomain[] = [
   { id: 'cold-resistance', label: 'Résistance au froid', abilities: ['CON'], sourcePage: 57 },
   { id: 'heat-resistance', label: 'Résistance à la chaleur', abilities: ['CON'], sourcePage: 57 },
   { id: 'disease-resistance', label: 'Résistance aux maladies', abilities: ['CON'], sourcePage: 57 },
+  // poison : pendant de disease-resistance (Vigueur divine, prêtre, soins-r2, p. 124).
+  { id: 'poison-resistance', label: 'Résistance aux poisons', abilities: ['CON'], sourcePage: 124 },
   // équitation : le livre teste l'Équitation sur DEUX caracs selon l'action — CON pour
   // l'endurance, CHA pour mener la monture (Marche forcée, p. 233). Meilleure des deux.
   { id: 'riding', label: 'Équitation', abilities: ['CON', 'CHA'], sourcePage: 233 },
@@ -64,6 +70,9 @@ export const testDomains: TestDomain[] = [
   // météorologie (humain-r1 « Campagnard ») : lire le temps.
   // TODO(extraction) : PER (observation du ciel) ou INT (savoir) ?
   { id: 'meteorology', label: 'Météorologie', abilities: ['PER'], sourcePage: 57 },
+  // survie (druide, Maître de la survie, nature-r1, p. 116) : s'orienter, trouver
+  // abri/nourriture, éviter les dangers → lecture du milieu, PER (comme orientation).
+  { id: 'survival', label: 'Survie', abilities: ['PER'], sourcePage: 116 },
 
   // --- INT — exemples p. 202 + savoirs/artisanats (mages) --------------------
   { id: 'knowledge', label: 'Connaissances', abilities: ['INT'], sourcePage: 202 },
@@ -84,6 +93,15 @@ export const testDomains: TestDomain[] = [
   // orfèvrerie (forgesort « orfèvrerie ou forge ») : artisanat de précision.
   // TODO(extraction) : INT (artisanat) ou FOR ? (cf. `smithing`)
   { id: 'goldsmithing', label: 'Orfèvrerie', abilities: ['INT'], sourcePage: 99 },
+  // herboristerie (druide, Peau d'écorce, vegetaux-r1, p. 117) : identifier les
+  // plantes et connaître leurs propriétés → savoir, INT.
+  { id: 'herbalism', label: 'Herboristerie', abilities: ['INT'], sourcePage: 117 },
+  // savoirs religieux (prêtre, Bénédiction, priere-r1, p. 124) → INT.
+  { id: 'theology', label: 'Théologie', abilities: ['INT'], sourcePage: 124 },
+  { id: 'cosmology', label: 'Cosmologie', abilities: ['INT'], sourcePage: 124 },
+  // premiers soins (prêtre, Récupération mineure, soins-r1, p. 124) : groupés avec
+  // la médecine (INT) par le livre.
+  { id: 'first-aid', label: 'Premiers soins', abilities: ['INT'], sourcePage: 124 },
 
   // --- CHA — exemples p. 202 + social (mages) --------------------------------
   { id: 'art', label: 'Art', abilities: ['CHA'], sourcePage: 202 },
@@ -96,6 +114,11 @@ export const testDomains: TestDomain[] = [
   // commerce (humain-r1 « Citadin ») : marchandage.
   // TODO(extraction) : CHA (négoce / baratin) ou INT (calcul) ?
   { id: 'commerce', label: 'Commerce', abilities: ['CHA'], sourcePage: 57 },
+  // influence animale (druide, Langage des animaux, animaux-r1, p. 114) : influencer
+  // un animal avec lequel le druide peut communiquer → ascendant social, CHA.
+  { id: 'animal-handling', label: 'Influence animale', abilities: ['CHA'], sourcePage: 114 },
+  // prêche (prêtre, Prédicateur, foi-r1, p. 122) : convertir un auditoire → CHA.
+  { id: 'preaching', label: 'Prêche', abilities: ['CHA'], sourcePage: 122 },
 
   // --- VOL — exemples p. 202 -------------------------------------------------
   { id: 'pushing-limits', label: 'Se dépasser', abilities: ['VOL'], sourcePage: 202 },

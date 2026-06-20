@@ -35,7 +35,9 @@ import {
   abilityModsFromFeatures,
   effectContext,
   modsFromFeatures,
+  pruneEffectInputs,
   pruneEffectToggles,
+  pruneUsageCounters,
   setEffectToggle,
   testBonusSources,
 } from '@/lib/character/effects';
@@ -173,6 +175,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       featureIds,
       featureChoices: pruneFeatureChoices(character.featureChoices, featureIds),
       effectToggles: pruneEffectToggles(character.effectToggles, featureIds),
+      effectInputs: pruneEffectInputs(character.effectInputs, featureIds),
+      usageCounters: pruneUsageCounters(character.usageCounters, featureIds),
     });
   // Résolution rétroactive d'un choix porté par une capacité (PER-66/68). La
   // fiche est permissive : on persiste sans bloquer (recalcul en direct).
@@ -182,6 +186,24 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // en direct : le moteur n'inclut l'effet que lorsqu'il est actif.
   const setEffectToggleValue = (featureId: string, index: number, active: boolean) =>
     update({ effectToggles: setEffectToggle(character, featureId, index, active) });
+  // Saisie libre d'état de jeu corrélée à une capacité (PER-70, ex. animal de Forme
+  // animale). Une chaîne vide supprime la clé (pas de note fantôme).
+  const setEffectInputValue = (featureId: string, value: string) => {
+    const next = { ...character.effectInputs };
+    if (value.trim() === '') delete next[featureId];
+    else next[featureId] = value;
+    update({ effectInputs: next });
+  };
+  // Décompte d'une capacité à usages limités (PER-70, ex. Les sept vies du chat).
+  // Borné à [0, max] ; au maximum, on supprime la clé (= compteur plein par défaut).
+  const setUsageCounterValue = (featureId: string, value: number) => {
+    const max = featureById.get(featureId)?.usageCounter?.max ?? 0;
+    const clamped = Math.max(0, Math.min(max, value));
+    const next = { ...character.usageCounters };
+    if (clamped >= max) delete next[featureId];
+    else next[featureId] = clamped;
+    update({ usageCounters: next });
+  };
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
   // supprime la clé et rétablit le calcul automatique.
   const setOverride = (key: DerivedStatId, value: number | null) => {
@@ -480,6 +502,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Les interrupteurs d'effets conditionnels sont des ÉTATS DE JEU
               // transitoires : activables à tout moment, y compris hors édition.
               onToggleEffect={setEffectToggleValue}
+              // Saisie libre corrélée (animal de Forme animale) : état de jeu, comme
+              // les interrupteurs, donc modifiable hors édition.
+              onSetEffectInput={setEffectInputValue}
+              // Compteur d'usages limités (Les sept vies du chat) : état de jeu.
+              onSetUsageCounter={setUsageCounterValue}
               // Stats du maître : Init./attaque des compagnons recopient ce total.
               masterDerived={masterDerived}
             />

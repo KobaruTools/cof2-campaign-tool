@@ -269,6 +269,29 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le druide sait communiquer avec les mammifères. La communication reste primitive et limitée à l'intelligence de l'animal et à son point de vue (prédateur, proie, etc.). De plus, il ajoute son rang + 2 à tous les tests destinés à influencer un animal avec lequel il peut communiquer. Chaque fois que le personnage atteint le rang 4 dans une voie de druide, il apprend à communiquer avec une nouvelle catégorie d'animaux de son choix : les oiseaux, les reptiles (et les amphibiens), les poissons (et les mollusques) ou les arthropodes (insectes, araignées, scorpions, etc.) et enfin les animaux fantastiques (griffon, pégase, etc.).",
+    // Bonus de compétence (PER-89) : influence animale (CHA), domaine nommé inconditionnel.
+    richText:
+      "Le druide sait communiquer avec les mammifères. La communication reste primitive et limitée à l'intelligence de l'animal et à son point de vue (prédateur, proie, etc.). De plus, il ajoute son [rang + 2] à tous les tests destinés à influencer un animal avec lequel il peut communiquer. Chaque fois que le personnage atteint le rang 4 dans une voie de druide, il apprend à communiquer avec une nouvelle catégorie d'animaux de son choix : les oiseaux, les reptiles (et les amphibiens), les poissons (et les mollusques) ou les arthropodes (insectes, araignées, scorpions, etc.) et enfin les animaux fantastiques (griffon, pégase, etc.).",
+    effects: [{ kind: 'test-bonus', domains: ['animal-handling'] }],
+    // Catégories d'animaux supplémentaires : choix RÉPÉTABLE débloqué par paliers de
+    // progression — une nouvelle catégorie « chaque fois que le personnage atteint le
+    // rang 4 dans une voie de druide » (la voie hôte comprise) → `repeat: paths-at-rank`,
+    // même mécanique que Golem supérieur (golem-r5, mages.ts). Les mammifères du rang 1
+    // sont acquis d'office (pas une option). Options purement descriptives (aucun effet).
+    choices: [
+      {
+        kind: 'option',
+        prompt: "Catégorie d'animaux supplémentaire (par voie de druide au rang 4)",
+        repeat: { by: 'paths-at-rank', classIds: ['druide'], rank: 4 },
+        options: [
+          { id: 'birds', label: 'Oiseaux' },
+          { id: 'reptiles', label: 'Reptiles (et amphibiens)' },
+          { id: 'fish', label: 'Poissons (et mollusques)' },
+          { id: 'arthropods', label: 'Arthropodes (insectes, araignées, scorpions, etc.)' },
+          { id: 'fantastic-animals', label: 'Animaux fantastiques (griffon, pégase, etc.)' },
+        ],
+      },
+    ],
     sourcePage: 114,
   },
   {
@@ -280,6 +303,15 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le druide choisit un petit animal (écureuil, corbeau, chat). Il peut utiliser les sens de son familier (voir par ses yeux, entendre ce qu'il entend, etc.) et communiquer avec lui à distance illimitée. Il gagne +2 en DEF lorsque son familier est en vue. Le familier récupère tous les PV perdus après une récupération rapide. S'il est réduit à 0 PV, le familier prend la fuite et réapparaît auprès de son maître 24 h plus tard, complètement soigné. S'il est tué (lors d'un fait de jeu que le MJ juge inévitable), le druide perd 1d4° PV en contrecoup et pourra trouver un autre familier au prochain passage de niveau (pas forcément le même animal).\n\nFAMILIER\nAGI +3* | CON 0 | FOR -4 | PER +2* | INT -2 | CHA -2 | VOL +2\nDéfense [13 + rang dans la voie]\nPoints de vigueur [niveau du druide × 2]\nInitiative [Init. du druide]\nUn familier est une créature trop petite pour attaquer et infliger des dommages.\n\nNote : Petit compagnon est une version non magique du Familier du magicien (voie de la magie universelle). Si un personnage décide de faire l'acquisition de ces deux capacités, le bonus de DEF ne se cumule pas.",
+    // Profil structuré du familier (mini-fiche) ; le bloc de stats est retiré du richText.
+    // Bonus CONDITIONNEL +2 DEF « familier en vue » → interrupteur manuel (PER-67).
+    // EXCLUSION MUTUELLE avec le Familier du magicien (magie-universelle-r2) : le livre
+    // dit « le bonus de DEF ne se cumule pas » → `disablesFeatures` réciproque (même
+    // règle qu'Armure de pierre ↔ Déphasage, cf. effets-conditionnels-cadrage.md).
+    richText:
+      "Le druide choisit un petit animal (écureuil, corbeau, chat). Il peut utiliser les sens de son familier (voir par ses yeux, entendre ce qu'il entend, etc.) et communiquer avec lui à distance illimitée. Il gagne +2 en DEF lorsque son familier est en vue. Le familier récupère tous les PV perdus après une récupération rapide. S'il est réduit à 0 PV, le familier prend la fuite et réapparaît auprès de son maître 24 h plus tard, complètement soigné. S'il est tué (lors d'un fait de jeu que le MJ juge inévitable), le druide perd {1d4°} PV en contrecoup et pourra trouver un autre familier au prochain passage de niveau (pas forcément le même animal).\n\nNote : Petit compagnon est une version non magique du Familier du magicien (voie de la magie universelle). Si un personnage décide de faire l'acquisition de ces deux capacités, le bonus de DEF ne se cumule pas.",
+    effects: [{ kind: 'conditional-stat-bonus', bonuses: [{ stat: 'def', value: 2 }], activation: { kind: 'condition', label: 'familier en vue', activeByDefault: false }, disablesFeatures: ['magie-universelle-r2'] }],
+    creatureProfile: { name: 'Familier', abilities: { AGI: 3, CON: 0, FOR: -4, PER: 2, CHA: -2, INT: -2, VOL: 2 }, defense: '[13 + rang]', hitPoints: '[=niveau × 2]', initiative: { fromMaster: 'initiative' }, note: 'Créature trop petite pour attaquer ou infliger des dommages.' },
     sourcePage: 114,
   },
   {
@@ -291,6 +323,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "En réussissant un test d'attaque magique contre la DEF de sa cible (portée 20 m), le druide libère sur celle-ci une nuée d'insectes volants qui piquent, aveuglent et la suivent pendant [3 + PER] rounds. La victime subit 1 DM par round et un malus de -2 à tous les tests. Les DM de zone détruisent la nuée.",
+    richText:
+      "En réussissant un test d'attaque magique contre la DEF de sa cible (portée 20 m), le druide libère sur celle-ci une nuée d'insectes volants qui piquent, aveuglent et la suivent pendant [=3 + PER] rounds. La victime subit 1 DM par round et un malus de -2 à tous les tests. Les DM de zone détruisent la nuée.",
     sourcePage: 114,
   },
   {
@@ -302,6 +336,11 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Pendant PER minutes, le druide prend les traits d'un fauve ou d'un loup. Il gagne +2 en Initiative, en DEF, en attaque et aux DM au contact et peut voir dans la nuit (comme un elfe).",
+    // Buff TEMPORAIRE pendant le sort (interrupteur, PER-67) : +2 Init/DEF/attaque.
+    // Le « +2 aux DM au contact » n'est pas une stat dérivée → reste verbatim.
+    richText:
+      "Pendant [=PER] minutes, le druide prend les traits d'un fauve ou d'un loup. Il gagne +2 en Initiative, en DEF, en attaque et aux DM au contact et peut voir dans la nuit (comme un elfe).",
+    effects: [{ kind: 'conditional-stat-bonus', bonuses: [{ stat: 'initiative', value: 2 }, { stat: 'def', value: 2 }, { stat: 'meleeAttack', value: 2 }], activation: { kind: 'temporary', label: 'Masque du prédateur actif', activeByDefault: false } }],
     sourcePage: 114,
   },
   {
@@ -313,6 +352,20 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Pendant une durée de PER minutes, le druide peut prendre la forme d'un animal de taille moyenne ou inférieure (minimum une souris) d'une catégorie dont il maîtrise la communication (voir rang 1, à l'exception des animaux fantastiques). Il conserve seulement ses PV, ses valeur d'INT et de VOL, et acquiert les caractéristiques, les attaques, la DEF et les capacités naturelles de la forme choisie (le vol pour un oiseau, la respiration aquatique pour le poisson, etc.). Le druide ne peut ni utiliser son équipement ni ses propres capacités sous cette forme. Le druide peut reprendre sa forme humaine lorsqu'il le désire par une action de mouvement (M).",
+    richText:
+      "Pendant une durée de [=PER] minutes, le druide peut prendre la forme d'un animal de taille moyenne ou inférieure (minimum une souris) d'une catégorie dont il maîtrise la communication (voir rang 1, à l'exception des animaux fantastiques). Il conserve seulement ses PV, ses valeur d'INT et de VOL, et acquiert les caractéristiques, les attaques, la DEF et les capacités naturelles de la forme choisie (le vol pour un oiseau, la respiration aquatique pour le poisson, etc.). Le druide ne peut ni utiliser son équipement ni ses propres capacités sous cette forme. Le druide peut reprendre sa forme humaine lorsqu'il le désire par une action de mouvement (M).",
+    // Interrupteur MARQUEUR de transformation (PER-67) : aucun bonus chiffré — la forme
+    // REMPLACE les caractéristiques (le druide acquiert AGI/CON/FOR/PER/DEF/attaques de
+    // l'animal et ne garde que PV/INT/VOL), ce qui n'est pas modélisable en +X ; le toggle
+    // ne porte donc que l'état « transformé » (comme Armure de pierre / Déphasage). Les
+    // catégories accessibles sont dérivées des choix de Langage des animaux (animaux-r1).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Forme animale active', activeByDefault: false },
+      },
+    ],
     sourcePage: 114,
   },
   // =======================================================================
@@ -327,6 +380,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le druide ajoute son rang + 2 aux tests de course, d'escalade ou de saut. De plus, il gagne +3 en Initiative et +1 en DEF. Le bonus de DEF passe à +2 au rang 3 et +3 au rang 5.",
+    // Bonus de compétence course/escalade/saut (AGI). Init +3 plat ; DEF +1→+2 (r3)→+3 (r5).
+    richText:
+      "Le druide ajoute son [rang + 2] aux tests de course, d'escalade ou de saut. De plus, il gagne +3 en Initiative et +1 en DEF. Le bonus de DEF passe à +2 au rang 3 et +3 au rang 5.",
+    effects: [{ kind: 'test-bonus', domains: ['running', 'climbing', 'jumping'] }, { kind: 'stat-bonus', stat: 'initiative', value: 3 }, { kind: 'stat-bonus', stat: 'def', value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 3, value: 2 }, { min: 5, value: 3 }] } }],
     sourcePage: 115,
   },
   {
@@ -338,6 +395,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le druide apprivoise une panthère (ou un puma) qui lui obéit au doigt et à l'œil.\n\nPANTHÈRE\nAGI +4* | CON +2 | FOR +2 | PER +2* | CHA -2 | INT -3 | VOL +2\nDéfense [13 + rang dans la voie]\nPoints de vigueur [niveau du druide × 4]\nInitiative [Init. du druide]\nAttaque au contact [attaque magique] · DM 1d4+2",
+    // Profil structuré de la panthère (mini-fiche) ; bloc de stats retiré du richText.
+    richText:
+      "Le druide apprivoise une panthère (ou un puma) qui lui obéit au doigt et à l'œil.",
+    creatureProfile: { name: 'Panthère', abilities: { AGI: 4, CON: 2, FOR: 2, PER: 2, CHA: -2, INT: -3, VOL: 2 }, defense: '[13 + rang]', hitPoints: '[=niveau × 4]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4 + 2]' } },
     sourcePage: 115,
   },
   {
@@ -349,6 +410,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le druide ou son félin parcourt de 5 à 10 m et bénéficie d'un dé bonus au test d'attaque et de +1d4° aux DM contre sa cible. Il ne peut pas effectuer d'attaque bondissante s'il est au contact d'un adversaire.",
+    richText:
+      "Le druide ou son félin parcourt de 5 à 10 m et bénéficie d'un dé bonus au test d'attaque et de +{1d4°} aux DM contre sa cible. Il ne peut pas effectuer d'attaque bondissante s'il est au contact d'un adversaire.",
     sourcePage: 115,
   },
   {
@@ -360,6 +423,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "La panthère devient un animal fabuleux ou est remplacée par un félin plus grand (tigre, lion). Le grand félin peut servir de monture au druide et il se déplace de 20 m par action de mouvement. Le druide peut communiquer avec son félin par télépathie et le guérir à distance en dépensant ses propres PV (-1 PV au druide par PV octroyé au félin).\n\nANIMAL FABULEUX\nAGI +4* | CON +5 | FOR +5 | PER +2* | CHA -2 | INT -2 | VOL +4\nDéfense [15 + rang]\nPoints de vigueur [niveau du druide × 5]\nInitiative [Init. du druide]\nAttaque au contact [attaque magique] · DM 1d4°+5",
+    // Profil structuré de l'animal fabuleux (mini-fiche) ; bloc de stats retiré du richText.
+    richText:
+      "La panthère devient un animal fabuleux ou est remplacée par un félin plus grand (tigre, lion). Le grand félin peut servir de monture au druide et il se déplace de 20 m par action de mouvement. Le druide peut communiquer avec son félin par télépathie et le guérir à distance en dépensant ses propres PV (-1 PV au druide par PV octroyé au félin).",
+    creatureProfile: { name: 'Animal fabuleux', abilities: { AGI: 4, CON: 5, FOR: 5, PER: 2, CHA: -2, INT: -2, VOL: 4 }, defense: '[15 + rang]', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' } },
     sourcePage: 115,
   },
   {
@@ -371,6 +438,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Cette capacité ne peut être utilisée que six fois, et pas plus d'une fois par niveau. Lorsque les PV du druide tombent à 0 ou qu'il meurt, le druide peut choisir d'ignorer ce qui a provoqué la mort ou l'inconscience ! Le MJ et le joueur doivent se mettre d'accord et trouver une raison plausible (ou pas !) pour expliquer la survie du personnage, et le faire réapparaître immédiatement ou un peu plus tard dans l'aventure si nécessaire.",
+    // Usages limités (PER-70) : « ne peut être utilisée que six fois » → compteur 6 → 0.
+    // Malgré le nom « sept vies », la règle chiffrée est SIX (verbatim p. 115). La
+    // sous-règle « pas plus d'une fois par niveau » reste en texte (non automatisée).
+    usageCounter: { max: 6, label: 'Usages restants' },
     sourcePage: 115,
   },
   // =======================================================================
@@ -385,6 +456,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "En milieu naturel, le druide ajoute son rang + 2 à tous les tests de survie (s'orienter, trouver un abri et de la nourriture, éviter les dangers, etc.) dont les tests de récupération effectués chaque nuit. Lorsqu'il dort en milieu naturel, s'il utilise 1 DR, il guérit 1d4° PV supplémentaire.",
+    // Bonus de compétence survie (PER).
+    richText:
+      "En milieu naturel, le druide ajoute son [rang + 2] à tous les tests de survie (s'orienter, trouver un abri et de la nourriture, éviter les dangers, etc.) dont les tests de récupération effectués chaque nuit. Lorsqu'il dort en milieu naturel, s'il utilise 1 DR, il guérit {1d4°} PV supplémentaire.",
+    effects: [{ kind: 'test-bonus', domains: ['survival'] }],
     sourcePage: 116,
   },
   {
@@ -396,6 +471,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le druide ne subit aucune pénalité de déplacement en terrain difficile (natation, neige, boue, broussailles, pente abrupte, etc.). Il obtient un bonus de +3 en initiative, et +1 en attaque et en DEF lors d'un combat dans ces conditions.",
+    // Buff CONDITIONNEL (combat en terrain difficile) : +3 Init, +1 attaque, +1 DEF (PER-67).
+    effects: [{ kind: 'conditional-stat-bonus', bonuses: [{ stat: 'initiative', value: 3 }, { stat: 'meleeAttack', value: 1 }, { stat: 'def', value: 1 }], activation: { kind: 'condition', label: 'combat en terrain difficile', activeByDefault: false } }],
     sourcePage: 116,
   },
   {
@@ -407,6 +484,9 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le druide combat avec les deux extrémités de son bâton de bois noueux (ou de son épieu). Lorsqu'il utilise cette capacité, il effectue deux attaques de contact pour lesquelles il peut remplacer sa FOR par son AGI en attaque s'il le souhaite. Il inflige [1d4°+FOR ou AGI au choix] DM par attaque (plus d'éventuels bonus si l'arme est magique) et il gagne +2 en DEF pendant 1 round.",
+    // « FOR ou AGI au choix » non exprimable en formule unique → dé marqué, stats littérales.
+    richText:
+      "Le druide combat avec les deux extrémités de son bâton de bois noueux (ou de son épieu). Lorsqu'il utilise cette capacité, il effectue deux attaques de contact pour lesquelles il peut remplacer sa FOR par son AGI en attaque s'il le souhaite. Il inflige {1d4°} + FOR ou AGI au choix DM par attaque (plus d'éventuels bonus si l'arme est magique) et il gagne +2 en DEF pendant 1 round.",
     sourcePage: 116,
   },
   {
@@ -418,6 +498,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le druide augmente sa CON de +1. Désormais, il obtient un dé bonus aux tests de CON.",
+    // CON +1 + dé bonus aux tests de CON (mécanique core).
+    effects: [{ kind: 'ability-bonus', ability: 'CON', value: 1 }, { kind: 'ability-bonus-die', ability: 'CON' }],
     sourcePage: 116,
   },
   {
@@ -429,6 +511,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le druide divise par deux tous les DM « naturels non magiques » : froid, feu, chutes, poisons… mais aussi les DM provoqués par les animaux ou les insectes (même géants). Cette protection s'étend aussi à ses compagnons animaux.",
+    // TODO(résistances) : « divise par deux les DM naturels non magiques » → DamageReduction
+    // divide 2 (passe « stats avancées » différée, cf. effets-conditionnels-cadrage.md).
     sourcePage: 116,
   },
   // =======================================================================
@@ -443,6 +527,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le druide doit se trouver devant un buisson ou un arbre vivant. Son incantation fait pousser PER fruits qu'il peut cueillir. Chaque fruit offre l'équivalent d'un repas et rend [1d4°+rang] PV après 1 min à celui qui le consomme. Les effets de ces fruits ne fonctionnent qu'une fois par jour et par personnage. En plus de ce sort, le druide ajoute son rang + 2 à tous les tests de vigilance et de discrétion en pleine nature.",
+    // Bonus de vigilance/discrétion « en pleine nature » = SITUATIONNEL → laissé verbatim
+    // (hors périmètre PER-89), seul le rendu [rang + 2] est balisé.
+    richText:
+      "Le druide doit se trouver devant un buisson ou un arbre vivant. Son incantation fait pousser [=PER] fruits qu'il peut cueillir. Chaque fruit offre l'équivalent d'un repas et rend [1d4° + rang] PV après 1 min à celui qui le consomme. Les effets de ces fruits ne fonctionnent qu'une fois par jour et par personnage. En plus de ce sort, le druide ajoute son [rang + 2] à tous les tests de vigilance et de discrétion en pleine nature.",
     sourcePage: 116,
   },
   {
@@ -454,6 +542,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Après un rituel de 30 min, la forêt s'éveille dans un rayon de 1 km par rang et devient une alliée du druide pendant 24 h. Dans ce périmètre, les ennemis du druide sont désorientés et gênés par les branches et les racines. Ils divisent leur déplacement par deux et subissent un dé malus à tous les tests de survie, d'orientation, de perception ou de discrétion. Le druide peut lancer ce sort une seule fois par jour. Si deux druides essaient d'influencer la forêt, c'est celui dont le niveau est le plus élevé qui l'emporte.",
+    richText:
+      "Après un rituel de 30 min, la forêt s'éveille dans un rayon de [=rang] km et devient une alliée du druide pendant 24 h. Dans ce périmètre, les ennemis du druide sont désorientés et gênés par les branches et les racines. Ils divisent leur déplacement par deux et subissent un dé malus à tous les tests de survie, d'orientation, de perception ou de discrétion. Le druide peut lancer ce sort une seule fois par jour. Si deux druides essaient d'influencer la forêt, c'est celui dont le niveau est le plus élevé qui l'emporte.",
     sourcePage: 116,
   },
   {
@@ -465,6 +555,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Une cible touchée par le druide récupère [3d4°+PER] PV par un rituel de 10 min (la cible et le druide doivent rester au calme). À partir du rang 5, ce sort permet aussi de faire repousser les membres ou les parties du corps amputées. Une cible peut bénéficier de ce sort seulement une fois par jour.",
+    richText:
+      "Une cible touchée par le druide récupère [3d4° + PER] PV par un rituel de 10 min (la cible et le druide doivent rester au calme). À partir du rang 5, ce sort permet aussi de faire repousser les membres ou les parties du corps amputées. Une cible peut bénéficier de ce sort seulement une fois par jour.",
     sourcePage: 117,
   },
   {
@@ -476,6 +568,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le druide augmente sa PER de +1. Désormais, il obtient un dé bonus aux tests de PER. De plus, il ajoute désormais sa PER pour calculer ses PM (en plus de sa VOL).",
+    // PER +1 + dé bonus aux tests de PER + ajoute la PER aux PM (comme divination-r4).
+    effects: [{ kind: 'stat-bonus', stat: 'manaPoints', value: { scale: 'ability', ability: 'PER' } }, { kind: 'ability-bonus', ability: 'PER', value: 1 }, { kind: 'ability-bonus-die', ability: 'PER' }],
     sourcePage: 117,
   },
   {
@@ -487,6 +581,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le druide peut se transformer en arbre (environ 5 m de hauteur) pendant PER minutes. Il prend les mêmes caractéristiques (à l'exception de l'INT, de la PER et de la VOL) que l'arbre animé (voir plus loin), y compris les PV. Sous cette forme, il ne peut pas parler, mais peut utiliser les sorts des voies du protecteur et des végétaux. À la fin du sort, ou s'il est réduit à 0 PV, il reprend forme humaine et retrouve les PV que le personnage avait au début du sort.",
+    richText:
+      "Le druide peut se transformer en arbre (environ 5 m de hauteur) pendant [=PER] minutes. Il prend les mêmes caractéristiques (à l'exception de l'INT, de la PER et de la VOL) que l'arbre animé (voir plus loin), y compris les PV. Sous cette forme, il ne peut pas parler, mais peut utiliser les sorts des voies du protecteur et des végétaux. À la fin du sort, ou s'il est réduit à 0 PV, il reprend forme humaine et retrouve les PV que le personnage avait au début du sort.",
     sourcePage: 117,
   },
   // =======================================================================
@@ -501,6 +597,11 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['M'],
     text:
       "La peau du druide prend la consistance de l'écorce. Il bénéficie d'un bonus à la DEF égal à +2 pendant PER minutes. Ce bonus augmente de +1 aux rangs 3 et 5. Les effets du sort ne sont pas cumulables au bonus d'une armure métallique ou d'un autre sort de protection qui ajoute un bonus de DEF (à l'exception du Masque du prédateur). En plus de ce sort, le druide ajoute son rang + 2 aux tests pour identifier les plantes et connaître leurs propriétés.",
+    // DEF TEMPORAIRE pendant le sort : +2→+3 (r3)→+4 (r5), interrupteur (PER-67). Non-cumul
+    // avec armure métallique/autre sort de protection → milestone Armures. Bonus de compétence herboristerie.
+    richText:
+      "La peau du druide prend la consistance de l'écorce. Il bénéficie d'un bonus à la DEF égal à +2 pendant [=PER] minutes. Ce bonus augmente de +1 aux rangs 3 et 5. Les effets du sort ne sont pas cumulables au bonus d'une armure métallique ou d'un autre sort de protection qui ajoute un bonus de DEF (à l'exception du Masque du prédateur). En plus de ce sort, le druide ajoute son [rang + 2] aux tests pour identifier les plantes et connaître leurs propriétés.",
+    effects: [{ kind: 'conditional-stat-bonus', bonuses: [{ stat: 'def', value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 3, value: 3 }, { min: 5, value: 4 }] } }], activation: { kind: 'temporary', label: 'Peau d\'écorce active', activeByDefault: false } }, { kind: 'test-bonus', domains: ['herbalism'] }],
     sourcePage: 117,
   },
   {
@@ -512,6 +613,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le druide peut commander à la végétation de pousser et bloquer ses ennemis (mais pas ses alliés) dans une zone de 10 m de diamètre (portée 20 m) pendant PER minutes. Les cibles sont immobilisées. À son tour, une créature peut se libérer (action d'attaque) avec un test de FOR difficulté [10 + PER du druide]. En cas de réussite, elle n'est plus affectée par le sort pour le reste du combat.",
+    richText:
+      "Le druide peut commander à la végétation de pousser et bloquer ses ennemis (mais pas ses alliés) dans une zone de 10 m de diamètre (portée 20 m) pendant [=PER] minutes. Les cibles sont immobilisées. À son tour, une créature peut se libérer (action d'attaque) avec un test de @FOR difficulté [10 + PER]. En cas de réussite, elle n'est plus affectée par le sort pour le reste du combat.",
     sourcePage: 117,
   },
   {
@@ -523,6 +626,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "En une action, le druide enchante une flèche et la tire (il doit tenir un arc en main). Cette flèche a pour particularité de prendre racine dans la plaie et de devenir un arbuste. S'il réussit un test d'attaque à distance, il inflige les DM habituels de son attaque, et au round suivant, la flèche inflige 3d4° DM supplémentaires. Si la victime est réduite à 0 PV par ce sort, un jeune arbuste pousse sur son cadavre.",
+    richText:
+      "En une action, le druide enchante une flèche et la tire (il doit tenir un arc en main). Cette flèche a pour particularité de prendre racine dans la plaie et de devenir un arbuste. S'il réussit un test d'attaque à distance, il inflige les DM habituels de son attaque, et au round suivant, la flèche inflige {3d4°} DM supplémentaires. Si la victime est réduite à 0 PV par ce sort, un jeune arbuste pousse sur son cadavre.",
     sourcePage: 117,
   },
   {
@@ -534,6 +639,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le druide peut animer un arbre en le touchant. Il combat à son service pendant [niveau du druide] rounds. Il peut animer un seul arbre à la fois.\n\nARBRE ANIMÉ\nAGI -2 | CON +3 | FOR +3 | PER -2 | CHA -2 | INT -2 | VOL +0\nDéfense [10 + rang]\nPoints de vigueur [Niveau × 5]\nInitiative 8\nAttaque de contact [attaque magique] · DM 1d4°+3\nDéplacement 5 m par action de mouvement.",
+    // Profil structuré de l'arbre animé (mini-fiche) ; bloc de stats retiré du richText.
+    richText:
+      "Le druide peut animer un arbre en le touchant. Il combat à son service pendant [=niveau] rounds. Il peut animer un seul arbre à la fois.",
+    creatureProfile: { name: 'Arbre animé', abilities: { AGI: -2, CON: 3, FOR: 3, PER: -2, CHA: -2, INT: -2, VOL: 0 }, defense: '[10 + rang]', hitPoints: '[=niveau × 5]', initiative: '8', attack: { fromMaster: 'magicAttack', damage: '[1d4° + 3]' }, note: 'Déplacement 5 m par action de mouvement.' },
     sourcePage: 117,
   },
   {
@@ -545,6 +654,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par jour, le druide peut pénétrer dans le tronc d'un gros arbre et sortir de celui d'un autre arbre appartenant à la même forêt et situé à une distance maximale de PER × 10 km. À partir du niveau 10 et tous les 4 niveaux supplémentaires, le druide peut emmener une personne avec lui.",
+    richText:
+      "Une fois par jour, le druide peut pénétrer dans le tronc d'un gros arbre et sortir de celui d'un autre arbre appartenant à la même forêt et situé à une distance maximale de [=PER × 10] km. À partir du niveau 10 et tous les 4 niveaux supplémentaires, le druide peut emmener une personne avec lui.",
     sourcePage: 117,
   },
   // =======================================================================
@@ -559,6 +670,9 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Par un effort de concentration, le moine peut rendre ses mains intangibles. Au prix d'une action limitée, à son tour, il peut faire une attaque à mains nues avec un bonus en attaque égal au rang + 2. De plus, même lorsqu'il n'utilise pas Mains d'énergie, toutes les attaques à mains nues du moine sont considérées comme magiques et il peut choisir de remplacer sa FOR aux DM par sa VOL.",
+    // Bonus d'attaque [rang + 2] propre à l'action Mains d'énergie (option d'attaque, pas un bonus permanent) → seul le rendu est balisé.
+    richText:
+      "Par un effort de concentration, le moine peut rendre ses mains intangibles. Au prix d'une action limitée, à son tour, il peut faire une attaque à mains nues avec un bonus en attaque égal au [rang + 2]. De plus, même lorsqu'il n'utilise pas Mains d'énergie, toutes les attaques à mains nues du moine sont considérées comme magiques et il peut choisir de remplacer sa FOR aux DM par sa VOL.",
     sourcePage: 119,
   },
   {
@@ -570,6 +684,9 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le moine projette une vague de force avec son corps et son esprit à une distance maximale de 20 m. Un test d'attaque magique réussi lui permet d'infliger [1d4°+ VOL] DM. Les DM passent à [2d4°+ VOL] au rang 4.",
+    // DM scalants par rang de voie : [1d4°|2@4 + VOL] (palier IN-VOIE) ; phrase explicative conservée.
+    richText:
+      "Le moine projette une vague de force avec son corps et son esprit à une distance maximale de 20 m. Un test d'attaque magique réussi lui permet d'infliger [1d4°|2@4 + VOL] DM. Les DM passent à {2d4°} + VOL au rang 4.",
     sourcePage: 119,
   },
   {
@@ -581,6 +698,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine ne reçoit que la moitié des DM de toutes les sources « élémentaires » : Feu, froid, foudre, acide… ainsi que des poisons ou des maladies. À partir du rang 5, il ne reçoit plus aucun DM ni effet des poisons et des maladies.",
+    // TODO(résistances) : moitié des DM élémentaires (feu/froid/foudre/acide) + immunité
+    // poisons/maladies au rang 5 → DamageReduction (passe « stats avancées » différée).
     sourcePage: 119,
   },
   {
@@ -592,6 +711,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['M'],
     text:
       "Le moine frappe les points par lesquels circule l'énergie vitale d'une créature vivante. En touchant un point précis, il libère ensuite des effets dévastateurs. Lorsqu'il combat à mains nues, le joueur peut choisir de ne pas infliger immédiatement les DM de ses attaques, il les comptabilise à part et ajoute +1d4° aux DM de chaque attaque. À tout moment dans l'heure qui suit, il peut annoncer une Pression mortelle. Il doit alors réussir un test d'attaque au contact contre la DEF de la cible (action limitée), ce qui libère instantanément la totalité des DM infligés jusqu'alors. À partir du niveau 10, le moine n'a plus besoin de toucher sa cible pour déclencher cet effet ; dans ce cas, il remplace le test d'attaque au contact par un test opposé d'attaque magique, mais n'a droit qu'à un seul essai.",
+    richText:
+      "Le moine frappe les points par lesquels circule l'énergie vitale d'une créature vivante. En touchant un point précis, il libère ensuite des effets dévastateurs. Lorsqu'il combat à mains nues, le joueur peut choisir de ne pas infliger immédiatement les DM de ses attaques, il les comptabilise à part et ajoute +{1d4°} aux DM de chaque attaque. À tout moment dans l'heure qui suit, il peut annoncer une Pression mortelle. Il doit alors réussir un test d'attaque au contact contre la DEF de la cible (action limitée), ce qui libère instantanément la totalité des DM infligés jusqu'alors. À partir du niveau 10, le moine n'a plus besoin de toucher sa cible pour déclencher cet effet ; dans ce cas, il remplace le test d'attaque au contact par un test opposé d'attaque magique, mais n'a droit qu'à un seul essai.",
     sourcePage: 119,
   },
   {
@@ -603,6 +724,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine ne mange presque plus, et il peut subsister sans eau et sans sommeil pendant [5 + VOL] jour. Il ne subit aucune pénalité durant cette période. De plus, le moine augmente sa CON de +1 et obtient un dé bonus aux tests de CON.",
+    // CON +1 + dé bonus aux tests de CON.
+    richText:
+      "Le moine ne mange presque plus, et il peut subsister sans eau et sans sommeil pendant [=5 + VOL] jour. Il ne subit aucune pénalité durant cette période. De plus, le moine augmente sa CON de +1 et obtient un dé bonus aux tests de CON.",
+    effects: [{ kind: 'ability-bonus', ability: 'CON', value: 1 }, { kind: 'ability-bonus-die', ability: 'CON' }],
     sourcePage: 119,
   },
   // =======================================================================
@@ -617,6 +742,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine ajoute son rang + 2 à tous ses tests pour effectuer des acrobaties ou esquiver et il gagne +2 en DEF. Ce bonus passe à +3 au rang 4. Se relever (si le personnage est renversé) devient une action gratuite.",
+    // Bonus de compétence acrobaties (AGI) ; DEF +2→+3 (r4) permanent.
+    richText:
+      "Le moine ajoute son [rang + 2] à tous ses tests pour effectuer des acrobaties ou esquiver et il gagne +2 en DEF. Ce bonus passe à +3 au rang 4. Se relever (si le personnage est renversé) devient une action gratuite.",
+    effects: [{ kind: 'test-bonus', domains: ['acrobatics'] }, { kind: 'stat-bonus', stat: 'def', value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 4, value: 3 }] } }],
     sourcePage: 119,
   },
   {
@@ -650,6 +779,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le moine peut effectuer une attaque tournoyante qui inflige automatiquement [3d4°+FOR] DM à tous les adversaires au contact et oblige ceux-ci à réussir un test de FOR difficulté 10 pour ne pas être renversés.",
+    richText:
+      "Une fois par combat, le moine peut effectuer une attaque tournoyante qui inflige automatiquement [3d4° + FOR] DM à tous les adversaires au contact et oblige ceux-ci à réussir un test de @FOR difficulté 10 pour ne pas être renversés.",
     sourcePage: 119,
   },
   {
@@ -675,6 +806,11 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Tant que le moine n'a réalisé aucune action offensive dans un combat, il bénéficie d'un bonus de +5 en DEF et divise par deux tous les DM subis par des attaques. De plus, il obtient un bonus égal à son rang + 2 à tous les tests d'empathie (pour analyser l'état émotionnel d'un interlocuteur) ou à ceux effectués pour apaiser un auditoire ou le convaincre de ne pas avoir recours à la violence.",
+    // Bonus de compétence empathie (PER) ; +5 DEF CONDITIONNEL (aucune action offensive).
+    // TODO(résistances) : « divise par deux les DM subis » → DamageReduction (différé).
+    richText:
+      "Tant que le moine n'a réalisé aucune action offensive dans un combat, il bénéficie d'un bonus de +5 en DEF et divise par deux tous les DM subis par des attaques. De plus, il obtient un bonus égal à son [rang + 2] à tous les tests d'empathie (pour analyser l'état émotionnel d'un interlocuteur) ou à ceux effectués pour apaiser un auditoire ou le convaincre de ne pas avoir recours à la violence.",
+    effects: [{ kind: 'test-bonus', domains: ['empathy'] }, { kind: 'conditional-stat-bonus', bonuses: [{ stat: 'def', value: 5 }], activation: { kind: 'condition', label: 'aucune action offensive ce combat', activeByDefault: false } }],
     sourcePage: 120,
   },
   {
@@ -686,6 +822,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine peut méditer pendant 10 min et récupérer ainsi [1d4°+VOL] PV. Les soins augmentent de +1d4° chaque fois que le personnage atteint le rang 4 dans une voie de moine. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité et il ne peut pas l'utiliser plus de trois fois par jour.",
+    richText:
+      "Le moine peut méditer pendant 10 min et récupérer ainsi [1d4° + VOL] PV. Les soins augmentent de +{1d4°} chaque fois que le personnage atteint le rang 4 dans une voie de moine. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité et il ne peut pas l'utiliser plus de trois fois par jour.",
     sourcePage: 120,
   },
   {
@@ -697,6 +835,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine utilise sa force mentale pour augmenter son efficacité en combat. Il ajoute sa VOL à son Initiative et à ses PV. De plus, il gagne +2 en DEF (ce bonus passe à +3 au rang 5).",
+    // Passif permanent : Init += VOL, PV += VOL, DEF +2→+3 (r5).
+    effects: [{ kind: 'stat-bonus', stat: 'initiative', value: { scale: 'ability', ability: 'VOL' } }, { kind: 'stat-bonus', stat: 'maxHp', value: { scale: 'ability', ability: 'VOL' } }, { kind: 'stat-bonus', stat: 'def', value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 5, value: 3 }] } }],
     sourcePage: 120,
   },
   {
@@ -708,6 +848,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine augmente sa VOL de +1. Désormais, il obtient un dé bonus aux tests de VOL.",
+    // VOL +1 + dé bonus aux tests de VOL.
+    effects: [{ kind: 'ability-bonus', ability: 'VOL', value: 1 }, { kind: 'ability-bonus-die', ability: 'VOL' }],
     sourcePage: 120,
   },
   {
@@ -719,6 +861,9 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le moine entre en méditation et projette son esprit hors de son corps pendant [1d4°+VOL] minutes. Il ressemble à un ectoplasme de couleur blanche qui se déplace en volant à la vitesse de 10 m par round. Il peut passer au travers des murs, mais pas des êtres vivants ou des barrières magiques. Le moine ne perçoit le monde que par sa projection mentale, mais ressent les DM qui sont infligés à son corps. Il peut utiliser cette capacité une fois de plus chaque jour par rang 5 atteint dans une autre voie de moine. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
+    // « +1 à la plus faible carac » → verbatim (non calculable, cf. humain-r5).
+    richText:
+      "Une fois par jour, le moine entre en méditation et projette son esprit hors de son corps pendant [1d4° + VOL] minutes. Il ressemble à un ectoplasme de couleur blanche qui se déplace en volant à la vitesse de 10 m par round. Il peut passer au travers des murs, mais pas des êtres vivants ou des barrières magiques. Le moine ne perçoit le monde que par sa projection mentale, mais ressent les DM qui sont infligés à son corps. Il peut utiliser cette capacité une fois de plus chaque jour par rang 5 atteint dans une autre voie de moine. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
     sourcePage: 120,
   },
   // =======================================================================
@@ -733,6 +878,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Lorsqu'il combat à mains nues, le moine peut (s'il le souhaite) remplacer sa FOR par son AGI pour ses tests d'attaque au contact et il inflige [1d6+FOR] DM létaux (Voir « DM temporaires » page 219). Ces DM augmentent à chaque rang suivant : 1d8 au rang 2, 1d10 au rang 3, 1d12 au rang 4 et enfin 2d6 au rang 5.",
+    // Taille de dé montant par rang (d6→d8→d10→d12→2d6) non exprimable en |C@R (compte
+    // de dés seulement) → dés marqués individuellement, progression en prose.
+    richText:
+      "Lorsqu'il combat à mains nues, le moine peut (s'il le souhaite) remplacer sa FOR par son AGI pour ses tests d'attaque au contact et il inflige {1d6}+FOR DM létaux (Voir « DM temporaires » page 219). Ces DM augmentent à chaque rang suivant : {1d8} au rang 2, {1d10} au rang 3, {1d12} au rang 4 et enfin {2d6} au rang 5.",
     sourcePage: 121,
   },
   {
@@ -744,6 +893,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine gagne un bonus de +2 en DEF et il divise tous les DM temporaires subis par deux. Le bonus de DEF passe à +3 au rang 5.",
+    // DEF +2→+3 (r5) permanent. TODO(résistances) : « DM temporaires /2 » → DamageReduction (différé).
+    effects: [{ kind: 'stat-bonus', stat: 'def', value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 5, value: 3 }] } }],
     sourcePage: 121,
   },
   {
@@ -777,6 +928,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine peut choisir de s'imposer un dé malus sur une attaque au contact et ajoute +2d4° aux DM. Cette capacité peut aussi être utilisée avec Projection du ki qui est une attaque magique.",
+    richText:
+      "Le moine peut choisir de s'imposer un dé malus sur une attaque au contact et ajoute +{2d4°} aux DM. Cette capacité peut aussi être utilisée avec Projection du ki qui est une attaque magique.",
     sourcePage: 121,
   },
   // =======================================================================
@@ -791,6 +944,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine peut se déplacer avant et après avoir attaqué (mais il couvre toujours une distance normale, il divise son mouvement en deux). De plus, il gagne +3 en Initiative et son rang + 2 à tous les tests de saut, de course ou d'escalade.",
+    // Init +3 plat ; bonus de compétence saut/course/escalade (AGI).
+    richText:
+      "Le moine peut se déplacer avant et après avoir attaqué (mais il couvre toujours une distance normale, il divise son mouvement en deux). De plus, il gagne +3 en Initiative et son [rang + 2] à tous les tests de saut, de course ou d'escalade.",
+    effects: [{ kind: 'stat-bonus', stat: 'initiative', value: 3 }, { kind: 'test-bonus', domains: ['jumping', 'running', 'climbing'] }],
     sourcePage: 121,
   },
   {
@@ -802,6 +959,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine se déplace à une vitesse surhumaine, il gagne +1 en DEF et une action de mouvement lui permet de couvrir 15 m. Au rang 5, le bonus de DEF passe à +2 et l'action de mouvement lui permet de couvrir 20 m.",
+    // DEF +1→+2 (r5) permanent (le gain de déplacement reste verbatim).
+    effects: [{ kind: 'stat-bonus', stat: 'def', value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 5, value: 2 }] } }],
     sourcePage: 121,
   },
   {
@@ -824,6 +983,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine augmente son AGI de +1. Désormais, il obtient un dé bonus aux tests d'AGI.",
+    // AGI +1 + dé bonus aux tests d'AGI.
+    effects: [{ kind: 'ability-bonus', ability: 'AGI', value: 1 }, { kind: 'ability-bonus-die', ability: 'AGI' }],
     sourcePage: 121,
   },
   {
@@ -835,6 +996,9 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le moine peut rendre son corps intangible le temps de passer au travers d'un mur d'une épaisseur maximal de VOL mètres. Il ne peut rester immatériel qu'un court instant et reprend corps dès qu'il émerge du mur. Si le mur est trop épais, la capacité ne fonctionne pas. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
+    // « +1 à la plus faible carac » → verbatim (non calculable, cf. humain-r5).
+    richText:
+      "Une fois par combat, le moine peut rendre son corps intangible le temps de passer au travers d'un mur d'une épaisseur maximal de [=VOL] mètres. Il ne peut rester immatériel qu'un court instant et reprend corps dès qu'il émerge du mur. Si le mur est trop épais, la capacité ne fonctionne pas. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
     sourcePage: 121,
   },
   // =======================================================================
@@ -849,6 +1013,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le prêtre ajoute son rang + 2 aux tests visant à convaincre ou convertir son auditoire. De plus, une fois par jour, il récupère 1 PC s'il réussit à convertir une créature (ou un groupe) à sa religion ou à convaincre une créature peu encline à le faire à suivre ses préceptes.",
+    // Bonus de compétence persuasion + prêche (CHA).
+    richText:
+      "Le prêtre ajoute son [rang + 2] aux tests visant à convaincre ou convertir son auditoire. De plus, une fois par jour, il récupère 1 PC s'il réussit à convertir une créature (ou un groupe) à sa religion ou à convaincre une créature peu encline à le faire à suivre ses préceptes.",
+    effects: [{ kind: 'test-bonus', domains: ['persuasion', 'preaching'] }],
     sourcePage: 122,
   },
   {
@@ -860,6 +1028,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le prêtre réalise un petit miracle. Par exemple, purifier de l'eau croupie pour qu'elle devienne buvable ou des aliments avariés (mais il ne peut pas en créer), apaiser une douleur mineure (qui n'entraîne pas de malus) ou même une douleur majeure pendant un seul round, soigner une maladie bénigne (rhume, grippe, etc.). Ce sort permet aussi de rendre 1d4° PV à une créature à 0 PV.",
+    richText:
+      "Le prêtre réalise un petit miracle. Par exemple, purifier de l'eau croupie pour qu'elle devienne buvable ou des aliments avariés (mais il ne peut pas en créer), apaiser une douleur mineure (qui n'entraîne pas de malus) ou même une douleur majeure pendant un seul round, soigner une maladie bénigne (rhume, grippe, etc.). Ce sort permet aussi de rendre {1d4°} PV à une créature à 0 PV.",
     sourcePage: 122,
   },
   {
@@ -871,6 +1041,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['M', 'L'],
     text:
       "Ce sort permet d'enchanter l'arme du prêtre pour une durée de CHA minutes. Elle produit de la lumière dans un rayon de 5 m et contre les démons et les morts-vivants, elle offre un dé bonus en attaque et ajoute +1d4° aux DM. À partir du rang 5, le prêtre peut utiliser ce sort sur l'arme d'un allié au prix d'une action limitée ou, s'il utilise le sort sur son arme personnelle, infliger +2d4° DM (au lieu de 1d4°). Le sort prend immédiatement fin si l'arme quitte les mains du prêtre.",
+    richText:
+      "Ce sort permet d'enchanter l'arme du prêtre pour une durée de [=CHA] minutes. Elle produit de la lumière dans un rayon de 5 m et contre les démons et les morts-vivants, elle offre un dé bonus en attaque et ajoute +{1d4°} aux DM. À partir du rang 5, le prêtre peut utiliser ce sort sur l'arme d'un allié au prix d'une action limitée ou, s'il utilise le sort sur son arme personnelle, infliger +{2d4°} DM (au lieu de {1d4°}). Le sort prend immédiatement fin si l'arme quitte les mains du prêtre.",
     sourcePage: 123,
   },
   {
@@ -882,6 +1054,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Des ailes divines poussent dans le dos du prêtre, qui peut voler à une vitesse équivalente à son déplacement normal pendant CHA minutes. Rester en vol stationnaire avec les ailes célestes est une action de mouvement.",
+    richText:
+      "Des ailes divines poussent dans le dos du prêtre, qui peut voler à une vitesse équivalente à son déplacement normal pendant [=CHA] minutes. Rester en vol stationnaire avec les ailes célestes est une action de mouvement.",
     sourcePage: 123,
   },
   {
@@ -893,6 +1067,9 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "La foudre frappe toutes les créatures désignées dans un rayon de 10 m autour du prêtre et leur inflige [2d4°+CHA] DM (pas de test d'attaque requis). Ce sort est gourmand en énergie et son coût augmente de +1 PM à chaque utilisation tant que le prêtre n'a pas terminé une récupération rapide.",
+    // « +1 PM par utilisation » = surcoût DYNAMIQUE (par-dessus le coût de base) → pas de manaCost.
+    richText:
+      "La foudre frappe toutes les créatures désignées dans un rayon de 10 m autour du prêtre et leur inflige [2d4° + CHA] DM (pas de test d'attaque requis). Ce sort est gourmand en énergie et son coût augmente de +1 PM à chaque utilisation tant que le prêtre n'a pas terminé une récupération rapide.",
     sourcePage: 123,
   },
   // =======================================================================
@@ -918,6 +1095,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le prêtre porte le symbole de sa foi sur son bouclier, ce qui lui confère un bonus supplémentaire de +1 en DEF lorsqu'il l'utilise. Ce bonus passe à +2 au rang 5. Comme pour l'arme bénie, le symbole de la foi n'est d'aucune utilité si le bouclier est utilisé par quelqu'un d'autre.",
+    // DEF CONDITIONNELLE (porte son bouclier) : +1→+2 (r5), interrupteur manuel (PER-67).
+    effects: [{ kind: 'conditional-stat-bonus', bonuses: [{ stat: 'def', value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 5, value: 2 }] } }], activation: { kind: 'condition', label: 'porte son bouclier', activeByDefault: false } }],
     sourcePage: 123,
   },
   {
@@ -929,6 +1108,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le prêtre effectue une attaque de contact avec un dé bonus et ajoute son CHA aux dommages. De plus, lorsqu'il utilise cette capacité, le prêtre peut dépenser 1 PM pour ajouter +1d4° aux DM d'une attaque au contact qui touche. Au rang 5, il peut dépenser 2 PM pour ajouter +2d4°.",
+    richText:
+      "Le prêtre effectue une attaque de contact avec un dé bonus et ajoute son [CHA] aux dommages. De plus, lorsqu'il utilise cette capacité, le prêtre peut dépenser 1 PM pour ajouter +{1d4°} aux DM d'une attaque au contact qui touche. Au rang 5, il peut dépenser 2 PM pour ajouter +{2d4°}.",
     sourcePage: 123,
   },
   {
@@ -940,6 +1121,9 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le prêtre effectue un test d'attaque magique contre la DEF se sa cible (portée de 30 m). Un projectile d'énergie de la forme de l'arme du prêtre va percuter la cible, lui infligeant [2d4°+CHA] DM en cas de réussite. Si l'arme du prêtre est magique, il peut ajouter son bonus au test d'attaque et aux DM. Les DM du marteau de la foi augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une autre voie de prêtre.",
+    // DM +1 par voie de prêtre au rang 4 = scaling CROSS-VOIE sur les DM (pas une stat dérivée) → prose.
+    richText:
+      "Le prêtre effectue un test d'attaque magique contre la DEF se sa cible (portée de 30 m). Un projectile d'énergie de la forme de l'arme du prêtre va percuter la cible, lui infligeant [2d4° + CHA] DM en cas de réussite. Si l'arme du prêtre est magique, il peut ajouter son bonus au test d'attaque et aux DM. Les DM du marteau de la foi augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une autre voie de prêtre.",
     sourcePage: 123,
   },
   {
@@ -965,6 +1149,11 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le prêtre entonne un chant pour encourager ses compagnons en vue. Ses alliés et lui bénéficient d'un bonus de +1 à tous leurs tests de caractéristique et d'attaque pendant CHA minutes. Ce bonus passe à +2 au rang 5. De plus, le prêtre obtient un bonus égal à son rang + 2 à tous les tests de théologie ou de cosmologie.",
+    // Bonus de compétence théologie/cosmologie. Le +1 aux tests/attaque AUX ALLIÉS et
+    // temporaire est hors périmètre PER-89 → verbatim.
+    richText:
+      "Le prêtre entonne un chant pour encourager ses compagnons en vue. Ses alliés et lui bénéficient d'un bonus de +1 à tous leurs tests de caractéristique et d'attaque pendant [=CHA] minutes. Ce bonus passe à +2 au rang 5. De plus, le prêtre obtient un bonus égal à son [rang + 2] à tous les tests de théologie ou de cosmologie.",
+    effects: [{ kind: 'test-bonus', domains: ['theology', 'cosmology'] }],
     sourcePage: 124,
   },
   {
@@ -976,6 +1165,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Pendant 1 min (10 rounds), tous les adversaires qui veulent attaquer le prêtre doivent réussir un test d'INT difficulté [10 + CHA du prêtre]. S'ils échouent, ils ne peuvent pas l'attaquer pour la durée du sort. Ceux dont le niveau est inférieur à la moitié de celui du prêtre sont automatiquement affectés (pas de test d'INT). Si le prêtre commet une action offensive, le sort prend fin immédiatement et il ne peut plus être lancé avant de prendre une récupération rapide.",
+    richText:
+      "Pendant 1 min (10 rounds), tous les adversaires qui veulent attaquer le prêtre doivent réussir un test d'@INT difficulté [10 + CHA]. S'ils échouent, ils ne peuvent pas l'attaquer pour la durée du sort. Ceux dont le niveau est inférieur à la moitié de celui du prêtre sont automatiquement affectés (pas de test d'INT). Si le prêtre commet une action offensive, le sort prend fin immédiatement et il ne peut plus être lancé avant de prendre une récupération rapide.",
     sourcePage: 124,
   },
   {
@@ -987,6 +1178,9 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Tous les morts-vivants et les démons dans un rayon de 10 m autour du prêtre subissent automatiquement [2d4°+CHA] DM. Les DM passent à 3d4° au rang 5.",
+    // DM scalants par rang de voie : [2d4°|3@5 + CHA] ; phrase explicative conservée.
+    richText:
+      "Tous les morts-vivants et les démons dans un rayon de 10 m autour du prêtre subissent automatiquement [2d4°|3@5 + CHA] DM. Les DM passent à {3d4°} au rang 5.",
     sourcePage: 124,
   },
   {
@@ -998,6 +1192,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le prêtre augmente sa VOL de +1. Désormais, il obtient un dé bonus aux tests de VOL.",
+    // VOL +1 + dé bonus aux tests de VOL.
+    effects: [{ kind: 'ability-bonus', ability: 'VOL', value: 1 }, { kind: 'ability-bonus-die', ability: 'VOL' }],
     sourcePage: 124,
   },
   {
@@ -1023,6 +1219,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le prêtre peut apposer les mains sur un allié au contact (ou sur lui-même) pour le soigner. Le patient récupère [1d4°+CHA du prêtre] PV. Ce sort peut être lancé une fois par jour par rang atteint dans la voie, plus une fois supplémentaire chaque fois que le personnage atteint le rang 3 dans une autre voie de prêtre. En plus de ce sort, le prêtre ajoute son rang + 2 à tous les tests de médecine et de premiers soins.",
+    // Bonus de compétence médecine + premiers soins.
+    richText:
+      "Le prêtre peut apposer les mains sur un allié au contact (ou sur lui-même) pour le soigner. Le patient récupère [1d4° + CHA] PV. Ce sort peut être lancé une fois par jour par rang atteint dans la voie, plus une fois supplémentaire chaque fois que le personnage atteint le rang 3 dans une autre voie de prêtre. En plus de ce sort, le prêtre ajoute son [rang + 2] à tous les tests de médecine et de premiers soins.",
+    effects: [{ kind: 'test-bonus', domains: ['medicine', 'first-aid'] }],
     sourcePage: 124,
   },
   {
@@ -1034,6 +1234,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "La cible au contact est guérie d'un poison ou d'une maladie. Si l'infection est surnaturelle, un test d'attaque magique (éventuellement opposé) peut être demandé par le MJ. De plus, le prêtre obtient un bonus égal au rang + 2 aux tests effectués pour résister aux maladies et aux poisons.",
+    // Bonus de compétence résistance aux maladies/poisons (domaines nommés, sur le porteur).
+    richText:
+      "La cible au contact est guérie d'un poison ou d'une maladie. Si l'infection est surnaturelle, un test d'attaque magique (éventuellement opposé) peut être demandé par le MJ. De plus, le prêtre obtient un bonus égal au [rang + 2] aux tests effectués pour résister aux maladies et aux poisons.",
+    effects: [{ kind: 'test-bonus', domains: ['disease-resistance', 'poison-resistance'] }],
     sourcePage: 124,
   },
   {
@@ -1045,6 +1249,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le prêtre peut soigner une cible (ou lui-même) à une portée de 20 m ; elle récupère immédiatement [3d4°+CHA du prêtre] PV. Le montant des soins prodigués augmente de 1d4° chaque fois que le personnage atteint le rang 5 dans une voie de prêtre.",
+    richText:
+      "Le prêtre peut soigner une cible (ou lui-même) à une portée de 20 m ; elle récupère immédiatement [3d4° + CHA] PV. Le montant des soins prodigués augmente de {1d4°} chaque fois que le personnage atteint le rang 5 dans une voie de prêtre.",
     sourcePage: 125,
   },
   {
@@ -1056,6 +1262,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par jour, lorsque le personnage tombe à 0 PV, il se relève, nimbé d'une aura de lumière. Il produit alors une onde d'énergie positive qui restitue [2d4°+CHA du prêtre] PV à tous ses alliés dans un rayon de 20 m, et il récupère lui-même le double de PV.",
+    richText:
+      "Une fois par jour, lorsque le personnage tombe à 0 PV, il se relève, nimbé d'une aura de lumière. Il produit alors une onde d'énergie positive qui restitue [2d4° + CHA] PV à tous ses alliés dans un rayon de 20 m, et il récupère lui-même le double de PV.",
     sourcePage: 125,
   },
   {
@@ -1081,6 +1289,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "La tenue religieuse du prêtre est bénie et le protège. Lorsqu'il ne porte aucune armure (bouclier autorisé), il obtient un dé bonus à tous les tests pour résister à un contrôle mental (injonction, charme, domination…) et +2 en DEF. Ce bonus passe à +3 au rang 3 et +4 au rang 5. Éventuellement, si le prêtre prie une divinité guerrière, il peut choisir d'obtenir la maîtrise de la cotte de mailles (DEF +5) et l'autorisation d'utiliser les capacités des voies de prêtre avec cette armure (dans le cas d'un profil hybride, la maîtrise de la chemise de mailles est un prérequis pour bénéficier de cette variante).",
+    // DEF « sans armure » + variante cotte de mailles = sémantique d'ARMURE → milestone
+    // Armures / PER-81. Dé bonus « résister au contrôle mental » = situationnel → verbatim.
     sourcePage: 125,
   },
   {
@@ -1114,6 +1324,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le prêtre augmente son CHA de +1. Désormais, il obtient un dé bonus aux tests de CHA.",
+    // CHA +1 + dé bonus aux tests de CHA.
+    effects: [{ kind: 'ability-bonus', ability: 'CHA', value: 1 }, { kind: 'ability-bonus-die', ability: 'CHA' }],
     sourcePage: 125,
   },
   {
@@ -1125,6 +1337,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le prêtre peut passer dans une dimension entre les plans d'existence où le temps et l'espace sont déformés pendant un maximum de CHA rounds. Il se déplace dans une sorte de brouillard gris où le paysage défile à toute vitesse. Pour chaque round de Marche des plans, il se déplace en réalité de 10 km. Le lieu de sortie n'est cependant pas très précis et le MJ doit déterminer une position au hasard autour du point visé (à 1d6 km près).",
+    richText:
+      "Une fois par jour, le prêtre peut passer dans une dimension entre les plans d'existence où le temps et l'espace sont déformés pendant un maximum de [=CHA] rounds. Il se déplace dans une sorte de brouillard gris où le paysage défile à toute vitesse. Pour chaque round de Marche des plans, il se déplace en réalité de 10 km. Le lieu de sortie n'est cependant pas très précis et le MJ doit déterminer une position au hasard autour du point visé (à {1d6} km près).",
     sourcePage: 125,
   },
 ];

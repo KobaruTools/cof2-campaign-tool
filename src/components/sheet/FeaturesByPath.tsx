@@ -1,7 +1,9 @@
 'use client';
 
+import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import RemoveIcon from '@mui/icons-material/Remove';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PushPinIcon from '@mui/icons-material/PushPin';
@@ -34,6 +36,7 @@ import type { Feature, Path } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import { featureChoiceDefs, hasUnmadeChoice } from '@/lib/character/choices';
+import { animalFormCategories } from '@/lib/character/animalForms';
 import {
   conditionalEffectsOf,
   creatureBonusDiceForPath,
@@ -164,6 +167,18 @@ export interface FeaturesByPathProps {
    * `character`) → interrupteurs désactivés.
    */
   onToggleEffect?: (featureId: string, index: number, active: boolean) => void;
+  /**
+   * Saisie libre d'état de jeu corrélée à une capacité (PER-70 — ex. l'animal pris
+   * par « Forme animale »). État transitoire, modifiable même hors édition. Absent
+   * → la saisie est affichée en lecture seule (ou masquée si vide).
+   */
+  onSetEffectInput?: (featureId: string, value: string) => void;
+  /**
+   * Met à jour le décompte d'une capacité à usages limités (PER-70 — ex. « Les sept
+   * vies du chat »). État de jeu, modifiable hors édition. Absent → compteur en
+   * lecture seule.
+   */
+  onSetUsageCounter?: (featureId: string, value: number) => void;
 }
 
 /**
@@ -299,6 +314,187 @@ function RetainedAncestryCapacity({
   );
 }
 
+/**
+ * Forme animale (animaux-r5) : liste, sous la description, les catégories d'animaux
+ * en lesquelles le druide peut se métamorphoser — dérivées des choix de « Langage des
+ * animaux » (animaux-r1), hors animaux fantastiques. Rendu discret (légende), aligné
+ * sur le style des notes.
+ */
+function AnimalFormsNote({ character }: { character: Character }) {
+  const forms = animalFormCategories(character);
+  if (!forms) return null;
+  return (
+    <Typography
+      variant="caption"
+      component="div"
+      sx={{ mt: 1, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
+    >
+      Formes accessibles (selon Langage des animaux) : {forms.join(', ')}.
+    </Typography>
+  );
+}
+
+/**
+ * Sélecteur LIBRE de l'animal pris par « Forme animale » (animaux-r5), corrélé à
+ * l'interrupteur de transformation (état de jeu, `Character.effectInputs`, PER-70).
+ * Contrairement aux choix de capacité (énumérés, liés à la progression), il est en
+ * saisie libre : un Autocomplete `freeSolo` proposant les catégories accessibles
+ * (dérivées de Langage des animaux) tout en autorisant un animal précis au clavier.
+ * En lecture seule (sans `onSetInput`), affiche la valeur saisie si elle existe.
+ */
+function AnimalFormSelector({
+  character,
+  onSetInput,
+}: {
+  character: Character;
+  onSetInput?: (featureId: string, value: string) => void;
+}) {
+  const value = character.effectInputs?.['animaux-r5'] ?? '';
+  if (!onSetInput) {
+    return value ? (
+      <Typography variant="caption" component="div" sx={{ mt: 1, fontWeight: 600 }}>
+        Forme prise : {value}
+      </Typography>
+    ) : null;
+  }
+  return (
+    <Box sx={{ mt: 1 }}>
+      <Autocomplete
+        freeSolo
+        options={animalFormCategories(character) ?? []}
+        value={value}
+        onInputChange={(_, next) => onSetInput('animaux-r5', next)}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Forme prise"
+            placeholder="catégorie ou animal précis (ex. loup)"
+            size="small"
+          />
+        )}
+        sx={{ maxWidth: 320 }}
+      />
+      <Typography
+        variant="caption"
+        component="div"
+        sx={{ mt: 0.5, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
+      >
+        Caractéristiques de l’animal arbitrées par le MJ ; ajustez-les via les surcharges
+        manuelles si besoin.
+      </Typography>
+    </Box>
+  );
+}
+
+/**
+ * Compteur d'usages limités d'une capacité (PER-70 — ex. « Les sept vies du chat »,
+ * 6 usages). État de jeu : décompte courant = `usageCounters[id]`, à défaut le
+ * maximum déclaré (compteur plein). Boutons −/+ bornés à [0, max] ; à 0, badge
+ * « épuisé ». En lecture seule (sans `onSet`), n'affiche que la valeur.
+ */
+function UsageCounterField({
+  feature,
+  character,
+  onSet,
+}: {
+  feature: Feature;
+  character: Character;
+  onSet?: (featureId: string, value: number) => void;
+}) {
+  const counter = feature.usageCounter;
+  if (!counter) return null;
+  const max = counter.max;
+  const remaining = character.usageCounters?.[feature.id] ?? max;
+  const label = counter.label ?? 'Usages restants';
+  const exhausted = remaining <= 0;
+  return (
+    <Stack direction="row" spacing={1} sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+        {label} :
+      </Typography>
+      {onSet && (
+        <IconButton
+          size="small"
+          aria-label="Décrémenter"
+          disabled={remaining <= 0}
+          onClick={() => onSet(feature.id, remaining - 1)}
+        >
+          <RemoveIcon fontSize="small" />
+        </IconButton>
+      )}
+      <Typography
+        variant="body2"
+        sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 36, textAlign: 'center' }}
+      >
+        {remaining} / {max}
+      </Typography>
+      {onSet && (
+        <IconButton
+          size="small"
+          aria-label="Incrémenter"
+          disabled={remaining >= max}
+          onClick={() => onSet(feature.id, remaining + 1)}
+        >
+          <AddIcon fontSize="small" />
+        </IconButton>
+      )}
+      {exhausted && <Chip label="épuisé" size="small" color="error" variant="outlined" />}
+    </Stack>
+  );
+}
+
+/**
+ * Indicateur COMPACT d'un compteur d'usages (vue colonne) : une rangée de pastilles
+ * — pleines pour les usages restants, creuses pour les usages consommés — avec le
+ * décompte « N/max » et une info-bulle. Lecture seule (l'édition −/+ se fait dans la
+ * modale de détail). Au-delà de ~8 usages, on retombe sur un simple « N/max » pour
+ * ne pas surcharger le petit bloc.
+ */
+function CompactUsageIndicator({ feature, character }: { feature: Feature; character: Character }) {
+  const counter = feature.usageCounter;
+  if (!counter) return null;
+  const max = counter.max;
+  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[feature.id] ?? max));
+  const label = counter.label ?? 'Usages restants';
+  return (
+    <Tooltip title={`${label} : ${remaining} / ${max}`} arrow>
+      <Box
+        sx={{
+          mt: 0.5,
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          flexWrap: 'wrap',
+        }}
+      >
+        {max <= 8 &&
+          Array.from({ length: max }).map((_, i) => (
+            <Box
+              key={i}
+              sx={{
+                width: 9,
+                height: 9,
+                borderRadius: '50%',
+                border: 1,
+                borderColor: (theme) =>
+                  i < remaining ? theme.palette.success.main : alpha(theme.palette.text.disabled, 0.6),
+                bgcolor: (theme) =>
+                  i < remaining ? theme.palette.success.main : 'transparent',
+              }}
+            />
+          ))}
+        <Typography
+          variant="caption"
+          sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'text.secondary' }}
+        >
+          {remaining}/{max}
+        </Typography>
+      </Box>
+    </Tooltip>
+  );
+}
+
 /** Une voie et ses capacités acquises, chaque capacité dépliable (texte complet). */
 function PathBlock({
   group,
@@ -315,6 +511,8 @@ function PathBlock({
   character,
   onChoiceChange,
   onToggleEffect,
+  onSetEffectInput,
+  onSetUsageCounter,
   disabledIds,
   concentration = false,
 }: {
@@ -342,6 +540,10 @@ function PathBlock({
   onChoiceChange?: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
   /** Bascule d'un interrupteur d'effet conditionnel (fiche permissive, PER-67). */
   onToggleEffect?: (featureId: string, index: number, active: boolean) => void;
+  /** Saisie libre corrélée à une capacité (animal de Forme animale, PER-70). */
+  onSetEffectInput?: (featureId: string, value: string) => void;
+  /** Décompte d'une capacité à usages limités (Les sept vies du chat, PER-70). */
+  onSetUsageCounter?: (featureId: string, value: number) => void;
   /**
    * Capacités désactivées par exclusion mutuelle (un interrupteur actif les grise) :
    * rendues semi-transparentes + grisées, interrupteur non-interactif, détail conservé.
@@ -549,6 +751,11 @@ function PathBlock({
             {hasEffectToggles(feature) && (
               <Box sx={{ mt: 0.5, width: '100%' }}>{renderEffectToggles(feature, { compact: true })}</Box>
             )}
+            {/* Indicateur compact du compteur d'usages (lecture seule ; édition en
+                modale). Ex. Les sept vies du chat : pastilles « N/6 ». */}
+            {feature.usageCounter && character && (
+              <CompactUsageIndicator feature={feature} character={character} />
+            )}
             {/* Choix porté par la capacité, poussé en bas du bloc : valeur retenue
                 (chip compact, lecture seule) + bouton crayon ouvrant la modale
                 d'édition (second niveau d'édition — PER-68). */}
@@ -647,6 +854,9 @@ function PathBlock({
                   </>
                 )}
                 <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={pathRank} />
+                {openFeature.id === 'animaux-r5' && character && (
+                  <AnimalFormsNote character={character} />
+                )}
                 {openFeature.creatureProfile && abilities && level != null && (
                   <Box sx={{ mt: 1.5 }}>
                     <CreatureStatBlock
@@ -684,6 +894,19 @@ function PathBlock({
                   <>
                     <Divider sx={{ my: 1.5 }} />
                     {renderEffectToggles(openFeature)}
+                    {openFeature.id === 'animaux-r5' && character && (
+                      <AnimalFormSelector character={character} onSetInput={onSetEffectInput} />
+                    )}
+                  </>
+                )}
+                {openFeature.usageCounter && character && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <UsageCounterField
+                      feature={openFeature}
+                      character={character}
+                      onSet={onSetUsageCounter}
+                    />
                   </>
                 )}
               </DialogContent>
@@ -797,6 +1020,7 @@ function PathBlock({
                 </>
               )}
               <FeatureText feature={feature} abilities={abilities} level={level} pathRank={pathRank} />
+              {feature.id === 'animaux-r5' && character && <AnimalFormsNote character={character} />}
               {feature.creatureProfile && abilities && level != null && (
                 <Box sx={{ mt: 1.5 }}>
                   <CreatureStatBlock
@@ -821,6 +1045,15 @@ function PathBlock({
                 <>
                   <Divider sx={{ my: 1.5 }} />
                   {renderEffectToggles(feature)}
+                  {feature.id === 'animaux-r5' && character && (
+                    <AnimalFormSelector character={character} onSetInput={onSetEffectInput} />
+                  )}
+                </>
+              )}
+              {feature.usageCounter && character && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  <UsageCounterField feature={feature} character={character} onSet={onSetUsageCounter} />
                 </>
               )}
             </AccordionDetails>
@@ -882,6 +1115,8 @@ export function FeaturesByPath({
   character,
   onChoiceChange,
   onToggleEffect,
+  onSetEffectInput,
+  onSetUsageCounter,
   concentration = false,
 }: FeaturesByPathProps) {
   const groups = groupFeaturesByPath(featureIds);
@@ -970,6 +1205,8 @@ export function FeaturesByPath({
               character={character}
               onChoiceChange={onChoiceChange}
               onToggleEffect={onToggleEffect}
+              onSetEffectInput={onSetEffectInput}
+              onSetUsageCounter={onSetUsageCounter}
               disabledIds={disabled}
               concentration={concentration}
             />
@@ -992,6 +1229,8 @@ export function FeaturesByPath({
               character={character}
               onChoiceChange={onChoiceChange}
               onToggleEffect={onToggleEffect}
+              onSetEffectInput={onSetEffectInput}
+              onSetUsageCounter={onSetUsageCounter}
               disabledIds={disabled}
               concentration={concentration}
             />
@@ -1014,6 +1253,8 @@ export function FeaturesByPath({
               character={character}
               onChoiceChange={onChoiceChange}
               onToggleEffect={onToggleEffect}
+              onSetEffectInput={onSetEffectInput}
+              onSetUsageCounter={onSetUsageCounter}
               disabledIds={disabled}
               concentration={concentration}
             />

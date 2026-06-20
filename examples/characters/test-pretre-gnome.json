@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 6,
+  "id": "test-pretre-gnome",
+  "name": "Test — Prêtre (gnome)",
+  "identity": {
+    "sex": "female",
+    "description": "PER-70 — toutes les voies de prêtre au rang 5 + voie du peuple (gnome) au rang 5. À vérifier : sorts de soin et formules [.. + CHA] (foi-r2 {1d4°}, foi-r3, soins-r1 [1d4° + CHA], soins-r3 [3d4° + CHA], soins-r4), scaling par rang de voie [2d4°|3@5 + CHA] (Destruction du mal, priere-r3), durées [=CHA], références @INT (Sanctuaire), Arme de lumière (foi-r3 {1d4°}/{2d4°}), Châtiment divin (guerre-sainte-r3 [CHA] + {1d4°}/{2d4°}). Héroïques cumulés : VOL+1+dé (priere-r4) et CHA+1+dé (spiritualite-r4). Interrupteur : Bouclier de la foi (guerre-sainte-r2, +2 DEF avec bouclier — pré-activé). Bonus de compétence : persuasion+prêche (foi-r1), théologie+cosmologie (priere-r1), médecine+premiers soins (soins-r1), résistance maladies+poisons (soins-r2). Vêtements sacrés (spiritualite-r1) : DEF sans armure + variante cotte de mailles laissées verbatim → milestone Armures / PER-81."
+  },
+  "ancestryId": "gnome",
+  "classId": "pretre",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": { "AGI": 0, "CON": 1, "FOR": 0, "PER": 2, "CHA": 3, "INT": 1, "VOL": 2 },
+  "baseAbilities": { "AGI": 0, "CON": 1, "FOR": 1, "PER": 1, "CHA": 3, "INT": 1, "VOL": 2 },
+  "ancestryChoices": ["PER", "FOR"],
+  "ancestryPathId": "gnome",
+  "featureIds": [
+    "gnome-r1", "gnome-r2", "gnome-r3", "gnome-r4", "gnome-r5",
+    "foi-r1", "foi-r2", "foi-r3", "foi-r4", "foi-r5",
+    "guerre-sainte-r1", "guerre-sainte-r2", "guerre-sainte-r3", "guerre-sainte-r4", "guerre-sainte-r5",
+    "priere-r1", "priere-r2", "priere-r3", "priere-r4", "priere-r5",
+    "soins-r1", "soins-r2", "soins-r3", "soins-r4", "soins-r5",
+    "spiritualite-r1", "spiritualite-r2", "spiritualite-r3", "spiritualite-r4", "spiritualite-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "guerre-sainte-r2": [true]
+  },
+  "levelUpHistory": [
+    { "level": 1, "chosenFeatureIds": ["gnome-r1", "foi-r1", "priere-r1", "soins-r1"] }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-70 — relecture famille mystique (prêtre). Voies de prêtre + voie du peuple au rang 5. Voir identity.description.",
+  "createdAt": "2026-06-19T00:00:00.000Z",
+  "updatedAt": "2026-06-19T00:00:00.000Z"
+}

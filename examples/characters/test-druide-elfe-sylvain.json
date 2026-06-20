@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 6,
+  "id": "test-druide-elfe-sylvain",
+  "name": "Test — Druide (elfe sylvain)",
+  "identity": {
+    "sex": "female",
+    "description": "PER-70 — toutes les voies de druide au rang 5 + voie du peuple (elfe sylvain) au rang 5. À vérifier : 3 mini-fiches de créature (Familier animaux-r2, Panthère fauve-r2, Animal fabuleux fauve-r4), rendu enrichi des durées [=PER], formules ([1d4° + rang], [3d4° + PER]), quantités ([=rang] km, [=PER × 10] km), références @FOR. Effets permanents : Init/DEF (fauve-r1 : +3 Init, DEF +3 au rang 5), PER → PM (protecteur-r4), CON/PER héroïques (nature-r4, protecteur-r4). Interrupteurs pré-activés : familier en vue (+2 DEF), Masque du prédateur (+2 Init/DEF/att), Terrains difficiles (+3 Init/+1 att/+1 DEF), Peau d'écorce (+4 DEF au rang 5). Bonus de compétence (test-bonus) : influence animale, course/escalade/saut, survie, herboristerie. Choix RÉPÉTABLE Langage des animaux (animaux-r1) : 5 catégories débloquées (5 voies de druide au rang 4) — toutes sélectionnées ici."
+  },
+  "ancestryId": "elfe-sylvain",
+  "classId": "druide",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": { "AGI": 1, "CON": 2, "FOR": 0, "PER": 4, "CHA": 0, "INT": 1, "VOL": 2 },
+  "baseAbilities": { "AGI": 1, "CON": 2, "FOR": 1, "PER": 3, "CHA": 0, "INT": 1, "VOL": 2 },
+  "ancestryChoices": ["PER", "FOR"],
+  "ancestryPathId": "elfe-sylvain",
+  "featureIds": [
+    "elfe-sylvain-r1", "elfe-sylvain-r2", "elfe-sylvain-r3", "elfe-sylvain-r4", "elfe-sylvain-r5",
+    "animaux-r1", "animaux-r2", "animaux-r3", "animaux-r4", "animaux-r5",
+    "fauve-r1", "fauve-r2", "fauve-r3", "fauve-r4", "fauve-r5",
+    "nature-r1", "nature-r2", "nature-r3", "nature-r4", "nature-r5",
+    "protecteur-r1", "protecteur-r2", "protecteur-r3", "protecteur-r4", "protecteur-r5",
+    "vegetaux-r1", "vegetaux-r2", "vegetaux-r3", "vegetaux-r4", "vegetaux-r5"
+  ],
+  "featureChoices": {
+    "animaux-r1": [["birds", "reptiles", "fish", "arthropods", "fantastic-animals"]]
+  },
+  "effectToggles": {
+    "animaux-r2": [true],
+    "animaux-r4": [true],
+    "nature-r2": [true],
+    "vegetaux-r1": [true]
+  },
+  "effectInputs": {
+    "animaux-r5": "Ours"
+  },
+  "usageCounters": {
+    "fauve-r5": 4
+  },
+  "levelUpHistory": [
+    { "level": 1, "chosenFeatureIds": ["elfe-sylvain-r1", "animaux-r1", "fauve-r1", "nature-r1"] }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-70 — relecture famille mystique (druide). Voies de druide + voie du peuple au rang 5. Voir identity.description pour la liste des points à vérifier.",
+  "createdAt": "2026-06-19T00:00:00.000Z",
+  "updatedAt": "2026-06-19T00:00:00.000Z"
+}

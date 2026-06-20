@@ -194,6 +194,8 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     featureIds,
     featureChoices: draft.featureChoices ?? {},
     effectToggles: {},
+    effectInputs: {},
+    usageCounters: {},
     levelUpHistory: [{ level: 1, chosenFeatureIds: featureIds }],
     equipment: draft.equipment,
     overrides: {},

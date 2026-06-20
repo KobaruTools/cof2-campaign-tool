@@ -51,6 +51,8 @@ function validRaw(): Record<string, unknown> {
     featureIds: [],
     featureChoices: {},
     effectToggles: {},
+    effectInputs: {},
+    usageCounters: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},
@@ -236,11 +238,59 @@ describe('migrateCharacter', () => {
     expect(() => migrateCharacter(raw)).toThrow(ValidationError);
   });
 
-  it('expose les migrations 1→2, 2→3, 3→4, 4→5 et 5→6 dans le registre', () => {
+  it('migre un personnage v6 vers v7 (effectInputs initialisé à vide)', () => {
+    const v6 = validRaw();
+    v6.schemaVersion = 6;
+    delete v6.effectInputs;
+    const c = migrateCharacter(v6);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.effectInputs).toEqual({});
+  });
+
+  it('préserve les effectInputs déjà présents lors d’un chargement v7', () => {
+    const v7 = validRaw();
+    v7.effectInputs = { 'animaux-r5': 'loup' };
+    const c = migrateCharacter(v7);
+    expect(c.effectInputs).toEqual({ 'animaux-r5': 'loup' });
+  });
+
+  it('refuse un objet sans effectInputs à la version courante', () => {
+    const raw = validRaw();
+    delete raw.effectInputs;
+    raw.schemaVersion = SCHEMA_VERSION; // pas de migration : la validation doit échouer
+    expect(() => migrateCharacter(raw)).toThrow(ValidationError);
+  });
+
+  it('migre un personnage v7 vers v8 (usageCounters initialisé à vide)', () => {
+    const v7 = validRaw();
+    v7.schemaVersion = 7;
+    delete v7.usageCounters;
+    const c = migrateCharacter(v7);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.usageCounters).toEqual({});
+  });
+
+  it('préserve les usageCounters déjà présents lors d’un chargement v8', () => {
+    const v8 = validRaw();
+    v8.usageCounters = { 'fauve-r5': 3 };
+    const c = migrateCharacter(v8);
+    expect(c.usageCounters).toEqual({ 'fauve-r5': 3 });
+  });
+
+  it('refuse un objet sans usageCounters à la version courante', () => {
+    const raw = validRaw();
+    delete raw.usageCounters;
+    raw.schemaVersion = SCHEMA_VERSION; // pas de migration : la validation doit échouer
+    expect(() => migrateCharacter(raw)).toThrow(ValidationError);
+  });
+
+  it('expose les migrations 1→2 … 7→8 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
     expect(typeof MIGRATIONS[4]).toBe('function');
     expect(typeof MIGRATIONS[5]).toBe('function');
+    expect(typeof MIGRATIONS[6]).toBe('function');
+    expect(typeof MIGRATIONS[7]).toBe('function');
   });
 });

@@ -41,6 +41,8 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     featureIds: ['rage-r1'],
     featureChoices: {},
     effectToggles: {},
+    effectInputs: {},
+    usageCounters: {},
     levelUpHistory: [{ level: 1, chosenFeatureIds: ['rage-r1'] }],
     equipment: [],
     overrides: {},

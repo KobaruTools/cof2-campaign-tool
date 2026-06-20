@@ -1625,7 +1625,9 @@ export const mageFeatures: Feature[] = [
       note: 'Créature trop petite pour attaquer ou infliger des dommages.',
     },
     // Bonus CONDITIONNEL +2 Init./DEF actif « lorsque son familier est en vue » →
-    // interrupteur manuel (PER-67).
+    // interrupteur manuel (PER-67). EXCLUSION MUTUELLE avec Petit compagnon (animaux-r2,
+    // druide), version non magique : « le bonus de DEF ne se cumule pas » → `disablesFeatures`
+    // réciproque (déclaré des deux côtés).
     effects: [
       {
         kind: 'conditional-stat-bonus',
@@ -1636,6 +1638,7 @@ export const mageFeatures: Feature[] = [
           { stat: 'def', value: 2 },
         ],
         activation: { kind: 'condition', label: 'familier en vue', activeByDefault: false },
+        disablesFeatures: ['animaux-r2'],
       },
     ],
     sourcePage: 106,
