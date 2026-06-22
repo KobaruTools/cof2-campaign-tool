@@ -11,7 +11,7 @@ import type { Die, Feature } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
 import { DieIcon } from '@/components/DieIcon';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
-import { dieCountAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
+import { dieAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
 import { splitNotes } from '@/lib/ui/featureNotes';
 import { splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
 
@@ -411,9 +411,10 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
                   level={level}
                   noTooltip
                 />
-              ) : p.kind === 'ability' ? (
+              ) : p.kind === 'ability' || p.kind === 'abilityBest' ? (
                 // On montre toujours le code de la stat + sa valeur BRUTE entre
-                // parenthèses (ex. « CHA (4) »), cohérent avec les formules sans dé.
+                // parenthèses (ex. « CHA (4) ») ; pour une « meilleure de », le code
+                // est celui de la carac retenue (ex. « AGI (3) »).
                 <Box component="span">
                   {p.symbol} ({p.value ?? 0})
                 </Box>
@@ -453,16 +454,11 @@ export function RichInline({
         if (seg.kind === 'abilityRef')
           return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
         if (seg.kind === 'die') {
-          // Dé évolutif → valeur au niveau courant ; nombre de dés résolu au rang de voie.
-          const displayDie = seg.token.evolving ? scalingDie(level, progression) : seg.token.die;
+          // Nombre ET faces résolus au rang de voie ; dé évolutif → valeur au niveau courant.
+          const { count, die } = dieAtRank(seg.token, rank);
+          const displayDie = seg.token.evolving ? scalingDie(level, progression) : die;
           return (
-            <DiePart
-              key={i}
-              count={dieCountAtRank(seg.token, rank)}
-              die={displayDie}
-              evolving={seg.token.evolving}
-              level={level}
-            />
+            <DiePart key={i} count={count} die={displayDie} evolving={seg.token.evolving} level={level} />
           );
         }
         const resolved = resolveExpr(seg.terms, abilities, level, progression, rank);

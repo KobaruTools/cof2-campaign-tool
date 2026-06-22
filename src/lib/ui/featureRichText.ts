@@ -9,12 +9,17 @@
  * - `{1d4°}`, `{d6}`, `{2d6}` : un dé (accolades). `°` = dé évolutif (p. 43). Le
  *   nombre de dés peut SCALER par rang de voie via des paliers `|C@R` (le compte
  *   passe à C au rang R) : `{1d4°|2@4}`, `{2d4°|3@4|4@5}` — utilisable aussi en formule
- *   (`[1d4°|2@4 + INT]`). Résolu au rang ATTEINT dans la voie (cf. `dieCountAtRank`).
+ *   (`[1d4°|2@4 + INT]`). Quand c'est la TAILLE du dé qui monte par rang (et non son
+ *   seul nombre), les paliers portent un DÉ COMPLET `|CdF@R` (« passe à CdF au rang R »)
+ *   — Poings de fer `{1d6|1d8@2|1d10@3|1d12@4|2d6@5}`. Résolu au rang ATTEINT dans la
+ *   voie (cf. `dieAtRank`).
  * - `[FOR + 1]`, `[CHA]`, `[1d4° + CHA]`, `[10 + rang]`, `[niveau × 3]` : une
  *   formule de MODIFICATEUR (crochets) — suite de termes séparés par `+`/`-`.
  *   Un terme est une caractéristique / un dé / un nombre / `rang` / `niveau`,
  *   éventuellement multiplié par une constante (`CHA × 100`, `2 × FOR`). Rendue
- *   en encadré signé (total + détail).
+ *   en encadré signé (total + détail). Un terme peut aussi être la MEILLEURE de
+ *   plusieurs caractéristiques (`FOR/AGI` = la plus forte des deux) — substitution
+ *   optionnelle de carac, ex. Poings de fer ; le rendu affiche la carac retenue.
  * - `[=CHA]`, `[=CHA × 100]`, `[=rang]`, `[=niveau × 5]` : une QUANTITÉ (crochets
  *   préfixés de `=`) — même grammaire, mais rendue en VALEUR BRUTE (une durée, une
  *   portée, un nombre de cibles), sans signe. « pendant [=CHA] minutes » → « 5 ».
@@ -58,6 +63,14 @@ export interface DieToken {
    * `count`. Notation : `1d4°|2@4`, `2d4°|3@4|4@5`. Absent = nombre fixe.
    */
   countSteps?: { minRank: number; count: number }[];
+  /**
+   * Paliers de DÉ COMPLET (nombre ET faces) selon le rang ATTEINT dans la voie —
+   * pour les DM dont la TAILLE du dé monte par rang (que `countSteps` ne sait pas
+   * exprimer), ex. Poings de fer « 1d6→1d8→1d10→1d12→2d6 ». Triés par seuil
+   * croissant ; on retient le palier de plus haut seuil atteint, sinon le dé de
+   * base. Notation : `1d6|1d8@2|1d10@3|1d12@4|2d6@5`. Absent = dé fixe.
+   */
+  dieSteps?: { minRank: number; count: number; die: Die }[];
 }
 
 /**
@@ -67,6 +80,7 @@ export interface DieToken {
  */
 export type ExprTerm =
   | { kind: 'ability'; sign: 1 | -1; ability: AbilityId; coeff?: number }
+  | { kind: 'abilityBest'; sign: 1 | -1; abilities: AbilityId[]; coeff?: number }
   | { kind: 'die'; sign: 1 | -1; token: DieToken }
   | { kind: 'number'; sign: 1 | -1; value: number }
   | { kind: 'rank'; sign: 1 | -1; coeff?: number }
@@ -81,9 +95,11 @@ export type RichTextSegment =
   | { kind: 'term'; terms: ExprTerm[]; raw: string }
   | { kind: 'abilityRef'; ability: AbilityId };
 
-// `(\d*)d<faces>(°?)` éventuellement suivi de paliers `|C@R` (le nombre de dés passe
-// à C au rang de voie R) : `1d4°|2@4`, `2d4°|3@4|4@5`.
-const DIE_RE = /^(\d*)d(4|6|8|10|12|20)(°?)((?:\|\d+@\d+)*)$/;
+// `(\d*)d<faces>(°?)` éventuellement suivi de paliers par rang de voie : soit
+// `|C@R` (seul le NOMBRE de dés passe à C — `1d4°|2@4`), soit `|CdF@R` (le DÉ COMPLET
+// passe à CdF, quand la TAILLE monte — `1d6|1d8@2|2d6@5`). Les deux formes cohabitent.
+const DIE_RE =
+  /^(\d*)d(4|6|8|10|12|20)(°?)((?:\|(?:\d*d(?:4|6|8|10|12|20)|\d+)@\d+)*)$/;
 /**
  * Capture un `{…}` (dé), un `[…]` (formule ou quantité) ou un `@CODE` (référence
  * de caractéristique) ; le reste est du texte.
@@ -106,35 +122,59 @@ function parseDie(raw: string): DieToken | null {
     evolving: m[3] === '°',
   };
   if (m[4]) {
-    const steps = m[4]
-      .split('|')
-      .filter(Boolean)
-      .map((part) => {
-        const [count, rank] = part.split('@');
-        return { minRank: Number(rank), count: Number(count) };
-      })
-      .sort((a, b) => a.minRank - b.minRank);
-    token.countSteps = steps;
+    const countSteps: { minRank: number; count: number }[] = [];
+    const dieSteps: { minRank: number; count: number; die: Die }[] = [];
+    for (const part of m[4].split('|').filter(Boolean)) {
+      const [spec, rank] = part.split('@');
+      const minRank = Number(rank);
+      const dieMatch = /^(\d*)d(4|6|8|10|12|20)$/.exec(spec);
+      if (dieMatch) {
+        // Palier de dé complet `CdF@R` (la taille du dé change) — ex. Poings de fer.
+        dieSteps.push({ minRank, count: dieMatch[1] ? Number(dieMatch[1]) : 1, die: `d${dieMatch[2]}` as Die });
+      } else {
+        // Palier de nombre seul `C@R` (la taille du dé ne change pas) — ex. Arc de feu.
+        countSteps.push({ minRank, count: Number(spec) });
+      }
+    }
+    if (countSteps.length > 0) token.countSteps = countSteps.sort((a, b) => a.minRank - b.minRank);
+    if (dieSteps.length > 0) token.dieSteps = dieSteps.sort((a, b) => a.minRank - b.minRank);
   }
   return token;
 }
 
 /**
- * Nombre de dés au rang de voie atteint : palier de plus haut seuil ≤ `rank`,
- * sinon le `count` de base. Pour un dé à nombre fixe (sans `countSteps`), renvoie
- * simplement `count`.
+ * Dé (nombre ET faces) au rang de voie atteint : on applique le palier de plus
+ * haut seuil ≤ `rank`, d'abord les paliers de nombre (`countSteps`) puis ceux de dé
+ * complet (`dieSteps`, qui changent aussi la taille). Sans palier, renvoie le dé de
+ * base. Les deux familles de paliers ne coexistent pas sur une même capacité.
  */
-export function dieCountAtRank(token: DieToken, rank: number): number {
+export function dieAtRank(token: DieToken, rank: number): { count: number; die: Die } {
   let count = token.count;
+  let die = token.die;
   for (const step of token.countSteps ?? []) {
     if (rank >= step.minRank) count = step.count;
   }
-  return count;
+  for (const step of token.dieSteps ?? []) {
+    if (rank >= step.minRank) {
+      count = step.count;
+      die = step.die;
+    }
+  }
+  return { count, die };
+}
+
+/**
+ * Nombre de dés au rang de voie atteint (raccourci sur `dieAtRank`). Pour un dé à
+ * nombre fixe (sans paliers), renvoie simplement `count`.
+ */
+export function dieCountAtRank(token: DieToken, rank: number): number {
+  return dieAtRank(token, rank).count;
 }
 
 /** Un atome d'expression (avant réduction en terme). */
 type ExprAtom =
   | { kind: 'ability'; ability: AbilityId }
+  | { kind: 'abilityBest'; abilities: AbilityId[] }
   | { kind: 'die'; token: DieToken }
   | { kind: 'number'; value: number }
   | { kind: 'rank' }
@@ -146,6 +186,15 @@ function parseAtom(raw: string): ExprAtom | null {
   if (die) return { kind: 'die', token: die };
   if ((ABILITY_IDS as readonly string[]).includes(raw)) {
     return { kind: 'ability', ability: raw as AbilityId };
+  }
+  // Meilleure de plusieurs caractéristiques (« FOR/AGI » = la plus forte) : modélise
+  // une substitution OPTIONNELLE de carac (« remplacer sa FOR par son AGI s'il le
+  // souhaite » → on prend la plus avantageuse). Codes séparés par `/`.
+  if (raw.includes('/')) {
+    const codes = raw.split('/');
+    if (codes.length >= 2 && codes.every((c) => (ABILITY_IDS as readonly string[]).includes(c))) {
+      return { kind: 'abilityBest', abilities: codes as AbilityId[] };
+    }
   }
   if (/^rang$/i.test(raw)) return { kind: 'rank' };
   if (/^niveau$/i.test(raw)) return { kind: 'level' };
@@ -166,7 +215,9 @@ function reduceFactors(sign: 1 | -1, factors: ExprAtom[]): ExprTerm | null {
     return { kind: 'die', sign, token: (dice[0] as { token: DieToken }).token };
   }
   const numbers = factors.filter((f) => f.kind === 'number') as { value: number }[];
-  const vars = factors.filter((f) => f.kind === 'ability' || f.kind === 'rank' || f.kind === 'level');
+  const vars = factors.filter(
+    (f) => f.kind === 'ability' || f.kind === 'abilityBest' || f.kind === 'rank' || f.kind === 'level',
+  );
   if (vars.length > 1) return null; // pas de produit de deux variables
   const coeffProduct = numbers.reduce((acc, n) => acc * n.value, 1);
   if (vars.length === 0) {
@@ -178,6 +229,11 @@ function reduceFactors(sign: 1 | -1, factors: ExprAtom[]): ExprTerm | null {
     return coeff !== undefined
       ? { kind: 'ability', sign, ability: v.ability, coeff }
       : { kind: 'ability', sign, ability: v.ability };
+  }
+  if (v.kind === 'abilityBest') {
+    return coeff !== undefined
+      ? { kind: 'abilityBest', sign, abilities: v.abilities, coeff }
+      : { kind: 'abilityBest', sign, abilities: v.abilities };
   }
   if (v.kind === 'rank') {
     return coeff !== undefined ? { kind: 'rank', sign, coeff } : { kind: 'rank', sign };
@@ -361,6 +417,20 @@ export function resolveExpr(
           value: abilities[term.ability] * (term.coeff ?? 1),
           coeff: term.coeff,
         };
+      case 'abilityBest': {
+        // Meilleure des caractéristiques listées (substitution optionnelle, ex.
+        // FOR↔AGI) : on retient la plus forte au moment du rendu et on l'AFFICHE
+        // (« AGI (3) »), l'info-bulle rappelant que c'est la meilleure des deux.
+        const best = term.abilities.reduce((a, b) => (abilities[b] > abilities[a] ? b : a));
+        return {
+          kind: 'abilityBest',
+          sign: term.sign,
+          label: `Meilleure de ${term.abilities.map((a) => `${ABILITY_NAMES[a]} (${a})`).join(' ou ')}`,
+          symbol: withCoeff(best, term.coeff),
+          value: abilities[best] * (term.coeff ?? 1),
+          coeff: term.coeff,
+        };
+      }
       case 'rank':
         return {
           kind: 'rank',
@@ -388,17 +458,15 @@ export function resolveExpr(
           value: term.value,
         };
       case 'die': {
-        const displayDie = term.token.evolving
-          ? scalingDie(level, progression)
-          : term.token.die;
-        // Nombre de dés résolu au rang de voie atteint (paliers `countSteps`).
-        const count = dieCountAtRank(term.token, rank);
+        // Nombre ET faces résolus au rang de voie atteint (paliers `countSteps`/`dieSteps`).
+        const { count, die } = dieAtRank(term.token, rank);
+        const displayDie = term.token.evolving ? scalingDie(level, progression) : die;
         const prefix = count > 1 ? String(count) : '';
         return {
           kind: 'die',
           sign: term.sign,
           label: 'Dé',
-          symbol: `${prefix}${term.token.die}${term.token.evolving ? '°' : ''}`,
+          symbol: `${prefix}${die}${term.token.evolving ? '°' : ''}`,
           value: null,
           die: { count, displayDie, evolving: term.token.evolving },
         };
@@ -406,7 +474,9 @@ export function resolveExpr(
     }
   });
   const hasDie = parts.some((p) => p.die);
-  const hasAbility = terms.some((t) => t.kind === 'ability' || t.kind === 'rank' || t.kind === 'level');
+  const hasAbility = terms.some(
+    (t) => t.kind === 'ability' || t.kind === 'abilityBest' || t.kind === 'rank' || t.kind === 'level',
+  );
   const total = hasDie
     ? null
     : parts.reduce((acc, p) => acc + p.sign * (p.value ?? 0), 0);

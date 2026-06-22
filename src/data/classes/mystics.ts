@@ -880,12 +880,12 @@ export const mysticFeatures: Feature[] = [
       "Lorsqu'il combat à mains nues, le moine peut (s'il le souhaite) remplacer sa FOR par son AGI pour ses tests d'attaque au contact et il inflige [1d6+FOR] DM létaux (Voir « DM temporaires » page 219). Ces DM augmentent à chaque rang suivant : 1d8 au rang 2, 1d10 au rang 3, 1d12 au rang 4 et enfin 2d6 au rang 5.",
     // DM dont la TAILLE du dé monte par rang (d6→d8→d10→d12→2d6) : paliers de dé
     // complet `|CdF@R` → le DM principal se résout au rang de voie courant (le joueur
-    // voit son dé réel) ; la progression reste rappelée en prose.
+    // voit son dé réel) ; la progression est rappelée en NOTE (petit/gris, `splitNotes`).
     // Choix de table : la substitution optionnelle « remplacer FOR par AGI » (le livre
     // la prévoit pour le test d'attaque) est étendue au DM et rendue par la MEILLEURE
     // des deux carac (`FOR/AGI`) — le `text` verbatim reste « 1d6+FOR » inchangé.
     richText:
-      "Lorsqu'il combat à mains nues, le moine peut (s'il le souhaite) remplacer sa FOR par son AGI pour ses tests d'attaque au contact et il inflige [1d6|1d8@2|1d10@3|1d12@4|2d6@5 + FOR/AGI] DM létaux (Voir « DM temporaires » page 219). Ces DM augmentent à chaque rang suivant : {1d8} au rang 2, {1d10} au rang 3, {1d12} au rang 4 et enfin {2d6} au rang 5.",
+      "Lorsqu'il combat à mains nues, le moine peut (s'il le souhaite) remplacer sa FOR par son AGI pour ses tests d'attaque au contact et il inflige [1d6|1d8@2|1d10@3|1d12@4|2d6@5 + FOR/AGI] DM létaux (Voir « DM temporaires » page 219).\n\nNote : ces DM augmentent à chaque rang suivant : {1d8} au rang 2, {1d10} au rang 3, {1d12} au rang 4 et enfin {2d6} au rang 5.",
     sourcePage: 121,
   },
   {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { progression } from '@/data/progression';
 import type { Abilities } from '@/lib/engine';
-import { dieCountAtRank, parseRichText, resolveExpr } from './featureRichText';
+import { dieAtRank, dieCountAtRank, parseRichText, resolveExpr } from './featureRichText';
 
 const abilities: Abilities = { AGI: 1, CON: 2, FOR: 3, PER: 1, CHA: 4, INT: 0, VOL: -1 };
 
@@ -313,5 +313,89 @@ describe('dé scalant par rang de voie (|C@R)', () => {
 
   it('un palier mal formé retombe en littéral', () => {
     expect(parseRichText('{1d4°|2@}')).toEqual([{ kind: 'text', value: '{1d4°|2@}' }]);
+  });
+});
+
+describe('dé COMPLET scalant par rang de voie (|CdF@R)', () => {
+  it('parse les paliers de dé complet (Poings de fer)', () => {
+    expect(parseRichText('{1d6|1d8@2|1d10@3|1d12@4|2d6@5}')).toEqual([
+      {
+        kind: 'die',
+        token: {
+          count: 1,
+          die: 'd6',
+          evolving: false,
+          dieSteps: [
+            { minRank: 2, count: 1, die: 'd8' },
+            { minRank: 3, count: 1, die: 'd10' },
+            { minRank: 4, count: 1, die: 'd12' },
+            { minRank: 5, count: 2, die: 'd6' },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it('dieAtRank retient le dé du palier de plus haut seuil atteint', () => {
+    const token = {
+      count: 1,
+      die: 'd6' as const,
+      evolving: false,
+      dieSteps: [
+        { minRank: 2, count: 1, die: 'd8' as const },
+        { minRank: 3, count: 1, die: 'd10' as const },
+        { minRank: 4, count: 1, die: 'd12' as const },
+        { minRank: 5, count: 2, die: 'd6' as const },
+      ],
+    };
+    expect(dieAtRank(token, 1)).toEqual({ count: 1, die: 'd6' });
+    expect(dieAtRank(token, 2)).toEqual({ count: 1, die: 'd8' });
+    expect(dieAtRank(token, 4)).toEqual({ count: 1, die: 'd12' });
+    expect(dieAtRank(token, 5)).toEqual({ count: 2, die: 'd6' });
+    // Dé fixe (sans paliers) : toujours son dé de base.
+    expect(dieAtRank({ count: 1, die: 'd6', evolving: false }, 9)).toEqual({ count: 1, die: 'd6' });
+  });
+
+  it('résout le dé au rang dans une formule de DM (Poings de fer)', () => {
+    const segs = parseRichText('[1d6|1d8@2|1d10@3|1d12@4|2d6@5 + FOR/AGI]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    // rang 1 → 1d6 ; rang 5 → 2d6.
+    const r1 = resolveExpr(expr.terms, abilities, 1, progression, 1).parts[0].die;
+    expect(r1).toMatchObject({ count: 1, displayDie: 'd6' });
+    const r5 = resolveExpr(expr.terms, abilities, 1, progression, 5).parts[0].die;
+    expect(r5).toMatchObject({ count: 2, displayDie: 'd6' });
+  });
+});
+
+describe('meilleure de plusieurs caractéristiques (FOR/AGI)', () => {
+  it('parse une « meilleure de » en terme abilityBest', () => {
+    expect(parseRichText('[FOR/AGI]')).toEqual([
+      {
+        kind: 'expr',
+        terms: [{ kind: 'abilityBest', sign: 1, abilities: ['FOR', 'AGI'] }],
+        raw: '[FOR/AGI]',
+      },
+    ]);
+  });
+
+  it('retient la carac la plus forte et l\'affiche', () => {
+    const segs = parseRichText('[FOR/AGI]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    // Fixture : FOR (3) > AGI (1) → retient FOR.
+    const r = resolveExpr(expr.terms, abilities, 1, progression).parts[0];
+    expect(r).toMatchObject({ kind: 'abilityBest', symbol: 'FOR', value: 3 });
+    // AGI plus forte → retient AGI.
+    const agiFort: Abilities = { ...abilities, AGI: 5 };
+    const r2 = resolveExpr(expr.terms, agiFort, 1, progression).parts[0];
+    expect(r2).toMatchObject({ symbol: 'AGI', value: 5 });
+  });
+
+  it('résout la meilleure carac dans une formule à dé (Poings de fer)', () => {
+    const segs = parseRichText('[1d6 + FOR/AGI]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    const resolved = resolveExpr(expr.terms, abilities, 1, progression);
+    expect(resolved.hasDie).toBe(true);
+    // Le terme carac retient la plus forte (FOR 3).
+    expect(resolved.parts[1]).toMatchObject({ kind: 'abilityBest', symbol: 'FOR', value: 3 });
   });
 });

@@ -222,6 +222,39 @@ de voie courant (`dieCountAtRank`) — utilisable en dé autonome `{…}` comme 
 phrase explicative peut être conservée. Cas de référence : `magie-destructrice-r1`
 (Arc de feu, `[1d4°|2@4 + INT]`) et `elixirs-r2` (Feu grégeois, `{2d4°|3@4|4@5}`).
 
+### f. Dé COMPLET scalant par rang de voie : `|CdF@R`
+
+Quand c'est la **taille** du dé (ses faces) qui monte par rang — pas seulement son
+nombre — `|C@R` ne suffit pas (il ne change que le compte). Le palier porte alors un
+**dé complet `CdF`** (nombre + faces) : `|1d8@2`, `|2d6@5`. Même résolution que `|C@R`
+(palier de plus haut seuil ≤ rang atteint dans la voie hôte), via `dieAtRank`.
+
+| Balisage | Rendu (selon le rang de voie) |
+|---|---|
+| `{1d6\|1d8@2\|1d10@3\|1d12@4\|2d6@5}` | `1d6` (rang 1), `1d8` (2), `1d10` (3), `1d12` (4), `2d6` (5) |
+| `[1d6\|1d8@2\|2d6@5 + FOR]` | `1d6 + FOR` (1-4), `2d6 + FOR` (5) |
+
+Les deux familles de paliers (`|C@R` nombre seul, `|CdF@R` dé complet) ne se mélangent
+pas sur une même capacité. Cas de référence : `poing-r1` (Poings de fer, moine,
+`[1d6|1d8@2|1d10@3|1d12@4|2d6@5 + FOR/AGI]`).
+
+### g. Meilleure de plusieurs caractéristiques : `FOR/AGI`
+
+Un terme de formule peut être la **plus forte de plusieurs caractéristiques**, noté
+par les codes séparés de `/` (`FOR/AGI`, voire plus). Modélise une **substitution
+optionnelle** de carac (« remplacer sa FOR par son AGI **s'il le souhaite** » → on
+retient la plus avantageuse). Le rendu **affiche la carac retenue** au moment du calcul
+(« AGI (3) »), l'info-bulle rappelant « Meilleure de Force (FOR) ou Agilité (AGI) ».
+
+| Balisage | Rendu (selon le personnage) |
+|---|---|
+| `[FOR/AGI]` | `FOR (2)` si FOR ≥ AGI, sinon `AGI (3)` |
+| `[1d6 + FOR/AGI]` | dé + la plus forte des deux carac |
+
+Cas de référence : `poing-r1` (Poings de fer). **Note d'extraction** : le livre
+n'applique la substitution FOR→AGI qu'au **test d'attaque** (DM = FOR au strict RAW) ;
+l'extension au DM est un choix de table assumé, le `text` verbatim restant inchangé.
+
 > **Limite (IN-VOIE seulement).** `|C@R` compte le rang de la VOIE HÔTE. Un scaling
 > CROSS-VOIE (« +1 par voie de magicien au rang 4 », ou plafonné par une stat, ex.
 > Projectile de mana) n'est PAS exprimable ainsi → reporté au lot « scaling par

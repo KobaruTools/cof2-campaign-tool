@@ -902,14 +902,18 @@ export interface Feature {
    * - dé : `{1d4°}`, `{d6}`, `{2d6}` (entre accolades, notation du livre ; `°` =
    *   dé évolutif rendu à sa valeur au niveau courant). Le nombre de dés peut SCALER
    *   par rang de voie via des paliers `|C@R` (« passe à C dés au rang R ») :
-   *   `{1d4°|2@4}`, `{2d4°|3@4|4@5}`, utilisable aussi en formule (`[1d4°|2@4 + INT]`) ;
+   *   `{1d4°|2@4}`, `{2d4°|3@4|4@5}`, utilisable aussi en formule (`[1d4°|2@4 + INT]`).
+   *   Quand la TAILLE du dé monte par rang, les paliers portent un dé complet `|CdF@R`
+   *   (« passe à CdF au rang R ») : `{1d6|1d8@2|1d10@3|1d12@4|2d6@5}` (Poings de fer) ;
    * - formule de MODIFICATEUR : `[FOR + 1]`, `[CHA]`, `[1d4° + CHA]`, `[10 + rang]`,
    *   `[niveau × 3]` (entre crochets) — une suite de termes (caractéristique, dé,
    *   nombre, `rang`, `niveau`), chacun éventuellement multiplié par une constante
    *   (`CHA × 100`), séparés par `+`/`-`. Sans dé : calculée et affichée en encadré
    *   signé ; avec un dé : rendue dé(s) + variables résolues. `niveau` = niveau du
    *   personnage ; `rang` = rang ATTEINT dans la voie hôte (« son rang » dynamique),
-   *   pas le rang figé de la capacité — un « rang du sort/de la cible » reste littéral ;
+   *   pas le rang figé de la capacité — un « rang du sort/de la cible » reste littéral.
+   *   Un terme peut être la MEILLEURE de plusieurs caractéristiques (`FOR/AGI`, codes
+   *   séparés de `/`) — substitution optionnelle, rendue à la carac la plus forte ;
    * - QUANTITÉ : `[=CHA]`, `[=CHA × 100]`, `[=rang]`, `[=niveau × 5]` (crochets
    *   préfixés de `=`) — même grammaire, mais rendue en VALEUR BRUTE (durée, portée,
    *   nombre de cibles), sans signe : « pendant [=CHA] minutes » → « 5 minutes » ;
