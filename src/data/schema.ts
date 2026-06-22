@@ -521,6 +521,16 @@ export interface ConditionalStatBonusEffect {
    * la réduction de DM vit dans `Feature.damageReduction`).
    */
   bonuses: StatBonus[];
+  /**
+   * Bonus (signé) à TOUS les TESTS DE CARACTÉRISTIQUE du personnage, piloté par le
+   * MÊME interrupteur que `bonuses`. Axe DISTINCT des stats dérivées : il ne modifie
+   * pas la valeur des caractéristiques (donc ni les PV, ni la DEF, ni les formules),
+   * seulement le jet d20 + carac d'un test (PER-89). Ex. Bénédiction (prêtre,
+   * priere-r1, p. 124) : « +1 à tous les tests de caractéristique » (→ +2 au rang 5),
+   * doublé d'un bonus aux tests d'attaque modélisé dans `bonuses`. Constante ou
+   * scalante. Absent = l'effet ne touche pas les tests de carac.
+   */
+  abilityTestBonus?: EffectValue;
   /** Déclencheur (condition / durée) et état par défaut de l'interrupteur. */
   activation: EffectActivation;
   /**

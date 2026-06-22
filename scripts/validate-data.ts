@@ -215,6 +215,11 @@ for (const c of features) {
         const valueError = effectValueError(b.value);
         if (valueError) err(`[capacite ${c.id}] effect: ${valueError} (${b.stat})`);
       }
+      // Bonus optionnel à TOUS les tests de carac, sous le même interrupteur (PER-89).
+      if (e.abilityTestBonus !== undefined) {
+        const valueError = effectValueError(e.abilityTestBonus);
+        if (valueError) err(`[capacite ${c.id}] effect: abilityTestBonus ${valueError}`);
+      }
       const a = e.activation;
       if (!a || !validActivationKinds.has(a.kind))
         err(`[capacite ${c.id}] effect: activation.kind invalide (${c.id})`);
@@ -232,6 +237,12 @@ for (const c of features) {
     } else if (e.kind === 'ability-bonus-die') {
       // Dé bonus permanent aux tests d'une caractéristique (drapeau, sans valeur).
       if (!validAbilities.has(e.ability)) err(`[capacite ${c.id}] effect: caractéristique inconnue : ${e.ability}`);
+    } else if (e.kind === 'ability-bonus-from-choice') {
+      // Carac déterminée par un choix `ability` de la capacité (meditation-r5, vent-r5).
+      const choice = c.choices?.[e.choiceIndex];
+      if (!choice || choice.kind !== 'ability')
+        err(`[capacite ${c.id}] effect: ability-bonus-from-choice → choiceIndex ${e.choiceIndex} ne pointe pas vers un choix 'ability'`);
+      if (!Number.isFinite(e.value)) err(`[capacite ${c.id}] effect: ability-bonus-from-choice value non finie`);
     } else if (e.kind === 'test-bonus') {
       // Bonus de compétence à un/des domaine(s) nommé(s) (PER-89). `domains` non vide,
       // chaque id présent dans le catalogue ; `value` optionnelle (sinon déduite).

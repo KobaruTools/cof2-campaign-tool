@@ -33,6 +33,7 @@ import {
   abilityBonusDiceFromFeatures,
   abilityModSources,
   abilityModsFromFeatures,
+  abilityTestBonusSources,
   effectContext,
   modsFromFeatures,
   pruneEffectInputs,
@@ -230,6 +231,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds);
   // Bonus de compétence par domaine de test (PER-89) — règle de cumul du livre (p. 203).
   const testBonuses = testBonusSources(modFeatureIds, effectCtx);
+  // Buffs ACTIFS à tous les tests de carac (ex. Bénédiction, via son interrupteur).
+  const abilityTestBonus = abilityTestBonusSources(modFeatureIds, effectCtx);
 
   const derivedInput: DerivedInput | null = family
     ? {
@@ -477,7 +480,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             )}
           </SheetSection>
 
-          <TestDomainsPanel bonuses={testBonuses} abilities={effectCtx.abilities} />
+          <TestDomainsPanel
+            bonuses={testBonuses}
+            abilities={effectCtx.abilities}
+            abilityTestBonus={abilityTestBonus}
+            bonusDice={bonusDieSrc}
+          />
 
           <SheetSection
             title="Voies & capacités"

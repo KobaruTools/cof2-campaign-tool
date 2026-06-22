@@ -22,7 +22,12 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import type { ConditionalStatBonusEffect, DerivedStatId } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
-import { conditionalEffectsOf, conditionalEffectBonuses, isEffectActive } from '@/lib/character/effects';
+import {
+  conditionalEffectsOf,
+  conditionalEffectBonuses,
+  conditionalAbilityTestBonus,
+  isEffectActive,
+} from '@/lib/character/effects';
 
 /** Libellés courts (français) des stats dérivées, indexés par clé moteur. */
 const STAT_SHORT: Record<DerivedStatId, string> = {
@@ -54,8 +59,12 @@ function effectLabel(
   effect: ConditionalStatBonusEffect,
 ): string {
   const bonuses = conditionalEffectBonuses(character, featureId, index) ?? [];
-  const parts = bonuses.map((b) => `${signed(b.value)} ${STAT_SHORT[b.stat]}`).join(', ');
-  return parts ? `${parts} — ${effect.activation.label}` : effect.activation.label;
+  const parts = bonuses.map((b) => `${signed(b.value)} ${STAT_SHORT[b.stat]}`);
+  // Facette « tous les tests de carac » (ex. Bénédiction), sous le même interrupteur.
+  const testBonus = conditionalAbilityTestBonus(character, featureId, index);
+  if (testBonus !== null && testBonus !== 0) parts.push(`${signed(testBonus)} tests de carac`);
+  const joined = parts.join(', ');
+  return joined ? `${joined} — ${effect.activation.label}` : effect.activation.label;
 }
 
 export interface FeatureEffectTogglesProps {

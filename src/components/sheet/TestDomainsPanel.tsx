@@ -9,12 +9,19 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { testDomains } from '@/data';
 import type { AbilityId } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
-import { COMPETENCE_CATEGORY_LABEL, type TestDomainBonus } from '@/lib/character/effects';
+import {
+  COMPETENCE_CATEGORY_LABEL,
+  type AbilityTestBonusSource,
+  type TestDomainBonus,
+} from '@/lib/character/effects';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
+import { BonusDieBadge } from '@/components/BonusDieBadge';
+import { DieIcon } from '@/components/DieIcon';
 import { SheetSection } from '@/components/sheet/SheetSection';
 
 export interface TestDomainsPanelProps {
@@ -23,24 +30,37 @@ export interface TestDomainsPanelProps {
   bonuses: TestDomainBonus[];
   /**
    * Caractéristiques EFFECTIVES du personnage (saisie + modificateurs permanents). Servent
-   * à RANGER chaque domaine sous sa carac gouvernante la plus élevée (multi-carac), et à
-   * l'option « inclure la carac » (la meilleure carac s'ajoute alors au bonus de compétence).
+   * à RANGER chaque domaine sous sa carac gouvernante la plus élevée (multi-carac), à
+   * l'option « inclure la carac », et à la ligne « test de [CARAC] » de chaque en-tête.
    */
   abilities: Record<AbilityId, number>;
+  /**
+   * Bonus ACTIFS à TOUS les tests de caractéristique (ex. Bénédiction, via son
+   * interrupteur) — appliqués à la ligne « test de [CARAC] » de chaque en-tête (et,
+   * quand « inclure la carac » est coché, aux tests de domaine). Vide = aucun buff actif.
+   */
+  abilityTestBonus?: AbilityTestBonusSource[];
+  /**
+   * Caractéristiques bénéficiant d'un DÉ BONUS permanent (badge double-d20), avec la/les
+   * capacité(s) source(s) — affiché à droite de la ligne « test de [CARAC] ».
+   */
+  bonusDice?: Partial<Record<AbilityId, string[]>>;
 }
 
 /** Modificateur signé (« +3 », « +0 », « −2 »). */
-const signed = (n: number): string => (n >= 0 ? `+${n}` : String(n));
+const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
 
 /**
- * Encadré « Compétences & tests » : tous les domaines du catalogue, **regroupés par
- * caractéristique gouvernante** (icône + nom), chacun avec son **bonus de capacité plat**
+ * Encadré « Compétences & tests » : les 7 caractéristiques, chacune avec sa ligne
+ * **« test de [CARAC] »** (icône d20 + modificateur de la carac, buff temporaire inclus —
+ * ex. Bénédiction), et **regroupant ses domaines** avec leur **bonus de compétence plat**
  * (PER-89). Un domaine multi-carac est rangé sous sa carac la plus élevée chez le personnage
  * (égalité → première carac déclarée au catalogue, stable). Deux options de vue (en haut à
- * droite) : inclure la meilleure carac dans le chiffre, et masquer les domaines à 0. Au
- * survol : provenance (capacité par catégorie de source, p. 203) et plafond +15. Lecture seule.
+ * droite) : inclure la meilleure carac dans le chiffre des domaines, et masquer les domaines
+ * à 0. Au survol : provenance (capacité par catégorie de source, p. 203) et plafond +15.
+ * Lecture seule (les interrupteurs des buffs vivent sur les cartes de capacité).
  */
-export function TestDomainsPanel({ bonuses, abilities }: TestDomainsPanelProps) {
+export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDice }: TestDomainsPanelProps) {
   const [includeAbility, setIncludeAbility] = useState(false);
   // Coché par défaut : on n'affiche d'emblée que les domaines effectivement bonifiés
   // (les centaines de domaines à 0 sont masqués tant que l'utilisateur ne les demande pas).
@@ -56,7 +76,9 @@ export function TestDomainsPanel({ bonuses, abilities }: TestDomainsPanelProps) 
     .map((d) => ({ d, bonus: byDomain.get(d.id), best: bestAbility(d.abilities) }))
     .filter(({ bonus }) => !hideZero || (bonus?.total ?? 0) !== 0);
 
-  const hasAny = lines.length > 0;
+  // Buff actif uniforme sur TOUS les tests de carac (ex. Bénédiction : +1, +2 au rang 5).
+  const buffSources = abilityTestBonus ?? [];
+  const testBuff = buffSources.reduce((sum, s) => sum + s.value, 0);
 
   const toggles = (
     <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
@@ -78,33 +100,81 @@ export function TestDomainsPanel({ bonuses, abilities }: TestDomainsPanelProps) 
   return (
     <SheetSection title="Compétences & tests" collapsible defaultCollapsed persistKey="test-domains" action={toggles}>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-        Bonus de compétence apportés par les capacités (cumul par domaine, plafond +15 — p. 203).
+        Test de carac (d20 + carac) par caractéristique, et bonus de compétence des domaines
+        (cumul par domaine, plafond +15 — p. 203).
       </Typography>
-      {!hasAny ? (
-        <Typography variant="body2" color="text.secondary">
-          Aucun bonus de compétence.
-        </Typography>
-      ) : (
-        <Stack spacing={2.5}>
-          {ABILITY_IDS.map((ability) => {
-            const group = lines
-              .filter((l) => l.best === ability)
-              .sort((a, b) => a.d.label.localeCompare(b.d.label, 'fr'));
-            if (group.length === 0) return null;
-            return (
-              <Box key={ability}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
-                  <AbilityIcon ability={ability} size={24} sx={{ color: 'text.secondary' }} />
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
-                    {ABILITY_NAMES[ability]} ({ability})
-                  </Typography>
-                </Stack>
+      <Stack spacing={2.5}>
+        {ABILITY_IDS.map((ability) => {
+          const group = lines
+            .filter((l) => l.best === ability)
+            .sort((a, b) => a.d.label.localeCompare(b.d.label, 'fr'));
+
+          const abilityMod = abilities[ability] ?? 0;
+          const caracTest = abilityMod + testBuff;
+          const dice = bonusDice?.[ability] ?? [];
+
+          // Détail de la ligne « test de [CARAC] » : carac de base + chaque buff actif.
+          const testBreakdown = (
+            <Box sx={{ py: 0.5 }}>
+              <Typography variant="caption" sx={{ display: 'block', fontWeight: 700 }}>
+                Test de {ABILITY_NAMES[ability]} : d20 {signed(caracTest)}
+              </Typography>
+              <Typography variant="caption" sx={{ display: 'block' }}>
+                Caractéristique {ability} : {signed(abilityMod)}
+              </Typography>
+              {buffSources.map((s) => (
+                <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
+                  {s.name} : {signed(s.value)}
+                </Typography>
+              ))}
+            </Box>
+          );
+
+          return (
+            <Box key={ability}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: 'center',
+                  mb: 1,
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                  bgcolor: 'action.hover',
+                }}
+              >
+                <AbilityIcon ability={ability} size={24} sx={{ color: 'text.secondary' }} />
+                <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
+                  {ABILITY_NAMES[ability]} ({ability})
+                </Typography>
+                <Tooltip title={testBreakdown} arrow>
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    sx={{
+                      alignItems: 'center',
+                      cursor: 'help',
+                      color: testBuff !== 0 ? 'secondary.main' : 'text.secondary',
+                    }}
+                  >
+                    <DieIcon die="d20" size={18} noTooltip />
+                    <Typography variant="subtitle2" color="inherit" sx={{ fontWeight: 700 }}>
+                      {signed(caracTest)}
+                    </Typography>
+                  </Stack>
+                </Tooltip>
+                {dice.length > 0 && <BonusDieBadge ability={ability} sources={dice} size={16} />}
+              </Stack>
+              {group.length > 0 && (
                 <Grid container spacing={1}>
                   {group.map(({ d, bonus, best }) => {
                     const flat = bonus?.total ?? 0;
                     const has = (bonus?.sources.length ?? 0) > 0;
                     const abilityValue = abilities[best] ?? 0;
-                    const display = includeAbility ? flat + abilityValue : flat;
+                    // « Inclure la carac » ajoute la meilleure carac ET le buff actif des
+                    // tests de carac (un test de domaine est aussi un test de carac).
+                    const display = includeAbility ? flat + abilityValue + testBuff : flat;
                     const multiAbility = d.abilities.length > 1;
 
                     const breakdown =
@@ -115,6 +185,12 @@ export function TestDomainsPanel({ bonuses, abilities }: TestDomainsPanelProps) 
                               {best} (meilleure carac) : {signed(abilityValue)}
                             </Typography>
                           )}
+                          {includeAbility &&
+                            buffSources.map((s) => (
+                              <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
+                                {s.name} : {signed(s.value)}
+                              </Typography>
+                            ))}
                           {bonus?.sources.map((s) => (
                             <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
                               {COMPETENCE_CATEGORY_LABEL[s.category]} — {s.name} : {signed(s.value)}
@@ -138,7 +214,12 @@ export function TestDomainsPanel({ bonuses, abilities }: TestDomainsPanelProps) 
                           px: 1,
                           py: 0.5,
                           borderRadius: 1,
-                          bgcolor: has ? 'action.hover' : undefined,
+                          // Fond plus discret que celui des en-têtes de carac (`action.hover`),
+                          // pour mieux démarquer les blocs : moitié de l'opacité de survol.
+                          bgcolor: has
+                            ? (theme) =>
+                                alpha(theme.palette.text.primary, theme.palette.action.hoverOpacity / 2)
+                            : undefined,
                           cursor: breakdown ? 'help' : undefined,
                         }}
                       >
@@ -178,11 +259,11 @@ export function TestDomainsPanel({ bonuses, abilities }: TestDomainsPanelProps) 
                     );
                   })}
                 </Grid>
-              </Box>
-            );
-          })}
-        </Stack>
-      )}
+              )}
+            </Box>
+          );
+        })}
+      </Stack>
     </SheetSection>
   );
 }

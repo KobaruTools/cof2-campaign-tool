@@ -5,6 +5,7 @@ import {
   abilityBonusDiceFromFeatures,
   abilityModSources,
   abilityModsFromFeatures,
+  abilityTestBonusSources,
   conditionalEffectsOf,
   conditionalEffectBonuses,
   creatureBonusDiceForPath,
@@ -212,6 +213,28 @@ describe('effectContext', () => {
       toggles: { 'rage-r3': [true] },
       featureChoices: {},
     });
+  });
+});
+
+describe('abilityTestBonusSources — buff conditionnel aux tests de carac (Bénédiction, priere-r1)', () => {
+  // L'effet conditionnel de Bénédiction est le 2e (index 1) : test-bonus puis conditional.
+  const ON = (toggles: Record<string, boolean[]>): EffectContext => ctx({ toggles });
+
+  it('interrupteur éteint ou sans contexte → aucun buff', () => {
+    expect(abilityTestBonusSources(['priere-r1'])).toEqual([]);
+    expect(abilityTestBonusSources(['priere-r1'], ctx())).toEqual([]);
+  });
+
+  it('interrupteur allumé → +1 aux tests de carac au rang 1 de la voie', () => {
+    expect(abilityTestBonusSources(['priere-r1'], ON({ 'priere-r1': [false, true] }))).toEqual([
+      { featureId: 'priere-r1', name: 'Bénédiction', value: 1 },
+    ]);
+  });
+
+  it('passe à +2 quand la voie de la prière atteint le rang 5', () => {
+    expect(
+      abilityTestBonusSources(['priere-r1', 'priere-r5'], ON({ 'priere-r1': [false, true] })),
+    ).toEqual([{ featureId: 'priere-r1', name: 'Bénédiction', value: 2 }]);
   });
 });
 

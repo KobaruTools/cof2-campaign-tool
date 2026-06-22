@@ -1,4 +1,18 @@
-import type { CharacterClass, ClassPath, Feature } from '../schema';
+import type { CharacterClass, ClassPath, EffectValue, Feature } from '../schema';
+
+/**
+ * Valeur scalante « +1, puis +2 au rang 5 de la voie » (palier sur le rang de la
+ * voie hôte). Partagée par les facettes de Bénédiction (prêtre, priere-r1) — tests
+ * de carac et tests d'attaque montent ensemble au rang 5.
+ */
+const STEP_1_THEN_2_AT_R5: EffectValue = {
+  scale: 'stepped',
+  by: 'path-rank',
+  steps: [
+    { min: 1, value: 1 },
+    { min: 5, value: 2 },
+  ],
+};
 
 /**
  * Famille des mystiques — druide, moine, prêtre.
@@ -1139,10 +1153,10 @@ export const mysticFeatures: Feature[] = [
     isSpell: true,
     actionTypes: ['A'],
     text:
-      "Le prêtre effectue un test d'attaque magique contre la DEF se sa cible (portée de 30 m). Un projectile d'énergie de la forme de l'arme du prêtre va percuter la cible, lui infligeant [2d4°+CHA] DM en cas de réussite. Si l'arme du prêtre est magique, il peut ajouter son bonus au test d'attaque et aux DM. Les DM du marteau de la foi augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une autre voie de prêtre.",
+      "Le prêtre effectue un test d'attaque magique contre la DEF de sa cible (portée de 30 m). Un projectile d'énergie de la forme de l'arme du prêtre va percuter la cible, lui infligeant [2d4°+CHA] DM en cas de réussite. Si l'arme du prêtre est magique, il peut ajouter son bonus au test d'attaque et aux DM. Les DM du marteau de la foi augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une autre voie de prêtre.",
     // DM +1 par voie de prêtre au rang 4 = scaling CROSS-VOIE sur les DM (pas une stat dérivée) → prose.
     richText:
-      "Le prêtre effectue un test d'attaque magique contre la DEF se sa cible (portée de 30 m). Un projectile d'énergie de la forme de l'arme du prêtre va percuter la cible, lui infligeant [2d4° + CHA] DM en cas de réussite. Si l'arme du prêtre est magique, il peut ajouter son bonus au test d'attaque et aux DM. Les DM du marteau de la foi augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une autre voie de prêtre.",
+      "Le prêtre effectue un test d'attaque magique contre la DEF de sa cible (portée de 30 m). Un projectile d'énergie de la forme de l'arme du prêtre va percuter la cible, lui infligeant [2d4° + CHA] DM en cas de réussite. Si l'arme du prêtre est magique, il peut ajouter son bonus au test d'attaque et aux DM. Les DM du marteau de la foi augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une autre voie de prêtre.",
     sourcePage: 123,
   },
   {
@@ -1168,11 +1182,28 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le prêtre entonne un chant pour encourager ses compagnons en vue. Ses alliés et lui bénéficient d'un bonus de +1 à tous leurs tests de caractéristique et d'attaque pendant CHA minutes. Ce bonus passe à +2 au rang 5. De plus, le prêtre obtient un bonus égal à son rang + 2 à tous les tests de théologie ou de cosmologie.",
-    // Bonus de compétence théologie/cosmologie. Le +1 aux tests/attaque AUX ALLIÉS et
-    // temporaire est hors périmètre PER-89 → verbatim.
+    // Bonus de compétence théologie/cosmologie (permanent) + buff TEMPORAIRE à
+    // interrupteur sur les tests de carac et d'attaque DU PRÊTRE. Le +1 aux ALLIÉS
+    // reste hors périmètre (fiche mono-perso) → verbatim.
     richText:
       "Le prêtre entonne un chant pour encourager ses compagnons en vue. Ses alliés et lui bénéficient d'un bonus de +1 à tous leurs tests de caractéristique et d'attaque pendant [=CHA] minutes. Ce bonus passe à +2 au rang 5. De plus, le prêtre obtient un bonus égal à son [rang + 2] à tous les tests de théologie ou de cosmologie.",
-    effects: [{ kind: 'test-bonus', domains: ['theology', 'cosmology'] }],
+    effects: [
+      { kind: 'test-bonus', domains: ['theology', 'cosmology'] },
+      {
+        // « +1 à tous les tests de caractéristique ET d'attaque » (→ +2 au rang 5),
+        // pendant CHA minutes : un seul interrupteur pilote les deux facettes. Les
+        // tests de carac passent par `abilityTestBonus` (ils ne modifient PAS la
+        // valeur des caracs) ; les tests d'attaque sont des stats dérivées.
+        kind: 'conditional-stat-bonus',
+        bonuses: [
+          { stat: 'meleeAttack', value: STEP_1_THEN_2_AT_R5 },
+          { stat: 'rangedAttack', value: STEP_1_THEN_2_AT_R5 },
+          { stat: 'magicAttack', value: STEP_1_THEN_2_AT_R5 },
+        ],
+        abilityTestBonus: STEP_1_THEN_2_AT_R5,
+        activation: { kind: 'temporary', label: 'pendant la Bénédiction (CHA min)', activeByDefault: false },
+      },
+    ],
     sourcePage: 124,
   },
   {

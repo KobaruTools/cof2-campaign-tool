@@ -364,6 +364,60 @@ export function conditionalEffectBonuses(
   }));
 }
 
+/** Une capacité qui ajoute un bonus à TOUS les tests de caractéristique (conditionnel). */
+export interface AbilityTestBonusSource {
+  featureId: string;
+  /** Nom de la capacité (français), pour le détail affiché. */
+  name: string;
+  value: number;
+}
+
+/**
+ * Bonus COURANTS à TOUS les tests de caractéristique (PER-89), apportés par les
+ * effets `conditional-stat-bonus` ACTIFS qui portent un `abilityTestBonus` (ex.
+ * Bénédiction, prêtre, priere-r1). Le bonus s'applique uniformément aux 7
+ * caractéristiques : il ne modifie PAS leur valeur (donc ni PV, ni DEF, ni les
+ * formules), seulement le jet « d20 + carac » d'un test. Sans `ctx`, les effets
+ * conditionnels et les valeurs scalantes sont ignorés (appels « catalogue seul »).
+ */
+export function abilityTestBonusSources(
+  featureIds: string[],
+  ctx?: EffectContext,
+): AbilityTestBonusSource[] {
+  const pathRanks = pathRanksFromFeatures(featureIds);
+  const out: AbilityTestBonusSource[] = [];
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    feature.effects.forEach((effect, i) => {
+      if (effect.kind !== 'conditional-stat-bonus' || effect.abilityTestBonus === undefined) return;
+      if (!isConditionalActive(effect, id, i, ctx)) return;
+      const v = resolveValue(effect.abilityTestBonus, feature.pathId, pathRanks, ctx);
+      if (v !== null && v !== 0) out.push({ featureId: id, name: feature.name, value: v });
+    });
+  }
+  return out;
+}
+
+/**
+ * Bonus aux tests de carac (résolu) d'un effet conditionnel d'une capacité, pour
+ * le libellé de son interrupteur (ex. « +1 tests de carac »). `null` si l'index ne
+ * pointe pas un effet conditionnel connu ou si l'effet ne touche pas les tests de
+ * carac.
+ */
+export function conditionalAbilityTestBonus(
+  character: Character,
+  featureId: string,
+  index: number,
+): number | null {
+  const feature = featureById.get(featureId);
+  const effect = feature?.effects?.[index];
+  if (!feature || effect?.kind !== 'conditional-stat-bonus' || effect.abilityTestBonus === undefined)
+    return null;
+  const pathRanks = pathRanksFromFeatures(character.featureIds);
+  return resolveValue(effect.abilityTestBonus, feature.pathId, pathRanks, effectContext(character));
+}
+
 /** L'interrupteur du i-ème effet d'une capacité est-il actif pour ce personnage ? */
 export function isEffectActive(character: Character, featureId: string, index: number): boolean {
   const effects = featureById.get(featureId)?.effects;
