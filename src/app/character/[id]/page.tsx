@@ -225,8 +225,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const effectCtx = effectContext(character);
   // Modificateurs permanents de caractéristiques et dés bonus apportés par les
   // capacités (mécanique core) — appliqués PAR-DESSUS la valeur saisie des caracs.
-  const abilityMods = abilityModsFromFeatures(modFeatureIds);
-  const abilityModSrc = abilityModSources(modFeatureIds);
+  const abilityMods = abilityModsFromFeatures(modFeatureIds, character.featureChoices);
+  const abilityModSrc = abilityModSources(modFeatureIds, character.featureChoices);
   const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds);
   // Bonus de compétence par domaine de test (PER-89) — règle de cumul du livre (p. 203).
   const testBonuses = testBonusSources(modFeatureIds, effectCtx);

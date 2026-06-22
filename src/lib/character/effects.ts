@@ -26,6 +26,7 @@ import type {
   EffectValue,
   FeatureEffect,
 } from '@/data/schema';
+import { ABILITY_IDS } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
 import { effectiveFeatureIdsForMods } from './choices';
 import type { Character, FeatureChoiceSelection } from './types';
@@ -67,7 +68,7 @@ export interface EffectContext {
  * cohérent avec l'inventaire affiché par `abilityModSources`.
  */
 export function effectiveAbilities(character: Character): Record<AbilityId, number> {
-  const mods = abilityModsFromFeatures(effectiveFeatureIdsForMods(character));
+  const mods = abilityModsFromFeatures(effectiveFeatureIdsForMods(character), character.featureChoices);
   const out: Record<AbilityId, number> = { ...character.abilities };
   for (const [ability, value] of Object.entries(mods) as [AbilityId, number][]) {
     out[ability] = (out[ability] ?? 0) + value;
@@ -503,25 +504,40 @@ export interface AbilityModSource {
 }
 
 /**
- * Modificateurs PERMANENTS de caractéristiques apportés par les capacités acquises
- * (genre `ability-bonus`, ex. « +1 en CON » d'Endurer). Cumulés par caractéristique.
- * Déterministes : viennent PAR-DESSUS la valeur saisie (base + peuple). Ids inconnus
- * ignorés.
+ * Modificateurs PERMANENTS de caractéristiques apportés par les capacités acquises.
+ * Gère deux genres :
+ *  - `ability-bonus` : cible fixe (ex. « +1 CON » d'Endurer) ;
+ *  - `ability-bonus-from-choice` : cible lue depuis `featureChoices[id][choiceIndex]`
+ *    (ex. Projection mentale : « +1 à la carac la plus faible »).
+ * Ids inconnus ignorés.
  */
-export function abilityModsFromFeatures(featureIds: string[]): Partial<Record<AbilityId, number>> {
+export function abilityModsFromFeatures(
+  featureIds: string[],
+  featureChoices?: Record<string, FeatureChoiceSelection[]>,
+): Partial<Record<AbilityId, number>> {
   const mods: Partial<Record<AbilityId, number>> = {};
   for (const id of featureIds) {
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
     for (const e of feature.effects) {
-      if (e.kind === 'ability-bonus') mods[e.ability] = (mods[e.ability] ?? 0) + e.value;
+      if (e.kind === 'ability-bonus') {
+        mods[e.ability] = (mods[e.ability] ?? 0) + e.value;
+      } else if (e.kind === 'ability-bonus-from-choice' && featureChoices) {
+        const chosen = featureChoices[id]?.[e.choiceIndex];
+        if (typeof chosen === 'string' && (ABILITY_IDS as readonly string[]).includes(chosen)) {
+          mods[chosen as AbilityId] = (mods[chosen as AbilityId] ?? 0) + e.value;
+        }
+      }
     }
   }
   return mods;
 }
 
 /** Détaille, par caractéristique, QUELLES capacités apportent le modificateur. */
-export function abilityModSources(featureIds: string[]): Partial<Record<AbilityId, AbilityModSource[]>> {
+export function abilityModSources(
+  featureIds: string[],
+  featureChoices?: Record<string, FeatureChoiceSelection[]>,
+): Partial<Record<AbilityId, AbilityModSource[]>> {
   const sources: Partial<Record<AbilityId, AbilityModSource[]>> = {};
   for (const id of featureIds) {
     const feature = featureById.get(id);
@@ -529,6 +545,11 @@ export function abilityModSources(featureIds: string[]): Partial<Record<AbilityI
     for (const e of feature.effects) {
       if (e.kind === 'ability-bonus') {
         (sources[e.ability] ??= []).push({ featureId: id, name: feature.name, value: e.value });
+      } else if (e.kind === 'ability-bonus-from-choice' && featureChoices) {
+        const chosen = featureChoices[id]?.[e.choiceIndex];
+        if (typeof chosen === 'string' && (ABILITY_IDS as readonly string[]).includes(chosen)) {
+          (sources[chosen as AbilityId] ??= []).push({ featureId: id, name: feature.name, value: e.value });
+        }
       }
     }
   }

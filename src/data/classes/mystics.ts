@@ -861,9 +861,16 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le moine entre en méditation et projette son esprit hors de son corps pendant [1d4°+VOL] minutes. Il ressemble à un ectoplasme de couleur blanche qui se déplace en volant à la vitesse de 10 m par round. Il peut passer au travers des murs, mais pas des êtres vivants ou des barrières magiques. Le moine ne perçoit le monde que par sa projection mentale, mais ressent les DM qui sont infligés à son corps. Il peut utiliser cette capacité une fois de plus chaque jour par rang 5 atteint dans une autre voie de moine. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
-    // « +1 à la plus faible carac » → verbatim (non calculable, cf. humain-r5).
     richText:
       "Une fois par jour, le moine entre en méditation et projette son esprit hors de son corps pendant [1d4° + VOL] minutes. Il ressemble à un ectoplasme de couleur blanche qui se déplace en volant à la vitesse de 10 m par round. Il peut passer au travers des murs, mais pas des êtres vivants ou des barrières magiques. Le moine ne perçoit le monde que par sa projection mentale, mais ressent les DM qui sont infligés à son corps. Il peut utiliser cette capacité une fois de plus chaque jour par rang 5 atteint dans une autre voie de moine. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
+    // +1 à la carac choisie (choix `ability`) → effet `ability-bonus-from-choice`.
+    effects: [{ kind: 'ability-bonus-from-choice', choiceIndex: 0, value: 1 }],
+    choices: [
+      {
+        kind: 'ability',
+        prompt: "Caractéristique à augmenter de +1 (la plus faible, choisir en cas d'égalité)",
+      },
+    ],
     sourcePage: 120,
   },
   // =======================================================================

@@ -354,6 +354,7 @@ export type FeatureEffect =
   | StatBonusEffect
   | ConditionalStatBonusEffect
   | AbilityBonusEffect
+  | AbilityBonusFromChoiceEffect
   | AbilityBonusDieEffect
   | TestBonusEffect;
 
@@ -549,6 +550,22 @@ export interface AbilityBonusEffect {
   /** Caractéristique visée (cf. `ABILITY_IDS`). */
   ability: AbilityId;
   /** Valeur ajoutée (signée) — constante (les cas du livre sont des +1). */
+  value: number;
+}
+
+/**
+ * Modificateur PERMANENT à une CARACTÉRISTIQUE dont la CIBLE est déterminée par un
+ * choix `ability` de la même capacité (ex. Projection mentale : « augmente de +1 la
+ * plus faible carac »). Résolu dynamiquement depuis `Character.featureChoices`.
+ */
+export interface AbilityBonusFromChoiceEffect {
+  kind: 'ability-bonus-from-choice';
+  /**
+   * Index du choix `ability` dans `Feature.choices` qui détermine la carac visée.
+   * En général 0 (premier et unique choix de la capacité).
+   */
+  choiceIndex: number;
+  /** Valeur ajoutée — constante (les cas du livre sont des +1). */
   value: number;
 }
 
