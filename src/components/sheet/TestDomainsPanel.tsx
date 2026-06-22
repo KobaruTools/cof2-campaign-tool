@@ -42,7 +42,9 @@ const signed = (n: number): string => (n >= 0 ? `+${n}` : String(n));
  */
 export function TestDomainsPanel({ bonuses, abilities }: TestDomainsPanelProps) {
   const [includeAbility, setIncludeAbility] = useState(false);
-  const [hideZero, setHideZero] = useState(false);
+  // Coché par défaut : on n'affiche d'emblée que les domaines effectivement bonifiés
+  // (les centaines de domaines à 0 sont masqués tant que l'utilisateur ne les demande pas).
+  const [hideZero, setHideZero] = useState(true);
 
   const byDomain = new Map(bonuses.map((b) => [b.domain, b]));
   // Meilleure carac gouvernante du domaine pour ce personnage (max de ses valeurs ;
