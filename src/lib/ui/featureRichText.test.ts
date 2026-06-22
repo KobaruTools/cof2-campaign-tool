@@ -303,6 +303,20 @@ describe('dé scalant par rang de voie (|C@R)', () => {
     expect(dieCountAtRank({ count: 1, die: 'd4', evolving: true }, 9)).toBe(1);
   });
 
+  it('progression de Récupération majeure (soins-r3) : +1d4° par voie de prêtre au rang 5', () => {
+    // « rang » passé = nombre de voies de prêtre au rang 5 (0 → 3d4°, …, 5 → 8d4°).
+    const segs = parseRichText('[3d4°|4@1|5@2|6@3|7@4|8@5 + CHA]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    const dieTerm = expr.terms.find((t) => t.kind === 'die') as Extract<
+      (typeof expr.terms)[number],
+      { kind: 'die' }
+    >;
+    expect(dieCountAtRank(dieTerm.token, 0)).toBe(3);
+    expect(dieCountAtRank(dieTerm.token, 1)).toBe(4);
+    expect(dieCountAtRank(dieTerm.token, 5)).toBe(8);
+    expect(dieCountAtRank(dieTerm.token, 9)).toBe(8); // jamais au-delà du dernier palier
+  });
+
   it('résout le nombre de dés au rang dans une formule (Arc de feu)', () => {
     const segs = parseRichText('[1d4°|2@4 + INT]');
     const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;

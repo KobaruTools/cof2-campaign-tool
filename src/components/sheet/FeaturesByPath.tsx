@@ -496,20 +496,21 @@ function CompactUsageIndicator({ feature, character }: { feature: Feature; chara
 }
 
 /**
- * Nombre de voies de moine (type 'class', classIds inclut 'moine') où le personnage
- * a atteint le rang 4 au minimum. Sert à piloter le scaling cross-voie de la
- * Transe de guérison (meditation-r2) : +1d4° par voie de moine au rang 4.
+ * Nombre de voies d'un profil (type 'class', `classIds` inclut `classId`) où le
+ * personnage a atteint au moins `rank`. Pilote les scalings cross-voie sur le nombre
+ * de dés : Transe de guérison (meditation-r2, moine au rang 4) et Récupération
+ * majeure (soins-r3, prêtre au rang 5) — +1d4° par voie au seuil.
  */
-function countMonkPathsAtRank4(character: Character): number {
+function countClassPathsAtRank(character: Character, classId: string, rank: number): number {
   const pathMaxRank = new Map<string, number>();
   for (const id of character.featureIds) {
     const f = featureById.get(id);
     if (!f) continue;
     const p = pathById.get(f.pathId);
-    if (!p || p.type !== 'class' || !p.classIds.includes('moine')) continue;
+    if (!p || p.type !== 'class' || !p.classIds.includes(classId)) continue;
     pathMaxRank.set(f.pathId, Math.max(pathMaxRank.get(f.pathId) ?? 0, f.rank));
   }
-  return [...pathMaxRank.values()].filter((r) => r >= 4).length;
+  return [...pathMaxRank.values()].filter((r) => r >= rank).length;
 }
 
 /** Une voie et ses capacités acquises, chaque capacité dépliable (texte complet). */
@@ -574,16 +575,18 @@ function PathBlock({
   // résoudre le terme « rang » des textes enrichis (« son rang » = rang de la voie
   // courante, dynamique), partagé par toutes les capacités du bloc.
   const pathRank = features.reduce((max, f) => Math.max(max, f.rank), 0);
-  // meditation-r2 (Transe de guérison) : le nombre de dés scale avec le nombre
-  // de voies de moine (classIds: ['moine']) où rang 4+ est atteint (cross-voie).
-  // On passe ce compte comme pathRank pour cette capacité, pilotant ses countSteps
-  // (|2@1|3@2|…) — le terme `rang` n'est pas utilisé dans ce richText.
-  const monkR4Count =
-    features.some((f) => f.id === 'meditation-r2') && character
-      ? countMonkPathsAtRank4(character)
-      : undefined;
-  const effectiveRank = (feature: Feature) =>
-    feature.id === 'meditation-r2' && monkR4Count !== undefined ? monkR4Count : pathRank;
+  // Scalings CROSS-VOIE sur le nombre de dés : on passe le COMPTE de voies du profil
+  // au rang seuil comme « rang » à la formule, ce qui pilote ses paliers `|C@R` (le
+  // terme `rang` n'est pas utilisé dans ces richText). Cf. `countClassPathsAtRank`.
+  //  - Transe de guérison (meditation-r2) : +1d4° par voie de moine au rang 4 ;
+  //  - Récupération majeure (soins-r3)    : +1d4° par voie de prêtre au rang 5.
+  const crossPathDieCount = (feature: Feature): number | undefined => {
+    if (!character) return undefined;
+    if (feature.id === 'meditation-r2') return countClassPathsAtRank(character, 'moine', 4);
+    if (feature.id === 'soins-r3') return countClassPathsAtRank(character, 'pretre', 5);
+    return undefined;
+  };
+  const effectiveRank = (feature: Feature) => crossPathDieCount(feature) ?? pathRank;
   // Profil dont la voie est issue : le profil principal si la voie lui appartient
   // (cas courant), sinon le profil d'origine de la voie (hybridation). Sert à la
   // teinte ET à l'icône, pour distinguer les voies hybrides du profil principal.

@@ -1298,9 +1298,14 @@ export const mysticFeatures: Feature[] = [
     isSpell: true,
     actionTypes: ['L'],
     text:
-      "Le prêtre peut soigner une cible (ou lui-même) à une portée de 20 m ; elle récupère immédiatement [3d4°+CHA du prêtre] PV. Le montant des soins prodigués augmente de 1d4° chaque fois que le personnage atteint le rang 5 dans une voie de prêtre.",
+      "Le prêtre peut soigner une cible (ou lui-même) à une portée de 20 m ; elle récupère immédiatement [3d4°+CHA du prêtre] PV.\nNote : Le montant des soins prodigués augmente de 1d4° chaque fois que le personnage atteint le rang 5 dans une voie de prêtre.",
+    // Scaling CROSS-VOIE (même mécanique que meditation-r2) : le nombre de dés monte
+    // de +1 par voie de prêtre au rang 5, encodé en paliers `|C@R` où le « rang »
+    // passé à la formule est le COMPTE de voies de prêtre au rang 5 (0 → 3d4°, …,
+    // 5 → 8d4°). Cf. `countClassPathsAtRank` dans FeaturesByPath. Le terme `rang`
+    // n'est pas utilisé dans ce richText.
     richText:
-      "Le prêtre peut soigner une cible (ou lui-même) à une portée de 20 m ; elle récupère immédiatement [3d4° + CHA] PV. Le montant des soins prodigués augmente de {1d4°} chaque fois que le personnage atteint le rang 5 dans une voie de prêtre.",
+      "Le prêtre peut soigner une cible (ou lui-même) à une portée de 20 m ; elle récupère immédiatement [3d4°|4@1|5@2|6@3|7@4|8@5 + CHA] PV.\nNote : Le montant des soins prodigués augmente de {1d4°} chaque fois que le personnage atteint le rang 5 dans une voie de prêtre.",
     sourcePage: 125,
   },
   {
