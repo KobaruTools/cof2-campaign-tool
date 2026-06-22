@@ -823,7 +823,7 @@ export const mysticFeatures: Feature[] = [
     text:
       "Le moine peut méditer pendant 10 min et récupérer ainsi [1d4°+VOL] PV. Les soins augmentent de +1d4° chaque fois que le personnage atteint le rang 4 dans une voie de moine. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité et il ne peut pas l'utiliser plus de trois fois par jour.",
     richText:
-      "Le moine peut méditer pendant 10 min et récupérer ainsi [1d4° + VOL] PV. Les soins augmentent de +{1d4°} chaque fois que le personnage atteint le rang 4 dans une voie de moine. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité et il ne peut pas l'utiliser plus de trois fois par jour.",
+      "Le moine peut méditer pendant 10 min et récupérer ainsi [1d4°|2@1|3@2|4@3|5@4|6@5 + VOL] PV. Les soins augmentent de +{1d4°} chaque fois que le personnage atteint le rang 4 dans une voie de moine. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité et il ne peut pas l'utiliser plus de trois fois par jour.",
     sourcePage: 120,
   },
   {
@@ -878,10 +878,14 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Lorsqu'il combat à mains nues, le moine peut (s'il le souhaite) remplacer sa FOR par son AGI pour ses tests d'attaque au contact et il inflige [1d6+FOR] DM létaux (Voir « DM temporaires » page 219). Ces DM augmentent à chaque rang suivant : 1d8 au rang 2, 1d10 au rang 3, 1d12 au rang 4 et enfin 2d6 au rang 5.",
-    // Taille de dé montant par rang (d6→d8→d10→d12→2d6) non exprimable en |C@R (compte
-    // de dés seulement) → dés marqués individuellement, progression en prose.
+    // DM dont la TAILLE du dé monte par rang (d6→d8→d10→d12→2d6) : paliers de dé
+    // complet `|CdF@R` → le DM principal se résout au rang de voie courant (le joueur
+    // voit son dé réel) ; la progression reste rappelée en prose.
+    // Choix de table : la substitution optionnelle « remplacer FOR par AGI » (le livre
+    // la prévoit pour le test d'attaque) est étendue au DM et rendue par la MEILLEURE
+    // des deux carac (`FOR/AGI`) — le `text` verbatim reste « 1d6+FOR » inchangé.
     richText:
-      "Lorsqu'il combat à mains nues, le moine peut (s'il le souhaite) remplacer sa FOR par son AGI pour ses tests d'attaque au contact et il inflige {1d6}+FOR DM létaux (Voir « DM temporaires » page 219). Ces DM augmentent à chaque rang suivant : {1d8} au rang 2, {1d10} au rang 3, {1d12} au rang 4 et enfin {2d6} au rang 5.",
+      "Lorsqu'il combat à mains nues, le moine peut (s'il le souhaite) remplacer sa FOR par son AGI pour ses tests d'attaque au contact et il inflige [1d6|1d8@2|1d10@3|1d12@4|2d6@5 + FOR/AGI] DM létaux (Voir « DM temporaires » page 219). Ces DM augmentent à chaque rang suivant : {1d8} au rang 2, {1d10} au rang 3, {1d12} au rang 4 et enfin {2d6} au rang 5.",
     sourcePage: 121,
   },
   {
