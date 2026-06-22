@@ -25,6 +25,7 @@ import Typography from '@mui/material/Typography';
 import { featureById, pathById } from '@/data';
 import type { AbilityId, FeatureChoice, OptionFeatureChoice } from '@/data/schema';
 import { lowestAbilities } from '@/lib/character/ancestry';
+import { effectiveAbilities } from '@/lib/character/effects';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
   allowedAbilitiesForChoice,
@@ -109,7 +110,7 @@ function ChoiceControl({
 
   if (choice.kind === 'ability') {
     const allowed = allowedAbilitiesForChoice(choice);
-    const lowest: AbilityId[] = choice.lowestHint ? lowestAbilities(character.abilities) : [];
+    const lowest: AbilityId[] = choice.lowestHint ? lowestAbilities(effectiveAbilities(character)) : [];
     const deviates = lowest.length > 0 && !!single && !lowest.includes(single as AbilityId);
     const lowestNames = lowest.map((id) => ABILITY_NAMES[id]);
     const lowestLabel =
