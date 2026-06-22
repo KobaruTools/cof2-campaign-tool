@@ -1008,9 +1008,16 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le moine peut rendre son corps intangible le temps de passer au travers d'un mur d'une épaisseur maximal de VOL mètres. Il ne peut rester immatériel qu'un court instant et reprend corps dès qu'il émerge du mur. Si le mur est trop épais, la capacité ne fonctionne pas. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
-    // « +1 à la plus faible carac » → verbatim (non calculable, cf. humain-r5).
     richText:
       "Une fois par combat, le moine peut rendre son corps intangible le temps de passer au travers d'un mur d'une épaisseur maximal de [=VOL] mètres. Il ne peut rester immatériel qu'un court instant et reprend corps dès qu'il émerge du mur. Si le mur est trop épais, la capacité ne fonctionne pas. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
+    effects: [{ kind: 'ability-bonus-from-choice', choiceIndex: 0, value: 1 }],
+    choices: [
+      {
+        kind: 'ability',
+        lowestHint: true,
+        prompt: "Caractéristique à augmenter de +1 (la plus faible, choisir en cas d'égalité)",
+      },
+    ],
     sourcePage: 121,
   },
   // =======================================================================
