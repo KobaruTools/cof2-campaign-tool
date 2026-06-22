@@ -823,6 +823,16 @@ function PathBlock({
             <>
               <DialogTitle sx={{ pr: 6 }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  {ownerClassId && (
+                    <ClassIcon classId={ownerClassId} size={18} sx={{ color: color ?? undefined, flexShrink: 0 }} />
+                  )}
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    sx={{ fontWeight: 700, color: color ?? 'text.primary' }}
+                  >
+                    {path?.name ?? group.pathId}
+                  </Typography>
                   <Chip
                     label={`Rang ${openFeature.rank}`}
                     size="small"
@@ -973,6 +983,12 @@ function PathBlock({
                 spacing={1}
                 sx={{ alignItems: 'center', flexWrap: 'wrap', flexGrow: 1 }}
               >
+                {ownerClassId && (
+                  <ClassIcon classId={ownerClassId} size={18} sx={{ color: color ?? undefined, flexShrink: 0 }} />
+                )}
+                <Typography component="span" variant="body2" sx={{ fontWeight: 700, color: color ?? 'text.primary' }}>
+                  {path?.name ?? group.pathId}
+                </Typography>
                 <Chip
                   label={`Rang ${feature.rank}`}
                   size="small"
