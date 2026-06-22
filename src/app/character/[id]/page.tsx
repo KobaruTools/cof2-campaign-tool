@@ -277,7 +277,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           la métadonnée en streaming de Next réécrase le titre après hydratation
           (clignotement nom → titre de base). Réactif : suit l'édition du nom. */}
       <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
-      <AppBar position="static">
+      <AppBar position="sticky">
         <Toolbar>
           <IconButton edge="start" color="inherit" onClick={() => router.push('/')} sx={{ mr: 1 }}>
             <ArrowBackIcon />
