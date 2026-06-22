@@ -741,9 +741,16 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
                         onChange={(e) => setChoice(i, e.target.value as AbilityId)}
                       >
                         {(isLowestMod ? ABILITY_IDS : mod.abilities).map((c) => (
-                          <MenuItem key={c} value={c}>
+                          <MenuItem
+                            key={c}
+                            value={c}
+                            sx={isLowestMod
+                              ? lowest.includes(c)
+                                ? { fontWeight: 700 }
+                                : { opacity: 0.35 }
+                              : undefined}
+                          >
                             {ABILITY_NAMES[c]}
-                            {isLowestMod && lowest.includes(c) ? ' (faible)' : ''}
                           </MenuItem>
                         ))}
                       </Select>

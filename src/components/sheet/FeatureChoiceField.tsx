@@ -144,8 +144,16 @@ function ChoiceControl({
           <em>— Non choisi —</em>
         </MenuItem>
         {allowed.map((id) => (
-          <MenuItem key={id} value={id}>
-            {ABILITY_NAMES[id]} ({id}){lowest.includes(id) ? ' · faible' : ''}
+          <MenuItem
+            key={id}
+            value={id}
+            sx={lowest.length > 0
+              ? lowest.includes(id)
+                ? { fontWeight: 700 }
+                : { opacity: 0.35 }
+              : undefined}
+          >
+            {ABILITY_NAMES[id]} ({id})
           </MenuItem>
         ))}
       </TextField>
