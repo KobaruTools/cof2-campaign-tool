@@ -744,6 +744,11 @@ export interface AbilityFeatureChoice extends FeatureChoiceBase {
   kind: 'ability';
   /** Caractéristiques admissibles ; absent = les 7. */
   allowed?: AbilityId[];
+  /**
+   * Si true : le choix est censé porter sur la caractéristique la plus faible.
+   * L'UI affiche un hint et un avertissement si la valeur retenue dévie.
+   */
+  lowestHint?: boolean;
 }
 
 /**

@@ -868,6 +868,7 @@ export const mysticFeatures: Feature[] = [
     choices: [
       {
         kind: 'ability',
+        lowestHint: true,
         prompt: "Caractéristique à augmenter de +1 (la plus faible, choisir en cas d'égalité)",
       },
     ],

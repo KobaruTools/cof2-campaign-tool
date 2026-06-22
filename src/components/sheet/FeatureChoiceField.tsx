@@ -23,7 +23,8 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { featureById, pathById } from '@/data';
-import type { FeatureChoice, OptionFeatureChoice } from '@/data/schema';
+import type { AbilityId, FeatureChoice, OptionFeatureChoice } from '@/data/schema';
+import { lowestAbilities } from '@/lib/character/ancestry';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
   allowedAbilitiesForChoice,
@@ -108,7 +109,21 @@ function ChoiceControl({
 
   if (choice.kind === 'ability') {
     const allowed = allowedAbilitiesForChoice(choice);
-    return (
+    const lowest: AbilityId[] = choice.lowestHint ? lowestAbilities(character.abilities) : [];
+    const deviates = lowest.length > 0 && !!single && !lowest.includes(single as AbilityId);
+    const lowestNames = lowest.map((id) => ABILITY_NAMES[id]);
+    const lowestLabel =
+      lowestNames.length > 1
+        ? `${lowestNames.slice(0, -1).join(', ')} et ${lowestNames[lowestNames.length - 1]}`
+        : (lowestNames[0] ?? '');
+    const lowestPhrase =
+      lowest.length === 1
+        ? 'votre caractéristique la plus faible'
+        : lowest.length === 2
+          ? 'vos deux caractéristiques les plus faibles'
+          : 'vos caractéristiques les plus faibles';
+
+    const field = (
       <TextField
         select
         size="small"
@@ -116,7 +131,13 @@ function ChoiceControl({
         label={choice.prompt}
         value={single ?? ''}
         error={blocking && missing}
-        helperText={blocking && missing ? 'Choix obligatoire' : undefined}
+        helperText={
+          blocking && missing
+            ? 'Choix obligatoire'
+            : lowest.length > 0
+              ? `Plus faible${lowest.length > 1 ? 's' : ''} : ${lowestLabel}`
+              : undefined
+        }
         onChange={(e) => onChange(index, e.target.value || null)}
       >
         <MenuItem value="">
@@ -124,10 +145,24 @@ function ChoiceControl({
         </MenuItem>
         {allowed.map((id) => (
           <MenuItem key={id} value={id}>
-            {ABILITY_NAMES[id]} ({id})
+            {ABILITY_NAMES[id]} ({id}){lowest.includes(id) ? ' · faible' : ''}
           </MenuItem>
         ))}
       </TextField>
+    );
+
+    if (!choice.lowestHint) return field;
+    return (
+      <Box>
+        {field}
+        {deviates && single && (
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            {ABILITY_NAMES[single as keyof typeof ABILITY_NAMES] ?? single} ne fait pas partie de{' '}
+            {lowestPhrase}
+            {lowestLabel ? ` (${lowestLabel})` : ''} : vous dérogez à la règle.
+          </Alert>
+        )}
+      </Box>
     );
   }
 
