@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import Alert from '@mui/material/Alert';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -43,6 +44,11 @@ interface StepDef {
   valid: (d: WizardDraft) => boolean;
   /** Résumé des choix faits, affiché en petit sous le libellé de l'étape. */
   summary?: (d: WizardDraft) => string | null;
+  /**
+   * Ce qu'il reste à faire pour pouvoir passer à l'étape suivante (affiché au-dessus
+   * des boutons quand l'étape n'est pas encore valide). `null` = rien à signaler.
+   */
+  hint?: (d: WizardDraft) => string | null;
 }
 
 const STEPS: StepDef[] = [
@@ -54,6 +60,12 @@ const STEPS: StepDef[] = [
       return !!p && d.ancestryPathId !== null;
     },
     summary: (d) => ancestryById.get(d.ancestryId)?.name ?? null,
+    hint: (d) =>
+      !ancestryById.has(d.ancestryId)
+        ? 'Choisis un peuple pour continuer.'
+        : d.ancestryPathId === null
+          ? 'Choisis la voie de peuple pour continuer.'
+          : null,
   },
   {
     label: 'Profil',
@@ -71,6 +83,15 @@ const STEPS: StepDef[] = [
           : `spécialiste${v.godId ? ` — ${priestGods.find((g) => g.id === v.godId)?.name ?? ''}` : ''}`;
       return `${className} (${suffix})`;
     },
+    hint: (d) => {
+      if (!classById.has(d.classId)) return 'Choisis un profil pour continuer.';
+      if (!priestVocationComplete(d)) {
+        return d.priestVocation
+          ? 'Choisis un dieu pour continuer.'
+          : 'Choisis la vocation du prêtre (généraliste ou spécialiste) pour continuer.';
+      }
+      return null;
+    },
   },
   {
     label: 'Caractéristiques',
@@ -78,6 +99,12 @@ const STEPS: StepDef[] = [
     valid: (d) => {
       const p = ancestryById.get(d.ancestryId);
       return !!p && choicesComplete(p, d.ancestryChoices);
+    },
+    hint: (d) => {
+      const p = ancestryById.get(d.ancestryId);
+      return p && !choicesComplete(p, d.ancestryChoices)
+        ? 'Attribue les modificateurs de caractéristiques « au choix » de ton peuple pour continuer.'
+        : null;
     },
   },
   {
@@ -90,12 +117,25 @@ const STEPS: StepDef[] = [
       const a = ancestryById.get(d.ancestryId);
       return !!a && featuresWithUnmadeChoices(materializeDraft(d, a, d.createdAt)).length === 0;
     },
+    hint: (d) => {
+      if (!pathsStepComplete(d)) {
+        const characterClass = classById.get(d.classId);
+        if (characterClass?.familyId === 'mages' && d.chosenPaths.length === 2 && d.mageBonus === null)
+          return 'Désigne la capacité de rang 2 supplémentaire (mage) pour continuer.';
+        return 'Choisis deux voies pour continuer.';
+      }
+      const a = ancestryById.get(d.ancestryId);
+      if (a && featuresWithUnmadeChoices(materializeDraft(d, a, d.createdAt)).length > 0)
+        return 'Résous tous les choix des capacités de rang 1 pour continuer.';
+      return null;
+    },
   },
   { label: 'Équipement', Component: EquipmentStep, valid: () => true },
   {
     label: 'Identité',
     Component: IdentityStep,
     valid: (d) => d.name.trim().length > 0,
+    hint: (d) => (d.name.trim().length === 0 ? 'Donne un nom à ton personnage pour continuer.' : null),
   },
   { label: 'Récapitulatif', Component: SummaryStep, valid: () => true },
 ];
@@ -188,6 +228,13 @@ export default function CreatePage() {
         <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
           <StepComponent draft={draft} patch={patch} />
         </Paper>
+
+        {/* Feedback : ce qu'il reste à faire avant de pouvoir passer à la suite. */}
+        {!isLast && !canNext && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {current.hint?.(draft) ?? 'Complète les choix obligatoires de cette étape pour continuer.'}
+          </Alert>
+        )}
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Button disabled={step === 0} onClick={() => setStep(step - 1)}>

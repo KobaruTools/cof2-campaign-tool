@@ -714,10 +714,6 @@ function PriestVocationPanel({ draft, patch }: StepProps) {
             />
           )}
 
-          {mode === 'specialist' && !god && (
-            <Alert severity="info">Choisis un dieu pour continuer.</Alert>
-          )}
-
           {god && (
             <Box
               sx={{
