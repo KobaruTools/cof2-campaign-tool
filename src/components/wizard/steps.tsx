@@ -48,6 +48,7 @@ import {
   classes,
   classById,
   pathById,
+  priestGods,
 } from '@/data';
 import type { AbilityId, AbilityModifier, AncestryNames, Armor, CharacterClass } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
@@ -64,6 +65,7 @@ import {
   involvedClassIds,
   level1FeatureIds,
   materializeDraft,
+  PRIEST_CLASS_ID,
   type WizardDraft,
 } from '@/lib/character/wizard';
 import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
@@ -525,6 +527,8 @@ export function ClassStep({ draft, patch }: StepProps) {
       chosenPaths: [],
       magePathSlot: false,
       mageBonus: null,
+      // La vocation ne concerne que le prêtre : on la réinitialise à chaque changement.
+      priestVocation: null,
       equipment: initialEquipment(p),
     });
   };
@@ -639,7 +643,132 @@ export function ClassStep({ draft, patch }: StepProps) {
           </CardContent>
         </Card>
       )}
+
+      {draft.classId === PRIEST_CLASS_ID && <PriestVocationPanel draft={draft} patch={patch} />}
     </Stack>
+  );
+}
+
+/**
+ * Choix de vocation du prêtre (p. 122), affiché dans l'étape Profil quand le prêtre
+ * est sélectionné. Généraliste (aucun effet) ou spécialiste d'un dieu du panthéon
+ * (p. 126-127) — auquel cas un dieu doit être désigné (wizard bloquant). Montre, pour
+ * le dieu retenu, son arme sacrée et sa capacité divine.
+ */
+function PriestVocationPanel({ draft, patch }: StepProps) {
+  const vocation = draft.priestVocation ?? null;
+  const mode = vocation?.mode ?? '';
+  const godId = vocation?.mode === 'specialist' ? vocation.godId : '';
+  const god = godId ? (priestGods.find((g) => g.id === godId) ?? null) : null;
+
+  const setMode = (m: string) => {
+    if (m === 'generalist') patch({ priestVocation: { mode: 'generalist' } });
+    else if (m === 'specialist') patch({ priestVocation: { mode: 'specialist', godId } });
+  };
+
+  const divineFeature = god ? featureById.get(god.divineFeatureId) : undefined;
+  const divinePath = divineFeature ? pathById.get(divineFeature.pathId) : undefined;
+  // Profil d'origine de la capacité divine (toujours une voie de profil) — pour
+  // afficher son icône et sa couleur (la capacité vient d'un AUTRE profil).
+  const divineClass =
+    divinePath?.type === 'class' ? classById.get(divinePath.classIds[0]) : undefined;
+  const sacredWeapons = god
+    ? god.sacredWeaponIds.map((id) => equipmentById.get(id)?.name).filter(Boolean).join(' ou ')
+    : '';
+
+  return (
+    <Card variant="outlined" sx={{ borderLeft: 5, borderLeftColor: classColor(PRIEST_CLASS_ID) }}>
+      <CardContent>
+        <Stack spacing={2}>
+          <FormControl>
+            <FormLabel>Vocation du prêtre</FormLabel>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              Choix obligatoire (p. 122). Le généraliste suit les règles de base ; le spécialiste se
+              voue à un seul dieu, maîtrise son arme sacrée et reçoit une capacité divine d’un autre
+              profil.
+            </Typography>
+            <RadioGroup value={mode} onChange={(e) => setMode(e.target.value)}>
+              <FormControlLabel
+                value="generalist"
+                control={<Radio />}
+                label="Généraliste — prie un panthéon (aucun effet mécanique, inspiration)"
+              />
+              <FormControlLabel
+                value="specialist"
+                control={<Radio />}
+                label="Spécialiste — héraut d'un seul dieu"
+              />
+            </RadioGroup>
+          </FormControl>
+
+          {mode === 'specialist' && (
+            <Autocomplete
+              options={priestGods}
+              value={god}
+              onChange={(_, val) => patch({ priestVocation: { mode: 'specialist', godId: val?.id ?? '' } })}
+              getOptionLabel={(g) => `${g.name} — ${g.domain}`}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              renderInput={(params) => (
+                <TextField {...params} label="Dieu" placeholder="Choisir un dieu…" />
+              )}
+            />
+          )}
+
+          {mode === 'specialist' && !god && (
+            <Alert severity="info">Choisis un dieu pour continuer.</Alert>
+          )}
+
+          {god && (
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 1,
+                bgcolor: (theme) => alpha(theme.palette.text.primary, theme.palette.action.hoverOpacity),
+              }}
+            >
+              <Typography variant="subtitle2">{god.name}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                {god.domain} — symbole : {god.symbol}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Arme sacrée :</strong> {sacredWeapons || god.sacredWeaponIds.join(', ')}
+              </Typography>
+              <Typography
+                variant="body2"
+                component="div"
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}
+              >
+                <strong>Capacité divine :</strong>
+                {divineFeature ? (
+                  <>
+                    <span>
+                      {divineFeature.name} — {divinePath?.name ?? divineFeature.pathId}, rang{' '}
+                      {divineFeature.rank}
+                    </span>
+                    {divineClass && (
+                      <Box
+                        component="span"
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          fontWeight: 700,
+                          color: classColor(divineClass.id),
+                        }}
+                      >
+                        <ClassIcon classId={divineClass.id} size={18} />({divineClass.name})
+                      </Box>
+                    )}
+                  </>
+                ) : (
+                  god.divineFeatureId
+                )}
+              </Typography>
+            </Box>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
   );
 }
 

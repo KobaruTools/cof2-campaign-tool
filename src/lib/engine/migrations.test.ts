@@ -43,6 +43,7 @@ function validRaw(): Record<string, unknown> {
     ancestryId: 'humain',
     classId: 'barbare',
     level: 1,
+    priestVocation: null,
     portraitVariant: 'default',
     abilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
     baseAbilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
@@ -284,7 +285,23 @@ describe('migrateCharacter', () => {
     expect(() => migrateCharacter(raw)).toThrow(ValidationError);
   });
 
-  it('expose les migrations 1→2 … 7→8 dans le registre', () => {
+  it('migre un personnage v8 vers v9 (priestVocation initialisé à null)', () => {
+    const v8 = validRaw();
+    v8.schemaVersion = 8;
+    delete v8.priestVocation;
+    const c = migrateCharacter(v8);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.priestVocation).toBeNull();
+  });
+
+  it('préserve la vocation du prêtre déjà présente lors d’un chargement v9', () => {
+    const v9 = validRaw();
+    v9.priestVocation = { mode: 'specialist', godId: 'morn' };
+    const c = migrateCharacter(v9);
+    expect(c.priestVocation).toEqual({ mode: 'specialist', godId: 'morn' });
+  });
+
+  it('expose les migrations 1→2 … 8→9 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -292,5 +309,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[5]).toBe('function');
     expect(typeof MIGRATIONS[6]).toBe('function');
     expect(typeof MIGRATIONS[7]).toBe('function');
+    expect(typeof MIGRATIONS[8]).toBe('function');
   });
 });

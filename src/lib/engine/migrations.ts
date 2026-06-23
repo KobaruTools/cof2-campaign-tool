@@ -202,6 +202,18 @@ function migrateV7toV8(data: Record<string, unknown>): Record<string, unknown> {
 }
 
 /**
+ * v8 → v9 : ajout de `priestVocation` (choix généraliste/spécialiste du prêtre —
+ * p. 122). Les personnages d'avant v9 n'ont pas ce choix : on initialise à `null`
+ * (non applicable). Un prêtre existant pourra le renseigner depuis la fiche.
+ */
+function migrateV8toV9(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (next.priestVocation === undefined) next.priestVocation = null;
+  next.schemaVersion = 9;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -213,6 +225,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   5: migrateV5toV6,
   6: migrateV6toV7,
   7: migrateV7toV8,
+  8: migrateV8toV9,
 };
 
 export class MigrationError extends Error {}

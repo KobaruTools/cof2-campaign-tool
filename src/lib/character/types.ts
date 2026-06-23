@@ -30,8 +30,21 @@ import type { AncestryChoice } from './ancestry';
  *   interrupteur — ex. l'animal pris par « Forme animale » — PER-70).
  * v8 : ajout de `usageCounters` (décompte des capacités à usages limités — ex.
  *   « Les sept vies du chat », 6 usages — PER-70).
+ * v9 : ajout de `priestVocation` (choix généraliste/spécialiste du prêtre et, le
+ *   cas échéant, le dieu spécialisé — p. 122, table p. 126-127).
  */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
+
+/**
+ * Vocation d'un prêtre (p. 122). `generalist` : suit les règles de base, aucun
+ * effet mécanique (la liste des dieux n'est qu'une inspiration). `specialist` :
+ * héraut d'un seul dieu (`godId` ∈ `src/data/priest-gods.ts`) — maîtrise son arme
+ * sacrée et reçoit une capacité divine (câblage des effets à venir). Pertinent
+ * uniquement pour un personnage prêtre ; `null` sur la fiche = non applicable.
+ */
+export type PriestVocation =
+  | { mode: 'generalist' }
+  | { mode: 'specialist'; godId: string };
 
 /**
  * Statistiques dérivées surchargeables manuellement (règle maison, cf. PRD
@@ -112,6 +125,13 @@ export interface Character {
   ancestryId: string;
   classId: string;
   level: number;
+
+  /**
+   * Vocation du prêtre (p. 122) : généraliste ou spécialiste d'un dieu. `null`
+   * pour les non-prêtres (et tant que le choix n'est pas fait). Voir
+   * `PriestVocation`.
+   */
+  priestVocation: PriestVocation | null;
 
   /** Variante d'illustration de profil retenue (esthétique). */
   portraitVariant: PortraitVariant;

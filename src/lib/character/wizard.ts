@@ -9,13 +9,14 @@
 import type { AbilityId, Ancestry } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { classById, pathById } from '@/data';
-import { applyModifiers, initialChoices, type AncestryChoice } from './ancestry';
+import { applyModifiers, type AncestryChoice } from './ancestry';
 import {
   SCHEMA_VERSION,
   type Character,
   type EquipmentLine,
   type FeatureChoiceSelection,
   type Identity,
+  type PriestVocation,
 } from './types';
 
 /** Bonus de capacité supplémentaire des mages au niveau 1 (p. 29). */
@@ -34,6 +35,12 @@ export interface WizardDraft {
 
   // Étape profil
   classId: string;
+  /**
+   * Vocation du prêtre (p. 122) : généraliste ou spécialiste d'un dieu. Pertinent
+   * seulement si `classId === 'pretre'`. Optionnel pour rester compatible avec un
+   * brouillon persisté avant l'ajout du champ (absent = pas encore choisi).
+   */
+  priestVocation?: PriestVocation | null;
 
   // Étape caractéristiques
   baseAbilities: Record<AbilityId, number>;
@@ -74,6 +81,22 @@ export interface WizardDraft {
 /** Identifiant de la voie du mage (remplace la voie de peuple pour les mages). */
 export const MAGE_PATH_ID = 'mage';
 
+/** Id du profil prêtre — seul concerné par la vocation généraliste/spécialiste. */
+export const PRIEST_CLASS_ID = 'pretre';
+
+/**
+ * La vocation du prêtre est-elle résolue ? Pour un prêtre (profil principal), une
+ * vocation doit être choisie : généraliste, ou spécialiste AVEC un dieu désigné.
+ * Pour tout autre profil, toujours vrai (champ non pertinent). Wizard bloquant
+ * (p. 122). Le cas d'un prêtre en voie SECONDAIRE d'un hybride est hors périmètre.
+ */
+export function priestVocationComplete(draft: WizardDraft): boolean {
+  if (draft.classId !== PRIEST_CLASS_ID) return true;
+  const v = draft.priestVocation;
+  if (!v) return false;
+  return v.mode === 'generalist' || (v.mode === 'specialist' && !!v.godId);
+}
+
 function abilitiesZero(): Record<AbilityId, number> {
   return ABILITY_IDS.reduce(
     (acc, id) => {
@@ -92,6 +115,7 @@ export function createDraft(characterId: string, now: string): WizardDraft {
     ancestryId: '',
     ancestryPathId: null,
     classId: '',
+    priestVocation: null,
     baseAbilities: abilitiesZero(),
     ancestryChoices: [],
     chosenPaths: [],
@@ -186,6 +210,8 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     ancestryId: draft.ancestryId,
     classId: draft.classId,
     level: 1,
+    // Vocation pertinente seulement pour un prêtre ; null sinon (cf. priestVocationComplete).
+    priestVocation: draft.classId === PRIEST_CLASS_ID ? (draft.priestVocation ?? null) : null,
     portraitVariant: 'default',
     abilities: finalAbilities(draft, ancestry),
     baseAbilities: draft.baseAbilities,

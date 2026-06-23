@@ -15,10 +15,15 @@ import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import { ancestryById, classById } from '@/data';
+import { ancestryById, classById, priestGods } from '@/data';
 import { choicesComplete } from '@/lib/character/ancestry';
 import { featuresWithUnmadeChoices } from '@/lib/character/choices';
-import { materializeDraft, pathsStepComplete, type WizardDraft } from '@/lib/character/wizard';
+import {
+  materializeDraft,
+  pathsStepComplete,
+  priestVocationComplete,
+  type WizardDraft,
+} from '@/lib/character/wizard';
 import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
 import {
@@ -53,8 +58,19 @@ const STEPS: StepDef[] = [
   {
     label: 'Profil',
     Component: ClassStep,
-    valid: (d) => classById.has(d.classId),
-    summary: (d) => classById.get(d.classId)?.name ?? null,
+    // Prêtre : la vocation généraliste/spécialiste (+ dieu) doit être résolue (p. 122).
+    valid: (d) => classById.has(d.classId) && priestVocationComplete(d),
+    summary: (d) => {
+      const className = classById.get(d.classId)?.name;
+      if (!className) return null;
+      const v = d.priestVocation;
+      if (!v) return className;
+      const suffix =
+        v.mode === 'generalist'
+          ? 'généraliste'
+          : `spécialiste${v.godId ? ` — ${priestGods.find((g) => g.id === v.godId)?.name ?? ''}` : ''}`;
+      return `${className} (${suffix})`;
+    },
   },
   {
     label: 'Caractéristiques',

@@ -36,6 +36,7 @@ export function createBlankCharacter(
     ancestryId: '',
     classId: '',
     level: 1,
+    priestVocation: null,
     portraitVariant: 'default',
     abilities: abilitiesZero(),
     baseAbilities: abilitiesZero(),

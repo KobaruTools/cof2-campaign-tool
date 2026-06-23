@@ -15,6 +15,7 @@ import {
   effectiveAncestryPath,
   involvedClassIds,
   pathsStepComplete,
+  priestVocationComplete,
   type WizardDraft,
 } from './wizard';
 
@@ -136,6 +137,51 @@ describe('capacités de niveau 1', () => {
   it("voie du mage occupe l'emplacement de peuple", () => {
     expect(effectiveAncestryPath(base({ magePathSlot: true }))).toBe('mage');
     expect(effectiveAncestryPath(base())).toBe('humain');
+  });
+});
+
+describe('vocation du prêtre (p. 122)', () => {
+  const draft = (over: Partial<WizardDraft> = {}): WizardDraft => ({
+    ...createDraft('id-p', '2026-01-01T00:00:00.000Z'),
+    ...over,
+  });
+
+  it('non-prêtre : toujours complet (champ non pertinent)', () => {
+    expect(priestVocationComplete(draft({ classId: 'barbare' }))).toBe(true);
+    expect(priestVocationComplete(draft({ classId: 'barbare', priestVocation: null }))).toBe(true);
+  });
+
+  it('prêtre sans vocation : incomplet (wizard bloquant)', () => {
+    expect(priestVocationComplete(draft({ classId: 'pretre' }))).toBe(false);
+  });
+
+  it('prêtre généraliste : complet', () => {
+    expect(priestVocationComplete(draft({ classId: 'pretre', priestVocation: { mode: 'generalist' } }))).toBe(true);
+  });
+
+  it('prêtre spécialiste : complet seulement avec un dieu désigné', () => {
+    expect(
+      priestVocationComplete(draft({ classId: 'pretre', priestVocation: { mode: 'specialist', godId: '' } })),
+    ).toBe(false);
+    expect(
+      priestVocationComplete(draft({ classId: 'pretre', priestVocation: { mode: 'specialist', godId: 'morn' } })),
+    ).toBe(true);
+  });
+
+  it('materializeDraft : vocation conservée pour un prêtre, forcée à null sinon', () => {
+    const ancestry = { id: 'humain', abilityModifiers: [] } as unknown as Ancestry;
+    const priest = materializeDraft(
+      draft({ classId: 'pretre', priestVocation: { mode: 'specialist', godId: 'morn' } }),
+      ancestry,
+      '2026-01-01T00:00:00.000Z',
+    );
+    expect(priest.priestVocation).toEqual({ mode: 'specialist', godId: 'morn' });
+    const barbarian = materializeDraft(
+      draft({ classId: 'barbare', priestVocation: { mode: 'generalist' } }),
+      ancestry,
+      '2026-01-01T00:00:00.000Z',
+    );
+    expect(barbarian.priestVocation).toBeNull();
   });
 });
 
