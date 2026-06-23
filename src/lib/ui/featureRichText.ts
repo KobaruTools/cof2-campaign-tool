@@ -29,6 +29,12 @@
  *   garde un déterminant qui réclame le nom (« au rang », « son INT », « par point de
  *   CHA », « d'INT ») là où `[=…]` afficherait un nombre nu (« au 5 », « son 4 »).
  *   Restreint à UN terme `rang`/`niveau`/caractéristique SEUL (ni multiplicateur ni opérateur).
+ * - `paliers` (terme de formule) : un BONUS PLAT cross-voie, fourni de l'EXTÉRIEUR par
+ *   le composant hôte (un compte de voies au seuil, ex. Marteau de la foi « +1 DM par
+ *   AUTRE voie de prêtre au rang 4 »). La couche données ne porte que le placeholder
+ *   `[… + paliers]` ; la valeur (le compte) est calculée et injectée à `resolveExpr`
+ *   (`milestoneBonus`), comme le « rang » détourné des dés cross-voie. Multipliable
+ *   (`2 × paliers`). Défaut 0 → le terme est OMIS (pas de « + 0 » parasite).
  * - `@FOR`, `@AGI`, … : une simple RÉFÉRENCE à une caractéristique (sigle `@`),
  *   mise en avant visuellement sans calcul de valeur (ex. « une @FOR égale au
  *   [CHA] », ou la stat d'une CIBLE qu'on ne peut pas calculer). Pour les sept
@@ -84,7 +90,8 @@ export type ExprTerm =
   | { kind: 'die'; sign: 1 | -1; token: DieToken }
   | { kind: 'number'; sign: 1 | -1; value: number }
   | { kind: 'rank'; sign: 1 | -1; coeff?: number }
-  | { kind: 'level'; sign: 1 | -1; coeff?: number };
+  | { kind: 'level'; sign: 1 | -1; coeff?: number }
+  | { kind: 'milestoneBonus'; sign: 1 | -1; coeff?: number };
 
 /** Un fragment de `richText` prêt à rendre. */
 export type RichTextSegment =
@@ -178,7 +185,8 @@ type ExprAtom =
   | { kind: 'die'; token: DieToken }
   | { kind: 'number'; value: number }
   | { kind: 'rank' }
-  | { kind: 'level' };
+  | { kind: 'level' }
+  | { kind: 'milestoneBonus' };
 
 /** Parse un opérande unique en atome. `null` si non reconnu. */
 function parseAtom(raw: string): ExprAtom | null {
@@ -198,6 +206,7 @@ function parseAtom(raw: string): ExprAtom | null {
   }
   if (/^rang$/i.test(raw)) return { kind: 'rank' };
   if (/^niveau$/i.test(raw)) return { kind: 'level' };
+  if (/^paliers$/i.test(raw)) return { kind: 'milestoneBonus' };
   if (/^\d+$/.test(raw)) return { kind: 'number', value: Number(raw) };
   return null;
 }
@@ -216,7 +225,12 @@ function reduceFactors(sign: 1 | -1, factors: ExprAtom[]): ExprTerm | null {
   }
   const numbers = factors.filter((f) => f.kind === 'number') as { value: number }[];
   const vars = factors.filter(
-    (f) => f.kind === 'ability' || f.kind === 'abilityBest' || f.kind === 'rank' || f.kind === 'level',
+    (f) =>
+      f.kind === 'ability' ||
+      f.kind === 'abilityBest' ||
+      f.kind === 'rank' ||
+      f.kind === 'level' ||
+      f.kind === 'milestoneBonus',
   );
   if (vars.length > 1) return null; // pas de produit de deux variables
   const coeffProduct = numbers.reduce((acc, n) => acc * n.value, 1);
@@ -237,6 +251,9 @@ function reduceFactors(sign: 1 | -1, factors: ExprAtom[]): ExprTerm | null {
   }
   if (v.kind === 'rank') {
     return coeff !== undefined ? { kind: 'rank', sign, coeff } : { kind: 'rank', sign };
+  }
+  if (v.kind === 'milestoneBonus') {
+    return coeff !== undefined ? { kind: 'milestoneBonus', sign, coeff } : { kind: 'milestoneBonus', sign };
   }
   return coeff !== undefined ? { kind: 'level', sign, coeff } : { kind: 'level', sign };
 }
@@ -405,8 +422,9 @@ export function resolveExpr(
   level: number,
   progression: ProgressionRules,
   rank = 0,
+  milestoneBonus = 0,
 ): ResolvedExpr {
-  const parts: ResolvedPart[] = terms.map((term) => {
+  const allParts: ResolvedPart[] = terms.map((term) => {
     switch (term.kind) {
       case 'ability':
         return {
@@ -457,6 +475,18 @@ export function resolveExpr(
           symbol: String(term.value),
           value: term.value,
         };
+      case 'milestoneBonus':
+        // Bonus plat cross-voie injecté par le composant hôte (compte de voies au
+        // seuil, ex. Marteau de la foi). `milestoneBonus` = compte de base ; le
+        // coeff applique le « par palier » (Marteau : +1 → coeff absent = ×1).
+        return {
+          kind: 'milestoneBonus',
+          sign: term.sign,
+          label: 'Bonus de paliers de voie',
+          symbol: withCoeff('paliers', term.coeff),
+          value: milestoneBonus * (term.coeff ?? 1),
+          coeff: term.coeff,
+        };
       case 'die': {
         // Nombre ET faces résolus au rang de voie atteint (paliers `countSteps`/`dieSteps`).
         const { count, die } = dieAtRank(term.token, rank);
@@ -473,9 +503,17 @@ export function resolveExpr(
       }
     }
   });
+  // Un bonus de paliers nul (« +0 ») n'apporte rien : on l'omet pour ne pas afficher
+  // de terme parasite « + 0 » dans l'encadré (cas fréquent : aucune AUTRE voie au seuil).
+  const parts = allParts.filter((p) => !(p.kind === 'milestoneBonus' && (p.value ?? 0) === 0));
   const hasDie = parts.some((p) => p.die);
   const hasAbility = terms.some(
-    (t) => t.kind === 'ability' || t.kind === 'abilityBest' || t.kind === 'rank' || t.kind === 'level',
+    (t) =>
+      t.kind === 'ability' ||
+      t.kind === 'abilityBest' ||
+      t.kind === 'rank' ||
+      t.kind === 'level' ||
+      t.kind === 'milestoneBonus',
   );
   const total = hasDie
     ? null

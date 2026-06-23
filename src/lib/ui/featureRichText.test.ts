@@ -239,6 +239,33 @@ describe('resolveExpr — évaluation', () => {
     expect(r.parts[0].die).toEqual({ count: 2, displayDie: 'd6', evolving: false });
   });
 
+  it('terme `paliers` : bonus plat injecté (Marteau de la foi)', () => {
+    const segs = parseRichText('[2d4° + CHA + paliers]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    // milestoneBonus = 2 (2 autres voies de prêtre au rang 4) → 3 termes, +2 en dernier.
+    const r = resolveExpr(expr.terms, abilities, 1, progression, 0, 2);
+    expect(r.hasDie).toBe(true);
+    expect(r.parts).toHaveLength(3);
+    expect(r.parts[2].kind).toBe('milestoneBonus');
+    expect(r.parts[2].value).toBe(2);
+  });
+
+  it('terme `paliers` : OMIS quand le bonus est 0 (pas de « + 0 » parasite)', () => {
+    const segs = parseRichText('[2d4° + CHA + paliers]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    const r = resolveExpr(expr.terms, abilities, 1, progression, 0, 0);
+    expect(r.parts).toHaveLength(2); // dé + CHA, le terme paliers disparaît
+    expect(r.parts.some((p) => p.kind === 'milestoneBonus')).toBe(false);
+  });
+
+  it('terme `paliers` : multipliable (« +2 par palier »)', () => {
+    const segs = parseRichText('[2 × paliers]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    const r = resolveExpr(expr.terms, abilities, 1, progression, 0, 3); // 3 paliers × 2
+    expect(r.hasDie).toBe(false);
+    expect(r.total).toBe(6);
+  });
+
   it('résout le terme rang via le rang passé en argument', () => {
     const segs = parseRichText('[10 + rang]');
     const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;

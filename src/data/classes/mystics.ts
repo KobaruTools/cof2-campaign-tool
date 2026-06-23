@@ -1153,10 +1153,14 @@ export const mysticFeatures: Feature[] = [
     isSpell: true,
     actionTypes: ['A'],
     text:
-      "Le prêtre effectue un test d'attaque magique contre la DEF de sa cible (portée de 30 m). Un projectile d'énergie de la forme de l'arme du prêtre va percuter la cible, lui infligeant [2d4°+CHA] DM en cas de réussite. Si l'arme du prêtre est magique, il peut ajouter son bonus au test d'attaque et aux DM. Les DM du marteau de la foi augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une autre voie de prêtre.",
-    // DM +1 par voie de prêtre au rang 4 = scaling CROSS-VOIE sur les DM (pas une stat dérivée) → prose.
+      "Le prêtre effectue un test d'attaque magique contre la DEF de sa cible (portée de 30 m). Un projectile d'énergie de la forme de l'arme du prêtre va percuter la cible, lui infligeant [2d4°+CHA] DM en cas de réussite. Si l'arme du prêtre est magique, il peut ajouter son bonus au test d'attaque et aux DM.\nNote : Les DM du marteau de la foi augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une autre voie de prêtre.",
+    // DM +1 par AUTRE voie de prêtre au rang 4 = scaling CROSS-VOIE PLAT sur les DM
+    // (pas une stat dérivée). Encodé via le terme de formule `paliers` : le compte de
+    // voies (voie hôte exclue) est injecté par FeaturesByPath (`milestoneBonusFor`),
+    // omis de l'encadré quand il est nul. Le bonus « arme magique » reste verbatim
+    // (dépend d'une arme magique équipée → milestone Armures/équipement).
     richText:
-      "Le prêtre effectue un test d'attaque magique contre la DEF de sa cible (portée de 30 m). Un projectile d'énergie de la forme de l'arme du prêtre va percuter la cible, lui infligeant [2d4° + CHA] DM en cas de réussite. Si l'arme du prêtre est magique, il peut ajouter son bonus au test d'attaque et aux DM. Les DM du marteau de la foi augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une autre voie de prêtre.",
+      "Le prêtre effectue un test d'attaque magique contre la DEF de sa cible (portée de 30 m). Un projectile d'énergie de la forme de l'arme du prêtre va percuter la cible, lui infligeant [2d4° + CHA + paliers] DM en cas de réussite. Si l'arme du prêtre est magique, il peut ajouter son bonus au test d'attaque et aux DM.\nNote : Les DM du marteau de la foi augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une autre voie de prêtre.",
     sourcePage: 123,
   },
   {

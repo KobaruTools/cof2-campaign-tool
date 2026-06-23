@@ -497,15 +497,22 @@ function CompactUsageIndicator({ feature, character }: { feature: Feature; chara
 
 /**
  * Nombre de voies d'un profil (type 'class', `classIds` inclut `classId`) où le
- * personnage a atteint au moins `rank`. Pilote les scalings cross-voie sur le nombre
- * de dés : Transe de guérison (meditation-r2, moine au rang 4) et Récupération
- * majeure (soins-r3, prêtre au rang 5) — +1d4° par voie au seuil.
+ * personnage a atteint au moins `rank`. Pilote les scalings cross-voie : Transe de
+ * guérison (meditation-r2, moine au rang 4) et Récupération majeure (soins-r3, prêtre
+ * au rang 5) sur le nombre de dés ; Marteau de la foi (guerre-sainte-r4, prêtre au
+ * rang 4) sur un bonus plat de DM. `excludePathId` retire une voie du compte, pour
+ * les règles « dans une AUTRE voie » (Marteau exclut sa propre voie).
  */
-function countClassPathsAtRank(character: Character, classId: string, rank: number): number {
+function countClassPathsAtRank(
+  character: Character,
+  classId: string,
+  rank: number,
+  excludePathId?: string,
+): number {
   const pathMaxRank = new Map<string, number>();
   for (const id of character.featureIds) {
     const f = featureById.get(id);
-    if (!f) continue;
+    if (!f || f.pathId === excludePathId) continue;
     const p = pathById.get(f.pathId);
     if (!p || p.type !== 'class' || !p.classIds.includes(classId)) continue;
     pathMaxRank.set(f.pathId, Math.max(pathMaxRank.get(f.pathId) ?? 0, f.rank));
@@ -587,6 +594,13 @@ function PathBlock({
     return undefined;
   };
   const effectiveRank = (feature: Feature) => crossPathDieCount(feature) ?? pathRank;
+  // Bonus PLAT cross-voie injecté au terme `paliers` d'une formule : Marteau de la
+  // foi (guerre-sainte-r4) gagne +1 DM par AUTRE voie de prêtre au rang 4 (sa propre
+  // voie exclue). Le terme est omis de l'encadré quand le compte est 0.
+  const milestoneBonusFor = (feature: Feature): number | undefined =>
+    character && feature.id === 'guerre-sainte-r4'
+      ? countClassPathsAtRank(character, 'pretre', 4, feature.pathId)
+      : undefined;
   // Profil dont la voie est issue : le profil principal si la voie lui appartient
   // (cas courant), sinon le profil d'origine de la voie (hybridation). Sert à la
   // teinte ET à l'icône, pour distinguer les voies hybrides du profil principal.
@@ -893,7 +907,7 @@ function PathBlock({
                     <Divider sx={{ my: 1.5 }} />
                   </>
                 )}
-                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} />
+                <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} />
                 {openFeature.id === 'animaux-r5' && character && (
                   <AnimalFormsNote character={character} />
                 )}
@@ -1065,7 +1079,7 @@ function PathBlock({
                   <Divider sx={{ my: 1.5 }} />
                 </>
               )}
-              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} />
+              <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} />
               {feature.id === 'animaux-r5' && character && <AnimalFormsNote character={character} />}
               {feature.creatureProfile && abilities && level != null && (
                 <Box sx={{ mt: 1.5 }}>

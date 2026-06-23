@@ -441,11 +441,14 @@ export function RichInline({
   abilities,
   level,
   rank,
+  milestoneBonus = 0,
 }: {
   text: string;
   abilities: Abilities;
   level: number;
   rank: number;
+  /** Bonus plat cross-voie injecté au terme `paliers` des formules (défaut 0). */
+  milestoneBonus?: number;
 }) {
   return (
     <>
@@ -461,7 +464,7 @@ export function RichInline({
             <DiePart key={i} count={count} die={displayDie} evolving={seg.token.evolving} level={level} />
           );
         }
-        const resolved = resolveExpr(seg.terms, abilities, level, progression, rank);
+        const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus);
         if (seg.kind === 'term') {
           // `[#rang]`/`[#niveau]`/`[#CARAC]` : substantif « mot (valeur) ».
           const part = resolved.parts[0];
@@ -520,6 +523,12 @@ export interface FeatureTextProps {
    * capacité). Absent → repli sur `feature.rank` (contextes sans personnage).
    */
   pathRank?: number;
+  /**
+   * Bonus plat cross-voie injecté au terme `paliers` des formules (ex. Marteau de la
+   * foi : +1 DM par AUTRE voie de prêtre au rang 4). Calculé par le composant hôte
+   * (`FeaturesByPath`) ; absent → 0 (le terme `paliers` est alors omis de l'encadré).
+   */
+  milestoneBonus?: number;
 }
 
 /**
@@ -529,14 +538,20 @@ export interface FeatureTextProps {
  * Sinon, on retombe proprement sur le `text` verbatim — c'est le comportement
  * par défaut tant qu'une capacité n'a pas été réécrite (PER-64).
  */
-export function FeatureText({ feature, abilities, level, pathRank }: FeatureTextProps) {
+export function FeatureText({ feature, abilities, level, pathRank, milestoneBonus }: FeatureTextProps) {
   const enriched = feature.richText && abilities && level != null;
   // Les « Note : » sont rendues plus petites/grises (`NoteSpan`), dans les deux
   // modes ; le balisage interne (puces, dés, formules) reste actif.
   const rank = pathRank ?? feature.rank;
   const renderChunk = (value: string) =>
     enriched ? (
-      <RichInline text={value} abilities={abilities!} level={level!} rank={rank} />
+      <RichInline
+        text={value}
+        abilities={abilities!}
+        level={level!}
+        rank={rank}
+        milestoneBonus={milestoneBonus}
+      />
     ) : (
       <RichTextRun value={value} />
     );
