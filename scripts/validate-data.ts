@@ -27,6 +27,7 @@ import {
   equipment,
   equipmentById,
   featureById,
+  priestGods,
   pathById,
   testDomains,
   testDomainById,
@@ -322,6 +323,30 @@ for (const c of features) {
     err(`[capacite ${c.id}] manaCost invalide : ${c.manaCost} (entier >= 0 attendu)`);
 }
 
+// --- Panthéon d'Osgild — dieux du prêtre (p. 126-127) ------------------------
+// Intégrité référentielle : arme(s) sacrée(s) = armes existantes, capacité
+// divine = feature existante d'une AUTRE voie que celles du prêtre.
+const godIds = new Set<string>();
+const PRIEST_CLASS_ID = 'pretre';
+for (const g of priestGods) {
+  if (godIds.has(g.id)) err(`[dieu ${g.id}] id en double`);
+  godIds.add(g.id);
+  if (g.sacredWeaponIds.length === 0) err(`[dieu ${g.id}] aucune arme sacrée`);
+  for (const wid of g.sacredWeaponIds) {
+    const item = equipmentById.get(wid);
+    if (!item) err(`[dieu ${g.id}] arme sacrée inconnue : ${wid}`);
+    else if (item.category !== 'weapon') err(`[dieu ${g.id}] arme sacrée n'est pas une arme : ${wid}`);
+  }
+  const feature = featureById.get(g.divineFeatureId);
+  if (!feature) err(`[dieu ${g.id}] capacité divine inconnue : ${g.divineFeatureId}`);
+  else {
+    // La capacité divine vient d'un AUTRE profil : sa voie ne doit pas être une voie de prêtre.
+    const path = pathById.get(feature.pathId);
+    if (path?.type === 'class' && path.classIds.includes(PRIEST_CLASS_ID))
+      err(`[dieu ${g.id}] capacité divine ${g.divineFeatureId} appartient à une voie de prêtre (doit venir d'un autre profil)`);
+  }
+}
+
 // --- Rapport -----------------------------------------------------------------
 const spells = features.filter((c) => c.isSpell).length;
 console.log('=== Comptages ===');
@@ -337,6 +362,7 @@ console.log(`  · avec effects   : ${featuresWithEffects}`);
 console.log(`  · avec RD        : ${featuresWithDamageReduction} (réduction de dégâts, non lue par le moteur)`);
 console.log(`  · coût mana dérogé : ${spellsWithManaCost} (sinon = rang, p. 228)`);
 console.log(`équipement (total) : ${equipment.length}`);
+console.log(`dieux du prêtre    : ${priestGods.length}`);
 console.log('');
 console.log(`=== Avertissements (${warnings.length}) ===`);
 warnings.forEach((w) => console.log('  ⚠ ' + w));

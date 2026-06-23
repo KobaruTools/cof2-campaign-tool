@@ -340,6 +340,79 @@ export const weapons: Weapon[] = [
   },
 
   // -------------------------------------------------------------------------
+  // Armes sacrées du prêtre spécialiste — uniquement définies par la table des
+  // dieux (p. 126-127) et ses notes ; absentes de la table d'armes p. 183. Le
+  // DM/type vient des notes (faux/pioche/trident) ou est inféré (lame/pointe).
+  // -------------------------------------------------------------------------
+  {
+    id: 'faux',
+    name: 'Faux',
+    category: 'weapon',
+    weaponCategory: 'twoHands',
+    melee: true,
+    ranged: false,
+    damage: '1d10',
+    price: null,
+    properties:
+      'Type de DM : tranchants. Arme à deux mains. Arme sacrée (prêtre spécialiste) de Cérès et de Morn — table des dieux p. 127, note 2 (« arme à deux mains, d10 DM »).',
+    sourcePage: 127,
+  },
+  {
+    id: 'pioche',
+    name: 'Pioche',
+    category: 'weapon',
+    weaponCategory: 'twoHands',
+    melee: true,
+    ranged: false,
+    damage: '1d8',
+    price: null,
+    properties:
+      'Type de DM : perforants. Arme à deux mains. Arme sacrée (prêtre spécialiste) de Jeweln — table des dieux p. 127, note 3 (« arme à deux mains, d8 DM »).',
+    sourcePage: 127,
+  },
+  {
+    id: 'trident',
+    name: 'Trident',
+    category: 'weapon',
+    weaponCategory: 'oneOrTwoHands',
+    melee: true,
+    ranged: true,
+    damage: '1d6',
+    twoHandedDamage: '1d10',
+    range: '10 m',
+    price: null,
+    properties:
+      'Type de DM : perforants. Arme à une ou deux mains (1d6/1d10), « semblable à un épieu » (lançable, 10 m). Arme sacrée (prêtre spécialiste) de Linnarré — table des dieux p. 127, note 4.',
+    sourcePage: 127,
+  },
+  {
+    id: 'rouleau-a-patisserie',
+    name: 'Rouleau à pâtisserie',
+    category: 'weapon',
+    weaponCategory: 'twoHands',
+    melee: true,
+    ranged: false,
+    damage: '1d10',
+    price: null,
+    properties:
+      'Type de DM : contondants. Arme à deux mains. Variante au choix de la faux (« même DM ») — table des dieux p. 127, note 5.',
+    sourcePage: 127,
+  },
+  {
+    id: 'poele',
+    name: 'Poêle',
+    category: 'weapon',
+    weaponCategory: 'twoHands',
+    melee: true,
+    ranged: false,
+    damage: '1d10',
+    price: null,
+    properties:
+      'Type de DM : contondants. Arme à deux mains. Variante au choix de la faux (« même DM ») — table des dieux p. 127, note 5.',
+    sourcePage: 127,
+  },
+
+  // -------------------------------------------------------------------------
   // Armes d'attaque à distance — table p. 185 + prose p. 185, 187
   // -------------------------------------------------------------------------
   {

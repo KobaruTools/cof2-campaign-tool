@@ -1092,6 +1092,47 @@ export type EquipmentItem = Weapon | Armor | Shield | Gear;
 export type EquipmentCategory = EquipmentItem['category'];
 
 // ---------------------------------------------------------------------------
+// Panthéon d'Osgild — dieux du prêtre spécialiste (table p. 126-127)
+// ---------------------------------------------------------------------------
+
+/**
+ * Divinité du panthéon d'Osgild (« Principales religions d'Osgild », p. 126-127).
+ *
+ * Sert au choix du prêtre **spécialiste** (héraut d'un seul dieu, p. 122) : il
+ * MAÎTRISE l'arme sacrée de son dieu (exception à la restriction d'armes du prêtre
+ * — câblage maîtrise différé à la milestone Armures, PER-96) et obtient une
+ * CAPACITÉ DIVINE issue d'un autre profil, qui remplace une capacité de même rang
+ * d'une voie de prêtre choisie. Pour le prêtre **généraliste**, cette liste n'est
+ * qu'une inspiration (aucun effet mécanique).
+ *
+ * Convention (CLAUDE.md) : `id` = slug (clé de contenu persistée sur le personnage) ;
+ * `name`/`domain`/`symbol` = français verbatim.
+ */
+export interface PriestGod {
+  /** Id stable (slug du nom), ex. `'arcanna'`. Persisté sur le personnage. */
+  id: string;
+  /** Nom de la divinité (français), ex. « Arcanna ». */
+  name: string;
+  /** Domaine (français, verbatim), ex. « déesse de la magie blanche ». */
+  domain: string;
+  /** Symbole sacré (français, verbatim), ex. « une étoile ». */
+  symbol: string;
+  /**
+   * Arme(s) sacrée(s) maîtrisée(s) par le spécialiste de ce dieu (ids d'équipement).
+   * PLUSIEURS = choix du joueur (ex. arc long ou court ; faux ou rouleau/poêle).
+   * Intégrité référentielle vérifiée par `validate:data`.
+   */
+  sacredWeaponIds: string[];
+  /**
+   * Capacité divine octroyée : feature d'un AUTRE profil (id), qui remplace une
+   * capacité de même rang d'une voie de prêtre choisie (p. 122). Emprunt
+   * déterministe — câblage de la feature « prêtre spécialiste » à venir.
+   */
+  divineFeatureId: string;
+  sourcePage: SourcePage;
+}
+
+// ---------------------------------------------------------------------------
 // Règles de progression — chap. 1 (p. 29-33) et chap. 2 (p. 38-43)
 // ---------------------------------------------------------------------------
 

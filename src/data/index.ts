@@ -27,6 +27,7 @@ import type {
   ClassPath,
   MagePath,
   TestDomain,
+  PriestGod,
 } from './schema';
 
 import { families } from './families';
@@ -42,6 +43,7 @@ import { mysticClasses, mysticPaths, mysticFeatures } from './classes/mystics';
 import { prestigePaths1, prestigeFeatures1 } from './prestige-paths/part1';
 import { prestigePaths2, prestigeFeatures2 } from './prestige-paths/part2';
 import { weapons, armors, shields, gear } from './equipment';
+import { priestGods, priestGodById } from './priest-gods';
 import { testDomains, testDomainById } from './test-domains';
 import {
   FEATURE_CLASSIFICATIONS,
@@ -104,6 +106,9 @@ export const equipment: EquipmentItem[] = [...weapons, ...armors, ...shields, ..
 // --- Domaines de compétence (PER-89) -----------------------------------------
 export { testDomains, testDomainById };
 
+// --- Panthéon d'Osgild — dieux du prêtre spécialiste (p. 126-127) ------------
+export { priestGods, priestGodById };
+
 // --- Classification analytique des capacités (PER-62) ------------------------
 export { FEATURE_CLASSIFICATIONS, FEATURE_NATURE_TAGS, CONDITIONAL_KINDS };
 
@@ -117,5 +122,5 @@ export const featureClassificationById = new Map<string, FeatureClassification>(
   FEATURE_CLASSIFICATIONS.map((c) => [c.id, c]),
 );
 
-export type { Family, ProgressionRules, ValueSet, IdealFlaw, Weapon, Armor, Shield, Gear, TestDomain };
+export type { Family, ProgressionRules, ValueSet, IdealFlaw, Weapon, Armor, Shield, Gear, TestDomain, PriestGod };
 export type { FeatureClassification, FeatureNatureTag, ConditionalKind };
