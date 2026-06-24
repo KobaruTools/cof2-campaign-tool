@@ -17,8 +17,12 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
+import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
@@ -26,7 +30,7 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { classById, featureById, pathById, progression } from '@/data';
 import type { Family, Feature } from '@/data/schema';
-import { featureCost, maxHp } from '@/lib/engine';
+import { featureCost, maxHp, minLevelForRank } from '@/lib/engine';
 import { familyHpGains } from '@/lib/character/hp';
 import { rulesContext } from '@/lib/character/rulesContext';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
@@ -38,10 +42,13 @@ import {
   totalFeatureCost,
 } from '@/lib/character/levelUp';
 import {
+  eligibleDivineHostPaths,
   featureChoiceDefs,
   hasUnmadeChoice,
+  pendingDivineAcquisition,
   pruneFeatureChoices,
   setFeatureChoice,
+  type PendingDivine,
 } from '@/lib/character/choices';
 import { classColor } from '@/lib/ui/classColors';
 import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
@@ -64,12 +71,19 @@ function AvailablePathGroup({
   group,
   color,
   remaining,
+  lockedRank,
   onAdd,
 }: {
   group: FeatureGroup;
   /** Teinte de la voie (profil), ou null pour une voie neutre (peuple/prestige). */
   color: string | null;
   remaining: number;
+  /**
+   * Rang verrouillé tant que la capacité divine d'un prêtre spécialiste n'est pas
+   * prise (priorité absolue, p. 122) : les capacités de ce rang sont grisées et leur
+   * bouton désactivé. `null` = aucun verrou.
+   */
+  lockedRank: number | null;
   onAdd: (featureId: string) => void;
 }) {
   return (
@@ -91,6 +105,8 @@ function AvailablePathGroup({
         {group.features.map((feature) => {
           const cost = featureCost(feature, progression);
           const tooExpensive = cost > remaining;
+          const locked = lockedRank !== null && feature.rank === lockedRank;
+          const disabled = tooExpensive || locked;
           return (
             <Accordion
               key={feature.id}
@@ -100,6 +116,7 @@ function AvailablePathGroup({
                 border: 1,
                 borderColor: 'divider',
                 bgcolor: color ? alpha(color, 0.06) : 'transparent',
+                opacity: locked ? 0.5 : 1,
                 '&::before': { display: 'none' },
               }}
             >
@@ -122,9 +139,11 @@ function AvailablePathGroup({
                 </Stack>
                 <Tooltip
                   title={
-                    tooExpensive
-                      ? `Coût ${cost} points — il vous reste ${remaining} point${remaining > 1 ? 's' : ''}`
-                      : ''
+                    locked
+                      ? 'Capacité divine à choisir d’abord (priorité absolue, p. 122)'
+                      : tooExpensive
+                        ? `Coût ${cost} points — il vous reste ${remaining} point${remaining > 1 ? 's' : ''}`
+                        : ''
                   }
                   arrow
                 >
@@ -134,7 +153,7 @@ function AvailablePathGroup({
                       variant="outlined"
                       startIcon={<AddIcon />}
                       component="span"
-                      disabled={tooExpensive}
+                      disabled={disabled}
                       onClick={(e) => {
                         e.stopPropagation();
                         onAdd(feature.id);
@@ -159,6 +178,140 @@ function AvailablePathGroup({
 }
 
 /**
+ * Carte dédiée d'acquisition de la capacité divine (prêtre spécialiste, divine de
+ * rang ≥ 2) au level-up. Affichée en tête des nouvelles capacités, en priorité
+ * absolue (p. 122). Le joueur désigne la VOIE D'ACCUEIL (une voie de prêtre dont le
+ * rang précédent est acquis et le slot du rang de la divine est libre) ; la divine
+ * vient occuper ce slot, la capacité native de ce rang étant « perdue ».
+ */
+function DivineAcquisitionCard({
+  pending,
+  hosts,
+  host,
+  picked,
+  remaining,
+  onHostChange,
+  onAdd,
+  onRemove,
+}: {
+  pending: PendingDivine;
+  hosts: { id: string; name: string }[];
+  host: string | null;
+  picked: boolean;
+  remaining: number;
+  onHostChange: (pathId: string) => void;
+  onAdd: () => void;
+  onRemove: () => void;
+}) {
+  const divine = pending.feature;
+  const cost = featureCost(divine, progression);
+  const originPath = pathById.get(divine.pathId);
+  const originClassId = originPath?.type === 'class' ? originPath.classIds[0] : undefined;
+  const originColor = originClassId ? classColor(originClassId) : undefined;
+  const originClassName = originClassId ? classById.get(originClassId)?.name : undefined;
+  const accent = originColor ?? '#9c27b0';
+  const replacedNative = host ? featureById.get(`${host}-r${divine.rank}`) : undefined;
+  const tooExpensive = cost > remaining;
+  const canAdd = !!host && !tooExpensive;
+
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        border: 2,
+        borderColor: accent,
+        borderRadius: 1,
+        bgcolor: alpha(accent, 0.06),
+        p: 1.5,
+        mb: 2,
+      }}
+    >
+      <Typography
+        variant="overline"
+        sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: accent, fontWeight: 700, lineHeight: 1.4 }}
+      >
+        ✦ Capacité divine — à acquérir en priorité
+      </Typography>
+
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
+        <Chip label={`Rang ${divine.rank}`} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
+        <Chip label={`${cost} point${cost > 1 ? 's' : ''}`} size="small" />
+        {originClassId && <ClassIcon classId={originClassId} size={20} />}
+        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+          <FeatureLabel feature={divine} />
+        </Typography>
+        {originClassName && (
+          <Typography variant="caption" sx={{ color: originColor ?? 'text.secondary' }}>
+            ({originClassName})
+          </Typography>
+        )}
+      </Stack>
+
+      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line', mt: 1 }}>
+        {divine.text}
+      </Typography>
+
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1.5 }}>
+        <FormControl size="small" sx={{ minWidth: 220 }} disabled={picked || hosts.length === 0}>
+          <InputLabel id="divine-host-label">Voie d’accueil</InputLabel>
+          <Select
+            labelId="divine-host-label"
+            label="Voie d’accueil"
+            value={host ?? ''}
+            onChange={(e) => onHostChange(e.target.value)}
+          >
+            {hosts.map((h) => (
+              <MenuItem key={h.id} value={h.id}>
+                {h.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        {!picked ? (
+          <Tooltip
+            title={
+              hosts.length === 0
+                ? 'Aucune voie de prêtre éligible pour accueillir la capacité divine à ce niveau'
+                : !host
+                  ? 'Choisissez d’abord une voie d’accueil'
+                  : tooExpensive
+                    ? `Coût ${cost} point${cost > 1 ? 's' : ''} — il vous reste ${remaining}`
+                    : ''
+            }
+            arrow
+          >
+            <Box component="span">
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<AddIcon />}
+                disabled={!canAdd}
+                onClick={onAdd}
+                sx={{ bgcolor: accent, '&:hover': { bgcolor: accent } }}
+              >
+                Choisir
+              </Button>
+            </Box>
+          </Tooltip>
+        ) : (
+          <Tooltip title="Retirer la capacité divine" arrow>
+            <IconButton size="small" color="error" onClick={onRemove}>
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Stack>
+
+      {replacedNative && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          Remplacera : <FeatureLabel feature={replacedNative} /> (rang {divine.rank} de la voie d’accueil)
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+/**
  * Mini-wizard bloquant de montée de niveau (PER-49). Applique les gains
  * automatiques (PV ; les attaques et autres stats dérivées sont recalculées
  * par le moteur depuis le niveau) et ne propose que des capacités légales —
@@ -175,11 +328,23 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   // par défaut pour ne pas noyer la montée de niveau classique — l'hybridation
   // est un choix délibéré (accord du MJ, cohérence narrative).
   const [showHybrid, setShowHybrid] = useState(false);
+  // Voie d'accueil choisie pour la capacité divine d'un prêtre spécialiste (divine
+  // de rang ≥ 2 acquise à ce niveau, p. 122). null tant que non désignée.
+  const [divineHost, setDivineHost] = useState<string | null>(null);
   const newLevel = character.level + 1;
+
+  // Capacité divine restant à acquérir (prêtre spécialiste, divine de rang ≥ 2) et
+  // accessibilité au nouveau niveau. La divine est en priorité absolue (p. 122).
+  const pendingDivine = pendingDivineAcquisition(character);
+  const divineAccessible =
+    !!pendingDivine && newLevel >= minLevelForRank(pendingDivine.rank, family, progression);
+  const divinePicked = !!pendingDivine && picked.includes(pendingDivine.feature.id);
 
   // Personnage « de travail » au nouveau niveau, capacités déjà choisies
   // incluses : c'est sur lui qu'on évalue la légalité du prochain choix (prendre
-  // un rang 1 débloque le rang 2 si le niveau le permet, etc.).
+  // un rang 1 débloque le rang 2 si le niveau le permet, etc.). Quand la divine est
+  // prise, on renseigne sa voie d'accueil pour que la progression la rattache au bon
+  // slot (la voie d'accueil avance, la voie d'origine n'est pas « entamée »).
   const working: Character = {
     ...character,
     level: newLevel,
@@ -187,8 +352,21 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
     // Choix déjà résolus dans cette montée de niveau, pour la résolution du
     // domaine (ex. `same-family`) et l'état « choix à faire ».
     featureChoices: { ...character.featureChoices, ...pickedChoices },
+    priestVocation:
+      divinePicked && divineHost && character.priestVocation?.mode === 'specialist'
+        ? { ...character.priestVocation, hostPathId: divineHost }
+        : character.priestVocation,
   };
   const available = acquirableFeatures(working, rulesContext);
+
+  // Voies de prêtre éligibles comme voie d'accueil de la divine (rang précédent
+  // acquis, slot du rang de la divine libre). Calculé sur `working` (tient compte
+  // d'une voie ouverte ce même niveau).
+  const divineHosts = pendingDivine
+    ? eligibleDivineHostPaths(working, pendingDivine.rank).map((p) => ({ id: p.id, name: p.name }))
+    : [];
+  // Rang verrouillé tant que la divine accessible n'est pas prise (priorité absolue).
+  const lockedRank = pendingDivine && divineAccessible && !divinePicked ? pendingDivine.rank : null;
 
   // Une capacité « hybride à ouvrir » = rang 1 d'une voie de profil qui n'est ni
   // du profil principal ni déjà entamée. On peut toujours poursuivre une voie
@@ -204,7 +382,11 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   const hasHybridOption = available.some(isNewHybridFeature);
   const visible = showHybrid ? available : available.filter((f) => !isNewHybridFeature(f));
   const availableGroups = groupFeaturesByPath(visible.map((f) => f.id));
-  const pickedGroups = groupFeaturesByPath(picked);
+  // La divine prise est présentée dans sa carte dédiée, pas dans la liste « choisies ».
+  const pickedNonDivine = pendingDivine
+    ? picked.filter((id) => id !== pendingDivine.feature.id)
+    : picked;
+  const pickedGroups = groupFeaturesByPath(pickedNonDivine);
 
   // Teinte d'une voie = couleur de SON profil (pas du profil principal) ;
   // neutre pour la voie de peuple et les voies de prestige.
@@ -281,6 +463,14 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   const remaining = budget - spent;
 
   const add = (featureId: string) => setPicked((prev) => [...prev, featureId]);
+  const addDivine = () => {
+    if (!pendingDivine || !divineHost) return;
+    setPicked((prev) => (prev.includes(pendingDivine.feature.id) ? prev : [...prev, pendingDivine.feature.id]));
+  };
+  const removeDivine = () => {
+    if (!pendingDivine) return;
+    setPicked((prev) => prev.filter((id) => id !== pendingDivine.feature.id));
+  };
   const remove = (featureId: string) =>
     setPicked((prev) => {
       const next = deselectFeature(prev, featureId);
@@ -300,19 +490,27 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   const close = () => {
     setPicked([]);
     setPickedChoices({});
+    setDivineHost(null);
     onClose();
   };
   const confirm = () => {
     const leveled = applyLevelUp(character, picked);
+    // Capacité divine prise ce niveau : on persiste sa voie d'accueil sur la vocation
+    // (la progression rattache alors la divine à ce slot, p. 122).
+    const withVocation =
+      divinePicked && divineHost && leveled.priestVocation?.mode === 'specialist'
+        ? { ...leveled, priestVocation: { ...leveled.priestVocation, hostPathId: divineHost } }
+        : leveled;
     onConfirm({
-      ...leveled,
+      ...withVocation,
       featureChoices: pruneFeatureChoices(
-        { ...leveled.featureChoices, ...pickedChoices },
-        leveled.featureIds,
+        { ...withVocation.featureChoices, ...pickedChoices },
+        withVocation.featureIds,
       ),
     });
     setPicked([]);
     setPickedChoices({});
+    setDivineHost(null);
   };
 
   return (
@@ -349,6 +547,19 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                 size="small"
               />
             </Stack>
+
+            {pendingDivine && divineAccessible && (
+              <DivineAcquisitionCard
+                pending={pendingDivine}
+                hosts={divineHosts}
+                host={divineHost}
+                picked={divinePicked}
+                remaining={remaining}
+                onHostChange={setDivineHost}
+                onAdd={addDivine}
+                onRemove={removeDivine}
+              />
+            )}
 
             {hasHybridOption && (
               <FormControlLabel
@@ -433,6 +644,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                     group={group}
                     color={pathColor(group.path)}
                     remaining={remaining}
+                    lockedRank={lockedRank}
                     onAdd={add}
                   />
                 ))}
@@ -466,6 +678,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                             group={group}
                             color={null}
                             remaining={remaining}
+                            lockedRank={lockedRank}
                             onAdd={add}
                           />
                         ))}
@@ -511,6 +724,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                                     group={group}
                                     color={color}
                                     remaining={remaining}
+                                    lockedRank={lockedRank}
                                     onAdd={add}
                                   />
                                 ))}

@@ -22,6 +22,7 @@ import {
   type Feature,
   type FeatureChoice,
   type OptionFeatureChoice,
+  type Path,
   type PathFeatureChoice,
 } from '@/data/schema';
 import type { Character, FeatureChoiceSelection } from './types';
@@ -62,6 +63,54 @@ export function priestDivineSlot(character: Character): DivineSlot | null {
   const feature = featureId ? featureById.get(featureId) : undefined;
   if (!feature || !character.featureIds.includes(feature.id)) return null;
   return { featureId: feature.id, hostPathId: v.hostPathId, rank: feature.rank };
+}
+
+/**
+ * Capacité divine d'un prêtre spécialiste restant à acquérir lors d'une montée de
+ * niveau : une divine de RANG ≥ 2 (la divine de rang 1 est, elle, acquise dès la
+ * création — voir wizard) pas encore présente dans `featureIds`. Au level-up elle
+ * s'obtient en PRIORITÉ ABSOLUE (p. 122 : « première capacité de son rang »).
+ * `null` si généraliste, divine de rang 1, ou divine déjà acquise.
+ */
+export interface PendingDivine {
+  /** Capacité divine (dans sa voie d'origine, un autre profil). */
+  feature: Feature;
+  /** Rang du slot qu'elle occupera dans la voie d'accueil. */
+  rank: number;
+  /** Nom du dieu (affichage). */
+  godName: string;
+}
+
+export function pendingDivineAcquisition(character: Character): PendingDivine | null {
+  const v = character.priestVocation;
+  if (v?.mode !== 'specialist') return null;
+  const god = priestGodById.get(v.godId);
+  const feature = god ? featureById.get(god.divineFeatureId) : undefined;
+  if (!feature || feature.rank < 2) return null;
+  if (character.featureIds.includes(feature.id)) return null;
+  return { feature, rank: feature.rank, godName: god!.name };
+}
+
+/**
+ * Voies de prêtre (profil principal) pouvant ACCUEILLIR la capacité divine de rang
+ * `divineRank` : celles dont le rang `divineRank - 1` est acquis (donc tous les rangs
+ * inférieurs, les voies étant linéaires) et dont le rang `divineRank` est encore
+ * libre. La divine viendra occuper ce slot (p. 122).
+ */
+export function eligibleDivineHostPaths(character: Character, divineRank: number): Path[] {
+  const mainPathIds = classById.get(character.classId)?.pathIds ?? [];
+  const hosts: Path[] = [];
+  for (const pathId of mainPathIds) {
+    const path = pathById.get(pathId);
+    if (!path) continue;
+    const ranks: number[] = [];
+    for (const id of character.featureIds) {
+      const f = featureById.get(id);
+      if (f?.pathId === pathId) ranks.push(f.rank);
+    }
+    if (ranks.includes(divineRank - 1) && !ranks.includes(divineRank)) hosts.push(path);
+  }
+  return hosts;
 }
 
 /** Définitions de choix portées par une capacité (vide si aucune / id inconnu). */

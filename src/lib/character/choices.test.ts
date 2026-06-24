@@ -7,6 +7,7 @@ import {
   allowedAbilitiesForChoice,
   borrowedFeatureIds,
   effectiveFeatureIdsForMods,
+  eligibleDivineHostPaths,
   eligibleFeaturesForChoice,
   featureChoiceDefs,
   featuresWithUnmadeChoices,
@@ -14,6 +15,7 @@ import {
   getSelection,
   getSelections,
   hasUnmadeChoice,
+  pendingDivineAcquisition,
   pruneFeatureChoices,
   repeatableChoiceCount,
   setFeatureChoice,
@@ -50,6 +52,61 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     ...over,
   };
 }
+
+// Prêtre spécialiste d'un dieu dont la capacité divine est de RANG 2 (basile →
+// survie-r2), au niveau 1 avec deux voies de prêtre au rang 1 (foi, guerre-sainte).
+function makeSpecialistPriest(over: Partial<Character> = {}): Character {
+  return makeCharacter({
+    classId: 'pretre',
+    ancestryId: 'humain',
+    ancestryPathId: 'humain',
+    priestVocation: { mode: 'specialist', godId: 'basile' },
+    featureIds: ['foi-r1', 'guerre-sainte-r1', 'humain-r1'],
+    ...over,
+  });
+}
+
+describe('pendingDivineAcquisition', () => {
+  it('expose la capacité divine de rang ≥ 2 restant à acquérir', () => {
+    const pending = pendingDivineAcquisition(makeSpecialistPriest());
+    expect(pending?.feature.id).toBe('survie-r2');
+    expect(pending?.rank).toBe(2);
+    expect(pending?.godName).toBeTruthy();
+  });
+
+  it('renvoie null une fois la capacité divine acquise', () => {
+    const char = makeSpecialistPriest({
+      featureIds: ['foi-r1', 'guerre-sainte-r1', 'humain-r1', 'survie-r2'],
+    });
+    expect(pendingDivineAcquisition(char)).toBeNull();
+  });
+
+  it('renvoie null pour un prêtre généraliste', () => {
+    const char = makeSpecialistPriest({ priestVocation: { mode: 'generalist' } });
+    expect(pendingDivineAcquisition(char)).toBeNull();
+  });
+});
+
+describe('eligibleDivineHostPaths', () => {
+  it('ne retient que les voies de prêtre dont le rang précédent est acquis et le slot libre', () => {
+    const hosts = eligibleDivineHostPaths(makeSpecialistPriest(), 2).map((p) => p.id);
+    // foi et guerre-sainte ont leur rang 1 → éligibles ; les autres voies (sans rang 1)
+    // ne le sont pas.
+    expect(hosts).toEqual(expect.arrayContaining(['foi', 'guerre-sainte']));
+    expect(hosts).not.toContain('priere');
+    expect(hosts).not.toContain('soins');
+    expect(hosts).not.toContain('spiritualite');
+  });
+
+  it('exclut une voie dont le slot du rang de la divine est déjà occupé', () => {
+    const char = makeSpecialistPriest({
+      featureIds: ['foi-r1', 'foi-r2', 'guerre-sainte-r1', 'humain-r1'],
+    });
+    const hosts = eligibleDivineHostPaths(char, 2).map((p) => p.id);
+    expect(hosts).not.toContain('foi'); // rang 2 déjà pris
+    expect(hosts).toContain('guerre-sainte');
+  });
+});
 
 describe('featureChoiceDefs', () => {
   it('expose les choix définis sur une capacité', () => {
