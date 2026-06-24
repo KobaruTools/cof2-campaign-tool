@@ -463,9 +463,17 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   // Une capacité « hybride à ouvrir » = rang 1 d'une voie de profil qui n'est ni
   // du profil principal ni déjà entamée. On peut toujours poursuivre une voie
   // hybride existante ; seule l'ouverture d'une nouvelle voie est masquable.
+  // La capacité divine est EXCLUE : emprunter une capacité d'un autre profil (p. 122)
+  // n'est pas de l'hybridation, donc sa voie d'origine n'est « entamée » que si on en
+  // a pris le rang 1 NATIF (sinon elle resterait masquée derrière « Voies d'autres
+  // profils », comme toute voie hybride non encore ouverte).
   const mainPathIds = new Set(classById.get(character.classId)?.pathIds ?? []);
+  const divineFeatureId = acquiredSlot?.featureId;
   const startedPaths = new Set(
-    working.featureIds.map((id) => featureById.get(id)?.pathId).filter((p): p is string => !!p),
+    working.featureIds
+      .filter((id) => id !== divineFeatureId)
+      .map((id) => featureById.get(id)?.pathId)
+      .filter((p): p is string => !!p),
   );
   const isNewHybridFeature = (f: Feature) => {
     const path = pathById.get(f.pathId);
