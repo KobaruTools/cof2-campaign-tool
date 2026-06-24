@@ -81,7 +81,7 @@ function AvailablePathGroup({
   group,
   color,
   remaining,
-  lockedRank,
+  lockAll,
   skipped,
   onAdd,
 }: {
@@ -90,11 +90,11 @@ function AvailablePathGroup({
   color: string | null;
   remaining: number;
   /**
-   * Rang verrouillé tant que la capacité divine d'un prêtre spécialiste n'est pas
-   * prise (priorité absolue, p. 122) : les capacités de ce rang sont grisées et leur
-   * bouton désactivé. `null` = aucun verrou.
+   * Verrou global : tant que la capacité divine prioritaire (rang ≥ 2) n'est pas
+   * prise, TOUTES les capacités sont grisées et leur bouton désactivé (priorité
+   * absolue, p. 122). La fiche permissive permet ensuite tout ajustement manuel.
    */
-  lockedRank: number | null;
+  lockAll: boolean;
   /**
    * Rang « sauté » de cette voie (détenu via la capacité divine, logée ailleurs) :
    * affiché grisé à sa place, et le rang juste au-dessus porte une indication de
@@ -170,7 +170,7 @@ function AvailablePathGroup({
           }
           const cost = featureCost(feature, progression);
           const tooExpensive = cost > remaining;
-          const locked = lockedRank !== null && feature.rank === lockedRank;
+          const locked = lockAll;
           const disabled = tooExpensive || locked;
           const afterSkip = !!skipped && feature.rank === skipped.rank + 1;
           return (
@@ -444,8 +444,9 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   const divineHosts = pendingDivine
     ? eligibleDivineHostPaths(working, pendingDivine.rank).map((p) => ({ id: p.id, name: p.name }))
     : [];
-  // Rang verrouillé tant que la divine accessible n'est pas prise (priorité absolue).
-  const lockedRank = pendingDivine && divineAccessible && !divinePicked ? pendingDivine.rank : null;
+  // Verrou global : tant que la divine accessible n'est pas prise, on grise TOUS les
+  // autres choix (priorité absolue, p. 122) — la fiche reste éditable librement.
+  const divineLock = !!pendingDivine && divineAccessible && !divinePicked;
 
   // Capacité divine DÉJÀ acquise (ce niveau ou un précédent) : son rang natif est
   // « sauté » dans sa voie d'origine (elle est logée dans la voie d'accueil). On
@@ -735,7 +736,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                     group={group}
                     color={pathColor(group.path)}
                     remaining={remaining}
-                    lockedRank={lockedRank}
+                    lockAll={divineLock}
                     skipped={skippedFor(group)}
                     onAdd={add}
                   />
@@ -770,7 +771,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                             group={group}
                             color={null}
                             remaining={remaining}
-                            lockedRank={lockedRank}
+                            lockAll={divineLock}
                             skipped={skippedFor(group)}
                             onAdd={add}
                           />
@@ -817,7 +818,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                                     group={group}
                                     color={color}
                                     remaining={remaining}
-                                    lockedRank={lockedRank}
+                                    lockAll={divineLock}
                                     skipped={skippedFor(group)}
                                     onAdd={add}
                                   />
