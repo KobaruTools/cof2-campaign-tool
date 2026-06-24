@@ -44,7 +44,18 @@ export const SCHEMA_VERSION = 9;
  */
 export type PriestVocation =
   | { mode: 'generalist' }
-  | { mode: 'specialist'; godId: string };
+  | {
+      mode: 'specialist';
+      godId: string;
+      /**
+       * Voie de prêtre dont le slot de rang N (= rang natif de la capacité divine)
+       * est occupé par la capacité divine, à la place de sa capacité native (p. 122).
+       * Choisi à l'acquisition (création pour une divine de rang 1). Absent tant que
+       * non choisi (ou pour une divine de rang 2+, dont l'accueil sera désigné à la
+       * montée de niveau).
+       */
+      hostPathId?: string;
+    };
 
 /**
  * Statistiques dérivées surchargeables manuellement (règle maison, cf. PRD

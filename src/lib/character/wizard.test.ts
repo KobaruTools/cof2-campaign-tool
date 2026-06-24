@@ -16,6 +16,8 @@ import {
   involvedClassIds,
   pathsStepComplete,
   priestVocationComplete,
+  divineFeatureOfVocation,
+  divineHostComplete,
   type WizardDraft,
 } from './wizard';
 
@@ -182,6 +184,56 @@ describe('vocation du prêtre (p. 122)', () => {
       '2026-01-01T00:00:00.000Z',
     );
     expect(barbarian.priestVocation).toBeNull();
+  });
+});
+
+describe('capacité divine du prêtre spécialiste (p. 122)', () => {
+  const draft = (over: Partial<WizardDraft> = {}): WizardDraft => ({
+    ...createDraft('id-d', '2026-01-01T00:00:00.000Z'),
+    classId: 'pretre',
+    chosenPaths: ['foi', 'priere'],
+    ancestryPathId: 'humain',
+    ...over,
+  });
+
+  it('divineFeatureOfVocation renvoie la feature du dieu', () => {
+    expect(divineFeatureOfVocation({ mode: 'specialist', godId: 'axender' })?.id).toBe('meneur-d-hommes-r1');
+    expect(divineFeatureOfVocation({ mode: 'generalist' })).toBeNull();
+    expect(divineFeatureOfVocation(null)).toBeNull();
+  });
+
+  it('divineHostComplete : une divine de rang 1 exige une voie d’accueil parmi les voies choisies', () => {
+    // Axénder → meneur-d-hommes-r1 (rang 1).
+    expect(divineHostComplete(draft({ priestVocation: { mode: 'specialist', godId: 'axender' } }))).toBe(false);
+    // hostPathId hors des voies choisies → incomplet.
+    expect(
+      divineHostComplete(draft({ priestVocation: { mode: 'specialist', godId: 'axender', hostPathId: 'guerre-sainte' } })),
+    ).toBe(false);
+    expect(
+      divineHostComplete(draft({ priestVocation: { mode: 'specialist', godId: 'axender', hostPathId: 'foi' } })),
+    ).toBe(true);
+  });
+
+  it('divineHostComplete : une divine de rang 2+ ne demande rien à la création', () => {
+    // Forthur → brute-r2 (rang 2).
+    expect(divineHostComplete(draft({ priestVocation: { mode: 'specialist', godId: 'forthur' } }))).toBe(true);
+  });
+
+  it('level1FeatureIds : la divine de rang 1 remplace le rang 1 de la voie d’accueil', () => {
+    const ids = level1FeatureIds(
+      draft({ priestVocation: { mode: 'specialist', godId: 'axender', hostPathId: 'foi' } }),
+    );
+    expect(ids).toContain('meneur-d-hommes-r1'); // divine acquise
+    expect(ids).toContain('priere-r1'); // autre voie inchangée
+    expect(ids).toContain('humain-r1'); // voie de peuple inchangée
+    expect(ids).not.toContain('foi-r1'); // native remplacée
+  });
+
+  it('level1FeatureIds : généraliste ou divine de rang 2+ → aucune substitution', () => {
+    expect(level1FeatureIds(draft({ priestVocation: { mode: 'generalist' } }))).toContain('foi-r1');
+    expect(
+      level1FeatureIds(draft({ priestVocation: { mode: 'specialist', godId: 'forthur', hostPathId: 'foi' } })),
+    ).toContain('foi-r1');
   });
 });
 

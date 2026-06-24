@@ -61,6 +61,7 @@ import {
   lowestAbilities,
 } from '@/lib/character/ancestry';
 import {
+  divineFeatureOfVocation,
   finalAbilities,
   involvedClassIds,
   level1FeatureIds,
@@ -1029,7 +1030,13 @@ export function PathsStep({ draft, patch }: StepProps) {
         return;
       }
     }
-    patch({ chosenPaths: next, mageBonus });
+    // Si la voie d'accueil de la capacité divine n'est plus choisie, on la réinitialise.
+    const v = draft.priestVocation;
+    const priestVocation =
+      v?.mode === 'specialist' && v.hostPathId && !next.includes(v.hostPathId)
+        ? { ...v, hostPathId: undefined }
+        : v;
+    patch({ chosenPaths: next, mageBonus, priestVocation });
   };
 
   const setHybrid = (on: boolean) => {
@@ -1246,6 +1253,52 @@ export function PathsStep({ draft, patch }: StepProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Prêtre spécialiste : la capacité divine (p. 122) remplace une capacité du
+          même rang d'une voie choisie. Rang 1 → choix de la voie d'accueil ICI (à la
+          création) ; rang 2+ → simple note (acquise à la montée de niveau). */}
+      {(() => {
+        const v = draft.priestVocation;
+        const divine = divineFeatureOfVocation(v);
+        if (v?.mode !== 'specialist' || !divine) return null;
+        const god = priestGods.find((g) => g.id === v.godId);
+        if (divine.rank !== 1) {
+          return (
+            <Alert severity="info">
+              Capacité divine « {divine.name} » ({god?.name}, rang {divine.rank}) : à acquérir en
+              priorité au rang {divine.rank} lors d’une montée de niveau — elle remplacera alors le
+              rang {divine.rank} d’une de vos voies de prêtre.
+            </Alert>
+          );
+        }
+        if (draft.chosenPaths.length !== 2) return null;
+        return (
+          <Card variant="outlined" sx={{ borderLeft: 5, borderLeftColor: classColor(PRIEST_CLASS_ID) }}>
+            <CardContent>
+              <FormControl>
+                <FormLabel>Capacité divine — voie d’accueil</FormLabel>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  « {divine.name} » (capacité divine de {god?.name}, rang 1) remplace le rang 1 de
+                  l’une de vos 2 voies (p. 122).
+                </Typography>
+                <RadioGroup
+                  value={v.hostPathId && draft.chosenPaths.includes(v.hostPathId) ? v.hostPathId : ''}
+                  onChange={(e) => patch({ priestVocation: { ...v, hostPathId: e.target.value } })}
+                >
+                  {draft.chosenPaths.map((pid) => (
+                    <FormControlLabel
+                      key={pid}
+                      value={pid}
+                      control={<Radio />}
+                      label={`Remplace le rang 1 de ${pathById.get(pid)?.name ?? pid}`}
+                    />
+                  ))}
+                </RadioGroup>
+              </FormControl>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Choix portés par les capacités de rang 1 (PER-66/68) : proposés dès la
           sélection des voies. Obligatoires — la création reste bloquée tant

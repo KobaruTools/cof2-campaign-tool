@@ -6,9 +6,9 @@
  * `materializeDraft` produit un personnage de niveau 1 conforme à la création
  * CO2 (p. 29-31).
  */
-import type { AbilityId, Ancestry } from '@/data/schema';
+import type { AbilityId, Ancestry, Feature } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
-import { classById, pathById } from '@/data';
+import { classById, pathById, priestGodById, featureById } from '@/data';
 import { applyModifiers, type AncestryChoice } from './ancestry';
 import {
   SCHEMA_VERSION,
@@ -97,6 +97,26 @@ export function priestVocationComplete(draft: WizardDraft): boolean {
   return v.mode === 'generalist' || (v.mode === 'specialist' && !!v.godId);
 }
 
+/** Capacité divine (feature) du dieu d'un spécialiste — null sinon. */
+export function divineFeatureOfVocation(vocation: WizardDraft['priestVocation']): Feature | null {
+  if (vocation?.mode !== 'specialist') return null;
+  const god = priestGodById.get(vocation.godId);
+  return (god && featureById.get(god.divineFeatureId)) || null;
+}
+
+/**
+ * Le choix de « voie d'accueil » de la capacité divine est-il fait ? Ne concerne
+ * QUE le spécialiste dont la capacité divine est de RANG 1 (acquise à la création,
+ * p. 122) : il faut désigner laquelle des 2 voies choisies voit son rang 1 remplacé.
+ * Pour une divine de rang 2+ (acquise plus tard) ou tout autre cas → toujours vrai.
+ */
+export function divineHostComplete(draft: WizardDraft): boolean {
+  const divine = divineFeatureOfVocation(draft.priestVocation);
+  if (!divine || divine.rank !== 1) return true;
+  const host = draft.priestVocation?.mode === 'specialist' ? draft.priestVocation.hostPathId : undefined;
+  return !!host && draft.chosenPaths.includes(host);
+}
+
 function abilitiesZero(): Record<AbilityId, number> {
   return ABILITY_IDS.reduce(
     (acc, id) => {
@@ -152,6 +172,14 @@ export function level1FeatureIds(draft: WizardDraft): string[] {
   if (draft.mageBonus?.type === 'mage-rank2') {
     ids.add(`${MAGE_PATH_ID}-r1`);
     ids.add(`${MAGE_PATH_ID}-r2`);
+  }
+  // Prêtre spécialiste, capacité divine de RANG 1 (p. 122) : elle remplace le rang 1
+  // de la voie d'accueil choisie — on retire la native, on acquiert la divine.
+  const divine = divineFeatureOfVocation(draft.priestVocation);
+  const host = draft.priestVocation?.mode === 'specialist' ? draft.priestVocation.hostPathId : undefined;
+  if (divine && divine.rank === 1 && host && ids.has(`${host}-r1`)) {
+    ids.delete(`${host}-r1`);
+    ids.add(divine.id);
   }
   return [...ids];
 }

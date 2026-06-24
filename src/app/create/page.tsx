@@ -20,6 +20,7 @@ import { ancestryById, classById, priestGods } from '@/data';
 import { choicesComplete } from '@/lib/character/ancestry';
 import { featuresWithUnmadeChoices } from '@/lib/character/choices';
 import {
+  divineHostComplete,
   materializeDraft,
   pathsStepComplete,
   priestVocationComplete,
@@ -113,7 +114,7 @@ const STEPS: StepDef[] = [
     // Voies choisies + tous les choix portés par les capacités de rang 1
     // résolus (wizard bloquant — les choix sont proposés dans cette étape).
     valid: (d) => {
-      if (!pathsStepComplete(d)) return false;
+      if (!pathsStepComplete(d) || !divineHostComplete(d)) return false;
       const a = ancestryById.get(d.ancestryId);
       return !!a && featuresWithUnmadeChoices(materializeDraft(d, a, d.createdAt)).length === 0;
     },
@@ -124,6 +125,8 @@ const STEPS: StepDef[] = [
           return 'Désigne la capacité de rang 2 supplémentaire (mage) pour continuer.';
         return 'Choisis deux voies pour continuer.';
       }
+      if (!divineHostComplete(d))
+        return 'Choisis la voie dont le rang 1 est remplacé par la capacité divine pour continuer.';
       const a = ancestryById.get(d.ancestryId);
       if (a && featuresWithUnmadeChoices(materializeDraft(d, a, d.createdAt)).length > 0)
         return 'Résous tous les choix des capacités de rang 1 pour continuer.';
