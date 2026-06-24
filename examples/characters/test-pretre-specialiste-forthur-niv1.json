@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 9,
+  "id": "test-pretre-forthur-niv1",
+  "name": "Aldric, prêtre de Forthur (niv. 1)",
+  "identity": {},
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 1,
+  "priestVocation": {
+    "mode": "specialist",
+    "godId": "forthur"
+  },
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 0,
+    "CON": 1,
+    "FOR": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 1,
+    "FOR": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "foi-r1",
+    "guerre-sainte-r1",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "foi-r1",
+        "guerre-sainte-r1",
+        "humain-r1"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "masse",
+      "quantity": 1
+    },
+    {
+      "itemId": "baton-ferre",
+      "quantity": 1
+    },
+    {
+      "itemId": "petit-bouclier",
+      "quantity": 1
+    },
+    {
+      "itemId": "chemise-de-mailles",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "Test : ouvre « Monter au niveau 2 » → carte « Capacité divine » (Forthur → Tour de force, rang 2) en priorité, choix de la voie d’accueil.",
+  "createdAt": "2026-06-24T10:00:00.000Z",
+  "updatedAt": "2026-06-24T10:00:00.000Z"
+}

@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 9,
+  "id": "test-pretre-forthur-niv4",
+  "name": "Maëlis, prêtre de Forthur (niv. 4)",
+  "identity": {},
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 4,
+  "priestVocation": {
+    "mode": "specialist",
+    "godId": "forthur",
+    "hostPathId": "foi"
+  },
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 0,
+    "CON": 2,
+    "FOR": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 2,
+    "FOR": 1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "foi-r1",
+    "guerre-sainte-r1",
+    "humain-r1",
+    "brute-r2",
+    "humain-r2",
+    "guerre-sainte-r2",
+    "priere-r1",
+    "soins-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "foi-r1",
+        "guerre-sainte-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "brute-r2",
+        "humain-r2"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "guerre-sainte-r2"
+      ],
+      "orphanRewards": [
+        "hp"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "priere-r1",
+        "soins-r1"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "masse",
+      "quantity": 1
+    },
+    {
+      "itemId": "petit-bouclier",
+      "quantity": 1
+    },
+    {
+      "itemId": "chemise-de-mailles",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "Test : sur la fiche, la divine (Tour de force) s’affiche sous « Voie de la foi » avec double cadre (origine Voie de la brute / Barbare) ; +2 PV « Point orphelin (niv. 3) » dans le détail des PV. « Monter au niveau 5 » → on peut développer la Voie de la brute (rang 2 grisé = sauté) et convertir un point orphelin.",
+  "createdAt": "2026-06-24T10:00:00.000Z",
+  "updatedAt": "2026-06-24T10:00:00.000Z"
+}
