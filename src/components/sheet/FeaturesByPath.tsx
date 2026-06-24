@@ -31,7 +31,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
-import { features as featureCatalog, featureById, pathById } from '@/data';
+import { features as featureCatalog, featureById, pathById, priestGodById } from '@/data';
 import type { Feature, Path } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
@@ -84,16 +84,25 @@ export interface FeatureGroup {
  * et non par ordre alphabétique. Les ids inconnus sont ignorés ici (signalés par
  * les avertissements de conformité, PER-47).
  */
-export function groupFeaturesByPath(featureIds: string[]): FeatureGroup[] {
+export function groupFeaturesByPath(
+  featureIds: string[],
+  /**
+   * Relocalisation d'affichage : `featureId → pathId d'accueil`. Sert au prêtre
+   * spécialiste, dont la capacité divine (d'un autre profil) occupe le slot d'une
+   * voie de prêtre — on l'affiche sous cette voie d'accueil, pas sous sa voie d'origine.
+   */
+  pathOverride?: Map<string, string>,
+): FeatureGroup[] {
   const byPath = new Map<string, Feature[]>();
   const acquisitionOrder: string[] = [];
   for (const id of featureIds) {
     const feature = featureById.get(id);
     if (!feature) continue;
-    if (!byPath.has(feature.pathId)) acquisitionOrder.push(feature.pathId);
-    const list = byPath.get(feature.pathId) ?? [];
+    const pathId = pathOverride?.get(id) ?? feature.pathId;
+    if (!byPath.has(pathId)) acquisitionOrder.push(pathId);
+    const list = byPath.get(pathId) ?? [];
     list.push(feature);
-    byPath.set(feature.pathId, list);
+    byPath.set(pathId, list);
   }
   const acquisitionIndex = new Map(acquisitionOrder.map((pathId, i) => [pathId, i]));
   const groups: FeatureGroup[] = [...byPath.entries()].map(([pathId, features]) => ({
@@ -108,6 +117,45 @@ export function groupFeaturesByPath(featureIds: string[]): FeatureGroup[] {
     return (acquisitionIndex.get(a.pathId) ?? 0) - (acquisitionIndex.get(b.pathId) ?? 0);
   });
   return groups;
+}
+
+/** Remplacement de slot par une capacité divine (prêtre spécialiste, p. 122). */
+interface SlotReplacement {
+  /** Capacité divine acquise (id), affichée à la place de la native du slot. */
+  featureId: string;
+  /** Voie de prêtre d'accueil (sous laquelle la divine est relocalisée). */
+  hostPathId: string;
+  /** Couleur de la voie d'ORIGINE de la divine (signale « ça vient d'ailleurs »). */
+  originColor: string;
+  /** Nom du dieu (info-bulle / badge). */
+  godName?: string;
+  /** Nom de la capacité native remplacée (info-bulle). */
+  replacedName?: string;
+}
+
+/**
+ * Si le personnage est prêtre spécialiste et que sa capacité divine est acquise,
+ * décrit le remplacement de slot à afficher : la divine occupe le rang N de sa voie
+ * d'accueil, à la place de la native (p. 122). `null` sinon.
+ */
+function divineSlotReplacement(
+  character: Character | undefined,
+  featureIds: string[],
+): SlotReplacement | null {
+  const v = character?.priestVocation;
+  if (v?.mode !== 'specialist' || !v.hostPathId) return null;
+  const god = priestGodById.get(v.godId);
+  const divine = god ? featureById.get(god.divineFeatureId) : undefined;
+  if (!divine || !featureIds.includes(divine.id)) return null; // pas (encore) acquise
+  const originPath = pathById.get(divine.pathId);
+  const originColor = originPath?.type === 'class' ? classColor(originPath.classIds[0]) : 'text.primary';
+  return {
+    featureId: divine.id,
+    hostPathId: v.hostPathId,
+    originColor,
+    godName: god?.name,
+    replacedName: featureById.get(`${v.hostPathId}-r${divine.rank}`)?.name,
+  };
 }
 
 /** Libellé d'une capacité dans le sélecteur d'ajout : voie — rang — nom. */
@@ -539,6 +587,7 @@ function PathBlock({
   onSetEffectInput,
   onSetUsageCounter,
   disabledIds,
+  replacements,
   concentration = false,
 }: {
   group: FeatureGroup;
@@ -574,6 +623,12 @@ function PathBlock({
    * rendues semi-transparentes + grisées, interrupteur non-interactif, détail conservé.
    */
   disabledIds?: Set<string>;
+  /**
+   * Capacités occupant un slot par REMPLACEMENT (capacité divine du prêtre spécialiste,
+   * p. 122) : rendues avec un cadre fantôme du slot natif + bordure couleur d'origine
+   * + badge. Indexé par id de la capacité remplaçante.
+   */
+  replacements?: Map<string, SlotReplacement>;
   /** Concentration accrue active (p. 228) : coût réduit + (A)→(L) pour les sorts éligibles. */
   concentration?: boolean;
 }) {
@@ -736,7 +791,10 @@ function PathBlock({
         }}
       >
         {header}
-        {features.map((feature) => (
+        {features.map((feature) => {
+          // Capacité divine occupant ce slot par remplacement (prêtre spécialiste, p. 122).
+          const repl = replacements?.get(feature.id);
+          return (
           // Ligne cliquable : le détail s'ouvre dans une modale.
           <Box
             key={feature.id}
@@ -753,11 +811,20 @@ function PathBlock({
               // mana en haut droite, suppression et épingle en bas).
               pt: 1.75,
               pb: 0.75,
-              border: 1,
-              borderColor: 'divider',
+              border: repl ? 2 : 1,
+              borderColor: repl ? repl.originColor : 'divider',
               borderRadius: 1,
               cursor: 'pointer',
-              bgcolor: color ? alpha(color, 0.06) : 'transparent',
+              // Cadre « fantôme » du slot natif remplacé : un bloc décalé derrière la carte
+              // de la capacité divine (le slot d'origine de la voie d'accueil, p. 122).
+              boxShadow: repl
+                ? (theme) => `5px 5px 0 0 ${alpha(theme.palette.text.primary, 0.18)}`
+                : undefined,
+              bgcolor: repl
+                ? alpha(repl.originColor, 0.1)
+                : color
+                  ? alpha(color, 0.06)
+                  : 'transparent',
               '&:hover': { bgcolor: color ? alpha(color, 0.14) : 'action.hover' },
               ...(onRemove
                 ? {
@@ -788,6 +855,21 @@ function PathBlock({
               variant="body2"
               sx={{ fontWeight: 600, width: '100%', textAlign: 'left', wordBreak: 'break-word' }}
             >
+              {repl && (
+                <Tooltip
+                  title={`Capacité divine de ${repl.godName ?? '—'}${
+                    repl.replacedName ? ` — remplace ${repl.replacedName}` : ''
+                  }`}
+                  arrow
+                >
+                  <Box
+                    component="span"
+                    sx={{ color: repl.originColor, fontWeight: 700, mr: 0.5, cursor: 'help' }}
+                  >
+                    ✦
+                  </Box>
+                </Tooltip>
+              )}
               {feature.name}
             </Typography>
             {/* Interrupteurs des effets conditionnels, compacts (état de jeu, libellé
@@ -852,7 +934,8 @@ function PathBlock({
               </Tooltip>
             )}
           </Box>
-        ))}
+          );
+        })}
         {Array.from({ length: ghostCount }).map((_, i) => (
           <GhostBlock key={`ghost-${i}`} />
         ))}
@@ -1006,15 +1089,22 @@ function PathBlock({
     <Box>
       {header}
       <Stack spacing={0.5}>
-        {features.map((feature) => (
+        {features.map((feature) => {
+          // Capacité divine occupant ce slot par remplacement (prêtre spécialiste, p. 122).
+          const repl = replacements?.get(feature.id);
+          return (
           <Accordion
             key={feature.id}
             disableGutters
             elevation={0}
             sx={{
-              border: 1,
-              borderColor: 'divider',
-              bgcolor: color ? alpha(color, 0.06) : 'transparent',
+              border: repl ? 2 : 1,
+              borderColor: repl ? repl.originColor : 'divider',
+              // Cadre « fantôme » du slot natif remplacé : bloc décalé derrière (p. 122).
+              boxShadow: repl
+                ? (theme) => `5px 5px 0 0 ${alpha(theme.palette.text.primary, 0.18)}`
+                : undefined,
+              bgcolor: repl ? alpha(repl.originColor, 0.1) : color ? alpha(color, 0.06) : 'transparent',
               '&::before': { display: 'none' },
               // Désactivée par exclusion mutuelle : grisée + transparente, mais
               // toujours dépliable (détail conservé).
@@ -1041,6 +1131,21 @@ function PathBlock({
                 />
                 {manualFeatureIds?.has(feature.id) && <ManualPin inline />}
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  {repl && (
+                    <Tooltip
+                      title={`Capacité divine de ${repl.godName ?? '—'}${
+                        repl.replacedName ? ` — remplace ${repl.replacedName}` : ''
+                      }`}
+                      arrow
+                    >
+                      <Box
+                        component="span"
+                        sx={{ color: repl.originColor, fontWeight: 700, mr: 0.5, cursor: 'help' }}
+                      >
+                        ✦
+                      </Box>
+                    </Tooltip>
+                  )}
                   <FeatureLabel feature={feature} concentration={concentration} />
                 </Typography>
               </Stack>
@@ -1118,7 +1223,8 @@ function PathBlock({
               )}
             </AccordionDetails>
           </Accordion>
-        ))}
+          );
+        })}
       </Stack>
     </Box>
   );
@@ -1179,7 +1285,19 @@ export function FeaturesByPath({
   onSetUsageCounter,
   concentration = false,
 }: FeaturesByPathProps) {
-  const groups = groupFeaturesByPath(featureIds);
+  // Prêtre spécialiste : la capacité divine occupe le slot d'une voie de prêtre
+  // (voie d'accueil). On la RELOCALISE sous cette voie (override) et on la rend avec
+  // un cadre de remplacement (bordure couleur d'origine + badge + cadre fantôme).
+  const divineReplacement = divineSlotReplacement(character, featureIds);
+  const replacements = divineReplacement
+    ? new Map<string, SlotReplacement>([[divineReplacement.featureId, divineReplacement]])
+    : undefined;
+  const groups = groupFeaturesByPath(
+    featureIds,
+    divineReplacement
+      ? new Map([[divineReplacement.featureId, divineReplacement.hostPathId]])
+      : undefined,
+  );
 
   // Voie du mage : elle remplace la voie de peuple mais le personnage conserve
   // la capacité de rang 1 de son peuple (p. 60). On fusionne cette capacité dans
@@ -1268,6 +1386,7 @@ export function FeaturesByPath({
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
               disabledIds={disabled}
+              replacements={replacements}
               concentration={concentration}
             />
           ))}
@@ -1292,6 +1411,7 @@ export function FeaturesByPath({
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
               disabledIds={disabled}
+              replacements={replacements}
               concentration={concentration}
             />
           ))}
@@ -1316,6 +1436,7 @@ export function FeaturesByPath({
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
               disabledIds={disabled}
+              replacements={replacements}
               concentration={concentration}
             />
           ))}
