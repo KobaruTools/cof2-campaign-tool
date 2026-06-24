@@ -27,6 +27,7 @@ import type {
   Path,
 } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
+import { priestDivineFeatureId } from '@/lib/character/choices';
 
 /** Données de règles injectées (testable avec des fixtures). */
 export interface RulesContext {
@@ -209,7 +210,11 @@ export function classPathFamily(path: Path, ctx: RulesContext): FamilyId | undef
  */
 export function classFamiliesWithFeatures(character: Character, ctx: RulesContext): Set<FamilyId> {
   const families = new Set<FamilyId>();
+  // La capacité divine d'un prêtre spécialiste vient d'un autre profil mais ne fait
+  // PAS de lui un hybride (p. 122) : on l'exclut de la détection des familles.
+  const divineId = priestDivineFeatureId(character);
   for (const id of character.featureIds) {
+    if (id === divineId) continue;
     const feature = ctx.featureById.get(id);
     if (!feature) continue;
     const path = ctx.pathById.get(feature.pathId);

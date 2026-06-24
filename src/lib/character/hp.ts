@@ -20,6 +20,7 @@ import type { FamilyId, Family } from '@/data/schema';
 import type { HpLevelGain, RulesContext } from '@/lib/engine';
 import { classPathFamily } from '@/lib/engine';
 import type { Character } from './types';
+import { priestDivineFeatureId } from './choices';
 
 /** Capacités acquises au niveau 1 (entrée d'historique de création). */
 function level1FeatureIds(character: Character): string[] {
@@ -125,7 +126,12 @@ export function familyHpGains(character: Character, ctx: RulesContext): number[]
 /** Famille de chaque voie de profil distincte acquise au niveau 1, dans l'ordre. */
 function level1ClassPathFamilies(character: Character, ctx: RulesContext): FamilyId[] {
   const familyByPath = new Map<string, FamilyId>();
+  // Capacité divine d'un prêtre spécialiste : empruntée à un autre profil, elle ne
+  // constitue PAS une 2e voie de profil (sinon les PV de base seraient comptés comme
+  // hybrides — p. 122). On l'exclut.
+  const divineId = priestDivineFeatureId(character);
   for (const id of level1FeatureIds(character)) {
+    if (id === divineId) continue;
     const feature = ctx.featureById.get(id);
     if (!feature) continue;
     const path = ctx.pathById.get(feature.pathId);

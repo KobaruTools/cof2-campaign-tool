@@ -15,7 +15,7 @@
  * figé) plutôt que de recevoir un contexte injecté : c'est un helper de contenu,
  * pas le moteur de calcul (qui, lui, reste pur et sans dépendance aux données).
  */
-import { classById, classes, featureById, pathById, paths } from '@/data';
+import { classById, classes, featureById, pathById, paths, priestGodById } from '@/data';
 import {
   ABILITY_IDS,
   type AbilityId,
@@ -25,6 +25,18 @@ import {
   type PathFeatureChoice,
 } from '@/data/schema';
 import type { Character, FeatureChoiceSelection } from './types';
+
+/**
+ * Id de la capacité DIVINE d'un prêtre spécialiste (issue d'un autre profil, p. 122),
+ * ou `undefined`. Bien qu'elle figure dans `featureIds`, cette capacité empruntée NE
+ * fait PAS du prêtre un hybride et ne compte pas comme une voie d'une autre famille
+ * (détection d'hybridation, PV de niveau 1…) : les appelants l'excluent.
+ */
+export function priestDivineFeatureId(character: Character): string | undefined {
+  const v = character.priestVocation;
+  if (v?.mode !== 'specialist') return undefined;
+  return priestGodById.get(v.godId)?.divineFeatureId;
+}
 
 /** Définitions de choix portées par une capacité (vide si aucune / id inconnu). */
 export function featureChoiceDefs(featureId: string): FeatureChoice[] {

@@ -10,6 +10,8 @@ import {
   minLevelForRank,
   canAcquireFeature,
   checkCompliance,
+  classFamiliesWithFeatures,
+  isHybrid,
   type RulesContext,
 } from './legality';
 
@@ -50,6 +52,25 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     ...over,
   };
 }
+
+describe('capacité divine du prêtre spécialiste — pas d’hybridation (p. 122)', () => {
+  // foi-r1 remplacée par la capacité divine d'Axénder (meneur-d-hommes-r1, famille
+  // « combattants »), prêtre spécialiste.
+  const priest = makeCharacter({
+    classId: 'pretre',
+    featureIds: ['meneur-d-hommes-r1', 'priere-r1', 'humain-r1'],
+    priestVocation: { mode: 'specialist', godId: 'axender', hostPathId: 'foi' },
+  });
+
+  it('la capacité divine ne compte pas comme une autre famille', () => {
+    expect([...classFamiliesWithFeatures(priest, ctx)]).toEqual(['mystics']);
+    expect(isHybrid(priest, ctx)).toBe(false);
+  });
+
+  it('sanity : sans la vocation spécialiste, la même capacité déclencherait l’hybride', () => {
+    expect(isHybrid({ ...priest, priestVocation: null }, ctx)).toBe(true);
+  });
+});
 
 describe('featureCost', () => {
   const feature = (id: string) => featureById.get(id)!;
