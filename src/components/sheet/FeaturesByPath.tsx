@@ -31,7 +31,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
-import { features as featureCatalog, featureById, pathById, priestGodById } from '@/data';
+import { features as featureCatalog, featureById, pathById, classById, priestGodById } from '@/data';
 import type { Feature, Path } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
@@ -129,8 +129,8 @@ interface SlotReplacement {
   originColor: string;
   /** Nom du dieu (info-bulle / badge). */
   godName?: string;
-  /** Nom de la capacité native remplacée (info-bulle). */
-  replacedName?: string;
+  /** Capacité native du slot, remplacée par la divine (rappel grisé d'accessibilité). */
+  replacedFeature?: Feature;
 }
 
 /**
@@ -154,8 +154,133 @@ function divineSlotReplacement(
     hostPathId: v.hostPathId,
     originColor,
     godName: god?.name,
-    replacedName: featureById.get(`${v.hostPathId}-r${divine.rank}`)?.name,
+    replacedFeature: featureById.get(`${v.hostPathId}-r${divine.rank}`),
   };
+}
+
+/** Voie d'une capacité pour un en-tête : nom, profil rattaché (icône, couleur, nom). */
+function pathTitleInfo(feature: Feature): {
+  classId?: string;
+  pathName: string;
+  color?: string;
+  className?: string;
+} {
+  const path = pathById.get(feature.pathId);
+  const classId = path?.type === 'class' ? path.classIds[0] : undefined;
+  return {
+    classId,
+    pathName: path?.name ?? feature.pathId,
+    color: classId ? classColor(classId) : undefined,
+    className: classId ? classById.get(classId)?.name : undefined,
+  };
+}
+
+/**
+ * En-tête « icône de profil + nom de la voie (couleur du profil) + (profil) » d'une
+ * capacité, d'après SA voie réelle (`feature.pathId`). Pour une capacité divine, c'est
+ * sa voie d'ORIGINE (d'où vient le rang) — pas la voie d'accueil sous laquelle on
+ * l'affiche. Réutilisé par le titre de la modale, l'en-tête de liste et le rappel de
+ * remplacement.
+ */
+function ReplacedSlotHeader({ feature }: { feature: Feature }) {
+  const { classId, pathName, color, className } = pathTitleInfo(feature);
+  return (
+    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+      {classId && <ClassIcon classId={classId} size={18} sx={{ color: color ?? undefined, flexShrink: 0 }} />}
+      <Typography component="span" variant="subtitle2" sx={{ fontWeight: 700, color: color ?? 'text.primary' }}>
+        {pathName}
+      </Typography>
+      {className && (
+        <Typography component="span" variant="caption" color="text.secondary">
+          ({className})
+        </Typography>
+      )}
+    </Stack>
+  );
+}
+
+/**
+ * Titre de voie d'une capacité dans la modale / l'en-tête de liste. Cas normal : la voie
+ * du GROUPE (fallbacks). Cas capacité divine (remplacement) : sa voie d'ORIGINE (le rang
+ * vient d'un autre profil), avec son icône, sa couleur et son profil — `feature.pathId`.
+ */
+function FeaturePathTitle({
+  feature,
+  isReplacement,
+  fallbackClassId,
+  fallbackPathName,
+  fallbackColor,
+}: {
+  feature: Feature;
+  isReplacement: boolean;
+  fallbackClassId?: string;
+  fallbackPathName: string;
+  fallbackColor?: string;
+}) {
+  const origin = isReplacement ? pathTitleInfo(feature) : null;
+  const classId = origin?.classId ?? fallbackClassId;
+  const pathName = origin?.pathName ?? fallbackPathName;
+  const color = origin?.color ?? fallbackColor;
+  return (
+    <>
+      {classId && <ClassIcon classId={classId} size={18} sx={{ color: color ?? undefined, flexShrink: 0 }} />}
+      <Typography component="span" variant="body2" sx={{ fontWeight: 700, color: color ?? 'text.primary' }}>
+        {pathName}
+      </Typography>
+      {origin?.className && (
+        <Typography component="span" variant="caption" color="text.secondary">
+          ({origin.className})
+        </Typography>
+      )}
+    </>
+  );
+}
+
+/**
+ * Rappel (accessibilité) de la capacité NATIVE remplacée par une capacité divine
+ * (p. 122) : rendue grisée + désaturée + semi-transparente pour signaler qu'elle est
+ * INACTIVE. `showHeader` affiche en tête la voie d'accueil (icône profil + nom coloré +
+ * profil) ; en vue liste le titre vit déjà dans le résumé dépliant, on le masque alors.
+ */
+function ReplacedSlotBlock({
+  feature,
+  abilities,
+  level,
+  showHeader = true,
+}: {
+  feature: Feature;
+  abilities?: Abilities;
+  level?: number;
+  showHeader?: boolean;
+}) {
+  return (
+    <Box
+      sx={{
+        p: 1,
+        border: 1,
+        borderStyle: 'dashed',
+        borderColor: 'divider',
+        borderRadius: 1,
+        opacity: 0.6,
+        filter: 'grayscale(0.4)',
+      }}
+    >
+      {showHeader && (
+        <Box sx={{ mb: 0.5 }}>
+          <ReplacedSlotHeader feature={feature} />
+        </Box>
+      )}
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+        Remplacée par la capacité divine — rang {feature.rank}
+      </Typography>
+      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+        <FeatureLabel feature={feature} />
+      </Typography>
+      <Box sx={{ mt: 0.25 }}>
+        <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} />
+      </Box>
+    </Box>
+  );
 }
 
 /** Libellé d'une capacité dans le sélecteur d'ajout : voie — rang — nom. */
@@ -858,7 +983,7 @@ function PathBlock({
               {repl && (
                 <Tooltip
                   title={`Capacité divine de ${repl.godName ?? '—'}${
-                    repl.replacedName ? ` — remplace ${repl.replacedName}` : ''
+                    repl.replacedFeature ? ` — remplace ${repl.replacedFeature.name}` : ''
                   }`}
                   arrow
                 >
@@ -950,16 +1075,13 @@ function PathBlock({
             <>
               <DialogTitle sx={{ pr: 6 }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                  {ownerClassId && (
-                    <ClassIcon classId={ownerClassId} size={18} sx={{ color: color ?? undefined, flexShrink: 0 }} />
-                  )}
-                  <Typography
-                    component="span"
-                    variant="body2"
-                    sx={{ fontWeight: 700, color: color ?? 'text.primary' }}
-                  >
-                    {path?.name ?? group.pathId}
-                  </Typography>
+                  <FeaturePathTitle
+                    feature={openFeature}
+                    isReplacement={!!replacements?.has(openFeature.id)}
+                    fallbackClassId={ownerClassId ?? undefined}
+                    fallbackPathName={path?.name ?? group.pathId}
+                    fallbackColor={color ?? undefined}
+                  />
                   <Chip
                     label={`Rang ${openFeature.rank}`}
                     size="small"
@@ -991,6 +1113,16 @@ function PathBlock({
                   </>
                 )}
                 <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} />
+                {replacements?.get(openFeature.id)?.replacedFeature && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <ReplacedSlotBlock
+                      feature={replacements.get(openFeature.id)!.replacedFeature!}
+                      abilities={abilities}
+                      level={level}
+                    />
+                  </>
+                )}
                 {openFeature.id === 'animaux-r5' && character && (
                   <AnimalFormsNote character={character} />
                 )}
@@ -1117,12 +1249,13 @@ function PathBlock({
                 spacing={1}
                 sx={{ alignItems: 'center', flexWrap: 'wrap', flexGrow: 1 }}
               >
-                {ownerClassId && (
-                  <ClassIcon classId={ownerClassId} size={18} sx={{ color: color ?? undefined, flexShrink: 0 }} />
-                )}
-                <Typography component="span" variant="body2" sx={{ fontWeight: 700, color: color ?? 'text.primary' }}>
-                  {path?.name ?? group.pathId}
-                </Typography>
+                <FeaturePathTitle
+                  feature={feature}
+                  isReplacement={!!repl}
+                  fallbackClassId={ownerClassId ?? undefined}
+                  fallbackPathName={path?.name ?? group.pathId}
+                  fallbackColor={color ?? undefined}
+                />
                 <Chip
                   label={`Rang ${feature.rank}`}
                   size="small"
@@ -1134,7 +1267,7 @@ function PathBlock({
                   {repl && (
                     <Tooltip
                       title={`Capacité divine de ${repl.godName ?? '—'}${
-                        repl.replacedName ? ` — remplace ${repl.replacedName}` : ''
+                        repl.replacedFeature ? ` — remplace ${repl.replacedFeature.name}` : ''
                       }`}
                       arrow
                     >
@@ -1220,6 +1353,28 @@ function PathBlock({
                   <Divider sx={{ my: 1.5 }} />
                   <UsageCounterField feature={feature} character={character} onSet={onSetUsageCounter} />
                 </>
+              )}
+              {repl?.replacedFeature && (
+                <Accordion
+                  disableGutters
+                  elevation={0}
+                  sx={{ mt: 1.5, bgcolor: 'transparent', border: 0, '&::before': { display: 'none' } }}
+                >
+                  <AccordionSummary
+                    expandIcon={<ExpandMoreIcon />}
+                    sx={{ minHeight: 0, px: 0, '& .MuiAccordionSummary-content': { my: 0.5 } }}
+                  >
+                    <ReplacedSlotHeader feature={repl.replacedFeature} />
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ px: 0, pt: 0 }}>
+                    <ReplacedSlotBlock
+                      feature={repl.replacedFeature}
+                      abilities={abilities}
+                      level={level}
+                      showHeader={false}
+                    />
+                  </AccordionDetails>
+                </Accordion>
               )}
             </AccordionDetails>
           </Accordion>
