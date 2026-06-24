@@ -12,6 +12,7 @@ import {
   checkCompliance,
   classFamiliesWithFeatures,
   isHybrid,
+  ownedRanks,
   type RulesContext,
 } from './legality';
 
@@ -69,6 +70,30 @@ describe('capacité divine du prêtre spécialiste — pas d’hybridation (p. 1
 
   it('sanity : sans la vocation spécialiste, la même capacité déclencherait l’hybride', () => {
     expect(isHybrid({ ...priest, priestVocation: null }, ctx)).toBe(true);
+  });
+});
+
+describe('progression : la capacité divine occupe le slot de la voie d’accueil (p. 122)', () => {
+  const priest = makeCharacter({
+    classId: 'pretre',
+    level: 5,
+    featureIds: ['meneur-d-hommes-r1', 'priere-r1', 'humain-r1'],
+    priestVocation: { mode: 'specialist', godId: 'axender', hostPathId: 'foi' },
+    levelUpHistory: [{ level: 1, chosenFeatureIds: ['meneur-d-hommes-r1', 'priere-r1', 'humain-r1'] }],
+  });
+
+  it('la divine compte pour la voie d’accueil, pas pour sa voie d’origine', () => {
+    expect(ownedRanks(priest, 'foi', ctx)).toEqual([1]);
+    expect(ownedRanks(priest, 'meneur-d-hommes', ctx)).toEqual([]);
+  });
+
+  it('la voie d’accueil passe au rang 2 ; son rang 1 natif est bloqué (slot occupé)', () => {
+    expect(canAcquireFeature(priest, 'foi-r2', ctx).legal).toBe(true);
+    expect(canAcquireFeature(priest, 'foi-r1', ctx).legal).toBe(false);
+  });
+
+  it('la voie d’origine de la divine n’est pas proposée (son rang 2 reste bloqué)', () => {
+    expect(canAcquireFeature(priest, 'meneur-d-hommes-r2', ctx).legal).toBe(false);
   });
 });
 

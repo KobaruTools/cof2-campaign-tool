@@ -27,7 +27,16 @@ import type {
   Path,
 } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
-import { priestDivineFeatureId } from '@/lib/character/choices';
+import { priestDivineFeatureId, priestDivineSlot, type DivineSlot } from '@/lib/character/choices';
+
+/**
+ * Voie EFFECTIVE d'une capacité pour la PROGRESSION : la capacité divine d'un prêtre
+ * spécialiste (p. 122) compte pour sa voie d'ACCUEIL (le slot qu'elle occupe), et non
+ * pour sa voie d'origine ; toute autre capacité garde sa voie native.
+ */
+function effectivePathId(slot: DivineSlot | null, featureId: string, nativePathId: string): string {
+  return slot && featureId === slot.featureId ? slot.hostPathId : nativePathId;
+}
 
 /** Données de règles injectées (testable avec des fixtures). */
 export interface RulesContext {
@@ -163,22 +172,28 @@ export function lowestRank(path: Path, ctx: RulesContext): number {
   return Number.isFinite(min) ? min : 1;
 }
 
-/** Rangs effectivement possédés dans une voie, triés croissant. */
+/** Rangs effectivement possédés dans une voie, triés croissant (la capacité divine
+ *  compte pour sa voie d'ACCUEIL, p. 122). */
 export function ownedRanks(character: Character, pathId: string, ctx: RulesContext): number[] {
-  return character.featureIds
-    .map((id) => ctx.featureById.get(id))
-    .filter((c): c is Feature => !!c && c.pathId === pathId)
-    .map((c) => c.rank)
-    .sort((a, b) => a - b);
+  const slot = priestDivineSlot(character);
+  const ranks: number[] = [];
+  for (const id of character.featureIds) {
+    const feature = ctx.featureById.get(id);
+    if (!feature) continue;
+    if (effectivePathId(slot, id, feature.pathId) === pathId) ranks.push(feature.rank);
+  }
+  return ranks.sort((a, b) => a - b);
 }
 
 /** Voies (hors voie de peuple/voie du mage) actuellement entamées. */
 function nonAncestryPaths(character: Character, ctx: RulesContext): Set<string> {
+  const slot = priestDivineSlot(character);
   const paths = new Set<string>();
   for (const id of character.featureIds) {
     const feature = ctx.featureById.get(id);
     if (!feature) continue;
-    const path = ctx.pathById.get(feature.pathId);
+    // Voie d'accueil pour la capacité divine (pas sa voie d'origine).
+    const path = ctx.pathById.get(effectivePathId(slot, id, feature.pathId));
     if (!path) continue;
     if (path.type === 'class' || path.type === 'prestige') paths.add(path.id);
   }
@@ -318,6 +333,13 @@ export function canAcquireFeature(
     if (!ranks.includes(r)) {
       reasons.push(`Rang ${r} de « ${path.name} » non acquis (rangs dans l'ordre).`);
     }
+  }
+
+  // Slot déjà occupé : le rang de cette voie est déjà pris (ex. la capacité divine
+  // d'un prêtre spécialiste occupe le slot — p. 122 — donc la capacité native de ce
+  // rang n'est plus acquérable). Sans objet pour les voies linéaires standards.
+  if (!character.featureIds.includes(featureId) && ranks.includes(feature.rank)) {
+    reasons.push(`Le rang ${feature.rank} de « ${path.name} » est déjà occupé.`);
   }
 
   // Niveau requis par le rang.

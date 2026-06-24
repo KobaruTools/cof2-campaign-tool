@@ -38,6 +38,32 @@ export function priestDivineFeatureId(character: Character): string | undefined 
   return priestGodById.get(v.godId)?.divineFeatureId;
 }
 
+/** Slot occupé par la capacité divine d'un prêtre spécialiste (p. 122). */
+export interface DivineSlot {
+  /** Id de la capacité divine acquise (d'un autre profil). */
+  featureId: string;
+  /** Voie de prêtre d'accueil dont elle occupe le slot. */
+  hostPathId: string;
+  /** Rang du slot (= rang natif de la capacité divine). */
+  rank: number;
+}
+
+/**
+ * Slot occupé par la capacité divine, si le prêtre est spécialiste, que la voie
+ * d'accueil est désignée et que la capacité est acquise. Sert au moteur de
+ * PROGRESSION : la divine compte pour sa voie d'ACCUEIL (et non pour sa voie
+ * d'origine), de sorte que la voie d'accueil progresse au rang suivant et que la
+ * voie d'origine n'est pas « entamée ». `null` sinon.
+ */
+export function priestDivineSlot(character: Character): DivineSlot | null {
+  const v = character.priestVocation;
+  if (v?.mode !== 'specialist' || !v.hostPathId) return null;
+  const featureId = priestGodById.get(v.godId)?.divineFeatureId;
+  const feature = featureId ? featureById.get(featureId) : undefined;
+  if (!feature || !character.featureIds.includes(feature.id)) return null;
+  return { featureId: feature.id, hostPathId: v.hostPathId, rank: feature.rank };
+}
+
 /** Définitions de choix portées par une capacité (vide si aucune / id inconnu). */
 export function featureChoiceDefs(featureId: string): FeatureChoice[] {
   return featureById.get(featureId)?.choices ?? [];
