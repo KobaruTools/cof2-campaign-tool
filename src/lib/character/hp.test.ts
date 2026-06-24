@@ -202,4 +202,24 @@ describe('hpLevelGains', () => {
     // Cohérence avec la vue numérique consommée par le moteur.
     expect(gains.map((g) => g.familyGain)).toEqual(familyHpGains(c, ctx));
   });
+
+  it('capacité divine : pas de niveau mixte (empruntée mais rattachée à la voie d’accueil, p. 122)', () => {
+    // Prêtre (mystics, 4 PV) spécialiste de Forthur : divine = brute-r2 (combattants,
+    // 5 PV), acquise au niveau 3. Sans l'exception, ce niveau serait moyenné (4,5).
+    const c = makeCharacter({
+      classId: 'pretre',
+      level: 3,
+      priestVocation: { mode: 'specialist', godId: 'forthur', hostPathId: 'foi' },
+      featureIds: ['foi-r1', 'priere-r1', 'humain-r1', 'priere-r2', 'brute-r2'],
+      levelUpHistory: history(
+        { level: 1, chosenFeatureIds: ['foi-r1', 'priere-r1', 'humain-r1'] },
+        { level: 2, chosenFeatureIds: ['priere-r2'] },
+        { level: 3, chosenFeatureIds: ['brute-r2'] },
+      ),
+    });
+    expect(hpLevelGains(c, ctx)).toEqual([
+      { level: 2, familyIds: ['mystics'], familyGain: 4 },
+      { level: 3, familyIds: ['mystics'], familyGain: 4 },
+    ]);
+  });
 });

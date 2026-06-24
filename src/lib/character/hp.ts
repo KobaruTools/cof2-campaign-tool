@@ -38,9 +38,17 @@ function levelFamilies(
   featureIds: string[],
   mainFamilyId: FamilyId,
   ctx: RulesContext,
+  divineId?: string,
 ): Set<FamilyId> {
   const families = new Set<FamilyId>();
   for (const id of featureIds) {
+    // Capacité divine d'un prêtre spécialiste : empruntée à un autre profil mais elle
+    // « devient une capacité de la voie d'accueil » (p. 40, p. 122). Elle NE crée donc
+    // PAS un niveau mixte — son rang compte pour la famille du profil principal, pas
+    // pour sa famille d'origine. (Les autres emprunts `feature-from-path` vivent dans
+    // `featureChoices`, jamais dans cette liste : ils sont déjà rattachés à leur voie
+    // d'accueil, sans impact ici.)
+    if (id === divineId) continue;
     const feature = ctx.featureById.get(id);
     if (!feature) continue;
     const path = ctx.pathById.get(feature.pathId);
@@ -61,6 +69,10 @@ export function hpLevelGains(character: Character, ctx: RulesContext): HpLevelGa
   const mainFamily = mainFamilyOf(character, ctx);
   if (!mainFamily) return [];
 
+  // Capacité divine du prêtre spécialiste : exclue de la détection des niveaux mixtes
+  // (empruntée mais rattachée à la voie d'accueil, p. 122).
+  const divineId = priestDivineFeatureId(character);
+
   // Capacités choisies par niveau (plusieurs entrées d'historique possibles).
   const idsByLevel = new Map<number, string[]>();
   for (const entry of character.levelUpHistory) {
@@ -73,7 +85,7 @@ export function hpLevelGains(character: Character, ctx: RulesContext): HpLevelGa
   // Nombre de demi-PV déjà arrondis : pair → inférieur, impair → supérieur.
   let halfRoundings = 0;
   for (let level = 2; level <= character.level; level++) {
-    const families = levelFamilies(idsByLevel.get(level) ?? [], mainFamily.id, ctx);
+    const families = levelFamilies(idsByLevel.get(level) ?? [], mainFamily.id, ctx, divineId);
     if (families.size <= 1) {
       const only = families.size === 1 ? ctx.familyById.get([...families][0]) : undefined;
       const family = only ?? mainFamily;
