@@ -415,6 +415,9 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   // Conversion du point de capacité orphelin (p. 40). Un seul point peut être
   // orphelin (il l'est quand il reste seul) → un unique choix. '' = laissé non dépensé.
   const [orphanReward, setOrphanReward] = useState<OrphanReward | ''>('');
+  // Surcharge manuelle d'ouverture du bloc orphelin (null = suit l'état « point
+  // réellement indépensable », qui ouvre le bloc d'office — cf. `forcedOrphan`).
+  const [orphanExpanded, setOrphanExpanded] = useState<boolean | null>(null);
   const newLevel = character.level + 1;
 
   // Capacité divine restant à acquérir (prêtre spécialiste, divine de rang ≥ 2) et
@@ -567,6 +570,15 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   const spent = totalFeatureCost(picked, rulesContext);
   const remaining = budget - spent;
 
+  // Point RÉELLEMENT orphelin (cas de base, p. 40) : il reste au moins un point mais
+  // aucune capacité acquérable ne coûte assez peu pour être achetée (il ne reste que
+  // du rang 3+, à 2 points). Le point ne peut alors pas être dépensé en capacité → on
+  // déplie le bloc d'office pour inviter à le convertir. Distinct du choix VOLONTAIRE
+  // de ne pas hybrider (règle maison), qui laisse le bloc replié par défaut.
+  const forcedOrphan =
+    remaining > 0 && !available.some((f) => featureCost(f, progression) <= remaining);
+  const orphanOpen = orphanExpanded ?? forcedOrphan;
+
   const add = (featureId: string) => setPicked((prev) => [...prev, featureId]);
   const addDivine = () => {
     if (!pendingDivine || !divineHost) return;
@@ -601,6 +613,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
     setPickedChoices({});
     setDivineHost(null);
     setOrphanReward('');
+    setOrphanExpanded(null);
   };
   const close = () => {
     resetState();
@@ -740,6 +753,8 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
               <Accordion
                 disableGutters
                 elevation={0}
+                expanded={orphanOpen}
+                onChange={(_, exp) => setOrphanExpanded(exp)}
                 sx={{
                   border: 1,
                   borderColor: 'divider',
@@ -754,6 +769,13 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                     <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                       Point de capacité orphelin (p. 40)
                     </Typography>
+                    {forcedOrphan && !orphanReward && (
+                      <Chip
+                        size="small"
+                        color="warning"
+                        label="Point indépensable — à convertir"
+                      />
+                    )}
                     {orphanReward && (
                       <Chip
                         size="small"
