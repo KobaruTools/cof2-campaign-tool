@@ -54,6 +54,7 @@ import {
 } from '@/lib/character/choices';
 import { classColor } from '@/lib/ui/classColors';
 import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
+import { RichInline } from '@/components/sheet/FeatureRichText';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -411,9 +412,9 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   // Voie d'accueil choisie pour la capacité divine d'un prêtre spécialiste (divine
   // de rang ≥ 2 acquise à ce niveau, p. 122). null tant que non désignée.
   const [divineHost, setDivineHost] = useState<string | null>(null);
-  // Conversions des points de capacité orphelins (p. 40), un emplacement par point
-  // potentiellement non dépensé (budget = 2). '' = point laissé non dépensé.
-  const [orphanChoices, setOrphanChoices] = useState<(OrphanReward | '')[]>(['', '']);
+  // Conversion du point de capacité orphelin (p. 40). Un seul point peut être
+  // orphelin (il l'est quand il reste seul) → un unique choix. '' = laissé non dépensé.
+  const [orphanReward, setOrphanReward] = useState<OrphanReward | ''>('');
   const newLevel = character.level + 1;
 
   // Capacité divine restant à acquérir (prêtre spécialiste, divine de rang ≥ 2) et
@@ -591,18 +592,15 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   // Bloquant : toute capacité choisie portant un choix doit l'avoir résolu.
   const choicesPending = picked.some((id) => hasUnmadeChoice(working, id));
 
-  // Points orphelins effectivement convertis : un par point restant non dépensé dont
-  // une récompense a été choisie (p. 40). Les emplacements au-delà de `remaining`
-  // sont ignorés (le joueur a finalement dépensé ces points en capacité).
-  const orphanRewardsToApply = orphanChoices
-    .slice(0, Math.max(0, remaining))
-    .filter((r): r is OrphanReward => r !== '');
+  // Point orphelin effectivement converti (p. 40) : seulement s'il reste au moins un
+  // point non dépensé et qu'une récompense a été choisie.
+  const orphanRewardsToApply: OrphanReward[] = remaining > 0 && orphanReward ? [orphanReward] : [];
 
   const resetState = () => {
     setPicked([]);
     setPickedChoices({});
     setDivineHost(null);
-    setOrphanChoices(['', '']);
+    setOrphanReward('');
   };
   const close = () => {
     resetState();
@@ -739,55 +737,67 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
             </Alert>
 
             {remaining > 0 && (
-              <Box
+              <Accordion
+                disableGutters
+                elevation={0}
                 sx={{
                   border: 1,
                   borderColor: 'divider',
                   borderRadius: 1,
-                  p: 1.5,
                   mb: 2,
                   bgcolor: (t) => alpha(t.palette.warning.main, 0.06),
+                  '&::before': { display: 'none' },
                 }}
               >
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  Point{remaining > 1 ? 's' : ''} de capacité orphelin{remaining > 1 ? 's' : ''} (p. 40)
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  Un point non dépensé peut être échangé contre +1 point de chance, +1 dé de
-                  récupération, +2 PV ou +2 PM (bonus permanent). Laissez « non dépensé » pour le
-                  perdre.
-                </Typography>
-                <Stack spacing={1}>
-                  {Array.from({ length: remaining }, (_, i) => (
-                    <FormControl key={i} size="small" fullWidth>
-                      <InputLabel id={`orphan-${i}`}>
-                        Point orphelin {remaining > 1 ? `n° ${i + 1}` : ''}
-                      </InputLabel>
-                      <Select
-                        labelId={`orphan-${i}`}
-                        label={`Point orphelin ${remaining > 1 ? `n° ${i + 1}` : ''}`}
-                        value={orphanChoices[i] ?? ''}
-                        onChange={(e) =>
-                          setOrphanChoices((prev) => {
-                            const next = [...prev];
-                            next[i] = e.target.value as OrphanReward | '';
-                            return next;
-                          })
-                        }
-                      >
-                        <MenuItem value="">
-                          <em>Non dépensé (perdu)</em>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      Point de capacité orphelin (p. 40)
+                    </Typography>
+                    {orphanReward && (
+                      <Chip
+                        size="small"
+                        color="warning"
+                        variant="outlined"
+                        label={ORPHAN_REWARD_LABEL[orphanReward]}
+                      />
+                    )}
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    component="div"
+                    sx={{ mb: 1.5, whiteSpace: 'pre-line' }}
+                  >
+                    <RichInline
+                      text="Un point de capacité non dépensé peut être échangé contre +1 point de chance, +1 dé de récupération, +2 PV ou +2 PM (bonus permanent). Laissez « non dépensé » pour le perdre."
+                      abilities={character.abilities}
+                      level={newLevel}
+                      rank={1}
+                    />
+                  </Typography>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel id="orphan-reward">Point de capacité orphelin</InputLabel>
+                    <Select
+                      labelId="orphan-reward"
+                      label="Point de capacité orphelin"
+                      value={orphanReward}
+                      onChange={(e) => setOrphanReward(e.target.value as OrphanReward | '')}
+                    >
+                      <MenuItem value="">
+                        <em>Non dépensé (perdu)</em>
+                      </MenuItem>
+                      {(Object.keys(ORPHAN_REWARD_LABEL) as OrphanReward[]).map((r) => (
+                        <MenuItem key={r} value={r}>
+                          {ORPHAN_REWARD_LABEL[r]}
                         </MenuItem>
-                        {(Object.keys(ORPHAN_REWARD_LABEL) as OrphanReward[]).map((r) => (
-                          <MenuItem key={r} value={r}>
-                            {ORPHAN_REWARD_LABEL[r]}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  ))}
-                </Stack>
-              </Box>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </AccordionDetails>
+              </Accordion>
             )}
 
             {!hasAnyAvailable ? (
