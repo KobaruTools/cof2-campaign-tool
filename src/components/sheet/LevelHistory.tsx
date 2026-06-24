@@ -14,6 +14,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { featureById, pathById } from '@/data';
 import type { LevelUpEntry } from '@/lib/character/types';
+import { ORPHAN_REWARD_LABEL } from '@/lib/character/orphanPoints';
 import { FeatureLabel } from '@/components/FeatureLabel';
 
 export interface LevelHistoryProps {
@@ -83,7 +84,7 @@ export function LevelHistory({ history, canUndo, onUndo }: LevelHistoryProps) {
               </Typography>
             )}
           </Typography>
-          {entry.chosenFeatureIds.length === 0 ? (
+          {entry.chosenFeatureIds.length === 0 && !entry.orphanRewards?.length ? (
             <Typography variant="body2" color="text.secondary">
               Aucune capacité acquise à ce niveau.
             </Typography>
@@ -91,6 +92,16 @@ export function LevelHistory({ history, canUndo, onUndo }: LevelHistoryProps) {
             <Stack spacing={0.5} sx={{ pl: 1.5, borderLeft: 3, borderColor: 'divider' }}>
               {entry.chosenFeatureIds.map((id) => (
                 <HistoryFeature key={id} featureId={id} />
+              ))}
+              {/* Point(s) de capacité orphelin(s) convertis ce niveau (p. 40) : tracés ici
+                  pour que le bonus permanent soit explicite (et l'undo, transparent). */}
+              {entry.orphanRewards?.map((reward, i) => (
+                <Stack key={`orphan-${i}`} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <Chip label="Point orphelin" size="small" color="warning" variant="outlined" />
+                  <Typography variant="body2" color="text.secondary">
+                    {ORPHAN_REWARD_LABEL[reward]} (p. 40)
+                  </Typography>
+                </Stack>
               ))}
             </Stack>
           )}
