@@ -120,11 +120,27 @@ export interface CustomItem {
 
 export type EquipmentLine = EquipmentRef | CustomItem;
 
+/**
+ * Récompense choisie pour un point de capacité orphelin (p. 40) : un point qui n'a
+ * pas été dépensé en capacité, échangé contre un bonus permanent.
+ *  - `luck` → +1 point de chance ;
+ *  - `recovery-die` → +1 dé de récupération ;
+ *  - `hp` → +2 points de vigueur (PV) ;
+ *  - `mana` → +2 points de mana (PM ; sans effet tant que le perso n'a pas de réserve).
+ */
+export type OrphanReward = 'luck' | 'recovery-die' | 'hp' | 'mana';
+
 /** Entrée d'historique : ce qui a été choisi à un niveau donné. */
 export interface LevelUpEntry {
   level: number;
   /** Ids des capacités acquises à ce niveau (et autres choix sérialisables). */
   chosenFeatureIds: string[];
+  /**
+   * Points de capacité orphelins convertis à ce niveau (p. 40), un par point non
+   * dépensé. Absent = aucun. Stocké sur le niveau d'origine → l'annulation du
+   * niveau retire aussi ses bonus orphelins.
+   */
+  orphanRewards?: OrphanReward[];
 }
 
 export interface Character {

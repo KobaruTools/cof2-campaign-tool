@@ -16,6 +16,7 @@ import { deriveStats, type DerivedInput } from '@/lib/engine';
 import type { EffectContext } from '@/lib/character/effects';
 import type { DerivedStatId as OverrideKey } from '@/lib/character/types';
 import { DERIVED_STAT_NAMES, type DerivedStatId } from '@/lib/ui/derivedStats';
+import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DerivedStatHint } from '@/components/DerivedStatHint';
 import { DieIcon } from '@/components/DieIcon';
@@ -53,6 +54,11 @@ export interface DerivedStatsGridProps {
    */
   effectContext?: EffectContext;
   /**
+   * Sources additionnelles (hors capacités) à détailler sous « Capacités / divers »
+   * — ex. points de capacité orphelins convertis (p. 40). Transmis aux infobulles.
+   */
+  extraModSources?: ModSources;
+  /**
    * Tailles de colonne MUI Grid. Par défaut : une carte par ligne sur mobile
    * (les contrôles d'édition tiennent à l'aise), deux sur tablette, trois sur
    * desktop.
@@ -87,6 +93,7 @@ export function DerivedStatsGrid({
   input,
   featureIds,
   effectContext,
+  extraModSources,
   size = { xs: 12, sm: 6, md: 4 },
   overrides,
   onOverride,
@@ -199,6 +206,7 @@ export function DerivedStatsGrid({
                   input={input}
                   featureIds={featureIds}
                   effectContext={effectContext}
+                  extraModSources={extraModSources}
                   sx={{ alignSelf: 'flex-start' }}
                 />
               </CardContent>

@@ -29,6 +29,7 @@ import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/ch
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
+import { mergeMods, orphanMods, orphanSourceTerms } from '@/lib/character/orphanPoints';
 import {
   abilityBonusDiceFromFeatures,
   abilityModSources,
@@ -247,8 +248,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         // Bonus des capacités acquises (PER-63) ET des capacités empruntées par un
         // choix « capacité d'une autre voie » (PER-66). Le contexte (PER-67) résout
         // les valeurs scalantes et n'ajoute les effets conditionnels que s'ils sont
-        // activés.
-        mods: modsFromFeatures(modFeatureIds, effectCtx),
+        // activés. On fusionne les points de capacité orphelins convertis (p. 40).
+        mods: mergeMods(modsFromFeatures(modFeatureIds, effectCtx), orphanMods(character)),
         // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique à la
         // formule mono-famille pour un profil classique.
         hpFamilyGains: familyHpGains(character, rulesContext),
@@ -470,6 +471,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 input={derivedInput}
                 featureIds={modFeatureIds}
                 effectContext={effectCtx}
+                extraModSources={orphanSourceTerms(character)}
                 overrides={character.overrides}
                 onOverride={editing ? setOverride : undefined}
               />

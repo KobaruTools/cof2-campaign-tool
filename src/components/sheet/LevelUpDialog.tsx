@@ -33,7 +33,8 @@ import type { Family, Feature } from '@/data/schema';
 import { featureCost, maxHp, minLevelForRank } from '@/lib/engine';
 import { familyHpGains } from '@/lib/character/hp';
 import { rulesContext } from '@/lib/character/rulesContext';
-import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
+import type { Character, FeatureChoiceSelection, OrphanReward } from '@/lib/character/types';
+import { ORPHAN_REWARD_LABEL } from '@/lib/character/orphanPoints';
 import {
   acquirableFeatures,
   applyLevelUp,
@@ -410,6 +411,9 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   // Voie d'accueil choisie pour la capacité divine d'un prêtre spécialiste (divine
   // de rang ≥ 2 acquise à ce niveau, p. 122). null tant que non désignée.
   const [divineHost, setDivineHost] = useState<string | null>(null);
+  // Conversions des points de capacité orphelins (p. 40), un emplacement par point
+  // potentiellement non dépensé (budget = 2). '' = point laissé non dépensé.
+  const [orphanChoices, setOrphanChoices] = useState<(OrphanReward | '')[]>(['', '']);
   const newLevel = character.level + 1;
 
   // Capacité divine restant à acquérir (prêtre spécialiste, divine de rang ≥ 2) et
@@ -587,14 +591,25 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   // Bloquant : toute capacité choisie portant un choix doit l'avoir résolu.
   const choicesPending = picked.some((id) => hasUnmadeChoice(working, id));
 
-  const close = () => {
+  // Points orphelins effectivement convertis : un par point restant non dépensé dont
+  // une récompense a été choisie (p. 40). Les emplacements au-delà de `remaining`
+  // sont ignorés (le joueur a finalement dépensé ces points en capacité).
+  const orphanRewardsToApply = orphanChoices
+    .slice(0, Math.max(0, remaining))
+    .filter((r): r is OrphanReward => r !== '');
+
+  const resetState = () => {
     setPicked([]);
     setPickedChoices({});
     setDivineHost(null);
+    setOrphanChoices(['', '']);
+  };
+  const close = () => {
+    resetState();
     onClose();
   };
   const confirm = () => {
-    const leveled = applyLevelUp(character, picked);
+    const leveled = applyLevelUp(character, picked, orphanRewardsToApply);
     // Capacité divine prise ce niveau : on persiste sa voie d'accueil sur la vocation
     // (la progression rattache alors la divine à ce slot, p. 122).
     const withVocation =
@@ -608,9 +623,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
         withVocation.featureIds,
       ),
     });
-    setPicked([]);
-    setPickedChoices({});
-    setDivineHost(null);
+    resetState();
   };
 
   return (
@@ -723,14 +736,59 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
             <Alert severity="info" sx={{ mb: 2 }}>
               Vous gagnez {budget} points de capacité à ce niveau (rang 1-2 : 1 point ; rang 3 et
               plus : 2 points). Seuls les choix légaux et abordables sont proposés.
-              {remaining > 0 && spent > 0 && (
-                <>
-                  {' '}
-                  Un point non dépensé peut être échangé contre 1 point de chance, 1 dé de
-                  récupération, ou 2 PV/PM (point de capacité orphelin, p. 40).
-                </>
-              )}
             </Alert>
+
+            {remaining > 0 && (
+              <Box
+                sx={{
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  p: 1.5,
+                  mb: 2,
+                  bgcolor: (t) => alpha(t.palette.warning.main, 0.06),
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Point{remaining > 1 ? 's' : ''} de capacité orphelin{remaining > 1 ? 's' : ''} (p. 40)
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Un point non dépensé peut être échangé contre +1 point de chance, +1 dé de
+                  récupération, +2 PV ou +2 PM (bonus permanent). Laissez « non dépensé » pour le
+                  perdre.
+                </Typography>
+                <Stack spacing={1}>
+                  {Array.from({ length: remaining }, (_, i) => (
+                    <FormControl key={i} size="small" fullWidth>
+                      <InputLabel id={`orphan-${i}`}>
+                        Point orphelin {remaining > 1 ? `n° ${i + 1}` : ''}
+                      </InputLabel>
+                      <Select
+                        labelId={`orphan-${i}`}
+                        label={`Point orphelin ${remaining > 1 ? `n° ${i + 1}` : ''}`}
+                        value={orphanChoices[i] ?? ''}
+                        onChange={(e) =>
+                          setOrphanChoices((prev) => {
+                            const next = [...prev];
+                            next[i] = e.target.value as OrphanReward | '';
+                            return next;
+                          })
+                        }
+                      >
+                        <MenuItem value="">
+                          <em>Non dépensé (perdu)</em>
+                        </MenuItem>
+                        {(Object.keys(ORPHAN_REWARD_LABEL) as OrphanReward[]).map((r) => (
+                          <MenuItem key={r} value={r}>
+                            {ORPHAN_REWARD_LABEL[r]}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ))}
+                </Stack>
+              </Box>
+            )}
 
             {!hasAnyAvailable ? (
               <Typography variant="body2" color="text.secondary">

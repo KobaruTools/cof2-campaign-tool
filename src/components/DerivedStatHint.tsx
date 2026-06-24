@@ -22,6 +22,11 @@ export interface DerivedStatHintProps {
    * effets conditionnels inactifs du détail. Absent → bonus plats constants seuls.
    */
   effectContext?: EffectContext;
+  /**
+   * Sources additionnelles (hors capacités) à fusionner dans le détail « Capacités /
+   * divers » de chaque stat — ex. points de capacité orphelins convertis (p. 40).
+   */
+  extraModSources?: ModSources;
   sx?: SxProps<Theme>;
 }
 
@@ -29,7 +34,14 @@ export interface DerivedStatHintProps {
  * Icône « i » à poser à côté d'une statistique dérivée : au survol, détaille
  * d'où vient le total (terme par terme), avec la page source CO2.
  */
-export function DerivedStatHint({ statId, input, featureIds, effectContext, sx }: DerivedStatHintProps) {
+export function DerivedStatHint({
+  statId,
+  input,
+  featureIds,
+  effectContext,
+  extraModSources,
+  sx,
+}: DerivedStatHintProps) {
   // Inventaire des capacités contribuant à chaque modificateur, mis en forme de
   // sous-termes (libellé = nom de la capacité ; suffixe « (conditionnel) » pour
   // les effets à interrupteur) consommés par le détail.
@@ -40,6 +52,13 @@ export function DerivedStatHint({ statId, input, featureIds, effectContext, sx }
         label: s.conditional ? `${s.name} (conditionnel)` : s.name,
         value: s.value,
       }));
+    }
+  }
+  // Sources additionnelles (points orphelins…) ajoutées aux sous-termes existants.
+  if (extraModSources) {
+    for (const [key, list] of Object.entries(extraModSources)) {
+      const k = key as keyof ModSources;
+      modSources[k] = [...(modSources[k] ?? []), ...(list ?? [])];
     }
   }
   const bd = derivedStatBreakdown(statId, input, modSources);

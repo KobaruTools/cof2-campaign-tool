@@ -16,7 +16,7 @@
 import { features as featureCatalog, featureById, progression } from '@/data';
 import type { Feature } from '@/data/schema';
 import { canAcquireFeature, featureCost, type RulesContext } from '@/lib/engine';
-import type { Character } from './types';
+import type { Character, LevelUpEntry, OrphanReward } from './types';
 
 /** Points de capacité gagnés à chaque montée de niveau (p. 38-39). */
 export const FEATURE_POINTS_PER_LEVEL = progression.featurePointsPerLevel;
@@ -78,19 +78,26 @@ export function deselectFeature(picked: string[], featureId: string): string[] {
 
 /**
  * Personnage promu d'un niveau : niveau +1, capacités choisies ajoutées (sans
- * doublon), entrée d'historique journalisée.
+ * doublon), entrée d'historique journalisée. `orphanRewards` (p. 40) : conversions
+ * des points de capacité non dépensés, stockées sur l'entrée du niveau.
  */
-export function applyLevelUp(character: Character, chosenFeatureIds: string[]): Character {
+export function applyLevelUp(
+  character: Character,
+  chosenFeatureIds: string[],
+  orphanRewards: OrphanReward[] = [],
+): Character {
   const level = character.level + 1;
   const featureIds = [...character.featureIds];
   for (const id of chosenFeatureIds) {
     if (!featureIds.includes(id)) featureIds.push(id);
   }
+  const entry: LevelUpEntry = { level, chosenFeatureIds };
+  if (orphanRewards.length > 0) entry.orphanRewards = orphanRewards;
   return {
     ...character,
     level,
     featureIds,
-    levelUpHistory: [...character.levelUpHistory, { level, chosenFeatureIds }],
+    levelUpHistory: [...character.levelUpHistory, entry],
   };
 }
 
