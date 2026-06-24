@@ -46,6 +46,7 @@ import {
   featureChoiceDefs,
   hasUnmadeChoice,
   pendingDivineAcquisition,
+  priestDivineSlot,
   pruneFeatureChoices,
   setFeatureChoice,
   type PendingDivine,
@@ -67,11 +68,21 @@ export interface LevelUpDialogProps {
 }
 
 /** Une voie disponible et ses capacités acquérables : en-tête + accordéons. */
+/** Rang « sauté » d'une voie : capacité détenue ailleurs (divine) que l'on ne peut
+ *  reprendre, affichée grisée à sa place dans l'arbre de la voie. */
+interface SkippedRank {
+  rank: number;
+  feature: Feature;
+  /** Nom de la voie d'accueil où la capacité est réellement logée (info-bulle). */
+  hostPathName?: string;
+}
+
 function AvailablePathGroup({
   group,
   color,
   remaining,
   lockedRank,
+  skipped,
   onAdd,
 }: {
   group: FeatureGroup;
@@ -84,8 +95,23 @@ function AvailablePathGroup({
    * bouton désactivé. `null` = aucun verrou.
    */
   lockedRank: number | null;
+  /**
+   * Rang « sauté » de cette voie (détenu via la capacité divine, logée ailleurs) :
+   * affiché grisé à sa place, et le rang juste au-dessus porte une indication de
+   * skip. `undefined` = pas de skip dans cette voie.
+   */
+  skipped?: SkippedRank;
   onAdd: (featureId: string) => void;
 }) {
+  // Capacités acquérables + le rang sauté (grisé), intercalés dans l'ordre des rangs.
+  const rows: { feature: Feature; kind: 'acquirable' | 'skipped' }[] = group.features.map(
+    (feature) => ({ feature, kind: 'acquirable' as const }),
+  );
+  if (skipped && !group.features.some((f) => f.id === skipped.feature.id)) {
+    rows.push({ feature: skipped.feature, kind: 'skipped' });
+  }
+  rows.sort((a, b) => a.feature.rank - b.feature.rank);
+
   return (
     <Box>
       <Typography
@@ -102,11 +128,51 @@ function AvailablePathGroup({
         {group.path?.name ?? group.pathId}
       </Typography>
       <Stack spacing={0.5}>
-        {group.features.map((feature) => {
+        {rows.map(({ feature, kind }) => {
+          if (kind === 'skipped') {
+            return (
+              <Box
+                key={feature.id}
+                sx={{
+                  border: 1,
+                  borderColor: 'divider',
+                  borderStyle: 'dashed',
+                  borderRadius: 1,
+                  px: 1.5,
+                  py: 1,
+                  opacity: 0.55,
+                  filter: 'grayscale(0.4)',
+                }}
+              >
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Chip
+                    label={`Rang ${feature.rank}`}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontWeight: 600 }}
+                  />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    <FeatureLabel feature={feature} />
+                  </Typography>
+                  <Tooltip
+                    title={
+                      skipped?.hostPathName
+                        ? `Détenue via la capacité divine (logée dans « ${skipped.hostPathName} ») — rang sauté, p. 122`
+                        : 'Détenue via la capacité divine — rang sauté, p. 122'
+                    }
+                    arrow
+                  >
+                    <Chip label="✦ Détenu (capacité divine) — rang sauté" size="small" />
+                  </Tooltip>
+                </Stack>
+              </Box>
+            );
+          }
           const cost = featureCost(feature, progression);
           const tooExpensive = cost > remaining;
           const locked = lockedRank !== null && feature.rank === lockedRank;
           const disabled = tooExpensive || locked;
+          const afterSkip = !!skipped && feature.rank === skipped.rank + 1;
           return (
             <Accordion
               key={feature.id}
@@ -136,6 +202,19 @@ function AvailablePathGroup({
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                     <FeatureLabel feature={feature} />
                   </Typography>
+                  {afterSkip && (
+                    <Tooltip
+                      title={`Rang ${skipped!.rank} détenu via la capacité divine : ce rang est accessible directement (skip, p. 122)`}
+                      arrow
+                    >
+                      <Chip
+                        label={`Après saut du rang ${skipped!.rank}`}
+                        size="small"
+                        color="secondary"
+                        variant="outlined"
+                      />
+                    </Tooltip>
+                  )}
                 </Stack>
                 <Tooltip
                   title={
@@ -367,6 +446,18 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
     : [];
   // Rang verrouillé tant que la divine accessible n'est pas prise (priorité absolue).
   const lockedRank = pendingDivine && divineAccessible && !divinePicked ? pendingDivine.rank : null;
+
+  // Capacité divine DÉJÀ acquise (ce niveau ou un précédent) : son rang natif est
+  // « sauté » dans sa voie d'origine (elle est logée dans la voie d'accueil). On
+  // l'affiche grisée à sa place et on signale le skip sur le rang juste au-dessus.
+  const acquiredSlot = priestDivineSlot(working);
+  const divineSkipFeature = acquiredSlot ? featureById.get(acquiredSlot.featureId) : undefined;
+  const divineSkipPathId = divineSkipFeature?.pathId;
+  const divineSkipHostName = acquiredSlot ? pathById.get(acquiredSlot.hostPathId)?.name : undefined;
+  const skippedFor = (g: FeatureGroup): SkippedRank | undefined =>
+    acquiredSlot && divineSkipFeature && g.pathId === divineSkipPathId
+      ? { rank: acquiredSlot.rank, feature: divineSkipFeature, hostPathName: divineSkipHostName }
+      : undefined;
 
   // Une capacité « hybride à ouvrir » = rang 1 d'une voie de profil qui n'est ni
   // du profil principal ni déjà entamée. On peut toujours poursuivre une voie
@@ -645,6 +736,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                     color={pathColor(group.path)}
                     remaining={remaining}
                     lockedRank={lockedRank}
+                    skipped={skippedFor(group)}
                     onAdd={add}
                   />
                 ))}
@@ -679,6 +771,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                             color={null}
                             remaining={remaining}
                             lockedRank={lockedRank}
+                            skipped={skippedFor(group)}
                             onAdd={add}
                           />
                         ))}
@@ -725,6 +818,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                                     color={color}
                                     remaining={remaining}
                                     lockedRank={lockedRank}
+                                    skipped={skippedFor(group)}
                                     onAdd={add}
                                   />
                                 ))}

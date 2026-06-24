@@ -13,6 +13,7 @@ import {
   classFamiliesWithFeatures,
   isHybrid,
   ownedRanks,
+  skippedRanks,
   type RulesContext,
 } from './legality';
 
@@ -92,8 +93,54 @@ describe('progression : la capacité divine occupe le slot de la voie d’accuei
     expect(canAcquireFeature(priest, 'foi-r1', ctx).legal).toBe(false);
   });
 
-  it('la voie d’origine de la divine n’est pas proposée (son rang 2 reste bloqué)', () => {
-    expect(canAcquireFeature(priest, 'meneur-d-hommes-r2', ctx).legal).toBe(false);
+  it('skip de rang : la voie d’origine se poursuit au rang suivant sans reprendre le rang détenu', () => {
+    // Le rang 1 natif (meneur-d-hommes-r1) EST la capacité divine : on ne peut pas le
+    // reprendre (p. 40, « pas deux fois la même capacité »)…
+    expect(canAcquireFeature(priest, 'meneur-d-hommes-r1', ctx).legal).toBe(false);
+    // …mais il compte comme prérequis satisfait, donc le rang 2 est accessible
+    // directement (skip de rang, p. 122).
+    expect(canAcquireFeature(priest, 'meneur-d-hommes-r2', ctx).legal).toBe(true);
+  });
+});
+
+describe('skip de rang : divine de rang 2 (Basile → survie-r2, accueil = foi)', () => {
+  const priest = makeCharacter({
+    classId: 'pretre',
+    level: 5,
+    featureIds: ['foi-r1', 'priere-r1', 'humain-r1', 'survie-r2'],
+    priestVocation: { mode: 'specialist', godId: 'basile', hostPathId: 'foi' },
+  });
+
+  it('expose le rang sauté de la voie d’origine', () => {
+    expect(skippedRanks(priest, 'survie', ctx)).toEqual([2]);
+    expect(skippedRanks(priest, 'foi', ctx)).toEqual([]); // pas un saut côté accueil
+  });
+
+  it('le rang 3 d’origine est bloqué tant que le rang 1 n’est pas comblé', () => {
+    expect(canAcquireFeature(priest, 'survie-r3', ctx).legal).toBe(false);
+  });
+
+  it('après le rang 1 d’origine, le rang 3 est accessible (rang 2 sauté via la divine)', () => {
+    const withR1 = { ...priest, featureIds: [...priest.featureIds, 'survie-r1'] };
+    expect(canAcquireFeature(withR1, 'survie-r2', ctx).legal).toBe(false); // détenu (divine)
+    expect(canAcquireFeature(withR1, 'survie-r3', ctx).legal).toBe(true);
+  });
+
+  it('la voie d’accueil reste intacte : rang 3 ouvert, rang 2 natif occupé', () => {
+    expect(canAcquireFeature(priest, 'foi-r3', ctx).legal).toBe(true);
+    expect(canAcquireFeature(priest, 'foi-r2', ctx).legal).toBe(false);
+  });
+
+  it('conformité : pas de faux « rang manquant » dû à la divine', () => {
+    const missing = (c: Character) =>
+      checkCompliance(c, ctx).filter((w) => w.code === 'MISSING_RANK');
+    // Voie d'accueil avancée (foi-r3) + voie d'origine non développée : la divine
+    // comble foi rang 2, et survie n'est pas signalée (logée dans foi).
+    const host = { ...priest, level: 7, featureIds: ['foi-r1', 'foi-r3', 'priere-r1', 'humain-r1', 'survie-r2'] };
+    expect(missing(host)).toEqual([]);
+    // Voie d'origine développée via skip (survie-r1 + r3, rang 2 = divine) : aucun trou.
+    const developed = { ...host, level: 9, featureIds: [...host.featureIds, 'survie-r1', 'survie-r3'] };
+    expect(missing(developed)).toEqual([]);
   });
 });
 

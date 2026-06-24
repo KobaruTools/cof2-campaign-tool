@@ -185,6 +185,34 @@ export function ownedRanks(character: Character, pathId: string, ctx: RulesConte
   return ranks.sort((a, b) => a - b);
 }
 
+/**
+ * Rangs possédés dans une voie d'après la voie NATIVE des capacités (sans tenir
+ * compte du remap de la capacité divine vers sa voie d'accueil). Sert au « skip de
+ * rang » : une divine issue de la voie d'origine (ex. `survie-r2`) y est bien
+ * détenue, et le perso ne peut pas la reprendre (p. 40, « pas deux fois la même
+ * capacité ») ; ce rang doit donc compter comme prérequis satisfait pour continuer
+ * la voie d'origine (rangs supérieurs), sans qu'on ait à le racheter.
+ */
+export function nativeOwnedRanks(character: Character, pathId: string, ctx: RulesContext): number[] {
+  const ranks: number[] = [];
+  for (const id of character.featureIds) {
+    const feature = ctx.featureById.get(id);
+    if (feature && feature.pathId === pathId) ranks.push(feature.rank);
+  }
+  return ranks.sort((a, b) => a - b);
+}
+
+/**
+ * Rangs « sautés » dans une voie : possédés nativement mais comptés ailleurs (la
+ * capacité divine, logée dans sa voie d'accueil). Pour ces rangs, on tient le
+ * prérequis pour satisfait alors que la capacité native n'est pas (re)prise — d'où
+ * un trou « légal » dans l'ordre des rangs. Vide pour les voies sans divine.
+ */
+export function skippedRanks(character: Character, pathId: string, ctx: RulesContext): number[] {
+  const effective = new Set(ownedRanks(character, pathId, ctx));
+  return nativeOwnedRanks(character, pathId, ctx).filter((r) => !effective.has(r));
+}
+
 /** Voies (hors voie de peuple/voie du mage) actuellement entamées. */
 function nonAncestryPaths(character: Character, ctx: RulesContext): Set<string> {
   const slot = priestDivineSlot(character);
@@ -327,10 +355,14 @@ export function canAcquireFeature(
   }
 
   // Ordre des rangs : tous les rangs inférieurs de la voie doivent être acquis
-  // (à partir du rang le plus bas réel de la voie).
+  // (à partir du rang le plus bas réel de la voie). Un rang détenu via la capacité
+  // divine (logée dans sa voie d'accueil mais native de cette voie) compte comme
+  // satisfait — « skip de rang » : on poursuit la voie d'origine sans racheter ce
+  // rang, qu'on ne peut de toute façon pas reprendre (p. 40, p. 122).
   const ranks = ownedRanks(character, path.id, ctx);
+  const native = nativeOwnedRanks(character, path.id, ctx);
   for (let r = lowestRank(path, ctx); r < feature.rank; r++) {
-    if (!ranks.includes(r)) {
+    if (!ranks.includes(r) && !native.includes(r)) {
       reasons.push(`Rang ${r} de « ${path.name} » non acquis (rangs dans l'ordre).`);
     }
   }
@@ -396,17 +428,30 @@ export function checkCompliance(character: Character, ctx: RulesContext): Warnin
     }
   });
 
-  // Regroupe les capacités possédées par voie.
+  // Regroupe les capacités possédées par voie. La capacité divine d'un prêtre
+  // spécialiste est logée dans sa voie d'ACCUEIL (p. 122) : on la compte là, pas
+  // dans sa voie d'origine — sinon faux « rang manquant » (trou au rang d'accueil
+  // côté accueil, rang inférieur absent côté origine).
+  const slot = priestDivineSlot(character);
   const ranksByPath = new Map<string, number[]>();
+  const pushRank = (pathId: string, rank: number) => {
+    const list = ranksByPath.get(pathId) ?? [];
+    list.push(rank);
+    ranksByPath.set(pathId, list);
+  };
   for (const id of character.featureIds) {
     const feature = ctx.featureById.get(id);
     if (!feature) {
       warnings.push({ code: 'UNKNOWN_FEATURE', message: `Capacité inconnue : ${id}.`, featureId: id });
       continue;
     }
-    const list = ranksByPath.get(feature.pathId) ?? [];
-    list.push(feature.rank);
-    ranksByPath.set(feature.pathId, list);
+    pushRank(effectivePathId(slot, id, feature.pathId), feature.rank);
+  }
+  // Skip de rang : si la voie d'ORIGINE de la divine est par ailleurs développée
+  // (capacités natives), le rang détenu via la divine comble le trou de ce rang.
+  if (slot) {
+    const originPathId = ctx.featureById.get(slot.featureId)?.pathId;
+    if (originPathId && ranksByPath.has(originPathId)) pushRank(originPathId, slot.rank);
   }
 
   // Par voie : rangs manquants (trous) + niveau requis dépassé.
