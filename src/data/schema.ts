@@ -674,6 +674,14 @@ export interface TestDomain {
   /** Libellé affiché au joueur (français). */
   label: string;
   /**
+   * Note d'aide (français) affichée en info-bulle sur la ligne du domaine, pour préciser
+   * son PÉRIMÈTRE quand le libellé seul est ambigu ou qu'il ABSORBE un domaine voisin (ex.
+   * Bricolage inclut « réparer / comprendre des mécanismes » depuis la fusion de l'ancien
+   * domaine `mechanisms`). Absente = pas d'info-bulle de description (seul le détail du
+   * calcul du bonus s'affiche, s'il y en a un).
+   */
+  description?: string;
+  /**
    * Caractéristique(s) gouvernante(s) : un test = d20 + carac + bonus de compétence.
    * PLUSIEURS quand le livre teste le domaine sur des caracs différentes selon la
    * situation (ex. équitation : CON pour l'endurance, CHA pour mener la monture — p. 233).

@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 9,
+  "id": "test-arquebusier-humain",
+  "name": "Test — Arquebusier (humain)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-71 — arquebusier humain, les 5 voies au rang 5. À vérifier : Artilleur — Mécanismes (r1) : bonus de compétence rang+2 au bricolage (tinkering, qui absorbe « mécanismes » — voir info-bulle du domaine) + désamorçage (disarm-traps) ; « dé bonus armes de siège » SITUATIONNEL verbatim. Arme à répétition (r2) : capacité du chargeur [=2 + INT] (quantité). Canon double (r4) / Poudre puissante (explosifs r3) : DM d'arme → flagués PER-115, verbatim. Couleuvrine (r5) : DM [5d4° + INT]. Explosifs — Tir de grenaille (r1) : bonus pyrotechnie (pyrotechnics). Démolition (r2) : DM [3d4° + INT] / zone {2d4°} ; charges = [#rang], réserve PARTAGÉE r2/r4/r5 NON modélisée en usageCounter (max constant, or rang scalant) → prose. Piège (r4) : [5d4° + INT], détection difficulté [15 + INT] (INT du joueur). Boulet (r5) : [4d4° + INT]. Mercenaire — Pilier de bar (r1) : bonus social CONDITIONNEL « dans une taverne » (interrupteur : fast-talk/persuasion/seduction) ; {1d4°} mains nues ; /2 DM non létaux verbatim. Combattant aguerri (r3) : choix capacité rang 1 (combat-r1 emprunté) + stat-bonus DEF +1. Constitution héroïque (r4) : CON +1 + dé. Combat de masse (r5) : ⚠ +1 DEF modélisé CONDITIONNEL (combat de masse) — À VALIDER vs permanent. Pistolero — Plus vite que son ombre (r1) : +5 Init CONDITIONNEL (arme à poudre chargée) ; dé malus verbatim PER-116. Tir double (r3) : PER-116 verbatim. Agilité héroïque (r4) : AGI +1 + dé. As de la gâchette (r5) : +{2d4°} DM situationnel. Précision — Défaut dans la cuirasse (r2) : DEF cible 10 + @AGI (non calculé). Tir précis (r3) : plage de critique NON modélisée, verbatim. Tireur d'élite (r4) : +{2d4°}. Tir fatal (r5) : difficulté 10 + NC créature (non calculé)."
+  },
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 3,
+    "CON": 2,
+    "FOR": 0,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 4,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 3,
+    "CON": 2,
+    "FOR": 0,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 4,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "artilleur-r1",
+    "explosifs-r1",
+    "humain-r1",
+    "mercenaire-r1",
+    "pistolero-r1",
+    "precision-r1",
+    "artilleur-r2",
+    "explosifs-r2",
+    "mercenaire-r2",
+    "pistolero-r2",
+    "precision-r2",
+    "artilleur-r3",
+    "explosifs-r3",
+    "mercenaire-r3",
+    "pistolero-r3",
+    "precision-r3",
+    "artilleur-r4",
+    "explosifs-r4",
+    "mercenaire-r4",
+    "pistolero-r4",
+    "precision-r4",
+    "artilleur-r5",
+    "explosifs-r5",
+    "mercenaire-r5",
+    "pistolero-r5",
+    "precision-r5"
+  ],
+  "featureChoices": {
+    "humain-r1": [
+      "city-dweller"
+    ],
+    "mercenaire-r3": [
+      "combat-r1"
+    ]
+  },
+  "effectToggles": {
+    "mercenaire-r1": [
+      true
+    ],
+    "mercenaire-r5": [
+      true
+    ],
+    "pistolero-r1": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "artilleur-r1",
+        "explosifs-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "mercenaire-r1",
+        "pistolero-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "precision-r1",
+        "artilleur-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "explosifs-r2",
+        "mercenaire-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "pistolero-r2",
+        "precision-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "artilleur-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "explosifs-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "mercenaire-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "pistolero-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "precision-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "artilleur-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "explosifs-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "mercenaire-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "pistolero-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "precision-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "artilleur-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "explosifs-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "mercenaire-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "pistolero-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "precision-r5"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "petoire",
+      "quantity": 1
+    },
+    {
+      "itemId": "epee-longue",
+      "quantity": 1
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-71 (arquebusier) — perso de recette. Voir identity.description pour la liste de vérification. Profil arquebusier (armes à poudre, powderAllowed) ; peuple humain (origine Citadin). Interrupteurs activés : Pilier de bar (taverne), Combat de masse, Plus vite que son ombre (arme chargée). Zones flaguées : PER-115 (DM d'arme : Canon double, Poudre puissante, Couleuvrine), PER-116 (dé malus : Plus vite que son ombre, Tir double), PER-104/105 (tracker de combat). usageCounter non scalant : charges explosives partagées laissées en prose.",
+  "createdAt": "2026-06-25T00:00:00.000Z",
+  "updatedAt": "2026-06-25T00:00:00.000Z"
+}

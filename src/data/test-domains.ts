@@ -99,8 +99,18 @@ export const testDomains: TestDomain[] = [
   { id: 'logic', label: 'Logique', abilities: ['INT'], sourcePage: 202 },
   { id: 'medicine', label: 'Médecine', abilities: ['INT'], sourcePage: 202 },
   // forgesort « bricolage ou science » (texte explicite : « un peu de réflexion »,
-  // test d'INT au lieu de FOR) → INT assuré.
-  { id: 'tinkering', label: 'Bricolage', abilities: ['INT'], sourcePage: 99 },
+  // test d'INT au lieu de FOR) → INT assuré. Absorbe l'ancien domaine « mécanismes » de
+  // l'arquebusier (Mécanismes, artilleur-r1, p. 62) : réparer/comprendre des mécanismes et
+  // manipuler des armes de siège relèvent du même savoir-faire (INT) → fusionnés ici (PER-71),
+  // d'où la `description` ci-dessous (info-bulle de périmètre).
+  {
+    id: 'tinkering',
+    label: 'Bricolage',
+    abilities: ['INT'],
+    sourcePage: 99,
+    description:
+      'Bricoler, réparer ou comprendre des mécanismes (y compris manipuler des armes de siège). Le désamorçage manuel d’un piège relève de la Dextérité (Désamorçage de pièges).',
+  },
   { id: 'science', label: 'Science', abilities: ['INT'], sourcePage: 99 },
   // forgesort « alchimie ou chimie » (étude des potions) → INT.
   { id: 'alchemy', label: 'Alchimie', abilities: ['INT'], sourcePage: 98 },
@@ -125,6 +135,11 @@ export const testDomains: TestDomain[] = [
   // estimation (Doigts agiles, roublard-r1, p. 76) : évaluer un objet précieux
   // (joyaux, bijoux) → connaissance de la valeur, INT.
   { id: 'appraisal', label: 'Estimation', abilities: ['INT'], sourcePage: 76 },
+  // --- INT — pyrotechnie de l'arquebusier (PER-71) ---------------------------
+  // pyrotechnie (Tir de grenaille, explosifs-r1, p. 63) : « tests d'artificier » (fabriquer
+  // et tirer des feux d'artifice) → savoir-faire de l'artificier, INT. (Le savoir mécanique de
+  // l'arquebusier — Mécanismes, artilleur-r1 — est fusionné dans `tinkering`, voir plus haut.)
+  { id: 'pyrotechnics', label: 'Pyrotechnie', abilities: ['INT'], sourcePage: 63 },
 
   // --- CHA — exemples p. 202 + social (mages) --------------------------------
   { id: 'art', label: 'Art', abilities: ['CHA'], sourcePage: 202 },

@@ -352,6 +352,15 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier ajoute son rang + 2 à tous les tests visant à réparer ou à comprendre des mécanismes (cela inclut le fait de désamorcer des pièges mécaniques et de manipuler des armes de siège). Il obtient un dé bonus à tous les tests d'attaque avec des armes de siège (baliste, couleuvrine, canon, trébuchet, catapulte, etc.).",
+    // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2]. Bonus de compétence (PER-89)
+    // INCONDITIONNEL aux domaines nommés : bricolage (tinkering — qui ABSORBE « réparer/comprendre
+    // des mécanismes » et « manipuler des armes de siège », cf. sa description) et désamorçage de
+    // pièges mécaniques (disarm-traps, déjà au catalogue). Le « dé bonus aux tests d'ATTAQUE avec des
+    // armes de siège » est SITUATIONNEL (arme de siège en main) et porte sur un jet d'attaque, pas sur
+    // un domaine de compétence → laissé verbatim.
+    richText:
+      "L'arquebusier ajoute son [rang + 2] à tous les tests visant à réparer ou à comprendre des mécanismes (cela inclut le fait de désamorcer des pièges mécaniques et de manipuler des armes de siège). Il obtient un dé bonus à tous les tests d'attaque avec des armes de siège (baliste, couleuvrine, canon, trébuchet, catapulte, etc.).",
+    effects: [{ kind: 'test-bonus', domains: ['tinkering', 'disarm-traps'] }],
     sourcePage: 62,
   },
   {
@@ -363,6 +372,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier modifie jusqu'à deux armes de son choix pour les doter de chargeurs. La capacité du chargeur est égale à [2 + INT] et elle augmente de 1 projectile supplémentaire chaque fois que le personnage atteint le rang 3 dans une voie d'arquebusier. Chaque chargeur doit être ensuite rechargé au rythme d'une action limitée (L) par projectile.",
+    // Rendu enrichi (PER-71) : la capacité du chargeur est une QUANTITÉ (un compte de projectiles)
+    // → [=2 + INT] (rendu en valeur brute, pas en modificateur de d20). La montée « +1 projectile
+    // par rang 3 cross-voie » est un palier CROSS-VOIE décrit en prose → laissée littérale (format §7).
+    richText:
+      "L'arquebusier modifie jusqu'à deux armes de son choix pour les doter de chargeurs. La capacité du chargeur est égale à [=2 + INT] et elle augmente de 1 projectile supplémentaire chaque fois que le personnage atteint le rang 3 dans une voie d'arquebusier. Chaque chargeur doit être ensuite rechargé au rythme d'une action limitée (L) par projectile.",
     sourcePage: 62,
   },
   {
@@ -385,6 +399,9 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier peut bricoler ses armes à poudre (mais pas une couleuvrine) pour les doter d'un second canon. Il double le dé de DM de l'arme (mais pas les dés bonus ni les bonus). Il doit recharger chaque canon individuellement (un canon double consomme 2 projectiles). En cas de critique le dé est triplé (au lieu de ×4). Ce type d'arme possède une double détente et il reste possible de décharger un seul canon à la fois.",
+    // PER-71 : modifie le DM d'une ARME À POUDRE (dé de DM doublé, ×3 au critique au lieu de ×4)
+    // → relève de l'affichage des DM d'arme augmentés par capacité (PER-115, milestone Armures).
+    // Pas d'effet structuré ici ; texte verbatim conservé tel quel (aucune valeur à calculer).
     sourcePage: 63,
   },
   {
@@ -395,6 +412,11 @@ export const adventurerFeatures: Feature[] = [
     isSpell: false,
     actionTypes: ['L'],
     text:
+      "L'arquebusier obtient une couleuvrine (un petit canon portatif). Sur un test d'attaque à distance réussi (dé bonus), la couleuvrine inflige [5d4° + INT] DM à une portée de 100 m. Il faut ensuite deux rounds (L) pour la recharger. C'est une arme encombrante et il est impossible de transporter plus d'une couleuvrine.",
+    // Rendu enrichi (PER-71) : DM de la couleuvrine [5d4° + INT]. Le « (dé bonus) » sur le test
+    // d'attaque est SITUATIONNEL (propre à la couleuvrine) → laissé verbatim. La couleuvrine est une
+    // ARME octroyée (DM/portée affichés via PER-115, milestone Armures), pas une créature ni une stat.
+    richText:
       "L'arquebusier obtient une couleuvrine (un petit canon portatif). Sur un test d'attaque à distance réussi (dé bonus), la couleuvrine inflige [5d4° + INT] DM à une portée de 100 m. Il faut ensuite deux rounds (L) pour la recharger. C'est une arme encombrante et il est impossible de transporter plus d'une couleuvrine.",
     sourcePage: 63,
   },
@@ -409,6 +431,12 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "L'arquebusier sait réaliser un mélange de poudre et de grenaille. Quand il charge une arme à poudre, il peut choisir d'utiliser ce mélange à la place d'une munition normale (il doit l'annoncer au moment où il charge). Lorsqu'il tire cette munition (L), il fait un seul test d'attaque contre toutes les cibles lui faisant face dans un cône de 10 m de long et sur 5 m de large. Toutes les cibles dont il atteint la DEF subissent la moitié des DM habituels. De plus, le personnage ajoute son rang + 2 à tous les tests d'artificier (par exemple pour fabriquer et tirer des feux d'artifice).",
+    // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2]. Bonus de compétence INCONDITIONNEL
+    // au domaine pyrotechnie (pyrotechnics, « tests d'artificier »). Le tir de grenaille en cône et la
+    // moitié des DM relèvent du tracker de combat (PER-104/105) → laissés verbatim.
+    richText:
+      "L'arquebusier sait réaliser un mélange de poudre et de grenaille. Quand il charge une arme à poudre, il peut choisir d'utiliser ce mélange à la place d'une munition normale (il doit l'annoncer au moment où il charge). Lorsqu'il tire cette munition (L), il fait un seul test d'attaque contre toutes les cibles lui faisant face dans un cône de 10 m de long et sur 5 m de large. Toutes les cibles dont il atteint la DEF subissent la moitié des DM habituels. De plus, le personnage ajoute son [rang + 2] à tous les tests d'artificier (par exemple pour fabriquer et tirer des feux d'artifice).",
+    effects: [{ kind: 'test-bonus', domains: ['pyrotechnics'] }],
     sourcePage: 63,
   },
   {
@@ -420,6 +448,14 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier peut préparer un explosif qui lui permet de démolir facilement des structures. Il lui faut 3 rounds complets pour préparer et poser son explosif. Celui-ci inflige à la structure [3d4° + INT] DM et ignore la moitié de sa RD (et seulement 2d4° DM dans un rayon de 2 m). Chaque jour, l'arquebusier peut utiliser un nombre de charges explosives égal au rang dans la voie. Ces charges permettent indifféremment d'utiliser les capacités Démolition, Piège explosif ou Boulet explosif.",
+    // Rendu enrichi (PER-71) : DM contre la structure [3d4° + INT] ; DM de zone {2d4°} (dé fixe).
+    // « nombre de charges égal au rang dans la voie » → [#rang] (terme nommé, déterminant « au »).
+    // Les charges sont une réserve quotidienne PARTAGÉE entre Démolition (r2), Piège explosif (r4) et
+    // Boulet explosif (r5). Non modélisées en `usageCounter` : son `max` est une CONSTANTE, or ici la
+    // réserve = rang ATTEINT dans la voie (1→5, scalant) → inexprimable. Laissée en prose (à revoir si
+    // `usageCounter` gagne un max scalant). Pas de double comptage : compteur posé sur aucune des trois.
+    richText:
+      "L'arquebusier peut préparer un explosif qui lui permet de démolir facilement des structures. Il lui faut 3 rounds complets pour préparer et poser son explosif. Celui-ci inflige à la structure [3d4° + INT] DM et ignore la moitié de sa RD (et seulement {2d4°} DM dans un rayon de 2 m). Chaque jour, l'arquebusier peut utiliser un nombre de charges explosives égal au [#rang] dans la voie. Ces charges permettent indifféremment d'utiliser les capacités Démolition, Piège explosif ou Boulet explosif.",
     sourcePage: 63,
   },
   {
@@ -431,6 +467,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier sait préparer une poudre plus puissante, il ajoute +10 m à la portée et +1 aux DM des armes à poudre. Le bonus aux DM augmente de +1 à chaque fois que le personnage atteint le rang 5 dans une voie d'arquebusier. De plus, sa poudre est magique et elle permet à ses projectiles d'affecter les créatures immunisées aux armes non magiques.",
+    // PER-71 : « +1 aux DM des armes à poudre » (scalant +1 par rang 5 cross-voie) modifie le DM d'une
+    // ARME → relève de l'affichage des DM d'arme augmentés par capacité (PER-115, milestone Armures). Le
+    // +10 m de portée et le caractère « poudre magique » (touche les créatures immunisées aux armes non
+    // magiques) accompagnent ce traitement d'arme. Pas d'effet structuré ici ; texte verbatim conservé.
     sourcePage: 63,
   },
   {
@@ -442,6 +482,12 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Il faut 1 min à l'arquebusier pour installer un piège qui explose dans un rayon de 5 m en infligeant [5d4° + INT] DM de feu (test d'AGI difficulté 15 pour ne subir que la moitié des DM). Le piège est déclenché à l'intrusion de toute créature dans une zone d'un à deux mètres autour du piège. Une créature peut détecter le piège avec un test d'INT difficulté [15 + INT de l'arquebusier] avant de le déclencher.",
+    // Rendu enrichi (PER-71) : DM du piège [5d4° + INT]. La difficulté de détection « [15 + INT de
+    // l'arquebusier] » est calculée sur l'INT DU JOUEUR (suffixe « de l'arquebusier » implicite, format
+    // §6) → [15 + INT]. La difficulté d'AGI 15 (créature touchée) est une constante → littérale. Use une
+    // charge explosive partagée (cf. explosifs-r2). Pas d'effet structuré (DM/piège, tracker PER-104/105).
+    richText:
+      "Il faut 1 min à l'arquebusier pour installer un piège qui explose dans un rayon de 5 m en infligeant [5d4° + INT] DM de feu (test d'AGI difficulté 15 pour ne subir que la moitié des DM). Le piège est déclenché à l'intrusion de toute créature dans une zone d'un à deux mètres autour du piège. Une créature peut détecter le piège avec un test d'INT difficulté [15 + INT] avant de le déclencher.",
     sourcePage: 64,
   },
   {
@@ -452,6 +498,10 @@ export const adventurerFeatures: Feature[] = [
     isSpell: false,
     actionTypes: ['L'],
     text:
+      "L'arquebusier sait fabriquer et lancer de petites boules de métal garnies de poudre et d'une portée de 20 m qui explosent dans un rayon de 5 m en infligeant [4d4° + INT] DM perforants, divisés par 2 pour les victimes qui réussissent un test d'AGI difficulté 10. Ceux qui ratent le test sont de plus aveuglés un round par le flash lumineux de l'explosion.",
+    // Rendu enrichi (PER-71) : DM du boulet [4d4° + INT]. Use une charge explosive partagée (cf.
+    // explosifs-r2). DM divisés/état aveuglé : tracker de combat (PER-104/105) → laissés verbatim.
+    richText:
       "L'arquebusier sait fabriquer et lancer de petites boules de métal garnies de poudre et d'une portée de 20 m qui explosent dans un rayon de 5 m en infligeant [4d4° + INT] DM perforants, divisés par 2 pour les victimes qui réussissent un test d'AGI difficulté 10. Ceux qui ratent le test sont de plus aveuglés un round par le flash lumineux de l'explosion.",
     sourcePage: 64,
   },
@@ -466,6 +516,22 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier obtient un bonus égal à son rang + 2 aux tests d'interaction sociale dans les tavernes ou les auberges (renseignement, négociation, séduction, etc.) ainsi que pour résister aux effets de l'alcool. De plus, il inflige 1d4° DM à mains nues (non létal) et il divise par 2 tous les DM non létaux qu'on lui inflige.",
+    // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2] ; DM à mains nues {1d4°}. PER-117 : le bonus
+    // de compétence social est CONDITIONNEL au lieu (« dans les tavernes ou les auberges ») → conditional-
+    // stat-bonus avec testBonusDomains + interrupteur, `bonuses` vide. Domaines : renseignement (fast-talk),
+    // négociation (persuasion), séduction (seduction). « résister aux effets de l'alcool » : application
+    // situationnelle (résistance CON), non modélisée en domaine → verbatim. La division par 2 des DM non
+    // létaux subis n'entre pas dans `DamageReduction` (pas de type « non létal » dans les scopes) → verbatim.
+    richText:
+      "L'arquebusier obtient un bonus égal à son [rang + 2] aux tests d'interaction sociale dans les tavernes ou les auberges (renseignement, négociation, séduction, etc.) ainsi que pour résister aux effets de l'alcool. De plus, il inflige {1d4°} DM à mains nues (non létal) et il divise par 2 tous les DM non létaux qu'on lui inflige.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        testBonusDomains: ['fast-talk', 'persuasion', 'seduction'],
+        activation: { kind: 'condition', label: 'dans une taverne ou une auberge', activeByDefault: false },
+      },
+    ],
     sourcePage: 64,
   },
   {
@@ -477,6 +543,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "L'arquebusier effectue une attaque au contact ou à distance (avec l'arme en main). Si l'attaque est réussie, il inflige ses DM habituels (mais peut choisir d'infliger des DM temporaires) et il choisit entre désarmer, renverser ou affaiblir (1d4 rounds) un adversaire dont le NC est inférieur au rang atteint dans la voie. Si l'attaque est une réussite critique, il peut choisir de cumuler deux effets.",
+    // Rendu enrichi (PER-71) : durée de l'état affaibli {1d4} rounds ; « inférieur au rang atteint dans la
+    // voie » → [#rang] (terme nommé). Le NC de la cible est auto-glossé. Effets de contrôle (désarmer/
+    // renverser/affaiblir) : tracker de combat (PER-104/105) → pas d'effet structuré.
+    richText:
+      "L'arquebusier effectue une attaque au contact ou à distance (avec l'arme en main). Si l'attaque est réussie, il inflige ses DM habituels (mais peut choisir d'infliger des DM temporaires) et il choisit entre désarmer, renverser ou affaiblir ({1d4} rounds) un adversaire dont le NC est inférieur au [#rang] atteint dans la voie. Si l'attaque est une réussite critique, il peut choisir de cumuler deux effets.",
     sourcePage: 64,
   },
   {
@@ -488,6 +559,9 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier choisit une capacité de rang 1 de son choix de guerrier, de voleur (armure de cuir) ou de rôdeur (armure de cuir renforcé). Il gagne aussi +1 en DEF.",
+    // PER-71 : « +1 en DEF » PERMANENT (inconditionnel) → stat-bonus def +1. Le choix d'une capacité de
+    // rang 1 (guerrier/voleur/rôdeur) est déjà porté par `choices` (feature-from-path). L'accès à l'armure
+    // de cuir / cuir renforcé qu'ouvre l'option relève de la milestone Armures (non modélisé ici).
     choices: [
       {
         kind: 'feature-from-path',
@@ -496,6 +570,7 @@ export const adventurerFeatures: Feature[] = [
         classIds: ['guerrier', 'voleur', 'rodeur'],
       },
     ],
+    effects: [{ kind: 'stat-bonus', stat: 'def', value: 1 }],
     sourcePage: 64,
   },
   {
@@ -507,6 +582,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier augmente sa valeur de CON de +1 et il obtient un dé bonus aux tests de CON.",
+    // Caractéristique héroïque (mécanique core) : +1 CON permanent + dé bonus aux tests de CON.
+    effects: [
+      { kind: 'ability-bonus', ability: 'CON', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'CON' },
+    ],
     sourcePage: 64,
   },
   {
@@ -518,6 +598,17 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Si le combat implique au moins 10 créatures actives (en comptant l'arquebusier et ses alliés), l'arquebusier obtient, au choix, une action d'attaque ou une action de mouvement supplémentaire à son tour. De plus, l'arquebusier gagne +1 en DEF.",
+    // PER-71 : l'action supplémentaire (attaque OU mouvement) relève du tracker de combat (PER-104/105)
+    // → verbatim. Le « +1 en DEF » est rattaché par « De plus » à la même phrase conditionnelle (combat
+    // d'au moins 10 créatures actives) → modélisé en conditional-stat-bonus def +1 avec interrupteur
+    // (lecture validée par le propriétaire : entièrement CONDITIONNEL, pas un +1 DEF permanent).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [{ stat: 'def', value: 1 }],
+        activation: { kind: 'condition', label: 'combat de masse (≥ 10 créatures actives)', activeByDefault: false },
+      },
+    ],
     sourcePage: 64,
   },
 
@@ -531,6 +622,16 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Si son arme à poudre est chargée et tenue en main, l'arquebusier peut tirer avec un bonus de +5 à son Initiative. De plus, il ne subit plus de dé malus lorsqu'il tire avec une arme à poudre ou une arbalète en étant engagé en combat au contact (sauf avec la couleuvrine).",
+    // PER-71 : le « +5 à son Initiative » est CONDITIONNEL (arme à poudre chargée et tenue en main) →
+    // conditional-stat-bonus initiative +5 avec interrupteur. La suppression du dé malus en tirant engagé
+    // au contact relève de l'exception au dé malus (PER-116, milestone Armures) → laissée verbatim.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [{ stat: 'initiative', value: 5 }],
+        activation: { kind: 'condition', label: 'arme à poudre chargée en main', activeByDefault: false },
+      },
+    ],
     sourcePage: 64,
   },
   {
@@ -553,6 +654,8 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "L'arquebusier est capable de tirer simultanément avec une pétoire (ou une arbalète de poing) dans chaque main avec un malus de -2 à chaque attaque. S'il décharge ses deux armes sur la même cible, il ne subit aucun malus.",
+    // PER-71 : combat à deux armes à distance (malus de -2, annulé si même cible) → relève de la gestion
+    // du dé malus / combat à deux armes (PER-116, milestone Armures). Pas d'effet structuré ; verbatim.
     sourcePage: 64,
   },
   {
@@ -564,6 +667,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier augmente sa valeur d'AGI de +1 et il obtient un dé bonus aux tests d'AGI.",
+    // Caractéristique héroïque (mécanique core) : +1 AGI permanent + dé bonus aux tests d'AGI.
+    effects: [
+      { kind: 'ability-bonus', ability: 'AGI', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'AGI' },
+    ],
     sourcePage: 64,
   },
   {
@@ -575,6 +683,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Lors d'une attaque à distance avec une arme à poudre ou une arbalète, s'il obtient un résultat d'attaque supérieur ou égal à la DEF de son adversaire +10 points, l'arquebusier obtient un bonus de +2d4° aux DM de son attaque.",
+    // Rendu enrichi (PER-71) : bonus aux DM {2d4°}. Bonus SITUATIONNEL (seuil de réussite ≥ DEF + 10 sur un
+    // tir) → pas d'effet permanent (calqué sur le barde escrime-r5/saltimbanque, même structure de seuil).
+    richText:
+      "Lors d'une attaque à distance avec une arme à poudre ou une arbalète, s'il obtient un résultat d'attaque supérieur ou égal à la DEF de son adversaire +10 points, l'arquebusier obtient un bonus de +{2d4°} aux DM de son attaque.",
     sourcePage: 64,
   },
 
@@ -599,6 +711,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "L'arquebusier utilise une action d'attaque pour trouver le point faible de son adversaire et le viser. Au prochain round*, il réalise ses attaques à distance sur cette cible contre une DEF de [10 + AGI de la cible] et il peut ignorer sa résistance aux DM ou sa réduction des DM (sauf si cette dernière est acquise parce que la cible est immatérielle : ombre, fantôme, etc.).\n* Si l'arquebusier utilise la capacité Combat de masse pour son action d'attaque en début de round, alors la capacité s'applique seulement aux tirs du round en cours.",
+    // Rendu enrichi (PER-71) : la DEF visée se calcule sur l'AGI de la CIBLE (stat d'autrui, format §5)
+    // → NE PAS évaluer : @AGI en référence, « 10 + » et « de la cible » restent littéraux (pas de [...]
+    // qui calculerait contre le joueur). Le contournement de RD/résistance relève du tracker (PER-104/105).
+    richText:
+      "L'arquebusier utilise une action d'attaque pour trouver le point faible de son adversaire et le viser. Au prochain round*, il réalise ses attaques à distance sur cette cible contre une DEF de 10 + @AGI de la cible et il peut ignorer sa résistance aux DM ou sa réduction des DM (sauf si cette dernière est acquise parce que la cible est immatérielle : ombre, fantôme, etc.).\n* Si l'arquebusier utilise la capacité Combat de masse pour son action d'attaque en début de round, alors la capacité s'applique seulement aux tirs du round en cours.",
     sourcePage: 65,
   },
   {
@@ -610,6 +727,9 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier inflige des critiques sur 19-20 sur ses attaques avec une arme à distance. La plage de critique passe à 18-20 à partir du rang 5.",
+    // PER-71 : élargissement de la plage de critique (19-20, puis 18-20 au rang 5) — NON modélisé en effet
+    // (aucun genre « plage de critique » dans le moteur), comme le voleur spadassin-r3. Verbatim ; la montée
+    // par palier reste décrite en prose (format §7).
     sourcePage: 65,
   },
   {
@@ -621,6 +741,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "L'arquebusier prend le temps d'ajuster une cible au loin (distance minimum de 10 m). Il double la portée de son arme et ajoute +2d4° aux DM. Il ne peut pas utiliser cette capacité s'il est au contact d'un adversaire ou dans une position instable (par exemple dans un véhicule).",
+    // Rendu enrichi (PER-71) : bonus aux DM {2d4°}. Bonus SITUATIONNEL (tir ajusté, action limitée, hors
+    // contact) → pas d'effet permanent. Le doublement de portée accompagne le traitement d'arme.
+    richText:
+      "L'arquebusier prend le temps d'ajuster une cible au loin (distance minimum de 10 m). Il double la portée de son arme et ajoute +{2d4°} aux DM. Il ne peut pas utiliser cette capacité s'il est au contact d'un adversaire ou dans une position instable (par exemple dans un véhicule).",
     sourcePage: 65,
   },
   {
@@ -632,6 +756,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "S'il tire sur une créature dont le niveau (NC) est inférieur à la moitié du sien (arrondi au supérieur), l'arquebusier peut faire un test d'INT difficulté [10 + NC de la créature]. En cas de réussite, elle est morte. Dans tous les autres cas, elle subit les DM normaux.",
+    // Rendu enrichi (PER-71) : la difficulté « [10 + NC de la créature] » dépend du NC de la CIBLE (stat
+    // d'autrui, format §5) → NE PAS évaluer : « 10 + NC de la créature » littéral (NC auto-glossé). « la
+    // moitié du sien » (demi-niveau du joueur) reste en prose. Mise à mort : tracker de combat (PER-104/105).
+    richText:
+      "S'il tire sur une créature dont le niveau (NC) est inférieur à la moitié du sien (arrondi au supérieur), l'arquebusier peut faire un test d'INT difficulté 10 + NC de la créature. En cas de réussite, elle est morte. Dans tous les autres cas, elle subit les DM normaux.",
     sourcePage: 65,
   },
 

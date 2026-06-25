@@ -64,6 +64,12 @@ const TARGETS: Target[] = [
     // Les trois autres voies (survie, traqueur, combat à deux armes) s'ouvrent aux montées.
     level1FreeIds: ['archer-r1', 'compagnon-animal-r1', 'humain-r1'],
   },
+  {
+    file: 'test-arquebusier-humain.json',
+    // Profil arquebusier (artilleur + explosifs à la création) ; peuple humain.
+    // Les trois autres voies (mercenaire, pistolero, précision) s'ouvrent aux montées.
+    level1FreeIds: ['artilleur-r1', 'explosifs-r1', 'humain-r1'],
+  },
 ];
 
 const dir = join(process.cwd(), 'examples', 'characters');

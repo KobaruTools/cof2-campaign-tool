@@ -194,8 +194,16 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
                     const multiAbility = d.abilities.length > 1;
 
                     const breakdown =
-                      has || includeAbility ? (
+                      has || includeAbility || d.description ? (
                         <Box sx={{ py: 0.5 }}>
+                          {d.description && (
+                            <Typography
+                              variant="caption"
+                              sx={{ display: 'block', fontStyle: 'italic', mb: has || includeAbility ? 0.5 : 0 }}
+                            >
+                              {d.description}
+                            </Typography>
+                          )}
                           {includeAbility && (
                             <Typography variant="caption" sx={{ display: 'block', fontWeight: 700 }}>
                               {best} (meilleure carac) : {signed(abilityValue)}
