@@ -690,9 +690,17 @@ export function pruneUsageCounters(
   featureIds: string[],
 ): Record<string, number> {
   const owned = new Set(featureIds);
+  // Clés VALIDES : pour chaque capacité possédée portant un compteur, sa clé d'état —
+  // `sharedKey` si réserve partagée (PER-119), sinon l'id de la capacité. On conserve aussi
+  // les clés = id possédé (rétrocompat des compteurs propres sans champ `sharedKey`).
+  const validKeys = new Set<string>(owned);
+  for (const id of featureIds) {
+    const counter = featureById.get(id)?.usageCounter;
+    if (counter) validKeys.add(counter.sharedKey ?? id);
+  }
   const next: Record<string, number> = {};
-  for (const [id, value] of Object.entries(usageCounters)) {
-    if (owned.has(id)) next[id] = value;
+  for (const [key, value] of Object.entries(usageCounters)) {
+    if (validKeys.has(key)) next[key] = value;
   }
   return next;
 }

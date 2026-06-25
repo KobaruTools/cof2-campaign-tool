@@ -267,6 +267,18 @@ describe('resolveExpr — évaluation', () => {
     expect(r.total).toBe(6);
   });
 
+  it('terme `paliers` dans une QUANTITÉ : chargeur de l’arquebusier (PER-118)', () => {
+    // Capacité du chargeur = 2 + INT + (voies d'arquebusier au rang 3). INT 0 ici, 5 voies au rang 3.
+    const segs = parseRichText('[=2 + INT + paliers]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'quantity' }>;
+    expect(expr.kind).toBe('quantity');
+    const r = resolveExpr(expr.terms, abilities, 1, progression, 0, 5);
+    expect(r.hasDie).toBe(false);
+    expect(r.total).toBe(7); // 2 + INT(0) + 5
+    // À 0 voie au rang 3, le terme paliers disparaît → 2 + INT.
+    expect(resolveExpr(expr.terms, abilities, 1, progression, 0, 0).total).toBe(2);
+  });
+
   it('résout le terme rang via le rang passé en argument', () => {
     const segs = parseRichText('[10 + rang]');
     const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;

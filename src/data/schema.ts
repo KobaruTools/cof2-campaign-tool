@@ -1035,8 +1035,28 @@ export interface CreatureProfile {
  * automatisable proprement → laissée en verbatim, le décrément restant manuel.
  */
 export interface UsageCounter {
-  /** Nombre d'usages disponibles au départ (valeur la plus haute du compteur). */
-  max: number;
+  /**
+   * Nombre d'usages disponibles au départ (valeur la plus haute du compteur). CONSTANT.
+   * Optionnel uniquement si `maxByPathRank` est utilisé (maximum scalant). Au moins l'un
+   * des deux (`max` ou `maxByPathRank`) doit être présent.
+   */
+  max?: number;
+  /**
+   * Maximum SCALANT (PER-119) : si vrai, le maximum vaut le RANG ATTEINT dans la voie hôte
+   * (1→5), pas une constante — il grandit avec la progression. Prioritaire sur `max`. Cas :
+   * les charges explosives de l'arquebusier (réserve quotidienne = rang dans la voie des
+   * explosifs). Le moteur ne stocke que la déclaration ; le maximum effectif est résolu à
+   * l'affichage à partir du rang de voie courant.
+   */
+  maxByPathRank?: boolean;
+  /**
+   * Clé d'état PARTAGÉE (PER-119) : plusieurs capacités d'une même voie peuvent puiser dans
+   * une réserve COMMUNE. Le décompte courant est alors stocké sous cette clé dans
+   * `Character.usageCounters` (au lieu de l'id de la capacité), si bien que les capacités qui
+   * la partagent affichent et décomptent le MÊME compteur. Ex. `'explosifs-charges'` partagé
+   * par Démolition, Piège explosif et Boulet explosif. Défaut = id de la capacité (compteur propre).
+   */
+  sharedKey?: string;
   /** Libellé affiché (français). Défaut : « Usages restants ». */
   label?: string;
 }

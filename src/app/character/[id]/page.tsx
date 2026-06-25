@@ -203,13 +203,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     update({ effectInputs: next });
   };
   // Décompte d'une capacité à usages limités (PER-70, ex. Les sept vies du chat).
-  // Borné à [0, max] ; au maximum, on supprime la clé (= compteur plein par défaut).
-  const setUsageCounterValue = (featureId: string, value: number) => {
-    const max = featureById.get(featureId)?.usageCounter?.max ?? 0;
+  // Borné à [0, max] ; au maximum, on supprime la clé (= compteur plein par défaut). La CLÉ peut
+  // être une `sharedKey` (réserve partagée, PER-119) et non un id de capacité → le max effectif
+  // (constant ou scalant) est calculé par le composant et fourni ici, plutôt que relu via l'id.
+  const setUsageCounterValue = (counterKey: string, value: number, max: number) => {
     const clamped = Math.max(0, Math.min(max, value));
     const next = { ...character.usageCounters };
-    if (clamped >= max) delete next[featureId];
-    else next[featureId] = clamped;
+    if (clamped >= max) delete next[counterKey];
+    else next[counterKey] = clamped;
     update({ usageCounters: next });
   };
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`

@@ -4,6 +4,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import RemoveIcon from '@mui/icons-material/Remove';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PushPinIcon from '@mui/icons-material/PushPin';
@@ -33,7 +34,7 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById } from '@/data';
-import type { Feature, Path } from '@/data/schema';
+import type { Feature, Path, UsageCounter } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import { featureChoiceDefs, hasUnmadeChoice } from '@/lib/character/choices';
@@ -42,6 +43,7 @@ import {
   conditionalEffectsOf,
   creatureBonusDiceForPath,
   disabledFeatureReasons,
+  pathRanksFromFeatures,
   type DisabledFeatureReason,
 } from '@/lib/character/effects';
 import { classColor } from '@/lib/ui/classColors';
@@ -285,6 +287,73 @@ function ReplacedSlotBlock({
   );
 }
 
+/**
+ * Capacité EMPRUNTÉE par un choix `feature-from-path` résolu (PER-120). Ex. Combattant
+ * aguerri (mercenaire-r3) : l'arquebusier prend une capacité de rang 1 d'une autre voie.
+ * Renvoie la capacité choisie (depuis `Character.featureChoices`), ou `undefined` si le
+ * choix n'est pas (encore) fait. Première (et unique) entrée `feature-from-path` de la capacité.
+ */
+function borrowedFeatureOf(character: Character | undefined, feature: Feature): Feature | undefined {
+  if (!character) return undefined;
+  const defs = feature.choices;
+  if (!defs) return undefined;
+  const sels = character.featureChoices?.[feature.id];
+  if (!sels) return undefined;
+  for (let i = 0; i < defs.length; i++) {
+    if (defs[i].kind === 'feature-from-path') {
+      const sel = sels[i];
+      if (typeof sel === 'string') return featureById.get(sel);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Carte d'une capacité EMPRUNTÉE (PER-120), affichée SOUS le texte de la capacité hôte —
+ * contrairement au « slot divin » du prêtre, elle ne REMPLACE rien : l'effet de base de
+ * l'hôte (ex. le +1 DEF de Combattant aguerri) reste actif, et les effets de la capacité
+ * empruntée s'appliquent aussi. Bordée et titrée à la couleur de la VOIE SOURCE (comme le
+ * slot divin), avec un en-tête « Capacité empruntée — <voie> (<profil>) ».
+ */
+function BorrowedFeatureBlock({
+  feature,
+  abilities,
+  level,
+}: {
+  feature: Feature;
+  abilities?: Abilities;
+  level?: number;
+}) {
+  const path = pathById.get(feature.pathId);
+  const classId = path?.type === 'class' ? path.classIds[0] : undefined;
+  const color = classId ? classColor(classId) : 'text.primary';
+  const pathName = path?.name ?? feature.pathId;
+  const className = classId ? classById.get(classId)?.name : undefined;
+  return (
+    <Box
+      sx={{
+        pl: 1,
+        py: 0.5,
+        borderLeft: 3,
+        borderColor: color,
+        borderRadius: 0.5,
+        bgcolor: (theme) => alpha(theme.palette.text.primary, 0.04),
+      }}
+    >
+      <Typography variant="caption" sx={{ color, fontWeight: 700, display: 'block' }}>
+        Capacité empruntée — {pathName}
+        {className ? ` (${className})` : ''}
+      </Typography>
+      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+        <FeatureLabel feature={feature} />
+      </Typography>
+      <Box sx={{ mt: 0.25 }}>
+        <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} />
+      </Box>
+    </Box>
+  );
+}
+
 /** Libellé d'une capacité dans le sélecteur d'ajout : voie — rang — nom. */
 function featureOptionLabel(feature: Feature): string {
   const pathName = pathById.get(feature.pathId)?.name ?? feature.pathId;
@@ -353,7 +422,7 @@ export interface FeaturesByPathProps {
    * vies du chat »). État de jeu, modifiable hors édition. Absent → compteur en
    * lecture seule.
    */
-  onSetUsageCounter?: (featureId: string, value: number) => void;
+  onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
 }
 
 /**
@@ -562,10 +631,29 @@ function AnimalFormSelector({
 }
 
 /**
+ * Maximum EFFECTIF d'un compteur (PER-119) : constante `max`, ou — si `maxByPathRank` —
+ * le rang ATTEINT dans la voie hôte (scalant, ex. charges explosives = rang dans la voie).
+ */
+function usageCounterMax(counter: UsageCounter, character: Character, feature: Feature): number {
+  if (counter.maxByPathRank) return pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? 0;
+  return counter.max ?? 0;
+}
+
+/**
+ * Clé d'état d'un compteur (PER-119) : la clé PARTAGÉE `sharedKey` si la capacité puise dans
+ * une réserve commune (ex. charges explosives), sinon l'id de la capacité (compteur propre).
+ */
+function usageCounterKey(counter: UsageCounter, feature: Feature): string {
+  return counter.sharedKey ?? feature.id;
+}
+
+/**
  * Compteur d'usages limités d'une capacité (PER-70 — ex. « Les sept vies du chat »,
- * 6 usages). État de jeu : décompte courant = `usageCounters[id]`, à défaut le
- * maximum déclaré (compteur plein). Boutons −/+ bornés à [0, max] ; à 0, badge
- * « épuisé ». En lecture seule (sans `onSet`), n'affiche que la valeur.
+ * 6 usages). État de jeu : décompte courant = `usageCounters[clé]`, à défaut le
+ * maximum (compteur plein). Le maximum peut être constant ou scalant (rang de voie,
+ * PER-119) ; la clé peut être partagée entre capacités d'une même voie (réserve
+ * commune, PER-119). Boutons −/+ bornés à [0, max] + un bouton de réinitialisation
+ * (remet à plein) ; à 0, badge « épuisé ». En lecture seule (sans `onSet`), valeur seule.
  */
 function UsageCounterField({
   feature,
@@ -574,12 +662,13 @@ function UsageCounterField({
 }: {
   feature: Feature;
   character: Character;
-  onSet?: (featureId: string, value: number) => void;
+  onSet?: (counterKey: string, value: number, max: number) => void;
 }) {
   const counter = feature.usageCounter;
   if (!counter) return null;
-  const max = counter.max;
-  const remaining = character.usageCounters?.[feature.id] ?? max;
+  const max = usageCounterMax(counter, character, feature);
+  const key = usageCounterKey(counter, feature);
+  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
   const label = counter.label ?? 'Usages restants';
   const exhausted = remaining <= 0;
   return (
@@ -592,7 +681,7 @@ function UsageCounterField({
           size="small"
           aria-label="Décrémenter"
           disabled={remaining <= 0}
-          onClick={() => onSet(feature.id, remaining - 1)}
+          onClick={() => onSet(key, remaining - 1, max)}
         >
           <RemoveIcon fontSize="small" />
         </IconButton>
@@ -608,10 +697,24 @@ function UsageCounterField({
           size="small"
           aria-label="Incrémenter"
           disabled={remaining >= max}
-          onClick={() => onSet(feature.id, remaining + 1)}
+          onClick={() => onSet(key, remaining + 1, max)}
         >
           <AddIcon fontSize="small" />
         </IconButton>
+      )}
+      {onSet && (
+        <Tooltip title="Réinitialiser au maximum" arrow>
+          <span>
+            <IconButton
+              size="small"
+              aria-label="Réinitialiser"
+              disabled={remaining >= max}
+              onClick={() => onSet(key, max, max)}
+            >
+              <RestartAltIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
       )}
       {exhausted && <Chip label="épuisé" size="small" color="error" variant="outlined" />}
     </Stack>
@@ -628,8 +731,9 @@ function UsageCounterField({
 function CompactUsageIndicator({ feature, character }: { feature: Feature; character: Character }) {
   const counter = feature.usageCounter;
   if (!counter) return null;
-  const max = counter.max;
-  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[feature.id] ?? max));
+  const max = usageCounterMax(counter, character, feature);
+  const key = usageCounterKey(counter, feature);
+  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
   const label = counter.label ?? 'Usages restants';
   return (
     <Tooltip title={`${label} : ${remaining} / ${max}`} arrow>
@@ -745,7 +849,7 @@ function PathBlock({
   /** Saisie libre corrélée à une capacité (animal de Forme animale, PER-70). */
   onSetEffectInput?: (featureId: string, value: string) => void;
   /** Décompte d'une capacité à usages limités (Les sept vies du chat, PER-70). */
-  onSetUsageCounter?: (featureId: string, value: number) => void;
+  onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
   /**
    * Capacités désactivées par exclusion mutuelle (un interrupteur actif les grise) :
    * rendues semi-transparentes + grisées, interrupteur non-interactif, détail conservé.
@@ -785,10 +889,15 @@ function PathBlock({
   // Bonus PLAT cross-voie injecté au terme `paliers` d'une formule : Marteau de la
   // foi (guerre-sainte-r4) gagne +1 DM par AUTRE voie de prêtre au rang 4 (sa propre
   // voie exclue). Le terme est omis de l'encadré quand le compte est 0.
-  const milestoneBonusFor = (feature: Feature): number | undefined =>
-    character && feature.id === 'guerre-sainte-r4'
-      ? countClassPathsAtRank(character, 'pretre', 4, feature.pathId)
-      : undefined;
+  const milestoneBonusFor = (feature: Feature): number | undefined => {
+    if (!character) return undefined;
+    // Marteau de la foi (guerre-sainte-r4) : +1 DM par AUTRE voie de prêtre au rang 4 (voie hôte exclue).
+    if (feature.id === 'guerre-sainte-r4') return countClassPathsAtRank(character, 'pretre', 4, feature.pathId);
+    // Arme à répétition (artilleur-r2, PER-118) : +1 projectile au chargeur par voie d'arquebusier au rang 3
+    // (voie hôte COMPRISE — le texte ne l'exclut pas), injecté au terme `paliers` de la quantité du chargeur.
+    if (feature.id === 'artilleur-r2') return countClassPathsAtRank(character, 'arquebusier', 3);
+    return undefined;
+  };
   // Profil dont la voie est issue : le profil principal si la voie lui appartient
   // (cas courant), sinon le profil d'origine de la voie (hybridation). Sert à la
   // teinte ET à l'icône, pour distinguer les voies hybrides du profil principal.
@@ -1192,6 +1301,16 @@ function PathBlock({
                     )}
                   </>
                 )}
+                {(() => {
+                  // PER-120 : capacité empruntée (Combattant aguerri) rendue SOUS le texte/choix,
+                  // sans remplacer la carte (l'effet de base de l'hôte reste appliqué).
+                  const borrowed = borrowedFeatureOf(character, openFeature);
+                  return borrowed ? (
+                    <Box sx={{ mt: 1.5 }}>
+                      <BorrowedFeatureBlock feature={borrowed} abilities={abilities} level={level} />
+                    </Box>
+                  ) : null;
+                })()}
                 {hasEffectToggles(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -1373,6 +1492,16 @@ function PathBlock({
                   {onChoiceChange ? renderChoiceEditor(feature) : renderChoiceDisplay(feature)}
                 </>
               )}
+              {(() => {
+                // PER-120 : capacité empruntée (Combattant aguerri) rendue SOUS le texte/choix,
+                // sans remplacer la carte (l'effet de base de l'hôte reste appliqué).
+                const borrowed = borrowedFeatureOf(character, feature);
+                return borrowed ? (
+                  <Box sx={{ mt: 1.5 }}>
+                    <BorrowedFeatureBlock feature={borrowed} abilities={abilities} level={level} />
+                  </Box>
+                ) : null;
+              })()}
               {hasEffectToggles(feature) && (
                 <>
                   <Divider sx={{ my: 1.5 }} />

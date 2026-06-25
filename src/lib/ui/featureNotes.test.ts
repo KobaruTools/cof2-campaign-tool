@@ -42,4 +42,21 @@ describe('splitNotes', () => {
     const text = "Il prend note de tout. La note de musique résonne.";
     expect(splitNotes(text)).toEqual([{ kind: 'body', value: text }]);
   });
+
+  it('isole un renvoi en astérisque « * » de bas de capacité', () => {
+    const text =
+      "Au prochain round*, il tire contre une DEF réduite.\n* Si l'arquebusier utilise Combat de masse, l'effet ne dure que le round en cours.";
+    expect(splitNotes(text)).toEqual([
+      { kind: 'body', value: 'Au prochain round*, il tire contre une DEF réduite.\n' },
+      {
+        kind: 'note',
+        value: "* Si l'arquebusier utilise Combat de masse, l'effet ne dure que le round en cours.",
+      },
+    ]);
+  });
+
+  it('ne capte pas un astérisque d’appel en milieu de ligne (« round* »)', () => {
+    const text = 'Au prochain round*, il tire.';
+    expect(splitNotes(text)).toEqual([{ kind: 'body', value: text }]);
+  });
 });

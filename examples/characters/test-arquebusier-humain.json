@@ -4,7 +4,7 @@
   "name": "Test — Arquebusier (humain)",
   "identity": {
     "sex": "male",
-    "description": "PER-71 — arquebusier humain, les 5 voies au rang 5. À vérifier : Artilleur — Mécanismes (r1) : bonus de compétence rang+2 au bricolage (tinkering, qui absorbe « mécanismes » — voir info-bulle du domaine) + désamorçage (disarm-traps) ; « dé bonus armes de siège » SITUATIONNEL verbatim. Arme à répétition (r2) : capacité du chargeur [=2 + INT] (quantité). Canon double (r4) / Poudre puissante (explosifs r3) : DM d'arme → flagués PER-115, verbatim. Couleuvrine (r5) : DM [5d4° + INT]. Explosifs — Tir de grenaille (r1) : bonus pyrotechnie (pyrotechnics). Démolition (r2) : DM [3d4° + INT] / zone {2d4°} ; charges = [#rang], réserve PARTAGÉE r2/r4/r5 NON modélisée en usageCounter (max constant, or rang scalant) → prose. Piège (r4) : [5d4° + INT], détection difficulté [15 + INT] (INT du joueur). Boulet (r5) : [4d4° + INT]. Mercenaire — Pilier de bar (r1) : bonus social CONDITIONNEL « dans une taverne » (interrupteur : fast-talk/persuasion/seduction) ; {1d4°} mains nues ; /2 DM non létaux verbatim. Combattant aguerri (r3) : choix capacité rang 1 (combat-r1 emprunté) + stat-bonus DEF +1. Constitution héroïque (r4) : CON +1 + dé. Combat de masse (r5) : ⚠ +1 DEF modélisé CONDITIONNEL (combat de masse) — À VALIDER vs permanent. Pistolero — Plus vite que son ombre (r1) : +5 Init CONDITIONNEL (arme à poudre chargée) ; dé malus verbatim PER-116. Tir double (r3) : PER-116 verbatim. Agilité héroïque (r4) : AGI +1 + dé. As de la gâchette (r5) : +{2d4°} DM situationnel. Précision — Défaut dans la cuirasse (r2) : DEF cible 10 + @AGI (non calculé). Tir précis (r3) : plage de critique NON modélisée, verbatim. Tireur d'élite (r4) : +{2d4°}. Tir fatal (r5) : difficulté 10 + NC créature (non calculé)."
+    "description": "PER-71 — arquebusier humain, les 5 voies au rang 5. À vérifier : Artilleur — Mécanismes (r1) : bonus de compétence rang+2 au bricolage (tinkering, qui absorbe « mécanismes » — voir info-bulle du domaine) + désamorçage (disarm-traps) ; « dé bonus armes de siège » SITUATIONNEL verbatim. Arme à répétition (r2) : capacité du chargeur [=2 + INT + paliers] (quantité) — paliers = +1 par voie d'arquebusier au rang 3 (PER-118 ; ici 5 voies au rang 5 → +5). Canon double (r4) / Poudre puissante (explosifs r3) : DM d'arme → flagués PER-115, verbatim. Couleuvrine (r5) : DM [5d4° + INT]. Explosifs — Tir de grenaille (r1) : bonus pyrotechnie (pyrotechnics). Démolition (r2) : DM [3d4° + INT] / zone {2d4°} ; charges = [#rang], compteur PARTAGÉ r2/r4/r5 (usageCounter maxByPathRank + sharedKey 'explosifs-charges', bouton reset) — PER-119 ; ici rang 5 → 5 charges. Piège (r4) : [5d4° + INT], détection difficulté [15 + INT] (INT du joueur). Boulet (r5) : [4d4° + INT]. Mercenaire — Pilier de bar (r1) : bonus social CONDITIONNEL « dans une taverne » (interrupteur : fast-talk/persuasion/seduction) ; {1d4°} mains nues ; /2 DM non létaux verbatim. Combattant aguerri (r3) : choix capacité rang 1 (combat-r1 « Vivacité » emprunté) + stat-bonus DEF +1 ; la capacité empruntée s'affiche en carte colorée sous le texte/choix, sans remplacer l'hôte (PER-120). Constitution héroïque (r4) : CON +1 + dé. Combat de masse (r5) : ⚠ +1 DEF modélisé CONDITIONNEL (combat de masse) — À VALIDER vs permanent. Pistolero — Plus vite que son ombre (r1) : +5 Init laissé VERBATIM (s'applique seulement au tir → PER-121, tracker) ; dé malus verbatim PER-116. Tir double (r3) : PER-116 verbatim. Agilité héroïque (r4) : AGI +1 + dé. As de la gâchette (r5) : +{2d4°} DM situationnel. Précision — Défaut dans la cuirasse (r2) : DEF cible 10 + @AGI (non calculé). Tir précis (r3) : plage de critique NON modélisée, verbatim. Tireur d'élite (r4) : +{2d4°}. Tir fatal (r5) : difficulté 10 + NC créature (non calculé)."
   },
   "ancestryId": "humain",
   "classId": "arquebusier",
@@ -71,9 +71,6 @@
       true
     ],
     "mercenaire-r5": [
-      true
-    ],
-    "pistolero-r1": [
       true
     ]
   },
@@ -222,7 +219,7 @@
     }
   ],
   "overrides": {},
-  "notes": "PER-71 (arquebusier) — perso de recette. Voir identity.description pour la liste de vérification. Profil arquebusier (armes à poudre, powderAllowed) ; peuple humain (origine Citadin). Interrupteurs activés : Pilier de bar (taverne), Combat de masse, Plus vite que son ombre (arme chargée). Zones flaguées : PER-115 (DM d'arme : Canon double, Poudre puissante, Couleuvrine), PER-116 (dé malus : Plus vite que son ombre, Tir double), PER-104/105 (tracker de combat). usageCounter non scalant : charges explosives partagées laissées en prose.",
+  "notes": "PER-71 (arquebusier) — perso de recette. Voir identity.description pour la liste de vérification. Profil arquebusier (armes à poudre, powderAllowed) ; peuple humain (origine Citadin). Interrupteurs activés : Pilier de bar (taverne), Combat de masse. Zones flaguées : PER-115 (DM d'arme : Canon double, Poudre puissante, Couleuvrine), PER-116 (dé malus : Plus vite que son ombre, Tir double), PER-104/105 (tracker de combat). usageCounter non scalant : charges explosives partagées laissées en prose.",
   "createdAt": "2026-06-25T00:00:00.000Z",
   "updatedAt": "2026-06-25T00:00:00.000Z"
 }

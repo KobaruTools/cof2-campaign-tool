@@ -372,11 +372,13 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier modifie jusqu'à deux armes de son choix pour les doter de chargeurs. La capacité du chargeur est égale à [2 + INT] et elle augmente de 1 projectile supplémentaire chaque fois que le personnage atteint le rang 3 dans une voie d'arquebusier. Chaque chargeur doit être ensuite rechargé au rythme d'une action limitée (L) par projectile.",
-    // Rendu enrichi (PER-71) : la capacité du chargeur est une QUANTITÉ (un compte de projectiles)
-    // → [=2 + INT] (rendu en valeur brute, pas en modificateur de d20). La montée « +1 projectile
-    // par rang 3 cross-voie » est un palier CROSS-VOIE décrit en prose → laissée littérale (format §7).
+    // Rendu enrichi (PER-71 / PER-118) : la capacité du chargeur est une QUANTITÉ (compte de projectiles)
+    // → [=2 + INT + paliers] (valeur brute). La montée « +1 projectile par rang 3 dans une voie d'arquebusier »
+    // est un scaling CROSS-VOIE injecté par le terme `paliers` (milestoneBonus) : le composant câble
+    // `countClassPathsAtRank('arquebusier', 3)` (voie hôte comprise, aucune exclusion) via `milestoneBonusFor`.
+    // À 0 voie au rang 3, le terme `paliers` est omis → affichage « 2 + INT ».
     richText:
-      "L'arquebusier modifie jusqu'à deux armes de son choix pour les doter de chargeurs. La capacité du chargeur est égale à [=2 + INT] et elle augmente de 1 projectile supplémentaire chaque fois que le personnage atteint le rang 3 dans une voie d'arquebusier. Chaque chargeur doit être ensuite rechargé au rythme d'une action limitée (L) par projectile.",
+      "L'arquebusier modifie jusqu'à deux armes de son choix pour les doter de chargeurs. La capacité du chargeur est égale à [=2 + INT + paliers] et elle augmente de 1 projectile supplémentaire chaque fois que le personnage atteint le rang 3 dans une voie d'arquebusier. Chaque chargeur doit être ensuite rechargé au rythme d'une action limitée (L) par projectile.",
     sourcePage: 62,
   },
   {
@@ -450,12 +452,12 @@ export const adventurerFeatures: Feature[] = [
       "L'arquebusier peut préparer un explosif qui lui permet de démolir facilement des structures. Il lui faut 3 rounds complets pour préparer et poser son explosif. Celui-ci inflige à la structure [3d4° + INT] DM et ignore la moitié de sa RD (et seulement 2d4° DM dans un rayon de 2 m). Chaque jour, l'arquebusier peut utiliser un nombre de charges explosives égal au rang dans la voie. Ces charges permettent indifféremment d'utiliser les capacités Démolition, Piège explosif ou Boulet explosif.",
     // Rendu enrichi (PER-71) : DM contre la structure [3d4° + INT] ; DM de zone {2d4°} (dé fixe).
     // « nombre de charges égal au rang dans la voie » → [#rang] (terme nommé, déterminant « au »).
-    // Les charges sont une réserve quotidienne PARTAGÉE entre Démolition (r2), Piège explosif (r4) et
-    // Boulet explosif (r5). Non modélisées en `usageCounter` : son `max` est une CONSTANTE, or ici la
-    // réserve = rang ATTEINT dans la voie (1→5, scalant) → inexprimable. Laissée en prose (à revoir si
-    // `usageCounter` gagne un max scalant). Pas de double comptage : compteur posé sur aucune des trois.
+    // PER-119 : les charges sont une réserve quotidienne PARTAGÉE entre Démolition (r2), Piège explosif (r4)
+    // et Boulet explosif (r5) → un seul `usageCounter` à `maxByPathRank` (max = rang dans la voie, scalant)
+    // et `sharedKey: 'explosifs-charges'` (même compteur sur les trois capacités). Réinitialisable au max.
     richText:
       "L'arquebusier peut préparer un explosif qui lui permet de démolir facilement des structures. Il lui faut 3 rounds complets pour préparer et poser son explosif. Celui-ci inflige à la structure [3d4° + INT] DM et ignore la moitié de sa RD (et seulement {2d4°} DM dans un rayon de 2 m). Chaque jour, l'arquebusier peut utiliser un nombre de charges explosives égal au [#rang] dans la voie. Ces charges permettent indifféremment d'utiliser les capacités Démolition, Piège explosif ou Boulet explosif.",
+    usageCounter: { maxByPathRank: true, sharedKey: 'explosifs-charges', label: 'Charges explosives' },
     sourcePage: 63,
   },
   {
@@ -484,10 +486,12 @@ export const adventurerFeatures: Feature[] = [
       "Il faut 1 min à l'arquebusier pour installer un piège qui explose dans un rayon de 5 m en infligeant [5d4° + INT] DM de feu (test d'AGI difficulté 15 pour ne subir que la moitié des DM). Le piège est déclenché à l'intrusion de toute créature dans une zone d'un à deux mètres autour du piège. Une créature peut détecter le piège avec un test d'INT difficulté [15 + INT de l'arquebusier] avant de le déclencher.",
     // Rendu enrichi (PER-71) : DM du piège [5d4° + INT]. La difficulté de détection « [15 + INT de
     // l'arquebusier] » est calculée sur l'INT DU JOUEUR (suffixe « de l'arquebusier » implicite, format
-    // §6) → [15 + INT]. La difficulté d'AGI 15 (créature touchée) est une constante → littérale. Use une
-    // charge explosive partagée (cf. explosifs-r2). Pas d'effet structuré (DM/piège, tracker PER-104/105).
+    // §6) → [15 + INT]. La difficulté d'AGI 15 (créature touchée) est une constante → littérale. PER-119 :
+    // consomme une charge de la réserve PARTAGÉE de la voie (même `sharedKey` que Démolition/Boulet).
+    // Pas d'effet structuré (DM/piège, tracker PER-104/105).
     richText:
       "Il faut 1 min à l'arquebusier pour installer un piège qui explose dans un rayon de 5 m en infligeant [5d4° + INT] DM de feu (test d'AGI difficulté 15 pour ne subir que la moitié des DM). Le piège est déclenché à l'intrusion de toute créature dans une zone d'un à deux mètres autour du piège. Une créature peut détecter le piège avec un test d'INT difficulté [15 + INT] avant de le déclencher.",
+    usageCounter: { maxByPathRank: true, sharedKey: 'explosifs-charges', label: 'Charges explosives' },
     sourcePage: 64,
   },
   {
@@ -499,10 +503,12 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "L'arquebusier sait fabriquer et lancer de petites boules de métal garnies de poudre et d'une portée de 20 m qui explosent dans un rayon de 5 m en infligeant [4d4° + INT] DM perforants, divisés par 2 pour les victimes qui réussissent un test d'AGI difficulté 10. Ceux qui ratent le test sont de plus aveuglés un round par le flash lumineux de l'explosion.",
-    // Rendu enrichi (PER-71) : DM du boulet [4d4° + INT]. Use une charge explosive partagée (cf.
-    // explosifs-r2). DM divisés/état aveuglé : tracker de combat (PER-104/105) → laissés verbatim.
+    // Rendu enrichi (PER-71) : DM du boulet [4d4° + INT]. PER-119 : consomme une charge de la réserve
+    // PARTAGÉE de la voie (même `sharedKey` que Démolition/Piège). DM divisés/état aveuglé : tracker de
+    // combat (PER-104/105) → laissés verbatim.
     richText:
       "L'arquebusier sait fabriquer et lancer de petites boules de métal garnies de poudre et d'une portée de 20 m qui explosent dans un rayon de 5 m en infligeant [4d4° + INT] DM perforants, divisés par 2 pour les victimes qui réussissent un test d'AGI difficulté 10. Ceux qui ratent le test sont de plus aveuglés un round par le flash lumineux de l'explosion.",
+    usageCounter: { maxByPathRank: true, sharedKey: 'explosifs-charges', label: 'Charges explosives' },
     sourcePage: 64,
   },
 
@@ -622,16 +628,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Si son arme à poudre est chargée et tenue en main, l'arquebusier peut tirer avec un bonus de +5 à son Initiative. De plus, il ne subit plus de dé malus lorsqu'il tire avec une arme à poudre ou une arbalète en étant engagé en combat au contact (sauf avec la couleuvrine).",
-    // PER-71 : le « +5 à son Initiative » est CONDITIONNEL (arme à poudre chargée et tenue en main) →
-    // conditional-stat-bonus initiative +5 avec interrupteur. La suppression du dé malus en tirant engagé
-    // au contact relève de l'exception au dé malus (PER-116, milestone Armures) → laissée verbatim.
-    effects: [
-      {
-        kind: 'conditional-stat-bonus',
-        bonuses: [{ stat: 'initiative', value: 5 }],
-        activation: { kind: 'condition', label: 'arme à poudre chargée en main', activeByDefault: false },
-      },
-    ],
+    // PER-71 / PER-121 : le « +5 à son Initiative » ne s'applique QU'À l'attaque de tir (pas à une action
+    // longue ni à un mouvement) → inexprimable comme bonus d'Initiative de fiche (même conditionnel : il
+    // fausserait l'Init dès que le perso ne tire pas). Laissé VERBATIM ; le cas « +5 Init seulement si
+    // l'action est un tir » est reporté au tracker de combat (PER-121, milestone Rencontres). La
+    // suppression du dé malus en tirant engagé au contact relève de l'exception au dé malus (PER-116).
     sourcePage: 64,
   },
   {
@@ -714,6 +715,8 @@ export const adventurerFeatures: Feature[] = [
     // Rendu enrichi (PER-71) : la DEF visée se calcule sur l'AGI de la CIBLE (stat d'autrui, format §5)
     // → NE PAS évaluer : @AGI en référence, « 10 + » et « de la cible » restent littéraux (pas de [...]
     // qui calculerait contre le joueur). Le contournement de RD/résistance relève du tracker (PER-104/105).
+    // PER-122 : le renvoi « * » de bas de capacité est CONSERVÉ dans le texte (verbatim et richText) et
+    // rendu en NOTE (petit/gris) par `splitNotes`/`NoteSpan`, comme les « Note : » — pas de duplication.
     richText:
       "L'arquebusier utilise une action d'attaque pour trouver le point faible de son adversaire et le viser. Au prochain round*, il réalise ses attaques à distance sur cette cible contre une DEF de 10 + @AGI de la cible et il peut ignorer sa résistance aux DM ou sa réduction des DM (sauf si cette dernière est acquise parce que la cible est immatérielle : ombre, fantôme, etc.).\n* Si l'arquebusier utilise la capacité Combat de masse pour son action d'attaque en début de round, alors la capacité s'applique seulement aux tirs du round en cours.",
     sourcePage: 65,
