@@ -1020,6 +1020,17 @@ export interface Feature {
    * Absent = la capacité n'a pas d'usage limité décompté.
    */
   usageCounter?: UsageCounter;
+  /**
+   * REMPLACEMENT INCONDITIONNEL entre capacités d'une même voie : ids des capacités
+   * que CETTE capacité, DÈS QU'ELLE EST ACQUISE, supplante définitivement (« la
+   * panthère devient un animal fabuleux ou est remplacée par un félin plus grand » —
+   * Grand félin/fauve-r4 remplace Panthère/fauve-r2, p. 115). À DISTINGUER de
+   * `ConditionalStatBonusEffect.disablesFeatures`, qui est conditionnel à un
+   * interrupteur ACTIF (exclusion mutuelle). Ici il n'y a pas d'interrupteur : la
+   * capacité remplacée est grisée + accompagnée d'un message dès l'acquisition de la
+   * remplaçante (le détail reste consultable). Absent = la capacité n'en remplace aucune.
+   */
+  replacesFeatures?: string[];
   sourcePage: SourcePage;
 }
 

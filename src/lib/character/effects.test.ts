@@ -9,6 +9,8 @@ import {
   conditionalEffectsOf,
   conditionalEffectBonuses,
   creatureBonusDiceForPath,
+  disabledFeatureIds,
+  disabledFeatureReasons,
   effectContext,
   effectiveAbilities,
   featureModSources,
@@ -427,5 +429,37 @@ describe('effectiveAbilities — saisie + modificateurs permanents de capacités
     // Saisie CON 3 / INT 3 ; Endurer porte la CON effective à 4 → échange = INT 3 − CON 4 = −1.
     const c = charWithFeatures(ABILITIES_3, ['metal-r5', 'golem-r1'], { 'golem-r1': ['pv-from-int'] });
     expect(modsFromFeatures(['metal-r5', 'golem-r1'], effectContext(c)).maxHp).toBe(-1);
+  });
+});
+
+describe('disabledFeatureReasons — grisage des capacités (exclusion / remplacement)', () => {
+  const char = (featureIds: string[], toggles: Record<string, boolean[]> = {}): Character =>
+    ({ level: 5, abilities: ctx().abilities, featureIds, effectToggles: toggles, featureChoices: {} }) as Character;
+
+  it('Grand félin (fauve-r4) remplace définitivement la Panthère (fauve-r2)', () => {
+    const reasons = disabledFeatureReasons(char(['fauve-r2', 'fauve-r4']));
+    expect(reasons.get('fauve-r2')).toEqual({
+      byFeatureId: 'fauve-r4',
+      byFeatureName: 'Grand félin',
+      kind: 'replaced',
+    });
+    expect(disabledFeatureIds(char(['fauve-r2', 'fauve-r4']))).toEqual(new Set(['fauve-r2']));
+  });
+
+  it('sans Grand félin, la Panthère n’est pas grisée', () => {
+    expect(disabledFeatureReasons(char(['fauve-r2'])).size).toBe(0);
+  });
+
+  it('exclusion mutuelle : Aspect du démon ACTIF grise Beauté de la succube (demon-r2)', () => {
+    const reasons = disabledFeatureReasons(char(['demon-r2', 'demon-r4'], { 'demon-r4': [true] }));
+    expect(reasons.get('demon-r2')).toEqual({
+      byFeatureId: 'demon-r4',
+      byFeatureName: 'Aspect du démon',
+      kind: 'excluded',
+    });
+  });
+
+  it('exclusion mutuelle : interrupteur éteint → aucun grisage', () => {
+    expect(disabledFeatureReasons(char(['demon-r2', 'demon-r4'])).size).toBe(0);
   });
 });

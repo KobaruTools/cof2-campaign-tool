@@ -11,6 +11,7 @@ import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import ViewStreamIcon from '@mui/icons-material/ViewStream';
 import Accordion from '@mui/material/Accordion';
+import Alert from '@mui/material/Alert';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -40,7 +41,8 @@ import { animalFormCategories } from '@/lib/character/animalForms';
 import {
   conditionalEffectsOf,
   creatureBonusDiceForPath,
-  disabledFeatureIds,
+  disabledFeatureReasons,
+  type DisabledFeatureReason,
 } from '@/lib/character/effects';
 import { classColor } from '@/lib/ui/classColors';
 import { FeatureLabel } from '@/components/FeatureLabel';
@@ -712,6 +714,7 @@ function PathBlock({
   onSetEffectInput,
   onSetUsageCounter,
   disabledIds,
+  disabledReasons,
   replacements,
   concentration = false,
 }: {
@@ -748,6 +751,8 @@ function PathBlock({
    * rendues semi-transparentes + grisées, interrupteur non-interactif, détail conservé.
    */
   disabledIds?: Set<string>;
+  /** Raison du grisage par capacité (message « pourquoi désactivé » : exclusion / remplacement). */
+  disabledReasons?: Map<string, DisabledFeatureReason>;
   /**
    * Capacités occupant un slot par REMPLACEMENT (capacité divine du prêtre spécialiste,
    * p. 122) : rendues avec un cadre fantôme du slot natif + bordure couleur d'origine
@@ -840,6 +845,30 @@ function PathBlock({
   /** Style « capacité désactivée » : semi-transparente + grisée (le clic reste). */
   const disabledSx = (feature: Feature) =>
     isDisabled(feature) ? { opacity: 0.5, filter: 'grayscale(1)' } : null;
+
+  /**
+   * Message « pourquoi cette capacité est grisée » (affiché dans la modale et le bloc
+   * dépliable). Remplacement : la capacité est définitivement supplantée. Exclusion :
+   * désactivée tant qu'une autre est active. `null` si la capacité n'est pas grisée.
+   */
+  const disabledMessage = (feature: Feature): string | null => {
+    const reason = disabledReasons?.get(feature.id);
+    if (!reason) return null;
+    return reason.kind === 'replaced'
+      ? `Remplacée par ${reason.byFeatureName} : cette capacité n'est plus disponible.`
+      : `Désactivée tant que ${reason.byFeatureName} est active (ne se cumulent pas).`;
+  };
+
+  /** Bandeau d'explication du grisage, en tête du détail (modale / bloc dépliable). */
+  const renderDisabledNotice = (feature: Feature) => {
+    const message = disabledMessage(feature);
+    if (!message) return null;
+    return (
+      <Alert severity="info" variant="outlined" sx={{ mb: 1.5 }}>
+        {message}
+      </Alert>
+    );
+  };
 
   /**
    * Interrupteurs des effets conditionnels (PER-67). Toujours basculables (état de
@@ -1101,6 +1130,7 @@ function PathBlock({
                 </IconButton>
               </DialogTitle>
               <DialogContent dividers>
+                {renderDisabledNotice(openFeature)}
                 {retainedFeature && openFeature.rank === 1 && (
                   <>
                     <RetainedAncestryCapacity
@@ -1306,6 +1336,7 @@ function PathBlock({
               )}
             </AccordionSummary>
             <AccordionDetails>
+              {renderDisabledNotice(feature)}
               {retainedFeature && feature.rank === 1 && (
                 <>
                   <RetainedAncestryCapacity
@@ -1470,9 +1501,11 @@ export function FeaturesByPath({
     ? groups.filter((g) => g !== ancestryGroup)
     : groups;
 
-  // Capacités désactivées par exclusion mutuelle (un interrupteur actif les grise,
-  // ex. Aspect du démon → Beauté de la succube ; Armure de pierre ↔ Déphasage).
-  const disabled = character ? disabledFeatureIds(character) : undefined;
+  // Capacités grisées (avec leur raison) : exclusion mutuelle par interrupteur actif
+  // (Aspect du démon → Beauté de la succube ; Armure de pierre ↔ Déphasage) OU
+  // remplacement inconditionnel (Grand félin → Panthère).
+  const disabledReasons = character ? disabledFeatureReasons(character) : undefined;
+  const disabled = disabledReasons ? new Set(disabledReasons.keys()) : undefined;
 
   const owned = new Set(featureIds);
   const addable = onChange
@@ -1541,6 +1574,7 @@ export function FeaturesByPath({
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
               disabledIds={disabled}
+              disabledReasons={disabledReasons}
               replacements={replacements}
               concentration={concentration}
             />
@@ -1566,6 +1600,7 @@ export function FeaturesByPath({
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
               disabledIds={disabled}
+              disabledReasons={disabledReasons}
               replacements={replacements}
               concentration={concentration}
             />
@@ -1591,6 +1626,7 @@ export function FeaturesByPath({
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
               disabledIds={disabled}
+              disabledReasons={disabledReasons}
               replacements={replacements}
               concentration={concentration}
             />

@@ -311,6 +311,19 @@ for (const c of features) {
   }
 }
 
+// --- Remplacement inconditionnel de capacité (PER-70) ------------------------
+// `replacesFeatures` (Grand félin → Panthère) : les cibles doivent exister, ne pas
+// être soi, et appartenir à la même voie (un remplacement ne traverse pas les voies).
+for (const c of features) {
+  for (const target of c.replacesFeatures ?? []) {
+    const t = featureById.get(target);
+    if (!t) err(`[capacite ${c.id}] replacesFeatures cible inexistante : ${target}`);
+    else if (t.pathId !== c.pathId)
+      err(`[capacite ${c.id}] replacesFeatures cible hors voie : ${target} (${t.pathId} ≠ ${c.pathId})`);
+    if (target === c.id) err(`[capacite ${c.id}] replacesFeatures s'auto-référence`);
+  }
+}
+
 // --- Coût de base en mana (PER-65) -------------------------------------------
 // Dérogation explicite au coût standard (= rang du sort, p. 228). On vérifie
 // que le champ ne porte que des entiers >= 0 et n'apparaît que sur des sorts.

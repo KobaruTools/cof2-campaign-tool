@@ -477,24 +477,64 @@ export function setEffectToggle(
 }
 
 /**
- * Capacités actuellement DÉSACTIVÉES par l'exclusion mutuelle : ids des capacités
- * qu'un interrupteur ACTIF d'une capacité ACQUISE déclare dans `disablesFeatures`
- * (« ne se cumule pas avec X », « incompatible avec X »). L'UI grise ces capacités
- * et rend leur interrupteur non-interactif (le détail reste consultable). Une cible
- * peut être désactivée par plusieurs sources → union.
+ * Pourquoi une capacité est grisée. `excluded` : exclusion mutuelle conditionnelle —
+ * un interrupteur ACTIF d'une autre capacité la désactive (« ne se cumule pas avec X »).
+ * `replaced` : remplacement INCONDITIONNEL — une capacité acquise la supplante dès
+ * l'acquisition (Grand félin remplace Panthère). `byFeatureId`/`byFeatureName` : la
+ * capacité source (pour le message d'UI).
  */
-export function disabledFeatureIds(character: Character): Set<string> {
-  const disabled = new Set<string>();
+export interface DisabledFeatureReason {
+  byFeatureId: string;
+  byFeatureName: string;
+  kind: 'excluded' | 'replaced';
+}
+
+/**
+ * Capacités actuellement grisées, avec LA RAISON (source + nature) — pour le grisage
+ * et le message d'UI. Deux origines :
+ *  - EXCLUSION MUTUELLE (`disablesFeatures`) : un interrupteur ACTIF d'une capacité
+ *    acquise désactive la cible (« ne se cumule pas avec X »).
+ *  - REMPLACEMENT (`replacesFeatures`) : une capacité acquise en supplante une autre
+ *    dès l'acquisition, sans interrupteur (Grand félin/fauve-r4 → Panthère/fauve-r2).
+ * Le remplacement prime sur l'exclusion pour le message (cause structurelle, pas un
+ * état transitoire). Une cible peut être visée par plusieurs sources → première gagne.
+ */
+export function disabledFeatureReasons(character: Character): Map<string, DisabledFeatureReason> {
+  const reasons = new Map<string, DisabledFeatureReason>();
+  // 1) Exclusions par interrupteur actif.
   for (const id of character.featureIds) {
-    const effects = featureById.get(id)?.effects;
-    if (!effects) continue;
-    effects.forEach((effect, index) => {
+    const feature = featureById.get(id);
+    feature?.effects?.forEach((effect, index) => {
       if (effect.kind !== 'conditional-stat-bonus' || !effect.disablesFeatures) return;
       if (!isEffectActive(character, id, index)) return;
-      for (const targetId of effect.disablesFeatures) disabled.add(targetId);
+      for (const targetId of effect.disablesFeatures) {
+        if (!reasons.has(targetId)) {
+          reasons.set(targetId, { byFeatureId: id, byFeatureName: feature?.name ?? id, kind: 'excluded' });
+        }
+      }
     });
   }
-  return disabled;
+  // 2) Remplacements inconditionnels (priment sur l'exclusion) : la cible doit être acquise.
+  const owned = new Set(character.featureIds);
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.replacesFeatures) continue;
+    for (const targetId of feature.replacesFeatures) {
+      if (!owned.has(targetId)) continue;
+      reasons.set(targetId, { byFeatureId: id, byFeatureName: feature.name, kind: 'replaced' });
+    }
+  }
+  return reasons;
+}
+
+/**
+ * Capacités actuellement DÉSACTIVÉES (grisées) : exclusion mutuelle par interrupteur
+ * actif OU remplacement inconditionnel. L'UI grise ces capacités et rend leur
+ * interrupteur non-interactif (le détail reste consultable). Cf. `disabledFeatureReasons`
+ * pour la raison affichable.
+ */
+export function disabledFeatureIds(character: Character): Set<string> {
+  return new Set(disabledFeatureReasons(character).keys());
 }
 
 /**

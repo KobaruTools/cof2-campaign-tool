@@ -441,6 +441,10 @@ export const mysticFeatures: Feature[] = [
     richText:
       "La panthère devient un animal fabuleux ou est remplacée par un félin plus grand (tigre, lion). Le grand félin peut servir de monture au druide et il se déplace de 20 m par action de mouvement. Le druide peut communiquer avec son félin par télépathie et le guérir à distance en dépensant ses propres PV (-1 PV au druide par PV octroyé au félin).",
     creatureProfile: { name: 'Animal fabuleux', abilities: { AGI: 4, CON: 5, FOR: 5, PER: 2, CHA: -2, INT: -2, VOL: 4 }, defense: '[15 + rang]', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' } },
+    // « La panthère devient un animal fabuleux ou est remplacée par un félin plus
+    // grand » : Grand félin supplante définitivement la Panthère (fauve-r2) dès son
+    // acquisition → remplacement inconditionnel (≠ exclusion par interrupteur).
+    replacesFeatures: ['fauve-r2'],
     sourcePage: 115,
   },
   {
