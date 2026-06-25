@@ -44,6 +44,10 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   PC: { label: 'Points de chance', category: 'derived' },
   DR: { label: 'Dés de récupération', category: 'derived' },
   Init: { label: 'Initiative', category: 'derived' },
+  // Le mot complet « Initiative » (en plus de l'acronyme « Init ») → même puce dérivée
+  // (PER-121, retour propriétaire). `\bInit\b` ne capte PAS « Initiative » (pas de
+  // frontière après « Init »), donc les deux clés coexistent sans conflit.
+  Initiative: { label: 'Initiative', category: 'derived' },
   // --- Jargon (souligné pointillé) ---
   NC: { label: 'Niveau de créature', category: 'jargon' },
   RD: { label: 'Réduction de dégâts', category: 'jargon' },

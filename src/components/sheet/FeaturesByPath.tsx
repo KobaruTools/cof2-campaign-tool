@@ -326,21 +326,25 @@ function BorrowedFeatureBlock({
 }) {
   const path = pathById.get(feature.pathId);
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
-  const color = classId ? classColor(classId) : 'text.primary';
+  const color = classId ? classColor(classId) : undefined;
   const pathName = path?.name ?? feature.pathId;
   const className = classId ? classById.get(classId)?.name : undefined;
   return (
+    // Carte teintée/bordée à la couleur de la VOIE SOURCE, façon « slot divin » du prêtre —
+    // mais SANS remplacement : elle se superpose, l'hôte reste actif (PER-120).
     <Box
       sx={{
-        pl: 1,
-        py: 0.5,
-        borderLeft: 3,
-        borderColor: color,
-        borderRadius: 0.5,
-        bgcolor: (theme) => alpha(theme.palette.text.primary, 0.04),
+        p: 1,
+        // Cadre discret (1px) comme les autres cartes ; la couleur de bordure/teinte rappelle
+        // simplement la voie source, sans surcharger visuellement (retour propriétaire).
+        border: 1,
+        borderColor: color ?? 'divider',
+        borderRadius: 1,
+        bgcolor: color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
       }}
     >
-      <Typography variant="caption" sx={{ color, fontWeight: 700, display: 'block' }}>
+      <Typography variant="caption" sx={{ color: color ?? 'text.secondary', fontWeight: 700, display: 'block', mb: 0.25 }}>
+        <Box component="span" sx={{ mr: 0.5 }}>✦</Box>
         Capacité empruntée — {pathName}
         {className ? ` (${className})` : ''}
       </Typography>
@@ -1060,7 +1064,14 @@ function PathBlock({
         {features.map((feature) => {
           // Capacité divine occupant ce slot par remplacement (prêtre spécialiste, p. 122).
           const repl = replacements?.get(feature.id);
-          return (
+          // Capacité EMPRUNTÉE par un choix `feature-from-path` (Combattant aguerri, PER-120) :
+          // teinte la carte à la couleur de sa voie source, façon slot divin — mais SANS remplacer
+          // (l'hôte n'est ni grisé ni désactivé). Exclu si la carte est déjà un slot divin (repl).
+          const borrowed = !repl ? borrowedFeatureOf(character, feature) : undefined;
+          const borrowedPath = borrowed ? pathById.get(borrowed.pathId) : undefined;
+          const borrowedClassId = borrowedPath?.type === 'class' ? borrowedPath.classIds[0] : undefined;
+          const borrowedColor = borrowedClassId ? classColor(borrowedClassId) : undefined;
+          const cardInner = (
           // Ligne cliquable : le détail s'ouvre dans une modale.
           <Box
             key={feature.id}
@@ -1077,20 +1088,38 @@ function PathBlock({
               // mana en haut droite, suppression et épingle en bas).
               pt: 1.75,
               pb: 0.75,
-              border: repl ? 2 : 1,
-              borderColor: repl ? repl.originColor : 'divider',
+              // Bordure FINE (1px) comme les cartes normales du profil — emprunt et slot divin ne
+              // doivent pas être « trop prononcés » ; seule la couleur de bordure rappelle l'origine.
+              border: 1,
+              borderColor: repl
+                ? repl.originColor
+                : borrowed && borrowedColor
+                  ? borrowedColor
+                  : 'divider',
               borderRadius: 1,
               cursor: 'pointer',
               // Cadre « fantôme » du slot natif remplacé : un bloc décalé derrière la carte
-              // de la capacité divine (le slot d'origine de la voie d'accueil, p. 122).
+              // de la capacité divine (le slot d'origine de la voie d'accueil, p. 122). PAS pour
+              // un emprunt (PER-120) : rien n'est remplacé, donc pas de slot fantôme derrière.
               boxShadow: repl
                 ? (theme) => `5px 5px 0 0 ${alpha(theme.palette.text.primary, 0.18)}`
                 : undefined,
               bgcolor: repl
                 ? alpha(repl.originColor, 0.1)
-                : color
-                  ? alpha(color, 0.06)
-                  : 'transparent',
+                : borrowed && borrowedColor
+                  ? alpha(borrowedColor, 0.1)
+                  : color
+                    ? alpha(color, 0.06)
+                    : 'transparent',
+              // Carte de devant d'un emprunt (PER-120) : fond OPAQUE (teinte source sur paper)
+              // pour qu'elle masque la case décalée derrière — sinon la couleur de l'hôte
+              // transparaîtrait à travers la carte de la capacité empruntée.
+              ...(borrowed && borrowedColor
+                ? {
+                    backgroundColor: 'background.paper',
+                    backgroundImage: `linear-gradient(${alpha(borrowedColor, 0.06)}, ${alpha(borrowedColor, 0.06)})`,
+                  }
+                : {}),
               '&:hover': { bgcolor: color ? alpha(color, 0.14) : 'action.hover' },
               ...(onRemove
                 ? {
@@ -1136,7 +1165,9 @@ function PathBlock({
                   </Box>
                 </Tooltip>
               )}
-              {feature.name}
+              {/* Emprunt (PER-120) : la carte de devant porte le VRAI nom de la capacité empruntée
+                  (« Vivacité »), écrit normalement ; le nom de l'hôte est dans la case décalée derrière. */}
+              {borrowed ? borrowed.name : feature.name}
             </Typography>
             {/* Interrupteurs des effets conditionnels, compacts (état de jeu, libellé
                 en infobulle) ; le détail cliquable héberge la version étiquetée. */}
@@ -1150,8 +1181,10 @@ function PathBlock({
             )}
             {/* Choix porté par la capacité, poussé en bas du bloc : valeur retenue
                 (chip compact, lecture seule) + bouton crayon ouvrant la modale
-                d'édition (second niveau d'édition — PER-68). */}
-            {hasChoices(feature) && (
+                d'édition (second niveau d'édition — PER-68). Masqué pour un emprunt
+                (PER-120) : la carte de la capacité empruntée affiche déjà le choix
+                retenu → le tag serait redondant (édition possible via la modale). */}
+            {hasChoices(feature) && !borrowed && (
               <Box
                 sx={{
                   mt: 'auto',
@@ -1200,6 +1233,53 @@ function PathBlock({
               </Tooltip>
             )}
           </Box>
+          );
+          // Emprunt (PER-120) : on reprend la « case décalée » du slot divin, mais la boîte qui
+          // dépasse derrière prend le contour + le fond de la VOIE HÔTE (celle qui reçoit l'emprunt)
+          // et porte le nom de l'hôte (« Combattant aguerri ») — la carte de devant montrant la
+          // capacité empruntée (« Vivacité »). Rien n'est grisé : l'hôte reste pleinement actif.
+          return borrowed ? (
+            <Box key={feature.id} sx={{ position: 'relative', pb: 2.5 }}>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: -5,
+                  bottom: 0,
+                  borderRadius: 1,
+                  // Cadre discret, identique aux autres cartes du profil (1px `divider` + teinte
+                  // 0.06 de la voie hôte) : la case décalée ne doit pas être plus marquée qu'elles.
+                  border: 1,
+                  borderColor: 'divider',
+                  bgcolor: color ? alpha(color, 0.06) : 'transparent',
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  // Titre de l'hôte collé à DROITE du bloc (dans la partie qui dépasse).
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    px: 1,
+                    // 2px d'espacement au-dessus et en dessous du titre dans la bande qui dépasse.
+                    pt: 0.25,
+                    pb: 0.25,
+                    fontWeight: 600,
+                    lineHeight: 1.2,
+                    textAlign: 'right',
+                    color: 'text.primary',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {feature.name}
+                </Typography>
+              </Box>
+              {cardInner}
+            </Box>
+          ) : (
+            cardInner
           );
         })}
         {Array.from({ length: ghostCount }).map((_, i) => (

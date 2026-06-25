@@ -35,8 +35,19 @@ describe('splitGlossary', () => {
     ]);
   });
 
-  it('ne confond pas « Init » avec le mot « Initiative »', () => {
-    expect(splitGlossary('Initiative')).toEqual([{ kind: 'text', value: 'Initiative' }]);
+  it('capte le mot complet « Initiative » comme stat dérivée (sans le confondre avec « Init »)', () => {
+    expect(splitGlossary('Initiative')).toEqual([
+      { kind: 'term', term: 'Initiative', entry: GLOSSARY.Initiative },
+    ]);
+  });
+
+  it('« Init. » reste capté distinctement du mot « Initiative »', () => {
+    expect(splitGlossary("bonus d’Init. puis Initiative")).toEqual([
+      { kind: 'text', value: 'bonus d’' },
+      { kind: 'term', term: 'Init.', entry: GLOSSARY.Init },
+      { kind: 'text', value: ' puis ' },
+      { kind: 'term', term: 'Initiative', entry: GLOSSARY.Initiative },
+    ]);
   });
 
   it('distingue PNJ et PJ (plus long d’abord)', () => {
