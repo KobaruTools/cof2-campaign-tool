@@ -356,6 +356,7 @@ export type FeatureEffect =
   | AbilityBonusEffect
   | AbilityBonusFromChoiceEffect
   | AbilityBonusDieEffect
+  | AbilityBonusDieFromChoiceEffect
   | TestBonusEffect
   | ManaAbilityOverrideEffect
   | UniversalTestBonusEffect
@@ -534,6 +535,30 @@ export interface ConditionalStatBonusEffect {
    * scalante. Absent = l'effet ne touche pas les tests de carac.
    */
   abilityTestBonus?: EffectValue;
+  /**
+   * Domaines de test (ids du catalogue `src/data/test-domains.ts`) dont les tests gagnent un
+   * DÉ BONUS tant que cet effet est ACTIF (PER-108) — pas un bonus chiffré, un DÉ (« 2d20, garde
+   * le meilleur »). Ex. Travail d'équipe (rôdeur, compagnon-animal-r2) : « dé bonus aux tests pour
+   * pister ou éviter d'être surpris (Vigilance) » quand le loup est au contact. Piloté par le MÊME
+   * interrupteur que `bonuses` (qui peut être vide : effet purement « dé bonus conditionnel »).
+   * Rendu par un `BonusDieBadge` sur le domaine dans l'encadré « Compétences & tests ». Absent = aucun.
+   */
+  testDieDomains?: string[];
+  /**
+   * Domaines de test (ids du catalogue) recevant un BONUS DE COMPÉTENCE CHIFFRÉ (« rang + 2 »,
+   * valeur déduite de la catégorie de voie comme un `TestBonusEffect` sans `value`) tant que cet
+   * effet est ACTIF (PER-117). Pour les bonus de compétence CONDITIONNELS d'une situation de jeu
+   * (ex. « en milieu naturel » : Survie/survie-r1, Éclaireur/traqueur-r1) — `bonuses` peut être
+   * vide. Agrégé par `testBonusSources` via l'interrupteur. Absent = aucun.
+   */
+  testBonusDomains?: string[];
+  /**
+   * DÉPENDANCE intra-capacité À SENS UNIQUE : index (dans `Feature.effects`) d'un effet dont CET
+   * effet dépend — DÉSACTIVER l'effet référencé désactive aussi celui-ci (PER-109). Ex. Parade
+   * croisée : le « bonus doublé » dépend de « une arme dans chaque main » (on ne double qu'un bonus
+   * qu'on a) → éteindre le 1ᵉʳ éteint le 2ᵉ, mais pas l'inverse. Absent = aucune dépendance.
+   */
+  deactivatesWithEffectIndex?: number;
   /** Déclencheur (condition / durée) et état par défaut de l'interrupteur. */
   activation: EffectActivation;
   /**
@@ -597,6 +622,26 @@ export interface AbilityBonusDieEffect {
   kind: 'ability-bonus-die';
   /** Caractéristique dont les tests bénéficient du dé bonus (cf. `ABILITY_IDS`). */
   ability: AbilityId;
+}
+
+/**
+ * DÉ BONUS aux tests d'une caractéristique dont la CIBLE est déterminée par un choix
+ * `ability` de la même capacité, ÉVENTUELLEMENT restreint à certaines caractéristiques
+ * (PER-110). Ex. Combattant héroïque (rôdeur, combat-a-deux-armes-r4) : « augmente AGI
+ * +1 ET dé bonus aux tests d'AGI. Plutôt qu'AGI, FOR +1 (PAS de dé bonus). » → le +1
+ * suit le choix (`ability-bonus-from-choice`), mais le dé bonus n'est accordé QUE si la
+ * carac choisie est AGI (`onlyIfAbility: ['AGI']`). Résolu depuis `Character.featureChoices`.
+ */
+export interface AbilityBonusDieFromChoiceEffect {
+  kind: 'ability-bonus-die-from-choice';
+  /** Index du choix `ability` dans `Feature.choices` qui détermine la carac visée. */
+  choiceIndex: number;
+  /**
+   * Si présent : le dé bonus n'est accordé que si la carac CHOISIE figure dans cette
+   * liste (ex. `['AGI']` — l'option FOR ne donne pas de dé). Absent = dé bonus pour la
+   * carac choisie quelle qu'elle soit.
+   */
+  onlyIfAbility?: AbilityId[];
 }
 
 /**
@@ -878,6 +923,14 @@ export interface FeatureChoiceOption {
    * que les effets `test-bonus` statiques. Voir le précédent `hpFromAbility`.
    */
   testBonusDomains?: string[];
+  /**
+   * Bonus à des STATS DÉRIVÉES octroyés lorsque cette option est retenue (PER-111). Ex.
+   * Éclaireur (rôdeur, traqueur-r1) : option « +1 DR au lieu du +1 PC de famille » →
+   * `[{ stat: 'recoveryDiceCount', value: 1 }, { stat: 'luckPoints', value: -1 }]`. Agrégé au
+   * sac `DerivedMods` (et au détail « Capacités / divers ») par `optionStatBonusSources`, au
+   * même titre qu'un `StatBonusEffect`. Valeur constante ou scalante. Absent = aucun.
+   */
+  statBonuses?: StatBonus[];
 }
 
 /**
@@ -942,6 +995,15 @@ export interface CreatureProfile {
   type?: string;
   /** Les 7 caractéristiques (valeurs fixes de la créature). */
   abilities: Record<AbilityId, number>;
+  /**
+   * Caractéristiques dont les TESTS bénéficient d'un DÉ BONUS INNÉ (notées « * » dans
+   * les blocs de stats du livre, ex. loup « CON +1* | PER +2* »). Rendu par l'icône
+   * double-d20 (`BonusDieBadge`) à droite de la valeur, sur la mini-fiche — système
+   * UNIFIÉ avec la fiche de personnage (PER-107). À DISTINGUER des dés bonus octroyés
+   * par une OPTION de voie (`FeatureChoiceOption.creatureAbilityBonusDie`, ex. golem) :
+   * les deux ensembles fusionnent à l'affichage. Absent = aucun dé bonus inné.
+   */
+  bonusDieAbilities?: AbilityId[];
   /** Défense (S) : nombre fixe ou expression `richText` (« 10 + rang »). */
   defense: string;
   /** Points de vigueur (V) : expression `richText` (« niveau × 5 »). */

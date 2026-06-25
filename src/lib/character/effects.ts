@@ -230,7 +230,49 @@ export function modsFromFeatures(featureIds: string[], ctx?: EffectContext): Der
   for (const s of hpAbilitySwapSources(featureIds, ctx)) {
     mods.maxHp = (mods.maxHp ?? 0) + s.value;
   }
+  // Bonus de stats dérivées pilotés par une OPTION retenue (ex. Éclaireur : +1 DR / −1 PC).
+  for (const { stat, source } of optionStatBonusSources(featureIds, ctx)) {
+    mods[stat] = (mods[stat] ?? 0) + source.value;
+  }
   return mods;
+}
+
+/**
+ * Bonus de stats DÉRIVÉES octroyés par les OPTIONS retenues (champ
+ * `FeatureChoiceOption.statBonuses`, PER-111). Ex. Éclaireur (traqueur-r1) : option « +1 DR au
+ * lieu du +1 PC de famille » → `recoveryDiceCount +1`, `luckPoints −1`. Lit les options retenues
+ * (`ctx.featureChoices`, aligné par position sur `Feature.choices`) ; gère le choix simple (id
+ * unique) comme le répétable (tableau d'ids). Sans `ctx`/sans choix : rien. Résout les valeurs
+ * scalantes ; une contribution nulle est omise (pas de terme « +0 » parasite).
+ */
+export function optionStatBonusSources(
+  featureIds: string[],
+  ctx?: EffectContext,
+): Array<{ stat: DerivedStatId; source: FeatureModSource }> {
+  if (!ctx?.featureChoices) return [];
+  const out: Array<{ stat: DerivedStatId; source: FeatureModSource }> = [];
+  const pathRanks = pathRanksFromFeatures(featureIds);
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.choices) continue;
+    const selections = ctx.featureChoices[id] ?? [];
+    feature.choices.forEach((choice, i) => {
+      if (choice.kind !== 'option') return;
+      const sel = selections[i];
+      const chosenIds = Array.isArray(sel) ? sel : typeof sel === 'string' ? [sel] : [];
+      for (const optId of chosenIds) {
+        const option = choice.options.find((o) => o.id === optId);
+        if (!option?.statBonuses) continue;
+        for (const b of option.statBonuses) {
+          const value = resolveValue(b.value, feature.pathId, pathRanks, ctx);
+          if (value !== null && value !== 0) {
+            out.push({ stat: b.stat, source: { featureId: id, name: feature.name, value } });
+          }
+        }
+      }
+    });
+  }
+  return out;
 }
 
 /**
@@ -339,6 +381,10 @@ export function featureModSources(
   for (const s of hpAbilitySwapSources(featureIds, ctx)) {
     (sources.maxHp ??= []).push(s);
   }
+  // Bonus de stats dérivées pilotés par une option retenue (ex. Éclaireur : +1 DR / −1 PC).
+  for (const { stat, source } of optionStatBonusSources(featureIds, ctx)) {
+    (sources[stat] ??= []).push(source);
+  }
   return sources;
 }
 
@@ -392,6 +438,31 @@ export function conditionalEffectBonuses(
     stat: b.stat,
     value: resolveValue(b.value, feature.pathId, pathRanks, ctx) ?? 0,
   }));
+}
+
+/**
+ * Domaines de test bénéficiant d'un DÉ BONUS CONDITIONNEL actuellement ACTIF (champ
+ * `ConditionalStatBonusEffect.testDieDomains`, PER-108). Ex. Travail d'équipe (rôdeur,
+ * compagnon-animal-r2) : tant que l'interrupteur « le loup au contact » est actif, les tests
+ * pour pister et de vigilance gagnent un dé bonus. Renvoie une map domaine → nom(s) de
+ * capacité(s) source(s), pour le badge double-d20 de l'encadré « Compétences & tests ».
+ */
+export function activeConditionalTestDice(character: Character): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    feature.effects.forEach((effect, i) => {
+      if (effect.kind !== 'conditional-stat-bonus' || !effect.testDieDomains?.length) return;
+      if (!isEffectActive(character, id, i)) return;
+      for (const d of effect.testDieDomains) {
+        const arr = out.get(d) ?? [];
+        arr.push(feature.name);
+        out.set(d, arr);
+      }
+    });
+  }
+  return out;
 }
 
 /** Une capacité qui ajoute un bonus à TOUS les tests de caractéristique (conditionnel). */
@@ -494,8 +565,19 @@ export function setEffectToggle(
   active: boolean,
 ): Record<string, boolean[]> {
   let next = setToggleIn(character.effectToggles, featureId, index, active);
-  if (!active) return next;
-  const effect = featureById.get(featureId)?.effects?.[index];
+  const ownEffects = featureById.get(featureId)?.effects ?? [];
+  if (!active) {
+    // Cascade de DÉSACTIVATION intra-capacité, À SENS UNIQUE (PER-109) : éteindre cet effet éteint
+    // aussi ceux qui en dépendent (`deactivatesWithEffectIndex`). Ex. Parade croisée : couper
+    // « une arme dans chaque main » coupe « bonus doublé », pas l'inverse.
+    ownEffects.forEach((e, ei) => {
+      if (e.kind === 'conditional-stat-bonus' && e.deactivatesWithEffectIndex === index) {
+        next = setToggleIn(next, featureId, ei, false);
+      }
+    });
+    return next;
+  }
+  const effect = ownEffects[index];
   if (effect?.kind !== 'conditional-stat-bonus' || !effect.disablesFeatures) return next;
   for (const targetId of effect.disablesFeatures) {
     const targetEffects = featureById.get(targetId)?.effects ?? [];
@@ -688,13 +770,27 @@ export function abilityModSources(
  */
 export function abilityBonusDiceFromFeatures(
   featureIds: string[],
+  featureChoices?: Record<string, FeatureChoiceSelection[]>,
 ): Partial<Record<AbilityId, string[]>> {
   const dice: Partial<Record<AbilityId, string[]>> = {};
   for (const id of featureIds) {
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
     for (const e of feature.effects) {
-      if (e.kind === 'ability-bonus-die') (dice[e.ability] ??= []).push(feature.name);
+      if (e.kind === 'ability-bonus-die') {
+        (dice[e.ability] ??= []).push(feature.name);
+      } else if (e.kind === 'ability-bonus-die-from-choice' && featureChoices) {
+        // Dé bonus dont la carac est lue depuis le choix retenu, éventuellement restreint
+        // (ex. Combattant héroïque : dé bonus seulement si AGI est choisie, pas FOR).
+        const chosen = featureChoices[id]?.[e.choiceIndex];
+        if (
+          typeof chosen === 'string' &&
+          (ABILITY_IDS as readonly string[]).includes(chosen) &&
+          (!e.onlyIfAbility || e.onlyIfAbility.includes(chosen as AbilityId))
+        ) {
+          (dice[chosen as AbilityId] ??= []).push(feature.name);
+        }
+      }
     }
   }
   return dice;
@@ -828,6 +924,17 @@ function rawTestContributions(featureIds: string[], ctx?: EffectContext): RawTes
       for (const domain of effect.domains)
         out.push({ domain, featureId: id, name: feature.name, category, value });
     }
+
+    // (a bis) bonus de compétence CONDITIONNEL (PER-117) : domaines portés par un
+    // conditional-stat-bonus ACTIF (ex. « en milieu naturel » : Survie, Éclaireur). Même valeur
+    // déduite de la catégorie (fallback) qu'un test-bonus statique ; comptés seulement si le
+    // toggle est actif (ctx requis ; sans ctx, aucun toggle → ignorés).
+    (feature.effects ?? []).forEach((effect, i) => {
+      if (effect.kind !== 'conditional-stat-bonus' || !effect.testBonusDomains?.length) return;
+      if (!isConditionalActive(effect, id, i, ctx)) return;
+      for (const domain of effect.testBonusDomains)
+        out.push({ domain, featureId: id, name: feature.name, category, value: fallback });
+    });
 
     // (b) domaines octroyés par une OPTION retenue (ex. humain-r1 : origine → 2 domaines).
     const selections = ctx?.featureChoices?.[id] ?? [];

@@ -222,6 +222,17 @@ for (const c of features) {
         const valueError = effectValueError(e.abilityTestBonus);
         if (valueError) err(`[capacite ${c.id}] effect: abilityTestBonus ${valueError}`);
       }
+      // Dé bonus conditionnel sur des domaines de test nommés (PER-108) — ids du catalogue.
+      for (const d of e.testDieDomains ?? [])
+        if (!testDomainById.has(d)) err(`[capacite ${c.id}] effect: domaine inconnu (testDieDomains) : ${d}`);
+      // Bonus de compétence conditionnel sur des domaines (PER-117) — ids du catalogue.
+      for (const d of e.testBonusDomains ?? [])
+        if (!testDomainById.has(d)) err(`[capacite ${c.id}] effect: domaine inconnu (testBonusDomains) : ${d}`);
+      // Dépendance intra-capacité (PER-109) : l'index référencé doit exister et différer de soi.
+      if (e.deactivatesWithEffectIndex !== undefined) {
+        const target = c.effects?.[e.deactivatesWithEffectIndex];
+        if (!target) err(`[capacite ${c.id}] effect: deactivatesWithEffectIndex pointe un effet inexistant`);
+      }
       const a = e.activation;
       if (!a || !validActivationKinds.has(a.kind))
         err(`[capacite ${c.id}] effect: activation.kind invalide (${c.id})`);
@@ -245,6 +256,13 @@ for (const c of features) {
       if (!choice || choice.kind !== 'ability')
         err(`[capacite ${c.id}] effect: ability-bonus-from-choice → choiceIndex ${e.choiceIndex} ne pointe pas vers un choix 'ability'`);
       if (!Number.isFinite(e.value)) err(`[capacite ${c.id}] effect: ability-bonus-from-choice value non finie`);
+    } else if (e.kind === 'ability-bonus-die-from-choice') {
+      // Dé bonus dont la carac vient d'un choix `ability`, éventuellement restreint (PER-110).
+      const choice = c.choices?.[e.choiceIndex];
+      if (!choice || choice.kind !== 'ability')
+        err(`[capacite ${c.id}] effect: ability-bonus-die-from-choice → choiceIndex ${e.choiceIndex} ne pointe pas vers un choix 'ability'`);
+      for (const ab of e.onlyIfAbility ?? [])
+        if (!validAbilities.has(ab)) err(`[capacite ${c.id}] effect: ability-bonus-die-from-choice carac inconnue : ${ab}`);
     } else if (e.kind === 'test-bonus') {
       // Bonus de compétence à un/des domaine(s) nommé(s) (PER-89). `domains` non vide,
       // chaque id présent dans le catalogue ; `value` optionnelle (sinon déduite).
@@ -292,9 +310,16 @@ for (const d of testDomains) {
 for (const c of features) {
   for (const choice of c.choices ?? []) {
     if (choice.kind !== 'option') continue;
-    for (const opt of choice.options)
+    for (const opt of choice.options) {
       for (const d of opt.testBonusDomains ?? [])
         if (!testDomainById.has(d)) err(`[capacite ${c.id}] option ${opt.id}: domaine inconnu : ${d}`);
+      // Bonus de stats dérivées portés par une option (PER-111, ex. Éclaireur : +1 DR / −1 PC).
+      for (const b of opt.statBonuses ?? []) {
+        if (!validStats.has(b.stat)) err(`[capacite ${c.id}] option ${opt.id}: stat inconnue : ${b.stat}`);
+        const valueError = effectValueError(b.value);
+        if (valueError) err(`[capacite ${c.id}] option ${opt.id}: statBonuses ${valueError}`);
+      }
+    }
   }
 }
 

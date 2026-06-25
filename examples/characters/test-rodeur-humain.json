@@ -1,0 +1,251 @@
+{
+  "schemaVersion": 9,
+  "id": "test-rodeur-humain",
+  "name": "Test — Rôdeur (humain)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-71 — rôdeur humain, les 5 voies au rang 5. À vérifier : compagnon animal — mini-fiche du Loup (creatureProfile : DEF [12+rang], PV [niveau×4], Init. du maître, attaque magie + DM [1d4+2], note « dé bonus CON/PER ») PUIS Mâle alpha (Loup alpha, r4) qui REMPLACE le loup de base (compagnon-animal-r1 grisée), DEF 18, PV [niveau×5], DM [1d4°+5] ; Tactiques de meute (r5) : +1 DEF par voie de rôdeur au rang 5 (milestone-count → ici 5 voies = +5 DEF) ; bonus du loup (PER-94) NON modélisés. Archerie : +Init scalant (+1 par rang → +5 au rang 5, archer-r1), PER aux DM. Survie : bonus de compétence escalade (cumul avec l'origine humaine « Montagnard » +3 peuple) + survie ; DEF conditionnelle « en milieu naturel » (survie-r3) ; héroïque Constitution (CON +1 + dé). Traqueur : domaines CONDITIONNELS « en milieu naturel » laissés verbatim (à valider) ; choix répétable « ennemi juré » (traqueur-r3, 5 voies au rang 5 → 5 choix) ; héroïque Perception (PER +1 + dé). Combat à deux armes : Parade croisée (DEF conditionnelle scalante) ; Droite-gauche (r3) REMPLACE Attaque à suivre (r1) ; héroïque Agilité (AGI +1 + dé ; alternative FOR en prose) ; dés {1d4°}. Rendu enrichi des dés et formules."
+  },
+  "ancestryId": "humain",
+  "classId": "rodeur",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 4,
+    "CON": 2,
+    "FOR": 1,
+    "PER": 3,
+    "CHA": -1,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 4,
+    "CON": 2,
+    "FOR": 1,
+    "PER": 3,
+    "CHA": -1,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "archer-r1",
+    "compagnon-animal-r1",
+    "humain-r1",
+    "combat-a-deux-armes-r1",
+    "survie-r1",
+    "traqueur-r1",
+    "archer-r2",
+    "combat-a-deux-armes-r2",
+    "compagnon-animal-r2",
+    "survie-r2",
+    "traqueur-r2",
+    "archer-r3",
+    "combat-a-deux-armes-r3",
+    "compagnon-animal-r3",
+    "survie-r3",
+    "traqueur-r3",
+    "archer-r4",
+    "combat-a-deux-armes-r4",
+    "compagnon-animal-r4",
+    "survie-r4",
+    "traqueur-r4",
+    "archer-r5",
+    "combat-a-deux-armes-r5",
+    "compagnon-animal-r5",
+    "survie-r5",
+    "traqueur-r5"
+  ],
+  "featureChoices": {
+    "humain-r1": [
+      "highlander"
+    ],
+    "traqueur-r1": [
+      "take-recovery"
+    ],
+    "traqueur-r3": [
+      [
+        "goblinoids",
+        "giants",
+        "dragons",
+        "undead",
+        "demons"
+      ]
+    ],
+    "combat-a-deux-armes-r4": [
+      "AGI"
+    ]
+  },
+  "effectToggles": {
+    "survie-r1": [
+      true
+    ],
+    "traqueur-r1": [
+      true
+    ],
+    "survie-r3": [
+      true
+    ],
+    "combat-a-deux-armes-r2": [
+      true,
+      true
+    ],
+    "compagnon-animal-r2": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "archer-r1",
+        "compagnon-animal-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "combat-a-deux-armes-r1",
+        "survie-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "traqueur-r1",
+        "archer-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "combat-a-deux-armes-r2",
+        "compagnon-animal-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "survie-r2",
+        "traqueur-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "archer-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "combat-a-deux-armes-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "compagnon-animal-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "survie-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "traqueur-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "archer-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "combat-a-deux-armes-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "compagnon-animal-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "survie-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "traqueur-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "archer-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "combat-a-deux-armes-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "compagnon-animal-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "survie-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "traqueur-r5"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1
+    },
+    {
+      "itemId": "arc-court",
+      "quantity": 1
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    },
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-71 (rôdeur) — perso de recette. Voir identity.description pour la liste de vérification. Origine humaine « Montagnard » (highlander) choisie pour faire chevaucher l'escalade (climbing) entre la voie de peuple (+3) et la voie de la survie (profil) → contrôle du cumul PER-89. Compagnon animal : zones différées PER-94 (bonus maître→créature) signalées dans les commentaires des données.",
+  "createdAt": "2026-06-25T00:00:00.000Z",
+  "updatedAt": "2026-06-25T00:00:00.000Z"
+}

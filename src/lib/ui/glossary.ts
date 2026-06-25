@@ -154,6 +154,13 @@ export const GAME_TERMS: Record<string, GameTermEntry> = {
       "Attaquer dans le dos : quand le voleur attaque la même créature qu'un allié à son contact, il est considéré l'attaquer dans le dos — sauf si elle peut se placer dos à un obstacle infranchissable (p. 74).",
     category: 'rule',
   },
+  // Ajout PER-114 (rôdeur, Chasseur émérite) : la catégorie « insectes » des ennemis jurés inclut
+  // tous les arthropodes. Remplace la note de bas « * arthropodes inclus » par une info-bulle
+  // auto-détectée, partout où le mot apparaît (ex. aussi l'option d'animaux du druide).
+  insectes: {
+    label: 'Insectes : la catégorie inclut tous les arthropodes (araignées, scorpions, etc.).',
+    category: 'rule',
+  },
 };
 
 /** Un fragment de texte : texte brut, ou locution de jeu reconnue. */

@@ -1054,6 +1054,31 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le rôdeur ajoute sa PER aux DM qu'il inflige à l'arc et +1 par rang dans la voie en initiative. Le joueur peut souhaiter une variante de cette capacité s'appliquant aux armes de jet (dague, hachette, javelot) plutôt qu'à l'arc (rebaptisez-la voie du lancer). Dans ce cas, le PJ ajoute sa FOR aux DM qu'il inflige et double la portée de jet (pas de bonus d'Init.). Par ailleurs, toutes les capacités de la voie qui suivent s'appliquent aux armes de jet plutôt qu'à l'arc.",
+    // Rendu enrichi (PER-71) : « sa PER aux DM » = modificateur de DM (à l'arc) → [PER]. La
+    // variante « voie du lancer » (FOR aux DM, pas de bonus d'Init.) reste en prose littérale
+    // (build alternatif, non actif). Effet : « +1 par rang dans la voie en initiative » est un
+    // bonus PERMANENT de l'archétype arc (la variante du lancer l'annule explicitement) →
+    // `stat-bonus` à l'initiative, scalant par rang de voie hôte (+N au rang N). La montée par
+    // rang reste décrite en prose (format §7). Le +PER aux DM n'est pas une stat dérivée → pas d'effet.
+    richText:
+      "Le rôdeur ajoute sa [PER] aux DM qu'il inflige à l'arc et +1 par rang dans la voie en initiative. Le joueur peut souhaiter une variante de cette capacité s'appliquant aux armes de jet (dague, hachette, javelot) plutôt qu'à l'arc (rebaptisez-la voie du lancer). Dans ce cas, le PJ ajoute sa FOR aux DM qu'il inflige et double la portée de jet (pas de bonus d'Init.). Par ailleurs, toutes les capacités de la voie qui suivent s'appliquent aux armes de jet plutôt qu'à l'arc.",
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'initiative',
+        value: {
+          scale: 'stepped',
+          by: 'path-rank',
+          steps: [
+            { min: 1, value: 1 },
+            { min: 2, value: 2 },
+            { min: 3, value: 3 },
+            { min: 4, value: 4 },
+            { min: 5, value: 5 },
+          ],
+        },
+      },
+    ],
     sourcePage: 70,
   },
   {
@@ -1076,6 +1101,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Pour une attaque à distance, le rôdeur peut choisir de s'imposer un dé malus en attaque. Si elle est réussie, il ajoute 2d4° aux DM. Cette capacité peut être utilisée avec Tir rapide ou Flèche de mort par exemple. Transformez cette capacité en action limitée (L) pour obtenir +3d4° aux DM au lieu de 2d4°.",
+    // Rendu enrichi (PER-71) : bonus aux DM {2d4°} (mode standard) et {3d4°} (mode action
+    // limitée). Le rappel « au lieu de 2d4° » reste en prose. Bonus SITUATIONNEL → pas d'effet.
+    richText:
+      "Pour une attaque à distance, le rôdeur peut choisir de s'imposer un dé malus en attaque. Si elle est réussie, il ajoute {2d4°} aux DM. Cette capacité peut être utilisée avec Tir rapide ou Flèche de mort par exemple. Transformez cette capacité en action limitée (L) pour obtenir +{3d4°} aux DM au lieu de 2d4°.",
     sourcePage: 70,
   },
   {
@@ -1098,6 +1127,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Vous obtenez un dé bonus en attaque à distance et vous ajoutez 1d4° aux DM. Au lieu du dé bonus et de +1d4° aux DM, vous pouvez infliger un état préjudiciable de votre choix parmi aveuglé, affaibli, ralenti ou immobilisé pendant 1 round à une cible d'un NC inférieur au vôtre. Vous ne pouvez infliger chaque état préjudiciable qu'une seule fois par combat.",
+    // Rendu enrichi (PER-71) : bonus aux DM {1d4°} (deux occurrences du même bonus). Le dé
+    // bonus en attaque, l'état préjudiciable et « 1 round » restent en prose. Pas d'effet permanent.
+    richText:
+      "Vous obtenez un dé bonus en attaque à distance et vous ajoutez {1d4°} aux DM. Au lieu du dé bonus et de +{1d4°} aux DM, vous pouvez infliger un état préjudiciable de votre choix parmi aveuglé, affaibli, ralenti ou immobilisé pendant 1 round à une cible d'un NC inférieur au vôtre. Vous ne pouvez infliger chaque état préjudiciable qu'une seule fois par combat.",
     sourcePage: 70,
   },
 
@@ -1111,6 +1144,14 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le rôdeur obtient un loup pour compagnon animal. En combat, le loup attaque en même temps que le rôdeur. Le loup comprend des ordres simples comme : garde, reste, apporte, attaque, etc.\n\nLOUP — CRÉATURE VIVANTE\nAGI +1 | CON +1* | FOR +2 | PER +2* | CHA -2 | INT -3 | VOL +2\n(S) Défense [12 + rang dans la voie]\n(V) Points de vigueur [niv. du rôdeur × 4]\n(I) Initiative [Init. du rôdeur]\nAttaque au contact [attaque magique du rôdeur] DM 1d4+2\n*Le loup obtient un dé bonus sur ses tests.",
+    // Profil structuré du loup (mini-fiche, PER-69) ; le bloc de stats est retiré du richText.
+    // Défense « [12 + rang dans la voie] » → [12 + rang] (rang = rang ATTEINT dans la voie hôte) ;
+    // PV « [niv. du rôdeur × 4] » → quantité [=niveau × 4] ; Init. recopiée du maître ; attaque au
+    // jet d'attaque magique du rôdeur, DM 1d4+2. Astérisques (CON+1*, PER+2* « dé bonus sur ses
+    // tests ») → `bonusDieAbilities` (rendu double-d20, système unifié PER-107).
+    richText:
+      "Le rôdeur obtient un loup pour compagnon animal. En combat, le loup attaque en même temps que le rôdeur. Le loup comprend des ordres simples comme : garde, reste, apporte, attaque, etc.",
+    creatureProfile: { name: 'Loup', type: 'Créature vivante', abilities: { AGI: 1, CON: 1, FOR: 2, PER: 2, CHA: -2, INT: -3, VOL: 2 }, defense: '[12 + rang]', hitPoints: '[=niveau × 4]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4 + 2]' }, bonusDieAbilities: ['CON', 'PER'] },
     sourcePage: 70,
   },
   {
@@ -1122,6 +1163,19 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque le loup et le rôdeur sont au contact, le loup obtient un dé bonus en attaque et le rôdeur obtient un dé bonus aux tests effectués pour pister ou pour éviter d'être surpris (Vigilance).",
+    // PER-108 : effet CONDITIONNEL « le loup au contact » (interrupteur manuel) accordant au
+    // RÔDEUR un DÉ BONUS (pas un bonus chiffré) aux tests de pister (tracking) et de vigilance
+    // (vigilance) → `testDieDomains`, rendu par un double-d20 dans l'encadré des tests. `bonuses`
+    // vide (aucune stat dérivée touchée). Le « dé bonus en attaque du LOUP » relève de PER-94
+    // (bonus maître→créature) → non modélisé sur le profil du loup.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        testDieDomains: ['tracking', 'vigilance'],
+        activation: { kind: 'condition', label: 'le loup au contact', activeByDefault: false },
+      },
+    ],
     sourcePage: 71,
   },
   {
@@ -1144,6 +1198,16 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le loup du rôdeur devient un spécimen particulièrement puissant.\n\nMÂLE ALPHA\nCON +3* | FOR +5\n(S) Défense 18\n(V) Points de vigueur [Niveau × 5]\nDM 1d4°+5",
+    // Le loup « devient » un Mâle alpha : profil amélioré qui SUPPLANTE le loup de base
+    // (compagnon-animal-r1) dès l'acquisition → `replacesFeatures` (même mécanique que Grand
+    // félin/Panthère du druide). Le bloc « MÂLE ALPHA » ne réécrit que CON (+3), FOR (+5), la
+    // Défense (18 fixe), les PV (niveau × 5) et les DM (1d4°+5) ; le reste du profil du loup est
+    // reporté (AGI+1, PER+2*, CHA-2, INT-3, VOL+2 ; Init. du maître ; jet d'attaque magique).
+    // Bloc de stats retiré du richText. Dés bonus innés (CON* de l'alpha + PER* reporté) →
+    // `bonusDieAbilities` (rendu double-d20, PER-107).
+    richText: "Le loup du rôdeur devient un spécimen particulièrement puissant.",
+    creatureProfile: { name: 'Mâle alpha', type: 'Créature vivante', abilities: { AGI: 1, CON: 3, FOR: 5, PER: 2, CHA: -2, INT: -3, VOL: 2 }, defense: '18', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' }, bonusDieAbilities: ['CON', 'PER'] },
+    replacesFeatures: ['compagnon-animal-r1'],
     sourcePage: 72,
   },
   {
@@ -1155,6 +1219,21 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque le loup attaque la même cible que le rôdeur, il obtient un bonus de 1d4° aux DM. Chaque fois que le rôdeur dépense 1 PV pour soigner son loup, le loup récupère 2 PV. De plus, le rôdeur et son loup augmentent leur DEF de +1 chaque fois que le personnage atteint le rang 5 dans une voie de rôdeur (celle-ci incluse).",
+    // Rendu enrichi (PER-71) : bonus aux DM du loup {1d4°} (situationnel). Effet : « le rôdeur …
+    // augmente sa DEF de +1 chaque fois qu'il atteint le rang 5 dans une voie de rôdeur (celle-ci
+    // incluse) » → `stat-bonus` DEF scalant par PALIERS DE FAMILLE (milestone-count : +1 par voie
+    // de rôdeur au rang 5, voie hôte comprise ; même forme qu'Armure de mana). La montée reste en
+    // prose (format §7). Le +1 DEF du LOUP (bonus maître→créature) relève de PER-94 → non modélisé
+    // sur le profil du loup ; idem « le loup récupère 2 PV par PV dépensé ».
+    richText:
+      "Lorsque le loup attaque la même cible que le rôdeur, il obtient un bonus de {1d4°} aux DM. Chaque fois que le rôdeur dépense 1 PV pour soigner son loup, le loup récupère 2 PV. De plus, le rôdeur et son loup augmentent leur DEF de +1 chaque fois que le personnage atteint le rang 5 dans une voie de rôdeur (celle-ci incluse).",
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'milestone-count', per: 1, rank: 5, classIds: ['rodeur'] },
+      },
+    ],
     sourcePage: 72,
   },
 
@@ -1168,6 +1247,22 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le rôdeur ajoute son rang + 2 à tous les tests d'escalade et de survie en milieu naturel (s'orienter, trouver un abri et de la nourriture, etc.) dont les tests de récupération effectués chaque nuit. Lorsqu'il dort en milieu naturel, s'il dépense 1 dé de récupération (DR), il guérit 1d4° PV supplémentaire (en plus de [DR max + ½ niveau]).",
+    // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2] ; soin supplémentaire {1d4°}. La
+    // formule de récupération « [DR max + ½ niveau] » n'est pas exprimable (terme « DR max »,
+    // demi-niveau) → laissée littérale (le parseur retombe proprement en texte).
+    // PER-117 : le bonus de compétence (escalade/climbing, survie/survival) est CONDITIONNEL
+    // (« en milieu naturel », pas tout le temps actif) → conditional-stat-bonus avec
+    // `testBonusDomains` et un interrupteur, plutôt qu'un test-bonus statique.
+    richText:
+      "Le rôdeur ajoute son [rang + 2] à tous les tests d'escalade et de survie en milieu naturel (s'orienter, trouver un abri et de la nourriture, etc.) dont les tests de récupération effectués chaque nuit. Lorsqu'il dort en milieu naturel, s'il dépense 1 dé de récupération (DR), il guérit {1d4°} PV supplémentaire (en plus de [DR max + ½ niveau]).",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        testBonusDomains: ['climbing', 'survival'],
+        activation: { kind: 'condition', label: 'en milieu naturel', activeByDefault: false },
+      },
+    ],
     sourcePage: 72,
   },
   {
@@ -1179,6 +1274,12 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par jour, si le rôdeur passe 1d6 h en milieu naturel sauvage (pas dans un champ), il trouve de quoi nourrir une personne par rang pour une journée et, s'il réussit un test de PER (Survie) difficulté 10, il trouve des plantes médicinales pour soigner 1d4° PV par rang. Les plantes doivent être utilisées immédiatement (10 min de préparation et autant pour faire effet) et les dés peuvent être répartis sur plusieurs patients.",
+    // Rendu enrichi (PER-71 / PER-112) : durée {1d6} h ; soin {1d4°} PV. Les « par rang » désignent
+    // le rang ATTEINT dans la voie de la survie → balisés en terme nommé [#rang] (« par rang (N) »,
+    // info-bulle = valeur). « test de PER (Survie) » est un USAGE de la survie (pas une attribution
+    // de bonus de compétence) → pas d'effet. « Une fois par jour » : pas de compteur d'usages.
+    richText:
+      "Une fois par jour, si le rôdeur passe {1d6} h en milieu naturel sauvage (pas dans un champ), il trouve de quoi nourrir une personne par [#rang] pour une journée et, s'il réussit un test de PER (Survie) difficulté 10, il trouve des plantes médicinales pour soigner {1d4°} PV par [#rang]. Les plantes doivent être utilisées immédiatement (10 min de préparation et autant pour faire effet) et les dés peuvent être répartis sur plusieurs patients.",
     sourcePage: 72,
   },
   {
@@ -1190,6 +1291,21 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       "En milieu naturel, le rôdeur obtient +1 en DEF (ce bonus passe à +2 au rang 5) et 10 m de déplacement en action gratuite (à son tour de jeu). Enfin, il n'est pas gêné par les terrains difficiles naturels, mais il n'obtient pas alors de déplacement supplémentaire.",
+    // Bonus de DEF CONDITIONNEL (« en milieu naturel », interrupteur manuel PER-67), scalant par
+    // rang de voie : +1, puis +2 au rang 5. Le déplacement gratuit et l'absence de gêne en terrain
+    // difficile restent en prose. Pas de richText (aucun jeton parsable ; DEF auto-détectée).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [
+          {
+            stat: 'def',
+            value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 5, value: 2 }] },
+          },
+        ],
+        activation: { kind: 'condition', label: 'en milieu naturel', activeByDefault: false },
+      },
+    ],
     sourcePage: 72,
   },
   {
@@ -1201,6 +1317,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le rôdeur augmente sa valeur de CON de +1. Désormais, il obtient un dé bonus aux tests de CON.",
+    // Caractéristique héroïque (mécanique core) : +1 CON permanent + dé bonus aux tests de CON.
+    effects: [
+      { kind: 'ability-bonus', ability: 'CON', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'CON' },
+    ],
     sourcePage: 72,
   },
   {
@@ -1211,6 +1332,10 @@ export const adventurerFeatures: Feature[] = [
     isSpell: false,
     actionTypes: ['L'],
     text:
+      "Une fois par combat, lorsqu'il tombe à 0PV, le rôdeur peut récupérer [4d4° + CON] PV au début de son prochain tour. Lorsqu'il se relève, il bénéficie d'un bonus de +5 en DEF pendant 1 round et il se débarrasse de tous les états préjudiciables non permanents qui l'affectent.",
+    // Rendu enrichi (PER-71) : PV récupérés [4d4° + CON]. Le « +5 en DEF pendant 1 round » est un
+    // buff TEMPORAIRE déclenché en tombant à 0 PV (pas un interrupteur de fiche persistant) → prose.
+    richText:
       "Une fois par combat, lorsqu'il tombe à 0PV, le rôdeur peut récupérer [4d4° + CON] PV au début de son prochain tour. Lorsqu'il se relève, il bénéficie d'un bonus de +5 en DEF pendant 1 round et il se débarrasse de tous les états préjudiciables non permanents qui l'affectent.",
     sourcePage: 72,
   },
@@ -1225,6 +1350,40 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "En milieu naturel, le rôdeur ajoute son rang + 2 à ses tests de discrétion et de vigilance ainsi qu'aux tests pour pister. De plus, le rôdeur peut remplacer le bonus de +1 PC de la famille des aventuriers par un bonus de +1 DR si le joueur le souhaite.",
+    // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2]. PER-111/PER-117 : les domaines
+    // discrétion (stealth), vigilance et pister (tracking) sont reliés mais CONDITIONNELS
+    // (« en milieu naturel », pas tout le temps actif) → conditional-stat-bonus avec
+    // `testBonusDomains` + interrupteur. L'échange optionnel « +1 PC de famille → +1 DR » est un
+    // CHOIX d'option portant des bonus de stats dérivées (luckPoints −1, recoveryDiceCount +1),
+    // agrégé par `optionStatBonusSources`. Labels d'option « PC (…) / DR (…) » : le complément entre
+    // parenthèses est masqué en vue colonne (forme courte « PC »/« DR »), gardé dans l'input.
+    richText:
+      "En milieu naturel, le rôdeur ajoute son [rang + 2] à ses tests de discrétion et de vigilance ainsi qu'aux tests pour pister. De plus, le rôdeur peut remplacer le bonus de +1 PC de la famille des aventuriers par un bonus de +1 DR si le joueur le souhaite.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        testBonusDomains: ['stealth', 'vigilance', 'tracking'],
+        activation: { kind: 'condition', label: 'en milieu naturel', activeByDefault: false },
+      },
+    ],
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Bonus de la famille des aventuriers',
+        options: [
+          { id: 'keep-luck', label: 'PC (garder le +1 point de chance de la famille)' },
+          {
+            id: 'take-recovery',
+            label: 'DR (+1 dé de récupération au lieu du +1 PC)',
+            statBonuses: [
+              { stat: 'recoveryDiceCount', value: 1 },
+              { stat: 'luckPoints', value: -1 },
+            ],
+          },
+        ],
+      },
+    ],
     sourcePage: 72,
   },
   {
@@ -1236,6 +1395,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le rôdeur peut effectuer une attaque au contact très rapide. Il ajoute son AGI en attaque et aux DM pour cette attaque. À partir du rang 5, cette attaque peut être associée à 10 m de déplacement.",
+    // Rendu enrichi (PER-71) : « son AGI en attaque et aux DM » = modificateur [AGI] (situationnel,
+    // pour cette attaque limitée) → pas d'effet permanent.
+    richText:
+      "Le rôdeur peut effectuer une attaque au contact très rapide. Il ajoute son [AGI] en attaque et aux DM pour cette attaque. À partir du rang 5, cette attaque peut être associée à 10 m de déplacement.",
     sourcePage: 72,
   },
   {
@@ -1247,6 +1410,31 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le rôdeur obtient +1d4° aux DM de ses attaques au contact ou à distance lorsqu'il combat des animaux (même géants). Chaque fois qu'il atteint le rang 5 dans une voie de rôdeur, il peut choisir un ennemi juré contre lequel il obtient le même avantage parmi les goblinoïdes, les géants, les dragons, les morts-vivants, les insectes*, les démons.\n* arthropodes inclus.",
+    // Rendu enrichi (PER-71) : bonus aux DM {1d4°} (contre les animaux, et chaque ennemi juré).
+    // Choix RÉPÉTABLE d'« ennemi juré » débloqué par paliers de progression — un de plus « chaque
+    // fois qu'il atteint le rang 5 dans une voie de rôdeur » (voie hôte comprise, le texte ne dit
+    // pas « autre ») → `repeat: paths-at-rank` (même mécanique que Golem supérieur / Petit
+    // compagnon). Options descriptives (le +1d4° vs la catégorie choisie n'est pas une stat → pas
+    // d'effet mécanique, seul le choix est enregistré). PER-114 : la note de bas « * arthropodes
+    // inclus » est retirée du richText au profit du terme de glossaire « insectes » (souligné
+    // pointillé + info-bulle, auto-détecté via GAME_TERMS).
+    richText:
+      "Le rôdeur obtient +{1d4°} aux DM de ses attaques au contact ou à distance lorsqu'il combat des animaux (même géants). Chaque fois qu'il atteint le rang 5 dans une voie de rôdeur, il peut choisir un ennemi juré contre lequel il obtient le même avantage parmi les goblinoïdes, les géants, les dragons, les morts-vivants, les insectes, les démons.",
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Ennemi juré (par voie de rôdeur au rang 5)',
+        repeat: { by: 'paths-at-rank', classIds: ['rodeur'], rank: 5 },
+        options: [
+          { id: 'goblinoids', label: 'Goblinoïdes' },
+          { id: 'giants', label: 'Géants' },
+          { id: 'dragons', label: 'Dragons' },
+          { id: 'undead', label: 'Morts-vivants' },
+          { id: 'insects', label: 'Insectes (arthropodes inclus)' },
+          { id: 'demons', label: 'Démons' },
+        ],
+      },
+    ],
     sourcePage: 72,
   },
   {
@@ -1258,6 +1446,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le rôdeur augmente sa valeur de PER de +1. Désormais, il obtient un dé bonus aux tests de PER.",
+    // Caractéristique héroïque (mécanique core) : +1 PER permanent + dé bonus aux tests de PER.
+    effects: [
+      { kind: 'ability-bonus', ability: 'PER', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'PER' },
+    ],
     sourcePage: 73,
   },
   {
@@ -1293,11 +1486,12 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le rôdeur obtient un bonus de +1 en DEF lorsqu'il combat avec une arme dans chaque main. Ce bonus passe à +2 au rang 5 de la voie. Au début de son tour, s'il renonce à toute attaque de la main secondaire, il double ce bonus jusqu'à son prochain tour.",
-    // Part structurable (PER-67) : « +1 en DEF avec une arme dans chaque main,
-    // passe à +2 au rang 5 de la voie » → effet CONDITIONNEL (interrupteur :
-    // combat à deux armes) dont la valeur est SCALANTE par paliers de rang de
-    // voie. Le doublement temporaire « s'il renonce à l'attaque secondaire » est
-    // une condition supplémentaire non structurée → reste verbatim.
+    // Part structurable (PER-67) : « +1 en DEF avec une arme dans chaque main, passe à +2 au
+    // rang 5 de la voie » → effet CONDITIONNEL (interrupteur : une arme dans chaque main) dont la
+    // valeur est SCALANTE par paliers de rang de voie.
+    // PER-109 : le doublement « s'il renonce à l'attaque secondaire » est un 2ᵉ interrupteur portant
+    // le MÊME bonus scalant — les deux actifs s'additionnent → bonus doublé (+2 au lieu de +1, +4 au
+    // rang 5). Dépendance À SENS UNIQUE (`deactivatesWithEffectIndex: 0`) : couper le 1ᵉʳ coupe le 2ᵉ.
     effects: [
       {
         kind: 'conditional-stat-bonus',
@@ -1316,6 +1510,26 @@ export const adventurerFeatures: Feature[] = [
         ],
         activation: { kind: 'condition', label: 'une arme dans chaque main', activeByDefault: false },
       },
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [
+          {
+            stat: 'def',
+            value: {
+              scale: 'stepped',
+              by: 'path-rank',
+              steps: [
+                { min: 1, value: 1 },
+                { min: 5, value: 2 },
+              ],
+            },
+          },
+        ],
+        activation: { kind: 'condition', label: "bonus doublé (renonce à l'attaque secondaire)", activeByDefault: false },
+        // Dépend du 1ᵉʳ interrupteur (index 0) : couper « une arme dans chaque main » coupe aussi
+        // le doublement — on ne double qu'un bonus qu'on a (PER-109, sens unique).
+        deactivatesWithEffectIndex: 0,
+      },
     ],
     sourcePage: 73,
   },
@@ -1328,6 +1542,12 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par round, lorsqu'il attaque de sa main principale, le rôdeur obtient aussi une attaque de sa main secondaire en action gratuite. Si la cible n'est pas la même que celle de la main principale, il subit un dé malus au test. Cette capacité se substitue à Attaque à suivre.",
+    // PER-113 : « Cette capacité se substitue à Attaque à suivre » → mise en Note (présentation),
+    // ET `replacesFeatures` conservé (comportement d'origine validé) : Droite - gauche supplante
+    // Attaque à suivre (combat-a-deux-armes-r1), qui est grisée dès l'acquisition.
+    richText:
+      "Une fois par round, lorsqu'il attaque de sa main principale, le rôdeur obtient aussi une attaque de sa main secondaire en action gratuite. Si la cible n'est pas la même que celle de la main principale, il subit un dé malus au test.\nNote : Cette capacité se substitue à Attaque à suivre.",
+    replacesFeatures: ['combat-a-deux-armes-r1'],
     sourcePage: 73,
   },
   {
@@ -1339,6 +1559,22 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le rôdeur augmente sa valeur d'AGI de +1 et obtient un dé bonus aux tests d'AGI (lancer deux d20 et conserver le plus haut résultat). Plutôt qu'augmenter son AGI, le personnage peut choisir d'augmenter sa valeur de FOR de +1 (pas de dé bonus aux tests) et peut désormais attaquer avec la même arme dans la main secondaire sans subir de dé malus (par exemple deux épées longues).",
+    // Caractéristique héroïque AVEC choix (PER-110) : le joueur augmente AGI ou FOR de +1
+    // (`ability-bonus-from-choice`), mais le DÉ BONUS n'est accordé QUE si AGI est choisie
+    // (`ability-bonus-die-from-choice` restreint à AGI — l'option FOR dit « pas de dé bonus »).
+    // La clause « attaquer avec la même arme dans la main secondaire sans dé malus » (option FOR)
+    // relève de la maîtrise des armes / indicateur de dé malus → milestone Armures (PER-116).
+    choices: [
+      {
+        kind: 'ability',
+        allowed: ['AGI', 'FOR'],
+        prompt: 'Caractéristique à augmenter de +1 (AGI : dé bonus aux tests d’AGI ; FOR : pas de dé bonus, mais attaque possible avec la même arme dans la main secondaire)',
+      },
+    ],
+    effects: [
+      { kind: 'ability-bonus-from-choice', choiceIndex: 0, value: 1 },
+      { kind: 'ability-bonus-die-from-choice', choiceIndex: 0, onlyIfAbility: ['AGI'] },
+    ],
     sourcePage: 73,
   },
   {
@@ -1350,6 +1586,9 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Si les deux armes du rôdeur atteignent la même cible lors d'un même tour, le personnage obtient un effet d'enchaînement qui ajoute 1d4° DM à l'une des deux attaques de son choix.",
+    // Rendu enrichi (PER-71) : bonus aux DM de l'enchaînement {1d4°} (situationnel) → pas d'effet.
+    richText:
+      "Si les deux armes du rôdeur atteignent la même cible lors d'un même tour, le personnage obtient un effet d'enchaînement qui ajoute {1d4°} DM à l'une des deux attaques de son choix.",
     sourcePage: 73,
   },
 

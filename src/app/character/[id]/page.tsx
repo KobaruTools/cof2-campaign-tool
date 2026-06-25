@@ -35,6 +35,7 @@ import {
   abilityModSources,
   abilityModsFromFeatures,
   abilityTestBonusSources,
+  activeConditionalTestDice,
   aggregateImmunities,
   effectContext,
   isEffectActive,
@@ -234,9 +235,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // capacités (mécanique core) — appliqués PAR-DESSUS la valeur saisie des caracs.
   const abilityMods = abilityModsFromFeatures(modFeatureIds, character.featureChoices);
   const abilityModSrc = abilityModSources(modFeatureIds, character.featureChoices);
-  const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds);
+  const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds, character.featureChoices);
   // Bonus de compétence par domaine de test (PER-89) — règle de cumul du livre (p. 203).
   const testBonuses = testBonusSources(modFeatureIds, effectCtx);
+  // Dés bonus CONDITIONNELS actifs sur des domaines (ex. Travail d'équipe, via son interrupteur).
+  const testDice = activeConditionalTestDice(character);
   // Buffs ACTIFS à tous les tests de carac (ex. Bénédiction, via son interrupteur).
   const abilityTestBonus = abilityTestBonusSources(modFeatureIds, effectCtx);
   // Plancher de compétence universel (Éclectique, PER-102) et immunités (PER-103).
@@ -507,6 +510,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             abilityTestBonus={abilityTestBonus}
             bonusDice={bonusDieSrc}
             universalBonus={universalTest}
+            testDice={testDice}
           />
 
           <ImmunitiesPanel immunities={immunities} />

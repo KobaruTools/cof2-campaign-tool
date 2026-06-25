@@ -1619,6 +1619,8 @@ export const mageFeatures: Feature[] = [
     creatureProfile: {
       name: 'Familier',
       abilities: { AGI: 3, CON: 0, FOR: -4, PER: 2, CHA: -2, INT: -2, VOL: 2 },
+      // « AGI +3* » dans le livre — le PER +2 n'a PAS d'astérisque ici (≠ familier du druide).
+      bonusDieAbilities: ['AGI'],
       defense: '[13 + rang]',
       hitPoints: '[=niveau]',
       initiative: { fromMaster: 'initiative' },
@@ -1789,6 +1791,8 @@ export const mageFeatures: Feature[] = [
     creatureProfile: {
       name: 'Démon',
       abilities: { AGI: 2, CON: 4, FOR: 5, PER: 2, CHA: 0, INT: 2, VOL: 4 },
+      // « CON +4* | FOR +5* » dans le livre.
+      bonusDieAbilities: ['CON', 'FOR'],
       defense: '18',
       hitPoints: '[=niveau × 5]',
       initiative: { fromMaster: 'initiative' },

@@ -104,6 +104,10 @@ export function CreatureStatBlock({
   bonusDieAbilities,
 }: CreatureStatBlockProps) {
   const rich = (text: string) => <RichInline text={text} abilities={abilities} level={level} rank={rank} />;
+  // Dés bonus de la créature = dés INNÉS (notés « * » dans le livre, portés par le profil)
+  // UNIS aux dés octroyés par une option de voie retenue (ex. golem « Forme de félin »). Système
+  // unifié avec la fiche de personnage (PER-107) : icône double-d20 à droite de la valeur.
+  const allBonusDice = new Set<AbilityId>([...(profile.bonusDieAbilities ?? []), ...(bonusDieAbilities ?? [])]);
   return (
     <Box
       sx={{
@@ -147,7 +151,7 @@ export function CreatureStatBlock({
                 <Typography variant="caption" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                   {signed(profile.abilities[id])}
                 </Typography>
-                {bonusDieAbilities?.has(id) && <BonusDieBadge ability={id} size={12} />}
+                {allBonusDice.has(id) && <BonusDieBadge ability={id} size={12} />}
               </Stack>
             </Stack>
           </Tooltip>

@@ -53,6 +53,12 @@ export interface TestDomainsPanelProps {
    * autres tests : +N ». Absent = pas de plancher universel.
    */
   universalBonus?: UniversalTestBonus | null;
+  /**
+   * Domaines bénéficiant d'un DÉ BONUS CONDITIONNEL actuellement actif (badge double-d20),
+   * map domaine → capacité(s) source(s) — ex. Travail d'équipe (rôdeur) quand son interrupteur
+   * « loup au contact » est actif (PER-108). Absent / vide = aucun.
+   */
+  testDice?: Map<string, string[]>;
 }
 
 /** Modificateur signé (« +3 », « +0 », « −2 »). */
@@ -68,7 +74,7 @@ const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
  * à 0. Au survol : provenance (capacité par catégorie de source, p. 203) et plafond +15.
  * Lecture seule (les interrupteurs des buffs vivent sur les cartes de capacité).
  */
-export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDice, universalBonus }: TestDomainsPanelProps) {
+export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDice, universalBonus, testDice }: TestDomainsPanelProps) {
   const [includeAbility, setIncludeAbility] = useState(false);
   // Coché par défaut : on n'affiche d'emblée que les domaines effectivement bonifiés
   // (les centaines de domaines à 0 sont masqués tant que l'utilisateur ne les demande pas).
@@ -82,7 +88,8 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
 
   const lines = testDomains
     .map((d) => ({ d, bonus: byDomain.get(d.id), best: bestAbility(d.abilities) }))
-    .filter(({ bonus }) => !hideZero || (bonus?.total ?? 0) !== 0);
+    // Un domaine reste visible s'il porte un bonus chiffré OU un dé bonus conditionnel actif.
+    .filter(({ d, bonus }) => !hideZero || (bonus?.total ?? 0) !== 0 || (testDice?.has(d.id) ?? false));
 
   // Buff actif uniforme sur TOUS les tests de carac (ex. Bénédiction : +1, +2 au rang 5).
   const buffSources = abilityTestBonus ?? [];
@@ -179,6 +186,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
                   {group.map(({ d, bonus, best }) => {
                     const flat = bonus?.total ?? 0;
                     const has = (bonus?.sources.length ?? 0) > 0;
+                    const die = testDice?.get(d.id);
                     const abilityValue = abilities[best] ?? 0;
                     // « Inclure la carac » ajoute la meilleure carac ET le buff actif des
                     // tests de carac (un test de domaine est aussi un test de carac).
@@ -232,7 +240,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
                         }}
                       >
                         <Box sx={{ minWidth: 0 }}>
-                          <Typography variant="body2" color={has ? undefined : 'text.disabled'} noWrap>
+                          <Typography variant="body2" color={has || die ? undefined : 'text.disabled'} noWrap>
                             {d.label}
                           </Typography>
                           {multiAbility && (
@@ -242,10 +250,11 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
                           )}
                         </Box>
                         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                          {die && <BonusDieBadge ability={d.label} sources={die} size={14} />}
                           <Typography
                             variant="subtitle1"
                             sx={{ fontWeight: has ? 700 : 400 }}
-                            color={has || (includeAbility && display !== 0) ? undefined : 'text.disabled'}
+                            color={has || die || (includeAbility && display !== 0) ? undefined : 'text.disabled'}
                           >
                             {signed(display)}
                           </Typography>

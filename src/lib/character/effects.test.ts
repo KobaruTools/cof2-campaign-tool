@@ -6,6 +6,7 @@ import {
   abilityModSources,
   abilityModsFromFeatures,
   abilityTestBonusSources,
+  activeConditionalTestDice,
   aggregateImmunities,
   conditionalEffectsOf,
   conditionalEffectBonuses,
@@ -19,6 +20,7 @@ import {
   isEffectActive,
   manaCastingAbility,
   modsFromFeatures,
+  optionStatBonusSources,
   pathRanksFromFeatures,
   pruneEffectToggles,
   setEffectToggle,
@@ -218,10 +220,13 @@ describe('pathRanksFromFeatures', () => {
 
 describe('interrupteurs des effets conditionnels', () => {
   it('liste les effets conditionnels avec leur index et libellé', () => {
+    // Parade croisée porte DEUX interrupteurs (PER-109) : le bonus de base et son doublement.
     const entries = conditionalEffectsOf('combat-a-deux-armes-r2');
-    expect(entries).toHaveLength(1);
+    expect(entries).toHaveLength(2);
     expect(entries[0].index).toBe(0);
     expect(entries[0].effect.activation.label).toBe('une arme dans chaque main');
+    expect(entries[1].index).toBe(1);
+    expect(entries[1].effect.activation.label).toBe("bonus doublé (renonce à l'attaque secondaire)");
   });
 
   it('renvoie une liste vide pour une capacité sans effet conditionnel', () => {
@@ -332,6 +337,96 @@ describe('dés bonus permanents aux tests (ability-bonus-die)', () => {
 
   it('aucune capacité concernée → vide', () => {
     expect(abilityBonusDiceFromFeatures(['air-r1'])).toEqual({});
+  });
+});
+
+describe('ability-bonus-die-from-choice — Combattant héroïque (rôdeur, PER-110)', () => {
+  it('choix AGI → +1 AGI ET dé bonus aux tests d’AGI', () => {
+    const choices = { 'combat-a-deux-armes-r4': ['AGI'] };
+    expect(abilityModsFromFeatures(['combat-a-deux-armes-r4'], choices)).toEqual({ AGI: 1 });
+    expect(abilityBonusDiceFromFeatures(['combat-a-deux-armes-r4'], choices)).toEqual({
+      AGI: ['Combattant héroïque'],
+    });
+  });
+
+  it('choix FOR → +1 FOR mais AUCUN dé bonus (onlyIfAbility: AGI)', () => {
+    const choices = { 'combat-a-deux-armes-r4': ['FOR'] };
+    expect(abilityModsFromFeatures(['combat-a-deux-armes-r4'], choices)).toEqual({ FOR: 1 });
+    expect(abilityBonusDiceFromFeatures(['combat-a-deux-armes-r4'], choices)).toEqual({});
+  });
+
+  it('choix non fait → ni +1 ni dé bonus', () => {
+    expect(abilityBonusDiceFromFeatures(['combat-a-deux-armes-r4'], {})).toEqual({});
+  });
+});
+
+describe('optionStatBonusSources — Éclaireur (rôdeur, PER-111) : +1 PC ou +1 DR', () => {
+  it('option « +1 DR » → recoveryDiceCount +1 et luckPoints −1', () => {
+    const out = optionStatBonusSources(['traqueur-r1'], ctx({ featureChoices: { 'traqueur-r1': ['take-recovery'] } }));
+    expect(out).toEqual([
+      { stat: 'recoveryDiceCount', source: { featureId: 'traqueur-r1', name: 'Éclaireur', value: 1 } },
+      { stat: 'luckPoints', source: { featureId: 'traqueur-r1', name: 'Éclaireur', value: -1 } },
+    ]);
+    // Et l'agrégat `modsFromFeatures` reflète l'échange.
+    const mods = modsFromFeatures(['traqueur-r1'], ctx({ featureChoices: { 'traqueur-r1': ['take-recovery'] } }));
+    expect(mods.recoveryDiceCount).toBe(1);
+    expect(mods.luckPoints).toBe(-1);
+  });
+
+  it('option « garder PC » ou aucun choix → aucun bonus de stat dérivée', () => {
+    expect(optionStatBonusSources(['traqueur-r1'], ctx({ featureChoices: { 'traqueur-r1': ['keep-luck'] } }))).toEqual([]);
+    expect(optionStatBonusSources(['traqueur-r1'], ctx())).toEqual([]);
+  });
+});
+
+describe('activeConditionalTestDice — Travail d’équipe (rôdeur, PER-108)', () => {
+  const charDie = (active: boolean): Character =>
+    ({
+      ...charWith(active ? { 'compagnon-animal-r2': [true] } : {}),
+      featureIds: ['compagnon-animal-r2'],
+    }) as Character;
+
+  it('interrupteur actif → dé bonus aux tests de pister et de vigilance', () => {
+    const dice = activeConditionalTestDice(charDie(true));
+    expect(dice.get('tracking')).toEqual(["Travail d'équipe"]);
+    expect(dice.get('vigilance')).toEqual(["Travail d'équipe"]);
+  });
+
+  it('interrupteur inactif → aucun dé bonus', () => {
+    expect(activeConditionalTestDice(charDie(false)).size).toBe(0);
+  });
+});
+
+describe('test-bonus CONDITIONNEL « en milieu naturel » (rôdeur, PER-117)', () => {
+  it('Survie : interrupteur actif → escalade et survie bonifiées (rang + 2 = 3 au rang 1)', () => {
+    const on = ctx({ toggles: { 'survie-r1': [true] } });
+    const bonuses = testBonusSources(['survie-r1'], on);
+    expect(bonuses.find((b) => b.domain === 'climbing')?.total).toBe(3);
+    expect(bonuses.find((b) => b.domain === 'survival')?.total).toBe(3);
+  });
+
+  it('Survie : interrupteur inactif → aucun bonus de compétence', () => {
+    expect(testBonusSources(['survie-r1'], ctx()).length).toBe(0);
+  });
+
+  it('Éclaireur : interrupteur actif → discrétion, vigilance et pister bonifiées', () => {
+    const on = ctx({ toggles: { 'traqueur-r1': [true] } });
+    const domains = testBonusSources(['traqueur-r1'], on).map((b) => b.domain);
+    expect(domains).toEqual(expect.arrayContaining(['stealth', 'vigilance', 'tracking']));
+  });
+});
+
+describe('cascade de désactivation intra-capacité (Parade croisée, PER-109)', () => {
+  const both = charWith({ 'combat-a-deux-armes-r2': [true, true] });
+
+  it('couper le 1ᵉʳ interrupteur coupe aussi le 2ᵉ (bonus doublé)', () => {
+    const next = setEffectToggle(both, 'combat-a-deux-armes-r2', 0, false);
+    expect(next['combat-a-deux-armes-r2']).toEqual([false, false]);
+  });
+
+  it('couper le 2ᵉ interrupteur laisse le 1ᵉʳ actif (sens unique)', () => {
+    const next = setEffectToggle(both, 'combat-a-deux-armes-r2', 1, false);
+    expect(next['combat-a-deux-armes-r2']).toEqual([true, false]);
   });
 });
 

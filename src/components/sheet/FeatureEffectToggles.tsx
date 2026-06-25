@@ -21,6 +21,7 @@ import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import type { ConditionalStatBonusEffect, DerivedStatId } from '@/data/schema';
+import { testDomainById } from '@/data';
 import type { Character } from '@/lib/character/types';
 import {
   conditionalEffectsOf,
@@ -63,6 +64,16 @@ function effectLabel(
   // Facette « tous les tests de carac » (ex. Bénédiction), sous le même interrupteur.
   const testBonus = conditionalAbilityTestBonus(character, featureId, index);
   if (testBonus !== null && testBonus !== 0) parts.push(`${signed(testBonus)} tests de carac`);
+  // Facette « bonus de compétence sur des domaines » (ex. en milieu naturel, PER-117).
+  if (effect.testBonusDomains?.length) {
+    const labels = effect.testBonusDomains.map((d) => testDomainById.get(d)?.label ?? d).join(', ');
+    parts.push(`tests : ${labels}`);
+  }
+  // Facette « dé bonus sur des domaines de test » (ex. Travail d'équipe, PER-108).
+  if (effect.testDieDomains?.length) {
+    const labels = effect.testDieDomains.map((d) => testDomainById.get(d)?.label ?? d).join(', ');
+    parts.push(`dé bonus : ${labels}`);
+  }
   const joined = parts.join(', ');
   return joined ? `${joined} — ${effect.activation.label}` : effect.activation.label;
 }
@@ -96,6 +107,13 @@ export function FeatureEffectToggles({
   const entries = conditionalEffectsOf(featureId);
   if (entries.length === 0) return null;
 
+  // Dépendance à sens unique (PER-109) : un interrupteur qui dépend d'un autre
+  // (`deactivatesWithEffectIndex`) est rendu NON-INTERACTIF tant que son prérequis est inactif
+  // (ex. « bonus doublé » de Parade croisée tant que « une arme dans chaque main » est coupé).
+  const prereqUnmet = (effect: ConditionalStatBonusEffect): boolean =>
+    effect.deactivatesWithEffectIndex !== undefined &&
+    !isEffectActive(character, featureId, effect.deactivatesWithEffectIndex);
+
   if (compact) {
     // Vue colonne : interrupteur seul. `stopPropagation` pour ne pas ouvrir la
     // modale de détail de la carte en basculant l'état.
@@ -106,7 +124,7 @@ export function FeatureEffectToggles({
             <Switch
               size="small"
               checked={isEffectActive(character, featureId, index)}
-              disabled={!onToggle || disabled}
+              disabled={!onToggle || disabled || prereqUnmet(effect)}
               onChange={(e) => onToggle?.(featureId, index, e.target.checked)}
             />
           </Tooltip>
@@ -127,7 +145,7 @@ export function FeatureEffectToggles({
             <Switch
               size="small"
               checked={isEffectActive(character, featureId, index)}
-              disabled={!onToggle || disabled}
+              disabled={!onToggle || disabled || prereqUnmet(effect)}
               onChange={(e) => onToggle?.(featureId, index, e.target.checked)}
             />
           }

@@ -58,6 +58,12 @@ const TARGETS: Target[] = [
     // de l'assassin s'ouvre comme HYBRIDE (une voie de barde, séduction, reste vierge).
     level1FreeIds: ['escrime-r1', 'musicien-r1', 'humain-r1'],
   },
+  {
+    file: 'test-rodeur-humain.json',
+    // Profil rôdeur (archerie + compagnon animal à la création) ; peuple humain.
+    // Les trois autres voies (survie, traqueur, combat à deux armes) s'ouvrent aux montées.
+    level1FreeIds: ['archer-r1', 'compagnon-animal-r1', 'humain-r1'],
+  },
 ];
 
 const dir = join(process.cwd(), 'examples', 'characters');
