@@ -25,8 +25,9 @@ import type {
   DerivedStatId,
   EffectValue,
   FeatureEffect,
+  ImmunityId,
 } from '@/data/schema';
-import { ABILITY_IDS } from '@/data/schema';
+import { ABILITY_IDS, IMMUNITY_LABELS } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
 import { effectiveFeatureIdsForMods } from './choices';
 import type { Character, FeatureChoiceSelection } from './types';
@@ -230,6 +231,35 @@ export function modsFromFeatures(featureIds: string[], ctx?: EffectContext): Der
     mods.maxHp = (mods.maxHp ?? 0) + s.value;
   }
   return mods;
+}
+
+/**
+ * Caractéristique servant de BASE au calcul des PM. Par défaut la VOL ; une capacité
+ * `mana-ability-override` (ex. Charisme héroïque : « CHA au lieu de la VOL ») permet
+ * d'utiliser une autre caractéristique si elle est STRICTEMENT plus avantageuse (choix
+ * systématique du joueur). On renvoie la carac retenue et, si elle remplace la VOL, le
+ * nom de la capacité source (pour le détail des PM). La réserve se calcule alors sur
+ * cette carac (et non par un bonus ajouté à la VOL) — d'où un détail « Charisme (CHA) »
+ * au lieu de « Volonté + bonus ».
+ */
+export function manaCastingAbility(
+  featureIds: string[],
+  abilities: Record<AbilityId, number>,
+): { ability: AbilityId; source?: string } {
+  let best: AbilityId = 'VOL';
+  let source: string | undefined;
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const e of feature.effects) {
+      if (e.kind !== 'mana-ability-override') continue;
+      if (abilities[e.ability] > abilities[best]) {
+        best = e.ability;
+        source = feature.name;
+      }
+    }
+  }
+  return best === 'VOL' ? { ability: 'VOL' } : { ability: best, source };
 }
 
 /**
@@ -815,12 +845,63 @@ function rawTestContributions(featureIds: string[], ctx?: EffectContext): RawTes
   return out;
 }
 
+/** Bonus de compétence UNIVERSEL appliqué en plancher (Éclectique) — cf. `universalTestBonus`. */
+export interface UniversalTestBonus {
+  featureId: string;
+  /** Nom de la capacité (français), pour le détail affiché. */
+  name: string;
+  /** Valeur du plancher (nombre de voies au rang seuil, plancher 1). */
+  value: number;
+}
+
+/**
+ * Nombre de voies de PROFIL du profil `classId` dont le rang atteint est ≥ `rank`
+ * (cross-voie, voie hôte comprise). Sert aux bonus de famille (ex. Éclectique : +1 par
+ * voie de barde au rang 4).
+ */
+function countClassVoiesAtRank(featureIds: string[], classId: string, rank: number): number {
+  const pathRanks = pathRanksFromFeatures(featureIds);
+  let count = 0;
+  for (const [pathId, maxRank] of Object.entries(pathRanks)) {
+    const path = pathById.get(pathId);
+    if (path?.type === 'class' && path.classIds.includes(classId) && maxRank >= rank) count++;
+  }
+  return count;
+}
+
+/**
+ * Bonus de compétence UNIVERSEL (effet `universal-test-bonus`, ex. Éclectique) du
+ * personnage, s'il en porte un. Valeur = 1 (bonus de base) + nombre de voies du profil
+ * au rang seuil (« +1 chaque fois qu'il atteint le rang 4 dans une voie de barde »).
+ * `null` si aucune capacité ne l'accorde. On ne gère qu'une source à la fois (aucun cas
+ * de cumul de deux bonus universels au catalogue).
+ */
+export function universalTestBonus(featureIds: string[]): UniversalTestBonus | null {
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const e of feature.effects) {
+      if (e.kind !== 'universal-test-bonus') continue;
+      const count = countClassVoiesAtRank(featureIds, e.scaleByPathsAtRank.classId, e.scaleByPathsAtRank.rank);
+      return { featureId: id, name: feature.name, value: 1 + count };
+    }
+  }
+  return null;
+}
+
 /**
  * Bonus de compétence PAR DOMAINE pour un personnage, AVEC détail de provenance —
  * applique la règle du livre (p. 203) : par domaine, MAX par catégorie de source, maxima
  * ADDITIONNÉS, total plafonné à +15. Un domaine sans contribution n'apparaît pas. Sur le
  * modèle de `featureModSources`. Sans `ctx`, les bonus pilotés par option et les valeurs
  * scalantes sont ignorés (suffit aux appels « catalogue seul »).
+ *
+ * Le bonus UNIVERSEL (Éclectique, PER-102) NE SE CUMULE PAS avec les bonus de profil/
+ * prestige (il PRIME au MAX : si Éclectique > le bonus de voie/prestige, c'est lui qui
+ * s'applique), mais il SE CUMULE avec le bonus de PEUPLE. Donc, par domaine :
+ * total = peuple + max(Éclectique, profil + prestige). Les domaines SANS aucune
+ * contribution ne sont pas matérialisés ici — ils relèvent de la ligne « tous les autres
+ * tests : +N » (cf. `universalTestBonus`, rendue à part).
  */
 export function testBonusSources(featureIds: string[], ctx?: EffectContext): TestDomainBonus[] {
   const byDomain = new Map<string, RawTestContribution[]>();
@@ -829,6 +910,7 @@ export function testBonusSources(featureIds: string[], ctx?: EffectContext): Tes
     if (list) list.push(c);
     else byDomain.set(c.domain, [c]);
   }
+  const floor = universalTestBonus(featureIds);
   const result: TestDomainBonus[] = [];
   for (const [domain, contribs] of byDomain) {
     // Max par catégorie : deux bonus de même type ne se cumulent pas (p. 203).
@@ -843,8 +925,25 @@ export function testBonusSources(featureIds: string[], ctx?: EffectContext): Tes
           value: c.value,
         });
     }
-    const sources = [...winnerByCat.values()];
-    const rawTotal = sources.reduce((sum, s) => sum + s.value, 0);
+    const ancestryW = winnerByCat.get('ancestry');
+    const classW = winnerByCat.get('class');
+    const prestigeW = winnerByCat.get('prestige');
+    // Peuple : se cumule toujours (exception du livre). Non-peuple : profil + prestige
+    // se cumulent entre eux, mais Éclectique NE se cumule PAS — il prend le MAX face à eux.
+    const otherNonAncestry = (classW?.value ?? 0) + (prestigeW?.value ?? 0);
+    const sources: TestDomainSource[] = [];
+    if (ancestryW) sources.push(ancestryW);
+    let nonAncestry: number;
+    if (floor && floor.value > otherNonAncestry) {
+      // Éclectique l'emporte (strictement plus élevé) → il remplace les bonus de profil/prestige.
+      sources.push({ featureId: floor.featureId, name: floor.name, category: 'class', value: floor.value });
+      nonAncestry = floor.value;
+    } else {
+      if (classW) sources.push(classW);
+      if (prestigeW) sources.push(prestigeW);
+      nonAncestry = otherNonAncestry;
+    }
+    const rawTotal = (ancestryW?.value ?? 0) + nonAncestry;
     result.push({
       domain,
       total: Math.min(rawTotal, COMPETENCE_BONUS_CAP),
@@ -853,4 +952,40 @@ export function testBonusSources(featureIds: string[], ctx?: EffectContext): Tes
     });
   }
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Immunités (PER-103)
+// ---------------------------------------------------------------------------
+
+/** Une immunité agrégée pour le personnage, avec ses capacités sources. */
+export interface ImmunitySource {
+  id: ImmunityId;
+  /** Libellé français (cf. `IMMUNITY_LABELS`). */
+  label: string;
+  /** Noms des capacités qui l'accordent (pour le détail au survol). */
+  sources: string[];
+}
+
+/**
+ * Immunités accordées par les capacités acquises (effet `immunity`), dédupliquées par
+ * id et accompagnées de leurs capacités sources. Ordre stable suivant `IMMUNITY_LABELS`.
+ */
+export function aggregateImmunities(featureIds: string[]): ImmunitySource[] {
+  const byId = new Map<ImmunityId, Set<string>>();
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const e of feature.effects) {
+      if (e.kind !== 'immunity') continue;
+      for (const imm of e.immunities) {
+        const set = byId.get(imm) ?? new Set<string>();
+        set.add(feature.name);
+        byId.set(imm, set);
+      }
+    }
+  }
+  return (Object.keys(IMMUNITY_LABELS) as ImmunityId[])
+    .filter((immId) => byId.has(immId))
+    .map((immId) => ({ id: immId, label: IMMUNITY_LABELS[immId], sources: [...byId.get(immId)!] }));
 }

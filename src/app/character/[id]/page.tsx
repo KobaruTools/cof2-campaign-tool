@@ -35,13 +35,17 @@ import {
   abilityModSources,
   abilityModsFromFeatures,
   abilityTestBonusSources,
+  aggregateImmunities,
   effectContext,
+  isEffectActive,
+  manaCastingAbility,
   modsFromFeatures,
   pruneEffectInputs,
   pruneEffectToggles,
   pruneUsageCounters,
   setEffectToggle,
   testBonusSources,
+  universalTestBonus,
 } from '@/lib/character/effects';
 import { effectiveFeatureIdsForMods, pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
@@ -53,6 +57,7 @@ import { classColor } from '@/lib/ui/classColors';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
+import { ImmunitiesPanel } from '@/components/sheet/ImmunitiesPanel';
 import {
   ConcentrationToggle,
   FeaturesByPath,
@@ -234,6 +239,19 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const testBonuses = testBonusSources(modFeatureIds, effectCtx);
   // Buffs ACTIFS à tous les tests de carac (ex. Bénédiction, via son interrupteur).
   const abilityTestBonus = abilityTestBonusSources(modFeatureIds, effectCtx);
+  // Plancher de compétence universel (Éclectique, PER-102) et immunités (PER-103).
+  const universalTest = universalTestBonus(modFeatureIds);
+  const immunities = aggregateImmunities(modFeatureIds);
+  // Carac de base des PM : VOL, ou substitution (Charisme héroïque → CHA, PER-101).
+  const manaCast = manaCastingAbility(modFeatureIds, effectCtx.abilities);
+  // Dentelles et rapière (seduction-r2, PER-71) : tant que l'interrupteur « aucune armure »
+  // est actif, la DEF d'armure/bouclier est ignorée (la rapière+CHA la remplace). Branchement
+  // « simple » ; le port effectif d'armure + le plafond par le rang relèvent de PER-106.
+  const dentellesActive =
+    character.featureIds.includes('seduction-r2') && isEffectActive(character, 'seduction-r2', 0);
+  const defenseEquip = dentellesActive
+    ? { defBonus: 0, maxAgi: null }
+    : defenseFromEquipment(character.equipment);
 
   const derivedInput: DerivedInput | null = family
     ? {
@@ -243,8 +261,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         abilities: effectCtx.abilities,
         level: character.level,
         family,
-        defenseEquipment: defenseFromEquipment(character.equipment),
+        defenseEquipment: defenseEquip,
         spellCount: character.featureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
+        manaAbility: manaCast.ability,
         // Bonus des capacités acquises (PER-63) ET des capacités empruntées par un
         // choix « capacité d'une autre voie » (PER-66). Le contexte (PER-67) résout
         // les valeurs scalantes et n'ajoute les effets conditionnels que s'ils sont
@@ -487,7 +506,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             abilities={effectCtx.abilities}
             abilityTestBonus={abilityTestBonus}
             bonusDice={bonusDieSrc}
+            universalBonus={universalTest}
           />
+
+          <ImmunitiesPanel immunities={immunities} />
 
           <SheetSection
             title="Voies & capacités"

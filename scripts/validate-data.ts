@@ -35,7 +35,7 @@ import {
   FEATURE_NATURE_TAGS,
   CONDITIONAL_KINDS,
 } from '../src/data/index';
-import { ABILITY_IDS, DERIVED_STAT_IDS, RESISTIBLE_DAMAGE_TYPES } from '../src/data/schema';
+import { ABILITY_IDS, DERIVED_STAT_IDS, IMMUNITY_IDS, RESISTIBLE_DAMAGE_TYPES } from '../src/data/schema';
 
 const errors: string[] = [];
 const warnings: string[] = [];
@@ -156,6 +156,7 @@ for (const cl of FEATURE_CLASSIFICATIONS) {
 const validStats = new Set<string>(DERIVED_STAT_IDS);
 const validAbilities = new Set<string>(ABILITY_IDS);
 const validActivationKinds = new Set(['condition', 'temporary']);
+const validImmunities = new Set<string>(IMMUNITY_IDS);
 
 /** Valide une `EffectValue` (constante ou scalante) ; renvoie un message ou null. */
 function effectValueError(value: unknown): string | null {
@@ -255,6 +256,20 @@ for (const c of features) {
         const valueError = effectValueError(e.value);
         if (valueError) err(`[capacite ${c.id}] effect: test-bonus ${valueError}`);
       }
+    } else if (e.kind === 'mana-ability-override') {
+      // Substitution de la carac de calcul des PM (« CHA au lieu de VOL »).
+      if (!validAbilities.has(e.ability)) err(`[capacite ${c.id}] effect: caractéristique inconnue : ${e.ability}`);
+    } else if (e.kind === 'universal-test-bonus') {
+      // Bonus de compétence universel (Éclectique) : profil et rang seuil valides.
+      const s = e.scaleByPathsAtRank;
+      if (!s || typeof s.classId !== 'string' || !Number.isInteger(s.rank))
+        err(`[capacite ${c.id}] effect: universal-test-bonus scaleByPathsAtRank invalide`);
+    } else if (e.kind === 'immunity') {
+      // Immunités : liste non vide, chaque id reconnu (IMMUNITY_IDS).
+      if (!Array.isArray(e.immunities) || e.immunities.length === 0)
+        err(`[capacite ${c.id}] effect: immunity vide`);
+      for (const imm of e.immunities ?? [])
+        if (!validImmunities.has(imm)) err(`[capacite ${c.id}] effect: immunité inconnue : ${imm}`);
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }

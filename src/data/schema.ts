@@ -356,7 +356,10 @@ export type FeatureEffect =
   | AbilityBonusEffect
   | AbilityBonusFromChoiceEffect
   | AbilityBonusDieEffect
-  | TestBonusEffect;
+  | TestBonusEffect
+  | ManaAbilityOverrideEffect
+  | UniversalTestBonusEffect
+  | ImmunityEffect;
 
 /**
  * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
@@ -634,6 +637,63 @@ export interface TestDomain {
   abilities: AbilityId[];
   /** Page source quand le domaine provient d'un exemple/d'une capacité sourcé(e). */
   sourcePage?: SourcePage;
+}
+
+/**
+ * SUBSTITUTION de la caractéristique servant à calculer la réserve de POINTS DE MANA.
+ * Par défaut, PM = VOL + nombre de sorts connus (p. 31/42). Certaines capacités
+ * autorisent une AUTRE caractéristique « au lieu de la VOL » (ex. Charisme héroïque
+ * du barde, seduction-r4 : « utiliser son CHA au lieu de sa VOL pour calculer le
+ * nombre de PM »). Le moteur retient la MEILLEURE des deux (VOL ou la carac
+ * d'override) — c'est le choix systématique du joueur, donc on n'applique le swap
+ * que s'il est avantageux. PER-71 / PER-101.
+ */
+export interface ManaAbilityOverrideEffect {
+  kind: 'mana-ability-override';
+  /** Caractéristique utilisable à la place de la VOL pour la réserve de PM. */
+  ability: AbilityId;
+}
+
+/**
+ * Bonus de compétence UNIVERSEL à TOUS les tests, NON-CUMULATIF (PER-71 / PER-102).
+ * Ex. Éclectique (barde, vagabond-r2) : « +1 à tous les tests de compétence… ne se
+ * cumule à aucun autre bonus de compétence SAUF celui de la voie de peuple… augmente
+ * de +1 chaque fois qu'il atteint le rang 4 dans une voie de barde ».
+ *
+ * La VALEUR est 1 (bonus de base) + le nombre de voies du profil `classId` ayant atteint
+ * `rank` (cross-voie, voie hôte comprise). Le moteur l'applique par domaine : il NE se
+ * cumule PAS avec les bonus de profil/prestige (il PRIME au MAX — c'est le plus élevé qui
+ * s'applique), mais SE cumule avec le bonus de PEUPLE → total = peuple + max(universel,
+ * profil + prestige). Cf. `universalTestBonus` / `testBonusSources`.
+ */
+export interface UniversalTestBonusEffect {
+  kind: 'universal-test-bonus';
+  /** Valeur = nombre de voies de ce profil au rang `rank` atteint (plancher 1). */
+  scaleByPathsAtRank: { classId: string; rank: number };
+}
+
+/** États/effets auxquels une capacité peut rendre IMMUNISÉ (liste fermée, extensible). PER-103. */
+export const IMMUNITY_IDS = ['fear', 'mind-control', 'slowed', 'immobilized'] as const;
+export type ImmunityId = (typeof IMMUNITY_IDS)[number];
+
+/** Libellés français des immunités (affichés au joueur). */
+export const IMMUNITY_LABELS: Record<ImmunityId, string> = {
+  fear: 'Peur',
+  'mind-control': 'Charme / possession',
+  slowed: 'Ralenti',
+  immobilized: 'Immobilisé',
+};
+
+/**
+ * IMMUNITÉ permanente à un ou plusieurs états/effets (PER-103). Ex. Liberté d'action
+ * (barde, saltimbanque-r4) : immunisé à la peur, aux sorts d'asservissement mental
+ * (charme/possession), aux états ralenti et immobilisé. Agrégé sur le porteur et rendu
+ * dans un encadré « Immunités » dédié de la fiche (cf. `aggregateImmunities`).
+ */
+export interface ImmunityEffect {
+  kind: 'immunity';
+  /** États/effets dont le porteur est immunisé (cf. `IMMUNITY_IDS`). */
+  immunities: ImmunityId[];
 }
 
 export interface TestBonusEffect {

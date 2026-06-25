@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 9,
+  "id": "test-barde-humain",
+  "name": "Test — Barde (humain)",
+  "identity": {
+    "sex": "female",
+    "description": "PER-71 — barde humain, les 5 voies au rang 5. Recette des retours PER-99→103. À vérifier : Chant des héros (musicien-r1, interrupteur ACTIF) → +2 à tous les tests de carac ET aux 3 jets d'attaque (rang 5) ; Chant de réconfort (musicien-r2) → la montée des soins est en NOTE, dé {1d4°|2@4} ; Lanceur de couteau (saltimbanque-r3) → DM = 1d4° au rang 5 (dé ÉVOLUTIF, PER-100) ; Charisme héroïque (seduction-r4) → PM calculés sur le CHA (5 effectif, 4 + héroïque) au lieu de la VOL (2) ; le détail des PM affiche « Charisme (CHA) » + « Sorts connus », sans ligne Volonté (PER-101) ; ÉCLECTIQUE (vagabond-r2) → encadré « Compétences & tests » : ligne « Tous les autres tests : +6 » (1 base + 5 voies de barde au rang 4) ; un domaine de peuple seul s'y cumule (ex. Résistance au froid +3 → +9), un domaine déjà bonifié par une voie de profil prend le MAX (ex. Escalade : peuple +3 + max(profil 7, Éclectique 6) = 10) (PER-102) ; IMMUNITÉS → nouvel encadré « Immunités » : Peur / Charme-possession / Ralenti / Immobilisé (Liberté d'action, PER-103) ; Dentelles et rapière (seduction-r2) → interrupteur « aucune armure » (DEF += CHA, plafond par le rang DIFFÉRÉ à PER-106) ; sorts → coût de mana = rang. CUMUL climbing : Montagnard +3 + Acrobate profil."
+  },
+  "ancestryId": "humain",
+  "classId": "barde",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 3,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "AGI": 3,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "escrime-r1",
+    "musicien-r1",
+    "humain-r1",
+    "saltimbanque-r1",
+    "seduction-r1",
+    "vagabond-r1",
+    "escrime-r2",
+    "musicien-r2",
+    "saltimbanque-r2",
+    "seduction-r2",
+    "vagabond-r2",
+    "escrime-r3",
+    "musicien-r3",
+    "saltimbanque-r3",
+    "seduction-r3",
+    "vagabond-r3",
+    "escrime-r4",
+    "musicien-r4",
+    "saltimbanque-r4",
+    "seduction-r4",
+    "vagabond-r4",
+    "escrime-r5",
+    "musicien-r5",
+    "saltimbanque-r5",
+    "seduction-r5",
+    "vagabond-r5"
+  ],
+  "featureChoices": {
+    "humain-r1": [
+      "highlander"
+    ]
+  },
+  "effectToggles": {
+    "musicien-r1": [
+      false,
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "escrime-r1",
+        "musicien-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "saltimbanque-r1",
+        "seduction-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "vagabond-r1",
+        "escrime-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "musicien-r2",
+        "saltimbanque-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "seduction-r2",
+        "vagabond-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "escrime-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "musicien-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "saltimbanque-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "seduction-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "vagabond-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "escrime-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "musicien-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "saltimbanque-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "seduction-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "vagabond-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "escrime-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "musicien-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "saltimbanque-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "seduction-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "vagabond-r5"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "rapiere",
+      "quantity": 1
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    },
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-71 (barde) — perso de recette. Voir identity.description. Origine Montagnard choisie pour le cumul climbing (peuple +3 + voie du saltimbanque). Interrupteur « Chant des héros » laissé ACTIF pour montrer le buff +2 (rang 5).",
+  "createdAt": "2026-06-25T00:00:00.000Z",
+  "updatedAt": "2026-06-25T00:00:00.000Z"
+}

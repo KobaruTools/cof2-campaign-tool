@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 9,
+  "id": "test-barde-voleur-hybride",
+  "name": "Test — Barde/Voleur (Éclectique prioritaire)",
+  "identity": {
+    "sex": "female",
+    "description": "PER-102 — cas de PRIORITÉ d'Éclectique. Hybride barde (escrime, musicien, saltimbanque, vagabond au rang 5) + voie de voleur de l'ASSASSIN au rang 2 (Discrétion). 4 voies de barde au rang 4+ → Éclectique = 1 + 4 = 5. La voie de l'assassin (rang 2) donne +4 à Discrétion / Déguisement / Dissimulation (bonus de PROFIL). À VÉRIFIER dans l'encadré « Compétences & tests » : sur Discrétion (et Déguisement, Dissimulation d'objet), c'est +5 qui s'affiche — Éclectique (5) PRIME sur le +4 de l'assassin (non-cumul, on garde le plus élevé), il ne s'additionne PAS (pas de +9). Et la ligne « Tous les autres tests : +5 »."
+  },
+  "ancestryId": "humain",
+  "classId": "barde",
+  "level": 17,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 3,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 3,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "escrime-r1",
+    "musicien-r1",
+    "humain-r1",
+    "assassin-r1",
+    "saltimbanque-r1",
+    "vagabond-r1",
+    "assassin-r2",
+    "escrime-r2",
+    "musicien-r2",
+    "saltimbanque-r2",
+    "vagabond-r2",
+    "escrime-r3",
+    "musicien-r3",
+    "saltimbanque-r3",
+    "vagabond-r3",
+    "escrime-r4",
+    "musicien-r4",
+    "saltimbanque-r4",
+    "vagabond-r4",
+    "escrime-r5",
+    "musicien-r5",
+    "saltimbanque-r5",
+    "vagabond-r5"
+  ],
+  "featureChoices": {
+    "humain-r1": [
+      "city-dweller"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "escrime-r1",
+        "musicien-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "assassin-r1",
+        "saltimbanque-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "vagabond-r1",
+        "assassin-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "escrime-r2",
+        "musicien-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "saltimbanque-r2",
+        "vagabond-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "escrime-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "musicien-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "saltimbanque-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "vagabond-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "escrime-r4"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "musicien-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "saltimbanque-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "vagabond-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "escrime-r5"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "musicien-r5"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "saltimbanque-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "vagabond-r5"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "rapiere",
+      "quantity": 1
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    },
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-102 — démonstration de la PRIORITÉ MAX d'Éclectique sur un bonus de profil plus faible (voie de voleur hybride). Voir identity.description. Origine humaine « Citadin » choisie pour ne PAS toucher aux domaines du voleur (Discrétion reste : assassin +4 vs Éclectique +5).",
+  "createdAt": "2026-06-25T00:00:00.000Z",
+  "updatedAt": "2026-06-25T00:00:00.000Z"
+}

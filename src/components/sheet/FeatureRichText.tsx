@@ -461,11 +461,12 @@ export function RichInline({
         if (seg.kind === 'abilityRef')
           return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
         if (seg.kind === 'die') {
-          // Nombre ET faces résolus au rang de voie ; dé évolutif → valeur au niveau courant.
-          const { count, die } = dieAtRank(seg.token, rank);
-          const displayDie = seg.token.evolving ? scalingDie(level, progression) : die;
+          // Nombre, faces ET caractère évolutif résolus au rang de voie (un palier `|1d4°@R`
+          // peut rendre le dé évolutif) ; dé évolutif → valeur au niveau courant.
+          const { count, die, evolving } = dieAtRank(seg.token, rank);
+          const displayDie = evolving ? scalingDie(level, progression) : die;
           return (
-            <DiePart key={i} count={count} die={displayDie} evolving={seg.token.evolving} level={level} />
+            <DiePart key={i} count={count} die={displayDie} evolving={evolving} level={level} />
           );
         }
         const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus);

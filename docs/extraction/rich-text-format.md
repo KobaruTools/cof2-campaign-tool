@@ -238,6 +238,12 @@ Les deux familles de paliers (`|C@R` nombre seul, `|CdF@R` dé complet) ne se m�
 pas sur une même capacité. Cas de référence : `poing-r1` (Poings de fer, moine,
 `[1d6|1d8@2|1d10@3|1d12@4|2d6@5 + FOR/AGI]`).
 
+Un palier de dé complet peut porter le **marqueur évolutif `°`** (`|1d4°@5`) pour un dé
+qui **DEVIENT évolutif** à un rang — fixe en deçà, évolutif (rendu à sa face au niveau
+courant) à partir du palier. Le caractère évolutif est alors résolu par `dieAtRank` au
+rang atteint, pas figé sur le dé de base. Cas de référence : `saltimbanque-r3` (Lanceur
+de couteau, barde, `[1d4|1d4°@5 + AGI]` — `1d4` fixe aux rangs 1-4, `1d4°` au rang 5).
+
 ### g. Meilleure de plusieurs caractéristiques : `FOR/AGI`
 
 Un terme de formule peut être la **plus forte de plusieurs caractéristiques**, noté

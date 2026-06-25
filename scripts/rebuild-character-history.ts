@@ -46,10 +46,22 @@ const TARGETS: Target[] = [
     // Les trois autres voies (aventurier, roublard, spadassin) s'ouvrent aux montées.
     level1FreeIds: ['assassin-r1', 'deplacement-r1', 'humain-r1'],
   },
+  {
+    file: 'test-barde-humain.json',
+    // Profil barde (escrime + musicien à la création) ; peuple humain.
+    // Les trois autres voies (saltimbanque, séduction, vagabond) s'ouvrent aux montées.
+    level1FreeIds: ['escrime-r1', 'musicien-r1', 'humain-r1'],
+  },
+  {
+    file: 'test-barde-voleur-hybride.json',
+    // Profil barde (escrime + musicien à la création) ; peuple humain. La voie de voleur
+    // de l'assassin s'ouvre comme HYBRIDE (une voie de barde, séduction, reste vierge).
+    level1FreeIds: ['escrime-r1', 'musicien-r1', 'humain-r1'],
+  },
 ];
 
 const dir = join(process.cwd(), 'examples', 'characters');
-const isoToday = '2026-06-24T00:00:00.000Z';
+const isoToday = '2026-06-25T00:00:00.000Z';
 
 for (const { file, level1FreeIds } of TARGETS) {
   const path = join(dir, file);

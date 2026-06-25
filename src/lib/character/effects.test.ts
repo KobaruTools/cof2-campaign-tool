@@ -6,6 +6,7 @@ import {
   abilityModSources,
   abilityModsFromFeatures,
   abilityTestBonusSources,
+  aggregateImmunities,
   conditionalEffectsOf,
   conditionalEffectBonuses,
   creatureBonusDiceForPath,
@@ -16,11 +17,13 @@ import {
   featureModSources,
   hpAbilitySwapSources,
   isEffectActive,
+  manaCastingAbility,
   modsFromFeatures,
   pathRanksFromFeatures,
   pruneEffectToggles,
   setEffectToggle,
   testBonusSources,
+  universalTestBonus,
   type EffectContext,
 } from './effects';
 
@@ -126,6 +129,69 @@ describe('modsFromFeatures — paliers de famille CROSS-VOIE (milestone-count + 
     const ids = ['outre-tombe-r2', 'outre-tombe-r4', 'demon-r4', 'mort-r4', 'sang-r4', 'sombre-magie-r4'];
     // demon-r4 (Aspect du démon, +5 DEF) est conditionnel inactif → exclu.
     expect(modsFromFeatures(ids, ctx())).toEqual({ def: 8 });
+  });
+});
+
+describe('manaCastingAbility (Charisme héroïque, PER-101)', () => {
+  const abil = (cha: number, vol: number) =>
+    ({ AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: cha, INT: 0, VOL: vol }) as Record<AbilityId, number>;
+  it('retient le CHA quand CHA > VOL (et nomme la capacité source)', () => {
+    expect(manaCastingAbility(['seduction-r4'], abil(5, 2))).toEqual({ ability: 'CHA', source: 'Charisme héroïque' });
+  });
+  it('reste sur la VOL quand CHA ≤ VOL', () => {
+    expect(manaCastingAbility(['seduction-r4'], abil(2, 4))).toEqual({ ability: 'VOL' });
+  });
+  it('VOL par défaut sans capacité de substitution', () => {
+    expect(manaCastingAbility(['escrime-r1'], abil(5, 2))).toEqual({ ability: 'VOL' });
+  });
+});
+
+describe('universalTestBonus (Éclectique, PER-102)', () => {
+  it('vaut 1 (base) quand aucune voie de barde n’a atteint le rang 4', () => {
+    expect(universalTestBonus(['vagabond-r2'])).toMatchObject({ value: 1, name: 'Éclectique' });
+  });
+  it('vaut 1 + nombre de voies de barde au rang 4 (voie hôte comprise)', () => {
+    const ids = ['vagabond-r2', 'vagabond-r4', 'escrime-r4', 'musicien-r4', 'saltimbanque-r4', 'seduction-r4'];
+    expect(universalTestBonus(ids)).toMatchObject({ value: 6 });
+  });
+  it('null sans capacité de bonus universel', () => {
+    expect(universalTestBonus(['escrime-r1'])).toBeNull();
+  });
+});
+
+describe('testBonusSources — plancher universel (Éclectique, PER-102)', () => {
+  const ctxHighlander = ctx({ featureChoices: { 'humain-r1': ['highlander'] } });
+  it('ajoute le plancher à un domaine sans bonus de profil (cumul avec le peuple)', () => {
+    const out = testBonusSources(['humain-r1', 'vagabond-r2'], ctxHighlander);
+    // cold-resistance : peuple +3 (origine Montagnard) + plancher +1 = 4.
+    expect(out.find((b) => b.domain === 'cold-resistance')?.total).toBe(4);
+  });
+  it('ne se cumule pas avec un bonus de profil PLUS ÉLEVÉ (le profil l’emporte)', () => {
+    const out = testBonusSources(['humain-r1', 'saltimbanque-r1', 'vagabond-r2'], ctxHighlander);
+    // climbing : peuple +3 + max(Éclectique 1, profil saltimbanque-r1 = 3) = 3 → 6.
+    expect(out.find((b) => b.domain === 'climbing')?.total).toBe(6);
+  });
+  it('PRIME (max) sur un bonus de profil plus faible — cas hybride', () => {
+    // Hybride : assassin (voleur) au rang 2 → stealth +4 (profil). 4 voies de barde au rang 4
+    // → Éclectique = 1 + 4 = 5. Sur stealth : max(5, 4) = 5 (Éclectique l'emporte).
+    const ids = ['vagabond-r2', 'vagabond-r4', 'escrime-r4', 'musicien-r4', 'saltimbanque-r4', 'assassin-r1', 'assassin-r2'];
+    const stealth = testBonusSources(ids, ctx()).find((b) => b.domain === 'stealth');
+    expect(stealth?.total).toBe(5);
+    expect(stealth?.sources.some((s) => s.name === 'Éclectique')).toBe(true);
+  });
+});
+
+describe('aggregateImmunities (Liberté d’action, PER-103)', () => {
+  it('agrège les immunités d’une capacité, dans l’ordre du catalogue', () => {
+    expect(aggregateImmunities(['saltimbanque-r4'])).toEqual([
+      { id: 'fear', label: 'Peur', sources: ["Liberté d'action"] },
+      { id: 'mind-control', label: 'Charme / possession', sources: ["Liberté d'action"] },
+      { id: 'slowed', label: 'Ralenti', sources: ["Liberté d'action"] },
+      { id: 'immobilized', label: 'Immobilisé', sources: ["Liberté d'action"] },
+    ]);
+  });
+  it('vide sans capacité d’immunité', () => {
+    expect(aggregateImmunities(['escrime-r1'])).toEqual([]);
   });
 });
 

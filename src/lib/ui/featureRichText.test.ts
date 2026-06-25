@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { progression } from '@/data/progression';
 import type { Abilities } from '@/lib/engine';
+import { scalingDie } from '@/lib/engine';
 import { dieAtRank, dieCountAtRank, parseRichText, resolveExpr } from './featureRichText';
 
 const abilities: Abilities = { AGI: 1, CON: 2, FOR: 3, PER: 1, CHA: 4, INT: 0, VOL: -1 };
@@ -389,12 +390,12 @@ describe('dé COMPLET scalant par rang de voie (|CdF@R)', () => {
         { minRank: 5, count: 2, die: 'd6' as const },
       ],
     };
-    expect(dieAtRank(token, 1)).toEqual({ count: 1, die: 'd6' });
-    expect(dieAtRank(token, 2)).toEqual({ count: 1, die: 'd8' });
-    expect(dieAtRank(token, 4)).toEqual({ count: 1, die: 'd12' });
-    expect(dieAtRank(token, 5)).toEqual({ count: 2, die: 'd6' });
+    expect(dieAtRank(token, 1)).toEqual({ count: 1, die: 'd6', evolving: false });
+    expect(dieAtRank(token, 2)).toEqual({ count: 1, die: 'd8', evolving: false });
+    expect(dieAtRank(token, 4)).toEqual({ count: 1, die: 'd12', evolving: false });
+    expect(dieAtRank(token, 5)).toEqual({ count: 2, die: 'd6', evolving: false });
     // Dé fixe (sans paliers) : toujours son dé de base.
-    expect(dieAtRank({ count: 1, die: 'd6', evolving: false }, 9)).toEqual({ count: 1, die: 'd6' });
+    expect(dieAtRank({ count: 1, die: 'd6', evolving: false }, 9)).toEqual({ count: 1, die: 'd6', evolving: false });
   });
 
   it('résout le dé au rang dans une formule de DM (Poings de fer)', () => {
@@ -405,6 +406,25 @@ describe('dé COMPLET scalant par rang de voie (|CdF@R)', () => {
     expect(r1).toMatchObject({ count: 1, displayDie: 'd6' });
     const r5 = resolveExpr(expr.terms, abilities, 1, progression, 5).parts[0].die;
     expect(r5).toMatchObject({ count: 2, displayDie: 'd6' });
+  });
+
+  it('un palier de dé complet peut rendre le dé évolutif (Lanceur de couteau)', () => {
+    // `[1d4|1d4°@5 + AGI]` : 1d4 FIXE aux rangs 1-4, 1d4° ÉVOLUTIF au rang 5.
+    const segs = parseRichText('[1d4|1d4°@5 + AGI]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    const dieTerm = expr.terms.find((t) => t.kind === 'die') as Extract<
+      (typeof expr.terms)[number],
+      { kind: 'die' }
+    >;
+    expect(dieTerm.token.dieSteps).toEqual([{ minRank: 5, count: 1, die: 'd4', evolving: true }]);
+    // Rang 4 : fixe → displayDie = d4, non évolutif. Rang 5 : évolutif → displayDie au niveau.
+    expect(dieAtRank(dieTerm.token, 4)).toEqual({ count: 1, die: 'd4', evolving: false });
+    expect(dieAtRank(dieTerm.token, 5)).toEqual({ count: 1, die: 'd4', evolving: true });
+    const r4 = resolveExpr(expr.terms, abilities, 12, progression, 4).parts[0].die;
+    expect(r4).toMatchObject({ count: 1, displayDie: 'd4', evolving: false });
+    const r5 = resolveExpr(expr.terms, abilities, 12, progression, 5).parts[0].die;
+    expect(r5?.evolving).toBe(true);
+    expect(r5?.displayDie).toBe(scalingDie(12, progression));
   });
 });
 

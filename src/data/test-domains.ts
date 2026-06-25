@@ -146,6 +146,16 @@ export const testDomains: TestDomain[] = [
   // compétence MONDAINE, distincte du sort Déguisement du barde (vagabond-r5, p. 69).
   // TODO(extraction) : CHA (jeu de rôle / imposture) ou AGI (maquillage, costume) ? À valider.
   { id: 'disguise', label: 'Déguisement', abilities: ['CHA'], sourcePage: 74 },
+  // --- CHA — arts de la scène du barde (PER-71) ------------------------------
+  // Domaines de spectacle nommés par les voies du barde. Tous gouvernés par le CHA
+  // (prestation devant un public). À distinguer du domaine générique `art` (p. 202).
+  // musique : « jouer d'un instrument de musique ou chanter » (Chant des héros,
+  // musicien-r1, p. 67) — le chant est inclus dans la prestation musicale.
+  { id: 'music', label: 'Musique', abilities: ['CHA'], sourcePage: 67 },
+  // danse / mime / jonglerie (Grâce féline, saltimbanque-r2, p. 68).
+  { id: 'dance', label: 'Danse', abilities: ['CHA'], sourcePage: 68 },
+  { id: 'mime', label: 'Mime', abilities: ['CHA'], sourcePage: 68 },
+  { id: 'juggling', label: 'Jonglerie', abilities: ['CHA'], sourcePage: 68 },
 
   // --- VOL — exemples p. 202 -------------------------------------------------
   { id: 'pushing-limits', label: 'Se dépasser', abilities: ['VOL'], sourcePage: 202 },

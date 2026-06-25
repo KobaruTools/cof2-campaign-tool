@@ -17,6 +17,7 @@ import {
   COMPETENCE_CATEGORY_LABEL,
   type AbilityTestBonusSource,
   type TestDomainBonus,
+  type UniversalTestBonus,
 } from '@/lib/character/effects';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
@@ -45,6 +46,13 @@ export interface TestDomainsPanelProps {
    * capacité(s) source(s) — affiché à droite de la ligne « test de [CARAC] ».
    */
   bonusDice?: Partial<Record<AbilityId, string[]>>;
+  /**
+   * Bonus de compétence UNIVERSEL en PLANCHER (ex. Éclectique, PER-102) : s'applique à
+   * TOUS les tests de domaine sans autre bonus de profil/prestige. Les domaines déjà
+   * bonifiés l'incluent dans leur total ; cette valeur sert la ligne récap « tous les
+   * autres tests : +N ». Absent = pas de plancher universel.
+   */
+  universalBonus?: UniversalTestBonus | null;
 }
 
 /** Modificateur signé (« +3 », « +0 », « −2 »). */
@@ -60,7 +68,7 @@ const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
  * à 0. Au survol : provenance (capacité par catégorie de source, p. 203) et plafond +15.
  * Lecture seule (les interrupteurs des buffs vivent sur les cartes de capacité).
  */
-export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDice }: TestDomainsPanelProps) {
+export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDice, universalBonus }: TestDomainsPanelProps) {
   const [includeAbility, setIncludeAbility] = useState(false);
   // Coché par défaut : on n'affiche d'emblée que les domaines effectivement bonifiés
   // (les centaines de domaines à 0 sont masqués tant que l'utilisateur ne les demande pas).
@@ -264,6 +272,41 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
           );
         })}
       </Stack>
+      {universalBonus && (
+        <Tooltip
+          arrow
+          title={
+            <Box sx={{ py: 0.5 }}>
+              <Typography variant="caption" sx={{ display: 'block' }}>
+                {universalBonus.name} : bonus de compétence universel appliqué à tout test
+                sans bonus de voie de profil ou de prestige (se cumule avec le bonus de peuple).
+              </Typography>
+            </Box>
+          }
+        >
+          <Box
+            sx={{
+              mt: 2,
+              px: 1,
+              py: 0.75,
+              borderRadius: 1,
+              cursor: 'help',
+              borderTop: (theme) => `1px dashed ${alpha(theme.palette.text.secondary, 0.4)}`,
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 1,
+            }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              Tous les autres tests <Typography component="span" variant="caption">({universalBonus.name})</Typography>
+            </Typography>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              {signed(universalBonus.value)}
+            </Typography>
+          </Box>
+        </Tooltip>
+      )}
     </SheetSection>
   );
 }

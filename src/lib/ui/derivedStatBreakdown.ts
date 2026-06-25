@@ -9,6 +9,7 @@ import type { DerivedInput, DerivedMods, HpLevelGain } from '@/lib/engine';
 import { MAX_ATTACK_LEVEL } from '@/lib/engine';
 import { families } from '@/data';
 import type { FamilyId } from '@/data/schema';
+import { ABILITY_NAMES } from './ability';
 import type { DerivedStatId } from './derivedStats';
 
 const familyById = new Map<FamilyId, (typeof families)[number]>(families.map((f) => [f.id, f]));
@@ -224,12 +225,19 @@ export function derivedStatBreakdown(
       if (spellCount <= 0) {
         return { terms: [], total: null, note: 'Aucun sort connu → pas de réserve de mana.', page: 31 };
       }
+      // Carac de base des PM : VOL par défaut, ou la carac de substitution (ex. Charisme
+      // héroïque : CHA au lieu de VOL — la VOL n'apparaît alors PAS, c'est le CHA qui sert).
+      const manaAbility = input.manaAbility ?? 'VOL';
       const terms: BreakdownTerm[] = [
-        { label: 'Volonté (VOL)', value: abilities.VOL },
+        { label: `${ABILITY_NAMES[manaAbility]} (${manaAbility})`, value: abilities[manaAbility] },
         { label: 'Sorts connus', value: spellCount },
         ...capacities('manaPoints'),
       ];
-      return { terms, total: Math.max(0, sum(terms)), page: 31 };
+      const note =
+        manaAbility !== 'VOL'
+          ? `${ABILITY_NAMES[manaAbility]} (${manaAbility}) utilisé au lieu de la Volonté pour les PM (capacité).`
+          : undefined;
+      return { terms, total: Math.max(0, sum(terms)), note, page: 31 };
     }
     case 'meleeAttack': {
       const terms: BreakdownTerm[] = [

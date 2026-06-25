@@ -140,13 +140,15 @@ export function luckPoints(cha: number, family: Family, mods: DerivedMods = {}):
 // ---------------------------------------------------------------------------
 
 /**
- * PM = VOL + nombre de capacités de sorts connues — uniquement si le
- * personnage possède au moins un sort (sinon il n'a pas de réserve de mana).
+ * PM = caractéristique de base + nombre de capacités de sorts connues — uniquement si
+ * le personnage possède au moins un sort (sinon il n'a pas de réserve de mana). La
+ * caractéristique de base est la VOL par défaut, mais peut être remplacée (ex. Charisme
+ * héroïque : CHA, cf. `DerivedInput.manaAbility`) ; l'appelant passe ici sa VALEUR.
  * Retourne null quand spellCount vaut 0.
  */
-export function manaPoints(vol: number, spellCount: number, mods: DerivedMods = {}): number | null {
+export function manaPoints(castingAbilityValue: number, spellCount: number, mods: DerivedMods = {}): number | null {
   if (spellCount <= 0) return null;
-  return Math.max(0, vol + spellCount + m(mods.manaPoints));
+  return Math.max(0, castingAbilityValue + spellCount + m(mods.manaPoints));
 }
 
 /**
@@ -267,6 +269,11 @@ export interface DerivedInput {
   /** Nombre de capacités de sorts connues (pour les PM). */
   spellCount: number;
   /**
+   * Caractéristique servant de BASE aux PM. Défaut `VOL` (règle p. 31/42) ; une capacité
+   * peut la remplacer (ex. Charisme héroïque du barde : CHA au lieu de VOL — `manaCastingAbility`).
+   */
+  manaAbility?: AbilityId;
+  /**
    * Composante « famille » du gain de PV par niveau (profils hybrides, p. 177).
    * Voir `maxHp`. Absent pour un profil mono-famille.
    */
@@ -317,7 +324,7 @@ export function deriveStats(input: DerivedInput): DerivedStats {
     recoveryDiceCount: recoveryDiceCount(abilities.CON, family, mods),
     recoveryDie: recoveryDie(family),
     luckPoints: luckPoints(abilities.CHA, family, mods),
-    manaPoints: manaPoints(abilities.VOL, spellCount, mods),
+    manaPoints: manaPoints(abilities[input.manaAbility ?? 'VOL'], spellCount, mods),
     initiative: initiative(abilities.PER, mods),
     defense: defense(abilities.AGI, defenseEquipment, mods),
     meleeAttack: meleeAttack(level, abilities.FOR, mods),

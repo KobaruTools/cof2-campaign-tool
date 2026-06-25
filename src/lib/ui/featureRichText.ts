@@ -76,7 +76,7 @@ export interface DieToken {
    * croissant ; on retient le palier de plus haut seuil atteint, sinon le dé de
    * base. Notation : `1d6|1d8@2|1d10@3|1d12@4|2d6@5`. Absent = dé fixe.
    */
-  dieSteps?: { minRank: number; count: number; die: Die }[];
+  dieSteps?: { minRank: number; count: number; die: Die; evolving?: boolean }[];
 }
 
 /**
@@ -106,7 +106,7 @@ export type RichTextSegment =
 // `|C@R` (seul le NOMBRE de dés passe à C — `1d4°|2@4`), soit `|CdF@R` (le DÉ COMPLET
 // passe à CdF, quand la TAILLE monte — `1d6|1d8@2|2d6@5`). Les deux formes cohabitent.
 const DIE_RE =
-  /^(\d*)d(4|6|8|10|12|20)(°?)((?:\|(?:\d*d(?:4|6|8|10|12|20)|\d+)@\d+)*)$/;
+  /^(\d*)d(4|6|8|10|12|20)(°?)((?:\|(?:\d*d(?:4|6|8|10|12|20)°?|\d+)@\d+)*)$/;
 /**
  * Capture un `{…}` (dé), un `[…]` (formule ou quantité) ou un `@CODE` (référence
  * de caractéristique) ; le reste est du texte.
@@ -130,14 +130,24 @@ function parseDie(raw: string): DieToken | null {
   };
   if (m[4]) {
     const countSteps: { minRank: number; count: number }[] = [];
-    const dieSteps: { minRank: number; count: number; die: Die }[] = [];
+    const dieSteps: { minRank: number; count: number; die: Die; evolving?: boolean }[] = [];
     for (const part of m[4].split('|').filter(Boolean)) {
       const [spec, rank] = part.split('@');
       const minRank = Number(rank);
-      const dieMatch = /^(\d*)d(4|6|8|10|12|20)$/.exec(spec);
+      const dieMatch = /^(\d*)d(4|6|8|10|12|20)(°?)$/.exec(spec);
       if (dieMatch) {
-        // Palier de dé complet `CdF@R` (la taille du dé change) — ex. Poings de fer.
-        dieSteps.push({ minRank, count: dieMatch[1] ? Number(dieMatch[1]) : 1, die: `d${dieMatch[2]}` as Die });
+        // Palier de dé complet `CdF@R` (la taille du dé change) — ex. Poings de fer. Le
+        // marqueur évolutif `°` est admis pour un dé qui DEVIENT évolutif au rang (`|1d4°@5`,
+        // Lanceur de couteau) — le dé de base reste fixe en deçà du palier.
+        const dieStep: { minRank: number; count: number; die: Die; evolving?: boolean } = {
+          minRank,
+          count: dieMatch[1] ? Number(dieMatch[1]) : 1,
+          die: `d${dieMatch[2]}` as Die,
+        };
+        // On ne mémorise `evolving` que s'il est vrai : un palier fixe reste sans drapeau
+        // (rétrocompat avec les paliers de dé complet existants, ex. Poings de fer).
+        if (dieMatch[3] === '°') dieStep.evolving = true;
+        dieSteps.push(dieStep);
       } else {
         // Palier de nombre seul `C@R` (la taille du dé ne change pas) — ex. Arc de feu.
         countSteps.push({ minRank, count: Number(spec) });
@@ -155,9 +165,10 @@ function parseDie(raw: string): DieToken | null {
  * complet (`dieSteps`, qui changent aussi la taille). Sans palier, renvoie le dé de
  * base. Les deux familles de paliers ne coexistent pas sur une même capacité.
  */
-export function dieAtRank(token: DieToken, rank: number): { count: number; die: Die } {
+export function dieAtRank(token: DieToken, rank: number): { count: number; die: Die; evolving: boolean } {
   let count = token.count;
   let die = token.die;
+  let evolving = token.evolving;
   for (const step of token.countSteps ?? []) {
     if (rank >= step.minRank) count = step.count;
   }
@@ -165,9 +176,11 @@ export function dieAtRank(token: DieToken, rank: number): { count: number; die: 
     if (rank >= step.minRank) {
       count = step.count;
       die = step.die;
+      // Un palier peut FAIRE DEVENIR le dé évolutif (`|1d4°@5`) ; sinon il hérite du dé de base.
+      evolving = step.evolving ?? token.evolving;
     }
   }
-  return { count, die };
+  return { count, die, evolving };
 }
 
 /**
@@ -488,17 +501,18 @@ export function resolveExpr(
           coeff: term.coeff,
         };
       case 'die': {
-        // Nombre ET faces résolus au rang de voie atteint (paliers `countSteps`/`dieSteps`).
-        const { count, die } = dieAtRank(term.token, rank);
-        const displayDie = term.token.evolving ? scalingDie(level, progression) : die;
+        // Nombre, faces ET caractère évolutif résolus au rang de voie atteint (paliers
+        // `countSteps`/`dieSteps` ; un palier `|1d4°@R` peut rendre le dé évolutif).
+        const { count, die, evolving } = dieAtRank(term.token, rank);
+        const displayDie = evolving ? scalingDie(level, progression) : die;
         const prefix = count > 1 ? String(count) : '';
         return {
           kind: 'die',
           sign: term.sign,
           label: 'Dé',
-          symbol: `${prefix}${die}${term.token.evolving ? '°' : ''}`,
+          symbol: `${prefix}${die}${evolving ? '°' : ''}`,
           value: null,
-          die: { count, displayDie, evolving: term.token.evolving },
+          die: { count, displayDie, evolving },
         };
       }
     }

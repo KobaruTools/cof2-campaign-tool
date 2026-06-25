@@ -1,4 +1,18 @@
-import type { CharacterClass, ClassPath, Feature } from '../schema';
+import type { CharacterClass, ClassPath, EffectValue, Feature } from '../schema';
+
+/**
+ * Valeur scalante « +1, puis +2 au rang 5 de la voie » — bonus de buff récurrent
+ * (Chant des héros, musicien-r1 ; cf. Bénédiction du prêtre). Rang = rang ATTEINT
+ * dans la voie hôte.
+ */
+const STEP_1_THEN_2_AT_R5: EffectValue = {
+  scale: 'stepped',
+  by: 'path-rank',
+  steps: [
+    { min: 1, value: 1 },
+    { min: 5, value: 2 },
+  ],
+};
 
 /**
  * Famille des aventuriers — chapitre 4 (p. 61-77) du livre de base CO2.
@@ -643,6 +657,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le barde effectue une attaque fictive pour déséquilibrer son adversaire et réalise ensuite une attaque mortelle. Faites un test opposé de CHA contre la PER de votre adversaire à ce round. Au round suivant, vous obtenez un bonus en attaque égal au double de votre rang dans la voie de l'escrime (+4 au rang 2, par exemple) sur votre première attaque au contact contre cet adversaire et, si votre feinte a réussi, +2d4° aux DM.",
+    // Rendu enrichi (PER-71) : @PER est la stat de la CIBLE (non calculée) ; bonus aux
+    // DM {2d4°}. Le « double de votre rang (+4 au rang 2) » est un palier décrit en
+    // prose (avec son exemple) → laissé littéral (cf. rich-text-format.md § 7).
+    richText:
+      "Le barde effectue une attaque fictive pour déséquilibrer son adversaire et réalise ensuite une attaque mortelle. Faites un test opposé de CHA contre la @PER de votre adversaire à ce round. Au round suivant, vous obtenez un bonus en attaque égal au double de votre rang dans la voie de l'escrime (+4 au rang 2, par exemple) sur votre première attaque au contact contre cet adversaire et, si votre feinte a réussi, +{2d4°} aux DM.",
     sourcePage: 66,
   },
   {
@@ -665,6 +684,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le style de combat du barde est flamboyant et surprenant : Il effectue une attaque de contact avec une arme légère et obtient un bonus d'attaque et de DM égal à son CHA (en plus de sa FOR ou de son AGI).",
+    // Rendu enrichi (PER-71) : bonus d'attaque et de DM = [CHA]. Bonus SITUATIONNEL
+    // (attaque au contact à l'arme légère, action limitée) → pas d'effet permanent.
+    richText:
+      "Le style de combat du barde est flamboyant et surprenant : Il effectue une attaque de contact avec une arme légère et obtient un bonus d'attaque et de DM égal à son [CHA] (en plus de sa FOR ou de son AGI).",
     sourcePage: 66,
   },
   {
@@ -676,6 +699,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Lors d'une attaque au contact avec une arme légère, s'il obtient un résultat d'attaque supérieur ou égal à (la DEF de son adversaire + 10 points), le barde obtient un bonus de +2d4° aux DM de son attaque (les dés bonus ne sont jamais multipliés en cas de critique).",
+    // Rendu enrichi (PER-71) : bonus aux DM {2d4°}. « DEF de son adversaire » = stat de
+    // la cible (auto-détectée comme stat dérivée, non calculée contre le joueur).
+    richText:
+      "Lors d'une attaque au contact avec une arme légère, s'il obtient un résultat d'attaque supérieur ou égal à (la DEF de son adversaire + 10 points), le barde obtient un bonus de +{2d4°} aux DM de son attaque (les dés bonus ne sont jamais multipliés en cas de critique).",
     sourcePage: 66,
   },
 
@@ -689,6 +716,27 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le barde peut chanter et inspirer ses compagnons, tous ses alliés à portée de voix et lui obtiennent un bonus de +1 à tous leurs tests pendant un nombre de minutes égal à sa valeur de CHA. Pendant toute la durée du sort, il fredonne (action gratuite qui ne l'empêche pas de lancer d'autres sorts de barde). Le bonus passe à +2 au rang 5. En plus de ce sort, le barde ajoute son rang + 2 aux tests pour jouer d'un instrument de musique ou chanter.",
+    // Rendu enrichi (PER-71) : durée « égal à sa valeur de [#CHA] » (substantif) ;
+    // « son [rang + 2] » aux tests de musique. Effets : (1) bonus de compétence permanent
+    // en musique (PER-89) ; (2) buff TEMPORAIRE « +1 à tous leurs tests » (→ +2 au rang 5)
+    // sur le BARDE — un interrupteur, tests de carac via `abilityTestBonus` + les trois
+    // jets d'attaque (gabarit Bénédiction, priere-r1). Le +1 aux ALLIÉS reste hors
+    // périmètre (fiche mono-perso) → verbatim. Coût de mana = rang (pas de dérogation).
+    richText:
+      "Le barde peut chanter et inspirer ses compagnons, tous ses alliés à portée de voix et lui obtiennent un bonus de +1 à tous leurs tests pendant un nombre de minutes égal à sa valeur de [#CHA]. Pendant toute la durée du sort, il fredonne (action gratuite qui ne l'empêche pas de lancer d'autres sorts de barde). Le bonus passe à +2 au rang 5. En plus de ce sort, le barde ajoute son [rang + 2] aux tests pour jouer d'un instrument de musique ou chanter.",
+    effects: [
+      { kind: 'test-bonus', domains: ['music'] },
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [
+          { stat: 'meleeAttack', value: STEP_1_THEN_2_AT_R5 },
+          { stat: 'rangedAttack', value: STEP_1_THEN_2_AT_R5 },
+          { stat: 'magicAttack', value: STEP_1_THEN_2_AT_R5 },
+        ],
+        abilityTestBonus: STEP_1_THEN_2_AT_R5,
+        activation: { kind: 'temporary', label: 'Chant des héros actif (CHA min)', activeByDefault: false },
+      },
+    ],
     sourcePage: 67,
   },
   {
@@ -700,6 +748,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le barde chante ou joue de la musique pendant toute la durée d'une récupération rapide (30 min). Le barde et ses alliés dans un rayon de 10 m, récupèrent 1d4° PV. Les soins passent à 2d4° au rang 4.",
+    // Rendu enrichi (PER-71) : soins {1d4°|2@4} — le nombre de dés passe à 2 au rang 4
+    // de la voie (palier IN-VOIE). La phrase de palier passe en Note (PER-99). Coût mana = rang.
+    richText:
+      "Le barde chante ou joue de la musique pendant toute la durée d'une récupération rapide (30 min). Le barde et ses alliés dans un rayon de 10 m, récupèrent {1d4°|2@4} PV.\nNote : Les soins passent à 2d4° au rang 4.",
     sourcePage: 67,
   },
   {
@@ -711,6 +763,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le barde pousse un cri dont les effets sont dévastateurs (ou produit un son avec un instrument à cette même fin). Il inflige [2d4° + CHA] DM à toutes les cibles dans un cône de 10 m (de long et de large). Les cibles peuvent diviser les DM par 2 si elles réussissent un test de CON difficulté [10 + CHA du barde].",
+    // Rendu enrichi (PER-71) : DM [2d4° + CHA] ; difficulté du test de CON (des cibles)
+    // [10 + CHA] — CHA du barde (joueur), suffixe « du barde » implicite retiré (§ 6).
+    richText:
+      "Le barde pousse un cri dont les effets sont dévastateurs (ou produit un son avec un instrument à cette même fin). Il inflige [2d4° + CHA] DM à toutes les cibles dans un cône de 10 m (de long et de large). Les cibles peuvent diviser les DM par 2 si elles réussissent un test de CON difficulté [10 + CHA].",
     sourcePage: 67,
   },
   {
@@ -722,6 +778,9 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le barde crée une zone de silence fixe de 5 m de diamètre, jusqu'à une portée de 30 m, pendant un nombre de minutes égal à sa valeur de CHA. Tous les sons émis dans cette sphère sont annulés. Dans cette zone, il faut réussir un test d'INT difficulté 10 pour lancer un sort.",
+    // Rendu enrichi (PER-71) : durée « égal à sa valeur de [#CHA] » (substantif). Coût mana = rang.
+    richText:
+      "Le barde crée une zone de silence fixe de 5 m de diamètre, jusqu'à une portée de 30 m, pendant un nombre de minutes égal à sa valeur de [#CHA]. Tous les sons émis dans cette sphère sont annulés. Dans cette zone, il faut réussir un test d'INT difficulté 10 pour lancer un sort.",
     sourcePage: 67,
   },
   {
@@ -732,6 +791,10 @@ export const adventurerFeatures: Feature[] = [
     isSpell: true,
     actionTypes: ['A'],
     text:
+      "Le barde joue une gigue endiablée aux effets magiques. S'il réussit un test d'attaque magique opposé contre sa cible (portée 10 m), celle-ci se met à danser pendant [1d4° + CHA] rounds, elle subit un dé malus aux tests d'attaque et -5 en DEF. Si la cible est d'un niveau (NC) supérieur ou égal au barde, elle ne danse qu'un seul round.",
+    // Rendu enrichi (PER-71) : durée [1d4° + CHA] rounds. « -5 en DEF » porte sur la
+    // cible (DEF auto-détectée, non calculée). Coût mana = rang.
+    richText:
       "Le barde joue une gigue endiablée aux effets magiques. S'il réussit un test d'attaque magique opposé contre sa cible (portée 10 m), celle-ci se met à danser pendant [1d4° + CHA] rounds, elle subit un dé malus aux tests d'attaque et -5 en DEF. Si la cible est d'un niveau (NC) supérieur ou égal au barde, elle ne danse qu'un seul round.",
     sourcePage: 67,
   },
@@ -746,6 +809,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le barde ajoute son rang + 2 à tous les tests qu'il effectue pour réaliser des acrobaties, tenir en équilibre, faire des sauts ou de l'escalade.",
+    // Rendu enrichi (PER-71) : « son [rang + 2] » aux tests. Bonus de compétence (PER-89)
+    // aux domaines nommés : acrobaties (équilibre inclus), saut, escalade.
+    richText:
+      "Le barde ajoute son [rang + 2] à tous les tests qu'il effectue pour réaliser des acrobaties, tenir en équilibre, faire des sauts ou de l'escalade.",
+    effects: [{ kind: 'test-bonus', domains: ['acrobatics', 'jumping', 'climbing'] }],
     sourcePage: 67,
   },
   {
@@ -757,6 +825,21 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le barde gagne son CHA en Initiative et +1 en DEF (+2 au rang 4). De plus, le barde ajoute son rang + 2 aux tests de danse, de mime ou de jonglerie.",
+    // Rendu enrichi (PER-71) : « son [rang + 2] » aux tests. Effets : +CHA permanent en
+    // Initiative (`stat-bonus` scalant sur le CHA), +1 DEF → +2 au rang 4 (palier de voie),
+    // et bonus de compétence (PER-89) en danse/mime/jonglerie. « son CHA en Initiative »
+    // auto-détecté (puce de carac) ; le palier +1/+2 reste en prose.
+    richText:
+      "Le barde gagne son CHA en Initiative et +1 en DEF (+2 au rang 4). De plus, le barde ajoute son [rang + 2] aux tests de danse, de mime ou de jonglerie.",
+    effects: [
+      { kind: 'stat-bonus', stat: 'initiative', value: { scale: 'ability', ability: 'CHA' } },
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 4, value: 2 }] },
+      },
+      { kind: 'test-bonus', domains: ['dance', 'mime', 'juggling'] },
+    ],
     sourcePage: 68,
   },
   {
@@ -768,6 +851,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par round, en plus de ses autres actions, le barde peut lancer un couteau sur une cible à distance (portée 10 m) en réussissant un test d'attaque à distance. Cette attaque occasionne [1d4 + AGI] DM. Il peut exécuter cette action sans pénalité, même s'il est engagé en combat au contact avec un autre adversaire. Les DM passent à 1d4° au rang 5.",
+    // Rendu enrichi (PER-71 + PER-100) : DM [1d4|1d4°@5 + AGI] — le dé est fixe (1d4) aux
+    // rangs 1-4 puis DEVIENT évolutif (1d4°) au rang 5 (palier de dé complet portant le
+    // marqueur évolutif `°`). La phrase de palier passe en Note.
+    richText:
+      "Une fois par round, en plus de ses autres actions, le barde peut lancer un couteau sur une cible à distance (portée 10 m) en réussissant un test d'attaque à distance. Cette attaque occasionne [1d4|1d4°@5 + AGI] DM. Il peut exécuter cette action sans pénalité, même s'il est engagé en combat au contact avec un autre adversaire.\nNote : Les DM passent à 1d4° au rang 5.",
     sourcePage: 68,
   },
   {
@@ -779,6 +867,9 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le barde est immunisé à la peur et à tous les sorts qui asservissent l'esprit (possession, charme), il est immunisé aux états ralenti et immobilisé.",
+    // PER-103 : immunités permanentes → effet `immunity`, agrégé dans l'encadré « Immunités ».
+    // « sorts qui asservissent l'esprit (possession, charme) » → mind-control.
+    effects: [{ kind: 'immunity', immunities: ['fear', 'mind-control', 'slowed', 'immobilized'] }],
     sourcePage: 68,
   },
   {
@@ -803,6 +894,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le barde ajoute son rang + 2 aux tests effectués pour séduire, convaincre, mentir ou baratiner. Désormais, il peut dépenser 1 point de chance pour améliorer l'action d'un compagnon en vue, ce PC permet d'ajouter [1d4° + CHA] sur le résultat du test (au lieu de +10).",
+    // Rendu enrichi (PER-71) : « son [rang + 2] » ; aide d'un compagnon [1d4° + CHA].
+    // Bonus de compétence (PER-89) : séduction, persuasion (convaincre), mensonge, baratin.
+    richText:
+      "Le barde ajoute son [rang + 2] aux tests effectués pour séduire, convaincre, mentir ou baratiner. Désormais, il peut dépenser 1 point de chance pour améliorer l'action d'un compagnon en vue, ce PC permet d'ajouter [1d4° + CHA] sur le résultat du test (au lieu de +10).",
+    effects: [{ kind: 'test-bonus', domains: ['seduction', 'persuasion', 'deception', 'fast-talk'] }],
     sourcePage: 68,
   },
   {
@@ -814,6 +910,18 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le barde ne met pas d'armure, cela ne sied point en société. Sa seule armure est la dentelle, sa seule défense, la rapière. Lorsqu'il ne porte aucune armure, le barde ajoute son CHA en DEF (en plus de son AGI), toutefois ce bonus ne peut pas dépasser le rang atteint dans la voie.",
+    // PER-71 (#6) — règle ajoutée « bêtement » : bonus de DEF CONDITIONNEL (« aucune armure »,
+    // interrupteur manuel) valant le CHA. Le PLAFOND par le rang (min(CHA, rang)) et le branchement
+    // sur le PORT EFFECTIF d'armure sont DIFFÉRÉS à PER-106 (milestone Armures) — les valeurs
+    // scalantes actuelles n'ont pas de `min`, et la détection d'armure portée relève de cette
+    // milestone. Tant que le plafond n'est pas posé, le bonus = CHA (surévalué si CHA > rang).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [{ stat: 'def', value: { scale: 'ability', ability: 'CHA' } }],
+        activation: { kind: 'condition', label: 'aucune armure portée', activeByDefault: false },
+      },
+    ],
     sourcePage: 68,
   },
   {
@@ -836,6 +944,14 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le barde augmente sa valeur de CHA de +1. Désormais, il obtient un dé bonus aux tests de CHA. De plus, le barde peut désormais utiliser son CHA au lieu de sa VOL pour calculer le nombre de PM dont il dispose.",
+    // Caractéristique héroïque : +1 CHA permanent + dé bonus aux tests de CHA.
+    // PER-101 : « utiliser son CHA au lieu de sa VOL pour les PM » → `mana-ability-override`
+    // (le moteur retient la meilleure de VOL/CHA pour la réserve de PM, cf. manaCastingAbility).
+    effects: [
+      { kind: 'ability-bonus', ability: 'CHA', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'CHA' },
+      { kind: 'mana-ability-override', ability: 'CHA' },
+    ],
     sourcePage: 68,
   },
   {
@@ -860,6 +976,13 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "À force de voyager, le barde possède une culture générale très vaste, il ajoute son rang + 2 aux tests d'INT pour se « souvenir » d'une information historique, politique, géographique ou occulte ou encore pour identifier un objet magique difficulté (25 – (2 x niveau de magie de l'objet)).",
+    // Rendu enrichi (PER-71) : « son [rang + 2] ». La difficulté « 25 – 2 × niveau de magie
+    // de l'objet » dépend de l'OBJET (pas du joueur) → littéral. Bonus de compétence (PER-89) :
+    // savoirs (connaissances) + érudition occulte. L'identification d'objet magique est une
+    // application situationnelle → non modélisée en domaine.
+    richText:
+      "À force de voyager, le barde possède une culture générale très vaste, il ajoute son [rang + 2] aux tests d'INT pour se « souvenir » d'une information historique, politique, géographique ou occulte ou encore pour identifier un objet magique difficulté (25 – (2 x niveau de magie de l'objet)).",
+    effects: [{ kind: 'test-bonus', domains: ['knowledge', 'occult-lore'] }],
     sourcePage: 68,
   },
   {
@@ -871,6 +994,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le barde obtient un bonus de +1 à tous les tests de compétence (absolument tous, de se cacher dans les ombres jusqu'à forger une épée, en passant par traduire une langue ancienne). Ce bonus ne peut se cumuler à aucun autre bonus de compétence sauf celui du rang 1 de la voie de peuple. Il augmente de +1 chaque fois qu'il atteint le rang 4 dans une voie de barde.",
+    // PER-102 : bonus de compétence UNIVERSEL → effet `universal-test-bonus`. Valeur = 1
+    // (base) + nb de voies de barde au rang 4 (5 voies → +6). NE se cumule PAS avec les
+    // bonus de profil/prestige (prime au MAX : le plus élevé l'emporte), SE cumule avec le
+    // peuple. Cf. universalTestBonus / testBonusSources.
+    effects: [{ kind: 'universal-test-bonus', scaleByPathsAtRank: { classId: 'barde', rank: 4 } }],
     sourcePage: 69,
   },
   {
@@ -893,6 +1021,9 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Ce sort permet au barde de lire, écrire et parler une langue vivante étrangère. Le sort a une durée maximale de CHA heures, mais il peut aussi être lancé sur un allié au contact et dans ce cas, il ne dure que CHA minutes. À partir du rang 5, il peut aussi déchiffrer une inscription dans une langue morte.",
+    // Rendu enrichi (PER-71) : durées en quantités brutes [=CHA] heures / [=CHA] minutes. Coût mana = rang.
+    richText:
+      "Ce sort permet au barde de lire, écrire et parler une langue vivante étrangère. Le sort a une durée maximale de [=CHA] heures, mais il peut aussi être lancé sur un allié au contact et dans ce cas, il ne dure que [=CHA] minutes. À partir du rang 5, il peut aussi déchiffrer une inscription dans une langue morte.",
     sourcePage: 69,
   },
   {
@@ -904,6 +1035,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Ce sort permet au barde de prendre l'apparence de n'importe quelle humanoïde de taille à peu près équivalente (avec une marge d'environ 50 cm). S'il veut imiter une personne en particulier, il lui faudra réussir un test de CHA difficulté 15 (20 s'il ne la connaît pas mais l'a seulement vue, 10 s'il la connaît très bien). Le sort a une durée maximale de CHA heures, mais il peut aussi être lancé sur un allié au contact et dans ce cas, il ne dure que CHA minutes.",
+    // Rendu enrichi (PER-71) : durées [=CHA] heures / [=CHA] minutes. « test de CHA difficulté
+    // 15 » : CHA du joueur (auto-détecté), difficulté littérale. Sort de déguisement MAGIQUE —
+    // distinct de la compétence `disguise` (assassin-r1). Coût mana = rang.
+    richText:
+      "Ce sort permet au barde de prendre l'apparence de n'importe quelle humanoïde de taille à peu près équivalente (avec une marge d'environ 50 cm). S'il veut imiter une personne en particulier, il lui faudra réussir un test de CHA difficulté 15 (20 s'il ne la connaît pas mais l'a seulement vue, 10 s'il la connaît très bien). Le sort a une durée maximale de [=CHA] heures, mais il peut aussi être lancé sur un allié au contact et dans ce cas, il ne dure que [=CHA] minutes.",
     sourcePage: 69,
   },
 
