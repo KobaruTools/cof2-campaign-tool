@@ -134,6 +134,36 @@ describe('derivedStatBreakdown ↔ deriveStats', () => {
     expect(bd.total).toBe(16);
   });
 
+  it('PV hybrides à la base mais mono-famille ensuite : niveaux 2..N regroupés en une plage', () => {
+    // Hybride prêtre/magicien : base mystiques 4 + mages 3 + CON 1 = 8, puis tous
+    // les niveaux 2 à 5 sont mono-famille mystiques (4 PV) + CON 1 = 5 chacun.
+    // Les quatre lignes identiques doivent fusionner en « Niveaux 2 à 5 ».
+    const monoGains: { level: number; familyIds: ['mystics']; familyGain: number }[] = [
+      { level: 2, familyIds: ['mystics'], familyGain: 4 },
+      { level: 3, familyIds: ['mystics'], familyGain: 4 },
+      { level: 4, familyIds: ['mystics'], familyGain: 4 },
+      { level: 5, familyIds: ['mystics'], familyGain: 4 },
+    ];
+    const bd = derivedStatBreakdown('maxHp', {
+      abilities: abilities({ CON: 1 }),
+      level: 5,
+      family: family('mystics'),
+      defenseEquipment: { defBonus: 0, maxAgi: null },
+      spellCount: 0,
+      hpLevel1Family: 7,
+      hpLevel1Families: ['mystics', 'mages'],
+      hpFamilyGains: monoGains.map((g) => g.familyGain),
+      hpLevelGains: monoGains,
+    });
+    // Une seule ligne de plage pour les niveaux 2 à 5 (pas quatre lignes).
+    const rangeLine = bd.terms.find((t) => t.label.startsWith('Niveaux 2 à 5'));
+    expect(rangeLine).toBeDefined();
+    expect(rangeLine?.value).toBe(20); // (4 + CON 1) × 4
+    // Aucune ligne « Niveau N · » individuelle pour N ≥ 2 (tout est dans la plage).
+    expect(bd.terms.filter((t) => /^Niveau [2-9]\d* ·/.test(t.label))).toHaveLength(0);
+    expect(bd.total).toBe(8 + 20); // base hybride 8 + plage 20
+  });
+
   it('détaille les capacités sous « Capacités / divers » sans fausser le total', () => {
     const input: DerivedInput = {
       abilities: abilities(),
