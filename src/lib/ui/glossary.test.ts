@@ -123,4 +123,19 @@ describe('splitGameTerms', () => {
   it('« attaque » seul (sans qualificatif) reste du texte brut', () => {
     expect(games('lors d’une attaque de mêlée classique')).toEqual([]);
   });
+
+  it('capte les notions de règle du voleur (catégorie « rule »)', () => {
+    expect(games('un adversaire surpris ou qui lui tourne le dos')).toEqual([
+      { term: 'surpris', category: 'rule' },
+      { term: 'tourne le dos', category: 'rule' },
+    ]);
+    expect(games('il réalise une attaque sournoise')).toEqual([
+      { term: 'attaque sournoise', category: 'rule' },
+    ]);
+    expect(games('attaquer dans le dos')[0]).toEqual({ term: 'dans le dos', category: 'rule' });
+  });
+
+  it('« surpris » ne capte pas « surprise » (évite le titre « Attaque par surprise »)', () => {
+    expect(games('réaliser une attaque par surprise')).toEqual([]);
+  });
 });

@@ -293,6 +293,14 @@ début de phrase compte) et la casse d'origine est conservée. Deux catégories 
   info-bulle : `attaque magique`, `attaque à distance`, `attaque au contact`,
   `attaque de contact` (le livre emploie « au » ET « de » pour le contact). Ce sont
   les stats dérivées `magicAttack`/`rangedAttack`/`meleeAttack` du moteur.
+- **Notion de règle** (`rule`) → **souligné pointillé + info-bulle** (même rendu que
+  le jargon acronyme `GlossaryMark`). Ajout PER-71 (voleur) : vocabulaire récurrent
+  de l'attaque sournoise — `attaque sournoise`, `surpris`, `dans le dos`,
+  `tourne le dos` — défini UNE fois dans `GAME_TERMS` (l'info-bulle porte la règle),
+  donc auto-rendu dans toutes les capacités qui l'emploient, sans balisage. Étendre
+  cette liste pour les notions de règle nommées qui reviennent (plutôt que de baliser
+  au cas par cas). Casse insensible ; « surprise » (suivi d'un « e ») n'est PAS capté
+  par `surpris` (bornes Unicode) — évite d'attraper le titre « Attaque par surprise ».
 
 Bornes Unicode (les locutions ont des accents : « opposé », « à ») : un mot collé
 (« tester », « attestation ») n'est PAS capté ; « attaque » seule (sans qualificatif)

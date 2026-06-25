@@ -102,13 +102,17 @@ export function splitGlossary(text: string): GlossaryPiece[] {
  *  - `action` : une ACTION DE JET (« test », « test opposé ») → mise en GRAS ;
  *  - `attack` : un JET D'ATTAQUE, qui EST une stat dérivée du moteur
  *    (`magicAttack`/`rangedAttack`/`meleeAttack`) → même puce que les autres stats
- *    dérivées (teinte ambre `derived`), avec info-bulle.
+ *    dérivées (teinte ambre `derived`), avec info-bulle ;
+ *  - `rule` : une NOTION DE RÈGLE nommée en locution (« attaque sournoise »,
+ *    « surpris », « dans le dos ») → même rendu que le jargon acronyme (souligné
+ *    pointillé + info-bulle, cf. `GlossaryMark`). Étend le glossaire aux concepts
+ *    récurrents qui ne sont ni acronyme, ni carac/stat, ni action de jet (PER-71).
  *
  * Insensible à la casse (un « Test » en début de phrase compte), contrairement aux
  * acronymes. La casse d'origine est conservée à l'affichage. Le livre emploie deux
  * formes pour le contact (« au contact » / « de contact ») : les deux sont captées.
  */
-export type GameTermCategory = 'action' | 'attack';
+export type GameTermCategory = 'action' | 'attack' | 'rule';
 
 export interface GameTermEntry {
   /** Libellé affiché en info-bulle (français). Vide pour `action` (gras sans bulle). */
@@ -127,6 +131,29 @@ export const GAME_TERMS: Record<string, GameTermEntry> = {
   'tests opposés': { label: '', category: 'action' },
   test: { label: '', category: 'action' },
   tests: { label: '', category: 'action' },
+  // --- Notions de règle en locution (souligné pointillé + info-bulle, PER-71) ---
+  // Vocabulaire récurrent de l'attaque sournoise du voleur (assassin-r2/r3/r5,
+  // aventurier-r2/r5, deplacement-r3, spadassin-r5…). Défini ICI une seule fois.
+  'attaque sournoise': {
+    label:
+      "Attaque sournoise : contre une cible surprise ou attaquée dans le dos, le voleur inflige des dés de DM supplémentaires avec une arme légère (voie de l'assassin, p. 74).",
+    category: 'rule',
+  },
+  surpris: {
+    label:
+      "Surpris : adversaire pris au dépourvu (qui n'a pas encore agi ou ne perçoit pas la menace) — condition d'une attaque sournoise.",
+    category: 'rule',
+  },
+  'dans le dos': {
+    label:
+      "Attaquer dans le dos : quand le voleur attaque la même créature qu'un allié à son contact, il est considéré l'attaquer dans le dos — sauf si elle peut se placer dos à un obstacle infranchissable (p. 74).",
+    category: 'rule',
+  },
+  'tourne le dos': {
+    label:
+      "Attaquer dans le dos : quand le voleur attaque la même créature qu'un allié à son contact, il est considéré l'attaquer dans le dos — sauf si elle peut se placer dos à un obstacle infranchissable (p. 74).",
+    category: 'rule',
+  },
 };
 
 /** Un fragment de texte : texte brut, ou locution de jeu reconnue. */

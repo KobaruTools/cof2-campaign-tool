@@ -1228,6 +1228,13 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur ajoute son rang + 2 à tous les tests de discrétion, de déguisement ou pour cacher une arme sur lui. Il apprend le langage silencieux à base de signe des voleurs (argotien) et enfin il obtient un dé bonus en attaque lorsqu'il attaque un adversaire surpris.",
+    // Rendu enrichi (PER-71) : « son rang + 2 » est un bonus de MODIFICATEUR aux tests
+    // → [rang + 2]. Bonus de compétence (PER-89) à trois domaines nommés inconditionnels :
+    // discrétion (stealth), déguisement (disguise) et dissimulation d'objet (concealment).
+    // Le dé bonus en attaque « contre un adversaire surpris » est SITUATIONNEL → verbatim.
+    richText:
+      "Le voleur ajoute son [rang + 2] à tous les tests de discrétion, de déguisement ou pour cacher une arme sur lui. Il apprend le langage silencieux à base de signe des voleurs (argotien) et enfin il obtient un dé bonus en attaque lorsqu'il attaque un adversaire surpris.",
+    effects: [{ kind: 'test-bonus', domains: ['stealth', 'disguise', 'concealment'] }],
     sourcePage: 74,
   },
   {
@@ -1239,6 +1246,15 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par round, quand il attaque un adversaire surpris ou qui lui tourne le dos** avec une arme légère, le voleur inflige +2d4° DM supplémentaires. Les DM infligés par cette capacité augmentent de 1d4° à chaque fois qu'il atteint le rang 4 dans une voie de voleur (pour un maximum de 7d4°). Cette capacité nécessite l'utilisation d'une arme légère (dague, éventuellement lancée, épée courte, rapière) dans tous les autres cas, le bonus aux DM est divisé par deux (cela comprend les armes à distance).",
+    // Rendu enrichi (PER-71) : DM scalant CROSS-VOIE (de famille) — base {2d4°}, +1 dé par
+    // voie de voleur au rang 4 (la voie hôte comprise), plafonné à 7d4° (= 5 voies). Encodé
+    // en paliers `|C@R` où le « rang » passé à la formule est le COMPTE de voies de voleur
+    // au rang 4, injecté par `crossPathDieCount` (cf. countClassPathsAtRank, FeaturesByPath ;
+    // même mécanique que soins-r3 du prêtre). Le terme `rang` n'est pas utilisé ici. La
+    // phrase de scaling reste (avec {1d4°}) ; la restriction « arme légère » devient une Note.
+    // Le renvoi « ** » du texte (note de la voie, p. 74) est retiré au profit du rendu.
+    richText:
+      "Une fois par round, quand il attaque un adversaire surpris ou qui lui tourne le dos avec une arme légère, le voleur inflige +{2d4°|3@1|4@2|5@3|6@4|7@5} DM supplémentaires. Les DM infligés par cette capacité augmentent de {1d4°} à chaque fois qu'il atteint le rang 4 dans une voie de voleur (pour un maximum de 7d4°).\nNote : Cette capacité nécessite l'utilisation d'une arme légère (dague, éventuellement lancée, épée courte, rapière) ; dans tous les autres cas, le bonus aux DM est divisé par deux (cela comprend les armes à distance).",
     sourcePage: 74,
   },
   {
@@ -1250,6 +1266,9 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Contre un adversaire surpris, le voleur peut réaliser une attaque sournoise en utilisant une action d'attaque plutôt qu'une action limitée et il augmente les DM de son attaque sournoise de 2d4°.",
+    // Rendu enrichi (PER-71) : bonus aux DM de l'attaque sournoise {2d4°}.
+    richText:
+      "Contre un adversaire surpris, le voleur peut réaliser une attaque sournoise en utilisant une action d'attaque plutôt qu'une action limitée et il augmente les DM de son attaque sournoise de {2d4°}.",
     sourcePage: 74,
   },
   {
@@ -1285,6 +1304,14 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur ajoute son rang + 2 aux tests destinés à baratiner, séduire, négocier, mentir ou pour trouver un objet au marché noir. De plus, il devient capable d'utiliser les parchemins ou les baguettes magiques en réussissant un test d'attaque magique (L) contre une difficulté de (10 + (2 x rang du sort inscrit)). En cas d'échec, le sort n'est pas lancé et le voleur peut faire une nouvelle tentative.",
+    // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2]. « rang du sort inscrit »
+    // n'est PAS le rang de la voie hôte → laissé en littéral. Bonus de compétence (PER-89)
+    // à des domaines nommés : baratin (fast-talk), séduction (seduction), négociation
+    // (persuasion), mensonge (deception). « trouver un objet au marché noir » est une
+    // application situationnelle → non modélisée en domaine, reste verbatim.
+    richText:
+      "Le voleur ajoute son [rang + 2] aux tests destinés à baratiner, séduire, négocier, mentir ou pour trouver un objet au marché noir. De plus, il devient capable d'utiliser les parchemins ou les baguettes magiques en réussissant un test d'attaque magique (L) contre une difficulté de (10 + (2 x rang du sort inscrit)). En cas d'échec, le sort n'est pas lancé et le voleur peut faire une nouvelle tentative.",
+    effects: [{ kind: 'test-bonus', domains: ['fast-talk', 'seduction', 'persuasion', 'deception'] }],
     sourcePage: 74,
   },
   {
@@ -1296,6 +1323,10 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le voleur maîtrise l'art de se rendre désagréable, voire insupportable. S'il emporte un test opposé de CHA contre INT d'un adversaire humanoïde à moins de 10 m, il force la cible à l'attaquer à son prochain tour. À ce moment-là, si le voleur est au contact, il peut riposter par une attaque de contact gratuite pour laquelle il bénéficie au choix d'une attaque sournoise ou d'un bonus de 1d4° aux DM.",
+    // Rendu enrichi (PER-71) : test opposé du CHA (joueur, auto-détecté) contre l'@INT de
+    // la CIBLE (stat d'autrui, non calculée) ; bonus aux DM de la riposte {1d4°}.
+    richText:
+      "Le voleur maîtrise l'art de se rendre désagréable, voire insupportable. S'il emporte un test opposé de CHA contre @INT d'un adversaire humanoïde à moins de 10 m, il force la cible à l'attaquer à son prochain tour. À ce moment-là, si le voleur est au contact, il peut riposter par une attaque de contact gratuite pour laquelle il bénéficie au choix d'une attaque sournoise ou d'un bonus de {1d4°} aux DM.",
     sourcePage: 75,
   },
   {
@@ -1307,6 +1338,21 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur possède une démarche et une façon de se déplacer à la fois élégante, féline et souple. Il ajoute +2 en DEF et en Initiative. Ce bonus passe à +3 au rang 5. Il lui faut seulement une action de mouvement pour se relever.",
+    // Bonus PERMANENT inconditionnel +2 DEF et +2 Init., scalant par paliers de rang de
+    // voie (+3 au rang 5) → `stat-bonus` (PER-67), même forme que Réflexes éclair. La
+    // montée par palier en prose reste littérale (pas de balisage richText).
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 5, value: 3 }] },
+      },
+      {
+        kind: 'stat-bonus',
+        stat: 'initiative',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 5, value: 3 }] },
+      },
+    ],
     sourcePage: 75,
   },
   {
@@ -1318,6 +1364,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur augmente sa valeur de CHA de +1. Désormais, il obtient un dé bonus aux tests de CHA.",
+    // Caractéristique héroïque (mécanique core) : +1 CHA permanent + dé bonus aux tests de CHA.
+    effects: [
+      { kind: 'ability-bonus', ability: 'CHA', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'CHA' },
+    ],
     sourcePage: 75,
   },
   {
@@ -1329,6 +1380,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le voleur peut, en réussissant une attaque de contact, paralyser un adversaire humanoïde de douleur. La cible ne subit aucun DM, mais elle est immobilisée pendant 1d4 rounds ou, si son NC est inférieur à la moitié du niveau du voleur, elle est paralysée. De plus, le voleur peut désormais utiliser au choix l'attaque sournoise (s'il détient cette capacité) ou infliger +1d4° DM contre tout adversaire immobilisé ou paralysé.",
+    // Rendu enrichi (PER-71) : durée d'immobilisation {1d4} rounds ; bonus aux DM {1d4°}.
+    // « la moitié du niveau du voleur » (seuil de NC) reste en prose (pas de division par
+    // constante dans le format ; valeur situationnelle comparée au NC de la cible).
+    richText:
+      "Une fois par combat, le voleur peut, en réussissant une attaque de contact, paralyser un adversaire humanoïde de douleur. La cible ne subit aucun DM, mais elle est immobilisée pendant {1d4} rounds ou, si son NC est inférieur à la moitié du niveau du voleur, elle est paralysée. De plus, le voleur peut désormais utiliser au choix l'attaque sournoise (s'il détient cette capacité) ou infliger +{1d4°} DM contre tout adversaire immobilisé ou paralysé.",
     sourcePage: 75,
   },
 
@@ -1342,6 +1398,26 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur ajoute son rang + 2 à tous tests liés à un déplacement (esquive, saut, course, équilibre, escalade, se glisser entre des barreaux ou échapper à une créature qui l'agrippe). De plus, il bénéficie d'un bonus de +1 en DEF et en Initiative. Ce bonus passe à +2 au rang 3 et +3 au rang 5.",
+    // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2]. Bonus de compétence (PER-89)
+    // aux domaines nommés du déplacement : saut, course, escalade, et équilibre/acrobaties
+    // (acrobatics). Esquive, « se glisser entre des barreaux », « échapper à une créature
+    // qui l'agrippe » sont des applications situationnelles → non modélisées, reste verbatim.
+    // Le +1 DEF/Init permanent (→ +2 rang 3, +3 rang 5) est un `stat-bonus` scalant.
+    richText:
+      "Le voleur ajoute son [rang + 2] à tous tests liés à un déplacement (esquive, saut, course, équilibre, escalade, se glisser entre des barreaux ou échapper à une créature qui l'agrippe). De plus, il bénéficie d'un bonus de +1 en DEF et en Initiative. Ce bonus passe à +2 au rang 3 et +3 au rang 5.",
+    effects: [
+      { kind: 'test-bonus', domains: ['jumping', 'running', 'climbing', 'acrobatics'] },
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 3, value: 2 }, { min: 5, value: 3 }] },
+      },
+      {
+        kind: 'stat-bonus',
+        stat: 'initiative',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 3, value: 2 }, { min: 5, value: 3 }] },
+      },
+    ],
     sourcePage: 75,
   },
   {
@@ -1364,6 +1440,9 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par round, si le voleur réussit un test d'AGI difficulté 15, il peut effectuer une acrobatie pour franchir un obstacle (qui peut être un adversaire) ou attaquer dans le dos un adversaire au contact. Il peut alors au choix utiliser l'attaque sournoise ou infliger +1d4° DM.",
+    // Rendu enrichi (PER-71) : bonus aux DM {1d4°}.
+    richText:
+      "Une fois par round, si le voleur réussit un test d'AGI difficulté 15, il peut effectuer une acrobatie pour franchir un obstacle (qui peut être un adversaire) ou attaquer dans le dos un adversaire au contact. Il peut alors au choix utiliser l'attaque sournoise ou infliger +{1d4°} DM.",
     sourcePage: 76,
   },
   {
@@ -1375,6 +1454,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur augmente sa valeur d'AGI de +1. Désormais, il obtient un dé bonus aux tests d'AGI.",
+    // Caractéristique héroïque (mécanique core) : +1 AGI permanent + dé bonus aux tests d'AGI.
+    effects: [
+      { kind: 'ability-bonus', ability: 'AGI', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'AGI' },
+    ],
     sourcePage: 76,
   },
   {
@@ -1399,6 +1483,14 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur ajoute son rang + 2 aux tests liés à la précision manuelle (crocheter une serrure, désamorcer un piège, pickpocket…) ainsi qu'aux tests pour évaluer un objet précieux (joyaux, bijoux, etc.). De plus il obtient +1 aux DM des attaques à distance avec les dagues et couteaux. Ce bonus passe à +2 au rang 3 de la voie et +3 au rang 5.",
+    // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2]. Bonus de compétence (PER-89)
+    // aux domaines nommés : crochetage (lockpicking), désamorçage de pièges (disarm-traps),
+    // vol à la tire (pickpocketing), estimation (appraisal). Le « +1 aux DM des attaques à
+    // distance avec dagues et couteaux » est un bonus aux DM RESTREINT à une catégorie
+    // d'arme (situationnel, pas de stat dérivée dédiée) → laissé verbatim.
+    richText:
+      "Le voleur ajoute son [rang + 2] aux tests liés à la précision manuelle (crocheter une serrure, désamorcer un piège, pickpocket…) ainsi qu'aux tests pour évaluer un objet précieux (joyaux, bijoux, etc.). De plus il obtient +1 aux DM des attaques à distance avec les dagues et couteaux. Ce bonus passe à +2 au rang 3 de la voie et +3 au rang 5.",
+    effects: [{ kind: 'test-bonus', domains: ['lockpicking', 'disarm-traps', 'pickpocketing', 'appraisal'] }],
     sourcePage: 76,
   },
   {
@@ -1410,6 +1502,13 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur ajoute son rang + 2 aux tests effectués pour fouiller une pièce à la recherche d'un trésor, détecter un piège (même magique), un passage secret ou même une embuscade (Vigilance). De plus, il divise par 2 les DM infligés par des pièges.",
+    // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2]. Bonus de compétence (PER-89)
+    // aux domaines nommés : fouille (searching, pièce/passage secret), détection de pièges
+    // (trap-detection) et vigilance (embuscade — nommée par le livre). La division par 2
+    // des DM de pièges est situationnelle (type de DM hors barème) → laissée verbatim.
+    richText:
+      "Le voleur ajoute son [rang + 2] aux tests effectués pour fouiller une pièce à la recherche d'un trésor, détecter un piège (même magique), un passage secret ou même une embuscade (Vigilance). De plus, il divise par 2 les DM infligés par des pièges.",
+    effects: [{ kind: 'test-bonus', domains: ['searching', 'trap-detection', 'vigilance'] }],
     sourcePage: 76,
   },
   {
@@ -1421,6 +1520,11 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par combat, le voleur peut feindre la mort après avoir reçu une blessure (même à 0 PV). Il peut ainsi passer pour mort aussi longtemps qu'il le souhaite et un test d'INT difficulté 20 est nécessaire pour révéler la supercherie. Lorsqu'il décide de se relever (action gratuite), le voleur récupère immédiatement 1d4° PV et s'il est au contact d'un adversaire, celui-ci est surpris. Un adversaire qui a déjà été victime de cette stratégie du voleur lors d'un précédent combat ne se laisse pas surprendre une seconde fois (sauf si son INT est de -4).",
+    // Rendu enrichi (PER-71) : PV récupérés en se relevant {1d4°}. Le test d'INT difficulté
+    // 20 (jet d'un observateur) et l'« INT de -4 » de l'adversaire restent en prose (stats
+    // d'autrui, non calculées contre le joueur).
+    richText:
+      "Une fois par combat, le voleur peut feindre la mort après avoir reçu une blessure (même à 0 PV). Il peut ainsi passer pour mort aussi longtemps qu'il le souhaite et un test d'INT difficulté 20 est nécessaire pour révéler la supercherie. Lorsqu'il décide de se relever (action gratuite), le voleur récupère immédiatement {1d4°} PV et s'il est au contact d'un adversaire, celui-ci est surpris. Un adversaire qui a déjà été victime de cette stratégie du voleur lors d'un précédent combat ne se laisse pas surprendre une seconde fois (sauf si son INT est de -4).",
     sourcePage: 76,
   },
   {
@@ -1443,6 +1547,13 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur peut utiliser 3 doses de poison par jour sans risque de s'empoisonner lui-même. Une dose permet d'enduire une dague, une flèche ou un carreau pour infliger +2d4° DM supplémentaire et demande un test de CON difficulté (10 + INT du voleur) ou une cible vivante est affaiblie pour le reste du combat. Alternativement, une dose peut être versée dans les aliments pour une personne ; si la cible rate son test de CON, elle sombre dans l'inconscience pour 2d6 min (4d6 min pour 2 doses, etc.).",
+    // Rendu enrichi (PER-71) : DM du poison {2d4°} ; difficulté du test de CON [10 + INT]
+    // (INT du voleur = joueur) ; durée d'inconscience {2d6} min (« 4d6 pour 2 doses » =
+    // palier d'usage décrit en prose, laissé littéral). Usages limités : 3 doses par jour
+    // (usageCounter, comme Les sept vies du chat).
+    richText:
+      "Le voleur peut utiliser 3 doses de poison par jour sans risque de s'empoisonner lui-même. Une dose permet d'enduire une dague, une flèche ou un carreau pour infliger +{2d4°} DM supplémentaire et demande un test de CON difficulté [10 + INT] ou une cible vivante est affaiblie pour le reste du combat. Alternativement, une dose peut être versée dans les aliments pour une personne ; si la cible rate son test de CON, elle sombre dans l'inconscience pour {2d6} min (4d6 min pour 2 doses, etc.).",
+    usageCounter: { max: 3, label: 'Doses de poison' },
     sourcePage: 76,
   },
 
@@ -1456,6 +1567,17 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur ajoute son AGI à son Init. et peut remplacer sa FOR par son AGI pour ses tests d'attaque au contact (mais pas aux DM) lorsqu'il utilise une arme légère à une main (dague, épée courte ou rapière). Enfin, il obtient un bonus égal à son rang + 2 aux tests d'intimidation.",
+    // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2] (intimidation). AGI/FOR sont
+    // auto-détectés (puces de carac). Effets : +AGI permanent en Initiative (`stat-bonus`
+    // scalant sur l'AGI, comme Grâce féline du barde) et bonus de compétence à
+    // l'intimidation (PER-89). La substitution FOR→AGI au test d'attaque au contact est
+    // une mécanique de combat situationnelle (arme légère) → laissée verbatim.
+    richText:
+      "Le voleur ajoute son AGI à son Init. et peut remplacer sa FOR par son AGI pour ses tests d'attaque au contact (mais pas aux DM) lorsqu'il utilise une arme légère à une main (dague, épée courte ou rapière). Enfin, il obtient un bonus égal à son [rang + 2] aux tests d'intimidation.",
+    effects: [
+      { kind: 'stat-bonus', stat: 'initiative', value: { scale: 'ability', ability: 'AGI' } },
+      { kind: 'test-bonus', domains: ['intimidation'] },
+    ],
     sourcePage: 77,
   },
   {

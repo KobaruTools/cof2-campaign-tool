@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 9,
+  "id": "test-voleur-humain",
+  "name": "Test — Voleur (humain)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-71 — voleur humain, les 5 voies au rang 5. À vérifier : bonus de compétence (PER-89) des domaines nommés (discrétion/déguisement/dissimulation, baratin/séduction/persuasion/mensonge, saut/course/escalade/acrobaties, crochetage/désamorçage/vol à la tire/estimation, fouille/détection de pièges/vigilance, intimidation) ; CUMUL sur l'escalade (climbing) entre l'origine humaine « Montagnard » (+3 peuple) et la voie du déplacement (profil, +rang+2) ; héroïques Charisme (aventurier-r4, +1 CHA + dé) et Agilité (deplacement-r4, +1 AGI + dé) ; +DEF/+Init scalants permanents (Souplesse du félin, Agile) et +AGI en Init (spadassin-r1) ; compteur d'usages « Doses de poison » (roublard-r5) ; rendu enrichi (dés et formules) ; Attaque sournoise (assassin-r2) : DM dynamiques cross-voie (2d4° → 7d4° selon les voies de voleur au rang 4 — ici 5 voies au rang 5 → 7d4°)."
+  },
+  "ancestryId": "humain",
+  "classId": "voleur",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 4,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 2,
+    "CHA": 2,
+    "INT": 1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 4,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 2,
+    "CHA": 2,
+    "INT": 1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "assassin-r1",
+    "deplacement-r1",
+    "humain-r1",
+    "aventurier-r1",
+    "roublard-r1",
+    "spadassin-r1",
+    "assassin-r2",
+    "aventurier-r2",
+    "deplacement-r2",
+    "roublard-r2",
+    "spadassin-r2",
+    "assassin-r3",
+    "aventurier-r3",
+    "deplacement-r3",
+    "roublard-r3",
+    "spadassin-r3",
+    "assassin-r4",
+    "aventurier-r4",
+    "deplacement-r4",
+    "roublard-r4",
+    "spadassin-r4",
+    "assassin-r5",
+    "aventurier-r5",
+    "deplacement-r5",
+    "roublard-r5",
+    "spadassin-r5"
+  ],
+  "featureChoices": {
+    "humain-r1": [
+      "highlander"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "assassin-r1",
+        "deplacement-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "aventurier-r1",
+        "roublard-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "spadassin-r1",
+        "assassin-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "aventurier-r2",
+        "deplacement-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "roublard-r2",
+        "spadassin-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "assassin-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "aventurier-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "deplacement-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "roublard-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "spadassin-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "assassin-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "aventurier-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "deplacement-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "roublard-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "spadassin-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "assassin-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "aventurier-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "deplacement-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "roublard-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "spadassin-r5"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "rapiere",
+      "quantity": 1
+    },
+    {
+      "itemId": "dague",
+      "quantity": 5
+    },
+    {
+      "itemId": "outils-de-crochetage",
+      "quantity": 1
+    },
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-71 (voleur) — perso de recette. Voir identity.description pour la liste de vérification. Origine humaine « Montagnard » volontairement choisie pour faire chevaucher l'escalade (climbing) entre la voie de peuple (+3) et la voie du déplacement (profil) → contrôle du cumul PER-89.",
+  "createdAt": "2026-06-25T00:00:00.000Z",
+  "updatedAt": "2026-06-25T00:00:00.000Z"
+}

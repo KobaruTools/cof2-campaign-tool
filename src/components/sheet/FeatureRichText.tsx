@@ -161,6 +161,10 @@ function RichTextRun({ value }: { value: string }) {
           <GlossaryRun key={i} value={piece.value} />
         ) : piece.entry.category === 'attack' ? (
           <RefChip key={i} label={piece.term} title={piece.entry.label} tone="derived" />
+        ) : piece.entry.category === 'rule' ? (
+          // Notion de règle en locution (« attaque sournoise », « surpris »…) : même
+          // rendu que le jargon acronyme (souligné pointillé + info-bulle).
+          <GlossaryMark key={i} label={piece.term} title={piece.entry.label} />
         ) : (
           <GameAction key={i} label={piece.term} />
         ),

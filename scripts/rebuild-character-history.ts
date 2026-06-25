@@ -40,6 +40,12 @@ const TARGETS: Target[] = [
     // de magicien (magie protectrice) s'ouvre comme hybride dès le niveau 2.
     level1FreeIds: ['priere-r1', 'spiritualite-r1', 'elfe-haut-r1'],
   },
+  {
+    file: 'test-voleur-humain.json',
+    // Profil voleur (assassin + déplacement à la création) ; peuple humain.
+    // Les trois autres voies (aventurier, roublard, spadassin) s'ouvrent aux montées.
+    level1FreeIds: ['assassin-r1', 'deplacement-r1', 'humain-r1'],
+  },
 ];
 
 const dir = join(process.cwd(), 'examples', 'characters');

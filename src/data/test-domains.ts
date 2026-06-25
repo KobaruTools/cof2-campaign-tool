@@ -33,6 +33,16 @@ export const testDomains: TestDomain[] = [
   // (p. 115) et du vent (p. 121) — à distinguer de `long-running` (course longue, CON).
   { id: 'running', label: 'Course', abilities: ['AGI'], sourcePage: 115 },
   { id: 'jumping', label: 'Saut', abilities: ['AGI'], sourcePage: 115 },
+  // --- AGI — adresse / précision manuelle du voleur (PER-71) -----------------
+  // pickpocket (Doigts agiles, roublard-r1, p. 76) : adresse des doigts → AGI.
+  { id: 'pickpocketing', label: 'Vol à la tire', abilities: ['AGI'], sourcePage: 76 },
+  // désamorçage de pièges (Doigts agiles, roublard-r1, p. 76 ; aussi artilleur-r1
+  // « désamorcer des pièges mécaniques », p. 62) : précision manuelle → AGI. À
+  // distinguer de la DÉTECTION du piège (`trap-detection`, PER, roublard-r2).
+  { id: 'disarm-traps', label: 'Désamorçage de pièges', abilities: ['AGI'], sourcePage: 76 },
+  // cacher une arme sur soi (Discrétion, assassin-r1, p. 74) : escamotage → AGI.
+  // TODO(extraction) : domaine à part entière ou application de la discrétion ? À valider.
+  { id: 'concealment', label: "Dissimulation d'objet", abilities: ['AGI'], sourcePage: 74 },
 
   // --- FOR — exemples p. 202 -------------------------------------------------
   { id: 'breaking', label: 'Briser', abilities: ['FOR'], sourcePage: 202 },
@@ -73,6 +83,16 @@ export const testDomains: TestDomain[] = [
   // survie (druide, Maître de la survie, nature-r1, p. 116) : s'orienter, trouver
   // abri/nourriture, éviter les dangers → lecture du milieu, PER (comme orientation).
   { id: 'survival', label: 'Survie', abilities: ['PER'], sourcePage: 116 },
+  // --- PER — observation / fouille du voleur (PER-71) ------------------------
+  // vigilance (Aux aguets, roublard-r2, p. 76 ; aussi Éclaireur, traqueur-r1, p. 72) :
+  // éviter la surprise / repérer une embuscade — le livre nomme « Vigilance ».
+  { id: 'vigilance', label: 'Vigilance', abilities: ['PER'], sourcePage: 76 },
+  // fouille (Aux aguets, roublard-r2, p. 76) : fouiller une pièce, trouver un passage
+  // secret → observation méthodique, PER. À distinguer de `clue-finding` (enquête).
+  { id: 'searching', label: 'Fouille', abilities: ['PER'], sourcePage: 76 },
+  // détection de pièges (Aux aguets, roublard-r2, p. 76) : repérer un piège (même
+  // magique) → PER. Le DÉSAMORÇAGE est manuel (`disarm-traps`, AGI, roublard-r1).
+  { id: 'trap-detection', label: 'Détection de pièges', abilities: ['PER'], sourcePage: 76 },
 
   // --- INT — exemples p. 202 + savoirs/artisanats (mages) --------------------
   { id: 'knowledge', label: 'Connaissances', abilities: ['INT'], sourcePage: 202 },
@@ -102,6 +122,9 @@ export const testDomains: TestDomain[] = [
   // premiers soins (prêtre, Récupération mineure, soins-r1, p. 124) : groupés avec
   // la médecine (INT) par le livre.
   { id: 'first-aid', label: 'Premiers soins', abilities: ['INT'], sourcePage: 124 },
+  // estimation (Doigts agiles, roublard-r1, p. 76) : évaluer un objet précieux
+  // (joyaux, bijoux) → connaissance de la valeur, INT.
+  { id: 'appraisal', label: 'Estimation', abilities: ['INT'], sourcePage: 76 },
 
   // --- CHA — exemples p. 202 + social (mages) --------------------------------
   { id: 'art', label: 'Art', abilities: ['CHA'], sourcePage: 202 },
@@ -119,6 +142,10 @@ export const testDomains: TestDomain[] = [
   { id: 'animal-handling', label: 'Influence animale', abilities: ['CHA'], sourcePage: 114 },
   // prêche (prêtre, Prédicateur, foi-r1, p. 122) : convertir un auditoire → CHA.
   { id: 'preaching', label: 'Prêche', abilities: ['CHA'], sourcePage: 122 },
+  // déguisement (Discrétion, assassin-r1, p. 74) : se faire passer pour un autre —
+  // compétence MONDAINE, distincte du sort Déguisement du barde (vagabond-r5, p. 69).
+  // TODO(extraction) : CHA (jeu de rôle / imposture) ou AGI (maquillage, costume) ? À valider.
+  { id: 'disguise', label: 'Déguisement', abilities: ['CHA'], sourcePage: 74 },
 
   // --- VOL — exemples p. 202 -------------------------------------------------
   { id: 'pushing-limits', label: 'Se dépasser', abilities: ['VOL'], sourcePage: 202 },

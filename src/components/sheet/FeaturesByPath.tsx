@@ -771,11 +771,14 @@ function PathBlock({
   // au rang seuil comme « rang » à la formule, ce qui pilote ses paliers `|C@R` (le
   // terme `rang` n'est pas utilisé dans ces richText). Cf. `countClassPathsAtRank`.
   //  - Transe de guérison (meditation-r2) : +1d4° par voie de moine au rang 4 ;
-  //  - Récupération majeure (soins-r3)    : +1d4° par voie de prêtre au rang 5.
+  //  - Récupération majeure (soins-r3)    : +1d4° par voie de prêtre au rang 5 ;
+  //  - Attaque sournoise (assassin-r2)    : +1d4° par voie de voleur au rang 4 (la voie
+  //    hôte comprise — le texte dit « une voie de voleur », sans exclusion).
   const crossPathDieCount = (feature: Feature): number | undefined => {
     if (!character) return undefined;
     if (feature.id === 'meditation-r2') return countClassPathsAtRank(character, 'moine', 4);
     if (feature.id === 'soins-r3') return countClassPathsAtRank(character, 'pretre', 5);
+    if (feature.id === 'assassin-r2') return countClassPathsAtRank(character, 'voleur', 4);
     return undefined;
   };
   const effectiveRank = (feature: Feature) => crossPathDieCount(feature) ?? pathRank;
