@@ -450,6 +450,16 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage peut prendre la forme d'un loup pendant une durée maximale de 1 h par rang chaque jour. Le personnage conserve toutes ses caractéristiques sauf celles ci-dessous, ainsi que sa valeur d'attaque au contact habituelle.\n\nLOUP\n| FOR +3 | AGI +1 |\nDéfense [12 + rang] · Initiative 15\nDM 1d4+3\nBonus de +5 aux tests basés sur la PER. Sous cette forme, il réduit de 5 les DM qui lui sont infligés par des armes qui ne sont pas en argent, et il gagne un bonus de +5 à tous les tests de poursuite et pour pister une trace.",
+    // PER-137 : RD −5 contre les armes non argentées, CONDITIONNELLE à la forme de loup. Marqueur
+    // d'état (interrupteur manuel) pour n'afficher la RD que sous cette forme.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Sous forme de loup', activeByDefault: false },
+      },
+    ],
+    damageReduction: { kind: 'flat', value: 5, scopes: ['non-silver-weapon'] },
     sourcePage: 130,
   },
   {
@@ -472,6 +482,16 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Désormais le lycanthrope réduit de 5 tous les DM qui lui sont infligés par des armes qui ne sont pas en argent lorsqu'il est sous forme hybride. Cette réduction des DM ne peut pas être cumulée à une autre forme de RD.",
+    // PER-137 : RD −5 contre les armes non argentées, CONDITIONNELLE à la forme hybride. Marqueur
+    // d'état. Le non-cumul « avec une autre forme de RD » reste verbatim (non modélisé).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Sous forme hybride', activeByDefault: false },
+      },
+    ],
+    damageReduction: { kind: 'flat', value: 5, scopes: ['non-silver-weapon'] },
     sourcePage: 131,
   },
   {
@@ -540,6 +560,16 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le corps du personnage se renforce et se couvre d'écailles lorsqu'il reçoit des blessures graves. Lorsque le personnage passe sous la moitié de ses PV, il gagne une réduction des DM de 5 face à tous les types de dommages.",
+    // PER-137 : RD −5 sur TOUS les DM, CONDITIONNELLE (sous la moitié des PV). Marqueur d'état :
+    // le suivi des PV courants n'est pas automatisé → interrupteur manuel.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'Sous la moitié des PV', activeByDefault: false },
+      },
+    ],
+    damageReduction: { kind: 'flat', value: 5 },
     sourcePage: 132,
   },
 

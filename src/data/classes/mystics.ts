@@ -529,8 +529,9 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le druide divise par deux tous les DM « naturels non magiques » : froid, feu, chutes, poisons… mais aussi les DM provoqués par les animaux ou les insectes (même géants). Cette protection s'étend aussi à ses compagnons animaux.",
-    // TODO(résistances) : « divise par deux les DM naturels non magiques » → DamageReduction
-    // divide 2 (passe « stats avancées » différée, cf. effets-conditionnels-cadrage.md).
+    // PER-137 : RD permanente ÷2 sur les DM « naturels non magiques » (regroupement large du livre :
+    // froid, feu, chutes, poisons, animaux/insectes). L'extension aux compagnons animaux reste verbatim.
+    damageReduction: { kind: 'divide', value: 2, scopes: ['natural-non-magical'] },
     sourcePage: 116,
   },
   // =======================================================================
@@ -716,8 +717,13 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine ne reçoit que la moitié des DM de toutes les sources « élémentaires » : Feu, froid, foudre, acide… ainsi que des poisons ou des maladies. À partir du rang 5, il ne reçoit plus aucun DM ni effet des poisons et des maladies.",
-    // TODO(résistances) : moitié des DM élémentaires (feu/froid/foudre/acide) + immunité
-    // poisons/maladies au rang 5 → DamageReduction (passe « stats avancées » différée).
+    // PER-137 : ÷2 permanent sur feu/froid/foudre/acide ; poison/maladie ÷2 jusqu'au rang 4, puis
+    // IMMUNITÉ totale à partir du rang 5 (gating par rang sur les entrées poison/maladie).
+    damageReduction: [
+      { kind: 'divide', value: 2, scopes: ['fire', 'cold', 'lightning', 'acid'] },
+      { kind: 'divide', value: 2, scopes: ['poison', 'disease'], maxPathRank: 4 },
+      { kind: 'immunity', scopes: ['poison', 'disease'], minPathRank: 5 },
+    ],
     sourcePage: 119,
   },
   {
@@ -838,10 +844,12 @@ export const mysticFeatures: Feature[] = [
     text:
       "Tant que le moine n'a réalisé aucune action offensive dans un combat, il bénéficie d'un bonus de +5 en DEF et divise par deux tous les DM subis par des attaques. De plus, il obtient un bonus égal à son rang + 2 à tous les tests d'empathie (pour analyser l'état émotionnel d'un interlocuteur) ou à ceux effectués pour apaiser un auditoire ou le convaincre de ne pas avoir recours à la violence.",
     // Bonus de compétence empathie (PER) ; +5 DEF CONDITIONNEL (aucune action offensive).
-    // TODO(résistances) : « divise par deux les DM subis » → DamageReduction (différé).
+    // PER-137 : « divise par deux tous les DM subis par des attaques » → RD ÷2 (tous DM). Chevauche
+    // l'interrupteur « aucune action offensive » ci-dessous : affichée seulement quand il est actif.
     richText:
       "Tant que le moine n'a réalisé aucune action offensive dans un combat, il bénéficie d'un bonus de +5 en DEF et divise par deux tous les DM subis par des attaques. De plus, il obtient un bonus égal à son [rang + 2] à tous les tests d'empathie (pour analyser l'état émotionnel d'un interlocuteur) ou à ceux effectués pour apaiser un auditoire ou le convaincre de ne pas avoir recours à la violence.",
     effects: [{ kind: 'test-bonus', domains: ['empathy'] }, { kind: 'conditional-stat-bonus', bonuses: [{ stat: 'def', value: 5 }], activation: { kind: 'condition', label: 'aucune action offensive ce combat', activeByDefault: false } }],
+    damageReduction: { kind: 'divide', value: 2 },
     sourcePage: 120,
   },
   {

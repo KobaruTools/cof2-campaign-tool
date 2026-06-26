@@ -25,7 +25,9 @@ export function formatCriticalRange(
   const range = `${low}-20`;
   const scopeWords = SCOPE_WORDS[scope];
   return {
-    short: `Crit. ${range}`,
+    // Court : la plage seule (« 19-20 ») — l'icône de critique et le contexte de la carte suffisent ;
+    // le tooltip (`long`) explicite.
+    short: range,
     long: `Critique sur ${range} (au lieu de 20) sur les attaques ${scopeWords}.`,
   };
 }

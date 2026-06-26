@@ -1189,6 +1189,8 @@ export interface DamageReductionSource {
  * affichage informatif. La valeur scalante éventuelle est résolue par l'UI (toutes constantes à ce jour).
  */
 export function damageReductionSources(character: Character): DamageReductionSource[] {
+  const pathRanks = pathRanksFromFeatures(character.featureIds);
+  const ctx = effectContext(character);
   const out: DamageReductionSource[] = [];
   for (const id of character.featureIds) {
     const feature = featureById.get(id);
@@ -1201,7 +1203,20 @@ export function damageReductionSources(character: Character): DamageReductionSou
     const active =
       conditionalIndexes.length === 0 || conditionalIndexes.some((i) => isEffectActive(character, id, i));
     if (!active) continue;
-    out.push({ featureId: id, name: feature.name, reduction: feature.damageReduction });
+    // Une capacité peut porter PLUSIEURS entrées de RD (tableau, PER-137).
+    const entries = Array.isArray(feature.damageReduction) ? feature.damageReduction : [feature.damageReduction];
+    const rank = pathRanks[feature.pathId] ?? 0;
+    for (const dr of entries) {
+      // Gating par RANG de voie (ex. Invulnérable : ÷2 poison/maladie ≤ r4, immunité ≥ r5).
+      if (dr.minPathRank !== undefined && rank < dr.minPathRank) continue;
+      if (dr.maxPathRank !== undefined && rank > dr.maxPathRank) continue;
+      // Résolution de la valeur scalante (ex. Fils du roc 2 → 3 au niveau 10 ; Résistance au feu 5 → 10
+      // au rang 7) pour l'affichage. Une constante est rendue telle quelle ; le plafond d'absorption
+      // éventuel reste verbatim (non affiché dans la puce).
+      const resolved =
+        dr.value === undefined ? dr : { ...dr, value: resolveValue(dr.value, feature.pathId, pathRanks, ctx) ?? dr.value };
+      out.push({ featureId: id, name: feature.name, reduction: resolved });
+    }
   }
   return out;
 }

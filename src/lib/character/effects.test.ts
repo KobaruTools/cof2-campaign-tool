@@ -13,6 +13,7 @@ import {
   conditionalEffectsOf,
   conditionalEffectBonuses,
   criticalRangeSources,
+  damageReductionSources,
   creatureBonusDiceForPath,
   disabledFeatureIds,
   disabledFeatureReasons,
@@ -743,6 +744,73 @@ describe('criticalRangeSources — plage de critique élargie (PER-133)', () => 
   it('Frappe chirurgicale (spadassin-r3) : +2 au contact (18-20) quand l’interrupteur « arme légère » est actif', () => {
     expect(criticalRangeSources(char(['spadassin-r3'], { 'spadassin-r3': [true] }))).toEqual([
       { featureId: 'spadassin-r3', name: 'Frappe chirurgicale', scope: 'melee', value: 2 },
+    ]);
+  });
+});
+
+describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
+  const char = (
+    featureIds: string[],
+    over: Partial<Character> = {},
+  ): Character =>
+    ({
+      level: 7,
+      abilities: ctx().abilities,
+      featureIds,
+      effectToggles: {},
+      featureChoices: {},
+      ...over,
+    }) as Character;
+
+  it('Endurer (metal-r5) : RD passive ÷2 sur le feu, toujours active', () => {
+    expect(damageReductionSources(char(['metal-r5']))).toEqual([
+      { featureId: 'metal-r5', name: 'Endurer', reduction: { kind: 'divide', value: 2, scopes: ['fire'] } },
+    ]);
+  });
+
+  it('Fils du roc (nain-r4) : RD plate scalante par niveau — 2, puis 3 au niveau 10', () => {
+    const at9 = damageReductionSources(char(['nain-r4'], { level: 9 }));
+    expect(at9[0].reduction).toMatchObject({ kind: 'flat', value: 2 });
+    const at10 = damageReductionSources(char(['nain-r4'], { level: 10 }));
+    expect(at10[0].reduction).toMatchObject({ kind: 'flat', value: 3 });
+  });
+
+  it('Résistance au feu (prestige-chevalier-dragon-r5) : RD feu scalante par rang de voie — 5, puis 10 au rang 7', () => {
+    const r5 = damageReductionSources(char(['prestige-chevalier-dragon-r5']));
+    expect(r5[0].reduction).toMatchObject({ kind: 'flat', value: 5, scopes: ['fire'] });
+    const r7 = damageReductionSources(char(['prestige-chevalier-dragon-r5', 'prestige-chevalier-dragon-r7']));
+    expect(r7[0].reduction).toMatchObject({ kind: 'flat', value: 10, scopes: ['fire'] });
+  });
+
+  it('Magnétisme (metal-r3) : RD conditionnelle masquée tant que l’interrupteur est éteint', () => {
+    expect(damageReductionSources(char(['metal-r3']))).toEqual([]);
+    const on = damageReductionSources(char(['metal-r3'], { effectToggles: { 'metal-r3': [true] } }));
+    expect(on[0].reduction).toMatchObject({ kind: 'divide', value: 2, scopes: ['metallic-projectile'] });
+  });
+
+  it('Insensible au feu (prestige-elementaire-du-feu-r6) : deux entrées — immunité feu + ÷2 froid', () => {
+    const src = damageReductionSources(char(['prestige-elementaire-du-feu-r6']));
+    expect(src.map((s) => s.reduction)).toEqual([
+      { kind: 'immunity', scopes: ['fire'] },
+      { kind: 'divide', value: 2, scopes: ['cold'] },
+    ]);
+  });
+
+  it('Invulnérable (energie-vitale) : poison/maladie en ÷2 au rang 3, en IMMUNITÉ au rang 5', () => {
+    const r3 = damageReductionSources(char(['energie-vitale-r3']));
+    // Rang 3 : ÷2 éléments + ÷2 poison/maladie ; pas encore d'immunité.
+    expect(r3.map((s) => s.reduction.kind)).toEqual(['divide', 'divide']);
+    expect(r3.some((s) => s.reduction.kind === 'immunity')).toBe(false);
+
+    const r5 = damageReductionSources(char(['energie-vitale-r3', 'energie-vitale-r5']));
+    // Rang 5 : ÷2 éléments + IMMUNITÉ poison/maladie (l'entrée ÷2 poison/maladie disparaît).
+    const immunity = r5.find((s) => s.reduction.kind === 'immunity');
+    expect(immunity?.reduction.scopes).toEqual(['poison', 'disease']);
+    expect(r5.filter((s) => s.reduction.kind === 'divide').flatMap((s) => s.reduction.scopes ?? [])).toEqual([
+      'fire',
+      'cold',
+      'lightning',
+      'acid',
     ]);
   });
 });

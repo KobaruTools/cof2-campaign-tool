@@ -535,6 +535,12 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le nain réduit tous les DM subis de 2 points (mais il subit toujours au moins 1 DM par attaque reçue). La réduction passe à 3 au niveau 10. Elle est cumulable avec d’autres sources de réduction des DM comme la peau d’acier du barbare.',
+    // PER-137 : RD permanente plate sur TOUS les DM, scalante par NIVEAU (2 → 3 au niveau 10). Le
+    // plancher « au moins 1 DM » et le cumul explicite restent verbatim (non modélisés).
+    damageReduction: {
+      kind: 'flat',
+      value: { scale: 'stepped', by: 'level', steps: [{ min: 1, value: 2 }, { min: 10, value: 3 }] },
+    },
     sourcePage: 59,
   },
   {

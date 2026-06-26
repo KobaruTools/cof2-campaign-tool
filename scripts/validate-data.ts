@@ -329,25 +329,31 @@ for (const c of features) {
 const validDamageScopes = new Set<string>(RESISTIBLE_DAMAGE_TYPES);
 let featuresWithDamageReduction = 0;
 for (const c of features) {
-  const dr = c.damageReduction;
-  if (!dr) continue;
+  if (!c.damageReduction) continue;
   featuresWithDamageReduction++;
-  if (dr.kind !== 'flat' && dr.kind !== 'divide' && dr.kind !== 'immunity')
-    err(`[capacite ${c.id}] damageReduction.kind inconnu : ${dr.kind}`);
-  if (dr.kind === 'immunity') {
-    if (dr.value !== undefined) err(`[capacite ${c.id}] damageReduction: 'immunity' ne porte pas de value`);
-  } else {
-    if (dr.value === undefined) err(`[capacite ${c.id}] damageReduction: '${dr.kind}' exige une value`);
-    else {
-      const ve = effectValueError(dr.value);
-      if (ve) err(`[capacite ${c.id}] damageReduction value: ${ve}`);
+  // Une capacité peut porter une seule RD ou un TABLEAU d'entrées (PER-137).
+  const drs = Array.isArray(c.damageReduction) ? c.damageReduction : [c.damageReduction];
+  for (const dr of drs) {
+    if (dr.kind !== 'flat' && dr.kind !== 'divide' && dr.kind !== 'immunity')
+      err(`[capacite ${c.id}] damageReduction.kind inconnu : ${dr.kind}`);
+    if (dr.kind === 'immunity') {
+      if (dr.value !== undefined) err(`[capacite ${c.id}] damageReduction: 'immunity' ne porte pas de value`);
+    } else {
+      if (dr.value === undefined) err(`[capacite ${c.id}] damageReduction: '${dr.kind}' exige une value`);
+      else {
+        const ve = effectValueError(dr.value);
+        if (ve) err(`[capacite ${c.id}] damageReduction value: ${ve}`);
+      }
     }
-  }
-  for (const s of dr.scopes ?? [])
-    if (!validDamageScopes.has(s)) err(`[capacite ${c.id}] damageReduction scope inconnu : ${s}`);
-  if (dr.absorptionCap !== undefined) {
-    const ce = effectValueError(dr.absorptionCap);
-    if (ce) err(`[capacite ${c.id}] damageReduction absorptionCap: ${ce}`);
+    for (const s of dr.scopes ?? [])
+      if (!validDamageScopes.has(s)) err(`[capacite ${c.id}] damageReduction scope inconnu : ${s}`);
+    if (dr.absorptionCap !== undefined) {
+      const ce = effectValueError(dr.absorptionCap);
+      if (ce) err(`[capacite ${c.id}] damageReduction absorptionCap: ${ce}`);
+    }
+    for (const k of ['minPathRank', 'maxPathRank'] as const)
+      if (dr[k] !== undefined && (typeof dr[k] !== 'number' || dr[k]! < 1 || dr[k]! > 8))
+        err(`[capacite ${c.id}] damageReduction ${k} hors plage 1-8 : ${dr[k]}`);
   }
 }
 

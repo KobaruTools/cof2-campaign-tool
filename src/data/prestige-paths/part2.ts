@@ -753,6 +753,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le cavalier est désormais un membre à part entière de l'ordre des chevaliers Dragon. Il a appris à résister aux flammes les plus féroces et il retranche 5 à tous les DM de feu subis (RD [feu] 5). Cette réduction passe à 10 une fois atteint le rang 7.",
+    // PER-137 : RD permanente sur le feu, scalante par rang de voie (−5, puis −10 au rang 7).
+    damageReduction: {
+      kind: 'flat',
+      value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 5, value: 5 }, { min: 7, value: 10 }] },
+      scopes: ['fire'],
+    },
     sourcePage: 148,
   },
   {
@@ -1230,6 +1236,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par round, en action gratuite, le personnage retranche la valeur de DEF de son bouclier (bonus de magie inclus) aux DM subis d'une attaque au contact ou à distance, sauf s'il est surpris.",
+    // PER-137 : RD = valeur de DEF du BOUCLIER porté, sur une attaque, 1×/round. Valeur dépendante de
+    // l'équipement porté → modélisation différée à PER-76. Verbatim ; badge WIP pour la relecture.
+    wip: "Réduction de DM égale à la DEF du bouclier porté (manœuvre 1×/round) — valeur dépendante de l'équipement porté, modélisation différée à la milestone Armures (PER-137 / PER-76).",
     sourcePage: 152,
   },
   {
@@ -1526,6 +1535,17 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage peut prendre une seule forme élémentaire de son choix pendant [5 + INT] minutes. La forme élémentaire lui permet de retrancher 5 points à tous les DM subis (RD 5), elle l'immunise aux DM de la forme choisie et lui octroie les capacités suivantes :\n- Feu : le personnage ajoute +2d4° DM de feu à toutes ses attaques au contact. Une créature qui s'attaque à lui avec des armes naturelles subit 1d4° DM pour chaque attaque réussie.\n- Eau : le personnage guérit toutes ses blessures au rythme de 1d4° PV par round et il peut déformer son corps pour passer dans le moindre interstice.\n- Terre : le personnage obtient un bonus de +3 en FOR (+3 attaque et DM au contact et +3 tests de FOR) et en DEF.\n- Air : le personnage peut voler (à une vitesse de 20 m par action de mouvement), il divise par deux les DM de ses attaques physiques mais pas ceux des sorts) et sa RD passe à 10.",
+    // PER-137 : RD −5 sur TOUS les DM, CONDITIONNELLE à la forme élémentaire (durée du sort). Marqueur
+    // d'état pour l'affichage. Cas non modélisés (verbatim) : l'immunité aux DM de l'élément choisi
+    // (cadre « Immunités », phase 2) et la variante Air (RD portée à 10), choix-dépendants.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Forme élémentaire active', activeByDefault: false },
+      },
+    ],
+    damageReduction: { kind: 'flat', value: 5 },
     sourcePage: 157,
   },
 
@@ -2075,6 +2095,9 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: false,
     actionTypes: [],
     text: "L'armure acquiert la couleur de l'argent. Elle octroie une RD 5.",
+    // PER-137 : RD −5 sur tous les DM, octroyée par l'armure sacrée propre à la voie (toujours portée
+    // par définition du personnage de prestige) → traitée comme permanente.
+    damageReduction: { kind: 'flat', value: 5 },
     sourcePage: 166,
   },
   {
@@ -2096,6 +2119,8 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: false,
     actionTypes: [],
     text: "L'armure acquiert la couleur de l'or et elle octroie une RD 7.",
+    // PER-137 : RD −7 sur tous les DM (armure sacrée de la voie, toujours portée) → permanente.
+    damageReduction: { kind: 'flat', value: 7 },
     sourcePage: 166,
   },
 
@@ -2131,6 +2156,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage devient insensible aux DM de feu et il divise par deux les DM de froid.",
+    // PER-137 : deux modes traités SÉPARÉMENT — immunité au feu (puce verte) ET ÷2 froid (puce bleue).
+    damageReduction: [
+      { kind: 'immunity', scopes: ['fire'] },
+      { kind: 'divide', value: 2, scopes: ['cold'] },
+    ],
     sourcePage: 166,
   },
   {

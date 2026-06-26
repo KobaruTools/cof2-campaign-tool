@@ -792,6 +792,17 @@ export const RESISTIBLE_DAMAGE_TYPES = [
   'cold',
   'lightning',
   'acid',
+  // PER-137 : types ajoutés au fil du rescan transversal des RD (liste extensible).
+  'poison',
+  'disease',
+  // Projectiles à pointes métalliques (Magnétisme, forgesort metal-r3).
+  'metallic-projectile',
+  // Armes qui ne sont pas en argent (lycanthrope).
+  'non-silver-weapon',
+  // « Naturels non magiques » — regroupement large du livre (druide Résistant, nature-r5) :
+  // froid, feu, chutes, poisons, DM d'animaux/insectes… On garde un seul type plutôt que
+  // d'énumérer toutes les sources (décision PER-137).
+  'natural-non-magical',
 ] as const;
 export type ResistibleDamageType = (typeof RESISTIBLE_DAMAGE_TYPES)[number];
 
@@ -835,6 +846,18 @@ export interface DamageReduction {
    * `[niveau × 3]`) ; absent = pas de plafond (réduction continue tant qu'active).
    */
   absorptionCap?: EffectValue;
+  /**
+   * Rang MINIMUM atteint dans la voie hôte pour que CETTE entrée s'applique (PER-137). Sert aux
+   * capacités dont la protection CHANGE de nature avec le rang — ex. Invulnérable (moine) : les
+   * poisons/maladies sont ÷2 jusqu'au rang 4, puis IMMUNITÉ à partir du rang 5. Absent = dès l'acquisition.
+   */
+  minPathRank?: number;
+  /**
+   * Rang MAXIMUM dans la voie hôte au-delà duquel cette entrée ne s'applique PLUS (PER-137) — ex. la
+   * réduction ÷2 poison/maladie d'Invulnérable, remplacée par l'immunité au rang 5 → `maxPathRank: 4`.
+   * Absent = pas de plafond de rang.
+   */
+  maxPathRank?: number;
 }
 
 /**
@@ -1233,8 +1256,12 @@ export interface Feature {
    * « DM divisés par 2 »…), EN PLUS du `text` verbatim. PRÉPARATION : posée dans les
    * données, pas encore lue par le moteur (cf. `DamageReduction`). Absent = la
    * capacité n'accorde aucune RD modélisée.
+   *
+   * Peut porter PLUSIEURS entrées (tableau, PER-137) quand une capacité combine des modes
+   * distincts — ex. Insensible au feu (immunité au feu ET ÷2 froid), Invulnérable (÷2 éléments,
+   * puis immunité poison/maladie au rang 5). Chaque entrée est agrégée et affichée séparément.
    */
-  damageReduction?: DamageReduction;
+  damageReduction?: DamageReduction | DamageReduction[];
   /**
    * Plage de critique élargie accordée par la capacité (« 19-20 au lieu de 20 »), EN PLUS du
    * `text` verbatim (PER-133). Donnée d'affichage informatif (non lue par le moteur), rendue en

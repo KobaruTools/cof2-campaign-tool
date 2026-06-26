@@ -450,6 +450,16 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée « pendant [=CHA] minutes ».
     richText:
       "L’ensorceleur et tout son équipement deviennent translucides et intangibles pendant [=CHA] minutes. Sous cette forme, il peut passer à travers murs et obstacles et ne peut subir aucun DM physiques (même infligés par une arme magique), ni en infliger, ni lancer de sorts. Il n’est pas affecté par la gravité et peut se déplacer dans toutes les directions. Il est stoppé par les barrières magiques et ne peut pas passer à travers les êtres vivants.",
+    // PER-137 : IMMUNITÉ aux DM physiques (même magiques) pendant le sort (forme éthérée). Marqueur
+    // d'état pour gater l'affichage de la puce d'immunité.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Forme éthérée active', activeByDefault: false },
+      },
+    ],
+    damageReduction: { kind: 'immunity', scopes: ['physical'] },
     sourcePage: 93,
   },
 
@@ -550,6 +560,16 @@ export const mageFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par combat, au début du round, le joueur peut décider qu’il a eu une vision des différents futurs possibles. Il bénéficie d’un bonus de +10 en attaque, en Défense et à tous les tests de PER pour tout le round, il divise tous les DM subis par 2 et il peut choisir d’agir à n’importe quel moment dans le round, sans considération d’initiative.",
+    // PER-137 : RD TEMPORAIRE ÷2 sur TOUS les DM (le temps du round de vision). Marqueur d'état pour
+    // l'affichage. Le +10 attaque/DEF/tests et l'agir-hors-initiative restent verbatim (situationnels).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Prescience active (ce round)', activeByDefault: false },
+      },
+    ],
+    damageReduction: { kind: 'divide', value: 2 },
     sourcePage: 94,
   },
 
@@ -999,6 +1019,9 @@ export const mageFeatures: Feature[] = [
         activation: { kind: 'condition', label: 'Magnétisme actif — contre les armes métalliques', activeByDefault: false },
       },
     ],
+    // RD ÷2 sur les projectiles à pointes métalliques (PER-137). Chevauche l'interrupteur ci-dessus :
+    // affichée seulement quand Magnétisme est actif.
+    damageReduction: { kind: 'divide', value: 2, scopes: ['metallic-projectile'] },
     sourcePage: 99,
   },
   {
@@ -1028,14 +1051,14 @@ export const mageFeatures: Feature[] = [
     // « ajouter sa valeur de CON au nombre de PM » → bonus permanent de mana égal à la CON.
     // « augmente sa CON de +1 » → modificateur permanent de carac. « dé bonus aux tests de
     // CON » → dé bonus permanent (mécanique core, icône double-d20).
-    // « divise par deux les DM de feu » → réduction de dégâts (type `fire`, moitié).
-    // TODO(résistances) : porter par `Feature.damageReduction` lors de la passe « stats
-    // avancées » (la couche données existe ; le moteur ne la consomme pas encore).
+    // « divise par deux les DM de feu » → réduction de dégâts permanente (PER-137).
     effects: [
       { kind: 'stat-bonus', stat: 'manaPoints', value: { scale: 'ability', ability: 'CON' } },
       { kind: 'ability-bonus', ability: 'CON', value: 1 },
       { kind: 'ability-bonus-die', ability: 'CON' },
     ],
+    // RD permanente : DM de feu subis divisés par 2 (PER-137). Aucun effet conditionnel → toujours active.
+    damageReduction: { kind: 'divide', value: 2, scopes: ['fire'] },
     sourcePage: 99,
   },
 
@@ -1281,6 +1304,16 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le magicien prend la consistance d’un gaz pendant 1 min. Il se déplace au ras du sol (s’il chute, il le fait au ralenti) à une vitesse de 5 m par action de mouvement (M). Il peut s’introduire par les plus petits interstices (comme sous une porte), mais ne peut utiliser aucune capacité. Sous cette forme, les armes ordinaires ne lui infligent aucun DM, mais la magie et les armes magiques l’affectent normalement.",
+    // PER-137 : IMMUNITÉ aux DM non magiques (« armes ordinaires ») pendant le sort (forme gazeuse).
+    // La magie et les armes magiques affectent normalement → scope `non-magical`. Marqueur d'état.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Forme gazeuse active', activeByDefault: false },
+      },
+    ],
+    damageReduction: { kind: 'immunity', scopes: ['non-magical'] },
     sourcePage: 103,
   },
   {
@@ -1413,6 +1446,31 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : réduction de DM « rang + 2 » → [rang + 2] ; durée [=INT] minutes.
     richText:
       "Le magicien retranche son [rang + 2] à tous les DM de feu, de froid, d’électricité ou d’acide subis pendant [=INT] minutes. De plus, pendant la durée du sort, lorsqu’il lance un sort d’un élément, le magicien peut échanger un élément contre un autre (par exemple, une explosion de froid ou une flèche acide).",
+    // PER-137 : RD TEMPORAIRE (durée du sort) plate « rang + 2 » sur les 4 éléments. Marqueur d'état
+    // (interrupteur manuel, bonuses vide) pour que la RD ne s'affiche que sort actif, comme Armure de
+    // pierre. Valeur scalante par rang de voie (rang + 2 → 3..7).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Maîtrise des éléments active', activeByDefault: false },
+      },
+    ],
+    damageReduction: {
+      kind: 'flat',
+      value: {
+        scale: 'stepped',
+        by: 'path-rank',
+        steps: [
+          { min: 1, value: 3 },
+          { min: 2, value: 4 },
+          { min: 3, value: 5 },
+          { min: 4, value: 6 },
+          { min: 5, value: 7 },
+        ],
+      },
+      scopes: ['fire', 'cold', 'lightning', 'acid'],
+    },
     sourcePage: 104,
   },
   {
@@ -1826,6 +1884,19 @@ export const mageFeatures: Feature[] = [
     // Note décrit les créatures non vivantes en général → littéral).
     richText:
       "Le sorcier prend l’apparence de la mort pendant [=INT] minutes. Il est alors considéré non‑vivant et devient immunisé à la plupart des pouvoirs des morts‑vivants (drain de vigueur et affaiblissement, paralysie de la goule, etc.). De plus, ceux‑ci le prennent pour l’un des leurs. Il divise par deux tous les DM de froid. Il ne peut pas bénéficier de soins tant qu’il est sous l’effet de ce sort.\nNote : Les créatures non vivantes sont infatigables, ne respirent pas et sont immunisées aux maladies, aux poisons et à la plupart des attaques qui demandent un test de CON. Elles voient dans le noir comme dans de la pénombre à une distance de 30 m.",
+    // PER-137 : pendant le sort (interrupteur) — ÷2 froid ET immunité aux poisons/maladies (état
+    // non‑vivant). Les pouvoirs de morts‑vivants (drain, paralysie de goule) restent verbatim.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Masque mortuaire actif', activeByDefault: false },
+      },
+    ],
+    damageReduction: [
+      { kind: 'divide', value: 2, scopes: ['cold'] },
+      { kind: 'immunity', scopes: ['poison', 'disease'] },
+    ],
     sourcePage: 108,
   },
   {

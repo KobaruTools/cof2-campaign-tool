@@ -56,6 +56,7 @@ import { effectiveFeatureIdsForMods, pruneFeatureChoices, setFeatureChoice } fro
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
+import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
@@ -64,7 +65,6 @@ import { formatCriticalRange } from '@/lib/ui/criticalRange';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
-import { ImmunitiesPanel } from '@/components/sheet/ImmunitiesPanel';
 import {
   ConcentrationToggle,
   FeaturesByPath,
@@ -271,22 +271,75 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const abilityTestBonus = abilityTestBonusSources(modFeatureIds, effectCtx);
   // Bonus aux tests d'UNE carac précise, par option retenue (ex. Tatouages, PER-125).
   const perAbilityTestBonus = abilityTestBonusByAbility(modFeatureIds, effectCtx);
-  // Réductions de dégâts ACTIVES (ex. Peau d'acier RD 3) — affichées dans la carte Défense (PER-126).
-  const damageReductions = damageReductionSources(character).map((s) => {
-    const f = formatDamageReduction(s.reduction);
-    return { label: f.short, detail: `${s.name} — ${f.long}` };
-  });
-  // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — affichées sous les cartes
-  // Attaque au contact / à distance selon leur portée (PER-133), même patron de puces que la RD.
-  const critRanges = criticalRangeSources(character).map((s) => {
+  // Puces de la carte Défense (PER-137) : IMMUNITÉS (vert) d'abord, puis RÉDUCTIONS de dégâts (bleu).
+  // Chaque RD est éclatée EN UNE PUCE PAR TYPE de dégât (lisibilité) ; l'icône porte le type, le
+  // tooltip l'explication. Les immunités de type de dégât (kind 'immunity') rejoignent les immunités
+  // d'état (PER-103) dans le même cadre Défense.
+  const reductionBadges: DefenseBadgeData[] = [];
+  const damageImmunityBadges: DefenseBadgeData[] = [];
+  for (const s of damageReductionSources(character)) {
+    const dr = s.reduction;
+    const scopes = dr.scopes ?? [];
+    const value = typeof dr.value === 'number' ? dr.value : undefined;
+    const perScope: (typeof scopes[number] | undefined)[] = scopes.length ? scopes : [undefined];
+    // Description du tooltip = VERBATIM de la capacité (le détail du livre, ex. druide Résistant qui
+    // énumère froid/feu/chutes/poisons/animaux) ; repli sur la formule générique si absent.
+    const verbatim = featureById.get(s.featureId)?.text ?? '';
+    for (const scope of perScope) {
+      const f = formatDamageReduction({ ...dr, scopes: scope ? [scope] : undefined });
+      if (dr.kind === 'immunity') {
+        damageImmunityBadges.push({
+          key: `${s.featureId}-imm-${scope ?? 'all'}`,
+          variant: 'immunity',
+          scope,
+          text: scope ? undefined : 'tous DM',
+          title: f.short,
+          description: verbatim || f.long,
+          sources: [s.name],
+        });
+      } else {
+        reductionBadges.push({
+          key: `${s.featureId}-rd-${scope ?? 'all'}`,
+          variant: 'reduction',
+          scope,
+          text: dr.kind === 'divide' ? `/${value ?? '?'}` : `${value ?? '?'}`,
+          title: f.short,
+          description: verbatim || f.long,
+          sources: [s.name],
+        });
+      }
+    }
+  }
+  // Immunités d'ÉTAT (peur, charme, ralenti, immobilisé) — PER-103, désormais fusionnées comme puces
+  // vertes dans la carte Défense (suppression du cadre Immunités séparé).
+  const statusImmunityBadges: DefenseBadgeData[] = aggregateImmunities(modFeatureIds).map((imm) => ({
+    key: `imm-${imm.id}`,
+    variant: 'immunity',
+    text: imm.label,
+    title: `Immunité : ${imm.label}`,
+    description: `Le personnage est immunisé contre l'effet « ${imm.label} ».`,
+    sources: imm.sources,
+  }));
+  // Ordre voulu : immunités d'abord, réductions ensuite.
+  const defenseBadges: DefenseBadgeData[] = [...statusImmunityBadges, ...damageImmunityBadges, ...reductionBadges];
+  // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — badges custom (variante 'critical')
+  // sous les cartes Attaque au contact / à distance selon leur portée (PER-133).
+  const critBadge = (s: ReturnType<typeof criticalRangeSources>[number]): DefenseBadgeData => {
     const f = formatCriticalRange(s.scope, s.value);
-    return { scope: s.scope, label: f.short, detail: `${s.name} — ${f.long}` };
-  });
-  const meleeCriticalRanges = critRanges.filter((c) => c.scope === 'melee');
-  const rangedCriticalRanges = critRanges.filter((c) => c.scope === 'ranged');
-  // Plancher de compétence universel (Éclectique, PER-102) et immunités (PER-103).
+    return {
+      key: `crit-${s.featureId}`,
+      variant: 'critical',
+      text: f.short,
+      title: `Critique ${f.short}`,
+      description: featureById.get(s.featureId)?.text ?? f.long,
+      sources: [s.name],
+    };
+  };
+  const critRanges = criticalRangeSources(character);
+  const meleeCriticalRanges = critRanges.filter((c) => c.scope === 'melee').map(critBadge);
+  const rangedCriticalRanges = critRanges.filter((c) => c.scope === 'ranged').map(critBadge);
+  // Plancher de compétence universel (Éclectique, PER-102).
   const universalTest = universalTestBonus(modFeatureIds);
-  const immunities = aggregateImmunities(modFeatureIds);
   // Carac de base des PM : VOL, ou substitution (Charisme héroïque → CHA, PER-101).
   const manaCast = manaCastingAbility(modFeatureIds, effectCtx.abilities);
   // Dentelles et rapière (seduction-r2, PER-71) : tant que l'interrupteur « aucune armure »
@@ -538,7 +591,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 extraModSources={orphanSourceTerms(character)}
                 overrides={character.overrides}
                 onOverride={editing ? setOverride : undefined}
-                damageReductions={damageReductions}
+                defenseBadges={defenseBadges}
                 meleeCriticalRanges={meleeCriticalRanges}
                 rangedCriticalRanges={rangedCriticalRanges}
               />
@@ -558,8 +611,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             universalBonus={universalTest}
             testDice={testDice}
           />
-
-          <ImmunitiesPanel immunities={immunities} />
 
           <SheetSection
             title="Voies & capacités"

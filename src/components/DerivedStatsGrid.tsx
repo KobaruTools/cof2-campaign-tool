@@ -6,7 +6,6 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
@@ -21,6 +20,7 @@ import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DerivedStatHint } from '@/components/DerivedStatHint';
 import { DieIcon } from '@/components/DieIcon';
+import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 
 /**
  * Pont entre l'id d'affichage (UI) et la clé de surcharge du modèle (moteur).
@@ -73,43 +73,17 @@ export interface DerivedStatsGridProps {
    */
   onOverride?: (key: OverrideKey, value: number | null) => void;
   /**
-   * Réductions de dégâts (RD) ACTIVES à afficher dans la carte Défense (PER-126). Puces
-   * informatives (libellé court + info-bulle). Absent = aucune RD affichée (ex. récap du wizard).
+   * Puces de la carte Défense (PER-137) : immunités (vert, en premier) puis réductions de dégâts
+   * (bleu), rendues en blocs custom (cf. `DefenseBadge`). Absent = aucune (ex. récap du wizard).
    */
-  damageReductions?: { label: string; detail: string }[];
+  defenseBadges?: DefenseBadgeData[];
   /**
-   * Plages de critique élargies ACTIVES au CONTACT à afficher sous la carte « Attaque au contact »
-   * (PER-133). Mêmes puces informatives que la RD. Absent = aucune (ex. récap du wizard).
+   * Badges de plage de critique ACTIVE au CONTACT, sous la carte « Attaque au contact » (PER-133).
+   * Mêmes blocs custom que la Défense (cf. `DefenseBadge`). Absent = aucun (ex. récap du wizard).
    */
-  meleeCriticalRanges?: { label: string; detail: string }[];
-  /** Plages de critique élargies ACTIVES À DISTANCE, sous la carte « Attaque à distance » (PER-133). */
-  rangedCriticalRanges?: { label: string; detail: string }[];
-}
-
-/** Puces informatives (libellé court + info-bulle) accolées sous la valeur d'une stat (RD, plage de critique). */
-function StatChips({
-  items,
-  color,
-}: {
-  items: { label: string; detail: string }[];
-  color: 'info' | 'secondary';
-}) {
-  if (items.length === 0) return null;
-  return (
-    <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-      {items.map((it, i) => (
-        <Tooltip key={`${it.label}-${i}`} title={it.detail} arrow>
-          <Chip
-            label={it.label}
-            size="small"
-            variant="outlined"
-            color={color}
-            sx={{ cursor: 'help', height: 20, '& .MuiChip-label': { px: 0.75, fontSize: '0.7rem' } }}
-          />
-        </Tooltip>
-      ))}
-    </Stack>
-  );
+  meleeCriticalRanges?: DefenseBadgeData[];
+  /** Badges de plage de critique ACTIVE À DISTANCE, sous la carte « Attaque à distance » (PER-133). */
+  rangedCriticalRanges?: DefenseBadgeData[];
 }
 
 interface StatLine {
@@ -136,7 +110,7 @@ export function DerivedStatsGrid({
   size = { xs: 12, sm: 6, md: 4 },
   overrides,
   onOverride,
-  damageReductions,
+  defenseBadges,
   meleeCriticalRanges,
   rangedCriticalRanges,
 }: DerivedStatsGridProps) {
@@ -165,6 +139,16 @@ export function DerivedStatsGrid({
         const forced = overrides ? key in overrides : false;
         const overrideValue = forced ? (overrides![key] ?? 0) : null;
         const display = forced ? overrideValue : computed;
+        // Badges du bas de carte selon la stat : immunités/RD pour la Défense, plage de critique
+        // pour les attaques de contact / à distance (PER-133/137).
+        const badges =
+          id === 'defense'
+            ? defenseBadges
+            : id === 'meleeAttack'
+              ? meleeCriticalRanges
+              : id === 'rangedAttack'
+                ? rangedCriticalRanges
+                : undefined;
 
         return (
           <Grid key={id} size={size}>
@@ -174,90 +158,109 @@ export function DerivedStatsGrid({
                   py: 1,
                   height: '100%',
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
+                  flexDirection: 'column',
                   '&:last-child': { pb: 1 },
                 }}
               >
-                <DerivedStatIcon statId={id} title size={40} />
-                <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: 'block', lineHeight: 1.2 }}
-                  >
-                    {DERIVED_STAT_NAMES[id]}
-                  </Typography>
-
-                  {onOverride ? (
-                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.25 }}>
-                      <TextField
-                        type="number"
-                        size="small"
-                        value={display ?? 0}
-                        disabled={!forced}
-                        onChange={(e) => onOverride(key, Number(e.target.value) || 0)}
-                        slotProps={{
-                          htmlInput: {
-                            style: { textAlign: 'center', fontWeight: 700, padding: '4px 6px' },
-                          },
-                        }}
-                        sx={{ width: 68 }}
-                      />
-                      {suffix}
-                      <Tooltip
-                        title={forced ? 'Revenir au calcul automatique' : 'Forcer cette valeur'}
-                        arrow
-                      >
-                        <IconButton
-                          size="small"
-                          color={forced ? 'warning' : 'default'}
-                          onClick={() => onOverride(key, forced ? null : (computed ?? 0))}
-                        >
-                          {forced ? (
-                            <RestartAltIcon fontSize="small" />
-                          ) : (
-                            <PushPinOutlinedIcon fontSize="small" />
-                          )}
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
-                  ) : (
+                {/* Ligne du haut : icône + libellé + valeur + bouton info, alignée EN HAUT du bloc. */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                  <DerivedStatIcon statId={id} title size={40} />
+                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                     <Typography
-                      variant="h5"
-                      sx={{
-                        fontWeight: 600,
-                        color: forced ? 'warning.main' : undefined,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 0.75,
-                      }}
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', lineHeight: 1.2 }}
                     >
-                      {display === null ? '—' : display}
-                      {suffix}
-                      {forced && (
-                        <Tooltip title="Valeur forcée (calcul automatique remplacé)" arrow>
-                          <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
-                        </Tooltip>
-                      )}
+                      {DERIVED_STAT_NAMES[id]}
                     </Typography>
-                  )}
-                  {id === 'defense' && damageReductions && <StatChips items={damageReductions} color="info" />}
-                  {id === 'meleeAttack' && meleeCriticalRanges && (
-                    <StatChips items={meleeCriticalRanges} color="secondary" />
-                  )}
-                  {id === 'rangedAttack' && rangedCriticalRanges && (
-                    <StatChips items={rangedCriticalRanges} color="secondary" />
-                  )}
+
+                    {onOverride ? (
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.25 }}>
+                        <TextField
+                          type="number"
+                          size="small"
+                          value={display ?? 0}
+                          disabled={!forced}
+                          onChange={(e) => onOverride(key, Number(e.target.value) || 0)}
+                          slotProps={{
+                            htmlInput: {
+                              style: { textAlign: 'center', fontWeight: 700, padding: '4px 6px' },
+                            },
+                          }}
+                          sx={{ width: 68 }}
+                        />
+                        {suffix}
+                        <Tooltip
+                          title={forced ? 'Revenir au calcul automatique' : 'Forcer cette valeur'}
+                          arrow
+                        >
+                          <IconButton
+                            size="small"
+                            color={forced ? 'warning' : 'default'}
+                            onClick={() => onOverride(key, forced ? null : (computed ?? 0))}
+                          >
+                            {forced ? (
+                              <RestartAltIcon fontSize="small" />
+                            ) : (
+                              <PushPinOutlinedIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    ) : (
+                      <Typography
+                        variant="h5"
+                        sx={{
+                          fontWeight: 600,
+                          color: forced ? 'warning.main' : undefined,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 0.75,
+                        }}
+                      >
+                        {display === null ? '—' : display}
+                        {suffix}
+                        {forced && (
+                          <Tooltip title="Valeur forcée (calcul automatique remplacé)" arrow>
+                            <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
+                          </Tooltip>
+                        )}
+                      </Typography>
+                    )}
+                  </Box>
+                  <DerivedStatHint
+                    statId={id}
+                    input={input}
+                    featureIds={featureIds}
+                    effectContext={effectContext}
+                    extraModSources={extraModSources}
+                    sx={{ alignSelf: 'flex-start' }}
+                  />
                 </Box>
-                <DerivedStatHint
-                  statId={id}
-                  input={input}
-                  featureIds={featureIds}
-                  effectContext={effectContext}
-                  extraModSources={extraModSources}
-                  sx={{ alignSelf: 'flex-start' }}
-                />
+
+                {/* Badges alignés EN BAS du bloc (mt: auto). Les IMMUNITÉS ont leur PROPRE grille,
+                    placée AVANT celle des réductions / plages de critique. Grilles à 3 colonnes
+                    ÉGALES pour une empreinte uniforme. */}
+                {badges && badges.length > 0 && (
+                  <Box sx={{ mt: 'auto', pt: 0.75, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    {(['immunity', 'other'] as const).map((group) => {
+                      const items = badges.filter((b) =>
+                        group === 'immunity' ? b.variant === 'immunity' : b.variant !== 'immunity',
+                      );
+                      if (items.length === 0) return null;
+                      return (
+                        <Box
+                          key={group}
+                          sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 0.5 }}
+                        >
+                          {items.map(({ key, ...rest }) => (
+                            <DefenseBadge key={key} {...rest} />
+                          ))}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>
