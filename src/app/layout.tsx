@@ -17,6 +17,8 @@ const roboto = Roboto({
 export const metadata: Metadata = {
   description:
     'Création et simulation de personnages pour Chroniques Oubliées Fantasy 2e édition.',
+  // App privée (table de jeu) : publique mais jamais référencée par les moteurs.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({
