@@ -560,6 +560,12 @@ export const mageFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par combat, au début du round, le joueur peut décider qu’il a eu une vision des différents futurs possibles. Il bénéficie d’un bonus de +10 en attaque, en Défense et à tous les tests de PER pour tout le round, il divise tous les DM subis par 2 et il peut choisir d’agir à n’importe quel moment dans le round, sans considération d’initiative.",
+    // Rendu enrichi (PER-137) : le bonus de [10] est parsé (encadré +10) et @PER mis en avant. « attaque »
+    // (= contact / distance / magique) et « Défense » restent littéraux : le parseur richText n'a pas de
+    // jeton pour les stats DÉRIVÉES (seulement les 7 caracs). Le lien dynamique aux stats dérivées passe,
+    // lui, par les `effects` conditionnels ci-dessous (s'appliquent quand l'interrupteur est actif).
+    richText:
+      "Une fois par combat, au début du round, le joueur peut décider qu’il a eu une vision des différents futurs possibles. Il bénéficie d’un bonus de [10] en attaque, en Défense et à tous les tests de @PER pour tout le round, il divise tous les DM subis par 2 et il peut choisir d’agir à n’importe quel moment dans le round, sans considération d’initiative.",
     // PER-137 : pendant le round de vision (interrupteur) — +10 en attaque (contact, distance ET
     // magique), +10 en DEF, +10 à tous les tests de PER, et ÷2 sur TOUS les DM subis. L'agir-hors-
     // initiative reste verbatim (non modélisable en stat).
