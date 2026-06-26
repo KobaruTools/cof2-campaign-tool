@@ -1131,8 +1131,8 @@ export interface CreatureProfile {
 export interface UsageCounter {
   /**
    * Nombre d'usages disponibles au départ (valeur la plus haute du compteur). CONSTANT.
-   * Optionnel uniquement si un maximum scalant est utilisé (`maxByPathRank` ou `maxByRankCount`).
-   * Au moins l'un des trois (`max`, `maxByPathRank`, `maxByRankCount`) doit être présent.
+   * Optionnel uniquement si un maximum scalant est utilisé (`maxByPathRank`, `maxByLevel` ou `maxByRankCount`).
+   * Au moins l'un des quatre (`max`, `maxByPathRank`, `maxByLevel`, `maxByRankCount`) doit être présent.
    */
   max?: number;
   /**
@@ -1143,6 +1143,13 @@ export interface UsageCounter {
    * l'affichage à partir du rang de voie courant.
    */
   maxByPathRank?: boolean;
+  /**
+   * Maximum SCALANT par NIVEAU (PER-137) : max = `niveau du personnage × maxByLevel`. Sert au SUIVI
+   * D'ABSORPTION d'Armure de pierre (le sort prend fin après avoir absorbé `niveau × 3` DM →
+   * `maxByLevel: 3`) : le compteur démarre plein (capacité d'absorption) et descend à mesure que le
+   * joueur enregistre les DM absorbés. Prioritaire sur `max`. Résolu à l'affichage.
+   */
+  maxByLevel?: number;
   /**
    * Maximum SCALANT par COMPTAGE CROSS-VOIE (PER-130) : max = `base` + nombre de capacités
    * ACQUISES de rang `rank` dans une voie de profil des `classIds`. Ex. réserve de rage du
@@ -1158,6 +1165,14 @@ export interface UsageCounter {
    * l'incrément se font alors par pas de `cost`, et le décrément est bloqué si le reste est inférieur.
    */
   cost?: number;
+  /**
+   * ACTIVER l'interrupteur d'un état temporaire à compteur le CONSOMME-t-il automatiquement (un cran
+   * de `cost`) ? Défaut `true` — patron Rage/Furie du berserk (PER-130) : entrer en rage dépense un
+   * usage. Mettre `false` pour les compteurs de SUIVI dont l'activation ne consomme rien et qui se
+   * décrémentent à la main (ex. absorption d'Armure de pierre, PER-137 : on décompte les DM absorbés
+   * au fil des coups, pas au lancement du sort).
+   */
+  consumeOnActivate?: boolean;
   /**
    * Clé d'état PARTAGÉE (PER-119) : plusieurs capacités d'une même voie peuvent puiser dans
    * une réserve COMMUNE. Le décompte courant est alors stocké sous cette clé dans

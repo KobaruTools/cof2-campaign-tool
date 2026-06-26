@@ -207,7 +207,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     const feature = featureById.get(featureId);
     const effect = feature?.effects?.[index];
     const counter = feature?.usageCounter;
-    if (active && feature && counter && effect?.kind === 'conditional-stat-bonus' && effect.activation.kind === 'temporary') {
+    if (
+      active &&
+      feature &&
+      counter &&
+      counter.consumeOnActivate !== false &&
+      effect?.kind === 'conditional-stat-bonus' &&
+      effect.activation.kind === 'temporary'
+    ) {
       const key = counter.sharedKey ?? feature.id;
       const max = usageCounterMaximum(counter, character, feature);
       const cost = counter.cost ?? 1;

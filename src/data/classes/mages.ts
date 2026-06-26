@@ -1532,6 +1532,10 @@ export const mageFeatures: Feature[] = [
     // RD plate de 5 sur TOUS les DM subis, avec plafond d'absorption niveau × 3
     // (préparation « stats avancées » — non encore lue par le moteur).
     damageReduction: { kind: 'flat', value: 5, absorptionCap: { scale: 'level', factor: 3 } },
+    // PER-137 : compteur de SUIVI de l'absorption (le sort prend fin après niveau × 3 DM absorbés).
+    // Démarre plein et se décrémente À LA MAIN au fil des DM absorbés (pas de consommation au lancement
+    // du sort → `consumeOnActivate: false`).
+    usageCounter: { maxByLevel: 3, consumeOnActivate: false, label: 'Absorption restante (DM)' },
     sourcePage: 104,
   },
 

@@ -162,6 +162,15 @@ describe('usageCounterMaximum — réserve de rage cross-voie (PER-130)', () => 
       ),
     ).toBe(4);
   });
+
+  it('maxByLevel : absorption d’Armure de pierre = niveau × 3 (PER-137)', () => {
+    const feature = featureById.get('magie-elementaire-r5');
+    const counter = feature?.usageCounter;
+    expect(feature && counter).toBeTruthy();
+    if (!feature || !counter) return;
+    expect(usageCounterMaximum(counter, { ...charWith({}), level: 7 }, feature)).toBe(21);
+    expect(usageCounterMaximum(counter, { ...charWith({}), level: 10 }, feature)).toBe(30);
+  });
 });
 
 describe('modsFromFeatures — effets conditionnels / temporaires (PER-67)', () => {

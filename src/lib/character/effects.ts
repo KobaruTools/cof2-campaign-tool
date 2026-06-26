@@ -125,6 +125,7 @@ export function usageCounterMaximum(
   feature: Feature,
 ): number {
   if (counter.maxByPathRank) return pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? 0;
+  if (counter.maxByLevel !== undefined) return character.level * counter.maxByLevel;
   if (counter.maxByRankCount) {
     const { classIds, rank, base } = counter.maxByRankCount;
     let count = 0;
