@@ -560,12 +560,15 @@ export const mageFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par combat, au début du round, le joueur peut décider qu’il a eu une vision des différents futurs possibles. Il bénéficie d’un bonus de +10 en attaque, en Défense et à tous les tests de PER pour tout le round, il divise tous les DM subis par 2 et il peut choisir d’agir à n’importe quel moment dans le round, sans considération d’initiative.",
-    // Rendu enrichi (PER-137) : le bonus de [10] est parsé (encadré +10) et @PER mis en avant. « attaque »
-    // (= contact / distance / magique) et « Défense » restent littéraux : le parseur richText n'a pas de
-    // jeton pour les stats DÉRIVÉES (seulement les 7 caracs). Le lien dynamique aux stats dérivées passe,
-    // lui, par les `effects` conditionnels ci-dessous (s'appliquent quand l'interrupteur est actif).
+    // Rendu enrichi (PER-137, retour propriétaire) : le +10 est un bonus FIXE → texte
+    // littéral (PAS d'encadré de formule dynamique, ce serait trompeur pour un nombre fixe).
+    // Les stats DÉRIVÉES sont auto-détectées par le glossaire (puce ambre) : on développe
+    // « attaque » en ses trois jets (contact / distance / magique), « Défense » → « DEF », et
+    // « initiative » est capitalisée en « Initiative » (glossaire sensible à la casse). @PER reste
+    // une puce de caractéristique. Le lien dynamique aux stats passe par les `effects`
+    // conditionnels ci-dessous (s'appliquent quand l'interrupteur est actif).
     richText:
-      "Une fois par combat, au début du round, le joueur peut décider qu’il a eu une vision des différents futurs possibles. Il bénéficie d’un bonus de [10] en attaque, en Défense et à tous les tests de @PER pour tout le round, il divise tous les DM subis par 2 et il peut choisir d’agir à n’importe quel moment dans le round, sans considération d’initiative.",
+      "Une fois par combat, au début du round, le joueur peut décider qu’il a eu une vision des différents futurs possibles. Il bénéficie d’un bonus de +10 en attaque de contact, attaque à distance et attaque magique, en DEF et à tous les tests de @PER pour tout le round, il divise tous les DM subis par 2 et il peut choisir d’agir à n’importe quel moment dans le round, sans considération d’Initiative.",
     // PER-137 : pendant le round de vision (interrupteur) — +10 en attaque (contact, distance ET
     // magique), +10 en DEF, +10 à tous les tests de PER, et ÷2 sur TOUS les DM subis. L'agir-hors-
     // initiative reste verbatim (non modélisable en stat).
@@ -994,6 +997,7 @@ export const mageFeatures: Feature[] = [
       "Au prix d’une action de mouvement, le forgesort peut enflammer son bâton ou son marteau pendant [=INT] minutes et ajoute +2 DM de feu sur les attaques au contact réalisées avec cette arme. Ce bonus augmente de +1 chaque fois que le personnage atteint le rang 4 dans une voie de forgesort. L’arme s’éteint immédiatement s’il la lâche. En plus de ce sort, le forgesort ajoute son [rang + 2] aux tests d’orfèvrerie ou de forge.",
     // Bonus de compétence (PER-89) : domaines = orfèvrerie, forge.
     effects: [{ kind: 'test-bonus', domains: ['goldsmithing', 'smithing'] }],
+    wip: "+2 DM de feu (scalant par rang 4 de forgesort) sur l'arme enflammée — affichage du DM réel différé au lot scaling cross-voie (PER-92).",
     sourcePage: 99,
   },
   {
@@ -1292,6 +1296,7 @@ export const mageFeatures: Feature[] = [
     // Divination / Armure de mana / Armure d'os). Pas de syntaxe de formule ad hoc ici.
     richText:
       "Le magicien choisit une cible visible située à moins de 30 m et lance sur elle un projectile d’énergie ésotérique pure, déformant la trame de la réalité. La cible subit automatiquement {1d4°} DM. Si le joueur obtient le résultat maximal sur son dé de dommages, il peut le relancer et ajouter le nouveau résultat (une seule fois). Les DM du projectile de mana augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une voie de magicien jusqu’à un maximum égal à sa valeur d’INT.",
+    wip: "Montée des DM (+1 par rang 4 de magicien, plafond INT) non affichée dans l'encadré de dé — différée au lot scaling cross-voie (PER-92).",
     sourcePage: 103,
   },
   {
