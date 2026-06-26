@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { featureById } from '@/data';
 import type { AbilityId } from '@/data/schema';
 import type { Character } from './types';
 import {
@@ -27,6 +28,7 @@ import {
   setEffectToggle,
   testBonusSources,
   universalTestBonus,
+  usageCounterMaximum,
   type EffectContext,
 } from './effects';
 
@@ -133,6 +135,29 @@ describe('setEffectToggle — exclusion mutuelle d’interrupteurs (PER-130)', (
     const reasons = disabledFeatureReasons({ ...c, featureIds: ['rage-r3', 'rage-r5'] });
     expect(reasons.has('rage-r3')).toBe(false);
     expect(reasons.has('rage-r5')).toBe(false);
+  });
+});
+
+describe('usageCounterMaximum — réserve de rage cross-voie (PER-130)', () => {
+  const rageFeature = featureById.get('rage-r3');
+  const counter = rageFeature?.usageCounter;
+
+  it('max = 1 + nombre de capacités de rang 4 de barbare acquises', () => {
+    expect(rageFeature && counter).toBeTruthy();
+    if (!rageFeature || !counter) return;
+    const base = charWith({});
+    // 1 rage de base ; +1 par capacité de rang 4 de barbare (brute-r4, pagne-r4, rage-r4…).
+    expect(usageCounterMaximum(counter, { ...base, featureIds: ['rage-r3'] }, rageFeature)).toBe(1);
+    expect(
+      usageCounterMaximum(counter, { ...base, featureIds: ['rage-r3', 'brute-r4'] }, rageFeature),
+    ).toBe(2);
+    expect(
+      usageCounterMaximum(
+        counter,
+        { ...base, featureIds: ['rage-r3', 'brute-r4', 'pagne-r4', 'rage-r4'] },
+        rageFeature,
+      ),
+    ).toBe(4);
   });
 });
 

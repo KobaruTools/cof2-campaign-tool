@@ -25,8 +25,10 @@ import type {
   DamageReduction,
   DerivedStatId,
   EffectValue,
+  Feature,
   FeatureEffect,
   ImmunityId,
+  UsageCounter,
 } from '@/data/schema';
 import { ABILITY_IDS, IMMUNITY_LABELS } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
@@ -106,6 +108,33 @@ export function pathRanksFromFeatures(featureIds: string[]): Record<string, numb
     ranks[feature.pathId] = Math.max(ranks[feature.pathId] ?? 0, feature.rank);
   }
   return ranks;
+}
+
+/**
+ * Maximum EFFECTIF d'un compteur d'usages : constante `max`, rang ATTEINT dans la voie hôte
+ * (`maxByPathRank`, PER-119), ou `base` + nombre de capacités ACQUISES de rang `rank` dans une voie
+ * de profil des `classIds` (`maxByRankCount`, PER-130 — ex. réserve de rage = 1 + une par capacité de
+ * rang 4 de barbare). SOURCE UNIQUE, partagée par la fiche (FeaturesByPath) et la consommation au
+ * toggle (page personnage).
+ */
+export function usageCounterMaximum(
+  counter: UsageCounter,
+  character: Character,
+  feature: Feature,
+): number {
+  if (counter.maxByPathRank) return pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? 0;
+  if (counter.maxByRankCount) {
+    const { classIds, rank, base } = counter.maxByRankCount;
+    let count = 0;
+    for (const id of character.featureIds) {
+      const f = featureById.get(id);
+      if (!f || f.rank !== rank) continue;
+      const p = pathById.get(f.pathId);
+      if (p?.type === 'class' && p.classIds.some((c) => classIds.includes(c))) count++;
+    }
+    return base + count;
+  }
+  return counter.max ?? 0;
 }
 
 /**

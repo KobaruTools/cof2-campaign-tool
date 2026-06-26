@@ -43,7 +43,7 @@ import {
   conditionalEffectsOf,
   creatureBonusDiceForPath,
   disabledFeatureReasons,
-  pathRanksFromFeatures,
+  usageCounterMaximum,
   type DisabledFeatureReason,
 } from '@/lib/character/effects';
 import { classColor } from '@/lib/ui/classColors';
@@ -635,28 +635,6 @@ function AnimalFormSelector({
 }
 
 /**
- * Maximum EFFECTIF d'un compteur : constante `max`, ou — si `maxByPathRank` (PER-119) — le rang
- * ATTEINT dans la voie hôte, ou — si `maxByRankCount` (PER-130) — `base` + le nombre de capacités
- * ACQUISES de rang `rank` dans une voie de profil des `classIds` (ex. réserve de rage = 1 + une par
- * capacité de rang 4 de barbare).
- */
-function usageCounterMax(counter: UsageCounter, character: Character, feature: Feature): number {
-  if (counter.maxByPathRank) return pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? 0;
-  if (counter.maxByRankCount) {
-    const { classIds, rank, base } = counter.maxByRankCount;
-    let count = 0;
-    for (const id of character.featureIds) {
-      const f = featureById.get(id);
-      if (!f || f.rank !== rank) continue;
-      const p = pathById.get(f.pathId);
-      if (p?.type === 'class' && p.classIds.some((c) => classIds.includes(c))) count++;
-    }
-    return base + count;
-  }
-  return counter.max ?? 0;
-}
-
-/**
  * Clé d'état d'un compteur (PER-119) : la clé PARTAGÉE `sharedKey` si la capacité puise dans
  * une réserve commune (ex. charges explosives), sinon l'id de la capacité (compteur propre).
  */
@@ -683,7 +661,7 @@ function UsageCounterField({
 }) {
   const counter = feature.usageCounter;
   if (!counter) return null;
-  const max = usageCounterMax(counter, character, feature);
+  const max = usageCounterMaximum(counter, character, feature);
   const key = usageCounterKey(counter, feature);
   const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
   // Coût d'un usage de CETTE capacité (PER-130) : le pas de décrément/incrément. La Furie du berserk
@@ -758,7 +736,7 @@ function UsageCounterField({
 function CompactUsageIndicator({ feature, character }: { feature: Feature; character: Character }) {
   const counter = feature.usageCounter;
   if (!counter) return null;
-  const max = usageCounterMax(counter, character, feature);
+  const max = usageCounterMaximum(counter, character, feature);
   const key = usageCounterKey(counter, feature);
   const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
   const label = counter.label ?? 'Usages restants';

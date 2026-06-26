@@ -47,6 +47,7 @@ import {
   pruneEffectToggles,
   pruneUsageCounters,
   setEffectToggle,
+  usageCounterMaximum,
   testBonusSources,
   universalTestBonus,
 } from '@/lib/character/effects';
@@ -195,8 +196,28 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     update({ featureChoices: setFeatureChoice(character, featureId, index, value) });
   // Bascule d'un interrupteur d'effet conditionnel/temporaire (PER-67). Recalcul
   // en direct : le moteur n'inclut l'effet que lorsqu'il est actif.
-  const setEffectToggleValue = (featureId: string, index: number, active: boolean) =>
-    update({ effectToggles: setEffectToggle(character, featureId, index, active) });
+  const setEffectToggleValue = (featureId: string, index: number, active: boolean) => {
+    const nextToggles = setEffectToggle(character, featureId, index, active);
+    const patch: Partial<typeof character> = { effectToggles: nextToggles };
+    // PER-130 : ACTIVER un état TEMPORAIRE doté d'un compteur d'usages le CONSOMME (ex. Rage / Furie
+    // du berserk) — équivaut à un clic « − » de `cost`, clampé à [0, max] (jamais sous 0). Pas de
+    // remboursement à l'extinction (comme le « − »). Les autres interrupteurs ne touchent pas le compteur.
+    const feature = featureById.get(featureId);
+    const effect = feature?.effects?.[index];
+    const counter = feature?.usageCounter;
+    if (active && feature && counter && effect?.kind === 'conditional-stat-bonus' && effect.activation.kind === 'temporary') {
+      const key = counter.sharedKey ?? feature.id;
+      const max = usageCounterMaximum(counter, character, feature);
+      const cost = counter.cost ?? 1;
+      const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+      const nextVal = Math.max(0, remaining - cost);
+      const nextCounters = { ...character.usageCounters };
+      if (nextVal >= max) delete nextCounters[key];
+      else nextCounters[key] = nextVal;
+      patch.usageCounters = nextCounters;
+    }
+    update(patch);
+  };
   // Saisie libre d'état de jeu corrélée à une capacité (PER-70, ex. animal de Forme
   // animale). Une chaîne vide supprime la clé (pas de note fantôme).
   const setEffectInputValue = (featureId: string, value: string) => {
