@@ -1066,6 +1066,7 @@ export const adventurerFeatures: Feature[] = [
         activation: { kind: 'condition', label: 'aucune armure portée', activeByDefault: false },
       },
     ],
+    wip: "Bonus de DEF (CHA) à plafonner par min(CHA, rang) et à conditionner au PORT EFFECTIF d'armure — plafond non posé (valeur surévaluée si CHA > rang) et détection automatique différés à la milestone Armures (PER-106).",
     sourcePage: 68,
   },
   {

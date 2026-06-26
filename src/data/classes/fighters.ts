@@ -767,6 +767,7 @@ export const fighterFeatures: Feature[] = [
     // PER-129 (différé, dépend de PER-115) : le +1d4° DM au contact est CONDITIONNEL à l'état de rage
     // (même interrupteur que le -2 DEF) ; son AFFICHAGE dans le bloc Attaque au contact attend l'infra
     // DM d'arme (PER-115). Modélisé pour l'instant par le {1d4°} du richText (à brancher sur la couche DM).
+    wip: "+1d4° DM au contact conditionnel à la rage — visible dans le texte mais pas encore câblé dans le bloc Attaque au contact, en attente de l'infrastructure DM d'arme (PER-115 / PER-129).",
     sourcePage: 82,
   },
   {
@@ -815,6 +816,7 @@ export const fighterFeatures: Feature[] = [
     },
     // PER-129 (différé, dépend de PER-115) : le +2d4° DM au contact est CONDITIONNEL à l'état de furie
     // (même interrupteur que le -4 DEF) ; affichage dans le bloc Attaque au contact différé à PER-115.
+    wip: "+2d4° DM au contact conditionnel à la furie — visible dans le texte mais pas encore câblé dans le bloc Attaque au contact, en attente de l'infrastructure DM d'arme (PER-115 / PER-129).",
     sourcePage: 82,
   },
 
@@ -839,6 +841,9 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Lorsqu’il est en selle, le chevalier gagne un bonus de +1 aux DM de ses attaques au contact, et sa monture obtient une DEF égale à celle du chevalier. Monter ou descendre de cheval est désormais une action gratuite. Le bonus aux DM passe à +2 au rang 5.',
+    // Bonus aux DM d'arme au contact en selle (+1, +2 au rang 5) → conditionnel au port en selle ;
+    // affichage dans le bloc d'attaque différé à l'infrastructure DM d'arme (PER-115). Verbatim ; badge WIP.
+    wip: "+1 (puis +2 au rang 5) aux DM au contact en selle — bonus aux DM d'arme non câblé dans le bloc d'attaque, en attente de l'infrastructure DM d'arme (PER-115).",
     sourcePage: 83,
   },
   {

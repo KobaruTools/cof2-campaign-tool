@@ -946,6 +946,7 @@ export const mysticFeatures: Feature[] = [
       "Le moine gagne un bonus de +2 en DEF et il divise tous les DM temporaires subis par deux. Le bonus de DEF passe à +3 au rang 5.",
     // DEF +2→+3 (r5) permanent. TODO(résistances) : « DM temporaires /2 » → DamageReduction (différé).
     effects: [{ kind: 'stat-bonus', stat: 'def', value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 5, value: 3 }] } }],
+    wip: "« DM temporaires divisés par deux » non encore modélisé en réduction de dégâts — différé à la passe Résistances (seul le bonus de DEF est posé).",
     sourcePage: 121,
   },
   {
@@ -1400,6 +1401,7 @@ export const mysticFeatures: Feature[] = [
         activation: { kind: 'condition', label: 'sans armure (bouclier autorisé)', activeByDefault: false },
       },
     ],
+    wip: "Bonus de DEF « sans armure » à interrupteur manuel — détection automatique de l'absence d'armure (PER-83) et variante cotte de mailles (maîtrise + capacités utilisables avec, PER-81) différées à la milestone Armures.",
     sourcePage: 125,
   },
   {
