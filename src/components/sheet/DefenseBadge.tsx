@@ -1,7 +1,6 @@
 'use client';
 
 import Box from '@mui/material/Box';
-import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import ShieldIcon from '@mui/icons-material/Shield';
@@ -26,12 +25,13 @@ export interface DefenseBadgeData {
   scope?: ResistibleDamageType;
   /** Texte court accolé : valeur de RD (« /2 », « 5 »), plage de critique (« 19-20 »), état (« Peur »). */
   text?: string;
-  /** Titre du tooltip : libellé court de l'effet (ex. « RD Froid ÷2 », « Immunité au feu », « Critique 18-20 »). */
+  /** Titre du tooltip : libellé court de l'effet (ex. « RD 5 », « Immunité au feu », « Critique 18-20 »). */
   title: string;
-  /** Explication (règle) affichée sous le titre. */
-  description: string;
-  /** Capacité(s) qui accordent l'effet — listées en breakdown « Source », comme les stats dérivées (PER-137). */
-  sources: string[];
+  /**
+   * Capacité(s) qui accordent l'effet, en BREAKDOWN (comme les stats dérivées) : nom + contribution
+   * éventuelle (ex. RD cumulée « Fils du roc : 3 », « Peau d'acier : 3 »). PER-137.
+   */
+  sources: { name: string; value?: string }[];
 }
 
 /** Couleur de palette MUI par variante. */
@@ -47,27 +47,34 @@ const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary'> = {
  * pilotée par la grille parente (cellule à largeur égale) pour une empreinte UNIFORME. Vert =
  * immunité (bouclier), bleu = réduction de dégâts, violet = plage de critique (croix de visée).
  */
-export function DefenseBadge({ variant, scope, text, title, description, sources }: Omit<DefenseBadgeData, 'key'>) {
+export function DefenseBadge({
+  variant,
+  scope,
+  text,
+  title,
+  sources,
+  fullWidth = true,
+}: Omit<DefenseBadgeData, 'key'> & { fullWidth?: boolean }) {
   const paletteKey = PALETTE[variant];
-  // Tooltip en « breakdown » au style des statistiques dérivées : titre de l'effet, explication, puis
-  // la/les capacité(s) source(s) en sous-détail gris (PER-137).
+  // Tooltip en « breakdown » au style des statistiques dérivées : titre de l'effet, puis la/les
+  // capacité(s) source(s) en sous-détail gris (nom + contribution si cumul). PER-137.
   const tooltip = (
-    <Box sx={{ minWidth: 180 }}>
+    <Box sx={{ minWidth: 160 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
         {title}
       </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-        {description}
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+        {sources.length > 1 ? 'Sources' : 'Source'}
       </Typography>
-      {sources.length > 0 && (
-        <>
-          <Divider sx={{ my: 0.5 }} />
-          <Box sx={{ fontSize: '0.8em', color: 'text.secondary' }}>
-            {sources.length > 1 ? 'Sources : ' : 'Source : '}
-            {sources.join(', ')}
-          </Box>
-        </>
-      )}
+      {sources.map((s, i) => (
+        <Box
+          key={i}
+          sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, fontSize: '0.85em', fontVariantNumeric: 'tabular-nums' }}
+        >
+          <span>{s.name}</span>
+          {s.value && <span style={{ fontWeight: 600 }}>{s.value}</span>}
+        </Box>
+      ))}
     </Box>
   );
   return (
@@ -78,7 +85,7 @@ export function DefenseBadge({ variant, scope, text, title, description, sources
           alignItems: 'center',
           justifyContent: 'center',
           gap: 0.5,
-          width: '100%',
+          width: fullWidth ? '100%' : 'auto',
           minWidth: 0,
           height: 28,
           px: 1,

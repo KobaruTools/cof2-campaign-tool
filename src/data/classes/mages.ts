@@ -560,12 +560,19 @@ export const mageFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par combat, au début du round, le joueur peut décider qu’il a eu une vision des différents futurs possibles. Il bénéficie d’un bonus de +10 en attaque, en Défense et à tous les tests de PER pour tout le round, il divise tous les DM subis par 2 et il peut choisir d’agir à n’importe quel moment dans le round, sans considération d’initiative.",
-    // PER-137 : RD TEMPORAIRE ÷2 sur TOUS les DM (le temps du round de vision). Marqueur d'état pour
-    // l'affichage. Le +10 attaque/DEF/tests et l'agir-hors-initiative restent verbatim (situationnels).
+    // PER-137 : pendant le round de vision (interrupteur) — +10 en attaque (contact, distance ET
+    // magique), +10 en DEF, +10 à tous les tests de PER, et ÷2 sur TOUS les DM subis. L'agir-hors-
+    // initiative reste verbatim (non modélisable en stat).
     effects: [
       {
         kind: 'conditional-stat-bonus',
-        bonuses: [],
+        bonuses: [
+          { stat: 'meleeAttack', value: 10 },
+          { stat: 'rangedAttack', value: 10 },
+          { stat: 'magicAttack', value: 10 },
+          { stat: 'def', value: 10 },
+        ],
+        abilityTestBonusFor: { ability: 'PER', value: 10 },
         activation: { kind: 'temporary', label: 'Prescience active (ce round)', activeByDefault: false },
       },
     ],
@@ -1446,16 +1453,10 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : réduction de DM « rang + 2 » → [rang + 2] ; durée [=INT] minutes.
     richText:
       "Le magicien retranche son [rang + 2] à tous les DM de feu, de froid, d’électricité ou d’acide subis pendant [=INT] minutes. De plus, pendant la durée du sort, lorsqu’il lance un sort d’un élément, le magicien peut échanger un élément contre un autre (par exemple, une explosion de froid ou une flèche acide).",
-    // PER-137 : RD TEMPORAIRE (durée du sort) plate « rang + 2 » sur les 4 éléments. Marqueur d'état
-    // (interrupteur manuel, bonuses vide) pour que la RD ne s'affiche que sort actif, comme Armure de
-    // pierre. Valeur scalante par rang de voie (rang + 2 → 3..7).
-    effects: [
-      {
-        kind: 'conditional-stat-bonus',
-        bonuses: [],
-        activation: { kind: 'temporary', label: 'Maîtrise des éléments active', activeByDefault: false },
-      },
-    ],
+    // PER-137 : RD TEMPORAIRE plate « rang + 2 » contre UN SEUL élément, CHOISI à la table (le livre
+    // dit « feu, froid, électricité OU acide » + échange d'élément en cours de sort). Le scope est donc
+    // un choix d'état de jeu (`scopeChoice` → `Character.effectInputs`, hors mode édition), et le
+    // sélecteur d'élément tient lieu d'interrupteur (« Aucun » = inactif). Valeur scalante (rang + 2).
     damageReduction: {
       kind: 'flat',
       value: {
@@ -1469,7 +1470,7 @@ export const mageFeatures: Feature[] = [
           { min: 5, value: 7 },
         ],
       },
-      scopes: ['fire', 'cold', 'lightning', 'acid'],
+      scopeChoice: ['fire', 'cold', 'lightning', 'acid'],
     },
     sourcePage: 104,
   },

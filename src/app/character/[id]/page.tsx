@@ -37,7 +37,7 @@ import {
   abilityTestBonusSources,
   abilityTestBonusByAbility,
   criticalRangeSources,
-  damageReductionSources,
+  stackedDamageReductions,
   activeConditionalTestDice,
   aggregateImmunities,
   effectContext,
@@ -272,42 +272,35 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Bonus aux tests d'UNE carac précise, par option retenue (ex. Tatouages, PER-125).
   const perAbilityTestBonus = abilityTestBonusByAbility(modFeatureIds, effectCtx);
   // Puces de la carte Défense (PER-137) : IMMUNITÉS (vert) d'abord, puis RÉDUCTIONS de dégâts (bleu).
-  // Chaque RD est éclatée EN UNE PUCE PAR TYPE de dégât (lisibilité) ; l'icône porte le type, le
-  // tooltip l'explication. Les immunités de type de dégât (kind 'immunity') rejoignent les immunités
-  // d'état (PER-103) dans le même cadre Défense.
+  // Le cumul des RD plates de même portée (Fils du roc + Peau d'acier → RD 6) est fait côté moteur par
+  // `stackedDamageReductions` ; ici on ne fait que mettre en badges (titre + breakdown des sources).
   const reductionBadges: DefenseBadgeData[] = [];
   const damageImmunityBadges: DefenseBadgeData[] = [];
-  for (const s of damageReductionSources(character)) {
-    const dr = s.reduction;
-    const scopes = dr.scopes ?? [];
-    const value = typeof dr.value === 'number' ? dr.value : undefined;
-    const perScope: (typeof scopes[number] | undefined)[] = scopes.length ? scopes : [undefined];
-    // Description du tooltip = VERBATIM de la capacité (le détail du livre, ex. druide Résistant qui
-    // énumère froid/feu/chutes/poisons/animaux) ; repli sur la formule générique si absent.
-    const verbatim = featureById.get(s.featureId)?.text ?? '';
-    for (const scope of perScope) {
-      const f = formatDamageReduction({ ...dr, scopes: scope ? [scope] : undefined });
-      if (dr.kind === 'immunity') {
-        damageImmunityBadges.push({
-          key: `${s.featureId}-imm-${scope ?? 'all'}`,
-          variant: 'immunity',
-          scope,
-          text: scope ? undefined : 'tous DM',
-          title: f.short,
-          description: verbatim || f.long,
-          sources: [s.name],
-        });
-      } else {
-        reductionBadges.push({
-          key: `${s.featureId}-rd-${scope ?? 'all'}`,
-          variant: 'reduction',
-          scope,
-          text: dr.kind === 'divide' ? `/${value ?? '?'}` : `${value ?? '?'}`,
-          title: f.short,
-          description: verbatim || f.long,
-          sources: [s.name],
-        });
-      }
+  for (const r of stackedDamageReductions(character)) {
+    const scopes = r.scope ? [r.scope] : undefined;
+    if (r.kind === 'immunity') {
+      damageImmunityBadges.push({
+        key: `imm-${r.scope ?? 'all'}`,
+        variant: 'immunity',
+        scope: r.scope,
+        text: r.scope ? undefined : 'tous DM',
+        title: formatDamageReduction({ kind: 'immunity', scopes }).short,
+        sources: r.sources.map((s) => ({ name: s.name })),
+      });
+    } else {
+      const v = r.total ?? 0;
+      reductionBadges.push({
+        key: `rd-${r.kind}-${r.scope ?? 'all'}-${v}`,
+        variant: 'reduction',
+        scope: r.scope,
+        text: r.kind === 'divide' ? `/${v}` : `${v}`,
+        title: formatDamageReduction({ kind: r.kind, value: v, scopes }).short,
+        // Breakdown : on n'affiche la valeur par source que si plusieurs sources cumulent.
+        sources: r.sources.map((s) => ({
+          name: s.name,
+          value: r.sources.length > 1 && s.value !== undefined ? `${s.value}` : undefined,
+        })),
+      });
     }
   }
   // Immunités d'ÉTAT (peur, charme, ralenti, immobilisé) — PER-103, désormais fusionnées comme puces
@@ -317,8 +310,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     variant: 'immunity',
     text: imm.label,
     title: `Immunité : ${imm.label}`,
-    description: `Le personnage est immunisé contre l'effet « ${imm.label} ».`,
-    sources: imm.sources,
+    sources: imm.sources.map((name) => ({ name })),
   }));
   // Ordre voulu : immunités d'abord, réductions ensuite.
   const defenseBadges: DefenseBadgeData[] = [...statusImmunityBadges, ...damageImmunityBadges, ...reductionBadges];
@@ -331,8 +323,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       variant: 'critical',
       text: f.short,
       title: `Critique ${f.short}`,
-      description: featureById.get(s.featureId)?.text ?? f.long,
-      sources: [s.name],
+      sources: [{ name: s.name }],
     };
   };
   const critRanges = criticalRangeSources(character);

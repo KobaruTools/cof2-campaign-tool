@@ -76,6 +76,12 @@ const TARGETS: Target[] = [
     // Les trois autres voies (pourfendeur, primitif, rage) s'ouvrent aux montées.
     level1FreeIds: ['brute-r1', 'pagne-r1', 'humain-r1'],
   },
+  {
+    file: 'test-nain-guerrier-rd-cumul.json',
+    // Profil guerrier (combat + soldat à la création) ; peuple nain. La voie du pagne
+    // (barbare) s'ouvre comme HYBRIDE intra-famille combattants aux montées (Peau d'acier).
+    level1FreeIds: ['combat-r1', 'soldat-r1', 'nain-r1'],
+  },
 ];
 
 const dir = join(process.cwd(), 'examples', 'characters');

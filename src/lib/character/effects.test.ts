@@ -14,6 +14,7 @@ import {
   conditionalEffectBonuses,
   criticalRangeSources,
   damageReductionSources,
+  stackedDamageReductions,
   creatureBonusDiceForPath,
   disabledFeatureIds,
   disabledFeatureReasons,
@@ -788,12 +789,41 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
     expect(on[0].reduction).toMatchObject({ kind: 'divide', value: 2, scopes: ['metallic-projectile'] });
   });
 
+  it('stackedDamageReductions : Fils du roc + Peau d’acier CUMULENT en RD 6 (tous DM) avec breakdown', () => {
+    // Nain niveau 10 (Fils du roc = RD 3) + barbare Peau d’acier (RD 3), toutes deux plates sur tous
+    // les DM → une seule entrée cumulée de 6, détaillant les deux capacités sources.
+    const stacked = stackedDamageReductions(char(['nain-r4', 'pagne-r5'], { level: 10 }));
+    const flatAll = stacked.find((r) => r.kind === 'flat' && r.scope === undefined);
+    expect(flatAll?.total).toBe(6);
+    expect(flatAll?.sources).toEqual(
+      expect.arrayContaining([
+        { name: 'Fils du roc', value: 3 },
+        { name: 'Peau d’acier', value: 3 },
+      ]),
+    );
+  });
+
   it('Insensible au feu (prestige-elementaire-du-feu-r6) : deux entrées — immunité feu + ÷2 froid', () => {
     const src = damageReductionSources(char(['prestige-elementaire-du-feu-r6']));
     expect(src.map((s) => s.reduction)).toEqual([
       { kind: 'immunity', scopes: ['fire'] },
       { kind: 'divide', value: 2, scopes: ['cold'] },
     ]);
+  });
+
+  it('Maîtrise des éléments (magie-elementaire-r2) : RD sur l’élément CHOISI à la table, masquée sans choix', () => {
+    // Aucun élément choisi → pas de RD affichée.
+    expect(damageReductionSources(char(['magie-elementaire-r2']))).toEqual([]);
+    // Élément « feu » choisi (état de jeu effectInputs) → RD plate rang+2 (= 4 au rang 2) sur le feu.
+    const fire = damageReductionSources(
+      char(['magie-elementaire-r2'], { effectInputs: { 'magie-elementaire-r2': 'fire' } }),
+    );
+    expect(fire).toHaveLength(1);
+    expect(fire[0].reduction).toMatchObject({ kind: 'flat', value: 4, scopes: ['fire'] });
+    // Choix invalide → ignoré (pas de RD).
+    expect(
+      damageReductionSources(char(['magie-elementaire-r2'], { effectInputs: { 'magie-elementaire-r2': 'xyz' } })),
+    ).toEqual([]);
   });
 
   it('Invulnérable (energie-vitale) : poison/maladie en ÷2 au rang 3, en IMMUNITÉ au rang 5', () => {

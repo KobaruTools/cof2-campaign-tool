@@ -536,6 +536,13 @@ export interface ConditionalStatBonusEffect {
    */
   abilityTestBonus?: EffectValue;
   /**
+   * Bonus CHIFFRÉ aux tests d'UNE caractéristique précise, piloté par le MÊME interrupteur (PER-137).
+   * À DISTINGUER de `abilityTestBonus` (uniforme à TOUTES les caracs, ex. Bénédiction) : ici une seule
+   * carac. Ex. Prescience (divination-r5) : « +10 à tous les tests de PER » tant que la vision est
+   * active. Constante ou scalante. Agrégé par `abilityTestBonusByAbility` quand l'interrupteur est actif.
+   */
+  abilityTestBonusFor?: { ability: AbilityId; value: EffectValue };
+  /**
    * Domaines de test (ids du catalogue `src/data/test-domains.ts`) dont les tests gagnent un
    * DÉ BONUS tant que cet effet est ACTIF (PER-108) — pas un bonus chiffré, un DÉ (« 2d20, garde
    * le meilleur »). Ex. Travail d'équipe (rôdeur, compagnon-animal-r2) : « dé bonus aux tests pour
@@ -858,6 +865,14 @@ export interface DamageReduction {
    * Absent = pas de plafond de rang.
    */
   maxPathRank?: number;
+  /**
+   * SCOPE choisi À LA TABLE (PER-137) : au lieu d'une portée figée (`scopes`), le joueur PICKE l'un de
+   * ces types pendant une session — ex. Maîtrise des éléments (le magicien choisit l'élément résisté,
+   * échangeable « à la table »). Le choix est un ÉTAT DE JEU (`Character.effectInputs[featureId]`,
+   * éditable HORS mode édition de la fiche), pas une donnée figée. La RD n'est comptée/affichée que si un
+   * élément valide est choisi. Exclusif avec `scopes`.
+   */
+  scopeChoice?: ResistibleDamageType[];
 }
 
 /**

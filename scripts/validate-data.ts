@@ -222,6 +222,13 @@ for (const c of features) {
         const valueError = effectValueError(e.abilityTestBonus);
         if (valueError) err(`[capacite ${c.id}] effect: abilityTestBonus ${valueError}`);
       }
+      // Bonus conditionnel à UNE carac précise (PER-137, ex. Prescience +10 PER).
+      if (e.abilityTestBonusFor !== undefined) {
+        if (!validAbilities.has(e.abilityTestBonusFor.ability))
+          err(`[capacite ${c.id}] effect: abilityTestBonusFor carac inconnue : ${e.abilityTestBonusFor.ability}`);
+        const valueError = effectValueError(e.abilityTestBonusFor.value);
+        if (valueError) err(`[capacite ${c.id}] effect: abilityTestBonusFor ${valueError}`);
+      }
       // Dé bonus conditionnel sur des domaines de test nommés (PER-108) — ids du catalogue.
       for (const d of e.testDieDomains ?? [])
         if (!testDomainById.has(d)) err(`[capacite ${c.id}] effect: domaine inconnu (testDieDomains) : ${d}`);
@@ -347,6 +354,11 @@ for (const c of features) {
     }
     for (const s of dr.scopes ?? [])
       if (!validDamageScopes.has(s)) err(`[capacite ${c.id}] damageReduction scope inconnu : ${s}`);
+    // Scope CHOISI à la table (PER-137) : types valides, et exclusif avec `scopes` figés.
+    for (const s of dr.scopeChoice ?? [])
+      if (!validDamageScopes.has(s)) err(`[capacite ${c.id}] damageReduction scopeChoice inconnu : ${s}`);
+    if (dr.scopeChoice && dr.scopes)
+      err(`[capacite ${c.id}] damageReduction: 'scopes' et 'scopeChoice' sont exclusifs`);
     if (dr.absorptionCap !== undefined) {
       const ce = effectValueError(dr.absorptionCap);
       if (ce) err(`[capacite ${c.id}] damageReduction absorptionCap: ${ce}`);

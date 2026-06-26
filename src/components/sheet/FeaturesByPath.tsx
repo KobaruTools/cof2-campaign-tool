@@ -34,7 +34,7 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById } from '@/data';
-import type { Feature, Path, UsageCounter } from '@/data/schema';
+import type { Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import { featureChoiceDefs, hasUnmadeChoice } from '@/lib/character/choices';
@@ -47,6 +47,8 @@ import {
   type DisabledFeatureReason,
 } from '@/lib/character/effects';
 import { classColor } from '@/lib/ui/classColors';
+import { DamageTypeIcon } from '@/components/DamageTypeIcon';
+import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { SpellManaBadge } from '@/components/SpellManaBadge';
@@ -641,6 +643,75 @@ function AnimalFormSelector({
   );
 }
 
+/** Libellés français courts des types de dégât proposés à un choix de résistance. */
+const ELEMENT_CHOICE_LABEL: Partial<Record<ResistibleDamageType, string>> = {
+  fire: 'Feu',
+  cold: 'Froid',
+  lightning: 'Foudre',
+  acid: 'Acide',
+  poison: 'Poison',
+  disease: 'Maladie',
+};
+
+/** Types proposés au choix de résistance d'une capacité (1ère entrée `damageReduction` à `scopeChoice`), ou null. */
+function damageReductionScopeChoice(feature: Feature): ResistibleDamageType[] | null {
+  const dr = feature.damageReduction;
+  if (!dr) return null;
+  const list = Array.isArray(dr) ? dr : [dr];
+  return list.find((d) => d.scopeChoice?.length)?.scopeChoice ?? null;
+}
+
+/**
+ * Sélecteur d'ÉLÉMENT RÉSISTÉ pour une RD à scope choisi (ex. Maîtrise des éléments, PER-137). État
+ * de jeu « à la table » (stocké dans `Character.effectInputs[featureId]`, éditable HORS mode édition,
+ * comme les interrupteurs). Le sélecteur tient lieu d'activation : « Aucun » = inactif (pas de RD),
+ * un élément = sort actif sur cet élément (échangeable). En lecture seule, affiche l'élément retenu.
+ */
+function ElementResistanceSelector({
+  feature,
+  character,
+  onSetInput,
+}: {
+  feature: Feature;
+  character: Character;
+  onSetInput?: (featureId: string, value: string) => void;
+}) {
+  const options = damageReductionScopeChoice(feature);
+  if (!options) return null;
+  const value = character.effectInputs?.[feature.id] ?? '';
+  if (!onSetInput) {
+    return value ? (
+      <Typography variant="caption" component="div" sx={{ mt: 1, fontWeight: 600 }}>
+        Élément résisté : {ELEMENT_CHOICE_LABEL[value as ResistibleDamageType] ?? value}
+      </Typography>
+    ) : null;
+  }
+  return (
+    <Box sx={{ mt: 1 }} onClick={(e) => e.stopPropagation()}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
+        Élément résisté (à choisir à la table)
+      </Typography>
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={value}
+        onChange={(_, next: string | null) => onSetInput(feature.id, next ?? '')}
+        sx={{ flexWrap: 'wrap' }}
+      >
+        <ToggleButton value="" sx={{ textTransform: 'none' }}>
+          Aucun
+        </ToggleButton>
+        {options.map((el) => (
+          <ToggleButton key={el} value={el} sx={{ textTransform: 'none', gap: 0.5 }}>
+            <DamageTypeIcon type={el} size={18} />
+            {ELEMENT_CHOICE_LABEL[el] ?? el}
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
+    </Box>
+  );
+}
+
 /**
  * Clé d'état d'un compteur (PER-119) : la clé PARTAGÉE `sharedKey` si la capacité puise dans
  * une réserve commune (ex. charges explosives), sinon l'id de la capacité (compteur propre).
@@ -1200,6 +1271,25 @@ function PathBlock({
             {hasEffectToggles(feature) && (
               <Box sx={{ mt: 0.5, width: '100%' }}>{renderEffectToggles(feature, { compact: true })}</Box>
             )}
+            {/* Rappel compact de l'élément résisté choisi (Maîtrise des éléments, PER-137) : badge bleu
+                « Feu/Froid… » pour ne pas oublier que l'effet est actif (le sélecteur est dans la modale). */}
+            {(() => {
+              const el = damageReductionScopeChoice(feature) && character?.effectInputs?.[feature.id];
+              if (!el) return null;
+              const label = ELEMENT_CHOICE_LABEL[el as ResistibleDamageType] ?? el;
+              return (
+                <Box sx={{ mt: 0.5 }} onClick={(e) => e.stopPropagation()}>
+                  <DefenseBadge
+                    variant="reduction"
+                    scope={el as ResistibleDamageType}
+                    text={label}
+                    title={`${feature.name} : ${label}`}
+                    sources={[{ name: feature.name }]}
+                    fullWidth={false}
+                  />
+                </Box>
+              );
+            })()}
             {/* Indicateur compact du compteur d'usages (lecture seule ; édition en
                 modale). Ex. Les sept vies du chat : pastilles « N/6 ». */}
             {feature.usageCounter && character && (
@@ -1436,6 +1526,16 @@ function PathBlock({
                     )}
                   </>
                 )}
+                {damageReductionScopeChoice(openFeature) && character && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <ElementResistanceSelector
+                      feature={openFeature}
+                      character={character}
+                      onSetInput={onSetEffectInput}
+                    />
+                  </>
+                )}
                 {openFeature.usageCounter && character && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -1635,6 +1735,12 @@ function PathBlock({
                   {feature.id === 'animaux-r5' && character && (
                     <AnimalFormSelector character={character} onSetInput={onSetEffectInput} />
                   )}
+                </>
+              )}
+              {damageReductionScopeChoice(feature) && character && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  <ElementResistanceSelector feature={feature} character={character} onSetInput={onSetEffectInput} />
                 </>
               )}
               {feature.usageCounter && character && (

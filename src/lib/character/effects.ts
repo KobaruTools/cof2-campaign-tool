@@ -29,6 +29,7 @@ import type {
   Feature,
   FeatureEffect,
   ImmunityId,
+  ResistibleDamageType,
   UsageCounter,
 } from '@/data/schema';
 import { ABILITY_IDS, IMMUNITY_LABELS } from '@/data/schema';
@@ -544,21 +545,33 @@ export function abilityTestBonusByAbility(
   ctx?: EffectContext,
 ): Partial<Record<AbilityId, AbilityTestBonusSource[]>> {
   const out: Partial<Record<AbilityId, AbilityTestBonusSource[]>> = {};
-  if (!ctx?.featureChoices) return out;
+  const pathRanks = pathRanksFromFeatures(featureIds);
   for (const id of featureIds) {
     const feature = featureById.get(id);
-    if (!feature?.choices) continue;
-    const selections = ctx.featureChoices[id] ?? [];
-    feature.choices.forEach((choice, i) => {
-      if (choice.kind !== 'option') return;
-      const sel = selections[i];
-      const chosenIds = Array.isArray(sel) ? sel : typeof sel === 'string' ? [sel] : [];
-      for (const optId of chosenIds) {
-        const option = choice.options.find((o) => o.id === optId);
-        if (!option?.abilityTestBonus || option.abilityTestBonus.value === 0) continue;
-        const { ability, value } = option.abilityTestBonus;
-        (out[ability] ??= []).push({ featureId: id, name: feature.name, value });
-      }
+    if (!feature) continue;
+    // (a) Options retenues (Tatouages, PER-125) — nécessite les choix du personnage.
+    if (ctx?.featureChoices && feature.choices) {
+      const selections = ctx.featureChoices[id] ?? [];
+      feature.choices.forEach((choice, i) => {
+        if (choice.kind !== 'option') return;
+        const sel = selections[i];
+        const chosenIds = Array.isArray(sel) ? sel : typeof sel === 'string' ? [sel] : [];
+        for (const optId of chosenIds) {
+          const option = choice.options.find((o) => o.id === optId);
+          if (!option?.abilityTestBonus || option.abilityTestBonus.value === 0) continue;
+          const { ability, value } = option.abilityTestBonus;
+          (out[ability] ??= []).push({ featureId: id, name: feature.name, value });
+        }
+      });
+    }
+    // (b) Bonus CONDITIONNEL à UNE carac, piloté par un interrupteur actif (PER-137) — ex. Prescience
+    // (divination-r5) : « +10 à tous les tests de PER » tant que la vision est active.
+    feature.effects?.forEach((effect, i) => {
+      if (effect.kind !== 'conditional-stat-bonus' || !effect.abilityTestBonusFor) return;
+      if (!isConditionalActive(effect, id, i, ctx)) return;
+      const v = resolveValue(effect.abilityTestBonusFor.value, feature.pathId, pathRanks, ctx);
+      if (v !== null && v !== 0)
+        (out[effect.abilityTestBonusFor.ability] ??= []).push({ featureId: id, name: feature.name, value: v });
     });
   }
   return out;
@@ -1210,12 +1223,78 @@ export function damageReductionSources(character: Character): DamageReductionSou
       // Gating par RANG de voie (ex. Invulnérable : ÷2 poison/maladie ≤ r4, immunité ≥ r5).
       if (dr.minPathRank !== undefined && rank < dr.minPathRank) continue;
       if (dr.maxPathRank !== undefined && rank > dr.maxPathRank) continue;
+      // SCOPE choisi à la table (ex. Maîtrise des éléments) : la RD n'est comptée que si un élément
+      // valide est sélectionné (`effectInputs[id]`, hors mode édition) ; ce choix devient le scope.
+      let scopes = dr.scopes;
+      if (dr.scopeChoice) {
+        const chosen = character.effectInputs?.[id];
+        if (!chosen || !(dr.scopeChoice as string[]).includes(chosen)) continue;
+        scopes = [chosen as (typeof dr.scopeChoice)[number]];
+      }
       // Résolution de la valeur scalante (ex. Fils du roc 2 → 3 au niveau 10 ; Résistance au feu 5 → 10
       // au rang 7) pour l'affichage. Une constante est rendue telle quelle ; le plafond d'absorption
       // éventuel reste verbatim (non affiché dans la puce).
-      const resolved =
-        dr.value === undefined ? dr : { ...dr, value: resolveValue(dr.value, feature.pathId, pathRanks, ctx) ?? dr.value };
-      out.push({ featureId: id, name: feature.name, reduction: resolved });
+      const value =
+        dr.value === undefined ? undefined : (resolveValue(dr.value, feature.pathId, pathRanks, ctx) ?? dr.value);
+      out.push({ featureId: id, name: feature.name, reduction: { ...dr, value, scopes } });
+    }
+  }
+  return out;
+}
+
+/** Une réduction de dégâts AGRÉGÉE par (type, portée), avec ses capacités sources (PER-137). */
+export interface StackedDamageReduction {
+  kind: DamageReduction['kind'];
+  /** Type de dégât couvert ; absent = tous les DM. */
+  scope?: ResistibleDamageType;
+  /**
+   * Valeur agrégée : SOMME des réductions plates de même portée (`flat` — le livre : « cumulable avec
+   * d'autres sources de réduction comme la peau d'acier ») ; diviseur (`divide`) ; absent (`immunity`).
+   */
+  total?: number;
+  /** Capacités qui contribuent, avec leur valeur individuelle (pour le breakdown du tooltip). */
+  sources: { name: string; value?: number }[];
+}
+
+/**
+ * Réductions de dégâts ACTIVES du personnage, AGRÉGÉES pour l'affichage (PER-137) : les RD PLATES de
+ * MÊME portée s'ADDITIONNENT en une seule entrée (ex. Fils du roc + Peau d'acier → RD 6), avec le
+ * détail des sources. Division et immunité ne s'additionnent pas (regroupées par portée, et par valeur
+ * pour la division, afin de fusionner les sources identiques sans cumuler les diviseurs). Une RD sur
+ * plusieurs types est éclatée en une entrée PAR type. Source unique pour les badges de la carte Défense.
+ */
+export function stackedDamageReductions(character: Character): StackedDamageReduction[] {
+  const entries = damageReductionSources(character).flatMap((s) => {
+    const scopes = s.reduction.scopes ?? [];
+    const perScope: (ResistibleDamageType | undefined)[] = scopes.length ? scopes : [undefined];
+    return perScope.map((scope) => ({
+      name: s.name,
+      kind: s.reduction.kind,
+      scope,
+      value: typeof s.reduction.value === 'number' ? s.reduction.value : undefined,
+    }));
+  });
+  const groups = new Map<string, typeof entries>();
+  for (const e of entries) {
+    const key = e.kind === 'flat' ? `flat|${e.scope ?? ''}` : `${e.kind}|${e.scope ?? ''}|${e.value ?? ''}`;
+    const arr = groups.get(key);
+    if (arr) arr.push(e);
+    else groups.set(key, [e]);
+  }
+  const out: StackedDamageReduction[] = [];
+  for (const list of groups.values()) {
+    const { kind, scope } = list[0];
+    if (kind === 'flat') {
+      out.push({
+        kind,
+        scope,
+        total: list.reduce((acc, e) => acc + (e.value ?? 0), 0),
+        sources: list.map((e) => ({ name: e.name, value: e.value })),
+      });
+    } else if (kind === 'divide') {
+      out.push({ kind, scope, total: list[0].value, sources: list.map((e) => ({ name: e.name })) });
+    } else {
+      out.push({ kind, scope, sources: list.map((e) => ({ name: e.name })) });
     }
   }
   return out;
