@@ -33,6 +33,9 @@ export const testDomains: TestDomain[] = [
   // (p. 115) et du vent (p. 121) — à distinguer de `long-running` (course longue, CON).
   { id: 'running', label: 'Course', abilities: ['AGI'], sourcePage: 115 },
   { id: 'jumping', label: 'Saut', abilities: ['AGI'], sourcePage: 115 },
+  // esquive (Réflexes éclair, barbare pourfendeur-r1, p. 81) : « tests d'AGI destinés à
+  // esquiver » (explosions de feu, souffles, pièges…) → réaction d'évitement, AGI.
+  { id: 'evasion', label: 'Esquive', abilities: ['AGI'], sourcePage: 81 },
   // --- AGI — adresse / précision manuelle du voleur (PER-71) -----------------
   // pickpocket (Doigts agiles, roublard-r1, p. 76) : adresse des doigts → AGI.
   { id: 'pickpocketing', label: 'Vol à la tire', abilities: ['AGI'], sourcePage: 76 },
@@ -147,6 +150,9 @@ export const testDomains: TestDomain[] = [
   { id: 'seduction', label: 'Séduction', abilities: ['CHA'], sourcePage: 202 },
   // ensorceleur « persuasion ou séduction » (Injonction, p. 94).
   { id: 'persuasion', label: 'Persuasion', abilities: ['CHA'], sourcePage: 94 },
+  // négociation (Argument de taille, barbare brute-r1, p. 79) : marchander un accord —
+  // proche de persuasion, conservé comme domaine distinct (décision propriétaire, PER-123).
+  { id: 'negotiation', label: 'Négociation', abilities: ['CHA'], sourcePage: 79 },
   // ensorceleur « supercherie » (illusion, p. 95) : tromperie sociale → CHA.
   { id: 'deception', label: 'Supercherie', abilities: ['CHA'], sourcePage: 95 },
   // commerce (humain-r1 « Citadin ») : marchandage.

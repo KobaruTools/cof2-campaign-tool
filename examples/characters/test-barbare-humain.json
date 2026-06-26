@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 9,
+  "id": "test-barbare-humain",
+  "name": "Test — Barbare (humain)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-72 — barbare humain, les 5 voies au rang 5. À vérifier : Brute — Argument de taille (PV += FOR, bonus CHA/alliés verbatim), Force héroïque (FOR +1 + dé), dés d'Attaque brutale {1d4°}/{2d4°} + [#rang]. Pagne — Vigueur (compétence course/saut/escalade INCONDITIONNELLE + PV scalant = rang ; cumul escalade avec l'origine « Montagnard » +3 peuple), Tatouages (CHOIX d'option, +3 carac verbatim), Constitution héroïque (CON +1 + dé), Peau d'acier (RD 3). Pourfendeur — Réflexes éclair (+3 Init plat, DEF +1→+2 au rang 5 ; AGI esquive verbatim), Charge {1d4°}. Primitif — Proche de la nature (PV +1 plat + compétences survie/discrétion CONDITIONNELLES « en milieu naturel », interrupteur ON), Armure de vent (DEF +2→+3 conditionnelle « aucune armure »), Vigilance (détection de pièges/vigilance INCONDITIONNELLES ; immunité sournoise verbatim), Vitalité débordante {1d4°}. Rage — Cri de guerre ([rang+2], peur VERBATIM à confirmer), Rage du berserk (DEF -2 temporaire, dé {1d4°}), Furie du berserk (DEF -4 temporaire, {2d4°}/{1d4°}). Verbatim laissés : Peau de pierre (DEF AGI→CON), accès armures (milestone Armures), plages de critique, effets de groupe/contrôle (tracker)."
+  },
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 2,
+    "CON": 3,
+    "FOR": 4,
+    "PER": 1,
+    "CHA": -1,
+    "INT": -2,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 2,
+    "CON": 3,
+    "FOR": 4,
+    "PER": 1,
+    "CHA": -1,
+    "INT": -2,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "brute-r1",
+    "pagne-r1",
+    "humain-r1",
+    "pourfendeur-r1",
+    "primitif-r1",
+    "rage-r1",
+    "brute-r2",
+    "pagne-r2",
+    "pourfendeur-r2",
+    "primitif-r2",
+    "rage-r2",
+    "brute-r3",
+    "pagne-r3",
+    "pourfendeur-r3",
+    "primitif-r3",
+    "rage-r3",
+    "brute-r4",
+    "pagne-r4",
+    "pourfendeur-r4",
+    "primitif-r4",
+    "rage-r4",
+    "brute-r5",
+    "pagne-r5",
+    "pourfendeur-r5",
+    "primitif-r5",
+    "rage-r5"
+  ],
+  "featureChoices": {
+    "humain-r1": [
+      "highlander"
+    ],
+    "pagne-r2": [
+      "con-for-def"
+    ],
+    "pagne-r3": [
+      "bull"
+    ]
+  },
+  "effectToggles": {
+    "primitif-r1": [
+      false,
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "brute-r1",
+        "pagne-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "pourfendeur-r1",
+        "primitif-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "rage-r1",
+        "brute-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "pagne-r2",
+        "pourfendeur-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "primitif-r2",
+        "rage-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "brute-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "pagne-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "pourfendeur-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "primitif-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "rage-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "brute-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "pagne-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "pourfendeur-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "primitif-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "rage-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "brute-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "pagne-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "pourfendeur-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "primitif-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "rage-r5"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1
+    },
+    {
+      "itemId": "javelot",
+      "quantity": 2
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    },
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-72 (barbare) — perso de recette. Origine humaine « Montagnard » (highlander) choisie pour faire chevaucher l'escalade (climbing) entre la voie de peuple (+3) et la voie du pagne (profil, Vigueur) → contrôle du cumul PER-89. Interrupteur primitif-r1 (« en milieu naturel ») activé pour montrer le bonus de compétence survie/discrétion conditionnel.",
+  "createdAt": "2026-06-25T00:00:00.000Z",
+  "updatedAt": "2026-06-25T00:00:00.000Z"
+}

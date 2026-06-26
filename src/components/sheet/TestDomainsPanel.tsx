@@ -42,6 +42,12 @@ export interface TestDomainsPanelProps {
    */
   abilityTestBonus?: AbilityTestBonusSource[];
   /**
+   * Bonus CHIFFRÉS à UNE caractéristique précise (ex. Tatouages, PER-125), regroupés par carac.
+   * Ajoutés à la ligne « test de [CARAC] » de la carac visée (et, quand « inclure la carac » est
+   * coché, à ses domaines). Distinct de `abilityTestBonus` (buff uniforme à toutes les caracs).
+   */
+  perAbilityTestBonus?: Partial<Record<AbilityId, AbilityTestBonusSource[]>>;
+  /**
    * Caractéristiques bénéficiant d'un DÉ BONUS permanent (badge double-d20), avec la/les
    * capacité(s) source(s) — affiché à droite de la ligne « test de [CARAC] ».
    */
@@ -74,7 +80,7 @@ const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
  * à 0. Au survol : provenance (capacité par catégorie de source, p. 203) et plafond +15.
  * Lecture seule (les interrupteurs des buffs vivent sur les cartes de capacité).
  */
-export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDice, universalBonus, testDice }: TestDomainsPanelProps) {
+export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbilityTestBonus, bonusDice, universalBonus, testDice }: TestDomainsPanelProps) {
   const [includeAbility, setIncludeAbility] = useState(false);
   // Coché par défaut : on n'affiche d'emblée que les domaines effectivement bonifiés
   // (les centaines de domaines à 0 sont masqués tant que l'utilisateur ne les demande pas).
@@ -125,10 +131,14 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
             .sort((a, b) => a.d.label.localeCompare(b.d.label, 'fr'));
 
           const abilityMod = abilities[ability] ?? 0;
-          const caracTest = abilityMod + testBuff;
+          // Bonus CHIFFRÉS propres à CETTE carac (ex. Tatouages, PER-125).
+          const perCaracSources = perAbilityTestBonus?.[ability] ?? [];
+          const perCaracBonus = perCaracSources.reduce((sum, s) => sum + s.value, 0);
+          const caracTest = abilityMod + testBuff + perCaracBonus;
+          const caracBuffed = testBuff !== 0 || perCaracBonus !== 0;
           const dice = bonusDice?.[ability] ?? [];
 
-          // Détail de la ligne « test de [CARAC] » : carac de base + chaque buff actif.
+          // Détail de la ligne « test de [CARAC] » : carac de base + chaque buff actif + bonus propres.
           const testBreakdown = (
             <Box sx={{ py: 0.5 }}>
               <Typography variant="caption" sx={{ display: 'block', fontWeight: 700 }}>
@@ -138,6 +148,11 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
                 Caractéristique {ability} : {signed(abilityMod)}
               </Typography>
               {buffSources.map((s) => (
+                <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
+                  {s.name} : {signed(s.value)}
+                </Typography>
+              ))}
+              {perCaracSources.map((s) => (
                 <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
                   {s.name} : {signed(s.value)}
                 </Typography>
@@ -170,7 +185,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
                     sx={{
                       alignItems: 'center',
                       cursor: 'help',
-                      color: testBuff !== 0 ? 'secondary.main' : 'text.secondary',
+                      color: caracBuffed ? 'secondary.main' : 'text.secondary',
                     }}
                   >
                     <DieIcon die="d20" size={18} noTooltip />
@@ -188,9 +203,10 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
                     const has = (bonus?.sources.length ?? 0) > 0;
                     const die = testDice?.get(d.id);
                     const abilityValue = abilities[best] ?? 0;
-                    // « Inclure la carac » ajoute la meilleure carac ET le buff actif des
-                    // tests de carac (un test de domaine est aussi un test de carac).
-                    const display = includeAbility ? flat + abilityValue + testBuff : flat;
+                    // « Inclure la carac » ajoute la meilleure carac, le buff actif uniforme ET le
+                    // bonus propre à cette carac (tatouage…) — un test de domaine est aussi un test de
+                    // carac. `best === ability` ici (le domaine est rangé sous sa meilleure carac).
+                    const display = includeAbility ? flat + abilityValue + testBuff + perCaracBonus : flat;
                     const multiAbility = d.abilities.length > 1;
 
                     const breakdown =
@@ -211,6 +227,12 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, bonusDi
                           )}
                           {includeAbility &&
                             buffSources.map((s) => (
+                              <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
+                                {s.name} : {signed(s.value)}
+                              </Typography>
+                            ))}
+                          {includeAbility &&
+                            perCaracSources.map((s) => (
                               <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
                                 {s.name} : {signed(s.value)}
                               </Typography>

@@ -70,6 +70,12 @@ const TARGETS: Target[] = [
     // Les trois autres voies (mercenaire, pistolero, précision) s'ouvrent aux montées.
     level1FreeIds: ['artilleur-r1', 'explosifs-r1', 'humain-r1'],
   },
+  {
+    file: 'test-barbare-humain.json',
+    // Profil barbare (brute + pagne à la création) ; peuple humain.
+    // Les trois autres voies (pourfendeur, primitif, rage) s'ouvrent aux montées.
+    level1FreeIds: ['brute-r1', 'pagne-r1', 'humain-r1'],
+  },
 ];
 
 const dir = join(process.cwd(), 'examples', 'characters');

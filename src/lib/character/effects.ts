@@ -22,6 +22,7 @@ import { featureById, pathById } from '@/data';
 import type {
   AbilityId,
   ConditionalStatBonusEffect,
+  DamageReduction,
   DerivedStatId,
   EffectValue,
   FeatureEffect,
@@ -501,6 +502,39 @@ export function abilityTestBonusSources(
 }
 
 /**
+ * Bonus CHIFFRÉS aux tests d'UNE caractéristique précise (PER-125), octroyés par les OPTIONS
+ * retenues (`FeatureChoiceOption.abilityTestBonus`, ex. Tatouages/barbare pagne-r3 : Taureau →
+ * +3 aux tests de FOR), regroupés par caractéristique cible. À DISTINGUER de
+ * `abilityTestBonusSources` (buff UNIFORME à TOUTES les caracs, ex. Bénédiction) : ici le bonus
+ * vise UNE carac. Lit les options retenues (`ctx.featureChoices`, aligné par position) ; gère le
+ * choix simple comme le répétable. Sans `ctx`/sans choix : rien.
+ */
+export function abilityTestBonusByAbility(
+  featureIds: string[],
+  ctx?: EffectContext,
+): Partial<Record<AbilityId, AbilityTestBonusSource[]>> {
+  const out: Partial<Record<AbilityId, AbilityTestBonusSource[]>> = {};
+  if (!ctx?.featureChoices) return out;
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.choices) continue;
+    const selections = ctx.featureChoices[id] ?? [];
+    feature.choices.forEach((choice, i) => {
+      if (choice.kind !== 'option') return;
+      const sel = selections[i];
+      const chosenIds = Array.isArray(sel) ? sel : typeof sel === 'string' ? [sel] : [];
+      for (const optId of chosenIds) {
+        const option = choice.options.find((o) => o.id === optId);
+        if (!option?.abilityTestBonus || option.abilityTestBonus.value === 0) continue;
+        const { ability, value } = option.abilityTestBonus;
+        (out[ability] ??= []).push({ featureId: id, name: feature.name, value });
+      }
+    });
+  }
+  return out;
+}
+
+/**
  * Bonus aux tests de carac (résolu) d'un effet conditionnel d'une capacité, pour
  * le libellé de son interrupteur (ex. « +1 tests de carac »). `null` si l'index ne
  * pointe pas un effet conditionnel connu ou si l'effet ne touche pas les tests de
@@ -578,8 +612,12 @@ export function setEffectToggle(
     return next;
   }
   const effect = ownEffects[index];
-  if (effect?.kind !== 'conditional-stat-bonus' || !effect.disablesFeatures) return next;
-  for (const targetId of effect.disablesFeatures) {
+  if (effect?.kind !== 'conditional-stat-bonus') return next;
+  // ACTIVER éteint les interrupteurs des capacités exclues. Deux familles, MÊME cascade d'extinction :
+  //  - `disablesFeatures` : exclusion mutuelle AVEC désactivation/grisage (cf. disabledFeatureReasons) ;
+  //  - `mutuallyExclusiveWith` (PER-130) : simple basculement ON/OFF, SANS désactiver (Rage ↔ Furie).
+  const turnOffTargets = [...(effect.disablesFeatures ?? []), ...(effect.mutuallyExclusiveWith ?? [])];
+  for (const targetId of turnOffTargets) {
     const targetEffects = featureById.get(targetId)?.effects ?? [];
     targetEffects.forEach((te, ti) => {
       if (te.kind === 'conditional-stat-bonus') next = setToggleIn(next, targetId, ti, false);
@@ -1103,4 +1141,37 @@ export function aggregateImmunities(featureIds: string[]): ImmunitySource[] {
   return (Object.keys(IMMUNITY_LABELS) as ImmunityId[])
     .filter((immId) => byId.has(immId))
     .map((immId) => ({ id: immId, label: IMMUNITY_LABELS[immId], sources: [...byId.get(immId)!] }));
+}
+
+/** Une réduction de dégâts ACTIVE octroyée par une capacité, avec sa capacité source (PER-126). */
+export interface DamageReductionSource {
+  featureId: string;
+  /** Nom de la capacité (français). */
+  name: string;
+  reduction: DamageReduction;
+}
+
+/**
+ * Réductions de dégâts (RD) ACTIVES du personnage (PER-126), pour l'affichage à côté de la Défense.
+ * Une RD est retenue si sa capacité est PASSIVE (aucun effet conditionnel → toujours active, ex. Peau
+ * d'acier), ou si la capacité porte un effet conditionnel ACTIF (ex. Armure de pierre / Déphasage, dont
+ * la RD suit l'interrupteur). La RD reste « non lue par le moteur » pour les calculs ; il s'agit d'un
+ * affichage informatif. La valeur scalante éventuelle est résolue par l'UI (toutes constantes à ce jour).
+ */
+export function damageReductionSources(character: Character): DamageReductionSource[] {
+  const out: DamageReductionSource[] = [];
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.damageReduction) continue;
+    const conditionalIndexes = (feature.effects ?? [])
+      .map((e, i) => (e.kind === 'conditional-stat-bonus' ? i : -1))
+      .filter((i) => i >= 0);
+    // Capacité passive (aucun effet conditionnel) → RD permanente. Sinon, RD affichée seulement si
+    // l'un de ses interrupteurs conditionnels est actif.
+    const active =
+      conditionalIndexes.length === 0 || conditionalIndexes.some((i) => isEffectActive(character, id, i));
+    if (!active) continue;
+    out.push({ featureId: id, name: feature.name, reduction: feature.damageReduction });
+  }
+  return out;
 }

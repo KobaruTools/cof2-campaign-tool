@@ -573,6 +573,14 @@ export interface ConditionalStatBonusEffect {
    * la capacité n'en désactive aucune.
    */
   disablesFeatures?: string[];
+  /**
+   * EXCLUSION MUTUELLE d'INTERRUPTEURS (PER-130, ≠ `disablesFeatures`) : ids des capacités dont
+   * l'interrupteur est ÉTEINT quand CET interrupteur est ACTIVÉ — mais SANS désactiver/griser la
+   * capacité (les deux restent pleinement interactives, c'est un simple basculement ON/OFF). Cas :
+   * Rage du berserk ↔ Furie du berserk (le barbare est dans l'un OU l'autre état, jamais les deux).
+   * Réciprocité déclarée des DEUX côtés. Absent = aucun basculement.
+   */
+  mutuallyExclusiveWith?: string[];
 }
 
 /**
@@ -906,6 +914,13 @@ export interface FeatureChoiceOption {
   /** Libellé affiché au joueur (français). */
   label: string;
   /**
+   * Libellé COURT pour la puce compacte sur la carte (vues colonne ET liste), quand le `label`
+   * complet est trop long (ex. Peau de pierre/pagne-r2 : « Remplacer l'AGI par la CON pour la DEF »
+   * → « CON »). PER-130. Absent → on retombe sur le `label` (coupé à son premier complément entre
+   * parenthèses). N'affecte QUE l'affichage ; le menu de sélection garde le `label` complet.
+   */
+  shortLabel?: string;
+  /**
    * Dé bonus aux tests d'une caractéristique octroyé à la CRÉATURE de la même voie
    * lorsque cette option est retenue (ex. Golem supérieur : « Forme de félin » →
    * dé bonus en AGI du golem, « Puissant » → dé bonus en FOR). Mécanique core,
@@ -939,6 +954,17 @@ export interface FeatureChoiceOption {
    * même titre qu'un `StatBonusEffect`. Valeur constante ou scalante. Absent = aucun.
    */
   statBonuses?: StatBonus[];
+  /**
+   * Bonus CHIFFRÉ aux tests d'UNE caractéristique octroyé lorsque cette option est retenue
+   * (ex. Tatouages, barbare pagne-r3 : Taureau → +3 aux tests de FOR). PER-125. Axe DISTINCT du
+   * bonus de compétence par domaine (`testBonusDomains`) et de la valeur de la caractéristique
+   * (`ability-bonus`, qui change PV/DEF/formules) : ici on ne modifie QUE le jet « d20 + carac » des
+   * tests de cette caractéristique (et donc des domaines qu'elle gouverne). Agrégé par
+   * `abilityTestBonusByAbility` et rendu sur la ligne de la carac dans « Compétences & tests ».
+   * Le livre précise « bonus de magie, non cumulable avec un objet magique » — non modélisé (pas
+   * d'objets magiques) → reste verbatim. Absent = aucun.
+   */
+  abilityTestBonus?: { ability: AbilityId; value: number };
 }
 
 /**
@@ -1037,8 +1063,8 @@ export interface CreatureProfile {
 export interface UsageCounter {
   /**
    * Nombre d'usages disponibles au départ (valeur la plus haute du compteur). CONSTANT.
-   * Optionnel uniquement si `maxByPathRank` est utilisé (maximum scalant). Au moins l'un
-   * des deux (`max` ou `maxByPathRank`) doit être présent.
+   * Optionnel uniquement si un maximum scalant est utilisé (`maxByPathRank` ou `maxByRankCount`).
+   * Au moins l'un des trois (`max`, `maxByPathRank`, `maxByRankCount`) doit être présent.
    */
   max?: number;
   /**
@@ -1049,6 +1075,21 @@ export interface UsageCounter {
    * l'affichage à partir du rang de voie courant.
    */
   maxByPathRank?: boolean;
+  /**
+   * Maximum SCALANT par COMPTAGE CROSS-VOIE (PER-130) : max = `base` + nombre de capacités
+   * ACQUISES de rang `rank` dans une voie de profil des `classIds`. Ex. réserve de rage du
+   * barbare : 1 + une par capacité de rang 4 atteinte dans une voie de barbare (« le personnage
+   * peut entrer en rage une fois de plus par jour pour chaque capacité de rang 4 qu'il atteint
+   * dans une voie de barbare »). Prioritaire sur `max` et `maxByPathRank`. Résolu à l'affichage.
+   */
+  maxByRankCount?: { classIds: string[]; rank: number; base: number };
+  /**
+   * Coût en points décrémentés à CHAQUE usage de CETTE capacité (PER-130). Défaut 1. Sert aux
+   * réserves PARTAGÉES (`sharedKey`) où certaines capacités consomment plus : ex. Furie du berserk
+   * consomme 2 points de rage et n'est utilisable que s'il en reste au moins 2. Le décrément et
+   * l'incrément se font alors par pas de `cost`, et le décrément est bloqué si le reste est inférieur.
+   */
+  cost?: number;
   /**
    * Clé d'état PARTAGÉE (PER-119) : plusieurs capacités d'une même voie peuvent puiser dans
    * une réserve COMMUNE. Le décompte courant est alors stocké sous cette clé dans
@@ -1181,6 +1222,14 @@ export interface Feature {
    * remplaçante (le détail reste consultable). Absent = la capacité n'en remplace aucune.
    */
   replacesFeatures?: string[];
+  /**
+   * Marqueur de TRAVAIL EN COURS (badge « WIP » sur la carte) — suivi de relecture, pas une règle de
+   * jeu. Présent quand la capacité dépend d'un ticket EXTÉRIEUR non terminé (ex. calcul de DEF de
+   * Peau de pierre en attente de la milestone Armures, PER-131) : une partie de son effet n'est donc
+   * pas encore branchée. La chaîne sert d'info-bulle (raison + ticket). Recensement systématique des
+   * capacités concernées : ticket dédié (milestone « Structuration des capacités »). Absent = rien.
+   */
+  wip?: string;
   sourcePage: SourcePage;
 }
 

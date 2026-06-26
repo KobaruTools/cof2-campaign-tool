@@ -55,9 +55,11 @@ export function choiceSelectionLabel(
     case 'ability':
       return ABILITY_NAMES[selection as keyof typeof ABILITY_NAMES] ?? selection;
     case 'option': {
-      const label = choice.options.find((o) => o.id === selection)?.label ?? selection;
-      // Forme courte : on coupe au premier complément entre parenthèses.
-      return short ? label.replace(/\s*\(.*$/, '') : label;
+      const option = choice.options.find((o) => o.id === selection);
+      const label = option?.label ?? selection;
+      // Forme courte : `shortLabel` explicite si défini (ex. « CON »/« AGI » de Peau de pierre),
+      // sinon on coupe au premier complément entre parenthèses.
+      return short ? (option?.shortLabel ?? label.replace(/\s*\(.*$/, '')) : label;
     }
     case 'feature-from-path': {
       const feature = featureById.get(selection);

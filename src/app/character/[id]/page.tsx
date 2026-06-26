@@ -35,6 +35,8 @@ import {
   abilityModSources,
   abilityModsFromFeatures,
   abilityTestBonusSources,
+  abilityTestBonusByAbility,
+  damageReductionSources,
   activeConditionalTestDice,
   aggregateImmunities,
   effectContext,
@@ -55,6 +57,7 @@ import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { ClassIcon } from '@/components/ClassIcon';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
+import { formatDamageReduction } from '@/lib/ui/damageReduction';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
@@ -243,6 +246,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const testDice = activeConditionalTestDice(character);
   // Buffs ACTIFS à tous les tests de carac (ex. Bénédiction, via son interrupteur).
   const abilityTestBonus = abilityTestBonusSources(modFeatureIds, effectCtx);
+  // Bonus aux tests d'UNE carac précise, par option retenue (ex. Tatouages, PER-125).
+  const perAbilityTestBonus = abilityTestBonusByAbility(modFeatureIds, effectCtx);
+  // Réductions de dégâts ACTIVES (ex. Peau d'acier RD 3) — affichées dans la carte Défense (PER-126).
+  const damageReductions = damageReductionSources(character).map((s) => {
+    const f = formatDamageReduction(s.reduction);
+    return { label: f.short, detail: `${s.name} — ${f.long}` };
+  });
   // Plancher de compétence universel (Éclectique, PER-102) et immunités (PER-103).
   const universalTest = universalTestBonus(modFeatureIds);
   const immunities = aggregateImmunities(modFeatureIds);
@@ -497,6 +507,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 extraModSources={orphanSourceTerms(character)}
                 overrides={character.overrides}
                 onOverride={editing ? setOverride : undefined}
+                damageReductions={damageReductions}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">
@@ -509,6 +520,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             bonuses={testBonuses}
             abilities={effectCtx.abilities}
             abilityTestBonus={abilityTestBonus}
+            perAbilityTestBonus={perAbilityTestBonus}
             bonusDice={bonusDieSrc}
             universalBonus={universalTest}
             testDice={testDice}

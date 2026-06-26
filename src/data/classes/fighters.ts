@@ -309,10 +309,19 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare ajoute sa FOR à son maximum de PV ainsi qu’à ses tests de CHA et à ceux de ses alliés au contact pour les tests de négociation, de persuasion ou d’intimidation. Allez savoir pourquoi, sa simple présence donne de la force aux arguments de ses alliés…',
-    // Part structurable (PER-67) : « ajoute sa FOR à son maximum de PV » → bonus
-    // permanent SCALANT (valeur = FOR). Le bonus aux tests de CHA (siens et alliés)
-    // n'est pas une stat dérivée → reste verbatim.
-    effects: [{ kind: 'stat-bonus', stat: 'maxHp', value: { scale: 'ability', ability: 'FOR' } }],
+    // PER-67 : « ajoute sa FOR à son maximum de PV » → bonus permanent SCALANT (valeur = FOR).
+    // PER-123 : « ajoute sa FOR à ses tests de … négociation, persuasion ou intimidation » →
+    // bonus de compétence DU PORTEUR, valeur = FOR (valeur scalante `ability`), sur les domaines
+    // négociation / persuasion / intimidation. La part « et à ceux de ses alliés » n'est PAS
+    // comptabilisée (bonus aux alliés hors périmètre) → reste verbatim.
+    effects: [
+      { kind: 'stat-bonus', stat: 'maxHp', value: { scale: 'ability', ability: 'FOR' } },
+      {
+        kind: 'test-bonus',
+        domains: ['negotiation', 'persuasion', 'intimidation'],
+        value: { scale: 'ability', ability: 'FOR' },
+      },
+    ],
     sourcePage: 79,
   },
   {
@@ -324,6 +333,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       'Le barbare peut temporairement décupler ses ressources physiques pour faire usage d’une force prodigieuse. Il obtient un bonus de +10 sur un test de FOR (pas un jet de DM ou un test d’attaque), mais cela lui coûte 1d4° PV (à décider avant de lancer les dés). Enfin, le barbare peut désormais porter une chemise de mailles et utiliser toutes les capacités des voies de barbare auparavant autorisées avec une armure de cuir renforcé.',
+    // Rendu enrichi (PER-72) : coût en PV {1d4°}. Le « +10 sur un test de FOR » est un bonus
+    // SITUATIONNEL à un test de caractéristique (déclenché, optionnel) → hors périmètre PER-89,
+    // verbatim. L'accès à la chemise de mailles relève de la milestone Armures (non modélisé).
+    richText:
+      'Le barbare peut temporairement décupler ses ressources physiques pour faire usage d’une force prodigieuse. Il obtient un bonus de +10 sur un test de FOR (pas un jet de DM ou un test d’attaque), mais cela lui coûte {1d4°} PV (à décider avant de lancer les dés). Enfin, le barbare peut désormais porter une chemise de mailles et utiliser toutes les capacités des voies de barbare auparavant autorisées avec une armure de cuir renforcé.',
     sourcePage: 79,
   },
   {
@@ -335,6 +349,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       'Le barbare effectue une puissante attaque au contact qui inflige +1d4° aux DM. À la place, il peut choisir de s’imposer un malus de -3 au test d’attaque pour obtenir +2d4° aux DM. Sur une attaque brutale réussie, il peut sacrifier 1d4° DM pour faire reculer de 3 m un adversaire de NC inférieur au rang atteint dans la voie, ou sacrifier 2d4° DM pour le renverser.',
+    // Rendu enrichi (PER-72) : dés de DM {1d4°}/{2d4°} ; « inférieur au rang atteint dans la voie »
+    // → terme nommé [#rang]. Augmentation des DM d'arme → PER-115 (verbatim). Le recul / renversement
+    // (effets de contrôle) relèvent du tracker de combat (PER-104/105). Pas d'effet structuré.
+    richText:
+      'Le barbare effectue une puissante attaque au contact qui inflige +{1d4°} aux DM. À la place, il peut choisir de s’imposer un malus de -3 au test d’attaque pour obtenir +{2d4°} aux DM. Sur une attaque brutale réussie, il peut sacrifier {1d4°} DM pour faire reculer de 3 m un adversaire de NC inférieur au [#rang] atteint dans la voie, ou sacrifier {2d4°} DM pour le renverser.',
     sourcePage: 79,
   },
   {
@@ -345,6 +364,11 @@ export const fighterFeatures: Feature[] = [
     isSpell: false,
     actionTypes: [],
     text: 'Le barbare augmente sa FOR de +1. Désormais, il obtient un dé bonus aux tests de FOR.',
+    // Caractéristique héroïque (mécanique core) : +1 FOR permanent + dé bonus aux tests de FOR.
+    effects: [
+      { kind: 'ability-bonus', ability: 'FOR', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'FOR' },
+    ],
     sourcePage: 80,
   },
   {
@@ -369,6 +393,30 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare est un athlète capable de prouesses physiques extraordinaires, il ajoute son rang + 2 aux tests de course, de saut ou d’escalade. De plus, il gagne 1 PV supplémentaire par rang atteint dans la voie.',
+    // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. La montée des PV « par rang » reste
+    // décrite en prose (format §7). PER-89 : bonus de compétence INCONDITIONNEL aux domaines course
+    // (running), saut (jumping) et escalade (climbing) — valeur déduite de la catégorie de voie.
+    // « 1 PV supplémentaire par rang atteint dans la voie » → bonus PERMANENT scalant aux PV (= rang).
+    richText:
+      'Le barbare est un athlète capable de prouesses physiques extraordinaires, il ajoute son [rang + 2] aux tests de course, de saut ou d’escalade. De plus, il gagne 1 PV supplémentaire par rang atteint dans la voie.',
+    effects: [
+      { kind: 'test-bonus', domains: ['running', 'jumping', 'climbing'] },
+      {
+        kind: 'stat-bonus',
+        stat: 'maxHp',
+        value: {
+          scale: 'stepped',
+          by: 'path-rank',
+          steps: [
+            { min: 1, value: 1 },
+            { min: 2, value: 2 },
+            { min: 3, value: 3 },
+            { min: 4, value: 4 },
+            { min: 5, value: 5 },
+          ],
+        },
+      },
+    ],
     sourcePage: 80,
   },
   {
@@ -381,6 +429,28 @@ export const fighterFeatures: Feature[] = [
     text:
       'Le barbare est particulièrement endurci, il encaisse les coups plutôt que de les esquiver. Il peut choisir de remplacer son AGI par sa CON pour calculer sa DEF (la limitation du bonus maximal en fonction de l’armure portée s’applique toujours, mais cette fois elle s’applique à la CON).\n' +
       'Autrement (si son AGI est supérieure ou égale à sa CON), il reçoit +1 en DEF et ce bonus passe à +2 au rang 4.',
+    // PER-124 : le barbare CHOISIT entre deux régimes de DEF. On expose ici la SÉLECTION
+    // (couche choix PER-66), affichée en puce COURTE « CON » / « AGI » sur la carte (shortLabel,
+    // PER-130). Le CALCUL réel — DEF basée sur la CON + plafond d'armure appliqué à la CON, ou bonus
+    // plat +1/+2 — relève du moteur de DEF / milestone Armures (PER-131, non fait). Aucun jeton
+    // parsable (DEF auto-glossée, « +1/+2 » et « rang 4 » en prose) → pas de richText.
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Calcul de la défense',
+        options: [
+          { id: 'con-for-def', label: 'Remplacer l’AGI par la CON pour la DEF', shortLabel: 'CON' },
+          {
+            id: 'def-bonus',
+            label: '+1 en DEF (+2 au rang 4), si l’AGI est supérieure ou égale à la CON',
+            shortLabel: 'AGI',
+          },
+        ],
+      },
+    ],
+    // WIP (PER-72) : le calcul de DEF (substitution AGI→CON + plafond, ou bonus +1/+2) dépend de la
+    // milestone Armures (PER-131) — seule la couche choix + l'affichage CON/AGI sont faits pour l'instant.
+    wip: 'Calcul de la DEF en attente de PER-131 (milestone Armures) — seul le choix CON/AGI est posé.',
     sourcePage: 80,
   },
   {
@@ -394,6 +464,27 @@ export const fighterFeatures: Feature[] = [
     text:
       'Le barbare possède un tatouage magique* qui améliore ses performances physiques ou mentales. Au choix : Taureau (+3 aux tests de FOR), ours (+3 aux tests de CON), panthère (+3 aux tests d’AGI), chouette (+3 aux tests de PER), loup (+3 aux tests de CHA), renard (+3 aux tests d’INT) ou serpent (+3 aux tests de VOL). De plus, lorsqu’il subit l’état étourdi, il est seulement ralenti.\n' +
       '* Ce bonus n’est pas un bonus de compétence, mais un bonus de magie qui ne peut donc pas se cumuler à un bonus fourni par un objet magique.',
+    // PER-66 / PER-125 : le tatouage est un CHOIX d'option (7 totems) ; l'option retenue octroie un
+    // bonus CHIFFRÉ de +3 aux tests de SA caractéristique (`abilityTestBonus`), rendu sur la ligne de
+    // la carac dans Compétences & tests. C'est un bonus aux tests d'une CARAC (axe distinct des domaines
+    // de compétence PER-89). La note de bas de page (« bonus de magie, non cumulable avec un objet
+    // magique ») reste verbatim — pas d'objets magiques en jeu. « étourdi → ralenti » : état (tracker
+    // PER-104/105).
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Tatouage magique',
+        options: [
+          { id: 'bull', label: 'Taureau (+3 aux tests de FOR)', abilityTestBonus: { ability: 'FOR', value: 3 } },
+          { id: 'bear', label: 'Ours (+3 aux tests de CON)', abilityTestBonus: { ability: 'CON', value: 3 } },
+          { id: 'panther', label: 'Panthère (+3 aux tests d’AGI)', abilityTestBonus: { ability: 'AGI', value: 3 } },
+          { id: 'owl', label: 'Chouette (+3 aux tests de PER)', abilityTestBonus: { ability: 'PER', value: 3 } },
+          { id: 'wolf', label: 'Loup (+3 aux tests de CHA)', abilityTestBonus: { ability: 'CHA', value: 3 } },
+          { id: 'fox', label: 'Renard (+3 aux tests d’INT)', abilityTestBonus: { ability: 'INT', value: 3 } },
+          { id: 'snake', label: 'Serpent (+3 aux tests de VOL)', abilityTestBonus: { ability: 'VOL', value: 3 } },
+        ],
+      },
+    ],
     sourcePage: 80,
   },
   {
@@ -405,6 +496,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare augmente sa valeur de CON de +1 et obtient un dé bonus aux tests de CON.',
+    // Caractéristique héroïque (mécanique core) : +1 CON permanent + dé bonus aux tests de CON.
+    effects: [
+      { kind: 'ability-bonus', ability: 'CON', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'CON' },
+    ],
     sourcePage: 80,
   },
   {
@@ -416,6 +512,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare ne sent plus la douleur et ignore les égratignures, il réduit tous les DM subis de 3 points (RD 3). Une attaque lui inflige toujours au minimum 1 DM.',
+    // PER-72 : réduction de dégâts PERMANENTE de 3 sur TOUS les DM subis (RD 3) → `damageReduction`
+    // plate, sans `scopes` (tous les DM). Posée dans les données ; pas encore consommée par le moteur
+    // (cf. DamageReduction). « minimum 1 DM » : plancher non modélisé (verbatim). Pas de jeton parsable.
+    damageReduction: { kind: 'flat', value: 3 },
     sourcePage: 81,
   },
 
@@ -429,12 +529,20 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare ajoute son rang + 2 à tous les tests d’AGI destinés à esquiver (Explosion de feu, souffle, pièges, etc.). De plus, il gagne +3 en Init. et +1 en DEF. Le bonus de DEF passe à +2 au rang 5.',
-    // Part plate inconditionnelle seulement : +3 Init et +1 DEF. Le bonus d'AGI
-    // aux tests d'esquive (conditionnel) et le passage de la DEF à +2 au rang 5
-    // (scalant) relèvent des tickets aval — non structurés ici.
+    // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. PER-127 :
+    // - bonus de compétence INCONDITIONNEL au domaine esquive (`evasion`, AGI) — décision propriétaire ;
+    // - effets plats : +3 Init (constant) ; +1 DEF passant à +2 au rang 5 → DEF SCALANTE (stepped
+    //   path-rank {1:1,5:2}), comme barde vagabond-r3 / Parade croisée (la montée reste aussi en prose).
+    richText:
+      'Le barbare ajoute son [rang + 2] à tous les tests d’AGI destinés à esquiver (Explosion de feu, souffle, pièges, etc.). De plus, il gagne +3 en Init. et +1 en DEF. Le bonus de DEF passe à +2 au rang 5.',
     effects: [
       { kind: 'stat-bonus', stat: 'initiative', value: 3 },
-      { kind: 'stat-bonus', stat: 'def', value: 1 },
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 5, value: 2 }] },
+      },
+      { kind: 'test-bonus', domains: ['evasion'] },
     ],
     sourcePage: 81,
   },
@@ -447,6 +555,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       'Le barbare se déplace en ligne droite entre 5 m et 10 m et effectue une attaque au contact avec un dé bonus et +1d4° aux DM. Il ne peut pas lancer une charge s’il est au contact d’un adversaire.',
+    // Rendu enrichi (PER-72) : DM {1d4°}. « un dé bonus » au test d'attaque (situationnel) et la hausse
+    // des DM d'arme → PER-115/PER-116 (verbatim). Pas d'effet structuré.
+    richText:
+      'Le barbare se déplace en ligne droite entre 5 m et 10 m et effectue une attaque au contact avec un dé bonus et +{1d4°} aux DM. Il ne peut pas lancer une charge s’il est au contact d’un adversaire.',
     sourcePage: 81,
   },
   {
@@ -493,6 +605,21 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare ajoute son rang + 2 à ses tests de survie (dont les tests de récupération) et de discrétion en milieu naturel. De plus, il gagne 1 PV supplémentaire.',
+    // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. PER-117 : bonus de compétence survie
+    // (survival) et discrétion (stealth) CONDITIONNELS (« en milieu naturel ») → conditional-stat-bonus
+    // avec testBonusDomains + interrupteur (cf. rôdeur survie-r1). « 1 PV supplémentaire » : bonus
+    // PERMANENT plat aux PV (+1, inconditionnel) → stat-bonus.
+    richText:
+      'Le barbare ajoute son [rang + 2] à ses tests de survie (dont les tests de récupération) et de discrétion en milieu naturel. De plus, il gagne 1 PV supplémentaire.',
+    effects: [
+      { kind: 'stat-bonus', stat: 'maxHp', value: 1 },
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        testBonusDomains: ['survival', 'stealth'],
+        activation: { kind: 'condition', label: 'en milieu naturel', activeByDefault: false },
+      },
+    ],
     sourcePage: 81,
   },
   {
@@ -504,6 +631,22 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Lorsqu’il ne porte aucune armure, le barbare peut se relever par une action de mouvement et il obtient +2 en DEF. Ce bonus passe à +3 au rang 5. S’il porte une armure, il gagne seulement +1 en DEF.',
+    // PER-67/PER-72 : bonus de DEF CONDITIONNEL à l'état d'armure (interrupteur manuel). Cas SANS armure
+    // (+2, passant à +3 au rang 5) modélisé en conditional-stat-bonus scalant (cf. barde vagabond-r3).
+    // Le cas « +1 en DEF si armure portée » est l'ALTERNATIVE (mutuellement exclusive) → laissé en prose,
+    // à câbler à la milestone Armures (qui connaîtra l'armure réellement portée). Aucun jeton parsable.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [
+          {
+            stat: 'def',
+            value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 5, value: 3 }] },
+          },
+        ],
+        activation: { kind: 'condition', label: 'aucune armure portée', activeByDefault: false },
+      },
+    ],
     sourcePage: 81,
   },
   {
@@ -515,6 +658,13 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare possède des sens très affûtés, il est difficile de le surprendre, il ajoute son rang + 2 à tous les tests effectués pour détecter les pièges mécaniques, magiques (ses poils se hérissent) ou les embuscades. Il devient immunisé aux Attaques sournoises d’un voleur ou à toute capacité similaire d’une créature de niveau inférieur au sien.',
+    // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. PER-89 : bonus de compétence INCONDITIONNEL
+    // aux domaines détection de pièges (trap-detection, couvre pièges mécaniques ET magiques) et vigilance
+    // (repérer une embuscade / éviter la surprise). L'immunité aux attaques sournoises est CONDITIONNELLE
+    // (« créature de niveau inférieur au sien »), hors de la liste fermée IMMUNITY_IDS → verbatim.
+    richText:
+      'Le barbare possède des sens très affûtés, il est difficile de le surprendre, il ajoute son [rang + 2] à tous les tests effectués pour détecter les pièges mécaniques, magiques (ses poils se hérissent) ou les embuscades. Il devient immunisé aux Attaques sournoises d’un voleur ou à toute capacité similaire d’une créature de niveau inférieur au sien.',
+    effects: [{ kind: 'test-bonus', domains: ['trap-detection', 'vigilance'] }],
     sourcePage: 81,
   },
   {
@@ -539,6 +689,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare guérit à une vitesse presque surnaturelle. Tant que son niveau actuel de PV est compris entre 1 et un tiers de son maximum, il récupère 1d4° PV par heure, de nuit comme de jour.',
+    // Rendu enrichi (PER-72) : soin {1d4°} PV par heure. Le seuil « entre 1 et un tiers du maximum »
+    // reste en prose (régime de guérison, pas une stat dérivée) → pas d'effet structuré.
+    richText:
+      'Le barbare guérit à une vitesse presque surnaturelle. Tant que son niveau actuel de PV est compris entre 1 et un tiers de son maximum, il récupère {1d4°} PV par heure, de nuit comme de jour.',
     sourcePage: 82,
   },
 
@@ -552,6 +706,13 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       'Une fois par combat, le barbare pousse un hurlement qui effraie ses adversaires dans un rayon de 10 m. Les adversaires dont la FOR est inférieure à celle du barbare subissent un dé malus à leurs tests d’attaque au contact durant leur prochain tour. De plus, le barbare est sans peur, il ajoute son rang + 2 à tous les tests de VOL destinés à résister à la peur.',
+    // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. PER-128 : bonus de compétence
+    // INCONDITIONNEL au domaine « résister à la peur » (`fear-resistance`, VOL). Le dé malus infligé
+    // aux ennemis (effet de groupe) relève du tracker de combat (PER-104/105). « Une fois par combat » :
+    // pas de compteur d'usages.
+    richText:
+      'Une fois par combat, le barbare pousse un hurlement qui effraie ses adversaires dans un rayon de 10 m. Les adversaires dont la FOR est inférieure à celle du barbare subissent un dé malus à leurs tests d’attaque au contact durant leur prochain tour. De plus, le barbare est sans peur, il ajoute son [rang + 2] à tous les tests de VOL destinés à résister à la peur.',
+    effects: [{ kind: 'test-bonus', domains: ['fear-resistance'] }],
     sourcePage: 82,
   },
   {
@@ -578,13 +739,30 @@ export const fighterFeatures: Feature[] = [
     // (le temps de la rage) → effet conditionnel à interrupteur, inactif par
     // défaut. Le +1d4° DM au contact, le malus de mouvement et le dé bonus de VOL
     // ne touchent pas une stat dérivée → restent verbatim.
+    // Rendu enrichi (PER-72) : DM {1d4°}. Le dé bonus TEMPORAIRE aux tests de VOL (pendant la rage)
+    // reste verbatim (les dés bonus permanents seuls sont structurés). « Une fois par jour … +1 par
+    // capacité de rang 4 » : compteur d'usages non automatisable proprement → verbatim.
+    richText:
+      'Une fois par jour, le barbare entre dans une rage berserk pour le reste du combat, ce qui le rend particulièrement dangereux. Il obtient +{1d4°} DM sur ses attaques au contact, mais il subit -2 en DEF et ne peut fuir de son propre gré ou attaquer à distance. Enfin, il obtient un dé bonus pour tous les tests de VOL. S’il veut stopper la rage avant d’avoir éliminé tous les ennemis sur le terrain, le barbare doit réussir un test de VOL difficulté 15 (un seul essai, à la fin de son tour). S’il devient inconscient, la rage cesse. Le personnage peut entrer en rage une fois de plus par jour pour chaque capacité de rang 4 qu’il atteint dans une voie de barbare.',
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [{ stat: 'def', value: -2 }],
         activation: { kind: 'temporary', label: 'pendant la rage berserk', activeByDefault: false },
+        // Exclusif de la Furie du berserk (rage-r5) : activer l'un éteint l'autre, sans le désactiver.
+        mutuallyExclusiveWith: ['rage-r5'],
       },
     ],
+    // PER-130 : réserve quotidienne de RAGE, partagée avec Furie du berserk (rage-r5). Max scalant =
+    // 1 + une par capacité de rang 4 atteinte dans une voie de barbare (maxByRankCount).
+    usageCounter: {
+      maxByRankCount: { classIds: ['barbare'], rank: 4, base: 1 },
+      sharedKey: 'rage',
+      label: 'Rages',
+    },
+    // PER-129 (différé, dépend de PER-115) : le +1d4° DM au contact est CONDITIONNEL à l'état de rage
+    // (même interrupteur que le -2 DEF) ; son AFFICHAGE dans le bloc Attaque au contact attend l'infra
+    // DM d'arme (PER-115). Modélisé pour l'instant par le {1d4°} du richText (à brancher sur la couche DM).
     sourcePage: 82,
   },
   {
@@ -607,6 +785,32 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       'Au lieu de la Rage du berserk, le barbare peut entrer en Furie du berserk, mais cela consomme deux utilisations de la rage. Cet état est similaire à la rage, mais le barbare ajoute 2d4° aux DM (au lieu de 1d4°) et subit -4 en DEF. La difficulté du test pour mettre prématurément fin à la furie est égale à 20.',
+    // Rendu enrichi (PER-72) : DM {2d4°} (au lieu de {1d4°}). Malus de DEF -4 TEMPORAIRE pendant la furie
+    // → conditional-stat-bonus à interrupteur (même modèle que Rage du berserk, rage-r3). EXCLUSION
+    // MUTUELLE d'interrupteurs avec la Rage du berserk (rage-r3) : on est dans l'un OU l'autre état, jamais
+    // les deux → `mutuallyExclusiveWith` (basculement ON/OFF, sans désactiver/griser).
+    richText:
+      'Au lieu de la Rage du berserk, le barbare peut entrer en Furie du berserk, mais cela consomme deux utilisations de la rage. Cet état est similaire à la rage, mais le barbare ajoute {2d4°} aux DM (au lieu de {1d4°}) et subit -4 en DEF. La difficulté du test pour mettre prématurément fin à la furie est égale à 20.',
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [{ stat: 'def', value: -4 }],
+        activation: { kind: 'temporary', label: 'pendant la furie du berserk', activeByDefault: false },
+        // Exclusif de la Rage du berserk (rage-r3) : activer l'un éteint l'autre, sans le désactiver.
+        mutuallyExclusiveWith: ['rage-r3'],
+      },
+    ],
+    // PER-130 : la Furie puise dans la MÊME réserve de rage (sharedKey 'rage') mais consomme 2 points
+    // (« cela consomme deux utilisations de la rage ») → `cost: 2` ; le décrément est bloqué s'il reste
+    // moins de 2. Même maximum scalant que rage-r3.
+    usageCounter: {
+      maxByRankCount: { classIds: ['barbare'], rank: 4, base: 1 },
+      sharedKey: 'rage',
+      label: 'Rages',
+      cost: 2,
+    },
+    // PER-129 (différé, dépend de PER-115) : le +2d4° DM au contact est CONDITIONNEL à l'état de furie
+    // (même interrupteur que le -4 DEF) ; affichage dans le bloc Attaque au contact différé à PER-115.
     sourcePage: 82,
   },
 

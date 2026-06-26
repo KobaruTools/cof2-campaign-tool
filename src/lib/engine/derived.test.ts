@@ -266,7 +266,8 @@ describe('cas en or — Ionas, ensorceleur niveau 1 (elfe haut)', () => {
 
 describe('cas en or — Lhagva, barbare niveau 1 (humaine)', () => {
   const abilities: Abilities = { AGI: 1, CON: 2, FOR: 3, PER: 1, CHA: -1, INT: 0, VOL: 1 };
-  // Réflexes éclair (pourfendeur r1) : +3 Init, +1 DEF. Diversité (humain r1) : +1 PC.
+  // Réflexes éclair (pourfendeur r1) : +3 Init, +1 DEF (DEF scalante depuis PER-127 → on passe le
+  // contexte pour la résoudre ; au rang 1 elle vaut +1, la fiche reste donc à DEF 16). Diversité (humain r1) : +1 PC.
   // Équipement : armure de cuir (+2) + grand bouclier (+2). Bonus agrégés depuis
   // les `effects` des capacités, sans injection manuelle (PER-63).
   const stats = deriveStats({
@@ -275,7 +276,7 @@ describe('cas en or — Lhagva, barbare niveau 1 (humaine)', () => {
     family: combattants,
     defenseEquipment: { defBonus: 4, maxAgi: null },
     spellCount: 0,
-    mods: modsFromFeatures(['pourfendeur-r1', 'humain-r1']),
+    mods: modsFromFeatures(['pourfendeur-r1', 'humain-r1'], { level: 1, abilities, toggles: {} }),
   });
 
   it('reproduit la fiche pour les stats régies par les formules', () => {

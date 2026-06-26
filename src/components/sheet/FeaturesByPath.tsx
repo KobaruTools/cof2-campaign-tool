@@ -635,11 +635,24 @@ function AnimalFormSelector({
 }
 
 /**
- * Maximum EFFECTIF d'un compteur (PER-119) : constante `max`, ou — si `maxByPathRank` —
- * le rang ATTEINT dans la voie hôte (scalant, ex. charges explosives = rang dans la voie).
+ * Maximum EFFECTIF d'un compteur : constante `max`, ou — si `maxByPathRank` (PER-119) — le rang
+ * ATTEINT dans la voie hôte, ou — si `maxByRankCount` (PER-130) — `base` + le nombre de capacités
+ * ACQUISES de rang `rank` dans une voie de profil des `classIds` (ex. réserve de rage = 1 + une par
+ * capacité de rang 4 de barbare).
  */
 function usageCounterMax(counter: UsageCounter, character: Character, feature: Feature): number {
   if (counter.maxByPathRank) return pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? 0;
+  if (counter.maxByRankCount) {
+    const { classIds, rank, base } = counter.maxByRankCount;
+    let count = 0;
+    for (const id of character.featureIds) {
+      const f = featureById.get(id);
+      if (!f || f.rank !== rank) continue;
+      const p = pathById.get(f.pathId);
+      if (p?.type === 'class' && p.classIds.some((c) => classIds.includes(c))) count++;
+    }
+    return base + count;
+  }
   return counter.max ?? 0;
 }
 
@@ -673,19 +686,29 @@ function UsageCounterField({
   const max = usageCounterMax(counter, character, feature);
   const key = usageCounterKey(counter, feature);
   const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+  // Coût d'un usage de CETTE capacité (PER-130) : le pas de décrément/incrément. La Furie du berserk
+  // consomme 2 points de rage et n'est utilisable que s'il en reste au moins 2.
+  const cost = counter.cost ?? 1;
   const label = counter.label ?? 'Usages restants';
   const exhausted = remaining <= 0;
   return (
     <Stack direction="row" spacing={1} sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap' }}>
       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        {label} :
+        {label}
+        {cost > 1 && (
+          <Typography component="span" variant="caption" color="text.secondary">
+            {' '}
+            (coûte {cost})
+          </Typography>
+        )}{' '}
+        :
       </Typography>
       {onSet && (
         <IconButton
           size="small"
-          aria-label="Décrémenter"
-          disabled={remaining <= 0}
-          onClick={() => onSet(key, remaining - 1, max)}
+          aria-label={cost > 1 ? `Consommer ${cost}` : 'Décrémenter'}
+          disabled={remaining < cost}
+          onClick={() => onSet(key, remaining - cost, max)}
         >
           <RemoveIcon fontSize="small" />
         </IconButton>
@@ -701,7 +724,7 @@ function UsageCounterField({
           size="small"
           aria-label="Incrémenter"
           disabled={remaining >= max}
-          onClick={() => onSet(key, remaining + 1, max)}
+          onClick={() => onSet(key, Math.min(max, remaining + cost), max)}
         >
           <AddIcon fontSize="small" />
         </IconButton>
@@ -1169,6 +1192,24 @@ function PathBlock({
                   (« Vivacité »), écrit normalement ; le nom de l'hôte est dans la case décalée derrière. */}
               {borrowed ? borrowed.name : feature.name}
             </Typography>
+            {/* Badge WIP (PER-72) : capacité dont une partie de l'effet dépend d'un ticket extérieur
+                non terminé (ex. pagne-r2 → PER-131). Suivi de relecture, pas une règle. */}
+            {feature.wip && (
+              <Tooltip title={feature.wip} arrow>
+                <Chip
+                  label="WIP"
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                  sx={{
+                    mt: 0.5,
+                    height: 18,
+                    cursor: 'help',
+                    '& .MuiChip-label': { px: 0.75, fontSize: '0.6rem', fontWeight: 700 },
+                  }}
+                />
+              </Tooltip>
+            )}
             {/* Interrupteurs des effets conditionnels, compacts (état de jeu, libellé
                 en infobulle) ; le détail cliquable héberge la version étiquetée. */}
             {hasEffectToggles(feature) && (
@@ -1312,6 +1353,17 @@ function PathBlock({
                   <Box component="span" sx={{ fontWeight: 600 }}>
                     <FeatureLabel feature={openFeature} concentration={concentration} />
                   </Box>
+                  {openFeature.wip && (
+                    <Tooltip title={openFeature.wip} arrow>
+                      <Chip
+                        label="WIP"
+                        size="small"
+                        color="warning"
+                        variant="outlined"
+                        sx={{ fontWeight: 700, cursor: 'help' }}
+                      />
+                    </Tooltip>
+                  )}
                 </Stack>
                 <IconButton
                   aria-label="Fermer"
@@ -1494,6 +1546,17 @@ function PathBlock({
                   variant="outlined"
                   sx={{ fontWeight: 600 }}
                 />
+                {feature.wip && (
+                  <Tooltip title={feature.wip} arrow>
+                    <Chip
+                      label="WIP"
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      sx={{ fontWeight: 700, cursor: 'help' }}
+                    />
+                  </Tooltip>
+                )}
                 {manualFeatureIds?.has(feature.id) && <ManualPin inline />}
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   {repl && (

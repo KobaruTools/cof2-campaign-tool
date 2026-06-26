@@ -6,6 +6,7 @@ import {
   abilityModSources,
   abilityModsFromFeatures,
   abilityTestBonusSources,
+  abilityTestBonusByAbility,
   activeConditionalTestDice,
   aggregateImmunities,
   conditionalEffectsOf,
@@ -60,14 +61,17 @@ describe('modsFromFeatures — bonus plats constants (PER-63)', () => {
     expect(modsFromFeatures(['air-r1'])).toEqual({ initiative: 1, def: 1 });
   });
 
-  it('agrège la part plate de Réflexes éclair (pourfendeur r1 : +3 Init, +1 DEF)', () => {
-    expect(modsFromFeatures(['pourfendeur-r1'])).toEqual({ initiative: 3, def: 1 });
+  it('agrège la part plate de Réflexes éclair (pourfendeur r1 : +3 Init ; DEF scalante omise sans contexte)', () => {
+    // Depuis PER-127, le +1 DEF de pourfendeur-r1 est SCALANT (stepped path-rank {1:1,5:2}) :
+    // sans contexte, seule la part plate +3 Init est résoluble (la DEF est résolue avec contexte,
+    // cf. le bloc « valeurs scalantes » et le cas en or Lhagva dans derived.test.ts).
+    expect(modsFromFeatures(['pourfendeur-r1'])).toEqual({ initiative: 3 });
   });
 
-  it('somme les bonus de plusieurs capacités, par stat (cas Lhagva)', () => {
+  it('somme les bonus de plusieurs capacités, par stat (cas Lhagva, parts plates)', () => {
+    // DEF de pourfendeur-r1 désormais scalante (omise sans contexte) ; restent les parts plates.
     expect(modsFromFeatures(['pourfendeur-r1', 'humain-r1'])).toEqual({
       initiative: 3,
-      def: 1,
       luckPoints: 1,
     });
   });
@@ -81,6 +85,54 @@ describe('modsFromFeatures — valeurs scalantes (PER-67)', () => {
 
   it('résout une valeur = caractéristique (brute r1 : maxHp += FOR)', () => {
     expect(modsFromFeatures(['brute-r1'], ctx())).toEqual({ maxHp: 3 });
+  });
+
+  it('résout la DEF scalante de Réflexes éclair (pourfendeur r1 : +1 DEF, +2 au rang 5)', () => {
+    // Au rang 1, la DEF stepped vaut 1 ; au rang 5 (voie complétée), elle passe à 2 (PER-127).
+    expect(modsFromFeatures(['pourfendeur-r1'], ctx())).toEqual({ initiative: 3, def: 1 });
+    expect(modsFromFeatures(['pourfendeur-r1', 'pourfendeur-r5'], ctx())).toEqual({
+      initiative: 3,
+      def: 2,
+    });
+  });
+});
+
+describe('abilityTestBonusByAbility — bonus à une carac via option (PER-125)', () => {
+  it('le tatouage retenu octroie +3 aux tests de sa caractéristique', () => {
+    const result = abilityTestBonusByAbility(
+      ['pagne-r3'],
+      ctx({ featureChoices: { 'pagne-r3': ['bull'] } }),
+    );
+    expect(result.FOR).toEqual([{ featureId: 'pagne-r3', name: 'Tatouages', value: 3 }]);
+    expect(result.CON).toBeUndefined();
+  });
+
+  it('sans sélection (ni contexte), aucun bonus', () => {
+    expect(abilityTestBonusByAbility(['pagne-r3'], ctx())).toEqual({});
+    expect(abilityTestBonusByAbility(['pagne-r3'])).toEqual({});
+  });
+});
+
+describe('setEffectToggle — exclusion mutuelle d’interrupteurs (PER-130)', () => {
+  it('activer la Furie du berserk éteint l’interrupteur de la Rage du berserk', () => {
+    const c = charWith({ 'rage-r3': [true] });
+    const next = setEffectToggle(c, 'rage-r5', 0, true);
+    expect(next['rage-r5']?.[0]).toBe(true);
+    expect(next['rage-r3']?.[0]).toBe(false);
+  });
+
+  it('et réciproquement : activer la Rage éteint la Furie', () => {
+    const c = charWith({ 'rage-r5': [true] });
+    const next = setEffectToggle(c, 'rage-r3', 0, true);
+    expect(next['rage-r3']?.[0]).toBe(true);
+    expect(next['rage-r5']?.[0]).toBe(false);
+  });
+
+  it('ne désactive PAS les capacités (basculement ON/OFF, pas un grisage)', () => {
+    const c = charWith({ 'rage-r3': [true], 'rage-r5': [true] });
+    const reasons = disabledFeatureReasons({ ...c, featureIds: ['rage-r3', 'rage-r5'] });
+    expect(reasons.has('rage-r3')).toBe(false);
+    expect(reasons.has('rage-r5')).toBe(false);
   });
 });
 
@@ -268,8 +320,10 @@ describe('interrupteurs des effets conditionnels', () => {
   });
 
   it('setEffectToggle fixe une case sans muter le personnage', () => {
-    const next = setEffectToggle(charWith({}), 'rage-r3', 0, true);
-    expect(next).toEqual({ 'rage-r3': [true] });
+    // primitif-r2 (Armure de vent) : interrupteur conditionnel SANS exclusion mutuelle ni
+    // désactivation → aucune cascade, le résultat ne contient que la case fixée.
+    const next = setEffectToggle(charWith({}), 'primitif-r2', 0, true);
+    expect(next).toEqual({ 'primitif-r2': [true] });
   });
 
   it('pruneEffectToggles retire les interrupteurs orphelins', () => {

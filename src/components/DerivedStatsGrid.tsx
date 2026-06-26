@@ -6,6 +6,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
@@ -71,6 +72,11 @@ export interface DerivedStatsGridProps {
    * ou de revenir au calcul. `null` en valeur = retour au calcul automatique.
    */
   onOverride?: (key: OverrideKey, value: number | null) => void;
+  /**
+   * Réductions de dégâts (RD) ACTIVES à afficher dans la carte Défense (PER-126). Puces
+   * informatives (libellé court + info-bulle). Absent = aucune RD affichée (ex. récap du wizard).
+   */
+  damageReductions?: { label: string; detail: string }[];
 }
 
 interface StatLine {
@@ -97,6 +103,7 @@ export function DerivedStatsGrid({
   size = { xs: 12, sm: 6, md: 4 },
   overrides,
   onOverride,
+  damageReductions,
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
 
@@ -199,6 +206,21 @@ export function DerivedStatsGrid({
                         </Tooltip>
                       )}
                     </Typography>
+                  )}
+                  {id === 'defense' && damageReductions && damageReductions.length > 0 && (
+                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                      {damageReductions.map((dr) => (
+                        <Tooltip key={dr.label} title={dr.detail} arrow>
+                          <Chip
+                            label={dr.label}
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                            sx={{ cursor: 'help', height: 20, '& .MuiChip-label': { px: 0.75, fontSize: '0.7rem' } }}
+                          />
+                        </Tooltip>
+                      ))}
+                    </Stack>
                   )}
                 </Box>
                 <DerivedStatHint

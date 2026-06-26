@@ -206,8 +206,9 @@ describe('borrowedFeatureIds & moteur', () => {
 
   it('le bonus plat d’une capacité empruntée s’applique via les ids effectifs', () => {
     const c = makeCharacter({ featureChoices: { 'demi-orc-r2': ['pourfendeur-r1'] } });
-    // pourfendeur-r1 = Réflexes éclair : +3 Init, +1 DEF (cf. effects.test).
-    expect(modsFromFeatures(effectiveFeatureIdsForMods(c))).toEqual({ initiative: 3, def: 1 });
+    // pourfendeur-r1 = Réflexes éclair : +3 Init (part plate) ; sa DEF est scalante (PER-127),
+    // donc omise ici faute de contexte — l'emprunt de la part plate reste vérifié par le +3 Init.
+    expect(modsFromFeatures(effectiveFeatureIdsForMods(c))).toEqual({ initiative: 3 });
   });
 
   it('sans choix fait, aucune capacité empruntée et aucun bonus', () => {
