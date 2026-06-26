@@ -837,6 +837,36 @@ export interface DamageReduction {
   absorptionCap?: EffectValue;
 }
 
+/**
+ * PLAGE DE CRITIQUE élargie accordée par une capacité (PER-133) — concept de règles du
+ * livre : un critique est normalement obtenu sur un 20 naturel (p. 213), et certaines
+ * capacités « augmentent les chances d'obtenir un critique » (« 19-20 au lieu de 20 »).
+ *
+ * Comme la RÉDUCTION DE DÉGÂTS (`DamageReduction`), c'est une donnée d'AFFICHAGE INFORMATIF :
+ * le moteur ne la consomme PAS (aucun jet d'attaque simulé — les dés sont lancés à la table).
+ * Elle est rendue en puce sous la carte « Attaque au contact » ou « à distance » selon `scope`,
+ * sur le même patron UI que la RD (cf. `criticalRangeSources`, `formatCriticalRange`).
+ *
+ * ACTIVATION : si la capacité est PASSIVE (aucun effet conditionnel), la plage est permanente
+ * (ex. Briseur d'os, Écuyer, Tir précis). Si l'élargissement est CONDITIONNÉ À L'ARME
+ * (« arme de prédilection », « mains nues », « arme légère »), il suit un INTERRUPTEUR MANUEL :
+ * la capacité porte alors un `ConditionalStatBonusEffect` à `bonuses` vide (marqueur d'état) et
+ * `criticalRangeSources` ne retient la plage que si l'interrupteur est actif — exactement comme
+ * la RD d'Armure de pierre suit son interrupteur. Le câblage AUTOMATIQUE au type d'arme PORTÉE
+ * est différé à la milestone « Armures et équipement porté » (PER-76) ; ces capacités portent
+ * en attendant un badge `wip`.
+ */
+export interface CriticalRange {
+  /** Portée concernée : attaques au contact (`melee`) ou à distance (`ranged`). */
+  scope: 'melee' | 'ranged';
+  /**
+   * ÉLARGISSEMENT = nombre de points retranchés au seuil de 20 : 1 → critique sur 19-20,
+   * 2 → 18-20. Constante (cas courant) ou SCALANTE (Tir précis, arquebusier : 1, puis 2 au
+   * rang 5 de la voie — `stepped` `path-rank`). Résolue à l'affichage par `criticalRangeSources`.
+   */
+  value: EffectValue;
+}
+
 // ---------------------------------------------------------------------------
 // Choix portés par une capacité — PER-66
 // ---------------------------------------------------------------------------
@@ -1205,6 +1235,14 @@ export interface Feature {
    * capacité n'accorde aucune RD modélisée.
    */
   damageReduction?: DamageReduction;
+  /**
+   * Plage de critique élargie accordée par la capacité (« 19-20 au lieu de 20 »), EN PLUS du
+   * `text` verbatim (PER-133). Donnée d'affichage informatif (non lue par le moteur), rendue en
+   * puce sous la carte Attaque au contact / à distance selon `scope`, sur le patron de la RD. Une
+   * plage CONDITIONNÉE À L'ARME suit l'interrupteur d'un `conditional-stat-bonus` marqueur d'état
+   * (cf. `CriticalRange`). Absent = la capacité n'élargit pas la plage de critique.
+   */
+  criticalRange?: CriticalRange;
   /**
    * Compteur d'usages limités (« utilisable N fois ») — déclare le maximum ; le
    * décompte courant est un état de jeu du personnage (`Character.usageCounters`).

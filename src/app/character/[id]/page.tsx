@@ -36,6 +36,7 @@ import {
   abilityModsFromFeatures,
   abilityTestBonusSources,
   abilityTestBonusByAbility,
+  criticalRangeSources,
   damageReductionSources,
   activeConditionalTestDice,
   aggregateImmunities,
@@ -59,6 +60,7 @@ import { ClassIcon } from '@/components/ClassIcon';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
+import { formatCriticalRange } from '@/lib/ui/criticalRange';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
@@ -274,6 +276,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     const f = formatDamageReduction(s.reduction);
     return { label: f.short, detail: `${s.name} — ${f.long}` };
   });
+  // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — affichées sous les cartes
+  // Attaque au contact / à distance selon leur portée (PER-133), même patron de puces que la RD.
+  const critRanges = criticalRangeSources(character).map((s) => {
+    const f = formatCriticalRange(s.scope, s.value);
+    return { scope: s.scope, label: f.short, detail: `${s.name} — ${f.long}` };
+  });
+  const meleeCriticalRanges = critRanges.filter((c) => c.scope === 'melee');
+  const rangedCriticalRanges = critRanges.filter((c) => c.scope === 'ranged');
   // Plancher de compétence universel (Éclectique, PER-102) et immunités (PER-103).
   const universalTest = universalTestBonus(modFeatureIds);
   const immunities = aggregateImmunities(modFeatureIds);
@@ -529,6 +539,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 overrides={character.overrides}
                 onOverride={editing ? setOverride : undefined}
                 damageReductions={damageReductions}
+                meleeCriticalRanges={meleeCriticalRanges}
+                rangedCriticalRanges={rangedCriticalRanges}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">

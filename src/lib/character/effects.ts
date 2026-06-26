@@ -22,6 +22,7 @@ import { featureById, pathById } from '@/data';
 import type {
   AbilityId,
   ConditionalStatBonusEffect,
+  CriticalRange,
   DamageReduction,
   DerivedStatId,
   EffectValue,
@@ -1201,6 +1202,47 @@ export function damageReductionSources(character: Character): DamageReductionSou
       conditionalIndexes.length === 0 || conditionalIndexes.some((i) => isEffectActive(character, id, i));
     if (!active) continue;
     out.push({ featureId: id, name: feature.name, reduction: feature.damageReduction });
+  }
+  return out;
+}
+
+/** Une plage de critique ACTIVE octroyée par une capacité, valeur résolue (PER-133). */
+export interface CriticalRangeSource {
+  featureId: string;
+  /** Nom de la capacité (français). */
+  name: string;
+  /** Portée concernée (cf. `CriticalRange`). */
+  scope: CriticalRange['scope'];
+  /** Élargissement RÉSOLU (points retranchés à 20) : 1 → 19-20, 2 → 18-20. */
+  value: number;
+}
+
+/**
+ * Plages de critique élargies ACTIVES du personnage (PER-133), pour l'affichage sous les cartes
+ * Attaque au contact / à distance. Même logique d'activation que `damageReductionSources` : une
+ * capacité PASSIVE (aucun effet conditionnel) accorde une plage PERMANENTE (Briseur d'os, Écuyer,
+ * Tir précis) ; une capacité dont l'élargissement est conditionné à l'arme porte un effet
+ * conditionnel (marqueur d'état) et n'est retenue que si son interrupteur est ACTIF (Science du
+ * critique, Morsure du serpent, Frappe chirurgicale — câblage automatique différé à PER-76). La
+ * valeur scalante éventuelle (Tir précis : 1 puis 2 au rang 5) est résolue ici. Donnée informative,
+ * non lue par le moteur (aucun jet simulé).
+ */
+export function criticalRangeSources(character: Character): CriticalRangeSource[] {
+  const pathRanks = pathRanksFromFeatures(character.featureIds);
+  const ctx = effectContext(character);
+  const out: CriticalRangeSource[] = [];
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.criticalRange) continue;
+    const conditionalIndexes = (feature.effects ?? [])
+      .map((e, i) => (e.kind === 'conditional-stat-bonus' ? i : -1))
+      .filter((i) => i >= 0);
+    const active =
+      conditionalIndexes.length === 0 || conditionalIndexes.some((i) => isEffectActive(character, id, i));
+    if (!active) continue;
+    const value = resolveValue(feature.criticalRange.value, feature.pathId, pathRanks, ctx);
+    if (value === null || value <= 0) continue;
+    out.push({ featureId: id, name: feature.name, scope: feature.criticalRange.scope, value });
   }
   return out;
 }

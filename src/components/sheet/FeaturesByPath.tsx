@@ -57,6 +57,13 @@ import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
 
 /**
+ * Couleur du badge « WIP » (PER-72) : jaune franc, VOLONTAIREMENT distinct de l'orange « warning »
+ * du système (réservé aux « choix à faire »), pour ne pas confondre les deux codes couleur. Appliqué
+ * en `sx` (le thème MUI n'a pas de teinte jaune dédiée) sur un Chip outlined sans prop `color`.
+ */
+const WIP_CHIP_SX = { color: '#ffeb3b', borderColor: '#ffeb3b' } as const;
+
+/**
  * Ordre d'affichage des voies par type, de gauche à droite sur la fiche :
  * la voie du peuple (ou du mage, qui la remplace) à gauche, les voies de
  * profil au milieu, la voie de prestige tout à droite.
@@ -1177,9 +1184,9 @@ function PathBlock({
                 <Chip
                   label="WIP"
                   size="small"
-                  color="warning"
                   variant="outlined"
                   sx={{
+                    ...WIP_CHIP_SX,
                     mt: 0.5,
                     height: 18,
                     cursor: 'help',
@@ -1336,9 +1343,8 @@ function PathBlock({
                       <Chip
                         label="WIP"
                         size="small"
-                        color="warning"
                         variant="outlined"
-                        sx={{ fontWeight: 700, cursor: 'help' }}
+                        sx={{ ...WIP_CHIP_SX, fontWeight: 700, cursor: 'help' }}
                       />
                     </Tooltip>
                   )}
@@ -1529,9 +1535,8 @@ function PathBlock({
                     <Chip
                       label="WIP"
                       size="small"
-                      color="warning"
                       variant="outlined"
-                      sx={{ fontWeight: 700, cursor: 'help' }}
+                      sx={{ ...WIP_CHIP_SX, fontWeight: 700, cursor: 'help' }}
                     />
                   </Tooltip>
                 )}

@@ -12,6 +12,7 @@ import {
   aggregateImmunities,
   conditionalEffectsOf,
   conditionalEffectBonuses,
+  criticalRangeSources,
   creatureBonusDiceForPath,
   disabledFeatureIds,
   disabledFeatureReasons,
@@ -701,5 +702,47 @@ describe('disabledFeatureReasons — grisage des capacités (exclusion / remplac
 
   it('exclusion mutuelle : interrupteur éteint → aucun grisage', () => {
     expect(disabledFeatureReasons(char(['demon-r2', 'demon-r4'])).size).toBe(0);
+  });
+});
+
+describe('criticalRangeSources — plage de critique élargie (PER-133)', () => {
+  const char = (featureIds: string[], toggles: Record<string, boolean[]> = {}): Character =>
+    ({ level: 7, abilities: ctx().abilities, featureIds, effectToggles: toggles, featureChoices: {} }) as Character;
+
+  it('Briseur d’os (brute-r5) : plage passive +1 au contact, toujours active', () => {
+    expect(criticalRangeSources(char(['brute-r5']))).toEqual([
+      { featureId: 'brute-r5', name: 'Briseur d’os', scope: 'melee', value: 1 },
+    ]);
+  });
+
+  it('Écuyer (noblesse-r2) : plage passive +1 au contact', () => {
+    const src = criticalRangeSources(char(['noblesse-r2']));
+    expect(src).toEqual([{ featureId: 'noblesse-r2', name: 'Écuyer', scope: 'melee', value: 1 }]);
+  });
+
+  it('Tir précis (precision-r3) : plage à distance SCALANTE — +1 au rang 3, +2 au rang 5 de la voie', () => {
+    expect(criticalRangeSources(char(['precision-r3']))).toEqual([
+      { featureId: 'precision-r3', name: 'Tir précis', scope: 'ranged', value: 1 },
+    ]);
+    // Rang 5 atteint dans la voie de précision → la plage passe à 18-20 (value 2).
+    expect(criticalRangeSources(char(['precision-r3', 'precision-r5']))).toContainEqual({
+      featureId: 'precision-r3',
+      name: 'Tir précis',
+      scope: 'ranged',
+      value: 2,
+    });
+  });
+
+  it('Science du critique (maitre-d-armes-r2) : conditionnée à l’arme → masquée tant que l’interrupteur est éteint', () => {
+    expect(criticalRangeSources(char(['maitre-d-armes-r2']))).toEqual([]);
+    expect(criticalRangeSources(char(['maitre-d-armes-r2'], { 'maitre-d-armes-r2': [true] }))).toEqual([
+      { featureId: 'maitre-d-armes-r2', name: 'Science du critique', scope: 'melee', value: 1 },
+    ]);
+  });
+
+  it('Frappe chirurgicale (spadassin-r3) : +2 au contact (18-20) quand l’interrupteur « arme légère » est actif', () => {
+    expect(criticalRangeSources(char(['spadassin-r3'], { 'spadassin-r3': [true] }))).toEqual([
+      { featureId: 'spadassin-r3', name: 'Frappe chirurgicale', scope: 'melee', value: 2 },
+    ]);
   });
 });

@@ -351,6 +351,21 @@ for (const c of features) {
   }
 }
 
+// --- Plage de critique élargie (PER-133) -------------------------------------
+// Donnée d'affichage informatif (non lue par le moteur) : on vérifie la portée (melee/ranged)
+// et la résolubilité de la valeur (constante ou scalante). Une plage conditionnée à l'arme doit
+// s'appuyer sur un effet conditionnel (marqueur d'état) pour que son interrupteur existe.
+let featuresWithCriticalRange = 0;
+for (const c of features) {
+  const cr = c.criticalRange;
+  if (!cr) continue;
+  featuresWithCriticalRange++;
+  if (cr.scope !== 'melee' && cr.scope !== 'ranged')
+    err(`[capacite ${c.id}] criticalRange.scope inconnu : ${cr.scope}`);
+  const ve = effectValueError(cr.value);
+  if (ve) err(`[capacite ${c.id}] criticalRange value: ${ve}`);
+}
+
 // --- Remplacement inconditionnel de capacité (PER-70) ------------------------
 // `replacesFeatures` (Grand félin → Panthère) : les cibles doivent exister, ne pas
 // être soi, et appartenir à la même voie (un remplacement ne traverse pas les voies).
@@ -413,6 +428,7 @@ console.log(`capacités (total)  : ${features.length}  (dont sorts * : ${spells}
 console.log(`  · classées       : ${FEATURE_CLASSIFICATIONS.length}  (dont TODO(extraction) : ${classifTodos})`);
 console.log(`  · avec effects   : ${featuresWithEffects}`);
 console.log(`  · avec RD        : ${featuresWithDamageReduction} (réduction de dégâts, non lue par le moteur)`);
+console.log(`  · avec plage crit. : ${featuresWithCriticalRange} (plage de critique élargie, non lue par le moteur)`);
 console.log(`  · coût mana dérogé : ${spellsWithManaCost} (sinon = rang, p. 228)`);
 console.log(`équipement (total) : ${equipment.length}`);
 console.log(`dieux du prêtre    : ${priestGods.length}`);

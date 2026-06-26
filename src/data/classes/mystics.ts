@@ -786,6 +786,19 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Lorsqu'il attaque à mains nues, le moine augmente de 1 point les chances d'obtenir un critique sur les attaques au contact (par exemple, 19-20 au lieu de 20). De plus, ses coups critiques portés à mains nues sont désormais si douloureux que la cible est affaiblie pendant 1 round.",
+    // PER-133 : élargissement de la plage de critique au CONTACT (+1 → 19-20), CONDITIONNÉ au combat à
+    // mains nues. En attendant le câblage automatique au type d'arme porté (PER-136), un interrupteur
+    // manuel (effet conditionnel « marqueur d'état », bonuses vide) pilote l'affichage de la puce sous
+    // la carte Attaque au contact. L'effet « cible affaiblie sur critique » reste en verbatim.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'à mains nues' },
+      },
+    ],
+    criticalRange: { scope: 'melee', value: 1 },
+    wip: "Plage de critique conditionnée au combat à mains nues — activation manuelle en attendant le câblage automatique au type d'arme porté (PER-136).",
     sourcePage: 119,
   },
   {

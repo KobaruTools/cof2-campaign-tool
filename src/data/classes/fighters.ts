@@ -380,6 +380,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le barbare augmente de 1 point les chances d’obtenir un critique sur les attaques au contact (par exemple 19-20 au lieu de 20). Lorsqu’il obtient un critique sur une attaque au contact, en plus des DM doublés, la cible est étourdie pendant 1 round. Enfin, le barbare peut désormais porter une cotte de mailles et utiliser toutes les capacités des voies de barbare auparavant autorisées avec une chemise de mailles.',
+    // PER-133 : élargissement de la plage de critique au CONTACT (+1 → 19-20), inconditionnel (passif).
+    // Affiché en puce sous la carte Attaque au contact. L'effet « cible étourdie sur critique » et le
+    // déblocage de la cotte de mailles (PER-76) restent en verbatim (non modélisés).
+    criticalRange: { scope: 'melee', value: 1 },
     sourcePage: 80,
   },
 
@@ -1063,6 +1067,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier dispose d’un écuyer à son service (Init. [chevalier], DEF [10 + rang], PV [niveau × 4], Att [attaque magique], DM 1d4°+1). Il est absolument loyal à son maître, il s’occupe de sa monture et de son équipement, prépare le campement, panse les blessures, etc. Grâce à l’écuyer, les armes du chevalier sont parfaitement affûtées et il augmente de 1 point les chances d’obtenir un critique sur les attaques au contact (par exemple, 19-20 au lieu de 20). De plus, le chevalier, sa monture et jusqu’à CHA alliés récupèrent 1d4° PV supplémentaires après chaque récupération complète s’ils profitent des services de l’écuyer. Si l’écuyer vient à mourir, le chevalier en prendra un autre à son service au niveau suivant.',
+    // PER-133 : élargissement de la plage de critique au CONTACT (+1 → 19-20), inconditionnel (passif :
+    // l'écuyer affûte les armes). Affiché en puce sous la carte Attaque au contact. Le reste (mini-fiche
+    // de l'écuyer, PV de récupération supplémentaires) reste en verbatim.
+    criticalRange: { scope: 'melee', value: 1 },
     sourcePage: 86,
   },
   {
@@ -1249,6 +1257,19 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le guerrier augmente de 1 point les chances d’obtenir un critique sur les attaques effectuées avec une arme de prédilection (par exemple, 19-20 au lieu de 20).',
+    // PER-133 : élargissement de la plage de critique au CONTACT (+1 → 19-20), CONDITIONNÉ à une arme
+    // de prédilection en main. En attendant le câblage automatique au type d'arme porté (PER-136), un
+    // interrupteur manuel (effet conditionnel « marqueur d'état », bonuses vide) pilote l'affichage de
+    // la puce sous la carte Attaque au contact.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'arme de prédilection en main' },
+      },
+    ],
+    criticalRange: { scope: 'melee', value: 1 },
+    wip: "Plage de critique conditionnée à l'arme de prédilection — activation manuelle en attendant le câblage automatique au type d'arme porté (PER-136).",
     sourcePage: 89,
   },
   {

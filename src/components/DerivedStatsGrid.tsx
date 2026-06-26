@@ -77,6 +77,39 @@ export interface DerivedStatsGridProps {
    * informatives (libellé court + info-bulle). Absent = aucune RD affichée (ex. récap du wizard).
    */
   damageReductions?: { label: string; detail: string }[];
+  /**
+   * Plages de critique élargies ACTIVES au CONTACT à afficher sous la carte « Attaque au contact »
+   * (PER-133). Mêmes puces informatives que la RD. Absent = aucune (ex. récap du wizard).
+   */
+  meleeCriticalRanges?: { label: string; detail: string }[];
+  /** Plages de critique élargies ACTIVES À DISTANCE, sous la carte « Attaque à distance » (PER-133). */
+  rangedCriticalRanges?: { label: string; detail: string }[];
+}
+
+/** Puces informatives (libellé court + info-bulle) accolées sous la valeur d'une stat (RD, plage de critique). */
+function StatChips({
+  items,
+  color,
+}: {
+  items: { label: string; detail: string }[];
+  color: 'info' | 'secondary';
+}) {
+  if (items.length === 0) return null;
+  return (
+    <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+      {items.map((it, i) => (
+        <Tooltip key={`${it.label}-${i}`} title={it.detail} arrow>
+          <Chip
+            label={it.label}
+            size="small"
+            variant="outlined"
+            color={color}
+            sx={{ cursor: 'help', height: 20, '& .MuiChip-label': { px: 0.75, fontSize: '0.7rem' } }}
+          />
+        </Tooltip>
+      ))}
+    </Stack>
+  );
 }
 
 interface StatLine {
@@ -104,6 +137,8 @@ export function DerivedStatsGrid({
   overrides,
   onOverride,
   damageReductions,
+  meleeCriticalRanges,
+  rangedCriticalRanges,
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
 
@@ -207,20 +242,12 @@ export function DerivedStatsGrid({
                       )}
                     </Typography>
                   )}
-                  {id === 'defense' && damageReductions && damageReductions.length > 0 && (
-                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                      {damageReductions.map((dr) => (
-                        <Tooltip key={dr.label} title={dr.detail} arrow>
-                          <Chip
-                            label={dr.label}
-                            size="small"
-                            variant="outlined"
-                            color="info"
-                            sx={{ cursor: 'help', height: 20, '& .MuiChip-label': { px: 0.75, fontSize: '0.7rem' } }}
-                          />
-                        </Tooltip>
-                      ))}
-                    </Stack>
+                  {id === 'defense' && damageReductions && <StatChips items={damageReductions} color="info" />}
+                  {id === 'meleeAttack' && meleeCriticalRanges && (
+                    <StatChips items={meleeCriticalRanges} color="secondary" />
+                  )}
+                  {id === 'rangedAttack' && rangedCriticalRanges && (
+                    <StatChips items={rangedCriticalRanges} color="secondary" />
                   )}
                 </Box>
                 <DerivedStatHint
