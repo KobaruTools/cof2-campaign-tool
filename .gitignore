@@ -45,3 +45,4 @@ next-env.d.ts
 
 # pages PDF rendues pour lecture par Claude
 /.pdf-pages/
+.vercel
