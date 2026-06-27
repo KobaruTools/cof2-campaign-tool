@@ -105,6 +105,12 @@ export interface FeatureMarkerHexesProps {
    * sort en action limitée — avec un halo bleu mana. Sans effet sinon.
    */
   concentration?: boolean;
+  /**
+   * Rang ATTEINT dans la voie hôte (PER-72) : affiche les types d'action conditionnels
+   * (`feature.actionTypesFromRank`, ex. Parer un coup → hexagone (G) au rang 5). Absent →
+   * ces marqueurs conditionnels ne sont pas affichés.
+   */
+  pathRank?: number;
   sx?: SxProps<Theme>;
 }
 
@@ -120,9 +126,14 @@ export function FeatureMarkerHexes({
   color,
   size = 20,
   concentration = false,
+  pathRank,
   sx,
 }: FeatureMarkerHexesProps) {
-  if (!feature.isSpell && feature.actionTypes.length === 0) return null;
+  // Types d'action conditionnels au rang atteint dans la voie (PER-72), ex. Parer un coup → (G) au rang 5.
+  const fromRank = feature.actionTypesFromRank;
+  const extraActionTypes =
+    fromRank && pathRank != null && pathRank >= fromRank.rank ? fromRank.actionTypes : [];
+  if (!feature.isSpell && feature.actionTypes.length === 0 && extraActionTypes.length === 0) return null;
   const fill = color ? darken(color, 0.25) : 'info.main';
   // Concentration active ET sort éligible (lancé en (A) seulement) : son hexagone
   // d'action (A) devient (L), avec halo (p. 228).
@@ -151,6 +162,16 @@ export function FeatureMarkerHexes({
           </Hex>
         ),
       )}
+      {extraActionTypes.map((a) => (
+        <Hex
+          key={`fromRank-${a}`}
+          fill={fill}
+          size={size}
+          label={`${ACTION_TYPE_LABELS[a]} — à partir du rang ${fromRank!.rank} de la voie`}
+        >
+          {a}
+        </Hex>
+      ))}
     </Stack>
   );
 }

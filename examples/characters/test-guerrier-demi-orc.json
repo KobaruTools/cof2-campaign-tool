@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 9,
+  "id": "test-guerrier-demi-orc",
+  "name": "Test — Guerrier (demi-orc)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-72 — guerrier demi-orc, les 5 voies au rang 5. À vérifier : Bouclier — Protéger un allié (compétence vigilance + [rang + 2] ; +2 DEF allié verbatim), Défense au bouclier (INTERRUPTEUR « bouclier en main » ACTIF → +1/+2 DEF en puce Défense ; RD zone/souffles en WIP), Renvoi de sort (référence [&bouclier-r4] Absorber un sort). Combat — Vivacité (+3 Init en puce ; +3 AGI/FOR situationnel verbatim), Attaque puissante {2d4°}/{3d4°} + références [&combat-r4]/[&combat-r5]/[&maitre-d-armes-r4]. Maître d'armes — Armes de prédilection (CHOIX « Épées » + compétence connaissance martiale ; +1 attaque WIP), Science du critique (INTERRUPTEUR « arme de prédilection en main » ACTIF → plage de critique +1 au contact), Spécialisation (WIP DM), Attaque parfaite {1d4°}. Résistance — Robustesse (PV +[rang + 2] → +7 au rang 5 ; compétences résistance/chaleur/froid CON), Résilient (compétences résister étourdissement/affaiblissement = rang, CON ; récupération rapide verbatim), Armure lourde (CHOIX « +1 en DEF » modélisé ; option plaque WIP), Constitution héroïque (CON +1 + dé), Dur à cuire (+1 DEF). Soldat — Teigneux (compétence résistance aux privations, CON), Prouesse {1d4°}, Piqûre de rappel (@INT cible non calculée), Force héroïque (FOR +1 + dé), Rempart (référence [&soldat-r1] Teigneux + nombre [=AGI + 2] + 1 DEF). Peuple demi-orc : Impressionnant (demi-orc-r1, vision dans le noir + intimidation +3 — bonus d'intimidation non encore modélisé côté voie de peuple, hors périmètre PER-72)."
+  },
+  "ancestryId": "demi-orc",
+  "classId": "guerrier",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 2,
+    "CON": 3,
+    "FOR": 4,
+    "PER": 0,
+    "CHA": -1,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 2,
+    "CON": 3,
+    "FOR": 3,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [
+    "FOR",
+    "INT"
+  ],
+  "ancestryPathId": "demi-orc",
+  "featureIds": [
+    "bouclier-r1",
+    "combat-r1",
+    "demi-orc-r1",
+    "maitre-d-armes-r1",
+    "resistance-r1",
+    "soldat-r1",
+    "bouclier-r2",
+    "combat-r2",
+    "maitre-d-armes-r2",
+    "resistance-r2",
+    "soldat-r2",
+    "bouclier-r3",
+    "combat-r3",
+    "maitre-d-armes-r3",
+    "resistance-r3",
+    "soldat-r3",
+    "bouclier-r4",
+    "combat-r4",
+    "maitre-d-armes-r4",
+    "resistance-r4",
+    "soldat-r4",
+    "bouclier-r5",
+    "combat-r5",
+    "maitre-d-armes-r5",
+    "resistance-r5",
+    "soldat-r5"
+  ],
+  "featureChoices": {
+    "maitre-d-armes-r1": [
+      "swords"
+    ],
+    "resistance-r3": [
+      "def-bonus"
+    ]
+  },
+  "effectToggles": {
+    "bouclier-r3": [
+      true
+    ],
+    "maitre-d-armes-r2": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "bouclier-r1",
+        "combat-r1",
+        "demi-orc-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "maitre-d-armes-r1",
+        "resistance-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "soldat-r1",
+        "bouclier-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "combat-r2",
+        "maitre-d-armes-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "resistance-r2",
+        "soldat-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "bouclier-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "combat-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "maitre-d-armes-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "resistance-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "soldat-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "bouclier-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "combat-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "maitre-d-armes-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "resistance-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "soldat-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "bouclier-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "combat-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "maitre-d-armes-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "resistance-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "soldat-r5"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1
+    },
+    {
+      "itemId": "grand-bouclier",
+      "quantity": 1
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    },
+    {
+      "itemId": "chemise-de-mailles",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-72 (guerrier) — perso de recette. Peuple demi-orc (+1 FOR / -1 INT au choix ; voie de peuple « Impressionnant » au rang 1). Interrupteurs actifs : « bouclier en main » (Défense au bouclier) et « arme de prédilection en main » (Science du critique). Choix : catégorie d'armes de prédilection = Épées ; Armure lourde = « +1 en DEF » (branche modélisée, l'option armure de plaque restant WIP milestone Armures). NB : pas de chevauchement de domaine peuple/voie ici (demi-orc-r1 = intimidation, non touchée par le guerrier) ; le cumul de bonus de compétence est déjà couvert par test-chevalier-humain (équitation).",
+  "createdAt": "2026-06-27T00:00:00.000Z",
+  "updatedAt": "2026-06-25T00:00:00.000Z"
+}

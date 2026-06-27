@@ -1300,6 +1300,7 @@ function PathBlock({
               feature={feature}
               color={color ?? undefined}
               concentration={concentration}
+              pathRank={pathRank}
               sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
             />
             <SpellManaBadge
@@ -1549,7 +1550,7 @@ function PathBlock({
                     sx={{ fontWeight: 600 }}
                   />
                   <Box component="span" sx={{ fontWeight: 600 }}>
-                    <FeatureLabel feature={openFeature} concentration={concentration} />
+                    <FeatureLabel feature={openFeature} concentration={concentration} pathRank={pathRank} />
                   </Box>
                   {openFeature.wip && (
                     <Tooltip title={openFeature.wip} arrow>
@@ -1784,7 +1785,7 @@ function PathBlock({
                       </Box>
                     </Tooltip>
                   )}
-                  <FeatureLabel feature={feature} concentration={concentration} />
+                  <FeatureLabel feature={feature} concentration={concentration} pathRank={pathRank} />
                 </Typography>
               </Stack>
               <SpellManaBadge

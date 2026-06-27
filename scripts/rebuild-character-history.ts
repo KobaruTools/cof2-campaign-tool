@@ -88,6 +88,12 @@ const TARGETS: Target[] = [
     // (barbare) s'ouvre comme HYBRIDE intra-famille combattants aux montées (Peau d'acier).
     level1FreeIds: ['combat-r1', 'soldat-r1', 'nain-r1'],
   },
+  {
+    file: 'test-guerrier-demi-orc.json',
+    // Profil guerrier (bouclier + combat à la création) ; peuple demi-orc.
+    // Les trois autres voies (maître d'armes, résistance, soldat) s'ouvrent aux montées.
+    level1FreeIds: ['bouclier-r1', 'combat-r1', 'demi-orc-r1'],
+  },
 ];
 
 const dir = join(process.cwd(), 'examples', 'characters');

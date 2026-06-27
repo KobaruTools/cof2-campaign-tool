@@ -64,6 +64,17 @@ export const testDomains: TestDomain[] = [
   { id: 'disease-resistance', label: 'Résistance aux maladies', abilities: ['CON'], sourcePage: 57 },
   // poison : pendant de disease-resistance (Vigueur divine, prêtre, soins-r2, p. 124).
   { id: 'poison-resistance', label: 'Résistance aux poisons', abilities: ['CON'], sourcePage: 124 },
+  // --- CON — endurance & résistances du guerrier (PER-72) --------------------
+  // résister à l'alcool / privation de nourriture ou de sommeil (Teigneux, soldat-r1, p. 90) :
+  // endurance face aux privations → CON, cohérent avec l'exemple « résistance » du groupe CON (p. 202).
+  // Distinct de l'endurance générique (`endurance`) : périmètre ciblé (alcool / faim / sommeil).
+  { id: 'deprivation-resistance', label: 'Résistance aux privations', abilities: ['CON'], sourcePage: 90 },
+  // résister aux états étourdi et affaibli (Résilient, resistance-r2, p. 90) : encaisser des effets
+  // débilitants physiques → CON. La carac est CONFIRMÉE par le RAW pour l'étourdissement : la manœuvre
+  // Étourdir (p. 218) impose « un test de CON difficulté 10 (…) ou être assommée ». L'affaiblissement
+  // n'a pas de carac explicitée mais relève du même registre physique → CON par analogie.
+  { id: 'stun-resistance', label: 'Résister à l’étourdissement', abilities: ['CON'], sourcePage: 218 },
+  { id: 'weakened-resistance', label: 'Résister à l’affaiblissement', abilities: ['CON'], sourcePage: 90 },
   // équitation : le livre teste l'Équitation sur DEUX caracs selon l'action — CON pour
   // l'endurance, CHA pour mener la monture (Marche forcée, p. 233). Meilleure des deux.
   { id: 'riding', label: 'Équitation', abilities: ['CON', 'CHA'], sourcePage: 233 },
@@ -153,6 +164,12 @@ export const testDomains: TestDomain[] = [
   // science de la conduite des armées → INT (raisonnement). Le COMMANDEMENT effectif
   // d'une troupe est un domaine social distinct (`command`, CHA).
   { id: 'military-tactics', label: 'Tactique militaire', abilities: ['INT'], sourcePage: 85 },
+  // connaissance martiale (Armes de prédilection, guerrier maitre-d-armes-r1, p. 88) : « estimer la
+  // valeur d'une arme ou la réputation martiale d'un adversaire » → savoir sur les armes et les
+  // combattants → INT (érudition, proche de l'estimation `appraisal` et des connaissances p. 202).
+  // Carac non explicitée par le livre (le bonus est accordé, la carac du test reste au MJ) ;
+  // INT VALIDÉ par le propriétaire (2026-06-27) plutôt que PER (œil exercé).
+  { id: 'martial-lore', label: 'Connaissance martiale', abilities: ['INT'], sourcePage: 88 },
 
   // --- CHA — exemples p. 202 + social (mages) --------------------------------
   { id: 'art', label: 'Art', abilities: ['CHA'], sourcePage: 202 },

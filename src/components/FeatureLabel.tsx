@@ -21,6 +21,12 @@ export interface FeatureLabelProps {
    * effet sur les capacités non éligibles (cf. `canConcentrate`).
    */
   concentration?: boolean;
+  /**
+   * Rang ATTEINT dans la voie hôte (PER-72). Sert à afficher les types d'action
+   * conditionnels (`feature.actionTypesFromRank`, ex. Parer un coup → (G) au rang 5).
+   * Absent (wizard, historique…) → ces marqueurs conditionnels ne sont pas affichés.
+   */
+  pathRank?: number;
 }
 
 /**
@@ -32,8 +38,13 @@ export interface FeatureLabelProps {
  * Rendu inline (`<span>`) : le composant hérite de la typographie du parent ;
  * c'est l'appelant qui choisit la taille/graisse via un `<Typography>` englobant.
  */
-export function FeatureLabel({ feature, concentration = false }: FeatureLabelProps) {
+export function FeatureLabel({ feature, concentration = false, pathRank }: FeatureLabelProps) {
   const concentrated = concentration && canConcentrate(feature);
+  // Types d'action conditionnels au rang atteint dans la voie (PER-72) : affichés en plus
+  // des `actionTypes` quand le rang est connu et atteint (ex. Parer un coup → (G) au rang 5).
+  const fromRank = feature.actionTypesFromRank;
+  const extraActionTypes =
+    fromRank && pathRank != null && pathRank >= fromRank.rank ? fromRank.actionTypes : [];
   return (
     <Box component="span">
       {feature.name}
@@ -70,6 +81,21 @@ export function FeatureLabel({ feature, concentration = false }: FeatureLabelPro
           </Box>
         ),
       )}
+      {extraActionTypes.map((a) => (
+        // Type d'action débloqué au rang (PER-72) : même rendu que les autres, l'infobulle
+        // précisant la condition de rang dans la voie.
+        <Box component="span" key={`fromRank-${a}`}>
+          {' '}
+          <Tooltip title={`${ACTION_TYPE_LABELS[a]} — à partir du rang ${fromRank!.rank} de la voie`} arrow>
+            <Box
+              component="span"
+              sx={{ fontWeight: 700, color: 'text.secondary', cursor: 'default' }}
+            >
+              ({a})
+            </Box>
+          </Tooltip>
+        </Box>
+      ))}
     </Box>
   );
 }

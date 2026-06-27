@@ -1258,6 +1258,16 @@ export interface Feature {
    * plusieurs (« Malédiction (M) ou (L)* » — p. 343). Vide = passive.
    */
   actionTypes: ActionType[];
+  /**
+   * Types d'action SUPPLÉMENTAIRES débloqués À PARTIR D'UN RANG atteint dans la voie hôte (PER-72),
+   * EN PLUS de `actionTypes`. Le livre énonce parfois « à partir du rang N, la capacité peut être
+   * utilisée en action gratuite » : c'est un MODE de plus, AU CHOIX du joueur (ni interrupteur, ni
+   * remplacement). Affiché comme un marqueur d'action additionnel uniquement quand le rang atteint
+   * dans la voie est connu ET ≥ `rank` (le rendu de la fiche fournit ce rang ; dans les contextes
+   * sans rang de voie — wizard, historique — ces types ne sont pas affichés). Ex. Parer un coup
+   * (bouclier-r2) : (M) par défaut, et (G) à partir du rang 5 de la voie.
+   */
+  actionTypesFromRank?: { rank: number; actionTypes: ActionType[] };
   /** Texte de règles complet, verbatim. Reste la SOURCE, jamais perdu. */
   text: string;
   /**

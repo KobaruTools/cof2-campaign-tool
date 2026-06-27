@@ -1398,6 +1398,9 @@ export const fighterFeatures: Feature[] = [
     rank: 2,
     isSpell: false,
     actionTypes: ['M'],
+    // À partir du rang 5 de la voie, la parade peut AUSSI se faire en action gratuite (au choix du
+    // joueur, avec un dé malus au test opposé) → marqueur (G) additionnel au rang 5 (PER-72).
+    actionTypesFromRank: { rank: 5, actionTypes: ['G'] },
     text:
       'Le guerrier utilise une action de mouvement pour se mettre en posture défensive. Il peut alors essayer de parer une attaque à tout moment avant son prochain tour. Il doit faire un test d’attaque au contact (il peut remplacer la FOR par l’AGI pour ce test) en opposition au test de l’attaque au contact ou à distance réussie par son adversaire. S’il l’emporte, l’attaque adverse est bloquée par le bouclier. Il ne subit aucun DM sauf si la créature est de taille énorme ou colossale, auquel cas, il subit tout de même la moitié des DM. À partir du rang 5, le guerrier peut utiliser cette capacité en action gratuite (toujours une fois par round), mais dans ce cas, il subit un dé malus au test opposé.',
     // PER-137 : parade au bouclier (test opposé) qui ANNULE les DM (moitié contre créatures énorme/
@@ -1473,6 +1476,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le guerrier gagne +3 en Initiative et aux tests d’AGI ou de FOR pour éviter d’être immobilisé ou renversé. De plus, une fois par combat, il obtient une action de mouvement supplémentaire à son tour.',
+    // PER-72 : « +3 en Initiative » → bonus PERMANENT plat à l'Init. (stat-bonus). Le « +3 aux tests
+    // d'AGI ou de FOR pour éviter d'être immobilisé ou renversé » est un bonus SITUATIONNEL à un test
+    // de caractéristique (état de combat) → hors périmètre PER-89, verbatim. L'action de mouvement
+    // supplémentaire relève du tracker de combat. Pas de jeton parsable (« +3 » plat, Init. auto-glosée).
+    effects: [{ kind: 'stat-bonus', stat: 'initiative', value: 3 }],
     sourcePage: 88,
   },
   {
@@ -1494,6 +1502,12 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le guerrier peut choisir de s’imposer un dé malus sur une attaque au contact et il ajoute +2d4° aux DM. Cette capacité peut être utilisée avec Double attaque, Attaque circulaire ou Attaque parfaite (voir exemple). Transformez cette capacité en action limitée (L) pour obtenir +3d4° aux DM au lieu de +2d4°.',
+    // Rendu enrichi (PER-72) : dés de DM {2d4°}/{3d4°}. Les capacités citées sont des RÉFÉRENCES :
+    // Double attaque (combat-r4), Attaque circulaire (combat-r5) et Attaque parfaite (maitre-d-armes-r4)
+    // → balisées [&id] (puces aux couleurs du guerrier). « (voir exemple) » renvoie à la note de la voie
+    // (affichée). Le +2d4°/+3d4° aux DM d'arme n'est pas encore câblé au bloc Attaque au contact (PER-115).
+    richText:
+      'Le guerrier peut choisir de s’imposer un dé malus sur une attaque au contact et il ajoute +{2d4°} aux DM. Cette capacité peut être utilisée avec [&combat-r4], [&combat-r5] ou [&maitre-d-armes-r4] (voir exemple). Transformez cette capacité en action limitée (L) pour obtenir +{3d4°} aux DM au lieu de +{2d4°}.',
     sourcePage: 88,
   },
   {
@@ -1529,6 +1543,12 @@ export const fighterFeatures: Feature[] = [
     // « lorsqu'il l'utilise une arme » : sic, coquille présente dans le livre.
     text:
       'Le guerrier choisit une catégorie d’armes de prédilection parmi épées, haches, mains nues, masses, lances (épieu, lance, pique) et enfin armes de jet (dague de lancer, javelot, etc.), et il gagne +1 en attaque lorsqu’il l’utilise une arme de cette catégorie. De plus, vous ajoutez votre rang + 2 à tous les tests destinés à estimer la valeur d’une arme ou la réputation martiale d’un adversaire.',
+    // PER-66 : CHOIX d'option (6 catégories d'armes de prédilection). PER-89 : bonus de compétence
+    // INCONDITIONNEL au domaine connaissance martiale (`martial-lore`, « estimer la valeur d'une arme
+    // ou la réputation martiale d'un adversaire ») — « votre rang + 2 » → [rang + 2]. Le +1 en attaque
+    // avec une arme de la catégorie choisie dépend du TYPE d'arme porté → WIP (PER-136 / PER-115).
+    richText:
+      'Le guerrier choisit une catégorie d’armes de prédilection parmi épées, haches, mains nues, masses, lances (épieu, lance, pique) et enfin armes de jet (dague de lancer, javelot, etc.), et il gagne +1 en attaque lorsqu’il l’utilise une arme de cette catégorie. De plus, vous ajoutez votre [rang + 2] à tous les tests destinés à estimer la valeur d’une arme ou la réputation martiale d’un adversaire.',
     choices: [
       {
         kind: 'option',
@@ -1543,6 +1563,8 @@ export const fighterFeatures: Feature[] = [
         ],
       },
     ],
+    effects: [{ kind: 'test-bonus', domains: ['martial-lore'] }],
+    wip: "+1 en attaque avec une arme de la catégorie de prédilection — bonus dépendant du type d'arme porté, câblage différé à la milestone Armures (PER-136 / PER-115).",
     sourcePage: 88,
   },
   {
@@ -1578,6 +1600,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Lorsque le guerrier emploie une arme de prédilection, il gagne un bonus de +1 DM. Chaque fois que le personnage atteint le rang 5 dans une voie de guerrier, il peut choisir une nouvelle catégorie d’arme de prédilection (il gagne les avantages des rangs 1 à 3) ou décider d’augmenter de +1 le bonus aux DM d’une catégorie qu’il connaît déjà (pour un maximum de +6 pour un guerrier ayant atteint le rang 5 dans les cinq voies).',
+    // PER-72 : le +1 DM (croissant par rang 5 de voie de guerrier, jusqu'à +6) s'applique à l'arme de
+    // prédilection PORTÉE → bonus aux DM d'arme dépendant de l'équipement et du choix répétable de
+    // catégorie (Armes de prédilection, maitre-d-armes-r1). Non résoluble sans l'équipement porté →
+    // différé à la milestone Armures (PER-136 / PER-115). Verbatim ; badge WIP.
+    wip: "Bonus de +1 DM (jusqu'à +6) avec une arme de prédilection, et choix répétable de catégorie par rang 5 de voie de guerrier — dépendant de l'arme portée, modélisation différée à la milestone Armures (PER-136 / PER-115).",
     sourcePage: 89,
   },
   {
@@ -1589,6 +1616,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       'Vous obtenez un dé bonus en attaque au contact (ou à distance pour une arme de lancer) et ajoutez +1d4° DM. Vous devez utiliser une arme de prédilection. Éventuellement, le guerrier peut choisir de ne pas infliger les DM de son attaque parfaite pour désarmer une cible dont le NC est inférieur à son bonus de DM de spécialisation.',
+    // Rendu enrichi (PER-72) : DM {1d4°}. « un dé bonus » au test d'attaque (situationnel) et le +1d4°
+    // aux DM d'arme → câblage différé à PER-115 (verbatim). « NC … bonus de DM de spécialisation » :
+    // comparaison de table (auto-glose NC). Pas d'effet structuré.
+    richText:
+      'Vous obtenez un dé bonus en attaque au contact (ou à distance pour une arme de lancer) et ajoutez +{1d4°} DM. Vous devez utiliser une arme de prédilection. Éventuellement, le guerrier peut choisir de ne pas infliger les DM de son attaque parfaite pour désarmer une cible dont le NC est inférieur à son bonus de DM de spécialisation.',
     sourcePage: 89,
   },
   {
@@ -1613,6 +1645,30 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le guerrier augmente sa valeur maximale de PV de rang + 2. De plus, vous ajoutez votre rang + 2 à tous les tests destinés à résister aux efforts physiques, à la chaleur ou au froid (conditions naturelles).',
+    // PER-72 : « augmente sa valeur maximale de PV de rang + 2 » → bonus PERMANENT scalant aux PV
+    // (= rang + 2), rendu quantité [=rang + 2] ; modélisé en stepped path-rank {1:3 … 5:7}. PER-89 :
+    // bonus de compétence INCONDITIONNEL aux domaines résistance (`endurance`, « efforts physiques »),
+    // chaleur (`heat-resistance`) et froid (`cold-resistance`) — « votre rang + 2 » → [rang + 2].
+    richText:
+      'Le guerrier augmente sa valeur maximale de PV de [=rang + 2]. De plus, vous ajoutez votre [rang + 2] à tous les tests destinés à résister aux efforts physiques, à la chaleur ou au froid (conditions naturelles).',
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'maxHp',
+        value: {
+          scale: 'stepped',
+          by: 'path-rank',
+          steps: [
+            { min: 1, value: 3 },
+            { min: 2, value: 4 },
+            { min: 3, value: 5 },
+            { min: 4, value: 6 },
+            { min: 5, value: 7 },
+          ],
+        },
+      },
+      { kind: 'test-bonus', domains: ['endurance', 'heat-resistance', 'cold-resistance'] },
+    ],
     sourcePage: 89,
   },
   {
@@ -1624,6 +1680,31 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Désormais, il suffit de 10 min au guerrier pour bénéficier des effets d’une récupération rapide (au lieu de 30 min) et cela passe à 5 min au rang 4 de la voie. De plus, le guerrier obtient un bonus égal au rang atteint dans la voie pour tous les tests destinés à résister aux états étourdi et affaibli.',
+    // Rendu enrichi (PER-72) : « un bonus égal au rang atteint dans la voie » → terme nommé [#rang]
+    // (déterminant « au »). PER-89 : bonus de compétence INCONDITIONNEL aux domaines résister à
+    // l'étourdissement (`stun-resistance`) et à l'affaiblissement (`weakened-resistance`) — VALEUR
+    // EXPLICITE = rang (et non « 2 + rang » de catégorie de voie) → stepped path-rank {1:1 … 5:5}.
+    // Le raccourcissement du temps de récupération rapide (30→10→5 min) reste en prose (régime de
+    // récupération, pas une stat dérivée).
+    richText:
+      'Désormais, il suffit de 10 min au guerrier pour bénéficier des effets d’une récupération rapide (au lieu de 30 min) et cela passe à 5 min au rang 4 de la voie. De plus, le guerrier obtient un bonus égal au [#rang] atteint dans la voie pour tous les tests destinés à résister aux états étourdi et affaibli.',
+    effects: [
+      {
+        kind: 'test-bonus',
+        domains: ['stun-resistance', 'weakened-resistance'],
+        value: {
+          scale: 'stepped',
+          by: 'path-rank',
+          steps: [
+            { min: 1, value: 1 },
+            { min: 2, value: 2 },
+            { min: 3, value: 3 },
+            { min: 4, value: 4 },
+            { min: 5, value: 5 },
+          ],
+        },
+      },
+    ],
     sourcePage: 90,
   },
   {
@@ -1637,6 +1718,22 @@ export const fighterFeatures: Feature[] = [
     text:
       'Au choix le guerrier gagne +1 en DEF ou il apprend à porter l’armure de plaque (DEF +6) et désormais, il peut utiliser toutes les capacités de guerrier avec cette armure*.\n' +
       '* Dans le cas d’un profil hybride, le personnage apprend à utiliser une armure d’une catégorie au-dessus de celles autorisées par son profil principal et il peut désormais utiliser toutes les capacités de ce profil avec cette armure. Par exemple, un barbare qui choisit cette capacité peut désormais entrer en rage en portant une chemise de mailles.',
+    // PER-66 : CHOIX entre deux bénéfices. (a) « +1 en DEF » → bonus PERMANENT plat à la DEF, porté par
+    // l'option (`statBonuses`, comme l'option DR de l'Éclaireur du rôdeur). (b) « apprend à porter
+    // l'armure de plaque (DEF +6) » → accès d'armure, dépendant de l'équipement porté → différé à la
+    // milestone Armures (PER-76), d'où le badge WIP. La note de bas de page (« * », profil hybride :
+    // relèvement d'un cran) reste verbatim, comme les déblocages d'armure du barbare/chevalier.
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Bénéfice de l’armure lourde',
+        options: [
+          { id: 'def-bonus', label: '+1 en DEF', shortLabel: '+1 DEF', statBonuses: [{ stat: 'def', value: 1 }] },
+          { id: 'plate-armor', label: 'Port de l’armure de plaque (DEF +6)', shortLabel: 'Plaque' },
+        ],
+      },
+    ],
+    wip: "Option « port de l'armure de plaque » (accès d'armure + usage des capacités en plaque, relèvement d'un cran pour les hybrides) — dépendante de l'équipement porté, modélisation différée à la milestone Armures (PER-76).",
     sourcePage: 90,
   },
   {
@@ -1648,6 +1745,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le guerrier augmente sa CON de +1. Désormais, il obtient un dé bonus aux tests de CON.',
+    // Caractéristique héroïque (mécanique core) : +1 CON permanent + dé bonus aux tests de CON.
+    effects: [
+      { kind: 'ability-bonus', ability: 'CON', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'CON' },
+    ],
     sourcePage: 90,
   },
   {
@@ -1659,6 +1761,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le guerrier gagne +1 en DEF et, une fois par combat, lorsqu’il tombe à 0 PV, il peut encore agir un round avant de tomber inconscient. De plus, il ne subit plus de dé malus lorsqu’il est immobilisé et lorsqu’il est étourdi ; il peut encore attaquer, mais avec un dé malus.',
+    // PER-72 : « +1 en DEF » → bonus PERMANENT plat à la DEF (stat-bonus, inconditionnel). Le sursis à
+    // 0 PV (1×/combat) et l'absence de dé malus en état immobilisé/étourdi relèvent du tracker de
+    // combat / des états (PER-104/105) → verbatim. Pas de jeton parsable (« +1 » plat).
+    effects: [{ kind: 'stat-bonus', stat: 'def', value: 1 }],
     sourcePage: 90,
   },
 
@@ -1672,6 +1778,13 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       'Une fois par round, si une créature à votre contact tente de s’éloigner de vous, vous obtenez une attaque au contact en action gratuite contre elle. De plus vous ajoutez votre rang + 2 aux tests destinés à résister à l’alcool et à la privation de nourriture ou de sommeil.',
+    // Rendu enrichi (PER-72) : « votre rang + 2 » → [rang + 2]. PER-89 : bonus de compétence
+    // INCONDITIONNEL au domaine résistance aux privations (`deprivation-resistance`, « alcool,
+    // privation de nourriture ou de sommeil »). L'attaque d'opportunité gratuite (créature qui
+    // s'éloigne) relève du tracker de combat → verbatim.
+    richText:
+      'Une fois par round, si une créature à votre contact tente de s’éloigner de vous, vous obtenez une attaque au contact en action gratuite contre elle. De plus vous ajoutez votre [rang + 2] aux tests destinés à résister à l’alcool et à la privation de nourriture ou de sommeil.',
+    effects: [{ kind: 'test-bonus', domains: ['deprivation-resistance'] }],
     sourcePage: 90,
   },
   {
@@ -1683,6 +1796,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       'Le guerrier réussit souvent des exploits physiques hors-norme. Une fois par round, vous pouvez sacrifier 1d4° PV pour obtenir +5 sur un test de FOR ou de CON. Vous pouvez annoncer l’utilisation de cette capacité après avoir pris connaissance du résultat du test de caractéristique.',
+    // Rendu enrichi (PER-72) : coût en PV {1d4°}. Le « +5 sur un test de FOR ou de CON » est un bonus
+    // SITUATIONNEL à un test de caractéristique (déclenché, optionnel) → hors périmètre PER-89, verbatim.
+    richText:
+      'Le guerrier réussit souvent des exploits physiques hors-norme. Une fois par round, vous pouvez sacrifier {1d4°} PV pour obtenir +5 sur un test de FOR ou de CON. Vous pouvez annoncer l’utilisation de cette capacité après avoir pris connaissance du résultat du test de caractéristique.',
     sourcePage: 90,
   },
   {
@@ -1694,6 +1811,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       'Vous n’admettez pas qu’un adversaire vous ignore. Une fois par round, si un adversaire à votre contact attaque une autre créature que vous, vous obtenez une attaque en action gratuite contre lui. Si l’INT de cet adversaire est négative et que vous lui infligez des DM sur cette attaque, il vous prend automatiquement pour cible lors de sa prochaine attaque.',
+    // Rendu enrichi (PER-72) : « l'INT de cet adversaire » = stat d'une CIBLE → référence non calculée
+    // @INT (cf. format §5). L'attaque d'opportunité gratuite et la prise pour cible automatique relèvent
+    // du tracker de combat. Pas d'effet structuré.
+    richText:
+      'Vous n’admettez pas qu’un adversaire vous ignore. Une fois par round, si un adversaire à votre contact attaque une autre créature que vous, vous obtenez une attaque en action gratuite contre lui. Si l’@INT de cet adversaire est négative et que vous lui infligez des DM sur cette attaque, il vous prend automatiquement pour cible lors de sa prochaine attaque.',
     sourcePage: 90,
   },
   {
@@ -1705,6 +1827,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le guerrier augmente sa FOR de +1. Désormais, il obtient un dé bonus aux tests de FOR.',
+    // Caractéristique héroïque (mécanique core) : +1 FOR permanent + dé bonus aux tests de FOR.
+    effects: [
+      { kind: 'ability-bonus', ability: 'FOR', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'FOR' },
+    ],
     sourcePage: 90,
   },
   {
@@ -1716,6 +1843,12 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Vous pouvez désormais utiliser Teigneux contre un nombre d’adversaires égal à votre AGI + 2 à chaque round. Si vous réussissez cette attaque, le déplacement de votre adversaire est stoppé à l’endroit où vous l’avez attaqué. De plus vous gagnez +1 en DEF.',
+    // Rendu enrichi (PER-72) : « Teigneux » → RÉFÉRENCE de capacité [&soldat-r1] (puce aux couleurs du
+    // guerrier) ; « votre AGI + 2 » = nombre d'adversaires → quantité [=AGI + 2]. « +1 en DEF » → bonus
+    // PERMANENT plat à la DEF (stat-bonus). L'arrêt du déplacement adverse relève du tracker de combat.
+    richText:
+      'Vous pouvez désormais utiliser [&soldat-r1] contre un nombre d’adversaires égal à votre [=AGI + 2] à chaque round. Si vous réussissez cette attaque, le déplacement de votre adversaire est stoppé à l’endroit où vous l’avez attaqué. De plus vous gagnez +1 en DEF.',
+    effects: [{ kind: 'stat-bonus', stat: 'def', value: 1 }],
     sourcePage: 90,
   },
 ];
