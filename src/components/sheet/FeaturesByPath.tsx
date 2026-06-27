@@ -34,7 +34,7 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById } from '@/data';
-import type { CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
+import type { AbilityId, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import { featureChoiceDefs, getSelection, hasActionableChoice, hasUnmadeChoice } from '@/lib/character/choices';
@@ -57,8 +57,9 @@ import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
-import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
+import { FeatureChoiceField, COMPACT_CHIP_SX } from '@/components/sheet/FeatureChoiceField';
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
+import { ABILITY_NAMES } from '@/lib/ui/ability';
 
 /**
  * Couleur du badge « WIP » (PER-72) : jaune franc, VOLONTAIREMENT distinct de l'orange « warning »
@@ -314,6 +315,26 @@ function borrowedFeatureOf(character: Character | undefined, feature: Feature): 
     if (defs[i].kind === 'feature-from-path') {
       const sel = sels[i];
       if (typeof sel === 'string') return featureById.get(sel);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Code court de la caractéristique retenue par un choix `ability` d'une capacité (ex.
+ * « CON » pour Formation d'élite, noblesse-r5), ou `undefined` si le choix n'est pas (encore)
+ * fait. Sert à afficher une puce COMPACTE (code seul, nom complet en infobulle) là où le bloc
+ * est trop étroit pour le libellé entier — le sélecteur de choix garde, lui, le nom complet.
+ * Première (et unique) entrée `ability` de la capacité.
+ */
+function abilityChoiceCode(character: Character | undefined, feature: Feature): AbilityId | undefined {
+  if (!character) return undefined;
+  const defs = feature.choices;
+  if (!defs) return undefined;
+  for (let i = 0; i < defs.length; i++) {
+    if (defs[i].kind === 'ability') {
+      const sel = getSelection(character, feature.id, i);
+      if (typeof sel === 'string') return sel as AbilityId;
     }
   }
   return undefined;
@@ -1209,6 +1230,10 @@ function PathBlock({
               flexDirection: 'column',
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
+              // Emprunt (carte de devant) : remplit toute la hauteur du conteneur (flex column)
+              // pour que la zone cliquable soit aussi grande que possible. Ignoré en grille (carte
+              // directe), où la carte s'étire déjà sur la hauteur de ligne du subgrid.
+              flexGrow: 1,
               px: 1,
               // Le haut est dégagé pour laisser voir les hexagones, qui chevauchent
               // la bordure supérieure (coins : marqueurs en haut gauche, goutte de
@@ -1402,8 +1427,27 @@ function PathBlock({
           // dépasse derrière prend le contour + le fond de la VOIE HÔTE (celle qui reçoit l'emprunt)
           // et porte le nom de l'hôte (« Combattant aguerri ») — la carte de devant montrant la
           // capacité empruntée (« Vivacité »). Rien n'est grisé : l'hôte reste pleinement actif.
+          // Caractéristique retenue par le second choix de l'hôte (ex. CON de Formation d'élite) :
+          // affichée en puce COMPACTE (code seul) sous le nom de l'hôte, dans SON cadre (la case
+          // décalée). Le sélecteur de choix garde, lui, le nom complet (« Constitution »).
+          const abilityCode = abilityChoiceCode(character, feature);
           return borrowed ? (
-            <Box key={feature.id} sx={{ position: 'relative', pb: 2.5 }}>
+            // Conteneur en colonne : la carte de devant (`cardInner`, `flexGrow: 1`) remplit toute la
+            // hauteur restante pour que la zone cliquable soit aussi grande que possible. La réserve du
+            // bas (`pb`) laisse voir le cadre de l'hôte (nom + éventuelle puce de carac). TOUT le bloc
+            // (carte de devant ET cadre de l'hôte qui dépasse) ouvre le détail au clic — c'est une seule
+            // capacité « qui en contient une autre au choix », pas deux cartes distinctes.
+            <Box
+              key={feature.id}
+              onClick={() => setOpenFeature(feature)}
+              sx={{
+                position: 'relative',
+                pb: abilityCode ? 5.5 : 2.5,
+                display: 'flex',
+                flexDirection: 'column',
+                cursor: 'pointer',
+              }}
+            >
               <Box
                 sx={{
                   position: 'absolute',
@@ -1423,22 +1467,42 @@ function PathBlock({
                   justifyContent: 'flex-end',
                 }}
               >
-                <Typography
-                  variant="caption"
+                <Stack
+                  spacing={0.25}
                   sx={{
                     px: 1,
-                    // 2px d'espacement au-dessus et en dessous du titre dans la bande qui dépasse.
+                    // 2px d'espacement au-dessus et en dessous du contenu dans la bande qui dépasse.
                     pt: 0.25,
                     pb: 0.25,
-                    fontWeight: 600,
-                    lineHeight: 1.2,
-                    textAlign: 'right',
-                    color: 'text.primary',
-                    wordBreak: 'break-word',
+                    alignItems: 'flex-end',
                   }}
                 >
-                  {feature.name}
-                </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 600,
+                      lineHeight: 1.2,
+                      textAlign: 'right',
+                      color: 'text.primary',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {feature.name}
+                  </Typography>
+                  {/* Carac retenue : chip de choix standard (bleu primaire), code court « CON »
+                      pour gagner de la place ; nom complet (« Constitution ») en infobulle. */}
+                  {abilityCode && (
+                    <Tooltip title={ABILITY_NAMES[abilityCode]} arrow>
+                      <Chip
+                        label={abilityCode}
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        sx={COMPACT_CHIP_SX}
+                      />
+                    </Tooltip>
+                  )}
+                </Stack>
               </Box>
               {cardInner}
             </Box>

@@ -270,7 +270,7 @@ function ChoiceControl({
 }
 
 /** Style compact partagé des chips de choix (vue colonne, blocs étroits). */
-const COMPACT_CHIP_SX = {
+export const COMPACT_CHIP_SX = {
   maxWidth: '100%',
   height: 18,
   '& .MuiChip-label': { px: 0.75, fontSize: '0.62rem', fontWeight: 700 },
