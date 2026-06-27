@@ -379,6 +379,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       }
     : null;
 
+  // Le personnage dispose-t-il d'une réserve de mana ? Uniquement s'il connaît au
+  // moins un sort (cf. `manaPoints`, qui retourne null sinon). Sert à n'afficher la
+  // Concentration accrue (p. 228) que pour les lanceurs de sorts : sans sort, le
+  // toggle ne change rien.
+  const hasSpells = character.featureIds.some((fid) => featureById.get(fid)?.isSpell);
+
   // Stats dérivées finales du MAÎTRE (mods inclus), avec surcharges manuelles pour les
   // stats recopiées par les profils de créature (Init., attaque). Sert aux mini-fiches
   // de compagnons (golem, familier, démon…), dont l'Init/attaque = celle du maître.
@@ -615,7 +621,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             title="Voies & capacités"
             action={
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <ConcentrationToggle value={concentration} onChange={setConcentration} />
+                {hasSpells && (
+                  <ConcentrationToggle value={concentration} onChange={setConcentration} />
+                )}
                 <FeaturesLayoutToggle value={voiesLayout} onChange={setVoiesLayout} />
               </Stack>
             }
