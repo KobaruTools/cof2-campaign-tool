@@ -8,7 +8,6 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
-import Chip from '@mui/material/Chip';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
@@ -45,25 +44,54 @@ function splitDescription(desc: string): {
 }
 
 /**
+ * Badge de valeur signée d'un modificateur (ex. « +1 », « -2 »). Reprend le
+ * style du badge de caractéristique (`AbilityBadge`) mais conserve la couleur
+ * verte (bonus) / rouge (malus) pour signaler le sens du modificateur.
+ */
+function ModifierValueBadge({ value }: { value: number }) {
+  const theme = useTheme();
+  const bonus = value > 0;
+  const tint = bonus ? theme.palette.success.main : theme.palette.error.main;
+  const sign = bonus ? '+' : '';
+  return (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: 0.75,
+        py: 0.125,
+        minWidth: 40,
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        letterSpacing: 0.5,
+        lineHeight: 1.4,
+        borderRadius: 1,
+        border: 1,
+        borderColor: tint,
+        bgcolor: `color-mix(in srgb, ${tint} 18%, transparent)`,
+        color: tint,
+        cursor: 'default',
+        userSelect: 'none',
+      }}
+    >
+      {sign}
+      {value}
+    </Box>
+  );
+}
+
+/**
  * Affichage inline d'un modificateur de peuple : la valeur signée puis les
  * caractéristiques concernées sous forme de badges (ex. « +1 [PER] ou [CHA] »).
  * Cas humain (les 7 caracs listées) : « +1 à une de vos deux plus faibles ».
  */
 function AncestryModifier({ mod }: { mod: AbilityModifier }) {
-  const theme = useTheme();
-  const bonus = mod.value > 0;
-  const sign = bonus ? '+' : '';
-  const tint = bonus ? theme.palette.success.main : theme.palette.error.main;
   const isLowest = mod.abilities.length === ABILITY_IDS.length;
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-      <Chip
-        label={`${sign}${mod.value}`}
-        color={bonus ? 'success' : 'error'}
-        variant="outlined"
-        size="small"
-        sx={{ minWidth: 48, fontWeight: 700, '& .MuiChip-label': { px: 0 } }}
-      />
+      <ModifierValueBadge value={mod.value} />
       {isLowest ? (
         <Typography variant="body2" color="text.secondary">
           à une de vos deux plus faibles caractéristiques (au choix)
@@ -80,7 +108,7 @@ function AncestryModifier({ mod }: { mod: AbilityModifier }) {
                 ou
               </Typography>
             )}
-            <AbilityBadge ability={c} color={tint} />
+            <AbilityBadge ability={c} />
           </Box>
         ))
       )}
