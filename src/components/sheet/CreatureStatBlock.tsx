@@ -93,6 +93,12 @@ export interface CreatureStatBlockProps {
    * `creatureBonusDiceForPath`.
    */
   bonusDieAbilities?: Set<AbilityId>;
+  /**
+   * La DÉFENSE ALTERNATIVE (`profile.defenseAlt`) est-elle active ? Résolu en amont par le
+   * maître (capacité acquise + interrupteur de condition actif, ex. cavalier-r2 « en selle »).
+   * `true` → la DEF affichée devient l'alternative ; sinon la DEF de base.
+   */
+  defenseAltActive?: boolean;
 }
 
 export function CreatureStatBlock({
@@ -102,8 +108,10 @@ export function CreatureStatBlock({
   rank,
   masterDerived,
   bonusDieAbilities,
+  defenseAltActive,
 }: CreatureStatBlockProps) {
   const rich = (text: string) => <RichInline text={text} abilities={abilities} level={level} rank={rank} />;
+  const defAlt = profile.defenseAlt;
   // Dés bonus de la créature = dés INNÉS (notés « * » dans le livre, portés par le profil)
   // UNIS aux dés octroyés par une option de voie retenue (ex. golem « Forme de félin »). Système
   // unifié avec la fiche de personnage (PER-107) : icône double-d20 à droite de la valeur.
@@ -160,7 +168,25 @@ export function CreatureStatBlock({
 
       {/* Stats dérivées + attaque. */}
       <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}>
-        <StatItem label="DEF">{rich(profile.defense)}</StatItem>
+        <StatItem label="DEF">
+          {defAlt && defenseAltActive ? (
+            // DEF alternative active (ex. en selle) : DEF égale à celle du maître, info-bulle de provenance.
+            <Tooltip
+              title={`${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`}
+              arrow
+            >
+              <Box component="span" sx={{ fontWeight: 700, cursor: 'help', fontVariantNumeric: 'tabular-nums' }}>
+                {isMasterRef(defAlt.value)
+                  ? masterDerived
+                    ? masterValue(masterDerived, defAlt.value.fromMaster)
+                    : 'DEF du maître'
+                  : rich(defAlt.value)}
+              </Box>
+            </Tooltip>
+          ) : (
+            rich(profile.defense)
+          )}
+        </StatItem>
         <StatItem label="PV">{rich(profile.hitPoints)}</StatItem>
         <StatItem label="Init.">
           {isMasterRef(profile.initiative) ? (
@@ -172,8 +198,15 @@ export function CreatureStatBlock({
       </Stack>
       {profile.attack && (
         <Stack direction="row" spacing={2} sx={{ mt: 0.5, flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}>
-          <StatItem label="Attaque">
-            <MasterStatValue stat={profile.attack.fromMaster} masterDerived={masterDerived} />
+          <StatItem label={profile.attack.label ?? 'Attaque'}>
+            {profile.attack.fromMaster ? (
+              <MasterStatValue stat={profile.attack.fromMaster} masterDerived={masterDerived} />
+            ) : (
+              // Valeur PROPRE à la créature (bonus fixe, ex. Ruade +5) — affichée telle quelle.
+              <Box component="span" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                {profile.attack.value}
+              </Box>
+            )}
           </StatItem>
           <StatItem label="DM">{rich(profile.attack.damage)}</StatItem>
         </Stack>

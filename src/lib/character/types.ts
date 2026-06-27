@@ -32,8 +32,10 @@ import type { AncestryChoice } from './ancestry';
  *   « Les sept vies du chat », 6 usages — PER-70).
  * v9 : ajout de `priestVocation` (choix généraliste/spécialiste du prêtre et, le
  *   cas échéant, le dieu spécialisé — p. 122, table p. 126-127).
+ * v10 : `identity.height` passe des mètres aux centimètres (saisie en cm +
+ *   avertissement de fourchette).
  */
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 /**
  * Vocation d'un prêtre (p. 122). `generalist` : suit les règles de base, aucun
@@ -95,6 +97,7 @@ export type PortraitVariant = 'default' | 'alt';
 export interface Identity {
   sex?: Sex;
   age?: string;
+  /** Taille en centimètres (chaîne libre ; cf. migration v9→v10). */
   height?: string;
   weight?: string;
   description?: string;

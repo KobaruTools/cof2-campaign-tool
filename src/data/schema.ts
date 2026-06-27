@@ -1046,6 +1046,20 @@ export interface FeatureChoiceOption {
    * d'objets magiques) → reste verbatim. Absent = aucun.
    */
   abilityTestBonus?: { ability: AbilityId; value: number };
+  /**
+   * Niveau de personnage MINIMUM requis pour retenir cette option (PER-140). Absent = aucune
+   * condition. Ex. Monture fantastique (cavalier-r5) : les montures VOLANTES (pégase, griffon,
+   * hippogriffe) ne sont possibles qu'à partir du niveau 9. L'UI grise l'option en deçà ; la fiche
+   * reste permissive (une sélection devenue illégale n'est pas effacée d'office).
+   */
+  minLevel?: number;
+  /**
+   * Profil de créature octroyé QUAND cette option est retenue (PER-140) — il PRIME sur le
+   * `Feature.creatureProfile` de base. Ex. Monture fantastique : chaque monture (cheval de guerre
+   * lourd, ours, félin géant, pégase…) a sa propre mini-fiche. Absent = pas de créature propre à
+   * l'option (on retombe sur le profil de la capacité, s'il existe).
+   */
+  creatureProfile?: CreatureProfile;
 }
 
 /**
@@ -1121,12 +1135,41 @@ export interface CreatureProfile {
   bonusDieAbilities?: AbilityId[];
   /** Défense (S) : nombre fixe ou expression `richText` (« 10 + rang »). */
   defense: string;
+  /**
+   * DÉFENSE ALTERNATIVE conditionnelle (PER-72, cavalier). Quand une capacité du maître
+   * l'accorde et que son interrupteur est actif, la DEF affichée devient cette valeur —
+   * typiquement une stat dérivée du maître (`MasterStatRef`). Cas : Cavalier émérite
+   * (cavalier-r2) — « en selle, la monture obtient une DEF égale à celle du chevalier ».
+   * Rendu : la mini-fiche montre la DEF effective + une info-bulle détaillant l'alternative
+   * (base hors selle ↔ DEF du maître en selle). L'activation est résolue EN AMONT (par
+   * `isEffectActive` sur `sourceFeatureId`) et passée à `CreatureStatBlock`.
+   * NB : la propagation GÉNÉRALE maître→créature est l'objet de PER-94 ; ce champ couvre le
+   * seul cas d'AFFICHAGE trivial (DEF = celle du maître) traité en avance.
+   */
+  defenseAlt?: {
+    /** Valeur de DEF quand l'alternative est active (souvent `{ fromMaster: 'def' }`). */
+    value: string | MasterStatRef;
+    /** Condition d'activation, affichée en info-bulle (ex. « en selle »). */
+    conditionLabel: string;
+    /** Nom de la capacité source, affiché en info-bulle (ex. « Cavalier émérite »). */
+    sourceLabel: string;
+    /** Capacité du maître qui octroie l'alternative (ex. `cavalier-r2`) ; interrupteur index 0. */
+    sourceFeatureId: string;
+  };
   /** Points de vigueur (V) : expression `richText` (« niveau × 5 »). */
   hitPoints: string;
   /** Initiative (I) : nombre fixe (`richText`, ex. « 8 ») ou recopie d'une stat du maître. */
   initiative: string | MasterStatRef;
-  /** Attaque, si la créature attaque : jet = stat dérivée du maître + DM (`richText`). */
-  attack?: { fromMaster: DerivedStatId; damage: string };
+  /**
+   * Attaque, si la créature attaque. Le jet est SOIT recopié d'une stat dérivée du
+   * MAÎTRE (`fromMaster`, ex. « attaque magique du rôdeur » du loup), SOIT une valeur
+   * PROPRE à la créature (`value`, bonus fixe affiché tel quel, ex. « Ruade +5 » de la
+   * fidèle monture, qui attaque avec sa propre FOR et non celle du chevalier).
+   * Exactement l'un des deux. `label` nomme le jet (défaut « Attaque », ex. « Ruade »).
+   * `damage` est au format `richText` (dés + constantes uniquement : une carac s'y
+   * résoudrait contre le MAÎTRE, pas contre la créature).
+   */
+  attack?: { label?: string; fromMaster?: DerivedStatId; value?: string; damage: string };
   /** Particularités libres (déplacement, « trop petit pour attaquer »…). */
   note?: string;
 }

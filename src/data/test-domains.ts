@@ -143,6 +143,16 @@ export const testDomains: TestDomain[] = [
   // et tirer des feux d'artifice) → savoir-faire de l'artificier, INT. (Le savoir mécanique de
   // l'arquebusier — Mécanismes, artilleur-r1 — est fusionné dans `tinkering`, voir plus haut.)
   { id: 'pyrotechnics', label: 'Pyrotechnie', abilities: ['INT'], sourcePage: 63 },
+  // --- INT — savoirs nobiliaires & art militaire du chevalier (PER-72) -------
+  // histoire / héraldique / géographie (Éduqué, chevalier noblesse-r1, p. 86) :
+  // savoirs encyclopédiques → INT (groupe « connaissances », p. 202).
+  { id: 'history', label: 'Histoire', abilities: ['INT'], sourcePage: 86 },
+  { id: 'heraldry', label: 'Héraldique', abilities: ['INT'], sourcePage: 86 },
+  { id: 'geography', label: 'Géographie', abilities: ['INT'], sourcePage: 86 },
+  // stratégie / tactique militaire (Sans peur, chevalier meneur-d-hommes-r1, p. 85) :
+  // science de la conduite des armées → INT (raisonnement). Le COMMANDEMENT effectif
+  // d'une troupe est un domaine social distinct (`command`, CHA).
+  { id: 'military-tactics', label: 'Tactique militaire', abilities: ['INT'], sourcePage: 85 },
 
   // --- CHA — exemples p. 202 + social (mages) --------------------------------
   { id: 'art', label: 'Art', abilities: ['CHA'], sourcePage: 202 },
@@ -177,6 +187,21 @@ export const testDomains: TestDomain[] = [
   { id: 'dance', label: 'Danse', abilities: ['CHA'], sourcePage: 68 },
   { id: 'mime', label: 'Mime', abilities: ['CHA'], sourcePage: 68 },
   { id: 'juggling', label: 'Jonglerie', abilities: ['CHA'], sourcePage: 68 },
+  // --- CHA — autorité & maintien du chevalier (PER-72) -----------------------
+  // commandement : « commander une troupe » (Sans peur, meneur-d-hommes-r1, p. 85) et
+  // « donner des ordres » (Autorité naturelle, noblesse-r3, p. 86) → ascendant sur des
+  // subordonnés, CHA. Distinct de la TACTIQUE militaire (`military-tactics`, INT).
+  { id: 'command', label: 'Commandement', abilities: ['CHA'], sourcePage: 85 },
+  // harangue : « haranguer et convaincre les foules » (Ignorer la douleur, preux-r1, p. 85) →
+  // entraîner un large auditoire, CHA. Proche du prêche (`preaching`) mais profane.
+  { id: 'haranguing', label: 'Harangue', abilities: ['CHA'], sourcePage: 85 },
+  // étiquette : « se comporter dans la haute société » (Éduqué, noblesse-r1, p. 86) →
+  // manières mondaines, CHA.
+  { id: 'etiquette', label: 'Étiquette', abilities: ['CHA'], sourcePage: 86 },
+  // dressage : « tests d'équitation et de dressage » (Fidèle monture, cavalier-r1, p. 83) →
+  // éduquer/maîtriser un animal. TODO(extraction) : CHA (ascendant, comme l'influence
+  // animale et le volet CHA de l'équitation) ou PER (patience / lecture de l'animal) ?
+  { id: 'animal-training', label: 'Dressage', abilities: ['CHA'], sourcePage: 83 },
 
   // --- VOL — exemples p. 202 -------------------------------------------------
   { id: 'pushing-limits', label: 'Se dépasser', abilities: ['VOL'], sourcePage: 202 },

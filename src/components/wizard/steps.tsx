@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
@@ -13,29 +11,22 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
 import Checkbox from '@mui/material/Checkbox';
-import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
-import InputAdornment from '@mui/material/InputAdornment';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
-import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import SvgIcon, { type SvgIconProps } from '@mui/material/SvgIcon';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
 import {
@@ -44,60 +35,31 @@ import {
   equipmentById,
   families,
   ancestryById,
-  ancestries,
   classes,
   classById,
   pathById,
   priestGods,
 } from '@/data';
-import type { AbilityId, AbilityModifier, AncestryNames, Armor, CharacterClass, Shield } from '@/data/schema';
-import { ABILITY_IDS } from '@/data/schema';
-import { checkCompliance } from '@/lib/engine';
-import { rulesContext } from '@/lib/character/rulesContext';
-import type { Sex } from '@/lib/character/types';
-import {
-  initialChoices,
-  modifierDeltas,
-  lowestAbilities,
-} from '@/lib/character/ancestry';
+import type { Armor, CharacterClass, Feature, Shield } from '@/data/schema';
+import { IdentityForm } from '@/components/IdentityForm';
 import {
   divineFeatureOfVocation,
-  finalAbilities,
   involvedClassIds,
-  level1FeatureIds,
+  MAGE_PATH_ID,
   materializeDraft,
   PRIEST_CLASS_ID,
   type WizardDraft,
 } from '@/lib/character/wizard';
-import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
-import { effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
-import {
-  effectiveFeatureIdsForMods,
-  hasActionableChoice,
-  setFeatureChoice,
-} from '@/lib/character/choices';
+import { hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
-import { pickName } from '@/lib/character/names';
-import {
-  defenseFromEquipment,
-  initialEquipment,
-  equipmentLabel,
-  distributeValueSet,
-  valueSets,
-} from './helpers';
-import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors';
+import { FeatureText } from '@/components/sheet/FeatureRichText';
+import { initialEquipment } from './helpers';
 import { classColor } from '@/lib/ui/classColors';
-import { ABILITY_NAMES } from '@/lib/ui/ability';
-import { AbilityBadge, AbilityBadgeList } from '@/components/AbilityBadge';
-import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
-import { AbilityIcon } from '@/components/AbilityIcon';
+import { AbilityBadgeList } from '@/components/AbilityBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { DamageValue } from '@/components/DamageValue';
-import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { FeatureLabel } from '@/components/FeatureLabel';
-import { InfoHint } from '@/components/InfoHint';
-
-const familyById = new Map(families.map((f) => [f.id, f]));
+import type { StepProps } from './types';
 
 /** Échelle des armures, triée par défense croissante — pour lister les armures
  * autorisées d'une classe (toutes celles ≤ la plus protectrice permise). */
@@ -123,201 +85,6 @@ function SwordIcon(props: SvgIconProps) {
   );
 }
 
-/**
- * Découpe la description d'un peuple à la section « Interpréter un … » : le
- * texte avant reste affiché, la section et son corps partent dans un accordéon.
- */
-function splitDescription(desc: string): {
-  intro: string;
-  interpretationTitle: string | null;
-  interpretationBody: string;
-} {
-  const idx = desc.search(/^Interpréter /m);
-  if (idx === -1) return { intro: desc.trim(), interpretationTitle: null, interpretationBody: '' };
-  const rest = desc.slice(idx);
-  const nl = rest.indexOf('\n');
-  return {
-    intro: desc.slice(0, idx).trim(),
-    interpretationTitle: (nl === -1 ? rest : rest.slice(0, nl)).trim(),
-    interpretationBody: nl === -1 ? '' : rest.slice(nl).trim(),
-  };
-}
-
-/**
- * Affichage inline d'un modificateur de peuple : la valeur signée puis les
- * caractéristiques concernées sous forme de badges (ex. « +1 [PER] ou [CHA] »).
- * Cas humain (les 7 caracs listées) : « +1 à une de vos deux plus faibles ».
- */
-function AncestryModifier({ mod }: { mod: AbilityModifier }) {
-  const theme = useTheme();
-  const bonus = mod.value > 0;
-  const sign = bonus ? '+' : '';
-  const tint = bonus ? theme.palette.success.main : theme.palette.error.main;
-  const isLowest = mod.abilities.length === ABILITY_IDS.length;
-  return (
-    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-      <Chip
-        label={`${sign}${mod.value}`}
-        color={bonus ? 'success' : 'error'}
-        variant="outlined"
-        size="small"
-        sx={{ minWidth: 48, fontWeight: 700, '& .MuiChip-label': { px: 0 } }}
-      />
-      {isLowest ? (
-        <Typography variant="body2" color="text.secondary">
-          à une de vos deux plus faibles caractéristiques (au choix)
-        </Typography>
-      ) : (
-        mod.abilities.map((c, j) => (
-          <Box
-            component="span"
-            key={c}
-            sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}
-          >
-            {j > 0 && (
-              <Typography component="span" variant="body2" color="text.secondary">
-                ou
-              </Typography>
-            )}
-            <AbilityBadge ability={c} color={tint} />
-          </Box>
-        ))
-      )}
-    </Stack>
-  );
-}
-
-export interface StepProps {
-  draft: WizardDraft;
-  patch: (partial: Partial<WizardDraft>) => void;
-}
-
-// ---------------------------------------------------------------------------
-// Étape 1 — Peuple
-// ---------------------------------------------------------------------------
-
-export function AncestryStep({ draft, patch }: StepProps) {
-  const ancestry = ancestryById.get(draft.ancestryId);
-  const desc = ancestry ? splitDescription(ancestry.description) : null;
-
-  const chooseAncestry = (id: string) => {
-    const p = ancestryById.get(id);
-    if (!p) return;
-    patch({
-      ancestryId: id,
-      ancestryChoices: initialChoices(p),
-      ancestryPathId: p.ancestryPathIds.length === 1 ? p.ancestryPathIds[0] : null,
-    });
-  };
-
-  return (
-    <Stack spacing={3}>
-      <FormControl>
-        <FormLabel>Peuple</FormLabel>
-        <RadioGroup value={draft.ancestryId} onChange={(e) => chooseAncestry(e.target.value)}>
-          <Grid container spacing={1}>
-            {ancestries.map((p) => (
-              <Grid key={p.id} size={{ xs: 12, sm: 6 }}>
-                <FormControlLabel value={p.id} control={<Radio />} label={p.name} />
-              </Grid>
-            ))}
-          </Grid>
-        </RadioGroup>
-      </FormControl>
-
-      {ancestry && (
-        <Card variant="outlined" sx={{ position: 'relative' }}>
-          <CardMedia
-            component="img"
-            image={`/ancestries/${ancestry.id}.webp`}
-            alt={`Illustration du peuple ${ancestry.name}`}
-            sx={{ maxHeight: 320, objectFit: 'cover', objectPosition: 'center' }}
-          />
-          {/* Filigrane « homme de vitruve » du peuple, décalé hors du coin bas-droite */}
-          <Box
-            component="img"
-            src={`/ancestries/${ancestry.id}-vitruve.webp`}
-            alt=""
-            aria-hidden
-            sx={{
-              position: 'absolute',
-              bottom: -24,
-              right: -24,
-              width: { xs: 160, sm: 220 },
-              opacity: 0.75,
-              pointerEvents: 'none',
-              userSelect: 'none',
-              zIndex: 0,
-            }}
-          />
-          <CardContent
-            sx={{
-              position: 'relative',
-              zIndex: 1,
-              '&:last-child': { pb: { xs: 15, sm: 21 } },
-            }}
-          >
-            <Typography variant="subtitle1" gutterBottom>
-              {ancestry.name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
-              {desc?.intro}
-            </Typography>
-
-            {desc?.interpretationTitle && (
-              <Accordion
-                disableGutters
-                elevation={0}
-                sx={{ mb: 2, border: 1, borderColor: 'divider', '&::before': { display: 'none' } }}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="subtitle2">{desc.interpretationTitle}</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ whiteSpace: 'pre-line' }}
-                  >
-                    {desc.interpretationBody}
-                  </Typography>
-                </AccordionDetails>
-              </Accordion>
-            )}
-
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Modificateurs de caractéristiques
-              </Typography>
-              <Stack spacing={1}>
-                {ancestry.abilityModifiers.map((mod, i) => (
-                  <AncestryModifier key={i} mod={mod} />
-                ))}
-              </Stack>
-            </Box>
-
-            {ancestry.ancestryPathIds.length > 1 && (
-              <FormControl sx={{ mt: 1, minWidth: { xs: '100%', sm: 260 } }} size="small">
-                <InputLabel>Voie de peuple</InputLabel>
-                <Select
-                  label="Voie de peuple"
-                  value={draft.ancestryPathId ?? ''}
-                  onChange={(e) => patch({ ancestryPathId: e.target.value })}
-                >
-                  {ancestry.ancestryPathIds.map((vid) => (
-                    <MenuItem key={vid} value={vid}>
-                      {pathById.get(vid)?.name ?? vid}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </Stack>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Étape 2 — Profil
@@ -746,246 +513,36 @@ function PriestVocationPanel({ draft, patch }: StepProps) {
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
                 {god.domain} — symbole : {god.symbol}
               </Typography>
-              <Typography variant="body2">
+              <Typography variant="body2" sx={{ mb: 1 }}>
                 <strong>Arme sacrée :</strong> {sacredWeapons || god.sacredWeaponIds.join(', ')}
               </Typography>
-              <Typography
-                variant="body2"
-                component="div"
-                sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}
-              >
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
                 <strong>Capacité divine :</strong>
-                {divineFeature ? (
-                  <>
-                    <span>
-                      {divineFeature.name} — {divinePath?.name ?? divineFeature.pathId}, rang{' '}
-                      {divineFeature.rank}
-                    </span>
-                    {divineClass && (
-                      <Box
-                        component="span"
-                        sx={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 0.5,
-                          fontWeight: 700,
-                          color: classColor(divineClass.id),
-                        }}
-                      >
-                        <ClassIcon classId={divineClass.id} size={18} />({divineClass.name})
-                      </Box>
-                    )}
-                  </>
-                ) : (
-                  god.divineFeatureId
-                )}
               </Typography>
+              {/* Carte (affichage seul) de la capacité divine, avec son texte verbatim,
+                  pour aider à choisir le dieu — la capacité vient d'un AUTRE profil. */}
+              {divineFeature ? (
+                <PathCard
+                  key={divineFeature.id}
+                  name={divinePath?.name ?? divineFeature.pathId}
+                  color={divineClass ? classColor(divineClass.id) : undefined}
+                  classId={divineClass?.id}
+                  checked
+                  selectable={false}
+                  defaultExpanded
+                  feature={divineFeature}
+                  rankLabel={`Rang ${divineFeature.rank} — capacité divine${
+                    divineClass ? ` (${divineClass.name})` : ''
+                  }`}
+                />
+              ) : (
+                <Typography variant="body2">{god.divineFeatureId}</Typography>
+              )}
             </Box>
           )}
         </Stack>
       </CardContent>
     </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Étape 3 — Caractéristiques
-// ---------------------------------------------------------------------------
-
-/** Terme qualitatif associé à une valeur de caractéristique
- * (table « Échelle des valeurs de caractéristiques », p. 27). */
-function abilityTotalLabel(total: number): string {
-  const clamped = Math.max(-3, Math.min(5, total));
-  const labels: Record<number, string> = {
-    [-3]: 'Catastrophique',
-    [-2]: 'Très faible',
-    [-1]: 'Faible',
-    [0]: 'Moyen',
-    [1]: 'Supérieur',
-    [2]: 'Bon',
-    [3]: 'Très bon',
-    [4]: 'Excellent',
-    [5]: 'Extraordinaire',
-  };
-  return labels[clamped];
-}
-
-export function AbilitiesStep({ draft, patch }: StepProps) {
-  const ancestry = ancestryById.get(draft.ancestryId);
-  const characterClass = classById.get(draft.classId);
-  if (!ancestry) return <Alert severity="warning">Choisissez d’abord un peuple.</Alert>;
-
-  const deltas = modifierDeltas(ancestry, draft.ancestryChoices);
-  const lowest = lowestAbilities(draft.baseAbilities);
-
-  const applyValueSet = (values: number[]) => {
-    patch({ baseAbilities: distributeValueSet(values, characterClass?.recommendedAbilities ?? []) });
-  };
-
-  const setBase = (id: AbilityId, value: number) => {
-    patch({ baseAbilities: { ...draft.baseAbilities, [id]: value } });
-  };
-
-  const setChoice = (index: number, ability: AbilityId) => {
-    const next = [...draft.ancestryChoices];
-    next[index] = ability;
-    patch({ ancestryChoices: next });
-  };
-
-  return (
-    <Stack spacing={3}>
-      <Box>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          Reportez les valeurs déterminées à la table (saisie libre). Les séries du livre sont
-          proposées comme point de départ.
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-          {valueSets.map((s) => (
-            <Button key={s.id} size="small" variant="outlined" onClick={() => applyValueSet(s.values)}>
-              {s.name} ({s.values.join(', ')})
-            </Button>
-          ))}
-        </Stack>
-      </Box>
-
-      {/* Résolution des modificateurs de peuple à choix */}
-      {ancestry.abilityModifiers.some((m) => m.abilities.length > 1) && (
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="subtitle2" gutterBottom>
-              Modificateurs de {ancestry.name}
-            </Typography>
-            <Stack spacing={2}>
-              {ancestry.abilityModifiers.map((mod, i) => {
-                if (mod.abilities.length === 1) return null;
-                // Cas humain : « +1 à une des deux plus faibles » (encodé avec les
-                // 7 caracs). Le choix reste libre dans le modèle ; l'UI conseille
-                // les plus faibles et alerte si une autre carac est retenue.
-                const isLowestMod = mod.abilities.length === ABILITY_IDS.length;
-                const chosen = draft.ancestryChoices[i];
-                const names = lowest.map((id) => ABILITY_NAMES[id]);
-                // « A, B et C » — énumération lisible (≥ 2 caracs éligibles).
-                const lowestNames =
-                  names.length > 1
-                    ? `${names.slice(0, -1).join(', ')} et ${names[names.length - 1]}`
-                    : names[0];
-                // « deux » seulement sans égalité ; sinon plusieurs caracs sont à
-                // égalité sur la valeur la plus faible (toutes éligibles).
-                const lowestPhrase =
-                  lowest.length === 2
-                    ? 'vos deux caractéristiques les plus faibles'
-                    : 'vos caractéristiques les plus faibles';
-                const deviates = isLowestMod && !!chosen && !lowest.includes(chosen);
-                return (
-                  <Box key={i}>
-                    <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 260 } }}>
-                      <InputLabel>{`${mod.value > 0 ? '+' : ''}${mod.value} à`}</InputLabel>
-                      <Select
-                        label={`${mod.value > 0 ? '+' : ''}${mod.value} à`}
-                        value={draft.ancestryChoices[i] ?? ''}
-                        onChange={(e) => setChoice(i, e.target.value as AbilityId)}
-                      >
-                        {(isLowestMod ? ABILITY_IDS : mod.abilities).map((c) => (
-                          <MenuItem
-                            key={c}
-                            value={c}
-                            sx={isLowestMod
-                              ? lowest.includes(c)
-                                ? { fontWeight: 700 }
-                                : { opacity: 0.35 }
-                              : undefined}
-                          >
-                            {ABILITY_NAMES[c]}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    {isLowestMod && (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ display: 'block', mt: 0.5 }}
-                      >
-                        Règle de l’humain (p. 57) : ce +1 doit porter sur l’une de {lowestPhrase}
-                        {lowestNames ? ` (${lowestNames})` : ''}.
-                      </Typography>
-                    )}
-                    {deviates && chosen && (
-                      <Alert severity="warning" sx={{ mt: 1 }}>
-                        {ABILITY_NAMES[chosen]} ne fait pas partie de {lowestPhrase}
-                        {lowestNames ? ` (${lowestNames})` : ''} : vous dérogez à la règle de
-                        l’humain.
-                      </Alert>
-                    )}
-                  </Box>
-                );
-              })}
-            </Stack>
-          </CardContent>
-        </Card>
-      )}
-
-      <Grid container spacing={2}>
-        <Grid size={12}>
-          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-            <Box sx={{ width: 24, flexShrink: 0 }} />
-            <Typography variant="overline" color="text.secondary" sx={{ flex: 1, maxWidth: 160 }}>
-              Jet de dés
-            </Typography>
-            <Typography variant="overline" color="text.secondary" sx={{ flex: 1, maxWidth: 160 }}>
-              Total
-            </Typography>
-          </Stack>
-        </Grid>
-        {ABILITY_IDS.map((id) => {
-          const total = draft.baseAbilities[id] + deltas[id];
-          const color = abilityTotalColor(total);
-          return (
-            <Grid key={id} size={12}>
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <AbilityIcon
-                  ability={id}
-                  title
-                  size={24}
-                  sx={{ color: 'text.secondary', flexShrink: 0 }}
-                />
-                <TextField
-                  label={id}
-                  type="number"
-                  size="small"
-                  value={draft.baseAbilities[id]}
-                  onChange={(e) => setBase(id, Number(e.target.value) || 0)}
-                  sx={{ flex: 1, maxWidth: 160 }}
-                />
-                <TextField
-                  label={abilityTotalLabel(total)}
-                  size="small"
-                  disabled
-                  value={`${total > 0 ? '+' : ''}${total}`}
-                  sx={{
-                    flex: 1,
-                    maxWidth: 160,
-                    '& .MuiInputBase-input.Mui-disabled': {
-                      WebkitTextFillColor: color,
-                      fontWeight: 600,
-                    },
-                    '& .MuiInputLabel-root.Mui-disabled': {
-                      color,
-                    },
-                  }}
-                />
-                {deltas[id] !== 0 && (
-                  <Typography variant="caption" sx={{ color: ancestryModifierColor(deltas[id]) }}>
-                    {ancestry.name} {deltas[id] > 0 ? '+' : ''}
-                    {deltas[id]}
-                  </Typography>
-                )}
-              </Stack>
-            </Grid>
-          );
-        })}
-      </Grid>
-    </Stack>
   );
 }
 
@@ -1011,6 +568,170 @@ function pathFamilyId(pathId: string): string | undefined {
   const path = pathById.get(pathId);
   if (path?.type !== 'class') return undefined;
   return classById.get(path.classIds[0])?.familyId;
+}
+
+/** Capacité d'une voie à un rang donné (les `featureIds` sont ordonnés par rang). */
+function pathFeatureAtRank(pathId: string, rank: number): Feature | undefined {
+  const path = pathById.get(pathId);
+  if (!path) return undefined;
+  for (const fid of path.featureIds) {
+    const f = featureById.get(fid);
+    if (f?.rank === rank) return f;
+  }
+  return undefined;
+}
+
+/**
+ * Carte sélectionnable d'une voie/option (étape « Voies & capacités » et options de
+ * mage). Inspirée des cartes de la vue colonne de la fiche : en-tête « nom + icône
+ * de profil », corps avec la capacité concernée et son texte verbatim. Contour
+ * gris/neutre quand non sélectionnée, couleur de la voie quand sélectionnée.
+ * `control` choisit l'indicateur : case à cocher pour les voies (multi-sélection),
+ * bouton radio pour les choix exclusifs des options de mage.
+ */
+function PathCard({
+  name,
+  color = '#90a4ae',
+  classId,
+  checked,
+  disabled = false,
+  feature,
+  rankLabel = 'Rang 1 — acquis gratuitement',
+  note,
+  control = 'checkbox',
+  selectable = true,
+  defaultExpanded = false,
+  onToggle,
+}: {
+  name: string;
+  color?: string;
+  classId?: string;
+  checked: boolean;
+  disabled?: boolean;
+  feature?: Feature;
+  /** Libellé au-dessus de la capacité (ex. « Rang 1 — acquis gratuitement »). */
+  rankLabel?: string;
+  /** Précision en italique sous le libellé de rang (ex. règle de remplacement). */
+  note?: string;
+  control?: 'checkbox' | 'radio';
+  /**
+   * Carte sélectionnable (défaut) : indicateur visible, le clic (dé)sélectionne.
+   * `false` → affichage seul (pas d'indicateur) : le clic plie/déplie le détail,
+   * utile pour présenter une capacité figée (ex. capacité divine du prêtre).
+   */
+  selectable?: boolean;
+  /** Détail déplié dès le montage (ex. pour aider à décider). */
+  defaultExpanded?: boolean;
+  onToggle?: () => void;
+}) {
+  const ControlComp = control === 'radio' ? Radio : Checkbox;
+  // Détail repliable (texte verbatim de la capacité), replié par défaut — pas de
+  // persistance, c'est uniquement un confort de lecture dans le créateur (PER).
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  return (
+    <Box
+      onClick={() => {
+        if (disabled) return;
+        if (selectable) onToggle?.();
+        else setExpanded((v) => !v);
+      }}
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        border: 2,
+        borderColor: checked ? color : 'divider',
+        borderRadius: 1,
+        bgcolor: checked ? alpha(color, 0.06) : 'transparent',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'border-color .15s, background-color .15s',
+        '&:hover': disabled
+          ? undefined
+          : {
+              borderColor: checked ? color : alpha(color, 0.5),
+              bgcolor: checked ? alpha(color, 0.1) : alpha(color, 0.03),
+            },
+      }}
+    >
+      {/* En-tête : indicateur + nom (coloré quand sélectionné) + icône de profil + chevron. */}
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', p: 1 }}>
+        {selectable && (
+          <ControlComp
+            checked={checked}
+            disabled={disabled}
+            size="small"
+            onClick={(e) => e.stopPropagation()}
+            onChange={() => onToggle?.()}
+            sx={{ p: 0.5, color, '&.Mui-checked': { color } }}
+          />
+        )}
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 700,
+            color: checked ? color : 'text.primary',
+            flexGrow: 1,
+            lineHeight: 1.2,
+            wordBreak: 'break-word',
+          }}
+        >
+          {name}
+        </Typography>
+        {classId && <ClassIcon classId={classId} size={20} sx={{ color, flexShrink: 0 }} />}
+        {/* Chevron de repli (indépendant de la sélection) : ouvre/ferme le détail. */}
+        <IconButton
+          size="small"
+          aria-label={expanded ? 'Replier le détail' : 'Déplier le détail'}
+          aria-expanded={expanded}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((v) => !v);
+          }}
+          sx={{ flexShrink: 0 }}
+        >
+          <ExpandMoreIcon
+            fontSize="small"
+            sx={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}
+          />
+        </IconButton>
+      </Stack>
+
+      {/* Corps repliable : capacité concernée + son texte verbatim. */}
+      <Collapse in={expanded} unmountOnExit>
+        <Box sx={{ p: 1, borderTop: 1, borderColor: 'divider' }} onClick={(e) => e.stopPropagation()}>
+          {feature ? (
+            <>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mb: note ? 0 : 0.25 }}
+              >
+                {rankLabel}
+              </Typography>
+              {note && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mb: 0.25, fontStyle: 'italic' }}
+                >
+                  {note}
+                </Typography>
+              )}
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                <FeatureLabel feature={feature} />
+              </Typography>
+              <FeatureText feature={feature} />
+            </>
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              Capacité indisponible.
+            </Typography>
+          )}
+        </Box>
+      </Collapse>
+    </Box>
+  );
 }
 
 export function PathsStep({ draft, patch }: StepProps) {
@@ -1072,24 +793,29 @@ export function PathsStep({ draft, patch }: StepProps) {
     patch({ hybrid: false, chosenPaths: kept, mageBonus });
   };
 
-  // Liste de cases à cocher pour les voies d'un profil donné.
-  const pathChecklist = (pathIds: string[]) => (
-    <Stack>
+  // Grille de cartes cochables (2 par ligne) pour les voies d'un profil donné.
+  // `color`/`classId` teintent les cartes à la couleur du profil concerné.
+  const pathChecklist = (pathIds: string[], color: string, classId: string) => (
+    <Grid container spacing={1.5}>
       {pathIds.map((vid) => {
         const path = pathById.get(vid);
         const checked = draft.chosenPaths.includes(vid);
         const disabled = !checked && draft.chosenPaths.length >= 2;
         return (
-          <FormControlLabel
-            key={vid}
-            control={
-              <Checkbox checked={checked} disabled={disabled} onChange={() => togglePath(vid)} />
-            }
-            label={path?.name ?? vid}
-          />
+          <Grid key={vid} size={12}>
+            <PathCard
+              name={path?.name ?? vid}
+              color={color}
+              classId={classId}
+              checked={checked}
+              disabled={disabled}
+              feature={pathFeatureAtRank(vid, 1)}
+              onToggle={() => togglePath(vid)}
+            />
+          </Grid>
         );
       })}
-    </Stack>
+    </Grid>
   );
 
   // Hybride : profils autres que le profil principal, avec leurs voies propres
@@ -1135,7 +861,7 @@ export function PathsStep({ draft, patch }: StepProps) {
             {characterClass.name} (profil principal)
           </Typography>
         )}
-        {pathChecklist(characterClass.pathIds)}
+        {pathChecklist(characterClass.pathIds, classColor(characterClass.id), characterClass.id)}
 
         {hybrid && (
           <>
@@ -1166,7 +892,7 @@ export function PathsStep({ draft, patch }: StepProps) {
                         </Typography>
                       </Stack>
                     </AccordionSummary>
-                    <AccordionDetails>{pathChecklist(pathIds)}</AccordionDetails>
+                    <AccordionDetails>{pathChecklist(pathIds, color, c.id)}</AccordionDetails>
                   </Accordion>
                 );
               })}
@@ -1210,64 +936,95 @@ export function PathsStep({ draft, patch }: StepProps) {
               Options de mage (niveau 1)
             </Typography>
 
-            <FormControl sx={{ mb: 2 }}>
-              <FormLabel>Emplacement de la voie de peuple</FormLabel>
-              <RadioGroup
-                value={draft.magePathSlot ? 'mage' : 'peuple'}
-                onChange={(e) => {
-                  const slot = e.target.value === 'mage';
-                  const mageBonus =
-                    !slot && draft.mageBonus?.type === 'mage-rank2' ? null : draft.mageBonus;
-                  patch({ magePathSlot: slot, mageBonus });
-                }}
-              >
-                <FormControlLabel
-                  value="peuple"
-                  control={<Radio />}
-                  label={`Voie de peuple${ancestry ? ` (${ancestry.name})` : ''}`}
-                />
-                <FormControlLabel
-                  value="mage"
-                  control={<Radio />}
-                  label="Voie du mage (remplace la voie de peuple ; rang 1 de peuple conservé)"
-                />
-              </RadioGroup>
+            {/* Emplacement de la voie de peuple : choix exclusif entre la voie de peuple
+                et la voie du mage (qui la remplace). Cartes radio montrant le rang 1. */}
+            <FormControl sx={{ mb: 2, width: '100%' }}>
+              <FormLabel sx={{ mb: 1 }}>Emplacement de la voie de peuple</FormLabel>
+              <Grid container spacing={1.5}>
+                <Grid size={12}>
+                  <PathCard
+                    name={`Voie de peuple${ancestry ? ` (${ancestry.name})` : ''}`}
+                    checked={!draft.magePathSlot}
+                    feature={
+                      draft.ancestryPathId ? pathFeatureAtRank(draft.ancestryPathId, 1) : undefined
+                    }
+                    rankLabel="Rang 1 — voie de peuple"
+                    control="radio"
+                    onToggle={() => {
+                      const mageBonus =
+                        draft.mageBonus?.type === 'mage-rank2' ? null : draft.mageBonus;
+                      patch({ magePathSlot: false, mageBonus });
+                    }}
+                  />
+                </Grid>
+                <Grid size={12}>
+                  <PathCard
+                    name="Voie du mage"
+                    color={classColor(characterClass.id)}
+                    classId={characterClass.id}
+                    checked={draft.magePathSlot}
+                    feature={pathFeatureAtRank(MAGE_PATH_ID, 1)}
+                    rankLabel="Rang 1 — remplace la voie de peuple"
+                    note="Le rang 1 de la voie de peuple reste acquis (p. 60)."
+                    control="radio"
+                    onToggle={() => patch({ magePathSlot: true })}
+                  />
+                </Grid>
+              </Grid>
             </FormControl>
 
-            <FormControl>
-              <FormLabel>Capacité de rang 2 supplémentaire</FormLabel>
-              <RadioGroup
-                value={
-                  draft.mageBonus?.type === 'mage-rank2'
-                    ? 'mage'
-                    : draft.mageBonus?.type === 'class-rank2'
-                      ? draft.mageBonus.pathId
-                      : ''
-                }
-                onChange={(e) => {
-                  const v = e.target.value;
-                  patch({
-                    mageBonus:
-                      v === 'mage' ? { type: 'mage-rank2' } : { type: 'class-rank2', pathId: v },
-                  });
-                }}
-              >
-                {mageRank2Paths.map((vid) => (
-                  <FormControlLabel
-                    key={vid}
-                    value={vid}
-                    control={<Radio />}
-                    label={`Rang 2 — ${pathById.get(vid)?.name ?? vid}`}
-                  />
-                ))}
-                {draft.magePathSlot && (
-                  <FormControlLabel
-                    value="mage"
-                    control={<Radio />}
-                    label="Rang 2 — Voie du mage"
-                  />
-                )}
-              </RadioGroup>
+            {/* Capacité de rang 2 supplémentaire : choix exclusif parmi les rangs 2 des
+                voies de mage choisies (+ rang 2 de la voie du mage si elle occupe le slot). */}
+            <FormControl sx={{ width: '100%' }}>
+              <FormLabel sx={{ mb: 1 }}>Capacité de rang 2 supplémentaire</FormLabel>
+              {mageRank2Paths.length === 0 && !draft.magePathSlot ? (
+                <Typography variant="body2" color="text.secondary">
+                  Choisissez d’abord au moins une voie de la famille des mages ci-dessus.
+                </Typography>
+              ) : (
+                <Grid container spacing={1.5}>
+                  {mageRank2Paths.map((vid) => {
+                    const path = pathById.get(vid);
+                    const ownerClassId =
+                      path?.type === 'class'
+                        ? path.classIds.includes(characterClass.id)
+                          ? characterClass.id
+                          : path.classIds[0]
+                        : characterClass.id;
+                    return (
+                      <Grid key={vid} size={12}>
+                        <PathCard
+                          name={path?.name ?? vid}
+                          color={classColor(ownerClassId)}
+                          classId={ownerClassId}
+                          checked={
+                            draft.mageBonus?.type === 'class-rank2' &&
+                            draft.mageBonus.pathId === vid
+                          }
+                          feature={pathFeatureAtRank(vid, 2)}
+                          rankLabel="Rang 2 — capacité supplémentaire"
+                          control="radio"
+                          onToggle={() => patch({ mageBonus: { type: 'class-rank2', pathId: vid } })}
+                        />
+                      </Grid>
+                    );
+                  })}
+                  {draft.magePathSlot && (
+                    <Grid size={12}>
+                      <PathCard
+                        name="Voie du mage"
+                        color={classColor(characterClass.id)}
+                        classId={characterClass.id}
+                        checked={draft.mageBonus?.type === 'mage-rank2'}
+                        feature={pathFeatureAtRank(MAGE_PATH_ID, 2)}
+                        rankLabel="Rang 2 — capacité supplémentaire"
+                        control="radio"
+                        onToggle={() => patch({ mageBonus: { type: 'mage-rank2' } })}
+                      />
+                    </Grid>
+                  )}
+                </Grid>
+              )}
             </FormControl>
           </CardContent>
         </Card>
@@ -1357,431 +1114,19 @@ export function PathsStep({ draft, patch }: StepProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Étape 5 — Équipement
-// ---------------------------------------------------------------------------
-
-export function EquipmentStep({ draft, patch }: StepProps) {
-  const remove = (index: number) => {
-    patch({ equipment: draft.equipment.filter((_, i) => i !== index) });
-  };
-  const add = (itemId: string) => {
-    patch({ equipment: [...draft.equipment, { itemId, quantity: 1 }] });
-  };
-
-  return (
-    <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
-        Équipement de départ du profil + sac d’aventurier. Ajustez librement.
-      </Typography>
-
-      <Stack divider={<Divider />}>
-        {draft.equipment.map((line, i) => (
-          <Stack key={i} direction="row" sx={{ alignItems: 'center', py: 0.5 }}>
-            <Typography sx={{ flexGrow: 1 }}>
-              {equipmentLabel(line)}
-              {line.quantity > 1 ? ` ×${line.quantity}` : ''}
-            </Typography>
-            <IconButton size="small" color="error" onClick={() => remove(i)}>
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          </Stack>
-        ))}
-        {draft.equipment.length === 0 && (
-          <Typography variant="body2" color="text.secondary">
-            Aucun équipement.
-          </Typography>
-        )}
-      </Stack>
-
-      <Autocomplete
-        options={equipment}
-        getOptionLabel={(o) => o.name}
-        renderInput={(params) => <TextField {...params} label="Ajouter un objet du catalogue" />}
-        onChange={(_, value) => {
-          if (value) add(value.id);
-        }}
-        value={null}
-        blurOnSelect
-        clearOnBlur
-      />
-    </Stack>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Étape 6 — Identité
 // ---------------------------------------------------------------------------
 
-/**
- * Contenu de l'infobulle du champ Nom : conseils « Noms typiques » du peuple
- * choisi, suivis des listes proposées par le livre (par sexe + noms de famille).
- */
-function NameHintContent({ names }: { names: AncestryNames }) {
-  const lists: Array<[string, string[]]> = [
-    ['Masculins', names.male],
-    ['Féminins', names.female],
-    ['Noms de famille', names.surnames ?? []],
-  ];
-  return (
-    <>
-      {names.note}
-      {lists
-        .filter(([, items]) => items.length > 0)
-        .map(([label, items]) => (
-          <Typography key={label} variant="body2" sx={{ mt: 1 }}>
-            <strong>{label} :</strong> {items.join(', ')}
-          </Typography>
-        ))}
-    </>
-  );
-}
-
-/** Ne conserve que les chiffres et la virgule décimale (âge, taille, poids). */
-function digitsOnly(value: string): string {
-  return value.replace(/[^0-9,]/g, '');
-}
-
 export function IdentityStep({ draft, patch }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
-  const physical = ancestry?.physical;
-  // Le générateur a besoin du sexe pour choisir la bonne liste de noms.
-  const sexChosen = draft.identity.sex != null;
   return (
-    <Stack spacing={2}>
-      <TextField
-        label="Nom"
-        required
-        value={draft.name}
-        onChange={(e) => patch({ name: e.target.value })}
-        fullWidth
-        slotProps={{
-          input: {
-            endAdornment: ancestry ? (
-              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                <Tooltip title={sexChosen ? 'Générer un nom' : 'Choisissez d’abord le sexe'} arrow>
-                  <span>
-                    <IconButton
-                      size="small"
-                      aria-label="Générer un nom"
-                      disabled={!sexChosen}
-                      onClick={() => {
-                        const name = pickName(ancestry, draft.identity.sex);
-                        if (name) patch({ name });
-                      }}
-                    >
-                      <CasinoOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                <InfoHint page={ancestry.names.sourcePage}>
-                  <NameHintContent names={ancestry.names} />
-                </InfoHint>
-              </Stack>
-            ) : undefined,
-          },
-        }}
-      />
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 6, sm: 3 }}>
-          <TextField
-            select
-            label="Sexe"
-            value={draft.identity.sex ?? ''}
-            onChange={(e) =>
-              patch({ identity: { ...draft.identity, sex: (e.target.value || undefined) as Sex | undefined } })
-            }
-            fullWidth
-          >
-            <MenuItem value="male">Homme</MenuItem>
-            <MenuItem value="female">Femme</MenuItem>
-          </TextField>
-        </Grid>
-        <Grid size={{ xs: 6, sm: 3 }}>
-          <TextField
-            label="Âge"
-            value={draft.identity.age ?? ''}
-            onChange={(e) => patch({ identity: { ...draft.identity, age: digitsOnly(e.target.value) } })}
-            placeholder={physical?.startingAge}
-            fullWidth
-            slotProps={
-              physical
-                ? {
-                    input: {
-                      endAdornment: (
-                        <InfoHint page={ancestry?.sourcePage}>
-                          <>
-                            Âge de départ conseillé : <strong>{physical.startingAge}</strong>.
-                            <br />
-                            Espérance de vie : <strong>{physical.lifeExpectancy}</strong>.
-                          </>
-                        </InfoHint>
-                      ),
-                    },
-                  }
-                : undefined
-            }
-          />
-        </Grid>
-        <Grid size={{ xs: 6, sm: 3 }}>
-          <TextField
-            label="Taille"
-            value={draft.identity.height ?? ''}
-            onChange={(e) => patch({ identity: { ...draft.identity, height: digitsOnly(e.target.value) } })}
-            placeholder={physical?.height}
-            fullWidth
-            slotProps={{
-              input: {
-                endAdornment: <InputAdornment position="end">m</InputAdornment>,
-              },
-            }}
-          />
-        </Grid>
-        <Grid size={{ xs: 6, sm: 3 }}>
-          <TextField
-            label="Poids"
-            value={draft.identity.weight ?? ''}
-            onChange={(e) => patch({ identity: { ...draft.identity, weight: digitsOnly(e.target.value) } })}
-            placeholder={physical?.weight}
-            fullWidth
-            slotProps={{
-              input: {
-                endAdornment: <InputAdornment position="end">kg</InputAdornment>,
-              },
-            }}
-          />
-        </Grid>
-      </Grid>
-      <TextField
-        label="Description"
-        multiline
-        minRows={6}
-        placeholder="Décrivez votre héros : allure, caractère, passé, ce qui le pousse à l'aventure…"
-        value={draft.identity.description ?? ''}
-        onChange={(e) => patch({ identity: { ...draft.identity, description: e.target.value } })}
-        fullWidth
-      />
-    </Stack>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Étape 7 — Récapitulatif
-// ---------------------------------------------------------------------------
-
-export function SummaryStep({ draft, patch }: StepProps) {
-  const ancestry = ancestryById.get(draft.ancestryId);
-  const characterClass = classById.get(draft.classId);
-  const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
-  if (!ancestry || !characterClass || !family) {
-    return <Alert severity="warning">Récapitulatif indisponible : étapes incomplètes.</Alert>;
-  }
-
-  const abilities = finalAbilities(draft, ancestry);
-  const featureIds = level1FeatureIds(draft);
-  const spellCount = featureIds.filter((id) => featureById.get(id)?.isSpell).length;
-  const preview = materializeDraft(draft, ancestry, draft.createdAt);
-  const derivedInput = {
-    // Caractéristiques effectives (saisie + peuple + modificateurs permanents de
-    // capacités du niveau 1) — cohérent avec la fiche. Cf. `effectiveAbilities`.
-    abilities: effectiveAbilities(preview),
-    level: 1,
-    family,
-    defenseEquipment: defenseFromEquipment(draft.equipment),
-    spellCount,
-    // Bonus des capacités du niveau 1 (PER-63) + capacités empruntées par un
-    // choix « capacité d'une autre voie » (PER-66) ; `preview` porte déjà les
-    // choix faits dans le wizard. Le contexte (PER-67) résout les valeurs
-    // scalantes (ex. PV += FOR) ; aucun interrupteur n'est encore basculé.
-    mods: modsFromFeatures(effectiveFeatureIdsForMods(preview), effectContext(preview)),
-    // PV de base d'un profil hybride créé au niveau 1 (somme des deux familles,
-    // p. 180) ; identique à 2 × baseHp pour un profil standard.
-    hpLevel1Family: level1FamilyHp(preview, rulesContext),
-    // Détail par famille pour l'infobulle (vide hors hybridation).
-    hpLevel1Families: level1HybridFamilies(preview, rulesContext),
-  };
-  const warnings = checkCompliance(preview, rulesContext);
-
-  return (
-    <Stack spacing={3}>
-      <Box>
-        <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
-          {draft.name || 'Nouveau personnage'}
-        </Typography>
-        <Stack
-          direction="row"
-          spacing={0.75}
-          sx={{ alignItems: 'center', color: 'text.secondary' }}
-        >
-          <Typography variant="body2" component="span">
-            {ancestry.name} ·
-          </Typography>
-          <ClassIcon classId={characterClass.id} size={18} />
-          <Typography
-            variant="body2"
-            component="span"
-            sx={{ color: classColor(characterClass.id), fontWeight: 600 }}
-          >
-            {characterClass.name}
-          </Typography>
-          <Typography variant="body2" component="span">
-            · niveau 1
-          </Typography>
-        </Stack>
-      </Box>
-
-      <Box>
-        <Typography variant="subtitle2" gutterBottom>
-          Caractéristiques
-        </Typography>
-        <Stack direction="row" spacing={1}>
-          {ABILITY_IDS.map((id) => {
-            const total = abilities[id];
-            const color = abilityTotalColor(total);
-            return (
-              <Box
-                key={id}
-                title={ABILITY_NAMES[id]}
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 0.25,
-                  px: 0.5,
-                }}
-              >
-                <AbilityIcon ability={id} title size={32} sx={{ color: 'text.secondary' }} />
-                <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
-                  {id}
-                </Typography>
-                <AbilityBreakdownTooltip
-                  abilityId={id}
-                  baseAbilities={draft.baseAbilities}
-                  ancestry={ancestry}
-                  ancestryChoices={draft.ancestryChoices}
-                >
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color, cursor: 'help' }}>
-                    {total > 0 ? '+' : ''}
-                    {total}
-                  </Typography>
-                </AbilityBreakdownTooltip>
-              </Box>
-            );
-          })}
-        </Stack>
-      </Box>
-
-      <Box>
-        <Typography variant="subtitle2" gutterBottom>
-          Statistiques dérivées
-        </Typography>
-        <DerivedStatsGrid
-          input={derivedInput}
-          featureIds={effectiveFeatureIdsForMods(preview)}
-          effectContext={effectContext(preview)}
-        />
-      </Box>
-
-      <Box>
-        <Typography variant="subtitle2" gutterBottom>
-          Capacités acquises
-        </Typography>
-        <Grid container spacing={1}>
-          {featureIds.map((id) => {
-            const feature = featureById.get(id);
-            const path = feature ? pathById.get(feature.pathId) : undefined;
-            // Capacité liée à un profil = voie de classe → couleur/icône de SON
-            // profil (pas du profil principal : en hybride, une voie peut venir
-            // d'un autre profil). Voie de peuple / du mage : pas de profil →
-            // bordure neutre.
-            const featureClassId =
-              path?.type === 'class'
-                ? characterClass.pathIds.includes(path.id)
-                  ? characterClass.id
-                  : path.classIds[0]
-                : null;
-            const color = featureClassId ? classColor(featureClassId) : null;
-            return (
-              <Grid key={id} size={{ xs: 6, sm: 3 }}>
-                <Box
-                  sx={{
-                    height: '100%',
-                    px: 1.5,
-                    py: 0.75,
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: color ?? 'divider',
-                    bgcolor: color ? alpha(color, 0.15) : 'transparent',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: 1,
-                  }}
-                >
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {feature ? <FeatureLabel feature={feature} /> : id}
-                    </Typography>
-                    {path && (
-                      <Typography variant="caption" color="text.secondary">
-                        {path.name}
-                      </Typography>
-                    )}
-                  </Box>
-                  {featureClassId && (
-                    <ClassIcon
-                      classId={featureClassId}
-                      size={20}
-                      color="#fff"
-                      sx={{ mt: 0.25 }}
-                    />
-                  )}
-                </Box>
-              </Grid>
-            );
-          })}
-        </Grid>
-      </Box>
-
-      {/* Choix portés par les capacités de niveau 1 (PER-66/68) — bloquant :
-          le bouton « Créer » reste désactivé tant qu'ils ne sont pas résolus. */}
-      {featureIds.some((id) => hasActionableChoice(preview, id)) && (
-        <Box>
-          <Typography variant="subtitle2" gutterBottom>
-            Choix à faire
-          </Typography>
-          <Stack spacing={2}>
-            {featureIds
-              .filter((id) => hasActionableChoice(preview, id))
-              .map((id) => {
-                const feature = featureById.get(id);
-                return (
-                  <Box key={id}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                      {feature ? <FeatureLabel feature={feature} /> : id}
-                    </Typography>
-                    <FeatureChoiceField
-                      character={preview}
-                      featureId={id}
-                      mode="edit"
-                      blocking
-                      onChange={(fid, index, value) =>
-                        patch({ featureChoices: setFeatureChoice(preview, fid, index, value) })
-                      }
-                    />
-                  </Box>
-                );
-              })}
-          </Stack>
-        </Box>
-      )}
-
-      {warnings.length > 0 && (
-        <Alert severity="warning">
-          {warnings.map((a) => a.message).join(' ')}
-        </Alert>
-      )}
-    </Stack>
+    <IdentityForm
+      name={draft.name}
+      identity={draft.identity}
+      ancestry={ancestry}
+      showNameGenerator
+      onName={(name) => patch({ name })}
+      onIdentity={(identityPatch) => patch({ identity: { ...draft.identity, ...identityPatch } })}
+    />
   );
 }

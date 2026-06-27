@@ -34,15 +34,16 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById } from '@/data';
-import type { Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
+import type { CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
-import { featureChoiceDefs, hasActionableChoice, hasUnmadeChoice } from '@/lib/character/choices';
+import { featureChoiceDefs, getSelection, hasActionableChoice, hasUnmadeChoice } from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
 import {
   conditionalEffectsOf,
   creatureBonusDiceForPath,
   disabledFeatureReasons,
+  isEffectActive,
   usageCounterMaximum,
   type DisabledFeatureReason,
 } from '@/lib/character/effects';
@@ -577,6 +578,38 @@ function RetainedAncestryCapacity({
  * animaux » (animaux-r1), hors animaux fantastiques. Rendu discret (légende), aligné
  * sur le style des notes.
  */
+/**
+ * La DÉFENSE ALTERNATIVE de la créature (`profile.defenseAlt`, ex. monture « en selle ») est-elle
+ * active ? Active = capacité source ACQUISE (ex. cavalier-r2) ET son interrupteur de condition (index 0)
+ * actif. Cas localisé en attendant la propagation maître→créature générale (PER-94).
+ */
+function creatureDefenseAltActive(profile: CreatureProfile, character: Character | undefined): boolean {
+  const alt = profile.defenseAlt;
+  if (!alt || !character) return false;
+  return character.featureIds.includes(alt.sourceFeatureId) && isEffectActive(character, alt.sourceFeatureId, 0);
+}
+
+/**
+ * Profil de créature EFFECTIF d'une capacité (PER-140) : si la capacité porte un choix `option`
+ * dont l'option retenue déclare son propre `creatureProfile` (ex. Monture fantastique → la monture
+ * choisie), celui-ci PRIME ; sinon on retombe sur le `creatureProfile` de la capacité. `undefined`
+ * = aucune créature à afficher (ex. choix de monture pas encore fait).
+ */
+function effectiveCreatureProfile(feature: Feature, character: Character | undefined): CreatureProfile | undefined {
+  if (character) {
+    const defs = feature.choices ?? [];
+    for (let i = 0; i < defs.length; i += 1) {
+      const def = defs[i];
+      if (def.kind !== 'option') continue;
+      const raw = getSelection(character, feature.id, i);
+      const id = Array.isArray(raw) ? raw[0] : raw;
+      const opt = id ? def.options.find((o) => o.id === id) : undefined;
+      if (opt?.creatureProfile) return opt.creatureProfile;
+    }
+  }
+  return feature.creatureProfile;
+}
+
 function AnimalFormsNote({ character }: { character: Character }) {
   const forms = animalFormCategories(character);
   if (!forms) return null;
@@ -1476,20 +1509,24 @@ function PathBlock({
                 {openFeature.id === 'animaux-r5' && character && (
                   <AnimalFormsNote character={character} />
                 )}
-                {openFeature.creatureProfile && abilities && level != null && (
-                  <Box sx={{ mt: 1.5 }}>
-                    <CreatureStatBlock
-                      profile={openFeature.creatureProfile}
-                      abilities={abilities}
-                      level={level}
-                      rank={pathRank}
-                      masterDerived={masterDerived}
-                      bonusDieAbilities={
-                        character ? creatureBonusDiceForPath(openFeature.pathId, character) : undefined
-                      }
-                    />
-                  </Box>
-                )}
+                {(() => {
+                  const profile = effectiveCreatureProfile(openFeature, character);
+                  return profile && abilities && level != null ? (
+                    <Box sx={{ mt: 1.5 }}>
+                      <CreatureStatBlock
+                        profile={profile}
+                        abilities={abilities}
+                        level={level}
+                        rank={pathRank}
+                        masterDerived={masterDerived}
+                        bonusDieAbilities={
+                          character ? creatureBonusDiceForPath(openFeature.pathId, character) : undefined
+                        }
+                        defenseAltActive={creatureDefenseAltActive(profile, character)}
+                      />
+                    </Box>
+                  ) : null;
+                })()}
                 {hasChoices(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -1700,20 +1737,24 @@ function PathBlock({
               )}
               <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} />
               {feature.id === 'animaux-r5' && character && <AnimalFormsNote character={character} />}
-              {feature.creatureProfile && abilities && level != null && (
-                <Box sx={{ mt: 1.5 }}>
-                  <CreatureStatBlock
-                    profile={feature.creatureProfile}
-                    abilities={abilities}
-                    level={level}
-                    rank={pathRank}
-                    masterDerived={masterDerived}
-                    bonusDieAbilities={
-                      character ? creatureBonusDiceForPath(feature.pathId, character) : undefined
-                    }
-                  />
-                </Box>
-              )}
+              {(() => {
+                const profile = effectiveCreatureProfile(feature, character);
+                return profile && abilities && level != null ? (
+                  <Box sx={{ mt: 1.5 }}>
+                    <CreatureStatBlock
+                      profile={profile}
+                      abilities={abilities}
+                      level={level}
+                      rank={pathRank}
+                      masterDerived={masterDerived}
+                      bonusDieAbilities={
+                        character ? creatureBonusDiceForPath(feature.pathId, character) : undefined
+                      }
+                      defenseAltActive={creatureDefenseAltActive(profile, character)}
+                    />
+                  </Box>
+                ) : null;
+              })()}
               {hasChoices(feature) && (
                 <>
                   <Divider sx={{ my: 1.5 }} />

@@ -77,6 +77,12 @@ const TARGETS: Target[] = [
     level1FreeIds: ['brute-r1', 'pagne-r1', 'humain-r1'],
   },
   {
+    file: 'test-chevalier-humain.json',
+    // Profil chevalier (cavalier + guerre à la création) ; peuple humain.
+    // Les trois autres voies (preux, meneur d'hommes, noblesse) s'ouvrent aux montées.
+    level1FreeIds: ['cavalier-r1', 'guerre-r1', 'humain-r1'],
+  },
+  {
     file: 'test-nain-guerrier-rd-cumul.json',
     // Profil guerrier (combat + soldat à la création) ; peuple nain. La voie du pagne
     // (barbare) s'ouvre comme HYBRIDE intra-famille combattants aux montées (Peau d'acier).

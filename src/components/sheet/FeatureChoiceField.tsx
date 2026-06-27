@@ -225,11 +225,17 @@ function ChoiceControl({
         <MenuItem value="">
           <em>— Non choisi —</em>
         </MenuItem>
-        {choice.options.map((opt) => (
-          <MenuItem key={opt.id} value={opt.id}>
-            {opt.label}
-          </MenuItem>
-        ))}
+        {choice.options.map((opt) => {
+          // Option verrouillée par le niveau (PER-140, ex. montures volantes au niveau 9) :
+          // grisée tant que le personnage n'a pas le niveau requis.
+          const locked = opt.minLevel != null && character.level < opt.minLevel;
+          return (
+            <MenuItem key={opt.id} value={opt.id} disabled={locked}>
+              {opt.label}
+              {locked ? ` — niveau ${opt.minLevel} requis` : ''}
+            </MenuItem>
+          );
+        })}
       </TextField>
     );
   }

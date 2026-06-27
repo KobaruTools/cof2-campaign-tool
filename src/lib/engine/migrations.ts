@@ -214,6 +214,27 @@ function migrateV8toV9(data: Record<string, unknown>): Record<string, unknown> {
 }
 
 /**
+ * v9 → v10 : passage de la taille (`identity.height`) des mètres aux
+ * centimètres (PER — saisie en cm + avertissement de fourchette). Avant v10, la
+ * taille était saisie en mètres (« 1,75 », « 1,8 »). On convertit les valeurs
+ * qui ressemblent à des mètres (nombre fini < 3) en centimètres entiers ; les
+ * autres (déjà en cm, ou non numériques) sont laissées telles quelles.
+ */
+function migrateV9toV10(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  const identity = asRecord(next.identity);
+  if (identity && typeof identity.height === 'string' && identity.height.trim() !== '') {
+    const meters = Number.parseFloat(identity.height.replace(',', '.'));
+    if (Number.isFinite(meters) && meters < 3) {
+      identity.height = String(Math.round(meters * 100));
+      next.identity = identity;
+    }
+  }
+  next.schemaVersion = 10;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -226,6 +247,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   6: migrateV6toV7,
   7: migrateV7toV8,
   8: migrateV8toV9,
+  9: migrateV9toV10,
 };
 
 export class MigrationError extends Error {}

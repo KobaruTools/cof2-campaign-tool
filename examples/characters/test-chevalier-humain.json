@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 9,
+  "id": "test-chevalier-humain",
+  "name": "Test — Chevalier (humain)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-72 — chevalier humain, les 5 voies au rang 5. À vérifier : Cavalier — Fidèle monture (compétence équitation + dressage INCONDITIONNELLE ; cumul équitation entre l'origine « Campagnard » +3 peuple et la voie rang+2 ; CADRE DE CRÉATURE de la monture : CON +4 avec dé bonus inné, DEF [12+rang], PV [10+niveau×4], Ruade +5, DM 1d4°+5), Cavalier émérite (interrupteur « EN SELLE » ACTIF → la DEF de la monture devient celle du chevalier, +1/+2 DM différé PER-139), Charge {1d4°}, Monture fantastique (PER-140 : CHOIX de monture dynamique — volantes au niveau ≥ 9 ; ici GRIFFON volant → cadre de créature AGI+3/CON+5/FOR+5/PER+3, DEF 20, PV [10+niveau×5]=110, attaque magique du chevalier, DM 2d4°+5 ; stats terrestres du bestiaire, volantes extrapolées). Guerre — Armure sur mesure (WIP milestone Armures), Force héroïque (FOR +1 + dé), Mon armure est une arme (formule [1d4° + FOR] + @FOR de la cible non calculée). Preux — Ignorer la douleur (compétence harangue + [rang + 2]), Charisme héroïque (CHA +1 + dé), Laissez-le-moi {1d4°}. Meneur d'hommes — Sans peur (IMMUNITÉ peur en badge Défense + compétences tactique militaire/commandement ; bonus aux alliés verbatim), Charge fantastique {1d4°}. Noblesse — Éduqué (compétences histoire/héraldique/géographie/étiquette), Écuyer (plage de critique +1 au contact), Autorité naturelle (commandement + intimidation ; accès armure de plaque complète verbatim), Massacrer la piétaille {1d4°}, Formation d'élite (EMPRUNT inter-familles : roublard-r1 voleur → domaines crochetage/désamorçage/vol à la tire/estimation + dé bonus à une carac au choix : CON)."
+  },
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 20,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 0,
+    "CON": 3,
+    "FOR": 4,
+    "PER": 1,
+    "CHA": 3,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 3,
+    "FOR": 4,
+    "PER": 1,
+    "CHA": 3,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "cavalier-r1",
+    "guerre-r1",
+    "humain-r1",
+    "meneur-d-hommes-r1",
+    "noblesse-r1",
+    "preux-r1",
+    "cavalier-r2",
+    "guerre-r2",
+    "meneur-d-hommes-r2",
+    "noblesse-r2",
+    "preux-r2",
+    "cavalier-r3",
+    "guerre-r3",
+    "meneur-d-hommes-r3",
+    "noblesse-r3",
+    "preux-r3",
+    "cavalier-r4",
+    "guerre-r4",
+    "meneur-d-hommes-r4",
+    "noblesse-r4",
+    "preux-r4",
+    "cavalier-r5",
+    "guerre-r5",
+    "meneur-d-hommes-r5",
+    "noblesse-r5",
+    "preux-r5"
+  ],
+  "featureChoices": {
+    "humain-r1": [
+      "countryman"
+    ],
+    "noblesse-r5": [
+      "roublard-r1",
+      "CON"
+    ],
+    "cavalier-r5": [
+      "griffin"
+    ]
+  },
+  "effectToggles": {
+    "cavalier-r2": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "cavalier-r1",
+        "guerre-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "meneur-d-hommes-r1",
+        "noblesse-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "preux-r1",
+        "cavalier-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "guerre-r2",
+        "meneur-d-hommes-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "noblesse-r2",
+        "preux-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "cavalier-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "guerre-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "meneur-d-hommes-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "noblesse-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "preux-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "cavalier-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "guerre-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "meneur-d-hommes-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "noblesse-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "preux-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "cavalier-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "guerre-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "meneur-d-hommes-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "noblesse-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "preux-r5"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1
+    },
+    {
+      "itemId": "lance-de-cavalerie",
+      "quantity": 1
+    },
+    {
+      "itemId": "grand-bouclier",
+      "quantity": 1
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    },
+    {
+      "itemId": "cotte-de-mailles",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-72 (chevalier) — perso de recette. Origine humaine « Campagnard » (countryman) choisie pour faire chevaucher l'équitation (riding) entre la voie de peuple (+3) et la voie du cavalier (profil, Fidèle monture) → contrôle du cumul PER-89. Formation d'élite (noblesse-r5) emprunte roublard-r1 (voleur, famille des aventuriers) pour exercer la portée inter-familles de l'emprunt, et fixe le dé bonus de carac au choix sur la CON.",
+  "createdAt": "2026-06-26T00:00:00.000Z",
+  "updatedAt": "2026-06-25T00:00:00.000Z"
+}

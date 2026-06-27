@@ -178,19 +178,10 @@ export const fighterPaths: ClassPath[] = [
     name: 'Voie du cavalier',
     classIds: ['chevalier'],
     featureIds: ['cavalier-r1', 'cavalier-r2', 'cavalier-r3', 'cavalier-r4', 'cavalier-r5'],
-    // Encadré de profil de créature p. 84.
-    // TODO(extraction): page 84 — signification de l'astérisque sur « CON +4* »
-    // dans l'encadré (probablement une convention des profils de créatures
-    // définie au chapitre correspondant, non expliquée sur les pages 78-90).
-    note:
-      'FIDÈLE MONTURE\n' +
-      'AGI +0 | CON +4* | FOR +5 | PER +0 | CHA +0 | INT -2 | VOL +2\n' +
-      'Défense [12 + rang]\n' +
-      'Points de vigueur [10 + Niveau × 4]\n' +
-      'Initiative [Init. du chevalier]\n' +
-      'Attaque\n' +
-      'Ruade +5 · DM 1d4°+5\n' +
-      'La monture peut être soignée comme un personnage et elle récupère 1d8+4 PV par nuit. Si la fidèle monture meurt, le chevalier en récupère une au niveau suivant. Selon son peuple, un personnage peut obtenir une monture différente ayant les mêmes caractéristiques : yack ou sanglier (nain), cerf ou orignal (elfe).',
+    // Le profil de la FIDÈLE MONTURE (encadré p. 84, jadis recopié ici en note) est désormais
+    // STRUCTURÉ en `creatureProfile` sur cavalier-r1 (mini-fiche animal, comme le loup du rôdeur).
+    // L'astérisque « CON +4* » du livre = DÉ BONUS INNÉ (convention des blocs de stats de créature,
+    // cf. CreatureProfile.bonusDieAbilities) — ce qui résout l'ancien TODO(extraction) de la voie.
     sourcePage: 83,
   },
   {
@@ -830,6 +821,32 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier possède une fidèle monture (voir page suivante), un cheval de guerre bien dressé qui comprend les ordres simples. À cheval, il peut ajouter un déplacement de 10 m avant ou après une action normale (par exemple, parcourir 10 m et réaliser une action limitée). La monture n’attaque que si elle est elle-même attaquée au contact par une créature. De plus, le chevalier ajoute son rang + 2 aux tests d’équitation et de dressage.',
+    // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. PER-89 : bonus de compétence
+    // INCONDITIONNEL aux domaines équitation (`riding`) et dressage (`animal-training`) — valeur
+    // déduite de la catégorie de voie. Le renvoi « (voir page suivante) » est RETIRÉ du richText
+    // (aucune pagination dans l'app ; le `text` verbatim le conserve comme source) : la « page
+    // suivante » est le profil de la monture, désormais rendu en mini-fiche via `creatureProfile`.
+    richText:
+      'Le chevalier possède une fidèle monture, un cheval de guerre bien dressé qui comprend les ordres simples. À cheval, il peut ajouter un déplacement de 10 m avant ou après une action normale (par exemple, parcourir 10 m et réaliser une action limitée). La monture n’attaque que si elle est elle-même attaquée au contact par une créature. De plus, le chevalier ajoute son [rang + 2] aux tests d’équitation et de dressage.',
+    effects: [{ kind: 'test-bonus', domains: ['riding', 'animal-training'] }],
+    // Profil structuré de la FIDÈLE MONTURE (encadré p. 84) — mini-fiche animal (CreatureStatBlock),
+    // comme le loup du rôdeur. DEF [12 + rang] (rang ATTEINT dans la voie du cavalier) ; PV
+    // [=10 + niveau × 4] (niveau du chevalier) ; Init. recopiée du maître ; attaque PROPRE à la
+    // monture (« Ruade +5 », sa FOR), DM [1d4° + 5]. CON +4* → dé bonus inné (`bonusDieAbilities`).
+    // `defenseAlt` : Cavalier émérite (cavalier-r2) donne à la monture, EN SELLE, une DEF égale à
+    // celle du chevalier → affichée ici quand l'interrupteur « en selle » de cavalier-r2 est actif
+    // (cas d'affichage maître→créature trivial, traité en avance de PER-94).
+    creatureProfile: {
+      name: 'Fidèle monture',
+      abilities: { AGI: 0, CON: 4, FOR: 5, PER: 0, CHA: 0, INT: -2, VOL: 2 },
+      bonusDieAbilities: ['CON'],
+      defense: '[12 + rang]',
+      defenseAlt: { value: { fromMaster: 'def' }, conditionLabel: 'en selle', sourceLabel: 'Cavalier émérite', sourceFeatureId: 'cavalier-r2' },
+      hitPoints: '[=10 + niveau × 4]',
+      initiative: { fromMaster: 'initiative' },
+      attack: { label: 'Ruade', value: '+5', damage: '[1d4° + 5]' },
+      note: 'La monture peut être soignée comme un personnage et elle récupère 1d8+4 PV par nuit. Si la fidèle monture meurt, le chevalier en récupère une au niveau suivant. Selon son peuple, un personnage peut obtenir une monture différente ayant les mêmes caractéristiques : yack ou sanglier (nain), cerf ou orignal (elfe).',
+    },
     sourcePage: 83,
   },
   {
@@ -841,9 +858,19 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Lorsqu’il est en selle, le chevalier gagne un bonus de +1 aux DM de ses attaques au contact, et sa monture obtient une DEF égale à celle du chevalier. Monter ou descendre de cheval est désormais une action gratuite. Le bonus aux DM passe à +2 au rang 5.',
-    // Bonus aux DM d'arme au contact en selle (+1, +2 au rang 5) → conditionnel au port en selle ;
-    // affichage dans le bloc d'attaque différé à l'infrastructure DM d'arme (PER-115). Verbatim ; badge WIP.
-    wip: "+1 (puis +2 au rang 5) aux DM au contact en selle — bonus aux DM d'arme non câblé dans le bloc d'attaque, en attente de l'infrastructure DM d'arme (PER-115).",
+    // PER-72 : « en selle » est un ÉTAT → interrupteur (conditional-stat-bonus marqueur, sans bonus de
+    // stat dérivée du chevalier ; activeByDefault false). Il pilote DEUX rendus :
+    //  · la DEF de la FIDÈLE MONTURE = celle du chevalier en selle (cavalier-r1 `defenseAlt`, déjà câblé) ;
+    //  · le +1 (puis +2 au rang 5) aux DM d'arme au contact en selle → dépend de l'arme/équipement porté,
+    //    différé à la milestone « Armures et équipement porté » (PER-139). Verbatim ; badge WIP.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'en selle', activeByDefault: false },
+      },
+    ],
+    wip: "+1 (puis +2 au rang 5) aux DM au contact en selle — bonus aux DM d'arme dépendant de l'équipement porté, modélisation différée à la milestone Armures et équipement porté (PER-139).",
     sourcePage: 83,
   },
   {
@@ -855,6 +882,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       'À cheval, le chevalier peut effectuer un déplacement de 10 à 20 m en ligne droite et faire une attaque de contact placée au moment de son choix. Le joueur obtient un dé bonus au test d’attaque et ajoute 1d4° aux DM. Si une créature s’interpose pour bloquer la charge du chevalier, elle doit réussir un test de FOR difficulté 20 ou être contrainte de céder le passage en subissant 1d4° DM. Si elle réussit ce test, la Charge est bloquée et le tour du chevalier se termine.',
+    // Rendu enrichi (PER-72) : dés de DM {1d4°}. « un dé bonus » au test d'attaque (situationnel) et
+    // la hausse des DM d'arme → PER-115 (verbatim). Le test de FOR adverse / le contrôle (céder le
+    // passage) relèvent du tracker de combat. Pas d'effet structuré.
+    richText:
+      'À cheval, le chevalier peut effectuer un déplacement de 10 à 20 m en ligne droite et faire une attaque de contact placée au moment de son choix. Le joueur obtient un dé bonus au test d’attaque et ajoute {1d4°} aux DM. Si une créature s’interpose pour bloquer la charge du chevalier, elle doit réussir un test de FOR difficulté 20 ou être contrainte de céder le passage en subissant {1d4°} DM. Si elle réussit ce test, la Charge est bloquée et le tour du chevalier se termine.',
     sourcePage: 84,
   },
   {
@@ -875,8 +907,107 @@ export const fighterFeatures: Feature[] = [
     rank: 5,
     isSpell: false,
     actionTypes: [],
+    // PER-140 : le STATBLOCK recopié est RETIRÉ du richText (conservé dans `text` verbatim, source) et
+    // devient une mini-fiche `creatureProfile` DÉPENDANTE de la monture choisie (couche choix PER-66 +
+    // `FeatureChoiceOption.creatureProfile`). Choix DYNAMIQUE selon le niveau : les montures VOLANTES
+    // (`minLevel: 9`) ne sont proposées qu'à partir du niveau 9. Gabarit commun (livre, p. 84) : DEF 20,
+    // attaque = attaque magique du chevalier, DM 2d4°+5, Init. recopiée du maître ; PV [=10 + niveau × 6]
+    // (terrestres) ou [=10 + niveau × 5] (volantes). Les CARACTÉRISTIQUES (« varient selon la créature »)
+    // sont tirées du bestiaire du livre : Cheval de guerre p. 267, Lion (félin géant) p. 269, Ours brun
+    // p. 271. Les montures volantes (pégase/griffon/hippogriffe) ne figurant PAS au bestiaire du livre de
+    // base, leurs caractéristiques sont EXTRAPOLÉES (cheval + aigle commun p. 266) — TODO(extraction) à
+    // affiner si une source officielle les donne. Le richText garde la prose (PV volante [=10 + niveau × 5]
+    // affichés dynamiquement).
+    richText:
+      'Le chevalier obtient une monture puissante (cheval de guerre lourd, ours, félin géant, etc.). La valeur exacte des caractéristiques peut varier selon la créature. Lorsqu’il est en selle, le chevalier peut faire attaquer sa monture une fois par round en action gratuite. À partir du niveau 9, le chevalier peut obtenir une monture volante (pégase, griffon, hippogriffe, etc.) si le MJ l’autorise (il devra vérifier qu’une monture volante n’entre pas en contradiction avec les aventures prévues). Dans ce cas, en vol, la monture couvre une distance de 20 m par action de mouvement, mais ses PV sont seulement égaux à [=10 + niveau × 5].',
     text:
       'Le chevalier obtient une monture puissante (cheval de guerre lourd, ours, félin géant, etc.). Init. [Init. du chevalier], DEF 20, PV [10 + niveau du chevalier × 6], Ruade ou morsure [attaque magique], DM 2d4°+5. La valeur exacte des caractéristiques peut varier selon la créature. Lorsqu’il est en selle, le chevalier peut faire attaquer sa monture une fois par round en action gratuite. À partir du niveau 9, le chevalier peut obtenir une monture volante (pégase, griffon, hippogriffe, etc.) si le MJ l’autorise (il devra vérifier qu’une monture volante n’entre pas en contradiction avec les aventures prévues). Dans ce cas, en vol, la monture couvre une distance de 20 m par action de mouvement, mais ses PV sont seulement égaux à [10 + niveau × 5].',
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Monture fantastique',
+        options: [
+          {
+            id: 'war-horse',
+            label: 'Cheval de guerre lourd',
+            creatureProfile: {
+              name: 'Cheval de guerre lourd',
+              abilities: { AGI: 0, CON: 4, FOR: 5, PER: 0, CHA: -1, INT: -4, VOL: 0 },
+              defense: '20',
+              hitPoints: '[=10 + niveau × 6]',
+              initiative: { fromMaster: 'initiative' },
+              attack: { label: 'Ruade', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
+            },
+          },
+          {
+            id: 'bear',
+            label: 'Ours',
+            creatureProfile: {
+              name: 'Ours',
+              abilities: { AGI: 1, CON: 6, FOR: 6, PER: 2, CHA: -2, INT: -4, VOL: 1 },
+              defense: '20',
+              hitPoints: '[=10 + niveau × 6]',
+              initiative: { fromMaster: 'initiative' },
+              attack: { label: 'Morsure et griffes', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
+            },
+          },
+          {
+            id: 'giant-cat',
+            label: 'Félin géant',
+            creatureProfile: {
+              name: 'Félin géant',
+              abilities: { AGI: 4, CON: 5, FOR: 5, PER: 2, CHA: -2, INT: -3, VOL: 0 },
+              defense: '20',
+              hitPoints: '[=10 + niveau × 6]',
+              initiative: { fromMaster: 'initiative' },
+              attack: { label: 'Morsure et griffes', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
+            },
+          },
+          {
+            id: 'pegasus',
+            label: 'Pégase (monture volante)',
+            minLevel: 9,
+            creatureProfile: {
+              name: 'Pégase',
+              abilities: { AGI: 2, CON: 4, FOR: 5, PER: 2, CHA: 0, INT: -3, VOL: 1 },
+              defense: '20',
+              hitPoints: '[=10 + niveau × 5]',
+              initiative: { fromMaster: 'initiative' },
+              attack: { label: 'Ruade', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
+              note: 'En vol : 20 m par action de mouvement. Caractéristiques extrapolées (absente du bestiaire du livre de base).',
+            },
+          },
+          {
+            id: 'griffin',
+            label: 'Griffon (monture volante)',
+            minLevel: 9,
+            creatureProfile: {
+              name: 'Griffon',
+              abilities: { AGI: 3, CON: 5, FOR: 5, PER: 3, CHA: -2, INT: -3, VOL: 2 },
+              defense: '20',
+              hitPoints: '[=10 + niveau × 5]',
+              initiative: { fromMaster: 'initiative' },
+              attack: { label: 'Bec et griffes', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
+              note: 'En vol : 20 m par action de mouvement. Caractéristiques extrapolées (absent du bestiaire du livre de base).',
+            },
+          },
+          {
+            id: 'hippogriff',
+            label: 'Hippogriffe (monture volante)',
+            minLevel: 9,
+            creatureProfile: {
+              name: 'Hippogriffe',
+              abilities: { AGI: 3, CON: 4, FOR: 5, PER: 3, CHA: -1, INT: -4, VOL: 1 },
+              defense: '20',
+              hitPoints: '[=10 + niveau × 5]',
+              initiative: { fromMaster: 'initiative' },
+              attack: { label: 'Bec et griffes', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
+              note: 'En vol : 20 m par action de mouvement. Caractéristiques extrapolées (absent du bestiaire du livre de base).',
+            },
+          },
+        ],
+      },
+    ],
     sourcePage: 84,
   },
 
@@ -890,6 +1021,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'L’armure du chevalier est parfaitement ajustée, aussi il n’ajoute que la moitié de sa DEF à la difficulté des tests pour lesquels l’armure inflige une pénalité. De plus, lorsqu’il porte une armure lourde (plaque ou plaque complète), il obtient un bonus de +1 en DEF à chaque fois qu’il atteint le rang 5 dans une voie de chevalier.',
+    // PER-72 : les deux effets dépendent de l'ARMURE réellement portée — moitié de la DEF d'armure
+    // retranchée aux pénalités d'armure ; et +1 en DEF par rang 5 atteint dans une voie de chevalier,
+    // SEULEMENT en armure lourde (plaque / plaque complète). Non résoluble sans l'équipement porté
+    // → modélisation différée à la milestone Armures (PER-76). Verbatim ; badge WIP.
+    wip: "Armure sur mesure dépend de l'armure portée — pénalités d'armure réduites de moitié, et +1 en DEF par rang 5 de voie de chevalier en armure lourde — modélisation différée à la milestone Armures (PER-76).",
     sourcePage: 84,
   },
   {
@@ -927,6 +1063,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier augmente sa FOR de +1. Désormais, il obtient un dé bonus aux tests de FOR.',
+    // Caractéristique héroïque (mécanique core) : +1 FOR permanent + dé bonus aux tests de FOR.
+    effects: [
+      { kind: 'ability-bonus', ability: 'FOR', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'FOR' },
+    ],
     sourcePage: 85,
   },
   {
@@ -938,6 +1079,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       'Une fois par combat, le chevalier peut donner un coup avec son armure (gantelet, heaume, spallière, etc.) en action gratuite. Il inflige automatiquement [1d4° + FOR] DM, et si la FOR de la cible est inférieure à celle du chevalier, elle est (au choix du chevalier) renversée ou étourdie pour 1 round ou recule de 3 m.',
+    // Rendu enrichi (PER-72) : DM = formule dé + carac [1d4° + FOR]. La « FOR de la cible » est la
+    // stat d'un ADVERSAIRE → référence non calculée @FOR (cf. format §5). Le contrôle (renversé /
+    // étourdi / recul) relève du tracker de combat. Pas d'effet structuré.
+    richText:
+      'Une fois par combat, le chevalier peut donner un coup avec son armure (gantelet, heaume, spallière, etc.) en action gratuite. Il inflige automatiquement [1d4° + FOR] DM, et si la @FOR de la cible est inférieure à celle du chevalier, elle est (au choix du chevalier) renversée ou étourdie pour 1 round ou recule de 3 m.',
     sourcePage: 85,
   },
 
@@ -951,6 +1097,12 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       'Une fois par combat, le chevalier peut noter à part les DM subis par une attaque (mais pas un critique). Il ne subira les DM que lorsque le combat sera terminé. De plus le héros gagne un bonus égal à rang + 2 pour haranguer et convaincre les foules (au moins 15 individus).',
+    // Rendu enrichi (PER-72) : « rang + 2 » → [rang + 2]. PER-89 : bonus de compétence INCONDITIONNEL
+    // au domaine harangue (`haranguing`, CHA). Le report des DM en fin de combat (« noter à part »)
+    // relève du tracker de combat → verbatim.
+    richText:
+      'Une fois par combat, le chevalier peut noter à part les DM subis par une attaque (mais pas un critique). Il ne subira les DM que lorsque le combat sera terminé. De plus le héros gagne un bonus égal à [rang + 2] pour haranguer et convaincre les foules (au moins 15 individus).',
+    effects: [{ kind: 'test-bonus', domains: ['haranguing'] }],
     sourcePage: 85,
   },
   {
@@ -976,6 +1128,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier met un point d’honneur à combattre le leader ennemi. Lorsqu’il peut aisément être identifié dans un groupe d’au moins 4 créatures, le chevalier lui inflige +1d4° DM par attaque au contact. Chaque fois que le chevalier inflige des DM à une créature de cette façon, la créature doit réussir un test d’INT difficulté 15 ou elle ne peut pas attaquer d’autre adversaire que lui à son prochain tour.',
+    // Rendu enrichi (PER-72) : DM {1d4°}. Le +1d4° est SITUATIONNEL (cible identifiable dans un
+    // groupe) → bonus aux DM d'arme conditionnel, affichage différé à PER-115 (verbatim). Le contrôle
+    // (test d'INT adverse) relève du tracker de combat. Pas d'effet structuré.
+    richText:
+      'Le chevalier met un point d’honneur à combattre le leader ennemi. Lorsqu’il peut aisément être identifié dans un groupe d’au moins 4 créatures, le chevalier lui inflige +{1d4°} DM par attaque au contact. Chaque fois que le chevalier inflige des DM à une créature de cette façon, la créature doit réussir un test d’INT difficulté 15 ou elle ne peut pas attaquer d’autre adversaire que lui à son prochain tour.',
     sourcePage: 85,
   },
   {
@@ -987,6 +1144,11 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier augmente son CHA de +1. Désormais, il obtient un dé bonus aux tests de CHA.',
+    // Caractéristique héroïque (mécanique core) : +1 CHA permanent + dé bonus aux tests de CHA.
+    effects: [
+      { kind: 'ability-bonus', ability: 'CHA', value: 1 },
+      { kind: 'ability-bonus-die', ability: 'CHA' },
+    ],
     sourcePage: 85,
   },
   {
@@ -1011,6 +1173,16 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier est immunisé aux effets de peur et il offre un bonus égal à son CHA aux tests de tous ses alliés contre ce type d’effet. De plus, le chevalier ajoute son rang + 2 aux tests de stratégie et de tactique militaire ou pour commander une troupe.',
+    // PER-103 : immunité permanente à la PEUR (`fear`). PER-89 : bonus de compétence INCONDITIONNEL
+    // aux domaines tactique militaire (`military-tactics`, INT) et commandement (`command`, CHA) —
+    // « son rang + 2 » → [rang + 2]. Le bonus de CHA aux tests des ALLIÉS contre la peur est hors
+    // périmètre (bonus aux alliés) → verbatim (CHA auto-glossé).
+    richText:
+      'Le chevalier est immunisé aux effets de peur et il offre un bonus égal à son CHA aux tests de tous ses alliés contre ce type d’effet. De plus, le chevalier ajoute son [rang + 2] aux tests de stratégie et de tactique militaire ou pour commander une troupe.',
+    effects: [
+      { kind: 'immunity', immunities: ['fear'] },
+      { kind: 'test-bonus', domains: ['military-tactics', 'command'] },
+    ],
     sourcePage: 85,
   },
   {
@@ -1048,6 +1220,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       'Une fois par combat, lorsque le chevalier déclare l’utilisation de cette capacité, tous ses alliés en vue et lui obtiennent 10 m de déplacement supplémentaire au début de leur tour puis un dé bonus et +1d4° DM à toutes leurs attaques. Ne se cumule ni avec exemplaire ni avec ordre de bataille.',
+    // Rendu enrichi (PER-72) : DM {1d4°}. Buff de groupe TEMPORAIRE (le chevalier ET ses alliés) au
+    // déclenchement → relève du tracker de combat (alliés hors périmètre). Pas d'effet structuré.
+    richText:
+      'Une fois par combat, lorsque le chevalier déclare l’utilisation de cette capacité, tous ses alliés en vue et lui obtiennent 10 m de déplacement supplémentaire au début de leur tour puis un dé bonus et +{1d4°} DM à toutes leurs attaques. Ne se cumule ni avec exemplaire ni avec ordre de bataille.',
     sourcePage: 86,
   },
   {
@@ -1072,6 +1248,13 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier sait lire et écrire, et apprend à parler une langue supplémentaire. De plus, il ajoute son rang + 2 à tous les tests d’histoire, d’héraldique et de géographie ainsi qu’aux tests pour savoir se comporter dans la haute société.',
+    // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. PER-89 : bonus de compétence
+    // INCONDITIONNEL aux domaines histoire (`history`), héraldique (`heraldry`), géographie
+    // (`geography`) et étiquette (`etiquette`, « se comporter dans la haute société »). La lecture/
+    // écriture et la langue supplémentaire restent en prose (non modélisées).
+    richText:
+      'Le chevalier sait lire et écrire, et apprend à parler une langue supplémentaire. De plus, il ajoute son [rang + 2] à tous les tests d’histoire, d’héraldique et de géographie ainsi qu’aux tests pour savoir se comporter dans la haute société.',
+    effects: [{ kind: 'test-bonus', domains: ['history', 'heraldry', 'geography', 'etiquette'] }],
     sourcePage: 86,
   },
   {
@@ -1100,6 +1283,15 @@ export const fighterFeatures: Feature[] = [
     text:
       'Le chevalier ajoute son rang + 2 aux tests réalisés pour donner des ordres ou intimider. De plus, le noble chevalier reçoit la formation nécessaire au port de l’armure de plaque complète (DEF +7). Désormais, il peut utiliser toutes les capacités des voies de chevalier* en portant cette armure.\n' +
       '* Pour un profil hybride de combattant, cette capacité permet d’augmenter le niveau d’armure d’un cran pour toutes les autres voies de combattant : jusqu’à l’armure de plaque pour les voies de guerrier et jusqu’à la chemise de mailles pour les voies de barbare.',
+    // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. PER-89 : bonus de compétence
+    // INCONDITIONNEL aux domaines commandement (`command`, « donner des ordres ») et intimidation
+    // (`intimidation`, déjà au catalogue). L'accès à l'armure de plaque complète (et le relèvement
+    // d'un cran pour les profils hybrides) relève de la milestone Armures → reste en prose (comme les
+    // déblocages d'armure du barbare).
+    richText:
+      'Le chevalier ajoute son [rang + 2] aux tests réalisés pour donner des ordres ou intimider. De plus, le noble chevalier reçoit la formation nécessaire au port de l’armure de plaque complète (DEF +7). Désormais, il peut utiliser toutes les capacités des voies de chevalier* en portant cette armure.\n' +
+      '* Pour un profil hybride de combattant, cette capacité permet d’augmenter le niveau d’armure d’un cran pour toutes les autres voies de combattant : jusqu’à l’armure de plaque pour les voies de guerrier et jusqu’à la chemise de mailles pour les voies de barbare.',
+    effects: [{ kind: 'test-bonus', domains: ['command', 'intimidation'] }],
     sourcePage: 86,
   },
   {
@@ -1111,6 +1303,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier ajoute +1d4° aux DM contre la piétaille. S’il y a au moins 4 créatures aux statistiques semblables impliquées dans le combat, elles sont assimilées à de la piétaille (même si leur nombre est par la suite réduit à moins de 4 au cours du combat). Les cavaliers ne sont jamais considérés comme de la piétaille.',
+    // Rendu enrichi (PER-72) : DM {1d4°}. Le +1d4° est SITUATIONNEL (cible « piétaille ») → bonus aux
+    // DM d'arme conditionnel, affichage différé à PER-115 (verbatim). Pas d'effet structuré.
+    richText:
+      'Le chevalier ajoute +{1d4°} aux DM contre la piétaille. S’il y a au moins 4 créatures aux statistiques semblables impliquées dans le combat, elles sont assimilées à de la piétaille (même si leur nombre est par la suite réduit à moins de 4 au cours du combat). Les cavaliers ne sont jamais considérés comme de la piétaille.',
     sourcePage: 86,
   },
   {
@@ -1122,6 +1318,24 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier possède les moyens et la culture nécessaires pour obtenir une formation dans n’importe quel domaine qui lui sied. Choisissez une capacité de rang 1 à 3 dans n’importe quel profil issu de la famille des combattants ou des aventuriers (voir page 78). De plus, le chevalier choisit une caractéristique ; désormais, il obtient un dé bonus lors des tests en rapport avec celle-ci.',
+    // PER-66 : DEUX choix. (0) capacité empruntée de rang 1 à 3 dans une voie des familles
+    // « combattants » (barbare, chevalier, guerrier) OU « aventuriers » (barde, rôdeur, voleur,
+    // aventurier) — `feature-from-path` ; la capacité retenue est acquise, ses propres effects
+    // comptent côté moteur. (1) une caractéristique au choix → dé bonus à ses tests
+    // (`ability-bonus-die-from-choice` sur le choix d'index 1, sans restriction de carac).
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 1 à 3 (famille des combattants ou des aventuriers)',
+        allowedRanks: [1, 2, 3],
+        classIds: ['barbare', 'chevalier', 'guerrier', 'barde', 'rodeur', 'voleur', 'aventurier'],
+      },
+      {
+        kind: 'ability',
+        prompt: 'Caractéristique bénéficiant d’un dé bonus aux tests',
+      },
+    ],
+    effects: [{ kind: 'ability-bonus-die-from-choice', choiceIndex: 1 }],
     sourcePage: 86,
   },
 

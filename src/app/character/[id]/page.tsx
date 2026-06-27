@@ -654,10 +654,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             {editing ? (
               <IdentityEditor
                 name={character.name}
-                level={character.level}
                 identity={character.identity}
+                ancestry={ancestry}
                 onName={(name) => update({ name })}
-                onLevel={(level) => update({ level })}
                 onIdentity={setIdentity}
               />
             ) : (

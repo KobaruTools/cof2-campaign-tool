@@ -126,7 +126,8 @@ describe('migrateCharacter', () => {
     expect(c.abilities).toEqual({ AGI: 1, CON: 2, FOR: 3, PER: 0, CHA: -1, INT: 0, VOL: 1 });
     expect(c.ancestryPathId).toBe('humain');
     expect(c.featureIds).toEqual(['humain-r1', 'rage-r1']);
-    expect(c.identity).toEqual({ sex: 'F', height: '1,70 m', weight: '60 kg', age: '30', description: 'desc' });
+    // v10 : la taille (« 1,70 m ») est convertie en centimètres.
+    expect(c.identity).toEqual({ sex: 'F', height: '170', weight: '60 kg', age: '30', description: 'desc' });
     expect(c.levelUpHistory).toEqual([{ level: 1, chosenFeatureIds: ['humain-r1'] }]);
     expect(c.equipment).toEqual([
       { itemId: 'epee-longue', quantity: 1 },
@@ -301,7 +302,30 @@ describe('migrateCharacter', () => {
     expect(c.priestVocation).toEqual({ mode: 'specialist', godId: 'morn' });
   });
 
-  it('expose les migrations 1→2 … 8→9 dans le registre', () => {
+  it('migre un personnage v9 vers v10 (taille des mètres aux centimètres)', () => {
+    const v9 = validRaw();
+    v9.schemaVersion = 9;
+    v9.identity = { height: '1,75' };
+    const c = migrateCharacter(v9);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.identity.height).toBe('175');
+  });
+
+  it('v9→v10 laisse une taille déjà en centimètres intacte', () => {
+    const v9 = validRaw();
+    v9.schemaVersion = 9;
+    v9.identity = { height: '180' };
+    expect(migrateCharacter(v9).identity.height).toBe('180');
+  });
+
+  it('v9→v10 ne touche pas une taille absente', () => {
+    const v9 = validRaw();
+    v9.schemaVersion = 9;
+    v9.identity = {};
+    expect(migrateCharacter(v9).identity.height).toBeUndefined();
+  });
+
+  it('expose les migrations 1→2 … 9→10 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -310,5 +334,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[6]).toBe('function');
     expect(typeof MIGRATIONS[7]).toBe('function');
     expect(typeof MIGRATIONS[8]).toBe('function');
+    expect(typeof MIGRATIONS[9]).toBe('function');
   });
 });

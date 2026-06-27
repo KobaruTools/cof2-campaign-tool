@@ -37,7 +37,7 @@ export function IdentityFields({ identity }: IdentityFieldsProps) {
         <Field label="Âge" value={identity.age} />
       </Grid>
       <Grid size={{ xs: 6, sm: 3 }}>
-        <Field label="Taille" value={identity.height} unit=" m" />
+        <Field label="Taille" value={identity.height} unit=" cm" />
       </Grid>
       <Grid size={{ xs: 6, sm: 3 }}>
         <Field label="Poids" value={identity.weight} unit=" kg" />

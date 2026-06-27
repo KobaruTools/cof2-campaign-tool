@@ -28,16 +28,12 @@ import {
 } from '@/lib/character/wizard';
 import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
-import {
-  AbilitiesStep,
-  EquipmentStep,
-  IdentityStep,
-  AncestryStep,
-  ClassStep,
-  SummaryStep,
-  PathsStep,
-  type StepProps,
-} from '@/components/wizard/steps';
+import { ClassStep, PathsStep, IdentityStep } from '@/components/wizard/steps';
+import { AncestryStep } from '@/components/wizard/AncestryStep';
+import { AbilitiesStep } from '@/components/wizard/AbilitiesStep';
+import { EquipmentStep } from '@/components/wizard/EquipmentStep';
+import { SummaryStep } from '@/components/wizard/SummaryStep';
+import type { StepProps } from '@/components/wizard/types';
 
 interface StepDef {
   label: string;
