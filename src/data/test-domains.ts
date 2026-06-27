@@ -68,13 +68,31 @@ export const testDomains: TestDomain[] = [
   // résister à l'alcool / privation de nourriture ou de sommeil (Teigneux, soldat-r1, p. 90) :
   // endurance face aux privations → CON, cohérent avec l'exemple « résistance » du groupe CON (p. 202).
   // Distinct de l'endurance générique (`endurance`) : périmètre ciblé (alcool / faim / sommeil).
-  { id: 'deprivation-resistance', label: 'Résistance aux privations', abilities: ['CON'], sourcePage: 90 },
+  {
+    id: 'deprivation-resistance',
+    label: 'Résistance aux privations',
+    abilities: ['CON'],
+    sourcePage: 90,
+    description: 'Résister à l’alcool, à la privation de nourriture ou de sommeil (Teigneux, voie du soldat).',
+  },
   // résister aux états étourdi et affaibli (Résilient, resistance-r2, p. 90) : encaisser des effets
   // débilitants physiques → CON. La carac est CONFIRMÉE par le RAW pour l'étourdissement : la manœuvre
   // Étourdir (p. 218) impose « un test de CON difficulté 10 (…) ou être assommée ». L'affaiblissement
   // n'a pas de carac explicitée mais relève du même registre physique → CON par analogie.
-  { id: 'stun-resistance', label: 'Résister à l’étourdissement', abilities: ['CON'], sourcePage: 218 },
-  { id: 'weakened-resistance', label: 'Résister à l’affaiblissement', abilities: ['CON'], sourcePage: 90 },
+  {
+    id: 'stun-resistance',
+    label: 'Résister à l’étourdissement',
+    abilities: ['CON'],
+    sourcePage: 218,
+    description: 'Résister à l’état étourdi (Résilient, voie de la résistance).',
+  },
+  {
+    id: 'weakened-resistance',
+    label: 'Résister à l’affaiblissement',
+    abilities: ['CON'],
+    sourcePage: 90,
+    description: 'Résister à l’état affaibli (Résilient, voie de la résistance).',
+  },
   // équitation : le livre teste l'Équitation sur DEUX caracs selon l'action — CON pour
   // l'endurance, CHA pour mener la monture (Marche forcée, p. 233). Meilleure des deux.
   { id: 'riding', label: 'Équitation', abilities: ['CON', 'CHA'], sourcePage: 233 },
@@ -169,7 +187,13 @@ export const testDomains: TestDomain[] = [
   // combattants → INT (érudition, proche de l'estimation `appraisal` et des connaissances p. 202).
   // Carac non explicitée par le livre (le bonus est accordé, la carac du test reste au MJ) ;
   // INT VALIDÉ par le propriétaire (2026-06-27) plutôt que PER (œil exercé).
-  { id: 'martial-lore', label: 'Connaissance martiale', abilities: ['INT'], sourcePage: 88 },
+  {
+    id: 'martial-lore',
+    label: 'Connaissance martiale',
+    abilities: ['INT'],
+    sourcePage: 88,
+    description: 'Estimer la valeur d’une arme ou jauger la réputation martiale d’un adversaire (Armes de prédilection, voie du maître d’armes).',
+  },
 
   // --- CHA — exemples p. 202 + social (mages) --------------------------------
   { id: 'art', label: 'Art', abilities: ['CHA'], sourcePage: 202 },

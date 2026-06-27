@@ -7,6 +7,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
@@ -1180,6 +1181,22 @@ function PathBlock({
       >
         {path?.name ?? group.pathId}
       </Typography>
+      {/* Note de voie (PER-72) : encadré/condition/exemple verbatim du livre (ex. voie du bouclier
+          « doit manier un bouclier », exemple d'Attaque puissante cité par « voir exemple », encadré
+          RAGE ET AUTRES CAPACITÉS). Rendue en infobulle sur une icône « i » discrète, plutôt qu'en
+          bloc permanent — couvre AUTOMATIQUEMENT toute voie portant un `note`. */}
+      {path?.note && (
+        <Tooltip
+          title={
+            <Box sx={{ whiteSpace: 'pre-line', maxWidth: 320 }}>{path.note}</Box>
+          }
+          arrow
+        >
+          <InfoOutlinedIcon
+            sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help', flexShrink: 0, ml: 0.25 }}
+          />
+        </Tooltip>
+      )}
       {compact ? (
         // Vue colonne : icône de profil au-dessus du compteur de rangs.
         <Stack spacing={0.25} sx={{ ml: 'auto', flexShrink: 0, alignItems: 'flex-end' }}>
