@@ -378,7 +378,18 @@ function BorrowedFeatureBlock({
       <Typography variant="caption" sx={{ color: color ?? 'text.secondary', fontWeight: 700, display: 'block', mb: 0.25 }}>
         <Box component="span" sx={{ mr: 0.5 }}>✦</Box>
         Capacité empruntée — {pathName}
-        {className ? ` (${className})` : ''}
+        {className && classId ? (
+          // Profil source entre parenthèses, suivi de son icône (teintée de la couleur du profil
+          // via le fill par défaut de ClassIcon), pour le repérer d'un coup d'œil.
+          <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
+            {' ('}
+            {className}
+            <ClassIcon classId={classId} size={13} sx={{ ml: 0.4, verticalAlign: 'text-bottom' }} />
+            {')'}
+          </Box>
+        ) : (
+          ''
+        )}
       </Typography>
       <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
         <FeatureLabel feature={feature} />
