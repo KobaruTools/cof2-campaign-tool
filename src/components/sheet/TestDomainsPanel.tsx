@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -20,6 +19,7 @@ import {
   type UniversalTestBonus,
 } from '@/lib/character/effects';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DieIcon } from '@/components/DieIcon';
@@ -81,10 +81,10 @@ const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
  * Lecture seule (les interrupteurs des buffs vivent sur les cartes de capacité).
  */
 export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbilityTestBonus, bonusDice, universalBonus, testDice }: TestDomainsPanelProps) {
-  const [includeAbility, setIncludeAbility] = useState(false);
+  const [includeAbility, setIncludeAbility] = usePersistedBoolean('test-domains:include-ability', false);
   // Coché par défaut : on n'affiche d'emblée que les domaines effectivement bonifiés
   // (les centaines de domaines à 0 sont masqués tant que l'utilisateur ne les demande pas).
-  const [hideZero, setHideZero] = useState(true);
+  const [hideZero, setHideZero] = usePersistedBoolean('test-domains:hide-zero', true);
 
   const byDomain = new Map(bonuses.map((b) => [b.domain, b]));
   // Meilleure carac gouvernante du domaine pour ce personnage (max de ses valeurs ;
