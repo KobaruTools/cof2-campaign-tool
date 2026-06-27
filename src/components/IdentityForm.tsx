@@ -126,7 +126,7 @@ export function IdentityForm({
         <Grid size={{ xs: 6, sm: 3 }}>
           <TextField
             select
-            label="Sexe"
+            label="Genre"
             value={identity.sex ?? ''}
             onChange={(e) => onIdentity({ sex: (e.target.value || undefined) as Sex | undefined })}
             fullWidth

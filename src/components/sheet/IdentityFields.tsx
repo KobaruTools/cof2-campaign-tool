@@ -31,7 +31,7 @@ export function IdentityFields({ identity }: IdentityFieldsProps) {
   return (
     <Grid container spacing={2}>
       <Grid size={{ xs: 6, sm: 3 }}>
-        <Field label="Sexe" value={identity.sex ? SEX_LABELS[identity.sex] : undefined} />
+        <Field label="Genre" value={identity.sex ? SEX_LABELS[identity.sex] : undefined} />
       </Grid>
       <Grid size={{ xs: 6, sm: 3 }}>
         <Field label="Âge" value={identity.age} />
