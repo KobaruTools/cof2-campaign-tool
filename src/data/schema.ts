@@ -823,6 +823,10 @@ export const RESISTIBLE_DAMAGE_TYPES = [
   // froid, feu, chutes, poisons, DM d'animaux/insectes… On garde un seul type plutôt que
   // d'énumérer toutes les sources (décision PER-137).
   'natural-non-magical',
+  // Attaques de ZONE et souffles (guerrier Défense au bouclier, bouclier-r3) : sorts de zone
+  // (Explosion de feu, mains brûlantes, foudre…) et souffles. Mode de DÉLIVRANCE plutôt que type
+  // élémentaire — une boule de feu est à la fois `fire` ET `area` ; les RD se cumulent par source.
+  'area',
 ] as const;
 export type ResistibleDamageType = (typeof RESISTIBLE_DAMAGE_TYPES)[number];
 

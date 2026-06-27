@@ -1422,8 +1422,10 @@ export const fighterFeatures: Feature[] = [
     // Comme la milestone Armures (PER-76) ne câble pas encore l'équipement porté, l'effet suit un
     // INTERRUPTEUR manuel « bouclier en main » (conditional-stat-bonus, comme Armure de vent du
     // barbare / Cavalier émérite) ; DEF SCALANTE stepped path-rank {1:1, 5:2}. La RÉDUCTION DE DM
-    // « son rang » contre les attaques de ZONE/souffles reste verbatim : aucun type de DM « zone »
-    // dans la liste fermée RESISTIBLE_DAMAGE_TYPES, et elle dépend aussi du bouclier porté → WIP.
+    // « son rang » contre les attaques de ZONE/souffles est portée par `damageReduction` (type `area`,
+    // PER-72) : valeur = rang de la voie (stepped {3:3, 4:4, 5:5}). Elle SUIT le même interrupteur
+    // « bouclier en main » que la DEF (cf. damageReductionSources : RD affichée seulement s'il est
+    // actif). La nuance « sauf s'il est surpris » reste verbatim (état de combat non modélisé).
     effects: [
       {
         kind: 'conditional-stat-bonus',
@@ -1436,7 +1438,11 @@ export const fighterFeatures: Feature[] = [
         activation: { kind: 'condition', label: 'bouclier en main', activeByDefault: false },
       },
     ],
-    wip: "Réduction de « son rang » aux DM des attaques de zone et des souffles (bouclier en main, hors surprise) — pas de type de DM « zone » modélisé et valeur dépendante de l'équipement porté → différée à la milestone Armures (PER-76).",
+    damageReduction: {
+      kind: 'flat',
+      value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 3, value: 3 }, { min: 4, value: 4 }, { min: 5, value: 5 }] },
+      scopes: ['area'],
+    },
     sourcePage: 88,
   },
   {

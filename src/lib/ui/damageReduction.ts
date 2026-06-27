@@ -23,6 +23,7 @@ const SCOPE_SHORT: Record<ResistibleDamageType, string> = {
   'metallic-projectile': 'Projectiles métalliques',
   'non-silver-weapon': 'Armes non argentées',
   'natural-non-magical': 'Naturels non magiques',
+  area: 'Zone',
 };
 
 /** Libellé LONG (info-bulle), tournure prépositionnelle — « les DM de froid ». */
@@ -39,6 +40,7 @@ const SCOPE_LONG: Record<ResistibleDamageType, string> = {
   'metallic-projectile': 'des projectiles métalliques',
   'non-silver-weapon': 'des armes non argentées',
   'natural-non-magical': 'naturels non magiques',
+  area: 'des attaques de zone et des souffles',
 };
 
 /** Portée(s) au format court, jointes — ou chaîne vide si la RD couvre tous les DM. */
