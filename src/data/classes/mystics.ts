@@ -38,7 +38,7 @@ export const mysticClasses: CharacterClass[] = [
     weaponsAndArmor:
       "Le druide sait manier la dague, le bâton noueux (équivalent au bâton ferré), l'épieu, le javelot et l'arc court. Les voies de druide limitent l'armure au cuir simple. Il peut utiliser le petit bouclier en bois (DEF +1).",
     maxArmorId: 'cuir-simple',
-    shieldAllowed: true,
+    shieldAccess: 'small',
     meleeAccess: 'none',
     rangedAccess: 'none',
     allowedWeaponIds: ['dague', 'baton-ferre', 'epieu', 'javelot', 'arc-court'],
@@ -66,7 +66,7 @@ export const mysticClasses: CharacterClass[] = [
     weaponsAndArmor:
       "Le moine sait manier toutes les armes (sauf les armes à poudre), y compris celles à deux mains, mais la plupart des moines n'y font pas appel et sont plus efficaces à mains nues. En effet, tous les moines infligent des DM létaux avec les attaques à mains nues lorsqu'ils le souhaitent. Les voies de moine interdisent de porter une armure ou d'utiliser un bouclier.",
     maxArmorId: null,
-    shieldAllowed: false,
+    shieldAccess: 'none',
     meleeAccess: 'all',
     rangedAccess: 'all',
     allowedWeaponIds: [],
@@ -86,7 +86,7 @@ export const mysticClasses: CharacterClass[] = [
     weaponsAndArmor:
       "Le prêtre sait manier les armes contondantes à une main ainsi que le bâton ferré. Les prêtres ont l'interdiction morale de faire couler le sang (!) et n'utilisent donc pas les armes tranchantes ou perçantes pour des raisons religieuses. L'arme sacrée d'un prêtre spécialiste constitue une exception. Les voies de prêtre limitent l'armure à la chemise de mailles et permettent d'utiliser le petit bouclier (DEF +1).",
     maxArmorId: 'chemise-de-mailles',
-    shieldAllowed: true,
+    shieldAccess: 'small',
     meleeAccess: 'none',
     rangedAccess: 'none',
     allowedWeaponIds: ['fleau', 'gourdin', 'marteau', 'masse', 'baton-ferre'],

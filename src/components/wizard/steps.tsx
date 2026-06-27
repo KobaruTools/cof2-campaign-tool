@@ -50,7 +50,7 @@ import {
   pathById,
   priestGods,
 } from '@/data';
-import type { AbilityId, AbilityModifier, AncestryNames, Armor, CharacterClass } from '@/data/schema';
+import type { AbilityId, AbilityModifier, AncestryNames, Armor, CharacterClass, Shield } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { checkCompliance } from '@/lib/engine';
 import { rulesContext } from '@/lib/character/rulesContext';
@@ -103,6 +103,12 @@ const familyById = new Map(families.map((f) => [f.id, f]));
  * autorisées d'une classe (toutes celles ≤ la plus protectrice permise). */
 const ARMORS: Armor[] = equipment
   .filter((it): it is Armor => it.category === 'armor')
+  .sort((a, b) => a.def - b.def);
+
+/** Boucliers, triés par défense croissante — pour lister ceux qu'un profil
+ * débloque (petit seul, ou petit + grand). */
+const SHIELDS: Shield[] = equipment
+  .filter((it): it is Shield => it.category === 'shield')
   .sort((a, b) => a.def - b.def);
 
 /** Armes à poudre — p.185 (aucun drapeau structuré ; ids connus du catalogue). */
@@ -390,9 +396,10 @@ function RestrictionRow({
 
 /**
  * Repères visuels des restrictions d'un profil. L'armure liste toutes les
- * protections autorisées (≤ la plus protectrice permise) et le bouclier est un
- * oui/non ; les deux sont des données structurées (blocs avec code couleur).
- * Les armes ne le sont pas (texte nuancé par profil), gardées en dessous.
+ * protections autorisées (≤ la plus protectrice permise) et le bouclier liste
+ * ceux débloqués (petit seul, ou petit + grand) ; les deux sont des données
+ * structurées (blocs avec code couleur). Les armes ne le sont pas (texte nuancé
+ * par profil), gardées en dessous.
  */
 function ClassRestrictions({ characterClass }: { characterClass: CharacterClass }) {
   const theme = useTheme();
@@ -404,6 +411,15 @@ function ClassRestrictions({ characterClass }: { characterClass: CharacterClass 
   const maxArmor = characterClass.maxArmorId ? equipmentById.get(characterClass.maxArmorId) : null;
   const maxDef = maxArmor && maxArmor.category === 'armor' ? maxArmor.def : null;
   const allowedArmors = maxDef != null ? ARMORS.filter((a) => a.def <= maxDef) : [];
+
+  // `all` débloque tous les boucliers, `small` le petit seul (le moins
+  // protecteur, en tête de SHIELDS trié par DEF), `none` aucun — p. 188.
+  const allowedShields =
+    characterClass.shieldAccess === 'all'
+      ? SHIELDS
+      : characterClass.shieldAccess === 'small'
+        ? SHIELDS.slice(0, 1)
+        : [];
 
   const weaponBlocks: React.ReactNode[] = [];
   if (characterClass.meleeAccess === 'all') {
@@ -477,10 +493,13 @@ function ClassRestrictions({ characterClass }: { characterClass: CharacterClass 
         </RestrictionRow>
 
         <RestrictionRow icon={<ShieldOutlinedIcon fontSize="small" />} label="Bouclier">
-          <RestrictionBlock
-            label={characterClass.shieldAllowed ? 'Autorisé' : 'Interdit'}
-            color={characterClass.shieldAllowed ? theme.palette.success.main : theme.palette.error.main}
-          />
+          {allowedShields.length > 0 ? (
+            allowedShields.map((s) => (
+              <RestrictionBlock key={s.id} label={`${s.name} (DEF +${s.def})`} />
+            ))
+          ) : (
+            <RestrictionBlock label="Interdit" color={theme.palette.error.main} />
+          )}
         </RestrictionRow>
 
         <RestrictionRow icon={<SwordIcon fontSize="small" />} label="Armes">

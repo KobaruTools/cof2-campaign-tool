@@ -34,7 +34,7 @@ export const fighterClasses: CharacterClass[] = [
       'Le barbare sait manier toutes les armes au contact, toutes les armes à distance (sauf les arbalètes et les armes d’une technologie trop complexe).\n' +
       'Les voies de barbare limitent l’armure au cuir renforcé. Le barbare peut en revanche utiliser tous les boucliers.',
     maxArmorId: 'cuir-renforce-broigne',
-    shieldAllowed: true,
+    shieldAccess: 'all',
     meleeAccess: 'all',
     rangedAccess: 'all',
     allowedWeaponIds: [],
@@ -65,7 +65,7 @@ export const fighterClasses: CharacterClass[] = [
       'Le chevalier sait manier toutes les armes de contact, mais il dédaigne les armes à distance qu’il considère comme des armes de couard.\n' +
       'Les voies de chevalier limitent l’armure à celle de plaque (l’armure de plaque complète nécessite une capacité particulière). Il peut utiliser tous les boucliers.',
     maxArmorId: 'armure-de-plaques',
-    shieldAllowed: true,
+    shieldAccess: 'all',
     meleeAccess: 'all',
     rangedAccess: 'none',
     allowedWeaponIds: [],
@@ -92,7 +92,7 @@ export const fighterClasses: CharacterClass[] = [
       'Le guerrier sait manier toutes les armes de contact et toutes les armes à distance.\n' +
       'Les voies de guerrier limitent l’armure à la cotte de mailles. Il peut utiliser tous les boucliers.',
     maxArmorId: 'cotte-de-mailles',
-    shieldAllowed: true,
+    shieldAccess: 'all',
     meleeAccess: 'all',
     rangedAccess: 'all',
     allowedWeaponIds: [],

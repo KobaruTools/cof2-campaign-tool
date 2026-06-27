@@ -178,6 +178,16 @@ export interface Ancestry {
  */
 export type WeaponAccess = 'all' | 'oneHanded' | 'none';
 
+/**
+ * Accès d'un profil au bouclier, interprété depuis le texte « Armes & armures
+ * maîtrisées ». Le livre distingue petit bouclier (DEF +1) et grand bouclier
+ * (DEF +2) — table p. 188 — et certains profils ne débloquent que le petit :
+ * - `all` : tous les boucliers (petit et grand) — ex. guerrier, chevalier, barbare ;
+ * - `small` : petit bouclier seulement — ex. druide, prêtre ;
+ * - `none` : aucun bouclier — ex. arquebusier, magicien.
+ */
+export type ShieldAccess = 'all' | 'small' | 'none';
+
 export interface CharacterClass {
   id: string;
   name: string;
@@ -191,8 +201,11 @@ export interface CharacterClass {
    * aucune armure (à confirmer profil par profil à l'extraction) — p. 31, 188.
    */
   maxArmorId: string | null;
-  /** Le profil autorise-t-il le bouclier ? — ex. arquebusier : non (p. 62). */
-  shieldAllowed: boolean;
+  /**
+   * Accès au bouclier — voir `ShieldAccess`. Distingue petit/grand bouclier car
+   * certains profils (druide, prêtre) ne maîtrisent que le petit (p. 188, p. 62).
+   */
+  shieldAccess: ShieldAccess;
   /** Accès aux armes de contact — voir `WeaponAccess`. Interprété du verbatim. */
   meleeAccess: WeaponAccess;
   /** Accès aux armes à distance : `all` (hors poudre, cf. `powderAllowed`) ou `none`. */

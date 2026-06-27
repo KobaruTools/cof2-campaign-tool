@@ -25,7 +25,7 @@ export const mageClasses: CharacterClass[] = [
     weaponsAndArmor:
       "L’ensorceleur sait manier la dague et le bâton ferré. De plus, chaque ensorceleur peut choisir une arme supplémentaire de son choix qu’il a appris à utiliser, sans dépasser 1d6 DM (malgré ses DM de 2d4, l’arbalète légère est aussi une arme éligible). Les voies d’ensorceleur interdisent de porter une armure ou d’utiliser un bouclier.",
     maxArmorId: null,
-    shieldAllowed: false,
+    shieldAccess: 'none',
     meleeAccess: 'none',
     rangedAccess: 'none',
     allowedWeaponIds: ['dague', 'baton-ferre'],
@@ -48,7 +48,7 @@ export const mageClasses: CharacterClass[] = [
     weaponsAndArmor:
       "Le forgesort sait manier la dague, le bâton, le marteau et l’arbalète légère. Les voies de forgesort limitent l’armure au cuir simple et interdisent d’utiliser un bouclier.",
     maxArmorId: 'cuir-simple',
-    shieldAllowed: false,
+    shieldAccess: 'none',
     meleeAccess: 'none',
     rangedAccess: 'none',
     allowedWeaponIds: ['dague', 'baton', 'marteau', 'arbalete-legere'],
@@ -70,7 +70,7 @@ export const mageClasses: CharacterClass[] = [
     weaponsAndArmor:
       "Le magicien sait manier la dague et le bâton. Les voies de magicien interdisent de porter une armure ou d’utiliser un bouclier.",
     maxArmorId: null,
-    shieldAllowed: false,
+    shieldAccess: 'none',
     meleeAccess: 'none',
     rangedAccess: 'none',
     allowedWeaponIds: ['dague', 'baton'],
@@ -98,7 +98,7 @@ export const mageClasses: CharacterClass[] = [
     weaponsAndArmor:
       "Le sorcier sait manier la dague et le bâton. Les voies de sorcier interdisent de porter une armure ou d’utiliser un bouclier.",
     maxArmorId: null,
-    shieldAllowed: false,
+    shieldAccess: 'none',
     meleeAccess: 'none',
     rangedAccess: 'none',
     allowedWeaponIds: ['dague', 'baton'],

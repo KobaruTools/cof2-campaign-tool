@@ -38,7 +38,7 @@ export const adventurerClasses: CharacterClass[] = [
     weaponsAndArmor:
       "L'arquebusier sait manier toutes les armes de contact à une main, les armes à distance, armes à poudre incluses. Un arquebusier sait fabriquer sa propre poudre et elle ne risque pas d'exploser malgré lui (voir la section Équipement).\n\nLes voies d'arquebusier limitent l'armure à la chemise de mailles et interdisent l'utilisation du bouclier.",
     maxArmorId: 'chemise-de-mailles',
-    shieldAllowed: false,
+    shieldAccess: 'none',
     meleeAccess: 'oneHanded',
     rangedAccess: 'all',
     allowedWeaponIds: [],
@@ -63,7 +63,7 @@ export const adventurerClasses: CharacterClass[] = [
     weaponsAndArmor:
       "Le barde sait manier les armes à une main. Les voies de barde limitent l'armure au cuir renforcé et interdisent l'utilisation du bouclier. Il est nécessaire d'avoir une main libre pour utiliser les capacités de bardes (ni arme secondaire ni bouclier).",
     maxArmorId: 'cuir-renforce-broigne',
-    shieldAllowed: false,
+    shieldAccess: 'none',
     meleeAccess: 'oneHanded',
     rangedAccess: 'none',
     allowedWeaponIds: [],
@@ -89,7 +89,7 @@ export const adventurerClasses: CharacterClass[] = [
     weaponsAndArmor:
       "Le rôdeur sait manier les armes de contact à une main et toutes les armes à distance.\n\nLes voies de rôdeur limitent l'armure au cuir renforcé et interdisent le port du bouclier.",
     maxArmorId: 'cuir-renforce-broigne',
-    shieldAllowed: false,
+    shieldAccess: 'none',
     meleeAccess: 'oneHanded',
     rangedAccess: 'all',
     allowedWeaponIds: [],
@@ -117,7 +117,7 @@ export const adventurerClasses: CharacterClass[] = [
     weaponsAndArmor:
       "Le voleur sait manier les armes de contact à une main et toutes les armes à distance.\n\nLes voies de voleur limitent l'armure au cuir simple et interdisent l'utilisation du bouclier.",
     maxArmorId: 'cuir-simple',
-    shieldAllowed: false,
+    shieldAccess: 'none',
     meleeAccess: 'oneHanded',
     rangedAccess: 'all',
     allowedWeaponIds: [],
