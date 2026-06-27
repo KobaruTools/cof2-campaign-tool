@@ -4,13 +4,15 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
+import { alpha, type SxProps, type Theme } from '@mui/material/styles';
 import { Fragment, type ReactNode } from 'react';
-import { progression } from '@/data';
+import { featureById, pathById, progression } from '@/data';
 import type { Die, Feature } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
+import { ClassIcon } from '@/components/ClassIcon';
 import { DieIcon } from '@/components/DieIcon';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { classColor } from '@/lib/ui/classColors';
 import { dieAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
 import { splitNotes } from '@/lib/ui/featureNotes';
 import { splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
@@ -53,6 +55,62 @@ function RefChip({ label, title, tone }: { label: string; title: string; tone: R
         }}
       >
         {label}
+      </Box>
+    </Tooltip>
+  );
+}
+
+/**
+ * Référence à une AUTRE capacité (`[&feature-id|texte]`, PER-72) : puce encadrée aux
+ * couleurs du PROFIL de la capacité citée — bordure + fond semi-transparent + icône de
+ * profil + texte, tous teintés de la couleur du profil. Info-bulle = nom canonique +
+ * voie. Référence inconnue (id erroné) → repli silencieux sur le texte brut.
+ */
+export function CapabilityChip({
+  featureId,
+  label,
+  sx,
+}: {
+  featureId: string;
+  label: string | null;
+  /** Surcharge de style ponctuelle (ex. fond plus marqué + texte agrandi dans les tooltips de stats dérivées). */
+  sx?: SxProps<Theme>;
+}) {
+  const feature = featureById.get(featureId);
+  const path = feature ? pathById.get(feature.pathId) : undefined;
+  // Couleur = profil de la voie. Seules les voies de PROFIL (`type: 'class'`) portent
+  // `classIds` ; pour les autres (peuple, prestige), on retombe sur le repli neutre.
+  const classId = path?.type === 'class' ? path.classIds[0] : undefined;
+  const text = label ?? feature?.name ?? featureId;
+  if (!feature || !classId) return <>{text}</>;
+  const color = classColor(classId);
+  return (
+    <Tooltip title={`${feature.name}${path ? ` — ${path.name}` : ''}`} arrow>
+      <Box
+        component="span"
+        sx={[
+          {
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.35,
+            verticalAlign: 'baseline',
+            px: 0.6,
+            mx: 0.2,
+            borderRadius: 0.75,
+            fontWeight: 700,
+            fontSize: '0.95em',
+            lineHeight: 1.4,
+            cursor: 'help',
+            color,
+            bgcolor: alpha(color, 0.12),
+            border: 1,
+            borderColor: alpha(color, 0.45),
+          },
+          ...(Array.isArray(sx) ? sx : [sx]),
+        ]}
+      >
+        <ClassIcon classId={classId} size={14} color="currentColor" />
+        {text}
       </Box>
     </Tooltip>
   );
@@ -458,6 +516,8 @@ export function RichInline({
     <>
       {parseRichText(text).map((seg, i) => {
         if (seg.kind === 'text') return <RichTextRun key={i} value={seg.value} />;
+        if (seg.kind === 'capabilityRef')
+          return <CapabilityChip key={i} featureId={seg.featureId} label={seg.label} />;
         if (seg.kind === 'abilityRef')
           return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
         if (seg.kind === 'die') {

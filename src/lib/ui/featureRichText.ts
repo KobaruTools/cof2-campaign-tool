@@ -100,7 +100,12 @@ export type RichTextSegment =
   | { kind: 'expr'; terms: ExprTerm[]; raw: string }
   | { kind: 'quantity'; terms: ExprTerm[]; raw: string }
   | { kind: 'term'; terms: ExprTerm[]; raw: string }
-  | { kind: 'abilityRef'; ability: AbilityId };
+  | { kind: 'abilityRef'; ability: AbilityId }
+  // Référence à une AUTRE capacité (PER-72), balisée `[&feature-id]` ou
+  // `[&feature-id|texte affiché]`. Le rendu en fait une puce aux couleurs du profil
+  // de la capacité citée (cf. `CapabilityChip`). `label` = texte verbatim de la prose
+  // (ex. « encaisser un coup ») ; absent → le nom canonique de la capacité.
+  | { kind: 'capabilityRef'; featureId: string; label: string | null };
 
 // `(\d*)d<faces>(°?)` éventuellement suivi de paliers par rang de voie : soit
 // `|C@R` (seul le NOMBRE de dés passe à C — `1d4°|2@4`), soit `|CdF@R` (le DÉ COMPLET
@@ -355,6 +360,18 @@ export function parseRichText(richText: string): RichTextSegment[] {
     } else if (m[2] !== undefined) {
       const body = m[2];
       const trimmed = body.trimStart();
+      // Référence de capacité `[&feature-id]` / `[&feature-id|texte affiché]` (PER-72) :
+      // l'id est un slug (sans `|`), le texte affiché optionnel suit un `|`. Le segment est
+      // consommé ICI, donc son texte (ex. « Piqûres d'insectes ») n'est PAS re-glossé en aval.
+      if (trimmed.startsWith('&')) {
+        const rest = trimmed.slice(1);
+        const sep = rest.indexOf('|');
+        const featureId = (sep >= 0 ? rest.slice(0, sep) : rest).trim();
+        const label = sep >= 0 ? rest.slice(sep + 1).trim() : null;
+        if (featureId) segments.push({ kind: 'capabilityRef', featureId, label: label || null });
+        else pushText(m[0]); // `[&]` vide → littéral
+        continue;
+      }
       const isQuantity = trimmed.startsWith('=');
       const isTerm = trimmed.startsWith('#');
       const exprBody = isQuantity || isTerm ? trimmed.slice(1) : body;

@@ -7,7 +7,9 @@ import ShieldIcon from '@mui/icons-material/Shield';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import { alpha } from '@mui/material/styles';
 import type { ResistibleDamageType } from '@/data/schema';
+import { featureOrigin } from '@/lib/ui/featureOrigin';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
+import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 
 /** Variante d'un badge de stat dérivée (couleur + icône de tête). */
 export type DefenseBadgeVariant = 'immunity' | 'reduction' | 'critical';
@@ -29,9 +31,11 @@ export interface DefenseBadgeData {
   title: string;
   /**
    * Capacité(s) qui accordent l'effet, en BREAKDOWN (comme les stats dérivées) : nom + contribution
-   * éventuelle (ex. RD cumulée « Fils du roc : 3 », « Peau d'acier : 3 »). PER-137.
+   * éventuelle (ex. RD cumulée « Fils du roc : 3 », « Peau d'acier : 3 ») + `featureId` d'origine,
+   * affiché en puce de voie (`CapabilityChip` : voie en couleur + icône + rang) pour situer chaque
+   * source d'un coup d'œil. PER-137.
    */
-  sources: { name: string; value?: string }[];
+  sources: { name: string; value?: string; featureId?: string }[];
 }
 
 /** Couleur de palette MUI par variante. */
@@ -66,15 +70,32 @@ export function DefenseBadge({
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
         {sources.length > 1 ? 'Sources' : 'Source'}
       </Typography>
-      {sources.map((s, i) => (
-        <Box
-          key={i}
-          sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, fontSize: '0.85em', fontVariantNumeric: 'tabular-nums' }}
-        >
-          <span>{s.name}</span>
-          {s.value && <span style={{ fontWeight: 600 }}>{s.value}</span>}
-        </Box>
-      ))}
+      {sources.map((s, i) => {
+        const origin = s.featureId ? featureOrigin(s.featureId) : undefined;
+        return (
+          <Box key={i} sx={{ mb: i < sources.length - 1 ? 0.5 : 0 }}>
+            <Box
+              sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, fontSize: '0.85em', fontVariantNumeric: 'tabular-nums' }}
+            >
+              <span>{s.name}</span>
+              {s.value && <span style={{ fontWeight: 600 }}>{s.value}</span>}
+            </Box>
+            {/* Voie d'origine en puce de capacité (CapabilityChip) : voie en couleur + icône de profil
+                + rang, pour identifier la provenance sans ambiguïté (le nom seul ne suffit pas). PER-137. */}
+            {s.featureId && origin && (
+              <Box sx={{ mt: 0.25, fontSize: '0.8em' }}>
+                {/* Fond blanc plus marqué + texte +2px : la puce est trop petite/illisible dans le
+                    tooltip de stat dérivée. Surcharge LOCALE (autres usages de CapabilityChip inchangés). */}
+                <CapabilityChip
+                  featureId={s.featureId}
+                  label={`${origin.pathName} · rang ${origin.rank}`}
+                  sx={{ bgcolor: 'rgba(255, 255, 255, 0.78)', fontSize: 'calc(0.95em + 2px)' }}
+                />
+              </Box>
+            )}
+          </Box>
+        );
+      })}
     </Box>
   );
   return (

@@ -1196,7 +1196,14 @@ export const fighterFeatures: Feature[] = [
       'Une fois par round, le chevalier peut encaisser une attaque au contact ou à distance à la place d’un allié à son contact. Il utilise sa DEF plutôt que celle de la cible initiale et retranche son rang dans la voie aux DM (en cas de synergie avec la capacité Piqûres d’insectes ou encaisser un coup, la réduction des DM se cumule). Le joueur doit annoncer son intention d’intercepter avant de connaître le résultat de l’attaque.',
     // PER-137 : manœuvre 1×/round protégeant un ALLIÉ — RD = rang sur l'attaque interceptée, et cumul
     // avec les RD d'armure (Piqûres d'insectes / Encaisser un coup). Dépend de l'équipement porté et du
-    // suivi de combat → modélisation différée. Verbatim ; badge WIP.
+    // suivi de combat → modélisation différée. Badge WIP conservé.
+    // Rendu enrichi (PER-72) : « son rang dans la voie » → [#rang] (rang ATTEINT dans la voie du meneur).
+    // « Piqûres d'insectes » et « encaisser un coup » sont des RÉFÉRENCES de capacité (preux-r2, guerre-r2)
+    // → balisées [&id] (SANS texte d'override : on affiche le NOM CANONIQUE de la capacité, donc capitalisé
+    // « Encaisser un coup »), rendues en puce aux couleurs du profil. Le balisage consomme « insectes »,
+    // ce qui évite sa glose parasite « catégorie d'arthropodes » (terme de jeu du rôdeur, PER-114).
+    richText:
+      'Une fois par round, le chevalier peut encaisser une attaque au contact ou à distance à la place d’un allié à son contact. Il utilise sa DEF plutôt que celle de la cible initiale et retranche son [#rang] dans la voie aux DM (en cas de synergie avec la capacité [&preux-r2] ou [&guerre-r2], la réduction des DM se cumule). Le joueur doit annoncer son intention d’intercepter avant de connaître le résultat de l’attaque.',
     wip: "Interception : réduit de son rang les DM d'une attaque encaissée pour un allié (manœuvre 1×/round, cumul avec les RD d'armure) — modélisation différée à la milestone Armures (PER-137 / PER-76).",
     sourcePage: 85,
   },

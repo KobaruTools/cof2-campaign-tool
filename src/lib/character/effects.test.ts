@@ -274,11 +274,12 @@ describe('testBonusSources — plancher universel (Éclectique, PER-102)', () =>
 
 describe('aggregateImmunities (Liberté d’action, PER-103)', () => {
   it('agrège les immunités d’une capacité, dans l’ordre du catalogue', () => {
+    const src = [{ featureId: 'saltimbanque-r4', name: "Liberté d'action" }];
     expect(aggregateImmunities(['saltimbanque-r4'])).toEqual([
-      { id: 'fear', label: 'Peur', sources: ["Liberté d'action"] },
-      { id: 'mind-control', label: 'Charme / possession', sources: ["Liberté d'action"] },
-      { id: 'slowed', label: 'Ralenti', sources: ["Liberté d'action"] },
-      { id: 'immobilized', label: 'Immobilisé', sources: ["Liberté d'action"] },
+      { id: 'fear', label: 'Peur', sources: src },
+      { id: 'mind-control', label: 'Charme / possession', sources: src },
+      { id: 'slowed', label: 'Ralenti', sources: src },
+      { id: 'immobilized', label: 'Immobilisé', sources: src },
     ]);
   });
   it('vide sans capacité d’immunité', () => {
@@ -806,8 +807,8 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
     expect(flatAll?.total).toBe(6);
     expect(flatAll?.sources).toEqual(
       expect.arrayContaining([
-        { name: 'Fils du roc', value: 3 },
-        { name: 'Peau d’acier', value: 3 },
+        { featureId: 'nain-r4', name: 'Fils du roc', value: 3 },
+        { featureId: 'pagne-r5', name: 'Peau d’acier', value: 3 },
       ]),
     );
   });

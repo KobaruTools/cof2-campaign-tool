@@ -1160,8 +1160,8 @@ export interface ImmunitySource {
   id: ImmunityId;
   /** Libellé français (cf. `IMMUNITY_LABELS`). */
   label: string;
-  /** Noms des capacités qui l'accordent (pour le détail au survol). */
-  sources: string[];
+  /** Capacités qui l'accordent (id + nom), pour le détail au survol et la voie d'origine. */
+  sources: { featureId: string; name: string }[];
 }
 
 /**
@@ -1169,22 +1169,27 @@ export interface ImmunitySource {
  * id et accompagnées de leurs capacités sources. Ordre stable suivant `IMMUNITY_LABELS`.
  */
 export function aggregateImmunities(featureIds: string[]): ImmunitySource[] {
-  const byId = new Map<ImmunityId, Set<string>>();
+  // Map immId → (featureId → nom) : dédup par capacité source (l'id, pas le nom).
+  const byId = new Map<ImmunityId, Map<string, string>>();
   for (const id of featureIds) {
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
     for (const e of feature.effects) {
       if (e.kind !== 'immunity') continue;
       for (const imm of e.immunities) {
-        const set = byId.get(imm) ?? new Set<string>();
-        set.add(feature.name);
-        byId.set(imm, set);
+        const map = byId.get(imm) ?? new Map<string, string>();
+        map.set(feature.id, feature.name);
+        byId.set(imm, map);
       }
     }
   }
   return (Object.keys(IMMUNITY_LABELS) as ImmunityId[])
     .filter((immId) => byId.has(immId))
-    .map((immId) => ({ id: immId, label: IMMUNITY_LABELS[immId], sources: [...byId.get(immId)!] }));
+    .map((immId) => ({
+      id: immId,
+      label: IMMUNITY_LABELS[immId],
+      sources: [...byId.get(immId)!].map(([featureId, name]) => ({ featureId, name })),
+    }));
 }
 
 /** Une réduction de dégâts ACTIVE octroyée par une capacité, avec sa capacité source (PER-126). */
@@ -1253,8 +1258,8 @@ export interface StackedDamageReduction {
    * d'autres sources de réduction comme la peau d'acier ») ; diviseur (`divide`) ; absent (`immunity`).
    */
   total?: number;
-  /** Capacités qui contribuent, avec leur valeur individuelle (pour le breakdown du tooltip). */
-  sources: { name: string; value?: number }[];
+  /** Capacités qui contribuent (id + nom + valeur individuelle) pour le breakdown et la voie d'origine. */
+  sources: { featureId: string; name: string; value?: number }[];
 }
 
 /**
@@ -1269,6 +1274,7 @@ export function stackedDamageReductions(character: Character): StackedDamageRedu
     const scopes = s.reduction.scopes ?? [];
     const perScope: (ResistibleDamageType | undefined)[] = scopes.length ? scopes : [undefined];
     return perScope.map((scope) => ({
+      featureId: s.featureId,
       name: s.name,
       kind: s.reduction.kind,
       scope,
@@ -1290,12 +1296,12 @@ export function stackedDamageReductions(character: Character): StackedDamageRedu
         kind,
         scope,
         total: list.reduce((acc, e) => acc + (e.value ?? 0), 0),
-        sources: list.map((e) => ({ name: e.name, value: e.value })),
+        sources: list.map((e) => ({ featureId: e.featureId, name: e.name, value: e.value })),
       });
     } else if (kind === 'divide') {
-      out.push({ kind, scope, total: list[0].value, sources: list.map((e) => ({ name: e.name })) });
+      out.push({ kind, scope, total: list[0].value, sources: list.map((e) => ({ featureId: e.featureId, name: e.name })) });
     } else {
-      out.push({ kind, scope, sources: list.map((e) => ({ name: e.name })) });
+      out.push({ kind, scope, sources: list.map((e) => ({ featureId: e.featureId, name: e.name })) });
     }
   }
   return out;

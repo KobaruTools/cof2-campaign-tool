@@ -266,6 +266,30 @@ l'extension au DM est un choix de table assumé, le `text` verbatim restant inch
 > Projectile de mana) n'est PAS exprimable ainsi → reporté au lot « scaling par
 > paliers de famille » (voir les `TODO(cross-voie)` dans les données).
 
+### h. Référence à une autre capacité : `[&feature-id]` / `[&feature-id|texte]`
+
+Quand un texte **cite une autre capacité** par son nom (« en synergie avec la capacité
+**Piqûres d'insectes** »), on balise la citation pour la rendre en **puce aux couleurs du
+profil** de la capacité citée — bordure + fond semi-transparent + **icône de profil** +
+texte, tous teintés de `CLASS_COLORS[profil]` (info-bulle : nom canonique + voie).
+
+| Balisage | Rendu |
+|---|---|
+| `[&preux-r2]` | puce « Piqûres d'insectes » aux couleurs du chevalier |
+| `[&guerre-r2]` | puce « Encaisser un coup » aux couleurs du chevalier |
+
+- L'**id** est le slug de la capacité (`Feature.id`, ex. `preux-r2`). **Par défaut on N'override PAS
+  le texte** : on affiche le **nom canonique** de la capacité — un nom de capacité est un nom propre,
+  il garde donc sa **majuscule** même si la prose l'écrit en minuscule (« encaisser un coup » →
+  « Encaisser un coup »). Le **texte affiché** optionnel (après `|`) n'est à utiliser que pour un
+  cas particulier de formulation, pas pour recopier une casse de prose.
+- Résolu à l'affichage (`CapabilityChip`) : `feature → voie → profil → couleur + icône`. Une
+  référence inconnue (id erroné) retombe **silencieusement** sur le texte brut.
+- **Le segment balisé n'est PAS re-glossé** : c'est le moyen d'éviter qu'un mot du nom
+  (« insectes ») déclenche une glose parasite d'un terme de jeu auto-détecté (ici la
+  catégorie « insectes » des ennemis jurés du rôdeur). Cas de référence :
+  `meneur-d-hommes-r2` (Intercepter, chevalier).
+
 ## Glossaire des acronymes (auto-détecté, SANS balisage)
 
 Ajout post-PER-90 (population des mages). Source unique : `src/lib/ui/glossary.ts`

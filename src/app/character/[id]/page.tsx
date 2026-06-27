@@ -292,7 +292,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         scope: r.scope,
         text: r.scope ? undefined : 'tous DM',
         title: formatDamageReduction({ kind: 'immunity', scopes }).short,
-        sources: r.sources.map((s) => ({ name: s.name })),
+        sources: r.sources.map((s) => ({ name: s.name, featureId: s.featureId })),
       });
     } else {
       const v = r.total ?? 0;
@@ -306,6 +306,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         sources: r.sources.map((s) => ({
           name: s.name,
           value: r.sources.length > 1 && s.value !== undefined ? `${s.value}` : undefined,
+          featureId: s.featureId,
         })),
       });
     }
@@ -317,7 +318,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     variant: 'immunity',
     text: imm.label,
     title: `Immunité : ${imm.label}`,
-    sources: imm.sources.map((name) => ({ name })),
+    sources: imm.sources.map((s) => ({ name: s.name, featureId: s.featureId })),
   }));
   // Ordre voulu : immunités d'abord, réductions ensuite.
   const defenseBadges: DefenseBadgeData[] = [...statusImmunityBadges, ...damageImmunityBadges, ...reductionBadges];
@@ -330,7 +331,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       variant: 'critical',
       text: f.short,
       title: `Critique ${f.short}`,
-      sources: [{ name: s.name }],
+      sources: [{ name: s.name, featureId: s.featureId }],
     };
   };
   const critRanges = criticalRangeSources(character);
