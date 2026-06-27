@@ -517,7 +517,18 @@ export function RichInline({
       {parseRichText(text).map((seg, i) => {
         if (seg.kind === 'text') return <RichTextRun key={i} value={seg.value} />;
         if (seg.kind === 'capabilityRef')
-          return <CapabilityChip key={i} featureId={seg.featureId} label={seg.label} />;
+          // Fond blanc semi-transparent (comme les puces de source des stats dérivées,
+          // cf. DefenseBadge) : le texte plein de la couleur du profil (ex. guerrier rouge
+          // foncé) sur fond sombre était illisible. Le blanc rétablit le contraste tout en
+          // gardant bordure + texte aux couleurs du profil.
+          return (
+            <CapabilityChip
+              key={i}
+              featureId={seg.featureId}
+              label={seg.label}
+              sx={{ bgcolor: 'rgba(255, 255, 255, 0.78)' }}
+            />
+          );
         if (seg.kind === 'abilityRef')
           return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
         if (seg.kind === 'die') {
