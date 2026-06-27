@@ -727,9 +727,15 @@ describe('criticalRangeSources — plage de critique élargie (PER-133)', () => 
     ]);
   });
 
-  it('Écuyer (noblesse-r2) : plage passive +1 au contact', () => {
+  it('Écuyer (noblesse-r2) : plage +1 au contact, active par défaut (écuyer en vie)', () => {
+    // L'interrupteur « écuyer en vie » est ACTIVÉ par défaut → plage retenue sans toggle explicite.
     const src = criticalRangeSources(char(['noblesse-r2']));
     expect(src).toEqual([{ featureId: 'noblesse-r2', name: 'Écuyer', scope: 'melee', value: 1 }]);
+  });
+
+  it('Écuyer (noblesse-r2) : écuyer mort (interrupteur coupé) → plus de plage de critique', () => {
+    // Le joueur coupe l'interrupteur (écuyer mort) → `criticalRangeSources` cesse de retenir la plage.
+    expect(criticalRangeSources(char(['noblesse-r2'], { 'noblesse-r2': [false] }))).toEqual([]);
   });
 
   it('Tir précis (precision-r3) : plage à distance SCALANTE — +1 au rang 3, +2 au rang 5 de la voie', () => {

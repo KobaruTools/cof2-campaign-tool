@@ -137,34 +137,38 @@ export function CreatureStatBlock({
         )}
       </Stack>
 
-      {/* Caractéristiques de la créature (valeurs fixes), avec l'icône de la fiche. */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 0.75 }}>
-        {ABILITY_IDS.map((id) => (
-          <Tooltip key={id} title={ABILITY_NAMES[id]} arrow>
-            <Stack
-              spacing={0.1}
-              sx={{
-                alignItems: 'center',
-                borderRadius: 0.5,
-                py: 0.4,
-                cursor: 'help',
-                bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
-              }}
-            >
-              <AbilityIcon ability={id} size={16} />
-              <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1 }}>
-                {id}
-              </Typography>
-              <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
-                <Typography variant="caption" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {signed(profile.abilities[id])}
+      {/* Caractéristiques de la créature (valeurs fixes), avec l'icône de la fiche. Certaines
+          créatures n'ont PAS de bloc de caractéristiques dans le livre (ex. écuyer du chevalier :
+          seulement Init/DEF/PV/Att/DM) → grille omise. */}
+      {profile.abilities && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 0.75 }}>
+          {ABILITY_IDS.map((id) => (
+            <Tooltip key={id} title={ABILITY_NAMES[id]} arrow>
+              <Stack
+                spacing={0.1}
+                sx={{
+                  alignItems: 'center',
+                  borderRadius: 0.5,
+                  py: 0.4,
+                  cursor: 'help',
+                  bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
+                }}
+              >
+                <AbilityIcon ability={id} size={16} />
+                <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1 }}>
+                  {id}
                 </Typography>
-                {allBonusDice.has(id) && <BonusDieBadge ability={id} size={12} />}
+                <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
+                  <Typography variant="caption" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {signed(profile.abilities![id])}
+                  </Typography>
+                  {allBonusDice.has(id) && <BonusDieBadge ability={id} size={12} />}
+                </Stack>
               </Stack>
-            </Stack>
-          </Tooltip>
-        ))}
-      </Box>
+            </Tooltip>
+          ))}
+        </Box>
+      )}
 
       {/* Stats dérivées + attaque. */}
       <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}>

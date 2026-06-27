@@ -1122,8 +1122,12 @@ export interface CreatureProfile {
   name: string;
   /** Mention de nature/type si le livre la donne (ex. « Créature non vivante »). */
   type?: string;
-  /** Les 7 caractéristiques (valeurs fixes de la créature). */
-  abilities: Record<AbilityId, number>;
+  /**
+   * Les 7 caractéristiques (valeurs fixes de la créature). ABSENT pour les créatures que le
+   * livre décrit SANS bloc de caractéristiques — seulement Init/DEF/PV/Att/DM (ex. écuyer du
+   * chevalier, `noblesse-r2`) : la mini-fiche omet alors la grille de caractéristiques.
+   */
+  abilities?: Record<AbilityId, number>;
   /**
    * Caractéristiques dont les TESTS bénéficient d'un DÉ BONUS INNÉ (notées « * » dans
    * les blocs de stats du livre, ex. loup « CON +1* | PER +2* »). Rendu par l'icône

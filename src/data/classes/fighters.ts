@@ -1273,10 +1273,37 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier dispose d’un écuyer à son service (Init. [chevalier], DEF [10 + rang], PV [niveau × 4], Att [attaque magique], DM 1d4°+1). Il est absolument loyal à son maître, il s’occupe de sa monture et de son équipement, prépare le campement, panse les blessures, etc. Grâce à l’écuyer, les armes du chevalier sont parfaitement affûtées et il augmente de 1 point les chances d’obtenir un critique sur les attaques au contact (par exemple, 19-20 au lieu de 20). De plus, le chevalier, sa monture et jusqu’à CHA alliés récupèrent 1d4° PV supplémentaires après chaque récupération complète s’ils profitent des services de l’écuyer. Si l’écuyer vient à mourir, le chevalier en prendra un autre à son service au niveau suivant.',
-    // PER-133 : élargissement de la plage de critique au CONTACT (+1 → 19-20), inconditionnel (passif :
-    // l'écuyer affûte les armes). Affiché en puce sous la carte Attaque au contact. Le reste (mini-fiche
-    // de l'écuyer, PV de récupération supplémentaires) reste en verbatim.
+    // Le STATBLOCK recopié « (Init. … DM 1d4°+1) » est RETIRÉ du richText (conservé dans `text` verbatim,
+    // source) et devient une mini-fiche `creatureProfile` (ci-dessous), comme la fidèle monture. Dans la
+    // prose : « jusqu’à CHA alliés » → quantité dynamique [=CHA] (nombre brut, bleu souligné) ; « 1d4° PV »
+    // → dé évolutif {1d4°} au niveau courant.
+    richText:
+      'Le chevalier dispose d’un écuyer à son service. Il est absolument loyal à son maître, il s’occupe de sa monture et de son équipement, prépare le campement, panse les blessures, etc. Grâce à l’écuyer, les armes du chevalier sont parfaitement affûtées et il augmente de 1 point les chances d’obtenir un critique sur les attaques au contact (par exemple, 19-20 au lieu de 20). De plus, le chevalier, sa monture et jusqu’à [=CHA] alliés récupèrent {1d4°} PV supplémentaires après chaque récupération complète s’ils profitent des services de l’écuyer. Si l’écuyer vient à mourir, le chevalier en prendra un autre à son service au niveau suivant.',
+    // PER-133 : élargissement de la plage de critique au CONTACT (+1 → 19-20). L'écuyer affûte les armes :
+    // la plage n'est donc valable que tant que l'écuyer est EN VIE. Modélisé par un interrupteur
+    // `conditional-stat-bonus` MARQUEUR D'ÉTAT (sans bonus de stat), ACTIVÉ PAR DÉFAUT (écuyer vivant) ; en
+    // cas de mort de l'écuyer, le joueur le COUPE et `criticalRangeSources` cesse de retenir la plage (même
+    // patron que les plages conditionnées à l'arme). Affiché en puce sous la carte Attaque au contact.
     criticalRange: { scope: 'melee', value: 1 },
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'écuyer en vie', activeByDefault: true },
+      },
+    ],
+    // Profil structuré de l'ÉCUYER (p. 86) — mini-fiche (CreatureStatBlock), comme la fidèle monture.
+    // Le livre ne lui donne PAS de bloc de 7 caractéristiques (seulement Init/DEF/PV/Att/DM) → `abilities`
+    // absent (grille de carac omise). Init. recopiée du maître ; DEF [10 + rang] (rang atteint dans la voie
+    // de noblesse) ; PV [=niveau × 4] (niveau du chevalier) ; attaque = attaque magique du chevalier,
+    // DM [1d4° + 1] (dé évolutif au niveau courant).
+    creatureProfile: {
+      name: 'Écuyer',
+      defense: '[10 + rang]',
+      hitPoints: '[=niveau × 4]',
+      initiative: { fromMaster: 'initiative' },
+      attack: { fromMaster: 'magicAttack', damage: '[1d4° + 1]' },
+    },
     sourcePage: 86,
   },
   {
@@ -1356,6 +1383,12 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       'S’il n’est pas surpris, le guerrier peut accorder un bonus de DEF de +2 à un allié à son contact contre une attaque par round. Il doit annoncer son intention avant de connaître le résultat de l’attaque. De plus, vous ajoutez votre rang + 2 à tous les tests destinés à éviter d’être surpris.',
+    // Rendu enrichi (PER-72) : « votre rang + 2 » → [rang + 2]. PER-89 : bonus de compétence
+    // INCONDITIONNEL au domaine vigilance (`vigilance`, PER, « éviter d'être surpris » — déjà au
+    // catalogue). Le +2 en DEF accordé à un ALLIÉ est hors périmètre (bonus aux alliés) → verbatim.
+    richText:
+      'S’il n’est pas surpris, le guerrier peut accorder un bonus de DEF de +2 à un allié à son contact contre une attaque par round. Il doit annoncer son intention avant de connaître le résultat de l’attaque. De plus, vous ajoutez votre [rang + 2] à tous les tests destinés à éviter d’être surpris.',
+    effects: [{ kind: 'test-bonus', domains: ['vigilance'] }],
     sourcePage: 87,
   },
   {
@@ -1382,6 +1415,25 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le guerrier obtient un bonus de +1 en DEF lorsqu’il manie un bouclier. Ce bonus passe à +2 au rang 5. De plus, lorsqu’il tient son bouclier en main, il retranche son rang à tous les DM des attaques de zone (sorts d’Explosion de feu, mains brûlantes, foudre, etc. et aux souffles) sauf s’il est surpris.',
+    // PER-72 : le +1 en DEF (passant à +2 au rang 5) est CONDITIONNÉ au maniement d'un bouclier.
+    // Comme la milestone Armures (PER-76) ne câble pas encore l'équipement porté, l'effet suit un
+    // INTERRUPTEUR manuel « bouclier en main » (conditional-stat-bonus, comme Armure de vent du
+    // barbare / Cavalier émérite) ; DEF SCALANTE stepped path-rank {1:1, 5:2}. La RÉDUCTION DE DM
+    // « son rang » contre les attaques de ZONE/souffles reste verbatim : aucun type de DM « zone »
+    // dans la liste fermée RESISTIBLE_DAMAGE_TYPES, et elle dépend aussi du bouclier porté → WIP.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [
+          {
+            stat: 'def',
+            value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 5, value: 2 }] },
+          },
+        ],
+        activation: { kind: 'condition', label: 'bouclier en main', activeByDefault: false },
+      },
+    ],
+    wip: "Réduction de « son rang » aux DM des attaques de zone et des souffles (bouclier en main, hors surprise) — pas de type de DM « zone » modélisé et valeur dépendante de l'équipement porté → différée à la milestone Armures (PER-76).",
     sourcePage: 88,
   },
   {
@@ -1404,6 +1456,10 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       'Le guerrier peut décider de renvoyer un sort qu’il vient d’absorber grâce à sa capacité Absorber un sort. Au lieu d’être annulé, le sort absorbé est immédiatement retourné contre son expéditeur : le lanceur du sort subit alors les effets de sa propre attaque ! Cet effet ne fonctionne pas contre les sorts de zone.',
+    // Rendu enrichi (PER-72) : « sa capacité Absorber un sort » → RÉFÉRENCE de capacité [&bouclier-r4]
+    // (puce aux couleurs du guerrier, nom canonique « Absorber un sort »). Pas d'effet structuré.
+    richText:
+      'Le guerrier peut décider de renvoyer un sort qu’il vient d’absorber grâce à sa capacité [&bouclier-r4]. Au lieu d’être annulé, le sort absorbé est immédiatement retourné contre son expéditeur : le lanceur du sort subit alors les effets de sa propre attaque ! Cet effet ne fonctionne pas contre les sorts de zone.',
     sourcePage: 88,
   },
 
