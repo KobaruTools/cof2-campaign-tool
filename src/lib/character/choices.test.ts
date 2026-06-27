@@ -15,12 +15,14 @@ import {
   getSelection,
   getSelections,
   hasActionableChoice,
+  hasRepeatableOption,
   hasUnmadeChoice,
   isChoiceActionable,
   pendingDivineAcquisition,
   pruneFeatureChoices,
   repeatableChoiceCount,
   setFeatureChoice,
+  splitRepeatableSelections,
   unmadeChoiceIndexes,
 } from './choices';
 import type { OptionFeatureChoice, PathFeatureChoice } from '@/data/schema';
@@ -305,6 +307,77 @@ describe('choix `option` répétable (Golem supérieur)', () => {
     expect(isChoiceActionable(d, animauxChoice)).toBe(true);
     expect(hasActionableChoice(d, 'animaux-r1')).toBe(true);
     expect(unmadeChoiceIndexes(d, 'animaux-r1')).toEqual([0]); // palier atteint, rien choisi
+  });
+});
+
+describe('Armes de prédilection consolidée (maitre-d-armes-r1) : base + jalons débloqués par Spécialisation', () => {
+  // Guerrier rang 5 dans les 5 voies (donc r3 acquise) → budget = base 1 + 5 jalons = 6.
+  const guerrier = (over: Partial<Character> = {}) =>
+    makeCharacter({
+      classId: 'guerrier',
+      ancestryId: 'humain',
+      ancestryPathId: 'humain',
+      featureIds: [
+        'bouclier-r5',
+        'combat-r5',
+        'maitre-d-armes-r3',
+        'maitre-d-armes-r5',
+        'resistance-r5',
+        'soldat-r5',
+      ],
+      ...over,
+    });
+  const prefChoice = featureChoiceDefs('maitre-d-armes-r1')[0] as OptionFeatureChoice;
+
+  it('le choix porte base 1, un déblocage par r3 et une option `repeatable`', () => {
+    expect(prefChoice.repeat).toEqual({
+      by: 'paths-at-rank',
+      classIds: ['guerrier'],
+      rank: 5,
+      base: 1,
+      requiresFeatureId: 'maitre-d-armes-r3',
+    });
+    expect(hasRepeatableOption(prefChoice)).toBe(true);
+    expect(prefChoice.options.find((o) => o.id === 'dm-bonus')?.repeatable).toBe(true);
+  });
+
+  it('budget = base + voies de guerrier au rang 5, une fois Spécialisation acquise', () => {
+    expect(repeatableChoiceCount(guerrier(), prefChoice)).toBe(6); // 1 base + 5 jalons
+  });
+
+  it('sans Spécialisation (r3), seul le pick de base compte — le système de jalons reste verrouillé', () => {
+    // Rang 5 dans une AUTRE voie mais maitre-d-armes encore au rang 1 (pas de r3) → budget = base.
+    const noSpec = guerrier({ featureIds: ['maitre-d-armes-r1', 'combat-r5'] });
+    expect(repeatableChoiceCount(noSpec, prefChoice)).toBe(1);
+  });
+
+  it('avec r3 mais aucune voie au rang 5, budget = base (jalons à 0)', () => {
+    const justSpec = guerrier({ featureIds: ['maitre-d-armes-r3'] });
+    expect(repeatableChoiceCount(justSpec, prefChoice)).toBe(1);
+  });
+
+  it('r3 + 1 voie au rang 5 → budget = base + 1', () => {
+    const oneMilestone = guerrier({ featureIds: ['maitre-d-armes-r3', 'maitre-d-armes-r5'] });
+    expect(repeatableChoiceCount(oneMilestone, prefChoice)).toBe(2);
+  });
+
+  it('getOptionSelections conserve les doublons de « +1 DM » mais dédoublonne les catégories', () => {
+    const c = guerrier({
+      featureChoices: { 'maitre-d-armes-r1': [['swords', 'swords', 'dm-bonus', 'dm-bonus', 'dm-bonus']] },
+    });
+    // « swords » apparaît une fois (distincte) ; « dm-bonus » conserve ses 3 instances.
+    expect(getOptionSelections(c, 'maitre-d-armes-r1', 0)).toEqual(['swords', 'dm-bonus', 'dm-bonus', 'dm-bonus']);
+  });
+
+  it('splitRepeatableSelections décompose catégories vs compteur d’option répétable', () => {
+    const c = guerrier({
+      featureChoices: { 'maitre-d-armes-r1': [['swords', 'axes', 'dm-bonus', 'dm-bonus', 'dm-bonus', 'dm-bonus']] },
+    });
+    expect(splitRepeatableSelections(c, 'maitre-d-armes-r1', 0)).toEqual({
+      distinct: ['swords', 'axes'],
+      repeatCounts: { 'dm-bonus': 4 },
+      used: 6,
+    });
   });
 });
 

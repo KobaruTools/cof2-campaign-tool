@@ -17,6 +17,7 @@
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
@@ -33,8 +34,10 @@ import {
   featureChoiceDefs,
   getOptionSelections,
   getSelection,
+  hasRepeatableOption,
   isChoiceActionable,
   repeatableChoiceCount,
+  splitRepeatableSelections,
 } from '@/lib/character/choices';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 
@@ -178,6 +181,95 @@ function ChoiceControl({
     );
   }
 
+  // Choix `option` RÉPÉTABLE avec une option `repeatable` (ex. Spécialisation, maitre-d-armes-r3) :
+  // catégories distinctes (multisélection) + compteur ± pour l'option répétable (« +1 DM »). Chaque
+  // unité (catégorie ou instance répétable) consomme le budget partagé `repeat`.
+  if (choice.kind === 'option' && choice.repeat && hasRepeatableOption(choice)) {
+    const { distinct, repeatCounts, used } = splitRepeatableSelections(character, featureId, index);
+    const budget = repeatableChoiceCount(character, choice);
+    const remaining = budget - used;
+    const distinctOptions = choice.options.filter((o) => !o.repeatable);
+    const repeatableOptions = choice.options.filter((o) => o.repeatable);
+    const empty = used === 0;
+    const over = used > budget;
+    // Picks de progression débloqués (ex. Spécialisation prise ET ≥1 voie au rang requis) ⟺
+    // budget au-delà de la base. Tant que verrouillé, on n'expose QUE la catégorie de base :
+    // ni stepper « +1 DM », ni jargon de jalon (cf. PER-72, choix consolidé sur Armes de prédilection).
+    const base = choice.repeat!.base ?? 0;
+    const repeatableUnlocked = budget > base;
+
+    const rebuild = (nextDistinct: string[], nextCounts: Record<string, number>) => {
+      const arr = [...nextDistinct];
+      for (const o of repeatableOptions) {
+        for (let k = 0; k < (nextCounts[o.id] ?? 0); k++) arr.push(o.id);
+      }
+      onChange(index, arr.length ? arr : null);
+    };
+
+    return (
+      <Stack spacing={1}>
+        <Autocomplete
+          multiple
+          disableCloseOnSelect
+          size="small"
+          options={distinctOptions.map((o) => o.id)}
+          getOptionLabel={(id) => distinctOptions.find((o) => o.id === id)?.label ?? id}
+          value={distinct}
+          isOptionEqualToValue={(opt, val) => opt === val}
+          onChange={(_, value) => rebuild(value, repeatCounts)}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={choice.prompt}
+              error={(blocking && empty) || over}
+              helperText={
+                !repeatableUnlocked
+                  ? blocking && empty
+                    ? 'Choix obligatoire'
+                    : 'Catégorie de prédilection de base'
+                  : over
+                    ? `${used}/${budget} retenue(s) — au-delà du budget (base + 1 par voie au rang ${choice.repeat!.rank})`
+                    : `${used}/${budget} retenue(s) — catégorie de base + 1 par voie au rang ${choice.repeat!.rank} ; budget restant : ${Math.max(0, remaining)}`
+              }
+            />
+          )}
+        />
+        {repeatableUnlocked &&
+          repeatableOptions.map((o) => {
+            const count = repeatCounts[o.id] ?? 0;
+            return (
+              <Stack key={o.id} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                  {o.label}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={count <= 0}
+                  onClick={() => rebuild(distinct, { ...repeatCounts, [o.id]: count - 1 })}
+                  sx={{ minWidth: 32 }}
+                >
+                  −
+                </Button>
+                <Typography variant="body2" sx={{ minWidth: 24, textAlign: 'center', fontWeight: 700 }}>
+                  ×{count}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={remaining <= 0}
+                  onClick={() => rebuild(distinct, { ...repeatCounts, [o.id]: count + 1 })}
+                  sx={{ minWidth: 32 }}
+                >
+                  +
+                </Button>
+              </Stack>
+            );
+          })}
+      </Stack>
+    );
+  }
+
   // Choix `option` RÉPÉTABLE : plusieurs options distinctes (Autocomplete multiple).
   // Le nombre conseillé dépend de la progression (une par voie au rang requis).
   if (choice.kind === 'option' && choice.repeat) {
@@ -277,9 +369,10 @@ export const COMPACT_CHIP_SX = {
 } as const;
 
 /**
- * Affichage (lecture seule) d'un choix `option` RÉPÉTABLE : un badge par option
- * retenue (nom court ; détail entre parenthèses à côté en vue liste) + un compteur
- * « retenues/autorisées ». « Choix à faire » si rien n'est encore retenu.
+ * Affichage (lecture seule) d'un choix `option` RÉPÉTABLE : un badge par option DISTINCTE
+ * retenue (nom court ; détail entre parenthèses à côté en vue liste), plus un badge « label ×N »
+ * par option `repeatable` (ex. « +1 DM ×4 », Spécialisation), + un compteur « consommé/budget ».
+ * « Choix à faire » si rien n'est encore retenu.
  */
 function RepeatOptionDisplay({
   choice,
@@ -294,11 +387,26 @@ function RepeatOptionDisplay({
   index: number;
   compact: boolean;
 }) {
-  const ids = getOptionSelections(character, featureId, index);
+  const { distinct, repeatCounts, used } = splitRepeatableSelections(character, featureId, index);
   const allowed = repeatableChoiceCount(character, choice);
-  const counter = `${ids.length}/${allowed}`;
+  const counter = `${used}/${allowed}`;
+  // Badges : options distinctes (avec complément éventuel) puis options répétables agrégées « ×N ».
+  const entries: { key: string; label: string | null; complement: string | null }[] = [
+    ...distinct.map((id) => ({
+      key: id,
+      label: choiceSelectionLabel(choice, id, true),
+      complement: compact ? null : choiceSelectionComplement(choice, id),
+    })),
+    ...choice.options
+      .filter((o) => o.repeatable && (repeatCounts[o.id] ?? 0) > 0)
+      .map((o) => ({
+        key: o.id,
+        label: `${choiceSelectionLabel(choice, o.id, true)} ×${repeatCounts[o.id]}`,
+        complement: null,
+      })),
+  ];
 
-  if (ids.length === 0) {
+  if (entries.length === 0) {
     const chip = (
       <Chip
         label="Choix à faire"
@@ -322,10 +430,10 @@ function RepeatOptionDisplay({
   if (compact) {
     return (
       <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
-        {ids.map((id) => (
+        {entries.map((e) => (
           <Chip
-            key={id}
-            label={choiceSelectionLabel(choice, id, true)}
+            key={e.key}
+            label={e.label}
             size="small"
             variant="outlined"
             color="primary"
@@ -345,24 +453,16 @@ function RepeatOptionDisplay({
         {choice.prompt} ({counter}) :
       </Typography>
       <Stack spacing={0.25} sx={{ mt: 0.25 }}>
-        {ids.map((id) => {
-          const complement = choiceSelectionComplement(choice, id);
-          return (
-            <Stack key={id} direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-              <Chip
-                label={choiceSelectionLabel(choice, id, true)}
-                size="small"
-                variant="outlined"
-                color="primary"
-              />
-              {complement && (
-                <Typography variant="caption" color="text.secondary">
-                  {complement}
-                </Typography>
-              )}
-            </Stack>
-          );
-        })}
+        {entries.map((e) => (
+          <Stack key={e.key} direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Chip label={e.label} size="small" variant="outlined" color="primary" />
+            {e.complement && (
+              <Typography variant="caption" color="text.secondary">
+                {e.complement}
+              </Typography>
+            )}
+          </Stack>
+        ))}
       </Stack>
     </Box>
   );

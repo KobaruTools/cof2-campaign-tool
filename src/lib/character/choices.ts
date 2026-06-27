@@ -134,9 +134,13 @@ export function getSelection(
 
 /**
  * Sélections d'un choix `option` RÉPÉTABLE, normalisées en tableau d'ids (ordre
- * conservé, doublons retirés). Tolère l'ancien format (une chaîne simple → tableau
- * d'un élément) et l'absence (→ tableau vide). À utiliser pour tout choix `option`,
- * répétable ou non (un choix simple renvoie alors 0 ou 1 id).
+ * conservé). Tolère l'ancien format (une chaîne simple → tableau d'un élément) et
+ * l'absence (→ tableau vide). À utiliser pour tout choix `option`, répétable ou non
+ * (un choix simple renvoie alors 0 ou 1 id).
+ *
+ * Dédoublonnage SÉLECTIF (PER-72) : les options marquées `repeatable` (ex. « +1 DM »
+ * de Spécialisation) conservent leurs DOUBLONS — chaque instance compte ; les autres
+ * options (catégories distinctes) restent dédoublonnées, ordre conservé.
  */
 export function getOptionSelections(
   character: Character,
@@ -145,7 +149,52 @@ export function getOptionSelections(
 ): string[] {
   const sel = getSelection(character, featureId, index);
   const raw = sel == null ? [] : Array.isArray(sel) ? sel : [sel];
-  return [...new Set(raw.filter((id): id is string => typeof id === 'string'))];
+  const ids = raw.filter((id): id is string => typeof id === 'string');
+  const def = featureChoiceDefs(featureId)[index];
+  const repeatableIds = new Set(
+    def?.kind === 'option' ? def.options.filter((o) => o.repeatable).map((o) => o.id) : [],
+  );
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of ids) {
+    if (repeatableIds.has(id)) {
+      out.push(id); // option répétable : doublons conservés
+    } else if (!seen.has(id)) {
+      seen.add(id);
+      out.push(id); // option distincte : une seule fois
+    }
+  }
+  return out;
+}
+
+/**
+ * Décompose les sélections d'un choix `option` répétable (PER-72) en deux axes : les options
+ * DISTINCTES retenues (hors `repeatable`, ex. catégories d'armes) et le NOMBRE d'instances de
+ * chaque option `repeatable` (ex. « +1 DM » ×N). `used` = total consommé sur le budget `repeat`
+ * (= longueur de `getOptionSelections`). Sert au contrôle d'édition et à l'affichage.
+ */
+export function splitRepeatableSelections(
+  character: Character,
+  featureId: string,
+  index: number,
+): { distinct: string[]; repeatCounts: Record<string, number>; used: number } {
+  const ids = getOptionSelections(character, featureId, index);
+  const def = featureChoiceDefs(featureId)[index];
+  const repeatableIds = new Set(
+    def?.kind === 'option' ? def.options.filter((o) => o.repeatable).map((o) => o.id) : [],
+  );
+  const distinct: string[] = [];
+  const repeatCounts: Record<string, number> = {};
+  for (const id of ids) {
+    if (repeatableIds.has(id)) repeatCounts[id] = (repeatCounts[id] ?? 0) + 1;
+    else distinct.push(id);
+  }
+  return { distinct, repeatCounts, used: ids.length };
+}
+
+/** Vrai si le choix `option` porte au moins une option `repeatable` (ex. Spécialisation). */
+export function hasRepeatableOption(choice: OptionFeatureChoice): boolean {
+  return choice.options.some((o) => o.repeatable);
 }
 
 /**
@@ -157,7 +206,11 @@ export function getOptionSelections(
  */
 export function repeatableChoiceCount(character: Character, choice: OptionFeatureChoice): number {
   if (!choice.repeat) return 1;
-  const { classIds, rank } = choice.repeat;
+  const { classIds, rank, base, requiresFeatureId } = choice.repeat;
+  // Picks de base toujours accordés (ex. la catégorie de prédilection de base, maitre-d-armes-r1).
+  let count = base ?? 0;
+  // Picks de progression : débloqués seulement si la capacité requise est acquise (ex. Spécialisation).
+  if (requiresFeatureId && !character.featureIds.includes(requiresFeatureId)) return count;
   // Rang le plus haut atteint par le personnage dans chaque voie de profil visée.
   const maxRankByPath = new Map<string, number>();
   for (const id of character.featureIds) {
@@ -167,7 +220,6 @@ export function repeatableChoiceCount(character: Character, choice: OptionFeatur
     if (path?.type !== 'class' || !path.classIds.some((c) => classIds.includes(c))) continue;
     maxRankByPath.set(path.id, Math.max(maxRankByPath.get(path.id) ?? 0, feature.rank));
   }
-  let count = 0;
   for (const max of maxRankByPath.values()) if (max >= rank) count++;
   return count;
 }

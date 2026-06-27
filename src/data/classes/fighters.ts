@@ -1426,6 +1426,8 @@ export const fighterFeatures: Feature[] = [
     // PER-72) : valeur = rang de la voie (stepped {3:3, 4:4, 5:5}). Elle SUIT le même interrupteur
     // « bouclier en main » que la DEF (cf. damageReductionSources : RD affichée seulement s'il est
     // actif). La nuance « sauf s'il est surpris » reste verbatim (état de combat non modélisé).
+    // PER-142 (milestone Armures) : remplacer cet interrupteur manuel par une détection AUTOMATIQUE
+    // du bouclier porté et désactiver toute la voie du bouclier quand aucun bouclier n'est équipé.
     effects: [
       {
         kind: 'conditional-stat-bonus',
@@ -1553,12 +1555,25 @@ export const fighterFeatures: Feature[] = [
     // INCONDITIONNEL au domaine connaissance martiale (`martial-lore`, « estimer la valeur d'une arme
     // ou la réputation martiale d'un adversaire ») — « votre rang + 2 » → [rang + 2]. Le +1 en attaque
     // avec une arme de la catégorie choisie dépend du TYPE d'arme porté → WIP (PER-136 / PER-115).
+    // PER-72 : le choix est RÉPÉTABLE et regroupe ICI tout le système d'armes de prédilection (lecture) :
+    // `base: 1` = la catégorie de base (toujours, dès le rang 1) ; `requiresFeatureId: maitre-d-armes-r3`
+    // débloque les picks supplémentaires (Spécialisation) — chaque voie de guerrier au rang 5 ajoute un
+    // jalon dépensable en nouvelle catégorie (distincte) OU « +1 DM » (option `repeatable`, doublons
+    // autorisés). Le système des jalons n'apparaît donc QUE si r3 est prise ET ≥1 voie au rang 5
+    // (`budget > base`). Patron : « Langage des animaux » (animaux-r1).
     richText:
       'Le guerrier choisit une catégorie d’armes de prédilection parmi épées, haches, mains nues, masses, lances (épieu, lance, pique) et enfin armes de jet (dague de lancer, javelot, etc.), et il gagne +1 en attaque lorsqu’il l’utilise une arme de cette catégorie. De plus, vous ajoutez votre [rang + 2] à tous les tests destinés à estimer la valeur d’une arme ou la réputation martiale d’un adversaire.',
     choices: [
       {
         kind: 'option',
-        prompt: 'Catégorie d’armes de prédilection',
+        prompt: 'Armes de prédilection',
+        repeat: {
+          by: 'paths-at-rank',
+          classIds: ['guerrier'],
+          rank: 5,
+          base: 1,
+          requiresFeatureId: 'maitre-d-armes-r3',
+        },
         options: [
           { id: 'swords', label: 'Épées' },
           { id: 'axes', label: 'Haches' },
@@ -1566,6 +1581,7 @@ export const fighterFeatures: Feature[] = [
           { id: 'maces', label: 'Masses' },
           { id: 'polearms', label: 'Lances (épieu, lance, pique)' },
           { id: 'thrown', label: 'Armes de jet (dague de lancer, javelot, etc.)' },
+          { id: 'dm-bonus', label: '+1 DM (catégorie connue, via Spécialisation)', repeatable: true },
         ],
       },
     ],
@@ -1606,11 +1622,13 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Lorsque le guerrier emploie une arme de prédilection, il gagne un bonus de +1 DM. Chaque fois que le personnage atteint le rang 5 dans une voie de guerrier, il peut choisir une nouvelle catégorie d’arme de prédilection (il gagne les avantages des rangs 1 à 3) ou décider d’augmenter de +1 le bonus aux DM d’une catégorie qu’il connaît déjà (pour un maximum de +6 pour un guerrier ayant atteint le rang 5 dans les cinq voies).',
-    // PER-72 : le +1 DM (croissant par rang 5 de voie de guerrier, jusqu'à +6) s'applique à l'arme de
-    // prédilection PORTÉE → bonus aux DM d'arme dépendant de l'équipement et du choix répétable de
-    // catégorie (Armes de prédilection, maitre-d-armes-r1). Non résoluble sans l'équipement porté →
-    // différé à la milestone Armures (PER-136 / PER-115). Verbatim ; badge WIP.
-    wip: "Bonus de +1 DM (jusqu'à +6) avec une arme de prédilection, et choix répétable de catégorie par rang 5 de voie de guerrier — dépendant de l'arme portée, modélisation différée à la milestone Armures (PER-136 / PER-115).",
+    // PER-72 : cette capacité DÉBLOQUE les picks supplémentaires du choix « Armes de prédilection »
+    // (maitre-d-armes-r1, `requiresFeatureId: maitre-d-armes-r3`) — catégories additionnelles + « +1 DM »
+    // par voie de guerrier au rang 5. Le CHOIX est hébergé sur r1 (lecture regroupée du système de
+    // prédilection), pas ici. Reste WIP ici : le CALCUL effectif du +DM (jusqu'à +6) dépend de l'arme
+    // PORTÉE → différé à la milestone Armures (PER-136 / PER-115). « avantages des rangs 1 à 3 » pour
+    // une catégorie additionnelle : non câblé (att/critique/DM dépendent aussi de l'arme portée).
+    wip: "Bonus de +1 DM (jusqu'à +6) avec une arme de prédilection — calcul dépendant de l'arme portée, différé à la milestone Armures (PER-136 / PER-115). Le CHOIX (catégories additionnelles + « +1 DM » débloquées par cette capacité) est modélisé sur Armes de prédilection (maitre-d-armes-r1).",
     sourcePage: 89,
   },
   {
@@ -1850,10 +1868,11 @@ export const fighterFeatures: Feature[] = [
     text:
       'Vous pouvez désormais utiliser Teigneux contre un nombre d’adversaires égal à votre AGI + 2 à chaque round. Si vous réussissez cette attaque, le déplacement de votre adversaire est stoppé à l’endroit où vous l’avez attaqué. De plus vous gagnez +1 en DEF.',
     // Rendu enrichi (PER-72) : « Teigneux » → RÉFÉRENCE de capacité [&soldat-r1] (puce aux couleurs du
-    // guerrier) ; « votre AGI + 2 » = nombre d'adversaires → quantité [=AGI + 2]. « +1 en DEF » → bonus
-    // PERMANENT plat à la DEF (stat-bonus). L'arrêt du déplacement adverse relève du tracker de combat.
+    // guerrier) ; « votre AGI + 2 » = nombre d'adversaires → TERME NOMMÉ [#AGI + 2] (substantif « AGI + 2 (4) »,
+    // pas la valeur nue « votre 4 » : le déterminant « votre » réclame que la formule reste lisible). « +1 en
+    // DEF » → bonus PERMANENT plat à la DEF (stat-bonus). L'arrêt du déplacement adverse relève du tracker.
     richText:
-      'Vous pouvez désormais utiliser [&soldat-r1] contre un nombre d’adversaires égal à votre [=AGI + 2] à chaque round. Si vous réussissez cette attaque, le déplacement de votre adversaire est stoppé à l’endroit où vous l’avez attaqué. De plus vous gagnez +1 en DEF.',
+      'Vous pouvez désormais utiliser [&soldat-r1] contre un nombre d’adversaires égal à votre [#AGI + 2] à chaque round. Si vous réussissez cette attaque, le déplacement de votre adversaire est stoppé à l’endroit où vous l’avez attaqué. De plus vous gagnez +1 en DEF.',
     effects: [{ kind: 'stat-bonus', stat: 'def', value: 1 }],
     sourcePage: 90,
   },

@@ -63,7 +63,12 @@
   ],
   "featureChoices": {
     "maitre-d-armes-r1": [
-      "swords"
+      "swords",
+      "axes",
+      "dm-bonus",
+      "dm-bonus",
+      "dm-bonus",
+      "dm-bonus"
     ],
     "resistance-r3": [
       "def-bonus"

@@ -1064,6 +1064,15 @@ export interface FeatureChoiceOption {
    * l'option (on retombe sur le profil de la capacité, s'il existe).
    */
   creatureProfile?: CreatureProfile;
+  /**
+   * Option RÉPÉTABLE au sein d'un choix `repeat` (PER-72) : contrairement aux options normales
+   * (DISTINCTES, retenues une seule fois), celle-ci peut être retenue PLUSIEURS fois dans le même
+   * choix — ex. Spécialisation (maitre-d-armes-r3) : « +1 DM » dépensable à CHAQUE jalon de rang 5,
+   * jusqu'à +6. Ses sélections ne sont donc PAS dédoublonnées par `getOptionSelections` (les autres
+   * options du choix le restent). Chaque instance consomme une unité du budget `repeat`. Absent =
+   * option distincte classique. N'a de sens que sur un `OptionFeatureChoice` avec `repeat`.
+   */
+  repeatable?: boolean;
 }
 
 /**
@@ -1080,6 +1089,19 @@ export interface ChoiceRepeat {
   classIds: string[];
   /** Rang à atteindre dans une voie pour octroyer une sélection (ex. 5). */
   rank: number;
+  /**
+   * Picks TOUJOURS accordés, indépendamment de la progression (PER-72) — ex. la catégorie de
+   * BASE d'Armes de prédilection (maitre-d-armes-r1 : 1 catégorie dès le rang 1). Les picks
+   * `paths-at-rank` s'ajoutent PAR-DESSUS. Défaut 0 (cas Golem supérieur / Langage des animaux).
+   */
+  base?: number;
+  /**
+   * Les picks de progression (`paths-at-rank`) ne sont DÉBLOQUÉS que si cette capacité est acquise
+   * (PER-72) — ex. Armes de prédilection n'octroie catégories/« +1 DM » supplémentaires qu'une fois
+   * Spécialisation (maitre-d-armes-r3) prise. Tant qu'elle ne l'est pas, seul le `base` compte
+   * (`budget > base` ⟺ capacité acquise ET au moins une voie au rang requis). Absent = toujours actif.
+   */
+  requiresFeatureId?: string;
 }
 
 /** Choix d'une option dans une liste énumérée explicitement. */
@@ -1297,11 +1319,12 @@ export interface Feature {
    * - QUANTITÉ : `[=CHA]`, `[=CHA × 100]`, `[=rang]`, `[=niveau × 5]` (crochets
    *   préfixés de `=`) — même grammaire, mais rendue en VALEUR BRUTE (durée, portée,
    *   nombre de cibles), sans signe : « pendant [=CHA] minutes » → « 5 minutes » ;
-   * - TERME NOMMÉ : `[#rang]`, `[#niveau]` (crochets préfixés de `#`, `rang`/`niveau`
-   *   SEULS) — `rang`/`niveau` employé comme SUBSTANTIF, rendu en encadré « mot (valeur) »
-   *   (teinte verte) : « égal au [#rang] » → « égal au rang (5) ». À préférer à `[=rang]`
-   *   quand la prose garde un déterminant (« au rang », « le rang … atteint dans la
-   *   voie ») où un nombre nu (« au 5 ») se lirait mal ;
+   * - TERME NOMMÉ : `[#rang]`, `[#niveau]`, `[#INT]`, `[#AGI + 2]` (crochets préfixés
+   *   de `#`) — expression DÉTERMINISTE employée comme SUBSTANTIF, rendue en encadré
+   *   « symboles (valeur) » (teinte verte) : « égal au [#rang] » → « égal au rang (5) »,
+   *   « égal à votre [#AGI + 2] » → « égal à votre AGI + 2 (4) ». À préférer à `[=…]`
+   *   quand la prose garde un déterminant (« au rang », « votre AGI + 2 ») où un nombre
+   *   nu (« au 5 », « votre 4 ») se lirait mal. Un dé y est refusé → littéral ;
    * - référence de stat : `@FOR`, `@CHA` — mise en avant sans calcul (renvoi, ou
    *   stat d'une CIBLE qu'on ne peut pas évaluer).
    * Tout le reste est du texte littéral. Absent → on retombe sur `text` verbatim.
