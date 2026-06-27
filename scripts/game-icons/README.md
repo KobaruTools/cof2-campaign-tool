@@ -14,6 +14,7 @@ Outillage **dev uniquement** pour intégrer des icônes [game-icons.net](https:/
 | Dossier | Génère | Composant d'affichage | Clés (`map.tsv`) |
 | --- | --- | --- | --- |
 | [`classes/`](./classes) | `src/lib/ui/classIcons.ts` | `<ClassIcon>` | id de profil |
+| [`ancestries/`](./ancestries) | `src/lib/ui/ancestryIcons.ts` | `<AncestryIcon>` | id de voie de peuple |
 | [`derived-stats/`](./derived-stats) | `src/lib/ui/derivedStatIcons.ts` | `<DerivedStatIcon>` | `DerivedStatId` |
 | [`dice/`](./dice) | `src/lib/ui/diceIcons.ts` | `<DieIcon>` | `Die` (`d4`…`d20`) |
 | [`abilities/`](./abilities) | `src/lib/ui/abilityIcons.ts` | `<AbilityIcon>` | `AbilityId` |

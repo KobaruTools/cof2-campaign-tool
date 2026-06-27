@@ -183,7 +183,7 @@ function AvailablePathGroup({
               sx={{
                 border: 1,
                 borderColor: 'divider',
-                bgcolor: color ? alpha(color, 0.06) : 'transparent',
+                bgcolor: color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
                 opacity: locked ? 0.5 : 1,
                 '&::before': { display: 'none' },
               }}

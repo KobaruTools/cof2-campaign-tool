@@ -22,6 +22,7 @@ import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
+import { AncestryIcon } from '@/components/AncestryIcon';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import type { StepProps } from './types';
@@ -162,6 +163,9 @@ export function SummaryStep({ draft, patch }: StepProps) {
                   : path.classIds[0]
                 : null;
             const color = featureClassId ? classColor(featureClassId) : null;
+            // Voie de peuple : pas de profil → icône neutre du peuple (la voie du
+            // mage / de prestige n'a pas d'icône, AncestryIcon ne rend alors rien).
+            const ancestryId = path?.type === 'ancestry' ? path.id : null;
             return (
               <Grid key={id} size={{ xs: 6, sm: 3 }}>
                 <Box
@@ -172,7 +176,9 @@ export function SummaryStep({ draft, patch }: StepProps) {
                     borderRadius: 1,
                     border: '1px solid',
                     borderColor: color ?? 'divider',
-                    bgcolor: color ? alpha(color, 0.15) : 'transparent',
+                    // Voie de peuple / du mage (pas de couleur de profil) : fond gris/blanc
+                    // très transparent plutôt que rien, pour montrer qu'elle est active.
+                    bgcolor: color ? alpha(color, 0.15) : (theme) => alpha(theme.palette.text.primary, 0.04),
                     display: 'flex',
                     alignItems: 'flex-start',
                     justifyContent: 'space-between',
@@ -189,13 +195,21 @@ export function SummaryStep({ draft, patch }: StepProps) {
                       </Typography>
                     )}
                   </Box>
-                  {featureClassId && (
+                  {featureClassId ? (
                     <ClassIcon
                       classId={featureClassId}
                       size={20}
                       color="#fff"
                       sx={{ mt: 0.25 }}
                     />
+                  ) : (
+                    ancestryId && (
+                      <AncestryIcon
+                        ancestryId={ancestryId}
+                        size={20}
+                        sx={{ mt: 0.25, color: 'text.secondary' }}
+                      />
+                    )
                   )}
                 </Box>
               </Grid>

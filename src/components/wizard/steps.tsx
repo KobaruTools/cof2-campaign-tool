@@ -57,6 +57,7 @@ import { initialEquipment } from './helpers';
 import { classColor } from '@/lib/ui/classColors';
 import { AbilityBadgeList } from '@/components/AbilityBadge';
 import { ClassIcon } from '@/components/ClassIcon';
+import { AncestryIcon } from '@/components/AncestryIcon';
 import { DamageValue } from '@/components/DamageValue';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import type { StepProps } from './types';
@@ -593,6 +594,7 @@ function PathCard({
   name,
   color = '#90a4ae',
   classId,
+  ancestryId,
   checked,
   disabled = false,
   feature,
@@ -606,6 +608,8 @@ function PathCard({
   name: string;
   color?: string;
   classId?: string;
+  /** Voie de peuple : id pour l'icône neutre (à défaut de `classId`/teinte de profil). */
+  ancestryId?: string;
   checked: boolean;
   disabled?: boolean;
   feature?: Feature;
@@ -678,7 +682,13 @@ function PathCard({
         >
           {name}
         </Typography>
-        {classId && <ClassIcon classId={classId} size={20} sx={{ color, flexShrink: 0 }} />}
+        {classId ? (
+          <ClassIcon classId={classId} size={20} sx={{ color, flexShrink: 0 }} />
+        ) : (
+          ancestryId && (
+            <AncestryIcon ancestryId={ancestryId} size={20} sx={{ color: 'text.secondary', flexShrink: 0 }} />
+          )
+        )}
         {/* Chevron de repli (indépendant de la sélection) : ouvre/ferme le détail. */}
         <IconButton
           size="small"
@@ -944,6 +954,7 @@ export function PathsStep({ draft, patch }: StepProps) {
                 <Grid size={12}>
                   <PathCard
                     name={`Voie de peuple${ancestry ? ` (${ancestry.name})` : ''}`}
+                    ancestryId={draft.ancestryPathId ?? undefined}
                     checked={!draft.magePathSlot}
                     feature={
                       draft.ancestryPathId ? pathFeatureAtRank(draft.ancestryPathId, 1) : undefined

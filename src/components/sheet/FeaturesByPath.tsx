@@ -54,6 +54,7 @@ import { FeatureLabel } from '@/components/FeatureLabel';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
+import { AncestryIcon } from '@/components/AncestryIcon';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
@@ -1024,6 +1025,10 @@ function PathBlock({
         : path.classIds[0]
       : null;
   const color = ownerClassId ? classColor(ownerClassId) : null;
+  // Voie de peuple : pas de teinte de profil, mais une icône neutre pour rappeler
+  // que c'est une voie au même titre que les autres (la voie du mage / de prestige
+  // n'a pas d'icône → AncestryIcon ne rend rien pour ces id).
+  const ancestryId = path?.type === 'ancestry' ? path.id : null;
   // Progression dans la voie : capacités acquises sur le total de la voie.
   const total = path?.featureIds.length;
   // Vue colonne : la capacité ouverte dans la modale de détail (null = fermée).
@@ -1146,7 +1151,11 @@ function PathBlock({
       {compact ? (
         // Vue colonne : icône de profil au-dessus du compteur de rangs.
         <Stack spacing={0.25} sx={{ ml: 'auto', flexShrink: 0, alignItems: 'flex-end' }}>
-          {ownerClassId && <ClassIcon classId={ownerClassId} size={18} />}
+          {ownerClassId ? (
+            <ClassIcon classId={ownerClassId} size={18} />
+          ) : (
+            ancestryId && <AncestryIcon ancestryId={ancestryId} size={18} sx={{ color: 'text.secondary' }} />
+          )}
           {total != null && (
             <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
               {features.length}/{total}
@@ -1154,8 +1163,12 @@ function PathBlock({
           )}
         </Stack>
       ) : (
-        // Vue liste : icône de profil juste à droite du titre.
-        ownerClassId && <ClassIcon classId={ownerClassId} size={18} sx={{ ml: 0.5 }} />
+        // Vue liste : icône de profil (ou de peuple) juste à droite du titre.
+        ownerClassId ? (
+          <ClassIcon classId={ownerClassId} size={18} sx={{ ml: 0.5 }} />
+        ) : (
+          ancestryId && <AncestryIcon ancestryId={ancestryId} size={18} sx={{ ml: 0.5, color: 'text.secondary' }} />
+        )
       )}
     </Stack>
   );
@@ -1224,7 +1237,7 @@ function PathBlock({
                   ? alpha(borrowedColor, 0.1)
                   : color
                     ? alpha(color, 0.06)
-                    : 'transparent',
+                    : (theme) => alpha(theme.palette.text.primary, 0.04),
               // Carte de devant d'un emprunt (PER-120) : fond OPAQUE (teinte source sur paper)
               // pour qu'elle masque la case décalée derrière — sinon la couleur de l'hôte
               // transparaîtrait à travers la carte de la capacité empruntée.
@@ -1403,7 +1416,7 @@ function PathBlock({
                   // 0.06 de la voie hôte) : la case décalée ne doit pas être plus marquée qu'elles.
                   border: 1,
                   borderColor: 'divider',
-                  bgcolor: color ? alpha(color, 0.06) : 'transparent',
+                  bgcolor: color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
                   display: 'flex',
                   alignItems: 'flex-end',
                   // Titre de l'hôte collé à DROITE du bloc (dans la partie qui dépasse).
@@ -1643,7 +1656,7 @@ function PathBlock({
               boxShadow: repl
                 ? (theme) => `5px 5px 0 0 ${alpha(theme.palette.text.primary, 0.18)}`
                 : undefined,
-              bgcolor: repl ? alpha(repl.originColor, 0.1) : color ? alpha(color, 0.06) : 'transparent',
+              bgcolor: repl ? alpha(repl.originColor, 0.1) : color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
               '&::before': { display: 'none' },
               // Désactivée par exclusion mutuelle : grisée + transparente, mais
               // toujours dépliable (détail conservé).

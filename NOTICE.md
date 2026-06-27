@@ -28,6 +28,30 @@ dans `CLASS_ICON_SOURCES` (même fichier) et dans `scripts/game-icons/classes/ma
 | Moine | `lorc/meditation.svg` | Lorc |
 | Prêtre | `lorc/holy-symbol.svg` | Lorc |
 
+## Icônes des peuples
+
+Les icônes illustrant chaque voie de peuple proviennent de
+[game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteurs : **Lorc** et **Delapouite** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/ancestryIcons.ts`. La correspondance peuple → fichier source est
+conservée dans `ANCESTRY_ICON_SOURCES` (même fichier) et dans
+`scripts/game-icons/ancestries/map.tsv`. L'affichage passe par le composant commun
+`src/components/AncestryIcon.tsx`.
+
+| Peuple | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Demi-orc | `delapouite/orc-head.svg` | Delapouite |
+| Elfe haut | `delapouite/woman-elf-face.svg` | Delapouite |
+| Elfe sylvain | `delapouite/bow-arrow.svg` | Delapouite |
+| Gnome | `delapouite/wizard-face.svg` | Delapouite |
+| Halfelin | `lorc/footprint.svg` | Lorc |
+| Humain | `delapouite/person.svg` | Delapouite |
+| Nain | `delapouite/dwarf-face.svg` | Delapouite |
+
 ## Icônes des statistiques dérivées
 
 Les icônes des statistiques dérivées (PV, Défense, Initiative, etc.) proviennent
