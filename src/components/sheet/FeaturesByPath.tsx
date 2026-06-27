@@ -37,7 +37,7 @@ import { features as featureCatalog, featureById, pathById, classById, priestGod
 import type { Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
-import { featureChoiceDefs, hasUnmadeChoice } from '@/lib/character/choices';
+import { featureChoiceDefs, hasActionableChoice, hasUnmadeChoice } from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
 import {
   conditionalEffectsOf,
@@ -1026,9 +1026,11 @@ function PathBlock({
       />
     ) : null;
 
-  /** Vrai si la capacité porte un choix résoluble (pour les affordances d'UI). */
+  /** Vrai si la capacité porte un choix résoluble MAINTENANT (pour les affordances
+   *  d'UI) : on masque le crayon/accordéon tant qu'aucun choix n'est actionnable
+   *  (ex. choix répétable sans palier atteint), pour ne pas ouvrir un éditeur vide. */
   const hasChoices = (feature: Feature) =>
-    !!character && featureChoiceDefs(feature.id).length > 0;
+    !!character && hasActionableChoice(character, feature.id);
 
   /** Vrai si la capacité porte un effet conditionnel/temporaire (PER-67). */
   const hasEffectToggles = (feature: Feature) =>

@@ -14,7 +14,9 @@ import {
   getOptionSelections,
   getSelection,
   getSelections,
+  hasActionableChoice,
   hasUnmadeChoice,
+  isChoiceActionable,
   pendingDivineAcquisition,
   pruneFeatureChoices,
   repeatableChoiceCount,
@@ -278,6 +280,31 @@ describe('choix `option` répétable (Golem supérieur)', () => {
     expect(
       unmadeChoiceIndexes(forgesort({ featureChoices: { 'golem-r5': [['mighty']] } }), 'golem-r5'),
     ).toEqual([]);
+  });
+
+  // Régression : Langage des animaux (druide). Le choix répétable « catégorie d'animaux »
+  // ne se débloque qu'au rang 4 d'une voie de druide. Tant qu'aucun palier n'est atteint
+  // (rang 1 → allowed 0), le choix n'est NI proposé (UI/wizard) NI « à faire » (pas de
+  // blocage ni de puce). Une fois un rang 4 atteint, il redevient actionnable et dû.
+  const druid = (over: Partial<Character> = {}) =>
+    makeCharacter({ classId: 'druide', ancestryId: 'humain', ancestryPathId: 'humain', featureIds: ['animaux-r1'], ...over });
+  const animauxChoice = featureChoiceDefs('animaux-r1')[0] as OptionFeatureChoice;
+
+  it('un répétable sans palier atteint (allowed === 0) n’est ni proposé ni « à faire »', () => {
+    const d = druid();
+    expect(repeatableChoiceCount(d, animauxChoice)).toBe(0);
+    expect(isChoiceActionable(d, animauxChoice)).toBe(false);
+    expect(hasActionableChoice(d, 'animaux-r1')).toBe(false);
+    expect(unmadeChoiceIndexes(d, 'animaux-r1')).toEqual([]);
+    expect(hasUnmadeChoice(d, 'animaux-r1')).toBe(false);
+  });
+
+  it('un répétable redevient proposé et dû une fois le palier (rang 4) atteint', () => {
+    const d = druid({ featureIds: ['animaux-r1', 'animaux-r2', 'animaux-r3', 'animaux-r4'] });
+    expect(repeatableChoiceCount(d, animauxChoice)).toBe(1);
+    expect(isChoiceActionable(d, animauxChoice)).toBe(true);
+    expect(hasActionableChoice(d, 'animaux-r1')).toBe(true);
+    expect(unmadeChoiceIndexes(d, 'animaux-r1')).toEqual([0]); // palier atteint, rien choisi
   });
 });
 

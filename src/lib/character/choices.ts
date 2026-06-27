@@ -173,6 +173,25 @@ export function repeatableChoiceCount(character: Character, choice: OptionFeatur
 }
 
 /**
+ * Un choix est-il À PROPOSER actuellement (UI + validation) ? Un choix `option`
+ * répétable ne l'est que lorsqu'un palier de progression est atteint
+ * (`repeatableChoiceCount > 0`) : tant que rien n'est débloqué (ex. catégorie
+ * d'animaux de « Langage des animaux » avant un rang 4 de druide), il n'y a rien
+ * à retenir, donc on masque le contrôle plutôt que d'embrouiller l'utilisateur.
+ * Les autres natures (ability / feature-from-path / option simple) sont toujours
+ * proposées.
+ */
+export function isChoiceActionable(character: Character, choice: FeatureChoice): boolean {
+  if (choice.kind === 'option' && choice.repeat) return repeatableChoiceCount(character, choice) > 0;
+  return true;
+}
+
+/** Vrai si la capacité porte au moins un choix à proposer actuellement (cf. `isChoiceActionable`). */
+export function hasActionableChoice(character: Character, featureId: string): boolean {
+  return featureChoiceDefs(featureId).some((choice) => isChoiceActionable(character, choice));
+}
+
+/**
  * Renvoie une copie de `featureChoices` avec la sélection du i-ème choix d'une
  * capacité fixée à `value`. Le tableau est complété par des `null` si besoin
  * pour atteindre l'index visé (choix antérieurs pas encore faits). Fonction pure
@@ -315,11 +334,20 @@ export function unmadeChoiceIndexes(character: Character, featureId: string): nu
   const defs = featureChoiceDefs(featureId);
   const selections = getSelections(character, featureId);
   const pending: number[] = [];
-  defs.forEach((_, i) => {
+  defs.forEach((choice, i) => {
     const sel = selections[i] ?? null;
-    // Non fait = aucune valeur, OU (choix répétable) tableau vide. Un choix répétable
-    // PARTIEL (au moins une option retenue) n'est pas « à faire » — le « il en reste »
-    // est une simple indication, pas un manquement (fiche permissive).
+    // Choix répétable (`option` + `repeat`) : « à faire » UNIQUEMENT s'il reste des
+    // catégories à retenir, c.-à-d. si un palier est atteint (`allowed > 0`) et qu'aucune
+    // option n'a encore été retenue. Tant qu'aucun palier n'est atteint (ex. Langage des
+    // animaux au rang 1 → 0 autorisée), rien n'est dû : le choix n'est pas « à faire »
+    // (sinon le wizard reste bloqué sur une étape sans option valide). Un répétable
+    // PARTIEL n'est pas non plus « à faire » — le « il en reste » est une indication.
+    if (choice.kind === 'option' && choice.repeat) {
+      const allowed = repeatableChoiceCount(character, choice);
+      if (allowed > 0 && getOptionSelections(character, featureId, i).length === 0) pending.push(i);
+      return;
+    }
+    // Autres natures : non fait = aucune valeur (ou tableau vide normalisé).
     if (sel == null || (Array.isArray(sel) && sel.length === 0)) pending.push(i);
   });
   return pending;

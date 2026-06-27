@@ -73,7 +73,7 @@ import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
 import {
   effectiveFeatureIdsForMods,
-  featureChoiceDefs,
+  hasActionableChoice,
   setFeatureChoice,
 } from '@/lib/character/choices';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
@@ -1007,7 +1007,7 @@ export function PathsStep({ draft, patch }: StepProps) {
   // domaines et lire/écrire les choix retenus (`draft.featureChoices`).
   const choicePreview = ancestry ? materializeDraft(draft, ancestry, draft.createdAt) : null;
   const level1WithChoices = choicePreview
-    ? choicePreview.featureIds.filter((id) => featureChoiceDefs(id).length > 0)
+    ? choicePreview.featureIds.filter((id) => hasActionableChoice(choicePreview, id))
     : [];
 
   const togglePath = (pathId: string) => {
@@ -1727,14 +1727,14 @@ export function SummaryStep({ draft, patch }: StepProps) {
 
       {/* Choix portés par les capacités de niveau 1 (PER-66/68) — bloquant :
           le bouton « Créer » reste désactivé tant qu'ils ne sont pas résolus. */}
-      {featureIds.some((id) => featureChoiceDefs(id).length > 0) && (
+      {featureIds.some((id) => hasActionableChoice(preview, id)) && (
         <Box>
           <Typography variant="subtitle2" gutterBottom>
             Choix à faire
           </Typography>
           <Stack spacing={2}>
             {featureIds
-              .filter((id) => featureChoiceDefs(id).length > 0)
+              .filter((id) => hasActionableChoice(preview, id))
               .map((id) => {
                 const feature = featureById.get(id);
                 return (

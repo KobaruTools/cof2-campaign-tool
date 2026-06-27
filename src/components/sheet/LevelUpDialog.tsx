@@ -44,7 +44,7 @@ import {
 } from '@/lib/character/levelUp';
 import {
   eligibleDivineHostPaths,
-  featureChoiceDefs,
+  hasActionableChoice,
   hasUnmadeChoice,
   pendingDivineAcquisition,
   priestDivineSlot,
@@ -726,8 +726,9 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                           </IconButton>
                         </Tooltip>
                       </Stack>
-                      {/* Choix porté par la capacité : à résoudre (bloquant). */}
-                      {featureChoiceDefs(feature.id).length > 0 && (
+                      {/* Choix porté par la capacité : à résoudre (bloquant). Masqué tant
+                          qu'aucun choix n'est actionnable (ex. choix répétable sans palier). */}
+                      {hasActionableChoice(working, feature.id) && (
                         <Box sx={{ mt: 1, pl: 1 }}>
                           <FeatureChoiceField
                             character={working}

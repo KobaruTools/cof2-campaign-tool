@@ -33,6 +33,7 @@ import {
   featureChoiceDefs,
   getOptionSelections,
   getSelection,
+  isChoiceActionable,
   repeatableChoiceCount,
 } from '@/lib/character/choices';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
@@ -394,11 +395,19 @@ export function FeatureChoiceField({
 }: FeatureChoiceFieldProps) {
   const defs = featureChoiceDefs(featureId);
   if (defs.length === 0) return null;
+  // On ne propose un choix répétable qu'une fois un palier atteint (cf.
+  // `isChoiceActionable`) : avant cela il n'y a rien à retenir, on masque le contrôle
+  // (et sa puce « Choix à faire ») pour ne pas embrouiller l'utilisateur. On conserve
+  // l'index d'origine, clé de `featureChoices` pour lire/écrire la sélection.
+  const visible = defs
+    .map((choice, index) => ({ choice, index }))
+    .filter(({ choice }) => isChoiceActionable(character, choice));
+  if (visible.length === 0) return null;
 
   if (mode === 'display') {
     return (
       <Stack spacing={0.5}>
-        {defs.map((choice, i) => {
+        {visible.map(({ choice, index: i }) => {
           // Choix `option` RÉPÉTABLE : plusieurs badges (un par option retenue) + compteur.
           if (choice.kind === 'option' && choice.repeat) {
             return (
@@ -460,7 +469,7 @@ export function FeatureChoiceField({
 
   return (
     <Stack spacing={1.5}>
-      {defs.map((choice, i) => (
+      {visible.map(({ choice, index: i }) => (
         <ChoiceControl
           key={i}
           character={character}
