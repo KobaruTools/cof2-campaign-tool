@@ -542,15 +542,27 @@ export function RichInline({
         }
         const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus);
         if (seg.kind === 'term') {
-          // `[#rang]`/`[#niveau]`/`[#CARAC]` : substantif « mot (valeur) ».
+          // `[#…]` : substantif « symboles (valeur) ». Un terme nu garde son mot
+          // (« rang (5) », « INT (4) ») ; une formule conserve son écriture, suivie de
+          // son total (« AGI + 2 (4) ») — la prose reste lisible là où `[=…]` n'afficherait
+          // qu'un nombre nu (« votre 4 »).
+          const word = resolved.parts
+            .map((p, idx) => {
+              const connector = idx > 0 ? ` ${p.sign === -1 ? '−' : '+'} ` : p.sign === -1 ? '−' : '';
+              return connector + p.symbol;
+            })
+            .join('');
+          const value = resolved.total ?? 0;
           const part = resolved.parts[0];
           const title =
-            part.kind === 'rank'
-              ? `Rang atteint dans la voie = ${part.value ?? 0}`
-              : part.kind === 'level'
-                ? `Niveau = ${part.value ?? 0}`
-                : `${part.label} = ${part.value ?? 0}`;
-          return <TermWord key={i} word={part.symbol} value={part.value ?? 0} title={title} />;
+            resolved.parts.length === 1
+              ? part.kind === 'rank'
+                ? `Rang atteint dans la voie = ${value}`
+                : part.kind === 'level'
+                  ? `Niveau = ${value}`
+                  : `${part.label} = ${value}`
+              : `${word} = ${value}`;
+          return <TermWord key={i} word={word} value={value} title={title} />;
         }
         if (seg.kind === 'quantity') return <QuantityValue key={i} resolved={resolved} />;
         return resolved.hasDie ? (

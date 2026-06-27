@@ -180,10 +180,26 @@ describe('parseRichText — découpage', () => {
     ]);
   });
 
-  it('restreint [#…] à UN terme nu (rang/niveau/carac) — multiplicateur/opérateur → littéral', () => {
-    expect(parseRichText('[#rang × 2]')).toEqual([{ kind: 'text', value: '[#rang × 2]' }]);
-    expect(parseRichText('[#10 + rang]')).toEqual([{ kind: 'text', value: '[#10 + rang]' }]);
-    expect(parseRichText('[#CHA × 2]')).toEqual([{ kind: 'text', value: '[#CHA × 2]' }]);
+  it('reconnaît un terme nommé sur une expression déterministe [#AGI + 2] (substantif)', () => {
+    expect(parseRichText('égal à votre [#AGI + 2]')).toEqual([
+      { kind: 'text', value: 'égal à votre ' },
+      {
+        kind: 'term',
+        raw: '[#AGI + 2]',
+        terms: [
+          { kind: 'ability', sign: 1, ability: 'AGI' },
+          { kind: 'number', sign: 1, value: 2 },
+        ],
+      },
+    ]);
+    expect(parseRichText('[#CHA × 2]')).toEqual([
+      { kind: 'term', raw: '[#CHA × 2]', terms: [{ kind: 'ability', sign: 1, ability: 'CHA', coeff: 2 }] },
+    ]);
+  });
+
+  it('refuse un dé dans un terme nommé [#1d6] (pas de valeur unique) → littéral', () => {
+    expect(parseRichText('[#1d6]')).toEqual([{ kind: 'text', value: '[#1d6]' }]);
+    expect(parseRichText('[#1d6 + AGI]')).toEqual([{ kind: 'text', value: '[#1d6 + AGI]' }]);
   });
 
   it('rejette un produit de deux variables', () => {

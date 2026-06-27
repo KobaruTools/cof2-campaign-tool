@@ -23,12 +23,15 @@
  * - `[=CHA]`, `[=CHA × 100]`, `[=rang]`, `[=niveau × 5]` : une QUANTITÉ (crochets
  *   préfixés de `=`) — même grammaire, mais rendue en VALEUR BRUTE (une durée, une
  *   portée, un nombre de cibles), sans signe. « pendant [=CHA] minutes » → « 5 ».
- * - `[#rang]`, `[#niveau]`, `[#INT]` : un TERME NOMMÉ employé comme SUBSTANTIF dans la
- *   phrase (« égal au rang », « égal à son INT ») — rendu en encadré « mot (valeur) »
- *   (« rang (5) », « INT (4) »), info-bulle « … = valeur ». À utiliser quand la prose
- *   garde un déterminant qui réclame le nom (« au rang », « son INT », « par point de
- *   CHA », « d'INT ») là où `[=…]` afficherait un nombre nu (« au 5 », « son 4 »).
- *   Restreint à UN terme `rang`/`niveau`/caractéristique SEUL (ni multiplicateur ni opérateur).
+ * - `[#rang]`, `[#niveau]`, `[#INT]`, `[#AGI + 2]` : un TERME NOMMÉ employé comme
+ *   SUBSTANTIF dans la phrase (« égal au rang », « égal à son INT », « un nombre
+ *   d'adversaires égal à votre AGI + 2 ») — rendu en encadré « symboles (valeur) »
+ *   (« rang (5) », « INT (4) », « AGI + 2 (4) »), info-bulle « … = valeur ». À utiliser
+ *   quand la prose garde un déterminant qui réclame le nom (« au rang », « son INT »,
+ *   « votre AGI + 2 ») là où `[=…]` afficherait un nombre nu (« au 5 », « votre 4 »)
+ *   qui casse la lecture. Accepte toute expression DÉTERMINISTE (caractéristiques,
+ *   `rang`, `niveau`, nombres, multiplicateurs, `+`/`-`) ; un dé est refusé (pas de
+ *   valeur unique à afficher) → retombe en littéral.
  * - `paliers` (terme de formule) : un BONUS PLAT cross-voie, fourni de l'EXTÉRIEUR par
  *   le composant hôte (un compte de voies au seuil, ex. Marteau de la foi « +1 DM par
  *   AUTRE voie de prêtre au rang 4 »). La couche données ne porte que le placeholder
@@ -323,15 +326,13 @@ function parseExpr(raw: string): ExprTerm[] | null {
 }
 
 /**
- * Un `[#…]` (terme nommé) n'accepte qu'UN terme NU — `rang`, `niveau` ou une
- * caractéristique — sans multiplicateur ni opérateur : c'est un substantif rendu
- * par son mot (+ valeur), pas une valeur calculée. Sert quand la prose garde un
- * déterminant qui réclame le nom (« son INT », « par point de CHA », « d'INT »).
+ * Un `[#…]` (terme nommé) rend la formule TELLE QU'ÉCRITE (ses symboles) suivie de
+ * sa valeur résolue : c'est un SUBSTANTIF (« son INT », « votre AGI + 2 »), pas une
+ * valeur nue. Accepte toute expression DÉTERMINISTE — un dé est refusé car il n'a
+ * pas de valeur numérique unique à afficher dans le « (valeur) ».
  */
-function isBareNamedTerm(terms: ExprTerm[]): boolean {
-  if (terms.length !== 1) return false;
-  const t = terms[0];
-  return (t.kind === 'rank' || t.kind === 'level' || t.kind === 'ability') && t.coeff === undefined;
+function isNamedTermExpr(terms: ExprTerm[]): boolean {
+  return terms.length > 0 && terms.every((t) => t.kind !== 'die');
 }
 
 /**
@@ -376,10 +377,10 @@ export function parseRichText(richText: string): RichTextSegment[] {
       const isTerm = trimmed.startsWith('#');
       const exprBody = isQuantity || isTerm ? trimmed.slice(1) : body;
       const terms = parseExpr(exprBody);
-      // Un TERME NOMMÉ (`[#…]`) est restreint à `rang`/`niveau` SEUL (sans
-      // multiplicateur ni opérateur) : c'est un substantif, pas une expression.
-      // Tout le reste (`[#CHA]`, `[#rang × 2]`, `[#10 + rang]`…) retombe en littéral.
-      if (terms && (!isTerm || isBareNamedTerm(terms))) {
+      // Un TERME NOMMÉ (`[#…]`) accepte toute expression DÉTERMINISTE, rendue en
+      // substantif « symboles (valeur) » (« rang (5) », « AGI + 2 (4) »). Seul un dé
+      // (`[#1d6]`) est refusé — pas de valeur unique à afficher — et retombe en littéral.
+      if (terms && (!isTerm || isNamedTermExpr(terms))) {
         segments.push(
           isTerm
             ? { kind: 'term', terms, raw: m[0] }
