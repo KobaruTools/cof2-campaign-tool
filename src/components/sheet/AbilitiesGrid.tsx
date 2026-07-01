@@ -103,7 +103,11 @@ export function AbilitiesGrid({
             {effective}
           </Typography>
         );
-        const featureTerms = (abilityModSources?.[id] ?? []).map((s) => ({ name: s.name, value: s.value }));
+        const featureTerms = (abilityModSources?.[id] ?? []).map((s) => ({
+          name: s.name,
+          value: s.value,
+          featureId: s.featureId,
+        }));
         return (
           <Grid key={id} size={{ xs: 6, sm: 12 / 7 }}>
             <Box

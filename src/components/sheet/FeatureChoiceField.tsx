@@ -35,6 +35,7 @@ import {
   getOptionSelections,
   getSelection,
   hasRepeatableOption,
+  ineligibleBorrowersForChoice,
   isChoiceActionable,
   repeatableChoiceCount,
   splitRepeatableSelections,
@@ -333,19 +334,31 @@ function ChoiceControl({
   }
 
   // feature-from-path : longue liste de capacités empruntables (Autocomplete).
+  // Règle des poupées russes (p. 41) : les capacités elles-mêmes « emprunteuses »
+  // (qui permettent de choisir à leur tour une capacité) ne sont pas empruntables
+  // — un seul niveau d'emprunt, pas de chaînage. On les laisse VISIBLES mais
+  // GRISÉES (non sélectionnables), avec l'explication, plutôt que de les masquer.
   const eligible = eligibleFeaturesForChoice(character, featureId, choice);
+  const blocked = ineligibleBorrowersForChoice(character, featureId, choice);
+  const blockedIds = new Set(blocked.map((f) => f.id));
+  const options = [...eligible, ...blocked]
+    .sort((a, b) => a.pathId.localeCompare(b.pathId) || a.rank - b.rank)
+    .map((f) => f.id);
   const optionLabel = (id: string): string => {
     const feature = featureById.get(id);
     if (!feature) return id;
     const pathName = pathById.get(feature.pathId)?.name ?? feature.pathId;
-    return `${pathName} — Rang ${feature.rank} — ${feature.name}${feature.isSpell ? '*' : ''}`;
+    const base = `${pathName} — Rang ${feature.rank} — ${feature.name}${feature.isSpell ? '*' : ''}`;
+    // Suffixe explicatif sur les capacités écartées (poupées russes, p. 41).
+    return blockedIds.has(id) ? `${base} — emprunte déjà une capacité (non cumulable)` : base;
   };
   return (
     <Autocomplete
       size="small"
-      options={eligible.map((f) => f.id)}
+      options={options}
       groupBy={(id) => pathById.get(featureById.get(id)?.pathId ?? '')?.name ?? ''}
       getOptionLabel={(id) => optionLabel(id)}
+      getOptionDisabled={(id) => blockedIds.has(id)}
       value={single}
       isOptionEqualToValue={(opt, val) => opt === val}
       onChange={(_, value) => onChange(index, value ?? null)}
@@ -354,7 +367,13 @@ function ChoiceControl({
           {...params}
           label={choice.prompt}
           error={blocking && missing}
-          helperText={blocking && missing ? 'Choix obligatoire' : undefined}
+          helperText={
+            blocking && missing
+              ? 'Choix obligatoire'
+              : blocked.length > 0
+                ? 'Les capacités grisées empruntent elles-mêmes une capacité : non sélectionnables (poupées russes, p. 41).'
+                : undefined
+          }
         />
       )}
     />

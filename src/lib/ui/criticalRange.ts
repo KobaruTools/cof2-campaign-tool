@@ -31,3 +31,36 @@ export function formatCriticalRange(
     long: `Critique sur ${range} (au lieu de 20) sur les attaques ${scopeWords}.`,
   };
 }
+
+/** Une source d'élargissement de plage de critique (capacité ACTIVE), résolue à sa valeur. */
+export interface CriticalRangeSourceLike {
+  featureId: string;
+  name: string;
+  scope: CriticalRange['scope'];
+  value: number;
+}
+
+/** Élargissement de critique CUMULÉ d'une portée : valeur sommée + capacités contributrices. */
+export interface CombinedCriticalRange {
+  scope: CriticalRange['scope'];
+  /** Somme des élargissements actifs de cette portée (le plancher 16 est appliqué au formatage). */
+  total: number;
+  sources: CriticalRangeSourceLike[];
+}
+
+/**
+ * CUMUL des plages de critique d'une même portée (PER-73). Les élargissements de critique
+ * s'ADDITIONNENT — deux sources « +1 au contact » (ex. Critique brutal du demi-orc + Briseur d'os
+ * du barbare) donnent 18-20. On somme donc TOUTES les sources actives de la portée et on liste
+ * chaque capacité contributrice (le plancher 16, p. 213, est appliqué par `formatCriticalRange`).
+ * `null` si aucune source pour cette portée. Règle systémique : vaut pour toute combinaison de
+ * capacités (passives ou conditionnelles déjà filtrées en amont), pas seulement un cas particulier.
+ */
+export function combineCriticalRanges(
+  sources: CriticalRangeSourceLike[],
+  scope: CriticalRange['scope'],
+): CombinedCriticalRange | null {
+  const list = sources.filter((s) => s.scope === scope);
+  if (list.length === 0) return null;
+  return { scope, total: list.reduce((acc, s) => acc + s.value, 0), sources: list };
+}

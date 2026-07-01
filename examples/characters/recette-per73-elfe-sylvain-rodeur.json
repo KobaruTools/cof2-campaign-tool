@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 10,
+  "id": "recette-per73-elfe-sylvain-rodeur",
+  "name": "Recette PER-73 — Elfe sylvain (rôdeur)",
+  "identity": {
+    "sex": "male",
+    "description": "Voie de l’elfe sylvain 5/5. À vérifier : Lumière des étoiles (escalade/discrétion/chasse +3), Enfant de la forêt (CHOIX capacité druide/rôdeur r1), Archer émérite (plage de critique +1 à distance — INTERRUPTEUR « arc en main » ACTIF ; WIP ; {1d4°} crit), Flèche sanglante ({1d4°} saignement), Supériorité elfique (+1 AGI / +1 PER)."
+  },
+  "ancestryId": "elfe-sylvain",
+  "classId": "rodeur",
+  "level": 20,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 4,
+    "CON": 1,
+    "FOR": -2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 3,
+    "CON": 1,
+    "FOR": -1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [
+    "AGI",
+    "FOR"
+  ],
+  "ancestryPathId": "elfe-sylvain",
+  "featureIds": [
+    "archer-r1",
+    "compagnon-animal-r1",
+    "elfe-sylvain-r1",
+    "combat-a-deux-armes-r1",
+    "survie-r1",
+    "traqueur-r1",
+    "archer-r2",
+    "compagnon-animal-r2",
+    "elfe-sylvain-r2",
+    "survie-r2",
+    "traqueur-r2",
+    "archer-r3",
+    "compagnon-animal-r3",
+    "elfe-sylvain-r3",
+    "survie-r3",
+    "traqueur-r3",
+    "archer-r4",
+    "compagnon-animal-r4",
+    "elfe-sylvain-r4",
+    "survie-r4",
+    "traqueur-r4",
+    "archer-r5",
+    "compagnon-animal-r5",
+    "elfe-sylvain-r5",
+    "survie-r5",
+    "traqueur-r5"
+  ],
+  "featureChoices": {
+    "elfe-sylvain-r2": [
+      "animaux-r1"
+    ]
+  },
+  "effectToggles": {
+    "elfe-sylvain-r3": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "archer-r1",
+        "compagnon-animal-r1",
+        "elfe-sylvain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "combat-a-deux-armes-r1",
+        "survie-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "traqueur-r1",
+        "archer-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "compagnon-animal-r2",
+        "elfe-sylvain-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "survie-r2",
+        "traqueur-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "archer-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "compagnon-animal-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "elfe-sylvain-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "survie-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "traqueur-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "archer-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "compagnon-animal-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "elfe-sylvain-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "survie-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "traqueur-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "archer-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "compagnon-animal-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "elfe-sylvain-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "survie-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "traqueur-r5"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-73 — perso de recette, voie de peuple « Voie de l’elfe sylvain » poussée à 5/5. Profil Rôdeur (4 voies au rang 5, 1 au rang 1). Choix des capacités de peuple auto-remplis ; choix des voies de profil laissés tels quels (hors périmètre).",
+  "createdAt": "2026-06-29T00:00:00.000Z",
+  "updatedAt": "2026-06-29T00:00:00.000Z"
+}

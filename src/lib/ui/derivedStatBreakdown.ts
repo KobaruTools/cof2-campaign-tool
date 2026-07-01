@@ -25,6 +25,12 @@ export interface BreakdownTerm {
    * porte déjà le total).
    */
   subTerms?: BreakdownTerm[];
+  /**
+   * Id de la capacité SOURCE de ce terme (PER-73). Présent → l'UI affiche une puce de
+   * voie (`CapabilityChip` : voie en couleur + icône + rang) sous le libellé, pour situer
+   * la provenance (ex. « Colosse » → Voie du demi-orc). Absent = terme non lié à une capacité.
+   */
+  featureId?: string;
 }
 
 /**

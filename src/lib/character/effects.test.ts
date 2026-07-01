@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { featureById } from '@/data';
 import type { AbilityId } from '@/data/schema';
 import type { Character } from './types';
+import { effectiveFeatureIdsForMods } from './choices';
 import {
   abilityBonusDiceFromFeatures,
   abilityModSources,
@@ -377,7 +378,48 @@ describe('effectContext', () => {
       abilities: c.abilities,
       toggles: { 'rage-r3': [true] },
       featureChoices: {},
+      // Mapping emprunt → voie A (PER-73) : vide ici (aucune capacité empruntée).
+      borrowedHostPaths: new Map(),
     });
+  });
+});
+
+describe('capacité empruntée : rang de la voie A + domination (PER-73)', () => {
+  // Demi-orc barbare : voie de peuple (A) à 5/5 ; demi-orc-r2 emprunte bouclier-r1 (guerrier),
+  // qui donne un bonus de compétence en vigilance « rang + 2 ». Le `rang` doit être celui de la
+  // VOIE A (peuple, 5) → 7, pas le rang d'origine de bouclier-r1 (1 → 3).
+  const ranks = (path: string, n: number) => Array.from({ length: n }, (_, i) => `${path}-r${i + 1}`);
+  const build = (featureIds: string[]): Character => ({
+    ...charWith({}),
+    level: 20,
+    featureIds,
+    featureChoices: { 'demi-orc-r2': ['bouclier-r1'] },
+  });
+
+  it('résout le rang de la capacité empruntée sur la voie A (bouclier-r1 → rang 5 → +7)', () => {
+    const c = build(ranks('demi-orc', 5));
+    const mods = effectiveFeatureIdsForMods(c);
+    expect(mods).toContain('bouclier-r1');
+    const vig = testBonusSources(mods, effectContext(c)).find((b) => b.domain === 'vigilance');
+    expect(vig?.total).toBe(7);
+    expect(vig?.sources).toEqual([
+      { featureId: 'bouclier-r1', name: 'Protéger un allié', category: 'class', value: 7 },
+    ]);
+  });
+
+  it('marque l’emprunt comme DOMINÉ quand une vraie voie de profil l’égale (Vigilance, primitif-r3)', () => {
+    const c = build([...ranks('demi-orc', 5), ...ranks('primitif', 5)]);
+    const vig = testBonusSources(effectiveFeatureIdsForMods(c), effectContext(c)).find(
+      (b) => b.domain === 'vigilance',
+    );
+    expect(vig?.total).toBe(7); // pas de cumul : max par catégorie « profil »
+    expect(vig?.sources.map((s) => s.featureId)).toEqual(['primitif-r3']);
+    expect(vig?.dominated).toEqual([
+      {
+        source: { featureId: 'bouclier-r1', name: 'Protéger un allié', category: 'class', value: 7 },
+        dominatedBy: { featureId: 'primitif-r3', name: 'Vigilance', category: 'class', value: 7 },
+      },
+    ]);
   });
 });
 

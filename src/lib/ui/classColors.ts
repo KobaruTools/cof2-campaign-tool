@@ -32,3 +32,19 @@ export const CLASS_COLORS: Record<string, string> = {
 export function classColor(classId: string): string {
   return CLASS_COLORS[classId] ?? '#90a4ae';
 }
+
+/**
+ * Teinte d'accentuation des VOIES DE PEUPLE (catégorie distincte des profils,
+ * aucune règle CO2 — purement UI). Une seule teinte commune (taupe chaud), pour
+ * que les puces de voie de peuple (`CapabilityChip`) se distinguent des profils
+ * tout en restant cohérentes entre elles.
+ */
+export const ANCESTRY_COLOR = '#a1887f';
+
+/**
+ * Gris foncé NEUTRE des hexagones de marqueur d'action (A/L/G/M) d'une voie de PEUPLE : sans
+ * couleur de profil, le marqueur retombait sur le bleu mana par défaut (`info.main`), qui évoque à
+ * tort un profil de mage. Le composant l'assombrit (darken 0.25) → ~#525252, contraste large avec le
+ * texte blanc. (La voie du mage / de prestige conserve le bleu mana par défaut.)
+ */
+export const ANCESTRY_MARKER_COLOR = '#6e6e6e';

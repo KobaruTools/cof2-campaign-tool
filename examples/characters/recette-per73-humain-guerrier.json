@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 10,
+  "id": "recette-per73-humain-guerrier",
+  "name": "Recette PER-73 — Humain (guerrier)",
+  "identity": {
+    "sex": "male",
+    "description": "Voie de l’humain 5/5. À vérifier : Diversité (origine CHOISIE → 2 domaines +3 + 1 PC), Instinct de survie (+2 DEF temporaire — INTERRUPTEUR ACTIF ; division des DM verbatim), Touche-à-tout (CHOIX capacité r1-2 tout profil), Loup parmi les loups ({1d4°} DM verbatim), Polyvalence (+1 VOL + CHOIX +1 carac la plus faible)."
+  },
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 20,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 1,
+    "CON": 2,
+    "FOR": 4,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 1,
+    "CON": 2,
+    "FOR": 3,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [
+    "FOR"
+  ],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "bouclier-r1",
+    "combat-r1",
+    "humain-r1",
+    "maitre-d-armes-r1",
+    "resistance-r1",
+    "soldat-r1",
+    "bouclier-r2",
+    "combat-r2",
+    "humain-r2",
+    "maitre-d-armes-r2",
+    "resistance-r2",
+    "bouclier-r3",
+    "combat-r3",
+    "humain-r3",
+    "maitre-d-armes-r3",
+    "resistance-r3",
+    "bouclier-r4",
+    "combat-r4",
+    "humain-r4",
+    "maitre-d-armes-r4",
+    "resistance-r4",
+    "bouclier-r5",
+    "combat-r5",
+    "humain-r5",
+    "maitre-d-armes-r5",
+    "resistance-r5"
+  ],
+  "featureChoices": {
+    "humain-r1": [
+      "highlander"
+    ],
+    "humain-r3": [
+      "air-r1"
+    ],
+    "humain-r5": [
+      "INT"
+    ]
+  },
+  "effectToggles": {
+    "humain-r2": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "bouclier-r1",
+        "combat-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "maitre-d-armes-r1",
+        "resistance-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "soldat-r1",
+        "bouclier-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "combat-r2",
+        "humain-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "maitre-d-armes-r2",
+        "resistance-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "bouclier-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "combat-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "humain-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "maitre-d-armes-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "resistance-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "bouclier-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "combat-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "humain-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "maitre-d-armes-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "resistance-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "bouclier-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "combat-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "humain-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "maitre-d-armes-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "resistance-r5"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-73 — perso de recette, voie de peuple « Voie de l’humain » poussée à 5/5. Profil Guerrier (4 voies au rang 5, 1 au rang 1). Choix des capacités de peuple auto-remplis ; choix des voies de profil laissés tels quels (hors périmètre).",
+  "createdAt": "2026-06-29T00:00:00.000Z",
+  "updatedAt": "2026-06-29T00:00:00.000Z"
+}

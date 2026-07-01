@@ -10,9 +10,10 @@ import { featureById, pathById, progression } from '@/data';
 import type { Die, Feature } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
 import { ClassIcon } from '@/components/ClassIcon';
+import { AncestryIcon } from '@/components/AncestryIcon';
 import { DieIcon } from '@/components/DieIcon';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
-import { classColor } from '@/lib/ui/classColors';
+import { ANCESTRY_COLOR, classColor } from '@/lib/ui/classColors';
 import { dieAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
 import { splitNotes } from '@/lib/ui/featureNotes';
 import { splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
@@ -78,12 +79,14 @@ export function CapabilityChip({
 }) {
   const feature = featureById.get(featureId);
   const path = feature ? pathById.get(feature.pathId) : undefined;
-  // Couleur = profil de la voie. Seules les voies de PROFIL (`type: 'class'`) portent
-  // `classIds` ; pour les autres (peuple, prestige), on retombe sur le repli neutre.
+  // Couleur + icône selon le TYPE de voie : profil (`class`) → teinte du profil + icône de profil ;
+  // peuple (`ancestry`) → teinte de peuple + icône de peuple (PER-73). Les voies de mage/prestige
+  // n'ont ni `classIds` ni icône dédiée → repli silencieux sur le texte brut.
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
+  const ancestryId = path?.type === 'ancestry' ? path.ancestryIds[0] : undefined;
   const text = label ?? feature?.name ?? featureId;
-  if (!feature || !classId) return <>{text}</>;
-  const color = classColor(classId);
+  if (!feature || (!classId && !ancestryId)) return <>{text}</>;
+  const color = classId ? classColor(classId) : ANCESTRY_COLOR;
   return (
     <Tooltip title={`${feature.name}${path ? ` — ${path.name}` : ''}`} arrow>
       <Box
@@ -109,7 +112,11 @@ export function CapabilityChip({
           ...(Array.isArray(sx) ? sx : [sx]),
         ]}
       >
-        <ClassIcon classId={classId} size={14} color="currentColor" />
+        {classId ? (
+          <ClassIcon classId={classId} size={14} color="currentColor" />
+        ) : (
+          <AncestryIcon ancestryId={ancestryId!} size={14} color="currentColor" />
+        )}
         {text}
       </Box>
     </Tooltip>

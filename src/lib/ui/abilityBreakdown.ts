@@ -15,6 +15,8 @@ export interface AbilityFeatureTerm {
   /** Nom de la capacité source (français). */
   name: string;
   value: number;
+  /** Id de la capacité source → puce de voie dans le détail (PER-73). */
+  featureId?: string;
 }
 
 /**
@@ -41,7 +43,9 @@ export function abilityBreakdown(
   });
 
   for (const ft of featureTerms) {
-    terms.push({ label: `Capacité (${ft.name})`, value: ft.value });
+    // Libellé = nom de la capacité ; la PROVENANCE (voie) est portée par la puce de voie
+    // (`CapabilityChip`) rendue sous le libellé quand `featureId` est présent (PER-73).
+    terms.push({ label: ft.name, value: ft.value, featureId: ft.featureId });
   }
 
   return { terms, total: sum(terms), page: 28 };

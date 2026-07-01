@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 10,
+  "id": "recette-per73-elfe-haut-ensorceleur",
+  "name": "Recette PER-73 — Elfe haut (ensorceleur)",
+  "identity": {
+    "sex": "male",
+    "description": "Voie de l’elfe haut 5/5. À vérifier : Lumière intérieure (érudition + art +3), Force d’âme (immunités Peur + Sommeil magique ; bonus = [#rang] situationnel verbatim), Talent pour la magie (CHOIX capacité magicien/ensorceleur r1-2), Immortel (immunité poison/maladie), Supériorité elfique (+1 VOL + CHOIX +1 INT/CHA)."
+  },
+  "ancestryId": "elfe-haut",
+  "classId": "ensorceleur",
+  "level": 20,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 1,
+    "CON": 1,
+    "FOR": -2,
+    "PER": 0,
+    "CHA": 4,
+    "INT": 2,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 1,
+    "CON": 1,
+    "FOR": -1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 1
+  },
+  "ancestryChoices": [
+    "CHA",
+    "FOR"
+  ],
+  "ancestryPathId": "elfe-haut",
+  "featureIds": [
+    "air-r1",
+    "divination-r1",
+    "elfe-haut-r1",
+    "envouteur-r1",
+    "illusions-r1",
+    "invocation-r1",
+    "air-r2",
+    "divination-r2",
+    "elfe-haut-r2",
+    "envouteur-r2",
+    "illusions-r2",
+    "air-r3",
+    "divination-r3",
+    "elfe-haut-r3",
+    "envouteur-r3",
+    "illusions-r3",
+    "air-r4",
+    "divination-r4",
+    "elfe-haut-r4",
+    "envouteur-r4",
+    "illusions-r4",
+    "air-r5",
+    "divination-r5",
+    "elfe-haut-r5",
+    "envouteur-r5",
+    "illusions-r5"
+  ],
+  "featureChoices": {
+    "elfe-haut-r3": [
+      "invocation-r2"
+    ],
+    "elfe-haut-r5": [
+      "INT"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "air-r1",
+        "divination-r1",
+        "elfe-haut-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "envouteur-r1",
+        "illusions-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "invocation-r1",
+        "air-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "divination-r2",
+        "elfe-haut-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "envouteur-r2",
+        "illusions-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "air-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "divination-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "elfe-haut-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "envouteur-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "illusions-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "air-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "divination-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "elfe-haut-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "envouteur-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "illusions-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "air-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "divination-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "elfe-haut-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "envouteur-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "illusions-r5"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-73 — perso de recette, voie de peuple « Voie de l’elfe haut » poussée à 5/5. Profil Ensorceleur (4 voies au rang 5, 1 au rang 1). Choix des capacités de peuple auto-remplis ; choix des voies de profil laissés tels quels (hors périmètre).",
+  "createdAt": "2026-06-29T00:00:00.000Z",
+  "updatedAt": "2026-06-29T00:00:00.000Z"
+}

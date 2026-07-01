@@ -4,6 +4,8 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import type { StatBreakdown } from '@/lib/ui/derivedStatBreakdown';
+import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { featureOrigin } from '@/lib/ui/featureOrigin';
 
 export interface BreakdownContentProps {
   /** Titre affiché en tête (nom de la stat ou de la caractéristique). */
@@ -39,6 +41,22 @@ export function BreakdownContent({ title, breakdown }: BreakdownContentProps) {
             <span>{t.label}</span>
             <span style={{ fontWeight: 600 }}>{signed(t.value)}</span>
           </Box>
+          {/* Provenance du terme : puce de voie (couleur + icône + rang) quand le terme est
+              porté par une capacité (ex. « Colosse » → Voie du demi-orc), PER-73. La puce est
+              petite dans un tooltip → fond plus marqué + texte agrandi (même surcharge que les
+              badges de stats dérivées). */}
+          {t.featureId && (() => {
+            const origin = featureOrigin(t.featureId);
+            return origin ? (
+              <Box sx={{ mt: 0.25, mb: 0.25, fontSize: '0.8em' }}>
+                <CapabilityChip
+                  featureId={t.featureId}
+                  label={`${origin.pathName} · rang ${origin.rank}`}
+                  sx={{ bgcolor: 'rgba(255, 255, 255, 0.78)', fontSize: 'calc(0.95em + 2px)' }}
+                />
+              </Box>
+            ) : null;
+          })()}
           {/* Sous-détail (ex. inventaire des capacités composant « Capacités /
               divers ») : plus petit, en retrait et en gris. */}
           {t.subTerms?.map((s, j) => (

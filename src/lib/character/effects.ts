@@ -34,7 +34,7 @@ import type {
 } from '@/data/schema';
 import { ABILITY_IDS, IMMUNITY_LABELS } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
-import { effectiveFeatureIdsForMods } from './choices';
+import { borrowedHostPathByFeatureId, effectiveFeatureIdsForMods } from './choices';
 import type { Character, FeatureChoiceSelection } from './types';
 
 /**
@@ -60,6 +60,13 @@ export interface EffectContext {
    * absent → aucun choix pris en compte (appels « catalogue seul »).
    */
   featureChoices?: Record<string, FeatureChoiceSelection[]>;
+  /**
+   * Mapping `id de capacité EMPRUNTÉE → pathId de la VOIE A` qui l'a fait emprunter (cf.
+   * `borrowedHostPathByFeatureId`). Sert à résoudre le `rang`/les paliers `by: 'path-rank'` d'une
+   * capacité empruntée contre la voie A (encadré « Appel à une autre capacité ») et non contre sa
+   * voie d'origine, que le personnage ne possède pas. Absent → chaque capacité utilise sa propre voie.
+   */
+  borrowedHostPaths?: Map<string, string>;
 }
 
 /**
@@ -94,6 +101,7 @@ export function effectContext(character: Character): EffectContext {
     abilities: effectiveAbilities(character),
     toggles: character.effectToggles,
     featureChoices: character.featureChoices,
+    borrowedHostPaths: borrowedHostPathByFeatureId(character),
   };
 }
 
@@ -252,8 +260,11 @@ export function modsFromFeatures(featureIds: string[], ctx?: EffectContext): Der
   for (const id of featureIds) {
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
+    // Capacité empruntée : son `rang`/ses paliers `by: 'path-rank'` se résolvent contre la VOIE A
+    // (encadré « Appel à une autre capacité »), pas contre sa voie d'origine absente du personnage.
+    const rankPathId = ctx?.borrowedHostPaths?.get(id) ?? feature.pathId;
     feature.effects.forEach((effect, i) => {
-      for (const c of effectContributions(effect, id, feature.pathId, i, pathRanks, ctx)) {
+      for (const c of effectContributions(effect, id, rankPathId, i, pathRanks, ctx)) {
         mods[c.stat] = (mods[c.stat] ?? 0) + c.value;
       }
     });
@@ -969,6 +980,20 @@ export interface TestDomainSource {
 }
 
 /** Bonus de compétence total d'un domaine pour un personnage, après cumul. */
+/**
+ * Contribution à un domaine qui NE compte PAS dans le total (PER-73) : battue par une autre source
+ * de la même catégorie (règle du livre « max par catégorie », p. 203 — deux bonus de profil ne se
+ * cumulent pas). Conservée pour l'affichage (barrée + « ne se cumule pas avec … ») afin que le
+ * joueur voie qu'elle est prise en compte mais dominée. Cas typique : une capacité EMPRUNTÉE dont
+ * le bonus est égalé/dépassé par une vraie capacité de voie de profil.
+ */
+export interface DominatedTestSource {
+  /** La contribution dominée (capacité + valeur résolue). */
+  source: TestDomainSource;
+  /** La source RETENUE qui la domine (même catégorie, valeur ≥). */
+  dominatedBy: TestDomainSource;
+}
+
 export interface TestDomainBonus {
   /** Id du domaine (cf. `src/data/test-domains.ts`). */
   domain: string;
@@ -978,6 +1003,8 @@ export interface TestDomainBonus {
   capped: boolean;
   /** Contribution retenue par catégorie (le max de chacune), pour le détail. */
   sources: TestDomainSource[];
+  /** Contributions DOMINÉES (non comptées car battues dans leur catégorie), pour l'affichage barré. */
+  dominated?: DominatedTestSource[];
 }
 
 /** Une contribution BRUTE (avant cumul) à un domaine. */
@@ -1000,7 +1027,12 @@ function rawTestContributions(featureIds: string[], ctx?: EffectContext): RawTes
     if (!feature) continue;
     const category = competenceCategoryOf(feature.pathId);
     if (!category) continue;
-    const pathRank = pathRanks[feature.pathId] ?? feature.rank;
+    // Capacité empruntée (« Appel à une autre capacité ») : le rang qui pilote la valeur du bonus
+    // (formule 2 + rang) est celui de la VOIE A qui l'a fait emprunter, pas sa voie d'origine. La
+    // CATÉGORIE de cumul, elle, reste celle de la voie d'origine de la capacité (profil → ne se
+    // cumule donc pas avec les autres bonus de profil ; max par catégorie, p. 203).
+    const rankPathId = ctx?.borrowedHostPaths?.get(id) ?? feature.pathId;
+    const pathRank = pathRanks[rankPathId] ?? feature.rank;
     const fallback = defaultCompetenceValue(category, pathRank);
 
     // (a) effets `test-bonus` statiques (barbare, chevalier, mages…).
@@ -1141,11 +1173,27 @@ export function testBonusSources(featureIds: string[], ctx?: EffectContext): Tes
       nonAncestry = otherNonAncestry;
     }
     const rawTotal = (ancestryW?.value ?? 0) + nonAncestry;
+    // Contributions DOMINÉES (PER-73) : celles qui n'ont pas été retenues (battues dans leur
+    // catégorie, ou catégorie remplacée par Éclectique). Conservées pour l'affichage barré, avec la
+    // source qui les domine (même catégorie si retenue, sinon la source de profil retenue — Éclectique).
+    const keptByCat = new Map<CompetenceCategory, TestDomainSource>(sources.map((s) => [s.category, s]));
+    const keptIds = new Set(sources.map((s) => s.featureId));
+    const dominated: DominatedTestSource[] = [];
+    for (const c of contribs) {
+      if (keptIds.has(c.featureId)) continue;
+      const dominatedBy = keptByCat.get(c.category) ?? keptByCat.get('class');
+      if (!dominatedBy) continue;
+      dominated.push({
+        source: { featureId: c.featureId, name: c.name, category: c.category, value: c.value },
+        dominatedBy,
+      });
+    }
     result.push({
       domain,
       total: Math.min(rawTotal, COMPETENCE_BONUS_CAP),
       capped: rawTotal > COMPETENCE_BONUS_CAP,
       sources,
+      ...(dominated.length ? { dominated } : {}),
     });
   }
   return result;
@@ -1211,9 +1259,12 @@ export function damageReductionSources(character: Character): DamageReductionSou
   const pathRanks = pathRanksFromFeatures(character.featureIds);
   const ctx = effectContext(character);
   const out: DamageReductionSource[] = [];
-  for (const id of character.featureIds) {
+  // Capacités acquises ET empruntées : une capacité empruntée fonctionne comme une capacité normale,
+  // sa RD comprise (PER-73). Son rang se résout sur la VOIE A (cf. `borrowedHostPaths`).
+  for (const id of effectiveFeatureIdsForMods(character)) {
     const feature = featureById.get(id);
     if (!feature?.damageReduction) continue;
+    const rankPathId = ctx.borrowedHostPaths?.get(id) ?? feature.pathId;
     const conditionalIndexes = (feature.effects ?? [])
       .map((e, i) => (e.kind === 'conditional-stat-bonus' ? i : -1))
       .filter((i) => i >= 0);
@@ -1224,7 +1275,7 @@ export function damageReductionSources(character: Character): DamageReductionSou
     if (!active) continue;
     // Une capacité peut porter PLUSIEURS entrées de RD (tableau, PER-137).
     const entries = Array.isArray(feature.damageReduction) ? feature.damageReduction : [feature.damageReduction];
-    const rank = pathRanks[feature.pathId] ?? 0;
+    const rank = pathRanks[rankPathId] ?? 0;
     for (const dr of entries) {
       // Gating par RANG de voie (ex. Invulnérable : ÷2 poison/maladie ≤ r4, immunité ≥ r5).
       if (dr.minPathRank !== undefined && rank < dr.minPathRank) continue;
@@ -1241,7 +1292,7 @@ export function damageReductionSources(character: Character): DamageReductionSou
       // au rang 7) pour l'affichage. Une constante est rendue telle quelle ; le plafond d'absorption
       // éventuel reste verbatim (non affiché dans la puce).
       const value =
-        dr.value === undefined ? undefined : (resolveValue(dr.value, feature.pathId, pathRanks, ctx) ?? dr.value);
+        dr.value === undefined ? undefined : (resolveValue(dr.value, rankPathId, pathRanks, ctx) ?? dr.value);
       out.push({ featureId: id, name: feature.name, reduction: { ...dr, value, scopes } });
     }
   }
@@ -1332,7 +1383,9 @@ export function criticalRangeSources(character: Character): CriticalRangeSource[
   const pathRanks = pathRanksFromFeatures(character.featureIds);
   const ctx = effectContext(character);
   const out: CriticalRangeSource[] = [];
-  for (const id of character.featureIds) {
+  // Capacités acquises ET empruntées : une capacité empruntée fonctionne comme une capacité normale,
+  // sa plage de critique comprise (PER-73). Son rang se résout sur la VOIE A (cf. `borrowedHostPaths`).
+  for (const id of effectiveFeatureIdsForMods(character)) {
     const feature = featureById.get(id);
     if (!feature?.criticalRange) continue;
     const conditionalIndexes = (feature.effects ?? [])
@@ -1341,7 +1394,8 @@ export function criticalRangeSources(character: Character): CriticalRangeSource[
     const active =
       conditionalIndexes.length === 0 || conditionalIndexes.some((i) => isEffectActive(character, id, i));
     if (!active) continue;
-    const value = resolveValue(feature.criticalRange.value, feature.pathId, pathRanks, ctx);
+    const rankPathId = ctx.borrowedHostPaths?.get(id) ?? feature.pathId;
+    const value = resolveValue(feature.criticalRange.value, rankPathId, pathRanks, ctx);
     if (value === null || value <= 0) continue;
     out.push({ featureId: id, name: feature.name, scope: feature.criticalRange.scope, value });
   }

@@ -125,6 +125,17 @@ export const testDomains: TestDomain[] = [
   // détection de pièges (Aux aguets, roublard-r2, p. 76) : repérer un piège (même
   // magique) → PER. Le DÉSAMORÇAGE est manuel (`disarm-traps`, AGI, roublard-r1).
   { id: 'trap-detection', label: 'Détection de pièges', abilities: ['PER'], sourcePage: 76 },
+  // passages secrets et pièges dans la pierre (Habitant des tunnels, nain, nain-r1, p. 59) :
+  // « passages secrets et (…) pièges dans les murs et les parois rocheuses » → détection en
+  // contexte STONE, distincte de la fouille générique (`searching`) et de la détection de
+  // pièges générique (`trap-detection`) qui s'appliqueraient hors pierre. PER (observation).
+  {
+    id: 'stone-secrets',
+    label: 'Passages secrets et pièges dans la pierre',
+    abilities: ['PER'],
+    sourcePage: 59,
+    description: 'Repérer les passages secrets et les pièges dans les murs et les parois rocheuses (Habitant des tunnels, voie du nain).',
+  },
 
   // --- INT — exemples p. 202 + savoirs/artisanats (mages) --------------------
   { id: 'knowledge', label: 'Connaissances', abilities: ['INT'], sourcePage: 202 },
@@ -194,6 +205,24 @@ export const testDomains: TestDomain[] = [
     sourcePage: 88,
     description: 'Estimer la valeur d’une arme ou jauger la réputation martiale d’un adversaire (Armes de prédilection, voie du maître d’armes).',
   },
+  // --- INT — savoirs des voies de peuple (PER-73) ----------------------------
+  // érudition (Lumière intérieure, elfe haut, elfe-haut-r1, p. 50) : le livre annote
+  // explicitement « tests d'érudition (INT) » → savoir livresque, INT. Distinct de
+  // `knowledge` (connaissances générales) et de `occult-lore` (érudition occulte).
+  { id: 'erudition', label: 'Érudition', abilities: ['INT'], sourcePage: 50 },
+  // maçonnerie (Habitant des tunnels, nain, nain-r1, p. 59) : « tests en rapport avec la
+  // pierre, l'architecture » → savoir de la pierre et des constructions.
+  // TODO(extraction) : INT (savoir des constructions) ou PER (œil du tailleur de pierre) ? À valider.
+  {
+    id: 'masonry',
+    label: 'Maçonnerie',
+    abilities: ['INT'],
+    sourcePage: 59,
+    description: 'La pierre et l’architecture (constructions, fortifications, ouvrages).',
+  },
+  // mines (Habitant des tunnels, nain-r1, p. 59) : « tests en rapport avec (…) les mines ».
+  // TODO(extraction) : INT (savoir minier) ou PER (lecture du filon) ? À valider.
+  { id: 'mining', label: 'Mines', abilities: ['INT'], sourcePage: 59 },
 
   // --- CHA — exemples p. 202 + social (mages) --------------------------------
   { id: 'art', label: 'Art', abilities: ['CHA'], sourcePage: 202 },

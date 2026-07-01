@@ -20,6 +20,7 @@ import {
 } from '@/lib/character/effects';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DieIcon } from '@/components/DieIcon';
@@ -241,6 +242,23 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                             <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
                               {COMPETENCE_CATEGORY_LABEL[s.category]} — {s.name} : {signed(s.value)}
                             </Typography>
+                          ))}
+                          {/* Sources DOMINÉES (PER-73) : prises en compte mais battues dans leur catégorie
+                              (max par catégorie, p. 203) → affichées BARRÉES + la capacité qui les domine
+                              (puce de voie). Ex. une capacité empruntée égalée par une vraie voie de profil. */}
+                          {bonus?.dominated?.map((dom) => (
+                            <Box key={`dom-${dom.source.featureId}`} sx={{ mt: 0.25 }}>
+                              <Typography
+                                variant="caption"
+                                sx={{ display: 'block', textDecoration: 'line-through', color: 'text.disabled' }}
+                              >
+                                {COMPETENCE_CATEGORY_LABEL[dom.source.category]} — {dom.source.name} : {signed(dom.source.value)}
+                              </Typography>
+                              <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', color: 'text.secondary' }}>
+                                Ne se cumule pas avec{' '}
+                                <CapabilityChip featureId={dom.dominatedBy.featureId} label={null} />
+                              </Typography>
+                            </Box>
                           ))}
                           {bonus?.capped && (
                             <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic' }}>
