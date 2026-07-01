@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 10,
+  "id": "recette-borrowed-demo-elfe-haut-barde",
+  "name": "Recette — Capacités empruntées (elfe haut · barde hybride)",
+  "identity": {
+    "sex": "female",
+    "description": "Vérification de l'affichage des CAPACITÉS EMPRUNTÉES. 3 emprunts (maximum légal) : elfe-haut-r3 → Projectile de mana (magicien, SORT (A), 1 PM) ; noblesse-r5 → Chant des héros (barde, SORT (L), 1 PM) ; mercenaire-r3 → Attaque à suivre (rôdeur, NON-SORT (G), pas de PM). Activez « Concentration accrue » : le Projectile de mana (A) passe en (L) et coûte 2 PM de moins (1→0, plancher 0) ; le Chant des héros (L) reste inchangé (la concentration ne joue que sur les sorts en (A)) ; l’Attaque à suivre (non-sort) ne montre pas de goutte de PM."
+  },
+  "ancestryId": "elfe-haut",
+  "classId": "barde",
+  "level": 12,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 2,
+    "CON": 1,
+    "FOR": -1,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 4,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 2,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 3,
+    "VOL": 1
+  },
+  "ancestryChoices": [
+    "INT",
+    "FOR"
+  ],
+  "ancestryPathId": "elfe-haut",
+  "featureIds": [
+    "escrime-r1",
+    "seduction-r1",
+    "elfe-haut-r1",
+    "mercenaire-r1",
+    "noblesse-r1",
+    "elfe-haut-r2",
+    "escrime-r2",
+    "mercenaire-r2",
+    "noblesse-r2",
+    "seduction-r2",
+    "elfe-haut-r3",
+    "escrime-r3",
+    "mercenaire-r3",
+    "noblesse-r3",
+    "seduction-r3",
+    "noblesse-r4",
+    "noblesse-r5"
+  ],
+  "featureChoices": {
+    "elfe-haut-r3": [
+      "magie-des-arcanes-r1"
+    ],
+    "mercenaire-r3": [
+      "combat-a-deux-armes-r1"
+    ],
+    "noblesse-r5": [
+      "musicien-r1",
+      "CHA"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "escrime-r1",
+        "seduction-r1",
+        "elfe-haut-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "mercenaire-r1",
+        "noblesse-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "elfe-haut-r2",
+        "escrime-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "mercenaire-r2",
+        "noblesse-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "seduction-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "elfe-haut-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "escrime-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "mercenaire-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "noblesse-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "seduction-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "noblesse-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "noblesse-r5"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "Perso de recette pour les CAPACITÉS EMPRUNTÉES (affichage enrichi : marqueurs (A)/(L)/(G), astérisque de sort, goutte de coût en PM, concentration). Build hybride volontaire : elfe haut, profil principal barde (voies escrime + séduction), hybridé guerrier (voie de noblesse) et arquebusier (voie de mercenaire). 3 emprunts = maximum légal : le 4e emprunt possible (voie de l'expert, prestige-expert-r4) est écarté car la voie de l'expert est interdite aux hybrides multi-familles (p. 129) et les voies de prestige ne sont pas encore intégrées. Emprunts calés sur des cibles variées (sort (A), sort (L), capacité non-sort). Les choix non-emprunt sont auto-remplis.",
+  "createdAt": "2026-07-01T00:00:00.000Z",
+  "updatedAt": "2026-07-01T00:00:00.000Z"
+}

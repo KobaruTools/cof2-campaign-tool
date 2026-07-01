@@ -363,6 +363,7 @@ function BorrowedFeatureBlock({
   abilities,
   level,
   hostPathRank,
+  concentration = false,
   dominatedTestBonuses = [],
 }: {
   feature: Feature;
@@ -374,6 +375,12 @@ function BorrowedFeatureBlock({
    * sur son rang d'origine. Ex. bouclier-r1 emprunté via la voie de peuple à 5/5 → `[rang + 2]` = 7.
    */
   hostPathRank?: number;
+  /**
+   * Concentration accrue active (état de jeu, p. 228) : propagée aux marqueurs et à la goutte de PM
+   * de la capacité empruntée, exactement comme une capacité native — un sort emprunté lancé en (A)
+   * passe en (L) et voit son coût réduit de 2 PM.
+   */
+  concentration?: boolean;
   /**
    * Bonus de test de cette capacité empruntée qui sont DOMINÉS (ne se cumulent pas, p. 203) : rendus
    * barrés + la capacité qui les domine (PER-73). Vide = rien à signaler.
@@ -415,13 +422,43 @@ function BorrowedFeatureBlock({
           ''
         )}
       </Typography>
-      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-        <FeatureLabel feature={feature} />
-      </Typography>
+      {/* Ligne « nom + marqueurs d'action + coût en PM » : une capacité empruntée porte EXACTEMENT
+          les mêmes marqueurs qu'une capacité native. Le nom est rendu nu (les marqueurs
+          textuels de `FeatureLabel` feraient doublon avec les hexagones). */}
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          {feature.name}
+        </Typography>
+        {/* Hexagones : * (sort), A/L/G/M (types d'action). Les types conditionnels au rang
+            (`actionTypesFromRank`) se résolvent sur la VOIE A (rang hôte, p. 41). */}
+        <FeatureMarkerHexes
+          feature={feature}
+          color={color}
+          concentration={concentration}
+          pathRank={hostPathRank ?? feature.rank}
+        />
+        {/* Goutte de coût en PM : « toujours calculé à partir du rang HABITUEL du sort » (p. 41) —
+            c.-à-d. le rang d'origine du sort emprunté, pas le rang atteint dans la voie A. Ne rend
+            rien pour une capacité empruntée qui n'est pas un sort. */}
+        <SpellManaBadge feature={feature} concentration={concentration} color={color} size={26} />
+      </Stack>
       <Box sx={{ mt: 0.25 }}>
         {/* `rang` résolu sur la VOIE A (rang hôte), pas sur le rang d'origine de la capacité empruntée. */}
         <FeatureText feature={feature} abilities={abilities} level={level} pathRank={hostPathRank ?? feature.rank} />
       </Box>
+      {/* Rappel des règles propres à un SORT emprunté (encadré « Appel à une autre capacité », p. 41) :
+          coût en PM au rang habituel du sort, caractéristique de magie du profil d'origine (déjà reflétée
+          par les formules ci-dessus, qui citent la carac d'origine), et +1 PM gagné au réservoir. */}
+      {feature.isSpell && (
+        <Typography
+          variant="caption"
+          component="div"
+          sx={{ mt: 0.75, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
+        >
+          Sort emprunté : coût en PM égal au rang habituel du sort ; lancé avec la caractéristique de
+          magie de son profil d’origine ; il rapporte +1 PM au réservoir (p. 41).
+        </Typography>
+      )}
       {/* Bonus de test DOMINÉ (ne se cumule pas, p. 203) : barré + la capacité qui le domine, pour
           que le joueur voie qu'il est pris en compte mais sans effet ici (PER-73). */}
       {dominatedTestBonuses.map((dom) => {
@@ -1380,18 +1417,21 @@ function PathBlock({
               ...(disabledSx(feature) ?? {}),
             }}
           >
-            {/* Marqueurs hexagonaux centrés sur la ligne du haut du bloc. */}
+            {/* Marqueurs hexagonaux centrés sur la ligne du haut du bloc. Sur une carte d'emprunt
+                ils décrivent la capacité EMPRUNTÉE (l'hôte, ex. Talent pour la magie, n'a
+                ni astérisque ni type d'action) — teintés de la couleur de la voie source. */}
             <FeatureMarkerHexes
-              feature={feature}
-              color={markerColor}
+              feature={borrowed ?? feature}
+              color={borrowed ? (borrowedColor ?? markerColor) : markerColor}
               concentration={concentration}
               pathRank={pathRank}
               sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
             />
+            {/* Goutte de coût en PM : celle du sort EMPRUNTÉ le cas échéant (coût = son rang habituel, p. 41). */}
             <SpellManaBadge
-              feature={feature}
+              feature={borrowed ?? feature}
               concentration={concentration}
-              color={color ?? undefined}
+              color={(borrowed ? borrowedColor : color) ?? undefined}
               sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
             />
             {manualFeatureIds?.has(feature.id) && <ManualPin />}
@@ -1737,6 +1777,7 @@ function PathBlock({
                         abilities={abilities}
                         level={level}
                         hostPathRank={pathRank}
+                        concentration={concentration}
                         dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                       />
                     </Box>
@@ -1959,6 +2000,7 @@ function PathBlock({
                       abilities={abilities}
                       level={level}
                       hostPathRank={pathRank}
+                      concentration={concentration}
                       dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                     />
                   </Box>
