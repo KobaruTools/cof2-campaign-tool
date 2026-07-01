@@ -381,6 +381,48 @@ describe('choix `option` répétable (Golem supérieur)', () => {
   });
 });
 
+// Choix PROPRE d'une capacité EMPRUNTÉE : un elfe sylvain hybride druide/rôdeur emprunte
+// « Langage des animaux » (animaux-r1) via Enfant de la forêt (elfe-sylvain-r2). Le choix
+// répétable « catégorie d'animaux » de la capacité empruntée doit se débloquer et devenir dû
+// dès qu'une VRAIE voie de druide atteint le rang 4 chez l'hybride — au même titre qu'un choix natif.
+describe('choix propre d’une capacité empruntée (animaux-r1 via elfe-sylvain-r2)', () => {
+  // Voie de peuple (r1-r2, r2 emprunte animaux-r1) + une voie de druide (nature) poussée au rang 4.
+  const hybrid = (over: Partial<Character> = {}) =>
+    makeCharacter({
+      classId: 'druide',
+      ancestryId: 'elfe-sylvain',
+      ancestryPathId: 'elfe-sylvain',
+      featureIds: ['elfe-sylvain-r1', 'elfe-sylvain-r2', 'nature-r1', 'nature-r2', 'nature-r3', 'nature-r4'],
+      featureChoices: { 'elfe-sylvain-r2': ['animaux-r1'] },
+      ...over,
+    });
+
+  it('la capacité empruntée est bien reconnue', () => {
+    expect(borrowedFeatureIds(hybrid())).toContain('animaux-r1');
+  });
+
+  it('son choix de catégorie devient actionnable et « à faire » grâce au rang 4 de druide de l’hybride', () => {
+    const c = hybrid();
+    expect(hasActionableChoice(c, 'animaux-r1')).toBe(true);
+    // La capacité EMPRUNTÉE figure dans les choix à faire, comme une native.
+    expect(featuresWithUnmadeChoices(c)).toContain('animaux-r1');
+  });
+
+  it('une fois une catégorie retenue, l’emprunt ne figure plus dans les choix à faire', () => {
+    const c = hybrid({
+      featureChoices: { 'elfe-sylvain-r2': ['animaux-r1'], 'animaux-r1': [['birds']] },
+    });
+    expect(featuresWithUnmadeChoices(c)).not.toContain('animaux-r1');
+  });
+
+  it('un rôdeur pur (aucune voie de druide au rang 4) n’a pas ce choix', () => {
+    const c = hybrid({ featureIds: ['elfe-sylvain-r1', 'elfe-sylvain-r2'] });
+    expect(borrowedFeatureIds(c)).toContain('animaux-r1');
+    expect(hasActionableChoice(c, 'animaux-r1')).toBe(false);
+    expect(featuresWithUnmadeChoices(c)).not.toContain('animaux-r1');
+  });
+});
+
 describe('Armes de prédilection consolidée (maitre-d-armes-r1) : base + jalons débloqués par Spécialisation', () => {
   // Guerrier rang 5 dans les 5 voies (donc r3 acquise) → budget = base 1 + 5 jalons = 6.
   const guerrier = (over: Partial<Character> = {}) =>

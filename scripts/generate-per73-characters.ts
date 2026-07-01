@@ -52,6 +52,24 @@ interface PeupleConfig {
   /** Interrupteurs d'effets conditionnels de la voie de peuple à activer pour la recette. */
   activeToggles?: Record<string, boolean[]>;
   /**
+   * Voies de PROFIL ciblées (voie + rang max), en remplacement de la sélection par défaut
+   * (les 4 premières voies du profil au rang 5 + la 5e au rang 1). Permet un HYBRIDE (voie
+   * d'un autre profil, p. 180) ou une composition sur mesure. Défaut = comportement d'origine.
+   */
+  profilePaths?: { pathId: string; maxRank: number }[];
+  /**
+   * Deux voies du PROFIL PRINCIPAL acquises gratuitement à la création (rang 1). Défaut = les
+   * deux premières voies du profil. À préciser quand `profilePaths` inclut des voies hybrides
+   * (la création ne donne que des voies du profil principal ; l'hybridation vient aux montées).
+   */
+  freePathIds?: [string, string];
+  /**
+   * Sélections de choix FORCÉES (par id de capacité), appliquées APRÈS l'auto-remplissage.
+   * Ex. forcer l'emprunt d'Enfant de la forêt (elfe-sylvain-r2) sur `animaux-r1` plutôt que sur
+   * le premier éligible, pour recetter le choix propre de la capacité empruntée.
+   */
+  forcedFeatureChoices?: Record<string, (string | null)[]>;
+  /**
    * VOIE DU MAGE (p. 60) : la voie de peuple est remplacée par la voie du mage, mais la capacité de
    * rang 1 de la voie de peuple est CONSERVÉE (gratuite, acquise à la création). Son id est posé ici ;
    * il s'ajoute aux capacités gratuites de niveau 1 et reste affiché au rang 1 de la voie du mage.
@@ -97,6 +115,29 @@ const CONFIGS: PeupleConfig[] = [
     baseAbilities: b(3, 1, -1, 2, 0, 0, 1),
     ancestryChoices: ['AGI', 'FOR'],
     activeToggles: { 'elfe-sylvain-r3': [true] },
+  },
+  {
+    file: 'recette-per73-elfe-sylvain-rodeur-druide.json',
+    name: 'Recette PER-73 — Elfe sylvain (hybride rôdeur/druide) — emprunt animaux-r1',
+    description:
+      'Hybride rôdeur/druide (voie de druide « Nature » au rang 5, la voie « Animaux » N’est PAS possédée). Enfant de la forêt (elfe-sylvain-r2) emprunte « Langage des animaux » (animaux-r1, druide). À VÉRIFIER : la capacité empruntée porte SON PROPRE choix « catégorie d’animaux », débloqué par le rang 4 de la voie de druide — il apparaît (affichage + éditeur) dans la carte ✦ Capacité empruntée, à « Choix à faire » tant qu’aucune catégorie n’est retenue.',
+    ancestryId: 'elfe-sylvain',
+    ancestryPathId: 'elfe-sylvain',
+    classId: 'rodeur',
+    baseAbilities: b(3, 1, -1, 2, 0, 0, 1),
+    ancestryChoices: ['AGI', 'FOR'],
+    activeToggles: { 'elfe-sylvain-r3': [true] },
+    // 3 voies de rôdeur au rang 5 + la voie de druide « Nature » au rang 5 (hybride → rang 4 atteint)
+    // + une 5e voie de rôdeur au rang 1. « Combat à deux armes » reste vierge (rend l’hybride légal).
+    profilePaths: [
+      { pathId: 'archer', maxRank: 5 },
+      { pathId: 'survie', maxRank: 5 },
+      { pathId: 'traqueur', maxRank: 5 },
+      { pathId: 'nature', maxRank: 5 },
+      { pathId: 'compagnon-animal', maxRank: 1 },
+    ],
+    freePathIds: ['archer', 'survie'],
+    forcedFeatureChoices: { 'elfe-sylvain-r2': ['animaux-r1'] },
   },
   {
     file: 'recette-per73-gnome-magicien.json',
@@ -192,25 +233,32 @@ for (const cfg of CONFIGS) {
     abilities[chosen] += mod.value;
   });
 
-  // Capacités gratuites de création : 2 voies de profil au rang 1 + rang 1 de la voie de peuple
-  // (ou de la voie du mage) + éventuellement le rang 1 de peuple CONSERVÉ (voie du mage, p. 60).
+  // Voies de profil ciblées : sur mesure (`profilePaths`, ex. hybride) ou par défaut
+  // (4 premières voies du profil au rang 5 + la 5e au rang 1).
+  const profilePaths = cfg.profilePaths ?? [
+    { pathId: classPaths[0], maxRank: 5 },
+    { pathId: classPaths[1], maxRank: 5 },
+    { pathId: classPaths[2], maxRank: 5 },
+    { pathId: classPaths[3], maxRank: 5 },
+    { pathId: classPaths[4], maxRank: 1 },
+  ];
+  const freePathIds = cfg.freePathIds ?? [classPaths[0], classPaths[1]];
+
+  // Capacités gratuites de création : 2 voies du profil PRINCIPAL au rang 1 + rang 1 de la voie
+  // de peuple (ou du mage) + éventuellement le rang 1 de peuple CONSERVÉ (voie du mage, p. 60).
   const freeIds = [
-    featureAtRank(classPaths[0], 1),
-    featureAtRank(classPaths[1], 1),
+    featureAtRank(freePathIds[0], 1),
+    featureAtRank(freePathIds[1], 1),
     featureAtRank(cfg.ancestryPathId, 1),
     ...(cfg.keptAncestryFeatureId ? [cfg.keptAncestryFeatureId] : []),
   ];
 
-  // Cible : voie de peuple (ou du mage) 5/5 + 4 voies de profil 5/5 + 1 voie de profil au rang 1
-  // (+ le rang 1 de peuple conservé, gratuit, pour la voie du mage).
+  // Cible : voie de peuple (ou du mage) 5/5 (+ rang 1 de peuple conservé pour la voie du mage)
+  // + les voies de profil ciblées (hybride possible).
   const targetFeatureIds = [
     ...featuresUpToRank(cfg.ancestryPathId, 5),
     ...(cfg.keptAncestryFeatureId ? [cfg.keptAncestryFeatureId] : []),
-    ...featuresUpToRank(classPaths[0], 5),
-    ...featuresUpToRank(classPaths[1], 5),
-    ...featuresUpToRank(classPaths[2], 5),
-    ...featuresUpToRank(classPaths[3], 5),
-    ...featuresUpToRank(classPaths[4], 1),
+    ...profilePaths.flatMap((p) => featuresUpToRank(p.pathId, p.maxRank)),
   ];
 
   const base: Character = {
@@ -259,6 +307,11 @@ for (const cfg of CONFIGS) {
       // option : première option (les choix de peuple ici ne sont pas répétables).
       return choice.options[0]?.id ?? null;
     });
+    featureChoices[fid] = sel;
+  }
+
+  // Choix forcés (priment sur l'auto-remplissage) : ex. emprunt d'Enfant de la forêt → animaux-r1.
+  for (const [fid, sel] of Object.entries(cfg.forcedFeatureChoices ?? {})) {
     featureChoices[fid] = sel;
   }
 

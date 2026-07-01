@@ -50,7 +50,7 @@ import {
   PRIEST_CLASS_ID,
   type WizardDraft,
 } from '@/lib/character/wizard';
-import { hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
+import { borrowedFeatureIds, hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { initialEquipment } from './helpers';
@@ -756,8 +756,13 @@ export function PathsStep({ draft, patch }: StepProps) {
   // `materializeDraft` fournit le personnage de travail pour résoudre les
   // domaines et lire/écrire les choix retenus (`draft.featureChoices`).
   const choicePreview = ancestry ? materializeDraft(draft, ancestry, draft.createdAt) : null;
+  // Capacités natives ET empruntées (`feature-from-path`) : un emprunt porte ses propres choix
+  // (cf. `featuresWithUnmadeChoices`), qui doivent être proposés ici dès qu'ils sont actionnables
+  // pour que la barrière de création ne bloque jamais sans éditeur correspondant.
   const level1WithChoices = choicePreview
-    ? choicePreview.featureIds.filter((id) => hasActionableChoice(choicePreview, id))
+    ? [...new Set([...choicePreview.featureIds, ...borrowedFeatureIds(choicePreview)])].filter((id) =>
+        hasActionableChoice(choicePreview, id),
+      )
     : [];
 
   const togglePath = (pathId: string) => {

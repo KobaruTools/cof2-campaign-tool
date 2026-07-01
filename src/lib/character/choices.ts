@@ -501,9 +501,13 @@ export function hasUnmadeChoice(character: Character, featureId: string): boolea
 }
 
 /**
- * Ids des capacités acquises dont au moins un choix reste à faire — utile pour
- * un avertissement de conformité (fiche) ou pour bloquer une étape (wizard).
+ * Ids des capacités dont au moins un choix reste à faire — utile pour un avertissement de
+ * conformité (fiche) ou pour bloquer une étape (wizard). Inclut les capacités EMPRUNTÉES
+ * (`feature-from-path`) : une capacité empruntée porte ses propres choix (ex. la catégorie
+ * d'animaux de « Langage des animaux » débloquée par un rang 4 de druide chez un hybride),
+ * qui deviennent dus au même titre qu'un choix natif dès qu'ils sont actionnables.
  */
 export function featuresWithUnmadeChoices(character: Character): string[] {
-  return character.featureIds.filter((id) => hasUnmadeChoice(character, id));
+  const ids = [...new Set([...character.featureIds, ...borrowedFeatureIds(character)])];
+  return ids.filter((id) => hasUnmadeChoice(character, id));
 }

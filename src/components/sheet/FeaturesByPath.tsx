@@ -33,7 +33,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
 import type { AbilityId, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
@@ -365,6 +365,7 @@ function BorrowedFeatureBlock({
   hostPathRank,
   concentration = false,
   dominatedTestBonuses = [],
+  footer,
 }: {
   feature: Feature;
   abilities?: Abilities;
@@ -386,6 +387,13 @@ function BorrowedFeatureBlock({
    * barrés + la capacité qui les domine (PER-73). Vide = rien à signaler.
    */
   dominatedTestBonuses?: { domain: string; value: number; dominatedBy: DominatedTestSource['dominatedBy'] }[];
+  /**
+   * Contenu rendu en pied de carte — sert à surfacer les CHOIX propres de la capacité empruntée
+   * (ex. la catégorie d'animaux de « Langage des animaux ») : l'emprunt étant une vraie capacité
+   * acquise, ses choix se règlent comme ceux d'une capacité native. Le rendu (affichage vs éditeur)
+   * est décidé par l'appelant, qui possède `character`/`onChoiceChange`. Absent = rien.
+   */
+  footer?: ReactNode;
 }) {
   const path = pathById.get(feature.pathId);
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
@@ -479,6 +487,7 @@ function BorrowedFeatureBlock({
           </Typography>
         );
       })}
+      {footer}
     </Box>
   );
 }
@@ -1542,6 +1551,41 @@ function PathBlock({
                 {renderChoiceDisplay(feature, { compact: true })}
               </Box>
             )}
+            {/* Choix PROPRE de la capacité empruntée (ex. catégorie d'animaux de Langage des
+                animaux, débloquée par un rang 4 de druide) : la carte compacte de l'hôte étant
+                teintée à la voie source, on y remonte le choix de l'emprunt (puce « Choix à faire »
+                tant que rien n'est retenu) — sinon il n'apparaîtrait qu'en modale (PER-73). */}
+            {borrowed && hasChoices(borrowed) && (
+              <Box
+                sx={{
+                  mt: 'auto',
+                  pt: 0.75,
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  pr: onRemove ? 2.5 : 0,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {onChoiceChange && (
+                  <Tooltip title="Modifier le choix" arrow>
+                    <IconButton
+                      size="small"
+                      color={hasUnmadeChoice(character!, borrowed.id) ? 'warning' : 'primary'}
+                      sx={{ p: 0.25, flexShrink: 0 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setChoiceEditFeature(borrowed);
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {renderChoiceDisplay(borrowed, { compact: true })}
+              </Box>
+            )}
             {onRemove && (
               <Tooltip title="Retirer la capacité" arrow>
                 <IconButton
@@ -1779,6 +1823,27 @@ function PathBlock({
                         hostPathRank={pathRank}
                         concentration={concentration}
                         dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
+                        footer={
+                          hasChoices(borrowed) ? (
+                            <>
+                              <Divider sx={{ my: 1 }} />
+                              {renderChoiceDisplay(borrowed)}
+                              {onChoiceChange && (
+                                <Button
+                                  size="small"
+                                  startIcon={<EditIcon fontSize="small" />}
+                                  sx={{ mt: 1 }}
+                                  onClick={() => {
+                                    setOpenFeature(null);
+                                    setChoiceEditFeature(borrowed);
+                                  }}
+                                >
+                                  Modifier le choix
+                                </Button>
+                              )}
+                            </>
+                          ) : null
+                        }
                       />
                     </Box>
                   ) : null;
@@ -2002,6 +2067,14 @@ function PathBlock({
                       hostPathRank={pathRank}
                       concentration={concentration}
                       dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
+                      footer={
+                        hasChoices(borrowed) ? (
+                          <>
+                            <Divider sx={{ my: 1 }} />
+                            {onChoiceChange ? renderChoiceEditor(borrowed) : renderChoiceDisplay(borrowed)}
+                          </>
+                        ) : null
+                      }
                     />
                   </Box>
                 ) : null;
