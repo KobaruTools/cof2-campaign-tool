@@ -292,15 +292,41 @@ export function allowedAbilitiesForChoice(choice: {
 }
 
 /**
- * Capacités légalement empruntables pour un choix `feature-from-path`, d'après
- * ses contraintes (rangs, profils, voies, portée relative au personnage),
- * triées par voie puis rang. Le domaine se limite aux voies de PROFIL
+ * Vrai si la capacité porte elle-même un choix `feature-from-path` — capacité
+ * « emprunteuse », qui permet de faire appel à une autre capacité. Pivot de la
+ * règle des poupées russes (p. 41).
+ */
+export function featureOffersBorrow(featureId: string): boolean {
+  return featureChoiceDefs(featureId).some((c) => c.kind === 'feature-from-path');
+}
+
+/**
+ * Vrai si la capacité octroie un bonus de DEF *à soi* (plat inconditionnel ou
+ * conditionnel/temporaire). Détecté sur les `effects` structurés uniquement — un
+ * « test d'attaque magique contre la DEF de la cible » (prose) n'en est pas un, et
+ * une réduction de dommages (`damageReduction`) n'est pas de la DEF. Pivot de la
+ * restriction `excludeDefBonus` de Talent pour la magie (elfe haut, p. 50).
+ */
+export function featureGrantsDefBonus(featureId: string): boolean {
+  const effects = featureById.get(featureId)?.effects;
+  if (!effects) return false;
+  return effects.some(
+    (e) =>
+      (e.kind === 'stat-bonus' && e.stat === 'def') ||
+      (e.kind === 'conditional-stat-bonus' && e.bonuses.some((b) => b.stat === 'def')),
+  );
+}
+
+/**
+ * Domaine BRUT d'un choix `feature-from-path` (rangs, profils, voies, portée
+ * relative au personnage), AVANT application de la règle des poupées russes,
+ * trié par voie puis rang. Le domaine se limite aux voies de PROFIL
  * (`type: 'class'`) — les emprunts du livre se font toujours « dans une voie de
  * tel profil ». La capacité hôte (celle qui porte le choix) et les capacités
  * déjà acquises par le personnage sont exclues (un emprunt redondant n'aurait
  * pas de sens).
  */
-export function eligibleFeaturesForChoice(
+function featuresInChoiceDomain(
   character: Character,
   hostFeatureId: string,
   choice: PathFeatureChoice,
@@ -332,9 +358,48 @@ export function eligibleFeaturesForChoice(
         f.pathId !== hostPathId &&
         !owned.has(f.id) &&
         allowedRanks.has(f.rank) &&
-        classPathIds.has(f.pathId),
+        classPathIds.has(f.pathId) &&
+        // Talent pour la magie : pas de capacité qui octroie un bonus de DEF (p. 50).
+        !(choice.excludeDefBonus && featureGrantsDefBonus(f.id)),
     )
     .sort((a, b) => a.pathId.localeCompare(b.pathId) || a.rank - b.rank);
+}
+
+/**
+ * Capacités légalement empruntables pour un choix `feature-from-path` : le
+ * domaine (cf. `featuresInChoiceDomain`) PRIVÉ des capacités « emprunteuses ».
+ *
+ * Règle des **poupées russes** (p. 41, verbatim) : « lorsqu'une capacité permet
+ * de choisir une autre capacité […], il n'est pas possible de choisir une
+ * capacité qui permet elle-même de faire appel à une autre capacité » — pas de
+ * chaînage, un seul niveau d'emprunt. Point de passage UNIQUE : le wizard
+ * (bloquant) comme la fiche (permissive) consomment cette liste (cf.
+ * `FeatureChoiceField`), la règle s'applique donc partout.
+ */
+export function eligibleFeaturesForChoice(
+  character: Character,
+  hostFeatureId: string,
+  choice: PathFeatureChoice,
+): Feature[] {
+  return featuresInChoiceDomain(character, hostFeatureId, choice).filter(
+    (f) => !featureOffersBorrow(f.id),
+  );
+}
+
+/**
+ * Capacités du domaine ÉCARTÉES par la règle des poupées russes (p. 41) : celles
+ * qui sont elles-mêmes « emprunteuses ». Sert à l'UI, qui les affiche grisées
+ * (non sélectionnables) avec l'explication de la règle, plutôt que de les masquer.
+ * Disjointe de `eligibleFeaturesForChoice` ; leur union redonne le domaine brut.
+ */
+export function ineligibleBorrowersForChoice(
+  character: Character,
+  hostFeatureId: string,
+  choice: PathFeatureChoice,
+): Feature[] {
+  return featuresInChoiceDomain(character, hostFeatureId, choice).filter((f) =>
+    featureOffersBorrow(f.id),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -371,6 +436,31 @@ export function borrowedFeatureIds(character: Character): string[] {
  */
 export function effectiveFeatureIdsForMods(character: Character): string[] {
   return [...new Set([...character.featureIds, ...borrowedFeatureIds(character)])];
+}
+
+/**
+ * Mapping `id de capacité EMPRUNTÉE → pathId de la VOIE A` (la voie hôte dont une capacité-choix a
+ * fait emprunter cette capacité). Encadré « Appel à une autre capacité » du livre : une capacité
+ * empruntée « devient une capacité de la voie A » ; si elle évolue selon le rang ATTEINT dans la
+ * voie, c'est le rang dans la **voie A** qui est utilisé. Ce mapping permet au moteur de résoudre
+ * le terme `rang` (et les paliers `by: 'path-rank'`) d'une capacité empruntée contre la voie A, et
+ * non contre sa voie d'origine (que le personnage ne possède pas). Cf. `effectContext`.
+ */
+export function borrowedHostPathByFeatureId(character: Character): Map<string, string> {
+  const owned = new Set(character.featureIds);
+  const map = new Map<string, string>();
+  for (const [hostId, selections] of Object.entries(character.featureChoices ?? {})) {
+    if (!owned.has(hostId)) continue;
+    const host = featureById.get(hostId);
+    if (!host) continue;
+    const defs = featureChoiceDefs(hostId);
+    selections.forEach((sel, i) => {
+      if (defs[i]?.kind === 'feature-from-path' && typeof sel === 'string' && featureById.has(sel)) {
+        map.set(sel, host.pathId);
+      }
+    });
+  }
+  return map;
 }
 
 // ---------------------------------------------------------------------------

@@ -10,7 +10,10 @@ import {
   eligibleDivineHostPaths,
   eligibleFeaturesForChoice,
   featureChoiceDefs,
+  featureGrantsDefBonus,
+  featureOffersBorrow,
   featuresWithUnmadeChoices,
+  ineligibleBorrowersForChoice,
   getOptionSelections,
   getSelection,
   getSelections,
@@ -177,6 +180,44 @@ describe('eligibleFeaturesForChoice', () => {
     expect(eligible.map((f) => f.id)).not.toContain('demi-orc-r1');
   });
 
+  it('exclut les capacités elles-mêmes « emprunteuses » (poupées russes, p. 41)', () => {
+    const c = makeCharacter();
+    // Choix synthétique dont le domaine contient la voie du mercenaire (arquebusier),
+    // qui porte `mercenaire-r3` (Combattant aguerri) — une capacité emprunteuse.
+    const choice: PathFeatureChoice = {
+      kind: 'feature-from-path',
+      prompt: 'test',
+      allowedRanks: [1, 2, 3],
+      classIds: ['arquebusier'],
+    };
+    const eligible = eligibleFeaturesForChoice(c, 'demi-orc-r2', choice).map((f) => f.id);
+    const blocked = ineligibleBorrowersForChoice(c, 'demi-orc-r2', choice).map((f) => f.id);
+    // mercenaire-r1 (non emprunteuse) reste empruntable ; mercenaire-r3 (emprunteuse) est écartée.
+    expect(eligible).toContain('mercenaire-r1');
+    expect(eligible).not.toContain('mercenaire-r3');
+    expect(blocked).toContain('mercenaire-r3');
+    // Aucune capacité empruntable n'est elle-même emprunteuse, et les deux listes sont disjointes.
+    expect(eligible.every((id) => !featureOffersBorrow(id))).toBe(true);
+    expect(eligible.some((id) => blocked.includes(id))).toBe(false);
+  });
+
+  it('elfe haut r3 (Talent pour la magie) : exclut les capacités qui offrent un bonus de DEF', () => {
+    const c = makeCharacter();
+    const choice = featureChoiceDefs('elfe-haut-r3')[0] as PathFeatureChoice;
+    expect(choice.excludeDefBonus).toBe(true);
+    const eligible = eligibleFeaturesForChoice(c, 'elfe-haut-r3', choice).map((f) => f.id);
+    // Uniquement rangs 1-2 des voies de magicien / ensorceleur.
+    expect(eligible.length).toBeGreaterThan(0);
+    // Les 4 capacités qui octroient un bonus de DEF à soi sont écartées…
+    expect(eligible).not.toContain('air-r1'); // Murmures dans le vent (+1 DEF permanent)
+    expect(eligible).not.toContain('divination-r1'); // Divination (+1 DEF permanent)
+    expect(eligible).not.toContain('magie-protectrice-r1'); // Armure de mana (+3 DEF)
+    expect(eligible).not.toContain('magie-universelle-r2'); // Familier (+2 DEF conditionnel)
+    // …tandis qu'un emprunt sans DEF reste disponible.
+    expect(eligible).toContain('invocation-r2'); // Serviteur invisible
+    expect(eligible).toContain('envouteur-r1'); // Injonction
+  });
+
   it('familyScope same-family : voies des profils de la famille du personnage', () => {
     // prestige-expert-r4 : rang 1 d'un profil de la même famille.
     const mage = makeCharacter({ classId: 'magicien', featureIds: ['prestige-expert-r4'] });
@@ -186,6 +227,36 @@ describe('eligibleFeaturesForChoice', () => {
     // Toutes issues de voies de profils de la famille des mages.
     expect(eligible.every((f) => f.rank === 1)).toBe(true);
     expect(eligible.map((f) => f.id)).toContain('air-r1'); // voie de l'air (magicien)
+  });
+});
+
+describe('featureOffersBorrow (pivot des poupées russes)', () => {
+  it('détecte une capacité qui porte un choix `feature-from-path`', () => {
+    expect(featureOffersBorrow('mercenaire-r3')).toBe(true); // Combattant aguerri
+    expect(featureOffersBorrow('noblesse-r5')).toBe(true); // chevalier, Formation
+    expect(featureOffersBorrow('demi-orc-r2')).toBe(true); // voie de peuple emprunteuse
+  });
+
+  it('faux pour une capacité ordinaire ou inconnue', () => {
+    expect(featureOffersBorrow('pourfendeur-r1')).toBe(false);
+    expect(featureOffersBorrow('demi-orc-r1')).toBe(false);
+    expect(featureOffersBorrow('id-inexistant')).toBe(false);
+  });
+});
+
+describe('featureGrantsDefBonus', () => {
+  it('détecte un bonus de DEF à soi, plat ou conditionnel', () => {
+    expect(featureGrantsDefBonus('air-r1')).toBe(true); // +1 DEF plat permanent
+    expect(featureGrantsDefBonus('divination-r1')).toBe(true); // +1 DEF plat scalant
+    expect(featureGrantsDefBonus('magie-protectrice-r1')).toBe(true); // Armure de mana, +3 DEF conditionnel
+    expect(featureGrantsDefBonus('magie-universelle-r2')).toBe(true); // Familier, +2 DEF conditionnel
+  });
+
+  it('faux quand la DEF n’est que celle de la CIBLE, une RD, ou absente', () => {
+    expect(featureGrantsDefBonus('invocation-r1')).toBe(false); // « contre la DEF de l’adversaire »
+    expect(featureGrantsDefBonus('magie-elementaire-r2')).toBe(false); // RD élémentaire, pas de DEF
+    expect(featureGrantsDefBonus('invocation-r2')).toBe(false); // Serviteur invisible
+    expect(featureGrantsDefBonus('id-inexistant')).toBe(false);
   });
 });
 

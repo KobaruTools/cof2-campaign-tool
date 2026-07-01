@@ -34,7 +34,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useState } from 'react';
-import { features as featureCatalog, featureById, pathById, classById, priestGodById } from '@/data';
+import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
 import type { AbilityId, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
@@ -47,8 +47,10 @@ import {
   isEffectActive,
   usageCounterMaximum,
   type DisabledFeatureReason,
+  type TestDomainBonus,
+  type DominatedTestSource,
 } from '@/lib/character/effects';
-import { classColor } from '@/lib/ui/classColors';
+import { ANCESTRY_MARKER_COLOR, classColor } from '@/lib/ui/classColors';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { FeatureLabel } from '@/components/FeatureLabel';
@@ -56,7 +58,7 @@ import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
-import { FeatureText } from '@/components/sheet/FeatureRichText';
+import { FeatureText, CapabilityChip } from '@/components/sheet/FeatureRichText';
 import { CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
 import { FeatureChoiceField, COMPACT_CHIP_SX } from '@/components/sheet/FeatureChoiceField';
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
@@ -225,12 +227,14 @@ function FeaturePathTitle({
   feature,
   isReplacement,
   fallbackClassId,
+  fallbackAncestryId,
   fallbackPathName,
   fallbackColor,
 }: {
   feature: Feature;
   isReplacement: boolean;
   fallbackClassId?: string;
+  fallbackAncestryId?: string;
   fallbackPathName: string;
   fallbackColor?: string;
 }) {
@@ -238,9 +242,15 @@ function FeaturePathTitle({
   const classId = origin?.classId ?? fallbackClassId;
   const pathName = origin?.pathName ?? fallbackPathName;
   const color = origin?.color ?? fallbackColor;
+  // Voie de peuple : pas d'icône de profil, mais l'icône neutre de peuple (comme
+  // l'en-tête de groupe), afin que la modale/l'accordéon de détail la rappellent.
+  const ancestryId = !classId ? fallbackAncestryId : undefined;
   return (
     <>
       {classId && <ClassIcon classId={classId} size={18} sx={{ color: color ?? undefined, flexShrink: 0 }} />}
+      {ancestryId && (
+        <AncestryIcon ancestryId={ancestryId} size={18} sx={{ color: 'text.secondary', flexShrink: 0 }} />
+      )}
       <Typography component="span" variant="body2" sx={{ fontWeight: 700, color: color ?? 'text.primary' }}>
         {pathName}
       </Typography>
@@ -352,10 +362,23 @@ function BorrowedFeatureBlock({
   feature,
   abilities,
   level,
+  hostPathRank,
+  dominatedTestBonuses = [],
 }: {
   feature: Feature;
   abilities?: Abilities;
   level?: number;
+  /**
+   * Rang ATTEINT dans la VOIE A (la voie hôte qui a fait emprunter cette capacité). Encadré « Appel
+   * à une autre capacité » : le terme `rang` d'une capacité empruntée se résout sur la voie A, pas
+   * sur son rang d'origine. Ex. bouclier-r1 emprunté via la voie de peuple à 5/5 → `[rang + 2]` = 7.
+   */
+  hostPathRank?: number;
+  /**
+   * Bonus de test de cette capacité empruntée qui sont DOMINÉS (ne se cumulent pas, p. 203) : rendus
+   * barrés + la capacité qui les domine (PER-73). Vide = rien à signaler.
+   */
+  dominatedTestBonuses?: { domain: string; value: number; dominatedBy: DominatedTestSource['dominatedBy'] }[];
 }) {
   const path = pathById.get(feature.pathId);
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
@@ -396,8 +419,29 @@ function BorrowedFeatureBlock({
         <FeatureLabel feature={feature} />
       </Typography>
       <Box sx={{ mt: 0.25 }}>
-        <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} />
+        {/* `rang` résolu sur la VOIE A (rang hôte), pas sur le rang d'origine de la capacité empruntée. */}
+        <FeatureText feature={feature} abilities={abilities} level={level} pathRank={hostPathRank ?? feature.rank} />
       </Box>
+      {/* Bonus de test DOMINÉ (ne se cumule pas, p. 203) : barré + la capacité qui le domine, pour
+          que le joueur voie qu'il est pris en compte mais sans effet ici (PER-73). */}
+      {dominatedTestBonuses.map((dom) => {
+        const label = testDomainById.get(dom.domain)?.label ?? dom.domain;
+        const signedVal = dom.value >= 0 ? `+${dom.value}` : `${dom.value}`;
+        return (
+          <Typography
+            key={dom.domain}
+            variant="caption"
+            component="div"
+            sx={{ mt: 0.5, color: 'text.secondary', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}
+          >
+            <Box component="span" sx={{ textDecoration: 'line-through' }}>
+              {label} {signedVal}
+            </Box>
+            <Box component="span" sx={{ fontStyle: 'italic' }}>— ne se cumule pas avec</Box>
+            <CapabilityChip featureId={dom.dominatedBy.featureId} label={null} />
+          </Typography>
+        );
+      })}
     </Box>
   );
 }
@@ -471,6 +515,12 @@ export interface FeaturesByPathProps {
    * lecture seule.
    */
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
+  /**
+   * Bonus de compétence par domaine (cf. `testBonusSources`) — utilisé pour signaler, sur une
+   * capacité EMPRUNTÉE, que son bonus de test est DOMINÉ (ne se cumule pas), affiché barré + la
+   * capacité qui le domine (PER-73). Absent → aucun signalement.
+   */
+  testBonuses?: TestDomainBonus[];
 }
 
 /**
@@ -971,6 +1021,7 @@ function PathBlock({
   disabledReasons,
   replacements,
   concentration = false,
+  testBonuses,
 }: {
   group: FeatureGroup;
   classId: string;
@@ -1015,12 +1066,24 @@ function PathBlock({
   replacements?: Map<string, SlotReplacement>;
   /** Concentration accrue active (p. 228) : coût réduit + (A)→(L) pour les sorts éligibles. */
   concentration?: boolean;
+  /** Bonus de compétence par domaine — pour signaler une capacité empruntée dont le bonus est dominé (PER-73). */
+  testBonuses?: TestDomainBonus[];
 }) {
   const { path, features } = group;
   // Rang ATTEINT dans la voie = plus haut rang acquis parmi ses capacités. Sert à
   // résoudre le terme « rang » des textes enrichis (« son rang » = rang de la voie
   // courante, dynamique), partagé par toutes les capacités du bloc.
   const pathRank = features.reduce((max, f) => Math.max(max, f.rank), 0);
+  // Bonus de test d'une capacité (typiquement EMPRUNTÉE) qui sont DOMINÉS (ne se cumulent pas, p. 203) :
+  // pour les afficher barrés sur sa carte avec la capacité qui les domine (PER-73). Vide si aucun.
+  const dominatedTestBonusesFor = (
+    featureId: string,
+  ): { domain: string; value: number; dominatedBy: DominatedTestSource['dominatedBy'] }[] =>
+    (testBonuses ?? []).flatMap((b) =>
+      (b.dominated ?? [])
+        .filter((d) => d.source.featureId === featureId)
+        .map((d) => ({ domain: b.domain, value: d.source.value, dominatedBy: d.dominatedBy })),
+    );
   // Scalings CROSS-VOIE sur le nombre de dés : on passe le COMPTE de voies du profil
   // au rang seuil comme « rang » à la formule, ce qui pilote ses paliers `|C@R` (le
   // terme `rang` n'est pas utilisé dans ces richText). Cf. `countClassPathsAtRank`.
@@ -1062,6 +1125,11 @@ function PathBlock({
   // que c'est une voie au même titre que les autres (la voie du mage / de prestige
   // n'a pas d'icône → AncestryIcon ne rend rien pour ces id).
   const ancestryId = path?.type === 'ancestry' ? path.id : null;
+  // Couleur des hexagones de marqueur d'action (A/L/G/M) : profil pour une voie de profil ; GRIS
+  // FONCÉ neutre pour une voie de PEUPLE (sans quoi le bleu mana par défaut évoquerait un profil de
+  // mage) ; bleu mana par défaut conservé pour la voie du mage / de prestige (`markerColor` absent
+  // → `info.main` dans `FeatureMarkerHexes`).
+  const markerColor = color ?? (ancestryId ? ANCESTRY_MARKER_COLOR : undefined);
   // Progression dans la voie : capacités acquises sur le total de la voie.
   const total = path?.featureIds.length;
   // Vue colonne : la capacité ouverte dans la modale de détail (null = fermée).
@@ -1315,7 +1383,7 @@ function PathBlock({
             {/* Marqueurs hexagonaux centrés sur la ligne du haut du bloc. */}
             <FeatureMarkerHexes
               feature={feature}
-              color={color ?? undefined}
+              color={markerColor}
               concentration={concentration}
               pathRank={pathRank}
               sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
@@ -1461,23 +1529,25 @@ function PathBlock({
           // décalée). Le sélecteur de choix garde, lui, le nom complet (« Constitution »).
           const abilityCode = abilityChoiceCode(character, feature);
           return borrowed ? (
-            // Conteneur en colonne : la carte de devant (`cardInner`, `flexGrow: 1`) remplit toute la
-            // hauteur restante pour que la zone cliquable soit aussi grande que possible. La réserve du
-            // bas (`pb`) laisse voir le cadre de l'hôte (nom + éventuelle puce de carac). TOUT le bloc
-            // (carte de devant ET cadre de l'hôte qui dépasse) ouvre le détail au clic — c'est une seule
-            // capacité « qui en contient une autre au choix », pas deux cartes distinctes.
+            // Conteneur en colonne : carte de devant (`cardInner`, capacité empruntée) PUIS bande de
+            // l'hôte, toutes deux EN FLUX → leur hauteur est comptée dans le bloc (et donc dans la ligne
+            // du subgrid), ce qui évite que le nom de l'hôte (qui peut tenir sur deux lignes, ex.
+            // « Talent pour la violence ») soit tronqué ou masqué (PER-73 — auparavant la bande était en
+            // position absolue, hors flux). Le cadre décalé bas-droite reste un décor absolu DERRIÈRE.
+            // TOUT le bloc ouvre le détail au clic — une seule capacité « qui en contient une autre ».
             <Box
               key={feature.id}
               onClick={() => setOpenFeature(feature)}
               sx={{
                 position: 'relative',
-                pb: abilityCode ? 5.5 : 2.5,
                 display: 'flex',
                 flexDirection: 'column',
                 cursor: 'pointer',
               }}
             >
+              {/* Cadre décalé décoratif (offset bas-droite) DERRIÈRE le contenu — purement visuel. */}
               <Box
+                aria-hidden
                 sx={{
                   position: 'absolute',
                   top: 0,
@@ -1485,55 +1555,58 @@ function PathBlock({
                   right: -5,
                   bottom: 0,
                   borderRadius: 1,
-                  // Cadre discret, identique aux autres cartes du profil (1px `divider` + teinte
-                  // 0.06 de la voie hôte) : la case décalée ne doit pas être plus marquée qu'elles.
                   border: 1,
                   borderColor: 'divider',
                   bgcolor: color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
+                  zIndex: 0,
+                }}
+              />
+              {/* Carte de devant (capacité empruntée), au-dessus du cadre. */}
+              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                {cardInner}
+              </Box>
+              {/* Bande de l'hôte EN FLUX, alignée bas-droite sur le cadre décalé : son nom (et la
+                  carac retenue éventuelle) restent toujours entièrement visibles. */}
+              <Box
+                sx={{
+                  position: 'relative',
+                  zIndex: 1,
                   display: 'flex',
-                  alignItems: 'flex-end',
-                  // Titre de l'hôte collé à DROITE du bloc (dans la partie qui dépasse).
+                  alignItems: 'center',
                   justifyContent: 'flex-end',
+                  flexWrap: 'wrap',
+                  gap: 0.5,
+                  px: 1,
+                  pt: 0.25,
+                  pb: 0.25,
                 }}
               >
-                <Stack
-                  spacing={0.25}
+                <Typography
+                  variant="caption"
                   sx={{
-                    px: 1,
-                    // 2px d'espacement au-dessus et en dessous du contenu dans la bande qui dépasse.
-                    pt: 0.25,
-                    pb: 0.25,
-                    alignItems: 'flex-end',
+                    fontWeight: 600,
+                    lineHeight: 1.2,
+                    textAlign: 'right',
+                    color: 'text.primary',
+                    wordBreak: 'break-word',
                   }}
                 >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: 600,
-                      lineHeight: 1.2,
-                      textAlign: 'right',
-                      color: 'text.primary',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    {feature.name}
-                  </Typography>
-                  {/* Carac retenue : chip de choix standard (bleu primaire), code court « CON »
-                      pour gagner de la place ; nom complet (« Constitution ») en infobulle. */}
-                  {abilityCode && (
-                    <Tooltip title={ABILITY_NAMES[abilityCode]} arrow>
-                      <Chip
-                        label={abilityCode}
-                        size="small"
-                        variant="outlined"
-                        color="primary"
-                        sx={COMPACT_CHIP_SX}
-                      />
-                    </Tooltip>
-                  )}
-                </Stack>
+                  {feature.name}
+                </Typography>
+                {/* Carac retenue : chip de choix standard (bleu primaire), code court « CON »
+                    pour gagner de la place ; nom complet (« Constitution ») en infobulle. */}
+                {abilityCode && (
+                  <Tooltip title={ABILITY_NAMES[abilityCode]} arrow>
+                    <Chip
+                      label={abilityCode}
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                      sx={COMPACT_CHIP_SX}
+                    />
+                  </Tooltip>
+                )}
               </Box>
-              {cardInner}
             </Box>
           ) : (
             cardInner
@@ -1557,6 +1630,7 @@ function PathBlock({
                     feature={openFeature}
                     isReplacement={!!replacements?.has(openFeature.id)}
                     fallbackClassId={ownerClassId ?? undefined}
+                    fallbackAncestryId={ancestryId ?? undefined}
                     fallbackPathName={path?.name ?? group.pathId}
                     fallbackColor={color ?? undefined}
                   />
@@ -1658,7 +1732,13 @@ function PathBlock({
                   const borrowed = borrowedFeatureOf(character, openFeature);
                   return borrowed ? (
                     <Box sx={{ mt: 1.5 }}>
-                      <BorrowedFeatureBlock feature={borrowed} abilities={abilities} level={level} />
+                      <BorrowedFeatureBlock
+                        feature={borrowed}
+                        abilities={abilities}
+                        level={level}
+                        hostPathRank={pathRank}
+                        dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
+                      />
                     </Box>
                   ) : null;
                 })()}
@@ -1766,6 +1846,7 @@ function PathBlock({
                   feature={feature}
                   isReplacement={!!repl}
                   fallbackClassId={ownerClassId ?? undefined}
+                  fallbackAncestryId={ancestryId ?? undefined}
                   fallbackPathName={path?.name ?? group.pathId}
                   fallbackColor={color ?? undefined}
                 />
@@ -1873,7 +1954,13 @@ function PathBlock({
                 const borrowed = borrowedFeatureOf(character, feature);
                 return borrowed ? (
                   <Box sx={{ mt: 1.5 }}>
-                    <BorrowedFeatureBlock feature={borrowed} abilities={abilities} level={level} />
+                    <BorrowedFeatureBlock
+                      feature={borrowed}
+                      abilities={abilities}
+                      level={level}
+                      hostPathRank={pathRank}
+                      dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
+                    />
                   </Box>
                 ) : null;
               })()}
@@ -1983,6 +2070,7 @@ export function FeaturesByPath({
   onSetEffectInput,
   onSetUsageCounter,
   concentration = false,
+  testBonuses,
 }: FeaturesByPathProps) {
   // Prêtre spécialiste : la capacité divine occupe le slot d'une voie de prêtre
   // (voie d'accueil). On la RELOCALISE sous cette voie (override) et on la rend avec
@@ -2090,6 +2178,7 @@ export function FeaturesByPath({
               disabledReasons={disabledReasons}
               replacements={replacements}
               concentration={concentration}
+              testBonuses={testBonuses}
             />
           ))}
           {ghostColumns.map((c) => (
@@ -2116,6 +2205,7 @@ export function FeaturesByPath({
               disabledReasons={disabledReasons}
               replacements={replacements}
               concentration={concentration}
+              testBonuses={testBonuses}
             />
           ))}
         </Box>
@@ -2142,6 +2232,7 @@ export function FeaturesByPath({
               disabledReasons={disabledReasons}
               replacements={replacements}
               concentration={concentration}
+              testBonuses={testBonuses}
             />
           ))}
         </Stack>

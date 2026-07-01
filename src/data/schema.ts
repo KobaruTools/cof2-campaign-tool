@@ -754,7 +754,7 @@ export interface UniversalTestBonusEffect {
 }
 
 /** États/effets auxquels une capacité peut rendre IMMUNISÉ (liste fermée, extensible). PER-103. */
-export const IMMUNITY_IDS = ['fear', 'mind-control', 'slowed', 'immobilized'] as const;
+export const IMMUNITY_IDS = ['fear', 'mind-control', 'slowed', 'immobilized', 'magic-sleep'] as const;
 export type ImmunityId = (typeof IMMUNITY_IDS)[number];
 
 /** Libellés français des immunités (affichés au joueur). */
@@ -763,6 +763,8 @@ export const IMMUNITY_LABELS: Record<ImmunityId, string> = {
   'mind-control': 'Charme / possession',
   slowed: 'Ralenti',
   immobilized: 'Immobilisé',
+  // Force d'âme (elfe haut, elfe-haut-r2, p. 50) : « immunisé à la peur et au sommeil magique ».
+  'magic-sleep': 'Sommeil magique',
 };
 
 /**
@@ -972,6 +974,10 @@ export interface AbilityFeatureChoice extends FeatureChoiceBase {
  * CONTRAINTES (rangs, profils, voies, portée relative au personnage) plutôt
  * qu'énuméré en dur : la liste réelle se calcule depuis le catalogue de voies
  * (cf. `eligibleFeaturesForChoice`, `src/lib/character/choices.ts`).
+ *
+ * Règle des **poupées russes** (p. 41) : une capacité empruntée ne peut pas être
+ * elle-même « emprunteuse » (porter un `feature-from-path`) — pas de chaînage,
+ * un seul niveau d'emprunt. Filtrée par `eligibleFeaturesForChoice`.
  */
 export interface PathFeatureChoice extends FeatureChoiceBase {
   kind: 'feature-from-path';
@@ -990,6 +996,15 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    * qui connaît le personnage.
    */
   familyScope?: 'same-family';
+  /**
+   * Exclut du domaine toute capacité qui octroie un bonus de DEF *à soi* (plat ou
+   * conditionnel). Sert la restriction explicite de Talent pour la magie (elfe haut,
+   * p. 50) : « il peut utiliser cette capacité en armure sans pénalité (mais pas une
+   * capacité qui offre un bonus de DEF) » — sans quoi on empilerait Armure de mana
+   * sur une armure physique et l'on monterait dans des DEF ahurissantes. Détection
+   * via les `effects` structurés (cf. `featureGrantsDefBonus`).
+   */
+  excludeDefBonus?: boolean;
 }
 
 /** Une option énumérée d'un `OptionFeatureChoice`. */
