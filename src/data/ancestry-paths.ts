@@ -287,10 +287,12 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Pour un elfe sylvain, l’obscurité de la nuit sous la lumière des étoiles est considérée comme de la pénombre. De plus, l’elfe gagne un bonus de +3 à tous les tests de survie en forêt (escalade, discrétion, chasse, etc.).',
-    // Bonus de compétence (PER-89) : « survie en forêt » énumérée par ses exemples nommés —
-    // escalade (`climbing`), discrétion (`stealth`), chasse (`hunting`). Le « etc. » ouvert reste
-    // verbatim. Valeur +3 déduite de la catégorie « voie de peuple ». Vision sous les étoiles verbatim.
-    effects: [{ kind: 'test-bonus', domains: ['climbing', 'stealth', 'hunting'] }],
+    // Bonus de compétence (PER-89) : le +3 est CONTEXTUEL (« survie en forêt ») — il ne s'applique
+    // qu'en forêt, pas à l'escalade/discrétion/chasse en général. On le porte donc sur un domaine
+    // unique `forest-survival` (« Survie en forêt »), dont le tooltip détaille les exemples verbatim
+    // (escalade, discrétion, chasse, etc.). Valeur +3 déduite de la catégorie « voie de peuple ».
+    // Vision sous les étoiles = pénombre : verbatim, non modélisée.
+    effects: [{ kind: 'test-bonus', domains: ['forest-survival'] }],
     sourcePage: 52,
   },
   {

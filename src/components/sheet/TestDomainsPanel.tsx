@@ -88,13 +88,9 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
   const [hideZero, setHideZero] = usePersistedBoolean('test-domains:hide-zero', true);
 
   const byDomain = new Map(bonuses.map((b) => [b.domain, b]));
-  // Meilleure carac gouvernante du domaine pour ce personnage (max de ses valeurs ;
-  // égalité → première déclarée, car `>` strict conserve le `best` antérieur).
-  const bestAbility = (abs: AbilityId[]): AbilityId =>
-    abs.reduce((best, a) => ((abilities[a] ?? 0) > (abilities[best] ?? 0) ? a : best));
 
   const lines = testDomains
-    .map((d) => ({ d, bonus: byDomain.get(d.id), best: bestAbility(d.abilities) }))
+    .map((d) => ({ d, bonus: byDomain.get(d.id) }))
     // Un domaine reste visible s'il porte un bonus chiffré OU un dé bonus conditionnel actif.
     .filter(({ d, bonus }) => !hideZero || (bonus?.total ?? 0) !== 0 || (testDice?.has(d.id) ?? false));
 
@@ -127,8 +123,11 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
       </Typography>
       <Stack spacing={2.5}>
         {ABILITY_IDS.map((ability) => {
+          // Un domaine multi-carac (ex. Équitation CON/CHA, Survie en forêt AGI/PER) apparaît
+          // sous CHACUNE de ses caracs : le bonus de compétence est le même, seule la carac que
+          // le MJ ajoute au jet change selon l'action. Le tooltip l'explique (cf. `multiAbility`).
           const group = lines
-            .filter((l) => l.best === ability)
+            .filter((l) => l.d.abilities.includes(ability))
             .sort((a, b) => a.d.label.localeCompare(b.d.label, 'fr'));
 
           const abilityMod = abilities[ability] ?? 0;
@@ -199,31 +198,42 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
               </Stack>
               {group.length > 0 && (
                 <Grid container spacing={1}>
-                  {group.map(({ d, bonus, best }) => {
+                  {group.map(({ d, bonus }) => {
                     const flat = bonus?.total ?? 0;
                     const has = (bonus?.sources.length ?? 0) > 0;
                     const die = testDice?.get(d.id);
-                    const abilityValue = abilities[best] ?? 0;
-                    // « Inclure la carac » ajoute la meilleure carac, le buff actif uniforme ET le
-                    // bonus propre à cette carac (tatouage…) — un test de domaine est aussi un test de
-                    // carac. `best === ability` ici (le domaine est rangé sous sa meilleure carac).
+                    const abilityValue = abilities[ability] ?? 0;
+                    // « Inclure la carac » ajoute LA carac du groupe courant, le buff actif uniforme ET
+                    // le bonus propre à cette carac (tatouage…) — un test de domaine est aussi un test de
+                    // carac. Pour un domaine multi-carac, ce bloc est rendu une fois par carac (le bonus
+                    // de compétence est identique ; seule la carac ajoutée diffère).
                     const display = includeAbility ? flat + abilityValue + testBuff + perCaracBonus : flat;
                     const multiAbility = d.abilities.length > 1;
 
                     const breakdown =
-                      has || includeAbility || d.description ? (
+                      has || includeAbility || d.description || multiAbility ? (
                         <Box sx={{ py: 0.5 }}>
                           {d.description && (
                             <Typography
                               variant="caption"
-                              sx={{ display: 'block', fontStyle: 'italic', mb: has || includeAbility ? 0.5 : 0 }}
+                              sx={{ display: 'block', fontStyle: 'italic', mb: 0.5 }}
                             >
                               {d.description}
                             </Typography>
                           )}
+                          {multiAbility && (
+                            <Typography
+                              variant="caption"
+                              sx={{ display: 'block', fontStyle: 'italic', color: 'text.secondary', mb: has || includeAbility ? 0.5 : 0 }}
+                            >
+                              Ce domaine relève de plusieurs caractéristiques ({d.abilities.join(', ')}) : le type
+                              de jet à lancer est décidé par le MJ selon l’action. Le même bonus apparaît donc sous
+                              chacune de ces caractéristiques.
+                            </Typography>
+                          )}
                           {includeAbility && (
                             <Typography variant="caption" sx={{ display: 'block', fontWeight: 700 }}>
-                              {best} (meilleure carac) : {signed(abilityValue)}
+                              Test de {ability} : {signed(abilityValue)}
                             </Typography>
                           )}
                           {includeAbility &&
@@ -293,7 +303,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                           </Typography>
                           {multiAbility && (
                             <Typography variant="caption" color="text.secondary">
-                              {d.abilities.map((a) => (a === best ? `[${a}]` : a)).join(' / ')}
+                              {d.abilities.map((a) => (a === ability ? `[${a}]` : a)).join(' / ')}
                             </Typography>
                           )}
                         </Box>

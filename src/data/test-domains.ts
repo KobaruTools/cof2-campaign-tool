@@ -115,6 +115,18 @@ export const testDomains: TestDomain[] = [
   // survie (druide, Maître de la survie, nature-r1, p. 116) : s'orienter, trouver
   // abri/nourriture, éviter les dangers → lecture du milieu, PER (comme orientation).
   { id: 'survival', label: 'Survie', abilities: ['PER'], sourcePage: 116 },
+  // survie EN FORÊT (Lumière des étoiles, elfe sylvain, elfe-sylvain-r1, p. 52) : le livre
+  // groupe le +3 sous le contexte « survie en forêt » et l'illustre par des exemples aux
+  // caracs distinctes (escalade/discrétion → AGI, chasse → PER) + un « etc. » ouvert. On
+  // en fait UN domaine contextuel (le bonus ne vaut qu'en forêt), multi-carac (meilleure
+  // des deux), plutôt que de disperser le bonus sur des domaines génériques non contextuels.
+  {
+    id: 'forest-survival',
+    label: 'Survie en forêt',
+    abilities: ['AGI', 'PER'],
+    sourcePage: 52,
+    description: 'Uniquement en forêt : escalade, discrétion, chasse, etc. (Lumière des étoiles, voie de l’elfe sylvain).',
+  },
   // --- PER — observation / fouille du voleur (PER-71) ------------------------
   // vigilance (Aux aguets, roublard-r2, p. 76 ; aussi Éclaireur, traqueur-r1, p. 72) :
   // éviter la surprise / repérer une embuscade — le livre nomme « Vigilance ».
