@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 10,
+  "id": "test-immunites-barde-elfe-haut",
+  "name": "Test — Immunités (barde elfe haut)",
+  "identity": {
+    "sex": "female",
+    "description": "Personnage de TEST des icônes d'immunité d'état. Cumule les 5 immunités : Force d'âme (elfe haut r2 → peur + sommeil magique) et Liberté d'action (saltimbanque r4 → peur + charme/possession + ralenti + immobilisé). Voir la carte Défense."
+  },
+  "ancestryId": "elfe-haut",
+  "classId": "barde",
+  "level": 20,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "abilities": {
+    "AGI": 2,
+    "CON": 1,
+    "FOR": -2,
+    "PER": 0,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "AGI": 2,
+    "CON": 1,
+    "FOR": -1,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 1,
+    "VOL": 2
+  },
+  "ancestryChoices": [
+    "CHA",
+    "FOR"
+  ],
+  "ancestryPathId": "elfe-haut",
+  "featureIds": [
+    "escrime-r1",
+    "musicien-r1",
+    "elfe-haut-r1",
+    "saltimbanque-r1",
+    "seduction-r1",
+    "vagabond-r1",
+    "elfe-haut-r2",
+    "escrime-r2",
+    "musicien-r2",
+    "saltimbanque-r2",
+    "seduction-r2",
+    "elfe-haut-r3",
+    "escrime-r3",
+    "musicien-r3",
+    "saltimbanque-r3",
+    "seduction-r3",
+    "elfe-haut-r4",
+    "escrime-r4",
+    "musicien-r4",
+    "saltimbanque-r4",
+    "seduction-r4",
+    "elfe-haut-r5",
+    "escrime-r5",
+    "musicien-r5",
+    "saltimbanque-r5",
+    "seduction-r5"
+  ],
+  "featureChoices": {
+    "elfe-haut-r3": [
+      "air-r1"
+    ],
+    "elfe-haut-r5": [
+      "INT"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "escrime-r1",
+        "musicien-r1",
+        "elfe-haut-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "saltimbanque-r1",
+        "seduction-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "vagabond-r1",
+        "elfe-haut-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "escrime-r2",
+        "musicien-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "saltimbanque-r2",
+        "seduction-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "elfe-haut-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "escrime-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "musicien-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "saltimbanque-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "seduction-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "elfe-haut-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "escrime-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "musicien-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "saltimbanque-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "seduction-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "elfe-haut-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "escrime-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "musicien-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "saltimbanque-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "seduction-r5"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "Perso de test des icônes d'immunité d'état (5 immunités visibles sur la carte Défense). Barde elfe haut, voies elfe haut + saltimbanque poussées pour débloquer Force d'âme et Liberté d'action.",
+  "createdAt": "2026-07-01T00:00:00.000Z",
+  "updatedAt": "2026-07-01T00:00:00.000Z"
+}

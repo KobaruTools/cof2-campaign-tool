@@ -61,7 +61,7 @@ import { ClassIcon } from '@/components/ClassIcon';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
-import { formatCriticalRange } from '@/lib/ui/criticalRange';
+import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
@@ -313,30 +313,39 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   }
   // Immunités d'ÉTAT (peur, charme, ralenti, immobilisé) — PER-103, désormais fusionnées comme puces
   // vertes dans la carte Défense (suppression du cadre Immunités séparé).
+  // Icône d'état dédiée (StatusEffectIcon) au lieu du bouclier + libellé tronqué : le nom complet
+  // (ex. « Immunité : Sommeil magique ») reste dans le tooltip via `title`.
   const statusImmunityBadges: DefenseBadgeData[] = aggregateImmunities(modFeatureIds).map((imm) => ({
     key: `imm-${imm.id}`,
     variant: 'immunity',
-    text: imm.label,
+    statusEffect: imm.id,
     title: `Immunité : ${imm.label}`,
     sources: imm.sources.map((s) => ({ name: s.name, featureId: s.featureId })),
   }));
   // Ordre voulu : immunités d'abord, réductions ensuite.
   const defenseBadges: DefenseBadgeData[] = [...statusImmunityBadges, ...damageImmunityBadges, ...reductionBadges];
   // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — badges custom (variante 'critical')
-  // sous les cartes Attaque au contact / à distance selon leur portée (PER-133).
-  const critBadge = (s: ReturnType<typeof criticalRangeSources>[number]): DefenseBadgeData => {
-    const f = formatCriticalRange(s.scope, s.value);
-    return {
-      key: `crit-${s.featureId}`,
-      variant: 'critical',
-      text: f.short,
-      title: `Critique ${f.short}`,
-      sources: [{ name: s.name, featureId: s.featureId }],
-    };
-  };
+  // sous les cartes Attaque au contact / à distance selon leur portée (PER-133). Les élargissements
+  // d'une même portée se CUMULENT (PER-73) : deux sources +1 au contact (Critique brutal + Briseur
+  // d'os) donnent 18-20. On agrège donc en UN seul badge par portée (valeur sommée, plancher 16
+  // appliqué par `formatCriticalRange`), listant chaque capacité source et sa contribution.
   const critRanges = criticalRangeSources(character);
-  const meleeCriticalRanges = critRanges.filter((c) => c.scope === 'melee').map(critBadge);
-  const rangedCriticalRanges = critRanges.filter((c) => c.scope === 'ranged').map(critBadge);
+  const critBadgeForScope = (scope: 'melee' | 'ranged'): DefenseBadgeData[] => {
+    const combined = combineCriticalRanges(critRanges, scope);
+    if (!combined) return [];
+    const f = formatCriticalRange(scope, combined.total);
+    return [
+      {
+        key: `crit-${scope}`,
+        variant: 'critical',
+        text: f.short,
+        title: `Critique ${f.short}`,
+        sources: combined.sources.map((s) => ({ name: s.name, value: `+${s.value}`, featureId: s.featureId })),
+      },
+    ];
+  };
+  const meleeCriticalRanges = critBadgeForScope('melee');
+  const rangedCriticalRanges = critBadgeForScope('ranged');
   // Plancher de compétence universel (Éclectique, PER-102).
   const universalTest = universalTestBonus(modFeatureIds);
   // Carac de base des PM : VOL, ou substitution (Charisme héroïque → CHA, PER-101).
@@ -359,7 +368,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         level: character.level,
         family,
         defenseEquipment: defenseEquip,
-        spellCount: character.featureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
+        // Sorts connus = acquis ET EMPRUNTÉS : « apprendre un sort, même par une autre capacité,
+        // rapporte toujours 1 PM » (encadré « Appel à une autre capacité », p. 60). PER-73.
+        spellCount: modFeatureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
         manaAbility: manaCast.ability,
         // Bonus des capacités acquises (PER-63) ET des capacités empruntées par un
         // choix « capacité d'une autre voie » (PER-66). Le contexte (PER-67) résout
@@ -383,7 +394,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // moins un sort (cf. `manaPoints`, qui retourne null sinon). Sert à n'afficher la
   // Concentration accrue (p. 228) que pour les lanceurs de sorts : sans sort, le
   // toggle ne change rien.
-  const hasSpells = character.featureIds.some((fid) => featureById.get(fid)?.isSpell);
+  const hasSpells = modFeatureIds.some((fid) => featureById.get(fid)?.isSpell);
 
   // Stats dérivées finales du MAÎTRE (mods inclus), avec surcharges manuelles pour les
   // stats recopiées par les profils de créature (Init., attaque). Sert aux mini-fiches
@@ -649,6 +660,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               onSetUsageCounter={setUsageCounterValue}
               // Stats du maître : Init./attaque des compagnons recopient ce total.
               masterDerived={masterDerived}
+              // Bonus de compétence par domaine : sert à signaler, sur une capacité EMPRUNTÉE, que son
+              // bonus de test est DOMINÉ (ne se cumule pas) — barré + capacité qui le domine (PER-73).
+              testBonuses={testBonuses}
             />
           </SheetSection>
 

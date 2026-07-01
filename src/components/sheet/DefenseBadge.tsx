@@ -6,9 +6,10 @@ import Typography from '@mui/material/Typography';
 import ShieldIcon from '@mui/icons-material/Shield';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import { alpha } from '@mui/material/styles';
-import type { ResistibleDamageType } from '@/data/schema';
+import type { ImmunityId, ResistibleDamageType } from '@/data/schema';
 import { featureOrigin } from '@/lib/ui/featureOrigin';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
+import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 
 /** Variante d'un badge de stat dérivée (couleur + icône de tête). */
@@ -25,6 +26,12 @@ export interface DefenseBadgeData {
   variant: DefenseBadgeVariant;
   /** Type de dégât (→ icône). Absent : immunité d'état, RD sur tous les DM (« RD »), ou critique. */
   scope?: ResistibleDamageType;
+  /**
+   * Immunité d'ÉTAT (→ icône dédiée : terreur, ondes psychiques, escargot…), à la place du bouclier
+   * générique. Le libellé texte étant souvent tronqué dans les cellules à largeur fixe, l'icône porte
+   * l'identification (le `title`/tooltip donne le nom complet). Exclusif avec `scope`.
+   */
+  statusEffect?: ImmunityId;
   /** Texte court accolé : valeur de RD (« /2 », « 5 »), plage de critique (« 19-20 »), état (« Peur »). */
   text?: string;
   /** Titre du tooltip : libellé court de l'effet (ex. « RD 5 », « Immunité au feu », « Critique 18-20 »). */
@@ -54,6 +61,7 @@ const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary'> = {
 export function DefenseBadge({
   variant,
   scope,
+  statusEffect,
   text,
   title,
   sources,
@@ -121,7 +129,11 @@ export function DefenseBadge({
           border: `1px solid ${alpha(theme.palette[paletteKey].main, 0.45)}`,
         })}
       >
-        {variant === 'immunity' && <ShieldIcon sx={{ fontSize: 18 }} />}
+        {/* Immunité d'ÉTAT : icône dédiée (game-icons) à la place du bouclier générique — le libellé
+            texte étant souvent tronqué, l'icône porte l'identification, le tooltip donne le nom complet. */}
+        {statusEffect && <StatusEffectIcon effect={statusEffect} size={18} />}
+        {/* Bouclier générique conservé pour les immunités SANS icône dédiée (ex. « tous DM »). */}
+        {variant === 'immunity' && !scope && !statusEffect && <ShieldIcon sx={{ fontSize: 18 }} />}
         {variant === 'critical' && <GpsFixedIcon sx={{ fontSize: 18 }} />}
         {scope && <DamageTypeIcon type={scope} size={18} />}
         {!scope && variant === 'reduction' && <Box component="span">RD</Box>}
