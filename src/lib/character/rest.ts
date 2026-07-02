@@ -69,25 +69,22 @@ export function shortRest(
  *
  * Soin optionnel (p. 222) : « il peut immédiatement choisir d'utiliser ce DR pour restaurer
  * des PV. Dans ce cas, le nombre de PV récupérés est automatiquement égal à la valeur maximale
- * du dé. » → si `heal` est fourni et qu'un DR est disponible après le +1, on soigne
- * `dieFaces + ½ niveau` PV (valeur MAX du dé, sans lancer) et on dépense 1 DR.
+ * du dé. » Le DR **gagné** est aussitôt **dépensé** pour le soin : c'est le MÊME dé, donc le
+ * nombre de DR reste **INCHANGÉ** (même à plein — le dé plafonné est créé et consommé sur-le-champ,
+ * il ne se rajoute pas et n'en retire pas un autre). Soin = `dieFaces + ½ niveau` PV (valeur MAX).
  */
-export function longRest(
-  character: Character,
-  heal?: { recoveryDiceMax: number; dieFaces: number },
-): RestResult {
+export function longRest(character: Character, heal?: { dieFaces: number }): RestResult {
   let depletion: Depletion = { ...clearTemp(character.depletion) };
   // Mana plein.
   delete depletion.mana;
-  // +1 DR (réduit le manque de 1, plancher 0).
-  const spentDr = depletion.recoveryDice ?? 0;
-  if (spentDr > 0) depletion.recoveryDice = spentDr - 1;
-  else delete depletion.recoveryDice;
-  // Dépense optionnelle du DR gagné pour un soin à la valeur MAX du dé (+ ½ niveau).
-  if (heal && heal.recoveryDiceMax - (depletion.recoveryDice ?? 0) > 0) {
-    const healAmount = heal.dieFaces + Math.floor(character.level / 2);
-    depletion = healHp(depletion, healAmount);
-    depletion = spendRecoveryDice(depletion, 1, heal.recoveryDiceMax);
+  if (heal) {
+    // Le DR gagné est immédiatement dépensé pour le soin → réserve de DR inchangée (net zéro).
+    depletion = healHp(depletion, heal.dieFaces + Math.floor(character.level / 2));
+  } else {
+    // Sans soin : on conserve le +1 DR gagné (réduit le manque de 1, plancher 0).
+    const spentDr = depletion.recoveryDice ?? 0;
+    if (spentDr > 0) depletion.recoveryDice = spentDr - 1;
+    else delete depletion.recoveryDice;
   }
   return {
     depletion: pruneDepletion(depletion),
