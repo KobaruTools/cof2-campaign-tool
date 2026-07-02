@@ -1964,6 +1964,17 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur divise par 2 tous les DM de chute. De plus, une fois par combat, il obtient une action de mouvement supplémentaire à son tour. Au rang 5, il peut réaliser cet exploit 2 fois par combat (mais pas plus d'une fois par round).",
+    // « une fois par combat » → compteur réinitialisé au repos court (PER-159). Max SCALANT : 1, puis
+    // 2 au rang 5 de la voie du déplacement (« 2 fois par combat »). Le « pas plus d'une fois par
+    // round » est un plafond de cadence non modélisé.
+    usageCounter: {
+      maxByPathRankSteps: [
+        { minRank: 1, max: 1 },
+        { minRank: 5, max: 2 },
+      ],
+      resetOn: 'combat',
+      hideFromStatusPanel: true,
+    },
     sourcePage: 76,
   },
   {

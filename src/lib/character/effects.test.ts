@@ -1095,3 +1095,19 @@ describe('resetUsageCounters — réinitialisation par repos (PER-151)', () => {
     expect(resetUsageCounters({ mystere: 1 }, ['rage-r3'], new Set(['day'] as const))).toEqual({ mystere: 1 });
   });
 });
+
+describe('usageCounterMaximum — max scalant par paliers de rang (PER-159)', () => {
+  const feature = featureById.get('deplacement-r2')!;
+  const counter = feature.usageCounter!;
+  const base = { level: 5, usageCounters: {} } as Character;
+
+  it('Réflexes félins : 1 usage/combat, puis 2 au rang 5 de la voie', () => {
+    expect(usageCounterMaximum(counter, { ...base, featureIds: ['deplacement-r2'] }, feature)).toBe(1);
+    expect(
+      usageCounterMaximum(counter, { ...base, featureIds: ['deplacement-r2', 'deplacement-r4'] }, feature),
+    ).toBe(1);
+    expect(
+      usageCounterMaximum(counter, { ...base, featureIds: ['deplacement-r2', 'deplacement-r5'] }, feature),
+    ).toBe(2);
+  });
+});

@@ -1295,6 +1295,14 @@ export interface UsageCounter {
    */
   maxByPathRank?: boolean;
   /**
+   * Maximum SCALANT PAR PALIERS de rang de voie (PER-159) : le max prend la valeur du palier de plus
+   * haut `minRank` atteint dans la voie hôte (0 sous le premier palier). Ex. Réflexes félins (voleur,
+   * `deplacement-r2`) : 1 usage/combat, puis 2 au rang 5 de la voie →
+   * `[{ minRank: 1, max: 1 }, { minRank: 5, max: 2 }]`. Prioritaire sur `max` ; résolu à l'affichage
+   * à partir du rang de voie courant.
+   */
+  maxByPathRankSteps?: { minRank: number; max: number }[];
+  /**
    * Maximum SCALANT par NIVEAU (PER-137) : max = `niveau du personnage × maxByLevel`. Sert au SUIVI
    * D'ABSORPTION d'Armure de pierre (le sort prend fin après avoir absorbé `niveau × 3` DM →
    * `maxByLevel: 3`) : le compteur démarre plein (capacité d'absorption) et descend à mesure que le

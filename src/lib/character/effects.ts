@@ -134,6 +134,13 @@ export function usageCounterMaximum(
   feature: Feature,
 ): number {
   if (counter.maxByPathRank) return pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? 0;
+  if (counter.maxByPathRankSteps) {
+    // Palier de plus haut `minRank` atteint dans la voie hôte (0 sous le premier palier). PER-159.
+    const reached = pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? 0;
+    let resolved = 0;
+    for (const step of counter.maxByPathRankSteps) if (reached >= step.minRank) resolved = step.max;
+    return resolved;
+  }
   if (counter.maxByLevel !== undefined) return character.level * counter.maxByLevel;
   if (counter.maxByRankCount) {
     const { classIds, rank, base, addPathRank, excludeHostPath } = counter.maxByRankCount;
