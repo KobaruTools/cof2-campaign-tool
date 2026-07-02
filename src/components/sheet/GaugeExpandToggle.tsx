@@ -5,16 +5,13 @@ import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
 import { darken } from '@mui/material/styles';
 
-/** Clé de palette MUI d'une jauge (couleur de barre à assombrir pour le cap). */
-export type GaugeAccent = 'success' | 'info' | 'error' | 'warning' | 'secondary' | 'primary';
-
 export interface GaugeExpandToggleProps {
   /** Options détaillées actuellement dépliées ? */
   expanded: boolean;
   /** Bascule déplié/replié. */
   onToggle: () => void;
-  /** Palette de la jauge : le cap en reprend la couleur, assombrie. */
-  accent: GaugeAccent;
+  /** Couleur (concrète) de la barre : le cap en reprend la teinte, assombrie. */
+  color: string;
   /** Hauteur (= hauteur de la barre) en pixels. Défaut 24. */
   height?: number;
 }
@@ -24,7 +21,7 @@ export interface GaugeExpandToggleProps {
  * la barre (coins gauches arrondis, couleur de la barre assombrie) qui déplie/replie
  * les options détaillées affichées en dessous. Le chevron pivote selon l'état.
  */
-export function GaugeExpandToggle({ expanded, onToggle, accent, height = 24 }: GaugeExpandToggleProps) {
+export function GaugeExpandToggle({ expanded, onToggle, color, height = 24 }: GaugeExpandToggleProps) {
   return (
     <Tooltip title={expanded ? 'Masquer les options' : 'Plus d’options'} arrow>
       <Box
@@ -44,11 +41,11 @@ export function GaugeExpandToggle({ expanded, onToggle, accent, height = 24 }: G
           border: 'none',
           cursor: 'pointer',
           color: 'rgba(255, 255, 255, 0.85)',
-          bgcolor: darken(theme.palette[accent].main, 0.35),
+          bgcolor: darken(color, 0.35),
           borderTopLeftRadius: theme.shape.borderRadius,
           borderBottomLeftRadius: theme.shape.borderRadius,
           transition: 'background-color 0.15s',
-          '&:hover': { bgcolor: darken(theme.palette[accent].main, 0.2) },
+          '&:hover': { bgcolor: darken(color, 0.2) },
         })}
       >
         <ExpandMoreIcon

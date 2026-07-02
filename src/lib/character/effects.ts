@@ -798,6 +798,72 @@ export function pruneUsageCounters(
   return next;
 }
 
+/** Libellé générique par défaut d'un compteur d'usages — non identifiant pour une jauge. */
+const GENERIC_USAGE_LABEL = 'Usages restants';
+
+/** Une ressource de capacité à réserve limitée, prête à afficher en jauge (PER-150). */
+export interface CapacityResourceGauge {
+  /** Clé dans `usageCounters` (partagée si réserve cross-voie). */
+  key: string;
+  /** Libellé identifiant la ressource (label du compteur, ou nom de la capacité). */
+  label: string;
+  /** Usages RESTANTS courants (borné à [0, max]). */
+  current: number;
+  /** Maximum effectif (constant ou scalant). */
+  max: number;
+  /**
+   * Profil dont relève la voie porteuse de la ressource (rage → barbare, charges
+   * explosives → arquebusier). Sert à colorer la jauge et à choisir l'icône de
+   * profil. `undefined` si la voie n'est pas une voie de profil.
+   */
+  classId?: string;
+}
+
+/**
+ * Ressources de capacité à réserve limitée du personnage (rage, sept vies du chat,
+ * charges explosives…), agrégées pour affichage en jauges dans le bloc « État du
+ * personnage » (PER-150).
+ *
+ * SOURCE UNIQUE : lit directement `usageCounters` (le même état que `FeaturesByPath`
+ * et que la consommation au toggle). Les capacités partageant une `sharedKey` (réserve
+ * cross-voie, ex. rage — PER-130) sont fusionnées en UNE seule jauge ; on retient le
+ * `max` le plus élevé et un libellé de compteur explicite. Aucune donnée dupliquée :
+ * le bloc et `FeaturesByPath` COEXISTENT sur la même source (régler ici = régler
+ * partout). Ordre d'apparition = ordre des capacités acquises.
+ */
+export function capacityResourceGauges(character: Character): CapacityResourceGauge[] {
+  const byKey = new Map<string, { label: string; max: number; classId?: string }>();
+  const order: string[] = [];
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    const counter = feature?.usageCounter;
+    if (!feature || !counter) continue;
+    const key = counter.sharedKey ?? feature.id;
+    const max = usageCounterMaximum(counter, character, feature);
+    // Libellé identifiant : le label du compteur sauf s'il est générique, auquel cas le nom
+    // de la capacité (plus parlant qu'« Usages restants » pour une jauge).
+    const label =
+      !counter.label || counter.label === GENERIC_USAGE_LABEL ? feature.name : counter.label;
+    // Profil porteur de la voie (pour la couleur/icône de la jauge).
+    const path = pathById.get(feature.pathId);
+    const classId = path?.type === 'class' ? path.classIds[0] : undefined;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, { label, max, classId });
+      order.push(key);
+    } else {
+      existing.max = Math.max(existing.max, max);
+      if (counter.label && counter.label !== GENERIC_USAGE_LABEL) existing.label = counter.label;
+      if (!existing.classId && classId) existing.classId = classId;
+    }
+  }
+  return order.map((key) => {
+    const { label, max, classId } = byKey.get(key)!;
+    const current = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+    return { key, label, current, max, classId };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Caractéristiques : modificateurs permanents et dés bonus (genres `ability-*`)
 // ---------------------------------------------------------------------------

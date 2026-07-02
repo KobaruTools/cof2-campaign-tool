@@ -40,6 +40,7 @@ import {
   stackedDamageReductions,
   activeConditionalTestDice,
   aggregateImmunities,
+  capacityResourceGauges,
   effectContext,
   isEffectActive,
   manaCastingAbility,
@@ -426,6 +427,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const setManaRestore = (amount: number) =>
     update({ depletion: restoreMana(character.depletion, amount, manaMax ?? 0) });
   const setManaReset = () => update({ depletion: resetMana(character.depletion) });
+  // Ressources de capacité (rage, sept vies…) surfacées en jauges (PER-150) : lues depuis les
+  // MÊMES `usageCounters` que FeaturesByPath (source unique). L'écriture passe par le setter existant.
+  const capacityGauges = capacityResourceGauges(character);
 
   return (
     <>
@@ -618,24 +622,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             />
           </SheetSection>
 
-          {masterDerived && (
-            <SheetSection title="État du personnage">
-              <PlayerStatusPanel
-                depletion={character.depletion}
-                // Max EFFECTIF : surcharge manuelle de « Statistiques dérivées » si présente,
-                // sinon la valeur calculée. Le bloc n'édite que le courant, jamais le max.
-                maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
-                onDamage={setHpDamage}
-                onHeal={setHpHeal}
-                onResetHp={setHpReset}
-                manaMax={manaMax}
-                onSpendMana={setManaSpend}
-                onRestoreMana={setManaRestore}
-                onResetMana={setManaReset}
-              />
-            </SheetSection>
-          )}
-
           <SheetSection title="Statistiques dérivées">
             {derivedInput ? (
               <DerivedStatsGrid
@@ -665,6 +651,26 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             universalBonus={universalTest}
             testDice={testDice}
           />
+
+          {masterDerived && (
+            <SheetSection title="État du personnage">
+              <PlayerStatusPanel
+                depletion={character.depletion}
+                // Max EFFECTIF : surcharge manuelle de « Statistiques dérivées » si présente,
+                // sinon la valeur calculée. Le bloc n'édite que le courant, jamais le max.
+                maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
+                onDamage={setHpDamage}
+                onHeal={setHpHeal}
+                onResetHp={setHpReset}
+                manaMax={manaMax}
+                onSpendMana={setManaSpend}
+                onRestoreMana={setManaRestore}
+                onResetMana={setManaReset}
+                capacityGauges={capacityGauges}
+                onSetUsageCounter={setUsageCounterValue}
+              />
+            </SheetSection>
+          )}
 
           <SheetSection
             title="Voies & capacités"

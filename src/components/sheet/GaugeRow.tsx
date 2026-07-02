@@ -12,7 +12,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import { GaugeBar, GaugeValueLabel, type GaugeSegment } from './GaugeBar';
-import { GaugeExpandToggle, type GaugeAccent } from './GaugeExpandToggle';
+import { GaugeExpandToggle } from './GaugeExpandToggle';
 import { GaugeIconCap } from './GaugeIconCap';
 import { usePersistentBoolean } from './usePersistentBoolean';
 
@@ -23,8 +23,14 @@ export interface GaugeRowProps {
   icon?: ReactNode;
   /** Couleur CSS de remplissage de la portion pleine (ex. `info.main`). */
   fillColor: string;
-  /** Palette de la jauge (pour le cap d'expansion : couleur de barre assombrie). */
-  accent: GaugeAccent;
+  /**
+   * Libellé affiché À GAUCHE dans la barre (ressources de capacité sans icône dédiée,
+   * PER-150). Absent → seuls les chiffres `courant / max` sont superposés (PV, mana,
+   * dont l'icône suffit à identifier la jauge).
+   */
+  barLabel?: string;
+  /** Couleur (concrète) des caps (expansion + icône), = couleur de la barre assombrie. */
+  capColor: string;
   /** Clé `localStorage` de l'état déplié/replié des options (préférence utilisateur). */
   persistKey: string;
   /** Valeur courante (déjà bornée par l'appelant). */
@@ -56,7 +62,8 @@ export function GaugeRow({
   label,
   icon,
   fillColor,
-  accent,
+  barLabel,
+  capColor,
   persistKey,
   current,
   max,
@@ -82,9 +89,9 @@ export function GaugeRow({
           ajustement fin (±1, reset) accolés à sa droite. */}
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
         <Stack direction="row" spacing={0} sx={{ alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
-          <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} accent={accent} />
+          <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} color={capColor} />
           {icon && (
-            <GaugeIconCap accent={accent} label={label}>
+            <GaugeIconCap color={capColor} label={label}>
               {icon}
             </GaugeIconCap>
           )}
@@ -93,7 +100,31 @@ export function GaugeRow({
               max={max}
               segments={segments}
               roundedLeft={false}
-              overlay={<GaugeValueLabel current={current} max={max} />}
+              overlay={
+                barLabel ? (
+                  <>
+                    <Box
+                      component="span"
+                      sx={{
+                        mr: 'auto',
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        color: '#fff',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        textShadow: '0 0 4px rgba(0, 0, 0, 1), 0 1px 3px rgba(0, 0, 0, 0.85)',
+                      }}
+                    >
+                      {barLabel}
+                    </Box>
+                    <GaugeValueLabel current={current} max={max} />
+                  </>
+                ) : (
+                  <GaugeValueLabel current={current} max={max} />
+                )
+              }
             />
           </Box>
         </Stack>

@@ -11,6 +11,7 @@ import {
   abilityTestBonusByAbility,
   activeConditionalTestDice,
   aggregateImmunities,
+  capacityResourceGauges,
   conditionalEffectsOf,
   conditionalEffectBonuses,
   criticalRangeSources,
@@ -139,6 +140,37 @@ describe('setEffectToggle — exclusion mutuelle d’interrupteurs (PER-130)', (
     const reasons = disabledFeatureReasons({ ...c, featureIds: ['rage-r3', 'rage-r5'] });
     expect(reasons.has('rage-r3')).toBe(false);
     expect(reasons.has('rage-r5')).toBe(false);
+  });
+});
+
+describe('capacityResourceGauges — ressources de capacité en jauges (PER-150)', () => {
+  const make = (over: Partial<Character>): Character =>
+    ({ level: 5, featureIds: [], usageCounters: {}, ...over }) as Character;
+
+  it('aucune capacité à réserve → aucune jauge', () => {
+    expect(capacityResourceGauges(make({ featureIds: ['brute-r1'] }))).toEqual([]);
+  });
+
+  it('fusionne la réserve de rage cross-voie en UNE seule jauge', () => {
+    const gauges = capacityResourceGauges(
+      make({ featureIds: ['rage-r3', 'rage-r5', 'brute-r4'], usageCounters: { rage: 1 } }),
+    );
+    expect(gauges).toHaveLength(1);
+    expect(gauges[0]).toMatchObject({ key: 'rage', label: 'Rages', current: 1 });
+    // max = base 1 + une capacité de rang 4 barbare (brute-r4) = 2.
+    expect(gauges[0].max).toBe(2);
+  });
+
+  it('compteur plein par défaut (pas d’entrée) → current = max', () => {
+    const [gauge] = capacityResourceGauges(make({ featureIds: ['rage-r3'] }));
+    expect(gauge.current).toBe(gauge.max);
+    expect(gauge.max).toBe(1);
+  });
+
+  it('libellé générique « Usages restants » remplacé par le nom de la capacité', () => {
+    const [gauge] = capacityResourceGauges(make({ featureIds: ['fauve-r5'] }));
+    expect(gauge.label).toBe(featureById.get('fauve-r5')?.name);
+    expect(gauge.max).toBe(6);
   });
 });
 

@@ -14,15 +14,40 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 import type { Depletion } from '@/lib/character/types';
+import type { CapacityResourceGauge } from '@/lib/character/effects';
 import { currentHp, currentMana, hpHealthState, type HealthState } from '@/lib/character/gauges';
+import { classColor } from '@/lib/ui/classColors';
+import { ClassIcon } from '@/components/ClassIcon';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { GaugeBar, GaugeValueLabel, type GaugeSegment } from './GaugeBar';
 import { GaugeExpandToggle } from './GaugeExpandToggle';
 import { GaugeIconCap } from './GaugeIconCap';
 import { GaugeRow } from './GaugeRow';
 import { usePersistentBoolean } from './usePersistentBoolean';
+
+/**
+ * Icône de profil dans un cercle blanc (même présentation cerclée que les icônes de
+ * stats dérivées), pour identifier une jauge de ressource de capacité par son profil.
+ */
+function CircledClassIcon({ classId }: { classId: string }) {
+  return (
+    <Box
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 28,
+        height: 28,
+        borderRadius: '50%',
+        border: '2px solid #fff',
+      }}
+    >
+      <ClassIcon classId={classId} size={16} color="#fff" />
+    </Box>
+  );
+}
 
 /** Nature des dégâts saisis dans les contrôles de PV. */
 type DamageKind = 'lethal' | 'temp';
@@ -129,6 +154,13 @@ export interface PlayerStatusPanelProps {
   onRestoreMana: (amount: number) => void;
   /** Remet le mana à plein. */
   onResetMana: () => void;
+  /**
+   * Ressources de capacité à réserve limitée (rage, sept vies…), lues depuis les mêmes
+   * `usageCounters` que `FeaturesByPath` (PER-150). Vide → aucune jauge de ce type.
+   */
+  capacityGauges: CapacityResourceGauge[];
+  /** Fixe le décompte RESTANT d'une ressource de capacité (clé, valeur, max). */
+  onSetUsageCounter: (key: string, value: number, max: number) => void;
 }
 
 /**
@@ -152,7 +184,13 @@ export function PlayerStatusPanel({
   onSpendMana,
   onRestoreMana,
   onResetMana,
+  capacityGauges,
+  onSetUsageCounter,
 }: PlayerStatusPanelProps) {
+  const theme = useTheme();
+  // Couleurs CONCRÈTES (résolues) pour les caps assombris : PV en vert, mana en bleu.
+  const hpColor = theme.palette.success.main;
+  const manaColor = theme.palette.info.main;
   const [amount, setAmount] = useState('1');
   const [kind, setKind] = useState<DamageKind>('lethal');
   const [expanded, toggleExpanded] = usePersistentBoolean('gauge-expanded:hp', false);
@@ -187,8 +225,8 @@ export function PlayerStatusPanel({
           badge d'état) + ajustement fin (±1, reset) accolés à sa droite. */}
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
         <Stack direction="row" spacing={0} sx={{ alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
-          <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} accent="success" />
-          <GaugeIconCap accent="success" label="Points de vie">
+          <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} color={hpColor} />
+          <GaugeIconCap color={hpColor} label="Points de vie">
             <DerivedStatIcon statId="maxHp" size={28} color="#fff" />
           </GaugeIconCap>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -266,7 +304,7 @@ export function PlayerStatusPanel({
           label="Points de mana"
           icon={<DerivedStatIcon statId="manaPoints" size={28} color="#fff" />}
           fillColor="info.main"
-          accent="info"
+          capColor={manaColor}
           persistKey="gauge-expanded:mana"
           current={currentMana(manaMax, depletion)}
           max={manaMax}
@@ -277,6 +315,31 @@ export function PlayerStatusPanel({
           onReset={onResetMana}
         />
       )}
+
+      {/* Ressources de capacité (rage, charges explosives…) — même source que FeaturesByPath, PER-150.
+          Couleur du profil porteur (barbare rouge, arquebusier orange…) + icône du profil cerclée ;
+          repli sur l'ambre + libellé dans la barre si le profil n'est pas identifiable. */}
+      {capacityGauges.map((g) => {
+        const color = g.classId ? classColor(g.classId) : theme.palette.warning.main;
+        return (
+          <GaugeRow
+            key={g.key}
+            label={g.label}
+            barLabel={g.classId ? undefined : g.label}
+            icon={g.classId ? <CircledClassIcon classId={g.classId} /> : undefined}
+            fillColor={color}
+            capColor={color}
+            persistKey={`gauge-expanded:usage:${g.key}`}
+            current={g.current}
+            max={g.max}
+            spendLabel="Consommer"
+            restoreLabel="Restaurer"
+            onSpend={(n) => onSetUsageCounter(g.key, g.current - n, g.max)}
+            onRestore={(n) => onSetUsageCounter(g.key, g.current + n, g.max)}
+            onReset={() => onSetUsageCounter(g.key, g.max, g.max)}
+          />
+        );
+      })}
     </Stack>
   );
 }
