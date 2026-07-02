@@ -653,6 +653,7 @@ export const ancestryFeatures: Feature[] = [
         allowedRanks: [1, 2],
       },
     ],
+    wip: 'Limitation d’armure : « Si la capacité est de rang 2 ou accorde un bonus de DEF, il doit respecter les limitations d’armure » — contrainte non encore appliquée à la capacité empruntée, en attente du modèle d’armure portée (PER-153).',
     sourcePage: 57,
   },
   {
