@@ -1267,6 +1267,20 @@ export function testBonusSources(featureIds: string[], ctx?: EffectContext): Tes
     if (list) list.push(c);
     else byDomain.set(c.domain, [c]);
   }
+  // Subsomption ciblée (PER-73) : « érudition occulte » est une spécialisation d'« érudition ».
+  // SEUL cas traité : voie de peuple elfe haut (`erudition`, peuple) + voie du mage (`occult-lore`,
+  // peuple). La règle « pas de cumul d'une source identique » (p.203) veut que deux bonus de PEUPLE
+  // ne s'additionnent pas sur un même test → max, et non somme. On replie donc les contributions
+  // `erudition` de catégorie PEUPLE dans le seau `occult-lore`, UNIQUEMENT si ce seau porte déjà une
+  // contribution de peuple (mage-r1). Sans cette garde, on toucherait les cas profil/prestige (ex.
+  // elfe haut sorcier) qui sont hors périmètre. Le seau `erudition` reste intact (l'érudition
+  // GÉNÉRALE conserve son +3 : le bonus occulte ne remonte pas vers le parent).
+  const occultBucket = byDomain.get('occult-lore');
+  const eruditionBucket = byDomain.get('erudition');
+  if (occultBucket && eruditionBucket && occultBucket.some((c) => c.category === 'ancestry')) {
+    for (const c of eruditionBucket)
+      if (c.category === 'ancestry') occultBucket.push({ ...c, domain: 'occult-lore' });
+  }
   const floor = universalTestBonus(featureIds);
   const result: TestDomainBonus[] = [];
   for (const [domain, contribs] of byDomain) {

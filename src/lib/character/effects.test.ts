@@ -795,6 +795,35 @@ describe('testBonusSources — bonus de compétence par domaine (PER-89)', () =>
     ]);
   });
 
+  it('doublon peuple érudition : elfe haut (érudition +3) + voie du mage (érudition occulte +7) → max, +3 dominé', () => {
+    // Cas UNIQUE de subsomption (PER-73) : « érudition occulte » est une spécialisation
+    // d'« érudition ». Les deux bonus sont de PEUPLE → « pas de cumul d'une source identique »
+    // (p.203) → max, pas de somme. mage-r5 pousse la voie du mage au rang 5 (occult-lore = 2+5 = 7).
+    const res = testBonusSources(['elfe-haut-r1', 'mage-r1', 'mage-r5'], ctx());
+    const occult = res.find((r) => r.domain === 'occult-lore');
+    // L'érudition occulte prend le MAX (mage +7), le +3 de l'elfe haut est dominé (pas additionné).
+    expect(occult?.total).toBe(7);
+    expect(occult?.sources).toEqual([
+      { featureId: 'mage-r1', name: 'Capacité de peuple + occultisme', category: 'ancestry', value: 7 },
+    ]);
+    expect(occult?.dominated).toEqual([
+      {
+        source: { featureId: 'elfe-haut-r1', name: 'Lumière intérieure', category: 'ancestry', value: 3 },
+        dominatedBy: { featureId: 'mage-r1', name: 'Capacité de peuple + occultisme', category: 'ancestry', value: 7 },
+      },
+    ]);
+    // L'érudition GÉNÉRALE conserve son +3 (le bonus occulte ne remonte pas vers le parent).
+    expect(res.find((r) => r.domain === 'erudition')?.total).toBe(3);
+    expect(res.find((r) => r.domain === 'erudition')?.dominated).toBeUndefined();
+    // L'art (CHA) n'est pas concerné par la subsomption.
+    expect(res.find((r) => r.domain === 'art')?.total).toBe(3);
+  });
+
+  it('elfe haut SANS voie du mage → pas de seau érudition occulte, érudition & art intacts (+3)', () => {
+    const byDomain = Object.fromEntries(testBonusSources(['elfe-haut-r1']).map((r) => [r.domain, r.total]));
+    expect(byDomain).toEqual({ erudition: 3, art: 3 });
+  });
+
   it('domaines pilotés par une option (humain-r1 « Montagnard ») → escalade & résist. froid, +3 (peuple)', () => {
     const c = ctx({ featureChoices: { 'humain-r1': ['highlander'] } });
     const byDomain = Object.fromEntries(testBonusSources(['humain-r1'], c).map((r) => [r.domain, r.total]));
