@@ -25,6 +25,8 @@ import {
   featureModSources,
   hpAbilitySwapSources,
   isEffectActive,
+  isTemporaryActivationShortRestLocked,
+  shortRestLockKey,
   manaCastingAbility,
   modsFromFeatures,
   optionStatBonusSources,
@@ -1133,5 +1135,31 @@ describe('resetUsageCounters — verrou « oncePerShortRest » (PER-160)', () =>
       new Set(['day', 'short-rest', 'combat'] as const),
     );
     expect(next).toEqual({});
+  });
+});
+
+describe('isTemporaryActivationShortRestLocked — Sanctuaire (priere-r2, PER-161)', () => {
+  const mkChar = (featureIds: string[], usageCounters: Record<string, number>): Character =>
+    ({
+      level: 5,
+      abilities: ctx().abilities,
+      featureIds,
+      effectToggles: {},
+      featureChoices: {},
+      usageCounters,
+    }) as Character;
+
+  it('interrupteur temporaire + oncePerShortRest verrouillé → réactivation bloquée', () => {
+    const char = mkChar(['priere-r2'], { 'priere-r2': 0, [shortRestLockKey('priere-r2')]: 1 });
+    expect(isTemporaryActivationShortRestLocked(char, 'priere-r2', 0)).toBe(true);
+  });
+
+  it('sans verrou posé → réactivation libre', () => {
+    expect(isTemporaryActivationShortRestLocked(mkChar(['priere-r2'], {}), 'priere-r2', 0)).toBe(false);
+  });
+
+  it('un état temporaire SANS oncePerShortRest (Rage) n’est jamais verrouillé', () => {
+    const rage = mkChar(['rage-r3'], { rage: 0, [shortRestLockKey('rage')]: 1 });
+    expect(isTemporaryActivationShortRestLocked(rage, 'rage-r3', 0)).toBe(false);
   });
 });

@@ -90,8 +90,26 @@ describe('longRest — récupération complète', () => {
   });
 });
 
+describe('repos — extinction des états temporaires (PER-161)', () => {
+  // rage-r3 porte un effet TEMPORAIRE (index 0) ; priere-r2 (Sanctuaire) aussi.
+  const withTemporaryActive = make({
+    featureIds: ['rage-r3', 'priere-r2'],
+    effectToggles: { 'rage-r3': [true], 'priere-r2': [true] },
+  });
+
+  it('le repos court éteint les interrupteurs d’effets temporaires actifs', () => {
+    const { effectToggles } = shortRest(withTemporaryActive);
+    expect(effectToggles).toEqual({ 'rage-r3': [false], 'priere-r2': [false] });
+  });
+
+  it('le repos long éteint aussi les interrupteurs d’effets temporaires actifs', () => {
+    const { effectToggles } = longRest(withTemporaryActive);
+    expect(effectToggles).toEqual({ 'rage-r3': [false], 'priere-r2': [false] });
+  });
+});
+
 describe('resetAll — tout réinitialiser', () => {
-  it('vide toutes les jauges et tous les compteurs', () => {
-    expect(resetAll()).toEqual({ depletion: {}, usageCounters: {} });
+  it('vide toutes les jauges, tous les compteurs et tous les interrupteurs', () => {
+    expect(resetAll()).toEqual({ depletion: {}, usageCounters: {}, effectToggles: {} });
   });
 });

@@ -10,12 +10,17 @@
  */
 import type { Character, Depletion } from './types';
 import { currentRecoveryDice, healHp, pruneDepletion, spendRecoveryDice } from './gauges';
-import { resetUsageCounters } from './effects';
+import { clearTemporaryEffectToggles, resetUsageCounters } from './effects';
 
 /** Patch d'état de jeu produit par un repos. */
 export interface RestResult {
   depletion: Depletion;
   usageCounters: Record<string, number>;
+  /**
+   * Interrupteurs d'effets TEMPORAIRES éteints par le repos (PER-161) : un repos met fin aux états
+   * de durée / combat (Sanctuaire, Rage…). Les effets conditionnels situationnels sont préservés.
+   */
+  effectToggles: Record<string, boolean[]>;
 }
 
 /**
@@ -56,6 +61,7 @@ export function shortRest(
       character.featureIds,
       new Set(['short-rest', 'combat']),
     ),
+    effectToggles: clearTemporaryEffectToggles(character),
   };
 }
 
@@ -93,6 +99,7 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
       character.featureIds,
       new Set(['day', 'short-rest', 'combat']),
     ),
+    effectToggles: clearTemporaryEffectToggles(character),
   };
 }
 
@@ -102,5 +109,5 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
  * compteurs d'usages au maximum, y compris les compteurs `manual` (à vie).
  */
 export function resetAll(): RestResult {
-  return { depletion: {}, usageCounters: {} };
+  return { depletion: {}, usageCounters: {}, effectToggles: {} };
 }

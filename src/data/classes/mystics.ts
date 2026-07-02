@@ -1279,6 +1279,21 @@ export const mysticFeatures: Feature[] = [
       "Pendant 1 min (10 rounds), tous les adversaires qui veulent attaquer le prêtre doivent réussir un test d'INT difficulté [10 + CHA du prêtre]. S'ils échouent, ils ne peuvent pas l'attaquer pour la durée du sort. Ceux dont le niveau est inférieur à la moitié de celui du prêtre sont automatiquement affectés (pas de test d'INT). Si le prêtre commet une action offensive, le sort prend fin immédiatement et il ne peut plus être lancé avant de prendre une récupération rapide.",
     richText:
       "Pendant 1 min (10 rounds), tous les adversaires qui veulent attaquer le prêtre doivent réussir un test d'@INT difficulté [10 + CHA]. S'ils échouent, ils ne peuvent pas l'attaquer pour la durée du sort. Ceux dont le niveau est inférieur à la moitié de celui du prêtre sont automatiquement affectés (pas de test d'INT). Si le prêtre commet une action offensive, le sort prend fin immédiatement et il ne peut plus être lancé avant de prendre une récupération rapide.",
+    // PER-161 — deux mécaniques couplées :
+    // 1) INTERRUPTEUR d'état « sanctuaire actif » : marqueur on/off pur (l'inattaquabilité n'est pas
+    //    une stat dérivée chiffrée → `bonuses: []`). Le prêtre l'éteint dès qu'il agit offensivement.
+    // 2) USAGE 1×/récupération rapide : ACTIVER l'interrupteur consomme l'unique charge
+    //    (`consumeOnActivate` par défaut) ET pose le verrou `oncePerShortRest` ; le sort n'est
+    //    relançable qu'après un repos court (qui recharge la charge via `resetOn: 'short-rest'` et lève
+    //    le verrou). Hors dashboard (`hideFromStatusPanel`) : suivi uniquement sur la carte de capacité.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'sanctuaire actif', activeByDefault: false },
+      },
+    ],
+    usageCounter: { max: 1, resetOn: 'short-rest', oncePerShortRest: true, hideFromStatusPanel: true },
     sourcePage: 124,
   },
   {

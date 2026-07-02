@@ -269,6 +269,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       const nextCounters = { ...character.usageCounters };
       if (nextVal >= max) delete nextCounters[key];
       else nextCounters[key] = nextVal;
+      // PER-161 : si le compteur est verrouillé « 1 dépense par repos court » (`oncePerShortRest`,
+      // ex. Sanctuaire), activer l'interrupteur pose le verrou (miroir du « − » de setUsageCounterValue)
+      // — la réactivation reste bloquée jusqu'au prochain repos court, indépendamment du reste.
+      if (counter.oncePerShortRest && nextVal < remaining) nextCounters[shortRestLockKey(key)] = 1;
       patch.usageCounters = nextCounters;
     }
     // PER-150 : ACTIVER un effet temporaire doté d'un compteur de SUIVI `resetOnActivate` le remet à

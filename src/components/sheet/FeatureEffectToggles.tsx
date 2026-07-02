@@ -28,6 +28,7 @@ import {
   conditionalEffectBonuses,
   conditionalAbilityTestBonus,
   isEffectActive,
+  isTemporaryActivationShortRestLocked,
 } from '@/lib/character/effects';
 
 /** Libellés courts (français) des stats dérivées, indexés par clé moteur. */
@@ -114,6 +115,13 @@ export function FeatureEffectToggles({
     effect.deactivatesWithEffectIndex !== undefined &&
     !isEffectActive(character, featureId, effect.deactivatesWithEffectIndex);
 
+  // Verrou « 1 usage par repos court » (PER-161, ex. Sanctuaire) : une fois lancé, l'interrupteur ne
+  // peut plus être RÉACTIVÉ avant un repos court. On grise donc la RÉACTIVATION seule — l'éteindre
+  // (fin du sort, action offensive) reste toujours possible tant qu'il est actif.
+  const reactivationLocked = (index: number): boolean =>
+    !isEffectActive(character, featureId, index) &&
+    isTemporaryActivationShortRestLocked(character, featureId, index);
+
   if (compact) {
     // Vue colonne : interrupteur seul. `stopPropagation` pour ne pas ouvrir la
     // modale de détail de la carte en basculant l'état.
@@ -124,7 +132,7 @@ export function FeatureEffectToggles({
             <Switch
               size="small"
               checked={isEffectActive(character, featureId, index)}
-              disabled={!onToggle || disabled || prereqUnmet(effect)}
+              disabled={!onToggle || disabled || prereqUnmet(effect) || reactivationLocked(index)}
               onChange={(e) => onToggle?.(featureId, index, e.target.checked)}
             />
           </Tooltip>
@@ -145,7 +153,7 @@ export function FeatureEffectToggles({
             <Switch
               size="small"
               checked={isEffectActive(character, featureId, index)}
-              disabled={!onToggle || disabled || prereqUnmet(effect)}
+              disabled={!onToggle || disabled || prereqUnmet(effect) || reactivationLocked(index)}
               onChange={(e) => onToggle?.(featureId, index, e.target.checked)}
             />
           }

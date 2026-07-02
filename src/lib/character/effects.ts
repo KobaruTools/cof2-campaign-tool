@@ -635,6 +635,31 @@ export function hasActiveConditionalEffect(character: Character, featureId: stri
 }
 
 /**
+ * PER-161 — éteint tous les interrupteurs d'effets TEMPORAIRES actifs (états de durée / combat :
+ * Sanctuaire, Rage, Armure de pierre…), en préservant les effets CONDITIONNELS (`activation.kind:
+ * 'condition'`, ex. « une arme dans chaque main ») qui décrivent une situation, pas une durée. Appelé
+ * par tout repos (court/long), qui met fin aux états transitoires. Fonction pure : renvoie une copie.
+ */
+export function clearTemporaryEffectToggles(character: Character): Record<string, boolean[]> {
+  const toggles = character.effectToggles ?? {};
+  const next: Record<string, boolean[]> = { ...toggles };
+  for (const featureId of character.featureIds) {
+    const effects = featureById.get(featureId)?.effects;
+    if (!effects) continue;
+    effects.forEach((effect, index) => {
+      if (effect.kind !== 'conditional-stat-bonus' || effect.activation.kind !== 'temporary') return;
+      const active = toggles[featureId]?.[index] ?? effect.activation.activeByDefault ?? false;
+      if (!active) return;
+      const arr = [...(next[featureId] ?? [])];
+      while (arr.length <= index) arr.push(false);
+      arr[index] = false;
+      next[featureId] = arr;
+    });
+  }
+  return next;
+}
+
+/**
  * Fixe l'interrupteur du i-ème effet d'une capacité à `active` DANS un dictionnaire
  * d'interrupteurs (le tableau est complété par des `false` jusqu'à l'index visé).
  * Fonction pure : renvoie une nouvelle copie, n'en mute aucune. Brique partagée par
@@ -797,6 +822,29 @@ export function pruneEffectInputs(
  */
 export function shortRestLockKey(counterKey: string): string {
   return `${counterKey}::sr-lock`;
+}
+
+/**
+ * PER-161 — la RÉACTIVATION de l'interrupteur du i-ème effet TEMPORAIRE d'une capacité est-elle
+ * verrouillée jusqu'au prochain repos court ? Vrai quand l'effet est un `conditional-stat-bonus`
+ * temporaire dont le compteur porteur a `oncePerShortRest` ET dont le verrou de repos court est posé
+ * (ex. Sanctuaire / priere-r2 : lancer le sort le rend inattaquable puis interdit de le relancer avant
+ * une récupération rapide). L'UI grise alors l'interrupteur POUR L'ACTIVATION uniquement — l'éteindre
+ * (fin du sort) reste toujours possible. Sans effet sur les états sans verrou (ex. Rage : pas de
+ * `oncePerShortRest` → interrupteur toujours (ré)activable).
+ */
+export function isTemporaryActivationShortRestLocked(
+  character: Character,
+  featureId: string,
+  index: number,
+): boolean {
+  const feature = featureById.get(featureId);
+  const effect = feature?.effects?.[index];
+  if (effect?.kind !== 'conditional-stat-bonus' || effect.activation.kind !== 'temporary') return false;
+  const counter = feature?.usageCounter;
+  if (!counter?.oncePerShortRest) return false;
+  const key = counter.sharedKey ?? featureId;
+  return (character.usageCounters?.[shortRestLockKey(key)] ?? 0) > 0;
 }
 
 /**
