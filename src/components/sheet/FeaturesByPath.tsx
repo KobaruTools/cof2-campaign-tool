@@ -53,6 +53,7 @@ import {
   creatureBonusDiceForPath,
   disabledFeatureReasons,
   isEffectActive,
+  shortRestLockKey,
   usageCounterMaximum,
   type DisabledFeatureReason,
   type TestDomainBonus,
@@ -1017,6 +1018,93 @@ function usageCounterKey(counter: UsageCounter, feature: Feature): string {
  * commune, PER-119). Boutons −/+ bornés à [0, max] + un bouton de réinitialisation
  * (remet à plein) ; à 0, badge « épuisé ». En lecture seule (sans `onSet`), valeur seule.
  */
+function UsageCounterRow({
+  counter,
+  feature,
+  character,
+  onSet,
+}: {
+  counter: UsageCounter;
+  feature: Feature;
+  character: Character;
+  onSet?: (counterKey: string, value: number, max: number) => void;
+}) {
+  const max = usageCounterMaximum(counter, character, feature);
+  const key = usageCounterKey(counter, feature);
+  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+  // Coût d'un usage de CETTE capacité (PER-130) : le pas de décrément/incrément. La Furie du berserk
+  // consomme 2 points de rage et n'est utilisable que s'il en reste au moins 2.
+  const cost = counter.cost ?? 1;
+  const label = counter.label ?? 'Usages restants';
+  const exhausted = remaining <= 0;
+  // Verrou « une dépense par récupération rapide » (PER-160) : une fois un point dépensé, le décrément
+  // est bloqué (avec une note) jusqu'au prochain repos court — indépendamment du total restant.
+  const locked = !!counter.oncePerShortRest && (character.usageCounters?.[shortRestLockKey(key)] ?? 0) > 0;
+  return (
+    <Stack sx={{ mt: 1 }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {label}
+          {cost > 1 && (
+            <Typography component="span" variant="caption" color="text.secondary">
+              {' '}
+              (coûte {cost})
+            </Typography>
+          )}{' '}
+          :
+        </Typography>
+        {onSet && (
+          <IconButton
+            size="small"
+            aria-label={cost > 1 ? `Consommer ${cost}` : 'Décrémenter'}
+            disabled={remaining < cost || locked}
+            onClick={() => onSet(key, remaining - cost, max)}
+          >
+            <RemoveIcon fontSize="small" />
+          </IconButton>
+        )}
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 36, textAlign: 'center' }}
+        >
+          {remaining} / {max}
+        </Typography>
+        {onSet && (
+          <IconButton
+            size="small"
+            aria-label="Incrémenter"
+            disabled={remaining >= max}
+            onClick={() => onSet(key, Math.min(max, remaining + cost), max)}
+          >
+            <AddIcon fontSize="small" />
+          </IconButton>
+        )}
+        {onSet && (
+          <Tooltip title="Réinitialiser au maximum" arrow>
+            <span>
+              <IconButton
+                size="small"
+                aria-label="Réinitialiser"
+                disabled={remaining >= max}
+                onClick={() => onSet(key, max, max)}
+              >
+                <RestartAltIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
+        {exhausted && <Chip label="épuisé" size="small" color="error" variant="outlined" />}
+      </Stack>
+      {locked && (
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, fontStyle: 'italic' }}>
+          Une récupération rapide (repos court) est nécessaire avant un nouvel usage.
+        </Typography>
+      )}
+    </Stack>
+  );
+}
+
+/** Compteur d'usages d'une capacité (PER-70) — rend la ligne −/+ du compteur principal. */
 function UsageCounterField({
   feature,
   character,
@@ -1026,71 +1114,8 @@ function UsageCounterField({
   character: Character;
   onSet?: (counterKey: string, value: number, max: number) => void;
 }) {
-  const counter = feature.usageCounter;
-  if (!counter) return null;
-  const max = usageCounterMaximum(counter, character, feature);
-  const key = usageCounterKey(counter, feature);
-  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
-  // Coût d'un usage de CETTE capacité (PER-130) : le pas de décrément/incrément. La Furie du berserk
-  // consomme 2 points de rage et n'est utilisable que s'il en reste au moins 2.
-  const cost = counter.cost ?? 1;
-  const label = counter.label ?? 'Usages restants';
-  const exhausted = remaining <= 0;
-  return (
-    <Stack direction="row" spacing={1} sx={{ mt: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        {label}
-        {cost > 1 && (
-          <Typography component="span" variant="caption" color="text.secondary">
-            {' '}
-            (coûte {cost})
-          </Typography>
-        )}{' '}
-        :
-      </Typography>
-      {onSet && (
-        <IconButton
-          size="small"
-          aria-label={cost > 1 ? `Consommer ${cost}` : 'Décrémenter'}
-          disabled={remaining < cost}
-          onClick={() => onSet(key, remaining - cost, max)}
-        >
-          <RemoveIcon fontSize="small" />
-        </IconButton>
-      )}
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 36, textAlign: 'center' }}
-      >
-        {remaining} / {max}
-      </Typography>
-      {onSet && (
-        <IconButton
-          size="small"
-          aria-label="Incrémenter"
-          disabled={remaining >= max}
-          onClick={() => onSet(key, Math.min(max, remaining + cost), max)}
-        >
-          <AddIcon fontSize="small" />
-        </IconButton>
-      )}
-      {onSet && (
-        <Tooltip title="Réinitialiser au maximum" arrow>
-          <span>
-            <IconButton
-              size="small"
-              aria-label="Réinitialiser"
-              disabled={remaining >= max}
-              onClick={() => onSet(key, max, max)}
-            >
-              <RestartAltIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-      )}
-      {exhausted && <Chip label="épuisé" size="small" color="error" variant="outlined" />}
-    </Stack>
-  );
+  if (!feature.usageCounter) return null;
+  return <UsageCounterRow counter={feature.usageCounter} feature={feature} character={character} onSet={onSet} />;
 }
 
 /**

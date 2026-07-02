@@ -1363,6 +1363,14 @@ export interface UsageCounter {
    */
   resetOn?: UsageResetTrigger;
   /**
+   * Verrou « une seule dépense entre deux récupérations rapides » (PER-160). Quand `true`, dès qu'un
+   * point est dépensé, toute nouvelle dépense est BLOQUÉE jusqu'au prochain repos court — INDÉPENDAMMENT
+   * du total restant (ex. Transe de guérison : 3/jour, mais « une récupération rapide entre deux usages »).
+   * Ce n'est PAS un second compteur : l'UI désactive simplement le décrément avec une note ; le verrou
+   * est un état de jeu levé par tout repos court/long. Sans effet si absent.
+   */
+  oncePerShortRest?: boolean;
+  /**
    * Ne PAS remonter ce compteur en jauge dans le bloc « État du personnage » (PER-150). Réservé aux
    * usages QUOTIDIENS à faible cadence (pouvoirs 1–3/jour) qui n'ont pas vocation à occuper le tableau
    * de bord : ils restent suivis UNIQUEMENT au niveau de la carte de capacité (indicateur compact +

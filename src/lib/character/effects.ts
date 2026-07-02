@@ -792,6 +792,14 @@ export function pruneEffectInputs(
 }
 
 /**
+ * Clé d'état du VERROU « une dépense par récupération rapide » (PER-160) d'un compteur, dérivée de
+ * sa clé de compteur. Une valeur > 0 sous cette clé signifie « verrouillé jusqu'au prochain repos court ».
+ */
+export function shortRestLockKey(counterKey: string): string {
+  return `${counterKey}::sr-lock`;
+}
+
+/**
  * Élague les compteurs d'usages (`usageCounters`, PER-70) dont la capacité n'est
  * plus acquise — mêmes raisons que `pruneEffectToggles` (pas de décompte fantôme).
  */
@@ -806,7 +814,11 @@ export function pruneUsageCounters(
   const validKeys = new Set<string>(owned);
   for (const id of featureIds) {
     const counter = featureById.get(id)?.usageCounter;
-    if (counter) validKeys.add(counter.sharedKey ?? id);
+    if (!counter) continue;
+    const key = counter.sharedKey ?? id;
+    validKeys.add(key);
+    // Verrou « 1 dépense par repos court » (PER-160) : sa clé d'état dérivée est aussi valide.
+    if (counter.oncePerShortRest) validKeys.add(shortRestLockKey(key));
   }
   const next: Record<string, number> = {};
   for (const [key, value] of Object.entries(usageCounters)) {
@@ -903,7 +915,10 @@ export function resetUsageCounters(
   for (const id of featureIds) {
     const counter = featureById.get(id)?.usageCounter;
     if (!counter) continue;
-    if (triggers.has(counter.resetOn ?? 'day')) toReset.add(counter.sharedKey ?? id);
+    const key = counter.sharedKey ?? id;
+    if (triggers.has(counter.resetOn ?? 'day')) toReset.add(key);
+    // Verrou « 1 dépense par repos court » (PER-160) : levé par tout repos court (donc aussi long).
+    if (counter.oncePerShortRest && triggers.has('short-rest')) toReset.add(shortRestLockKey(key));
   }
   const next: Record<string, number> = {};
   for (const [key, value] of Object.entries(usageCounters)) {

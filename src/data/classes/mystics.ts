@@ -879,9 +879,10 @@ export const mysticFeatures: Feature[] = [
       "Le moine peut méditer pendant 10 min et récupérer ainsi [1d4°+VOL] PV. Les soins augmentent de +1d4° chaque fois que le personnage atteint le rang 4 dans une voie de moine. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité et il ne peut pas l'utiliser plus de trois fois par jour.",
     richText:
       "Le moine peut méditer pendant 10 min et récupérer ainsi [1d4°|2@1|3@2|4@3|5@4|6@5 + VOL] PV. Les soins augmentent de +{1d4°} chaque fois que le personnage atteint le rang 4 dans une voie de moine. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité et il ne peut pas l'utiliser plus de trois fois par jour.",
-    // « pas plus de trois fois par jour » → compteur 3 usages, rechargé au repos long. La contrainte
-    // « terminer une récupération rapide entre deux usages » reste verbatim (non modélisée).
-    usageCounter: { max: 3, resetOn: 'day', hideFromStatusPanel: true },
+    // « pas plus de trois fois par jour » → compteur 3 usages, rechargé au repos long. PER-160 :
+    // « terminer une récupération rapide entre deux usages » → `oncePerShortRest` : dépenser 1 point
+    // verrouille les suivants (bouton grisé + note) jusqu'au prochain repos court.
+    usageCounter: { max: 3, resetOn: 'day', oncePerShortRest: true, hideFromStatusPanel: true },
     sourcePage: 120,
   },
   {

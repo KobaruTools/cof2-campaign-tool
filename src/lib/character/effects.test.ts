@@ -1111,3 +1111,27 @@ describe('usageCounterMaximum — max scalant par paliers de rang (PER-159)', ()
     ).toBe(2);
   });
 });
+
+describe('resetUsageCounters — verrou « oncePerShortRest » (PER-160)', () => {
+  // meditation-r2 : pool 'meditation-r2' (3/jour) + verrou 'meditation-r2::sr-lock' (oncePerShortRest).
+  const ids = ['meditation-r2'];
+  const lock = 'meditation-r2::sr-lock'; // = shortRestLockKey('meditation-r2')
+
+  it('repos court lève le verrou mais garde le pool quotidien', () => {
+    const next = resetUsageCounters(
+      { 'meditation-r2': 0, [lock]: 1 },
+      ids,
+      new Set(['short-rest', 'combat'] as const),
+    );
+    expect(next).toEqual({ 'meditation-r2': 0 });
+  });
+
+  it('repos long lève le verrou ET réinitialise le pool', () => {
+    const next = resetUsageCounters(
+      { 'meditation-r2': 0, [lock]: 1 },
+      ids,
+      new Set(['day', 'short-rest', 'combat'] as const),
+    );
+    expect(next).toEqual({});
+  });
+});

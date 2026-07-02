@@ -52,6 +52,7 @@ import {
   pruneEffectToggles,
   pruneUsageCounters,
   setEffectToggle,
+  shortRestLockKey,
   usageCounterMaximum,
   testBonusSources,
   universalTestBonus,
@@ -314,6 +315,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         toggles = setEffectToggle({ ...character, effectToggles: toggles }, counterKey, index, false);
       }
       patch.effectToggles = toggles;
+    }
+    // PER-160 : DÉPENSE (valeur en baisse) d'un compteur `oncePerShortRest` → pose le verrou « repos
+    // court requis avant un nouvel usage » (levé par tout repos court/long). Incrément/reset : rien.
+    if (feature?.usageCounter?.oncePerShortRest) {
+      const prev = character.usageCounters?.[counterKey] ?? max;
+      if (clamped < prev) next[shortRestLockKey(counterKey)] = 1;
     }
     update(patch);
   };
