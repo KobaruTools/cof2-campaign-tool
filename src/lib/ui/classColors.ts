@@ -42,6 +42,13 @@ export function classColor(classId: string): string {
 export const ANCESTRY_COLOR = '#a1887f';
 
 /**
+ * Teinte de la VOIE DU MAGE (type `mage`), qui remplace la voie de peuple pour la
+ * famille des mages (p.60). Indigo arcane dédié, distinct des profils et de la
+ * teinte commune de peuple, pour signaler son caractère occulte. Purement UI.
+ */
+export const MAGE_PATH_COLOR = '#5c6bc0';
+
+/**
  * Gris foncé NEUTRE des hexagones de marqueur d'action (A/L/G/M) d'une voie de PEUPLE : sans
  * couleur de profil, le marqueur retombait sur le bleu mana par défaut (`info.main`), qui évoque à
  * tort un profil de mage. Le composant l'assombrit (darken 0.25) → ~#525252, contraste large avec le

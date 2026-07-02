@@ -51,6 +51,7 @@ conservée dans `ANCESTRY_ICON_SOURCES` (même fichier) et dans
 | Halfelin | `lorc/footprint.svg` | Lorc |
 | Humain | `delapouite/person.svg` | Delapouite |
 | Nain | `delapouite/dwarf-face.svg` | Delapouite |
+| Voie du mage | `lorc/pointy-hat.svg` | Lorc |
 
 ## Icônes des statistiques dérivées
 

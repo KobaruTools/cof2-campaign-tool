@@ -58,7 +58,7 @@ import {
   type TestDomainBonus,
   type DominatedTestSource,
 } from '@/lib/character/effects';
-import { ANCESTRY_MARKER_COLOR, classColor } from '@/lib/ui/classColors';
+import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { FeatureLabel } from '@/components/FeatureLabel';
@@ -1454,15 +1454,19 @@ function PathBlock({
         ? classId
         : path.classIds[0]
       : null;
-  const color = ownerClassId ? classColor(ownerClassId) : null;
+  // Voie du mage (`type: 'mage'`) : identité dédiée (indigo arcane + icône de chapeau), PER-73.
+  const isMagePath = path?.type === 'mage';
+  const color = ownerClassId ? classColor(ownerClassId) : isMagePath ? MAGE_PATH_COLOR : null;
   // Voie de peuple : pas de teinte de profil, mais une icône neutre pour rappeler
-  // que c'est une voie au même titre que les autres (la voie du mage / de prestige
-  // n'a pas d'icône → AncestryIcon ne rend rien pour ces id).
+  // que c'est une voie au même titre que les autres. La voie du mage réutilise le jeu d'icônes de
+  // peuple (clé `mage`, elle occupe l'emplacement peuple) ; les voies de PRESTIGE n'ont toujours pas
+  // d'icône → AncestryIcon ne rend rien pour leurs id.
   const ancestryId = path?.type === 'ancestry' ? path.id : null;
+  const iconAncestryId = ancestryId ?? (isMagePath ? 'mage' : null);
   // Couleur des hexagones de marqueur d'action (A/L/G/M) : profil pour une voie de profil ; GRIS
   // FONCÉ neutre pour une voie de PEUPLE (sans quoi le bleu mana par défaut évoquerait un profil de
-  // mage) ; bleu mana par défaut conservé pour la voie du mage / de prestige (`markerColor` absent
-  // → `info.main` dans `FeatureMarkerHexes`).
+  // mage) ; indigo arcane pour la voie du mage ; bleu mana par défaut conservé pour le prestige
+  // (`markerColor` absent → `info.main` dans `FeatureMarkerHexes`).
   const markerColor = color ?? (ancestryId ? ANCESTRY_MARKER_COLOR : undefined);
   // Progression dans la voie : capacités acquises sur le total de la voie.
   const total = path?.featureIds.length;
@@ -1607,7 +1611,13 @@ function PathBlock({
           {ownerClassId ? (
             <ClassIcon classId={ownerClassId} size={18} />
           ) : (
-            ancestryId && <AncestryIcon ancestryId={ancestryId} size={18} sx={{ color: 'text.secondary' }} />
+            iconAncestryId && (
+              <AncestryIcon
+                ancestryId={iconAncestryId}
+                size={18}
+                sx={{ color: isMagePath ? MAGE_PATH_COLOR : 'text.secondary' }}
+              />
+            )
           )}
           {total != null && (
             <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
@@ -1620,7 +1630,13 @@ function PathBlock({
         ownerClassId ? (
           <ClassIcon classId={ownerClassId} size={18} sx={{ ml: 0.5 }} />
         ) : (
-          ancestryId && <AncestryIcon ancestryId={ancestryId} size={18} sx={{ ml: 0.5, color: 'text.secondary' }} />
+          iconAncestryId && (
+            <AncestryIcon
+              ancestryId={iconAncestryId}
+              size={18}
+              sx={{ ml: 0.5, color: isMagePath ? MAGE_PATH_COLOR : 'text.secondary' }}
+            />
+          )
         )
       )}
     </Stack>
