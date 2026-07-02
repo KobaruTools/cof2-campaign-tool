@@ -9,7 +9,7 @@
  * personnage ; elle ne mute pas l'entrée. Module pur (aucune dépendance UI).
  */
 import type { Character, Depletion } from './types';
-import { pruneDepletion } from './gauges';
+import { currentRecoveryDice, healHp, pruneDepletion, spendRecoveryDice } from './gauges';
 import { resetUsageCounters } from './effects';
 
 /** Patch d'état de jeu produit par un repos. */
@@ -30,12 +30,27 @@ function clearTemp(depletion: Depletion): Depletion {
 /**
  * Repos court = récupération rapide (30 min, p. 221) : régénère les dégâts temporaires
  * et réinitialise les capacités de fréquence « par combat » / « par récupération
- * rapide ». Ne rend ni les DR, ni le mana, ni les PV létaux (la dépense de DR pour
- * soigner reste une action manuelle — les dés se lancent à la vraie table).
+ * rapide ».
+ *
+ * Dépense d'un dé de récupération (optionnelle, p. 221) : « le personnage peut utiliser
+ * UN dé de récupération pour restaurer ses PV. Il jette le dé et récupère [1 DR + ½ Niveau]
+ * PV ; son nombre de DR est réduit de 1. » On soigne donc `recovery.dieRoll + ⌊niveau/2⌋`
+ * PV (le résultat du dé est SAISI par le joueur — les dés se lancent à la vraie table) et on
+ * dépense 1 DR. Sans DR disponible, aucun soin possible en repos court (seul le repos long
+ * le permet). Le mana n'est pas rendu par un repos court.
  */
-export function shortRest(character: Character): RestResult {
+export function shortRest(
+  character: Character,
+  recovery?: { dieRoll: number; recoveryDiceMax: number },
+): RestResult {
+  let depletion = clearTemp(character.depletion);
+  if (recovery && recovery.dieRoll > 0 && currentRecoveryDice(recovery.recoveryDiceMax, character.depletion) > 0) {
+    const heal = recovery.dieRoll + Math.floor(character.level / 2);
+    depletion = healHp(depletion, heal);
+    depletion = spendRecoveryDice(depletion, 1, recovery.recoveryDiceMax);
+  }
   return {
-    depletion: pruneDepletion(clearTemp(character.depletion)),
+    depletion: pruneDepletion(depletion),
     usageCounters: resetUsageCounters(
       character.usageCounters,
       character.featureIds,

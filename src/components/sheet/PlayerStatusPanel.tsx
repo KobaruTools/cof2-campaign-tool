@@ -29,6 +29,7 @@ import { GaugeBar, GaugeValueLabel, type GaugeSegment } from './GaugeBar';
 import { GaugeExpandToggle } from './GaugeExpandToggle';
 import { GaugeIconCap } from './GaugeIconCap';
 import { GaugeRow } from './GaugeRow';
+import { ShortRestDialog } from './ShortRestDialog';
 import { usePersistentBoolean } from './usePersistentBoolean';
 
 /**
@@ -231,10 +232,15 @@ export interface PlayerStatusPanelProps {
   recoveryDiceMax: number;
   /** Type du dé de récupération du profil (ex. `d8`), affiché à droite de la matrice. */
   recoveryDie: Die;
+  /** Niveau du personnage (pour le ½ niveau ajouté au soin d'un DR). */
+  level: number;
   /** Fixe le nombre de DR DISPONIBLES (matrice de blocs). */
   onSetRecoveryDiceCurrent: (value: number) => void;
-  /** Repos court (récupération rapide). */
-  onShortRest: () => void;
+  /**
+   * Repos court (récupération rapide). `recoveryDieRoll` = résultat du dé saisi pour
+   * dépenser un DR (soin), ou `null` pour un repos sans soin.
+   */
+  onShortRest: (recoveryDieRoll: number | null) => void;
   /** Repos long (récupération complète). */
   onLongRest: () => void;
 }
@@ -264,11 +270,13 @@ export function PlayerStatusPanel({
   onSetUsageCounter,
   recoveryDiceMax,
   recoveryDie,
+  level,
   onSetRecoveryDiceCurrent,
   onShortRest,
   onLongRest,
 }: PlayerStatusPanelProps) {
   const theme = useTheme();
+  const [shortRestOpen, setShortRestOpen] = useState(false);
   // Couleurs CONCRÈTES (résolues) pour les caps assombris : PV en vert, mana en bleu.
   const hpColor = theme.palette.success.main;
   const manaColor = theme.palette.info.main;
@@ -428,7 +436,7 @@ export function PlayerStatusPanel({
           title="Récupération rapide (30 min) : dégâts temporaires régénérés et capacités « par combat » réinitialisées (p. 221)."
           arrow
         >
-          <Button size="small" variant="outlined" startIcon={<TimerIcon />} onClick={onShortRest}>
+          <Button size="small" variant="outlined" startIcon={<TimerIcon />} onClick={() => setShortRestOpen(true)}>
             Repos court
           </Button>
         </Tooltip>
@@ -452,6 +460,18 @@ export function PlayerStatusPanel({
           </>
         )}
       </Stack>
+
+      <ShortRestDialog
+        open={shortRestOpen}
+        onClose={() => setShortRestOpen(false)}
+        recoveryDiceCurrent={currentRecoveryDice(recoveryDiceMax, depletion)}
+        recoveryDie={recoveryDie}
+        level={level}
+        onConfirm={(recoveryDieRoll) => {
+          onShortRest(recoveryDieRoll);
+          setShortRestOpen(false);
+        }}
+      />
     </Stack>
   );
 }

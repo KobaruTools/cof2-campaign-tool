@@ -536,7 +536,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const setDrCurrent = (value: number) =>
     update({ depletion: setRecoveryDiceMissing(character.depletion, recoveryDiceMax - value, recoveryDiceMax) });
   // Repos (PER-151) : applique la récupération réglementaire (patch depletion + usageCounters).
-  const doShortRest = () => update(shortRest(character));
+  // Repos court : `recoveryDieRoll` = résultat du dé saisi pour dépenser 1 DR et soigner ; null sinon.
+  const doShortRest = (recoveryDieRoll: number | null) =>
+    update(
+      shortRest(
+        character,
+        recoveryDieRoll != null ? { dieRoll: recoveryDieRoll, recoveryDiceMax } : undefined,
+      ),
+    );
   const doLongRest = () => update(longRest(character));
   // Ressources de capacité (rage, sept vies…) surfacées en jauges (PER-150) : lues depuis les
   // MÊMES `usageCounters` que FeaturesByPath (source unique). L'écriture passe par le setter existant.
@@ -801,6 +808,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 onSetUsageCounter={setUsageCounterValue}
                 recoveryDiceMax={recoveryDiceMax}
                 recoveryDie={recoveryDie}
+                level={character.level}
                 onSetRecoveryDiceCurrent={setDrCurrent}
                 onShortRest={doShortRest}
                 onLongRest={doLongRest}

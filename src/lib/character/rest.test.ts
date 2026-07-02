@@ -24,6 +24,25 @@ describe('shortRest — récupération rapide', () => {
     const { usageCounters } = shortRest(make(base));
     expect(usageCounters).toEqual({ rage: 0, 'fauve-r5': 2 });
   });
+
+  it('dépense 1 DR et soigne [dé + ½ niveau] PV (niveau 5 → +2)', () => {
+    // Létaux 10, un DR déjà dépensé (recoveryDice 1) sur un max de 4. Dé lancé = 6 → soin 6 + 2 = 8.
+    const { depletion } = shortRest(
+      make({ level: 5, depletion: { hp: { lethal: 10, temp: 3 }, recoveryDice: 1 } }),
+      { dieRoll: 6, recoveryDiceMax: 4 },
+    );
+    // Létaux 10 − 8 = 2 ; temp régénéré ; DR dépensés 1 → 2.
+    expect(depletion).toEqual({ hp: { lethal: 2, temp: 0 }, recoveryDice: 2 });
+  });
+
+  it('ne soigne pas sans DR disponible (tous dépensés)', () => {
+    const { depletion } = shortRest(
+      make({ level: 5, depletion: { hp: { lethal: 10, temp: 0 }, recoveryDice: 4 } }),
+      { dieRoll: 6, recoveryDiceMax: 4 },
+    );
+    // Aucun DR dispo (4/4 dépensés) → pas de soin ni de dépense supplémentaire.
+    expect(depletion).toEqual({ hp: { lethal: 10, temp: 0 }, recoveryDice: 4 });
+  });
 });
 
 describe('longRest — récupération complète', () => {
