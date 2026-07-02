@@ -113,18 +113,6 @@ export function EquipmentList({ equipment, onChange, onUse }: EquipmentListProps
                   </>
                 )}
               </Box>
-              {/* « Utiliser » : consomme une unité (état de jeu, dispo hors édition). Juste à gauche
-                  du nombre. Décrémente, puis supprime la ligne à 0 (géré par l'appelant). */}
-              {onUse && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => onUse(i)}
-                  sx={{ flexShrink: 0 }}
-                >
-                  Utiliser
-                </Button>
-              )}
               {onChange ? (
                 <TextField
                   type="number"
@@ -138,10 +126,26 @@ export function EquipmentList({ equipment, onChange, onUse }: EquipmentListProps
                 />
               ) : (
                 line.quantity > 1 && (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body1"
+                    color="text.secondary"
+                    sx={{ fontWeight: 700, fontSize: '1.1rem', flexShrink: 0 }}
+                  >
                     ×{line.quantity}
                   </Typography>
                 )
+              )}
+              {/* « Utiliser » : consomme une unité (état de jeu, dispo hors édition), à DROITE du
+                  nombre. Décrémente, puis supprime la ligne à 0 (géré par l'appelant). */}
+              {onUse && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => onUse(i)}
+                  sx={{ flexShrink: 0 }}
+                >
+                  Utiliser
+                </Button>
               )}
               {onChange && (
                 <IconButton size="small" color="error" onClick={() => remove(i)}>
