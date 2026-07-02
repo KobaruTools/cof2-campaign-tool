@@ -1,15 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import UndoIcon from '@mui/icons-material/Undo';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { featureById, pathById } from '@/data';
@@ -19,10 +11,6 @@ import { FeatureLabel } from '@/components/FeatureLabel';
 
 export interface LevelHistoryProps {
   history: LevelUpEntry[];
-  /** Vrai si le dernier niveau peut être annulé (jamais la création). */
-  canUndo: boolean;
-  /** Annule le dernier niveau. */
-  onUndo: () => void;
 }
 
 /** Une capacité de l'historique : « Voie — Rang N — Nom » (id brut si inconnue). */
@@ -53,10 +41,8 @@ function HistoryFeature({ featureId }: { featureId: string }) {
  * Historique des montées de niveau (PER-50) : ce qui a été choisi niveau par
  * niveau (« qu’ai-je pris au niveau 4 ? »), avec annulation du dernier niveau.
  */
-export function LevelHistory({ history, canUndo, onUndo }: LevelHistoryProps) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
+export function LevelHistory({ history }: LevelHistoryProps) {
   const entries = [...history].sort((a, b) => a.level - b.level);
-  const lastLevel = entries[entries.length - 1]?.level;
 
   if (entries.length === 0) {
     return (
@@ -65,11 +51,6 @@ export function LevelHistory({ history, canUndo, onUndo }: LevelHistoryProps) {
       </Typography>
     );
   }
-
-  const confirmUndo = () => {
-    setConfirmOpen(false);
-    onUndo();
-  };
 
   return (
     <Stack spacing={2}>
@@ -107,37 +88,6 @@ export function LevelHistory({ history, canUndo, onUndo }: LevelHistoryProps) {
           )}
         </Box>
       ))}
-
-      {canUndo && (
-        <Box>
-          <Button
-            color="error"
-            variant="outlined"
-            size="small"
-            startIcon={<UndoIcon />}
-            onClick={() => setConfirmOpen(true)}
-          >
-            Annuler le niveau {lastLevel}
-          </Button>
-        </Box>
-      )}
-
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <DialogTitle>Annuler le niveau {lastLevel} ?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Les capacités acquises au niveau {lastLevel} seront retirées et le personnage
-            redescendra au niveau {lastLevel !== undefined ? lastLevel - 1 : ''}. Cette action est
-            réversible en remontant de niveau.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)}>Conserver</Button>
-          <Button color="error" variant="contained" onClick={confirmUndo}>
-            Annuler le niveau
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Stack>
   );
 }

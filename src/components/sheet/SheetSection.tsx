@@ -12,8 +12,12 @@ import type { SxProps, Theme } from '@mui/material/styles';
 export interface SheetSectionProps {
   /** Titre de la section (h2). */
   title: string;
-  /** Élément optionnel aligné à droite du titre (bouton, badge…). */
-  action?: ReactNode;
+  /**
+   * Élément optionnel aligné à droite du titre (bouton, badge…). Peut être une fonction
+   * recevant l'état replié courant, pour masquer l'action quand la section est repliée
+   * (utile pour des toggles qui n'ont pas de sens sans le contenu visible).
+   */
+  action?: ReactNode | ((collapsed: boolean) => ReactNode);
   /** Styles supplémentaires fusionnés sur le cadre Paper. */
   sx?: SxProps<Theme>;
   /** Si vrai, le titre devient cliquable (chevron) pour replier/déplier le contenu. */
@@ -47,6 +51,7 @@ export function SheetSection({
 }: SheetSectionProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const isCollapsed = collapsible && collapsed;
+  const resolvedAction = typeof action === 'function' ? action(isCollapsed) : action;
 
   // Persistance optionnelle : on relit le choix sauvegardé APRÈS le montage (et non à
   // l'initialisation) pour ne pas désynchroniser le rendu serveur/client. Écrase `defaultCollapsed`.
@@ -99,10 +104,10 @@ export function SheetSection({
             {title}
           </Typography>
         </Stack>
-        {action && (
+        {resolvedAction && (
           // Empêche un clic sur l'action (bouton, etc.) de replier la section.
           <Stack direction="row" onClick={(e) => e.stopPropagation()}>
-            {action}
+            {resolvedAction}
           </Stack>
         )}
       </Stack>

@@ -116,7 +116,14 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
   );
 
   return (
-    <SheetSection title="Compétences & tests" collapsible defaultCollapsed persistKey="test-domains" action={toggles}>
+    <SheetSection
+      title="Compétences & tests"
+      collapsible
+      defaultCollapsed
+      persistKey="test-domains"
+      // Les toggles n'ont aucun sens quand le bloc est replié : on ne les affiche que déplié.
+      action={(collapsed) => (collapsed ? null : toggles)}
+    >
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
         Test de carac (d20 + carac) par caractéristique, et bonus de compétence des domaines
         (cumul par domaine, plafond +15 — p. 203).

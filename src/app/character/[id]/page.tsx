@@ -65,6 +65,7 @@ import { classColor } from '@/lib/ui/classColors';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { SheetSection } from '@/components/sheet/SheetSection';
+import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
@@ -80,9 +81,26 @@ import { IdentityEditor } from '@/components/sheet/IdentityEditor';
 import { ComplianceWarnings } from '@/components/sheet/ComplianceWarnings';
 import { LevelUpDialog } from '@/components/sheet/LevelUpDialog';
 import { LevelHistory } from '@/components/sheet/LevelHistory';
+import { LevelUndoButton } from '@/components/sheet/LevelUndoButton';
 import { useCharactersStore } from '@/stores/characters';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
+
+/**
+ * Blocs de la fiche possédant un mode édition à scope propre (crayon dédié). Le
+ * bouton « Modifier » du bandeau bascule tous ces blocs en une fois ; chaque crayon
+ * n'agit que sur son bloc. « Compétences & tests » en est absent (lecture seule).
+ */
+const EDIT_BLOCKS = ['abilities', 'derived', 'features', 'equipment', 'identity', 'notes'] as const;
+type EditBlock = (typeof EDIT_BLOCKS)[number];
+const NO_EDIT: Record<EditBlock, boolean> = {
+  abilities: false,
+  derived: false,
+  features: false,
+  equipment: false,
+  identity: false,
+  notes: false,
+};
 
 export default function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -90,7 +108,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const character = useCharactersStore((s) => s.characters.find((c) => c.id === id));
   const upsert = useCharactersStore((s) => s.upsert);
-  const [editing, setEditing] = useState(false);
+  // Édition par bloc : chaque bloc a son propre scope, activable via son crayon.
+  const [editingBlocks, setEditingBlocks] = useState<Record<EditBlock, boolean>>(NO_EDIT);
+  const allEditing = EDIT_BLOCKS.every((k) => editingBlocks[k]);
+  const toggleBlock = (block: EditBlock) =>
+    setEditingBlocks((s) => ({ ...s, [block]: !s[block] }));
+  // Bouton « Modifier » du bandeau : tout activé → tout désactivé, sinon tout activé.
+  const toggleAllEditing = () =>
+    setEditingBlocks((s) => {
+      const next = !EDIT_BLOCKS.every((k) => s[k]);
+      return { abilities: next, derived: next, features: next, equipment: next, identity: next, notes: next };
+    });
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [voiesLayout, setVoiesLayout] = useState<FeaturesLayout>('columns');
   // Concentration accrue (p. 228) : état de jeu transitoire (non persisté), comme
@@ -448,10 +476,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </Typography>
           <Button
             color="inherit"
-            startIcon={editing ? <DoneIcon /> : <EditIcon />}
-            onClick={() => setEditing((v) => !v)}
+            startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
+            onClick={toggleAllEditing}
           >
-            {editing ? 'Terminer' : 'Modifier'}
+            {allEditing ? 'Terminer' : 'Modifier'}
           </Button>
         </Toolbar>
       </AppBar>
@@ -506,7 +534,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 }}
               />
             )}
-            {editing ? (
+            {editingBlocks.identity ? (
               <TextField
                 value={character.name}
                 onChange={(e) => update({ name: e.target.value })}
@@ -586,7 +614,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
             {/* Bascule entre l'illustration de profil standard et son alternative
                 (-2), uniquement en mode édition. */}
-            {editing && characterClass && (
+            {editingBlocks.identity && characterClass && (
               <Tooltip title="Changer l’illustration du profil">
                 <IconButton
                   size="small"
@@ -609,10 +637,19 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           <SheetSection
             title="Caractéristiques"
             sx={(theme) => ({ bgcolor: alpha(theme.palette.background.default, 0.75) })}
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingBlocks.abilities}
+                  onToggle={() => toggleBlock('abilities')}
+                  label="caractéristiques"
+                />
+              )
+            }
           >
             <AbilitiesGrid
               abilities={character.abilities}
-              onChange={editing ? setAbility : undefined}
+              onChange={editingBlocks.abilities ? setAbility : undefined}
               baseAbilities={character.baseAbilities}
               ancestry={ancestry}
               ancestryChoices={character.ancestryChoices}
@@ -622,7 +659,18 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             />
           </SheetSection>
 
-          <SheetSection title="Statistiques dérivées">
+          <SheetSection
+            title="Statistiques dérivées"
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingBlocks.derived}
+                  onToggle={() => toggleBlock('derived')}
+                  label="statistiques dérivées"
+                />
+              )
+            }
+          >
             {derivedInput ? (
               <DerivedStatsGrid
                 input={derivedInput}
@@ -630,7 +678,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 effectContext={effectCtx}
                 extraModSources={orphanSourceTerms(character)}
                 overrides={character.overrides}
-                onOverride={editing ? setOverride : undefined}
+                onOverride={editingBlocks.derived ? setOverride : undefined}
                 defenseBadges={defenseBadges}
                 meleeCriticalRanges={meleeCriticalRanges}
                 rangedCriticalRanges={rangedCriticalRanges}
@@ -680,6 +728,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   <ConcentrationToggle value={concentration} onChange={setConcentration} />
                 )}
                 <FeaturesLayoutToggle value={voiesLayout} onChange={setVoiesLayout} />
+                <BlockEditButton
+                  editing={editingBlocks.features}
+                  onToggle={() => toggleBlock('features')}
+                  label="voies & capacités"
+                />
               </Stack>
             }
           >
@@ -694,10 +747,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // refléter le total réel, comme les stats dérivées. Cf. `effectiveAbilities`.
               abilities={effectCtx.abilities}
               level={character.level}
-              onChange={editing ? setFeatureIds : undefined}
+              onChange={editingBlocks.features ? setFeatureIds : undefined}
               manualFeatureIds={manualFeatureIds(character)}
               character={character}
-              onChoiceChange={editing ? setChoice : undefined}
+              onChoiceChange={editingBlocks.features ? setChoice : undefined}
               // Les interrupteurs d'effets conditionnels sont des ÉTATS DE JEU
               // transitoires : activables à tout moment, y compris hors édition.
               onToggleEffect={setEffectToggleValue}
@@ -714,15 +767,43 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             />
           </SheetSection>
 
-          <SheetSection title="Équipement">
+          <SheetSection
+            title="Équipement"
+            collapsible
+            defaultCollapsed
+            persistKey="equipment"
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingBlocks.equipment}
+                  onToggle={() => toggleBlock('equipment')}
+                  label="équipement"
+                />
+              )
+            }
+          >
             <EquipmentList
               equipment={character.equipment}
-              onChange={editing ? setEquipment : undefined}
+              onChange={editingBlocks.equipment ? setEquipment : undefined}
             />
           </SheetSection>
 
-          <SheetSection title="Identité">
-            {editing ? (
+          <SheetSection
+            title="Identité"
+            collapsible
+            defaultCollapsed
+            persistKey="identity"
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingBlocks.identity}
+                  onToggle={() => toggleBlock('identity')}
+                  label="identité"
+                />
+              )
+            }
+          >
+            {editingBlocks.identity ? (
               <IdentityEditor
                 name={character.name}
                 identity={character.identity}
@@ -735,31 +816,65 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             )}
           </SheetSection>
 
-          {(editing || character.notes) && (
-            <SheetSection title="Notes">
-              {editing ? (
-                <TextField
-                  multiline
-                  minRows={3}
-                  fullWidth
-                  placeholder="Notes libres du joueur…"
-                  value={character.notes}
-                  onChange={(e) => update({ notes: e.target.value })}
+          <SheetSection
+            title="Notes"
+            collapsible
+            defaultCollapsed
+            persistKey="notes"
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingBlocks.notes}
+                  onToggle={() => toggleBlock('notes')}
+                  label="notes"
                 />
-              ) : (
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-                  {character.notes}
-                </Typography>
-              )}
-            </SheetSection>
-          )}
+              )
+            }
+          >
+            {editingBlocks.notes ? (
+              <TextField
+                multiline
+                minRows={3}
+                fullWidth
+                placeholder="Notes libres du joueur…"
+                value={character.notes}
+                onChange={(e) => update({ notes: e.target.value })}
+              />
+            ) : character.notes ? (
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                {character.notes}
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Aucune note.
+              </Typography>
+            )}
+          </SheetSection>
 
-          <SheetSection title="Historique des niveaux">
-            <LevelHistory
-              history={character.levelUpHistory}
-              canUndo={canUndoLastLevelUp(character)}
-              onUndo={() => upsert(undoLastLevelUp(character))}
-            />
+          <SheetSection
+            title="Historique des niveaux"
+            collapsible
+            defaultCollapsed
+            persistKey="level-history"
+            action={(collapsed) =>
+              !collapsed && canUndoLastLevelUp(character) ? (
+                <LevelUndoButton
+                  level={character.level}
+                  onUndo={() => upsert(undoLastLevelUp(character))}
+                />
+              ) : null
+            }
+          >
+            <LevelHistory history={character.levelUpHistory} />
+            {canUndoLastLevelUp(character) && (
+              // Miroir du bouton de l'en-tête, ancré à droite en bas du bloc.
+              <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 2 }}>
+                <LevelUndoButton
+                  level={character.level}
+                  onUndo={() => upsert(undoLastLevelUp(character))}
+                />
+              </Stack>
+            )}
           </SheetSection>
         </Stack>
       </Container>
