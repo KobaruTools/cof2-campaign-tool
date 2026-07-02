@@ -916,6 +916,16 @@ export const mageFeatures: Feature[] = [
     // Bonus de compétence (PER-89) : domaines = alchimie, chimie ; « identifier une potion »
     // (avec sa difficulté propre) est une extension situationnelle → laissée en texte.
     effects: [{ kind: 'test-bonus', domains: ['alchemy', 'chemistry'] }],
+    // Réserve quotidienne d'élixirs (note de voie, p. 98) : rang(elixirs) + 1 par voie de forgesort
+    // à rang 3 (celle-ci incluse). Pool PARTAGÉ entre tous les élixirs (sharedKey), rechargé au repos
+    // long (préparation matinale). Reste verbatim / différé : répertoire = INT recettes (r4/r5) et
+    // l'élixir EMPRUNTÉ via une autre voie (2/jour, 1 si majeur) — non modélisés.
+    usageCounter: {
+      maxByRankCount: { classIds: ['forgesort'], rank: 3, base: 0, addPathRank: true },
+      sharedKey: 'elixirs-doses',
+      resetOn: 'day',
+      label: 'Élixirs du jour',
+    },
     sourcePage: 98,
   },
   {
@@ -932,6 +942,13 @@ export const mageFeatures: Feature[] = [
     // est gardée en explication. Test d’@AGI (victimes) ; difficulté [10 + INT] (INT du joueur).
     richText:
       "Le forgesort lance la fiole à une distance maximale de 10 m (réussite automatique). Le contenu explose dans un rayon de 3 m en infligeant {2d4°|3@4|4@5} DM. Un test d’@AGI difficulté [10 + INT] réussi permet aux victimes de diviser les DM par deux. Les DM passent à {3d4°} au rang 4 et {4d4°} au rang 5.",
+    // Consomme 1 dose du pool quotidien d'élixirs (partagé, cf. elixirs-r1).
+    usageCounter: {
+      maxByRankCount: { classIds: ['forgesort'], rank: 3, base: 0, addPathRank: true },
+      sharedKey: 'elixirs-doses',
+      resetOn: 'day',
+      label: 'Élixirs du jour',
+    },
     sourcePage: 98,
   },
   {
@@ -946,6 +963,13 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : soin [2d4° + INT] PV.
     richText:
       "Le forgesort peut préparer un élixir qui soigne [2d4° + INT] PV au bout d’une minute ou guérit un empoisonnement de manière instantanée.",
+    // Consomme 1 dose du pool quotidien d'élixirs (partagé, cf. elixirs-r1).
+    usageCounter: {
+      maxByRankCount: { classIds: ['forgesort'], rank: 3, base: 0, addPathRank: true },
+      sharedKey: 'elixirs-doses',
+      resetOn: 'day',
+      label: 'Élixirs du jour',
+    },
     sourcePage: 98,
   },
   {
@@ -962,6 +986,14 @@ export const mageFeatures: Feature[] = [
     // de `choices` structuré (décision propriétaire PER-69).
     richText:
       "Le forgesort apprend à préparer des élixirs parmi Forme gazeuse, Maîtrise des éléments, Chute ralentie (voies de magicien) et Masque mortuaire (voie de sorcier). Il choisit un nombre d’élixirs égal à [=INT] (pour un maximum de 4).",
+    // Consomme 1 dose du pool quotidien d'élixirs (partagé, cf. elixirs-r1). Le répertoire préparable
+    // (INT recettes, max 4) reste verbatim.
+    usageCounter: {
+      maxByRankCount: { classIds: ['forgesort'], rank: 3, base: 0, addPathRank: true },
+      sharedKey: 'elixirs-doses',
+      resetOn: 'day',
+      label: 'Élixirs du jour',
+    },
     sourcePage: 98,
   },
   {
@@ -977,6 +1009,15 @@ export const mageFeatures: Feature[] = [
     // à 4, en texte). Choix multiple FAIT À LA TABLE → pas de `choices` structuré.
     richText:
       "Le forgesort apprend à préparer des élixirs parmi Invisibilité, Vol, Accélération (voies de magicien) et Masque du prédateur (voie de druide). Il choisit un nombre d’élixirs égal à [=INT] (pour un maximum de 4). Ces préparations comptent pour deux élixirs.",
+    // Élixir MAJEUR : « compte pour deux élixirs » → consomme 2 doses du pool partagé (cost: 2).
+    // Répertoire préparable (INT recettes, max 4) reste verbatim.
+    usageCounter: {
+      maxByRankCount: { classIds: ['forgesort'], rank: 3, base: 0, addPathRank: true },
+      sharedKey: 'elixirs-doses',
+      cost: 2,
+      resetOn: 'day',
+      label: 'Élixirs du jour',
+    },
     sourcePage: 98,
   },
 

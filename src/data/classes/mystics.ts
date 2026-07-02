@@ -834,6 +834,15 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par jour, le moine peut choisir de réussir toutes ses attaques automatiquement (pas de critique) et d'esquiver toutes celles qui le prennent pour cible pendant un round. Tout semble aller au ralenti autour de lui… Il peut utiliser cette capacité une fois de plus chaque jour par rang 5 atteint dans une autre voie de moine, mais pas plus d'une fois par combat. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
+    // « 1/jour + 1 par rang 5 atteint dans une AUTRE voie de moine » → max scalant = nombre de
+    // capacités de rang 5 de moine acquises (la capacité hôte fournit le « 1 » de base, chaque
+    // autre rang 5 ajoute +1) → base 0. Rechargé au repos long. Le plafond « pas plus d'une fois
+    // par combat » et le +1 permanent à la plus faible caractéristique restent verbatim.
+    usageCounter: {
+      maxByRankCount: { classIds: ['moine'], rank: 5, base: 0 },
+      resetOn: 'day',
+      hideFromStatusPanel: true,
+    },
     sourcePage: 120,
   },
   // =======================================================================
@@ -910,6 +919,14 @@ export const mysticFeatures: Feature[] = [
       "Une fois par jour, le moine entre en méditation et projette son esprit hors de son corps pendant [1d4°+VOL] minutes. Il ressemble à un ectoplasme de couleur blanche qui se déplace en volant à la vitesse de 10 m par round. Il peut passer au travers des murs, mais pas des êtres vivants ou des barrières magiques. Le moine ne perçoit le monde que par sa projection mentale, mais ressent les DM qui sont infligés à son corps. Il peut utiliser cette capacité une fois de plus chaque jour par rang 5 atteint dans une autre voie de moine. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
     richText:
       "Une fois par jour, le moine entre en méditation et projette son esprit hors de son corps pendant [1d4° + VOL] minutes. Il ressemble à un ectoplasme de couleur blanche qui se déplace en volant à la vitesse de 10 m par round. Il peut passer au travers des murs, mais pas des êtres vivants ou des barrières magiques. Le moine ne perçoit le monde que par sa projection mentale, mais ressent les DM qui sont infligés à son corps. Il peut utiliser cette capacité une fois de plus chaque jour par rang 5 atteint dans une autre voie de moine. De plus le moine augmente définitivement de +1 la valeur de sa plus faible caractéristique (choisir en cas d'égalité).",
+    // « 1/jour + 1 par rang 5 atteint dans une AUTRE voie de moine » → max scalant = nombre de
+    // capacités de rang 5 de moine acquises (hôte = « 1 » de base, chaque autre rang 5 = +1) → base 0.
+    // Rechargé au repos long.
+    usageCounter: {
+      maxByRankCount: { classIds: ['moine'], rank: 5, base: 0 },
+      resetOn: 'day',
+      hideFromStatusPanel: true,
+    },
     // +1 à la carac choisie (choix `ability`) → effet `ability-bonus-from-choice`.
     effects: [{ kind: 'ability-bonus-from-choice', choiceIndex: 0, value: 1 }],
     choices: [
@@ -1313,6 +1330,19 @@ export const mysticFeatures: Feature[] = [
     richText:
       "Le prêtre peut apposer les mains sur un allié au contact (ou sur lui-même) pour le soigner. Le patient récupère [1d4° + CHA] PV. Ce sort peut être lancé une fois par jour par rang atteint dans la voie, plus une fois supplémentaire chaque fois que le personnage atteint le rang 3 dans une autre voie de prêtre. En plus de ce sort, le prêtre ajoute son [rang + 2] à tous les tests de médecine et de premiers soins.",
     effects: [{ kind: 'test-bonus', domains: ['medicine', 'first-aid'] }],
+    // « une fois par jour par rang atteint dans la voie, plus une fois par rang 3 atteint dans une
+    // AUTRE voie de prêtre » → max = rang(soins) + nb de capacités de rang 3 des autres voies de
+    // prêtre. Rechargé au repos long. Réserve de soins → jauge du bloc « État du personnage ».
+    usageCounter: {
+      maxByRankCount: {
+        classIds: ['pretre'],
+        rank: 3,
+        base: 0,
+        addPathRank: true,
+        excludeHostPath: true,
+      },
+      resetOn: 'day',
+    },
     sourcePage: 124,
   },
   {

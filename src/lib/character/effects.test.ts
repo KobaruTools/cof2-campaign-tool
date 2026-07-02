@@ -233,6 +233,47 @@ describe('usageCounterMaximum — réserve de rage cross-voie (PER-130)', () => 
   });
 });
 
+describe('usageCounterMaximum — formules /jour dynamiques (PER-73)', () => {
+  const base = charWith({});
+  const maxOf = (id: string, featureIds: string[]) => {
+    const f = featureById.get(id)!;
+    return usageCounterMaximum(f.usageCounter!, { ...base, featureIds }, f);
+  };
+
+  it('moine (base 0) : max = nombre de capacités de rang 5 de moine acquises', () => {
+    expect(maxOf('maitrise-r5', ['maitrise-r5'])).toBe(1);
+    expect(maxOf('maitrise-r5', ['maitrise-r5', 'meditation-r5'])).toBe(2);
+    expect(maxOf('meditation-r5', ['maitrise-r5', 'meditation-r5', 'vent-r5'])).toBe(3);
+  });
+
+  it('soins-r1 : rang(soins) + rang 3 des AUTRES voies de prêtre (excludeHostPath)', () => {
+    expect(maxOf('soins-r1', ['soins-r1'])).toBe(1);
+    // soins au rang 3, mais sa PROPRE capacité de rang 3 ne compte pas (voie hôte exclue).
+    expect(maxOf('soins-r1', ['soins-r1', 'soins-r2', 'soins-r3'])).toBe(3);
+    // + une autre voie de prêtre à rang 3 (foi) → +1.
+    expect(
+      maxOf('soins-r1', ['soins-r1', 'soins-r2', 'soins-r3', 'foi-r1', 'foi-r2', 'foi-r3']),
+    ).toBe(4);
+  });
+
+  it('élixirs (pool partagé) : rang(elixirs) + rang 3 des voies de forgesort (voie incluse)', () => {
+    expect(maxOf('elixirs-r1', ['elixirs-r1'])).toBe(1);
+    // elixirs au rang 3 : rang 3 + sa propre capacité de rang 3 comptée (voie hôte incluse) = 4.
+    expect(maxOf('elixirs-r1', ['elixirs-r1', 'elixirs-r2', 'elixirs-r3'])).toBe(4);
+    // + une autre voie de forgesort à rang 3 (métal) → +1 = 5.
+    expect(
+      maxOf('elixirs-r1', [
+        'elixirs-r1',
+        'elixirs-r2',
+        'elixirs-r3',
+        'metal-r1',
+        'metal-r2',
+        'metal-r3',
+      ]),
+    ).toBe(5);
+  });
+});
+
 describe('modsFromFeatures — effets conditionnels / temporaires (PER-67)', () => {
   it('un effet conditionnel inactif par défaut ne compte pas', () => {
     // Rage du berserk (rage r3) : -2 DEF temporaire, inactif par défaut.

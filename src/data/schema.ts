@@ -1307,8 +1307,23 @@ export interface UsageCounter {
    * barbare : 1 + une par capacité de rang 4 atteinte dans une voie de barbare (« le personnage
    * peut entrer en rage une fois de plus par jour pour chaque capacité de rang 4 qu'il atteint
    * dans une voie de barbare »). Prioritaire sur `max` et `maxByPathRank`. Résolu à l'affichage.
+   *
+   * PER-73 — deux modulateurs optionnels pour les formules « rang de la voie + comptage » :
+   * - `addPathRank` : ajoute le RANG ATTEINT dans la voie hôte au total (terme « une fois par
+   *   rang acquis dans la voie »). Ex. Récupération mineure (prêtre, soins-r1) et pool d'élixirs
+   *   (forgesort) : `rang(voie hôte) + nb de voies de la classe à rang ≥ 3`.
+   * - `excludeHostPath` : ne compte PAS la capacité de la voie hôte dans le comptage (pour les
+   *   règles « dans une AUTRE voie de … », ex. soins-r1). Défaut : la voie hôte est incluse
+   *   (comportement de la rage). Astuce : « atteindre le rang 3 dans une voie » = avoir acquis sa
+   *   capacité de rang 3, d'où `rank: 3`.
    */
-  maxByRankCount?: { classIds: string[]; rank: number; base: number };
+  maxByRankCount?: {
+    classIds: string[];
+    rank: number;
+    base: number;
+    addPathRank?: boolean;
+    excludeHostPath?: boolean;
+  };
   /**
    * Coût en points décrémentés à CHAQUE usage de CETTE capacité (PER-130). Défaut 1. Sert aux
    * réserves PARTAGÉES (`sharedKey`) où certaines capacités consomment plus : ex. Furie du berserk

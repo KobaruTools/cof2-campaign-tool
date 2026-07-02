@@ -135,15 +135,19 @@ export function usageCounterMaximum(
   if (counter.maxByPathRank) return pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? 0;
   if (counter.maxByLevel !== undefined) return character.level * counter.maxByLevel;
   if (counter.maxByRankCount) {
-    const { classIds, rank, base } = counter.maxByRankCount;
+    const { classIds, rank, base, addPathRank, excludeHostPath } = counter.maxByRankCount;
     let count = 0;
     for (const id of character.featureIds) {
       const f = featureById.get(id);
       if (!f || f.rank !== rank) continue;
+      // PER-73 : « dans une AUTRE voie » → on exclut la voie hôte du comptage.
+      if (excludeHostPath && f.pathId === feature.pathId) continue;
       const p = pathById.get(f.pathId);
       if (p?.type === 'class' && p.classIds.some((c) => classIds.includes(c))) count++;
     }
-    return base + count;
+    // PER-73 : terme « une fois par rang acquis dans la voie » → on ajoute le rang de la voie hôte.
+    const pathRankTerm = addPathRank ? pathRanksFromFeatures(character.featureIds)[feature.pathId] ?? 0 : 0;
+    return base + count + pathRankTerm;
   }
   return counter.max ?? 0;
 }
