@@ -644,7 +644,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               classId={character.classId}
               layout={voiesLayout}
               concentration={concentration}
-              abilities={character.abilities}
+              // Caractéristiques EFFECTIVES (saisie + modificateurs permanents de
+              // capacités, ex. gnome-r5 +1 CHA, Endurer +1 CON) : les formules richText
+              // des cartes (portée « CHA × 100 m », durée « CHA minutes »…) doivent
+              // refléter le total réel, comme les stats dérivées. Cf. `effectiveAbilities`.
+              abilities={effectCtx.abilities}
               level={character.level}
               onChange={editing ? setFeatureIds : undefined}
               manualFeatureIds={manualFeatureIds(character)}
