@@ -1511,6 +1511,17 @@ export interface Feature {
    */
   replacesFeatures?: string[];
   /**
+   * Capacités CITÉES à titre INDICATIF par cette capacité (Élixirs mineurs/majeurs,
+   * p. 98 : « préparer des élixirs parmi Forme gazeuse, Maîtrise des éléments… »). La
+   * recette REPRODUIT l'effet d'un sort d'une AUTRE voie sans que ce sort soit acquis ni
+   * actif sur le personnage — à distinguer d'une capacité EMPRUNTÉE (choix
+   * `feature-from-path`, réellement acquise). Rendu : chaque id est aussi balisé `[&id|nom]`
+   * dans le `richText` (puce aux couleurs du profil source) ET déplié à la demande dans un
+   * accordéon sous la description, montrant son texte enrichi (résolu sur les carac du
+   * personnage) pour référence. Volontairement cross-voie. Absent = aucune citation dépliable.
+   */
+  referencedFeatures?: string[];
+  /**
    * Marqueur de TRAVAIL EN COURS (badge « WIP » sur la carte) — suivi de relecture, pas une règle de
    * jeu. Présent quand la capacité dépend d'un ticket EXTÉRIEUR non terminé (ex. calcul de DEF de
    * Peau de pierre en attente de la milestone Armures, PER-131) : une partie de son effet n'est donc

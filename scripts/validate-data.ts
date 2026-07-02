@@ -397,6 +397,17 @@ for (const c of features) {
   }
 }
 
+// --- Sorts cités à titre indicatif (Élixirs mineurs/majeurs, p. 98) ----------
+// `referencedFeatures` : les cibles doivent exister et ne pas être soi. Volontairement
+// cross-voie (une recette reproduit un sort d'une AUTRE voie) → aucune contrainte de voie.
+for (const c of features) {
+  for (const target of c.referencedFeatures ?? []) {
+    if (!featureById.get(target))
+      err(`[capacite ${c.id}] referencedFeatures cible inexistante : ${target}`);
+    if (target === c.id) err(`[capacite ${c.id}] referencedFeatures s'auto-référence`);
+  }
+}
+
 // --- Coût de base en mana (PER-65) -------------------------------------------
 // Dérogation explicite au coût standard (= rang du sort, p. 228). On vérifie
 // que le champ ne porte que des entiers >= 0 et n'apparaît que sur des sorts.

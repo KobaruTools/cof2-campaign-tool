@@ -498,6 +498,73 @@ function BorrowedFeatureBlock({
   );
 }
 
+/**
+ * Sort CITÉ à titre INDICATIF par une capacité (Élixirs mineurs/majeurs, p. 98) : la recette
+ * REPRODUIT l'effet du sort d'une autre voie sans que ce dernier soit acquis ni actif sur le
+ * personnage — contrairement à une capacité EMPRUNTÉE (`BorrowedFeatureBlock`), qui, elle, est
+ * une vraie capacité acquise. Rendu en accordéon REPLIÉ par défaut : l'en-tête reprend la puce
+ * du sort (couleurs + icône du profil source, cf. `CapabilityChip`), le détail montre son texte
+ * enrichi résolu sur les carac/stats du personnage. Purement documentaire : aucun marqueur
+ * d'action, aucun coût en PM, aucune règle d'emprunt (le sort n'est pas lancé « en tant que tel »).
+ * `rang` résolu au rang d'ORIGINE du sort (la recette reproduit la version de base).
+ */
+function ReferencedFeatureAccordion({
+  feature,
+  abilities,
+  level,
+}: {
+  feature: Feature;
+  abilities?: Abilities;
+  level?: number;
+}) {
+  return (
+    <Accordion
+      disableGutters
+      elevation={0}
+      sx={{ bgcolor: 'transparent', border: 0, '&::before': { display: 'none' } }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon />}
+        sx={{ minHeight: 0, px: 0, '& .MuiAccordionSummary-content': { my: 0.5, alignItems: 'center' } }}
+      >
+        <CapabilityChip featureId={feature.id} label={feature.name} />
+      </AccordionSummary>
+      <AccordionDetails sx={{ px: 0, pt: 0 }}>
+        <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} />
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
+/**
+ * Liste des sorts cités à titre indicatif par une capacité (`Feature.referencedFeatures`),
+ * chacun déplié à la demande (`ReferencedFeatureAccordion`). Rendu sous la description de la
+ * capacité hôte, précédé d'une légende discrète. `null` si la capacité ne cite rien (ou si
+ * aucune cible ne résout — sécurité, les ids sont validés par `validate-data`).
+ */
+function ReferencedFeaturesBlock({
+  ids,
+  abilities,
+  level,
+}: {
+  ids: string[];
+  abilities?: Abilities;
+  level?: number;
+}) {
+  const feats = ids.map((id) => featureById.get(id)).filter((f): f is Feature => !!f);
+  if (feats.length === 0) return null;
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.25 }}>
+        Détail des sorts reproduits (à titre indicatif)
+      </Typography>
+      {feats.map((f) => (
+        <ReferencedFeatureAccordion key={f.id} feature={f} abilities={abilities} level={level} />
+      ))}
+    </Box>
+  );
+}
+
 /** Libellé d'une capacité dans le sélecteur d'ajout : voie — rang — nom. */
 function featureOptionLabel(feature: Feature): string {
   const pathName = pathById.get(feature.pathId)?.name ?? feature.pathId;
@@ -1766,6 +1833,16 @@ function PathBlock({
                   </>
                 )}
                 <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} />
+                {openFeature.referencedFeatures && openFeature.referencedFeatures.length > 0 && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <ReferencedFeaturesBlock
+                      ids={openFeature.referencedFeatures}
+                      abilities={abilities}
+                      level={level}
+                    />
+                  </>
+                )}
                 {replacements?.get(openFeature.id)?.replacedFeature && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -2042,6 +2119,16 @@ function PathBlock({
                 </>
               )}
               <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} />
+              {feature.referencedFeatures && feature.referencedFeatures.length > 0 && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  <ReferencedFeaturesBlock
+                    ids={feature.referencedFeatures}
+                    abilities={abilities}
+                    level={level}
+                  />
+                </>
+              )}
               {feature.id === 'animaux-r5' && character && <AnimalFormsNote character={character} />}
               {(() => {
                 const profile = effectiveCreatureProfile(feature, character);

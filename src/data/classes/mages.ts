@@ -983,9 +983,14 @@ export const mageFeatures: Feature[] = [
       "Le forgesort apprend à préparer des élixirs parmi Forme gazeuse, Maîtrise des éléments, Chute ralentie (voies de magicien) et Masque mortuaire (voie de sorcier). Il choisit un nombre d’élixirs égal à sa valeur d’INT (pour un maximum de 4).",
     // Rendu enrichi (PER-69) : nombre d’élixirs préparables = quantité [=INT] (plafonné
     // à 4, en texte). Choix multiple FAIT À LA TABLE (au matin, parmi la liste) → pas
-    // de `choices` structuré (décision propriétaire PER-69).
+    // de `choices` structuré (décision propriétaire PER-69). Les sorts REPRODUITS sont
+    // balisés `[&id|nom]` (puces aux couleurs du profil source) + dépliables via
+    // `referencedFeatures` (accordéons sous la description).
     richText:
-      "Le forgesort apprend à préparer des élixirs parmi Forme gazeuse, Maîtrise des éléments, Chute ralentie (voies de magicien) et Masque mortuaire (voie de sorcier). Il choisit un nombre d’élixirs égal à [=INT] (pour un maximum de 4).",
+      "Le forgesort apprend à préparer des élixirs parmi [&magie-des-arcanes-r3|Forme gazeuse], [&magie-elementaire-r2|Maîtrise des éléments], [&magie-protectrice-r2|Chute ralentie] (voies de magicien) et [&mort-r2|Masque mortuaire] (voie de sorcier). Il choisit un nombre d’élixirs égal à [=INT] (pour un maximum de 4).",
+    // Sorts reproduits par les recettes mineures (à titre indicatif — non acquis) : dépliables
+    // sous la description via un accordéon (cf. `referencedFeatures`).
+    referencedFeatures: ['magie-des-arcanes-r3', 'magie-elementaire-r2', 'magie-protectrice-r2', 'mort-r2'],
     // Consomme 1 dose du pool quotidien d'élixirs (partagé, cf. elixirs-r1). Le répertoire préparable
     // (INT recettes, max 4) reste verbatim.
     usageCounter: {
@@ -1006,9 +1011,13 @@ export const mageFeatures: Feature[] = [
     text:
       "Le forgesort apprend à préparer des élixirs parmi Invisibilité, Vol, Accélération (voies de magicien) et Masque du prédateur (voie de druide). Il choisit un nombre d’élixirs égal à sa valeur d’INT (pour un maximum de 4). Ces préparations comptent pour deux élixirs.",
     // Rendu enrichi (PER-69) : nombre d’élixirs préparables = quantité [=INT] (plafonné
-    // à 4, en texte). Choix multiple FAIT À LA TABLE → pas de `choices` structuré.
+    // à 4, en texte). Choix multiple FAIT À LA TABLE → pas de `choices` structuré. Sorts
+    // REPRODUITS balisés `[&id|nom]` + dépliables via `referencedFeatures`.
     richText:
-      "Le forgesort apprend à préparer des élixirs parmi Invisibilité, Vol, Accélération (voies de magicien) et Masque du prédateur (voie de druide). Il choisit un nombre d’élixirs égal à [=INT] (pour un maximum de 4). Ces préparations comptent pour deux élixirs.",
+      "Le forgesort apprend à préparer des élixirs parmi [&magie-universelle-r3|Invisibilité], [&magie-universelle-r4|Vol], [&magie-des-arcanes-r4|Accélération] (voies de magicien) et [&animaux-r4|Masque du prédateur] (voie de druide). Il choisit un nombre d’élixirs égal à [=INT] (pour un maximum de 4). Ces préparations comptent pour deux élixirs.",
+    // Sorts reproduits par les recettes majeures (à titre indicatif — non acquis) : dépliables
+    // sous la description via un accordéon (cf. `referencedFeatures`).
+    referencedFeatures: ['magie-universelle-r3', 'magie-universelle-r4', 'magie-des-arcanes-r4', 'animaux-r4'],
     // Élixir MAJEUR : « compte pour deux élixirs » → consomme 2 doses du pool partagé (cost: 2).
     // Répertoire préparable (INT recettes, max 4) reste verbatim.
     usageCounter: {
