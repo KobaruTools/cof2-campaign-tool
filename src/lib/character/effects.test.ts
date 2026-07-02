@@ -172,6 +172,33 @@ describe('capacityResourceGauges — ressources de capacité en jauges (PER-150)
     expect(gauge.label).toBe(featureById.get('fauve-r5')?.name);
     expect(gauge.max).toBe(6);
   });
+
+  it('rattache la ressource à son profil (rage → barbare)', () => {
+    const [gauge] = capacityResourceGauges(make({ featureIds: ['rage-r3'] }));
+    expect(gauge.classId).toBe('barbare');
+  });
+
+  // PER-157 : charges explosives de la voie des explosifs (arquebusier).
+  it('charges explosives : réserve PARTAGÉE r2/r4/r5 en une seule jauge, profil arquebusier', () => {
+    const gauges = capacityResourceGauges(
+      make({ featureIds: ['explosifs-r2', 'explosifs-r4', 'explosifs-r5'], usageCounters: { 'explosifs-charges': 2 } }),
+    );
+    expect(gauges).toHaveLength(1);
+    expect(gauges[0]).toMatchObject({
+      key: 'explosifs-charges',
+      label: 'Charges explosives',
+      classId: 'arquebusier',
+      current: 2,
+    });
+  });
+
+  it('charges explosives : max = rang le plus haut atteint dans la voie (scalant)', () => {
+    expect(capacityResourceGauges(make({ featureIds: ['explosifs-r2'] }))[0].max).toBe(2);
+    expect(capacityResourceGauges(make({ featureIds: ['explosifs-r2', 'explosifs-r4'] }))[0].max).toBe(4);
+    expect(
+      capacityResourceGauges(make({ featureIds: ['explosifs-r2', 'explosifs-r4', 'explosifs-r5'] }))[0].max,
+    ).toBe(5);
+  });
 });
 
 describe('usageCounterMaximum — réserve de rage cross-voie (PER-130)', () => {
