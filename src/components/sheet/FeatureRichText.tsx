@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { alpha, type SxProps, type Theme } from '@mui/material/styles';
+import { alpha, darken, lighten, type SxProps, type Theme } from '@mui/material/styles';
 import { Fragment, type ReactNode } from 'react';
 import { featureById, pathById, progression } from '@/data';
 import type { Die, Feature } from '@/data/schema';
@@ -70,11 +70,19 @@ function RefChip({ label, title, tone }: { label: string; title: string; tone: R
 export function CapabilityChip({
   featureId,
   label,
+  onDark = false,
   sx,
 }: {
   featureId: string;
   label: string | null;
-  /** Surcharge de style ponctuelle (ex. fond plus marqué + texte agrandi dans les tooltips de stats dérivées). */
+  /**
+   * Puce posée sur un fond SOMBRE (info-bulles de breakdown, texte enrichi sur tooltip) : le fond
+   * translucide par défaut y était illisible. `onDark` pose un fond de couleur de voie ASSOMBRIE vers
+   * le noir, un texte de couleur de voie ÉCLAIRCIE vers le blanc, et une ombre noire discrète derrière
+   * le texte et l'icône pour renforcer la lisibilité (PER-73).
+   */
+  onDark?: boolean;
+  /** Surcharge de style ponctuelle (ex. texte agrandi dans les tooltips de stats dérivées). */
   sx?: SxProps<Theme>;
 }) {
   const feature = featureById.get(featureId);
@@ -104,10 +112,21 @@ export function CapabilityChip({
             fontSize: '0.95em',
             lineHeight: 1.4,
             cursor: 'help',
-            color,
-            bgcolor: alpha(color, 0.12),
+            // Texte : sur clair, la couleur de voie pleine ; sur sombre (`onDark`), la couleur de
+            // voie ÉCLAIRCIE vers le blanc pour le contraste (l'icône suit via `currentColor`).
+            color: onDark ? lighten(color, 0.6) : color,
+            // Fond : sur clair, translucide teinté ; sur sombre (`onDark`), la couleur de voie
+            // ASSOMBRIE vers le noir (fond sombre teinté, contraste avec le texte éclairci).
+            bgcolor: onDark ? darken(color, 0.7) : alpha(color, 0.12),
             border: 1,
             borderColor: alpha(color, 0.45),
+            // Ombre noire discrète derrière le texte et l'icône (SVG) pour renforcer le contraste.
+            ...(onDark
+              ? {
+                  textShadow: '0 1px 1.5px rgba(0, 0, 0, 0.35)',
+                  '& svg': { filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35))' },
+                }
+              : null),
           },
           ...(Array.isArray(sx) ? sx : [sx]),
         ]}
@@ -524,18 +543,10 @@ export function RichInline({
       {parseRichText(text).map((seg, i) => {
         if (seg.kind === 'text') return <RichTextRun key={i} value={seg.value} />;
         if (seg.kind === 'capabilityRef')
-          // Fond blanc semi-transparent (comme les puces de source des stats dérivées,
-          // cf. DefenseBadge) : le texte plein de la couleur du profil (ex. guerrier rouge
-          // foncé) sur fond sombre était illisible. Le blanc rétablit le contraste tout en
-          // gardant bordure + texte aux couleurs du profil.
-          return (
-            <CapabilityChip
-              key={i}
-              featureId={seg.featureId}
-              label={seg.label}
-              sx={{ bgcolor: 'rgba(255, 255, 255, 0.78)' }}
-            />
-          );
+          // Sur fond sombre (tooltip) : `onDark` pose un blanc très légèrement teinté de la couleur
+          // de voie + ombre noire derrière texte/icône. Le texte plein aux couleurs du profil (ex.
+          // guerrier rouge foncé) restait sinon illisible sur fond sombre.
+          return <CapabilityChip key={i} featureId={seg.featureId} label={seg.label} onDark />;
         if (seg.kind === 'abilityRef')
           return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
         if (seg.kind === 'die') {
