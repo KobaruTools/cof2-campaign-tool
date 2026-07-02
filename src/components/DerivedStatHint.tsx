@@ -43,14 +43,17 @@ export function DerivedStatHint({
   sx,
 }: DerivedStatHintProps) {
   // Inventaire des capacités contribuant à chaque modificateur, mis en forme de
-  // sous-termes (libellé = nom de la capacité ; suffixe « (conditionnel) » pour
-  // les effets à interrupteur) consommés par le détail.
+  // sous-termes : libellé = nom nu de la capacité + `featureId` → l'UI rend la puce
+  // de voie complète (`CapabilityChip` : couleur + icône) au lieu du nom brut ; le
+  // drapeau `conditional` ajoute un marqueur « (conditionnel) » pour les effets à interrupteur.
   const modSources: ModSources = {};
   if (featureIds) {
     for (const [key, list] of Object.entries(featureModSources(featureIds, effectContext))) {
       modSources[key as keyof ModSources] = list.map((s) => ({
-        label: s.conditional ? `${s.name} (conditionnel)` : s.name,
+        label: s.name,
         value: s.value,
+        featureId: s.featureId,
+        conditional: s.conditional,
       }));
     }
   }

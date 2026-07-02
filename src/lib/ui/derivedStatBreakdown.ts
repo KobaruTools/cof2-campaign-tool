@@ -31,6 +31,12 @@ export interface BreakdownTerm {
    * la provenance (ex. « Colosse » → Voie du demi-orc). Absent = terme non lié à une capacité.
    */
   featureId?: string;
+  /**
+   * Effet conditionnel / temporaire (vs bonus permanent) ? Affiché comme marqueur
+   * « (conditionnel) » discret à côté du libellé/de la puce. Sert aux sous-termes de
+   * « Capacités / divers » (le libellé reste le nom nu, porté par la puce de voie).
+   */
+  conditional?: boolean;
 }
 
 /**
