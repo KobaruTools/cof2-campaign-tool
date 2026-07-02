@@ -42,8 +42,7 @@ export function BreakdownContent({ title, breakdown }: BreakdownContentProps) {
             <span style={{ fontWeight: 600 }}>{signed(t.value)}</span>
           </Box>
           {/* Provenance du terme : puce de voie (couleur + icône + rang) quand le terme est
-              porté par une capacité (ex. « Colosse » → Voie du demi-orc), PER-73. Sur fond de
-              tooltip sombre → `onDark` (blanc teinté de la couleur de voie + ombre). Texte agrandi. */}
+              porté par une capacité (ex. « Colosse » → Voie du demi-orc), PER-73. Texte agrandi. */}
           {t.featureId && (() => {
             const origin = featureOrigin(t.featureId);
             return origin ? (
@@ -51,7 +50,6 @@ export function BreakdownContent({ title, breakdown }: BreakdownContentProps) {
                 <CapabilityChip
                   featureId={t.featureId}
                   label={`${origin.pathName} · rang ${origin.rank}`}
-                  onDark
                   sx={{ fontSize: 'calc(0.95em + 2px)' }}
                 />
               </Box>

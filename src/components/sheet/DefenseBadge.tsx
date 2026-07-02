@@ -92,12 +92,10 @@ export function DefenseBadge({
                 + rang, pour identifier la provenance sans ambiguïté (le nom seul ne suffit pas). PER-137. */}
             {s.featureId && origin && (
               <Box sx={{ mt: 0.25, fontSize: '0.8em' }}>
-                {/* Sur fond de tooltip sombre → `onDark` (blanc teinté de la couleur de voie +
-                    ombre derrière texte/icône) ; texte +2px car la puce est petite ici. */}
+                {/* Texte +2px car la puce est petite ici. */}
                 <CapabilityChip
                   featureId={s.featureId}
                   label={`${origin.pathName} · rang ${origin.rank}`}
-                  onDark
                   sx={{ fontSize: 'calc(0.95em + 2px)' }}
                 />
               </Box>

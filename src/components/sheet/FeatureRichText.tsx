@@ -62,26 +62,19 @@ function RefChip({ label, title, tone }: { label: string; title: string; tone: R
 }
 
 /**
- * Référence à une AUTRE capacité (`[&feature-id|texte]`, PER-72) : puce encadrée aux
- * couleurs du PROFIL de la capacité citée — bordure + fond semi-transparent + icône de
- * profil + texte, tous teintés de la couleur du profil. Info-bulle = nom canonique +
- * voie. Référence inconnue (id erroné) → repli silencieux sur le texte brut.
+ * Référence à une AUTRE capacité (`[&feature-id|texte]`, PER-72) : puce encadrée aux couleurs du
+ * PROFIL de la capacité citée. Style UNIQUE (PER-73, unifié) : fond de couleur de voie ASSOMBRIE vers
+ * le noir, texte + icône de couleur de voie ÉCLAIRCIE vers le blanc, et une ombre portée noire discrète
+ * derrière le texte et l'icône. Lisible sur tout fond (clair, sombre, tooltip) sans variante. Info-bulle
+ * = nom canonique + voie. Référence inconnue (id erroné) → repli silencieux sur le texte brut.
  */
 export function CapabilityChip({
   featureId,
   label,
-  onDark = false,
   sx,
 }: {
   featureId: string;
   label: string | null;
-  /**
-   * Puce posée sur un fond SOMBRE (info-bulles de breakdown, texte enrichi sur tooltip) : le fond
-   * translucide par défaut y était illisible. `onDark` pose un fond de couleur de voie ASSOMBRIE vers
-   * le noir, un texte de couleur de voie ÉCLAIRCIE vers le blanc, et une ombre noire discrète derrière
-   * le texte et l'icône pour renforcer la lisibilité (PER-73).
-   */
-  onDark?: boolean;
   /** Surcharge de style ponctuelle (ex. texte agrandi dans les tooltips de stats dérivées). */
   sx?: SxProps<Theme>;
 }) {
@@ -112,21 +105,15 @@ export function CapabilityChip({
             fontSize: '0.95em',
             lineHeight: 1.4,
             cursor: 'help',
-            // Texte : sur clair, la couleur de voie pleine ; sur sombre (`onDark`), la couleur de
-            // voie ÉCLAIRCIE vers le blanc pour le contraste (l'icône suit via `currentColor`).
-            color: onDark ? lighten(color, 0.6) : color,
-            // Fond : sur clair, translucide teinté ; sur sombre (`onDark`), la couleur de voie
-            // ASSOMBRIE vers le noir (fond sombre teinté, contraste avec le texte éclairci).
-            bgcolor: onDark ? darken(color, 0.7) : alpha(color, 0.12),
+            // Texte + icône : couleur de voie ÉCLAIRCIE vers le blanc (l'icône suit via `currentColor`).
+            color: lighten(color, 0.6),
+            // Fond : couleur de voie ASSOMBRIE vers le noir (contraste avec le texte éclairci).
+            bgcolor: darken(color, 0.7),
             border: 1,
             borderColor: alpha(color, 0.45),
-            // Ombre noire discrète derrière le texte et l'icône (SVG) pour renforcer le contraste.
-            ...(onDark
-              ? {
-                  textShadow: '0 1px 1.5px rgba(0, 0, 0, 0.35)',
-                  '& svg': { filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35))' },
-                }
-              : null),
+            // Ombre portée noire discrète derrière le texte et l'icône (SVG) pour renforcer le contraste.
+            textShadow: '0 1px 1.5px rgba(0, 0, 0, 0.35)',
+            '& svg': { filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35))' },
           },
           ...(Array.isArray(sx) ? sx : [sx]),
         ]}
@@ -543,10 +530,7 @@ export function RichInline({
       {parseRichText(text).map((seg, i) => {
         if (seg.kind === 'text') return <RichTextRun key={i} value={seg.value} />;
         if (seg.kind === 'capabilityRef')
-          // Sur fond sombre (tooltip) : `onDark` pose un blanc très légèrement teinté de la couleur
-          // de voie + ombre noire derrière texte/icône. Le texte plein aux couleurs du profil (ex.
-          // guerrier rouge foncé) restait sinon illisible sur fond sombre.
-          return <CapabilityChip key={i} featureId={seg.featureId} label={seg.label} onDark />;
+          return <CapabilityChip key={i} featureId={seg.featureId} label={seg.label} />;
         if (seg.kind === 'abilityRef')
           return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
         if (seg.kind === 'die') {

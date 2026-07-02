@@ -112,19 +112,14 @@ export function EquipmentList({ equipment, onChange, onUse }: EquipmentListProps
                   />
                 ) : elixirFeatureId ? (
                   // Nom d'élixir : « Élixir — » suivi de la puce de la capacité reproduite (couleurs +
-                  // icône du profil source, cf. CapabilityChip). Fond clair pour rester lisible sur le
-                  // thème sombre, comme les puces des cartes de capacité.
+                  // icône du profil source, cf. CapabilityChip — style unique lisible sur tout fond).
                   <Typography
                     variant="body2"
                     component="span"
                     sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center' }}
                   >
                     Élixir —
-                    <CapabilityChip
-                      featureId={elixirFeatureId}
-                      label={null}
-                      sx={{ bgcolor: 'rgba(255, 255, 255, 0.85)' }}
-                    />
+                    <CapabilityChip featureId={elixirFeatureId} label={null} />
                   </Typography>
                 ) : (
                   <>
