@@ -21,6 +21,7 @@ import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -509,31 +510,72 @@ function BorrowedFeatureBlock({
  * d'action, aucun coût en PM, aucune règle d'emprunt (le sort n'est pas lancé « en tant que tel »).
  * `rang` résolu au rang d'ORIGINE du sort (la recette reproduit la version de base).
  */
+/**
+ * Contexte de PRODUCTION d'élixir pour les sorts reproduits (r4/r5) : la capacité HÔTE (qui porte
+ * la réserve partagée) + le personnage + le callback de création. Fourni quand la capacité offre
+ * un pool éditable (`poolInPathHeader` + `onCreateElixir`) ; alors chaque bloc de sort reproduit
+ * gagne un bouton « Créer cet élixir » nommant la dose d'après CE sort (on ne peut pas deviner
+ * lequel des sorts est produit — d'où un bouton par sort, retour propriétaire). Absent → blocs
+ * purement documentaires.
+ */
+interface ElixirCreation {
+  hostFeature: Feature;
+  character: Character;
+  onCreate: (counterKey: string, cost: number, max: number, elixirName: string) => void;
+}
+
 function ReferencedFeatureAccordion({
   feature,
   abilities,
   level,
+  creation,
 }: {
   feature: Feature;
   abilities?: Abilities;
   level?: number;
+  creation?: ElixirCreation;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  // Collapse MANUEL (pas d'Accordion MUI) : le résumé porte à la fois le chevron de dépliage ET le
+  // bouton « Créer cet élixir ». Un `AccordionSummary` est un `<button>` — y imbriquer le bouton de
+  // création donnerait un bouton dans un bouton (HTML invalide). Ici la zone repliable est un simple
+  // IconButton, le bouton de création vit à côté, sans imbrication.
   return (
-    <Accordion
-      disableGutters
-      elevation={0}
-      sx={{ bgcolor: 'transparent', border: 0, '&::before': { display: 'none' } }}
-    >
-      <AccordionSummary
-        expandIcon={<ExpandMoreIcon />}
-        sx={{ minHeight: 0, px: 0, '& .MuiAccordionSummary-content': { my: 0.5, alignItems: 'center' } }}
-      >
+    <Box>
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', gap: 0.5 }}>
+        <IconButton
+          size="small"
+          aria-label={expanded ? 'Replier le sort' : 'Déplier le sort'}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+          sx={{ p: 0.25 }}
+        >
+          <ExpandMoreIcon
+            sx={{ fontSize: 20, transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none' }}
+          />
+        </IconButton>
         <CapabilityChip featureId={feature.id} label={feature.name} />
-      </AccordionSummary>
-      <AccordionDetails sx={{ px: 0, pt: 0 }}>
-        <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} />
-      </AccordionDetails>
-    </Accordion>
+        {creation && (
+          // Bouton de production nommant la dose d'après CE sort ; poussé à droite du chip. Le
+          // décompte de la réserve reste rappelé par la barre de l'en-tête de voie (showRemaining off).
+          <Box sx={{ ml: 'auto' }}>
+            <CreateElixirButton
+              feature={creation.hostFeature}
+              character={creation.character}
+              onCreate={creation.onCreate}
+              elixirName={feature.name}
+              buttonLabel="Créer cet élixir"
+              showRemaining={false}
+            />
+          </Box>
+        )}
+      </Stack>
+      <Collapse in={expanded} unmountOnExit>
+        <Box sx={{ pl: 3.5, pt: 0.25 }}>
+          <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} />
+        </Box>
+      </Collapse>
+    </Box>
   );
 }
 
@@ -541,26 +583,29 @@ function ReferencedFeatureAccordion({
  * Liste des sorts cités à titre indicatif par une capacité (`Feature.referencedFeatures`),
  * chacun déplié à la demande (`ReferencedFeatureAccordion`). Rendu sous la description de la
  * capacité hôte, précédé d'une légende discrète. `null` si la capacité ne cite rien (ou si
- * aucune cible ne résout — sécurité, les ids sont validés par `validate-data`).
+ * aucune cible ne résout — sécurité, les ids sont validés par `validate-data`). Quand `creation`
+ * est fourni (Élixirs mineurs/majeurs), chaque bloc porte un bouton « Créer cet élixir ».
  */
 function ReferencedFeaturesBlock({
   ids,
   abilities,
   level,
+  creation,
 }: {
   ids: string[];
   abilities?: Abilities;
   level?: number;
+  creation?: ElixirCreation;
 }) {
   const feats = ids.map((id) => featureById.get(id)).filter((f): f is Feature => !!f);
   if (feats.length === 0) return null;
   return (
     <Box>
       <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.25 }}>
-        Détail des sorts reproduits (à titre indicatif)
+        {creation ? 'Élixirs préparables (choisir la recette à produire)' : 'Détail des sorts reproduits (à titre indicatif)'}
       </Typography>
       {feats.map((f) => (
-        <ReferencedFeatureAccordion key={f.id} feature={f} abilities={abilities} level={level} />
+        <ReferencedFeatureAccordion key={f.id} feature={f} abilities={abilities} level={level} creation={creation} />
       ))}
     </Box>
   );
@@ -635,6 +680,13 @@ export interface FeaturesByPathProps {
    * lecture seule.
    */
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
+  /**
+   * Produit un élixir (forgesort, p. 98) : consomme la réserve partagée d'un cran (`cost`) ET
+   * matérialise une dose dans l'équipement (objet custom). `elixirName` nomme la dose créée — le
+   * nom de la capacité pour les rangs 1-3 (une seule recette), le nom du sort choisi pour les
+   * Élixirs mineurs/majeurs (r4/r5). Absent → boutons de création masqués (lecture seule).
+   */
+  onCreateElixir?: (counterKey: string, cost: number, max: number, elixirName: string) => void;
   /**
    * Bonus de compétence par domaine (cf. `testBonusSources`) — utilisé pour signaler, sur une
    * capacité EMPRUNTÉE, que son bonus de test est DOMINÉ (ne se cumule pas), affiché barré + la
@@ -1183,28 +1235,37 @@ function PathResourcePoolBar({
 }
 
 /**
- * Bouton « Créer l'élixir » (forgesort, p. 98) : produit une dose de cette recette en consommant
- * la réserve partagée d'un cran (`cost`). Remplace le compteur ±1 par carte pour les réserves
- * `poolInPathHeader` — le suivi vit dans la barre de l'en-tête de voie. Le décompte restant est
- * rappelé à côté (la modale masque l'en-tête). Désactivé quand la réserve est insuffisante.
- * Lecture seule (`onSet` absent) → rien.
+ * Bouton « Créer l'élixir » (forgesort, p. 98) : produit une dose en consommant la réserve
+ * partagée d'un cran (`cost`, porté par la capacité HÔTE `feature`) ET en matérialisant l'élixir
+ * dans l'équipement (via `onCreate`). `elixirName` nomme la dose : nom de la capacité pour les
+ * rangs 1-3 (recette unique), nom du SORT choisi pour les Élixirs mineurs/majeurs (r4/r5, où le
+ * bouton vit dans chaque bloc de sort reproduit). `showRemaining` rappelle « réserve : N/max » à
+ * côté (utile en modale ; masqué dans les accordéons compacts). Désactivé si la réserve est
+ * insuffisante. Lecture seule (`onCreate` absent) → rien.
  */
 function CreateElixirButton({
   feature,
   character,
-  onSet,
+  onCreate,
+  elixirName,
+  buttonLabel = 'Créer l’élixir',
+  showRemaining = true,
 }: {
   feature: Feature;
   character: Character;
-  onSet?: (counterKey: string, value: number, max: number) => void;
+  onCreate?: (counterKey: string, cost: number, max: number, elixirName: string) => void;
+  elixirName?: string;
+  buttonLabel?: string;
+  showRemaining?: boolean;
 }) {
   const counter = feature.usageCounter;
-  if (!counter || !onSet) return null;
+  if (!counter || !onCreate) return null;
   const max = usageCounterMaximum(counter, character, feature);
   const key = usageCounterKey(counter, feature);
   const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
   const cost = counter.cost ?? 1;
   const label = counter.label ?? 'Réserve';
+  const name = elixirName ?? feature.name;
   const enough = remaining >= cost;
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
@@ -1213,14 +1274,22 @@ function CreateElixirButton({
         variant="outlined"
         startIcon={<ScienceOutlinedIcon />}
         disabled={!enough}
-        onClick={() => onSet(key, remaining - cost, max)}
+        // stopPropagation : le bouton peut vivre dans le résumé cliquable d'un accordéon (r4/r5) —
+        // le clic « Créer » ne doit pas déplier/replier le bloc du sort.
+        onClick={(e) => {
+          e.stopPropagation();
+          onCreate(key, cost, max, name);
+        }}
       >
-        Créer l’élixir{cost > 1 ? ` (−${cost})` : ''}
+        {buttonLabel}
+        {cost > 1 ? ` (−${cost})` : ''}
       </Button>
-      <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-        {label} : {remaining}/{max}
-        {!enough && (remaining <= 0 ? ' — réserve épuisée' : ' — réserve insuffisante')}
-      </Typography>
+      {showRemaining && (
+        <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+          {label} : {remaining}/{max}
+          {!enough && (remaining <= 0 ? ' — réserve épuisée' : ' — réserve insuffisante')}
+        </Typography>
+      )}
     </Stack>
   );
 }
@@ -1268,6 +1337,7 @@ function PathBlock({
   onToggleEffect,
   onSetEffectInput,
   onSetUsageCounter,
+  onCreateElixir,
   disabledIds,
   disabledReasons,
   replacements,
@@ -1302,6 +1372,8 @@ function PathBlock({
   onSetEffectInput?: (featureId: string, value: string) => void;
   /** Décompte d'une capacité à usages limités (Les sept vies du chat, PER-70). */
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
+  /** Produit un élixir : consomme la réserve + matérialise la dose dans l'équipement (forgesort). */
+  onCreateElixir?: (counterKey: string, cost: number, max: number, elixirName: string) => void;
   /**
    * Capacités désactivées par exclusion mutuelle (un interrupteur actif les grise) :
    * rendues semi-transparentes + grisées, interrupteur non-interactif, détail conservé.
@@ -1329,6 +1401,13 @@ function PathBlock({
   // barre sous l'en-tête + bouton « Créer l'élixir » par carte, au lieu d'une jauge d'état / d'un
   // compteur par carte. `null` pour les voies sans réserve de ce type.
   const pool = pathResourcePool(features, character);
+  // Contexte de production d'élixir d'une capacité à pool (r1-r5) : fourni quand le callback existe.
+  // Sert au(x) bouton(s) « Créer l'élixir » — un seul (rangs 1-3, recette unique) ou un par sort
+  // reproduit (r4/r5, où il faut préciser QUELLE recette est produite).
+  const elixirCreation = (feature: Feature): ElixirCreation | undefined =>
+    feature.usageCounter?.poolInPathHeader && onCreateElixir && character
+      ? { hostFeature: feature, character, onCreate: onCreateElixir }
+      : undefined;
   // Bonus de test d'une capacité (typiquement EMPRUNTÉE) qui sont DOMINÉS (ne se cumulent pas, p. 203) :
   // pour les afficher barrés sur sa carte avec la capacité qui les domine (PER-73). Vide si aucun.
   const dominatedTestBonusesFor = (
@@ -1991,6 +2070,7 @@ function PathBlock({
                       ids={openFeature.referencedFeatures}
                       abilities={abilities}
                       level={level}
+                      creation={elixirCreation(openFeature)}
                     />
                   </>
                 )}
@@ -2101,26 +2181,30 @@ function PathBlock({
                     />
                   </>
                 )}
-                {openFeature.usageCounter && character && (
-                  <>
-                    <Divider sx={{ my: 1.5 }} />
-                    {openFeature.usageCounter.poolInPathHeader ? (
-                      // Réserve de type pool (élixirs) : bouton de production qui décompte la réserve
-                      // partagée (suivie dans la barre de l'en-tête de voie), au lieu du compteur ±1.
-                      <CreateElixirButton
-                        feature={openFeature}
-                        character={character}
-                        onSet={onSetUsageCounter}
-                      />
-                    ) : (
-                      <UsageCounterField
-                        feature={openFeature}
-                        character={character}
-                        onSet={onSetUsageCounter}
-                      />
-                    )}
-                  </>
-                )}
+                {openFeature.usageCounter &&
+                  character &&
+                  // r4/r5 (pool + sorts reproduits) : les boutons « Créer cet élixir » vivent DANS
+                  // les blocs de sorts ci-dessus (on y précise la recette) → pas de bouton unique ici.
+                  !(openFeature.usageCounter.poolInPathHeader && openFeature.referencedFeatures?.length) && (
+                    <>
+                      <Divider sx={{ my: 1.5 }} />
+                      {openFeature.usageCounter.poolInPathHeader ? (
+                        // Rangs 1-3 (recette unique) : bouton de production nommé d'après la capacité,
+                        // qui décompte la réserve (barre de l'en-tête) et matérialise la dose.
+                        <CreateElixirButton
+                          feature={openFeature}
+                          character={character}
+                          onCreate={onCreateElixir}
+                        />
+                      ) : (
+                        <UsageCounterField
+                          feature={openFeature}
+                          character={character}
+                          onSet={onSetUsageCounter}
+                        />
+                      )}
+                    </>
+                  )}
               </DialogContent>
             </>
           )}
@@ -2287,6 +2371,7 @@ function PathBlock({
                     ids={feature.referencedFeatures}
                     abilities={abilities}
                     level={level}
+                    creation={elixirCreation(feature)}
                   />
                 </>
               )}
@@ -2355,18 +2440,22 @@ function PathBlock({
                   <ElementResistanceSelector feature={feature} character={character} onSetInput={onSetEffectInput} />
                 </>
               )}
-              {feature.usageCounter && character && (
-                <>
-                  <Divider sx={{ my: 1.5 }} />
-                  {feature.usageCounter.poolInPathHeader ? (
-                    // Réserve de type pool (élixirs) : bouton de production décomptant la réserve
-                    // partagée (suivie dans la barre de l'en-tête de voie), au lieu du compteur ±1.
-                    <CreateElixirButton feature={feature} character={character} onSet={onSetUsageCounter} />
-                  ) : (
-                    <UsageCounterField feature={feature} character={character} onSet={onSetUsageCounter} />
-                  )}
-                </>
-              )}
+              {feature.usageCounter &&
+                character &&
+                // r4/r5 (pool + sorts reproduits) : les boutons « Créer cet élixir » vivent dans les
+                // blocs de sorts reproduits ci-dessus → pas de bouton unique ici.
+                !(feature.usageCounter.poolInPathHeader && feature.referencedFeatures?.length) && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    {feature.usageCounter.poolInPathHeader ? (
+                      // Rangs 1-3 (recette unique) : bouton de production nommé d'après la capacité,
+                      // qui décompte la réserve (barre de l'en-tête) et matérialise la dose.
+                      <CreateElixirButton feature={feature} character={character} onCreate={onCreateElixir} />
+                    ) : (
+                      <UsageCounterField feature={feature} character={character} onSet={onSetUsageCounter} />
+                    )}
+                  </>
+                )}
               {repl?.replacedFeature && (
                 <Accordion
                   disableGutters
@@ -2451,6 +2540,7 @@ export function FeaturesByPath({
   onToggleEffect,
   onSetEffectInput,
   onSetUsageCounter,
+  onCreateElixir,
   concentration = false,
   testBonuses,
 }: FeaturesByPathProps) {
@@ -2556,6 +2646,7 @@ export function FeaturesByPath({
               onToggleEffect={onToggleEffect}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
+              onCreateElixir={onCreateElixir}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               replacements={replacements}
@@ -2583,6 +2674,7 @@ export function FeaturesByPath({
               onToggleEffect={onToggleEffect}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
+              onCreateElixir={onCreateElixir}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               replacements={replacements}
@@ -2610,6 +2702,7 @@ export function FeaturesByPath({
               onToggleEffect={onToggleEffect}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
+              onCreateElixir={onCreateElixir}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               replacements={replacements}

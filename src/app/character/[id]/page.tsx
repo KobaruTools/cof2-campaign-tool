@@ -25,7 +25,8 @@ import { ancestryById, classById, families, featureById, progression } from '@/d
 import type { DerivedInput } from '@/lib/engine';
 import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
-import type { Character, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
+import type { Character, CustomItem, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
+import { isCustomItem } from '@/lib/character/types';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
@@ -277,6 +278,28 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     if (clamped >= max) delete next[counterKey];
     else next[counterKey] = clamped;
     update({ usageCounters: next });
+  };
+  // Créer un élixir (forgesort, p. 98) : consomme la réserve partagée d'un cran (`cost`) ET
+  // matérialise la dose dans l'équipement (objet custom, quantité incrémentée si déjà présent).
+  // Les deux mutations partent dans UNE seule mise à jour, pour ne pas s'écraser l'une l'autre.
+  // Matérialisation minimale (le transfert à un autre personnage relève de PER-158).
+  const createElixir = (counterKey: string, cost: number, max: number, elixirName: string) => {
+    const remaining = Math.max(0, Math.min(max, character.usageCounters?.[counterKey] ?? max));
+    if (remaining < cost) return;
+    const usageCounters = { ...character.usageCounters };
+    const nextValue = remaining - cost;
+    if (nextValue >= max) delete usageCounters[counterKey];
+    else usageCounters[counterKey] = nextValue;
+    const itemName = `Élixir — ${elixirName}`;
+    const equipment = [...character.equipment];
+    const idx = equipment.findIndex((line) => isCustomItem(line) && line.name === itemName);
+    if (idx >= 0) {
+      const line = equipment[idx] as CustomItem;
+      equipment[idx] = { ...line, quantity: line.quantity + 1 };
+    } else {
+      equipment.push({ custom: true, name: itemName, quantity: 1, details: 'Élixir préparé (voie des élixirs, p. 98).' });
+    }
+    update({ usageCounters, equipment });
   };
   // Jauge de PV (PER-148) : dépletion transitoire (manque létal/temp), état de jeu
   // modifiable HORS mode « Modifier » (comme les compteurs d'usages). Le max reste
@@ -759,6 +782,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               onSetEffectInput={setEffectInputValue}
               // Compteur d'usages limités (Les sept vies du chat) : état de jeu.
               onSetUsageCounter={setUsageCounterValue}
+              // Créer un élixir (forgesort) : décompte la réserve + ajoute la dose à l'équipement.
+              onCreateElixir={createElixir}
               // Stats du maître : Init./attaque des compagnons recopient ce total.
               masterDerived={masterDerived}
               // Bonus de compétence par domaine : sert à signaler, sur une capacité EMPRUNTÉE, que son
