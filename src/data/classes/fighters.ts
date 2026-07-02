@@ -587,6 +587,8 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       'Une fois par combat, le barbare tourne sur lui-même en assénant des attaques à toutes les cibles au contact. Il inflige automatiquement des DM correspondant à l’arme utilisée (plus tous les bonus habituels) à toutes les cibles dans un rayon de 5 m autour de lui.',
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 81,
   },
 
@@ -703,11 +705,12 @@ export const fighterFeatures: Feature[] = [
       'Une fois par combat, le barbare pousse un hurlement qui effraie ses adversaires dans un rayon de 10 m. Les adversaires dont la FOR est inférieure à celle du barbare subissent un dé malus à leurs tests d’attaque au contact durant leur prochain tour. De plus, le barbare est sans peur, il ajoute son rang + 2 à tous les tests de VOL destinés à résister à la peur.',
     // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. PER-128 : bonus de compétence
     // INCONDITIONNEL au domaine « résister à la peur » (`fear-resistance`, VOL). Le dé malus infligé
-    // aux ennemis (effet de groupe) relève du tracker de combat (PER-104/105). « Une fois par combat » :
-    // pas de compteur d'usages.
+    // aux ennemis (effet de groupe) relève du tracker de combat (PER-104/105). « Une fois par combat »
+    // → compteur réinitialisé au repos court (resetOn 'combat', PER-73/151).
     richText:
       'Une fois par combat, le barbare pousse un hurlement qui effraie ses adversaires dans un rayon de 10 m. Les adversaires dont la FOR est inférieure à celle du barbare subissent un dé malus à leurs tests d’attaque au contact durant leur prochain tour. De plus, le barbare est sans peur, il ajoute son [rang + 2] à tous les tests de VOL destinés à résister à la peur.',
     effects: [{ kind: 'test-bonus', domains: ['fear-resistance'] }],
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 82,
   },
   {
@@ -719,6 +722,8 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Une fois par combat, lorsque le barbare subit des DM d’une attaque qui devrait l’amener à 0 PV, il peut réaliser un test de CON difficulté 10. En cas de réussite, il conserve 1 PV. S’il est enragé, la réussite est automatique.',
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 82,
   },
   {
@@ -770,6 +775,8 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Une fois par combat, le barbare peut ignorer les DM d’un coup critique (il ne subit aucun DM) et il peut alors immédiatement entrer en Rage par une action gratuite.',
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 82,
   },
   {
@@ -1084,6 +1091,8 @@ export const fighterFeatures: Feature[] = [
     // étourdi / recul) relève du tracker de combat. Pas d'effet structuré.
     richText:
       'Une fois par combat, le chevalier peut donner un coup avec son armure (gantelet, heaume, spallière, etc.) en action gratuite. Il inflige automatiquement [1d4° + FOR] DM, et si la @FOR de la cible est inférieure à celle du chevalier, elle est (au choix du chevalier) renversée ou étourdie pour 1 round ou recule de 3 m.',
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 85,
   },
 
@@ -1103,6 +1112,7 @@ export const fighterFeatures: Feature[] = [
     richText:
       'Une fois par combat, le chevalier peut noter à part les DM subis par une attaque (mais pas un critique). Il ne subira les DM que lorsque le combat sera terminé. De plus le héros gagne un bonus égal à [rang + 2] pour haranguer et convaincre les foules (au moins 15 individus).',
     effects: [{ kind: 'test-bonus', domains: ['haranguing'] }],
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 85,
   },
   {
@@ -1231,6 +1241,8 @@ export const fighterFeatures: Feature[] = [
     // déclenchement → relève du tracker de combat (alliés hors périmètre). Pas d'effet structuré.
     richText:
       'Une fois par combat, lorsque le chevalier déclare l’utilisation de cette capacité, tous ses alliés en vue et lui obtiennent 10 m de déplacement supplémentaire au début de leur tour puis un dé bonus et +{1d4°} DM à toutes leurs attaques. Ne se cumule ni avec exemplaire ni avec ordre de bataille.',
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 86,
   },
   {
@@ -1489,6 +1501,8 @@ export const fighterFeatures: Feature[] = [
     // de caractéristique (état de combat) → hors périmètre PER-89, verbatim. L'action de mouvement
     // supplémentaire relève du tracker de combat. Pas de jeton parsable (« +3 » plat, Init. auto-glosée).
     effects: [{ kind: 'stat-bonus', stat: 'initiative', value: 3 }],
+    // « Une fois par combat » (action de mouvement suppl.) → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 88,
   },
   {
@@ -1789,6 +1803,8 @@ export const fighterFeatures: Feature[] = [
     // 0 PV (1×/combat) et l'absence de dé malus en état immobilisé/étourdi relèvent du tracker de
     // combat / des états (PER-104/105) → verbatim. Pas de jeton parsable (« +1 » plat).
     effects: [{ kind: 'stat-bonus', stat: 'def', value: 1 }],
+    // « Une fois par combat » (sursis à 0 PV) → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 90,
   },
 

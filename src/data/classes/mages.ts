@@ -586,6 +586,8 @@ export const mageFeatures: Feature[] = [
       },
     ],
     damageReduction: { kind: 'divide', value: 2 },
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 94,
   },
 
@@ -619,6 +621,8 @@ export const mageFeatures: Feature[] = [
     // durée « pendant [=CHA] minutes ». Les seuils de NC par rang restent en texte.
     richText:
       "Une fois par combat, l’ensorceleur vise une zone de 10 m de diamètre à une portée maximale de 20 m. Le sort affecte jusqu’à [1d4° + CHA] créatures vivantes de NC inférieur à 1. Le sort affecte les créatures de NC inférieur à 2 au rang 4 puis à 3 au rang 5. Les créatures perdent conscience pendant [=CHA] minutes. Il est possible de les réveiller en les cognant violemment (action d’attaque, 1 DM).",
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 94,
   },
   {
@@ -1752,6 +1756,8 @@ export const mageFeatures: Feature[] = [
     // le mot, pas un nombre nu).
     richText:
       "Le magicien désigne un objet à moins de 10 m. Celui‑ci produit de la lumière dans un rayon de 10 m pendant [=INT] heures. Cette source de lumière n’émet pas de chaleur. Une fois par combat, le magicien peut lancer ce sort sur les yeux d’une créature dont le NC ne dépasse pas le [#rang] atteint dans la voie. S’il réussit un test opposé d’attaque magique, elle est aveuglée pendant 1 round.",
+    // « Une fois par combat » (aveuglement) → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 106,
   },
   {

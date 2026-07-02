@@ -823,6 +823,8 @@ export const mysticFeatures: Feature[] = [
       "Une fois par combat, le moine peut effectuer une attaque tournoyante qui inflige automatiquement [3d4°+FOR] DM à tous les adversaires au contact et oblige ceux-ci à réussir un test de FOR difficulté 10 pour ne pas être renversés.",
     richText:
       "Une fois par combat, le moine peut effectuer une attaque tournoyante qui inflige automatiquement [3d4° + FOR] DM à tous les adversaires au contact et oblige ceux-ci à réussir un test de @FOR difficulté 10 pour ne pas être renversés.",
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 119,
   },
   {
@@ -1083,6 +1085,8 @@ export const mysticFeatures: Feature[] = [
         prompt: "Caractéristique à augmenter de +1 (la plus faible, choisir en cas d'égalité)",
       },
     ],
+    // « Une fois par combat » (intangibilité) → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 121,
   },
   // =======================================================================
@@ -1312,6 +1316,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       "Le prêtre fait appel à son dieu pour changer le cours des événements. Une fois par combat, il peut décider qu'un test du MJ ou des joueurs est une réussite ou un échec, même après que les dés ont révélé leur résultat. Il ne peut pas modifier le résultat du test obtenu par une créature d'un NC supérieur à son niveau.",
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 124,
   },
   // =======================================================================

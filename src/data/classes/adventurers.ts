@@ -817,6 +817,8 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['M'],
     text:
       "Une fois par combat, le barde peut au choix désarmer, renverser ou aveugler pour une durée de 1 round un adversaire dont le NC est inférieur au sien en emportant un test opposé d'INT. S'il a réussi une feinte contre cet adversaire à son tour précédent, il bénéficie d'un bonus de +5 au test d'INT.",
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 66,
   },
   {
@@ -1276,6 +1278,9 @@ export const adventurerFeatures: Feature[] = [
     // bonus en attaque, l'état préjudiciable et « 1 round » restent en prose. Pas d'effet permanent.
     richText:
       "Vous obtenez un dé bonus en attaque à distance et vous ajoutez {1d4°} aux DM. Au lieu du dé bonus et de +{1d4°} aux DM, vous pouvez infliger un état préjudiciable de votre choix parmi aveuglé, affaibli, ralenti ou immobilisé pendant 1 round à une cible d'un NC inférieur au vôtre. Vous ne pouvez infliger chaque état préjudiciable qu'une seule fois par combat.",
+    // « chaque état préjudiciable une seule fois par combat » → 4 états (aveuglé, affaibli, ralenti,
+    // immobilisé), soit 4 utilisations par combat ; réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 4, resetOn: 'combat', hideFromStatusPanel: true, label: 'États infligés' },
     sourcePage: 70,
   },
 
@@ -1484,6 +1489,8 @@ export const adventurerFeatures: Feature[] = [
     // buff TEMPORAIRE déclenché en tombant à 0 PV (pas un interrupteur de fiche persistant) → prose.
     richText:
       "Une fois par combat, lorsqu'il tombe à 0PV, le rôdeur peut récupérer [4d4° + CON] PV au début de son prochain tour. Lorsqu'il se relève, il bénéficie d'un bonus de +5 en DEF pendant 1 round et il se débarrasse de tous les états préjudiciables non permanents qui l'affectent.",
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 72,
   },
 
@@ -1802,6 +1809,8 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['M'],
     text:
       "Une fois par combat, le voleur peut disparaître dans un flash lumineux et un nuage de fumée. Aucun adversaire ne peut l'attaquer pendant qu'il a disparu, mais il peut subir des DM de zone. Il ne réapparaît qu'au début de son prochain tour à une distance maximale de 20 m de sa position initiale. À ce moment, si le voleur a l'initiative, il peut réaliser une attaque sournoise.",
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 74,
   },
   {
@@ -1813,6 +1822,8 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le voleur obtient une réussite critique automatique contre la cible de son choix. Il profite donc d'une réussite automatique, des dommages multipliés par 2 prévus dans ce cas et d'une attaque sournoise (dont les DM ne sont pas doublés).",
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 74,
   },
 
@@ -1907,6 +1918,8 @@ export const adventurerFeatures: Feature[] = [
     // constante dans le format ; valeur situationnelle comparée au NC de la cible).
     richText:
       "Une fois par combat, le voleur peut, en réussissant une attaque de contact, paralyser un adversaire humanoïde de douleur. La cible ne subit aucun DM, mais elle est immobilisée pendant {1d4} rounds ou, si son NC est inférieur à la moitié du niveau du voleur, elle est paralysée. De plus, le voleur peut désormais utiliser au choix l'attaque sournoise (s'il détient cette capacité) ou infliger +{1d4°} DM contre tout adversaire immobilisé ou paralysé.",
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 75,
   },
 
@@ -2047,6 +2060,8 @@ export const adventurerFeatures: Feature[] = [
     // d'autrui, non calculées contre le joueur).
     richText:
       "Une fois par combat, le voleur peut feindre la mort après avoir reçu une blessure (même à 0 PV). Il peut ainsi passer pour mort aussi longtemps qu'il le souhaite et un test d'INT difficulté 20 est nécessaire pour révéler la supercherie. Lorsqu'il décide de se relever (action gratuite), le voleur récupère immédiatement {1d4°} PV et s'il est au contact d'un adversaire, celui-ci est surpris. Un adversaire qui a déjà été victime de cette stratégie du voleur lors d'un précédent combat ne se laisse pas surprendre une seconde fois (sauf si son INT est de -4).",
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 76,
   },
   {
@@ -2111,6 +2126,8 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par combat, le voleur peut esquiver une attaque et s'arranger pour que celle-ci affecte un autre adversaire à son contact. Comparez le test d'attaque à la DEF de la nouvelle cible pour savoir si celle-ci subit des DM. Cette capacité ne peut pas être utilisée si le voleur n'a qu'un seul adversaire au contact et jamais contre une réussite critique (un critique touche toujours sa cible).",
+    // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 77,
   },
   {
@@ -2157,6 +2174,9 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque le voleur obtient un critique sur le dé d'une attaque au contact de sa main principale avec une arme légère (mais pas sur une ouverture mortelle), il inflige à sa cible un état préjudiciable au choix parmi affaibli, aveuglé, étourdi, immobilisé ou ralenti pendant 1 round. Vous ne pouvez infliger chaque état préjudiciable qu'une seule fois par combat. Alternativement, le voleur peut choisir que l'attaque devienne une attaque sournoise dont les DM s'ajoutent au critique (au lieu d'infliger un état préjudiciable).",
+    // « chaque état préjudiciable une seule fois par combat » → 5 états (affaibli, aveuglé, étourdi,
+    // immobilisé, ralenti), soit 5 utilisations par combat ; réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 5, resetOn: 'combat', hideFromStatusPanel: true, label: 'États infligés' },
     sourcePage: 77,
   },
 ];

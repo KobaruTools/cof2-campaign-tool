@@ -544,8 +544,10 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le halfelin gagne 1 PC supplémentaire. De plus, il peut esquiver une attaque de son choix par combat (avant d’avoir pris connaissance des DM, mais pas un critique).',
-    // +1 PC permanent → stat-bonus luckPoints. L'esquive (une attaque par combat) reste verbatim.
+    // +1 PC permanent → stat-bonus luckPoints. L'esquive (une attaque par combat) → compteur
+    // d'usages 1×/combat, réinitialisé au repos court (PER-73/151).
     effects: [{ kind: 'stat-bonus', stat: 'luckPoints', value: 1 }],
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true, label: 'Esquive' },
     sourcePage: 56,
   },
   {
@@ -638,6 +640,8 @@ export const ancestryFeatures: Feature[] = [
         activation: { kind: 'temporary', label: 'Instinct de survie déclenché ce combat' },
       },
     ],
+    // « Une fois par combat » (division des DM à 0 PV) → compteur réinitialisé au repos court (PER-73/151).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 57,
   },
   {
