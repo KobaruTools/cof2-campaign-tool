@@ -31,6 +31,7 @@ import type {
   ImmunityId,
   ResistibleDamageType,
   UsageCounter,
+  UsageResetTrigger,
 } from '@/data/schema';
 import { ABILITY_IDS, IMMUNITY_LABELS } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
@@ -621,6 +622,11 @@ export function isEffectActive(character: Character, featureId: string, index: n
   return toggled ?? effect.activation.activeByDefault ?? false;
 }
 
+/** Au moins un des effets conditionnels de la capacité est-il actif (interrupteur ON) ? */
+export function hasActiveConditionalEffect(character: Character, featureId: string): boolean {
+  return conditionalEffectsOf(featureId).some(({ index }) => isEffectActive(character, featureId, index));
+}
+
 /**
  * Fixe l'interrupteur du i-ème effet d'une capacité à `active` DANS un dictionnaire
  * d'interrupteurs (le tableau est complété par des `false` jusqu'à l'index visé).
@@ -845,6 +851,9 @@ export function capacityResourceGauges(character: Character): CapacityResourceGa
     // Usages quotidiens à faible cadence (PER-73) : suivis sur la carte de capacité, pas en jauge d'état.
     // Réserve « à préparation systématique » (pool d'élixirs) : suivie dans l'en-tête de voie, pas ici.
     if (counter.hideFromStatusPanel || counter.poolInPathHeader) continue;
+    // Compteur de suivi d'un effet temporaire (Absorption d'Armure de pierre) : jauge affichée
+    // seulement tant que l'interrupteur de la capacité est actif (PER-150).
+    if (counter.visibleWhenEffectActive && !hasActiveConditionalEffect(character, feature.id)) continue;
     const key = counter.sharedKey ?? feature.id;
     const max = usageCounterMaximum(counter, character, feature);
     // Libellé identifiant : le label du compteur sauf s'il est générique, auquel cas le nom
@@ -869,6 +878,31 @@ export function capacityResourceGauges(character: Character): CapacityResourceGa
     const current = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
     return { key, label, current, max, classId };
   });
+}
+
+/**
+ * Réinitialise (remet à plein) les compteurs d'usages dont le `resetOn` figure dans
+ * `triggers` — pour les boutons de repos (PER-151). Un compteur sans `resetOn` vaut
+ * `'day'` par défaut (cas le plus courant) ; `'manual'` n'est jamais réinitialisé par
+ * un repos. Remettre à plein = retirer la clé (absence ⇒ compteur au max). Ne touche
+ * pas aux clés inconnues (compteurs d'une capacité non possédée : préservés).
+ */
+export function resetUsageCounters(
+  usageCounters: Record<string, number>,
+  featureIds: string[],
+  triggers: Set<UsageResetTrigger>,
+): Record<string, number> {
+  const toReset = new Set<string>();
+  for (const id of featureIds) {
+    const counter = featureById.get(id)?.usageCounter;
+    if (!counter) continue;
+    if (triggers.has(counter.resetOn ?? 'day')) toReset.add(counter.sharedKey ?? id);
+  }
+  const next: Record<string, number> = {};
+  for (const [key, value] of Object.entries(usageCounters)) {
+    if (!toReset.has(key)) next[key] = value;
+  }
+  return next;
 }
 
 // ---------------------------------------------------------------------------

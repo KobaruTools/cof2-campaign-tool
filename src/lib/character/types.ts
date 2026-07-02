@@ -68,6 +68,8 @@ export interface Depletion {
   hp?: HpDepletion;
   /** Points de mana dépensés. Absent = mana plein. */
   mana?: number;
+  /** Dés de récupération (DR) dépensés (PER-151). Absent = réserve de DR pleine. */
+  recoveryDice?: number;
 }
 
 /**

@@ -30,6 +30,7 @@ import {
   optionStatBonusSources,
   pathRanksFromFeatures,
   pruneEffectToggles,
+  resetUsageCounters,
   setEffectToggle,
   testBonusSources,
   universalTestBonus,
@@ -203,6 +204,19 @@ describe('capacityResourceGauges — ressources de capacité en jauges (PER-150)
   // Pool d'élixirs (forgesort) : suivi dans l'en-tête de la voie, PAS en jauge d'état.
   it('réserve « poolInPathHeader » (élixirs) exclue des jauges d’état', () => {
     expect(capacityResourceGauges(make({ featureIds: ['elixirs-r1', 'elixirs-r5'] }))).toEqual([]);
+  });
+
+  // PER-150 : compteur « visibleWhenEffectActive » (Absorption d'Armure de pierre).
+  it('Absorption d’Armure de pierre : jauge masquée hors sort, visible sort actif', () => {
+    // Interrupteur OFF (aucun toggle) → pas de jauge d'état.
+    expect(
+      capacityResourceGauges(make({ featureIds: ['magie-elementaire-r5'], effectToggles: {} })),
+    ).toEqual([]);
+    // Interrupteur ON (effet index 0 actif) → jauge présente, max = niveau 5 × 3.
+    const [gauge] = capacityResourceGauges(
+      make({ featureIds: ['magie-elementaire-r5'], effectToggles: { 'magie-elementaire-r5': [true] } }),
+    );
+    expect(gauge).toMatchObject({ label: 'Absorption restante (DM)', max: 15 });
   });
 });
 
@@ -1029,5 +1043,26 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
       'lightning',
       'acid',
     ]);
+  });
+});
+
+describe('resetUsageCounters — réinitialisation par repos (PER-151)', () => {
+  it('repos long (day) réinitialise les compteurs « day » (défaut), pas les « manual »', () => {
+    // rage-r3 : resetOn par défaut ('day') ; fauve-r5 : resetOn 'manual'.
+    const next = resetUsageCounters(
+      { rage: 0, 'fauve-r5': 2 },
+      ['rage-r3', 'fauve-r5'],
+      new Set(['day', 'short-rest', 'combat'] as const),
+    );
+    expect(next).toEqual({ 'fauve-r5': 2 });
+  });
+
+  it('repos court (short-rest/combat) ne touche pas un compteur « day »', () => {
+    const next = resetUsageCounters({ rage: 0 }, ['rage-r3'], new Set(['short-rest', 'combat'] as const));
+    expect(next).toEqual({ rage: 0 });
+  });
+
+  it('préserve les clés inconnues (capacité non possédée)', () => {
+    expect(resetUsageCounters({ mystere: 1 }, ['rage-r3'], new Set(['day'] as const))).toEqual({ mystere: 1 });
   });
 });

@@ -131,6 +131,40 @@ export function resetMana(depletion: Depletion): Depletion {
   return next;
 }
 
+/** Dés de récupération COURANTS = `clamp(max − dépensés, 0, max)`. */
+export function currentRecoveryDice(max: number, depletion: Depletion): number {
+  return currentGauge(max, Math.max(0, depletion.recoveryDice ?? 0));
+}
+
+/**
+ * Fixe le MANQUE de dés de récupération (DR dépensés), borné à `[0, max]`. À 0, la clé
+ * est retirée (réserve pleine par défaut). Pendant de `setManaMissing` pour les DR (PER-151).
+ */
+export function setRecoveryDiceMissing(depletion: Depletion, missing: number, max: number): Depletion {
+  const clamped = Math.max(0, Math.min(Math.max(0, max), Math.round(missing)));
+  const next = { ...depletion };
+  if (clamped <= 0) delete next.recoveryDice;
+  else next.recoveryDice = clamped;
+  return next;
+}
+
+/** Dépense `amount` dés de récupération (augmente le manque, borné au max). */
+export function spendRecoveryDice(depletion: Depletion, amount: number, max: number): Depletion {
+  return setRecoveryDiceMissing(depletion, (depletion.recoveryDice ?? 0) + Math.max(0, amount), max);
+}
+
+/** Regagne `amount` dés de récupération (réduit le manque, plancher 0). */
+export function restoreRecoveryDice(depletion: Depletion, amount: number, max: number): Depletion {
+  return setRecoveryDiceMissing(depletion, (depletion.recoveryDice ?? 0) - Math.max(0, amount), max);
+}
+
+/** Remet les DR à plein (retire la dépletion de DR, conserve les autres jauges). */
+export function resetRecoveryDice(depletion: Depletion): Depletion {
+  const next = { ...depletion };
+  delete next.recoveryDice;
+  return next;
+}
+
 /**
  * Normalise la dépletion : retire les jauges pleines (manque nul) et re-borne les
  * composantes à ≥ 0, pour respecter l'invariant « absence d'entrée = jauge pleine ».
@@ -148,6 +182,10 @@ export function pruneDepletion(depletion: Depletion): Depletion {
   if (depletion.mana !== undefined) {
     const mana = Math.max(0, depletion.mana);
     if (mana > 0) next.mana = mana;
+  }
+  if (depletion.recoveryDice !== undefined) {
+    const dr = Math.max(0, depletion.recoveryDice);
+    if (dr > 0) next.recoveryDice = dr;
   }
   return next;
 }

@@ -1373,6 +1373,29 @@ export interface UsageCounter {
    * carte. Défaut : `false`.
    */
   poolInPathHeader?: boolean;
+  /**
+   * N'afficher la jauge d'état de ce compteur QUE lorsqu'un effet conditionnel de la capacité
+   * porteuse est ACTIF (PER-150). Réservé aux compteurs de SUIVI d'un effet temporaire à interrupteur
+   * dont la valeur n'a de sens que le sort/état lancé : l'absorption d'Armure de pierre (le plafond
+   * `niveau × 3` ne se décompte que pendant que le sort est actif — hors sort, la barre « Absorption
+   * restante » n'aurait aucun sens). À la différence d'une réserve quotidienne (rage, charges) qui
+   * reste utile à voir même inactive. Défaut : `false` (jauge toujours visible). N'affecte que le bloc
+   * « État du personnage » ; la carte de capacité continue de suivre le compteur.
+   */
+  visibleWhenEffectActive?: boolean;
+  /**
+   * ACTIVER l'interrupteur d'un effet temporaire de la capacité porteuse remet ce compteur à PLEIN
+   * (PER-150). Pour les compteurs de SUIVI rechargés au (re)lancement du sort : l'absorption d'Armure
+   * de pierre repart à `niveau × 3` à chaque activation. À distinguer de `consumeOnActivate` (qui, lui,
+   * DÉPENSE un cran à l'activation, patron Rage/Furie). Défaut : `false`.
+   */
+  resetOnActivate?: boolean;
+  /**
+   * Atteindre 0 sur ce compteur COUPE l'interrupteur des effets conditionnels de la capacité porteuse
+   * (PER-150). Pour les compteurs de SUIVI dont l'épuisement met fin à l'effet : Armure de pierre prend
+   * fin dès qu'elle a absorbé son plafond de DM (`niveau × 3`). Défaut : `false`.
+   */
+  endsEffectAtZero?: boolean;
   /** Libellé affiché (français). Défaut : « Usages restants ». */
   label?: string;
 }

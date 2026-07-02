@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
+import HotelIcon from '@mui/icons-material/Hotel';
 import RemoveIcon from '@mui/icons-material/Remove';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import TimerIcon from '@mui/icons-material/Timer';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
@@ -16,11 +18,13 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
 import type { Depletion } from '@/lib/character/types';
+import type { Die } from '@/data/schema';
 import type { CapacityResourceGauge } from '@/lib/character/effects';
-import { currentHp, currentMana, hpHealthState, type HealthState } from '@/lib/character/gauges';
+import { currentHp, currentMana, currentRecoveryDice, hpHealthState, type HealthState } from '@/lib/character/gauges';
 import { classColor } from '@/lib/ui/classColors';
 import { ClassIcon } from '@/components/ClassIcon';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
+import { DieIcon } from '@/components/DieIcon';
 import { GaugeBar, GaugeValueLabel, type GaugeSegment } from './GaugeBar';
 import { GaugeExpandToggle } from './GaugeExpandToggle';
 import { GaugeIconCap } from './GaugeIconCap';
@@ -46,6 +50,68 @@ function CircledClassIcon({ classId }: { classId: string }) {
     >
       <ClassIcon classId={classId} size={16} color="#fff" />
     </Box>
+  );
+}
+
+/**
+ * Réserve de dés de récupération en MATRICE de petits blocs (PER-151), 5 par ligne :
+ * plein (vert) = DR disponible, contour vide = DR dépensé. Cliquer un bloc règle la
+ * réserve à sa position (cliquer le dernier plein le dépense). Le dé de récupération
+ * du profil (dynamique) est affiché à droite.
+ */
+function RecoveryDicePips({
+  max,
+  current,
+  die,
+  onSet,
+}: {
+  max: number;
+  current: number;
+  die: Die;
+  onSet: (value: number) => void;
+}) {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+      <Tooltip title={`Dés de récupération : ${current} / ${max}`} arrow>
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            // Largeur max = 5 blocs de 14px + 4 espaces de 3px → retour à la ligne après 5.
+            // Le contenu est aligné à DROITE : la dernière ligne (incomplète) reste collée au dé.
+            maxWidth: '82px',
+            gap: '3px',
+            justifyContent: 'flex-end',
+          }}
+        >
+          {Array.from({ length: max }, (_, i) => {
+            const filled = i < current;
+            const pos = i + 1;
+            return (
+              <Box
+                key={i}
+                component="button"
+                type="button"
+                aria-label={filled ? `Dépenser un dé de récupération (${pos})` : `Regagner un dé de récupération (${pos})`}
+                onClick={() => onSet(pos === current ? pos - 1 : pos)}
+                sx={(theme) => ({
+                  width: 14,
+                  height: 14,
+                  p: 0,
+                  cursor: 'pointer',
+                  borderRadius: '3px',
+                  border: `1px solid ${theme.palette.success.main}`,
+                  bgcolor: filled ? theme.palette.success.main : 'transparent',
+                  transition: 'background-color 0.1s',
+                  '&:hover': { borderColor: theme.palette.success.dark },
+                })}
+              />
+            );
+          })}
+        </Box>
+      </Tooltip>
+      <DieIcon die={die} size={22} />
+    </Stack>
   );
 }
 
@@ -161,6 +227,16 @@ export interface PlayerStatusPanelProps {
   capacityGauges: CapacityResourceGauge[];
   /** Fixe le décompte RESTANT d'une ressource de capacité (clé, valeur, max). */
   onSetUsageCounter: (key: string, value: number, max: number) => void;
+  /** Réserve de dés de récupération (stat dérivée `recoveryDiceCount`) ; 0 → pas de matrice DR (PER-151). */
+  recoveryDiceMax: number;
+  /** Type du dé de récupération du profil (ex. `d8`), affiché à droite de la matrice. */
+  recoveryDie: Die;
+  /** Fixe le nombre de DR DISPONIBLES (matrice de blocs). */
+  onSetRecoveryDiceCurrent: (value: number) => void;
+  /** Repos court (récupération rapide). */
+  onShortRest: () => void;
+  /** Repos long (récupération complète). */
+  onLongRest: () => void;
 }
 
 /**
@@ -186,6 +262,11 @@ export function PlayerStatusPanel({
   onResetMana,
   capacityGauges,
   onSetUsageCounter,
+  recoveryDiceMax,
+  recoveryDie,
+  onSetRecoveryDiceCurrent,
+  onShortRest,
+  onLongRest,
 }: PlayerStatusPanelProps) {
   const theme = useTheme();
   // Couleurs CONCRÈTES (résolues) pour les caps assombris : PV en vert, mana en bleu.
@@ -340,6 +421,37 @@ export function PlayerStatusPanel({
           />
         );
       })}
+
+      {/* Repos (PER-151) : récupération selon les règles CO2 ; matrice des DR à droite. */}
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1, pt: 0.5 }}>
+        <Tooltip
+          title="Récupération rapide (30 min) : dégâts temporaires régénérés et capacités « par combat » réinitialisées (p. 221)."
+          arrow
+        >
+          <Button size="small" variant="outlined" startIcon={<TimerIcon />} onClick={onShortRest}>
+            Repos court
+          </Button>
+        </Tooltip>
+        <Tooltip
+          title="Récupération complète (8 h, 1/jour) : mana plein, +1 dé de récupération, dégâts temporaires régénérés, capacités quotidiennes réinitialisées (p. 221-222, 229)."
+          arrow
+        >
+          <Button size="small" variant="outlined" startIcon={<HotelIcon />} onClick={onLongRest}>
+            Repos long
+          </Button>
+        </Tooltip>
+        {recoveryDiceMax > 0 && (
+          <>
+            <Box sx={{ flexGrow: 1 }} />
+            <RecoveryDicePips
+              max={recoveryDiceMax}
+              current={currentRecoveryDice(recoveryDiceMax, depletion)}
+              die={recoveryDie}
+              onSet={onSetRecoveryDiceCurrent}
+            />
+          </>
+        )}
+      </Stack>
     </Stack>
   );
 }

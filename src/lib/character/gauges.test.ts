@@ -5,15 +5,19 @@ import {
   currentGauge,
   currentHp,
   currentMana,
+  currentRecoveryDice,
   healHp,
   hpHealthState,
   hpMissing,
   pruneDepletion,
   resetHp,
   resetMana,
+  resetRecoveryDice,
   restoreMana,
+  restoreRecoveryDice,
   setManaMissing,
   spendMana,
+  spendRecoveryDice,
 } from './gauges';
 
 describe('currentGauge', () => {
@@ -218,5 +222,26 @@ describe('spendMana / restoreMana / resetMana', () => {
 
   it('reset retire la dépletion de mana en conservant les PV', () => {
     expect(resetMana({ mana: 6, hp: { lethal: 3, temp: 0 } })).toEqual({ hp: { lethal: 3, temp: 0 } });
+  });
+});
+
+describe('dés de récupération (DR)', () => {
+  it('current = clamp(max − dépensés, 0, max)', () => {
+    expect(currentRecoveryDice(4, {})).toBe(4);
+    expect(currentRecoveryDice(4, { recoveryDice: 1 })).toBe(3);
+    expect(currentRecoveryDice(4, { recoveryDice: 9 })).toBe(0);
+  });
+
+  it('dépense / regagne bornés, reset conserve les autres jauges', () => {
+    expect(spendRecoveryDice({}, 2, 4)).toEqual({ recoveryDice: 2 });
+    expect(spendRecoveryDice({ recoveryDice: 3 }, 5, 4)).toEqual({ recoveryDice: 4 });
+    expect(restoreRecoveryDice({ recoveryDice: 3 }, 1, 4)).toEqual({ recoveryDice: 2 });
+    expect(restoreRecoveryDice({ recoveryDice: 1 }, 5, 4)).toEqual({});
+    expect(resetRecoveryDice({ recoveryDice: 2, mana: 3 })).toEqual({ mana: 3 });
+  });
+
+  it('pruneDepletion normalise les DR pleins', () => {
+    expect(pruneDepletion({ recoveryDice: 0 })).toEqual({});
+    expect(pruneDepletion({ recoveryDice: 2 })).toEqual({ recoveryDice: 2 });
   });
 });

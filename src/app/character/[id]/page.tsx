@@ -43,6 +43,7 @@ import {
   activeConditionalTestDice,
   aggregateImmunities,
   capacityResourceGauges,
+  conditionalEffectsOf,
   effectContext,
   isEffectActive,
   manaCastingAbility,
@@ -56,7 +57,17 @@ import {
   universalTestBonus,
 } from '@/lib/character/effects';
 import { effectiveFeatureIdsForMods, pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
-import { applyDamage, healHp, pruneDepletion, resetHp, resetMana, restoreMana, spendMana } from '@/lib/character/gauges';
+import {
+  applyDamage,
+  healHp,
+  pruneDepletion,
+  resetHp,
+  resetMana,
+  restoreMana,
+  setRecoveryDiceMissing,
+  spendMana,
+} from '@/lib/character/gauges';
+import { longRest, shortRest } from '@/lib/character/rest';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
@@ -259,6 +270,20 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       else nextCounters[key] = nextVal;
       patch.usageCounters = nextCounters;
     }
+    // PER-150 : ACTIVER un effet temporaire doté d'un compteur de SUIVI `resetOnActivate` le remet à
+    // PLEIN (absorption d'Armure de pierre rechargée au relancement du sort). Absence de clé = plein.
+    if (
+      active &&
+      feature &&
+      counter?.resetOnActivate &&
+      effect?.kind === 'conditional-stat-bonus' &&
+      effect.activation.kind === 'temporary'
+    ) {
+      const key = counter.sharedKey ?? feature.id;
+      const nextCounters = { ...character.usageCounters };
+      delete nextCounters[key];
+      patch.usageCounters = nextCounters;
+    }
     update(patch);
   };
   // Saisie libre d'état de jeu corrélée à une capacité (PER-70, ex. animal de Forme
@@ -278,7 +303,19 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     const next = { ...character.usageCounters };
     if (clamped >= max) delete next[counterKey];
     else next[counterKey] = clamped;
-    update({ usageCounters: next });
+    const patch: Partial<typeof character> = { usageCounters: next };
+    // PER-150 : un compteur de SUIVI `endsEffectAtZero` qui tombe à 0 COUPE l'interrupteur des effets
+    // de la capacité porteuse (Armure de pierre prend fin dès son plafond d'absorption atteint). La
+    // clé du compteur vaut alors l'id de la capacité (compteur propre, non partagé).
+    const feature = featureById.get(counterKey);
+    if (clamped <= 0 && feature?.usageCounter?.endsEffectAtZero) {
+      let toggles = character.effectToggles;
+      for (const { index } of conditionalEffectsOf(counterKey)) {
+        toggles = setEffectToggle({ ...character, effectToggles: toggles }, counterKey, index, false);
+      }
+      patch.effectToggles = toggles;
+    }
+    update(patch);
   };
   // Créer un élixir (forgesort, p. 98) : consomme la réserve partagée d'un cran (`cost`) ET
   // matérialise la dose dans l'équipement (objet custom, quantité incrémentée si déjà présent).
@@ -490,6 +527,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const setManaRestore = (amount: number) =>
     update({ depletion: restoreMana(character.depletion, amount, manaMax ?? 0) });
   const setManaReset = () => update({ depletion: resetMana(character.depletion) });
+  // Dés de récupération (PER-151) : max EFFECTIF (surcharge ?? dérivé) et type de dé pour la jauge.
+  const recoveryDiceMax = masterDerived
+    ? character.overrides.recoveryDiceCount ?? masterDerived.recoveryDiceCount
+    : 0;
+  const recoveryDie = masterDerived?.recoveryDie ?? 'd6';
+  // Matrice de DR (PER-151) : on fixe le nombre de DR DISPONIBLES (le manque = max − dispo).
+  const setDrCurrent = (value: number) =>
+    update({ depletion: setRecoveryDiceMissing(character.depletion, recoveryDiceMax - value, recoveryDiceMax) });
+  // Repos (PER-151) : applique la récupération réglementaire (patch depletion + usageCounters).
+  const doShortRest = () => update(shortRest(character));
+  const doLongRest = () => update(longRest(character));
   // Ressources de capacité (rage, sept vies…) surfacées en jauges (PER-150) : lues depuis les
   // MÊMES `usageCounters` que FeaturesByPath (source unique). L'écriture passe par le setter existant.
   const capacityGauges = capacityResourceGauges(character);
@@ -751,6 +799,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 onResetMana={setManaReset}
                 capacityGauges={capacityGauges}
                 onSetUsageCounter={setUsageCounterValue}
+                recoveryDiceMax={recoveryDiceMax}
+                recoveryDie={recoveryDie}
+                onSetRecoveryDiceCurrent={setDrCurrent}
+                onShortRest={doShortRest}
+                onLongRest={doLongRest}
               />
             </SheetSection>
           )}

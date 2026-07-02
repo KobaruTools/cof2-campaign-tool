@@ -1612,7 +1612,20 @@ export const mageFeatures: Feature[] = [
     // Démarre plein et se décrémente À LA MAIN au fil des DM absorbés (pas de consommation au lancement
     // du sort → `consumeOnActivate: false`).
     // Suivi d'absorption rechargé au relancement du sort, pas au repos → resetOn manuel.
-    usageCounter: { maxByLevel: 3, consumeOnActivate: false, resetOn: 'manual', label: 'Absorption restante (DM)' },
+    // Compteur de SUIVI lié à l'interrupteur du sort (PER-150) : la jauge d'état ne s'affiche que
+    // sort actif (`visibleWhenEffectActive`) ; (re)lancer le sort la remet à plein (`resetOnActivate`) ;
+    // atteindre 0 met fin au sort (`endsEffectAtZero`). Hors sort, le plafond niveau × 3 n'a rien à
+    // décompter. L'activation ne consomme rien (`consumeOnActivate: false`) et le repos ne recharge pas
+    // (`resetOn: 'manual'` — c'est le relancement du sort qui recharge).
+    usageCounter: {
+      maxByLevel: 3,
+      consumeOnActivate: false,
+      resetOn: 'manual',
+      visibleWhenEffectActive: true,
+      resetOnActivate: true,
+      endsEffectAtZero: true,
+      label: 'Absorption restante (DM)',
+    },
     sourcePage: 104,
   },
 
