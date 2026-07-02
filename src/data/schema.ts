@@ -1363,6 +1363,16 @@ export interface UsageCounter {
    * elles, des jauges du bloc d'état. Défaut : `false` (le compteur apparaît en jauge).
    */
   hideFromStatusPanel?: boolean;
+  /**
+   * Afficher cette réserve comme une BARRE COMPACTE sous l'en-tête de la VOIE (au lieu d'une jauge
+   * d'état ou d'un compteur par carte). Réservé aux réserves PARTAGÉES « à préparation systématique »
+   * comme le pool d'élixirs du forgesort (p. 98) : il prépare toujours 100 % de ses doses, donc une
+   * jauge « restant/max » d'état n'a pas de sens — la réserve se suit au niveau de la voie, chaque
+   * carte offrant un bouton « Créer l'élixir » qui décompte d'un cran (`cost`). Implique de NE PAS
+   * remonter le compteur en jauge d'état (`capacityResourceGauges` l'ignore) ni en compteur ±1 par
+   * carte. Défaut : `false`.
+   */
+  poolInPathHeader?: boolean;
   /** Libellé affiché (français). Défaut : « Usages restants ». */
   label?: string;
 }

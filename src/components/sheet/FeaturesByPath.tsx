@@ -5,6 +5,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import RemoveIcon from '@mui/icons-material/Remove';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import ScienceOutlinedIcon from '@mui/icons-material/ScienceOutlined';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -1093,6 +1094,137 @@ function CompactUsageIndicator({ feature, character }: { feature: Feature; chara
   );
 }
 
+/** Réserve partagée d'une voie, prête à afficher en barre d'en-tête (pool d'élixirs). */
+interface PathResourcePoolState {
+  key: string;
+  current: number;
+  max: number;
+  label: string;
+  cost: number;
+}
+
+/**
+ * Réserve partagée (`poolInPathHeader`) d'une voie : la PREMIÈRE capacité du groupe dont le
+ * compteur la demande porte la déclaration ; toutes partagent la même `sharedKey`, donc une
+ * seule réserve par voie. `null` si la voie n'en a pas (ou hors contexte personnage).
+ */
+function pathResourcePool(
+  features: Feature[],
+  character: Character | undefined,
+): PathResourcePoolState | null {
+  if (!character) return null;
+  const carrier = features.find((f) => f.usageCounter?.poolInPathHeader);
+  if (!carrier) return null;
+  const counter = carrier.usageCounter!;
+  const key = usageCounterKey(counter, carrier);
+  const max = usageCounterMaximum(counter, character, carrier);
+  const current = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+  return { key, current, max, label: counter.label ?? 'Réserve', cost: counter.cost ?? 1 };
+}
+
+/**
+ * Barre COMPACTE d'une réserve partagée, rendue sous l'en-tête d'une voie (pool d'élixirs, p. 98) :
+ * une piste fine remplie au prorata + le décompte « restant/max » à droite. Le forgesort prépare
+ * toujours 100 % de ses doses → cette réserve se suit ici (au niveau de la voie), pas en jauge
+ * d'état ni par carte. Une petite réinitialisation apparaît quand la réserve est entamée (en
+ * attendant le bouton « Nouvelle journée ») ; masquée en lecture seule (`onReset` absent).
+ */
+function PathResourcePoolBar({
+  pool,
+  color,
+  onReset,
+}: {
+  pool: PathResourcePoolState;
+  color?: string;
+  onReset?: () => void;
+}) {
+  const { current, max, label } = pool;
+  const ratio = max > 0 ? current / max : 0;
+  return (
+    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mt: 0.5 }}>
+      <Tooltip title={`${label} : ${current} / ${max}`} arrow>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexGrow: 1, minWidth: 0, cursor: 'help' }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              height: 6,
+              borderRadius: 3,
+              overflow: 'hidden',
+              bgcolor: (theme) => alpha(color ?? theme.palette.text.primary, 0.15),
+            }}
+          >
+            <Box
+              sx={{
+                width: `${ratio * 100}%`,
+                height: '100%',
+                borderRadius: 3,
+                bgcolor: (theme) => color ?? theme.palette.info.main,
+                transition: 'width 0.2s',
+              }}
+            />
+          </Box>
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'text.secondary', flexShrink: 0 }}
+          >
+            {current}/{max}
+          </Typography>
+        </Box>
+      </Tooltip>
+      {onReset && current < max && (
+        <Tooltip title="Refaire le plein d'élixirs (réserve du jour)" arrow>
+          <IconButton size="small" aria-label="Refaire le plein d'élixirs" onClick={onReset} sx={{ p: 0.25 }}>
+            <RestartAltIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Stack>
+  );
+}
+
+/**
+ * Bouton « Créer l'élixir » (forgesort, p. 98) : produit une dose de cette recette en consommant
+ * la réserve partagée d'un cran (`cost`). Remplace le compteur ±1 par carte pour les réserves
+ * `poolInPathHeader` — le suivi vit dans la barre de l'en-tête de voie. Le décompte restant est
+ * rappelé à côté (la modale masque l'en-tête). Désactivé quand la réserve est insuffisante.
+ * Lecture seule (`onSet` absent) → rien.
+ */
+function CreateElixirButton({
+  feature,
+  character,
+  onSet,
+}: {
+  feature: Feature;
+  character: Character;
+  onSet?: (counterKey: string, value: number, max: number) => void;
+}) {
+  const counter = feature.usageCounter;
+  if (!counter || !onSet) return null;
+  const max = usageCounterMaximum(counter, character, feature);
+  const key = usageCounterKey(counter, feature);
+  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+  const cost = counter.cost ?? 1;
+  const label = counter.label ?? 'Réserve';
+  const enough = remaining >= cost;
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<ScienceOutlinedIcon />}
+        disabled={!enough}
+        onClick={() => onSet(key, remaining - cost, max)}
+      >
+        Créer l’élixir{cost > 1 ? ` (−${cost})` : ''}
+      </Button>
+      <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+        {label} : {remaining}/{max}
+        {!enough && (remaining <= 0 ? ' — réserve épuisée' : ' — réserve insuffisante')}
+      </Typography>
+    </Stack>
+  );
+}
+
 /**
  * Nombre de voies d'un profil (type 'class', `classIds` inclut `classId`) où le
  * personnage a atteint au moins `rank`. Pilote les scalings cross-voie : Transe de
@@ -1193,6 +1325,10 @@ function PathBlock({
   // résoudre le terme « rang » des textes enrichis (« son rang » = rang de la voie
   // courante, dynamique), partagé par toutes les capacités du bloc.
   const pathRank = features.reduce((max, f) => Math.max(max, f.rank), 0);
+  // Réserve partagée « à préparation systématique » de la voie (pool d'élixirs, p. 98) : affichée en
+  // barre sous l'en-tête + bouton « Créer l'élixir » par carte, au lieu d'une jauge d'état / d'un
+  // compteur par carte. `null` pour les voies sans réserve de ce type.
+  const pool = pathResourcePool(features, character);
   // Bonus de test d'une capacité (typiquement EMPRUNTÉE) qui sont DOMINÉS (ne se cumulent pas, p. 203) :
   // pour les afficher barrés sur sa carte avec la capacité qui les domine (PER-73). Vide si aucun.
   const dominatedTestBonusesFor = (
@@ -1345,16 +1481,18 @@ function PathBlock({
   };
 
   const header = (
-    <Stack
-      direction="row"
-      spacing={0.5}
+    <Box
       sx={{
-        alignItems: compact ? 'flex-start' : 'center',
         mb: compact ? 0 : 1,
         pl: compact ? 1 : 1.5,
         borderLeft: 3,
         borderColor: color ?? 'divider',
       }}
+    >
+    <Stack
+      direction="row"
+      spacing={0.5}
+      sx={{ alignItems: compact ? 'flex-start' : 'center' }}
     >
       <Typography
         variant={compact ? 'body2' : 'subtitle1'}
@@ -1407,6 +1545,18 @@ function PathBlock({
         )
       )}
     </Stack>
+      {/* Réserve partagée (pool d'élixirs, p. 98) : petite barre sous le titre de la voie, avec le
+          décompte « restant/max » à droite. Rendue uniquement pour les voies qui en portent une. */}
+      {pool && (
+        <PathResourcePoolBar
+          pool={pool}
+          color={color ?? undefined}
+          onReset={
+            onSetUsageCounter ? () => onSetUsageCounter(pool.key, pool.max, pool.max) : undefined
+          }
+        />
+      )}
+    </Box>
   );
 
   // Vue colonne : la colonne est une subgrid → toutes les colonnes partagent
@@ -1583,8 +1733,9 @@ function PathBlock({
               );
             })()}
             {/* Indicateur compact du compteur d'usages (lecture seule ; édition en
-                modale). Ex. Les sept vies du chat : pastilles « N/6 ». */}
-            {feature.usageCounter && character && (
+                modale). Ex. Les sept vies du chat : pastilles « N/6 ». Masqué pour une réserve
+                de type pool (élixirs) : elle est suivie dans la barre de l'en-tête de voie. */}
+            {feature.usageCounter && !feature.usageCounter.poolInPathHeader && character && (
               <CompactUsageIndicator feature={feature} character={character} />
             )}
             {/* Choix porté par la capacité, poussé en bas du bloc : valeur retenue
@@ -1953,11 +2104,21 @@ function PathBlock({
                 {openFeature.usageCounter && character && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
-                    <UsageCounterField
-                      feature={openFeature}
-                      character={character}
-                      onSet={onSetUsageCounter}
-                    />
+                    {openFeature.usageCounter.poolInPathHeader ? (
+                      // Réserve de type pool (élixirs) : bouton de production qui décompte la réserve
+                      // partagée (suivie dans la barre de l'en-tête de voie), au lieu du compteur ±1.
+                      <CreateElixirButton
+                        feature={openFeature}
+                        character={character}
+                        onSet={onSetUsageCounter}
+                      />
+                    ) : (
+                      <UsageCounterField
+                        feature={openFeature}
+                        character={character}
+                        onSet={onSetUsageCounter}
+                      />
+                    )}
                   </>
                 )}
               </DialogContent>
@@ -2197,7 +2358,13 @@ function PathBlock({
               {feature.usageCounter && character && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
-                  <UsageCounterField feature={feature} character={character} onSet={onSetUsageCounter} />
+                  {feature.usageCounter.poolInPathHeader ? (
+                    // Réserve de type pool (élixirs) : bouton de production décomptant la réserve
+                    // partagée (suivie dans la barre de l'en-tête de voie), au lieu du compteur ±1.
+                    <CreateElixirButton feature={feature} character={character} onSet={onSetUsageCounter} />
+                  ) : (
+                    <UsageCounterField feature={feature} character={character} onSet={onSetUsageCounter} />
+                  )}
                 </>
               )}
               {repl?.replacedFeature && (

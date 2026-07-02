@@ -923,6 +923,9 @@ export const mageFeatures: Feature[] = [
     usageCounter: {
       maxByRankCount: { classIds: ['forgesort'], rank: 3, base: 0, addPathRank: true },
       sharedKey: 'elixirs-doses',
+      // Réserve suivie dans une barre sous l'en-tête de la voie des élixirs + bouton « Créer
+      // l'élixir » par carte (le forgesort prépare toujours 100 % de ses doses) — pas de jauge d'état.
+      poolInPathHeader: true,
       resetOn: 'day',
       label: 'Élixirs du jour',
     },
@@ -946,6 +949,9 @@ export const mageFeatures: Feature[] = [
     usageCounter: {
       maxByRankCount: { classIds: ['forgesort'], rank: 3, base: 0, addPathRank: true },
       sharedKey: 'elixirs-doses',
+      // Réserve suivie dans une barre sous l'en-tête de la voie des élixirs + bouton « Créer
+      // l'élixir » par carte (le forgesort prépare toujours 100 % de ses doses) — pas de jauge d'état.
+      poolInPathHeader: true,
       resetOn: 'day',
       label: 'Élixirs du jour',
     },
@@ -967,6 +973,9 @@ export const mageFeatures: Feature[] = [
     usageCounter: {
       maxByRankCount: { classIds: ['forgesort'], rank: 3, base: 0, addPathRank: true },
       sharedKey: 'elixirs-doses',
+      // Réserve suivie dans une barre sous l'en-tête de la voie des élixirs + bouton « Créer
+      // l'élixir » par carte (le forgesort prépare toujours 100 % de ses doses) — pas de jauge d'état.
+      poolInPathHeader: true,
       resetOn: 'day',
       label: 'Élixirs du jour',
     },
@@ -996,6 +1005,9 @@ export const mageFeatures: Feature[] = [
     usageCounter: {
       maxByRankCount: { classIds: ['forgesort'], rank: 3, base: 0, addPathRank: true },
       sharedKey: 'elixirs-doses',
+      // Réserve suivie dans une barre sous l'en-tête de la voie des élixirs + bouton « Créer
+      // l'élixir » par carte (le forgesort prépare toujours 100 % de ses doses) — pas de jauge d'état.
+      poolInPathHeader: true,
       resetOn: 'day',
       label: 'Élixirs du jour',
     },
@@ -1023,6 +1035,9 @@ export const mageFeatures: Feature[] = [
     usageCounter: {
       maxByRankCount: { classIds: ['forgesort'], rank: 3, base: 0, addPathRank: true },
       sharedKey: 'elixirs-doses',
+      // Réserve suivie dans une barre sous l'en-tête de la voie des élixirs + bouton « Créer
+      // l'élixir » par carte (le forgesort prépare toujours 100 % de ses doses) — pas de jauge d'état.
+      poolInPathHeader: true,
       cost: 2,
       resetOn: 'day',
       label: 'Élixirs du jour',

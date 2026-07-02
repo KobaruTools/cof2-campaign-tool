@@ -199,6 +199,11 @@ describe('capacityResourceGauges — ressources de capacité en jauges (PER-150)
       capacityResourceGauges(make({ featureIds: ['explosifs-r2', 'explosifs-r4', 'explosifs-r5'] }))[0].max,
     ).toBe(5);
   });
+
+  // Pool d'élixirs (forgesort) : suivi dans l'en-tête de la voie, PAS en jauge d'état.
+  it('réserve « poolInPathHeader » (élixirs) exclue des jauges d’état', () => {
+    expect(capacityResourceGauges(make({ featureIds: ['elixirs-r1', 'elixirs-r5'] }))).toEqual([]);
+  });
 });
 
 describe('usageCounterMaximum — réserve de rage cross-voie (PER-130)', () => {
