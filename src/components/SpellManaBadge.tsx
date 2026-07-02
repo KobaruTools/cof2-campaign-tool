@@ -94,8 +94,11 @@ export function SpellManaBadge({ feature, concentration = false, size = 30, colo
             width: '100%',
             height: '100%',
             // Teinte du profil assombrie (utilitaire MUI `darken`) pour contraster
-            // avec le chiffre blanc ; repli sur le bleu mana du thème sinon.
-            fill: color ? darken(color, 0.25) : 'info.main',
+            // avec le chiffre blanc ; repli sur le bleu mana du thème sinon. Le repli
+            // passe par un callback thème (couleur CONCRÈTE) et non par la chaîne
+            // 'info.main' : sur un SVG, `fill` ne résout pas la clé de palette MUI et
+            // la goutte retombait au noir (voie du mage / prestige, sans couleur de profil).
+            fill: color ? darken(color, 0.25) : (theme) => theme.palette.info.main,
             // Concentration : halo bleu mana épousant la goutte pour signaler le
             // coût réduit ; ombre portée simple sinon.
             filter: concentrated
