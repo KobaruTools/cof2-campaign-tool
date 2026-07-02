@@ -54,6 +54,7 @@ function validRaw(): Record<string, unknown> {
     effectToggles: {},
     effectInputs: {},
     usageCounters: {},
+    depletion: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},
@@ -325,7 +326,30 @@ describe('migrateCharacter', () => {
     expect(migrateCharacter(v9).identity.height).toBeUndefined();
   });
 
-  it('expose les migrations 1→2 … 9→10 dans le registre', () => {
+  it('migre un personnage v10 vers v11 (depletion initialisé à vide)', () => {
+    const v10 = validRaw();
+    v10.schemaVersion = 10;
+    delete v10.depletion;
+    const c = migrateCharacter(v10);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.depletion).toEqual({});
+  });
+
+  it('préserve la depletion déjà présente lors d’un chargement v11', () => {
+    const v11 = validRaw();
+    v11.depletion = { hp: { lethal: 4, temp: 2 }, mana: 3 };
+    const c = migrateCharacter(v11);
+    expect(c.depletion).toEqual({ hp: { lethal: 4, temp: 2 }, mana: 3 });
+  });
+
+  it('refuse un objet sans depletion à la version courante', () => {
+    const raw = validRaw();
+    delete raw.depletion;
+    raw.schemaVersion = SCHEMA_VERSION; // pas de migration : la validation doit échouer
+    expect(() => migrateCharacter(raw)).toThrow(ValidationError);
+  });
+
+  it('expose les migrations 1→2 … 10→11 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -335,5 +359,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[7]).toBe('function');
     expect(typeof MIGRATIONS[8]).toBe('function');
     expect(typeof MIGRATIONS[9]).toBe('function');
+    expect(typeof MIGRATIONS[10]).toBe('function');
   });
 });

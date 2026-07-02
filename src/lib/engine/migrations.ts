@@ -235,6 +235,19 @@ function migrateV9toV10(data: Record<string, unknown>): Record<string, unknown> 
 }
 
 /**
+ * v10 → v11 : ajout de `depletion` (dépletion transitoire des jauges — manque des
+ * PV décomposé létal/temp, et mana dépensé — PER-147). Les personnages d'avant v11
+ * n'ont subi aucune dépletion : on initialise une table vide (toutes les jauges
+ * partent alors pleines).
+ */
+function migrateV10toV11(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.depletion) === null) next.depletion = {};
+  next.schemaVersion = 11;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -248,6 +261,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   7: migrateV7toV8,
   8: migrateV8toV9,
   9: migrateV9toV10,
+  10: migrateV10toV11,
 };
 
 export class MigrationError extends Error {}
@@ -321,6 +335,9 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   }
   if (typeof data.usageCounters !== 'object' || data.usageCounters === null) {
     fail('Champ « usageCounters » manquant ou invalide.');
+  }
+  if (typeof data.depletion !== 'object' || data.depletion === null) {
+    fail('Champ « depletion » manquant ou invalide.');
   }
   if (!Array.isArray(data.equipment)) fail('Champ « equipment » manquant ou invalide.');
   if (!Array.isArray(data.levelUpHistory)) fail('Champ « levelUpHistory » manquant ou invalide.');

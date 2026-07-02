@@ -34,8 +34,41 @@ import type { AncestryChoice } from './ancestry';
  *   cas échéant, le dieu spécialisé — p. 122, table p. 126-127).
  * v10 : `identity.height` passe des mètres aux centimètres (saisie en cm +
  *   avertissement de fourchette).
+ * v11 : ajout de `depletion` (dépletion transitoire des jauges — MANQUE des PV
+ *   décomposé létal/temp, et mana dépensé — PER-147).
  */
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
+
+/**
+ * Manque de PV, décomposé selon la nature des dégâts (p. 218/220) :
+ *  - `lethal` : dégâts normaux (létaux) subis ;
+ *  - `temp` : dégâts temporaires (non létaux), régénérés à 1/min et distingués
+ *    car ils assomment (0 PV) au lieu de faire tomber à terre.
+ * PV courants = `clamp(maxHp − lethal − temp, 0, maxHp)`.
+ */
+export interface HpDepletion {
+  lethal: number;
+  temp: number;
+}
+
+/**
+ * Dépletion transitoire des jauges (PER-147) : on stocke le **manque** de chaque
+ * jauge (dégâts subis, mana dépensé), non sa valeur absolue. La valeur courante se
+ * recalcule toujours depuis le max du moment → un changement de max (montée de
+ * niveau, surcharge manuelle) est suivi automatiquement, sans re-clamp ni perte
+ * d'information. Absence d'entrée = jauge **pleine**.
+ *
+ * État de jeu transitoire, au même titre que `effectToggles`/`effectInputs`/
+ * `usageCounters` : modifiable hors mode « Modifier », normalisé aux changements
+ * structurels (voir `pruneDepletion`). Les ressources de capacité à réserve limitée
+ * (rage, sept vies…) restent modélisées par `usageCounters`, pas ici.
+ */
+export interface Depletion {
+  /** Manque de PV (létal + temporaire). Absent = PV pleins. */
+  hp?: HpDepletion;
+  /** Points de mana dépensés. Absent = mana plein. */
+  mana?: number;
+}
 
 /**
  * Vocation d'un prêtre (p. 122). `generalist` : suit les règles de base, aucun
@@ -248,6 +281,13 @@ export interface Character {
    * chat » (fauve-r5, 6 usages). Une capacité sans usage limité n'a pas d'entrée.
    */
   usageCounters: Record<string, number>;
+
+  /**
+   * Dépletion transitoire des jauges (PER-147) : manque courant des PV (létal +
+   * temporaire) et du mana. État de jeu transitoire, comme `usageCounters`. Voir
+   * `Depletion` et `src/lib/character/gauges.ts`. `{}` = toutes les jauges pleines.
+   */
+  depletion: Depletion;
 
   /** Historique des montées de niveau (permet « qu'ai-je pris au niveau N ? »). */
   levelUpHistory: LevelUpEntry[];

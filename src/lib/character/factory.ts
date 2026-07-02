@@ -47,6 +47,7 @@ export function createBlankCharacter(
     effectToggles: {},
     effectInputs: {},
     usageCounters: {},
+    depletion: {},
     levelUpHistory: [],
     equipment: [],
     overrides: {},
