@@ -13,8 +13,9 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { equipment as equipmentCatalog, equipmentById } from '@/data';
 import type { EquipmentItem } from '@/data/schema';
-import type { EquipmentLine } from '@/lib/character/types';
+import type { CustomItem, EquipmentLine } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
+import { creatableElixirItemNames } from '@/lib/character/elixirs';
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { DamageValue } from '@/components/DamageValue';
 
@@ -45,16 +46,33 @@ export interface EquipmentListProps {
   equipment: EquipmentLine[];
   /** Édition en place : si fourni, ajout / suppression / quantité / objet libre. */
   onChange?: (equipment: EquipmentLine[]) => void;
+  /**
+   * Consommer un objet (bouton « Utiliser », PER-158) : décrémente la quantité de la ligne `i`, et
+   * SUPPRIME la ligne quand elle tombe à 0. C'est un ÉTAT DE JEU (consommer un élixir, une potion…),
+   * donc disponible HORS mode édition — indépendant de `onChange`. Absent → pas de bouton « Utiliser ».
+   */
+  onUse?: (index: number) => void;
 }
 
 /** Liste de l'équipement possédé, en lecture ou en édition. */
-export function EquipmentList({ equipment, onChange }: EquipmentListProps) {
+export function EquipmentList({ equipment, onChange, onUse }: EquipmentListProps) {
   const setLine = (i: number, line: EquipmentLine) =>
     onChange?.(equipment.map((l, j) => (j === i ? line : l)));
   const remove = (i: number) => onChange?.(equipment.filter((_, j) => j !== i));
   const addCatalog = (itemId: string) => onChange?.([...equipment, { itemId, quantity: 1 }]);
   const addCustom = () =>
     onChange?.([...equipment, { custom: true, name: 'Nouvel objet', quantity: 1 }]);
+  // Ajout d'un élixir préparé (objet custom) depuis la liste des élixirs préparables : incrémente la
+  // dose si elle existe déjà (même nom), sinon crée la ligne — miroir du bouton « Créer l'élixir ».
+  const addElixir = (itemName: string) => {
+    const idx = equipment.findIndex((l) => isCustomItem(l) && l.name === itemName);
+    if (idx >= 0) {
+      const line = equipment[idx] as CustomItem;
+      onChange?.(equipment.map((l, j) => (j === idx ? { ...line, quantity: line.quantity + 1 } : l)));
+    } else {
+      onChange?.([...equipment, { custom: true, name: itemName, quantity: 1 }]);
+    }
+  };
 
   if (equipment.length === 0 && !onChange) {
     return (
@@ -95,6 +113,18 @@ export function EquipmentList({ equipment, onChange }: EquipmentListProps) {
                   </>
                 )}
               </Box>
+              {/* « Utiliser » : consomme une unité (état de jeu, dispo hors édition). Juste à gauche
+                  du nombre. Décrémente, puis supprime la ligne à 0 (géré par l'appelant). */}
+              {onUse && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => onUse(i)}
+                  sx={{ flexShrink: 0 }}
+                >
+                  Utiliser
+                </Button>
+              )}
               {onChange ? (
                 <TextField
                   type="number"
@@ -148,6 +178,25 @@ export function EquipmentList({ equipment, onChange }: EquipmentListProps) {
             Objet libre
           </Button>
         </Stack>
+      )}
+
+      {/* Ajout direct d'un élixir préparé (forgesort) : toute recette/tout sort reproductible par la
+          voie des élixirs (p. 98). Sélection ⇒ dose ajoutée à l'inventaire (empilée si déjà présente),
+          en miroir du bouton « Créer l'élixir » des cartes de capacité. */}
+      {onChange && (
+        <Autocomplete
+          sx={{ minWidth: 240 }}
+          options={creatableElixirItemNames()}
+          renderInput={(params) => (
+            <TextField {...params} label="Ajouter un élixir préparé" size="small" />
+          )}
+          onChange={(_, value) => {
+            if (value) addElixir(value);
+          }}
+          value={null}
+          blurOnSelect
+          clearOnBlur
+        />
       )}
     </Stack>
   );

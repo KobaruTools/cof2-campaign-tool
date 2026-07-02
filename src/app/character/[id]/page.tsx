@@ -27,6 +27,7 @@ import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
 import type { Character, CustomItem, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
+import { elixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
@@ -290,7 +291,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     const nextValue = remaining - cost;
     if (nextValue >= max) delete usageCounters[counterKey];
     else usageCounters[counterKey] = nextValue;
-    const itemName = `Élixir — ${elixirName}`;
+    const itemName = elixirItemName(elixirName);
     const equipment = [...character.equipment];
     const idx = equipment.findIndex((line) => isCustomItem(line) && line.name === itemName);
     if (idx >= 0) {
@@ -300,6 +301,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       equipment.push({ custom: true, name: itemName, quantity: 1, details: 'Élixir préparé (voie des élixirs, p. 98).' });
     }
     update({ usageCounters, equipment });
+  };
+  // Utiliser un objet (PER-158) : consomme une unité de la ligne `i` (état de jeu, hors édition) —
+  // décrémente la quantité, et retire la ligne quand elle tombe à 0.
+  const useEquipmentItem = (i: number) => {
+    const line = character.equipment[i];
+    if (!line) return;
+    const equipment =
+      line.quantity <= 1
+        ? character.equipment.filter((_, j) => j !== i)
+        : character.equipment.map((l, j) => (j === i ? { ...l, quantity: l.quantity - 1 } : l));
+    update({ equipment });
   };
   // Jauge de PV (PER-148) : dépletion transitoire (manque létal/temp), état de jeu
   // modifiable HORS mode « Modifier » (comme les compteurs d'usages). Le max reste
@@ -810,6 +822,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             <EquipmentList
               equipment={character.equipment}
               onChange={editingBlocks.equipment ? setEquipment : undefined}
+              // « Utiliser » : consommer une unité est un état de jeu → disponible hors mode édition.
+              onUse={useEquipmentItem}
             />
           </SheetSection>
 
