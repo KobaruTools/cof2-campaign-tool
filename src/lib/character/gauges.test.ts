@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { Depletion } from './types';
 import {
+  applyDamage,
   currentGauge,
   currentHp,
   currentMana,
+  healHp,
   hpHealthState,
   hpMissing,
   pruneDepletion,
+  resetHp,
 } from './gauges';
 
 describe('currentGauge', () => {
@@ -121,5 +124,59 @@ describe('pruneDepletion', () => {
     expect(pruneDepletion({ hp: { lethal: 2, temp: 0 }, mana: 0 })).toEqual({
       hp: { lethal: 2, temp: 0 },
     });
+  });
+});
+
+describe('applyDamage', () => {
+  it('crée la dépletion PV depuis une jauge pleine', () => {
+    expect(applyDamage({}, 5, 'lethal')).toEqual({ hp: { lethal: 5, temp: 0 } });
+    expect(applyDamage({}, 3, 'temp')).toEqual({ hp: { lethal: 0, temp: 3 } });
+  });
+
+  it('cumule sur la composante ciblée sans toucher l’autre', () => {
+    expect(applyDamage({ hp: { lethal: 2, temp: 1 } }, 4, 'lethal')).toEqual({
+      hp: { lethal: 6, temp: 1 },
+    });
+    expect(applyDamage({ hp: { lethal: 2, temp: 1 } }, 4, 'temp')).toEqual({
+      hp: { lethal: 2, temp: 5 },
+    });
+  });
+
+  it('préserve les autres jauges (mana)', () => {
+    expect(applyDamage({ mana: 3 }, 2, 'lethal')).toEqual({ mana: 3, hp: { lethal: 2, temp: 0 } });
+  });
+
+  it('ignore un montant nul ou négatif', () => {
+    const dep = { hp: { lethal: 2, temp: 0 } };
+    expect(applyDamage(dep, 0, 'lethal')).toBe(dep);
+    expect(applyDamage(dep, -3, 'lethal')).toBe(dep);
+  });
+});
+
+describe('healHp', () => {
+  it('résorbe les dégâts létaux en premier', () => {
+    expect(healHp({ hp: { lethal: 8, temp: 4 } }, 3)).toEqual({ hp: { lethal: 5, temp: 4 } });
+  });
+
+  it('déborde sur les temporaires une fois les létaux épuisés', () => {
+    expect(healHp({ hp: { lethal: 2, temp: 6 } }, 5)).toEqual({ hp: { lethal: 0, temp: 3 } });
+  });
+
+  it('normalise en jauge pleine si tout est soigné', () => {
+    expect(healHp({ hp: { lethal: 2, temp: 3 } }, 10)).toEqual({});
+  });
+
+  it('ne fait rien sur des PV déjà pleins', () => {
+    expect(healHp({}, 5)).toEqual({});
+  });
+});
+
+describe('resetHp', () => {
+  it('retire la dépletion de PV', () => {
+    expect(resetHp({ hp: { lethal: 5, temp: 2 } })).toEqual({});
+  });
+
+  it('conserve les autres jauges', () => {
+    expect(resetHp({ hp: { lethal: 5, temp: 2 }, mana: 3 })).toEqual({ mana: 3 });
   });
 });

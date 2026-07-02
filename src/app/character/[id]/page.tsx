@@ -53,6 +53,7 @@ import {
   universalTestBonus,
 } from '@/lib/character/effects';
 import { effectiveFeatureIdsForMods, pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
+import { applyDamage, healHp, pruneDepletion, resetHp } from '@/lib/character/gauges';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
@@ -63,6 +64,7 @@ import { classColor } from '@/lib/ui/classColors';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { SheetSection } from '@/components/sheet/SheetSection';
+import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
 import {
@@ -191,6 +193,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       effectToggles: pruneEffectToggles(character.effectToggles, featureIds),
       effectInputs: pruneEffectInputs(character.effectInputs, featureIds),
       usageCounters: pruneUsageCounters(character.usageCounters, featureIds),
+      depletion: pruneDepletion(character.depletion),
     });
   // Résolution rétroactive d'un choix porté par une capacité (PER-66/68). La
   // fiche est permissive : on persiste sans bloquer (recalcul en direct).
@@ -246,6 +249,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     else next[counterKey] = clamped;
     update({ usageCounters: next });
   };
+  // Jauge de PV (PER-148) : dépletion transitoire (manque létal/temp), état de jeu
+  // modifiable HORS mode « Modifier » (comme les compteurs d'usages). Le max reste
+  // piloté par « Statistiques dérivées » ; ces setters ne touchent que le courant.
+  const setHpDamage = (amount: number, kind: 'lethal' | 'temp') =>
+    update({ depletion: applyDamage(character.depletion, amount, kind) });
+  const setHpHeal = (amount: number) => update({ depletion: healHp(character.depletion, amount) });
+  const setHpReset = () => update({ depletion: resetHp(character.depletion) });
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
   // supprime la clé et rétablit le calcul automatique.
   const setOverride = (key: DerivedStatId, value: number | null) => {
@@ -597,6 +607,20 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               bonusDieSources={bonusDieSrc}
             />
           </SheetSection>
+
+          {masterDerived && (
+            <SheetSection title="État du personnage">
+              <PlayerStatusPanel
+                depletion={character.depletion}
+                // Max EFFECTIF : surcharge manuelle de « Statistiques dérivées » si présente,
+                // sinon la valeur calculée. Le bloc n'édite que le courant, jamais le max.
+                maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
+                onDamage={setHpDamage}
+                onHeal={setHpHeal}
+                onResetHp={setHpReset}
+              />
+            </SheetSection>
+          )}
 
           <SheetSection title="Statistiques dérivées">
             {derivedInput ? (

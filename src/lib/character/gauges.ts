@@ -59,6 +59,49 @@ export function hpHealthState(maxHp: number, depletion: Depletion): HealthState 
 }
 
 /**
+ * Applique des dégâts : augmente le manque de PV de la composante correspondante —
+ * `lethal` (dégâts normaux) ou `temp` (dégâts temporaires / non létaux). Les DM
+ * temporaires sont « comptabilisés à part » (p. 219/220), donc n'écrasent jamais les
+ * dégâts létaux et inversement. Un montant nul/négatif ne change rien.
+ */
+export function applyDamage(depletion: Depletion, amount: number, kind: 'lethal' | 'temp'): Depletion {
+  const delta = Math.max(0, Math.round(amount));
+  if (delta === 0) return depletion;
+  const hp = depletion.hp ?? { lethal: 0, temp: 0 };
+  return {
+    ...depletion,
+    hp: { lethal: Math.max(0, hp.lethal), temp: Math.max(0, hp.temp), [kind]: Math.max(0, hp[kind]) + delta },
+  };
+}
+
+/**
+ * Soigne : réduit le manque de PV du montant indiqué, en résorbant d'abord les
+ * dégâts LÉTAUX (blessures réelles) puis, le reliquat épuisé, les dégâts temporaires.
+ * Outil manuel permissif (les règles de récupération réglementaires — repos, régen
+ * 1/min des DM temporaires — relèvent du ticket Repos). Une jauge redevenue pleine
+ * est normalisée (clé retirée). Un montant nul/négatif ne change rien.
+ */
+export function healHp(depletion: Depletion, amount: number): Depletion {
+  const heal = Math.max(0, Math.round(amount));
+  if (heal === 0 || !depletion.hp) return depletion;
+  let remaining = heal;
+  let lethal = Math.max(0, depletion.hp.lethal);
+  let temp = Math.max(0, depletion.hp.temp);
+  const healedLethal = Math.min(lethal, remaining);
+  lethal -= healedLethal;
+  remaining -= healedLethal;
+  temp = Math.max(0, temp - remaining);
+  return pruneDepletion({ ...depletion, hp: { lethal, temp } });
+}
+
+/** Remet les PV à plein (retire la dépletion de PV, conserve les autres jauges). */
+export function resetHp(depletion: Depletion): Depletion {
+  const next = { ...depletion };
+  delete next.hp;
+  return next;
+}
+
+/**
  * Normalise la dépletion : retire les jauges pleines (manque nul) et re-borne les
  * composantes à ≥ 0, pour respecter l'invariant « absence d'entrée = jauge pleine ».
  * À appeler comme les autres `prune` d'état transitoire lors des mutations
