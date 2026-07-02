@@ -459,7 +459,8 @@ export const mysticFeatures: Feature[] = [
     // Usages limités (PER-70) : « ne peut être utilisée que six fois » → compteur 6 → 0.
     // Malgré le nom « sept vies », la règle chiffrée est SIX (verbatim p. 115). La
     // sous-règle « pas plus d'une fois par niveau » reste en texte (non automatisée).
-    usageCounter: { max: 6, label: 'Usages restants' },
+    // Compteur « à vie » (6 usages au total, pas de recharge journalière) → resetOn manuel.
+    usageCounter: { max: 6, resetOn: 'manual', label: 'Usages restants' },
     sourcePage: 115,
   },
   // =======================================================================
@@ -563,6 +564,8 @@ export const mysticFeatures: Feature[] = [
       "Après un rituel de 30 min, la forêt s'éveille dans un rayon de 1 km par rang et devient une alliée du druide pendant 24 h. Dans ce périmètre, les ennemis du druide sont désorientés et gênés par les branches et les racines. Ils divisent leur déplacement par deux et subissent un dé malus à tous les tests de survie, d'orientation, de perception ou de discrétion. Le druide peut lancer ce sort une seule fois par jour. Si deux druides essaient d'influencer la forêt, c'est celui dont le niveau est le plus élevé qui l'emporte.",
     richText:
       "Après un rituel de 30 min, la forêt s'éveille dans un rayon de [=rang] km et devient une alliée du druide pendant 24 h. Dans ce périmètre, les ennemis du druide sont désorientés et gênés par les branches et les racines. Ils divisent leur déplacement par deux et subissent un dé malus à tous les tests de survie, d'orientation, de perception ou de discrétion. Le druide peut lancer ce sort une seule fois par jour. Si deux druides essaient d'influencer la forêt, c'est celui dont le niveau est le plus élevé qui l'emporte.",
+    // « une seule fois par jour » → compteur 1 usage, rechargé au repos long.
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 116,
   },
   {
@@ -675,6 +678,8 @@ export const mysticFeatures: Feature[] = [
       "Une fois par jour, le druide peut pénétrer dans le tronc d'un gros arbre et sortir de celui d'un autre arbre appartenant à la même forêt et situé à une distance maximale de PER × 10 km. À partir du niveau 10 et tous les 4 niveaux supplémentaires, le druide peut emmener une personne avec lui.",
     richText:
       "Une fois par jour, le druide peut pénétrer dans le tronc d'un gros arbre et sortir de celui d'un autre arbre appartenant à la même forêt et situé à une distance maximale de [=PER × 10] km. À partir du niveau 10 et tous les 4 niveaux supplémentaires, le druide peut emmener une personne avec lui.",
+    // « Une fois par jour » → compteur 1 usage, rechargé au repos long.
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 117,
   },
   // =======================================================================
@@ -863,6 +868,9 @@ export const mysticFeatures: Feature[] = [
       "Le moine peut méditer pendant 10 min et récupérer ainsi [1d4°+VOL] PV. Les soins augmentent de +1d4° chaque fois que le personnage atteint le rang 4 dans une voie de moine. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité et il ne peut pas l'utiliser plus de trois fois par jour.",
     richText:
       "Le moine peut méditer pendant 10 min et récupérer ainsi [1d4°|2@1|3@2|4@3|5@4|6@5 + VOL] PV. Les soins augmentent de +{1d4°} chaque fois que le personnage atteint le rang 4 dans une voie de moine. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité et il ne peut pas l'utiliser plus de trois fois par jour.",
+    // « pas plus de trois fois par jour » → compteur 3 usages, rechargé au repos long. La contrainte
+    // « terminer une récupération rapide entre deux usages » reste verbatim (non modélisée).
+    usageCounter: { max: 3, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 120,
   },
   {
@@ -1198,6 +1206,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par jour, le prêtre peut prononcer un mot avec la voix de son dieu. Cela dépasse l'entendement des mortels et tous ses ennemis dans un rayon de 10 m sont étourdis pendant 1 round (pas d'action et -5 en DEF).",
+    // « Une fois par jour » → compteur 1 usage, rechargé au repos long.
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 124,
   },
   // =======================================================================
@@ -1349,6 +1359,9 @@ export const mysticFeatures: Feature[] = [
       "Une fois par jour, lorsque le personnage tombe à 0 PV, il se relève, nimbé d'une aura de lumière. Il produit alors une onde d'énergie positive qui restitue [2d4°+CHA du prêtre] PV à tous ses alliés dans un rayon de 20 m, et il récupère lui-même le double de PV.",
     richText:
       "Une fois par jour, lorsque le personnage tombe à 0 PV, il se relève, nimbé d'une aura de lumière. Il produit alors une onde d'énergie positive qui restitue [2d4° + CHA] PV à tous ses alliés dans un rayon de 20 m, et il récupère lui-même le double de PV.",
+    // « Une fois par jour » → compteur 1 usage, rechargé au repos long. Le déclenchement « lorsque
+    // le personnage tombe à 0 PV » reste verbatim (condition non modélisée).
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 125,
   },
   {
@@ -1360,6 +1373,8 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par jour, le prêtre peut soigner une créature par point de CHA. Chaque patient (éventuellement lui-même inclus) obtient les mêmes effets qu'un sort de Récupération majeure. Le sort prend 10 min pendant lesquelles tous les patients doivent rester au repos dans un rayon de 5 m autour du prêtre qui se concentre et se nimbe de lumière divine. Ce sort ne peut pas être lancé avec la règle de concentration.",
+    // « Une fois par jour » → compteur 1 usage, rechargé au repos long.
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 125,
   },
   // =======================================================================
@@ -1450,6 +1465,8 @@ export const mysticFeatures: Feature[] = [
       "Une fois par jour, le prêtre peut passer dans une dimension entre les plans d'existence où le temps et l'espace sont déformés pendant un maximum de CHA rounds. Il se déplace dans une sorte de brouillard gris où le paysage défile à toute vitesse. Pour chaque round de Marche des plans, il se déplace en réalité de 10 km. Le lieu de sortie n'est cependant pas très précis et le MJ doit déterminer une position au hasard autour du point visé (à 1d6 km près).",
     richText:
       "Une fois par jour, le prêtre peut passer dans une dimension entre les plans d'existence où le temps et l'espace sont déformés pendant un maximum de [=CHA] rounds. Il se déplace dans une sorte de brouillard gris où le paysage défile à toute vitesse. Pour chaque round de Marche des plans, il se déplace en réalité de 10 km. Le lieu de sortie n'est cependant pas très précis et le MJ doit déterminer une position au hasard autour du point visé (à {1d6} km près).",
+    // « Une fois par jour » → compteur 1 usage, rechargé au repos long.
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 125,
   },
 ];

@@ -530,6 +530,9 @@ export const ancestryFeatures: Feature[] = [
     // Rendu enrichi (PER-64) : « 1d4° PV » → {1d4°}. La récupération (repas, cadence) reste verbatim.
     richText:
       'Un halfelin qui mange bien est un halfelin heureux. À chaque repas (jusqu’à 4 fois par jour, espacés d’au moins 3 h) au cours duquel le personnage boit et mange des mets de qualité et en quantité, il récupère {1d4°} PV.',
+    // « jusqu’à 4 fois par jour » → compteur 4 usages, rechargé au repos long. La cadence
+    // (repas espacés d’au moins 3 h) reste verbatim (non modélisée).
+    usageCounter: { max: 4, resetOn: 'day', hideFromStatusPanel: true, label: 'Repas réparateurs' },
     sourcePage: 55,
   },
   {
@@ -733,6 +736,9 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Une fois par jour, le nain peut choisir d’ignorer les effets d’un sort qui le prend pour cible (mais pas un sort de zone). Les créatures dont le niveau (NC) est au moins égal au double du nain ignorent cette capacité.',
+    // « Une fois par jour » → compteur 1 usage, rechargé au repos long (bouton « Nouvelle journée »).
+    // La restriction « créatures de NC ≥ double » reste verbatim (non modélisée).
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 59,
   },
   {

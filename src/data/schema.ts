@@ -1259,6 +1259,17 @@ export interface CreatureProfile {
 }
 
 /**
+ * ÉVÉNEMENT qui remet un compteur d'usages à son maximum (PER-73). Déclaratif : aucun
+ * consommateur moteur pour l'instant — le futur bouton « Nouvelle journée » lira `resetOn === 'day'`
+ * pour savoir quels compteurs recharger d'un clic. Les valeurs plus fines (`short-rest`, `combat`)
+ * anticipent les rangs classés « par récupération rapide » / « par combat » (catégorie E du scan
+ * PER-73) qui relèveront d'un autre bouton de reset. `manual` = jamais rechargé automatiquement
+ * (compteur « à vie » comme les sept vies du chat, ou remis à plein par une autre règle : absorption
+ * d'Armure de pierre rechargée au relancement du sort).
+ */
+export type UsageResetTrigger = 'day' | 'short-rest' | 'combat' | 'manual';
+
+/**
  * Compteur d'USAGES LIMITÉS d'une capacité (PER-70) — concept de règles nommé
  * (« cette capacité ne peut être utilisée que N fois »). DÉCLARATION côté données
  * (le maximum) ; le décompte courant est un état de jeu porté par le personnage
@@ -1321,6 +1332,22 @@ export interface UsageCounter {
    * par Démolition, Piège explosif et Boulet explosif. Défaut = id de la capacité (compteur propre).
    */
   sharedKey?: string;
+  /**
+   * Quand le compteur se recharge à plein (PER-73). Défaut : `'day'` (repos long / « Nouvelle
+   * journée ») — cas de très loin le plus courant. À renseigner explicitement pour les compteurs
+   * qui NE suivent PAS le cycle journalier (`'manual'` pour les compteurs à vie ou rechargés par
+   * une autre règle), afin que le futur bouton « Nouvelle journée » ne les remette pas à tort.
+   */
+  resetOn?: UsageResetTrigger;
+  /**
+   * Ne PAS remonter ce compteur en jauge dans le bloc « État du personnage » (PER-150). Réservé aux
+   * usages QUOTIDIENS à faible cadence (pouvoirs 1–3/jour) qui n'ont pas vocation à occuper le tableau
+   * de bord : ils restent suivis UNIQUEMENT au niveau de la carte de capacité (indicateur compact +
+   * édition en modale, « scope du rang de voie »). Les vraies RÉSERVES tactiques dépensées en jeu
+   * (rage, charges explosives, doses de poison, sept vies, absorption d'Armure de pierre) restent,
+   * elles, des jauges du bloc d'état. Défaut : `false` (le compteur apparaît en jauge).
+   */
+  hideFromStatusPanel?: boolean;
   /** Libellé affiché (français). Défaut : « Usages restants ». */
   label?: string;
 }

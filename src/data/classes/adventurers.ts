@@ -1422,9 +1422,11 @@ export const adventurerFeatures: Feature[] = [
     // Rendu enrichi (PER-71 / PER-112) : durée {1d6} h ; soin {1d4°} PV. Les « par rang » désignent
     // le rang ATTEINT dans la voie de la survie → balisés en terme nommé [#rang] (« par rang (N) »,
     // info-bulle = valeur). « test de PER (Survie) » est un USAGE de la survie (pas une attribution
-    // de bonus de compétence) → pas d'effet. « Une fois par jour » : pas de compteur d'usages.
+    // de bonus de compétence) → pas d'effet. « Une fois par jour » → compteur 1 usage (PER-73),
+    // rechargé au repos long (bouton « Nouvelle journée »).
     richText:
       "Une fois par jour, si le rôdeur passe {1d6} h en milieu naturel sauvage (pas dans un champ), il trouve de quoi nourrir une personne par [#rang] pour une journée et, s'il réussit un test de PER (Survie) difficulté 10, il trouve des plantes médicinales pour soigner {1d4°} PV par [#rang]. Les plantes doivent être utilisées immédiatement (10 min de préparation et autant pour faire effet) et les dés peuvent être répartis sur plusieurs patients.",
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 72,
   },
   {

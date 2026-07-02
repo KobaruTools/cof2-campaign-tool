@@ -838,6 +838,8 @@ export function capacityResourceGauges(character: Character): CapacityResourceGa
     const feature = featureById.get(id);
     const counter = feature?.usageCounter;
     if (!feature || !counter) continue;
+    // Usages quotidiens à faible cadence (PER-73) : suivis sur la carte de capacité, pas en jauge d'état.
+    if (counter.hideFromStatusPanel) continue;
     const key = counter.sharedKey ?? feature.id;
     const max = usageCounterMaximum(counter, character, feature);
     // Libellé identifiant : le label du compteur sauf s'il est générique, auquel cas le nom

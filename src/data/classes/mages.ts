@@ -1546,7 +1546,8 @@ export const mageFeatures: Feature[] = [
     // PER-137 : compteur de SUIVI de l'absorption (le sort prend fin après niveau × 3 DM absorbés).
     // Démarre plein et se décrémente À LA MAIN au fil des DM absorbés (pas de consommation au lancement
     // du sort → `consumeOnActivate: false`).
-    usageCounter: { maxByLevel: 3, consumeOnActivate: false, label: 'Absorption restante (DM)' },
+    // Suivi d'absorption rechargé au relancement du sort, pas au repos → resetOn manuel.
+    usageCounter: { maxByLevel: 3, consumeOnActivate: false, resetOn: 'manual', label: 'Absorption restante (DM)' },
     sourcePage: 104,
   },
 
@@ -1760,6 +1761,8 @@ export const mageFeatures: Feature[] = [
     // (niveau × INT), non exprimable par la grammaire (un seul terme variable par produit,
     // cf. format §b et le test `rejette un produit de deux variables`) → reste en texte
     // verbatim. TODO(extraction) : à traiter si le format évolue.
+    // « Une fois par jour » → compteur 1 usage, rechargé au repos long.
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 106,
   },
 
@@ -2053,6 +2056,8 @@ export const mageFeatures: Feature[] = [
     // suffixe implicite retiré) ; DM {2d4°} par round.
     richText:
       "Une fois par jour, le sorcier peut invoquer d’innombrables squelettes qui émergent du sol pour attaquer ses ennemis pendant [=niveau] rounds. Tous les adversaires situés dans un rayon de 10 m autour du sorcier subissent automatiquement {2d4°} DM par round. Les squelettes se déplacent avec le sorcier, mais tous les déplacements dans cette zone (même ceux du sorcier) sont divisés par deux.",
+    // « Une fois par jour » → compteur 1 usage, rechargé au repos long.
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 109,
   },
 
