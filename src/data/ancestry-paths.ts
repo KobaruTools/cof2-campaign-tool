@@ -584,8 +584,10 @@ export const ancestryFeatures: Feature[] = [
     // Part plate inconditionnelle : +1 PC (`luckPoints`). Le +3 aux deux domaines de
     // l'origine relève du bonus de compétence (PER-89) : chaque option porte ses deux
     // domaines (`testBonusDomains`) ; la valeur (+3) est déduite de la catégorie « voie de
-    // peuple ». L'agrégation est faite par `testBonusSources`. La saisie LIBRE d'un
-    // gagne-pain et le remplacement d'un domaine d'origine (p. 57) relèvent de PER-68.
+    // peuple ». L'agrégation est faite par `testBonusSources`. L'option « Libre » ouvre la
+    // saisie personnalisée (gagne-pain nommé + 2 domaines au choix), portée par le choix
+    // `custom-skill` ci-dessous, visible seulement si « Libre » est retenu. Le remplacement
+    // partiel d'un domaine d'une origine PRESET reste hors périmètre (PER-68).
     effects: [{ kind: 'stat-bonus', stat: 'luckPoints', value: 1 }],
     choices: [
       {
@@ -598,7 +600,18 @@ export const ancestryFeatures: Feature[] = [
           { id: 'riverfolk', label: 'Riverain (natation et navigation)', testBonusDomains: ['swimming', 'navigation'] },
           { id: 'wildling', label: 'Sauvage (chasser et pister)', testBonusDomains: ['hunting', 'tracking'] },
           { id: 'nomad', label: 'Nomade (orientation et résistance à la chaleur ou au froid)', testBonusDomains: ['orientation', 'heat-resistance'] },
+          // Origine/gagne-pain INVENTÉ (p. 57 : « Le MJ peut en inventer d'autres… »). Les deux
+          // domaines +3 sont saisis via le choix `custom-skill` ci-dessous (pas de `testBonusDomains`).
+          { id: 'custom', label: 'Libre (origine ou gagne-pain au choix du MJ)' },
         ],
+      },
+      {
+        kind: 'custom-skill',
+        prompt: 'Origine ou gagne-pain personnalisé',
+        namePrompt: 'Nom de l’origine ou du gagne-pain',
+        domainCount: 2,
+        // Ne s'affiche (et n'est « dû ») que si l'origine « Libre » est retenue au choix 0.
+        visibleIfOption: { choiceIndex: 0, optionId: 'custom' },
       },
     ],
     sourcePage: 57,

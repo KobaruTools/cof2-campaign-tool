@@ -684,6 +684,30 @@ describe('testBonusSources — bonus de compétence par domaine (PER-89)', () =>
     expect(climbing?.sources[0]).toMatchObject({ category: 'ancestry', name: 'Diversité', value: 3 });
   });
 
+  it('gagne-pain LIBRE (humain-r1 « Libre ») → les 2 domaines saisis reçoivent le +3 de peuple', () => {
+    // Sélection custom-skill persistée en [nom, ...domaines] à l'index 1 (le choix d'origine à
+    // l'index 0 vaut « custom »). Le nom est décoratif ; seuls les domaines portent le bonus.
+    const c = ctx({ featureChoices: { 'humain-r1': ['custom', ['Forgeron', 'smithing', 'commerce']] } });
+    const byDomain = Object.fromEntries(testBonusSources(['humain-r1'], c).map((r) => [r.domain, r.total]));
+    expect(byDomain).toEqual({ smithing: 3, commerce: 3 });
+    const smithing = testBonusSources(['humain-r1'], c).find((r) => r.domain === 'smithing');
+    expect(smithing?.sources[0]).toMatchObject({ category: 'ancestry', name: 'Diversité', value: 3 });
+  });
+
+  it('gagne-pain LIBRE partiel (1 seul domaine saisi) → seul ce domaine est bonifié', () => {
+    const c = ctx({ featureChoices: { 'humain-r1': ['custom', ['Scribe', 'erudition']] } });
+    const byDomain = Object.fromEntries(testBonusSources(['humain-r1'], c).map((r) => [r.domain, r.total]));
+    expect(byDomain).toEqual({ erudition: 3 });
+  });
+
+  it('origine preset retenue → une saisie « Libre » obsolète n’est PAS comptée', () => {
+    // Le joueur a rebasculé sur « Montagnard » (index 0) : les domaines custom (index 1) sont
+    // masqués/obsolètes → seuls ceux de Montagnard s'appliquent.
+    const c = ctx({ featureChoices: { 'humain-r1': ['highlander', ['Forgeron', 'smithing', 'commerce']] } });
+    const byDomain = Object.fromEntries(testBonusSources(['humain-r1'], c).map((r) => [r.domain, r.total]));
+    expect(byDomain).toEqual({ climbing: 3, 'cold-resistance': 3 });
+  });
+
   it('sans contexte, les domaines pilotés par option ne sont pas résolus', () => {
     expect(testBonusSources(['humain-r1'])).toEqual([]);
   });

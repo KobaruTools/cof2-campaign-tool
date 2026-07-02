@@ -304,6 +304,8 @@ for (const cfg of CONFIGS) {
         }
         return choice.allowed?.[0] ?? 'FOR';
       }
+      // custom-skill (gagne-pain libre) : pas d'auto-remplissage (choix conditionnel à « Libre »).
+      if (choice.kind === 'custom-skill') return null;
       // option : première option (les choix de peuple ici ne sont pas répétables).
       return choice.options[0]?.id ?? null;
     });

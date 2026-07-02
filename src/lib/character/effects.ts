@@ -1061,12 +1061,33 @@ function rawTestContributions(featureIds: string[], ctx?: EffectContext): RawTes
     // (b) domaines octroyés par une OPTION retenue (ex. humain-r1 : origine → 2 domaines).
     const selections = ctx?.featureChoices?.[id] ?? [];
     (feature.choices ?? []).forEach((choice, i) => {
-      if (choice.kind !== 'option') return;
-      const sel = selections[i];
-      const chosenIds = Array.isArray(sel) ? sel : sel ? [sel] : [];
-      for (const opt of choice.options) {
-        if (!opt.testBonusDomains || !chosenIds.includes(opt.id)) continue;
-        for (const domain of opt.testBonusDomains)
+      // (b.1) option preset : domaines portés par l'option retenue.
+      if (choice.kind === 'option') {
+        const sel = selections[i];
+        const chosenIds = Array.isArray(sel) ? sel : sel ? [sel] : [];
+        for (const opt of choice.options) {
+          if (!opt.testBonusDomains || !chosenIds.includes(opt.id)) continue;
+          for (const domain of opt.testBonusDomains)
+            out.push({ domain, featureId: id, name: feature.name, category, value: fallback });
+        }
+        return;
+      }
+      // (b.2) gagne-pain LIBRE (`custom-skill`, PER-73, ex. humain-r1 « Libre ») : les domaines
+      // saisis (persistés en `[nom, ...domaines]`) reçoivent le même bonus de catégorie que ceux
+      // d'une option preset. Le nom est décoratif → ignoré ici.
+      if (choice.kind === 'custom-skill') {
+        // Choix conditionnel à une option sœur (« Libre ») : on n'applique les domaines que si
+        // l'option gouvernante est effectivement retenue (sinon la saisie est masquée/obsolète).
+        if (choice.visibleIfOption) {
+          const gov = selections[choice.visibleIfOption.choiceIndex];
+          const govIds = Array.isArray(gov) ? gov : gov ? [gov] : [];
+          if (!govIds.includes(choice.visibleIfOption.optionId)) return;
+        }
+        const sel = selections[i];
+        const domains = Array.isArray(sel)
+          ? sel.slice(1).filter((d): d is string => typeof d === 'string' && d.length > 0)
+          : [];
+        for (const domain of domains)
           out.push({ domain, featureId: id, name: feature.name, category, value: fallback });
       }
     });

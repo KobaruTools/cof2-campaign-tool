@@ -12,6 +12,8 @@ import {
   featureChoiceDefs,
   featureGrantsDefBonus,
   featureOffersBorrow,
+  getCustomSkillSelection,
+  hasIncompleteCustomSkill,
   featuresWithUnmadeChoices,
   ineligibleBorrowersForChoice,
   getOptionSelections,
@@ -366,7 +368,7 @@ describe('choix `option` répétable (Golem supérieur)', () => {
   it('un répétable sans palier atteint (allowed === 0) n’est ni proposé ni « à faire »', () => {
     const d = druid();
     expect(repeatableChoiceCount(d, animauxChoice)).toBe(0);
-    expect(isChoiceActionable(d, animauxChoice)).toBe(false);
+    expect(isChoiceActionable(d, 'animaux-r1', animauxChoice)).toBe(false);
     expect(hasActionableChoice(d, 'animaux-r1')).toBe(false);
     expect(unmadeChoiceIndexes(d, 'animaux-r1')).toEqual([]);
     expect(hasUnmadeChoice(d, 'animaux-r1')).toBe(false);
@@ -375,9 +377,76 @@ describe('choix `option` répétable (Golem supérieur)', () => {
   it('un répétable redevient proposé et dû une fois le palier (rang 4) atteint', () => {
     const d = druid({ featureIds: ['animaux-r1', 'animaux-r2', 'animaux-r3', 'animaux-r4'] });
     expect(repeatableChoiceCount(d, animauxChoice)).toBe(1);
-    expect(isChoiceActionable(d, animauxChoice)).toBe(true);
+    expect(isChoiceActionable(d, 'animaux-r1', animauxChoice)).toBe(true);
     expect(hasActionableChoice(d, 'animaux-r1')).toBe(true);
     expect(unmadeChoiceIndexes(d, 'animaux-r1')).toEqual([0]); // palier atteint, rien choisi
+  });
+});
+
+// Gagne-pain LIBRE d'humain-r1 (PER-73) : un choix `custom-skill` (index 1) visible seulement si
+// l'origine « Libre » (id 'custom') est retenue au choix d'origine (index 0). Nom libre + 2 domaines.
+describe('humain-r1 « Libre » — choix custom-skill conditionnel (PER-73)', () => {
+  const human = (over: Partial<Character> = {}) =>
+    makeCharacter({ ancestryId: 'humain', classId: 'guerrier', ancestryPathId: 'humain', featureIds: ['humain-r1'], ...over });
+  const customChoice = featureChoiceDefs('humain-r1')[1];
+
+  it('le custom-skill existe et référence l’option gouvernante « custom »', () => {
+    expect(customChoice.kind).toBe('custom-skill');
+    expect(customChoice.visibleIfOption).toEqual({ choiceIndex: 0, optionId: 'custom' });
+  });
+
+  it('origine preset (Montagnard) → custom-skill NON proposé et NON « à faire »', () => {
+    const d = human({ featureChoices: { 'humain-r1': ['highlander'] } });
+    expect(isChoiceActionable(d, 'humain-r1', customChoice)).toBe(false);
+    expect(unmadeChoiceIndexes(d, 'humain-r1')).toEqual([]);
+  });
+
+  it('origine « Libre » sans saisie → custom-skill proposé ET « à faire »', () => {
+    const d = human({ featureChoices: { 'humain-r1': ['custom'] } });
+    expect(isChoiceActionable(d, 'humain-r1', customChoice)).toBe(true);
+    expect(unmadeChoiceIndexes(d, 'humain-r1')).toEqual([1]);
+  });
+
+  it('origine « Libre » + nom + 1 seul domaine → toujours « à faire » (2 domaines requis)', () => {
+    const d = human({ featureChoices: { 'humain-r1': ['custom', ['Forgeron', 'smithing']] } });
+    expect(unmadeChoiceIndexes(d, 'humain-r1')).toEqual([1]);
+  });
+
+  it('origine « Libre » + nom + 2 domaines → complet, plus « à faire »', () => {
+    const d = human({ featureChoices: { 'humain-r1': ['custom', ['Forgeron', 'smithing', 'commerce']] } });
+    expect(unmadeChoiceIndexes(d, 'humain-r1')).toEqual([]);
+    expect(getCustomSkillSelection(d, 'humain-r1', 1)).toEqual({ name: 'Forgeron', domains: ['smithing', 'commerce'] });
+  });
+
+  it('un nom composé UNIQUEMENT d’espaces ne compte pas comme rempli', () => {
+    const d = human({ featureChoices: { 'humain-r1': ['custom', ['   ', 'smithing', 'commerce']] } });
+    expect(unmadeChoiceIndexes(d, 'humain-r1')).toEqual([1]);
+  });
+
+  // Barrière de création du wizard (`canCreate` = `featuresWithUnmadeChoices(...).length === 0`).
+  it('bloque « Créer le personnage » tant que « Libre » est incomplet, débloque une fois rempli', () => {
+    expect(featuresWithUnmadeChoices(human({ featureChoices: { 'humain-r1': ['custom'] } }))).toContain('humain-r1');
+    expect(featuresWithUnmadeChoices(human({ featureChoices: { 'humain-r1': ['highlander'] } }))).not.toContain('humain-r1');
+    expect(
+      featuresWithUnmadeChoices(human({ featureChoices: { 'humain-r1': ['custom', ['Forgeron', 'smithing', 'commerce']] } })),
+    ).not.toContain('humain-r1');
+  });
+
+  // Grisage du bouton « Terminer » de la modale d'édition de choix (fiche permissive).
+  it('hasIncompleteCustomSkill : engagé et incomplet → vrai ; preset ou complet → faux', () => {
+    expect(hasIncompleteCustomSkill(human({ featureChoices: { 'humain-r1': ['custom'] } }), 'humain-r1')).toBe(true);
+    expect(
+      hasIncompleteCustomSkill(human({ featureChoices: { 'humain-r1': ['custom', ['Forgeron', 'smithing']] } }), 'humain-r1'),
+    ).toBe(true);
+    // Origine preset : le custom-skill n'est pas engagé → pas de blocage (permissif).
+    expect(hasIncompleteCustomSkill(human({ featureChoices: { 'humain-r1': ['highlander'] } }), 'humain-r1')).toBe(false);
+    // Complet.
+    expect(
+      hasIncompleteCustomSkill(
+        human({ featureChoices: { 'humain-r1': ['custom', ['Forgeron', 'smithing', 'commerce']] } }),
+        'humain-r1',
+      ),
+    ).toBe(false);
   });
 });
 

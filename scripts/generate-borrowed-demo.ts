@@ -131,6 +131,7 @@ for (const fid of built.featureIds) {
       }
       return choice.allowed?.[0] ?? 'FOR';
     }
+    if (choice.kind === 'custom-skill') return null; // gagne-pain libre : pas d'auto-remplissage
     return choice.options[0]?.id ?? null; // option (non répétable ici)
   });
 }

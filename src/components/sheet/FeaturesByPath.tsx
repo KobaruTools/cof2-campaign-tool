@@ -38,7 +38,13 @@ import { features as featureCatalog, featureById, pathById, classById, priestGod
 import type { AbilityId, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
-import { featureChoiceDefs, getSelection, hasActionableChoice, hasUnmadeChoice } from '@/lib/character/choices';
+import {
+  featureChoiceDefs,
+  getSelection,
+  hasActionableChoice,
+  hasIncompleteCustomSkill,
+  hasUnmadeChoice,
+} from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
 import {
   conditionalEffectsOf,
@@ -1906,7 +1912,14 @@ function PathBlock({
               </DialogTitle>
               <DialogContent dividers>{renderChoiceEditor(choiceEditFeature)}</DialogContent>
               <DialogActions>
-                <Button onClick={() => setChoiceEditFeature(null)}>Terminer</Button>
+                {/* Un gagne-pain « Libre » (custom-skill) engagé doit être complété : « Terminer »
+                    grisé tant que le nom ou l'un des domaines manque (le « X » reste une échappatoire). */}
+                <Button
+                  onClick={() => setChoiceEditFeature(null)}
+                  disabled={!!character && hasIncompleteCustomSkill(character, choiceEditFeature.id)}
+                >
+                  Terminer
+                </Button>
               </DialogActions>
             </>
           )}

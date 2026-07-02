@@ -168,6 +168,25 @@ export function getOptionSelections(
 }
 
 /**
+ * Sélection d'un choix `custom-skill` (PER-73) décomposée : le NOM libre saisi (gagne-pain) et
+ * les ids de domaines de test retenus. La sélection est persistée en `[nom, ...domaines]`. Tolère
+ * une saisie absente ou partielle : nom vide, domaines manquants ; les entrées vides sont filtrées.
+ */
+export function getCustomSkillSelection(
+  character: Character,
+  featureId: string,
+  index: number,
+): { name: string; domains: string[] } {
+  const sel = getSelection(character, featureId, index);
+  const arr = Array.isArray(sel) ? sel : [];
+  const name = typeof arr[0] === 'string' ? arr[0] : '';
+  const domains = arr
+    .slice(1)
+    .filter((d): d is string => typeof d === 'string' && d.length > 0);
+  return { name, domains };
+}
+
+/**
  * Décompose les sélections d'un choix `option` répétable (PER-72) en deux axes : les options
  * DISTINCTES retenues (hors `repeatable`, ex. catégories d'armes) et le NOMBRE d'instances de
  * chaque option `repeatable` (ex. « +1 DM » ×N). `used` = total consommé sur le budget `repeat`
@@ -233,14 +252,25 @@ export function repeatableChoiceCount(character: Character, choice: OptionFeatur
  * Les autres natures (ability / feature-from-path / option simple) sont toujours
  * proposées.
  */
-export function isChoiceActionable(character: Character, choice: FeatureChoice): boolean {
+export function isChoiceActionable(
+  character: Character,
+  featureId: string,
+  choice: FeatureChoice,
+): boolean {
+  // Choix conditionnel à une option sœur (PER-73, ex. `custom-skill` d'humain-r1 visible seulement
+  // si l'origine « Libre » est retenue) : masqué tant que l'option gouvernante n'est pas choisie.
+  if (choice.visibleIfOption) {
+    const gov = getSelection(character, featureId, choice.visibleIfOption.choiceIndex);
+    const ids = Array.isArray(gov) ? gov : gov ? [gov] : [];
+    if (!ids.includes(choice.visibleIfOption.optionId)) return false;
+  }
   if (choice.kind === 'option' && choice.repeat) return repeatableChoiceCount(character, choice) > 0;
   return true;
 }
 
 /** Vrai si la capacité porte au moins un choix à proposer actuellement (cf. `isChoiceActionable`). */
 export function hasActionableChoice(character: Character, featureId: string): boolean {
-  return featureChoiceDefs(featureId).some((choice) => isChoiceActionable(character, choice));
+  return featureChoiceDefs(featureId).some((choice) => isChoiceActionable(character, featureId, choice));
 }
 
 /**
@@ -478,6 +508,9 @@ export function unmadeChoiceIndexes(character: Character, featureId: string): nu
   const pending: number[] = [];
   defs.forEach((choice, i) => {
     const sel = selections[i] ?? null;
+    // Choix non actionnable actuellement (répétable sans palier atteint, ou `custom-skill` dont
+    // l'option gouvernante n'est pas retenue) : rien n'est dû, on ne le compte pas « à faire ».
+    if (!isChoiceActionable(character, featureId, choice)) return;
     // Choix répétable (`option` + `repeat`) : « à faire » UNIQUEMENT s'il reste des
     // catégories à retenir, c.-à-d. si un palier est atteint (`allowed > 0`) et qu'aucune
     // option n'a encore été retenue. Tant qu'aucun palier n'est atteint (ex. Langage des
@@ -489,6 +522,13 @@ export function unmadeChoiceIndexes(character: Character, featureId: string): nu
       if (allowed > 0 && getOptionSelections(character, featureId, i).length === 0) pending.push(i);
       return;
     }
+    // Choix `custom-skill` (PER-73) : « à faire » tant que le NOM (non vide, espaces exclus) ou l'un
+    // des `domainCount` domaines manque (le contrôle n'est proposé que si actionnable, cf. ci-dessus).
+    if (choice.kind === 'custom-skill') {
+      const { name, domains } = getCustomSkillSelection(character, featureId, i);
+      if (name.trim().length === 0 || domains.length < choice.domainCount) pending.push(i);
+      return;
+    }
     // Autres natures : non fait = aucune valeur (ou tableau vide normalisé).
     if (sel == null || (Array.isArray(sel) && sel.length === 0)) pending.push(i);
   });
@@ -498,6 +538,18 @@ export function unmadeChoiceIndexes(character: Character, featureId: string): nu
 /** Vrai si la capacité acquise porte au moins un choix non encore fait. */
 export function hasUnmadeChoice(character: Character, featureId: string): boolean {
   return unmadeChoiceIndexes(character, featureId).length > 0;
+}
+
+/**
+ * Vrai si la capacité porte un choix `custom-skill` ENGAGÉ mais INCOMPLET (PER-73) — ex. l'origine
+ * « Libre » d'humain-r1 retenue sans nom ou sans ses `domainCount` domaines. Contrairement aux autres
+ * choix (permissifs, laissés « à faire » avec un simple avertissement sur la fiche), un `custom-skill`
+ * est TOUT-OU-RIEN : une fois l'option gouvernante retenue, il doit être complété. Sert à bloquer le
+ * bouton « Terminer » de la modale d'édition de choix (fiche) tant qu'il n'est pas rempli.
+ */
+export function hasIncompleteCustomSkill(character: Character, featureId: string): boolean {
+  const defs = featureChoiceDefs(featureId);
+  return unmadeChoiceIndexes(character, featureId).some((i) => defs[i]?.kind === 'custom-skill');
 }
 
 /**

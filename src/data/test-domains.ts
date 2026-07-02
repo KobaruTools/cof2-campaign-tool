@@ -35,7 +35,7 @@ export const testDomains: TestDomain[] = [
   { id: 'jumping', label: 'Saut', abilities: ['AGI'], sourcePage: 115 },
   // esquive (Réflexes éclair, barbare pourfendeur-r1, p. 81) : « tests d'AGI destinés à
   // esquiver » (explosions de feu, souffles, pièges…) → réaction d'évitement, AGI.
-  { id: 'evasion', label: 'Esquive', abilities: ['AGI'], sourcePage: 81 },
+  { id: 'evasion', label: 'Esquive', abilities: ['AGI'], sourcePage: 81, combat: true },
   // --- AGI — adresse / précision manuelle du voleur (PER-71) -----------------
   // pickpocket (Doigts agiles, roublard-r1, p. 76) : adresse des doigts → AGI.
   { id: 'pickpocketing', label: 'Vol à la tire', abilities: ['AGI'], sourcePage: 76 },
@@ -49,7 +49,7 @@ export const testDomains: TestDomain[] = [
 
   // --- FOR — exemples p. 202 -------------------------------------------------
   { id: 'breaking', label: 'Briser', abilities: ['FOR'], sourcePage: 202 },
-  { id: 'intimidation', label: 'Intimidation', abilities: ['FOR'], sourcePage: 202 },
+  { id: 'intimidation', label: 'Intimidation', abilities: ['FOR'], sourcePage: 202, combat: true },
   { id: 'lifting', label: 'Soulever', abilities: ['FOR'], sourcePage: 202 },
   // forge (forgesort « orfèvrerie ou forge ») : travail du métal.
   // TODO(extraction) : FOR (effort physique) ou INT (artisanat / thème forgesort) ?

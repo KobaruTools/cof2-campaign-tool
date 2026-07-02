@@ -718,6 +718,13 @@ export interface TestDomain {
   abilities: AbilityId[];
   /** Page source quand le domaine provient d'un exemple/d'une capacité sourcé(e). */
   sourcePage?: SourcePage;
+  /**
+   * Domaine à coloration COMBAT (PER-73) : réaction défensive ou manœuvre (ex. Esquive,
+   * Intimidation). Sert à exclure ces domaines du gagne-pain LIBRE d'`humain-r1`, dont le
+   * texte précise que « le bonus obtenu ne s'applique jamais à des tests de combat » (p. 57).
+   * N'a AUCUN autre effet moteur (on ne simule pas le combat). Absent = domaine hors combat.
+   */
+  combat?: boolean;
 }
 
 /**
@@ -949,12 +956,23 @@ export interface CriticalRange {
  * persistée). On ne modélise ici QUE le domaine de valeurs autorisées ; l'effet
  * mécanique d'un choix relève du moteur et des tickets d'effets.
  */
-export type FeatureChoice = AbilityFeatureChoice | PathFeatureChoice | OptionFeatureChoice;
+export type FeatureChoice =
+  | AbilityFeatureChoice
+  | PathFeatureChoice
+  | OptionFeatureChoice
+  | CustomSkillFeatureChoice;
 export type FeatureChoiceKind = FeatureChoice['kind'];
 
 interface FeatureChoiceBase {
   /** Invite affichée au joueur (français), ex. « Caractéristique à augmenter ». */
   prompt: string;
+  /**
+   * Visibilité CONDITIONNELLE à une OPTION sœur (PER-73) : le choix n'est proposé (et n'est « dû »)
+   * que si le choix d'index `choiceIndex` de la MÊME capacité a l'option `optionId` retenue. Sert le
+   * gagne-pain LIBRE d'`humain-r1` : la saisie personnalisée n'apparaît que si l'origine « Libre » est
+   * choisie. Résolu par `isChoiceActionable`. Absent = toujours proposé.
+   */
+  visibleIfOption?: { choiceIndex: number; optionId: string };
 }
 
 /** Choix d'une caractéristique parmi un domaine autorisé. */
@@ -1130,6 +1148,27 @@ export interface OptionFeatureChoice extends FeatureChoiceBase {
    * d'ids d'options (cf. `FeatureChoiceSelection`).
    */
   repeat?: ChoiceRepeat;
+}
+
+/**
+ * Choix d'une compétence PERSONNALISÉE (PER-73) — le gagne-pain/origine LIBRE d'`humain-r1` :
+ * « Le MJ peut en inventer d'autres (…) le joueur peut remplacer un des bonus d'origine (…) par un
+ * bonus en relation avec (…) un gagne-pain de son choix » (p. 57). Le joueur saisit un NOM libre
+ * (le gagne-pain) et choisit `domainCount` domaines de test DISTINCTS dans le catalogue
+ * (`test-domains.ts`), qui reçoivent chacun le bonus de la voie hôte (peuple → +3), au même titre
+ * que les `testBonusDomains` d'une option preset. Les domaines à coloration COMBAT (`TestDomain.combat`)
+ * sont exclus des listes (« le bonus obtenu ne s'applique jamais à des tests de combat », p. 57).
+ *
+ * PERSISTANCE : la sélection est un `string[]` de la forme `[nom, ...domaines]` (`FeatureChoiceSelection`).
+ * Le NOM est purement décoratif (libellé d'origine affiché) ; seuls les domaines portent un effet.
+ * Typiquement gardé derrière un `visibleIfOption` (l'option « Libre » d'un choix sœur).
+ */
+export interface CustomSkillFeatureChoice extends FeatureChoiceBase {
+  kind: 'custom-skill';
+  /** Invite du champ NOM libre (ex. « Nom de l'origine ou du gagne-pain »). */
+  namePrompt: string;
+  /** Nombre de domaines de test distincts à choisir (ex. 2 pour `humain-r1`). */
+  domainCount: number;
 }
 
 // ---------------------------------------------------------------------------

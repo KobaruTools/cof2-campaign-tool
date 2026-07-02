@@ -23,7 +23,8 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { featureById, pathById } from '@/data';
+import { featureById, pathById, testDomains, testDomainById } from '@/data';
+import { ABILITY_IDS } from '@/data/schema';
 import type { AbilityId, FeatureChoice, OptionFeatureChoice } from '@/data/schema';
 import { lowestAbilities } from '@/lib/character/ancestry';
 import { effectiveAbilities } from '@/lib/character/effects';
@@ -34,6 +35,7 @@ import {
   featureChoiceDefs,
   getOptionSelections,
   getSelection,
+  getCustomSkillSelection,
   hasRepeatableOption,
   ineligibleBorrowersForChoice,
   isChoiceActionable,
@@ -73,6 +75,10 @@ export function choiceSelectionLabel(
       const pathName = pathById.get(feature.pathId)?.name ?? feature.pathId;
       return `${pathName} — Rang ${feature.rank} — ${feature.name}`;
     }
+    case 'custom-skill':
+      // La sélection normalisée d'un `custom-skill` est son NOM (1er élément) ; l'affichage
+      // détaillé (nom + domaines) est traité par un rendu dédié en mode `display`.
+      return selection;
   }
 }
 
@@ -333,6 +339,95 @@ function ChoiceControl({
     );
   }
 
+  // custom-skill : gagne-pain LIBRE (PER-73, ex. humain-r1 « Libre ») — un nom libre + `domainCount`
+  // domaines de test au choix, HORS combat (`TestDomain.combat`) et mutuellement exclusifs (un domaine
+  // retenu dans un slot est grisé dans les autres). Persisté en `[nom, ...domaines]`.
+  if (choice.kind === 'custom-skill') {
+    const { name, domains: chosen } = getCustomSkillSelection(character, featureId, index);
+    // Vecteur positionnel de longueur `domainCount` ('' = slot vide), pour un rendu stable.
+    const raw = getSelection(character, featureId, index);
+    const arr = Array.isArray(raw) ? raw : [];
+    const slots: string[] = [];
+    for (let k = 0; k < choice.domainCount; k++) slots.push(typeof arr[k + 1] === 'string' ? arr[k + 1] : '');
+    // Domaines proposés : tout le catalogue HORS combat, GROUPÉS par caractéristique gouvernante
+    // (en-tête non-sélectionnable, comme le `groupBy` par voie des capacités empruntées). Le tri
+    // par (ordre canonique de la 1re carac, libellé du groupe, libellé du domaine) garantit que les
+    // domaines d'un même groupe restent consécutifs — sinon MUI répète l'en-tête.
+    const domainGroupLabel = (id: string) =>
+      (testDomainById.get(id)?.abilities ?? []).map((a) => ABILITY_NAMES[a]).join(' / ') || 'Autres';
+    const nonCombatIds = testDomains
+      .filter((d) => !d.combat)
+      .map((d) => d.id)
+      .sort((x, y) => {
+        const dx = testDomainById.get(x)!;
+        const dy = testDomainById.get(y)!;
+        const byAbility = ABILITY_IDS.indexOf(dx.abilities[0]) - ABILITY_IDS.indexOf(dy.abilities[0]);
+        if (byAbility !== 0) return byAbility;
+        const byGroup = domainGroupLabel(x).localeCompare(domainGroupLabel(y));
+        return byGroup !== 0 ? byGroup : dx.label.localeCompare(dy.label);
+      });
+
+    const commit = (nextName: string, nextSlots: string[]) => {
+      const hasAny = nextName.trim().length > 0 || nextSlots.some((d) => d);
+      onChange(index, hasAny ? [nextName, ...nextSlots] : null);
+    };
+
+    // Un custom-skill VISIBLE signifie que l'option gouvernante (« Libre ») est retenue : il est dès
+    // lors TOUT-OU-RIEN et doit être complété — on signale donc les champs manquants même hors mode
+    // `blocking` (fiche permissive comprise), contrairement aux autres choix laissés simplement « à faire ».
+    const nameMissing = name.trim().length === 0;
+    const domainsMissing = chosen.length < choice.domainCount;
+
+    return (
+      <Stack spacing={1}>
+        <TextField
+          size="small"
+          fullWidth
+          label={choice.namePrompt}
+          value={name}
+          error={nameMissing}
+          helperText={nameMissing ? 'Nom obligatoire' : 'Le bonus ne s’applique jamais à des tests de combat (p. 57).'}
+          onChange={(e) => commit(e.target.value, slots)}
+        />
+        {slots.map((dom, k) => {
+          // Domaines retenus dans les AUTRES slots : grisés ici (mutuellement exclusifs).
+          const takenElsewhere = new Set(slots.filter((_, j) => j !== k).filter(Boolean));
+          const slotMissing = !dom;
+          return (
+            <Autocomplete
+              key={k}
+              size="small"
+              options={nonCombatIds}
+              groupBy={(id) => domainGroupLabel(id)}
+              getOptionLabel={(id) => testDomainById.get(id)?.label ?? id}
+              getOptionDisabled={(id) => takenElsewhere.has(id)}
+              value={dom || null}
+              isOptionEqualToValue={(opt, val) => opt === val}
+              onChange={(_, value) => {
+                const next = [...slots];
+                next[k] = value ?? '';
+                commit(name, next);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={`Domaine amélioré ${k + 1} (+3)`}
+                  error={slotMissing}
+                  helperText={slotMissing ? 'Choix obligatoire' : undefined}
+                />
+              )}
+            />
+          );
+        })}
+        {!nameMissing && domainsMissing && (
+          <Alert severity="warning" sx={{ py: 0 }}>
+            Choisissez {choice.domainCount} domaines.
+          </Alert>
+        )}
+      </Stack>
+    );
+  }
+
   // feature-from-path : longue liste de capacités empruntables (Autocomplete).
   // Règle des poupées russes (p. 41) : les capacités elles-mêmes « emprunteuses »
   // (qui permettent de choisir à leur tour une capacité) ne sont pas empruntables
@@ -526,7 +621,7 @@ export function FeatureChoiceField({
   // l'index d'origine, clé de `featureChoices` pour lire/écrire la sélection.
   const visible = defs
     .map((choice, index) => ({ choice, index }))
-    .filter(({ choice }) => isChoiceActionable(character, choice));
+    .filter(({ choice }) => isChoiceActionable(character, featureId, choice));
   if (visible.length === 0) return null;
 
   if (mode === 'display') {
@@ -544,6 +639,43 @@ export function FeatureChoiceField({
                 index={i}
                 compact={compact}
               />
+            );
+          }
+          // Choix `custom-skill` (PER-73) : nom du gagne-pain + domaines +3 retenus.
+          if (choice.kind === 'custom-skill') {
+            const { name, domains } = getCustomSkillSelection(character, featureId, i);
+            const complete = name.trim().length > 0 && domains.length >= choice.domainCount;
+            const domLabels = domains.map((d) => testDomainById.get(d)?.label ?? d).join(', ');
+            const chip = complete ? (
+              <Chip
+                label={name}
+                size="small"
+                variant="outlined"
+                color="primary"
+                sx={compact ? COMPACT_CHIP_SX : undefined}
+              />
+            ) : (
+              <Chip
+                label="Choix à faire"
+                size="small"
+                color="warning"
+                variant="outlined"
+                sx={compact ? COMPACT_CHIP_SX : undefined}
+              />
+            );
+            if (compact) return <Box key={i}>{chip}</Box>;
+            return (
+              <Stack key={i} direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  {choice.prompt} :
+                </Typography>
+                {chip}
+                {complete && domLabels && (
+                  <Typography variant="caption" color="text.secondary">
+                    {domLabels}
+                  </Typography>
+                )}
+              </Stack>
             );
           }
           const raw = getSelection(character, featureId, i);
