@@ -721,6 +721,7 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le nain gagne un bonus de +1 en attaque et aux DM lorsqu’il utilise une hache ou un marteau de guerre. Il sait utiliser ces armes, quel que soit son profil.',
+    wip: 'Bonus conditionnel à l’arme portée : « +1 en attaque et aux DM lorsqu’il utilise une hache ou un marteau de guerre », plus la maîtrise de base de ces armes quel que soit le profil — non encore appliqués, en attente du modèle d’arme portée (PER-154).',
     sourcePage: 59,
   },
   {
