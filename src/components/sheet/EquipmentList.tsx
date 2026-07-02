@@ -15,9 +15,16 @@ import { equipment as equipmentCatalog, equipmentById } from '@/data';
 import type { EquipmentItem } from '@/data/schema';
 import type { CustomItem, EquipmentLine } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
-import { creatableElixirItemNames } from '@/lib/character/elixirs';
+import { creatableElixirItemNames, elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { DamageValue } from '@/components/DamageValue';
+import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+
+/**
+ * Résolution NOM D'OBJET → capacité mise en avant (puce) pour les doses d'élixir (voie des élixirs).
+ * Dérivée des données (statique) → calculée une seule fois au chargement du module.
+ */
+const ELIXIR_FEATURE_BY_ITEM = elixirFeatureIdByItemName();
 
 /** Détail concis d'un objet du catalogue (DM des armes, DEF des protections). */
 function itemDetail(item: EquipmentItem): ReactNode {
@@ -88,7 +95,10 @@ export function EquipmentList({ equipment, onChange, onUse }: EquipmentListProps
         {equipment.map((line, i) => {
           const custom = isCustomItem(line);
           const item = custom ? null : equipmentById.get(line.itemId);
-          const detail = custom ? line.details : item ? itemDetail(item) : null;
+          // Dose d'élixir (objet custom nommé par `elixirItemName`) : on met en avant la CAPACITÉ
+          // reproduite via une puce (sort choisi pour un mineur/majeur, sinon capacité du forgesort).
+          const elixirFeatureId = custom ? ELIXIR_FEATURE_BY_ITEM.get(line.name) : undefined;
+          const detail = elixirFeatureId ? null : custom ? line.details : item ? itemDetail(item) : null;
           return (
             <Stack key={i} direction="row" spacing={1} sx={{ alignItems: 'center', py: 0.75 }}>
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -100,6 +110,22 @@ export function EquipmentList({ equipment, onChange, onUse }: EquipmentListProps
                     onChange={(e) => setLine(i, { ...line, name: e.target.value })}
                     fullWidth
                   />
+                ) : elixirFeatureId ? (
+                  // Nom d'élixir : « Élixir — » suivi de la puce de la capacité reproduite (couleurs +
+                  // icône du profil source, cf. CapabilityChip). Fond clair pour rester lisible sur le
+                  // thème sombre, comme les puces des cartes de capacité.
+                  <Typography
+                    variant="body2"
+                    component="span"
+                    sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center' }}
+                  >
+                    Élixir —
+                    <CapabilityChip
+                      featureId={elixirFeatureId}
+                      label={null}
+                      sx={{ bgcolor: 'rgba(255, 255, 255, 0.85)' }}
+                    />
+                  </Typography>
                 ) : (
                   <>
                     <Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>

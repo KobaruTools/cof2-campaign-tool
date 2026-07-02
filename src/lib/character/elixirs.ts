@@ -40,3 +40,26 @@ export function creatableElixirItemNames(): string[] {
   }
   return names;
 }
+
+/**
+ * Résolution NOM D'OBJET → id de la CAPACITÉ à mettre en avant (puce) pour une dose d'élixir en
+ * inventaire. Pour un Élixir mineur/majeur (r4/r5), c'est le SORT choisi dans une autre voie
+ * (`referencedFeatures`) ; pour les rangs 1-3, c'est la capacité du forgesort elle-même. Restreint
+ * au SET des élixirs préparables → pas d'ambiguïté sur les noms (ex. « Invisibilité » ne pointe pas
+ * vers une voie de prestige). `undefined` pour un objet qui n'est pas un élixir connu (repli texte).
+ */
+export function elixirFeatureIdByItemName(): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const feature of features) {
+    if (!feature.usageCounter?.poolInPathHeader) continue;
+    if (feature.referencedFeatures?.length) {
+      for (const id of feature.referencedFeatures) {
+        const ref = featureById.get(id);
+        if (ref) map.set(elixirItemName(ref.name), ref.id);
+      }
+    } else {
+      map.set(elixirItemName(feature.name), feature.id);
+    }
+  }
+  return map;
+}
