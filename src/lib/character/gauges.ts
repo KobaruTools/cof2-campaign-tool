@@ -102,6 +102,36 @@ export function resetHp(depletion: Depletion): Depletion {
 }
 
 /**
+ * Fixe le MANQUE de mana (points dépensés), borné à `[0, max]`. À 0, la clé est
+ * retirée (mana plein par défaut). Setter unique dont dérivent dépense/récupération/
+ * reset — sur le modèle de `setUsageCounterValue`. Un `max` ≤ 0 remet le mana à plein.
+ */
+export function setManaMissing(depletion: Depletion, missing: number, max: number): Depletion {
+  const clamped = Math.max(0, Math.min(Math.max(0, max), Math.round(missing)));
+  const next = { ...depletion };
+  if (clamped <= 0) delete next.mana;
+  else next.mana = clamped;
+  return next;
+}
+
+/** Dépense `amount` points de mana (augmente le manque, borné au max). */
+export function spendMana(depletion: Depletion, amount: number, max: number): Depletion {
+  return setManaMissing(depletion, (depletion.mana ?? 0) + Math.max(0, amount), max);
+}
+
+/** Récupère `amount` points de mana (réduit le manque, plancher 0). */
+export function restoreMana(depletion: Depletion, amount: number, max: number): Depletion {
+  return setManaMissing(depletion, (depletion.mana ?? 0) - Math.max(0, amount), max);
+}
+
+/** Remet le mana à plein (retire la dépletion de mana, conserve les autres jauges). */
+export function resetMana(depletion: Depletion): Depletion {
+  const next = { ...depletion };
+  delete next.mana;
+  return next;
+}
+
+/**
  * Normalise la dépletion : retire les jauges pleines (manque nul) et re-borne les
  * composantes à ≥ 0, pour respecter l'invariant « absence d'entrée = jauge pleine ».
  * À appeler comme les autres `prune` d'état transitoire lors des mutations

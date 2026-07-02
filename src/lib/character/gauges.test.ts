@@ -10,6 +10,10 @@ import {
   hpMissing,
   pruneDepletion,
   resetHp,
+  resetMana,
+  restoreMana,
+  setManaMissing,
+  spendMana,
 } from './gauges';
 
 describe('currentGauge', () => {
@@ -178,5 +182,41 @@ describe('resetHp', () => {
 
   it('conserve les autres jauges', () => {
     expect(resetHp({ hp: { lethal: 5, temp: 2 }, mana: 3 })).toEqual({ mana: 3 });
+  });
+});
+
+describe('setManaMissing', () => {
+  it('borne à [0, max] et retire la clé à plein', () => {
+    expect(setManaMissing({}, 3, 10)).toEqual({ mana: 3 });
+    expect(setManaMissing({ mana: 3 }, 0, 10)).toEqual({});
+    expect(setManaMissing({}, 99, 10)).toEqual({ mana: 10 });
+    expect(setManaMissing({ mana: 5 }, -2, 10)).toEqual({});
+  });
+
+  it('conserve les PV', () => {
+    expect(setManaMissing({ hp: { lethal: 4, temp: 0 } }, 2, 10)).toEqual({
+      hp: { lethal: 4, temp: 0 },
+      mana: 2,
+    });
+  });
+
+  it('remet à plein si max ≤ 0', () => {
+    expect(setManaMissing({ mana: 3 }, 3, 0)).toEqual({});
+  });
+});
+
+describe('spendMana / restoreMana / resetMana', () => {
+  it('dépense en cumulant le manque, borné au max', () => {
+    expect(spendMana({}, 4, 10)).toEqual({ mana: 4 });
+    expect(spendMana({ mana: 8 }, 5, 10)).toEqual({ mana: 10 });
+  });
+
+  it('récupère en réduisant le manque, plancher 0', () => {
+    expect(restoreMana({ mana: 7 }, 3, 10)).toEqual({ mana: 4 });
+    expect(restoreMana({ mana: 2 }, 5, 10)).toEqual({});
+  });
+
+  it('reset retire la dépletion de mana en conservant les PV', () => {
+    expect(resetMana({ mana: 6, hp: { lethal: 3, temp: 0 } })).toEqual({ hp: { lethal: 3, temp: 0 } });
   });
 });

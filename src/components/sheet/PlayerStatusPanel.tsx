@@ -6,6 +6,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
@@ -15,9 +16,13 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import type { Depletion } from '@/lib/character/types';
-import { currentHp, hpHealthState, type HealthState } from '@/lib/character/gauges';
+import { currentHp, currentMana, hpHealthState, type HealthState } from '@/lib/character/gauges';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
-import { GaugeBar, type GaugeSegment } from './GaugeBar';
+import { GaugeBar, GaugeValueLabel, type GaugeSegment } from './GaugeBar';
+import { GaugeExpandToggle } from './GaugeExpandToggle';
+import { GaugeIconCap } from './GaugeIconCap';
+import { GaugeRow } from './GaugeRow';
+import { usePersistentBoolean } from './usePersistentBoolean';
 
 /** Nature des dégâts saisis dans les contrôles de PV. */
 type DamageKind = 'lethal' | 'temp';
@@ -113,6 +118,17 @@ export interface PlayerStatusPanelProps {
   onHeal: (amount: number) => void;
   /** Remet les PV à plein. */
   onResetHp: () => void;
+  /**
+   * Réserve de mana maximale (stat dérivée `manaPoints`), ou `null` si le personnage
+   * ne connaît aucun sort — dans ce cas la jauge de mana n'est pas affichée (PER-149).
+   */
+  manaMax: number | null;
+  /** Dépense `amount` points de mana. */
+  onSpendMana: (amount: number) => void;
+  /** Récupère `amount` points de mana. */
+  onRestoreMana: (amount: number) => void;
+  /** Remet le mana à plein. */
+  onResetMana: () => void;
 }
 
 /**
@@ -126,9 +142,20 @@ export interface PlayerStatusPanelProps {
  * Le maximum reste piloté ailleurs (« Statistiques dérivées ») : ce bloc ne touche
  * que le courant.
  */
-export function PlayerStatusPanel({ depletion, maxHp, onDamage, onHeal, onResetHp }: PlayerStatusPanelProps) {
+export function PlayerStatusPanel({
+  depletion,
+  maxHp,
+  onDamage,
+  onHeal,
+  onResetHp,
+  manaMax,
+  onSpendMana,
+  onRestoreMana,
+  onResetMana,
+}: PlayerStatusPanelProps) {
   const [amount, setAmount] = useState('1');
   const [kind, setKind] = useState<DamageKind>('lethal');
+  const [expanded, toggleExpanded] = usePersistentBoolean('gauge-expanded:hp', false);
 
   const current = currentHp(maxHp, depletion);
   const lethal = Math.max(0, depletion.hp?.lethal ?? 0);
@@ -155,54 +182,25 @@ export function PlayerStatusPanel({ depletion, maxHp, onDamage, onHeal, onResetH
 
   return (
     <Stack spacing={1.25}>
-      {/* En-tête : icône cœur + libellé + courant/max + badge d'état. */}
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <DerivedStatIcon statId="maxHp" size={26} color="var(--mui-palette-error-main)" />
-        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-          Points de vie
-        </Typography>
-        <Box sx={{ flexGrow: 1 }} />
+      <Stack spacing={1.25}>
+      {/* Cap d'expansion + icône cœur (libellé en tooltip) + barre (courant/max intégré +
+          badge d'état) + ajustement fin (±1, reset) accolés à sa droite. */}
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+        <Stack direction="row" spacing={0} sx={{ alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
+          <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} accent="success" />
+          <GaugeIconCap accent="success" label="Points de vie">
+            <DerivedStatIcon statId="maxHp" size={28} color="#fff" />
+          </GaugeIconCap>
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <GaugeBar
+              max={maxHp}
+              segments={segments}
+              roundedLeft={false}
+              overlay={<GaugeValueLabel current={current} max={maxHp} />}
+            />
+          </Box>
+        </Stack>
         {state !== 'normal' && <HealthStateBadge state={state} />}
-        <Typography variant="h6" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>
-          {current}
-          <Typography component="span" variant="body2" color="text.secondary">
-            {' '}
-            / {maxHp}
-          </Typography>
-        </Typography>
-      </Stack>
-
-      <GaugeBar max={maxHp} segments={segments} />
-
-      {/* Contrôles : montant + nature (létal/temp) + Dégâts / Soin + steppers ±1 + reset. */}
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-        <TextField
-          type="number"
-          size="small"
-          label="Montant"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          slotProps={{ htmlInput: { min: 0, style: { width: 64 } } }}
-        />
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={kind}
-          onChange={(_, next: DamageKind | null) => next && setKind(next)}
-          aria-label="Nature des dégâts"
-        >
-          <ToggleButton value="lethal">Létal</ToggleButton>
-          <ToggleButton value="temp">Temp.</ToggleButton>
-        </ToggleButtonGroup>
-        <Button variant="outlined" color="error" onClick={applyDamage} disabled={parsedAmount <= 0}>
-          Dégâts
-        </Button>
-        <Button variant="outlined" color="success" onClick={applyHeal} disabled={parsedAmount <= 0}>
-          Soin
-        </Button>
-
-        <Box sx={{ flexGrow: 1 }} />
-
         <Tooltip title="Infliger 1 dégât létal" arrow>
           <span>
             <IconButton size="small" aria-label="Retirer 1 PV" onClick={() => onDamage(1, 'lethal')}>
@@ -230,6 +228,55 @@ export function PlayerStatusPanel({ depletion, maxHp, onDamage, onHeal, onResetH
           </span>
         </Tooltip>
       </Stack>
+
+      {/* Contrôles détaillés : montant + nature (létal/temp) + Dégâts / Soin. Repliés par défaut. */}
+      <Collapse in={expanded} unmountOnExit>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+          <TextField
+            type="number"
+            size="small"
+            label="Montant"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            slotProps={{ htmlInput: { min: 0, style: { width: 64 } } }}
+          />
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={kind}
+            onChange={(_, next: DamageKind | null) => next && setKind(next)}
+            aria-label="Nature des dégâts"
+          >
+            <ToggleButton value="lethal">Létal</ToggleButton>
+            <ToggleButton value="temp">Temp.</ToggleButton>
+          </ToggleButtonGroup>
+          <Button variant="outlined" color="error" onClick={applyDamage} disabled={parsedAmount <= 0}>
+            Dégâts
+          </Button>
+          <Button variant="outlined" color="success" onClick={applyHeal} disabled={parsedAmount <= 0}>
+            Soin
+          </Button>
+        </Stack>
+      </Collapse>
+      </Stack>
+
+      {/* Jauge de mana — seulement pour un lanceur de sorts (manaMax non nul), PER-149. */}
+      {manaMax !== null && (
+        <GaugeRow
+          label="Points de mana"
+          icon={<DerivedStatIcon statId="manaPoints" size={28} color="#fff" />}
+          fillColor="info.main"
+          accent="info"
+          persistKey="gauge-expanded:mana"
+          current={currentMana(manaMax, depletion)}
+          max={manaMax}
+          spendLabel="Dépenser"
+          restoreLabel="Récupérer"
+          onSpend={onSpendMana}
+          onRestore={onRestoreMana}
+          onReset={onResetMana}
+        />
+      )}
     </Stack>
   );
 }

@@ -53,7 +53,7 @@ import {
   universalTestBonus,
 } from '@/lib/character/effects';
 import { effectiveFeatureIdsForMods, pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
-import { applyDamage, healHp, pruneDepletion, resetHp } from '@/lib/character/gauges';
+import { applyDamage, healHp, pruneDepletion, resetHp, resetMana, restoreMana, spendMana } from '@/lib/character/gauges';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
@@ -417,6 +417,16 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       })()
     : undefined;
 
+  // Réserve de mana EFFECTIVE (PER-149) : surcharge manuelle si présente, sinon la
+  // valeur dérivée (`null` = aucun sort → pas de jauge de mana). Ces setters bornent
+  // le manque au max courant, comme le compteur d'usages.
+  const manaMax = masterDerived ? character.overrides.manaPoints ?? masterDerived.manaPoints : null;
+  const setManaSpend = (amount: number) =>
+    update({ depletion: spendMana(character.depletion, amount, manaMax ?? 0) });
+  const setManaRestore = (amount: number) =>
+    update({ depletion: restoreMana(character.depletion, amount, manaMax ?? 0) });
+  const setManaReset = () => update({ depletion: resetMana(character.depletion) });
+
   return (
     <>
       {/* Titre de l'onglet = nom du personnage. Rendu déclaratif (React 19 le
@@ -618,6 +628,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 onDamage={setHpDamage}
                 onHeal={setHpHeal}
                 onResetHp={setHpReset}
+                manaMax={manaMax}
+                onSpendMana={setManaSpend}
+                onRestoreMana={setManaRestore}
+                onResetMana={setManaReset}
               />
             </SheetSection>
           )}
