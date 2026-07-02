@@ -544,7 +544,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         recoveryDieRoll != null ? { dieRoll: recoveryDieRoll, recoveryDiceMax } : undefined,
       ),
     );
-  const doLongRest = () => update(longRest(character));
+  // Repos long : `heal` → dépenser le DR gagné pour un soin à la valeur MAX du dé (p. 222).
+  const doLongRest = (heal: boolean) =>
+    update(
+      longRest(
+        character,
+        heal ? { recoveryDiceMax, dieFaces: Number.parseInt(recoveryDie.slice(1), 10) || 0 } : undefined,
+      ),
+    );
   // Ressources de capacité (rage, sept vies…) surfacées en jauges (PER-150) : lues depuis les
   // MÊMES `usageCounters` que FeaturesByPath (source unique). L'écriture passe par le setter existant.
   const capacityGauges = capacityResourceGauges(character);

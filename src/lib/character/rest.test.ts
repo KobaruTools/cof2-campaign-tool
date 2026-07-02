@@ -61,6 +61,23 @@ describe('longRest — récupération complète', () => {
     const { usageCounters } = longRest(make(base));
     expect(usageCounters).toEqual({ 'fauve-r5': 2 }); // rage (day) réinitialisée, sept vies (manual) conservée
   });
+
+  it('option soin : dépense le DR gagné pour la valeur MAX du dé + ½ niveau', () => {
+    // Niveau 5 (½ = 2), dé d10 (faces 10) → soin max = 12. Létaux 15, DR 2 dépensés / max 4.
+    const { depletion } = longRest(
+      make({ level: 5, depletion: { hp: { lethal: 15, temp: 4 }, recoveryDice: 2 } }),
+      { recoveryDiceMax: 4, dieFaces: 10 },
+    );
+    // +1 DR (2→1) puis dépense 1 DR pour le soin (1→2) : net recoveryDice = 2 ; létaux 15 − 12 = 3.
+    expect(depletion).toEqual({ hp: { lethal: 3, temp: 0 }, recoveryDice: 2 });
+  });
+
+  it('sans option soin : garde le +1 DR, ne soigne pas les létaux', () => {
+    const { depletion } = longRest(
+      make({ level: 5, depletion: { hp: { lethal: 15, temp: 4 }, recoveryDice: 2 } }),
+    );
+    expect(depletion).toEqual({ hp: { lethal: 15, temp: 0 }, recoveryDice: 1 });
+  });
 });
 
 describe('resetAll — tout réinitialiser', () => {

@@ -66,17 +66,31 @@ export function shortRest(
  *  - **+1 DR** (attrition, p. 222 : « un personnage gagne 1 DR ») — pas de restauration
  *    complète des DR ni des PV ;
  *  - réinitialise les capacités « par jour » (et, a fortiori, « par combat » / « rapide »).
+ *
+ * Soin optionnel (p. 222) : « il peut immédiatement choisir d'utiliser ce DR pour restaurer
+ * des PV. Dans ce cas, le nombre de PV récupérés est automatiquement égal à la valeur maximale
+ * du dé. » → si `heal` est fourni et qu'un DR est disponible après le +1, on soigne
+ * `dieFaces + ½ niveau` PV (valeur MAX du dé, sans lancer) et on dépense 1 DR.
  */
-export function longRest(character: Character): RestResult {
-  const depletion = clearTemp(character.depletion);
-  const next: Depletion = { ...depletion };
+export function longRest(
+  character: Character,
+  heal?: { recoveryDiceMax: number; dieFaces: number },
+): RestResult {
+  let depletion: Depletion = { ...clearTemp(character.depletion) };
   // Mana plein.
-  delete next.mana;
+  delete depletion.mana;
   // +1 DR (réduit le manque de 1, plancher 0).
-  const spentDr = next.recoveryDice ?? 0;
-  if (spentDr > 0) next.recoveryDice = spentDr - 1;
+  const spentDr = depletion.recoveryDice ?? 0;
+  if (spentDr > 0) depletion.recoveryDice = spentDr - 1;
+  else delete depletion.recoveryDice;
+  // Dépense optionnelle du DR gagné pour un soin à la valeur MAX du dé (+ ½ niveau).
+  if (heal && heal.recoveryDiceMax - (depletion.recoveryDice ?? 0) > 0) {
+    const healAmount = heal.dieFaces + Math.floor(character.level / 2);
+    depletion = healHp(depletion, healAmount);
+    depletion = spendRecoveryDice(depletion, 1, heal.recoveryDiceMax);
+  }
   return {
-    depletion: pruneDepletion(next),
+    depletion: pruneDepletion(depletion),
     usageCounters: resetUsageCounters(
       character.usageCounters,
       character.featureIds,

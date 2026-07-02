@@ -29,6 +29,7 @@ import { GaugeBar, GaugeValueLabel, type GaugeSegment } from './GaugeBar';
 import { GaugeExpandToggle } from './GaugeExpandToggle';
 import { GaugeIconCap } from './GaugeIconCap';
 import { GaugeRow } from './GaugeRow';
+import { LongRestDialog } from './LongRestDialog';
 import { ShortRestDialog } from './ShortRestDialog';
 import { usePersistentBoolean } from './usePersistentBoolean';
 
@@ -241,8 +242,11 @@ export interface PlayerStatusPanelProps {
    * dépenser un DR (soin), ou `null` pour un repos sans soin.
    */
   onShortRest: (recoveryDieRoll: number | null) => void;
-  /** Repos long (récupération complète). */
-  onLongRest: () => void;
+  /**
+   * Repos long (récupération complète). `heal = true` → dépenser le DR gagné pour un soin
+   * à la valeur max du dé (p. 222).
+   */
+  onLongRest: (heal: boolean) => void;
 }
 
 /**
@@ -277,6 +281,7 @@ export function PlayerStatusPanel({
 }: PlayerStatusPanelProps) {
   const theme = useTheme();
   const [shortRestOpen, setShortRestOpen] = useState(false);
+  const [longRestOpen, setLongRestOpen] = useState(false);
   // Couleurs CONCRÈTES (résolues) pour les caps assombris : PV en vert, mana en bleu.
   const hpColor = theme.palette.success.main;
   const manaColor = theme.palette.info.main;
@@ -433,7 +438,7 @@ export function PlayerStatusPanel({
       {/* Repos (PER-151) : récupération selon les règles CO2 ; matrice des DR à droite. */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1, pt: 0.5 }}>
         <Tooltip
-          title="Récupération rapide (30 min) : dégâts temporaires régénérés et capacités « par combat » réinitialisées (p. 221)."
+          title="Récupération rapide (30 min) : régénère les dégâts temporaires, réinitialise les capacités « par combat », et permet de consommer un dé de récupération pour se soigner de [dé + ½ niveau] PV (p. 221)."
           arrow
         >
           <Button size="small" variant="outlined" startIcon={<TimerIcon />} onClick={() => setShortRestOpen(true)}>
@@ -444,7 +449,7 @@ export function PlayerStatusPanel({
           title="Récupération complète (8 h, 1/jour) : mana plein, +1 dé de récupération, dégâts temporaires régénérés, capacités quotidiennes réinitialisées (p. 221-222, 229)."
           arrow
         >
-          <Button size="small" variant="outlined" startIcon={<HotelIcon />} onClick={onLongRest}>
+          <Button size="small" variant="outlined" startIcon={<HotelIcon />} onClick={() => setLongRestOpen(true)}>
             Repos long
           </Button>
         </Tooltip>
@@ -470,6 +475,19 @@ export function PlayerStatusPanel({
         onConfirm={(recoveryDieRoll) => {
           onShortRest(recoveryDieRoll);
           setShortRestOpen(false);
+        }}
+      />
+
+      <LongRestDialog
+        open={longRestOpen}
+        onClose={() => setLongRestOpen(false)}
+        recoveryDie={recoveryDie}
+        recoveryDiceMax={recoveryDiceMax}
+        level={level}
+        lethalDamage={lethal}
+        onConfirm={(heal) => {
+          onLongRest(heal);
+          setLongRestOpen(false);
         }}
       />
     </Stack>
