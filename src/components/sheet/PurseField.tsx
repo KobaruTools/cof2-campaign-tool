@@ -23,9 +23,24 @@ interface CoinMeta {
   name: string;
   /** Couleur du jeton. */
   color: string;
+  /** Couleur de la barre de brillance au survol (défaut : blanc vif). */
+  shine?: string;
   /** Verbatim de règle (p. 181) affiché en info-bulle. */
   rule: string;
 }
+
+/**
+ * Étincelles décoratives autour de la pièce d'or — soulignent son statut « rare »
+ * au survol. Positions/tailles fixes (px relatifs au jeton 24×24), chacune avec un
+ * léger décalage d'animation pour un scintillement échelonné.
+ */
+const GOLD_SPARKLES = [
+  { top: -5, left: 19, size: 9, delay: '0s' },
+  { top: 6, left: 23, size: 5, delay: '0.35s' },
+  { top: 19, left: -4, size: 7, delay: '0.15s' },
+  { top: -3, left: -3, size: 5, delay: '0.5s' },
+  { top: 20, left: 17, size: 4, delay: '0.7s' },
+] as const;
 
 const COINS: CoinMeta[] = [
   {
@@ -51,6 +66,8 @@ const COINS: CoinMeta[] = [
     code: 'pc',
     name: 'Pièce de cuivre',
     color: '#c07a4b',
+    // Cuivre = métal humble : brillance plus terne et grisée que l'or/argent.
+    shine: 'rgba(205, 205, 210, 0.4)',
     rule:
       'Un aventurier n’a pas vraiment besoin de comptabiliser les pièces de cuivre… ' +
       'Commencez à compter votre argent pour les choses qui valent au moins 1 pa. ' +
@@ -73,55 +90,87 @@ function CoinToken({ coin }: { coin: CoinMeta }) {
       </Typography>
     </Box>
   );
+  const shine = coin.shine ?? 'rgba(255,255,255,0.85)';
   return (
     <AppTooltip title={tooltip}>
-      <Box
-        className="coin-shine"
-        sx={{
-          position: 'relative',
-          // Le contour (bord) recouvre le texte : `overflow: hidden` clippe le code
-          // au cercle INTERNE, il ne déborde donc jamais du rond.
-          overflow: 'hidden',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 24,
-          height: 24,
-          borderRadius: '50%',
-          cursor: 'help',
-          flexShrink: 0,
-          // Code de la pièce (PO/PA/PC) : très gras, grand (débord clippé par le cercle),
-          // noir semi-transparent + ombre portée noire → effet « relief ».
-          fontSize: '1rem',
-          fontWeight: 700,
-          // Roboto n'est chargé qu'en 300–700 : `900` retombe sur 700. Pour un rendu
-          // vraiment massif (« Black »), on épaissit les glyphes au contour de texte.
-          WebkitTextStroke: '0.9px rgba(0, 0, 0, 0.2)',
-          lineHeight: 1,
-          letterSpacing: '-0.02em',
-          textTransform: 'uppercase',
-          // Texte plus transparent, mais son ombre portée reste marquée (relief).
-          color: 'rgba(0, 0, 0, 0.2)',
-          textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
-          // Contour de la même teinte, plus foncé (2px), et fond en dégradé vers plus clair.
-          border: `2px solid ${darken(coin.color, 0.3)}`,
-          background: `linear-gradient(135deg, ${coin.color} 0%, ${lighten(coin.color, 0.28)} 100%)`,
-          // Barre blanche de brillance — au repos hors champ, à gauche. Le balayage est
-          // déclenché par le survol de TOUT le champ (voir `CoinInput`).
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: '-150%',
-            width: '80%',
-            height: '100%',
-            background: 'linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.85) 50%, transparent 100%)',
-            transform: 'skewX(-20deg)',
-            transition: 'left 0.55s ease',
-          },
-        }}
-      >
-        {coin.code}
+      {/* Wrapper `overflow: visible` : porte les étincelles qui débordent hors du jeton
+          (le jeton lui-même reste `overflow: hidden` pour clipper le code et la brillance). */}
+      <Box sx={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+        <Box
+          className="coin-shine"
+          sx={{
+            position: 'relative',
+            // Le contour (bord) recouvre le texte : `overflow: hidden` clippe le code
+            // au cercle INTERNE, il ne déborde donc jamais du rond.
+            overflow: 'hidden',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 24,
+            height: 24,
+            borderRadius: '50%',
+            cursor: 'help',
+            flexShrink: 0,
+            // Code de la pièce (PO/PA/PC) : très gras, grand (débord clippé par le cercle),
+            // noir semi-transparent + ombre portée noire → effet « relief ».
+            fontSize: '1rem',
+            fontWeight: 700,
+            // Roboto n'est chargé qu'en 300–700 : `900` retombe sur 700. Pour un rendu
+            // vraiment massif (« Black »), on épaissit les glyphes au contour de texte.
+            WebkitTextStroke: '0.9px rgba(0, 0, 0, 0.2)',
+            lineHeight: 1,
+            letterSpacing: '-0.02em',
+            textTransform: 'uppercase',
+            // Texte plus transparent, mais son ombre portée reste marquée (relief).
+            color: 'rgba(0, 0, 0, 0.2)',
+            textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+            // Contour de la même teinte, plus foncé (2px), et fond en dégradé vers plus clair.
+            border: `2px solid ${darken(coin.color, 0.3)}`,
+            background: `linear-gradient(135deg, ${coin.color} 0%, ${lighten(coin.color, 0.28)} 100%)`,
+            // Barre de brillance — au repos hors champ, à gauche. Sa teinte dépend de la
+            // pièce (`shine`). Le balayage est déclenché par le survol de TOUT le champ
+            // (voir `CoinInput`).
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: '-150%',
+              width: '80%',
+              height: '100%',
+              background: `linear-gradient(120deg, transparent 0%, ${shine} 50%, transparent 100%)`,
+              transform: 'skewX(-20deg)',
+              // Pas de transition au repos : le retour de la barre est instantané (invisible,
+              // hors-champ). La transition n'existe qu'au survol → brillance à l'aller seulement.
+            },
+          }}
+        >
+          {coin.code}
+        </Box>
+
+        {/* Pièce d'or « rare » : étincelles scintillantes au survol (voir `CoinInput`). */}
+        {coin.code === 'po' &&
+          GOLD_SPARKLES.map((s, i) => (
+            <Box
+              key={i}
+              className="coin-sparkle"
+              sx={{
+                position: 'absolute',
+                top: s.top,
+                left: s.left,
+                width: s.size,
+                height: s.size,
+                pointerEvents: 'none',
+                opacity: 0,
+                zIndex: 2,
+                animationDelay: s.delay,
+                background: 'radial-gradient(circle, #fff7d6 0%, #f2c94c 55%, transparent 72%)',
+                filter: 'drop-shadow(0 0 1px rgba(242,201,76,0.9))',
+                // Étoile à 4 branches.
+                clipPath:
+                  'polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%)',
+              }}
+            />
+          ))}
       </Box>
     </AppTooltip>
   );
@@ -168,8 +217,23 @@ function CoinInput({
         if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
       }}
       aria-label={`${coin.name} (${coin.code})`}
-      // Survoler n'importe où dans le champ fait « briller » la pièce (balaie la barre blanche).
-      sx={{ '&:hover .coin-shine::before': { left: '150%' } }}
+      // Survoler n'importe où dans le champ fait « briller » la pièce (balaie la barre)
+      // et, pour l'or, déclenche le scintillement échelonné des étincelles.
+      sx={{
+        '&:hover .coin-shine::before': { left: '150%', transition: 'left 0.55s ease' },
+        '@keyframes coinSparkleTwinkle': {
+          '0%': { transform: 'scale(0) rotate(0deg)', opacity: 0 },
+          '35%': { opacity: 1 },
+          '55%': { transform: 'scale(1) rotate(120deg)', opacity: 0.95 },
+          '100%': { transform: 'scale(0) rotate(180deg)', opacity: 0 },
+        },
+        '&:hover .coin-sparkle': {
+          animationName: 'coinSparkleTwinkle',
+          animationDuration: '1.1s',
+          animationTimingFunction: 'ease-in-out',
+          animationIterationCount: 'infinite',
+        },
+      }}
       slotProps={{
         htmlInput: { min: 0, step: 1, style: { width: 52 } },
         input: {
