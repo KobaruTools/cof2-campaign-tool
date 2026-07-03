@@ -116,7 +116,7 @@ export function EquipmentList({ equipment, onChange, onUse }: EquipmentListProps
                   <Typography
                     variant="body2"
                     component="span"
-                    sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center' }}
+                    sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
                   >
                     Élixir —
                     <CapabilityChip featureId={elixirFeatureId} label={null} />
