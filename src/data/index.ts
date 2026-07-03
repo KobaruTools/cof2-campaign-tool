@@ -32,7 +32,7 @@ import type {
 
 import { families } from './families';
 import { valueSets } from './value-sets';
-import { progression } from './progression';
+import { progression, COIN_POUCH_ITEM_NAME } from './progression';
 import { idealsFlaws } from './ideals-flaws';
 import { ancestries } from './ancestries';
 import { ancestryPaths, magePath, ancestryFeatures } from './ancestry-paths';
@@ -55,7 +55,7 @@ import {
 } from './feature-classification';
 
 // --- Règles transverses ------------------------------------------------------
-export { families, valueSets, progression, idealsFlaws };
+export { families, valueSets, progression, COIN_POUCH_ITEM_NAME, idealsFlaws };
 
 // --- Peuples -----------------------------------------------------------------
 export { ancestries };

@@ -7,6 +7,14 @@
 
 import type { ProgressionRules } from './schema';
 
+/**
+ * Nom de l'objet « bourse de départ » du sac d'aventurier (p. 31 : « une bourse de
+ * 2d6 pa »). Constante partagée : sert de libellé dans `adventurerPack` ET de clé de
+ * reconnaissance côté fiche (bouton « Utiliser » → saisie du montant tiré). Le montant
+ * n'est PAS simulé (les dés se lancent à la vraie table) ; il est saisi par le joueur.
+ */
+export const COIN_POUCH_ITEM_NAME = 'Bourse de 2d6 pa';
+
 export const progression: ProgressionRules = {
   /**
    * Niveau maximum jouable. Le livre ne le fixe pas explicitement (la table
@@ -87,7 +95,7 @@ export const progression: ProgressionRules = {
     { itemId: 'briquet-a-silex', label: 'Briquet à silex', quantity: 1 },
     { itemId: null, label: 'Outre', quantity: 1 },
     { itemId: null, label: 'Gamelle', quantity: 1 },
-    { itemId: null, label: 'Bourse de 2d6 pa', quantity: 1 },
+    { itemId: null, label: COIN_POUCH_ITEM_NAME, quantity: 1 },
   ],
 
   // Page de la table centrale des rangs ; les autres pages sources sont

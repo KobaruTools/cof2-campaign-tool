@@ -21,7 +21,7 @@ import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { ancestryById, classById, families, featureById, progression } from '@/data';
+import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, progression } from '@/data';
 import type { DerivedInput } from '@/lib/engine';
 import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
@@ -84,6 +84,7 @@ import { SheetSection } from '@/components/sheet/SheetSection';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { PurseField } from '@/components/sheet/PurseField';
+import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
 import {
@@ -142,6 +143,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // l'affichage des voies. Quand actif, les sorts en (A) montrent leur coût réduit.
   const [concentration, setConcentration] = useState(false);
   const [createdToast, setCreatedToast] = useState(false);
+  // Index de la ligne « Bourse de 2d6 pa » dont l'ouverture est en cours (modale) ; null = fermée.
+  const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
 
   // Confirmation « fin de wizard » : le wizard redirige avec `?created=1`. On
   // affiche un retour clair puis on nettoie l'URL pour ne pas le rejouer au
@@ -373,16 +376,34 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     }
     update({ usageCounters, equipment });
   };
-  // Utiliser un objet (PER-158) : consomme une unité de la ligne `i` (état de jeu, hors édition) —
-  // décrémente la quantité, et retire la ligne quand elle tombe à 0.
+  // Consomme une unité de la ligne `i` : décrémente la quantité, retire la ligne à 0.
+  const consumeEquipmentLine = (i: number): EquipmentLine[] => {
+    const line = character.equipment[i];
+    if (!line) return character.equipment;
+    return line.quantity <= 1
+      ? character.equipment.filter((_, j) => j !== i)
+      : character.equipment.map((l, j) => (j === i ? { ...l, quantity: l.quantity - 1 } : l));
+  };
+  // Utiliser un objet (PER-158) : consommer une unité est un état de jeu (hors édition).
+  // Cas particulier de la « Bourse de 2d6 pa » (p. 31) : au lieu de simplement la consommer,
+  // on ouvre une modale pour saisir les pa tirés, qui s'ajoutent à la fortune (PER-152).
   const useEquipmentItem = (i: number) => {
     const line = character.equipment[i];
     if (!line) return;
-    const equipment =
-      line.quantity <= 1
-        ? character.equipment.filter((_, j) => j !== i)
-        : character.equipment.map((l, j) => (j === i ? { ...l, quantity: l.quantity - 1 } : l));
-    update({ equipment });
+    if (isCustomItem(line) && line.name === COIN_POUCH_ITEM_NAME) {
+      setCoinPouchIndex(i);
+      return;
+    }
+    update({ equipment: consumeEquipmentLine(i) });
+  };
+  // Validation de la modale de bourse : ajoute `silver` pa à la fortune et consomme la dose.
+  const confirmCoinPouch = (silver: number) => {
+    if (coinPouchIndex === null) return;
+    update({
+      equipment: consumeEquipmentLine(coinPouchIndex),
+      purse: { ...character.purse, silver: character.purse.silver + silver },
+    });
+    setCoinPouchIndex(null);
   };
   // Jauge de PV (PER-148) : dépletion transitoire (manque létal/temp), état de jeu
   // modifiable HORS mode « Modifier » (comme les compteurs d'usages). Le max reste
@@ -1032,6 +1053,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           upsert(updated);
           setLevelUpOpen(false);
         }}
+      />
+
+      <CoinPouchDialog
+        open={coinPouchIndex !== null}
+        onClose={() => setCoinPouchIndex(null)}
+        onConfirm={confirmCoinPouch}
       />
 
       <Snackbar
