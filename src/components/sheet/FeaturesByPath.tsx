@@ -9,6 +9,8 @@ import ScienceOutlinedIcon from '@mui/icons-material/ScienceOutlined';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
@@ -683,6 +685,13 @@ export interface FeaturesByPathProps {
    */
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
   /**
+   * Lève le verrou « repos court requis » d'une capacité (PER-160/161) SANS forcer un vrai repos :
+   * applique l'effet d'un repos court À CETTE SEULE capacité (lève le verrou `oncePerShortRest` et
+   * recharge ce qu'un repos court rechargerait). Rendu par un cadenas ouvert quand la capacité est
+   * bloquée — pour ne jamais OBLIGER à cliquer « Repos court ». Absent → cadenas masqué (lecture seule).
+   */
+  onLiftShortRestLock?: (featureId: string) => void;
+  /**
    * Produit un élixir (forgesort, p. 98) : consomme la réserve partagée d'un cran (`cost`) ET
    * matérialise une dose dans l'équipement (objet custom). `elixirName` nomme la dose créée — le
    * nom de la capacité pour les rangs 1-3 (une seule recette), le nom du sort choisi pour les
@@ -1024,11 +1033,13 @@ function UsageCounterRow({
   feature,
   character,
   onSet,
+  onLiftShortRestLock,
 }: {
   counter: UsageCounter;
   feature: Feature;
   character: Character;
   onSet?: (counterKey: string, value: number, max: number) => void;
+  onLiftShortRestLock?: (featureId: string) => void;
 }) {
   const max = usageCounterMaximum(counter, character, feature);
   const key = usageCounterKey(counter, feature);
@@ -1097,9 +1108,49 @@ function UsageCounterRow({
         {exhausted && <Chip label="épuisé" size="small" color="error" variant="outlined" />}
       </Stack>
       {locked && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, fontStyle: 'italic' }}>
-          Une récupération rapide (repos court) est nécessaire avant un nouvel usage.
-        </Typography>
+        <Stack direction="row" spacing={0.5} sx={{ mt: 0.25, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+            Une récupération rapide (repos court) est nécessaire avant un nouvel usage.
+          </Typography>
+          {onLiftShortRestLock && (
+            <Tooltip
+              title={
+                <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'flex-start' }}>
+                  <WarningAmberOutlinedIcon fontSize="small" sx={{ mt: '1px', color: 'warning.light' }} />
+                  <Box>
+                    <Box component="span" sx={{ fontWeight: 700, display: 'block' }}>
+                      Hors règles standard
+                    </Box>
+                    Débloque cette capacité sans passer par un repos court. Réservé aux joueurs qui
+                    tiennent toute leur fiche dans l'application ; normalement, c'est une récupération
+                    rapide (repos court) qui lève ce verrou.
+                  </Box>
+                </Box>
+              }
+              arrow
+              slotProps={{ tooltip: { sx: { maxWidth: 280 } } }}
+            >
+              {/* Révélé seulement au survol du bloc / de la modale (classe `lift-lock-reveal` ciblée par
+                  le conteneur) : masqué par défaut pour ne pas suggérer que c'est la méthode normale. */}
+              <IconButton
+                className="lift-lock-reveal"
+                size="small"
+                aria-label="Débloquer sans repos court (hors règles standard)"
+                color="warning"
+                onClick={() => onLiftShortRestLock(feature.id)}
+                sx={{
+                  opacity: 0,
+                  transition: 'opacity 0.15s ease',
+                  '&:focus-visible': { opacity: 1 },
+                  // Appareils tactiles (pas de survol) : toujours visible, sinon inatteignable.
+                  '@media (hover: none)': { opacity: 1 },
+                }}
+              >
+                <LockOpenIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Stack>
       )}
     </Stack>
   );
@@ -1110,13 +1161,23 @@ function UsageCounterField({
   feature,
   character,
   onSet,
+  onLiftShortRestLock,
 }: {
   feature: Feature;
   character: Character;
   onSet?: (counterKey: string, value: number, max: number) => void;
+  onLiftShortRestLock?: (featureId: string) => void;
 }) {
   if (!feature.usageCounter) return null;
-  return <UsageCounterRow counter={feature.usageCounter} feature={feature} character={character} onSet={onSet} />;
+  return (
+    <UsageCounterRow
+      counter={feature.usageCounter}
+      feature={feature}
+      character={character}
+      onSet={onSet}
+      onLiftShortRestLock={onLiftShortRestLock}
+    />
+  );
 }
 
 /**
@@ -1427,6 +1488,7 @@ function PathBlock({
   onToggleEffect,
   onSetEffectInput,
   onSetUsageCounter,
+  onLiftShortRestLock,
   onCreateElixir,
   disabledIds,
   disabledReasons,
@@ -1462,6 +1524,8 @@ function PathBlock({
   onSetEffectInput?: (featureId: string, value: string) => void;
   /** Décompte d'une capacité à usages limités (Les sept vies du chat, PER-70). */
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
+  /** Lève le verrou « repos court requis » d'une capacité sans forcer un repos (PER-160/161). */
+  onLiftShortRestLock?: (featureId: string) => void;
   /** Produit un élixir : consomme la réserve + matérialise la dose dans l'équipement (forgesort). */
   onCreateElixir?: (counterKey: string, cost: number, max: number, elixirName: string) => void;
   /**
@@ -2156,7 +2220,11 @@ function PathBlock({
                   <CloseIcon />
                 </IconButton>
               </DialogTitle>
-              <DialogContent dividers>
+              <DialogContent
+                dividers
+                // PER-165 : le cadenas « débloquer sans repos » n'apparaît qu'au survol de la modale.
+                sx={{ '&:hover .lift-lock-reveal, &:focus-within .lift-lock-reveal': { opacity: 1 } }}
+              >
                 {renderDisabledNotice(openFeature)}
                 {retainedFeature && openFeature.rank === 1 && (
                   <>
@@ -2308,6 +2376,7 @@ function PathBlock({
                           feature={openFeature}
                           character={character}
                           onSet={onSetUsageCounter}
+                          onLiftShortRestLock={onLiftShortRestLock}
                         />
                       )}
                     </>
@@ -2391,6 +2460,8 @@ function PathBlock({
                 : undefined,
               bgcolor: repl ? alpha(repl.originColor, 0.1) : color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
               '&::before': { display: 'none' },
+              // PER-165 : le cadenas « débloquer sans repos » n'apparaît qu'au survol de la carte.
+              '&:hover .lift-lock-reveal, &:focus-within .lift-lock-reveal': { opacity: 1 },
               // Désactivée par exclusion mutuelle : grisée + transparente, mais
               // toujours dépliable (détail conservé).
               ...(disabledSx(feature) ?? {}),
@@ -2572,7 +2643,12 @@ function PathBlock({
                       // qui décompte la réserve (barre de l'en-tête) et matérialise la dose.
                       <CreateElixirButton feature={feature} character={character} onCreate={onCreateElixir} />
                     ) : (
-                      <UsageCounterField feature={feature} character={character} onSet={onSetUsageCounter} />
+                      <UsageCounterField
+                        feature={feature}
+                        character={character}
+                        onSet={onSetUsageCounter}
+                        onLiftShortRestLock={onLiftShortRestLock}
+                      />
                     )}
                   </>
                 )}
@@ -2667,6 +2743,7 @@ export function FeaturesByPath({
   onToggleEffect,
   onSetEffectInput,
   onSetUsageCounter,
+  onLiftShortRestLock,
   onCreateElixir,
   concentration = false,
   testBonuses,
@@ -2773,6 +2850,7 @@ export function FeaturesByPath({
               onToggleEffect={onToggleEffect}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
+              onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
@@ -2801,6 +2879,7 @@ export function FeaturesByPath({
               onToggleEffect={onToggleEffect}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
+              onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
@@ -2829,6 +2908,7 @@ export function FeaturesByPath({
               onToggleEffect={onToggleEffect}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
+              onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
               disabledIds={disabled}
               disabledReasons={disabledReasons}

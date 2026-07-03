@@ -1166,6 +1166,39 @@ describe('escalatingManaSurcharge — Foudres divines (foi-r5, PER-162)', () => 
   });
 });
 
+describe('resetUsageCounters — cadenas « débloquer sans repos » restreint à UNE capacité (PER-160/161)', () => {
+  const SR = new Set(['short-rest', 'combat'] as const);
+
+  it('Transe (meditation-r2) : lève le verrou mais garde la réserve /jour (comme un vrai repos court)', () => {
+    const next = resetUsageCounters(
+      { 'meditation-r2': 1, [shortRestLockKey('meditation-r2')]: 1 },
+      ['meditation-r2'],
+      SR,
+    );
+    // resetOn 'day' non déclenché → le 1 restant est conservé ; seul le verrou saute.
+    expect(next).toEqual({ 'meditation-r2': 1 });
+  });
+
+  it('Sanctuaire (priere-r2) : lève le verrou ET recharge la charge (resetOn short-rest)', () => {
+    const next = resetUsageCounters(
+      { 'priere-r2': 0, [shortRestLockKey('priere-r2')]: 1 },
+      ['priere-r2'],
+      SR,
+    );
+    expect(next).toEqual({});
+  });
+
+  it('ne touche pas aux autres capacités (portée limitée à l’id fourni)', () => {
+    const next = resetUsageCounters(
+      { 'priere-r2': 0, [shortRestLockKey('priere-r2')]: 1, rage: 0 },
+      ['priere-r2'],
+      SR,
+    );
+    // La rage (autre capacité) est préservée : le cadenas n'agit que sur la capacité ciblée.
+    expect(next).toEqual({ rage: 0 });
+  });
+});
+
 describe('resetUsageCounters — surcoût mana croissant (foi-r5, PER-162)', () => {
   it('repos court (short-rest) remet le surcoût croissant à 0', () => {
     expect(resetUsageCounters({ 'foi-r5': 4 }, ['foi-r5'], new Set(['short-rest', 'combat'] as const))).toEqual({});

@@ -51,6 +51,7 @@ import {
   pruneEffectInputs,
   pruneEffectToggles,
   pruneUsageCounters,
+  resetUsageCounters,
   setEffectToggle,
   shortRestLockKey,
   usageCounterMaximum,
@@ -339,6 +340,15 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     }
     update(patch);
   };
+  // PER-160/161 : lever le verrou « repos court requis » d'UNE capacité sans forcer un vrai repos —
+  // pour ne jamais OBLIGER le joueur à cliquer « Repos court » (usage app-first). Applique EXACTEMENT
+  // l'effet d'un repos court, mais restreint à cette seule capacité (mêmes déclencheurs que shortRest :
+  // lève le verrou `oncePerShortRest` et recharge ce qu'un repos court rechargerait — ex. la charge de
+  // Sanctuaire ; la réserve /jour de Transe reste inchangée, comme lors d'un vrai repos court).
+  const liftShortRestLock = (featureId: string) =>
+    update({
+      usageCounters: resetUsageCounters(character.usageCounters, [featureId], new Set(['short-rest', 'combat'])),
+    });
   // Créer un élixir (forgesort, p. 98) : consomme la réserve partagée d'un cran (`cost`) ET
   // matérialise la dose dans l'équipement (objet custom, quantité incrémentée si déjà présent).
   // Les deux mutations partent dans UNE seule mise à jour, pour ne pas s'écraser l'une l'autre.
@@ -879,6 +889,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               onSetEffectInput={setEffectInputValue}
               // Compteur d'usages limités (Les sept vies du chat) : état de jeu.
               onSetUsageCounter={setUsageCounterValue}
+              // Débloquer sans repos (cadenas) : lève le verrou « repos court requis » d'une capacité.
+              onLiftShortRestLock={liftShortRestLock}
               // Créer un élixir (forgesort) : décompte la réserve + ajoute la dose à l'équipement.
               onCreateElixir={createElixir}
               // Stats du maître : Init./attaque des compagnons recopient ce total.
