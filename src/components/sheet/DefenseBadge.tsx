@@ -6,7 +6,6 @@ import ShieldIcon from '@mui/icons-material/Shield';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import { alpha } from '@mui/material/styles';
 import type { ImmunityId, ResistibleDamageType } from '@/data/schema';
-import { featureOrigin } from '@/lib/ui/featureOrigin';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
@@ -78,31 +77,26 @@ export function DefenseBadge({
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
         {sources.length > 1 ? 'Sources' : 'Source'}
       </Typography>
-      {sources.map((s, i) => {
-        const origin = s.featureId ? featureOrigin(s.featureId) : undefined;
-        return (
-          <Box key={i} sx={{ mb: i < sources.length - 1 ? 0.5 : 0 }}>
-            <Box
-              sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, fontSize: '0.85em', fontVariantNumeric: 'tabular-nums' }}
-            >
-              <span>{s.name}</span>
-              {s.value && <span style={{ fontWeight: 600 }}>{s.value}</span>}
-            </Box>
-            {/* Voie d'origine en puce de capacité (CapabilityChip) : voie en couleur + icône de profil
-                + rang, pour identifier la provenance sans ambiguïté (le nom seul ne suffit pas). PER-137. */}
-            {s.featureId && origin && (
-              <Box sx={{ mt: 0.25, fontSize: '0.8em' }}>
-                {/* Texte +2px car la puce est petite ici. */}
-                <CapabilityChip
-                  featureId={s.featureId}
-                  label={`${origin.pathName} · rang ${origin.rank}`}
-                  sx={{ fontSize: 'calc(0.95em + 2px)' }}
-                />
-              </Box>
-            )}
-          </Box>
-        );
-      })}
+      {/* Chaque source rendue en puce de voie (couleur + icône + nom), l'origine « Voie du X, rang N »
+          passant en infobulle ; la contribution chiffrée éventuelle (cumul RD) reste en bout de ligne.
+          Sans `featureId` (source non liée à une capacité), on retombe sur le nom en texte. PER-137. */}
+      {sources.map((s, i) => (
+        <Box
+          key={i}
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 2,
+            fontSize: '0.85em',
+            fontVariantNumeric: 'tabular-nums',
+            mb: i < sources.length - 1 ? 0.5 : 0,
+          }}
+        >
+          {s.featureId ? <CapabilityChip featureId={s.featureId} label={null} /> : <span>{s.name}</span>}
+          {s.value && <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{s.value}</span>}
+        </Box>
+      ))}
     </Box>
   );
   return (
