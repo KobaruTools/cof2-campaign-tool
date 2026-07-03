@@ -36,10 +36,10 @@ interface CoinMeta {
  */
 const GOLD_SPARKLES = [
   { top: -5, left: 19, size: 9, delay: '0s' },
-  { top: 6, left: 23, size: 5, delay: '0.35s' },
-  { top: 19, left: -4, size: 7, delay: '0.15s' },
-  { top: -3, left: -3, size: 5, delay: '0.5s' },
-  { top: 20, left: 17, size: 4, delay: '0.7s' },
+  { top: 6, left: 23, size: 5, delay: '0.18s' },
+  { top: 19, left: -4, size: 7, delay: '0.08s' },
+  { top: -3, left: -3, size: 5, delay: '0.25s' },
+  { top: 20, left: 17, size: 4, delay: '0.32s' },
 ] as const;
 
 const COINS: CoinMeta[] = [
@@ -229,9 +229,10 @@ function CoinInput({
         },
         '&:hover .coin-sparkle': {
           animationName: 'coinSparkleTwinkle',
-          animationDuration: '1.1s',
+          animationDuration: '1s',
           animationTimingFunction: 'ease-in-out',
-          animationIterationCount: 'infinite',
+          // Un seul scintillement par survol (pas de boucle infinie).
+          animationIterationCount: 1,
         },
       }}
       slotProps={{
