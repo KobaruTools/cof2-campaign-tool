@@ -247,6 +247,8 @@ export interface PlayerStatusPanelProps {
    * à la valeur max du dé (p. 222).
    */
   onLongRest: (heal: boolean) => void;
+  /** Doses d'élixir (forgesort) qui seront perdues par un repos long (avertissement, p. 98). */
+  elixirDosesToLose?: number;
 }
 
 /**
@@ -278,6 +280,7 @@ export function PlayerStatusPanel({
   onSetRecoveryDiceCurrent,
   onShortRest,
   onLongRest,
+  elixirDosesToLose = 0,
 }: PlayerStatusPanelProps) {
   const theme = useTheme();
   const [shortRestOpen, setShortRestOpen] = useState(false);
@@ -483,6 +486,7 @@ export function PlayerStatusPanel({
         recoveryDiceMax={recoveryDiceMax}
         level={level}
         lethalDamage={lethal}
+        elixirDosesToLose={elixirDosesToLose}
         onConfirm={(heal) => {
           onLongRest(heal);
           setLongRestOpen(false);

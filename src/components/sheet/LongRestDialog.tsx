@@ -22,6 +22,11 @@ export interface LongRestDialogProps {
   /** Dégâts létaux courants (le soin n'est proposé que s'il y a de quoi soigner). */
   lethalDamage: number;
   /**
+   * Nombre de doses d'élixir (forgesort) qui seront PERDUES par ce repos long (voie des élixirs,
+   * p. 98 : « Les élixirs qui ne sont pas utilisés le jour même sont perdus »). 0 → pas d'avertissement.
+   */
+  elixirDosesToLose?: number;
+  /**
    * Applique le repos long. `heal = true` → dépenser le DR gagné pour un soin à la valeur
    * MAX du dé (p. 222) ; `false` → repos sans soin (garde le +1 DR).
    */
@@ -46,6 +51,7 @@ export function LongRestDialog({
   recoveryDiceMax,
   level,
   lethalDamage,
+  elixirDosesToLose = 0,
   onConfirm,
 }: LongRestDialogProps) {
   const halfLevel = Math.floor(level / 2);
@@ -71,6 +77,15 @@ export function LongRestDialog({
                 {recoveryDie} max + {halfLevel} = <strong>{healAmount} PV</strong> (−1 DR).
               </Typography>
             </Stack>
+          )}
+
+          {elixirDosesToLose > 0 && (
+            <Typography variant="body2" color="warning.main">
+              {elixirDosesToLose === 1
+                ? '1 élixir préparé sera perdu'
+                : `${elixirDosesToLose} élixirs préparés seront perdus`}{' '}
+              (les élixirs non utilisés le jour même sont perdus, p. 98).
+            </Typography>
           )}
         </Stack>
       </DialogContent>

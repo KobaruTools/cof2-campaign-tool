@@ -4,7 +4,7 @@ import { longRest, resetAll, shortRest } from './rest';
 
 /** Personnage minimal pour tester le repos (les fonctions ne lisent que ces champs). */
 const make = (over: Partial<Character>): Character =>
-  ({ level: 5, featureIds: [], usageCounters: {}, depletion: {}, ...over }) as Character;
+  ({ level: 5, featureIds: [], usageCounters: {}, depletion: {}, equipment: [], ...over }) as Character;
 
 // rage-r3 : compteur `resetOn` par défaut ('day', clé partagée 'rage').
 // fauve-r5 (« Les sept vies du chat ») : `resetOn: 'manual'` (compteur à vie).
@@ -105,6 +105,29 @@ describe('repos — extinction des états temporaires (PER-161)', () => {
   it('le repos long éteint aussi les interrupteurs d’effets temporaires actifs', () => {
     const { effectToggles } = longRest(withTemporaryActive);
     expect(effectToggles).toEqual({ 'rage-r3': [false], 'priere-r2': [false] });
+  });
+});
+
+describe('repos — élixirs du forgesort (voie des élixirs, p. 98)', () => {
+  const withElixirs = make({
+    equipment: [
+      { itemId: 'epee-longue', quantity: 1 },
+      { custom: true, name: 'Élixir — Fortifiant', quantity: 2 },
+      { custom: true, name: 'Élixir — Feu grégeois', quantity: 1 },
+      { custom: true, name: 'Corde', quantity: 1 },
+    ],
+  });
+
+  it('le repos long purge toutes les doses d’élixir de l’inventaire', () => {
+    const { equipment } = longRest(withElixirs);
+    expect(equipment).toEqual([
+      { itemId: 'epee-longue', quantity: 1 },
+      { custom: true, name: 'Corde', quantity: 1 },
+    ]);
+  });
+
+  it('le repos court ne touche PAS l’équipement (pas de champ equipment)', () => {
+    expect(shortRest(withElixirs).equipment).toBeUndefined();
   });
 });
 

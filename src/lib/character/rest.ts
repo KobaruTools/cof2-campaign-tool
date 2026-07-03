@@ -8,9 +8,10 @@
  * Chaque fonction renvoie un patch `{ depletion, usageCounters }` à appliquer au
  * personnage ; elle ne mute pas l'entrée. Module pur (aucune dépendance UI).
  */
-import type { Character, Depletion } from './types';
+import type { Character, Depletion, EquipmentLine } from './types';
 import { currentRecoveryDice, healHp, pruneDepletion, spendRecoveryDice } from './gauges';
 import { clearTemporaryEffectToggles, resetUsageCounters } from './effects';
+import { removeElixirDoses } from './elixirs';
 
 /** Patch d'état de jeu produit par un repos. */
 export interface RestResult {
@@ -21,6 +22,12 @@ export interface RestResult {
    * de durée / combat (Sanctuaire, Rage…). Les effets conditionnels situationnels sont préservés.
    */
   effectToggles: Record<string, boolean[]>;
+  /**
+   * Équipement mis à jour (PER-152) : présent UNIQUEMENT pour le repos long, qui purge les doses
+   * d'élixir du forgesort (voie des élixirs, p. 98 : « Les élixirs qui ne sont pas utilisés le jour
+   * même sont perdus »). Absent pour repos court / reset → l'équipement n'est pas touché.
+   */
+  equipment?: EquipmentLine[];
 }
 
 /**
@@ -100,6 +107,8 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
       new Set(['day', 'short-rest', 'combat']),
     ),
     effectToggles: clearTemporaryEffectToggles(character),
+    // Récupération complète = nouveau jour : les élixirs préparés non utilisés sont perdus (p. 98).
+    equipment: removeElixirDoses(character.equipment),
   };
 }
 

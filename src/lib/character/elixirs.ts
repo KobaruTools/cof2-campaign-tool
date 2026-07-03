@@ -5,10 +5,28 @@
  * Matérialisation minimale ; le transfert à un autre personnage relève de PER-158.
  */
 import { features, featureById } from '@/data';
+import { isCustomItem, type EquipmentLine } from './types';
+
+/** Préfixe commun à toutes les doses d'élixir matérialisées (voie des élixirs, p. 98). */
+const ELIXIR_ITEM_PREFIX = 'Élixir — ';
 
 /** Nom d'objet d'inventaire d'une dose d'élixir, d'après le sort/la recette reproduit(e). */
 export function elixirItemName(spellOrRecipeName: string): string {
-  return `Élixir — ${spellOrRecipeName}`;
+  return `${ELIXIR_ITEM_PREFIX}${spellOrRecipeName}`;
+}
+
+/** `true` si le nom d'objet désigne une dose d'élixir (préfixe `elixirItemName`). */
+export function isElixirItemName(name: string): boolean {
+  return name.startsWith(ELIXIR_ITEM_PREFIX);
+}
+
+/**
+ * Retire toutes les doses d'élixir de l'équipement (voie des élixirs, p. 98 : « Les élixirs
+ * qui ne sont pas utilisés le jour même sont perdus »). Appelé au repos long (récupération
+ * complète) ; sans effet pour un personnage sans dose (non-forgesort).
+ */
+export function removeElixirDoses(equipment: EquipmentLine[]): EquipmentLine[] {
+  return equipment.filter((line) => !(isCustomItem(line) && isElixirItemName(line.name)));
 }
 
 /**

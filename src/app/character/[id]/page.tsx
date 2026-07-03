@@ -27,7 +27,7 @@ import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
 import type { Character, CustomItem, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
-import { elixirItemName } from '@/lib/character/elixirs';
+import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
@@ -604,6 +604,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     update(longRest(character, heal ? { dieFaces: Number.parseInt(recoveryDie.slice(1), 10) || 0 } : undefined));
   // Bourse (PER-152) : argent possédé, état de jeu transitoire (non touché par un repos).
   const setPurse = (purse: Character['purse']) => update({ purse });
+  // Doses d'élixir en inventaire, perdues par un repos long (voie des élixirs, p. 98) — pour l'avertissement.
+  const elixirDosesToLose = character.equipment.reduce(
+    (n, line) => (isCustomItem(line) && isElixirItemName(line.name) ? n + line.quantity : n),
+    0,
+  );
   // Ressources de capacité (rage, sept vies…) surfacées en jauges (PER-150) : lues depuis les
   // MÊMES `usageCounters` que FeaturesByPath (source unique). L'écriture passe par le setter existant.
   const capacityGauges = capacityResourceGauges(character);
@@ -871,6 +876,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 onSetRecoveryDiceCurrent={setDrCurrent}
                 onShortRest={doShortRest}
                 onLongRest={doLongRest}
+                elixirDosesToLose={elixirDosesToLose}
               />
             </SheetSection>
           )}
