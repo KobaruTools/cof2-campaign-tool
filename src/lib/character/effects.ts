@@ -825,6 +825,26 @@ export function shortRestLockKey(counterKey: string): string {
 }
 
 /**
+ * PER-163 — clé d'état de l'USAGE QUOTIDIEN d'un pouvoir emprunté (Artefact étrange). Portée par la
+ * capacité HÔTE (`artefacts-r5`) et le sort emprunté (`spellId`). Convention « absence = plein » : la
+ * clé absente signifie « disponible aujourd'hui » ; une valeur 0 signifie « déjà utilisé ». Rechargée
+ * au repos long (`resetOn: 'day'`).
+ */
+export function borrowedPowerUsedKey(hostId: string, spellId: string): string {
+  return `${hostId}::borrowed::${spellId}::used`;
+}
+
+/**
+ * PER-163 — clé d'état d'INTÉGRITÉ d'un pouvoir emprunté (Artefact étrange). Convention « absence =
+ * plein » : la clé absente signifie « intact » ; une valeur 0 signifie « cassé » (panne 1-2 au d6).
+ * Réparée à la récupération rapide (`'short-rest'`, donc aussi au repos long). Distincte de l'usage
+ * quotidien : un pouvoir peut être cassé sans avoir consommé son usage, et inversement.
+ */
+export function borrowedPowerIntegrityKey(hostId: string, spellId: string): string {
+  return `${hostId}::borrowed::${spellId}::integrity`;
+}
+
+/**
  * PER-161 — la RÉACTIVATION de l'interrupteur du i-ème effet TEMPORAIRE d'une capacité est-elle
  * verrouillée jusqu'au prochain repos court ? Vrai quand l'effet est un `conditional-stat-bonus`
  * temporaire dont le compteur porteur a `oncePerShortRest` ET dont le verrou de repos court est posé
@@ -880,6 +900,14 @@ export function pruneUsageCounters(
     validKeys.add(key);
     // Verrou « 1 dépense par repos court » (PER-160) : sa clé d'état dérivée est aussi valide.
     if (counter.oncePerShortRest) validKeys.add(shortRestLockKey(key));
+  }
+  // PER-163 : pouvoirs empruntés (Artefact étrange) — leurs clés d'état dérivées (usage + intégrité)
+  // sont valides tant que la capacité HÔTE est possédée (indépendamment d'un `usageCounter`).
+  for (const id of featureIds) {
+    for (const spellId of featureById.get(id)?.borrowedPowers ?? []) {
+      validKeys.add(borrowedPowerUsedKey(id, spellId));
+      validKeys.add(borrowedPowerIntegrityKey(id, spellId));
+    }
   }
   // PER-162 : le surcoût croissant stocke ses lancements sous l'id de la capacité — déjà couvert par
   // `owned`, donc rien à ajouter ici (mentionné pour mémoire ; la clé survit à l'élagage).
@@ -987,6 +1015,13 @@ export function resetUsageCounters(
     // PER-162 : surcoût mana croissant — retomber à 0 = retirer la clé (id de la capacité), comme un
     // compteur classique (ici « à plein » signifie « à 0 », baseline du modèle croissant).
     if (feature?.escalatingManaCost && triggers.has(feature.escalatingManaCost.resetOn)) toReset.add(id);
+    // PER-163 : pouvoirs empruntés (Artefact étrange) — l'USAGE quotidien se recharge au repos long
+    // (`'day'`), l'INTÉGRITÉ (réparation) à la récupération rapide (`'short-rest'`, donc aussi au repos
+    // long). « À plein » = clé retirée (disponible / intact), même convention que les compteurs.
+    for (const spellId of feature?.borrowedPowers ?? []) {
+      if (triggers.has('day')) toReset.add(borrowedPowerUsedKey(id, spellId));
+      if (triggers.has('short-rest')) toReset.add(borrowedPowerIntegrityKey(id, spellId));
+    }
   }
   const next: Record<string, number> = {};
   for (const [key, value] of Object.entries(usageCounters)) {

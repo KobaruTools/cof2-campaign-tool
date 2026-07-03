@@ -6,6 +6,9 @@ import { effectiveFeatureIdsForMods } from './choices';
 import {
   abilityBonusDiceFromFeatures,
   abilityModSources,
+  borrowedPowerUsedKey,
+  borrowedPowerIntegrityKey,
+  pruneUsageCounters,
   abilityModsFromFeatures,
   abilityTestBonusSources,
   abilityTestBonusByAbility,
@@ -1233,5 +1236,49 @@ describe('isTemporaryActivationShortRestLocked — Sanctuaire (priere-r2, PER-16
   it('un état temporaire SANS oncePerShortRest (Rage) n’est jamais verrouillé', () => {
     const rage = mkChar(['rage-r3'], { rage: 0, [shortRestLockKey('rage')]: 1 });
     expect(isTemporaryActivationShortRestLocked(rage, 'rage-r3', 0)).toBe(false);
+  });
+});
+
+describe('pouvoirs empruntés — Artefact étrange (artefacts-r5, PER-163)', () => {
+  const HOST = 'artefacts-r5';
+  const SPELL = 'magie-universelle-r5';
+  const usedKey = borrowedPowerUsedKey(HOST, SPELL);
+  const integrityKey = borrowedPowerIntegrityKey(HOST, SPELL);
+
+  describe('resetUsageCounters', () => {
+    it('repos long (day) recharge l’usage quotidien ET répare (retire les deux clés)', () => {
+      const next = resetUsageCounters(
+        { [usedKey]: 0, [integrityKey]: 0 },
+        [HOST],
+        new Set(['day', 'short-rest', 'combat'] as const),
+      );
+      expect(next).toEqual({});
+    });
+
+    it('repos court (short-rest) répare SANS recharger l’usage quotidien', () => {
+      const next = resetUsageCounters(
+        { [usedKey]: 0, [integrityKey]: 0 },
+        [HOST],
+        new Set(['short-rest', 'combat'] as const),
+      );
+      // L'intégrité est réparée (clé retirée) ; l'usage quotidien reste consommé.
+      expect(next).toEqual({ [usedKey]: 0 });
+    });
+
+    it('un reset limité à « combat » ne touche ni l’usage ni l’intégrité', () => {
+      const state = { [usedKey]: 0, [integrityKey]: 0 };
+      expect(resetUsageCounters(state, [HOST], new Set(['combat'] as const))).toEqual(state);
+    });
+  });
+
+  describe('pruneUsageCounters', () => {
+    it('préserve les clés d’état tant que la capacité hôte est possédée', () => {
+      const state = { [usedKey]: 0, [integrityKey]: 0 };
+      expect(pruneUsageCounters(state, [HOST])).toEqual(state);
+    });
+
+    it('élague les clés d’état quand la capacité hôte n’est plus acquise', () => {
+      expect(pruneUsageCounters({ [usedKey]: 0, [integrityKey]: 0 }, [])).toEqual({});
+    });
   });
 });

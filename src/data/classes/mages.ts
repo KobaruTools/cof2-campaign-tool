@@ -894,10 +894,16 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le forgesort crée un artefact qu’il est le seul à pouvoir utiliser et dont la description est laissée au soin du joueur. L’artefact permet d’utiliser les capacités de rang 5 suivantes chacune une fois par jour au prix d’une action limitée : Téléportation (voie de la magie universelle, magicien), Interruption du temps (voie de la magie protectrice, magicien), Forme éthérée (voie de l’air, ensorceleur), Prescience (voie de la divination, ensorceleur). À chaque utilisation, le joueur doit lancer 1d6 : sur un résultat de 1 ou 2, l’artefact ne fonctionne pas, le forgesort doit réparer l’artefact lors d’une récupération rapide avant de pouvoir faire une nouvelle tentative de ce pouvoir (il peut tenter d’utiliser les autres pouvoirs normalement).",
-    // Rendu enrichi (PER-69) : dé de fonctionnement {1d6}. La capacité donne accès aux
-    // quatre pouvoirs de rang 5 listés (pas un choix à persister) → pas de `choices`.
+    // Rendu enrichi (PER-69/163) : dé de fonctionnement {1d6}. Les quatre pouvoirs de rang 5
+    // accessibles (pas un choix à persister → pas de `choices`) sont balisés en puces `[&id|nom]`
+    // (parenthèses de voie/classe redondantes retirées : la voie source est dans l'info-bulle de la
+    // puce et le détail dans l'accordéon). Chacun porte un DOUBLE état de jeu (1×/jour + panne) via
+    // `borrowedPowers` — cf. `BorrowedPowersField`.
     richText:
-      "Le forgesort crée un artefact qu’il est le seul à pouvoir utiliser et dont la description est laissée au soin du joueur. L’artefact permet d’utiliser les capacités de rang 5 suivantes chacune une fois par jour au prix d’une action limitée : Téléportation (voie de la magie universelle, magicien), Interruption du temps (voie de la magie protectrice, magicien), Forme éthérée (voie de l’air, ensorceleur), Prescience (voie de la divination, ensorceleur). À chaque utilisation, le joueur doit lancer {1d6} : sur un résultat de 1 ou 2, l’artefact ne fonctionne pas, le forgesort doit réparer l’artefact lors d’une récupération rapide avant de pouvoir faire une nouvelle tentative de ce pouvoir (il peut tenter d’utiliser les autres pouvoirs normalement).",
+      "Le forgesort crée un artefact qu’il est le seul à pouvoir utiliser et dont la description est laissée au soin du joueur. L’artefact permet d’utiliser les capacités de rang 5 suivantes chacune une fois par jour au prix d’une action limitée : [&magie-universelle-r5|Téléportation], [&magie-protectrice-r5|Interruption du temps], [&air-r5|Forme éthérée], [&divination-r5|Prescience]. À chaque utilisation, le joueur doit lancer {1d6} : sur un résultat de 1 ou 2, l’artefact ne fonctionne pas, le forgesort doit réparer l’artefact lors d’une récupération rapide avant de pouvoir faire une nouvelle tentative de ce pouvoir (il peut tenter d’utiliser les autres pouvoirs normalement).",
+    // PER-163 : chaque sort emprunté = usage 1×/jour (repos long) + état « cassé » réparé au repos
+    // court. Ordre = ordre de citation dans le texte.
+    borrowedPowers: ['magie-universelle-r5', 'magie-protectrice-r5', 'air-r5', 'divination-r5'],
     sourcePage: 97,
   },
 

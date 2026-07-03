@@ -65,8 +65,10 @@ function RefChip({ label, title, tone }: { label: string; title: string; tone: R
  * Référence à une AUTRE capacité (`[&feature-id|texte]`, PER-72) : puce encadrée aux couleurs du
  * PROFIL de la capacité citée. Style UNIQUE (PER-73, unifié) : fond de couleur de voie ASSOMBRIE vers
  * le noir, texte + icône de couleur de voie ÉCLAIRCIE vers le blanc, et une ombre portée noire discrète
- * derrière le texte et l'icône. Lisible sur tout fond (clair, sombre, tooltip) sans variante. Info-bulle
- * = nom canonique + voie. Référence inconnue (id erroné) → repli silencieux sur le texte brut.
+ * derrière le texte et l'icône. Lisible sur tout fond (clair, sombre, tooltip) sans variante. Affichage
+ * de base UNIFORME (décision propriétaire) : couleur + icône du profil + NOM de la capacité ; l'ORIGINE
+ * (« Voie du X, rang N ») passe en info-bulle. Référence inconnue (id erroné) → repli silencieux sur le
+ * texte brut.
  */
 export function CapabilityChip({
   featureId,
@@ -92,7 +94,7 @@ export function CapabilityChip({
   if (!feature || (!classId && !ancestryId && !isMage)) return <>{text}</>;
   const color = classId ? classColor(classId) : isMage ? MAGE_PATH_COLOR : ANCESTRY_COLOR;
   return (
-    <AppTooltip title={`${feature.name}${path ? ` — ${path.name}` : ''}`}>
+    <AppTooltip title={path ? `${path.name}, rang ${feature.rank}` : feature.name}>
       <Box
         component="span"
         sx={[
@@ -622,6 +624,12 @@ export interface FeatureTextProps {
    * (`FeaturesByPath`) ; absent → 0 (le terme `paliers` est alors omis de l'encadré).
    */
   milestoneBonus?: number;
+  /**
+   * Rendu COMPACT (PER-163) : taille de police et interligne réduits d'environ 10 %, pour les blocs
+   * d'information encadrés qui citent un sort (sorts reproduits, élixirs préparables, pouvoirs
+   * empruntés). Défaut `false` (rendu normal du corps de capacité).
+   */
+  dense?: boolean;
 }
 
 /**
@@ -631,7 +639,7 @@ export interface FeatureTextProps {
  * Sinon, on retombe proprement sur le `text` verbatim — c'est le comportement
  * par défaut tant qu'une capacité n'a pas été réécrite (PER-64).
  */
-export function FeatureText({ feature, abilities, level, pathRank, milestoneBonus }: FeatureTextProps) {
+export function FeatureText({ feature, abilities, level, pathRank, milestoneBonus, dense }: FeatureTextProps) {
   const enriched = feature.richText && abilities && level != null;
   // Les « Note : » sont rendues plus petites/grises (`NoteSpan`), dans les deux
   // modes ; le balisage interne (puces, dés, formules) reste actif.
@@ -661,7 +669,12 @@ export function FeatureText({ feature, abilities, level, pathRank, milestoneBonu
       variant="body2"
       color="text.secondary"
       component="div"
-      sx={{ whiteSpace: 'pre-line', fontSize: '1rem', ...(enriched && { lineHeight: 1.9 }) }}
+      sx={{
+        whiteSpace: 'pre-line',
+        // Compact (`dense`) : ~−10 % sur la taille et l'interligne pour les blocs encadrés (PER-163).
+        fontSize: dense ? '0.9rem' : '1rem',
+        ...(enriched && { lineHeight: dense ? 1.71 : 1.9 }),
+      }}
     >
       {chunks.map((chunk, i) => {
         if (chunk.kind === 'note') return <NoteSpan key={i}>{renderChunk(chunk.value)}</NoteSpan>;

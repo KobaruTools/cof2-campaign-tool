@@ -34,9 +34,8 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
+import { alpha, type Theme } from '@mui/material/styles';
 import { useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
 import type { AbilityId, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
@@ -51,6 +50,8 @@ import {
 } from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
 import {
+  borrowedPowerIntegrityKey,
+  borrowedPowerUsedKey,
   conditionalEffectsOf,
   creatureBonusDiceForPath,
   disabledFeatureReasons,
@@ -63,6 +64,7 @@ import {
   type DominatedTestSource,
 } from '@/lib/character/effects';
 import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
+import { AppTooltip } from '@/components/AppTooltip';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { FeatureLabel } from '@/components/FeatureLabel';
@@ -528,6 +530,22 @@ interface ElixirCreation {
   onCreate: (counterKey: string, cost: number, max: number, elixirName: string) => void;
 }
 
+/**
+ * Cadre commun des blocs d'INFORMATION qui listent un sort en puce de capacité (sorts reproduits,
+ * élixirs préparables, pouvoirs empruntés d'un artefact) : conteneur encadré discret qui les détache
+ * du texte courant et unifie leur présentation (PER-163, retour d'UX).
+ */
+const REFERENCED_SPELL_BLOCK_SX = {
+  border: 1,
+  borderColor: 'divider',
+  borderRadius: 1,
+  px: 1.25,
+  py: 0.75,
+  // Fond ASSOMBRI (voile noir) plutôt qu'éclairci, pour détacher le bloc du fond de carte avec un
+  // meilleur contraste (retour d'UX PER-163).
+  bgcolor: (theme: Theme) => alpha(theme.palette.common.black, 0.2),
+};
+
 function ReferencedFeatureAccordion({
   feature,
   abilities,
@@ -545,7 +563,7 @@ function ReferencedFeatureAccordion({
   // création donnerait un bouton dans un bouton (HTML invalide). Ici la zone repliable est un simple
   // IconButton, le bouton de création vit à côté, sans imbrication.
   return (
-    <Box>
+    <Box sx={REFERENCED_SPELL_BLOCK_SX}>
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', gap: 0.5 }}>
         <IconButton
           size="small"
@@ -576,7 +594,7 @@ function ReferencedFeatureAccordion({
       </Stack>
       <Collapse in={expanded} unmountOnExit>
         <Box sx={{ pl: 3.5, pt: 0.25 }}>
-          <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} />
+          <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} dense />
         </Box>
       </Collapse>
     </Box>
@@ -605,12 +623,190 @@ function ReferencedFeaturesBlock({
   if (feats.length === 0) return null;
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.25 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
         {creation ? 'Élixirs préparables (choisir la recette à produire)' : 'Détail des sorts reproduits (à titre indicatif)'}
       </Typography>
-      {feats.map((f) => (
-        <ReferencedFeatureAccordion key={f.id} feature={f} abilities={abilities} level={level} creation={creation} />
-      ))}
+      <Stack spacing={0.75}>
+        {feats.map((f) => (
+          <ReferencedFeatureAccordion key={f.id} feature={f} abilities={abilities} level={level} creation={creation} />
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
+/**
+ * Une ligne de pouvoir EMPRUNTÉ par un artefact (PER-163, Artefact étrange / artefacts-r5). Le sort
+ * `spellId` porte un DOUBLE cycle d'état de jeu propre, suivi dans `Character.usageCounters` (convention
+ * « absence = plein ») :
+ *  - USAGE quotidien (1×/jour, rechargé au repos long) : « Utiliser » consomme l'usage du jour ;
+ *  - PANNE (1-2 au d6) : « Briser » grise le pouvoir jusqu'à réparation à une récupération rapide
+ *    (« Réparer », ou tout repos court/long).
+ * Un pouvoir cassé ne peut être utilisé (« Utiliser » désactivé). La ligne reprend le dépliage de détail
+ * des sorts reproduits (puce de capacité + texte enrichi en accordéon).
+ */
+function BorrowedPowerRow({
+  hostId,
+  spellId,
+  character,
+  abilities,
+  level,
+  onSet,
+}: {
+  hostId: string;
+  spellId: string;
+  character: Character;
+  abilities?: Abilities;
+  level?: number;
+  onSet?: (counterKey: string, value: number, max: number) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const spell = featureById.get(spellId);
+  if (!spell) return null;
+  const usedKey = borrowedPowerUsedKey(hostId, spellId);
+  const integrityKey = borrowedPowerIntegrityKey(hostId, spellId);
+  const used = (character.usageCounters?.[usedKey] ?? 1) <= 0;
+  const broken = (character.usageCounters?.[integrityKey] ?? 1) <= 0;
+  return (
+    <Box sx={{ ...REFERENCED_SPELL_BLOCK_SX, opacity: broken ? 0.72 : 1 }}>
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+        <IconButton
+          size="small"
+          aria-label={expanded ? 'Replier le sort' : 'Déplier le sort'}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+          sx={{ p: 0.25 }}
+        >
+          <ExpandMoreIcon
+            sx={{ fontSize: 20, transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none' }}
+          />
+        </IconButton>
+        <CapabilityChip featureId={spell.id} label={spell.name} />
+        {/* Tout ce qui suit la puce est poussé à DROITE (chip d'état + boutons) ; seuls le chevron de
+            dépliage et la puce de capacité restent à gauche (retour d'UX PER-163). */}
+        <Box sx={{ ml: 'auto', display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap' }}>
+          {broken ? (
+            <Chip
+              icon={<WarningAmberOutlinedIcon />}
+              label="Cassé"
+              size="small"
+              color="error"
+              variant="outlined"
+            />
+          ) : used ? (
+            <Chip label="Utilisé aujourd’hui" size="small" variant="outlined" />
+          ) : null}
+          {onSet && (
+            <>
+              {/* USAGE quotidien : « Utiliser » consomme l'usage du jour ; une fois utilisé, un bouton
+                  de restauration permet d'annuler (le repos long recharge de toute façon). */}
+              {used ? (
+                <AppTooltip title="Marquer comme non utilisé (rendre l’usage du jour)">
+                  <span>
+                    <IconButton
+                      size="small"
+                      aria-label="Rendre l’usage du jour"
+                      onClick={() => onSet(usedKey, 1, 1)}
+                    >
+                      <RestartAltIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </AppTooltip>
+              ) : (
+                <AppTooltip
+                  title={broken ? 'Pouvoir cassé — réparez l’artefact d’abord' : 'Utiliser ce pouvoir (1×/jour)'}
+                >
+                  <span>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={broken}
+                      onClick={() => onSet(usedKey, 0, 1)}
+                    >
+                      Utiliser
+                    </Button>
+                  </span>
+                </AppTooltip>
+              )}
+              {/* PANNE : « Briser » (1-2 au d6) casse le pouvoir jusqu'à réparation ; « Réparer » le
+                  remet en état (équivalent d'une récupération rapide, qui répare aussi automatiquement). */}
+              {broken ? (
+                <AppTooltip title="Réparé lors d’une récupération rapide (repos court)">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="success"
+                    onClick={() => onSet(integrityKey, 1, 1)}
+                  >
+                    Réparer
+                  </Button>
+                </AppTooltip>
+              ) : (
+                <AppTooltip title="Panne (1-2 au d6) : casse ce pouvoir jusqu’à une récupération rapide">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    onClick={() => onSet(integrityKey, 0, 1)}
+                  >
+                    Briser
+                  </Button>
+                </AppTooltip>
+              )}
+            </>
+          )}
+        </Box>
+      </Stack>
+      <Collapse in={expanded} unmountOnExit>
+        <Box sx={{ pl: 3.5, pt: 0.25 }}>
+          <FeatureText feature={spell} abilities={abilities} level={level} pathRank={spell.rank} dense />
+        </Box>
+      </Collapse>
+    </Box>
+  );
+}
+
+/**
+ * Bloc des pouvoirs EMPRUNTÉS d'un artefact (PER-163). Une ligne `BorrowedPowerRow` par sort de
+ * `feature.borrowedPowers`, précédée d'une légende rappelant les deux règles (1×/jour + panne). `null`
+ * si la capacité n'emprunte aucun pouvoir (ou si aucune cible ne résout — sécurité, ids validés par
+ * `validate-data`).
+ */
+function BorrowedPowersField({
+  feature,
+  character,
+  abilities,
+  level,
+  onSet,
+}: {
+  feature: Feature;
+  character: Character;
+  abilities?: Abilities;
+  level?: number;
+  onSet?: (counterKey: string, value: number, max: number) => void;
+}) {
+  const ids = feature.borrowedPowers;
+  if (!ids || ids.length === 0) return null;
+  if (ids.every((id) => !featureById.get(id))) return null;
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+        Pouvoirs de l’artefact — chacun 1×/jour ; en cas de panne (1-2 au d6), « Briser » jusqu’à une
+        récupération rapide
+      </Typography>
+      <Stack spacing={0.75}>
+        {ids.map((id) => (
+          <BorrowedPowerRow
+            key={id}
+            hostId={feature.id}
+            spellId={id}
+            character={character}
+            abilities={abilities}
+            level={level}
+            onSet={onSet}
+          />
+        ))}
+      </Stack>
     </Box>
   );
 }
@@ -715,7 +911,7 @@ export interface FeaturesByPathProps {
  */
 function ManualPin({ inline = false }: { inline?: boolean }) {
   return (
-    <Tooltip title="Ajoutée manuellement sur la fiche (hors wizard)" arrow>
+    <AppTooltip title="Ajoutée manuellement sur la fiche (hors wizard)">
       <PushPinIcon
         color="warning"
         sx={{
@@ -733,7 +929,7 @@ function ManualPin({ inline = false }: { inline?: boolean }) {
               }),
         }}
       />
-    </Tooltip>
+    </AppTooltip>
   );
 }
 
@@ -755,14 +951,14 @@ export function FeaturesLayoutToggle({
       }}
     >
       <ToggleButton value="rows" aria-label="Affichage en lignes">
-        <Tooltip title="Affichage en lignes" arrow>
+        <AppTooltip title="Affichage en lignes">
           <ViewStreamIcon fontSize="small" />
-        </Tooltip>
+        </AppTooltip>
       </ToggleButton>
       <ToggleButton value="columns" aria-label="Affichage en colonnes">
-        <Tooltip title="Affichage en colonnes" arrow>
+        <AppTooltip title="Affichage en colonnes">
           <ViewColumnIcon fontSize="small" />
-        </Tooltip>
+        </AppTooltip>
       </ToggleButton>
     </ToggleButtonGroup>
   );
@@ -798,12 +994,11 @@ export function ConcentrationToggle({
           : undefined
       }
     >
-      <Tooltip
+      <AppTooltip
         title="Concentration accrue : les sorts en (A) coûtent 2 PM de moins (plancher 0) et deviennent une action limitée (L) (p. 228)"
-        arrow
       >
         <SelfImprovementIcon fontSize="small" />
-      </Tooltip>
+      </AppTooltip>
     </ToggleButton>
   );
 }
@@ -1092,7 +1287,7 @@ function UsageCounterRow({
           </IconButton>
         )}
         {onSet && (
-          <Tooltip title="Réinitialiser au maximum" arrow>
+          <AppTooltip title="Réinitialiser au maximum">
             <span>
               <IconButton
                 size="small"
@@ -1103,7 +1298,7 @@ function UsageCounterRow({
                 <RestartAltIcon fontSize="small" />
               </IconButton>
             </span>
-          </Tooltip>
+          </AppTooltip>
         )}
         {exhausted && <Chip label="épuisé" size="small" color="error" variant="outlined" />}
       </Stack>
@@ -1113,7 +1308,7 @@ function UsageCounterRow({
             Une récupération rapide (repos court) est nécessaire avant un nouvel usage.
           </Typography>
           {onLiftShortRestLock && (
-            <Tooltip
+            <AppTooltip
               title={
                 <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'flex-start' }}>
                   <WarningAmberOutlinedIcon fontSize="small" sx={{ mt: '1px', color: 'warning.light' }} />
@@ -1127,8 +1322,7 @@ function UsageCounterRow({
                   </Box>
                 </Box>
               }
-              arrow
-              slotProps={{ tooltip: { sx: { maxWidth: 280 } } }}
+              maxWidth={280}
             >
               {/* Révélé seulement au survol du bloc / de la modale (classe `lift-lock-reveal` ciblée par
                   le conteneur) : masqué par défaut pour ne pas suggérer que c'est la méthode normale. */}
@@ -1148,7 +1342,7 @@ function UsageCounterRow({
               >
                 <LockOpenIcon fontSize="small" />
               </IconButton>
-            </Tooltip>
+            </AppTooltip>
           )}
         </Stack>
       )}
@@ -1223,7 +1417,7 @@ function EscalatingManaCostRow({
           </Button>
         )}
         {onSet && (
-          <Tooltip title="Remettre le surcoût à 0" arrow>
+          <AppTooltip title="Remettre le surcoût à 0">
             <span>
               <IconButton
                 size="small"
@@ -1234,7 +1428,7 @@ function EscalatingManaCostRow({
                 <RestartAltIcon fontSize="small" />
               </IconButton>
             </span>
-          </Tooltip>
+          </AppTooltip>
         )}
       </Stack>
       <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, fontStyle: 'italic' }}>
@@ -1259,7 +1453,7 @@ function CompactUsageIndicator({ feature, character }: { feature: Feature; chara
   const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
   const label = counter.label ?? 'Usages restants';
   return (
-    <Tooltip title={`${label} : ${remaining} / ${max}`} arrow>
+    <AppTooltip title={`${label} : ${remaining} / ${max}`}>
       <Box
         sx={{
           mt: 0.5,
@@ -1293,7 +1487,7 @@ function CompactUsageIndicator({ feature, character }: { feature: Feature; chara
           {remaining}/{max}
         </Typography>
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 
@@ -1345,7 +1539,7 @@ function PathResourcePoolBar({
   const ratio = max > 0 ? current / max : 0;
   return (
     <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mt: 0.5 }}>
-      <Tooltip title={`${label} : ${current} / ${max}`} arrow>
+      <AppTooltip title={`${label} : ${current} / ${max}`}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexGrow: 1, minWidth: 0, cursor: 'help' }}>
           <Box
             sx={{
@@ -1373,13 +1567,13 @@ function PathResourcePoolBar({
             {current}/{max}
           </Typography>
         </Box>
-      </Tooltip>
+      </AppTooltip>
       {onReset && current < max && (
-        <Tooltip title="Refaire le plein d'élixirs (réserve du jour)" arrow>
+        <AppTooltip title="Refaire le plein d'élixirs (réserve du jour)">
           <IconButton size="small" aria-label="Refaire le plein d'élixirs" onClick={onReset} sx={{ p: 0.25 }}>
             <RestartAltIcon sx={{ fontSize: 16 }} />
           </IconButton>
-        </Tooltip>
+        </AppTooltip>
       )}
     </Stack>
   );
@@ -1748,16 +1942,15 @@ function PathBlock({
           RAGE ET AUTRES CAPACITÉS). Rendue en infobulle sur une icône « i » discrète, plutôt qu'en
           bloc permanent — couvre AUTOMATIQUEMENT toute voie portant un `note`. */}
       {path?.note && (
-        <Tooltip
+        <AppTooltip
           title={
             <Box sx={{ whiteSpace: 'pre-line', maxWidth: 320 }}>{path.note}</Box>
           }
-          arrow
         >
           <InfoOutlinedIcon
             sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help', flexShrink: 0, ml: 0.25 }}
           />
-        </Tooltip>
+        </AppTooltip>
       )}
       {compact ? (
         // Vue colonne : icône de profil au-dessus du compteur de rangs.
@@ -1922,11 +2115,10 @@ function PathBlock({
               sx={{ fontWeight: 600, width: '100%', textAlign: 'left', wordBreak: 'break-word' }}
             >
               {repl && (
-                <Tooltip
+                <AppTooltip
                   title={`Capacité divine de ${repl.godName ?? '—'}${
                     repl.replacedFeature ? ` — remplace ${repl.replacedFeature.name}` : ''
                   }`}
-                  arrow
                 >
                   <Box
                     component="span"
@@ -1934,7 +2126,7 @@ function PathBlock({
                   >
                     ✦
                   </Box>
-                </Tooltip>
+                </AppTooltip>
               )}
               {/* Emprunt (PER-120) : la carte de devant porte le VRAI nom de la capacité empruntée
                   (« Vivacité »), écrit normalement ; le nom de l'hôte est dans la case décalée derrière. */}
@@ -1943,7 +2135,7 @@ function PathBlock({
             {/* Badge WIP (PER-72) : capacité dont une partie de l'effet dépend d'un ticket extérieur
                 non terminé (ex. pagne-r2 → PER-131). Suivi de relecture, pas une règle. */}
             {feature.wip && (
-              <Tooltip title={feature.wip} arrow>
+              <AppTooltip title={feature.wip}>
                 <Chip
                   label="WIP"
                   size="small"
@@ -1956,7 +2148,7 @@ function PathBlock({
                     '& .MuiChip-label': { px: 0.75, fontSize: '0.6rem', fontWeight: 700 },
                   }}
                 />
-              </Tooltip>
+              </AppTooltip>
             )}
             {/* Interrupteurs des effets conditionnels, compacts (état de jeu, libellé
                 en infobulle) ; le détail cliquable héberge la version étiquetée. */}
@@ -2008,7 +2200,7 @@ function PathBlock({
                 onClick={(e) => e.stopPropagation()}
               >
                 {onChoiceChange && (
-                  <Tooltip title="Modifier le choix" arrow>
+                  <AppTooltip title="Modifier le choix">
                     <IconButton
                       size="small"
                       color={hasUnmadeChoice(character!, feature.id) ? 'warning' : 'primary'}
@@ -2020,7 +2212,7 @@ function PathBlock({
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
-                  </Tooltip>
+                  </AppTooltip>
                 )}
                 {renderChoiceDisplay(feature, { compact: true })}
               </Box>
@@ -2043,7 +2235,7 @@ function PathBlock({
                 onClick={(e) => e.stopPropagation()}
               >
                 {onChoiceChange && (
-                  <Tooltip title="Modifier le choix" arrow>
+                  <AppTooltip title="Modifier le choix">
                     <IconButton
                       size="small"
                       color={hasUnmadeChoice(character!, borrowed.id) ? 'warning' : 'primary'}
@@ -2055,13 +2247,13 @@ function PathBlock({
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
-                  </Tooltip>
+                  </AppTooltip>
                 )}
                 {renderChoiceDisplay(borrowed, { compact: true })}
               </Box>
             )}
             {onRemove && (
-              <Tooltip title="Retirer la capacité" arrow>
+              <AppTooltip title="Retirer la capacité">
                 <IconButton
                   className="feature-remove"
                   size="small"
@@ -2074,7 +2266,7 @@ function PathBlock({
                 >
                   <DeleteOutlineIcon fontSize="small" />
                 </IconButton>
-              </Tooltip>
+              </AppTooltip>
             )}
           </Box>
           );
@@ -2154,7 +2346,7 @@ function PathBlock({
                 {/* Carac retenue : chip de choix standard (bleu primaire), code court « CON »
                     pour gagner de la place ; nom complet (« Constitution ») en infobulle. */}
                 {abilityCode && (
-                  <Tooltip title={ABILITY_NAMES[abilityCode]} arrow>
+                  <AppTooltip title={ABILITY_NAMES[abilityCode]}>
                     <Chip
                       label={abilityCode}
                       size="small"
@@ -2162,7 +2354,7 @@ function PathBlock({
                       color="primary"
                       sx={COMPACT_CHIP_SX}
                     />
-                  </Tooltip>
+                  </AppTooltip>
                 )}
               </Box>
             </Box>
@@ -2202,14 +2394,14 @@ function PathBlock({
                     <FeatureLabel feature={openFeature} concentration={concentration} pathRank={pathRank} />
                   </Box>
                   {openFeature.wip && (
-                    <Tooltip title={openFeature.wip} arrow>
+                    <AppTooltip title={openFeature.wip}>
                       <Chip
                         label="WIP"
                         size="small"
                         variant="outlined"
                         sx={{ ...WIP_CHIP_SX, fontWeight: 700, cursor: 'help' }}
                       />
-                    </Tooltip>
+                    </AppTooltip>
                   )}
                 </Stack>
                 <IconButton
@@ -2246,6 +2438,19 @@ function PathBlock({
                       abilities={abilities}
                       level={level}
                       creation={elixirCreation(openFeature)}
+                    />
+                  </>
+                )}
+                {/* PER-163 : pouvoirs empruntés cassables (Artefact étrange) — usage 1×/jour + panne. */}
+                {openFeature.borrowedPowers && openFeature.borrowedPowers.length > 0 && character && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <BorrowedPowersField
+                      feature={openFeature}
+                      character={character}
+                      abilities={abilities}
+                      level={level}
+                      onSet={onSetUsageCounter}
                     />
                   </>
                 )}
@@ -2488,23 +2693,22 @@ function PathBlock({
                   sx={{ fontWeight: 600 }}
                 />
                 {feature.wip && (
-                  <Tooltip title={feature.wip} arrow>
+                  <AppTooltip title={feature.wip}>
                     <Chip
                       label="WIP"
                       size="small"
                       variant="outlined"
                       sx={{ ...WIP_CHIP_SX, fontWeight: 700, cursor: 'help' }}
                     />
-                  </Tooltip>
+                  </AppTooltip>
                 )}
                 {manualFeatureIds?.has(feature.id) && <ManualPin inline />}
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   {repl && (
-                    <Tooltip
+                    <AppTooltip
                       title={`Capacité divine de ${repl.godName ?? '—'}${
                         repl.replacedFeature ? ` — remplace ${repl.replacedFeature.name}` : ''
                       }`}
-                      arrow
                     >
                       <Box
                         component="span"
@@ -2512,7 +2716,7 @@ function PathBlock({
                       >
                         ✦
                       </Box>
-                    </Tooltip>
+                    </AppTooltip>
                   )}
                   <FeatureLabel feature={feature} concentration={concentration} pathRank={pathRank} />
                 </Typography>
@@ -2525,7 +2729,7 @@ function PathBlock({
                 sx={{ alignSelf: 'center', mr: 1 }}
               />
               {onRemove && (
-                <Tooltip title="Retirer la capacité" arrow>
+                <AppTooltip title="Retirer la capacité">
                   <IconButton
                     size="small"
                     color="error"
@@ -2538,7 +2742,7 @@ function PathBlock({
                   >
                     <DeleteOutlineIcon fontSize="small" />
                   </IconButton>
-                </Tooltip>
+                </AppTooltip>
               )}
             </AccordionSummary>
             <AccordionDetails>
@@ -2563,6 +2767,19 @@ function PathBlock({
                     abilities={abilities}
                     level={level}
                     creation={elixirCreation(feature)}
+                  />
+                </>
+              )}
+              {/* PER-163 : pouvoirs empruntés cassables (Artefact étrange) — usage 1×/jour + panne. */}
+              {feature.borrowedPowers && feature.borrowedPowers.length > 0 && character && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  <BorrowedPowersField
+                    feature={feature}
+                    character={character}
+                    abilities={abilities}
+                    level={level}
+                    onSet={onSetUsageCounter}
                   />
                 </>
               )}

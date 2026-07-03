@@ -1597,6 +1597,22 @@ export interface Feature {
    */
   referencedFeatures?: string[];
   /**
+   * Pouvoirs EMPRUNTÉS par un artefact (PER-163) — Artefact étrange (forgesort, `artefacts-r5`,
+   * p. 97) : cette capacité donne accès à plusieurs sorts d'AUTRES voies, chacun doté d'un DOUBLE
+   * cycle d'état de jeu propre :
+   *  - usage QUOTIDIEN : « chacune une fois par jour » → 1×/jour, rechargé au repos long ;
+   *  - PANNE : à chaque utilisation le joueur lance 1d6 et, sur 1-2, l'artefact « ne fonctionne
+   *    pas » pour CE pouvoir jusqu'à une réparation lors d'une récupération rapide → cassé, réparé
+   *    au repos court (donc a fortiori au repos long).
+   * À DISTINGUER de `referencedFeatures` (citation indicative SANS état de jeu) : ici chaque sort
+   * porte un état suivi. L'état est stocké dans `Character.usageCounters` sous des clés dérivées
+   * (`borrowedPowerUsedKey`/`borrowedPowerIntegrityKey`) suivant la convention « absence = plein »
+   * (disponible / intact). Chaque id est aussi rendu en puce `[&id|nom]` dans le `richText` et déplié
+   * en accordéon sous la description (comme `referencedFeatures`). Les cibles sont validées par
+   * `validate-data`. Absent = la capacité n'emprunte aucun pouvoir cassable.
+   */
+  borrowedPowers?: string[];
+  /**
    * Marqueur de TRAVAIL EN COURS (badge « WIP » sur la carte) — suivi de relecture, pas une règle de
    * jeu. Présent quand la capacité dépend d'un ticket EXTÉRIEUR non terminé (ex. calcul de DEF de
    * Peau de pierre en attente de la milestone Armures, PER-131) : une partie de son effet n'est donc

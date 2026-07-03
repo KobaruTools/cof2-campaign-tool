@@ -408,6 +408,17 @@ for (const c of features) {
   }
 }
 
+// --- Pouvoirs empruntés cassables (Artefact étrange, p. 97, PER-163) ----------
+// `borrowedPowers` : mêmes contraintes que `referencedFeatures` (cibles existantes, pas soi ;
+// volontairement cross-voie — l'artefact reproduit des sorts d'AUTRES voies).
+for (const c of features) {
+  for (const target of c.borrowedPowers ?? []) {
+    if (!featureById.get(target))
+      err(`[capacite ${c.id}] borrowedPowers cible inexistante : ${target}`);
+    if (target === c.id) err(`[capacite ${c.id}] borrowedPowers s'auto-référence`);
+  }
+}
+
 // --- Coût de base en mana (PER-65) -------------------------------------------
 // Dérogation explicite au coût standard (= rang du sort, p. 228). On vérifie
 // que le champ ne porte que des entiers >= 0 et n'apparaît que sur des sorts.
