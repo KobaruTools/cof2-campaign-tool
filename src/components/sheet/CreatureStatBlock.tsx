@@ -11,13 +11,13 @@
  */
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import { ABILITY_IDS, type AbilityId, type CreatureProfile, type DerivedStatId, type MasterStatRef } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { AppTooltip } from '@/components/AppTooltip';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { RichInline } from './FeatureRichText';
@@ -69,11 +69,11 @@ function MasterStatValue({ stat, masterDerived }: { stat: DerivedStatId; masterD
     );
   }
   return (
-    <Tooltip title={`${label} du maître`} arrow>
+    <AppTooltip title={`${label} du maître`}>
       <Box component="span" sx={{ fontWeight: 700, cursor: 'help', fontVariantNumeric: 'tabular-nums' }}>
         {masterValue(masterDerived, stat)}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 
@@ -143,7 +143,7 @@ export function CreatureStatBlock({
       {profile.abilities && (
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 0.75 }}>
           {ABILITY_IDS.map((id) => (
-            <Tooltip key={id} title={ABILITY_NAMES[id]} arrow>
+            <AppTooltip key={id} title={ABILITY_NAMES[id]}>
               <Stack
                 spacing={0.1}
                 sx={{
@@ -165,7 +165,7 @@ export function CreatureStatBlock({
                   {allBonusDice.has(id) && <BonusDieBadge ability={id} size={12} />}
                 </Stack>
               </Stack>
-            </Tooltip>
+            </AppTooltip>
           ))}
         </Box>
       )}
@@ -175,9 +175,8 @@ export function CreatureStatBlock({
         <StatItem label="DEF">
           {defAlt && defenseAltActive ? (
             // DEF alternative active (ex. en selle) : DEF égale à celle du maître, info-bulle de provenance.
-            <Tooltip
+            <AppTooltip
               title={`${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`}
-              arrow
             >
               <Box component="span" sx={{ fontWeight: 700, cursor: 'help', fontVariantNumeric: 'tabular-nums' }}>
                 {isMasterRef(defAlt.value)
@@ -186,7 +185,7 @@ export function CreatureStatBlock({
                     : 'DEF du maître'
                   : rich(defAlt.value)}
               </Box>
-            </Tooltip>
+            </AppTooltip>
           ) : (
             rich(profile.defense)
           )}

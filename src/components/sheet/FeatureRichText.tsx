@@ -2,13 +2,13 @@
 
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha, darken, lighten, type SxProps, type Theme } from '@mui/material/styles';
 import { Fragment, type ReactNode } from 'react';
 import { featureById, pathById, progression } from '@/data';
 import type { Die, Feature } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
+import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { DieIcon } from '@/components/DieIcon';
@@ -35,7 +35,7 @@ function RefChip({ label, title, tone }: { label: string; title: string; tone: R
   const accent = (theme: { palette: { warning: { main: string }; text: { primary: string } } }) =>
     tone === 'derived' ? theme.palette.warning.main : theme.palette.text.primary;
   return (
-    <Tooltip title={title} arrow>
+    <AppTooltip title={title}>
       <Box
         component="span"
         sx={{
@@ -57,7 +57,7 @@ function RefChip({ label, title, tone }: { label: string; title: string; tone: R
       >
         {label}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 
@@ -92,7 +92,7 @@ export function CapabilityChip({
   if (!feature || (!classId && !ancestryId && !isMage)) return <>{text}</>;
   const color = classId ? classColor(classId) : isMage ? MAGE_PATH_COLOR : ANCESTRY_COLOR;
   return (
-    <Tooltip title={`${feature.name}${path ? ` — ${path.name}` : ''}`} arrow>
+    <AppTooltip title={`${feature.name}${path ? ` — ${path.name}` : ''}`}>
       <Box
         component="span"
         sx={[
@@ -128,7 +128,7 @@ export function CapabilityChip({
         )}
         {text}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 
@@ -138,7 +138,7 @@ export function CapabilityChip({
  */
 function GlossaryMark({ label, title }: { label: string; title: string }) {
   return (
-    <Tooltip title={title} arrow>
+    <AppTooltip title={title}>
       <Box
         component="span"
         sx={{
@@ -148,7 +148,7 @@ function GlossaryMark({ label, title }: { label: string; title: string }) {
       >
         {label}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 
@@ -162,7 +162,7 @@ function GlossaryMark({ label, title }: { label: string; title: string }) {
  */
 function TermWord({ word, value, title }: { word: string; value: number; title: string }) {
   return (
-    <Tooltip title={title} arrow>
+    <AppTooltip title={title}>
       <Box
         component="span"
         sx={{
@@ -185,7 +185,7 @@ function TermWord({ word, value, title }: { word: string; value: number; title: 
       >
         {word} ({value})
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 
@@ -320,7 +320,7 @@ function FormulaTotal({ resolved }: { resolved: ResolvedExpr }) {
   // Style compact aligné sur l'encadré de dé ; couleur PRIMAIRE pour le distinguer
   // d'une formule à dé (secondaire).
   return (
-    <Tooltip title={tooltip} arrow>
+    <AppTooltip title={tooltip}>
       <Box
         component="span"
         sx={{
@@ -347,7 +347,7 @@ function FormulaTotal({ resolved }: { resolved: ResolvedExpr }) {
           ? `${inline}${resolved.parts.length > 1 ? ` = ${resolved.total}` : ''}`
           : signed(resolved.total ?? 0)}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 
@@ -398,7 +398,7 @@ function QuantityValue({ resolved }: { resolved: ResolvedExpr }) {
   const display = resolved.total != null ? String(resolved.total) : symbolicFormula(resolved);
   const tooltip = resolved.total != null ? quantityTooltip(resolved) : symbolicFormula(resolved);
   return (
-    <Tooltip title={tooltip} arrow>
+    <AppTooltip title={tooltip}>
       <Box
         component="span"
         sx={{
@@ -416,7 +416,7 @@ function QuantityValue({ resolved }: { resolved: ResolvedExpr }) {
       >
         {display}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 
@@ -453,7 +453,7 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
     </Box>
   );
   return (
-    <Tooltip title={tooltip} arrow>
+    <AppTooltip title={tooltip}>
       {/* Boîte inline-block : le texte (caractéristiques, nombres) reste sur la
           baseline, seul le dé est centré verticalement (`vertical-align: middle`
           porté par DiePart) pour ne pas « flotter ». */}
@@ -503,7 +503,7 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
           );
         })}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 

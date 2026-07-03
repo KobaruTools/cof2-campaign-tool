@@ -30,8 +30,8 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Toolbar from '@mui/material/Toolbar';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
@@ -111,26 +111,26 @@ export default function HomePage() {
   // Actions d'une ligne, partagées par le tableau (desktop) et les cartes (mobile).
   const rowActions = (r: (typeof rows)[number]) => (
     <>
-      <Tooltip title="Ouvrir">
+      <AppTooltip title="Ouvrir">
         <IconButton onClick={() => router.push(`/character/${r.id}`)}>
           <OpenInNewIcon fontSize="small" />
         </IconButton>
-      </Tooltip>
-      <Tooltip title="Dupliquer">
+      </AppTooltip>
+      <AppTooltip title="Dupliquer">
         <IconButton onClick={() => handleDuplicate(r.id)}>
           <ContentCopyIcon fontSize="small" />
         </IconButton>
-      </Tooltip>
-      <Tooltip title="Exporter en JSON">
+      </AppTooltip>
+      <AppTooltip title="Exporter en JSON">
         <IconButton onClick={() => handleExport(r.id)}>
           <DownloadIcon fontSize="small" />
         </IconButton>
-      </Tooltip>
-      <Tooltip title="Supprimer">
+      </AppTooltip>
+      <AppTooltip title="Supprimer">
         <IconButton color="error" onClick={() => setToDelete({ id: r.id, name: r.name })}>
           <DeleteOutlineIcon fontSize="small" />
         </IconButton>
-      </Tooltip>
+      </AppTooltip>
     </>
   );
 

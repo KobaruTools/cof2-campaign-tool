@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
 import type { SxProps, Theme } from '@mui/material/styles';
+import { AppTooltip } from '@/components/AppTooltip';
 import type { Die } from '@/data/schema';
 import { DIE_ICON_PATHS } from '@/lib/ui/diceIcons';
 
@@ -104,5 +104,5 @@ export function DieIcon({
   );
 
   if (noTooltip) return inner;
-  return <Tooltip title={label}>{inner}</Tooltip>;
+  return <AppTooltip title={label}>{inner}</AppTooltip>;
 }

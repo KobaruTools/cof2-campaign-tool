@@ -6,7 +6,6 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { testDomains } from '@/data';
@@ -20,6 +19,7 @@ import {
 } from '@/lib/character/effects';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { AppTooltip } from '@/components/AppTooltip';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
@@ -185,7 +185,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                 <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
                   {ABILITY_NAMES[ability]} ({ability})
                 </Typography>
-                <Tooltip title={testBreakdown} arrow>
+                <AppTooltip title={testBreakdown}>
                   <Stack
                     direction="row"
                     spacing={0.5}
@@ -200,7 +200,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                       {signed(caracTest)}
                     </Typography>
                   </Stack>
-                </Tooltip>
+                </AppTooltip>
                 {dice.length > 0 && <BonusDieBadge ability={ability} sources={dice} size={16} />}
               </Stack>
               {group.length > 0 && (
@@ -331,9 +331,9 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                     return (
                       <Grid key={d.id} size={{ xs: 6, sm: 4 }}>
                         {breakdown ? (
-                          <Tooltip title={breakdown} arrow>
+                          <AppTooltip title={breakdown}>
                             {row}
-                          </Tooltip>
+                          </AppTooltip>
                         ) : (
                           row
                         )}
@@ -347,8 +347,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
         })}
       </Stack>
       {universalBonus && (
-        <Tooltip
-          arrow
+        <AppTooltip
           title={
             <Box sx={{ py: 0.5 }}>
               <Typography variant="caption" sx={{ display: 'block' }}>
@@ -379,7 +378,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
               {signed(universalBonus.value)}
             </Typography>
           </Box>
-        </Tooltip>
+        </AppTooltip>
       )}
     </SheetSection>
   );

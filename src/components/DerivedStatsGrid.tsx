@@ -10,13 +10,13 @@ import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { deriveStats, type DerivedInput } from '@/lib/engine';
 import type { EffectContext } from '@/lib/character/effects';
 import type { DerivedStatId as OverrideKey } from '@/lib/character/types';
 import { DERIVED_STAT_NAMES, type DerivedStatId } from '@/lib/ui/derivedStats';
 import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
+import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DerivedStatHint } from '@/components/DerivedStatHint';
 import { DieIcon } from '@/components/DieIcon';
@@ -190,9 +190,8 @@ export function DerivedStatsGrid({
                           sx={{ width: 68 }}
                         />
                         {suffix}
-                        <Tooltip
+                        <AppTooltip
                           title={forced ? 'Revenir au calcul automatique' : 'Forcer cette valeur'}
-                          arrow
                         >
                           <IconButton
                             size="small"
@@ -205,7 +204,7 @@ export function DerivedStatsGrid({
                               <PushPinOutlinedIcon fontSize="small" />
                             )}
                           </IconButton>
-                        </Tooltip>
+                        </AppTooltip>
                       </Stack>
                     ) : (
                       <Typography
@@ -221,9 +220,9 @@ export function DerivedStatsGrid({
                         {display === null ? '—' : display}
                         {suffix}
                         {forced && (
-                          <Tooltip title="Valeur forcée (calcul automatique remplacé)" arrow>
+                          <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
                             <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
-                          </Tooltip>
+                          </AppTooltip>
                         )}
                       </Typography>
                     )}

@@ -10,8 +10,8 @@ import InputAdornment from '@mui/material/InputAdornment';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { AppTooltip } from '@/components/AppTooltip';
 import { InfoHint } from '@/components/InfoHint';
 import type { Ancestry, AncestryNames } from '@/data/schema';
 import { pickName } from '@/lib/character/names';
@@ -99,7 +99,7 @@ export function IdentityForm({
             endAdornment:
               showNameGenerator && ancestry ? (
                 <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                  <Tooltip title={sexChosen ? 'Générer un nom' : 'Choisissez d’abord le sexe'} arrow>
+                  <AppTooltip title={sexChosen ? 'Générer un nom' : 'Choisissez d’abord le sexe'}>
                     <span>
                       <IconButton
                         size="small"
@@ -113,7 +113,7 @@ export function IdentityForm({
                         <CasinoOutlinedIcon fontSize="small" />
                       </IconButton>
                     </span>
-                  </Tooltip>
+                  </AppTooltip>
                   <InfoHint page={ancestry.names.sourcePage}>
                     <NameHintContent names={ancestry.names} />
                   </InfoHint>

@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
 import { darken, type SxProps, type Theme } from '@mui/material/styles';
+import { AppTooltip } from '@/components/AppTooltip';
 import type { Feature } from '@/data/schema';
 import { canConcentrate, concentratedSpellManaCost, spellManaCost } from '@/lib/engine';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
@@ -88,11 +88,7 @@ export function SpellManaBadge({ feature, concentration = false, surcharge = 0, 
     ? `${tooltip}\n\nSurcoût actuel : +${surcharge} PM (coût croissant, +1 PM par lancement, remis à 0 au repos court, p. 123).\nCoût total à payer maintenant : ${displayCost} PM.`
     : tooltip;
   return (
-    <Tooltip
-      title={fullTooltip}
-      arrow
-      slotProps={{ tooltip: { sx: { whiteSpace: 'pre-line', maxWidth: 300 } } }}
-    >
+    <AppTooltip title={fullTooltip} preLine maxWidth={300}>
       <Box
         role="img"
         aria-label={
@@ -151,6 +147,6 @@ export function SpellManaBadge({ feature, concentration = false, surcharge = 0, 
           {displayCost}
         </Box>
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }

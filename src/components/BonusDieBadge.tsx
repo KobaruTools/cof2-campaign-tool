@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
 import type { SxProps, Theme } from '@mui/material/styles';
+import { AppTooltip } from '@/components/AppTooltip';
 import { DieIcon } from '@/components/DieIcon';
 
 export interface BonusDieBadgeProps {
@@ -32,7 +32,7 @@ export function BonusDieBadge({ ability, sources = [], size = 16, sx }: BonusDie
       ? `Dé bonus aux tests de ${ability} — ${sources.join(', ')}`
       : `Dé bonus aux tests de ${ability}`;
   return (
-    <Tooltip title={title} arrow>
+    <AppTooltip title={title}>
       <Box
         component="span"
         aria-label={title}
@@ -51,6 +51,6 @@ export function BonusDieBadge({ ability, sources = [], size = 16, sx }: BonusDie
         <DieIcon die="d20" size={size} noTooltip sx={{ position: 'absolute', left: 0, opacity: 0.55 }} />
         <DieIcon die="d20" size={size} noTooltip sx={{ position: 'absolute', left: size * 0.4 }} />
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }

@@ -1,11 +1,8 @@
 'use client';
 
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
-import Typography from '@mui/material/Typography';
 import type { SxProps, Theme } from '@mui/material/styles';
-import { SourceRef } from '@/components/SourceRef';
+import { AppTooltip } from '@/components/AppTooltip';
 
 export interface InfoHintProps {
   /** Corps de l'infobulle : conseil ou texte de règle (chaîne ou nœud React). */
@@ -24,23 +21,16 @@ export interface InfoHintProps {
  * Icône « i » informative : affiche au survol un texte d'aide (conseil de jeu,
  * extrait de règle…), avec une citation de source optionnelle. Réutilisable
  * partout où une explication doit rester discrète et accessible à la demande.
+ * Simple déclencheur (icône) au-dessus d'`AppTooltip`, qui porte le look et le
+ * motif « contenu + source ».
  */
 export function InfoHint({ children, page, section, fontSize = 'small', sx }: InfoHintProps) {
-  const hasSource = page != null || section != null;
-  const title = (
-    <Box sx={{ py: 0.5 }}>
-      <Typography variant="body2" component="div" sx={{ mb: hasSource ? 1 : 0 }}>
-        {children}
-      </Typography>
-      {hasSource && <SourceRef page={page} section={section} />}
-    </Box>
-  );
   return (
-    <Tooltip title={title} arrow>
+    <AppTooltip title={children} page={page} section={section}>
       <InfoOutlinedIcon
         fontSize={fontSize}
         sx={{ color: 'text.secondary', cursor: 'help', ...sx }}
       />
-    </Tooltip>
+    </AppTooltip>
   );
 }

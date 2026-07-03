@@ -2,8 +2,8 @@
 
 import type { ReactNode } from 'react';
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
 import { alpha } from '@mui/material/styles';
+import { AppTooltip } from '@/components/AppTooltip';
 
 /** Un segment REMPLI d'une jauge (portion colorée de largeur proportionnelle au max). */
 export interface GaugeSegment {
@@ -74,7 +74,7 @@ export function GaugeBar({ max, segments, height = 24, roundedLeft = true, overl
       >
         {segments.map((seg) =>
           seg.value <= 0 ? null : (
-            <Tooltip key={seg.key} title={seg.label ?? ''} arrow disableInteractive>
+            <AppTooltip key={seg.key} title={seg.label ?? ''} disableInteractive>
               <Box
                 sx={{
                   width: pct(seg.value),
@@ -83,7 +83,7 @@ export function GaugeBar({ max, segments, height = 24, roundedLeft = true, overl
                   transition: 'width 0.2s',
                 }}
               />
-            </Tooltip>
+            </AppTooltip>
           ),
         )}
       </Box>

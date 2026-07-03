@@ -18,7 +18,6 @@ import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { ancestryById, classById, families, featureById, progression } from '@/data';
@@ -72,6 +71,7 @@ import {
 import { longRest, shortRest } from '@/lib/character/rest';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
+import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -716,7 +716,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             {/* Montée de niveau (PER-49) : toujours accessible. Le niveau max (20)
                 est une borne d'UI souple — on désactive simplement le bouton. */}
             <Box sx={{ mt: 1.5, position: 'relative', zIndex: 1 }}>
-              <Tooltip
+              <AppTooltip
                 title={
                   character.level >= progression.maxLevel
                     ? `Niveau maximum (${progression.maxLevel}) atteint`
@@ -733,13 +733,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                     Monter au niveau suivant
                   </Button>
                 </span>
-              </Tooltip>
+              </AppTooltip>
             </Box>
 
             {/* Bascule entre l'illustration de profil standard et son alternative
                 (-2), uniquement en mode édition. */}
             {editingBlocks.identity && characterClass && (
-              <Tooltip title="Changer l’illustration du profil">
+              <AppTooltip title="Changer l’illustration du profil">
                 <IconButton
                   size="small"
                   onClick={() =>
@@ -752,7 +752,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 >
                   <SwapHorizIcon />
                 </IconButton>
-              </Tooltip>
+              </AppTooltip>
             )}
           </Box>
 

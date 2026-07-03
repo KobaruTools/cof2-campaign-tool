@@ -2,8 +2,8 @@
 
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
 import { darken } from '@mui/material/styles';
+import { AppTooltip } from '@/components/AppTooltip';
 
 export interface GaugeExpandToggleProps {
   /** Options détaillées actuellement dépliées ? */
@@ -23,7 +23,7 @@ export interface GaugeExpandToggleProps {
  */
 export function GaugeExpandToggle({ expanded, onToggle, color, height = 24 }: GaugeExpandToggleProps) {
   return (
-    <Tooltip title={expanded ? 'Masquer les options' : 'Plus d’options'} arrow>
+    <AppTooltip title={expanded ? 'Masquer les options' : 'Plus d’options'}>
       <Box
         component="button"
         type="button"
@@ -52,6 +52,6 @@ export function GaugeExpandToggle({ expanded, onToggle, color, height = 24 }: Ga
           sx={{ fontSize: 16, transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none' }}
         />
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }

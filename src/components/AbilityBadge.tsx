@@ -2,8 +2,8 @@
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Tooltip from '@mui/material/Tooltip';
 import type { SxProps, Theme } from '@mui/material/styles';
+import { AppTooltip } from '@/components/AppTooltip';
 import type { AbilityId } from '@/data/schema';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 
@@ -34,7 +34,7 @@ const SIZES = {
 export function AbilityBadge({ ability, size = 'sm', color, sx }: AbilityBadgeProps) {
   const t = SIZES[size];
   return (
-    <Tooltip title={ABILITY_NAMES[ability]} arrow>
+    <AppTooltip title={ABILITY_NAMES[ability]}>
       <Box
         component="span"
         sx={{
@@ -60,7 +60,7 @@ export function AbilityBadge({ ability, size = 'sm', color, sx }: AbilityBadgePr
       >
         {ability}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 

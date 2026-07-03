@@ -14,7 +14,6 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
 import type { Depletion } from '@/lib/character/types';
@@ -22,6 +21,7 @@ import type { Die } from '@/data/schema';
 import type { CapacityResourceGauge } from '@/lib/character/effects';
 import { currentHp, currentMana, currentRecoveryDice, hpHealthState, type HealthState } from '@/lib/character/gauges';
 import { classColor } from '@/lib/ui/classColors';
+import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DieIcon } from '@/components/DieIcon';
@@ -74,7 +74,7 @@ function RecoveryDicePips({
 }) {
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-      <Tooltip title={`Dés de récupération : ${current} / ${max}`} arrow>
+      <AppTooltip title={`Dés de récupération : ${current} / ${max}`}>
         <Box
           sx={{
             display: 'flex',
@@ -111,7 +111,7 @@ function RecoveryDicePips({
             );
           })}
         </Box>
-      </Tooltip>
+      </AppTooltip>
       <DieIcon die={die} size={22} />
     </Stack>
   );
@@ -177,7 +177,7 @@ function HealthStateBadge({ state }: { state: Exclude<HealthState, 'normal'> }) 
     </Box>
   );
   return (
-    <Tooltip title={tooltip} arrow>
+    <AppTooltip title={tooltip}>
       <Box
         sx={(theme) => ({
           display: 'inline-flex',
@@ -196,7 +196,7 @@ function HealthStateBadge({ state }: { state: Exclude<HealthState, 'normal'> }) 
       >
         {meta.label}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 
@@ -333,14 +333,14 @@ export function PlayerStatusPanel({
           </Box>
         </Stack>
         {state !== 'normal' && <HealthStateBadge state={state} />}
-        <Tooltip title="Infliger 1 dégât létal" arrow>
+        <AppTooltip title="Infliger 1 dégât létal">
           <span>
             <IconButton size="small" aria-label="Retirer 1 PV" onClick={() => onDamage(1, 'lethal')}>
               <RemoveIcon fontSize="small" />
             </IconButton>
           </span>
-        </Tooltip>
-        <Tooltip title="Soigner 1 PV" arrow>
+        </AppTooltip>
+        <AppTooltip title="Soigner 1 PV">
           <span>
             <IconButton
               size="small"
@@ -351,14 +351,14 @@ export function PlayerStatusPanel({
               <AddIcon fontSize="small" />
             </IconButton>
           </span>
-        </Tooltip>
-        <Tooltip title="Remettre les PV à plein (outil manuel, hors règles de repos)" arrow>
+        </AppTooltip>
+        <AppTooltip title="Remettre les PV à plein (outil manuel, hors règles de repos)">
           <span>
             <IconButton size="small" aria-label="Remettre les PV à plein" disabled={!hasDamage} onClick={onResetHp}>
               <RestartAltIcon fontSize="small" />
             </IconButton>
           </span>
-        </Tooltip>
+        </AppTooltip>
       </Stack>
 
       {/* Contrôles détaillés : montant + nature (létal/temp) + Dégâts / Soin. Repliés par défaut. */}
@@ -437,22 +437,20 @@ export function PlayerStatusPanel({
 
       {/* Repos (PER-151) : récupération selon les règles CO2 ; matrice des DR à droite. */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1, pt: 0.5 }}>
-        <Tooltip
+        <AppTooltip
           title="Récupération rapide (30 min) : régénère les dégâts temporaires, réinitialise les capacités « par combat », et permet de consommer un dé de récupération pour se soigner de [dé + ½ niveau] PV (p. 221)."
-          arrow
         >
           <Button size="small" variant="outlined" startIcon={<TimerIcon />} onClick={() => setShortRestOpen(true)}>
             Repos court
           </Button>
-        </Tooltip>
-        <Tooltip
+        </AppTooltip>
+        <AppTooltip
           title="Récupération complète (8 h, 1/jour) : mana plein, +1 dé de récupération, dégâts temporaires régénérés, capacités quotidiennes réinitialisées (p. 221-222, 229)."
-          arrow
         >
           <Button size="small" variant="outlined" startIcon={<HotelIcon />} onClick={() => setLongRestOpen(true)}>
             Repos long
           </Button>
-        </Tooltip>
+        </AppTooltip>
         {recoveryDiceMax > 0 && (
           <>
             <Box sx={{ flexGrow: 1 }} />

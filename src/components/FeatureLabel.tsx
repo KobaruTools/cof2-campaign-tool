@@ -1,7 +1,7 @@
 'use client';
 
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
+import { AppTooltip } from '@/components/AppTooltip';
 import type { ActionType, Feature } from '@/data/schema';
 import { canConcentrate } from '@/lib/engine';
 
@@ -49,11 +49,11 @@ export function FeatureLabel({ feature, concentration = false, pathRank }: Featu
     <Box component="span">
       {feature.name}
       {feature.isSpell && (
-        <Tooltip title="Sort" arrow>
+        <AppTooltip title="Sort">
           <Box component="span" sx={{ fontWeight: 700, color: 'info.main', cursor: 'default' }}>
             *
           </Box>
-        </Tooltip>
+        </AppTooltip>
       )}
       {feature.actionTypes.map((a) =>
         // Concentration : le (A) devient (L), affiché en accent avec une infobulle
@@ -61,23 +61,23 @@ export function FeatureLabel({ feature, concentration = false, pathRank }: Featu
         concentrated && a === 'A' ? (
           <Box component="span" key={a}>
             {' '}
-            <Tooltip title="Concentration : lancé en action limitée (L) au lieu de (A) (p. 228)" arrow>
+            <AppTooltip title="Concentration : lancé en action limitée (L) au lieu de (A) (p. 228)">
               <Box component="span" sx={{ fontWeight: 700, color: 'info.main', cursor: 'default' }}>
                 (L)
               </Box>
-            </Tooltip>
+            </AppTooltip>
           </Box>
         ) : (
           <Box component="span" key={a}>
             {' '}
-            <Tooltip title={ACTION_TYPE_LABELS[a]} arrow>
+            <AppTooltip title={ACTION_TYPE_LABELS[a]}>
               <Box
                 component="span"
                 sx={{ fontWeight: 700, color: 'text.secondary', cursor: 'default' }}
               >
                 ({a})
               </Box>
-            </Tooltip>
+            </AppTooltip>
           </Box>
         ),
       )}
@@ -86,14 +86,14 @@ export function FeatureLabel({ feature, concentration = false, pathRank }: Featu
         // précisant la condition de rang dans la voie.
         <Box component="span" key={`fromRank-${a}`}>
           {' '}
-          <Tooltip title={`${ACTION_TYPE_LABELS[a]} — à partir du rang ${fromRank!.rank} de la voie`} arrow>
+          <AppTooltip title={`${ACTION_TYPE_LABELS[a]} — à partir du rang ${fromRank!.rank} de la voie`}>
             <Box
               component="span"
               sx={{ fontWeight: 700, color: 'text.secondary', cursor: 'default' }}
             >
               ({a})
             </Box>
-          </Tooltip>
+          </AppTooltip>
         </Box>
       ))}
     </Box>

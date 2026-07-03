@@ -25,7 +25,6 @@ import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { classById, featureById, pathById, progression } from '@/data';
@@ -53,6 +52,7 @@ import {
   type PendingDivine,
 } from '@/lib/character/choices';
 import { classColor } from '@/lib/ui/classColors';
+import { AppTooltip } from '@/components/AppTooltip';
 import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
 import { RichInline } from '@/components/sheet/FeatureRichText';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
@@ -156,16 +156,15 @@ function AvailablePathGroup({
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                     <FeatureLabel feature={feature} />
                   </Typography>
-                  <Tooltip
+                  <AppTooltip
                     title={
                       skipped?.hostPathName
                         ? `Détenue via la capacité divine (logée dans « ${skipped.hostPathName} ») — rang sauté, p. 122`
                         : 'Détenue via la capacité divine — rang sauté, p. 122'
                     }
-                    arrow
                   >
                     <Chip label="✦ Détenu (capacité divine) — rang sauté" size="small" />
-                  </Tooltip>
+                  </AppTooltip>
                 </Stack>
               </Box>
             );
@@ -205,9 +204,8 @@ function AvailablePathGroup({
                     <FeatureLabel feature={feature} />
                   </Typography>
                   {afterSkip && (
-                    <Tooltip
+                    <AppTooltip
                       title={`Rang ${skipped!.rank} détenu via la capacité divine : ce rang est accessible directement (skip, p. 122)`}
-                      arrow
                     >
                       <Chip
                         label={`Après saut du rang ${skipped!.rank}`}
@@ -215,10 +213,10 @@ function AvailablePathGroup({
                         color="secondary"
                         variant="outlined"
                       />
-                    </Tooltip>
+                    </AppTooltip>
                   )}
                 </Stack>
-                <Tooltip
+                <AppTooltip
                   title={
                     locked
                       ? 'Capacité divine à choisir d’abord (priorité absolue, p. 122)'
@@ -226,7 +224,6 @@ function AvailablePathGroup({
                         ? `Coût ${cost} points — il vous reste ${remaining} point${remaining > 1 ? 's' : ''}`
                         : ''
                   }
-                  arrow
                 >
                   <Box component="span" sx={{ mr: 1, flexShrink: 0 }}>
                     <Button
@@ -243,7 +240,7 @@ function AvailablePathGroup({
                       Choisir
                     </Button>
                   </Box>
-                </Tooltip>
+                </AppTooltip>
               </AccordionSummary>
               <AccordionDetails>
                 <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
@@ -349,7 +346,7 @@ function DivineAcquisitionCard({
           </Select>
         </FormControl>
         {!picked ? (
-          <Tooltip
+          <AppTooltip
             title={
               hosts.length === 0
                 ? 'Aucune voie de prêtre éligible pour accueillir la capacité divine à ce niveau'
@@ -359,7 +356,6 @@ function DivineAcquisitionCard({
                     ? `Coût ${cost} point${cost > 1 ? 's' : ''} — il vous reste ${remaining}`
                     : ''
             }
-            arrow
           >
             <Box component="span">
               <Button
@@ -373,13 +369,13 @@ function DivineAcquisitionCard({
                 Choisir
               </Button>
             </Box>
-          </Tooltip>
+          </AppTooltip>
         ) : (
-          <Tooltip title="Retirer la capacité divine" arrow>
+          <AppTooltip title="Retirer la capacité divine">
             <IconButton size="small" color="error" onClick={onRemove}>
               <DeleteOutlineIcon fontSize="small" />
             </IconButton>
-          </Tooltip>
+          </AppTooltip>
         )}
       </Stack>
 
@@ -720,11 +716,11 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                           </Box>
                           <FeatureLabel feature={feature} />
                         </Typography>
-                        <Tooltip title="Retirer ce choix" arrow>
+                        <AppTooltip title="Retirer ce choix">
                           <IconButton size="small" color="error" onClick={() => remove(feature.id)}>
                             <DeleteOutlineIcon fontSize="small" />
                           </IconButton>
-                        </Tooltip>
+                        </AppTooltip>
                       </Stack>
                       {/* Choix porté par la capacité : à résoudre (bloquant). Masqué tant
                           qu'aucun choix n'est actionnable (ex. choix répétable sans palier). */}
@@ -937,16 +933,15 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
       </DialogContent>
       <DialogActions>
         <Button onClick={close}>Annuler</Button>
-        <Tooltip
+        <AppTooltip
           title={choicesPending ? 'Résolvez les choix des capacités sélectionnées' : ''}
-          arrow
         >
           <Box component="span">
             <Button variant="contained" onClick={confirm} disabled={choicesPending}>
               Valider le niveau {newLevel}
             </Button>
           </Box>
-        </Tooltip>
+        </AppTooltip>
       </DialogActions>
     </Dialog>
   );

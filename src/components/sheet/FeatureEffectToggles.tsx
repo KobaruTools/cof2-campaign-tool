@@ -18,8 +18,8 @@
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { AppTooltip } from '@/components/AppTooltip';
 import type { ConditionalStatBonusEffect, DerivedStatId } from '@/data/schema';
 import { testDomainById } from '@/data';
 import type { Character } from '@/lib/character/types';
@@ -128,14 +128,14 @@ export function FeatureEffectToggles({
     return (
       <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
         {entries.map(({ index, effect }) => (
-          <Tooltip key={index} title={effectLabel(character, featureId, index, effect)} arrow>
+          <AppTooltip key={index} title={effectLabel(character, featureId, index, effect)}>
             <Switch
               size="small"
               checked={isEffectActive(character, featureId, index)}
               disabled={!onToggle || disabled || prereqUnmet(effect) || reactivationLocked(index)}
               onChange={(e) => onToggle?.(featureId, index, e.target.checked)}
             />
-          </Tooltip>
+          </AppTooltip>
         ))}
       </Stack>
     );

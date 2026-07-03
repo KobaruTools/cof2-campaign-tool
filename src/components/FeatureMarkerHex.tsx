@@ -3,11 +3,11 @@
 import EmergencyIcon from '@mui/icons-material/Emergency';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Tooltip from '@mui/material/Tooltip';
 import { darken, type SxProps, type Theme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import type { Feature } from '@/data/schema';
 import { canConcentrate } from '@/lib/engine';
+import { AppTooltip } from '@/components/AppTooltip';
 import { ACTION_TYPE_LABELS } from '@/components/FeatureLabel';
 
 /**
@@ -35,7 +35,7 @@ function Hex({
   children: ReactNode;
 }) {
   return (
-    <Tooltip title={label} arrow>
+    <AppTooltip title={label}>
       <Box
         role="img"
         aria-label={label}
@@ -85,7 +85,7 @@ function Hex({
           {children}
         </Box>
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }
 

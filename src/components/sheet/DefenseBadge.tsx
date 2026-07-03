@@ -1,13 +1,13 @@
 'use client';
 
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import ShieldIcon from '@mui/icons-material/Shield';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import { alpha } from '@mui/material/styles';
 import type { ImmunityId, ResistibleDamageType } from '@/data/schema';
 import { featureOrigin } from '@/lib/ui/featureOrigin';
+import { AppTooltip } from '@/components/AppTooltip';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
@@ -106,7 +106,7 @@ export function DefenseBadge({
     </Box>
   );
   return (
-    <Tooltip title={tooltip} arrow>
+    <AppTooltip title={tooltip}>
       <Box
         sx={(theme) => ({
           display: 'inline-flex',
@@ -138,6 +138,6 @@ export function DefenseBadge({
         {!scope && variant === 'reduction' && <Box component="span">RD</Box>}
         {text && <Box component="span">{text}</Box>}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }

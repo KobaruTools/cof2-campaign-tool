@@ -2,8 +2,8 @@
 
 import type { ReactNode } from 'react';
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
 import { darken } from '@mui/material/styles';
+import { AppTooltip } from '@/components/AppTooltip';
 
 export interface GaugeIconCapProps {
   /** Couleur (concrète) de la barre : le fond reprend la teinte assombrie (même que le cap d'expansion). */
@@ -25,7 +25,7 @@ export interface GaugeIconCapProps {
  */
 export function GaugeIconCap({ color, label, height = 24, children }: GaugeIconCapProps) {
   return (
-    <Tooltip title={label} arrow>
+    <AppTooltip title={label}>
       <Box
         sx={{
           display: 'inline-flex',
@@ -40,6 +40,6 @@ export function GaugeIconCap({ color, label, height = 24, children }: GaugeIconC
       >
         {children}
       </Box>
-    </Tooltip>
+    </AppTooltip>
   );
 }

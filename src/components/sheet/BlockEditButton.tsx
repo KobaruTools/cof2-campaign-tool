@@ -3,7 +3,7 @@
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
 import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
+import { AppTooltip } from '@/components/AppTooltip';
 
 export interface BlockEditButtonProps {
   /** Vrai si ce bloc est actuellement en édition. */
@@ -21,7 +21,7 @@ export interface BlockEditButtonProps {
  */
 export function BlockEditButton({ editing, onToggle, label }: BlockEditButtonProps) {
   return (
-    <Tooltip title={editing ? `Terminer — ${label}` : `Modifier — ${label}`}>
+    <AppTooltip title={editing ? `Terminer — ${label}` : `Modifier — ${label}`}>
       <IconButton
         size="small"
         color={editing ? 'primary' : 'default'}
@@ -30,6 +30,6 @@ export function BlockEditButton({ editing, onToggle, label }: BlockEditButtonPro
       >
         {editing ? <DoneIcon fontSize="small" /> : <EditIcon fontSize="small" />}
       </IconButton>
-    </Tooltip>
+    </AppTooltip>
   );
 }

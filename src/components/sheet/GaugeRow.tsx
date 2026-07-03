@@ -10,7 +10,7 @@ import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
-import Tooltip from '@mui/material/Tooltip';
+import { AppTooltip } from '@/components/AppTooltip';
 import { GaugeBar, GaugeValueLabel, type GaugeSegment } from './GaugeBar';
 import { GaugeExpandToggle } from './GaugeExpandToggle';
 import { GaugeIconCap } from './GaugeIconCap';
@@ -128,27 +128,27 @@ export function GaugeRow({
             />
           </Box>
         </Stack>
-        <Tooltip title={`${spendLabel} 1`} arrow>
+        <AppTooltip title={`${spendLabel} 1`}>
           <span>
             <IconButton size="small" aria-label={`${spendLabel} 1`} disabled={empty} onClick={() => onSpend(1)}>
               <RemoveIcon fontSize="small" />
             </IconButton>
           </span>
-        </Tooltip>
-        <Tooltip title={`${restoreLabel} 1`} arrow>
+        </AppTooltip>
+        <AppTooltip title={`${restoreLabel} 1`}>
           <span>
             <IconButton size="small" aria-label={`${restoreLabel} 1`} disabled={full} onClick={() => onRestore(1)}>
               <AddIcon fontSize="small" />
             </IconButton>
           </span>
-        </Tooltip>
-        <Tooltip title="Remettre à plein" arrow>
+        </AppTooltip>
+        <AppTooltip title="Remettre à plein">
           <span>
             <IconButton size="small" aria-label="Remettre à plein" disabled={full} onClick={onReset}>
               <RestartAltIcon fontSize="small" />
             </IconButton>
           </span>
-        </Tooltip>
+        </AppTooltip>
       </Stack>
 
       <Collapse in={expanded} unmountOnExit>

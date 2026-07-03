@@ -2,11 +2,11 @@
 
 import type { ReactElement } from 'react';
 import Box from '@mui/material/Box';
-import Tooltip from '@mui/material/Tooltip';
 import type { AbilityId, Ancestry } from '@/data/schema';
 import type { AncestryChoice } from '@/lib/character/ancestry';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { abilityBreakdown, type AbilityFeatureTerm } from '@/lib/ui/abilityBreakdown';
+import { AppTooltip } from '@/components/AppTooltip';
 import { BreakdownContent } from '@/components/BreakdownContent';
 import { SourceRef } from '@/components/SourceRef';
 
@@ -45,9 +45,5 @@ export function AbilityBreakdownTooltip({
       <SourceRef page={bd.page} sx={{ display: 'block', mt: 1 }} />
     </Box>
   );
-  return (
-    <Tooltip title={title} arrow>
-      {children}
-    </Tooltip>
-  );
+  return <AppTooltip title={title}>{children}</AppTooltip>;
 }
