@@ -564,7 +564,9 @@ function ReferencedFeatureAccordion({
   // IconButton, le bouton de création vit à côté, sans imbrication.
   return (
     <Box sx={REFERENCED_SPELL_BLOCK_SX}>
-      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', gap: 0.5 }}>
+      {/* Pas de `spacing` (il pose un margin-left sur chaque enfant qui écraserait le `ml: auto` du
+          bouton « Créer cet élixir ») : l'espacement passe par `gap`. */}
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5 }}>
         <IconButton
           size="small"
           aria-label={expanded ? 'Replier le sort' : 'Déplier le sort'}
@@ -669,7 +671,9 @@ function BorrowedPowerRow({
   const broken = (character.usageCounters?.[integrityKey] ?? 1) <= 0;
   return (
     <Box sx={{ ...REFERENCED_SPELL_BLOCK_SX, opacity: broken ? 0.72 : 1 }}>
-      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+      {/* Pas de `spacing` (il pose un margin-left sur chaque enfant qui écraserait le `ml: auto` de
+          la boîte de droite) : l'espacement passe par `gap`. */}
+      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
         <IconButton
           size="small"
           aria-label={expanded ? 'Replier le sort' : 'Déplier le sort'}
