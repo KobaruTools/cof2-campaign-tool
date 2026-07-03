@@ -55,6 +55,7 @@ function validRaw(): Record<string, unknown> {
     effectInputs: {},
     usageCounters: {},
     depletion: {},
+    purse: { gold: 0, silver: 0, copper: 0 },
     levelUpHistory: [],
     equipment: [],
     overrides: {},
@@ -349,7 +350,30 @@ describe('migrateCharacter', () => {
     expect(() => migrateCharacter(raw)).toThrow(ValidationError);
   });
 
-  it('expose les migrations 1→2 … 10→11 dans le registre', () => {
+  it('migre un personnage v11 vers v12 (purse initialisé à vide)', () => {
+    const v11 = validRaw();
+    v11.schemaVersion = 11;
+    delete v11.purse;
+    const c = migrateCharacter(v11);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.purse).toEqual({ gold: 0, silver: 0, copper: 0 });
+  });
+
+  it('préserve la bourse déjà présente lors d’un chargement v12', () => {
+    const v12 = validRaw();
+    v12.purse = { gold: 12, silver: 3, copper: 5 };
+    const c = migrateCharacter(v12);
+    expect(c.purse).toEqual({ gold: 12, silver: 3, copper: 5 });
+  });
+
+  it('refuse un objet sans purse à la version courante', () => {
+    const raw = validRaw();
+    delete raw.purse;
+    raw.schemaVersion = SCHEMA_VERSION; // pas de migration : la validation doit échouer
+    expect(() => migrateCharacter(raw)).toThrow(ValidationError);
+  });
+
+  it('expose les migrations 1→2 … 11→12 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -360,5 +384,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[8]).toBe('function');
     expect(typeof MIGRATIONS[9]).toBe('function');
     expect(typeof MIGRATIONS[10]).toBe('function');
+    expect(typeof MIGRATIONS[11]).toBe('function');
   });
 });

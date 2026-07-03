@@ -36,8 +36,9 @@ import type { AncestryChoice } from './ancestry';
  *   avertissement de fourchette).
  * v11 : ajout de `depletion` (dépletion transitoire des jauges — MANQUE des PV
  *   décomposé létal/temp, et mana dépensé — PER-147).
+ * v12 : ajout de `purse` (argent possédé, par unité or/argent/cuivre — PER-152).
  */
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 /**
  * Manque de PV, décomposé selon la nature des dégâts (p. 218/220) :
@@ -70,6 +71,28 @@ export interface Depletion {
   mana?: number;
   /** Dés de récupération (DR) dépensés (PER-151). Absent = réserve de DR pleine. */
   recoveryDice?: number;
+}
+
+/**
+ * Bourse du personnage (PER-152) : argent possédé, structuré par unité de monnaie
+ * CO2 (livre de base, p. 181, « Système monétaire »). Codes du livre conservés en
+ * commentaire : `gold` = pièce d'or (po), `silver` = pièce d'argent (pa),
+ * `copper` = pièce de cuivre (pc). Conversion : 1 po = 10 pa = 100 pc (la platine
+ * `pp`, quasi-mythique, n'est pas suivie — comme dans `src/data/equipment.ts`).
+ *
+ * État de jeu transitoire (modifiable hors mode « Modifier », au même titre que
+ * `depletion`/`usageCounters`), mais NON réinitialisé par un repos : l'argent ne
+ * se régénère pas. Chaque unité est un entier ≥ 0 ; les valeurs ne sont pas
+ * normalisées automatiquement (10 pa ≠ forcément regroupées en 1 po — le joueur
+ * décide), voir `src/lib/character/purse.ts`.
+ */
+export interface Purse {
+  /** Pièces d'or (po). */
+  gold: number;
+  /** Pièces d'argent (pa) — unité de référence des prix d'équipement. */
+  silver: number;
+  /** Pièces de cuivre (pc) — unité de base. */
+  copper: number;
 }
 
 /**
@@ -290,6 +313,13 @@ export interface Character {
    * `Depletion` et `src/lib/character/gauges.ts`. `{}` = toutes les jauges pleines.
    */
   depletion: Depletion;
+
+  /**
+   * Argent possédé (PER-152). État de jeu transitoire (modifiable hors mode
+   * « Modifier »), non affecté par un repos. Voir `Purse` et
+   * `src/lib/character/purse.ts`.
+   */
+  purse: Purse;
 
   /** Historique des montées de niveau (permet « qu'ai-je pris au niveau N ? »). */
   levelUpHistory: LevelUpEntry[];

@@ -248,6 +248,18 @@ function migrateV10toV11(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v11 → v12 : ajout de `purse` (argent possédé, par unité or/argent/cuivre —
+ * PER-152). Les personnages d'avant v12 n'ont pas de bourse renseignée : on
+ * initialise une bourse vide (0 dans chaque unité).
+ */
+function migrateV11toV12(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.purse) === null) next.purse = { gold: 0, silver: 0, copper: 0 };
+  next.schemaVersion = 12;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -262,6 +274,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   8: migrateV8toV9,
   9: migrateV9toV10,
   10: migrateV10toV11,
+  11: migrateV11toV12,
 };
 
 export class MigrationError extends Error {}
@@ -338,6 +351,9 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   }
   if (typeof data.depletion !== 'object' || data.depletion === null) {
     fail('Champ « depletion » manquant ou invalide.');
+  }
+  if (typeof data.purse !== 'object' || data.purse === null) {
+    fail('Champ « purse » manquant ou invalide.');
   }
   if (!Array.isArray(data.equipment)) fail('Champ « equipment » manquant ou invalide.');
   if (!Array.isArray(data.levelUpHistory)) fail('Champ « levelUpHistory » manquant ou invalide.');

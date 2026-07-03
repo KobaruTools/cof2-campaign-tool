@@ -13,6 +13,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
@@ -82,6 +83,7 @@ import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRan
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
+import { PurseField } from '@/components/sheet/PurseField';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
 import {
@@ -579,6 +581,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Repos long : `heal` → dépenser le DR gagné pour un soin à la valeur MAX du dé (p. 222).
   const doLongRest = (heal: boolean) =>
     update(longRest(character, heal ? { dieFaces: Number.parseInt(recoveryDie.slice(1), 10) || 0 } : undefined));
+  // Bourse (PER-152) : argent possédé, état de jeu transitoire (non touché par un repos).
+  const setPurse = (purse: Character['purse']) => update({ purse });
   // Ressources de capacité (rage, sept vies…) surfacées en jauges (PER-150) : lues depuis les
   // MÊMES `usageCounters` que FeaturesByPath (source unique). L'écriture passe par le setter existant.
   const capacityGauges = capacityResourceGauges(character);
@@ -916,6 +920,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               )
             }
           >
+            {/* Bourse (PER-152) : argent possédé, état de jeu transitoire (éditable hors mode
+                « Modifier », non affecté par un repos). En tête du bloc équipement. */}
+            <PurseField purse={character.purse} onChange={setPurse} />
+            <Divider sx={{ my: 1.5 }} />
             <EquipmentList
               equipment={character.equipment}
               onChange={editingBlocks.equipment ? setEquipment : undefined}
