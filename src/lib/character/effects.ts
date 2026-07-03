@@ -848,6 +848,19 @@ export function isTemporaryActivationShortRestLocked(
 }
 
 /**
+ * PER-162 — surcoût en mana CROISSANT courant d'un sort (en PM) : `lancements × step`, où le nombre
+ * de lancements depuis le dernier reset est lu dans `usageCounters` sous l'id de la capacité (absence
+ * ⇒ 0). Retourne 0 si la capacité ne porte pas d'`escalatingManaCost`. À ajouter par-dessus le coût
+ * de base (`spellManaCost`) pour obtenir le coût effectif affiché.
+ */
+export function escalatingManaSurcharge(character: Character, feature: Feature): number {
+  const esc = feature.escalatingManaCost;
+  if (!esc) return 0;
+  const casts = Math.max(0, character.usageCounters?.[feature.id] ?? 0);
+  return casts * (esc.step ?? 1);
+}
+
+/**
  * Élague les compteurs d'usages (`usageCounters`, PER-70) dont la capacité n'est
  * plus acquise — mêmes raisons que `pruneEffectToggles` (pas de décompte fantôme).
  */
@@ -868,6 +881,8 @@ export function pruneUsageCounters(
     // Verrou « 1 dépense par repos court » (PER-160) : sa clé d'état dérivée est aussi valide.
     if (counter.oncePerShortRest) validKeys.add(shortRestLockKey(key));
   }
+  // PER-162 : le surcoût croissant stocke ses lancements sous l'id de la capacité — déjà couvert par
+  // `owned`, donc rien à ajouter ici (mentionné pour mémoire ; la clé survit à l'élagage).
   const next: Record<string, number> = {};
   for (const [key, value] of Object.entries(usageCounters)) {
     if (validKeys.has(key)) next[key] = value;
@@ -961,12 +976,17 @@ export function resetUsageCounters(
 ): Record<string, number> {
   const toReset = new Set<string>();
   for (const id of featureIds) {
-    const counter = featureById.get(id)?.usageCounter;
-    if (!counter) continue;
-    const key = counter.sharedKey ?? id;
-    if (triggers.has(counter.resetOn ?? 'day')) toReset.add(key);
-    // Verrou « 1 dépense par repos court » (PER-160) : levé par tout repos court (donc aussi long).
-    if (counter.oncePerShortRest && triggers.has('short-rest')) toReset.add(shortRestLockKey(key));
+    const feature = featureById.get(id);
+    const counter = feature?.usageCounter;
+    if (counter) {
+      const key = counter.sharedKey ?? id;
+      if (triggers.has(counter.resetOn ?? 'day')) toReset.add(key);
+      // Verrou « 1 dépense par repos court » (PER-160) : levé par tout repos court (donc aussi long).
+      if (counter.oncePerShortRest && triggers.has('short-rest')) toReset.add(shortRestLockKey(key));
+    }
+    // PER-162 : surcoût mana croissant — retomber à 0 = retirer la clé (id de la capacité), comme un
+    // compteur classique (ici « à plein » signifie « à 0 », baseline du modèle croissant).
+    if (feature?.escalatingManaCost && triggers.has(feature.escalatingManaCost.resetOn)) toReset.add(id);
   }
   const next: Record<string, number> = {};
   for (const [key, value] of Object.entries(usageCounters)) {

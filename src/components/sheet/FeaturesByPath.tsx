@@ -52,6 +52,7 @@ import {
   conditionalEffectsOf,
   creatureBonusDiceForPath,
   disabledFeatureReasons,
+  escalatingManaSurcharge,
   isEffectActive,
   shortRestLockKey,
   usageCounterMaximum,
@@ -1119,6 +1120,70 @@ function UsageCounterField({
 }
 
 /**
+ * Surcoût en mana CROISSANT (PER-162, ex. Foudres divines / foi-r5) : le sort coûte +`step` PM par
+ * lancement jusqu'au repos court. Rend le surcoût courant, un bouton « Lancer (+PM) » qui l'incrémente
+ * et une remise à zéro. Modèle ISOLÉ des compteurs « usages restants » (sémantique inverse) mais
+ * réutilise le même handler `onSet` (branché sur `setUsageCounterValue`, qui détecte l'escalade).
+ */
+function EscalatingManaCostRow({
+  feature,
+  character,
+  onSet,
+}: {
+  feature: Feature;
+  character: Character;
+  onSet?: (counterKey: string, value: number, max: number) => void;
+}) {
+  const esc = feature.escalatingManaCost;
+  if (!esc) return null;
+  const step = esc.step ?? 1;
+  const casts = Math.max(0, character.usageCounters?.[feature.id] ?? 0);
+  const surcharge = escalatingManaSurcharge(character, feature);
+  return (
+    <Stack sx={{ mt: 1 }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Surcoût en mana :
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 44, textAlign: 'center' }}
+        >
+          +{surcharge} PM
+        </Typography>
+        {onSet && (
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<AddIcon fontSize="small" />}
+            onClick={() => onSet(feature.id, casts + 1, 0)}
+          >
+            Lancer (+{step} PM)
+          </Button>
+        )}
+        {onSet && (
+          <Tooltip title="Remettre le surcoût à 0" arrow>
+            <span>
+              <IconButton
+                size="small"
+                aria-label="Remettre le surcoût à 0"
+                disabled={casts <= 0}
+                onClick={() => onSet(feature.id, 0, 0)}
+              >
+                <RestartAltIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
+      </Stack>
+      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, fontStyle: 'italic' }}>
+        +{step} PM par lancement ; remis à 0 à la récupération rapide (repos court).
+      </Typography>
+    </Stack>
+  );
+}
+
+/**
  * Indicateur COMPACT d'un compteur d'usages (vue colonne) : une rangée de pastilles
  * — pleines pour les usages restants, creuses pour les usages consommés — avec le
  * décompte « N/max » et une info-bulle. Lecture seule (l'édition −/+ se fait dans la
@@ -1783,6 +1848,7 @@ function PathBlock({
             <SpellManaBadge
               feature={borrowed ?? feature}
               concentration={concentration}
+              surcharge={character ? escalatingManaSurcharge(character, borrowed ?? feature) : 0}
               color={(borrowed ? borrowedColor : color) ?? undefined}
               sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
             />
@@ -2246,6 +2312,18 @@ function PathBlock({
                       )}
                     </>
                   )}
+                {/* PER-162 : surcoût mana croissant (Foudres divines) — bloc dédié, indépendant des
+                    compteurs d'usages (foi-r5 n'en porte pas). */}
+                {openFeature.escalatingManaCost && character && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <EscalatingManaCostRow
+                      feature={openFeature}
+                      character={character}
+                      onSet={onSetUsageCounter}
+                    />
+                  </>
+                )}
               </DialogContent>
             </>
           )}
@@ -2371,6 +2449,7 @@ function PathBlock({
               <SpellManaBadge
                 feature={feature}
                 concentration={concentration}
+                surcharge={character ? escalatingManaSurcharge(character, feature) : 0}
                 color={color ?? undefined}
                 sx={{ alignSelf: 'center', mr: 1 }}
               />
@@ -2497,6 +2576,13 @@ function PathBlock({
                     )}
                   </>
                 )}
+              {/* PER-162 : surcoût mana croissant (Foudres divines) — bloc dédié, indépendant des compteurs. */}
+              {feature.escalatingManaCost && character && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  <EscalatingManaCostRow feature={feature} character={character} onSet={onSetUsageCounter} />
+                </>
+              )}
               {repl?.replacedFeature && (
                 <Accordion
                   disableGutters

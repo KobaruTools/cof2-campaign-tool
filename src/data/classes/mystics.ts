@@ -1157,8 +1157,10 @@ export const mysticFeatures: Feature[] = [
     text:
       "La foudre frappe toutes les créatures désignées dans un rayon de 10 m autour du prêtre et leur inflige [2d4°+CHA] DM (pas de test d'attaque requis). Ce sort est gourmand en énergie et son coût augmente de +1 PM à chaque utilisation tant que le prêtre n'a pas terminé une récupération rapide.",
     // « +1 PM par utilisation » = surcoût DYNAMIQUE (par-dessus le coût de base) → pas de manaCost.
+    // PER-162 : surcoût CROISSANT modélisé — +1 PM par lancement, remis à 0 à la récupération rapide.
     richText:
       "La foudre frappe toutes les créatures désignées dans un rayon de 10 m autour du prêtre et leur inflige [2d4° + CHA] DM (pas de test d'attaque requis). Ce sort est gourmand en énergie et son coût augmente de +1 PM à chaque utilisation tant que le prêtre n'a pas terminé une récupération rapide.",
+    escalatingManaCost: { resetOn: 'short-rest' },
     sourcePage: 123,
   },
   // =======================================================================

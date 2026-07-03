@@ -108,6 +108,18 @@ describe('repos — extinction des états temporaires (PER-161)', () => {
   });
 });
 
+describe('repos — surcoût mana croissant (foi-r5, PER-162)', () => {
+  const withSurcharge = make({ featureIds: ['foi-r5'], usageCounters: { 'foi-r5': 3 } });
+
+  it('le repos court remet le surcoût croissant à 0', () => {
+    expect(shortRest(withSurcharge).usageCounters).toEqual({});
+  });
+
+  it('le repos long remet aussi le surcoût croissant à 0', () => {
+    expect(longRest(withSurcharge).usageCounters).toEqual({});
+  });
+});
+
 describe('resetAll — tout réinitialiser', () => {
   it('vide toutes les jauges, tous les compteurs et tous les interrupteurs', () => {
     expect(resetAll()).toEqual({ depletion: {}, usageCounters: {}, effectToggles: {} });

@@ -46,6 +46,13 @@ export interface SpellManaBadgeProps {
    * sorts non éligibles (cf. `canConcentrate`).
    */
   concentration?: boolean;
+  /**
+   * Surcoût en mana CROISSANT courant (PER-162), en PM, ajouté PAR-DESSUS le coût affiché (ex.
+   * Foudres divines : +1 PM par lancement depuis le dernier repos court). > 0 → la goutte montre le
+   * coût total et signale le surcoût (halo + infobulle). Défaut 0 (aucun surcoût). Calculé par
+   * l'appelant (état de jeu, `escalatingManaSurcharge`) — le badge reste présentationnel.
+   */
+  surcharge?: number;
   /** Diamètre de la goutte en pixels. Défaut 30. */
   size?: number;
   /**
@@ -64,25 +71,36 @@ export interface SpellManaBadgeProps {
  * (cf. `spellManaCost`, PER-65). Ne rend rien pour une capacité qui n'est pas un
  * sort (pas de coût de mana).
  */
-export function SpellManaBadge({ feature, concentration = false, size = 30, color, sx }: SpellManaBadgeProps) {
+export function SpellManaBadge({ feature, concentration = false, surcharge = 0, size = 30, color, sx }: SpellManaBadgeProps) {
   const baseCost = spellManaCost(feature);
   if (baseCost === null) return null;
   // Concentration active ET sort éligible (lancé en (A)) : on affiche le coût
   // réduit. Sinon la pastille montre le coût de base inchangé.
   const concentrated = concentration && canConcentrate(feature);
   const cost = concentrated ? (concentratedSpellManaCost(feature) ?? baseCost) : baseCost;
+  // PER-162 : surcoût croissant ajouté par-dessus (peut se cumuler avec la réduction de concentration).
+  const surcharged = surcharge > 0;
+  const displayCost = cost + Math.max(0, surcharge);
+  const tooltip = concentrated
+    ? concentrationCostExplanation(baseCost, cost)
+    : manaCostExplanation(feature, cost);
+  const fullTooltip = surcharged
+    ? `${tooltip}\n\nSurcoût actuel : +${surcharge} PM (coût croissant, +1 PM par lancement, remis à 0 au repos court, p. 123).\nCoût total à payer maintenant : ${displayCost} PM.`
+    : tooltip;
   return (
     <Tooltip
-      title={concentrated ? concentrationCostExplanation(baseCost, cost) : manaCostExplanation(feature, cost)}
+      title={fullTooltip}
       arrow
       slotProps={{ tooltip: { sx: { whiteSpace: 'pre-line', maxWidth: 300 } } }}
     >
       <Box
         role="img"
         aria-label={
-          concentrated
-            ? `Coût en concentration : ${cost} points de mana`
-            : `Coût : ${cost} points de mana`
+          surcharged
+            ? `Coût actuel : ${displayCost} points de mana (dont +${surcharge} de surcoût croissant)`
+            : concentrated
+              ? `Coût en concentration : ${displayCost} points de mana`
+              : `Coût : ${displayCost} points de mana`
         }
         sx={{ position: 'relative', width: size, height: size, flexShrink: 0, lineHeight: 0, ...sx }}
       >
@@ -99,12 +117,15 @@ export function SpellManaBadge({ feature, concentration = false, size = 30, colo
             // 'info.main' : sur un SVG, `fill` ne résout pas la clé de palette MUI et
             // la goutte retombait au noir (voie du mage / prestige, sans couleur de profil).
             fill: color ? darken(color, 0.25) : (theme) => theme.palette.info.main,
-            // Concentration : halo bleu mana épousant la goutte pour signaler le
-            // coût réduit ; ombre portée simple sinon.
-            filter: concentrated
+            // Concentration : halo bleu mana ; surcoût croissant (PER-162) : halo ambré d'alerte
+            // (coût gonflé) — prioritaire visuellement ; ombre portée simple sinon.
+            filter: surcharged
               ? (theme) =>
-                  `drop-shadow(0 1px 1px rgba(0,0,0,0.35)) drop-shadow(0 0 4px ${theme.palette.info.main})`
-              : 'drop-shadow(0 1px 1px rgba(0,0,0,0.35))',
+                  `drop-shadow(0 1px 1px rgba(0,0,0,0.35)) drop-shadow(0 0 4px ${theme.palette.warning.main})`
+              : concentrated
+                ? (theme) =>
+                    `drop-shadow(0 1px 1px rgba(0,0,0,0.35)) drop-shadow(0 0 4px ${theme.palette.info.main})`
+                : 'drop-shadow(0 1px 1px rgba(0,0,0,0.35))',
           }}
           dangerouslySetInnerHTML={{ __html: MANA_DROP_PATH }}
         />
@@ -127,7 +148,7 @@ export function SpellManaBadge({ feature, concentration = false, size = 30, colo
             pointerEvents: 'none',
           }}
         >
-          {cost}
+          {displayCost}
         </Box>
       </Box>
     </Tooltip>

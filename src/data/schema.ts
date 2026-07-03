@@ -1270,6 +1270,24 @@ export interface CreatureProfile {
 export type UsageResetTrigger = 'day' | 'short-rest' | 'combat' | 'manual';
 
 /**
+ * Surcoût en mana CROISSANT d'un sort (PER-162) — modèle ISOLÉ, distinct de `UsageCounter`
+ * (« usages restants / max ») car sa sémantique est INVERSE : il démarre à 0 et s'incrémente à
+ * chaque lancement, sans plafond, puis retombe à 0 à un déclencheur (pas « remis au max »).
+ * Cas du livre : Foudres divines (foi-r5, prêtre) — « son coût augmente de +1 PM à chaque
+ * utilisation tant que le prêtre n'a pas terminé une récupération rapide » (`resetOn: 'short-rest'`).
+ *
+ * Le décompte courant (nombre de lancements depuis le dernier reset) est un état de jeu porté par
+ * `Character.usageCounters` sous l'id de la capacité (absence ⇒ 0). Coût effectif du sort =
+ * `spellManaCost` + `lancements × step`. N'a de sens que si `isSpell`.
+ */
+export interface EscalatingManaCost {
+  /** PM ajoutés à CHAQUE lancement. Défaut 1 (seul cas du livre). */
+  step?: number;
+  /** Déclencheur qui remet le surcoût cumulé à 0. Cas du livre : `'short-rest'`. */
+  resetOn: UsageResetTrigger;
+}
+
+/**
  * Compteur d'USAGES LIMITÉS d'une capacité (PER-70) — concept de règles nommé
  * (« cette capacité ne peut être utilisée que N fois »). DÉCLARATION côté données
  * (le maximum) ; le décompte courant est un état de jeu porté par le personnage
@@ -1516,6 +1534,14 @@ export interface Feature {
    * le surcoût d'armure (= bonus de DEF de l'armure, p. 178, milestone Armures).
    */
   manaCost?: number;
+  /**
+   * Surcoût en mana CROISSANT (PER-162) : le coût du sort augmente de `step` PM (défaut 1) à
+   * chaque lancement jusqu'au `resetOn` (ex. Foudres divines / foi-r5 : +1 PM par lancement,
+   * remis à 0 au repos court). S'ajoute PAR-DESSUS `manaCost`/rang, sans le modifier. Modèle isolé
+   * (cf. `EscalatingManaCost`) : n'affecte pas les compteurs d'usages classiques. N'a de sens que
+   * si `isSpell`. Absent = le coût ne croît pas à l'usage.
+   */
+  escalatingManaCost?: EscalatingManaCost;
   /**
    * Profil chiffré de la créature/compagnon octroyé(e) par la capacité (golem,
    * familier, démon, zombie…), EN PLUS du `text` verbatim. Rendu en mini-fiche

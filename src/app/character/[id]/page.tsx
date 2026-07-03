@@ -304,6 +304,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // être une `sharedKey` (réserve partagée, PER-119) et non un id de capacité → le max effectif
   // (constant ou scalant) est calculé par le composant et fourni ici, plutôt que relu via l'id.
   const setUsageCounterValue = (counterKey: string, value: number, max: number) => {
+    // PER-162 : compteur CROISSANT (surcoût mana, ex. Foudres divines) — sémantique inverse : pas de
+    // plafond, baseline = 0 (clé absente), aucun verrou. `counterKey` = id de la capacité.
+    const escalating = featureById.get(counterKey)?.escalatingManaCost;
+    if (escalating) {
+      const raised = Math.max(0, value);
+      const nextEsc = { ...character.usageCounters };
+      if (raised <= 0) delete nextEsc[counterKey];
+      else nextEsc[counterKey] = raised;
+      update({ usageCounters: nextEsc });
+      return;
+    }
     const clamped = Math.max(0, Math.min(max, value));
     const next = { ...character.usageCounters };
     if (clamped >= max) delete next[counterKey];

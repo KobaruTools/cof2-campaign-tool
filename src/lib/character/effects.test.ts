@@ -24,6 +24,7 @@ import {
   effectiveAbilities,
   featureModSources,
   hpAbilitySwapSources,
+  escalatingManaSurcharge,
   isEffectActive,
   isTemporaryActivationShortRestLocked,
   shortRestLockKey,
@@ -1135,6 +1136,44 @@ describe('resetUsageCounters — verrou « oncePerShortRest » (PER-160)', () =>
       new Set(['day', 'short-rest', 'combat'] as const),
     );
     expect(next).toEqual({});
+  });
+});
+
+describe('escalatingManaSurcharge — Foudres divines (foi-r5, PER-162)', () => {
+  const withCounters = (usageCounters: Record<string, number>): Character =>
+    ({
+      level: 5,
+      abilities: ctx().abilities,
+      featureIds: ['foi-r5'],
+      effectToggles: {},
+      featureChoices: {},
+      usageCounters,
+    }) as Character;
+
+  const foiR5 = featureById.get('foi-r5')!;
+
+  it('0 lancement (clé absente) → surcoût 0', () => {
+    expect(escalatingManaSurcharge(withCounters({}), foiR5)).toBe(0);
+  });
+
+  it('N lancements → +N PM (step 1 par défaut)', () => {
+    expect(escalatingManaSurcharge(withCounters({ 'foi-r5': 3 }), foiR5)).toBe(3);
+  });
+
+  it('capacité sans escalatingManaCost → 0', () => {
+    const rageR3 = featureById.get('rage-r3')!;
+    expect(escalatingManaSurcharge(withCounters({ 'rage-r3': 2 }), rageR3)).toBe(0);
+  });
+});
+
+describe('resetUsageCounters — surcoût mana croissant (foi-r5, PER-162)', () => {
+  it('repos court (short-rest) remet le surcoût croissant à 0', () => {
+    expect(resetUsageCounters({ 'foi-r5': 4 }, ['foi-r5'], new Set(['short-rest', 'combat'] as const))).toEqual({});
+  });
+
+  it('un déclencheur qui ne matche pas laisse le surcoût intact', () => {
+    // resetOn de foi-r5 = 'short-rest' → un reset limité à 'combat' ne le touche pas.
+    expect(resetUsageCounters({ 'foi-r5': 4 }, ['foi-r5'], new Set(['combat'] as const))).toEqual({ 'foi-r5': 4 });
   });
 });
 
