@@ -419,6 +419,16 @@ for (const c of features) {
   }
 }
 
+// --- Substitutions de caractéristique des sorts reproduits (Artefact/Élixirs, PER-163) ----------
+// `reproducedAbilitySubstitutions` : une substitution `from → to` doit porter sur deux carac DISTINCTES
+// (une substitution vers elle-même n'a aucun sens) ; les carac sont déjà typées `AbilityId`.
+for (const c of features) {
+  for (const sub of c.reproducedAbilitySubstitutions ?? []) {
+    if (sub.from === sub.to)
+      err(`[capacite ${c.id}] reproducedAbilitySubstitutions : substitution vers elle-même (${sub.from})`);
+  }
+}
+
 // --- Coût de base en mana (PER-65) -------------------------------------------
 // Dérogation explicite au coût standard (= rang du sort, p. 228). On vérifie
 // que le champ ne porte que des entiers >= 0 et n'apparaît que sur des sorts.

@@ -49,7 +49,7 @@
  * pour ne jamais casser l'affichage d'un balisage approximatif.
  */
 import { scalingDie } from '@/lib/engine';
-import { ABILITY_IDS, type AbilityId, type Die, type ProgressionRules } from '@/data/schema';
+import { ABILITY_IDS, type AbilityId, type AbilitySubstitution, type Die, type ProgressionRules } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { ABILITY_NAMES } from './ability';
 
@@ -94,7 +94,22 @@ export type ExprTerm =
   | { kind: 'number'; sign: 1 | -1; value: number }
   | { kind: 'rank'; sign: 1 | -1; coeff?: number }
   | { kind: 'level'; sign: 1 | -1; coeff?: number }
-  | { kind: 'milestoneBonus'; sign: 1 | -1; coeff?: number };
+  | { kind: 'milestoneBonus'; sign: 1 | -1; coeff?: number }
+  // PRODUIT DE DEUX VARIABLES OU PLUS (`niveau × INT`, portée de Téléportation, p. 106). La grammaire
+  // n'admet qu'une variable par terme additif SAUF ici : un produit explicite de variables (chacune
+  // résolue puis multipliée), avec un éventuel `coeff` numérique global. Déterministe (pas de dé).
+  | { kind: 'product'; sign: 1 | -1; factors: ProductFactor[]; coeff?: number };
+
+/**
+ * Un facteur VARIABLE d'un produit `product` (`niveau × INT`) — les mêmes natures que les termes
+ * variables, mais sans signe ni coeff propres (portés par le terme `product` global).
+ */
+export type ProductFactor =
+  | { kind: 'ability'; ability: AbilityId }
+  | { kind: 'abilityBest'; abilities: AbilityId[] }
+  | { kind: 'rank' }
+  | { kind: 'level' }
+  | { kind: 'milestoneBonus' };
 
 /** Un fragment de `richText` prêt à rendre. */
 export type RichTextSegment =
@@ -253,12 +268,25 @@ function reduceFactors(sign: 1 | -1, factors: ExprAtom[]): ExprTerm | null {
       f.kind === 'level' ||
       f.kind === 'milestoneBonus',
   );
-  if (vars.length > 1) return null; // pas de produit de deux variables
   const coeffProduct = numbers.reduce((acc, n) => acc * n.value, 1);
   if (vars.length === 0) {
     return { kind: 'number', sign, value: coeffProduct };
   }
   const coeff = numbers.length > 0 ? coeffProduct : undefined;
+  if (vars.length > 1) {
+    // Produit de plusieurs variables (`niveau × INT`) : chaque variable devient un `ProductFactor`
+    // (sans signe/coeff propre) ; le signe et l'éventuel coeff numérique global portent sur le terme.
+    const factorsOut = vars.map((v): ProductFactor => {
+      if (v.kind === 'ability') return { kind: 'ability', ability: v.ability };
+      if (v.kind === 'abilityBest') return { kind: 'abilityBest', abilities: v.abilities };
+      if (v.kind === 'rank') return { kind: 'rank' };
+      if (v.kind === 'level') return { kind: 'level' };
+      return { kind: 'milestoneBonus' };
+    });
+    return coeff !== undefined
+      ? { kind: 'product', sign, factors: factorsOut, coeff }
+      : { kind: 'product', sign, factors: factorsOut };
+  }
   const v = vars[0];
   if (v.kind === 'ability') {
     return coeff !== undefined
@@ -418,6 +446,19 @@ export interface ResolvedPart {
   coeff?: number;
   /** Présent si le terme est un dé, avec sa valeur concrète au niveau courant. */
   die?: { count: number; displayDie: Die; evolving: boolean };
+  /**
+   * Substitution de caractéristique APPLIQUÉE (PER-163) : ce terme référençait `from` mais a été
+   * résolu sur `to` (ex. un forgesort reproduisant un sort d'ensorceleur lance avec son INT au lieu du
+   * CHA d'origine). Renseigné uniquement quand la substitution a EFFECTIVEMENT changé la carac
+   * (`to` strictement plus élevée que `from`) → sert à afficher un avertissement. Absent = pas de
+   * substitution.
+   */
+  substituted?: { from: AbilityId; to: AbilityId };
+  /**
+   * Détail des facteurs d'un terme `product` (`niveau × INT`), pour l'info-bulle (« niveau (5) ×
+   * INT (4) = 20 »). Absent hors produit.
+   */
+  productParts?: { label: string; symbol: string; value: number }[];
 }
 
 /** Résultat de l'évaluation d'une formule/quantité contre un personnage donné. */
@@ -438,6 +479,22 @@ function withCoeff(base: string, coeff?: number): string {
 }
 
 /**
+ * Applique une éventuelle SUBSTITUTION de caractéristique (PER-163) à `ability` : s'il existe une
+ * règle `from → to` pour cette carac ET que `to` est STRICTEMENT plus avantageuse (`abilities[to] >
+ * abilities[from]`), retourne `to` marquée comme substituée ; sinon la carac d'origine sans marque.
+ * Sert au forgesort qui reproduit un sort d'une autre voie en lançant avec son INT (Artefact étrange,
+ * Élixirs majeurs) : la substitution n'a lieu que si elle est bénéfique, et reste signalée à l'affichage.
+ */
+function applyAbilitySubstitution(
+  ability: AbilityId,
+  abilities: Abilities,
+  substitutions?: AbilitySubstitution[],
+): { ability: AbilityId; substituted?: { from: AbilityId; to: AbilityId } } {
+  const sub = substitutions?.find((s) => s.from === ability && abilities[s.to] > abilities[ability]);
+  return sub ? { ability: sub.to, substituted: { from: ability, to: sub.to } } : { ability };
+}
+
+/**
  * Évalue une formule (ou une quantité) contre les caractéristiques, le niveau et
  * le rang fournis. Sans dé : on calcule le total. Avec dé : on résout les dés à
  * leur valeur au niveau courant et les variables à leur valeur, sans total (le dé
@@ -454,18 +511,24 @@ export function resolveExpr(
   progression: ProgressionRules,
   rank = 0,
   milestoneBonus = 0,
+  substitutions?: AbilitySubstitution[],
 ): ResolvedExpr {
   const allParts: ResolvedPart[] = terms.map((term) => {
     switch (term.kind) {
-      case 'ability':
+      case 'ability': {
+        const eff = applyAbilitySubstitution(term.ability, abilities, substitutions);
         return {
           kind: 'ability',
           sign: term.sign,
-          label: `${ABILITY_NAMES[term.ability]} (${term.ability})`,
-          symbol: withCoeff(term.ability, term.coeff),
-          value: abilities[term.ability] * (term.coeff ?? 1),
+          label: eff.substituted
+            ? `${ABILITY_NAMES[eff.ability]} (${eff.ability}) — remplace ${ABILITY_NAMES[term.ability]} (${term.ability})`
+            : `${ABILITY_NAMES[term.ability]} (${term.ability})`,
+          symbol: withCoeff(eff.ability, term.coeff),
+          value: abilities[eff.ability] * (term.coeff ?? 1),
           coeff: term.coeff,
+          substituted: eff.substituted,
         };
+      }
       case 'abilityBest': {
         // Meilleure des caractéristiques listées (substitution optionnelle, ex.
         // FOR↔AGI) : on retient la plus forte au moment du rendu et on l'AFFICHE
@@ -533,6 +596,49 @@ export function resolveExpr(
           die: { count, displayDie, evolving },
         };
       }
+      case 'product': {
+        // Produit de variables (`niveau × INT`) : chaque facteur résolu (substitution éventuelle
+        // appliquée), puis multipliés ensemble avec le coeff numérique global.
+        const factors = term.factors.map(
+          (f): { label: string; symbol: string; value: number; substituted?: { from: AbilityId; to: AbilityId } } => {
+            switch (f.kind) {
+              case 'ability': {
+                const eff = applyAbilitySubstitution(f.ability, abilities, substitutions);
+                return {
+                  label: eff.substituted
+                    ? `${ABILITY_NAMES[eff.ability]} (remplace ${f.ability})`
+                    : `${ABILITY_NAMES[f.ability]} (${f.ability})`,
+                  symbol: eff.ability,
+                  value: abilities[eff.ability],
+                  substituted: eff.substituted,
+                };
+              }
+              case 'abilityBest': {
+                const best = f.abilities.reduce((a, b) => (abilities[b] > abilities[a] ? b : a));
+                return { label: `Meilleure de ${f.abilities.join('/')}`, symbol: best, value: abilities[best] };
+              }
+              case 'rank':
+                return { label: 'Rang', symbol: 'rang', value: rank };
+              case 'level':
+                return { label: 'Niveau', symbol: 'niveau', value: level };
+              case 'milestoneBonus':
+                return { label: 'Bonus de paliers de voie', symbol: 'paliers', value: milestoneBonus };
+            }
+          },
+        );
+        const product = factors.reduce((acc, f) => acc * f.value, 1) * (term.coeff ?? 1);
+        const symbol = [...(term.coeff !== undefined ? [String(term.coeff)] : []), ...factors.map((f) => f.symbol)].join(' × ');
+        return {
+          kind: 'product',
+          sign: term.sign,
+          label: `Produit : ${symbol}`,
+          symbol,
+          value: product,
+          coeff: term.coeff,
+          substituted: factors.find((f) => f.substituted)?.substituted,
+          productParts: factors.map((f) => ({ label: f.label, symbol: f.symbol, value: f.value })),
+        };
+      }
     }
   });
   // Un bonus de paliers nul (« +0 ») n'apporte rien : on l'omet pour ne pas afficher
@@ -545,7 +651,8 @@ export function resolveExpr(
       t.kind === 'abilityBest' ||
       t.kind === 'rank' ||
       t.kind === 'level' ||
-      t.kind === 'milestoneBonus',
+      t.kind === 'milestoneBonus' ||
+      t.kind === 'product',
   );
   const total = hasDie
     ? null

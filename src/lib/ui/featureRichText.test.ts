@@ -202,8 +202,27 @@ describe('parseRichText — découpage', () => {
     expect(parseRichText('[#1d6 + AGI]')).toEqual([{ kind: 'text', value: '[#1d6 + AGI]' }]);
   });
 
-  it('rejette un produit de deux variables', () => {
-    expect(parseRichText('[CHA × FOR]')).toEqual([{ kind: 'text', value: '[CHA × FOR]' }]);
+  it('parse un produit de deux variables en terme `product` (PER-163)', () => {
+    expect((parseRichText('[CHA × FOR]')[0] as { terms: unknown }).terms).toEqual([
+      {
+        kind: 'product',
+        sign: 1,
+        factors: [
+          { kind: 'ability', ability: 'CHA' },
+          { kind: 'ability', ability: 'FOR' },
+        ],
+      },
+    ]);
+  });
+
+  it('parse un produit variable × variable avec coeff numérique (`niveau × INT`)', () => {
+    expect((parseRichText('[=niveau × INT]')[0] as { terms: unknown }).terms).toEqual([
+      {
+        kind: 'product',
+        sign: 1,
+        factors: [{ kind: 'level' }, { kind: 'ability', ability: 'INT' }],
+      },
+    ]);
   });
 
   it('rejette un dé multiplié', () => {
@@ -486,5 +505,59 @@ describe('meilleure de plusieurs caractéristiques (FOR/AGI)', () => {
     expect(resolved.hasDie).toBe(true);
     // Le terme carac retient la plus forte (FOR 3).
     expect(resolved.parts[1]).toMatchObject({ kind: 'abilityBest', symbol: 'FOR', value: 3 });
+  });
+});
+
+describe('resolveExpr — produit de variables (Téléportation, PER-163)', () => {
+  it('multiplie les variables et expose le détail des facteurs', () => {
+    const segs = parseRichText('[=niveau × CHA]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'quantity' }>;
+    const r = resolveExpr(expr.terms, abilities, 5, progression); // niveau 5 × CHA 4
+    expect(r.hasDie).toBe(false);
+    expect(r.hasAbility).toBe(true);
+    expect(r.total).toBe(20);
+    expect(r.parts[0]).toMatchObject({
+      kind: 'product',
+      symbol: 'niveau × CHA',
+      value: 20,
+      productParts: [
+        { symbol: 'niveau', value: 5 },
+        { symbol: 'CHA', value: 4 },
+      ],
+    });
+  });
+});
+
+describe('resolveExpr — substitution de caractéristique contextuelle (PER-163)', () => {
+  const CHA_TO_INT = [{ from: 'CHA', to: 'INT' } as const];
+
+  it('substitue CHA→INT quand INT est strictement plus élevée, et marque la substitution', () => {
+    const segs = parseRichText('[=CHA]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'quantity' }>;
+    const forgesort: Abilities = { ...abilities, CHA: 2, INT: 5 };
+    const r = resolveExpr(expr.terms, forgesort, 1, progression, 0, 0, CHA_TO_INT);
+    expect(r.total).toBe(5); // INT (5) au lieu de CHA (2)
+    expect(r.parts[0].substituted).toEqual({ from: 'CHA', to: 'INT' });
+    expect(r.parts[0].symbol).toBe('INT');
+  });
+
+  it('n’applique PAS la substitution si INT ≤ CHA (exception à l’exception)', () => {
+    const segs = parseRichText('[=CHA]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'quantity' }>;
+    // Fixture : CHA 4 ≥ INT 0 → pas de substitution.
+    const r = resolveExpr(expr.terms, abilities, 1, progression, 0, 0, CHA_TO_INT);
+    expect(r.total).toBe(4); // CHA conservé
+    expect(r.parts[0].substituted).toBeUndefined();
+    expect(r.parts[0].symbol).toBe('CHA');
+  });
+
+  it('n’affecte pas les autres caractéristiques', () => {
+    const segs = parseRichText('[=PER]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'quantity' }>;
+    const forgesort: Abilities = { ...abilities, PER: 1, INT: 5 };
+    // Substitution ciblée sur CHA uniquement → PER intact.
+    const r = resolveExpr(expr.terms, forgesort, 1, progression, 0, 0, CHA_TO_INT);
+    expect(r.total).toBe(1);
+    expect(r.parts[0].substituted).toBeUndefined();
   });
 });

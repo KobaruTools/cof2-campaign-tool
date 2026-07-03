@@ -904,6 +904,10 @@ export const mageFeatures: Feature[] = [
     // PER-163 : chaque sort emprunté = usage 1×/jour (repos long) + état « cassé » réparé au repos
     // court. Ordre = ordre de citation dans le texte.
     borrowedPowers: ['magie-universelle-r5', 'magie-protectrice-r5', 'air-r5', 'divination-r5'],
+    // PER-163 : le forgesort lance ces sorts avec son INT. Forme éthérée (air-r5) a une durée en CHA
+    // (carac de l'ensorceleur) qui n'a aucun sens pour lui → substitution CHA→INT (si INT plus élevée),
+    // signalée à l'affichage. Sans effet sur les autres pouvoirs empruntés (ils ne citent pas CHA).
+    reproducedAbilitySubstitutions: [{ from: 'CHA', to: 'INT' }],
     sourcePage: 97,
   },
 
@@ -1040,6 +1044,10 @@ export const mageFeatures: Feature[] = [
     // Sorts reproduits par les recettes majeures (à titre indicatif — non acquis) : dépliables
     // sous la description via un accordéon (cf. `referencedFeatures`).
     referencedFeatures: ['magie-universelle-r3', 'magie-universelle-r4', 'magie-des-arcanes-r4', 'animaux-r4'],
+    // PER-163 : le forgesort prépare ces élixirs avec son INT. Masque du prédateur (animaux-r4) a une
+    // durée en PER (carac du druide) que le forgesort peut avoir à 0 ou négatif → substitution PER→INT
+    // (si INT plus élevée), signalée à l'affichage. Sans effet sur les autres recettes (pas de PER).
+    reproducedAbilitySubstitutions: [{ from: 'PER', to: 'INT' }],
     // Élixir MAJEUR : « compte pour deux élixirs » → consomme 2 doses du pool partagé (cost: 2).
     // Répertoire préparable (INT recettes, max 4) reste verbatim.
     usageCounter: {
@@ -1847,11 +1855,11 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le magicien disparaît et réapparaît à un autre endroit situé à moins de (niveau x INT) kilomètres. Le lieu d’arrivée doit être soit en vue, soit parfaitement connu par le magicien. Le magicien peut emmener avec lui un allié à partir du niveau 10, un deuxième au niveau 13, un troisième au niveau 16 et enfin un quatrième au niveau 19.",
-    // Pas de richText : la portée « (niveau x INT) km » est un PRODUIT DE DEUX VARIABLES
-    // (niveau × INT), non exprimable par la grammaire (un seul terme variable par produit,
-    // cf. format §b et le test `rejette un produit de deux variables`) → reste en texte
-    // verbatim. TODO(extraction) : à traiter si le format évolue.
-    // « Une fois par jour » → compteur 1 usage, rechargé au repos long.
+    // Rendu enrichi (PER-163) : portée « [=niveau × INT] km » — PRODUIT DE DEUX VARIABLES, désormais
+    // exprimable (terme `product`, cf. featureRichText). « Une fois par jour » → compteur 1 usage,
+    // rechargé au repos long.
+    richText:
+      "Une fois par jour, le magicien disparaît et réapparaît à un autre endroit situé à moins de [=niveau × INT] kilomètres. Le lieu d’arrivée doit être soit en vue, soit parfaitement connu par le magicien. Le magicien peut emmener avec lui un allié à partir du niveau 10, un deuxième au niveau 13, un troisième au niveau 16 et enfin un quatrième au niveau 19.",
     usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 106,
   },

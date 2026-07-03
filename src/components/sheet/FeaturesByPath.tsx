@@ -38,7 +38,7 @@ import Typography from '@mui/material/Typography';
 import { alpha, type Theme } from '@mui/material/styles';
 import { useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
-import type { AbilityId, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
+import type { AbilityId, AbilitySubstitution, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
@@ -551,11 +551,14 @@ function ReferencedFeatureAccordion({
   abilities,
   level,
   creation,
+  abilitySubstitutions,
 }: {
   feature: Feature;
   abilities?: Abilities;
   level?: number;
   creation?: ElixirCreation;
+  /** Substitutions de carac contextuelles (PER-163, ex. forgesort → INT) transmises à `FeatureText`. */
+  abilitySubstitutions?: AbilitySubstitution[];
 }) {
   const [expanded, setExpanded] = useState(false);
   // Collapse MANUEL (pas d'Accordion MUI) : le résumé porte à la fois le chevron de dépliage ET le
@@ -596,7 +599,14 @@ function ReferencedFeatureAccordion({
       </Stack>
       <Collapse in={expanded} unmountOnExit>
         <Box sx={{ pl: 3.5, pt: 0.25 }}>
-          <FeatureText feature={feature} abilities={abilities} level={level} pathRank={feature.rank} dense />
+          <FeatureText
+            feature={feature}
+            abilities={abilities}
+            level={level}
+            pathRank={feature.rank}
+            dense
+            abilitySubstitutions={abilitySubstitutions}
+          />
         </Box>
       </Collapse>
     </Box>
@@ -615,11 +625,14 @@ function ReferencedFeaturesBlock({
   abilities,
   level,
   creation,
+  abilitySubstitutions,
 }: {
   ids: string[];
   abilities?: Abilities;
   level?: number;
   creation?: ElixirCreation;
+  /** Substitutions de carac contextuelles (PER-163, ex. forgesort → INT) propagées à chaque sort. */
+  abilitySubstitutions?: AbilitySubstitution[];
 }) {
   const feats = ids.map((id) => featureById.get(id)).filter((f): f is Feature => !!f);
   if (feats.length === 0) return null;
@@ -630,7 +643,14 @@ function ReferencedFeaturesBlock({
       </Typography>
       <Stack spacing={0.75}>
         {feats.map((f) => (
-          <ReferencedFeatureAccordion key={f.id} feature={f} abilities={abilities} level={level} creation={creation} />
+          <ReferencedFeatureAccordion
+            key={f.id}
+            feature={f}
+            abilities={abilities}
+            level={level}
+            creation={creation}
+            abilitySubstitutions={abilitySubstitutions}
+          />
         ))}
       </Stack>
     </Box>
@@ -654,6 +674,7 @@ function BorrowedPowerRow({
   abilities,
   level,
   onSet,
+  abilitySubstitutions,
 }: {
   hostId: string;
   spellId: string;
@@ -661,6 +682,8 @@ function BorrowedPowerRow({
   abilities?: Abilities;
   level?: number;
   onSet?: (counterKey: string, value: number, max: number) => void;
+  /** Substitutions de carac contextuelles (PER-163, ex. Forme éthérée CHA→INT) pour le détail du sort. */
+  abilitySubstitutions?: AbilitySubstitution[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const spell = featureById.get(spellId);
@@ -763,7 +786,14 @@ function BorrowedPowerRow({
       </Stack>
       <Collapse in={expanded} unmountOnExit>
         <Box sx={{ pl: 3.5, pt: 0.25 }}>
-          <FeatureText feature={spell} abilities={abilities} level={level} pathRank={spell.rank} dense />
+          <FeatureText
+            feature={spell}
+            abilities={abilities}
+            level={level}
+            pathRank={spell.rank}
+            dense
+            abilitySubstitutions={abilitySubstitutions}
+          />
         </Box>
       </Collapse>
     </Box>
@@ -808,6 +838,7 @@ function BorrowedPowersField({
             abilities={abilities}
             level={level}
             onSet={onSet}
+            abilitySubstitutions={feature.reproducedAbilitySubstitutions}
           />
         ))}
       </Stack>
@@ -2442,6 +2473,7 @@ function PathBlock({
                       abilities={abilities}
                       level={level}
                       creation={elixirCreation(openFeature)}
+                      abilitySubstitutions={openFeature.reproducedAbilitySubstitutions}
                     />
                   </>
                 )}
@@ -2771,6 +2803,7 @@ function PathBlock({
                     abilities={abilities}
                     level={level}
                     creation={elixirCreation(feature)}
+                    abilitySubstitutions={feature.reproducedAbilitySubstitutions}
                   />
                 </>
               )}

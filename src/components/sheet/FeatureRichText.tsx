@@ -1,12 +1,13 @@
 'use client';
 
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import { alpha, darken, lighten, type SxProps, type Theme } from '@mui/material/styles';
 import { Fragment, type ReactNode } from 'react';
 import { featureById, pathById, progression } from '@/data';
-import type { Die, Feature } from '@/data/schema';
+import type { AbilityId, AbilitySubstitution, Die, Feature } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -280,6 +281,51 @@ function DiePart({
  * le détail du calcul en info-bulle (base + caractéristique + bonus = total),
  * sur le modèle de `derivedStatBreakdown`.
  */
+/** Première substitution de caractéristique appliquée dans une formule résolue (PER-163), ou `undefined`. */
+function resolvedSubstitution(resolved: ResolvedExpr): { from: AbilityId; to: AbilityId } | undefined {
+  return resolved.parts.find((p) => p.substituted)?.substituted;
+}
+
+/**
+ * Panneau d'AVERTISSEMENT (contenu d'info-bulle) signalant une substitution de caractéristique
+ * (PER-163) : le forgesort lance/reproduit ce sort avec sa propre carac de magie (INT) au lieu de
+ * celle de l'auteur d'origine. `derivation` = texte de dérivation habituel, ajouté sous l'avertissement.
+ */
+function SubstitutionWarningPanel({
+  from,
+  to,
+  derivation,
+}: {
+  from: AbilityId;
+  to: AbilityId;
+  derivation: ReactNode;
+}) {
+  return (
+    <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'flex-start' }}>
+      <WarningAmberOutlinedIcon fontSize="small" sx={{ mt: '1px', color: 'warning.light', flexShrink: 0 }} />
+      <Box>
+        <Box component="span" sx={{ fontWeight: 700, display: 'block' }}>
+          Caractéristique remplacée
+        </Box>
+        <Box component="span" sx={{ display: 'block', mb: 0.5 }}>
+          {ABILITY_NAMES[to]} ({to}) remplace {ABILITY_NAMES[from]} ({from}) : le forgesort lance ce sort
+          avec sa caractéristique de magie.
+        </Box>
+        {derivation}
+      </Box>
+    </Box>
+  );
+}
+
+/** Petite icône d'avertissement amber accolée à une valeur substituée (repère visuel, PER-163). */
+function SubstitutionMark() {
+  return (
+    <WarningAmberOutlinedIcon
+      sx={{ fontSize: '0.95em', ml: 0.3, verticalAlign: 'middle', color: 'warning.main' }}
+    />
+  );
+}
+
 function FormulaTotal({ resolved }: { resolved: ResolvedExpr }) {
   // Lecture claire : chaque variable résolue à sa valeur BRUTE entre parenthèses,
   // opérateurs de la formule, puis « = total » — « 10 + CHA (4) = 14 ». Une formule
@@ -319,10 +365,18 @@ function FormulaTotal({ resolved }: { resolved: ResolvedExpr }) {
       )}
     </Box>
   );
+  // Substitution de carac appliquée (PER-163) → accent AMBRE + avertissement.
+  const sub = resolvedSubstitution(resolved);
+  const finalTooltip = sub ? (
+    <SubstitutionWarningPanel from={sub.from} to={sub.to} derivation={tooltip} />
+  ) : (
+    tooltip
+  );
+  const accent = sub ? 'warning' : 'primary';
   // Style compact aligné sur l'encadré de dé ; couleur PRIMAIRE pour le distinguer
-  // d'une formule à dé (secondaire).
+  // d'une formule à dé (secondaire) — ambre si une substitution a eu lieu.
   return (
-    <AppTooltip title={tooltip}>
+    <AppTooltip title={finalTooltip} maxWidth={sub ? 300 : undefined}>
       <Box
         component="span"
         sx={{
@@ -340,14 +394,15 @@ function FormulaTotal({ resolved }: { resolved: ResolvedExpr }) {
           fontWeight: 600,
           fontVariantNumeric: 'tabular-nums',
           cursor: 'help',
-          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+          bgcolor: (theme) => alpha(theme.palette[accent].main, 0.1),
           border: 1,
-          borderColor: (theme) => alpha(theme.palette.primary.main, 0.35),
+          borderColor: (theme) => alpha(theme.palette[accent].main, 0.35),
         }}
       >
         {resolved.hasAbility
           ? `${inline}${resolved.parts.length > 1 ? ` = ${resolved.total}` : ''}`
           : signed(resolved.total ?? 0)}
+        {sub && <SubstitutionMark />}
       </Box>
     </AppTooltip>
   );
@@ -383,6 +438,11 @@ function quantityTooltip(resolved: ResolvedExpr): string {
   if (resolved.parts.length === 1) {
     const p = resolved.parts[0];
     if (p.kind === 'number') return String(p.value);
+    // Produit de variables (`niveau × INT`) : « niveau (5) × INT (4) [× coeff] = total ».
+    if (p.kind === 'product' && p.productParts) {
+      const body = p.productParts.map((f) => `${f.symbol} (${f.value})`).join(' × ');
+      return `${body}${p.coeff !== undefined ? ` × ${p.coeff}` : ''} = ${resolved.total}`;
+    }
     // Dérivation TOUJOURS explicite, même sans multiplicateur (× 1), pour la clarté.
     const coeff = p.coeff ?? 1;
     const base = p.value != null ? p.value / coeff : 0;
@@ -398,9 +458,18 @@ function QuantityValue({ resolved }: { resolved: ResolvedExpr }) {
   // Quantité déterministe attendue ; au cas (théorique) où un dé s'y glisse, on
   // se rabat sur la forme symbolique pour ne rien afficher de faux.
   const display = resolved.total != null ? String(resolved.total) : symbolicFormula(resolved);
-  const tooltip = resolved.total != null ? quantityTooltip(resolved) : symbolicFormula(resolved);
+  const derivation = resolved.total != null ? quantityTooltip(resolved) : symbolicFormula(resolved);
+  // Substitution de carac appliquée (PER-163) → accent AMBRE + icône d'avertissement + panneau
+  // explicatif dans l'info-bulle (le forgesort lance avec son INT).
+  const sub = resolvedSubstitution(resolved);
+  const tooltip = sub ? (
+    <SubstitutionWarningPanel from={sub.from} to={sub.to} derivation={derivation} />
+  ) : (
+    derivation
+  );
+  const accent = sub ? 'warning' : 'info';
   return (
-    <AppTooltip title={tooltip}>
+    <AppTooltip title={tooltip} maxWidth={sub ? 300 : undefined}>
       <Box
         component="span"
         sx={{
@@ -412,11 +481,12 @@ function QuantityValue({ resolved }: { resolved: ResolvedExpr }) {
           fontVariantNumeric: 'tabular-nums',
           cursor: 'help',
           color: 'text.primary',
-          bgcolor: (theme) => alpha(theme.palette.info.main, 0.12),
-          borderBottom: (theme) => `1px dashed ${alpha(theme.palette.info.main, 0.6)}`,
+          bgcolor: (theme) => alpha(theme.palette[accent].main, 0.12),
+          borderBottom: (theme) => `1px dashed ${alpha(theme.palette[accent].main, 0.6)}`,
         }}
       >
         {display}
+        {sub && <SubstitutionMark />}
       </Box>
     </AppTooltip>
   );
@@ -454,8 +524,16 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
       ))}
     </Box>
   );
+  // Substitution de carac appliquée (PER-163) → accent AMBRE + avertissement.
+  const sub = resolvedSubstitution(resolved);
+  const finalTooltip = sub ? (
+    <SubstitutionWarningPanel from={sub.from} to={sub.to} derivation={tooltip} />
+  ) : (
+    tooltip
+  );
+  const accent = sub ? 'warning' : 'secondary';
   return (
-    <AppTooltip title={tooltip}>
+    <AppTooltip title={finalTooltip} maxWidth={sub ? 320 : undefined}>
       {/* Boîte inline-block : le texte (caractéristiques, nombres) reste sur la
           baseline, seul le dé est centré verticalement (`vertical-align: middle`
           porté par DiePart) pour ne pas « flotter ». */}
@@ -471,9 +549,9 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
           fontWeight: 600,
           fontVariantNumeric: 'tabular-nums',
           cursor: 'help',
-          bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.1),
+          bgcolor: (theme) => alpha(theme.palette[accent].main, 0.1),
           border: 1,
-          borderColor: (theme) => alpha(theme.palette.secondary.main, 0.35),
+          borderColor: (theme) => alpha(theme.palette[accent].main, 0.35),
         }}
       >
         {resolved.parts.map((p, i) => {
@@ -504,6 +582,7 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
             </Fragment>
           );
         })}
+        {sub && <SubstitutionMark />}
       </Box>
     </AppTooltip>
   );
@@ -522,6 +601,7 @@ export function RichInline({
   level,
   rank,
   milestoneBonus = 0,
+  abilitySubstitutions,
 }: {
   text: string;
   abilities: Abilities;
@@ -529,6 +609,8 @@ export function RichInline({
   rank: number;
   /** Bonus plat cross-voie injecté au terme `paliers` des formules (défaut 0). */
   milestoneBonus?: number;
+  /** Substitutions de carac contextuelles (PER-163, ex. forgesort → INT). Passées à `resolveExpr`. */
+  abilitySubstitutions?: AbilitySubstitution[];
 }) {
   return (
     <>
@@ -547,7 +629,7 @@ export function RichInline({
             <DiePart key={i} count={count} die={displayDie} evolving={evolving} level={level} />
           );
         }
-        const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus);
+        const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus, abilitySubstitutions);
         if (seg.kind === 'term') {
           // `[#…]` : substantif « symboles (valeur) ». Un terme nu garde son mot
           // (« rang (5) », « INT (4) ») ; une formule conserve son écriture, suivie de
@@ -630,6 +712,12 @@ export interface FeatureTextProps {
    * empruntés). Défaut `false` (rendu normal du corps de capacité).
    */
   dense?: boolean;
+  /**
+   * Substitutions de caractéristique CONTEXTUELLES (PER-163) appliquées aux formules du sort : ex. un
+   * forgesort reproduisant ce sort le lance avec son INT (CHA→INT, PER→INT). Signalées par un
+   * avertissement à l'affichage. Absent = aucune substitution (usage normal du sort).
+   */
+  abilitySubstitutions?: AbilitySubstitution[];
 }
 
 /**
@@ -639,7 +727,15 @@ export interface FeatureTextProps {
  * Sinon, on retombe proprement sur le `text` verbatim — c'est le comportement
  * par défaut tant qu'une capacité n'a pas été réécrite (PER-64).
  */
-export function FeatureText({ feature, abilities, level, pathRank, milestoneBonus, dense }: FeatureTextProps) {
+export function FeatureText({
+  feature,
+  abilities,
+  level,
+  pathRank,
+  milestoneBonus,
+  dense,
+  abilitySubstitutions,
+}: FeatureTextProps) {
   const enriched = feature.richText && abilities && level != null;
   // Les « Note : » sont rendues plus petites/grises (`NoteSpan`), dans les deux
   // modes ; le balisage interne (puces, dés, formules) reste actif.
@@ -652,6 +748,7 @@ export function FeatureText({ feature, abilities, level, pathRank, milestoneBonu
         level={level!}
         rank={rank}
         milestoneBonus={milestoneBonus}
+        abilitySubstitutions={abilitySubstitutions}
       />
     ) : (
       <RichTextRun value={value} />

@@ -1434,6 +1434,17 @@ export interface UsageCounter {
   label?: string;
 }
 
+/**
+ * SUBSTITUTION de caractéristique (PER-163) : remplacer `from` par `to` dans les formules d'un sort
+ * REPRODUIT/EMPRUNTÉ, quand le lanceur effectif utilise une autre caractéristique de magie (forgesort →
+ * INT). Voir `Feature.reproducedAbilitySubstitutions`. La substitution n'est effective que si `to` est
+ * strictement plus avantageuse ; elle est alors signalée à l'affichage.
+ */
+export interface AbilitySubstitution {
+  from: AbilityId;
+  to: AbilityId;
+}
+
 export interface Feature {
   id: string;
   name: string;
@@ -1612,6 +1623,17 @@ export interface Feature {
    * `validate-data`. Absent = la capacité n'emprunte aucun pouvoir cassable.
    */
   borrowedPowers?: string[];
+  /**
+   * SUBSTITUTIONS de caractéristique appliquées aux sorts que cette capacité REPRODUIT ou EMPRUNTE
+   * (`referencedFeatures` + `borrowedPowers`), PER-163. Le forgesort lance ces sorts avec sa propre
+   * caractéristique de magie (INT) au lieu de celle de l'auteur d'origine : ex. Forme éthérée (durée
+   * en CHA de l'ensorceleur) via Artefact étrange → `[{ from: 'CHA', to: 'INT' }]` ; Masque du prédateur
+   * (durée en PER du druide) via Élixirs majeurs → `[{ from: 'PER', to: 'INT' }]`. La substitution n'est
+   * appliquée QUE si elle est bénéfique (`to` strictement supérieure à `from`) et est alors SIGNALÉE
+   * par un avertissement à l'affichage. N'affecte que le rendu contextuel des sorts reproduits/empruntés,
+   * jamais l'usage NORMAL du sort par sa classe d'origine. Absent = aucune substitution.
+   */
+  reproducedAbilitySubstitutions?: AbilitySubstitution[];
   /**
    * Marqueur de TRAVAIL EN COURS (badge « WIP » sur la carte) — suivi de relecture, pas une règle de
    * jeu. Présent quand la capacité dépend d'un ticket EXTÉRIEUR non terminé (ex. calcul de DEF de
