@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import AutorenewIcon from '@mui/icons-material/Autorenew';
+import { Fragment, useState } from 'react';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
@@ -11,7 +12,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { darken, lighten } from '@mui/material/styles';
 import type { Purse } from '@/lib/character/types';
-import { formatPurse, isPurseCanonical, normalizePurse } from '@/lib/character/purse';
+import { COPPER_PER_SILVER, SILVER_PER_GOLD } from '@/lib/character/purse';
 import { AppTooltip } from '@/components/AppTooltip';
 
 /** Unité de monnaie affichée dans la bourse (clé du modèle + présentation). */
@@ -249,51 +250,120 @@ function CoinInput({
   );
 }
 
+/**
+ * Contrôle de conversion entre deux unités adjacentes (`higher` = plus forte, à gauche ;
+ * `lower` = plus faible, à droite ; `ratio` pièces faibles pour une forte). Deux flèches :
+ *  ← regroupe (`ratio` faibles → 1 forte), → fait de la monnaie (1 forte → `ratio` faibles).
+ * La valeur totale de la bourse est inchangée (simple change). Chaque flèche est désactivée
+ * s'il n'y a pas de quoi convertir.
+ */
+function CoinConvert({
+  purse,
+  onChange,
+  higher,
+  lower,
+  higherCode,
+  lowerCode,
+  ratio,
+}: {
+  purse: Purse;
+  onChange: (purse: Purse) => void;
+  higher: keyof Purse;
+  lower: keyof Purse;
+  higherCode: string;
+  lowerCode: string;
+  ratio: number;
+}) {
+  const canGroup = purse[lower] >= ratio;
+  const canBreak = purse[higher] >= 1;
+  const group = () => onChange({ ...purse, [lower]: purse[lower] - ratio, [higher]: purse[higher] + 1 });
+  const breakDown = () => onChange({ ...purse, [higher]: purse[higher] - 1, [lower]: purse[lower] + ratio });
+  return (
+    <Stack direction="row" sx={{ alignItems: 'center' }}>
+      <AppTooltip title={`Regrouper : ${ratio} ${lowerCode} → 1 ${higherCode}`}>
+        <span>
+          <IconButton
+            size="small"
+            disabled={!canGroup}
+            onClick={group}
+            aria-label={`Regrouper ${ratio} ${lowerCode} en 1 ${higherCode}`}
+            sx={{ p: 0.25 }}
+          >
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </AppTooltip>
+      <AppTooltip title={`Faire de la monnaie : 1 ${higherCode} → ${ratio} ${lowerCode}`}>
+        <span>
+          <IconButton
+            size="small"
+            disabled={!canBreak}
+            onClick={breakDown}
+            aria-label={`Convertir 1 ${higherCode} en ${ratio} ${lowerCode}`}
+            sx={{ p: 0.25 }}
+          >
+            <ChevronRightIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </AppTooltip>
+    </Stack>
+  );
+}
+
+/** Taux de conversion entre unités adjacentes (p. 181), dans l'ordre d'affichage des `COINS`. */
+const CONVERSION_RATIO: Record<string, number> = {
+  gold: SILVER_PER_GOLD, // 1 po ↔ 10 pa
+  silver: COPPER_PER_SILVER, // 1 pa ↔ 10 pc
+};
+
 export interface PurseFieldProps {
   /** Bourse courante du personnage. */
   purse: Purse;
   /** Applique une nouvelle bourse (état de jeu transitoire). */
   onChange: (purse: Purse) => void;
+  /**
+   * Mode édition du bloc « Équipement » : n'affiche les flèches de conversion entre unités
+   * que dans ce mode (les montants restent éditables en permanence — état de jeu transitoire).
+   */
+  editing?: boolean;
 }
 
 /**
  * Bloc « Bourse » (PER-152) — argent possédé par unité (or / argent / cuivre,
- * p. 181). État de jeu transitoire (éditable hors mode « Modifier », non affecté
- * par un repos). Trois champs éditables ; un bouton « regrouper » convertit en
- * monnaie courante (10 pc → 1 pa, 10 pa → 1 po) sans changer la valeur totale.
+ * p. 181). État de jeu transitoire (montants éditables hors mode « Modifier », non affecté
+ * par un repos). En mode édition, des flèches gauche/droite entre unités permettent de
+ * regrouper / faire de la monnaie (po ↔ pa ↔ pc) sans changer la valeur totale.
  */
-export function PurseField({ purse, onChange }: PurseFieldProps) {
-  const canonical = isPurseCanonical(purse);
-  const normalized = normalizePurse(purse);
-
+export function PurseField({ purse, onChange, editing = false }: PurseFieldProps) {
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
       <AppTooltip title="Bourse — argent possédé (p. 181)">
         <AccountBalanceWalletIcon fontSize="small" sx={{ color: 'text.secondary', flexShrink: 0 }} />
       </AppTooltip>
 
-      {COINS.map((coin) => (
-        <CoinInput
-          key={coin.key}
-          coin={coin}
-          value={purse[coin.key]}
-          onCommit={(v) => onChange({ ...purse, [coin.key]: v })}
-        />
-      ))}
-
-      {/* Conversion en monnaie courante — proposée seulement s'il y a à regrouper. */}
-      {!canonical && (
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-          <Typography variant="caption" color="text.secondary">
-            = {formatPurse(normalized)}
-          </Typography>
-          <AppTooltip title="Regrouper en monnaie courante (10 pc → 1 pa, 10 pa → 1 po). La valeur totale ne change pas.">
-            <IconButton size="small" aria-label="Regrouper en monnaie courante" onClick={() => onChange(normalized)}>
-              <AutorenewIcon fontSize="small" />
-            </IconButton>
-          </AppTooltip>
-        </Stack>
-      )}
+      {COINS.map((coin, i) => {
+        const next = COINS[i + 1];
+        return (
+          <Fragment key={coin.key}>
+            <CoinInput
+              coin={coin}
+              value={purse[coin.key]}
+              onCommit={(v) => onChange({ ...purse, [coin.key]: v })}
+            />
+            {editing && next && (
+              <CoinConvert
+                purse={purse}
+                onChange={onChange}
+                higher={coin.key}
+                lower={next.key}
+                higherCode={coin.code}
+                lowerCode={next.code}
+                ratio={CONVERSION_RATIO[coin.key]}
+              />
+            )}
+          </Fragment>
+        );
+      })}
     </Stack>
   );
 }

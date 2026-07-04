@@ -947,9 +947,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               )
             }
           >
-            {/* Bourse (PER-152) : argent possédé, état de jeu transitoire (éditable hors mode
-                « Modifier », non affecté par un repos). En tête du bloc équipement. */}
-            <PurseField purse={character.purse} onChange={setPurse} />
+            {/* Bourse (PER-152) : argent possédé, état de jeu transitoire (montants éditables hors
+                mode « Modifier », non affecté par un repos). Les flèches de conversion entre unités
+                n'apparaissent qu'en mode édition du bloc. En tête du bloc équipement. */}
+            <PurseField purse={character.purse} onChange={setPurse} editing={editingBlocks.equipment} />
             <Divider sx={{ my: 1.5 }} />
             <EquipmentList
               equipment={character.equipment}
