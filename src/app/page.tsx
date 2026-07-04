@@ -33,6 +33,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
+import { HomeBackground } from '@/components/home/HomeBackground';
 import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
 import { useCharactersStore } from '@/stores/characters';
@@ -137,7 +138,20 @@ export default function HomePage() {
   return (
     <>
       <title>Personnages — Éditeur de personnage CO2</title>
-      <AppBar position="static">
+      <HomeBackground />
+      <AppBar
+        position="static"
+        // Légèrement translucide + flou : la barre laisse deviner l'illustration
+        // qui défile derrière, sans nuire à la lisibilité du titre.
+        sx={{
+          bgcolor: 'rgba(18, 18, 18, 0.55)',
+          backgroundImage: 'none',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          boxShadow: 'none',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        }}
+      >
         <Toolbar>
           <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
             Personnages — Chroniques Oubliées Fantasy 2
@@ -194,7 +208,20 @@ export default function HomePage() {
             <CircularProgress />
           </Box>
         ) : rows.length === 0 ? (
-          <Paper variant="outlined" sx={{ p: 6, textAlign: 'center' }}>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 6,
+              textAlign: 'center',
+              bgcolor: 'rgba(30, 30, 34, 0.55)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              borderColor: 'rgba(255, 255, 255, 0.10)',
+            }}
+          >
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Rassemblez votre compagnie
+            </Typography>
             <Typography color="text.secondary">
               Aucun personnage pour l’instant. Créez-en un ou importez un fichier JSON.
             </Typography>
@@ -205,7 +232,13 @@ export default function HomePage() {
             <TableContainer
               component={Paper}
               variant="outlined"
-              sx={{ display: { xs: 'none', md: 'block' } }}
+              sx={{
+                display: { xs: 'none', md: 'block' },
+                bgcolor: 'rgba(30, 30, 34, 0.62)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                borderColor: 'rgba(255, 255, 255, 0.10)',
+              }}
             >
               <Table>
                 <TableHead>
@@ -243,7 +276,17 @@ export default function HomePage() {
             {/* Mobile : une carte empilée par personnage (PER-51). */}
             <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
               {rows.map((r) => (
-                <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
+                <Paper
+                  key={r.id}
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    bgcolor: 'rgba(30, 30, 34, 0.62)',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                    borderColor: 'rgba(255, 255, 255, 0.10)',
+                  }}
+                >
                   <Stack
                     direction="row"
                     spacing={1}
