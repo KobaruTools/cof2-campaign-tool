@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -34,6 +34,7 @@ import Typography from '@mui/material/Typography';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { HomeBackground } from '@/components/home/HomeBackground';
+import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
 import { useCharactersStore } from '@/stores/characters';
@@ -45,11 +46,10 @@ export default function HomePage() {
   const characters = useCharactersStore((s) => s.characters);
   const duplicate = useCharactersStore((s) => s.duplicate);
   const remove = useCharactersStore((s) => s.remove);
-  const importCharacter = useCharactersStore((s) => s.importCharacter);
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
 
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
@@ -78,25 +78,6 @@ export default function HomePage() {
   const handleDuplicate = (id: string) => {
     const copy = duplicate(id);
     if (copy) notify(`« ${copy.name || 'Sans nom'} » dupliqué.`);
-  };
-
-  const handleImportFile = async (file: File) => {
-    try {
-      const raw = JSON.parse(await file.text());
-      const c = importCharacter(raw);
-      notify(`« ${c.name || 'Sans nom'} » importé.`);
-    } catch (e) {
-      // On ne laisse jamais remonter de message technique brut : l'erreur de
-      // parsing JSON (SyntaxError, libellé en anglais) est reformulée ; les
-      // erreurs de migration/validation portent déjà un message français clair.
-      const message =
-        e instanceof SyntaxError
-          ? "Ce fichier n'est pas un JSON valide."
-          : e instanceof Error
-            ? e.message
-            : 'Fichier illisible.';
-      notify(`Import impossible : ${message}`, 'error');
-    }
   };
 
   const confirmDelete = () => {
@@ -167,21 +148,10 @@ export default function HomePage() {
           <Button
             variant="outlined"
             startIcon={<UploadIcon />}
-            onClick={() => fileInput.current?.click()}
+            onClick={() => setImportOpen(true)}
           >
             Importer un JSON
           </Button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleImportFile(file);
-              e.target.value = '';
-            }}
-          />
         </Stack>
 
         {draft && (
@@ -327,6 +297,12 @@ export default function HomePage() {
           </>
         )}
       </Container>
+
+      <ImportCharacterDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={(c) => notify(`« ${c.name || 'Sans nom'} » importé.`)}
+      />
 
       <Dialog open={toDelete !== null} onClose={() => setToDelete(null)}>
         <DialogTitle>Supprimer le personnage ?</DialogTitle>
