@@ -2,8 +2,9 @@
  * Helpers d'affichage d'un personnage dans les listes (résout les ids de
  * règles en libellés lisibles).
  */
-import { ancestryById, classById } from '@/data';
+import { ancestryById } from '@/data';
 import type { Character } from './types';
+import { characterClassName } from './classDisplay';
 
 export interface CharacterSummary {
   id: string;
@@ -24,7 +25,7 @@ export function summarize(character: Character): CharacterSummary {
     name: character.name || 'Sans nom',
     ancestry: ancestryById.get(character.ancestryId)?.name ?? dash,
     classId: character.classId,
-    characterClass: classById.get(character.classId)?.name ?? dash,
+    characterClass: characterClassName(character, dash),
     level: character.level,
     updatedAt: character.updatedAt,
   };

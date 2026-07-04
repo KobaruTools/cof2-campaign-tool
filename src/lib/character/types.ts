@@ -37,8 +37,10 @@ import type { AncestryChoice } from './ancestry';
  * v11 : ajout de `depletion` (dépletion transitoire des jauges — MANQUE des PV
  *   décomposé létal/temp, et mana dépensé — PER-147).
  * v12 : ajout de `purse` (argent possédé, par unité or/argent/cuivre — PER-152).
+ * v13 : ajout de `firearmsAllowed` (armes à feu autorisées dans l'univers de jeu ;
+ *   `false` transforme l'arquebusier en « arbalétrier » — p. 62).
  */
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 /**
  * Manque de PV, décomposé selon la nature des dégâts (p. 218/220) :
@@ -223,6 +225,17 @@ export interface Character {
 
   /** Variante d'illustration de profil retenue (esthétique). */
   portraitVariant: PortraitVariant;
+
+  /**
+   * Les armes à feu sont-elles autorisées dans l'univers de jeu (p. 185, encadré) ?
+   * Réglage de campagne stocké au niveau du personnage en attendant un scope de
+   * campagne (TODO). N'a d'effet que pour un profil qui maîtrise la poudre
+   * (`CharacterClass.powderAllowed`, l'arquebusier) : à `false`, ses armes à feu
+   * sont remplacées par des arbalètes et il prend le nom d'« Arbalétrier » (p. 62).
+   * Par défaut `true` (les armes à feu conviennent à l'univers). Modifiable au
+   * wizard comme en mode édition de la fiche.
+   */
+  firearmsAllowed: boolean;
 
   /**
    * Valeurs des 7 caractéristiques telles qu'elles figurent sur la fiche

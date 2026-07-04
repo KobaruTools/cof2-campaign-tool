@@ -42,6 +42,14 @@ export interface WizardDraft {
    */
   priestVocation?: PriestVocation | null;
 
+  /**
+   * Armes à feu autorisées dans l'univers de jeu (p. 185). N'a d'effet que pour
+   * l'arquebusier (`powderAllowed`) : à `false`, il devient « arbalétrier ». Par
+   * défaut `true`. Optionnel pour rester compatible avec un brouillon persisté
+   * avant l'ajout du champ (absent = autorisées).
+   */
+  firearmsAllowed?: boolean;
+
   // Étape caractéristiques
   baseAbilities: Record<AbilityId, number>;
   ancestryChoices: AncestryChoice;
@@ -136,6 +144,7 @@ export function createDraft(characterId: string, now: string): WizardDraft {
     ancestryPathId: null,
     classId: '',
     priestVocation: null,
+    firearmsAllowed: true,
     baseAbilities: abilitiesZero(),
     ancestryChoices: [],
     chosenPaths: [],
@@ -241,6 +250,7 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     // Vocation pertinente seulement pour un prêtre ; null sinon (cf. priestVocationComplete).
     priestVocation: draft.classId === PRIEST_CLASS_ID ? (draft.priestVocation ?? null) : null,
     portraitVariant: 'default',
+    firearmsAllowed: draft.firearmsAllowed ?? true,
     abilities: finalAbilities(draft, ancestry),
     baseAbilities: draft.baseAbilities,
     ancestryChoices: draft.ancestryChoices,

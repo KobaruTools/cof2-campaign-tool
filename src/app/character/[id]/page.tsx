@@ -14,9 +14,11 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
+import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -29,6 +31,7 @@ import type { Character, CustomItem, DerivedStatId, EquipmentLine, Identity } fr
 import { isCustomItem } from '@/lib/character/types';
 import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
+import { classDisplayName } from '@/lib/character/classDisplay';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
 import { mergeMods, orphanMods, orphanSourceTerms } from '@/lib/character/orphanPoints';
@@ -736,7 +739,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   fontWeight: 600,
                 }}
               >
-                {characterClass?.name ?? 'Profil à définir'}
+                {characterClass
+                  ? classDisplayName(characterClass, character.firearmsAllowed)
+                  : 'Profil à définir'}
               </Typography>
               <Typography variant="body1" component="span">
                 · niveau {character.level}
@@ -783,6 +788,26 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   <SwapHorizIcon />
                 </IconButton>
               </AppTooltip>
+            )}
+
+            {/* Armes à feu autorisées dans l'univers (p. 185) — réglage de campagne.
+                Pour un profil qui maîtrise la poudre (arquebusier), le désactiver le
+                transforme en « arbalétrier » (p. 62). Édité en mode « Modifier ». */}
+            {editingBlocks.identity && characterClass?.powderAllowed && (
+              <Box sx={{ mt: 1, position: 'relative', zIndex: 1 }}>
+                <AppTooltip title="Univers sans poudre : l’arquebusier combat à l’arbalète et devient « arbalétrier » (p. 62).">
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={character.firearmsAllowed}
+                        onChange={(e) => update({ firearmsAllowed: e.target.checked })}
+                      />
+                    }
+                    label={<Typography variant="body2">Armes à feu autorisées</Typography>}
+                  />
+                </AppTooltip>
+              </Box>
             )}
           </Box>
 

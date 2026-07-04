@@ -35,6 +35,7 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     level: 1,
     priestVocation: null,
     portraitVariant: 'default',
+    firearmsAllowed: true,
     abilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
     baseAbilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
     ancestryChoices: [],

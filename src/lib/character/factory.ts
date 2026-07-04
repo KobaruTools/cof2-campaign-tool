@@ -38,6 +38,7 @@ export function createBlankCharacter(
     level: 1,
     priestVocation: null,
     portraitVariant: 'default',
+    firearmsAllowed: true,
     abilities: abilitiesZero(),
     baseAbilities: abilitiesZero(),
     ancestryChoices: [],

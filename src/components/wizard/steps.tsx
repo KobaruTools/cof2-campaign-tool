@@ -51,6 +51,7 @@ import {
   type WizardDraft,
 } from '@/lib/character/wizard';
 import { borrowedFeatureIds, hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
+import { classDisplayName } from '@/lib/character/classDisplay';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { initialEquipment } from './helpers';
@@ -74,8 +75,14 @@ const SHIELDS: Shield[] = equipment
   .filter((it): it is Shield => it.category === 'shield')
   .sort((a, b) => a.def - b.def);
 
-/** Armes à poudre — p.185 (aucun drapeau structuré ; ids connus du catalogue). */
-const POWDER_WEAPON_IDS = ['petoire', 'mousquet'];
+/**
+ * Armes à poudre de l'arquebusier — noms courts pour le chip de restrictions
+ * (p. 185). Si les armes à feu sont interdites dans l'univers, chacune est
+ * remplacée par son équivalent arbalète (p. 62 : mousquet → arbalète lourde ; la
+ * pétoire par l'arbalète de poing, cf. catalogue d'équipement).
+ */
+const FIREARM_SHORT_NAMES = ['pétoire', 'mousquet'];
+const CROSSBOW_EQUIVALENT_NAMES = ['Arbalète de poing', 'Arbalète lourde'];
 
 /** Icône épée (MUI n'en fournit pas) — tracé Material Design Icons « sword ». */
 function SwordIcon(props: SvgIconProps) {
@@ -169,12 +176,17 @@ function RestrictionRow({
  * structurées (blocs avec code couleur). Les armes ne le sont pas (texte nuancé
  * par profil), gardées en dessous.
  */
-function ClassRestrictions({ characterClass }: { characterClass: CharacterClass }) {
+function ClassRestrictions({
+  characterClass,
+  firearmsAllowed,
+  onFirearmsAllowedChange,
+}: {
+  characterClass: CharacterClass;
+  /** Armes à feu autorisées dans l'univers (contrôlé par le brouillon du wizard). */
+  firearmsAllowed: boolean;
+  onFirearmsAllowedChange: (value: boolean) => void;
+}) {
   const theme = useTheme();
-  // TODO(campaign) : remonter ce réglage au scope de la campagne (les armes à
-  // feu ne conviennent qu'à certains univers — p.185). Local au wizard pour
-  // l'instant, activé par défaut pour la classe qui les maîtrise (arquebusier).
-  const [includeFirearms, setIncludeFirearms] = useState(true);
 
   const maxArmor = characterClass.maxArmorId ? equipmentById.get(characterClass.maxArmorId) : null;
   const maxDef = maxArmor && maxArmor.category === 'armor' ? maxArmor.def : null;
@@ -219,15 +231,21 @@ function ClassRestrictions({ characterClass }: { characterClass: CharacterClass 
       );
     }
   }
-  if (characterClass.powderAllowed && includeFirearms) {
-    const names = POWDER_WEAPON_IDS.map((id) => equipmentById.get(id)?.name ?? id).join(', ');
-    weaponBlocks.push(
-      <RestrictionBlock
-        key="powder"
-        label={`Armes à feu (${names})`}
-        color={theme.palette.warning.main}
-      />,
-    );
+  if (characterClass.powderAllowed) {
+    if (firearmsAllowed) {
+      weaponBlocks.push(
+        <RestrictionBlock
+          key="powder"
+          label={`Armes à feu (${FIREARM_SHORT_NAMES.join(' ou ')})`}
+          color={theme.palette.warning.main}
+        />,
+      );
+    } else {
+      // Armes à feu interdites dans l'univers → l'arquebusier combat à l'arbalète (p. 62).
+      weaponBlocks.push(
+        <RestrictionBlock key="crossbow" label={CROSSBOW_EQUIVALENT_NAMES.join(' ou ')} />,
+      );
+    }
   }
   if (weaponBlocks.length === 0) {
     weaponBlocks.push(
@@ -293,8 +311,8 @@ function ClassRestrictions({ characterClass }: { characterClass: CharacterClass 
           control={
             <Switch
               size="small"
-              checked={includeFirearms}
-              onChange={(e) => setIncludeFirearms(e.target.checked)}
+              checked={firearmsAllowed}
+              onChange={(e) => onFirearmsAllowedChange(e.target.checked)}
             />
           }
           label={<Typography variant="body2">Armes à feu autorisées</Typography>}
@@ -362,7 +380,7 @@ export function ClassStep({ draft, patch }: StepProps) {
                             label={
                               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                                 <ClassIcon classId={p.id} size={22} />
-                                <span>{p.name}</span>
+                                <span>{classDisplayName(p, draft.firearmsAllowed ?? true)}</span>
                               </Stack>
                             }
                           />
@@ -414,7 +432,7 @@ export function ClassStep({ draft, patch }: StepProps) {
             >
               <ClassIcon classId={characterClass.id} size={28} />
               <Typography variant="subtitle1" sx={{ color: classColor(characterClass.id) }}>
-                {characterClass.name}
+                {classDisplayName(characterClass, draft.firearmsAllowed ?? true)}
               </Typography>
             </Stack>
             <Box sx={{ mb: 1.5, pr: { xs: 13, sm: 17 } }}>
@@ -427,7 +445,11 @@ export function ClassStep({ draft, patch }: StepProps) {
               </Typography>
               <AbilityBadgeList abilities={characterClass.recommendedAbilities} />
             </Box>
-            <ClassRestrictions characterClass={characterClass} />
+            <ClassRestrictions
+              characterClass={characterClass}
+              firearmsAllowed={draft.firearmsAllowed ?? true}
+              onFirearmsAllowedChange={(value) => patch({ firearmsAllowed: value })}
+            />
           </CardContent>
         </Card>
       )}

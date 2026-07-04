@@ -43,6 +43,9 @@ export const adventurerClasses: CharacterClass[] = [
     rangedAccess: 'all',
     allowedWeaponIds: [],
     powderAllowed: true,
+    // Si les armes à feu sont interdites dans l'univers, l'arquebusier devient
+    // « Arbalétrier » et combat à l'arbalète (p. 62).
+    nameWithoutFirearms: 'Arbalétrier',
     weaponNotes: "Fabrique sa propre poudre, sans risque d'explosion accidentelle.",
     startingEquipment: [
       { itemId: null, label: 'Pétoire ou arbalète de poing (DM 1d10, portée 20 m)', quantity: 1 },

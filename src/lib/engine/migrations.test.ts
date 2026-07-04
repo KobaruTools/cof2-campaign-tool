@@ -45,6 +45,7 @@ function validRaw(): Record<string, unknown> {
     level: 1,
     priestVocation: null,
     portraitVariant: 'default',
+    firearmsAllowed: true,
     abilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
     baseAbilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
     ancestryChoices: ['AGI'],
@@ -373,7 +374,23 @@ describe('migrateCharacter', () => {
     expect(() => migrateCharacter(raw)).toThrow(ValidationError);
   });
 
-  it('expose les migrations 1→2 … 11→12 dans le registre', () => {
+  it('migre un personnage v12 vers v13 (firearmsAllowed initialisé à true)', () => {
+    const v12 = validRaw();
+    v12.schemaVersion = 12;
+    delete v12.firearmsAllowed;
+    const c = migrateCharacter(v12);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.firearmsAllowed).toBe(true);
+  });
+
+  it('préserve firearmsAllowed=false lors d’un chargement v13', () => {
+    const v13 = validRaw();
+    v13.firearmsAllowed = false;
+    const c = migrateCharacter(v13);
+    expect(c.firearmsAllowed).toBe(false);
+  });
+
+  it('expose les migrations 1→2 … 12→13 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -385,5 +402,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[9]).toBe('function');
     expect(typeof MIGRATIONS[10]).toBe('function');
     expect(typeof MIGRATIONS[11]).toBe('function');
+    expect(typeof MIGRATIONS[12]).toBe('function');
   });
 });

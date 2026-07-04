@@ -224,6 +224,13 @@ export interface CharacterClass {
    * feu sont autorisées dans la partie (notion de campagne à venir).
    */
   powderAllowed?: boolean;
+  /**
+   * Nom alternatif du profil quand les armes à feu sont interdites dans l'univers
+   * de jeu (`Character.firearmsAllowed === false`). L'arquebusier privé de poudre
+   * combat à l'arbalète et prend alors le nom d'« Arbalétrier » (p. 62). Absent →
+   * le profil garde `name` quelle que soit l'autorisation des armes à feu.
+   */
+  nameWithoutFirearms?: string;
   /** Nuances verbatim non structurables (choix du joueur, exceptions…). */
   weaponNotes?: string;
   /** Équipement de départ — ex. p. 62. */

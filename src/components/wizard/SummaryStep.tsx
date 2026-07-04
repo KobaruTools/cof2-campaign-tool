@@ -11,6 +11,7 @@ import { ABILITY_IDS } from '@/data/schema';
 import { checkCompliance } from '@/lib/engine';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { finalAbilities, level1FeatureIds, materializeDraft } from '@/lib/character/wizard';
+import { classDisplayName } from '@/lib/character/classDisplay';
 import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
 import { effectiveFeatureIdsForMods, hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
@@ -82,7 +83,7 @@ export function SummaryStep({ draft, patch }: StepProps) {
             component="span"
             sx={{ color: classColor(characterClass.id), fontWeight: 600 }}
           >
-            {characterClass.name}
+            {classDisplayName(characterClass, draft.firearmsAllowed ?? true)}
           </Typography>
           <Typography variant="body2" component="span">
             · niveau 1

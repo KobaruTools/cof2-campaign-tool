@@ -260,6 +260,18 @@ function migrateV11toV12(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v12 → v13 : ajout de `firearmsAllowed` (armes à feu autorisées dans l'univers
+ * de jeu — p. 185). Les personnages d'avant v13 sont réputés jouer avec les armes
+ * à feu autorisées (comportement historique) : on initialise à `true`.
+ */
+function migrateV12toV13(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (typeof next.firearmsAllowed !== 'boolean') next.firearmsAllowed = true;
+  next.schemaVersion = 13;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -275,6 +287,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   9: migrateV9toV10,
   10: migrateV10toV11,
   11: migrateV11toV12,
+  12: migrateV12toV13,
 };
 
 export class MigrationError extends Error {}
