@@ -5,7 +5,7 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import { alpha, darken, lighten, type SxProps, type Theme } from '@mui/material/styles';
-import { Fragment, type ReactNode } from 'react';
+import { createContext, useContext, Fragment, type ReactNode } from 'react';
 import { featureById, pathById, progression } from '@/data';
 import type { AbilityId, AbilitySubstitution, Die, Feature } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
@@ -20,6 +20,14 @@ import { splitNotes } from '@/lib/ui/featureNotes';
 import { splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
+
+/**
+ * Force l'affichage VERBATIM (`Feature.text`) au lieu du rendu enrichi (dés, dé
+ * évolutif, encadrés de formule — PER-64), consommé par `FeatureText` (PER-88).
+ * Défaut `false` → rendu enrichi (la vue par défaut). Un `Provider` dans l'en-tête
+ * de la section « Voies & capacités » bascule toute la section vers le texte d'origine.
+ */
+export const FeatureVerbatimContext = createContext(false);
 
 /** Tonalité d'une puce de référence : caractéristique (neutre) ou stat dérivée (teinte dédiée). */
 type RefTone = 'ability' | 'derived';
@@ -736,6 +744,24 @@ export function FeatureText({
   dense,
   abilitySubstitutions,
 }: FeatureTextProps) {
+  // Bascule « Texte d'origine » (PER-88) : quand elle est active (Provider dans l'en-tête
+  // de la section), on rend le verbatim TOTALEMENT BRUT — le `text` extrait du PDF, tel
+  // quel, SANS aucun traitement : ni enrichissement (dés, formules), ni puces de glossaire
+  // (carac, DEF, jargon), ni séparation des « Note : ». Destiné à la relecture « comme dans
+  // le livre » ; les sauts de ligne du source sont conservés (`pre-line`).
+  const verbatim = useContext(FeatureVerbatimContext);
+  if (verbatim) {
+    return (
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        component="div"
+        sx={{ whiteSpace: 'pre-line', fontSize: dense ? '0.9rem' : '1rem' }}
+      >
+        {feature.text}
+      </Typography>
+    );
+  }
   const enriched = feature.richText && abilities && level != null;
   // Les « Note : » sont rendues plus petites/grises (`NoteSpan`), dans les deux
   // modes ; le balisage interne (puces, dés, formules) reste actif.

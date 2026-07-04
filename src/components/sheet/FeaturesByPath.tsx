@@ -10,6 +10,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
@@ -72,7 +73,7 @@ import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
-import { FeatureText, CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { FeatureText, CapabilityChip, FeatureVerbatimContext } from '@/components/sheet/FeatureRichText';
 import { CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
 import { FeatureChoiceField, COMPACT_CHIP_SX } from '@/components/sheet/FeatureChoiceField';
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
@@ -935,6 +936,12 @@ export interface FeaturesByPathProps {
    * capacité qui le domine (PER-73). Absent → aucun signalement.
    */
   testBonuses?: TestDomainBonus[];
+  /**
+   * Affiche le texte d'ORIGINE verbatim (`Feature.text`) plutôt que le rendu enrichi
+   * (PER-88). Défaut `false` → rendu enrichi. Propagé à tous les `FeatureText` de la
+   * section via `FeatureVerbatimContext`.
+   */
+  verbatim?: boolean;
 }
 
 /**
@@ -1033,6 +1040,44 @@ export function ConcentrationToggle({
         title="Concentration accrue : les sorts en (A) coûtent 2 PM de moins (plancher 0) et deviennent une action limitée (L) (p. 228)"
       >
         <SelfImprovementIcon fontSize="small" />
+      </AppTooltip>
+    </ToggleButton>
+  );
+}
+
+/**
+ * Interrupteur « Texte d'origine » (PER-88), à placer dans l'en-tête de la section à
+ * côté de la bascule d'affichage. OFF (défaut) → rendu ENRICHI des capacités (dés en
+ * icônes, dé évolutif au niveau courant, encadrés de formule — PER-64) ; ON → texte
+ * d'origine VERBATIM (`Feature.text`), sans enrichissement, pour consulter la règle
+ * officielle telle qu'elle figure dans le livre. S'applique à toute la section (via
+ * `FeatureVerbatimContext`), en vue lignes comme en vue colonnes.
+ */
+export function VerbatimToggle({
+  value,
+  onChange,
+}: {
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <ToggleButton
+      value="verbatim"
+      selected={value}
+      size="small"
+      aria-label="Texte d'origine"
+      aria-pressed={value}
+      onChange={() => onChange(!value)}
+      sx={value ? { color: 'text.primary' } : undefined}
+    >
+      <AppTooltip
+        title={
+          value
+            ? "Texte d'origine affiché — cliquez pour revenir au rendu enrichi (dés, formules calculées)"
+            : "Afficher le texte d'origine (verbatim du livre), sans enrichissement"
+        }
+      >
+        <MenuBookOutlinedIcon fontSize="small" />
       </AppTooltip>
     </ToggleButton>
   );
@@ -3001,6 +3046,7 @@ export function FeaturesByPath({
   onCreateElixir,
   concentration = false,
   testBonuses,
+  verbatim = false,
 }: FeaturesByPathProps) {
   // Prêtre spécialiste : la capacité divine occupe le slot d'une voie de prêtre
   // (voie d'accueil). On la RELOCALISE sous cette voie (override) et on la rend avec
@@ -3062,6 +3108,7 @@ export function FeaturesByPath({
   }
 
   return (
+    <FeatureVerbatimContext.Provider value={verbatim}>
     <Stack spacing={2.5}>
       {displayGroups.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
@@ -3190,5 +3237,6 @@ export function FeaturesByPath({
         />
       )}
     </Stack>
+    </FeatureVerbatimContext.Provider>
   );
 }

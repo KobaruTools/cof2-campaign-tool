@@ -97,6 +97,7 @@ import {
   ConcentrationToggle,
   FeaturesByPath,
   FeaturesLayoutToggle,
+  VerbatimToggle,
 } from '@/components/sheet/FeaturesByPath';
 import type { FeaturesLayout } from '@/components/sheet/FeaturesByPath';
 import { EquipmentList } from '@/components/sheet/EquipmentList';
@@ -145,6 +146,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     });
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [voiesLayout, setVoiesLayout] = useState<FeaturesLayout>('columns');
+  // Texte d'origine (PER-88) : OFF (défaut) → rendu enrichi des capacités ; ON →
+  // verbatim du livre. Préférence d'affichage transitoire, comme la disposition des voies.
+  const [featuresVerbatim, setFeaturesVerbatim] = useState(false);
   // Concentration accrue (p. 228) : état de jeu transitoire (non persisté), comme
   // l'affichage des voies. Quand actif, les sorts en (A) montrent leur coût réduit.
   const [concentration, setConcentration] = useState(false);
@@ -927,6 +931,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 {hasSpells && (
                   <ConcentrationToggle value={concentration} onChange={setConcentration} />
                 )}
+                <VerbatimToggle value={featuresVerbatim} onChange={setFeaturesVerbatim} />
                 <FeaturesLayoutToggle value={voiesLayout} onChange={setVoiesLayout} />
                 <BlockEditButton
                   editing={editingBlocks.features}
@@ -940,6 +945,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               featureIds={character.featureIds}
               classId={character.classId}
               layout={voiesLayout}
+              verbatim={featuresVerbatim}
               concentration={concentration}
               // Caractéristiques EFFECTIVES (saisie + modificateurs permanents de
               // capacités, ex. gnome-r5 +1 CHA, Endurer +1 CON) : les formules richText
