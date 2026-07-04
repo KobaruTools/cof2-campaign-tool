@@ -16,7 +16,6 @@ import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
 import { ancestryById, classById, priestGods } from '@/data';
 import { choicesComplete } from '@/lib/character/ancestry';
 import { featuresWithUnmadeChoices } from '@/lib/character/choices';
@@ -35,7 +34,7 @@ import { AbilitiesStep } from '@/components/wizard/AbilitiesStep';
 import { EquipmentStep } from '@/components/wizard/EquipmentStep';
 import { SummaryStep } from '@/components/wizard/SummaryStep';
 import type { StepProps } from '@/components/wizard/types';
-import { HeaderIllustrations } from '@/components/HeaderIllustrations';
+import { HomeBackground } from '@/components/home/HomeBackground';
 
 interface StepDef {
   label: string;
@@ -179,13 +178,6 @@ export default function CreatePage() {
   const pendingChoices = previewForChoices ? featuresWithUnmadeChoices(previewForChoices) : [];
   const canCreate = pendingChoices.length === 0;
 
-  // Illustrations d'arrière-plan (mêmes que la fiche) : apparaissent au fur et à
-  // mesure des choix — la vitruve dès qu'un peuple valide est retenu, le portrait
-  // dès qu'un profil l'est. On ne passe l'id que s'il correspond à une entité
-  // connue, pour ne pas tenter de charger une image inexistante.
-  const bgAncestryId = ancestryById.has(draft.ancestryId) ? draft.ancestryId : undefined;
-  const bgClassId = classById.has(draft.classId) ? draft.classId : undefined;
-
   const finish = () => {
     const ancestry = ancestryById.get(draft.ancestryId);
     if (!ancestry) return;
@@ -200,7 +192,22 @@ export default function CreatePage() {
   return (
     <>
       <title>Création de personnage — Éditeur de personnage CO2</title>
-      <AppBar position="static">
+      {/* Même illustration de fond que l'accueil : la couverture scindée en deux
+          moitiés encadrant le contenu (fixe, parallaxe + léger suivi de la souris). */}
+      <HomeBackground />
+      <AppBar
+        position="static"
+        // Translucide + flou, comme l'accueil : laisse deviner l'illustration de fond
+        // sans nuire à la lisibilité du titre.
+        sx={{
+          bgcolor: 'rgba(18, 18, 18, 0.55)',
+          backgroundImage: 'none',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          boxShadow: 'none',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        }}
+      >
         <Toolbar>
           <IconButton edge="start" color="inherit" onClick={() => router.push('/')} sx={{ mr: 1 }}>
             <ArrowBackIcon />
@@ -212,77 +219,63 @@ export default function CreatePage() {
       </AppBar>
 
       <Container maxWidth="md" sx={{ py: 4 }}>
-        {/* Ancre `position: relative` pleine largeur : les illustrations s'y ancrent
-            et, le container étant centré, leur ancrage aux bords de l'écran (±50vw)
-            tombe juste. Elles restent en filigrane derrière le contenu (zIndex -1). */}
-        <Box sx={{ position: 'relative' }}>
-          <HeaderIllustrations
-            ancestryId={bgAncestryId}
-            classId={bgClassId}
-            ancestryTop={150}
-            ancestryHeight={460}
-          />
-          <Stepper activeStep={step} alternativeLabel sx={{ mb: 4 }}>
-            {STEPS.map((s) => {
-              const choice = s.summary?.(draft) ?? null;
-              return (
-                <Step key={s.label}>
-                  <StepLabel
-                    optional={
-                      choice ? (
-                        <Typography variant="caption" color="text.secondary">
-                          ({choice})
-                        </Typography>
-                      ) : undefined
-                    }
-                  >
-                    {s.label}
-                  </StepLabel>
-                </Step>
-              );
-            })}
-          </Stepper>
+        <Stepper activeStep={step} alternativeLabel sx={{ mb: 4 }}>
+          {STEPS.map((s) => {
+            const choice = s.summary?.(draft) ?? null;
+            return (
+              <Step key={s.label}>
+                <StepLabel
+                  optional={
+                    choice ? (
+                      <Typography variant="caption" color="text.secondary">
+                        ({choice})
+                      </Typography>
+                    ) : undefined
+                  }
+                >
+                  {s.label}
+                </StepLabel>
+              </Step>
+            );
+          })}
+        </Stepper>
 
-          <Paper
-            variant="outlined"
-            // Translucide + léger flou : laisse transparaître les illustrations de fond
-            // (peuple / profil) sans nuire à la lisibilité du contenu de l'étape.
-            sx={{
-              p: { xs: 2, sm: 3 },
-              mb: 3,
-              bgcolor: (theme) => alpha(theme.palette.background.paper, 0.82),
-              backdropFilter: 'blur(6px)',
-              WebkitBackdropFilter: 'blur(6px)',
-            }}
-          >
-            <StepComponent draft={draft} patch={patch} />
-          </Paper>
+        <Paper
+          variant="outlined"
+          // Translucide + léger flou, comme les cartes de l'accueil : laisse
+          // transparaître l'illustration de fond sans nuire à la lisibilité de l'étape.
+          sx={{
+            p: { xs: 2, sm: 3 },
+            mb: 3,
+            bgcolor: 'rgba(30, 30, 34, 0.62)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            borderColor: 'rgba(255, 255, 255, 0.10)',
+          }}
+        >
+          <StepComponent draft={draft} patch={patch} />
+        </Paper>
 
-          {/* Feedback : ce qu'il reste à faire avant de pouvoir passer à la suite. */}
-          {!isLast && !canNext && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              {current.hint?.(draft) ?? 'Complète les choix obligatoires de cette étape pour continuer.'}
-            </Alert>
-          )}
+        {/* Feedback : ce qu'il reste à faire avant de pouvoir passer à la suite. */}
+        {!isLast && !canNext && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {current.hint?.(draft) ?? 'Complète les choix obligatoires de cette étape pour continuer.'}
+          </Alert>
+        )}
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
-              Précédent
+        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
+            Précédent
+          </Button>
+          {isLast ? (
+            <Button variant="contained" onClick={finish} disabled={!canCreate}>
+              Créer le personnage
             </Button>
-            {isLast ? (
-              <Button variant="contained" onClick={finish} disabled={!canCreate}>
-                Créer le personnage
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                disabled={!canNext}
-                onClick={() => setStep(step + 1)}
-              >
-                Suivant
-              </Button>
-            )}
-          </Box>
+          ) : (
+            <Button variant="contained" disabled={!canNext} onClick={() => setStep(step + 1)}>
+              Suivant
+            </Button>
+          )}
         </Box>
       </Container>
     </>
