@@ -143,6 +143,24 @@ describe('repos — surcoût mana croissant (foi-r5, PER-162)', () => {
   });
 });
 
+describe('repos — charges explosives (voie des explosifs, PER-157)', () => {
+  // Réserve QUOTIDIENNE partagée (clé 'explosifs-charges') entre Démolition (r2), Piège explosif (r4)
+  // et Boulet explosif (r5) ; le livre précise « chaque jour » (p. 63-64) → `resetOn` par défaut ('day').
+  // La recharge quotidienne passe par le mécanisme générique du repos long (PER-151), pas de code dédié.
+  const withCharges = make({
+    featureIds: ['explosifs-r2', 'explosifs-r4', 'explosifs-r5'],
+    usageCounters: { 'explosifs-charges': 1 },
+  });
+
+  it('le repos long recharge la réserve partagée (clé retirée → pleine)', () => {
+    expect(longRest(withCharges).usageCounters).toEqual({});
+  });
+
+  it('le repos court ne recharge PAS la réserve (compteur « par jour » conservé)', () => {
+    expect(shortRest(withCharges).usageCounters).toEqual({ 'explosifs-charges': 1 });
+  });
+});
+
 describe('resetAll — tout réinitialiser', () => {
   it('vide toutes les jauges, tous les compteurs et tous les interrupteurs', () => {
     expect(resetAll()).toEqual({ depletion: {}, usageCounters: {}, effectToggles: {} });
