@@ -34,7 +34,7 @@ import { AbilitiesStep } from '@/components/wizard/AbilitiesStep';
 import { EquipmentStep } from '@/components/wizard/EquipmentStep';
 import { SummaryStep } from '@/components/wizard/SummaryStep';
 import type { StepProps } from '@/components/wizard/types';
-import { HomeBackground } from '@/components/home/HomeBackground';
+import { HomeBackground } from '@/components/HomeBackground';
 
 interface StepDef {
   label: string;
