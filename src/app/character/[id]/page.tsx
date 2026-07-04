@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useRef, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
@@ -80,6 +80,7 @@ import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
+import { HeaderIllustrations } from '@/components/HeaderIllustrations';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
@@ -170,37 +171,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       setCreatedToast(true);
       window.history.replaceState(null, '', window.location.pathname);
     }
-  }, []);
-
-  // Parallax léger sur les illustrations de l'en-tête. Pour rester fluide, on
-  // écrit le transform directement sur le DOM (pas de state React → pas de
-  // re-render à chaque pixel) et on throttle via requestAnimationFrame.
-  const ancestryImgRef = useRef<HTMLImageElement>(null);
-  const classImgRef = useRef<HTMLImageElement>(null);
-  useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      const y = window.scrollY;
-      // On conserve les transforms de base (ancrage aux bords de l'écran via 50vw)
-      // et on y ajoute le décalage vertical du parallaxe.
-      if (ancestryImgRef.current) {
-        // +50px : décalage vertical de base pour la faire démarrer un peu plus bas.
-        ancestryImgRef.current.style.transform = `translateX(-50vw) translateY(calc(-50% + 50px + ${y * 0.5}px))`;
-      }
-      if (classImgRef.current) {
-        classImgRef.current.style.transform = `translateX(50vw) translateY(${y * 0.5}px)`;
-      }
-    };
-    const onScroll = () => {
-      if (!raf) raf = window.requestAnimationFrame(update);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    update(); // position initiale
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      if (raf) window.cancelAnimationFrame(raf);
-    };
   }, []);
 
   if (!hasHydrated) {
@@ -662,57 +632,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           {/* En-tête : nom + peuple · profil · niveau, encadré par les illustrations
               du peuple (gauche) et du profil (droite), en filigrane semi-transparent */}
           <Box sx={{ position: 'relative' }}>
-            {ancestry && (
-              <Box
-                component="img"
-                ref={ancestryImgRef}
-                src={`/ancestries/${ancestry.id}-vitruve.webp`}
-                alt=""
-                aria-hidden
-                sx={{
-                  position: 'absolute',
-                  top: '75%',
-                  // Ancré au bord GAUCHE de l'écran, indépendamment de la largeur du
-                  // container : le centre du bloc = centre du viewport, on part de là
-                  // (left 50 %) puis on ramène le bord gauche de l'image sur le bord
-                  // gauche de l'écran (translateX -50vw).
-                  left: '50%',
-                  transform: 'translateX(-50vw) translateY(calc(-50% + 50px))',
-                  willChange: 'transform',
-                  height: '300%',
-                  width: 'auto',
-                  opacity: 0.4,
-                  pointerEvents: 'none',
-                  zIndex: -1,
-                }}
-              />
-            )}
-            {characterClass && (
-              <Box
-                component="img"
-                ref={classImgRef}
-                src={`/classes/${characterClass.id}${
-                  character.portraitVariant === 'alt' ? '-2' : ''
-                }.webp`}
-                alt=""
-                aria-hidden
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  // Ancré au bord DROIT de l'écran (symétrique de l'illustration de
-                  // peuple) : right 50 % place le bord droit de l'image au centre du
-                  // viewport, translateX 50vw le ramène sur le bord droit de l'écran.
-                  right: '50%',
-                  transform: 'translateX(50vw)',
-                  willChange: 'transform',
-                  height: 600,
-                  width: 'auto',
-                  opacity: 0.4,
-                  pointerEvents: 'none',
-                  zIndex: -1,
-                }}
-              />
-            )}
+            <HeaderIllustrations
+              ancestryId={ancestry?.id}
+              classId={characterClass?.id}
+              portraitVariant={character.portraitVariant}
+            />
             {editingBlocks.identity ? (
               <TextField
                 value={character.name}
