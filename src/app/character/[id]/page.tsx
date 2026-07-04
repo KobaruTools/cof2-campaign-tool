@@ -182,12 +182,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     const update = () => {
       raf = 0;
       const y = window.scrollY;
-      // On conserve les transforms de base (centrage) et on y ajoute le décalage.
+      // On conserve les transforms de base (ancrage aux bords de l'écran via 50vw)
+      // et on y ajoute le décalage vertical du parallaxe.
       if (ancestryImgRef.current) {
-        ancestryImgRef.current.style.transform = `translateY(calc(-50% + ${y * 0.5}px))`;
+        ancestryImgRef.current.style.transform = `translateX(-50vw) translateY(calc(-50% + ${y * 0.5}px))`;
       }
       if (classImgRef.current) {
-        classImgRef.current.style.transform = `translateX(-50%) translateY(${y * 0.5}px)`;
+        classImgRef.current.style.transform = `translateX(50vw) translateY(${y * 0.5}px)`;
       }
     };
     const onScroll = () => {
@@ -670,9 +671,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 sx={{
                   position: 'absolute',
                   top: '75%',
-                  right: '100%',
-                  mr: -4,
-                  transform: 'translateY(-50%)',
+                  // Ancré au bord GAUCHE de l'écran, indépendamment de la largeur du
+                  // container : le centre du bloc = centre du viewport, on part de là
+                  // (left 50 %) puis on ramène le bord gauche de l'image sur le bord
+                  // gauche de l'écran (translateX -50vw).
+                  left: '50%',
+                  transform: 'translateX(-50vw) translateY(-50%)',
                   willChange: 'transform',
                   height: '300%',
                   width: 'auto',
@@ -694,8 +698,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 sx={{
                   position: 'absolute',
                   top: 0,
-                  left: '100%',
-                  transform: 'translateX(-50%)',
+                  // Ancré au bord DROIT de l'écran (symétrique de l'illustration de
+                  // peuple) : right 50 % place le bord droit de l'image au centre du
+                  // viewport, translateX 50vw le ramène sur le bord droit de l'écran.
+                  right: '50%',
+                  transform: 'translateX(50vw)',
                   willChange: 'transform',
                   height: 600,
                   width: 'auto',
