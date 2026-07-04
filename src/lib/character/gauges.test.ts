@@ -10,12 +10,17 @@ import {
   hpHealthState,
   hpMissing,
   pruneDepletion,
+  currentLuck,
   resetHp,
+  resetLuck,
   resetMana,
   resetRecoveryDice,
+  restoreLuck,
   restoreMana,
   restoreRecoveryDice,
+  setLuckMissing,
   setManaMissing,
+  spendLuck,
   spendMana,
   spendRecoveryDice,
 } from './gauges';
@@ -85,6 +90,49 @@ describe('currentMana', () => {
 
   it('borne basse à 0', () => {
     expect(currentMana(12, { mana: 99 })).toBe(0);
+  });
+});
+
+describe('points de chance (PER-155)', () => {
+  it('current = clamp(max − dépensés, 0, max)', () => {
+    expect(currentLuck(5, {})).toBe(5);
+    expect(currentLuck(5, { luck: 2 })).toBe(3);
+    expect(currentLuck(5, { luck: 99 })).toBe(0);
+  });
+
+  it('suit automatiquement un changement de max (pas de re-clamp)', () => {
+    const dep: Depletion = { luck: 2 };
+    expect(currentLuck(5, dep)).toBe(3);
+    expect(currentLuck(7, dep)).toBe(5); // CHA plus élevé : le courant remonte
+  });
+
+  it('setLuckMissing borne à [0, max] et retire la clé à plein', () => {
+    expect(setLuckMissing({}, 3, 5)).toEqual({ luck: 3 });
+    expect(setLuckMissing({ luck: 3 }, 0, 5)).toEqual({});
+    expect(setLuckMissing({}, 99, 5)).toEqual({ luck: 5 });
+    expect(setLuckMissing({ luck: 4 }, -2, 5)).toEqual({});
+    expect(setLuckMissing({ luck: 3 }, 3, 0)).toEqual({});
+  });
+
+  it('dépense / récupère bornés, reset conserve les autres jauges', () => {
+    expect(spendLuck({}, 2, 5)).toEqual({ luck: 2 });
+    expect(spendLuck({ luck: 4 }, 5, 5)).toEqual({ luck: 5 });
+    expect(restoreLuck({ luck: 3 }, 1, 5)).toEqual({ luck: 2 });
+    expect(restoreLuck({ luck: 1 }, 5, 5)).toEqual({});
+    expect(resetLuck({ luck: 2, mana: 3 })).toEqual({ mana: 3 });
+  });
+
+  it('pruneDepletion normalise les points de chance pleins', () => {
+    expect(pruneDepletion({ luck: 0 })).toEqual({});
+    expect(pruneDepletion({ luck: 2 })).toEqual({ luck: 2 });
+  });
+
+  it('préserve les autres jauges (mana, PV)', () => {
+    expect(spendLuck({ mana: 3, hp: { lethal: 2, temp: 0 } }, 1, 5)).toEqual({
+      mana: 3,
+      hp: { lethal: 2, temp: 0 },
+      luck: 1,
+    });
   });
 });
 

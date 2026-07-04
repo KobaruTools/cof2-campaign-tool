@@ -67,9 +67,12 @@ import {
   healHp,
   pruneDepletion,
   resetHp,
+  resetLuck,
   resetMana,
+  restoreLuck,
   restoreMana,
   setRecoveryDiceMissing,
+  spendLuck,
   spendMana,
 } from '@/lib/character/gauges';
 import { longRest, shortRest } from '@/lib/character/rest';
@@ -585,6 +588,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const setManaRestore = (amount: number) =>
     update({ depletion: restoreMana(character.depletion, amount, manaMax ?? 0) });
   const setManaReset = () => update({ depletion: resetMana(character.depletion) });
+  // Points de chance (PER-155) : max EFFECTIF (surcharge ?? dérivé). Universel (pas de condition).
+  const luckMax = masterDerived ? character.overrides.luckPoints ?? masterDerived.luckPoints : 0;
+  const setLuckSpend = (amount: number) =>
+    update({ depletion: spendLuck(character.depletion, amount, luckMax) });
+  const setLuckRestore = (amount: number) =>
+    update({ depletion: restoreLuck(character.depletion, amount, luckMax) });
+  const setLuckReset = () => update({ depletion: resetLuck(character.depletion) });
   // Dés de récupération (PER-151) : max EFFECTIF (surcharge ?? dérivé) et type de dé pour la jauge.
   const recoveryDiceMax = masterDerived
     ? character.overrides.recoveryDiceCount ?? masterDerived.recoveryDiceCount
@@ -893,6 +903,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 onSpendMana={setManaSpend}
                 onRestoreMana={setManaRestore}
                 onResetMana={setManaReset}
+                luckMax={luckMax}
+                onSpendLuck={setLuckSpend}
+                onRestoreLuck={setLuckRestore}
+                onResetLuck={setLuckReset}
                 capacityGauges={capacityGauges}
                 onSetUsageCounter={setUsageCounterValue}
                 recoveryDiceMax={recoveryDiceMax}

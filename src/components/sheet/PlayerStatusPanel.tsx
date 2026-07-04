@@ -9,6 +9,7 @@ import TimerIcon from '@mui/icons-material/Timer';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
+import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
@@ -19,7 +20,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import type { Depletion } from '@/lib/character/types';
 import type { Die } from '@/data/schema';
 import type { CapacityResourceGauge } from '@/lib/character/effects';
-import { currentHp, currentMana, currentRecoveryDice, hpHealthState, type HealthState } from '@/lib/character/gauges';
+import { currentHp, currentLuck, currentMana, currentRecoveryDice, hpHealthState, type HealthState } from '@/lib/character/gauges';
 import { classColor } from '@/lib/ui/classColors';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -222,6 +223,14 @@ export interface PlayerStatusPanelProps {
   onRestoreMana: (amount: number) => void;
   /** Remet le mana à plein. */
   onResetMana: () => void;
+  /** Réserve de points de chance maximale (stat dérivée `luckPoints`), affichée pour tous (PER-155). */
+  luckMax: number;
+  /** Dépense `amount` points de chance. */
+  onSpendLuck: (amount: number) => void;
+  /** Récupère `amount` points de chance. */
+  onRestoreLuck: (amount: number) => void;
+  /** Remet les points de chance à plein. */
+  onResetLuck: () => void;
   /**
    * Ressources de capacité à réserve limitée (rage, sept vies…), lues depuis les mêmes
    * `usageCounters` que `FeaturesByPath` (PER-150). Vide → aucune jauge de ce type.
@@ -272,6 +281,10 @@ export function PlayerStatusPanel({
   onSpendMana,
   onRestoreMana,
   onResetMana,
+  luckMax,
+  onSpendLuck,
+  onRestoreLuck,
+  onResetLuck,
   capacityGauges,
   onSetUsageCounter,
   recoveryDiceMax,
@@ -288,6 +301,8 @@ export function PlayerStatusPanel({
   // Couleurs CONCRÈTES (résolues) pour les caps assombris : PV en vert, mana en bleu.
   const hpColor = theme.palette.success.main;
   const manaColor = theme.palette.info.main;
+  // Chance en violet (secondary) : distinct du vert PV, du bleu mana et de l'ambre des capacités.
+  const luckColor = theme.palette.secondary.main;
   const [amount, setAmount] = useState('1');
   const [kind, setKind] = useState<DamageKind>('lethal');
   const [expanded, toggleExpanded] = usePersistentBoolean('gauge-expanded:hp', false);
@@ -437,6 +452,27 @@ export function PlayerStatusPanel({
           />
         );
       })}
+
+      {/* Séparateur : la chance n'est pas une jauge de vitalité/énergie (PV, mana, ressources de
+          capacité) mais une méta-ressource de méta-jeu — on l'isole visuellement du groupe ci-dessus. */}
+      <Divider sx={{ my: 0.25 }} />
+
+      {/* Jauge de points de chance (PER-155) — universelle (tous les personnages). Violet (secondary),
+          icône trèfle de la stat dérivée `luckPoints`. Réserve dépensée manuellement (relance de dé…). */}
+      <GaugeRow
+        label="Points de chance"
+        icon={<DerivedStatIcon statId="luckPoints" size={28} color="#fff" />}
+        fillColor="secondary.main"
+        capColor={luckColor}
+        persistKey="gauge-expanded:luck"
+        current={currentLuck(luckMax, depletion)}
+        max={luckMax}
+        spendLabel="Dépenser"
+        restoreLabel="Récupérer"
+        onSpend={onSpendLuck}
+        onRestore={onRestoreLuck}
+        onReset={onResetLuck}
+      />
 
       {/* Repos (PER-151) : récupération selon les règles CO2 ; matrice des DR à droite. */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1, pt: 0.5 }}>

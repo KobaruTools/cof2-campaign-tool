@@ -131,6 +131,41 @@ export function resetMana(depletion: Depletion): Depletion {
   return next;
 }
 
+/** Points de chance courants = `clamp(maxLuck − dépensés, 0, maxLuck)` (PER-155). */
+export function currentLuck(maxLuck: number, depletion: Depletion): number {
+  return currentGauge(maxLuck, Math.max(0, depletion.luck ?? 0));
+}
+
+/**
+ * Fixe le MANQUE de points de chance (points dépensés), borné à `[0, max]`. À 0, la clé
+ * est retirée (réserve pleine par défaut). Pendant de `setManaMissing` pour la chance
+ * (PER-155). Un `max` ≤ 0 remet la réserve à plein.
+ */
+export function setLuckMissing(depletion: Depletion, missing: number, max: number): Depletion {
+  const clamped = Math.max(0, Math.min(Math.max(0, max), Math.round(missing)));
+  const next = { ...depletion };
+  if (clamped <= 0) delete next.luck;
+  else next.luck = clamped;
+  return next;
+}
+
+/** Dépense `amount` points de chance (augmente le manque, borné au max). */
+export function spendLuck(depletion: Depletion, amount: number, max: number): Depletion {
+  return setLuckMissing(depletion, (depletion.luck ?? 0) + Math.max(0, amount), max);
+}
+
+/** Récupère `amount` points de chance (réduit le manque, plancher 0). */
+export function restoreLuck(depletion: Depletion, amount: number, max: number): Depletion {
+  return setLuckMissing(depletion, (depletion.luck ?? 0) - Math.max(0, amount), max);
+}
+
+/** Remet la chance à plein (retire la dépletion de chance, conserve les autres jauges). */
+export function resetLuck(depletion: Depletion): Depletion {
+  const next = { ...depletion };
+  delete next.luck;
+  return next;
+}
+
 /** Dés de récupération COURANTS = `clamp(max − dépensés, 0, max)`. */
 export function currentRecoveryDice(max: number, depletion: Depletion): number {
   return currentGauge(max, Math.max(0, depletion.recoveryDice ?? 0));
@@ -182,6 +217,10 @@ export function pruneDepletion(depletion: Depletion): Depletion {
   if (depletion.mana !== undefined) {
     const mana = Math.max(0, depletion.mana);
     if (mana > 0) next.mana = mana;
+  }
+  if (depletion.luck !== undefined) {
+    const luck = Math.max(0, depletion.luck);
+    if (luck > 0) next.luck = luck;
   }
   if (depletion.recoveryDice !== undefined) {
     const dr = Math.max(0, depletion.recoveryDice);
