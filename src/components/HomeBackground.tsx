@@ -24,8 +24,9 @@ import Box from '@mui/material/Box';
 // Réglages du mouvement, en pixels.
 const MOUSE_X = 16; // décalage horizontal max au suivi souris
 const MOUSE_Y = 8; // décalage vertical max au suivi souris
-const SCROLL_FACTOR = 0.05; // fraction du défilement répercutée sur l'image
-const SCROLL_MAX = 20; // décalage vertical max dû au scroll (borné)
+// Décalage vertical max dû au scroll (borné) : atteint en bas de page, réparti sur
+// TOUTE la course de défilement (progression 0→1), pas sur les premiers pixels.
+const SCROLL_MAX = 20;
 const SAFETY = 4; // marge de sécurité
 
 // Débordement de l'image au-delà de sa fenêtre, déduit du déplacement maximal
@@ -132,7 +133,12 @@ export function HomeBackground() {
       // Interpolation exponentielle : lisse le suivi de la cible.
       currentX += (targetX - currentX) * 0.06;
       currentY += (targetY - currentY) * 0.06;
-      const shift = clamp(scroll * SCROLL_FACTOR, 0, SCROLL_MAX);
+      // Progression du défilement [0, 1] : le décalage est proportionnel à la course
+      // TOTALE (recalculée à chaque frame, la hauteur du document pouvant changer),
+      // de sorte que le parallaxe atteint son max (SCROLL_MAX) pile en bas de page.
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = maxScroll > 0 ? clamp(scroll / maxScroll, 0, 1) : 0;
+      const shift = progress * SCROLL_MAX;
       const y = currentY + shift;
       const t = `translate3d(${currentX.toFixed(2)}px, ${y.toFixed(2)}px, 0)`;
       // Même transform sur les deux moitiés : la scène entière suit le mouvement.
