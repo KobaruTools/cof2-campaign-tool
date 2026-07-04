@@ -185,7 +185,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       // On conserve les transforms de base (ancrage aux bords de l'écran via 50vw)
       // et on y ajoute le décalage vertical du parallaxe.
       if (ancestryImgRef.current) {
-        ancestryImgRef.current.style.transform = `translateX(-50vw) translateY(calc(-50% + ${y * 0.5}px))`;
+        // +50px : décalage vertical de base pour la faire démarrer un peu plus bas.
+        ancestryImgRef.current.style.transform = `translateX(-50vw) translateY(calc(-50% + 50px + ${y * 0.5}px))`;
       }
       if (classImgRef.current) {
         classImgRef.current.style.transform = `translateX(50vw) translateY(${y * 0.5}px)`;
@@ -676,7 +677,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   // (left 50 %) puis on ramène le bord gauche de l'image sur le bord
                   // gauche de l'écran (translateX -50vw).
                   left: '50%',
-                  transform: 'translateX(-50vw) translateY(-50%)',
+                  transform: 'translateX(-50vw) translateY(calc(-50% + 50px))',
                   willChange: 'transform',
                   height: '300%',
                   width: 'auto',
