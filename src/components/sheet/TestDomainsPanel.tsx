@@ -156,12 +156,12 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
               </Typography>
               {buffSources.map((s) => (
                 <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
-                  {s.name} : {signed(s.value)}
+                  <CapabilityChip featureId={s.featureId} label={null} /> : {signed(s.value)}
                 </Typography>
               ))}
               {perCaracSources.map((s) => (
                 <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
-                  {s.name} : {signed(s.value)}
+                  <CapabilityChip featureId={s.featureId} label={null} /> : {signed(s.value)}
                 </Typography>
               ))}
             </Box>
@@ -246,18 +246,19 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                           {includeAbility &&
                             buffSources.map((s) => (
                               <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
-                                {s.name} : {signed(s.value)}
+                                <CapabilityChip featureId={s.featureId} label={null} /> : {signed(s.value)}
                               </Typography>
                             ))}
                           {includeAbility &&
                             perCaracSources.map((s) => (
                               <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
-                                {s.name} : {signed(s.value)}
+                                <CapabilityChip featureId={s.featureId} label={null} /> : {signed(s.value)}
                               </Typography>
                             ))}
                           {bonus?.sources.map((s) => (
                             <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
-                              {COMPETENCE_CATEGORY_LABEL[s.category]} — {s.name} : {signed(s.value)}
+                              {COMPETENCE_CATEGORY_LABEL[s.category]} —{' '}
+                              <CapabilityChip featureId={s.featureId} label={null} /> : {signed(s.value)}
                             </Typography>
                           ))}
                           {/* Sources DOMINÉES (PER-73) : prises en compte mais battues dans leur catégorie
