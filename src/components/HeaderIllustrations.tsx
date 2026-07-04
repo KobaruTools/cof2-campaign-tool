@@ -3,6 +3,13 @@
 import { useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 
+// Suivi souris (px) : décalage max de l'image selon la position du curseur dans la
+// fenêtre. Mêmes réglages que le fond de l'accueil, pour un mouvement cohérent.
+const MOUSE_X = 16;
+const MOUSE_Y = 8;
+// Fraction du défilement répercutée sur l'image (parallaxe vertical).
+const SCROLL_FACTOR = 0.5;
+
 interface HeaderIllustrationsProps {
   /** Peuple : illustration « vitruve », ancrée au bord GAUCHE de l'écran. Absent = rien. */
   ancestryId?: string;
@@ -23,7 +30,8 @@ interface HeaderIllustrationsProps {
 /**
  * Illustrations d'arrière-plan encadrant le contenu : la « vitruve » du peuple collée
  * au bord gauche de l'écran, le portrait du profil au bord droit, en filigrane
- * semi-transparent (zIndex -1, pointerEvents none) avec un léger parallaxe au scroll.
+ * semi-transparent (zIndex -1, pointerEvents none) avec un léger parallaxe au scroll
+ * et un suivi de la souris (désactivés si « animations réduites »).
  *
  * Doit être rendu dans un ancêtre `position: relative` dont le centre horizontal
  * coïncide avec celui du viewport (typiquement un enfant pleine largeur d'un
@@ -38,31 +46,50 @@ export function HeaderIllustrations({
   ancestryTop = '75%',
   ancestryHeight = '300%',
 }: HeaderIllustrationsProps) {
-  // Parallaxe léger : on écrit le transform directement sur le DOM (pas de state
-  // React → pas de re-render à chaque pixel) et on throttle via requestAnimationFrame.
+  // Mouvement écrit directement sur le DOM (pas de state React → pas de re-render à
+  // chaque pixel), dans une boucle rAF continue : parallaxe au défilement + léger
+  // suivi de la souris lissé (interpolation exponentielle vers la cible).
   const ancestryImgRef = useRef<HTMLImageElement>(null);
   const classImgRef = useRef<HTMLImageElement>(null);
   useEffect(() => {
+    // Animations réduites : on laisse les transforms de base du sx (aucun mouvement).
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let targetX = 0;
+    let targetY = 0;
+    let currentX = 0;
+    let currentY = 0;
+
+    const onMouseMove = (e: MouseEvent) => {
+      // Position normalisée [-1, 1] par rapport au centre de la fenêtre.
+      const nx = (e.clientX / window.innerWidth) * 2 - 1;
+      const ny = (e.clientY / window.innerHeight) * 2 - 1;
+      targetX = nx * MOUSE_X;
+      targetY = ny * MOUSE_Y;
+    };
+
     let raf = 0;
-    const update = () => {
-      raf = 0;
-      const y = window.scrollY;
+    const tick = () => {
+      currentX += (targetX - currentX) * 0.06;
+      currentY += (targetY - currentY) * 0.06;
+      const y = window.scrollY * SCROLL_FACTOR;
+      const mx = currentX.toFixed(2);
+      const dy = (y + currentY).toFixed(2);
       // On conserve les transforms de base (ancrage aux bords via ±50vw, +50px de
-      // décalage vertical sur la vitruve) et on y ajoute le décalage du parallaxe.
+      // décalage vertical sur la vitruve) et on y ajoute scroll + suivi souris.
       if (ancestryImgRef.current) {
-        ancestryImgRef.current.style.transform = `translateX(-50vw) translateY(calc(-50% + 50px + ${y * 0.5}px))`;
+        ancestryImgRef.current.style.transform = `translateX(calc(-50vw + ${mx}px)) translateY(calc(-50% + 50px + ${dy}px))`;
       }
       if (classImgRef.current) {
-        classImgRef.current.style.transform = `translateX(50vw) translateY(${y * 0.5}px)`;
+        classImgRef.current.style.transform = `translateX(calc(50vw + ${mx}px)) translateY(${dy}px)`;
       }
+      raf = window.requestAnimationFrame(tick);
     };
-    const onScroll = () => {
-      if (!raf) raf = window.requestAnimationFrame(update);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    update(); // position initiale (et repositionnement quand une illustration apparaît)
+
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    raf = window.requestAnimationFrame(tick);
     return () => {
-      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('mousemove', onMouseMove);
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, [ancestryId, classId, portraitVariant]);
