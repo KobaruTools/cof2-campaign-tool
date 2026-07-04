@@ -81,6 +81,7 @@ import { rulesContext } from '@/lib/character/rulesContext';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { HeaderIllustrations } from '@/components/HeaderIllustrations';
+import { HomeBackground } from '@/components/HomeBackground';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
@@ -627,6 +628,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         </Toolbar>
       </AppBar>
 
+      {/* Wrapper pleine largeur `position: relative` : sert d'ancre au fond de
+          couverture (variante footer), dont les moitiés se calent sur les bords du
+          viewport et au bas du contenu (miroir des illustrations d'en-tête). */}
+      <Box sx={{ position: 'relative' }}>
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>
           {/* En-tête : nom + peuple · profil · niveau, encadré par les illustrations
@@ -1027,6 +1032,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </SheetSection>
         </Stack>
       </Container>
+        <HomeBackground variant="footer" />
+      </Box>
 
       <LevelUpDialog
         open={levelUpOpen}

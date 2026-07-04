@@ -5,11 +5,16 @@ import Box from '@mui/material/Box';
 
 /**
  * Illustration de couverture (page 1 du livre de base) scindée en deux moitiés
- * qui encadrent la liste des personnages : la moitié gauche est ancrée au bord
- * gauche, la moitié droite au bord droit, chacune sur toute la hauteur de la
- * fenêtre. Un dégradé fond le côté intérieur (vers la liste) dans la couleur de
- * l'app, de sorte que l'illustration profite des marges disponibles sans gêner
- * la lecture.
+ * qui encadrent le contenu : la moitié gauche est ancrée au bord gauche, la moitié
+ * droite au bord droit, chacune sur toute la hauteur de la fenêtre. Un dégradé fond
+ * le côté intérieur (vers le contenu) dans la couleur de l'app, de sorte que
+ * l'illustration profite des marges disponibles sans gêner la lecture.
+ *
+ * Deux variantes :
+ * - `'full'` (défaut) : backdrop plein écran fixe (accueil, wizard).
+ * - `'footer'` : ancré EN BAS d'un parent `position: relative` (miroir du haut de la
+ *   fiche de personnage). L'image est calée en bas et un fondu VERTICAL masque la
+ *   coupure de son bord supérieur. Le fond de l'app transparaît (pas de bgcolor).
  *
  * Mouvement (uniquement sur l'image, jamais sur le dégradé qui reste fixe) :
  * - parallaxe au défilement (bornée) ;
@@ -20,6 +25,7 @@ import Box from '@mui/material/Box';
  * même souris et scroll au maximum (en haut comme en bas), aucun bord vide
  * n'apparaît. Tout le mouvement est désactivé si « animations réduites ».
  */
+type HomeBackgroundVariant = 'full' | 'footer';
 
 // Réglages du mouvement, en pixels.
 const MOUSE_X = 16; // décalage horizontal max au suivi souris
@@ -44,6 +50,11 @@ const BASE_SHIFT = 20;
 const FADE_START = 10; // vh : l'image reste pleine jusque-là (côté extérieur)
 const FADE_END = 34; // vh : image totalement fondue au-delà (~ son bord intérieur)
 
+// Variante `footer` : hauteur de la bande d'illustration ancrée en bas, et fondu
+// VERTICAL masquant la coupure du haut (en % de la bande : opaque en haut → transparent).
+const FOOTER_HEIGHT = '60vh';
+const FOOTER_TOP_FADE = 45; // %
+
 // Couleur de fond de l'app (thème sombre) : sert au dégradé de fondu intérieur.
 const BG = 'rgb(18, 18, 18)';
 const BG0 = 'rgba(18, 18, 18, 0)';
@@ -52,12 +63,15 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 
 function SidePanel({
   side,
+  variant,
   imageRef,
 }: {
   side: 'left' | 'right';
+  variant: HomeBackgroundVariant;
   imageRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const isLeft = side === 'left';
+  const isFooter = variant === 'footer';
   return (
     <Box
       sx={{
@@ -85,14 +99,15 @@ function SidePanel({
           backgroundImage: `url(${isLeft ? '/cover-left.webp' : '/cover-right.webp'})`,
           // Pleine hauteur, largeur naturelle : on montre un maximum de hauteur.
           backgroundSize: 'auto 100%',
-          backgroundPosition: isLeft ? 'left center' : 'right center',
+          // Footer : image calée EN BAS (miroir du haut) ; plein écran : centrée.
+          backgroundPosition: `${isLeft ? 'left' : 'right'} ${isFooter ? 'bottom' : 'center'}`,
           backgroundRepeat: 'no-repeat',
           opacity: 0.6,
           willChange: 'transform',
         }}
       />
-      {/* Dégradé de fondu, FIXE (hors de la couche animée) : transparent côté
-          extérieur, opaque (couleur de l'app) côté intérieur vers la liste. */}
+      {/* Dégradé de fondu intérieur, FIXE (hors de la couche animée) : transparent
+          côté extérieur, opaque (couleur de l'app) côté intérieur vers le contenu. */}
       <Box
         sx={{
           position: 'absolute',
@@ -100,11 +115,23 @@ function SidePanel({
           background: `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} ${FADE_START}vh, ${BG} ${FADE_END}vh)`,
         }}
       />
+      {/* Footer : fondu VERTICAL supplémentaire — opaque en haut (masque la coupure
+          du bord supérieur de l'image) → transparent vers le bas où l'art apparaît. */}
+      {isFooter && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(to bottom, ${BG} 0%, ${BG0} ${FOOTER_TOP_FADE}%)`,
+          }}
+        />
+      )}
     </Box>
   );
 }
 
-export function HomeBackground() {
+export function HomeBackground({ variant = 'full' }: { variant?: HomeBackgroundVariant } = {}) {
+  const isFooter = variant === 'footer';
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
 
@@ -164,15 +191,20 @@ export function HomeBackground() {
     <Box
       aria-hidden
       sx={{
-        position: 'fixed',
-        inset: 0,
+        // Footer : ancré au bas d'un parent `position: relative`, bande de hauteur
+        //   fixe, SANS bgcolor (le fond de l'app transparaît autour de l'art).
+        // Plein écran : backdrop fixe couvrant tout le viewport, peint dans la
+        //   couleur de l'app.
+        position: isFooter ? 'absolute' : 'fixed',
+        left: 0,
+        right: 0,
+        ...(isFooter ? { bottom: 0, height: FOOTER_HEIGHT } : { top: 0, bottom: 0, bgcolor: 'background.default' }),
         zIndex: -1,
         pointerEvents: 'none',
-        bgcolor: 'background.default',
       }}
     >
-      <SidePanel side="left" imageRef={leftRef} />
-      <SidePanel side="right" imageRef={rightRef} />
+      <SidePanel side="left" variant={variant} imageRef={leftRef} />
+      <SidePanel side="right" variant={variant} imageRef={rightRef} />
     </Box>
   );
 }
