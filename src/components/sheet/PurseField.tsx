@@ -457,7 +457,9 @@ function CoinInput({
         // label ici) pour garder la bordure intacte.
         // Fond du champ (noir courant) très légèrement teinté vers la couleur de la pièce,
         // pour mieux détacher les boutons −/+.
-        '& .MuiOutlinedInput-root': { overflow: 'hidden', pr: 0.5, backgroundColor: alpha(coin.color, 0.09) },
+        // `pr: 0` : le stepper touche le bord droit. Les enfants restent centrés (le stepper, lui,
+        // se met en `alignSelf: stretch` pour occuper 100 % de la hauteur).
+        '& .MuiOutlinedInput-root': { overflow: 'hidden', pr: 0, backgroundColor: alpha(coin.color, 0.09) },
         // Contour au survol = couleur de la pièce, avec fondu ; le délai (.4s) porté par l'état
         // de BASE ne joue qu'à la SORTIE (imite le hover des voies & capacités en vue colonne),
         // l'entrée (`:hover`, sans délai) prend le relais → fondu immédiat.
@@ -516,7 +518,9 @@ function CoinInput({
           // ci-dessus). Séparé du nombre par un liseré ; couleur proche du blanc, teintée vers la
           // pièce. `−` à gauche, `+` à droite.
           endAdornment: (
-            <InputAdornment position="end" sx={{ ml: 0.5, mr: -0.5 }}>
+            // `alignSelf: stretch` + `maxHeight: none` : l'adornment occupe 100 % de la hauteur
+            // du champ, donc le stepper et son liseré aussi (m:0 → collé au bord droit).
+            <InputAdornment position="end" sx={{ m: 0, alignSelf: 'stretch', maxHeight: 'none', height: 'auto' }}>
               <Stack direction="row" sx={{ borderLeft: '1px solid', borderColor: 'divider', alignSelf: 'stretch' }}>
                 <IconButton
                   aria-label={`Retirer 1 ${coin.code}`}
@@ -571,6 +575,7 @@ function CoinConvert({
   higherCode,
   lowerCode,
   ratio,
+  breakpoint,
 }: {
   purse: Purse;
   onChange: (purse: Purse) => void;
@@ -579,13 +584,22 @@ function CoinConvert({
   higherCode: string;
   lowerCode: string;
   ratio: number;
+  /** Seuil (px) sous lequel la rangée passe en colonne : les flèches deviennent alors haut/bas. */
+  breakpoint: number;
 }) {
   const canGroup = purse[lower] >= ratio;
   const canBreak = purse[higher] >= 1;
   const group = () => onChange({ ...purse, [lower]: purse[lower] - ratio, [higher]: purse[higher] + 1 });
   const breakDown = () => onChange({ ...purse, [higher]: purse[higher] - 1, [lower]: purse[lower] + ratio });
+  // En layout vertical (container étroit), la paire passe en colonne et les chevrons pivotent :
+  // « regrouper » (vers l'unité forte, placée AU-DESSUS) devient ↑, « faire la monnaie » ↓.
+  const vertQuery = `@container (max-width: ${breakpoint}px)`;
+  const rotate = { [vertQuery]: { transform: 'rotate(90deg)' } };
   return (
-    <Stack direction="row" sx={{ alignItems: 'center' }}>
+    <Stack
+      direction="row"
+      sx={{ alignItems: 'center', flexShrink: 0, [vertQuery]: { flexDirection: 'column', alignSelf: 'center' } }}
+    >
       <AppTooltip title={`Regrouper : ${ratio} ${lowerCode} → 1 ${higherCode}`}>
         <span>
           <IconButton
@@ -595,7 +609,7 @@ function CoinConvert({
             aria-label={`Regrouper ${ratio} ${lowerCode} en 1 ${higherCode}`}
             sx={{ p: 0.25 }}
           >
-            <ChevronLeftIcon fontSize="small" />
+            <ChevronLeftIcon fontSize="small" sx={rotate} />
           </IconButton>
         </span>
       </AppTooltip>
@@ -608,7 +622,7 @@ function CoinConvert({
             aria-label={`Convertir 1 ${higherCode} en ${ratio} ${lowerCode}`}
             sx={{ p: 0.25 }}
           >
-            <ChevronRightIcon fontSize="small" />
+            <ChevronRightIcon fontSize="small" sx={rotate} />
           </IconButton>
         </span>
       </AppTooltip>
@@ -638,41 +652,61 @@ export interface PurseFieldProps {
 /**
  * Bloc « Bourse » (PER-152) — argent possédé par unité (platine / or / argent / cuivre,
  * p. 181). État de jeu transitoire (montants éditables hors mode « Modifier », non affecté
- * par un repos). En mode édition, des flèches gauche/droite entre unités permettent de
- * regrouper / faire de la monnaie (pp ↔ po ↔ pa ↔ pc) sans changer la valeur totale.
+ * par un repos). En mode édition, des flèches entre unités permettent de regrouper / faire de
+ * la monnaie (pp ↔ po ↔ pa ↔ pc) sans changer la valeur totale.
+ *
+ * Mise en page adaptative par **container query** (pas de retour à la ligne) : dès que le
+ * conteneur devient trop étroit pour tenir la rangée sur une ligne, on bascule d'un coup en
+ * colonne (un champ par ligne). Les flèches de conversion passent alors de gauche/droite à
+ * haut/bas et se placent entre les blocs empilés. Le seuil dépend du mode (les flèches, présentes
+ * en édition, élargissent la rangée).
  */
 export function PurseField({ purse, onChange, editing = false }: PurseFieldProps) {
+  const breakpoint = editing ? 800 : 620;
+  const vertQuery = `@container (max-width: ${breakpoint}px)`;
   return (
-    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-      <AppTooltip title="Bourse — argent possédé" page={181}>
-        <Box sx={{ display: 'inline-flex', color: 'text.secondary', flexShrink: 0, cursor: 'help' }}>
-          <PurseIcon size={20} title="Bourse" />
-        </Box>
-      </AppTooltip>
+    <Box sx={{ containerType: 'inline-size' }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: 'center',
+          flexWrap: 'nowrap',
+          // Bascule instantanée en colonne quand la rangée ne tiendrait plus sur une ligne.
+          [vertQuery]: { flexDirection: 'column', alignItems: 'flex-start' },
+        }}
+      >
+        <AppTooltip title="Bourse — argent possédé" page={181}>
+          <Box sx={{ display: 'inline-flex', color: 'text.secondary', flexShrink: 0, cursor: 'help' }}>
+            <PurseIcon size={20} title="Bourse" />
+          </Box>
+        </AppTooltip>
 
-      {COINS.map((coin, i) => {
-        const next = COINS[i + 1];
-        return (
-          <Fragment key={coin.key}>
-            <CoinInput
-              coin={coin}
-              value={purse[coin.key]}
-              onCommit={(v) => onChange({ ...purse, [coin.key]: v })}
-            />
-            {editing && next && (
-              <CoinConvert
-                purse={purse}
-                onChange={onChange}
-                higher={coin.key}
-                lower={next.key}
-                higherCode={coin.code}
-                lowerCode={next.code}
-                ratio={CONVERSION_RATIO[coin.key]}
+        {COINS.map((coin, i) => {
+          const next = COINS[i + 1];
+          return (
+            <Fragment key={coin.key}>
+              <CoinInput
+                coin={coin}
+                value={purse[coin.key]}
+                onCommit={(v) => onChange({ ...purse, [coin.key]: v })}
               />
-            )}
-          </Fragment>
-        );
-      })}
-    </Stack>
+              {editing && next && (
+                <CoinConvert
+                  purse={purse}
+                  onChange={onChange}
+                  higher={coin.key}
+                  lower={next.key}
+                  higherCode={coin.code}
+                  lowerCode={next.code}
+                  ratio={CONVERSION_RATIO[coin.key]}
+                  breakpoint={breakpoint}
+                />
+              )}
+            </Fragment>
+          );
+        })}
+      </Stack>
+    </Box>
   );
 }
