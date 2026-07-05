@@ -33,8 +33,19 @@ export default function RootLayout({
         <Providers>
           {/* Sticky footer : colonne pleine hauteur, le contenu prend l'espace
               disponible (`flex: 1 0 auto`) et pousse le footer tout en bas même
-              quand la page est trop courte pour remplir l'écran. */}
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+              quand la page est trop courte pour remplir l'écran.
+              `position: relative` : sert d'ancre aux fonds calés au BAS DE LA PAGE
+              (illustration de couverture en variante footer, `position: absolute`),
+              qui se placent ainsi derrière le pied de page plutôt qu'au bas du
+              seul contenu. */}
+          <div
+            style={{
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: '100dvh',
+            }}
+          >
             <div style={{ flex: '1 0 auto' }}>{children}</div>
             <AppFooter />
           </div>

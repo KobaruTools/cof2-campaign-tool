@@ -643,11 +643,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         }
       />
 
-      {/* Fond de couverture (variante footer) : désormais en `position: fixed`,
-          ancré au BAS du viewport — il se colle au bas de l'écran et passe derrière
-          le pied de page global (verre semi-transparent). Le wrapper regroupe
-          simplement le contenu et cette illustration. */}
-      <Box sx={{ position: 'relative' }}>
+      {/* Fond de couverture (variante footer) : illustration ancrée au BAS DE LA
+          PAGE. Rendue en `position: absolute` (voir HomeBackground) calée sur la
+          colonne relative pleine hauteur du layout racine, elle se colle au bas du
+          document et passe DERRIÈRE le pied de page global (verre semi-transparent),
+          qui la laisse transparaître floutée — sans recouvrir le haut de la page.
+          Aucun wrapper `relative` ici : ce serait la fiche (le contenu) qui servirait
+          d'ancre et l'illustration se calerait alors au bas du contenu, PAS derrière
+          le footer. */}
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>
           {/* En-tête : nom + peuple · profil · niveau, encadré par les illustrations
@@ -1073,8 +1076,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </SheetSection>
         </Stack>
       </Container>
-        <HomeBackground variant="footer" />
-      </Box>
+      <HomeBackground variant="footer" />
 
       <LevelUpDialog
         open={levelUpOpen}

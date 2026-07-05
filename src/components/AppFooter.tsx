@@ -18,10 +18,11 @@ const YEAR = new Date().getFullYear();
  * naturellement après le contenu de chaque page).
  *
  * Voile SEMI-TRANSPARENT : le `backdropFilter` floute ce qui est peint DERRIÈRE le
- * footer. Les illustrations de couverture (`HomeBackground`, en `position: fixed;
- * zIndex: -1`, ancrées au bas du viewport) passent donc derrière le footer et
- * transparaissent, floutées, au travers du verre — sur l'accueil comme sur la fiche.
- * Sur une page sans fond, le footer reste un simple verre sombre (dégradé propre).
+ * footer. Les illustrations de couverture (`HomeBackground`, `zIndex: -1`) passent
+ * donc derrière le footer et transparaissent, floutées, au travers du verre — le
+ * fond plein écran `fixed` sur l'accueil, la variante footer en `position: absolute`
+ * ancrée au bas de la page sur la fiche. Sur une page sans fond, le footer reste un
+ * simple verre sombre (dégradé propre).
  *
  * Outil non officiel réalisé par des fans pour une table de jeu privée : les
  * règles proviennent du DRS (Document de Référence du Système) de Chroniques
