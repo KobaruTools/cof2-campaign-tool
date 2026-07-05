@@ -52,6 +52,17 @@ const BASE_SHIFT = 20;
 const FADE_START = 10; // vh : l'image reste pleine jusque-là (côté extérieur)
 const FADE_END = 34; // vh : image totalement fondue au-delà (~ son bord intérieur)
 
+// Variante `footer` — fondu intérieur RELATIF À LA LARGEUR de la page. Contrairement
+// au plein écran (arrêts figés en vh), les arrêts sont ici exprimés en % de la largeur
+// du panneau : plus la page est large, plus la bande opaque recule et plus on découvre
+// d'image. Chaque arrêt est borné par un plafond en vh (`min(%, vh)`) calé au ras du
+// bord INTÉRIEUR de l'image (sa « coupe », ~41vh du bord extérieur à 110vh de haut) :
+// sur les écrans très larges le fondu s'arrête pile avant la coupe, jamais au-delà.
+const FOOTER_FADE_START_PCT = 18; // % : bande extérieure pleinement visible
+const FOOTER_FADE_END_PCT = 60; // % : image totalement fondue au-delà
+const FOOTER_FADE_START_CAP = 14; // vh : plafond de l'arrêt de départ
+const FOOTER_FADE_END_CAP = 38; // vh : plafond = ras de la coupe (la cache toujours)
+
 // Variante `footer`. Hauteur de référence de l'image (vh) : la largeur en découle
 // (`backgroundSize: auto 100%`). > 100 → image plus grande que sur l'accueil.
 const FOOTER_IMAGE_HEIGHT = 110; // vh
@@ -80,13 +91,15 @@ function SidePanel({
 }) {
   const isLeft = side === 'left';
   const isFooter = variant === 'footer';
-  // Le dégradé intérieur s'aligne sur le bord intérieur de l'image, dont la largeur
-  // (en vh) est proportionnelle à sa hauteur. Le footer agrandit l'image (100 →
-  // FOOTER_IMAGE_HEIGHT vh) : on met les arrêts du fondu à la même échelle pour
-  // qu'ils restent alignés (la home, à 100vh, garde ses valeurs de base).
-  const fadeScale = isFooter ? FOOTER_IMAGE_HEIGHT / 100 : 1;
-  const fadeStart = FADE_START * fadeScale;
-  const fadeEnd = FADE_END * fadeScale;
+  // Dégradé de fondu intérieur (côté contenu). Direction : transparent au bord
+  // extérieur → opaque (couleur de l'app) vers l'intérieur.
+  // - `full` : arrêts figés en vh, alignés sur le bord intérieur de l'image (dont la
+  //   largeur découle de la hauteur).
+  // - `footer` : arrêts relatifs à la LARGEUR du panneau (%), bornés au ras de la
+  //   coupe par un plafond en vh — plus la page est large, plus on voit d'image.
+  const innerFade = isFooter
+    ? `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} min(${FOOTER_FADE_START_PCT}%, ${FOOTER_FADE_START_CAP}vh), ${BG} min(${FOOTER_FADE_END_PCT}%, ${FOOTER_FADE_END_CAP}vh))`
+    : `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} ${FADE_START}vh, ${BG} ${FADE_END}vh)`;
   return (
     <Box
       sx={{
@@ -134,7 +147,7 @@ function SidePanel({
         sx={{
           position: 'absolute',
           inset: 0,
-          background: `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} ${fadeStart}vh, ${BG} ${fadeEnd}vh)`,
+          background: innerFade,
         }}
       />
       {/* Footer : fondu VERTICAL supplémentaire — opaque en haut (masque la coupure
