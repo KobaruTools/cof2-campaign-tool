@@ -3,7 +3,6 @@
  */
 import type { AbilityId } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
-import { DEFAULT_CAMPAIGN_ID, DEFAULT_PLAYER_ID } from '@/lib/campaign/types';
 import { SCHEMA_VERSION, type Character } from './types';
 
 function abilitiesZero(): Record<AbilityId, number> {
@@ -34,11 +33,11 @@ export function createBlankCharacter(
     id: newId(),
     name: options.name ?? 'Nouveau personnage',
     identity: {},
-    // FK de la hiérarchie campagne (PER-179) : par défaut la campagne/le joueur
-    // « par défaut » (le bootstrap en garantit l'existence). Le rattachement à une
-    // campagne précise depuis le routing est traité par PER-180.
-    campaignId: DEFAULT_CAMPAIGN_ID,
-    playerId: DEFAULT_PLAYER_ID,
+    // FK de la hiérarchie campagne (PER-180) : un personnage neuf n'est rattaché à
+    // aucune campagne ni joueur par défaut (« Non attribué »). Le rattachement est
+    // un choix explicite (fiche / vue campagne / wizard).
+    campaignId: null,
+    playerId: null,
     status: 'active',
     ancestryId: '',
     classId: '',

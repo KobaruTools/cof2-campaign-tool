@@ -43,8 +43,12 @@ import type { AncestryChoice } from './ancestry';
  * v15 : ajout des clés étrangères de la hiérarchie Campagne ⊃ Joueurs ⊃
  *   Personnages : `campaignId`, `playerId` (obligatoires) et `status`
  *   ('active' | 'dead' | 'retired', défaut 'active') — PER-179.
+ * v16 : `campaignId`/`playerId` deviennent NULLABLE (PER-180 : la campagne est un
+ *   regroupement optionnel, le personnage reste l'entité première). Les persos
+ *   auto-attribués à la « Campagne par défaut » (v15) repassent « Non attribué »
+ *   (`null`) ; une FK vers une VRAIE campagne choisie est préservée.
  */
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 /**
  * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
@@ -238,18 +242,21 @@ export interface Character {
   identity: Identity;
 
   /**
-   * Clé étrangère vers la campagne de rattachement (PER-179), OBLIGATOIRE. La
-   * hiérarchie est plate (stockage localStorage + FK) : le personnage vit dans
-   * son store et pointe vers `Campaign.id`. Garde défensive à la lecture (FK
-   * potentiellement orpheline, cf. `src/lib/campaign/guards.ts`).
+   * Clé étrangère vers la campagne de rattachement, ou `null` si le personnage
+   * n'est **rattaché à aucune campagne** (PER-180 : la campagne est un
+   * regroupement OPTIONNEL, le personnage reste l'entité première). La hiérarchie
+   * est plate (stockage localStorage + FK) : le personnage vit dans son store et
+   * pointe vers `Campaign.id`. Garde défensive à la lecture (FK potentiellement
+   * orpheline, cf. `src/lib/campaign/guards.ts`).
    */
-  campaignId: string;
+  campaignId: string | null;
   /**
-   * Clé étrangère vers le joueur qui incarne ce personnage (PER-179),
-   * OBLIGATOIRE. Le joueur est LOCAL à la campagne (`Campaign.players`) : cet id
-   * n'a de sens que résolu dans `campaignId`.
+   * Clé étrangère vers le joueur qui incarne ce personnage, ou `null` si aucun
+   * joueur n'est attribué (PER-180). Le joueur est LOCAL à la campagne
+   * (`Campaign.players`) : cet id n'a de sens que résolu dans `campaignId` (donc
+   * `null` dès que `campaignId` est `null`). L'attribution est traitée par PER-184.
    */
-  playerId: string;
+  playerId: string | null;
   /** Statut du personnage dans sa campagne (PER-179). Voir `CharacterStatus`. */
   status: CharacterStatus;
 

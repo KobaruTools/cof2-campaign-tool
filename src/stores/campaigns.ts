@@ -6,20 +6,20 @@
  * éprouvé) ; la hiérarchie Campagne ⊃ Joueurs ⊃ Personnages est plate, reliée
  * par les FK `Character.campaignId` / `Character.playerId`.
  *
- * Ordre d'hydratation : ce module importe `useCharactersStore` en tête, ce qui
- * force le module `characters` à s'évaluer (et donc à s'hydrater depuis
- * localStorage, synchrone) AVANT que ce store ne soit créé. Le `bootstrap` peut
- * donc lire des personnages déjà hydratés dans `onRehydrateStorage`.
+ * Ce module importe `useCharactersStore` pour la **cascade** de suppression
+ * (`remove` retire aussi les personnages de la campagne via `removeByCampaign`).
+ * Depuis PER-180 la campagne est un regroupement OPTIONNEL : plus de « campagne
+ * active » implicite ni de campagne par défaut (celle-ci est purgée au rechargement).
  *
- * Toute la logique métier (bootstrap, cascade, gardes FK) vit dans des fonctions
+ * Toute la logique métier (purge, cascade, gardes FK) vit dans des fonctions
  * pures testées (`src/lib/campaign/guards.ts`) ; ce store n'en est que le câblage.
  */
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import {
-  bootstrapCampaigns,
   cascadeDeleteCampaign,
   createPlayer,
+  pruneDefaultCampaign,
   type Campaign,
   type CampaignRules,
   type Player,
@@ -32,10 +32,11 @@ interface CampaignsState {
   setHasHydrated: (value: boolean) => void;
 
   /**
-   * Garantit l'existence de la « Campagne par défaut » si des personnages la
-   * référencent sans qu'elle existe (post-migration). Idempotent.
+   * Purge la « Campagne par défaut » héritée (auto-créée par l'ancien bootstrap
+   * PER-179). Depuis PER-180 la campagne est optionnelle ; les personnages migrés
+   * repassent « Non attribué » et cette campagne technique disparaît. Idempotent.
    */
-  bootstrap: () => void;
+  pruneLegacyDefault: () => void;
 
   /** Ajoute ou remplace une campagne (par id). */
   upsert: (campaign: Campaign) => void;
@@ -70,10 +71,8 @@ export const useCampaignsStore = create<CampaignsState>()(
       hasHydrated: false,
       setHasHydrated: (value) => set({ hasHydrated: value }),
 
-      bootstrap: () =>
-        set((state) => ({
-          campaigns: bootstrapCampaigns(state.campaigns, useCharactersStore.getState().characters),
-        })),
+      pruneLegacyDefault: () =>
+        set((state) => ({ campaigns: pruneDefaultCampaign(state.campaigns) })),
 
       upsert: (campaign) =>
         set((state) => {
@@ -133,9 +132,9 @@ export const useCampaignsStore = create<CampaignsState>()(
       partialize: (state) => ({ campaigns: state.campaigns }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
-        // Garantit la campagne par défaut pour les persos migrés (cf. ordre
-        // d'hydratation documenté en tête de fichier).
-        state?.bootstrap();
+        // Retire la « Campagne par défaut » héritée (PER-180) si elle traîne
+        // encore d'un ancien bootstrap.
+        state?.pruneLegacyDefault();
       },
     },
   ),

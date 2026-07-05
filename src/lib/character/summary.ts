@@ -16,6 +16,8 @@ export interface CharacterSummary {
   /** Armes à feu autorisées dans l'univers — pilote l'icône « Arbalétrier » (`ClassIcon`). */
   firearmsAllowed: boolean;
   level: number;
+  /** Campagne de rattachement, ou `null` si « Non attribué » (PER-180). */
+  campaignId: string | null;
   updatedAt: string;
 }
 
@@ -30,6 +32,7 @@ export function summarize(character: Character): CharacterSummary {
     characterClass: characterClassName(character, dash),
     firearmsAllowed: character.firearmsAllowed,
     level: character.level,
+    campaignId: character.campaignId,
     updatedAt: character.updatedAt,
   };
 }

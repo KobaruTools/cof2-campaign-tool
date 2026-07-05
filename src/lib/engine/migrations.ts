@@ -311,6 +311,25 @@ function migrateV14toV15(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v15 → v16 : la campagne devient un regroupement OPTIONNEL (PER-180). Les
+ * personnages avaient été auto-attribués à la « Campagne par défaut » en v15
+ * (FK constantes, jamais choisies par l'utilisateur) : on les repasse « Non
+ * attribué » (`campaignId`/`playerId` → `null`). Une FK vers une VRAIE campagne
+ * (choisie depuis l'app) est préservée. Le joueur étant local à la campagne,
+ * retirer la campagne retire aussi le joueur.
+ */
+function migrateV15toV16(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (next.campaignId === DEFAULT_CAMPAIGN_ID) {
+    next.campaignId = null;
+    next.playerId = null;
+  }
+  if (next.playerId === DEFAULT_PLAYER_ID) next.playerId = null;
+  next.schemaVersion = 16;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -329,6 +348,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   12: migrateV12toV13,
   13: migrateV13toV14,
   14: migrateV14toV15,
+  15: migrateV15toV16,
 };
 
 export class MigrationError extends Error {}
@@ -409,9 +429,14 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   if (typeof data.purse !== 'object' || data.purse === null) {
     fail('Champ « purse » manquant ou invalide.');
   }
-  // Clés étrangères de la hiérarchie campagne (PER-179), obligatoires.
-  if (!isString(data.campaignId)) fail('Champ « campaignId » manquant ou invalide.');
-  if (!isString(data.playerId)) fail('Champ « playerId » manquant ou invalide.');
+  // Clés étrangères de la hiérarchie campagne : nullable depuis v16 (PER-180).
+  // `null` = « Non attribué » ; sinon une chaîne (id de campagne / de joueur).
+  if (data.campaignId !== null && !isString(data.campaignId)) {
+    fail('Champ « campaignId » invalide.');
+  }
+  if (data.playerId !== null && !isString(data.playerId)) {
+    fail('Champ « playerId » invalide.');
+  }
   if (!isString(data.status) || !CHARACTER_STATUSES.includes(data.status as string)) {
     fail('Champ « status » manquant ou invalide.');
   }

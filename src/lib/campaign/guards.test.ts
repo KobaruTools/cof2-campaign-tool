@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Character } from '@/lib/character/types';
-import { createDefaultCampaign } from './factory';
 import {
-  bootstrapCampaigns,
   campaignOfCharacter,
   cascadeDeleteCampaign,
   charactersInCampaign,
@@ -10,14 +8,21 @@ import {
   findCampaign,
   findPlayer,
   playerOfCharacter,
+  pruneDefaultCampaign,
+  unassignedCharacters,
 } from './guards';
-import { DEFAULT_CAMPAIGN_ID, DEFAULT_PLAYER_ID, type Campaign } from './types';
+import { DEFAULT_CAMPAIGN_ID, type Campaign } from './types';
 
 /**
  * Personnage minimal pour les tests de FK : seuls `campaignId`/`playerId` sont
- * lus par les gardes, on ne construit donc que ce dont elles ont besoin.
+ * lus par les gardes, on ne construit donc que ce dont elles ont besoin. Les FK
+ * sont nullable (PER-180) : `null` = « Non attribué ».
  */
-function char(campaignId: string, playerId: string, id = `${campaignId}-${playerId}`): Character {
+function char(
+  campaignId: string | null,
+  playerId: string | null,
+  id = `${campaignId}-${playerId}`,
+): Character {
   return { id, campaignId, playerId } as unknown as Character;
 }
 
@@ -28,39 +33,30 @@ const campaign = (id: string, playerIds: string[] = []): Campaign => ({
   players: playerIds.map((pid) => ({ id: pid, name: pid })),
 });
 
-describe('createDefaultCampaign', () => {
-  it('crée la campagne par défaut avec le joueur par défaut et les règles historiques', () => {
-    const c = createDefaultCampaign();
-    expect(c.id).toBe(DEFAULT_CAMPAIGN_ID);
-    expect(c.rules.firearmsAllowed).toBe(true);
-    expect(c.players).toEqual([{ id: DEFAULT_PLAYER_ID, name: 'Joueur 1' }]);
+describe('pruneDefaultCampaign', () => {
+  it('retire la « Campagne par défaut » héritée si elle est présente', () => {
+    const out = pruneDefaultCampaign([campaign(DEFAULT_CAMPAIGN_ID), campaign('c1')]);
+    expect(out.map((c) => c.id)).toEqual(['c1']);
+  });
+
+  it('idempotent : même référence si aucune campagne par défaut à purger', () => {
+    const existing = [campaign('c1'), campaign('c2')];
+    expect(pruneDefaultCampaign(existing)).toBe(existing);
   });
 });
 
-describe('bootstrapCampaigns', () => {
-  it('crée la campagne par défaut si des persos la référencent et qu’elle manque', () => {
-    const out = bootstrapCampaigns([], [char(DEFAULT_CAMPAIGN_ID, DEFAULT_PLAYER_ID)]);
-    expect(out).toHaveLength(1);
-    expect(out[0].id).toBe(DEFAULT_CAMPAIGN_ID);
+describe('unassignedCharacters', () => {
+  it('ne retient que les personnages sans campagne (campaignId null)', () => {
+    const characters = [char('c1', 'p1', 'a'), char(null, null, 'b'), char(null, null, 'c')];
+    expect(unassignedCharacters(characters).map((c) => c.id)).toEqual(['b', 'c']);
   });
+});
 
-  it('idempotent : ne recrée pas la campagne par défaut si elle existe déjà', () => {
-    const existing = [campaign(DEFAULT_CAMPAIGN_ID)];
-    const out = bootstrapCampaigns(existing, [char(DEFAULT_CAMPAIGN_ID, DEFAULT_PLAYER_ID)]);
-    expect(out).toBe(existing); // même référence, aucune modification
-  });
-
-  it('ne crée rien si aucun perso ne référence la campagne par défaut', () => {
-    const out = bootstrapCampaigns([], [char('autre-campagne', 'p1')]);
-    expect(out).toEqual([]);
-  });
-
-  it('préserve les campagnes existantes en ajoutant la par défaut en tête', () => {
-    const out = bootstrapCampaigns(
-      [campaign('autre')],
-      [char(DEFAULT_CAMPAIGN_ID, DEFAULT_PLAYER_ID), char('autre', 'p1')],
-    );
-    expect(out.map((c) => c.id)).toEqual([DEFAULT_CAMPAIGN_ID, 'autre']);
+describe('gardes FK — personnage « Non attribué »', () => {
+  it('campaignOfCharacter / playerOfCharacter renvoient undefined si campaignId null', () => {
+    const campaigns = [campaign('c1', ['p1'])];
+    expect(campaignOfCharacter(campaigns, char(null, null))).toBeUndefined();
+    expect(playerOfCharacter(campaigns, char(null, null))).toBeUndefined();
   });
 });
 

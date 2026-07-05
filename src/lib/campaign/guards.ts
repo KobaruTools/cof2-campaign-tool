@@ -10,7 +10,6 @@
  * `undefined` plutôt que de présumer l'existence).
  */
 import type { Character } from '@/lib/character/types';
-import { createDefaultCampaign } from './factory';
 import { DEFAULT_CAMPAIGN_ID, type Campaign, type Player } from './types';
 
 /** Campagne d'id donné, ou `undefined` si absente (garde FK). */
@@ -23,12 +22,15 @@ export function findPlayer(campaign: Campaign, playerId: string): Player | undef
   return campaign.players.find((p) => p.id === playerId);
 }
 
-/** Campagne de rattachement d'un personnage, ou `undefined` si la FK est orpheline. */
+/**
+ * Campagne de rattachement d'un personnage, ou `undefined` s'il n'est attribué à
+ * aucune campagne (`campaignId === null`, PER-180) ou si la FK est orpheline.
+ */
 export function campaignOfCharacter(
   campaigns: Campaign[],
   character: Character,
 ): Campaign | undefined {
-  return findCampaign(campaigns, character.campaignId);
+  return character.campaignId ? findCampaign(campaigns, character.campaignId) : undefined;
 }
 
 /**
@@ -37,12 +39,17 @@ export function campaignOfCharacter(
  */
 export function playerOfCharacter(campaigns: Campaign[], character: Character): Player | undefined {
   const campaign = campaignOfCharacter(campaigns, character);
-  return campaign && findPlayer(campaign, character.playerId);
+  return campaign && character.playerId ? findPlayer(campaign, character.playerId) : undefined;
 }
 
 /** Personnages rattachés à une campagne (filtre par FK). */
 export function charactersInCampaign(characters: Character[], campaignId: string): Character[] {
   return characters.filter((c) => c.campaignId === campaignId);
+}
+
+/** Personnages non rattachés à une campagne (« Non attribué », PER-180). */
+export function unassignedCharacters(characters: Character[]): Character[] {
+  return characters.filter((c) => c.campaignId == null);
 }
 
 /** Personnages rattachés à un joueur d'une campagne (filtre par double FK). */
@@ -55,17 +62,17 @@ export function charactersOfPlayer(
 }
 
 /**
- * Garantit l'existence de la « Campagne par défaut » quand au moins un personnage
- * pointe vers elle mais qu'elle n'existe pas encore (typiquement juste après une
- * migration qui a estampillé `DEFAULT_CAMPAIGN_ID` sur des persos préexistants).
- * Idempotent : ne crée rien si la campagne par défaut existe déjà, ou si aucun
- * perso ne la référence. Ne touche jamais aux campagnes existantes.
+ * Purge la « Campagne par défaut » auto-créée par l'ancien bootstrap (PER-179).
+ * Depuis PER-180 la campagne est optionnelle et les personnages migrés repassent
+ * « Non attribué » : cette campagne technique (id réservé `DEFAULT_CAMPAIGN_ID`,
+ * jamais choisie par l'utilisateur) n'a plus lieu d'être. Idempotent : ne retire
+ * qu'une campagne portant exactement l'id réservé (les campagnes utilisateur ont
+ * un uuid), laisse tout le reste intact.
  */
-export function bootstrapCampaigns(campaigns: Campaign[], characters: Character[]): Campaign[] {
-  const hasDefault = campaigns.some((c) => c.id === DEFAULT_CAMPAIGN_ID);
-  const needsDefault = characters.some((c) => c.campaignId === DEFAULT_CAMPAIGN_ID);
-  if (hasDefault || !needsDefault) return campaigns;
-  return [createDefaultCampaign(), ...campaigns];
+export function pruneDefaultCampaign(campaigns: Campaign[]): Campaign[] {
+  return campaigns.some((c) => c.id === DEFAULT_CAMPAIGN_ID)
+    ? campaigns.filter((c) => c.id !== DEFAULT_CAMPAIGN_ID)
+    : campaigns;
 }
 
 /**

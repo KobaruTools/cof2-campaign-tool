@@ -412,7 +412,7 @@ describe('migrateCharacter', () => {
     expect(c.purse).toEqual({ platinum: 7, gold: 4, silver: 2, copper: 1 });
   });
 
-  it('migre un personnage v14 vers v15 (FK campagne/joueur + statut estampillés)', () => {
+  it('migre un personnage v14 jusqu’à la version courante : « Non attribué » (FK null)', () => {
     const v14 = validRaw();
     v14.schemaVersion = 14;
     delete v14.campaignId;
@@ -420,21 +420,34 @@ describe('migrateCharacter', () => {
     delete v14.status;
     const c = migrateCharacter(v14);
     expect(c.schemaVersion).toBe(SCHEMA_VERSION);
-    // Rattachement sans perte à la campagne/au joueur « par défaut », statut actif.
-    expect(c.campaignId).toBe('default-campaign');
-    expect(c.playerId).toBe('default-player');
+    // v14→v15 estampille la campagne par défaut, v15→v16 la retire (« Non attribué »).
+    expect(c.campaignId).toBeNull();
+    expect(c.playerId).toBeNull();
     expect(c.status).toBe('active');
   });
 
   it('préserve des FK campagne/joueur déjà présentes lors d’un chargement v15', () => {
     const v15 = validRaw();
+    v15.schemaVersion = 15;
     v15.campaignId = 'ma-campagne';
     v15.playerId = 'pierre';
     v15.status = 'dead';
     const c = migrateCharacter(v15);
+    // Une VRAIE campagne (choisie) est préservée par v15→v16 ; seule la campagne
+    // par défaut auto-attribuée est retirée.
     expect(c.campaignId).toBe('ma-campagne');
     expect(c.playerId).toBe('pierre');
     expect(c.status).toBe('dead');
+  });
+
+  it('v15→v16 repasse « Non attribué » un personnage de la campagne par défaut', () => {
+    const v15 = validRaw();
+    v15.schemaVersion = 15;
+    v15.campaignId = 'default-campaign';
+    v15.playerId = 'default-player';
+    const c = migrateCharacter(v15);
+    expect(c.campaignId).toBeNull();
+    expect(c.playerId).toBeNull();
   });
 
   it('v14→v15 remplace un statut invalide par « active »', () => {
@@ -444,10 +457,10 @@ describe('migrateCharacter', () => {
     expect(migrateCharacter(v14).status).toBe('active');
   });
 
-  it('un personnage v1 migré jusqu’à v15 reçoit les FK campagne par défaut', () => {
+  it('un personnage v1 migré jusqu’à la version courante repart « Non attribué »', () => {
     const c = migrateCharacter(v1Raw());
-    expect(c.campaignId).toBe('default-campaign');
-    expect(c.playerId).toBe('default-player');
+    expect(c.campaignId).toBeNull();
+    expect(c.playerId).toBeNull();
     expect(c.status).toBe('active');
   });
 
@@ -465,7 +478,7 @@ describe('migrateCharacter', () => {
     expect(() => migrateCharacter(raw)).toThrow(ValidationError);
   });
 
-  it('expose les migrations 1→2 … 14→15 dans le registre', () => {
+  it('expose les migrations 1→2 … 15→16 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -480,5 +493,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[12]).toBe('function');
     expect(typeof MIGRATIONS[13]).toBe('function');
     expect(typeof MIGRATIONS[14]).toBe('function');
+    expect(typeof MIGRATIONS[15]).toBe('function');
   });
 });

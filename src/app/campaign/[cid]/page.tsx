@@ -73,7 +73,9 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     setToast({ message, severity });
 
   const handleCreate = () => {
-    router.push(`/campaign/${cid}/create`);
+    // Création rattachée à cette campagne : la campagne est passée en query au
+    // wizard (dé-imbriqué). Le personnage naît dans cette campagne.
+    router.push(`/create?campaign=${cid}`);
   };
 
   const handleExport = (id: string) => {
@@ -112,7 +114,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const rowActions = (r: (typeof rows)[number]) => (
     <>
       <AppTooltip title="Ouvrir">
-        <IconButton onClick={() => router.push(`/campaign/${cid}/character/${r.id}`)}>
+        <IconButton onClick={() => router.push(`/character/${r.id}`)}>
           <OpenInNewIcon fontSize="small" />
         </IconButton>
       </AppTooltip>
@@ -149,7 +151,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
         <Typography variant="h6" gutterBottom>
           Campagne introuvable
         </Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/')}>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/campaigns')}>
           Retour aux campagnes
         </Button>
       </Container>
@@ -160,7 +162,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     <>
       <title>{`${campaign.name} — Éditeur de personnage CO2`}</title>
       <HomeBackground />
-      <AppHeader title={campaign.name} onBack={() => router.push('/')} />
+      <AppHeader title={campaign.name} onBack={() => router.push('/campaigns')} />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>
@@ -185,7 +187,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
                 <Button
                   color="inherit"
                   size="small"
-                  onClick={() => router.push(`/campaign/${cid}/create`)}
+                  onClick={() => router.push(`/create?campaign=${cid}`)}
                 >
                   Reprendre
                 </Button>
@@ -286,7 +288,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
                   >
                     <Box
                       sx={{ minWidth: 0, cursor: 'pointer' }}
-                      onClick={() => router.push(`/campaign/${cid}/character/${r.id}`)}
+                      onClick={() => router.push(`/character/${r.id}`)}
                     >
                       <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                         {r.name}

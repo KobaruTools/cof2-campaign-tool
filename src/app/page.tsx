@@ -1,23 +1,21 @@
 'use client';
 
 /**
- * Accueil = liste des campagnes (PER-180). La campagne est le point d'entrée de
- * l'application : le contexte campagne doit être explicite dans l'URL (les règles
- * appliquées et l'affichage en dépendent), plutôt qu'une « campagne active »
- * implicite. On peut créer, renommer et supprimer une campagne ; la suppression
- * est en cascade (personnages rattachés) avec confirmation forte.
- *
- * Ce composant est le PREMIER consommateur du store `campaigns` : son import
- * déclenche l'hydratation du store et le bootstrap de la « Campagne par défaut »
- * pour les personnages migrés (cf. store `campaigns`).
+ * Accueil = liste plate de TOUS les personnages (PER-180, révision). Le
+ * personnage est l'entité première : on peut en créer et en consulter sans
+ * campagne ni joueur. Chaque ligne affiche un badge de campagne (nom de la
+ * campagne de rattachement, ou « Non attribué »). La gestion des campagnes vit
+ * sur une page dédiée (`/campaigns`), accessible depuis l'en-tête.
  */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import EditIcon from '@mui/icons-material/Edit';
-import GroupIcon from '@mui/icons-material/Group';
-import PersonIcon from '@mui/icons-material/Person';
+import DownloadIcon from '@mui/icons-material/Download';
+import GroupsIcon from '@mui/icons-material/Groups';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import UploadIcon from '@mui/icons-material/Upload';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -31,102 +29,134 @@ import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
+import { CampaignBadge } from '@/components/home/CampaignBadge';
+import { ClassIcon } from '@/components/ClassIcon';
 import { HomeBackground } from '@/components/HomeBackground';
-import { createCampaign, type Campaign } from '@/lib/campaign';
-import { useCampaignsStore } from '@/stores/campaigns';
+import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
+import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
+import { classColor } from '@/lib/ui/classColors';
 import { useCharactersStore } from '@/stores/characters';
+import { useCampaignsStore } from '@/stores/campaigns';
 import { useWizardStore } from '@/stores/wizard';
 
 export default function HomePage() {
   const router = useRouter();
-  const hasHydrated = useCampaignsStore((s) => s.hasHydrated);
-  const campaigns = useCampaignsStore((s) => s.campaigns);
-  const upsertCampaign = useCampaignsStore((s) => s.upsert);
-  const removeCampaign = useCampaignsStore((s) => s.remove);
+  const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const characters = useCharactersStore((s) => s.characters);
+  const duplicate = useCharactersStore((s) => s.duplicate);
+  const remove = useCharactersStore((s) => s.remove);
+  const campaigns = useCampaignsStore((s) => s.campaigns);
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [toRename, setToRename] = useState<Campaign | null>(null);
-  const [renameName, setRenameName] = useState('');
-  const [toDelete, setToDelete] = useState<Campaign | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
+    null,
+  );
 
-  // Décompte des personnages par campagne (FK `campaignId`), pour l'affichage et
-  // l'avertissement de cascade à la suppression.
-  const characterCount = (campaignId: string) =>
-    characters.filter((c) => c.campaignId === campaignId).length;
+  const notify = (message: string, severity: 'success' | 'error' = 'success') =>
+    setToast({ message, severity });
 
-  const handleCreate = () => {
-    const campaign = createCampaign(newName);
-    upsertCampaign(campaign);
-    setCreateOpen(false);
-    setNewName('');
-    // On entre directement dans la campagne fraîchement créée.
-    router.push(`/campaign/${campaign.id}`);
+  // Nom de la campagne par id, pour le badge de chaque ligne (null = non attribué).
+  const campaignNameById = new Map(campaigns.map((c) => [c.id, c.name]));
+
+  const handleCreate = () => router.push('/create');
+
+  const handleExport = (id: string) => {
+    const character = useCharactersStore.getState().getById(id);
+    if (!character) return;
+    const blob = new Blob([JSON.stringify(character, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${fileSlug(character.name)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify(`« ${character.name || 'Sans nom'} » exporté en JSON.`);
   };
 
-  const handleRename = () => {
-    if (!toRename) return;
-    const name = renameName.trim();
-    if (name) upsertCampaign({ ...toRename, name });
-    setToRename(null);
+  const handleDuplicate = (id: string) => {
+    const copy = duplicate(id);
+    if (copy) notify(`« ${copy.name || 'Sans nom'} » dupliqué.`);
   };
 
   const confirmDelete = () => {
-    if (!toDelete) return;
-    const name = toDelete.name;
-    removeCampaign(toDelete.id);
-    setToast(`Campagne « ${name} » supprimée.`);
+    if (toDelete) {
+      remove(toDelete.id);
+      notify(`« ${toDelete.name || 'Sans nom'} » supprimé.`);
+    }
     setToDelete(null);
   };
 
-  // Brouillon de wizard en cours (PER-180) : ne le proposer à la reprise que si sa
-  // campagne existe encore (elle a pu être supprimée en cascade).
-  const draftCampaign = draft
-    ? campaigns.find((c) => c.id === draft.campaignId)
-    : undefined;
+  const rows = characters.map(summarize).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
-  const sorted = [...campaigns].sort((a, b) => a.name.localeCompare(b.name));
+  // Actions d'une ligne, partagées par le tableau (desktop) et les cartes (mobile).
+  const rowActions = (r: (typeof rows)[number]) => (
+    <>
+      <AppTooltip title="Ouvrir">
+        <IconButton onClick={() => router.push(`/character/${r.id}`)}>
+          <OpenInNewIcon fontSize="small" />
+        </IconButton>
+      </AppTooltip>
+      <AppTooltip title="Dupliquer">
+        <IconButton onClick={() => handleDuplicate(r.id)}>
+          <ContentCopyIcon fontSize="small" />
+        </IconButton>
+      </AppTooltip>
+      <AppTooltip title="Exporter en JSON">
+        <IconButton onClick={() => handleExport(r.id)}>
+          <DownloadIcon fontSize="small" />
+        </IconButton>
+      </AppTooltip>
+      <AppTooltip title="Supprimer">
+        <IconButton color="error" onClick={() => setToDelete({ id: r.id, name: r.name })}>
+          <DeleteOutlineIcon fontSize="small" />
+        </IconButton>
+      </AppTooltip>
+    </>
+  );
 
   return (
     <>
-      <title>Campagnes — Éditeur de personnage CO2</title>
+      <title>Personnages — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader title="Campagnes — Chroniques Oubliées Fantasy 2" />
+      <AppHeader
+        title="Personnages — Chroniques Oubliées Fantasy 2"
+        action={
+          <Button color="inherit" startIcon={<GroupsIcon />} onClick={() => router.push('/campaigns')}>
+            Campagnes
+          </Button>
+        }
+      />
 
-      <Container maxWidth="md" sx={{ py: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setNewName('');
-              setCreateOpen(true);
-            }}
-          >
-            Nouvelle campagne
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+            Nouveau personnage
+          </Button>
+          <Button variant="outlined" startIcon={<UploadIcon />} onClick={() => setImportOpen(true)}>
+            Importer un JSON
           </Button>
         </Stack>
 
-        {draft && draftCampaign && (
+        {draft && (
           <AppAlert
             severity="info"
             sx={{ mb: 3 }}
             action={
               <>
-                <Button
-                  color="inherit"
-                  size="small"
-                  onClick={() => router.push(`/campaign/${draftCampaign.id}/create`)}
-                >
+                <Button color="inherit" size="small" onClick={() => router.push('/create')}>
                   Reprendre
                 </Button>
                 <Button color="inherit" size="small" onClick={() => clearDraft()}>
@@ -135,7 +165,7 @@ export default function HomePage() {
               </>
             }
           >
-            Un brouillon de création est en cours dans « {draftCampaign.name} ».
+            Un brouillon de création est en cours.
           </AppAlert>
         )}
 
@@ -143,7 +173,7 @@ export default function HomePage() {
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />
           </Box>
-        ) : sorted.length === 0 ? (
+        ) : rows.length === 0 ? (
           <Paper
             variant="outlined"
             sx={{
@@ -156,19 +186,70 @@ export default function HomePage() {
             }}
           >
             <Typography variant="h6" sx={{ mb: 1 }}>
-              Ouvrez votre première campagne
+              Rassemblez votre compagnie
             </Typography>
             <Typography color="text.secondary">
-              Une campagne regroupe vos joueurs, leurs personnages et vos règles de table.
+              Aucun personnage pour l’instant. Créez-en un ou importez un fichier JSON.
             </Typography>
           </Paper>
         ) : (
-          <Stack spacing={1.5}>
-            {sorted.map((campaign) => {
-              const count = characterCount(campaign.id);
-              return (
+          <>
+            {/* Desktop : tableau classique. Masqué sous md (illisible sur mobile). */}
+            <TableContainer
+              component={Paper}
+              variant="outlined"
+              sx={{
+                display: { xs: 'none', md: 'block' },
+                bgcolor: 'rgba(30, 30, 34, 0.62)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                borderColor: 'rgba(255, 255, 255, 0.10)',
+              }}
+            >
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Nom</TableCell>
+                    <TableCell>Peuple</TableCell>
+                    <TableCell>Profil</TableCell>
+                    <TableCell align="center">Niveau</TableCell>
+                    <TableCell>Campagne</TableCell>
+                    <TableCell>Modifié</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.map((r) => (
+                    <TableRow key={r.id} hover>
+                      <TableCell>{r.name}</TableCell>
+                      <TableCell>{r.ancestry}</TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                          <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={20} />
+                          <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
+                            {r.characterClass}
+                          </Box>
+                        </Stack>
+                      </TableCell>
+                      <TableCell align="center">{r.level}</TableCell>
+                      <TableCell>
+                        <CampaignBadge
+                          name={r.campaignId ? campaignNameById.get(r.campaignId) ?? null : null}
+                        />
+                      </TableCell>
+                      <TableCell>{formatDate(r.updatedAt)}</TableCell>
+                      <TableCell align="right">{rowActions(r)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* Mobile : une carte empilée par personnage (PER-51). */}
+            <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
+              {rows.map((r) => (
                 <Paper
-                  key={campaign.id}
+                  key={r.id}
                   variant="outlined"
                   sx={{
                     p: 2,
@@ -184,132 +265,62 @@ export default function HomePage() {
                     sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
                   >
                     <Box
-                      sx={{ minWidth: 0, cursor: 'pointer', flexGrow: 1 }}
-                      onClick={() => router.push(`/campaign/${campaign.id}`)}
+                      sx={{ minWidth: 0, cursor: 'pointer' }}
+                      onClick={() => router.push(`/character/${r.id}`)}
                     >
-                      <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                        {campaign.name}
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        {r.name}
                       </Typography>
-                      {campaign.description && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                          {campaign.description}
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                        <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={16} />
+                        <Typography variant="body2" color="text.secondary">
+                          {r.ancestry} ·{' '}
+                          <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
+                            {r.characterClass}
+                          </Box>{' '}
+                          · niveau {r.level}
                         </Typography>
-                      )}
-                      <Stack
-                        direction="row"
-                        spacing={2}
-                        sx={{ alignItems: 'center', color: 'text.secondary', mt: 0.75 }}
-                      >
-                        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                          <PersonIcon fontSize="small" />
-                          <Typography variant="body2">
-                            {count} personnage{count > 1 ? 's' : ''}
-                          </Typography>
-                        </Stack>
-                        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                          <GroupIcon fontSize="small" />
-                          <Typography variant="body2">
-                            {campaign.players.length} joueur{campaign.players.length > 1 ? 's' : ''}
-                          </Typography>
-                        </Stack>
                       </Stack>
+                      <Box sx={{ mt: 0.5 }}>
+                        <CampaignBadge
+                          name={r.campaignId ? campaignNameById.get(r.campaignId) ?? null : null}
+                        />
+                      </Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                        Modifié {formatDate(r.updatedAt)}
+                      </Typography>
                     </Box>
-                    <Stack direction="row" sx={{ flexShrink: 0 }}>
-                      <AppTooltip title="Renommer">
-                        <IconButton
-                          onClick={() => {
-                            setToRename(campaign);
-                            setRenameName(campaign.name);
-                          }}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </AppTooltip>
-                      <AppTooltip title="Supprimer">
-                        <IconButton color="error" onClick={() => setToDelete(campaign)}>
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      </AppTooltip>
-                    </Stack>
+                  </Stack>
+                  <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 0.5 }}>
+                    {rowActions(r)}
                   </Stack>
                 </Paper>
-              );
-            })}
-          </Stack>
+              ))}
+            </Stack>
+          </>
         )}
       </Container>
 
-      {/* Création */}
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Nouvelle campagne</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Nom de la campagne"
-            fullWidth
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCreate();
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateOpen(false)}>Annuler</Button>
-          <Button variant="contained" onClick={handleCreate}>
-            Créer
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Import depuis l'accueil : personnage « Non attribué » (campaignId null). */}
+      <ImportCharacterDialog
+        open={importOpen}
+        campaignId={null}
+        onClose={() => setImportOpen(false)}
+        onImported={(c) => notify(`« ${c.name || 'Sans nom'} » importé.`)}
+      />
 
-      {/* Renommage */}
-      <Dialog open={toRename !== null} onClose={() => setToRename(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Renommer la campagne</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Nom de la campagne"
-            fullWidth
-            value={renameName}
-            onChange={(e) => setRenameName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRename();
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setToRename(null)}>Annuler</Button>
-          <Button variant="contained" onClick={handleRename}>
-            Renommer
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Suppression en cascade — confirmation forte */}
       <Dialog open={toDelete !== null} onClose={() => setToDelete(null)}>
-        <DialogTitle>Supprimer la campagne ?</DialogTitle>
+        <DialogTitle>Supprimer le personnage ?</DialogTitle>
         <DialogContent>
-          <DialogContentText component="div">
-            « {toDelete?.name} » sera définitivement supprimée, ainsi que{' '}
-            <strong>
-              {toDelete ? characterCount(toDelete.id) : 0} personnage
-              {toDelete && characterCount(toDelete.id) > 1 ? 's' : ''}
-            </strong>{' '}
-            et{' '}
-            <strong>
-              {toDelete?.players.length ?? 0} joueur
-              {(toDelete?.players.length ?? 0) > 1 ? 's' : ''}
-            </strong>{' '}
-            (suppression en cascade). Cette action est <strong>irréversible</strong> — pensez à
-            exporter les personnages en JSON au préalable si besoin.
+          <DialogContentText>
+            « {toDelete?.name} » sera définitivement supprimé. Cette action est irréversible
+            (pensez à exporter en JSON si besoin).
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setToDelete(null)}>Annuler</Button>
-          <Button color="error" variant="contained" onClick={confirmDelete}>
-            Supprimer définitivement
+          <Button color="error" onClick={confirmDelete}>
+            Supprimer
           </Button>
         </DialogActions>
       </Dialog>
@@ -321,8 +332,13 @@ export default function HomePage() {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         {toast ? (
-          <AppAlert severity="success" variant="filled" onClose={() => setToast(null)} sx={{ width: '100%' }}>
-            {toast}
+          <AppAlert
+            severity={toast.severity}
+            variant="filled"
+            onClose={() => setToast(null)}
+            sx={{ width: '100%' }}
+          >
+            {toast.message}
           </AppAlert>
         ) : undefined}
       </Snackbar>
