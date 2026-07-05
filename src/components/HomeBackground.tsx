@@ -89,8 +89,15 @@ function SidePanel({
         ref={imageRef}
         sx={{
           position: 'absolute',
-          top: -VOVER,
-          bottom: -VOVER,
+          // Plein écran : l'image remplit le panneau (pleine hauteur du viewport).
+          // Footer : la bande est plus courte que le viewport, mais on dimensionne
+          // quand même l'image sur la HAUTEUR DU VIEWPORT (100vh) pour conserver la
+          // MÊME LARGEUR que l'accueil (la largeur découle de la hauteur via
+          // `backgroundSize: auto 100%`) ; elle est calée en bas et déborde vers le
+          // haut, rognée par le panneau puis masquée par le fondu vertical.
+          ...(isFooter
+            ? { bottom: -VOVER, height: `calc(100vh + ${2 * VOVER}px)` }
+            : { top: -VOVER, bottom: -VOVER }),
           // Ancrée au bord extérieur (qui déborde de HOVER, plus le décalage de
           // base de 20px vers l'extérieur) ; le bord intérieur s'arrête au ras
           // de la fenêtre du panneau.
