@@ -41,20 +41,32 @@ export default function LoginPage() {
   const [busy, setBusy] = useState<Busy>({ kind: 'idle' });
   const [error, setError] = useState<string | null>(null);
   const [magicSent, setMagicSent] = useState(false);
+  // Destination post-connexion transmise par le gating du proxy (PER-189).
+  const [nextPath, setNextPath] = useState('/');
 
-  // Indice « dernière méthode » + erreur éventuelle renvoyée par le callback,
-  // lus côté client uniquement (évite un besoin de Suspense pour useSearchParams).
+  // Indice « dernière méthode » + erreur éventuelle renvoyée par le callback +
+  // destination `next`, lus côté client uniquement (évite un besoin de Suspense
+  // pour useSearchParams).
   useEffect(() => {
     setLastMethod(readLastAuthMethod());
     const params = new URLSearchParams(window.location.search);
     if (params.get('error')) {
       setError("La connexion a échoué. Réessaie ou choisis une autre méthode.");
     }
+    // `next` doit rester un chemin interne (pas d'open redirect).
+    const requested = params.get('next');
+    if (requested && requested.startsWith('/')) {
+      setNextPath(requested);
+    }
   }, []);
 
+  // Callback commun OAuth/magic-link, portant la destination post-connexion.
   const callbackUrl = useMemo(
-    () => (typeof window === 'undefined' ? '' : `${window.location.origin}/auth/callback`),
-    [],
+    () =>
+      typeof window === 'undefined'
+        ? ''
+        : `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+    [nextPath],
   );
 
   async function signInWithProvider(provider: OAuthProviderId) {
@@ -65,7 +77,7 @@ export default function LoginPage() {
       rememberLastAuthMethod(provider);
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: `${callbackUrl}?next=/` },
+        options: { redirectTo: callbackUrl },
       });
       if (err) throw err;
       // Succès : le navigateur part chez le provider (pas de retour ici).

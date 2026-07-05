@@ -4,7 +4,9 @@ import { updateSession } from '@/lib/supabase/updateSession';
 
 /**
  * Proxy Next 16 (ex-middleware) : rafraîchit la session Supabase à chaque requête
- * (PER-188). Inactif tant que Supabase n'est pas configuré (cf. `updateSession`).
+ * (PER-188) et gate les routes propriétaire (PER-189, redirection vers `/login`
+ * des visiteurs non authentifiés). Inactif tant que Supabase n'est pas configuré
+ * (cf. `updateSession`).
  */
 export async function proxy(request: NextRequest) {
   return updateSession(request);
