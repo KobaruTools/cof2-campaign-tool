@@ -27,6 +27,10 @@ export interface DerivedStatHintProps {
    * divers » de chaque stat — ex. points de capacité orphelins convertis (p. 40).
    */
   extraModSources?: ModSources;
+  /** Classe CSS posée sur l'icône « i » — permet au parent de la révéler au survol du bloc. */
+  className?: string;
+  /** Délai (ms) avant apparition de l'infobulle au survol (cf. `AppTooltip.enterDelay`). */
+  enterDelay?: number;
   sx?: SxProps<Theme>;
 }
 
@@ -40,6 +44,8 @@ export function DerivedStatHint({
   featureIds,
   effectContext,
   extraModSources,
+  className,
+  enterDelay,
   sx,
 }: DerivedStatHintProps) {
   // Inventaire des capacités contribuant à chaque modificateur, mis en forme de
@@ -66,7 +72,7 @@ export function DerivedStatHint({
   }
   const bd = derivedStatBreakdown(statId, input, modSources);
   return (
-    <InfoHint page={bd.page} sx={sx}>
+    <InfoHint page={bd.page} className={className} enterDelay={enterDelay} sx={sx}>
       <BreakdownContent title={DERIVED_STAT_NAMES[statId]} breakdown={bd} />
     </InfoHint>
   );

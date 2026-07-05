@@ -13,6 +13,10 @@ export interface InfoHintProps {
   section?: string;
   /** Taille de l'icône « i ». Par défaut `small`. */
   fontSize?: 'inherit' | 'small' | 'medium' | 'large';
+  /** Classe CSS posée sur l'icône — permet à un parent de la cibler (ex. révélation au survol). */
+  className?: string;
+  /** Délai (ms) avant apparition de l'infobulle au survol (cf. `AppTooltip.enterDelay`). */
+  enterDelay?: number;
   /** Style additionnel fusionné par-dessus le style de l'icône. */
   sx?: SxProps<Theme>;
 }
@@ -24,11 +28,12 @@ export interface InfoHintProps {
  * Simple déclencheur (icône) au-dessus d'`AppTooltip`, qui porte le look et le
  * motif « contenu + source ».
  */
-export function InfoHint({ children, page, section, fontSize = 'small', sx }: InfoHintProps) {
+export function InfoHint({ children, page, section, fontSize = 'small', className, enterDelay, sx }: InfoHintProps) {
   return (
-    <AppTooltip title={children} page={page} section={section}>
+    <AppTooltip title={children} page={page} section={section} enterDelay={enterDelay}>
       <InfoOutlinedIcon
         fontSize={fontSize}
+        className={className}
         sx={{ color: 'text.secondary', cursor: 'help', ...sx }}
       />
     </AppTooltip>

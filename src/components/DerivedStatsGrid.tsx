@@ -152,7 +152,20 @@ export function DerivedStatsGrid({
 
         return (
           <Grid key={id} size={size}>
-            <Card variant="outlined" sx={{ height: '100%' }}>
+            <Card
+              variant="outlined"
+              sx={{
+                height: '100%',
+                transition: 'border-color 120ms ease',
+                // L'icône « i » du détail reste masquée et n'apparaît qu'au survol
+                // (ou focus clavier) de la carte. Bordure très légèrement éclaircie au survol.
+                '& .derived-stat-hint': { opacity: 0, transition: 'opacity 120ms ease' },
+                '&:hover, &:focus-within': {
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  '& .derived-stat-hint': { opacity: 1 },
+                },
+              }}
+            >
               <CardContent
                 sx={{
                   py: 1,
@@ -233,6 +246,8 @@ export function DerivedStatsGrid({
                     featureIds={featureIds}
                     effectContext={effectContext}
                     extraModSources={extraModSources}
+                    className="derived-stat-hint"
+                    enterDelay={200}
                     sx={{ alignSelf: 'flex-start' }}
                   />
                 </Box>
