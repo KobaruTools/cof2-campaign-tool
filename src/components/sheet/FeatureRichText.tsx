@@ -10,6 +10,7 @@ import { featureById, pathById, progression } from '@/data';
 import type { AbilityId, AbilitySubstitution, Die, Feature } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
 import { AppTooltip } from '@/components/AppTooltip';
+import { SourceRef } from '@/components/SourceRef';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { DieIcon } from '@/components/DieIcon';
@@ -507,6 +508,9 @@ function QuantityValue({ resolved }: { resolved: ResolvedExpr }) {
  * formule entière (dé évolutif + caractéristiques), pas seulement le dé.
  */
 function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: number }) {
+  // Formule contenant au moins un dé ÉVOLUTIF → renvoi au livre (« D4°, les dés
+  // évolutifs », p. 43) en pied d'info-bulle, sur sa propre ligne.
+  const hasEvolvingDie = resolved.parts.some((p) => p.die?.evolving);
   const tooltip = (
     <Box sx={{ minWidth: 180 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -530,6 +534,11 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
           </span>
         </Box>
       ))}
+      {hasEvolvingDie && (
+        <Box sx={{ mt: 0.75 }}>
+          <SourceRef page={43} />
+        </Box>
+      )}
     </Box>
   );
   // Substitution de carac appliquée (PER-163) → accent AMBRE + avertissement.

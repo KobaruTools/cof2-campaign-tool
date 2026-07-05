@@ -104,5 +104,12 @@ export function DieIcon({
   );
 
   if (noTooltip) return inner;
-  return <AppTooltip title={label}>{inner}</AppTooltip>;
+  // Dé évolutif : on renvoie au livre (« D4°, les dés évolutifs », p. 43) via la prop
+  // `page` d'AppTooltip, qui rend un badge de source (SourceRef) sur sa propre ligne
+  // sous le libellé. Un dé fixe n'a pas de renvoi.
+  return (
+    <AppTooltip title={label} {...(evolving ? { page: 43 } : {})}>
+      {inner}
+    </AppTooltip>
+  );
 }
