@@ -135,11 +135,21 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const { id } = use(params);
   const router = useRouter();
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
+  const status = useCharactersStore((s) => s.status);
   const character = useCharactersStore((s) => s.characters.find((c) => c.id === id));
   const upsert = useCharactersStore((s) => s.upsert);
+  const loadCharacters = useCharactersStore((s) => s.load);
   // Campagnes disponibles pour l'attribution (PER-180) : le personnage peut être
   // rattaché à une campagne ou rester « Non attribué ».
   const campaigns = useCampaignsStore((s) => s.campaigns);
+  const loadCampaigns = useCampaignsStore((s) => s.load);
+
+  // Charge le personnage depuis le cloud (RLS `owner_id`, PER-192) en cas d'accès
+  // direct à l'URL, et les campagnes pour résoudre le libellé d'attribution.
+  useEffect(() => {
+    void loadCharacters();
+    void loadCampaigns();
+  }, [loadCharacters, loadCampaigns]);
   // Édition par bloc : chaque bloc a son propre scope, activable via son crayon.
   const [editingBlocks, setEditingBlocks] = useState<Record<EditBlock, boolean>>(NO_EDIT);
   const allEditing = EDIT_BLOCKS.every((k) => editingBlocks[k]);
@@ -179,7 +189,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     }
   }, []);
 
-  if (!hasHydrated) {
+  // Spinner tant que le staging local n'est pas relu, ou que le chargement cloud
+  // est en cours sans avoir encore trouvé la fiche (évite un « introuvable » fugace
+  // sur accès direct à l'URL avant que le cloud ait répondu).
+  if (!hasHydrated || ((status === 'idle' || status === 'loading') && !character)) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
         <CircularProgress />

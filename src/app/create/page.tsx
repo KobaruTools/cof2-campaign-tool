@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -146,7 +146,11 @@ export default function CreatePage() {
   const patch = useWizardStore((s) => s.patch);
   const setStep = useWizardStore((s) => s.setStep);
   const clear = useWizardStore((s) => s.clear);
-  const upsert = useCharactersStore((s) => s.upsert);
+  const commitNewCharacter = useCharactersStore((s) => s.commitNewCharacter);
+  // Commit de fin de wizard : écriture cloud en cours / échec (le brouillon est
+  // conservé tant que le commit n'a pas abouti — jamais d'inachevé en base).
+  const [committing, setCommitting] = useState(false);
+  const [commitError, setCommitError] = useState<string | null>(null);
 
   // Démarre un brouillon si aucun n'est en cours (après hydratation). La campagne
   // de rattachement est optionnelle (PER-180) : passée en query `?campaign=cid`
@@ -182,11 +186,22 @@ export default function CreatePage() {
   const pendingChoices = previewForChoices ? featuresWithUnmadeChoices(previewForChoices) : [];
   const canCreate = pendingChoices.length === 0;
 
-  const finish = () => {
+  const finish = async () => {
     const ancestry = ancestryById.get(draft.ancestryId);
     if (!ancestry) return;
     const character = materializeDraft(draft, ancestry, new Date().toISOString());
-    upsert(character);
+    // Commit en fin de wizard (PER-192) : le personnage naît directement en cloud
+    // (`campaign_id` porté par le brouillon, `player_id` vide). En cas d'échec, on
+    // conserve le brouillon pour permettre une nouvelle tentative.
+    setCommitting(true);
+    setCommitError(null);
+    try {
+      await commitNewCharacter(character);
+    } catch (e) {
+      setCommitError(e instanceof Error ? e.message : String(e));
+      setCommitting(false);
+      return;
+    }
     clear();
     // `created=1` : la fiche affiche une confirmation de création puis nettoie
     // l'URL (voir la page de fiche). La fiche est indépendante de la campagne
@@ -253,13 +268,24 @@ export default function CreatePage() {
           </AppAlert>
         )}
 
+        {/* Échec du commit cloud : le brouillon est conservé, on peut réessayer. */}
+        {commitError && (
+          <AppAlert severity="error" sx={{ mb: 2 }}>
+            Enregistrement impossible : {commitError}
+          </AppAlert>
+        )}
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
             Précédent
           </Button>
           {isLast ? (
-            <Button variant="contained" onClick={finish} disabled={!canCreate}>
-              Créer le personnage
+            <Button
+              variant="contained"
+              onClick={() => void finish()}
+              disabled={!canCreate || committing}
+            >
+              {committing ? 'Enregistrement…' : 'Créer le personnage'}
             </Button>
           ) : (
             <Button variant="contained" disabled={!canNext} onClick={() => setStep(step + 1)}>

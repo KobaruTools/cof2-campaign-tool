@@ -52,7 +52,9 @@ import { useWizardStore } from '@/stores/wizard';
 export default function HomePage() {
   const router = useRouter();
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
+  const status = useCharactersStore((s) => s.status);
   const characters = useCharactersStore((s) => s.characters);
+  const loadCharacters = useCharactersStore((s) => s.load);
   const duplicate = useCharactersStore((s) => s.duplicate);
   const remove = useCharactersStore((s) => s.remove);
   const campaigns = useCampaignsStore((s) => s.campaigns);
@@ -60,11 +62,12 @@ export default function HomePage() {
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
 
-  // Charge les campagnes cloud (RLS `owner_id`) pour résoudre le nom du badge de
-  // chaque personnage. Sans elles, un perso rattaché s'affiche « Non attribué ».
+  // Charge les personnages cloud (RLS `owner_id`) puis fusionne au staging local
+  // (PER-192), et les campagnes cloud pour résoudre le nom du badge de chaque perso.
   useEffect(() => {
+    void loadCharacters();
     void loadCampaigns();
-  }, [loadCampaigns]);
+  }, [loadCharacters, loadCampaigns]);
 
   const [importOpen, setImportOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -176,7 +179,7 @@ export default function HomePage() {
           </AppAlert>
         )}
 
-        {!hasHydrated ? (
+        {!hasHydrated || ((status === 'idle' || status === 'loading') && characters.length === 0) ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />
           </Box>

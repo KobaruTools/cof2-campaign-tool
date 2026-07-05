@@ -4,6 +4,7 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
 import { ThemeProvider } from '@mui/material/styles';
+import { CharacterSyncNotifier } from '@/components/CharacterSyncNotifier';
 import theme from '@/theme';
 
 /**
@@ -24,6 +25,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             conteneur de défilement, non affecté). */}
         <GlobalStyles styles={{ body: { overflowX: 'hidden' } }} />
         {children}
+        {/* Bandeau global de conflit de synchro + filet de flush avant fermeture (PER-192). */}
+        <CharacterSyncNotifier />
       </ThemeProvider>
     </AppRouterCacheProvider>
   );
