@@ -27,10 +27,25 @@ interface CoinMeta {
   color: string;
   /** Couleur de la barre de brillance au survol (défaut : blanc vif). */
   shine?: string;
-  /** `true` : jeton « précieux » qui scintille (étincelles au survol). */
-  sparkle?: boolean;
+  /** Profil de scintillement des jetons « précieux » (étincelles au survol) ; absent = aucun. */
+  sparkle?: SparkleProfile;
   /** Verbatim de règle (p. 181) affiché en info-bulle. */
   rule: string;
+}
+
+/** Position/taille d'une étincelle (px relatifs au jeton 24×24) + son décalage d'animation. */
+interface SparklePos {
+  top: number;
+  left: number;
+  size: number;
+  delay: string;
+}
+
+/** Profil de scintillement d'un jeton précieux : jeu d'étincelles + durée de l'animation. */
+interface SparkleProfile {
+  positions: readonly SparklePos[];
+  /** Durée du scintillement d'une étincelle. */
+  duration: string;
 }
 
 /** Composantes RGB (0–255) d'une couleur hex `#rrggbb`. */
@@ -49,18 +64,30 @@ function mixWhiteToColor(hex: string, t: number): string {
   return `rgb(${m(r)}, ${m(g)}, ${m(b)})`;
 }
 
-/**
- * Positions/tailles fixes des étincelles autour d'un jeton précieux (px relatifs au
- * jeton 24×24), chacune avec un léger décalage d'animation pour un scintillement
- * échelonné. La teinte et l'opacité, elles, sont tirées au hasard par jeton (cf. `CoinToken`).
- */
-const SPARKLES = [
+/** Or : scintillement discret — 5 étincelles proches du jeton, animation courte. */
+const SPARKLES_GOLD: readonly SparklePos[] = [
   { top: -5, left: 19, size: 9, delay: '0s' },
   { top: 6, left: 23, size: 5, delay: '0.18s' },
   { top: 19, left: -4, size: 7, delay: '0.08s' },
   { top: -3, left: -3, size: 5, delay: '0.25s' },
   { top: 20, left: 17, size: 4, delay: '0.32s' },
-] as const;
+];
+
+/**
+ * Platine : scintillement plus prononcé (unité la plus précieuse) — davantage
+ * d'étincelles, plus écartées du jeton et plus grosses ; animation plus longue.
+ */
+const SPARKLES_PLATINUM: readonly SparklePos[] = [
+  { top: -11, left: 10, size: 11, delay: '0s' },
+  { top: -8, left: 26, size: 7, delay: '0.16s' },
+  { top: 6, left: 31, size: 9, delay: '0.32s' },
+  { top: 22, left: 29, size: 6, delay: '0.1s' },
+  { top: 29, left: 15, size: 10, delay: '0.24s' },
+  { top: 28, left: -4, size: 7, delay: '0.38s' },
+  { top: 12, left: -11, size: 9, delay: '0.06s' },
+  { top: -4, left: -8, size: 6, delay: '0.3s' },
+  { top: 16, left: 9, size: 5, delay: '0.44s' },
+];
 
 const COINS: CoinMeta[] = [
   {
@@ -72,7 +99,7 @@ const COINS: CoinMeta[] = [
     color: '#0d8a7a',
     // Métal froid et éclatant : reflet légèrement bleuté plutôt que blanc pur.
     shine: 'rgba(190, 255, 246, 0.9)',
-    sparkle: true,
+    sparkle: { positions: SPARKLES_PLATINUM, duration: '3.2s' },
     rule:
       'La pièce de platine (pp) est la monnaie la plus précieuse, rare et recherchée. ' +
       '1 pp = 10 po = 100 pa = 1000 pc.',
@@ -82,7 +109,7 @@ const COINS: CoinMeta[] = [
     code: 'po',
     name: 'Pièce d’or',
     color: '#d4af37',
-    sparkle: true,
+    sparkle: { positions: SPARKLES_GOLD, duration: '2s' },
     rule:
       'Les pièces d’or (po) sont rares et précieuses, la plupart des paysans en ' +
       'utilisent rarement. 1 po = 10 pa = 100 pc.',
@@ -130,7 +157,7 @@ interface SparkleParam {
  */
 function rollSparkles(coin: CoinMeta): SparkleParam[] {
   if (!coin.sparkle) return [];
-  return SPARKLES.map((s) => {
+  return coin.sparkle.positions.map((s) => {
     const t = Math.random();
     return { ...s, color: mixWhiteToColor(coin.color, t), peak: 0.75 + 0.25 * t };
   });
@@ -153,8 +180,16 @@ function CoinToken({ coin, sparkles }: { coin: CoinMeta; sparkles: SparkleParam[
   return (
     <AppTooltip title={tooltip}>
       {/* Wrapper `overflow: visible` : porte les étincelles qui débordent hors du jeton
-          (le jeton lui-même reste `overflow: hidden` pour clipper le code et la brillance). */}
-      <Box sx={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+          (le jeton lui-même reste `overflow: hidden` pour clipper le code et la brillance).
+          `--sparkle-dur` : durée du scintillement propre à la pièce, héritée par les étincelles. */}
+      <Box
+        sx={{
+          position: 'relative',
+          display: 'inline-flex',
+          flexShrink: 0,
+          ...(coin.sparkle ? { '--sparkle-dur': coin.sparkle.duration } : {}),
+        }}
+      >
         <Box
           className="coin-shine"
           sx={{
@@ -186,30 +221,16 @@ function CoinToken({ coin, sparkles }: { coin: CoinMeta; sparkles: SparkleParam[
             // Contour de la même teinte, plus foncé (2px), et fond en dégradé vers plus clair.
             border: `2px solid ${darken(coin.color, 0.3)}`,
             background: `linear-gradient(135deg, ${coin.color} 0%, ${lighten(coin.color, 0.28)} 100%)`,
-            // Double barre de brillance — au repos hors champ, à gauche. La large (`::before`)
-            // précède la fine (`::after`) avec un écart constant : ensemble elles forment un
-            // reflet double (« glint ») au balayage. Teinte selon la pièce (`shine`). Le
+            // Barre de brillance unique — au repos hors champ, à gauche. Teinte selon la pièce
+            // (`shine`). VARIANTE testée : au survol elle balaie le jeton DEUX fois de suite
+            // (animation `coinShineSweep`, 2 itérations), au lieu de doubler la barre. Le
             // balayage est déclenché par le survol de TOUT le champ (voir `CoinInput`).
             '&::before': {
               content: '""',
               position: 'absolute',
               top: 0,
               left: '-150%',
-              width: '62%',
-              height: '100%',
-              background: `linear-gradient(120deg, transparent 0%, ${shine} 50%, transparent 100%)`,
-              transform: 'skewX(-20deg)',
-              // Pas de transition au repos : le retour de la barre est instantané (invisible,
-              // hors-champ). La transition n'existe qu'au survol → brillance à l'aller seulement.
-            },
-            // Seconde barre, plus fine, décalée derrière la première (même course de 300 %
-            // → elles balaient en parallèle, séparées par un fin liseré sombre).
-            '&::after': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: '-190%',
-              width: '20%',
+              width: '70%',
               height: '100%',
               background: `linear-gradient(120deg, transparent 0%, ${shine} 50%, transparent 100%)`,
               transform: 'skewX(-20deg)',
@@ -313,11 +334,21 @@ function CoinInput({
       }}
       aria-label={`${coin.name} (${coin.code})`}
       // Survoler n'importe où dans le champ fait « briller » la pièce (balaie la barre)
-      // et, pour l'or, déclenche le scintillement échelonné des étincelles.
+      // et, pour les jetons précieux, déclenche le scintillement des étincelles.
       sx={{
-        // Les deux barres balaient ensemble (même course/durée), en gardant leur écart.
-        '&:hover .coin-shine::before': { left: '150%', transition: 'left 0.55s ease' },
-        '&:hover .coin-shine::after': { left: '110%', transition: 'left 0.55s ease' },
+        // VARIANTE : la barre unique balaie le jeton DEUX fois de suite (2 itérations),
+        // avec une brève pause hors-champ entre les deux passages (fin du keyframe à droite).
+        '@keyframes coinShineSweep': {
+          '0%': { left: '-150%' },
+          '65%': { left: '150%' }, // passage
+          '100%': { left: '150%' }, // maintien hors-champ → gap avant le 2e passage
+        },
+        '&:hover .coin-shine::before': {
+          animationName: 'coinShineSweep',
+          animationDuration: '0.75s',
+          animationTimingFunction: 'ease-in-out',
+          animationIterationCount: 2,
+        },
         '@keyframes coinSparkleTwinkle': {
           '0%': { transform: 'scale(0) rotate(0deg)', opacity: 0 },
           // Pic d'opacité propre à chaque étincelle (`--sparkle-peak`, défaut 0.95).
@@ -327,7 +358,8 @@ function CoinInput({
         },
         '&:hover .coin-sparkle': {
           animationName: 'coinSparkleTwinkle',
-          animationDuration: '2s',
+          // Durée propre à la pièce (`--sparkle-dur` posé sur le wrapper) : platine plus long.
+          animationDuration: 'var(--sparkle-dur, 2s)',
           animationTimingFunction: 'ease-in-out',
           // Un seul scintillement par survol (pas de boucle infinie).
           animationIterationCount: 1,
