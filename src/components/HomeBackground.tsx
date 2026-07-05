@@ -52,7 +52,7 @@ const FADE_END = 34; // vh : image totalement fondue au-delà (~ son bord intér
 
 // Variante `footer`. Hauteur de référence de l'image (vh) : la largeur en découle
 // (`backgroundSize: auto 100%`). > 100 → image plus grande que sur l'accueil.
-const FOOTER_IMAGE_HEIGHT = 135; // vh
+const FOOTER_IMAGE_HEIGHT = 110; // vh
 // La bande fait la MÊME hauteur que l'image : celle-ci s'y inscrit entièrement (plus
 // de troncature dure en haut), et le fondu vertical peut la faire disparaître
 // progressivement jusqu'à son bord SUPÉRIEUR.
