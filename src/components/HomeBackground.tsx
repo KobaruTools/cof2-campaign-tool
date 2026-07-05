@@ -53,7 +53,10 @@ const FADE_END = 34; // vh : image totalement fondue au-delà (~ son bord intér
 // Variante `footer` : hauteur de la bande d'illustration ancrée en bas, et fondu
 // VERTICAL masquant la coupure du haut (en % de la bande : opaque en haut → transparent).
 const FOOTER_HEIGHT = '60vh';
-const FOOTER_TOP_FADE = 45; // %
+const FOOTER_TOP_FADE = 32; // %
+// Hauteur de référence de l'image du footer (vh) : la largeur en découle
+// (`backgroundSize: auto 100%`). > 100 → image plus grande que sur l'accueil.
+const FOOTER_IMAGE_HEIGHT = 135; // vh
 
 // Couleur de fond de l'app (thème sombre) : sert au dégradé de fondu intérieur.
 const BG = 'rgb(18, 18, 18)';
@@ -72,6 +75,13 @@ function SidePanel({
 }) {
   const isLeft = side === 'left';
   const isFooter = variant === 'footer';
+  // Le dégradé intérieur s'aligne sur le bord intérieur de l'image, dont la largeur
+  // (en vh) est proportionnelle à sa hauteur. Le footer agrandit l'image (100 →
+  // FOOTER_IMAGE_HEIGHT vh) : on met les arrêts du fondu à la même échelle pour
+  // qu'ils restent alignés (la home, à 100vh, garde ses valeurs de base).
+  const fadeScale = isFooter ? FOOTER_IMAGE_HEIGHT / 100 : 1;
+  const fadeStart = FADE_START * fadeScale;
+  const fadeEnd = FADE_END * fadeScale;
   return (
     <Box
       sx={{
@@ -96,7 +106,7 @@ function SidePanel({
           // `backgroundSize: auto 100%`) ; elle est calée en bas et déborde vers le
           // haut, rognée par le panneau puis masquée par le fondu vertical.
           ...(isFooter
-            ? { bottom: -VOVER, height: `calc(100vh + ${2 * VOVER}px)` }
+            ? { bottom: -VOVER, height: `calc(${FOOTER_IMAGE_HEIGHT}vh + ${2 * VOVER}px)` }
             : { top: -VOVER, bottom: -VOVER }),
           // Ancrée au bord extérieur (qui déborde de HOVER, plus le décalage de
           // base de 20px vers l'extérieur) ; le bord intérieur s'arrête au ras
@@ -119,7 +129,7 @@ function SidePanel({
         sx={{
           position: 'absolute',
           inset: 0,
-          background: `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} ${FADE_START}vh, ${BG} ${FADE_END}vh)`,
+          background: `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} ${fadeStart}vh, ${BG} ${fadeEnd}vh)`,
         }}
       />
       {/* Footer : fondu VERTICAL supplémentaire — opaque en haut (masque la coupure
