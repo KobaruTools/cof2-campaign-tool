@@ -21,18 +21,28 @@ Le **bonus de compétence** ne s'additionne pas entre sources de **même type**.
 
 Catégorie **déduite de la voie hôte** (`Path.type` ; `mage` → peuple).
 
-## Carac gouvernante — à valider (propriétaire)
+## Carac gouvernante — VALIDÉ propriétaire (2026-07-05)
 
-Le livre ne classe pas les métiers/gagne-pain. Hypothèses à confirmer :
+Le livre ne classe pas les métiers/gagne-pain. Les cas ambigus ont été tranchés par le
+propriétaire (note « VALIDÉ propriétaire » sur l'entrée du catalogue) :
 
-| Domaine | Hypothèse | Alternative | Source |
+| Domaine | Carac retenue | Alternative écartée | Source |
 |---|---|---|---|
-| `hunting` (chasser) | PER | AGI | humain-r1 p. 57 |
-| `orientation` | PER | INT | humain-r1 p. 57 |
-| `meteorology` (météorologie) | PER | INT | humain-r1 p. 57 |
-| `commerce` | CHA | INT | humain-r1 p. 57 |
-| `smithing` (forge) | FOR | INT | forgesort p. 99 |
-| `goldsmithing` (orfèvrerie) | INT | FOR | forgesort p. 99 |
+| `hunting` (chasser) | **PER** | AGI | humain-r1 p. 57 |
+| `orientation` | **PER** | INT | humain-r1 p. 57 |
+| `meteorology` (météorologie) | **PER** | INT | humain-r1 p. 57 |
+| `navigation` | **INT** | PER | humain-r1 p. 57 |
+| `commerce` | **CHA** | INT | humain-r1 p. 57 |
+| `smithing` (forge) | **INT** | ~~FOR~~ | forgesort p. 99 |
+| `goldsmithing` (orfèvrerie) | **INT** | FOR | forgesort p. 99 |
+| `masonry` (maçonnerie) | **INT** | PER | nain-r1 p. 59 |
+| `mining` (mines) | **INT** | PER | nain-r1 p. 59 |
+| `disguise` (déguisement) | **CHA** | AGI | assassin-r1 p. 74 |
+| `animal-training` (dressage) | **CHA** | PER | cavalier-r1 p. 83 |
+| `concealment` (dissimulation d'objet) | **AGI**, domaine distinct | fondre dans discrétion | assassin-r1 p. 74 |
+
+> `smithing` a basculé **FOR → INT** pour aligner les deux domaines de la paire
+> « orfèvrerie ou forge » sur la même carac (savoir-faire du forgesort).
 
 Domaines à carac **assurée** : tous les exemples p. 202 (regroupés par carac dans le livre),
 les résistances physiques (CON), et les domaines INT explicites des mages (`tinkering`,
@@ -53,11 +63,9 @@ origines (`FeatureChoiceOption.testBonusDomains`), 2 par origine :
 | Montagnard | `climbing`, `cold-resistance` |
 | Citadin | `commerce`, `disease-resistance` |
 | Campagnard | `meteorology`, `riding` |
-| Riverain | `swimming`, `navigation` ⚠️ |
+| Riverain | `swimming`, `navigation` |
 | Sauvage | `hunting`, `tracking` |
 | Nomade | `orientation`, `heat-resistance` (ou `cold-resistance`) |
-
-⚠️ `navigation` : à ajouter au catalogue (manque encore — voir « reste à faire »).
 
 ### Mages (graine — solde la dette PER-69)
 Bonus à domaine nommé, **inconditionnels**, profil (`2 + rang`) :
@@ -76,7 +84,7 @@ Bonus à domaine nommé, **inconditionnels**, profil (`2 + rang`) :
 conditionnel) ; tous les « dé bonus aux tests de [CARAC] » (→ `ability-bonus-die`).
 
 ### Reste à faire (mandaté dans les tickets aval)
-- [ ] `navigation` (riverain) : décider carac + ajouter au catalogue.
+- [x] `navigation` (riverain) : ajouté au catalogue, carac INT (VALIDÉ propriétaire 2026-07-05).
 - [ ] Combattants → PER-72 · Mystiques → PER-70 · Aventuriers → PER-71 ·
       Voies de peuple (hors humain) → PER-73 · Voies de prestige → PER-74.
 - [ ] PER-62 : tenir l'inventaire des capacités à domaine de test.

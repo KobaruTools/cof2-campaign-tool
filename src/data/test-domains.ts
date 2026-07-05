@@ -18,8 +18,9 @@
  * le modificateur affiché retient la meilleure.
  *
  * ⚠️ POINT DE VALIDATION PROPRIÉTAIRE : la carac gouvernante de plusieurs domaines
- * n'est pas donnée par le livre (le métier/gagne-pain n'est pas classé). Ces cas sont
- * marqués `TODO(extraction)` ci-dessous — à confirmer avant câblage des effets.
+ * n'est pas donnée par le livre (le métier/gagne-pain n'est pas classé). Ces cas ont été
+ * tranchés par le propriétaire (note « VALIDÉ propriétaire » sur l'entrée) ; tout NOUVEAU
+ * domaine ambigu doit rester `TODO(extraction)` jusqu'à validation avant câblage des effets.
  */
 import type { TestDomain } from './schema';
 
@@ -43,17 +44,15 @@ export const testDomains: TestDomain[] = [
   // « désamorcer des pièges mécaniques », p. 62) : précision manuelle → AGI. À
   // distinguer de la DÉTECTION du piège (`trap-detection`, PER, roublard-r2).
   { id: 'disarm-traps', label: 'Désamorçage de pièges', abilities: ['AGI'], sourcePage: 76 },
-  // cacher une arme sur soi (Discrétion, assassin-r1, p. 74) : escamotage → AGI.
-  // TODO(extraction) : domaine à part entière ou application de la discrétion ? À valider.
+  // cacher une arme sur soi (Discrétion, assassin-r1, p. 74) : escamotage → AGI. Conservé
+  // comme domaine DISTINCT de la discrétion (escamotage manuel ≠ se fondre) — VALIDÉ
+  // propriétaire (2026-07-05).
   { id: 'concealment', label: "Dissimulation d'objet", abilities: ['AGI'], sourcePage: 74 },
 
   // --- FOR — exemples p. 202 -------------------------------------------------
   { id: 'breaking', label: 'Briser', abilities: ['FOR'], sourcePage: 202 },
   { id: 'intimidation', label: 'Intimidation', abilities: ['FOR'], sourcePage: 202, combat: true },
   { id: 'lifting', label: 'Soulever', abilities: ['FOR'], sourcePage: 202 },
-  // forge (forgesort « orfèvrerie ou forge ») : travail du métal.
-  // TODO(extraction) : FOR (effort physique) ou INT (artisanat / thème forgesort) ?
-  { id: 'smithing', label: 'Forge', abilities: ['FOR'], sourcePage: 99 },
 
   // --- CON — exemples p. 202 + résistances (humain-r1) + équitation (p. 233) --
   { id: 'long-running', label: 'Course longue', abilities: ['CON'], sourcePage: 202 },
@@ -103,14 +102,14 @@ export const testDomains: TestDomain[] = [
   { id: 'empathy', label: 'Empathie', abilities: ['PER'], sourcePage: 202 },
   { id: 'tracking', label: 'Pister', abilities: ['PER'], sourcePage: 202 },
   { id: 'clue-finding', label: "Recherche d'indices", abilities: ['PER'], sourcePage: 202 },
-  // chasser (humain-r1 « Sauvage ») : proche de pister / survie.
-  // TODO(extraction) : PER (pistage / affût) ou AGI ?
+  // chasser (humain-r1 « Sauvage ») : pistage / affût → PER, cohérent avec `tracking` —
+  // VALIDÉ propriétaire (2026-07-05).
   { id: 'hunting', label: 'Chasser', abilities: ['PER'], sourcePage: 57 },
-  // orientation (humain-r1 « Nomade ») : se repérer.
-  // TODO(extraction) : PER (lecture du terrain) ou INT (cartographie / astres) ?
+  // orientation (humain-r1 « Nomade ») : se repérer → PER (lecture du terrain), comme
+  // `survival` — VALIDÉ propriétaire (2026-07-05).
   { id: 'orientation', label: 'Orientation', abilities: ['PER'], sourcePage: 57 },
-  // météorologie (humain-r1 « Campagnard ») : lire le temps.
-  // TODO(extraction) : PER (observation du ciel) ou INT (savoir) ?
+  // météorologie (humain-r1 « Campagnard ») : lire le temps → PER (observation du ciel),
+  // pas savoir livresque — VALIDÉ propriétaire (2026-07-05).
   { id: 'meteorology', label: 'Météorologie', abilities: ['PER'], sourcePage: 57 },
   // survie (druide, Maître de la survie, nature-r1, p. 116) : s'orienter, trouver
   // abri/nourriture, éviter les dangers → lecture du milieu, PER (comme orientation).
@@ -172,11 +171,13 @@ export const testDomains: TestDomain[] = [
   { id: 'chemistry', label: 'Chimie', abilities: ['INT'], sourcePage: 98 },
   // sorcier « tests d'INT basés sur les savoirs sombres » (texte explicite) → INT.
   { id: 'occult-lore', label: 'Érudition occulte', abilities: ['INT'], sourcePage: 110 },
-  // navigation (humain-r1 « Riverain ») : conduite d'embarcation / cap.
-  // TODO(extraction) : INT (cartes / astres) ou PER (lecture du courant) ?
+  // navigation (humain-r1 « Riverain ») : conduite d'embarcation / cap → INT (cartes,
+  // astres, calcul de route) — VALIDÉ propriétaire (2026-07-05).
   { id: 'navigation', label: 'Navigation', abilities: ['INT'], sourcePage: 57 },
-  // orfèvrerie (forgesort « orfèvrerie ou forge ») : artisanat de précision.
-  // TODO(extraction) : INT (artisanat) ou FOR ? (cf. `smithing`)
+  // forgesort « orfèvrerie ou forge » (p. 99) : artisanat du métal. FOR (effort physique)
+  // écarté au profit de l'INT (savoir-faire / thème forgesort), les DEUX domaines de la paire
+  // alignés sur la même carac — VALIDÉ propriétaire (2026-07-05).
+  { id: 'smithing', label: 'Forge', abilities: ['INT'], sourcePage: 99 },
   { id: 'goldsmithing', label: 'Orfèvrerie', abilities: ['INT'], sourcePage: 99 },
   // herboristerie (druide, Peau d'écorce, vegetaux-r1, p. 117) : identifier les
   // plantes et connaître leurs propriétés → savoir, INT.
@@ -223,8 +224,8 @@ export const testDomains: TestDomain[] = [
   // `knowledge` (connaissances générales) et de `occult-lore` (érudition occulte).
   { id: 'erudition', label: 'Érudition', abilities: ['INT'], sourcePage: 50 },
   // maçonnerie (Habitant des tunnels, nain, nain-r1, p. 59) : « tests en rapport avec la
-  // pierre, l'architecture » → savoir de la pierre et des constructions.
-  // TODO(extraction) : INT (savoir des constructions) ou PER (œil du tailleur de pierre) ? À valider.
+  // pierre, l'architecture » → savoir des constructions, INT (écarte PER « œil du tailleur
+  // de pierre ») — VALIDÉ propriétaire (2026-07-05).
   {
     id: 'masonry',
     label: 'Maçonnerie',
@@ -232,8 +233,8 @@ export const testDomains: TestDomain[] = [
     sourcePage: 59,
     description: 'La pierre et l’architecture (constructions, fortifications, ouvrages).',
   },
-  // mines (Habitant des tunnels, nain-r1, p. 59) : « tests en rapport avec (…) les mines ».
-  // TODO(extraction) : INT (savoir minier) ou PER (lecture du filon) ? À valider.
+  // mines (Habitant des tunnels, nain-r1, p. 59) : « tests en rapport avec (…) les mines »
+  // → savoir minier, INT (écarte PER « lecture du filon ») — VALIDÉ propriétaire (2026-07-05).
   { id: 'mining', label: 'Mines', abilities: ['INT'], sourcePage: 59 },
 
   // --- CHA — exemples p. 202 + social (mages) --------------------------------
@@ -247,8 +248,8 @@ export const testDomains: TestDomain[] = [
   { id: 'negotiation', label: 'Négociation', abilities: ['CHA'], sourcePage: 79 },
   // ensorceleur « supercherie » (illusion, p. 95) : tromperie sociale → CHA.
   { id: 'deception', label: 'Supercherie', abilities: ['CHA'], sourcePage: 95 },
-  // commerce (humain-r1 « Citadin ») : marchandage.
-  // TODO(extraction) : CHA (négoce / baratin) ou INT (calcul) ?
+  // commerce (humain-r1 « Citadin ») : marchandage → CHA (négoce, proche de `fast-talk`),
+  // écarte INT (calcul) — VALIDÉ propriétaire (2026-07-05).
   { id: 'commerce', label: 'Commerce', abilities: ['CHA'], sourcePage: 57 },
   // influence animale (druide, Langage des animaux, animaux-r1, p. 114) : influencer
   // un animal avec lequel le druide peut communiquer → ascendant social, CHA.
@@ -257,7 +258,7 @@ export const testDomains: TestDomain[] = [
   { id: 'preaching', label: 'Prêche', abilities: ['CHA'], sourcePage: 122 },
   // déguisement (Discrétion, assassin-r1, p. 74) : se faire passer pour un autre —
   // compétence MONDAINE, distincte du sort Déguisement du barde (vagabond-r5, p. 69).
-  // TODO(extraction) : CHA (jeu de rôle / imposture) ou AGI (maquillage, costume) ? À valider.
+  // CHA (imposture / jeu de rôle), écarte AGI (maquillage, costume) — VALIDÉ propriétaire (2026-07-05).
   { id: 'disguise', label: 'Déguisement', abilities: ['CHA'], sourcePage: 74 },
   // --- CHA — arts de la scène du barde (PER-71) ------------------------------
   // Domaines de spectacle nommés par les voies du barde. Tous gouvernés par le CHA
@@ -281,8 +282,8 @@ export const testDomains: TestDomain[] = [
   // manières mondaines, CHA.
   { id: 'etiquette', label: 'Étiquette', abilities: ['CHA'], sourcePage: 86 },
   // dressage : « tests d'équitation et de dressage » (Fidèle monture, cavalier-r1, p. 83) →
-  // éduquer/maîtriser un animal. TODO(extraction) : CHA (ascendant, comme l'influence
-  // animale et le volet CHA de l'équitation) ou PER (patience / lecture de l'animal) ?
+  // éduquer/maîtriser un animal → CHA (ascendant, comme `animal-handling` et le volet CHA de
+  // l'équitation), écarte PER (patience) — VALIDÉ propriétaire (2026-07-05).
   { id: 'animal-training', label: 'Dressage', abilities: ['CHA'], sourcePage: 83 },
 
   // --- VOL — exemples p. 202 -------------------------------------------------
