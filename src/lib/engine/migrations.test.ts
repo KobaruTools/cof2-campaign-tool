@@ -40,6 +40,9 @@ function validRaw(): Record<string, unknown> {
     id: 'abc',
     name: 'Test',
     identity: {},
+    campaignId: 'default-campaign',
+    playerId: 'default-player',
+    status: 'active',
     ancestryId: 'humain',
     classId: 'barbare',
     level: 1,
@@ -409,7 +412,60 @@ describe('migrateCharacter', () => {
     expect(c.purse).toEqual({ platinum: 7, gold: 4, silver: 2, copper: 1 });
   });
 
-  it('expose les migrations 1→2 … 13→14 dans le registre', () => {
+  it('migre un personnage v14 vers v15 (FK campagne/joueur + statut estampillés)', () => {
+    const v14 = validRaw();
+    v14.schemaVersion = 14;
+    delete v14.campaignId;
+    delete v14.playerId;
+    delete v14.status;
+    const c = migrateCharacter(v14);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    // Rattachement sans perte à la campagne/au joueur « par défaut », statut actif.
+    expect(c.campaignId).toBe('default-campaign');
+    expect(c.playerId).toBe('default-player');
+    expect(c.status).toBe('active');
+  });
+
+  it('préserve des FK campagne/joueur déjà présentes lors d’un chargement v15', () => {
+    const v15 = validRaw();
+    v15.campaignId = 'ma-campagne';
+    v15.playerId = 'pierre';
+    v15.status = 'dead';
+    const c = migrateCharacter(v15);
+    expect(c.campaignId).toBe('ma-campagne');
+    expect(c.playerId).toBe('pierre');
+    expect(c.status).toBe('dead');
+  });
+
+  it('v14→v15 remplace un statut invalide par « active »', () => {
+    const v14 = validRaw();
+    v14.schemaVersion = 14;
+    v14.status = 'zombie'; // statut hors domaine
+    expect(migrateCharacter(v14).status).toBe('active');
+  });
+
+  it('un personnage v1 migré jusqu’à v15 reçoit les FK campagne par défaut', () => {
+    const c = migrateCharacter(v1Raw());
+    expect(c.campaignId).toBe('default-campaign');
+    expect(c.playerId).toBe('default-player');
+    expect(c.status).toBe('active');
+  });
+
+  it('refuse un objet sans campaignId à la version courante', () => {
+    const raw = validRaw();
+    delete raw.campaignId;
+    raw.schemaVersion = SCHEMA_VERSION; // pas de migration : la validation doit échouer
+    expect(() => migrateCharacter(raw)).toThrow(ValidationError);
+  });
+
+  it('refuse un objet au statut invalide à la version courante', () => {
+    const raw = validRaw();
+    raw.status = 'zombie';
+    raw.schemaVersion = SCHEMA_VERSION;
+    expect(() => migrateCharacter(raw)).toThrow(ValidationError);
+  });
+
+  it('expose les migrations 1→2 … 14→15 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -423,5 +479,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[11]).toBe('function');
     expect(typeof MIGRATIONS[12]).toBe('function');
     expect(typeof MIGRATIONS[13]).toBe('function');
+    expect(typeof MIGRATIONS[14]).toBe('function');
   });
 });

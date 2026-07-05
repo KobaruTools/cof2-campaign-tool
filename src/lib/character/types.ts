@@ -39,8 +39,19 @@ import type { AncestryChoice } from './ancestry';
  * v12 : ajout de `purse` (argent possédé, par unité or/argent/cuivre — PER-152).
  * v13 : ajout de `firearmsAllowed` (armes à feu autorisées dans l'univers de jeu ;
  *   `false` transforme l'arquebusier en « arbalétrier » — p. 62).
+ * v14 : ajout de `purse.platinum` (pièce de platine, pp — 1 pp = 10 po, p. 181).
+ * v15 : ajout des clés étrangères de la hiérarchie Campagne ⊃ Joueurs ⊃
+ *   Personnages : `campaignId`, `playerId` (obligatoires) et `status`
+ *   ('active' | 'dead' | 'retired', défaut 'active') — PER-179.
  */
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
+
+/**
+ * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
+ * `dead` (mort — conservé pour l'historique, cf. cycle mort → recréation) ou
+ * `retired` (retiré du jeu). Défaut `active`.
+ */
+export type CharacterStatus = 'active' | 'dead' | 'retired';
 
 /**
  * Manque de PV, décomposé selon la nature des dégâts (p. 218/220) :
@@ -217,6 +228,22 @@ export interface Character {
   id: string; // uuid
   name: string;
   identity: Identity;
+
+  /**
+   * Clé étrangère vers la campagne de rattachement (PER-179), OBLIGATOIRE. La
+   * hiérarchie est plate (stockage localStorage + FK) : le personnage vit dans
+   * son store et pointe vers `Campaign.id`. Garde défensive à la lecture (FK
+   * potentiellement orpheline, cf. `src/lib/campaign/guards.ts`).
+   */
+  campaignId: string;
+  /**
+   * Clé étrangère vers le joueur qui incarne ce personnage (PER-179),
+   * OBLIGATOIRE. Le joueur est LOCAL à la campagne (`Campaign.players`) : cet id
+   * n'a de sens que résolu dans `campaignId`.
+   */
+  playerId: string;
+  /** Statut du personnage dans sa campagne (PER-179). Voir `CharacterStatus`. */
+  status: CharacterStatus;
 
   ancestryId: string;
   classId: string;

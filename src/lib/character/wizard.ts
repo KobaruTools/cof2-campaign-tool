@@ -9,6 +9,7 @@
 import type { AbilityId, Ancestry, Feature } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { classById, pathById, priestGodById, featureById } from '@/data';
+import { DEFAULT_CAMPAIGN_ID, DEFAULT_PLAYER_ID } from '@/lib/campaign/types';
 import { applyModifiers, type AncestryChoice } from './ancestry';
 import { effectiveClassPathIds } from './classDisplay';
 import {
@@ -249,6 +250,12 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     id: draft.characterId,
     name: draft.name.trim() || 'Nouveau personnage',
     identity: draft.identity,
+    // FK de la hiérarchie campagne (PER-179) : par défaut la campagne/le joueur
+    // « par défaut ». Le choix de campagne au wizard (via le routing) est traité
+    // par PER-180 — il renseignera ces FK sur le brouillon.
+    campaignId: DEFAULT_CAMPAIGN_ID,
+    playerId: DEFAULT_PLAYER_ID,
+    status: 'active',
     ancestryId: draft.ancestryId,
     classId: draft.classId,
     level: 1,

@@ -12,6 +12,10 @@ import { SCHEMA_VERSION, type Character } from '@/lib/character/types';
 import { ABILITY_IDS, type AbilityId } from '@/data/schema';
 import { ancestryById } from '@/data';
 import { modifierDeltas, type AncestryChoice } from '@/lib/character/ancestry';
+import { DEFAULT_CAMPAIGN_ID, DEFAULT_PLAYER_ID } from '@/lib/campaign/types';
+
+/** Statuts de personnage valides (garde de la migration + de la validation). */
+const CHARACTER_STATUSES = ['active', 'dead', 'retired'];
 
 /** Transforme un objet de la version `from` vers `from + 1`. */
 export type Migration = (data: Record<string, unknown>) => Record<string, unknown>;
@@ -287,6 +291,26 @@ function migrateV13toV14(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v14 → v15 : ajout des clés étrangères de la hiérarchie Campagne ⊃ Joueurs ⊃
+ * Personnages (PER-179). Migration PURE, par personnage : elle estampille des FK
+ * CONSTANTES connues (`DEFAULT_CAMPAIGN_ID` / `DEFAULT_PLAYER_ID`) et
+ * `status: 'active'` sur tout perso préexistant, sans perte. La garantie
+ * d'existence de la campagne correspondante est du ressort du store `campaigns`
+ * (bootstrap) — nette séparation migration/store. Idempotent : on ne réécrit pas
+ * une FK déjà présente et valide.
+ */
+function migrateV14toV15(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (typeof next.campaignId !== 'string') next.campaignId = DEFAULT_CAMPAIGN_ID;
+  if (typeof next.playerId !== 'string') next.playerId = DEFAULT_PLAYER_ID;
+  if (typeof next.status !== 'string' || !CHARACTER_STATUSES.includes(next.status)) {
+    next.status = 'active';
+  }
+  next.schemaVersion = 15;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -304,6 +328,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   11: migrateV11toV12,
   12: migrateV12toV13,
   13: migrateV13toV14,
+  14: migrateV14toV15,
 };
 
 export class MigrationError extends Error {}
@@ -383,6 +408,12 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   }
   if (typeof data.purse !== 'object' || data.purse === null) {
     fail('Champ « purse » manquant ou invalide.');
+  }
+  // Clés étrangères de la hiérarchie campagne (PER-179), obligatoires.
+  if (!isString(data.campaignId)) fail('Champ « campaignId » manquant ou invalide.');
+  if (!isString(data.playerId)) fail('Champ « playerId » manquant ou invalide.');
+  if (!isString(data.status) || !CHARACTER_STATUSES.includes(data.status as string)) {
+    fail('Champ « status » manquant ou invalide.');
   }
   if (!Array.isArray(data.equipment)) fail('Champ « equipment » manquant ou invalide.');
   if (!Array.isArray(data.levelUpHistory)) fail('Champ « levelUpHistory » manquant ou invalide.');

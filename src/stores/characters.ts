@@ -26,6 +26,11 @@ interface CharactersState {
   duplicate: (id: string) => Character | undefined;
   /** Supprime un personnage. */
   remove: (id: string) => void;
+  /**
+   * Supprime tous les personnages rattachés à une campagne (cascade de
+   * suppression déclenchée par le store `campaigns` — PER-179).
+   */
+  removeByCampaign: (campaignId: string) => void;
   /** Récupère un personnage par id. */
   getById: (id: string) => Character | undefined;
   /**
@@ -64,6 +69,11 @@ export const useCharactersStore = create<CharactersState>()(
 
       remove: (id) =>
         set((state) => ({ characters: state.characters.filter((c) => c.id !== id) })),
+
+      removeByCampaign: (campaignId) =>
+        set((state) => ({
+          characters: state.characters.filter((c) => c.campaignId !== campaignId),
+        })),
 
       getById: (id) => get().characters.find((c) => c.id === id),
 
