@@ -60,10 +60,10 @@ import {
   type PendingDivine,
 } from '@/lib/character/choices';
 import { classColor } from '@/lib/ui/classColors';
-import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
 import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
+import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 import { RichInline } from '@/components/sheet/FeatureRichText';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureLabel } from '@/components/FeatureLabel';
@@ -402,6 +402,53 @@ function DivineAcquisitionCard({
 }
 
 /**
+ * Solde de points de capacité du niveau, en badge custom (≠ Chip MUI, cf. `DefenseBadge`) :
+ * posé dans la barre d'actions pour désencombrer le corps du dialog. Affiche les points
+ * DÉPENSÉS sur le budget (« 1 / 2 » = 1 dépensé sur 2) ; le détail des règles passe en
+ * infobulle. Vert quand l'obligation de dépense est satisfaite, sinon accent primaire.
+ */
+function FeaturePointsBadge({
+  spent,
+  budget,
+  satisfied,
+}: {
+  spent: number;
+  budget: number;
+  satisfied: boolean;
+}) {
+  const paletteKey = satisfied ? 'success' : 'primary';
+  return (
+    <AppTooltip
+      title={`Vous gagnez ${budget} points de capacité à ce niveau (rang 1-2 : 1 point ; rang 3 et plus : 2 points). Tous les points doivent être dépensés ; un point qui ne peut plus rien acheter se convertit en bonus permanent (p. 40).`}
+    >
+      <Box
+        sx={(theme) => ({
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.75,
+          height: 28,
+          px: 1.25,
+          borderRadius: 1,
+          cursor: 'help',
+          fontSize: '0.8rem',
+          whiteSpace: 'nowrap',
+          fontVariantNumeric: 'tabular-nums',
+          color: theme.palette[paletteKey].main,
+          bgcolor: alpha(theme.palette[paletteKey].main, 0.12),
+          border: `1px solid ${alpha(theme.palette[paletteKey].main, 0.45)}`,
+        })}
+      >
+        <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} />
+        <Box component="span" sx={{ opacity: 0.9 }}>Points dépensés</Box>
+        <Box component="span" sx={{ fontWeight: 700 }}>
+          {spent} / {budget}
+        </Box>
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
  * Mini-wizard bloquant de montée de niveau (PER-49). Applique les gains
  * automatiques (PV ; les attaques et autres stats dérivées sont recalculées
  * par le moteur depuis le niveau) et ne propose que des capacités légales —
@@ -427,7 +474,22 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   // Surcharge manuelle d'ouverture du bloc orphelin (null = suit l'état « point
   // réellement indépensable », qui ouvre le bloc d'office — cf. `forcedOrphan`).
   const [orphanExpanded, setOrphanExpanded] = useState<boolean | null>(null);
+  // Changement d'orientation (p. 43) : capacités oubliées ce niveau et leur
+  // remplacement (id oublié → id de remplacement). Échange à budget neutre,
+  // distinct des points de capacité du niveau ; opt-in via un accordéon replié.
+  const [forgotten, setForgotten] = useState<string[]>([]);
+  const [retrainReplacement, setRetrainReplacement] = useState<Record<string, string>>({});
   const newLevel = character.level + 1;
+  // Ids des remplacements retenus (une capacité reprise par capacité oubliée).
+  const replacementIds = forgotten
+    .map((id) => retrainReplacement[id])
+    .filter((id): id is string => !!id);
+  // Voies dont un rang a été oublié ce niveau (changement d'orientation, p. 43) : le
+  // joueur s'en éloigne, on ne propose donc plus leur rang suivant — ni comme achat
+  // normal, ni comme remplacement. Non verrouillé : reprenable à un niveau ultérieur.
+  const forgottenPathIds = new Set(
+    forgotten.map((id) => featureById.get(id)?.pathId).filter((p): p is string => !!p),
+  );
 
   // Capacité divine restant à acquérir (prêtre spécialiste, divine de rang ≥ 2) et
   // accessibilité au nouveau niveau. La divine est en priorité absolue (p. 122).
@@ -444,7 +506,13 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   const working: Character = {
     ...character,
     level: newLevel,
-    featureIds: [...character.featureIds, ...picked],
+    // Capacités oubliées retirées (changement d'orientation, p. 43), puis capacités
+    // achetées et remplacements ajoutés : la légalité se recalcule sur cet état.
+    featureIds: [
+      ...character.featureIds.filter((id) => !forgotten.includes(id)),
+      ...picked,
+      ...replacementIds,
+    ],
     // Choix déjà résolus dans cette montée de niveau, pour la résolution du
     // domaine (ex. `same-family`) et l'état « choix à faire ».
     featureChoices: { ...character.featureChoices, ...pickedChoices },
@@ -453,7 +521,13 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
         ? { ...character.priestVocation, hostPathId: divineHost }
         : character.priestVocation,
   };
-  const available = acquirableFeatures(working, rulesContext);
+  // Capacités acquérables ce niveau, PRIVÉES des voies abandonnées (leur rang suivant
+  // ne doit pas être re-sélectionnable après un oubli — sinon on rachèterait ce qu'on
+  // vient d'abandonner). L'exclusion vaut aussi pour la liste normale, pas seulement
+  // pour les remplacements.
+  const available = acquirableFeatures(working, rulesContext).filter(
+    (f) => !forgottenPathIds.has(f.pathId),
+  );
 
   // Voies de prêtre éligibles comme voie d'accueil de la divine (rang précédent
   // acquis, slot du rang de la divine libre). Calculé sur `working` (tient compte
@@ -593,6 +667,46 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
     remaining > 0 && !available.some((f) => featureCost(f, progression) <= remaining);
   const orphanOpen = orphanExpanded ?? forcedOrphan;
 
+  // Changement d'orientation (p. 43). Quota : 1 oubli, ou 2 si INT ≥ +2. On calcule
+  // les capacités oubliables sur le personnage PRIVÉ des oublis déjà retenus, pour
+  // révéler le rang inférieur d'une voie une fois son rang supérieur oublié (LIFO).
+  // La capacité divine (empruntée, logée dans une voie d'accueil, p. 122) est exclue :
+  // l'oublier casserait le rattachement de vocation.
+  const retrainMax = maxRetrainings(character);
+  const charAfterForgets: Character = {
+    ...character,
+    featureIds: character.featureIds.filter((id) => !forgotten.includes(id)),
+  };
+  const forgettable = forgettableFeatures(charAfterForgets).filter(
+    (f) => f.id !== divineFeatureId,
+  );
+  // La section n'apparaît que hors verrou divin (priorité absolue, p. 122) et s'il y
+  // a matière à reconvertir.
+  const retrainAvailable = !divineLock && (forgettable.length > 0 || forgotten.length > 0);
+
+  // Remplacements légaux proposés pour une capacité oubliée : capacités acquérables
+  // sur le personnage de travail PRIVÉ du remplacement de CE slot (pour que le choix
+  // courant reste sélectionnable), les autres remplacements restant pris en compte.
+  // On écarte les voies abandonnées ce niveau (`forgottenPathIds`) ; le regroupement/tri
+  // par voie est assuré par `FeaturePathAutocomplete`.
+  const replacementOptionsFor = (forgottenId: string): string[] => {
+    const others = forgotten
+      .filter((id) => id !== forgottenId)
+      .map((id) => retrainReplacement[id])
+      .filter((id): id is string => !!id);
+    const slotWorking: Character = {
+      ...working,
+      featureIds: [
+        ...character.featureIds.filter((id) => !forgotten.includes(id)),
+        ...picked,
+        ...others,
+      ],
+    };
+    return acquirableFeatures(slotWorking, rulesContext)
+      .filter((f) => !forgottenPathIds.has(f.pathId))
+      .map((f) => f.id);
+  };
+
   const add = (featureId: string) => setPicked((prev) => [...prev, featureId]);
   const addDivine = () => {
     if (!pendingDivine || !divineHost) return;
@@ -615,8 +729,62 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
       setFeatureChoice({ ...working, featureChoices: pc }, featureId, index, value),
     );
 
-  // Bloquant : toute capacité choisie portant un choix doit l'avoir résolu.
-  const choicesPending = picked.some((id) => hasUnmadeChoice(working, id));
+  // Oublie une capacité (changement d'orientation, p. 43), sans dépasser le quota.
+  // Un remplacement déjà retenu qui poursuivrait la voie désormais abandonnée devient
+  // caduc → on le retire (et on élague son choix orphelin).
+  const addForget = (featureId: string) => {
+    const abandonedPath = featureById.get(featureId)?.pathId;
+    setForgotten((prev) =>
+      prev.includes(featureId) || prev.length >= retrainMax ? prev : [...prev, featureId],
+    );
+    if (!abandonedPath) return;
+    // Un achat normal de la voie désormais abandonnée n'a plus lieu d'être : on le retire.
+    setPicked((prev) => prev.filter((id) => featureById.get(id)?.pathId !== abandonedPath));
+    // Idem pour un remplacement déjà retenu qui poursuivrait cette voie.
+    setRetrainReplacement((prev) => {
+      const next: Record<string, string> = {};
+      for (const [slot, repId] of Object.entries(prev)) {
+        if (featureById.get(repId)?.pathId !== abandonedPath) next[slot] = repId;
+      }
+      return next;
+    });
+    // Élague les choix des capacités retirées ci-dessus (achats + remplacements de la voie).
+    setPickedChoices((pc) =>
+      pruneFeatureChoices(
+        pc,
+        Object.keys(pc).filter((id) => featureById.get(id)?.pathId !== abandonedPath),
+      ),
+    );
+  };
+  // Annule un oubli : retire aussi son remplacement et élague le choix devenu orphelin.
+  const removeForget = (featureId: string) =>
+    setForgotten((prev) => {
+      const next = prev.filter((id) => id !== featureId);
+      setRetrainReplacement((rr) => {
+        const rest = { ...rr };
+        delete rest[featureId];
+        const keep = [...picked, ...next.map((id) => rest[id]).filter(Boolean)] as string[];
+        setPickedChoices((pc) => pruneFeatureChoices(pc, keep));
+        return rest;
+      });
+      return next;
+    });
+  // Désigne le remplacement d'une capacité oubliée ; élague le choix de l'ancien.
+  const setReplacement = (forgottenId: string, replacementId: string) =>
+    setRetrainReplacement((prev) => {
+      const next = { ...prev, [forgottenId]: replacementId };
+      const keep = [...picked, ...forgotten.map((id) => next[id]).filter(Boolean)] as string[];
+      setPickedChoices((pc) => pruneFeatureChoices(pc, keep));
+      return next;
+    });
+
+  // Bloquant : toute capacité choisie portant un choix doit l'avoir résolu — capacités
+  // achetées comme capacités reprises par changement d'orientation.
+  const choicesPending = [...picked, ...replacementIds].some((id) => hasUnmadeChoice(working, id));
+  // Bloquant : tous les points de capacité doivent être dépensés. Exception unique — un
+  // point RÉELLEMENT indépensable (`forcedOrphan`, p. 40) : plus aucune capacité abordable,
+  // il se convertit alors en bonus permanent et ne bloque pas la validation.
+  const pointsUnspent = remaining > 0 && !forcedOrphan;
 
   // Point orphelin effectivement converti (p. 40) : seulement s'il reste au moins un
   // point non dépensé et qu'une récompense a été choisie.
@@ -628,25 +796,35 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
     setDivineHost(null);
     setOrphanReward('');
     setOrphanExpanded(null);
+    setForgotten([]);
+    setRetrainReplacement({});
   };
   const close = () => {
     resetState();
     onClose();
   };
   const confirm = () => {
-    const leveled = applyLevelUp(character, picked, orphanRewardsToApply);
+    // Capacités acquises ce niveau = achats + remplacements du changement
+    // d'orientation ; les oubliées sont retirées par `applyLevelUp` et journalisées.
+    const chosen = [...picked, ...replacementIds];
+    const leveled = applyLevelUp(character, chosen, orphanRewardsToApply, forgotten);
     // Capacité divine prise ce niveau : on persiste sa voie d'accueil sur la vocation
     // (la progression rattache alors la divine à ce slot, p. 122).
     const withVocation =
       divinePicked && divineHost && leveled.priestVocation?.mode === 'specialist'
         ? { ...leveled, priestVocation: { ...leveled.priestVocation, hostPathId: divineHost } }
         : leveled;
+    // Élague tous les états portés par une capacité désormais absente (les oubliées) :
+    // choix, interrupteurs, saisies libres et compteurs d'usages.
     onConfirm({
       ...withVocation,
       featureChoices: pruneFeatureChoices(
         { ...withVocation.featureChoices, ...pickedChoices },
         withVocation.featureIds,
       ),
+      effectToggles: pruneEffectToggles(withVocation.effectToggles, withVocation.featureIds),
+      effectInputs: pruneEffectInputs(withVocation.effectInputs, withVocation.featureIds),
+      usageCounters: pruneUsageCounters(withVocation.usageCounters, withVocation.featureIds),
     });
     resetState();
   };
@@ -673,18 +851,9 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
           <Divider />
 
           <Box>
-            <Stack
-              direction="row"
-              spacing={1}
-              sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
-            >
-              <Typography variant="subtitle2">Nouvelles capacités</Typography>
-              <Chip
-                label={`Points de capacité : ${remaining} / ${budget}`}
-                color={remaining === 0 ? 'success' : 'primary'}
-                size="small"
-              />
-            </Stack>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Nouvelles capacités
+            </Typography>
 
             {pendingDivine && divineAccessible && (
               <DivineAcquisitionCard
@@ -718,51 +887,115 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
             )}
 
             {pickedGroups.length > 0 && (
-              <Stack spacing={1} sx={{ mb: 2 }}>
-                {pickedGroups.flatMap((group) =>
-                  group.features.map((feature) => (
-                    <Box key={feature.id}>
-                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                        <Chip label={`Rang ${feature.rank}`} size="small" variant="outlined" />
-                        <Chip
-                          label={`${featureCost(feature, progression)} pt${featureCost(feature, progression) > 1 ? 's' : ''}`}
-                          size="small"
-                        />
-                        <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                          <Box component="span" sx={{ color: 'text.secondary' }}>
-                            {group.path?.name ?? group.pathId} —{' '}
-                          </Box>
-                          <FeatureLabel feature={feature} />
-                        </Typography>
-                        <AppTooltip title="Retirer ce choix">
-                          <IconButton size="small" color="error" onClick={() => remove(feature.id)}>
-                            <DeleteOutlineIcon fontSize="small" />
-                          </IconButton>
-                        </AppTooltip>
-                      </Stack>
-                      {/* Choix porté par la capacité : à résoudre (bloquant). Masqué tant
-                          qu'aucun choix n'est actionnable (ex. choix répétable sans palier). */}
-                      {hasActionableChoice(working, feature.id) && (
-                        <Box sx={{ mt: 1, pl: 1 }}>
-                          <FeatureChoiceField
-                            character={working}
-                            featureId={feature.id}
-                            mode="edit"
-                            blocking
-                            onChange={setChoice}
-                          />
+              // Cadre mis en avant : bordure claire à dégradé blanc/gris en rotation
+              // lente permanente, pour distinguer nettement les capacités retenues.
+              <Box
+                sx={{
+                  position: 'relative',
+                  borderRadius: 1.5,
+                  p: '1.5px',
+                  mb: 2,
+                  overflow: 'hidden',
+                  isolation: 'isolate',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    zIndex: -1,
+                    inset: '-150%',
+                    background:
+                      'conic-gradient(from 0deg, rgba(255,255,255,0.9), rgba(140,140,150,0.2), rgba(255,255,255,0.9), rgba(140,140,150,0.2), rgba(255,255,255,0.9))',
+                    animation: 'retrainBorderSpin 9s linear infinite',
+                  },
+                  '@keyframes retrainBorderSpin': { to: { transform: 'rotate(360deg)' } },
+                  '@media (prefers-reduced-motion: reduce)': {
+                    '&::before': { animation: 'none' },
+                  },
+                }}
+              >
+                <Box sx={{ borderRadius: 1.25, bgcolor: 'background.paper', p: 1.5 }}>
+                  <Typography
+                    variant="overline"
+                    color="text.secondary"
+                    sx={{ display: 'block', lineHeight: 1.4, mb: 0.5 }}
+                  >
+                    Capacités sélectionnées
+                  </Typography>
+                  <Stack spacing={1}>
+                    {pickedGroups.flatMap((group) => {
+                      const color = pathColor(group.path);
+                      return group.features.map((feature) => (
+                        <Box key={feature.id}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+                          >
+                            <Chip label={`Rang ${feature.rank}`} size="small" variant="outlined" />
+                            <Chip
+                              label={`${featureCost(feature, progression)} pt${featureCost(feature, progression) > 1 ? 's' : ''}`}
+                              size="small"
+                            />
+                            {/* Capacité retenue mise en avant, teintée de la couleur de sa voie. */}
+                            <Box
+                              component="span"
+                              sx={{
+                                flexGrow: 1,
+                                display: 'inline-flex',
+                                alignItems: 'baseline',
+                                gap: 0.5,
+                                px: 1,
+                                py: 0.375,
+                                borderRadius: 1,
+                                border: 1,
+                                borderColor: color ?? 'divider',
+                                bgcolor: color ? alpha(color, 0.14) : 'action.hover',
+                              }}
+                            >
+                              <Box
+                                component="span"
+                                sx={{ color: 'text.secondary', fontSize: '0.72rem' }}
+                              >
+                                {group.path?.name ?? group.pathId} —
+                              </Box>
+                              <Box
+                                component="span"
+                                sx={{ color: color ?? 'text.primary', fontWeight: 700 }}
+                              >
+                                <FeatureLabel feature={feature} />
+                              </Box>
+                            </Box>
+                            <AppTooltip title="Retirer ce choix">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => remove(feature.id)}
+                              >
+                                <DeleteOutlineIcon fontSize="small" />
+                              </IconButton>
+                            </AppTooltip>
+                          </Stack>
+                          {/* Choix porté par la capacité : à résoudre (bloquant). Masqué tant
+                              qu'aucun choix n'est actionnable (ex. répétable sans palier). */}
+                          {hasActionableChoice(working, feature.id) && (
+                            <Box sx={{ mt: 1, pl: 1 }}>
+                              <FeatureChoiceField
+                                character={working}
+                                featureId={feature.id}
+                                mode="edit"
+                                blocking
+                                onChange={setChoice}
+                              />
+                            </Box>
+                          )}
                         </Box>
-                      )}
-                    </Box>
-                  )),
-                )}
-              </Stack>
+                      ));
+                    })}
+                  </Stack>
+                </Box>
+              </Box>
             )}
 
-            <AppAlert severity="info" sx={{ mb: 2 }}>
-              Vous gagnez {budget} points de capacité à ce niveau (rang 1-2 : 1 point ; rang 3 et
-              plus : 2 points). Seuls les choix légaux et abordables sont proposés.
-            </AppAlert>
+            <Divider sx={{ my: 2 }} />
 
             {remaining > 0 && (
               <Accordion
@@ -833,6 +1066,139 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                       ))}
                     </Select>
                   </FormControl>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Changement d'orientation (p. 43) : option discrète, repliée par défaut, pour
+                oublier une capacité et la reprendre autrement. Masquée sous verrou divin. */}
+            {retrainAvailable && (
+              <Accordion
+                disableGutters
+                elevation={0}
+                sx={{
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  mb: 2,
+                  '&::before': { display: 'none' },
+                }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <AutorenewIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      Changement d’orientation (<SourceRef page={43} />)
+                    </Typography>
+                    {forgotten.length > 0 && (
+                      <Chip
+                        size="small"
+                        color="secondary"
+                        variant="outlined"
+                        label={`Reconversions : ${forgotten.length} / ${retrainMax}`}
+                      />
+                    )}
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    Vous pouvez oublier une capacité déjà acquise pour la remplacer par une autre,
+                    en suivant les règles normales de progression — un échange sans coût en points
+                    de capacité.
+                    {retrainMax > 1
+                      ? ' Avec une INT ≥ +2, jusqu’à deux reconversions par niveau.'
+                      : ''}
+                  </Typography>
+
+                  <Box sx={{ mb: forgotten.length > 0 ? 2 : 0 }}>
+                    <FeaturePathAutocomplete
+                      label={
+                        forgotten.length >= retrainMax
+                          ? 'Quota de reconversions atteint'
+                          : forgettable.length === 0
+                            ? 'Aucune capacité oubliable'
+                            : 'Oublier une capacité…'
+                      }
+                      options={forgettable.map((f) => f.id)}
+                      value={null}
+                      clearOnSelect
+                      disabled={forgotten.length >= retrainMax || forgettable.length === 0}
+                      onChange={(id) => id && addForget(id)}
+                    />
+                  </Box>
+
+                  <Stack spacing={1.5}>
+                    {forgotten.map((forgottenId) => {
+                      const forgottenFeature = featureById.get(forgottenId);
+                      const replacementOptions = replacementOptionsFor(forgottenId);
+                      const replacementId = retrainReplacement[forgottenId] ?? '';
+                      // Valeur clampée aux options courantes (une reconversion sur une autre
+                      // voie a pu rendre caduc un remplacement précédent).
+                      const replacementValue = replacementOptions.includes(replacementId)
+                        ? replacementId
+                        : null;
+                      return (
+                        <Box
+                          key={forgottenId}
+                          sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5 }}
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+                          >
+                            <Chip size="small" color="secondary" variant="outlined" label="Oubliée" />
+                            {forgottenFeature && (
+                              <Typography
+                                variant="body2"
+                                sx={{ flexGrow: 1, color: 'text.secondary' }}
+                              >
+                                <Box component="span">
+                                  {pathById.get(forgottenFeature.pathId)?.name ??
+                                    forgottenFeature.pathId}{' '}
+                                  —{' '}
+                                </Box>
+                                <Box component="span" sx={{ textDecoration: 'line-through' }}>
+                                  <FeatureLabel feature={forgottenFeature} />
+                                </Box>
+                              </Typography>
+                            )}
+                            <AppTooltip title="Annuler cet oubli">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => removeForget(forgottenId)}
+                              >
+                                <DeleteOutlineIcon fontSize="small" />
+                              </IconButton>
+                            </AppTooltip>
+                          </Stack>
+
+                          {/* Liste groupée par voie (couleur + icône de profil), comme l'emprunt (p. 41). */}
+                          <FeaturePathAutocomplete
+                            sx={{ mt: 1 }}
+                            label="Remplacer par…"
+                            options={replacementOptions}
+                            value={replacementValue}
+                            onChange={(id) => setReplacement(forgottenId, id ?? '')}
+                          />
+
+                          {/* Choix porté par la capacité reprise, à résoudre (bloquant), comme un achat. */}
+                          {replacementValue && hasActionableChoice(working, replacementValue) && (
+                            <Box sx={{ mt: 1, pl: 1 }}>
+                              <FeatureChoiceField
+                                character={working}
+                                featureId={replacementValue}
+                                mode="edit"
+                                blocking
+                                onChange={setChoice}
+                              />
+                            </Box>
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Stack>
                 </AccordionDetails>
               </Accordion>
             )}
@@ -949,17 +1315,30 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
           </Box>
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={close}>Annuler</Button>
-        <AppTooltip
-          title={choicesPending ? 'Résolvez les choix des capacités sélectionnées' : ''}
-        >
-          <Box component="span">
-            <Button variant="contained" onClick={confirm} disabled={choicesPending}>
-              Valider le niveau {newLevel}
-            </Button>
-          </Box>
-        </AppTooltip>
+      <DialogActions sx={{ justifyContent: 'space-between' }}>
+        <FeaturePointsBadge spent={spent} budget={budget} satisfied={!pointsUnspent} />
+        <Stack direction="row" spacing={1}>
+          <Button onClick={close}>Annuler</Button>
+          <AppTooltip
+            title={
+              choicesPending
+                ? 'Résolvez les choix des capacités sélectionnées'
+                : pointsUnspent
+                  ? `Dépensez vos points de capacité (${remaining} restant${remaining > 1 ? 's' : ''})`
+                  : ''
+            }
+          >
+            <Box component="span">
+              <Button
+                variant="contained"
+                onClick={confirm}
+                disabled={choicesPending || pointsUnspent}
+              >
+                Valider le niveau {newLevel}
+              </Button>
+            </Box>
+          </AppTooltip>
+        </Stack>
       </DialogActions>
     </Dialog>
   );

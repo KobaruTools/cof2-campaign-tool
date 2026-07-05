@@ -11,7 +11,9 @@ import {
   canUndoLastLevelUp,
   deselectFeature,
   FEATURE_POINTS_PER_LEVEL,
+  forgettableFeatures,
   manualFeatureIds,
+  maxRetrainings,
   totalFeatureCost,
   undoLastLevelUp,
 } from './levelUp';
@@ -150,6 +152,89 @@ describe('applyLevelUp', () => {
     const next = applyLevelUp(c, ['rage-r1', 'brute-r1']);
     expect(next.featureIds.filter((id) => id === 'rage-r1')).toHaveLength(1);
     expect(next.featureIds).toContain('brute-r1');
+  });
+});
+
+describe('maxRetrainings (changement d’orientation, p. 43)', () => {
+  it('1 reconversion par défaut, 2 dès +2 en INT', () => {
+    const abilities = { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 1, VOL: 0 };
+    expect(maxRetrainings(makeCharacter({ abilities }))).toBe(1);
+    expect(maxRetrainings(makeCharacter({ abilities: { ...abilities, INT: 2 } }))).toBe(2);
+    expect(maxRetrainings(makeCharacter({ abilities: { ...abilities, INT: 4 } }))).toBe(2);
+  });
+});
+
+describe('forgettableFeatures (changement d’orientation, p. 43)', () => {
+  it('n’expose que le rang le plus haut de chaque voie, hors capacités gratuites', () => {
+    const c = makeCharacter({
+      level: 3,
+      featureIds: ['rage-r1', 'rage-r2', 'brute-r1'],
+      levelUpHistory: [
+        // rage-r1 + brute-r1 = gratuites (jeunesse / voie de départ) → jamais oubliables.
+        { level: 1, chosenFeatureIds: ['rage-r1', 'brute-r1'] },
+        { level: 2, chosenFeatureIds: ['rage-r2'] },
+      ],
+    });
+    const ids = forgettableFeatures(c).map((f) => f.id);
+    // Seule rage-r2 (rang le plus haut de la voie, achetée) est oubliable.
+    expect(ids).toEqual(['rage-r2']);
+  });
+
+  it('ne propose rien si le gratuit n’est pas identifiable (pas d’historique de niveau 1)', () => {
+    const c = makeCharacter({ featureIds: ['rage-r1', 'brute-r1'], levelUpHistory: [] });
+    expect(forgettableFeatures(c)).toEqual([]);
+  });
+
+  it('n’oublie jamais la voie de peuple, même un rang acheté (p. 43)', () => {
+    // Elfe haut : voie de peuple avec plusieurs rangs. elfe-haut-r2 est acheté (hors gratuit)
+    // et rang le plus haut de sa voie, mais reste NON oubliable (voie de peuple).
+    const c = makeCharacter({
+      ancestryId: 'elfe-haut',
+      ancestryPathId: 'elfe-haut',
+      level: 4,
+      featureIds: ['rage-r1', 'brute-r1', 'elfe-haut-r1', 'elfe-haut-r2', 'rage-r2'],
+      levelUpHistory: [
+        { level: 1, chosenFeatureIds: ['rage-r1', 'brute-r1', 'elfe-haut-r1'] },
+        { level: 2, chosenFeatureIds: ['elfe-haut-r2'] },
+        { level: 3, chosenFeatureIds: ['rage-r2'] },
+      ],
+    });
+    const ids = forgettableFeatures(c).map((f) => f.id);
+    expect(ids).not.toContain('elfe-haut-r2'); // voie de peuple : jamais oubliable
+    expect(ids).toContain('rage-r2'); // voie de profil achetée : oubliable
+  });
+});
+
+describe('applyLevelUp avec changement d’orientation', () => {
+  const base = () =>
+    makeCharacter({
+      level: 2,
+      featureIds: ['rage-r1', 'rage-r2', 'brute-r1'],
+      levelUpHistory: [
+        { level: 1, chosenFeatureIds: ['rage-r1', 'brute-r1'] },
+        { level: 2, chosenFeatureIds: ['rage-r2'] },
+      ],
+    });
+
+  it('retire la capacité oubliée, ajoute le remplacement et journalise l’oubli', () => {
+    const next = applyLevelUp(base(), ['pagne-r1'], [], ['rage-r2']);
+    expect(next.level).toBe(3);
+    expect(next.featureIds).not.toContain('rage-r2');
+    expect(next.featureIds).toContain('pagne-r1');
+    expect(next.levelUpHistory[2]).toEqual({
+      level: 3,
+      chosenFeatureIds: ['pagne-r1'],
+      forgottenFeatureIds: ['rage-r2'],
+    });
+  });
+
+  it('round-trip : oublier puis annuler restitue la capacité oubliée', () => {
+    const c = base();
+    const undone = undoLastLevelUp(applyLevelUp(c, ['pagne-r1'], [], ['rage-r2']));
+    expect(undone.level).toBe(2);
+    expect(undone.featureIds).not.toContain('pagne-r1');
+    expect(new Set(undone.featureIds)).toEqual(new Set(c.featureIds));
+    expect(undone.levelUpHistory).toEqual(c.levelUpHistory);
   });
 });
 

@@ -13,13 +13,57 @@
  * capacité (2 par niveau, coûts par rang) fait l'objet d'un ticket dédié. Ici
  * on s'appuie uniquement sur la légalité par capacité.
  */
-import { features as featureCatalog, featureById, progression } from '@/data';
+import { features as featureCatalog, featureById, pathById, progression } from '@/data';
 import type { Feature } from '@/data/schema';
-import { canAcquireFeature, featureCost, type RulesContext } from '@/lib/engine';
+import { canAcquireFeature, featureCost, freeFeatureIds, type RulesContext } from '@/lib/engine';
 import type { Character, LevelUpEntry, OrphanReward } from './types';
 
 /** Points de capacité gagnés à chaque montée de niveau (p. 38-39). */
 export const FEATURE_POINTS_PER_LEVEL = progression.featurePointsPerLevel;
+
+/**
+ * Nombre de « changements d'orientation » (p. 43) autorisés à un passage de niveau :
+ * le personnage peut oublier une capacité pour la remplacer par une autre, ou **deux**
+ * s'il a au moins +2 en INT.
+ */
+export function maxRetrainings(character: Character): number {
+  return character.abilities.INT >= 2 ? 2 : 1;
+}
+
+/**
+ * Capacités qu'un personnage peut « oublier » au titre du changement d'orientation
+ * (p. 43), pour le rang le plus haut de chaque voie uniquement (interdiction des
+ * voies à trous : on oublie le rang 5, puis le 4, puis le 3). Exclusions (p. 43) :
+ *  - les capacités acquises gratuitement — les deux rangs 1 du profil, « la jeunesse »
+ *    qu'on ne peut jamais oublier — via `freeFeatureIds` ;
+ *  - **toute la voie de peuple** (et la voie du mage) : capacités « acquises
+ *    automatiquement et gratuitement », jamais oubliables, quel que soit leur rang.
+ * Triée par voie puis rang. Si le gratuit n'est pas identifiable (historique de
+ * niveau 1 absent), rien n'est proposé à l'oubli plutôt que de risquer d'oublier une
+ * capacité de départ.
+ */
+export function forgettableFeatures(character: Character): Feature[] {
+  const { ids: free, known } = freeFeatureIds(character);
+  if (!known) return [];
+  const owned = character.featureIds
+    .map((id) => featureById.get(id))
+    .filter((f): f is Feature => !!f);
+  // Rang le plus haut détenu par voie : seul ce rang est oubliable (LIFO, p. 43).
+  const maxRankByPath = new Map<string, number>();
+  for (const f of owned) {
+    maxRankByPath.set(f.pathId, Math.max(maxRankByPath.get(f.pathId) ?? 0, f.rank));
+  }
+  // Voie de peuple / du mage : automatique et gratuite → jamais oubliable (p. 43).
+  const isPeopleFeature = (f: Feature): boolean => {
+    const type = pathById.get(f.pathId)?.type;
+    return type === 'ancestry' || type === 'mage';
+  };
+  return owned
+    .filter(
+      (f) => !free.has(f.id) && !isPeopleFeature(f) && f.rank === maxRankByPath.get(f.pathId),
+    )
+    .sort((a, b) => a.pathId.localeCompare(b.pathId) || a.rank - b.rank);
+}
 
 /**
  * Capacités que le personnage peut légalement acquérir à son niveau courant
@@ -80,19 +124,25 @@ export function deselectFeature(picked: string[], featureId: string): string[] {
  * Personnage promu d'un niveau : niveau +1, capacités choisies ajoutées (sans
  * doublon), entrée d'historique journalisée. `orphanRewards` (p. 40) : conversions
  * des points de capacité non dépensés, stockées sur l'entrée du niveau.
+ * `forgottenFeatureIds` (p. 43, changement d'orientation) : capacités abandonnées
+ * ce niveau, RETIRÉES de `featureIds` avant l'ajout des capacités choisies (le
+ * remplacement fait partie de `chosenFeatureIds`) et journalisées sur l'entrée.
  */
 export function applyLevelUp(
   character: Character,
   chosenFeatureIds: string[],
   orphanRewards: OrphanReward[] = [],
+  forgottenFeatureIds: string[] = [],
 ): Character {
   const level = character.level + 1;
-  const featureIds = [...character.featureIds];
+  const forgotten = new Set(forgottenFeatureIds);
+  const featureIds = character.featureIds.filter((id) => !forgotten.has(id));
   for (const id of chosenFeatureIds) {
     if (!featureIds.includes(id)) featureIds.push(id);
   }
   const entry: LevelUpEntry = { level, chosenFeatureIds };
   if (orphanRewards.length > 0) entry.orphanRewards = orphanRewards;
+  if (forgottenFeatureIds.length > 0) entry.forgottenFeatureIds = forgottenFeatureIds;
   return {
     ...character,
     level,
@@ -117,10 +167,16 @@ export function undoLastLevelUp(character: Character): Character {
   const history = character.levelUpHistory;
   const last = history[history.length - 1];
   const removed = new Set(last.chosenFeatureIds);
+  // Capacités acquises ce niveau retirées ; capacités oubliées via changement
+  // d'orientation (p. 43) restituées (elles avaient été retirées à la montée).
+  const featureIds = character.featureIds.filter((id) => !removed.has(id));
+  for (const id of last.forgottenFeatureIds ?? []) {
+    if (!featureIds.includes(id)) featureIds.push(id);
+  }
   return {
     ...character,
     level: last.level - 1,
-    featureIds: character.featureIds.filter((id) => !removed.has(id)),
+    featureIds,
     levelUpHistory: history.slice(0, -1),
   };
 }

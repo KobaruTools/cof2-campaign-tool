@@ -66,7 +66,9 @@ export function LevelHistory({ history }: LevelHistoryProps) {
               </Typography>
             )}
           </Typography>
-          {entry.chosenFeatureIds.length === 0 && !entry.orphanRewards?.length ? (
+          {entry.chosenFeatureIds.length === 0 &&
+          !entry.orphanRewards?.length &&
+          !entry.forgottenFeatureIds?.length ? (
             <Typography variant="body2" color="text.secondary">
               Aucune capacité acquise à ce niveau.
             </Typography>
@@ -74,6 +76,22 @@ export function LevelHistory({ history }: LevelHistoryProps) {
             <Stack spacing={0.5} sx={{ pl: 1.5, borderLeft: 3, borderColor: 'divider' }}>
               {entry.chosenFeatureIds.map((id) => (
                 <HistoryFeature key={id} featureId={id} />
+              ))}
+              {/* Capacité(s) oubliée(s) ce niveau via le changement d'orientation (p. 43) :
+                  tracées pour expliciter la reconversion (et rendre l'undo transparent). */}
+              {entry.forgottenFeatureIds?.map((id) => (
+                <Stack
+                  key={`forgotten-${id}`}
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: 'center' }}
+                >
+                  <Chip label="Oubliée" size="small" color="secondary" variant="outlined" />
+                  <Box sx={{ textDecoration: 'line-through', color: 'text.secondary' }}>
+                    <HistoryFeature featureId={id} />
+                  </Box>
+                  <SourceRef page={43} />
+                </Stack>
               ))}
               {/* Point(s) de capacité orphelin(s) convertis ce niveau (p. 40) : tracés ici
                   pour que le bonus permanent soit explicite (et l'undo, transparent). */}

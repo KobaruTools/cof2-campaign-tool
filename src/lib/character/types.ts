@@ -221,6 +221,14 @@ export interface LevelUpEntry {
    * niveau retire aussi ses bonus orphelins.
    */
   orphanRewards?: OrphanReward[];
+  /**
+   * Capacités OUBLIÉES à ce niveau via le changement d'orientation (p. 43) : le
+   * personnage abandonne une capacité déjà acquise pour la remplacer par une autre
+   * (le remplacement figure dans `chosenFeatureIds`, comme un choix normal). Absent
+   * = aucun oubli. Stocké sur le niveau d'origine → l'annulation du niveau restitue
+   * les capacités oubliées. Champ additif optionnel (pas de migration de schéma).
+   */
+  forgottenFeatureIds?: string[];
 }
 
 export interface Character {

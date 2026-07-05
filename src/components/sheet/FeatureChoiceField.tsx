@@ -44,6 +44,7 @@ import {
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
 import { SourceRef } from '@/components/SourceRef';
+import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 
 /**
  * Libellé lisible d'une sélection retenue, selon la nature du choix.
@@ -437,7 +438,8 @@ function ChoiceControl({
     );
   }
 
-  // feature-from-path : longue liste de capacités empruntables (Autocomplete).
+  // feature-from-path : longue liste de capacités empruntables, groupée par voie
+  // (couleur + icône de profil) via le composant unifié `FeaturePathAutocomplete`.
   // Règle des poupées russes (p. 41) : les capacités elles-mêmes « emprunteuses »
   // (qui permettent de choisir à leur tour une capacité) ne sont pas empruntables
   // — un seul niveau d'emprunt, pas de chaînage. On les laisse VISIBLES mais
@@ -445,44 +447,28 @@ function ChoiceControl({
   const eligible = eligibleFeaturesForChoice(character, featureId, choice);
   const blocked = ineligibleBorrowersForChoice(character, featureId, choice);
   const blockedIds = new Set(blocked.map((f) => f.id));
-  const options = [...eligible, ...blocked]
-    .sort((a, b) => a.pathId.localeCompare(b.pathId) || a.rank - b.rank)
-    .map((f) => f.id);
-  const optionLabel = (id: string): string => {
-    const feature = featureById.get(id);
-    if (!feature) return id;
-    const pathName = pathById.get(feature.pathId)?.name ?? feature.pathId;
-    const base = `${pathName} — Rang ${feature.rank} — ${feature.name}${feature.isSpell ? '*' : ''}`;
-    // Suffixe explicatif sur les capacités écartées (poupées russes, p. 41).
-    return blockedIds.has(id) ? `${base} — emprunte déjà une capacité (non cumulable)` : base;
-  };
+  const options = [...eligible, ...blocked].map((f) => f.id);
   return (
-    <Autocomplete
-      size="small"
+    <FeaturePathAutocomplete
+      label={choice.prompt}
       options={options}
-      groupBy={(id) => pathById.get(featureById.get(id)?.pathId ?? '')?.name ?? ''}
-      getOptionLabel={(id) => optionLabel(id)}
-      getOptionDisabled={(id) => blockedIds.has(id)}
       value={single}
-      isOptionEqualToValue={(opt, val) => opt === val}
-      onChange={(_, value) => onChange(index, value ?? null)}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label={choice.prompt}
-          error={blocking && missing}
-          helperText={
-            blocking && missing
-              ? 'Choix obligatoire'
-              : blocked.length > 0 ? (
-                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                    Les capacités grisées empruntent elles-mêmes une capacité : non sélectionnables
-                    (poupées russes, <SourceRef page={41} />).
-                  </Box>
-                ) : undefined
-          }
-        />
-      )}
+      onChange={(id) => onChange(index, id)}
+      disabledIds={blockedIds}
+      optionSuffix={(id) =>
+        blockedIds.has(id) ? ' — emprunte déjà une capacité (non cumulable)' : undefined
+      }
+      error={blocking && missing}
+      helperText={
+        blocking && missing
+          ? 'Choix obligatoire'
+          : blocked.length > 0 ? (
+              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                Les capacités grisées empruntent elles-mêmes une capacité : non sélectionnables
+                (poupées russes, <SourceRef page={41} />).
+              </Box>
+            ) : undefined
+      }
     />
   );
 }
