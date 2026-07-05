@@ -8,7 +8,6 @@ import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOu
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -52,7 +51,9 @@ import {
   type PendingDivine,
 } from '@/lib/character/choices';
 import { classColor } from '@/lib/ui/classColors';
+import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
+import { SourceRef } from '@/components/SourceRef';
 import { groupFeaturesByPath, type FeatureGroup } from '@/components/sheet/FeaturesByPath';
 import { RichInline } from '@/components/sheet/FeatureRichText';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
@@ -157,10 +158,11 @@ function AvailablePathGroup({
                     <FeatureLabel feature={feature} />
                   </Typography>
                   <AppTooltip
+                    page={122}
                     title={
                       skipped?.hostPathName
-                        ? `Détenue via la capacité divine (logée dans « ${skipped.hostPathName} ») — rang sauté, p. 122`
-                        : 'Détenue via la capacité divine — rang sauté, p. 122'
+                        ? `Détenue via la capacité divine (logée dans « ${skipped.hostPathName} ») — rang sauté`
+                        : 'Détenue via la capacité divine — rang sauté'
                     }
                   >
                     <Chip label="✦ Détenu (capacité divine) — rang sauté" size="small" />
@@ -205,7 +207,8 @@ function AvailablePathGroup({
                   </Typography>
                   {afterSkip && (
                     <AppTooltip
-                      title={`Rang ${skipped!.rank} détenu via la capacité divine : ce rang est accessible directement (skip, p. 122)`}
+                      page={122}
+                      title={`Rang ${skipped!.rank} détenu via la capacité divine : ce rang est accessible directement (skip)`}
                     >
                       <Chip
                         label={`Après saut du rang ${skipped!.rank}`}
@@ -217,9 +220,10 @@ function AvailablePathGroup({
                   )}
                 </Stack>
                 <AppTooltip
+                  page={locked ? 122 : undefined}
                   title={
                     locked
-                      ? 'Capacité divine à choisir d’abord (priorité absolue, p. 122)'
+                      ? 'Capacité divine à choisir d’abord (priorité absolue)'
                       : tooExpensive
                         ? `Coût ${cost} points — il vous reste ${remaining} point${remaining > 1 ? 's' : ''}`
                         : ''
@@ -693,7 +697,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                 }
                 label={
                   <Typography variant="body2" color="text.secondary">
-                    Voies d’autres profils (profil hybride — accord du MJ, p. 176)
+                    Voies d’autres profils (profil hybride — accord du MJ, <SourceRef page={176} />)
                   </Typography>
                 }
               />
@@ -741,10 +745,10 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
               </Stack>
             )}
 
-            <Alert severity="info" sx={{ mb: 2 }}>
+            <AppAlert severity="info" sx={{ mb: 2 }}>
               Vous gagnez {budget} points de capacité à ce niveau (rang 1-2 : 1 point ; rang 3 et
               plus : 2 points). Seuls les choix légaux et abordables sont proposés.
-            </Alert>
+            </AppAlert>
 
             {remaining > 0 && (
               <Accordion
@@ -764,7 +768,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      Point de capacité orphelin (p. 40)
+                      Point de capacité orphelin (<SourceRef page={40} />)
                     </Typography>
                     {forcedOrphan && !orphanReward && (
                       <Chip

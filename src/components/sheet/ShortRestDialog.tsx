@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -12,7 +11,9 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import type { Die } from '@/data/schema';
+import { AppAlert } from '@/components/AppAlert';
 import { DieIcon } from '@/components/DieIcon';
+import { SourceRef } from '@/components/SourceRef';
 
 export interface ShortRestDialogProps {
   open: boolean;
@@ -105,9 +106,10 @@ export function ShortRestDialog({
               />
             </Box>
           ) : (
-            <Alert severity="info" variant="outlined">
-              Aucun dé de récupération disponible : seul un repos long permet de restaurer des PV (p. 221).
-            </Alert>
+            <AppAlert severity="info">
+              Aucun dé de récupération disponible : seul un repos long permet de restaurer des PV{' '}
+              <SourceRef page={221} />.
+            </AppAlert>
           )}
         </Stack>
       </DialogContent>

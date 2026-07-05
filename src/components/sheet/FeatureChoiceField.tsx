@@ -14,7 +14,6 @@
  * pour la longue liste des capacités empruntables (un rang d'une autre voie), et
  * Select/Radio pour une liste d'options énumérées.
  */
-import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -43,6 +42,8 @@ import {
   splitRepeatableSelections,
 } from '@/lib/character/choices';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { AppAlert } from '@/components/AppAlert';
+import { SourceRef } from '@/components/SourceRef';
 
 /**
  * Libellé lisible d'une sélection retenue, selon la nature du choix.
@@ -178,11 +179,11 @@ function ChoiceControl({
       <Box>
         {field}
         {deviates && single && (
-          <Alert severity="warning" sx={{ mt: 1 }}>
+          <AppAlert severity="warning" sx={{ mt: 1 }}>
             {ABILITY_NAMES[single as keyof typeof ABILITY_NAMES] ?? single} ne fait pas partie de{' '}
             {lowestPhrase}
             {lowestLabel ? ` (${lowestLabel})` : ''} : vous dérogez à la règle.
-          </Alert>
+          </AppAlert>
         )}
       </Box>
     );
@@ -386,7 +387,15 @@ function ChoiceControl({
           label={choice.namePrompt}
           value={name}
           error={nameMissing}
-          helperText={nameMissing ? 'Nom obligatoire' : 'Le bonus ne s’applique jamais à des tests de combat (p. 57).'}
+          helperText={
+            nameMissing ? (
+              'Nom obligatoire'
+            ) : (
+              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                Le bonus ne s’applique jamais à des tests de combat <SourceRef page={57} />.
+              </Box>
+            )
+          }
           onChange={(e) => commit(e.target.value, slots)}
         />
         {slots.map((dom, k) => {
@@ -420,9 +429,9 @@ function ChoiceControl({
           );
         })}
         {!nameMissing && domainsMissing && (
-          <Alert severity="warning" sx={{ py: 0 }}>
+          <AppAlert severity="warning" sx={{ py: 0 }}>
             Choisissez {choice.domainCount} domaines.
-          </Alert>
+          </AppAlert>
         )}
       </Stack>
     );
@@ -465,9 +474,12 @@ function ChoiceControl({
           helperText={
             blocking && missing
               ? 'Choix obligatoire'
-              : blocked.length > 0
-                ? 'Les capacités grisées empruntent elles-mêmes une capacité : non sélectionnables (poupées russes, p. 41).'
-                : undefined
+              : blocked.length > 0 ? (
+                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                    Les capacités grisées empruntent elles-mêmes une capacité : non sélectionnables
+                    (poupées russes, <SourceRef page={41} />).
+                  </Box>
+                ) : undefined
           }
         />
       )}
@@ -738,9 +750,9 @@ export function FeatureChoiceField({
         />
       ))}
       {!blocking && (
-        <Alert severity="info" sx={{ py: 0 }}>
+        <AppAlert severity="info" sx={{ py: 0 }}>
           Choix modifiable librement (fiche permissive).
-        </Alert>
+        </AppAlert>
       )}
     </Stack>
   );

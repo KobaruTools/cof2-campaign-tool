@@ -1,8 +1,6 @@
 'use client';
 
 import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
-import Alert from '@mui/material/Alert';
-import AlertTitle from '@mui/material/AlertTitle';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
@@ -11,6 +9,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { InfoHint } from '@/components/InfoHint';
 import type { Ancestry, AncestryNames } from '@/data/schema';
@@ -192,12 +191,14 @@ export function IdentityForm({
         </Grid>
         {warnings.length > 0 && (
           <Grid size={12}>
-            <Alert severity="warning" variant="outlined">
-              <AlertTitle>
-                {warnings.length === 1
+            <AppAlert
+              severity="warning"
+              title={
+                warnings.length === 1
                   ? 'Hors du cadre du livre'
-                  : `${warnings.length} valeurs hors du cadre du livre`}
-              </AlertTitle>
+                  : `${warnings.length} valeurs hors du cadre du livre`
+              }
+            >
               <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
                 {warnings.map((w) => (
                   <Typography key={w} component="li" variant="body2">
@@ -208,7 +209,7 @@ export function IdentityForm({
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
                 Rien ne l’interdit — à garder en tête pour l’immersion.
               </Typography>
-            </Alert>
+            </AppAlert>
           </Grid>
         )}
       </Grid>

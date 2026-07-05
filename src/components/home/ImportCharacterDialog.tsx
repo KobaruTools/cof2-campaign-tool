@@ -18,7 +18,6 @@ import { useRouter } from 'next/navigation';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -28,6 +27,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { AppAlert } from '@/components/AppAlert';
 import { ClassIcon } from '@/components/ClassIcon';
 import { ABILITY_IDS } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
@@ -172,9 +172,9 @@ export function ImportCharacterDialog({ open, onClose, onImported }: ImportChara
         {(state.status === 'idle' || state.status === 'error') && (
           <Stack spacing={2}>
             {state.status === 'error' && (
-              <Alert severity="error" icon={<ErrorOutlineIcon />}>
+              <AppAlert severity="error" icon={<ErrorOutlineIcon />}>
                 Import impossible : {state.message}
-              </Alert>
+              </AppAlert>
             )}
             {dropZone}
           </Stack>

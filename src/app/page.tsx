@@ -8,8 +8,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import UploadIcon from '@mui/icons-material/Upload';
-import Alert from '@mui/material/Alert';
-import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -29,11 +27,12 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
+import { AppAlert } from '@/components/AppAlert';
+import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
-import { HomeBackground } from '@/components/home/HomeBackground';
+import { HomeBackground } from '@/components/HomeBackground';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
@@ -120,25 +119,7 @@ export default function HomePage() {
     <>
       <title>Personnages — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppBar
-        position="static"
-        // Légèrement translucide + flou : la barre laisse deviner l'illustration
-        // qui défile derrière, sans nuire à la lisibilité du titre.
-        sx={{
-          bgcolor: 'rgba(18, 18, 18, 0.55)',
-          backgroundImage: 'none',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          boxShadow: 'none',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        }}
-      >
-        <Toolbar>
-          <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-            Personnages — Chroniques Oubliées Fantasy 2
-          </Typography>
-        </Toolbar>
-      </AppBar>
+      <AppHeader title="Personnages — Chroniques Oubliées Fantasy 2" />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>
@@ -155,7 +136,7 @@ export default function HomePage() {
         </Stack>
 
         {draft && (
-          <Alert
+          <AppAlert
             severity="info"
             sx={{ mb: 3 }}
             action={
@@ -170,7 +151,7 @@ export default function HomePage() {
             }
           >
             Un brouillon de création est en cours.
-          </Alert>
+          </AppAlert>
         )}
 
         {!hasHydrated ? (
@@ -327,14 +308,14 @@ export default function HomePage() {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         {toast ? (
-          <Alert
+          <AppAlert
             severity={toast.severity}
             variant="filled"
             onClose={() => setToast(null)}
             sx={{ width: '100%' }}
           >
             {toast.message}
-          </Alert>
+          </AppAlert>
         ) : undefined}
       </Snackbar>
     </>

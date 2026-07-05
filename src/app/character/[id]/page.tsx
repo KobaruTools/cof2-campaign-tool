@@ -7,8 +7,6 @@ import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import UpgradeIcon from '@mui/icons-material/Upgrade';
-import Alert from '@mui/material/Alert';
-import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -20,7 +18,6 @@ import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
-import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, progression } from '@/data';
 import type { DerivedInput } from '@/lib/engine';
@@ -78,6 +75,8 @@ import {
 import { longRest, shortRest } from '@/lib/character/rest';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
+import { AppAlert } from '@/components/AppAlert';
+import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { HeaderIllustrations } from '@/components/HeaderIllustrations';
@@ -613,14 +612,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           la métadonnée en streaming de Next réécrase le titre après hydratation
           (clignotement nom → titre de base). Réactif : suit l'édition du nom. */}
       <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
-      <AppBar position="sticky">
-        <Toolbar>
-          <IconButton edge="start" color="inherit" onClick={() => router.push('/')} sx={{ mr: 1 }}>
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-            {character.name || 'Sans nom'}
-          </Typography>
+      <AppHeader
+        title={character.name || 'Sans nom'}
+        onBack={() => router.push('/')}
+        action={
           <Button
             color="inherit"
             startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
@@ -628,8 +623,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           >
             {allEditing ? 'Terminer' : 'Modifier'}
           </Button>
-        </Toolbar>
-      </AppBar>
+        }
+      />
 
       {/* Wrapper pleine largeur `position: relative` : sert d'ancre au fond de
           couverture (variante footer), dont les moitiés se calent sur les bords du
@@ -749,7 +744,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 transforme en « arbalétrier » (p. 62). Édité en mode « Modifier ». */}
             {editingBlocks.identity && characterClass?.powderAllowed && (
               <Box sx={{ mt: 1, position: 'relative', zIndex: 1 }}>
-                <AppTooltip title="Univers sans poudre : l’arquebusier combat à l’arbalète et devient « arbalétrier » (p. 62).">
+                <AppTooltip title="Univers sans poudre : l’arquebusier combat à l’arbalète et devient « arbalétrier »." page={62}>
                   <FormControlLabel
                     control={
                       <Switch
@@ -1060,14 +1055,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         onClose={() => setCreatedToast(false)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert
+        <AppAlert
           severity="success"
           variant="filled"
           onClose={() => setCreatedToast(false)}
           sx={{ width: '100%' }}
         >
           Personnage créé.
-        </Alert>
+        </AppAlert>
       </Snackbar>
     </>
   );

@@ -1,6 +1,5 @@
 'use client';
 
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
@@ -20,6 +19,7 @@ import { defenseFromEquipment } from './helpers';
 import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { AppAlert } from '@/components/AppAlert';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -35,7 +35,7 @@ export function SummaryStep({ draft, patch }: StepProps) {
   const characterClass = classById.get(draft.classId);
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
   if (!ancestry || !characterClass || !family) {
-    return <Alert severity="warning">Récapitulatif indisponible : étapes incomplètes.</Alert>;
+    return <AppAlert severity="warning">Récapitulatif indisponible : étapes incomplètes.</AppAlert>;
   }
 
   const abilities = finalAbilities(draft, ancestry);
@@ -253,9 +253,9 @@ export function SummaryStep({ draft, patch }: StepProps) {
       )}
 
       {warnings.length > 0 && (
-        <Alert severity="warning">
+        <AppAlert severity="warning">
           {warnings.map((a) => a.message).join(' ')}
-        </Alert>
+        </AppAlert>
       )}
     </Stack>
   );

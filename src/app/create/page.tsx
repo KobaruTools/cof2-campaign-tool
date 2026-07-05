@@ -2,19 +2,14 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import Alert from '@mui/material/Alert';
-import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
-import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
-import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { ancestryById, classById, priestGods } from '@/data';
 import { choicesComplete } from '@/lib/character/ancestry';
@@ -28,6 +23,8 @@ import {
 } from '@/lib/character/wizard';
 import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
+import { AppAlert } from '@/components/AppAlert';
+import { AppHeader } from '@/components/AppHeader';
 import { ClassStep, PathsStep, IdentityStep } from '@/components/wizard/steps';
 import { AncestryStep } from '@/components/wizard/AncestryStep';
 import { AbilitiesStep } from '@/components/wizard/AbilitiesStep';
@@ -195,28 +192,7 @@ export default function CreatePage() {
       {/* Même illustration de fond que l'accueil : la couverture scindée en deux
           moitiés encadrant le contenu (fixe, parallaxe + léger suivi de la souris). */}
       <HomeBackground />
-      <AppBar
-        position="static"
-        // Translucide + flou, comme l'accueil : laisse deviner l'illustration de fond
-        // sans nuire à la lisibilité du titre.
-        sx={{
-          bgcolor: 'rgba(18, 18, 18, 0.55)',
-          backgroundImage: 'none',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          boxShadow: 'none',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        }}
-      >
-        <Toolbar>
-          <IconButton edge="start" color="inherit" onClick={() => router.push('/')} sx={{ mr: 1 }}>
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-            Nouveau personnage
-          </Typography>
-        </Toolbar>
-      </AppBar>
+      <AppHeader title="Nouveau personnage" onBack={() => router.push('/')} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stepper activeStep={step} alternativeLabel sx={{ mb: 4 }}>
@@ -258,9 +234,9 @@ export default function CreatePage() {
 
         {/* Feedback : ce qu'il reste à faire avant de pouvoir passer à la suite. */}
         {!isLast && !canNext && (
-          <Alert severity="info" sx={{ mb: 2 }}>
+          <AppAlert severity="info" sx={{ mb: 2 }}>
             {current.hint?.(draft) ?? 'Complète les choix obligatoires de cette étape pour continuer.'}
-          </Alert>
+          </AppAlert>
         )}
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>

@@ -1,6 +1,5 @@
 'use client';
 
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -21,6 +20,8 @@ import { distributeValueSet, valueSets } from './helpers';
 import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
+import { AppAlert } from '@/components/AppAlert';
+import { SourceRef } from '@/components/SourceRef';
 import type { StepProps } from './types';
 
 function abilityTotalLabel(total: number): string {
@@ -42,7 +43,7 @@ function abilityTotalLabel(total: number): string {
 export function AbilitiesStep({ draft, patch }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const characterClass = classById.get(draft.classId);
-  if (!ancestry) return <Alert severity="warning">Choisissez d’abord un peuple.</Alert>;
+  if (!ancestry) return <AppAlert severity="warning">Choisissez d’abord un peuple.</AppAlert>;
 
   const deltas = modifierDeltas(ancestry, draft.ancestryChoices);
   const lowest = lowestAbilities(draft.baseAbilities);
@@ -135,16 +136,17 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
                         color="text.secondary"
                         sx={{ display: 'block', mt: 0.5 }}
                       >
-                        Règle de l’humain (p. 57) : ce +1 doit porter sur l’une de {lowestPhrase}
+                        Règle de l’humain <SourceRef page={57} /> : ce +1 doit porter sur l’une de{' '}
+                        {lowestPhrase}
                         {lowestNames ? ` (${lowestNames})` : ''}.
                       </Typography>
                     )}
                     {deviates && chosen && (
-                      <Alert severity="warning" sx={{ mt: 1 }}>
+                      <AppAlert severity="warning" sx={{ mt: 1 }}>
                         {ABILITY_NAMES[chosen]} ne fait pas partie de {lowestPhrase}
                         {lowestNames ? ` (${lowestNames})` : ''} : vous dérogez à la règle de
                         l’humain.
-                      </Alert>
+                      </AppAlert>
                     )}
                   </Box>
                 );

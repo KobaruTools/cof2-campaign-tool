@@ -17,7 +17,6 @@ import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import ViewStreamIcon from '@mui/icons-material/ViewStream';
 import Accordion from '@mui/material/Accordion';
-import Alert from '@mui/material/Alert';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -65,7 +64,9 @@ import {
   type DominatedTestSource,
 } from '@/lib/character/effects';
 import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
+import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
+import { SourceRef } from '@/components/SourceRef';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { FeatureLabel } from '@/components/FeatureLabel';
@@ -463,7 +464,7 @@ function BorrowedFeatureBlock({
         {/* Goutte de coût en PM : « toujours calculé à partir du rang HABITUEL du sort » (p. 41) —
             c.-à-d. le rang d'origine du sort emprunté, pas le rang atteint dans la voie A. Ne rend
             rien pour une capacité empruntée qui n'est pas un sort. */}
-        <SpellManaBadge feature={feature} concentration={concentration} color={color} size={26} />
+        <SpellManaBadge feature={feature} concentration={concentration} color={color} size={26} tooltipEnterDelay={1000} />
       </Stack>
       <Box sx={{ mt: 0.25 }}>
         {/* `rang` résolu sur la VOIE A (rang hôte), pas sur le rang d'origine de la capacité empruntée. */}
@@ -479,7 +480,7 @@ function BorrowedFeatureBlock({
           sx={{ mt: 0.75, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
         >
           Sort emprunté : coût en PM égal au rang habituel du sort ; lancé avec la caractéristique de
-          magie de son profil d’origine ; il rapporte +1 PM au réservoir (p. 41).
+          magie de son profil d’origine ; il rapporte +1 PM au réservoir (<SourceRef page={41} />).
         </Typography>
       )}
       {/* Bonus de test DOMINÉ (ne se cumule pas, p. 203) : barré + la capacité qui le domine, pour
@@ -1037,7 +1038,8 @@ export function ConcentrationToggle({
       }
     >
       <AppTooltip
-        title="Concentration accrue : les sorts en (A) coûtent 2 PM de moins (plancher 0) et deviennent une action limitée (L) (p. 228)"
+        title="Concentration accrue : les sorts en (A) coûtent 2 PM de moins (plancher 0) et deviennent une action limitée (L)"
+        page={228}
       >
         <SelfImprovementIcon fontSize="small" />
       </AppTooltip>
@@ -1966,9 +1968,9 @@ function PathBlock({
     const message = disabledMessage(feature);
     if (!message) return null;
     return (
-      <Alert severity="info" variant="outlined" sx={{ mb: 1.5 }}>
+      <AppAlert severity="info" sx={{ mb: 1.5 }}>
         {message}
-      </Alert>
+      </AppAlert>
     );
   };
 
@@ -2187,6 +2189,7 @@ function PathBlock({
               concentration={concentration}
               surcharge={character ? escalatingManaSurcharge(character, borrowed ?? feature) : 0}
               color={(borrowed ? borrowedColor : color) ?? undefined}
+              tooltipEnterDelay={1000}
               sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
             />
             {manualFeatureIds?.has(feature.id) && <ManualPin />}
@@ -2807,6 +2810,7 @@ function PathBlock({
                 concentration={concentration}
                 surcharge={character ? escalatingManaSurcharge(character, feature) : 0}
                 color={color ?? undefined}
+                tooltipEnterDelay={1000}
                 sx={{ alignSelf: 'center', mr: 1 }}
               />
               {onRemove && (
