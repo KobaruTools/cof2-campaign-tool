@@ -462,10 +462,12 @@ function CoinInput({
         '& .MuiOutlinedInput-root': { overflow: 'hidden', pr: 0, backgroundColor: alpha(coin.color, 0.09) },
         // Contour au survol = couleur de la pièce, avec fondu ; le délai (.4s) porté par l'état
         // de BASE ne joue qu'à la SORTIE (imite le hover des voies & capacités en vue colonne),
-        // l'entrée (`:hover`, sans délai) prend le relais → fondu immédiat.
+        // l'entrée (`:hover`, sans délai) prend le relais → fondu immédiat. Sélecteur volontairement
+        // très spécifique (`:not(.Mui-focused)`) pour battre la règle de survol par défaut de MUI
+        // (qui, à spécificité égale, imposait sinon le blanc `text.primary` — d'où la mauvaise teinte).
         '& .MuiOutlinedInput-notchedOutline': { top: 0, transition: 'border-color .3s ease .4s' },
         '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
-        '&:hover .MuiOutlinedInput-notchedOutline': {
+        '& .MuiOutlinedInput-root:hover:not(.Mui-focused) .MuiOutlinedInput-notchedOutline': {
           borderColor: coin.color,
           transition: 'border-color .3s ease',
         },
@@ -522,6 +524,9 @@ function CoinInput({
             // du champ, donc le stepper et son liseré aussi (m:0 → collé au bord droit).
             <InputAdornment position="end" sx={{ m: 0, alignSelf: 'stretch', maxHeight: 'none', height: 'auto' }}>
               <Stack direction="row" sx={{ borderLeft: '1px solid', borderColor: 'divider', alignSelf: 'stretch' }}>
+                {/* Largeur des deux boutons strictement identique : le séparateur est un élément
+                    à part (1px), et non une bordure DANS le bouton `+` — sinon (border-box) son
+                    aire serait rognée de 1px et les deux boutons n'auraient pas la même largeur. */}
                 <IconButton
                   aria-label={`Retirer 1 ${coin.code}`}
                   onClick={() => step(-1)}
@@ -530,12 +535,14 @@ function CoinInput({
                     borderRadius: 0,
                     p: 0,
                     width: 28,
+                    flexShrink: 0,
                     color: btnColor,
                     '&:hover': { bgcolor: alpha(coin.color, 0.2), color: btnHoverColor },
                   }}
                 >
                   <RemoveIcon sx={{ fontSize: 18 }} />
                 </IconButton>
+                <Box sx={{ width: '1px', alignSelf: 'stretch', bgcolor: 'divider', flexShrink: 0 }} />
                 <IconButton
                   aria-label={`Ajouter 1 ${coin.code}`}
                   onClick={() => step(1)}
@@ -543,8 +550,7 @@ function CoinInput({
                     borderRadius: 0,
                     p: 0,
                     width: 28,
-                    borderLeft: '1px solid',
-                    borderColor: 'divider',
+                    flexShrink: 0,
                     color: btnColor,
                     '&:hover': { bgcolor: alpha(coin.color, 0.2), color: btnHoverColor },
                   }}
@@ -668,19 +674,30 @@ export function PurseField({ purse, onChange, editing = false }: PurseFieldProps
     <Box sx={{ containerType: 'inline-size' }}>
       <Stack
         direction="row"
-        spacing={1}
         sx={{
           alignItems: 'center',
           flexWrap: 'nowrap',
+          gap: 1,
           // Bascule instantanée en colonne quand la rangée ne tiendrait plus sur une ligne.
-          [vertQuery]: { flexDirection: 'column', alignItems: 'flex-start' },
+          // En colonne : tout centré (les champs ET les flèches → flèches alignées sur les champs)
+          // et un peu plus d'espacement vertical entre les lignes.
+          [vertQuery]: { flexDirection: 'column', alignItems: 'center', gap: 1.5 },
         }}
       >
-        <AppTooltip title="Bourse — argent possédé" page={181}>
-          <Box sx={{ display: 'inline-flex', color: 'text.secondary', flexShrink: 0, cursor: 'help' }}>
-            <PurseIcon size={20} title="Bourse" />
-          </Box>
-        </AppTooltip>
+        {/* En-tête de la bourse : icône seule en ligne (desktop) ; icône + titre « Bourse » en colonne (mobile). */}
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, color: 'text.secondary', flexShrink: 0 }}>
+          <AppTooltip title="Bourse — argent possédé" page={181}>
+            <Box sx={{ display: 'inline-flex', cursor: 'help' }}>
+              <PurseIcon size={20} title="Bourse" />
+            </Box>
+          </AppTooltip>
+          <Typography
+            variant="subtitle2"
+            sx={{ display: 'none', fontWeight: 700, [vertQuery]: { display: 'block' } }}
+          >
+            Bourse
+          </Typography>
+        </Box>
 
         {COINS.map((coin, i) => {
           const next = COINS[i + 1];
