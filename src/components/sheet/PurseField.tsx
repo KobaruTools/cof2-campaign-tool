@@ -3,6 +3,8 @@
 import { Fragment, useState } from 'react';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -25,12 +27,32 @@ interface CoinMeta {
   name: string;
   /** Couleur du jeton. */
   color: string;
-  /** Couleur de la barre de brillance au survol (défaut : blanc vif). */
-  shine?: string;
+  /**
+   * Brillance au survol (défaut : blanc vif). Une couleur unique → barre monochrome ;
+   * un couple `{ from, to }` → barre en dégradé (ex. or jaune→orangé, platine teal clair).
+   */
+  shine?: string | ShineGradient;
+  /** `true` : la barre de brillance balaie DEUX fois (réservé à la pièce la plus précieuse). */
+  shineDouble?: boolean;
   /** Profil de scintillement des jetons « précieux » (étincelles au survol) ; absent = aucun. */
   sparkle?: SparkleProfile;
   /** Verbatim de règle (p. 181) affiché en info-bulle. */
   rule: string;
+}
+
+/** Brillance en dégradé : deux teintes balayées le long de la barre (bord → bord). */
+interface ShineGradient {
+  from: string;
+  to: string;
+}
+
+/** Construit le fond de la barre de brillance : monochrome (couleur unique) ou dégradé. */
+function shineBackground(shine: CoinMeta['shine']): string {
+  if (shine && typeof shine === 'object') {
+    return `linear-gradient(120deg, transparent 0%, ${shine.from} 38%, ${shine.to} 62%, transparent 100%)`;
+  }
+  const color = shine ?? 'rgba(255,255,255,0.85)';
+  return `linear-gradient(120deg, transparent 0%, ${color} 50%, transparent 100%)`;
 }
 
 /** Position/taille d'une étincelle (px relatifs au jeton 24×24) + son décalage d'animation. */
@@ -97,8 +119,10 @@ const COINS: CoinMeta[] = [
     // Teal profond très saturé : tranche volontairement sur les tons chauds
     // (or/argent/cuivre) pour signaler l'unité la plus précieuse d'un coup d'œil.
     color: '#0d8a7a',
-    // Métal froid et éclatant : reflet légèrement bleuté plutôt que blanc pur.
-    shine: 'rgba(190, 255, 246, 0.9)',
+    // Reflet en dégradé vert/bleu → vert/bleu plus clair (métal froid et éclatant),
+    // et SEULE pièce à double passage de la barre (statut le plus précieux).
+    shine: { from: 'rgba(28, 190, 178, 0.85)', to: 'rgba(196, 255, 248, 0.96)' },
+    shineDouble: true,
     sparkle: { positions: SPARKLES_PLATINUM, duration: '3.2s' },
     rule:
       'La pièce de platine (pp) est la monnaie la plus précieuse, rare et recherchée. ' +
@@ -109,6 +133,8 @@ const COINS: CoinMeta[] = [
     code: 'po',
     name: 'Pièce d’or',
     color: '#d4af37',
+    // Reflet en dégradé jaune → jaune-orangé (au lieu de la barre blanche), passage unique.
+    shine: { from: 'rgba(255, 228, 130, 0.92)', to: 'rgba(255, 160, 66, 0.85)' },
     sparkle: { positions: SPARKLES_GOLD, duration: '2s' },
     rule:
       'Les pièces d’or (po) sont rares et précieuses, la plupart des paysans en ' +
@@ -176,17 +202,18 @@ function CoinToken({ coin, sparkles }: { coin: CoinMeta; sparkles: SparkleParam[
       <SourceRef page={181} />
     </Box>
   );
-  const shine = coin.shine ?? 'rgba(255,255,255,0.85)';
   return (
     <AppTooltip title={tooltip}>
       {/* Wrapper `overflow: visible` : porte les étincelles qui débordent hors du jeton
           (le jeton lui-même reste `overflow: hidden` pour clipper le code et la brillance).
-          `--sparkle-dur` : durée du scintillement propre à la pièce, héritée par les étincelles. */}
+          `--sparkle-dur` : durée du scintillement propre à la pièce (héritée par les étincelles).
+          `--shine-passes` : nombre de balayages de la barre (2 pour la platine, 1 sinon). */}
       <Box
         sx={{
           position: 'relative',
           display: 'inline-flex',
           flexShrink: 0,
+          '--shine-passes': coin.shineDouble ? 2 : 1,
           ...(coin.sparkle ? { '--sparkle-dur': coin.sparkle.duration } : {}),
         }}
       >
@@ -221,10 +248,10 @@ function CoinToken({ coin, sparkles }: { coin: CoinMeta; sparkles: SparkleParam[
             // Contour de la même teinte, plus foncé (2px), et fond en dégradé vers plus clair.
             border: `2px solid ${darken(coin.color, 0.3)}`,
             background: `linear-gradient(135deg, ${coin.color} 0%, ${lighten(coin.color, 0.28)} 100%)`,
-            // Barre de brillance unique — au repos hors champ, à gauche. Teinte selon la pièce
-            // (`shine`). VARIANTE testée : au survol elle balaie le jeton DEUX fois de suite
-            // (animation `coinShineSweep`, 2 itérations), au lieu de doubler la barre. Le
-            // balayage est déclenché par le survol de TOUT le champ (voir `CoinInput`).
+            // Barre de brillance unique — au repos hors champ, à gauche. Fond selon la pièce
+            // (`shine` : couleur unie ou dégradé). Au survol elle balaie le jeton, une fois ou
+            // deux selon `--shine-passes` (2 pour la platine). Déclenché par le survol de TOUT
+            // le champ (voir `CoinInput`).
             '&::before': {
               content: '""',
               position: 'absolute',
@@ -232,7 +259,7 @@ function CoinToken({ coin, sparkles }: { coin: CoinMeta; sparkles: SparkleParam[
               left: '-150%',
               width: '70%',
               height: '100%',
-              background: `linear-gradient(120deg, transparent 0%, ${shine} 50%, transparent 100%)`,
+              background: shineBackground(coin.shine),
               transform: 'skewX(-20deg)',
             },
           }}
@@ -312,6 +339,13 @@ function CoinInput({
   // hors rendu (pur). Non précieux → tableau vide (aucune étincelle).
   const [sparkles, setSparkles] = useState<SparkleParam[]>([]);
 
+  // Incrément/décrément via les boutons −/+ (remplacent les flèches natives). Bornes ≥ 0.
+  const step = (delta: number) => {
+    const next = Math.max(0, value + delta);
+    if (next !== value) onCommit(next);
+    setText(String(next));
+  };
+
   return (
     <TextField
       size="small"
@@ -336,18 +370,33 @@ function CoinInput({
       // Survoler n'importe où dans le champ fait « briller » la pièce (balaie la barre)
       // et, pour les jetons précieux, déclenche le scintillement des étincelles.
       sx={{
-        // VARIANTE : la barre unique balaie le jeton DEUX fois de suite (2 itérations),
-        // avec une brève pause hors-champ entre les deux passages (fin du keyframe à droite).
+        // Étincelles clippées à l'input : `overflow: hidden` sur la racine les contient
+        // dans le champ (elles ne débordent plus dans la rangée). On réaligne le contour
+        // (`top: 0`, sinon son décalage de −5px pour l'encoche du label serait rogné, sans
+        // label ici) pour garder la bordure intacte.
+        '& .MuiOutlinedInput-root': { overflow: 'hidden', pr: 0.5 },
+        '& .MuiOutlinedInput-notchedOutline': { top: 0 },
+        '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
+        // Masque les flèches haut/bas natives du champ number (remplacées par les boutons −/+).
+        '& input[type=number]': { MozAppearance: 'textfield' },
+        '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
+          WebkitAppearance: 'none',
+          margin: 0,
+        },
+        // Balayage de la barre : le keyframe fait un passage (0→65 %) puis maintient la barre
+        // hors-champ à droite (65→100 %) — ce maintien ne sert que de pause AVANT un éventuel
+        // 2e passage. Le nombre de passages est piloté par `--shine-passes` (2 pour la platine,
+        // 1 pour les autres → passage unique simple).
         '@keyframes coinShineSweep': {
           '0%': { left: '-150%' },
-          '65%': { left: '150%' }, // passage
-          '100%': { left: '150%' }, // maintien hors-champ → gap avant le 2e passage
+          '65%': { left: '150%' },
+          '100%': { left: '150%' },
         },
         '&:hover .coin-shine::before': {
           animationName: 'coinShineSweep',
           animationDuration: '0.75s',
           animationTimingFunction: 'ease-in-out',
-          animationIterationCount: 2,
+          animationIterationCount: 'var(--shine-passes, 1)',
         },
         '@keyframes coinSparkleTwinkle': {
           '0%': { transform: 'scale(0) rotate(0deg)', opacity: 0 },
@@ -366,11 +415,52 @@ function CoinInput({
         },
       }}
       slotProps={{
-        htmlInput: { min: 0, step: 1, style: { width: 52 } },
+        htmlInput: { min: 0, step: 1, style: { width: 40, textAlign: 'center' } },
         input: {
           startAdornment: (
             <InputAdornment position="start" sx={{ mr: 0.75 }}>
               <CoinToken coin={coin} sparkles={sparkles} />
+            </InputAdornment>
+          ),
+          // Stepper −/+ carré, empilé, remplaçant les flèches natives (masquées ci-dessus).
+          // Un fin séparateur à gauche l'intègre au champ sans en changer la silhouette.
+          endAdornment: (
+            <InputAdornment position="end" sx={{ ml: 0.5 }}>
+              <Stack sx={{ borderLeft: '1px solid', borderColor: 'divider' }}>
+                <IconButton
+                  size="small"
+                  aria-label={`Ajouter 1 ${coin.code}`}
+                  onClick={() => step(1)}
+                  sx={{
+                    borderRadius: 0,
+                    p: 0,
+                    width: 20,
+                    height: 17,
+                    color: 'text.secondary',
+                    '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+                  }}
+                >
+                  <AddIcon sx={{ fontSize: 15 }} />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  aria-label={`Retirer 1 ${coin.code}`}
+                  onClick={() => step(-1)}
+                  disabled={value <= 0}
+                  sx={{
+                    borderRadius: 0,
+                    p: 0,
+                    width: 20,
+                    height: 17,
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                    color: 'text.secondary',
+                    '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+                  }}
+                >
+                  <RemoveIcon sx={{ fontSize: 15 }} />
+                </IconButton>
+              </Stack>
             </InputAdornment>
           ),
         },
