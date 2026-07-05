@@ -28,6 +28,7 @@ import type {
   MagePath,
   TestDomain,
   PriestGod,
+  FantasticFamiliar,
 } from './schema';
 
 import { families } from './families';
@@ -45,6 +46,7 @@ import { prestigePaths2, prestigeFeatures2 } from './prestige-paths/part2';
 import { weapons, armors, shields, gear } from './equipment';
 import { priestGods, priestGodById } from './priest-gods';
 import { testDomains, testDomainById } from './test-domains';
+import { fantasticFamiliars, fantasticFamiliarById } from './fantastic-familiars';
 import {
   FEATURE_CLASSIFICATIONS,
   FEATURE_NATURE_TAGS,
@@ -109,6 +111,9 @@ export { testDomains, testDomainById };
 // --- Panthéon d'Osgild — dieux du prêtre spécialiste (p. 126-127) ------------
 export { priestGods, priestGodById };
 
+// --- Familiers fantastiques — voie du familier fantastique (p. 133-136) -------
+export { fantasticFamiliars, fantasticFamiliarById };
+
 // --- Classification analytique des capacités (PER-62) ------------------------
 export { FEATURE_CLASSIFICATIONS, FEATURE_NATURE_TAGS, CONDITIONAL_KINDS };
 
@@ -122,5 +127,5 @@ export const featureClassificationById = new Map<string, FeatureClassification>(
   FEATURE_CLASSIFICATIONS.map((c) => [c.id, c]),
 );
 
-export type { Family, ProgressionRules, ValueSet, IdealFlaw, Weapon, Armor, Shield, Gear, TestDomain, PriestGod };
+export type { Family, ProgressionRules, ValueSet, IdealFlaw, Weapon, Armor, Shield, Gear, TestDomain, PriestGod, FantasticFamiliar };
 export type { FeatureClassification, FeatureNatureTag, ConditionalKind };

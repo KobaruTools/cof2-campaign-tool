@@ -29,8 +29,10 @@ import {
   featureById,
   priestGods,
   pathById,
+  classById,
   testDomains,
   testDomainById,
+  fantasticFamiliars,
   FEATURE_CLASSIFICATIONS,
   FEATURE_NATURE_TAGS,
   CONDITIONAL_KINDS,
@@ -465,6 +467,35 @@ for (const g of priestGods) {
   }
 }
 
+// --- Familiers fantastiques (p. 133-136, PER-84) -----------------------------
+// Intégrité : id unique, voie hôte existante, profils cités (spellProfile + grants)
+// = profils existants, caractéristique du +1 valide.
+const familiarIds = new Set<string>();
+const FAMILIAR_PATH_ID = 'prestige-familier-fantastique';
+const isKnownProfile = (id: string) => classById.has(id);
+for (const f of fantasticFamiliars) {
+  if (familiarIds.has(f.id)) err(`[familier ${f.id}] id en double`);
+  familiarIds.add(f.id);
+  if (f.pathId !== FAMILIAR_PATH_ID) err(`[familier ${f.id}] pathId inattendu : ${f.pathId}`);
+  if (!pathById.has(f.pathId)) err(`[familier ${f.id}] voie hôte inconnue : ${f.pathId}`);
+  // R5 : profil de magie associé — id de profil OU la valeur spéciale 'main-profile'.
+  if (f.spellProfile !== 'main-profile' && !isKnownProfile(f.spellProfile))
+    err(`[familier ${f.id}] spellProfile inconnu : ${f.spellProfile}`);
+  // R7 : caractéristique recevant le +1.
+  if (!ABILITY_IDS.includes(f.superiorPower.abilityBonus))
+    err(`[familier ${f.id}] abilityBonus invalide : ${f.superiorPower.abilityBonus}`);
+  // Capacités conférées (R4/R7) : le profil cité doit exister. featureId non résolu = normal (différé).
+  for (const [rank, power] of [['R4', f.minorPower] as const, ['R7', f.superiorPower] as const]) {
+    const g = power.grants;
+    if (g && !isKnownProfile(g.profile))
+      err(`[familier ${f.id} ${rank}] profil de la capacité conférée inconnu : ${g.profile}`);
+  }
+  // Écarts de caractéristiques : clés valides.
+  for (const k of Object.keys(f.abilityOverrides ?? {}))
+    if (!ABILITY_IDS.includes(k as (typeof ABILITY_IDS)[number]))
+      err(`[familier ${f.id}] abilityOverride invalide : ${k}`);
+}
+
 // --- Rapport -----------------------------------------------------------------
 const spells = features.filter((c) => c.isSpell).length;
 console.log('=== Comptages ===');
@@ -482,6 +513,7 @@ console.log(`  · avec plage crit. : ${featuresWithCriticalRange} (plage de crit
 console.log(`  · coût mana dérogé : ${spellsWithManaCost} (sinon = rang, p. 228)`);
 console.log(`équipement (total) : ${equipment.length}`);
 console.log(`dieux du prêtre    : ${priestGods.length}`);
+console.log(`familiers fantast. : ${fantasticFamiliars.length}`);
 console.log('');
 console.log(`=== Avertissements (${warnings.length}) ===`);
 warnings.forEach((w) => console.log('  ⚠ ' + w));

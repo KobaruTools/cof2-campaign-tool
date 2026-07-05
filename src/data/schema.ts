@@ -1266,6 +1266,86 @@ export interface CreatureProfile {
 }
 
 /**
+ * Capacité EXISTANTE d'un profil, CONFÉRÉE au maître par un familier fantastique (PER-84,
+ * p. 133-136). Descriptif verbatim tel que le livre le donne — la RÉSOLUTION vers un
+ * `featureId` réel est DIFFÉRÉE : les voies de profil citées (divination, mort, sang,
+ * illusions, air, envoûteur, invocation, végétaux, animaux, magie élémentaire/universelle,
+ * spiritualité, musicien…) ne sont pas toutes peuplées dans les données. On stocke donc la
+ * référence descriptive (nom/rang/voie/profil) suffisante pour l'afficher et la retrouver
+ * plus tard. Absente quand le pouvoir est PROPRE au familier (ex. « Toile », « Clone ») et
+ * ne renvoie à aucune capacité de profil.
+ */
+export interface FamiliarGrantedPower {
+  /** Nom de la capacité conférée, verbatim (ex. « Prescience »). Absent si le livre ne la nomme pas. */
+  name?: string;
+  /** Rang de la capacité dans sa voie d'origine (ex. 5). Absent si non précisé. */
+  rank?: number;
+  /** Voie d'origine, verbatim (ex. « voie de la divination »). */
+  pathName: string;
+  /** Profil d'origine (id de profil, ex. 'ensorceleur'). */
+  profile: string;
+  /** Fréquence d'usage verbatim si précisée (ex. « une fois par jour »). */
+  usage?: string;
+  /** featureId résolu si la capacité existe déjà dans les données. Différé → généralement absent. */
+  featureId?: string;
+}
+
+/**
+ * FAMILIER FANTASTIQUE (PER-84) — une des 12 créatures de l'encadré « Les familiers
+ * fantastiques » (p. 133-136) que le joueur CHOISIT en prenant la voie du familier
+ * fantastique (`prestige-familier-fantastique`). Le stat-block de base (taille minuscule)
+ * est porté par la capacité de RANG 3 de la voie ; chaque familier n'apporte que ses
+ * PARTICULARITÉS et surtout les éléments référencés par les rangs 4/5/7 de la voie :
+ * un pouvoir mineur (R4), un profil de magie dont on apprend un ou deux sorts (R5), un
+ * pouvoir supérieur + un bonus de +1 à une caractéristique (R7).
+ */
+export interface FantasticFamiliar {
+  /** Slug d'id (clé de contenu, français conservé comme les autres entités). */
+  id: string;
+  /** Voie hôte — toujours `'prestige-familier-fantastique'`. */
+  pathId: string;
+  /** Nom affiché (français, ex. « Animal céleste »). */
+  name: string;
+  /** Texte de présentation verbatim (aspect, déplacement, attaque innée…). */
+  description: string;
+  /**
+   * Écarts au stat-block générique de rang 3 exprimables en valeurs fixes
+   * (ex. lézard voltaïque `{ FOR: -2 }`, fée/lutin `{ CHA: 2 }`). Absent = suit le bloc
+   * générique tel quel. Les écarts non réductibles à des valeurs fixes vont dans `abilityNote`.
+   */
+  abilityOverrides?: Partial<Record<AbilityId, number>>;
+  /**
+   * Note verbatim sur les caractéristiques quand l'écart ne se réduit pas à des valeurs
+   * fixes (ex. minimoï : « FOR -3 et AGI [AGI du personnage + 2] ; autres = perso - 2 »).
+   */
+  abilityNote?: string;
+  /** R4 — Pouvoir mineur conféré au maître. */
+  minorPower: {
+    /** Texte verbatim complet. */
+    text: string;
+    /** Capacité de profil référencée, si le pouvoir en est une (sinon pouvoir propre au familier). */
+    grants?: FamiliarGrantedPower;
+  };
+  /**
+   * R5 — Profil de magie associé : le maître apprend un ou deux sorts de rang 1 ou 2 de ce
+   * profil. Id de profil (ex. `'sorcier'`) OU la valeur spéciale `'main-profile'` (minimoï :
+   * « le profil principal du personnage »).
+   */
+  spellProfile: string;
+  /** R7 — Pouvoir supérieur conféré au maître + caractéristique recevant le +1. */
+  superiorPower: {
+    /** Texte verbatim complet. */
+    text: string;
+    /** Capacité de profil référencée, si le pouvoir en est une. */
+    grants?: FamiliarGrantedPower;
+    /** Caractéristique bénéficiant du bonus de +1 (rang 7). */
+    abilityBonus: AbilityId;
+  };
+  /** Page source dans le livre de base. */
+  sourcePage: number;
+}
+
+/**
  * ÉVÉNEMENT qui remet un compteur d'usages à son maximum (PER-73). Déclaratif : aucun
  * consommateur moteur pour l'instant — le futur bouton « Nouvelle journée » lira `resetOn === 'day'`
  * pour savoir quels compteurs recharger d'un clic. Les valeurs plus fines (`short-rest`, `combat`)
