@@ -30,7 +30,7 @@ import {
 } from '@/lib/auth/lastMethod';
 
 const IS_CONFIGURED = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
 );
 
 type Busy = { kind: 'idle' } | { kind: 'oauth'; provider: OAuthProviderId } | { kind: 'magic' };

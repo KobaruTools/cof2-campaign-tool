@@ -18,14 +18,14 @@ import type { Database } from './types';
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !publishableKey) {
     return NextResponse.next({ request });
   }
 
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient<Database>(url, anonKey, {
+  const supabase = createServerClient<Database>(url, publishableKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();

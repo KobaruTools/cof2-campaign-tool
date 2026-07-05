@@ -23,9 +23,10 @@ Ces étapes nécessitent un compte Supabase — elles ne peuvent pas être autom
 1. **Créer le projet** sur https://supabase.com (choisir une région proche,
    free-tier). Noter l'URL du projet et les clés (Project Settings → API).
 2. **Renseigner l'environnement** : copier `.env.example` → `.env.local` à la
-   racine et remplir `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`. Ajouter les mêmes variables sur Vercel
-   (Environment Variables) pour la prod.
+   racine et remplir `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   (clé `sb_publishable_…`, ex-`anon`), `SUPABASE_SECRET_KEY` (clé `sb_secret_…`,
+   ex-`service_role`). Ajouter les mêmes variables sur Vercel (Environment
+   Variables) pour la prod.
 3. **Appliquer la migration**. Au choix :
    - **Éditeur SQL Supabase** : coller le contenu de `migrations/0001_foundations.sql`
      et exécuter.

@@ -16,15 +16,16 @@ import type { Database } from './types';
  * `setAll` peut échouer quand on est rendu depuis un Server Component (les cookies
  * y sont en lecture seule) : on l'ignore alors, le rafraîchissement de session
  * étant assuré par le `proxy.ts` (branché en PER-188/189). N'utilise que la clé
- * anonyme publique — la clé service (bypass RLS) sera une fabrique dédiée
- * server-only le jour où on en aura besoin (échange de lien magique, PER-191).
+ * **publishable** publique (`sb_publishable_…`) — la clé **secrète** (`sb_secret_…`,
+ * bypass RLS) sera une fabrique dédiée server-only le jour où on en aura besoin
+ * (échange de lien magique, PER-191).
  */
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
