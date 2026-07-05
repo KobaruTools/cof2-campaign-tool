@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Roboto } from 'next/font/google';
 import Providers from './providers';
+import { AppFooter } from '@/components/AppFooter';
 
 const roboto = Roboto({
   variable: '--font-roboto',
@@ -29,7 +30,10 @@ export default function RootLayout({
   return (
     <html lang="fr" className={roboto.variable} style={{ colorScheme: 'dark' }}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <AppFooter />
+        </Providers>
       </body>
     </html>
   );
