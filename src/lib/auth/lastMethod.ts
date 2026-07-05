@@ -9,7 +9,7 @@ export type LastAuthMethod = OAuthProviderId | 'magic-link';
 
 const STORAGE_KEY = 'cof2:last-auth-method';
 
-const VALID: readonly LastAuthMethod[] = ['google', 'discord', 'facebook', 'magic-link'];
+const VALID: readonly LastAuthMethod[] = ['google', 'discord', 'magic-link'];
 
 /** Lit la dernière méthode utilisée, ou `null` (SSR, absente ou invalide). */
 export function readLastAuthMethod(): LastAuthMethod | null {

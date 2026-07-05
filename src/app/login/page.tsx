@@ -2,7 +2,7 @@
 
 /**
  * Écran de connexion (PER-188). Inscription OUVERTE, sans mot de passe :
- * - OAuth Google / Discord / Facebook (liaison auto par email vérifié côté Supabase) ;
+ * - OAuth Google / Discord (liaison auto par email vérifié côté Supabase) ;
  * - magic-link email en repli (sans tiers).
  * Un indice `localStorage` met en avant la dernière méthode utilisée (non-autoritatif).
  *

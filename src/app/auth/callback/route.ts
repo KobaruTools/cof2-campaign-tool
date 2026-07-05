@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 /**
  * Callback d'authentification (PER-188) : point de retour commun à l'OAuth
- * (Google/Discord/Facebook) et au magic-link. Supabase renvoie ici avec un `code`
+ * (Google/Discord) et au magic-link. Supabase renvoie ici avec un `code`
  * (flux PKCE) qu'on échange contre une session (cookies posés par le client
  * serveur), puis on redirige vers `next` (défaut `/`).
  */
