@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react';
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Grid from '@mui/material/Grid';
@@ -409,7 +408,30 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                           >
                             {signed(display)}
                           </Typography>
-                          {bonus?.capped && <Chip label="+15" size="small" color="warning" variant="outlined" />}
+                          {/* Badge de plafond custom (≠ Chip MUI) : même langage visuel que
+                              DefenseBadge — pastille warning bordée, le tooltip de la ligne porte
+                              déjà l'explication du plafond +15 (p. 203). */}
+                          {bonus?.capped && (
+                            <Box
+                              component="span"
+                              sx={(theme) => ({
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                px: 0.75,
+                                height: 20,
+                                borderRadius: 1,
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                lineHeight: 1,
+                                whiteSpace: 'nowrap',
+                                color: theme.palette.warning.main,
+                                bgcolor: alpha(theme.palette.warning.main, 0.12),
+                                border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+                              })}
+                            >
+                              +15
+                            </Box>
+                          )}
                         </Stack>
                       </Box>
                     );
