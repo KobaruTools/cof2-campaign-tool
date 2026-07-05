@@ -8,7 +8,7 @@ import Typography from '@mui/material/Typography';
 import type { AbilityId, Ancestry } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import type { AncestryChoice } from '@/lib/character/ancestry';
-import type { AbilityModSource } from '@/lib/character/effects';
+import type { AbilityModSource, BonusDieSource } from '@/lib/character/effects';
 import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
@@ -45,9 +45,10 @@ export interface AbilitiesGridProps {
   abilityModSources?: Partial<Record<AbilityId, AbilityModSource[]>>;
   /**
    * Caractéristiques bénéficiant d'un DÉ BONUS permanent (genre `ability-bonus-die`),
-   * chacune avec le(s) nom(s) de capacité(s) source(s) — icône double-d20.
+   * chacune avec la/les capacité(s) source(s) — icône double-d20 + pastille de capacité
+   * dans le détail.
    */
-  bonusDieSources?: Partial<Record<AbilityId, string[]>>;
+  bonusDieSources?: Partial<Record<AbilityId, BonusDieSource[]>>;
 }
 
 /**
@@ -76,8 +77,10 @@ export function AbilitiesGrid({
         // la valeur SAISIE, le bonus de capacité restant appliqué par-dessus (chip « +N »).
         const effective = entered + mod;
         const dieSources = bonusDieSources?.[id];
-        // Le chiffre (ou champ) seul porte l'infobulle de détail ; l'icône de dé bonus est
-        // un FRÈRE, avec sa propre infobulle, pour ne pas imbriquer deux tooltips.
+        const dieSourceNames = dieSources?.map((s) => s.name);
+        // Tout le bloc porte l'infobulle de détail ; l'icône de dé bonus reste À CÔTÉ
+        // du chiffre mais SANS sa propre bulle (`noTooltip`) pour ne pas empiler deux
+        // tooltips — sa note est repliée dans l'infobulle de détail (`bonusDieSources`).
         const value = onChange ? (
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
             <TextField
@@ -98,7 +101,7 @@ export function AbilitiesGrid({
             )}
           </Stack>
         ) : (
-          <Typography variant="h6" sx={{ fontWeight: 'bold', color: abilityTotalColor(effective), cursor: 'help' }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', color: abilityTotalColor(effective) }}>
             {effective > 0 ? '+' : ''}
             {effective}
           </Typography>
@@ -108,43 +111,59 @@ export function AbilitiesGrid({
           value: s.value,
           featureId: s.featureId,
         }));
+        // Chiffre (ou champ) + dé bonus inline, sur la même rangée, l'ensemble centré
+        // dans le bloc. Le badge est posé en `noTooltip` : c'est le bloc entier qui
+        // déclenche l'unique infobulle.
+        const valueRow = (
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', justifyContent: 'center' }}>
+            {value}
+            {dieSourceNames && <BonusDieBadge ability={id} sources={dieSourceNames} noTooltip />}
+          </Stack>
+        );
+        // Le bloc entier (icône + code + chiffre + dé bonus) porte le cadre au survol
+        // ET l'infobulle de détail, déclenchés sur toute sa surface.
+        const block = (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 0.5,
+              px: 1,
+              py: 1,
+              minWidth: 88,
+              borderRadius: 2,
+              border: 1,
+              borderColor: 'transparent',
+              cursor: canExplain && !onChange ? 'help' : 'default',
+              transition: (theme) => theme.transitions.create(['background-color', 'border-color']),
+              '&:hover': { bgcolor: 'action.hover', borderColor: 'divider' },
+            }}
+          >
+            <AbilityIcon ability={id} title size={32} sx={{ color: 'text.secondary' }} />
+            <Typography variant="subtitle2" color="text.secondary" title={ABILITY_NAMES[id]} sx={{ fontWeight: 'bold' }}>
+              {id}
+            </Typography>
+            {valueRow}
+          </Box>
+        );
         return (
           <Grid key={id} size={{ xs: 6, sm: 12 / 7 }}>
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 0.5,
-                py: 1,
-              }}
-            >
-              <AbilityIcon ability={id} title size={32} sx={{ color: 'text.secondary' }} />
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                title={ABILITY_NAMES[id]}
-                sx={{ fontWeight: 'bold' }}
-              >
-                {id}
-              </Typography>
-              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                {canExplain ? (
-                  <AbilityBreakdownTooltip
-                    abilityId={id}
-                    baseAbilities={baseAbilities}
-                    ancestry={ancestry}
-                    ancestryChoices={ancestryChoices}
-                    featureTerms={featureTerms}
-                  >
-                    {value}
-                  </AbilityBreakdownTooltip>
-                ) : (
-                  value
-                )}
-                {dieSources && <BonusDieBadge ability={id} sources={dieSources} />}
-              </Stack>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              {canExplain ? (
+                <AbilityBreakdownTooltip
+                  abilityId={id}
+                  baseAbilities={baseAbilities}
+                  ancestry={ancestry}
+                  ancestryChoices={ancestryChoices}
+                  featureTerms={featureTerms}
+                  bonusDieSources={dieSources}
+                >
+                  {block}
+                </AbilityBreakdownTooltip>
+              ) : (
+                block
+              )}
             </Box>
           </Grid>
         );

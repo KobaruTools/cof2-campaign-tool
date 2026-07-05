@@ -16,6 +16,12 @@ export interface BonusDieBadgeProps {
   sources?: string[];
   /** Taille en pixels d'un dé (les deux dés sont légèrement décalés). Défaut 16. */
   size?: number;
+  /**
+   * Supprime l'info-bulle propre du badge (le libellé reste en `aria-label`/`title`
+   * natif). À utiliser quand le badge est posé À L'INTÉRIEUR d'un autre déclencheur
+   * d'info-bulle, pour ne pas empiler deux bulles MUI.
+   */
+  noTooltip?: boolean;
   sx?: SxProps<Theme>;
 }
 
@@ -26,31 +32,31 @@ export interface BonusDieBadgeProps {
  * capacité(s) source(s). Posée à droite du chiffre de la carac (fiche + mini-fiches
  * de créatures).
  */
-export function BonusDieBadge({ ability, sources = [], size = 16, sx }: BonusDieBadgeProps) {
+export function BonusDieBadge({ ability, sources = [], size = 16, noTooltip, sx }: BonusDieBadgeProps) {
   const title =
     sources.length > 0
       ? `Dé bonus aux tests de ${ability} — ${sources.join(', ')}`
       : `Dé bonus aux tests de ${ability}`;
-  return (
-    <AppTooltip title={title}>
-      <Box
-        component="span"
-        aria-label={title}
-        sx={{
-          position: 'relative',
-          display: 'inline-flex',
-          alignItems: 'center',
-          width: size * 1.4,
-          height: size,
-          color: 'secondary.main',
-          cursor: 'help',
-          flexShrink: 0,
-          ...sx,
-        }}
-      >
-        <DieIcon die="d20" size={size} noTooltip sx={{ position: 'absolute', left: 0, opacity: 0.55 }} />
-        <DieIcon die="d20" size={size} noTooltip sx={{ position: 'absolute', left: size * 0.4 }} />
-      </Box>
-    </AppTooltip>
+  const badge = (
+    <Box
+      component="span"
+      aria-label={title}
+      title={noTooltip ? title : undefined}
+      sx={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        width: size * 1.4,
+        height: size,
+        color: 'secondary.main',
+        cursor: noTooltip ? 'inherit' : 'help',
+        flexShrink: 0,
+        ...sx,
+      }}
+    >
+      <DieIcon die="d20" size={size} noTooltip sx={{ position: 'absolute', left: 0, opacity: 0.55 }} />
+      <DieIcon die="d20" size={size} noTooltip sx={{ position: 'absolute', left: size * 0.4 }} />
+    </Box>
   );
+  return noTooltip ? badge : <AppTooltip title={title}>{badge}</AppTooltip>;
 }

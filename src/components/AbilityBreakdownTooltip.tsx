@@ -2,12 +2,16 @@
 
 import type { ReactElement } from 'react';
 import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import type { AbilityId, Ancestry } from '@/data/schema';
 import type { AncestryChoice } from '@/lib/character/ancestry';
+import type { BonusDieSource } from '@/lib/character/effects';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { abilityBreakdown, type AbilityFeatureTerm } from '@/lib/ui/abilityBreakdown';
 import { AppTooltip } from '@/components/AppTooltip';
 import { BreakdownContent } from '@/components/BreakdownContent';
+import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 import { SourceRef } from '@/components/SourceRef';
 
 export interface AbilityBreakdownTooltipProps {
@@ -20,6 +24,12 @@ export interface AbilityBreakdownTooltipProps {
   ancestryChoices: AncestryChoice;
   /** Modificateurs permanents de capacités ciblant cette caractéristique (ex. « +1 — Endurer »). */
   featureTerms?: AbilityFeatureTerm[];
+  /**
+   * Capacité(s) accordant un DÉ BONUS permanent aux tests de cette caractéristique.
+   * Rendues en note sous le détail, chacune en pastille de capacité (le badge « double
+   * d20 » n'a plus sa propre bulle quand l'info-bulle enrobe tout le bloc).
+   */
+  bonusDieSources?: BonusDieSource[];
   /** Le chiffre (ou champ) survolé pour afficher le détail. */
   children: ReactElement;
 }
@@ -36,12 +46,27 @@ export function AbilityBreakdownTooltip({
   ancestry,
   ancestryChoices,
   featureTerms,
+  bonusDieSources,
   children,
 }: AbilityBreakdownTooltipProps) {
   const bd = abilityBreakdown(abilityId, baseAbilities, ancestry, ancestryChoices, featureTerms);
   const title = (
     <Box sx={{ py: 0.5 }}>
       <BreakdownContent title={ABILITY_NAMES[abilityId]} breakdown={bd} />
+      {bonusDieSources && bonusDieSources.length > 0 && (
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ mt: 1, flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}
+        >
+          <Typography variant="caption" sx={{ color: 'secondary.main' }}>
+            Dé bonus aux tests —
+          </Typography>
+          {bonusDieSources.map((s) => (
+            <CapabilityChip key={s.featureId} featureId={s.featureId} label={s.name} />
+          ))}
+        </Stack>
+      )}
       <SourceRef page={bd.page} sx={{ display: 'block', mt: 1 }} />
     </Box>
   );

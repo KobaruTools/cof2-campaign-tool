@@ -1095,23 +1095,30 @@ export function abilityModSources(
   return sources;
 }
 
+/** Capacité source d'un dé bonus permanent (pour le détail affiché au joueur). */
+export interface BonusDieSource {
+  featureId: string;
+  /** Nom de la capacité (français). */
+  name: string;
+}
+
 /**
  * Caractéristiques bénéficiant d'un DÉ BONUS permanent (genre `ability-bonus-die`),
- * chacune avec le(s) nom(s) de capacité(s) source(s) — pour l'info-bulle de l'icône
- * double-d20. Le dé bonus ne s'empile pas : une carac présente ici en bénéficie (peu
- * importe le nombre de sources), mais on garde la liste pour l'attribuer à l'affichage.
+ * chacune avec la/les capacité(s) source(s) — `featureId` + nom, pour rendre une
+ * pastille de capacité dans le détail. Le dé bonus ne s'empile pas : une carac présente
+ * ici en bénéficie (peu importe le nombre de sources), mais on garde la liste des sources.
  */
-export function abilityBonusDiceFromFeatures(
+export function abilityBonusDiceSources(
   featureIds: string[],
   featureChoices?: Record<string, FeatureChoiceSelection[]>,
-): Partial<Record<AbilityId, string[]>> {
-  const dice: Partial<Record<AbilityId, string[]>> = {};
+): Partial<Record<AbilityId, BonusDieSource[]>> {
+  const dice: Partial<Record<AbilityId, BonusDieSource[]>> = {};
   for (const id of featureIds) {
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
     for (const e of feature.effects) {
       if (e.kind === 'ability-bonus-die') {
-        (dice[e.ability] ??= []).push(feature.name);
+        (dice[e.ability] ??= []).push({ featureId: id, name: feature.name });
       } else if (e.kind === 'ability-bonus-die-from-choice' && featureChoices) {
         // Dé bonus dont la carac est lue depuis le choix retenu, éventuellement restreint
         // (ex. Combattant héroïque : dé bonus seulement si AGI est choisie, pas FOR).
@@ -1121,10 +1128,26 @@ export function abilityBonusDiceFromFeatures(
           (ABILITY_IDS as readonly string[]).includes(chosen) &&
           (!e.onlyIfAbility || e.onlyIfAbility.includes(chosen as AbilityId))
         ) {
-          (dice[chosen as AbilityId] ??= []).push(feature.name);
+          (dice[chosen as AbilityId] ??= []).push({ featureId: id, name: feature.name });
         }
       }
     }
+  }
+  return dice;
+}
+
+/**
+ * Variante « noms seuls » de {@link abilityBonusDiceSources}, pour l'info-bulle de
+ * l'icône double-d20 (badges) qui n'affiche que du texte.
+ */
+export function abilityBonusDiceFromFeatures(
+  featureIds: string[],
+  featureChoices?: Record<string, FeatureChoiceSelection[]>,
+): Partial<Record<AbilityId, string[]>> {
+  const detailed = abilityBonusDiceSources(featureIds, featureChoices);
+  const dice: Partial<Record<AbilityId, string[]>> = {};
+  for (const ability of Object.keys(detailed) as AbilityId[]) {
+    dice[ability] = detailed[ability]!.map((s) => s.name);
   }
   return dice;
 }

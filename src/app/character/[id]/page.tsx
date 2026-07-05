@@ -37,6 +37,7 @@ import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/cha
 import { mergeMods, orphanMods, orphanSourceTerms } from '@/lib/character/orphanPoints';
 import {
   abilityBonusDiceFromFeatures,
+  abilityBonusDiceSources,
   abilityModSources,
   abilityModsFromFeatures,
   abilityTestBonusSources,
@@ -419,6 +420,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const abilityMods = abilityModsFromFeatures(modFeatureIds, character.featureChoices);
   const abilityModSrc = abilityModSources(modFeatureIds, character.featureChoices);
   const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds, character.featureChoices);
+  // Variante détaillée (avec `featureId`) pour rendre les sources en pastilles de capacité
+  // dans le détail d'une caractéristique (l'icône double-d20 n'affiche, elle, que les noms).
+  const bonusDieSrcDetailed = abilityBonusDiceSources(modFeatureIds, character.featureChoices);
   // Bonus de compétence par domaine de test (PER-89) — règle de cumul du livre (p. 203).
   const testBonuses = testBonusSources(modFeatureIds, effectCtx);
   // Dés bonus CONDITIONNELS actifs sur des domaines (ex. Travail d'équipe, via son interrupteur).
@@ -785,7 +789,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               ancestryChoices={character.ancestryChoices}
               abilityMods={abilityMods}
               abilityModSources={abilityModSrc}
-              bonusDieSources={bonusDieSrc}
+              bonusDieSources={bonusDieSrcDetailed}
             />
           </SheetSection>
 
