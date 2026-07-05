@@ -660,6 +660,33 @@ export function clearTemporaryEffectToggles(character: Character): Record<string
 }
 
 /**
+ * PER-164 — purge les saisies libres (`effectInputs`) ORPHELINES qu'un repos laisserait derrière lui.
+ * Quand un repos éteint l'interrupteur d'un effet TEMPORAIRE actif (via `clearTemporaryEffectToggles`),
+ * la saisie libre corrélée à la MÊME capacité (ex. l'animal de Forme animale / `animaux-r5`) doit être
+ * effacée aussi — sinon on retrouve au réveil l'ancien animal alors que l'effet n'est plus actif. Ne
+ * touche QUE les capacités dont un interrupteur temporaire était effectivement actif ; les saisies
+ * d'effets SITUATIONNELS sans interrupteur temporaire (ex. élément résisté de Maîtrise des éléments — le
+ * sélecteur tient lieu d'activation, non éteint par un repos) sont PRÉSERVÉES. Même critère « temporaire
+ * & actif » que `clearTemporaryEffectToggles`, pour rester en phase. Fonction pure : renvoie une copie.
+ */
+export function clearTemporaryEffectInputs(character: Character): Record<string, string> {
+  const inputs = character.effectInputs ?? {};
+  const toggles = character.effectToggles ?? {};
+  const next: Record<string, string> = { ...inputs };
+  for (const featureId of character.featureIds) {
+    if (next[featureId] === undefined) continue;
+    const effects = featureById.get(featureId)?.effects;
+    if (!effects) continue;
+    const hadActiveTemporary = effects.some((effect, index) => {
+      if (effect.kind !== 'conditional-stat-bonus' || effect.activation.kind !== 'temporary') return false;
+      return toggles[featureId]?.[index] ?? effect.activation.activeByDefault ?? false;
+    });
+    if (hadActiveTemporary) delete next[featureId];
+  }
+  return next;
+}
+
+/**
  * Fixe l'interrupteur du i-ème effet d'une capacité à `active` DANS un dictionnaire
  * d'interrupteurs (le tableau est complété par des `false` jusqu'à l'index visé).
  * Fonction pure : renvoie une nouvelle copie, n'en mute aucune. Brique partagée par

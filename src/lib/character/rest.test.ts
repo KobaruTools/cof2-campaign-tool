@@ -108,6 +108,46 @@ describe('repos — extinction des états temporaires (PER-161)', () => {
   });
 });
 
+describe('repos — purge des saisies libres orphelines (PER-164)', () => {
+  // animaux-r5 (Forme animale) : interrupteur TEMPORAIRE (index 0) + saisie libre corrélée (l'animal).
+  const transformed = make({
+    featureIds: ['animaux-r5'],
+    effectToggles: { 'animaux-r5': [true] },
+    effectInputs: { 'animaux-r5': 'loup' },
+  });
+
+  it('le repos court efface la saisie libre d’une capacité dont l’interrupteur temporaire est éteint', () => {
+    const { effectInputs } = shortRest(transformed);
+    expect(effectInputs).toEqual({});
+  });
+
+  it('le repos long efface aussi la saisie libre orpheline', () => {
+    const { effectInputs } = longRest(transformed);
+    expect(effectInputs).toEqual({});
+  });
+
+  it('préserve la saisie d’un effet SITUATIONNEL (sans interrupteur temporaire) — ex. élément résisté', () => {
+    // magie-elementaire-r2 (Maîtrise des éléments) : le sélecteur d'élément TIENT LIEU d'activation,
+    // pas d'interrupteur temporaire → un repos ne doit pas effacer l'élément choisi.
+    const withScopeChoice = make({
+      featureIds: ['magie-elementaire-r2'],
+      effectInputs: { 'magie-elementaire-r2': 'fire' },
+    });
+    expect(shortRest(withScopeChoice).effectInputs).toEqual({ 'magie-elementaire-r2': 'fire' });
+    expect(longRest(withScopeChoice).effectInputs).toEqual({ 'magie-elementaire-r2': 'fire' });
+  });
+
+  it('préserve la saisie d’une capacité dont l’interrupteur temporaire n’était PAS actif', () => {
+    const notTransformed = make({
+      featureIds: ['animaux-r5'],
+      effectToggles: { 'animaux-r5': [false] },
+      effectInputs: { 'animaux-r5': 'loup' },
+    });
+    expect(shortRest(notTransformed).effectInputs).toEqual({ 'animaux-r5': 'loup' });
+    expect(longRest(notTransformed).effectInputs).toEqual({ 'animaux-r5': 'loup' });
+  });
+});
+
 describe('repos — élixirs du forgesort (voie des élixirs, p. 98)', () => {
   const withElixirs = make({
     equipment: [
@@ -163,6 +203,6 @@ describe('repos — charges explosives (voie des explosifs, PER-157)', () => {
 
 describe('resetAll — tout réinitialiser', () => {
   it('vide toutes les jauges, tous les compteurs et tous les interrupteurs', () => {
-    expect(resetAll()).toEqual({ depletion: {}, usageCounters: {}, effectToggles: {} });
+    expect(resetAll()).toEqual({ depletion: {}, usageCounters: {}, effectToggles: {}, effectInputs: {} });
   });
 });

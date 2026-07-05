@@ -10,7 +10,7 @@
  */
 import type { Character, Depletion, EquipmentLine } from './types';
 import { currentRecoveryDice, healHp, pruneDepletion, spendRecoveryDice } from './gauges';
-import { clearTemporaryEffectToggles, resetUsageCounters } from './effects';
+import { clearTemporaryEffectInputs, clearTemporaryEffectToggles, resetUsageCounters } from './effects';
 import { removeElixirDoses } from './elixirs';
 
 /** Patch d'état de jeu produit par un repos. */
@@ -22,6 +22,12 @@ export interface RestResult {
    * de durée / combat (Sanctuaire, Rage…). Les effets conditionnels situationnels sont préservés.
    */
   effectToggles: Record<string, boolean[]>;
+  /**
+   * Saisies libres d'état de jeu mises à jour (PER-164) : un repos qui éteint l'interrupteur d'un effet
+   * temporaire purge aussi la saisie libre corrélée à la même capacité (ex. l'animal de Forme animale),
+   * pour ne pas laisser de note orpheline au réveil. Les saisies d'effets situationnels sont préservées.
+   */
+  effectInputs: Record<string, string>;
   /**
    * Équipement mis à jour (PER-152) : présent UNIQUEMENT pour le repos long, qui purge les doses
    * d'élixir du forgesort (voie des élixirs, p. 98 : « Les élixirs qui ne sont pas utilisés le jour
@@ -69,6 +75,7 @@ export function shortRest(
       new Set(['short-rest', 'combat']),
     ),
     effectToggles: clearTemporaryEffectToggles(character),
+    effectInputs: clearTemporaryEffectInputs(character),
   };
 }
 
@@ -107,6 +114,7 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
       new Set(['day', 'short-rest', 'combat']),
     ),
     effectToggles: clearTemporaryEffectToggles(character),
+    effectInputs: clearTemporaryEffectInputs(character),
     // Récupération complète = nouveau jour : les élixirs préparés non utilisés sont perdus (p. 98).
     equipment: removeElixirDoses(character.equipment),
   };
@@ -118,5 +126,5 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
  * compteurs d'usages au maximum, y compris les compteurs `manual` (à vie).
  */
 export function resetAll(): RestResult {
-  return { depletion: {}, usageCounters: {}, effectToggles: {} };
+  return { depletion: {}, usageCounters: {}, effectToggles: {}, effectInputs: {} };
 }
