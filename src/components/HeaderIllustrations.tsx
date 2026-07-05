@@ -1,14 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import Box from '@mui/material/Box';
+import { useMouseParallax } from '@/lib/ui/useMouseParallax';
 
-// Suivi souris (px) : décalage max de l'image selon la position du curseur dans la
-// fenêtre. Mêmes réglages que le fond de l'accueil, pour un mouvement cohérent.
-const MOUSE_X = 16;
-const MOUSE_Y = 8;
-// Fraction du défilement répercutée sur l'image (parallaxe vertical).
-const SCROLL_FACTOR = 0.5;
+// Fraction du défilement répercutée sur l'image (parallaxe vertical). Volontairement
+// faible : l'effet doit rester à peine perceptible.
+const SCROLL_FACTOR = 0.08;
 
 interface HeaderIllustrationsProps {
   /** Peuple : illustration « vitruve », ancrée au bord GAUCHE de l'écran. Absent = rien. */
@@ -51,30 +49,10 @@ export function HeaderIllustrations({
   // suivi de la souris lissé (interpolation exponentielle vers la cible).
   const ancestryImgRef = useRef<HTMLImageElement>(null);
   const classImgRef = useRef<HTMLImageElement>(null);
-  useEffect(() => {
-    // Animations réduites : on laisse les transforms de base du sx (aucun mouvement).
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    let targetX = 0;
-    let targetY = 0;
-    let currentX = 0;
-    let currentY = 0;
-
-    const onMouseMove = (e: MouseEvent) => {
-      // Position normalisée [-1, 1] par rapport au centre de la fenêtre.
-      const nx = (e.clientX / window.innerWidth) * 2 - 1;
-      const ny = (e.clientY / window.innerHeight) * 2 - 1;
-      targetX = nx * MOUSE_X;
-      targetY = ny * MOUSE_Y;
-    };
-
-    let raf = 0;
-    const tick = () => {
-      currentX += (targetX - currentX) * 0.06;
-      currentY += (targetY - currentY) * 0.06;
-      const y = window.scrollY * SCROLL_FACTOR;
-      const mx = currentX.toFixed(2);
-      const dy = (y + currentY).toFixed(2);
+  useMouseParallax(
+    ({ x, y, scrollY }) => {
+      const mx = x.toFixed(2);
+      const dy = (scrollY * SCROLL_FACTOR + y).toFixed(2);
       // On conserve les transforms de base (ancrage aux bords via ±50vw, +50px de
       // décalage vertical sur la vitruve) et on y ajoute scroll + suivi souris.
       if (ancestryImgRef.current) {
@@ -83,16 +61,9 @@ export function HeaderIllustrations({
       if (classImgRef.current) {
         classImgRef.current.style.transform = `translateX(calc(50vw + ${mx}px)) translateY(${dy}px)`;
       }
-      raf = window.requestAnimationFrame(tick);
-    };
-
-    window.addEventListener('mousemove', onMouseMove, { passive: true });
-    raf = window.requestAnimationFrame(tick);
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      if (raf) window.cancelAnimationFrame(raf);
-    };
-  }, [ancestryId, classId, portraitVariant]);
+    },
+    { trackScroll: true, deps: [ancestryId, classId, portraitVariant] },
+  );
 
   return (
     <>

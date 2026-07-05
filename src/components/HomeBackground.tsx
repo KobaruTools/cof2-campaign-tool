@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import Box from '@mui/material/Box';
+import { MOUSE_PARALLAX_X, MOUSE_PARALLAX_Y, useMouseParallax } from '@/lib/ui/useMouseParallax';
 
 /**
  * Illustration de couverture (page 1 du livre de base) scindée en deux moitiés
@@ -27,12 +28,13 @@ import Box from '@mui/material/Box';
  */
 type HomeBackgroundVariant = 'full' | 'footer';
 
-// Réglages du mouvement, en pixels.
-const MOUSE_X = 16; // décalage horizontal max au suivi souris
-const MOUSE_Y = 8; // décalage vertical max au suivi souris
+// Réglages du mouvement, en pixels. Le suivi souris vient de la source partagée
+// (`useMouseParallax`) pour un mouvement cohérent avec le reste de l'app.
+const MOUSE_X = MOUSE_PARALLAX_X; // décalage horizontal max au suivi souris
+const MOUSE_Y = MOUSE_PARALLAX_Y; // décalage vertical max au suivi souris
 // Décalage vertical max dû au scroll (borné) : atteint en bas de page, réparti sur
 // TOUTE la course de défilement (progression 0→1), pas sur les premiers pixels.
-const SCROLL_MAX = 20;
+const SCROLL_MAX = 8;
 const SAFETY = 4; // marge de sécurité
 
 // Débordement de l'image au-delà de sa fenêtre, déduit du déplacement maximal
@@ -155,57 +157,21 @@ export function HomeBackground({ variant = 'full' }: { variant?: HomeBackgroundV
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    let targetX = 0;
-    let targetY = 0;
-    let currentX = 0;
-    let currentY = 0;
-    let scroll = 0;
-
-    const onMouseMove = (e: MouseEvent) => {
-      // Position normalisée [-1, 1] par rapport au centre de la fenêtre.
-      const nx = (e.clientX / window.innerWidth) * 2 - 1;
-      const ny = (e.clientY / window.innerHeight) * 2 - 1;
-      targetX = nx * MOUSE_X;
-      targetY = ny * MOUSE_Y;
-    };
-    const onScroll = () => {
-      scroll = window.scrollY;
-    };
-
-    let raf = 0;
-    const tick = () => {
-      // Interpolation exponentielle : lisse le suivi de la cible.
-      currentX += (targetX - currentX) * 0.06;
-      currentY += (targetY - currentY) * 0.06;
+  useMouseParallax(
+    ({ x, y, scrollY }) => {
       // Progression du défilement [0, 1] : le décalage est proportionnel à la course
       // TOTALE (recalculée à chaque frame, la hauteur du document pouvant changer),
       // de sorte que le parallaxe atteint son max (SCROLL_MAX) pile en bas de page.
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = maxScroll > 0 ? clamp(scroll / maxScroll, 0, 1) : 0;
-      const shift = progress * SCROLL_MAX;
-      const y = currentY + shift;
-      const t = `translate3d(${currentX.toFixed(2)}px, ${y.toFixed(2)}px, 0)`;
+      const progress = maxScroll > 0 ? clamp(scrollY / maxScroll, 0, 1) : 0;
+      const dy = y + progress * SCROLL_MAX;
+      const t = `translate3d(${x.toFixed(2)}px, ${dy.toFixed(2)}px, 0)`;
       // Même transform sur les deux moitiés : la scène entière suit le mouvement.
       if (leftRef.current) leftRef.current.style.transform = t;
       if (rightRef.current) rightRef.current.style.transform = t;
-      raf = requestAnimationFrame(tick);
-    };
-
-    if (!reduceMotion) {
-      window.addEventListener('mousemove', onMouseMove, { passive: true });
-      window.addEventListener('scroll', onScroll, { passive: true });
-      raf = requestAnimationFrame(tick);
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('scroll', onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
+    },
+    { mouseX: MOUSE_X, mouseY: MOUSE_Y, trackScroll: true },
+  );
 
   return (
     <Box
