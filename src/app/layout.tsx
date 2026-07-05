@@ -31,8 +31,13 @@ export default function RootLayout({
     <html lang="fr" className={roboto.variable} style={{ colorScheme: 'dark' }}>
       <body>
         <Providers>
-          {children}
-          <AppFooter />
+          {/* Sticky footer : colonne pleine hauteur, le contenu prend l'espace
+              disponible (`flex: 1 0 auto`) et pousse le footer tout en bas même
+              quand la page est trop courte pour remplir l'écran. */}
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+            <div style={{ flex: '1 0 auto' }}>{children}</div>
+            <AppFooter />
+          </div>
         </Providers>
       </body>
     </html>

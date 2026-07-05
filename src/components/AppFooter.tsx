@@ -13,9 +13,15 @@ const YEAR = new Date().getFullYear();
  * Pied de page global : crédits, mentions légales et citation de la source des
  * règles. Rendu sur toutes les pages (inséré dans le layout racine).
  *
- * Style calqué sur `AppHeader` (verre dépoli quasi-noir + flou d'arrière-plan),
- * mais bordure EN HAUT (`borderTop`) au lieu du bas, et non collé (flux normal :
- * il se place naturellement après le contenu de chaque page).
+ * Style calqué sur `AppHeader` (verre dépoli + flou d'arrière-plan), mais bordure
+ * EN HAUT (`borderTop`) au lieu du bas, et non collé (flux normal : il se place
+ * naturellement après le contenu de chaque page).
+ *
+ * Voile SEMI-TRANSPARENT : le `backdropFilter` floute ce qui est peint DERRIÈRE le
+ * footer. Les illustrations de couverture (`HomeBackground`, en `position: fixed;
+ * zIndex: -1`, ancrées au bas du viewport) passent donc derrière le footer et
+ * transparaissent, floutées, au travers du verre — sur l'accueil comme sur la fiche.
+ * Sur une page sans fond, le footer reste un simple verre sombre (dégradé propre).
  *
  * Outil non officiel réalisé par des fans pour une table de jeu privée : les
  * règles proviennent du DRS (Document de Référence du Système) de Chroniques
@@ -27,7 +33,12 @@ export function AppFooter() {
       component="footer"
       sx={{
         mt: 6,
-        bgcolor: 'rgba(20, 20, 23, 0.85)',
+        // Voile semi-transparent (bien plus bas que l'en-tête à 0.85) pour laisser
+        // voir l'illustration de fond ; le flou d'arrière-plan la reprend comme le
+        // verre de l'en-tête. Un léger dégradé vertical densifie le bas pour garder
+        // le texte lisible tout en dégageant le haut où l'art apparaît le mieux.
+        backgroundImage:
+          'linear-gradient(to bottom, rgba(20, 20, 23, 0.42), rgba(20, 20, 23, 0.62))',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',

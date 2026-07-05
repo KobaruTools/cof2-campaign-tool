@@ -643,9 +643,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         }
       />
 
-      {/* Wrapper pleine largeur `position: relative` : sert d'ancre au fond de
-          couverture (variante footer), dont les moitiés se calent sur les bords du
-          viewport et au bas du contenu (miroir des illustrations d'en-tête). */}
+      {/* Fond de couverture (variante footer) : désormais en `position: fixed`,
+          ancré au BAS du viewport — il se colle au bas de l'écran et passe derrière
+          le pied de page global (verre semi-transparent). Le wrapper regroupe
+          simplement le contenu et cette illustration. */}
       <Box sx={{ position: 'relative' }}>
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>

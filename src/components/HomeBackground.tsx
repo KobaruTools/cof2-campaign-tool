@@ -190,11 +190,13 @@ export function HomeBackground({ variant = 'full' }: { variant?: HomeBackgroundV
     <Box
       aria-hidden
       sx={{
-        // Footer : ancré au bas d'un parent `position: relative`, bande de hauteur
-        //   fixe, SANS bgcolor (le fond de l'app transparaît autour de l'art).
+        // Footer : backdrop FIXE ancré au BAS du viewport (bande de hauteur fixe,
+        //   SANS bgcolor — le fond de l'app transparaît autour de l'art). Ainsi
+        //   l'illustration se colle au bas de l'écran et passe DERRIÈRE le pied de
+        //   page global (verre semi-transparent), qui la laisse transparaître.
         // Plein écran : backdrop fixe couvrant tout le viewport, peint dans la
         //   couleur de l'app.
-        position: isFooter ? 'absolute' : 'fixed',
+        position: 'fixed',
         left: 0,
         right: 0,
         ...(isFooter ? { bottom: 0, height: FOOTER_HEIGHT } : { top: 0, bottom: 0, bgcolor: 'background.default' }),
