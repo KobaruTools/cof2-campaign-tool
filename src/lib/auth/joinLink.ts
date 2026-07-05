@@ -1,31 +1,82 @@
 import 'server-only';
 
-/**
- * Résultat de la tentative d'échange d'un secret de lien magique joueur (PER-189).
- * - `ok` : secret valide → session joueur scopée ouverte, `characterId` = fiche
- *   du joueur dans la campagne ciblée (destination de la redirection) ;
- * - `invalid` : secret inconnu ou révoqué (message générique, aucune fuite) ;
- * - `not-implemented` : la mécanique d'échange (PER-191) n'est pas encore livrée.
- */
-export type JoinRedemption =
-  | { status: 'ok'; characterId: string }
-  | { status: 'invalid' }
-  | { status: 'not-implemented' };
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 /**
- * Point de **délégation** (PER-189) vers la mécanique « secret → session joueur
- * scopée » livrée en PER-191 (JWT scopé + RLS joueur : lecture du roster,
- * écriture de sa seule fiche). La landing `/join/[secret]` appelle cette fonction
- * et se contente de mapper le résultat vers une redirection ou un message ; toute
- * la logique de validation/ouverture de session vivra ici.
+ * Résultat de l'échange d'un secret de lien magique joueur (PER-189/PER-191).
+ * - `ok` : secret valide → session joueur scopée ouverte (cookies posés) ;
+ * - `invalid` : secret inconnu, mal formé ou révoqué (message générique, aucune fuite).
  *
- * Tant que PER-191 n'est pas livré, on renvoie `not-implemented` : le seam existe
- * et la route est branchée dessus, sans faire de promesse de sécurité prématurée.
+ * Une erreur d'infrastructure (Supabase indisponible, sign-in anonyme refusé…)
+ * n'est pas un statut : la fonction **lève**, l'appelant (route handler) la mappe
+ * vers un message d'erreur générique.
+ */
+export type JoinRedemption = { status: 'ok' } | { status: 'invalid' };
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Échange « secret de lien magique → session joueur scopée » (PER-191).
+ *
+ * Mécanique (design verrouillé au grilling 2026-07-05) : le joueur n'a pas de
+ * compte, sa session est un **utilisateur anonyme** Supabase auquel on attache
+ * `player_id` + `campaign_id` dans `app_metadata` (posé par la clé secrète → non
+ * falsifiable). `getUser()` valide alors un vrai utilisateur (le gating PER-189
+ * reste inchangé) et la RLS joueur (migration 0002) scope l'accès via ces claims.
+ *
+ * Étapes :
+ *   1. Valider le `join_secret` via le client **admin** (contourne la RLS
+ *      propriétaire pour lire `players`). Secret mal formé/inconnu → `invalid`.
+ *   2. `signInAnonymously()` via le client **SSR** (pose les cookies de session).
+ *   3. `admin.updateUserById` pose `app_metadata` = { player_id, campaign_id }.
+ *   4. `refreshSession()` réémet le jeton AVEC les claims (le jeton de l'étape 2
+ *      était minté avant le stamp) et réécrit les cookies.
+ *   5. Enregistrer la liaison anon↔joueur (`player_auth_sessions`) pour la
+ *      révocation forte (régénération du lien → suppression de ces utilisateurs).
+ *
+ * **À appeler depuis un Route Handler** (l'écriture des cookies de session est
+ * interdite dans un Server Component).
  */
 export async function redeemJoinSecret(secret: string): Promise<JoinRedemption> {
-  // TODO(PER-191): valider le secret (table `players` / lien magique), ouvrir une
-  // session joueur scopée (JWT + RLS joueur), puis renvoyer `{ status: 'ok',
-  // characterId }`. Secret inconnu/révoqué → `{ status: 'invalid' }`.
-  void secret;
-  return { status: 'not-implemented' };
+  // 1. Secret mal formé → invalide, sans même toucher la base.
+  if (!UUID_RE.test(secret)) {
+    return { status: 'invalid' };
+  }
+
+  const admin = createAdminSupabaseClient();
+  const { data: player, error: lookupError } = await admin
+    .from('players')
+    .select('id, campaign_id')
+    .eq('join_secret', secret)
+    .maybeSingle();
+  if (lookupError) throw lookupError;
+  if (!player) {
+    return { status: 'invalid' };
+  }
+
+  // 2. Ouvre une session anonyme fraîche (cookies posés par le client SSR).
+  const supabase = await createServerSupabaseClient();
+  const { data: anon, error: signInError } = await supabase.auth.signInAnonymously();
+  if (signInError) throw signInError;
+  if (!anon.user) throw new Error('Échec de la création de la session anonyme.');
+
+  // 3. Attache les claims scopés (admin : app_metadata non modifiable par le joueur).
+  const { error: metaError } = await admin.auth.admin.updateUserById(anon.user.id, {
+    app_metadata: { player_id: player.id, campaign_id: player.campaign_id },
+  });
+  if (metaError) throw metaError;
+
+  // 4. Réémet le jeton pour y intégrer les claims fraîchement posés.
+  const { error: refreshError } = await supabase.auth.refreshSession();
+  if (refreshError) throw refreshError;
+
+  // 5. Trace la liaison pour la révocation forte (régénération du lien).
+  const { error: mapError } = await admin
+    .from('player_auth_sessions')
+    .insert({ auth_user_id: anon.user.id, player_id: player.id });
+  if (mapError) throw mapError;
+
+  return { status: 'ok' };
 }

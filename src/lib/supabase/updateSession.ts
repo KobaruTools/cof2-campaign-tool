@@ -13,10 +13,23 @@ import type { Database } from './types';
  */
 const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join'] as const;
 
+/**
+ * Routes ouvertes à une session **joueur** (utilisateur anonyme du lien magique,
+ * PER-191) : son espace `/play` et, à terme, l'édition de sa fiche `/character/*`.
+ * Tout le reste (UI propriétaire) lui est interdit → renvoyé vers `/play`.
+ */
+const PLAYER_PATH_PREFIXES = ['/play', '/character'] as const;
+
+function matchesPrefix(pathname: string, prefixes: readonly string[]): boolean {
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATH_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  return matchesPrefix(pathname, PUBLIC_PATH_PREFIXES);
+}
+
+function isPlayerPath(pathname: string): boolean {
+  return matchesPrefix(pathname, PLAYER_PATH_PREFIXES);
 }
 
 /**
@@ -68,22 +81,44 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Gating : visiteur non authentifié sur une route propriétaire → connexion.
-  if (!user && !isPublicPath(request.nextUrl.pathname)) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = '/login';
-    loginUrl.search = '';
-    // Retour post-connexion vers la page visée (chemin interne, pas d'open redirect).
-    const target = request.nextUrl.pathname + request.nextUrl.search;
-    if (target !== '/') {
-      loginUrl.searchParams.set('next', target);
-    }
-    const redirectResponse = NextResponse.redirect(loginUrl);
-    // Reporter les cookies de session éventuellement rafraîchis sur la redirection.
+  const pathname = request.nextUrl.pathname;
+
+  // Construit une redirection en reportant les cookies de session éventuellement
+  // rafraîchis (sinon la session « clignote » à la requête suivante).
+  const redirectTo = (to: string, search = ''): NextResponse => {
+    const url = request.nextUrl.clone();
+    url.pathname = to;
+    url.search = search;
+    const redirectResponse = NextResponse.redirect(url);
     for (const cookie of response.cookies.getAll()) {
       redirectResponse.cookies.set(cookie);
     }
     return redirectResponse;
+  };
+
+  // Gating : visiteur non authentifié sur une route propriétaire → connexion.
+  if (!user) {
+    if (isPublicPath(pathname)) {
+      return response;
+    }
+    // Retour post-connexion vers la page visée (chemin interne, pas d'open redirect).
+    const target = pathname + request.nextUrl.search;
+    return redirectTo('/login', target !== '/' ? `?next=${encodeURIComponent(target)}` : '');
+  }
+
+  // Confinement des rôles (PER-191). Une session JOUEUR (claim `player_id`) est
+  // cantonnée à son espace ; une session MJ n'a rien à faire dans `/play`.
+  const isPlayer = Boolean(
+    (user.app_metadata as { player_id?: string } | undefined)?.player_id,
+  );
+  if (isPlayer) {
+    if (!isPublicPath(pathname) && !isPlayerPath(pathname)) {
+      return redirectTo('/play');
+    }
+  } else if (isPlayerPath(pathname) && !pathname.startsWith('/character')) {
+    // MJ visant l'espace joueur `/play` → ramené à son accueil. (`/character/*`
+    // reste commun aux deux rôles.)
+    return redirectTo('/');
   }
 
   return response;

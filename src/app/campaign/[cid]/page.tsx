@@ -42,6 +42,7 @@ import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
+import { PlayersSection } from '@/components/campaign/PlayersSection';
 import { ClassIcon } from '@/components/ClassIcon';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
@@ -328,6 +329,10 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
             </Stack>
           </>
         )}
+
+        <Box sx={{ mt: 4 }}>
+          <PlayersSection campaignId={cid} />
+        </Box>
       </Container>
 
       <ImportCharacterDialog

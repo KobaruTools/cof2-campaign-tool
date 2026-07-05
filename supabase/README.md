@@ -35,6 +35,42 @@ Ces étapes nécessitent un compte Supabase — elles ne peuvent pas être autom
    `psql`). Le script doit se terminer sur « RLS isolation : tous les tests OK »
    sans lever d'exception, puis annuler ses données (`ROLLBACK`).
 
+## Accès joueur par lien magique (PER-191)
+
+- `migrations/0002_player_access.sql` — RLS **joueur** (lecture du roster de sa
+  campagne + édition/création de sa seule fiche), trigger imposant `owner_id`
+  = MJ de la campagne sur les fiches créées par un joueur, et table de liaison
+  `player_auth_sessions` (RLS verrouillée, accès clé secrète seule) pour la
+  révocation forte.
+- `tests/rls_player_isolation.sql` — isolation joueur (transaction `ROLLBACK`).
+  Exécuter comme le test propriétaire : doit finir sur « RLS joueur (PER-191) :
+  tous les tests OK ».
+
+Mécanique : le joueur n'a pas de compte ; le lien `/join/<join_secret>` ouvre une
+**session utilisateur anonyme** Supabase à laquelle la route serveur attache
+`player_id`/`campaign_id` dans `app_metadata` (posé par la clé secrète → non
+falsifiable). La RLS lit ces claims. `getUser()` valide un vrai utilisateur → le
+gating reste inchangé ; le proxy confine ensuite la session joueur à `/play` +
+`/character/*`.
+
+Provisionnement (en plus du socle) :
+
+1. **Activer les connexions anonymes** sur le projet hébergé. Soit dans le
+   dashboard (Authentication → Sign In / Providers → *Anonymous sign-ins*), soit
+   via l'API Management (ciblé, sans écraser `site_url`) :
+   ```sh
+   set -a; . ./.env.local; set +a
+   curl -s -X PATCH \
+     -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+     -d '{"external_anonymous_users_enabled": true}' \
+     "https://api.supabase.com/v1/projects/<project-ref>/config/auth"
+   ```
+   `config.toml` a déjà `enable_anonymous_sign_ins = true` pour le dev local.
+2. **`SUPABASE_SECRET_KEY`** est nécessaire côté serveur (échange du lien,
+   révocation) : présente en `.env.local` **et** sur Vercel (prod).
+3. Recette locale du login joueur : ajouter `http://localhost:3000/**` aux
+   *Redirect URLs* Supabase.
+
 ## Authentification CLI PAR DOSSIER (pas globale)
 
 `supabase login` stocke un token **global** à la machine : sur un poste qui gère

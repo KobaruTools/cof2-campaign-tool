@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -8,38 +7,43 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { HomeBackground } from '@/components/HomeBackground';
-import { redeemJoinSecret } from '@/lib/auth/joinLink';
 
 /**
- * Landing du lien magique joueur (PER-189). Route **publique** (exclue du gating
- * du proxy, cf. `updateSession`) : un joueur invité arrive ici sans compte
- * propriétaire. L'échange « secret → session joueur scopée » est **délégué** à
- * `redeemJoinSecret` (mécanique livrée en PER-191). Cette page ne fait que router
- * le résultat : redirection vers la fiche du joueur si le secret est valide, ou
- * message clair (en français, sans fuite d'info) sinon.
+ * Page d'information des invitations joueur (PER-191). Route **publique**. On y
+ * arrive quand la consommation du lien (`/join/[secret]`, route handler) échoue :
+ * `?status=invalid` (secret inconnu/révoqué) ou `?status=error` (incident). Un
+ * lien valide, lui, ne passe jamais ici : il redirige directement vers `/play`.
+ * Les messages restent génériques (aucune fuite sur l'existence d'un secret).
  */
 export const metadata: Metadata = {
   title: 'Invitation — Éditeur de personnage CO2',
 };
 
-export default async function JoinPage({
-  params,
+export default async function JoinInfoPage({
+  searchParams,
 }: {
-  params: Promise<{ secret: string }>;
+  searchParams: Promise<{ status?: string }>;
 }) {
-  const { secret } = await params;
-  const result = await redeemJoinSecret(secret);
+  const { status } = await searchParams;
 
-  // Secret valide : on rejoint directement la fiche du joueur dans la campagne.
-  if (result.status === 'ok') {
-    redirect(`/character/${result.characterId}`);
-  }
-
-  // Message générique : on ne révèle jamais si un secret existe ou a été révoqué.
-  const message =
-    result.status === 'invalid'
-      ? "Ce lien d'invitation est invalide ou a été révoqué. Demande un nouveau lien à ton MJ."
-      : "Les invitations par lien magique ne sont pas encore activées. Reviens bientôt, ou demande à ton MJ.";
+  const { severity, message } =
+    status === 'invalid'
+      ? {
+          severity: 'error' as const,
+          message:
+            "Ce lien d'invitation est invalide ou a été révoqué. Demande un nouveau lien à ton MJ.",
+        }
+      : status === 'error'
+        ? {
+            severity: 'error' as const,
+            message:
+              "Une erreur est survenue à l'ouverture de ta session. Réessaie, ou demande un nouveau lien à ton MJ.",
+          }
+        : {
+            severity: 'info' as const,
+            message:
+              "Ouvre le lien d'invitation que ton MJ t'a partagé pour rejoindre ta campagne.",
+          };
 
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
@@ -65,7 +69,7 @@ export default async function JoinPage({
             </Typography>
           </Stack>
 
-          <Alert severity={result.status === 'invalid' ? 'error' : 'info'} sx={{ mb: 3 }}>
+          <Alert severity={severity} sx={{ mb: 3 }}>
             {message}
           </Alert>
 

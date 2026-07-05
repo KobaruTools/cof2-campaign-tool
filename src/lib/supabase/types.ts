@@ -1,7 +1,3 @@
-// Types de la base Supabase — GENERE par `supabase gen types typescript --linked`.
-// Ne pas editer a la main : regenerer apres toute migration (cf. supabase/README.md).
-// set -a; . ./.env.local; set +a; npx supabase gen types typescript --linked > src/lib/supabase/types.ts
-
 export type Json =
   | string
   | number
@@ -127,6 +123,32 @@ export type Database = {
           },
         ]
       }
+      player_auth_sessions: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          player_id: string
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          player_id: string
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_auth_sessions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       players: {
         Row: {
           campaign_id: string
@@ -164,7 +186,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_player_campaign_id: { Args: never; Returns: string }
+      current_player_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
