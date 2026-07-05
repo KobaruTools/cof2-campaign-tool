@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
@@ -31,6 +32,7 @@ import type { Family, Feature } from '@/data/schema';
 import { featureCost, maxHp, minLevelForRank } from '@/lib/engine';
 import { familyHpGains } from '@/lib/character/hp';
 import { rulesContext } from '@/lib/character/rulesContext';
+import { effectiveClassPathIds } from '@/lib/character/classDisplay';
 import type { Character, FeatureChoiceSelection, OrphanReward } from '@/lib/character/types';
 import { ORPHAN_REWARD_LABEL } from '@/lib/character/orphanPoints';
 import {
@@ -38,8 +40,15 @@ import {
   applyLevelUp,
   deselectFeature,
   FEATURE_POINTS_PER_LEVEL,
+  forgettableFeatures,
+  maxRetrainings,
   totalFeatureCost,
 } from '@/lib/character/levelUp';
+import {
+  pruneEffectInputs,
+  pruneEffectToggles,
+  pruneUsageCounters,
+} from '@/lib/character/effects';
 import {
   eligibleDivineHostPaths,
   hasActionableChoice,
@@ -475,7 +484,12 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   // n'est pas de l'hybridation, donc sa voie d'origine n'est « entamée » que si on en
   // a pris le rang 1 NATIF (sinon elle resterait masquée derrière « Voies d'autres
   // profils », comme toute voie hybride non encore ouverte).
-  const mainPathIds = new Set(classById.get(character.classId)?.pathIds ?? []);
+  const characterClassForPaths = classById.get(character.classId);
+  const mainPathIds = new Set(
+    characterClassForPaths
+      ? effectiveClassPathIds(characterClassForPaths, character.firearmsAllowed)
+      : [],
+  );
   const divineFeatureId = acquiredSlot?.featureId;
   const startedPaths = new Set(
     working.featureIds

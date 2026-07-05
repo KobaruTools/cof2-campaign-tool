@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 9,
+  "id": "test-arbaletrier-humain",
+  "name": "Test — Arbalétrier (humain)",
+  "identity": {
+    "sex": "male",
+    "description": "PER-174 — arquebusier « Arbalétrier » (armes à feu interdites dans l'univers, firearmsAllowed=false, p. 62). Variante : la voie des explosifs est remplacée par la voie du MAÎTRE DES ARBALÈTES (copie carbone du maître d'armes du guerrier, limitée aux arbalètes). Les 5 voies effectives au rang 5. À vérifier : le profil s'affiche « Arbalétrier » (liste, en-tête, wizard) ; la voie proposée est bien « maître des arbalètes » et JAMAIS « explosifs ». Maître des arbalètes — Maîtrise de l'arbalète (r1) : prédilection FIXÉE aux arbalètes (pas de choix 6-catégories) ; bonus de compétence [rang + 2] connaissance martiale (martial-lore) ; +1 attaque WIP (PER-136/115) ; picks de spécialisation « +1 DM » = 5 (une par voie d'arquebusier au rang 5, débloqués par r3). Science du critique (r2) : INTERRUPTEUR « arbalète en main » ACTIF → plage de critique +1 À DISTANCE (scope ranged, et non contact). Spécialisation (r3) : +1 DM arbalète (max +6) WIP. Attaque parfaite (r4) : {1d4°} DM. Riposte (r5) : réaction (G). Artilleur/Mercenaire/Pistolero/Précision : idem recette arquebusier (PER-71). NB affichage : la voie de l'artilleur garde encore ses libellés « poudre/couleuvrine » — reskin différé à PER-178."
+  },
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 20,
+  "portraitVariant": "default",
+  "firearmsAllowed": false,
+  "abilities": {
+    "AGI": 3,
+    "CON": 2,
+    "FOR": 0,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 4,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 3,
+    "CON": 2,
+    "FOR": 0,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 4,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "artilleur-r1",
+    "maitre-des-arbaletes-r1",
+    "humain-r1",
+    "mercenaire-r1",
+    "pistolero-r1",
+    "precision-r1",
+    "artilleur-r2",
+    "maitre-des-arbaletes-r2",
+    "mercenaire-r2",
+    "pistolero-r2",
+    "precision-r2",
+    "artilleur-r3",
+    "maitre-des-arbaletes-r3",
+    "mercenaire-r3",
+    "pistolero-r3",
+    "precision-r3",
+    "artilleur-r4",
+    "maitre-des-arbaletes-r4",
+    "mercenaire-r4",
+    "pistolero-r4",
+    "precision-r4",
+    "artilleur-r5",
+    "maitre-des-arbaletes-r5",
+    "mercenaire-r5",
+    "pistolero-r5",
+    "precision-r5"
+  ],
+  "featureChoices": {
+    "humain-r1": [
+      "city-dweller"
+    ],
+    "maitre-des-arbaletes-r1": [
+      "dm-bonus",
+      "dm-bonus",
+      "dm-bonus",
+      "dm-bonus",
+      "dm-bonus"
+    ],
+    "mercenaire-r3": [
+      "combat-r1"
+    ]
+  },
+  "effectToggles": {
+    "maitre-des-arbaletes-r2": [
+      true
+    ],
+    "mercenaire-r1": [
+      true
+    ],
+    "mercenaire-r5": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "artilleur-r1",
+        "maitre-des-arbaletes-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "mercenaire-r1",
+        "pistolero-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "precision-r1",
+        "artilleur-r2"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "maitre-des-arbaletes-r2",
+        "mercenaire-r2"
+      ]
+    },
+    {
+      "level": 5,
+      "chosenFeatureIds": [
+        "pistolero-r2",
+        "precision-r2"
+      ]
+    },
+    {
+      "level": 6,
+      "chosenFeatureIds": [
+        "artilleur-r3"
+      ]
+    },
+    {
+      "level": 7,
+      "chosenFeatureIds": [
+        "maitre-des-arbaletes-r3"
+      ]
+    },
+    {
+      "level": 8,
+      "chosenFeatureIds": [
+        "mercenaire-r3"
+      ]
+    },
+    {
+      "level": 9,
+      "chosenFeatureIds": [
+        "pistolero-r3"
+      ]
+    },
+    {
+      "level": 10,
+      "chosenFeatureIds": [
+        "precision-r3"
+      ]
+    },
+    {
+      "level": 11,
+      "chosenFeatureIds": [
+        "artilleur-r4"
+      ]
+    },
+    {
+      "level": 12,
+      "chosenFeatureIds": [
+        "maitre-des-arbaletes-r4"
+      ]
+    },
+    {
+      "level": 13,
+      "chosenFeatureIds": [
+        "mercenaire-r4"
+      ]
+    },
+    {
+      "level": 14,
+      "chosenFeatureIds": [
+        "pistolero-r4"
+      ]
+    },
+    {
+      "level": 15,
+      "chosenFeatureIds": [
+        "precision-r4"
+      ]
+    },
+    {
+      "level": 16,
+      "chosenFeatureIds": [
+        "artilleur-r5"
+      ]
+    },
+    {
+      "level": 17,
+      "chosenFeatureIds": [
+        "maitre-des-arbaletes-r5"
+      ]
+    },
+    {
+      "level": 18,
+      "chosenFeatureIds": [
+        "mercenaire-r5"
+      ]
+    },
+    {
+      "level": 19,
+      "chosenFeatureIds": [
+        "pistolero-r5"
+      ]
+    },
+    {
+      "level": 20,
+      "chosenFeatureIds": [
+        "precision-r5"
+      ]
+    }
+  ],
+  "equipment": [
+    {
+      "itemId": "arbalete-de-poing",
+      "quantity": 1
+    },
+    {
+      "itemId": "epee-longue",
+      "quantity": 1
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-174 (variante « Arbalétrier ») — perso de recette. Profil arquebusier avec firearmsAllowed=false : le profil s'affiche « Arbalétrier » et la voie des explosifs est remplacée par la voie du maître des arbalètes (limitée aux arbalètes). Interrupteurs actifs : « arbalète en main » (Science du critique → plage de critique à distance), Pilier de bar (taverne), Combat de masse. Choix : Maîtrise de l'arbalète = 5 picks « +1 DM » de spécialisation (une par voie d'arquebusier au rang 5) ; Combattant aguerri = combat-r1 (Vivacité) emprunté. levelUpHistory reconstruit « pour de vrai » via scripts/rebuild-character-history.ts. Affichage poudre→arbalète de la voie de l'artilleur différé (PER-178).",
+  "createdAt": "2026-07-05T00:00:00.000Z",
+  "updatedAt": "2026-06-25T00:00:00.000Z"
+}

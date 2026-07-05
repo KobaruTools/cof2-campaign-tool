@@ -238,6 +238,15 @@ export interface CharacterClass {
   /** Les 5 voies du profil, dans l'ordre du livre — ex. table p. 61. */
   pathIds: string[];
   /**
+   * Voies EFFECTIVES quand les armes à feu sont interdites (`Character.firearmsAllowed === false`).
+   * Arquebusier → « Arbalétrier » : la voie des explosifs est supprimée et remplacée par la voie du
+   * maître des arbalètes (clone limité aux arbalètes de la voie du maître d'armes du guerrier),
+   * encadré « Poudre ou pas poudre ? », p. 62. Absent → `pathIds` s'applique quelle que soit
+   * l'autorisation des armes à feu. Résolu par `effectiveClassPathIds` (cf.
+   * `src/lib/character/classDisplay.ts`), miroir de `nameWithoutFirearms`.
+   */
+  pathIdsWithoutFirearms?: string[];
+  /**
    * Caractéristiques « les plus utiles au personnage », par ordre
    * d'importance, telles qu'indiquées entre crochets dans le résumé des
    * profils p. 24-25 (souvent 3 ; le druide a un 3e choix « CON ou AGI »,

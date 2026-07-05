@@ -10,6 +10,7 @@ import type { AbilityId, Ancestry, Feature } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import { classById, pathById, priestGodById, featureById } from '@/data';
 import { applyModifiers, type AncestryChoice } from './ancestry';
+import { effectiveClassPathIds } from './classDisplay';
 import {
   SCHEMA_VERSION,
   type Character,
@@ -226,7 +227,11 @@ export function pathsStepComplete(draft: WizardDraft): boolean {
   if (!characterClass) return false;
   if (draft.hybrid) {
     if (!involvedClassIds(draft.chosenPaths).includes(draft.classId)) return false;
-  } else if (!draft.chosenPaths.every((pathId) => characterClass.pathIds.includes(pathId))) {
+  } else if (
+    !draft.chosenPaths.every((pathId) =>
+      effectiveClassPathIds(characterClass, draft.firearmsAllowed ?? true).includes(pathId),
+    )
+  ) {
     return false;
   }
   if (characterClass.familyId === 'mages') return draft.mageBonus !== null;

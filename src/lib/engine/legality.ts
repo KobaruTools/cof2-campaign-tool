@@ -28,6 +28,7 @@ import type {
 } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
 import { priestDivineFeatureId, priestDivineSlot, type DivineSlot } from '@/lib/character/choices';
+import { effectiveClassPathIds, firearmsInactivePathIds } from '@/lib/character/classDisplay';
 
 /**
  * Voie EFFECTIVE d'une capacité pour la PROGRESSION : la capacité divine d'un prêtre
@@ -61,6 +62,7 @@ export type WarningCode =
   | 'PRESTIGE_LEVEL_TOO_LOW'
   | 'HYBRID_PROFILE'
   | 'FEATURE_POINTS_OVERSPENT'
+  | 'FIREARMS_DISABLED_PATH'
   | 'UNKNOWN_FEATURE';
 
 export interface Warning {
@@ -282,7 +284,9 @@ export function isHybrid(character: Character, ctx: RulesContext): boolean {
 export function canStartHybridPath(character: Character, ctx: RulesContext): boolean {
   const characterClass = ctx.classById.get(character.classId);
   if (!characterClass) return false;
-  return characterClass.pathIds.some((pathId) => ownedRanks(character, pathId, ctx).length === 0);
+  return effectiveClassPathIds(characterClass, character.firearmsAllowed).some(
+    (pathId) => ownedRanks(character, pathId, ctx).length === 0,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -326,7 +330,22 @@ export function canAcquireFeature(
   // ponctuellement dans une autre voie, est textuel et géré à la main sur la
   // fiche permissive — il n'entre pas dans les choix proposés par le wizard.)
   if (path.type === 'class') {
-    const isMainProfilePath = characterClass?.pathIds.includes(path.id) ?? false;
+    // Variante « Arbalétrier » (p. 62) : la voie des explosifs et la voie du maître des arbalètes
+    // sont mutuellement exclusives selon `firearmsAllowed`. La variante INACTIVE dans le cadre de jeu
+    // courant n'existe pas — elle n'est acquérable ni comme voie principale ni comme voie hybride,
+    // quel que soit le profil du personnage (le réglage est propre au personnage). On teste contre le
+    // profil PROPRIÉTAIRE de la voie (arquebusier) pour couvrir aussi un accès hybride.
+    const owningClass = ctx.classById.get(path.classIds[0]);
+    if (owningClass && firearmsInactivePathIds(owningClass, character.firearmsAllowed).includes(path.id)) {
+      reasons.push(
+        character.firearmsAllowed === false
+          ? `« ${path.name} » n'est pas disponible : les armes à feu sont interdites dans cet univers (variante « Arbalétrier », p. 62).`
+          : `« ${path.name} » n'est disponible que lorsque les armes à feu sont interdites (variante « Arbalétrier », p. 62).`,
+      );
+    }
+    const isMainProfilePath =
+      characterClass != null &&
+      effectiveClassPathIds(characterClass, character.firearmsAllowed).includes(path.id);
     if (!isMainProfilePath) {
       const alreadyStarted = ownedRanks(character, path.id, ctx).length > 0;
       if (!alreadyStarted && !canStartHybridPath(character, ctx)) {
@@ -535,6 +554,30 @@ export function checkCompliance(character: Character, ctx: RulesContext): Warnin
     warnings.push({
       code: 'FEATURE_POINTS_OVERSPENT',
       message: `Points de capacité dépassés : ${budget.spent} dépensé${budget.spent > 1 ? 's' : ''} pour ${budget.available} disponible${budget.available > 1 ? 's' : ''} (2 points par niveau au-delà du niveau 1, hors capacités gratuites de la création).`,
+    });
+  }
+
+  // Variante « Arbalétrier » (p. 62) : voie désactivée par le réglage des armes à feu mais déjà
+  // entamée. Cas typique : un arquebusier construit avec la voie des explosifs, puis basculé « armes
+  // à feu interdites » — ses capacités d'explosifs deviennent hors cadre. La fiche étant permissive,
+  // on ne retire rien : simple avertissement invitant à basculer vers la voie de remplacement.
+  const firearmsDisabledPaths = new Set<string>();
+  for (const id of character.featureIds) {
+    const feature = ctx.featureById.get(id);
+    if (!feature) continue;
+    const path = ctx.pathById.get(feature.pathId);
+    if (!path || path.type !== 'class') continue;
+    const owningClass = ctx.classById.get(path.classIds[0]);
+    if (owningClass && firearmsInactivePathIds(owningClass, character.firearmsAllowed).includes(path.id)) {
+      firearmsDisabledPaths.add(path.id);
+    }
+  }
+  for (const pathId of firearmsDisabledPaths) {
+    const path = ctx.pathById.get(pathId)!;
+    warnings.push({
+      code: 'FIREARMS_DISABLED_PATH',
+      message: `« ${path.name} » n'est pas disponible dans ce cadre de jeu (${character.firearmsAllowed === false ? 'armes à feu interdites' : 'armes à feu autorisées'}, variante « Arbalétrier », p. 62). Envisagez de basculer vers la voie de remplacement.`,
+      pathId,
     });
   }
 

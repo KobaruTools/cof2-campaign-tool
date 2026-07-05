@@ -92,6 +92,12 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'explosifs-r3', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 63 }, // Poudre puissante
   { id: 'explosifs-r4', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 64 }, // Piège explosif
   { id: 'explosifs-r5', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 64 }, // Boulet explosif
+  // Voie du maître des arbalètes (variante « Arbalétrier », p. 62) — copie carbone du maître d'armes.
+  { id: 'maitre-des-arbaletes-r1', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 62 }, // Maîtrise de l’arbalète
+  { id: 'maitre-des-arbaletes-r2', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 62 }, // Science du critique
+  { id: 'maitre-des-arbaletes-r3', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 62 }, // Spécialisation
+  { id: 'maitre-des-arbaletes-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 62 }, // Attaque parfaite
+  { id: 'maitre-des-arbaletes-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 62 }, // Riposte
   { id: 'mercenaire-r1', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 64 }, // Pilier de bar
   { id: 'mercenaire-r2', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 64 }, // Mort ou vif
   { id: 'mercenaire-r3', tags: ['flat-bonus', 'choice'], sourcePage: 64 }, // Combattant aguerri

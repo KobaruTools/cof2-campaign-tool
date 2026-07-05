@@ -71,6 +71,13 @@ const TARGETS: Target[] = [
     level1FreeIds: ['artilleur-r1', 'explosifs-r1', 'humain-r1'],
   },
   {
+    file: 'test-arbaletrier-humain.json',
+    // Variante « Arbalétrier » (PER-174, firearmsAllowed=false) : arquebusier dont la voie des
+    // explosifs est remplacée par la voie du maître des arbalètes. Voies de création : artilleur +
+    // maître des arbalètes ; peuple humain. Les trois autres voies s'ouvrent aux montées.
+    level1FreeIds: ['artilleur-r1', 'maitre-des-arbaletes-r1', 'humain-r1'],
+  },
+  {
     file: 'test-barbare-humain.json',
     // Profil barbare (brute + pagne à la création) ; peuple humain.
     // Les trois autres voies (pourfendeur, primitif, rage) s'ouvrent aux montées.

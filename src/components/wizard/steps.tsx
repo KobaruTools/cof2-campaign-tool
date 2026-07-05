@@ -51,7 +51,7 @@ import {
   type WizardDraft,
 } from '@/lib/character/wizard';
 import { borrowedFeatureIds, hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
-import { classDisplayName } from '@/lib/character/classDisplay';
+import { classDisplayName, effectiveClassPathIds } from '@/lib/character/classDisplay';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { initialEquipment } from './helpers';
@@ -824,8 +824,10 @@ export function PathsStep({ draft, patch }: StepProps) {
       patch({ hybrid: true });
       return;
     }
-    // Repli standard : ne conserver que les voies du profil principal.
-    const kept = draft.chosenPaths.filter((p) => characterClass.pathIds.includes(p));
+    // Repli standard : ne conserver que les voies du profil principal (voies EFFECTIVES : un
+    // arbalétrier a le maître des arbalètes à la place des explosifs).
+    const mainPathIds = effectiveClassPathIds(characterClass, draft.firearmsAllowed ?? true);
+    const kept = draft.chosenPaths.filter((p) => mainPathIds.includes(p));
     const mageBonus =
       draft.mageBonus?.type === 'class-rank2' && !kept.includes(draft.mageBonus.pathId)
         ? null
@@ -902,7 +904,11 @@ export function PathsStep({ draft, patch }: StepProps) {
             {characterClass.name} (profil principal)
           </Typography>
         )}
-        {pathChecklist(characterClass.pathIds, classColor(characterClass.id), characterClass.id)}
+        {pathChecklist(
+          effectiveClassPathIds(characterClass, draft.firearmsAllowed ?? true),
+          classColor(characterClass.id),
+          characterClass.id,
+        )}
 
         {hybrid && (
           <>

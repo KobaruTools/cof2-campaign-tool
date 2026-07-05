@@ -26,3 +26,40 @@ export function characterClassName(character: Character, fallback = '—'): stri
   const cls = classById.get(character.classId);
   return cls ? classDisplayName(cls, character.firearmsAllowed) : fallback;
 }
+
+/**
+ * Voies EFFECTIVES du profil `cls` compte tenu de l'autorisation des armes à feu.
+ *
+ * Miroir de `classDisplayName` côté voies : l'arquebusier privé de poudre
+ * (« Arbalétrier », p. 62) voit la voie des explosifs remplacée par la voie du
+ * maître des arbalètes (`pathIdsWithoutFirearms`). On ne bascule que si les armes
+ * à feu sont EXPLICITEMENT interdites (`false`) et que le profil déclare un jeu de
+ * voies alternatif ; `true`/absence → `pathIds` standard.
+ *
+ * À utiliser partout où compte la DISPONIBILITÉ des voies du profil principal
+ * (sélection au wizard, montée de niveau, contrôle de légalité/conformité), afin
+ * qu'un arbalétrier se voie proposer le maître des arbalètes et non les explosifs.
+ */
+export function effectiveClassPathIds(cls: CharacterClass, firearmsAllowed: boolean): string[] {
+  return firearmsAllowed === false && cls.pathIdsWithoutFirearms
+    ? cls.pathIdsWithoutFirearms
+    : cls.pathIds;
+}
+
+/**
+ * Voies du profil `cls` DÉSACTIVÉES par le réglage courant des armes à feu : celles
+ * qui appartiennent au profil dans l'AUTRE mode mais pas dans le mode actif. Pour
+ * l'arquebusier : `explosifs` quand les armes à feu sont interdites, et
+ * `maitre-des-arbaletes` quand elles sont autorisées (les deux voies sont des
+ * variantes mutuellement exclusives, encadré « Poudre ou pas poudre ? », p. 62).
+ * Vide si le profil ne déclare pas de variante (`pathIdsWithoutFirearms` absent).
+ *
+ * Sert à INTERDIRE l'acquisition de la variante inactive : elle n'existe pas dans
+ * ce cadre de jeu, donc ni voie principale ni voie hybride ne doit y donner accès.
+ */
+export function firearmsInactivePathIds(cls: CharacterClass, firearmsAllowed: boolean): string[] {
+  if (!cls.pathIdsWithoutFirearms) return [];
+  const active = new Set(effectiveClassPathIds(cls, firearmsAllowed));
+  const all = new Set([...cls.pathIds, ...cls.pathIdsWithoutFirearms]);
+  return [...all].filter((id) => !active.has(id));
+}

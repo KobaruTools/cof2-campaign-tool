@@ -401,3 +401,45 @@ describe('checkCompliance', () => {
     expect(codes).not.toContain('FEATURE_POINTS_OVERSPENT');
   });
 });
+
+describe('variante « Arbalétrier » : échange de voie explosifs ↔ maître des arbalètes (p. 62)', () => {
+  it('armes à feu autorisées : la voie des explosifs est accessible, pas celle du maître des arbalètes', () => {
+    const c = makeCharacter({ classId: 'arquebusier', ancestryId: 'humain', ancestryPathId: 'humain' });
+    expect(canAcquireFeature(c, 'explosifs-r1', ctx).legal).toBe(true);
+    expect(canAcquireFeature(c, 'maitre-des-arbaletes-r1', ctx).legal).toBe(false);
+  });
+
+  it('armes à feu interdites : la voie du maître des arbalètes remplace celle des explosifs', () => {
+    const c = makeCharacter({
+      classId: 'arquebusier',
+      ancestryId: 'humain',
+      ancestryPathId: 'humain',
+      firearmsAllowed: false,
+    });
+    expect(canAcquireFeature(c, 'maitre-des-arbaletes-r1', ctx).legal).toBe(true);
+    expect(canAcquireFeature(c, 'explosifs-r1', ctx).legal).toBe(false);
+  });
+
+  it('personnage existant : bascule armes à feu interdites avec la voie des explosifs déjà entamée → avertissement non bloquant', () => {
+    const c = makeCharacter({
+      classId: 'arquebusier',
+      ancestryId: 'humain',
+      ancestryPathId: 'humain',
+      firearmsAllowed: false,
+      featureIds: ['explosifs-r1', 'humain-r1'],
+    });
+    const warnings = checkCompliance(c, ctx);
+    const disabled = warnings.find((w) => w.code === 'FIREARMS_DISABLED_PATH');
+    expect(disabled?.pathId).toBe('explosifs');
+  });
+
+  it('aucun avertissement quand la voie effective est cohérente avec le réglage', () => {
+    const withFirearms = makeCharacter({
+      classId: 'arquebusier',
+      ancestryId: 'humain',
+      ancestryPathId: 'humain',
+      featureIds: ['explosifs-r1', 'humain-r1'],
+    });
+    expect(checkCompliance(withFirearms, ctx).map((w) => w.code)).not.toContain('FIREARMS_DISABLED_PATH');
+  });
+});

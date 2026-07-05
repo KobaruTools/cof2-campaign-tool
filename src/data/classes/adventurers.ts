@@ -54,6 +54,9 @@ export const adventurerClasses: CharacterClass[] = [
       { itemId: 'cuir-renforce-broigne', label: 'Cuir renforcé (DEF +3)', quantity: 1 },
     ],
     pathIds: ['artilleur', 'explosifs', 'mercenaire', 'pistolero', 'precision'],
+    // Armes à feu interdites (« Arbalétrier », p. 62) : la voie des explosifs cède la place à la voie
+    // du maître des arbalètes. Résolu par `effectiveClassPathIds`.
+    pathIdsWithoutFirearms: ['artilleur', 'maitre-des-arbaletes', 'mercenaire', 'pistolero', 'precision'],
     recommendedAbilities: ['AGI', 'INT', 'CON'],
     sourcePage: 62,
   },
@@ -186,6 +189,28 @@ export const adventurerPaths: ClassPath[] = [
     classIds: ['arquebusier'],
     featureIds: ['precision-r1', 'precision-r2', 'precision-r3', 'precision-r4', 'precision-r5'],
     sourcePage: 65,
+  },
+  // Variante « Arbalétrier » (encadré « Poudre ou pas poudre ? », p. 62) : quand les armes à feu
+  // sont interdites (`Character.firearmsAllowed === false`), la voie des explosifs est SUPPRIMÉE et
+  // remplacée par la voie du maître d'armes du guerrier, « limitée aux arbalètes ». Plutôt que
+  // d'emprunter la voie de guerrier (qui la traiterait comme une voie hybride), on en fait une COPIE
+  // CARBONE rattachée à l'arquebusier : `classIds: ['arquebusier']`, adaptée aux arbalètes (voir les
+  // features `maitre-des-arbaletes-r*`). L'échange est piloté par `CharacterClass.pathIdsWithoutFirearms`
+  // et le helper `effectiveClassPathIds` (cf. `src/lib/character/classDisplay.ts`).
+  {
+    id: 'maitre-des-arbaletes',
+    name: 'Voie du maître des arbalètes',
+    type: 'class',
+    classIds: ['arquebusier'],
+    featureIds: [
+      'maitre-des-arbaletes-r1',
+      'maitre-des-arbaletes-r2',
+      'maitre-des-arbaletes-r3',
+      'maitre-des-arbaletes-r4',
+      'maitre-des-arbaletes-r5',
+    ],
+    note: "Variante « Arbalétrier » (p. 62) : remplace la voie des explosifs quand les armes à feu sont interdites dans l'univers de jeu. C'est la voie du maître d'armes du guerrier, limitée aux arbalètes — l'arme de prédilection est fixée aux arbalètes.",
+    sourcePage: 62,
   },
 
   // --- Barde -------------------------------------------------------------
@@ -345,6 +370,11 @@ export const adventurerPaths: ClassPath[] = [
 
 export const adventurerFeatures: Feature[] = [
   // ======================= ARQUEBUSIER ==================================
+  // TODO(extraction) PER-178 : variante « Arbalétrier » (armes à feu interdites, p. 62) — reskin de
+  // l'affichage de la voie de l'artilleur (couleuvrine → baliste, pétoire → arbalète de poing,
+  // mousquet → arbalète lourde, « armes à poudre » → arbalètes). Différé : la voie est saturée de
+  // références à la poudre (Canon double, Tir de barrage…) ; une substitution partielle serait
+  // incohérente. À traiter globalement comme une couche d'affichage conditionnée à `firearmsAllowed`.
   // --- Voie de l'artilleur (p. 62) ---
   {
     id: 'artilleur-r1',
@@ -424,6 +454,128 @@ export const adventurerFeatures: Feature[] = [
     richText:
       "L'arquebusier obtient une couleuvrine (un petit canon portatif). Sur un test d'attaque à distance réussi (dé bonus), la couleuvrine inflige [5d4° + INT] DM à une portée de 100 m. Il faut ensuite deux rounds (L) pour la recharger. C'est une arme encombrante et il est impossible de transporter plus d'une couleuvrine.",
     sourcePage: 63,
+  },
+
+  // --- Voie du maître des arbalètes (variante « Arbalétrier », p. 62 / p. 88-89) ---
+  // COPIE CARBONE de la voie du maître d'armes du guerrier (`maitre-d-armes-r*`, cf. fighters.ts),
+  // « limitée aux arbalètes » (encadré « Poudre ou pas poudre ? », p. 62). Rattachée à l'arquebusier.
+  // Divergences vs l'original, toutes dues à la limitation aux arbalètes :
+  //   r1 — l'arme de prédilection est FIXÉE aux arbalètes (plus de choix parmi 6 catégories). Comme
+  //        il n'y a qu'une seule catégorie, les jalons de spécialisation (débloqués par r3, un par
+  //        voie d'ARQUEBUSIER au rang 5) ne peuvent plus servir qu'à empiler du « +1 DM » ;
+  //   r2 — l'arbalète est une arme à DISTANCE → `criticalRange.scope: 'ranged'` (l'original vise le
+  //        contact) ;
+  //   r3 — +1 DM avec l'arbalète (calcul dépendant de l'arme portée, différé PER-136 / PER-115) ;
+  //   r4/r5 — conservées verbatim (formulations « au contact »/« arme de lancer » inertes pour un
+  //        tireur à l'arbalète, mais la règle reste littérale).
+  {
+    id: 'maitre-des-arbaletes-r1',
+    name: 'Maîtrise de l’arbalète',
+    pathId: 'maitre-des-arbaletes',
+    rank: 1,
+    isSpell: false,
+    actionTypes: [],
+    text:
+      'L’arbalétrier a pour arme de prédilection les arbalètes (arbalète de poing, arbalète lourde, baliste). Il gagne +1 en attaque lorsqu’il utilise une arbalète. De plus, il ajoute son rang + 2 à tous les tests destinés à estimer la valeur d’une arme ou la réputation martiale d’un adversaire.',
+    // Adapté du maître d'armes r1 « Armes de prédilection ». La catégorie de prédilection n'est plus
+    // un choix : elle est FIXÉE aux arbalètes. Le bonus de compétence (PER-89) INCONDITIONNEL au
+    // domaine connaissance martiale (`martial-lore`) est conservé → « son rang + 2 » → [rang + 2].
+    // Le +1 en attaque avec une arbalète dépend du TYPE d'arme porté → WIP (PER-136 / PER-115).
+    // Jalons de spécialisation (PER-72) : comme il n'existe qu'une catégorie (arbalètes), le seul
+    // choix résiduel est « +1 DM » (répétable), débloqué par r3 (`requiresFeatureId`) et budgété par
+    // les voies d'ARQUEBUSIER au rang 5. `base: 0` : la prédilection « arbalètes » est acquise
+    // d'office (pas un pick), donc aucun choix tant que r3 n'est pas prise avec ≥1 voie au rang 5.
+    richText:
+      'L’arbalétrier a pour arme de prédilection les arbalètes (arbalète de poing, arbalète lourde, baliste). Il gagne +1 en attaque lorsqu’il utilise une arbalète. De plus, il ajoute son [rang + 2] à tous les tests destinés à estimer la valeur d’une arme ou la réputation martiale d’un adversaire.',
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Spécialisation à l’arbalète (+1 DM)',
+        repeat: {
+          by: 'paths-at-rank',
+          classIds: ['arquebusier'],
+          rank: 5,
+          base: 0,
+          requiresFeatureId: 'maitre-des-arbaletes-r3',
+        },
+        options: [
+          { id: 'dm-bonus', label: '+1 DM (arbalètes, via Spécialisation)', repeatable: true },
+        ],
+      },
+    ],
+    effects: [{ kind: 'test-bonus', domains: ['martial-lore'] }],
+    wip: "+1 en attaque avec une arbalète — bonus dépendant du type d'arme porté, câblage différé à la milestone Armures (PER-136 / PER-115).",
+    sourcePage: 62,
+  },
+  {
+    id: 'maitre-des-arbaletes-r2',
+    name: 'Science du critique',
+    pathId: 'maitre-des-arbaletes',
+    rank: 2,
+    isSpell: false,
+    actionTypes: [],
+    text:
+      'L’arbalétrier augmente de 1 point les chances d’obtenir un critique sur les attaques effectuées avec une arbalète (par exemple, 19-20 au lieu de 20).',
+    // Adapté du maître d'armes r2. L'élargissement de plage de critique vise ici les attaques à
+    // DISTANCE (l'arbalète est une arme à distance) → `criticalRange.scope: 'ranged'`. CONDITIONNÉ à
+    // une arbalète en main : interrupteur manuel (effet conditionnel « marqueur d'état », bonuses
+    // vide) en attendant le câblage automatique au type d'arme porté (PER-136).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'condition', label: 'arbalète en main' },
+      },
+    ],
+    criticalRange: { scope: 'ranged', value: 1 },
+    wip: "Plage de critique conditionnée à l'arbalète en main — activation manuelle en attendant le câblage automatique au type d'arme porté (PER-136).",
+    sourcePage: 62,
+  },
+  {
+    id: 'maitre-des-arbaletes-r3',
+    name: 'Spécialisation',
+    pathId: 'maitre-des-arbaletes',
+    rank: 3,
+    isSpell: false,
+    actionTypes: [],
+    text:
+      'Lorsque l’arbalétrier emploie une arbalète, il gagne un bonus de +1 DM. Chaque fois que le personnage atteint le rang 5 dans une voie d’arquebusier, il peut augmenter de +1 le bonus aux DM à l’arbalète (pour un maximum de +6 pour un arbalétrier ayant atteint le rang 5 dans les cinq voies).',
+    // Adapté du maître d'armes r3. Comme l'arbalétrier n'a qu'une catégorie de prédilection (arbalètes),
+    // les jalons de rang-5 ne débloquent PLUS de nouvelle catégorie : ils ne servent qu'à empiler
+    // « +1 DM » (max +6). Cette capacité DÉBLOQUE le choix répétable « +1 DM » hébergé sur r1
+    // (`maitre-des-arbaletes-r1`, `requiresFeatureId`). Le CALCUL effectif du +DM (jusqu'à +6) dépend
+    // de l'arme PORTÉE → différé à la milestone Armures (PER-136 / PER-115).
+    wip: "Bonus de +1 DM (jusqu'à +6) avec une arbalète — calcul dépendant de l'arme portée, différé à la milestone Armures (PER-136 / PER-115). Le CHOIX (« +1 DM » répétable, débloqué par cette capacité) est modélisé sur Maîtrise de l’arbalète (maitre-des-arbaletes-r1).",
+    sourcePage: 62,
+  },
+  {
+    id: 'maitre-des-arbaletes-r4',
+    name: 'Attaque parfaite',
+    pathId: 'maitre-des-arbaletes',
+    rank: 4,
+    isSpell: false,
+    actionTypes: ['L'],
+    text:
+      'Vous obtenez un dé bonus en attaque et ajoutez +1d4° DM. Vous devez utiliser une arbalète. Éventuellement, l’arbalétrier peut choisir de ne pas infliger les DM de son attaque parfaite pour désarmer une cible dont le NC est inférieur à son bonus de DM de spécialisation.',
+    // Adapté du maître d'armes r4. La formulation d'origine « au contact (ou à distance pour une arme
+    // de lancer) » est reformulée en « en attaque » (l'arbalète tire toujours à distance). DM {1d4°}
+    // et « dé bonus » au test d'attaque (situationnel) → câblage différé à PER-115 (verbatim).
+    richText:
+      'Vous obtenez un dé bonus en attaque et ajoutez +{1d4°} DM. Vous devez utiliser une arbalète. Éventuellement, l’arbalétrier peut choisir de ne pas infliger les DM de son attaque parfaite pour désarmer une cible dont le NC est inférieur à son bonus de DM de spécialisation.',
+    sourcePage: 62,
+  },
+  {
+    id: 'maitre-des-arbaletes-r5',
+    name: 'Riposte',
+    pathId: 'maitre-des-arbaletes',
+    rank: 5,
+    isSpell: false,
+    actionTypes: ['G'],
+    text:
+      'Lorsqu’un adversaire rate une attaque de contact contre lui, le personnage obtient immédiatement une attaque contre cet adversaire. Le personnage ne peut obtenir qu’une seule attaque supplémentaire de cette façon à chaque round et si plusieurs adversaires le ratent, il choisit contre lequel il effectue la riposte.',
+    // Adapté du maître d'armes r5 (verbatim, hormis « attaque au contact » → « attaque » pour rester
+    // cohérent avec un tireur à l'arbalète). Règle littérale conservée.
+    sourcePage: 62,
   },
 
   // --- Voie des explosifs (p. 63) ---
