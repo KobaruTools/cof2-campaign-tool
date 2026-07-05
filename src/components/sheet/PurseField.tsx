@@ -27,16 +27,34 @@ interface CoinMeta {
   color: string;
   /** Couleur de la barre de brillance au survol (défaut : blanc vif). */
   shine?: string;
+  /** `true` : jeton « précieux » qui scintille (étincelles au survol). */
+  sparkle?: boolean;
   /** Verbatim de règle (p. 181) affiché en info-bulle. */
   rule: string;
 }
 
+/** Composantes RGB (0–255) d'une couleur hex `#rrggbb`. */
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number];
+}
+
 /**
- * Étincelles décoratives autour de la pièce d'or — soulignent son statut « rare »
- * au survol. Positions/tailles fixes (px relatifs au jeton 24×24), chacune avec un
- * léger décalage d'animation pour un scintillement échelonné.
+ * Couleur interpolée entre le blanc (`t = 0`) et `hex` (`t = 1`), renvoyée en `rgb()`.
+ * Sert à teinter chaque étincelle au hasard entre blanc et la couleur de la pièce.
  */
-const GOLD_SPARKLES = [
+function mixWhiteToColor(hex: string, t: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  const m = (c: number) => Math.round(255 * (1 - t) + c * t);
+  return `rgb(${m(r)}, ${m(g)}, ${m(b)})`;
+}
+
+/**
+ * Positions/tailles fixes des étincelles autour d'un jeton précieux (px relatifs au
+ * jeton 24×24), chacune avec un léger décalage d'animation pour un scintillement
+ * échelonné. La teinte et l'opacité, elles, sont tirées au hasard par jeton (cf. `CoinToken`).
+ */
+const SPARKLES = [
   { top: -5, left: 19, size: 9, delay: '0s' },
   { top: 6, left: 23, size: 5, delay: '0.18s' },
   { top: 19, left: -4, size: 7, delay: '0.08s' },
@@ -54,6 +72,7 @@ const COINS: CoinMeta[] = [
     color: '#0d8a7a',
     // Métal froid et éclatant : reflet légèrement bleuté plutôt que blanc pur.
     shine: 'rgba(190, 255, 246, 0.9)',
+    sparkle: true,
     rule:
       'La pièce de platine (pp) est la monnaie la plus précieuse, rare et recherchée. ' +
       '1 pp = 10 po = 100 pa = 1000 pc.',
@@ -63,6 +82,7 @@ const COINS: CoinMeta[] = [
     code: 'po',
     name: 'Pièce d’or',
     color: '#d4af37',
+    sparkle: true,
     rule:
       'Les pièces d’or (po) sont rares et précieuses, la plupart des paysans en ' +
       'utilisent rarement. 1 po = 10 pa = 100 pc.',
@@ -90,8 +110,34 @@ const COINS: CoinMeta[] = [
   },
 ];
 
+/** Étincelle d'un jeton précieux : position/taille fixes + teinte & opacité tirées au hasard. */
+interface SparkleParam {
+  top: number;
+  left: number;
+  size: number;
+  delay: string;
+  /** Teinte tirée entre blanc et la couleur de la pièce. */
+  color: string;
+  /** Opacité de pic (0.75–1), d'autant plus faible que la teinte est proche du blanc. */
+  peak: number;
+}
+
+/**
+ * Tire au hasard les paramètres d'étincelles d'un jeton précieux : chaque étincelle prend
+ * une teinte entre blanc (`t = 0`) et la couleur de la pièce (`t = 1`), et une opacité de pic
+ * qui en découle (proche du blanc → plus transparente, de 75 % à 100 %). Appelé à chaque
+ * survol du champ (voir `CoinInput`) → le scintillement varie d'une fois sur l'autre.
+ */
+function rollSparkles(coin: CoinMeta): SparkleParam[] {
+  if (!coin.sparkle) return [];
+  return SPARKLES.map((s) => {
+    const t = Math.random();
+    return { ...s, color: mixWhiteToColor(coin.color, t), peak: 0.75 + 0.25 * t };
+  });
+}
+
 /** Jeton de monnaie coloré (pastille avec le code), info-bulle = verbatim + source. */
-function CoinToken({ coin }: { coin: CoinMeta }) {
+function CoinToken({ coin, sparkles }: { coin: CoinMeta; sparkles: SparkleParam[] }) {
   const tooltip = (
     <Box sx={{ maxWidth: 280 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -140,50 +186,65 @@ function CoinToken({ coin }: { coin: CoinMeta }) {
             // Contour de la même teinte, plus foncé (2px), et fond en dégradé vers plus clair.
             border: `2px solid ${darken(coin.color, 0.3)}`,
             background: `linear-gradient(135deg, ${coin.color} 0%, ${lighten(coin.color, 0.28)} 100%)`,
-            // Barre de brillance — au repos hors champ, à gauche. Sa teinte dépend de la
-            // pièce (`shine`). Le balayage est déclenché par le survol de TOUT le champ
-            // (voir `CoinInput`).
+            // Double barre de brillance — au repos hors champ, à gauche. La large (`::before`)
+            // précède la fine (`::after`) avec un écart constant : ensemble elles forment un
+            // reflet double (« glint ») au balayage. Teinte selon la pièce (`shine`). Le
+            // balayage est déclenché par le survol de TOUT le champ (voir `CoinInput`).
             '&::before': {
               content: '""',
               position: 'absolute',
               top: 0,
               left: '-150%',
-              width: '80%',
+              width: '62%',
               height: '100%',
               background: `linear-gradient(120deg, transparent 0%, ${shine} 50%, transparent 100%)`,
               transform: 'skewX(-20deg)',
               // Pas de transition au repos : le retour de la barre est instantané (invisible,
               // hors-champ). La transition n'existe qu'au survol → brillance à l'aller seulement.
             },
+            // Seconde barre, plus fine, décalée derrière la première (même course de 300 %
+            // → elles balaient en parallèle, séparées par un fin liseré sombre).
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: '-190%',
+              width: '20%',
+              height: '100%',
+              background: `linear-gradient(120deg, transparent 0%, ${shine} 50%, transparent 100%)`,
+              transform: 'skewX(-20deg)',
+            },
           }}
         >
           {coin.code}
         </Box>
 
-        {/* Pièce d'or « rare » : étincelles scintillantes au survol (voir `CoinInput`). */}
-        {coin.code === 'po' &&
-          GOLD_SPARKLES.map((s, i) => (
-            <Box
-              key={i}
-              className="coin-sparkle"
-              sx={{
-                position: 'absolute',
-                top: s.top,
-                left: s.left,
-                width: s.size,
-                height: s.size,
-                pointerEvents: 'none',
-                opacity: 0,
-                zIndex: 2,
-                animationDelay: s.delay,
-                background: 'radial-gradient(circle, #fff7d6 0%, #f2c94c 55%, transparent 72%)',
-                filter: 'drop-shadow(0 0 1px rgba(242,201,76,0.9))',
-                // Étoile à 4 branches.
-                clipPath:
-                  'polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%)',
-              }}
-            />
-          ))}
+        {/* Jetons précieux (or, platine) : étincelles scintillantes au survol (voir `CoinInput`).
+            Teinte et opacité de pic tirées au hasard par étincelle (cf. `sparkles`). */}
+        {sparkles.map((s, i) => (
+          <Box
+            key={i}
+            className="coin-sparkle"
+            sx={{
+              position: 'absolute',
+              top: s.top,
+              left: s.left,
+              width: s.size,
+              height: s.size,
+              pointerEvents: 'none',
+              opacity: 0,
+              zIndex: 2,
+              animationDelay: s.delay,
+              // Opacité de pic propre à l'étincelle, lue par le keyframe via `var()`.
+              '--sparkle-peak': s.peak,
+              background: `radial-gradient(circle, ${lighten(s.color, 0.5)} 0%, ${s.color} 55%, transparent 74%)`,
+              filter: `drop-shadow(0 0 1px ${s.color})`,
+              // Étoile à 4 branches.
+              clipPath:
+                'polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%)',
+            }}
+          />
+        ))}
       </Box>
     </AppTooltip>
   );
@@ -224,10 +285,17 @@ function CoinInput({
     setText(String(value));
   }
 
+  // Étincelles du jeton précieux (or, platine) : (re)tirées au hasard à chaque entrée
+  // de la souris dans le champ — c'est aussi le survol qui déclenche l'animation CSS
+  // (`&:hover .coin-sparkle`). Tirage dans un gestionnaire d'événement → `Math.random`
+  // hors rendu (pur). Non précieux → tableau vide (aucune étincelle).
+  const [sparkles, setSparkles] = useState<SparkleParam[]>([]);
+
   return (
     <TextField
       size="small"
       type="number"
+      onMouseEnter={() => setSparkles(rollSparkles(coin))}
       value={text}
       onChange={(e) => {
         const raw = e.target.value;
@@ -247,16 +315,19 @@ function CoinInput({
       // Survoler n'importe où dans le champ fait « briller » la pièce (balaie la barre)
       // et, pour l'or, déclenche le scintillement échelonné des étincelles.
       sx={{
+        // Les deux barres balaient ensemble (même course/durée), en gardant leur écart.
         '&:hover .coin-shine::before': { left: '150%', transition: 'left 0.55s ease' },
+        '&:hover .coin-shine::after': { left: '110%', transition: 'left 0.55s ease' },
         '@keyframes coinSparkleTwinkle': {
           '0%': { transform: 'scale(0) rotate(0deg)', opacity: 0 },
-          '35%': { opacity: 1 },
-          '55%': { transform: 'scale(1) rotate(120deg)', opacity: 0.95 },
+          // Pic d'opacité propre à chaque étincelle (`--sparkle-peak`, défaut 0.95).
+          '35%': { opacity: 'var(--sparkle-peak, 0.95)' },
+          '55%': { transform: 'scale(1) rotate(120deg)', opacity: 'var(--sparkle-peak, 0.95)' },
           '100%': { transform: 'scale(0) rotate(180deg)', opacity: 0 },
         },
         '&:hover .coin-sparkle': {
           animationName: 'coinSparkleTwinkle',
-          animationDuration: '1s',
+          animationDuration: '2s',
           animationTimingFunction: 'ease-in-out',
           // Un seul scintillement par survol (pas de boucle infinie).
           animationIterationCount: 1,
@@ -267,7 +338,7 @@ function CoinInput({
         input: {
           startAdornment: (
             <InputAdornment position="start" sx={{ mr: 0.75 }}>
-              <CoinToken coin={coin} />
+              <CoinToken coin={coin} sparkles={sparkles} />
             </InputAdornment>
           ),
         },
