@@ -314,6 +314,35 @@ describe('resolveExpr — évaluation', () => {
     expect(resolveExpr(expr.terms, abilities, 1, progression, 0, 0).total).toBe(2);
   });
 
+  it('terme `paliers` : DM de dé sans carac (Projectile de mana, PER-92)', () => {
+    // DM = 1d4° + (voies de magicien au rang 4, plafonné à l'INT). Le plafond est replié
+    // dans la valeur injectée par le composant hôte : ici on passe déjà min(compte, INT).
+    const segs = parseRichText('[1d4° + paliers]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    const r = resolveExpr(expr.terms, abilities, 6, progression, 0, 2); // 2 = min(compte, INT)
+    expect(r.hasDie).toBe(true);
+    expect(r.parts).toHaveLength(2);
+    expect(r.parts[0].die).toBeTruthy(); // pas de carac dans la formule, juste dé + paliers
+    expect(r.parts[1].kind).toBe('milestoneBonus');
+    expect(r.parts[1].value).toBe(2);
+    // À 0 voie au rang 4 (ou INT ≤ 0), `paliers` disparaît → l'encadré n'affiche que le dé.
+    const r0 = resolveExpr(expr.terms, abilities, 6, progression, 0, 0);
+    expect(r0.parts).toHaveLength(1);
+    expect(r0.parts[0].die).toBeTruthy();
+  });
+
+  it('terme `paliers` : DM plat sans dé ni carac (Morsure de la forge, PER-92)', () => {
+    // +2 DM de feu, +1 par voie de forgesort au rang 4. Nombre pur + paliers.
+    const segs = parseRichText('[2 + paliers]');
+    const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;
+    expect(resolveExpr(expr.terms, abilities, 1, progression, 0, 3).total).toBe(5); // 2 + 3
+    // À 0 voie au rang 4 : « +2 » (le terme paliers disparaît, reste le nombre nu).
+    const r0 = resolveExpr(expr.terms, abilities, 1, progression, 0, 0);
+    expect(r0.total).toBe(2);
+    expect(r0.parts).toHaveLength(1);
+    expect(r0.parts[0].kind).toBe('number');
+  });
+
   it('résout le terme rang via le rang passé en argument', () => {
     const segs = parseRichText('[10 + rang]');
     const expr = segs[0] as Extract<(typeof segs)[number], { kind: 'expr' }>;

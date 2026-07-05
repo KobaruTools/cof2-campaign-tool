@@ -261,10 +261,15 @@ Cas de référence : `poing-r1` (Poings de fer). **Note d'extraction** : le livr
 n'applique la substitution FOR→AGI qu'au **test d'attaque** (DM = FOR au strict RAW) ;
 l'extension au DM est un choix de table assumé, le `text` verbatim restant inchangé.
 
-> **Limite (IN-VOIE seulement).** `|C@R` compte le rang de la VOIE HÔTE. Un scaling
-> CROSS-VOIE (« +1 par voie de magicien au rang 4 », ou plafonné par une stat, ex.
-> Projectile de mana) n'est PAS exprimable ainsi → reporté au lot « scaling par
-> paliers de famille » (voir les `TODO(cross-voie)` dans les données).
+> **Limite du dé à paliers (`|C@R`) : IN-VOIE seulement.** `|C@R` compte le rang de la
+> VOIE HÔTE. Un scaling CROSS-VOIE (« +1 par voie de magicien au rang 4 ») ne s'exprime
+> PAS ainsi ; il passe par le terme de formule **`paliers`** (`milestoneBonus`), dont la
+> valeur — le compte de voies de la famille au rang seuil — est injectée de l'extérieur par
+> le composant hôte (`FeaturesByPath.milestoneBonusFor`). Un **plafond par carac** (ex.
+> Projectile de mana, plafonné à l'INT) se replie dans cette valeur injectée
+> (`min(compte, INT)`), la carac plafond étant rappelée dans la prose par un token `[INT]`.
+> Cas de référence : Marteau de la foi (`guerre-sainte-r4`), Morsure de la forge
+> (`metal-r1`), Projectile de mana (`magie-des-arcanes-r1`).
 
 ### h. Référence à une autre capacité : `[&feature-id]` / `[&feature-id|texte]`
 

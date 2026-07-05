@@ -1873,6 +1873,16 @@ function PathBlock({
     // Arme à répétition (artilleur-r2, PER-118) : +1 projectile au chargeur par voie d'arquebusier au rang 3
     // (voie hôte COMPRISE — le texte ne l'exclut pas), injecté au terme `paliers` de la quantité du chargeur.
     if (feature.id === 'artilleur-r2') return countClassPathsAtRank(character, 'arquebusier', 3);
+    // Morsure de la forge (metal-r1, PER-92) : +1 DM de feu par voie de forgesort au rang 4
+    // (voie hôte COMPRISE — le texte ne l'exclut pas), injecté au terme `paliers` du DM de feu.
+    if (feature.id === 'metal-r1') return countClassPathsAtRank(character, 'forgesort', 4);
+    // Projectile de mana (magie-des-arcanes-r1, PER-92) : +1 DM par voie de magicien au rang 4
+    // (voie hôte comprise), PLAFONNÉ à la valeur d'INT. Le plafond est replié ici dans la valeur
+    // injectée (min(compte, INT)) ; la phrase de montée l'exprime via le token carac [INT].
+    if (feature.id === 'magie-des-arcanes-r1')
+      return abilities
+        ? Math.min(countClassPathsAtRank(character, 'magicien', 4), abilities.INT)
+        : undefined;
     return undefined;
   };
   // Profil dont la voie est issue : le profil principal si la voie lui appartient

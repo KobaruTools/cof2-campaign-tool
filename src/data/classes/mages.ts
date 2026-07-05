@@ -1073,14 +1073,15 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['M'],
     text:
       "Au prix d’une action de mouvement, le forgesort peut enflammer son bâton ou son marteau pendant INT minutes et ajoute +2 DM de feu sur les attaques au contact réalisées avec cette arme. Ce bonus augmente de +1 chaque fois que le personnage atteint le rang 4 dans une voie de forgesort. L’arme s’éteint immédiatement s’il la lâche. En plus de ce sort, le forgesort ajoute son rang + 2 aux tests d’orfèvrerie ou de forge.",
-    // Rendu enrichi (PER-69) : durée [=INT] minutes ; « rang + 2 » modificateur aux tests
-    // (PER-89). Le « +2 DM de feu » (+ scaling cross-voie au rang 4 de forgesort) est un
-    // bonus aux DM d’arme, hors stats dérivées → texte. Affichage du DM réel : TODO(PER-92).
+    // Rendu enrichi (PER-69 / PER-92) : durée [=INT] minutes ; « rang + 2 » modificateur aux
+    // tests (PER-89). Le « +2 DM de feu » monte de +1 par voie de forgesort au rang 4 (scaling
+    // CROSS-VOIE, voie hôte comprise) : encodé [2 + paliers], le compte de voies étant injecté
+    // au terme `paliers` (milestoneBonus) par FeaturesByPath. À 0 voie au rang 4, `paliers` est
+    // omis → l'encadré affiche « +2 ».
     richText:
-      "Au prix d’une action de mouvement, le forgesort peut enflammer son bâton ou son marteau pendant [=INT] minutes et ajoute +2 DM de feu sur les attaques au contact réalisées avec cette arme. Ce bonus augmente de +1 chaque fois que le personnage atteint le rang 4 dans une voie de forgesort. L’arme s’éteint immédiatement s’il la lâche. En plus de ce sort, le forgesort ajoute son [rang + 2] aux tests d’orfèvrerie ou de forge.",
+      "Au prix d’une action de mouvement, le forgesort peut enflammer son bâton ou son marteau pendant [=INT] minutes et ajoute [2 + paliers] DM de feu sur les attaques au contact réalisées avec cette arme. Ce bonus augmente de +1 chaque fois que le personnage atteint le rang 4 dans une voie de forgesort. L’arme s’éteint immédiatement s’il la lâche. En plus de ce sort, le forgesort ajoute son [rang + 2] aux tests d’orfèvrerie ou de forge.",
     // Bonus de compétence (PER-89) : domaines = orfèvrerie, forge.
     effects: [{ kind: 'test-bonus', domains: ['goldsmithing', 'smithing'] }],
-    wip: "+2 DM de feu (scalant par rang 4 de forgesort) sur l'arme enflammée — affichage du DM réel différé au lot scaling cross-voie (PER-92).",
     sourcePage: 99,
   },
   {
@@ -1373,13 +1374,13 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le magicien choisit une cible visible située à moins de 30 m et lance sur elle un projectile d’énergie ésotérique pure, déformant la trame de la réalité. La cible subit automatiquement 1d4° DM. Si le joueur obtient le résultat maximal sur son dé de dommages, il peut le relancer et ajouter le nouveau résultat (une seule fois). Les DM du projectile de mana augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une voie de magicien jusqu’à un maximum égal à sa valeur d’INT.",
-    // Rendu enrichi (PER-69) : DM de base {1d4°} ; la montée par rang reste en prose.
-    // TODO(cross-voie, PER-92) : afficher le DM RÉEL « 1d4° + min(voies de magicien au rang 4,
-    // INT) » dans l'encadré de dé — reporté au lot « scaling par paliers de famille » (avec
-    // Divination / Armure de mana / Armure d'os). Pas de syntaxe de formule ad hoc ici.
+    // Rendu enrichi (PER-69 / PER-92) : DM [1d4° + paliers] — le terme `paliers` (milestoneBonus)
+    // porte la montée CROSS-VOIE « +1 par voie de magicien au rang 4 » (voie hôte comprise),
+    // PLAFONNÉE à l'INT. Le plafond est replié dans la valeur injectée par FeaturesByPath
+    // (min(compte, INT)) ; la phrase de montée l'exprime via le token carac [INT]. À 0 voie au
+    // rang 4, `paliers` est omis → l'encadré affiche le seul dé {1d4°}.
     richText:
-      "Le magicien choisit une cible visible située à moins de 30 m et lance sur elle un projectile d’énergie ésotérique pure, déformant la trame de la réalité. La cible subit automatiquement {1d4°} DM. Si le joueur obtient le résultat maximal sur son dé de dommages, il peut le relancer et ajouter le nouveau résultat (une seule fois). Les DM du projectile de mana augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une voie de magicien jusqu’à un maximum égal à sa valeur d’INT.",
-    wip: "Montée des DM (+1 par rang 4 de magicien, plafond INT) non affichée dans l'encadré de dé — différée au lot scaling cross-voie (PER-92).",
+      "Le magicien choisit une cible visible située à moins de 30 m et lance sur elle un projectile d’énergie ésotérique pure, déformant la trame de la réalité. La cible subit automatiquement [1d4° + paliers] DM. Si le joueur obtient le résultat maximal sur son dé de dommages, il peut le relancer et ajouter le nouveau résultat (une seule fois). Les DM du projectile de mana augmentent de +1 chaque fois que le personnage atteint le rang 4 dans une voie de magicien, jusqu’à un maximum égal à son [INT].",
     sourcePage: 103,
   },
   {
