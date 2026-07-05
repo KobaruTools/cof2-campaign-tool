@@ -30,6 +30,14 @@ export interface WizardDraft {
   characterId: string;
   step: number;
 
+  /**
+   * Campagne à laquelle appartient ce brouillon (PER-180). Un brouillon est créé
+   * depuis une campagne (`/campaign/[cid]/create`) et le personnage matérialisé
+   * hérite de cette FK. Optionnel pour rester compatible avec un brouillon
+   * persisté avant l'ajout du champ (absent = campagne par défaut).
+   */
+  campaignId?: string;
+
   // Étape peuple
   ancestryId: string;
   /** Voie de peuple retenue (le demi-elfe choisit ; sinon l'unique voie). */
@@ -137,11 +145,16 @@ function abilitiesZero(): Record<AbilityId, number> {
   );
 }
 
-/** Brouillon vierge pour un nouveau personnage. */
-export function createDraft(characterId: string, now: string): WizardDraft {
+/** Brouillon vierge pour un nouveau personnage, rattaché à une campagne (PER-180). */
+export function createDraft(
+  characterId: string,
+  now: string,
+  campaignId: string = DEFAULT_CAMPAIGN_ID,
+): WizardDraft {
   return {
     characterId,
     step: 0,
+    campaignId,
     ancestryId: '',
     ancestryPathId: null,
     classId: '',
@@ -250,10 +263,11 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     id: draft.characterId,
     name: draft.name.trim() || 'Nouveau personnage',
     identity: draft.identity,
-    // FK de la hiérarchie campagne (PER-179) : par défaut la campagne/le joueur
-    // « par défaut ». Le choix de campagne au wizard (via le routing) est traité
-    // par PER-180 — il renseignera ces FK sur le brouillon.
-    campaignId: DEFAULT_CAMPAIGN_ID,
+    // FK de la hiérarchie campagne : le brouillon porte sa campagne (PER-180,
+    // renseignée à l'entrée du wizard `/campaign/[cid]/create`). Repli sur la
+    // campagne par défaut pour un brouillon persisté avant l'ajout du champ.
+    // L'attribution du joueur reste au joueur par défaut (PER-184 la traitera).
+    campaignId: draft.campaignId ?? DEFAULT_CAMPAIGN_ID,
     playerId: DEFAULT_PLAYER_ID,
     status: 'active',
     ancestryId: draft.ancestryId,

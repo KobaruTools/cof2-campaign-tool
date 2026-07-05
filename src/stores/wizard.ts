@@ -17,8 +17,8 @@ interface WizardState {
   hasHydrated: boolean;
   setHasHydrated: (v: boolean) => void;
 
-  /** Démarre un nouveau brouillon et le retourne. */
-  start: () => WizardDraft;
+  /** Démarre un nouveau brouillon rattaché à une campagne et le retourne. */
+  start: (campaignId: string) => WizardDraft;
   /** Applique une mise à jour partielle au brouillon courant. */
   patch: (partial: Partial<WizardDraft>) => void;
   /** Va à une étape donnée. */
@@ -34,8 +34,8 @@ export const useWizardStore = create<WizardState>()(
       hasHydrated: false,
       setHasHydrated: (v) => set({ hasHydrated: v }),
 
-      start: () => {
-        const draft = createDraft(newId(), new Date().toISOString());
+      start: (campaignId) => {
+        const draft = createDraft(newId(), new Date().toISOString(), campaignId);
         set({ draft });
         return draft;
       },

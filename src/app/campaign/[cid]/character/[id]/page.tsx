@@ -1,0 +1,1076 @@
+'use client';
+
+import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DoneIcon from '@mui/icons-material/Done';
+import EditIcon from '@mui/icons-material/Edit';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import UpgradeIcon from '@mui/icons-material/Upgrade';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import IconButton from '@mui/material/IconButton';
+import Snackbar from '@mui/material/Snackbar';
+import Stack from '@mui/material/Stack';
+import Switch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, progression } from '@/data';
+import type { DerivedInput } from '@/lib/engine';
+import { checkCompliance, deriveStats } from '@/lib/engine';
+import type { AbilityId } from '@/data/schema';
+import type { Character, CustomItem, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
+import { isCustomItem } from '@/lib/character/types';
+import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
+import { modifierDeltas } from '@/lib/character/ancestry';
+import { classDisplayName } from '@/lib/character/classDisplay';
+import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
+import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
+import { mergeMods, orphanMods, orphanSourceTerms } from '@/lib/character/orphanPoints';
+import {
+  abilityBonusDiceFromFeatures,
+  abilityBonusDiceSources,
+  abilityModSources,
+  abilityModsFromFeatures,
+  abilityTestBonusSources,
+  abilityTestBonusByAbility,
+  criticalRangeSources,
+  stackedDamageReductions,
+  activeConditionalTestDice,
+  aggregateImmunities,
+  capacityResourceGauges,
+  conditionalEffectsOf,
+  effectContext,
+  isEffectActive,
+  manaCastingAbility,
+  modsFromFeatures,
+  pruneEffectInputs,
+  pruneEffectToggles,
+  pruneUsageCounters,
+  resetUsageCounters,
+  setEffectToggle,
+  shortRestLockKey,
+  usageCounterMaximum,
+  testBonusSources,
+  universalTestBonus,
+} from '@/lib/character/effects';
+import { effectiveFeatureIdsForMods, pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
+import {
+  applyDamage,
+  healHp,
+  pruneDepletion,
+  resetHp,
+  resetLuck,
+  resetMana,
+  restoreLuck,
+  restoreMana,
+  setRecoveryDiceMissing,
+  spendLuck,
+  spendMana,
+} from '@/lib/character/gauges';
+import { longRest, shortRest } from '@/lib/character/rest';
+import type { FeatureChoiceSelection } from '@/lib/character/types';
+import { rulesContext } from '@/lib/character/rulesContext';
+import { AppAlert } from '@/components/AppAlert';
+import { AppHeader } from '@/components/AppHeader';
+import { AppTooltip } from '@/components/AppTooltip';
+import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
+import { HeaderIllustrations } from '@/components/HeaderIllustrations';
+import { HomeBackground } from '@/components/HomeBackground';
+import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
+import { ClassIcon, FirearmsAllowedProvider } from '@/components/ClassIcon';
+import { defenseFromEquipment } from '@/components/wizard/helpers';
+import { classColor } from '@/lib/ui/classColors';
+import { formatDamageReduction } from '@/lib/ui/damageReduction';
+import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
+import { SheetSection } from '@/components/sheet/SheetSection';
+import { BlockEditButton } from '@/components/sheet/BlockEditButton';
+import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
+import { PurseField } from '@/components/sheet/PurseField';
+import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
+import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
+import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
+import {
+  ConcentrationToggle,
+  FeaturesByPath,
+  FeaturesLayoutToggle,
+  VerbatimToggle,
+} from '@/components/sheet/FeaturesByPath';
+import type { FeaturesLayout } from '@/components/sheet/FeaturesByPath';
+import { EquipmentList } from '@/components/sheet/EquipmentList';
+import { IdentityFields } from '@/components/sheet/IdentityFields';
+import { IdentityEditor } from '@/components/sheet/IdentityEditor';
+import { ComplianceWarnings } from '@/components/sheet/ComplianceWarnings';
+import { LevelUpDialog } from '@/components/sheet/LevelUpDialog';
+import { LevelHistory } from '@/components/sheet/LevelHistory';
+import { LevelUndoButton } from '@/components/sheet/LevelUndoButton';
+import { useCharactersStore } from '@/stores/characters';
+
+const familyById = new Map(families.map((f) => [f.id, f]));
+
+/**
+ * Blocs de la fiche possédant un mode édition à scope propre (crayon dédié). Le
+ * bouton « Modifier » du bandeau bascule tous ces blocs en une fois ; chaque crayon
+ * n'agit que sur son bloc. « Compétences & tests » en est absent (lecture seule).
+ */
+const EDIT_BLOCKS = ['abilities', 'derived', 'features', 'equipment', 'identity', 'notes'] as const;
+type EditBlock = (typeof EDIT_BLOCKS)[number];
+const NO_EDIT: Record<EditBlock, boolean> = {
+  abilities: false,
+  derived: false,
+  features: false,
+  equipment: false,
+  identity: false,
+  notes: false,
+};
+
+export default function CharacterSheetPage({
+  params,
+}: {
+  params: Promise<{ cid: string; id: string }>;
+}) {
+  const { cid, id } = use(params);
+  const router = useRouter();
+  const hasHydrated = useCharactersStore((s) => s.hasHydrated);
+  const character = useCharactersStore((s) => s.characters.find((c) => c.id === id));
+  const upsert = useCharactersStore((s) => s.upsert);
+  // Édition par bloc : chaque bloc a son propre scope, activable via son crayon.
+  const [editingBlocks, setEditingBlocks] = useState<Record<EditBlock, boolean>>(NO_EDIT);
+  const allEditing = EDIT_BLOCKS.every((k) => editingBlocks[k]);
+  const toggleBlock = (block: EditBlock) =>
+    setEditingBlocks((s) => ({ ...s, [block]: !s[block] }));
+  // Bouton « Modifier » du bandeau : tout activé → tout désactivé, sinon tout activé.
+  const toggleAllEditing = () =>
+    setEditingBlocks((s) => {
+      const next = !EDIT_BLOCKS.every((k) => s[k]);
+      return { abilities: next, derived: next, features: next, equipment: next, identity: next, notes: next };
+    });
+  const [levelUpOpen, setLevelUpOpen] = useState(false);
+  const [voiesLayout, setVoiesLayout] = useState<FeaturesLayout>('columns');
+  // Texte d'origine (PER-88) : OFF (défaut) → rendu enrichi des capacités ; ON →
+  // verbatim du livre. Préférence d'affichage transitoire, comme la disposition des voies.
+  const [featuresVerbatim, setFeaturesVerbatim] = useState(false);
+  // Concentration accrue (p. 228) : état de jeu transitoire (non persisté), comme
+  // l'affichage des voies. Quand actif, les sorts en (A) montrent leur coût réduit.
+  const [concentration, setConcentration] = useState(false);
+  const [createdToast, setCreatedToast] = useState(false);
+  // Index de la ligne « Bourse de 2d6 pa » dont l'ouverture est en cours (modale) ; null = fermée.
+  const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
+
+  // Confirmation « fin de wizard » : le wizard redirige avec `?created=1`. On
+  // affiche un retour clair puis on nettoie l'URL pour ne pas le rejouer au
+  // rechargement. Lecture directe de l'URL (pas de useSearchParams) pour éviter
+  // d'imposer une frontière Suspense au prerendu.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('created') === '1') {
+      // Lecture unique d'un paramètre d'URL côté client (impossible en
+      // initialiseur d'état sans décalage d'hydratation SSR) : synchronisation
+      // ponctuelle d'un système externe, pas une boucle de rendu.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCreatedToast(true);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
+  if (!hasHydrated) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!character) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 8, textAlign: 'center' }}>
+        <title>Personnage introuvable — Éditeur de personnage CO2</title>
+        <Typography variant="h6" gutterBottom>
+          Personnage introuvable
+        </Typography>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => router.push(`/campaign/${cid}`)}>
+          Retour à la campagne
+        </Button>
+      </Container>
+    );
+  }
+
+  const characterClass = classById.get(character.classId);
+  const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
+  const ancestry = ancestryById.get(character.ancestryId);
+
+  // Sauvegarde permissive : chaque modification persiste immédiatement (le store
+  // applique `updatedAt`). La fiche n'empêche aucun écart aux règles (PER-45).
+  const update = (patch: Partial<Character>) => upsert({ ...character, ...patch });
+  // Édition d'une caractéristique finale : on réajuste la valeur de base pour
+  // conserver l'invariant « base + modificateurs de peuple = total » (le détail
+  // affiché reste exact). Le modificateur de peuple, lui, ne bouge pas.
+  const setAbility = (abilityId: AbilityId, value: number) => {
+    const delta = ancestry ? modifierDeltas(ancestry, character.ancestryChoices)[abilityId] : 0;
+    update({
+      abilities: { ...character.abilities, [abilityId]: value },
+      baseAbilities: { ...character.baseAbilities, [abilityId]: value - delta },
+    });
+  };
+  const setIdentity = (identityPatch: Partial<Identity>) =>
+    update({ identity: { ...character.identity, ...identityPatch } });
+  const setEquipment = (equipment: EquipmentLine[]) => update({ equipment });
+  // L'édition des capacités élague les choix orphelins (capacité retirée → ses
+  // choix persistés sont supprimés), pour ne pas conserver de choix fantôme.
+  const setFeatureIds = (featureIds: string[]) =>
+    update({
+      featureIds,
+      featureChoices: pruneFeatureChoices(character.featureChoices, featureIds),
+      effectToggles: pruneEffectToggles(character.effectToggles, featureIds),
+      effectInputs: pruneEffectInputs(character.effectInputs, featureIds),
+      usageCounters: pruneUsageCounters(character.usageCounters, featureIds),
+      depletion: pruneDepletion(character.depletion),
+    });
+  // Résolution rétroactive d'un choix porté par une capacité (PER-66/68). La
+  // fiche est permissive : on persiste sans bloquer (recalcul en direct).
+  const setChoice = (featureId: string, index: number, value: FeatureChoiceSelection) =>
+    update({ featureChoices: setFeatureChoice(character, featureId, index, value) });
+  // Bascule d'un interrupteur d'effet conditionnel/temporaire (PER-67). Recalcul
+  // en direct : le moteur n'inclut l'effet que lorsqu'il est actif.
+  const setEffectToggleValue = (featureId: string, index: number, active: boolean) => {
+    const nextToggles = setEffectToggle(character, featureId, index, active);
+    const patch: Partial<typeof character> = { effectToggles: nextToggles };
+    // PER-130 : ACTIVER un état TEMPORAIRE doté d'un compteur d'usages le CONSOMME (ex. Rage / Furie
+    // du berserk) — équivaut à un clic « − » de `cost`, clampé à [0, max] (jamais sous 0). Pas de
+    // remboursement à l'extinction (comme le « − »). Les autres interrupteurs ne touchent pas le compteur.
+    const feature = featureById.get(featureId);
+    const effect = feature?.effects?.[index];
+    const counter = feature?.usageCounter;
+    if (
+      active &&
+      feature &&
+      counter &&
+      counter.consumeOnActivate !== false &&
+      effect?.kind === 'conditional-stat-bonus' &&
+      effect.activation.kind === 'temporary'
+    ) {
+      const key = counter.sharedKey ?? feature.id;
+      const max = usageCounterMaximum(counter, character, feature);
+      const cost = counter.cost ?? 1;
+      const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+      const nextVal = Math.max(0, remaining - cost);
+      const nextCounters = { ...character.usageCounters };
+      if (nextVal >= max) delete nextCounters[key];
+      else nextCounters[key] = nextVal;
+      // PER-161 : si le compteur est verrouillé « 1 dépense par repos court » (`oncePerShortRest`,
+      // ex. Sanctuaire), activer l'interrupteur pose le verrou (miroir du « − » de setUsageCounterValue)
+      // — la réactivation reste bloquée jusqu'au prochain repos court, indépendamment du reste.
+      if (counter.oncePerShortRest && nextVal < remaining) nextCounters[shortRestLockKey(key)] = 1;
+      patch.usageCounters = nextCounters;
+    }
+    // PER-150 : ACTIVER un effet temporaire doté d'un compteur de SUIVI `resetOnActivate` le remet à
+    // PLEIN (absorption d'Armure de pierre rechargée au relancement du sort). Absence de clé = plein.
+    if (
+      active &&
+      feature &&
+      counter?.resetOnActivate &&
+      effect?.kind === 'conditional-stat-bonus' &&
+      effect.activation.kind === 'temporary'
+    ) {
+      const key = counter.sharedKey ?? feature.id;
+      const nextCounters = { ...character.usageCounters };
+      delete nextCounters[key];
+      patch.usageCounters = nextCounters;
+    }
+    update(patch);
+  };
+  // Saisie libre d'état de jeu corrélée à une capacité (PER-70, ex. animal de Forme
+  // animale). Une chaîne vide supprime la clé (pas de note fantôme).
+  const setEffectInputValue = (featureId: string, value: string) => {
+    const next = { ...character.effectInputs };
+    if (value.trim() === '') delete next[featureId];
+    else next[featureId] = value;
+    update({ effectInputs: next });
+  };
+  // Décompte d'une capacité à usages limités (PER-70, ex. Les sept vies du chat).
+  // Borné à [0, max] ; au maximum, on supprime la clé (= compteur plein par défaut). La CLÉ peut
+  // être une `sharedKey` (réserve partagée, PER-119) et non un id de capacité → le max effectif
+  // (constant ou scalant) est calculé par le composant et fourni ici, plutôt que relu via l'id.
+  const setUsageCounterValue = (counterKey: string, value: number, max: number) => {
+    // PER-162 : compteur CROISSANT (surcoût mana, ex. Foudres divines) — sémantique inverse : pas de
+    // plafond, baseline = 0 (clé absente), aucun verrou. `counterKey` = id de la capacité.
+    const escalating = featureById.get(counterKey)?.escalatingManaCost;
+    if (escalating) {
+      const raised = Math.max(0, value);
+      const nextEsc = { ...character.usageCounters };
+      if (raised <= 0) delete nextEsc[counterKey];
+      else nextEsc[counterKey] = raised;
+      update({ usageCounters: nextEsc });
+      return;
+    }
+    const clamped = Math.max(0, Math.min(max, value));
+    const next = { ...character.usageCounters };
+    if (clamped >= max) delete next[counterKey];
+    else next[counterKey] = clamped;
+    const patch: Partial<typeof character> = { usageCounters: next };
+    // PER-150 : un compteur de SUIVI `endsEffectAtZero` qui tombe à 0 COUPE l'interrupteur des effets
+    // de la capacité porteuse (Armure de pierre prend fin dès son plafond d'absorption atteint). La
+    // clé du compteur vaut alors l'id de la capacité (compteur propre, non partagé).
+    const feature = featureById.get(counterKey);
+    if (clamped <= 0 && feature?.usageCounter?.endsEffectAtZero) {
+      let toggles = character.effectToggles;
+      for (const { index } of conditionalEffectsOf(counterKey)) {
+        toggles = setEffectToggle({ ...character, effectToggles: toggles }, counterKey, index, false);
+      }
+      patch.effectToggles = toggles;
+    }
+    // PER-160 : DÉPENSE (valeur en baisse) d'un compteur `oncePerShortRest` → pose le verrou « repos
+    // court requis avant un nouvel usage » (levé par tout repos court/long). Incrément/reset : rien.
+    if (feature?.usageCounter?.oncePerShortRest) {
+      const prev = character.usageCounters?.[counterKey] ?? max;
+      if (clamped < prev) next[shortRestLockKey(counterKey)] = 1;
+    }
+    update(patch);
+  };
+  // PER-160/161 : lever le verrou « repos court requis » d'UNE capacité sans forcer un vrai repos —
+  // pour ne jamais OBLIGER le joueur à cliquer « Repos court » (usage app-first). Applique EXACTEMENT
+  // l'effet d'un repos court, mais restreint à cette seule capacité (mêmes déclencheurs que shortRest :
+  // lève le verrou `oncePerShortRest` et recharge ce qu'un repos court rechargerait — ex. la charge de
+  // Sanctuaire ; la réserve /jour de Transe reste inchangée, comme lors d'un vrai repos court).
+  const liftShortRestLock = (featureId: string) =>
+    update({
+      usageCounters: resetUsageCounters(character.usageCounters, [featureId], new Set(['short-rest', 'combat'])),
+    });
+  // Créer un élixir (forgesort, p. 98) : consomme la réserve partagée d'un cran (`cost`) ET
+  // matérialise la dose dans l'équipement (objet custom, quantité incrémentée si déjà présent).
+  // Les deux mutations partent dans UNE seule mise à jour, pour ne pas s'écraser l'une l'autre.
+  // Matérialisation minimale (le transfert à un autre personnage relève de PER-158).
+  const createElixir = (counterKey: string, cost: number, max: number, elixirName: string) => {
+    const remaining = Math.max(0, Math.min(max, character.usageCounters?.[counterKey] ?? max));
+    if (remaining < cost) return;
+    const usageCounters = { ...character.usageCounters };
+    const nextValue = remaining - cost;
+    if (nextValue >= max) delete usageCounters[counterKey];
+    else usageCounters[counterKey] = nextValue;
+    const itemName = elixirItemName(elixirName);
+    const equipment = [...character.equipment];
+    const idx = equipment.findIndex((line) => isCustomItem(line) && line.name === itemName);
+    if (idx >= 0) {
+      const line = equipment[idx] as CustomItem;
+      equipment[idx] = { ...line, quantity: line.quantity + 1 };
+    } else {
+      equipment.push({ custom: true, name: itemName, quantity: 1, details: 'Élixir préparé (voie des élixirs, p. 98).' });
+    }
+    update({ usageCounters, equipment });
+  };
+  // Consomme une unité de la ligne `i` : décrémente la quantité, retire la ligne à 0.
+  const consumeEquipmentLine = (i: number): EquipmentLine[] => {
+    const line = character.equipment[i];
+    if (!line) return character.equipment;
+    return line.quantity <= 1
+      ? character.equipment.filter((_, j) => j !== i)
+      : character.equipment.map((l, j) => (j === i ? { ...l, quantity: l.quantity - 1 } : l));
+  };
+  // Utiliser un objet (PER-158) : consommer une unité est un état de jeu (hors édition).
+  // Cas particulier de la « Bourse de 2d6 pa » (p. 31) : au lieu de simplement la consommer,
+  // on ouvre une modale pour saisir les pa tirés, qui s'ajoutent à la fortune (PER-152).
+  const useEquipmentItem = (i: number) => {
+    const line = character.equipment[i];
+    if (!line) return;
+    if (isCustomItem(line) && line.name === COIN_POUCH_ITEM_NAME) {
+      setCoinPouchIndex(i);
+      return;
+    }
+    update({ equipment: consumeEquipmentLine(i) });
+  };
+  // Validation de la modale de bourse : ajoute `silver` pa à la fortune et consomme la dose.
+  const confirmCoinPouch = (silver: number) => {
+    if (coinPouchIndex === null) return;
+    update({
+      equipment: consumeEquipmentLine(coinPouchIndex),
+      purse: { ...character.purse, silver: character.purse.silver + silver },
+    });
+    setCoinPouchIndex(null);
+  };
+  // Jauge de PV (PER-148) : dépletion transitoire (manque létal/temp), état de jeu
+  // modifiable HORS mode « Modifier » (comme les compteurs d'usages). Le max reste
+  // piloté par « Statistiques dérivées » ; ces setters ne touchent que le courant.
+  const setHpDamage = (amount: number, kind: 'lethal' | 'temp') =>
+    update({ depletion: applyDamage(character.depletion, amount, kind) });
+  const setHpHeal = (amount: number) => update({ depletion: healHp(character.depletion, amount) });
+  const setHpReset = () => update({ depletion: resetHp(character.depletion) });
+  // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
+  // supprime la clé et rétablit le calcul automatique.
+  const setOverride = (key: DerivedStatId, value: number | null) => {
+    const next = { ...character.overrides };
+    if (value === null) delete next[key];
+    else next[key] = value;
+    update({ overrides: next });
+  };
+
+  // Conformité aux règles : recalculée à chaque rendu (donc en direct pendant
+  // l'édition). Non bloquante — simple aide affichée (PER-47).
+  const warnings = checkCompliance(character, rulesContext);
+
+  // Capacités acquises + capacités empruntées par choix : base de l'agrégation
+  // des bonus plats et du détail des stats dérivées (PER-66).
+  const modFeatureIds = effectiveFeatureIdsForMods(character);
+  // Contexte d'effets (PER-67) : résout les valeurs scalantes et n'inclut que les
+  // effets conditionnels dont l'interrupteur est actif.
+  const effectCtx = effectContext(character);
+  // Modificateurs permanents de caractéristiques et dés bonus apportés par les
+  // capacités (mécanique core) — appliqués PAR-DESSUS la valeur saisie des caracs.
+  const abilityMods = abilityModsFromFeatures(modFeatureIds, character.featureChoices);
+  const abilityModSrc = abilityModSources(modFeatureIds, character.featureChoices);
+  const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds, character.featureChoices);
+  // Variante détaillée (avec `featureId`) pour rendre les sources en pastilles de capacité
+  // dans le détail d'une caractéristique (l'icône double-d20 n'affiche, elle, que les noms).
+  const bonusDieSrcDetailed = abilityBonusDiceSources(modFeatureIds, character.featureChoices);
+  // Bonus de compétence par domaine de test (PER-89) — règle de cumul du livre (p. 203).
+  const testBonuses = testBonusSources(modFeatureIds, effectCtx);
+  // Dés bonus CONDITIONNELS actifs sur des domaines (ex. Travail d'équipe, via son interrupteur).
+  const testDice = activeConditionalTestDice(character);
+  // Buffs ACTIFS à tous les tests de carac (ex. Bénédiction, via son interrupteur).
+  const abilityTestBonus = abilityTestBonusSources(modFeatureIds, effectCtx);
+  // Bonus aux tests d'UNE carac précise, par option retenue (ex. Tatouages, PER-125).
+  const perAbilityTestBonus = abilityTestBonusByAbility(modFeatureIds, effectCtx);
+  // Puces de la carte Défense (PER-137) : IMMUNITÉS (vert) d'abord, puis RÉDUCTIONS de dégâts (bleu).
+  // Le cumul des RD plates de même portée (Fils du roc + Peau d'acier → RD 6) est fait côté moteur par
+  // `stackedDamageReductions` ; ici on ne fait que mettre en badges (titre + breakdown des sources).
+  const reductionBadges: DefenseBadgeData[] = [];
+  const damageImmunityBadges: DefenseBadgeData[] = [];
+  for (const r of stackedDamageReductions(character)) {
+    const scopes = r.scope ? [r.scope] : undefined;
+    if (r.kind === 'immunity') {
+      damageImmunityBadges.push({
+        key: `imm-${r.scope ?? 'all'}`,
+        variant: 'immunity',
+        scope: r.scope,
+        text: r.scope ? undefined : 'tous DM',
+        title: formatDamageReduction({ kind: 'immunity', scopes }).short,
+        sources: r.sources.map((s) => ({ name: s.name, featureId: s.featureId })),
+      });
+    } else {
+      const v = r.total ?? 0;
+      reductionBadges.push({
+        key: `rd-${r.kind}-${r.scope ?? 'all'}-${v}`,
+        variant: 'reduction',
+        scope: r.scope,
+        text: r.kind === 'divide' ? `/${v}` : `${v}`,
+        title: formatDamageReduction({ kind: r.kind, value: v, scopes }).short,
+        // Breakdown : on n'affiche la valeur par source que si plusieurs sources cumulent.
+        sources: r.sources.map((s) => ({
+          name: s.name,
+          value: r.sources.length > 1 && s.value !== undefined ? `${s.value}` : undefined,
+          featureId: s.featureId,
+        })),
+      });
+    }
+  }
+  // Immunités d'ÉTAT (peur, charme, ralenti, immobilisé) — PER-103, désormais fusionnées comme puces
+  // vertes dans la carte Défense (suppression du cadre Immunités séparé).
+  // Icône d'état dédiée (StatusEffectIcon) au lieu du bouclier + libellé tronqué : le nom complet
+  // (ex. « Immunité : Sommeil magique ») reste dans le tooltip via `title`.
+  const statusImmunityBadges: DefenseBadgeData[] = aggregateImmunities(modFeatureIds).map((imm) => ({
+    key: `imm-${imm.id}`,
+    variant: 'immunity',
+    statusEffect: imm.id,
+    title: `Immunité : ${imm.label}`,
+    sources: imm.sources.map((s) => ({ name: s.name, featureId: s.featureId })),
+  }));
+  // Ordre voulu : immunités d'abord, réductions ensuite.
+  const defenseBadges: DefenseBadgeData[] = [...statusImmunityBadges, ...damageImmunityBadges, ...reductionBadges];
+  // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — badges custom (variante 'critical')
+  // sous les cartes Attaque au contact / à distance selon leur portée (PER-133). Les élargissements
+  // d'une même portée se CUMULENT (PER-73) : deux sources +1 au contact (Critique brutal + Briseur
+  // d'os) donnent 18-20. On agrège donc en UN seul badge par portée (valeur sommée, plancher 16
+  // appliqué par `formatCriticalRange`), listant chaque capacité source et sa contribution.
+  const critRanges = criticalRangeSources(character);
+  const critBadgeForScope = (scope: 'melee' | 'ranged'): DefenseBadgeData[] => {
+    const combined = combineCriticalRanges(critRanges, scope);
+    if (!combined) return [];
+    const f = formatCriticalRange(scope, combined.total);
+    return [
+      {
+        key: `crit-${scope}`,
+        variant: 'critical',
+        text: f.short,
+        title: `Critique ${f.short}`,
+        sources: combined.sources.map((s) => ({ name: s.name, value: `+${s.value}`, featureId: s.featureId })),
+      },
+    ];
+  };
+  const meleeCriticalRanges = critBadgeForScope('melee');
+  const rangedCriticalRanges = critBadgeForScope('ranged');
+  // Plancher de compétence universel (Éclectique, PER-102).
+  const universalTest = universalTestBonus(modFeatureIds);
+  // Carac de base des PM : VOL, ou substitution (Charisme héroïque → CHA, PER-101).
+  const manaCast = manaCastingAbility(modFeatureIds, effectCtx.abilities);
+  // Dentelles et rapière (seduction-r2, PER-71) : tant que l'interrupteur « aucune armure »
+  // est actif, la DEF d'armure/bouclier est ignorée (la rapière+CHA la remplace). Branchement
+  // « simple » ; le port effectif d'armure + le plafond par le rang relèvent de PER-106.
+  const dentellesActive =
+    character.featureIds.includes('seduction-r2') && isEffectActive(character, 'seduction-r2', 0);
+  const defenseEquip = dentellesActive
+    ? { defBonus: 0, maxAgi: null }
+    : defenseFromEquipment(character.equipment);
+
+  const derivedInput: DerivedInput | null = family
+    ? {
+        // Caractéristiques EFFECTIVES (saisie + modificateurs permanents de
+        // capacités, ex. Endurer +1 CON) — c'est la vraie carac qui alimente les
+        // stats dérivées (PV, dés de récup., DEF, attaques…). Cf. `effectiveAbilities`.
+        abilities: effectCtx.abilities,
+        level: character.level,
+        family,
+        defenseEquipment: defenseEquip,
+        // Sorts connus = acquis ET EMPRUNTÉS : « apprendre un sort, même par une autre capacité,
+        // rapporte toujours 1 PM » (encadré « Appel à une autre capacité », p. 60). PER-73.
+        spellCount: modFeatureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
+        manaAbility: manaCast.ability,
+        // Bonus des capacités acquises (PER-63) ET des capacités empruntées par un
+        // choix « capacité d'une autre voie » (PER-66). Le contexte (PER-67) résout
+        // les valeurs scalantes et n'ajoute les effets conditionnels que s'ils sont
+        // activés. On fusionne les points de capacité orphelins convertis (p. 40).
+        mods: mergeMods(modsFromFeatures(modFeatureIds, effectCtx), orphanMods(character)),
+        // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique à la
+        // formule mono-famille pour un profil classique.
+        hpFamilyGains: familyHpGains(character, rulesContext),
+        // PV de base d'un profil hybride créé au niveau 1 (somme des deux
+        // familles, p. 180) ; identique à 2 × baseHp pour un profil classique.
+        hpLevel1Family: level1FamilyHp(character, rulesContext),
+        // Détail par famille pour l'infobulle (vide hors hybridation).
+        hpLevel1Families: level1HybridFamilies(character, rulesContext),
+        // Détail du gain de PV niveau par niveau, pour l'infobulle.
+        hpLevelGains: hpLevelGains(character, rulesContext),
+      }
+    : null;
+
+  // Le personnage dispose-t-il d'une réserve de mana ? Uniquement s'il connaît au
+  // moins un sort (cf. `manaPoints`, qui retourne null sinon). Sert à n'afficher la
+  // Concentration accrue (p. 228) que pour les lanceurs de sorts : sans sort, le
+  // toggle ne change rien.
+  const hasSpells = modFeatureIds.some((fid) => featureById.get(fid)?.isSpell);
+
+  // Stats dérivées finales du MAÎTRE (mods inclus), avec surcharges manuelles pour les
+  // stats recopiées par les profils de créature (Init., attaque). Sert aux mini-fiches
+  // de compagnons (golem, familier, démon…), dont l'Init/attaque = celle du maître.
+  const masterDerived = derivedInput
+    ? (() => {
+        const s = deriveStats(derivedInput);
+        const ov = character.overrides;
+        return { ...s, initiative: ov.initiative ?? s.initiative, magicAttack: ov.magicAttack ?? s.magicAttack };
+      })()
+    : undefined;
+
+  // Réserve de mana EFFECTIVE (PER-149) : surcharge manuelle si présente, sinon la
+  // valeur dérivée (`null` = aucun sort → pas de jauge de mana). Ces setters bornent
+  // le manque au max courant, comme le compteur d'usages.
+  const manaMax = masterDerived ? character.overrides.manaPoints ?? masterDerived.manaPoints : null;
+  const setManaSpend = (amount: number) =>
+    update({ depletion: spendMana(character.depletion, amount, manaMax ?? 0) });
+  const setManaRestore = (amount: number) =>
+    update({ depletion: restoreMana(character.depletion, amount, manaMax ?? 0) });
+  const setManaReset = () => update({ depletion: resetMana(character.depletion) });
+  // Points de chance (PER-155) : max EFFECTIF (surcharge ?? dérivé). Universel (pas de condition).
+  const luckMax = masterDerived ? character.overrides.luckPoints ?? masterDerived.luckPoints : 0;
+  const setLuckSpend = (amount: number) =>
+    update({ depletion: spendLuck(character.depletion, amount, luckMax) });
+  const setLuckRestore = (amount: number) =>
+    update({ depletion: restoreLuck(character.depletion, amount, luckMax) });
+  const setLuckReset = () => update({ depletion: resetLuck(character.depletion) });
+  // Dés de récupération (PER-151) : max EFFECTIF (surcharge ?? dérivé) et type de dé pour la jauge.
+  const recoveryDiceMax = masterDerived
+    ? character.overrides.recoveryDiceCount ?? masterDerived.recoveryDiceCount
+    : 0;
+  const recoveryDie = masterDerived?.recoveryDie ?? 'd6';
+  // Matrice de DR (PER-151) : on fixe le nombre de DR DISPONIBLES (le manque = max − dispo).
+  const setDrCurrent = (value: number) =>
+    update({ depletion: setRecoveryDiceMissing(character.depletion, recoveryDiceMax - value, recoveryDiceMax) });
+  // Repos (PER-151) : applique la récupération réglementaire (patch depletion + usageCounters).
+  // Repos court : `recoveryDieRoll` = résultat du dé saisi pour dépenser 1 DR et soigner ; null sinon.
+  const doShortRest = (recoveryDieRoll: number | null) =>
+    update(
+      shortRest(
+        character,
+        recoveryDieRoll != null ? { dieRoll: recoveryDieRoll, recoveryDiceMax } : undefined,
+      ),
+    );
+  // Repos long : `heal` → dépenser le DR gagné pour un soin à la valeur MAX du dé (p. 222).
+  const doLongRest = (heal: boolean) =>
+    update(longRest(character, heal ? { dieFaces: Number.parseInt(recoveryDie.slice(1), 10) || 0 } : undefined));
+  // Bourse (PER-152) : argent possédé, état de jeu transitoire (non touché par un repos).
+  const setPurse = (purse: Character['purse']) => update({ purse });
+  // Doses d'élixir en inventaire, perdues par un repos long (voie des élixirs, p. 98) — pour l'avertissement.
+  const elixirDosesToLose = character.equipment.reduce(
+    (n, line) => (isCustomItem(line) && isElixirItemName(line.name) ? n + line.quantity : n),
+    0,
+  );
+  // Ressources de capacité (rage, sept vies…) surfacées en jauges (PER-150) : lues depuis les
+  // MÊMES `usageCounters` que FeaturesByPath (source unique). L'écriture passe par le setter existant.
+  const capacityGauges = capacityResourceGauges(character);
+
+  return (
+    // Toutes les icônes de profil de la fiche (en-tête, voies, montée de niveau,
+    // références d'emprunt…) suivent le réglage « armes à feu » du personnage :
+    // l'arquebusier privé de poudre affiche une arbalète (« Arbalétrier », p. 62).
+    <FirearmsAllowedProvider value={character.firearmsAllowed}>
+      {/* Titre de l'onglet = nom du personnage. Rendu déclaratif (React 19 le
+          hisse dans le <head>) plutôt que document.title dans un effet : sinon
+          la métadonnée en streaming de Next réécrase le titre après hydratation
+          (clignotement nom → titre de base). Réactif : suit l'édition du nom. */}
+      <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
+      <AppHeader
+        title={character.name || 'Sans nom'}
+        onBack={() => router.push(`/campaign/${cid}`)}
+        action={
+          <Button
+            color="inherit"
+            startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
+            onClick={toggleAllEditing}
+          >
+            {allEditing ? 'Terminer' : 'Modifier'}
+          </Button>
+        }
+      />
+
+      {/* Wrapper pleine largeur `position: relative` : sert d'ancre au fond de
+          couverture (variante footer), dont les moitiés se calent sur les bords du
+          viewport et au bas du contenu (miroir des illustrations d'en-tête). */}
+      <Box sx={{ position: 'relative' }}>
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Stack spacing={3}>
+          {/* En-tête : nom + peuple · profil · niveau, encadré par les illustrations
+              du peuple (gauche) et du profil (droite), en filigrane semi-transparent */}
+          <Box sx={{ position: 'relative' }}>
+            <HeaderIllustrations
+              ancestryId={ancestry?.id}
+              classId={characterClass?.id}
+              portraitVariant={character.portraitVariant}
+            />
+            {editingBlocks.identity ? (
+              <TextField
+                value={character.name}
+                onChange={(e) => update({ name: e.target.value })}
+                placeholder="Sans nom"
+                variant="standard"
+                fullWidth
+                sx={{
+                  position: 'relative',
+                  zIndex: 1,
+                  '& .MuiInputBase-input': {
+                    fontSize: (theme) => theme.typography.h4.fontSize,
+                    fontWeight: 'bold',
+                  },
+                }}
+              />
+            ) : (
+              <Typography
+                variant="h4"
+                component="h2"
+                sx={{ fontWeight: 'bold', position: 'relative', zIndex: 1 }}
+              >
+                {character.name || 'Sans nom'}
+              </Typography>
+            )}
+            <Stack
+              direction="row"
+              spacing={0.75}
+              sx={{
+                alignItems: 'center',
+                color: 'text.secondary',
+                flexWrap: 'wrap',
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
+              <Typography variant="body1" component="span">
+                {ancestry?.name ?? 'Peuple à définir'} ·
+              </Typography>
+              {characterClass && <ClassIcon classId={characterClass.id} size={20} />}
+              <Typography
+                variant="body1"
+                component="span"
+                sx={{
+                  color: characterClass ? classColor(characterClass.id) : 'text.secondary',
+                  fontWeight: 600,
+                }}
+              >
+                {characterClass
+                  ? classDisplayName(characterClass, character.firearmsAllowed)
+                  : 'Profil à définir'}
+              </Typography>
+              <Typography variant="body1" component="span">
+                · niveau {character.level}
+              </Typography>
+            </Stack>
+
+            {/* Montée de niveau (PER-49) : toujours accessible. Le niveau max (20)
+                est une borne d'UI souple — on désactive simplement le bouton. */}
+            <Box sx={{ mt: 1.5, position: 'relative', zIndex: 1 }}>
+              <AppTooltip
+                title={
+                  character.level >= progression.maxLevel
+                    ? `Niveau maximum (${progression.maxLevel}) atteint`
+                    : ''
+                }
+              >
+                <span>
+                  <Button
+                    variant="contained"
+                    startIcon={<UpgradeIcon />}
+                    disabled={character.level >= progression.maxLevel}
+                    onClick={() => setLevelUpOpen(true)}
+                  >
+                    Monter au niveau suivant
+                  </Button>
+                </span>
+              </AppTooltip>
+            </Box>
+
+            {/* Bascule entre l'illustration de profil standard et son alternative
+                (-2), uniquement en mode édition. */}
+            {editingBlocks.identity && characterClass && (
+              <AppTooltip title="Changer l’illustration du profil">
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    update({
+                      portraitVariant:
+                        character.portraitVariant === 'alt' ? 'default' : 'alt',
+                    })
+                  }
+                  sx={{ position: 'absolute', top: 0, right: 0, zIndex: 2 }}
+                >
+                  <SwapHorizIcon />
+                </IconButton>
+              </AppTooltip>
+            )}
+
+            {/* Armes à feu autorisées dans l'univers (p. 185) — réglage de campagne.
+                Pour un profil qui maîtrise la poudre (arquebusier), le désactiver le
+                transforme en « arbalétrier » (p. 62). Édité en mode « Modifier ». */}
+            {editingBlocks.identity && characterClass?.powderAllowed && (
+              <Box sx={{ mt: 1, position: 'relative', zIndex: 1 }}>
+                <AppTooltip title="Univers sans poudre : l’arquebusier combat à l’arbalète et devient « arbalétrier »." page={62}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={character.firearmsAllowed}
+                        onChange={(e) => update({ firearmsAllowed: e.target.checked })}
+                      />
+                    }
+                    label={<Typography variant="body2">Armes à feu autorisées</Typography>}
+                  />
+                </AppTooltip>
+              </Box>
+            )}
+          </Box>
+
+          <ComplianceWarnings warnings={warnings} />
+
+          <SheetSection
+            title="Caractéristiques"
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingBlocks.abilities}
+                  onToggle={() => toggleBlock('abilities')}
+                  label="caractéristiques"
+                />
+              )
+            }
+          >
+            <AbilitiesGrid
+              abilities={character.abilities}
+              onChange={editingBlocks.abilities ? setAbility : undefined}
+              baseAbilities={character.baseAbilities}
+              ancestry={ancestry}
+              ancestryChoices={character.ancestryChoices}
+              abilityMods={abilityMods}
+              abilityModSources={abilityModSrc}
+              bonusDieSources={bonusDieSrcDetailed}
+            />
+          </SheetSection>
+
+          <SheetSection
+            title="Statistiques dérivées"
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingBlocks.derived}
+                  onToggle={() => toggleBlock('derived')}
+                  label="statistiques dérivées"
+                />
+              )
+            }
+          >
+            {derivedInput ? (
+              <DerivedStatsGrid
+                input={derivedInput}
+                featureIds={modFeatureIds}
+                effectContext={effectCtx}
+                extraModSources={orphanSourceTerms(character)}
+                overrides={character.overrides}
+                onOverride={editingBlocks.derived ? setOverride : undefined}
+                defenseBadges={defenseBadges}
+                meleeCriticalRanges={meleeCriticalRanges}
+                rangedCriticalRanges={rangedCriticalRanges}
+              />
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Profil incomplet : statistiques dérivées indisponibles.
+              </Typography>
+            )}
+          </SheetSection>
+
+          <TestDomainsPanel
+            bonuses={testBonuses}
+            abilities={effectCtx.abilities}
+            abilityTestBonus={abilityTestBonus}
+            perAbilityTestBonus={perAbilityTestBonus}
+            bonusDice={bonusDieSrc}
+            universalBonus={universalTest}
+            testDice={testDice}
+          />
+
+          {masterDerived && (
+            <SheetSection title="État du personnage">
+              <PlayerStatusPanel
+                depletion={character.depletion}
+                // Max EFFECTIF : surcharge manuelle de « Statistiques dérivées » si présente,
+                // sinon la valeur calculée. Le bloc n'édite que le courant, jamais le max.
+                maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
+                onDamage={setHpDamage}
+                onHeal={setHpHeal}
+                onResetHp={setHpReset}
+                manaMax={manaMax}
+                onSpendMana={setManaSpend}
+                onRestoreMana={setManaRestore}
+                onResetMana={setManaReset}
+                luckMax={luckMax}
+                onSpendLuck={setLuckSpend}
+                onRestoreLuck={setLuckRestore}
+                onResetLuck={setLuckReset}
+                capacityGauges={capacityGauges}
+                onSetUsageCounter={setUsageCounterValue}
+                recoveryDiceMax={recoveryDiceMax}
+                recoveryDie={recoveryDie}
+                level={character.level}
+                onSetRecoveryDiceCurrent={setDrCurrent}
+                onShortRest={doShortRest}
+                onLongRest={doLongRest}
+                elixirDosesToLose={elixirDosesToLose}
+              />
+            </SheetSection>
+          )}
+
+          <SheetSection
+            title="Voies & capacités"
+            action={
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                {hasSpells && (
+                  <ConcentrationToggle value={concentration} onChange={setConcentration} />
+                )}
+                <VerbatimToggle value={featuresVerbatim} onChange={setFeaturesVerbatim} />
+                <FeaturesLayoutToggle value={voiesLayout} onChange={setVoiesLayout} />
+                <BlockEditButton
+                  editing={editingBlocks.features}
+                  onToggle={() => toggleBlock('features')}
+                  label="voies & capacités"
+                />
+              </Stack>
+            }
+          >
+            <FeaturesByPath
+              featureIds={character.featureIds}
+              classId={character.classId}
+              layout={voiesLayout}
+              verbatim={featuresVerbatim}
+              concentration={concentration}
+              // Caractéristiques EFFECTIVES (saisie + modificateurs permanents de
+              // capacités, ex. gnome-r5 +1 CHA, Endurer +1 CON) : les formules richText
+              // des cartes (portée « CHA × 100 m », durée « CHA minutes »…) doivent
+              // refléter le total réel, comme les stats dérivées. Cf. `effectiveAbilities`.
+              abilities={effectCtx.abilities}
+              level={character.level}
+              onChange={editingBlocks.features ? setFeatureIds : undefined}
+              manualFeatureIds={manualFeatureIds(character)}
+              character={character}
+              onChoiceChange={editingBlocks.features ? setChoice : undefined}
+              // Les interrupteurs d'effets conditionnels sont des ÉTATS DE JEU
+              // transitoires : activables à tout moment, y compris hors édition.
+              onToggleEffect={setEffectToggleValue}
+              // Saisie libre corrélée (animal de Forme animale) : état de jeu, comme
+              // les interrupteurs, donc modifiable hors édition.
+              onSetEffectInput={setEffectInputValue}
+              // Compteur d'usages limités (Les sept vies du chat) : état de jeu.
+              onSetUsageCounter={setUsageCounterValue}
+              // Débloquer sans repos (cadenas) : lève le verrou « repos court requis » d'une capacité.
+              onLiftShortRestLock={liftShortRestLock}
+              // Créer un élixir (forgesort) : décompte la réserve + ajoute la dose à l'équipement.
+              onCreateElixir={createElixir}
+              // Stats du maître : Init./attaque des compagnons recopient ce total.
+              masterDerived={masterDerived}
+              // Bonus de compétence par domaine : sert à signaler, sur une capacité EMPRUNTÉE, que son
+              // bonus de test est DOMINÉ (ne se cumule pas) — barré + capacité qui le domine (PER-73).
+              testBonuses={testBonuses}
+            />
+          </SheetSection>
+
+          <SheetSection
+            title="Inventaire"
+            collapsible
+            defaultCollapsed
+            persistKey="equipment"
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingBlocks.equipment}
+                  onToggle={() => toggleBlock('equipment')}
+                  label="inventaire"
+                />
+              )
+            }
+          >
+            {/* Bourse (PER-152) : argent possédé, état de jeu transitoire (montants éditables hors
+                mode « Modifier », non affecté par un repos). Les flèches de conversion entre unités
+                n'apparaissent qu'en mode édition du bloc. En tête du bloc inventaire. */}
+            <PurseField purse={character.purse} onChange={setPurse} editing={editingBlocks.equipment} />
+            <Divider sx={{ my: 1.5 }} />
+            <EquipmentList
+              equipment={character.equipment}
+              onChange={editingBlocks.equipment ? setEquipment : undefined}
+              // « Utiliser » : consommer une unité est un état de jeu → disponible hors mode édition.
+              onUse={useEquipmentItem}
+            />
+          </SheetSection>
+
+          <SheetSection
+            title="Identité"
+            collapsible
+            defaultCollapsed
+            persistKey="identity"
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingBlocks.identity}
+                  onToggle={() => toggleBlock('identity')}
+                  label="identité"
+                />
+              )
+            }
+          >
+            {editingBlocks.identity ? (
+              <IdentityEditor
+                name={character.name}
+                identity={character.identity}
+                ancestry={ancestry}
+                onName={(name) => update({ name })}
+                onIdentity={setIdentity}
+              />
+            ) : (
+              <IdentityFields identity={character.identity} />
+            )}
+          </SheetSection>
+
+          <SheetSection
+            title="Notes"
+            collapsible
+            defaultCollapsed
+            persistKey="notes"
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingBlocks.notes}
+                  onToggle={() => toggleBlock('notes')}
+                  label="notes"
+                />
+              )
+            }
+          >
+            {editingBlocks.notes ? (
+              <TextField
+                multiline
+                minRows={3}
+                fullWidth
+                placeholder="Notes libres du joueur…"
+                value={character.notes}
+                onChange={(e) => update({ notes: e.target.value })}
+              />
+            ) : character.notes ? (
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                {character.notes}
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Aucune note.
+              </Typography>
+            )}
+          </SheetSection>
+
+          <SheetSection
+            title="Historique des niveaux"
+            collapsible
+            defaultCollapsed
+            persistKey="level-history"
+            action={(collapsed) =>
+              !collapsed && canUndoLastLevelUp(character) ? (
+                <LevelUndoButton
+                  level={character.level}
+                  onUndo={() => upsert(undoLastLevelUp(character))}
+                />
+              ) : null
+            }
+          >
+            <LevelHistory history={character.levelUpHistory} />
+            {canUndoLastLevelUp(character) && (
+              // Miroir du bouton de l'en-tête, ancré à droite en bas du bloc.
+              <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 2 }}>
+                <LevelUndoButton
+                  level={character.level}
+                  onUndo={() => upsert(undoLastLevelUp(character))}
+                />
+              </Stack>
+            )}
+          </SheetSection>
+        </Stack>
+      </Container>
+        <HomeBackground variant="footer" />
+      </Box>
+
+      <LevelUpDialog
+        open={levelUpOpen}
+        character={character}
+        family={family}
+        onClose={() => setLevelUpOpen(false)}
+        onConfirm={(updated) => {
+          upsert(updated);
+          setLevelUpOpen(false);
+        }}
+      />
+
+      <CoinPouchDialog
+        open={coinPouchIndex !== null}
+        onClose={() => setCoinPouchIndex(null)}
+        onConfirm={confirmCoinPouch}
+      />
+
+      <Snackbar
+        open={createdToast}
+        autoHideDuration={5000}
+        onClose={() => setCreatedToast(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <AppAlert
+          severity="success"
+          variant="filled"
+          onClose={() => setCreatedToast(false)}
+          sx={{ width: '100%' }}
+        >
+          Personnage créé.
+        </AppAlert>
+      </Snackbar>
+    </FirearmsAllowedProvider>
+  );
+}

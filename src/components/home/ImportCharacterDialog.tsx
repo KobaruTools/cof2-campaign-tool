@@ -47,6 +47,12 @@ type ImportState =
 
 export interface ImportCharacterDialogProps {
   open: boolean;
+  /**
+   * Campagne d'accueil de l'import (PER-180) : le personnage importé est rattaché
+   * à cette campagne (FK `campaignId`) et sa fiche s'ouvre sous `/campaign/[cid]`.
+   * Le mapping fin des FK à l'import (conflits, joueur) relève de PER-182.
+   */
+  campaignId: string;
   onClose: () => void;
   /** Notifié après un import réussi (pour le toast de la page). */
   onImported?: (character: Character) => void;
@@ -54,9 +60,15 @@ export interface ImportCharacterDialogProps {
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-export function ImportCharacterDialog({ open, onClose, onImported }: ImportCharacterDialogProps) {
+export function ImportCharacterDialog({
+  open,
+  campaignId,
+  onClose,
+  onImported,
+}: ImportCharacterDialogProps) {
   const router = useRouter();
   const importCharacter = useCharactersStore((s) => s.importCharacter);
+  const upsert = useCharactersStore((s) => s.upsert);
 
   const [state, setState] = useState<ImportState>({ status: 'idle' });
   const [dragging, setDragging] = useState(false);
@@ -68,7 +80,13 @@ export function ImportCharacterDialog({ open, onClose, onImported }: ImportChara
       const [result] = await Promise.allSettled([
         (async () => {
           const raw = JSON.parse(await file.text());
-          return importCharacter(raw); // lève si invalide
+          const imported = importCharacter(raw); // lève si invalide
+          // On rattache le personnage importé à la campagne d'accueil (PER-180) :
+          // il rejoint la campagne depuis laquelle l'import a été lancé, plutôt que
+          // de conserver la FK de son fichier d'origine (potentiellement orpheline).
+          const bound = { ...imported, campaignId };
+          upsert(bound);
+          return bound;
         })(),
         delay(MIN_LOADER_MS),
       ]);
@@ -90,7 +108,7 @@ export function ImportCharacterDialog({ open, onClose, onImported }: ImportChara
             : 'Fichier illisible.';
       setState({ status: 'error', message });
     },
-    [importCharacter, onImported],
+    [importCharacter, upsert, campaignId, onImported],
   );
 
   const handleFiles = (files: FileList | null | undefined) => {
@@ -195,7 +213,12 @@ export function ImportCharacterDialog({ open, onClose, onImported }: ImportChara
         {state.status === 'success' ? (
           <>
             <Button onClick={handleClose}>Fermer</Button>
-            <Button variant="contained" onClick={() => router.push(`/character/${state.character.id}`)}>
+            <Button
+              variant="contained"
+              onClick={() =>
+                router.push(`/campaign/${state.character.campaignId}/character/${state.character.id}`)
+              }
+            >
               Ouvrir la fiche
             </Button>
           </>
