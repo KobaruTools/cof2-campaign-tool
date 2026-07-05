@@ -1,0 +1,211 @@
+'use client';
+
+/**
+ * Écran de connexion (PER-188). Inscription OUVERTE, sans mot de passe :
+ * - OAuth Google / Discord / Facebook (liaison auto par email vérifié côté Supabase) ;
+ * - magic-link email en repli (sans tiers).
+ * Un indice `localStorage` met en avant la dernière méthode utilisée (non-autoritatif).
+ *
+ * Le gating des routes (rediriger un visiteur non authentifié vers ici) est livré
+ * en PER-189 ; cette page ne fait que déclencher les flux d'authentification.
+ */
+import { useEffect, useMemo, useState } from 'react';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import { HomeBackground } from '@/components/HomeBackground';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { OAUTH_PROVIDERS, type OAuthProviderId } from '@/lib/auth/providers';
+import {
+  readLastAuthMethod,
+  rememberLastAuthMethod,
+  type LastAuthMethod,
+} from '@/lib/auth/lastMethod';
+
+const IS_CONFIGURED = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+);
+
+type Busy = { kind: 'idle' } | { kind: 'oauth'; provider: OAuthProviderId } | { kind: 'magic' };
+
+export default function LoginPage() {
+  const [lastMethod, setLastMethod] = useState<LastAuthMethod | null>(null);
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState<Busy>({ kind: 'idle' });
+  const [error, setError] = useState<string | null>(null);
+  const [magicSent, setMagicSent] = useState(false);
+
+  // Indice « dernière méthode » + erreur éventuelle renvoyée par le callback,
+  // lus côté client uniquement (évite un besoin de Suspense pour useSearchParams).
+  useEffect(() => {
+    setLastMethod(readLastAuthMethod());
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error')) {
+      setError("La connexion a échoué. Réessaie ou choisis une autre méthode.");
+    }
+  }, []);
+
+  const callbackUrl = useMemo(
+    () => (typeof window === 'undefined' ? '' : `${window.location.origin}/auth/callback`),
+    [],
+  );
+
+  async function signInWithProvider(provider: OAuthProviderId) {
+    setError(null);
+    setBusy({ kind: 'oauth', provider });
+    try {
+      const supabase = createBrowserSupabaseClient();
+      rememberLastAuthMethod(provider);
+      const { error: err } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${callbackUrl}?next=/` },
+      });
+      if (err) throw err;
+      // Succès : le navigateur part chez le provider (pas de retour ici).
+    } catch {
+      setError("Impossible de démarrer la connexion. Réessaie dans un instant.");
+      setBusy({ kind: 'idle' });
+    }
+  }
+
+  async function sendMagicLink(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setBusy({ kind: 'magic' });
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { error: err } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo: callbackUrl },
+      });
+      if (err) throw err;
+      rememberLastAuthMethod('magic-link');
+      setMagicSent(true);
+    } catch {
+      setError("L'envoi du lien a échoué. Vérifie l'adresse et réessaie.");
+    } finally {
+      setBusy({ kind: 'idle' });
+    }
+  }
+
+  return (
+    <Box sx={{ position: 'relative', minHeight: '100%' }}>
+      <HomeBackground />
+      <Container maxWidth="xs" sx={{ py: { xs: 6, sm: 10 } }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 3, sm: 4 },
+            bgcolor: 'rgba(20, 20, 23, 0.72)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: 3,
+          }}
+        >
+          <Stack spacing={1} sx={{ mb: 3, textAlign: 'center' }}>
+            <Typography variant="h5" component="h1">
+              Connexion
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Éditeur de personnages Chroniques Oubliées Fantasy 2e édition
+            </Typography>
+          </Stack>
+
+          {!IS_CONFIGURED && (
+            <Alert severity="info" sx={{ mb: 3 }}>
+              L'authentification n'est pas encore configurée sur ce serveur (projet
+              Supabase à provisionner).
+            </Alert>
+          )}
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+
+          {magicSent ? (
+            <Alert severity="success">
+              Un lien de connexion vient d'être envoyé à <strong>{email.trim()}</strong>.
+              Ouvre-le sur cet appareil pour te connecter.
+            </Alert>
+          ) : (
+            <>
+              <Stack spacing={1.5}>
+                {OAUTH_PROVIDERS.map((p) => {
+                  const isBusy = busy.kind === 'oauth' && busy.provider === p.id;
+                  const isLast = lastMethod === p.id;
+                  return (
+                    <Button
+                      key={p.id}
+                      variant={isLast ? 'contained' : 'outlined'}
+                      size="large"
+                      disabled={!IS_CONFIGURED || busy.kind !== 'idle'}
+                      onClick={() => signInWithProvider(p.id)}
+                      startIcon={isBusy ? <CircularProgress size={18} color="inherit" /> : undefined}
+                      sx={{
+                        justifyContent: 'flex-start',
+                        borderColor: 'rgba(255,255,255,0.18)',
+                        ...(isLast
+                          ? { bgcolor: p.brand, '&:hover': { bgcolor: p.brand, filter: 'brightness(1.1)' } }
+                          : { color: 'text.primary' }),
+                      }}
+                    >
+                      Continuer avec {p.label}
+                      {isLast && (
+                        <Typography component="span" variant="caption" sx={{ ml: 'auto', opacity: 0.85 }}>
+                          dernière fois
+                        </Typography>
+                      )}
+                    </Button>
+                  );
+                })}
+              </Stack>
+
+              <Divider sx={{ my: 3 }}>ou</Divider>
+
+              <Box component="form" onSubmit={sendMagicLink}>
+                <Stack spacing={1.5}>
+                  <TextField
+                    type="email"
+                    label="Adresse email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    fullWidth
+                    disabled={!IS_CONFIGURED || busy.kind !== 'idle'}
+                    autoComplete="email"
+                    helperText={
+                      lastMethod === 'magic-link'
+                        ? 'Dernière méthode utilisée : lien magique.'
+                        : undefined
+                    }
+                  />
+                  <Button
+                    type="submit"
+                    variant={lastMethod === 'magic-link' ? 'contained' : 'outlined'}
+                    size="large"
+                    disabled={!IS_CONFIGURED || busy.kind !== 'idle' || email.trim() === ''}
+                    startIcon={
+                      busy.kind === 'magic' ? <CircularProgress size={18} color="inherit" /> : undefined
+                    }
+                  >
+                    Recevoir un lien de connexion
+                  </Button>
+                </Stack>
+              </Box>
+            </>
+          )}
+        </Paper>
+      </Container>
+    </Box>
+  );
+}
