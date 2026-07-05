@@ -7,7 +7,7 @@ import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import type { SxProps, Theme } from '@mui/material/styles';
+import { alpha, type SxProps, type Theme } from '@mui/material/styles';
 
 export interface SheetSectionProps {
   /** Titre de la section (h2). */
@@ -72,7 +72,22 @@ export function SheetSection({
   };
 
   return (
-    <Paper variant="outlined" sx={[{ p: { xs: 2, sm: 3 } }, ...(Array.isArray(sx) ? sx : [sx])]}>
+    <Paper
+      variant="outlined"
+      sx={[
+        (theme) => ({
+          p: { xs: 2, sm: 3 },
+          // Verre dépoli commun à toutes les sections : même teinte de fond
+          // semi-transparente + flou de l'illustration de couverture en arrière-plan
+          // (même idiome que les infobulles, cf. `theme.ts`). Fond uniforme d'une
+          // section à l'autre pour un rendu homogène.
+          bgcolor: alpha(theme.palette.background.paper, 0.72),
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+        }),
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
+    >
       <Stack
         direction="row"
         spacing={1}

@@ -22,7 +22,6 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
 import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, progression } from '@/data';
 import type { DerivedInput } from '@/lib/engine';
 import { checkCompliance, deriveStats } from '@/lib/engine';
@@ -770,7 +769,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <SheetSection
             title="Caractéristiques"
-            sx={(theme) => ({ bgcolor: alpha(theme.palette.background.default, 0.75) })}
             action={(collapsed) =>
               collapsed ? null : (
                 <BlockEditButton
