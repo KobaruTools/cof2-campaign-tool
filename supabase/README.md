@@ -35,9 +35,18 @@ Ces étapes nécessitent un compte Supabase — elles ne peuvent pas être autom
    `psql`). Le script doit se terminer sur « RLS isolation : tous les tests OK »
    sans lever d'exception, puis annuler ses données (`ROLLBACK`).
 
-## À décider (logistique)
+## Authentification CLI PAR DOSSIER (pas globale)
 
-Le CLI Supabase (`supabase` en devDep + `config.toml` + stack Docker locale) n'est
-**pas encore** branché : la migration s'applique pour l'instant par copier-coller.
-Voir avec le propriétaire s'il veut adopter le CLI (migrations versionnées,
-`db push`, génération des types) ou rester en application manuelle.
+`supabase login` stocke un token **global** à la machine : sur un poste qui gère
+plusieurs projets Supabase (comptes/organisations différents), ce token peut faire
+« déborder » le mauvais compte. Pour scoper l'auth CLI à CE dossier :
+
+1. Générer un **Personal Access Token** pour le compte propriétaire du projet
+   (Dashboard → Account → Access Tokens).
+2. Le mettre dans `.env.local` : `SUPABASE_ACCESS_TOKEN=sbp_…` (+ `SUPABASE_DB_PASSWORD`
+   pour `db push` sans invite). La CLI **préfère** cette variable au login global.
+3. Lancer les commandes CLI avec l'environnement du dossier chargé, ex. :
+   `set -a; . ./.env.local; set +a; npx supabase projects list`
+
+L'état de link (`supabase/.temp/`) et `config.toml` (`project_id`) sont déjà locaux
+au dossier. Ne jamais committer `.env.local`.
