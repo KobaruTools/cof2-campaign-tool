@@ -2161,7 +2161,15 @@ function PathBlock({
                     backgroundImage: `linear-gradient(${alpha(borrowedColor, 0.06)}, ${alpha(borrowedColor, 0.06)})`,
                   }
                 : {}),
-              '&:hover': { bgcolor: color ? alpha(color, 0.14) : 'action.hover' },
+              // Fondu doux du fond au survol (retour d'UX) plutôt qu'un changement sec. Le délai
+              // (.2s) porté par l'état de BASE ne joue qu'à la SORTIE du survol : l'opacité met un
+              // court instant à revenir. À l'ENTRÉE, la transition de `:hover` (sans délai) prend le
+              // relais, donc le fondu démarre immédiatement.
+              transition: 'background-color .15s ease .2s',
+              '&:hover': {
+                bgcolor: color ? alpha(color, 0.14) : 'action.hover',
+                transition: 'background-color .15s ease',
+              },
               ...(onRemove
                 ? {
                     '& .feature-remove': { opacity: 0, transition: 'opacity .15s' },
