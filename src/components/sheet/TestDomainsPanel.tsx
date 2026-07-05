@@ -1,7 +1,9 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
@@ -20,6 +22,7 @@ import {
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { AppTooltip } from '@/components/AppTooltip';
+import { SourceRef } from '@/components/SourceRef';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
@@ -70,6 +73,59 @@ export interface TestDomainsPanelProps {
 
 /** Modificateur signé (« +3 », « +0 », « −2 »). */
 const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
+
+/**
+ * Ligne de détail d'infobulle « libellé … valeur » : libellé à gauche (pouvant porter
+ * une puce de voie, centrée verticalement dans la ligne), valeur à droite en chiffres
+ * tabulaires. Même langage visuel que `BreakdownContent` (caractéristiques / stats
+ * dérivées) pour harmoniser tous les détails de calcul de la fiche.
+ */
+function BreakdownRow({
+  label,
+  value,
+  strong = false,
+  muted = false,
+  strike = false,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  /** Ligne de total : libellé et valeur en gras. */
+  strong?: boolean;
+  /** Ligne secondaire (gris atténué). */
+  muted?: boolean;
+  /** Source dominée : libellé barré et grisé. */
+  strike?: boolean;
+}) {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 2,
+        fontVariantNumeric: 'tabular-nums',
+        ...(muted && { color: 'text.secondary' }),
+      }}
+    >
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          flexWrap: 'wrap',
+          minWidth: 0,
+          ...(strike && { textDecoration: 'line-through', color: 'text.disabled' }),
+        }}
+      >
+        {label}
+      </Box>
+      <Box component="span" sx={{ fontWeight: strong ? 700 : 600, whiteSpace: 'nowrap' }}>
+        {value}
+      </Box>
+    </Box>
+  );
+}
 
 /**
  * Encadré « Compétences & tests » : les 7 caractéristiques, chacune avec sa ligne
@@ -126,7 +182,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
     >
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
         Test de carac (d20 + carac) par caractéristique, et bonus de compétence des domaines
-        (cumul par domaine, plafond +15 — p. 203).
+        (cumul par domaine, plafond +15 — <SourceRef page={203} />).
       </Typography>
       <Stack spacing={2.5}>
         {ABILITY_IDS.map((ability) => {
@@ -145,25 +201,31 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
           const caracBuffed = testBuff !== 0 || perCaracBonus !== 0;
           const dice = bonusDice?.[ability] ?? [];
 
-          // Détail de la ligne « test de [CARAC] » : carac de base + chaque buff actif + bonus propres.
+          // Détail de la ligne « test de [CARAC] » : carac de base + chaque buff actif + bonus propres,
+          // aligné comme les infobulles de stats dérivées (chiffres à droite, total en bas).
           const testBreakdown = (
-            <Box sx={{ py: 0.5 }}>
-              <Typography variant="caption" sx={{ display: 'block', fontWeight: 700 }}>
-                Test de {ABILITY_NAMES[ability]} : d20 {signed(caracTest)}
+            <Box sx={{ minWidth: 180, py: 0.5 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Test de {ABILITY_NAMES[ability]} ({ability})
               </Typography>
-              <Typography variant="caption" sx={{ display: 'block' }}>
-                Caractéristique {ability} : {signed(abilityMod)}
-              </Typography>
+              <BreakdownRow label={`Caractéristique ${ability}`} value={signed(abilityMod)} />
               {buffSources.map((s) => (
-                <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
-                  <CapabilityChip featureId={s.featureId} label={null} /> : {signed(s.value)}
-                </Typography>
+                <BreakdownRow
+                  key={s.featureId}
+                  label={<CapabilityChip featureId={s.featureId} label={null} />}
+                  value={signed(s.value)}
+                />
               ))}
               {perCaracSources.map((s) => (
-                <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
-                  <CapabilityChip featureId={s.featureId} label={null} /> : {signed(s.value)}
-                </Typography>
+                <BreakdownRow
+                  key={s.featureId}
+                  label={<CapabilityChip featureId={s.featureId} label={null} />}
+                  value={signed(s.value)}
+                />
               ))}
+              <Divider sx={{ my: 0.5 }} />
+              {/* La ligne de total porte le « d20 » : c'est un jet, pas une valeur figée. */}
+              <BreakdownRow strong label="Total" value={`d20 ${signed(caracTest)}`} />
             </Box>
           );
 
@@ -217,9 +279,15 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                     const display = includeAbility ? flat + abilityValue + testBuff + perCaracBonus : flat;
                     const multiAbility = d.abilities.length > 1;
 
+                    // Nombre de lignes CHIFFRÉES qui se cumulent (hors sources dominées, barrées) : sert à
+                    // n'afficher une ligne « Total » que lorsqu'il y a au moins deux termes à sommer.
+                    const contributingRows =
+                      (includeAbility ? 1 + buffSources.length + perCaracSources.length : 0) +
+                      (bonus?.sources.length ?? 0);
+
                     const breakdown =
                       has || includeAbility || d.description || multiAbility ? (
-                        <Box sx={{ py: 0.5 }}>
+                        <Box sx={{ minWidth: 180, py: 0.5 }}>
                           {d.description && (
                             <Typography
                               variant="caption"
@@ -239,48 +307,65 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                             </Typography>
                           )}
                           {includeAbility && (
-                            <Typography variant="caption" sx={{ display: 'block', fontWeight: 700 }}>
-                              Test de {ability} : {signed(abilityValue)}
-                            </Typography>
+                            <BreakdownRow label={`Caractéristique ${ability}`} value={signed(abilityValue)} />
                           )}
                           {includeAbility &&
                             buffSources.map((s) => (
-                              <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
-                                <CapabilityChip featureId={s.featureId} label={null} /> : {signed(s.value)}
-                              </Typography>
+                              <BreakdownRow
+                                key={s.featureId}
+                                label={<CapabilityChip featureId={s.featureId} label={null} />}
+                                value={signed(s.value)}
+                              />
                             ))}
                           {includeAbility &&
                             perCaracSources.map((s) => (
-                              <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
-                                <CapabilityChip featureId={s.featureId} label={null} /> : {signed(s.value)}
-                              </Typography>
+                              <BreakdownRow
+                                key={s.featureId}
+                                label={<CapabilityChip featureId={s.featureId} label={null} />}
+                                value={signed(s.value)}
+                              />
                             ))}
                           {bonus?.sources.map((s) => (
-                            <Typography key={s.featureId} variant="caption" sx={{ display: 'block' }}>
-                              {COMPETENCE_CATEGORY_LABEL[s.category]} —{' '}
-                              <CapabilityChip featureId={s.featureId} label={null} /> : {signed(s.value)}
-                            </Typography>
+                            <BreakdownRow
+                              key={s.featureId}
+                              label={
+                                <>
+                                  <Box component="span">{COMPETENCE_CATEGORY_LABEL[s.category]} —</Box>
+                                  <CapabilityChip featureId={s.featureId} label={null} />
+                                </>
+                              }
+                              value={signed(s.value)}
+                            />
                           ))}
                           {/* Sources DOMINÉES (PER-73) : prises en compte mais battues dans leur catégorie
                               (max par catégorie, p. 203) → affichées BARRÉES + la capacité qui les domine
                               (puce de voie). Ex. une capacité empruntée égalée par une vraie voie de profil. */}
                           {bonus?.dominated?.map((dom) => (
                             <Box key={`dom-${dom.source.featureId}`} sx={{ mt: 0.25 }}>
+                              <BreakdownRow
+                                strike
+                                label={`${COMPETENCE_CATEGORY_LABEL[dom.source.category]} — ${dom.source.name}`}
+                                value={signed(dom.source.value)}
+                              />
                               <Typography
                                 variant="caption"
-                                sx={{ display: 'block', textDecoration: 'line-through', color: 'text.disabled' }}
+                                component="div"
+                                sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', fontStyle: 'italic', color: 'text.secondary' }}
                               >
-                                {COMPETENCE_CATEGORY_LABEL[dom.source.category]} — {dom.source.name} : {signed(dom.source.value)}
-                              </Typography>
-                              <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', color: 'text.secondary' }}>
                                 Ne se cumule pas avec{' '}
                                 <CapabilityChip featureId={dom.dominatedBy.featureId} label={null} />
                               </Typography>
                             </Box>
                           ))}
+                          {contributingRows > 1 && (
+                            <>
+                              <Divider sx={{ my: 0.5 }} />
+                              <BreakdownRow strong label="Total" value={signed(display)} />
+                            </>
+                          )}
                           {bonus?.capped && (
-                            <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic' }}>
-                              Bonus de compétence plafonné à +15 (p. 203).
+                            <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', mt: 0.5 }}>
+                              Bonus de compétence plafonné à +15 (<SourceRef page={203} />).
                             </Typography>
                           )}
                         </Box>
