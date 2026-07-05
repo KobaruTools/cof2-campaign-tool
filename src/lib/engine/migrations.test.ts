@@ -56,7 +56,7 @@ function validRaw(): Record<string, unknown> {
     effectInputs: {},
     usageCounters: {},
     depletion: {},
-    purse: { gold: 0, silver: 0, copper: 0 },
+    purse: { platinum: 0, gold: 0, silver: 0, copper: 0 },
     levelUpHistory: [],
     equipment: [],
     overrides: {},
@@ -351,20 +351,22 @@ describe('migrateCharacter', () => {
     expect(() => migrateCharacter(raw)).toThrow(ValidationError);
   });
 
-  it('migre un personnage v11 vers v12 (purse initialisé à vide)', () => {
+  it('migre un personnage v11 vers v12 puis v14 (purse vide, platine incluse)', () => {
     const v11 = validRaw();
     v11.schemaVersion = 11;
     delete v11.purse;
     const c = migrateCharacter(v11);
     expect(c.schemaVersion).toBe(SCHEMA_VERSION);
-    expect(c.purse).toEqual({ gold: 0, silver: 0, copper: 0 });
+    expect(c.purse).toEqual({ platinum: 0, gold: 0, silver: 0, copper: 0 });
   });
 
   it('préserve la bourse déjà présente lors d’un chargement v12', () => {
     const v12 = validRaw();
+    v12.schemaVersion = 12;
     v12.purse = { gold: 12, silver: 3, copper: 5 };
     const c = migrateCharacter(v12);
-    expect(c.purse).toEqual({ gold: 12, silver: 3, copper: 5 });
+    // v13→v14 ajoute la platine à 0 sans toucher aux autres unités.
+    expect(c.purse).toEqual({ platinum: 0, gold: 12, silver: 3, copper: 5 });
   });
 
   it('refuse un objet sans purse à la version courante', () => {
@@ -385,12 +387,29 @@ describe('migrateCharacter', () => {
 
   it('préserve firearmsAllowed=false lors d’un chargement v13', () => {
     const v13 = validRaw();
+    v13.schemaVersion = 13;
     v13.firearmsAllowed = false;
     const c = migrateCharacter(v13);
     expect(c.firearmsAllowed).toBe(false);
   });
 
-  it('expose les migrations 1→2 … 12→13 dans le registre', () => {
+  it('migre un personnage v13 vers v14 (platine initialisée à 0)', () => {
+    const v13 = validRaw();
+    v13.schemaVersion = 13;
+    v13.purse = { gold: 4, silver: 2, copper: 1 };
+    const c = migrateCharacter(v13);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.purse).toEqual({ platinum: 0, gold: 4, silver: 2, copper: 1 });
+  });
+
+  it('préserve la platine déjà présente lors d’un chargement v14', () => {
+    const v14 = validRaw();
+    v14.purse = { platinum: 7, gold: 4, silver: 2, copper: 1 };
+    const c = migrateCharacter(v14);
+    expect(c.purse).toEqual({ platinum: 7, gold: 4, silver: 2, copper: 1 });
+  });
+
+  it('expose les migrations 1→2 … 13→14 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -403,5 +422,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[10]).toBe('function');
     expect(typeof MIGRATIONS[11]).toBe('function');
     expect(typeof MIGRATIONS[12]).toBe('function');
+    expect(typeof MIGRATIONS[13]).toBe('function');
   });
 });

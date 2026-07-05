@@ -912,7 +912,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </SheetSection>
 
           <SheetSection
-            title="Équipement"
+            title="Inventaire"
             collapsible
             defaultCollapsed
             persistKey="equipment"
@@ -921,14 +921,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 <BlockEditButton
                   editing={editingBlocks.equipment}
                   onToggle={() => toggleBlock('equipment')}
-                  label="équipement"
+                  label="inventaire"
                 />
               )
             }
           >
             {/* Bourse (PER-152) : argent possédé, état de jeu transitoire (montants éditables hors
                 mode « Modifier », non affecté par un repos). Les flèches de conversion entre unités
-                n'apparaissent qu'en mode édition du bloc. En tête du bloc équipement. */}
+                n'apparaissent qu'en mode édition du bloc. En tête du bloc inventaire. */}
             <PurseField purse={character.purse} onChange={setPurse} editing={editingBlocks.equipment} />
             <Divider sx={{ my: 1.5 }} />
             <EquipmentList

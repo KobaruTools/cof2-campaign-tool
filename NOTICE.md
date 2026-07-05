@@ -124,3 +124,20 @@ est conservée dans `ABILITY_ICON_SOURCES` (même fichier) et dans
 | Charisme (CHA) | `delapouite/public-speaker.svg` | Delapouite |
 | Intelligence (INT) | `lorc/brain.svg` | Lorc |
 | Volonté (VOL) | `lorc/inner-self.svg` | Lorc |
+
+## Icône de la bourse
+
+L'icône « bourse » (sac à monnaie) en tête du bloc « Inventaire » provient également
+de [game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteur : **Lorc** (https://game-icons.net).
+
+Le SVG a été nettoyé (fond retiré, couleur neutralisée) et intégré dans
+`src/lib/ui/purseIcon.ts` (constante `PURSE_ICON_PATH`, source dans
+`PURSE_ICON_SOURCE` et `scripts/game-icons/purse/map.tsv`). L'affichage passe par le
+composant `src/components/PurseIcon.tsx`.
+
+| Élément | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Bourse | `lorc/swap-bag.svg` | Lorc |

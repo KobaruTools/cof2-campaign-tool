@@ -24,7 +24,7 @@ function makeCharacter(over: Partial<Character>): Character {
     effectInputs: {},
     usageCounters: {},
     depletion: {},
-    purse: { gold: 0, silver: 0, copper: 0 },
+    purse: { platinum: 0, gold: 0, silver: 0, copper: 0 },
     levelUpHistory: [],
     equipment: [],
     overrides: {},

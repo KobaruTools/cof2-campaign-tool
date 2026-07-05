@@ -272,6 +272,21 @@ function migrateV12toV13(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v13 → v14 : ajout de la pièce de platine (`purse.platinum`, pp — 1 pp = 10 po,
+ * p. 181). Les bourses d'avant v14 n'ont que or/argent/cuivre : on initialise la
+ * platine à 0 (les autres unités restent inchangées).
+ */
+function migrateV13toV14(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  const purse = asRecord(next.purse);
+  if (purse !== null && typeof purse.platinum !== 'number') {
+    next.purse = { ...purse, platinum: 0 };
+  }
+  next.schemaVersion = 14;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -288,6 +303,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   10: migrateV10toV11,
   11: migrateV11toV12,
   12: migrateV12toV13,
+  13: migrateV13toV14,
 };
 
 export class MigrationError extends Error {}

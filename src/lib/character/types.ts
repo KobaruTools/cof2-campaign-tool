@@ -40,7 +40,7 @@ import type { AncestryChoice } from './ancestry';
  * v13 : ajout de `firearmsAllowed` (armes à feu autorisées dans l'univers de jeu ;
  *   `false` transforme l'arquebusier en « arbalétrier » — p. 62).
  */
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 /**
  * Manque de PV, décomposé selon la nature des dégâts (p. 218/220) :
@@ -80,9 +80,11 @@ export interface Depletion {
 /**
  * Bourse du personnage (PER-152) : argent possédé, structuré par unité de monnaie
  * CO2 (livre de base, p. 181, « Système monétaire »). Codes du livre conservés en
- * commentaire : `gold` = pièce d'or (po), `silver` = pièce d'argent (pa),
- * `copper` = pièce de cuivre (pc). Conversion : 1 po = 10 pa = 100 pc (la platine
- * `pp`, quasi-mythique, n'est pas suivie — comme dans `src/data/equipment.ts`).
+ * commentaire : `platinum` = pièce de platine (pp), `gold` = pièce d'or (po),
+ * `silver` = pièce d'argent (pa), `copper` = pièce de cuivre (pc). Conversion :
+ * 1 pp = 10 po = 100 pa = 1000 pc. La platine reste rare/précieuse (« 1 pp = 10 po »,
+ * p. 181) et n'apparaît dans aucune table de prix, mais elle est désormais suivie
+ * pour permettre au joueur de la thésauriser et de faire la monnaie.
  *
  * État de jeu transitoire (modifiable hors mode « Modifier », au même titre que
  * `depletion`/`usageCounters`), mais NON réinitialisé par un repos : l'argent ne
@@ -91,6 +93,8 @@ export interface Depletion {
  * décide), voir `src/lib/character/purse.ts`.
  */
 export interface Purse {
+  /** Pièces de platine (pp) — unité la plus forte, rare. 1 pp = 10 po. */
+  platinum: number;
   /** Pièces d'or (po). */
   gold: number;
   /** Pièces d'argent (pa) — unité de référence des prix d'équipement. */

@@ -3,7 +3,6 @@
 import { Fragment, useState } from 'react';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -12,15 +11,16 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { darken, lighten } from '@mui/material/styles';
 import type { Purse } from '@/lib/character/types';
-import { COPPER_PER_SILVER, SILVER_PER_GOLD } from '@/lib/character/purse';
+import { COPPER_PER_SILVER, GOLD_PER_PLATINUM, SILVER_PER_GOLD } from '@/lib/character/purse';
 import { AppTooltip } from '@/components/AppTooltip';
+import { PurseIcon } from '@/components/PurseIcon';
 import { SourceRef } from '@/components/SourceRef';
 
 /** Unité de monnaie affichée dans la bourse (clé du modèle + présentation). */
 interface CoinMeta {
   key: keyof Purse;
   /** Code du livre (français, cf. exception CLAUDE.md : codes neutres conservés). */
-  code: 'po' | 'pa' | 'pc';
+  code: 'pp' | 'po' | 'pa' | 'pc';
   /** Nom complet de l'unité (info-bulle). */
   name: string;
   /** Couleur du jeton. */
@@ -45,6 +45,19 @@ const GOLD_SPARKLES = [
 ] as const;
 
 const COINS: CoinMeta[] = [
+  {
+    key: 'platinum',
+    code: 'pp',
+    name: 'Pièce de platine',
+    // Teal profond très saturé : tranche volontairement sur les tons chauds
+    // (or/argent/cuivre) pour signaler l'unité la plus précieuse d'un coup d'œil.
+    color: '#0d8a7a',
+    // Métal froid et éclatant : reflet légèrement bleuté plutôt que blanc pur.
+    shine: 'rgba(190, 255, 246, 0.9)',
+    rule:
+      'La pièce de platine (pp) est la monnaie la plus précieuse, rare et recherchée. ' +
+      '1 pp = 10 po = 100 pa = 1000 pc.',
+  },
   {
     key: 'gold',
     code: 'po',
@@ -176,10 +189,19 @@ function CoinToken({ coin }: { coin: CoinMeta }) {
   );
 }
 
+/** Parse une saisie libre en entier ≥ 0 (virgule décimale tolérée, vide → 0). */
+function parseCoin(raw: string): number {
+  return Math.max(0, Math.floor(Number(raw.replace(',', '.')) || 0));
+}
+
 /**
  * Champ éditable d'une unité de monnaie : jeton coloré (adornment) + nombre entier
- * ≥ 0. Tamponne la saisie en local et la valide au blur / à Entrée pour permettre
- * une frappe libre (effacer, retaper), sans reclamp à chaque caractère.
+ * ≥ 0. Tamponne l'affichage en local (frappe libre : effacer, retaper, sans reclamp
+ * à chaque caractère) MAIS valide la bourse en direct à chaque frappe. Ce commit
+ * immédiat est nécessaire pour que les flèches de conversion — qui lisent la bourse
+ * commitée — s'activent/se désactivent dès qu'on franchit un cap de 10 en tapant
+ * (sinon elles restaient figées jusqu'à la perte du focus). Le blur normalise
+ * seulement l'affichage (« 03 » → « 3 », vide → « 0 »).
  */
 function CoinInput({
   coin,
@@ -191,28 +213,33 @@ function CoinInput({
   onCommit: (value: number) => void;
 }) {
   const [text, setText] = useState(String(value));
+  const [focused, setFocused] = useState(false);
   // Resynchronise le tampon quand la valeur externe change (repos, regroupement,
   // édition d'une autre unité), SANS effet : ajustement d'état pendant le rendu,
-  // pattern recommandé par React (évite `set-state-in-effect`).
+  // pattern recommandé par React (évite `set-state-in-effect`). On NE resynchronise
+  // pas pendant l'édition, pour ne pas écraser une frappe en cours (champ vidé, etc.).
   const [lastValue, setLastValue] = useState(value);
-  if (value !== lastValue) {
+  if (!focused && value !== lastValue) {
     setLastValue(value);
     setText(String(value));
   }
-
-  const commit = () => {
-    const parsed = Math.max(0, Math.floor(Number(text.replace(',', '.')) || 0));
-    setText(String(parsed));
-    if (parsed !== value) onCommit(parsed);
-  };
 
   return (
     <TextField
       size="small"
       type="number"
       value={text}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={commit}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        const parsed = parseCoin(raw);
+        if (parsed !== value) onCommit(parsed);
+      }}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false);
+        setText(String(parseCoin(text)));
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
       }}
@@ -311,6 +338,7 @@ function CoinConvert({
 
 /** Taux de conversion entre unités adjacentes (p. 181), dans l'ordre d'affichage des `COINS`. */
 const CONVERSION_RATIO: Record<string, number> = {
+  platinum: GOLD_PER_PLATINUM, // 1 pp ↔ 10 po
   gold: SILVER_PER_GOLD, // 1 po ↔ 10 pa
   silver: COPPER_PER_SILVER, // 1 pa ↔ 10 pc
 };
@@ -321,23 +349,25 @@ export interface PurseFieldProps {
   /** Applique une nouvelle bourse (état de jeu transitoire). */
   onChange: (purse: Purse) => void;
   /**
-   * Mode édition du bloc « Équipement » : n'affiche les flèches de conversion entre unités
+   * Mode édition du bloc « Inventaire » : n'affiche les flèches de conversion entre unités
    * que dans ce mode (les montants restent éditables en permanence — état de jeu transitoire).
    */
   editing?: boolean;
 }
 
 /**
- * Bloc « Bourse » (PER-152) — argent possédé par unité (or / argent / cuivre,
+ * Bloc « Bourse » (PER-152) — argent possédé par unité (platine / or / argent / cuivre,
  * p. 181). État de jeu transitoire (montants éditables hors mode « Modifier », non affecté
  * par un repos). En mode édition, des flèches gauche/droite entre unités permettent de
- * regrouper / faire de la monnaie (po ↔ pa ↔ pc) sans changer la valeur totale.
+ * regrouper / faire de la monnaie (pp ↔ po ↔ pa ↔ pc) sans changer la valeur totale.
  */
 export function PurseField({ purse, onChange, editing = false }: PurseFieldProps) {
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
       <AppTooltip title="Bourse — argent possédé" page={181}>
-        <AccountBalanceWalletIcon fontSize="small" sx={{ color: 'text.secondary', flexShrink: 0 }} />
+        <Box sx={{ display: 'inline-flex', color: 'text.secondary', flexShrink: 0, cursor: 'help' }}>
+          <PurseIcon size={20} title="Bourse" />
+        </Box>
       </AppTooltip>
 
       {COINS.map((coin, i) => {
