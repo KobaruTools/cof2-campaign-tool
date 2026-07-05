@@ -1,22 +1,22 @@
 'use client';
 
 /**
- * Accueil = liste des campagnes (PER-180). La campagne est le point d'entrée de
- * l'application : le contexte campagne doit être explicite dans l'URL (les règles
- * appliquées et l'affichage en dépendent), plutôt qu'une « campagne active »
- * implicite. On peut créer, renommer et supprimer une campagne ; la suppression
- * est en cascade (personnages rattachés) avec confirmation forte.
+ * Gestion des campagnes (PER-190) — CRUD cloud (MJ = propriétaire, RLS
+ * `owner_id`). Accessible depuis l'en-tête de l'accueil (`/`, liste plate des
+ * personnages, pivot PER-180). On peut créer, modifier (nom + notes) et supprimer
+ * une campagne. La suppression est **en cascade côté joueurs** et **détache** les
+ * personnages (ils repassent « Non attribué », pivot PER-180) — jamais de
+ * destruction de personnage —, sous **confirmation forte** (retaper le nom).
  *
- * Ce composant est le PREMIER consommateur du store `campaigns` : son import
- * déclenche l'hydratation du store et le bootstrap de la « Campagne par défaut »
- * pour les personnages migrés (cf. store `campaigns`).
+ * Les campagnes vivent dans Supabase : ce composant s'appuie sur le store
+ * `campaigns` (cache d'une source cloud) et affiche les états de chargement,
+ * d'erreur et « cloud non configuré ».
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditIcon from '@mui/icons-material/Edit';
-import GroupIcon from '@mui/icons-material/Group';
 import PersonIcon from '@mui/icons-material/Person';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -37,62 +37,98 @@ import { AppAlert } from '@/components/AppAlert';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { HomeBackground } from '@/components/HomeBackground';
-import { createCampaign, type Campaign } from '@/lib/campaign';
+import type { Campaign } from '@/lib/campaign';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
 
-export default function HomePage() {
+export default function CampaignsPage() {
   const router = useRouter();
-  const hasHydrated = useCampaignsStore((s) => s.hasHydrated);
+  const status = useCampaignsStore((s) => s.status);
+  const error = useCampaignsStore((s) => s.error);
   const campaigns = useCampaignsStore((s) => s.campaigns);
-  const upsertCampaign = useCampaignsStore((s) => s.upsert);
-  const removeCampaign = useCampaignsStore((s) => s.remove);
+  const load = useCampaignsStore((s) => s.load);
+  const create = useCampaignsStore((s) => s.create);
+  const update = useCampaignsStore((s) => s.update);
+  const remove = useCampaignsStore((s) => s.remove);
   const characters = useCharactersStore((s) => s.characters);
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
-  const [toRename, setToRename] = useState<Campaign | null>(null);
-  const [renameName, setRenameName] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [toEdit, setToEdit] = useState<Campaign | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [toDelete, setToDelete] = useState<Campaign | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
+    null,
+  );
 
-  // Décompte des personnages par campagne (FK `campaignId`), pour l'affichage et
-  // l'avertissement de cascade à la suppression.
+  const notify = (message: string, severity: 'success' | 'error' = 'success') =>
+    setToast({ message, severity });
+
+  // Charge les campagnes possédées au montage (idempotent).
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // Décompte des personnages LOCAUX par campagne (FK `campaignId`), pour l'affichage
+  // et l'avertissement de détachement à la suppression.
   const characterCount = (campaignId: string) =>
     characters.filter((c) => c.campaignId === campaignId).length;
 
-  const handleCreate = () => {
-    const campaign = createCampaign(newName);
-    upsertCampaign(campaign);
-    setCreateOpen(false);
-    setNewName('');
-    // On entre directement dans la campagne fraîchement créée.
-    router.push(`/campaign/${campaign.id}`);
+  const handleCreate = async () => {
+    setBusy(true);
+    try {
+      const campaign = await create(newName, newDescription);
+      setCreateOpen(false);
+      setNewName('');
+      setNewDescription('');
+      // On entre directement dans la campagne fraîchement créée.
+      router.push(`/campaign/${campaign.id}`);
+    } catch (e) {
+      notify(`Création impossible : ${e instanceof Error ? e.message : String(e)}`, 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleRename = () => {
-    if (!toRename) return;
-    const name = renameName.trim();
-    if (name) upsertCampaign({ ...toRename, name });
-    setToRename(null);
+  const handleEdit = async () => {
+    if (!toEdit) return;
+    setBusy(true);
+    try {
+      await update(toEdit.id, { name: editName, description: editDescription });
+      setToEdit(null);
+    } catch (e) {
+      notify(`Modification impossible : ${e instanceof Error ? e.message : String(e)}`, 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!toDelete) return;
     const name = toDelete.name;
-    removeCampaign(toDelete.id);
-    setToast(`Campagne « ${name} » supprimée.`);
-    setToDelete(null);
+    setBusy(true);
+    try {
+      await remove(toDelete.id);
+      notify(`Campagne « ${name} » supprimée.`);
+      setToDelete(null);
+      setDeleteConfirm('');
+    } catch (e) {
+      notify(`Suppression impossible : ${e instanceof Error ? e.message : String(e)}`, 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   // Brouillon de wizard en cours (PER-180) : ne le proposer à la reprise que si sa
-  // campagne existe encore (elle a pu être supprimée en cascade).
-  const draftCampaign = draft
-    ? campaigns.find((c) => c.id === draft.campaignId)
-    : undefined;
+  // campagne existe encore (elle a pu être supprimée).
+  const draftCampaign = draft ? campaigns.find((c) => c.id === draft.campaignId) : undefined;
 
   const sorted = [...campaigns].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -107,8 +143,10 @@ export default function HomePage() {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
+            disabled={status === 'unconfigured'}
             onClick={() => {
               setNewName('');
+              setNewDescription('');
               setCreateOpen(true);
             }}
           >
@@ -139,7 +177,41 @@ export default function HomePage() {
           </AppAlert>
         )}
 
-        {!hasHydrated ? (
+        {status === 'error' && (
+          <AppAlert
+            severity="error"
+            sx={{ mb: 3 }}
+            action={
+              <Button color="inherit" size="small" onClick={() => void load()}>
+                Réessayer
+              </Button>
+            }
+          >
+            Impossible de charger les campagnes{error ? ` : ${error}` : '.'}
+          </AppAlert>
+        )}
+
+        {status === 'unconfigured' ? (
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 6,
+              textAlign: 'center',
+              bgcolor: 'rgba(30, 30, 34, 0.55)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              borderColor: 'rgba(255, 255, 255, 0.10)',
+            }}
+          >
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Campagnes indisponibles
+            </Typography>
+            <Typography color="text.secondary">
+              Les campagnes sont hébergées en ligne. Le service n’est pas configuré sur cette
+              installation ; l’édition de personnages reste disponible en local.
+            </Typography>
+          </Paper>
+        ) : status === 'loading' || status === 'idle' ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />
           </Box>
@@ -197,36 +269,35 @@ export default function HomePage() {
                       )}
                       <Stack
                         direction="row"
-                        spacing={2}
+                        spacing={0.5}
                         sx={{ alignItems: 'center', color: 'text.secondary', mt: 0.75 }}
                       >
-                        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                          <PersonIcon fontSize="small" />
-                          <Typography variant="body2">
-                            {count} personnage{count > 1 ? 's' : ''}
-                          </Typography>
-                        </Stack>
-                        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                          <GroupIcon fontSize="small" />
-                          <Typography variant="body2">
-                            {campaign.players.length} joueur{campaign.players.length > 1 ? 's' : ''}
-                          </Typography>
-                        </Stack>
+                        <PersonIcon fontSize="small" />
+                        <Typography variant="body2">
+                          {count} personnage{count > 1 ? 's' : ''}
+                        </Typography>
                       </Stack>
                     </Box>
                     <Stack direction="row" sx={{ flexShrink: 0 }}>
-                      <AppTooltip title="Renommer">
+                      <AppTooltip title="Modifier">
                         <IconButton
                           onClick={() => {
-                            setToRename(campaign);
-                            setRenameName(campaign.name);
+                            setToEdit(campaign);
+                            setEditName(campaign.name);
+                            setEditDescription(campaign.description ?? '');
                           }}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </AppTooltip>
                       <AppTooltip title="Supprimer">
-                        <IconButton color="error" onClick={() => setToDelete(campaign)}>
+                        <IconButton
+                          color="error"
+                          onClick={() => {
+                            setToDelete(campaign);
+                            setDeleteConfirm('');
+                          }}
+                        >
                           <DeleteOutlineIcon fontSize="small" />
                         </IconButton>
                       </AppTooltip>
@@ -251,64 +322,106 @@ export default function HomePage() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCreate();
+              if (e.key === 'Enter' && !e.shiftKey) void handleCreate();
             }}
+          />
+          <TextField
+            margin="dense"
+            label="Notes du MJ (optionnel)"
+            fullWidth
+            multiline
+            minRows={2}
+            value={newDescription}
+            onChange={(e) => setNewDescription(e.target.value)}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateOpen(false)}>Annuler</Button>
-          <Button variant="contained" onClick={handleCreate}>
+          <Button variant="contained" onClick={() => void handleCreate()} disabled={busy}>
             Créer
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Renommage */}
-      <Dialog open={toRename !== null} onClose={() => setToRename(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Renommer la campagne</DialogTitle>
+      {/* Modification (nom + notes) */}
+      <Dialog open={toEdit !== null} onClose={() => setToEdit(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Modifier la campagne</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
             label="Nom de la campagne"
             fullWidth
-            value={renameName}
-            onChange={(e) => setRenameName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRename();
-            }}
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="Notes du MJ (optionnel)"
+            fullWidth
+            multiline
+            minRows={2}
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setToRename(null)}>Annuler</Button>
-          <Button variant="contained" onClick={handleRename}>
-            Renommer
+          <Button onClick={() => setToEdit(null)}>Annuler</Button>
+          <Button variant="contained" onClick={() => void handleEdit()} disabled={busy}>
+            Enregistrer
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Suppression en cascade — confirmation forte */}
-      <Dialog open={toDelete !== null} onClose={() => setToDelete(null)}>
+      {/* Suppression — confirmation forte (retaper le nom) */}
+      <Dialog
+        open={toDelete !== null}
+        onClose={() => {
+          setToDelete(null);
+          setDeleteConfirm('');
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
         <DialogTitle>Supprimer la campagne ?</DialogTitle>
         <DialogContent>
-          <DialogContentText component="div">
-            « {toDelete?.name} » sera définitivement supprimée, ainsi que{' '}
+          <DialogContentText component="div" sx={{ mb: 2 }}>
+            « {toDelete?.name} » sera définitivement supprimée, ainsi que ses joueurs et leurs
+            liens magiques (cascade). Ses{' '}
             <strong>
               {toDelete ? characterCount(toDelete.id) : 0} personnage
               {toDelete && characterCount(toDelete.id) > 1 ? 's' : ''}
             </strong>{' '}
-            et{' '}
-            <strong>
-              {toDelete?.players.length ?? 0} joueur
-              {(toDelete?.players.length ?? 0) > 1 ? 's' : ''}
-            </strong>{' '}
-            (suppression en cascade). Cette action est <strong>irréversible</strong> — pensez à
-            exporter les personnages en JSON au préalable si besoin.
+            ne sont <strong>pas supprimés</strong> : ils sont détachés et repassent « Non
+            attribué ». Cette action est <strong>irréversible</strong>.
           </DialogContentText>
+          <DialogContentText sx={{ mb: 1 }}>
+            Pour confirmer, retapez le nom de la campagne :
+          </DialogContentText>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            placeholder={toDelete?.name}
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setToDelete(null)}>Annuler</Button>
-          <Button color="error" variant="contained" onClick={confirmDelete}>
+          <Button
+            onClick={() => {
+              setToDelete(null);
+              setDeleteConfirm('');
+            }}
+          >
+            Annuler
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={busy || deleteConfirm.trim() !== toDelete?.name}
+            onClick={() => void confirmDelete()}
+          >
             Supprimer définitivement
           </Button>
         </DialogActions>
@@ -321,8 +434,13 @@ export default function HomePage() {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         {toast ? (
-          <AppAlert severity="success" variant="filled" onClose={() => setToast(null)} sx={{ width: '100%' }}>
-            {toast}
+          <AppAlert
+            severity={toast.severity}
+            variant="filled"
+            onClose={() => setToast(null)}
+            sx={{ width: '100%' }}
+          >
+            {toast.message}
           </AppAlert>
         ) : undefined}
       </Snackbar>

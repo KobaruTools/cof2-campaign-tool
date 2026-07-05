@@ -27,10 +27,13 @@ interface CharactersState {
   /** Supprime un personnage. */
   remove: (id: string) => void;
   /**
-   * Supprime tous les personnages rattachés à une campagne (cascade de
-   * suppression déclenchée par le store `campaigns` — PER-179).
+   * Détache de leur campagne tous les personnages locaux qui la référençaient
+   * (`campaignId`/`playerId` remis à `undefined` → « Non attribué »). Miroir
+   * local du `ON DELETE SET NULL` cloud, déclenché par le store `campaigns` à la
+   * suppression d'une campagne (PER-190). Un joueur n'ayant de sens que dans une
+   * campagne, on retire aussi la FK joueur.
    */
-  removeByCampaign: (campaignId: string) => void;
+  detachFromCampaign: (campaignId: string) => void;
   /** Récupère un personnage par id. */
   getById: (id: string) => Character | undefined;
   /**
@@ -70,9 +73,13 @@ export const useCharactersStore = create<CharactersState>()(
       remove: (id) =>
         set((state) => ({ characters: state.characters.filter((c) => c.id !== id) })),
 
-      removeByCampaign: (campaignId) =>
+      detachFromCampaign: (campaignId) =>
         set((state) => ({
-          characters: state.characters.filter((c) => c.campaignId !== campaignId),
+          characters: state.characters.map((c) =>
+            c.campaignId === campaignId
+              ? withTimestamp({ ...c, campaignId: null, playerId: null })
+              : c,
+          ),
         })),
 
       getById: (id) => get().characters.find((c) => c.id === id),

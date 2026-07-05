@@ -10,7 +10,7 @@
  * est porté par PER-183 ; on relocalise ici la liste de personnages qui vivait
  * auparavant sur l'accueil, pour que la navigation reste cohérente.
  */
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -58,10 +58,17 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const characters = useCharactersStore((s) => s.characters);
   const duplicate = useCharactersStore((s) => s.duplicate);
   const remove = useCharactersStore((s) => s.remove);
-  const campaignsHydrated = useCampaignsStore((s) => s.hasHydrated);
+  const campaignsStatus = useCampaignsStore((s) => s.status);
+  const loadCampaigns = useCampaignsStore((s) => s.load);
   const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === cid));
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
+
+  // Charge les campagnes possédées au montage : la campagne courante est résolue
+  // depuis ce cache cloud (RLS `owner_id`), le CRUD vivant sur `/campaigns`.
+  useEffect(() => {
+    void loadCampaigns();
+  }, [loadCampaigns]);
 
   const [importOpen, setImportOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -136,7 +143,8 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     </>
   );
 
-  if (!charactersHydrated || !campaignsHydrated) {
+  const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';
+  if (!charactersHydrated || campaignsLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
         <CircularProgress />

@@ -244,16 +244,16 @@ export interface Character {
   /**
    * Clé étrangère vers la campagne de rattachement, ou `null` si le personnage
    * n'est **rattaché à aucune campagne** (PER-180 : la campagne est un
-   * regroupement OPTIONNEL, le personnage reste l'entité première). La hiérarchie
-   * est plate (stockage localStorage + FK) : le personnage vit dans son store et
-   * pointe vers `Campaign.id`. Garde défensive à la lecture (FK potentiellement
-   * orpheline, cf. `src/lib/campaign/guards.ts`).
+   * regroupement OPTIONNEL, le personnage reste l'entité première). Depuis PER-190
+   * la campagne vit dans le cloud (Supabase, UUID) : le personnage — encore local
+   * en attendant sa persistance cloud (PER-192/193) — pointe vers cet UUID. Une FK
+   * qui ne résout aucune campagne connue est traitée comme « Non attribué ».
    */
   campaignId: string | null;
   /**
    * Clé étrangère vers le joueur qui incarne ce personnage, ou `null` si aucun
-   * joueur n'est attribué (PER-180). Le joueur est LOCAL à la campagne
-   * (`Campaign.players`) : cet id n'a de sens que résolu dans `campaignId` (donc
+   * joueur n'est attribué (PER-180). Le joueur est LOCAL à la campagne (table
+   * `players`, PER-191) : cet id n'a de sens que résolu dans `campaignId` (donc
    * `null` dès que `campaignId` est `null`). L'attribution est traitée par PER-184.
    */
   playerId: string | null;

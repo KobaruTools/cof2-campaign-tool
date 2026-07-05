@@ -1,8 +1,8 @@
 /**
- * Barrel de la couche « Campagne » (PER-179) : entités, fabrique et gardes FK.
- * Module pur (aucun store) — consommé par le store `campaigns`, la migration des
- * personnages et l'UI.
+ * Barrel de la couche « Campagne » (PER-190) : entités et accès données cloud.
+ * Module consommé par le store `campaigns` et l'UI. La logique métier est
+ * désormais portée par la base (RLS + FK) ; ce dossier n'expose plus que le
+ * modèle de données et le repository Supabase.
  */
 export * from './types';
-export * from './factory';
-export * from './guards';
+export * from './repo';

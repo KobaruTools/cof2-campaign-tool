@@ -7,7 +7,7 @@
  * campagne de rattachement, ou « Non attribué »). La gestion des campagnes vit
  * sur une page dédiée (`/campaigns`), accessible depuis l'en-tête.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -56,8 +56,15 @@ export default function HomePage() {
   const duplicate = useCharactersStore((s) => s.duplicate);
   const remove = useCharactersStore((s) => s.remove);
   const campaigns = useCampaignsStore((s) => s.campaigns);
+  const loadCampaigns = useCampaignsStore((s) => s.load);
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
+
+  // Charge les campagnes cloud (RLS `owner_id`) pour résoudre le nom du badge de
+  // chaque personnage. Sans elles, un perso rattaché s'affiche « Non attribué ».
+  useEffect(() => {
+    void loadCampaigns();
+  }, [loadCampaigns]);
 
   const [importOpen, setImportOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);

@@ -1,141 +1,107 @@
 'use client';
 
 /**
- * Store des campagnes (PER-179) — zustand + middleware `persist` (localStorage).
- * Deuxième store à côté de `characters` (on conserve le store personnages
- * éprouvé) ; la hiérarchie Campagne ⊃ Joueurs ⊃ Personnages est plate, reliée
- * par les FK `Character.campaignId` / `Character.playerId`.
+ * Store des campagnes (PER-190) — **cache mémoire d'une source cloud**. Contrairement
+ * au store `characters` (encore localStorage, phase transitoire), les campagnes
+ * vivent dans Supabase : ce store ne persiste RIEN, il charge la liste possédée
+ * (RLS `owner_id`) via `src/lib/campaign/repo.ts` et applique les mutations en
+ * optimiste local après confirmation serveur.
  *
- * Ce module importe `useCharactersStore` pour la **cascade** de suppression
- * (`remove` retire aussi les personnages de la campagne via `removeByCampaign`).
- * Depuis PER-180 la campagne est un regroupement OPTIONNEL : plus de « campagne
- * active » implicite ni de campagne par défaut (celle-ci est purgée au rechargement).
+ * Garde-fou : sans variables d'env Supabase (mode 100 % local historique), le
+ * store reste `unconfigured` et la liste vide — les pages campagnes affichent un
+ * état dédié plutôt que de tenter un appel réseau voué à l'échec.
  *
- * Toute la logique métier (purge, cascade, gardes FK) vit dans des fonctions
- * pures testées (`src/lib/campaign/guards.ts`) ; ce store n'en est que le câblage.
+ * Suppression d'une campagne : la base répercute les FK (joueurs en cascade,
+ * personnages cloud détachés). Les personnages encore **locaux** qui la
+ * référençaient sont détachés ici via `useCharactersStore.detachFromCampaign`
+ * (miroir du `ON DELETE SET NULL`), pour qu'ils repassent « Non attribué ».
  */
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 import {
-  cascadeDeleteCampaign,
-  createPlayer,
-  pruneDefaultCampaign,
+  deleteCampaign,
+  fetchCampaigns,
+  insertCampaign,
+  updateCampaign,
   type Campaign,
-  type CampaignRules,
-  type Player,
 } from '@/lib/campaign';
 import { useCharactersStore } from './characters';
 
+/** Cycle de vie du chargement cloud. `unconfigured` = env Supabase absente. */
+export type CampaignsStatus = 'idle' | 'loading' | 'ready' | 'error' | 'unconfigured';
+
 interface CampaignsState {
   campaigns: Campaign[];
-  hasHydrated: boolean;
-  setHasHydrated: (value: boolean) => void;
+  status: CampaignsStatus;
+  error: string | null;
 
+  /** Charge (ou recharge) les campagnes possédées. Idempotent, à appeler au montage. */
+  load: () => Promise<void>;
+  /** Crée une campagne côté cloud et l'ajoute au cache. Lève en cas d'échec. */
+  create: (name: string, description?: string | null) => Promise<Campaign>;
+  /** Met à jour nom/description d'une campagne. Lève en cas d'échec. */
+  update: (id: string, patch: { name?: string; description?: string | null }) => Promise<void>;
   /**
-   * Purge la « Campagne par défaut » héritée (auto-créée par l'ancien bootstrap
-   * PER-179). Depuis PER-180 la campagne est optionnelle ; les personnages migrés
-   * repassent « Non attribué » et cette campagne technique disparaît. Idempotent.
+   * Supprime une campagne (cloud) puis détache les personnages LOCAUX qui la
+   * référençaient (→ « Non attribué »). Lève en cas d'échec côté cloud.
    */
-  pruneLegacyDefault: () => void;
-
-  /** Ajoute ou remplace une campagne (par id). */
-  upsert: (campaign: Campaign) => void;
-  /**
-   * Supprime une campagne EN CASCADE : la campagne (et ses joueurs embarqués)
-   * ainsi que tous ses personnages (via le store `characters`).
-   */
-  remove: (id: string) => void;
-  /** Met à jour (partiellement) les règles de table d'une campagne. */
-  updateRules: (id: string, rules: Partial<CampaignRules>) => void;
-  /** Ajoute un joueur à une campagne et le retourne (undefined si campagne absente). */
-  addPlayer: (campaignId: string, name: string) => Player | undefined;
-  /** Renomme un joueur d'une campagne. */
-  renamePlayer: (campaignId: string, playerId: string, name: string) => void;
-  /** Récupère une campagne par id. */
+  remove: (id: string) => Promise<void>;
+  /** Récupère une campagne du cache par id. */
   getById: (id: string) => Campaign | undefined;
 }
 
-/** Applique une transformation à la campagne d'id donné, laisse les autres intactes. */
-function mapCampaign(
-  campaigns: Campaign[],
-  id: string,
-  fn: (c: Campaign) => Campaign,
-): Campaign[] {
-  return campaigns.map((c) => (c.id === id ? fn(c) : c));
+/** L'app est-elle branchée sur Supabase (variables d'env publiques présentes) ? */
+function isSupabaseConfigured(): boolean {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  );
 }
 
-export const useCampaignsStore = create<CampaignsState>()(
-  persist(
-    (set, get) => ({
-      campaigns: [],
-      hasHydrated: false,
-      setHasHydrated: (value) => set({ hasHydrated: value }),
+function messageOf(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
 
-      pruneLegacyDefault: () =>
-        set((state) => ({ campaigns: pruneDefaultCampaign(state.campaigns) })),
+export const useCampaignsStore = create<CampaignsState>()((set, get) => ({
+  campaigns: [],
+  status: 'idle',
+  error: null,
 
-      upsert: (campaign) =>
-        set((state) => {
-          const i = state.campaigns.findIndex((c) => c.id === campaign.id);
-          if (i === -1) return { campaigns: [...state.campaigns, campaign] };
-          const next = state.campaigns.slice();
-          next[i] = campaign;
-          return { campaigns: next };
-        }),
+  load: async () => {
+    if (!isSupabaseConfigured()) {
+      set({ status: 'unconfigured', campaigns: [], error: null });
+      return;
+    }
+    set({ status: 'loading', error: null });
+    try {
+      const campaigns = await fetchCampaigns();
+      set({ campaigns, status: 'ready', error: null });
+    } catch (e) {
+      set({ status: 'error', error: messageOf(e) });
+    }
+  },
 
-      remove: (id) => {
-        // Cascade : on calcule les deux tableaux résultants, puis on met à jour
-        // chaque store dans son domaine (campagnes ici, personnages là-bas).
-        const result = cascadeDeleteCampaign(
-          get().campaigns,
-          useCharactersStore.getState().characters,
-          id,
-        );
-        set({ campaigns: result.campaigns });
-        useCharactersStore.getState().removeByCampaign(id);
-      },
+  create: async (name, description) => {
+    const campaign = await insertCampaign({
+      name: name.trim() || 'Nouvelle campagne',
+      description: description?.trim() || null,
+    });
+    set((state) => ({ campaigns: [...state.campaigns, campaign] }));
+    return campaign;
+  },
 
-      updateRules: (id, rules) =>
-        set((state) => ({
-          campaigns: mapCampaign(state.campaigns, id, (c) => ({
-            ...c,
-            rules: { ...c.rules, ...rules },
-          })),
-        })),
+  update: async (id, patch) => {
+    const normalized: { name?: string; description?: string | null } = {};
+    if (patch.name !== undefined) normalized.name = patch.name.trim() || 'Nouvelle campagne';
+    if (patch.description !== undefined) normalized.description = patch.description?.trim() || null;
+    const updated = await updateCampaign(id, normalized);
+    set((state) => ({ campaigns: state.campaigns.map((c) => (c.id === id ? updated : c)) }));
+  },
 
-      addPlayer: (campaignId, name) => {
-        const campaign = get().campaigns.find((c) => c.id === campaignId);
-        if (!campaign) return undefined;
-        const player = createPlayer(name);
-        set((state) => ({
-          campaigns: mapCampaign(state.campaigns, campaignId, (c) => ({
-            ...c,
-            players: [...c.players, player],
-          })),
-        }));
-        return player;
-      },
+  remove: async (id) => {
+    await deleteCampaign(id);
+    set((state) => ({ campaigns: state.campaigns.filter((c) => c.id !== id) }));
+    // Miroir local du ON DELETE SET NULL : les persos locaux repassent « Non attribué ».
+    useCharactersStore.getState().detachFromCampaign(id);
+  },
 
-      renamePlayer: (campaignId, playerId, name) =>
-        set((state) => ({
-          campaigns: mapCampaign(state.campaigns, campaignId, (c) => ({
-            ...c,
-            players: c.players.map((p) => (p.id === playerId ? { ...p, name } : p)),
-          })),
-        })),
-
-      getById: (id) => get().campaigns.find((c) => c.id === id),
-    }),
-    {
-      name: 'cof2-campaigns',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ campaigns: state.campaigns }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
-        // Retire la « Campagne par défaut » héritée (PER-180) si elle traîne
-        // encore d'un ancien bootstrap.
-        state?.pruneLegacyDefault();
-      },
-    },
-  ),
-);
+  getById: (id) => get().campaigns.find((c) => c.id === id),
+}));
