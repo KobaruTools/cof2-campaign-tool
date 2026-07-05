@@ -8,7 +8,6 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
-import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -41,6 +40,7 @@ import {
   priestGods,
 } from '@/data';
 import type { Armor, CharacterClass, Feature, Shield } from '@/data/schema';
+import { AppAlert } from '@/components/AppAlert';
 import { IdentityForm } from '@/components/IdentityForm';
 import {
   divineFeatureOfVocation,
@@ -57,6 +57,7 @@ import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { initialEquipment } from './helpers';
 import { classColor } from '@/lib/ui/classColors';
 import { AbilityBadgeList } from '@/components/AbilityBadge';
+import { SourceRef } from '@/components/SourceRef';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { DamageValue } from '@/components/DamageValue';
@@ -395,6 +396,8 @@ export function ClassStep({ draft, patch }: StepProps) {
         </RadioGroup>
       </FormControl>
 
+      {characterClass && <Divider />}
+
       {characterClass && (
         <Card
           variant="outlined"
@@ -493,9 +496,9 @@ function PriestVocationPanel({ draft, patch }: StepProps) {
           <FormControl>
             <FormLabel>Vocation du prêtre</FormLabel>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              Choix obligatoire (p. 122). Le généraliste suit les règles de base ; le spécialiste se
-              voue à un seul dieu, maîtrise son arme sacrée et reçoit une capacité divine d’un autre
-              profil.
+              Choix obligatoire <SourceRef page={122} />. Le généraliste suit les règles de base ; le
+              spécialiste se voue à un seul dieu, maîtrise son arme sacrée et reçoit une capacité
+              divine d’un autre profil.
             </Typography>
             <RadioGroup value={mode} onChange={(e) => setMode(e.target.value)}>
               <FormControlLabel
@@ -638,7 +641,7 @@ function PathCard({
   /** Libellé au-dessus de la capacité (ex. « Rang 1 — acquis gratuitement »). */
   rankLabel?: string;
   /** Précision en italique sous le libellé de rang (ex. règle de remplacement). */
-  note?: string;
+  note?: React.ReactNode;
   control?: 'checkbox' | 'radio';
   /**
    * Carte sélectionnable (défaut) : indicateur visible, le clic (dé)sélectionne.
@@ -768,7 +771,7 @@ function PathCard({
 
 export function PathsStep({ draft, patch }: StepProps) {
   const characterClass = classById.get(draft.classId);
-  if (!characterClass) return <Alert severity="warning">Choisissez d’abord un profil.</Alert>;
+  if (!characterClass) return <AppAlert severity="warning">Choisissez d’abord un profil.</AppAlert>;
   const isMage = characterClass.familyId === 'mages';
   const ancestry = ancestryById.get(draft.ancestryId);
   const hybrid = draft.hybrid ?? false;
@@ -885,7 +888,8 @@ export function PathsStep({ draft, patch }: StepProps) {
           control={<Switch size="small" checked={hybrid} onChange={(e) => setHybrid(e.target.checked)} />}
           label={
             <Typography variant="body2" color="text.secondary">
-              Profil hybride : voies d’autres profils dès la création (accord du MJ, p. 179-180)
+              Profil hybride : voies d’autres profils dès la création (accord du MJ,{' '}
+              <SourceRef page="179-180" />)
             </Typography>
           }
         />
@@ -937,7 +941,9 @@ export function PathsStep({ draft, patch }: StepProps) {
 
             {involved.length > 0 && (
               <FormControl sx={{ mt: 2 }}>
-                <FormLabel>Profil principal (parmi les profils des voies choisies, p. 180)</FormLabel>
+                <FormLabel>
+                  Profil principal (parmi les profils des voies choisies, <SourceRef page={180} />)
+                </FormLabel>
                 <RadioGroup
                   value={involved.includes(draft.classId) ? draft.classId : ''}
                   onChange={(e) => patch(mainProfilePatch(e.target.value))}
@@ -1003,7 +1009,7 @@ export function PathsStep({ draft, patch }: StepProps) {
                     checked={draft.magePathSlot}
                     feature={pathFeatureAtRank(MAGE_PATH_ID, 1)}
                     rankLabel="Rang 1 — remplace la voie de peuple"
-                    note="Le rang 1 de la voie de peuple reste acquis (p. 60)."
+                    note={<>Le rang 1 de la voie de peuple reste acquis <SourceRef page={60} />.</>}
                     control="radio"
                     onToggle={() => patch({ magePathSlot: true })}
                   />
@@ -1078,11 +1084,11 @@ export function PathsStep({ draft, patch }: StepProps) {
         const god = priestGods.find((g) => g.id === v.godId);
         if (divine.rank !== 1) {
           return (
-            <Alert severity="info">
+            <AppAlert severity="info">
               Capacité divine « {divine.name} » ({god?.name}, rang {divine.rank}) : à acquérir en
               priorité au rang {divine.rank} lors d’une montée de niveau — elle remplacera alors le
               rang {divine.rank} d’une de vos voies de prêtre.
-            </Alert>
+            </AppAlert>
           );
         }
         if (draft.chosenPaths.length !== 2) return null;
@@ -1093,7 +1099,7 @@ export function PathsStep({ draft, patch }: StepProps) {
                 <FormLabel>Capacité divine — voie d’accueil</FormLabel>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
                   « {divine.name} » (capacité divine de {god?.name}, rang 1) remplace le rang 1 de
-                  l’une de vos 2 voies (p. 122).
+                  l’une de vos 2 voies <SourceRef page={122} />.
                 </Typography>
                 <RadioGroup
                   value={v.hostPathId && draft.chosenPaths.includes(v.hostPathId) ? v.hostPathId : ''}
