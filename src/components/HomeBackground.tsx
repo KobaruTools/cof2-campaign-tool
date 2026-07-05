@@ -50,13 +50,16 @@ const BASE_SHIFT = 20;
 const FADE_START = 10; // vh : l'image reste pleine jusque-là (côté extérieur)
 const FADE_END = 34; // vh : image totalement fondue au-delà (~ son bord intérieur)
 
-// Variante `footer` : hauteur de la bande d'illustration ancrée en bas, et fondu
-// VERTICAL masquant la coupure du haut (en % de la bande : opaque en haut → transparent).
-const FOOTER_HEIGHT = '60vh';
-const FOOTER_TOP_FADE = 32; // %
-// Hauteur de référence de l'image du footer (vh) : la largeur en découle
+// Variante `footer`. Hauteur de référence de l'image (vh) : la largeur en découle
 // (`backgroundSize: auto 100%`). > 100 → image plus grande que sur l'accueil.
 const FOOTER_IMAGE_HEIGHT = 135; // vh
+// La bande fait la MÊME hauteur que l'image : celle-ci s'y inscrit entièrement (plus
+// de troncature dure en haut), et le fondu vertical peut la faire disparaître
+// progressivement jusqu'à son bord SUPÉRIEUR.
+const FOOTER_HEIGHT = `${FOOTER_IMAGE_HEIGHT}vh`;
+// Fondu VERTICAL du haut, en % de la bande (= de l'image) : opaque tout en haut (bord
+// supérieur de l'image) → transparent plus bas. Plus petit = on voit plus d'image.
+const FOOTER_TOP_FADE = 32; // %
 
 // Couleur de fond de l'app (thème sombre) : sert au dégradé de fondu intérieur.
 const BG = 'rgb(18, 18, 18)';
