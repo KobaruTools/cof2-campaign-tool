@@ -30,7 +30,7 @@ export function AppHeader({ title, onBack, action }: AppHeaderProps) {
       // peine transparent + le même flou d'arrière-plan (blur 10px) que les sections
       // (cf. SheetSection), pour laisser transparaître l'illustration au défilement.
       sx={{
-        bgcolor: 'rgba(9, 9, 11, 0.78)',
+        bgcolor: 'rgba(20, 20, 23, 0.85)',
         backgroundImage: 'none',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
