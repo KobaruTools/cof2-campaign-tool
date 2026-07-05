@@ -13,6 +13,8 @@ export interface CharacterSummary {
   /** Id du profil — pour l'icône et le code couleur (`ClassIcon`, `classColor`). */
   classId: string;
   characterClass: string;
+  /** Armes à feu autorisées dans l'univers — pilote l'icône « Arbalétrier » (`ClassIcon`). */
+  firearmsAllowed: boolean;
   level: number;
   updatedAt: string;
 }
@@ -26,6 +28,7 @@ export function summarize(character: Character): CharacterSummary {
     ancestry: ancestryById.get(character.ancestryId)?.name ?? dash,
     classId: character.classId,
     characterClass: characterClassName(character, dash),
+    firearmsAllowed: character.firearmsAllowed,
     level: character.level,
     updatedAt: character.updatedAt,
   };

@@ -32,6 +32,7 @@ import { EquipmentStep } from '@/components/wizard/EquipmentStep';
 import { SummaryStep } from '@/components/wizard/SummaryStep';
 import type { StepProps } from '@/components/wizard/types';
 import { HomeBackground } from '@/components/HomeBackground';
+import { FirearmsAllowedProvider } from '@/components/ClassIcon';
 
 interface StepDef {
   label: string;
@@ -187,7 +188,10 @@ export default function CreatePage() {
   };
 
   return (
-    <>
+    // Les icônes de profil du wizard (sélection, hybridation, récap) suivent le
+    // réglage « armes à feu » du brouillon : dès qu'il est décoché, l'arquebusier
+    // s'affiche en « Arbalétrier » (arbalète) partout — cf. FirearmsAllowedProvider.
+    <FirearmsAllowedProvider value={draft.firearmsAllowed ?? true}>
       <title>Création de personnage — Éditeur de personnage CO2</title>
       {/* Même illustration de fond que l'accueil : la couverture scindée en deux
           moitiés encadrant le contenu (fixe, parallaxe + léger suivi de la souris). */}
@@ -254,6 +258,6 @@ export default function CreatePage() {
           )}
         </Box>
       </Container>
-    </>
+    </FirearmsAllowedProvider>
   );
 }

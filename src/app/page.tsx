@@ -209,7 +209,7 @@ export default function HomePage() {
                       <TableCell>{r.ancestry}</TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                          <ClassIcon classId={r.classId} size={20} />
+                          <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={20} />
                           <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
                             {r.characterClass}
                           </Box>
@@ -255,7 +255,7 @@ export default function HomePage() {
                         spacing={0.5}
                         sx={{ alignItems: 'center', flexWrap: 'wrap' }}
                       >
-                        <ClassIcon classId={r.classId} size={16} />
+                        <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={16} />
                         <Typography variant="body2" color="text.secondary">
                           {r.ancestry} ·{' '}
                           <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>

@@ -82,7 +82,7 @@ import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { HeaderIllustrations } from '@/components/HeaderIllustrations';
 import { HomeBackground } from '@/components/HomeBackground';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
-import { ClassIcon } from '@/components/ClassIcon';
+import { ClassIcon, FirearmsAllowedProvider } from '@/components/ClassIcon';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
@@ -606,7 +606,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const capacityGauges = capacityResourceGauges(character);
 
   return (
-    <>
+    // Toutes les icônes de profil de la fiche (en-tête, voies, montée de niveau,
+    // références d'emprunt…) suivent le réglage « armes à feu » du personnage :
+    // l'arquebusier privé de poudre affiche une arbalète (« Arbalétrier », p. 62).
+    <FirearmsAllowedProvider value={character.firearmsAllowed}>
       {/* Titre de l'onglet = nom du personnage. Rendu déclaratif (React 19 le
           hisse dans le <head>) plutôt que document.title dans un effet : sinon
           la métadonnée en streaming de Next réécrase le titre après hydratation
@@ -1064,6 +1067,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           Personnage créé.
         </AppAlert>
       </Snackbar>
-    </>
+    </FirearmsAllowedProvider>
   );
 }

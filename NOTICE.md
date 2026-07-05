@@ -5,7 +5,7 @@
 Les icônes illustrant chaque profil proviennent de [game-icons.net](https://game-icons.net),
 distribuées sous licence [Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 
-Auteurs : **Lorc** et **Delapouite** (https://game-icons.net).
+Auteurs : **Lorc**, **Delapouite** et **Carl Olsen** (https://game-icons.net).
 
 Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
 `src/lib/ui/classIcons.ts`. La correspondance profil → fichier source est conservée
@@ -14,6 +14,7 @@ dans `CLASS_ICON_SOURCES` (même fichier) et dans `scripts/game-icons/classes/ma
 | Profil | Fichier game-icons.net | Auteur |
 | --- | --- | --- |
 | Arquebusier | `lorc/blunderbuss.svg` | Lorc |
+| Arbalétrier (arquebusier sans armes à feu) | `carl-olsen/crossbow.svg` | Carl Olsen |
 | Barde | `lorc/lyre.svg` | Lorc |
 | Rôdeur | `lorc/high-shot.svg` | Lorc |
 | Voleur | `lorc/hood.svg` | Lorc |

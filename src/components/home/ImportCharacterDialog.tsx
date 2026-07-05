@@ -243,7 +243,7 @@ function ImportedSummary({ character }: { character: Character }) {
             {summary.name}
           </Typography>
           <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mt: 0.25 }}>
-            <ClassIcon classId={summary.classId} size={18} />
+            <ClassIcon classId={summary.classId} firearmsAllowed={summary.firearmsAllowed} size={18} />
             <Typography variant="body2" color="text.secondary">
               <Box component="span" sx={{ color: classColor(summary.classId), fontWeight: 600 }}>
                 {summary.characterClass}
