@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import AddIcon from '@mui/icons-material/Add';
@@ -11,7 +11,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { darken, lighten } from '@mui/material/styles';
+import { alpha, darken, lighten } from '@mui/material/styles';
 import type { Purse } from '@/lib/character/types';
 import { COPPER_PER_SILVER, GOLD_PER_PLATINUM, SILVER_PER_GOLD } from '@/lib/character/purse';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -34,6 +34,11 @@ interface CoinMeta {
   shine?: string | ShineGradient;
   /** `true` : la barre de brillance balaie DEUX fois (réservé à la pièce la plus précieuse). */
   shineDouble?: boolean;
+  /**
+   * `true` : ajoute une 3e barre large et semi-transparente qui balaie lentement DERRIÈRE la
+   * double barre (couvre toute sa durée). Fondu de sortie si la souris quitte avant la fin.
+   */
+  shineThick?: boolean;
   /** Profil de scintillement des jetons « précieux » (étincelles au survol) ; absent = aucun. */
   sparkle?: SparkleProfile;
   /** Verbatim de règle (p. 181) affiché en info-bulle. */
@@ -123,6 +128,7 @@ const COINS: CoinMeta[] = [
     // et SEULE pièce à double passage de la barre (statut le plus précieux).
     shine: { from: 'rgba(28, 190, 178, 0.85)', to: 'rgba(196, 255, 248, 0.96)' },
     shineDouble: true,
+    shineThick: true,
     sparkle: { positions: SPARKLES_PLATINUM, duration: '3.2s' },
     rule:
       'La pièce de platine (pp) est la monnaie la plus précieuse, rare et recherchée. ' +
@@ -189,8 +195,68 @@ function rollSparkles(coin: CoinMeta): SparkleParam[] {
   });
 }
 
+/**
+ * 3e barre de brillance : large, floue et semi-transparente, elle balaie lentement (1,5 s,
+ * soit toute la durée de la double barre) DERRIÈRE celle-ci. Pilotée à la main (Web Animations
+ * API) pour offrir un fondu de SORTIE : si la souris quitte avant la fin du balayage, la barre
+ * se fige à sa position courante et s'estompe doucement, au lieu de disparaître d'un coup.
+ */
+function ThickShineBar({ coin, hover }: { coin: CoinMeta; hover: boolean }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof el.animate !== 'function') return;
+    if (hover) {
+      // (Re)lance le balayage large et lent, avec fondu d'entrée/sortie intégré au keyframe.
+      el.getAnimations().forEach((a) => a.cancel());
+      el.style.left = '';
+      el.style.opacity = '';
+      el.animate(
+        [
+          { left: '-190%', opacity: 0 },
+          { left: '-120%', opacity: 0.5, offset: 0.12 },
+          { left: '120%', opacity: 0.5, offset: 0.85 },
+          { left: '190%', opacity: 0 },
+        ],
+        { duration: 1500, easing: 'ease-out', fill: 'forwards' },
+      );
+    } else {
+      const running = el.getAnimations().some((a) => a.playState === 'running');
+      if (running) {
+        // Sortie en cours de balayage : on fige la position courante puis on estompe.
+        const left = getComputedStyle(el).left;
+        el.getAnimations().forEach((a) => a.cancel());
+        el.style.left = left;
+        el.animate([{ opacity: 0.5 }, { opacity: 0 }], { duration: 400, easing: 'ease-out', fill: 'forwards' });
+      } else {
+        el.getAnimations().forEach((a) => a.cancel());
+        el.style.opacity = '0';
+      }
+    }
+  }, [hover]);
+
+  return (
+    <Box
+      ref={ref}
+      sx={{
+        position: 'absolute',
+        top: 0,
+        left: '-190%',
+        width: '165%',
+        height: '100%',
+        opacity: 0,
+        zIndex: 1,
+        pointerEvents: 'none',
+        transform: 'skewX(-20deg)',
+        filter: 'blur(2.5px)',
+        background: shineBackground(coin.shine),
+      }}
+    />
+  );
+}
+
 /** Jeton de monnaie coloré (pastille avec le code), info-bulle = verbatim + source. */
-function CoinToken({ coin, sparkles }: { coin: CoinMeta; sparkles: SparkleParam[] }) {
+function CoinToken({ coin, sparkles, hover }: { coin: CoinMeta; sparkles: SparkleParam[]; hover: boolean }) {
   const tooltip = (
     <Box sx={{ maxWidth: 280 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -259,11 +325,15 @@ function CoinToken({ coin, sparkles }: { coin: CoinMeta; sparkles: SparkleParam[
               left: '-150%',
               width: '70%',
               height: '100%',
+              // Au-dessus de la 3e barre large (`ThickShineBar`, zIndex 1) → double barre nette devant.
+              zIndex: 2,
               background: shineBackground(coin.shine),
               transform: 'skewX(-20deg)',
             },
           }}
         >
+          {/* 3e barre large et lente, DERRIÈRE la double barre (jetons `shineThick`, ex. platine). */}
+          {coin.shineThick && <ThickShineBar coin={coin} hover={hover} />}
           {coin.code}
         </Box>
 
@@ -338,6 +408,8 @@ function CoinInput({
   // (`&:hover .coin-sparkle`). Tirage dans un gestionnaire d'événement → `Math.random`
   // hors rendu (pur). Non précieux → tableau vide (aucune étincelle).
   const [sparkles, setSparkles] = useState<SparkleParam[]>([]);
+  // Survol du champ : pilote la 3e barre large (fondu de sortie géré par `ThickShineBar`).
+  const [hover, setHover] = useState(false);
 
   // Incrément/décrément via les boutons −/+ (remplacent les flèches natives). Bornes ≥ 0.
   const step = (delta: number) => {
@@ -346,11 +418,20 @@ function CoinInput({
     setText(String(next));
   };
 
+  // Boutons −/+ : proches du blanc mais légèrement teintés vers la couleur de la pièce ;
+  // fond du champ noir courant très légèrement teinté de la même couleur (pour mieux les repérer).
+  const btnColor = mixWhiteToColor(coin.color, 0.22);
+  const btnHoverColor = mixWhiteToColor(coin.color, 0.5);
+
   return (
     <TextField
       size="small"
       type="number"
-      onMouseEnter={() => setSparkles(rollSparkles(coin))}
+      onMouseEnter={() => {
+        setHover(true);
+        setSparkles(rollSparkles(coin));
+      }}
+      onMouseLeave={() => setHover(false)}
       value={text}
       onChange={(e) => {
         const raw = e.target.value;
@@ -374,9 +455,18 @@ function CoinInput({
         // dans le champ (elles ne débordent plus dans la rangée). On réaligne le contour
         // (`top: 0`, sinon son décalage de −5px pour l'encoche du label serait rogné, sans
         // label ici) pour garder la bordure intacte.
-        '& .MuiOutlinedInput-root': { overflow: 'hidden', pr: 0.5 },
-        '& .MuiOutlinedInput-notchedOutline': { top: 0 },
+        // Fond du champ (noir courant) très légèrement teinté vers la couleur de la pièce,
+        // pour mieux détacher les boutons −/+.
+        '& .MuiOutlinedInput-root': { overflow: 'hidden', pr: 0.5, backgroundColor: alpha(coin.color, 0.09) },
+        // Contour au survol = couleur de la pièce, avec fondu ; le délai (.4s) porté par l'état
+        // de BASE ne joue qu'à la SORTIE (imite le hover des voies & capacités en vue colonne),
+        // l'entrée (`:hover`, sans délai) prend le relais → fondu immédiat.
+        '& .MuiOutlinedInput-notchedOutline': { top: 0, transition: 'border-color .3s ease .4s' },
         '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
+        '&:hover .MuiOutlinedInput-notchedOutline': {
+          borderColor: coin.color,
+          transition: 'border-color .3s ease',
+        },
         // Masque les flèches haut/bas natives du champ number (remplacées par les boutons −/+).
         '& input[type=number]': { MozAppearance: 'textfield' },
         '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
@@ -419,46 +509,43 @@ function CoinInput({
         input: {
           startAdornment: (
             <InputAdornment position="start" sx={{ mr: 0.75 }}>
-              <CoinToken coin={coin} sparkles={sparkles} />
+              <CoinToken coin={coin} sparkles={sparkles} hover={hover} />
             </InputAdornment>
           ),
-          // Stepper −/+ carré, empilé, remplaçant les flèches natives (masquées ci-dessus).
-          // Un fin séparateur à gauche l'intègre au champ sans en changer la silhouette.
+          // Stepper −/+ HORIZONTAL (boutons plus gros), remplaçant les flèches natives (masquées
+          // ci-dessus). Séparé du nombre par un liseré ; couleur proche du blanc, teintée vers la
+          // pièce. `−` à gauche, `+` à droite.
           endAdornment: (
-            <InputAdornment position="end" sx={{ ml: 0.5 }}>
-              <Stack sx={{ borderLeft: '1px solid', borderColor: 'divider' }}>
+            <InputAdornment position="end" sx={{ ml: 0.5, mr: -0.5 }}>
+              <Stack direction="row" sx={{ borderLeft: '1px solid', borderColor: 'divider', alignSelf: 'stretch' }}>
                 <IconButton
-                  size="small"
-                  aria-label={`Ajouter 1 ${coin.code}`}
-                  onClick={() => step(1)}
-                  sx={{
-                    borderRadius: 0,
-                    p: 0,
-                    width: 20,
-                    height: 17,
-                    color: 'text.secondary',
-                    '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
-                  }}
-                >
-                  <AddIcon sx={{ fontSize: 15 }} />
-                </IconButton>
-                <IconButton
-                  size="small"
                   aria-label={`Retirer 1 ${coin.code}`}
                   onClick={() => step(-1)}
                   disabled={value <= 0}
                   sx={{
                     borderRadius: 0,
                     p: 0,
-                    width: 20,
-                    height: 17,
-                    borderTop: '1px solid',
-                    borderColor: 'divider',
-                    color: 'text.secondary',
-                    '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+                    width: 28,
+                    color: btnColor,
+                    '&:hover': { bgcolor: alpha(coin.color, 0.2), color: btnHoverColor },
                   }}
                 >
-                  <RemoveIcon sx={{ fontSize: 15 }} />
+                  <RemoveIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+                <IconButton
+                  aria-label={`Ajouter 1 ${coin.code}`}
+                  onClick={() => step(1)}
+                  sx={{
+                    borderRadius: 0,
+                    p: 0,
+                    width: 28,
+                    borderLeft: '1px solid',
+                    borderColor: 'divider',
+                    color: btnColor,
+                    '&:hover': { bgcolor: alpha(coin.color, 0.2), color: btnHoverColor },
+                  }}
+                >
+                  <AddIcon sx={{ fontSize: 18 }} />
                 </IconButton>
               </Stack>
             </InputAdornment>
