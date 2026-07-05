@@ -7,8 +7,8 @@ import { AppTooltip } from '@/components/AppTooltip';
 export interface InfoHintProps {
   /** Corps de l'infobulle : conseil ou texte de règle (chaîne ou nœud React). */
   children: React.ReactNode;
-  /** Numéro de page citée en source (cf. `SourceRef`). */
-  page?: number;
+  /** Numéro de page citée en source (cf. `SourceRef`) ; nombre ou plage (« 219-220 »). */
+  page?: number | string;
   /** Section ou titre de paragraphe cité en source (cf. `SourceRef`). */
   section?: string;
   /** Taille de l'icône « i ». Par défaut `small`. */

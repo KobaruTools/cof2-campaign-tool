@@ -61,7 +61,7 @@ export function FeatureLabel({ feature, concentration = false, pathRank }: Featu
         concentrated && a === 'A' ? (
           <Box component="span" key={a}>
             {' '}
-            <AppTooltip title="Concentration : lancé en action limitée (L) au lieu de (A) (p. 228)">
+            <AppTooltip title="Concentration : lancé en action limitée (L) au lieu de (A)" page={228}>
               <Box component="span" sx={{ fontWeight: 700, color: 'info.main', cursor: 'default' }}>
                 (L)
               </Box>

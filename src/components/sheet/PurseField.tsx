@@ -14,6 +14,7 @@ import { darken, lighten } from '@mui/material/styles';
 import type { Purse } from '@/lib/character/types';
 import { COPPER_PER_SILVER, SILVER_PER_GOLD } from '@/lib/character/purse';
 import { AppTooltip } from '@/components/AppTooltip';
+import { SourceRef } from '@/components/SourceRef';
 
 /** Unité de monnaie affichée dans la bourse (clé du modèle + présentation). */
 interface CoinMeta {
@@ -86,9 +87,7 @@ function CoinToken({ coin }: { coin: CoinMeta }) {
       <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', mb: 0.5 }}>
         « {coin.rule} »
       </Typography>
-      <Typography variant="caption" color="text.secondary">
-        p. 181
-      </Typography>
+      <SourceRef page={181} />
     </Box>
   );
   const shine = coin.shine ?? 'rgba(255,255,255,0.85)';
@@ -337,7 +336,7 @@ export interface PurseFieldProps {
 export function PurseField({ purse, onChange, editing = false }: PurseFieldProps) {
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-      <AppTooltip title="Bourse — argent possédé (p. 181)">
+      <AppTooltip title="Bourse — argent possédé" page={181}>
         <AccountBalanceWalletIcon fontSize="small" sx={{ color: 'text.secondary', flexShrink: 0 }} />
       </AppTooltip>
 

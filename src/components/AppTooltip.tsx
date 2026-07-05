@@ -13,14 +13,20 @@ export interface AppTooltipProps extends Omit<TooltipProps, 'title'> {
    * infobulles conditionnelles n'apparaissant que dans un état bloqué).
    */
   title: React.ReactNode;
-  /** Page du livre à citer en source sous le contenu (cf. `SourceRef`). */
-  page?: number;
+  /** Page du livre à citer en source sous le contenu (cf. `SourceRef`) ; nombre ou plage (« 219-220 »). */
+  page?: number | string;
   /** Section/titre de paragraphe à citer en source (cf. `SourceRef`). */
   section?: string;
   /** Largeur maximale de la bulle (px ou valeur CSS). Défaut : laissé à MUI. */
   maxWidth?: number | string;
   /** Conserve les retours à la ligne du contenu (`white-space: pre-line`). */
   preLine?: boolean;
+  /**
+   * Délai (ms) avant apparition au survol. Appliqué aussi à `enterNextDelay` pour rester
+   * constant même juste après une autre bulle. Défaut : comportement MUI (bulle quasi immédiate).
+   * Utile pour une info secondaire toujours identique qu'on ne veut pas voir surgir à chaque survol.
+   */
+  enterDelay?: number;
 }
 
 /**
@@ -36,6 +42,7 @@ export function AppTooltip({
   section,
   maxWidth,
   preLine,
+  enterDelay,
   slotProps,
   children,
   ...rest
@@ -73,7 +80,12 @@ export function AppTooltip({
       : slotProps;
 
   return (
-    <Tooltip title={content} slotProps={mergedSlotProps} {...rest}>
+    <Tooltip
+      title={content}
+      slotProps={mergedSlotProps}
+      {...(enterDelay != null ? { enterDelay, enterNextDelay: enterDelay } : {})}
+      {...rest}
+    >
       {children}
     </Tooltip>
   );

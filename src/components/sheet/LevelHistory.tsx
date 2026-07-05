@@ -8,6 +8,7 @@ import { featureById, pathById } from '@/data';
 import type { LevelUpEntry } from '@/lib/character/types';
 import { ORPHAN_REWARD_LABEL } from '@/lib/character/orphanPoints';
 import { FeatureLabel } from '@/components/FeatureLabel';
+import { SourceRef } from '@/components/SourceRef';
 
 export interface LevelHistoryProps {
   history: LevelUpEntry[];
@@ -80,7 +81,7 @@ export function LevelHistory({ history }: LevelHistoryProps) {
                 <Stack key={`orphan-${i}`} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <Chip label="Point orphelin" size="small" color="warning" variant="outlined" />
                   <Typography variant="body2" color="text.secondary">
-                    {ORPHAN_REWARD_LABEL[reward]} (p. 40)
+                    {ORPHAN_REWARD_LABEL[reward]} <SourceRef page={40} />
                   </Typography>
                 </Stack>
               ))}

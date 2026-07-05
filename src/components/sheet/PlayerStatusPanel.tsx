@@ -23,6 +23,7 @@ import type { CapacityResourceGauge } from '@/lib/character/effects';
 import { currentHp, currentLuck, currentMana, currentRecoveryDice, hpHealthState, type HealthState } from '@/lib/character/gauges';
 import { classColor } from '@/lib/ui/classColors';
 import { AppTooltip } from '@/components/AppTooltip';
+import { SourceRef } from '@/components/SourceRef';
 import { ClassIcon } from '@/components/ClassIcon';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DieIcon } from '@/components/DieIcon';
@@ -128,7 +129,7 @@ type DamageKind = 'lethal' | 'temp';
  */
 const HEALTH_STATE_META: Record<
   Exclude<HealthState, 'normal'>,
-  { label: string; palette: 'warning' | 'error' | 'secondary'; rule: string; source: string }
+  { label: string; palette: 'warning' | 'error' | 'secondary'; rule: string; sourcePage: number | string }
 > = {
   weakened: {
     label: 'Affaibli',
@@ -136,7 +137,7 @@ const HEALTH_STATE_META: Record<
     rule:
       'Un personnage ou une créature à 1 PV subit l’état préjudiciable affaibli. ' +
       'L’état affaibli disparaît dès que les PV repassent au-dessus de 1.',
-    source: 'p. 220',
+    sourcePage: 220,
   },
   down: {
     label: 'À terre / mourant',
@@ -145,7 +146,7 @@ const HEALTH_STATE_META: Record<
       'Quand un PJ tombe à 0 PV, il tombe au sol, inconscient, et perd 1 dé de récupération (DR). ' +
       'Lorsqu’un PJ est à 0 PV, il ne peut plus agir, et s’il ne bénéficie pas d’un sort de soins, ' +
       'd’une potion ou de premiers soins dans l’heure qui suit, il meurt.',
-    source: 'p. 220',
+    sourcePage: 220,
   },
   stunned: {
     label: 'Assommé',
@@ -154,7 +155,7 @@ const HEALTH_STATE_META: Record<
       'Lorsque les DM temporaires dépassent le nombre de PV restants et que le dernier coup a infligé ' +
       'des DM temporaires, la créature est assommée (inconsciente). Une créature élimine 1 DM ' +
       'temporaire subi par minute.',
-    source: 'p. 219-220',
+    sourcePage: '219-220',
   },
 };
 
@@ -172,9 +173,7 @@ function HealthStateBadge({ state }: { state: Exclude<HealthState, 'normal'> }) 
       <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', mb: 0.5 }}>
         « {meta.rule} »
       </Typography>
-      <Typography variant="caption" color="text.secondary">
-        {meta.source}
-      </Typography>
+      <SourceRef page={meta.sourcePage} />
     </Box>
   );
   return (
@@ -477,14 +476,16 @@ export function PlayerStatusPanel({
       {/* Repos (PER-151) : récupération selon les règles CO2 ; matrice des DR à droite. */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1, pt: 0.5 }}>
         <AppTooltip
-          title="Récupération rapide (30 min) : régénère les dégâts temporaires, réinitialise les capacités « par combat », et permet de consommer un dé de récupération pour se soigner de [dé + ½ niveau] PV (p. 221)."
+          title="Récupération rapide (30 min) : régénère les dégâts temporaires, réinitialise les capacités « par combat », et permet de consommer un dé de récupération pour se soigner de [dé + ½ niveau] PV."
+          page={221}
         >
           <Button size="small" variant="outlined" startIcon={<TimerIcon />} onClick={() => setShortRestOpen(true)}>
             Repos court
           </Button>
         </AppTooltip>
         <AppTooltip
-          title="Récupération complète (8 h, 1/jour) : mana plein, +1 dé de récupération, dégâts temporaires régénérés, capacités quotidiennes réinitialisées (p. 221-222, 229)."
+          title="Récupération complète (8 h, 1/jour) : mana plein, +1 dé de récupération, dégâts temporaires régénérés, capacités quotidiennes réinitialisées."
+          page="221-222, 229"
         >
           <Button size="small" variant="outlined" startIcon={<HotelIcon />} onClick={() => setLongRestOpen(true)}>
             Repos long

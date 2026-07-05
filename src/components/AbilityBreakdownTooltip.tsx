@@ -67,7 +67,9 @@ export function AbilityBreakdownTooltip({
           ))}
         </Stack>
       )}
-      <SourceRef page={bd.page} sx={{ display: 'block', mt: 1 }} />
+      <Box sx={{ mt: 1 }}>
+        <SourceRef page={bd.page} />
+      </Box>
     </Box>
   );
   return <AppTooltip title={title}>{children}</AppTooltip>;

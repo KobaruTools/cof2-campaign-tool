@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import { darken, type SxProps, type Theme } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
+import { SourceRef } from '@/components/SourceRef';
 import type { Feature } from '@/data/schema';
 import { canConcentrate, concentratedSpellManaCost, spellManaCost } from '@/lib/engine';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
@@ -8,32 +10,51 @@ import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 /** Tracé SVG de la goutte des points de mana (réutilisé de la grille de stats). */
 const MANA_DROP_PATH = DERIVED_STAT_ICON_PATHS.manaPoints;
 
-/**
- * Texte d'infobulle du coût en mana : précise s'il suit la règle du rang
- * (p. 228) ou s'il s'agit d'une dérogation verbatim du sort (champ `manaCost`),
- * puis rappelle, AVEC LEURS PAGES, les deux règles qui modifient ce coût à
- * l'usage et ne sont pas comptées ici : la Concentration et le surcoût d'armure.
- */
-function manaCostExplanation(feature: Feature, cost: number): string {
-  const base =
-    feature.manaCost === undefined
-      ? `Coût de base : ${cost} PM (= rang ${feature.rank} du sort, p. 228).`
-      : `Coût de base : ${cost} PM — dérogation au coût standard (rang ${feature.rank}).`;
+/** Une ligne d'infobulle : texte + chip de source « livre » optionnelle en fin de ligne. */
+function TooltipLine({ children, page }: { children: ReactNode; page?: number | string }) {
   return (
-    `${base}\n\nNon compté ici (modifie le coût à l'usage) :\n` +
-    `• Concentration : sort en (A) → −2 PM, devient (L) (p. 228).\n` +
-    `• Armure : un mage en armure paie +PM = bonus de DEF de l'armure (p. 178).`
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', columnGap: 0.5 }}>
+      <span>{children}</span>
+      {page != null && <SourceRef page={page} />}
+    </Box>
   );
 }
 
 /**
- * Infobulle du coût quand la Concentration accrue est active (p. 228) : rappelle
- * le coût de base, la réduction de 2 PM (plancher 0) et le passage en (L).
+ * Infobulle du coût en mana : précise s'il suit la règle du rang (chip p. 228) ou s'il s'agit
+ * d'une dérogation verbatim du sort (champ `manaCost`), puis rappelle, AVEC LEURS PAGES, les deux
+ * règles qui modifient ce coût à l'usage et ne sont pas comptées ici : la Concentration et le
+ * surcoût d'armure.
  */
-function concentrationCostExplanation(baseCost: number, reducedCost: number): string {
+function manaCostExplanation(feature: Feature, cost: number): ReactNode {
   return (
-    `Coût en concentration : ${reducedCost} PM (= ${baseCost} − 2, plancher 0, p. 228).\n\n` +
-    `Le sort est lancé en se concentrant plus longtemps : il devient une action limitée (L).`
+    <Box>
+      {feature.manaCost === undefined ? (
+        <TooltipLine page={228}>Coût de base : {cost} PM (= rang {feature.rank} du sort)</TooltipLine>
+      ) : (
+        <TooltipLine>Coût de base : {cost} PM — dérogation au coût standard (rang {feature.rank}).</TooltipLine>
+      )}
+      <Box sx={{ mt: 1 }}>Non compté ici (modifie le coût à l’usage) :</Box>
+      <TooltipLine page={228}>• Concentration : sort en (A) → −2 PM, devient (L)</TooltipLine>
+      <TooltipLine page={178}>• Armure : un mage en armure paie +PM = bonus de DEF de l’armure</TooltipLine>
+    </Box>
+  );
+}
+
+/**
+ * Infobulle du coût quand la Concentration accrue est active (chip p. 228) : rappelle le coût de
+ * base, la réduction de 2 PM (plancher 0) et le passage en (L).
+ */
+function concentrationCostExplanation(baseCost: number, reducedCost: number): ReactNode {
+  return (
+    <Box>
+      <TooltipLine page={228}>
+        Coût en concentration : {reducedCost} PM (= {baseCost} − 2, plancher 0)
+      </TooltipLine>
+      <Box sx={{ mt: 1 }}>
+        Le sort est lancé en se concentrant plus longtemps : il devient une action limitée (L).
+      </Box>
+    </Box>
   );
 }
 
@@ -61,6 +82,12 @@ export interface SpellManaBadgeProps {
    * utilisé quand la voie n'a pas de couleur de profil (voie du mage, prestige…).
    */
   color?: string;
+  /**
+   * Délai (ms) avant l'apparition de l'infobulle au survol de la goutte. L'info (règle du coût)
+   * est toujours la même et la bulle est encombrante : on la temporise là où la goutte est dense
+   * (voies & capacités). Sans valeur → apparition standard. Cf. `AppTooltip.enterDelay`.
+   */
+  tooltipEnterDelay?: number;
   sx?: SxProps<Theme>;
 }
 
@@ -71,7 +98,7 @@ export interface SpellManaBadgeProps {
  * (cf. `spellManaCost`, PER-65). Ne rend rien pour une capacité qui n'est pas un
  * sort (pas de coût de mana).
  */
-export function SpellManaBadge({ feature, concentration = false, surcharge = 0, size = 30, color, sx }: SpellManaBadgeProps) {
+export function SpellManaBadge({ feature, concentration = false, surcharge = 0, size = 30, color, tooltipEnterDelay, sx }: SpellManaBadgeProps) {
   const baseCost = spellManaCost(feature);
   if (baseCost === null) return null;
   // Concentration active ET sort éligible (lancé en (A)) : on affiche le coût
@@ -84,11 +111,21 @@ export function SpellManaBadge({ feature, concentration = false, surcharge = 0, 
   const tooltip = concentrated
     ? concentrationCostExplanation(baseCost, cost)
     : manaCostExplanation(feature, cost);
-  const fullTooltip = surcharged
-    ? `${tooltip}\n\nSurcoût actuel : +${surcharge} PM (coût croissant, +1 PM par lancement, remis à 0 au repos court, p. 123).\nCoût total à payer maintenant : ${displayCost} PM.`
-    : tooltip;
+  const fullTooltip = surcharged ? (
+    <Box>
+      {tooltip}
+      <Box sx={{ mt: 1 }}>
+        <TooltipLine page={123}>
+          Surcoût actuel : +{surcharge} PM (coût croissant, +1 PM par lancement, remis à 0 au repos court)
+        </TooltipLine>
+        <Box>Coût total à payer maintenant : {displayCost} PM.</Box>
+      </Box>
+    </Box>
+  ) : (
+    tooltip
+  );
   return (
-    <AppTooltip title={fullTooltip} preLine maxWidth={300}>
+    <AppTooltip title={fullTooltip} maxWidth={300} enterDelay={tooltipEnterDelay}>
       <Box
         role="img"
         aria-label={

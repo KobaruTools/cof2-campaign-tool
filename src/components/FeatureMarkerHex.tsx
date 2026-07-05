@@ -24,18 +24,21 @@ function Hex({
   fill,
   size,
   label,
+  page,
   glow = false,
   children,
 }: {
   fill: string;
   size: number;
   label: string;
+  /** Page source citée en chip « livre » sous le label du tooltip (cf. `SourceRef`). */
+  page?: number | string;
   /** Halo bleu mana autour de l'hexagone : signale une transformation de concentration. */
   glow?: boolean;
   children: ReactNode;
 }) {
   return (
-    <AppTooltip title={label}>
+    <AppTooltip title={label} page={page}>
       <Box
         role="img"
         aria-label={label}
@@ -152,7 +155,8 @@ export function FeatureMarkerHexes({
             fill={fill}
             size={size}
             glow
-            label="Concentration : action limitée (L) au lieu de (A) (p. 228)"
+            label="Concentration : action limitée (L) au lieu de (A)"
+            page={228}
           >
             L
           </Hex>

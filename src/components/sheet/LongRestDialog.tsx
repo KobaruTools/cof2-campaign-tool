@@ -9,6 +9,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { Die } from '@/data/schema';
 import { DieIcon } from '@/components/DieIcon';
+import { SourceRef } from '@/components/SourceRef';
 
 export interface LongRestDialogProps {
   open: boolean;
@@ -84,7 +85,7 @@ export function LongRestDialog({
               {elixirDosesToLose === 1
                 ? '1 élixir préparé sera perdu'
                 : `${elixirDosesToLose} élixirs préparés seront perdus`}{' '}
-              (les élixirs non utilisés le jour même sont perdus, p. 98).
+              (les élixirs non utilisés le jour même sont perdus, <SourceRef page={98} />).
             </Typography>
           )}
         </Stack>
