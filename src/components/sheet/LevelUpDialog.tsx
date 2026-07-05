@@ -19,6 +19,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import GlobalStyles from '@mui/material/GlobalStyles';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -68,6 +69,23 @@ import { RichInline } from '@/components/sheet/FeatureRichText';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import { ClassIcon } from '@/components/ClassIcon';
+
+/**
+ * Custom property + keyframes pour la bordure animée du cadre des capacités
+ * sélectionnées. `@property` (typé `<angle>`) rend le `conic-gradient(from …)`
+ * animable de façon fluide : la bordure reste PLEINE, seule sa couleur tourne.
+ * Injecté globalement (dédupliqué par MUI) — impossible à déclarer dans un `sx`.
+ */
+const BORDER_ANGLE_STYLES = `
+  @property --pathBorderAngle {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+  }
+  @keyframes pathBorderRotate {
+    to { --pathBorderAngle: 360deg; }
+  }
+`;
 
 export interface LevelUpDialogProps {
   open: boolean;
@@ -830,8 +848,10 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   };
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="sm" fullWidth>
-      <DialogTitle>Montée au niveau {newLevel}</DialogTitle>
+    <>
+      <GlobalStyles styles={BORDER_ANGLE_STYLES} />
+      <Dialog open={open} onClose={close} maxWidth="sm" fullWidth>
+        <DialogTitle>Montée au niveau {newLevel}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={3}>
           <Box>
@@ -887,40 +907,30 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
             )}
 
             {pickedGroups.length > 0 && (
-              // Cadre mis en avant : bordure claire à dégradé blanc/gris en rotation
-              // lente permanente, pour distinguer nettement les capacités retenues.
+              // Cadre mis en avant : bordure PLEINE dont la couleur (dégradé blanc/gris)
+              // tourne lentement, sans jamais être coupée. Le dégradé conique remplit
+              // toujours toute la bordure (technique padding-box/border-box) ; seule
+              // l'orientation `--pathBorderAngle` s'anime → rotation fluide, pas de
+              // rotation géométrique (donc pas de coins « vides »).
               <Box
-                sx={{
-                  position: 'relative',
-                  borderRadius: 1.5,
-                  p: '1.5px',
+                sx={(theme) => ({
                   mb: 2,
-                  overflow: 'hidden',
-                  isolation: 'isolate',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    zIndex: -1,
-                    inset: '-150%',
-                    background:
-                      'conic-gradient(from 0deg, rgba(255,255,255,0.9), rgba(140,140,150,0.2), rgba(255,255,255,0.9), rgba(140,140,150,0.2), rgba(255,255,255,0.9))',
-                    animation: 'retrainBorderSpin 9s linear infinite',
-                  },
-                  '@keyframes retrainBorderSpin': { to: { transform: 'rotate(360deg)' } },
-                  '@media (prefers-reduced-motion: reduce)': {
-                    '&::before': { animation: 'none' },
-                  },
-                }}
+                  p: 1.5,
+                  borderRadius: 1.5,
+                  border: '2px solid transparent',
+                  background: `linear-gradient(${theme.palette.background.paper}, ${theme.palette.background.paper}) padding-box, conic-gradient(from var(--pathBorderAngle), #ffffff, #6b7280, #ffffff) border-box`,
+                  animation: 'pathBorderRotate 30s linear infinite',
+                  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                })}
               >
-                <Box sx={{ borderRadius: 1.25, bgcolor: 'background.paper', p: 1.5 }}>
-                  <Typography
-                    variant="overline"
-                    color="text.secondary"
-                    sx={{ display: 'block', lineHeight: 1.4, mb: 0.5 }}
-                  >
-                    Capacités sélectionnées
-                  </Typography>
-                  <Stack spacing={1}>
+                <Typography
+                  variant="overline"
+                  color="text.secondary"
+                  sx={{ display: 'block', lineHeight: 1.4, mb: 0.5 }}
+                >
+                  Capacités sélectionnées
+                </Typography>
+                <Stack spacing={1}>
                     {pickedGroups.flatMap((group) => {
                       const color = pathColor(group.path);
                       return group.features.map((feature) => (
@@ -991,7 +1001,6 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
                       ));
                     })}
                   </Stack>
-                </Box>
               </Box>
             )}
 
@@ -1340,6 +1349,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
           </AppTooltip>
         </Stack>
       </DialogActions>
-    </Dialog>
+      </Dialog>
+    </>
   );
 }
