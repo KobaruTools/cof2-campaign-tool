@@ -6,17 +6,27 @@
  * campagne ni joueur. Chaque ligne affiche un badge de campagne (nom de la
  * campagne de rattachement, ou « Non attribué »). La gestion des campagnes vit
  * sur une page dédiée (`/campaigns`), accessible depuis l'en-tête.
+ *
+ * Allègement (2026-07-06) : recherche + tri (Modifié par défaut, Nom, Niveau,
+ * Campagne), regroupement visuel par campagne quand on trie par campagne,
+ * colonne « Identité » condensée (peuple · profil · niveau) et actions repliées
+ * dans un menu « ⋮ » — la ligne entière ouvre le personnage.
  */
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import GroupsIcon from '@mui/icons-material/Groups';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import SearchIcon from '@mui/icons-material/Search';
+import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import UploadIcon from '@mui/icons-material/Upload';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -28,7 +38,13 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
+import Select from '@mui/material/Select';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -37,6 +53,7 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { AccountMenu } from '@/components/AccountMenu';
@@ -49,10 +66,35 @@ import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import { UploadCharacterDialog } from '@/components/home/UploadCharacterDialog';
 import type { Character } from '@/lib/character/types';
 import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
+import type { CharacterSummary } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useWizardStore } from '@/stores/wizard';
+
+/** Clé de tri de la liste. `updatedAt` est le défaut (plus récent d'abord). */
+type SortKey = 'updatedAt' | 'name' | 'level' | 'campaign';
+type SortDir = 'asc' | 'desc';
+
+const SORT_LABELS: Record<SortKey, string> = {
+  updatedAt: 'Modifié',
+  name: 'Nom',
+  level: 'Niveau',
+  campaign: 'Campagne',
+};
+
+/** Sens « naturel » d'une clé au moment où on la sélectionne. */
+const naturalDir = (key: SortKey): SortDir =>
+  key === 'name' || key === 'campaign' ? 'asc' : 'desc';
+
+/** Normalise pour une recherche insensible aux accents et à la casse. */
+const norm = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+
+const UNASSIGNED = 'Non attribué';
 
 export default function HomePage() {
   const router = useRouter();
@@ -81,12 +123,25 @@ export default function HomePage() {
   const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
+    key: 'updatedAt',
+    dir: 'desc',
+  });
+  const [menu, setMenu] = useState<{ anchor: HTMLElement; row: CharacterSummary } | null>(null);
 
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>
     setToast({ message, severity });
 
   // Nom de la campagne par id, pour le badge de chaque ligne (null = non attribué).
-  const campaignNameById = new Map(campaigns.map((c) => [c.id, c.name]));
+  const campaignNameById = useMemo(
+    () => new Map(campaigns.map((c) => [c.id, c.name])),
+    [campaigns],
+  );
+
+  // Libellé de campagne d'un perso, pour la recherche, le tri et le regroupement.
+  const campaignLabel = (r: CharacterSummary) =>
+    r.campaignId ? campaignNameById.get(r.campaignId) ?? UNASSIGNED : UNASSIGNED;
 
   // Un personnage est « local » (staging non téléversé, PER-193) s'il est absent
   // des versions cloud APRÈS un chargement réussi. Tant que le cloud n'est pas
@@ -127,40 +182,233 @@ export default function HomePage() {
     setToDelete(null);
   };
 
-  const rows = characters.map(summarize).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  // Sélectionne une clé de tri ; recliquer la clé active inverse le sens.
+  const pickSort = (key: SortKey) =>
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: naturalDir(key) },
+    );
 
-  // Actions d'une ligne, partagées par le tableau (desktop) et les cartes (mobile).
-  const rowActions = (r: (typeof rows)[number]) => (
-    <>
-      {isLocalOnly(r.id) && (
-        <AppTooltip title="Téléverser vers le cloud">
-          <IconButton color="primary" onClick={() => openUpload(r.id)}>
-            <CloudUploadIcon fontSize="small" />
-          </IconButton>
-        </AppTooltip>
-      )}
-      <AppTooltip title="Ouvrir">
-        <IconButton onClick={() => router.push(`/character/${r.id}`)}>
-          <OpenInNewIcon fontSize="small" />
+  const toggleDir = () =>
+    setSort((prev) => ({ key: prev.key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }));
+
+  // Icône d'un en-tête triable : flèche simple si actif, double flèche sinon.
+  const sortIcon = (key: SortKey) =>
+    sort.key === key ? (
+      sort.dir === 'asc' ? (
+        <ArrowUpwardIcon fontSize="small" />
+      ) : (
+        <ArrowDownwardIcon fontSize="small" />
+      )
+    ) : (
+      <UnfoldMoreIcon fontSize="small" sx={{ opacity: 0.4 }} />
+    );
+
+  // En-tête de colonne cliquable qui pilote le tri de la liste.
+  const renderSortHeader = (
+    label: string,
+    key: SortKey,
+    align: 'left' | 'center' | 'right' = 'left',
+    hint?: string,
+  ) => {
+    const content = (
+      <Box
+        component="span"
+        onClick={() => pickSort(key)}
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+      >
+        {label}
+        {sortIcon(key)}
+      </Box>
+    );
+    return (
+      <TableCell align={align} sortDirection={sort.key === key ? sort.dir : false}>
+        {hint ? <AppTooltip title={hint}>{content}</AppTooltip> : content}
+      </TableCell>
+    );
+  };
+
+  const allRows = useMemo(() => characters.map(summarize), [characters]);
+
+  // Filtre (recherche) puis tri. Le regroupement par campagne se fait au rendu.
+  const rows = useMemo(() => {
+    const q = norm(query.trim());
+    const filtered = q
+      ? allRows.filter((r) => {
+          const campaign = r.campaignId ? campaignNameById.get(r.campaignId) ?? '' : UNASSIGNED;
+          return norm(`${r.name} ${r.ancestry} ${r.characterClass} ${campaign}`).includes(q);
+        })
+      : allRows;
+
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      switch (sort.key) {
+        case 'name':
+          return dir * a.name.localeCompare(b.name, 'fr');
+        case 'level':
+          return dir * (a.level - b.level) || a.name.localeCompare(b.name, 'fr');
+        case 'campaign': {
+          // Non attribué toujours regroupé en fin de liste (sens ascendant).
+          const ca = a.campaignId ? campaignNameById.get(a.campaignId) ?? '' : '￿';
+          const cb = b.campaignId ? campaignNameById.get(b.campaignId) ?? '' : '￿';
+          return dir * ca.localeCompare(cb, 'fr') || a.name.localeCompare(b.name, 'fr');
+        }
+        default:
+          return dir * a.updatedAt.localeCompare(b.updatedAt);
+      }
+    });
+  }, [allRows, query, sort, campaignNameById]);
+
+  // Regroupement visuel : seulement quand on trie par campagne. On préserve
+  // l'ordre déjà trié (les groupes sortent dans l'ordre des lignes).
+  const groups = useMemo(() => {
+    if (sort.key !== 'campaign') return null;
+    const map = new Map<string, { name: string; rows: CharacterSummary[] }>();
+    for (const r of rows) {
+      const key = r.campaignId ?? '__none__';
+      if (!map.has(key)) map.set(key, { name: campaignLabel(r), rows: [] });
+      map.get(key)!.rows.push(r);
+    }
+    return [...map.entries()].map(([key, g]) => ({ key, ...g }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, sort.key, campaignNameById]);
+
+  const openMenu = (e: React.MouseEvent<HTMLElement>, row: CharacterSummary) => {
+    e.stopPropagation();
+    setMenu({ anchor: e.currentTarget, row });
+  };
+  const closeMenu = () => setMenu(null);
+  // Exécute une action du menu puis ferme (garde l'id capturé avant fermeture).
+  const runFromMenu = (fn: (id: string) => void) => {
+    const id = menu?.row.id;
+    closeMenu();
+    if (id) fn(id);
+  };
+
+  // ---- Rendu d'une ligne de tableau (desktop) --------------------------------
+  const renderRow = (r: CharacterSummary, i: number) => (
+    <TableRow
+      key={r.id}
+      hover
+      sx={{
+        cursor: 'pointer',
+        bgcolor: i % 2 ? 'rgba(255, 255, 255, 0.035)' : 'transparent',
+      }}
+      onClick={() => router.push(`/character/${r.id}`)}
+    >
+      <TableCell>
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+          <Box component="span">{r.name}</Box>
+          {isLocalOnly(r.id) && (
+            <AppTooltip title="Non synchronisé — stocké uniquement sur cet appareil">
+              <CloudOffIcon fontSize="small" sx={{ color: 'warning.main' }} />
+            </AppTooltip>
+          )}
+        </Stack>
+      </TableCell>
+      <TableCell>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+          <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={20} />
+          <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
+            {r.characterClass}
+          </Box>
+          <Box component="span" sx={{ color: 'text.secondary' }}>
+            · {r.ancestry} · {r.level}
+          </Box>
+        </Stack>
+      </TableCell>
+      <TableCell>
+        <CampaignBadge
+          name={r.campaignId ? campaignNameById.get(r.campaignId) ?? null : null}
+          campaignId={r.campaignId}
+        />
+      </TableCell>
+      <TableCell>
+        <Typography variant="caption" color="text.secondary">
+          {formatDate(r.updatedAt)}
+        </Typography>
+      </TableCell>
+      <TableCell align="right" sx={{ pr: 2 }}>
+        <IconButton size="small" onClick={(e) => openMenu(e, r)}>
+          <MoreVertIcon fontSize="small" />
         </IconButton>
-      </AppTooltip>
-      <AppTooltip title="Dupliquer">
-        <IconButton onClick={() => handleDuplicate(r.id)}>
-          <ContentCopyIcon fontSize="small" />
-        </IconButton>
-      </AppTooltip>
-      <AppTooltip title="Exporter en JSON">
-        <IconButton onClick={() => handleExport(r.id)}>
-          <DownloadIcon fontSize="small" />
-        </IconButton>
-      </AppTooltip>
-      <AppTooltip title="Supprimer">
-        <IconButton color="error" onClick={() => setToDelete({ id: r.id, name: r.name })}>
-          <DeleteOutlineIcon fontSize="small" />
-        </IconButton>
-      </AppTooltip>
-    </>
+      </TableCell>
+    </TableRow>
   );
+
+  // ---- Rendu d'une carte (mobile) --------------------------------------------
+  const renderCard = (r: CharacterSummary) => (
+    <Paper
+      key={r.id}
+      variant="outlined"
+      sx={{
+        p: 2,
+        bgcolor: 'rgba(30, 30, 34, 0.62)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        borderColor: 'rgba(255, 255, 255, 0.10)',
+      }}
+    >
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
+      >
+        <Box
+          sx={{ minWidth: 0, flex: 1, cursor: 'pointer' }}
+          onClick={() => router.push(`/character/${r.id}`)}
+        >
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
+              {r.name}
+            </Typography>
+            {isLocalOnly(r.id) && (
+              <AppTooltip title="Non synchronisé — stocké uniquement sur cet appareil">
+                <CloudOffIcon fontSize="small" sx={{ color: 'warning.main', flexShrink: 0 }} />
+              </AppTooltip>
+            )}
+          </Stack>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={16} />
+            <Typography variant="body2">
+              <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
+                {r.characterClass}
+              </Box>
+              <Box component="span" sx={{ color: 'text.secondary' }}>
+                {' '}
+                · {r.ancestry} · {r.level}
+              </Box>
+            </Typography>
+          </Stack>
+          <Box sx={{ mt: 0.5 }}>
+            <CampaignBadge
+              name={r.campaignId ? campaignNameById.get(r.campaignId) ?? null : null}
+              campaignId={r.campaignId}
+            />
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            Modifié {formatDate(r.updatedAt)}
+          </Typography>
+        </Box>
+        <IconButton size="small" onClick={(e) => openMenu(e, r)}>
+          <MoreVertIcon fontSize="small" />
+        </IconButton>
+      </Stack>
+    </Paper>
+  );
+
+  const groupHeaderSx = {
+    fontWeight: 700,
+    color: 'text.secondary',
+    bgcolor: 'rgba(255, 255, 255, 0.04)',
+  } as const;
 
   return (
     <>
@@ -211,7 +459,7 @@ export default function HomePage() {
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />
           </Box>
-        ) : rows.length === 0 ? (
+        ) : allRows.length === 0 ? (
           <Paper
             variant="outlined"
             sx={{
@@ -232,130 +480,201 @@ export default function HomePage() {
           </Paper>
         ) : (
           <>
-            {/* Desktop : tableau classique. Masqué sous md (illisible sur mobile). */}
-            <TableContainer
-              component={Paper}
-              variant="outlined"
+            {/* Bloc de recherche, collé en haut du tableau : fond noir translucide
+                + flou, arrondi seulement en haut (le tableau prolonge le bas). */}
+            <Box
               sx={{
-                display: { xs: 'none', md: 'block' },
-                bgcolor: 'rgba(30, 30, 34, 0.62)',
+                p: 1.5,
+                bgcolor: 'rgba(0, 0, 0, 0.45)',
                 backdropFilter: 'blur(6px)',
                 WebkitBackdropFilter: 'blur(6px)',
-                borderColor: 'rgba(255, 255, 255, 0.10)',
+                border: '1px solid rgba(255, 255, 255, 0.10)',
+                borderRadius: 2,
+                borderBottomLeftRadius: { md: 0 },
+                borderBottomRightRadius: { md: 0 },
+                borderBottom: { md: 'none' },
+                mb: { xs: 2, md: 0 },
               }}
             >
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Nom</TableCell>
-                    <TableCell>Peuple</TableCell>
-                    <TableCell>Profil</TableCell>
-                    <TableCell align="center">Niveau</TableCell>
-                    <TableCell>Campagne</TableCell>
-                    <TableCell>Modifié</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {rows.map((r) => (
-                    <TableRow key={r.id} hover>
-                      <TableCell>
-                        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                          <Box component="span">{r.name}</Box>
-                          {isLocalOnly(r.id) && (
-                            <AppTooltip title="Non synchronisé — stocké uniquement sur cet appareil">
-                              <CloudOffIcon fontSize="small" sx={{ color: 'warning.main' }} />
-                            </AppTooltip>
-                          )}
-                        </Stack>
-                      </TableCell>
-                      <TableCell>{r.ancestry}</TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                          <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={20} />
-                          <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
-                            {r.characterClass}
-                          </Box>
-                        </Stack>
-                      </TableCell>
-                      <TableCell align="center">{r.level}</TableCell>
-                      <TableCell>
-                        <CampaignBadge
-                          name={r.campaignId ? campaignNameById.get(r.campaignId) ?? null : null}
-                          campaignId={r.campaignId}
-                        />
-                      </TableCell>
-                      <TableCell>{formatDate(r.updatedAt)}</TableCell>
-                      <TableCell align="right">{rowActions(r)}</TableCell>
-                    </TableRow>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Rechercher (nom, peuple, profil, campagne)"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+              {/* Tri mobile : les cartes n'ont pas d'en-tête cliquable. */}
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', mt: 1 }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  Trier :
+                </Typography>
+                <Select
+                  size="small"
+                  value={sort.key}
+                  onChange={(e) => pickSort(e.target.value as SortKey)}
+                  sx={{ flex: 1 }}
+                >
+                  {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+                    <MenuItem key={key} value={key}>
+                      {SORT_LABELS[key]}
+                    </MenuItem>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                </Select>
+                <AppTooltip title={sort.dir === 'asc' ? 'Croissant' : 'Décroissant'}>
+                  <IconButton size="small" onClick={toggleDir}>
+                    {sort.dir === 'asc' ? (
+                      <ArrowUpwardIcon fontSize="small" />
+                    ) : (
+                      <ArrowDownwardIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                </AppTooltip>
+              </Stack>
+            </Box>
 
-            {/* Mobile : une carte empilée par personnage (PER-51). */}
-            <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
-              {rows.map((r) => (
-                <Paper
-                  key={r.id}
+            {rows.length === 0 ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  bgcolor: 'rgba(30, 30, 34, 0.55)',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                  borderColor: 'rgba(255, 255, 255, 0.10)',
+                  borderTopLeftRadius: { md: 0 },
+                  borderTopRightRadius: { md: 0 },
+                }}
+              >
+                <Typography color="text.secondary">
+                  Aucun personnage ne correspond à « {query} ».
+                </Typography>
+              </Paper>
+            ) : (
+              <>
+                {/* Desktop : tableau classique. Masqué sous md (illisible sur mobile). */}
+                <TableContainer
+                  component={Paper}
                   variant="outlined"
                   sx={{
-                    p: 2,
+                    display: { xs: 'none', md: 'block' },
                     bgcolor: 'rgba(30, 30, 34, 0.62)',
                     backdropFilter: 'blur(6px)',
                     WebkitBackdropFilter: 'blur(6px)',
                     borderColor: 'rgba(255, 255, 255, 0.10)',
+                    borderTopLeftRadius: 0,
+                    borderTopRightRadius: 0,
                   }}
                 >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
-                  >
-                    <Box
-                      sx={{ minWidth: 0, cursor: 'pointer' }}
-                      onClick={() => router.push(`/character/${r.id}`)}
-                    >
-                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
-                          {r.name}
-                        </Typography>
-                        {isLocalOnly(r.id) && (
-                          <AppTooltip title="Non synchronisé — stocké uniquement sur cet appareil">
-                            <CloudOffIcon fontSize="small" sx={{ color: 'warning.main', flexShrink: 0 }} />
-                          </AppTooltip>
-                        )}
-                      </Stack>
-                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                        <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={16} />
-                        <Typography variant="body2" color="text.secondary">
-                          {r.ancestry} ·{' '}
-                          <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
-                            {r.characterClass}
-                          </Box>{' '}
-                          · niveau {r.level}
-                        </Typography>
-                      </Stack>
-                      <Box sx={{ mt: 0.5 }}>
-                        <CampaignBadge
-                          name={r.campaignId ? campaignNameById.get(r.campaignId) ?? null : null}
-                          campaignId={r.campaignId}
-                        />
-                      </Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                        Modifié {formatDate(r.updatedAt)}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                  <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 0.5 }}>
-                    {rowActions(r)}
-                  </Stack>
-                </Paper>
-              ))}
-            </Stack>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        {renderSortHeader('Nom', 'name')}
+                        {renderSortHeader('Identité', 'level', 'left', 'Trier par niveau')}
+                        {renderSortHeader('Campagne', 'campaign')}
+                        {renderSortHeader('Modifié', 'updatedAt')}
+                        <TableCell align="right" sx={{ pr: 2 }} />
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {groups
+                        ? groups.map((g) => (
+                            <Fragment key={g.key}>
+                              <TableRow>
+                                <TableCell colSpan={5} sx={groupHeaderSx}>
+                                  {g.name} ({g.rows.length})
+                                </TableCell>
+                              </TableRow>
+                              {g.rows.map(renderRow)}
+                            </Fragment>
+                          ))
+                        : rows.map(renderRow)}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                {/* Mobile : une carte empilée par personnage (PER-51). */}
+                <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
+                  {groups
+                    ? groups.map((g) => (
+                        <Fragment key={g.key}>
+                          <Typography
+                            variant="overline"
+                            color="text.secondary"
+                            sx={{ mt: 1, fontWeight: 700 }}
+                          >
+                            {g.name} ({g.rows.length})
+                          </Typography>
+                          {g.rows.map(renderCard)}
+                        </Fragment>
+                      ))
+                    : rows.map(renderCard)}
+                </Stack>
+              </>
+            )}
           </>
         )}
       </Container>
+
+      {/* Menu d'actions par ligne (replie dupliquer / exporter / téléverser / supprimer). */}
+      <Menu
+        anchorEl={menu?.anchor ?? null}
+        open={menu !== null}
+        onClose={closeMenu}
+        disableScrollLock
+      >
+        <MenuItem onClick={() => runFromMenu((id) => router.push(`/character/${id}`))}>
+          <ListItemIcon>
+            <OpenInNewIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Ouvrir</ListItemText>
+        </MenuItem>
+        {menu && isLocalOnly(menu.row.id) && (
+          <MenuItem onClick={() => runFromMenu(openUpload)}>
+            <ListItemIcon>
+              <CloudUploadIcon fontSize="small" color="primary" />
+            </ListItemIcon>
+            <ListItemText>Téléverser vers le cloud</ListItemText>
+          </MenuItem>
+        )}
+        <MenuItem onClick={() => runFromMenu(handleDuplicate)}>
+          <ListItemIcon>
+            <ContentCopyIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Dupliquer</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => runFromMenu(handleExport)}>
+          <ListItemIcon>
+            <DownloadIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Exporter en JSON</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            const row = menu?.row;
+            closeMenu();
+            if (row) setToDelete({ id: row.id, name: row.name });
+          }}
+        >
+          <ListItemIcon>
+            <DeleteOutlineIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText sx={{ color: 'error.main' }}>Supprimer</ListItemText>
+        </MenuItem>
+      </Menu>
 
       {/* Import depuis l'accueil : personnage « Non attribué » (campaignId null). */}
       <ImportCharacterDialog
