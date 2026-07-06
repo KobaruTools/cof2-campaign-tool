@@ -108,8 +108,9 @@ export default async function PlayPage() {
             Ta fiche
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            L&apos;édition de ta fiche en ligne arrive bientôt. En attendant, ton MJ conserve
-            les personnages.
+            Ton invitation est bien active : tu as rejoint la campagne. La création et
+            l&apos;édition de ta fiche directement ici sont en cours de développement. En
+            attendant, ton MJ prépare et conserve les personnages — dis-lui que tu es connecté.
           </Typography>
         </Paper>
       </Container>
