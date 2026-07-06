@@ -3,7 +3,7 @@
  * règles en libellés lisibles).
  */
 import { ancestryById } from '@/data';
-import type { Character } from './types';
+import type { Character, CharacterStatus } from './types';
 import { characterClassName } from './classDisplay';
 
 export interface CharacterSummary {
@@ -18,6 +18,8 @@ export interface CharacterSummary {
   level: number;
   /** Campagne de rattachement, ou `null` si « Non attribué » (PER-180). */
   campaignId: string | null;
+  /** Statut dans la campagne (actif / mort / retiré) — pilote le split actifs/archivés (PER-183). */
+  status: CharacterStatus;
   updatedAt: string;
 }
 
@@ -33,6 +35,7 @@ export function summarize(character: Character): CharacterSummary {
     firearmsAllowed: character.firearmsAllowed,
     level: character.level,
     campaignId: character.campaignId,
+    status: character.status,
     updatedAt: character.updatedAt,
   };
 }

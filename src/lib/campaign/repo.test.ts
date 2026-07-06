@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Database } from '@/lib/supabase/types';
+import type { Database, Json } from '@/lib/supabase/types';
 import { parseRules, rowToCampaign } from './repo';
+import type { CampaignRules } from './types';
 
 type CampaignRow = Database['public']['Tables']['campaigns']['Row'];
 
@@ -55,5 +56,15 @@ describe('rowToCampaign', () => {
     const c = rowToCampaign(row({ description: 'Notes du MJ', rules: {} }));
     expect(c.description).toBe('Notes du MJ');
     expect(c.rules).toEqual({ firearmsAllowed: true });
+  });
+});
+
+describe('round-trip des règles (écriture → lecture)', () => {
+  // `updateCampaign` sérialise `CampaignRules` tel quel vers la colonne jsonb ;
+  // `parseRules` doit relire exactement ce qui a été écrit. On verrouille la
+  // symétrie sans mocker Supabase (l'écriture réseau reste hors périmètre unitaire).
+  it('parseRules relit fidèlement des règles sérialisées', () => {
+    const rules: CampaignRules = { firearmsAllowed: false };
+    expect(parseRules(rules as unknown as Json)).toEqual(rules);
   });
 });

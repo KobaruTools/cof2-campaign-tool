@@ -17,7 +17,10 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
+import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import SettingsIcon from '@mui/icons-material/Settings';
 import UploadIcon from '@mui/icons-material/Upload';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -119,6 +122,24 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     .map(summarize)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
+  // Split actifs / archivés (PER-183) : « Archivés » est un terme d'UI désignant
+  // l'union mort ∪ retiré (pas une valeur de statut). Le changement de statut se
+  // fait sur la FICHE (owner-only ici, alors que le joueur doit pouvoir l'éditer).
+  const activeRows = rows.filter((r) => r.status === 'active');
+  const archivedRows = rows.filter((r) => r.status !== 'active');
+
+  // Marqueur discret du statut d'un personnage archivé (mort / retiré).
+  const statusMarker = (status: (typeof rows)[number]['status']) =>
+    status === 'dead' ? (
+      <AppTooltip title="Mort">
+        <HeartBrokenIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+      </AppTooltip>
+    ) : status === 'retired' ? (
+      <AppTooltip title="Retiré">
+        <Inventory2Icon fontSize="small" sx={{ color: 'text.secondary' }} />
+      </AppTooltip>
+    ) : null;
+
   // Actions d'une ligne, partagées par le tableau (desktop) et les cartes (mobile).
   const rowActions = (r: (typeof rows)[number]) => (
     <>
@@ -142,6 +163,117 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           <DeleteOutlineIcon fontSize="small" />
         </IconButton>
       </AppTooltip>
+    </>
+  );
+
+  // Rend un groupe de personnages (actifs ou archivés) : tableau (desktop) +
+  // cartes empilées (mobile). Les lignes archivées portent leur marqueur de statut.
+  const renderGroup = (groupRows: typeof rows, archived: boolean) => (
+    <>
+      {/* Desktop : tableau classique. Masqué sous md (illisible sur mobile). */}
+      <TableContainer
+        component={Paper}
+        variant="outlined"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          bgcolor: 'rgba(30, 30, 34, 0.62)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          borderColor: 'rgba(255, 255, 255, 0.10)',
+        }}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Nom</TableCell>
+              <TableCell>Peuple</TableCell>
+              <TableCell>Profil</TableCell>
+              <TableCell align="center">Niveau</TableCell>
+              <TableCell>Modifié</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {groupRows.map((r) => (
+              <TableRow key={r.id} hover>
+                <TableCell>
+                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                    {archived && statusMarker(r.status)}
+                    <Box component="span">{r.name}</Box>
+                  </Stack>
+                </TableCell>
+                <TableCell>{r.ancestry}</TableCell>
+                <TableCell>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={20} />
+                    <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
+                      {r.characterClass}
+                    </Box>
+                  </Stack>
+                </TableCell>
+                <TableCell align="center">{r.level}</TableCell>
+                <TableCell>{formatDate(r.updatedAt)}</TableCell>
+                <TableCell align="right">{rowActions(r)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Mobile : une carte empilée par personnage (PER-51). */}
+      <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
+        {groupRows.map((r) => (
+          <Paper
+            key={r.id}
+            variant="outlined"
+            sx={{
+              p: 2,
+              bgcolor: 'rgba(30, 30, 34, 0.62)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              borderColor: 'rgba(255, 255, 255, 0.10)',
+            }}
+          >
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
+            >
+              <Box
+                sx={{ minWidth: 0, cursor: 'pointer' }}
+                onClick={() => router.push(`/character/${r.id}`)}
+              >
+                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                  {archived && statusMarker(r.status)}
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    {r.name}
+                  </Typography>
+                </Stack>
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+                >
+                  <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={16} />
+                  <Typography variant="body2" color="text.secondary">
+                    {r.ancestry} ·{' '}
+                    <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
+                      {r.characterClass}
+                    </Box>{' '}
+                    · niveau {r.level}
+                  </Typography>
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  Modifié {formatDate(r.updatedAt)}
+                </Typography>
+              </Box>
+            </Stack>
+            <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 0.5 }}>
+              {rowActions(r)}
+            </Stack>
+          </Paper>
+        ))}
+      </Stack>
     </>
   );
 
@@ -175,7 +307,16 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
       <AppHeader
         title={campaign.name}
         onBack={() => router.push('/campaigns')}
-        action={<AccountMenu />}
+        action={
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+            <AppTooltip title="Réglages de la campagne">
+              <IconButton color="inherit" onClick={() => router.push(`/campaign/${cid}/settings`)}>
+                <SettingsIcon />
+              </IconButton>
+            </AppTooltip>
+            <AccountMenu />
+          </Stack>
+        }
       />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -235,104 +376,29 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
             </Typography>
           </Paper>
         ) : (
-          <>
-            {/* Desktop : tableau classique. Masqué sous md (illisible sur mobile). */}
-            <TableContainer
-              component={Paper}
-              variant="outlined"
-              sx={{
-                display: { xs: 'none', md: 'block' },
-                bgcolor: 'rgba(30, 30, 34, 0.62)',
-                backdropFilter: 'blur(6px)',
-                WebkitBackdropFilter: 'blur(6px)',
-                borderColor: 'rgba(255, 255, 255, 0.10)',
-              }}
-            >
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Nom</TableCell>
-                    <TableCell>Peuple</TableCell>
-                    <TableCell>Profil</TableCell>
-                    <TableCell align="center">Niveau</TableCell>
-                    <TableCell>Modifié</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {rows.map((r) => (
-                    <TableRow key={r.id} hover>
-                      <TableCell>{r.name}</TableCell>
-                      <TableCell>{r.ancestry}</TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                          <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={20} />
-                          <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
-                            {r.characterClass}
-                          </Box>
-                        </Stack>
-                      </TableCell>
-                      <TableCell align="center">{r.level}</TableCell>
-                      <TableCell>{formatDate(r.updatedAt)}</TableCell>
-                      <TableCell align="right">{rowActions(r)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+          <Stack spacing={4}>
+            {/* Actifs (`status = active`). Un léger message si tous sont archivés. */}
+            <Box>
+              <Typography variant="h6" sx={{ mb: 1.5 }}>
+                Actifs
+              </Typography>
+              {activeRows.length === 0 ? (
+                <Typography color="text.secondary">Aucun personnage actif.</Typography>
+              ) : (
+                renderGroup(activeRows, false)
+              )}
+            </Box>
 
-            {/* Mobile : une carte empilée par personnage (PER-51). */}
-            <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
-              {rows.map((r) => (
-                <Paper
-                  key={r.id}
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    bgcolor: 'rgba(30, 30, 34, 0.62)',
-                    backdropFilter: 'blur(6px)',
-                    WebkitBackdropFilter: 'blur(6px)',
-                    borderColor: 'rgba(255, 255, 255, 0.10)',
-                  }}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
-                  >
-                    <Box
-                      sx={{ minWidth: 0, cursor: 'pointer' }}
-                      onClick={() => router.push(`/character/${r.id}`)}
-                    >
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        {r.name}
-                      </Typography>
-                      <Stack
-                        direction="row"
-                        spacing={0.5}
-                        sx={{ alignItems: 'center', flexWrap: 'wrap' }}
-                      >
-                        <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={16} />
-                        <Typography variant="body2" color="text.secondary">
-                          {r.ancestry} ·{' '}
-                          <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
-                            {r.characterClass}
-                          </Box>{' '}
-                          · niveau {r.level}
-                        </Typography>
-                      </Stack>
-                      <Typography variant="caption" color="text.secondary">
-                        Modifié {formatDate(r.updatedAt)}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                  <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 0.5 }}>
-                    {rowActions(r)}
-                  </Stack>
-                </Paper>
-              ))}
-            </Stack>
-          </>
+            {/* Archivés (mort ∪ retiré) — section masquée si vide. */}
+            {archivedRows.length > 0 && (
+              <Box>
+                <Typography variant="h6" sx={{ mb: 1.5 }}>
+                  Archivés
+                </Typography>
+                {renderGroup(archivedRows, true)}
+              </Box>
+            )}
+          </Stack>
         )}
 
         <Box sx={{ mt: 4 }}>

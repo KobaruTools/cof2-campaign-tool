@@ -50,7 +50,6 @@ export default function CampaignsPage() {
   const campaigns = useCampaignsStore((s) => s.campaigns);
   const load = useCampaignsStore((s) => s.load);
   const create = useCampaignsStore((s) => s.create);
-  const update = useCampaignsStore((s) => s.update);
   const remove = useCampaignsStore((s) => s.remove);
   const characters = useCharactersStore((s) => s.characters);
   const draft = useWizardStore((s) => s.draft);
@@ -59,9 +58,6 @@ export default function CampaignsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [toEdit, setToEdit] = useState<Campaign | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editDescription, setEditDescription] = useState('');
   const [toDelete, setToDelete] = useState<Campaign | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -93,19 +89,6 @@ export default function CampaignsPage() {
       router.push(`/campaign/${campaign.id}`);
     } catch (e) {
       notify(`Création impossible : ${e instanceof Error ? e.message : String(e)}`, 'error');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleEdit = async () => {
-    if (!toEdit) return;
-    setBusy(true);
-    try {
-      await update(toEdit.id, { name: editName, description: editDescription });
-      setToEdit(null);
-    } catch (e) {
-      notify(`Modification impossible : ${e instanceof Error ? e.message : String(e)}`, 'error');
     } finally {
       setBusy(false);
     }
@@ -280,13 +263,9 @@ export default function CampaignsPage() {
                       </Stack>
                     </Box>
                     <Stack direction="row" sx={{ flexShrink: 0 }}>
-                      <AppTooltip title="Modifier">
+                      <AppTooltip title="Réglages">
                         <IconButton
-                          onClick={() => {
-                            setToEdit(campaign);
-                            setEditName(campaign.name);
-                            setEditDescription(campaign.description ?? '');
-                          }}
+                          onClick={() => router.push(`/campaign/${campaign.id}/settings`)}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
@@ -340,36 +319,6 @@ export default function CampaignsPage() {
           <Button onClick={() => setCreateOpen(false)}>Annuler</Button>
           <Button variant="contained" onClick={() => void handleCreate()} disabled={busy}>
             Créer
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Modification (nom + notes) */}
-      <Dialog open={toEdit !== null} onClose={() => setToEdit(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Modifier la campagne</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Nom de la campagne"
-            fullWidth
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-          />
-          <TextField
-            margin="dense"
-            label="Notes du MJ (optionnel)"
-            fullWidth
-            multiline
-            minRows={2}
-            value={editDescription}
-            onChange={(e) => setEditDescription(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setToEdit(null)}>Annuler</Button>
-          <Button variant="contained" onClick={() => void handleEdit()} disabled={busy}>
-            Enregistrer
           </Button>
         </DialogActions>
       </Dialog>

@@ -5,15 +5,25 @@ import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
+import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
+import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import UpgradeIcon from '@mui/icons-material/Upgrade';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
@@ -24,7 +34,7 @@ import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, p
 import type { DerivedInput } from '@/lib/engine';
 import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
-import type { Character, CustomItem, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
+import type { Character, CharacterStatus, CustomItem, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
@@ -172,6 +182,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const [createdToast, setCreatedToast] = useState(false);
   // Index de la ligne « Bourse de 2d6 pa » dont l'ouverture est en cours (modale) ; null = fermée.
   const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
+  // Ancre du menu de statut (PER-183) ; null = fermé.
+  const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
+  // Statut d'archivage en attente de confirmation (mort/retiré) ; null = aucune. Le
+  // passage en « actif » ne demande pas de confirmation (retour à l'état de jeu normal).
+  const [pendingArchive, setPendingArchive] = useState<Exclude<CharacterStatus, 'active'> | null>(
+    null,
+  );
 
   // Confirmation « fin de wizard » : le wizard redirige avec `?created=1`. On
   // affiche un retour clair puis on nettoie l'URL pour ne pas le rejouer au
@@ -229,6 +246,31 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const currentCampaign = character.campaignId
     ? campaigns.find((c) => c.id === character.campaignId)
     : undefined;
+
+  // Statut du personnage (PER-183) : modifiable par le MJ ET le joueur (la RLS
+  // l'autorise ; la vue campagne, owner-only, ne suffit pas). `active` ↔
+  // `dead`/`retired` réversible, mais l'archivage (acte narratif) est confirmé.
+  const STATUS_LABEL: Record<CharacterStatus, string> = {
+    active: 'Actif',
+    dead: 'Mort',
+    retired: 'Retiré',
+  };
+  const statusIcon = (status: CharacterStatus) =>
+    status === 'dead' ? (
+      <HeartBrokenIcon fontSize="small" />
+    ) : status === 'retired' ? (
+      <Inventory2Icon fontSize="small" />
+    ) : (
+      <MonitorHeartIcon fontSize="small" />
+    );
+  // Sélection d'un statut dans le menu : « actif » s'applique directement ; un
+  // archivage (mort/retiré) passe par une confirmation avant écriture.
+  const selectStatus = (next: CharacterStatus) => {
+    setStatusAnchor(null);
+    if (next === character.status) return;
+    if (next === 'active') update({ status: 'active' });
+    else setPendingArchive(next);
+  };
   // Édition d'une caractéristique finale : on réajuste la valeur de base pour
   // conserver l'invariant « base + modificateurs de peuple = total » (le détail
   // affiché reste exact). Le modificateur de peuple, lui, ne bouge pas.
@@ -761,24 +803,54 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               </AppTooltip>
             </Box>
 
-            {/* Bascule entre l'illustration de profil standard et son alternative
-                (-2), uniquement en mode édition. */}
-            {editingBlocks.identity && characterClass && (
-              <AppTooltip title="Changer l’illustration du profil">
-                <IconButton
-                  size="small"
-                  onClick={() =>
-                    update({
-                      portraitVariant:
-                        character.portraitVariant === 'alt' ? 'default' : 'alt',
-                    })
-                  }
-                  sx={{ position: 'absolute', top: 0, right: 0, zIndex: 2 }}
-                >
-                  <SwapHorizIcon />
-                </IconButton>
-              </AppTooltip>
+            {/* Cluster d'actions haut-droit, en mode édition : statut du personnage
+                (PER-183) puis bascule de l'illustration de profil (standard / -2). */}
+            {editingBlocks.identity && (
+              <Stack
+                direction="row"
+                spacing={0.5}
+                sx={{ position: 'absolute', top: 0, right: 0, zIndex: 2, alignItems: 'center' }}
+              >
+                <AppTooltip title={`Statut : ${STATUS_LABEL[character.status]}`}>
+                  <IconButton size="small" onClick={(e) => setStatusAnchor(e.currentTarget)}>
+                    {statusIcon(character.status)}
+                  </IconButton>
+                </AppTooltip>
+                {characterClass && (
+                  <AppTooltip title="Changer l’illustration du profil">
+                    <IconButton
+                      size="small"
+                      onClick={() =>
+                        update({
+                          portraitVariant:
+                            character.portraitVariant === 'alt' ? 'default' : 'alt',
+                        })
+                      }
+                    >
+                      <SwapHorizIcon />
+                    </IconButton>
+                  </AppTooltip>
+                )}
+              </Stack>
             )}
+
+            {/* Menu de statut : 3 valeurs fermées ; la valeur courante est cochée. */}
+            <Menu
+              anchorEl={statusAnchor}
+              open={statusAnchor !== null}
+              onClose={() => setStatusAnchor(null)}
+            >
+              {(['active', 'dead', 'retired'] as const).map((s) => (
+                <MenuItem
+                  key={s}
+                  selected={character.status === s}
+                  onClick={() => selectStatus(s)}
+                >
+                  <ListItemIcon>{statusIcon(s)}</ListItemIcon>
+                  {STATUS_LABEL[s]}
+                </MenuItem>
+              ))}
+            </Menu>
 
             {/* Armes à feu autorisées dans l'univers (p. 185) — réglage de campagne.
                 Pour un profil qui maîtrise la poudre (arquebusier), le désactiver le
@@ -1110,6 +1182,36 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         onClose={() => setCoinPouchIndex(null)}
         onConfirm={confirmCoinPouch}
       />
+
+      {/* Confirmation d'archivage (PER-183) : passer un personnage en mort/retiré est
+          un acte narratif volontaire. Réversible (on peut le repasser « Actif »
+          ensuite, sans confirmation) — la fiche permissive n'enferme jamais la donnée. */}
+      <Dialog open={pendingArchive !== null} onClose={() => setPendingArchive(null)}>
+        <DialogTitle>
+          {pendingArchive === 'dead'
+            ? 'Marquer ce personnage comme mort ?'
+            : 'Retirer ce personnage ?'}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {pendingArchive === 'dead'
+              ? `« ${character.name || 'Sans nom'} » sera classé parmi les personnages archivés de sa campagne. Rien n’est supprimé et le statut reste réversible.`
+              : `« ${character.name || 'Sans nom'} » sera rangé parmi les personnages archivés de sa campagne. Rien n’est supprimé et le statut reste réversible.`}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingArchive(null)}>Annuler</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              if (pendingArchive) update({ status: pendingArchive });
+              setPendingArchive(null);
+            }}
+          >
+            {pendingArchive === 'dead' ? 'Marquer mort' : 'Retirer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={createdToast}

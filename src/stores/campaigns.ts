@@ -23,6 +23,7 @@ import {
   insertCampaign,
   updateCampaign,
   type Campaign,
+  type CampaignRules,
 } from '@/lib/campaign';
 import { useCharactersStore } from './characters';
 
@@ -38,8 +39,11 @@ interface CampaignsState {
   load: () => Promise<void>;
   /** Crée une campagne côté cloud et l'ajoute au cache. Lève en cas d'échec. */
   create: (name: string, description?: string | null) => Promise<Campaign>;
-  /** Met à jour nom/description d'une campagne. Lève en cas d'échec. */
-  update: (id: string, patch: { name?: string; description?: string | null }) => Promise<void>;
+  /** Met à jour nom/notes/règles de table d'une campagne. Lève en cas d'échec. */
+  update: (
+    id: string,
+    patch: { name?: string; description?: string | null; rules?: CampaignRules },
+  ) => Promise<void>;
   /**
    * Supprime une campagne (cloud) puis détache les personnages LOCAUX qui la
    * référençaient (→ « Non attribué »). Lève en cas d'échec côté cloud.
@@ -89,9 +93,10 @@ export const useCampaignsStore = create<CampaignsState>()((set, get) => ({
   },
 
   update: async (id, patch) => {
-    const normalized: { name?: string; description?: string | null } = {};
+    const normalized: { name?: string; description?: string | null; rules?: CampaignRules } = {};
     if (patch.name !== undefined) normalized.name = patch.name.trim() || 'Nouvelle campagne';
     if (patch.description !== undefined) normalized.description = patch.description?.trim() || null;
+    if (patch.rules !== undefined) normalized.rules = patch.rules;
     const updated = await updateCampaign(id, normalized);
     set((state) => ({ campaigns: state.campaigns.map((c) => (c.id === id ? updated : c)) }));
   },

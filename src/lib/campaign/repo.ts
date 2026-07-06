@@ -84,15 +84,24 @@ export async function insertCampaign(input: {
   return rowToCampaign(data);
 }
 
-/** Met à jour le nom et/ou la description d'une campagne (RLS propriétaire). */
+/**
+ * Met à jour le nom, les notes et/ou les règles de table d'une campagne (RLS
+ * propriétaire). Écriture **simple** (pas de verrou optimiste) : la table
+ * `campaigns` n'a pas de colonne `version` et l'édition est mono-propriétaire (le
+ * MJ, seul, sur sa page de réglages) — pas de scénario de concurrence à arbitrer.
+ * Les `rules` sont sérialisées telles quelles vers la colonne jsonb ; leur
+ * relecture reste défensive (`parseRules`).
+ */
 export async function updateCampaign(
   id: string,
-  patch: { name?: string; description?: string | null },
+  patch: { name?: string; description?: string | null; rules?: CampaignRules },
 ): Promise<Campaign> {
   const supabase = createBrowserSupabaseClient();
+  const { rules, ...rest } = patch;
+  const row = rules ? { ...rest, rules: rules as unknown as Json } : rest;
   const { data, error } = await supabase
     .from('campaigns')
-    .update(patch)
+    .update(row)
     .eq('id', id)
     .select('*')
     .single();
