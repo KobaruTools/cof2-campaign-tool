@@ -40,6 +40,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PlayersSection } from '@/components/campaign/PlayersSection';
@@ -171,7 +172,11 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     <>
       <title>{`${campaign.name} — Éditeur de personnage CO2`}</title>
       <HomeBackground />
-      <AppHeader title={campaign.name} onBack={() => router.push('/campaigns')} />
+      <AppHeader
+        title={campaign.name}
+        onBack={() => router.push('/campaigns')}
+        action={<AccountMenu />}
+      />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>

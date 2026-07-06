@@ -34,6 +34,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { HomeBackground } from '@/components/HomeBackground';
@@ -136,7 +137,7 @@ export default function CampaignsPage() {
     <>
       <title>Campagnes — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader title="Campagnes" onBack={() => router.push('/')} />
+      <AppHeader title="Campagnes" onBack={() => router.push('/')} action={<AccountMenu />} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>

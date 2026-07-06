@@ -39,6 +39,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CampaignBadge } from '@/components/home/CampaignBadge';
@@ -168,9 +169,12 @@ export default function HomePage() {
       <AppHeader
         title="Personnages — Chroniques Oubliées Fantasy 2"
         action={
-          <Button color="inherit" startIcon={<GroupsIcon />} onClick={() => router.push('/campaigns')}>
-            Campagnes
-          </Button>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+            <Button color="inherit" startIcon={<GroupsIcon />} onClick={() => router.push('/campaigns')}>
+              Campagnes
+            </Button>
+            <AccountMenu />
+          </Stack>
         }
       />
 
