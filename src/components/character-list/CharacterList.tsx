@@ -180,8 +180,8 @@ export function CharacterList({
     >
       <TableCell>
         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-          <Box component="span">{r.name}</Box>
           {renderNameMarker?.(r)}
+          <Box component="span">{r.name}</Box>
         </Stack>
       </TableCell>
       <TableCell>
@@ -223,10 +223,10 @@ export function CharacterList({
       >
         <Box sx={{ minWidth: 0, flex: 1, cursor: 'pointer' }} onClick={() => onOpen(r)}>
           <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+            {renderNameMarker?.(r)}
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
               {r.name}
             </Typography>
-            {renderNameMarker?.(r)}
           </Stack>
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
             <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={16} />
