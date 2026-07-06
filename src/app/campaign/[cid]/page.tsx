@@ -17,7 +17,6 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
-import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -48,6 +47,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PlayersSection } from '@/components/campaign/PlayersSection';
 import { ClassIcon } from '@/components/ClassIcon';
+import { TombstoneIcon } from '@/components/TombstoneIcon';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
@@ -132,7 +132,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const statusMarker = (status: (typeof rows)[number]['status']) =>
     status === 'dead' ? (
       <AppTooltip title="Mort">
-        <HeartBrokenIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+        <TombstoneIcon fontSize="small" sx={{ color: 'text.secondary' }} />
       </AppTooltip>
     ) : status === 'retired' ? (
       <AppTooltip title="Retraité">

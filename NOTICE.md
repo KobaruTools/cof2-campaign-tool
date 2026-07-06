@@ -142,3 +142,20 @@ composant `src/components/PurseIcon.tsx`.
 | Élément | Fichier game-icons.net | Auteur |
 | --- | --- | --- |
 | Bourse | `lorc/swap-bag.svg` | Lorc |
+
+## Icône de statut « mort »
+
+L'icône « pierre tombale » marquant un personnage mort (statut, PER-183) provient
+de [game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteur : **Lorc** (https://game-icons.net).
+
+Le SVG a été nettoyé (fond retiré, couleur neutralisée) et embarqué en dur dans le
+composant `src/components/TombstoneIcon.tsx` (rendu via `SvgIcon`, sans requête
+réseau). Les autres marqueurs de statut (« Vivant », « Retraité ») sont des icônes
+Material UI, non issues de game-icons.net.
+
+| Élément | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Mort (pierre tombale) | `lorc/tombstone.svg` | Lorc |

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
-import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
@@ -94,6 +93,7 @@ import { HeaderIllustrations } from '@/components/HeaderIllustrations';
 import { HomeBackground } from '@/components/HomeBackground';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { ClassIcon, FirearmsAllowedProvider } from '@/components/ClassIcon';
+import { TombstoneIcon } from '@/components/TombstoneIcon';
 import { CampaignBadge } from '@/components/home/CampaignBadge';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
@@ -262,7 +262,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   };
   const statusIcon = (status: CharacterStatus) =>
     status === 'dead' ? (
-      <HeartBrokenIcon fontSize="small" />
+      <TombstoneIcon fontSize="small" />
     ) : status === 'retired' ? (
       <Inventory2Icon fontSize="small" />
     ) : (
@@ -739,7 +739,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                     }}
                   >
                     {character.status === 'dead' ? (
-                      <HeartBrokenIcon fontSize="inherit" />
+                      <TombstoneIcon fontSize="inherit" />
                     ) : (
                       <Inventory2Icon fontSize="inherit" />
                     )}
