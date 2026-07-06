@@ -22,7 +22,6 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
-import Inventory2Icon from '@mui/icons-material/Inventory2';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SettingsIcon from '@mui/icons-material/Settings';
 import UploadIcon from '@mui/icons-material/Upload';
@@ -48,13 +47,12 @@ import {
   CharacterList,
   type CharacterListAction,
 } from '@/components/character-list/CharacterList';
+import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
 import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey, type SortState } from '@/components/character-list/sort';
 import { PlayersSection } from '@/components/campaign/PlayersSection';
-import { TombstoneIcon } from '@/components/TombstoneIcon';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
-import type { CharacterStatus } from '@/lib/character/types';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { fileSlug, summarize } from '@/lib/character/summary';
 import { useCharactersStore } from '@/stores/characters';
@@ -152,26 +150,9 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const activeRows = rows.filter((r) => r.status === 'active');
   const archivedRows = rows.filter((r) => r.status !== 'active');
 
-  // Marqueur discret du statut d'un personnage archivé (mort / retiré), accolé au
+  // Marqueur discret du statut d'un personnage archivé (mort / retraité), accolé au
   // nom. `active` ⇒ aucun marqueur (cas des lignes de la section « Vivants »).
-  const renderNameMarker = (r: CharacterSummary) => {
-    const status: CharacterStatus = r.status;
-    if (status === 'dead') {
-      return (
-        <AppTooltip title="Mort">
-          <TombstoneIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-        </AppTooltip>
-      );
-    }
-    if (status === 'retired') {
-      return (
-        <AppTooltip title="Retraité">
-          <Inventory2Icon fontSize="small" sx={{ color: 'text.secondary' }} />
-        </AppTooltip>
-      );
-    }
-    return null;
-  };
+  const renderNameMarker = (r: CharacterSummary) => <CharacterStatusMarker status={r.status} />;
 
   const actions: CharacterListAction[] = [
     {

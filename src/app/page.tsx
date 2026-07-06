@@ -19,6 +19,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import GroupsIcon from '@mui/icons-material/Groups';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SearchIcon from '@mui/icons-material/Search';
@@ -26,6 +27,7 @@ import UploadIcon from '@mui/icons-material/Upload';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Collapse from '@mui/material/Collapse';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -48,9 +50,11 @@ import {
   type CharacterListAction,
   type CharacterListGroup,
 } from '@/components/character-list/CharacterList';
+import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
 import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey, type SortState } from '@/components/character-list/sort';
 import { HomeBackground } from '@/components/HomeBackground';
+import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import { UploadCharacterDialog } from '@/components/home/UploadCharacterDialog';
 import type { Character } from '@/lib/character/types';
@@ -98,6 +102,9 @@ export default function HomePage() {
   );
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortState>({ key: 'updatedAt', dir: 'desc' });
+  // Section « Archivés » (morts + retraités) repliable, repliée par défaut, choix
+  // persisté en local (survit au rechargement).
+  const [archivedOpen, setArchivedOpen] = usePersistedBoolean('home-archived-open', false);
 
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>
     setToast({ message, severity });
@@ -181,12 +188,18 @@ export default function HomePage() {
     });
   }, [allRows, query, sort, campaignNameById]);
 
-  // Regroupement visuel : seulement quand on trie par campagne. On préserve
-  // l'ordre déjà trié (les groupes sortent dans l'ordre des lignes).
+  // Split actifs / archivés (PER-183, comme la vue campagne) : « Archivés » est un
+  // terme d'UI désignant l'union mort ∪ retraité (pas une valeur de statut).
+  const activeRows = useMemo(() => rows.filter((r) => r.status === 'active'), [rows]);
+  const archivedRows = useMemo(() => rows.filter((r) => r.status !== 'active'), [rows]);
+
+  // Regroupement visuel des VIVANTS : seulement quand on trie par campagne. On
+  // préserve l'ordre déjà trié (les groupes sortent dans l'ordre des lignes). Les
+  // archivés restent une liste plate dans leur propre section repliable.
   const groups = useMemo<CharacterListGroup[] | null>(() => {
     if (sort.key !== 'campaign') return null;
     const map = new Map<string, CharacterListGroup>();
-    for (const r of rows) {
+    for (const r of activeRows) {
       const key = r.campaignId ?? '__none__';
       if (!map.has(key)) {
         const name = r.campaignId ? campaignNameById.get(r.campaignId) ?? UNASSIGNED : UNASSIGNED;
@@ -195,15 +208,20 @@ export default function HomePage() {
       map.get(key)!.rows.push(r);
     }
     return [...map.values()];
-  }, [rows, sort.key, campaignNameById]);
+  }, [activeRows, sort.key, campaignNameById]);
 
-  // Marqueur « non synchronisé » accolé au nom (PER-193).
-  const renderNameMarker = (r: CharacterSummary) =>
-    isLocalOnly(r.id) ? (
-      <AppTooltip title="Non synchronisé — stocké uniquement sur cet appareil">
-        <CloudOffIcon fontSize="small" sx={{ color: 'warning.main', flexShrink: 0 }} />
-      </AppTooltip>
-    ) : null;
+  // Marqueur accolé au nom : statut archivé (mort / retraité, PER-183) puis
+  // « non synchronisé » (PER-193) — les deux peuvent coexister.
+  const renderNameMarker = (r: CharacterSummary) => (
+    <>
+      <CharacterStatusMarker status={r.status} />
+      {isLocalOnly(r.id) && (
+        <AppTooltip title="Non synchronisé — stocké uniquement sur cet appareil">
+          <CloudOffIcon fontSize="small" sx={{ color: 'warning.main', flexShrink: 0 }} />
+        </AppTooltip>
+      )}
+    </>
+  );
 
   const actions: CharacterListAction[] = [
     {
@@ -370,18 +388,98 @@ export default function HomePage() {
                 </Typography>
               </Paper>
             ) : (
-              <CharacterList
-                rows={rows}
-                groups={groups}
-                onOpen={(r) => router.push(`/character/${r.id}`)}
-                actions={actions}
-                showCampaign
-                campaignNameById={campaignNameById}
-                sort={sort}
-                onPickSort={pickSort}
-                renderNameMarker={renderNameMarker}
-                attachedTop
-              />
+              <>
+                {/* Vivants (`status = active`) : liste principale, raccordée au bloc
+                    de recherche au-dessus. */}
+                {activeRows.length > 0 ? (
+                  <CharacterList
+                    rows={activeRows}
+                    groups={groups}
+                    onOpen={(r) => router.push(`/character/${r.id}`)}
+                    actions={actions}
+                    showCampaign
+                    campaignNameById={campaignNameById}
+                    sort={sort}
+                    onPickSort={pickSort}
+                    renderNameMarker={renderNameMarker}
+                    attachedTop
+                  />
+                ) : (
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 4,
+                      textAlign: 'center',
+                      bgcolor: 'rgba(30, 30, 34, 0.55)',
+                      backdropFilter: 'blur(6px)',
+                      WebkitBackdropFilter: 'blur(6px)',
+                      borderColor: 'rgba(255, 255, 255, 0.10)',
+                      borderTopLeftRadius: { md: 0 },
+                      borderTopRightRadius: { md: 0 },
+                    }}
+                  >
+                    <Typography color="text.secondary">
+                      {query
+                        ? 'Aucun personnage vivant ne correspond à cette recherche.'
+                        : 'Aucun personnage vivant.'}
+                    </Typography>
+                  </Paper>
+                )}
+
+                {/* Archivés (morts + retraités) : section repliable, repliée par
+                    défaut, état persisté en local. Masquée si aucun archivé. */}
+                {archivedRows.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Box
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setArchivedOpen(!archivedOpen)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setArchivedOpen(!archivedOpen);
+                        }
+                      }}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        p: 1.5,
+                        borderRadius: 2,
+                        bgcolor: 'rgba(0, 0, 0, 0.35)',
+                        border: '1px solid rgba(255, 255, 255, 0.10)',
+                        '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.45)' },
+                      }}
+                    >
+                      <ExpandMoreIcon
+                        sx={{
+                          transition: 'transform 0.2s',
+                          transform: archivedOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+                        }}
+                      />
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        Archivés ({archivedRows.length})
+                      </Typography>
+                    </Box>
+                    <Collapse in={archivedOpen} unmountOnExit>
+                      <Box sx={{ mt: 1.5 }}>
+                        <CharacterList
+                          rows={archivedRows}
+                          onOpen={(r) => router.push(`/character/${r.id}`)}
+                          actions={actions}
+                          showCampaign
+                          campaignNameById={campaignNameById}
+                          sort={sort}
+                          onPickSort={pickSort}
+                          renderNameMarker={renderNameMarker}
+                        />
+                      </Box>
+                    </Collapse>
+                  </Box>
+                )}
+              </>
             )}
           </>
         )}
