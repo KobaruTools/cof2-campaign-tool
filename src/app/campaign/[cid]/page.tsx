@@ -22,12 +22,14 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SettingsIcon from '@mui/icons-material/Settings';
 import UploadIcon from '@mui/icons-material/Upload';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Collapse from '@mui/material/Collapse';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -50,8 +52,8 @@ import {
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
 import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey, type SortState } from '@/components/character-list/sort';
-import { PlayersSection } from '@/components/campaign/PlayersSection';
 import { HomeBackground } from '@/components/HomeBackground';
+import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { fileSlug, summarize } from '@/lib/character/summary';
@@ -87,6 +89,9 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     null,
   );
   const [sort, setSort] = useState<SortState>({ key: 'updatedAt', dir: 'desc' });
+  // Section « Archivés » (morts + retraités) repliable, repliée par défaut, choix
+  // persisté en local (comme l'accueil). Une seule clé partagée par les campagnes.
+  const [archivedOpen, setArchivedOpen] = usePersistedBoolean('campaign-archived-open', false);
 
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>
     setToast({ message, severity });
@@ -236,7 +241,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
       />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>
+        <Stack direction="row" spacing={2} useFlexGap sx={{ mb: 3, flexWrap: 'wrap' }}>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
             Nouveau personnage
           </Button>
@@ -246,6 +251,16 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
             onClick={() => setImportOpen(true)}
           >
             Importer un JSON
+          </Button>
+          {/* Accès aux réglages depuis la ligne d'actions (en plus de la roue crantée de
+              l'en-tête) — poussé tout à droite via la marge automatique. */}
+          <Button
+            variant="outlined"
+            startIcon={<SettingsIcon />}
+            onClick={() => router.push(`/campaign/${cid}/settings`)}
+            sx={{ ml: { sm: 'auto' } }}
+          >
+            Réglages de la campagne
           </Button>
         </Stack>
 
@@ -292,7 +307,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
             </Typography>
           </Paper>
         ) : (
-          <Stack spacing={4}>
+          <Stack spacing={2}>
             {/* Tri mobile partagé par les deux sections (le desktop trie via les
                 en-têtes de chaque tableau). */}
             <SortControl
@@ -302,33 +317,58 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
               onToggleDir={toggleDir}
             />
 
-            {/* Vivants (`status = active`). Un léger message si tous sont archivés. */}
-            <Box>
-              <Typography variant="h6" sx={{ mb: 1.5 }}>
-                Vivants
-              </Typography>
-              {activeRows.length === 0 ? (
-                <Typography color="text.secondary">Aucun personnage vivant.</Typography>
-              ) : (
-                list(activeRows)
-              )}
-            </Box>
+            {/* Vivants (`status = active`) : simple liste, sans titre (comme l'accueil).
+                Un léger message si tous les personnages sont archivés. */}
+            {activeRows.length > 0 ? (
+              list(activeRows)
+            ) : (
+              <Typography color="text.secondary">Aucun personnage vivant.</Typography>
+            )}
 
-            {/* Archivés (mort ∪ retiré) — section masquée si vide. */}
+            {/* Archivés (mort ∪ retiré) : section repliable, repliée par défaut, état
+                persisté en local (comme l'accueil). Masquée si aucun archivé. */}
             {archivedRows.length > 0 && (
               <Box>
-                <Typography variant="h6" sx={{ mb: 1.5 }}>
-                  Archivés
-                </Typography>
-                {list(archivedRows)}
+                <Box
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setArchivedOpen(!archivedOpen)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setArchivedOpen(!archivedOpen);
+                    }
+                  }}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    p: 1.5,
+                    borderRadius: 2,
+                    bgcolor: 'rgba(0, 0, 0, 0.35)',
+                    border: '1px solid rgba(255, 255, 255, 0.10)',
+                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.45)' },
+                  }}
+                >
+                  <ExpandMoreIcon
+                    sx={{
+                      transition: 'transform 0.2s',
+                      transform: archivedOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+                    }}
+                  />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    Archivés ({archivedRows.length})
+                  </Typography>
+                </Box>
+                <Collapse in={archivedOpen} unmountOnExit>
+                  <Box sx={{ mt: 1.5 }}>{list(archivedRows)}</Box>
+                </Collapse>
               </Box>
             )}
           </Stack>
         )}
-
-        <Box sx={{ mt: 4 }}>
-          <PlayersSection campaignId={cid} />
-        </Box>
       </Container>
 
       <ImportCharacterDialog
