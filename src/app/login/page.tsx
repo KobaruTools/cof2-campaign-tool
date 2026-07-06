@@ -21,6 +21,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { HomeBackground } from '@/components/HomeBackground';
+import { ProviderIcon } from '@/components/icons/ProviderIcons';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { OAUTH_PROVIDERS, type OAuthProviderId } from '@/lib/auth/providers';
 import {
@@ -46,18 +47,22 @@ export default function LoginPage() {
 
   // Indice « dernière méthode » + erreur éventuelle renvoyée par le callback +
   // destination `next`, lus côté client uniquement (évite un besoin de Suspense
-  // pour useSearchParams).
+  // pour useSearchParams). Ces valeurs (localStorage, URL) ne sont PAS connues au
+  // rendu serveur : on les pose **après montage** pour ne pas provoquer de décalage
+  // d'hydratation — d'où le setState en effet, ici volontaire.
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     setLastMethod(readLastAuthMethod());
     const params = new URLSearchParams(window.location.search);
     if (params.get('error')) {
-      setError("La connexion a échoué. Réessaie ou choisis une autre méthode.");
+      setError('La connexion a échoué. Réessaie ou choisis une autre méthode.');
     }
     // `next` doit rester un chemin interne (pas d'open redirect).
     const requested = params.get('next');
     if (requested && requested.startsWith('/')) {
       setNextPath(requested);
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   // Callback commun OAuth/magic-link, portant la destination post-connexion.
@@ -133,7 +138,7 @@ export default function LoginPage() {
 
           {!IS_CONFIGURED && (
             <Alert severity="info" sx={{ mb: 3 }}>
-              L'authentification n'est pas encore configurée sur ce serveur (projet
+              L’authentification n’est pas encore configurée sur ce serveur (projet
               Supabase à provisionner).
             </Alert>
           )}
@@ -146,7 +151,7 @@ export default function LoginPage() {
 
           {magicSent ? (
             <Alert severity="success">
-              Un lien de connexion vient d'être envoyé à <strong>{email.trim()}</strong>.
+              Un lien de connexion vient d’être envoyé à <strong>{email.trim()}</strong>.
               Ouvre-le sur cet appareil pour te connecter.
             </Alert>
           ) : (
@@ -162,7 +167,13 @@ export default function LoginPage() {
                       size="large"
                       disabled={!IS_CONFIGURED || busy.kind !== 'idle'}
                       onClick={() => signInWithProvider(p.id)}
-                      startIcon={isBusy ? <CircularProgress size={18} color="inherit" /> : undefined}
+                      startIcon={
+                        isBusy ? (
+                          <CircularProgress size={18} color="inherit" />
+                        ) : (
+                          <ProviderIcon id={p.id} sx={{ color: '#fff', fontSize: 20 }} />
+                        )
+                      }
                       sx={{
                         justifyContent: 'flex-start',
                         borderColor: 'rgba(255,255,255,0.18)',

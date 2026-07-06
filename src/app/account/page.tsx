@@ -15,7 +15,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { User, UserIdentity } from '@supabase/supabase-js';
-import AddLinkIcon from '@mui/icons-material/AddLink';
+import EmailIcon from '@mui/icons-material/Email';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import LogoutIcon from '@mui/icons-material/Logout';
 import Alert from '@mui/material/Alert';
@@ -31,6 +31,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
@@ -39,6 +40,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
+import { ProviderIcon } from '@/components/icons/ProviderIcons';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { OAUTH_PROVIDERS } from '@/lib/auth/providers';
 import { deleteAccount } from './actions';
@@ -244,6 +246,16 @@ export default function AccountPage() {
                       </Button>
                     }
                   >
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      {identity.provider === 'google' || identity.provider === 'discord' ? (
+                        <ProviderIcon
+                          id={identity.provider}
+                          sx={{ color: '#fff', fontSize: 20 }}
+                        />
+                      ) : (
+                        <EmailIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      )}
+                    </ListItemIcon>
                     <ListItemText
                       primary={providerLabel(identity.provider)}
                       secondary={identitySubtitle(identity)}
@@ -263,7 +275,7 @@ export default function AccountPage() {
                     key={p.id}
                     size="small"
                     variant="outlined"
-                    startIcon={<AddLinkIcon fontSize="small" />}
+                    startIcon={<ProviderIcon id={p.id} sx={{ color: '#fff', fontSize: 18 }} />}
                     disabled={busyProvider !== null}
                     onClick={() => void linkProvider(p.id)}
                   >
