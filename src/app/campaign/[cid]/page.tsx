@@ -9,8 +9,13 @@
  * riche de la campagne (personnages actifs/archivés, éditeur de règles de table)
  * est porté par PER-183 ; on relocalise ici la liste de personnages qui vivait
  * auparavant sur l'accueil, pour que la navigation reste cohérente.
+ *
+ * La liste (tableau + cartes, menu « ⋮ », zébrures, tri) est portée par le
+ * composant partagé `CharacterList`, mutualisé avec l'accueil. Ici, pas de
+ * colonne campagne (contexte implicite) mais un découpage en sections
+ * actifs/archivés (PER-183) et un marqueur de statut accolé au nom.
  */
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -34,27 +39,30 @@ import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
+import {
+  CharacterList,
+  type CharacterListAction,
+} from '@/components/character-list/CharacterList';
+import { SortControl } from '@/components/character-list/SortControl';
+import { pickSortReducer, type SortKey, type SortState } from '@/components/character-list/sort';
 import { PlayersSection } from '@/components/campaign/PlayersSection';
-import { ClassIcon } from '@/components/ClassIcon';
 import { TombstoneIcon } from '@/components/TombstoneIcon';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
-import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
-import { classColor } from '@/lib/ui/classColors';
+import type { CharacterStatus } from '@/lib/character/types';
+import type { CharacterSummary } from '@/lib/character/summary';
+import { fileSlug, summarize } from '@/lib/character/summary';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useWizardStore } from '@/stores/wizard';
+
+// Pas de tri par campagne ici : la campagne est le contexte implicite.
+const CAMPAIGN_SORT_KEYS: SortKey[] = ['updatedAt', 'name', 'level'];
 
 export default function CampaignPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
@@ -80,9 +88,13 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
   );
+  const [sort, setSort] = useState<SortState>({ key: 'updatedAt', dir: 'desc' });
 
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>
     setToast({ message, severity });
+
+  const pickSort = (key: SortKey) => setSort(pickSortReducer(key));
+  const toggleDir = () => setSort((p) => ({ key: p.key, dir: p.dir === 'asc' ? 'desc' : 'asc' }));
 
   const handleCreate = () => {
     // Création rattachée à cette campagne : la campagne est passée en query au
@@ -116,11 +128,23 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     setToDelete(null);
   };
 
-  // Personnages de CETTE campagne (FK `campaignId`), triés par date de modification.
-  const rows = characters
-    .filter((c) => c.campaignId === cid)
-    .map(summarize)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  // Personnages de CETTE campagne (FK `campaignId`), puis tri partagé.
+  const rows = useMemo(() => {
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return characters
+      .filter((c) => c.campaignId === cid)
+      .map(summarize)
+      .sort((a, b) => {
+        switch (sort.key) {
+          case 'name':
+            return dir * a.name.localeCompare(b.name, 'fr');
+          case 'level':
+            return dir * (a.level - b.level) || a.name.localeCompare(b.name, 'fr');
+          default:
+            return dir * a.updatedAt.localeCompare(b.updatedAt);
+        }
+      });
+  }, [characters, cid, sort]);
 
   // Split actifs / archivés (PER-183) : « Archivés » est un terme d'UI désignant
   // l'union mort ∪ retiré (pas une valeur de statut). Le changement de statut se
@@ -128,153 +152,64 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const activeRows = rows.filter((r) => r.status === 'active');
   const archivedRows = rows.filter((r) => r.status !== 'active');
 
-  // Marqueur discret du statut d'un personnage archivé (mort / retiré).
-  const statusMarker = (status: (typeof rows)[number]['status']) =>
-    status === 'dead' ? (
-      <AppTooltip title="Mort">
-        <TombstoneIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-      </AppTooltip>
-    ) : status === 'retired' ? (
-      <AppTooltip title="Retraité">
-        <Inventory2Icon fontSize="small" sx={{ color: 'text.secondary' }} />
-      </AppTooltip>
-    ) : null;
+  // Marqueur discret du statut d'un personnage archivé (mort / retiré), accolé au
+  // nom. `active` ⇒ aucun marqueur (cas des lignes de la section « Vivants »).
+  const renderNameMarker = (r: CharacterSummary) => {
+    const status: CharacterStatus = r.status;
+    if (status === 'dead') {
+      return (
+        <AppTooltip title="Mort">
+          <TombstoneIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+        </AppTooltip>
+      );
+    }
+    if (status === 'retired') {
+      return (
+        <AppTooltip title="Retraité">
+          <Inventory2Icon fontSize="small" sx={{ color: 'text.secondary' }} />
+        </AppTooltip>
+      );
+    }
+    return null;
+  };
 
-  // Actions d'une ligne, partagées par le tableau (desktop) et les cartes (mobile).
-  const rowActions = (r: (typeof rows)[number]) => (
-    <>
-      <AppTooltip title="Ouvrir">
-        <IconButton onClick={() => router.push(`/character/${r.id}`)}>
-          <OpenInNewIcon fontSize="small" />
-        </IconButton>
-      </AppTooltip>
-      <AppTooltip title="Dupliquer">
-        <IconButton onClick={() => handleDuplicate(r.id)}>
-          <ContentCopyIcon fontSize="small" />
-        </IconButton>
-      </AppTooltip>
-      <AppTooltip title="Exporter en JSON">
-        <IconButton onClick={() => handleExport(r.id)}>
-          <DownloadIcon fontSize="small" />
-        </IconButton>
-      </AppTooltip>
-      <AppTooltip title="Supprimer">
-        <IconButton color="error" onClick={() => setToDelete({ id: r.id, name: r.name })}>
-          <DeleteOutlineIcon fontSize="small" />
-        </IconButton>
-      </AppTooltip>
-    </>
-  );
+  const actions: CharacterListAction[] = [
+    {
+      key: 'open',
+      label: 'Ouvrir',
+      icon: <OpenInNewIcon fontSize="small" />,
+      onClick: (r) => router.push(`/character/${r.id}`),
+    },
+    {
+      key: 'duplicate',
+      label: 'Dupliquer',
+      icon: <ContentCopyIcon fontSize="small" />,
+      onClick: (r) => handleDuplicate(r.id),
+    },
+    {
+      key: 'export',
+      label: 'Exporter en JSON',
+      icon: <DownloadIcon fontSize="small" />,
+      onClick: (r) => handleExport(r.id),
+    },
+    {
+      key: 'delete',
+      label: 'Supprimer',
+      icon: <DeleteOutlineIcon fontSize="small" color="error" />,
+      danger: true,
+      onClick: (r) => setToDelete({ id: r.id, name: r.name }),
+    },
+  ];
 
-  // Rend un groupe de personnages (actifs ou archivés) : tableau (desktop) +
-  // cartes empilées (mobile). Les lignes archivées portent leur marqueur de statut.
-  const renderGroup = (groupRows: typeof rows, archived: boolean) => (
-    <>
-      {/* Desktop : tableau classique. Masqué sous md (illisible sur mobile). */}
-      <TableContainer
-        component={Paper}
-        variant="outlined"
-        sx={{
-          display: { xs: 'none', md: 'block' },
-          bgcolor: 'rgba(30, 30, 34, 0.62)',
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
-          borderColor: 'rgba(255, 255, 255, 0.10)',
-        }}
-      >
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Nom</TableCell>
-              <TableCell>Peuple</TableCell>
-              <TableCell>Profil</TableCell>
-              <TableCell align="center">Niveau</TableCell>
-              <TableCell>Modifié</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {groupRows.map((r) => (
-              <TableRow key={r.id} hover>
-                <TableCell>
-                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                    {archived && statusMarker(r.status)}
-                    <Box component="span">{r.name}</Box>
-                  </Stack>
-                </TableCell>
-                <TableCell>{r.ancestry}</TableCell>
-                <TableCell>
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={20} />
-                    <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
-                      {r.characterClass}
-                    </Box>
-                  </Stack>
-                </TableCell>
-                <TableCell align="center">{r.level}</TableCell>
-                <TableCell>{formatDate(r.updatedAt)}</TableCell>
-                <TableCell align="right">{rowActions(r)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {/* Mobile : une carte empilée par personnage (PER-51). */}
-      <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
-        {groupRows.map((r) => (
-          <Paper
-            key={r.id}
-            variant="outlined"
-            sx={{
-              p: 2,
-              bgcolor: 'rgba(30, 30, 34, 0.62)',
-              backdropFilter: 'blur(6px)',
-              WebkitBackdropFilter: 'blur(6px)',
-              borderColor: 'rgba(255, 255, 255, 0.10)',
-            }}
-          >
-            <Stack
-              direction="row"
-              spacing={1}
-              sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
-            >
-              <Box
-                sx={{ minWidth: 0, cursor: 'pointer' }}
-                onClick={() => router.push(`/character/${r.id}`)}
-              >
-                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                  {archived && statusMarker(r.status)}
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    {r.name}
-                  </Typography>
-                </Stack>
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  sx={{ alignItems: 'center', flexWrap: 'wrap' }}
-                >
-                  <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={16} />
-                  <Typography variant="body2" color="text.secondary">
-                    {r.ancestry} ·{' '}
-                    <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
-                      {r.characterClass}
-                    </Box>{' '}
-                    · niveau {r.level}
-                  </Typography>
-                </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  Modifié {formatDate(r.updatedAt)}
-                </Typography>
-              </Box>
-            </Stack>
-            <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 0.5 }}>
-              {rowActions(r)}
-            </Stack>
-          </Paper>
-        ))}
-      </Stack>
-    </>
+  const list = (groupRows: CharacterSummary[]) => (
+    <CharacterList
+      rows={groupRows}
+      onOpen={(r) => router.push(`/character/${r.id}`)}
+      actions={actions}
+      sort={sort}
+      onPickSort={pickSort}
+      renderNameMarker={renderNameMarker}
+    />
   );
 
   const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';
@@ -377,6 +312,15 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           </Paper>
         ) : (
           <Stack spacing={4}>
+            {/* Tri mobile partagé par les deux sections (le desktop trie via les
+                en-têtes de chaque tableau). */}
+            <SortControl
+              sort={sort}
+              keys={CAMPAIGN_SORT_KEYS}
+              onPickSort={pickSort}
+              onToggleDir={toggleDir}
+            />
+
             {/* Vivants (`status = active`). Un léger message si tous sont archivés. */}
             <Box>
               <Typography variant="h6" sx={{ mb: 1.5 }}>
@@ -385,7 +329,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
               {activeRows.length === 0 ? (
                 <Typography color="text.secondary">Aucun personnage vivant.</Typography>
               ) : (
-                renderGroup(activeRows, false)
+                list(activeRows)
               )}
             </Box>
 
@@ -395,7 +339,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
                 <Typography variant="h6" sx={{ mb: 1.5 }}>
                   Archivés
                 </Typography>
-                {renderGroup(archivedRows, true)}
+                {list(archivedRows)}
               </Box>
             )}
           </Stack>
