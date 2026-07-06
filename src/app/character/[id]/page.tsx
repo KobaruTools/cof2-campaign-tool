@@ -255,6 +255,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     dead: 'Mort',
     retired: 'Retraité',
   };
+  // Explication brève affichée au survol du marqueur de statut, à côté du nom.
+  const STATUS_TOOLTIP: Record<Exclude<CharacterStatus, 'active'>, string> = {
+    dead: 'Personnage mort. Statut réversible : repassez-le « Vivant » en mode édition.',
+    retired: 'Personnage à la retraite. Statut réversible : repassez-le « Vivant » en mode édition.',
+  };
   const statusIcon = (status: CharacterStatus) =>
     status === 'dead' ? (
       <HeartBrokenIcon fontSize="small" />
@@ -716,31 +721,51 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               classId={characterClass?.id}
               portraitVariant={character.portraitVariant}
             />
-            {editingBlocks.identity ? (
-              <TextField
-                value={character.name}
-                onChange={(e) => update({ name: e.target.value })}
-                placeholder="Sans nom"
-                variant="standard"
-                fullWidth
-                sx={{
-                  position: 'relative',
-                  zIndex: 1,
-                  '& .MuiInputBase-input': {
-                    fontSize: (theme) => theme.typography.h4.fontSize,
-                    fontWeight: 'bold',
-                  },
-                }}
-              />
-            ) : (
-              <Typography
-                variant="h4"
-                component="h2"
-                sx={{ fontWeight: 'bold', position: 'relative', zIndex: 1 }}
-              >
-                {character.name || 'Sans nom'}
-              </Typography>
-            )}
+            {/* Nom, précédé du marqueur de statut quand le personnage est archivé
+                (mort / retraité) — même taille que le nom, tooltip explicatif. */}
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: 'center', position: 'relative', zIndex: 1 }}
+            >
+              {character.status !== 'active' && (
+                <AppTooltip title={STATUS_TOOLTIP[character.status]}>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: 'inline-flex',
+                      color: 'text.secondary',
+                      fontSize: (theme) => theme.typography.h4.fontSize,
+                    }}
+                  >
+                    {character.status === 'dead' ? (
+                      <HeartBrokenIcon fontSize="inherit" />
+                    ) : (
+                      <Inventory2Icon fontSize="inherit" />
+                    )}
+                  </Box>
+                </AppTooltip>
+              )}
+              {editingBlocks.identity ? (
+                <TextField
+                  value={character.name}
+                  onChange={(e) => update({ name: e.target.value })}
+                  placeholder="Sans nom"
+                  variant="standard"
+                  fullWidth
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontSize: (theme) => theme.typography.h4.fontSize,
+                      fontWeight: 'bold',
+                    },
+                  }}
+                />
+              ) : (
+                <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
+                  {character.name || 'Sans nom'}
+                </Typography>
+              )}
+            </Stack>
             <Stack
               direction="row"
               spacing={0.75}
