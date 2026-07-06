@@ -35,7 +35,18 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { joinLinkUrl, type Player } from '@/lib/player/types';
 import { usePlayersStore } from '@/stores/players';
 
-export function PlayersSection({ campaignId }: { campaignId: string }) {
+export function PlayersSection({
+  campaignId,
+  bare = false,
+}: {
+  campaignId: string;
+  /**
+   * Rendu « nu » : sans le `Paper` englobant ni le titre « Joueurs ». Utilisé quand
+   * un conteneur extérieur fournit déjà l'en-tête (ex. section repliable des
+   * réglages de campagne). Défaut `false` = section autonome complète.
+   */
+  bare?: boolean;
+}) {
   const players = usePlayersStore((s) => s.players);
   const status = usePlayersStore((s) => s.status);
   const load = usePlayersStore((s) => s.load);
@@ -142,20 +153,8 @@ export function PlayersSection({ campaignId }: { campaignId: string }) {
 
   const loading = status === 'idle' || status === 'loading';
 
-  return (
-    <Paper
-      variant="outlined"
-      sx={{
-        p: { xs: 2, sm: 3 },
-        bgcolor: 'rgba(30, 30, 34, 0.62)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        borderColor: 'rgba(255, 255, 255, 0.10)',
-      }}
-    >
-      <Typography variant="h6" sx={{ mb: 0.5 }}>
-        Joueurs
-      </Typography>
+  const content = (
+    <>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Ajoute un joueur, puis partage-lui son lien magique : il rejoint la campagne sans
         compte et éditera sa fiche.
@@ -283,7 +282,11 @@ export function PlayersSection({ campaignId }: { campaignId: string }) {
           ))}
         </Stack>
       )}
+    </>
+  );
 
+  const overlays = (
+    <>
       {/* Renommer */}
       <Dialog open={renameTarget !== null} onClose={() => setRenameTarget(null)} fullWidth maxWidth="xs">
         <DialogTitle>Renommer le joueur</DialogTitle>
@@ -358,6 +361,36 @@ export function PlayersSection({ campaignId }: { campaignId: string }) {
           </AppAlert>
         ) : undefined}
       </Snackbar>
+    </>
+  );
+
+  // Mode « bare » : le conteneur extérieur fournit l'en-tête (section repliable).
+  if (bare) {
+    return (
+      <>
+        {content}
+        {overlays}
+      </>
+    );
+  }
+
+  // Section autonome : verre dépoli + titre, comme les autres cartes de l'app.
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: { xs: 2, sm: 3 },
+        bgcolor: 'rgba(30, 30, 34, 0.62)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        borderColor: 'rgba(255, 255, 255, 0.10)',
+      }}
+    >
+      <Typography variant="h6" sx={{ mb: 0.5 }}>
+        Joueurs
+      </Typography>
+      {content}
+      {overlays}
     </Paper>
   );
 }
