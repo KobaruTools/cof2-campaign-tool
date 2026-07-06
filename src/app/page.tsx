@@ -282,6 +282,7 @@ export default function HomePage() {
                       <TableCell>
                         <CampaignBadge
                           name={r.campaignId ? campaignNameById.get(r.campaignId) ?? null : null}
+                          campaignId={r.campaignId}
                         />
                       </TableCell>
                       <TableCell>{formatDate(r.updatedAt)}</TableCell>
@@ -338,6 +339,7 @@ export default function HomePage() {
                       <Box sx={{ mt: 0.5 }}>
                         <CampaignBadge
                           name={r.campaignId ? campaignNameById.get(r.campaignId) ?? null : null}
+                          campaignId={r.campaignId}
                         />
                       </Box>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>

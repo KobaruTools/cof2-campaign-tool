@@ -732,7 +732,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               <Typography variant="body1" component="span">
                 ·
               </Typography>
-              <CampaignBadge name={currentCampaign?.name ?? null} />
+              <CampaignBadge
+                name={currentCampaign?.name ?? null}
+                campaignId={currentCampaign?.id ?? null}
+              />
             </Stack>
 
             {/* Montée de niveau (PER-49) : toujours accessible. Le niveau max (20)
