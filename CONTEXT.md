@@ -33,6 +33,18 @@ _Avoid_: en tant que valeur de statut
 Objet **typé** (un champ par règle, pas de registre générique), persisté dans `campaigns.rules` (jsonb). Décisions d'univers qui découlent sur les personnages de la campagne (ex. `firearmsAllowed`).
 _Avoid_: options, paramètres, config
 
+**Règle « armes à feu »** (`campaign.rules.firearmsAllowed`) :
+Décision d'univers : les armes à feu **existent-elles** dans cette campagne ? C'est une **disponibilité d'option**, pas un interrupteur imposé à chaque personnage. La règle reste **éditable** par le MJ après création de la campagne.
+_Avoid_: interrupteur global, forçage par personnage
+
+**Choix d'armes à feu du personnage** (`Character.firearmsAllowed`, dit *snapshot*) :
+Le choix du **joueur** à la création — dans une campagne où la poudre existe, il peut jouer un Arquebusier (poudre) ou un Arbalétrier (arbalète, par goût). **Verrouillé après la création** (pas d'interrupteur sur la fiche). Un personnage « Non attribué » (sans campagne) retombe sur le comportement historique (poudre disponible).
+_Avoid_: réglage modifiable en jeu, réglage de campagne
+
+**Armes à feu effectives** (dérivé) :
+`firearmsEffectif = Character.firearmsAllowed ∧ campaign.rules.firearmsAllowed` (campagne absente ⇒ `true`). **Valeur unique lue partout** où comptait `Character.firearmsAllowed` : nom affiché du profil (Arquebusier ↔ Arbalétrier), voies effectives (explosifs ↔ maître des arbalètes), légalité/level-up, conformité. La campagne **filtre** (gate) le choix du joueur : si le MJ interdit la poudre après coup, l'effectif d'un Arquebusier bascule à `false` — il s'affiche « Arbalétrier », le level-up lui propose l'arbalète, et un **avertissement de conformité** (voie explosifs orpheline, arme à feu équipée) invite le MJ à régulariser à la main. Aucune donnée du personnage n'est jamais mutée en silence ; rebasculer la campagne à `true` restaure l'Arquebusier.
+_Avoid_: mutation du personnage, transformation destructive
+
 ## Relationships
 
 - Un **MJ** possède zéro ou plusieurs **Campagnes**.
