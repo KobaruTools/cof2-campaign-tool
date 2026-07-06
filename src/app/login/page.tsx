@@ -204,8 +204,8 @@ export default function LoginPage() {
                             borderBottomRightRadius: (theme) => theme.shape.borderRadius,
                           }}
                         >
-                          <Typography component="span" variant="caption">
-                            Dernière fois
+                          <Typography component="span" variant="caption" sx={{ fontWeight: 700 }}>
+                            Utilisé à la dernière connexion
                           </Typography>
                         </Box>
                       )}
