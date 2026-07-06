@@ -19,14 +19,12 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
-import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, progression } from '@/data';
@@ -38,6 +36,7 @@ import { isCustomItem } from '@/lib/character/types';
 import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { classDisplayName } from '@/lib/character/classDisplay';
+import { firearmsEffective } from '@/lib/character/firearms';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
 import { mergeMods, orphanMods, orphanSourceTerms } from '@/lib/character/orphanPoints';
@@ -246,6 +245,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const currentCampaign = character.campaignId
     ? campaigns.find((c) => c.id === character.campaignId)
     : undefined;
+  // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185).
+  // Valeur unique lue partout où comptait `character.firearmsAllowed` : nom affiché,
+  // conformité, level-up. Le snapshot `character.firearmsAllowed` reste figé (choix
+  // de création) ; c'est la campagne qui filtre en aval, sans jamais muter le perso.
+  const firearmsAllowed = firearmsEffective(character, currentCampaign);
 
   // Statut du personnage (PER-183) : modifiable par le MJ ET le joueur (la RLS
   // l'autorise ; la vue campagne, owner-only, ne suffit pas). `active` ↔
@@ -479,7 +483,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
   // Conformité aux règles : recalculée à chaque rendu (donc en direct pendant
   // l'édition). Non bloquante — simple aide affichée (PER-47).
-  const warnings = checkCompliance(character, rulesContext);
+  const warnings = checkCompliance(character, rulesContext, firearmsAllowed);
 
   // Capacités acquises + capacités empruntées par choix : base de l'agrégation
   // des bonus plats et du détail des stats dérivées (PER-66).
@@ -683,7 +687,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     // Toutes les icônes de profil de la fiche (en-tête, voies, montée de niveau,
     // références d'emprunt…) suivent le réglage « armes à feu » du personnage :
     // l'arquebusier privé de poudre affiche une arbalète (« Arbalétrier », p. 62).
-    <FirearmsAllowedProvider value={character.firearmsAllowed}>
+    <FirearmsAllowedProvider value={firearmsAllowed}>
       {/* Titre de l'onglet = nom du personnage. Rendu déclaratif (React 19 le
           hisse dans le <head>) plutôt que document.title dans un effet : sinon
           la métadonnée en streaming de Next réécrase le titre après hydratation
@@ -790,7 +794,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 }}
               >
                 {characterClass
-                  ? classDisplayName(characterClass, character.firearmsAllowed)
+                  ? classDisplayName(characterClass, firearmsAllowed)
                   : 'Profil à définir'}
               </Typography>
               <Typography variant="body1" component="span">
@@ -877,25 +881,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               ))}
             </Menu>
 
-            {/* Armes à feu autorisées dans l'univers (p. 185) — réglage de campagne.
-                Pour un profil qui maîtrise la poudre (arquebusier), le désactiver le
-                transforme en « arbalétrier » (p. 62). Édité en mode « Modifier ». */}
-            {editingBlocks.identity && characterClass?.powderAllowed && (
-              <Box sx={{ mt: 1, position: 'relative', zIndex: 1 }}>
-                <AppTooltip title="Univers sans poudre : l’arquebusier combat à l’arbalète et devient « arbalétrier »." page={62}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size="small"
-                        checked={character.firearmsAllowed}
-                        onChange={(e) => update({ firearmsAllowed: e.target.checked })}
-                      />
-                    }
-                    label={<Typography variant="body2">Armes à feu autorisées</Typography>}
-                  />
-                </AppTooltip>
-              </Box>
-            )}
+            {/* PER-185 : le choix « armes à feu » (Arquebusier ↔ Arbalétrier) est un
+                snapshot VERROUILLÉ à la création — plus d'interrupteur ici. La
+                disponibilité de la poudre relève désormais de la règle de campagne
+                (réglages de campagne) ; l'effectif en découle (`firearmsAllowed`). */}
 
             {/* Attribution de campagne (PER-180) : rattacher le personnage à une
                 campagne ou le laisser « Non attribué ». Éditée en mode « Modifier ». */}
@@ -1195,6 +1184,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         open={levelUpOpen}
         character={character}
         family={family}
+        firearmsAllowed={firearmsAllowed}
         onClose={() => setLevelUpOpen(false)}
         onConfirm={(updated) => {
           upsert(updated);

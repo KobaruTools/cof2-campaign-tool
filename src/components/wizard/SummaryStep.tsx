@@ -30,13 +30,17 @@ import type { StepProps } from './types';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
-export function SummaryStep({ draft, patch }: StepProps) {
+export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
   const ancestry = ancestryById.get(draft.ancestryId);
   const characterClass = classById.get(draft.classId);
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
   if (!ancestry || !characterClass || !family) {
     return <AppAlert severity="warning">Récapitulatif indisponible : étapes incomplètes.</AppAlert>;
   }
+  // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix brouillon, PER-185) :
+  // nom affiché, voies effectives et conformité suivent l'effectif, pas le seul choix.
+  // Absent = « Non attribué » → pas de contrainte de campagne (fallback historique).
+  const firearmsAllowed = (campaignAllowsFirearms ?? true) && (draft.firearmsAllowed ?? true);
 
   const abilities = finalAbilities(draft, ancestry);
   const featureIds = level1FeatureIds(draft);
@@ -61,7 +65,7 @@ export function SummaryStep({ draft, patch }: StepProps) {
     // Détail par famille pour l'infobulle (vide hors hybridation).
     hpLevel1Families: level1HybridFamilies(preview, rulesContext),
   };
-  const warnings = checkCompliance(preview, rulesContext);
+  const warnings = checkCompliance(preview, rulesContext, firearmsAllowed);
 
   return (
     <Stack spacing={3}>
@@ -83,7 +87,7 @@ export function SummaryStep({ draft, patch }: StepProps) {
             component="span"
             sx={{ color: classColor(characterClass.id), fontWeight: 600 }}
           >
-            {classDisplayName(characterClass, draft.firearmsAllowed ?? true)}
+            {classDisplayName(characterClass, firearmsAllowed)}
           </Typography>
           <Typography variant="body2" component="span">
             · niveau 1
@@ -159,7 +163,7 @@ export function SummaryStep({ draft, patch }: StepProps) {
             // bordure neutre.
             const featureClassId =
               path?.type === 'class'
-                ? effectiveClassPathIds(characterClass, draft.firearmsAllowed ?? true).includes(path.id)
+                ? effectiveClassPathIds(characterClass, firearmsAllowed).includes(path.id)
                   ? characterClass.id
                   : path.classIds[0]
                 : null;

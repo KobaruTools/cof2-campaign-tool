@@ -445,4 +445,58 @@ describe('variante « Arbalétrier » : échange de voie explosifs ↔ maître d
     });
     expect(checkCompliance(withFirearms, ctx).map((w) => w.code)).not.toContain('FIREARMS_DISABLED_PATH');
   });
+
+  // PER-185 : la valeur EFFECTIVE (règle campagne ∧ choix perso) est passée en
+  // paramètre. Un Arquebusier (snapshot true) dont la campagne interdit la poudre
+  // reçoit l'effectif false → il joue « Arbalétrier » sans que ses données changent.
+  it('effectif passé en paramètre : campagne interdit la poudre → maître des arbalètes acquérable, explosifs bloqué', () => {
+    const c = makeCharacter({ classId: 'arquebusier', ancestryId: 'humain', ancestryPathId: 'humain' });
+    expect(c.firearmsAllowed).toBe(true); // snapshot inchangé
+    expect(canAcquireFeature(c, 'maitre-des-arbaletes-r1', ctx, false).legal).toBe(true);
+    expect(canAcquireFeature(c, 'explosifs-r1', ctx, false).legal).toBe(false);
+  });
+
+  it('effectif passé en paramètre : Arquebusier avec explosifs déjà pris + campagne interdit → FIREARMS_DISABLED_PATH', () => {
+    const c = makeCharacter({
+      classId: 'arquebusier',
+      ancestryId: 'humain',
+      ancestryPathId: 'humain',
+      featureIds: ['explosifs-r1', 'humain-r1'],
+    });
+    const disabled = checkCompliance(c, ctx, false).find((w) => w.code === 'FIREARMS_DISABLED_PATH');
+    expect(disabled?.pathId).toBe('explosifs');
+  });
+
+  it('effectif par défaut = snapshot du personnage (pas de campagne)', () => {
+    const c = makeCharacter({
+      classId: 'arquebusier',
+      ancestryId: 'humain',
+      ancestryPathId: 'humain',
+      firearmsAllowed: false,
+    });
+    expect(canAcquireFeature(c, 'maitre-des-arbaletes-r1', ctx).legal).toBe(true);
+  });
+
+  // PER-185 : détection LÉGÈRE d'une arme à feu équipée quand la poudre est
+  // interdite (traitement propre = PER-197, milestone équipement porté).
+  it('arme à feu équipée + poudre interdite : avertissement FIREARMS_DISABLED_ITEM', () => {
+    const c = makeCharacter({
+      classId: 'arquebusier',
+      ancestryId: 'humain',
+      ancestryPathId: 'humain',
+      equipment: [{ itemId: 'mousquet', quantity: 1 }],
+    });
+    const item = checkCompliance(c, ctx, false).find((w) => w.code === 'FIREARMS_DISABLED_ITEM');
+    expect(item).toBeDefined();
+  });
+
+  it('arme à feu équipée + poudre autorisée : aucun avertissement d’item', () => {
+    const c = makeCharacter({
+      classId: 'arquebusier',
+      ancestryId: 'humain',
+      ancestryPathId: 'humain',
+      equipment: [{ itemId: 'mousquet', quantity: 1 }],
+    });
+    expect(checkCompliance(c, ctx, true).map((w) => w.code)).not.toContain('FIREARMS_DISABLED_ITEM');
+  });
 });

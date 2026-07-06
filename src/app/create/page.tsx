@@ -22,7 +22,9 @@ import {
   type WizardDraft,
 } from '@/lib/character/wizard';
 import { useCharactersStore } from '@/stores/characters';
+import { useCampaignsStore } from '@/stores/campaigns';
 import { useWizardStore } from '@/stores/wizard';
+import { firearmsEffective } from '@/lib/character/firearms';
 import { AppAlert } from '@/components/AppAlert';
 import { AppHeader } from '@/components/AppHeader';
 import { ClassStep, PathsStep, IdentityStep } from '@/components/wizard/steps';
@@ -147,6 +149,8 @@ export default function CreatePage() {
   const setStep = useWizardStore((s) => s.setStep);
   const clear = useWizardStore((s) => s.clear);
   const commitNewCharacter = useCharactersStore((s) => s.commitNewCharacter);
+  const campaigns = useCampaignsStore((s) => s.campaigns);
+  const loadCampaigns = useCampaignsStore((s) => s.load);
   // Commit de fin de wizard : écriture cloud en cours / échec (le brouillon est
   // conservé tant que le commit n'a pas abouti — jamais d'inachevé en base).
   const [committing, setCommitting] = useState(false);
@@ -163,6 +167,12 @@ export default function CreatePage() {
     start(seed);
   }, [hasHydrated, draft, start]);
 
+  // La règle « armes à feu » de la campagne (PER-185) gate le toggle du wizard et
+  // l'autorisation effective : il faut donc que la liste des campagnes soit chargée.
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
+
   if (!hasHydrated || !draft) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -177,6 +187,18 @@ export default function CreatePage() {
   const isLast = step === STEPS.length - 1;
   const canNext = current.valid(draft);
 
+  // Campagne de rattachement du brouillon (PER-180/185). La règle « armes à feu »
+  // de la campagne détermine la disponibilité de l'option au wizard ; « Non
+  // attribué » (ou liste pas encore chargée) → fallback historique `true`.
+  const draftCampaign = draft.campaignId ? campaigns.find((c) => c.id === draft.campaignId) : undefined;
+  const campaignAllowsFirearms = draftCampaign ? draftCampaign.rules.firearmsAllowed : true;
+  // Autorisation EFFECTIVE des armes à feu du brouillon : pilote les icônes de
+  // profil (Arquebusier ↔ Arbalétrier) via le provider.
+  const firearmsAllowed = firearmsEffective(
+    { firearmsAllowed: draft.firearmsAllowed ?? true },
+    draftCampaign,
+  );
+
   // Choix de niveau 1 portés par les capacités (PER-66/68) : la création reste
   // bloquée tant qu'ils ne sont pas tous résolus (doctrine wizard, bloquant).
   const summaryAncestry = ancestryById.get(draft.ancestryId);
@@ -189,7 +211,14 @@ export default function CreatePage() {
   const finish = async () => {
     const ancestry = ancestryById.get(draft.ancestryId);
     if (!ancestry) return;
-    const character = materializeDraft(draft, ancestry, new Date().toISOString());
+    const materialized = materializeDraft(draft, ancestry, new Date().toISOString());
+    // PER-185 : le snapshot `firearmsAllowed` stocké = choix EFFECTIF à la création.
+    // Si la campagne interdit la poudre, le personnage naît « Arbalétrier » (false),
+    // même s'il est réattribué plus tard. Sans campagne, on garde le choix du joueur.
+    const character = {
+      ...materialized,
+      firearmsAllowed: firearmsEffective(materialized, draftCampaign),
+    };
     // Commit en fin de wizard (PER-192) : le personnage naît directement en cloud
     // (`campaign_id` porté par le brouillon, `player_id` vide). En cas d'échec, on
     // conserve le brouillon pour permettre une nouvelle tentative.
@@ -213,7 +242,7 @@ export default function CreatePage() {
     // Les icônes de profil du wizard (sélection, hybridation, récap) suivent le
     // réglage « armes à feu » du brouillon : dès qu'il est décoché, l'arquebusier
     // s'affiche en « Arbalétrier » (arbalète) partout — cf. FirearmsAllowedProvider.
-    <FirearmsAllowedProvider value={draft.firearmsAllowed ?? true}>
+    <FirearmsAllowedProvider value={firearmsAllowed}>
       <title>Création de personnage — Éditeur de personnage CO2</title>
       {/* Même illustration de fond que l'accueil : la couverture scindée en deux
           moitiés encadrant le contenu (fixe, parallaxe + léger suivi de la souris). */}
@@ -258,7 +287,7 @@ export default function CreatePage() {
             borderColor: 'rgba(255, 255, 255, 0.10)',
           }}
         >
-          <StepComponent draft={draft} patch={patch} />
+          <StepComponent draft={draft} patch={patch} campaignAllowsFirearms={campaignAllowsFirearms} />
         </Paper>
 
         {/* Feedback : ce qu'il reste à faire avant de pouvoir passer à la suite. */}

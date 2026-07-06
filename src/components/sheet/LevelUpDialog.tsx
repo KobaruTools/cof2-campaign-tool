@@ -92,6 +92,12 @@ export interface LevelUpDialogProps {
   character: Character;
   /** Famille du profil : sert au calcul du gain de PV (null si profil incomplet). */
   family: Family | undefined;
+  /**
+   * Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185).
+   * Distribue la bonne variante d'arquebusier au level-up (explosifs ↔ maître des
+   * arbalètes). Défaut = snapshot du personnage (fiche sans campagne résolue).
+   */
+  firearmsAllowed?: boolean;
   onClose: () => void;
   /** Personnage promu à valider (niveau +1, capacités, historique). */
   onConfirm: (updated: Character) => void;
@@ -474,7 +480,14 @@ function FeaturePointsBadge({
  * `acquirableFeatures`, en tenant compte des capacités déjà sélectionnées dans
  * cette même montée de niveau.
  */
-export function LevelUpDialog({ open, character, family, onClose, onConfirm }: LevelUpDialogProps) {
+export function LevelUpDialog({
+  open,
+  character,
+  family,
+  firearmsAllowed = character.firearmsAllowed,
+  onClose,
+  onConfirm,
+}: LevelUpDialogProps) {
   const [picked, setPicked] = useState<string[]>([]);
   // Choix portés par les capacités sélectionnées ce niveau (PER-66/68), à
   // résoudre avant validation (doctrine wizard : bloquant).
@@ -543,7 +556,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   // ne doit pas être re-sélectionnable après un oubli — sinon on rachèterait ce qu'on
   // vient d'abandonner). L'exclusion vaut aussi pour la liste normale, pas seulement
   // pour les remplacements.
-  const available = acquirableFeatures(working, rulesContext).filter(
+  const available = acquirableFeatures(working, rulesContext, firearmsAllowed).filter(
     (f) => !forgottenPathIds.has(f.pathId),
   );
 
@@ -579,7 +592,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
   const characterClassForPaths = classById.get(character.classId);
   const mainPathIds = new Set(
     characterClassForPaths
-      ? effectiveClassPathIds(characterClassForPaths, character.firearmsAllowed)
+      ? effectiveClassPathIds(characterClassForPaths, firearmsAllowed)
       : [],
   );
   const divineFeatureId = acquiredSlot?.featureId;
@@ -720,7 +733,7 @@ export function LevelUpDialog({ open, character, family, onClose, onConfirm }: L
         ...others,
       ],
     };
-    return acquirableFeatures(slotWorking, rulesContext)
+    return acquirableFeatures(slotWorking, rulesContext, firearmsAllowed)
       .filter((f) => !forgottenPathIds.has(f.pathId))
       .map((f) => f.id);
   };

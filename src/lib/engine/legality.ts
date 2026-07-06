@@ -27,8 +27,18 @@ import type {
   Path,
 } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
+import { isCustomItem } from '@/lib/character/types';
 import { priestDivineFeatureId, priestDivineSlot, type DivineSlot } from '@/lib/character/choices';
 import { effectiveClassPathIds, firearmsInactivePathIds } from '@/lib/character/classDisplay';
+
+/**
+ * Détection LÉGÈRE (PER-185) des objets « à poudre » du catalogue. Ces items sont
+ * DUAUX (« Mousquet ou arbalète lourde », « Pétoire ou arbalète de poing », p. 62) :
+ * quand la poudre est interdite, l'objet EST déjà l'arbalète. On se contente donc
+ * d'un avertissement doux invitant à vérifier la ligne d'équipement — la vraie
+ * gestion de l'arme portée (variante effectivement équipée) relève de PER-197.
+ */
+const FIREARM_ITEM_IDS = new Set(['mousquet', 'petoire']);
 
 /**
  * Voie EFFECTIVE d'une capacité pour la PROGRESSION : la capacité divine d'un prêtre
@@ -63,6 +73,7 @@ export type WarningCode =
   | 'HYBRID_PROFILE'
   | 'FEATURE_POINTS_OVERSPENT'
   | 'FIREARMS_DISABLED_PATH'
+  | 'FIREARMS_DISABLED_ITEM'
   | 'UNKNOWN_FEATURE';
 
 export interface Warning {
@@ -281,10 +292,14 @@ export function isHybrid(character: Character, ctx: RulesContext): boolean {
  * reçu aucune capacité — la « règle de la voie vierge » (p. 176). Continuer une
  * voie hybride déjà entamée reste toujours possible (vérifié en amont).
  */
-export function canStartHybridPath(character: Character, ctx: RulesContext): boolean {
+export function canStartHybridPath(
+  character: Character,
+  ctx: RulesContext,
+  firearmsAllowed: boolean = character.firearmsAllowed,
+): boolean {
   const characterClass = ctx.classById.get(character.classId);
   if (!characterClass) return false;
-  return effectiveClassPathIds(characterClass, character.firearmsAllowed).some(
+  return effectiveClassPathIds(characterClass, firearmsAllowed).some(
     (pathId) => ownedRanks(character, pathId, ctx).length === 0,
   );
 }
@@ -301,6 +316,9 @@ export function canAcquireFeature(
   character: Character,
   featureId: string,
   ctx: RulesContext,
+  // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185).
+  // Défaut = snapshot du personnage (comportement historique sans campagne).
+  firearmsAllowed: boolean = character.firearmsAllowed,
 ): LegalityResult {
   const reasons: string[] = [];
   const feature = ctx.featureById.get(featureId);
@@ -336,19 +354,19 @@ export function canAcquireFeature(
     // quel que soit le profil du personnage (le réglage est propre au personnage). On teste contre le
     // profil PROPRIÉTAIRE de la voie (arquebusier) pour couvrir aussi un accès hybride.
     const owningClass = ctx.classById.get(path.classIds[0]);
-    if (owningClass && firearmsInactivePathIds(owningClass, character.firearmsAllowed).includes(path.id)) {
+    if (owningClass && firearmsInactivePathIds(owningClass, firearmsAllowed).includes(path.id)) {
       reasons.push(
-        character.firearmsAllowed === false
+        firearmsAllowed === false
           ? `« ${path.name} » n'est pas disponible : les armes à feu sont interdites dans cet univers (variante « Arbalétrier », p. 62).`
           : `« ${path.name} » n'est disponible que lorsque les armes à feu sont interdites (variante « Arbalétrier », p. 62).`,
       );
     }
     const isMainProfilePath =
       characterClass != null &&
-      effectiveClassPathIds(characterClass, character.firearmsAllowed).includes(path.id);
+      effectiveClassPathIds(characterClass, firearmsAllowed).includes(path.id);
     if (!isMainProfilePath) {
       const alreadyStarted = ownedRanks(character, path.id, ctx).length > 0;
-      if (!alreadyStarted && !canStartHybridPath(character, ctx)) {
+      if (!alreadyStarted && !canStartHybridPath(character, ctx, firearmsAllowed)) {
         reasons.push(
           `« ${path.name} » appartient à un autre profil : profil hybride impossible, les cinq voies de votre profil principal sont déjà entamées (p. 176).`,
         );
@@ -431,8 +449,15 @@ export function canAcquireFeature(
 /**
  * Liste les écarts aux règles du personnage courant (avertissements non
  * bloquants). N'empêche jamais la sauvegarde — c'est l'UI qui les affiche.
+ *
+ * `firearmsAllowed` = autorisation EFFECTIVE des armes à feu (règle campagne ∧
+ * choix perso, PER-185) ; défaut = snapshot du personnage (sans campagne).
  */
-export function checkCompliance(character: Character, ctx: RulesContext): Warning[] {
+export function checkCompliance(
+  character: Character,
+  ctx: RulesContext,
+  firearmsAllowed: boolean = character.firearmsAllowed,
+): Warning[] {
   const warnings: Warning[] = [];
   const family = characterFamily(character, ctx);
 
@@ -568,7 +593,7 @@ export function checkCompliance(character: Character, ctx: RulesContext): Warnin
     const path = ctx.pathById.get(feature.pathId);
     if (!path || path.type !== 'class') continue;
     const owningClass = ctx.classById.get(path.classIds[0]);
-    if (owningClass && firearmsInactivePathIds(owningClass, character.firearmsAllowed).includes(path.id)) {
+    if (owningClass && firearmsInactivePathIds(owningClass, firearmsAllowed).includes(path.id)) {
       firearmsDisabledPaths.add(path.id);
     }
   }
@@ -576,9 +601,26 @@ export function checkCompliance(character: Character, ctx: RulesContext): Warnin
     const path = ctx.pathById.get(pathId)!;
     warnings.push({
       code: 'FIREARMS_DISABLED_PATH',
-      message: `« ${path.name} » n'est pas disponible dans ce cadre de jeu (${character.firearmsAllowed === false ? 'armes à feu interdites' : 'armes à feu autorisées'}, variante « Arbalétrier », p. 62). Envisagez de basculer vers la voie de remplacement.`,
+      message: `« ${path.name} » n'est pas disponible dans ce cadre de jeu (${firearmsAllowed === false ? 'armes à feu interdites' : 'armes à feu autorisées'}, variante « Arbalétrier », p. 62). Envisagez de basculer vers la voie de remplacement.`,
       pathId,
     });
+  }
+
+  // Arme à poudre équipée alors que les armes à feu sont interdites (PER-185,
+  // détection légère — cf. `FIREARM_ITEM_IDS`). Objet dual devenu arbalète : on
+  // signale la ligne à vérifier sans rien retirer (fiche permissive).
+  if (firearmsAllowed === false) {
+    const hasFirearmItem = character.equipment.some(
+      (line) => !isCustomItem(line) && FIREARM_ITEM_IDS.has(line.itemId),
+    );
+    if (hasFirearmItem) {
+      warnings.push({
+        code: 'FIREARMS_DISABLED_ITEM',
+        message:
+          'Une arme à poudre équipée n\'est pas disponible dans ce cadre de jeu (armes à feu interdites, p. 62) : elle compte désormais comme l\'arbalète correspondante. Vérifiez la ligne d\'équipement.',
+        severity: 'warning',
+      });
+    }
   }
 
   return warnings;

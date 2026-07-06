@@ -59,7 +59,7 @@ import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import { UploadCharacterDialog } from '@/components/home/UploadCharacterDialog';
 import type { Character } from '@/lib/character/types';
 import type { CharacterSummary } from '@/lib/character/summary';
-import { fileSlug, summarize } from '@/lib/character/summary';
+import { fileSlug, summarizeInCampaign } from '@/lib/character/summary';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useWizardStore } from '@/stores/wizard';
@@ -115,6 +115,10 @@ export default function HomePage() {
     [campaigns],
   );
 
+  // Campagne complète par id : sert à dériver l'autorisation EFFECTIVE des armes à
+  // feu de chaque personnage (nom Arquebusier ↔ Arbalétrier, PER-185).
+  const campaignById = useMemo(() => new Map(campaigns.map((c) => [c.id, c])), [campaigns]);
+
   // Un personnage est « local » (staging non téléversé, PER-193) s'il est absent
   // des versions cloud APRÈS un chargement réussi. Tant que le cloud n'est pas
   // chargé (ou non configuré / en erreur), on ne présume pas : pas de marqueur ni
@@ -157,7 +161,13 @@ export default function HomePage() {
     setToDelete(null);
   };
 
-  const allRows = useMemo(() => characters.map(summarize), [characters]);
+  const allRows = useMemo(
+    () =>
+      characters.map((c) =>
+        summarizeInCampaign(c, c.campaignId ? campaignById.get(c.campaignId) : null),
+      ),
+    [characters, campaignById],
+  );
 
   // Filtre (recherche) puis tri. Le regroupement par campagne se fait ensuite.
   const rows = useMemo(() => {

@@ -180,11 +180,14 @@ function RestrictionRow({
 function ClassRestrictions({
   characterClass,
   firearmsAllowed,
+  campaignAllowsFirearms,
   onFirearmsAllowedChange,
 }: {
   characterClass: CharacterClass;
-  /** Armes à feu autorisées dans l'univers (contrôlé par le brouillon du wizard). */
+  /** Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix brouillon). */
   firearmsAllowed: boolean;
+  /** La campagne autorise-t-elle la poudre ? Gate le toggle (PER-185). */
+  campaignAllowsFirearms: boolean;
   onFirearmsAllowedChange: (value: boolean) => void;
 }) {
   const theme = useTheme();
@@ -306,25 +309,39 @@ function ClassRestrictions({
         )}
       </Box>
 
-      {characterClass.powderAllowed && (
-        <FormControlLabel
-          sx={{ mt: 0.5 }}
-          control={
-            <Switch
-              size="small"
-              checked={firearmsAllowed}
-              onChange={(e) => onFirearmsAllowedChange(e.target.checked)}
-            />
-          }
-          label={<Typography variant="body2">Armes à feu autorisées</Typography>}
-        />
-      )}
+      {/* PER-185 : le joueur ne peut choisir Arquebusier/Arbalétrier QUE si la
+          campagne autorise la poudre. Sinon, pas de choix : forcé « Arbalétrier »
+          avec une note (la disponibilité relève des réglages de campagne, p. 62). */}
+      {characterClass.powderAllowed &&
+        (campaignAllowsFirearms ? (
+          <FormControlLabel
+            sx={{ mt: 0.5 }}
+            control={
+              <Switch
+                size="small"
+                checked={firearmsAllowed}
+                onChange={(e) => onFirearmsAllowedChange(e.target.checked)}
+              />
+            }
+            label={<Typography variant="body2">Armes à feu autorisées</Typography>}
+          />
+        ) : (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            Armes à feu interdites dans cette campagne : ce profil combat à l’arbalette
+            (« Arbalétrier », p. 62).
+          </Typography>
+        ))}
     </Box>
   );
 }
 
-export function ClassStep({ draft, patch }: StepProps) {
+export function ClassStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
   const characterClass = classById.get(draft.classId);
+  // Absent = « Non attribué » → pas de contrainte de campagne (fallback historique).
+  const campaignAllows = campaignAllowsFirearms ?? true;
+  // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix brouillon, PER-185) :
+  // pilote le nom affiché du profil (Arquebusier ↔ Arbalétrier) et le bloc « armes ».
+  const firearmsAllowed = campaignAllows && (draft.firearmsAllowed ?? true);
 
   const chooseClass = (id: string) => {
     const p = classById.get(id);
@@ -381,7 +398,7 @@ export function ClassStep({ draft, patch }: StepProps) {
                             label={
                               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                                 <ClassIcon classId={p.id} size={22} />
-                                <span>{classDisplayName(p, draft.firearmsAllowed ?? true)}</span>
+                                <span>{classDisplayName(p, firearmsAllowed)}</span>
                               </Stack>
                             }
                           />
@@ -435,7 +452,7 @@ export function ClassStep({ draft, patch }: StepProps) {
             >
               <ClassIcon classId={characterClass.id} size={28} />
               <Typography variant="subtitle1" sx={{ color: classColor(characterClass.id) }}>
-                {classDisplayName(characterClass, draft.firearmsAllowed ?? true)}
+                {classDisplayName(characterClass, firearmsAllowed)}
               </Typography>
             </Stack>
             <Box sx={{ mb: 1.5, pr: { xs: 13, sm: 17 } }}>
@@ -450,7 +467,8 @@ export function ClassStep({ draft, patch }: StepProps) {
             </Box>
             <ClassRestrictions
               characterClass={characterClass}
-              firearmsAllowed={draft.firearmsAllowed ?? true}
+              firearmsAllowed={firearmsAllowed}
+              campaignAllowsFirearms={campaignAllows}
               onFirearmsAllowedChange={(value) => patch({ firearmsAllowed: value })}
             />
           </CardContent>
@@ -769,9 +787,13 @@ function PathCard({
   );
 }
 
-export function PathsStep({ draft, patch }: StepProps) {
+export function PathsStep({ draft, patch, campaignAllowsFirearms }: StepProps) {
   const characterClass = classById.get(draft.classId);
   if (!characterClass) return <AppAlert severity="warning">Choisissez d’abord un profil.</AppAlert>;
+  // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix brouillon, PER-185) :
+  // l'arbalétrier se voit proposer le maître des arbalètes à la place des explosifs.
+  // Absent = « Non attribué » → pas de contrainte de campagne (fallback historique).
+  const firearmsAllowed = (campaignAllowsFirearms ?? true) && (draft.firearmsAllowed ?? true);
   const isMage = characterClass.familyId === 'mages';
   const ancestry = ancestryById.get(draft.ancestryId);
   const hybrid = draft.hybrid ?? false;
@@ -826,7 +848,7 @@ export function PathsStep({ draft, patch }: StepProps) {
     }
     // Repli standard : ne conserver que les voies du profil principal (voies EFFECTIVES : un
     // arbalétrier a le maître des arbalètes à la place des explosifs).
-    const mainPathIds = effectiveClassPathIds(characterClass, draft.firearmsAllowed ?? true);
+    const mainPathIds = effectiveClassPathIds(characterClass, firearmsAllowed);
     const kept = draft.chosenPaths.filter((p) => mainPathIds.includes(p));
     const mageBonus =
       draft.mageBonus?.type === 'class-rank2' && !kept.includes(draft.mageBonus.pathId)
@@ -905,7 +927,7 @@ export function PathsStep({ draft, patch }: StepProps) {
           </Typography>
         )}
         {pathChecklist(
-          effectiveClassPathIds(characterClass, draft.firearmsAllowed ?? true),
+          effectiveClassPathIds(characterClass, firearmsAllowed),
           classColor(characterClass.id),
           characterClass.id,
         )}

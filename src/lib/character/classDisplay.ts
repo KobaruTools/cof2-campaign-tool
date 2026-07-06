@@ -21,10 +21,18 @@ export function classDisplayName(cls: CharacterClass, firearmsAllowed: boolean):
   return firearmsAllowed === false && cls.nameWithoutFirearms ? cls.nameWithoutFirearms : cls.name;
 }
 
-/** Libellé du profil d'un personnage (résout l'id + applique `firearmsAllowed`). */
-export function characterClassName(character: Character, fallback = '—'): string {
+/**
+ * Libellé du profil d'un personnage (résout l'id + applique l'autorisation des
+ * armes à feu). `firearmsAllowed` = valeur EFFECTIVE (règle campagne ∧ choix
+ * perso, PER-185) ; défaut = snapshot du personnage (sans campagne).
+ */
+export function characterClassName(
+  character: Character,
+  fallback = '—',
+  firearmsAllowed: boolean = character.firearmsAllowed,
+): string {
   const cls = classById.get(character.classId);
-  return cls ? classDisplayName(cls, character.firearmsAllowed) : fallback;
+  return cls ? classDisplayName(cls, firearmsAllowed) : fallback;
 }
 
 /**

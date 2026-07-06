@@ -71,9 +71,16 @@ export function forgettableFeatures(character: Character): Feature[] {
  * `canAcquireFeature` vérifie l'ordre des rangs, on n'obtient ici que les
  * « prochains rangs » disponibles, jamais une capacité à trous.
  */
-export function acquirableFeatures(character: Character, ctx: RulesContext): Feature[] {
+export function acquirableFeatures(
+  character: Character,
+  ctx: RulesContext,
+  // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185).
+  // Défaut = snapshot du personnage. La bonne variante d'arquebusier (explosifs ou
+  // maître des arbalètes) est alors proposée au level-up selon l'effectif.
+  firearmsAllowed: boolean = character.firearmsAllowed,
+): Feature[] {
   return featureCatalog
-    .filter((f) => canAcquireFeature(character, f.id, ctx).legal)
+    .filter((f) => canAcquireFeature(character, f.id, ctx, firearmsAllowed).legal)
     .sort((a, b) => a.rank - b.rank || a.pathId.localeCompare(b.pathId));
 }
 
