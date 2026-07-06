@@ -19,10 +19,10 @@ _Avoid_: utilisateur, membre
 
 **Statut de personnage** (`Character.status`) :
 Position d'un personnage dans son cycle de vie. Trois valeurs fermées :
-- **`active`** — en cours de jeu.
-- **`dead`** — mort en jeu (événement narratif, appelle souvent une recréation pour le même joueur).
-- **`retired`** — retiré volontairement (rangé sans être mort).
-Passer à `dead`/`retired` demande une **confirmation** (acte narratif volontaire), mais reste **réversible** : un personnage archivé peut repasser `active` (résurrection, erreur de clic) — la fiche permissive n'enferme jamais la donnée. Modifiable par le **MJ et le joueur** (RLS 0002 autorise le joueur à écrire le statut de sa fiche).
+- **`active`** — en cours de jeu (affiché « Vivant »).
+- **`dead`** — mort en jeu (affiché « Mort » ; événement narratif, appelle souvent une recréation pour le même joueur).
+- **`retired`** — retiré volontairement (rangé sans être mort ; affiché « Retraité » — on évite « Retiré », anglicisme).
+Les valeurs de code restent `active`/`dead`/`retired` (clés persistées) ; « Vivant »/« Mort »/« Retraité » ne sont que les libellés d'UI. Passer à `dead`/`retired` demande une **confirmation** (acte narratif volontaire), mais reste **réversible** : un personnage archivé peut repasser `active` (résurrection, erreur de clic) — la fiche permissive n'enferme jamais la donnée. Modifiable par le **MJ et le joueur** (RLS 0002 autorise le joueur à écrire le statut de sa fiche).
 _Avoid_: archivé (voir ci-dessous), supprimé, définitif/irréversible
 
 **Archivé** :

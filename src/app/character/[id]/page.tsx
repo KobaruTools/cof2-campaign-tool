@@ -251,9 +251,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // l'autorise ; la vue campagne, owner-only, ne suffit pas). `active` ↔
   // `dead`/`retired` réversible, mais l'archivage (acte narratif) est confirmé.
   const STATUS_LABEL: Record<CharacterStatus, string> = {
-    active: 'Actif',
+    active: 'Vivant',
     dead: 'Mort',
-    retired: 'Retiré',
+    retired: 'Retraité',
   };
   const statusIcon = (status: CharacterStatus) =>
     status === 'dead' ? (
@@ -1183,14 +1183,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         onConfirm={confirmCoinPouch}
       />
 
-      {/* Confirmation d'archivage (PER-183) : passer un personnage en mort/retiré est
-          un acte narratif volontaire. Réversible (on peut le repasser « Actif »
+      {/* Confirmation d'archivage (PER-183) : passer un personnage en mort/retraité
+          est un acte narratif volontaire. Réversible (on peut le repasser « Vivant »
           ensuite, sans confirmation) — la fiche permissive n'enferme jamais la donnée. */}
       <Dialog open={pendingArchive !== null} onClose={() => setPendingArchive(null)}>
         <DialogTitle>
           {pendingArchive === 'dead'
             ? 'Marquer ce personnage comme mort ?'
-            : 'Retirer ce personnage ?'}
+            : 'Mettre ce personnage à la retraite ?'}
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -1208,7 +1208,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               setPendingArchive(null);
             }}
           >
-            {pendingArchive === 'dead' ? 'Marquer mort' : 'Retirer'}
+            {pendingArchive === 'dead' ? 'Marquer mort' : 'Mettre à la retraite'}
           </Button>
         </DialogActions>
       </Dialog>

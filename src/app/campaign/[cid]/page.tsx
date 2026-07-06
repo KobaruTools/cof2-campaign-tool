@@ -135,7 +135,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
         <HeartBrokenIcon fontSize="small" sx={{ color: 'text.secondary' }} />
       </AppTooltip>
     ) : status === 'retired' ? (
-      <AppTooltip title="Retiré">
+      <AppTooltip title="Retraité">
         <Inventory2Icon fontSize="small" sx={{ color: 'text.secondary' }} />
       </AppTooltip>
     ) : null;
@@ -377,13 +377,13 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           </Paper>
         ) : (
           <Stack spacing={4}>
-            {/* Actifs (`status = active`). Un léger message si tous sont archivés. */}
+            {/* Vivants (`status = active`). Un léger message si tous sont archivés. */}
             <Box>
               <Typography variant="h6" sx={{ mb: 1.5 }}>
-                Actifs
+                Vivants
               </Typography>
               {activeRows.length === 0 ? (
-                <Typography color="text.secondary">Aucun personnage actif.</Typography>
+                <Typography color="text.secondary">Aucun personnage vivant.</Typography>
               ) : (
                 renderGroup(activeRows, false)
               )}
