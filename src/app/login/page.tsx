@@ -161,34 +161,55 @@ export default function LoginPage() {
                   const isBusy = busy.kind === 'oauth' && busy.provider === p.id;
                   const isLast = lastMethod === p.id;
                   return (
-                    <Button
-                      key={p.id}
-                      variant={isLast ? 'contained' : 'outlined'}
-                      size="large"
-                      disabled={!IS_CONFIGURED || busy.kind !== 'idle'}
-                      onClick={() => signInWithProvider(p.id)}
-                      startIcon={
-                        isBusy ? (
-                          <CircularProgress size={18} color="inherit" />
-                        ) : (
-                          <ProviderIcon id={p.id} sx={{ color: '#fff', fontSize: 20 }} />
-                        )
-                      }
-                      sx={{
-                        justifyContent: 'flex-start',
-                        borderColor: 'rgba(255,255,255,0.18)',
-                        ...(isLast
-                          ? { bgcolor: p.brand, '&:hover': { bgcolor: p.brand, filter: 'brightness(1.1)' } }
-                          : { color: 'text.primary' }),
-                      }}
-                    >
-                      Continuer avec {p.label}
+                    <Box key={p.id}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        size="large"
+                        disabled={!IS_CONFIGURED || busy.kind !== 'idle'}
+                        onClick={() => signInWithProvider(p.id)}
+                        startIcon={
+                          isBusy ? (
+                            <CircularProgress size={18} color="inherit" />
+                          ) : (
+                            <ProviderIcon id={p.id} sx={{ color: '#fff', fontSize: 20 }} />
+                          )
+                        }
+                        sx={{
+                          justifyContent: 'flex-start',
+                          // Fond transparent, bordure à la couleur de marque du provider.
+                          bgcolor: 'transparent',
+                          color: 'text.primary',
+                          borderColor: p.brand,
+                          '&:hover': { borderColor: p.brand, bgcolor: `${p.brand}1f` },
+                          // Coins bas carrés quand le bandeau « dernière fois » est collé dessous.
+                          ...(isLast
+                            ? { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }
+                            : {}),
+                        }}
+                      >
+                        {p.label}
+                      </Button>
                       {isLast && (
-                        <Typography component="span" variant="caption" sx={{ ml: 'auto', opacity: 0.85 }}>
-                          dernière fois
-                        </Typography>
+                        // Mini-bandeau collé sous le bouton (coins bas arrondis), pour ne pas
+                        // encombrer le bouton horizontalement.
+                        <Box
+                          sx={{
+                            bgcolor: p.brand,
+                            color: '#fff',
+                            textAlign: 'center',
+                            py: 0.25,
+                            // Même rayon que le bouton, uniquement en bas (coins collés en haut).
+                            borderBottomLeftRadius: (theme) => theme.shape.borderRadius,
+                            borderBottomRightRadius: (theme) => theme.shape.borderRadius,
+                          }}
+                        >
+                          <Typography component="span" variant="caption">
+                            Dernière fois
+                          </Typography>
+                        </Box>
                       )}
-                    </Button>
+                    </Box>
                   );
                 })}
               </Stack>
