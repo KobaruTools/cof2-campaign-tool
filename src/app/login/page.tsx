@@ -80,9 +80,14 @@ export default function LoginPage() {
     try {
       const supabase = createBrowserSupabaseClient();
       rememberLastAuthMethod(provider);
+      const meta = OAUTH_PROVIDERS.find((p) => p.id === provider);
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: callbackUrl },
+        options: {
+          redirectTo: callbackUrl,
+          // Discord : prompt=none pour ne pas ré-afficher le consentement à chaque fois.
+          ...(meta?.authQueryParams ? { queryParams: meta.authQueryParams } : {}),
+        },
       });
       if (err) throw err;
       // Succès : le navigateur part chez le provider (pas de retour ici).

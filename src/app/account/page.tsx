@@ -131,9 +131,14 @@ export default function AccountPage() {
     setBusyProvider(provider);
     try {
       const supabase = createBrowserSupabaseClient();
+      const meta = OAUTH_PROVIDERS.find((p) => p.id === provider);
       const { error } = await supabase.auth.linkIdentity({
         provider,
-        options: { redirectTo: `${window.location.origin}/auth/callback?next=/account` },
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=/account`,
+          // Discord : prompt=none, cohérent avec l'écran de connexion.
+          ...(meta?.authQueryParams ? { queryParams: meta.authQueryParams } : {}),
+        },
       });
       if (error) throw error;
       // Succès : le navigateur part vers le provider (pas de retour ici).
