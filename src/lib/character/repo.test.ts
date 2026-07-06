@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Database, Json } from '@/lib/supabase/types';
 import { createBlankCharacter } from './factory';
-import { mergeCharacters, rowToCharacter } from './repo';
+import { bindForUpload, isUniqueViolation, mergeCharacters, rowToCharacter } from './repo';
 import type { Character } from './types';
 
 type CharacterRow = Database['public']['Tables']['characters']['Row'];
@@ -78,5 +78,42 @@ describe('mergeCharacters', () => {
     const cloud: Character[] = [];
     const local = [character({ id: 'legacy' })];
     expect(mergeCharacters(cloud, local).map((c) => c.id)).toEqual(['legacy']);
+  });
+});
+
+describe('bindForUpload', () => {
+  it('rattache à la campagne cible, remet le joueur à null et horodate', () => {
+    const local = character({ campaignId: null, playerId: 'p-old', updatedAt: '2020-01-01T00:00:00Z' });
+    const bound = bindForUpload(local, 'camp-1', '2026-07-06T09:00:00Z');
+    expect(bound.campaignId).toBe('camp-1');
+    expect(bound.playerId).toBeNull();
+    expect(bound.updatedAt).toBe('2026-07-06T09:00:00Z');
+    expect(bound.id).toBe(local.id); // id conservé
+  });
+
+  it('accepte « Non attribué » (campagne null)', () => {
+    const bound = bindForUpload(character({ campaignId: 'stale' }), null, '2026-07-06T09:00:00Z');
+    expect(bound.campaignId).toBeNull();
+    expect(bound.playerId).toBeNull();
+  });
+
+  it('ne mute pas le personnage source', () => {
+    const local = character({ campaignId: null, playerId: 'p-old' });
+    bindForUpload(local, 'camp-1', '2026-07-06T09:00:00Z');
+    expect(local.campaignId).toBeNull();
+    expect(local.playerId).toBe('p-old');
+  });
+});
+
+describe('isUniqueViolation', () => {
+  it('reconnaît le code SQLSTATE 23505', () => {
+    expect(isUniqueViolation({ code: '23505', message: 'duplicate key' })).toBe(true);
+  });
+
+  it('rejette les autres erreurs', () => {
+    expect(isUniqueViolation({ code: '23503' })).toBe(false);
+    expect(isUniqueViolation(new Error('réseau'))).toBe(false);
+    expect(isUniqueViolation(null)).toBe(false);
+    expect(isUniqueViolation('23505')).toBe(false);
   });
 });

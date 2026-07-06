@@ -10,6 +10,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
+import CloudOffIcon from '@mui/icons-material/CloudOff';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -43,6 +45,8 @@ import { CampaignBadge } from '@/components/home/CampaignBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
+import { UploadCharacterDialog } from '@/components/home/UploadCharacterDialog';
+import type { Character } from '@/lib/character/types';
 import { fileSlug, formatDate, summarize } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
 import { useCharactersStore } from '@/stores/characters';
@@ -54,6 +58,7 @@ export default function HomePage() {
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const status = useCharactersStore((s) => s.status);
   const characters = useCharactersStore((s) => s.characters);
+  const cloudVersions = useCharactersStore((s) => s.cloudVersions);
   const loadCharacters = useCharactersStore((s) => s.load);
   const duplicate = useCharactersStore((s) => s.duplicate);
   const remove = useCharactersStore((s) => s.remove);
@@ -70,6 +75,7 @@ export default function HomePage() {
   }, [loadCharacters, loadCampaigns]);
 
   const [importOpen, setImportOpen] = useState(false);
+  const [toUpload, setToUpload] = useState<Character | null>(null);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
@@ -80,6 +86,17 @@ export default function HomePage() {
 
   // Nom de la campagne par id, pour le badge de chaque ligne (null = non attribué).
   const campaignNameById = new Map(campaigns.map((c) => [c.id, c.name]));
+
+  // Un personnage est « local » (staging non téléversé, PER-193) s'il est absent
+  // des versions cloud APRÈS un chargement réussi. Tant que le cloud n'est pas
+  // chargé (ou non configuré / en erreur), on ne présume pas : pas de marqueur ni
+  // d'action de téléversement.
+  const isLocalOnly = (id: string) => status === 'ready' && !(id in cloudVersions);
+
+  const openUpload = (id: string) => {
+    const character = useCharactersStore.getState().getById(id);
+    if (character) setToUpload(character);
+  };
 
   const handleCreate = () => router.push('/create');
 
@@ -114,6 +131,13 @@ export default function HomePage() {
   // Actions d'une ligne, partagées par le tableau (desktop) et les cartes (mobile).
   const rowActions = (r: (typeof rows)[number]) => (
     <>
+      {isLocalOnly(r.id) && (
+        <AppTooltip title="Téléverser vers le cloud">
+          <IconButton color="primary" onClick={() => openUpload(r.id)}>
+            <CloudUploadIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
+      )}
       <AppTooltip title="Ouvrir">
         <IconButton onClick={() => router.push(`/character/${r.id}`)}>
           <OpenInNewIcon fontSize="small" />
@@ -231,7 +255,16 @@ export default function HomePage() {
                 <TableBody>
                   {rows.map((r) => (
                     <TableRow key={r.id} hover>
-                      <TableCell>{r.name}</TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                          <Box component="span">{r.name}</Box>
+                          {isLocalOnly(r.id) && (
+                            <AppTooltip title="Non synchronisé — stocké uniquement sur cet appareil">
+                              <CloudOffIcon fontSize="small" sx={{ color: 'warning.main' }} />
+                            </AppTooltip>
+                          )}
+                        </Stack>
+                      </TableCell>
                       <TableCell>{r.ancestry}</TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -278,9 +311,16 @@ export default function HomePage() {
                       sx={{ minWidth: 0, cursor: 'pointer' }}
                       onClick={() => router.push(`/character/${r.id}`)}
                     >
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        {r.name}
-                      </Typography>
+                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
+                          {r.name}
+                        </Typography>
+                        {isLocalOnly(r.id) && (
+                          <AppTooltip title="Non synchronisé — stocké uniquement sur cet appareil">
+                            <CloudOffIcon fontSize="small" sx={{ color: 'warning.main', flexShrink: 0 }} />
+                          </AppTooltip>
+                        )}
+                      </Stack>
                       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                         <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={16} />
                         <Typography variant="body2" color="text.secondary">
@@ -317,6 +357,13 @@ export default function HomePage() {
         campaignId={null}
         onClose={() => setImportOpen(false)}
         onImported={(c) => notify(`« ${c.name || 'Sans nom'} » importé.`)}
+      />
+
+      {/* Téléversement d'un perso local vers le cloud (PER-193), choix par personnage. */}
+      <UploadCharacterDialog
+        character={toUpload}
+        onClose={() => setToUpload(null)}
+        onUploaded={(c) => notify(`« ${c.name || 'Sans nom'} » téléversé vers le cloud.`)}
       />
 
       <Dialog open={toDelete !== null} onClose={() => setToDelete(null)}>

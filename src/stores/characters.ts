@@ -31,9 +31,11 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { duplicateCharacter } from '@/lib/character/factory';
 import {
+  bindForUpload,
   deleteCharacter,
   fetchCharacters,
   insertCharacter,
+  isUniqueViolation,
   mergeCharacters,
   updateCharacterRow,
 } from '@/lib/character/repo';
@@ -89,6 +91,17 @@ interface CharactersState {
    * import relève de PER-193/182. Lève en cas de fichier invalide.
    */
   importCharacter: (raw: unknown) => Character;
+  /**
+   * Téléverse un personnage LOCAL (staging) vers le cloud (PER-193) : l'affecte à
+   * la campagne cible choisie (`campaignId`, `null` = « Non attribué »), remet le
+   * joueur à `null` (attribution différée), l'insère en base puis le **promeut** en
+   * perso cloud (ajout à `cloudVersions`) — le blob reste en cache localStorage,
+   * aucune suppression n'a lieu (transition sans perte). No-op si déjà cloud ou
+   * introuvable. En cas de collision d'`id` (PK globale), régénère un id et
+   * réessaie une fois. Lève si Supabase n'est pas configuré ou si l'insertion
+   * échoue (l'UI conserve alors le perso en local et affiche l'erreur).
+   */
+  uploadToCloud: (id: string, campaignId: string | null) => Promise<void>;
   /** Force le flush immédiat de tous les personnages en attente (ex. avant fermeture d'onglet). */
   flushAll: () => void;
   /** Acquitte le conflit courant (referme le bandeau). */
@@ -270,6 +283,37 @@ export const useCharactersStore = create<CharactersState>()(
           const toAdd = exists ? { ...character, id: crypto.randomUUID() } : character;
           set((state) => ({ characters: [...state.characters, withTimestamp(toAdd)] }));
           return toAdd;
+        },
+
+        uploadToCloud: async (id, campaignId) => {
+          if (!isSupabaseConfigured()) {
+            throw new Error('Synchronisation cloud indisponible.');
+          }
+          const state = get();
+          if (id in state.cloudVersions) return; // déjà synchronisé
+          const original = state.characters.find((c) => c.id === id);
+          if (!original) return;
+          let bound = bindForUpload(original, campaignId, new Date().toISOString());
+          let version: number;
+          try {
+            version = await insertCharacter(bound);
+          } catch (e) {
+            // Collision de clé primaire (id déjà pris, très rare avec des UUID) :
+            // on régénère un id et on réessaie une fois, pour ne jamais bloquer
+            // l'adoption d'un perso local (filet « sans perte »).
+            if (!isUniqueViolation(e)) throw e;
+            bound = { ...bound, id: crypto.randomUUID() };
+            version = await insertCharacter(bound);
+          }
+          set((s) => {
+            // Remplace l'ancienne ligne par la version téléversée (l'id peut avoir
+            // changé en cas de collision) et bascule l'entrée de `cloudVersions`.
+            const characters = s.characters.map((c) => (c.id === id ? bound : c));
+            const cloudVersions = { ...s.cloudVersions };
+            delete cloudVersions[id];
+            cloudVersions[bound.id] = version;
+            return { characters, cloudVersions };
+          });
         },
 
         flushAll: () => {

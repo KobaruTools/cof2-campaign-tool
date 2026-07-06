@@ -149,3 +149,34 @@ export async function deleteCharacter(id: string): Promise<void> {
   const { error } = await supabase.from('characters').delete().eq('id', id);
   if (error) throw error;
 }
+
+/**
+ * Prépare un personnage LOCAL (staging) pour son téléversement vers le cloud
+ * (PER-193) : le rattache à la campagne cible choisie (`campaignId`, `null` =
+ * « Non attribué ») et remet le joueur à `null` (attribution différée, cf. PER-184),
+ * puis horodate. Fonction **pure** (l'horodatage est fourni) → testable ;
+ * l'insertion elle-même passe par `insertCharacter`.
+ */
+export function bindForUpload(
+  character: Character,
+  campaignId: string | null,
+  now: string,
+): Character {
+  return { ...character, campaignId, playerId: null, updatedAt: now };
+}
+
+/**
+ * L'erreur PostgREST correspond-elle à une violation de contrainte d'unicité
+ * (clé primaire déjà prise, code SQLSTATE `23505`) ? Sert au téléversement
+ * (PER-193) à détecter une collision d'`id` — improbable avec des UUID, mais un
+ * blob importé pourrait partager l'`id` d'une ligne existante — pour régénérer un
+ * id et réessayer sans jamais bloquer l'adoption d'un perso local.
+ */
+export function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'code' in e &&
+    (e as { code?: unknown }).code === '23505'
+  );
+}
