@@ -3,8 +3,10 @@
 /**
  * Gestion des campagnes (PER-190) — CRUD cloud (MJ = propriétaire, RLS
  * `owner_id`). Accessible depuis l'en-tête de l'accueil (`/`, liste plate des
- * personnages, pivot PER-180). On peut créer, modifier (nom + notes) et supprimer
- * une campagne. La suppression est **en cascade côté joueurs** et **détache** les
+ * personnages, pivot PER-180). On peut créer, ouvrir les **réglages** (roue crantée
+ * → nom + notes + règles de table) et supprimer une campagne. Une campagne
+ * fraîchement créée mène directement à ses réglages. La suppression est **en
+ * cascade côté joueurs** et **détache** les
  * personnages (ils repassent « Non attribué », pivot PER-180) — jamais de
  * destruction de personnage —, sous **confirmation forte** (retaper le nom).
  *
@@ -16,8 +18,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import EditIcon from '@mui/icons-material/Edit';
 import PersonIcon from '@mui/icons-material/Person';
+import SettingsIcon from '@mui/icons-material/Settings';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -85,8 +87,9 @@ export default function CampaignsPage() {
       setCreateOpen(false);
       setNewName('');
       setNewDescription('');
-      // On entre directement dans la campagne fraîchement créée.
-      router.push(`/campaign/${campaign.id}`);
+      // On atterrit directement sur les réglages de la campagne fraîchement créée
+      // pour définir tout de suite ses règles de table (armes à feu, etc.).
+      router.push(`/campaign/${campaign.id}/settings`);
     } catch (e) {
       notify(`Création impossible : ${e instanceof Error ? e.message : String(e)}`, 'error');
     } finally {
@@ -267,7 +270,7 @@ export default function CampaignsPage() {
                         <IconButton
                           onClick={() => router.push(`/campaign/${campaign.id}/settings`)}
                         >
-                          <EditIcon fontSize="small" />
+                          <SettingsIcon fontSize="small" />
                         </IconButton>
                       </AppTooltip>
                       <AppTooltip title="Supprimer">
