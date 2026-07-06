@@ -9,9 +9,11 @@ import type { Database } from './types';
  * `/campaigns`, `/campaign/[cid]`) exige une session Supabase.
  * - `/login` : écran de connexion (PER-188) ;
  * - `/auth` : callback PKCE + déconnexion (`/auth/callback`, `/auth/signout`) ;
- * - `/join` : landing du lien magique joueur (PER-189, échange délégué à PER-191).
+ * - `/join` : landing du lien magique joueur (PER-189, échange délégué à PER-191) ;
+ * - `/about` : page d'information publique (« À propos »), liée depuis le pied de
+ *   page présent sur toutes les routes, y compris déconnecté.
  */
-const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join'] as const;
+const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join', '/about'] as const;
 
 /**
  * Routes ouvertes à une session **joueur** (utilisateur anonyme du lien magique,

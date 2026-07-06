@@ -1,5 +1,6 @@
 'use client';
 
+import NextLink from 'next/link';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Link from '@mui/material/Link';
@@ -79,9 +80,17 @@ export function AppFooter() {
             privé à la table de jeu.
           </Typography>
 
-          {/* Crédit + copyright. */}
+          {/* Crédit + copyright + lien vers la page d'information. */}
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-            © {YEAR} — Éditeur de personnage CO2, développé par KobaruTools.
+            © {YEAR} — Éditeur de personnage CO2, développé par KobaruTools.{' '}
+            <Link
+              component={NextLink}
+              href="/about"
+              color="inherit"
+              sx={{ textDecorationColor: 'rgba(255, 255, 255, 0.4)' }}
+            >
+              À propos
+            </Link>
           </Typography>
         </Stack>
       </Container>
