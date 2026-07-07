@@ -23,7 +23,6 @@ import IconButton from '@mui/material/IconButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -84,9 +83,9 @@ import {
 import { longRest, shortRest } from '@/lib/character/rest';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
-import { AppAlert } from '@/components/AppAlert';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
+import { useToast } from '@/components/toast/ToastProvider';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { HeaderIllustrations } from '@/components/HeaderIllustrations';
 import { HomeBackground } from '@/components/HomeBackground';
@@ -178,7 +177,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Concentration accrue (p. 228) : état de jeu transitoire (non persisté), comme
   // l'affichage des voies. Quand actif, les sorts en (A) montrent leur coût réduit.
   const [concentration, setConcentration] = useState(false);
-  const [createdToast, setCreatedToast] = useState(false);
+  const { showToast } = useToast();
   // Index de la ligne « Bourse de 2d6 pa » dont l'ouverture est en cours (modale) ; null = fermée.
   const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
   // Ancre du menu de statut (PER-183) ; null = fermé.
@@ -199,10 +198,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       // Lecture unique d'un paramètre d'URL côté client (impossible en
       // initialiseur d'état sans décalage d'hydratation SSR) : synchronisation
       // ponctuelle d'un système externe, pas une boucle de rendu.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCreatedToast(true);
+      showToast('Personnage créé.', 'success');
       window.history.replaceState(null, '', window.location.pathname);
     }
+    // showToast est stable (issu d'un contexte mémoïsé) ; effet à exécution unique.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Spinner tant que le staging local n'est pas relu, ou que le chargement cloud
@@ -1241,22 +1241,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={createdToast}
-        autoHideDuration={5000}
-        onClose={() => setCreatedToast(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <AppAlert
-          severity="success"
-          variant="filled"
-          onClose={() => setCreatedToast(false)}
-          sx={{ width: '100%' }}
-        >
-          Personnage créé.
-        </AppAlert>
-      </Snackbar>
     </FirearmsAllowedProvider>
   );
 }

@@ -29,11 +29,11 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
-import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { useToast } from '@/components/toast/ToastProvider';
 import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { CampaignRulesFields } from '@/components/campaign/CampaignRulesFields';
@@ -153,9 +153,7 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
   }
   const [form, setForm] = useState<Form | null>(null);
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
-    null,
-  );
+  const { showToast } = useToast();
 
   // Initialise le formulaire dès que la campagne est disponible (une seule fois).
   useEffect(() => {
@@ -186,12 +184,12 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
     try {
       const rules: CampaignRules = { firearmsAllowed: form.firearmsAllowed };
       await update(campaign.id, { name: form.name, description: form.description, rules });
-      setToast({ message: 'Réglages enregistrés.', severity: 'success' });
+      showToast('Réglages enregistrés.', 'success');
     } catch (e) {
-      setToast({
-        message: `Enregistrement impossible : ${e instanceof Error ? e.message : String(e)}`,
-        severity: 'error',
-      });
+      showToast(
+        `Enregistrement impossible : ${e instanceof Error ? e.message : String(e)}`,
+        'error',
+      );
     } finally {
       setBusy(false);
     }
@@ -327,24 +325,6 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
           </Stack>
         )}
       </Container>
-
-      <Snackbar
-        open={toast !== null}
-        autoHideDuration={5000}
-        onClose={() => setToast(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        {toast ? (
-          <AppAlert
-            severity={toast.severity}
-            variant="filled"
-            onClose={() => setToast(null)}
-            sx={{ width: '100%' }}
-          >
-            {toast.message}
-          </AppAlert>
-        ) : undefined}
-      </Snackbar>
     </>
   );
 }

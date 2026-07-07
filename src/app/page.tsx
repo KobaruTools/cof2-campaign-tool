@@ -36,11 +36,11 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
-import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { useToast } from '@/components/toast/ToastProvider';
 import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -98,9 +98,6 @@ export default function HomePage() {
   const [importOpen, setImportOpen] = useState(false);
   const [toUpload, setToUpload] = useState<Character | null>(null);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
-    null,
-  );
   const [query, setQuery] = useState('');
   // Tri persisté en local (survit au rechargement, PER-183).
   const [sort, setSort] = usePersistedSort(
@@ -112,8 +109,9 @@ export default function HomePage() {
   // persisté en local (survit au rechargement).
   const [archivedOpen, setArchivedOpen] = usePersistedBoolean('home-archived-open', false);
 
+  const { showToast } = useToast();
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>
-    setToast({ message, severity });
+    showToast(message, severity);
 
   // Nom de la campagne par id, pour le badge de chaque ligne (null = non attribué).
   const campaignNameById = useMemo(
@@ -531,24 +529,6 @@ export default function HomePage() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={toast !== null}
-        autoHideDuration={5000}
-        onClose={() => setToast(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        {toast ? (
-          <AppAlert
-            severity={toast.severity}
-            variant="filled"
-            onClose={() => setToast(null)}
-            sx={{ width: '100%' }}
-          >
-            {toast.message}
-          </AppAlert>
-        ) : undefined}
-      </Snackbar>
     </>
   );
 }

@@ -26,11 +26,11 @@ import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
-import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { useToast } from '@/components/toast/ToastProvider';
 import { AppTooltip } from '@/components/AppTooltip';
 import { joinLinkUrl, type Player } from '@/lib/player/types';
 import { usePlayersStore } from '@/stores/players';
@@ -71,11 +71,9 @@ export function PlayersSection({
   const [toDelete, setToDelete] = useState<Player | null>(null);
   const [toRegenerate, setToRegenerate] = useState<Player | null>(null);
 
-  const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
-    null,
-  );
+  const { showToast } = useToast();
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>
-    setToast({ message, severity });
+    showToast(message, severity);
 
   useEffect(() => {
     void load(campaignId);
@@ -343,24 +341,6 @@ export function PlayersSection({
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={toast !== null}
-        autoHideDuration={5000}
-        onClose={() => setToast(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        {toast ? (
-          <AppAlert
-            severity={toast.severity}
-            variant="filled"
-            onClose={() => setToast(null)}
-            sx={{ width: '100%' }}
-          >
-            {toast.message}
-          </AppAlert>
-        ) : undefined}
-      </Snackbar>
     </>
   );
 

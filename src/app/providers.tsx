@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
 import { ThemeProvider } from '@mui/material/styles';
 import { CharacterSyncNotifier } from '@/components/CharacterSyncNotifier';
+import { ToastProvider } from '@/components/toast/ToastProvider';
 import theme from '@/theme';
 
 /**
@@ -24,7 +25,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             voulu — tableau d'accueil, voies en colonnes — ont leur propre
             conteneur de défilement, non affecté). */}
         <GlobalStyles styles={{ body: { overflowX: 'hidden' } }} />
-        {children}
+        {/* Toasts globaux empilés (bas droite) : `useToast()` accessible partout. */}
+        <ToastProvider>{children}</ToastProvider>
         {/* Bandeau global de conflit de synchro + filet de flush avant fermeture (PER-192). */}
         <CharacterSyncNotifier />
       </ThemeProvider>

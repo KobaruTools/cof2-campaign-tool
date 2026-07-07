@@ -31,17 +31,18 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
-import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { useToast } from '@/components/toast/ToastProvider';
 import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { HomeBackground } from '@/components/HomeBackground';
 import type { Campaign } from '@/lib/campaign';
 import { useCampaignsStore } from '@/stores/campaigns';
+import { useCampaignDraftStore } from '@/stores/campaignDraft';
 import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
 
@@ -55,16 +56,16 @@ export default function CampaignsPage() {
   const characters = useCharactersStore((s) => s.characters);
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
+  // Brouillon de création de campagne (PER-198) : alerte de reprise, propre à cette page.
+  const campaignDraft = useCampaignDraftStore((s) => s.draft);
+  const clearCampaignDraft = useCampaignDraftStore((s) => s.clear);
 
   const [toDelete, setToDelete] = useState<Campaign | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
-    null,
-  );
-
+  const { showToast } = useToast();
   const notify = (message: string, severity: 'success' | 'error' = 'success') =>
-    setToast({ message, severity });
+    showToast(message, severity);
 
   // Charge les campagnes possédées au montage (idempotent).
   useEffect(() => {
@@ -115,6 +116,26 @@ export default function CampaignsPage() {
             Nouvelle campagne
           </Button>
         </Stack>
+
+        {campaignDraft && (
+          <AppAlert
+            severity="info"
+            sx={{ mb: 3 }}
+            action={
+              <>
+                <Button color="inherit" size="small" onClick={() => router.push('/campaigns/new')}>
+                  Reprendre
+                </Button>
+                <Button color="inherit" size="small" onClick={() => clearCampaignDraft()}>
+                  Abandonner
+                </Button>
+              </>
+            }
+          >
+            Une création de campagne est en cours
+            {campaignDraft.name.trim() ? ` : « ${campaignDraft.name.trim()} »` : ''}.
+          </AppAlert>
+        )}
 
         {draft && draftCampaign && (
           <AppAlert
@@ -321,24 +342,6 @@ export default function CampaignsPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={toast !== null}
-        autoHideDuration={5000}
-        onClose={() => setToast(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        {toast ? (
-          <AppAlert
-            severity={toast.severity}
-            variant="filled"
-            onClose={() => setToast(null)}
-            sx={{ width: '100%' }}
-          >
-            {toast.message}
-          </AppAlert>
-        ) : undefined}
-      </Snackbar>
     </>
   );
 }

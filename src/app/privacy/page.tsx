@@ -22,18 +22,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
 import DownloadIcon from '@mui/icons-material/Download';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
 import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
-import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
+import { useToast } from '@/components/toast/ToastProvider';
 import { exportMyData } from './actions';
 import { EXPORT_ERRORS } from './exportTypes';
 
@@ -82,7 +81,7 @@ function MailLink() {
 export default function PrivacyPage() {
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   /**
    * Droit d'accès + portabilité (RGPD art. 15 & 20) en self-service : appelle la
@@ -109,9 +108,9 @@ export default function PrivacyPage() {
         return;
       }
       if (code === EXPORT_ERRORS.PLAYER_SESSION) {
-        setToast('Une session joueur ne dispose pas de données de compte à exporter.');
+        showToast('Une session joueur ne dispose pas de données de compte à exporter.', 'error');
       } else {
-        setToast('Le téléchargement a échoué. Réessaie dans un instant.');
+        showToast('Le téléchargement a échoué. Réessaie dans un instant.', 'error');
       }
     } finally {
       setExporting(false);
@@ -460,19 +459,6 @@ export default function PrivacyPage() {
           </Section>
         </Stack>
       </Container>
-
-      <Snackbar
-        open={toast !== null}
-        autoHideDuration={5000}
-        onClose={() => setToast(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        {toast ? (
-          <Alert severity="error" variant="filled" onClose={() => setToast(null)}>
-            {toast}
-          </Alert>
-        ) : undefined}
-      </Snackbar>
     </Box>
   );
 }
