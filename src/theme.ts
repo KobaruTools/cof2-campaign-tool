@@ -16,6 +16,22 @@ const theme = createTheme({
     fontFamily: 'var(--font-roboto), Roboto, Helvetica, Arial, sans-serif',
   },
   components: {
+    // Menus déroulants (Select, Menu) et popovers : ne PAS verrouiller le scroll
+    // de la page à l'ouverture. Par défaut MUI fige le body (overflow:hidden +
+    // compensation de padding) tant que le menu est ouvert, ce qui donne
+    // l'impression que la page « saute » et devient non défilable. Ce verrou
+    // n'a de sens que pour les vraies modales (Dialog/Modal), qu'on laisse
+    // intactes. MuiPopover couvre Select/Menu/Popover (Menu rend un Popover).
+    MuiPopover: {
+      defaultProps: {
+        disableScrollLock: true,
+      },
+    },
+    MuiMenu: {
+      defaultProps: {
+        disableScrollLock: true,
+      },
+    },
     // Infobulles : fond quasi-noir translucide avec flou d'arrière-plan, fine
     // bordure gris clair semi-transparente et ombre portée légère. Meilleur
     // contraste que le gris MUI par défaut. Source de vérité unique du look
