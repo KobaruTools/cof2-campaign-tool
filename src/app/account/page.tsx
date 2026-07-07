@@ -39,6 +39,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppHeader } from '@/components/AppHeader';
 import { useToast } from '@/components/toast/ToastProvider';
+import { BackgroundMotionToggle } from '@/components/BackgroundMotionToggle';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ProviderIcon } from '@/components/icons/ProviderIcons';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
@@ -224,6 +225,16 @@ export default function AccountPage() {
                   Enregistrer
                 </Button>
               </Stack>
+            </Section>
+
+            {/* Affichage (réglage par appareil, localStorage — même contrôle que le
+                pied de page global). */}
+            <Section title="Affichage">
+              <BackgroundMotionToggle />
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                Réglage propre à cet appareil. Le suivi de la souris reste coupé si ton
+                système demande de réduire les animations.
+              </Typography>
             </Section>
 
             {/* Identités liées */}

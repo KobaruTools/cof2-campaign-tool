@@ -3,9 +3,11 @@
 import NextLink from 'next/link';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { BackgroundMotionToggle } from '@/components/BackgroundMotionToggle';
 
 // Année du copyright, calculée côté client (composant client).
 const YEAR = new Date().getFullYear();
@@ -101,6 +103,11 @@ export function AppFooter() {
               Politique de vie privée
             </Link>
           </Typography>
+
+          {/* Réglage d'affichage par appareil (localStorage) : disponible sur toutes
+              les pages, y compris sans compte. Séparé des mentions ci-dessus. */}
+          <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.08)', mt: 0.5 }} />
+          <BackgroundMotionToggle />
         </Stack>
       </Container>
     </Box>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { usePreferencesStore } from '@/stores/preferences';
 
 // Amplitude par défaut du suivi souris (px), source unique partagée par tous les
 // effets de parallaxe pour un mouvement cohérent d'un écran à l'autre. Volontairement
@@ -36,8 +37,11 @@ export interface MouseParallaxOptions {
  * de l'appelant de poser le `transform` voulu sur ses éléments (écriture directe sur
  * le DOM, aucun state React, donc pas de re-render par pixel).
  *
- * Entièrement neutralisée si « animations réduites » (`prefers-reduced-motion`) :
- * `render` n'est jamais appelé, les styles de base des éléments sont conservés.
+ * Entièrement neutralisée dans deux cas : « animations réduites » de l'OS
+ * (`prefers-reduced-motion`) OU le réglage manuel par appareil `animateBackground`
+ * désactivé (cf. [[preferences]]). Dans ces cas la boucle n'est pas montée et `render`
+ * est appelé une dernière fois à (0, 0) pour remettre les éléments à leur position de
+ * base (utile si l'utilisateur bascule le réglage en cours de mouvement).
  *
  * `render` est référencé via une ref : l'appelant peut passer une fonction inline
  * sans la mémoïser ; la boucle n'est réinitialisée que par `deps`.
@@ -59,9 +63,18 @@ export function useMouseParallax(
     renderRef.current = render;
   });
 
+  // Réglage manuel par appareil (localStorage) : désactive le suivi souris du fond.
+  const animateBackground = usePreferencesStore((s) => s.animateBackground);
+
   useEffect(() => {
-    // Animations réduites : on laisse les transforms de base (aucun mouvement).
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Aucun mouvement si l'OS demande de réduire les animations OU si le réglage
+    // manuel est désactivé : on remet les éléments à leur position de base (0, 0)
+    // — indispensable quand l'utilisateur bascule le réglage alors qu'un décalage
+    // souris est déjà appliqué (l'effet se rejoue via `deps`/`animateBackground`).
+    if (!animateBackground || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      renderRef.current({ x: 0, y: 0, scrollY: 0 });
+      return;
+    }
 
     let targetX = 0;
     let targetY = 0;
@@ -98,6 +111,8 @@ export function useMouseParallax(
       if (trackScroll) window.removeEventListener('scroll', onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
+    // `animateBackground` en dépendance : basculer le réglage remonte (ou démonte)
+    // la boucle immédiatement, sans rechargement.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [...deps, animateBackground]);
 }
