@@ -22,6 +22,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import Box from '@mui/material/Box';
+import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
@@ -38,10 +39,12 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CampaignBadge } from '@/components/home/CampaignBadge';
+import { CharacterPreviewCard } from '@/components/CharacterPreviewCard';
 import { ClassIcon } from '@/components/ClassIcon';
 import { formatDate } from '@/lib/character/summary';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
+import { useCharactersStore } from '@/stores/characters';
 import type { SortKey, SortState } from './sort';
 
 /** Une entrée du menu « ⋮ » d'une ligne. */
@@ -84,6 +87,10 @@ export interface CharacterListProps {
 }
 
 const UNASSIGNED = 'Non attribué';
+
+// Animation d'ouverture/fermeture des groupes : courte et vive, à la manière des
+// accordéons MUI (le défaut MUI est de 300 ms).
+const COLLAPSE_MS = 220;
 
 const paperSx = {
   bgcolor: 'rgba(30, 30, 34, 0.62)',
@@ -139,6 +146,7 @@ export function CharacterList({
   attachedTop = false,
 }: CharacterListProps) {
   const router = useRouter();
+  const getById = useCharactersStore((s) => s.getById);
   const [menu, setMenu] = useState<{ anchor: HTMLElement; row: CharacterSummary } | null>(null);
 
   // Groupes repliés (par clé). Repli purement visuel, non persisté : les
@@ -239,56 +247,107 @@ export function CharacterList({
 
   const colSpan = showCampaign ? 5 : 4;
 
+  // Largeurs de colonnes figées (`table-layout: fixed`) : les colonnes ne se
+  // redimensionnent plus au contenu, donc replier/déplier un groupe (ou filtrer)
+  // ne fait plus « sauter » la largeur du nom (flicker). Le même colgroup est
+  // réappliqué au sous-tableau animé de chaque groupe pour aligner les colonnes.
+  const renderColgroup = () => (
+    <colgroup>
+      <col style={{ width: showCampaign ? '26%' : '38%' }} />
+      <col style={{ width: showCampaign ? '30%' : '42%' }} />
+      {showCampaign && <col style={{ width: '20%' }} />}
+      <col style={{ width: showCampaign ? '16%' : '14%' }} />
+      <col style={{ width: 56 }} />
+    </colgroup>
+  );
+
+  // ---- Aperçu au survol (infobulle) ------------------------------------------
+  // Micro-fiche du personnage (portrait + caractéristiques), affichée après un
+  // survol prolongé de la ligne : sert aussi à révéler un nom tronqué en entier.
+  const previewFor = (r: CharacterSummary) => {
+    const character = getById(r.id);
+    return character ? <CharacterPreviewCard character={character} /> : '';
+  };
+
   // ---- Menu d'actions --------------------------------------------------------
   const visibleActions = (r: CharacterSummary) =>
     actions.filter((a) => (a.show ? a.show(r) : true));
 
   // ---- Rendu d'une ligne (desktop) -------------------------------------------
   const renderRow = (r: CharacterSummary, i: number) => (
-    <TableRow
+    <AppTooltip
       key={r.id}
-      hover
-      sx={{ cursor: 'pointer', bgcolor: i % 2 ? 'rgba(255, 255, 255, 0.035)' : 'transparent' }}
-      onClick={() => onOpen(r)}
+      title={previewFor(r)}
+      enterDelay={1000}
+      placement="bottom-start"
+      maxWidth={360}
     >
-      <TableCell>
-        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-          {renderNameMarker?.(r)}
-          <Box component="span">{r.name}</Box>
-        </Stack>
-      </TableCell>
-      <TableCell>
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-          <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={20} />
-          <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
-            {r.characterClass}
-          </Box>
-          <Box component="span" sx={{ color: 'text.secondary' }}>
-            · {r.ancestry} · {r.level}
-          </Box>
-        </Stack>
-      </TableCell>
-      {showCampaign && (
+      <TableRow
+        hover
+        sx={{ cursor: 'pointer', bgcolor: i % 2 ? 'rgba(255, 255, 255, 0.035)' : 'transparent' }}
+        onClick={() => onOpen(r)}
+      >
         <TableCell>
-          <CampaignBadge name={campaignName(r)} campaignId={r.campaignId} />
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', minWidth: 0 }}>
+            {renderNameMarker?.(r)}
+            <Box
+              component="span"
+              sx={{
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {r.name}
+            </Box>
+          </Stack>
         </TableCell>
-      )}
-      <TableCell>
-        <Typography variant="caption" color="text.secondary">
-          {formatDate(r.updatedAt)}
-        </Typography>
-      </TableCell>
-      <TableCell align="right" sx={{ pr: 2 }}>
-        <IconButton size="small" onClick={(e) => openMenu(e, r)}>
-          <MoreVertIcon fontSize="small" />
-        </IconButton>
-      </TableCell>
-    </TableRow>
+        <TableCell>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+            <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={20} />
+            <Box
+              component="span"
+              sx={{
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Box component="span" sx={{ color: classColor(r.classId), fontWeight: 600 }}>
+                {r.characterClass}
+              </Box>
+              <Box component="span" sx={{ color: 'text.secondary' }}>
+                {' '}
+                · {r.ancestry} · {r.level}
+              </Box>
+            </Box>
+          </Stack>
+        </TableCell>
+        {showCampaign && (
+          <TableCell>
+            <CampaignBadge name={campaignName(r)} campaignId={r.campaignId} />
+          </TableCell>
+        )}
+        <TableCell>
+          <Typography variant="caption" color="text.secondary" noWrap>
+            {formatDate(r.updatedAt)}
+          </Typography>
+        </TableCell>
+        <TableCell align="right" sx={{ pr: 2 }}>
+          <IconButton size="small" onClick={(e) => openMenu(e, r)}>
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+        </TableCell>
+      </TableRow>
+    </AppTooltip>
   );
 
   // ---- Rendu d'une carte (mobile) --------------------------------------------
   const renderCard = (r: CharacterSummary) => (
-    <Paper key={r.id} variant="outlined" sx={{ p: 2, ...paperSx }}>
+    <AppTooltip key={r.id} title={previewFor(r)} enterDelay={1000} placement="bottom" maxWidth={360}>
+    <Paper variant="outlined" sx={{ p: 2, ...paperSx }}>
       <Stack
         direction="row"
         spacing={1}
@@ -327,6 +386,7 @@ export function CharacterList({
         </IconButton>
       </Stack>
     </Paper>
+    </AppTooltip>
   );
 
   return (
@@ -341,7 +401,8 @@ export function CharacterList({
           ...(attachedTop && { borderTopLeftRadius: 0, borderTopRightRadius: 0 }),
         }}
       >
-        <Table>
+        <Table sx={{ tableLayout: 'fixed' }}>
+          {renderColgroup()}
           <TableHead>
             <TableRow>
               {renderHeader('Nom', 'name')}
@@ -380,7 +441,19 @@ export function CharacterList({
                           </Box>
                         </TableCell>
                       </TableRow>
-                      {!isCollapsed && g.rows.map(renderRow)}
+                      {/* Corps du groupe animé (Collapse MUI) : un sous-tableau qui
+                          reprend le même colgroup figé pour aligner les colonnes
+                          sur l'en-tête. Ouverture/fermeture douce, façon accordéon. */}
+                      <TableRow>
+                        <TableCell colSpan={colSpan} sx={{ p: 0, border: 0 }}>
+                          <Collapse in={!isCollapsed} timeout={COLLAPSE_MS} unmountOnExit>
+                            <Table sx={{ tableLayout: 'fixed', width: '100%' }}>
+                              {renderColgroup()}
+                              <TableBody>{g.rows.map(renderRow)}</TableBody>
+                            </Table>
+                          </Collapse>
+                        </TableCell>
+                      </TableRow>
                     </Fragment>
                   );
                 })
@@ -434,7 +507,9 @@ export function CharacterList({
                     <Box sx={{ flexGrow: 1 }} />
                     {renderGroupLink(g.key)}
                   </Box>
-                  {!isCollapsed && g.rows.map(renderCard)}
+                  <Collapse in={!isCollapsed} timeout={COLLAPSE_MS} unmountOnExit>
+                    <Stack spacing={1.5}>{g.rows.map(renderCard)}</Stack>
+                  </Collapse>
                 </Fragment>
               );
             })
