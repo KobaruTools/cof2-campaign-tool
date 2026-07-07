@@ -16,9 +16,11 @@
  * du fichier n'est retenu que s'il figure dans le roster de la campagne cible.
  *
  * L'import lui-même délègue à `importCharacter` du store (migration + validation +
- * nouvel id si collision + application des FK résolues). Le personnage importé reste
- * LOCAL (staging) ; sa promotion vers le cloud passe par le téléversement dédié
- * (PER-193).
+ * nouvel id si collision + application des FK résolues). Quand Supabase est configuré,
+ * il crée directement une ligne cloud (comme le wizard) → un perso rattaché à une
+ * campagne/un joueur est une vraie ligne DB, pas un « split-brain » local (PER-182) ;
+ * sans Supabase, ajout local (staging). L'écriture pouvant être longue (réseau), les
+ * boutons se verrouillent et affichent un spinner pendant l'import.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -90,6 +92,8 @@ export function ImportCharacterDialog({
   // Campagne à laquelle correspond le roster chargé (null = pas encore chargé). Sert
   // à dériver l'état « chargement » sans setState synchrone dans l'effet.
   const [rosterFor, setRosterFor] = useState<string | null>(null);
+  // Écriture en cours (insertion cloud) : verrouille les boutons + spinner (PER-182).
+  const [importing, setImporting] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   // Campagnes chargées à l'ouverture (idempotent, mis en cache par le store).
@@ -143,9 +147,16 @@ export function ImportCharacterDialog({
         // Sans campagne cible possible (mode local / aucune campagne), rien à résoudre :
         // import direct, rattaché à la campagne d'accueil (ou « Non attribué »).
         if (known.length === 0) {
-          const imported = importCharacter(raw, { campaignId, playerId: null });
-          setState({ status: 'success', character: imported });
-          onImported?.(imported);
+          try {
+            const imported = await importCharacter(raw, { campaignId, playerId: null });
+            setState({ status: 'success', character: imported });
+            onImported?.(imported);
+          } catch (e) {
+            setState({
+              status: 'error',
+              message: e instanceof Error ? e.message : 'Import impossible.',
+            });
+          }
           return;
         }
         // Cible par défaut : l'hôte s'il est défini (import depuis une page campagne),
@@ -179,22 +190,32 @@ export function ImportCharacterDialog({
     if (file) void runImport(file);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (state.status !== 'resolve') return;
     const targetCampaignId = chosenCampaignId || null;
     const targetPlayerId = targetCampaignId ? chosenPlayerId || null : null;
-    const imported = importCharacter(state.raw, {
-      campaignId: targetCampaignId,
-      playerId: targetPlayerId,
-    });
-    setState({ status: 'success', character: imported });
-    onImported?.(imported);
+    setImporting(true);
+    try {
+      const imported = await importCharacter(state.raw, {
+        campaignId: targetCampaignId,
+        playerId: targetPlayerId,
+      });
+      setState({ status: 'success', character: imported });
+      onImported?.(imported);
+    } catch (e) {
+      setState({
+        status: 'error',
+        message: e instanceof Error ? e.message : 'Import impossible.',
+      });
+    } finally {
+      setImporting(false);
+    }
   };
 
   // Réinitialise l'état interne à la fermeture (via animation MUI), pour rouvrir la
   // modale sur la zone de dépôt vierge.
   const handleClose = () => {
-    if (state.status === 'loading') return; // on ne ferme pas en plein import
+    if (state.status === 'loading' || importing) return; // on ne ferme pas en plein import
     onClose();
   };
 
@@ -204,6 +225,7 @@ export function ImportCharacterDialog({
     setChosenPlayerId('');
     setRoster([]);
     setRosterFor(null);
+    setImporting(false);
   };
 
   const dropZone = (
@@ -318,9 +340,16 @@ export function ImportCharacterDialog({
           </>
         ) : state.status === 'resolve' ? (
           <>
-            <Button onClick={handleClose}>Annuler</Button>
-            <Button variant="contained" onClick={handleConfirm}>
-              Importer
+            <Button onClick={handleClose} disabled={importing}>
+              Annuler
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleConfirm}
+              disabled={importing}
+              startIcon={importing ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              {importing ? 'Import…' : 'Importer'}
             </Button>
           </>
         ) : (
@@ -391,23 +420,33 @@ function ResolveForm({
       </TextField>
 
       {chosenCampaignId && (
-        <TextField
-          select
-          label="Joueur"
-          size="small"
-          value={chosenPlayerId}
-          onChange={(e) => onPlayerChange(e.target.value)}
-          disabled={rosterLoading}
-          helperText={rosterLoading ? 'Chargement des joueurs…' : undefined}
-          slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
-        >
-          <MenuItem value="">Aucun joueur</MenuItem>
-          {roster.map((p) => (
-            <MenuItem key={p.id} value={p.id}>
-              {p.name}
-            </MenuItem>
-          ))}
-        </TextField>
+        <Box>
+          <TextField
+            select
+            label="Joueur"
+            size="small"
+            fullWidth
+            value={chosenPlayerId}
+            onChange={(e) => onPlayerChange(e.target.value)}
+            disabled={rosterLoading}
+            slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+          >
+            <MenuItem value="">Aucun joueur</MenuItem>
+            {roster.map((p) => (
+              <MenuItem key={p.id} value={p.id}>
+                {p.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          {rosterLoading && (
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.75, ml: 0.25 }}>
+              <CircularProgress size={14} thickness={5} />
+              <Typography variant="caption" color="text.secondary">
+                Chargement des joueurs…
+              </Typography>
+            </Stack>
+          )}
+        </Box>
       )}
     </Stack>
   );

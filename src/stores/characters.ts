@@ -86,17 +86,23 @@ interface CharactersState {
   /** Récupère un personnage par id. */
   getById: (id: string) => Character | undefined;
   /**
-   * Importe un objet JSON quelconque : migration + validation, puis ajout LOCAL
-   * (staging) avec un nouvel id si l'id existe déjà. Le `binding` optionnel (PER-182)
-   * force les clés étrangères du personnage importé (campagne + joueur cibles résolus
-   * par l'UI d'import) ; sans lui, les FK du fichier sont conservées telles quelles.
-   * Le perso importé reste LOCAL (staging) — sa promotion vers le cloud passe par le
-   * téléversement dédié (PER-193). Lève en cas de fichier invalide.
+   * Importe un objet JSON quelconque : migration + validation, nouvel id si l'id
+   * existe déjà, puis enregistrement. Le `binding` optionnel (PER-182) force les
+   * clés étrangères du personnage importé (campagne + joueur cibles résolus par
+   * l'UI) ; sans lui, les FK du fichier sont conservées.
+   *
+   * Enregistrement (PER-182, aligné sur le wizard `commitNewCharacter`) : **quand
+   * Supabase est configuré, l'import crée immédiatement une ligne cloud** (avec ses
+   * FK et `version` initialisée) — un perso rattaché à une campagne/un joueur est
+   * donc une vraie ligne DB, pas un « split-brain » local. Sans Supabase (mode local
+   * historique), retombe sur un ajout local (staging). Async ⇒ **lève** si l'insertion
+   * cloud échoue (l'UI conserve le brouillon et affiche l'erreur) ou si le fichier est
+   * invalide. En cas de collision d'`id` en base (rare), régénère un id et réessaie.
    */
   importCharacter: (
     raw: unknown,
     binding?: { campaignId: string | null; playerId: string | null },
-  ) => Character;
+  ) => Promise<Character>;
   /**
    * Téléverse un personnage LOCAL (staging) vers le cloud (PER-193) : l'affecte à
    * la campagne cible choisie (`campaignId`, `null` = « Non attribué »), conserve le
@@ -284,16 +290,37 @@ export const useCharactersStore = create<CharactersState>()(
 
         getById: (id) => get().characters.find((c) => c.id === id),
 
-        importCharacter: (raw, binding) => {
+        importCharacter: async (raw, binding) => {
           const character = migrateCharacter(raw); // lève si invalide
           const exists = get().characters.some((c) => c.id === character.id);
           const withId = exists ? { ...character, id: crypto.randomUUID() } : character;
           // FK résolues par l'UI d'import (PER-182) ; à défaut, on garde celles du fichier.
-          const toAdd = binding
+          const bound = binding
             ? { ...withId, campaignId: binding.campaignId, playerId: binding.playerId }
             : withId;
-          set((state) => ({ characters: [...state.characters, withTimestamp(toAdd)] }));
-          return toAdd;
+          let stamped = withTimestamp(bound);
+          // Mode local historique (sans Supabase) : ajout en staging, pas de cloud.
+          if (!isSupabaseConfigured()) {
+            set((state) => ({ characters: [...state.characters, stamped] }));
+            return stamped;
+          }
+          // Connecté : création immédiate d'une ligne cloud (comme le wizard). En cas
+          // de collision d'`id` en base (PK globale, très rare avec un UUID mais un blob
+          // importé pourrait partager l'id d'une ligne existante), on régénère un id et
+          // on réessaie une fois.
+          let version: number;
+          try {
+            version = await insertCharacter(stamped);
+          } catch (e) {
+            if (!isUniqueViolation(e)) throw e;
+            stamped = { ...stamped, id: crypto.randomUUID() };
+            version = await insertCharacter(stamped);
+          }
+          set((state) => ({
+            characters: [...state.characters, stamped],
+            cloudVersions: { ...state.cloudVersions, [stamped.id]: version },
+          }));
+          return stamped;
         },
 
         uploadToCloud: async (id, campaignId) => {
