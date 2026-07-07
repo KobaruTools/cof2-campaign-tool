@@ -159,3 +159,18 @@ Material UI, non issues de game-icons.net.
 | Élément | Fichier game-icons.net | Auteur |
 | --- | --- | --- |
 | Mort (pierre tombale) | `lorc/tombstone.svg` | Lorc |
+
+## Icône « Campagnes » (quête)
+
+L'icône « parchemin déroulé » du bouton « Campagnes » (en-tête d'accueil) provient
+de [game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteur : **Lorc** (https://game-icons.net).
+
+Le SVG a été nettoyé (fond retiré, couleur neutralisée) et embarqué en dur dans le
+composant `src/components/QuestIcon.tsx` (rendu via `SvgIcon`, sans requête réseau).
+
+| Élément | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Campagnes (quête) | `lorc/scroll-unfurled.svg` | Lorc |

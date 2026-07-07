@@ -20,7 +20,6 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import GroupsIcon from '@mui/icons-material/Groups';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadIcon from '@mui/icons-material/Upload';
@@ -55,6 +54,7 @@ import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey } from '@/components/character-list/sort';
 import { usePersistedSort } from '@/components/character-list/usePersistedSort';
 import { HomeBackground } from '@/components/HomeBackground';
+import { QuestIcon } from '@/components/QuestIcon';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import { UploadCharacterDialog } from '@/components/home/UploadCharacterDialog';
@@ -280,7 +280,7 @@ export default function HomePage() {
         title="Personnages — Chroniques Oubliées Fantasy 2"
         action={
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            <Button color="inherit" startIcon={<GroupsIcon />} onClick={() => router.push('/campaigns')}>
+            <Button color="inherit" startIcon={<QuestIcon />} onClick={() => router.push('/campaigns')}>
               Campagnes
             </Button>
             <AccountMenu />
