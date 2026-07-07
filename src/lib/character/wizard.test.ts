@@ -269,6 +269,20 @@ describe('profil hybride à la création (p. 180)', () => {
     ).toBe(false);
   });
 
+  it('arquebusier « poudre interdite » (PER-185) : la voie du maître des arbalètes est valide selon l’effectif', () => {
+    // Voie du maître des arbalètes = variante « Arbalétrier » (pathIdsWithoutFirearms),
+    // proposée quand les armes à feu sont EFFECTIVEMENT interdites (règle campagne).
+    const arbaletrier = draft({ classId: 'arquebusier', chosenPaths: ['artilleur', 'maitre-des-arbaletes'] });
+    // Effectif poudre autorisée (défaut snapshot) → voie inexistante → incomplet.
+    expect(pathsStepComplete(arbaletrier)).toBe(false);
+    // Effectif poudre interdite → la voie du maître des arbalètes est valide.
+    expect(pathsStepComplete(arbaletrier, false)).toBe(true);
+    // Symétrique : la voie des explosifs (poudre) n’est plus valide quand l’effectif interdit la poudre.
+    const artificier = draft({ classId: 'arquebusier', chosenPaths: ['artilleur', 'explosifs'] });
+    expect(pathsStepComplete(artificier)).toBe(true);
+    expect(pathsStepComplete(artificier, false)).toBe(false);
+  });
+
   it('mage : la capacité de rang 2 supplémentaire doit être désignée', () => {
     const mage = draft({ classId: 'magicien', chosenPaths: ['magie-des-arcanes', 'magie-destructrice'] });
     expect(pathsStepComplete(mage)).toBe(false);

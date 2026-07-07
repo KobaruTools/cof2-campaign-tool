@@ -237,7 +237,18 @@ export function involvedClassIds(chosenPaths: string[]): string[] {
  * mais le profil principal doit être l'un des deux profils concernés (p. 180).
  * Un mage doit en outre avoir désigné sa capacité de rang 2 supplémentaire.
  */
-export function pathsStepComplete(draft: WizardDraft): boolean {
+/**
+ * `firearmsAllowed` = autorisation EFFECTIVE des armes à feu (règle campagne ∧
+ * choix du brouillon, PER-185). Doit refléter EXACTEMENT ce que `PathsStep`
+ * affiche : un arquebusier en campagne « poudre interdite » se voit proposer la
+ * voie du maître des arbalètes (jeu `pathIdsWithoutFirearms`), la validation doit
+ * donc l'accepter. Défaut = snapshot du brouillon (sans campagne = comportement
+ * historique, tests inchangés).
+ */
+export function pathsStepComplete(
+  draft: WizardDraft,
+  firearmsAllowed: boolean = draft.firearmsAllowed ?? true,
+): boolean {
   if (draft.chosenPaths.length !== 2) return false;
   const characterClass = classById.get(draft.classId);
   if (!characterClass) return false;
@@ -245,7 +256,7 @@ export function pathsStepComplete(draft: WizardDraft): boolean {
     if (!involvedClassIds(draft.chosenPaths).includes(draft.classId)) return false;
   } else if (
     !draft.chosenPaths.every((pathId) =>
-      effectiveClassPathIds(characterClass, draft.firearmsAllowed ?? true).includes(pathId),
+      effectiveClassPathIds(characterClass, firearmsAllowed).includes(pathId),
     )
   ) {
     return false;

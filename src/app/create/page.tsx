@@ -39,14 +39,17 @@ import { FirearmsAllowedProvider } from '@/components/ClassIcon';
 interface StepDef {
   label: string;
   Component: (props: StepProps) => React.ReactNode;
-  valid: (d: WizardDraft) => boolean;
+  // `firearmsAllowed` = autorisation EFFECTIVE des armes à feu (règle campagne ∧
+  // choix du brouillon, PER-185) : la validation des voies doit correspondre à ce
+  // que l'étape affiche (arbalétrier en campagne « poudre interdite »).
+  valid: (d: WizardDraft, firearmsAllowed: boolean) => boolean;
   /** Résumé des choix faits, affiché en petit sous le libellé de l'étape. */
   summary?: (d: WizardDraft) => string | null;
   /**
    * Ce qu'il reste à faire pour pouvoir passer à l'étape suivante (affiché au-dessus
    * des boutons quand l'étape n'est pas encore valide). `null` = rien à signaler.
    */
-  hint?: (d: WizardDraft) => string | null;
+  hint?: (d: WizardDraft, firearmsAllowed: boolean) => string | null;
 }
 
 const STEPS: StepDef[] = [
@@ -110,13 +113,13 @@ const STEPS: StepDef[] = [
     Component: PathsStep,
     // Voies choisies + tous les choix portés par les capacités de rang 1
     // résolus (wizard bloquant — les choix sont proposés dans cette étape).
-    valid: (d) => {
-      if (!pathsStepComplete(d) || !divineHostComplete(d)) return false;
+    valid: (d, firearmsAllowed) => {
+      if (!pathsStepComplete(d, firearmsAllowed) || !divineHostComplete(d)) return false;
       const a = ancestryById.get(d.ancestryId);
       return !!a && featuresWithUnmadeChoices(materializeDraft(d, a, d.createdAt)).length === 0;
     },
-    hint: (d) => {
-      if (!pathsStepComplete(d)) {
+    hint: (d, firearmsAllowed) => {
+      if (!pathsStepComplete(d, firearmsAllowed)) {
         const characterClass = classById.get(d.classId);
         if (characterClass?.familyId === 'mages' && d.chosenPaths.length === 2 && d.mageBonus === null)
           return 'Désigne la capacité de rang 2 supplémentaire (mage) pour continuer.';
@@ -155,6 +158,11 @@ export default function CreatePage() {
   // conservé tant que le commit n'a pas abouti — jamais d'inachevé en base).
   const [committing, setCommitting] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);
+  // Redirection vers la fiche après création réussie : le brouillon vient d'être
+  // vidé (clear) mais la navigation n'est pas encore effective. Sans ce verrou,
+  // l'effet de démarrage ci-dessous recréerait aussitôt un brouillon vierge et
+  // ferait clignoter l'étape « Peuple » le temps que `router.push` aboutisse.
+  const [redirecting, setRedirecting] = useState(false);
 
   // Démarre un brouillon si aucun n'est en cours (après hydratation). La campagne
   // de rattachement est optionnelle (PER-180) : passée en query `?campaign=cid`
@@ -162,16 +170,27 @@ export default function CreatePage() {
   // Lecture directe de l'URL (pas de useSearchParams) pour éviter une frontière
   // Suspense au prerendu. Un brouillon déjà en cours est repris tel quel.
   useEffect(() => {
-    if (!hasHydrated || draft) return;
+    if (!hasHydrated || draft || redirecting) return;
     const seed = new URLSearchParams(window.location.search).get('campaign');
     start(seed);
-  }, [hasHydrated, draft, start]);
+  }, [hasHydrated, draft, start, redirecting]);
 
   // La règle « armes à feu » de la campagne (PER-185) gate le toggle du wizard et
   // l'autorisation effective : il faut donc que la liste des campagnes soit chargée.
   useEffect(() => {
     loadCampaigns();
   }, [loadCampaigns]);
+
+  // Pendant la redirection post-création, le brouillon est déjà vidé : on affiche
+  // un écran d'attente plutôt que l'étape « Peuple » recréée à la volée.
+  if (redirecting) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 8 }}>
+        <CircularProgress />
+        <Typography color="text.secondary">Création du personnage…</Typography>
+      </Box>
+    );
+  }
 
   if (!hasHydrated || !draft) {
     return (
@@ -185,7 +204,6 @@ export default function CreatePage() {
   const current = STEPS[step];
   const StepComponent = current.Component;
   const isLast = step === STEPS.length - 1;
-  const canNext = current.valid(draft);
 
   // Campagne de rattachement du brouillon (PER-180/185). La règle « armes à feu »
   // de la campagne détermine la disponibilité de l'option au wizard ; « Non
@@ -193,11 +211,14 @@ export default function CreatePage() {
   const draftCampaign = draft.campaignId ? campaigns.find((c) => c.id === draft.campaignId) : undefined;
   const campaignAllowsFirearms = draftCampaign ? draftCampaign.rules.firearmsAllowed : true;
   // Autorisation EFFECTIVE des armes à feu du brouillon : pilote les icônes de
-  // profil (Arquebusier ↔ Arbalétrier) via le provider.
+  // profil (Arquebusier ↔ Arbalétrier) via le provider ET la validation des voies
+  // (l'arbalétrier doit pouvoir valider la voie du maître des arbalètes, PER-185).
   const firearmsAllowed = firearmsEffective(
     { firearmsAllowed: draft.firearmsAllowed ?? true },
     draftCampaign,
   );
+
+  const canNext = current.valid(draft, firearmsAllowed);
 
   // Choix de niveau 1 portés par les capacités (PER-66/68) : la création reste
   // bloquée tant qu'ils ne sont pas tous résolus (doctrine wizard, bloquant).
@@ -250,6 +271,9 @@ export default function CreatePage() {
       setCommitting(false);
       return;
     }
+    // Verrouille l'affichage sur l'écran d'attente AVANT de vider le brouillon :
+    // empêche l'effet de démarrage de recréer une étape « Peuple » transitoire.
+    setRedirecting(true);
     clear();
     // `created=1` : la fiche affiche une confirmation de création puis nettoie
     // l'URL (voir la page de fiche). La fiche est indépendante de la campagne
@@ -314,7 +338,8 @@ export default function CreatePage() {
         {/* Feedback : ce qu'il reste à faire avant de pouvoir passer à la suite. */}
         {!isLast && !canNext && (
           <AppAlert severity="info" sx={{ mb: 2 }}>
-            {current.hint?.(draft) ?? 'Complète les choix obligatoires de cette étape pour continuer.'}
+            {current.hint?.(draft, firearmsAllowed) ??
+              'Complète les choix obligatoires de cette étape pour continuer.'}
           </AppAlert>
         )}
 
