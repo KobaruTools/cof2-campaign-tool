@@ -11,9 +11,11 @@ import type { Database } from './types';
  * - `/auth` : callback PKCE + déconnexion (`/auth/callback`, `/auth/signout`) ;
  * - `/join` : landing du lien magique joueur (PER-189, échange délégué à PER-191) ;
  * - `/about` : page d'information publique (« À propos »), liée depuis le pied de
- *   page présent sur toutes les routes, y compris déconnecté.
+ *   page présent sur toutes les routes, y compris déconnecté ;
+ * - `/privacy` : politique de vie privée (RGPD), également liée depuis le pied de
+ *   page — un document légal doit rester consultable sans compte.
  */
-const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join', '/about'] as const;
+const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join', '/about', '/privacy'] as const;
 
 /**
  * Routes ouvertes à une session **joueur** (utilisateur anonyme du lien magique,

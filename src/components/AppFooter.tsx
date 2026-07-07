@@ -80,7 +80,7 @@ export function AppFooter() {
             privé à la table de jeu.
           </Typography>
 
-          {/* Crédit + copyright + lien vers la page d'information. */}
+          {/* Crédit + copyright + liens vers les pages d'information et légale. */}
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
             © {YEAR} — Éditeur de personnage CO2, développé par KobaruTools.{' '}
             <Link
@@ -90,6 +90,15 @@ export function AppFooter() {
               sx={{ textDecorationColor: 'rgba(255, 255, 255, 0.4)' }}
             >
               À propos
+            </Link>
+            {' · '}
+            <Link
+              component={NextLink}
+              href="/privacy"
+              color="inherit"
+              sx={{ textDecorationColor: 'rgba(255, 255, 255, 0.4)' }}
+            >
+              Politique de vie privée
             </Link>
           </Typography>
         </Stack>
