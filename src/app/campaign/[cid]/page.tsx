@@ -38,7 +38,6 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
-import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -46,7 +45,6 @@ import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
 import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
-import { AppTooltip } from '@/components/AppTooltip';
 import {
   CharacterList,
   type CharacterListAction,
@@ -247,16 +245,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
       <AppHeader
         title={campaign.name}
         onBack={() => router.push('/campaigns')}
-        action={
-          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            <AppTooltip title="Réglages de la campagne">
-              <IconButton color="inherit" onClick={() => router.push(`/campaign/${cid}/settings`)}>
-                <SettingsIcon />
-              </IconButton>
-            </AppTooltip>
-            <AccountMenu />
-          </Stack>
-        }
+        action={<AccountMenu />}
       />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -278,8 +267,8 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           >
             Rattacher un personnage
           </Button>
-          {/* Accès aux réglages depuis la ligne d'actions (en plus de la roue crantée de
-              l'en-tête) — poussé tout à droite via la marge automatique. */}
+          {/* Accès aux réglages depuis la ligne d'actions — poussé tout à droite via la
+              marge automatique. */}
           <Button
             variant="outlined"
             startIcon={<SettingsIcon />}
