@@ -7,6 +7,7 @@ import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import UpgradeIcon from '@mui/icons-material/Upgrade';
 import Box from '@mui/material/Box';
@@ -93,6 +94,7 @@ import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { ClassIcon, FirearmsAllowedProvider } from '@/components/ClassIcon';
 import { TombstoneIcon } from '@/components/TombstoneIcon';
 import { CampaignBadge } from '@/components/home/CampaignBadge';
+import { PlayerBadge } from '@/components/home/PlayerBadge';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
@@ -120,6 +122,7 @@ import { LevelHistory } from '@/components/sheet/LevelHistory';
 import { LevelUndoButton } from '@/components/sheet/LevelUndoButton';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
+import { usePlayersStore } from '@/stores/players';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
@@ -151,6 +154,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // rattaché à une campagne ou rester « Non attribué ».
   const campaigns = useCampaignsStore((s) => s.campaigns);
   const loadCampaigns = useCampaignsStore((s) => s.load);
+  // Roster de joueurs de la campagne de rattachement (PER-184) : alimente le
+  // sélecteur de réattribution et l'affichage du joueur. Le store ne cache qu'une
+  // campagne à la fois — on ne fait donc confiance à `players` que si son
+  // `playersCampaignId` correspond à la campagne du personnage courant.
+  const players = usePlayersStore((s) => s.players);
+  const playersCampaignId = usePlayersStore((s) => s.campaignId);
+  const loadPlayers = usePlayersStore((s) => s.load);
 
   // Charge le personnage depuis le cloud (RLS `owner_id`, PER-192) en cas d'accès
   // direct à l'URL, et les campagnes pour résoudre le libellé d'attribution.
@@ -158,6 +168,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     void loadCharacters();
     void loadCampaigns();
   }, [loadCharacters, loadCampaigns]);
+  // Charge le roster de la campagne du personnage (quand il en a une), pour le
+  // sélecteur/affichage du joueur. Se recharge si la campagne change.
+  const characterCampaignId = character?.campaignId ?? null;
+  useEffect(() => {
+    if (characterCampaignId) void loadPlayers(characterCampaignId);
+  }, [characterCampaignId, loadPlayers]);
   // Édition par bloc : chaque bloc a son propre scope, activable via son crayon.
   const [editingBlocks, setEditingBlocks] = useState<Record<EditBlock, boolean>>(NO_EDIT);
   const allEditing = EDIT_BLOCKS.every((k) => editingBlocks[k]);
@@ -241,9 +257,19 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // remet « Non attribué » (`null`). Le joueur étant local à la campagne, on le
   // réinitialise à chaque changement (l'attribution d'un joueur relève de PER-184).
   const setCampaign = (campaignId: string | null) => update({ campaignId, playerId: null });
+  // Réattribution permissive du joueur (PER-184), local à la campagne : le MJ
+  // change (ou vide) le joueur qui incarne le personnage. Écriture cloud + RLS
+  // owner ; le trigger 0002 gèle `player_id` côté joueur (lui ne réattribue pas).
+  const setPlayer = (playerId: string | null) => update({ playerId });
   // Campagne de rattachement résolue (undefined si « Non attribué » ou FK orpheline).
   const currentCampaign = character.campaignId
     ? campaigns.find((c) => c.id === character.campaignId)
+    : undefined;
+  // Roster de confiance : uniquement si le store a chargé la campagne courante
+  // (sinon on éviterait d'afficher les joueurs d'une autre campagne).
+  const roster = playersCampaignId === character.campaignId ? players : [];
+  const currentPlayer = character.playerId
+    ? roster.find((p) => p.id === character.playerId)
     : undefined;
   // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185).
   // Valeur unique lue partout où comptait `character.firearmsAllowed` : nom affiché,
@@ -766,6 +792,36 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   campaignId={currentCampaign?.id ?? null}
                 />
               )}
+              {/* Joueur qui incarne le personnage (PER-184), local à la campagne :
+                  segment affiché seulement si le personnage est rattaché à une
+                  campagne. Sélecteur en mode édition (réattribution, remise à vide
+                  possible), badge sinon. */}
+              {character.campaignId && (
+                <>
+                  <Typography variant="body2" component="span">
+                    Joueur :
+                  </Typography>
+                  {editingBlocks.identity ? (
+                    <TextField
+                      select
+                      size="small"
+                      variant="standard"
+                      value={character.playerId ?? ''}
+                      onChange={(e) => setPlayer(e.target.value || null)}
+                      sx={{ minWidth: 140 }}
+                    >
+                      <MenuItem value="">Aucun joueur</MenuItem>
+                      {roster.map((p) => (
+                        <MenuItem key={p.id} value={p.id}>
+                          {p.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  ) : (
+                    <PlayerBadge name={currentPlayer?.name ?? null} />
+                  )}
+                </>
+              )}
             </Stack>
             {/* Nom, précédé du marqueur de statut quand le personnage est archivé
                 (mort / retraité) — même taille que le nom, tooltip explicatif. */}
@@ -866,6 +922,28 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 </span>
               </AppTooltip>
             </Box>
+
+            {/* Raccourci de recréation (PER-184) : quand le personnage est mort et
+                rattaché à une campagne, lance la création d'un nouveau personnage
+                pré-rempli avec la même campagne et le même joueur (le défunt reste
+                archivé, son historique préservé). */}
+            {character.status === 'dead' && character.campaignId && (
+              <Box sx={{ mt: 1, position: 'relative', zIndex: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<PersonAddIcon />}
+                  onClick={() => {
+                    const params = new URLSearchParams({ campaign: character.campaignId! });
+                    if (character.playerId) params.set('player', character.playerId);
+                    router.push(`/create?${params.toString()}`);
+                  }}
+                >
+                  {currentPlayer
+                    ? `Créer un nouveau personnage pour ${currentPlayer.name}`
+                    : 'Créer un nouveau personnage dans cette campagne'}
+                </Button>
+              </Box>
+            )}
 
             {/* Cluster d'actions haut-droit, en mode édition : statut du personnage
                 (PER-183) puis bascule de l'illustration de profil (standard / -2). */}

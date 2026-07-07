@@ -19,9 +19,10 @@ interface WizardState {
 
   /**
    * Démarre un nouveau brouillon et le retourne. `campaignId` rattache d'emblée
-   * la création à une campagne (défaut `null` = « Non attribué »).
+   * la création à une campagne (défaut `null` = « Non attribué »). `playerId`
+   * (PER-184) pré-attribue un joueur de cette campagne (raccourci de recréation).
    */
-  start: (campaignId?: string | null) => WizardDraft;
+  start: (campaignId?: string | null, playerId?: string | null) => WizardDraft;
   /** Applique une mise à jour partielle au brouillon courant. */
   patch: (partial: Partial<WizardDraft>) => void;
   /** Va à une étape donnée. */
@@ -37,8 +38,8 @@ export const useWizardStore = create<WizardState>()(
       hasHydrated: false,
       setHasHydrated: (v) => set({ hasHydrated: v }),
 
-      start: (campaignId = null) => {
-        const draft = createDraft(newId(), new Date().toISOString(), campaignId);
+      start: (campaignId = null, playerId = null) => {
+        const draft = createDraft(newId(), new Date().toISOString(), campaignId, playerId);
         set({ draft });
         return draft;
       },

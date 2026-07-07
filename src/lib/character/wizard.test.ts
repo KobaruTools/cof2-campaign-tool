@@ -325,4 +325,39 @@ describe('materializeDraft', () => {
     );
     expect(c.name).toBe('Nouveau personnage');
   });
+
+  // PER-184 : le raccourci « recréer pour ce joueur » depuis un perso mort lance
+  // la création avec la campagne ET le joueur pré-remplis ; le brouillon les porte
+  // jusqu'à la matérialisation.
+  it('campagne et joueur du brouillon reportés sur le personnage créé', () => {
+    const c = materializeDraft(
+      {
+        ...createDraft('recree', '2026-01-01T00:00:00.000Z', 'camp-1', 'joueur-1'),
+        ancestryId: 'demi-elfe',
+      },
+      halfElf,
+      '2026-01-01T00:00:00.000Z',
+    );
+    expect(c.campaignId).toBe('camp-1');
+    expect(c.playerId).toBe('joueur-1');
+  });
+
+  it('sans joueur seedé, le personnage créé a playerId null', () => {
+    const c = materializeDraft(
+      { ...createDraft('x', '2026-01-01T00:00:00.000Z', 'camp-1'), ancestryId: 'demi-elfe' },
+      halfElf,
+      '2026-01-01T00:00:00.000Z',
+    );
+    expect(c.campaignId).toBe('camp-1');
+    expect(c.playerId).toBeNull();
+  });
+});
+
+describe('createDraft — attribution (PER-184)', () => {
+  it('porte le joueur seedé, ou null par défaut', () => {
+    expect(createDraft('a', '2026-01-01T00:00:00.000Z').playerId).toBeNull();
+    expect(createDraft('b', '2026-01-01T00:00:00.000Z', 'camp-1', 'joueur-1').playerId).toBe(
+      'joueur-1',
+    );
+  });
 });

@@ -37,6 +37,14 @@ export interface WizardDraft {
    */
   campaignId?: string | null;
 
+  /**
+   * Joueur qui incarnera le personnage créé (PER-184), local à `campaignId`, ou
+   * `null` (défaut). Renseigné par le raccourci « recréer pour ce joueur » depuis
+   * un perso mort (`/create?campaign=cid&player=pid`). Optionnel/nullable pour
+   * rester compatible avec un brouillon persisté avant l'ajout du champ.
+   */
+  playerId?: string | null;
+
   // Étape peuple
   ancestryId: string;
   /** Voie de peuple retenue (le demi-elfe choisit ; sinon l'unique voie). */
@@ -152,11 +160,13 @@ export function createDraft(
   characterId: string,
   now: string,
   campaignId: string | null = null,
+  playerId: string | null = null,
 ): WizardDraft {
   return {
     characterId,
     step: 0,
     campaignId,
+    playerId,
     ancestryId: '',
     ancestryPathId: null,
     classId: '',
@@ -280,7 +290,10 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     // (renseignée si la création est lancée depuis une campagne), sinon « Non
     // attribué » (`null`). L'attribution d'un joueur est traitée par PER-184.
     campaignId: draft.campaignId ?? null,
-    playerId: null,
+    // Joueur seedé par le raccourci de recréation (PER-184), sinon « aucun » ; ne
+    // vaut que résolu dans `campaignId` (le brouillon ne seede un joueur qu'avec
+    // une campagne). L'attribution reste modifiable ensuite depuis la fiche.
+    playerId: draft.campaignId ? (draft.playerId ?? null) : null,
     status: 'active',
     ancestryId: draft.ancestryId,
     classId: draft.classId,

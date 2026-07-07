@@ -171,8 +171,12 @@ export default function CreatePage() {
   // Suspense au prerendu. Un brouillon déjà en cours est repris tel quel.
   useEffect(() => {
     if (!hasHydrated || draft || redirecting) return;
-    const seed = new URLSearchParams(window.location.search).get('campaign');
-    start(seed);
+    const params = new URLSearchParams(window.location.search);
+    const campaign = params.get('campaign');
+    // Joueur pré-attribué (PER-184, raccourci de recréation depuis un perso mort) :
+    // n'a de sens que dans une campagne, donc ignoré si `campaign` est absent.
+    const player = campaign ? params.get('player') : null;
+    start(campaign, player);
   }, [hasHydrated, draft, start, redirecting]);
 
   // La règle « armes à feu » de la campagne (PER-185) gate le toggle du wizard et
