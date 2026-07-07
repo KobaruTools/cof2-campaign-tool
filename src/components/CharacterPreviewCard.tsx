@@ -24,7 +24,11 @@ export interface CharacterPreviewCardProps {
 export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
   const summary = summarize(character);
   return (
-    <Stack spacing={2}>
+    // `minWidth` : sans largeur définie (ex. dans une infobulle qui se dimensionne
+    // au contenu), les colonnes `1fr` de la grille des caractéristiques retombent
+    // sur la largeur de leur contenu et ne sont plus égales. Une largeur plancher
+    // donne aux 7 badges une largeur définie à se répartir → strictement égaux.
+    <Stack spacing={2} sx={{ minWidth: 264 }}>
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
         <Box
           component="img"
@@ -65,6 +69,7 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
       <Box
         sx={{
           display: 'grid',
+          width: '100%',
           // `minmax(0, 1fr)` (et non `1fr`) : force les 7 colonnes à une largeur
           // strictement égale, indépendamment du contenu de chaque badge.
           gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
