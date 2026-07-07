@@ -23,6 +23,8 @@ export interface CharacterSummary {
   level: number;
   /** Campagne de rattachement, ou `null` si « Non attribué » (PER-180). */
   campaignId: string | null;
+  /** Joueur attribué dans la campagne, ou `null` si non attribué (PER-184). */
+  playerId: string | null;
   /** Statut dans la campagne (actif / mort / retiré) — pilote le split actifs/archivés (PER-183). */
   status: CharacterStatus;
   updatedAt: string;
@@ -40,6 +42,7 @@ function buildSummary(character: Character, firearmsAllowed: boolean): Character
     firearmsAllowed,
     level: character.level,
     campaignId: character.campaignId,
+    playerId: character.playerId,
     status: character.status,
     updatedAt: character.updatedAt,
   };

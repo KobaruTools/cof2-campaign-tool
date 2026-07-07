@@ -82,6 +82,8 @@ export interface CharacterListProps {
   groups?: CharacterListGroup[] | null;
   /** Marqueur accolé au nom (statut archivé, « non synchronisé »…). */
   renderNameMarker?: (r: CharacterSummary) => ReactNode;
+  /** Complément affiché juste après le nom (ex. joueur attribué, en vue campagne). */
+  renderNameSuffix?: (r: CharacterSummary) => ReactNode;
   /** Angles supérieurs carrés pour se raccorder à un bloc au-dessus (accueil). */
   attachedTop?: boolean;
 }
@@ -143,6 +145,7 @@ export function CharacterList({
   onPickSort,
   groups,
   renderNameMarker,
+  renderNameSuffix,
   attachedTop = false,
 }: CharacterListProps) {
   const router = useRouter();
@@ -312,6 +315,7 @@ export function CharacterList({
             >
               {r.name}
             </Box>
+            {renderNameSuffix?.(r)}
           </Stack>
         </TableCell>
         <TableCell>
@@ -382,6 +386,7 @@ export function CharacterList({
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
               {r.name}
             </Typography>
+            {renderNameSuffix?.(r)}
           </Stack>
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
             <ClassIcon classId={r.classId} firearmsAllowed={r.firearmsAllowed} size={16} />

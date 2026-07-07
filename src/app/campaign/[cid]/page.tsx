@@ -61,6 +61,7 @@ import { summarizeInCampaign } from '@/lib/character/summary';
 import { downloadCharacterExport } from '@/lib/character/transferExport';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
+import { usePlayersStore } from '@/stores/players';
 import { useWizardStore } from '@/stores/wizard';
 
 // Pas de tri par campagne ici : la campagne est le contexte implicite.
@@ -77,6 +78,8 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const campaignsStatus = useCampaignsStore((s) => s.status);
   const loadCampaigns = useCampaignsStore((s) => s.load);
   const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === cid));
+  const players = usePlayersStore((s) => s.players);
+  const loadPlayers = usePlayersStore((s) => s.load);
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
 
@@ -85,6 +88,10 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   useEffect(() => {
     void loadCampaigns();
   }, [loadCampaigns]);
+  // Charge le roster de la campagne pour afficher le joueur attribué à côté du nom.
+  useEffect(() => {
+    void loadPlayers(cid);
+  }, [cid, loadPlayers]);
 
   const [importOpen, setImportOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -166,6 +173,27 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   // nom. `active` ⇒ aucun marqueur (cas des lignes de la section « Vivants »).
   const renderNameMarker = (r: CharacterSummary) => <CharacterStatusMarker status={r.status} />;
 
+  // Joueur attribué (PER-184), résolu depuis le roster de la campagne.
+  const playerNameById = useMemo(
+    () => new Map(players.map((p) => [p.id, p.name])),
+    [players],
+  );
+
+  // Nom du joueur affiché juste après le nom du personnage — entre parenthèses, en
+  // italique et gris léger. Rien si aucun joueur n'est attribué.
+  const renderNameSuffix = (r: CharacterSummary) => {
+    const playerName = r.playerId ? playerNameById.get(r.playerId) : null;
+    if (!playerName) return null;
+    return (
+      <Box
+        component="span"
+        sx={{ flexShrink: 0, fontStyle: 'italic', color: 'text.disabled' }}
+      >
+        ({playerName})
+      </Box>
+    );
+  };
+
   const actions: CharacterListAction[] = [
     {
       key: 'open',
@@ -208,6 +236,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
       sort={sort}
       onPickSort={pickSort}
       renderNameMarker={renderNameMarker}
+      renderNameSuffix={renderNameSuffix}
       attachedTop={attachedTop}
     />
   );
