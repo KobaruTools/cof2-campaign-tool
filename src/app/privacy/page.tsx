@@ -34,7 +34,8 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
-import { EXPORT_ERRORS, exportMyData } from './actions';
+import { exportMyData } from './actions';
+import { EXPORT_ERRORS } from './exportTypes';
 
 /** Adresse de contact pour l’exercice des droits et toute question vie privée. */
 const CONTACT_EMAIL = 'kobaru@borntofight.fr';
