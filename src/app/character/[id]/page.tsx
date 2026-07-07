@@ -271,6 +271,16 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const currentPlayer = character.playerId
     ? roster.find((p) => p.id === character.playerId)
     : undefined;
+  // Retour contextuel (PER-184) : la navigation vers une fiche passe surtout par
+  // la campagne. On y renvoie donc quand le perso y est rattaché, sinon vers
+  // l'accueil. Choix piloté par la DONNÉE (pas l'historique) : robuste sur lien
+  // direct / rechargement. Le libellé nomme la destination (infobulle + a11y).
+  const backTarget = character.campaignId
+    ? {
+        href: `/campaign/${character.campaignId}`,
+        label: `Retour à ${currentCampaign?.name ?? 'la campagne'}`,
+      }
+    : { href: '/', label: 'Retour à l’accueil' };
   // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185).
   // Valeur unique lue partout où comptait `character.firearmsAllowed` : nom affiché,
   // conformité, level-up. Le snapshot `character.firearmsAllowed` reste figé (choix
@@ -721,7 +731,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
       <AppHeader
         title={character.name || 'Sans nom'}
-        onBack={() => router.push('/')}
+        onBack={() => router.push(backTarget.href)}
+        backLabel={backTarget.label}
         action={
           <Button
             color="inherit"
@@ -777,6 +788,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   variant="standard"
                   value={currentCampaign?.id ?? ''}
                   onChange={(e) => setCampaign(e.target.value || null)}
+                  // Affiche le libellé de l'option vide (« Non attribué ») dans
+                  // l'input plutôt qu'un blanc quand aucune campagne n'est choisie.
+                  slotProps={{ select: { displayEmpty: true } }}
                   sx={{ minWidth: 160 }}
                 >
                   <MenuItem value="">Non attribué</MenuItem>
@@ -808,6 +822,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                       variant="standard"
                       value={character.playerId ?? ''}
                       onChange={(e) => setPlayer(e.target.value || null)}
+                      // Affiche « Aucun joueur » dans l'input quand aucun joueur
+                      // n'est choisi, plutôt qu'un blanc.
+                      slotProps={{ select: { displayEmpty: true } }}
                       sx={{ minWidth: 140 }}
                     >
                       <MenuItem value="">Aucun joueur</MenuItem>

@@ -6,12 +6,19 @@ import AppBar from '@mui/material/AppBar';
 import IconButton from '@mui/material/IconButton';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
+import { AppTooltip } from '@/components/AppTooltip';
 
 interface AppHeaderProps {
   /** Titre affiché (rendu en `<h1>`). */
   title: ReactNode;
   /** Callback du bouton retour (flèche à gauche). Absent = pas de bouton retour. */
   onBack?: () => void;
+  /**
+   * Libellé de la destination du bouton retour (ex. « Retour à {campagne} »).
+   * Sert d'infobulle au survol et d'`aria-label`, quand le retour n'est pas
+   * toujours l'accueil (PER-184). Absent = pas d'infobulle, `aria-label` neutre.
+   */
+  backLabel?: string;
   /** Contenu optionnel aligné à droite (boutons d'action). */
   action?: ReactNode;
 }
@@ -22,7 +29,7 @@ interface AppHeaderProps {
  * Modèle unique — calqué sur l'en-tête de la fiche de personnage — pour l'accueil,
  * le wizard de création et la fiche. Reste visible au défilement.
  */
-export function AppHeader({ title, onBack, action }: AppHeaderProps) {
+export function AppHeader({ title, onBack, backLabel, action }: AppHeaderProps) {
   return (
     <AppBar
       position="sticky"
@@ -40,9 +47,17 @@ export function AppHeader({ title, onBack, action }: AppHeaderProps) {
     >
       <Toolbar>
         {onBack && (
-          <IconButton edge="start" color="inherit" onClick={onBack} sx={{ mr: 1 }}>
-            <ArrowBackIcon />
-          </IconButton>
+          <AppTooltip title={backLabel ?? ''}>
+            <IconButton
+              edge="start"
+              color="inherit"
+              onClick={onBack}
+              aria-label={backLabel ?? 'Retour'}
+              sx={{ mr: 1 }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+          </AppTooltip>
         )}
         <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
           {title}
