@@ -185,7 +185,17 @@ export default function CreatePage() {
   // un écran d'attente plutôt que l'étape « Peuple » recréée à la volée.
   if (redirecting) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 8 }}>
+      <Box
+        sx={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+        }}
+      >
         <CircularProgress />
         <Typography color="text.secondary">Création du personnage…</Typography>
       </Box>
