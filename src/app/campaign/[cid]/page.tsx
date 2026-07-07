@@ -23,6 +23,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -73,6 +74,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const characters = useCharactersStore((s) => s.characters);
   const duplicate = useCharactersStore((s) => s.duplicate);
   const remove = useCharactersStore((s) => s.remove);
+  const upsert = useCharactersStore((s) => s.upsert);
   const campaignsStatus = useCampaignsStore((s) => s.status);
   const loadCampaigns = useCampaignsStore((s) => s.load);
   const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === cid));
@@ -124,6 +126,16 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const handleDuplicate = (id: string) => {
     const copy = duplicate(id);
     if (copy) notify(`« ${copy.name || 'Sans nom'} » dupliqué.`);
+  };
+
+  const handleDetach = (id: string) => {
+    // Détachement d'un seul perso : miroir du rattachement. `campaignId`/`playerId`
+    // repassent à `null` (« Non attribué ») ; `upsert` horodate et flushe vers le
+    // cloud si le perso est cloud. Réversible via « Rattacher un personnage ».
+    const character = useCharactersStore.getState().getById(id);
+    if (!character) return;
+    upsert({ ...character, campaignId: null, playerId: null });
+    notify(`« ${character.name || 'Sans nom'} » détaché de ${campaign?.name ?? 'la campagne'}.`);
   };
 
   const confirmDelete = () => {
@@ -180,6 +192,12 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
       label: 'Exporter en JSON',
       icon: <DownloadIcon fontSize="small" />,
       onClick: (r) => handleExport(r.id),
+    },
+    {
+      key: 'detach',
+      label: 'Détacher de la campagne',
+      icon: <LinkOffIcon fontSize="small" />,
+      onClick: (r) => handleDetach(r.id),
     },
     {
       key: 'delete',
