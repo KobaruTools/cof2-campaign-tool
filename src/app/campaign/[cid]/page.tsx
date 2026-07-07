@@ -24,6 +24,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import SettingsIcon from '@mui/icons-material/Settings';
 import UploadIcon from '@mui/icons-material/Upload';
 import Box from '@mui/material/Box';
@@ -54,6 +55,7 @@ import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey, type SortState } from '@/components/character-list/sort';
 import { HomeBackground } from '@/components/HomeBackground';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { AttachCharacterDialog } from '@/components/home/AttachCharacterDialog';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { fileSlug, summarizeInCampaign } from '@/lib/character/summary';
@@ -84,6 +86,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   }, [loadCampaigns]);
 
   const [importOpen, setImportOpen] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(
     null,
@@ -252,6 +255,13 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           >
             Importer un JSON
           </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PersonAddAlt1Icon />}
+            onClick={() => setAttachOpen(true)}
+          >
+            Rattacher un personnage
+          </Button>
           {/* Accès aux réglages depuis la ligne d'actions (en plus de la roue crantée de
               l'en-tête) — poussé tout à droite via la marge automatique. */}
           <Button
@@ -376,6 +386,15 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
         campaignId={cid}
         onClose={() => setImportOpen(false)}
         onImported={(c) => notify(`« ${c.name || 'Sans nom'} » importé.`)}
+      />
+
+      <AttachCharacterDialog
+        open={attachOpen}
+        campaignId={cid}
+        onClose={() => setAttachOpen(false)}
+        onAttached={(c) =>
+          notify(`« ${c.name || 'Sans nom'} » rattaché à ${campaign.name}.`)
+        }
       />
 
       <Dialog open={toDelete !== null} onClose={() => setToDelete(null)}>
