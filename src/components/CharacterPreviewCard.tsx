@@ -163,8 +163,8 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
     // au contenu), les colonnes `1fr` de la grille des caractéristiques retombent
     // sur la largeur de leur contenu et ne sont plus égales. Une largeur plancher
     // donne aux 7 badges une largeur définie à se répartir → strictement égaux.
-    <Stack spacing={2} sx={{ minWidth: 320 }}>
-      <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+    <Stack spacing={2} sx={{ minWidth: 264 }}>
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
         <Box
           component="img"
           src={`/classes/${summary.classId}${character.portraitVariant === 'alt' ? '-2' : ''}.webp`}
@@ -182,7 +182,9 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
           }}
         />
         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+          {/* Largeur du nom bridée : sans plafond, un nom long élargissait toute la
+              carte. On le laisse passer à la ligne pour garder un bloc compact. */}
+          <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2, maxWidth: 200 }}>
             {summary.name}
           </Typography>
           <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mt: 0.25 }}>
@@ -209,9 +211,14 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
         sx={{
           display: 'grid',
           width: '100%',
-          // `minmax(0, 1fr)` (et non `1fr`) : force les 7 colonnes à une largeur
-          // strictement égale, indépendamment du contenu de chaque badge.
-          gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+          // Largeur MINIMALE des colonnes = ~hauteur d'un badge → chaque badge est
+          // (au moins) carré ; `1fr` les garde de largeur égale s'il reste de la place.
+          gridTemplateColumns: 'repeat(7, minmax(44px, 1fr))',
+          // `start` (et non le `stretch` par défaut) : sinon la grille étire chaque
+          // badge à la hauteur de la piste, ce qui ANNULE son `aspect-ratio`. En
+          // désactivant l'étirement, l'aspect-ratio impose une vraie hauteur = largeur
+          // (carré), et le `justifyContent: center` du badge centre alors son contenu.
+          alignItems: 'start',
           gap: 0.75,
         }}
       >
@@ -225,19 +232,28 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
                 borderRadius: 1,
                 border: '1px solid rgba(255, 255, 255, 0.12)',
                 bgcolor: 'rgba(255, 255, 255, 0.04)',
-                py: 0.5,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 0.25,
+                aspectRatio: '1',
+                minHeight: 44,
+                // Grille + `place-items: center` : centrage garanti (deux axes) de
+                // l'unique enfant, quel que soit le surplus de hauteur du carré.
+                display: 'grid',
+                placeItems: 'center',
+                // Léger padding-top : le line-box du chiffre laisse de l'espace SOUS le
+                // glyphe (descente de la police), ce qui tire le contenu vers le haut ;
+                // 2px compensent visuellement pour un rendu bien centré.
+                pt: '2px',
               }}
             >
-              {/* Icône de la caractéristique (même jeu d'icônes que la fiche), à la
-                  place du code court FOR/CON/… */}
-              <AbilityIcon ability={id} size={18} color="rgba(255, 255, 255, 0.7)" title={ABILITY_NAMES[id]} />
-              <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                {value >= 0 ? `+${value}` : value}
-              </Typography>
+              {/* Icône + chiffre regroupés dans une boîte unique, centrée comme un bloc. */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                {/* Icône de la caractéristique (même jeu d'icônes que la fiche), à la
+                    place du code court FOR/CON/… */}
+                <AbilityIcon ability={id} size={18} color="rgba(255, 255, 255, 0.7)" title={ABILITY_NAMES[id]} />
+                {/* `lineHeight: 1` : supprime l'espace bas du line-box qui décentrait le chiffre. */}
+                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1 }}>
+                  {value >= 0 ? `+${value}` : value}
+                </Typography>
+              </Box>
             </Box>
           );
         })}

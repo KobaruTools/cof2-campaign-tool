@@ -280,7 +280,7 @@ export function CharacterList({
       title={previewFor(r)}
       enterDelay={1000}
       placement="bottom-start"
-      maxWidth={360}
+      maxWidth="none"
     >
       <TableRow
         sx={{
@@ -357,7 +357,7 @@ export function CharacterList({
 
   // ---- Rendu d'une carte (mobile) --------------------------------------------
   const renderCard = (r: CharacterSummary) => (
-    <AppTooltip key={r.id} title={previewFor(r)} enterDelay={1000} placement="bottom" maxWidth={360}>
+    <AppTooltip key={r.id} title={previewFor(r)} enterDelay={1000} placement="bottom" maxWidth="none">
     <Paper
       variant="outlined"
       sx={{
