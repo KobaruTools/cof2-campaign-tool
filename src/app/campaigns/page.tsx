@@ -231,6 +231,16 @@ export default function CampaignsPage() {
                     backdropFilter: 'blur(6px)',
                     WebkitBackdropFilter: 'blur(6px)',
                     borderColor: 'rgba(255, 255, 255, 0.10)',
+                    // Fondu doux du fond au survol (inspiré des rangs de voie de la fiche et
+                    // des listes de personnages) : le délai (.2s) porté par l'état de BASE ne
+                    // joue qu'à la SORTIE — le fond met un court instant à revenir. À l'ENTRÉE,
+                    // la transition de `:hover` (sans délai) prend le relais, donc le fondu
+                    // démarre immédiatement.
+                    transition: 'background-color .15s ease .2s',
+                    '&:hover': {
+                      bgcolor: 'rgba(44, 44, 50, 0.72)',
+                      transition: 'background-color .15s ease',
+                    },
                   }}
                 >
                   <Stack
