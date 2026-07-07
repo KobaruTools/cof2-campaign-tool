@@ -283,8 +283,19 @@ export function CharacterList({
       maxWidth={360}
     >
       <TableRow
-        hover
-        sx={{ cursor: 'pointer', bgcolor: i % 2 ? 'rgba(255, 255, 255, 0.035)' : 'transparent' }}
+        sx={{
+          cursor: 'pointer',
+          bgcolor: i % 2 ? 'rgba(255, 255, 255, 0.035)' : 'transparent',
+          // Fondu doux du fond au survol (inspiré des rangs de voie de la fiche) :
+          // le délai (.2s) porté par l'état de BASE ne joue qu'à la SORTIE — le fond
+          // met un court instant à revenir. À l'ENTRÉE, la transition de `:hover`
+          // (sans délai) prend le relais, donc le fondu démarre immédiatement.
+          transition: 'background-color .15s ease .2s',
+          '&:hover': {
+            bgcolor: 'action.hover',
+            transition: 'background-color .15s ease',
+          },
+        }}
         onClick={() => onOpen(r)}
       >
         <TableCell>
@@ -347,7 +358,19 @@ export function CharacterList({
   // ---- Rendu d'une carte (mobile) --------------------------------------------
   const renderCard = (r: CharacterSummary) => (
     <AppTooltip key={r.id} title={previewFor(r)} enterDelay={1000} placement="bottom" maxWidth={360}>
-    <Paper variant="outlined" sx={{ p: 2, ...paperSx }}>
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2,
+        ...paperSx,
+        // Même fondu au survol que les lignes desktop (délai de sortie).
+        transition: 'background-color .15s ease .2s',
+        '&:hover': {
+          bgcolor: 'rgba(44, 44, 50, 0.72)',
+          transition: 'background-color .15s ease',
+        },
+      }}
+    >
       <Stack
         direction="row"
         spacing={1}

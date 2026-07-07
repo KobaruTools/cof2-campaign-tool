@@ -65,7 +65,9 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
+          // `minmax(0, 1fr)` (et non `1fr`) : force les 7 colonnes à une largeur
+          // strictement égale, indépendamment du contenu de chaque badge.
+          gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
           gap: 0.75,
         }}
       >
