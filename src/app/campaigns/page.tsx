@@ -51,15 +51,11 @@ export default function CampaignsPage() {
   const error = useCampaignsStore((s) => s.error);
   const campaigns = useCampaignsStore((s) => s.campaigns);
   const load = useCampaignsStore((s) => s.load);
-  const create = useCampaignsStore((s) => s.create);
   const remove = useCampaignsStore((s) => s.remove);
   const characters = useCharactersStore((s) => s.characters);
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newDescription, setNewDescription] = useState('');
   const [toDelete, setToDelete] = useState<Campaign | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -79,23 +75,6 @@ export default function CampaignsPage() {
   // et l'avertissement de détachement à la suppression.
   const characterCount = (campaignId: string) =>
     characters.filter((c) => c.campaignId === campaignId).length;
-
-  const handleCreate = async () => {
-    setBusy(true);
-    try {
-      const campaign = await create(newName, newDescription);
-      setCreateOpen(false);
-      setNewName('');
-      setNewDescription('');
-      // On atterrit directement sur les réglages de la campagne fraîchement créée
-      // pour définir tout de suite ses règles de table (armes à feu, etc.).
-      router.push(`/campaign/${campaign.id}/settings`);
-    } catch (e) {
-      notify(`Création impossible : ${e instanceof Error ? e.message : String(e)}`, 'error');
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const confirmDelete = async () => {
     if (!toDelete) return;
@@ -131,11 +110,7 @@ export default function CampaignsPage() {
             variant="contained"
             startIcon={<AddIcon />}
             disabled={status === 'unconfigured'}
-            onClick={() => {
-              setNewName('');
-              setNewDescription('');
-              setCreateOpen(true);
-            }}
+            onClick={() => router.push('/campaigns/new')}
           >
             Nouvelle campagne
           </Button>
@@ -292,39 +267,6 @@ export default function CampaignsPage() {
           </Stack>
         )}
       </Container>
-
-      {/* Création */}
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Nouvelle campagne</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Nom de la campagne"
-            fullWidth
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) void handleCreate();
-            }}
-          />
-          <TextField
-            margin="dense"
-            label="Notes du MJ (optionnel)"
-            fullWidth
-            multiline
-            minRows={2}
-            value={newDescription}
-            onChange={(e) => setNewDescription(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateOpen(false)}>Annuler</Button>
-          <Button variant="contained" onClick={() => void handleCreate()} disabled={busy}>
-            Créer
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Suppression — confirmation forte (retaper le nom) */}
       <Dialog

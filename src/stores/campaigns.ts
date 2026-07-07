@@ -37,8 +37,12 @@ interface CampaignsState {
 
   /** Charge (ou recharge) les campagnes possédées. Idempotent, à appeler au montage. */
   load: () => Promise<void>;
-  /** Crée une campagne côté cloud et l'ajoute au cache. Lève en cas d'échec. */
-  create: (name: string, description?: string | null) => Promise<Campaign>;
+  /**
+   * Crée une campagne côté cloud et l'ajoute au cache. Lève en cas d'échec. Les
+   * `rules` sont optionnelles : l'assistant de création (PER-198) les fournit
+   * dès la création ; sinon la base retombe sur le défaut (armes à feu OK).
+   */
+  create: (name: string, description?: string | null, rules?: CampaignRules) => Promise<Campaign>;
   /** Met à jour nom/notes/règles de table d'une campagne. Lève en cas d'échec. */
   update: (
     id: string,
@@ -83,10 +87,11 @@ export const useCampaignsStore = create<CampaignsState>()((set, get) => ({
     }
   },
 
-  create: async (name, description) => {
+  create: async (name, description, rules) => {
     const campaign = await insertCampaign({
       name: name.trim() || 'Nouvelle campagne',
       description: description?.trim() || null,
+      rules,
     });
     set((state) => ({ campaigns: [...state.campaigns, campaign] }));
     return campaign;

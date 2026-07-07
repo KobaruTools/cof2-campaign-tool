@@ -56,11 +56,14 @@ export async function fetchCampaigns(): Promise<Campaign[]> {
 /**
  * Crée une campagne possédée par l'utilisateur courant. `owner_id` est posé
  * explicitement depuis la session (la RLS `with check` le valide contre
- * `auth.uid()`). Les règles naissent avec le défaut historique (armes à feu OK).
+ * `auth.uid()`). Les `rules` sont posées **dès la création** (assistant PER-198,
+ * qui recueille les règles de table avant de créer) ; à défaut, on retombe sur le
+ * défaut historique (armes à feu OK).
  */
 export async function insertCampaign(input: {
   name: string;
   description?: string | null;
+  rules?: CampaignRules;
 }): Promise<Campaign> {
   const supabase = createBrowserSupabaseClient();
   const {
@@ -76,7 +79,7 @@ export async function insertCampaign(input: {
       owner_id: user.id,
       name: input.name,
       description: input.description ?? null,
-      rules: DEFAULT_CAMPAIGN_RULES as unknown as Json,
+      rules: (input.rules ?? DEFAULT_CAMPAIGN_RULES) as unknown as Json,
     })
     .select('*')
     .single();

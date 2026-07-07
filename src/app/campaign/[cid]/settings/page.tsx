@@ -31,15 +31,14 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
-import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
+import { CampaignRulesFields } from '@/components/campaign/CampaignRulesFields';
 import { PlayersSection } from '@/components/campaign/PlayersSection';
 import { HomeBackground } from '@/components/HomeBackground';
-import { SourceRef } from '@/components/SourceRef';
 import type { CampaignRules } from '@/lib/campaign';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { useCampaignsStore } from '@/stores/campaigns';
@@ -78,54 +77,6 @@ function ComingSoonBadge() {
       }}
     >
       Bientôt
-    </Box>
-  );
-}
-
-/** Bloc d'une règle de table : titre, description, renvoi au livre et contrôle. */
-interface RuleBlockProps {
-  title: string;
-  description: React.ReactNode;
-  /** Page du livre à citer sous la description (cf. `SourceRef`). */
-  page?: number | string;
-  /** Section/titre de paragraphe à citer avant la page. */
-  section?: string;
-  /** Contrôle éditable de la règle (interrupteur, champ…). */
-  control: React.ReactNode;
-}
-
-function RuleBlock({ title, description, page, section, control }: RuleBlockProps) {
-  const hasSource = page != null || section != null;
-  return (
-    <Box
-      sx={{
-        p: 2,
-        borderRadius: 1.5,
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        bgcolor: 'rgba(255, 255, 255, 0.03)',
-      }}
-    >
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {description}
-            {hasSource && (
-              <>
-                {' '}
-                <SourceRef page={page} section={section} />
-              </>
-            )}
-          </Typography>
-        </Box>
-        <Box sx={{ flexShrink: 0, pt: 0.25 }}>{control}</Box>
-      </Stack>
     </Box>
   );
 }
@@ -347,23 +298,12 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Décisions d’univers qui s’appliquent aux personnages de la campagne.
               </Typography>
-              <Stack spacing={2}>
-                <RuleBlock
-                  title="Armes à feu autorisées"
-                  description="Autorise la poudre dans l’univers de la campagne. Désactivée, l’arquebusier combat à l’arbalète et devient « Arbalétrier »."
-                  section="Poudre ou pas poudre ?"
-                  page={62}
-                  control={
-                    <Switch
-                      checked={form?.firearmsAllowed ?? true}
-                      onChange={(e) =>
-                        setForm((f) => (f ? { ...f, firearmsAllowed: e.target.checked } : f))
-                      }
-                      slotProps={{ input: { 'aria-label': 'Armes à feu autorisées' } }}
-                    />
-                  }
-                />
-              </Stack>
+              <CampaignRulesFields
+                rules={{ firearmsAllowed: form?.firearmsAllowed ?? true }}
+                onChange={(rules) =>
+                  setForm((f) => (f ? { ...f, firearmsAllowed: rules.firearmsAllowed } : f))
+                }
+              />
             </CollapsibleSection>
 
             {/* Barre d'action : enregistrement explicite + état modifié/enregistré. */}
