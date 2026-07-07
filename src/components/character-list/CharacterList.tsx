@@ -16,6 +16,7 @@
 import { Fragment, type ReactNode, useState } from 'react';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import Box from '@mui/material/Box';
@@ -89,10 +90,16 @@ const paperSx = {
   borderColor: 'rgba(255, 255, 255, 0.10)',
 } as const;
 
+// En-tête de groupe (séparateur intra-tableau) : ligne compacte (py réduit),
+// texte un peu plus gros que les lignes, cliquable pour replier le groupe.
 const groupHeaderSx = {
+  py: 0.5,
   fontWeight: 700,
-  color: 'text.secondary',
-  bgcolor: 'rgba(255, 255, 255, 0.04)',
+  fontSize: '1rem',
+  color: 'text.primary',
+  bgcolor: 'rgba(255, 255, 255, 0.05)',
+  cursor: 'pointer',
+  userSelect: 'none',
 } as const;
 
 export function CharacterList({
@@ -108,6 +115,17 @@ export function CharacterList({
   attachedTop = false,
 }: CharacterListProps) {
   const [menu, setMenu] = useState<{ anchor: HTMLElement; row: CharacterSummary } | null>(null);
+
+  // Groupes repliés (par clé). Repli purement visuel, non persisté : les
+  // groupes sont dépliés par défaut au montage.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleGroup = (key: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const openMenu = (e: React.MouseEvent<HTMLElement>, row: CharacterSummary) => {
     e.stopPropagation();
@@ -280,16 +298,28 @@ export function CharacterList({
           </TableHead>
           <TableBody>
             {groups
-              ? groups.map((g) => (
-                  <Fragment key={g.key}>
-                    <TableRow>
-                      <TableCell colSpan={colSpan} sx={groupHeaderSx}>
-                        {g.name} ({g.rows.length})
-                      </TableCell>
-                    </TableRow>
-                    {g.rows.map(renderRow)}
-                  </Fragment>
-                ))
+              ? groups.map((g) => {
+                  const isCollapsed = collapsed.has(g.key);
+                  return (
+                    <Fragment key={g.key}>
+                      <TableRow hover onClick={() => toggleGroup(g.key)}>
+                        <TableCell colSpan={colSpan} sx={groupHeaderSx}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <ExpandMoreIcon
+                              fontSize="small"
+                              sx={{
+                                transition: 'transform 0.2s',
+                                transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                              }}
+                            />
+                            {g.name} ({g.rows.length})
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                      {!isCollapsed && g.rows.map(renderRow)}
+                    </Fragment>
+                  );
+                })
               : rows.map(renderRow)}
           </TableBody>
         </Table>
@@ -298,14 +328,44 @@ export function CharacterList({
       {/* Mobile : une carte empilée par personnage (PER-51). */}
       <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
         {groups
-          ? groups.map((g) => (
-              <Fragment key={g.key}>
-                <Typography variant="overline" color="text.secondary" sx={{ mt: 1, fontWeight: 700 }}>
-                  {g.name} ({g.rows.length})
-                </Typography>
-                {g.rows.map(renderCard)}
-              </Fragment>
-            ))
+          ? groups.map((g) => {
+              const isCollapsed = collapsed.has(g.key);
+              return (
+                <Fragment key={g.key}>
+                  <Box
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggleGroup(g.key)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleGroup(g.key);
+                      }
+                    }}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      mt: 1,
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <ExpandMoreIcon
+                      fontSize="small"
+                      sx={{
+                        transition: 'transform 0.2s',
+                        transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                      }}
+                    />
+                    <Typography sx={{ fontWeight: 700 }}>
+                      {g.name} ({g.rows.length})
+                    </Typography>
+                  </Box>
+                  {!isCollapsed && g.rows.map(renderCard)}
+                </Fragment>
+              );
+            })
           : rows.map(renderCard)}
       </Stack>
 

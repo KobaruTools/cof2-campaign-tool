@@ -52,7 +52,8 @@ import {
 } from '@/components/character-list/CharacterList';
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
 import { SortControl } from '@/components/character-list/SortControl';
-import { pickSortReducer, type SortKey, type SortState } from '@/components/character-list/sort';
+import { pickSortReducer, type SortKey } from '@/components/character-list/sort';
+import { usePersistedSort } from '@/components/character-list/usePersistedSort';
 import { HomeBackground } from '@/components/HomeBackground';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
@@ -101,7 +102,12 @@ export default function HomePage() {
     null,
   );
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<SortState>({ key: 'updatedAt', dir: 'desc' });
+  // Tri persisté en local (survit au rechargement, PER-183).
+  const [sort, setSort] = usePersistedSort(
+    'home-sort',
+    { key: 'updatedAt', dir: 'desc' },
+    HOME_SORT_KEYS,
+  );
   // Section « Archivés » (morts + retraités) repliable, repliée par défaut, choix
   // persisté en local (survit au rechargement).
   const [archivedOpen, setArchivedOpen] = usePersistedBoolean('home-archived-open', false);
