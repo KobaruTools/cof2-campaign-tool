@@ -1194,6 +1194,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               onChange={editingBlocks.equipment ? setEquipment : undefined}
               // « Utiliser » : consommer une unité est un état de jeu → disponible hors mode édition.
               onUse={useEquipmentItem}
+              // Reskins d'objet du profil (PER-181) : druide `baton-ferre` → « Bâton noueux ».
+              characterClass={characterClass}
             />
           </SheetSection>
 

@@ -7,11 +7,12 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { equipment } from '@/data';
+import { classById, equipment } from '@/data';
 import { equipmentLabel } from './helpers';
 import type { StepProps } from './types';
 
 export function EquipmentStep({ draft, patch }: StepProps) {
+  const characterClass = draft.classId ? classById.get(draft.classId) : undefined;
   const remove = (index: number) => {
     patch({ equipment: draft.equipment.filter((_, i) => i !== index) });
   };
@@ -29,7 +30,7 @@ export function EquipmentStep({ draft, patch }: StepProps) {
         {draft.equipment.map((line, i) => (
           <Stack key={i} direction="row" sx={{ alignItems: 'center', py: 0.5 }}>
             <Typography sx={{ flexGrow: 1 }}>
-              {equipmentLabel(line)}
+              {equipmentLabel(line, characterClass)}
               {line.quantity > 1 ? ` ×${line.quantity}` : ''}
             </Typography>
             <IconButton size="small" color="error" onClick={() => remove(i)}>

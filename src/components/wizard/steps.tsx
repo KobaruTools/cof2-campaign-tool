@@ -51,7 +51,11 @@ import {
   type WizardDraft,
 } from '@/lib/character/wizard';
 import { borrowedFeatureIds, hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
-import { classDisplayName, effectiveClassPathIds } from '@/lib/character/classDisplay';
+import {
+  classDisplayName,
+  effectiveClassPathIds,
+  reskinnedItemName,
+} from '@/lib/character/classDisplay';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { initialEquipment } from './helpers';
@@ -222,7 +226,8 @@ function ClassRestrictions({
           key={id}
           label={
             <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
-              {w.name} (DM <DamageValue damage={w.damage} size={16} />
+              {reskinnedItemName(characterClass, w.id, w.name)} (DM{' '}
+              <DamageValue damage={w.damage} size={16} />
               {w.twoHandedDamage && (
                 <>
                   /<DamageValue damage={w.twoHandedDamage} size={16} />

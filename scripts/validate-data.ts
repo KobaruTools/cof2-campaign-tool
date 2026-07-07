@@ -118,6 +118,10 @@ for (const p of classes) {
     if (!equipmentById.has(wid)) itemMiss.add(wid);
   for (const wid of p.excludedWeaponIds ?? [])
     if (!equipmentById.has(wid)) itemMiss.add(wid);
+  // Reskins d'objet (PER-181) : la cible doit exister au catalogue (sinon le reskin
+  // n'a rien à renommer).
+  for (const r of p.equipmentReskins ?? [])
+    if (!equipmentById.has(r.itemId)) itemMiss.add(r.itemId);
 }
 if (itemMiss.size)
   warn(`[équipement] ${itemMiss.size} slug(s) référencés par les profils absents du catalogue : ${[...itemMiss].sort().join(', ')}`);

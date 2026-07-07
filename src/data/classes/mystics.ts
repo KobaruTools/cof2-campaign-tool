@@ -43,6 +43,9 @@ export const mysticClasses: CharacterClass[] = [
     rangedAccess: 'none',
     allowedWeaponIds: ['dague', 'baton-ferre', 'epieu', 'javelot', 'arc-court'],
     weaponNotes: 'Le bâton noueux équivaut au bâton ferré.',
+    // Reskin permanent (PER-181) : le druide ne porte pas de métal ; son `baton-ferre`
+    // (mêmes DM) s'affiche « Bâton noueux » partout où il apparaît (p. 113).
+    equipmentReskins: [{ itemId: 'baton-ferre', name: 'Bâton noueux' }],
     startingEquipment: [
       // Le livre précise « bâton noueux (équivalent au bâton ferré) » (p. 113).
       { itemId: 'baton-ferre', label: 'Bâton noueux (DM 1d6)', quantity: 1 },

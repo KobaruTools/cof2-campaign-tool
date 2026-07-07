@@ -188,6 +188,17 @@ export type WeaponAccess = 'all' | 'oneHanded' | 'none';
  */
 export type ShieldAccess = 'all' | 'small' | 'none';
 
+/**
+ * Reskin d'un objet du catalogue pour un profil donné (PER-181) : substitution de
+ * NOM D'AFFICHAGE uniquement, aucune stat modifiée. Cf. `CharacterClass.equipmentReskins`.
+ */
+export interface EquipmentReskin {
+  /** Id de l'objet du catalogue à renommer à l'affichage pour ce profil. */
+  itemId: string;
+  /** Nom affiché à la place du nom de catalogue (valeur en français). */
+  name: string;
+}
+
 export interface CharacterClass {
   id: string;
   name: string;
@@ -233,6 +244,17 @@ export interface CharacterClass {
   nameWithoutFirearms?: string;
   /** Nuances verbatim non structurables (choix du joueur, exceptions…). */
   weaponNotes?: string;
+  /**
+   * Reskins d'objet propres au profil (PER-181) : noms d'AFFICHAGE alternatifs
+   * d'objets du catalogue pour CE profil, à stats INCHANGÉES. C'est le SECOND
+   * déclencheur de la primitive de substitution — un TRAIT DE CLASSE PERMANENT,
+   * indépendant des campagnes — en miroir du premier, la règle de campagne « armes
+   * à feu » (`nameWithoutFirearms` / `pathIdsWithoutFirearms`). Ex. druide : le
+   * `baton-ferre` (bâton alourdi de métal) s'affiche « Bâton noueux » (simple bois),
+   * mêmes DM, p. 113. Résolu par `reskinnedItemName` (cf.
+   * `src/lib/character/classDisplay.ts`). Absent → l'objet garde son nom du catalogue.
+   */
+  equipmentReskins?: EquipmentReskin[];
   /** Équipement de départ — ex. p. 62. */
   startingEquipment: StartingEquipmentRef[];
   /** Les 5 voies du profil, dans l'ordre du livre — ex. table p. 61. */

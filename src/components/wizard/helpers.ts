@@ -8,6 +8,7 @@ import { ABILITY_IDS } from '@/data/schema';
 import type { EquipmentLine } from '@/lib/character/types';
 import type { DefenseEquipment } from '@/lib/engine';
 import { isCustomItem } from '@/lib/character/types';
+import { reskinnedItemName } from '@/lib/character/classDisplay';
 
 export const valueSets = valueSetsData;
 
@@ -42,10 +43,15 @@ export function initialEquipment(characterClass: CharacterClass): EquipmentLine[
   return lines;
 }
 
-/** Libellé d'affichage d'une ligne d'équipement. */
-export function equipmentLabel(line: EquipmentLine): string {
+/**
+ * Libellé d'affichage d'une ligne d'équipement. `characterClass` optionnel :
+ * quand il est fourni, applique les reskins d'objet du profil (PER-181, ex. druide
+ * `baton-ferre` → « Bâton noueux »). Absent → nom du catalogue tel quel.
+ */
+export function equipmentLabel(line: EquipmentLine, characterClass?: CharacterClass): string {
   if (isCustomItem(line)) return line.name;
-  return equipmentById.get(line.itemId)?.name ?? line.itemId;
+  const name = equipmentById.get(line.itemId)?.name ?? line.itemId;
+  return reskinnedItemName(characterClass, line.itemId, name);
 }
 
 /** Contribution de l'équipement porté à la défense (armures + boucliers). */

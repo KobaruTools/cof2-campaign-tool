@@ -12,7 +12,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { equipment as equipmentCatalog, equipmentById } from '@/data';
-import type { EquipmentItem } from '@/data/schema';
+import type { CharacterClass, EquipmentItem } from '@/data/schema';
 import type { EquipmentLine } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
@@ -59,10 +59,15 @@ export interface EquipmentListProps {
    * donc disponible HORS mode édition — indépendant de `onChange`. Absent → pas de bouton « Utiliser ».
    */
   onUse?: (index: number) => void;
+  /**
+   * Profil du personnage : applique les reskins d'objet du profil aux noms affichés
+   * (PER-181, ex. druide `baton-ferre` → « Bâton noueux »). Absent → nom du catalogue.
+   */
+  characterClass?: CharacterClass;
 }
 
 /** Liste de l'équipement possédé, en lecture ou en édition. */
-export function EquipmentList({ equipment, onChange, onUse }: EquipmentListProps) {
+export function EquipmentList({ equipment, onChange, onUse, characterClass }: EquipmentListProps) {
   const setLine = (i: number, line: EquipmentLine) =>
     onChange?.(equipment.map((l, j) => (j === i ? line : l)));
   const remove = (i: number) => onChange?.(equipment.filter((_, j) => j !== i));
@@ -113,7 +118,7 @@ export function EquipmentList({ equipment, onChange, onUse }: EquipmentListProps
                 ) : (
                   <>
                     <Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>
-                      {equipmentLabel(line)}
+                      {equipmentLabel(line, characterClass)}
                     </Typography>
                     {detail && (
                       <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>

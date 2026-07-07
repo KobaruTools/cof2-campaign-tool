@@ -71,3 +71,20 @@ export function firearmsInactivePathIds(cls: CharacterClass, firearmsAllowed: bo
   const all = new Set([...cls.pathIds, ...cls.pathIdsWithoutFirearms]);
   return [...all].filter((id) => !active.has(id));
 }
+
+/**
+ * Nom d'AFFICHAGE de l'objet `itemId` compte tenu des reskins du profil `cls`
+ * (PER-181). Second déclencheur de la primitive de substitution : un trait de classe
+ * PERMANENT (indépendant des campagnes), en miroir de `classDisplayName` /
+ * `effectiveClassPathIds` (règle « armes à feu »). Ex. druide : `baton-ferre` →
+ * « Bâton noueux ». Purement cosmétique — les stats de l'objet sont inchangées.
+ * `cls` absent ou aucun reskin déclaré pour `itemId` → renvoie `fallback` (le nom
+ * du catalogue).
+ */
+export function reskinnedItemName(
+  cls: CharacterClass | null | undefined,
+  itemId: string,
+  fallback: string,
+): string {
+  return cls?.equipmentReskins?.find((r) => r.itemId === itemId)?.name ?? fallback;
+}
