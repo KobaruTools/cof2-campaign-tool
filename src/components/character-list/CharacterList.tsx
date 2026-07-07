@@ -14,10 +14,12 @@
  * actifs/archivés restent à la charge des pages appelantes.
  */
 import { Fragment, type ReactNode, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
@@ -91,15 +93,37 @@ const paperSx = {
 } as const;
 
 // En-tête de groupe (séparateur intra-tableau) : ligne compacte (py réduit),
-// texte un peu plus gros que les lignes, cliquable pour replier le groupe.
+// texte un peu plus gros que les lignes, cliquable pour replier le groupe. Fond
+// noir dégradé (gris foncé → plus foncé), opaque et plus sombre que les lignes
+// zébrées, + un liseré bas épais (2px) pour bien démarquer chaque campagne.
 const groupHeaderSx = {
   py: 0.5,
   fontWeight: 700,
   fontSize: '1rem',
   color: 'text.primary',
-  bgcolor: 'rgba(255, 255, 255, 0.05)',
+  background: 'linear-gradient(90deg, rgba(26, 26, 30, 0.95) 0%, rgba(8, 8, 10, 0.97) 100%)',
+  borderBottom: '2px solid rgba(255, 255, 255, 0.14)',
   cursor: 'pointer',
   userSelect: 'none',
+} as const;
+
+// Petit lien « Voir la campagne » aligné à droite de l'en-tête de groupe.
+const groupLinkSx = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 0.25,
+  fontSize: '0.75rem',
+  fontWeight: 600,
+  color: 'rgba(144, 202, 249, 0.85)',
+  cursor: 'pointer',
+  transition: 'color 120ms',
+  '&:hover': { color: 'rgba(144, 202, 249, 1)' },
+  '&:focus-visible': {
+    outline: '2px solid',
+    outlineColor: 'rgba(144, 202, 249, 0.7)',
+    outlineOffset: 2,
+    borderRadius: 1,
+  },
 } as const;
 
 export function CharacterList({
@@ -114,6 +138,7 @@ export function CharacterList({
   renderNameMarker,
   attachedTop = false,
 }: CharacterListProps) {
+  const router = useRouter();
   const [menu, setMenu] = useState<{ anchor: HTMLElement; row: CharacterSummary } | null>(null);
 
   // Groupes repliés (par clé). Repli purement visuel, non persisté : les
@@ -135,6 +160,36 @@ export function CharacterList({
 
   const campaignName = (r: CharacterSummary) =>
     r.campaignId ? campaignNameById?.get(r.campaignId) ?? null : null;
+
+  // Lien « Voir la campagne » à droite de l'en-tête de groupe. La clé du groupe
+  // est l'id de campagne (ou `__none__` pour « Non attribué ») : on ne montre le
+  // lien que pour une vraie campagne, reconnue via `campaignNameById`.
+  const renderGroupLink = (key: string) => {
+    if (!campaignNameById?.has(key)) return null;
+    const goToCampaign = () => router.push(`/campaign/${key}`);
+    return (
+      <Box
+        component="span"
+        role="link"
+        tabIndex={0}
+        onClick={(e) => {
+          e.stopPropagation();
+          goToCampaign();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            goToCampaign();
+          }
+        }}
+        sx={groupLinkSx}
+      >
+        Voir la campagne
+        <OpenInNewIcon sx={{ fontSize: '0.95rem' }} />
+      </Box>
+    );
+  };
 
   // ---- Tri (en-têtes de colonnes) --------------------------------------------
   const sortable = sort != null && onPickSort != null;
@@ -304,7 +359,14 @@ export function CharacterList({
                     <Fragment key={g.key}>
                       <TableRow hover onClick={() => toggleGroup(g.key)}>
                         <TableCell colSpan={colSpan} sx={groupHeaderSx}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              pr: 1,
+                            }}
+                          >
                             <ExpandMoreIcon
                               fontSize="small"
                               sx={{
@@ -313,6 +375,8 @@ export function CharacterList({
                               }}
                             />
                             {g.name} ({g.rows.length})
+                            <Box sx={{ flexGrow: 1 }} />
+                            {renderGroupLink(g.key)}
                           </Box>
                         </TableCell>
                       </TableRow>
@@ -347,8 +411,14 @@ export function CharacterList({
                       alignItems: 'center',
                       gap: 0.5,
                       mt: 1,
+                      px: 1.5,
+                      py: 0.75,
+                      borderRadius: 1,
                       cursor: 'pointer',
                       userSelect: 'none',
+                      background:
+                        'linear-gradient(90deg, rgba(26, 26, 30, 0.95) 0%, rgba(8, 8, 10, 0.97) 100%)',
+                      borderBottom: '2px solid rgba(255, 255, 255, 0.14)',
                     }}
                   >
                     <ExpandMoreIcon
@@ -361,6 +431,8 @@ export function CharacterList({
                     <Typography sx={{ fontWeight: 700 }}>
                       {g.name} ({g.rows.length})
                     </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    {renderGroupLink(g.key)}
                   </Box>
                   {!isCollapsed && g.rows.map(renderCard)}
                 </Fragment>
