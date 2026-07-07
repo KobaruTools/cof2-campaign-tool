@@ -18,22 +18,37 @@
  * En cas d'évolution de ces traitements, mettre à jour cette page ET la date de
  * dernière révision ci-dessous.
  */
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
+import DownloadIcon from '@mui/icons-material/Download';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
 import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
+import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
+import { EXPORT_ERRORS, exportMyData } from './actions';
 
 /** Adresse de contact pour l’exercice des droits et toute question vie privée. */
 const CONTACT_EMAIL = 'kobaru@borntofight.fr';
 
 /** Date de dernière révision (statique, à mettre à jour à chaque modification). */
 const LAST_UPDATED = '6 juillet 2026';
+
+/**
+ * L'export self-service n'a de sens que si le cloud est provisionné (sinon il n'y a
+ * pas de compte). Variable `NEXT_PUBLIC_…` inlinée au build (comme sur `/account`).
+ */
+const IS_CONFIGURED = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+);
 
 /** Lien externe stylé de façon homogène (discret, ouverture dans un nouvel onglet). */
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -65,6 +80,42 @@ function MailLink() {
 
 export default function PrivacyPage() {
   const router = useRouter();
+  const [exporting, setExporting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  /**
+   * Droit d'accès + portabilité (RGPD art. 15 & 20) en self-service : appelle la
+   * Server Action, puis déclenche le téléchargement du JSON côté navigateur.
+   * - Non connecté → redirection vers la connexion (retour sur `/privacy`) ;
+   * - session joueur → message dédié (pas de compte à exporter) ;
+   * - autre erreur → message générique.
+   */
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const data = await exportMyData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mes-donnees-cof2-${data.exportedAt.slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : '';
+      if (code === EXPORT_ERRORS.NOT_AUTHENTICATED) {
+        router.push('/login?next=/privacy');
+        return;
+      }
+      if (code === EXPORT_ERRORS.PLAYER_SESSION) {
+        setToast('Une session joueur ne dispose pas de données de compte à exporter.');
+      } else {
+        setToast('Le téléchargement a échoué. Réessaie dans un instant.');
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
@@ -314,8 +365,47 @@ export default function PrivacyPage() {
                 réglages de compte
               </Link>{' '}
               ; et exporter chacun de vos personnages au format JSON depuis la liste des
-              personnages (droit à la portabilité).
+              personnages.
             </Typography>
+
+            {/* Export self-service : droit d'accès + portabilité en un clic (compte
+                connecté requis). Masqué si le cloud n'est pas provisionné. */}
+            {IS_CONFIGURED && (
+              <Box
+                sx={{
+                  p: 2,
+                  mb: 2,
+                  borderRadius: 2,
+                  bgcolor: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.10)',
+                }}
+              >
+                <Typography variant="subtitle1" sx={{ mb: 0.5 }}>
+                  Télécharger toutes mes données
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  Exercez vos droits d’accès et de portabilité en un clic : ce bouton génère un
+                  fichier JSON regroupant vos données de compte, vos campagnes, vos joueurs et vos
+                  personnages. Vous devez être connecté ; sinon nous vous invitons à vous
+                  connecter d’abord.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  startIcon={
+                    exporting ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <DownloadIcon fontSize="small" />
+                    )
+                  }
+                  disabled={exporting}
+                  onClick={() => void handleExport()}
+                >
+                  Télécharger mes données (JSON)
+                </Button>
+              </Box>
+            )}
+
             <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
               Pour toute autre demande, écrivez-nous à <MailLink />. Nous nous efforçons de
               répondre dans les meilleurs délais, et au plus tard dans le mois prévu par le RGPD.
@@ -369,6 +459,19 @@ export default function PrivacyPage() {
           </Section>
         </Stack>
       </Container>
+
+      <Snackbar
+        open={toast !== null}
+        autoHideDuration={5000}
+        onClose={() => setToast(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {toast ? (
+          <Alert severity="error" variant="filled" onClose={() => setToast(null)}>
+            {toast}
+          </Alert>
+        ) : undefined}
+      </Snackbar>
     </Box>
   );
 }
