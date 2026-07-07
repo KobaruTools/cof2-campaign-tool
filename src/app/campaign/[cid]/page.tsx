@@ -56,7 +56,7 @@ import { HomeBackground } from '@/components/HomeBackground';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import type { CharacterSummary } from '@/lib/character/summary';
-import { fileSlug, summarize } from '@/lib/character/summary';
+import { fileSlug, summarizeInCampaign } from '@/lib/character/summary';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useWizardStore } from '@/stores/wizard';
@@ -136,7 +136,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     const dir = sort.dir === 'asc' ? 1 : -1;
     return characters
       .filter((c) => c.campaignId === cid)
-      .map(summarize)
+      .map((c) => summarizeInCampaign(c, campaign))
       .sort((a, b) => {
         switch (sort.key) {
           case 'name':
@@ -147,7 +147,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
             return dir * a.updatedAt.localeCompare(b.updatedAt);
         }
       });
-  }, [characters, cid, sort]);
+  }, [characters, cid, campaign, sort]);
 
   // Split actifs / archivés (PER-183) : « Archivés » est un terme d'UI désignant
   // l'union mort ∪ retiré (pas une valeur de statut). Le changement de statut se
