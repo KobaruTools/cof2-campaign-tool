@@ -49,6 +49,14 @@ export const ANCESTRY_COLOR = '#a1887f';
 export const MAGE_PATH_COLOR = '#5c6bc0';
 
 /**
+ * Teinte de la VOIE DE PRESTIGE (type `prestige`), 7ᵉ voie possible d'un personnage
+ * (accessible à partir du niveau 5, une seule, capacités de rangs 4 à 8 — chap. 8).
+ * Or ancien dédié, distinct des profils, de la voie de peuple et de la voie du mage,
+ * pour signaler son statut à part. Purement UI.
+ */
+export const PRESTIGE_PATH_COLOR = '#d4af37';
+
+/**
  * Gris foncé NEUTRE des hexagones de marqueur d'action (A/L/G/M) d'une voie de PEUPLE : sans
  * couleur de profil, le marqueur retombait sur le bleu mana par défaut (`info.main`), qui évoque à
  * tort un profil de mage. Le composant l'assombrit (darken 0.25) → ~#525252, contraste large avec le
