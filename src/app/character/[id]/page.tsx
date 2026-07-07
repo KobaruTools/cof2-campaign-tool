@@ -725,6 +725,48 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               classId={characterClass?.id}
               portraitVariant={character.portraitVariant}
             />
+            {/* Attribution de campagne (PER-180), placée au-dessus du nom comme un fil
+                de contexte : hors édition, badge (cliquable vers la vue campagne) ; en
+                mode « Modifier », liste déroulante au même emplacement pour une
+                cohérence visuelle avec le badge. */}
+            <Stack
+              direction="row"
+              spacing={0.75}
+              sx={{
+                alignItems: 'center',
+                color: 'text.secondary',
+                flexWrap: 'wrap',
+                position: 'relative',
+                zIndex: 1,
+                mb: 0.5,
+              }}
+            >
+              <Typography variant="body2" component="span">
+                Campagne :
+              </Typography>
+              {editingBlocks.identity ? (
+                <TextField
+                  select
+                  size="small"
+                  variant="standard"
+                  value={currentCampaign?.id ?? ''}
+                  onChange={(e) => setCampaign(e.target.value || null)}
+                  sx={{ minWidth: 160 }}
+                >
+                  <MenuItem value="">Non attribué</MenuItem>
+                  {campaigns.map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              ) : (
+                <CampaignBadge
+                  name={currentCampaign?.name ?? null}
+                  campaignId={currentCampaign?.id ?? null}
+                />
+              )}
+            </Stack>
             {/* Nom, précédé du marqueur de statut quand le personnage est archivé
                 (mort / retraité) — même taille que le nom, tooltip explicatif. */}
             <Stack
@@ -800,13 +842,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               <Typography variant="body1" component="span">
                 · niveau {character.level}
               </Typography>
-              <Typography variant="body1" component="span">
-                ·
-              </Typography>
-              <CampaignBadge
-                name={currentCampaign?.name ?? null}
-                campaignId={currentCampaign?.id ?? null}
-              />
             </Stack>
 
             {/* Montée de niveau (PER-49) : toujours accessible. Le niveau max (20)
@@ -886,27 +921,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 disponibilité de la poudre relève désormais de la règle de campagne
                 (réglages de campagne) ; l'effectif en découle (`firearmsAllowed`). */}
 
-            {/* Attribution de campagne (PER-180) : rattacher le personnage à une
-                campagne ou le laisser « Non attribué ». Éditée en mode « Modifier ». */}
-            {editingBlocks.identity && (
-              <Box sx={{ mt: 1, position: 'relative', zIndex: 1, maxWidth: 320 }}>
-                <TextField
-                  select
-                  size="small"
-                  fullWidth
-                  label="Campagne"
-                  value={currentCampaign?.id ?? ''}
-                  onChange={(e) => setCampaign(e.target.value || null)}
-                >
-                  <MenuItem value="">Non attribué</MenuItem>
-                  {campaigns.map((c) => (
-                    <MenuItem key={c.id} value={c.id}>
-                      {c.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Box>
-            )}
           </Box>
 
           <ComplianceWarnings warnings={warnings} />
