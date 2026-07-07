@@ -153,16 +153,23 @@ export async function deleteCharacter(id: string): Promise<void> {
 /**
  * Prépare un personnage LOCAL (staging) pour son téléversement vers le cloud
  * (PER-193) : le rattache à la campagne cible choisie (`campaignId`, `null` =
- * « Non attribué ») et remet le joueur à `null` (attribution différée, cf. PER-184),
- * puis horodate. Fonction **pure** (l'horodatage est fourni) → testable ;
- * l'insertion elle-même passe par `insertCharacter`.
+ * « Non attribué ») et horodate. Fonction **pure** (l'horodatage est fourni) →
+ * testable ; l'insertion elle-même passe par `insertCharacter`.
+ *
+ * Joueur (PER-182) : on **préserve** le joueur SI le personnage reste dans SA
+ * campagne (cas d'un perso importé déjà attribué → aucune perte au téléversement).
+ * Un rattachement à une AUTRE campagne (ou « Non attribué ») remet le joueur à
+ * `null` : le joueur est local à sa campagne d'origine (table `players`), le porter
+ * ailleurs le laisserait orphelin. Ré-attribution possible sur la fiche (PER-184).
  */
 export function bindForUpload(
   character: Character,
   campaignId: string | null,
   now: string,
 ): Character {
-  return { ...character, campaignId, playerId: null, updatedAt: now };
+  const playerId =
+    campaignId !== null && campaignId === character.campaignId ? character.playerId : null;
+  return { ...character, campaignId, playerId, updatedAt: now };
 }
 
 /**

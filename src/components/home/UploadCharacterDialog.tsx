@@ -4,9 +4,11 @@
  * Modale de téléversement d'un personnage LOCAL vers le cloud (PER-193). Déclenchée
  * par ligne depuis l'accueil pour un perso encore en staging (hérité, anonyme ou
  * importé). Un choix par personnage : campagne cible (parmi les campagnes possédées
- * ou « Non attribué ») ; le joueur est différé (`playerId` remis à `null`,
- * attribution ultérieure). Le téléversement **promeut** le perso en cloud sans rien
- * supprimer en local (transition sans perte, cf. `useCharactersStore.uploadToCloud`).
+ * ou « Non attribué »). Le joueur déjà attribué (perso importé, PER-182) est
+ * **conservé** si le perso reste dans sa campagne, et écarté seulement si on le
+ * rattache ailleurs (le joueur est local à sa campagne, cf. `bindForUpload`). Le
+ * téléversement **promeut** le perso en cloud sans rien supprimer en local
+ * (transition sans perte, cf. `useCharactersStore.uploadToCloud`).
  *
  * L'état du formulaire (campagne choisie, en cours, erreur) vit dans un composant
  * interne `UploadForm` **remonté par `key={character.id}`** : il s'initialise depuis
@@ -122,7 +124,9 @@ function UploadForm({
             ))}
           </TextField>
           <Typography variant="caption" color="text.secondary">
-            Le joueur pourra être attribué plus tard depuis la campagne.
+            {character.playerId != null && campaignId !== UNASSIGNED && campaignId === character.campaignId
+              ? 'Le joueur actuellement attribué est conservé.'
+              : 'Le joueur pourra être attribué plus tard depuis la campagne.'}
           </Typography>
           {error && <AppAlert severity="error">{error}</AppAlert>}
         </Stack>

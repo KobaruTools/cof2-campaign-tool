@@ -87,14 +87,21 @@ interface CharactersState {
   getById: (id: string) => Character | undefined;
   /**
    * Importe un objet JSON quelconque : migration + validation, puis ajout LOCAL
-   * (staging) avec un nouvel id si l'id existe déjà. Le téléversement cloud d'un
-   * import relève de PER-193/182. Lève en cas de fichier invalide.
+   * (staging) avec un nouvel id si l'id existe déjà. Le `binding` optionnel (PER-182)
+   * force les clés étrangères du personnage importé (campagne + joueur cibles résolus
+   * par l'UI d'import) ; sans lui, les FK du fichier sont conservées telles quelles.
+   * Le perso importé reste LOCAL (staging) — sa promotion vers le cloud passe par le
+   * téléversement dédié (PER-193). Lève en cas de fichier invalide.
    */
-  importCharacter: (raw: unknown) => Character;
+  importCharacter: (
+    raw: unknown,
+    binding?: { campaignId: string | null; playerId: string | null },
+  ) => Character;
   /**
    * Téléverse un personnage LOCAL (staging) vers le cloud (PER-193) : l'affecte à
-   * la campagne cible choisie (`campaignId`, `null` = « Non attribué »), remet le
-   * joueur à `null` (attribution différée), l'insère en base puis le **promeut** en
+   * la campagne cible choisie (`campaignId`, `null` = « Non attribué »), conserve le
+   * joueur si le perso reste dans sa campagne (sinon le remet à `null`, cf.
+   * `bindForUpload` — PER-182), l'insère en base puis le **promeut** en
    * perso cloud (ajout à `cloudVersions`) — le blob reste en cache localStorage,
    * aucune suppression n'a lieu (transition sans perte). No-op si déjà cloud ou
    * introuvable. En cas de collision d'`id` (PK globale), régénère un id et
@@ -277,10 +284,14 @@ export const useCharactersStore = create<CharactersState>()(
 
         getById: (id) => get().characters.find((c) => c.id === id),
 
-        importCharacter: (raw) => {
+        importCharacter: (raw, binding) => {
           const character = migrateCharacter(raw); // lève si invalide
           const exists = get().characters.some((c) => c.id === character.id);
-          const toAdd = exists ? { ...character, id: crypto.randomUUID() } : character;
+          const withId = exists ? { ...character, id: crypto.randomUUID() } : character;
+          // FK résolues par l'UI d'import (PER-182) ; à défaut, on garde celles du fichier.
+          const toAdd = binding
+            ? { ...withId, campaignId: binding.campaignId, playerId: binding.playerId }
+            : withId;
           set((state) => ({ characters: [...state.characters, withTimestamp(toAdd)] }));
           return toAdd;
         },

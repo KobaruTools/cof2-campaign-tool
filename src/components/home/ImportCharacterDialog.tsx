@@ -1,19 +1,26 @@
 'use client';
 
 /**
- * Modale d'import d'un personnage depuis un fichier JSON (PER-* — import
- * enrichi). Trois temps :
+ * Modale d'import d'un personnage depuis un fichier JSON. Quatre temps :
  *  1. `idle`/`error` : zone de dépôt (drag'n'drop) + clic pour parcourir ;
- *  2. `loading` : loader pendant la lecture du fichier et la migration ;
- *  3. `success` : micro-fiche résumé du personnage importé, avec accès direct à
- *     sa fiche complète.
+ *  2. `loading` : loader pendant la lecture et la migration du fichier ;
+ *  3. `resolve` (PER-182) : le fichier est lu et valide → on affiche une micro-fiche
+ *     et un formulaire de résolution des clés étrangères (campagne + joueur cibles).
+ *     N'apparaît que s'il existe des campagnes à cibler (sinon import direct) ;
+ *  4. `success` : micro-fiche récapitulative, avec accès direct à la fiche complète.
  *
- * L'import lui-même délègue à `importCharacter` du store (migration + validation
- * + ajout avec un nouvel id si collision). Le personnage est donc DÉJÀ ajouté au
- * store quand la micro-fiche s'affiche : la modale confirme, elle ne pré-valide
- * pas avant enregistrement.
+ * Contexte FK (PER-182) : un fichier exporté est auto-porteur (`parseImportFile`) —
+ * il transporte la campagne et le joueur d'origine (ids + libellés). À l'import, on
+ * pré-remplit la cible : la campagne d'accueil si l'import part d'une page campagne,
+ * sinon la campagne du fichier si elle existe ici, sinon « Non attribué ». Le joueur
+ * du fichier n'est retenu que s'il figure dans le roster de la campagne cible.
+ *
+ * L'import lui-même délègue à `importCharacter` du store (migration + validation +
+ * nouvel id si collision + application des FK résolues). Le personnage importé reste
+ * LOCAL (staging) ; sa promotion vers le cloud passe par le téléversement dédié
+ * (PER-193).
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined';
@@ -25,11 +32,18 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { CharacterPreviewCard } from '@/components/CharacterPreviewCard';
+import { parseImportFile, type TransferContext } from '@/lib/character/transfer';
 import type { Character } from '@/lib/character/types';
+import { migrateCharacter } from '@/lib/engine';
+import { fetchPlayers } from '@/lib/player/repo';
+import type { Player } from '@/lib/player/types';
+import { useCampaignsStore } from '@/stores/campaigns';
 import { useCharactersStore } from '@/stores/characters';
 
 /** Durée minimale d'affichage du loader : évite un clignotement sur import rapide. */
@@ -38,15 +52,16 @@ const MIN_LOADER_MS = 450;
 type ImportState =
   | { status: 'idle' }
   | { status: 'loading'; fileName: string }
+  | { status: 'resolve'; raw: unknown; preview: Character; context: TransferContext | null }
   | { status: 'success'; character: Character }
   | { status: 'error'; message: string };
 
 export interface ImportCharacterDialogProps {
   open: boolean;
   /**
-   * Campagne d'accueil de l'import (PER-180) : le personnage importé y est
-   * rattaché (FK `campaignId`), ou `null` pour « Non attribué » (import depuis
-   * l'accueil). Le mapping fin des FK à l'import (conflits, joueur) relève de PER-182.
+   * Campagne d'accueil de l'import (PER-180) : si l'import part d'une page campagne,
+   * elle est la cible par défaut ; `null` pour un import depuis l'accueil (la cible
+   * par défaut est alors la campagne du fichier si elle existe, sinon « Non attribué »).
    */
   campaignId: string | null;
   onClose: () => void;
@@ -64,38 +79,89 @@ export function ImportCharacterDialog({
 }: ImportCharacterDialogProps) {
   const router = useRouter();
   const importCharacter = useCharactersStore((s) => s.importCharacter);
-  const upsert = useCharactersStore((s) => s.upsert);
+  const campaigns = useCampaignsStore((s) => s.campaigns);
 
   const [state, setState] = useState<ImportState>({ status: 'idle' });
   const [dragging, setDragging] = useState(false);
+  // Sélection de résolution FK (PER-182). `''` = « Non attribué » / « Aucun joueur ».
+  const [chosenCampaignId, setChosenCampaignId] = useState('');
+  const [chosenPlayerId, setChosenPlayerId] = useState('');
+  const [roster, setRoster] = useState<Player[]>([]);
+  // Campagne à laquelle correspond le roster chargé (null = pas encore chargé). Sert
+  // à dériver l'état « chargement » sans setState synchrone dans l'effet.
+  const [rosterFor, setRosterFor] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // Campagnes chargées à l'ouverture (idempotent, mis en cache par le store).
+  useEffect(() => {
+    if (open) void useCampaignsStore.getState().load();
+  }, [open]);
+
+  // Roster de la campagne cible (pour le sélecteur de joueur). On ne garde le joueur
+  // pré-sélectionné (issu du fichier) que s'il figure dans ce roster. Tout setState
+  // vit dans les callbacks async (pas dans le corps de l'effet).
+  useEffect(() => {
+    if (state.status !== 'resolve' || !chosenCampaignId) return;
+    if (rosterFor === chosenCampaignId) return; // roster déjà chargé pour cette campagne
+    let cancelled = false;
+    fetchPlayers(chosenCampaignId)
+      .then((players) => {
+        if (cancelled) return;
+        setRoster(players);
+        setRosterFor(chosenCampaignId);
+        setChosenPlayerId((prev) => (prev && players.some((p) => p.id === prev) ? prev : ''));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRoster([]);
+        setRosterFor(chosenCampaignId);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.status, chosenCampaignId, rosterFor]);
+
+  // Chargement en cours : une campagne est choisie mais son roster n'est pas encore là.
+  const rosterLoading = Boolean(chosenCampaignId) && rosterFor !== chosenCampaignId;
 
   const runImport = useCallback(
     async (file: File) => {
       setState({ status: 'loading', fileName: file.name });
       const [result] = await Promise.allSettled([
         (async () => {
-          const raw = JSON.parse(await file.text());
-          const imported = importCharacter(raw); // lève si invalide
-          // On rattache le personnage importé à la campagne d'accueil (PER-180) :
-          // il rejoint la campagne depuis laquelle l'import a été lancé (ou reste
-          // « Non attribué » si import depuis l'accueil), plutôt que de conserver la
-          // FK de son fichier d'origine. Le joueur est réinitialisé (attribution = PER-184).
-          const bound = { ...imported, campaignId, playerId: null };
-          upsert(bound);
-          return bound;
+          const parsed = JSON.parse(await file.text());
+          const { raw, context } = parseImportFile(parsed);
+          const preview = migrateCharacter(raw); // lève si invalide
+          return { raw, context, preview };
         })(),
         delay(MIN_LOADER_MS),
       ]);
 
       if (result.status === 'fulfilled') {
-        setState({ status: 'success', character: result.value });
-        onImported?.(result.value);
+        const { raw, context, preview } = result.value;
+        const known = useCampaignsStore.getState().campaigns;
+        // Sans campagne cible possible (mode local / aucune campagne), rien à résoudre :
+        // import direct, rattaché à la campagne d'accueil (ou « Non attribué »).
+        if (known.length === 0) {
+          const imported = importCharacter(raw, { campaignId, playerId: null });
+          setState({ status: 'success', character: imported });
+          onImported?.(imported);
+          return;
+        }
+        // Cible par défaut : l'hôte s'il est défini (import depuis une page campagne),
+        // sinon la campagne du fichier si elle existe ici, sinon « Non attribué ».
+        const fromFile =
+          context?.campaign && known.some((c) => c.id === context.campaign!.id)
+            ? context.campaign.id
+            : '';
+        setChosenCampaignId(campaignId ?? fromFile);
+        setChosenPlayerId(context?.player?.id ?? '');
+        setState({ status: 'resolve', raw, context, preview });
         return;
       }
-      // On ne laisse jamais remonter de message technique brut : l'erreur de
-      // parsing JSON (SyntaxError, libellé en anglais) est reformulée ; les
-      // erreurs de migration/validation portent déjà un message français clair.
+      // On ne laisse jamais remonter de message technique brut : l'erreur de parsing
+      // JSON (SyntaxError, libellé en anglais) est reformulée ; les erreurs de
+      // migration/validation portent déjà un message français clair.
       const e = result.reason;
       const message =
         e instanceof SyntaxError
@@ -105,7 +171,7 @@ export function ImportCharacterDialog({
             : 'Fichier illisible.';
       setState({ status: 'error', message });
     },
-    [importCharacter, upsert, campaignId, onImported],
+    [importCharacter, campaignId, onImported],
   );
 
   const handleFiles = (files: FileList | null | undefined) => {
@@ -113,14 +179,32 @@ export function ImportCharacterDialog({
     if (file) void runImport(file);
   };
 
-  // Réinitialise l'état interne à la fermeture (via animation MUI), pour rouvrir
-  // la modale sur la zone de dépôt vierge.
+  const handleConfirm = () => {
+    if (state.status !== 'resolve') return;
+    const targetCampaignId = chosenCampaignId || null;
+    const targetPlayerId = targetCampaignId ? chosenPlayerId || null : null;
+    const imported = importCharacter(state.raw, {
+      campaignId: targetCampaignId,
+      playerId: targetPlayerId,
+    });
+    setState({ status: 'success', character: imported });
+    onImported?.(imported);
+  };
+
+  // Réinitialise l'état interne à la fermeture (via animation MUI), pour rouvrir la
+  // modale sur la zone de dépôt vierge.
   const handleClose = () => {
     if (state.status === 'loading') return; // on ne ferme pas en plein import
     onClose();
   };
 
-  const resetToIdle = () => setState({ status: 'idle' });
+  const resetToIdle = () => {
+    setState({ status: 'idle' });
+    setChosenCampaignId('');
+    setChosenPlayerId('');
+    setRoster([]);
+    setRosterFor(null);
+  };
 
   const dropZone = (
     <Box
@@ -154,9 +238,7 @@ export function ImportCharacterDialog({
       <UploadFileIcon
         sx={{ fontSize: 48, color: dragging ? 'primary.main' : 'text.secondary', mb: 1 }}
       />
-      <Typography sx={{ fontWeight: 600 }}>
-        Glissez-déposez un fichier JSON ici
-      </Typography>
+      <Typography sx={{ fontWeight: 600 }}>Glissez-déposez un fichier JSON ici</Typography>
       <Typography variant="body2" color="text.secondary">
         ou cliquez pour parcourir vos fichiers
       </Typography>
@@ -204,6 +286,23 @@ export function ImportCharacterDialog({
           </Stack>
         )}
 
+        {state.status === 'resolve' && (
+          <ResolveForm
+            preview={state.preview}
+            context={state.context}
+            campaigns={campaigns}
+            roster={roster}
+            rosterLoading={rosterLoading}
+            chosenCampaignId={chosenCampaignId}
+            chosenPlayerId={chosenPlayerId}
+            onCampaignChange={(id) => {
+              setChosenCampaignId(id);
+              setChosenPlayerId(''); // campagne différente ⇒ roster différent
+            }}
+            onPlayerChange={setChosenPlayerId}
+          />
+        )}
+
         {state.status === 'success' && <ImportedSummary character={state.character} />}
       </DialogContent>
       <DialogActions>
@@ -217,6 +316,13 @@ export function ImportCharacterDialog({
               Ouvrir la fiche
             </Button>
           </>
+        ) : state.status === 'resolve' ? (
+          <>
+            <Button onClick={handleClose}>Annuler</Button>
+            <Button variant="contained" onClick={handleConfirm}>
+              Importer
+            </Button>
+          </>
         ) : (
           <Button onClick={handleClose} disabled={state.status === 'loading'}>
             {state.status === 'error' ? 'Annuler' : 'Fermer'}
@@ -224,6 +330,86 @@ export function ImportCharacterDialog({
         )}
       </DialogActions>
     </Dialog>
+  );
+}
+
+/** Formulaire de résolution des clés étrangères d'un import (PER-182). */
+function ResolveForm({
+  preview,
+  context,
+  campaigns,
+  roster,
+  rosterLoading,
+  chosenCampaignId,
+  chosenPlayerId,
+  onCampaignChange,
+  onPlayerChange,
+}: {
+  preview: Character;
+  context: TransferContext | null;
+  campaigns: { id: string; name: string }[];
+  roster: Player[];
+  rosterLoading: boolean;
+  chosenCampaignId: string;
+  chosenPlayerId: string;
+  onCampaignChange: (id: string) => void;
+  onPlayerChange: (id: string) => void;
+}) {
+  const sortedCampaigns = [...campaigns].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  // La campagne du fichier est-elle inconnue de ce poste ? (message d'aide.)
+  const fileCampaignUnknown =
+    context?.campaign && !campaigns.some((c) => c.id === context.campaign!.id);
+
+  return (
+    <Stack spacing={2}>
+      <CharacterPreviewCard character={preview} />
+
+      {context?.campaign && (
+        <Typography variant="body2" color="text.secondary">
+          Fichier issu de la campagne « {context.campaign.name || 'sans nom'} »
+          {context.player?.name ? ` · joueur « ${context.player.name} »` : ''}.
+          {fileCampaignUnknown ? ' Cette campagne n’existe pas ici : choisissez une cible.' : ''}
+        </Typography>
+      )}
+
+      <TextField
+        select
+        label="Campagne"
+        size="small"
+        value={chosenCampaignId}
+        onChange={(e) => onCampaignChange(e.target.value)}
+        // `displayEmpty` + label flottant : on force le label en position haute pour
+        // qu'il ne se superpose pas à l'option vide (« Non attribué »).
+        slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+      >
+        <MenuItem value="">Non attribué</MenuItem>
+        {sortedCampaigns.map((c) => (
+          <MenuItem key={c.id} value={c.id}>
+            {c.name}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      {chosenCampaignId && (
+        <TextField
+          select
+          label="Joueur"
+          size="small"
+          value={chosenPlayerId}
+          onChange={(e) => onPlayerChange(e.target.value)}
+          disabled={rosterLoading}
+          helperText={rosterLoading ? 'Chargement des joueurs…' : undefined}
+          slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+        >
+          <MenuItem value="">Aucun joueur</MenuItem>
+          {roster.map((p) => (
+            <MenuItem key={p.id} value={p.id}>
+              {p.name}
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
+    </Stack>
   );
 }
 

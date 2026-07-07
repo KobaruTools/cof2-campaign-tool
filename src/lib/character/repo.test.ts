@@ -82,17 +82,31 @@ describe('mergeCharacters', () => {
 });
 
 describe('bindForUpload', () => {
-  it('rattache à la campagne cible, remet le joueur à null et horodate', () => {
+  it('rattache à la campagne cible et horodate ; remet le joueur à null si la campagne change', () => {
     const local = character({ campaignId: null, playerId: 'p-old', updatedAt: '2020-01-01T00:00:00Z' });
     const bound = bindForUpload(local, 'camp-1', '2026-07-06T09:00:00Z');
     expect(bound.campaignId).toBe('camp-1');
-    expect(bound.playerId).toBeNull();
+    expect(bound.playerId).toBeNull(); // campagne changée (null → camp-1) ⇒ joueur écarté
     expect(bound.updatedAt).toBe('2026-07-06T09:00:00Z');
     expect(bound.id).toBe(local.id); // id conservé
   });
 
-  it('accepte « Non attribué » (campagne null)', () => {
-    const bound = bindForUpload(character({ campaignId: 'stale' }), null, '2026-07-06T09:00:00Z');
+  it('préserve le joueur si le perso reste dans SA campagne (aucune perte à l’import→téléversement)', () => {
+    const local = character({ campaignId: 'camp-1', playerId: 'p-1' });
+    const bound = bindForUpload(local, 'camp-1', '2026-07-06T09:00:00Z');
+    expect(bound.campaignId).toBe('camp-1');
+    expect(bound.playerId).toBe('p-1');
+  });
+
+  it('écarte le joueur si le perso change de campagne (joueur local à l’ancienne campagne)', () => {
+    const local = character({ campaignId: 'camp-1', playerId: 'p-1' });
+    const bound = bindForUpload(local, 'camp-2', '2026-07-06T09:00:00Z');
+    expect(bound.campaignId).toBe('camp-2');
+    expect(bound.playerId).toBeNull();
+  });
+
+  it('accepte « Non attribué » (campagne null) et écarte le joueur', () => {
+    const bound = bindForUpload(character({ campaignId: 'stale', playerId: 'p-1' }), null, '2026-07-06T09:00:00Z');
     expect(bound.campaignId).toBeNull();
     expect(bound.playerId).toBeNull();
   });

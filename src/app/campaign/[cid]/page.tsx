@@ -57,7 +57,8 @@ import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { AttachCharacterDialog } from '@/components/home/AttachCharacterDialog';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import type { CharacterSummary } from '@/lib/character/summary';
-import { fileSlug, summarizeInCampaign } from '@/lib/character/summary';
+import { summarizeInCampaign } from '@/lib/character/summary';
+import { downloadCharacterExport } from '@/lib/character/transferExport';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useWizardStore } from '@/stores/wizard';
@@ -106,16 +107,11 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     router.push(`/create?campaign=${cid}`);
   };
 
-  const handleExport = (id: string) => {
+  const handleExport = async (id: string) => {
     const character = useCharactersStore.getState().getById(id);
     if (!character) return;
-    const blob = new Blob([JSON.stringify(character, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${fileSlug(character.name)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // Fichier auto-porteur (PER-182) : blob + contexte des FK (campagne/joueur).
+    await downloadCharacterExport(character);
     notify(`« ${character.name || 'Sans nom'} » exporté en JSON.`);
   };
 
