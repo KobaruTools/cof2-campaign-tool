@@ -310,27 +310,41 @@ function ClassRestrictions({
       </Box>
 
       {/* PER-185 : le joueur ne peut choisir Arquebusier/Arbalétrier QUE si la
-          campagne autorise la poudre. Sinon, pas de choix : forcé « Arbalétrier »
-          avec une note (la disponibilité relève des réglages de campagne, p. 62). */}
-      {characterClass.powderAllowed &&
-        (campaignAllowsFirearms ? (
+          campagne autorise la poudre. On garde toujours le toggle affiché (grisé
+          quand la campagne interdit la poudre) pour la cohérence graphique entre
+          les deux cas, dans un cadre rappelant la règle de page pour chaque mode. */}
+      {characterClass.powderAllowed && (
+        <Box
+          sx={{
+            mt: 1.5,
+            p: 1.25,
+            border: '1px solid',
+            borderColor: 'rgba(255, 255, 255, 0.12)',
+            borderRadius: 1,
+            bgcolor: 'rgba(255, 255, 255, 0.03)',
+          }}
+        >
           <FormControlLabel
-            sx={{ mt: 0.5 }}
+            sx={{ m: 0 }}
             control={
               <Switch
                 size="small"
                 checked={firearmsAllowed}
+                disabled={!campaignAllowsFirearms}
                 onChange={(e) => onFirearmsAllowedChange(e.target.checked)}
               />
             }
             label={<Typography variant="body2">Armes à feu autorisées</Typography>}
           />
-        ) : (
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-            Armes à feu interdites dans cette campagne : ce profil combat à l’arbalette
-            (« Arbalétrier », p. 62).
+            {!campaignAllowsFirearms
+              ? 'Armes à feu interdites dans cette campagne : ce profil combat à l’arbalète (« Arbalétrier », p. 62).'
+              : firearmsAllowed
+                ? 'Ce profil manie les armes à feu (« Arquebusier », p. 62).'
+                : 'Armes à feu désactivées : ce profil combat à l’arbalète (« Arbalétrier », p. 62).'}
           </Typography>
-        ))}
+        </Box>
+      )}
     </Box>
   );
 }

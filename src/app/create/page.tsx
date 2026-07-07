@@ -208,6 +208,25 @@ export default function CreatePage() {
   const pendingChoices = previewForChoices ? featuresWithUnmadeChoices(previewForChoices) : [];
   const canCreate = pendingChoices.length === 0;
 
+  // Barre de navigation Précédent/Suivant, dupliquée en haut (sous le Stepper) et
+  // en bas de l'étape pour éviter d'avoir à faire défiler sur les longues étapes.
+  const navButtons = (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+      <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
+        Précédent
+      </Button>
+      {isLast ? (
+        <Button variant="contained" onClick={() => void finish()} disabled={!canCreate || committing}>
+          {committing ? 'Enregistrement…' : 'Créer le personnage'}
+        </Button>
+      ) : (
+        <Button variant="contained" disabled={!canNext} onClick={() => setStep(step + 1)}>
+          Suivant
+        </Button>
+      )}
+    </Box>
+  );
+
   const finish = async () => {
     const ancestry = ancestryById.get(draft.ancestryId);
     if (!ancestry) return;
@@ -274,6 +293,8 @@ export default function CreatePage() {
           })}
         </Stepper>
 
+        <Box sx={{ mb: 3 }}>{navButtons}</Box>
+
         <Paper
           variant="outlined"
           // Translucide + léger flou, comme les cartes de l'accueil : laisse
@@ -304,24 +325,7 @@ export default function CreatePage() {
           </AppAlert>
         )}
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
-            Précédent
-          </Button>
-          {isLast ? (
-            <Button
-              variant="contained"
-              onClick={() => void finish()}
-              disabled={!canCreate || committing}
-            >
-              {committing ? 'Enregistrement…' : 'Créer le personnage'}
-            </Button>
-          ) : (
-            <Button variant="contained" disabled={!canNext} onClick={() => setStep(step + 1)}>
-              Suivant
-            </Button>
-          )}
-        </Box>
+        {navButtons}
       </Container>
     </FirearmsAllowedProvider>
   );
