@@ -39,12 +39,24 @@ export async function fetchPlayers(campaignId: string): Promise<Player[]> {
   return (data ?? []).map(rowToPlayer);
 }
 
-/** Crée un joueur dans la campagne (le `join_secret` naît par défaut en base). */
-export async function insertPlayer(campaignId: string, name: string): Promise<Player> {
+/**
+ * Crée un joueur dans la campagne. Le `join_secret` naît par défaut en base
+ * (`gen_random_uuid()`) ; on peut cependant le **fournir** — c'est le cas de
+ * l'assistant de création (PER-198), qui pré-génère les secrets côté client
+ * (`crypto.randomUUID()`) pour afficher les liens sur le récapitulatif AVANT toute
+ * écriture, puis les persiste tels quels au clic final. La RLS `players` ne porte
+ * que sur la possession de la campagne, pas sur les colonnes — fixer le secret est
+ * autorisé et son entropie (uuid v4) équivaut au défaut serveur.
+ */
+export async function insertPlayer(
+  campaignId: string,
+  name: string,
+  joinSecret?: string,
+): Promise<Player> {
   const supabase = createBrowserSupabaseClient();
   const { data, error } = await supabase
     .from('players')
-    .insert({ campaign_id: campaignId, name })
+    .insert({ campaign_id: campaignId, name, ...(joinSecret ? { join_secret: joinSecret } : {}) })
     .select('*')
     .single();
   if (error) throw error;

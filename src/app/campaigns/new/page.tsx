@@ -4,22 +4,20 @@
  * Assistant de création de campagne (PER-198) — remplace l'ancien dialogue « nom +
  * notes » puis redirection vers les réglages. Calqué sur le wizard de personnage
  * (`src/app/create/page.tsx`) : même langage visuel (Stepper, carte en verre
- * dépoli, boutons Précédent/Suivant, récapitulatif final), pour offrir au MJ une
- * création guidée qui aboutit à une campagne **prête à l'emploi**, règles posées et
- * joueurs invités.
+ * dépoli, boutons Précédent/Suivant, récapitulatif final) et **même mécanique de
+ * brouillon** (`useCampaignDraftStore`, persisté) : interrompre la création la
+ * conserve, `/campaigns` propose de la reprendre.
  *
  * Quatre étapes : Identité (nom + notes) → Règles de table (mutualisées avec la
- * page de réglages via `CampaignRulesFields`) → Joueurs (saisie des NOMS en local)
- * → Récapitulatif. Rien n'est écrit au cloud avant le dernier clic (« Créer la
- * campagne ») : la campagne PUIS les joueurs sont alors créés en base — c'est à ce
- * moment que naissent les **liens magiques** (`join_secret` généré côté serveur).
- * Le récapitulatif se transforme alors en écran final qui affiche chaque lien
- * (copier / régénérer) avec une courte explication ; « Aller à la campagne » y mène.
+ * page de réglages via `CampaignRulesFields`) → Joueurs (ajout des noms) →
+ * Récapitulatif. Le brouillon est **purement local** : RIEN n'est écrit au cloud
+ * avant le dernier clic (« Créer la campagne »). Pour afficher les **liens
+ * magiques** dès le récapitulatif, les `joinSecret` sont pré-générés côté client à
+ * l'ajout d'un joueur ; la création finale insère la campagne (règles posées) puis
+ * les joueurs avec ces secrets, efface le brouillon et mène à la campagne.
  *
  * L'**édition** d'une campagne existante reste du ressort de la page de réglages
- * (roue crantée) — cet assistant ne sert qu'à la création. État local éphémère (pas
- * de brouillon persisté comme le wizard de personnage) : création courte, sans
- * reprise différée.
+ * (roue crantée) — cet assistant ne sert qu'à la création.
  */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -29,11 +27,11 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
-import Snackbar from '@mui/material/Snackbar';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
@@ -41,14 +39,15 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { useToast } from '@/components/toast/ToastProvider';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CampaignRulesFields } from '@/components/campaign/CampaignRulesFields';
 import { HomeBackground } from '@/components/HomeBackground';
-import { DEFAULT_CAMPAIGN_RULES, type Campaign, type CampaignRules } from '@/lib/campaign';
+import { insertPlayer } from '@/lib/player/repo';
 import { joinLinkUrl } from '@/lib/player/types';
 import { useCampaignsStore } from '@/stores/campaigns';
-import { usePlayersStore } from '@/stores/players';
+import { useCampaignDraftStore } from '@/stores/campaignDraft';
 
 const STEP_LABELS = ['Identité', 'Règles de table', 'Joueurs', 'Récapitulatif'] as const;
 
@@ -65,114 +64,130 @@ const glassPaper = {
 export default function CampaignCreatePage() {
   const router = useRouter();
   const status = useCampaignsStore((s) => s.status);
-  const load = useCampaignsStore((s) => s.load);
+  const loadCampaigns = useCampaignsStore((s) => s.load);
   const createCampaign = useCampaignsStore((s) => s.create);
 
-  // Store joueurs : peuplé au moment de la création (une fois la campagne en base),
-  // puis lu pour afficher les liens magiques générés dans le récapitulatif final.
-  const loadPlayers = usePlayersStore((s) => s.load);
-  const createPlayer = usePlayersStore((s) => s.create);
-  const regeneratePlayer = usePlayersStore((s) => s.regenerate);
-  const createdPlayers = usePlayersStore((s) => s.players);
+  const hasHydrated = useCampaignDraftStore((s) => s.hasHydrated);
+  const draft = useCampaignDraftStore((s) => s.draft);
+  const start = useCampaignDraftStore((s) => s.start);
+  const patch = useCampaignDraftStore((s) => s.patch);
+  const setStep = useCampaignDraftStore((s) => s.setStep);
+  const addPlayer = useCampaignDraftStore((s) => s.addPlayer);
+  const removePlayer = useCampaignDraftStore((s) => s.removePlayer);
+  const regeneratePlayer = useCampaignDraftStore((s) => s.regeneratePlayer);
+  const clear = useCampaignDraftStore((s) => s.clear);
 
-  // Détermine l'état du service (configuré ? disponible ?) : la création écrit au
-  // cloud, inutile de proposer l'assistant si Supabase n'est pas configuré.
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const { showToast } = useToast();
 
   // Origine lue à l'init (client) pour construire les URLs de liens magiques.
   const [origin] = useState(() => (typeof window !== 'undefined' ? window.location.origin : ''));
-
-  const [step, setStep] = useState(0);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [rules, setRules] = useState<CampaignRules>(DEFAULT_CAMPAIGN_RULES);
-  // Noms des joueurs saisis en local (les liens ne naissent qu'à la création).
-  const [playerNames, setPlayerNames] = useState<string[]>([]);
   const [newPlayerName, setNewPlayerName] = useState('');
-
-  const [busy, setBusy] = useState(false);
+  const [committing, setCommitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Erreur non bloquante : campagne créée mais un/des joueur(s) en échec.
-  const [playerError, setPlayerError] = useState<string | null>(null);
-  // Campagne créée : bascule le récapitulatif en écran final (liens magiques).
-  const [created, setCreated] = useState<Campaign | null>(null);
-  const [busyPlayerId, setBusyPlayerId] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  // Après création réussie : le brouillon est vidé mais la navigation n'est pas
+  // encore effective — on verrouille l'écran d'attente pour éviter que l'effet de
+  // démarrage ne recrée aussitôt un brouillon vierge (cf. wizard de personnage).
+  const [redirecting, setRedirecting] = useState(false);
 
-  const isLast = step === STEP_LABELS.length - 1;
-  // Seule l'étape Identité est bloquante : un nom est requis pour créer.
-  const nameValid = name.trim().length > 0;
-  const canNext = step === 0 ? nameValid : true;
+  // État du service cloud (la création écrit au cloud).
+  useEffect(() => {
+    void loadCampaigns();
+  }, [loadCampaigns]);
 
-  const addPlayerName = () => {
-    const n = newPlayerName.trim();
-    if (!n) return;
-    setPlayerNames((names) => [...names, n]);
-    setNewPlayerName('');
-  };
+  // Démarre un brouillon si aucun n'est en cours (après hydratation). Un brouillon
+  // déjà présent est repris tel quel (reprise depuis l'alerte `/campaigns`).
+  useEffect(() => {
+    if (!hasHydrated || draft || redirecting) return;
+    start();
+  }, [hasHydrated, draft, start, redirecting]);
 
   const handleCreate = async () => {
-    setBusy(true);
+    if (!draft) return;
+    setCommitting(true);
     setError(null);
-    setPlayerError(null);
-    // 1) La campagne (avec ses règles déjà posées).
-    let campaign: Campaign;
+    // 1) La campagne, avec ses règles déjà posées.
+    let campaign;
     try {
-      campaign = await createCampaign(name, description, rules);
+      campaign = await createCampaign(draft.name, draft.description, draft.rules);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-      setBusy(false);
+      setCommitting(false);
       return;
     }
-    // 2) Les joueurs (génèrent leur lien magique en base). La campagne existe déjà :
-    // un échec ici n'annule pas la création — on le signale et on laisse le MJ
-    // finir depuis la campagne (pas de nouvelle tentative de création de campagne).
-    try {
-      await loadPlayers(campaign.id);
-      for (const n of playerNames) {
-        await createPlayer(n);
+    // 2) Les joueurs, avec leurs secrets pré-générés (mêmes liens que le récap). La
+    // campagne existe déjà : un échec joueur n'annule pas la création (non bloquant,
+    // le MJ finit depuis la campagne) et ne relance jamais la création de campagne.
+    const failed: string[] = [];
+    for (const p of draft.players) {
+      try {
+        await insertPlayer(campaign.id, p.name, p.joinSecret);
+      } catch {
+        failed.push(p.name);
       }
-    } catch (e) {
-      setPlayerError(
-        `Certains joueurs n'ont pas pu être créés (${e instanceof Error ? e.message : String(e)}). ` +
-          'Tu pourras les ajouter depuis la campagne.',
+    }
+    if (failed.length > 0) {
+      showToast(
+        `Joueur(s) non créé(s) : ${failed.join(', ')}. Tu pourras les ajouter depuis la campagne.`,
+        'error',
       );
     }
-    setCreated(campaign);
-    setBusy(false);
+    // Verrouille l'écran d'attente AVANT de vider le brouillon (cf. redirecting).
+    setRedirecting(true);
+    clear();
+    router.push(`/campaign/${campaign.id}`);
   };
 
   const handleCopy = async (secret: string) => {
     try {
       await navigator.clipboard.writeText(joinLinkUrl(origin, secret));
-      setToast('Lien copié.');
+      showToast('Lien copié.', 'success');
     } catch {
-      setToast('Impossible de copier le lien.');
+      showToast('Impossible de copier le lien.', 'error');
     }
   };
 
-  const handleRegenerate = async (id: string) => {
-    setBusyPlayerId(id);
-    try {
-      await regeneratePlayer(id);
-      setToast("Lien régénéré. L'ancien lien ne fonctionne plus.");
-    } catch {
-      setToast('Échec de la régénération du lien.');
-    } finally {
-      setBusyPlayerId(null);
-    }
+  const addFromField = () => {
+    const n = newPlayerName.trim();
+    if (!n) return;
+    addPlayer(n);
+    setNewPlayerName('');
   };
+
+  // Écran d'attente pendant la redirection post-création (brouillon déjà vidé).
+  if (redirecting || committing) {
+    return (
+      <Box
+        sx={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+        }}
+      >
+        <CircularProgress />
+        <Typography color="text.secondary">Création de la campagne…</Typography>
+      </Box>
+    );
+  }
+
+  const unconfigured = status === 'unconfigured';
+
+  const step = draft ? Math.min(draft.step, STEP_LABELS.length - 1) : 0;
+  const isLast = step === STEP_LABELS.length - 1;
+  const nameValid = (draft?.name.trim().length ?? 0) > 0;
+  const canNext = step === 0 ? nameValid : true;
 
   const navButtons = (
     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-      <Button disabled={step === 0 || busy} onClick={() => setStep(step - 1)}>
+      <Button disabled={step === 0} onClick={() => setStep(step - 1)}>
         Précédent
       </Button>
       {isLast ? (
-        <Button variant="contained" onClick={() => void handleCreate()} disabled={busy}>
-          {busy ? 'Création…' : 'Créer la campagne'}
+        <Button variant="contained" onClick={() => void handleCreate()} disabled={!nameValid}>
+          Créer la campagne
         </Button>
       ) : (
         <Button variant="contained" disabled={!canNext} onClick={() => setStep(step + 1)}>
@@ -189,7 +204,7 @@ export default function CampaignCreatePage() {
       <AppHeader title="Nouvelle campagne" onBack={() => router.push('/campaigns')} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
-        {status === 'unconfigured' ? (
+        {unconfigured ? (
           <Paper variant="outlined" sx={{ ...glassPaper, p: 6, textAlign: 'center' }}>
             <Typography variant="h6" sx={{ mb: 1 }}>
               Campagnes indisponibles
@@ -199,18 +214,21 @@ export default function CampaignCreatePage() {
               installation ; l’édition de personnages reste disponible en local.
             </Typography>
           </Paper>
+        ) : !hasHydrated || !draft ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+            <CircularProgress />
+          </Box>
         ) : (
           <>
             <Stepper activeStep={step} alternativeLabel sx={{ mb: 4 }}>
               {STEP_LABELS.map((label) => (
-                <Step key={label} completed={created !== null && label !== 'Récapitulatif'}>
+                <Step key={label}>
                   <StepLabel>{label}</StepLabel>
                 </Step>
               ))}
             </Stepper>
 
-            {/* Barre de nav en haut, masquée une fois la campagne créée (écran final). */}
-            {!created && <Box sx={{ mb: 3 }}>{navButtons}</Box>}
+            <Box sx={{ mb: 3 }}>{navButtons}</Box>
 
             <Paper variant="outlined" sx={glassPaper}>
               {step === 0 && (
@@ -220,8 +238,8 @@ export default function CampaignCreatePage() {
                     autoFocus
                     label="Nom de la campagne"
                     fullWidth
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    value={draft.name}
+                    onChange={(e) => patch({ name: e.target.value })}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey && nameValid) setStep(1);
                     }}
@@ -231,8 +249,8 @@ export default function CampaignCreatePage() {
                     fullWidth
                     multiline
                     minRows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={draft.description}
+                    onChange={(e) => patch({ description: e.target.value })}
                   />
                 </Stack>
               )}
@@ -244,7 +262,7 @@ export default function CampaignCreatePage() {
                     Décisions d’univers qui s’appliquent aux personnages de la campagne. Vous
                     pourrez les modifier à tout moment depuis les réglages.
                   </Typography>
-                  <CampaignRulesFields rules={rules} onChange={setRules} />
+                  <CampaignRulesFields rules={draft.rules} onChange={(rules) => patch({ rules })} />
                 </Stack>
               )}
 
@@ -252,10 +270,9 @@ export default function CampaignCreatePage() {
                 <Stack spacing={2}>
                   <Typography variant="h6">Joueurs</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Ajoute les joueurs de ta table. Leurs liens d’invitation seront générés à la
-                    création de la campagne (dernière étape) ; tu pourras ensuite les copier et
-                    les partager. Étape facultative — tu peux aussi ajouter des joueurs plus tard
-                    depuis les réglages.
+                    Ajoute les joueurs de ta table. Leurs liens d’invitation apparaîtront au
+                    récapitulatif et seront créés avec la campagne. Étape facultative — tu peux
+                    aussi ajouter des joueurs plus tard depuis les réglages.
                   </Typography>
                   <Stack direction="row" spacing={1}>
                     <TextField
@@ -265,27 +282,27 @@ export default function CampaignCreatePage() {
                       value={newPlayerName}
                       onChange={(e) => setNewPlayerName(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') addPlayerName();
+                        if (e.key === 'Enter') addFromField();
                       }}
                     />
                     <Button
                       variant="contained"
                       startIcon={<AddIcon />}
-                      onClick={addPlayerName}
+                      onClick={addFromField}
                       disabled={newPlayerName.trim() === ''}
                     >
                       Ajouter
                     </Button>
                   </Stack>
-                  {playerNames.length === 0 ? (
+                  {draft.players.length === 0 ? (
                     <Typography variant="body2" color="text.secondary">
                       Aucun joueur pour l’instant.
                     </Typography>
                   ) : (
                     <Stack spacing={1}>
-                      {playerNames.map((n, i) => (
+                      {draft.players.map((player, i) => (
                         <Stack
-                          key={`${n}-${i}`}
+                          key={player.joinSecret}
                           direction="row"
                           spacing={1}
                           sx={{
@@ -299,15 +316,13 @@ export default function CampaignCreatePage() {
                           }}
                         >
                           <Typography variant="body1" sx={{ minWidth: 0 }}>
-                            {n}
+                            {player.name}
                           </Typography>
                           <AppTooltip title="Retirer">
                             <IconButton
                               size="small"
                               color="error"
-                              onClick={() =>
-                                setPlayerNames((names) => names.filter((_, j) => j !== i))
-                              }
+                              onClick={() => removePlayer(i)}
                             >
                               <DeleteOutlineIcon fontSize="small" />
                             </IconButton>
@@ -319,7 +334,7 @@ export default function CampaignCreatePage() {
                 </Stack>
               )}
 
-              {step === 3 && !created && (
+              {step === 3 && (
                 <Stack spacing={2}>
                   <Typography variant="h6">Récapitulatif</Typography>
                   <Box>
@@ -327,16 +342,16 @@ export default function CampaignCreatePage() {
                       Nom
                     </Typography>
                     <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                      {name.trim() || 'Nouvelle campagne'}
+                      {draft.name.trim() || 'Nouvelle campagne'}
                     </Typography>
                   </Box>
-                  {description.trim() && (
+                  {draft.description.trim() && (
                     <Box>
                       <Typography variant="overline" color="text.secondary">
                         Notes du MJ
                       </Typography>
                       <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                        {description.trim()}
+                        {draft.description.trim()}
                       </Typography>
                     </Box>
                   )}
@@ -345,103 +360,84 @@ export default function CampaignCreatePage() {
                       Règles de table
                     </Typography>
                     <Typography variant="body2">
-                      Armes à feu {rules.firearmsAllowed ? 'autorisées' : 'interdites'}.
+                      Armes à feu {draft.rules.firearmsAllowed ? 'autorisées' : 'interdites'}.
                     </Typography>
                   </Box>
+
                   <Box>
                     <Typography variant="overline" color="text.secondary">
-                      Joueurs
+                      Joueurs & liens d’invitation
                     </Typography>
-                    {playerNames.length === 0 ? (
+                    {draft.players.length === 0 ? (
                       <Typography variant="body2" color="text.secondary">
                         Aucun joueur — tu pourras en ajouter depuis les réglages.
                       </Typography>
                     ) : (
-                      <Typography variant="body2">{playerNames.join(', ')}</Typography>
+                      <>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                          Chaque joueur reçoit un lien magique unique : en l’ouvrant, il rejoint la
+                          campagne sans créer de compte et pourra éditer sa fiche. Garde ces liens
+                          privés — tu peux en régénérer un ici s’il te semble compromis.
+                        </Typography>
+                        <Stack spacing={1}>
+                          {draft.players.map((player, i) => (
+                            <Stack
+                              key={player.joinSecret}
+                              direction={{ xs: 'column', sm: 'row' }}
+                              spacing={1}
+                              sx={{ alignItems: { sm: 'center' } }}
+                            >
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ fontWeight: 600, minWidth: { sm: 120 }, flexShrink: 0 }}
+                              >
+                                {player.name}
+                              </Typography>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                label="Lien magique"
+                                value={joinLinkUrl(origin, player.joinSecret)}
+                                slotProps={{
+                                  input: {
+                                    readOnly: true,
+                                    endAdornment: (
+                                      <InputAdornment position="end">
+                                        <AppTooltip title="Copier le lien">
+                                          <IconButton
+                                            size="small"
+                                            edge="end"
+                                            onClick={() => void handleCopy(player.joinSecret)}
+                                          >
+                                            <ContentCopyIcon fontSize="small" />
+                                          </IconButton>
+                                        </AppTooltip>
+                                        <AppTooltip title="Régénérer le lien">
+                                          <IconButton
+                                            size="small"
+                                            edge="end"
+                                            onClick={() => regeneratePlayer(i)}
+                                          >
+                                            <AutorenewIcon fontSize="small" />
+                                          </IconButton>
+                                        </AppTooltip>
+                                      </InputAdornment>
+                                    ),
+                                  },
+                                }}
+                              />
+                            </Stack>
+                          ))}
+                        </Stack>
+                      </>
                     )}
                   </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    À la création, chaque joueur reçoit un lien magique d’invitation ; ils
-                    s’afficheront ici juste après.
-                  </Typography>
-                </Stack>
-              )}
-
-              {/* Écran final : campagne créée, liens magiques générés. */}
-              {created && (
-                <Stack spacing={2}>
-                  <Typography variant="h6">Campagne créée</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    « {created.name} » est prête. Chaque joueur reçoit un lien magique unique : en
-                    l’ouvrant, il rejoint la campagne sans créer de compte et pourra éditer sa
-                    fiche. Garde ces liens privés — tu peux en régénérer un s’il fuite (l’ancien
-                    cesse alors de fonctionner).
-                  </Typography>
-                  {playerError && <AppAlert severity="warning">{playerError}</AppAlert>}
-                  {createdPlayers.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">
-                      Aucun joueur pour l’instant. Tu pourras en ajouter depuis les réglages de la
-                      campagne.
-                    </Typography>
-                  ) : (
-                    <Stack spacing={1}>
-                      {createdPlayers.map((player) => (
-                        <Stack
-                          key={player.id}
-                          direction={{ xs: 'column', sm: 'row' }}
-                          spacing={1}
-                          sx={{ alignItems: { sm: 'center' } }}
-                        >
-                          <Typography
-                            variant="subtitle1"
-                            sx={{ fontWeight: 600, minWidth: { sm: 120 }, flexShrink: 0 }}
-                          >
-                            {player.name}
-                          </Typography>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            label="Lien magique"
-                            value={joinLinkUrl(origin, player.joinSecret)}
-                            slotProps={{
-                              input: {
-                                readOnly: true,
-                                endAdornment: (
-                                  <InputAdornment position="end">
-                                    <AppTooltip title="Copier le lien">
-                                      <IconButton
-                                        size="small"
-                                        edge="end"
-                                        onClick={() => void handleCopy(player.joinSecret)}
-                                      >
-                                        <ContentCopyIcon fontSize="small" />
-                                      </IconButton>
-                                    </AppTooltip>
-                                    <AppTooltip title="Régénérer (coupe l'ancien lien)">
-                                      <IconButton
-                                        size="small"
-                                        edge="end"
-                                        disabled={busyPlayerId === player.id}
-                                        onClick={() => void handleRegenerate(player.id)}
-                                      >
-                                        <AutorenewIcon fontSize="small" />
-                                      </IconButton>
-                                    </AppTooltip>
-                                  </InputAdornment>
-                                ),
-                              },
-                            }}
-                          />
-                        </Stack>
-                      ))}
-                    </Stack>
-                  )}
                 </Stack>
               )}
             </Paper>
 
             {/* Étape Identité incomplète : rappel de l'action attendue. */}
-            {!isLast && !canNext && (
+            {!canNext && (
               <AppAlert severity="info" sx={{ mb: 2 }}>
                 Donne un nom à ta campagne pour continuer.
               </AppAlert>
@@ -453,31 +449,10 @@ export default function CampaignCreatePage() {
               </AppAlert>
             )}
 
-            {created ? (
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <Button variant="contained" onClick={() => router.push(`/campaign/${created.id}`)}>
-                  Aller à la campagne
-                </Button>
-              </Box>
-            ) : (
-              navButtons
-            )}
+            {navButtons}
           </>
         )}
       </Container>
-
-      <Snackbar
-        open={toast !== null}
-        autoHideDuration={4000}
-        onClose={() => setToast(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        {toast ? (
-          <AppAlert severity="success" variant="filled" onClose={() => setToast(null)} sx={{ width: '100%' }}>
-            {toast}
-          </AppAlert>
-        ) : undefined}
-      </Snackbar>
     </>
   );
 }
