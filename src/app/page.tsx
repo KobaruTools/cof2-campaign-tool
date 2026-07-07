@@ -465,6 +465,13 @@ export default function HomePage() {
                         bgcolor: 'rgba(0, 0, 0, 0.35)',
                         border: '1px solid rgba(255, 255, 255, 0.10)',
                         '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.45)' },
+                        // Ouvert : le bouton se raccorde à la liste en dessous (angles
+                        // bas carrés, plus de liseré bas pour éviter le double trait).
+                        ...(archivedOpen && {
+                          borderBottomLeftRadius: 0,
+                          borderBottomRightRadius: 0,
+                          borderBottom: 'none',
+                        }),
                       }}
                     >
                       <ExpandMoreIcon
@@ -478,18 +485,17 @@ export default function HomePage() {
                       </Typography>
                     </Box>
                     <Collapse in={archivedOpen} unmountOnExit>
-                      <Box sx={{ mt: 1.5 }}>
-                        <CharacterList
-                          rows={archivedRows}
-                          onOpen={(r) => router.push(`/character/${r.id}`)}
-                          actions={actions}
-                          showCampaign
-                          campaignNameById={campaignNameById}
-                          sort={sort}
-                          onPickSort={pickSort}
-                          renderNameMarker={renderNameMarker}
-                        />
-                      </Box>
+                      <CharacterList
+                        rows={archivedRows}
+                        onOpen={(r) => router.push(`/character/${r.id}`)}
+                        actions={actions}
+                        showCampaign
+                        campaignNameById={campaignNameById}
+                        sort={sort}
+                        onPickSort={pickSort}
+                        renderNameMarker={renderNameMarker}
+                        attachedTop
+                      />
                     </Collapse>
                   </Box>
                 )}

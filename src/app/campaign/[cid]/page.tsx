@@ -204,7 +204,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
     },
   ];
 
-  const list = (groupRows: CharacterSummary[]) => (
+  const list = (groupRows: CharacterSummary[], attachedTop = false) => (
     <CharacterList
       rows={groupRows}
       onOpen={(r) => router.push(`/character/${r.id}`)}
@@ -212,6 +212,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
       sort={sort}
       onPickSort={pickSort}
       renderNameMarker={renderNameMarker}
+      attachedTop={attachedTop}
     />
   );
 
@@ -365,6 +366,13 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
                     bgcolor: 'rgba(0, 0, 0, 0.35)',
                     border: '1px solid rgba(255, 255, 255, 0.10)',
                     '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.45)' },
+                    // Ouvert : le bouton se raccorde à la liste en dessous (angles bas
+                    // carrés, plus de liseré bas pour éviter le double trait).
+                    ...(archivedOpen && {
+                      borderBottomLeftRadius: 0,
+                      borderBottomRightRadius: 0,
+                      borderBottom: 'none',
+                    }),
                   }}
                 >
                   <ExpandMoreIcon
@@ -378,7 +386,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
                   </Typography>
                 </Box>
                 <Collapse in={archivedOpen} unmountOnExit>
-                  <Box sx={{ mt: 1.5 }}>{list(archivedRows)}</Box>
+                  {list(archivedRows, true)}
                 </Collapse>
               </Box>
             )}
