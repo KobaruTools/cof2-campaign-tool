@@ -19,10 +19,19 @@ const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join', '/about', '/privacy'] 
 
 /**
  * Routes ouvertes à une session **joueur** (utilisateur anonyme du lien magique,
- * PER-191) : son espace `/play` et, à terme, l'édition de sa fiche `/character/*`.
- * Tout le reste (UI propriétaire) lui est interdit → renvoyé vers `/play`.
+ * PER-191) : son espace `/play`, l'édition de sa fiche `/character/*` et la
+ * création d'une fiche `/create` (PER-196 — attribuée à lui dans sa campagne, le
+ * scope réel étant porté par la RLS/trigger). Tout le reste (UI propriétaire) lui
+ * est interdit → renvoyé vers `/play`.
  */
-const PLAYER_PATH_PREFIXES = ['/play', '/character'] as const;
+const PLAYER_PATH_PREFIXES = ['/play', '/character', '/create'] as const;
+
+/**
+ * Routes **partagées** par les deux rôles : le MJ n'en est PAS exclu (contrairement
+ * à `/play`, exclusif au joueur). `/character/*` (fiche) et `/create` (wizard) sont
+ * empruntées par le MJ comme par le joueur.
+ */
+const SHARED_PATH_PREFIXES = ['/character', '/create'] as const;
 
 function matchesPrefix(pathname: string, prefixes: readonly string[]): boolean {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -119,9 +128,9 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     if (!isPublicPath(pathname) && !isPlayerPath(pathname)) {
       return redirectTo('/play');
     }
-  } else if (isPlayerPath(pathname) && !pathname.startsWith('/character')) {
-    // MJ visant l'espace joueur `/play` → ramené à son accueil. (`/character/*`
-    // reste commun aux deux rôles.)
+  } else if (isPlayerPath(pathname) && !matchesPrefix(pathname, SHARED_PATH_PREFIXES)) {
+    // MJ visant l'espace joueur `/play` (exclusif au joueur) → ramené à son
+    // accueil. Les routes partagées (`/character/*`, `/create`) restent ouvertes.
     return redirectTo('/');
   }
 

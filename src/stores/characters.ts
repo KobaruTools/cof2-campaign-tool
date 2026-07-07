@@ -72,6 +72,17 @@ interface CharactersState {
    * si l'insertion cloud échoue (le wizard conserve alors le brouillon).
    */
   commitNewCharacter: (character: Character) => Promise<Character>;
+  /**
+   * Réclame une fiche NON attribuée de sa campagne pour un joueur (PER-196) :
+   * pose `playerId` et écrit **immédiatement** en base (hors flush débouncé, pour
+   * un retour direct succès/conflit). La fiche doit avoir été chargée depuis le
+   * cloud (présente dans `cloudVersions`). Le trigger `enforce_player_character_scope`
+   * (migration 0004) n'autorise cette transition (`player_id` null → soi) que sur
+   * une fiche non attribuée de la campagne du joueur. Lève si Supabase est absent,
+   * si la fiche est introuvable/non chargée, ou en cas de conflit de version
+   * (fiche déjà réclamée/modifiée ailleurs → pose aussi `conflictId`).
+   */
+  claim: (id: string, playerId: string) => Promise<void>;
   /** Duplique un personnage existant ; retourne la copie (ou undefined). */
   duplicate: (id: string) => Character | undefined;
   /** Supprime un personnage (et sa ligne cloud le cas échéant). */
@@ -244,6 +255,30 @@ export const useCharactersStore = create<CharactersState>()(
             cloudVersions: { ...s.cloudVersions, [stamped.id]: version },
           }));
           return stamped;
+        },
+
+        claim: async (id, playerId) => {
+          if (!isSupabaseConfigured()) {
+            throw new Error('Synchronisation cloud indisponible.');
+          }
+          const state = get();
+          const character = state.characters.find((c) => c.id === id);
+          const version = state.cloudVersions[id];
+          if (!character || version === undefined) {
+            throw new Error('Fiche introuvable ou non chargée depuis le cloud.');
+          }
+          const claimed = withTimestamp({ ...character, playerId });
+          const nextVersion = await updateCharacterRow(claimed, version);
+          if (nextVersion === null) {
+            // Verrou optimiste : la fiche a changé côté serveur (déjà réclamée ou
+            // éditée). On ne réécrit pas et on signale le conflit à l'UI.
+            set({ conflictId: id });
+            throw new Error('Cette fiche a changé entre-temps. Recharge la page.');
+          }
+          set((s) => ({
+            characters: s.characters.map((c) => (c.id === id ? claimed : c)),
+            cloudVersions: { ...s.cloudVersions, [id]: nextVersion },
+          }));
         },
 
         duplicate: (id) => {

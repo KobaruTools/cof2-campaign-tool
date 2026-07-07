@@ -37,6 +37,7 @@ import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { classDisplayName } from '@/lib/character/classDisplay';
 import { firearmsEffective } from '@/lib/character/firearms';
+import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
 import { mergeMods, orphanMods, orphanSourceTerms } from '@/lib/character/orphanPoints';
@@ -161,6 +162,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const players = usePlayersStore((s) => s.players);
   const playersCampaignId = usePlayersStore((s) => s.campaignId);
   const loadPlayers = usePlayersStore((s) => s.load);
+  // Session joueur (PER-196) : usage COSMÉTIQUE — un joueur ne réattribue ni sa
+  // campagne ni son joueur (le trigger gèle ces colonnes). On masque donc pour lui
+  // les sélecteurs d'attribution (il garde l'édition de contenu, du statut, etc.).
+  const isPlayer = useIsPlayerSession();
 
   // Charge le personnage depuis le cloud (RLS `owner_id`, PER-192) en cas d'accès
   // direct à l'URL, et les campagnes pour résoudre le libellé d'attribution.
@@ -781,7 +786,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               <Typography variant="body2" component="span">
                 Campagne :
               </Typography>
-              {editingBlocks.identity ? (
+              {editingBlocks.identity && !isPlayer ? (
                 <TextField
                   select
                   size="small"
@@ -815,7 +820,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   <Typography variant="body2" component="span">
                     Joueur :
                   </Typography>
-                  {editingBlocks.identity ? (
+                  {editingBlocks.identity && !isPlayer ? (
                     <TextField
                       select
                       size="small"
