@@ -942,27 +942,28 @@ export function LevelUpDialog({
               )}
             </Stack>
 
-            {/* Règle maison « dé de vie » (PER-87) : choix PV fixes / lancer le DR. */}
+            {/* Règle maison « dé de vie » (PER-87) : choix PV fixes / lancer le DR, avec
+                la saisie du jet À DROITE du choix pour gagner de la place. */}
             {hitDieOnLevelUp && family && hitDie && (
               <Box sx={{ mt: 1.5 }}>
-                <ToggleButtonGroup
-                  size="small"
-                  exclusive
-                  value={hpMode}
-                  onChange={(_, v) => v && setHpMode(v)}
-                  aria-label="Mode de gain de PV à ce niveau"
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{ alignItems: 'center', flexWrap: 'wrap' }}
                 >
-                  <ToggleButton value="fixed">
-                    PV fixes{hpGain !== null ? ` (+${hpGain})` : ''}
-                  </ToggleButton>
-                  <ToggleButton value="rolled">Dé de vie ({hitDie})</ToggleButton>
-                </ToggleButtonGroup>
-                {rolling && (
-                  <Stack
-                    direction="row"
-                    spacing={1.5}
-                    sx={{ alignItems: 'center', mt: 1, flexWrap: 'wrap' }}
+                  <ToggleButtonGroup
+                    size="small"
+                    exclusive
+                    value={hpMode}
+                    onChange={(_, v) => v && setHpMode(v)}
+                    aria-label="Mode de gain de PV à ce niveau"
                   >
+                    <ToggleButton value="fixed">
+                      PV fixes{hpGain !== null ? ` (+${hpGain})` : ''}
+                    </ToggleButton>
+                    <ToggleButton value="rolled">Dé de vie ({hitDie})</ToggleButton>
+                  </ToggleButtonGroup>
+                  {rolling && (
                     <TextField
                       size="small"
                       type="number"
@@ -977,32 +978,43 @@ export function LevelUpDialog({
                           'aria-label': 'Résultat du dé de vie',
                         },
                       }}
-                      sx={{ width: 160 }}
+                      sx={{ width: 150 }}
                     />
-                    {rolledValid && (
-                      <Typography variant="body2" color="text.secondary">
-                        Jet {rolledNum} {con >= 0 ? `+ CON ${con}` : `− CON ${Math.abs(con)}`} = +
-                        {rolledNum + con} PV
+                  )}
+                </Stack>
+
+                {/* Notes : affichées UNIQUEMENT en mode « Dé de vie », en style discret
+                    (comme les notes de voie). Le hors-plage garde un ton d'avertissement. */}
+                {rolling && (
+                  <Box sx={{ mt: 1 }}>
+                    {rolledOutOfRange && (
+                      <Typography
+                        variant="caption"
+                        component="div"
+                        color="warning.main"
+                        sx={{ mb: 0.5 }}
+                      >
+                        Un {hitDie} ne dépasse pas {dieMax} — valeur conservée telle quelle (les dés
+                        se lancent à la table).
                       </Typography>
                     )}
-                  </Stack>
+                    <Typography
+                      variant="caption"
+                      component="div"
+                      sx={{
+                        fontStyle: 'italic',
+                        color: (theme) => alpha(theme.palette.text.secondary, 0.85),
+                      }}
+                    >
+                      Règle maison : lancez votre dé de récupération à la table et saisissez le
+                      résultat ; la Constitution s’ajoute au jet. Les valeurs d’attaque, la défense
+                      et les autres statistiques dérivées sont recalculées automatiquement à partir
+                      du niveau.
+                    </Typography>
+                  </Box>
                 )}
-                <Typography
-                  variant="caption"
-                  color={rolledOutOfRange ? 'warning.main' : 'text.secondary'}
-                  sx={{ display: 'block', mt: 0.5 }}
-                >
-                  {rolledOutOfRange
-                    ? `Un ${hitDie} ne dépasse pas ${dieMax} — valeur conservée telle quelle (les dés se lancent à la table).`
-                    : 'Règle maison : lancez votre dé de récupération à la table et saisissez le résultat ; la Constitution s’ajoute au jet.'}
-                </Typography>
               </Box>
             )}
-
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-              Les valeurs d’attaque, la défense et les autres statistiques dérivées sont recalculées
-              automatiquement à partir du niveau.
-            </Typography>
           </Box>
 
           <Divider />
