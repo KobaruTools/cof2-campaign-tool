@@ -43,11 +43,18 @@ export function AccountMenu() {
 
   // Charge l'utilisateur courant (asynchrone → pas de setState synchrone en effet).
   // `label` reste null (menu masqué) sans session ou pour une session joueur.
+  //
+  // On lit `getSession()` (session en cache local, AUCUN réseau) et non `getUser()`
+  // (qui revalide toujours via GoTrue → un aller-retour /auth/v1/user par page). Ici
+  // on ne fait qu'afficher un nom et distinguer propriétaire vs joueur : la revalidation
+  // serveur n'apporte rien, et toute opération réellement protégée reste vérifiée côté
+  // serveur. Économise un appel réseau à chaque navigation.
   useEffect(() => {
     if (!IS_CONFIGURED) return;
     let cancelled = false;
     const supabase = createBrowserSupabaseClient();
-    void supabase.auth.getUser().then(({ data: { user } }) => {
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user;
       if (cancelled || !user) return;
       const isPlayer = Boolean(
         (user.app_metadata as { player_id?: string } | undefined)?.player_id,

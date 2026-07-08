@@ -188,7 +188,7 @@ export function PlayersSection({
         <AppAlert
           severity="error"
           action={
-            <Button color="inherit" size="small" onClick={() => void load(campaignId)}>
+            <Button color="inherit" size="small" onClick={() => void load(campaignId, { force: true })}>
               Réessayer
             </Button>
           }

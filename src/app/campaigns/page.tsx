@@ -165,7 +165,7 @@ export default function CampaignsPage() {
             severity="error"
             sx={{ mb: 3 }}
             action={
-              <Button color="inherit" size="small" onClick={() => void load()}>
+              <Button color="inherit" size="small" onClick={() => void load({ force: true })}>
                 Réessayer
               </Button>
             }

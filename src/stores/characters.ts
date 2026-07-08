@@ -62,8 +62,15 @@ interface CharactersState {
   hasHydrated: boolean;
   setHasHydrated: (value: boolean) => void;
 
-  /** Charge les persos cloud et les fusionne au staging local. Idempotent, au montage. */
-  load: () => Promise<void>;
+  /**
+   * Charge les persos cloud et les fusionne au staging local, au montage.
+   * **Idempotent et mis en cache** : si déjà chargé (`ready`) ou en cours
+   * (`loading`), ne refait AUCUN appel réseau — le store vit pour toute la session
+   * SPA et les mutations le maintiennent à jour. `{ force: true }` pour recharger.
+   * (Après un rechargement de page, `status` repart à `idle` — cf. `partialize` qui
+   * ne persiste que `characters` — donc le fetch cloud initial a toujours lieu.)
+   */
+  load: (opts?: { force?: boolean }) => Promise<void>;
   /** Ajoute ou remplace un personnage (par id) ; met à jour `updatedAt`. Flush cloud débouncé si cloud. */
   upsert: (character: Character) => void;
   /**
@@ -208,11 +215,14 @@ export const useCharactersStore = create<CharactersState>()(
         hasHydrated: false,
         setHasHydrated: (value) => set({ hasHydrated: value }),
 
-        load: async () => {
+        load: async (opts) => {
           if (!isSupabaseConfigured()) {
             set({ status: 'unconfigured' });
             return;
           }
+          // Cache : pas de refetch si déjà chargé/en cours, sauf force explicite.
+          const { status } = get();
+          if (!opts?.force && (status === 'ready' || status === 'loading')) return;
           set({ status: 'loading', error: null });
           try {
             const loaded = await fetchCharacters();

@@ -28,8 +28,12 @@ interface PlayersState {
   status: PlayersStatus;
   error: string | null;
 
-  /** Charge (ou recharge) le roster d'une campagne. À appeler au montage. */
-  load: (campaignId: string) => Promise<void>;
+  /**
+   * Charge le roster d'une campagne, au montage. **Mis en cache par campagne** :
+   * si le roster de CETTE campagne est déjà chargé (`ready`) ou en cours, ne refait
+   * aucun appel réseau ; changer de campagne refetch. `{ force: true }` pour recharger.
+   */
+  load: (campaignId: string, opts?: { force?: boolean }) => Promise<void>;
   /** Crée un joueur dans la campagne courante et l'ajoute au cache. Lève en cas d'échec. */
   create: (name: string) => Promise<Player>;
   /** Renomme un joueur. Lève en cas d'échec. */
@@ -58,9 +62,18 @@ export const usePlayersStore = create<PlayersState>()((set, get) => ({
   status: 'idle',
   error: null,
 
-  load: async (campaignId) => {
+  load: async (campaignId, opts) => {
     if (!isSupabaseConfigured()) {
       set({ status: 'unconfigured', players: [], campaignId, error: null });
+      return;
+    }
+    // Cache par campagne : pas de refetch si CETTE campagne est déjà chargée/en cours.
+    const state = get();
+    if (
+      !opts?.force &&
+      state.campaignId === campaignId &&
+      (state.status === 'ready' || state.status === 'loading')
+    ) {
       return;
     }
     set({ status: 'loading', campaignId, error: null });

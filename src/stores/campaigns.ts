@@ -35,8 +35,14 @@ interface CampaignsState {
   status: CampaignsStatus;
   error: string | null;
 
-  /** Charge (ou recharge) les campagnes possédées. Idempotent, à appeler au montage. */
-  load: () => Promise<void>;
+  /**
+   * Charge les campagnes possédées, à appeler au montage. **Idempotent et mis en
+   * cache** : si la liste est déjà chargée (`ready`) ou en cours (`loading`), ne
+   * refait AUCUN appel réseau — le store est un cache mémoire vivant pour toute la
+   * session (les mutations create/update/remove le maintiennent à jour). Passer
+   * `{ force: true }` pour un rechargement explicite (bouton « Réessayer »).
+   */
+  load: (opts?: { force?: boolean }) => Promise<void>;
   /**
    * Crée une campagne côté cloud et l'ajoute au cache. Lève en cas d'échec. Les
    * `rules` sont optionnelles : l'assistant de création (PER-198) les fournit
@@ -73,11 +79,14 @@ export const useCampaignsStore = create<CampaignsState>()((set, get) => ({
   status: 'idle',
   error: null,
 
-  load: async () => {
+  load: async (opts) => {
     if (!isSupabaseConfigured()) {
       set({ status: 'unconfigured', campaigns: [], error: null });
       return;
     }
+    // Cache : on ne refetch pas si déjà chargé ou en cours, sauf force explicite.
+    const { status } = get();
+    if (!opts?.force && (status === 'ready' || status === 'loading')) return;
     set({ status: 'loading', error: null });
     try {
       const campaigns = await fetchCampaigns();
