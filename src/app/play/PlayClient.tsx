@@ -24,11 +24,16 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useToast } from '@/components/toast/ToastProvider';
+import { CharacterPreviewCard } from '@/components/CharacterPreviewCard';
 import {
   CharacterList,
   type CharacterListAction,
@@ -49,12 +54,10 @@ import { useCharactersStore } from '@/stores/characters';
  */
 function ClaimableRow({
   row,
-  claiming,
   onPreview,
   onClaim,
 }: {
   row: CharacterSummary;
-  claiming: boolean;
   onPreview: () => void;
   onClaim: () => void;
 }) {
@@ -94,10 +97,7 @@ function ClaimableRow({
       <Button
         variant="contained"
         size="small"
-        disabled={claiming}
-        startIcon={
-          claiming ? <CircularProgress size={14} color="inherit" /> : <PersonAddIcon />
-        }
+        startIcon={<PersonAddIcon />}
         onClick={onClaim}
         sx={{ flexShrink: 0 }}
       >
@@ -131,7 +131,10 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
   const claim = useCharactersStore((s) => s.claim);
 
   const { showToast } = useToast();
-  const [claimingId, setClaimingId] = useState<string | null>(null);
+  // Personnage dont la réclamation est en cours de confirmation (modale d'aperçu) ;
+  // null = modale fermée. `claimBusy` couvre l'écriture cloud le temps du clic.
+  const [claimTarget, setClaimTarget] = useState<CharacterSummary | null>(null);
+  const [claimBusy, setClaimBusy] = useState(false);
 
   // Charge (et fusionne) le roster de la campagne via la RLS joueur.
   useEffect(() => {
@@ -151,15 +154,24 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
     [characters, campaignId],
   );
 
-  const handleClaim = async (r: CharacterSummary) => {
-    setClaimingId(r.id);
+  // Personnage complet à prévisualiser dans la modale (le blob, pas le résumé).
+  const claimPreview = claimTarget
+    ? characters.find((c) => c.id === claimTarget.id) ?? null
+    : null;
+
+  // Confirme la réclamation depuis la modale : écrit en base, notifie, referme.
+  const confirmClaim = async () => {
+    if (!claimTarget) return;
+    setClaimBusy(true);
     try {
-      await claim(r.id, playerId);
-      showToast(`« ${r.name} » est désormais ta fiche.`, 'success');
+      await claim(claimTarget.id, playerId);
+      showToast(`« ${claimTarget.name} » est désormais ta fiche.`, 'success');
+      setClaimTarget(null);
     } catch (e) {
+      // On garde la modale ouverte pour permettre un nouvel essai ; le toast informe.
       showToast(e instanceof Error ? e.message : 'La réclamation a échoué.', 'error');
     } finally {
-      setClaimingId(null);
+      setClaimBusy(false);
     }
   };
 
@@ -248,14 +260,47 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
               <ClaimableRow
                 key={r.id}
                 row={r}
-                claiming={claimingId === r.id}
                 onPreview={() => router.push(`/character/${r.id}`)}
-                onClaim={() => void handleClaim(r)}
+                onClaim={() => setClaimTarget(r)}
               />
             ))}
           </Stack>
         </Paper>
       )}
+
+      {/* Confirmation de réclamation : aperçu du personnage (micro-fiche) avant de
+          se l'attribuer, pour éviter un clic par erreur (le geste est réversible
+          seulement côté MJ). */}
+      <Dialog
+        open={claimTarget !== null}
+        onClose={() => (claimBusy ? undefined : setClaimTarget(null))}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Réclamer ce personnage ?</DialogTitle>
+        <DialogContent>
+          {claimPreview ? <CharacterPreviewCard character={claimPreview} /> : null}
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Il te sera attribué et rejoindra « Mes fiches ». Seul ton MJ pourra ensuite le
+            désattribuer.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClaimTarget(null)} disabled={claimBusy}>
+            Annuler
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void confirmClaim()}
+            disabled={claimBusy}
+            startIcon={
+              claimBusy ? <CircularProgress size={14} color="inherit" /> : <PersonAddIcon />
+            }
+          >
+            Réclamer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
