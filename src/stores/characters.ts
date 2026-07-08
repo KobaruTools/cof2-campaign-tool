@@ -21,6 +21,13 @@
  * `load()` récupère les persos cloud (RLS `owner_id`) et les **fusionne** avec le
  * staging local (cloud prioritaire par id, cf. `repo.mergeCharacters`).
  *
+ * Fraîcheur multi-session (PER-205) : sans temps réel, une session ne voit les
+ * changements d'une autre qu'au prochain `load()` (rechargement de page). Un perso
+ * supprimé ailleurs ne doit alors PAS ressusciter depuis le staging local : le
+ * marqueur persisté `cloudBackedIds` (dérivé de `cloudVersions`) permet à `load()`
+ * de distinguer un « supprimé du cloud » (à purger) d'un « jamais téléversé » (à
+ * conserver). La souscription temps réel Supabase reste différée (cf. PER-205).
+ *
  * Garde-fou : sans variables d'env Supabase (mode 100 % local historique), le
  * store reste `unconfigured` et se comporte comme avant (localStorage seul).
  *
@@ -52,6 +59,13 @@ interface CharactersState {
   characters: Character[];
   /** Versions cloud chargées, par id. Un id présent ⇒ perso cloud. Non persisté. */
   cloudVersions: Record<string, number>;
+  /**
+   * Marqueur **persisté** des ids qu'on savait cloud-backed (PER-205). Dérivé de
+   * `cloudVersions` à l'écriture (`partialize`) et relu au montage (`merge`).
+   * Fait foi uniquement au chargement (`load`) pour purger les fantômes — un perso
+   * local supprimé depuis une autre session, qui ressusciterait sinon à la fusion.
+   */
+  cloudBackedIds: string[];
   status: CharactersStatus;
   error: string | null;
   /**
@@ -67,8 +81,9 @@ interface CharactersState {
    * **Idempotent et mis en cache** : si déjà chargé (`ready`) ou en cours
    * (`loading`), ne refait AUCUN appel réseau — le store vit pour toute la session
    * SPA et les mutations le maintiennent à jour. `{ force: true }` pour recharger.
-   * (Après un rechargement de page, `status` repart à `idle` — cf. `partialize` qui
-   * ne persiste que `characters` — donc le fetch cloud initial a toujours lieu.)
+   * (Après un rechargement de page, `status` repart à `idle` — `partialize` ne
+   * persiste que le staging `characters` et le marqueur `cloudBackedIds`, pas
+   * l'état de synchro — donc le fetch cloud initial a toujours lieu.)
    */
   load: (opts?: { force?: boolean }) => Promise<void>;
   /** Ajoute ou remplace un personnage (par id) ; met à jour `updatedAt`. Flush cloud débouncé si cloud. */
@@ -209,6 +224,7 @@ export const useCharactersStore = create<CharactersState>()(
       return {
         characters: [],
         cloudVersions: {},
+        cloudBackedIds: [],
         status: 'idle',
         error: null,
         conflictId: null,
@@ -229,9 +245,15 @@ export const useCharactersStore = create<CharactersState>()(
             const cloud = loaded.map((l) => l.character);
             const cloudVersions: Record<string, number> = {};
             for (const l of loaded) cloudVersions[l.character.id] = l.version;
+            const cloudIds = cloud.map((c) => c.id);
             set((s) => ({
-              characters: mergeCharacters(cloud, s.characters),
+              // Purge des fantômes (PER-205) : on passe le marqueur cloud-backed
+              // rehydraté pour écarter les persos supprimés depuis une autre session.
+              characters: mergeCharacters(cloud, s.characters, new Set(s.cloudBackedIds)),
               cloudVersions,
+              // Le cloud fraîchement lu fait foi : le marqueur reflète désormais
+              // exactement les ids réellement présents en base.
+              cloudBackedIds: cloudIds,
               status: 'ready',
               error: null,
             }));
@@ -413,13 +435,23 @@ export const useCharactersStore = create<CharactersState>()(
     {
       name: 'cof2-characters',
       storage: createJSONStorage(() => localStorage),
-      // Seuls les personnages sont persistés en staging (les versions cloud et
-      // l'état de synchro sont reconstruits par `load()`).
-      partialize: (state) => ({ characters: state.characters }),
+      // On persiste le staging des personnages, plus le marqueur cloud-backed
+      // (PER-205) **dérivé de `cloudVersions`** — pas maintenu à part : la clé de
+      // `cloudVersions` est l'unique source de vérité du « qui est cloud ». Les
+      // versions elles-mêmes et l'état de synchro sont reconstruits par `load()`.
+      partialize: (state) => ({
+        characters: state.characters,
+        cloudBackedIds: Object.keys(state.cloudVersions),
+      }),
       // À chaque relecture du staging, on migre les personnages vers le schéma
-      // courant (PRD §7), en conservant l'original si la migration échoue.
+      // courant (PRD §7), en conservant l'original si la migration échoue, et on
+      // relit le marqueur cloud-backed (consommé par `load()` pour purger les
+      // fantômes).
       merge: (persisted, current) => {
-        const stored = (persisted as { characters?: unknown[] } | undefined)?.characters;
+        const p = persisted as
+          | { characters?: unknown[]; cloudBackedIds?: unknown }
+          | undefined;
+        const stored = p?.characters;
         const characters = Array.isArray(stored)
           ? stored.map((raw) => {
               try {
@@ -429,7 +461,10 @@ export const useCharactersStore = create<CharactersState>()(
               }
             })
           : current.characters;
-        return { ...current, characters };
+        const cloudBackedIds = Array.isArray(p?.cloudBackedIds)
+          ? (p.cloudBackedIds as unknown[]).filter((x): x is string => typeof x === 'string')
+          : current.cloudBackedIds;
+        return { ...current, characters, cloudBackedIds };
       },
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

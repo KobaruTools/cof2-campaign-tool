@@ -56,10 +56,25 @@ export function rowToCharacter(row: CharacterRow): LoadedCharacter {
  * (« Supabase prime » — la copie locale n'est alors qu'un tampon de transition).
  * Les persos uniquement locaux (hérités / anonymes / importés) sont conservés en
  * staging jusqu'à leur téléversement explicite (PER-193).
+ *
+ * Purge des fantômes (PER-205) : `knownCloudBackedIds` est le marqueur **persisté**
+ * des ids qu'on savait cloud-backed (dérivé de `cloudVersions` d'une session
+ * précédente). Un perso local absent du cloud courant **mais présent dans ce
+ * marqueur** a été supprimé depuis une autre session/appareil → on ne le ressuscite
+ * pas. Un local hors du marqueur est un « jamais téléversé » (staging) → conservé.
+ * Sans marqueur (ancien appel à 2 arguments), on ne purge rien (rétrocompat).
  */
-export function mergeCharacters(cloud: Character[], local: Character[]): Character[] {
+export function mergeCharacters(
+  cloud: Character[],
+  local: Character[],
+  knownCloudBackedIds: ReadonlySet<string> = new Set(),
+): Character[] {
+  const cloudIds = new Set(cloud.map((c) => c.id));
   const byId = new Map<string, Character>();
-  for (const c of local) byId.set(c.id, c);
+  for (const c of local) {
+    if (!cloudIds.has(c.id) && knownCloudBackedIds.has(c.id)) continue; // fantôme purgé
+    byId.set(c.id, c);
+  }
   for (const c of cloud) byId.set(c.id, c); // le cloud écrase le local
   return [...byId.values()];
 }

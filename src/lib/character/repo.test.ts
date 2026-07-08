@@ -79,6 +79,39 @@ describe('mergeCharacters', () => {
     const local = [character({ id: 'legacy' })];
     expect(mergeCharacters(cloud, local).map((c) => c.id)).toEqual(['legacy']);
   });
+
+  it('sans marqueur cloud-backed, conserve tout local absent du cloud (rétrocompat)', () => {
+    // Comportement historique (2 args) : on ne purge rien faute de savoir qui
+    // était cloud-backed.
+    const cloud: Character[] = [];
+    const local = [character({ id: 'ghost' }), character({ id: 'legacy' })];
+    expect(mergeCharacters(cloud, local).map((c) => c.id).sort()).toEqual(['ghost', 'legacy']);
+  });
+
+  it('purge un fantôme : local connu cloud-backed mais absent du cloud courant', () => {
+    // « ghost » a été chargé du cloud dans une session précédente (donc dans le
+    // marqueur), puis supprimé ailleurs → il ne doit pas ressusciter.
+    const cloud: Character[] = [];
+    const local = [character({ id: 'ghost' })];
+    const known = new Set(['ghost']);
+    expect(mergeCharacters(cloud, local, known)).toEqual([]);
+  });
+
+  it('conserve un local jamais téléversé (hors marqueur) même si on purge par ailleurs', () => {
+    const cloud: Character[] = [];
+    const local = [character({ id: 'ghost' }), character({ id: 'legacy' })];
+    const known = new Set(['ghost']); // seul ghost était cloud-backed
+    expect(mergeCharacters(cloud, local, known).map((c) => c.id)).toEqual(['legacy']);
+  });
+
+  it('ne purge pas un perso encore présent dans le cloud (même s’il est dans le marqueur)', () => {
+    const cloud = [character({ id: 'alive', name: 'Version cloud' })];
+    const local = [character({ id: 'alive', name: 'Version locale' })];
+    const known = new Set(['alive']);
+    const merged = mergeCharacters(cloud, local, known);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].name).toBe('Version cloud');
+  });
 });
 
 describe('bindForUpload', () => {
