@@ -40,11 +40,13 @@ import {
 } from '@/components/character-list/CharacterList';
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
 import { ClassIcon } from '@/components/ClassIcon';
+import { PlayerBadge } from '@/components/home/PlayerBadge';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { summarize } from '@/lib/character/summary';
 import { downloadCharacterExport } from '@/lib/character/transferExport';
 import { classColor } from '@/lib/ui/classColors';
 import { useCharactersStore } from '@/stores/characters';
+import { usePlayersStore } from '@/stores/players';
 
 /**
  * Une ligne « À réclamer » : identité du personnage (cliquable → aperçu de la
@@ -130,6 +132,10 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
   const cloudVersions = useCharactersStore((s) => s.cloudVersions);
   const loadCharacters = useCharactersStore((s) => s.load);
   const claim = useCharactersStore((s) => s.claim);
+  // Roster des joueurs (RLS `players_read_roster`) : pour nommer le joueur qui
+  // incarne chaque personnage dans la section « Le roster ».
+  const players = usePlayersStore((s) => s.players);
+  const loadPlayers = usePlayersStore((s) => s.load);
 
   const { showToast } = useToast();
   // Personnage dont la réclamation est en cours de confirmation (modale d'aperçu) ;
@@ -140,7 +146,13 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
   // Charge (et fusionne) le roster de la campagne via la RLS joueur.
   useEffect(() => {
     void loadCharacters();
-  }, [loadCharacters]);
+    void loadPlayers(campaignId);
+  }, [loadCharacters, loadPlayers, campaignId]);
+
+  const playerNameById = useMemo(
+    () => new Map(players.map((p) => [p.id, p.name])),
+    [players],
+  );
 
   // On ne montre QUE les fiches réellement présentes dans le cloud (chargées par
   // `load()`, donc dans `cloudVersions`). Un joueur n'a jamais de perso purement
@@ -161,6 +173,22 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
         .filter((c) => c.playerId === null && c.campaignId === campaignId && c.id in cloudVersions)
         .map(summarize),
     [characters, campaignId, cloudVersions],
+  );
+  // Le roster : les personnages des AUTRES joueurs de la campagne (attribués, ni
+  // miens ni réclamables). Lecture seule (la RLS autorise la lecture du roster ;
+  // l'écriture d'une fiche d'autrui est refusée → la fiche s'ouvre en lecture seule).
+  const rosterRows = useMemo(
+    () =>
+      characters
+        .filter(
+          (c) =>
+            c.campaignId === campaignId &&
+            c.playerId !== null &&
+            c.playerId !== playerId &&
+            c.id in cloudVersions,
+        )
+        .map(summarize),
+    [characters, campaignId, playerId, cloudVersions],
   );
 
   // Personnage complet à prévisualiser dans la modale (le blob, pas le résumé).
@@ -205,6 +233,16 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
       label: 'Exporter en JSON',
       icon: <DownloadIcon fontSize="small" />,
       onClick: (r) => void handleExport(r),
+    },
+  ];
+
+  // Roster (fiches d'autrui) : seule action « Ouvrir » (lecture seule sur la fiche).
+  const rosterActions: CharacterListAction[] = [
+    {
+      key: 'open',
+      label: 'Ouvrir (lecture seule)',
+      icon: <OpenInNewIcon fontSize="small" />,
+      onClick: (r) => router.push(`/character/${r.id}`),
     },
   ];
 
@@ -276,6 +314,26 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
               />
             ))}
           </Stack>
+        </Paper>
+      )}
+
+      {rosterRows.length > 0 && (
+        <Paper elevation={0} sx={sectionSx}>
+          <Typography variant="h6" sx={{ mb: 0.5 }}>
+            Le roster
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Les personnages des autres joueurs de ta campagne — consultables en lecture seule.
+          </Typography>
+          <CharacterList
+            rows={rosterRows}
+            onOpen={(r) => router.push(`/character/${r.id}`)}
+            actions={rosterActions}
+            renderNameMarker={renderNameMarker}
+            renderNameSuffix={(r) =>
+              r.playerId ? <PlayerBadge name={playerNameById.get(r.playerId) ?? null} /> : null
+            }
+          />
         </Paper>
       )}
 

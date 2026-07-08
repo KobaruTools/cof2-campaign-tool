@@ -102,6 +102,7 @@ import { formatDamageReduction } from '@/lib/ui/damageReduction';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
+import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { PurseField } from '@/components/sheet/PurseField';
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
@@ -162,10 +163,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const players = usePlayersStore((s) => s.players);
   const playersCampaignId = usePlayersStore((s) => s.campaignId);
   const loadPlayers = usePlayersStore((s) => s.load);
-  // Session joueur (PER-196) : usage COSMÉTIQUE — un joueur ne réattribue ni sa
-  // campagne ni son joueur (le trigger gèle ces colonnes). On masque donc pour lui
-  // les sélecteurs d'attribution (il garde l'édition de contenu, du statut, etc.).
-  const isPlayer = useIsPlayerSession();
+  // Session joueur (PER-196). Usages : (1) COSMÉTIQUE — un joueur ne réattribue ni
+  // sa campagne ni son joueur (le trigger gèle ces colonnes), on masque donc les
+  // sélecteurs d'attribution ; (2) LECTURE SEULE — une fiche qui n'est PAS la sienne
+  // (roster d'un colistier) est consultable (RLS `read_roster`) mais non éditable
+  // (RLS refuse l'écriture) : on la présente en lecture seule (cf. `readOnly` plus bas).
+  const { isPlayer, playerId: sessionPlayerId } = useIsPlayerSession();
 
   // Charge le personnage depuis le cloud (RLS `owner_id`, PER-192) en cas d'accès
   // direct à l'URL, et les campagnes pour résoudre le libellé d'attribution.
@@ -255,9 +258,20 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
   const ancestry = ancestryById.get(character.ancestryId);
 
+  // Lecture seule (PER-196) : session joueur consultant une fiche qui n'est pas la
+  // sienne. La RLS refuserait toute écriture (update 0 ligne → conflit silencieux),
+  // donc on neutralise l'édition en amont — `update` devient un no-op et les
+  // affordances d'édition (Modifier, crayons, montée de niveau, recréation) sont
+  // masquées plus bas.
+  const readOnly = isPlayer && character.playerId !== sessionPlayerId;
+
   // Sauvegarde permissive : chaque modification persiste immédiatement (le store
   // applique `updatedAt`). La fiche n'empêche aucun écart aux règles (PER-45).
-  const update = (patch: Partial<Character>) => upsert({ ...character, ...patch });
+  // En lecture seule, aucune écriture (garde-fou : évite les rejets RLS silencieux).
+  const update = (patch: Partial<Character>) => {
+    if (readOnly) return;
+    upsert({ ...character, ...patch });
+  };
   // Attribution de campagne (PER-180) : rattache le personnage à une campagne ou le
   // remet « Non attribué » (`null`). Le joueur étant local à la campagne, on le
   // réinitialise à chaque changement (l'attribution d'un joueur relève de PER-184).
@@ -739,13 +753,15 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         onBack={() => router.push(backTarget.href)}
         backLabel={backTarget.label}
         action={
-          <Button
-            color="inherit"
-            startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
-            onClick={toggleAllEditing}
-          >
-            {allEditing ? 'Terminer' : 'Modifier'}
-          </Button>
+          readOnly ? undefined : (
+            <Button
+              color="inherit"
+              startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
+              onClick={toggleAllEditing}
+            >
+              {allEditing ? 'Terminer' : 'Modifier'}
+            </Button>
+          )
         }
       />
 
@@ -759,6 +775,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           le footer. */}
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>
+          {/* Bandeau lecture seule (PER-196) : session joueur consultant la fiche
+              d'un colistier. Consultable (RLS roster) mais non éditable. */}
+          {readOnly && (
+            <AppAlert severity="info">
+              Fiche d&apos;un autre joueur — consultation en lecture seule.
+            </AppAlert>
+          )}
           {/* En-tête : nom + peuple · profil · niveau, encadré par les illustrations
               du peuple (gauche) et du profil (droite), en filigrane semi-transparent */}
           <Box sx={{ position: 'relative' }}>
@@ -922,34 +945,37 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               </Typography>
             </Stack>
 
-            {/* Montée de niveau (PER-49) : toujours accessible. Le niveau max (20)
-                est une borne d'UI souple — on désactive simplement le bouton. */}
-            <Box sx={{ mt: 1.5, position: 'relative', zIndex: 1 }}>
-              <AppTooltip
-                title={
-                  character.level >= progression.maxLevel
-                    ? `Niveau maximum (${progression.maxLevel}) atteint`
-                    : ''
-                }
-              >
-                <span>
-                  <Button
-                    variant="contained"
-                    startIcon={<UpgradeIcon />}
-                    disabled={character.level >= progression.maxLevel}
-                    onClick={() => setLevelUpOpen(true)}
-                  >
-                    Monter au niveau suivant
-                  </Button>
-                </span>
-              </AppTooltip>
-            </Box>
+            {/* Montée de niveau (PER-49) : toujours accessible (sauf en lecture
+                seule d'une fiche qui n'est pas la sienne). Le niveau max (20) est une
+                borne d'UI souple — on désactive simplement le bouton. */}
+            {!readOnly && (
+              <Box sx={{ mt: 1.5, position: 'relative', zIndex: 1 }}>
+                <AppTooltip
+                  title={
+                    character.level >= progression.maxLevel
+                      ? `Niveau maximum (${progression.maxLevel}) atteint`
+                      : ''
+                  }
+                >
+                  <span>
+                    <Button
+                      variant="contained"
+                      startIcon={<UpgradeIcon />}
+                      disabled={character.level >= progression.maxLevel}
+                      onClick={() => setLevelUpOpen(true)}
+                    >
+                      Monter au niveau suivant
+                    </Button>
+                  </span>
+                </AppTooltip>
+              </Box>
+            )}
 
             {/* Raccourci de recréation (PER-184) : quand le personnage est mort et
                 rattaché à une campagne, lance la création d'un nouveau personnage
                 pré-rempli avec la même campagne et le même joueur (le défunt reste
                 archivé, son historique préservé). */}
-            {character.status === 'dead' && character.campaignId && (
+            {character.status === 'dead' && character.campaignId && !readOnly && (
               <Box sx={{ mt: 1, position: 'relative', zIndex: 1 }}>
                 <Button
                   variant="outlined"
@@ -1028,7 +1054,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           <SheetSection
             title="Caractéristiques"
             action={(collapsed) =>
-              collapsed ? null : (
+              collapsed || readOnly ? null : (
                 <BlockEditButton
                   editing={editingBlocks.abilities}
                   onToggle={() => toggleBlock('abilities')}
@@ -1052,7 +1078,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           <SheetSection
             title="Statistiques dérivées"
             action={(collapsed) =>
-              collapsed ? null : (
+              collapsed || readOnly ? null : (
                 <BlockEditButton
                   editing={editingBlocks.derived}
                   onToggle={() => toggleBlock('derived')}
@@ -1130,11 +1156,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 )}
                 <VerbatimToggle value={featuresVerbatim} onChange={setFeaturesVerbatim} />
                 <FeaturesLayoutToggle value={voiesLayout} onChange={setVoiesLayout} />
-                <BlockEditButton
-                  editing={editingBlocks.features}
-                  onToggle={() => toggleBlock('features')}
-                  label="voies & capacités"
-                />
+                {!readOnly && (
+                  <BlockEditButton
+                    editing={editingBlocks.features}
+                    onToggle={() => toggleBlock('features')}
+                    label="voies & capacités"
+                  />
+                )}
               </Stack>
             }
           >
@@ -1180,7 +1208,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             defaultCollapsed
             persistKey="equipment"
             action={(collapsed) =>
-              collapsed ? null : (
+              collapsed || readOnly ? null : (
                 <BlockEditButton
                   editing={editingBlocks.equipment}
                   onToggle={() => toggleBlock('equipment')}
@@ -1210,7 +1238,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             defaultCollapsed
             persistKey="identity"
             action={(collapsed) =>
-              collapsed ? null : (
+              collapsed || readOnly ? null : (
                 <BlockEditButton
                   editing={editingBlocks.identity}
                   onToggle={() => toggleBlock('identity')}
@@ -1238,7 +1266,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             defaultCollapsed
             persistKey="notes"
             action={(collapsed) =>
-              collapsed ? null : (
+              collapsed || readOnly ? null : (
                 <BlockEditButton
                   editing={editingBlocks.notes}
                   onToggle={() => toggleBlock('notes')}
@@ -1273,7 +1301,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             defaultCollapsed
             persistKey="level-history"
             action={(collapsed) =>
-              !collapsed && canUndoLastLevelUp(character) ? (
+              !collapsed && !readOnly && canUndoLastLevelUp(character) ? (
                 <LevelUndoButton
                   level={character.level}
                   onUndo={() => upsert(undoLastLevelUp(character))}
@@ -1282,7 +1310,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             }
           >
             <LevelHistory history={character.levelUpHistory} />
-            {canUndoLastLevelUp(character) && (
+            {!readOnly && canUndoLastLevelUp(character) && (
               // Miroir du bouton de l'en-tête, ancré à droite en bas du bloc.
               <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 2 }}>
                 <LevelUndoButton
