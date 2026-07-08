@@ -24,6 +24,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -33,10 +34,78 @@ import {
   type CharacterListAction,
 } from '@/components/character-list/CharacterList';
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
+import { ClassIcon } from '@/components/ClassIcon';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { summarize } from '@/lib/character/summary';
 import { downloadCharacterExport } from '@/lib/character/transferExport';
+import { classColor } from '@/lib/ui/classColors';
 import { useCharactersStore } from '@/stores/characters';
+
+/**
+ * Une ligne « À réclamer » : identité du personnage (cliquable → aperçu de la
+ * fiche en lecture) + bouton **Réclamer** proéminent (l'action primaire du
+ * joueur, PER-196 — pas cachée dans un menu). Le clic sur l'identité ouvre la
+ * fiche ; le bouton s'occupe de l'attribution.
+ */
+function ClaimableRow({
+  row,
+  claiming,
+  onPreview,
+  onClaim,
+}: {
+  row: CharacterSummary;
+  claiming: boolean;
+  onPreview: () => void;
+  onClaim: () => void;
+}) {
+  return (
+    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', py: 1.25 }}>
+      <Box
+        role="button"
+        tabIndex={0}
+        onClick={onPreview}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onPreview();
+          }
+        }}
+        sx={{ minWidth: 0, flex: 1, cursor: 'pointer' }}
+      >
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', minWidth: 0 }}>
+          <CharacterStatusMarker status={row.status} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
+            {row.name}
+          </Typography>
+        </Stack>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+          <ClassIcon classId={row.classId} firearmsAllowed={row.firearmsAllowed} size={16} />
+          <Typography variant="body2" noWrap>
+            <Box component="span" sx={{ color: classColor(row.classId), fontWeight: 600 }}>
+              {row.characterClass}
+            </Box>
+            <Box component="span" sx={{ color: 'text.secondary' }}>
+              {' '}
+              · {row.ancestry} · {row.level}
+            </Box>
+          </Typography>
+        </Stack>
+      </Box>
+      <Button
+        variant="contained"
+        size="small"
+        disabled={claiming}
+        startIcon={
+          claiming ? <CircularProgress size={14} color="inherit" /> : <PersonAddIcon />
+        }
+        onClick={onClaim}
+        sx={{ flexShrink: 0 }}
+      >
+        Réclamer
+      </Button>
+    </Stack>
+  );
+}
 
 interface PlayClientProps {
   playerId: string;
@@ -118,21 +187,6 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
     },
   ];
 
-  const claimableActions: CharacterListAction[] = [
-    {
-      key: 'open',
-      label: 'Aperçu',
-      icon: <OpenInNewIcon fontSize="small" />,
-      onClick: (r) => router.push(`/character/${r.id}`),
-    },
-    {
-      key: 'claim',
-      label: 'Réclamer cette fiche',
-      icon: <PersonAddIcon fontSize="small" color="primary" />,
-      onClick: (r) => void handleClaim(r),
-    },
-  ];
-
   // Le premier chargement : on attend l'hydratation localStorage + la fin du fetch
   // cloud tant qu'on n'a encore rien à montrer.
   const loading =
@@ -187,17 +241,19 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             Des personnages préparés par ton MJ, pas encore attribués. Réclames-en un pour te
-            l&apos;approprier.
+            l&apos;approprier — un aperçu s&apos;ouvre en cliquant sur son nom.
           </Typography>
-          <CharacterList
-            rows={claimableRows}
-            onOpen={(r) => router.push(`/character/${r.id}`)}
-            actions={claimableActions}
-            renderNameMarker={renderNameMarker}
-            renderNameSuffix={(r) =>
-              claimingId === r.id ? <CircularProgress size={14} sx={{ ml: 1 }} /> : null
-            }
-          />
+          <Stack divider={<Divider flexItem />}>
+            {claimableRows.map((r) => (
+              <ClaimableRow
+                key={r.id}
+                row={r}
+                claiming={claimingId === r.id}
+                onPreview={() => router.push(`/character/${r.id}`)}
+                onClaim={() => void handleClaim(r)}
+              />
+            ))}
+          </Stack>
         </Paper>
       )}
     </>
