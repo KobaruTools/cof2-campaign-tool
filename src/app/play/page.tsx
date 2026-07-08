@@ -50,7 +50,7 @@ export default async function PlayPage() {
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <HomeBackground />
-      <Container maxWidth="sm" sx={{ py: { xs: 4, sm: 6 } }}>
+      <Container maxWidth="md" sx={{ py: { xs: 4, sm: 6 } }}>
         <Stack spacing={1} sx={{ mb: 3 }}>
           <Typography variant="overline" color="text.secondary">
             Espace joueur
