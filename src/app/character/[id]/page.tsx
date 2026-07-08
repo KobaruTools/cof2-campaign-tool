@@ -38,6 +38,7 @@ import { modifierDeltas } from '@/lib/character/ancestry';
 import { classDisplayName } from '@/lib/character/classDisplay';
 import { firearmsEffective } from '@/lib/character/firearms';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
+import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
 import { mergeMods, orphanMods, orphanSourceTerms } from '@/lib/character/orphanPoints';
@@ -169,6 +170,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // (roster d'un colistier) est consultable (RLS `read_roster`) mais non éditable
   // (RLS refuse l'écriture) : on la présente en lecture seule (cf. `readOnly` plus bas).
   const { isPlayer, playerId: sessionPlayerId } = useIsPlayerSession();
+  // Présence (PER-195) : une session joueur qui édite/consulte une fiche reste
+  // « active » aux yeux du MJ (couvre les longues sessions passées hors de /play).
+  usePresenceHeartbeat(isPlayer);
 
   // Charge le personnage depuis le cloud (RLS `owner_id`, PER-192) en cas d'accès
   // direct à l'URL, et les campagnes pour résoudre le libellé d'attribution.

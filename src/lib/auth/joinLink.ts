@@ -48,7 +48,7 @@ export async function redeemJoinSecret(secret: string): Promise<JoinRedemption> 
   const admin = createAdminSupabaseClient();
   const { data: player, error: lookupError } = await admin
     .from('players')
-    .select('id, campaign_id')
+    .select('id, campaign_id, first_joined_at')
     .eq('join_secret', secret)
     .maybeSingle();
   if (lookupError) throw lookupError;
@@ -77,6 +77,15 @@ export async function redeemJoinSecret(secret: string): Promise<JoinRedemption> 
     .from('player_auth_sessions')
     .insert({ auth_user_id: anon.user.id, player_id: player.id });
   if (mapError) throw mapError;
+
+  // 6. Présence (PER-195) : marque la première activation du lien + l'activité.
+  //     Best-effort — un échec ici ne doit jamais casser l'entrée en campagne (le
+  //     heartbeat de `/play` re-posera `last_seen_at`/`first_joined_at` par coalesce).
+  const now = new Date().toISOString();
+  await admin
+    .from('players')
+    .update({ last_seen_at: now, first_joined_at: player.first_joined_at ?? now })
+    .eq('id', player.id);
 
   return { status: 'ok' };
 }

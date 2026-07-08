@@ -33,6 +33,7 @@ import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
 import { AppTooltip } from '@/components/AppTooltip';
 import { joinLinkUrl, type Player } from '@/lib/player/types';
+import { PlayerPresence } from '@/components/campaign/PlayerPresence';
 import { usePlayersStore } from '@/stores/players';
 
 export function PlayersSection({
@@ -216,10 +217,13 @@ export function PlayersSection({
                 spacing={1}
                 sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
               >
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, minWidth: 0 }}>
-                  {player.name}
-                </Typography>
-                <Stack direction="row" sx={{ alignItems: 'center' }}>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
+                    {player.name}
+                  </Typography>
+                  <PlayerPresence player={player} />
+                </Box>
+                <Stack direction="row" sx={{ alignItems: 'center', flexShrink: 0 }}>
                   {busyId === player.id ? <CircularProgress size={18} sx={{ mr: 1 }} /> : null}
                   <AppTooltip title="Renommer">
                     <IconButton

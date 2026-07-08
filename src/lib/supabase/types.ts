@@ -153,22 +153,28 @@ export type Database = {
         Row: {
           campaign_id: string
           created_at: string
+          first_joined_at: string | null
           id: string
           join_secret: string
+          last_seen_at: string | null
           name: string
         }
         Insert: {
           campaign_id: string
           created_at?: string
+          first_joined_at?: string | null
           id?: string
           join_secret?: string
+          last_seen_at?: string | null
           name: string
         }
         Update: {
           campaign_id?: string
           created_at?: string
+          first_joined_at?: string | null
           id?: string
           join_secret?: string
+          last_seen_at?: string | null
           name?: string
         }
         Relationships: [
@@ -188,6 +194,7 @@ export type Database = {
     Functions: {
       current_player_campaign_id: { Args: never; Returns: string }
       current_player_id: { Args: never; Returns: string }
+      touch_player_presence: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

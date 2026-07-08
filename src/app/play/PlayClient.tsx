@@ -45,6 +45,7 @@ import type { CharacterSummary } from '@/lib/character/summary';
 import { summarize } from '@/lib/character/summary';
 import { downloadCharacterExport } from '@/lib/character/transferExport';
 import { classColor } from '@/lib/ui/classColors';
+import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
 import { useCharactersStore } from '@/stores/characters';
 import { usePlayersStore } from '@/stores/players';
 
@@ -136,6 +137,9 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
   // incarne chaque personnage dans la section « Le roster ».
   const players = usePlayersStore((s) => s.players);
   const loadPlayers = usePlayersStore((s) => s.load);
+
+  // Présence (PER-195) : l'espace joueur signale l'activité au MJ tant qu'il est ouvert.
+  usePresenceHeartbeat();
 
   const { showToast } = useToast();
   // Personnage dont la réclamation est en cours de confirmation (modale d'aperçu) ;

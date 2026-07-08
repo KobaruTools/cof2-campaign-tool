@@ -14,6 +14,13 @@ export interface Player {
   /** Secret du lien magique (uuid). Régénérable par le MJ → invalide l'ancien lien. */
   joinSecret: string;
   createdAt: string;
+  /**
+   * Présence (PER-195), lue par le MJ. `firstJoinedAt` = première activation du
+   * lien (null tant que jamais connecté) ; `lastSeenAt` = dernière activité du
+   * joueur (heartbeat). Régénérer le lien remet les deux à null.
+   */
+  firstJoinedAt: string | null;
+  lastSeenAt: string | null;
 }
 
 /** Construit l'URL complète du lien magique d'un joueur pour un `origin` donné. */

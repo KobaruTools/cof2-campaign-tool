@@ -61,9 +61,12 @@ export async function regeneratePlayerLink(playerId: string): Promise<{ joinSecr
   await revokePlayerSessions(admin, playerId);
 
   const joinSecret = crypto.randomUUID();
+  // Reset de la présence (PER-195) : le nouveau lien n'a pas encore été activé, et
+  // les sessions vivantes viennent d'être coupées → « jamais connecté » jusqu'au
+  // prochain redeem.
   const { error } = await admin
     .from('players')
-    .update({ join_secret: joinSecret })
+    .update({ join_secret: joinSecret, first_joined_at: null, last_seen_at: null })
     .eq('id', playerId);
   if (error) throw error;
   return { joinSecret };

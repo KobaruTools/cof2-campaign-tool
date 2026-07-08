@@ -24,6 +24,8 @@ export function rowToPlayer(row: PlayerRow): Player {
     name: row.name,
     joinSecret: row.join_secret,
     createdAt: row.created_at,
+    firstJoinedAt: row.first_joined_at,
+    lastSeenAt: row.last_seen_at,
   };
 }
 
