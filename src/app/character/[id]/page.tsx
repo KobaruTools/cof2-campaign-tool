@@ -309,6 +309,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // conformité, level-up. Le snapshot `character.firearmsAllowed` reste figé (choix
   // de création) ; c'est la campagne qui filtre en aval, sans jamais muter le perso.
   const firearmsAllowed = firearmsEffective(character, currentCampaign);
+  // Règle maison « dé de vie à la montée de niveau » (PER-87) : disponible seulement
+  // si la campagne de rattachement l'active. « Non attribué » ⇒ règle inactive
+  // (comportement historique : PV fixes). N'a d'effet que dans le wizard de montée.
+  const hitDieOnLevelUp = currentCampaign?.rules.hitDieOnLevelUp ?? false;
 
   // Statut du personnage (PER-183) : modifiable par le MJ ET le joueur (la RLS
   // l'autorise ; la vue campagne, owner-only, ne suffit pas). `active` ↔
@@ -1333,6 +1337,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         character={character}
         family={family}
         firearmsAllowed={firearmsAllowed}
+        hitDieOnLevelUp={hitDieOnLevelUp}
         onClose={() => setLevelUpOpen(false)}
         onConfirm={(updated) => {
           upsert(updated);

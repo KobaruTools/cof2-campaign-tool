@@ -233,6 +233,16 @@ export interface LevelUpEntry {
    * les capacités oubliées. Champ additif optionnel (pas de migration de schéma).
    */
   forgottenFeatureIds?: string[];
+  /**
+   * Résultat du **dé de vie** lancé à cette montée de niveau, quand la règle maison
+   * de campagne `hitDieOnLevelUp` est active et que le joueur a choisi de lancer
+   * plutôt que de prendre les PV fixes (PER-87). Valeur SAISIE LIBREMENT (le dé est
+   * lancé à la vraie table) : c'est la composante « famille » du gain de PV du
+   * niveau, AVANT CON (le moteur ajoute la CON par-dessus, comme pour les PV fixes).
+   * Absent = PV fixes (comportement par défaut). Additif optionnel (pas de migration
+   * de schéma). Stocké sur le niveau d'origine → l'annulation du niveau le retire.
+   */
+  rolledHp?: number;
 }
 
 export interface Character {

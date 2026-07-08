@@ -35,6 +35,18 @@ export function CampaignRulesFields({ rules, onChange }: CampaignRulesFieldsProp
           />
         }
       />
+      {/* Règle maison (PER-87) : aucune page du livre à citer. */}
+      <RuleBlock
+        title="Dé de vie à la montée de niveau (règle maison)"
+        description="À chaque montée de niveau, le joueur peut choisir entre les PV fixes habituels et lancer son dé de vie (le dé de récupération de sa famille), à saisir librement. Le jet remplace la part « famille » du gain ; la Constitution s’ajoute par-dessus, si bien que la moyenne équivaut aux PV fixes — avec la chance en plus."
+        control={
+          <Switch
+            checked={rules.hitDieOnLevelUp}
+            onChange={(e) => onChange({ ...rules, hitDieOnLevelUp: e.target.checked })}
+            slotProps={{ input: { 'aria-label': 'Dé de vie à la montée de niveau' } }}
+          />
+        }
+      />
     </Stack>
   );
 }

@@ -33,8 +33,13 @@ function mainFamilyOf(character: Character, ctx: RulesContext): Family | undefin
   return characterClass ? ctx.familyById.get(characterClass.familyId) : undefined;
 }
 
-/** Familles de profil concernées par les capacités acquises à un niveau donné. */
-function levelFamilies(
+/**
+ * Familles de profil concernées par les capacités acquises à un niveau donné.
+ * Exporté pour la règle maison « dé de vie » (PER-87) : le wizard s'en sert pour
+ * contraindre les rangs 1-2 d'une même montée à une seule famille (DR déterminé)
+ * et pour choisir le bon dé de récupération à lancer.
+ */
+export function levelFamilies(
   featureIds: string[],
   mainFamilyId: FamilyId,
   ctx: RulesContext,
@@ -75,10 +80,14 @@ export function hpLevelGains(character: Character, ctx: RulesContext): HpLevelGa
 
   // Capacités choisies par niveau (plusieurs entrées d'historique possibles).
   const idsByLevel = new Map<number, string[]>();
+  // Résultat du dé de vie saisi à un niveau (règle maison `hitDieOnLevelUp`, PER-87) :
+  // il remplace la composante « famille » fixe de ce niveau.
+  const rolledByLevel = new Map<number, number>();
   for (const entry of character.levelUpHistory) {
     const list = idsByLevel.get(entry.level) ?? [];
     list.push(...entry.chosenFeatureIds);
     idsByLevel.set(entry.level, list);
+    if (typeof entry.rolledHp === 'number') rolledByLevel.set(entry.level, entry.rolledHp);
   }
 
   const result: HpLevelGain[] = [];
@@ -86,6 +95,15 @@ export function hpLevelGains(character: Character, ctx: RulesContext): HpLevelGa
   let halfRoundings = 0;
   for (let level = 2; level <= character.level; level++) {
     const families = levelFamilies(idsByLevel.get(level) ?? [], mainFamily.id, ctx, divineId);
+    // Dé de vie lancé à ce niveau (règle maison) : le résultat saisi remplace le gain
+    // « famille » fixe. La CON reste ajoutée par `maxHp` (comme pour les PV fixes) ; on
+    // n'entre donc PAS dans la logique de moyenne/alternance des niveaux mixtes.
+    const rolled = rolledByLevel.get(level);
+    if (rolled !== undefined) {
+      const familyIds = families.size >= 1 ? [...families] : [mainFamily.id];
+      result.push({ level, familyIds, familyGain: rolled, rolled: true });
+      continue;
+    }
     if (families.size <= 1) {
       const only = families.size === 1 ? ctx.familyById.get([...families][0]) : undefined;
       const family = only ?? mainFamily;

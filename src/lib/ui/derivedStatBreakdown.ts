@@ -100,7 +100,11 @@ export function derivedStatBreakdown(
       const isHybridLevel1 = hybridLevel1Families.length >= 2;
       const levelGains = input.hpLevelGains ?? [];
       const hasMixedLevel = levelGains.some((g) => g.familyIds.length >= 2);
-      const detailed = isHybridLevel1 || hasMixedLevel;
+      // Règle maison « dé de vie » (PER-87) : un niveau au jet a un gain propre → on
+      // force le détail niveau par niveau pour l'expliciter (sinon l'affichage compact
+      // afficherait un gain « famille » fixe qui ne correspond pas au total).
+      const hasRolledLevel = levelGains.some((g) => g.rolled);
+      const detailed = isHybridLevel1 || hasMixedLevel || hasRolledLevel;
       const con = abilities.CON;
       const conLabel = con >= 0 ? `+ CON ${con}` : `− CON ${Math.abs(con)}`;
       const familyName = (id: FamilyId): string => familyById.get(id)?.name ?? id;
@@ -136,6 +140,10 @@ export function derivedStatBreakdown(
           // `labelSuffix` = tout ce qui suit « Niveau(x) … · » ; deux niveaux ne
           // se regroupent que si ce suffixe (qui encode famille ET gain) coïncide.
           const labelSuffix = (g: HpLevelGain): string => {
+            // Dé de vie lancé (règle maison PER-87) : le jet remplace la part famille.
+            if (g.rolled) {
+              return `dé de vie : jet ${g.familyGain} PV, ${conLabel} (règle maison)`;
+            }
             if (g.familyIds.length >= 2) {
               const values = g.familyIds.map((id) => familyById.get(id)?.hpPerLevel ?? 0);
               const rawAverage = values.reduce((s, v) => s + v, 0) / values.length;
@@ -176,9 +184,14 @@ export function derivedStatBreakdown(
 
       terms.push(...capacities('maxHp'));
 
-      const note = detailed
-        ? "Profil hybride : au niveau 1 on additionne les PV de base de chaque profil au lieu de doubler ceux d'un seul (p. 180). Ensuite chaque niveau ajoute les PV de la famille des capacités prises ; un « niveau mixte » (deux familles) prend leur moyenne, demi-PV arrondis en alternance inférieur/supérieur (p. 177). CON s'ajoute à chaque niveau (p. 30, 39)."
-        : "PV au niveau 1 = 2 × PV de base de la famille + CON (p. 30) ; chaque niveau suivant ajoute les PV de la famille + CON (p. 39).";
+      const baseNote =
+        isHybridLevel1 || hasMixedLevel
+          ? "Profil hybride : au niveau 1 on additionne les PV de base de chaque profil au lieu de doubler ceux d'un seul (p. 180). Ensuite chaque niveau ajoute les PV de la famille des capacités prises ; un « niveau mixte » (deux familles) prend leur moyenne, demi-PV arrondis en alternance inférieur/supérieur (p. 177). CON s'ajoute à chaque niveau (p. 30, 39)."
+          : "PV au niveau 1 = 2 × PV de base de la famille + CON (p. 30) ; chaque niveau suivant ajoute les PV de la famille + CON (p. 39).";
+      // Règle maison « dé de vie » (PER-87) : signalée quand au moins un niveau au jet.
+      const note = hasRolledLevel
+        ? `${baseNote} Dé de vie (règle maison) : à ces niveaux, le jet saisi à la table remplace les PV fixes de la famille, la CON s'ajoutant par-dessus.`
+        : baseNote;
       // Lien de source principal : niveaux mixtes (p. 177) s'il y en a, sinon
       // base hybride du niveau 1 (p. 180), sinon règle générale (p. 30) ; les
       // autres pages pertinentes sont citées dans la note ci-dessus.

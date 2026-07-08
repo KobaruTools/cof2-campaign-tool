@@ -39,7 +39,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { CampaignRulesFields } from '@/components/campaign/CampaignRulesFields';
 import { PlayersSection } from '@/components/campaign/PlayersSection';
 import { HomeBackground } from '@/components/HomeBackground';
-import type { CampaignRules } from '@/lib/campaign';
+import { DEFAULT_CAMPAIGN_RULES, type CampaignRules } from '@/lib/campaign';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { useCampaignsStore } from '@/stores/campaigns';
 
@@ -149,7 +149,7 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
   interface Form {
     name: string;
     description: string;
-    firearmsAllowed: boolean;
+    rules: CampaignRules;
   }
   const [form, setForm] = useState<Form | null>(null);
   const [busy, setBusy] = useState(false);
@@ -164,7 +164,7 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
       setForm({
         name: campaign.name,
         description: campaign.description ?? '',
-        firearmsAllowed: campaign.rules.firearmsAllowed,
+        rules: campaign.rules,
       });
     }
   }, [campaign, form]);
@@ -176,14 +176,18 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
     campaign !== undefined &&
     (form.name.trim() !== campaign.name ||
       (form.description.trim() || null) !== (campaign.description ?? null) ||
-      form.firearmsAllowed !== campaign.rules.firearmsAllowed);
+      form.rules.firearmsAllowed !== campaign.rules.firearmsAllowed ||
+      form.rules.hitDieOnLevelUp !== campaign.rules.hitDieOnLevelUp);
 
   const handleSave = async () => {
     if (!campaign || !form) return;
     setBusy(true);
     try {
-      const rules: CampaignRules = { firearmsAllowed: form.firearmsAllowed };
-      await update(campaign.id, { name: form.name, description: form.description, rules });
+      await update(campaign.id, {
+        name: form.name,
+        description: form.description,
+        rules: form.rules,
+      });
       showToast('Réglages enregistrés.', 'success');
     } catch (e) {
       showToast(
@@ -297,10 +301,8 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
                 Décisions d’univers qui s’appliquent aux personnages de la campagne.
               </Typography>
               <CampaignRulesFields
-                rules={{ firearmsAllowed: form?.firearmsAllowed ?? true }}
-                onChange={(rules) =>
-                  setForm((f) => (f ? { ...f, firearmsAllowed: rules.firearmsAllowed } : f))
-                }
+                rules={form?.rules ?? DEFAULT_CAMPAIGN_RULES}
+                onChange={(rules) => setForm((f) => (f ? { ...f, rules } : f))}
               />
             </CollapsibleSection>
 

@@ -68,7 +68,8 @@ export function LevelHistory({ history }: LevelHistoryProps) {
           </Typography>
           {entry.chosenFeatureIds.length === 0 &&
           !entry.orphanRewards?.length &&
-          !entry.forgottenFeatureIds?.length ? (
+          !entry.forgottenFeatureIds?.length &&
+          entry.rolledHp === undefined ? (
             <Typography variant="body2" color="text.secondary">
               Aucune capacité acquise à ce niveau.
             </Typography>
@@ -93,6 +94,16 @@ export function LevelHistory({ history }: LevelHistoryProps) {
                   <SourceRef page={43} />
                 </Stack>
               ))}
+              {/* Dé de vie lancé ce niveau (règle maison PER-87) : le jet saisi a remplacé
+                  les PV fixes de la famille (la CON s'ajoute par-dessus). */}
+              {entry.rolledHp !== undefined && (
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <Chip label="Dé de vie" size="small" color="secondary" variant="outlined" />
+                  <Typography variant="body2" color="text.secondary">
+                    Jet de {entry.rolledHp} PV (règle maison)
+                  </Typography>
+                </Stack>
+              )}
               {/* Point(s) de capacité orphelin(s) convertis ce niveau (p. 40) : tracés ici
                   pour que le bonus permanent soit explicite (et l'undo, transparent). */}
               {entry.orphanRewards?.map((reward, i) => (

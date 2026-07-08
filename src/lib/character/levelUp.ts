@@ -14,8 +14,9 @@
  * on s'appuie uniquement sur la légalité par capacité.
  */
 import { features as featureCatalog, featureById, pathById, progression } from '@/data';
-import type { Feature } from '@/data/schema';
+import type { Feature, FamilyId } from '@/data/schema';
 import { canAcquireFeature, featureCost, freeFeatureIds, type RulesContext } from '@/lib/engine';
+import { levelFamilies } from './hp';
 import type { Character, LevelUpEntry, OrphanReward } from './types';
 
 /** Points de capacité gagnés à chaque montée de niveau (p. 38-39). */
@@ -134,12 +135,15 @@ export function deselectFeature(picked: string[], featureId: string): string[] {
  * `forgottenFeatureIds` (p. 43, changement d'orientation) : capacités abandonnées
  * ce niveau, RETIRÉES de `featureIds` avant l'ajout des capacités choisies (le
  * remplacement fait partie de `chosenFeatureIds`) et journalisées sur l'entrée.
+ * `rolledHp` (règle maison `hitDieOnLevelUp`, PER-87) : résultat du dé de vie saisi
+ * à ce niveau (composante « famille » du gain de PV, avant CON) ; absent = PV fixes.
  */
 export function applyLevelUp(
   character: Character,
   chosenFeatureIds: string[],
   orphanRewards: OrphanReward[] = [],
   forgottenFeatureIds: string[] = [],
+  rolledHp?: number,
 ): Character {
   const level = character.level + 1;
   const forgotten = new Set(forgottenFeatureIds);
@@ -150,12 +154,49 @@ export function applyLevelUp(
   const entry: LevelUpEntry = { level, chosenFeatureIds };
   if (orphanRewards.length > 0) entry.orphanRewards = orphanRewards;
   if (forgottenFeatureIds.length > 0) entry.forgottenFeatureIds = forgottenFeatureIds;
+  if (typeof rolledHp === 'number') entry.rolledHp = rolledHp;
   return {
     ...character,
     level,
     featureIds,
     levelUpHistory: [...character.levelUpHistory, entry],
   };
+}
+
+/**
+ * Famille dont le **dé de vie** (DR) serait lancé à cette montée de niveau (règle
+ * maison `hitDieOnLevelUp`, PER-87) : la famille des voies montées ce niveau. Sous
+ * la contrainte (voir `lockedRank12Family`) elle est unique ; on prend la première
+ * si plusieurs, et on retombe sur la famille du profil principal si aucune capacité
+ * n'est encore choisie (le DR par défaut est alors celui du profil).
+ */
+export function levelUpDieFamily(
+  pickedIds: string[],
+  mainFamilyId: FamilyId,
+  ctx: RulesContext,
+  divineId?: string,
+): FamilyId {
+  const families = levelFamilies(pickedIds, mainFamilyId, ctx, divineId);
+  return families.size >= 1 ? [...families][0] : mainFamilyId;
+}
+
+/**
+ * Règle maison « dé de vie » (PER-87) : à une montée de niveau, les capacités de
+ * rang 1-2 (achetables à deux dans la même montée) doivent relever d'UNE SEULE
+ * famille pour que le DR à lancer soit déterminé. Renvoie la famille imposée par les
+ * rangs 1-2 DÉJÀ choisis ce niveau, ou `null` si aucun rang 1-2 n'est encore choisi
+ * (aucune contrainte tant qu'on n'a pas engagé une famille). À partir du rang 3
+ * (2 points), le double achat dans une même montée est impossible → hors contrainte.
+ */
+export function lockedRank12Family(
+  pickedIds: string[],
+  mainFamilyId: FamilyId,
+  ctx: RulesContext,
+  divineId?: string,
+): FamilyId | null {
+  const rank12 = pickedIds.filter((id) => (ctx.featureById.get(id)?.rank ?? Infinity) <= 2);
+  const families = levelFamilies(rank12, mainFamilyId, ctx, divineId);
+  return families.size >= 1 ? [...families][0] : null;
 }
 
 /** Vrai si le dernier niveau peut être annulé (jamais la création, niveau 1). */

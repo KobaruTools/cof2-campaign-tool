@@ -209,6 +209,42 @@ describe('hpLevelGains', () => {
     expect(gains.map((g) => g.familyGain)).toEqual(familyHpGains(c, ctx));
   });
 
+  it('dé de vie (règle maison PER-87) : le jet saisi remplace le gain famille du niveau', () => {
+    // Barbare (combattant, 5 PV fixes/niveau). Au niveau 2 le joueur lance son DR (d10)
+    // et obtient 8 → ce niveau vaut 8 (famille), la CON s'ajoutant à part.
+    const c = makeCharacter({
+      classId: 'barbare',
+      level: 3,
+      levelUpHistory: history(
+        { level: 1, chosenFeatureIds: ['brute-r1'] },
+        { level: 2, chosenFeatureIds: ['brute-r2'], rolledHp: 8 },
+        { level: 3, chosenFeatureIds: ['pagne-r1'] },
+      ),
+    });
+    expect(hpLevelGains(c, ctx)).toEqual([
+      { level: 2, familyIds: ['fighters'], familyGain: 8, rolled: true },
+      { level: 3, familyIds: ['fighters'], familyGain: 5 },
+    ]);
+    expect(familyHpGains(c, ctx)).toEqual([8, 5]);
+  });
+
+  it('dé de vie : la CON reste ajoutée par-dessus le jet (Option A)', () => {
+    const fighters = families.find((f) => f.id === 'fighters')!;
+    // Niveau 2 : jet 8 ; niveau 3 : PV fixes (5). CON +2.
+    // maxHp = 2×5 + 2 (niv.1) + (8+2) + (5+2) = 12 + 10 + 7 = 29.
+    const c = makeCharacter({
+      classId: 'barbare',
+      level: 3,
+      abilities: { AGI: 0, CON: 2, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
+      levelUpHistory: history(
+        { level: 1, chosenFeatureIds: ['brute-r1'] },
+        { level: 2, chosenFeatureIds: ['brute-r2'], rolledHp: 8 },
+        { level: 3, chosenFeatureIds: ['pagne-r1'] },
+      ),
+    });
+    expect(maxHp(3, fighters, 2, {}, familyHpGains(c, ctx))).toBe(29);
+  });
+
   it('capacité divine : pas de niveau mixte (empruntée mais rattachée à la voie d’accueil, p. 122)', () => {
     // Prêtre (mystics, 4 PV) spécialiste de Forthur : divine = brute-r2 (combattants,
     // 5 PV), acquise au niveau 3. Sans l'exception, ce niveau serait moyenné (4,5).

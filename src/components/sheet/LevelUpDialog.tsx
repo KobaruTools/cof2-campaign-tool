@@ -26,9 +26,12 @@ import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { classById, featureById, pathById, progression } from '@/data';
+import { classById, families, featureById, pathById, progression } from '@/data';
 import type { Family, Feature } from '@/data/schema';
 import { featureCost, maxHp, minLevelForRank } from '@/lib/engine';
 import { familyHpGains } from '@/lib/character/hp';
@@ -42,6 +45,8 @@ import {
   deselectFeature,
   FEATURE_POINTS_PER_LEVEL,
   forgettableFeatures,
+  levelUpDieFamily,
+  lockedRank12Family,
   maxRetrainings,
   totalFeatureCost,
 } from '@/lib/character/levelUp';
@@ -55,6 +60,7 @@ import {
   hasActionableChoice,
   hasUnmadeChoice,
   pendingDivineAcquisition,
+  priestDivineFeatureId,
   priestDivineSlot,
   pruneFeatureChoices,
   setFeatureChoice,
@@ -76,6 +82,9 @@ import { ClassIcon } from '@/components/ClassIcon';
  * animable de façon fluide : la bordure reste PLEINE, seule sa couleur tourne.
  * Injecté globalement (dédupliqué par MUI) — impossible à déclarer dans un `sx`.
  */
+/** Familles indexées par id — pour retrouver le dé de récupération à lancer (PER-87). */
+const familyById = new Map(families.map((f) => [f.id, f]));
+
 const BORDER_ANGLE_STYLES = `
   @property --pathBorderAngle {
     syntax: '<angle>';
@@ -98,6 +107,12 @@ export interface LevelUpDialogProps {
    * arbalètes). Défaut = snapshot du personnage (fiche sans campagne résolue).
    */
   firearmsAllowed?: boolean;
+  /**
+   * Règle maison de campagne `hitDieOnLevelUp` (PER-87) : quand elle est active, le
+   * joueur peut CHOISIR à cette montée entre les PV fixes et lancer son dé de vie
+   * (résultat saisi librement). Défaut `false` (PV fixes, comportement historique).
+   */
+  hitDieOnLevelUp?: boolean;
   onClose: () => void;
   /** Personnage promu à valider (niveau +1, capacités, historique). */
   onConfirm: (updated: Character) => void;
@@ -485,10 +500,15 @@ export function LevelUpDialog({
   character,
   family,
   firearmsAllowed = character.firearmsAllowed,
+  hitDieOnLevelUp = false,
   onClose,
   onConfirm,
 }: LevelUpDialogProps) {
   const [picked, setPicked] = useState<string[]>([]);
+  // Règle maison « dé de vie » (PER-87) : mode de gain de PV de CE niveau et, si
+  // « dé de vie », le résultat saisi librement (le dé est lancé à la vraie table).
+  const [hpMode, setHpMode] = useState<'fixed' | 'rolled'>('fixed');
+  const [rolledValue, setRolledValue] = useState('');
   // Choix portés par les capacités sélectionnées ce niveau (PER-66/68), à
   // résoudre avant validation (doctrine wizard : bloquant).
   const [pickedChoices, setPickedChoices] = useState<Record<string, FeatureChoiceSelection[]>>({});
@@ -552,12 +572,34 @@ export function LevelUpDialog({
         ? { ...character.priestVocation, hostPathId: divineHost }
         : character.priestVocation,
   };
+  // Règle maison « dé de vie » (PER-87). La capacité divine est empruntée mais
+  // rattachée à sa voie d'accueil (p. 122) → exclue de la détection de famille.
+  const divineIdForHp = priestDivineFeatureId(working);
+  // Famille dont on lancerait le DR ce niveau (celle des voies montées) + son dé.
+  const dieFamilyId = family
+    ? levelUpDieFamily(picked, family.id, rulesContext, divineIdForHp)
+    : undefined;
+  const hitDie = dieFamilyId ? familyById.get(dieFamilyId)?.recoveryDie : undefined;
+  // Contrainte anti-ambiguïté : quand la règle est ON, les rangs 1-2 d'une même montée
+  // doivent relever d'une seule famille (sinon le DR à lancer serait indéterminé). La
+  // famille est « verrouillée » dès qu'un rang 1-2 est choisi.
+  const lockedFamily =
+    hitDieOnLevelUp && family
+      ? lockedRank12Family(picked, family.id, rulesContext, divineIdForHp)
+      : null;
+  const violatesFamilyLock = (f: Feature): boolean =>
+    lockedFamily != null &&
+    f.rank <= 2 &&
+    !!family &&
+    levelUpDieFamily([f.id], family.id, rulesContext, divineIdForHp) !== lockedFamily;
+
   // Capacités acquérables ce niveau, PRIVÉES des voies abandonnées (leur rang suivant
   // ne doit pas être re-sélectionnable après un oubli — sinon on rachèterait ce qu'on
   // vient d'abandonner). L'exclusion vaut aussi pour la liste normale, pas seulement
-  // pour les remplacements.
+  // pour les remplacements. Sous la règle « dé de vie » ON, on écarte aussi les rangs
+  // 1-2 d'une autre famille que celle déjà engagée ce niveau (contrainte ci-dessus).
   const available = acquirableFeatures(working, rulesContext, firearmsAllowed).filter(
-    (f) => !forgottenPathIds.has(f.pathId),
+    (f) => !forgottenPathIds.has(f.pathId) && !violatesFamilyLock(f),
   );
 
   // Voies de prêtre éligibles comme voie d'accueil de la divine (rang précédent
@@ -682,6 +724,18 @@ export function LevelUpDialog({
     ? maxHp(newLevel, family, character.abilities.CON, {}, gainsAfter) -
       maxHp(character.level, family, character.abilities.CON, {}, gainsBefore)
     : null;
+
+  // Règle maison « dé de vie » (PER-87) : résultat saisi + gain effectivement appliqué.
+  const con = character.abilities.CON;
+  const rolledNum = Number.parseInt(rolledValue, 10);
+  const rolledValid = Number.isInteger(rolledNum) && rolledNum >= 1;
+  const dieMax = hitDie ? Number.parseInt(hitDie.slice(1), 10) : undefined;
+  const rolledOutOfRange = rolledValid && dieMax !== undefined && rolledNum > dieMax;
+  const rolling = hitDieOnLevelUp && hpMode === 'rolled';
+  // Le jet remplace la part « famille » ; la CON s'ajoute par-dessus (Option A, cf. ticket).
+  const shownGain = rolling && rolledValid ? rolledNum + con : hpGain;
+  // Bloquant : « dé de vie » choisi sans résultat valide saisi.
+  const rolledPending = rolling && !rolledValid;
 
   // Budget de points de capacité du niveau (2 par niveau, p. 39). Un rang 1-2
   // coûte 1 point, un rang 3+ en coûte 2. On bloque tout dépassement.
@@ -829,6 +883,8 @@ export function LevelUpDialog({
     setOrphanExpanded(null);
     setForgotten([]);
     setRetrainReplacement({});
+    setHpMode('fixed');
+    setRolledValue('');
   };
   const close = () => {
     resetState();
@@ -838,7 +894,10 @@ export function LevelUpDialog({
     // Capacités acquises ce niveau = achats + remplacements du changement
     // d'orientation ; les oubliées sont retirées par `applyLevelUp` et journalisées.
     const chosen = [...picked, ...replacementIds];
-    const leveled = applyLevelUp(character, chosen, orphanRewardsToApply, forgotten);
+    // Dé de vie lancé ce niveau (règle maison PER-87) : le résultat saisi devient la
+    // composante « famille » du gain de PV ; sinon PV fixes (rolledHp absent).
+    const rolledHpToApply = rolling && rolledValid ? rolledNum : undefined;
+    const leveled = applyLevelUp(character, chosen, orphanRewardsToApply, forgotten, rolledHpToApply);
     // Capacité divine prise ce niveau : on persiste sa voie d'accueil sur la vocation
     // (la progression rattache alors la divine à ce slot, p. 122).
     const withVocation =
@@ -873,8 +932,73 @@ export function LevelUpDialog({
             </Typography>
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
               <Chip label={`Niveau ${character.level} → ${newLevel}`} color="primary" size="small" />
-              {hpGain !== null && <Chip label={`+${hpGain} PV max`} size="small" variant="outlined" />}
+              {shownGain !== null && (
+                <Chip
+                  label={`+${shownGain} PV max`}
+                  size="small"
+                  variant="outlined"
+                  color={rolling && rolledValid ? 'secondary' : 'default'}
+                />
+              )}
             </Stack>
+
+            {/* Règle maison « dé de vie » (PER-87) : choix PV fixes / lancer le DR. */}
+            {hitDieOnLevelUp && family && hitDie && (
+              <Box sx={{ mt: 1.5 }}>
+                <ToggleButtonGroup
+                  size="small"
+                  exclusive
+                  value={hpMode}
+                  onChange={(_, v) => v && setHpMode(v)}
+                  aria-label="Mode de gain de PV à ce niveau"
+                >
+                  <ToggleButton value="fixed">
+                    PV fixes{hpGain !== null ? ` (+${hpGain})` : ''}
+                  </ToggleButton>
+                  <ToggleButton value="rolled">Dé de vie ({hitDie})</ToggleButton>
+                </ToggleButtonGroup>
+                {rolling && (
+                  <Stack
+                    direction="row"
+                    spacing={1.5}
+                    sx={{ alignItems: 'center', mt: 1, flexWrap: 'wrap' }}
+                  >
+                    <TextField
+                      size="small"
+                      type="number"
+                      label={`Résultat du ${hitDie}`}
+                      value={rolledValue}
+                      onChange={(e) => setRolledValue(e.target.value)}
+                      slotProps={{
+                        htmlInput: {
+                          min: 1,
+                          max: dieMax,
+                          inputMode: 'numeric',
+                          'aria-label': 'Résultat du dé de vie',
+                        },
+                      }}
+                      sx={{ width: 160 }}
+                    />
+                    {rolledValid && (
+                      <Typography variant="body2" color="text.secondary">
+                        Jet {rolledNum} {con >= 0 ? `+ CON ${con}` : `− CON ${Math.abs(con)}`} = +
+                        {rolledNum + con} PV
+                      </Typography>
+                    )}
+                  </Stack>
+                )}
+                <Typography
+                  variant="caption"
+                  color={rolledOutOfRange ? 'warning.main' : 'text.secondary'}
+                  sx={{ display: 'block', mt: 0.5 }}
+                >
+                  {rolledOutOfRange
+                    ? `Un ${hitDie} ne dépasse pas ${dieMax} — valeur conservée telle quelle (les dés se lancent à la table).`
+                    : 'Règle maison : lancez votre dé de récupération à la table et saisissez le résultat ; la Constitution s’ajoute au jet.'}
+                </Typography>
+              </Box>
+            )}
+
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
               Les valeurs d’attaque, la défense et les autres statistiques dérivées sont recalculées
               automatiquement à partir du niveau.
@@ -1347,14 +1471,16 @@ export function LevelUpDialog({
                 ? 'Résolvez les choix des capacités sélectionnées'
                 : pointsUnspent
                   ? `Dépensez vos points de capacité (${remaining} restant${remaining > 1 ? 's' : ''})`
-                  : ''
+                  : rolledPending
+                    ? 'Saisissez le résultat du dé de vie'
+                    : ''
             }
           >
             <Box component="span">
               <Button
                 variant="contained"
                 onClick={confirm}
-                disabled={choicesPending || pointsUnspent}
+                disabled={choicesPending || pointsUnspent || rolledPending}
               >
                 Valider le niveau {newLevel}
               </Button>

@@ -30,6 +30,17 @@ export interface CampaignRules {
    * on préserve le comportement historique (armes à feu autorisées).
    */
   firearmsAllowed: boolean;
+  /**
+   * **Règle maison** (PER-87) — PAS une règle du livre de base : à chaque montée de
+   * niveau, le joueur peut CHOISIR entre les PV fixes habituels et **lancer son dé
+   * de vie** (= le dé de récupération de sa famille), le résultat étant saisi
+   * librement (les dés se lancent à la vraie table). Le jet remplace la seule part
+   * « famille » du gain de PV ; la CON reste ajoutée par-dessus, si bien que la
+   * moyenne du dé équivaut au gain fixe à +0,5 près, quelle que soit la CON (le pari
+   * ne fait que rajouter de la variance — cf. analyse statistique du ticket). À
+   * `false` (défaut), les PV fixes s'appliquent, comportement inchangé.
+   */
+  hitDieOnLevelUp: boolean;
 }
 
 /**
@@ -57,5 +68,11 @@ export interface Campaign {
 export const DEFAULT_CAMPAIGN_ID = 'default-campaign';
 export const DEFAULT_PLAYER_ID = 'default-player';
 
-/** Règles par défaut : on préserve le comportement historique (armes à feu OK). */
-export const DEFAULT_CAMPAIGN_RULES: CampaignRules = { firearmsAllowed: true };
+/**
+ * Règles par défaut : on préserve le comportement historique (armes à feu OK, dé
+ * de vie à la montée de niveau désactivé — les PV fixes du livre s'appliquent).
+ */
+export const DEFAULT_CAMPAIGN_RULES: CampaignRules = {
+  firearmsAllowed: true,
+  hitDieOnLevelUp: false,
+};

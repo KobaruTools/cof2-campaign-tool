@@ -12,6 +12,8 @@ import {
   deselectFeature,
   FEATURE_POINTS_PER_LEVEL,
   forgettableFeatures,
+  levelUpDieFamily,
+  lockedRank12Family,
   manualFeatureIds,
   maxRetrainings,
   totalFeatureCost,
@@ -261,5 +263,39 @@ describe('undoLastLevelUp', () => {
     expect(round.level).toBe(c.level);
     expect(round.featureIds).toEqual(c.featureIds);
     expect(round.levelUpHistory).toEqual(c.levelUpHistory);
+  });
+});
+
+describe('dé de vie à la montée de niveau (règle maison PER-87)', () => {
+  it('applyLevelUp journalise rolledHp quand un jet est fourni ; absent sinon', () => {
+    const c = makeCharacter({ level: 1 });
+    const rolled = applyLevelUp(c, ['rage-r2'], [], [], 7);
+    expect(rolled.levelUpHistory.at(-1)).toMatchObject({ level: 2, rolledHp: 7 });
+    const fixed = applyLevelUp(c, ['rage-r2']);
+    expect(fixed.levelUpHistory.at(-1)).not.toHaveProperty('rolledHp');
+  });
+
+  it('undo retire l’entrée (et son rolledHp) et redescend le personnage', () => {
+    const c = makeCharacter({ level: 1 });
+    const round = undoLastLevelUp(applyLevelUp(c, ['rage-r2'], [], [], 7));
+    expect(round.level).toBe(1);
+    expect(round.levelUpHistory).toEqual(c.levelUpHistory);
+  });
+
+  it('levelUpDieFamily : famille des voies montées ce niveau (fallback profil principal)', () => {
+    expect(levelUpDieFamily(['brute-r2'], 'fighters', ctx)).toBe('fighters');
+    // Voie d’un autre profil (aventurier) → sa propre famille.
+    expect(levelUpDieFamily(['artilleur-r1'], 'fighters', ctx)).toBe('adventurers');
+    // Rien de choisi → DR du profil principal.
+    expect(levelUpDieFamily([], 'fighters', ctx)).toBe('fighters');
+  });
+
+  it('lockedRank12Family : famille imposée par les rangs 1-2 (null hors contrainte)', () => {
+    // Un rang 1-2 engagé → sa famille est imposée aux autres rangs 1-2 du niveau.
+    expect(lockedRank12Family(['artilleur-r1'], 'fighters', ctx)).toBe('adventurers');
+    // Aucun rang 1-2 choisi → aucune contrainte.
+    expect(lockedRank12Family([], 'fighters', ctx)).toBeNull();
+    // Rang 3 seul (2 points, pas de double achat possible) → hors contrainte.
+    expect(lockedRank12Family(['rage-r3'], 'fighters', ctx)).toBeNull();
   });
 });

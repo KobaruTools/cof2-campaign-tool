@@ -27,6 +27,10 @@ export function parseRules(raw: Json): CampaignRules {
       typeof obj.firearmsAllowed === 'boolean'
         ? obj.firearmsAllowed
         : DEFAULT_CAMPAIGN_RULES.firearmsAllowed,
+    hitDieOnLevelUp:
+      typeof obj.hitDieOnLevelUp === 'boolean'
+        ? obj.hitDieOnLevelUp
+        : DEFAULT_CAMPAIGN_RULES.hitDieOnLevelUp,
   };
 }
 

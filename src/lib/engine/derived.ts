@@ -43,6 +43,13 @@ export interface HpLevelGain {
   familyIds: FamilyId[];
   /** PV « famille » attribués à ce niveau, avant CON (moyenne arrondie si mixte). */
   familyGain: number;
+  /**
+   * Vrai si `familyGain` provient d'un **dé de vie lancé** (règle maison
+   * `hitDieOnLevelUp`, PER-87) plutôt que du gain fixe de la famille : le résultat
+   * a été saisi librement à la table. Sert à l'affichage (breakdown des PV) ;
+   * absent/`false` = gain fixe habituel.
+   */
+  rolled?: boolean;
 }
 
 /** Contribution de l'équipement porté au calcul de la défense. */
