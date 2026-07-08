@@ -127,6 +127,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const status = useCharactersStore((s) => s.status);
   const characters = useCharactersStore((s) => s.characters);
+  const cloudVersions = useCharactersStore((s) => s.cloudVersions);
   const loadCharacters = useCharactersStore((s) => s.load);
   const claim = useCharactersStore((s) => s.claim);
 
@@ -141,17 +142,25 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
     void loadCharacters();
   }, [loadCharacters]);
 
-  // Mes fiches : attribuées à moi. Réclamables : non attribuées de ma campagne.
+  // On ne montre QUE les fiches réellement présentes dans le cloud (chargées par
+  // `load()`, donc dans `cloudVersions`). Un joueur n'a jamais de perso purement
+  // local légitime : ses fiches sont toutes en base. Ce filtre écarte les
+  // **fantômes** — un perso supprimé côté MJ que le staging localStorage
+  // ressuscite à la fusion (`mergeCharacters` conserve les locaux hors cloud) — et
+  // toute fuite du staging d'un autre compte sur un navigateur partagé.
   const myRows = useMemo(
-    () => characters.filter((c) => c.playerId === playerId).map(summarize),
-    [characters, playerId],
+    () =>
+      characters
+        .filter((c) => c.playerId === playerId && c.id in cloudVersions)
+        .map(summarize),
+    [characters, playerId, cloudVersions],
   );
   const claimableRows = useMemo(
     () =>
       characters
-        .filter((c) => c.playerId === null && c.campaignId === campaignId)
+        .filter((c) => c.playerId === null && c.campaignId === campaignId && c.id in cloudVersions)
         .map(summarize),
-    [characters, campaignId],
+    [characters, campaignId, cloudVersions],
   );
 
   // Personnage complet à prévisualiser dans la modale (le blob, pas le résumé).
@@ -199,10 +208,12 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
     },
   ];
 
-  // Le premier chargement : on attend l'hydratation localStorage + la fin du fetch
-  // cloud tant qu'on n'a encore rien à montrer.
-  const loading =
-    !hasHydrated || ((status === 'idle' || status === 'loading') && characters.length === 0);
+  // On attend l'hydratation localStorage ET la fin du fetch cloud avant d'afficher
+  // les listes : comme on filtre sur `cloudVersions` (peuplé seulement une fois
+  // `load()` terminé), rendre trop tôt masquerait des fiches valides ou laisserait
+  // voir un fantôme du staging. `error`/`unconfigured` (rares ici) sortent du
+  // spinner pour ne pas bloquer indéfiniment.
+  const loading = !hasHydrated || status === 'idle' || status === 'loading';
 
   if (loading) {
     return (
