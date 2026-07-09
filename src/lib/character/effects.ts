@@ -872,6 +872,16 @@ export function borrowedPowerIntegrityKey(hostId: string, spellId: string): stri
 }
 
 /**
+ * PER-206 — clé d'état d'un ÉTAT PRÉJUDICIABLE déjà infligé (Botte secrète, spadassin-r5). Portée par
+ * la capacité HÔTE et l'id de l'état (`STATUS_EFFECT_IDS`). Convention « absence = disponible » : clé
+ * absente ⇒ état non encore infligé ce combat ; valeur 0 ⇒ déjà infligé. Réinitialisée selon
+ * `inflictableStates.resetOn` (défaut `'combat'`, donc à toute récupération rapide / repos long).
+ */
+export function inflictedStateKey(hostId: string, stateId: string): string {
+  return `${hostId}::state::${stateId}`;
+}
+
+/**
  * PER-161 — la RÉACTIVATION de l'interrupteur du i-ème effet TEMPORAIRE d'une capacité est-elle
  * verrouillée jusqu'au prochain repos court ? Vrai quand l'effet est un `conditional-stat-bonus`
  * temporaire dont le compteur porteur a `oncePerShortRest` ET dont le verrou de repos court est posé
@@ -934,6 +944,11 @@ export function pruneUsageCounters(
     for (const spellId of featureById.get(id)?.borrowedPowers ?? []) {
       validKeys.add(borrowedPowerUsedKey(id, spellId));
       validKeys.add(borrowedPowerIntegrityKey(id, spellId));
+    }
+    // PER-206 : états préjudiciables infligeables (Botte secrète) — un marqueur par état, valide tant
+    // que la capacité HÔTE est possédée.
+    for (const stateId of featureById.get(id)?.inflictableStates?.stateIds ?? []) {
+      validKeys.add(inflictedStateKey(id, stateId));
     }
   }
   // PER-162 : le surcoût croissant stocke ses lancements sous l'id de la capacité — déjà couvert par
@@ -1048,6 +1063,12 @@ export function resetUsageCounters(
     for (const spellId of feature?.borrowedPowers ?? []) {
       if (triggers.has('day')) toReset.add(borrowedPowerUsedKey(id, spellId));
       if (triggers.has('short-rest')) toReset.add(borrowedPowerIntegrityKey(id, spellId));
+    }
+    // PER-206 : marqueurs d'états infligés (Botte secrète) — réinitialisés selon `resetOn` (défaut
+    // 'combat', donc à toute récupération rapide / repos long). « À plein » = clé retirée (disponible).
+    const states = feature?.inflictableStates;
+    if (states && triggers.has(states.resetOn ?? 'combat')) {
+      for (const stateId of states.stateIds) toReset.add(inflictedStateKey(id, stateId));
     }
   }
   const next: Record<string, number> = {};

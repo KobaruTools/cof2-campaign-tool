@@ -2340,9 +2340,16 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque le voleur obtient un critique sur le dé d'une attaque au contact de sa main principale avec une arme légère (mais pas sur une ouverture mortelle), il inflige à sa cible un état préjudiciable au choix parmi affaibli, aveuglé, étourdi, immobilisé ou ralenti pendant 1 round. Vous ne pouvez infliger chaque état préjudiciable qu'une seule fois par combat. Alternativement, le voleur peut choisir que l'attaque devienne une attaque sournoise dont les DM s'ajoutent au critique (au lieu d'infliger un état préjudiciable).",
-    // « chaque état préjudiciable une seule fois par combat » → 5 états (affaibli, aveuglé, étourdi,
-    // immobilisé, ralenti), soit 5 utilisations par combat ; réinitialisé au repos court (PER-73/151).
-    usageCounter: { max: 5, resetOn: 'combat', hideFromStatusPanel: true, label: 'États infligés' },
+    // « Vous ne pouvez infliger chaque état préjudiciable qu'une seule fois par combat » (p. 77) → un
+    // marqueur PAR état (affaibli, aveuglé, étourdi, immobilisé, ralenti) plutôt qu'un compteur 0→5
+    // opaque, pour coller au texte (PER-206). Réinitialisés au repos court (récupération rapide, comme
+    // toute capacité « par combat », PER-73/151). L'option « attaque sournoise à la place » reste en
+    // prose (elle ne consomme aucun marqueur).
+    inflictableStates: {
+      stateIds: ['weakened', 'blinded', 'dazed', 'immobilized', 'slowed'],
+      resetOn: 'combat',
+      label: 'États infligés ce combat',
+    },
     sourcePage: 77,
   },
 ];

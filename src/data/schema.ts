@@ -813,6 +813,25 @@ export const IMMUNITY_LABELS: Record<ImmunityId, string> = {
 };
 
 /**
+ * États PRÉJUDICIABLES infligeables à une cible (liste fermée, extensible), PER-206. Amorce d'un
+ * catalogue d'états de CO2 (p. 213) : ici le sous-ensemble que Botte secrète (spadassin-r5, p. 77)
+ * peut infliger. Distinct de `ImmunityId` (ce à quoi ON EST immunisé), même si certains ids se
+ * recoupent (ralenti, immobilisé). Le PARSING texte des états (« immobilisé », « assommé »… dans les
+ * descriptions) est hors périmètre pour l'instant — traité ultérieurement.
+ */
+export const STATUS_EFFECT_IDS = ['weakened', 'blinded', 'dazed', 'immobilized', 'slowed'] as const;
+export type StatusEffectId = (typeof STATUS_EFFECT_IDS)[number];
+
+/** Libellés français des états préjudiciables (affichés au joueur). */
+export const STATUS_EFFECT_LABELS: Record<StatusEffectId, string> = {
+  weakened: 'Affaibli',
+  blinded: 'Aveuglé',
+  dazed: 'Étourdi',
+  immobilized: 'Immobilisé',
+  slowed: 'Ralenti',
+};
+
+/**
  * IMMUNITÉ permanente à un ou plusieurs états/effets (PER-103). Ex. Liberté d'action
  * (barde, saltimbanque-r4) : immunisé à la peur, aux sorts d'asservissement mental
  * (charme/possession), aux états ralenti et immobilisé. Agrégé sur le porteur et rendu
@@ -1553,6 +1572,27 @@ export interface UsageCounter {
 }
 
 /**
+ * ÉTATS PRÉJUDICIABLES infligeables par une capacité, chacun UNE SEULE FOIS entre deux reset
+ * (Botte secrète, spadassin-r5, p. 77 : « il inflige à sa cible un état préjudiciable au choix parmi
+ * affaibli, aveuglé, étourdi, immobilisé ou ralenti … Vous ne pouvez infliger chaque état préjudiciable
+ * qu'une seule fois par combat »), PER-206. Modèle calqué sur `borrowedPowers` (Artefact étrange) : un
+ * ensemble de sous-éléments, chacun doté d'un marqueur d'état de jeu propre suivi dans
+ * `Character.usageCounters` sous une clé dérivée (`inflictedStateKey`), convention « absence =
+ * disponible » (état non encore infligé ce combat). Rendu en boutons-bascule (un par état).
+ */
+export interface InflictableStates {
+  /** États infligeables (catalogue `STATUS_EFFECT_IDS`), dans l'ordre du texte de règles. */
+  stateIds: StatusEffectId[];
+  /**
+   * Quand les marqueurs « déjà infligé » se réinitialisent. Défaut `'combat'` (donc réinitialisés
+   * par toute récupération rapide / repos long, comme toute capacité « par combat »).
+   */
+  resetOn?: UsageResetTrigger;
+  /** Libellé de la section (français). Défaut « États infligés ce combat ». */
+  label?: string;
+}
+
+/**
  * SUBSTITUTION de caractéristique (PER-163) : remplacer `from` par `to` dans les formules d'un sort
  * REPRODUIT/EMPRUNTÉ, quand le lanceur effectif utilise une autre caractéristique de magie (forgesort →
  * INT). Voir `Feature.reproducedAbilitySubstitutions`. La substitution n'est effective que si `to` est
@@ -1703,6 +1743,15 @@ export interface Feature {
    * Absent = la capacité n'a pas d'usage limité décompté.
    */
   usageCounter?: UsageCounter;
+  /**
+   * États préjudiciables que cette capacité peut infliger, chacun UNE SEULE FOIS par combat (Botte
+   * secrète, spadassin-r5, p. 77), EN PLUS du `text` verbatim (PER-206). Rendu en boutons-bascule
+   * (un par état) ; le marqueur « déjà infligé ce combat » de chaque état est suivi dans
+   * `Character.usageCounters` sous une clé dérivée (`inflictedStateKey`, convention « absence =
+   * disponible »). À DISTINGUER d'un `usageCounter` (compteur global sans distinction d'état). Absent
+   * = la capacité n'inflige aucun état suivi.
+   */
+  inflictableStates?: InflictableStates;
   /**
    * REMPLACEMENT INCONDITIONNEL entre capacités d'une même voie : ids des capacités
    * que CETTE capacité, DÈS QU'ELLE EST ACQUISE, supplante définitivement (« la

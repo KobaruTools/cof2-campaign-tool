@@ -37,7 +37,7 @@ import {
   FEATURE_NATURE_TAGS,
   CONDITIONAL_KINDS,
 } from '../src/data/index';
-import { ABILITY_IDS, DERIVED_STAT_IDS, IMMUNITY_IDS, RESISTIBLE_DAMAGE_TYPES } from '../src/data/schema';
+import { ABILITY_IDS, DERIVED_STAT_IDS, IMMUNITY_IDS, RESISTIBLE_DAMAGE_TYPES, STATUS_EFFECT_IDS } from '../src/data/schema';
 
 const errors: string[] = [];
 const warnings: string[] = [];
@@ -422,6 +422,22 @@ for (const c of features) {
     if (!featureById.get(target))
       err(`[capacite ${c.id}] borrowedPowers cible inexistante : ${target}`);
     if (target === c.id) err(`[capacite ${c.id}] borrowedPowers s'auto-référence`);
+  }
+}
+
+// --- États préjudiciables infligeables (Botte secrète, p. 77, PER-206) --------
+// `inflictableStates.stateIds` : liste non vide, sans doublon, chaque id reconnu (STATUS_EFFECT_IDS).
+const validStates = new Set<string>(STATUS_EFFECT_IDS);
+for (const c of features) {
+  const states = c.inflictableStates;
+  if (!states) continue;
+  if (!Array.isArray(states.stateIds) || states.stateIds.length === 0)
+    err(`[capacite ${c.id}] inflictableStates: stateIds vide`);
+  const seen = new Set<string>();
+  for (const s of states.stateIds ?? []) {
+    if (!validStates.has(s)) err(`[capacite ${c.id}] inflictableStates: état inconnu : ${s}`);
+    if (seen.has(s)) err(`[capacite ${c.id}] inflictableStates: état en double : ${s}`);
+    seen.add(s);
   }
 }
 

@@ -8,6 +8,7 @@ import {
   abilityModSources,
   borrowedPowerUsedKey,
   borrowedPowerIntegrityKey,
+  inflictedStateKey,
   pruneUsageCounters,
   abilityModsFromFeatures,
   abilityTestBonusSources,
@@ -1279,6 +1280,52 @@ describe('pouvoirs empruntés — Artefact étrange (artefacts-r5, PER-163)', ()
 
     it('élague les clés d’état quand la capacité hôte n’est plus acquise', () => {
       expect(pruneUsageCounters({ [usedKey]: 0, [integrityKey]: 0 }, [])).toEqual({});
+    });
+  });
+});
+
+describe('états préjudiciables infligeables — Botte secrète (spadassin-r5, PER-206)', () => {
+  const HOST = 'spadassin-r5';
+  const immobilizedKey = inflictedStateKey(HOST, 'immobilized');
+  const blindedKey = inflictedStateKey(HOST, 'blinded');
+
+  it('spadassin-r5 porte bien les 5 états et non un usageCounter', () => {
+    const feature = featureById.get(HOST)!;
+    expect(feature.usageCounter).toBeUndefined();
+    expect(feature.inflictableStates?.stateIds).toEqual([
+      'weakened',
+      'blinded',
+      'dazed',
+      'immobilized',
+      'slowed',
+    ]);
+    expect(feature.inflictableStates?.resetOn).toBe('combat');
+  });
+
+  describe('resetUsageCounters', () => {
+    it('un repos court (combat) réinitialise les marqueurs infligés (retire les clés)', () => {
+      const next = resetUsageCounters(
+        { [immobilizedKey]: 0, [blindedKey]: 0 },
+        [HOST],
+        new Set(['short-rest', 'combat'] as const),
+      );
+      expect(next).toEqual({});
+    });
+
+    it('un reset limité à « day » ne touche pas les marqueurs « par combat »', () => {
+      const state = { [immobilizedKey]: 0 };
+      expect(resetUsageCounters(state, [HOST], new Set(['day'] as const))).toEqual(state);
+    });
+  });
+
+  describe('pruneUsageCounters', () => {
+    it('préserve les marqueurs tant que la capacité est possédée', () => {
+      const state = { [immobilizedKey]: 0, [blindedKey]: 0 };
+      expect(pruneUsageCounters(state, [HOST])).toEqual(state);
+    });
+
+    it('élague les marqueurs quand la capacité n’est plus acquise', () => {
+      expect(pruneUsageCounters({ [immobilizedKey]: 0, [blindedKey]: 0 }, [])).toEqual({});
     });
   });
 });

@@ -39,6 +39,7 @@ import { alpha, type Theme } from '@mui/material/styles';
 import { useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
 import type { AbilityId, AbilitySubstitution, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
+import { STATUS_EFFECT_LABELS } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
@@ -52,6 +53,7 @@ import { animalFormCategories } from '@/lib/character/animalForms';
 import {
   borrowedPowerIntegrityKey,
   borrowedPowerUsedKey,
+  inflictedStateKey,
   conditionalEffectsOf,
   creatureBonusDiceForPath,
   disabledFeatureReasons,
@@ -848,6 +850,66 @@ function BorrowedPowersField({
   );
 }
 
+/**
+ * Bloc des ÉTATS PRÉJUDICIABLES infligeables par une capacité (Botte secrète, spadassin-r5, p. 77,
+ * PER-206). Un bouton-bascule par état de `feature.inflictableStates.stateIds`, chacun infligeable UNE
+ * SEULE fois par combat : cliquer marque l'état « infligé ce combat » (suivi dans
+ * `Character.usageCounters` sous `inflictedStateKey`, convention « absence = disponible ») ; recliquer
+ * le rend disponible. Les marqueurs se réinitialisent au repos court (récupération rapide). `null` si
+ * la capacité n'inflige aucun état suivi.
+ */
+function InflictableStatesField({
+  feature,
+  character,
+  onSet,
+}: {
+  feature: Feature;
+  character: Character;
+  onSet?: (counterKey: string, value: number, max: number) => void;
+}) {
+  const spec = feature.inflictableStates;
+  if (!spec || spec.stateIds.length === 0) return null;
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+        {spec.label ?? 'États infligés ce combat'} — chacun une seule fois par combat
+      </Typography>
+      <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+        {spec.stateIds.map((stateId) => {
+          const key = inflictedStateKey(feature.id, stateId);
+          // Convention « absence = disponible » : clé absente (ou > 0) ⇒ pas encore infligé.
+          const inflicted = (character.usageCounters?.[key] ?? 1) <= 0;
+          return (
+            <AppTooltip
+              key={stateId}
+              title={
+                inflicted
+                  ? 'Déjà infligé ce combat — cliquer pour rendre disponible'
+                  : 'Marquer comme infligé ce combat'
+              }
+            >
+              <span>
+                <ToggleButton
+                  value={stateId}
+                  selected={inflicted}
+                  size="small"
+                  disabled={!onSet}
+                  // Infliger = poser le marqueur (valeur 0) ; annuler = le retirer (valeur ≥ max ⇒ clé
+                  // supprimée par le setter, retour à « disponible »).
+                  onChange={onSet ? () => onSet(key, inflicted ? 1 : 0, 1) : undefined}
+                  sx={{ textTransform: 'none', py: 0.25, px: 1 }}
+                >
+                  {STATUS_EFFECT_LABELS[stateId]}
+                </ToggleButton>
+              </span>
+            </AppTooltip>
+          );
+        })}
+      </Stack>
+    </Box>
+  );
+}
+
 /** Libellé d'une capacité dans le sélecteur d'ajout : voie — rang — nom. */
 function featureOptionLabel(feature: Feature): string {
   const pathName = pathById.get(feature.pathId)?.name ?? feature.pathId;
@@ -1573,6 +1635,53 @@ function CompactUsageIndicator({ feature, character }: { feature: Feature; chara
   );
 }
 
+/**
+ * Indicateur COMPACT des états préjudiciables encore disponibles (vue colonne, Botte secrète, PER-206) :
+ * une pastille par état — pleine s'il est encore infligeable ce combat, creuse s'il est déjà infligé —
+ * avec le décompte « N/total » et une info-bulle. Lecture seule (les boutons-bascule vivent dans la
+ * modale de détail). Miroir de `CompactUsageIndicator` pour un `usageCounter`.
+ */
+function CompactInflictedStatesIndicator({
+  feature,
+  character,
+}: {
+  feature: Feature;
+  character: Character;
+}) {
+  const spec = feature.inflictableStates;
+  if (!spec || spec.stateIds.length === 0) return null;
+  const total = spec.stateIds.length;
+  const available = spec.stateIds.filter(
+    (stateId) => (character.usageCounters?.[inflictedStateKey(feature.id, stateId)] ?? 1) > 0,
+  ).length;
+  return (
+    <AppTooltip title={`${spec.label ?? 'États infligés ce combat'} : ${available} / ${total} encore disponibles`}>
+      <Box sx={{ mt: 0.5, width: '100%', display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+        {Array.from({ length: total }).map((_, i) => (
+          <Box
+            key={i}
+            sx={{
+              width: 9,
+              height: 9,
+              borderRadius: '50%',
+              border: 1,
+              borderColor: (theme) =>
+                i < available ? theme.palette.success.main : alpha(theme.palette.text.disabled, 0.6),
+              bgcolor: (theme) => (i < available ? theme.palette.success.main : 'transparent'),
+            }}
+          />
+        ))}
+        <Typography
+          variant="caption"
+          sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'text.secondary' }}
+        >
+          {available}/{total}
+        </Typography>
+      </Box>
+    </AppTooltip>
+  );
+}
+
 /** Réserve partagée d'une voie, prête à afficher en barre d'en-tête (pool d'élixirs). */
 interface PathResourcePoolState {
   key: string;
@@ -2281,6 +2390,9 @@ function PathBlock({
             {feature.usageCounter && !feature.usageCounter.poolInPathHeader && character && (
               <CompactUsageIndicator feature={feature} character={character} />
             )}
+            {feature.inflictableStates && character && (
+              <CompactInflictedStatesIndicator feature={feature} character={character} />
+            )}
             {/* Choix porté par la capacité, poussé en bas du bloc : valeur retenue
                 (chip compact, lecture seule) + bouton crayon ouvrant la modale
                 d'édition (second niveau d'édition — PER-68). Masqué pour un emprunt
@@ -2552,6 +2664,17 @@ function PathBlock({
                       character={character}
                       abilities={abilities}
                       level={level}
+                      onSet={onSetUsageCounter}
+                    />
+                  </>
+                )}
+                {/* PER-206 : états préjudiciables infligeables (Botte secrète) — un bouton par état, 1×/combat. */}
+                {openFeature.inflictableStates && character && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <InflictableStatesField
+                      feature={openFeature}
+                      character={character}
                       onSet={onSetUsageCounter}
                     />
                   </>
@@ -2885,6 +3008,13 @@ function PathBlock({
                     level={level}
                     onSet={onSetUsageCounter}
                   />
+                </>
+              )}
+              {/* PER-206 : états préjudiciables infligeables (Botte secrète) — un bouton par état, 1×/combat. */}
+              {feature.inflictableStates && character && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  <InflictableStatesField feature={feature} character={character} onSet={onSetUsageCounter} />
                 </>
               )}
               {feature.id === 'animaux-r5' && character && <AnimalFormsNote character={character} />}
