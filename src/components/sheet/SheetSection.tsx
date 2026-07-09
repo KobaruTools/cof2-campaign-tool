@@ -2,8 +2,10 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Box from '@mui/material/Box';
+import ButtonBase from '@mui/material/ButtonBase';
 import Collapse from '@mui/material/Collapse';
-import IconButton from '@mui/material/IconButton';
+import Fade from '@mui/material/Fade';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -74,9 +76,13 @@ export function SheetSection({
   return (
     <Paper
       variant="outlined"
+      // Replié : un clic n'importe où dans le bloc le rouvre (meilleure UX). Déplié : seul le
+      // bouton en bas peut le replier (pas de clic sur le corps, qui contient du contenu interactif).
+      onClick={isCollapsed ? toggle : undefined}
       sx={[
         (theme) => ({
           p: { xs: 2, sm: 3 },
+          cursor: isCollapsed ? 'pointer' : undefined,
           // Verre dépoli commun à toutes les sections : même teinte de fond
           // semi-transparente + flou de l'illustration de couverture en arrière-plan
           // (même idiome que les infobulles, cf. `theme.ts`). Fond uniforme d'une
@@ -84,49 +90,127 @@ export function SheetSection({
           bgcolor: alpha(theme.palette.background.paper, 0.72),
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
+          // Retour visuel d'interaction : le bouton du bas s'assombrit quand on survole la zone
+          // qui pilote le pliage — le TITRE en mode déplié (il replie), le BLOC ENTIER en mode
+          // replié (il rouvre). On cible le calque `::before` du bouton (`.section-toggle`) ;
+          // l'entrée est immédiate (transition sans délai), la sortie reste différée (délai de
+          // l'état de base du `::before`).
+          ...(collapsible
+            ? {
+                [isCollapsed
+                  ? '&:hover .section-toggle::before'
+                  : '& .section-header:hover ~ .section-toggle::before']: {
+                  opacity: 1,
+                  transition: 'opacity 0.15s ease',
+                },
+              }
+            : {}),
         }),
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
     >
       <Stack
+        className="section-header"
         direction="row"
         spacing={1}
-        onClick={collapsible ? toggle : undefined}
+        // Comportement caché mais cohérent : cliquer le titre replie la section quand elle est
+        // dépliée. (Repliée, c'est le Paper entier qui la rouvre — cf. son onClick — donc rien ici.)
+        onClick={collapsible && !isCollapsed ? toggle : undefined}
         sx={{
           alignItems: 'center',
           justifyContent: 'space-between',
-          mb: isCollapsed ? 0 : 2,
-          cursor: collapsible ? 'pointer' : undefined,
+          cursor: collapsible && !isCollapsed ? 'pointer' : undefined,
           userSelect: collapsible ? 'none' : undefined,
+          // Pas de marge conditionnelle ici : l'espace titre→contenu vit DANS le Collapse
+          // (cf. `pt` ci-dessous) pour s'animer avec le contenu au lieu de sauter au clic.
         }}
       >
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
-          {collapsible && (
-            <IconButton
-              size="small"
-              aria-label={isCollapsed ? 'Déplier' : 'Replier'}
-              sx={{ ml: -0.5 }}
-              // Le clic est déjà géré par la ligne entière ; ce bouton n'est qu'un repère visuel.
-              tabIndex={-1}
-            >
-              <ExpandMoreIcon
-                fontSize="small"
-                sx={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }}
-              />
-            </IconButton>
-          )}
-          <Typography variant="h6" component="h2" noWrap>
-            {title}
-          </Typography>
-        </Stack>
+        <Typography variant="h6" component="h2" noWrap>
+          {title}
+        </Typography>
         {resolvedAction && (
-          // Empêche un clic sur l'action (bouton, etc.) de replier la section.
-          <Stack direction="row" onClick={(e) => e.stopPropagation()}>
-            {resolvedAction}
-          </Stack>
+          // Fondu d'entrée : l'action (crayon d'édition…) apparaît en opacity 0→100% à l'ouverture
+          // de la section. `appear` rejoue à chaque remontage (l'action est démontée quand repliée).
+          // stopPropagation : un clic sur l'action ne doit pas replier/rouvrir la section.
+          <Fade in appear>
+            <Stack direction="row" onClick={(e) => e.stopPropagation()}>
+              {resolvedAction}
+            </Stack>
+          </Fade>
         )}
       </Stack>
-      {collapsible ? <Collapse in={!collapsed}>{children}</Collapse> : children}
+      {collapsible ? (
+        // L'espacement titre→contenu (`pt: 2`) est à l'intérieur du Collapse : il se replie
+        // avec le contenu (animation fluide), plus de saut de marge instantané.
+        <Collapse in={!collapsed}>
+          <Box sx={{ pt: 2 }}>{children}</Box>
+        </Collapse>
+      ) : (
+        <Box sx={{ pt: 2 }}>{children}</Box>
+      )}
+      {collapsible && (
+        // Style alternatif à l'essai : bande intégrée en bas de section, pleine largeur,
+        // flèche centrée. On casse le padding du Paper (marges négatives) pour aller bord à
+        // bord et affleurer le bas ; dégradé du gris vers le transparent en direction du haut
+        // pour se fondre dans le bloc.
+        <ButtonBase
+          className="section-toggle"
+          // stopPropagation : quand la section est repliée, le corps du bloc porte déjà un
+          // onClick qui rouvre ; sans ça, un clic sur la bande replierait puis rouvrirait.
+          onClick={(e) => {
+            e.stopPropagation();
+            toggle();
+          }}
+          aria-label={isCollapsed ? 'Déplier' : 'Replier'}
+          sx={(theme) => ({
+            position: 'relative',
+            overflow: 'hidden',
+            display: 'flex',
+            justifyContent: 'center',
+            // Les <button> ne s'étirent pas avec width:auto : on force la largeur pleine bande
+            // (100% du contenu + le padding cassé de chaque côté). Padding xs=16px, sm=24px.
+            width: { xs: 'calc(100% + 32px)', sm: 'calc(100% + 48px)' },
+            // Marge figée (pas de dépendance à l'état replié) : elle ne saute plus au clic ;
+            // c'est le Collapse au-dessus qui anime toute la variation de hauteur.
+            mt: 2,
+            mx: { xs: -2, sm: -3 },
+            mb: { xs: -2, sm: -3 },
+            py: 1.25,
+            color: theme.palette.text.secondary,
+            borderBottomLeftRadius: theme.shape.borderRadius,
+            borderBottomRightRadius: theme.shape.borderRadius,
+            // Base : léger dégradé gris → transparent vers le haut (toujours visible).
+            background: `linear-gradient(to top, ${alpha(theme.palette.text.primary, 0.06)}, transparent)`,
+            // Sur-couche d'assombrissement au survol, fondue via l'OPACITÉ d'un calque : les
+            // dégradés ne s'interpolent pas en CSS, il faut animer l'opacité. Transition « hover
+            // out » différée comme les cartes de capacités (cf. FeaturesByPath) : le délai de
+            // l'état de base ne joue qu'à la SORTIE du survol ; à l'ENTRÉE, la règle `:hover`
+            // (sans délai) prend le relais → l'assombrissement démarre immédiatement.
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              background: `linear-gradient(to top, ${alpha(theme.palette.text.primary, 0.08)}, transparent)`,
+              opacity: 0,
+              transition: 'opacity 0.15s ease 0.2s',
+              pointerEvents: 'none',
+            },
+            '&:hover::before': { opacity: 1, transition: 'opacity 0.15s ease' },
+          })}
+        >
+          <ExpandMoreIcon
+            fontSize="small"
+            // Repliée : flèche vers le bas (défaut) = « déplier ». Dépliée : retournée à 180° =
+            // flèche vers le haut = « replier ». `position/zIndex` : au-dessus du calque `::before`.
+            sx={{
+              position: 'relative',
+              zIndex: 1,
+              transform: isCollapsed ? 'none' : 'rotate(180deg)',
+              transition: 'transform 0.2s',
+            }}
+          />
+        </ButtonBase>
+      )}
     </Paper>
   );
 }
