@@ -1,0 +1,123 @@
+import { describe, expect, it } from 'vitest';
+import { equipmentById } from '@/data';
+import type { Weapon } from '@/data/schema';
+import { rulesContext } from './rulesContext';
+import { createBlankCharacter } from './factory';
+import type { Character } from './types';
+import { isWeaponMastered, masteredClassIds } from './mastery';
+
+const ctx = rulesContext;
+const weapon = (id: string) => equipmentById.get(id) as Weapon;
+
+function makeChar(over: Partial<Character>): Character {
+  return {
+    ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+    ancestryId: 'humain',
+    ancestryPathId: 'humain',
+    ...over,
+  };
+}
+
+describe('masteredClassIds', () => {
+  it('le profil principal est toujours maîtrisé (fiche « Armes & armures maîtrisées »)', () => {
+    const magicien = makeChar({ classId: 'magicien' });
+    expect(masteredClassIds(magicien, ctx).has('magicien')).toBe(true);
+  });
+
+  it('≥ 2 rangs dans une voie d’un autre profil → ce profil est maîtrisé (p. 177)', () => {
+    // Magicien qui a investi 2 rangs dans une voie de guerrier (voie du combat).
+    const magicien = makeChar({
+      classId: 'magicien',
+      featureIds: ['combat-r1', 'combat-r2'],
+    });
+    const mastered = masteredClassIds(magicien, ctx);
+    expect(mastered.has('magicien')).toBe(true);
+    expect(mastered.has('guerrier')).toBe(true);
+  });
+
+  it('< 2 rangs dans une voie d’un autre profil → ce profil n’est PAS maîtrisé', () => {
+    const magicien = makeChar({
+      classId: 'magicien',
+      featureIds: ['combat-r1'],
+    });
+    const mastered = masteredClassIds(magicien, ctx);
+    expect(mastered.has('magicien')).toBe(true);
+    expect(mastered.has('guerrier')).toBe(false);
+  });
+
+  it('hybride créé au niveau 1 → les DEUX profils maîtrisés d’office, dès le rang 1 (p. 180)', () => {
+    // Guerrier totem : barbare (profil principal) + druide/magicien pris à la création,
+    // rang 1 dans chaque voie. Les deux profils sont maîtrisés bien qu’il n’y ait qu’un
+    // rang dans la voie du second profil.
+    const level1 = ['rage-r1', 'magie-des-arcanes-r1', 'humain-r1'];
+    const hybride = makeChar({
+      classId: 'barbare',
+      featureIds: level1,
+      levelUpHistory: [{ level: 1, chosenFeatureIds: level1 }],
+    });
+    const mastered = masteredClassIds(hybride, ctx);
+    expect(mastered.has('barbare')).toBe(true);
+    expect(mastered.has('magicien')).toBe(true);
+  });
+
+  it('hybridé APRÈS la création : le second profil suit la règle des ≥ 2 rangs (p. 177)', () => {
+    // Barbare qui ouvre une voie de magicien plus tard, mais n’y a qu’un seul rang :
+    // l’entrée d’historique de niveau 1 ne contient que des voies de barbare.
+    const magiePris = makeChar({
+      classId: 'barbare',
+      featureIds: ['rage-r1', 'brute-r1', 'humain-r1', 'magie-des-arcanes-r1'],
+      levelUpHistory: [{ level: 1, chosenFeatureIds: ['rage-r1', 'brute-r1', 'humain-r1'] }],
+    });
+    const mastered = masteredClassIds(magiePris, ctx);
+    expect(mastered.has('barbare')).toBe(true);
+    expect(mastered.has('magicien')).toBe(false);
+  });
+});
+
+describe('isWeaponMastered', () => {
+  const magicienIds = masteredClassIds(makeChar({ classId: 'magicien' }), ctx);
+  const barbareIds = masteredClassIds(makeChar({ classId: 'barbare' }), ctx);
+  const arquebusierIds = masteredClassIds(makeChar({ classId: 'arquebusier' }), ctx);
+  const guerrierIds = masteredClassIds(makeChar({ classId: 'guerrier' }), ctx);
+
+  it('le magicien maîtrise les armes listées par son profil (dague, bâton)', () => {
+    expect(isWeaponMastered(weapon('dague'), magicienIds, ctx, true)).toBe(true);
+    expect(isWeaponMastered(weapon('baton'), magicienIds, ctx, true)).toBe(true);
+  });
+
+  it('le magicien ne maîtrise pas une arme hors de son accès (épée longue)', () => {
+    expect(isWeaponMastered(weapon('epee-longue'), magicienIds, ctx, true)).toBe(false);
+  });
+
+  it('un magicien ayant ≥ 2 rangs de guerrier maîtrise alors l’épée longue', () => {
+    const hybride = makeChar({ classId: 'magicien', featureIds: ['combat-r1', 'combat-r2'] });
+    const mastered = masteredClassIds(hybride, ctx);
+    expect(isWeaponMastered(weapon('epee-longue'), mastered, ctx, true)).toBe(true);
+  });
+
+  it('seul un profil « poudrier » maîtrise les armes à poudre (p. 185)', () => {
+    // Poudre autorisée : le guerrier (accès « toutes les armes à distance ») ne
+    // maîtrise PAS le mousquet ; l’arquebusier oui.
+    expect(isWeaponMastered(weapon('mousquet'), guerrierIds, ctx, true)).toBe(false);
+    expect(isWeaponMastered(weapon('mousquet'), arquebusierIds, ctx, true)).toBe(true);
+  });
+
+  it('armes à feu interdites : l’objet dual compte comme arbalète et suit l’accès à distance', () => {
+    // Poudre interdite (firearmsAllowed = false) : le « Mousquet ou arbalète lourde »
+    // est l’arbalète → maîtrisé par l’accès à distance normal du guerrier.
+    expect(isWeaponMastered(weapon('mousquet'), guerrierIds, ctx, false)).toBe(true);
+  });
+
+  it('une arme retirée de l’accès global du profil n’est pas maîtrisée (barbare / arbalète)', () => {
+    expect(isWeaponMastered(weapon('arbalete-legere'), barbareIds, ctx, true)).toBe(false);
+    // …mais le barbare maîtrise l’arc, qui n’est pas exclu.
+    expect(isWeaponMastered(weapon('arc-court'), barbareIds, ctx, true)).toBe(true);
+  });
+
+  it('l’accès « armes de contact à une main » exclut les armes à deux mains', () => {
+    // Arquebusier : meleeAccess « oneHanded ». Il maîtrise l’épée longue (à une main)
+    // mais pas l’espadon/bâton (à deux mains).
+    expect(isWeaponMastered(weapon('epee-longue'), arquebusierIds, ctx, true)).toBe(true);
+    expect(isWeaponMastered(weapon('baton'), arquebusierIds, ctx, true)).toBe(false);
+  });
+});

@@ -20,7 +20,8 @@ import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
-import { EquipConflictsAlert } from '@/components/sheet/WornEquipmentControls';
+import { EquipConflictsAlert, WeaponMasteryAlert } from '@/components/sheet/WornEquipmentControls';
+import { masteredClassIds } from '@/lib/character/mastery';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -259,6 +260,13 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
 
       {/* Conflits de port DURS de l'équipement porté (PER-77) — non bloquant, signalé avant « Créer ». */}
       <EquipConflictsAlert equipment={draft.equipment} />
+
+      {/* Arme(s) en main non maîtrisée(s) → dé malus en attaque (PER-79) — consultatif. */}
+      <WeaponMasteryAlert
+        equipment={draft.equipment}
+        masteredIds={masteredClassIds(preview, rulesContext)}
+        firearmsAllowed={firearmsAllowed}
+      />
 
       {warnings.length > 0 && (
         <AppAlert severity="warning">

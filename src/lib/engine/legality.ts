@@ -30,15 +30,9 @@ import type { Character } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { priestDivineFeatureId, priestDivineSlot, type DivineSlot } from '@/lib/character/choices';
 import { effectiveClassPathIds, firearmsInactivePathIds } from '@/lib/character/classDisplay';
-
-/**
- * Détection LÉGÈRE (PER-185) des objets « à poudre » du catalogue. Ces items sont
- * DUAUX (« Mousquet ou arbalète lourde », « Pétoire ou arbalète de poing », p. 62) :
- * quand la poudre est interdite, l'objet EST déjà l'arbalète. On se contente donc
- * d'un avertissement doux invitant à vérifier la ligne d'équipement — la vraie
- * gestion de l'arme portée (variante effectivement équipée) relève de PER-197.
- */
-const FIREARM_ITEM_IDS = new Set(['mousquet', 'petoire']);
+// Détection LÉGÈRE (PER-185) des objets « à poudre » du catalogue — source unique
+// partagée avec la maîtrise des armes (PER-79). Cf. `FIREARM_ITEM_IDS`.
+import { FIREARM_ITEM_IDS } from '@/lib/character/firearms';
 
 /**
  * Voie EFFECTIVE d'une capacité pour la PROGRESSION : la capacité divine d'un prêtre

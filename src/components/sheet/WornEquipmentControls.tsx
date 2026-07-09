@@ -2,6 +2,7 @@
 
 import CheckroomIcon from '@mui/icons-material/Checkroom';
 import PanToolIcon from '@mui/icons-material/PanTool';
+import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
 import ShieldIcon from '@mui/icons-material/Shield';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -10,10 +11,14 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { equipmentById } from '@/data';
+import type { Weapon } from '@/data/schema';
 import { equipConflicts } from '@/lib/character/equipment';
+import { isWeaponMastered } from '@/lib/character/mastery';
+import { rulesContext } from '@/lib/character/rulesContext';
 import type { EquipmentLine, EquipSlot, WeaponGrip, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { AppAlert } from '@/components/AppAlert';
+import { AppTooltip } from '@/components/AppTooltip';
 import { PageRefText } from '@/components/SourceRef';
 
 /** Icône d'un emplacement de port (armure, bouclier, main). */
@@ -186,6 +191,113 @@ export function EquipConflictsAlert({ equipment }: { equipment: EquipmentLine[] 
           <Typography key={c.kind} component="li" variant="body2">
             {/* Références de page (« (p. 188) ») parsées en puce de source (notion globale). */}
             <PageRefText>{c.message}</PageRefText>
+          </Typography>
+        ))}
+      </Stack>
+    </AppAlert>
+  );
+}
+
+/**
+ * Résout une ligne d'équipement en l'arme du catalogue TENUE EN MAIN et NON maîtrisée
+ * (→ dé malus en attaque, p. 177). Retourne l'arme concernée, ou `null` si la ligne
+ * n'est pas une arme du catalogue en main principale/secondaire, ou si elle est
+ * maîtrisée. Base commune du badge par ligne et de l'alerte agrégée.
+ */
+function unmasteredWornWeapon(
+  line: EquipmentLine,
+  masteredIds: Set<string>,
+  firearmsAllowed: boolean,
+): Weapon | null {
+  if (isCustomItem(line) || !line.worn) return null;
+  if (line.worn.slot !== 'mainHand' && line.worn.slot !== 'offHand') return null;
+  const item = equipmentById.get(line.itemId);
+  if (!item || item.category !== 'weapon') return null;
+  return isWeaponMastered(item, masteredIds, rulesContext, firearmsAllowed) ? null : item;
+}
+
+/** Info-bulle commune du dé malus : verbatim de la règle + mécanique + sources. */
+const MASTERY_TOOLTIP = (
+  <>
+    <strong>Arme non maîtrisée</strong> — dé malus en attaque.
+    <br />
+    « Utiliser une arme sans la maîtriser impose un dé malus en attaque. » (p. 177)
+    <br />
+    « Dé malus : lancez un d20 supplémentaire et gardez le plus faible résultat. » (p. 200)
+  </>
+);
+
+/**
+ * Badge consultatif (PER-79) posé sur une arme EN MAIN non maîtrisée par le
+ * personnage : rappelle qu'elle impose un dé malus en attaque (p. 177). Pastille
+ * custom en tonalité « warning » (≠ Chip MUI), info-bulle citant la règle verbatim et
+ * ses sources. `null` pour tout ce qui n'est pas une arme en main non maîtrisée — le
+ * moteur SIGNALE, il ne résout aucun jet (dés lancés à la vraie table).
+ */
+export function WeaponMasteryBadge({
+  line,
+  masteredIds,
+  firearmsAllowed,
+}: {
+  line: EquipmentLine;
+  masteredIds: Set<string>;
+  firearmsAllowed: boolean;
+}) {
+  if (!unmasteredWornWeapon(line, masteredIds, firearmsAllowed)) return null;
+  return (
+    <Box sx={{ mt: 0.5 }}>
+      <AppTooltip title={MASTERY_TOOLTIP}>
+        <Box
+          component="span"
+          sx={(theme) => ({
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+            px: 0.75,
+            height: 22,
+            borderRadius: 1,
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            cursor: 'help',
+            color: theme.palette.warning.main,
+            bgcolor: alpha(theme.palette.warning.main, 0.12),
+            border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+          })}
+        >
+          <ReportProblemOutlinedIcon sx={{ fontSize: 14 }} />
+          Non maîtrisée · dé malus
+        </Box>
+      </AppTooltip>
+    </Box>
+  );
+}
+
+/**
+ * Alerte non bloquante agrégée (PER-79) listant les armes EN MAIN non maîtrisées d'une
+ * liste d'équipement (→ dé malus en attaque, p. 177). Utilisée sur le récapitulatif du
+ * wizard. `null` si aucune. `masteredIds` = profils maîtrisés (`masteredClassIds`),
+ * `firearmsAllowed` = autorisation EFFECTIVE des armes à feu.
+ */
+export function WeaponMasteryAlert({
+  equipment,
+  masteredIds,
+  firearmsAllowed,
+}: {
+  equipment: EquipmentLine[];
+  masteredIds: Set<string>;
+  firearmsAllowed: boolean;
+}) {
+  const unmastered = equipment
+    .map((line) => unmasteredWornWeapon(line, masteredIds, firearmsAllowed))
+    .filter((w): w is Weapon => w !== null);
+  if (unmastered.length === 0) return null;
+  return (
+    <AppAlert severity="warning" title="Arme non maîtrisée">
+      <Stack component="ul" sx={{ m: 0, pl: 2 }} spacing={0.25}>
+        {unmastered.map((w) => (
+          <Typography key={w.id} component="li" variant="body2">
+            <PageRefText>{`« ${w.name} » : arme non maîtrisée → dé malus en attaque (p. 177).`}</PageRefText>
           </Typography>
         ))}
       </Stack>

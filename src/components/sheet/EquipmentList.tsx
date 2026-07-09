@@ -22,6 +22,7 @@ import { DamageValue } from '@/components/DamageValue';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 import {
   EquipConflictsAlert,
+  WeaponMasteryBadge,
   WornBadge,
   WornControls,
 } from '@/components/sheet/WornEquipmentControls';
@@ -77,10 +78,26 @@ export interface EquipmentListProps {
    * (PER-181, ex. druide `baton-ferre` → « Bâton noueux »). Absent → nom du catalogue.
    */
   characterClass?: CharacterClass;
+  /**
+   * Profils maîtrisés par le personnage (`masteredClassIds`, PER-79) : sert à poser
+   * l'indicateur « arme non maîtrisée → dé malus » sur les armes tenues en main.
+   * Absent → aucun indicateur de maîtrise.
+   */
+  masteredIds?: Set<string>;
+  /** Autorisation EFFECTIVE des armes à feu (PER-185), pour l'indicateur de maîtrise. */
+  firearmsAllowed?: boolean;
 }
 
 /** Liste de l'équipement possédé, en lecture ou en édition. */
-export function EquipmentList({ equipment, onChange, onUse, onWear, characterClass }: EquipmentListProps) {
+export function EquipmentList({
+  equipment,
+  onChange,
+  onUse,
+  onWear,
+  characterClass,
+  masteredIds,
+  firearmsAllowed = true,
+}: EquipmentListProps) {
   const setLine = (i: number, line: EquipmentLine) =>
     onChange?.(equipment.map((l, j) => (j === i ? line : l)));
   const remove = (i: number) => onChange?.(equipment.filter((_, j) => j !== i));
@@ -170,6 +187,14 @@ export function EquipmentList({ equipment, onChange, onUse, onWear, characterCla
                   <Box sx={{ mt: 0.5 }}>
                     <WornBadge worn={line.worn} />
                   </Box>
+                )}
+                {/* Indicateur consultatif (PER-79) : arme en main non maîtrisée → dé malus. */}
+                {masteredIds && (
+                  <WeaponMasteryBadge
+                    line={line}
+                    masteredIds={masteredIds}
+                    firearmsAllowed={firearmsAllowed}
+                  />
                 )}
               </Box>
               {onChange ? (

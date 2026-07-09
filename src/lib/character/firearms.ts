@@ -19,6 +19,20 @@
 import type { Campaign } from '@/lib/campaign/types';
 import type { Character } from './types';
 
+/**
+ * Objets « à poudre » du catalogue (ids). Ces objets sont DUAUX (« Mousquet ou
+ * arbalète lourde », « Pétoire ou arbalète de poing », p. 62) : quand la poudre est
+ * autorisée ils sont des armes à feu (maîtrisées par le seul profil poudrier, p. 185) ;
+ * quand elle est interdite, l'objet EST déjà l'arbalète correspondante (maîtrisée par
+ * l'accès à distance normal). Source unique partagée par la légalité et la maîtrise.
+ */
+export const FIREARM_ITEM_IDS = new Set(['mousquet', 'petoire']);
+
+/** L'objet du catalogue est-il une arme à poudre (cf. `FIREARM_ITEM_IDS`) ? */
+export function isFirearmItemId(itemId: string): boolean {
+  return FIREARM_ITEM_IDS.has(itemId);
+}
+
 export function firearmsEffective(
   character: Pick<Character, 'firearmsAllowed'>,
   campaign: Campaign | null | undefined,
