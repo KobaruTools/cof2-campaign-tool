@@ -33,6 +33,8 @@ import { effectiveClassPathIds, firearmsInactivePathIds } from '@/lib/character/
 // Détection LÉGÈRE (PER-185) des objets « à poudre » du catalogue — source unique
 // partagée avec la maîtrise des armes (PER-79). Cf. `FIREARM_ITEM_IDS`.
 import { FIREARM_ITEM_IDS } from '@/lib/character/firearms';
+// Plafond de port d'armure/bouclier par profil (PER-80) — module pur dédié.
+import { armorRestrictionViolations } from '@/lib/character/armorRestrictions';
 
 /**
  * Voie EFFECTIVE d'une capacité pour la PROGRESSION : la capacité divine d'un prêtre
@@ -68,6 +70,8 @@ export type WarningCode =
   | 'FEATURE_POINTS_OVERSPENT'
   | 'FIREARMS_DISABLED_PATH'
   | 'FIREARMS_DISABLED_ITEM'
+  | 'ARMOR_TOO_HEAVY'
+  | 'SHIELD_NOT_ALLOWED'
   | 'UNKNOWN_FEATURE';
 
 export interface Warning {
@@ -615,6 +619,18 @@ export function checkCompliance(
         severity: 'warning',
       });
     }
+  }
+
+  // Plafond de port d'armure/bouclier par profil (PER-80). Compare l'armure et le
+  // bouclier PORTÉS au maximum autorisé par les profils que le personnage maîtrise
+  // (p. 188). Avertissement non bloquant — la fiche est permissive et le wizard, par
+  // décision propriétaire, se contente aussi de signaler (cohérent avec les conflits
+  // de port, PER-77). La restriction FINE par capacité d'origine relève de PER-86.
+  for (const v of armorRestrictionViolations(character, ctx)) {
+    warnings.push({
+      code: v.kind === 'armor-too-heavy' ? 'ARMOR_TOO_HEAVY' : 'SHIELD_NOT_ALLOWED',
+      message: v.message,
+    });
   }
 
   return warnings;

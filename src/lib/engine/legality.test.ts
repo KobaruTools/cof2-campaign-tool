@@ -500,3 +500,31 @@ describe('variante « Arbalétrier » : échange de voie explosifs ↔ maître d
     expect(checkCompliance(c, ctx, true).map((w) => w.code)).not.toContain('FIREARMS_DISABLED_ITEM');
   });
 });
+
+describe('checkCompliance : restrictions d’armure par profil (PER-80)', () => {
+  it('avertit d’une armure trop lourde pour le profil (magicien / cuir simple porté)', () => {
+    const c = makeCharacter({
+      classId: 'magicien',
+      equipment: [{ itemId: 'cuir-simple', quantity: 1, worn: { slot: 'armor' } }],
+    });
+    expect(checkCompliance(c, ctx).map((w) => w.code)).toContain('ARMOR_TOO_HEAVY');
+  });
+
+  it('avertit d’un bouclier non autorisé (magicien / petit bouclier porté)', () => {
+    const c = makeCharacter({
+      classId: 'magicien',
+      equipment: [{ itemId: 'petit-bouclier', quantity: 1, worn: { slot: 'shield' } }],
+    });
+    expect(checkCompliance(c, ctx).map((w) => w.code)).toContain('SHIELD_NOT_ALLOWED');
+  });
+
+  it('aucun avertissement d’armure au plafond exact du profil (guerrier / cotte de mailles)', () => {
+    const c = makeCharacter({
+      classId: 'guerrier',
+      equipment: [{ itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } }],
+    });
+    const codes = checkCompliance(c, ctx).map((w) => w.code);
+    expect(codes).not.toContain('ARMOR_TOO_HEAVY');
+    expect(codes).not.toContain('SHIELD_NOT_ALLOWED');
+  });
+});
