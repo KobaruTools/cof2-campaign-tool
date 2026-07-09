@@ -12,7 +12,6 @@ import { abilityBreakdown, type AbilityFeatureTerm } from '@/lib/ui/abilityBreak
 import { AppTooltip } from '@/components/AppTooltip';
 import { BreakdownContent } from '@/components/BreakdownContent';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
-import { SourceRef } from '@/components/SourceRef';
 
 export interface AbilityBreakdownTooltipProps {
   abilityId: AbilityId;
@@ -50,9 +49,11 @@ export function AbilityBreakdownTooltip({
   children,
 }: AbilityBreakdownTooltipProps) {
   const bd = abilityBreakdown(abilityId, baseAbilities, ancestry, ancestryChoices, featureTerms);
+  // Page source rendue par `BreakdownContent` en haut à droite du titre (cohérent avec
+  // les statistiques dérivées ; plus de puce en pied de bulle).
   const title = (
     <Box sx={{ py: 0.5 }}>
-      <BreakdownContent title={ABILITY_NAMES[abilityId]} breakdown={bd} />
+      <BreakdownContent title={ABILITY_NAMES[abilityId]} breakdown={bd} page={bd.page} />
       {bonusDieSources && bonusDieSources.length > 0 && (
         <Stack
           direction="row"
@@ -67,9 +68,6 @@ export function AbilityBreakdownTooltip({
           ))}
         </Stack>
       )}
-      <Box sx={{ mt: 1 }}>
-        <SourceRef page={bd.page} />
-      </Box>
     </Box>
   );
   return <AppTooltip title={title}>{children}</AppTooltip>;

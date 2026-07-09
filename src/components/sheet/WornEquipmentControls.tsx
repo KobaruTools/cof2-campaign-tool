@@ -14,6 +14,7 @@ import { equipConflicts } from '@/lib/character/equipment';
 import type { EquipmentLine, EquipSlot, WeaponGrip, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { AppAlert } from '@/components/AppAlert';
+import { PageRefText } from '@/components/SourceRef';
 
 /** Icône d'un emplacement de port (armure, bouclier, main). */
 function slotIcon(slot: EquipSlot, size = 16) {
@@ -183,7 +184,8 @@ export function EquipConflictsAlert({ equipment }: { equipment: EquipmentLine[] 
       <Stack component="ul" sx={{ m: 0, pl: 2 }} spacing={0.25}>
         {conflicts.map((c) => (
           <Typography key={c.kind} component="li" variant="body2">
-            {c.message}
+            {/* Références de page (« (p. 188) ») parsées en puce de source (notion globale). */}
+            <PageRefText>{c.message}</PageRefText>
           </Typography>
         ))}
       </Stack>

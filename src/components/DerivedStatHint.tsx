@@ -71,9 +71,12 @@ export function DerivedStatHint({
     }
   }
   const bd = derivedStatBreakdown(statId, input, modSources);
+  // La page source est rendue par `BreakdownContent` en haut à droite du titre (et non
+  // par `InfoHint`/`AppTooltip` en pied de bulle) : elle qualifie la stat, sa place est
+  // auprès de son nom.
   return (
-    <InfoHint page={bd.page} className={className} enterDelay={enterDelay} sx={sx}>
-      <BreakdownContent title={DERIVED_STAT_NAMES[statId]} breakdown={bd} />
+    <InfoHint className={className} enterDelay={enterDelay} sx={sx}>
+      <BreakdownContent title={DERIVED_STAT_NAMES[statId]} breakdown={bd} page={bd.page} />
     </InfoHint>
   );
 }

@@ -5,12 +5,21 @@ import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import type { StatBreakdown } from '@/lib/ui/derivedStatBreakdown';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { PageRefText, SourceRef } from '@/components/SourceRef';
 
 export interface BreakdownContentProps {
   /** Titre affiché en tête (nom de la stat ou de la caractéristique). */
   title: string;
   /** Détail à présenter : termes additifs, total et note éventuelle. */
   breakdown: StatBreakdown;
+  /**
+   * Page source à citer (cf. `SourceRef`). Rendue en puce en HAUT À DROITE, sur la
+   * ligne du titre (plutôt qu'en pied d'info-bulle) : elle qualifie la statistique
+   * elle-même, sa place logique est donc auprès de son nom. Absent → pas de citation.
+   */
+  page?: number | string;
+  /** Section/titre de paragraphe cité en source, accolé à la page (cf. `SourceRef`). */
+  section?: string;
 }
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
@@ -21,12 +30,25 @@ const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
  * porte pas la citation de source (laissée à l'appelant : `InfoHint` l'ajoute,
  * un tooltip sur le chiffre la place sous le contenu).
  */
-export function BreakdownContent({ title, breakdown }: BreakdownContentProps) {
+export function BreakdownContent({ title, breakdown, page, section }: BreakdownContentProps) {
+  const hasSource = page != null || section != null;
   return (
     <Box sx={{ minWidth: 180 }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-        {title}
-      </Typography>
+      {/* Ligne du titre : nom de la stat à gauche, puce de source poussée à l'extrême droite. */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1.5,
+          mb: 0.5,
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          {title}
+        </Typography>
+        {hasSource && <SourceRef page={page} section={section} />}
+      </Box>
       {breakdown.terms.map((t, i) => (
         <Box key={i}>
           {/* Terme porté par une capacité (ex. « Colosse » → Voie du demi-orc) : rendu
@@ -88,7 +110,8 @@ export function BreakdownContent({ title, breakdown }: BreakdownContentProps) {
       )}
       {breakdown.note && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          {breakdown.note}
+          {/* Références de page de la note parsées en puce de source (notion globale). */}
+          <PageRefText>{breakdown.note}</PageRefText>
         </Typography>
       )}
     </Box>
