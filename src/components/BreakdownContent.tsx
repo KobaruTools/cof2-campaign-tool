@@ -1,8 +1,10 @@
 'use client';
 
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import type { StatBreakdown } from '@/lib/ui/derivedStatBreakdown';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
@@ -108,12 +110,34 @@ export function BreakdownContent({ title, breakdown, page, section }: BreakdownC
           </Box>
         </>
       )}
-      {breakdown.note && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          {/* Références de page de la note parsées en puce de source (notion globale). */}
-          <PageRefText>{breakdown.note}</PageRefText>
-        </Typography>
-      )}
+      {breakdown.note &&
+        (breakdown.noteTone === 'warning' ? (
+          // Note de LIMITE atteinte (ex. AGI plafonnée par l'armure) : encadré « warning »
+          // ambré (icône + fond teinté) pour que le joueur voie clairement qu'il a atteint un plafond.
+          <Box
+            sx={(theme) => ({
+              display: 'flex',
+              gap: 0.75,
+              alignItems: 'flex-start',
+              mt: 0.75,
+              px: 0.75,
+              py: 0.5,
+              borderRadius: 1,
+              bgcolor: alpha(theme.palette.warning.main, 0.14),
+              border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+            })}
+          >
+            <WarningAmberOutlinedIcon sx={{ fontSize: 16, color: 'warning.main', mt: '1px', flexShrink: 0 }} />
+            <Typography variant="caption" sx={{ color: 'warning.main', fontWeight: 600 }}>
+              <PageRefText>{breakdown.note}</PageRefText>
+            </Typography>
+          </Box>
+        ) : (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            {/* Références de page de la note parsées en puce de source (notion globale). */}
+            <PageRefText>{breakdown.note}</PageRefText>
+          </Typography>
+        ))}
     </Box>
   );
 }

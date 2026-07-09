@@ -53,6 +53,12 @@ export interface StatBreakdown {
   total: number | null;
   /** Précision libre (type de dé, cas particulier…). */
   note?: string;
+  /**
+   * Tonalité de la note : `info` (défaut — simple précision neutre) ou `warning`
+   * quand elle signale une LIMITE atteinte par le joueur (ex. AGI plafonnée par
+   * l'armure portée), à mettre en avant visuellement. Absent = `info`.
+   */
+  noteTone?: 'info' | 'warning';
   /** Page source dans le livre de base CO2. */
   page: number;
 }
@@ -209,11 +215,13 @@ export function derivedStatBreakdown(
         ...mod('Armure / bouclier', defenseEquipment.defBonus),
         ...capacities('def'),
       ];
-      const note =
-        defenseEquipment.maxAgi !== null && abilities.AGI > defenseEquipment.maxAgi
-          ? `AGI plafonnée à ${defenseEquipment.maxAgi} par l'armure portée (p. 188).`
-          : undefined;
-      return { terms, total: sum(terms), note, page: 31 };
+      // Plafonnement de l'AGI par l'armure : le joueur a atteint une LIMITE → note en
+      // tonalité « warning » pour qu'il comprenne que son AGI ne compte pas en entier.
+      const capped = defenseEquipment.maxAgi !== null && abilities.AGI > defenseEquipment.maxAgi;
+      const note = capped
+        ? `AGI plafonnée à ${defenseEquipment.maxAgi} par l'armure portée (p. 188).`
+        : undefined;
+      return { terms, total: sum(terms), note, noteTone: capped ? 'warning' : undefined, page: 31 };
     }
     case 'initiative': {
       const terms: BreakdownTerm[] = [

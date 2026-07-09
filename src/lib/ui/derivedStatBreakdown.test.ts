@@ -96,6 +96,30 @@ describe('derivedStatBreakdown ↔ deriveStats', () => {
     });
   }
 
+  it('Défense : note « warning » quand l’AGI est plafonnée par l’armure', () => {
+    const bd = derivedStatBreakdown('defense', {
+      abilities: abilities({ AGI: 4 }),
+      level: 1,
+      family: family('adventurers'),
+      defenseEquipment: { defBonus: 6, maxAgi: 1 },
+      spellCount: 0,
+    });
+    expect(bd.note).toContain('plafonnée');
+    expect(bd.noteTone).toBe('warning');
+  });
+
+  it('Défense : pas de note quand l’AGI n’est pas plafonnée', () => {
+    const bd = derivedStatBreakdown('defense', {
+      abilities: abilities({ AGI: 1 }),
+      level: 1,
+      family: family('adventurers'),
+      defenseEquipment: { defBonus: 6, maxAgi: 3 }, // AGI 1 ≤ 3 → pas de plafonnement
+      spellCount: 0,
+    });
+    expect(bd.note).toBeUndefined();
+    expect(bd.noteTone).toBeUndefined();
+  });
+
   it('PV hybrides niveau 1 : une sous-ligne par famille + renvoi p. 180', () => {
     const bd = derivedStatBreakdown('maxHp', {
       abilities: abilities({ CON: 2 }),
