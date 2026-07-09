@@ -47,8 +47,13 @@ import type { AncestryChoice } from './ancestry';
  *   regroupement optionnel, le personnage reste l'entité première). Les persos
  *   auto-attribués à la « Campagne par défaut » (v15) repassent « Non attribué »
  *   (`null`) ; une FK vers une VRAIE campagne choisie est préservée.
+ * v17 : ajout de l'état « porté » sur les lignes d'équipement (`EquipmentRef.worn`
+ *   / `CustomItem.worn`, PER-76). La migration auto-équipe la meilleure armure, le
+ *   meilleur bouclier et la première arme déjà présents dans l'inventaire, pour que
+ *   la défense des personnages existants ne chute pas au chargement (le calcul ne
+ *   compte désormais que l'armure/bouclier PORTÉS, corrigeant le cumul erroné).
  */
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 /**
  * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
@@ -184,10 +189,48 @@ export interface Identity {
   description?: string;
 }
 
+/**
+ * Emplacements de port d'un objet équipé (PER-76). Le livre distingue l'armure,
+ * le bouclier et les deux mains (p. 188) :
+ *  - `armor` : l'armure portée (au plus une) ;
+ *  - `shield` : le bouclier porté (au plus un) — occupe physiquement la main
+ *    secondaire, mais reste un emplacement distinct d'une arme en main secondaire
+ *    (permet de discriminer bouclier vs seconde arme du combat à deux armes) ;
+ *  - `mainHand` / `offHand` : arme(s) tenue(s) en main. Une arme à deux mains
+ *    (`twoHands`, ou `oneOrTwoHands` avec `grip: 'twoHands'`) occupe les deux mains.
+ */
+export const EQUIP_SLOTS = ['armor', 'shield', 'mainHand', 'offHand'] as const;
+export type EquipSlot = (typeof EQUIP_SLOTS)[number];
+
+/** Prise d'une arme tenue en main (p. 184) : à une main ou à deux mains. */
+export type WeaponGrip = 'oneHand' | 'twoHands';
+
+/**
+ * État « porté » d'une ligne d'équipement (PER-76). Absent = objet simplement
+ * rangé dans le sac (ne compte pas dans la défense, n'occupe aucune main). C'est
+ * la brique qui distingue enfin le porté du rangé : avant PER-76, `equipment`
+ * était une liste plate et le calcul de défense sommait à tort le bonus de DEF de
+ * *toutes* les armures/boucliers de l'inventaire.
+ */
+export interface WornState {
+  /** Emplacement occupé. */
+  slot: EquipSlot;
+  /**
+   * Prise choisie, UNIQUEMENT pour une arme `oneOrTwoHands` tenue en main
+   * principale : `oneHand` (DM `Weapon.damage`) ou `twoHands` (DM
+   * `Weapon.twoHandedDamage`, occupe alors aussi la main secondaire). Absent /
+   * ignoré pour les autres cas (arme `light`/`oneHand`, arme `twoHands`
+   * intrinsèquement à deux mains, armure, bouclier).
+   */
+  grip?: WeaponGrip;
+}
+
 /** Ligne d'équipement référençant le catalogue. */
 export interface EquipmentRef {
   itemId: string;
   quantity: number;
+  /** État de port (PER-76). Absent = rangé. Voir `WornState`. */
+  worn?: WornState;
 }
 
 /**
@@ -200,6 +243,12 @@ export interface CustomItem {
   quantity: number;
   /** Notes libres (DM, DEF, propriétés…). */
   details?: string;
+  /**
+   * État de port (PER-76). Absent = rangé. Un objet personnalisé peut être marqué
+   * porté pour l'affichage, mais n'a pas de statistiques structurées : il ne
+   * contribue pas au calcul de la défense (le moteur ne lit que le catalogue).
+   */
+  worn?: WornState;
 }
 
 export type EquipmentLine = EquipmentRef | CustomItem;

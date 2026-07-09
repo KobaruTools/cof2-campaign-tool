@@ -135,8 +135,10 @@ describe('migrateCharacter', () => {
     // v10 : la taille (« 1,70 m ») est convertie en centimètres.
     expect(c.identity).toEqual({ sex: 'F', height: '170', weight: '60 kg', age: '30', description: 'desc' });
     expect(c.levelUpHistory).toEqual([{ level: 1, chosenFeatureIds: ['humain-r1'] }]);
+    // v17 : la seule arme du catalogue (épée longue) est auto-équipée en main
+    // principale ; l'objet personnalisé reste rangé.
     expect(c.equipment).toEqual([
-      { itemId: 'epee-longue', quantity: 1 },
+      { itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } },
       { custom: true, name: 'Cape de voyage', quantity: 2 },
     ]);
     expect(c.overrides).toEqual({ maxHp: 30, def: 12, luckPoints: 4, meleeAttack: 5 });
@@ -478,7 +480,31 @@ describe('migrateCharacter', () => {
     expect(() => migrateCharacter(raw)).toThrow(ValidationError);
   });
 
-  it('expose les migrations 1→2 … 15→16 dans le registre', () => {
+  it('v16→v17 auto-équipe armure/bouclier/arme pour préserver la défense', () => {
+    const v16 = validRaw();
+    v16.schemaVersion = 16;
+    v16.equipment = [
+      { itemId: 'epee-longue', quantity: 1 },
+      { itemId: 'cotte-de-mailles', quantity: 1 },
+      { itemId: 'grand-bouclier', quantity: 1 },
+    ];
+    const c = migrateCharacter(v16);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    const byId = (id: string) => c.equipment.find((l) => 'itemId' in l && l.itemId === id);
+    expect(byId('cotte-de-mailles')?.worn).toEqual({ slot: 'armor' });
+    expect(byId('grand-bouclier')?.worn).toEqual({ slot: 'shield' });
+    expect(byId('epee-longue')?.worn).toEqual({ slot: 'mainHand' });
+  });
+
+  it('v16→v17 n’équipe rien quand l’inventaire n’a ni armure ni bouclier ni arme', () => {
+    const v16 = validRaw();
+    v16.schemaVersion = 16;
+    v16.equipment = [{ custom: true, name: 'Cape', quantity: 1 }];
+    const c = migrateCharacter(v16);
+    expect(c.equipment.every((l) => l.worn === undefined)).toBe(true);
+  });
+
+  it('expose les migrations 1→2 … 16→17 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -494,5 +520,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[13]).toBe('function');
     expect(typeof MIGRATIONS[14]).toBe('function');
     expect(typeof MIGRATIONS[15]).toBe('function');
+    expect(typeof MIGRATIONS[16]).toBe('function');
   });
 });

@@ -8,10 +8,11 @@
  * Une migration `N` transforme un objet de version N en version N+1. Les
  * migrations sont conservées dans le code dès la première évolution du schéma.
  */
-import { SCHEMA_VERSION, type Character } from '@/lib/character/types';
+import { SCHEMA_VERSION, type Character, type EquipmentLine } from '@/lib/character/types';
 import { ABILITY_IDS, type AbilityId } from '@/data/schema';
 import { ancestryById } from '@/data';
 import { modifierDeltas, type AncestryChoice } from '@/lib/character/ancestry';
+import { autoEquipStartingGear } from '@/lib/character/equipment';
 import { DEFAULT_CAMPAIGN_ID, DEFAULT_PLAYER_ID } from '@/lib/campaign/types';
 
 /** Statuts de personnage valides (garde de la migration + de la validation). */
@@ -330,6 +331,28 @@ function migrateV15toV16(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v16 → v17 : ajout de l'état « porté » sur les lignes d'équipement (PER-76). Le
+ * modèle distingue désormais un objet porté d'un objet rangé, et la défense ne
+ * compte que le porté. Pour que les personnages existants ne voient pas leur
+ * défense chuter au chargement, on auto-équipe la meilleure armure, le meilleur
+ * bouclier et la première arme déjà présents dans l'inventaire (logique partagée
+ * avec l'équipement de départ, `autoEquipStartingGear`). Idempotent : une liste
+ * déjà porteuse d'un objet équipé n'est pas retouchée.
+ *
+ * Effet de bord voulu : un personnage qui aurait empilé plusieurs armures dans son
+ * sac (dont l'ancien calcul cumulait à tort les bonus de DEF) voit sa défense
+ * corrigée à la seule meilleure armure portée — c'est précisément le bug visé.
+ */
+function migrateV16toV17(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (Array.isArray(next.equipment)) {
+    next.equipment = autoEquipStartingGear(next.equipment as EquipmentLine[]);
+  }
+  next.schemaVersion = 17;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -349,6 +372,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   13: migrateV13toV14,
   14: migrateV14toV15,
   15: migrateV15toV16,
+  16: migrateV16toV17,
 };
 
 export class MigrationError extends Error {}

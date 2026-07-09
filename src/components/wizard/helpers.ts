@@ -8,6 +8,7 @@ import { ABILITY_IDS } from '@/data/schema';
 import type { EquipmentLine } from '@/lib/character/types';
 import type { DefenseEquipment } from '@/lib/engine';
 import { isCustomItem } from '@/lib/character/types';
+import { autoEquipStartingGear } from '@/lib/character/equipment';
 import { reskinnedItemName } from '@/lib/character/classDisplay';
 
 export const valueSets = valueSetsData;
@@ -30,7 +31,12 @@ export function distributeValueSet(values: number[], recommended: AbilityId[]): 
   return out;
 }
 
-/** Équipement de départ d'un profil + sac d'aventurier, en lignes du modèle. */
+/**
+ * Équipement de départ d'un profil + sac d'aventurier, en lignes du modèle. Le
+ * matériel de base est auto-équipé (meilleure armure, meilleur bouclier, première
+ * arme) pour qu'une création parte protégée/armée dès le wizard, sans attendre
+ * l'UI d'équipement manuel (PER-77) — même logique que la migration v16→v17.
+ */
 export function initialEquipment(characterClass: CharacterClass): EquipmentLine[] {
   const lines: EquipmentLine[] = [];
   for (const ref of [...characterClass.startingEquipment, ...progression.adventurerPack]) {
@@ -40,7 +46,7 @@ export function initialEquipment(characterClass: CharacterClass): EquipmentLine[
       lines.push({ custom: true, name: ref.label, quantity: ref.quantity });
     }
   }
-  return lines;
+  return autoEquipStartingGear(lines);
 }
 
 /**
@@ -54,19 +60,32 @@ export function equipmentLabel(line: EquipmentLine, characterClass?: CharacterCl
   return reskinnedItemName(characterClass, line.itemId, name);
 }
 
-/** Contribution de l'équipement porté à la défense (armures + boucliers). */
+/**
+ * Contribution de l'équipement PORTÉ à la défense (armure + bouclier), p. 188.
+ *
+ * Depuis PER-76 le calcul ne considère que les objets marqués `worn` : une armure
+ * ou un bouclier rangé dans le sac ne compte pas. On ne retient qu'UNE armure et
+ * qu'UN bouclier portés (les premiers rencontrés) — le modèle vise ≤ 1 de chaque,
+ * et cette garde rend le cumul erroné d'antan structurellement impossible même sur
+ * des données incohérentes. L'AGI maximale provient de l'armure portée (les
+ * boucliers n'en imposent pas, colonne « — » p. 188).
+ */
 export function defenseFromEquipment(equipment: EquipmentLine[]): DefenseEquipment {
   let defBonus = 0;
   let maxAgi: number | null = null;
+  let armorCounted = false;
+  let shieldCounted = false;
   for (const line of equipment) {
-    if (isCustomItem(line)) continue;
+    if (isCustomItem(line) || !line.worn) continue;
     const item = equipmentById.get(line.itemId);
     if (!item) continue;
-    if (item.category === 'armor') {
+    if (item.category === 'armor' && !armorCounted) {
       defBonus += item.def;
-      if (item.maxAgi !== null) maxAgi = maxAgi === null ? item.maxAgi : Math.min(maxAgi, item.maxAgi);
-    } else if (item.category === 'shield') {
+      maxAgi = item.maxAgi;
+      armorCounted = true;
+    } else if (item.category === 'shield' && !shieldCounted) {
       defBonus += item.def;
+      shieldCounted = true;
     }
   }
   return { defBonus, maxAgi };
