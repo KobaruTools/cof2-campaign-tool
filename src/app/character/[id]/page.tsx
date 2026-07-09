@@ -31,8 +31,9 @@ import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, p
 import type { DerivedInput } from '@/lib/engine';
 import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
-import type { Character, CharacterStatus, CustomItem, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
+import type { Character, CharacterStatus, CustomItem, DerivedStatId, EquipmentLine, Identity, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
+import { setWornAt } from '@/lib/character/equipment';
 import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { classDisplayName } from '@/lib/character/classDisplay';
@@ -356,6 +357,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const setIdentity = (identityPatch: Partial<Identity>) =>
     update({ identity: { ...character.identity, ...identityPatch } });
   const setEquipment = (equipment: EquipmentLine[]) => update({ equipment });
+  // Équiper / déséquiper une ligne (PER-77) : état de jeu (on change d'arme, on lève le
+  // bouclier), donc disponible hors mode « Modifier ». Le port ne réajuste pas les autres
+  // lignes ; les conflits durs sont SIGNALÉS (non bloquant), pas empêchés.
+  const setWorn = (i: number, worn: WornState | undefined) =>
+    update({ equipment: setWornAt(character.equipment, i, worn) });
   // L'édition des capacités élague les choix orphelins (capacité retirée → ses
   // choix persistés sont supprimés), pour ne pas conserver de choix fantôme.
   const setFeatureIds = (featureIds: string[]) =>
@@ -1235,6 +1241,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               onChange={editingBlocks.equipment ? setEquipment : undefined}
               // « Utiliser » : consommer une unité est un état de jeu → disponible hors mode édition.
               onUse={useEquipmentItem}
+              // Équiper/déséquiper (PER-77) : état de jeu, hors mode édition ; masqué en lecture seule
+              // (le porté reste montré par un badge). Voir `setWorn`.
+              onWear={readOnly ? undefined : setWorn}
               // Reskins d'objet du profil (PER-181) : druide `baton-ferre` → « Bâton noueux ».
               characterClass={characterClass}
             />

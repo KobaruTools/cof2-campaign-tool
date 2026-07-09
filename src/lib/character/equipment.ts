@@ -75,3 +75,110 @@ export function autoEquipStartingGear(lines: EquipmentLine[]): EquipmentLine[] {
   }
   return next;
 }
+
+/**
+ * Une arme PORTÉE occupe-t-elle les deux mains ? Vrai si elle est intrinsèquement à
+ * deux mains (`weaponCategory: 'twoHands'`) ou si le joueur a choisi la prise à deux
+ * mains d'une arme `oneOrTwoHands` (`worn.grip === 'twoHands'`). Faux pour les armes
+ * à une main / légères et pour toute arme rangée. Les objets personnalisés (hors
+ * catalogue) suivent leur seule prise déclarée, faute de catégorie connue.
+ */
+export function wornWeaponIsTwoHanded(line: EquipmentLine): boolean {
+  if (!line.worn) return false;
+  if (isCustomItem(line)) return line.worn.grip === 'twoHands';
+  const item = equipmentById.get(line.itemId);
+  if (item?.category !== 'weapon') return false;
+  if (item.weaponCategory === 'twoHands') return true;
+  if (item.weaponCategory === 'oneOrTwoHands') return line.worn.grip === 'twoHands';
+  return false;
+}
+
+/**
+ * Nombre de mains occupées par une ligne PORTÉE (0 si rangée) :
+ *  - armure : 0 (ne prend pas de main) ;
+ *  - bouclier : 1 (occupe physiquement la main secondaire, p. 188) ;
+ *  - arme en main : 2 si tenue à deux mains (voir `wornWeaponIsTwoHanded`), sinon 1.
+ */
+function handsUsedByLine(line: EquipmentLine): number {
+  const worn = line.worn;
+  if (!worn) return 0;
+  switch (worn.slot) {
+    case 'armor':
+      return 0;
+    case 'shield':
+      return 1;
+    case 'mainHand':
+      return wornWeaponIsTwoHanded(line) ? 2 : 1;
+    case 'offHand':
+      return 1;
+  }
+}
+
+/**
+ * Nature d'un conflit de port DUR (PER-77), à signaler sur la fiche permissive
+ * (avertissement non bloquant) et dans le wizard :
+ *  - `multiple-armor` : plus d'une armure portée (une seule compte, p. 188) ;
+ *  - `multiple-shield` : plus d'un bouclier porté ;
+ *  - `hands-overbooked` : plus de deux mains occupées (ex. bouclier + arme à deux
+ *    mains, ou arme à deux mains + seconde arme). Le combat à deux armes (deux
+ *    armes à une main = 2 mains) reste LÉGAL et n'est pas un conflit (décision
+ *    propriétaire 2026-06-14).
+ */
+export type EquipConflictKind = 'multiple-armor' | 'multiple-shield' | 'hands-overbooked';
+
+export interface EquipConflict {
+  kind: EquipConflictKind;
+  /** Message français prêt à afficher (avertissement non bloquant). */
+  message: string;
+}
+
+/**
+ * Détecte les conflits de port DURS d'une liste d'équipement (PER-77). Ne considère
+ * que les objets marqués `worn` (le sac n'entre jamais en conflit). Ne PRÉVIENT rien
+ * (la fiche reste permissive) : renvoie la liste des incohérences à signaler.
+ */
+export function equipConflicts(equipment: EquipmentLine[]): EquipConflict[] {
+  const conflicts: EquipConflict[] = [];
+  let armorCount = 0;
+  let shieldCount = 0;
+  let handsUsed = 0;
+  for (const line of equipment) {
+    if (!line.worn) continue;
+    if (line.worn.slot === 'armor') armorCount += 1;
+    else if (line.worn.slot === 'shield') shieldCount += 1;
+    handsUsed += handsUsedByLine(line);
+  }
+  if (armorCount > 1) {
+    conflicts.push({
+      kind: 'multiple-armor',
+      message: 'Plusieurs armures portées en même temps : une seule protège (p. 188).',
+    });
+  }
+  if (shieldCount > 1) {
+    conflicts.push({
+      kind: 'multiple-shield',
+      message: 'Plusieurs boucliers portés en même temps : un seul protège.',
+    });
+  }
+  if (handsUsed > 2) {
+    conflicts.push({
+      kind: 'hands-overbooked',
+      message:
+        'Les deux mains sont déjà prises : une arme à deux mains ne peut pas être tenue avec un bouclier ou une autre arme.',
+    });
+  }
+  return conflicts;
+}
+
+/**
+ * Pose (ou retire, avec `undefined`) l'état de port d'UNE ligne, sur une copie de la
+ * liste. Setter permissif : ne réajuste pas les autres lignes (les conflits éventuels
+ * sont SIGNALÉS par `equipConflicts`, jamais empêchés). Ne mute pas la source.
+ */
+export function setWornAt(
+  equipment: EquipmentLine[],
+  index: number,
+  worn: WornState | undefined,
+): EquipmentLine[] {
+  return equipment.map((line, i) => (i === index ? { ...line, worn } : line));
+}

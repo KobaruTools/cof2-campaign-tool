@@ -11,14 +11,20 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { equipment as equipmentCatalog, equipmentById } from '@/data';
 import type { CharacterClass, EquipmentItem } from '@/data/schema';
-import type { EquipmentLine } from '@/lib/character/types';
+import type { EquipmentLine, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { DamageValue } from '@/components/DamageValue';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import {
+  EquipConflictsAlert,
+  WornBadge,
+  WornControls,
+} from '@/components/sheet/WornEquipmentControls';
 
 /**
  * Résolution NOM D'OBJET → capacité mise en avant (puce) pour les doses d'élixir (voie des élixirs).
@@ -60,6 +66,13 @@ export interface EquipmentListProps {
    */
   onUse?: (index: number) => void;
   /**
+   * Équiper / déséquiper une ligne (PER-77) : pose ou retire l'état de port
+   * (`WornState`) de la ligne `i`. C'est un ÉTAT DE JEU (on change d'arme, on lève le
+   * bouclier), donc disponible HORS mode édition — indépendant de `onChange`. Absent →
+   * pas de contrôle d'équipement (les objets portés sont alors montrés par un badge).
+   */
+  onWear?: (index: number, worn: WornState | undefined) => void;
+  /**
    * Profil du personnage : applique les reskins d'objet du profil aux noms affichés
    * (PER-181, ex. druide `baton-ferre` → « Bâton noueux »). Absent → nom du catalogue.
    */
@@ -67,7 +80,7 @@ export interface EquipmentListProps {
 }
 
 /** Liste de l'équipement possédé, en lecture ou en édition. */
-export function EquipmentList({ equipment, onChange, onUse, characterClass }: EquipmentListProps) {
+export function EquipmentList({ equipment, onChange, onUse, onWear, characterClass }: EquipmentListProps) {
   const setLine = (i: number, line: EquipmentLine) =>
     onChange?.(equipment.map((l, j) => (j === i ? line : l)));
   const remove = (i: number) => onChange?.(equipment.filter((_, j) => j !== i));
@@ -85,6 +98,8 @@ export function EquipmentList({ equipment, onChange, onUse, characterClass }: Eq
 
   return (
     <Stack spacing={onChange ? 1.5 : 0}>
+      {/* Conflits de port DURS (bouclier + arme à 2 mains, >1 armure/bouclier) — non bloquant (PER-77). */}
+      <EquipConflictsAlert equipment={equipment} />
       <Stack divider={<Divider />}>
         {equipment.map((line, i) => {
           const custom = isCustomItem(line);
@@ -93,8 +108,25 @@ export function EquipmentList({ equipment, onChange, onUse, characterClass }: Eq
           // reproduite via une puce (sort choisi pour un mineur/majeur, sinon capacité du forgesort).
           const elixirFeatureId = custom ? ELIXIR_FEATURE_BY_ITEM.get(line.name) : undefined;
           const detail = elixirFeatureId ? null : custom ? line.details : item ? itemDetail(item) : null;
+          // Objet équipable (a un emplacement de port) : armure, bouclier ou arme du catalogue.
+          const equippable =
+            !!item && (item.category === 'armor' || item.category === 'shield' || item.category === 'weapon');
           return (
-            <Stack key={i} direction="row" spacing={1} sx={{ alignItems: 'center', py: 0.75 }}>
+            <Stack
+              key={i}
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+                py: 0.75,
+                // Ligne PORTÉE : léger fond teinté pour distinguer d'un coup d'œil (PER-77).
+                ...(line.worn && {
+                  px: 1,
+                  borderRadius: 1,
+                  bgcolor: (theme) => alpha(theme.palette.success.main, 0.06),
+                }),
+              }}
+            >
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                 {onChange && custom ? (
                   <TextField
@@ -126,6 +158,18 @@ export function EquipmentList({ equipment, onChange, onUse, characterClass }: Eq
                       </Typography>
                     )}
                   </>
+                )}
+                {/* État de port (PER-77) : contrôles équiper/déséquiper si disponibles (état de jeu,
+                    hors mode édition), sinon un simple badge « équipé » en lecture. */}
+                {equippable && onWear && (
+                  <Box sx={{ mt: 0.5 }}>
+                    <WornControls line={line} onWear={(w) => onWear(i, w)} />
+                  </Box>
+                )}
+                {equippable && !onWear && line.worn && (
+                  <Box sx={{ mt: 0.5 }}>
+                    <WornBadge worn={line.worn} />
+                  </Box>
                 )}
               </Box>
               {onChange ? (

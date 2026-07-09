@@ -20,6 +20,7 @@ import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
+import { EquipConflictsAlert } from '@/components/sheet/WornEquipmentControls';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -255,6 +256,9 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
           </Stack>
         </Box>
       )}
+
+      {/* Conflits de port DURS de l'équipement porté (PER-77) — non bloquant, signalé avant « Créer ». */}
+      <EquipConflictsAlert equipment={draft.equipment} />
 
       {warnings.length > 0 && (
         <AppAlert severity="warning">
