@@ -190,11 +190,15 @@ const STATUS_EFFECT_ENTRIES: Record<string, GameTermEntry> = Object.fromEntries(
 );
 
 export const GAME_TERMS: Record<string, GameTermEntry> = {
-  // --- Jets d'attaque (puce de stat dérivée, ambre) ---
+  // --- Jets d'attaque (puce de stat dérivée, ambre) — singulier ET pluriel (PER-208) ---
   'attaque magique': { label: 'Attaque magique', category: 'attack' },
+  'attaques magiques': { label: 'Attaque magique', category: 'attack' },
   'attaque à distance': { label: 'Attaque à distance', category: 'attack' },
+  'attaques à distance': { label: 'Attaque à distance', category: 'attack' },
   'attaque au contact': { label: 'Attaque au contact', category: 'attack' },
+  'attaques au contact': { label: 'Attaque au contact', category: 'attack' },
   'attaque de contact': { label: 'Attaque au contact', category: 'attack' },
+  'attaques de contact': { label: 'Attaque au contact', category: 'attack' },
   // --- Action de jet (gras, sans info-bulle) ---
   'test opposé': { label: '', category: 'action' },
   'tests opposés': { label: '', category: 'action' },

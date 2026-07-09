@@ -120,6 +120,17 @@ describe('splitGameTerms', () => {
     expect(games('une attaque à distance')[0]).toEqual({ term: 'attaque à distance', category: 'attack' });
   });
 
+  it('capte les PLURIELS des jets d’attaque (PER-208)', () => {
+    expect(games('les attaques magiques nécessitant de voir')[0]).toEqual({
+      term: 'attaques magiques',
+      category: 'attack',
+    });
+    expect(games('les attaques à distance')[0]).toEqual({
+      term: 'attaques à distance',
+      category: 'attack',
+    });
+  });
+
   it('insensible à la casse, conserve la casse d’origine', () => {
     expect(games('Test d’attaque magique')).toEqual([
       { term: 'Test', category: 'action' },

@@ -4,7 +4,15 @@ import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
-import { alpha, darken, lighten, type SxProps, type Theme } from '@mui/material/styles';
+import {
+  alpha,
+  darken,
+  decomposeColor,
+  lighten,
+  recomposeColor,
+  type SxProps,
+  type Theme,
+} from '@mui/material/styles';
 import { createContext, useContext, Fragment, type ReactNode } from 'react';
 import { featureById, pathById, progression } from '@/data';
 import type { AbilityId, AbilitySubstitution, Die, Feature, StatusEffectId } from '@/data/schema';
@@ -22,6 +30,18 @@ import { splitNotes } from '@/lib/ui/featureNotes';
 import { splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
+
+/**
+ * Désature une couleur RGB en la rapprochant de son niveau de gris perçu (luminance), d'une
+ * fraction `amount` (0 = inchangé, 1 = gris). Sert à adoucir le rouge de la pastille d'état
+ * préjudiciable pour qu'il soit « moins marqué » (retour propriétaire) tout en restant théma-aware.
+ */
+function desaturate(color: string, amount: number): string {
+  const [r, g, b] = decomposeColor(color).values;
+  const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+  const mix = (c: number) => Math.round(gray + (c - gray) * (1 - amount));
+  return recomposeColor({ type: 'rgb', values: [mix(r), mix(g), mix(b)] });
+}
 
 /**
  * Force l'affichage VERBATIM (`Feature.text`) au lieu du rendu enrichi (dés, dé
@@ -173,13 +193,18 @@ function GlossaryMark({ label, title }: { label: string; title: string }) {
  */
 function StatusEffectChip({ label, stateId }: { label: string; stateId: StatusEffectId }) {
   const info = STATUS_EFFECTS[stateId];
+  // Rouge « moins marqué » (retour propriétaire) : très légère désaturation du rouge d'erreur.
+  const chipRed = (theme: Theme) => desaturate(theme.palette.error.main, 0.22);
+  // L'effet est lui-même du texte de règle : on le passe dans le rendu enrichi (`RichTextRun`)
+  // pour que « Init. », « DEF », « attaque à distance », « attaques magiques »… deviennent des
+  // puces de glossaire à l'intérieur de l'info-bulle.
   const title = (
     <Box>
       <Box component="span" sx={{ fontWeight: 700, display: 'block' }}>
         {info.label}
       </Box>
       <Box component="span" sx={{ display: 'block', mb: 0.5 }}>
-        {info.effect}
+        <RichTextRun value={info.effect} />
       </Box>
       <SourceRef page={info.sourcePage} />
     </Box>
@@ -198,10 +223,10 @@ function StatusEffectChip({ label, stateId }: { label: string; stateId: StatusEf
           fontSize: '0.95em',
           lineHeight: 1.4,
           cursor: 'help',
-          color: (theme) => theme.palette.error.main,
-          bgcolor: (theme) => alpha(theme.palette.error.main, 0.12),
+          color: chipRed,
+          bgcolor: (theme) => alpha(chipRed(theme), 0.12),
           border: 1,
-          borderColor: (theme) => alpha(theme.palette.error.main, 0.45),
+          borderColor: (theme) => alpha(chipRed(theme), 0.45),
         }}
       >
         {label}
