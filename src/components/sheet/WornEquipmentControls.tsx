@@ -216,14 +216,21 @@ function unmasteredWornWeapon(
   return isWeaponMastered(item, masteredIds, rulesContext, firearmsAllowed) ? null : item;
 }
 
-/** Info-bulle commune du dé malus : verbatim de la règle + mécanique + sources. */
+/**
+ * Info-bulle commune du dé malus : verbatim de la règle + mécanique + sources. Les
+ * références de page sont parsées en puce de source (`PageRefText`, notion globale).
+ */
 const MASTERY_TOOLTIP = (
   <>
     <strong>Arme non maîtrisée</strong> — dé malus en attaque.
     <br />
-    « Utiliser une arme sans la maîtriser impose un dé malus en attaque. » (p. 177)
+    <PageRefText>
+      « Utiliser une arme sans la maîtriser impose un dé malus en attaque. » (p. 177)
+    </PageRefText>
     <br />
-    « Dé malus : lancez un d20 supplémentaire et gardez le plus faible résultat. » (p. 200)
+    <PageRefText>
+      « Dé malus : lancez un d20 supplémentaire et gardez le plus faible résultat. » (p. 200)
+    </PageRefText>
   </>
 );
 
