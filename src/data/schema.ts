@@ -813,23 +813,93 @@ export const IMMUNITY_LABELS: Record<ImmunityId, string> = {
 };
 
 /**
- * États PRÉJUDICIABLES infligeables à une cible (liste fermée, extensible), PER-206. Amorce d'un
- * catalogue d'états de CO2 (p. 213) : ici le sous-ensemble que Botte secrète (spadassin-r5, p. 77)
- * peut infliger. Distinct de `ImmunityId` (ce à quoi ON EST immunisé), même si certains ids se
- * recoupent (ralenti, immobilisé). Le PARSING texte des états (« immobilisé », « assommé »… dans les
- * descriptions) est hors périmètre pour l'instant — traité ultérieurement.
+ * États PRÉJUDICIABLES de CO2 (liste fermée, extensible). Catalogue COMPLET du glossaire « États
+ * préjudiciables » du livre de base (p. 214-215, PER-208) — étend l'amorce PER-206 (le sous-ensemble
+ * que Botte secrète, spadassin-r5 p. 77, peut infliger) aux 10 états officiels. Ordre du livre.
+ *
+ * SOURCE UNIQUE partagée par deux couches : la MÉCANIQUE (états infligeables, `InflictableStates`,
+ * PER-206) et la PRÉSENTATION (balisage auto des noms d'états dans les textes de capacités, PER-208 —
+ * cf. `GAME_TERMS` catégorie `status` dans `glossary.ts`). Distinct de `ImmunityId` (ce à quoi ON EST
+ * immunisé), même si certains ids se recoupent (ralenti, immobilisé).
  */
-export const STATUS_EFFECT_IDS = ['weakened', 'blinded', 'dazed', 'immobilized', 'slowed'] as const;
+export const STATUS_EFFECT_IDS = [
+  'blinded',
+  'weakened',
+  'winded',
+  'dazed',
+  'immobilized',
+  'crippled',
+  'paralyzed',
+  'slowed',
+  'prone',
+  'surprised',
+] as const;
 export type StatusEffectId = (typeof STATUS_EFFECT_IDS)[number];
 
-/** Libellés français des états préjudiciables (affichés au joueur). */
-export const STATUS_EFFECT_LABELS: Record<StatusEffectId, string> = {
-  weakened: 'Affaibli',
-  blinded: 'Aveuglé',
-  dazed: 'Étourdi',
-  immobilized: 'Immobilisé',
-  slowed: 'Ralenti',
+/** Une entrée du catalogue des états : libellé FR, effet VERBATIM du glossaire, page source. */
+export interface StatusEffectEntry {
+  /** Libellé français (nom de l'état, tel qu'affiché). */
+  label: string;
+  /** Effet VERBATIM du glossaire CO2 (p. 214-215), rendu dans les info-bulles. */
+  effect: string;
+  /** Page du livre de base où l'état est défini. */
+  sourcePage: number;
+}
+
+/**
+ * Catalogue des états préjudiciables (glossaire p. 214-215). Effets recopiés VERBATIM du livre.
+ * `STATUS_EFFECT_LABELS` en est dérivé pour les usages qui n'ont besoin que du nom (PER-206).
+ */
+export const STATUS_EFFECTS: Record<StatusEffectId, StatusEffectEntry> = {
+  blinded: {
+    label: 'Aveuglé',
+    effect:
+      "-5 en Init., attaque et DEF, -10 en attaque à distance. Les attaques magiques nécessitant de voir la cible sont impossibles.",
+    sourcePage: 214,
+  },
+  weakened: { label: 'Affaibli', effect: 'Dé malus à tous les tests.', sourcePage: 214 },
+  winded: {
+    label: 'Essoufflé',
+    effect: 'Le déplacement est limité à 5 m par action de mouvement.',
+    sourcePage: 214,
+  },
+  dazed: { label: 'Étourdi', effect: 'Aucune action possible et -5 en DEF.', sourcePage: 214 },
+  immobilized: {
+    label: 'Immobilisé',
+    effect: "Pas de déplacement et dé malus aux tests d'attaque.",
+    sourcePage: 214,
+  },
+  crippled: {
+    label: 'Invalide',
+    effect: 'Le déplacement est limité à 5 m par action de mouvement.',
+    sourcePage: 214,
+  },
+  paralyzed: {
+    label: 'Paralysé',
+    effect: "Aucune action possible, en cas d'attaque touché automatiquement et subit un critique.",
+    sourcePage: 215,
+  },
+  slowed: {
+    label: 'Ralenti',
+    effect: "Une seule action par round (action d'attaque ou de mouvement).",
+    sourcePage: 215,
+  },
+  prone: {
+    label: 'Renversé',
+    effect: "-5 en attaque et DEF, nécessite une action d'attaque pour se relever.",
+    sourcePage: 215,
+  },
+  surprised: {
+    label: 'Surpris',
+    effect: 'Pas d’action et -5 en DEF au premier round de combat.',
+    sourcePage: 215,
+  },
 };
+
+/** Libellés français des états préjudiciables (affichés au joueur). Dérivé de `STATUS_EFFECTS`. */
+export const STATUS_EFFECT_LABELS: Record<StatusEffectId, string> = Object.fromEntries(
+  STATUS_EFFECT_IDS.map((id) => [id, STATUS_EFFECTS[id].label]),
+) as Record<StatusEffectId, string>;
 
 /**
  * IMMUNITÉ permanente à un ou plusieurs états/effets (PER-103). Ex. Liberté d'action

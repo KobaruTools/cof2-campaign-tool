@@ -330,12 +330,24 @@ début de phrase compte) et la casse d'origine est conservée. Deux catégories 
   les stats dérivées `magicAttack`/`rangedAttack`/`meleeAttack` du moteur.
 - **Notion de règle** (`rule`) → **souligné pointillé + info-bulle** (même rendu que
   le jargon acronyme `GlossaryMark`). Ajout PER-71 (voleur) : vocabulaire récurrent
-  de l'attaque sournoise — `attaque sournoise`, `surpris`, `dans le dos`,
-  `tourne le dos` — défini UNE fois dans `GAME_TERMS` (l'info-bulle porte la règle),
-  donc auto-rendu dans toutes les capacités qui l'emploient, sans balisage. Étendre
-  cette liste pour les notions de règle nommées qui reviennent (plutôt que de baliser
-  au cas par cas). Casse insensible ; « surprise » (suivi d'un « e ») n'est PAS capté
-  par `surpris` (bornes Unicode) — évite d'attraper le titre « Attaque par surprise ».
+  de l'attaque sournoise — `attaque sournoise`, `dans le dos`, `tourne le dos` —
+  défini UNE fois dans `GAME_TERMS` (l'info-bulle porte la règle), donc auto-rendu
+  dans toutes les capacités qui l'emploient, sans balisage. Étendre cette liste pour
+  les notions de règle nommées qui reviennent (plutôt que de baliser au cas par cas).
+  Casse insensible.
+- **État préjudiciable** (`status`) → **pastille rouge dédiée** (`StatusEffectChip`),
+  info-bulle = **effet verbatim + page source**. Ajout PER-208 : les 10 états du
+  glossaire CO2 (p. 214-215) — aveuglé, affaibli, essoufflé, étourdi, immobilisé,
+  invalide, paralysé, ralenti, renversé, surpris. Les **formes fléchies**
+  (participe/adjectif : « immobilisé/immobilisée/immobilisés/immobilisées ») sont
+  générées depuis le catalogue **`STATUS_EFFECTS`** (schema.ts, source unique
+  partagée avec les états infligeables de PER-206) et fusionnées dans `GAME_TERMS`.
+  **Pas d'infinitif** capté (« immobiliser », « renverser » — décision propriétaire).
+  Casse insensible ; on ne capte que `surpris` (invariable masc.), jamais « surprise/
+  surprises » (bornes Unicode) — évite le titre « Attaque par surprise » et le nom
+  commun « la surprise ». Faux positifs écartés par un **garde-fou de contexte**
+  (`GameTermGuard` : `notPrecededBy`/`notFollowedBy`) : « ralenti » n'est PAS capté
+  après « au » (idiome « au ralenti ») ni avant « par » (« ralenti par les terrains »).
 
 Bornes Unicode (les locutions ont des accents : « opposé », « à ») : un mot collé
 (« tester », « attestation ») n'est PAS capté ; « attaque » seule (sans qualificatif)

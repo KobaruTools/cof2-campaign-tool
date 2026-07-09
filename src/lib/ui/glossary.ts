@@ -18,7 +18,7 @@
  * Termes relevés par balayage des 660 capacités (toutes familles). Ensemble fermé
  * et non ambigu (en majuscules dans les textes ; `Init`/`Init.` en casse mixte).
  */
-import { ABILITY_IDS } from '@/data/schema';
+import { ABILITY_IDS, STATUS_EFFECT_IDS, STATUS_EFFECTS, type StatusEffectId } from '@/data/schema';
 import { ABILITY_NAMES } from './ability';
 
 export type GlossaryCategory = 'ability' | 'derived' | 'jargon';
@@ -108,21 +108,86 @@ export function splitGlossary(text: string): GlossaryPiece[] {
  *    (`magicAttack`/`rangedAttack`/`meleeAttack`) → même puce que les autres stats
  *    dérivées (teinte ambre `derived`), avec info-bulle ;
  *  - `rule` : une NOTION DE RÈGLE nommée en locution (« attaque sournoise »,
- *    « surpris », « dans le dos ») → même rendu que le jargon acronyme (souligné
- *    pointillé + info-bulle, cf. `GlossaryMark`). Étend le glossaire aux concepts
- *    récurrents qui ne sont ni acronyme, ni carac/stat, ni action de jet (PER-71).
+ *    « dans le dos ») → même rendu que le jargon acronyme (souligné pointillé +
+ *    info-bulle, cf. `GlossaryMark`). Étend le glossaire aux concepts récurrents qui
+ *    ne sont ni acronyme, ni carac/stat, ni action de jet (PER-71) ;
+ *  - `status` : un ÉTAT PRÉJUDICIABLE de CO2 (« immobilisé », « étourdi »… — glossaire
+ *    p. 214-215, PER-208) → pastille rouge dédiée (`StatusEffectChip`), info-bulle =
+ *    effet verbatim + page source. Les formes fléchies (participe/adjectif) sont
+ *    générées depuis le catalogue `STATUS_EFFECTS` (source unique, cf. `schema.ts`).
  *
  * Insensible à la casse (un « Test » en début de phrase compte), contrairement aux
  * acronymes. La casse d'origine est conservée à l'affichage. Le livre emploie deux
  * formes pour le contact (« au contact » / « de contact ») : les deux sont captées.
  */
-export type GameTermCategory = 'action' | 'attack' | 'rule';
+export type GameTermCategory = 'action' | 'attack' | 'rule' | 'status';
+
+/**
+ * Garde-fou de CONTEXTE pour écarter les faux positifs d'une locution auto-détectée
+ * (PER-208). Ex. « ralenti » : l'idiome « au ralenti » et « ralenti par les terrains »
+ * ne désignent pas l'état → on refuse la reconnaissance selon le texte adjacent.
+ */
+export interface GameTermGuard {
+  /** Refuser si le texte QUI PRÉCÈDE se termine par cette chaîne (casse insensible). */
+  notPrecededBy?: string;
+  /** Refuser si le texte QUI SUIT commence par cette chaîne (casse insensible). */
+  notFollowedBy?: string;
+}
 
 export interface GameTermEntry {
   /** Libellé affiché en info-bulle (français). Vide pour `action` (gras sans bulle). */
   label: string;
   category: GameTermCategory;
+  /** Pour un état (`category: 'status'`) : id du catalogue `STATUS_EFFECTS`. */
+  stateId?: StatusEffectId;
+  /** Garde-fou de contexte contre les faux positifs (cf. `GameTermGuard`). */
+  guard?: GameTermGuard;
 }
+
+/**
+ * Formes FLÉCHIES (participe/adjectif) de chaque état préjudiciable, dans l'ordre où elles
+ * apparaissent dans les textes (PER-208). On NE capte PAS les infinitifs (« immobiliser »,
+ * « renverser ») : décision propriétaire (formes participe/adjectif seulement). « surpris » est
+ * invariable au masculin ; on n'inclut PAS « surprise/surprises » (évite le titre « Attaque par
+ * surprise » et le nom commun). Source des états : catalogue `STATUS_EFFECTS` (schema.ts).
+ */
+const STATUS_EFFECT_FORMS: Record<StatusEffectId, string[]> = {
+  blinded: ['aveuglé', 'aveuglée', 'aveuglés', 'aveuglées'],
+  weakened: ['affaibli', 'affaiblie', 'affaiblis', 'affaiblies'],
+  winded: ['essoufflé', 'essoufflée', 'essoufflés', 'essoufflées'],
+  dazed: ['étourdi', 'étourdie', 'étourdis', 'étourdies'],
+  immobilized: ['immobilisé', 'immobilisée', 'immobilisés', 'immobilisées'],
+  crippled: ['invalide', 'invalides'],
+  paralyzed: ['paralysé', 'paralysée', 'paralysés', 'paralysées'],
+  slowed: ['ralenti', 'ralentie', 'ralentis', 'ralenties'],
+  prone: ['renversé', 'renversée', 'renversés', 'renversées'],
+  surprised: ['surpris'],
+};
+
+/**
+ * Garde-fous de contexte par état (PER-208). Seul « ralenti » en a besoin dans le contenu réel :
+ * l'idiome « au ralenti » (ralenti = « au ralenti », en slow-motion) et « ralenti par les terrains
+ * difficiles » (déplacement, pas l'état). Les vrais emplois (« est ralenti », « état ralenti »,
+ * « ralenti au prochain round ») restent reconnus.
+ */
+const STATUS_EFFECT_GUARDS: Partial<Record<StatusEffectId, GameTermGuard>> = {
+  slowed: { notPrecededBy: 'au ', notFollowedBy: ' par ' },
+};
+
+/** Entrées d'états générées depuis le catalogue (une par forme fléchie) — fusionnées à `GAME_TERMS`. */
+const STATUS_EFFECT_ENTRIES: Record<string, GameTermEntry> = Object.fromEntries(
+  STATUS_EFFECT_IDS.flatMap((id) =>
+    STATUS_EFFECT_FORMS[id].map((form) => [
+      form,
+      {
+        label: STATUS_EFFECTS[id].label,
+        category: 'status' as const,
+        stateId: id,
+        guard: STATUS_EFFECT_GUARDS[id],
+      },
+    ]),
+  ),
+);
 
 export const GAME_TERMS: Record<string, GameTermEntry> = {
   // --- Jets d'attaque (puce de stat dérivée, ambre) ---
@@ -138,14 +203,10 @@ export const GAME_TERMS: Record<string, GameTermEntry> = {
   // --- Notions de règle en locution (souligné pointillé + info-bulle, PER-71) ---
   // Vocabulaire récurrent de l'attaque sournoise du voleur (assassin-r2/r3/r5,
   // aventurier-r2/r5, deplacement-r3, spadassin-r5…). Défini ICI une seule fois.
+  // NB : « surpris » a migré vers la catégorie `status` (état préjudiciable, PER-208).
   'attaque sournoise': {
     label:
       "Attaque sournoise : contre une cible surprise ou attaquée dans le dos, le voleur inflige des dés de DM supplémentaires avec une arme légère (voie de l'assassin, p. 74).",
-    category: 'rule',
-  },
-  surpris: {
-    label:
-      "Surpris : adversaire pris au dépourvu (qui n'a pas encore agi ou ne perçoit pas la menace) — condition d'une attaque sournoise.",
     category: 'rule',
   },
   'dans le dos': {
@@ -165,6 +226,8 @@ export const GAME_TERMS: Record<string, GameTermEntry> = {
     label: 'Insectes : la catégorie inclut tous les arthropodes (araignées, scorpions, etc.).',
     category: 'rule',
   },
+  // --- États préjudiciables (pastille rouge, p. 214-215, PER-208) — générés depuis le catalogue ---
+  ...STATUS_EFFECT_ENTRIES,
 };
 
 /** Un fragment de texte : texte brut, ou locution de jeu reconnue. */
@@ -199,6 +262,15 @@ export function splitGameTerms(text: string): GameTermPiece[] {
     const raw = m[0];
     const entry = GAME_TERMS[raw.toLowerCase()];
     if (!entry) continue; // garde-fou (ne devrait pas arriver)
+    // Garde-fou de contexte (faux positifs, ex. « au ralenti ») : on refuse la reconnaissance
+    // selon le texte adjacent. Le mot rejeté n'est PAS consommé — `last` reste en place et il
+    // sera émis en texte brut dans le prochain `pushText`.
+    if (entry.guard) {
+      const before = text.slice(0, m.index).toLowerCase();
+      const after = text.slice(GAME_TERMS_RE.lastIndex).toLowerCase();
+      if (entry.guard.notPrecededBy && before.endsWith(entry.guard.notPrecededBy.toLowerCase())) continue;
+      if (entry.guard.notFollowedBy && after.startsWith(entry.guard.notFollowedBy.toLowerCase())) continue;
+    }
     pushText(text.slice(last, m.index));
     pieces.push({ kind: 'game', term: raw, entry });
     last = GAME_TERMS_RE.lastIndex;

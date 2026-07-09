@@ -136,10 +136,7 @@ describe('splitGameTerms', () => {
   });
 
   it('capte les notions de règle du voleur (catégorie « rule »)', () => {
-    expect(games('un adversaire surpris ou qui lui tourne le dos')).toEqual([
-      { term: 'surpris', category: 'rule' },
-      { term: 'tourne le dos', category: 'rule' },
-    ]);
+    expect(games('qui lui tourne le dos')).toEqual([{ term: 'tourne le dos', category: 'rule' }]);
     expect(games('il réalise une attaque sournoise')).toEqual([
       { term: 'attaque sournoise', category: 'rule' },
     ]);
@@ -148,5 +145,61 @@ describe('splitGameTerms', () => {
 
   it('« surpris » ne capte pas « surprise » (évite le titre « Attaque par surprise »)', () => {
     expect(games('réaliser une attaque par surprise')).toEqual([]);
+  });
+});
+
+describe('splitGameTerms — états préjudiciables (PER-208)', () => {
+  // Extrait chaque pièce « état » avec son id de catalogue.
+  const states = (text: string) =>
+    splitGameTerms(text)
+      .filter((p) => p.kind === 'game' && p.entry.category === 'status')
+      .map((p) => (p.kind === 'game' ? { term: p.term, stateId: p.entry.stateId } : null));
+
+  it('reconnaît les formes fléchies (participe/adjectif) d’un état', () => {
+    expect(states('la cible est immobilisée pendant 1 round')).toEqual([
+      { term: 'immobilisée', stateId: 'immobilized' },
+    ]);
+    expect(states('les créatures sont aveuglées')).toEqual([
+      { term: 'aveuglées', stateId: 'blinded' },
+    ]);
+    expect(states('il est étourdi')).toEqual([{ term: 'étourdi', stateId: 'dazed' }]);
+    expect(states('affaibli pour tout le reste du combat')).toEqual([
+      { term: 'affaibli', stateId: 'weakened' },
+    ]);
+  });
+
+  it('reconnaît « invalide » et « renversé » et « paralysé »', () => {
+    expect(states('la cible est invalide pour le reste du combat')).toEqual([
+      { term: 'invalide', stateId: 'crippled' },
+    ]);
+    expect(states('la cible est renversée')).toEqual([{ term: 'renversée', stateId: 'prone' }]);
+    expect(states('elle est paralysée')).toEqual([{ term: 'paralysée', stateId: 'paralyzed' }]);
+  });
+
+  it('« surpris » devient un état (plus une notion de règle)', () => {
+    expect(states('un adversaire surpris')).toEqual([{ term: 'surpris', stateId: 'surprised' }]);
+  });
+
+  it('ne capte PAS les infinitifs (immobiliser, renverser…)', () => {
+    expect(states('il peut immobiliser un adversaire')).toEqual([]);
+    expect(states('choisir de renverser la cible')).toEqual([]);
+  });
+
+  describe('garde-fou « ralenti »', () => {
+    it('capte les vrais emplois de l’état', () => {
+      expect(states('elle est ralentie au prochain round')).toEqual([
+        { term: 'ralentie', stateId: 'slowed' },
+      ]);
+      expect(states('immunisé à l’état ralenti')).toEqual([{ term: 'ralenti', stateId: 'slowed' }]);
+    });
+
+    it('ignore l’idiome « au ralenti »', () => {
+      expect(states('s’il chute, il le fait au ralenti')).toEqual([]);
+      expect(states('tout semble aller au ralenti autour de lui')).toEqual([]);
+    });
+
+    it('ignore « ralenti par … » (déplacement, pas l’état)', () => {
+      expect(states('il n’est plus ralenti par les terrains difficiles')).toEqual([]);
+    });
   });
 });

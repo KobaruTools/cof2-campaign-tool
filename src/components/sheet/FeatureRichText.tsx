@@ -7,7 +7,8 @@ import Typography from '@mui/material/Typography';
 import { alpha, darken, lighten, type SxProps, type Theme } from '@mui/material/styles';
 import { createContext, useContext, Fragment, type ReactNode } from 'react';
 import { featureById, pathById, progression } from '@/data';
-import type { AbilityId, AbilitySubstitution, Die, Feature } from '@/data/schema';
+import type { AbilityId, AbilitySubstitution, Die, Feature, StatusEffectId } from '@/data/schema';
+import { STATUS_EFFECTS } from '@/data/schema';
 import { scalingDie, type Abilities } from '@/lib/engine';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
@@ -165,6 +166,51 @@ function GlossaryMark({ label, title }: { label: string; title: string }) {
 }
 
 /**
+ * ÉTAT PRÉJUDICIABLE de CO2 (« immobilisé », « étourdi »… — glossaire p. 214-215, PER-208) :
+ * pastille à dominante ROUGE (`error`), dans l'esprit des autres pastilles inline. Le MOT conserve
+ * sa casse et son accord tels qu'écrits dans la prose (« immobilisée ») ; l'info-bulle rappelle
+ * l'effet VERBATIM de l'état et sa page source (catalogue `STATUS_EFFECTS`, source unique).
+ */
+function StatusEffectChip({ label, stateId }: { label: string; stateId: StatusEffectId }) {
+  const info = STATUS_EFFECTS[stateId];
+  const title = (
+    <Box>
+      <Box component="span" sx={{ fontWeight: 700, display: 'block' }}>
+        {info.label}
+      </Box>
+      <Box component="span" sx={{ display: 'block', mb: 0.5 }}>
+        {info.effect}
+      </Box>
+      <SourceRef page={info.sourcePage} />
+    </Box>
+  );
+  return (
+    <AppTooltip title={title}>
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-block',
+          verticalAlign: 'baseline',
+          px: 0.6,
+          mx: 0.2,
+          borderRadius: 0.75,
+          fontWeight: 700,
+          fontSize: '0.95em',
+          lineHeight: 1.4,
+          cursor: 'help',
+          color: (theme) => theme.palette.error.main,
+          bgcolor: (theme) => alpha(theme.palette.error.main, 0.12),
+          border: 1,
+          borderColor: (theme) => alpha(theme.palette.error.main, 0.45),
+        }}
+      >
+        {label}
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
  * TERME NOMMÉ employé comme SUBSTANTIF (`[#rang]`, `[#niveau]`) : encadré « mot
  * (valeur) » (« rang (5) ») — le MOT pour que la phrase se lise naturellement
  * (« égal au rang »), suivi de sa valeur résolue sur le personnage. Encadré
@@ -247,8 +293,13 @@ function RichTextRun({ value }: { value: string }) {
           <GlossaryRun key={i} value={piece.value} />
         ) : piece.entry.category === 'attack' ? (
           <RefChip key={i} label={piece.term} title={piece.entry.label} tone="derived" />
+        ) : piece.entry.category === 'status' ? (
+          // État préjudiciable (« immobilisé », « étourdi »… p. 214-215) : pastille rouge dédiée,
+          // info-bulle = effet verbatim + source (cf. StatusEffectChip). `stateId` toujours présent
+          // pour la catégorie `status` (généré depuis le catalogue).
+          <StatusEffectChip key={i} label={piece.term} stateId={piece.entry.stateId!} />
         ) : piece.entry.category === 'rule' ? (
-          // Notion de règle en locution (« attaque sournoise », « surpris »…) : même
+          // Notion de règle en locution (« attaque sournoise », « dans le dos »…) : même
           // rendu que le jargon acronyme (souligné pointillé + info-bulle).
           <GlossaryMark key={i} label={piece.term} title={piece.entry.label} />
         ) : (
