@@ -233,6 +233,13 @@ export function initiative(per: number, mods: DerivedMods = {}): number {
 /**
  * DEF = 10 + AGI + bonus d'armure/bouclier (+ modificateurs). L'AGI prise en
  * compte est plafonnée par l'« AGI maximale » de l'armure portée (p. 188).
+ *
+ * Il n'existe AUCUN plafond de défense « global » à appliquer comme règle
+ * indépendante (cadrage PER-75, `docs/extraction/armures.md` §1) : le seul
+ * plafond réel est celui de l'AGI ci-dessous. Le fait que le cumul AGI + armure
+ * ne dépasse pas +8 (+10 avec un grand bouclier) est une PROPRIÉTÉ calibrée par
+ * la table des armures (p. 188), pas une seconde limite à faire respecter — ne
+ * pas réintroduire de `Math.min` sur le total.
  */
 export function defense(agi: number, equip: DefenseEquipment, mods: DerivedMods = {}): number {
   const effectiveAgi = equip.maxAgi === null ? agi : Math.min(agi, equip.maxAgi);
