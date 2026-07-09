@@ -1068,6 +1068,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <SheetSection
             title="Caractéristiques"
+            icon="abilities"
             action={(collapsed) =>
               collapsed || readOnly ? null : (
                 <BlockEditButton
@@ -1092,6 +1093,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <SheetSection
             title="Statistiques dérivées"
+            icon="derived"
             action={(collapsed) =>
               collapsed || readOnly ? null : (
                 <BlockEditButton
@@ -1132,7 +1134,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           />
 
           {masterDerived && (
-            <SheetSection title="État du personnage">
+            <SheetSection title="État du personnage" icon="status">
               <PlayerStatusPanel
                 depletion={character.depletion}
                 // Max EFFECTIF : surcharge manuelle de « Statistiques dérivées » si présente,
@@ -1164,6 +1166,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <SheetSection
             title="Voies & capacités"
+            icon="paths"
             action={
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                 {hasSpells && (
@@ -1219,6 +1222,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <SheetSection
             title="Inventaire"
+            icon="inventory"
             collapsible
             defaultCollapsed
             persistKey="equipment"
@@ -1255,6 +1259,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <SheetSection
             title="Identité"
+            icon="identity"
             collapsible
             defaultCollapsed
             persistKey="identity"
@@ -1283,6 +1288,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <SheetSection
             title="Notes"
+            icon="notes"
             collapsible
             defaultCollapsed
             persistKey="notes"
@@ -1318,6 +1324,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <SheetSection
             title="Historique des niveaux"
+            icon="levels"
             collapsible
             defaultCollapsed
             persistKey="level-history"

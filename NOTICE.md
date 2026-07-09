@@ -174,3 +174,28 @@ composant `src/components/QuestIcon.tsx` (rendu via `SvgIcon`, sans requête ré
 | Élément | Fichier game-icons.net | Auteur |
 | --- | --- | --- |
 | Campagnes (quête) | `lorc/scroll-unfurled.svg` | Lorc |
+
+## Icônes des titres de section
+
+Les icônes ornant les titres de section de la fiche de personnage (Caractéristiques,
+Inventaire, etc.) proviennent également de [game-icons.net](https://game-icons.net),
+sous licence [Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteurs : **Lorc** et **Delapouite** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/sectionIcons.ts`. La correspondance section → fichier source est conservée
+dans `SECTION_ICON_SOURCES` (même fichier) et dans `scripts/game-icons/sections/map.tsv`.
+L'affichage passe par le composant commun `src/components/SectionIcon.tsx`.
+
+| Section | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Caractéristiques | `delapouite/skills.svg` | Delapouite |
+| Statistiques dérivées | `delapouite/abacus.svg` | Delapouite |
+| Compétences & tests | `delapouite/rolling-dices.svg` | Delapouite |
+| État du personnage | `delapouite/heart-beats.svg` | Delapouite |
+| Voies & capacités | `lorc/tree-branch.svg` | Lorc |
+| Inventaire | `delapouite/backpack.svg` | Delapouite |
+| Identité | `delapouite/id-card.svg` | Delapouite |
+| Notes | `lorc/quill-ink.svg` | Lorc |
+| Historique des niveaux | `delapouite/upgrade.svg` | Delapouite |

@@ -173,6 +173,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
   return (
     <SheetSection
       title="Compétences & tests"
+      icon="tests"
       collapsible
       defaultCollapsed
       persistKey="test-domains"

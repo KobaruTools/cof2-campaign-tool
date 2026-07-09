@@ -10,10 +10,14 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha, type SxProps, type Theme } from '@mui/material/styles';
+import { SectionIcon } from '@/components/SectionIcon';
+import type { SectionIconName } from '@/lib/ui/sectionIcons';
 
 export interface SheetSectionProps {
   /** Titre de la section (h2). */
   title: string;
+  /** Icône optionnelle affichée à gauche du titre (game-icons.net, cf. `<SectionIcon>`). */
+  icon?: SectionIconName;
   /**
    * Élément optionnel aligné à droite du titre (bouton, badge…). Peut être une fonction
    * recevant l'état replié courant, pour masquer l'action quand la section est repliée
@@ -44,6 +48,7 @@ const storageKey = (key: string) => `sheet-section-collapsed:${key}`;
  */
 export function SheetSection({
   title,
+  icon,
   action,
   sx,
   collapsible = false,
@@ -125,9 +130,12 @@ export function SheetSection({
           // (cf. `pt` ci-dessous) pour s'animer avec le contenu au lieu de sauter au clic.
         }}
       >
-        <Typography variant="h6" component="h2" noWrap>
-          {title}
-        </Typography>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
+          {icon && <SectionIcon name={icon} size={22} sx={{ color: 'text.secondary' }} />}
+          <Typography variant="h6" component="h2" noWrap>
+            {title}
+          </Typography>
+        </Stack>
         {resolvedAction && (
           // Fondu d'entrée : l'action (crayon d'édition…) apparaît en opacity 0→100% à l'ouverture
           // de la section. `appear` rejoue à chaque remontage (l'action est démontée quand repliée).
