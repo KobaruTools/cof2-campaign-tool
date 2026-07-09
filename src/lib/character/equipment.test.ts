@@ -182,4 +182,34 @@ describe('setWornAt', () => {
     setWornAt(lines, 0, { slot: 'mainHand' });
     expect(lines[0].worn).toBeUndefined();
   });
+
+  it('une main ne tient qu’une arme : équiper en main principale libère l’autre arme en main principale', () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } },
+      { itemId: 'dague', quantity: 1 },
+    ];
+    const out = setWornAt(lines, 1, { slot: 'mainHand' });
+    expect(out[1].worn).toEqual({ slot: 'mainHand' });
+    expect(out[0].worn).toBeUndefined();
+  });
+
+  it('le combat à deux armes reste possible : main secondaire n’affecte pas la main principale', () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } },
+      { itemId: 'dague', quantity: 1 },
+    ];
+    const out = setWornAt(lines, 1, { slot: 'offHand' });
+    expect(out[0].worn).toEqual({ slot: 'mainHand' });
+    expect(out[1].worn).toEqual({ slot: 'offHand' });
+  });
+
+  it('équiper une armure ne libère pas une arme en main (slots distincts)', () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } },
+      { itemId: 'cuir-simple', quantity: 1 },
+    ];
+    const out = setWornAt(lines, 1, { slot: 'armor' });
+    expect(out[0].worn).toEqual({ slot: 'mainHand' });
+    expect(out[1].worn).toEqual({ slot: 'armor' });
+  });
 });

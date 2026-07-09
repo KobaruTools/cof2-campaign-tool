@@ -172,13 +172,24 @@ export function equipConflicts(equipment: EquipmentLine[]): EquipConflict[] {
 
 /**
  * Pose (ou retire, avec `undefined`) l'état de port d'UNE ligne, sur une copie de la
- * liste. Setter permissif : ne réajuste pas les autres lignes (les conflits éventuels
- * sont SIGNALÉS par `equipConflicts`, jamais empêchés). Ne mute pas la source.
+ * liste. Ne mute pas la source.
+ *
+ * Exclusivité des mains : une main ne tient qu'une seule arme. Poser une arme en main
+ * principale (resp. secondaire) LIBÈRE toute AUTRE arme déjà dans cette même main —
+ * on ne peut pas se retrouver avec deux armes dans la même main. Les autres
+ * incohérences (plusieurs armures/boucliers, deux mains déjà prises) restent
+ * SIGNALÉES par `equipConflicts` sur la fiche permissive, pas empêchées ici.
  */
 export function setWornAt(
   equipment: EquipmentLine[],
   index: number,
   worn: WornState | undefined,
 ): EquipmentLine[] {
-  return equipment.map((line, i) => (i === index ? { ...line, worn } : line));
+  const exclusiveHand =
+    worn && (worn.slot === 'mainHand' || worn.slot === 'offHand') ? worn.slot : null;
+  return equipment.map((line, i) => {
+    if (i === index) return { ...line, worn };
+    if (exclusiveHand && line.worn?.slot === exclusiveHand) return { ...line, worn: undefined };
+    return line;
+  });
 }
