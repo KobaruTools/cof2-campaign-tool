@@ -18,6 +18,7 @@ import type { Feature, Path } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
 import { summarize } from '@/lib/character/summary';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import {
   ANCESTRY_COLOR,
   MAGE_PATH_COLOR,
@@ -27,6 +28,13 @@ import {
 
 export interface CharacterPreviewCardProps {
   character: Character;
+  /**
+   * Colore les 7 caractéristiques (chiffre ET icône) selon l'échelle fort/faible
+   * (`abilityTotalColor`) au lieu du gris neutre. Utilisé par l'écran de MJ pour
+   * un résumé plus parlant ; les autres usages (import, infobulle de liste) gardent
+   * le rendu neutre par défaut.
+   */
+  colorAbilities?: boolean;
 }
 
 /**
@@ -156,7 +164,7 @@ function pathColumns(character: Character): PathColumn[] {
     });
 }
 
-export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
+export function CharacterPreviewCard({ character, colorAbilities = false }: CharacterPreviewCardProps) {
   const summary = summarize(character);
   return (
     // `minWidth` : sans largeur définie (ex. dans une infobulle qui se dimensionne
@@ -224,6 +232,8 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
       >
         {ABILITY_IDS.map((id) => {
           const value = character.abilities[id] ?? 0;
+          // Teinte fort/faible optionnelle (chiffre + icône), sinon gris neutre.
+          const abilityColor = colorAbilities ? abilityTotalColor(value) : undefined;
           return (
             <Box
               key={id}
@@ -248,9 +258,14 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
                 {/* Icône de la caractéristique (même jeu d'icônes que la fiche), à la
                     place du code court FOR/CON/… */}
-                <AbilityIcon ability={id} size={18} color="rgba(255, 255, 255, 0.7)" title={ABILITY_NAMES[id]} />
+                <AbilityIcon
+                  ability={id}
+                  size={18}
+                  color={abilityColor ?? 'rgba(255, 255, 255, 0.7)'}
+                  title={ABILITY_NAMES[id]}
+                />
                 {/* `lineHeight: 1` : supprime l'espace bas du line-box qui décentrait le chiffre. */}
-                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1, color: abilityColor }}>
                   {value >= 0 ? `+${value}` : value}
                 </Typography>
               </Box>

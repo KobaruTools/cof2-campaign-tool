@@ -7,11 +7,11 @@
  * breakdown (« i »), pas d'édition — le but est le coup d'œil le plus
  * représentatif, entre l'aperçu et la fiche complète.
  *
- * Les blocs sont petits et rangés en grille auto-ajustée (~4–5 par ligne selon
- * la largeur), pour gagner en densité. Les valeurs viennent du moteur
+ * Les blocs sont petits et rangés à 3 par ligne (structure proche de la fiche :
+ * icône à gauche, chiffre à droite). Les valeurs viennent du moteur
  * (`deriveStats`) ; une surcharge manuelle (PER-48) prime et s'affiche en teinte
- * « forcée » (comme la fiche). Une stat non applicable (ex. mana sans sort, sans
- * surcharge) est masquée plutôt qu'affichée « — », pour ne garder que le signal.
+ * « forcée » (comme la fiche). Une stat non applicable (ex. mana sans sort) est
+ * affichée « — » comme sur la fiche, pour conserver la même grille de lecture.
  */
 import type { ReactNode } from 'react';
 import Box from '@mui/material/Box';
@@ -74,9 +74,9 @@ export function CompactDerivedStats({
     <Box
       sx={{
         display: 'grid',
-        // ~4–5 blocs par ligne selon la largeur du parent ; blocs alignés en haut
-        // (une stat avec puces est plus haute, elle ne doit pas étirer les autres).
-        gridTemplateColumns: 'repeat(auto-fit, minmax(72px, 1fr))',
+        // 3 blocs par ligne (structure « de base » proche de la fiche) ; blocs alignés
+        // en haut (une stat avec puces est plus haute, elle ne doit pas étirer les autres).
+        gridTemplateColumns: 'repeat(3, 1fr)',
         alignItems: 'start',
         gap: 0.75,
       }}
@@ -85,8 +85,6 @@ export function CompactDerivedStats({
         const key = OVERRIDE_KEY[id];
         const forced = overrides ? key in overrides : false;
         const display = forced ? (overrides![key] ?? 0) : computed;
-        // Stat non applicable et non forcée (ex. mana d'un non-lanceur) : masquée.
-        if (display === null) return null;
         const badges =
           id === 'defense'
             ? defenseBadges
@@ -110,17 +108,24 @@ export function CompactDerivedStats({
               bgcolor: 'rgba(255, 255, 255, 0.04)',
             }}
           >
-            {/* Infobulle du nom limitée à l'icône + le chiffre : les puces portent déjà
-                leur propre infobulle (breakdown), on évite ainsi deux infobulles rivales. */}
+            {/* Icône ANCRÉE à gauche ; le chiffre (+ dé de récup.) CENTRÉ sur l'espace
+                restant à droite. Infobulle du nom limitée à ce couple : les puces portent
+                déjà leur propre infobulle (breakdown), on évite ainsi deux infobulles
+                rivales. Une stat non applicable (ex. mana d'un non-lanceur) s'affiche « — »
+                comme sur la fiche. */}
             <AppTooltip title={DERIVED_STAT_NAMES[id]}>
-              <Stack sx={{ alignItems: 'center', gap: 0.25 }}>
-                <DerivedStatIcon statId={id} size={28} color="rgba(255, 255, 255, 0.75)" />
-                <Stack direction="row" spacing={0.4} sx={{ alignItems: 'center' }}>
+              <Stack direction="row" sx={{ alignItems: 'center', width: '100%' }}>
+                <DerivedStatIcon statId={id} size={26} color="rgba(255, 255, 255, 0.75)" />
+                <Stack
+                  direction="row"
+                  spacing={0.4}
+                  sx={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
+                >
                   <Typography
                     variant="subtitle1"
                     sx={{ fontWeight: 700, lineHeight: 1, color: forced ? 'warning.main' : undefined }}
                   >
-                    {display}
+                    {display === null ? '—' : display}
                   </Typography>
                   {suffix}
                 </Stack>
