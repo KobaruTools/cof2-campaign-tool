@@ -28,7 +28,7 @@ import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseB
  * côté UI, `def`/`recoveryDiceCount` côté moteur. La surcharge des dés de
  * récupération ne porte que sur le **nombre** (le type de dé reste calculé).
  */
-const OVERRIDE_KEY: Record<DerivedStatId, OverrideKey> = {
+export const OVERRIDE_KEY: Record<DerivedStatId, OverrideKey> = {
   maxHp: 'maxHp',
   defense: 'def',
   initiative: 'initiative',
