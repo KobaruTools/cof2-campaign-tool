@@ -24,6 +24,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
+import ShieldIcon from '@mui/icons-material/Shield';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -293,13 +294,20 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           >
             Rattacher un personnage
           </Button>
-          {/* Accès aux réglages depuis la ligne d'actions — poussé tout à droite via la
-              marge automatique. */}
+          {/* Outils MJ (écran de MJ + réglages) poussés tout à droite via la marge
+              automatique sur le premier de la paire. */}
+          <Button
+            variant="outlined"
+            startIcon={<ShieldIcon />}
+            onClick={() => router.push(`/campaign/${cid}/gm-screen`)}
+            sx={{ ml: { sm: 'auto' } }}
+          >
+            Écran de MJ
+          </Button>
           <Button
             variant="outlined"
             startIcon={<SettingsIcon />}
             onClick={() => router.push(`/campaign/${cid}/settings`)}
-            sx={{ ml: { sm: 'auto' } }}
           >
             Réglages de la campagne
           </Button>
