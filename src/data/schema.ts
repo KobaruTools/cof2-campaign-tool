@@ -411,7 +411,8 @@ export type FeatureEffect =
   | TestBonusEffect
   | ManaAbilityOverrideEffect
   | UniversalTestBonusEffect
-  | ImmunityEffect;
+  | ImmunityEffect
+  | ArmorAccessEffect;
 
 /**
  * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
@@ -911,6 +912,24 @@ export interface ImmunityEffect {
   kind: 'immunity';
   /** États/effets dont le porteur est immunisé (cf. `IMMUNITY_IDS`). */
   immunities: ImmunityId[];
+}
+
+/**
+ * AMÉLIORATION de l'accès aux ARMURES d'un profil par un rang de voie (PER-81).
+ * Certaines capacités relèvent la meilleure armure qu'un personnage peut PORTER
+ * au-delà du plafond de son profil (p. 178) :
+ *  - barbare, Tour de force (brute-r2) → chemise de mailles (DEF +4) ;
+ *  - barbare, Briseur d'os (brute-r5) → cotte de mailles (DEF +5) ;
+ *  - chevalier, Autorité naturelle (noblesse-r3) → plaque complète (DEF +7, p. 86).
+ * L'effet déclare l'armure débloquée par son `maxArmorId` ; le moteur en dérive la
+ * DEF plafond effective (cf. `armorRestrictions.ts`), qui prime si elle est plus
+ * élevée que le plafond du profil. Purement PORT (pas de sorts) — la restriction
+ * fine par capacité d'origine reste PER-86.
+ */
+export interface ArmorAccessEffect {
+  kind: 'armor-access';
+  /** Id (catalogue `armors`) de la meilleure armure débloquée par cette capacité. */
+  maxArmorId: string;
 }
 
 export interface TestBonusEffect {

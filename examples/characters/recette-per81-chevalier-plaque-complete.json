@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per81-chevalier-plaque-complete",
+  "name": "Recette PER-81 — Chevalier AVEC Autorité naturelle (plaque complète)",
+  "identity": {
+    "description": "PER-81. Chevalier avec Autorité naturelle (noblesse-r3) portant une plaque complète (DEF +7). ATTENDU : AUCUN avertissement de port d’armure (le rang débloque la plaque complète, au-delà du plafond chevalier « plaque » DEF +6). p. 86/178. NB : le relèvement d’UN CRAN par voie de combattant pour un HYBRIDE reste différé (PER-86)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 4,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "noblesse-r1",
+    "noblesse-r2",
+    "noblesse-r3",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "plaque-complete",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-81 — Autorité naturelle (noblesse-r3) débloque la plaque complète (DEF +7). Sans ce rang, le plafond chevalier est la plaque (DEF +6).",
+  "createdAt": "2026-07-14T00:00:00.000Z",
+  "updatedAt": "2026-07-14T00:00:00.000Z"
+}

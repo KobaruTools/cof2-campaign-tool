@@ -59,6 +59,54 @@ describe('armorRestrictionViolations — armure', () => {
     expect(armorRestrictionViolations(barbareSeul, ctx).some((v) => v.kind === 'armor-too-heavy')).toBe(true);
   });
 
+  it('Tour de force (brute-r2) relève le plafond du barbare à la chemise de mailles (PER-81)', () => {
+    // Barbare (plafond cuir renforcé, DEF +3) portant une chemise de mailles (DEF +4) :
+    // interdit par défaut, autorisé dès l'acquisition de Tour de force (brute-r1 puis brute-r2).
+    const sansRang = makeChar({ classId: 'barbare', equipment: [wornArmor('chemise-de-mailles')] });
+    expect(armorRestrictionViolations(sansRang, ctx).some((v) => v.kind === 'armor-too-heavy')).toBe(true);
+    const avecRang = makeChar({
+      classId: 'barbare',
+      featureIds: ['brute-r1', 'brute-r2'],
+      equipment: [wornArmor('chemise-de-mailles')],
+    });
+    expect(armorRestrictionViolations(avecRang, ctx)).toHaveLength(0);
+    // Mais Tour de force seul ne débloque PAS la cotte de mailles (DEF +5).
+    const cotte = makeChar({
+      classId: 'barbare',
+      featureIds: ['brute-r1', 'brute-r2'],
+      equipment: [wornArmor('cotte-de-mailles')],
+    });
+    expect(armorRestrictionViolations(cotte, ctx).some((v) => v.kind === 'armor-too-heavy')).toBe(true);
+  });
+
+  it('Briseur d’os (brute-r5) relève le plafond du barbare à la cotte de mailles (PER-81)', () => {
+    const barbare = makeChar({
+      classId: 'barbare',
+      featureIds: ['brute-r1', 'brute-r2', 'brute-r3', 'brute-r4', 'brute-r5'],
+      equipment: [wornArmor('cotte-de-mailles')],
+    });
+    expect(armorRestrictionViolations(barbare, ctx)).toHaveLength(0);
+    // La plaque (DEF +6) reste hors de portée, même avec Briseur d'os.
+    const plaque = makeChar({
+      classId: 'barbare',
+      featureIds: ['brute-r1', 'brute-r2', 'brute-r3', 'brute-r4', 'brute-r5'],
+      equipment: [wornArmor('armure-de-plaques')],
+    });
+    expect(armorRestrictionViolations(plaque, ctx).some((v) => v.kind === 'armor-too-heavy')).toBe(true);
+  });
+
+  it('Autorité naturelle (noblesse-r3) débloque la plaque complète du chevalier (PER-81)', () => {
+    // Plaque complète (DEF +7) au-delà du plafond chevalier (plaque, DEF +6) sans le rang.
+    const sansRang = makeChar({ classId: 'chevalier', equipment: [wornArmor('plaque-complete')] });
+    expect(armorRestrictionViolations(sansRang, ctx).some((v) => v.kind === 'armor-too-heavy')).toBe(true);
+    const avecRang = makeChar({
+      classId: 'chevalier',
+      featureIds: ['noblesse-r1', 'noblesse-r2', 'noblesse-r3'],
+      equipment: [wornArmor('plaque-complete')],
+    });
+    expect(armorRestrictionViolations(avecRang, ctx)).toHaveLength(0);
+  });
+
   it('une armure personnalisée portée est ignorée (stats inconnues du moteur)', () => {
     const magicien = makeChar({
       classId: 'magicien',

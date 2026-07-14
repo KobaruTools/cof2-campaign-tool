@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per81-barbare-briseur-os",
+  "name": "Recette PER-81 — Barbare AVEC Briseur d’os (cotte)",
+  "identity": {
+    "description": "PER-81. Barbare avec Briseur d’os (brute-r5) portant une cotte de mailles (DEF +5). ATTENDU : AUCUN avertissement de port d’armure (Briseur d’os relève le plafond à la cotte de mailles). Une armure de plaque (DEF +6) déclencherait encore l’avertissement. p. 80/178."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 6,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "brute-r1",
+    "brute-r2",
+    "brute-r3",
+    "brute-r4",
+    "brute-r5",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cotte-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-81 — Briseur d’os (brute-r5) relève le plafond de port à la cotte de mailles (DEF +5). La plaque (DEF +6) reste hors de portée.",
+  "createdAt": "2026-07-14T00:00:00.000Z",
+  "updatedAt": "2026-07-14T00:00:00.000Z"
+}

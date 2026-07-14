@@ -18,7 +18,7 @@
  * Le moteur SIGNALE l'excès (avertissement non bloquant, fiche + récap wizard) ;
  * il ne retire rien de force (la fiche reste permissive). Cf. `checkCompliance`.
  */
-import { equipmentById } from '@/data';
+import { equipmentById, featureById } from '@/data';
 import type { CharacterClass, ShieldAccess } from '@/data/schema';
 import type { RulesContext } from '@/lib/engine';
 import type { Character, EquipmentLine } from './types';
@@ -46,6 +46,29 @@ const SHIELD_ACCESS_RANK: Record<ShieldAccess, number> = { none: 0, small: 1, al
 /** Rang d'accès exigé pour porter un bouclier donné (petit → `small`, grand → `all`). */
 function shieldRequiredRank(shieldDef: number): number {
   return shieldDef >= 2 ? SHIELD_ACCESS_RANK.all : SHIELD_ACCESS_RANK.small;
+}
+
+/**
+ * DEF plafond débloquée par les capacités ACQUISES portant un effet `armor-access`
+ * (PER-81) : certaines capacités relèvent l'armure maximale au-delà du plafond du
+ * profil (barbare Tour de force → chemise de mailles, Briseur d'os → cotte de mailles ;
+ * chevalier Autorité naturelle → plaque complète, p. 178/86). On retient la MEILLEURE
+ * armure débloquée (`maxArmorId` du catalogue) ; 0 si aucune capacité de ce genre n'est
+ * acquise. La possession de la capacité suffit (on ne double pas la vérification de
+ * maîtrise : investir dans la voie porteuse la garantit déjà).
+ */
+function armorAccessDef(character: Character): number {
+  let def = 0;
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const effect of feature.effects) {
+      if (effect.kind !== 'armor-access') continue;
+      const armor = equipmentById.get(effect.maxArmorId);
+      if (armor?.category === 'armor') def = Math.max(def, armor.def);
+    }
+  }
+  return def;
 }
 
 /** Écart de port d'armure/bouclier à signaler (avertissement non bloquant). */
@@ -97,6 +120,10 @@ export function armorRestrictionViolations(
     allowedDef = Math.max(allowedDef, classMaxArmorDef(cls));
     allowedShieldRank = Math.max(allowedShieldRank, SHIELD_ACCESS_RANK[cls.shieldAccess]);
   }
+
+  // PER-81 : un rang de voie qui débloque une armure plus lourde (Tour de force,
+  // Briseur d'os, Autorité naturelle…) relève le plafond de port effectif.
+  allowedDef = Math.max(allowedDef, armorAccessDef(character));
 
   const armor = wornCatalogArmor(character.equipment);
   if (armor && armor.def > allowedDef) {

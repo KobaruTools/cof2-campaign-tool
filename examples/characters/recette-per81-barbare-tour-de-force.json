@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per81-barbare-tour-de-force",
+  "name": "Recette PER-81 — Barbare AVEC Tour de force (chemise)",
+  "identity": {
+    "description": "PER-81. Barbare avec Tour de force (brute-r2) portant une chemise de mailles (DEF +4). ATTENDU : AUCUN avertissement de port d’armure (le rang relève le plafond du barbare de cuir renforcé DEF +3 à chemise de mailles DEF +4). p. 79/178."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "brute-r1",
+    "brute-r2",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "chemise-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-81 — Tour de force (brute-r2) relève le plafond de port à la chemise de mailles. Retirer brute-r2 pour voir l’avertissement réapparaître (cf. recette-per81-barbare-base-chemise).",
+  "createdAt": "2026-07-14T00:00:00.000Z",
+  "updatedAt": "2026-07-14T00:00:00.000Z"
+}

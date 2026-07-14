@@ -301,6 +301,12 @@ for (const c of features) {
         err(`[capacite ${c.id}] effect: immunity vide`);
       for (const imm of e.immunities ?? [])
         if (!validImmunities.has(imm)) err(`[capacite ${c.id}] effect: immunité inconnue : ${imm}`);
+    } else if (e.kind === 'armor-access') {
+      // Accès armure amélioré (PER-81) : l'armure débloquée doit exister au catalogue.
+      const armor = e.maxArmorId ? equipmentById.get(e.maxArmorId) : undefined;
+      if (!armor) err(`[capacite ${c.id}] effect: armor-access maxArmorId inconnu : ${e.maxArmorId}`);
+      else if (armor.category !== 'armor')
+        err(`[capacite ${c.id}] effect: armor-access maxArmorId n'est pas une armure : ${e.maxArmorId}`);
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }

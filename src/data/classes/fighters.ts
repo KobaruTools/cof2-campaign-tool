@@ -326,9 +326,11 @@ export const fighterFeatures: Feature[] = [
       'Le barbare peut temporairement décupler ses ressources physiques pour faire usage d’une force prodigieuse. Il obtient un bonus de +10 sur un test de FOR (pas un jet de DM ou un test d’attaque), mais cela lui coûte 1d4° PV (à décider avant de lancer les dés). Enfin, le barbare peut désormais porter une chemise de mailles et utiliser toutes les capacités des voies de barbare auparavant autorisées avec une armure de cuir renforcé.',
     // Rendu enrichi (PER-72) : coût en PV {1d4°}. Le « +10 sur un test de FOR » est un bonus
     // SITUATIONNEL à un test de caractéristique (déclenché, optionnel) → hors périmètre PER-89,
-    // verbatim. L'accès à la chemise de mailles relève de la milestone Armures (non modélisé).
+    // verbatim. PER-81 : « peut désormais porter une chemise de mailles » → effet `armor-access`
+    // qui relève le plafond de port du barbare (cuir renforcé DEF +3 → chemise de mailles DEF +4).
     richText:
       'Le barbare peut temporairement décupler ses ressources physiques pour faire usage d’une force prodigieuse. Il obtient un bonus de +10 sur un test de FOR (pas un jet de DM ou un test d’attaque), mais cela lui coûte {1d4°} PV (à décider avant de lancer les dés). Enfin, le barbare peut désormais porter une chemise de mailles et utiliser toutes les capacités des voies de barbare auparavant autorisées avec une armure de cuir renforcé.',
+    effects: [{ kind: 'armor-access', maxArmorId: 'chemise-de-mailles' }],
     sourcePage: 79,
   },
   {
@@ -372,9 +374,11 @@ export const fighterFeatures: Feature[] = [
     text:
       'Le barbare augmente de 1 point les chances d’obtenir un critique sur les attaques au contact (par exemple 19-20 au lieu de 20). Lorsqu’il obtient un critique sur une attaque au contact, en plus des DM doublés, la cible est étourdie pendant 1 round. Enfin, le barbare peut désormais porter une cotte de mailles et utiliser toutes les capacités des voies de barbare auparavant autorisées avec une chemise de mailles.',
     // PER-133 : élargissement de la plage de critique au CONTACT (+1 → 19-20), inconditionnel (passif).
-    // Affiché en puce sous la carte Attaque au contact. L'effet « cible étourdie sur critique » et le
-    // déblocage de la cotte de mailles (PER-76) restent en verbatim (non modélisés).
+    // Affiché en puce sous la carte Attaque au contact. L'effet « cible étourdie sur critique » reste en
+    // verbatim (non modélisé). PER-81 : « peut désormais porter une cotte de mailles » → effet
+    // `armor-access` qui relève le plafond de port du barbare (chemise DEF +4 → cotte de mailles DEF +5).
     criticalRange: { scope: 'melee', value: 1 },
+    effects: [{ kind: 'armor-access', maxArmorId: 'cotte-de-mailles' }],
     sourcePage: 80,
   },
 
@@ -1331,13 +1335,18 @@ export const fighterFeatures: Feature[] = [
       '* Pour un profil hybride de combattant, cette capacité permet d’augmenter le niveau d’armure d’un cran pour toutes les autres voies de combattant : jusqu’à l’armure de plaque pour les voies de guerrier et jusqu’à la chemise de mailles pour les voies de barbare.',
     // Rendu enrichi (PER-72) : « son rang + 2 » → [rang + 2]. PER-89 : bonus de compétence
     // INCONDITIONNEL aux domaines commandement (`command`, « donner des ordres ») et intimidation
-    // (`intimidation`, déjà au catalogue). L'accès à l'armure de plaque complète (et le relèvement
-    // d'un cran pour les profils hybrides) relève de la milestone Armures → reste en prose (comme les
-    // déblocages d'armure du barbare).
+    // (`intimidation`, déjà au catalogue). PER-81 : « formation nécessaire au port de l'armure de
+    // plaque complète (DEF +7) » → effet `armor-access` qui relève le plafond de port du chevalier
+    // (plaque DEF +6 → plaque complète DEF +7). Le relèvement d'UN CRAN par voie de combattant pour
+    // un profil HYBRIDE (note de bas de page*) est une restriction FINE par voie d'origine → hors du
+    // modèle « plafond global » de PER-80, différé à PER-86 ; reste en prose.
     richText:
       'Le chevalier ajoute son [rang + 2] aux tests réalisés pour donner des ordres ou intimider. De plus, le noble chevalier reçoit la formation nécessaire au port de l’armure de plaque complète (DEF +7). Désormais, il peut utiliser toutes les capacités des voies de chevalier* en portant cette armure.\n' +
       '* Pour un profil hybride de combattant, cette capacité permet d’augmenter le niveau d’armure d’un cran pour toutes les autres voies de combattant : jusqu’à l’armure de plaque pour les voies de guerrier et jusqu’à la chemise de mailles pour les voies de barbare.',
-    effects: [{ kind: 'test-bonus', domains: ['command', 'intimidation'] }],
+    effects: [
+      { kind: 'test-bonus', domains: ['command', 'intimidation'] },
+      { kind: 'armor-access', maxArmorId: 'plaque-complete' },
+    ],
     sourcePage: 86,
   },
   {

@@ -119,6 +119,8 @@ Conseil (non obligatoire) :
 
 > « Notez cependant que quelques capacités permettent d'améliorer le type d'armures associées à un profil (par exemple le barbare avec Tour de force et Briseur d'os). » — p. 178
 
+**Note moteur (PER-81)** : ces relèvements sont modélisés par un effet `armor-access` (`{ kind: 'armor-access', maxArmorId }`) porté par le rang concerné ; le calcul des restrictions de port (`armorRestrictions.ts`, PER-80) retient la MEILLEURE armure ainsi débloquée comme plafond effectif. Capacités concernées : barbare *Tour de force* (`brute-r2` → chemise de mailles, DEF +4), *Briseur d'os* (`brute-r5` → cotte de mailles, DEF +5) ; chevalier *Autorité naturelle* (`noblesse-r3` → plaque complète, DEF +7, p. 86). Le relèvement d'UN CRAN par voie de combattant pour un hybride (note de bas de page de `noblesse-r3`) reste une restriction FINE par voie d'origine, hors du modèle « plafond global » → différé à PER-86.
+
 ## 7. Magie et sorts (pour l'hybride)
 
 ### 7.1 Caractéristique d'incantation
