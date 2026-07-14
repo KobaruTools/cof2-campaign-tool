@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Database, Json } from '@/lib/supabase/types';
 import { createBlankCharacter } from './factory';
-import { bindForUpload, isUniqueViolation, mergeCharacters, rowToCharacter } from './repo';
+import { bindForUpload, isUniqueViolation, isUuid, mergeCharacters, rowToCharacter } from './repo';
 import type { Character } from './types';
 
 type CharacterRow = Database['public']['Tables']['characters']['Row'];
@@ -162,5 +162,20 @@ describe('isUniqueViolation', () => {
     expect(isUniqueViolation(new Error('réseau'))).toBe(false);
     expect(isUniqueViolation(null)).toBe(false);
     expect(isUniqueViolation('23505')).toBe(false);
+  });
+});
+
+describe('isUuid', () => {
+  it('accepte un UUID canonique (toute casse)', () => {
+    expect(isUuid('14f1b9eb-7ca8-40a9-bab9-9be6d96acf55')).toBe(true);
+    expect(isUuid('14F1B9EB-7CA8-40A9-BAB9-9BE6D96ACF55')).toBe(true);
+  });
+
+  it('rejette un slug ou une valeur non-UUID', () => {
+    expect(isUuid('recette-per81-barbare-tour-de-force')).toBe(false);
+    expect(isUuid('')).toBe(false);
+    expect(isUuid('14f1b9eb-7ca8-40a9-bab9')).toBe(false); // tronqué
+    expect(isUuid(undefined)).toBe(false);
+    expect(isUuid(42)).toBe(false);
   });
 });

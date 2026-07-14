@@ -43,6 +43,7 @@ import {
   fetchCharacters,
   insertCharacter,
   isUniqueViolation,
+  isUuid,
   mergeCharacters,
   updateCharacterRow,
 } from '@/lib/character/repo';
@@ -360,7 +361,13 @@ export const useCharactersStore = create<CharactersState>()(
         importCharacter: async (raw, binding) => {
           const character = migrateCharacter(raw); // lève si invalide
           const exists = get().characters.some((c) => c.id === character.id);
-          const withId = exists ? { ...character, id: crypto.randomUUID() } : character;
+          // Régénère l'id s'il entre en collision locale OU s'il n'est pas un UUID (un
+          // fichier d'exemple porte un id lisible en slug, ex. `recette-per81-…`, que la
+          // colonne `id uuid` refuserait à l'insertion cloud — cf. `isUuid`).
+          const withId =
+            exists || !isUuid(character.id)
+              ? { ...character, id: crypto.randomUUID() }
+              : character;
           // FK résolues par l'UI d'import (PER-182) ; à défaut, on garde celles du fichier.
           const bound = binding
             ? { ...withId, campaignId: binding.campaignId, playerId: binding.playerId }

@@ -202,3 +202,17 @@ export function isUniqueViolation(e: unknown): boolean {
     (e as { code?: unknown }).code === '23505'
   );
 }
+
+/** Motif UUID (canonique, insensible à la casse) — colonne `id` en base est un `uuid`. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * La chaîne est-elle un UUID valide ? Les persos créés dans l'app en portent toujours
+ * un (`crypto.randomUUID`), mais un blob IMPORTÉ peut avoir un `id` arbitraire (slug
+ * lisible d'un fichier d'exemple, ex. `recette-per81-…`). La colonne `id` en base étant
+ * un `uuid`, un tel id ferait échouer l'insertion cloud (erreur de format, pas une
+ * collision) : l'import régénère alors un UUID (cf. `importCharacter`).
+ */
+export function isUuid(value: unknown): boolean {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
