@@ -17,6 +17,7 @@ import type { CharacterClass, EquipmentItem } from '@/data/schema';
 import type { EquipmentLine, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
+import { isConsumable } from '@/lib/character/consumables';
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { DamageValue } from '@/components/DamageValue';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
@@ -220,8 +221,9 @@ export function EquipmentList({
                 )
               )}
               {/* « Utiliser » : consomme une unité (état de jeu, dispo hors édition), à DROITE du
-                  nombre. Décrémente, puis supprime la ligne à 0 (géré par l'appelant). */}
-              {onUse && (
+                  nombre. Décrémente, puis supprime la ligne à 0 (géré par l'appelant). Réservé aux
+                  consommables (potions, parchemins, doses d'élixir) — jamais le matériel durable. */}
+              {onUse && isConsumable(line) && (
                 <Button
                   size="small"
                   variant="outlined"

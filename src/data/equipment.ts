@@ -789,6 +789,7 @@ export const gear: Gear[] = [
     id: 'potion-de-soins',
     name: 'Potion de Soins (1d4° PV)',
     category: 'gear',
+    consumable: true,
     price: { amount: 10, unit: 'pa' },
     description:
       'Les potions de soins ne sont pas forcément magiques, ce sont des remèdes à base de plantes ou de composants rares (qui peuvent être magiques). Un personnage ne peut pas profiter des effets de plus d’une potion de soins par récupération rapide (30 min).',

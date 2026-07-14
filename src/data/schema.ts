@@ -1945,6 +1945,12 @@ export interface Shield extends EquipmentBase {
 export interface Gear extends EquipmentBase {
   category: 'gear';
   description?: string;
+  /**
+   * Objet consommable (potion, parchemin…) : une utilisation dépense une unité.
+   * Seuls ces objets exposent le bouton « Utiliser » sur la fiche ; absent = non
+   * consommable (matériel durable, monture…). Voir `isConsumable`.
+   */
+  consumable?: boolean;
 }
 
 export type EquipmentItem = Weapon | Armor | Shield | Gear;
