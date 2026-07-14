@@ -34,6 +34,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -52,6 +53,16 @@ const IS_CONFIGURED = Boolean(
 
 /** Libellé du mot à retaper pour confirmer la suppression (confirmation forte). */
 const DELETE_CONFIRM_WORD = 'SUPPRIMER';
+
+/** Fond « verre dépoli » d'une carte de section (partagé avec son squelette). */
+const SECTION_SX = {
+  p: 2.5,
+  bgcolor: 'rgba(20, 20, 23, 0.72)',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  border: '1px solid rgba(255, 255, 255, 0.08)',
+  borderRadius: 2,
+} as const;
 
 /** Libellé lisible d'un provider d'identité (français / marque). */
 function providerLabel(provider: string): string {
@@ -198,8 +209,42 @@ export default function AccountPage() {
             L’authentification n’est pas configurée sur ce serveur : aucun compte à gérer.
           </Alert>
         ) : loading ? (
-          <Stack sx={{ alignItems: 'center', py: 6 }}>
-            <CircularProgress />
+          <Stack spacing={3} aria-hidden>
+            {/* Nom d'affichage : titre + champ + bouton Enregistrer. */}
+            <Paper elevation={0} sx={SECTION_SX}>
+              <Skeleton animation="wave" variant="text" width={140} sx={{ fontSize: '1rem', mb: 1.5 }} />
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+                <Skeleton animation="wave" variant="rounded" height={40} sx={{ flex: 1, borderRadius: 1 }} />
+                <Skeleton
+                  animation="wave"
+                  variant="rounded"
+                  width={110}
+                  height={36}
+                  sx={{ mt: 0.5, flexShrink: 0, borderRadius: 1 }}
+                />
+              </Stack>
+            </Paper>
+            {/* Affichage. */}
+            <Paper elevation={0} sx={SECTION_SX}>
+              <Skeleton animation="wave" variant="text" width={90} sx={{ fontSize: '1rem', mb: 1.5 }} />
+              <Skeleton animation="wave" variant="rounded" width={220} height={38} sx={{ borderRadius: 1 }} />
+            </Paper>
+            {/* Identités liées : titre + deux lignes d'identité. */}
+            <Paper elevation={0} sx={SECTION_SX}>
+              <Skeleton animation="wave" variant="text" width={130} sx={{ fontSize: '1rem', mb: 1.5 }} />
+              <Stack spacing={1.5}>
+                {Array.from({ length: 2 }, (_, i) => (
+                  <Stack key={i} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <Skeleton animation="wave" variant="circular" width={24} height={24} sx={{ flexShrink: 0 }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Skeleton animation="wave" variant="text" width="40%" />
+                      <Skeleton animation="wave" variant="text" width="60%" sx={{ fontSize: '0.75rem' }} />
+                    </Box>
+                    <Skeleton animation="wave" variant="rounded" width={64} height={30} sx={{ flexShrink: 0, borderRadius: 1 }} />
+                  </Stack>
+                ))}
+              </Stack>
+            </Paper>
           </Stack>
         ) : !user ? (
           <Alert severity="warning">Aucune session active.</Alert>
@@ -376,17 +421,7 @@ export default function AccountPage() {
 /** Bloc de section « verre dépoli » cohérent avec le reste de l'app. */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2.5,
-        bgcolor: 'rgba(20, 20, 23, 0.72)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: 2,
-      }}
-    >
+    <Paper elevation={0} sx={SECTION_SX}>
       <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
         {title}
       </Typography>

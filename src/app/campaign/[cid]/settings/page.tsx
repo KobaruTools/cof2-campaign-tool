@@ -25,10 +25,10 @@ import SaveIcon from '@mui/icons-material/Save';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -223,9 +223,26 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
             </Typography>
           </Paper>
         ) : loading && !campaign ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress />
-          </Box>
+          <Stack spacing={3} aria-hidden>
+            {/* Section « Campagne » : titre + champ nom + champ notes (multiligne). */}
+            <Paper variant="outlined" sx={glassPaper}>
+              <Skeleton animation="wave" variant="text" width={120} sx={{ fontSize: '1.25rem', mb: 2 }} />
+              <Stack spacing={2}>
+                <Skeleton animation="wave" variant="rounded" height={56} sx={{ borderRadius: 1 }} />
+                <Skeleton animation="wave" variant="rounded" height={100} sx={{ borderRadius: 1 }} />
+              </Stack>
+            </Paper>
+            {/* Placeholder PDF + sections repliables (titres seuls). */}
+            <Paper variant="outlined" sx={glassPaper}>
+              <Skeleton animation="wave" variant="text" width={220} sx={{ fontSize: '1.25rem' }} />
+            </Paper>
+            <Paper variant="outlined" sx={glassPaper}>
+              <Skeleton animation="wave" variant="text" width={100} sx={{ fontSize: '1.25rem' }} />
+            </Paper>
+            <Paper variant="outlined" sx={glassPaper}>
+              <Skeleton animation="wave" variant="text" width={150} sx={{ fontSize: '1.25rem' }} />
+            </Paper>
+          </Stack>
         ) : !campaign ? (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <Typography variant="h6" gutterBottom>

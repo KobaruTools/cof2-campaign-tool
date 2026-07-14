@@ -22,7 +22,6 @@ import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -39,6 +38,7 @@ import { useToast } from '@/components/toast/ToastProvider';
 import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
+import { CampaignListSkeleton } from '@/components/campaign/CampaignListSkeleton';
 import { HomeBackground } from '@/components/HomeBackground';
 import type { Campaign } from '@/lib/campaign';
 import { useCampaignsStore } from '@/stores/campaigns';
@@ -195,9 +195,7 @@ export default function CampaignsPage() {
             </Typography>
           </Paper>
         ) : status === 'loading' || status === 'idle' ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress />
-          </Box>
+          <CampaignListSkeleton rows={3} />
         ) : sorted.length === 0 ? (
           <Paper
             variant="outlined"

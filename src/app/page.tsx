@@ -25,7 +25,6 @@ import SearchIcon from '@mui/icons-material/Search';
 import UploadIcon from '@mui/icons-material/Upload';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
@@ -49,6 +48,7 @@ import {
   type CharacterListAction,
   type CharacterListGroup,
 } from '@/components/character-list/CharacterList';
+import { CharacterListSkeleton } from '@/components/character-list/CharacterListSkeleton';
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
 import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey } from '@/components/character-list/sort';
@@ -314,9 +314,7 @@ export default function HomePage() {
         )}
 
         {!hasHydrated || ((status === 'idle' || status === 'loading') && characters.length === 0) ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress />
-          </Box>
+          <CharacterListSkeleton rows={6} showCampaign sortable />
         ) : allRows.length === 0 ? (
           <Paper
             variant="outlined"

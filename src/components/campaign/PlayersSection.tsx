@@ -26,6 +26,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -182,9 +183,38 @@ export function PlayersSection({
       </Stack>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-          <CircularProgress size={28} />
-        </Box>
+        <Stack spacing={1.5} aria-hidden>
+          {Array.from({ length: 2 }, (_, i) => (
+            <Box
+              key={i}
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                bgcolor: 'rgba(0, 0, 0, 0.20)',
+              }}
+            >
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
+              >
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  {/* Nom du joueur (subtitle1) + ligne de présence. */}
+                  <Skeleton animation="wave" variant="text" width={140} sx={{ fontSize: '1rem' }} />
+                  <Skeleton animation="wave" variant="text" width={96} sx={{ fontSize: '0.75rem' }} />
+                </Box>
+                {/* Renommer + Supprimer (IconButton size small ≈ 30px, accolés). */}
+                <Stack direction="row" sx={{ alignItems: 'center', flexShrink: 0 }}>
+                  <Skeleton animation="wave" variant="circular" width={30} height={30} />
+                  <Skeleton animation="wave" variant="circular" width={30} height={30} />
+                </Stack>
+              </Stack>
+              {/* Champ « Lien magique » (TextField size small ≈ 40px). */}
+              <Skeleton animation="wave" variant="rounded" height={40} sx={{ borderRadius: 1 }} />
+            </Box>
+          ))}
+        </Stack>
       ) : status === 'error' ? (
         <AppAlert
           severity="error"

@@ -31,7 +31,6 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import UploadIcon from '@mui/icons-material/Upload';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
@@ -50,6 +49,7 @@ import {
   CharacterList,
   type CharacterListAction,
 } from '@/components/character-list/CharacterList';
+import { CharacterListSkeleton } from '@/components/character-list/CharacterListSkeleton';
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
 import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey, type SortState } from '@/components/character-list/sort';
@@ -244,10 +244,16 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
 
   const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';
   if (!charactersHydrated || campaignsLoading) {
+    // La campagne (donc son nom) n'est pas encore résolue : pas d'en-tête ici, mais
+    // on préfigure la liste dans la même zone de contenu (largeur/position finales)
+    // via un squelette plutôt qu'un spinner centré.
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
+      <>
+        <HomeBackground />
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <CharacterListSkeleton rows={5} sortable />
+        </Container>
+      </>
     );
   }
 

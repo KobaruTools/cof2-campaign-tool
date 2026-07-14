@@ -94,12 +94,33 @@ const UNASSIGNED = 'Non attribué';
 // accordéons MUI (le défaut MUI est de 300 ms).
 const COLLAPSE_MS = 220;
 
-const paperSx = {
+/**
+ * Fond « verre dépoli » des conteneurs de liste (tableau desktop + cartes mobile).
+ * Exporté pour que le squelette de chargement (`CharacterListSkeleton`) partage
+ * exactement le même fond, garantissant une bascule squelette → contenu sans
+ * variation visuelle.
+ */
+export const LIST_PAPER_SX = {
   bgcolor: 'rgba(30, 30, 34, 0.62)',
   backdropFilter: 'blur(6px)',
   WebkitBackdropFilter: 'blur(6px)',
   borderColor: 'rgba(255, 255, 255, 0.10)',
 } as const;
+
+/**
+ * Largeurs figées des colonnes (`table-layout: fixed`), selon la présence de la
+ * colonne « Campagne ». Partagées entre le tableau réel et son squelette pour un
+ * alignement des colonnes identique au pixel près.
+ */
+export function listColWidths(showCampaign: boolean): (string | number)[] {
+  return [
+    showCampaign ? '26%' : '38%',
+    showCampaign ? '30%' : '42%',
+    ...(showCampaign ? ['20%'] : []),
+    showCampaign ? '16%' : '14%',
+    56,
+  ];
+}
 
 // En-tête de groupe (séparateur intra-tableau) : ligne compacte (py réduit),
 // texte un peu plus gros que les lignes, cliquable pour replier le groupe. Fond
@@ -256,11 +277,9 @@ export function CharacterList({
   // réappliqué au sous-tableau animé de chaque groupe pour aligner les colonnes.
   const renderColgroup = () => (
     <colgroup>
-      <col style={{ width: showCampaign ? '26%' : '38%' }} />
-      <col style={{ width: showCampaign ? '30%' : '42%' }} />
-      {showCampaign && <col style={{ width: '20%' }} />}
-      <col style={{ width: showCampaign ? '16%' : '14%' }} />
-      <col style={{ width: 56 }} />
+      {listColWidths(showCampaign).map((w, i) => (
+        <col key={i} style={{ width: w }} />
+      ))}
     </colgroup>
   );
 
@@ -366,7 +385,7 @@ export function CharacterList({
       variant="outlined"
       sx={{
         p: 2,
-        ...paperSx,
+        ...LIST_PAPER_SX,
         // Même fondu au survol que les lignes desktop (délai de sortie).
         transition: 'background-color .15s ease .2s',
         '&:hover': {
@@ -425,7 +444,7 @@ export function CharacterList({
         variant="outlined"
         sx={{
           display: { xs: 'none', md: 'block' },
-          ...paperSx,
+          ...LIST_PAPER_SX,
           ...(attachedTop && { borderTopLeftRadius: 0, borderTopRightRadius: 0 }),
         }}
       >

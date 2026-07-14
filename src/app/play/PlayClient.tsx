@@ -30,6 +30,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useToast } from '@/components/toast/ToastProvider';
@@ -38,6 +39,7 @@ import {
   CharacterList,
   type CharacterListAction,
 } from '@/components/character-list/CharacterList';
+import { CharacterListSkeleton } from '@/components/character-list/CharacterListSkeleton';
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
 import { ClassIcon } from '@/components/ClassIcon';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
@@ -258,10 +260,19 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
   const loading = !hasHydrated || status === 'idle' || status === 'loading';
 
   if (loading) {
+    // Préfigure la section principale « Mes fiches » (la seule toujours présente) :
+    // même carte, même en-tête, liste remplacée par son squelette.
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
+      <Paper elevation={0} sx={sectionSx}>
+        <Stack
+          direction="row"
+          sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1, gap: 2 }}
+        >
+          <Skeleton animation="wave" variant="text" width={120} sx={{ fontSize: '1.25rem' }} />
+          <Skeleton animation="wave" variant="rounded" width={140} height={30} sx={{ flexShrink: 0 }} />
+        </Stack>
+        <CharacterListSkeleton rows={3} />
+      </Paper>
     );
   }
 
