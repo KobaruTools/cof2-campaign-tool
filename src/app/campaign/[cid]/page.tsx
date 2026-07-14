@@ -291,7 +291,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
             startIcon={<UploadIcon />}
             onClick={() => setImportOpen(true)}
           >
-            Importer un JSON
+            Importer
           </Button>
           <Button
             variant="outlined"

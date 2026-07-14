@@ -290,7 +290,7 @@ export default function HomePage() {
             Nouveau personnage
           </Button>
           <Button variant="outlined" startIcon={<UploadIcon />} onClick={() => setImportOpen(true)}>
-            Importer un JSON
+            Importer
           </Button>
         </Stack>
 
