@@ -15,7 +15,7 @@
  * d'erreur et « cloud non configuré ».
  */
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import PersonIcon from '@mui/icons-material/Person';
@@ -47,7 +47,6 @@ import { useCharactersStore } from '@/stores/characters';
 import { useWizardStore } from '@/stores/wizard';
 
 export default function CampaignsPage() {
-  const router = useRouter();
   const status = useCampaignsStore((s) => s.status);
   const error = useCampaignsStore((s) => s.error);
   const campaigns = useCampaignsStore((s) => s.campaigns);
@@ -103,18 +102,21 @@ export default function CampaignsPage() {
     <>
       <title>Campagnes — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader title="Campagnes" onBack={() => router.push('/')} action={<AccountMenu />} />
+      <AppHeader title="Campagnes" backHref="/" action={<AccountMenu />} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            disabled={status === 'unconfigured'}
-            onClick={() => router.push('/campaigns/new')}
-          >
-            Nouvelle campagne
-          </Button>
+          {/* Désactivé → simple bouton inerte ; sinon vraie ancre (une ancre ne
+              peut pas être « disabled », on rend donc deux variantes). */}
+          {status === 'unconfigured' ? (
+            <Button variant="contained" startIcon={<AddIcon />} disabled>
+              Nouvelle campagne
+            </Button>
+          ) : (
+            <Button variant="contained" startIcon={<AddIcon />} component={Link} href="/campaigns/new">
+              Nouvelle campagne
+            </Button>
+          )}
         </Stack>
 
         {campaignDraft && (
@@ -123,7 +125,7 @@ export default function CampaignsPage() {
             sx={{ mb: 3 }}
             action={
               <>
-                <Button color="inherit" size="small" onClick={() => router.push('/campaigns/new')}>
+                <Button color="inherit" size="small" component={Link} href="/campaigns/new">
                   Reprendre
                 </Button>
                 <Button color="inherit" size="small" onClick={() => clearCampaignDraft()}>
@@ -146,7 +148,8 @@ export default function CampaignsPage() {
                 <Button
                   color="inherit"
                   size="small"
-                  onClick={() => router.push(`/create?campaign=${draftCampaign.id}`)}
+                  component={Link}
+                  href={`/create?campaign=${draftCampaign.id}`}
                 >
                   Reprendre
                 </Button>
@@ -247,8 +250,15 @@ export default function CampaignsPage() {
                     sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
                   >
                     <Box
-                      sx={{ minWidth: 0, cursor: 'pointer', flexGrow: 1 }}
-                      onClick={() => router.push(`/campaign/${campaign.id}`)}
+                      component={Link}
+                      href={`/campaign/${campaign.id}`}
+                      sx={{
+                        minWidth: 0,
+                        cursor: 'pointer',
+                        flexGrow: 1,
+                        color: 'inherit',
+                        textDecoration: 'none',
+                      }}
                     >
                       <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                         {campaign.name}
@@ -271,9 +281,7 @@ export default function CampaignsPage() {
                     </Box>
                     <Stack direction="row" sx={{ flexShrink: 0 }}>
                       <AppTooltip title="Réglages">
-                        <IconButton
-                          onClick={() => router.push(`/campaign/${campaign.id}/settings`)}
-                        >
+                        <IconButton component={Link} href={`/campaign/${campaign.id}/settings`}>
                           <SettingsIcon fontSize="small" />
                         </IconButton>
                       </AppTooltip>

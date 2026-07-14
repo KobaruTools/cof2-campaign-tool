@@ -13,7 +13,6 @@
  * liaison **automatique** par email vérifié (PER-188) reste, elle, toujours active.
  */
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import type { User, UserIdentity } from '@supabase/supabase-js';
 import EmailIcon from '@mui/icons-material/Email';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
@@ -79,7 +78,6 @@ function identitySubtitle(identity: UserIdentity): string | undefined {
 }
 
 export default function AccountPage() {
-  const router = useRouter();
 
   // Initial : chargement uniquement si Supabase est configuré (sinon rien à charger,
   // et pas de setState synchrone en effet — cf. react-hooks/set-state-in-effect).
@@ -201,7 +199,7 @@ export default function AccountPage() {
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <HomeBackground />
-      <AppHeader title="Réglages du compte" onBack={() => router.push('/')} />
+      <AppHeader title="Réglages du compte" backHref="/" />
 
       <Container maxWidth="sm" sx={{ py: 4 }}>
         {!IS_CONFIGURED ? (

@@ -16,7 +16,7 @@
  * d'autres joueurs (ni miennes, ni réclamables) ne sont pas listées ici.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import DownloadIcon from '@mui/icons-material/Download';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -59,26 +59,19 @@ import { usePlayersStore } from '@/stores/players';
  */
 function ClaimableRow({
   row,
-  onPreview,
+  href,
   onClaim,
 }: {
   row: CharacterSummary;
-  onPreview: () => void;
+  href: string;
   onClaim: () => void;
 }) {
   return (
     <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', py: 1.25 }}>
       <Box
-        role="button"
-        tabIndex={0}
-        onClick={onPreview}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onPreview();
-          }
-        }}
-        sx={{ minWidth: 0, flex: 1, cursor: 'pointer' }}
+        component={Link}
+        href={href}
+        sx={{ minWidth: 0, flex: 1, cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}
       >
         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', minWidth: 0 }}>
           <CharacterStatusMarker status={row.status} />
@@ -128,7 +121,6 @@ const sectionSx = {
 } as const;
 
 export function PlayClient({ playerId, campaignId }: PlayClientProps) {
-  const router = useRouter();
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const status = useCharactersStore((s) => s.status);
   const characters = useCharactersStore((s) => s.characters);
@@ -232,7 +224,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
       key: 'open',
       label: 'Ouvrir',
       icon: <OpenInNewIcon fontSize="small" />,
-      onClick: (r) => router.push(`/character/${r.id}`),
+      href: (r) => `/character/${r.id}`,
     },
     {
       key: 'export',
@@ -248,7 +240,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
       key: 'open',
       label: 'Ouvrir (lecture seule)',
       icon: <OpenInNewIcon fontSize="small" />,
-      onClick: (r) => router.push(`/character/${r.id}`),
+      href: (r) => `/character/${r.id}`,
     },
   ];
 
@@ -288,9 +280,8 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
             variant="contained"
             size="small"
             startIcon={<AddIcon />}
-            onClick={() =>
-              router.push(`/create?campaign=${campaignId}&player=${playerId}`)
-            }
+            component={Link}
+            href={`/create?campaign=${campaignId}&player=${playerId}`}
           >
             Créer une fiche
           </Button>
@@ -298,7 +289,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
         {myRows.length > 0 ? (
           <CharacterList
             rows={myRows}
-            onOpen={(r) => router.push(`/character/${r.id}`)}
+            hrefFor={(r) => `/character/${r.id}`}
             actions={myActions}
             renderNameMarker={renderNameMarker}
           />
@@ -324,7 +315,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
               <ClaimableRow
                 key={r.id}
                 row={r}
-                onPreview={() => router.push(`/character/${r.id}`)}
+                href={`/character/${r.id}`}
                 onClaim={() => setClaimTarget(r)}
               />
             ))}
@@ -342,7 +333,7 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
           </Typography>
           <CharacterList
             rows={rosterRows}
-            onOpen={(r) => router.push(`/character/${r.id}`)}
+            hrefFor={(r) => `/character/${r.id}`}
             actions={rosterActions}
             renderNameMarker={renderNameMarker}
             renderNameSuffix={(r) =>

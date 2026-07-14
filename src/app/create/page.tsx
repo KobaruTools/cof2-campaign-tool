@@ -306,7 +306,7 @@ export default function CreatePage() {
       <HomeBackground />
       <AppHeader
         title="Nouveau personnage"
-        onBack={() => router.push(draft.campaignId ? `/campaign/${draft.campaignId}` : '/')}
+        backHref={draft.campaignId ? `/campaign/${draft.campaignId}` : '/'}
       />
 
       <Container maxWidth="md" sx={{ py: 4 }}>

@@ -14,6 +14,7 @@
  * actifs/archivés restent à la charge des pages appelantes.
  */
 import { Fragment, type ReactNode, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -56,7 +57,14 @@ export interface CharacterListAction {
   danger?: boolean;
   /** Filtre l'entrée selon le personnage (ex. Téléverser si non synchronisé). */
   show?: (r: CharacterSummary) => boolean;
-  onClick: (r: CharacterSummary) => void;
+  /**
+   * Destination de navigation (ex. « Ouvrir »). Fourni → l'entrée devient une
+   * vraie ancre `<a href>` (Ctrl/⌘+Clic et clic-molette ouvrent un nouvel onglet).
+   * Prioritaire sur `onClick` : si `href` est fourni, `onClick` n'est pas appelé.
+   */
+  href?: (r: CharacterSummary) => string;
+  /** Action impérative (ex. Supprimer, Dupliquer). Ignorée si `href` est fourni. */
+  onClick?: (r: CharacterSummary) => void;
 }
 
 /** Groupe de lignes rendu sous un en-tête intra-tableau (accueil : par campagne). */
@@ -68,8 +76,12 @@ export interface CharacterListGroup {
 
 export interface CharacterListProps {
   rows: CharacterSummary[];
-  /** Clic sur une ligne / carte (ouvre la fiche en général). */
-  onOpen: (r: CharacterSummary) => void;
+  /**
+   * Destination d'une ligne / carte (la fiche du personnage en général). Le nom
+   * est rendu en vraie ancre `<a href>` (Ctrl/⌘+Clic et clic-molette ouvrent un
+   * nouvel onglet) ; un clic simple ailleurs sur la ligne navigue aussi.
+   */
+  hrefFor: (r: CharacterSummary) => string;
   actions: CharacterListAction[];
   /** Affiche la colonne « Campagne » + badge (accueil). */
   showCampaign?: boolean;
@@ -156,9 +168,22 @@ const groupLinkSx = {
   },
 } as const;
 
+// Nom du personnage rendu en vraie ancre (`<a href>`) : apparence identique au
+// texte (couleur héritée, jamais souligné — le survol de la ligne suffit à
+// signaler la cliquabilité). Le `<a>` permet Ctrl/⌘+Clic et clic-molette pour
+// ouvrir la fiche dans un nouvel onglet — impossible avec une navigation JS.
+const nameLinkSx = {
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  color: 'inherit',
+  textDecoration: 'none',
+} as const;
+
 export function CharacterList({
   rows,
-  onOpen,
+  hrefFor,
   actions,
   showCampaign = false,
   campaignNameById,
@@ -198,22 +223,16 @@ export function CharacterList({
   // lien que pour une vraie campagne, reconnue via `campaignNameById`.
   const renderGroupLink = (key: string) => {
     if (!campaignNameById?.has(key)) return null;
-    const goToCampaign = () => router.push(`/campaign/${key}`);
     return (
       <Box
-        component="span"
-        role="link"
-        tabIndex={0}
-        onClick={(e) => {
-          e.stopPropagation();
-          goToCampaign();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            e.stopPropagation();
-            goToCampaign();
-          }
+        component={Link}
+        href={`/campaign/${key}`}
+        // Vraie ancre : Ctrl/⌘+Clic et clic-molette ouvrent la campagne dans un
+        // nouvel onglet. `stopPropagation` empêche l'en-tête de groupe parent de
+        // se replier au clic (simple ou Enter) sur le lien.
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
         }}
         sx={groupLinkSx}
       >
@@ -318,19 +337,20 @@ export function CharacterList({
             transition: 'background-color .15s ease',
           },
         }}
-        onClick={() => onOpen(r)}
+        onClick={() => router.push(hrefFor(r))}
       >
         <TableCell>
           <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', minWidth: 0 }}>
             {renderNameMarker?.(r)}
             <Box
-              component="span"
-              sx={{
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
+              component={Link}
+              href={hrefFor(r)}
+              prefetch={false}
+              // `stopPropagation` : sur le nom, c'est l'ancre qui navigue (clic
+              // simple = navigation SPA ; Ctrl/⌘/molette = nouvel onglet). Sans ça,
+              // le `onClick` de la ligne re-naviguerait dans l'onglet courant.
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              sx={nameLinkSx}
             >
               {r.name}
             </Box>
@@ -399,10 +419,18 @@ export function CharacterList({
         spacing={1}
         sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
       >
-        <Box sx={{ minWidth: 0, flex: 1, cursor: 'pointer' }} onClick={() => onOpen(r)}>
+        <Box sx={{ minWidth: 0, flex: 1, cursor: 'pointer' }} onClick={() => router.push(hrefFor(r))}>
           <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
             {renderNameMarker?.(r)}
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
+            <Typography
+              variant="subtitle1"
+              component={Link}
+              href={hrefFor(r)}
+              prefetch={false}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              sx={{ fontWeight: 600, color: 'inherit', textDecoration: 'none', minWidth: 0 }}
+              noWrap
+            >
               {r.name}
             </Typography>
             {renderNameSuffix?.(r)}
@@ -571,21 +599,36 @@ export function CharacterList({
         disableScrollLock
       >
         {menu &&
-          visibleActions(menu.row).map((a) => (
-            <MenuItem
-              key={a.key}
-              onClick={() => {
-                const row = menu.row;
-                closeMenu();
-                a.onClick(row);
-              }}
-            >
-              <ListItemIcon>{a.icon}</ListItemIcon>
-              <ListItemText sx={a.danger ? { color: 'error.main' } : undefined}>
-                {a.label}
-              </ListItemText>
-            </MenuItem>
-          ))}
+          visibleActions(menu.row).map((a) => {
+            const content = (
+              <>
+                <ListItemIcon>{a.icon}</ListItemIcon>
+                <ListItemText sx={a.danger ? { color: 'error.main' } : undefined}>
+                  {a.label}
+                </ListItemText>
+              </>
+            );
+            const row = menu.row;
+            // Action de navigation (`href`) → vraie ancre : Ctrl/⌘+Clic et
+            // clic-molette ouvrent la destination dans un nouvel onglet. Le clic
+            // simple laisse `Link` naviguer (on ne rappelle donc pas `onClick`),
+            // et on referme le menu dans tous les cas.
+            return a.href ? (
+              <MenuItem key={a.key} component={Link} href={a.href(row)} onClick={closeMenu}>
+                {content}
+              </MenuItem>
+            ) : (
+              <MenuItem
+                key={a.key}
+                onClick={() => {
+                  closeMenu();
+                  a.onClick?.(row);
+                }}
+              >
+                {content}
+              </MenuItem>
+            );
+          })}
       </Menu>
     </>
   );

@@ -16,7 +16,7 @@
  * actifs/archivés (PER-183) et un marqueur de statut accolé au nom.
  */
 import { use, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -70,7 +70,6 @@ const CAMPAIGN_SORT_KEYS: SortKey[] = ['updatedAt', 'name', 'level'];
 
 export default function CampaignPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
-  const router = useRouter();
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
   const characters = useCharactersStore((s) => s.characters);
   const duplicate = useCharactersStore((s) => s.duplicate);
@@ -109,11 +108,6 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const pickSort = (key: SortKey) => setSort(pickSortReducer(key));
   const toggleDir = () => setSort((p) => ({ key: p.key, dir: p.dir === 'asc' ? 'desc' : 'asc' }));
 
-  const handleCreate = () => {
-    // Création rattachée à cette campagne : la campagne est passée en query au
-    // wizard (dé-imbriqué). Le personnage naît dans cette campagne.
-    router.push(`/create?campaign=${cid}`);
-  };
 
   const handleExport = async (id: string) => {
     const character = useCharactersStore.getState().getById(id);
@@ -200,7 +194,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
       key: 'open',
       label: 'Ouvrir',
       icon: <OpenInNewIcon fontSize="small" />,
-      onClick: (r) => router.push(`/character/${r.id}`),
+      href: (r) => `/character/${r.id}`,
     },
     {
       key: 'duplicate',
@@ -232,7 +226,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const list = (groupRows: CharacterSummary[], attachedTop = false) => (
     <CharacterList
       rows={groupRows}
-      onOpen={(r) => router.push(`/character/${r.id}`)}
+      hrefFor={(r) => `/character/${r.id}`}
       actions={actions}
       sort={sort}
       onPickSort={pickSort}
@@ -264,7 +258,7 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
         <Typography variant="h6" gutterBottom>
           Campagne introuvable
         </Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/campaigns')}>
+        <Button startIcon={<ArrowBackIcon />} component={Link} href="/campaigns">
           Retour aux campagnes
         </Button>
       </Container>
@@ -277,13 +271,18 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
       <HomeBackground />
       <AppHeader
         title={campaign.name}
-        onBack={() => router.push('/campaigns')}
+        backHref="/campaigns"
         action={<AccountMenu />}
       />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} useFlexGap sx={{ mb: 3, flexWrap: 'wrap' }}>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            component={Link}
+            href={`/create?campaign=${cid}`}
+          >
             Nouveau personnage
           </Button>
           <Button
@@ -305,7 +304,8 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           <Button
             variant="outlined"
             startIcon={<ShieldIcon />}
-            onClick={() => router.push(`/campaign/${cid}/gm-screen`)}
+            component={Link}
+            href={`/campaign/${cid}/gm-screen`}
             sx={{ ml: { sm: 'auto' } }}
           >
             Écran de MJ
@@ -313,7 +313,8 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           <Button
             variant="outlined"
             startIcon={<SettingsIcon />}
-            onClick={() => router.push(`/campaign/${cid}/settings`)}
+            component={Link}
+            href={`/campaign/${cid}/settings`}
           >
             Réglages de la campagne
           </Button>
@@ -328,7 +329,8 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
                 <Button
                   color="inherit"
                   size="small"
-                  onClick={() => router.push(`/create?campaign=${cid}`)}
+                  component={Link}
+                  href={`/create?campaign=${cid}`}
                 >
                   Reprendre
                 </Button>

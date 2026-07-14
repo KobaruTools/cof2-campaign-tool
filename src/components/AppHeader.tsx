@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AppBar from '@mui/material/AppBar';
 import IconButton from '@mui/material/IconButton';
@@ -11,7 +12,16 @@ import { AppTooltip } from '@/components/AppTooltip';
 interface AppHeaderProps {
   /** Titre affiché (rendu en `<h1>`). */
   title: ReactNode;
-  /** Callback du bouton retour (flèche à gauche). Absent = pas de bouton retour. */
+  /**
+   * Destination du bouton retour (flèche à gauche). Rend le bouton en vraie ancre
+   * `<a href>` : Ctrl/⌘+Clic et clic-molette ouvrent la destination dans un
+   * nouvel onglet. À privilégier sur `onBack` pour une simple navigation.
+   */
+  backHref?: string;
+  /**
+   * Callback impératif du bouton retour, pour les cas sans URL fixe. Ignoré si
+   * `backHref` est fourni. Absent (avec `backHref` absent) = pas de bouton retour.
+   */
   onBack?: () => void;
   /**
    * Libellé de la destination du bouton retour (ex. « Retour à {campagne} »).
@@ -29,7 +39,7 @@ interface AppHeaderProps {
  * Modèle unique — calqué sur l'en-tête de la fiche de personnage — pour l'accueil,
  * le wizard de création et la fiche. Reste visible au défilement.
  */
-export function AppHeader({ title, onBack, backLabel, action }: AppHeaderProps) {
+export function AppHeader({ title, backHref, onBack, backLabel, action }: AppHeaderProps) {
   return (
     <AppBar
       position="sticky"
@@ -46,17 +56,33 @@ export function AppHeader({ title, onBack, backLabel, action }: AppHeaderProps) 
       }}
     >
       <Toolbar>
-        {onBack && (
+        {(backHref || onBack) && (
           <AppTooltip title={backLabel ?? ''}>
-            <IconButton
-              edge="start"
-              color="inherit"
-              onClick={onBack}
-              aria-label={backLabel ?? 'Retour'}
-              sx={{ mr: 1 }}
-            >
-              <ArrowBackIcon />
-            </IconButton>
+            {/* `backHref` → ancre (Ctrl/⌘+Clic → nouvel onglet) ; sinon `onBack`
+                → bouton impératif. Une ancre ne prenant pas `onClick` de retour,
+                on rend deux variantes plutôt qu'un spread de props. */}
+            {backHref ? (
+              <IconButton
+                edge="start"
+                color="inherit"
+                component={Link}
+                href={backHref}
+                aria-label={backLabel ?? 'Retour'}
+                sx={{ mr: 1 }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            ) : (
+              <IconButton
+                edge="start"
+                color="inherit"
+                onClick={onBack}
+                aria-label={backLabel ?? 'Retour'}
+                sx={{ mr: 1 }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            )}
           </AppTooltip>
         )}
         <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>

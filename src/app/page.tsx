@@ -12,7 +12,7 @@
  * on ajoute la recherche, le tri par campagne et le regroupement par campagne.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -76,7 +76,6 @@ const norm = (s: string) =>
     .toLowerCase();
 
 export default function HomePage() {
-  const router = useRouter();
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const status = useCharactersStore((s) => s.status);
   const characters = useCharactersStore((s) => s.characters);
@@ -137,8 +136,6 @@ export default function HomePage() {
     const character = useCharactersStore.getState().getById(id);
     if (character) setToUpload(character);
   };
-
-  const handleCreate = () => router.push('/create');
 
   const handleExport = async (id: string) => {
     const character = useCharactersStore.getState().getById(id);
@@ -238,7 +235,7 @@ export default function HomePage() {
       key: 'open',
       label: 'Ouvrir',
       icon: <OpenInNewIcon fontSize="small" />,
-      onClick: (r) => router.push(`/character/${r.id}`),
+      href: (r) => `/character/${r.id}`,
     },
     {
       key: 'upload',
@@ -276,7 +273,7 @@ export default function HomePage() {
         title="Personnages — Chroniques Oubliées Fantasy 2"
         action={
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            <Button color="inherit" startIcon={<QuestIcon />} onClick={() => router.push('/campaigns')}>
+            <Button color="inherit" startIcon={<QuestIcon />} component={Link} href="/campaigns">
               Campagnes
             </Button>
             <AccountMenu />
@@ -286,7 +283,7 @@ export default function HomePage() {
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+          <Button variant="contained" startIcon={<AddIcon />} component={Link} href="/create">
             Nouveau personnage
           </Button>
           <Button variant="outlined" startIcon={<UploadIcon />} onClick={() => setImportOpen(true)}>
@@ -300,7 +297,7 @@ export default function HomePage() {
             sx={{ mb: 3 }}
             action={
               <>
-                <Button color="inherit" size="small" onClick={() => router.push('/create')}>
+                <Button color="inherit" size="small" component={Link} href="/create">
                   Reprendre
                 </Button>
                 <Button color="inherit" size="small" onClick={() => clearDraft()}>
@@ -403,7 +400,7 @@ export default function HomePage() {
                   <CharacterList
                     rows={activeRows}
                     groups={groups}
-                    onOpen={(r) => router.push(`/character/${r.id}`)}
+                    hrefFor={(r) => `/character/${r.id}`}
                     actions={actions}
                     showCampaign
                     campaignNameById={campaignNameById}
@@ -481,7 +478,7 @@ export default function HomePage() {
                     <Collapse in={archivedOpen} unmountOnExit>
                       <CharacterList
                         rows={archivedRows}
-                        onOpen={(r) => router.push(`/character/${r.id}`)}
+                        hrefFor={(r) => `/character/${r.id}`}
                         actions={actions}
                         showCampaign
                         campaignNameById={campaignNameById}

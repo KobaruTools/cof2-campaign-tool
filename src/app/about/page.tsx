@@ -9,7 +9,6 @@
  *
  * Contenu 100 % statique : aucune donnée chargée, aucune dépendance au cloud.
  */
-import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Link from '@mui/material/Link';
@@ -35,13 +34,12 @@ function ExternalLink({ href, children }: { href: string; children: React.ReactN
 }
 
 export default function AboutPage() {
-  const router = useRouter();
 
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <title>À propos — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader title="À propos" onBack={() => router.push('/')} />
+      <AppHeader title="À propos" backHref="/" />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>

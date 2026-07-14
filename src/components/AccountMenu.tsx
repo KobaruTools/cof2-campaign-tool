@@ -11,7 +11,7 @@
  * de compte à gérer. Sûr à monter sur n'importe quelle page (il se tait tout seul).
  */
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -37,7 +37,6 @@ async function signOut(): Promise<void> {
 }
 
 export function AccountMenu() {
-  const router = useRouter();
   const [label, setLabel] = useState<string | null>(null);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
@@ -83,12 +82,7 @@ export function AccountMenu() {
           {label}
         </Typography>
         <Divider />
-        <MenuItem
-          onClick={() => {
-            close();
-            router.push('/account');
-          }}
-        >
+        <MenuItem component={Link} href="/account" onClick={close}>
           <ListItemIcon>
             <SettingsIcon fontSize="small" />
           </ListItemIcon>

@@ -201,7 +201,7 @@ export default function CampaignCreatePage() {
     <>
       <title>Nouvelle campagne — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader title="Nouvelle campagne" onBack={() => router.push('/campaigns')} />
+      <AppHeader title="Nouvelle campagne" backHref="/campaigns" />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         {unconfigured ? (

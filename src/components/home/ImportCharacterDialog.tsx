@@ -26,7 +26,7 @@
  * boutons se verrouillent et affichent un spinner pendant l'import.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -101,7 +101,6 @@ export function ImportCharacterDialog({
   onClose,
   onImported,
 }: ImportCharacterDialogProps) {
-  const router = useRouter();
   const importCharacter = useCharactersStore((s) => s.importCharacter);
   const campaigns = useCampaignsStore((s) => s.campaigns);
 
@@ -403,7 +402,9 @@ export function ImportCharacterDialog({
             {state.characters.length === 1 && (
               <Button
                 variant="contained"
-                onClick={() => router.push(`/character/${state.characters[0].id}`)}
+                component={Link}
+                href={`/character/${state.characters[0].id}`}
+                onClick={handleClose}
               >
                 Ouvrir la fiche
               </Button>

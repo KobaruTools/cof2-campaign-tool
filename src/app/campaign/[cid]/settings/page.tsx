@@ -18,7 +18,7 @@
  * PER-185. Ici, la DoD est « persisté et rechargé correctement ».
  */
 import { use, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SaveIcon from '@mui/icons-material/Save';
@@ -131,7 +131,6 @@ function CollapsibleSection({
 
 export default function CampaignSettingsPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
-  const router = useRouter();
   const status = useCampaignsStore((s) => s.status);
   const load = useCampaignsStore((s) => s.load);
   const update = useCampaignsStore((s) => s.update);
@@ -207,7 +206,7 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
       <HomeBackground />
       <AppHeader
         title="Réglages de la campagne"
-        onBack={() => router.push(`/campaign/${cid}`)}
+        backHref={`/campaign/${cid}`}
         action={<AccountMenu />}
       />
 
@@ -248,7 +247,7 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
             <Typography variant="h6" gutterBottom>
               Campagne introuvable
             </Typography>
-            <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/campaigns')}>
+            <Button startIcon={<ArrowBackIcon />} component={Link} href="/campaigns">
               Retour aux campagnes
             </Button>
           </Box>
