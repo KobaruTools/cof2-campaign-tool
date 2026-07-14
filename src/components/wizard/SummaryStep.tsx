@@ -20,6 +20,7 @@ import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
+import { PageRefText } from '@/components/SourceRef';
 import { EquipConflictsAlert, WeaponMasteryAlert } from '@/components/sheet/WornEquipmentControls';
 import { masteredClassIds } from '@/lib/character/mastery';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
@@ -270,7 +271,8 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
 
       {warnings.length > 0 && (
         <AppAlert severity="warning">
-          {warnings.map((a) => a.message).join(' ')}
+          {/* « (p. N) » cité dans un message → puce de source (notion globale PER-207). */}
+          <PageRefText>{warnings.map((a) => a.message).join(' ')}</PageRefText>
         </AppAlert>
       )}
     </Stack>

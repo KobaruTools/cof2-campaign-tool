@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
+import { PageRefText } from '@/components/SourceRef';
 import type { Warning } from '@/lib/engine';
 
 export interface ComplianceWarningsProps {
@@ -16,7 +17,8 @@ function WarningList({ warnings }: { warnings: Warning[] }) {
     <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
       {warnings.map((w, i) => (
         <Typography key={i} component="li" variant="body2">
-          {w.message}
+          {/* Notion globale (PER-207) : « (p. N) » cité dans un message est rendu en puce de source. */}
+          <PageRefText>{w.message}</PageRefText>
         </Typography>
       ))}
     </Box>
