@@ -85,6 +85,19 @@ describe('isWeaponMastered', () => {
     expect(isWeaponMastered(weapon('baton'), magicienIds, ctx, true)).toBe(true);
   });
 
+  it('le magicien maîtrise le bâton ferré : même famille que le bâton (p. 184, arme de départ)', () => {
+    // Le magicien ne liste que « bâton » mais reçoit un bâton ferré en équipement de
+    // départ (p. 102). Bâton et bâton ferré sont une même famille — le ferrage ne
+    // change que les DM, pas le type d’arme —, donc maîtriser l’un maîtrise l’autre.
+    expect(isWeaponMastered(weapon('baton-ferre'), magicienIds, ctx, true)).toBe(true);
+  });
+
+  it('réciproque : un profil listant le bâton ferré (druide) maîtrise le bâton simple', () => {
+    const druideIds = masteredClassIds(makeChar({ classId: 'druide' }), ctx);
+    expect(isWeaponMastered(weapon('baton-ferre'), druideIds, ctx, true)).toBe(true);
+    expect(isWeaponMastered(weapon('baton'), druideIds, ctx, true)).toBe(true);
+  });
+
   it('le magicien ne maîtrise pas une arme hors de son accès (épée longue)', () => {
     expect(isWeaponMastered(weapon('epee-longue'), magicienIds, ctx, true)).toBe(false);
   });

@@ -25,6 +25,23 @@ import { isFirearmItemId } from './firearms';
 export const MASTERY_RANK_THRESHOLD = 2;
 
 /**
+ * Familles d'armes interchangeables pour la maîtrise : maîtriser une variante les
+ * maîtrise TOUTES. Le bâton ferré n'est qu'un bâton renforcé — même type d'arme,
+ * seuls les DM changent (p. 184 : « tous les personnages qui savent manier le bâton
+ * ferré savent aussi manier le bâton »). C'est aussi ce qui rend cohérent l'accès du
+ * magicien/sorcier/forgesort, qui ne listent que « bâton » mais reçoivent un bâton
+ * ferré en équipement de départ (p. 102). Le « bâton noueux » du druide est un reskin
+ * du bâton ferré (même id `baton-ferre`), donc déjà couvert.
+ */
+const WEAPON_FAMILIES: readonly ReadonlySet<string>[] = [new Set(['baton', 'baton-ferre'])];
+
+/** Ids de la même famille que `weaponId` (l'arme elle-même si elle n'appartient à aucune). */
+function weaponFamilyIds(weaponId: string): readonly string[] {
+  const family = WEAPON_FAMILIES.find((ids) => ids.has(weaponId));
+  return family ? [...family] : [weaponId];
+}
+
+/**
  * Ensemble des profils (ids de `CharacterClass`) dont le personnage maîtrise armes
  * ET armures. Toujours au moins le profil principal ; plus tout profil atteint par
  * la règle des ≥ 2 rangs (p. 177) ou par la création hybride de niveau 1 (p. 180).
@@ -72,8 +89,9 @@ export function masteredClassIds(character: Character, ctx: RulesContext): Set<s
 
 /** Un profil donné maîtrise-t-il cette arme ? Interprète ses accès (`WeaponAccess`). */
 function classMastersWeapon(weapon: Weapon, cls: CharacterClass, firearmsAllowed: boolean): boolean {
-  // Arme explicitement listée comme maîtrisée par le profil (ex. magicien : dague, bâton).
-  if (cls.allowedWeaponIds.includes(weapon.id)) return true;
+  // Arme explicitement listée comme maîtrisée par le profil (ex. magicien : dague, bâton),
+  // ou une variante de la même famille (bâton ⇄ bâton ferré, cf. WEAPON_FAMILIES).
+  if (weaponFamilyIds(weapon.id).some((id) => cls.allowedWeaponIds.includes(id))) return true;
   // Arme retirée d'un accès global (ex. barbare exclut les arbalètes de son accès « toutes »).
   if (cls.excludedWeaponIds?.includes(weapon.id)) return false;
 
