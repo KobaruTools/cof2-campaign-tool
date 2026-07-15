@@ -108,6 +108,34 @@ describe('derivedStatBreakdown ↔ deriveStats', () => {
     expect(bd.noteTone).toBe('warning');
   });
 
+  it('Défense : ligne distincte pour le bonus magique de l’armure (PER-85)', () => {
+    const bd = derivedStatBreakdown('defense', {
+      abilities: abilities({ AGI: 1 }),
+      level: 1,
+      family: family('adventurers'),
+      defenseEquipment: { defBonus: 2, maxAgi: null, magicDefBonus: 1 },
+      spellCount: 0,
+    });
+    // DEF mondaine et bonus magique apparaissent sur DEUX lignes séparées.
+    const magic = bd.terms.find((t) => t.label.toLowerCase().includes('magique'));
+    expect(magic?.value).toBe(1);
+    const mundane = bd.terms.find((t) => t.label.includes('Armure'));
+    expect(mundane?.value).toBe(2);
+    // Total = 10 + AGI 1 + mondaine 2 + magie 1 = 14.
+    expect(bd.total).toBe(14);
+  });
+
+  it('Défense : aucune ligne « magique » sans bonus magique', () => {
+    const bd = derivedStatBreakdown('defense', {
+      abilities: abilities({ AGI: 1 }),
+      level: 1,
+      family: family('adventurers'),
+      defenseEquipment: { defBonus: 2, maxAgi: null },
+      spellCount: 0,
+    });
+    expect(bd.terms.find((t) => t.label.toLowerCase().includes('magique'))).toBeUndefined();
+  });
+
   it('Défense : pas de note quand l’AGI n’est pas plafonnée', () => {
     const bd = derivedStatBreakdown('defense', {
       abilities: abilities({ AGI: 1 }),

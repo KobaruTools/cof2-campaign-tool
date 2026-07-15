@@ -231,6 +231,18 @@ export interface EquipmentRef {
   quantity: number;
   /** État de port (PER-76). Absent = rangé. Voir `WornState`. */
   worn?: WornState;
+  /**
+   * Bonus de DEF MAGIQUE de cette instance d'armure enchantée (PER-85), en points
+   * de défense qui s'ajoutent à la DEF mondaine du catalogue (`Armor.def`). Propriété
+   * du PERSONNAGE (pas du catalogue, qui ne contient que des armures non magiques) :
+   * l'enchantement est intrinsèque à l'objet, il survit au déséquipement. Ne concerne
+   * QUE l'armure (l'enchantement des boucliers/armes est hors périmètre) et ne
+   * contribue à la défense que lorsque l'armure est PORTÉE. Absent / 0 = non magique.
+   * Distinct de la DEF mondaine car le surcoût de mana des sorts en armure (p. 178,
+   * PER-82) se calcule HORS bonus magique. Champ additif optionnel absent-safe → pas
+   * de bump de `schemaVersion` (cf. précédent `rolledHp`).
+   */
+  magicDef?: number;
 }
 
 /**

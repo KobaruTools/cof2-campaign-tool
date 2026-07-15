@@ -310,6 +310,17 @@ function GlossaryRun({ value }: { value: string }) {
   );
 }
 
+/**
+ * Rend un TEXTE LITTÉRAL en mettant en avant les notions de jeu (locutions,
+ * glossaire : caractéristiques, stats dérivées comme « DEF », jargon comme « DM »).
+ * Wrapper public réutilisable HORS des textes de capacités — ex. le détail d'un objet
+ * d'équipement (PER-85) — pour que « DEF »/« DM » y reçoivent le même traitement visuel
+ * qu'ailleurs. Prend une simple chaîne, sans contexte de personnage (pas de dés/formules).
+ */
+export function GlossaryText({ children }: { children: string }) {
+  return <RichTextRun value={children} />;
+}
+
 function RichTextRun({ value }: { value: string }) {
   return (
     <>

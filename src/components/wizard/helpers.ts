@@ -69,9 +69,15 @@ export function equipmentLabel(line: EquipmentLine, characterClass?: CharacterCl
  * et cette garde rend le cumul erroné d'antan structurellement impossible même sur
  * des données incohérentes. L'AGI maximale provient de l'armure portée (les
  * boucliers n'en imposent pas, colonne « — » p. 188).
+ *
+ * Le bonus magique éventuel de l'armure portée (`EquipmentRef.magicDef`, PER-85) est
+ * tenu SÉPARÉ de la DEF mondaine (`magicDefBonus`) : il compte dans la DEF totale mais
+ * reste distinct pour le surcoût de mana des sorts en armure (p. 178, PER-82). Il n'est
+ * lu QUE sur l'armure portée (hors périmètre : boucliers/armes ; ignoré si rangée).
  */
 export function defenseFromEquipment(equipment: EquipmentLine[]): DefenseEquipment {
   let defBonus = 0;
+  let magicDefBonus = 0;
   let maxAgi: number | null = null;
   let armorCounted = false;
   let shieldCounted = false;
@@ -81,6 +87,7 @@ export function defenseFromEquipment(equipment: EquipmentLine[]): DefenseEquipme
     if (!item) continue;
     if (item.category === 'armor' && !armorCounted) {
       defBonus += item.def;
+      magicDefBonus += line.magicDef ?? 0;
       maxAgi = item.maxAgi;
       armorCounted = true;
     } else if (item.category === 'shield' && !shieldCounted) {
@@ -88,5 +95,5 @@ export function defenseFromEquipment(equipment: EquipmentLine[]): DefenseEquipme
       shieldCounted = true;
     }
   }
-  return { defBonus, maxAgi };
+  return { defBonus, maxAgi, magicDefBonus };
 }

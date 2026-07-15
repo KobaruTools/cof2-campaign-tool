@@ -14,13 +14,15 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { equipment as equipmentCatalog, equipmentById } from '@/data';
 import type { CharacterClass, EquipmentItem } from '@/data/schema';
-import type { EquipmentLine, WornState } from '@/lib/character/types';
+import type { EquipmentLine, EquipmentRef, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { isConsumable } from '@/lib/character/consumables';
 import { equipmentLabel } from '@/components/wizard/helpers';
+import { AppTooltip } from '@/components/AppTooltip';
+import { PageRefText } from '@/components/SourceRef';
 import { DamageValue } from '@/components/DamageValue';
-import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
 import {
   EquipConflictsAlert,
   WeaponMasteryBadge,
@@ -34,13 +36,18 @@ import {
  */
 const ELIXIR_FEATURE_BY_ITEM = elixirFeatureIdByItemName();
 
-/** Détail concis d'un objet du catalogue (DM des armes, DEF des protections). */
+/**
+ * Détail concis d'un objet du catalogue (DM des armes, DEF des protections). Le texte
+ * passe par `GlossaryText` (PER-85) pour que « DM » (jargon) et « DEF » (stat dérivée)
+ * reçoivent la même mise en avant qu'ailleurs. La DEF affichée est la DEF MONDAINE
+ * (catalogue) ; le bonus magique éventuel est rendu à part (`MagicDefBadge`).
+ */
 function itemDetail(item: EquipmentItem): ReactNode {
   switch (item.category) {
     case 'weapon':
       return (
         <>
-          DM <DamageValue damage={item.damage} />
+          <GlossaryText>DM</GlossaryText> <DamageValue damage={item.damage} />
           {item.twoHandedDamage && (
             <>
               /<DamageValue damage={item.twoHandedDamage} />
@@ -51,10 +58,50 @@ function itemDetail(item: EquipmentItem): ReactNode {
       );
     case 'armor':
     case 'shield':
-      return `DEF +${item.def}`;
+      return <GlossaryText>{`DEF +${item.def}`}</GlossaryText>;
     case 'gear':
-      return item.description ?? null;
+      return item.description ? <GlossaryText>{item.description}</GlossaryText> : null;
   }
+}
+
+/**
+ * Badge du bonus de DEF MAGIQUE d'une armure enchantée (PER-85, retour propriétaire) :
+ * pastille custom (≠ Chip MUI, cf. conventions) en teinte SECONDAIRE, distincte de la
+ * DEF mondaine (« DEF +5 ») avec laquelle elle ne doit pas se confondre. Info-bulle
+ * rappelant qu'elle s'ajoute à la DEF totale mais reste hors du surcoût de mana (p. 178).
+ */
+function MagicDefBadge({ value }: { value: number }) {
+  return (
+    <AppTooltip
+      title={
+        <PageRefText>
+          Bonus magique de l’armure : s’ajoute à la DEF totale, hors surcoût de mana des sorts en
+          armure (p. 178).
+        </PageRefText>
+      }
+    >
+      <Box
+        component="span"
+        sx={(theme) => ({
+          display: 'inline-block',
+          verticalAlign: 'baseline',
+          ml: 0.75,
+          px: 0.6,
+          borderRadius: 0.75,
+          fontWeight: 700,
+          fontSize: '0.72rem',
+          lineHeight: 1.4,
+          whiteSpace: 'nowrap',
+          cursor: 'help',
+          color: theme.palette.secondary.main,
+          bgcolor: alpha(theme.palette.secondary.main, 0.12),
+          border: `1px solid ${alpha(theme.palette.secondary.main, 0.45)}`,
+        })}
+      >
+        +{value} magique
+      </Box>
+    </AppTooltip>
+  );
 }
 
 export interface EquipmentListProps {
@@ -125,7 +172,16 @@ export function EquipmentList({
           // Dose d'élixir (objet custom nommé par `elixirItemName`) : on met en avant la CAPACITÉ
           // reproduite via une puce (sort choisi pour un mineur/majeur, sinon capacité du forgesort).
           const elixirFeatureId = custom ? ELIXIR_FEATURE_BY_ITEM.get(line.name) : undefined;
-          const detail = elixirFeatureId ? null : custom ? line.details : item ? itemDetail(item) : null;
+          const detail = elixirFeatureId
+            ? null
+            : custom
+              ? line.details
+              : item
+                ? itemDetail(item)
+                : null;
+          // Bonus de DEF magique de l'armure enchantée (PER-85) : rendu à part de la DEF
+          // mondaine, pour ne pas les confondre visuellement (retour propriétaire).
+          const magicDef = !custom && item?.category === 'armor' ? (line as EquipmentRef).magicDef : undefined;
           // Objet équipable (a un emplacement de port) : armure, bouclier ou arme du catalogue.
           const equippable =
             !!item && (item.category === 'armor' || item.category === 'shield' || item.category === 'weapon');
@@ -171,10 +227,11 @@ export function EquipmentList({
                       {equipmentLabel(line, characterClass)}
                     </Typography>
                     {detail && (
-                      <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }} component="span">
                         {detail}
                       </Typography>
                     )}
+                    {magicDef ? <MagicDefBadge value={magicDef} /> : null}
                   </>
                 )}
                 {/* État de port (PER-77) : contrôles équiper/déséquiper si disponibles (état de jeu,
@@ -198,6 +255,23 @@ export function EquipmentList({
                   />
                 )}
               </Box>
+              {/* Bonus de DEF MAGIQUE d'une armure enchantée (PER-85) : saisi en mode
+                  édition, propriété de l'instance (survit au déséquipement). Réservé à
+                  l'armure (boucliers/armes hors périmètre). Ne compte dans la DEF que
+                  lorsque l'armure est portée (cf. defenseFromEquipment). */}
+              {onChange && !custom && item?.category === 'armor' && (
+                <TextField
+                  type="number"
+                  size="small"
+                  label="DEF magique"
+                  value={(line as EquipmentRef).magicDef ?? 0}
+                  onChange={(e) => {
+                    const n = Math.max(0, Number(e.target.value) || 0);
+                    setLine(i, { ...(line as EquipmentRef), magicDef: n || undefined });
+                  }}
+                  sx={{ width: 110 }}
+                />
+              )}
               {onChange ? (
                 <TextField
                   type="number"

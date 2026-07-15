@@ -213,6 +213,9 @@ export function derivedStatBreakdown(
         { label: 'Base', value: 10 },
         { label: 'Agilité (AGI)', value: cappedAgi },
         ...mod('Armure / bouclier', defenseEquipment.defBonus),
+        // DEF magique de l'armure portée (PER-85), sur une ligne distincte de la DEF
+        // mondaine : le surcoût de mana des sorts en armure (p. 178) l'exclura.
+        ...mod('Bonus magique d’armure', defenseEquipment.magicDefBonus ?? 0),
         ...capacities('def'),
       ];
       // Plafonnement de l'AGI par l'armure : le joueur a atteint une LIMITE → note en

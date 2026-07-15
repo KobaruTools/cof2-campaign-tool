@@ -212,6 +212,13 @@ describe('défense', () => {
   it('ajoute les modificateurs de capacités', () => {
     expect(defense(1, { defBonus: 0, maxAgi: null }, { def: 1 })).toBe(12); // Ionas + Murmure
   });
+
+  it('ajoute le bonus magique de l’armure à la DEF totale (PER-85)', () => {
+    // DEF totale = 10 + AGI + DEF mondaine + bonus magique.
+    expect(defense(1, { defBonus: 4, maxAgi: null, magicDefBonus: 1 })).toBe(16);
+    // Le bonus magique s'ajoute PAR-DESSUS l'AGI plafonnée par l'armure (p. 188).
+    expect(defense(5, { defBonus: 5, maxAgi: 3, magicDefBonus: 2 })).toBe(20);
+  });
 });
 
 describe("valeurs d'attaque", () => {

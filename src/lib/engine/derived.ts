@@ -54,8 +54,14 @@ export interface HpLevelGain {
 
 /** Contribution de l'équipement porté au calcul de la défense. */
 export interface DefenseEquipment {
-  /** Somme des bonus de DEF (armure + bouclier). */
+  /** Somme des bonus de DEF MONDAINE (armure + bouclier, `Armor.def`/`Shield.def`). */
   defBonus: number;
+  /**
+   * Bonus de DEF MAGIQUE de l'armure portée (PER-85), tenu SÉPARÉ de la DEF mondaine :
+   * il compte dans la DEF totale mais est exclu du surcoût de mana des sorts en armure
+   * (p. 178, PER-82). Optionnel/absent = 0 (aucune armure magique portée).
+   */
+  magicDefBonus?: number;
   /** AGI maximale exploitable imposée par l'armure (p. 188) ; null = aucune. */
   maxAgi: number | null;
 }
@@ -243,7 +249,8 @@ export function initiative(per: number, mods: DerivedMods = {}): number {
  */
 export function defense(agi: number, equip: DefenseEquipment, mods: DerivedMods = {}): number {
   const effectiveAgi = equip.maxAgi === null ? agi : Math.min(agi, equip.maxAgi);
-  return 10 + effectiveAgi + equip.defBonus + m(mods.def);
+  // DEF totale = base + AGI plafonnée + DEF mondaine + bonus magique de l'armure (PER-85).
+  return 10 + effectiveAgi + equip.defBonus + m(equip.magicDefBonus) + m(mods.def);
 }
 
 // ---------------------------------------------------------------------------
