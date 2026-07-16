@@ -18,8 +18,14 @@ export interface SignedNumberFieldProps
   max?: number;
   /** Pas des boutons − / + (défaut 1). */
   step?: number;
-  /** Styles du conteneur (rangée boutons + champ), pour le placer dans la mise en page. */
+  /** Styles du conteneur, pour le placer dans la mise en page. */
   containerSx?: SxProps<Theme>;
+  /**
+   * Disposition des boutons : `'row'` (défaut) les place de part et d'autre du
+   * champ ; `'stacked'` les met côte à côte SOUS le champ — préférable quand la
+   * largeur est contrainte (grille des caractéristiques en édition).
+   */
+  layout?: 'row' | 'stacked';
 }
 
 /**
@@ -41,6 +47,7 @@ export function SignedNumberField({
   disabled,
   sx,
   containerSx,
+  layout = 'row',
   ...textFieldProps
 }: SignedNumberFieldProps) {
   const clamp = (n: number): number => {
@@ -52,32 +59,56 @@ export function SignedNumberField({
 
   const commit = (n: number) => onChange(clamp(n));
 
+  const decrementButton = (
+    <IconButton
+      size="small"
+      aria-label="Diminuer"
+      disabled={disabled || (min != null && value <= min)}
+      onClick={() => commit(value - step)}
+    >
+      <RemoveIcon fontSize="small" />
+    </IconButton>
+  );
+
+  const incrementButton = (
+    <IconButton
+      size="small"
+      aria-label="Augmenter"
+      disabled={disabled || (max != null && value >= max)}
+      onClick={() => commit(value + step)}
+    >
+      <AddIcon fontSize="small" />
+    </IconButton>
+  );
+
+  const field = (
+    <TextField
+      type="number"
+      disabled={disabled}
+      value={value}
+      onChange={(e) => commit(Number(e.target.value) || 0)}
+      sx={{ flexGrow: layout === 'row' ? 1 : 0, minWidth: 0, ...sx }}
+      {...textFieldProps}
+    />
+  );
+
+  if (layout === 'stacked') {
+    return (
+      <Stack spacing={0.5} sx={{ alignItems: 'center', ...containerSx }}>
+        {field}
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+          {decrementButton}
+          {incrementButton}
+        </Stack>
+      </Stack>
+    );
+  }
+
   return (
     <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', ...containerSx }}>
-      <IconButton
-        size="small"
-        aria-label="Diminuer"
-        disabled={disabled || (min != null && value <= min)}
-        onClick={() => commit(value - step)}
-      >
-        <RemoveIcon fontSize="small" />
-      </IconButton>
-      <TextField
-        type="number"
-        disabled={disabled}
-        value={value}
-        onChange={(e) => commit(Number(e.target.value) || 0)}
-        sx={{ flexGrow: 1, minWidth: 0, ...sx }}
-        {...textFieldProps}
-      />
-      <IconButton
-        size="small"
-        aria-label="Augmenter"
-        disabled={disabled || (max != null && value >= max)}
-        onClick={() => commit(value + step)}
-      >
-        <AddIcon fontSize="small" />
-      </IconButton>
+      {decrementButton}
+      {field}
+      {incrementButton}
     </Stack>
   );
 }

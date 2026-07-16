@@ -84,13 +84,14 @@ export function AbilitiesGrid({
         const value = onChange ? (
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
             <SignedNumberField
+              layout="stacked"
               size="small"
               value={entered}
               onChange={(v) => onChange(id, v)}
               slotProps={{
                 htmlInput: { style: { textAlign: 'center', fontWeight: 700, color: abilityTotalColor(entered) } },
               }}
-              sx={{ width: 56, flexGrow: 0 }}
+              sx={{ width: 64 }}
             />
             {mod !== 0 && (
               <Typography variant="caption" sx={{ fontWeight: 700, color: 'secondary.main' }}>
