@@ -3,7 +3,6 @@
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import type { AbilityId, Ancestry } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
@@ -14,6 +13,7 @@ import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
+import { SignedNumberField } from '@/components/SignedNumberField';
 
 export interface AbilitiesGridProps {
   /**
@@ -83,15 +83,14 @@ export function AbilitiesGrid({
         // tooltips — sa note est repliée dans l'infobulle de détail (`bonusDieSources`).
         const value = onChange ? (
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            <TextField
-              type="number"
+            <SignedNumberField
               size="small"
               value={entered}
-              onChange={(e) => onChange(id, Number(e.target.value) || 0)}
+              onChange={(v) => onChange(id, v)}
               slotProps={{
                 htmlInput: { style: { textAlign: 'center', fontWeight: 700, color: abilityTotalColor(entered) } },
               }}
-              sx={{ width: 72 }}
+              sx={{ width: 56, flexGrow: 0 }}
             />
             {mod !== 0 && (
               <Typography variant="caption" sx={{ fontWeight: 700, color: 'secondary.main' }}>

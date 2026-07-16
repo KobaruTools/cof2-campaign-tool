@@ -9,7 +9,6 @@ import CardContent from '@mui/material/CardContent';
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { deriveStats, type DerivedInput } from '@/lib/engine';
 import type { EffectContext } from '@/lib/character/effects';
@@ -20,6 +19,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DerivedStatHint } from '@/components/DerivedStatHint';
 import { DieIcon } from '@/components/DieIcon';
+import { SignedNumberField } from '@/components/SignedNumberField';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 
 /**
@@ -189,18 +189,17 @@ export function DerivedStatsGrid({
 
                     {onOverride ? (
                       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.25 }}>
-                        <TextField
-                          type="number"
+                        <SignedNumberField
                           size="small"
                           value={display ?? 0}
                           disabled={!forced}
-                          onChange={(e) => onOverride(key, Number(e.target.value) || 0)}
+                          onChange={(v) => onOverride(key, v)}
                           slotProps={{
                             htmlInput: {
                               style: { textAlign: 'center', fontWeight: 700, padding: '4px 6px' },
                             },
                           }}
-                          sx={{ width: 68 }}
+                          sx={{ width: 56, flexGrow: 0 }}
                         />
                         {suffix}
                         <AppTooltip

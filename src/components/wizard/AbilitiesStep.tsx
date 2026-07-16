@@ -21,6 +21,7 @@ import { abilityTotalColor, ancestryModifierColor } from '@/lib/ui/abilityColors
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { AppAlert } from '@/components/AppAlert';
+import { SignedNumberField } from '@/components/SignedNumberField';
 import { SourceRef } from '@/components/SourceRef';
 import type { StepProps } from './types';
 
@@ -180,13 +181,12 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
                   size={24}
                   sx={{ color: 'text.secondary', flexShrink: 0 }}
                 />
-                <TextField
+                <SignedNumberField
                   label={id}
-                  type="number"
                   size="small"
                   value={draft.baseAbilities[id]}
-                  onChange={(e) => setBase(id, Number(e.target.value) || 0)}
-                  sx={{ flex: 1, maxWidth: 160 }}
+                  onChange={(v) => setBase(id, v)}
+                  containerSx={{ flex: 1, maxWidth: 160 }}
                 />
                 <TextField
                   label={abilityTotalLabel(total)}
