@@ -157,7 +157,8 @@ export interface FeatureArmorRestrictionViolation {
  *    peuple, du mage et de prestige n'en fixent pas ici) ;
  *  - passifs ET actifs sont signalés (décision propriétaire — lecture littérale, cf. PER-75) ;
  *    le RETRAIT effectif du bonus (désactivation) relève de PER-83, pas de ce module.
- * Le moteur SIGNALE seulement ; la fiche reste permissive (cf. `checkCompliance`).
+ * Le moteur SIGNALE seulement ; le rendu est VISUEL (rang désaturé + infobulle/notice dans
+ * `FeaturesByPath`, via `featureArmorRestrictionMessage`), pas un avertissement de conformité.
  */
 export function featureArmorRestrictionViolations(
   character: Character,
@@ -202,6 +203,16 @@ export function featureArmorRestrictionViolations(
   }
 
   return violations;
+}
+
+/**
+ * Message français prêt à afficher (infobulle / notice) pour une restriction d'usage
+ * (PER-86), sourcé p. 177. « (p. 177) » y est en parenthèse AUTONOME → parsé par
+ * `PageRefText`/`SourceRef` côté UI.
+ */
+export function featureArmorRestrictionMessage(v: FeatureArmorRestrictionViolation): string {
+  const cap = v.allowedArmorName ? `${v.allowedArmorName} maximum` : 'aucune armure autorisée';
+  return `Capacité de « ${v.className} » inutilisable avec l'armure portée (${cap}) : retirez votre armure pour en profiter (p. 177).`;
 }
 
 /** Écart de port d'armure/bouclier à signaler (avertissement non bloquant). */

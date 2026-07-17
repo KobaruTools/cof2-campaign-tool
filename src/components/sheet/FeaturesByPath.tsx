@@ -70,10 +70,16 @@ import {
 import { featureIdsFromHistory } from '@/lib/character/levelUp';
 import { spellArmorManaSurcharge } from '@/lib/character/manaSurcharge';
 import { rulesContext } from '@/lib/character/rulesContext';
+// Restriction FINE d'usage d'armure par capacité d'origine (PER-86) : rendu VISUEL (rang
+// désaturé + infobulle/notice), pas un avertissement de conformité.
+import {
+  featureArmorRestrictionViolations,
+  featureArmorRestrictionMessage,
+} from '@/lib/character/armorRestrictions';
 import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
-import { SourceRef } from '@/components/SourceRef';
+import { SourceRef, PageRefText } from '@/components/SourceRef';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { FeatureLabel } from '@/components/FeatureLabel';
@@ -1915,6 +1921,7 @@ function PathBlock({
   onCreateElixir,
   disabledIds,
   disabledReasons,
+  armorRestrictedReasons,
   replacements,
   concentration = false,
   testBonuses,
@@ -1958,6 +1965,14 @@ function PathBlock({
   disabledIds?: Set<string>;
   /** Raison du grisage par capacité (message « pourquoi désactivé » : exclusion / remplacement). */
   disabledReasons?: Map<string, DisabledFeatureReason>;
+  /**
+   * Capacités dont l'USAGE est gêné par l'armure portée (restriction fine par profil d'origine,
+   * PER-86), indexées par id → message d'avertissement. Rendu : rang DÉSATURÉ + légèrement
+   * transparent + infobulle (vue colonne) / notice dans le bloc déplié (vue liste). À DISTINGUER
+   * du grisage d'exclusion mutuelle (`disabledIds`) : ici AUCUN interrupteur n'est coupé, la
+   * capacité reste pleinement interactive — c'est un simple signal visuel « inutilisable en armure ».
+   */
+  armorRestrictedReasons?: Map<string, string>;
   /**
    * Capacités occupant un slot par REMPLACEMENT (capacité divine du prêtre spécialiste,
    * p. 122) : rendues avec un cadre fantôme du slot natif + bordure couleur d'origine
@@ -2127,6 +2142,33 @@ function PathBlock({
     return (
       <AppAlert severity="info" sx={{ mb: 1.5 }}>
         {message}
+      </AppAlert>
+    );
+  };
+
+  /** Vrai si l'usage de la capacité est gêné par l'armure portée (restriction fine, PER-86). */
+  const isArmorRestricted = (feature: Feature) => armorRestrictedReasons?.has(feature.id) ?? false;
+
+  /** Message « inutilisable avec l'armure portée » de la capacité (`null` si non gênée). */
+  const armorRestrictedMessage = (feature: Feature): string | null =>
+    armorRestrictedReasons?.get(feature.id) ?? null;
+
+  /**
+   * Style « capacité inutilisable avec l'armure portée » (PER-86) : rang DÉSATURÉ (~75 %) et
+   * légèrement transparent. Distinct du grisage d'exclusion mutuelle (`disabledSx`, opacity .5 /
+   * grayscale 1) : ici on n'éteint AUCUN interrupteur, on signale seulement.
+   */
+  const armorRestrictedSx = (feature: Feature) =>
+    isArmorRestricted(feature) ? { filter: 'grayscale(0.75)', opacity: 0.72 } : null;
+
+  /** Notice d'avertissement d'armure, en tête du détail (modale / bloc dépliable, vue liste). */
+  const renderArmorRestrictedNotice = (feature: Feature) => {
+    const message = armorRestrictedMessage(feature);
+    if (!message) return null;
+    return (
+      <AppAlert severity="warning" sx={{ mb: 1.5 }}>
+        {/* « (p. 177) » cité en source (PER-207). */}
+        <PageRefText>{message}</PageRefText>
       </AppAlert>
     );
   };
@@ -2336,6 +2378,8 @@ function PathBlock({
               // Désactivée par exclusion mutuelle : grisée + transparente, mais le
               // clic d'ouverture du détail reste actif.
               ...(disabledSx(feature) ?? {}),
+              // Inutilisable avec l'armure portée (PER-86) : désaturée, l'interrupteur reste actif.
+              ...(armorRestrictedSx(feature) ?? {}),
             }}
           >
             {/* Marqueurs hexagonaux centrés sur la ligne du haut du bloc. Sur une carte d'emprunt
@@ -2530,7 +2574,7 @@ function PathBlock({
           // affichée en puce COMPACTE (code seul) sous le nom de l'hôte, dans SON cadre (la case
           // décalée). Le sélecteur de choix garde, lui, le nom complet (« Constitution »).
           const abilityCode = abilityChoiceCode(character, feature);
-          return borrowed ? (
+          const rendered = borrowed ? (
             // Conteneur en colonne : carte de devant (`cardInner`, capacité empruntée) PUIS bande de
             // l'hôte, toutes deux EN FLUX → leur hauteur est comptée dans le bloc (et donc dans la ligne
             // du subgrid), ce qui évite que le nom de l'hôte (qui peut tenir sur deux lignes, ex.
@@ -2613,6 +2657,18 @@ function PathBlock({
           ) : (
             cardInner
           );
+          // Restriction d'armure (PER-86) : infobulle d'avertissement au survol du rang (vue colonne).
+          // La carte est déjà désaturée par `armorRestrictedSx` ; le tooltip porte le détail sourcé.
+          return isArmorRestricted(feature) ? (
+            <AppTooltip
+              key={feature.id}
+              title={<PageRefText>{armorRestrictedMessage(feature) ?? ''}</PageRefText>}
+            >
+              {rendered}
+            </AppTooltip>
+          ) : (
+            rendered
+          );
         })}
         {Array.from({ length: ghostCount }).map((_, i) => (
           <GhostBlock key={`ghost-${i}`} />
@@ -2670,6 +2726,7 @@ function PathBlock({
                 sx={{ '&:hover .lift-lock-reveal, &:focus-within .lift-lock-reveal': { opacity: 1 } }}
               >
                 {renderDisabledNotice(openFeature)}
+                {renderArmorRestrictedNotice(openFeature)}
                 {retainedFeature && openFeature.rank === 1 && (
                   <>
                     <RetainedAncestryCapacity
@@ -2934,6 +2991,8 @@ function PathBlock({
               // Désactivée par exclusion mutuelle : grisée + transparente, mais
               // toujours dépliable (détail conservé).
               ...(disabledSx(feature) ?? {}),
+              // Inutilisable avec l'armure portée (PER-86) : désaturée, dépliable (notice dans le détail).
+              ...(armorRestrictedSx(feature) ?? {}),
             }}
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -3013,6 +3072,7 @@ function PathBlock({
             </AccordionSummary>
             <AccordionDetails>
               {renderDisabledNotice(feature)}
+              {renderArmorRestrictedNotice(feature)}
               {retainedFeature && feature.rank === 1 && (
                 <>
                   <RetainedAncestryCapacity
@@ -3278,6 +3338,18 @@ export function FeaturesByPath({
   const disabledReasons = character ? disabledFeatureReasons(character) : undefined;
   const disabled = disabledReasons ? new Set(disabledReasons.keys()) : undefined;
 
+  // Capacités dont l'USAGE est gêné par l'armure portée (restriction fine par profil d'origine,
+  // PER-86) : id → message d'avertissement. Rendu visuellement par PathBlock (rang désaturé +
+  // infobulle/notice), et non en avertissement de conformité (choix propriétaire).
+  const armorRestrictedReasons = character
+    ? new Map(
+        featureArmorRestrictionViolations(character, rulesContext).map((v) => [
+          v.featureId,
+          featureArmorRestrictionMessage(v),
+        ]),
+      )
+    : undefined;
+
   const owned = new Set(featureIds);
   // `FeaturePathAutocomplete` regroupe/trie lui-même par voie (en-têtes colorés par profil) :
   // on ne lui passe que les ids acquérables (non détenus).
@@ -3363,6 +3435,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
+              armorRestrictedReasons={armorRestrictedReasons}
               replacements={replacements}
               concentration={concentration}
               testBonuses={testBonuses}
@@ -3392,6 +3465,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
+              armorRestrictedReasons={armorRestrictedReasons}
               replacements={replacements}
               concentration={concentration}
               testBonuses={testBonuses}
@@ -3421,6 +3495,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
+              armorRestrictedReasons={armorRestrictedReasons}
               replacements={replacements}
               concentration={concentration}
               testBonuses={testBonuses}

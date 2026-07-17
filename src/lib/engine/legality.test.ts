@@ -529,30 +529,6 @@ describe('checkCompliance : restrictions d’armure par profil (PER-80)', () => 
   });
 });
 
-describe('checkCompliance : restriction fine d’usage par capacité d’origine (PER-86)', () => {
-  it('avertit qu’une armure portable gêne une capacité de moine (hybride moine/guerrier)', () => {
-    // Le guerrier peut porter la cotte (aucun ARMOR_TOO_HEAVY), mais sa capacité de moine
-    // (poing-r1) exige de ne porter aucune armure → FEATURE_ARMOR_RESTRICTED, sans ARMOR_TOO_HEAVY.
-    const c = makeCharacter({
-      classId: 'guerrier',
-      featureIds: ['combat-r1', 'poing-r1'],
-      equipment: [{ itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } }],
-    });
-    const warnings = checkCompliance(c, ctx);
-    const codes = warnings.map((w) => w.code);
-    expect(codes).toContain('FEATURE_ARMOR_RESTRICTED');
-    expect(codes).not.toContain('ARMOR_TOO_HEAVY');
-    const message = warnings.find((w) => w.code === 'FEATURE_ARMOR_RESTRICTED')!.message;
-    expect(message).toContain('Moine');
-    expect(message).toContain('(p. 177)'); // référence de page parsée par PageRefText côté UI
-  });
-
-  it('aucun avertissement fin quand l’armure respecte le plafond de chaque capacité', () => {
-    const c = makeCharacter({
-      classId: 'guerrier',
-      featureIds: ['combat-r1'],
-      equipment: [{ itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } }],
-    });
-    expect(checkCompliance(c, ctx).map((w) => w.code)).not.toContain('FEATURE_ARMOR_RESTRICTED');
-  });
-});
+// PER-86 : la restriction fine d'usage par capacité d'origine n'est PAS un avertissement de
+// conformité (choix propriétaire) — elle est rendue visuellement par FeaturesByPath (rang
+// désaturé + infobulle). Voir armorRestrictions.test.ts pour le moteur (featureArmorRestrictionViolations).
