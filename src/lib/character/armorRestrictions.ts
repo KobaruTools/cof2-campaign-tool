@@ -88,6 +88,34 @@ function wornCatalogArmor(equipment: EquipmentLine[]) {
   return null;
 }
 
+/**
+ * DEF MONDAINE de l'armure du catalogue effectivement portée (0 si aucune, ou si
+ * l'armure portée est un objet personnalisé aux stats inconnues). Le BONUS MAGIQUE
+ * éventuel (porté par `EquipmentRef.magicDef`, PER-85) est EXCLU — le surcoût de
+ * mana d'incantation (PER-82) et les plafonds de port ne comptent que la DEF
+ * mondaine (p. 178, p. 188).
+ */
+export function wornArmorWorldlyDef(equipment: EquipmentLine[]): number {
+  return wornCatalogArmor(equipment)?.def ?? 0;
+}
+
+/**
+ * Plafond de PORT d'armure (DEF mondaine) du personnage : la meilleure armure
+ * autorisée parmi les profils qu'il MAÎTRISE (`masteredClassIds`), relevée par les
+ * capacités `armor-access` acquises (Tour de force, Autorité naturelle… — PER-81).
+ * C'est aussi le seuil qui décide si le personnage MAÎTRISE l'armure qu'il porte
+ * (armure portée ≤ ce plafond), condition du surcoût de mana d'incantation (PER-82,
+ * p. 178). 0 = aucune armure autorisée.
+ */
+export function wornArmorAllowedDef(character: Character, ctx: RulesContext): number {
+  let allowedDef = 0;
+  for (const id of masteredClassIds(character, ctx)) {
+    const cls = ctx.classById.get(id);
+    if (cls) allowedDef = Math.max(allowedDef, classMaxArmorDef(cls));
+  }
+  return Math.max(allowedDef, armorAccessDef(character));
+}
+
 /** Premier bouclier du CATALOGUE effectivement porté (au plus un compte, p. 188). */
 function wornCatalogShield(equipment: EquipmentLine[]) {
   for (const line of equipment) {
@@ -110,20 +138,17 @@ export function armorRestrictionViolations(
   const violations: ArmorRestrictionViolation[] = [];
   const mastered = masteredClassIds(character, ctx);
 
-  // Plafonds de port = meilleure armure et meilleur accès bouclier autorisés parmi
-  // les profils maîtrisés (le mono-profil retombe sur son seul profil principal).
-  let allowedDef = 0;
+  // Plafond de port d'armure = meilleure armure autorisée parmi les profils
+  // maîtrisés, relevée par les capacités `armor-access` (Tour de force… PER-81).
+  const allowedDef = wornArmorAllowedDef(character, ctx);
+
+  // Plafond d'accès au bouclier = meilleur accès parmi les profils maîtrisés
+  // (le mono-profil retombe sur son seul profil principal).
   let allowedShieldRank = 0;
   for (const id of mastered) {
     const cls = ctx.classById.get(id);
-    if (!cls) continue;
-    allowedDef = Math.max(allowedDef, classMaxArmorDef(cls));
-    allowedShieldRank = Math.max(allowedShieldRank, SHIELD_ACCESS_RANK[cls.shieldAccess]);
+    if (cls) allowedShieldRank = Math.max(allowedShieldRank, SHIELD_ACCESS_RANK[cls.shieldAccess]);
   }
-
-  // PER-81 : un rang de voie qui débloque une armure plus lourde (Tour de force,
-  // Briseur d'os, Autorité naturelle…) relève le plafond de port effectif.
-  allowedDef = Math.max(allowedDef, armorAccessDef(character));
 
   const armor = wornCatalogArmor(character.equipment);
   if (armor && armor.def > allowedDef) {

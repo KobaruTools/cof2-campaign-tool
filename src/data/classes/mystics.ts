@@ -90,6 +90,8 @@ export const mysticClasses: CharacterClass[] = [
       "Le prêtre sait manier les armes contondantes à une main ainsi que le bâton ferré. Les prêtres ont l'interdiction morale de faire couler le sang (!) et n'utilisent donc pas les armes tranchantes ou perçantes pour des raisons religieuses. L'arme sacrée d'un prêtre spécialiste constitue une exception. Les voies de prêtre limitent l'armure à la chemise de mailles et permettent d'utiliser le petit bouclier (DEF +1).",
     maxArmorId: 'chemise-de-mailles',
     shieldAccess: 'small',
+    // Les sorts de prêtre se lancent en toute armure sans surcoût de mana (p. 178).
+    spellsIgnoreArmor: true,
     meleeAccess: 'none',
     rangedAccess: 'none',
     allowedWeaponIds: ['fleau', 'gourdin', 'marteau', 'masse', 'baton-ferre'],

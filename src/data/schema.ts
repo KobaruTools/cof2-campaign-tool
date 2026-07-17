@@ -217,6 +217,15 @@ export interface CharacterClass {
    * certains profils (druide, prêtre) ne maîtrisent que le petit (p. 188, p. 62).
    */
   shieldAccess: ShieldAccess;
+  /**
+   * Les sorts de ce profil se lancent en portant N'IMPORTE QUELLE armure, SANS
+   * surcoût de mana (« Les sorts issus des voies de prêtre peuvent être lancés en
+   * portant n'importe quelle armure », p. 178). Seul le prêtre en bénéficie ; tous
+   * les autres lanceurs paient un surcoût de PM égal à la DEF de l'armure au-delà de
+   * leur armure autorisée (cf. `spellcastingArmorAllowance`, PER-82). Absent/`false`
+   * → le profil subit le surcoût d'armure normal.
+   */
+  spellsIgnoreArmor?: boolean;
   /** Accès aux armes de contact — voir `WeaponAccess`. Interprété du verbatim. */
   meleeAccess: WeaponAccess;
   /** Accès aux armes à distance : `all` (hors poudre, cf. `powderAllowed`) ou `none`. */
