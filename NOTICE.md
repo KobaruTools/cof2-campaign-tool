@@ -175,6 +175,30 @@ composant `src/components/QuestIcon.tsx` (rendu via `SvgIcon`, sans requête ré
 | --- | --- | --- |
 | Campagnes (quête) | `lorc/scroll-unfurled.svg` | Lorc |
 
+## Icônes des types d'objet
+
+Les icônes des 7 types d'objet d'inventaire (arme, armure, bouclier, consommable,
+équipement, trésor, divers) proviennent également de
+[game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteurs : **Lorc**, **Delapouite** et **Willdabeast** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/itemTypeIcons.ts`. La correspondance type → fichier source est conservée
+dans `ITEM_TYPE_ICON_SOURCES` (même fichier) et dans `scripts/game-icons/item-types/map.tsv`.
+L'affichage passe par le composant commun `src/components/ItemTypeIcon.tsx`.
+
+| Type | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Arme | `lorc/pointy-sword.svg` | Lorc |
+| Armure | `lorc/breastplate.svg` | Lorc |
+| Bouclier | `willdabeast/round-shield.svg` | Willdabeast |
+| Consommable | `lorc/potion-ball.svg` | Lorc |
+| Équipement | `delapouite/rope-coil.svg` | Delapouite |
+| Trésor | `lorc/cut-diamond.svg` | Lorc |
+| Divers | `delapouite/cardboard-box.svg` | Delapouite |
+
 ## Icônes des titres de section
 
 Les icônes ornant les titres de section de la fiche de personnage (Caractéristiques,

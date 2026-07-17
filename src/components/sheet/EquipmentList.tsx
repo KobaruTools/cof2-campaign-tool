@@ -19,11 +19,12 @@ import { equipment as equipmentCatalog } from '@/data';
 import type { CharacterClass, EquipmentItem } from '@/data/schema';
 import type { EquipmentLine, EquipmentRef, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
-import { effectiveItem } from '@/lib/character/items';
+import { effectiveItem, itemType } from '@/lib/character/items';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { isConsumable } from '@/lib/character/consumables';
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { AppTooltip } from '@/components/AppTooltip';
+import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { CustomItemDialog } from '@/components/sheet/CustomItemDialog';
 import { PageRefText } from '@/components/SourceRef';
 import { DamageValue } from '@/components/DamageValue';
@@ -194,6 +195,8 @@ export function EquipmentList({
       <Stack divider={<Divider />}>
         {equipment.map((line, i) => {
           const custom = isCustomItem(line);
+          // Type d'objet (PER-213) : sert à l'icône affichée à gauche du nom.
+          const lineType = itemType(line);
           // Résolveur de variante (PER-211) : l'objet effectif porte les surcharges
           // d'instance (nom via `equipmentLabel`, DM/DEF/plafond AGI via `itemDetail`).
           const item = custom ? null : effectiveItem(line);
@@ -243,11 +246,14 @@ export function EquipmentList({
                     component="span"
                     sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
                   >
+                    <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
                     Élixir —
                     <CapabilityChip featureId={elixirFeatureId} label={null} />
                   </Typography>
                 ) : (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                    {/* Icône du type d'objet (PER-213), teinte neutre, à gauche du nom. */}
+                    <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
                     {/* Titre de l'objet. S'il porte une description libre, il devient survolable
                         (tooltip) — la description reste masquée par défaut. */}
                     {description ? (
