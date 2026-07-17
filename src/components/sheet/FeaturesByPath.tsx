@@ -68,6 +68,8 @@ import {
   type DominatedTestSource,
 } from '@/lib/character/effects';
 import { featureIdsFromHistory } from '@/lib/character/levelUp';
+import { spellArmorManaSurcharge } from '@/lib/character/manaSurcharge';
+import { rulesContext } from '@/lib/character/rulesContext';
 import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -2351,6 +2353,7 @@ function PathBlock({
               feature={borrowed ?? feature}
               concentration={concentration}
               surcharge={character ? escalatingManaSurcharge(character, borrowed ?? feature) : 0}
+              armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, borrowed ?? feature) : null}
               color={(borrowed ? borrowedColor : color) ?? undefined}
               tooltipEnterDelay={1000}
               sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
@@ -2986,6 +2989,7 @@ function PathBlock({
                 feature={feature}
                 concentration={concentration}
                 surcharge={character ? escalatingManaSurcharge(character, feature) : 0}
+                armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, feature) : null}
                 color={color ?? undefined}
                 tooltipEnterDelay={1000}
                 sx={{ alignSelf: 'center', mr: 1 }}

@@ -4,6 +4,7 @@ import { darken, type SxProps, type Theme } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
 import type { Feature } from '@/data/schema';
+import type { SpellArmorSurcharge } from '@/lib/character/manaSurcharge';
 import { canConcentrate, concentratedSpellManaCost, spellManaCost } from '@/lib/engine';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 
@@ -22,9 +23,9 @@ function TooltipLine({ children, page }: { children: ReactNode; page?: number | 
 
 /**
  * Infobulle du coût en mana : précise s'il suit la règle du rang (chip p. 228) ou s'il s'agit
- * d'une dérogation verbatim du sort (champ `manaCost`), puis rappelle, AVEC LEURS PAGES, les deux
- * règles qui modifient ce coût à l'usage et ne sont pas comptées ici : la Concentration et le
- * surcoût d'armure.
+ * d'une dérogation verbatim du sort (champ `manaCost`), puis rappelle la Concentration (p. 228),
+ * seule règle qui modifie ce coût à l'usage sans être comptée ici. Le surcoût d'armure (PER-82),
+ * lui, EST compté quand il s'applique : il est détaillé à part par le composant (cf. `armorSurcharge`).
  */
 function manaCostExplanation(feature: Feature, cost: number): ReactNode {
   return (
@@ -36,7 +37,6 @@ function manaCostExplanation(feature: Feature, cost: number): ReactNode {
       )}
       <Box sx={{ mt: 1 }}>Non compté ici (modifie le coût à l’usage) :</Box>
       <TooltipLine page={228}>• Concentration : sort en (A) → −2 PM, devient (L)</TooltipLine>
-      <TooltipLine page={178}>• Armure : un mage en armure paie +PM = bonus de DEF de l’armure</TooltipLine>
     </Box>
   );
 }
@@ -74,6 +74,17 @@ export interface SpellManaBadgeProps {
    * l'appelant (état de jeu, `escalatingManaSurcharge`) — le badge reste présentationnel.
    */
   surcharge?: number;
+  /**
+   * Surcoût de mana D'ARMURE (PER-82, p. 178), calculé par l'appelant via
+   * `spellArmorManaSurcharge` pour ce sort et l'équipement porté. Distinct du
+   * surcoût CROISSANT ci-dessus : il vient de l'armure portée (au-delà de l'armure
+   * autorisée au profil d'origine du sort), pas de l'état de jeu. Quand son champ
+   * `surcharge` est > 0, la goutte l'ajoute au coût affiché (halo d'alerte) et
+   * l'infobulle le détaille (DEF portée − armure autorisée, source p. 178, plus un
+   * avertissement si l'armure n'est pas maîtrisée). `null`/absent → aucun surcoût
+   * d'armure (non-sort, voie de peuple/prestige, ou `character` indisponible).
+   */
+  armorSurcharge?: SpellArmorSurcharge | null;
   /** Diamètre de la goutte en pixels. Défaut 30. */
   size?: number;
   /**
@@ -98,39 +109,62 @@ export interface SpellManaBadgeProps {
  * (cf. `spellManaCost`, PER-65). Ne rend rien pour une capacité qui n'est pas un
  * sort (pas de coût de mana).
  */
-export function SpellManaBadge({ feature, concentration = false, surcharge = 0, size = 30, color, tooltipEnterDelay, sx }: SpellManaBadgeProps) {
+export function SpellManaBadge({ feature, concentration = false, surcharge = 0, armorSurcharge, size = 30, color, tooltipEnterDelay, sx }: SpellManaBadgeProps) {
   const baseCost = spellManaCost(feature);
   if (baseCost === null) return null;
   // Concentration active ET sort éligible (lancé en (A)) : on affiche le coût
   // réduit. Sinon la pastille montre le coût de base inchangé.
   const concentrated = concentration && canConcentrate(feature);
   const cost = concentrated ? (concentratedSpellManaCost(feature) ?? baseCost) : baseCost;
-  // PER-162 : surcoût croissant ajouté par-dessus (peut se cumuler avec la réduction de concentration).
-  const surcharged = surcharge > 0;
-  const displayCost = cost + Math.max(0, surcharge);
-  const tooltip = concentrated
+  // Deux surcoûts distincts s'ajoutent PAR-DESSUS le coût affiché : le surcoût CROISSANT
+  // (PER-162, état de jeu) et le surcoût d'ARMURE (PER-82, équipement porté). Les deux
+  // peuvent se cumuler avec la réduction de concentration.
+  const escalating = Math.max(0, surcharge);
+  const armorExtra = armorSurcharge && armorSurcharge.surcharge > 0 ? armorSurcharge.surcharge : 0;
+  const inflated = escalating > 0 || armorExtra > 0;
+  const displayCost = cost + escalating + armorExtra;
+  const baseTooltip = concentrated
     ? concentrationCostExplanation(baseCost, cost)
     : manaCostExplanation(feature, cost);
-  const fullTooltip = surcharged ? (
+  // Libellé accessible : liste les surcoûts qui gonflent le coût affiché.
+  const extras: string[] = [];
+  if (armorExtra > 0) extras.push(`+${armorExtra} de surcoût d’armure`);
+  if (escalating > 0) extras.push(`+${escalating} de surcoût croissant`);
+  const fullTooltip = inflated ? (
     <Box>
-      {tooltip}
-      <Box sx={{ mt: 1 }}>
-        <TooltipLine page={123}>
-          Surcoût actuel : +{surcharge} PM (coût croissant, +1 PM par lancement, remis à 0 au repos court)
-        </TooltipLine>
-        <Box>Coût total à payer maintenant : {displayCost} PM.</Box>
-      </Box>
+      {baseTooltip}
+      {armorExtra > 0 && armorSurcharge && (
+        <Box sx={{ mt: 1 }}>
+          <TooltipLine page={178}>
+            Surcoût d’armure : +{armorExtra} PM (DEF mondaine portée {armorSurcharge.wornArmorDef} − armure
+            autorisée {armorSurcharge.allowanceDef ?? 0}, hors bonus magique)
+          </TooltipLine>
+          {armorSurcharge.blockedByMastery && (
+            <TooltipLine page={178}>
+              ⚠ Armure non maîtrisée : sans la maîtriser, ce sort ne peut normalement pas être lancé dans cette armure.
+            </TooltipLine>
+          )}
+        </Box>
+      )}
+      {escalating > 0 && (
+        <Box sx={{ mt: 1 }}>
+          <TooltipLine page={123}>
+            Surcoût actuel : +{escalating} PM (coût croissant, +1 PM par lancement, remis à 0 au repos court)
+          </TooltipLine>
+        </Box>
+      )}
+      <Box sx={{ mt: 0.5 }}>Coût total à payer maintenant : {displayCost} PM.</Box>
     </Box>
   ) : (
-    tooltip
+    baseTooltip
   );
   return (
     <AppTooltip title={fullTooltip} maxWidth={300} enterDelay={tooltipEnterDelay}>
       <Box
         role="img"
         aria-label={
-          surcharged
-            ? `Coût actuel : ${displayCost} points de mana (dont +${surcharge} de surcoût croissant)`
+          inflated
+            ? `Coût actuel : ${displayCost} points de mana (dont ${extras.join(' et ')})`
             : concentrated
               ? `Coût en concentration : ${displayCost} points de mana`
               : `Coût : ${displayCost} points de mana`
@@ -150,9 +184,10 @@ export function SpellManaBadge({ feature, concentration = false, surcharge = 0, 
             // 'info.main' : sur un SVG, `fill` ne résout pas la clé de palette MUI et
             // la goutte retombait au noir (voie du mage / prestige, sans couleur de profil).
             fill: color ? darken(color, 0.25) : (theme) => theme.palette.info.main,
-            // Concentration : halo bleu mana ; surcoût croissant (PER-162) : halo ambré d'alerte
-            // (coût gonflé) — prioritaire visuellement ; ombre portée simple sinon.
-            filter: surcharged
+            // Concentration : halo bleu mana ; coût GONFLÉ par un surcoût (croissant PER-162 ou
+            // d'armure PER-82) : halo ambré d'alerte — prioritaire visuellement ; ombre portée
+            // simple sinon.
+            filter: inflated
               ? (theme) =>
                   `drop-shadow(0 1px 1px rgba(0,0,0,0.35)) drop-shadow(0 0 4px ${theme.palette.warning.main})`
               : concentrated
