@@ -58,8 +58,12 @@ export function spellcastingArmorAllowance(cls: CharacterClass): number | null {
 
 /** Surcoût de mana d'un sort dû à l'armure portée (PER-82). */
 export interface SpellArmorSurcharge {
-  /** Profil d'origine du sort (id de `CharacterClass`). */
-  originClassId: string;
+  /**
+   * Profil d'origine du sort (id de `CharacterClass`), s'il est déterminé. ABSENT
+   * pour un sort de la VOIE DU MAGE (magie de mage générique, sans profil unique) :
+   * il relève alors du cas par défaut « tous les autres profils » (allocation 0).
+   */
+  originClassId?: string;
   /** DEF MONDAINE de l'armure effectivement portée (bonus magique exclu, 0 si aucune). */
   wornArmorDef: number;
   /** Allocation d'armure d'incantation du profil d'origine (`null` = illimitée, prêtre). */
@@ -78,8 +82,16 @@ export interface SpellArmorSurcharge {
 
 /**
  * Surcoût de mana d'un sort donné pour le personnage tel qu'équipé (PER-82), ou
- * `null` si la notion ne s'applique pas : capacité qui n'est pas un sort, ou sort
- * dont le profil d'origine n'est pas déterminé (`spellOriginClassId` → `null`).
+ * `null` si la notion ne s'applique pas. Résolution du profil d'origine (p. 177 :
+ * « les restrictions d'armure qui correspondent au profil dont [la capacité] est
+ * issue ») :
+ *  - **voie de profil** → allocation du profil (`spellcastingArmorAllowance`) ;
+ *  - **voie du mage** (magie de mage générique) → cas par défaut « tous les autres
+ *    profils » de la p. 178, c.-à-d. allocation 0 (DEF complète en surcoût) ;
+ *  - **voie de peuple / prestige** → `null` : les p. 177-178 ne définissent pas
+ *    d'armure autorisée pour ces voies (le prestige relève d'un autre chapitre) —
+ *    on ne devine pas (question ouverte).
+ *  - **capacité non-sort** → `null`.
  *
  * Le surcoût est PUREMENT fonction du profil d'origine, de l'armure portée et de la
  * maîtrise ; il est indépendant du coût de base du sort (l'appelant l'ajoute par-
@@ -91,12 +103,25 @@ export function spellArmorManaSurcharge(
   feature: Feature,
 ): SpellArmorSurcharge | null {
   if (!feature.isSpell) return null;
-  const originClassId = spellOriginClassId(feature);
-  if (!originClassId) return null;
-  const cls = ctx.classById.get(originClassId);
-  if (!cls) return null;
+  const path = pathById.get(feature.pathId);
+  if (!path) return null;
 
-  const allowanceDef = spellcastingArmorAllowance(cls);
+  let originClassId: string | undefined;
+  let allowanceDef: number | null;
+  if (path.type === 'class' && path.classIds.length > 0) {
+    originClassId = path.classIds[0];
+    const cls = ctx.classById.get(originClassId);
+    if (!cls) return null;
+    allowanceDef = spellcastingArmorAllowance(cls);
+  } else if (path.type === 'mage') {
+    // Voie du mage : magie de mage générique, non listée p. 178 → cas par défaut
+    // « tous les autres profils » → armure autorisée = aucune (allocation 0).
+    allowanceDef = 0;
+  } else {
+    // Voie de peuple / prestige : hors périmètre des p. 177-178.
+    return null;
+  }
+
   const wornArmorDef = wornArmorWorldlyDef(character.equipment);
   // Prêtre (allocation illimitée) : jamais de surcoût. Sinon = DEF portée au-delà
   // de l'armure autorisée au profil, plancher 0.

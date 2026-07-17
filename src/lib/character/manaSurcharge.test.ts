@@ -130,9 +130,23 @@ describe('spellArmorManaSurcharge — cas de base', () => {
     expect(spellArmorManaSurcharge(makeChar({ classId: 'guerrier' }), ctx, feat('combat-r1'))).toBeNull();
   });
 
-  it('sort de la voie du mage (profil ambigu) → null', () => {
+  it('sort de la voie du mage : magie générique → DEF complète (allocation 0)', () => {
+    // Voie du mage = « tous les autres profils » (p. 178) → surcoût = DEF mondaine
+    // portée (comme un sort de magicien). Cuir simple (DEF +2) → +2.
+    const char = makeChar({
+      classId: 'magicien',
+      featureIds: ['combat-r1', 'combat-r2'],
+      equipment: [wornArmor('cuir-simple')],
+    });
+    const res = spellArmorManaSurcharge(char, ctx, feat('mage-r3'));
+    expect(res?.allowanceDef).toBe(0);
+    expect(res?.surcharge).toBe(2);
+    expect(res?.originClassId).toBeUndefined();
+  });
+
+  it('sort de voie de prestige (hors p. 177-178) → null (question ouverte)', () => {
     const char = makeChar({ classId: 'magicien', equipment: [wornArmor('cuir-simple')] });
-    expect(spellArmorManaSurcharge(char, ctx, feat('mage-r3'))).toBeNull();
+    expect(spellArmorManaSurcharge(char, ctx, feat('prestige-archimage-r5'))).toBeNull();
   });
 });
 
