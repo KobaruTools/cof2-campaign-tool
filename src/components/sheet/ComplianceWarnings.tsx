@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -33,15 +34,19 @@ function WarningList({ warnings }: { warnings: Warning[] }) {
  * conforme et sans information.
  */
 export function ComplianceWarnings({ warnings }: ComplianceWarningsProps) {
+  // Masquage ÉPHÉMÈRE des encadrés (croix en haut à droite) : réinitialisé au rechargement
+  // de la page (non persisté entre sessions — les écarts reviennent au refresh, volontairement).
+  const [hidden, setHidden] = useState({ deviations: false, infos: false });
   if (warnings.length === 0) return null;
   const deviations = warnings.filter((w) => (w.severity ?? 'warning') === 'warning');
   const infos = warnings.filter((w) => w.severity === 'info');
 
   return (
     <Stack spacing={2}>
-      {deviations.length > 0 && (
+      {deviations.length > 0 && !hidden.deviations && (
         <AppAlert
           severity="warning"
+          onClose={() => setHidden((h) => ({ ...h, deviations: true }))}
           title={
             deviations.length === 1 ? '1 écart aux règles' : `${deviations.length} écarts aux règles`
           }
@@ -52,8 +57,12 @@ export function ComplianceWarnings({ warnings }: ComplianceWarningsProps) {
           </Typography>
         </AppAlert>
       )}
-      {infos.length > 0 && (
-        <AppAlert severity="info" title={infos.length === 1 ? 'Information' : 'Informations'}>
+      {infos.length > 0 && !hidden.infos && (
+        <AppAlert
+          severity="info"
+          onClose={() => setHidden((h) => ({ ...h, infos: true }))}
+          title={infos.length === 1 ? 'Information' : 'Informations'}
+        >
           <WarningList warnings={infos} />
         </AppAlert>
       )}
