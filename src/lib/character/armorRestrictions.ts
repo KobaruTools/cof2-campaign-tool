@@ -71,6 +71,139 @@ function armorAccessDef(character: Character): number {
   return def;
 }
 
+/**
+ * Plafond d'armure exprimé à la fois en DEF mondaine et par l'id d'armure du catalogue
+ * qui le fixe (`null` = aucune armure autorisée).
+ */
+interface ArmorCeiling {
+  def: number;
+  armorId: string | null;
+}
+
+/** Plafond correspondant à un `maxArmorId` de catalogue (`null` ou inconnu → aucune armure). */
+function armorCeilingOf(armorId: string | null): ArmorCeiling {
+  if (armorId === null) return { def: 0, armorId: null };
+  const armor = equipmentById.get(armorId);
+  return armor?.category === 'armor' ? { def: armor.def, armorId } : { def: 0, armorId: null };
+}
+
+/**
+ * Relèvements d'accès d'ARMURE d'USAGE par profil (`classId`) débloqués par les capacités
+ * ACQUISES, pour la restriction FINE par capacité d'origine (PER-86) :
+ *  - un effet `armor-access` (PER-81) relève l'armure d'usage de SON profil d'origine — le
+ *    livre l'énonce en ces termes (« utiliser toutes les capacités des voies de barbare […]
+ *    avec une chemise de mailles », Tour de force, p. 79) ;
+ *  - un `hybridClassRaises` relève d'un cran l'armure d'usage d'AUTRES voies de combattant
+ *    pour un hybride de combattant (note d'Autorité naturelle, p. 86).
+ * On retient la MEILLEURE armure débloquée par profil. Ce relèvement est propre à l'USAGE des
+ * capacités ; le plafond de PORT global (PER-80/81) l'ignore.
+ */
+function usageArmorAccessByClass(character: Character, ctx: RulesContext): Map<string, ArmorCeiling> {
+  const byClass = new Map<string, ArmorCeiling>();
+  const raise = (classId: string, ceiling: ArmorCeiling) => {
+    const prev = byClass.get(classId);
+    if (!prev || ceiling.def > prev.def) byClass.set(classId, ceiling);
+  };
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    const path = ctx.pathById.get(feature.pathId);
+    for (const effect of feature.effects) {
+      if (effect.kind !== 'armor-access') continue;
+      // Relèvement du ou des profils d'origine de la capacité porteuse.
+      if (path?.type === 'class') {
+        const ceiling = armorCeilingOf(effect.maxArmorId);
+        for (const classId of path.classIds) raise(classId, ceiling);
+      }
+      // Relèvements CROISÉS explicites (hybride de combattant, p. 86).
+      for (const hr of effect.hybridClassRaises ?? []) raise(hr.classId, armorCeilingOf(hr.maxArmorId));
+    }
+  }
+  return byClass;
+}
+
+/**
+ * Écart d'USAGE d'une capacité non-sort dû à l'armure portée (restriction FINE par profil
+ * d'origine, PER-86). À DISTINGUER de `ArmorRestrictionViolation` (plafond de PORT global,
+ * PER-80) : ici c'est l'usage d'UNE capacité qui est gêné par une armure que le personnage
+ * a pourtant le droit de porter (cas des hybrides — p. 177, p. 180).
+ */
+export interface FeatureArmorRestrictionViolation {
+  /** Id de la capacité gênée. */
+  featureId: string;
+  /** Nom affiché de la capacité. */
+  featureName: string;
+  /** Profil d'origine retenu (le plus permissif si la voie est partagée). */
+  classId: string;
+  /** Nom du profil d'origine (affiché). */
+  className: string;
+  /** DEF mondaine max autorisée pour utiliser cette capacité (0 = aucune armure). */
+  allowedDef: number;
+  /** Nom de l'armure au plafond d'usage (`null` = aucune armure autorisée). */
+  allowedArmorName: string | null;
+  /** DEF mondaine de l'armure effectivement portée. */
+  wornDef: number;
+}
+
+/**
+ * Restrictions d'USAGE d'armure par capacité d'origine (PER-86, p. 177/178/180) : chaque
+ * capacité NON-SORT impose l'armure maximale de SON profil d'origine, indépendamment du profil
+ * principal. Renvoie une entrée par capacité acquise dont l'armure portée (DEF MONDAINE, hors
+ * bonus magique — la restriction porte sur le TYPE d'armure) dépasse ce plafond d'usage.
+ *
+ * Portée :
+ *  - SORTS exclus (leur surcoût de mana en armure relève de PER-82) ;
+ *  - seules les capacités de VOIE DE PROFIL portent une restriction d'origine (les voies de
+ *    peuple, du mage et de prestige n'en fixent pas ici) ;
+ *  - passifs ET actifs sont signalés (décision propriétaire — lecture littérale, cf. PER-75) ;
+ *    le RETRAIT effectif du bonus (désactivation) relève de PER-83, pas de ce module.
+ * Le moteur SIGNALE seulement ; la fiche reste permissive (cf. `checkCompliance`).
+ */
+export function featureArmorRestrictionViolations(
+  character: Character,
+  ctx: RulesContext,
+): FeatureArmorRestrictionViolation[] {
+  const wornDef = wornArmorWorldlyDef(character.equipment);
+  if (wornDef === 0) return []; // aucune armure (mondaine) portée → rien à signaler
+  const accessByClass = usageArmorAccessByClass(character, ctx);
+  const violations: FeatureArmorRestrictionViolation[] = [];
+
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature || feature.isSpell) continue; // sorts → PER-82
+    const path = ctx.pathById.get(feature.pathId);
+    if (path?.type !== 'class') continue; // seules les voies de profil fixent une restriction d'origine
+
+    // Plafond d'usage = profil le plus PERMISSIF de la voie (base du profil, relevée par les
+    // capacités `armor-access` / relèvements hybrides acquis).
+    let best: { classId: string; ceiling: ArmorCeiling } | null = null;
+    for (const classId of path.classIds) {
+      const cls = ctx.classById.get(classId);
+      if (!cls) continue;
+      let ceiling = armorCeilingOf(cls.maxArmorId);
+      const access = accessByClass.get(classId);
+      if (access && access.def > ceiling.def) ceiling = access;
+      if (!best || ceiling.def > best.ceiling.def) best = { classId, ceiling };
+    }
+    if (!best || wornDef <= best.ceiling.def) continue; // armure d'usage respectée
+
+    const cls = ctx.classById.get(best.classId)!;
+    violations.push({
+      featureId: id,
+      featureName: feature.name,
+      classId: best.classId,
+      className: cls.name,
+      allowedDef: best.ceiling.def,
+      allowedArmorName: best.ceiling.armorId
+        ? (equipmentById.get(best.ceiling.armorId)?.name ?? null)
+        : null,
+      wornDef,
+    });
+  }
+
+  return violations;
+}
+
 /** Écart de port d'armure/bouclier à signaler (avertissement non bloquant). */
 export interface ArmorRestrictionViolation {
   kind: 'armor-too-heavy' | 'shield-not-allowed';

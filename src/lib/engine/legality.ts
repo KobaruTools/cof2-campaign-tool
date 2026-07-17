@@ -33,8 +33,12 @@ import { effectiveClassPathIds, firearmsInactivePathIds } from '@/lib/character/
 // Détection LÉGÈRE (PER-185) des objets « à poudre » du catalogue — source unique
 // partagée avec la maîtrise des armes (PER-79). Cf. `FIREARM_ITEM_IDS`.
 import { FIREARM_ITEM_IDS } from '@/lib/character/firearms';
-// Plafond de port d'armure/bouclier par profil (PER-80) — module pur dédié.
-import { armorRestrictionViolations } from '@/lib/character/armorRestrictions';
+// Plafond de port d'armure/bouclier par profil (PER-80) + restriction fine d'usage par
+// capacité d'origine (PER-86) — module pur dédié.
+import {
+  armorRestrictionViolations,
+  featureArmorRestrictionViolations,
+} from '@/lib/character/armorRestrictions';
 
 /**
  * Voie EFFECTIVE d'une capacité pour la PROGRESSION : la capacité divine d'un prêtre
@@ -72,6 +76,7 @@ export type WarningCode =
   | 'FIREARMS_DISABLED_ITEM'
   | 'ARMOR_TOO_HEAVY'
   | 'SHIELD_NOT_ALLOWED'
+  | 'FEATURE_ARMOR_RESTRICTED'
   | 'UNKNOWN_FEATURE';
 
 export interface Warning {
@@ -630,6 +635,33 @@ export function checkCompliance(
     warnings.push({
       code: v.kind === 'armor-too-heavy' ? 'ARMOR_TOO_HEAVY' : 'SHIELD_NOT_ALLOWED',
       message: v.message,
+    });
+  }
+
+  // Restriction FINE d'usage par capacité d'origine (PER-86, p. 177/180). Chaque capacité
+  // non-sort impose l'armure autorisée de SON profil : porter une armure plus lourde en
+  // empêche l'usage, même quand le personnage a le droit de la PORTER (cas des hybrides). On
+  // agrège par profil d'origine + plafond pour un avertissement lisible plutôt qu'un par
+  // capacité. Signalement non bloquant — le RETRAIT effectif des bonus relève de PER-83.
+  const restrictedByProfile = new Map<
+    string,
+    { className: string; allowedArmorName: string | null; names: string[] }
+  >();
+  for (const v of featureArmorRestrictionViolations(character, ctx)) {
+    const key = `${v.classId}|${v.allowedDef}`;
+    const group = restrictedByProfile.get(key) ?? {
+      className: v.className,
+      allowedArmorName: v.allowedArmorName,
+      names: [],
+    };
+    group.names.push(v.featureName);
+    restrictedByProfile.set(key, group);
+  }
+  for (const { className, allowedArmorName, names } of restrictedByProfile.values()) {
+    const cap = allowedArmorName ? `${allowedArmorName} maximum` : 'aucune armure autorisée';
+    warnings.push({
+      code: 'FEATURE_ARMOR_RESTRICTED',
+      message: `L'armure portée empêche d'utiliser ${names.length} capacité${names.length > 1 ? 's' : ''} de « ${className} » (${cap}) : ${names.join(', ')} (p. 177).`,
     });
   }
 

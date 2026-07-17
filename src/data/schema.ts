@@ -939,6 +939,19 @@ export interface ArmorAccessEffect {
   kind: 'armor-access';
   /** Id (catalogue `armors`) de la meilleure armure débloquée par cette capacité. */
   maxArmorId: string;
+  /**
+   * Relèvements d'accès CROISÉS propres à un profil HYBRIDE de combattant (note de bas de
+   * page d'Autorité naturelle, `noblesse-r3`, p. 86) : cette capacité relève d'un cran
+   * l'armure d'USAGE des AUTRES voies de combattant. Ne concerne QUE la restriction FINE
+   * d'usage par capacité d'origine (PER-86), PAS le plafond de PORT global (PER-80/81, qui
+   * ne lit que `maxArmorId`) — le relèvement n'existe que « pour utiliser les capacités » des
+   * autres voies de combattant, il ne dispense pas de maîtriser l'armure pour la porter. Ex.
+   * `noblesse-r3` : guerrier → armure de plaques (DEF +6), barbare → chemise de mailles (DEF +4).
+   * Chaque `maxArmorId` relève le profil `classId` cité ; il ne bénéficie qu'aux capacités de
+   * CE profil effectivement possédées (un hybride, donc). Absent = la capacité ne relève que son
+   * propre profil (`maxArmorId`).
+   */
+  hybridClassRaises?: Array<{ classId: string; maxArmorId: string }>;
 }
 
 export interface TestBonusEffect {

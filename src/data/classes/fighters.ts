@@ -1338,14 +1338,23 @@ export const fighterFeatures: Feature[] = [
     // (`intimidation`, déjà au catalogue). PER-81 : « formation nécessaire au port de l'armure de
     // plaque complète (DEF +7) » → effet `armor-access` qui relève le plafond de port du chevalier
     // (plaque DEF +6 → plaque complète DEF +7). Le relèvement d'UN CRAN par voie de combattant pour
-    // un profil HYBRIDE (note de bas de page*) est une restriction FINE par voie d'origine → hors du
-    // modèle « plafond global » de PER-80, différé à PER-86 ; reste en prose.
+    // un profil HYBRIDE (note de bas de page*) est une restriction FINE d'USAGE par voie d'origine
+    // (PER-86) : porté par `hybridClassRaises` sur l'effet `armor-access` (guerrier → armure de
+    // plaques DEF +6, barbare → chemise de mailles DEF +4). Ne relève QUE l'armure d'usage des
+    // capacités de ces voies (hors sorts) ; le plafond de PORT global (PER-80/81) l'ignore.
     richText:
       'Le chevalier ajoute son [rang + 2] aux tests réalisés pour donner des ordres ou intimider. De plus, le noble chevalier reçoit la formation nécessaire au port de l’armure de plaque complète (DEF +7). Désormais, il peut utiliser toutes les capacités des voies de chevalier* en portant cette armure.\n' +
       '* Pour un profil hybride de combattant, cette capacité permet d’augmenter le niveau d’armure d’un cran pour toutes les autres voies de combattant : jusqu’à l’armure de plaque pour les voies de guerrier et jusqu’à la chemise de mailles pour les voies de barbare.',
     effects: [
       { kind: 'test-bonus', domains: ['command', 'intimidation'] },
-      { kind: 'armor-access', maxArmorId: 'plaque-complete' },
+      {
+        kind: 'armor-access',
+        maxArmorId: 'plaque-complete',
+        hybridClassRaises: [
+          { classId: 'guerrier', maxArmorId: 'armure-de-plaques' },
+          { classId: 'barbare', maxArmorId: 'chemise-de-mailles' },
+        ],
+      },
     ],
     sourcePage: 86,
   },

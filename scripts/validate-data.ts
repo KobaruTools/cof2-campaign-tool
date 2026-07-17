@@ -307,6 +307,16 @@ for (const c of features) {
       if (!armor) err(`[capacite ${c.id}] effect: armor-access maxArmorId inconnu : ${e.maxArmorId}`);
       else if (armor.category !== 'armor')
         err(`[capacite ${c.id}] effect: armor-access maxArmorId n'est pas une armure : ${e.maxArmorId}`);
+      // Relèvements croisés d'usage pour hybride de combattant (PER-86) : profil et armure valides.
+      for (const hr of e.hybridClassRaises ?? []) {
+        if (!classById.has(hr.classId))
+          err(`[capacite ${c.id}] effect: armor-access hybridClassRaises classId inconnu : ${hr.classId}`);
+        const raiseArmor = hr.maxArmorId ? equipmentById.get(hr.maxArmorId) : undefined;
+        if (!raiseArmor)
+          err(`[capacite ${c.id}] effect: armor-access hybridClassRaises maxArmorId inconnu : ${hr.maxArmorId}`);
+        else if (raiseArmor.category !== 'armor')
+          err(`[capacite ${c.id}] effect: armor-access hybridClassRaises maxArmorId n'est pas une armure : ${hr.maxArmorId}`);
+      }
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }
