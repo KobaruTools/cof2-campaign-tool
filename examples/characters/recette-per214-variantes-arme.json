@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per214-variantes-arme",
+  "name": "Recette PER-214 — variantes (arme + consommable)",
+  "identity": {
+    "description": "ATTENDU : « Rapière de Maître Ombre » (icône arme) équipée en main, DM 1d6+2, description au survol/œil ; « Fiole d’acide » (icône consommable) avec bouton « Utiliser » ; « Épée de la Garde » = épée longue customisée (variante) ; « Rubis étoilé » (icône trésor). Crayon présent sur les armes (catalogue ET variante) et sur les objets custom."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "voleur",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "rapiere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      },
+      "overrides": {
+        "name": "Rapière de Maître Ombre",
+        "description": "Lame effilée d’un maître assassin ; le fil semble boire la lumière.",
+        "damage": "1d6+2"
+      }
+    },
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "overrides": {
+        "name": "Épée de la Garde",
+        "damage": "1d8",
+        "weaponCategory": "oneHand"
+      }
+    },
+    {
+      "custom": true,
+      "name": "Fiole d’acide",
+      "quantity": 3,
+      "type": "consumable",
+      "details": "À lancer : 1d6 dégâts d’acide."
+    },
+    {
+      "custom": true,
+      "name": "Rubis étoilé",
+      "quantity": 1,
+      "type": "treasure"
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-214 — recette modale unifiée de création/édition d’objet.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

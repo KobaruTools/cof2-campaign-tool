@@ -25,7 +25,7 @@ import { isConsumable } from '@/lib/character/consumables';
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
-import { CustomItemDialog } from '@/components/sheet/CustomItemDialog';
+import { ItemDialog } from '@/components/sheet/ItemDialog';
 import { PageRefText } from '@/components/SourceRef';
 import { DamageValue } from '@/components/DamageValue';
 import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
@@ -154,9 +154,9 @@ export function EquipmentList({
   masteredIds,
   firearmsAllowed = true,
 }: EquipmentListProps) {
-  // Modale objet personnalisé : `null` = fermée, `'new'` = création, un index = réécriture
-  // de la ligne custom correspondante (bouton crayon).
-  const [customEdit, setCustomEdit] = useState<'new' | number | null>(null);
+  // Modale d'objet (PER-214) : `null` = fermée, `'new'` = création, un index = édition de
+  // la ligne correspondante (bouton crayon, objet custom OU arme/armure/bouclier).
+  const [itemEdit, setItemEdit] = useState<'new' | number | null>(null);
   // Descriptions ÉPINGLÉES sous le titre (bascule œil, PER-*). État d'affichage LOCAL,
   // volontairement non persisté : par défaut la description n'apparaît qu'au survol (tooltip).
   const [pinnedDesc, setPinnedDesc] = useState<Set<number>>(new Set());
@@ -172,13 +172,7 @@ export function EquipmentList({
     onChange?.(equipment.map((l, j) => (j === i ? line : l)));
   const remove = (i: number) => onChange?.(equipment.filter((_, j) => j !== i));
   const addCatalog = (itemId: string) => onChange?.([...equipment, { itemId, quantity: 1 }]);
-  const addCustom = (name: string, details: string | undefined) =>
-    onChange?.([...equipment, { custom: true, name, quantity: 1, details }]);
-  // Réécriture nom/description d'une ligne custom (conserve quantité et état de port).
-  const updateCustom = (i: number, name: string, details: string | undefined) => {
-    const line = equipment[i];
-    if (line && isCustomItem(line)) setLine(i, { ...line, name, details });
-  };
+  const addLine = (line: EquipmentLine) => onChange?.([...equipment, line]);
 
   if (equipment.length === 0 && !onChange) {
     return (
@@ -211,9 +205,10 @@ export function EquipmentList({
             ? undefined
             : custom
               ? line.details
-              : item?.category === 'gear'
-                ? item.description
-                : undefined;
+              : // Variante mécanique (PER-214) : sa description vit dans `overrides.description`
+                // (hors catalogue) ; à défaut, description du matériel du catalogue.
+                line.overrides?.description ??
+                (item?.category === 'gear' ? item.description : undefined);
           const descPinned = pinnedDesc.has(i);
           // Bonus de DEF magique de l'armure enchantée (PER-85) : rendu à part de la DEF
           // mondaine, pour ne pas les confondre visuellement (retour propriétaire).
@@ -294,12 +289,15 @@ export function EquipmentList({
                         </IconButton>
                       </AppTooltip>
                     )}
-                    {/* Crayon (mode édition, objets custom) : ouvre la modale de réécriture. */}
-                    {onChange && custom && (
+                    {/* Crayon (mode édition, PER-214) : ouvre la modale d'édition. Présent sur
+                        les objets custom ET sur toute arme/armure/bouclier (ref catalogue ou
+                        variante) — sur une ref simple, la 1re modification écrit `overrides` et
+                        elle devient une variante. Absent du matériel/consommable du catalogue. */}
+                    {onChange && (custom || equippable) && (
                       <AppTooltip title="Modifier l’objet">
                         <IconButton
                           size="small"
-                          onClick={() => setCustomEdit(i)}
+                          onClick={() => setItemEdit(i)}
                           sx={{ p: 0.25 }}
                           aria-label="Modifier l’objet"
                         >
@@ -341,23 +339,8 @@ export function EquipmentList({
                   />
                 )}
               </Box>
-              {/* Bonus de DEF MAGIQUE d'une armure enchantée (PER-85) : saisi en mode
-                  édition, propriété de l'instance (survit au déséquipement). Réservé à
-                  l'armure (boucliers/armes hors périmètre). Ne compte dans la DEF que
-                  lorsque l'armure est portée (cf. defenseFromEquipment). */}
-              {onChange && !custom && item?.category === 'armor' && (
-                <TextField
-                  type="number"
-                  size="small"
-                  label="DEF magique"
-                  value={(line as EquipmentRef).magicDef ?? 0}
-                  onChange={(e) => {
-                    const n = Math.max(0, Number(e.target.value) || 0);
-                    setLine(i, { ...(line as EquipmentRef), magicDef: n || undefined });
-                  }}
-                  sx={{ width: 110 }}
-                />
-              )}
+              {/* Le bonus de DEF MAGIQUE de l'armure (PER-85) se saisit désormais dans la
+                  modale d'édition (crayon), plus en ligne (retour recette PER-214). */}
               {onChange ? (
                 <TextField
                   type="number"
@@ -424,30 +407,28 @@ export function EquipmentList({
             blurOnSelect
             clearOnBlur
           />
-          <Button startIcon={<AddIcon />} onClick={() => setCustomEdit('new')} size="small">
+          <Button startIcon={<AddIcon />} onClick={() => setItemEdit('new')} size="small">
             Objet personnalisé
           </Button>
         </Stack>
       )}
 
       {onChange &&
-        customEdit !== null &&
+        itemEdit !== null &&
         (() => {
-          // Ligne éditée (mode réécriture) ou undefined (mode création). `key` remonte la
+          // Ligne éditée (mode édition) ou undefined (mode création). `key` remonte la
           // modale à chaque ouverture → les valeurs initiales servent d'état initial.
-          const editing = customEdit !== 'new' ? equipment[customEdit] : undefined;
-          const editingCustom = editing && isCustomItem(editing) ? editing : undefined;
+          const editing = itemEdit !== 'new' ? equipment[itemEdit] : undefined;
           return (
-            <CustomItemDialog
-              key={customEdit}
+            <ItemDialog
+              key={itemEdit}
               open
-              onClose={() => setCustomEdit(null)}
-              initialName={editingCustom?.name ?? ''}
-              initialDetails={editingCustom?.details ?? ''}
-              onConfirm={(name, details) => {
-                if (customEdit === 'new') addCustom(name, details);
-                else updateCustom(customEdit, name, details);
-                setCustomEdit(null);
+              onClose={() => setItemEdit(null)}
+              initial={editing}
+              onConfirm={(line) => {
+                if (itemEdit === 'new') addLine(line);
+                else setLine(itemEdit, line);
+                setItemEdit(null);
               }}
             />
           );

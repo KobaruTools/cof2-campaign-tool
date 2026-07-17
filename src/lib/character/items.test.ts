@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { effectiveItem, itemType } from './items';
+import { effectiveItem, itemType, snapshotOverrides } from './items';
 import type { EquipmentRef } from './types';
 
 describe('itemType', () => {
@@ -71,5 +71,46 @@ describe('effectiveItem', () => {
 
   it('renvoie undefined pour un itemId introuvable', () => {
     expect(effectiveItem({ itemId: 'objet-inexistant', quantity: 1 })).toBeUndefined();
+  });
+});
+
+describe('snapshotOverrides', () => {
+  it('capture nom + DM d’une arme, ignore les champs d’armure', () => {
+    const o = snapshotOverrides('weapon', {
+      name: 'Rapière de Maître Ombre',
+      description: 'Une lame fine et sombre.',
+      damage: '1d6+2',
+      range: '',
+      weaponCategory: 'light',
+      def: 99, // hors catégorie arme → ignoré
+    });
+    expect(o).toEqual({
+      name: 'Rapière de Maître Ombre',
+      description: 'Une lame fine et sombre.',
+      damage: '1d6+2',
+      weaponCategory: 'light',
+    });
+  });
+
+  it('capture DEF + plafond AGI d’une armure ; maxAgi null (pas de plafond) est retenu', () => {
+    expect(snapshotOverrides('armor', { name: 'Plaques runiques', def: 6, maxAgi: null })).toEqual({
+      name: 'Plaques runiques',
+      def: 6,
+      maxAgi: null,
+    });
+  });
+
+  it('capture seulement la DEF d’un bouclier', () => {
+    expect(snapshotOverrides('shield', { name: 'Égide', def: 3, maxAgi: 2 })).toEqual({
+      name: 'Égide',
+      def: 3,
+    });
+  });
+
+  it('coupe le nom et omet une description vide', () => {
+    expect(snapshotOverrides('weapon', { name: '  Dague  ', description: '   ', damage: '1d4' })).toEqual({
+      name: 'Dague',
+      damage: '1d4',
+    });
   });
 });

@@ -15,9 +15,28 @@
  * du livre (voir `mastery.ts`), pas sur le résolveur.
  */
 import { equipmentById } from '@/data';
-import type { EquipmentItem } from '@/data/schema';
-import type { EquipmentLine, EquipmentRef, ItemType } from './types';
+import type { EquipmentItem, WeaponCategory } from '@/data/schema';
+import type { EquipmentLine, EquipmentOverrides, EquipmentRef, ItemType } from './types';
 import { isCustomItem } from './types';
+
+/** Catégorie MÉCANIQUE d'une variante (base du livre obligatoire) — cf. `snapshotOverrides`. */
+export type MechanicalCategory = 'weapon' | 'armor' | 'shield';
+
+/**
+ * Valeurs de formulaire d'une variante mécanique (PER-214), telles que saisies dans la
+ * modale de création/édition d'objet. Toutes pré-remplies depuis la base du livre. Les
+ * champs sans rapport avec la catégorie sont simplement ignorés par `snapshotOverrides`.
+ */
+export interface MechanicalItemFields {
+  name: string;
+  description?: string;
+  damage?: string;
+  twoHandedDamage?: string;
+  range?: string;
+  weaponCategory?: WeaponCategory;
+  def?: number;
+  maxAgi?: number | null;
+}
 
 /**
  * Type d'une ligne d'inventaire (PER-211). Pour un objet personnalisé, son `type`
@@ -78,4 +97,39 @@ export function effectiveItem(ref: EquipmentRef): EquipmentItem | undefined {
       break;
   }
   return result;
+}
+
+/**
+ * Construit les surcharges FIGÉES (`overrides`) d'une variante mécanique à partir des
+ * valeurs de formulaire (PER-214). SNAPSHOT sans diff contre le catalogue : on capture
+ * telles quelles les valeurs saisies (pré-remplies depuis la base), en ne retenant que
+ * les clés pertinentes pour la catégorie de la base (la catégorie/le sous-type/la
+ * maîtrise ne sont jamais surchargés). Le `name` est toujours capturé (obligatoire) ;
+ * la `description` seulement si non vide. Les stats numériques (DEF, plafond AGI) sont
+ * capturées dès qu'elles sont définies — `maxAgi: null` (pas de plafond) est une valeur
+ * valide, distincte d'absente.
+ */
+export function snapshotOverrides(
+  category: MechanicalCategory,
+  fields: MechanicalItemFields,
+): EquipmentOverrides {
+  const o: EquipmentOverrides = { name: fields.name.trim() };
+  const description = fields.description?.trim();
+  if (description) o.description = description;
+  switch (category) {
+    case 'weapon':
+      if (fields.damage?.trim()) o.damage = fields.damage.trim();
+      if (fields.twoHandedDamage?.trim()) o.twoHandedDamage = fields.twoHandedDamage.trim();
+      if (fields.range?.trim()) o.range = fields.range.trim();
+      if (fields.weaponCategory !== undefined) o.weaponCategory = fields.weaponCategory;
+      break;
+    case 'armor':
+      if (fields.def !== undefined) o.def = fields.def;
+      if (fields.maxAgi !== undefined) o.maxAgi = fields.maxAgi;
+      break;
+    case 'shield':
+      if (fields.def !== undefined) o.def = fields.def;
+      break;
+  }
+  return o;
 }

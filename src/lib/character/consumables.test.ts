@@ -26,6 +26,17 @@ describe('isConsumable', () => {
     expect(isConsumable({ custom: true, name: COIN_POUCH_ITEM_NAME, quantity: 1 })).toBe(true);
   });
 
+  it('marque un objet personnalisé typé « consommable » (PER-214)', () => {
+    expect(isConsumable({ custom: true, name: 'Fiole d’acide', quantity: 3, type: 'consumable' })).toBe(
+      true,
+    );
+  });
+
+  it('ne marque pas un objet personnalisé typé autrement (trésor, divers…)', () => {
+    expect(isConsumable({ custom: true, name: 'Rubis', quantity: 1, type: 'treasure' })).toBe(false);
+    expect(isConsumable({ custom: true, name: 'Corde', quantity: 1, type: 'gear' })).toBe(false);
+  });
+
   it('ne marque pas un objet personnalisé quelconque', () => {
     expect(isConsumable({ custom: true, name: 'Grimoire', quantity: 1 })).toBe(false);
   });
