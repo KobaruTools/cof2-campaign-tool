@@ -29,8 +29,10 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
+import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -65,6 +67,7 @@ import {
   type TestDomainBonus,
   type DominatedTestSource,
 } from '@/lib/character/effects';
+import { featureIdsFromHistory } from '@/lib/character/levelUp';
 import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -79,6 +82,7 @@ import { AncestryIcon } from '@/components/AncestryIcon';
 import { FeatureText, CapabilityChip, FeatureVerbatimContext } from '@/components/sheet/FeatureRichText';
 import { CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
 import { FeatureChoiceField, COMPACT_CHIP_SX } from '@/components/sheet/FeatureChoiceField';
+import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 
@@ -910,10 +914,42 @@ function InflictableStatesField({
   );
 }
 
-/** Libellé d'une capacité dans le sélecteur d'ajout : voie — rang — nom. */
-function featureOptionLabel(feature: Feature): string {
-  const pathName = pathById.get(feature.pathId)?.name ?? feature.pathId;
-  return `${pathName} — Rang ${feature.rank} — ${feature.name}${feature.isSpell ? '*' : ''}`;
+/**
+ * Champ « Ajouter une capacité » (édition en place) : le sélecteur unifié groupé, précédé d'une
+ * bascule « Grouper par profil ». Le catalogue complet étant gigantesque, le groupement par profil
+ * (méta-groupes repliés par défaut) est ACTIVÉ par défaut pour la lisibilité ; la bascule permet de
+ * revenir à un groupement par voie (déplié). État local et transitoire (comme les autres préférences
+ * d'affichage de la section).
+ */
+function AddFeatureField({ options, onAdd }: { options: string[]; onAdd: (id: string) => void }) {
+  const [byProfile, setByProfile] = useState(true);
+  return (
+    <Box>
+      <Stack direction="row" sx={{ justifyContent: 'flex-end', mb: 0.5 }}>
+        <FormControlLabel
+          control={
+            <Switch size="small" checked={byProfile} onChange={(e) => setByProfile(e.target.checked)} />
+          }
+          label={
+            <Typography variant="caption" color="text.secondary">
+              Grouper par profil
+            </Typography>
+          }
+          sx={{ mr: 0 }}
+        />
+      </Stack>
+      <FeaturePathAutocomplete
+        options={options}
+        value={null}
+        onChange={(id) => {
+          if (id) onAdd(id);
+        }}
+        label="Ajouter une capacité"
+        groupMode={byProfile ? 'profile' : 'path'}
+        clearOnSelect
+      />
+    </Box>
+  );
 }
 
 /** Disposition des voies : empilées (« Lignes ») ou en grille (« Tableau »). */
@@ -1461,7 +1497,7 @@ function UsageCounterRow({
                       Hors règles standard
                     </Box>
                     Débloque cette capacité sans passer par un repos court. Réservé aux joueurs qui
-                    tiennent toute leur fiche dans l'application ; normalement, c'est une récupération
+                    tiennent toute leur fiche dans l’application ; normalement, c’est une récupération
                     rapide (repos court) qui lève ce verrou.
                   </Box>
                 </Box>
@@ -3200,6 +3236,8 @@ export function FeaturesByPath({
   testBonuses,
   verbatim = false,
 }: FeaturesByPathProps) {
+  // Confirmation du bouton « Réinitialiser d'après les montées de niveau » (édition libre).
+  const [resetOpen, setResetOpen] = useState(false);
   // Prêtre spécialiste : la capacité divine occupe le slot d'une voie de prêtre
   // (voie d'accueil). On la RELOCALISE sous cette voie (override) et on la rend avec
   // un cadre de remplacement (bordure couleur d'origine + badge + cadre fantôme).
@@ -3237,16 +3275,30 @@ export function FeaturesByPath({
   const disabled = disabledReasons ? new Set(disabledReasons.keys()) : undefined;
 
   const owned = new Set(featureIds);
-  const addable = onChange
-    ? featureCatalog
-        .filter((f) => !owned.has(f.id))
-        .sort((a, b) => featureOptionLabel(a).localeCompare(featureOptionLabel(b)))
+  // `FeaturePathAutocomplete` regroupe/trie lui-même par voie (en-têtes colorés par profil) :
+  // on ne lui passe que les ids acquérables (non détenus).
+  const addableIds = onChange
+    ? featureCatalog.filter((f) => !owned.has(f.id)).map((f) => f.id)
     : [];
 
   const remove = (featureId: string) => onChange?.(featureIds.filter((id) => id !== featureId));
   const add = (featureId: string) => {
     if (!owned.has(featureId)) onChange?.([...featureIds, featureId]);
   };
+
+  // Réinitialisation d'après les montées de niveau (PER-73, retour d'UX) : ensemble
+  // CANONIQUE reconstruit en rejouant l'historique, et diff avec la fiche courante —
+  // capacités à RESTITUER (supprimées à la main) et à RETIRER (ajoutées à la main).
+  // Disponible uniquement en édition (`onChange`) et si l'historique existe.
+  const canonicalIds = character && onChange ? featureIdsFromHistory(character) : null;
+  const toRestore = canonicalIds ? canonicalIds.filter((id) => !owned.has(id)) : [];
+  const toRemove = canonicalIds ? featureIds.filter((id) => !canonicalIds.includes(id)) : [];
+  const resetDivergence = toRestore.length + toRemove.length > 0;
+  const applyReset = () => {
+    if (canonicalIds) onChange?.(canonicalIds);
+    setResetOpen(false);
+  };
+  const featureName = (id: string) => featureById.get(id)?.name ?? id;
 
   // La voie de prestige (souvent unique) est épinglée aux dernières colonnes ;
   // les autres voies s'écoulent depuis la gauche (voie du peuple en premier).
@@ -3373,21 +3425,91 @@ export function FeaturesByPath({
         </Stack>
       )}
 
-      {onChange && (
-        <Autocomplete
-          options={addable}
-          getOptionLabel={featureOptionLabel}
-          renderInput={(params) => (
-            <TextField {...params} label="Ajouter une capacité" size="small" />
-          )}
-          onChange={(_, value) => {
-            if (value) add(value.id);
-          }}
-          value={null}
-          blurOnSelect
-          clearOnBlur
-        />
+      {onChange && <AddFeatureField options={addableIds} onAdd={add} />}
+
+      {/* Réinitialisation d'après les montées de niveau (bas-droite du bloc, en édition
+          seulement). Restaure l'ensemble des capacités que la progression impose — utile
+          pour récupérer une capacité supprimée par mégarde sur la fiche libre. Désactivé
+          quand la fiche est déjà conforme à l'historique (rien à réinitialiser). */}
+      {onChange && canonicalIds && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <AppTooltip
+            title={
+              resetDivergence
+                ? 'Rétablit exactement les capacités acquises à la création et aux montées de niveau (annule les ajouts/suppressions manuels de la fiche).'
+                : 'Les capacités de la fiche correspondent déjà aux montées de niveau — rien à réinitialiser.'
+            }
+          >
+            <span>
+              <Button
+                size="small"
+                color="warning"
+                variant="outlined"
+                startIcon={<RestartAltIcon />}
+                disabled={!resetDivergence}
+                onClick={() => setResetOpen(true)}
+              >
+                Réinitialiser d’après les montées de niveau
+              </Button>
+            </span>
+          </AppTooltip>
+        </Box>
       )}
+
+      <Dialog open={resetOpen} onClose={() => setResetOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningAmberOutlinedIcon color="warning" />
+          Réinitialiser les capacités ?
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" sx={{ mb: toRestore.length || toRemove.length ? 2 : 0 }}>
+            Les capacités de la fiche vont être remplacées par celles issues de la création
+            et des montées de niveau. Les modifications manuelles ci-dessous seront annulées.
+          </Typography>
+          {toRestore.length > 0 && (
+            <Box sx={{ mb: toRemove.length ? 2 : 0 }}>
+              <Typography
+                variant="caption"
+                color="success.main"
+                sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}
+              >
+                Restaurées ({toRestore.length}) — supprimées à la main :
+              </Typography>
+              <Stack component="ul" sx={{ m: 0, pl: 2.5 }} spacing={0.25}>
+                {toRestore.map((id) => (
+                  <Typography key={id} component="li" variant="body2">
+                    {featureName(id)}
+                  </Typography>
+                ))}
+              </Stack>
+            </Box>
+          )}
+          {toRemove.length > 0 && (
+            <Box>
+              <Typography
+                variant="caption"
+                color="error.main"
+                sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}
+              >
+                Retirées ({toRemove.length}) — ajoutées à la main :
+              </Typography>
+              <Stack component="ul" sx={{ m: 0, pl: 2.5 }} spacing={0.25}>
+                {toRemove.map((id) => (
+                  <Typography key={id} component="li" variant="body2">
+                    {featureName(id)}
+                  </Typography>
+                ))}
+              </Stack>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetOpen(false)}>Annuler</Button>
+          <Button color="warning" variant="contained" onClick={applyReset}>
+            Réinitialiser
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
     </FeatureVerbatimContext.Provider>
   );

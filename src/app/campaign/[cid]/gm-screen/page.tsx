@@ -7,27 +7,29 @@
  *
  * Pour l'instant, l'écran se limite aux **aperçus** (`CharacterPreviewCard`) des
  * personnages de la campagne **réclamés par un joueur** (attribués : `playerId`
- * non nul). C'est la vue « coup d'œil » du MJ sur sa table : portrait, identité,
- * caractéristiques et micro-grille des voies, chapeautés du nom du joueur qui
- * incarne le personnage. Les cartes sont cliquables et ouvrent la fiche complète.
+ * non nul). C'est la vue « coup d'œil » du MJ sur sa table : chaque carte est une
+ * fiche de personnage SIMPLIFIÉE (portrait, identité, caractéristiques, micro-grille
+ * des voies et statistiques dérivées compactes), chapeautée du nom du joueur qui
+ * incarne le personnage. Un petit bouton dédié (ligne du joueur) ouvre la fiche
+ * complète — la carte elle-même n'est pas cliquable.
  *
  * Vocation à grandir (jets rapides, PV/mana en direct, notes de session…), d'où
  * une page dédiée plutôt qu'une modale.
  */
 import { use, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
-import { CharacterPreviewCard } from '@/components/CharacterPreviewCard';
-import { PlayerBadge } from '@/components/home/PlayerBadge';
+import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
+import { GmScreenCard } from '@/components/campaign/GmScreenCard';
 import { HomeBackground } from '@/components/HomeBackground';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
@@ -35,7 +37,6 @@ import { usePlayersStore } from '@/stores/players';
 
 export default function GmScreenPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
-  const router = useRouter();
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
   const characters = useCharactersStore((s) => s.characters);
   const loadCharacters = useCharactersStore((s) => s.load);
@@ -70,10 +71,44 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
 
   const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';
   if (!charactersHydrated || campaignsLoading) {
+    // Nom de campagne pas encore résolu (donc pas d'en-tête) : on préfigure la
+    // grille d'aperçus dans la même zone de contenu via des cartes fantômes.
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
+      <>
+        <HomeBackground />
+        {/* Pleine largeur (hors container) avec padding symétrique — voir le rendu final. */}
+        <Box sx={{ p: { xs: 2, sm: 4 } }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+              gap: 2,
+              alignItems: 'start',
+            }}
+            aria-hidden
+          >
+            {Array.from({ length: 3 }, (_, i) => (
+              <Paper
+                key={i}
+                sx={{
+                  p: 2,
+                  bgcolor: 'rgba(20, 20, 23, 0.72)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: 3,
+                }}
+              >
+                <Stack spacing={1.5}>
+                  {/* Badge joueur (pastille). */}
+                  <Skeleton animation="wave" variant="rounded" width={96} height={24} />
+                  <CharacterPreviewCardSkeleton />
+                </Stack>
+              </Paper>
+            ))}
+          </Box>
+        </Box>
+      </>
     );
   }
 
@@ -84,7 +119,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         <Typography variant="h6" gutterBottom>
           Campagne introuvable
         </Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/campaigns')}>
+        <Button startIcon={<ArrowBackIcon />} component={Link} href="/campaigns">
           Retour aux campagnes
         </Button>
       </Container>
@@ -97,12 +132,15 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       <HomeBackground />
       <AppHeader
         title={`Écran de MJ — ${campaign.name}`}
-        onBack={() => router.push(`/campaign/${cid}`)}
+        backHref={`/campaign/${cid}`}
         backLabel={`Retour à ${campaign.name}`}
         action={<AccountMenu />}
       />
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Volontairement HORS du `Container` habituel du site : l'écran de MJ occupe
+          toute la largeur pour afficher un maximum de cartes de front. Padding
+          symétrique (gauche/droite = haut/bas) pour laisser respirer les bords. */}
+      <Box sx={{ p: { xs: 2, sm: 4 } }}>
         {claimed.length === 0 ? (
           <Paper
             variant="outlined"
@@ -126,52 +164,26 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              // Grille de 3 colonnes (les fiches de personnage), repliée à 1 colonne
+              // sur mobile où 3 de front seraient illisibles.
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
               gap: 2,
               alignItems: 'start',
             }}
           >
-            {claimed.map((character) => {
-              const playerName = character.playerId
-                ? playerNameById.get(character.playerId) ?? null
-                : null;
-              return (
-                <Paper
-                  key={character.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/character/${character.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      router.push(`/character/${character.id}`);
-                    }
-                  }}
-                  sx={{
-                    p: 2,
-                    cursor: 'pointer',
-                    bgcolor: 'rgba(20, 20, 23, 0.72)',
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: 3,
-                    transition: 'border-color 0.15s, transform 0.15s',
-                    '&:hover': {
-                      borderColor: 'rgba(255, 255, 255, 0.22)',
-                      transform: 'translateY(-2px)',
-                    },
-                  }}
-                >
-                  <Stack spacing={1.5}>
-                    <PlayerBadge name={playerName} />
-                    <CharacterPreviewCard character={character} />
-                  </Stack>
-                </Paper>
-              );
-            })}
+            {claimed.map((character) => (
+              <GmScreenCard
+                key={character.id}
+                character={character}
+                playerName={
+                  character.playerId ? playerNameById.get(character.playerId) ?? null : null
+                }
+                href={`/character/${character.id}`}
+              />
+            ))}
           </Box>
         )}
-      </Container>
+      </Box>
     </>
   );
 }

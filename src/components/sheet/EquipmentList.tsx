@@ -1,8 +1,11 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -20,6 +23,7 @@ import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { isConsumable } from '@/lib/character/consumables';
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { AppTooltip } from '@/components/AppTooltip';
+import { CustomItemDialog } from '@/components/sheet/CustomItemDialog';
 import { PageRefText } from '@/components/SourceRef';
 import { DamageValue } from '@/components/DamageValue';
 import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
@@ -60,7 +64,9 @@ function itemDetail(item: EquipmentItem): ReactNode {
     case 'shield':
       return <GlossaryText>{`DEF +${item.def}`}</GlossaryText>;
     case 'gear':
-      return item.description ? <GlossaryText>{item.description}</GlossaryText> : null;
+      // La description libre du matériel n'est plus affichée en ligne : elle passe par
+      // le survol du titre + la bascule œil (comme la description d'un objet custom).
+      return null;
   }
 }
 
@@ -146,12 +152,31 @@ export function EquipmentList({
   masteredIds,
   firearmsAllowed = true,
 }: EquipmentListProps) {
+  // Modale objet personnalisé : `null` = fermée, `'new'` = création, un index = réécriture
+  // de la ligne custom correspondante (bouton crayon).
+  const [customEdit, setCustomEdit] = useState<'new' | number | null>(null);
+  // Descriptions ÉPINGLÉES sous le titre (bascule œil, PER-*). État d'affichage LOCAL,
+  // volontairement non persisté : par défaut la description n'apparaît qu'au survol (tooltip).
+  const [pinnedDesc, setPinnedDesc] = useState<Set<number>>(new Set());
+  const togglePinned = (i: number) =>
+    setPinnedDesc((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+
   const setLine = (i: number, line: EquipmentLine) =>
     onChange?.(equipment.map((l, j) => (j === i ? line : l)));
   const remove = (i: number) => onChange?.(equipment.filter((_, j) => j !== i));
   const addCatalog = (itemId: string) => onChange?.([...equipment, { itemId, quantity: 1 }]);
-  const addCustom = () =>
-    onChange?.([...equipment, { custom: true, name: 'Nouvel objet', quantity: 1 }]);
+  const addCustom = (name: string, details: string | undefined) =>
+    onChange?.([...equipment, { custom: true, name, quantity: 1, details }]);
+  // Réécriture nom/description d'une ligne custom (conserve quantité et état de port).
+  const updateCustom = (i: number, name: string, details: string | undefined) => {
+    const line = equipment[i];
+    if (line && isCustomItem(line)) setLine(i, { ...line, name, details });
+  };
 
   if (equipment.length === 0 && !onChange) {
     return (
@@ -172,13 +197,18 @@ export function EquipmentList({
           // Dose d'élixir (objet custom nommé par `elixirItemName`) : on met en avant la CAPACITÉ
           // reproduite via une puce (sort choisi pour un mineur/majeur, sinon capacité du forgesort).
           const elixirFeatureId = custom ? ELIXIR_FEATURE_BY_ITEM.get(line.name) : undefined;
-          const detail = elixirFeatureId
-            ? null
+          // Détail STRUCTURÉ (DM des armes, DEF des protections) : toujours affiché en ligne.
+          const structuredDetail = elixirFeatureId || custom || !item ? null : itemDetail(item);
+          // Description LIBRE (notes du matériel du catalogue ou d'un objet custom) : masquée par
+          // défaut, révélée au survol du titre (tooltip) et épinglable sous le titre via l'œil.
+          const description = elixirFeatureId
+            ? undefined
             : custom
               ? line.details
-              : item
-                ? itemDetail(item)
-                : null;
+              : item?.category === 'gear'
+                ? item.description
+                : undefined;
+          const descPinned = pinnedDesc.has(i);
           // Bonus de DEF magique de l'armure enchantée (PER-85) : rendu à part de la DEF
           // mondaine, pour ne pas les confondre visuellement (retour propriétaire).
           const magicDef = !custom && item?.category === 'armor' ? (line as EquipmentRef).magicDef : undefined;
@@ -202,15 +232,7 @@ export function EquipmentList({
               }}
             >
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                {onChange && custom ? (
-                  <TextField
-                    variant="standard"
-                    placeholder="Nom de l’objet"
-                    value={line.name}
-                    onChange={(e) => setLine(i, { ...line, name: e.target.value })}
-                    fullWidth
-                  />
-                ) : elixirFeatureId ? (
+                {elixirFeatureId ? (
                   // Nom d'élixir : « Élixir — » suivi de la puce de la capacité reproduite (couleurs +
                   // icône du profil source, cf. CapabilityChip — style unique lisible sur tout fond).
                   <Typography
@@ -222,17 +244,72 @@ export function EquipmentList({
                     <CapabilityChip featureId={elixirFeatureId} label={null} />
                   </Typography>
                 ) : (
-                  <>
-                    <Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>
-                      {equipmentLabel(line, characterClass)}
-                    </Typography>
-                    {detail && (
-                      <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }} component="span">
-                        {detail}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                    {/* Titre de l'objet. S'il porte une description libre, il devient survolable
+                        (tooltip) — la description reste masquée par défaut. */}
+                    {description ? (
+                      <AppTooltip title={<GlossaryText>{description}</GlossaryText>} maxWidth={360}>
+                        <Typography
+                          variant="body2"
+                          component="span"
+                          sx={{ fontWeight: 500, cursor: 'help' }}
+                        >
+                          {equipmentLabel(line, characterClass)}
+                        </Typography>
+                      </AppTooltip>
+                    ) : (
+                      <Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>
+                        {equipmentLabel(line, characterClass)}
+                      </Typography>
+                    )}
+                    {structuredDetail && (
+                      <Typography variant="caption" color="text.secondary" component="span">
+                        {structuredDetail}
                       </Typography>
                     )}
                     {magicDef ? <MagicDefBadge value={magicDef} /> : null}
-                  </>
+                    {/* Bascule œil : épingle la description sous le titre (état d'affichage local). */}
+                    {description && (
+                      <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>
+                        <IconButton
+                          size="small"
+                          onClick={() => togglePinned(i)}
+                          sx={{ p: 0.25 }}
+                          aria-label={descPinned ? 'Masquer la description' : 'Afficher la description'}
+                        >
+                          {descPinned ? (
+                            <VisibilityIcon fontSize="inherit" />
+                          ) : (
+                            <VisibilityOffOutlinedIcon fontSize="inherit" />
+                          )}
+                        </IconButton>
+                      </AppTooltip>
+                    )}
+                    {/* Crayon (mode édition, objets custom) : ouvre la modale de réécriture. */}
+                    {onChange && custom && (
+                      <AppTooltip title="Modifier l’objet">
+                        <IconButton
+                          size="small"
+                          onClick={() => setCustomEdit(i)}
+                          sx={{ p: 0.25 }}
+                          aria-label="Modifier l’objet"
+                        >
+                          <EditOutlinedIcon fontSize="inherit" />
+                        </IconButton>
+                      </AppTooltip>
+                    )}
+                  </Box>
+                )}
+                {/* Description ÉPINGLÉE sous le titre (œil ouvert). */}
+                {description && descPinned && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    component="div"
+                    sx={{ mt: 0.25, whiteSpace: 'pre-line' }}
+                  >
+                    <GlossaryText>{description}</GlossaryText>
+                  </Typography>
                 )}
                 {/* État de port (PER-77) : contrôles équiper/déséquiper si disponibles (état de jeu,
                     hors mode édition), sinon un simple badge « équipé » en lecture. */}
@@ -338,11 +415,34 @@ export function EquipmentList({
             blurOnSelect
             clearOnBlur
           />
-          <Button startIcon={<AddIcon />} onClick={addCustom} size="small">
-            Objet libre
+          <Button startIcon={<AddIcon />} onClick={() => setCustomEdit('new')} size="small">
+            Objet personnalisé
           </Button>
         </Stack>
       )}
+
+      {onChange &&
+        customEdit !== null &&
+        (() => {
+          // Ligne éditée (mode réécriture) ou undefined (mode création). `key` remonte la
+          // modale à chaque ouverture → les valeurs initiales servent d'état initial.
+          const editing = customEdit !== 'new' ? equipment[customEdit] : undefined;
+          const editingCustom = editing && isCustomItem(editing) ? editing : undefined;
+          return (
+            <CustomItemDialog
+              key={customEdit}
+              open
+              onClose={() => setCustomEdit(null)}
+              initialName={editingCustom?.name ?? ''}
+              initialDetails={editingCustom?.details ?? ''}
+              onConfirm={(name, details) => {
+                if (customEdit === 'new') addCustom(name, details);
+                else updateCustom(customEdit, name, details);
+                setCustomEdit(null);
+              }}
+            />
+          );
+        })()}
     </Stack>
   );
 }

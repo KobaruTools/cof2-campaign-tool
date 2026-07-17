@@ -114,6 +114,35 @@ export function manualFeatureIds(character: Character): Set<string> {
 }
 
 /**
+ * Reconstruit les `featureIds` **canoniques** d'un personnage en rejouant son
+ * historique de montée de niveau (entrée de création incluse) : pour chaque niveau,
+ * on retire les capacités OUBLIÉES (changement d'orientation, p. 43) puis on ajoute
+ * les capacités CHOISIES, exactement dans l'ordre où `applyLevelUp` les a appliquées.
+ * Le résultat est l'ensemble que la progression IMPOSE — donc sans les capacités
+ * ajoutées à la main sur la fiche permissive, et en restituant celles supprimées à la
+ * main. C'est l'inverse conceptuel de `manualFeatureIds` : il sert au bouton
+ * « Réinitialiser d'après les montées de niveau » (retour à l'état d'origine après une
+ * édition libre).
+ *
+ * Renvoie `null` si l'historique est vide (sauvegarde ancienne / fixture bricolée) :
+ * on ne peut alors rien reconstruire, et il ne faut surtout pas vider `featureIds`.
+ */
+export function featureIdsFromHistory(character: Character): string[] | null {
+  if (character.levelUpHistory.length === 0) return null;
+  const ids: string[] = [];
+  for (const entry of character.levelUpHistory) {
+    const forgotten = new Set(entry.forgottenFeatureIds ?? []);
+    for (let i = ids.length - 1; i >= 0; i--) {
+      if (forgotten.has(ids[i])) ids.splice(i, 1);
+    }
+    for (const id of entry.chosenFeatureIds) {
+      if (!ids.includes(id)) ids.push(id);
+    }
+  }
+  return ids;
+}
+
+/**
  * Retire une capacité de la sélection en cours et, avec elle, toute capacité
  * sélectionnée de la même voie d'un rang supérieur (sinon on laisserait une
  * voie à trous, choix illégal). Conserve l'ordre d'ajout.

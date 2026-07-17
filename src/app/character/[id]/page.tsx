@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
@@ -12,7 +12,6 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import UpgradeIcon from '@mui/icons-material/Upgrade';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -28,7 +27,6 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, progression } from '@/data';
-import type { DerivedInput } from '@/lib/engine';
 import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
 import type { Character, CharacterStatus, CustomItem, DerivedStatId, EquipmentLine, Identity, WornState } from '@/lib/character/types';
@@ -41,9 +39,8 @@ import { masteredClassIds } from '@/lib/character/mastery';
 import { firearmsEffective } from '@/lib/character/firearms';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
-import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
-import { mergeMods, orphanMods, orphanSourceTerms } from '@/lib/character/orphanPoints';
+import { orphanSourceTerms } from '@/lib/character/orphanPoints';
 import {
   abilityBonusDiceFromFeatures,
   abilityBonusDiceSources,
@@ -51,16 +48,9 @@ import {
   abilityModsFromFeatures,
   abilityTestBonusSources,
   abilityTestBonusByAbility,
-  criticalRangeSources,
-  stackedDamageReductions,
   activeConditionalTestDice,
-  aggregateImmunities,
   capacityResourceGauges,
   conditionalEffectsOf,
-  effectContext,
-  isEffectActive,
-  manaCastingAbility,
-  modsFromFeatures,
   pruneEffectInputs,
   pruneEffectToggles,
   pruneUsageCounters,
@@ -71,7 +61,7 @@ import {
   testBonusSources,
   universalTestBonus,
 } from '@/lib/character/effects';
-import { effectiveFeatureIdsForMods, pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
+import { pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
 import {
   applyDamage,
   healHp,
@@ -92,17 +82,15 @@ import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { useToast } from '@/components/toast/ToastProvider';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
+import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
 import { HeaderIllustrations } from '@/components/HeaderIllustrations';
 import { HomeBackground } from '@/components/HomeBackground';
-import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
+import { CharacterSheetSkeleton } from '@/components/sheet/CharacterSheetSkeleton';
 import { ClassIcon, FirearmsAllowedProvider } from '@/components/ClassIcon';
 import { TombstoneIcon } from '@/components/TombstoneIcon';
 import { CampaignBadge } from '@/components/home/CampaignBadge';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
-import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { classColor } from '@/lib/ui/classColors';
-import { formatDamageReduction } from '@/lib/ui/damageReduction';
-import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { AppAlert } from '@/components/AppAlert';
@@ -149,7 +137,6 @@ const NO_EDIT: Record<EditBlock, boolean> = {
 
 export default function CharacterSheetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const hasHydrated = useCharactersStore((s) => s.hasHydrated);
   const status = useCharactersStore((s) => s.status);
   const character = useCharactersStore((s) => s.characters.find((c) => c.id === id));
@@ -240,9 +227,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // sur accès direct à l'URL avant que le cloud ait répondu).
   if (!hasHydrated || ((status === 'idle' || status === 'loading') && !character)) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
+      <>
+        <HomeBackground />
+        <CharacterSheetSkeleton />
+      </>
     );
   }
 
@@ -253,7 +241,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         <Typography variant="h6" gutterBottom>
           Personnage introuvable
         </Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/')}>
+        <Button startIcon={<ArrowBackIcon />} component={Link} href="/">
           Retour à l’accueil
         </Button>
       </Container>
@@ -306,6 +294,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         label: `Retour à ${currentCampaign?.name ?? 'la campagne'}`,
       }
     : { href: '/', label: 'Retour à l’accueil' };
+
+  // Destination du raccourci de recréation (perso mort rattaché à une campagne,
+  // cf. bouton plus bas) : même campagne + même joueur pré-remplis. Calculée ici
+  // en amont pour rendre le bouton en vraie ancre (Ctrl/⌘+Clic → nouvel onglet).
+  const recreateParams = new URLSearchParams();
+  if (character.campaignId) recreateParams.set('campaign', character.campaignId);
+  if (character.playerId) recreateParams.set('player', character.playerId);
+  const recreateHref = `/create?${recreateParams.toString()}`;
   // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185).
   // Valeur unique lue partout où comptait `character.firearmsAllowed` : nom affiché,
   // conformité, level-up. Le snapshot `character.firearmsAllowed` reste figé (choix
@@ -555,12 +551,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // l'édition). Non bloquante — simple aide affichée (PER-47).
   const warnings = checkCompliance(character, rulesContext, firearmsAllowed);
 
-  // Capacités acquises + capacités empruntées par choix : base de l'agrégation
-  // des bonus plats et du détail des stats dérivées (PER-66).
-  const modFeatureIds = effectiveFeatureIdsForMods(character);
-  // Contexte d'effets (PER-67) : résout les valeurs scalantes et n'inclut que les
-  // effets conditionnels dont l'interrupteur est actif.
-  const effectCtx = effectContext(character);
+  // Statistiques dérivées : entrée moteur + badges (immunités / RD / plages de critique),
+  // calculés par le helper partagé avec l'écran de MJ (source unique — cf.
+  // `buildCharacterDerivedView`, qui portait auparavant ce calcul inline dans la fiche).
+  const {
+    modFeatureIds,
+    effectContext: effectCtx,
+    derivedInput,
+    defenseBadges,
+    meleeCriticalRanges,
+    rangedCriticalRanges,
+  } = buildCharacterDerivedView(character);
   // Modificateurs permanents de caractéristiques et dés bonus apportés par les
   // capacités (mécanique core) — appliqués PAR-DESSUS la valeur saisie des caracs.
   const abilityMods = abilityModsFromFeatures(modFeatureIds, character.featureChoices);
@@ -577,117 +578,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const abilityTestBonus = abilityTestBonusSources(modFeatureIds, effectCtx);
   // Bonus aux tests d'UNE carac précise, par option retenue (ex. Tatouages, PER-125).
   const perAbilityTestBonus = abilityTestBonusByAbility(modFeatureIds, effectCtx);
-  // Puces de la carte Défense (PER-137) : IMMUNITÉS (vert) d'abord, puis RÉDUCTIONS de dégâts (bleu).
-  // Le cumul des RD plates de même portée (Fils du roc + Peau d'acier → RD 6) est fait côté moteur par
-  // `stackedDamageReductions` ; ici on ne fait que mettre en badges (titre + breakdown des sources).
-  const reductionBadges: DefenseBadgeData[] = [];
-  const damageImmunityBadges: DefenseBadgeData[] = [];
-  for (const r of stackedDamageReductions(character)) {
-    const scopes = r.scope ? [r.scope] : undefined;
-    if (r.kind === 'immunity') {
-      damageImmunityBadges.push({
-        key: `imm-${r.scope ?? 'all'}`,
-        variant: 'immunity',
-        scope: r.scope,
-        text: r.scope ? undefined : 'tous DM',
-        title: formatDamageReduction({ kind: 'immunity', scopes }).short,
-        sources: r.sources.map((s) => ({ name: s.name, featureId: s.featureId })),
-      });
-    } else {
-      const v = r.total ?? 0;
-      reductionBadges.push({
-        key: `rd-${r.kind}-${r.scope ?? 'all'}-${v}`,
-        variant: 'reduction',
-        scope: r.scope,
-        text: r.kind === 'divide' ? `/${v}` : `${v}`,
-        title: formatDamageReduction({ kind: r.kind, value: v, scopes }).short,
-        // Breakdown : on n'affiche la valeur par source que si plusieurs sources cumulent.
-        sources: r.sources.map((s) => ({
-          name: s.name,
-          value: r.sources.length > 1 && s.value !== undefined ? `${s.value}` : undefined,
-          featureId: s.featureId,
-        })),
-      });
-    }
-  }
-  // Immunités d'ÉTAT (peur, charme, ralenti, immobilisé) — PER-103, désormais fusionnées comme puces
-  // vertes dans la carte Défense (suppression du cadre Immunités séparé).
-  // Icône d'état dédiée (StatusEffectIcon) au lieu du bouclier + libellé tronqué : le nom complet
-  // (ex. « Immunité : Sommeil magique ») reste dans le tooltip via `title`.
-  const statusImmunityBadges: DefenseBadgeData[] = aggregateImmunities(modFeatureIds).map((imm) => ({
-    key: `imm-${imm.id}`,
-    variant: 'immunity',
-    statusEffect: imm.id,
-    title: `Immunité : ${imm.label}`,
-    sources: imm.sources.map((s) => ({ name: s.name, featureId: s.featureId })),
-  }));
-  // Ordre voulu : immunités d'abord, réductions ensuite.
-  const defenseBadges: DefenseBadgeData[] = [...statusImmunityBadges, ...damageImmunityBadges, ...reductionBadges];
-  // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — badges custom (variante 'critical')
-  // sous les cartes Attaque au contact / à distance selon leur portée (PER-133). Les élargissements
-  // d'une même portée se CUMULENT (PER-73) : deux sources +1 au contact (Critique brutal + Briseur
-  // d'os) donnent 18-20. On agrège donc en UN seul badge par portée (valeur sommée, plancher 16
-  // appliqué par `formatCriticalRange`), listant chaque capacité source et sa contribution.
-  const critRanges = criticalRangeSources(character);
-  const critBadgeForScope = (scope: 'melee' | 'ranged'): DefenseBadgeData[] => {
-    const combined = combineCriticalRanges(critRanges, scope);
-    if (!combined) return [];
-    const f = formatCriticalRange(scope, combined.total);
-    return [
-      {
-        key: `crit-${scope}`,
-        variant: 'critical',
-        text: f.short,
-        title: `Critique ${f.short}`,
-        sources: combined.sources.map((s) => ({ name: s.name, value: `+${s.value}`, featureId: s.featureId })),
-      },
-    ];
-  };
-  const meleeCriticalRanges = critBadgeForScope('melee');
-  const rangedCriticalRanges = critBadgeForScope('ranged');
   // Plancher de compétence universel (Éclectique, PER-102).
   const universalTest = universalTestBonus(modFeatureIds);
-  // Carac de base des PM : VOL, ou substitution (Charisme héroïque → CHA, PER-101).
-  const manaCast = manaCastingAbility(modFeatureIds, effectCtx.abilities);
-  // Dentelles et rapière (seduction-r2, PER-71) : tant que l'interrupteur « aucune armure »
-  // est actif, la DEF d'armure/bouclier est ignorée (la rapière+CHA la remplace). Branchement
-  // « simple » ; le port effectif d'armure + le plafond par le rang relèvent de PER-106.
-  const dentellesActive =
-    character.featureIds.includes('seduction-r2') && isEffectActive(character, 'seduction-r2', 0);
-  const defenseEquip = dentellesActive
-    ? { defBonus: 0, maxAgi: null }
-    : defenseFromEquipment(character.equipment);
-
-  const derivedInput: DerivedInput | null = family
-    ? {
-        // Caractéristiques EFFECTIVES (saisie + modificateurs permanents de
-        // capacités, ex. Endurer +1 CON) — c'est la vraie carac qui alimente les
-        // stats dérivées (PV, dés de récup., DEF, attaques…). Cf. `effectiveAbilities`.
-        abilities: effectCtx.abilities,
-        level: character.level,
-        family,
-        defenseEquipment: defenseEquip,
-        // Sorts connus = acquis ET EMPRUNTÉS : « apprendre un sort, même par une autre capacité,
-        // rapporte toujours 1 PM » (encadré « Appel à une autre capacité », p. 60). PER-73.
-        spellCount: modFeatureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
-        manaAbility: manaCast.ability,
-        // Bonus des capacités acquises (PER-63) ET des capacités empruntées par un
-        // choix « capacité d'une autre voie » (PER-66). Le contexte (PER-67) résout
-        // les valeurs scalantes et n'ajoute les effets conditionnels que s'ils sont
-        // activés. On fusionne les points de capacité orphelins convertis (p. 40).
-        mods: mergeMods(modsFromFeatures(modFeatureIds, effectCtx), orphanMods(character)),
-        // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique à la
-        // formule mono-famille pour un profil classique.
-        hpFamilyGains: familyHpGains(character, rulesContext),
-        // PV de base d'un profil hybride créé au niveau 1 (somme des deux
-        // familles, p. 180) ; identique à 2 × baseHp pour un profil classique.
-        hpLevel1Family: level1FamilyHp(character, rulesContext),
-        // Détail par famille pour l'infobulle (vide hors hybridation).
-        hpLevel1Families: level1HybridFamilies(character, rulesContext),
-        // Détail du gain de PV niveau par niveau, pour l'infobulle.
-        hpLevelGains: hpLevelGains(character, rulesContext),
-      }
-    : null;
 
   // Le personnage dispose-t-il d'une réserve de mana ? Uniquement s'il connaît au
   // moins un sort (cf. `manaPoints`, qui retourne null sinon). Sert à n'afficher la
@@ -765,7 +657,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
       <AppHeader
         title={character.name || 'Sans nom'}
-        onBack={() => router.push(backTarget.href)}
+        backHref={backTarget.href}
         backLabel={backTarget.label}
         action={
           readOnly ? undefined : (
@@ -995,11 +887,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 <Button
                   variant="outlined"
                   startIcon={<PersonAddIcon />}
-                  onClick={() => {
-                    const params = new URLSearchParams({ campaign: character.campaignId! });
-                    if (character.playerId) params.set('player', character.playerId);
-                    router.push(`/create?${params.toString()}`);
-                  }}
+                  component={Link}
+                  href={recreateHref}
                 >
                   {currentPlayer
                     ? `Créer un nouveau personnage pour ${currentPlayer.name}`

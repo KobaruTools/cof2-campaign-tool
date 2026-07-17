@@ -11,6 +11,7 @@
  * La vue dérivée (entrée moteur + badges) est calculée ici via le helper partagé
  * avec la fiche (`buildCharacterDerivedView`) : mêmes valeurs, aucune dérive.
  */
+import Link from 'next/link';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
@@ -27,11 +28,11 @@ export interface GmScreenCardProps {
   character: Character;
   /** Nom du joueur qui incarne le personnage (badge), ou `null` si aucun. */
   playerName: string | null;
-  /** Ouverture de la fiche complète (bouton dédié). */
-  onOpen: () => void;
+  /** Destination de la fiche complète (bouton dédié, rendu en vraie ancre). */
+  href: string;
 }
 
-export function GmScreenCard({ character, playerName, onOpen }: GmScreenCardProps) {
+export function GmScreenCard({ character, playerName, href }: GmScreenCardProps) {
   // Vue dérivée partagée avec la fiche (mêmes stats + puces). `null` si profil
   // incomplet : on n'affiche alors que l'aperçu.
   const view = buildCharacterDerivedView(character);
@@ -55,7 +56,8 @@ export function GmScreenCard({ character, playerName, onOpen }: GmScreenCardProp
           <AppTooltip title="Ouvrir la fiche">
             <IconButton
               size="small"
-              onClick={onOpen}
+              component={Link}
+              href={href}
               aria-label={`Ouvrir la fiche de ${character.name || 'ce personnage'}`}
             >
               <OpenInNewIcon fontSize="small" />

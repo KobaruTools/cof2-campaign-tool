@@ -11,6 +11,7 @@ import {
   canUndoLastLevelUp,
   deselectFeature,
   FEATURE_POINTS_PER_LEVEL,
+  featureIdsFromHistory,
   forgettableFeatures,
   levelUpDieFamily,
   lockedRank12Family,
@@ -124,6 +125,53 @@ describe('manualFeatureIds', () => {
   it('ensemble vide si aucun historique (rien à distinguer)', () => {
     const c = makeCharacter({ featureIds: ['rage-r1', 'brute-r1'], levelUpHistory: [] });
     expect(manualFeatureIds(c).size).toBe(0);
+  });
+});
+
+describe('featureIdsFromHistory', () => {
+  it('reconstruit les capacités en rejouant l’historique (dans l’ordre)', () => {
+    const c = makeCharacter({
+      featureIds: ['rage-r1', 'brute-r1'],
+      levelUpHistory: [
+        { level: 1, chosenFeatureIds: ['rage-r1'] },
+        { level: 2, chosenFeatureIds: ['brute-r1'] },
+      ],
+    });
+    expect(featureIdsFromHistory(c)).toEqual(['rage-r1', 'brute-r1']);
+  });
+
+  it('ignore les capacités ajoutées à la main (absentes de l’historique)', () => {
+    const c = makeCharacter({
+      featureIds: ['rage-r1', 'brute-r1'], // brute-r1 ajouté hors wizard
+      levelUpHistory: [{ level: 1, chosenFeatureIds: ['rage-r1'] }],
+    });
+    expect(featureIdsFromHistory(c)).toEqual(['rage-r1']);
+  });
+
+  it('restitue une capacité supprimée à la main (présente dans l’historique)', () => {
+    const c = makeCharacter({
+      featureIds: ['rage-r1'], // rage-r2 supprimé à la main sur la fiche
+      levelUpHistory: [
+        { level: 1, chosenFeatureIds: ['rage-r1'] },
+        { level: 2, chosenFeatureIds: ['rage-r2'] },
+      ],
+    });
+    expect(featureIdsFromHistory(c)).toEqual(['rage-r1', 'rage-r2']);
+  });
+
+  it('retire les capacités oubliées (changement d’orientation, p. 43)', () => {
+    const c = makeCharacter({
+      levelUpHistory: [
+        { level: 1, chosenFeatureIds: ['rage-r1'] },
+        { level: 2, chosenFeatureIds: ['brute-r1'], forgottenFeatureIds: ['rage-r1'] },
+      ],
+    });
+    expect(featureIdsFromHistory(c)).toEqual(['brute-r1']);
+  });
+
+  it('renvoie null si l’historique est vide (rien à reconstruire)', () => {
+    const c = makeCharacter({ featureIds: ['rage-r1', 'brute-r1'], levelUpHistory: [] });
+    expect(featureIdsFromHistory(c)).toBeNull();
   });
 });
 
