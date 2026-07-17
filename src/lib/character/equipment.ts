@@ -13,6 +13,7 @@
 import { equipmentById } from '@/data';
 import type { EquipmentLine, WornState } from './types';
 import { isCustomItem } from './types';
+import { effectiveItem } from './items';
 
 /**
  * Auto-équipe, sur une copie de la liste, la **meilleure armure**, le **meilleur
@@ -86,7 +87,8 @@ export function autoEquipStartingGear(lines: EquipmentLine[]): EquipmentLine[] {
 export function wornWeaponIsTwoHanded(line: EquipmentLine): boolean {
   if (!line.worn) return false;
   if (isCustomItem(line)) return line.worn.grip === 'twoHands';
-  const item = equipmentById.get(line.itemId);
+  // Catégorie d'arme EFFECTIVE (surcharge de variante prise en compte, PER-211).
+  const item = effectiveItem(line);
   if (item?.category !== 'weapon') return false;
   if (item.weaponCategory === 'twoHands') return true;
   if (item.weaponCategory === 'oneOrTwoHands') return line.worn.grip === 'twoHands';

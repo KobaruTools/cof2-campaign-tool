@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defenseFromEquipment, initialEquipment } from './helpers';
+import { defenseFromEquipment, equipmentLabel, initialEquipment } from './helpers';
 import { classById } from '@/data';
 import type { EquipmentLine } from '@/lib/character/types';
 
@@ -74,6 +74,49 @@ describe('defenseFromEquipment', () => {
       { itemId: 'grand-bouclier', quantity: 1, worn: { slot: 'shield' }, magicDef: 3 }, // magie ignorée
     ];
     expect(defenseFromEquipment(equipment)).toEqual({ defBonus: 7, maxAgi: 3, magicDefBonus: 0 });
+  });
+
+  // PER-211 : une VARIANTE (base catalogue + overrides) contribue à la DEF avec ses
+  // valeurs surchargées, et le bonus magique reste séparé.
+  it('compte la DEF et le plafond AGI SURCHARGÉS d’une armure variante', () => {
+    const equipment: EquipmentLine[] = [
+      {
+        itemId: 'cuir-simple', // catalogue : def 2, maxAgi 6
+        quantity: 1,
+        worn: { slot: 'armor' },
+        overrides: { def: 4, maxAgi: 5 },
+        magicDef: 1,
+      },
+    ];
+    expect(defenseFromEquipment(equipment)).toEqual({ defBonus: 4, maxAgi: 5, magicDefBonus: 1 });
+  });
+
+  it('compte la DEF de base quand la variante ne surcharge que le nom (non-régression)', () => {
+    const equipment: EquipmentLine[] = [
+      {
+        itemId: 'cotte-de-mailles', // def 5, maxAgi 3
+        quantity: 1,
+        worn: { slot: 'armor' },
+        overrides: { name: 'Cotte du Gardien' },
+      },
+    ];
+    expect(defenseFromEquipment(equipment)).toEqual({ defBonus: 5, maxAgi: 3, magicDefBonus: 0 });
+  });
+});
+
+describe('equipmentLabel', () => {
+  it('affiche le nom du catalogue par défaut', () => {
+    expect(equipmentLabel({ itemId: 'epee-longue', quantity: 1 })).toBe('Épée longue');
+  });
+
+  it('affiche le nom surchargé d’une variante (PER-211)', () => {
+    expect(
+      equipmentLabel({ itemId: 'epee-longue', quantity: 1, overrides: { name: 'Lame d’Ombre' } }),
+    ).toBe('Lame d’Ombre');
+  });
+
+  it('affiche le nom d’un objet personnalisé', () => {
+    expect(equipmentLabel({ custom: true, name: 'Grimoire', quantity: 1 })).toBe('Grimoire');
   });
 });
 

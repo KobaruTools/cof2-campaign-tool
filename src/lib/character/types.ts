@@ -11,7 +11,7 @@
  *  - les valeurs dérivées ne sont **pas** stockées (recalculées à l'affichage),
  *    sauf surcharges manuelles explicites (`overrides`).
  */
-import type { AbilityId, DerivedStatId, FeatureChoice } from '@/data/schema';
+import type { AbilityId, DerivedStatId, FeatureChoice, WeaponCategory } from '@/data/schema';
 import type { AncestryChoice } from './ancestry';
 
 /**
@@ -225,12 +225,61 @@ export interface WornState {
   grip?: WeaponGrip;
 }
 
+/**
+ * Type d'un objet d'inventaire (PER-211), pour l'icône de type et le classement de
+ * l'inventaire. Deux familles :
+ *  - MÉCANIQUE (`weapon` / `armor` / `shield`) : un objet personnalisé de ce type est
+ *    une **variante d'un objet du livre** (base catalogue + `overrides`), qui s'équipe
+ *    et compte dans le moteur comme un objet du catalogue ;
+ *  - COSMÉTIQUE (`consumable` / `gear` / `treasure` / `misc`) : objet libre typé, sans
+ *    effet de jeu structuré (le consommable custom porte seulement le décompte
+ *    « Utiliser »). `misc` (« Divers ») est le défaut d'un objet sans type.
+ *
+ * Pour une `EquipmentRef` (objet du catalogue), le type se DÉDUIT de la catégorie du
+ * catalogue (voir `itemType`) et n'est donc pas stocké ; il n'est persisté que sur un
+ * `CustomItem` (`CustomItem.type`).
+ */
+export type ItemType = 'weapon' | 'armor' | 'shield' | 'consumable' | 'gear' | 'treasure' | 'misc';
+
+/**
+ * Surcharges d'instance d'une variante d'objet du livre (PER-211). Chaque champ ABSENT
+ * ⇒ on retombe sur la valeur du catalogue (voir `effectiveItem`) ; un champ présent
+ * ÉCRASE la valeur de base. Surcharges RICHES (n'importe quelle stat écrasable) et
+ * FIGÉES au moment de la création (une variante ne suit pas les corrections futures du
+ * catalogue — choix de simplicité). Le sous-type et la maîtrise restent portés par
+ * l'`itemId` de base (jamais surchargés). Distinct de `magicDef`, qui reste séparé
+ * (bonus magique d'armure, hors surcoût de mana des sorts en armure, p. 178).
+ *
+ * Les clés reprennent celles du catalogue (`@/data/schema`) : `damage`/
+ * `twoHandedDamage`/`range`/`weaponCategory` pour une arme, `def`/`maxAgi` pour une
+ * armure (`def` seul pour un bouclier), plus `name`/`description` communs. Une clé sans
+ * rapport avec la catégorie de la base est simplement ignorée par le résolveur.
+ */
+export interface EquipmentOverrides {
+  name?: string;
+  description?: string;
+  damage?: string;
+  twoHandedDamage?: string;
+  range?: string;
+  weaponCategory?: WeaponCategory;
+  def?: number;
+  maxAgi?: number | null;
+}
+
 /** Ligne d'équipement référençant le catalogue. */
 export interface EquipmentRef {
   itemId: string;
   quantity: number;
   /** État de port (PER-76). Absent = rangé. Voir `WornState`. */
   worn?: WornState;
+  /**
+   * Surcharges d'instance qui font de cette ligne une **variante** de l'objet du livre
+   * `itemId` (PER-211) : nom, description et n'importe quelle stat écrasable (DM, DEF,
+   * plafond AGI, portée, catégorie d'arme). Absent = objet du catalogue standard. Voir
+   * `EquipmentOverrides` et `effectiveItem`. Champ additif optionnel absent-safe → pas
+   * de bump de `schemaVersion` (même logique que `magicDef`).
+   */
+  overrides?: EquipmentOverrides;
   /**
    * Bonus de DEF MAGIQUE de cette instance d'armure enchantée (PER-85), en points
    * de défense qui s'ajoutent à la DEF mondaine du catalogue (`Armor.def`). Propriété
@@ -253,6 +302,15 @@ export interface CustomItem {
   custom: true;
   name: string;
   quantity: number;
+  /**
+   * Type de l'objet (PER-211), pour l'icône et le classement de l'inventaire. Réservé
+   * à la famille COSMÉTIQUE en pratique (`consumable`/`gear`/`treasure`/`misc`) — un
+   * objet mécanique (arme/armure/bouclier) est modélisé comme variante d'un objet du
+   * livre (`EquipmentRef` + `overrides`), pas comme `CustomItem`. Absent = `misc`
+   * (« Divers »), pour rétrocompatibilité (champ additif absent-safe, pas de bump de
+   * schéma). Voir `ItemType` et `itemType`.
+   */
+  type?: ItemType;
   /** Notes libres (DM, DEF, propriétés…). */
   details?: string;
   /**

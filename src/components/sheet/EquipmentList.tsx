@@ -15,10 +15,11 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { equipment as equipmentCatalog, equipmentById } from '@/data';
+import { equipment as equipmentCatalog } from '@/data';
 import type { CharacterClass, EquipmentItem } from '@/data/schema';
 import type { EquipmentLine, EquipmentRef, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
+import { effectiveItem } from '@/lib/character/items';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { isConsumable } from '@/lib/character/consumables';
 import { equipmentLabel } from '@/components/wizard/helpers';
@@ -193,7 +194,9 @@ export function EquipmentList({
       <Stack divider={<Divider />}>
         {equipment.map((line, i) => {
           const custom = isCustomItem(line);
-          const item = custom ? null : equipmentById.get(line.itemId);
+          // Résolveur de variante (PER-211) : l'objet effectif porte les surcharges
+          // d'instance (nom via `equipmentLabel`, DM/DEF/plafond AGI via `itemDetail`).
+          const item = custom ? null : effectiveItem(line);
           // Dose d'élixir (objet custom nommé par `elixirItemName`) : on met en avant la CAPACITÉ
           // reproduite via une puce (sort choisi pour un mineur/majeur, sinon capacité du forgesort).
           const elixirFeatureId = custom ? ELIXIR_FEATURE_BY_ITEM.get(line.name) : undefined;

@@ -9,6 +9,7 @@ import type { EquipmentLine } from '@/lib/character/types';
 import type { DefenseEquipment } from '@/lib/engine';
 import { isCustomItem } from '@/lib/character/types';
 import { autoEquipStartingGear } from '@/lib/character/equipment';
+import { effectiveItem } from '@/lib/character/items';
 import { reskinnedItemName } from '@/lib/character/classDisplay';
 
 export const valueSets = valueSetsData;
@@ -53,9 +54,13 @@ export function initialEquipment(characterClass: CharacterClass): EquipmentLine[
  * Libellé d'affichage d'une ligne d'équipement. `characterClass` optionnel :
  * quand il est fourni, applique les reskins d'objet du profil (PER-181, ex. druide
  * `baton-ferre` → « Bâton noueux »). Absent → nom du catalogue tel quel.
+ *
+ * Le nom d'une VARIANTE (`overrides.name`, PER-211) prime : il a été choisi
+ * explicitement par le joueur et court-circuite le reskin de profil.
  */
 export function equipmentLabel(line: EquipmentLine, characterClass?: CharacterClass): string {
   if (isCustomItem(line)) return line.name;
+  if (line.overrides?.name) return line.overrides.name;
   const name = equipmentById.get(line.itemId)?.name ?? line.itemId;
   return reskinnedItemName(characterClass, line.itemId, name);
 }
@@ -83,7 +88,9 @@ export function defenseFromEquipment(equipment: EquipmentLine[]): DefenseEquipme
   let shieldCounted = false;
   for (const line of equipment) {
     if (isCustomItem(line) || !line.worn) continue;
-    const item = equipmentById.get(line.itemId);
+    // Résolveur de variante (PER-211) : DEF/plafond AGI EFFECTIFS (surcharges d'instance
+    // appliquées), pas les seules valeurs du catalogue.
+    const item = effectiveItem(line);
     if (!item) continue;
     if (item.category === 'armor' && !armorCounted) {
       defBonus += item.def;

@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per212-variantes",
+  "name": "Recette PER-212 — variantes d’objet",
+  "identity": {
+    "description": "ATTENDU (PER-212) : « Lame d’Ombre » affichée (nom surchargé), DM 1d8+2 (surchargé). Cuir simple porté = DEF mondaine +4 (surchargée), plafond AGI 5 (surchargé), badge « +1 magique » séparé. Grand bouclier standard +2 inchangé. DEF totale = 10 + min(AGI 6, 5) + (4+2) + 1 = 22. Rubis étoilé = type trésor ; Babiole = type divers par défaut."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 6,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 6,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      },
+      "overrides": {
+        "name": "Lame d’Ombre",
+        "damage": "1d8+2"
+      }
+    },
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      },
+      "overrides": {
+        "def": 4,
+        "maxAgi": 5
+      },
+      "magicDef": 1
+    },
+    {
+      "itemId": "grand-bouclier",
+      "quantity": 1,
+      "worn": {
+        "slot": "shield"
+      }
+    },
+    {
+      "custom": true,
+      "name": "Rubis étoilé",
+      "quantity": 1,
+      "type": "treasure"
+    },
+    {
+      "custom": true,
+      "name": "Babiole",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-212 — socle variantes + résolveur. Vérifier sur la fiche : nom « Lame d’Ombre », DM 1d8+2, DEF 22, plafond AGI 5, badge magique +1 distinct de la DEF mondaine.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
