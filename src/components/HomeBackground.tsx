@@ -49,8 +49,19 @@ const BASE_SHIFT = 20;
 // largeur ≈ 38.8vh) — afin que le dégradé reste ancré au bord intérieur de
 // l'image quelle que soit la largeur de l'écran. En `vw`, il dérivait hors de
 // l'image sur les écrans larges et devenait invisible.
+//
+// Bornes anti-écrans restreints :
+// - PLANCHER en px : sur un écran peu haut, `vh` devient minuscule et le dégradé
+//   se réduit à rien (« disparaît ») ; le plancher lui garde une taille minimale.
+// - PLAFOND en vw : sur un écran étroit (portrait), l'image est plus large que le
+//   panneau (42vw) et un arrêt en vh peut tomber HORS du panneau, si bien que le
+//   dégradé n'atteint jamais l'opacité pleine et le bord dur de l'image affleure
+//   le contenu. Le plafond force la fin du fondu à l'intérieur du panneau.
 const FADE_START = 10; // vh : l'image reste pleine jusque-là (côté extérieur)
 const FADE_END = 34; // vh : image totalement fondue au-delà (~ son bord intérieur)
+const FADE_START_MIN = 64; // px : plancher du début de fondu
+const FADE_END_MIN = 220; // px : plancher de fin de fondu
+const FADE_END_CAP_VW = 40; // vw : le fondu se termine au plus tard à ce % de largeur
 
 // Variante `footer` — fondu intérieur RELATIF À LA LARGEUR de la page. Contrairement
 // au plein écran (arrêts figés en vh), les arrêts sont ici exprimés en % de la largeur
@@ -78,6 +89,12 @@ const FOOTER_TOP_FADE = 32; // %
 const BG = 'rgb(18, 18, 18)';
 const BG0 = 'rgba(18, 18, 18, 0)';
 
+// Fallback mobile (< md, variante `full`) : les deux moitiés sont masquées, on
+// affiche à la place l'image ENTIÈRE (celle qui a été « coupée » en deux) en fond
+// plein cadre, à opacité réduite pour ne pas gêner la lecture du contenu.
+const MOBILE_IMAGE = '/cover-full.webp';
+const MOBILE_OPACITY = 0.18;
+
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 function SidePanel({
@@ -99,7 +116,7 @@ function SidePanel({
   //   coupe par un plafond en vh — plus la page est large, plus on voit d'image.
   const innerFade = isFooter
     ? `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} min(${FOOTER_FADE_START_PCT}%, ${FOOTER_FADE_START_CAP}vh), ${BG} min(${FOOTER_FADE_END_PCT}%, ${FOOTER_FADE_END_CAP}vh))`
-    : `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} ${FADE_START}vh, ${BG} ${FADE_END}vh)`;
+    : `linear-gradient(to ${isLeft ? 'right' : 'left'}, ${BG0} 0, ${BG0} max(${FADE_START}vh, ${FADE_START_MIN}px), ${BG} min(max(${FADE_END}vh, ${FADE_END_MIN}px), ${FADE_END_CAP_VW}vw))`;
   return (
     <Box
       sx={{
@@ -207,6 +224,23 @@ export function HomeBackground({ variant = 'full' }: { variant?: HomeBackgroundV
         pointerEvents: 'none',
       }}
     >
+      {/* Fallback mobile (< md) : sur la variante plein écran, les deux moitiés
+          (display md-only) laissent place à l'image entière en fond plein cadre,
+          à opacité réduite. La variante `footer` reste décorative et sans fond. */}
+      {!isFooter && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: { xs: 'block', md: 'none' },
+            backgroundImage: `url(${MOBILE_IMAGE})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            opacity: MOBILE_OPACITY,
+          }}
+        />
+      )}
       <SidePanel side="left" variant={variant} imageRef={leftRef} />
       <SidePanel side="right" variant={variant} imageRef={rightRef} />
     </Box>
