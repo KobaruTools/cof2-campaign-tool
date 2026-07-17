@@ -102,6 +102,25 @@ import { ABILITY_NAMES } from '@/lib/ui/ability';
 const WIP_CHIP_SX = { color: '#ffeb3b', borderColor: '#ffeb3b' } as const;
 
 /**
+ * Deux barres diagonales en croix « capacité désactivée par l'armure » (PER-86) : légères,
+ * 2px d'épaisseur, semi-transparentes, dérivées de la couleur de texte courante (donc adaptées
+ * au thème clair/sombre) via `color-mix`. Dessinées en `::after` (pointer-events:none, sous les
+ * badges positionnés) sur le bloc restreint — le conteneur doit être `position: relative`.
+ */
+const ARMOR_RESTRICTED_BARS_SX = {
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    inset: 0,
+    pointerEvents: 'none',
+    borderRadius: 'inherit',
+    backgroundImage:
+      'linear-gradient(to top right, transparent calc(50% - 1px), color-mix(in srgb, currentColor 45%, transparent) calc(50% - 1px), color-mix(in srgb, currentColor 45%, transparent) calc(50% + 1px), transparent calc(50% + 1px)), ' +
+      'linear-gradient(to bottom right, transparent calc(50% - 1px), color-mix(in srgb, currentColor 45%, transparent) calc(50% - 1px), color-mix(in srgb, currentColor 45%, transparent) calc(50% + 1px), transparent calc(50% + 1px))',
+  },
+} as const;
+
+/**
  * Ordre d'affichage des voies par type, de gauche à droite sur la fiche :
  * la voie du peuple (ou du mage, qui la remplace) à gauche, les voies de
  * profil au milieu, la voie de prestige tout à droite.
@@ -2378,8 +2397,10 @@ function PathBlock({
               // Désactivée par exclusion mutuelle : grisée + transparente, mais le
               // clic d'ouverture du détail reste actif.
               ...(disabledSx(feature) ?? {}),
-              // Inutilisable avec l'armure portée (PER-86) : désaturée, l'interrupteur reste actif.
+              // Inutilisable avec l'armure portée (PER-86) : désaturée + croix diagonale,
+              // l'interrupteur reste actif.
               ...(armorRestrictedSx(feature) ?? {}),
+              ...(isArmorRestricted(feature) ? ARMOR_RESTRICTED_BARS_SX : {}),
             }}
           >
             {/* Marqueurs hexagonaux centrés sur la ligne du haut du bloc. Sur une carte d'emprunt
@@ -2662,6 +2683,7 @@ function PathBlock({
           return isArmorRestricted(feature) ? (
             <AppTooltip
               key={feature.id}
+              enterDelay={1000}
               title={<PageRefText>{armorRestrictedMessage(feature) ?? ''}</PageRefText>}
             >
               {rendered}
@@ -2995,7 +3017,12 @@ function PathBlock({
               ...(armorRestrictedSx(feature) ?? {}),
             }}
           >
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              // Inutilisable avec l'armure portée (PER-86) : croix diagonale sur la barre du rang
+              // (la désaturation est portée par l'Accordion ; la notice est dans le détail déplié).
+              sx={isArmorRestricted(feature) ? { position: 'relative', ...ARMOR_RESTRICTED_BARS_SX } : undefined}
+            >
               <Stack
                 direction="row"
                 spacing={1}
