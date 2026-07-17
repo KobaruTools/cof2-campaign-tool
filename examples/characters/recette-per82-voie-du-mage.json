@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per82-voie-du-mage",
+  "name": "Recette PER-82 — Sort de voie du mage (DEF complète)",
+  "identity": {
+    "description": "ATTENDU (voie du mage, clarification p. 177-178) : un sort de la voie du mage (magie de mage générique) relève du cas par défaut « tous les autres profils » → armure autorisée = aucune (0) → surcoût = DEF complète. En cuir simple (DEF +2) → +2. Cuir maîtrisé via guerrier."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 3,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 3,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-r1",
+    "combat-r2",
+    "mage-r2",
+    "mage-r3"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-82 — surcoût de mana des sorts en armure non autorisée. ATTENDU (voie du mage, clarification p. 177-178) : un sort de la voie du mage (magie de mage générique) relève du cas par défaut « tous les autres profils » → armure autorisée = aucune (0) → surcoût = DEF complète. En cuir simple (DEF +2) → +2. Cuir maîtrisé via guerrier.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

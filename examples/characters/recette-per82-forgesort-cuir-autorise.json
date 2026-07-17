@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per82-forgesort-cuir-autorise",
+  "name": "Recette PER-82 — Forgesort en cuir autorisé (aucun surcoût)",
+  "identity": {
+    "description": "ATTENDU (contrôle négatif — armure autorisée) : le forgesort peut porter le cuir simple (DEF +2 = son armure autorisée). Sort lancé en cuir simple → surcoût 0 (DEF portée = armure autorisée). Aucune maîtrise externe requise (le forgesort maîtrise sa propre armure)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "forgesort",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 3,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 3,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "metal-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-82 — surcoût de mana des sorts en armure non autorisée. ATTENDU (contrôle négatif — armure autorisée) : le forgesort peut porter le cuir simple (DEF +2 = son armure autorisée). Sort lancé en cuir simple → surcoût 0 (DEF portée = armure autorisée). Aucune maîtrise externe requise (le forgesort maîtrise sa propre armure).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

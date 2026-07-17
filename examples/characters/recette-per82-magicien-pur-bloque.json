@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per82-magicien-pur-bloque",
+  "name": "Recette PER-82 — Magicien pur en cuir (surcoût mais non maîtrisé)",
+  "identity": {
+    "description": "ATTENDU (contrôle négatif — condition de maîtrise, p. 178) : magicien PUR (aucune maîtrise d'armure) en cuir simple. Le surcoût est calculé (+2) MAIS l'armure n'est pas maîtrisée → les deux conditions ne sont pas réunies, le sort ne peut pas être lancé dans cette armure (blockedByMastery)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 3,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 3,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "magie-des-arcanes-r1",
+    "magie-des-arcanes-r2",
+    "magie-des-arcanes-r3"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-82 — surcoût de mana des sorts en armure non autorisée. ATTENDU (contrôle négatif — condition de maîtrise, p. 178) : magicien PUR (aucune maîtrise d'armure) en cuir simple. Le surcoût est calculé (+2) MAIS l'armure n'est pas maîtrisée → les deux conditions ne sont pas réunies, le sort ne peut pas être lancé dans cette armure (blockedByMastery).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
