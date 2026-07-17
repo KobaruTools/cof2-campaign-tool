@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per86-moine-guerrier-cotte",
+  "name": "Recette PER-86 — Moine/guerrier en cotte",
+  "identity": {
+    "description": "ATTENDU : « L'armure portée empêche d'utiliser 1 capacité de « Moine » (aucune armure autorisée) : Poings de fer (p. 177). » et AUCUN avertissement de PORT (le guerrier peut porter la cotte). La capacité de guerrier (Vivacité) n'est PAS signalée."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 1,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-r1",
+    "poing-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cotte-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-86 — restriction fine par capacité d'origine (hybride moine/guerrier, p. 177/180).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

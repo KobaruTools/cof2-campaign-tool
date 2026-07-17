@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per86-moine-pur-cuir",
+  "name": "Recette PER-86 — Moine pur en cuir",
+  "identity": {
+    "description": "ATTENDU : FEATURE_ARMOR_RESTRICTED listant Poings de fer ET Agilité du singe (capacité PASSIVE incluse), profil « Moine », « aucune armure autorisée » (p. 177) ; PLUS l'avertissement de PORT ARMOR_TOO_HEAVY (le moine ne peut porter aucune armure, p. 188)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "moine",
+  "level": 1,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "poing-r1",
+    "maitrise-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-86 — passifs signalés (décision propriétaire) + cumul avec le plafond de port PER-80.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per86-chevalier-guerrier-plaques-sans-noblesse",
+  "name": "Recette PER-86 — Chevalier/guerrier en plaques (sans Autorité naturelle) ⚠ contrôle",
+  "identity": {
+    "description": "CONTRÔLE NÉGATIF. ATTENDU : FEATURE_ARMOR_RESTRICTED sur Vivacité (profil « Guerrier », cotte de mailles maximum, p. 177), le chevalier pouvant porter l'armure de plaques (aucun ARMOR_TOO_HEAVY). La capacité de chevalier (noblesse-r1) n'est PAS signalée."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 1,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "noblesse-r1",
+    "combat-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "armure-de-plaques",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-86 — contrôle négatif du relèvement d'un cran (sans noblesse-r3, la voie de guerrier reste au plafond cotte).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per86-chevalier-guerrier-plaques",
+  "name": "Recette PER-86 — Chevalier/guerrier + Autorité naturelle en plaques",
+  "identity": {
+    "description": "ATTENDU : AUCUN avertissement fin. Autorité naturelle (noblesse-r3) relève l'armure d'usage des voies de guerrier d'un cran (cotte → armure de plaques) ; la capacité de guerrier (Vivacité) est donc utilisable en plaques. Contrôle : la même chose SANS Autorité naturelle apparaît dans recette-per86-chevalier-guerrier-plaques-sans-noblesse."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "noblesse-r1",
+    "noblesse-r2",
+    "noblesse-r3",
+    "combat-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "armure-de-plaques",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-86 — relèvement d'un cran hybride (note d'Autorité naturelle, p. 86).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
