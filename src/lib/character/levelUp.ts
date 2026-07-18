@@ -17,6 +17,7 @@ import { features as featureCatalog, featureById, pathById, progression } from '
 import type { Feature, FamilyId } from '@/data/schema';
 import { canAcquireFeature, featureCost, freeFeatureIds, type RulesContext } from '@/lib/engine';
 import { levelFamilies } from './hp';
+import { resetLuck } from './gauges';
 import type { Character, LevelUpEntry, OrphanReward } from './types';
 
 /** Points de capacité gagnés à chaque montée de niveau (p. 38-39). */
@@ -189,6 +190,9 @@ export function applyLevelUp(
     level,
     featureIds,
     levelUpHistory: [...character.levelUpHistory, entry],
+    // Une montée de niveau restaure 100 % des points de chance (manque de chance remis à
+    // zéro). Les autres jauges transitoires (PV, mana, DR…) relèvent des règles de repos.
+    depletion: resetLuck(character.depletion),
   };
 }
 

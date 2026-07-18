@@ -63,14 +63,34 @@ export function hpHealthState(maxHp: number, depletion: Depletion): HealthState 
  * `lethal` (dégâts normaux) ou `temp` (dégâts temporaires / non létaux). Les DM
  * temporaires sont « comptabilisés à part » (p. 219/220), donc n'écrasent jamais les
  * dégâts létaux et inversement. Un montant nul/négatif ne change rien.
+ *
+ * `maxHp` (optionnel) PLAFONNE le manque total (létal + temporaire) au maximum de PV :
+ * on ne comptabilise pas les PV perdus en dessous de 0 (p. 220), et sans ce plafond le
+ * manque s'accumulerait indéfiniment (les PV courants affichent bien 0, mais il faudrait
+ * autant de soins que de coups « à vide » pour les faire remonter). Le manque de la
+ * composante visée est donc borné à `maxHp − autre composante`. Sans `maxHp`, aucun
+ * plafond (comportement historique conservé pour les tests purs). Un coup qui ne change
+ * rien (déjà au plafond) renvoie la dépletion inchangée.
  */
-export function applyDamage(depletion: Depletion, amount: number, kind: 'lethal' | 'temp'): Depletion {
+export function applyDamage(
+  depletion: Depletion,
+  amount: number,
+  kind: 'lethal' | 'temp',
+  maxHp?: number,
+): Depletion {
   const delta = Math.max(0, Math.round(amount));
   if (delta === 0) return depletion;
   const hp = depletion.hp ?? { lethal: 0, temp: 0 };
+  const lethal = Math.max(0, hp.lethal);
+  const temp = Math.max(0, hp.temp);
+  const other = kind === 'lethal' ? temp : lethal;
+  // Marge restante avant que le manque total n'atteigne le max (∞ si non plafonné).
+  const room = maxHp === undefined ? Infinity : Math.max(0, Math.max(0, maxHp) - other);
+  const nextValue = Math.min(Math.max(0, hp[kind]) + delta, room);
+  if (nextValue === Math.max(0, hp[kind])) return depletion;
   return {
     ...depletion,
-    hp: { lethal: Math.max(0, hp.lethal), temp: Math.max(0, hp.temp), [kind]: Math.max(0, hp[kind]) + delta },
+    hp: { lethal, temp, [kind]: nextValue },
   };
 }
 

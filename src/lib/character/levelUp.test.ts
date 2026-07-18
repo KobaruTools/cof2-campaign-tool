@@ -203,6 +203,15 @@ describe('applyLevelUp', () => {
     expect(next.featureIds.filter((id) => id === 'rage-r1')).toHaveLength(1);
     expect(next.featureIds).toContain('brute-r1');
   });
+
+  it('restaure 100 % des points de chance (manque de chance remis à zéro)', () => {
+    const c = makeCharacter({ level: 1, depletion: { luck: 3, mana: 2, hp: { lethal: 4, temp: 1 } } });
+    const next = applyLevelUp(c, ['rage-r2']);
+    expect(next.depletion.luck).toBeUndefined();
+    // Les autres jauges transitoires ne sont pas touchées (relèvent du repos).
+    expect(next.depletion.mana).toBe(2);
+    expect(next.depletion.hp).toEqual({ lethal: 4, temp: 1 });
+  });
 });
 
 describe('maxRetrainings (changement d’orientation, p. 43)', () => {

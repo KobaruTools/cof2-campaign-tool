@@ -207,6 +207,30 @@ describe('applyDamage', () => {
     expect(applyDamage(dep, 0, 'lethal')).toBe(dep);
     expect(applyDamage(dep, -3, 'lethal')).toBe(dep);
   });
+
+  it('plafonne le manque total au maxHp (jamais de PV sous 0)', () => {
+    // maxHp = 10 : 8 dégâts de plus depuis 6 létaux ne pousse le manque qu'à 10.
+    expect(applyDamage({ hp: { lethal: 6, temp: 0 } }, 8, 'lethal', 10)).toEqual({
+      hp: { lethal: 10, temp: 0 },
+    });
+    // La composante ciblée est bornée à maxHp − autre composante (total ≤ max).
+    expect(applyDamage({ hp: { lethal: 4, temp: 2 } }, 20, 'lethal', 10)).toEqual({
+      hp: { lethal: 8, temp: 2 },
+    });
+  });
+
+  it('renvoie la dépletion inchangée quand le manque est déjà au plafond', () => {
+    const dep = { hp: { lethal: 10, temp: 0 } };
+    expect(applyDamage(dep, 5, 'lethal', 10)).toBe(dep);
+    const dep2 = { hp: { lethal: 7, temp: 3 } };
+    expect(applyDamage(dep2, 5, 'temp', 10)).toBe(dep2);
+  });
+
+  it('sans maxHp, aucun plafond (comportement historique)', () => {
+    expect(applyDamage({ hp: { lethal: 6, temp: 0 } }, 8, 'lethal')).toEqual({
+      hp: { lethal: 14, temp: 0 },
+    });
+  });
 });
 
 describe('healHp', () => {

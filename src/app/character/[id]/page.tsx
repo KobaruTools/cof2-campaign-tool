@@ -534,8 +534,18 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Jauge de PV (PER-148) : dépletion transitoire (manque létal/temp), état de jeu
   // modifiable HORS mode « Modifier » (comme les compteurs d'usages). Le max reste
   // piloté par « Statistiques dérivées » ; ces setters ne touchent que le courant.
+  // Le manque de PV est plafonné au max EFFECTIF (surcharge ?? dérivé) : on ne descend
+  // jamais sous 0 PV, et le manque ne s'accumule pas au-delà (sinon les « - » à vide
+  // exigeraient autant de soins pour remonter). `masterDerived` est en portée à l'appel.
   const setHpDamage = (amount: number, kind: 'lethal' | 'temp') =>
-    update({ depletion: applyDamage(character.depletion, amount, kind) });
+    update({
+      depletion: applyDamage(
+        character.depletion,
+        amount,
+        kind,
+        character.overrides.maxHp ?? masterDerived?.maxHp,
+      ),
+    });
   const setHpHeal = (amount: number) => update({ depletion: healHp(character.depletion, amount) });
   const setHpReset = () => update({ depletion: resetHp(character.depletion) });
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
