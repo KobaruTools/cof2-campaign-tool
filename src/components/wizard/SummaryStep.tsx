@@ -21,8 +21,13 @@ import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
 import { PageRefText } from '@/components/SourceRef';
-import { EquipConflictsAlert, WeaponMasteryAlert } from '@/components/sheet/WornEquipmentControls';
+import {
+  EquipConflictsAlert,
+  TwoWeaponPenaltyAlert,
+  WeaponMasteryAlert,
+} from '@/components/sheet/WornEquipmentControls';
 import { masteredClassIds, sacredWeaponMasteryIds } from '@/lib/character/mastery';
+import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -271,6 +276,9 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
         firearmsAllowed={firearmsAllowed}
         sacredWeaponIds={sacredWeaponMasteryIds(preview)}
       />
+
+      {/* Combat à deux armes (PER-116) : dé malus sur chaque attaque (p. 215) — consultatif. */}
+      <TwoWeaponPenaltyAlert status={twoWeaponCombatStatus({ ...preview, equipment: draft.equipment })} />
 
       {warnings.length > 0 && (
         <AppAlert severity="warning">

@@ -15,6 +15,7 @@ import { equipmentById } from '@/data';
 import type { Weapon } from '@/data/schema';
 import { equipConflicts } from '@/lib/character/equipment';
 import { isWeaponMastered } from '@/lib/character/mastery';
+import type { TwoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { rulesContext } from '@/lib/character/rulesContext';
 import type { EquipmentLine, EquipSlot, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
@@ -376,6 +377,42 @@ export function WeaponMasteryAlert({
           </Typography>
         ))}
       </Stack>
+    </AppAlert>
+  );
+}
+
+/**
+ * Alerte non bloquante (PER-116) du combat à deux armes : tenir une arme dans CHAQUE
+ * main impose un dé malus sur chacune des deux attaques (p. 215), sauf exemption
+ * Combattant héroïque (option FOR + même arme dans la main secondaire, p. 73). Prend le
+ * statut PRÉCALCULÉ (`twoWeaponCombatStatus`, qui a besoin du personnage pour lire le
+ * choix FOR) pour rester présentationnelle, à l'image des résolveurs passés à la liste
+ * d'équipement. `null` hors combat à deux armes. Le moteur SIGNALE, il ne résout aucun
+ * jet (dés lancés à la vraie table). Partagée fiche + récapitulatif du wizard.
+ */
+export function TwoWeaponPenaltyAlert({ status }: { status: TwoWeaponCombatStatus }) {
+  if (!status.dualWielding) return null;
+  if (status.penaltyDie) {
+    return (
+      <AppAlert severity="warning" title="Combat à deux armes">
+        <Typography variant="body2">
+          <PageRefText>
+            Une arme dans chaque main : chacune des deux attaques subit un dé malus au test
+            d’attaque (p. 215).
+          </PageRefText>
+        </Typography>
+      </AppAlert>
+    );
+  }
+  // Exemption Combattant héroïque (option FOR) : même arme dans la main secondaire.
+  return (
+    <AppAlert severity="info" title="Combat à deux armes — sans dé malus">
+      <Typography variant="body2">
+        <PageRefText>
+          Combattant héroïque (option FOR) : attaquer avec la même arme dans la main secondaire
+          ne subit pas de dé malus (p. 73).
+        </PageRefText>
+      </Typography>
     </AppAlert>
   );
 }
