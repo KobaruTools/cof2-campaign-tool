@@ -19,6 +19,7 @@ import {
   type UniversalTestBonus,
 } from '@/lib/character/effects';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { agiTestArmorAdjustment } from '@/lib/character/equipment';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
@@ -68,7 +69,34 @@ export interface TestDomainsPanelProps {
    * « loup au contact » est actif (PER-108). Absent / vide = aucun.
    */
   testDice?: Map<string, string[]>;
+  /**
+   * Malus d'armure (« malus d'encombrement », p. 188, PER-209) = DEF mondaine de l'armure
+   * portée − bonus magique, plancher 0. Appliqué AUTOMATIQUEMENT en soustraction aux tests
+   * d'AGI (ligne « test de AGI » et domaines AGI quand la carac est incluse) ; rappelé au MJ,
+   * SANS être appliqué, sur les 6 domaines de survie CON. 0 / absent = aucune armure gênante.
+   */
+  armorPenalty?: number;
+  /**
+   * Plafond d'AGI imposé par l'armure PORTÉE (`null` = aucun, PER-78). Appliqué à l'AGI
+   * effective AVANT le malus d'armure sur la ligne « test de AGI » et les domaines AGI.
+   */
+  armorMaxAgi?: number | null;
 }
+
+/**
+ * Domaines de survie (CON) sur lesquels le MJ PEUT — à sa seule appréciation — imposer le
+ * malus d'armure (p. 188, PER-209). Liste validée propriétaire (2026-07-09). Les autres
+ * tests de CON (maladies, poisons, étourdissement, affaiblissement, équitation) n'en
+ * reçoivent aucun rappel.
+ */
+const SURVIVAL_CON_DOMAINS = new Set<string>([
+  'endurance',
+  'swimming',
+  'long-running',
+  'cold-resistance',
+  'heat-resistance',
+  'deprivation-resistance',
+]);
 
 /** Modificateur signé (« +3 », « +0 », « −2 »). */
 const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
@@ -127,6 +155,37 @@ function BreakdownRow({
 }
 
 /**
+ * Pastille d'avertissement compacte (même langage visuel que le badge « +15 » et
+ * `DefenseBadge` — PAS un Chip MUI). `outlined` (fond transparent + bord tireté) sert au
+ * rappel MJ *optionnel* (CON survie) pour le distinguer du malus RÉELLEMENT appliqué (AGI,
+ * fond plein).
+ */
+function WarnPill({ children, outlined = false }: { children: ReactNode; outlined?: boolean }) {
+  return (
+    <Box
+      component="span"
+      sx={(theme) => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.25,
+        px: 0.75,
+        height: 20,
+        borderRadius: 1,
+        fontSize: '0.7rem',
+        fontWeight: 700,
+        lineHeight: 1,
+        whiteSpace: 'nowrap',
+        color: theme.palette.warning.main,
+        bgcolor: alpha(theme.palette.warning.main, outlined ? 0 : 0.12),
+        border: `1px ${outlined ? 'dashed' : 'solid'} ${alpha(theme.palette.warning.main, 0.45)}`,
+      })}
+    >
+      {children}
+    </Box>
+  );
+}
+
+/**
  * Encadré « Compétences & tests » : les 7 caractéristiques, chacune avec sa ligne
  * **« test de [CARAC] »** (icône d20 + modificateur de la carac, buff temporaire inclus —
  * ex. Bénédiction), et **regroupant ses domaines** avec leur **bonus de compétence plat**
@@ -136,7 +195,8 @@ function BreakdownRow({
  * à 0. Au survol : provenance (capacité par catégorie de source, p. 203) et plafond +15.
  * Lecture seule (les interrupteurs des buffs vivent sur les cartes de capacité).
  */
-export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbilityTestBonus, bonusDice, universalBonus, testDice }: TestDomainsPanelProps) {
+export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbilityTestBonus, bonusDice, universalBonus, testDice, armorPenalty, armorMaxAgi }: TestDomainsPanelProps) {
+  const penalty = armorPenalty ?? 0;
   const [includeAbility, setIncludeAbility] = usePersistedBoolean('test-domains:include-ability', false);
   // Coché par défaut : on n'affiche d'emblée que les domaines effectivement bonifiés
   // (les centaines de domaines à 0 sont masqués tant que l'utilisateur ne les demande pas).
@@ -193,11 +253,19 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
             .filter((l) => l.d.abilities.includes(ability))
             .sort((a, b) => a.d.label.localeCompare(b.d.label, 'fr'));
 
-          const abilityMod = abilities[ability] ?? 0;
+          const rawAbilityMod = abilities[ability] ?? 0;
+          // Effet de l'armure portée sur les seuls tests d'AGI : plafond d'AGI (PER-78) PUIS
+          // malus d'armure (PER-209), composés dans le bon ordre par le helper pur. Les autres
+          // caracs (et l'AGI sans armure gênante) restent inchangées.
+          const isAgi = ability === 'AGI';
+          const agiAdj = isAgi ? agiTestArmorAdjustment(rawAbilityMod, armorMaxAgi ?? null, penalty) : null;
+          const agiCapBites = agiAdj?.capped ?? false;
+          const agiPenalty = agiAdj?.penalty ?? 0;
+          const abilityMod = agiAdj ? agiAdj.cappedAgi : rawAbilityMod;
           // Bonus CHIFFRÉS propres à CETTE carac (ex. Tatouages, PER-125).
           const perCaracSources = perAbilityTestBonus?.[ability] ?? [];
           const perCaracBonus = perCaracSources.reduce((sum, s) => sum + s.value, 0);
-          const caracTest = abilityMod + testBuff + perCaracBonus;
+          const caracTest = abilityMod + testBuff + perCaracBonus - agiPenalty;
           const caracBuffed = testBuff !== 0 || perCaracBonus !== 0;
           const dice = bonusDice?.[ability] ?? [];
 
@@ -208,7 +276,19 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
                 Test de {ABILITY_NAMES[ability]} ({ability})
               </Typography>
-              <BreakdownRow label={`Caractéristique ${ability}`} value={signed(abilityMod)} />
+              <BreakdownRow label={`Caractéristique ${ability}`} value={signed(rawAbilityMod)} />
+              {agiCapBites && (
+                <BreakdownRow
+                  muted
+                  label={
+                    <>
+                      <Box component="span">Plafond d'armure</Box>
+                      <SourceRef page={188} />
+                    </>
+                  }
+                  value={signed(abilityMod - rawAbilityMod)}
+                />
+              )}
               {buffSources.map((s) => (
                 <BreakdownRow
                   key={s.featureId}
@@ -223,6 +303,23 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                   value={signed(s.value)}
                 />
               ))}
+              {agiPenalty > 0 && (
+                <BreakdownRow
+                  label={
+                    <>
+                      <Box component="span" sx={{ color: 'warning.main' }}>
+                        Malus d'armure
+                      </Box>
+                      <SourceRef page={188} />
+                    </>
+                  }
+                  value={
+                    <Box component="span" sx={{ color: 'warning.main' }}>
+                      {signed(-agiPenalty)}
+                    </Box>
+                  }
+                />
+              )}
               <Divider sx={{ my: 0.5 }} />
               {/* La ligne de total porte le « d20 » : c'est un jet, pas une valeur figée. */}
               <BreakdownRow strong label="Total" value={`d20 ${signed(caracTest)}`} />
@@ -264,6 +361,22 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                   </Stack>
                 </AppTooltip>
                 {dice.length > 0 && <BonusDieBadge ability={ability} sources={dice} size={16} />}
+                {agiPenalty > 0 && (
+                  <AppTooltip
+                    title={
+                      <Box sx={{ py: 0.5, maxWidth: 240 }}>
+                        <Typography variant="caption" sx={{ display: 'block' }}>
+                          Malus d'armure appliqué : le chiffre affiché est déjà minoré de{' '}
+                          {signed(-agiPenalty)} sur tous les tests d'AGI (<SourceRef page={188} />).
+                        </Typography>
+                      </Box>
+                    }
+                  >
+                    <Box component="span" sx={{ display: 'inline-flex', cursor: 'help' }}>
+                      <WarnPill>{signed(-agiPenalty)}</WarnPill>
+                    </Box>
+                  </AppTooltip>
+                )}
               </Stack>
               {group.length > 0 && (
                 <Grid container spacing={1}>
@@ -271,22 +384,27 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                     const flat = bonus?.total ?? 0;
                     const has = (bonus?.sources.length ?? 0) > 0;
                     const die = testDice?.get(d.id);
-                    const abilityValue = abilities[ability] ?? 0;
+                    // Carac EFFECTIVE incluse : AGI déjà plafonnée par l'armure (PER-78) comme la
+                    // ligne d'en-tête, pas l'AGI brute.
+                    const abilityValue = abilityMod;
+                    // Rappel MJ (non appliqué) du malus d'armure sur les tests de survie CON (p. 188).
+                    const survivalConReminder = penalty > 0 && SURVIVAL_CON_DOMAINS.has(d.id);
                     // « Inclure la carac » ajoute LA carac du groupe courant, le buff actif uniforme ET
                     // le bonus propre à cette carac (tatouage…) — un test de domaine est aussi un test de
                     // carac. Pour un domaine multi-carac, ce bloc est rendu une fois par carac (le bonus
-                    // de compétence est identique ; seule la carac ajoutée diffère).
-                    const display = includeAbility ? flat + abilityValue + testBuff + perCaracBonus : flat;
+                    // de compétence est identique ; seule la carac ajoutée diffère). Le malus d'armure
+                    // (AGI seulement, PER-209) est retranché comme sur la ligne d'en-tête.
+                    const display = includeAbility ? flat + abilityValue + testBuff + perCaracBonus - agiPenalty : flat;
                     const multiAbility = d.abilities.length > 1;
 
                     // Nombre de lignes CHIFFRÉES qui se cumulent (hors sources dominées, barrées) : sert à
                     // n'afficher une ligne « Total » que lorsqu'il y a au moins deux termes à sommer.
                     const contributingRows =
-                      (includeAbility ? 1 + buffSources.length + perCaracSources.length : 0) +
+                      (includeAbility ? 1 + buffSources.length + perCaracSources.length + (agiPenalty > 0 ? 1 : 0) : 0) +
                       (bonus?.sources.length ?? 0);
 
                     const breakdown =
-                      has || includeAbility || d.description || multiAbility ? (
+                      has || includeAbility || d.description || multiAbility || survivalConReminder ? (
                         <Box sx={{ minWidth: 180, py: 0.5 }}>
                           {d.description && (
                             <Typography
@@ -307,7 +425,19 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                             </Typography>
                           )}
                           {includeAbility && (
-                            <BreakdownRow label={`Caractéristique ${ability}`} value={signed(abilityValue)} />
+                            <BreakdownRow label={`Caractéristique ${ability}`} value={signed(rawAbilityMod)} />
+                          )}
+                          {includeAbility && agiCapBites && (
+                            <BreakdownRow
+                              muted
+                              label={
+                                <>
+                                  <Box component="span">Plafond d'armure</Box>
+                                  <SourceRef page={188} />
+                                </>
+                              }
+                              value={signed(abilityValue - rawAbilityMod)}
+                            />
                           )}
                           {includeAbility &&
                             buffSources.map((s) => (
@@ -325,6 +455,23 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                                 value={signed(s.value)}
                               />
                             ))}
+                          {includeAbility && agiPenalty > 0 && (
+                            <BreakdownRow
+                              label={
+                                <>
+                                  <Box component="span" sx={{ color: 'warning.main' }}>
+                                    Malus d'armure
+                                  </Box>
+                                  <SourceRef page={188} />
+                                </>
+                              }
+                              value={
+                                <Box component="span" sx={{ color: 'warning.main' }}>
+                                  {signed(-agiPenalty)}
+                                </Box>
+                              }
+                            />
+                          )}
                           {bonus?.sources.map((s) => (
                             <BreakdownRow
                               key={s.featureId}
@@ -366,6 +513,16 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                           {bonus?.capped && (
                             <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', mt: 0.5 }}>
                               Bonus de compétence plafonné à +15 (<SourceRef page={203} />).
+                            </Typography>
+                          )}
+                          {survivalConReminder && (
+                            <Typography
+                              variant="caption"
+                              sx={{ display: 'block', fontStyle: 'italic', color: 'warning.main', mt: has || includeAbility ? 0.5 : 0 }}
+                            >
+                              Malus d'armure éventuel : {signed(-penalty)}. Le MJ <em>peut</em> l'imposer sur les
+                              tests de survie ; son application, sa valeur et le périmètre des tests concernés
+                              restent à sa libre appréciation (<SourceRef page={188} />).
                             </Typography>
                           )}
                         </Box>
@@ -433,6 +590,10 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                               +15
                             </Box>
                           )}
+                          {/* Rappel MJ (non appliqué) du malus d'armure sur les tests de survie CON :
+                              pastille warning TIRETÉE (distincte du malus AGI réellement appliqué, plein).
+                              « MJ ? » souligne que rien n'est imposé — le détail est dans le tooltip. */}
+                          {survivalConReminder && <WarnPill outlined>MJ ?</WarnPill>}
                         </Stack>
                       </Box>
                     );

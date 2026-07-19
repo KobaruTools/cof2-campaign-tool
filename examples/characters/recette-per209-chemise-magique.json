@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per209-chemise-magique",
+  "name": "Recette PER-209 — Chemise de mailles +3 (malus réduit à −1)",
+  "identity": {
+    "description": "ATTENDU : Exemple du livre p. 188 : DEF +4, magie +3 → malus −1. AGI +2 sous le plafond (+4) → NON plafonnée → en-tête = d20 +1 + badge « −1 ». Rappel MJ « ? » (−1) sur endurance/chaleur/froid."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "resistance-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "chemise-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      },
+      "magicDef": 3
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-209 — Exemple du livre p. 188 : DEF +4, magie +3 → malus −1. AGI +2 sous le plafond (+4) → NON plafonnée → en-tête = d20 +1 + badge « −1 ». Rappel MJ « ? » (−1) sur endurance/chaleur/froid.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

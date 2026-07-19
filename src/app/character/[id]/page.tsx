@@ -31,7 +31,8 @@ import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId } from '@/data/schema';
 import type { Character, CharacterStatus, CustomItem, DerivedStatId, EquipmentLine, Identity, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
-import { setWornAt } from '@/lib/character/equipment';
+import { armorEncumbrancePenalty, setWornAt } from '@/lib/character/equipment';
+import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { classDisplayName } from '@/lib/character/classDisplay';
@@ -595,6 +596,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const perAbilityTestBonus = abilityTestBonusByAbility(modFeatureIds, effectCtx);
   // Plancher de compétence universel (Éclectique, PER-102).
   const universalTest = universalTestBonus(modFeatureIds);
+  // Malus d'armure (p. 188, PER-209) : DEF mondaine de l'armure portée − bonus magique,
+  // plancher 0. Minore les tests d'AGI (application automatique) et rappelle le MJ sur les
+  // tests de survie CON. Le plafond d'AGI de l'armure portée (PER-78) est appliqué AVANT le
+  // malus sur la ligne « test de AGI » ; on lit ce plafond directement sur l'équipement
+  // (indépendant de la dérogation de défense « Dentelles », seduction-r2).
+  const armorPenalty = armorEncumbrancePenalty(character.equipment);
+  const armorMaxAgi = defenseFromEquipment(character.equipment).maxAgi;
 
   // Le personnage dispose-t-il d'une réserve de mana ? Uniquement s'il connaît au
   // moins un sort (cf. `manaPoints`, qui retourne null sinon). Sert à n'afficher la
@@ -1037,6 +1045,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             bonusDice={bonusDieSrc}
             universalBonus={universalTest}
             testDice={testDice}
+            armorPenalty={armorPenalty}
+            armorMaxAgi={armorMaxAgi}
           />
 
           {masterDerived && (

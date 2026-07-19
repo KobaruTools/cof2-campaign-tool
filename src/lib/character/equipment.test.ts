@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { autoEquipStartingGear, equipConflicts, setWornAt, wornWeaponIsTwoHanded } from './equipment';
+import {
+  agiTestArmorAdjustment,
+  armorEncumbrancePenalty,
+  autoEquipStartingGear,
+  equipConflicts,
+  setWornAt,
+  wornWeaponIsTwoHanded,
+} from './equipment';
 import type { EquipmentLine } from './types';
 
 describe('autoEquipStartingGear', () => {
@@ -161,6 +168,111 @@ describe('equipConflicts', () => {
   });
 });
 
+describe('armorEncumbrancePenalty', () => {
+  it("vaut 0 sans aucune armure portée", () => {
+    expect(armorEncumbrancePenalty([])).toBe(0);
+    expect(
+      armorEncumbrancePenalty([{ itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } }]),
+    ).toBe(0);
+  });
+
+  it("vaut la DEF mondaine d'une armure portée sans magie (cuir simple → 2)", () => {
+    expect(
+      armorEncumbrancePenalty([{ itemId: 'cuir-simple', quantity: 1, worn: { slot: 'armor' } }]),
+    ).toBe(2);
+  });
+
+  it("suit la DEF mondaine de la cotte de mailles (→ 5)", () => {
+    expect(
+      armorEncumbrancePenalty([{ itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } }]),
+    ).toBe(5);
+  });
+
+  it("réduit le malus du bonus magique (chemise de mailles +3 → 1)", () => {
+    // DEF +4, magicDef +3 → max(0, 4 − 3) = 1 (exemple du livre, p. 188).
+    expect(
+      armorEncumbrancePenalty([
+        { itemId: 'chemise-de-mailles', quantity: 1, worn: { slot: 'armor' }, magicDef: 3 },
+      ]),
+    ).toBe(1);
+  });
+
+  it("plafonne le malus à 0 pour une armure légère très enchantée (cuir simple +5 → 0)", () => {
+    // DEF +2, magicDef +5 → max(0, 2 − 5) = 0.
+    expect(
+      armorEncumbrancePenalty([
+        { itemId: 'cuir-simple', quantity: 1, worn: { slot: 'armor' }, magicDef: 5 },
+      ]),
+    ).toBe(0);
+  });
+
+  it("ignore une armure RANGÉE (non portée)", () => {
+    expect(armorEncumbrancePenalty([{ itemId: 'cotte-de-mailles', quantity: 1 }])).toBe(0);
+  });
+
+  it("ne compte pas les boucliers (aucun malus d'armure)", () => {
+    expect(
+      armorEncumbrancePenalty([{ itemId: 'grand-bouclier', quantity: 1, worn: { slot: 'shield' } }]),
+    ).toBe(0);
+  });
+
+  it("ignore les armures personnalisées (stats inconnues)", () => {
+    expect(
+      armorEncumbrancePenalty([
+        { custom: true, name: 'Armure bricolée', quantity: 1, worn: { slot: 'armor' } },
+      ]),
+    ).toBe(0);
+  });
+
+  it("utilise la DEF EFFECTIVE d'une variante (surcharge d'instance)", () => {
+    // Variante de cuir simple (DEF base 2) surchargée à DEF +4.
+    expect(
+      armorEncumbrancePenalty([
+        { itemId: 'cuir-simple', quantity: 1, worn: { slot: 'armor' }, overrides: { name: 'Cuir enchanté', def: 4 } },
+      ]),
+    ).toBe(4);
+  });
+
+  it("ne retient que la PREMIÈRE armure portée rencontrée", () => {
+    expect(
+      armorEncumbrancePenalty([
+        { itemId: 'cuir-simple', quantity: 1, worn: { slot: 'armor' } }, // DEF 2
+        { itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } }, // DEF 5
+      ]),
+    ).toBe(2);
+  });
+});
+
+describe('agiTestArmorAdjustment', () => {
+  it("ne change rien sans plafond ni malus", () => {
+    expect(agiTestArmorAdjustment(3, null, 0)).toEqual({ cappedAgi: 3, capped: false, penalty: 0, value: 3 });
+  });
+
+  it("plafonne l'AGI D'ABORD, puis retranche le malus (cotte de mailles : AGI +4, max +3, malus 5)", () => {
+    // AGI +4 plafonnée à +3 (PER-78), puis −5 de malus → −2 (et non +4 − 5 = −1).
+    const adj = agiTestArmorAdjustment(4, 3, 5);
+    expect(adj.cappedAgi).toBe(3);
+    expect(adj.capped).toBe(true);
+    expect(adj.penalty).toBe(5);
+    expect(adj.value).toBe(-2);
+  });
+
+  it("n'abaisse pas une AGI déjà sous le plafond, mais applique le malus", () => {
+    const adj = agiTestArmorAdjustment(1, 3, 5);
+    expect(adj.capped).toBe(false);
+    expect(adj.cappedAgi).toBe(1);
+    expect(adj.value).toBe(-4); // 1 − 5
+  });
+
+  it("un malus nul laisse la seule AGI plafonnée", () => {
+    expect(agiTestArmorAdjustment(5, 2, 0)).toEqual({ cappedAgi: 2, capped: true, penalty: 0, value: 2 });
+  });
+
+  it("planche un malus négatif à 0 (garde-fou)", () => {
+    expect(agiTestArmorAdjustment(3, null, -4).penalty).toBe(0);
+  });
+});
+
 describe('setWornAt', () => {
   it("pose l'état de port sur la ligne visée sans toucher aux autres", () => {
     const lines: EquipmentLine[] = [
@@ -211,5 +323,66 @@ describe('setWornAt', () => {
     const out = setWornAt(lines, 1, { slot: 'armor' });
     expect(out[0].worn).toEqual({ slot: 'mainHand' });
     expect(out[1].worn).toEqual({ slot: 'armor' });
+  });
+
+  it('équiper une arme à DEUX MAINS (intrinsèque) libère le bouclier porté (PER-219)', () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'petit-bouclier', quantity: 1, worn: { slot: 'shield' } },
+      { itemId: 'epee-a-deux-mains', quantity: 1 },
+    ];
+    const out = setWornAt(lines, 1, { slot: 'mainHand' });
+    expect(out[1].worn).toEqual({ slot: 'mainHand' });
+    expect(out[0].worn).toBeUndefined(); // bouclier déséquipé d'office
+  });
+
+  it('équiper une arme à deux mains libère une arme en main secondaire (PER-219)', () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'dague', quantity: 1, worn: { slot: 'offHand' } },
+      { itemId: 'epee-a-deux-mains', quantity: 1 },
+    ];
+    const out = setWornAt(lines, 1, { slot: 'mainHand' });
+    expect(out[1].worn).toEqual({ slot: 'mainHand' });
+    expect(out[0].worn).toBeUndefined();
+  });
+
+  it('passer une arme « une ou deux mains » à la prise DEUX MAINS libère bouclier ET main secondaire (PER-219)', () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'petit-bouclier', quantity: 1, worn: { slot: 'shield' } },
+      { itemId: 'dague', quantity: 1, worn: { slot: 'offHand' } },
+      { itemId: 'epee-batarde', quantity: 1, worn: { slot: 'mainHand', grip: 'oneHand' } },
+    ];
+    const out = setWornAt(lines, 2, { slot: 'mainHand', grip: 'twoHands' });
+    expect(out[2].worn).toEqual({ slot: 'mainHand', grip: 'twoHands' });
+    expect(out[0].worn).toBeUndefined();
+    expect(out[1].worn).toBeUndefined();
+  });
+
+  it("prendre une arme « une ou deux mains » à UNE main ne libère pas le bouclier (PER-219)", () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'petit-bouclier', quantity: 1, worn: { slot: 'shield' } },
+      { itemId: 'epee-batarde', quantity: 1 },
+    ];
+    const out = setWornAt(lines, 1, { slot: 'mainHand', grip: 'oneHand' });
+    expect(out[1].worn).toEqual({ slot: 'mainHand', grip: 'oneHand' });
+    expect(out[0].worn).toEqual({ slot: 'shield' }); // bouclier conservé
+  });
+
+  it("équiper une arme à deux mains ne touche pas à l'armure portée (PER-219)", () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'cuir-simple', quantity: 1, worn: { slot: 'armor' } },
+      { itemId: 'epee-a-deux-mains', quantity: 1 },
+    ];
+    const out = setWornAt(lines, 1, { slot: 'mainHand' });
+    expect(out[0].worn).toEqual({ slot: 'armor' });
+  });
+
+  it('un objet personnalisé à deux mains libère aussi bouclier et main secondaire (PER-219)', () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'petit-bouclier', quantity: 1, worn: { slot: 'shield' } },
+      { custom: true, name: 'Espadon exotique', quantity: 1 },
+    ];
+    const out = setWornAt(lines, 1, { slot: 'mainHand', grip: 'twoHands' });
+    expect(out[1].worn).toEqual({ slot: 'mainHand', grip: 'twoHands' });
+    expect(out[0].worn).toBeUndefined();
   });
 });

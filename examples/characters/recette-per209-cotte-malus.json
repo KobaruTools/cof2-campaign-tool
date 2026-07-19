@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per209-cotte-malus",
+  "name": "Recette PER-209 — Cotte de mailles (AGI plafonnée + malus + rappel CON)",
+  "identity": {
+    "description": "ATTENDU : Guerrier (max = cotte, donc AUCUNE alerte d'armure). AGI +4 plafonnée à +3 (max cotte) PUIS malus −5 → en-tête « test de AGI » = d20 −2 + badge plein « −5 ». Résistance (rang 1) rend endurance/résistance chaleur/froid visibles : chacun porte le badge tireté « MJ ? » (rappel −5, non appliqué) + note laissant tout au MJ."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "resistance-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cotte-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-209 — Guerrier (max = cotte, donc AUCUNE alerte d'armure). AGI +4 plafonnée à +3 (max cotte) PUIS malus −5 → en-tête « test de AGI » = d20 −2 + badge plein « −5 ». Résistance (rang 1) rend endurance/résistance chaleur/froid visibles : chacun porte le badge tireté « MJ ? » (rappel −5, non appliqué) + note laissant tout au MJ.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

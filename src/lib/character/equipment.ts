@@ -173,14 +173,79 @@ export function equipConflicts(equipment: EquipmentLine[]): EquipConflict[] {
 }
 
 /**
+ * Malus d'armure (« malus d'encombrement », p. 188) imposé par l'armure PORTÉE :
+ *
+ *   `max(0, DEF mondaine de l'armure portée − bonus magique de l'armure)`
+ *
+ * Ce malus s'ajoute à la difficulté de **tous les tests d'AGI** (et, au choix du MJ,
+ * de certains tests de survie CON — voir PER-209). Un bonus magique d'armure
+ * (`EquipmentRef.magicDef`, PER-85) ne l'augmente jamais et le réduit (plancher 0) :
+ * « une chemise de mailles (DEF +4) +3 impose seulement un malus de −1 » (p. 188).
+ *
+ * Périmètre, calqué sur `defenseFromEquipment` / `wornArmorWorldlyDef` :
+ *  - seule la **première armure PORTÉE** du catalogue compte (au plus une, p. 188) ;
+ *  - les **boucliers** n'ont pas de malus d'armure (colonne AGI max « — » p. 188) ;
+ *  - la DEF retenue est la DEF **effective** (surcharges de variante appliquées, PER-211) ;
+ *  - les objets personnalisés (stats inconnues) et l'inventaire rangé sont ignorés.
+ *
+ * Fonction pure réutilisable telle quelle par l'Écran MJ (PER-210).
+ */
+export function armorEncumbrancePenalty(equipment: EquipmentLine[]): number {
+  for (const line of equipment) {
+    if (isCustomItem(line) || line.worn?.slot !== 'armor') continue;
+    const item = effectiveItem(line);
+    if (item?.category !== 'armor') continue;
+    return Math.max(0, item.def - (line.magicDef ?? 0));
+  }
+  return 0;
+}
+
+/** Effet combiné de l'armure portée sur la valeur d'AGI d'un test (PER-78 + PER-209). */
+export interface AgiTestArmorAdjustment {
+  /** AGI EFFECTIVE après le plafond d'armure (PER-78), buffs exclus. */
+  cappedAgi: number;
+  /** Le plafond d'armure abaisse-t-il l'AGI brute (`rawAgi > maxAgi`) ? */
+  capped: boolean;
+  /** Malus d'armure appliqué (≥ 0, PER-209). */
+  penalty: number;
+  /** AGI contribuant réellement au test : `cappedAgi − penalty` (buffs à ajouter par-dessus). */
+  value: number;
+}
+
+/**
+ * Compose, dans le BON ORDRE, l'effet de l'armure portée sur la composante AGI d'un test
+ * (p. 188) : on applique D'ABORD le plafond d'AGI de l'armure (PER-78, `maxAgi` ; `null` =
+ * aucun plafond), PUIS on retranche le malus d'armure (PER-209, déjà planché à 0 par
+ * `armorEncumbrancePenalty`). L'ordre importe : plafonner après coup donnerait un résultat
+ * différent pour une AGI supérieure au plafond. Les buffs/bonus propres à la carac s'ajoutent
+ * PAR-DESSUS la `value` renvoyée. Fonction pure (aucun accès catalogue).
+ */
+export function agiTestArmorAdjustment(
+  rawAgi: number,
+  maxAgi: number | null,
+  armorPenalty: number,
+): AgiTestArmorAdjustment {
+  const capped = maxAgi != null && rawAgi > maxAgi;
+  const cappedAgi = capped ? maxAgi : rawAgi;
+  const penalty = Math.max(0, armorPenalty);
+  return { cappedAgi, capped, penalty, value: cappedAgi - penalty };
+}
+
+/**
  * Pose (ou retire, avec `undefined`) l'état de port d'UNE ligne, sur une copie de la
  * liste. Ne mute pas la source.
  *
  * Exclusivité des mains : une main ne tient qu'une seule arme. Poser une arme en main
  * principale (resp. secondaire) LIBÈRE toute AUTRE arme déjà dans cette même main —
- * on ne peut pas se retrouver avec deux armes dans la même main. Les autres
- * incohérences (plusieurs armures/boucliers, deux mains déjà prises) restent
- * SIGNALÉES par `equipConflicts` sur la fiche permissive, pas empêchées ici.
+ * on ne peut pas se retrouver avec deux armes dans la même main.
+ *
+ * Cas des DEUX MAINS (PER-219) : équiper une arme qui occupe les deux mains (arme
+ * intrinsèquement à deux mains, ou arme « à une ou deux mains » posée avec la prise
+ * `twoHands`) LIBÈRE en plus, d'office et en silence (retour au sac), toute arme en
+ * main secondaire ET le bouclier porté — on ne peut physiquement pas les tenir avec.
+ * C'est le seul conflit de mains RÉSOLU activement ici ; les autres incohérences
+ * (plusieurs armures/boucliers, ou un bouclier posé APRÈS coup sur une arme à deux
+ * mains) restent SIGNALÉES par `equipConflicts` sur la fiche permissive.
  */
 export function setWornAt(
   equipment: EquipmentLine[],
@@ -189,9 +254,19 @@ export function setWornAt(
 ): EquipmentLine[] {
   const exclusiveHand =
     worn && (worn.slot === 'mainHand' || worn.slot === 'offHand') ? worn.slot : null;
+  // Arme posée en main principale occupant les deux mains → libère l'autre main
+  // (arme secondaire) et le bouclier. On teste la ligne visée dotée du nouvel état.
+  const target = equipment[index];
+  const freesOtherHand =
+    worn?.slot === 'mainHand' &&
+    target !== undefined &&
+    wornWeaponIsTwoHanded({ ...target, worn });
   return equipment.map((line, i) => {
     if (i === index) return { ...line, worn };
     if (exclusiveHand && line.worn?.slot === exclusiveHand) return { ...line, worn: undefined };
+    if (freesOtherHand && (line.worn?.slot === 'offHand' || line.worn?.slot === 'shield')) {
+      return { ...line, worn: undefined };
+    }
     return line;
   });
 }

@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per209-barbare-domaines-agi",
+  "name": "Recette PER-209 — Barbare (domaines AGI minorés)",
+  "identity": {
+    "description": "ATTENDU : Barbare (max = cuir renforcé, donc AUCUNE alerte). Cuir renforcé : DEF +3, malus −3, plafond AGI +5. AGI +4 sous le plafond → non plafonnée. En-tête « test de AGI » = d20 +1 (4 − 3) + badge « −3 ». Voie du pagne (rang 1) rend Course/Saut/Escalade (AGI) visibles : en cochant « Inclure la carac », leur total intègre −3 (le détail montre la ligne « Malus d'armure −3 »)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "pagne-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-209 — Barbare (max = cuir renforcé, donc AUCUNE alerte). Cuir renforcé : DEF +3, malus −3, plafond AGI +5. AGI +4 sous le plafond → non plafonnée. En-tête « test de AGI » = d20 +1 (4 − 3) + badge « −3 ». Voie du pagne (rang 1) rend Course/Saut/Escalade (AGI) visibles : en cochant « Inclure la carac », leur total intègre −3 (le détail montre la ligne « Malus d'armure −3 »).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
