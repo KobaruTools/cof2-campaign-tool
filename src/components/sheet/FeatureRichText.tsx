@@ -23,7 +23,7 @@ import { SourceRef } from '@/components/SourceRef';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { DieIcon } from '@/components/DieIcon';
-import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { ABILITY_COLORS, ABILITY_NAMES } from '@/lib/ui/ability';
 import { ANCESTRY_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
 import { dieAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
 import { splitNotes } from '@/lib/ui/featureNotes';
@@ -57,14 +57,57 @@ type RefTone = 'ability' | 'derived';
 /**
  * Référence mise en avant comme une petite puce, sans valeur calculée : une
  * CARACTÉRISTIQUE (« FOR », renvoi `@CODE`) ou une STAT DÉRIVÉE (« DEF », « PV »…,
- * reconnue via le glossaire). La tonalité distingue visuellement les deux familles
- * (couleur légèrement différente pour les stats dérivées). Info-bulle = nom complet.
+ * reconnue via le glossaire). La tonalité distingue visuellement les deux familles :
+ * une CARAC porte une teinte propre + un contour TIRETÉ (PER-224), une stat dérivée
+ * reste en ambre + contour plein. Info-bulle = nom complet.
  */
-function RefChip({ label, title, tone }: { label: string; title: string; tone: RefTone }) {
-  // Stat dérivée → ambre/orange pâle (`warning`), DISTINCT du bleu déjà utilisé par
-  // les quantités (`[=CHA]`) et les formules (`10 + CHA`). Caractéristique → neutre.
-  const accent = (theme: { palette: { warning: { main: string }; text: { primary: string } } }) =>
-    tone === 'derived' ? theme.palette.warning.main : theme.palette.text.primary;
+function RefChip({
+  label,
+  title,
+  tone,
+  ability,
+}: {
+  label: string;
+  title: string;
+  tone: RefTone;
+  /** Caractéristique concernée quand `tone === 'ability'` : détermine la teinte propre (PER-224). */
+  ability?: AbilityId;
+}) {
+  // CARACTÉRISTIQUE (PER-224) → teinte propre (source unique `ABILITY_COLORS`) + contour TIRETÉ,
+  // fond/bordure/TEXTE colorés : le tireté la distingue de TOUTE autre puce (toutes en plein),
+  // ce qui libère le choix des teintes même quand elles frôlent une couleur déjà employée.
+  if (tone === 'ability' && ability) {
+    const color = ABILITY_COLORS[ability];
+    return (
+      <AppTooltip title={title}>
+        <Box
+          component="span"
+          sx={{
+            display: 'inline-block',
+            verticalAlign: 'baseline',
+            px: 0.6,
+            mx: 0.2,
+            borderRadius: 0.75,
+            fontWeight: 700,
+            fontSize: '0.95em',
+            letterSpacing: 0.3,
+            lineHeight: 1.4,
+            cursor: 'help',
+            color,
+            bgcolor: alpha(color, 0.12),
+            border: 1,
+            borderStyle: 'dashed',
+            borderColor: alpha(color, 0.55),
+          }}
+        >
+          {label}
+        </Box>
+      </AppTooltip>
+    );
+  }
+  // Stat dérivée (« DEF », « PV », jet d'attaque) → ambre/orange pâle (`warning`), contour PLEIN,
+  // DISTINCT du bleu déjà utilisé par les quantités (`[=CHA]`) et les formules (`10 + CHA`).
+  const accent = (theme: Theme) => theme.palette.warning.main;
   return (
     <AppTooltip title={title}>
       <Box
@@ -81,9 +124,9 @@ function RefChip({ label, title, tone }: { label: string; title: string; tone: R
           lineHeight: 1.4,
           cursor: 'help',
           color: 'text.primary',
-          bgcolor: (theme) => alpha(accent(theme), tone === 'derived' ? 0.12 : 0.08),
+          bgcolor: (theme) => alpha(accent(theme), 0.12),
           border: 1,
-          borderColor: (theme) => alpha(accent(theme), tone === 'derived' ? 0.4 : 0.2),
+          borderColor: (theme) => alpha(accent(theme), 0.4),
         }}
       >
         {label}
@@ -299,7 +342,15 @@ function GlossaryRun({ value }: { value: string }) {
         piece.kind === 'text' ? (
           <Fragment key={i}>{piece.value}</Fragment>
         ) : piece.entry.category === 'ability' ? (
-          <RefChip key={i} label={piece.term} title={piece.entry.label} tone="ability" />
+          // `piece.term` est le code de la carac tel que capté en prose (majuscules, borné par
+          // `\b`) : il EST l'`AbilityId`, on l'utilise pour choisir la teinte (PER-224).
+          <RefChip
+            key={i}
+            label={piece.term}
+            title={piece.entry.label}
+            tone="ability"
+            ability={piece.term as AbilityId}
+          />
         ) : piece.entry.category === 'derived' ? (
           <RefChip key={i} label={piece.term} title={piece.entry.label} tone="derived" />
         ) : (
@@ -723,7 +774,15 @@ export function RichInline({
         if (seg.kind === 'capabilityRef')
           return <CapabilityChip key={i} featureId={seg.featureId} label={seg.label} />;
         if (seg.kind === 'abilityRef')
-          return <RefChip key={i} label={seg.ability} title={ABILITY_NAMES[seg.ability]} tone="ability" />;
+          return (
+            <RefChip
+              key={i}
+              label={seg.ability}
+              title={ABILITY_NAMES[seg.ability]}
+              tone="ability"
+              ability={seg.ability}
+            />
+          );
         if (seg.kind === 'die') {
           // Nombre, faces ET caractère évolutif résolus au rang de voie (un palier `|1d4°@R`
           // peut rendre le dé évolutif) ; dé évolutif → valeur au niveau courant.
