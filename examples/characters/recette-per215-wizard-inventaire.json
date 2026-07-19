@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per215-wizard-inventaire",
+  "name": "Recette PER-215 — inventaire du wizard = celui de la fiche",
+  "identity": {
+    "description": "ATTENDU (créé « comme au wizard ») : le Cuir des Ombres (variante) est auto-équipé (armure), le Grand bouclier auto-équipé (bouclier), la Rapière de Maître Ombre auto-équipée (main). Aucun conflit de port. DEF 20 = 10 + AGI 3 + DEF mondaine 6 (armure 4 + bouclier 2) + 1 magique. Rapière : DM effectif 1d6+2. Icônes de type : arme / armure / bouclier / consommable / trésor."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "magicDef": 1,
+      "overrides": {
+        "name": "Cuir des Ombres",
+        "def": 4,
+        "maxAgi": 5
+      },
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "grand-bouclier",
+      "quantity": 1,
+      "worn": {
+        "slot": "shield"
+      }
+    },
+    {
+      "itemId": "rapiere",
+      "quantity": 1,
+      "overrides": {
+        "name": "Rapière de Maître Ombre",
+        "damage": "1d6+2"
+      },
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "epee-longue",
+      "quantity": 1
+    },
+    {
+      "custom": true,
+      "name": "Fiole d’acide",
+      "quantity": 3,
+      "type": "consumable",
+      "details": "À lancer : 1d6 dégâts d’acide."
+    },
+    {
+      "custom": true,
+      "name": "Rubis étoilé",
+      "quantity": 1,
+      "type": "treasure"
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-215 — recette : wizard réutilise EquipmentList (variantes + objets custom + port).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
