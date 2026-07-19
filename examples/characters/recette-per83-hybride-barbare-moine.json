@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per83-hybride-barbare-moine",
+  "name": "Recette PER-83 — Hybride barbare/moine (sélectivité)",
+  "identity": {
+    "description": "PER-83 (sélectivité). Barbare (plafond cuir renforcé DEF +3) ayant appris des capacités de moine, portant du cuir renforcé. ATTENDU : la capacité de barbare (Réflexes éclair : Init +3, DEF +1→+2) RESTE active (l'armure est dans son plafond) ; SEULE la capacité de moine (Peau de fer : DEF +2, aucune armure autorisée) est désactivée et son bonus retiré. Prouve que la désactivation est PAR CAPACITÉ d'origine, pas globale."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "pourfendeur-r1",
+    "pourfendeur-r2",
+    "poing-r1",
+    "poing-r2",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-83 — sélectivité par profil d’origine (hybride, p. 177/180). pourfendeur-r* (barbare) conservés ; poing-r2 (moine) retiré.",
+  "createdAt": "2026-07-19T00:00:00.000Z",
+  "updatedAt": "2026-07-19T00:00:00.000Z"
+}

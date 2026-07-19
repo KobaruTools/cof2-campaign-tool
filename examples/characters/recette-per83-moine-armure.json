@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per83-moine-armure",
+  "name": "Recette PER-83 — Moine EN armure (bonus retirés)",
+  "identity": {
+    "description": "PER-83. MÊME moine niv. 5, mais portant du cuir simple (DEF +2 mondaine). ATTENDU : les voies de moine interdisent l'armure (p. 177/188) → TOUTES ses capacités de moine sont désactivées, leurs bonus RETIRÉS : plus de DEF +3, plus d'Init +3, plus de +1 AGI (Agilité héroïque). Les rangs concernés apparaissent désaturés + croix (PER-86) ET les bonus disparaissent des totaux (PER-83). Retirer l'armure les réactive."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "moine",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "poing-r1",
+    "poing-r2",
+    "vent-r1",
+    "vent-r2",
+    "vent-r4",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-83 — décision A littérale (armures.md §3) : passifs inclus. Les capacités de moine (poing/vent) ne comptent plus tant que l’armure est portée. Contraste avec recette-per83-moine-sans-armure.",
+  "createdAt": "2026-07-19T00:00:00.000Z",
+  "updatedAt": "2026-07-19T00:00:00.000Z"
+}

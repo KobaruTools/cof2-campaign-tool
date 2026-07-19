@@ -12,8 +12,8 @@ import { rulesContext } from '@/lib/character/rulesContext';
 import { finalAbilities, level1FeatureIds, materializeDraft } from '@/lib/character/wizard';
 import { classDisplayName, effectiveClassPathIds } from '@/lib/character/classDisplay';
 import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
-import { effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
-import { effectiveFeatureIdsForMods, hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
+import { activeFeatureIdsForMods, effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
+import { hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { defenseFromEquipment } from './helpers';
 import { abilityTotalColor } from '@/lib/ui/abilityColors';
@@ -61,7 +61,7 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
     // choix « capacité d'une autre voie » (PER-66) ; `preview` porte déjà les
     // choix faits dans le wizard. Le contexte (PER-67) résout les valeurs
     // scalantes (ex. PV += FOR) ; aucun interrupteur n'est encore basculé.
-    mods: modsFromFeatures(effectiveFeatureIdsForMods(preview), effectContext(preview)),
+    mods: modsFromFeatures(activeFeatureIdsForMods(preview), effectContext(preview)),
     // PV de base d'un profil hybride créé au niveau 1 (somme des deux familles,
     // p. 180) ; identique à 2 × baseHp pour un profil standard.
     hpLevel1Family: level1FamilyHp(preview, rulesContext),
@@ -147,7 +147,7 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
         </Typography>
         <DerivedStatsGrid
           input={derivedInput}
-          featureIds={effectiveFeatureIdsForMods(preview)}
+          featureIds={activeFeatureIdsForMods(preview)}
           effectContext={effectContext(preview)}
         />
       </Box>

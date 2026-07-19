@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per83-moine-sans-armure",
+  "name": "Recette PER-83 — Moine SANS armure (contrôle)",
+  "identity": {
+    "description": "PER-83 (contrôle). Moine niv. 5 sans armure. ATTENDU : ses capacités s'appliquent — DEF +3 (Peau de fer +2 / Course du vent +1), Init +3 (Pas du vent), AGI +1 (Agilité héroïque). Aucune capacité désactivée. Comparer à recette-per83-moine-armure."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "moine",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "poing-r1",
+    "poing-r2",
+    "vent-r1",
+    "vent-r2",
+    "vent-r4",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-83 — contrôle sans armure. Équiper une armure (ou importer recette-per83-moine-armure) doit faire chuter DEF/Init et retirer le +1 AGI.",
+  "createdAt": "2026-07-19T00:00:00.000Z",
+  "updatedAt": "2026-07-19T00:00:00.000Z"
+}

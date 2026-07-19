@@ -36,6 +36,8 @@ import type {
 import { ABILITY_IDS, IMMUNITY_LABELS } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
 import { borrowedHostPathByFeatureId, effectiveFeatureIdsForMods } from './choices';
+import { armorDisabledFeatureIds } from './armorRestrictions';
+import { rulesContext } from './rulesContext';
 import type { Character, FeatureChoiceSelection } from './types';
 
 /**
@@ -71,6 +73,22 @@ export interface EffectContext {
 }
 
 /**
+ * Ids des capacités qui ALIMENTENT effectivement les stats dérivées et les caractéristiques :
+ * capacités acquises + empruntées (`effectiveFeatureIdsForMods`) MOINS celles DÉSACTIVÉES par le
+ * port d'armure (PER-83, cf. `armorDisabledFeatureIds`). C'est la SOURCE UNIQUE de capacités « qui
+ * comptent » consommée par la fiche (`buildCharacterDerivedView`) et le récap du wizard : une
+ * capacité gênée par l'armure portée ne contribue plus à aucun total (bonus de DEF/Init/PV,
+ * modificateur de caractéristique, test, immunité…) tant que l'armure est portée ; la retirer la
+ * réactive. Le RENDU « désactivée » (rang désaturé + infobulle) est déjà porté par PER-86 dans
+ * `FeaturesByPath` — ici on n'assure que le RETRAIT effectif dans les calculs.
+ */
+export function activeFeatureIdsForMods(character: Character): string[] {
+  const ids = effectiveFeatureIdsForMods(character);
+  const disabled = armorDisabledFeatureIds(character, rulesContext);
+  return disabled.size ? ids.filter((id) => !disabled.has(id)) : ids;
+}
+
+/**
  * Caractéristiques EFFECTIVES = valeur saisie (base + peuple) + modificateurs
  * PERMANENTS apportés par les capacités (`ability-bonus`, ex. Endurer/metal-r5 :
  * +1 CON). C'est la valeur réelle de la caractéristique du personnage (celle que
@@ -82,7 +100,7 @@ export interface EffectContext {
  * cohérent avec l'inventaire affiché par `abilityModSources`.
  */
 export function effectiveAbilities(character: Character): Record<AbilityId, number> {
-  const mods = abilityModsFromFeatures(effectiveFeatureIdsForMods(character), character.featureChoices);
+  const mods = abilityModsFromFeatures(activeFeatureIdsForMods(character), character.featureChoices);
   const out: Record<AbilityId, number> = { ...character.abilities };
   for (const [ability, value] of Object.entries(mods) as [AbilityId, number][]) {
     out[ability] = (out[ability] ?? 0) + value;

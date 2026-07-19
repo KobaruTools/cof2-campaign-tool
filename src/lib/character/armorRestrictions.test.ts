@@ -3,9 +3,11 @@ import { rulesContext } from './rulesContext';
 import { createBlankCharacter } from './factory';
 import type { Character, EquipmentLine } from './types';
 import {
+  armorDisabledFeatureIds,
   armorRestrictionViolations,
   featureArmorRestrictionViolations,
 } from './armorRestrictions';
+import { activeFeatureIdsForMods, effectContext, effectiveAbilities, modsFromFeatures } from './effects';
 
 const ctx = rulesContext;
 
@@ -236,5 +238,64 @@ describe('featureArmorRestrictionViolations — restriction fine par capacité d
       equipment: [{ custom: true, name: 'Armure de fortune', quantity: 1, worn: { slot: 'armor' } }],
     });
     expect(featureArmorRestrictionViolations(moine, ctx)).toHaveLength(0);
+  });
+});
+
+describe('armorDisabledFeatureIds / activeFeatureIdsForMods — retrait des bonus en armure (PER-83)', () => {
+  // poing-r2 « Peau de fer » : DEF +2 (moine, aucune armure autorisée).
+  // vent-r1 « Pas du vent » : Init +3 (moine, aucune armure autorisée).
+  // pourfendeur-r1 « Réflexes éclair » : Init +3 et DEF +1 (barbare, plafond cuir renforcé DEF +3).
+  const mods = (c: Character) => modsFromFeatures(activeFeatureIdsForMods(c), effectContext(c));
+
+  it("sans armure : aucune capacité désactivée, les bonus s'appliquent", () => {
+    const moine = makeChar({ classId: 'moine', featureIds: ['poing-r2', 'vent-r1'] });
+    expect(armorDisabledFeatureIds(moine, ctx).size).toBe(0);
+    expect(mods(moine)).toEqual({ def: 2, initiative: 3 });
+  });
+
+  it('un moine en armure perd les bonus de ses capacités (DEF et Init retirés)', () => {
+    const moine = makeChar({
+      classId: 'moine',
+      featureIds: ['poing-r2', 'vent-r1'],
+      equipment: [wornArmor('cuir-simple')],
+    });
+    expect(armorDisabledFeatureIds(moine, ctx)).toEqual(new Set(['poing-r2', 'vent-r1']));
+    expect(mods(moine)).toEqual({});
+  });
+
+  it("retire aussi le modificateur de caractéristique d'une capacité désactivée (AGI +1)", () => {
+    // vent-r4 « Agilité héroïque » : +1 AGI (moine). Sans armure → AGI +1 ; en armure → retiré.
+    const sansArmure = makeChar({ classId: 'moine', featureIds: ['vent-r4'] });
+    expect(effectiveAbilities(sansArmure).AGI).toBe(1);
+    const enArmure = makeChar({
+      classId: 'moine',
+      featureIds: ['vent-r4'],
+      equipment: [wornArmor('cuir-simple')],
+    });
+    expect(effectiveAbilities(enArmure).AGI).toBe(0);
+  });
+
+  it('sélectivité : seule la capacité gênée est désactivée (hybride barbare/moine)', () => {
+    // Barbare (plafond cuir renforcé, DEF +3) portant du cuir renforcé : sa capacité de barbare
+    // (pourfendeur-r1) reste active, mais sa capacité de moine (poing-r2, aucune armure) est retirée.
+    const hybride = makeChar({
+      classId: 'barbare',
+      featureIds: ['pourfendeur-r1', 'poing-r2'],
+      equipment: [wornArmor('cuir-renforce-broigne')],
+    });
+    expect(armorDisabledFeatureIds(hybride, ctx)).toEqual(new Set(['poing-r2']));
+    // pourfendeur-r1 conservé (Init +3, DEF +1) ; poing-r2 (DEF +2) retiré.
+    expect(mods(hybride)).toEqual({ initiative: 3, def: 1 });
+  });
+
+  it("réversible : retirer l'armure réactive les capacités", () => {
+    const enArmure = makeChar({
+      classId: 'moine',
+      featureIds: ['poing-r2'],
+      equipment: [wornArmor('cuir-simple')],
+    });
+    expect(activeFeatureIdsForMods(enArmure)).not.toContain('poing-r2');
+    const sansArmure = makeChar({ classId: 'moine', featureIds: ['poing-r2'], equipment: [] });
+    expect(activeFeatureIdsForMods(sansArmure)).toContain('poing-r2');
   });
 });

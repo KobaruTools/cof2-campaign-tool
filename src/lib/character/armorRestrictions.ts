@@ -215,6 +215,28 @@ export function featureArmorRestrictionMessage(v: FeatureArmorRestrictionViolati
   return `Capacité de « ${v.className} » inutilisable avec l'armure portée (${cap}) : retirez votre armure pour en profiter (p. 177).`;
 }
 
+/**
+ * PER-83 — ids des capacités DÉSACTIVÉES par le port d'armure : exactement celles que
+ * `featureArmorRestrictionViolations` (PER-86) signale comme inutilisables parce que l'armure
+ * portée dépasse la restriction d'armure de leur PROFIL D'ORIGINE (moine → aucune armure, voleur
+ * → cuir maximum, etc. — p. 177). Décision propriétaire A, lecture LITTÉRALE de la p. 188
+ * (« si vous utilisez une armure trop lourde, toutes les capacités restreintes à une armure plus
+ * légère vous seront interdites », passifs INCLUS — cf. `docs/extraction/armures.md` §3) : tant que
+ * l'armure trop lourde est portée, ces capacités ne contribuent plus à AUCUN calcul (leurs bonus
+ * de DEF/Init/PV, modificateurs de caractéristique, tests… sont retirés). Réversible : retirer
+ * l'armure les réactive.
+ *
+ * Où PER-86 s'arrête et où PER-83 prend le relais : PER-86 SIGNALE (rang désaturé + infobulle dans
+ * `FeaturesByPath`) mais laissait les bonus appliqués ; PER-83 les RETIRE effectivement du moteur,
+ * en excluant ces ids de la liste des capacités actives (cf. `activeFeatureIdsForMods`). Les SORTS
+ * sont exclus (leur surcoût de mana en armure relève de PER-82), comme dans le module PER-86.
+ * Le garde-fou « aucune armure portée → aucun retrait » évite tout coût sur le cas le plus courant.
+ */
+export function armorDisabledFeatureIds(character: Character, ctx: RulesContext): Set<string> {
+  if (!character.equipment?.length) return new Set();
+  return new Set(featureArmorRestrictionViolations(character, ctx).map((v) => v.featureId));
+}
+
 /** Écart de port d'armure/bouclier à signaler (avertissement non bloquant). */
 export interface ArmorRestrictionViolation {
   kind: 'armor-too-heavy' | 'shield-not-allowed';

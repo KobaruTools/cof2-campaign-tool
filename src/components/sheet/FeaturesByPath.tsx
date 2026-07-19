@@ -103,10 +103,19 @@ const WIP_CHIP_SX = { color: '#ffeb3b', borderColor: '#ffeb3b' } as const;
 
 /**
  * Deux barres diagonales en croix « capacité désactivée par l'armure » (PER-86) : légères,
- * 2px d'épaisseur, semi-transparentes, dérivées de la couleur de texte courante (donc adaptées
+ * ~1px d'épaisseur, semi-transparentes, dérivées de la couleur de texte courante (donc adaptées
  * au thème clair/sombre) via `color-mix`. Dessinées en `::after` (pointer-events:none, sous les
  * badges positionnés) sur le bloc restreint — le conteneur doit être `position: relative`.
+ *
+ * Les bords du trait sont FEUTRÉS : une rampe de ~0.75px `transparent → couleur` de chaque côté
+ * (au lieu d'un arrêt net à la même position) laisse le navigateur anti-aliaser la diagonale.
+ * Sans ça, l'arrête franche du gradient « marche » pixel par pixel et crénelle fortement, surtout
+ * sur une barre large et basse (diagonale très inclinée). Cf. `CROSS_STOPS`.
  */
+const CROSS_COLOR = 'color-mix(in srgb, currentColor 45%, transparent)';
+const CROSS_STOPS =
+  `transparent calc(50% - 1.25px), ${CROSS_COLOR} calc(50% - 0.5px), ` +
+  `${CROSS_COLOR} calc(50% + 0.5px), transparent calc(50% + 1.25px)`;
 const ARMOR_RESTRICTED_BARS_SX = {
   '&::after': {
     content: '""',
@@ -115,8 +124,8 @@ const ARMOR_RESTRICTED_BARS_SX = {
     pointerEvents: 'none',
     borderRadius: 'inherit',
     backgroundImage:
-      'linear-gradient(to top right, transparent calc(50% - 1px), color-mix(in srgb, currentColor 45%, transparent) calc(50% - 1px), color-mix(in srgb, currentColor 45%, transparent) calc(50% + 1px), transparent calc(50% + 1px)), ' +
-      'linear-gradient(to bottom right, transparent calc(50% - 1px), color-mix(in srgb, currentColor 45%, transparent) calc(50% - 1px), color-mix(in srgb, currentColor 45%, transparent) calc(50% + 1px), transparent calc(50% + 1px))',
+      `linear-gradient(to top right, ${CROSS_STOPS}), ` +
+      `linear-gradient(to bottom right, ${CROSS_STOPS})`,
   },
 } as const;
 

@@ -14,8 +14,8 @@
 import { classById, families, featureById } from '@/data';
 import type { DerivedInput } from '@/lib/engine';
 import type { Character } from '@/lib/character/types';
-import { effectiveFeatureIdsForMods } from '@/lib/character/choices';
 import {
+  activeFeatureIdsForMods,
   aggregateImmunities,
   criticalRangeSources,
   effectContext,
@@ -59,9 +59,10 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const characterClass = classById.get(character.classId);
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
 
-  // Capacités acquises + capacités empruntées par choix : base de l'agrégation
-  // des bonus plats et du détail des stats dérivées (PER-66).
-  const modFeatureIds = effectiveFeatureIdsForMods(character);
+  // Capacités acquises + capacités empruntées par choix, MOINS celles désactivées par
+  // le port d'armure (PER-83) : base de l'agrégation des bonus plats et du détail des
+  // stats dérivées (PER-66). Une capacité gênée par l'armure ne compte plus nulle part.
+  const modFeatureIds = activeFeatureIdsForMods(character);
   // Contexte d'effets (PER-67) : résout les valeurs scalantes et n'inclut que les
   // effets conditionnels dont l'interrupteur est actif.
   const effectCtx = effectContext(character);
