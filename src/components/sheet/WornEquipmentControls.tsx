@@ -16,12 +16,19 @@ import type { Weapon } from '@/data/schema';
 import { equipConflicts } from '@/lib/character/equipment';
 import { isWeaponMastered } from '@/lib/character/mastery';
 import { rulesContext } from '@/lib/character/rulesContext';
-import type { EquipmentLine, EquipSlot, WeaponGrip, WornState } from '@/lib/character/types';
+import type { EquipmentLine, EquipSlot, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import type { WeaponAffinity } from '@/lib/character/weaponAffinity';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PageRefText } from '@/components/SourceRef';
+
+/**
+ * Position d'UNE arme dans les mains (PER-219), telle qu'exposée par les boutons :
+ * main principale (à une main), main secondaire, ou les deux mains. Encode à la fois
+ * l'emplacement et la prise, pour n'avoir qu'un seul groupe de boutons.
+ */
+type WeaponPosition = 'mainHand' | 'offHand' | 'twoHands';
 
 /** Icône d'un emplacement de port (armure, bouclier, main). */
 function slotIcon(slot: EquipSlot, size = 16) {
@@ -121,12 +128,31 @@ export function WornControls({
   if (item.category === 'weapon') {
     const intrinsicTwoHands = item.weaponCategory === 'twoHands';
     const canChooseGrip = item.weaponCategory === 'oneOrTwoHands';
-    const slot = line.worn?.slot ?? null;
-    const grip: WeaponGrip = line.worn?.grip === 'twoHands' ? 'twoHands' : 'oneHand';
 
-    const setSlot = (next: EquipSlot | null) => {
-      if (next === 'mainHand') onWear({ slot: 'mainHand', ...(canChooseGrip ? { grip } : {}) });
+    // Position combinée de l'arme (PER-219) : « main principale » et « deux mains » sont
+    // désormais deux boutons frères (pour une arme « à une ou deux mains »), au lieu d'un
+    // choix de prise séparé. Une arme intrinsèquement à deux mains n'expose QUE « Deux mains ».
+    const position: WeaponPosition | null = !line.worn
+      ? null
+      : line.worn.slot === 'offHand'
+        ? 'offHand'
+        : line.worn.slot === 'mainHand'
+          ? intrinsicTwoHands || line.worn.grip === 'twoHands'
+            ? 'twoHands'
+            : 'mainHand'
+          : null;
+
+    // Un objet « à une ou deux mains » porte une prise explicite ; les autres armes
+    // (une main / légère / intrinsèquement deux mains) n'en ont pas besoin.
+    const mainHandWorn = (): WornState =>
+      canChooseGrip ? { slot: 'mainHand', grip: 'oneHand' } : { slot: 'mainHand' };
+    const twoHandsWorn = (): WornState =>
+      canChooseGrip ? { slot: 'mainHand', grip: 'twoHands' } : { slot: 'mainHand' };
+
+    const setPosition = (next: WeaponPosition | null) => {
+      if (next === 'mainHand') onWear(mainHandWorn());
       else if (next === 'offHand') onWear({ slot: 'offHand' });
+      else if (next === 'twoHands') onWear(twoHandsWorn());
       else onWear(undefined);
     };
 
@@ -135,41 +161,32 @@ export function WornControls({
         <ToggleButtonGroup
           exclusive
           size="small"
-          value={slot}
+          value={position}
           color="success"
-          onChange={(_, next: EquipSlot | null) => setSlot(next)}
+          onChange={(_, next: WeaponPosition | null) => setPosition(next)}
         >
-          <ToggleButton value="mainHand" sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}>
-            {slotIcon('mainHand')}
-            {intrinsicTwoHands ? 'En main' : 'Main principale'}
-          </ToggleButton>
-          {/* Pas de main secondaire pour une arme intrinsèquement à deux mains (elle prend les deux). */}
+          {/* Une arme intrinsèquement à deux mains n'a ni main principale ni secondaire. */}
+          {!intrinsicTwoHands && (
+            <ToggleButton value="mainHand" sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}>
+              {slotIcon('mainHand')}
+              Main principale
+            </ToggleButton>
+          )}
           {!intrinsicTwoHands && (
             <ToggleButton value="offHand" sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}>
               {slotIcon('offHand')}
               Main secondaire
             </ToggleButton>
           )}
+          {/* « Deux mains » : proposé pour une arme à deux mains (intrinsèque ou « une ou deux
+              mains »). L'équiper libère d'office la main secondaire et le bouclier (cf. setWornAt). */}
+          {(intrinsicTwoHands || canChooseGrip) && (
+            <ToggleButton value="twoHands" sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}>
+              {slotIcon('mainHand')}
+              Deux mains
+            </ToggleButton>
+          )}
         </ToggleButtonGroup>
-
-        {/* Choix de la prise : uniquement pour une arme « à une ou deux mains » tenue en main principale. */}
-        {canChooseGrip && slot === 'mainHand' && (
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={grip}
-            onChange={(_, g: WeaponGrip | null) => {
-              if (g) onWear({ slot: 'mainHand', grip: g });
-            }}
-          >
-            <ToggleButton value="oneHand" sx={{ py: 0.25, px: 1, textTransform: 'none' }}>
-              1 main
-            </ToggleButton>
-            <ToggleButton value="twoHands" sx={{ py: 0.25, px: 1, textTransform: 'none' }}>
-              2 mains
-            </ToggleButton>
-          </ToggleButtonGroup>
-        )}
       </Stack>
     );
   }
