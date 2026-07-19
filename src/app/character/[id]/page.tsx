@@ -36,6 +36,11 @@ import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { classDisplayName } from '@/lib/character/classDisplay';
 import { masteredClassIds, sacredWeaponMasteryIds } from '@/lib/character/mastery';
+import { weaponAffinities } from '@/lib/character/weaponAffinity';
+import {
+  PriestVocationBadge,
+  PriestVocationIdentityLine,
+} from '@/components/sheet/PriestVocationBadge';
 import { firearmsEffective } from '@/lib/character/firearms';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
@@ -857,6 +862,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   ? classDisplayName(characterClass, firearmsAllowed)
                   : 'Profil à définir'}
               </Typography>
+              {/* Vocation du prêtre spécialiste (PER-218) : trait d'identité, visible d'un coup d'œil. */}
+              <PriestVocationBadge vocation={character.priestVocation} />
               <Typography variant="body1" component="span">
                 · niveau {character.level}
               </Typography>
@@ -1155,6 +1162,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               firearmsAllowed={firearmsAllowed}
               // Exception d'arme sacrée du prêtre spécialiste (PER-96).
               sacredWeaponIds={sacredWeaponMasteryIds(character)}
+              // Badge positif d'affinité d'arme (PER-218) : arme sacrée « maîtrisée ».
+              resolveWeaponAffinities={(itemId) => weaponAffinities(character, itemId)}
             />
           </SheetSection>
 
@@ -1174,6 +1183,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               )
             }
           >
+            {/* Vocation RP du prêtre spécialiste (PER-218) : descriptif, au-dessus des champs libres. */}
+            <PriestVocationIdentityLine vocation={character.priestVocation} />
             {editingBlocks.identity ? (
               <IdentityEditor
                 name={character.name}

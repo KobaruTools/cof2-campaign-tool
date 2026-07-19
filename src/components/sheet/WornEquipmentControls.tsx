@@ -1,5 +1,6 @@
 'use client';
 
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import CheckroomIcon from '@mui/icons-material/Checkroom';
 import PanToolIcon from '@mui/icons-material/PanTool';
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
@@ -17,6 +18,7 @@ import { isWeaponMastered } from '@/lib/character/mastery';
 import { rulesContext } from '@/lib/character/rulesContext';
 import type { EquipmentLine, EquipSlot, WeaponGrip, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
+import type { WeaponAffinity } from '@/lib/character/weaponAffinity';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PageRefText } from '@/components/SourceRef';
@@ -283,6 +285,46 @@ export function WeaponMasteryBadge({
         </Box>
       </AppTooltip>
     </Box>
+  );
+}
+
+/**
+ * Badge(s) POSITIF(s) d'affinité d'arme (PER-218) : pendant du badge « Non maîtrisée ·
+ * dé malus », posé sur une arme de l'inventaire qui est SPÉCIALE pour le personnage
+ * (aujourd'hui : arme sacrée d'un prêtre spécialiste, cf. `weaponAffinities`). Un
+ * bloc custom en teinte « success » par affinité, info-bulle citant la règle verbatim
+ * + puce de source. `null` si aucune affinité (cas le plus courant).
+ */
+export function WeaponAffinityBadge({ affinities }: { affinities: WeaponAffinity[] }) {
+  if (affinities.length === 0) return null;
+  return (
+    <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: 'wrap', gap: 0.5 }}>
+      {affinities.map((affinity) => (
+        <AppTooltip key={affinity.kind} title={<PageRefText>{affinity.tooltip}</PageRefText>}>
+          <Box
+            component="span"
+            sx={(theme) => ({
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.5,
+              px: 0.75,
+              height: 22,
+              borderRadius: 1,
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              cursor: 'help',
+              color: theme.palette.success.main,
+              bgcolor: alpha(theme.palette.success.main, 0.12),
+              border: `1px solid ${alpha(theme.palette.success.main, 0.45)}`,
+            })}
+          >
+            <AutoAwesomeOutlinedIcon sx={{ fontSize: 14 }} />
+            {affinity.label}
+          </Box>
+        </AppTooltip>
+      ))}
+    </Stack>
   );
 }
 

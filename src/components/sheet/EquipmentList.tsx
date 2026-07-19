@@ -33,10 +33,12 @@ import { DamageValue } from '@/components/DamageValue';
 import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
 import {
   EquipConflictsAlert,
+  WeaponAffinityBadge,
   WeaponMasteryBadge,
   WornBadge,
   WornControls,
 } from '@/components/sheet/WornEquipmentControls';
+import type { WeaponAffinity } from '@/lib/character/weaponAffinity';
 
 /**
  * Résolution NOM D'OBJET → capacité mise en avant (puce) pour les doses d'élixir (voie des élixirs).
@@ -194,6 +196,13 @@ export interface EquipmentListProps {
    * l'arme sacrée même tranchante/perçante. Absent → aucune exception.
    */
   sacredWeaponIds?: ReadonlySet<string>;
+  /**
+   * Résolveur d'affinités d'arme (PER-218) : pour l'id d'objet d'une ligne, ce qui
+   * rend l'arme SPÉCIALE pour ce personnage (arme sacrée du prêtre spécialiste, et à
+   * terme prédilection/armes de peuple). Rend un badge positif par affinité. Absent →
+   * aucun badge d'affinité. Fourni par l'appelant lié au personnage (`weaponAffinities`).
+   */
+  resolveWeaponAffinities?: (itemId: string) => WeaponAffinity[];
 }
 
 /** Liste de l'équipement possédé, en lecture ou en édition. */
@@ -206,6 +215,7 @@ export function EquipmentList({
   masteredIds,
   firearmsAllowed = true,
   sacredWeaponIds,
+  resolveWeaponAffinities,
 }: EquipmentListProps) {
   // Modale d'objet (PER-214) : `null` = fermée, `'new'` = création, un index = édition de
   // la ligne correspondante (bouton crayon, objet custom OU arme/armure/bouclier).
@@ -405,6 +415,11 @@ export function EquipmentList({
                     firearmsAllowed={firearmsAllowed}
                     sacredWeaponIds={sacredWeaponIds}
                   />
+                )}
+                {/* Affinité d'arme (PER-218) : badge POSITIF si l'arme est spéciale pour le perso
+                    (arme sacrée du prêtre spécialiste). S'affiche sur l'objet du catalogue, porté ou non. */}
+                {resolveWeaponAffinities && !custom && item?.category === 'weapon' && (
+                  <WeaponAffinityBadge affinities={resolveWeaponAffinities(line.itemId)} />
                 )}
                 {/* Avertissement (PER-185) : arme à poudre grisée quand la poudre est indisponible. */}
                 {firearmUnavailable && <FirearmUnavailableBadge />}
