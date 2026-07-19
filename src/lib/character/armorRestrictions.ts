@@ -266,6 +266,17 @@ export function wornArmorWorldlyDef(equipment: EquipmentLine[]): number {
 }
 
 /**
+ * Une armure est-elle RÉELLEMENT portée (slot `armor`) ? À DISTINGUER de
+ * `wornArmorWorldlyDef` (> 0) : ici on compte TOUTE armure portée, y compris une
+ * armure personnalisée aux stats inconnues (DEF mondaine 0) — la règle « porte-t-il
+ * une armure ? » (Armure de vent, PER-132, p. 81) ne dépend pas de la DEF de
+ * l'armure, seulement de sa présence. Sans-safe (équipement absent → faux).
+ */
+export function isArmorWorn(equipment: EquipmentLine[] = []): boolean {
+  return equipment.some((line) => line.worn?.slot === 'armor');
+}
+
+/**
  * Plafond de PORT d'armure (DEF mondaine) du personnage : la meilleure armure
  * autorisée parmi les profils qu'il MAÎTRISE (`masteredClassIds`), relevée par les
  * capacités `armor-access` acquises (Tour de force, Autorité naturelle… — PER-81).

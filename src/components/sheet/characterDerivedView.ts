@@ -18,6 +18,7 @@ import {
   activeFeatureIdsForMods,
   aggregateImmunities,
   criticalRangeSources,
+  defenseAbility,
   effectContext,
   isEffectActive,
   manaCastingAbility,
@@ -147,6 +148,10 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     ? { defBonus: 0, maxAgi: null }
     : defenseFromEquipment(character.equipment);
 
+  // Caractéristique de DEF : AGI par défaut, ou substitution retenue par une capacité
+  // (Peau de pierre du barbare : CON, PER-131). Le plafond d'armure s'appliquera à elle.
+  const defAbility = defenseAbility(modFeatureIds, effectCtx);
+
   const derivedInput: DerivedInput | null = family
     ? {
         // Caractéristiques EFFECTIVES (saisie + modificateurs permanents de capacités).
@@ -154,6 +159,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         level: character.level,
         family,
         defenseEquipment: defenseEquip,
+        defAbility,
         // Sorts connus = acquis ET EMPRUNTÉS (encadré « Appel à une autre capacité », p. 60). PER-73.
         spellCount: modFeatureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
         manaAbility: manaCast.ability,

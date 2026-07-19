@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per132-armure-de-vent-sans-armure",
+  "name": "Recette PER-132 — Armure de vent (+2 sans armure)",
+  "identity": {
+    "description": "ATTENDU : aucune armure portée → Armure de vent donne +2 en DEF (AUTOMATIQUE, sans interrupteur). DEF = 10 + AGI 2 + 2 = 14. Le +2 apparaît sous « Capacités / divers »."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "primitif-r1",
+    "primitif-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-132 — Armure de vent : +2 en DEF sans armure (rang 2), auto selon le port.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

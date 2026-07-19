@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { featureById } from '@/data';
 import type { AbilityId } from '@/data/schema';
-import type { Character } from './types';
+import type { Character, EquipmentLine } from './types';
+import { createBlankCharacter } from './factory';
 import { effectiveFeatureIdsForMods } from './choices';
 import {
   abilityBonusDiceFromFeatures,
@@ -22,6 +23,7 @@ import {
   damageReductionSources,
   stackedDamageReductions,
   creatureBonusDiceForPath,
+  defenseAbility,
   disabledFeatureIds,
   disabledFeatureReasons,
   effectContext,
@@ -485,10 +487,11 @@ describe('interrupteurs des effets conditionnels', () => {
   });
 
   it('setEffectToggle fixe une case sans muter le personnage', () => {
-    // primitif-r2 (Armure de vent) : interrupteur conditionnel SANS exclusion mutuelle ni
-    // désactivation → aucune cascade, le résultat ne contient que la case fixée.
-    const next = setEffectToggle(charWith({}), 'primitif-r2', 0, true);
-    expect(next).toEqual({ 'primitif-r2': [true] });
+    // primitif-r1 (Proche de la nature), effet 1 : interrupteur conditionnel « en milieu naturel »
+    // SANS exclusion mutuelle ni désactivation → aucune cascade ; le tableau est complété jusqu'à
+    // l'index visé (effet 0 = bonus plat de PV, non basculable → false).
+    const next = setEffectToggle(charWith({}), 'primitif-r1', 1, true);
+    expect(next).toEqual({ 'primitif-r1': [false, true] });
   });
 
   it('pruneEffectToggles retire les interrupteurs orphelins', () => {
@@ -506,6 +509,8 @@ describe('effectContext', () => {
       featureChoices: {},
       // Mapping emprunt → voie A (PER-73) : vide ici (aucune capacité empruntée).
       borrowedHostPaths: new Map(),
+      // Armure réellement portée (PER-132) : aucune ici (personnage minimal sans équipement).
+      armorWorn: false,
     });
   });
 });
@@ -1327,5 +1332,85 @@ describe('états préjudiciables infligeables — Botte secrète (spadassin-r5, 
     it('élague les marqueurs quand la capacité n’est plus acquise', () => {
       expect(pruneUsageCounters({ [immobilizedKey]: 0, [blindedKey]: 0 }, [])).toEqual({});
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PER-131 — Peau de pierre (barbare, pagne-r2) : CON pour la DEF, ou bonus plat
+// ---------------------------------------------------------------------------
+
+describe('defenseAbility — caractéristique de calcul de la DEF (PER-131)', () => {
+  const choiceCtx = (choice?: string): EffectContext =>
+    ctx({ featureChoices: choice ? { 'pagne-r2': [choice] } : {} });
+
+  it('AGI par défaut quand aucune capacité ne la remplace', () => {
+    expect(defenseAbility([])).toBe('AGI');
+    expect(defenseAbility(['pourfendeur-r1'], ctx())).toBe('AGI');
+  });
+
+  it('CON quand Peau de pierre retient « con-for-def »', () => {
+    expect(defenseAbility(['pagne-r2'], choiceCtx('con-for-def'))).toBe('CON');
+  });
+
+  it('AGI quand Peau de pierre retient « def-bonus »', () => {
+    expect(defenseAbility(['pagne-r2'], choiceCtx('def-bonus'))).toBe('AGI');
+  });
+
+  it('AGI sans contexte de choix (catalogue seul)', () => {
+    expect(defenseAbility(['pagne-r2'])).toBe('AGI');
+  });
+});
+
+describe('Peau de pierre — bonus plat +1/+2 en DEF (def-bonus, PER-131)', () => {
+  const withChoice = (choice: string): EffectContext => ctx({ featureChoices: { 'pagne-r2': [choice] } });
+
+  it('+1 en DEF au rang 2 de la voie du pagne', () => {
+    expect(modsFromFeatures(['pagne-r2'], withChoice('def-bonus')).def).toBe(1);
+  });
+
+  it('+2 en DEF au rang 4 de la voie du pagne', () => {
+    expect(modsFromFeatures(['pagne-r2', 'pagne-r4'], withChoice('def-bonus')).def).toBe(2);
+  });
+
+  it('« con-for-def » n’ajoute aucun bonus plat de DEF', () => {
+    expect(modsFromFeatures(['pagne-r2'], withChoice('con-for-def')).def ?? 0).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PER-132 — Armure de vent (barbare, primitif-r2) : DEF selon l'armure portée
+// ---------------------------------------------------------------------------
+
+describe('Armure de vent — bonus de DEF selon l’armure portée (PER-132)', () => {
+  it('+2 en DEF quand aucune armure n’est portée', () => {
+    expect(modsFromFeatures(['primitif-r2'], ctx({ armorWorn: false })).def).toBe(2);
+  });
+
+  it('+3 en DEF sans armure au rang 5 de la voie', () => {
+    expect(modsFromFeatures(['primitif-r2', 'primitif-r5'], ctx({ armorWorn: false })).def).toBe(3);
+  });
+
+  it('+1 en DEF quand une armure est portée', () => {
+    expect(modsFromFeatures(['primitif-r2'], ctx({ armorWorn: true })).def).toBe(1);
+  });
+
+  it('+1 en DEF avec armure, même au rang 5', () => {
+    expect(modsFromFeatures(['primitif-r2', 'primitif-r5'], ctx({ armorWorn: true })).def).toBe(1);
+  });
+
+  it('sans contexte (catalogue seul), aucune contribution résoluble', () => {
+    expect(modsFromFeatures(['primitif-r2']).def ?? 0).toBe(0);
+  });
+
+  it('effectContext expose l’armure réellement portée (worn)', () => {
+    const base = createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' });
+    const wornArmor: EquipmentLine = { itemId: 'cuir-simple', quantity: 1, worn: { slot: 'armor' } };
+    const sansArmure: Character = { ...base, classId: 'barbare', featureIds: ['primitif-r2'] };
+    const avecArmure: Character = { ...sansArmure, equipment: [wornArmor] };
+    expect(effectContext(sansArmure).armorWorn).toBe(false);
+    expect(effectContext(avecArmure).armorWorn).toBe(true);
+    // Le bonus suit l'état porté sans interrupteur manuel.
+    expect(modsFromFeatures(['primitif-r2'], effectContext(sansArmure)).def).toBe(2);
+    expect(modsFromFeatures(['primitif-r2'], effectContext(avecArmure)).def).toBe(1);
   });
 });

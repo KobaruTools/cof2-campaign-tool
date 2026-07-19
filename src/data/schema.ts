@@ -421,7 +421,8 @@ export type FeatureEffect =
   | ManaAbilityOverrideEffect
   | UniversalTestBonusEffect
   | ImmunityEffect
-  | ArmorAccessEffect;
+  | ArmorAccessEffect
+  | ArmorDefBonusEffect;
 
 /**
  * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
@@ -954,6 +955,23 @@ export interface ArmorAccessEffect {
   hybridClassRaises?: Array<{ classId: string; maxArmorId: string }>;
 }
 
+/**
+ * Bonus de DEF conditionné à l'ARMURE RÉELLEMENT PORTÉE (PER-132), résolu
+ * AUTOMATIQUEMENT depuis l'état d'équipement du personnage — sans interrupteur
+ * manuel (contrairement à `ConditionalStatBonusEffect`). Ex. Armure de vent
+ * (barbare, primitif-r2, p. 81) : « sans armure, +2 en DEF (+3 au rang 5) ; avec
+ * une armure, +1 en DEF ». Les deux branches sont mutuellement exclusives et
+ * couvrent tous les cas — le moteur en applique toujours une (cf. `armorWorn`
+ * dans `EffectContext`). Chaque valeur peut être scalante (`EffectValue`).
+ */
+export interface ArmorDefBonusEffect {
+  kind: 'armor-def-bonus';
+  /** Bonus de DEF quand AUCUNE armure n'est portée (ex. +2, passant à +3 au rang 5). */
+  whenUnarmored: EffectValue;
+  /** Bonus de DEF quand une armure EST portée (ex. +1). */
+  whenArmored: EffectValue;
+}
+
 export interface TestBonusEffect {
   kind: 'test-bonus';
   /**
@@ -1240,6 +1258,15 @@ export interface FeatureChoiceOption {
    * même titre qu'un `StatBonusEffect`. Valeur constante ou scalante. Absent = aucun.
    */
   statBonuses?: StatBonus[];
+  /**
+   * Caractéristique utilisée pour calculer la DEF À LA PLACE de l'AGI lorsque cette option
+   * est retenue (PER-131). Ex. Peau de pierre (barbare, pagne-r2, p. 80) : option « CON pour
+   * la DEF » → `defAbility: 'CON'`. Le plafond d'armure (« AGI maximale », p. 188) s'applique
+   * alors à cette caractéristique de substitution (le moteur plafonne la valeur qu'il reçoit,
+   * cf. `defense`). Résolu par `defenseAbility` puis passé au moteur via `DerivedInput.defAbility`.
+   * Absent = DEF sur l'AGI (cas standard).
+   */
+  defAbility?: AbilityId;
   /**
    * Bonus CHIFFRÉ aux tests d'UNE caractéristique octroyé lorsque cette option est retenue
    * (ex. Tatouages, barbare pagne-r3 : Taureau → +3 aux tests de FOR). PER-125. Axe DISTINCT du

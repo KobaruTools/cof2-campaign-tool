@@ -219,6 +219,35 @@ describe('défense', () => {
     // Le bonus magique s'ajoute PAR-DESSUS l'AGI plafonnée par l'armure (p. 188).
     expect(defense(5, { defBonus: 5, maxAgi: 3, magicDefBonus: 2 })).toBe(20);
   });
+
+  it('utilise la caractéristique de DEF choisie — CON pour Peau de pierre (PER-131)', () => {
+    // Barbare CON 3 / AGI 1 en cotte de mailles (AGI max +3, DEF +5) : la DEF se
+    // calcule sur la CON (3, sous le plafond) → 10 + 3 + 5 = 18.
+    const abilities: Abilities = { AGI: 1, CON: 3, FOR: 3, PER: 0, CHA: 0, INT: 0, VOL: 0 };
+    const stats = deriveStats({
+      abilities,
+      level: 1,
+      family: family('fighters'),
+      defenseEquipment: { defBonus: 5, maxAgi: 3 },
+      spellCount: 0,
+      defAbility: 'CON',
+    });
+    expect(stats.defense).toBe(18);
+  });
+
+  it('applique le plafond d’armure à la CON substituée (PER-131)', () => {
+    // CON 5 dépasse le plafond d'AGI +3 de la cotte → plafonnée à 3 : 10 + 3 + 5 = 18.
+    const abilities: Abilities = { AGI: 1, CON: 5, FOR: 3, PER: 0, CHA: 0, INT: 0, VOL: 0 };
+    const stats = deriveStats({
+      abilities,
+      level: 1,
+      family: family('fighters'),
+      defenseEquipment: { defBonus: 5, maxAgi: 3 },
+      spellCount: 0,
+      defAbility: 'CON',
+    });
+    expect(stats.defense).toBe(18);
+  });
 });
 
 describe("valeurs d'attaque", () => {

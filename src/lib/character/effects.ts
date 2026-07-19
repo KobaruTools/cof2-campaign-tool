@@ -36,7 +36,7 @@ import type {
 import { ABILITY_IDS, IMMUNITY_LABELS } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
 import { borrowedHostPathByFeatureId, effectiveFeatureIdsForMods } from './choices';
-import { armorDisabledFeatureIds } from './armorRestrictions';
+import { armorDisabledFeatureIds, isArmorWorn } from './armorRestrictions';
 import { rulesContext } from './rulesContext';
 import type { Character, FeatureChoiceSelection } from './types';
 
@@ -70,6 +70,13 @@ export interface EffectContext {
    * voie d'origine, que le personnage ne possède pas. Absent → chaque capacité utilise sa propre voie.
    */
   borrowedHostPaths?: Map<string, string>;
+  /**
+   * Une armure est-elle RÉELLEMENT portée par le personnage (slot `armor`) ? Sert aux
+   * effets `armor-def-bonus` résolus AUTOMATIQUEMENT depuis l'équipement (Armure de vent,
+   * PER-132) — sans interrupteur manuel. Absent → traité comme « aucune armure portée »
+   * (les appels « catalogue seul » n'ont pas d'équipement ; `effectContext` le renseigne).
+   */
+  armorWorn?: boolean;
 }
 
 /**
@@ -121,6 +128,7 @@ export function effectContext(character: Character): EffectContext {
     toggles: character.effectToggles,
     featureChoices: character.featureChoices,
     borrowedHostPaths: borrowedHostPathByFeatureId(character),
+    armorWorn: isArmorWorn(character.equipment),
   };
 }
 
@@ -268,6 +276,14 @@ function effectContributions(
     }
     return out;
   }
+  // Bonus de DEF conditionné à l'armure RÉELLEMENT portée (PER-132) — résolu automatiquement
+  // depuis `ctx.armorWorn`, sans interrupteur manuel. Non résoluble sans contexte (catalogue seul).
+  if (effect.kind === 'armor-def-bonus') {
+    if (!ctx) return [];
+    const branch = ctx.armorWorn ? effect.whenArmored : effect.whenUnarmored;
+    const v = resolveValue(branch, pathId, pathRanks, ctx);
+    return v === null ? [] : [{ stat: 'def', value: v }];
+  }
   // Les genres ciblant une CARACTÉRISTIQUE (`ability-bonus`, `ability-bonus-die`) ne
   // contribuent pas au sac de stats DÉRIVÉES — ils sont agrégés à part (cf. plus bas).
   if (effect.kind !== 'stat-bonus') return [];
@@ -347,6 +363,35 @@ export function optionStatBonusSources(
     });
   }
   return out;
+}
+
+/**
+ * Caractéristique servant de base au calcul de la DEF (PER-131). Par défaut l'AGI (p. 31) ;
+ * une OPTION retenue peut la remplacer via son champ `defAbility` (ex. Peau de pierre du
+ * barbare, pagne-r2 : option « con-for-def » → CON au lieu de l'AGI, p. 80). On renvoie la
+ * caractéristique de substitution du premier choix qui en déclare une, sinon l'AGI. Le plafond
+ * d'armure s'applique ensuite à la caractéristique retenue (côté `defense`). Sans `ctx`/sans
+ * choix (catalogue seul), on retombe sur l'AGI. Lit les options retenues (`ctx.featureChoices`,
+ * aligné par position sur `Feature.choices`) ; gère le choix simple comme le répétable.
+ */
+export function defenseAbility(featureIds: string[], ctx?: EffectContext): AbilityId {
+  if (!ctx?.featureChoices) return 'AGI';
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.choices) continue;
+    const selections = ctx.featureChoices[id] ?? [];
+    for (let i = 0; i < feature.choices.length; i++) {
+      const choice = feature.choices[i];
+      if (choice.kind !== 'option') continue;
+      const sel = selections[i];
+      const chosenIds = Array.isArray(sel) ? sel : typeof sel === 'string' ? [sel] : [];
+      for (const optId of chosenIds) {
+        const option = choice.options.find((o) => o.id === optId);
+        if (option?.defAbility) return option.defAbility;
+      }
+    }
+  }
+  return 'AGI';
 }
 
 /**

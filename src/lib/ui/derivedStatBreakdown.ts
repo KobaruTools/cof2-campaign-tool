@@ -205,25 +205,33 @@ export function derivedStatBreakdown(
       return { terms, total: sum(terms), note, page };
     }
     case 'defense': {
-      const cappedAgi =
-        defenseEquipment.maxAgi === null
-          ? abilities.AGI
-          : Math.min(abilities.AGI, defenseEquipment.maxAgi);
+      // Caractéristique de DEF : AGI par défaut, ou substitution retenue (Peau de pierre : CON, PER-131).
+      const defAbility = input.defAbility ?? 'AGI';
+      const rawValue = abilities[defAbility];
+      const cappedValue =
+        defenseEquipment.maxAgi === null ? rawValue : Math.min(rawValue, defenseEquipment.maxAgi);
       const terms: BreakdownTerm[] = [
         { label: 'Base', value: 10 },
-        { label: 'Agilité (AGI)', value: cappedAgi },
+        { label: `${ABILITY_NAMES[defAbility]} (${defAbility})`, value: cappedValue },
         ...mod('Armure / bouclier', defenseEquipment.defBonus),
         // DEF magique de l'armure portée (PER-85), sur une ligne distincte de la DEF
         // mondaine : le surcoût de mana des sorts en armure (p. 178) l'exclura.
         ...mod('Bonus magique d’armure', defenseEquipment.magicDefBonus ?? 0),
         ...capacities('def'),
       ];
-      // Plafonnement de l'AGI par l'armure : le joueur a atteint une LIMITE → note en
-      // tonalité « warning » pour qu'il comprenne que son AGI ne compte pas en entier.
-      const capped = defenseEquipment.maxAgi !== null && abilities.AGI > defenseEquipment.maxAgi;
-      const note = capped
-        ? `AGI plafonnée à ${defenseEquipment.maxAgi} par l'armure portée (p. 188).`
-        : undefined;
+      // Substitution de caractéristique (Peau de pierre : CON au lieu de l'AGI, p. 80) et/ou
+      // plafonnement par l'armure (p. 188) : le joueur a atteint une LIMITE → note « warning »
+      // pour qu'il comprenne que sa caractéristique de DEF ne compte pas en entier.
+      const substituted = defAbility !== 'AGI';
+      const capped = defenseEquipment.maxAgi !== null && rawValue > defenseEquipment.maxAgi;
+      const notes: string[] = [];
+      if (substituted)
+        notes.push(`DEF calculée sur la ${ABILITY_NAMES[defAbility]} (${defAbility}) au lieu de l'AGI (Peau de pierre, p. 80).`);
+      if (capped)
+        notes.push(
+          `${ABILITY_NAMES[defAbility]} (${defAbility}) plafonnée à ${defenseEquipment.maxAgi} par l'armure portée (p. 188).`,
+        );
+      const note = notes.length ? notes.join(' ') : undefined;
       return { terms, total: sum(terms), note, noteTone: capped ? 'warning' : undefined, page: 31 };
     }
     case 'initiative': {

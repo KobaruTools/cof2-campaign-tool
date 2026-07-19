@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per131-def-bonus-rang4",
+  "name": "Recette PER-131 — Peau de pierre (+2 DEF, rang 4)",
+  "identity": {
+    "description": "ATTENDU : au rang 4 de la voie du pagne, le +1 de Peau de pierre passe à +2. DEF = 10 + AGI 3 + 2 = 15. (Constitution héroïque/pagne-r4 ajoute +1 CON, sans effet sur cette DEF calculée sur l’AGI.)"
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 7,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "pagne-r1",
+    "pagne-r2",
+    "pagne-r3",
+    "pagne-r4"
+  ],
+  "featureChoices": {
+    "pagne-r2": [
+      "def-bonus"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-131 — « def-bonus » scalant : +2 en DEF au rang 4 de la voie du pagne.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

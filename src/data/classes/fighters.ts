@@ -428,28 +428,39 @@ export const fighterFeatures: Feature[] = [
     text:
       'Le barbare est particulièrement endurci, il encaisse les coups plutôt que de les esquiver. Il peut choisir de remplacer son AGI par sa CON pour calculer sa DEF (la limitation du bonus maximal en fonction de l’armure portée s’applique toujours, mais cette fois elle s’applique à la CON).\n' +
       'Autrement (si son AGI est supérieure ou égale à sa CON), il reçoit +1 en DEF et ce bonus passe à +2 au rang 4.',
-    // PER-124 : le barbare CHOISIT entre deux régimes de DEF. On expose ici la SÉLECTION
+    // PER-124/PER-131 : le barbare CHOISIT entre deux régimes de DEF, exposés comme une SÉLECTION
     // (couche choix PER-66), affichée en puce COURTE « CON » / « AGI » sur la carte (shortLabel,
-    // PER-130). Le CALCUL réel — DEF basée sur la CON + plafond d'armure appliqué à la CON, ou bonus
-    // plat +1/+2 — relève du moteur de DEF / milestone Armures (PER-131, non fait). Aucun jeton
-    // parsable (DEF auto-glossée, « +1/+2 » et « rang 4 » en prose) → pas de richText.
+    // PER-130). Le CALCUL est désormais câblé au moteur de DEF (milestone Armures, PER-131) :
+    //  - « con-for-def » → `defAbility: 'CON'` : `defense()` calcule sur la CON au lieu de l'AGI, le
+    //    plafond d'armure (p. 188) s'appliquant alors à la CON (résolu par `defenseAbility`) ;
+    //  - « def-bonus » → `statBonuses` : bonus PLAT +1 en DEF, passant à +2 au rang 4 de la voie
+    //    (palier `path-rank`), agrégé au sac `DerivedMods` par `optionStatBonusSources`.
+    // Aucun jeton parsable (DEF auto-glossée, « +1/+2 » et « rang 4 » en prose) → pas de richText.
     choices: [
       {
         kind: 'option',
         prompt: 'Calcul de la défense',
         options: [
-          { id: 'con-for-def', label: 'Remplacer l’AGI par la CON pour la DEF', shortLabel: 'CON' },
+          {
+            id: 'con-for-def',
+            label: 'Remplacer l’AGI par la CON pour la DEF',
+            shortLabel: 'CON',
+            defAbility: 'CON',
+          },
           {
             id: 'def-bonus',
             label: '+1 en DEF (+2 au rang 4), si l’AGI est supérieure ou égale à la CON',
             shortLabel: 'AGI',
+            statBonuses: [
+              {
+                stat: 'def',
+                value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 2, value: 1 }, { min: 4, value: 2 }] },
+              },
+            ],
           },
         ],
       },
     ],
-    // WIP (PER-72) : le calcul de DEF (substitution AGI→CON + plafond, ou bonus +1/+2) dépend de la
-    // milestone Armures (PER-131) — seule la couche choix + l'affichage CON/AGI sont faits pour l'instant.
-    wip: 'Calcul de la DEF en attente de PER-131 (milestone Armures) — seul le choix CON/AGI est posé.',
     sourcePage: 80,
   },
   {
@@ -632,20 +643,16 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Lorsqu’il ne porte aucune armure, le barbare peut se relever par une action de mouvement et il obtient +2 en DEF. Ce bonus passe à +3 au rang 5. S’il porte une armure, il gagne seulement +1 en DEF.',
-    // PER-67/PER-72 : bonus de DEF CONDITIONNEL à l'état d'armure (interrupteur manuel). Cas SANS armure
-    // (+2, passant à +3 au rang 5) modélisé en conditional-stat-bonus scalant (cf. barde vagabond-r3).
-    // Le cas « +1 en DEF si armure portée » est l'ALTERNATIVE (mutuellement exclusive) → laissé en prose,
-    // à câbler à la milestone Armures (qui connaîtra l'armure réellement portée). Aucun jeton parsable.
+    // PER-132 : bonus de DEF conditionné à l'armure RÉELLEMENT portée (worn), résolu AUTOMATIQUEMENT
+    // depuis l'équipement — sans interrupteur manuel (l'ancien pis-aller PER-67/72 était un
+    // conditional-stat-bonus à bascule manuelle « aucune armure portée »). Sans armure : +2 en DEF,
+    // passant à +3 au rang 5 de la voie (palier `path-rank`) ; avec une armure : +1 en DEF. Le moteur
+    // choisit la branche via `ctx.armorWorn` (cf. `effects.ts`). Aucun jeton parsable.
     effects: [
       {
-        kind: 'conditional-stat-bonus',
-        bonuses: [
-          {
-            stat: 'def',
-            value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 5, value: 3 }] },
-          },
-        ],
-        activation: { kind: 'condition', label: 'aucune armure portée', activeByDefault: false },
+        kind: 'armor-def-bonus',
+        whenUnarmored: { scale: 'stepped', by: 'path-rank', steps: [{ min: 2, value: 2 }, { min: 5, value: 3 }] },
+        whenArmored: 1,
       },
     ],
     sourcePage: 81,

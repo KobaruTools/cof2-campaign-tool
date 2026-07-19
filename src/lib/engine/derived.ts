@@ -237,20 +237,25 @@ export function initiative(per: number, mods: DerivedMods = {}): number {
 // ---------------------------------------------------------------------------
 
 /**
- * DEF = 10 + AGI + bonus d'armure/bouclier (+ modificateurs). L'AGI prise en
- * compte est plafonnée par l'« AGI maximale » de l'armure portée (p. 188).
+ * DEF = 10 + caractéristique de défense + bonus d'armure/bouclier (+ modificateurs).
+ * La caractéristique de défense est l'AGI par défaut, mais une capacité peut la
+ * remplacer (ex. Peau de pierre du barbare : CON au lieu de l'AGI — PER-131) ;
+ * l'appelant passe ici sa VALEUR (`defAbilityValue`). Cette valeur est plafonnée
+ * par l'« AGI maximale » de l'armure portée (p. 188) : le plafond s'applique donc
+ * à la caractéristique retenue, quelle qu'elle soit (le livre le précise pour la
+ * substitution CON de Peau de pierre).
  *
  * Il n'existe AUCUN plafond de défense « global » à appliquer comme règle
  * indépendante (cadrage PER-75, `docs/extraction/armures.md` §1) : le seul
- * plafond réel est celui de l'AGI ci-dessous. Le fait que le cumul AGI + armure
- * ne dépasse pas +8 (+10 avec un grand bouclier) est une PROPRIÉTÉ calibrée par
- * la table des armures (p. 188), pas une seconde limite à faire respecter — ne
- * pas réintroduire de `Math.min` sur le total.
+ * plafond réel est celui de la caractéristique ci-dessous. Le fait que le cumul
+ * carac + armure ne dépasse pas +8 (+10 avec un grand bouclier) est une PROPRIÉTÉ
+ * calibrée par la table des armures (p. 188), pas une seconde limite à faire
+ * respecter — ne pas réintroduire de `Math.min` sur le total.
  */
-export function defense(agi: number, equip: DefenseEquipment, mods: DerivedMods = {}): number {
-  const effectiveAgi = equip.maxAgi === null ? agi : Math.min(agi, equip.maxAgi);
-  // DEF totale = base + AGI plafonnée + DEF mondaine + bonus magique de l'armure (PER-85).
-  return 10 + effectiveAgi + equip.defBonus + m(equip.magicDefBonus) + m(mods.def);
+export function defense(defAbilityValue: number, equip: DefenseEquipment, mods: DerivedMods = {}): number {
+  const effectiveValue = equip.maxAgi === null ? defAbilityValue : Math.min(defAbilityValue, equip.maxAgi);
+  // DEF totale = base + carac de défense plafonnée + DEF mondaine + bonus magique de l'armure (PER-85).
+  return 10 + effectiveValue + equip.defBonus + m(equip.magicDefBonus) + m(mods.def);
 }
 
 // ---------------------------------------------------------------------------
@@ -287,6 +292,12 @@ export interface DerivedInput {
   family: Family;
   /** Contribution de l'équipement porté à la DEF. */
   defenseEquipment: DefenseEquipment;
+  /**
+   * Caractéristique servant de base au calcul de la DEF. Défaut `AGI` (p. 31) ; une
+   * capacité peut la remplacer (ex. Peau de pierre du barbare : `CON`, PER-131 — cf.
+   * `defenseAbility`). Le plafond d'armure s'applique à la caractéristique retenue.
+   */
+  defAbility?: AbilityId;
   /** Nombre de capacités de sorts connues (pour les PM). */
   spellCount: number;
   /**
@@ -347,7 +358,7 @@ export function deriveStats(input: DerivedInput): DerivedStats {
     luckPoints: luckPoints(abilities.CHA, family, mods),
     manaPoints: manaPoints(abilities[input.manaAbility ?? 'VOL'], spellCount, mods),
     initiative: initiative(abilities.PER, mods),
-    defense: defense(abilities.AGI, defenseEquipment, mods),
+    defense: defense(abilities[input.defAbility ?? 'AGI'], defenseEquipment, mods),
     meleeAttack: meleeAttack(level, abilities.FOR, mods),
     rangedAttack: rangedAttack(level, abilities.AGI, mods),
     magicAttack: magicAttack(level, abilities.VOL, mods),

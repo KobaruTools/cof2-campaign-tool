@@ -6,6 +6,7 @@ import {
   armorDisabledFeatureIds,
   armorRestrictionViolations,
   featureArmorRestrictionViolations,
+  isArmorWorn,
 } from './armorRestrictions';
 import { activeFeatureIdsForMods, effectContext, effectiveAbilities, modsFromFeatures } from './effects';
 
@@ -297,5 +298,27 @@ describe('armorDisabledFeatureIds / activeFeatureIdsForMods — retrait des bonu
     expect(activeFeatureIdsForMods(enArmure)).not.toContain('poing-r2');
     const sansArmure = makeChar({ classId: 'moine', featureIds: ['poing-r2'], equipment: [] });
     expect(activeFeatureIdsForMods(sansArmure)).toContain('poing-r2');
+  });
+});
+
+describe('isArmorWorn — une armure est-elle portée ? (PER-132)', () => {
+  it('faux quand aucune ligne d’équipement n’est portée en slot armure', () => {
+    expect(isArmorWorn([])).toBe(false);
+    expect(isArmorWorn([{ itemId: 'cuir-simple', quantity: 1 }])).toBe(false);
+    expect(isArmorWorn([wornShield('petit-bouclier')])).toBe(false);
+  });
+
+  it('vrai dès qu’une armure du catalogue est portée', () => {
+    expect(isArmorWorn([wornArmor('cuir-simple')])).toBe(true);
+  });
+
+  it('vrai pour une armure personnalisée portée (sans stats connues)', () => {
+    const customArmor: EquipmentLine = {
+      custom: true,
+      name: 'Armure de fortune',
+      quantity: 1,
+      worn: { slot: 'armor' },
+    };
+    expect(isArmorWorn([customArmor])).toBe(true);
   });
 });

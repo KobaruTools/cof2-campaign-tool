@@ -12,7 +12,7 @@ import { rulesContext } from '@/lib/character/rulesContext';
 import { finalAbilities, level1FeatureIds, materializeDraft } from '@/lib/character/wizard';
 import { classDisplayName, effectiveClassPathIds } from '@/lib/character/classDisplay';
 import { level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
-import { activeFeatureIdsForMods, effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
+import { activeFeatureIdsForMods, defenseAbility, effectContext, effectiveAbilities, modsFromFeatures } from '@/lib/character/effects';
 import { hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { defenseFromEquipment } from './helpers';
@@ -56,6 +56,8 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
     level: 1,
     family,
     defenseEquipment: defenseFromEquipment(draft.equipment),
+    // Caractéristique de DEF : AGI par défaut, ou substitution retenue (Peau de pierre : CON, PER-131).
+    defAbility: defenseAbility(activeFeatureIdsForMods(preview), effectContext(preview)),
     spellCount,
     // Bonus des capacités du niveau 1 (PER-63) + capacités empruntées par un
     // choix « capacité d'une autre voie » (PER-66) ; `preview` porte déjà les
@@ -120,7 +122,7 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
                   px: 0.5,
                 }}
               >
-                <AbilityIcon ability={id} title size={32} sx={{ color: 'text.secondary' }} />
+                <AbilityIcon ability={id} title size={32} />
                 <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
                   {id}
                 </Typography>

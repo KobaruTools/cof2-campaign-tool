@@ -317,6 +317,13 @@ for (const c of features) {
         else if (raiseArmor.category !== 'armor')
           err(`[capacite ${c.id}] effect: armor-access hybridClassRaises maxArmorId n'est pas une armure : ${hr.maxArmorId}`);
       }
+    } else if (e.kind === 'armor-def-bonus') {
+      // Bonus de DEF selon l'armure portée (PER-132) : deux branches (avec / sans armure),
+      // chacune constante ou scalante.
+      const unarmoredError = effectValueError(e.whenUnarmored);
+      if (unarmoredError) err(`[capacite ${c.id}] effect: armor-def-bonus whenUnarmored ${unarmoredError}`);
+      const armoredError = effectValueError(e.whenArmored);
+      if (armoredError) err(`[capacite ${c.id}] effect: armor-def-bonus whenArmored ${armoredError}`);
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }
@@ -348,6 +355,9 @@ for (const c of features) {
         const valueError = effectValueError(b.value);
         if (valueError) err(`[capacite ${c.id}] option ${opt.id}: statBonuses ${valueError}`);
       }
+      // Caractéristique de DEF substituée par une option (PER-131, ex. Peau de pierre : CON).
+      if (opt.defAbility !== undefined && !validAbilities.has(opt.defAbility))
+        err(`[capacite ${c.id}] option ${opt.id}: defAbility carac inconnue : ${opt.defAbility}`);
     }
   }
 }

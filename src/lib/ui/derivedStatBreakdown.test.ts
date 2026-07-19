@@ -148,6 +148,40 @@ describe('derivedStatBreakdown ↔ deriveStats', () => {
     expect(bd.noteTone).toBeUndefined();
   });
 
+  it('Défense : substitution CON pour l’AGI (Peau de pierre, PER-131)', () => {
+    const bd = derivedStatBreakdown('defense', {
+      abilities: abilities({ AGI: 1, CON: 3 }),
+      level: 1,
+      family: family('fighters'),
+      defenseEquipment: { defBonus: 5, maxAgi: null },
+      spellCount: 0,
+      defAbility: 'CON',
+    });
+    // La ligne de carac porte la CON (3), pas l'AGI (1).
+    const abilityTerm = bd.terms.find((t) => t.label.includes('(CON)'));
+    expect(abilityTerm?.value).toBe(3);
+    expect(bd.terms.find((t) => t.label.includes('(AGI)'))).toBeUndefined();
+    expect(bd.total).toBe(18); // 10 + 3 + 5
+    expect(bd.note).toContain('Peau de pierre');
+    expect(bd.noteTone).toBeUndefined(); // substitution seule (non plafonnée) → info
+  });
+
+  it('Défense : plafond d’armure appliqué à la CON substituée (PER-131)', () => {
+    const bd = derivedStatBreakdown('defense', {
+      abilities: abilities({ AGI: 1, CON: 5 }),
+      level: 1,
+      family: family('fighters'),
+      defenseEquipment: { defBonus: 5, maxAgi: 3 }, // CON 5 > 3 → plafonnée
+      spellCount: 0,
+      defAbility: 'CON',
+    });
+    const abilityTerm = bd.terms.find((t) => t.label.includes('(CON)'));
+    expect(abilityTerm?.value).toBe(3); // plafonnée à 3
+    expect(bd.total).toBe(18); // 10 + 3 + 5
+    expect(bd.note).toContain('plafonnée');
+    expect(bd.noteTone).toBe('warning');
+  });
+
   it('PV hybrides niveau 1 : une sous-ligne par famille + renvoi p. 180', () => {
     const bd = derivedStatBreakdown('maxHp', {
       abilities: abilities({ CON: 2 }),
