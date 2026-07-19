@@ -188,6 +188,12 @@ export interface EquipmentListProps {
   masteredIds?: Set<string>;
   /** Autorisation EFFECTIVE des armes à feu (PER-185), pour l'indicateur de maîtrise. */
   firearmsAllowed?: boolean;
+  /**
+   * Armes maîtrisées PAR EXCEPTION (arme sacrée du prêtre spécialiste,
+   * `sacredWeaponMasteryIds`, PER-96) : suppriment l'indicateur de dé malus sur
+   * l'arme sacrée même tranchante/perçante. Absent → aucune exception.
+   */
+  sacredWeaponIds?: ReadonlySet<string>;
 }
 
 /** Liste de l'équipement possédé, en lecture ou en édition. */
@@ -199,6 +205,7 @@ export function EquipmentList({
   characterClass,
   masteredIds,
   firearmsAllowed = true,
+  sacredWeaponIds,
 }: EquipmentListProps) {
   // Modale d'objet (PER-214) : `null` = fermée, `'new'` = création, un index = édition de
   // la ligne correspondante (bouton crayon, objet custom OU arme/armure/bouclier).
@@ -396,6 +403,7 @@ export function EquipmentList({
                     line={line}
                     masteredIds={masteredIds}
                     firearmsAllowed={firearmsAllowed}
+                    sacredWeaponIds={sacredWeaponIds}
                   />
                 )}
                 {/* Avertissement (PER-185) : arme à poudre grisée quand la poudre est indisponible. */}
