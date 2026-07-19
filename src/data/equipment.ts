@@ -829,264 +829,16 @@ export const gear: Gear[] = [
     sourcePage: 190,
   },
 
-  // --- Montures (table « Prix des montures », p. 191) ---
-  {
-    id: 'mule-ou-ane',
-    name: 'Mule ou âne',
-    category: 'gear',
-    price: { amount: 25, unit: 'pa' },
-    sourcePage: 191,
-  },
-  {
-    id: 'poney',
-    name: 'Poney',
-    category: 'gear',
-    price: { amount: 50, unit: 'pa' },
-    sourcePage: 191,
-  },
-  {
-    id: 'cheval-de-selle',
-    name: 'Cheval de selle',
-    category: 'gear',
-    price: { amount: 100, unit: 'pa' },
-    description:
-      'Cheval de selle : un cheval de selle n’est pas apte à subir le stress du combat, son cavalier subit un dé malus à toutes ses actions en selle en situation de combat.',
-    sourcePage: 191,
-  },
-  {
-    id: 'cheval-de-guerre',
-    name: 'Cheval de guerre',
-    category: 'gear',
-    price: { amount: 300, unit: 'pa' },
-    description:
-      'Le cheval de guerre ne souffre pas des pénalités du cheval de selle en combat et sa valeur d’attaque passe à +4. NC 1, taille grande. Un cheval de guerre est apte à porter un caparaçon : caparaçon de mailles +2 DEF pour 100 pa ; barde de plaque de métal +4 DEF pour 300 pa (malus en Init. égal au bonus de DEF).',
-    sourcePage: 191,
-  },
-  {
-    id: 'carriole',
-    name: 'Carriole',
-    category: 'gear',
-    price: { amount: 50, unit: 'pa' },
-    sourcePage: 191,
-  },
-  {
-    id: 'chariot',
-    name: 'Chariot',
-    category: 'gear',
-    price: { amount: 90, unit: 'pa' },
-    sourcePage: 191,
-  },
-  {
-    id: 'caparacon-de-mailles',
-    name: 'Caparaçon de mailles',
-    category: 'gear',
-    price: { amount: 100, unit: 'pa' },
-    description:
-      'Un caparaçon de mailles augmente la DEF du cheval de +2. Les bardes octroient un malus en Init. au cheval et à son cavalier égal au bonus de DEF.',
-    sourcePage: 191,
-  },
-  {
-    id: 'barde-de-plaque',
-    name: 'Barde de plaque (de métal)',
-    category: 'gear',
-    price: { amount: 300, unit: 'pa' },
-    description:
-      'Une barde de plaque de métal apporte un bonus de +4 en DEF. Les bardes octroient un malus en Init. au cheval et à son cavalier égal au bonus de DEF.',
-    sourcePage: 191,
-  },
-
-  // --- À l'auberge (table « Prix des prestations d'auberge », p. 192) ---
-  {
-    id: 'cidre-lait-verre',
-    name: 'Cidre, lait (verre)',
-    category: 'gear',
-    price: { amount: 1, unit: 'pc' },
-    description: 'Boisson.',
-    sourcePage: 192,
-  },
-  {
-    id: 'cervoise-biere-pinte',
-    name: 'Cervoise, bière (pinte)',
-    category: 'gear',
-    price: { amount: 2, unit: 'pc' },
-    description: 'Boisson.',
-    sourcePage: 192,
-  },
-  {
-    id: 'hydromel-vin-verre',
-    name: 'Hydromel, vin (verre)',
-    category: 'gear',
-    price: { amount: 5, unit: 'pc' },
-    description: 'Boisson.',
-    sourcePage: 192,
-  },
-  {
-    id: 'grand-cru-bouteille',
-    name: 'Grand cru (bouteille)',
-    category: 'gear',
-    price: { amount: 5, unit: 'pa' },
-    description: 'Boisson. Prix : 5-50 pa.',
-    sourcePage: 192,
-  },
-  {
-    id: 'soupe-et-pain',
-    name: 'Soupe et pain',
-    category: 'gear',
-    price: { amount: 1, unit: 'pc' },
-    description: 'Repas.',
-    sourcePage: 192,
-  },
-  {
-    id: 'repas-avec-viande',
-    name: 'Repas avec viande',
-    category: 'gear',
-    price: { amount: 1, unit: 'pa' },
-    description: 'Repas.',
-    sourcePage: 192,
-  },
-  {
-    id: 'bon-repas',
-    name: 'Bon repas',
-    category: 'gear',
-    price: { amount: 5, unit: 'pa' },
-    description: 'Repas.',
-    sourcePage: 192,
-  },
-  {
-    id: 'banquet',
-    name: 'Banquet',
-    category: 'gear',
-    price: { amount: 10, unit: 'pa' },
-    description: 'Repas. Prix : 10-20 pa.',
-    sourcePage: 192,
-  },
-  {
-    id: 'nuit-dortoir',
-    name: 'Nuit (dortoir)',
-    category: 'gear',
-    price: { amount: 5, unit: 'pc' },
-    description: 'Nuitée.',
-    sourcePage: 192,
-  },
-  {
-    id: 'nuit-chambre-de-4',
-    name: 'Nuit (chambre de 4)',
-    category: 'gear',
-    price: { amount: 1, unit: 'pa' },
-    description: 'Nuitée.',
-    sourcePage: 192,
-  },
-  {
-    id: 'nuit-chambre-individuelle',
-    name: 'Nuit (chambre individuelle)',
-    category: 'gear',
-    price: { amount: 2, unit: 'pa' },
-    description: 'Nuitée. Prix : 2-5 pa.',
-    sourcePage: 192,
-  },
-  {
-    id: 'nuit-suite',
-    name: 'Nuit (suite)',
-    category: 'gear',
-    price: { amount: 10, unit: 'pa' },
-    description: 'Nuitée. Prix : 10-20 pa.',
-    sourcePage: 192,
-  },
-
-  // --- Biens immobiliers (table « Prix des biens immobiliers », p. 193) ---
-  // Note : ces prix sont exprimés en pièces d'or (po) dans le livre.
-  {
-    id: 'appartement-2-pieces',
-    name: 'Appartement (2 pièces)',
-    category: 'gear',
-    price: { amount: 250, unit: 'po' },
-    description: 'Bien immobilier.',
-    sourcePage: 193,
-  },
-  {
-    id: 'masure-3-pieces',
-    name: 'Masure (3 pièces)',
-    category: 'gear',
-    price: { amount: 500, unit: 'po' },
-    description: 'Bien immobilier.',
-    sourcePage: 193,
-  },
-  {
-    id: 'maison-3-pieces',
-    name: 'Maison (3 pièces)',
-    category: 'gear',
-    price: { amount: 1000, unit: 'po' },
-    description: 'Bien immobilier.',
-    sourcePage: 193,
-  },
-  {
-    id: 'grande-maison-6-pieces',
-    name: 'Grande maison (6 pièces)',
-    category: 'gear',
-    price: { amount: 2000, unit: 'po' },
-    description: 'Bien immobilier.',
-    sourcePage: 193,
-  },
-  {
-    id: 'villa-luxueuse',
-    name: 'Villa luxueuse',
-    category: 'gear',
-    price: { amount: 10000, unit: 'po' },
-    description: 'Bien immobilier.',
-    sourcePage: 193,
-  },
-  {
-    id: 'manoir',
-    name: 'Manoir',
-    category: 'gear',
-    price: { amount: 20000, unit: 'po' },
-    description: 'Bien immobilier.',
-    sourcePage: 193,
-  },
-  {
-    id: 'place-forte',
-    name: 'Place forte',
-    category: 'gear',
-    price: { amount: 60000, unit: 'po' },
-    description: 'Bien immobilier.',
-    sourcePage: 193,
-  },
-  {
-    id: 'chateau',
-    name: 'Château',
-    category: 'gear',
-    price: { amount: 150000, unit: 'po' },
-    description: 'Bien immobilier.',
-    sourcePage: 193,
-  },
-  {
-    id: 'palais',
-    name: 'Palais',
-    category: 'gear',
-    price: { amount: 300000, unit: 'po' },
-    description: 'Bien immobilier.',
-    sourcePage: 193,
-  },
-
-  // --- Équipement de qualité (p. 193) ---
-  {
-    id: 'arme-de-qualite',
-    name: 'Arme de qualité',
-    category: 'gear',
-    price: null,
-    description:
-      'Une arme de qualité donne un bonus de +1 en attaque ou aux DM (toujours le même). Pour une armure, c’est la pénalité d’encombrement infligée aux tests d’AGI qui est réduite de -1. Le prix de l’objet est multiplié par deux et on y ajoute 100 pa (ex. une épée longue de qualité vaut (6 × 2) +100 = 112 pa). Fabriquer un objet de qualité augmente la difficulté du test d’artisanat (habituellement entre 10 et 15) de +10, et la durée de travail est multipliée par trois. (Atlas d’Osgild — règles optionnelles.)',
-    sourcePage: 193,
-  },
-  {
-    id: 'armure-de-qualite',
-    name: 'Armure de qualité',
-    category: 'gear',
-    price: null,
-    description:
-      'Pour une armure, l’équipement de qualité réduit de -1 la pénalité d’encombrement infligée aux tests d’AGI. Le prix de l’objet est multiplié par deux et on y ajoute 100 pa. (Atlas d’Osgild — règles optionnelles.)',
-    sourcePage: 193,
-  },
+  // Entrées RETIRÉES du catalogue d'inventaire (elles n'y avaient leur place que
+  // parce que la table portait un prix — ce ne sont pas des objets à posséder) :
+  //  - Montures & véhicules + bardes (p. 191) → relèvent d'une entité « compagnon »
+  //    (monture avec son propre inventaire), traitée dans la milestone « Compagnons ».
+  //  - Nuitées d'auberge (p. 192) → prestations de service, pas des objets.
+  //  - Nourriture & boisson d'auberge (p. 192) → consommées sur place, pas des objets.
+  //  - Biens immobiliers (appartement → palais, p. 193) → hors inventaire.
+  //  - Équipement de qualité (arme/armure de qualité, p. 193) → ce n'est PAS un objet
+  //    distinct mais un PALIER DE QUALITÉ appliqué à une arme/armure existante (+1 att/DM
+  //    ou -1 encombrement) ; à modéliser via une variante mécanique (overrides), pas ici.
 
   // --- Équipement exotique (p. 193-195) — exemples de matériaux ---
   {
@@ -1115,5 +867,58 @@ export const gear: Gear[] = [
     description:
       'Exotique (300 pa). Le pnoulpe est une sorte de petit poulpe qui a la particularité de transformer l’eau en mélange respirable, et inversement, en quantité suffisante pour assurer la survie d’un être humain en milieu aquatique. En pratique, on place le corps mou de couleur rouge sur les voies respiratoires, les tentacules enserrant la tête, puis on se dépêche d’entrer dans l’eau pour ne pas asphyxier. Le pnoulpe est vendu dans un coffret de bois étanche empli d’un liquide qui permet de le conserver en léthargie environ un mois au maximum (15 × 15 × 30 cm, poids 5 kg). Dès que la boîte est ouverte, il faut le mettre à l’eau, il ne peut plus être à nouveau plongé en léthargie et si on le sort de l’eau, il meurt rapidement.',
     sourcePage: 195,
+  },
+
+  // --- Objets d'équipement de départ hors table de prix (PER-93) ---
+  // Le livre précise que « la liste d'équipement qui suit n'est pas exhaustive »
+  // et que « le MJ doit décider [...] les tarifs à appliquer » (p. 181). Ces
+  // objets, remis à la création par certains profils ou par le sac d'aventurier
+  // (p. 31), n'ont donc PAS de prix catalogué (`price: null`). Ils reçoivent
+  // néanmoins un id stable pour être raccordés depuis `startingEquipment` /
+  // `adventurerPack` au lieu de rester `itemId: null`.
+  {
+    id: 'grimoire-de-sorts',
+    name: 'Grimoire de sorts',
+    category: 'gear',
+    price: null,
+    description:
+      'Le bien le plus précieux du magicien, le livre où il a inscrit tous ses sorts (p. 102). Équipement de départ du magicien et du sorcier ; absent de la table des prix (liste non exhaustive, p. 181), le MJ en fixe le tarif s’il doit être remplacé.',
+    sourcePage: 102,
+  },
+  {
+    id: 'instrument-de-musique',
+    name: 'Instrument de musique',
+    category: 'gear',
+    price: null,
+    description:
+      'Équipement de départ du barde (p. 66), nécessaire aux capacités de la voie du musicien. Absent de la table des prix (liste non exhaustive, p. 181), le MJ en fixe le tarif.',
+    sourcePage: 66,
+  },
+  {
+    id: 'torche',
+    name: 'Torche',
+    category: 'gear',
+    price: null,
+    description:
+      'Éclaire dans un rayon de 10 m pendant 1 h (p. 190). Contenue à l’unité dans le sac d’aventurier (p. 31) ; la table des prix ne vend que des lots de trois (« Torches (x3) », 5 pa, p. 190).',
+    sourcePage: 31,
+  },
+  {
+    id: 'outre',
+    name: 'Outre',
+    category: 'gear',
+    price: null,
+    description:
+      'Gourde de voyage contenue dans le sac d’aventurier (p. 31). Absente de la table des prix (liste non exhaustive, p. 181).',
+    sourcePage: 31,
+  },
+  {
+    id: 'gamelle',
+    name: 'Gamelle',
+    category: 'gear',
+    price: null,
+    description:
+      'Ustensile de popote contenu dans le sac d’aventurier (p. 31). Absente de la table des prix (liste non exhaustive, p. 181).',
+    sourcePage: 31,
   },
 ];
