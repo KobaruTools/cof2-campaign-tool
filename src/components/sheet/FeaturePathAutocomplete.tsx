@@ -255,13 +255,24 @@ export function FeaturePathAutocomplete({
                   position: 'sticky',
                   top: -8,
                   zIndex: 1,
-                  bgcolor: meta.color ? alpha(meta.color, 0.14) : theme.palette.action.hover,
+                  // Fond OPAQUE (papier + teinte de profil en surimpression) + flou
+                  // d'arrière-plan : l'en-tête sticky laissait sinon transparaître les options
+                  // qui défilent derrière et devenait illisible. Verre dépoli, teinte préservée.
+                  backgroundColor: alpha(theme.palette.background.paper, 0.92),
+                  backgroundImage: `linear-gradient(0deg, ${
+                    meta.color ? alpha(meta.color, 0.18) : theme.palette.action.hover
+                  }, ${meta.color ? alpha(meta.color, 0.18) : theme.palette.action.hover})`,
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
                   borderLeft: `3px solid ${meta.color ?? theme.palette.divider}`,
+                  borderBottom: `1px solid ${theme.palette.divider}`,
                   color: meta.color ?? theme.palette.text.secondary,
                   fontWeight: 700,
                   fontSize: '0.75rem',
                   '&:hover': {
-                    bgcolor: meta.color ? alpha(meta.color, 0.24) : theme.palette.action.selected,
+                    backgroundImage: `linear-gradient(0deg, ${
+                      meta.color ? alpha(meta.color, 0.3) : theme.palette.action.selected
+                    }, ${meta.color ? alpha(meta.color, 0.3) : theme.palette.action.selected})`,
                   },
                 })}
               >
@@ -297,8 +308,16 @@ export function FeaturePathAutocomplete({
                 position: 'sticky',
                 top: -8,
                 zIndex: 1,
-                bgcolor: color ? alpha(color, 0.14) : theme.palette.action.hover,
+                // Fond OPAQUE (papier + teinte de profil) + flou d'arrière-plan, comme la
+                // branche « par profil » : lisibilité de l'en-tête sticky au défilement.
+                backgroundColor: alpha(theme.palette.background.paper, 0.92),
+                backgroundImage: `linear-gradient(0deg, ${
+                  color ? alpha(color, 0.18) : theme.palette.action.hover
+                }, ${color ? alpha(color, 0.18) : theme.palette.action.hover})`,
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
                 borderLeft: `3px solid ${color ?? theme.palette.divider}`,
+                borderBottom: `1px solid ${theme.palette.divider}`,
                 color: color ?? theme.palette.text.secondary,
                 fontWeight: 700,
                 fontSize: '0.75rem',
