@@ -613,6 +613,25 @@ export const weapons: Weapon[] = [
 // ---------------------------------------------------------------------------
 
 export const armors: Armor[] = [
+  // Entrée UTILITAIRE (HORS LIVRE) : « Sans armure » DEF +0. Le livre ne liste aucune
+  // armure à DEF 0 — un personnage sans armure n'a simplement pas de ligne d'armure
+  // (p. 188). Cette base existe pour créer des variantes « vêtements enchantés » sans
+  // protection sur les profils qui combattent sans armure (mage, moine) : elle donne
+  // un support d'effets spéciaux dans la modale de création d'objet. DEF 0 + aucun
+  // plafond d'AGI → strictement neutre pour la défense, le surcoût de mana (PER-82) et
+  // les plafonds de port (0 ≤ tout plafond, jamais signalée « trop lourde », PER-80).
+  // `sourcePage` = 188 (section armures) faute de page dédiée à un objet hors livre.
+  {
+    id: 'sans-armure',
+    name: 'Sans armure (vêtements)',
+    category: 'armor',
+    def: 0,
+    maxAgi: null,
+    price: null,
+    properties:
+      'Entrée utilitaire (hors livre) représentant l’absence d’armure : aucune protection (DEF +0) et aucun plafond d’AGI. Sert de base pour des vêtements enchantés à effets spéciaux sur les personnages qui combattent sans armure (mage, moine).',
+    sourcePage: 188,
+  },
   {
     id: 'tissus-matelasses-fourrures',
     name: 'Tissus matelassés, fourrures',

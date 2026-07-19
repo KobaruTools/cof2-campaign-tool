@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -186,6 +187,14 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
     setForm(base ? formFromBase(base) : EMPTY_FORM);
   };
 
+  // Retour au choix du type (création uniquement) : réinitialise base + formulaire, comme
+  // un bouton « précédent » sur un écran unique (le type choisi masque la rangée de boutons).
+  const resetType = () => {
+    setType(null);
+    setBaseId(null);
+    setForm(EMPTY_FORM);
+  };
+
   const mechanical = type !== null && isMechanicalType(type);
   const trimmedName = form.name.trim();
   const valid = type !== null && trimmedName.length > 0 && (!mechanical || baseId !== null);
@@ -243,6 +252,23 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
               <ItemTypeIcon type={type} size={18} />
               {ITEM_TYPE_LABELS[type]}
             </Typography>
+          ) : !editing && type !== null ? (
+            // Création, type déjà choisi : la rangée de boutons laisse place à un rappel du
+            // type retenu + un retour « Changer de type » qui ramène au choix (écran unique).
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Button
+                size="small"
+                startIcon={<ArrowBackIcon />}
+                onClick={resetType}
+                sx={{ textTransform: 'none' }}
+              >
+                Changer de type
+              </Button>
+              <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <ItemTypeIcon type={type} size={18} />
+                {ITEM_TYPE_LABELS[type]}
+              </Typography>
+            </Box>
           ) : (
             <Box>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
