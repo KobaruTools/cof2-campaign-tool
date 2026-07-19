@@ -86,15 +86,16 @@ export const progression: ProgressionRules = {
   // p. 31 : « Votre personnage débute avec un sac d'aventurier qui
   // contient : une couverture, une torche, un briquet à silex, une outre,
   // une gamelle, une bourse de 2d6 pa. »
-  // itemId raccordé au catalogue (chap. 10) quand une correspondance 1-pour-1
-  // existe. « torche » reste null (le catalogue ne vend que des lots de 3,
-  // `torches-x3`), de même qu'« outre », « gamelle » et la bourse (non vendus).
+  // itemId raccordé au catalogue (chap. 10). « torche », « outre » et « gamelle »
+  // ont désormais leur propre entrée hors table de prix (PER-93). Seule la bourse
+  // reste `itemId: null` : ce n'est pas un objet mais de la monnaie, reconnue par
+  // son NOM (`COIN_POUCH_ITEM_NAME`) pour ouvrir la modale d'ajout de pa (PER-152).
   adventurerPack: [
     { itemId: 'couverture', label: 'Couverture', quantity: 1 },
-    { itemId: null, label: 'Torche', quantity: 1 },
+    { itemId: 'torche', label: 'Torche', quantity: 1 },
     { itemId: 'briquet-a-silex', label: 'Briquet à silex', quantity: 1 },
-    { itemId: null, label: 'Outre', quantity: 1 },
-    { itemId: null, label: 'Gamelle', quantity: 1 },
+    { itemId: 'outre', label: 'Outre', quantity: 1 },
+    { itemId: 'gamelle', label: 'Gamelle', quantity: 1 },
     { itemId: null, label: COIN_POUCH_ITEM_NAME, quantity: 1 },
   ],
 

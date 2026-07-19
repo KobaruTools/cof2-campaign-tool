@@ -77,7 +77,7 @@ export const mageClasses: CharacterClass[] = [
     startingEquipment: [
       { itemId: 'baton-ferre', label: 'Bâton ferré (DM 1d6)', quantity: 1 },
       { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
-      { itemId: null /* TODO(extraction): grimoire non listé dans le catalogue de prix */, label: 'Grimoire de sorts', quantity: 1 },
+      { itemId: 'grimoire-de-sorts', label: 'Grimoire de sorts', quantity: 1 },
     ],
     pathIds: [
       'magie-des-arcanes',
@@ -106,7 +106,8 @@ export const mageClasses: CharacterClass[] = [
       { itemId: 'baton-ferre', label: 'Bâton ferré (DM 1d6)', quantity: 1 },
       { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
       {
-        itemId: null /* TODO(extraction): grimoire non listé dans le catalogue de prix */,
+        // « ou parchemins anciens » : variante de flavor du même grimoire (raccordé au catalogue).
+        itemId: 'grimoire-de-sorts',
         label: 'Grimoire de sorts ou parchemins anciens',
         quantity: 1,
       },

@@ -48,7 +48,12 @@ export const adventurerClasses: CharacterClass[] = [
     nameWithoutFirearms: 'Arbalétrier',
     weaponNotes: "Fabrique sa propre poudre, sans risque d'explosion accidentelle.",
     startingEquipment: [
-      { itemId: null, label: 'Pétoire ou arbalète de poing (DM 1d10, portée 20 m)', quantity: 1 },
+      // « Pétoire OU arbalète de poing » (p. 62) : deux lignes catalogue distinctes plutôt
+      // qu'un choix `null` (retour propriétaire PER-93). Quand la poudre est interdite en
+      // campagne, la ligne pétoire est GRISÉE + avertie dans l'inventaire (PER-185), sans être
+      // retirée : le MJ garde la liberté de la conserver pour un effet de style.
+      { itemId: 'petoire', label: 'Pétoire (DM 1d10, portée 20 m)', quantity: 1 },
+      { itemId: 'arbalete-de-poing', label: 'Arbalète de poing (DM 1d6, portée 10 m)', quantity: 1 },
       { itemId: 'epee-longue', label: 'Épée longue (DM 1d8)', quantity: 1 },
       { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
       { itemId: 'cuir-renforce-broigne', label: 'Cuir renforcé (DEF +3)', quantity: 1 },
@@ -78,8 +83,7 @@ export const adventurerClasses: CharacterClass[] = [
     startingEquipment: [
       { itemId: 'rapiere', label: 'Rapière (DM 1d6, Crit 19-20)', quantity: 1 },
       { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
-      // TODO(extraction): « instrument de musique » non listé dans le catalogue de prix (équipement de départ du barde, p. 66).
-      { itemId: null, label: 'Instrument de musique', quantity: 1 },
+      { itemId: 'instrument-de-musique', label: 'Instrument de musique', quantity: 1 },
       { itemId: 'cuir-simple', label: 'Armure de cuir (DEF +2)', quantity: 1 },
     ],
     pathIds: ['escrime', 'musicien', 'saltimbanque', 'seduction', 'vagabond'],
