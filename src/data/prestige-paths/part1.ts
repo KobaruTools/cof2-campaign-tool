@@ -516,14 +516,30 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Choisissez une couleur de dragon pour l'ascendance de votre personnage. Il obtient une réduction des DM de 5 (qui passe à 10 au rang 8 de la voie), correspondant au type d'énergie utilisé par le souffle du dragon. De plus, le personnage devient capable de voir dans le noir total comme si c'était de la pénombre jusqu'à 20 m.",
-    // PER-138 : RD PERMANENTE plate contre UN SEUL type d'énergie, celui du souffle de la couleur de
-    // dragon choisie. Le livre ne fournit PAS de table chromatique complète (seule la Chimère draconique,
-    // p. 277, atteste « rouge pour feu, blanc pour froid, etc. » ; l'encadré « Ascendance démoniaque »,
-    // p. 131, ajoute « acide ou feu »). On ne modélise donc que le TYPE D'ÉNERGIE (choix d'état de jeu
-    // `scopeChoice` → `Character.effectInputs`, hors mode édition, comme Maîtrise des éléments) — la couleur
-    // reste narrative. Le sélecteur tient lieu d'interrupteur (« Aucun » = inactif). Valeur scalante par le
-    // rang de voie : 5, puis 10 au rang 8 (Écailles de dragon acquise → rang 8). RD DISTINCTE de celle du
-    // rang 8 (Écailles, tous types, sous la moitié des PV) : pas de double comptage, ce sont deux entrées.
+    // PER-138 : le joueur choisit UNE FOIS la couleur de dragon de son ascendance (« Choisissez une
+    // couleur de dragon… »). C'est un CHOIX PERMANENT de construction (pas un état échangeable à la table) :
+    // `choices` option → `Character.featureChoices`, rendu en « choix à faire » orange, immuable hors mode
+    // édition. Le livre ne fournit PAS de table chromatique complète (seule la Chimère draconique, p. 277,
+    // atteste « rouge pour feu, blanc pour froid, etc. » ; l'encadré « Ascendance démoniaque », p. 131,
+    // ajoute « acide ou feu ») : on ne modélise que le TYPE D'ÉNERGIE du souffle, les couleurs attestées
+    // figurant en libellé, les autres restant narratives.
+    choices: [
+      {
+        kind: 'option',
+        prompt: "Type d'énergie du souffle (couleur de dragon)",
+        options: [
+          { id: 'fire', label: 'Feu (dragon rouge)' },
+          { id: 'cold', label: 'Froid (dragon blanc)' },
+          { id: 'lightning', label: 'Foudre' },
+          { id: 'acid', label: 'Acide' },
+          { id: 'poison', label: 'Poison' },
+        ],
+      },
+    ],
+    // RD PERMANENTE plate contre le SEUL type d'énergie choisi ci-dessus (`scopeFromChoice: 0` → 1er choix).
+    // Valeur scalante par le rang de voie : 5, puis 10 au rang 8 (Écailles de dragon acquise → rang 8). RD
+    // DISTINCTE de celle du rang 8 (Écailles, tous types, sous la moitié des PV) : pas de double comptage,
+    // ce sont deux entrées.
     damageReduction: {
       kind: 'flat',
       value: {
@@ -534,7 +550,7 @@ export const prestigeFeatures1: Feature[] = [
           { min: 8, value: 10 },
         ],
       },
-      scopeChoice: ['fire', 'cold', 'lightning', 'acid', 'poison'],
+      scopeFromChoice: 0,
     },
     sourcePage: 131,
   },

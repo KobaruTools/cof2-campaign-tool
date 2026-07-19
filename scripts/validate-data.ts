@@ -391,6 +391,19 @@ for (const c of features) {
       if (!validDamageScopes.has(s)) err(`[capacite ${c.id}] damageReduction scopeChoice inconnu : ${s}`);
     if (dr.scopeChoice && dr.scopes)
       err(`[capacite ${c.id}] damageReduction: 'scopes' et 'scopeChoice' sont exclusifs`);
+    // Scope dérivé d'un CHOIX PERMANENT (PER-138) : index d'un choix `option` de la même capacité dont
+    // TOUS les ids d'options sont des types de dégât valides ; exclusif avec `scopes`/`scopeChoice`.
+    if (dr.scopeFromChoice !== undefined) {
+      if (dr.scopes || dr.scopeChoice)
+        err(`[capacite ${c.id}] damageReduction: 'scopeFromChoice' exclusif avec 'scopes'/'scopeChoice'`);
+      const choice = c.choices?.[dr.scopeFromChoice];
+      if (!choice || choice.kind !== 'option')
+        err(`[capacite ${c.id}] damageReduction scopeFromChoice ${dr.scopeFromChoice} ne pointe pas un choix 'option'`);
+      else
+        for (const o of choice.options)
+          if (!validDamageScopes.has(o.id))
+            err(`[capacite ${c.id}] damageReduction scopeFromChoice : option '${o.id}' n'est pas un type de dégât valide`);
+    }
     if (dr.absorptionCap !== undefined) {
       const ce = effectValueError(dr.absorptionCap);
       if (ce) err(`[capacite ${c.id}] damageReduction absorptionCap: ${ce}`);

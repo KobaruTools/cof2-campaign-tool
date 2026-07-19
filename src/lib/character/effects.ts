@@ -33,9 +33,9 @@ import type {
   UsageCounter,
   UsageResetTrigger,
 } from '@/data/schema';
-import { ABILITY_IDS, IMMUNITY_LABELS } from '@/data/schema';
+import { ABILITY_IDS, IMMUNITY_LABELS, RESISTIBLE_DAMAGE_TYPES } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
-import { borrowedHostPathByFeatureId, effectiveFeatureIdsForMods } from './choices';
+import { borrowedHostPathByFeatureId, effectiveFeatureIdsForMods, getOptionSelections } from './choices';
 import { armorDisabledFeatureIds, isArmorWorn } from './armorRestrictions';
 import { rulesContext } from './rulesContext';
 import type { Character, FeatureChoiceSelection } from './types';
@@ -1688,6 +1688,13 @@ export function damageReductionSources(character: Character): DamageReductionSou
         const chosen = character.effectInputs?.[id];
         if (!chosen || !(dr.scopeChoice as string[]).includes(chosen)) continue;
         scopes = [chosen as (typeof dr.scopeChoice)[number]];
+      } else if (dr.scopeFromChoice !== undefined) {
+        // SCOPE dérivé d'un CHOIX PERMANENT de construction (ex. Ascendance draconique, PER-138) : la
+        // portée est l'énergie retenue au choix `option` d'index `scopeFromChoice` (`featureChoices`).
+        // RD comptée seulement si le choix est fait et valide.
+        const chosen = getOptionSelections(character, id, dr.scopeFromChoice)[0];
+        if (!chosen || !(RESISTIBLE_DAMAGE_TYPES as readonly string[]).includes(chosen)) continue;
+        scopes = [chosen as ResistibleDamageType];
       }
       // Résolution de la valeur scalante (ex. Fils du roc 2 → 3 au niveau 10 ; Résistance au feu 5 → 10
       // au rang 7) pour l'affichage. Une constante est rendue telle quelle ; le plafond d'absorption

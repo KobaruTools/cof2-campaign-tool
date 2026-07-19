@@ -1118,6 +1118,16 @@ export interface DamageReduction {
    * élément valide est choisi. Exclusif avec `scopes`.
    */
   scopeChoice?: ResistibleDamageType[];
+  /**
+   * SCOPE dérivé d'un CHOIX PERMANENT de construction (PER-138) : index du choix `option` de la même
+   * capacité (`Feature.choices`) dont la VALEUR retenue (un id de `ResistibleDamageType`) fixe la portée
+   * de la RD. Contrairement à `scopeChoice` (état de jeu échangeable « à la table », `effectInputs`), c'est
+   * un choix FIGÉ fait à l'acquisition (`Character.featureChoices`, immuable hors mode édition, rendu en
+   * « choix à faire » orange) — ex. Ascendance draconique (sang-dragon) : on choisit une fois la couleur/
+   * l'énergie du souffle, pas censé changer. La RD n'est comptée que si le choix est fait et valide.
+   * Exclusif avec `scopes` et `scopeChoice`.
+   */
+  scopeFromChoice?: number;
 }
 
 /**

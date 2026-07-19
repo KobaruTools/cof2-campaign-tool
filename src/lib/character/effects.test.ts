@@ -1025,12 +1025,12 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
     expect(r7[0].reduction).toMatchObject({ kind: 'flat', value: 10, scopes: ['fire'] });
   });
 
-  it('Ascendance draconique (prestige-sang-dragon-r4) : RD sur l’énergie du souffle CHOISIE, 5 puis 10 au rang 8', () => {
-    // Aucune énergie choisie → pas de RD (le sélecteur tient lieu d’activation).
+  it('Ascendance draconique (prestige-sang-dragon-r4) : RD sur l’énergie du CHOIX PERMANENT, 5 puis 10 au rang 8', () => {
+    // Aucune énergie choisie (choix de construction non fait) → pas de RD.
     expect(damageReductionSources(char(['prestige-sang-dragon-r4']))).toEqual([]);
-    // Énergie « feu » choisie, rang 4 de la voie → RD plate 5 sur le feu.
+    // Énergie « feu » retenue au choix permanent (featureChoices), rang 4 de la voie → RD plate 5 sur le feu.
     const r4 = damageReductionSources(
-      char(['prestige-sang-dragon-r4'], { effectInputs: { 'prestige-sang-dragon-r4': 'fire' } }),
+      char(['prestige-sang-dragon-r4'], { featureChoices: { 'prestige-sang-dragon-r4': ['fire'] } }),
     );
     expect(r4).toHaveLength(1);
     expect(r4[0].reduction).toMatchObject({ kind: 'flat', value: 5, scopes: ['fire'] });
@@ -1038,7 +1038,7 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
     // (conditionnelle « sous la moitié des PV », interrupteur éteint) → pas de double comptage.
     const r8 = damageReductionSources(
       char(['prestige-sang-dragon-r4', 'prestige-sang-dragon-r8'], {
-        effectInputs: { 'prestige-sang-dragon-r4': 'cold' },
+        featureChoices: { 'prestige-sang-dragon-r4': ['cold'] },
       }),
     );
     expect(r8).toHaveLength(1);
@@ -1046,7 +1046,7 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
     // Choix invalide → ignoré (pas de RD).
     expect(
       damageReductionSources(
-        char(['prestige-sang-dragon-r4'], { effectInputs: { 'prestige-sang-dragon-r4': 'xyz' } }),
+        char(['prestige-sang-dragon-r4'], { featureChoices: { 'prestige-sang-dragon-r4': ['xyz'] } }),
       ),
     ).toEqual([]);
   });
