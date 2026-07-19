@@ -7,7 +7,6 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import NoMeetingRoomOutlinedIcon from '@mui/icons-material/NoMeetingRoomOutlined';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
-import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
@@ -28,6 +27,7 @@ import { equipmentLabel } from '@/components/wizard/helpers';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { ItemDialog } from '@/components/sheet/ItemDialog';
+import { EquipmentCatalogAutocomplete } from '@/components/sheet/EquipmentCatalogAutocomplete';
 import { PageRefText } from '@/components/SourceRef';
 import { DamageValue } from '@/components/DamageValue';
 import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
@@ -455,19 +455,12 @@ export function EquipmentList({
 
       {onChange && (
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <Autocomplete
-            sx={{ flexGrow: 1, minWidth: 240 }}
+          {/* Sélecteur du catalogue GROUPÉ PAR TYPE d'objet (en-têtes icône + libellé),
+              même mise en forme que le sélecteur de rang de voie (FeaturePathAutocomplete). */}
+          <EquipmentCatalogAutocomplete
             options={equipmentCatalog}
-            getOptionLabel={(o) => o.name}
-            renderInput={(params) => (
-              <TextField {...params} label="Ajouter un objet du catalogue" size="small" />
-            )}
-            onChange={(_, value) => {
-              if (value) addCatalog(value.id);
-            }}
-            value={null}
-            blurOnSelect
-            clearOnBlur
+            onSelect={addCatalog}
+            sx={{ flexGrow: 1, minWidth: 240 }}
           />
           <Button startIcon={<AddIcon />} onClick={() => setItemEdit('new')} size="small">
             Objet personnalisé
