@@ -17,6 +17,7 @@ import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { EquipmentItem } from '@/data/schema';
 import type { ItemType } from '@/lib/character/types';
@@ -120,8 +121,15 @@ export function EquipmentCatalogAutocomplete({
                 position: 'sticky',
                 top: -8,
                 zIndex: 1,
-                bgcolor: theme.palette.action.hover,
+                // Fond OPAQUE (papier du menu à forte opacité) + flou d'arrière-plan : sans
+                // ça, l'en-tête sticky laisse voir les options qui défilent derrière et
+                // devient illisible. Le léger reste de translucidité + le blur donnent un
+                // effet verre dépoli tout en gardant les options du dessous nettes.
+                backgroundColor: alpha(theme.palette.background.paper, 0.92),
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
                 borderLeft: `3px solid ${theme.palette.divider}`,
+                borderBottom: `1px solid ${theme.palette.divider}`,
                 color: theme.palette.text.secondary,
                 fontWeight: 700,
                 fontSize: '0.75rem',
