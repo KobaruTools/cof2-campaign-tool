@@ -1025,6 +1025,32 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
     expect(r7[0].reduction).toMatchObject({ kind: 'flat', value: 10, scopes: ['fire'] });
   });
 
+  it('Ascendance draconique (prestige-sang-dragon-r4) : RD sur l’énergie du souffle CHOISIE, 5 puis 10 au rang 8', () => {
+    // Aucune énergie choisie → pas de RD (le sélecteur tient lieu d’activation).
+    expect(damageReductionSources(char(['prestige-sang-dragon-r4']))).toEqual([]);
+    // Énergie « feu » choisie, rang 4 de la voie → RD plate 5 sur le feu.
+    const r4 = damageReductionSources(
+      char(['prestige-sang-dragon-r4'], { effectInputs: { 'prestige-sang-dragon-r4': 'fire' } }),
+    );
+    expect(r4).toHaveLength(1);
+    expect(r4[0].reduction).toMatchObject({ kind: 'flat', value: 5, scopes: ['fire'] });
+    // Rang 8 de la voie (Écailles acquise) → la RD du r4 passe à 10 ; Écailles reste masquée
+    // (conditionnelle « sous la moitié des PV », interrupteur éteint) → pas de double comptage.
+    const r8 = damageReductionSources(
+      char(['prestige-sang-dragon-r4', 'prestige-sang-dragon-r8'], {
+        effectInputs: { 'prestige-sang-dragon-r4': 'cold' },
+      }),
+    );
+    expect(r8).toHaveLength(1);
+    expect(r8[0].reduction).toMatchObject({ kind: 'flat', value: 10, scopes: ['cold'] });
+    // Choix invalide → ignoré (pas de RD).
+    expect(
+      damageReductionSources(
+        char(['prestige-sang-dragon-r4'], { effectInputs: { 'prestige-sang-dragon-r4': 'xyz' } }),
+      ),
+    ).toEqual([]);
+  });
+
   it('Magnétisme (metal-r3) : RD conditionnelle masquée tant que l’interrupteur est éteint', () => {
     expect(damageReductionSources(char(['metal-r3']))).toEqual([]);
     const on = damageReductionSources(char(['metal-r3'], { effectToggles: { 'metal-r3': [true] } }));
