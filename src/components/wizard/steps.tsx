@@ -65,6 +65,7 @@ import { SourceRef } from '@/components/SourceRef';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { DamageValue } from '@/components/DamageValue';
+import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import type { StepProps } from './types';
 
@@ -227,10 +228,10 @@ function ClassRestrictions({
           label={
             <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
               {reskinnedItemName(characterClass, w.id, w.name)} (DM{' '}
-              <DamageValue damage={w.damage} size={16} />
+              <DamageValue damage={formatWeaponDamage(w.damage)} size={16} />
               {w.twoHandedDamage && (
                 <>
-                  /<DamageValue damage={w.twoHandedDamage} size={16} />
+                  /<DamageValue damage={formatWeaponDamage(w.twoHandedDamage)} size={16} />
                 </>
               )}
               )

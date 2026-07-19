@@ -35,6 +35,7 @@ import { ItemDialog, ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
 import { EquipmentCatalogAutocomplete } from '@/components/sheet/EquipmentCatalogAutocomplete';
 import { PageRefText } from '@/components/SourceRef';
 import { DamageValue } from '@/components/DamageValue';
+import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
 import {
   EquipConflictsAlert,
@@ -62,10 +63,10 @@ function itemDetail(item: EquipmentItem): ReactNode {
     case 'weapon':
       return (
         <>
-          <GlossaryText>DM</GlossaryText> <DamageValue damage={item.damage} />
+          <GlossaryText>DM</GlossaryText> <DamageValue damage={formatWeaponDamage(item.damage)} />
           {item.twoHandedDamage && (
             <>
-              /<DamageValue damage={item.twoHandedDamage} />
+              /<DamageValue damage={formatWeaponDamage(item.twoHandedDamage)} />
             </>
           )}
           {item.range && ` · portée ${item.range}`}

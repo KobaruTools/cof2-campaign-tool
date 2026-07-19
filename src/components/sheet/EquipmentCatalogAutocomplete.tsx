@@ -22,6 +22,7 @@ import type { SxProps, Theme } from '@mui/material/styles';
 import type { EquipmentItem } from '@/data/schema';
 import type { ItemType } from '@/lib/character/types';
 import { ITEM_TYPE_ORDER, itemType } from '@/lib/character/items';
+import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
 
@@ -40,7 +41,9 @@ function catalogItemType(item: EquipmentItem): ItemType {
 function itemHint(item: EquipmentItem): string | null {
   switch (item.category) {
     case 'weapon':
-      return item.twoHandedDamage ? `DM ${item.damage}/${item.twoHandedDamage}` : `DM ${item.damage}`;
+      return item.twoHandedDamage
+        ? `DM ${formatWeaponDamage(item.damage)}/${formatWeaponDamage(item.twoHandedDamage)}`
+        : `DM ${formatWeaponDamage(item.damage)}`;
     case 'armor':
     case 'shield':
       return `DEF +${item.def}`;

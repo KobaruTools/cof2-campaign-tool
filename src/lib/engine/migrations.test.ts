@@ -504,7 +504,72 @@ describe('migrateCharacter', () => {
     expect(c.equipment.every((l) => l.worn === undefined)).toBe(true);
   });
 
-  it('expose les migrations 1→2 … 16→17 dans le registre', () => {
+  it('v17→v18 convertit les surcharges de DM texte d’une variante en modèle structuré', () => {
+    const v17 = validRaw();
+    v17.schemaVersion = 17;
+    v17.equipment = [
+      {
+        itemId: 'epee-longue',
+        quantity: 1,
+        overrides: { name: 'Lame d’Ombre', damage: '1d8+2' },
+      },
+      {
+        itemId: 'epee-batarde',
+        quantity: 1,
+        overrides: { name: 'Tranche-monde', damage: '1d8', twoHandedDamage: '1d12' },
+      },
+      {
+        itemId: 'gourdin',
+        quantity: 1,
+        overrides: { name: 'Trique lestée', damage: '(1d6)' },
+      },
+    ];
+    const c = migrateCharacter(v17);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    const ov = (id: string) =>
+      (c.equipment.find((l) => 'itemId' in l && l.itemId === id) as { overrides?: unknown } | undefined)
+        ?.overrides;
+    expect(ov('epee-longue')).toEqual({ name: 'Lame d’Ombre', damage: { count: 1, die: 'd8', modifier: 2 } });
+    expect(ov('epee-batarde')).toEqual({
+      name: 'Tranche-monde',
+      damage: { count: 1, die: 'd8' },
+      twoHandedDamage: { count: 1, die: 'd12' },
+    });
+    expect(ov('gourdin')).toEqual({ name: 'Trique lestée', damage: { count: 1, die: 'd6', nonLethal: true } });
+  });
+
+  it('v17→v18 écrase une surcharge de DM non parsable : la clé retombe sur la base, le reste survit', () => {
+    const v17 = validRaw();
+    v17.schemaVersion = 17;
+    v17.equipment = [
+      {
+        itemId: 'epee-longue',
+        quantity: 1,
+        // « 5d4° + INT » : grammaire irrégulière (dé évolutif + carac) → non parsable.
+        overrides: { name: 'Relique brisée', damage: '5d4° + INT' },
+      },
+    ];
+    const c = migrateCharacter(v17);
+    const ref = c.equipment[0] as { overrides?: Record<string, unknown> };
+    // La surcharge de DM est retirée (la ligne retombe sur le DM structuré de l'épée
+    // longue), mais le nom de la variante survit.
+    expect(ref.overrides).toEqual({ name: 'Relique brisée' });
+    expect(ref.overrides?.damage).toBeUndefined();
+  });
+
+  it('v17→v18 laisse intacts les objets sans surcharge et les objets personnalisés', () => {
+    const v17 = validRaw();
+    v17.schemaVersion = 17;
+    v17.equipment = [
+      { itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } },
+      { custom: true, name: 'Cape', quantity: 1, type: 'gear' },
+    ];
+    const c = migrateCharacter(v17);
+    expect(c.equipment[0]).toEqual({ itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } });
+    expect(c.equipment[1]).toEqual({ custom: true, name: 'Cape', quantity: 1, type: 'gear' });
+  });
+
+  it('expose les migrations 1→2 … 17→18 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -521,5 +586,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[14]).toBe('function');
     expect(typeof MIGRATIONS[15]).toBe('function');
     expect(typeof MIGRATIONS[16]).toBe('function');
+    expect(typeof MIGRATIONS[17]).toBe('function');
   });
 });

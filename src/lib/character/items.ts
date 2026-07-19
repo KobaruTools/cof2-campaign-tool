@@ -15,7 +15,7 @@
  * du livre (voir `mastery.ts`), pas sur le résolveur.
  */
 import { equipmentById } from '@/data';
-import type { EquipmentItem, WeaponCategory } from '@/data/schema';
+import type { EquipmentItem, WeaponCategory, WeaponDamage } from '@/data/schema';
 import type { EquipmentLine, EquipmentOverrides, EquipmentRef, ItemType } from './types';
 import { isCustomItem } from './types';
 
@@ -30,8 +30,8 @@ export type MechanicalCategory = 'weapon' | 'armor' | 'shield';
 export interface MechanicalItemFields {
   name: string;
   description?: string;
-  damage?: string;
-  twoHandedDamage?: string;
+  damage?: WeaponDamage;
+  twoHandedDamage?: WeaponDamage;
   range?: string;
   weaponCategory?: WeaponCategory;
   def?: number;
@@ -170,8 +170,8 @@ export function snapshotOverrides(
   if (description) o.description = description;
   switch (category) {
     case 'weapon':
-      if (fields.damage?.trim()) o.damage = fields.damage.trim();
-      if (fields.twoHandedDamage?.trim()) o.twoHandedDamage = fields.twoHandedDamage.trim();
+      if (fields.damage) o.damage = fields.damage;
+      if (fields.twoHandedDamage) o.twoHandedDamage = fields.twoHandedDamage;
       if (fields.range?.trim()) o.range = fields.range.trim();
       if (fields.weaponCategory !== undefined) o.weaponCategory = fields.weaponCategory;
       break;

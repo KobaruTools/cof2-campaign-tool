@@ -45,6 +45,28 @@ _Avoid_: réglage modifiable en jeu, réglage de campagne
 `firearmsEffectif = Character.firearmsAllowed ∧ campaign.rules.firearmsAllowed` (campagne absente ⇒ `true`). **Valeur unique lue partout** où comptait `Character.firearmsAllowed` : nom affiché du profil (Arquebusier ↔ Arbalétrier), voies effectives (explosifs ↔ maître des arbalètes), légalité/level-up, conformité. La campagne **filtre** (gate) le choix du joueur : si le MJ interdit la poudre après coup, l'effectif d'un Arquebusier bascule à `false` — il s'affiche « Arbalétrier », le level-up lui propose l'arbalète, et un **avertissement de conformité** (voie explosifs orpheline, arme à feu équipée) invite le MJ à régulariser à la main. Aucune donnée du personnage n'est jamais mutée en silence ; rebasculer la campagne à `true` restaure l'Arquebusier.
 _Avoid_: mutation du personnage, transformation destructive
 
+## Équipement et dégâts
+
+**DM (dégâts)** :
+Dés de dommages d'une source. Quatre **porteurs** distincts, à ne pas confondre : le **catalogue d'armes**, les **variantes** (surcharges d'instance persistées, PER-211/214), les **créatures/familiers**, et les **sorts/capacités**. Seuls les deux premiers (armes/équipement) portent le modèle **structuré** (`WeaponDamage`) ; créatures et sorts restent en **chaîne** (ADR 0002).
+_Avoid_: « dégâts » et « DM » employés indifféremment pour tous les porteurs sans préciser lequel
+
+**DM structuré** (`WeaponDamage`) :
+Représentation typée d'un DM d'arme : `count` (nombre de dés) × `die` (dé) `+ modifier` plat optionnel, avec un marqueur `nonLethal`. Ne modélise **que** ce qui est saisi à la main (armes/variantes). La variation une-main/deux-mains n'y vit **pas** : ce sont deux champs (`damage`/`twoHandedDamage`) aiguillés par la **prise** (`grip`).
+_Avoid_: y mettre le `°` évolutif ou une carac (voir ci-dessous)
+
+**Modificateur plat** (`modifier`) :
+Le `+ N` **numérique** d'une arme magique (`1d8+2`). Distinct d'un **bonus de caractéristique** (`+ FOR`, `+ INT`) : la carac est ajoutée par la **formule d'attaque**, jamais gravée dans le DM de l'arme.
+_Avoid_: `+ FOR`/`+ INT` dans un `WeaponDamage`
+
+**DM non létaux (temporaires)** (`nonLethal`) :
+DM qui n'infligent pas de blessure durable (gourdin, mains nues), notés `(…)` au livre. Marqueur booléen sur le DM structuré ; l'affichage en dérive les parenthèses.
+_Avoid_: conserver les parenthèses comme texte dans la donnée
+
+**Dé évolutif** (`°`) :
+Dé qui monte d'une catégorie selon le niveau/rang (p. 43, durium p. 195). Vit **exclusivement** dans les données figées (créatures, sorts), **hors** du modèle structuré des armes.
+_Avoid_: le représenter dans `WeaponDamage`
+
 ## Relationships
 
 - Un **MJ** possède zéro ou plusieurs **Campagnes**.

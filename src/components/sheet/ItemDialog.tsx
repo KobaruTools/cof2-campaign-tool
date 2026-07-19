@@ -9,12 +9,20 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Autocomplete from '@mui/material/Autocomplete';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { equipment as equipmentCatalog, equipmentById } from '@/data';
-import { WEAPON_CATEGORIES, type EquipmentItem, type WeaponCategory } from '@/data/schema';
+import {
+  WEAPON_CATEGORIES,
+  type DamageDie,
+  type EquipmentItem,
+  type WeaponCategory,
+  type WeaponDamage,
+} from '@/data/schema';
 import type { EquipmentLine, EquipmentRef, ItemType } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import {
@@ -24,6 +32,7 @@ import {
   type MechanicalCategory,
 } from '@/lib/character/items';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
+import { DieIcon } from '@/components/DieIcon';
 
 /** Libellés FR des 7 types d'objet (le CODE reste en anglais, cf. CLAUDE.md). */
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
@@ -55,12 +64,122 @@ function isMechanicalType(type: ItemType): type is MechanicalCategory {
   return type === 'weapon' || type === 'armor' || type === 'shield';
 }
 
+/** Dés de DM proposés à la saisie (PER-217) — `d3` inclus (rendu en texte, sans icône). */
+const DAMAGE_DICE: DamageDie[] = ['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'];
+
+/**
+ * Brouillon de saisie d'un `WeaponDamage` (PER-217) : nombre et modificateur sont
+ * édités en CHAÎNE (champs numériques permissifs), le dé en énuméré, le non-létal en
+ * booléen. Converti en `WeaponDamage` à la validation (`draftToDamage`).
+ */
+interface DamageDraft {
+  count: string;
+  die: DamageDie;
+  modifier: string; // vide ou '0' = pas de modificateur
+  nonLethal: boolean;
+}
+
+const EMPTY_DAMAGE: DamageDraft = { count: '1', die: 'd6', modifier: '', nonLethal: false };
+
+/** Brouillon depuis un `WeaponDamage` du catalogue/d'une variante (pré-remplissage). */
+function damageToDraft(damage: WeaponDamage | undefined): DamageDraft {
+  if (!damage) return { ...EMPTY_DAMAGE };
+  return {
+    count: String(damage.count),
+    die: damage.die,
+    modifier: damage.modifier ? String(damage.modifier) : '',
+    nonLethal: damage.nonLethal ?? false,
+  };
+}
+
+/** `WeaponDamage` figé depuis un brouillon (nombre ≥ 1, modificateur/non-létal optionnels). */
+function draftToDamage(draft: DamageDraft): WeaponDamage {
+  const count = Math.max(1, Math.trunc(Number(draft.count) || 1));
+  const modifier = Math.trunc(Number(draft.modifier) || 0);
+  const result: WeaponDamage = { count, die: draft.die };
+  if (modifier) result.modifier = modifier;
+  if (draft.nonLethal) result.nonLethal = true;
+  return result;
+}
+
+/**
+ * Saisie guidée d'un `WeaponDamage` (PER-217) : nombre de dés + sélecteur de dé (icône
+ * `<DieIcon>`, `d3` en texte) + modificateur plat + case « DM temporaires » (non létal).
+ * Remplace l'ancienne formule tapée à la main.
+ */
+function WeaponDamageFields({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: DamageDraft;
+  onChange: (draft: DamageDraft) => void;
+}) {
+  const set = <K extends keyof DamageDraft>(key: K, v: DamageDraft[K]) =>
+    onChange({ ...value, [key]: v });
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+        {label}
+      </Typography>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+        <TextField
+          type="number"
+          size="small"
+          label="Nombre de dés"
+          value={value.count}
+          onChange={(e) => set('count', e.target.value)}
+          sx={{ width: 120 }}
+          slotProps={{ htmlInput: { min: 1 } }}
+        />
+        <TextField
+          select
+          size="small"
+          label="Dé"
+          value={value.die}
+          onChange={(e) => set('die', e.target.value as DamageDie)}
+          sx={{ width: 110 }}
+        >
+          {DAMAGE_DICE.map((d) => (
+            <MenuItem key={d} value={d}>
+              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                {d === 'd3' ? null : <DieIcon die={d} size={18} noTooltip />}
+                {d}
+              </Box>
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          type="number"
+          size="small"
+          label="Bonus plat"
+          placeholder="0"
+          value={value.modifier}
+          onChange={(e) => set('modifier', e.target.value)}
+          sx={{ width: 110 }}
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              size="small"
+              checked={value.nonLethal}
+              onChange={(e) => set('nonLethal', e.target.checked)}
+            />
+          }
+          label="DM temporaires"
+        />
+      </Stack>
+    </Box>
+  );
+}
+
 /** État de formulaire mutualisé (les champs sans rapport avec le type sont ignorés). */
 interface FormState {
   name: string;
   description: string;
-  damage: string;
-  twoHandedDamage: string;
+  damage: DamageDraft;
+  twoHandedDamage: DamageDraft;
   range: string;
   weaponCategory: WeaponCategory;
   def: string;
@@ -71,8 +190,8 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   name: '',
   description: '',
-  damage: '',
-  twoHandedDamage: '',
+  damage: { ...EMPTY_DAMAGE },
+  twoHandedDamage: { ...EMPTY_DAMAGE },
   range: '',
   weaponCategory: 'oneHand',
   def: '',
@@ -85,8 +204,8 @@ function formFromBase(base: EquipmentItem): FormState {
   const f: FormState = { ...EMPTY_FORM, name: base.name };
   switch (base.category) {
     case 'weapon':
-      f.damage = base.damage;
-      f.twoHandedDamage = base.twoHandedDamage ?? '';
+      f.damage = damageToDraft(base.damage);
+      f.twoHandedDamage = damageToDraft(base.twoHandedDamage);
       f.range = base.range ?? '';
       f.weaponCategory = base.weaponCategory;
       break;
@@ -111,8 +230,8 @@ function formFromLine(line: EquipmentLine): FormState {
   if (item) {
     switch (item.category) {
       case 'weapon':
-        base.damage = item.damage;
-        base.twoHandedDamage = item.twoHandedDamage ?? '';
+        base.damage = damageToDraft(item.damage);
+        base.twoHandedDamage = damageToDraft(item.twoHandedDamage);
         base.range = item.range ?? '';
         base.weaponCategory = item.weaponCategory;
         break;
@@ -208,8 +327,12 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
       const overrides = snapshotOverrides(type, {
         name: trimmedName,
         description: form.description,
-        damage: form.damage,
-        twoHandedDamage: form.twoHandedDamage,
+        damage: type === 'weapon' ? draftToDamage(form.damage) : undefined,
+        // Le DM à deux mains n'a de sens que pour une arme « à une ou deux mains ».
+        twoHandedDamage:
+          type === 'weapon' && form.weaponCategory === 'oneOrTwoHands'
+            ? draftToDamage(form.twoHandedDamage)
+            : undefined,
         range: form.range,
         weaponCategory: form.weaponCategory,
         def: form.def.trim() === '' ? undefined : Number(form.def) || 0,
@@ -343,48 +466,40 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
               {/* Stats d'arme. */}
               {type === 'weapon' && (
                 <>
-                  <Stack direction="row" spacing={1}>
-                    <TextField
-                      size="small"
-                      label="DM"
-                      value={form.damage}
-                      onChange={(e) => setField('damage', e.target.value)}
-                      sx={{ flex: 1 }}
+                  <TextField
+                    select
+                    size="small"
+                    label="Catégorie"
+                    value={form.weaponCategory}
+                    onChange={(e) => setField('weaponCategory', e.target.value as WeaponCategory)}
+                    fullWidth
+                  >
+                    {WEAPON_CATEGORIES.map((c) => (
+                      <MenuItem key={c} value={c}>
+                        {WEAPON_CATEGORY_LABELS[c]}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <WeaponDamageFields
+                    label={form.weaponCategory === 'oneOrTwoHands' ? 'DM à une main' : 'Dégâts (DM)'}
+                    value={form.damage}
+                    onChange={(d) => setField('damage', d)}
+                  />
+                  {form.weaponCategory === 'oneOrTwoHands' && (
+                    <WeaponDamageFields
+                      label="DM à deux mains"
+                      value={form.twoHandedDamage}
+                      onChange={(d) => setField('twoHandedDamage', d)}
                     />
-                    <TextField
-                      select
-                      size="small"
-                      label="Catégorie"
-                      value={form.weaponCategory}
-                      onChange={(e) => setField('weaponCategory', e.target.value as WeaponCategory)}
-                      sx={{ flex: 1 }}
-                    >
-                      {WEAPON_CATEGORIES.map((c) => (
-                        <MenuItem key={c} value={c}>
-                          {WEAPON_CATEGORY_LABELS[c]}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Stack>
-                  <Stack direction="row" spacing={1}>
-                    {form.weaponCategory === 'oneOrTwoHands' && (
-                      <TextField
-                        size="small"
-                        label="DM à deux mains"
-                        value={form.twoHandedDamage}
-                        onChange={(e) => setField('twoHandedDamage', e.target.value)}
-                        sx={{ flex: 1 }}
-                      />
-                    )}
-                    <TextField
-                      size="small"
-                      label="Portée"
-                      placeholder="ex. 20 m"
-                      value={form.range}
-                      onChange={(e) => setField('range', e.target.value)}
-                      sx={{ flex: 1 }}
-                    />
-                  </Stack>
+                  )}
+                  <TextField
+                    size="small"
+                    label="Portée"
+                    placeholder="ex. 20 m"
+                    value={form.range}
+                    onChange={(e) => setField('range', e.target.value)}
+                    fullWidth
+                  />
                 </>
               )}
 

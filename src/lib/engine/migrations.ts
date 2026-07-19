@@ -9,7 +9,7 @@
  * migrations sont conservées dans le code dès la première évolution du schéma.
  */
 import { SCHEMA_VERSION, type Character, type EquipmentLine } from '@/lib/character/types';
-import { ABILITY_IDS, type AbilityId } from '@/data/schema';
+import { ABILITY_IDS, type AbilityId, type DamageDie, type WeaponDamage } from '@/data/schema';
 import { ancestryById } from '@/data';
 import { modifierDeltas, type AncestryChoice } from '@/lib/character/ancestry';
 import { autoEquipStartingGear } from '@/lib/character/equipment';
@@ -353,6 +353,81 @@ function migrateV16toV17(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * Dés de DM reconnus par le parser de migration (PER-217) — `Die` (d4…d20) + `d3`.
+ * Une notation portant un autre dé (d5, d7…) est jugée non parsable.
+ */
+const PARSABLE_DAMAGE_DICE = new Set<string>(['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20']);
+
+/**
+ * Parser GELÉ (usage unique — migration v17→v18) d'une notation de DM en chaîne vers
+ * le modèle structuré `WeaponDamage` (PER-217). Grammaire fermée acceptée : `NdM`,
+ * `NdM+K`, `NdM-K` et leur variante non létale entre parenthèses `(NdM…)`. Le nombre
+ * de dés est optionnel (défaut 1). Toute chaîne hors de cette grammaire — dé évolutif
+ * `°`, ajout de carac `+ INT`, dé inconnu — renvoie `null` (la surcharge sera retirée).
+ */
+function parseWeaponDamage(raw: string): WeaponDamage | null {
+  let body = raw.trim();
+  let nonLethal = false;
+  const paren = /^\((.*)\)$/.exec(body);
+  if (paren) {
+    nonLethal = true;
+    body = paren[1].trim();
+  }
+  const m = /^(\d*)d(\d+)([+-]\d+)?$/.exec(body);
+  if (!m) return null;
+  const die = `d${m[2]}`;
+  if (!PARSABLE_DAMAGE_DICE.has(die)) return null;
+  const count = m[1] === '' ? 1 : Number.parseInt(m[1], 10);
+  if (count < 1) return null;
+  const result: WeaponDamage = { count, die: die as DamageDie };
+  if (m[3]) result.modifier = Number.parseInt(m[3], 10);
+  if (nonLethal) result.nonLethal = true;
+  return result;
+}
+
+/**
+ * v17 → v18 : passage des DM d'arme d'une chaîne libre au modèle structuré `WeaponDamage`
+ * (PER-217). Seules les VARIANTES d'objet du personnage portent des DM sérialisés
+ * (`EquipmentOverrides.damage`/`twoHandedDamage`) — le catalogue est du code source,
+ * réécrit à la main. Pour chaque variante, on convertit les surcharges de DM en chaîne
+ * via le parser gelé. Une chaîne non parsable est RETIRÉE : la ligne retombe alors sur
+ * le DM structuré de l'arme de base, tandis que le nom et les autres surcharges de la
+ * variante survivent (cas jugé vide en données réelles ; `console.warn` en dev).
+ */
+function migrateV17toV18(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (Array.isArray(next.equipment)) {
+    next.equipment = next.equipment.map((line) => {
+      const l = asRecord(line);
+      if (!l) return line;
+      const overrides = asRecord(l.overrides);
+      if (!overrides) return line;
+      const nextOverrides = { ...overrides };
+      for (const key of ['damage', 'twoHandedDamage'] as const) {
+        const value = nextOverrides[key];
+        if (typeof value !== 'string') continue;
+        const parsed = parseWeaponDamage(value);
+        if (parsed) {
+          nextOverrides[key] = parsed;
+        } else {
+          delete nextOverrides[key];
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(
+              `[migration v17→v18] DM « ${value} » non parsable sur la variante « ${
+                typeof overrides.name === 'string' ? overrides.name : l.itemId
+              } » : surcharge retirée, retour au DM de l'arme de base.`,
+            );
+          }
+        }
+      }
+      return { ...l, overrides: nextOverrides };
+    });
+  }
+  next.schemaVersion = 18;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -373,6 +448,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   14: migrateV14toV15,
   15: migrateV15toV16,
   16: migrateV16toV17,
+  17: migrateV17toV18,
 };
 
 export class MigrationError extends Error {}

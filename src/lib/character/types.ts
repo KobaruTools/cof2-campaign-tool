@@ -11,7 +11,7 @@
  *  - les valeurs dérivées ne sont **pas** stockées (recalculées à l'affichage),
  *    sauf surcharges manuelles explicites (`overrides`).
  */
-import type { AbilityId, DerivedStatId, FeatureChoice, WeaponCategory } from '@/data/schema';
+import type { AbilityId, DerivedStatId, FeatureChoice, WeaponCategory, WeaponDamage } from '@/data/schema';
 import type { AncestryChoice } from './ancestry';
 
 /**
@@ -52,8 +52,14 @@ import type { AncestryChoice } from './ancestry';
  *   meilleur bouclier et la première arme déjà présents dans l'inventaire, pour que
  *   la défense des personnages existants ne chute pas au chargement (le calcul ne
  *   compte désormais que l'armure/bouclier PORTÉS, corrigeant le cumul erroné).
+ * v18 : passage des DM d'arme d'une chaîne libre à un modèle structuré `WeaponDamage`
+ *   (PER-217). La migration convertit les surcharges de DM des variantes d'objet
+ *   (`EquipmentOverrides.damage`/`twoHandedDamage`) via un parser gelé ; une chaîne
+ *   non parsable est retirée (la ligne retombe sur le DM structuré de l'arme de base,
+ *   le nom et les autres surcharges survivant). Le catalogue `equipment.ts` (code
+ *   source) est réécrit à la main en littéraux structurés — hors migration.
  */
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;
 
 /**
  * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
@@ -254,12 +260,16 @@ export type ItemType = 'weapon' | 'armor' | 'shield' | 'consumable' | 'gear' | '
  * `twoHandedDamage`/`range`/`weaponCategory` pour une arme, `def`/`maxAgi` pour une
  * armure (`def` seul pour un bouclier), plus `name`/`description` communs. Une clé sans
  * rapport avec la catégorie de la base est simplement ignorée par le résolveur.
+ *
+ * Les DM (`damage`/`twoHandedDamage`) sont STRUCTURÉS (`WeaponDamage`, PER-217) depuis
+ * le schéma v18 ; les variantes d'avant v18 (DM en chaîne) sont converties par la
+ * migration v17→v18 (parser gelé), cf. `src/lib/engine/migrations.ts`.
  */
 export interface EquipmentOverrides {
   name?: string;
   description?: string;
-  damage?: string;
-  twoHandedDamage?: string;
+  damage?: WeaponDamage;
+  twoHandedDamage?: WeaponDamage;
   range?: string;
   weaponCategory?: WeaponCategory;
   def?: number;

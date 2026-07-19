@@ -100,11 +100,11 @@ describe('effectiveItem', () => {
     const ref: EquipmentRef = {
       itemId: 'epee-longue',
       quantity: 1,
-      overrides: { name: 'Lame d’Ombre', damage: '1d8+2' },
+      overrides: { name: 'Lame d’Ombre', damage: { count: 1, die: 'd8', modifier: 2 } },
     };
     const item = effectiveItem(ref);
     expect(item?.name).toBe('Lame d’Ombre');
-    expect(item?.category === 'weapon' && item.damage).toBe('1d8+2');
+    expect(item?.category === 'weapon' && item.damage).toEqual({ count: 1, die: 'd8', modifier: 2 });
     // Catégorie d'arme non surchargée → valeur du catalogue conservée.
     expect(item?.category === 'weapon' && item.weaponCategory).toBe('oneHand');
   });
@@ -137,7 +137,7 @@ describe('snapshotOverrides', () => {
     const o = snapshotOverrides('weapon', {
       name: 'Rapière de Maître Ombre',
       description: 'Une lame fine et sombre.',
-      damage: '1d6+2',
+      damage: { count: 1, die: 'd6', modifier: 2 },
       range: '',
       weaponCategory: 'light',
       def: 99, // hors catégorie arme → ignoré
@@ -145,7 +145,7 @@ describe('snapshotOverrides', () => {
     expect(o).toEqual({
       name: 'Rapière de Maître Ombre',
       description: 'Une lame fine et sombre.',
-      damage: '1d6+2',
+      damage: { count: 1, die: 'd6', modifier: 2 },
       weaponCategory: 'light',
     });
   });
@@ -166,9 +166,15 @@ describe('snapshotOverrides', () => {
   });
 
   it('coupe le nom et omet une description vide', () => {
-    expect(snapshotOverrides('weapon', { name: '  Dague  ', description: '   ', damage: '1d4' })).toEqual({
+    expect(
+      snapshotOverrides('weapon', {
+        name: '  Dague  ',
+        description: '   ',
+        damage: { count: 1, die: 'd4' },
+      }),
+    ).toEqual({
       name: 'Dague',
-      damage: '1d4',
+      damage: { count: 1, die: 'd4' },
     });
   });
 });

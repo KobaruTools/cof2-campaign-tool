@@ -66,6 +66,39 @@ export interface IdealFlaw {
 export type Die = 'd4' | 'd6' | 'd8' | 'd10' | 'd12' | 'd20';
 
 // ---------------------------------------------------------------------------
+// Dégâts d'arme — modèle structuré (PER-217)
+// ---------------------------------------------------------------------------
+
+/**
+ * Dé de DM d'une arme (PER-217). `Die` (d4…d20, jeu d'icônes) plus `d3`, présent
+ * sur quelques armes (mains nues, stylet, lance-pierre — p. 183/185) mais absent
+ * du jeu d'icônes polyédriques : il est rendu en texte, jamais en icône.
+ */
+export type DamageDie = Die | 'd3';
+
+/**
+ * Dégâts STRUCTURÉS d'une arme (PER-217) — remplace l'ancienne chaîne libre pour
+ * les seules ARMES/ÉQUIPEMENT (les créatures et les sorts restent en chaîne, cf.
+ * ADR 0002). Grammaire fermée et régulière : nombre de dés × dé, `+N` plat des
+ * armes magiques, marqueur non létal.
+ *
+ * Le `°` évolutif (p. 43) est EXCLU (aucune arme n'en porte) ; une carac n'est
+ * JAMAIS un `modifier` (elle est ajoutée par la formule d'attaque du moteur).
+ * L'affichage passe par `formatWeaponDamage` (cf. `src/lib/character/weaponDamage.ts`),
+ * qui produit la chaîne consommée par `<DamageValue>`.
+ */
+export interface WeaponDamage {
+  /** Nombre de dés lancés (≥ 1), ex. 2 pour « 2d6 ». */
+  count: number;
+  /** Type de dé lancé. */
+  die: DamageDie;
+  /** Modificateur PLAT signé (armes magiques : « 1d8+2 »). Jamais une carac. Absent = 0. */
+  modifier?: number;
+  /** DM temporaires / non létaux, affichés entre parenthèses « (…) » (gourdin, mains nues). */
+  nonLethal?: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Familles de profils — p. 30-31, 61, 78, 91, 112
 // ---------------------------------------------------------------------------
 
@@ -1988,10 +2021,10 @@ export interface Weapon extends EquipmentBase {
   /** L'arme est-elle une arme de contact, à distance, ou les deux (lancer) ? */
   melee: boolean;
   ranged: boolean;
-  /** Dés de dommages, notation du livre (ex. « 1d8 », « 5d4° + INT »). */
-  damage: string;
-  /** DM à deux mains pour les armes à une ou deux mains (ex. « 1d6/1d10 »). */
-  twoHandedDamage?: string;
+  /** Dés de dommages STRUCTURÉS (PER-217), ex. `{ count: 1, die: 'd8' }`. */
+  damage: WeaponDamage;
+  /** DM à deux mains STRUCTURÉS pour les armes à une ou deux mains (PER-217). */
+  twoHandedDamage?: WeaponDamage;
   /** Portée, notation du livre (ex. « 20 m », « 1d6 à 10 m » pour le lancer). */
   range?: string;
 }
