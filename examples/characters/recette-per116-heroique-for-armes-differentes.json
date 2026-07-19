@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per116-heroique-for-armes-differentes",
+  "name": "Recette PER-116 — Combattant héroïque (FOR) · armes différentes (contrôle)",
+  "identity": {
+    "description": "ATTENDU : alerte WARNING « Combat à deux armes ». Contrôle négatif : Combattant héroïque option FOR mais épée longue + épée courte (armes différentes) → l’exemption p. 73 ne s’applique pas, le dé malus demeure."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "rodeur",
+  "level": 7,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-a-deux-armes-r1",
+    "combat-a-deux-armes-r2",
+    "combat-a-deux-armes-r3",
+    "combat-a-deux-armes-r4",
+    "humain-r1"
+  ],
+  "featureChoices": {
+    "combat-a-deux-armes-r4": [
+      "FOR"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "epee-courte",
+      "quantity": 1,
+      "worn": {
+        "slot": "offHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-116 — dualWielding + penaltyDie attendus malgré FOR (armes ≠).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

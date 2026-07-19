@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per116-bi-arme-di",
+  "name": "Recette PER-116 — bi-armé (armes différentes)",
+  "identity": {
+    "description": "ATTENDU : alerte WARNING « Combat à deux armes » (dé malus p. 215). Épée longue en main principale + dague en main secondaire, aucune capacité d’exception."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 1,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-r1",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1,
+      "worn": {
+        "slot": "offHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-116 — dualWielding + penaltyDie attendus.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
