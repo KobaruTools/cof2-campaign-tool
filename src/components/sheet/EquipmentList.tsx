@@ -39,12 +39,14 @@ import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
 import {
   EquipConflictsAlert,
+  TwoWeaponPenaltyBadge,
   WeaponAffinityBadge,
   WeaponMasteryBadge,
   WornBadge,
   WornControls,
 } from '@/components/sheet/WornEquipmentControls';
 import type { WeaponAffinity } from '@/lib/character/weaponAffinity';
+import type { TwoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 
 /**
  * Résolution NOM D'OBJET → capacité mise en avant (puce) pour les doses d'élixir (voie des élixirs).
@@ -274,6 +276,13 @@ export interface EquipmentListProps {
    * aucun badge d'affinité. Fourni par l'appelant lié au personnage (`weaponAffinities`).
    */
   resolveWeaponAffinities?: (itemId: string) => WeaponAffinity[];
+  /**
+   * Statut de combat à deux armes du personnage (`twoWeaponCombatStatus`, PER-116) :
+   * pose sur chaque arme tenue en main l'indicateur « Deux armes · dé malus » (p. 215),
+   * ou « sans dé malus » quand l'exemption Combattant héroïque joue (p. 73). Absent →
+   * aucun indicateur de combat à deux armes.
+   */
+  twoWeaponStatus?: TwoWeaponCombatStatus;
 }
 
 /** Liste de l'équipement possédé, en lecture ou en édition. */
@@ -287,6 +296,7 @@ export function EquipmentList({
   firearmsAllowed = true,
   sacredWeaponIds,
   resolveWeaponAffinities,
+  twoWeaponStatus,
 }: EquipmentListProps) {
   // Modale d'objet (PER-214) : `null` = fermée, `'new'` = création, un index = édition de
   // la ligne correspondante (bouton crayon, objet custom OU arme/armure/bouclier).
@@ -490,6 +500,9 @@ export function EquipmentList({
               sacredWeaponIds={sacredWeaponIds}
             />
           )}
+          {/* Indicateur consultatif (PER-116) : arme tenue en main → dé malus du combat
+              à deux armes (p. 215), sauf exemption Combattant héroïque (p. 73). */}
+          {twoWeaponStatus && <TwoWeaponPenaltyBadge line={line} status={twoWeaponStatus} />}
           {/* Affinité d'arme (PER-218) : badge POSITIF si l'arme est spéciale pour le perso
               (arme sacrée du prêtre spécialiste). S'affiche sur l'objet du catalogue, porté ou non. */}
           {resolveWeaponAffinities && !custom && item?.category === 'weapon' && (

@@ -38,7 +38,6 @@ import { modifierDeltas } from '@/lib/character/ancestry';
 import { classDisplayName } from '@/lib/character/classDisplay';
 import { masteredClassIds, sacredWeaponMasteryIds } from '@/lib/character/mastery';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
-import { TwoWeaponPenaltyAlert } from '@/components/sheet/WornEquipmentControls';
 import { weaponAffinities } from '@/lib/character/weaponAffinity';
 import {
   PriestVocationBadge,
@@ -1159,9 +1158,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 n'apparaissent qu'en mode édition du bloc. En tête du bloc inventaire. */}
             <PurseField purse={character.purse} onChange={setPurse} editing={editingBlocks.equipment} />
             <Divider sx={{ my: 1.5 }} />
-            {/* Combat à deux armes (PER-116) : dé malus sur chaque attaque (p. 215), sauf
-                exemption Combattant héroïque option FOR (p. 73). Non bloquant. */}
-            <TwoWeaponPenaltyAlert status={twoWeaponCombatStatus(character)} />
             <EquipmentList
               equipment={character.equipment}
               onChange={editingBlocks.equipment ? setEquipment : undefined}
@@ -1179,6 +1175,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               sacredWeaponIds={sacredWeaponMasteryIds(character)}
               // Badge positif d'affinité d'arme (PER-218) : arme sacrée « maîtrisée ».
               resolveWeaponAffinities={(itemId) => weaponAffinities(character, itemId)}
+              // Indicateur « combat à deux armes → dé malus » (PER-116) par arme en main.
+              twoWeaponStatus={twoWeaponCombatStatus(character)}
             />
           </SheetSection>
 

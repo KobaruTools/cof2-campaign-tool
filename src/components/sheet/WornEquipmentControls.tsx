@@ -388,7 +388,9 @@ export function WeaponMasteryAlert({
  * statut PRÉCALCULÉ (`twoWeaponCombatStatus`, qui a besoin du personnage pour lire le
  * choix FOR) pour rester présentationnelle, à l'image des résolveurs passés à la liste
  * d'équipement. `null` hors combat à deux armes. Le moteur SIGNALE, il ne résout aucun
- * jet (dés lancés à la vraie table). Partagée fiche + récapitulatif du wizard.
+ * jet (dés lancés à la vraie table). Utilisée sur le RÉCAPITULATIF du wizard (qui ne
+ * détaille pas les armes ligne par ligne) ; la fiche pose plutôt le badge par arme
+ * (`TwoWeaponPenaltyBadge`), comme l'indicateur de maîtrise (PER-79).
  */
 export function TwoWeaponPenaltyAlert({ status }: { status: TwoWeaponCombatStatus }) {
   if (!status.dualWielding) return null;
@@ -414,5 +416,87 @@ export function TwoWeaponPenaltyAlert({ status }: { status: TwoWeaponCombatStatu
         </PageRefText>
       </Typography>
     </AppAlert>
+  );
+}
+
+/** Info-bulle du dé malus de combat à deux armes : verbatim de la règle + mécanique. */
+const TWO_WEAPON_PENALTY_TOOLTIP = (
+  <>
+    <strong>Combat à deux armes</strong> — dé malus en attaque.
+    <br />
+    <PageRefText>
+      « Chacune des deux attaques subit un dé malus au test d’attaque. » (p. 215)
+    </PageRefText>
+    <br />
+    <PageRefText>
+      « Dé malus : lancez un d20 supplémentaire et gardez le plus faible résultat. » (p. 200)
+    </PageRefText>
+  </>
+);
+
+/** Info-bulle de l'exemption Combattant héroïque (option FOR). */
+const TWO_WEAPON_EXEMPT_TOOLTIP = (
+  <>
+    <strong>Combattant héroïque</strong> (option FOR) — pas de dé malus.
+    <br />
+    <PageRefText>
+      « …peut désormais attaquer avec la même arme dans la main secondaire sans subir de dé
+      malus. » (p. 73)
+    </PageRefText>
+  </>
+);
+
+/**
+ * Badge par arme (PER-116) posé sur une arme du catalogue TENUE EN MAIN (principale ou
+ * secondaire) quand le personnage est en combat à deux armes : tonalité « warning »
+ * « Deux armes · dé malus » (p. 215), ou « success » « Deux armes · sans dé malus »
+ * quand l'exemption Combattant héroïque joue (p. 73). Prend le statut PRÉCALCULÉ
+ * (`twoWeaponCombatStatus`, qui a besoin du personnage). `null` hors combat à deux
+ * armes ou pour une ligne qui n'est pas une arme du catalogue en main. Pendant, sur
+ * l'arme, de l'alerte agrégée `TwoWeaponPenaltyAlert` du wizard.
+ */
+export function TwoWeaponPenaltyBadge({
+  line,
+  status,
+}: {
+  line: EquipmentLine;
+  status: TwoWeaponCombatStatus;
+}) {
+  if (!status.dualWielding || isCustomItem(line) || !line.worn) return null;
+  if (line.worn.slot !== 'mainHand' && line.worn.slot !== 'offHand') return null;
+  if (equipmentById.get(line.itemId)?.category !== 'weapon') return null;
+
+  const exempt = !status.penaltyDie;
+  const color = exempt ? 'success' : 'warning';
+  return (
+    <Box sx={{ mt: 0.5 }}>
+      <AppTooltip title={exempt ? TWO_WEAPON_EXEMPT_TOOLTIP : TWO_WEAPON_PENALTY_TOOLTIP}>
+        <Box
+          component="span"
+          sx={(theme) => ({
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+            px: 0.75,
+            height: 22,
+            borderRadius: 1,
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            cursor: 'help',
+            color: theme.palette[color].main,
+            bgcolor: alpha(theme.palette[color].main, 0.12),
+            border: `1px solid ${alpha(theme.palette[color].main, 0.45)}`,
+          })}
+        >
+          {exempt ? (
+            <AutoAwesomeOutlinedIcon sx={{ fontSize: 14 }} />
+          ) : (
+            <ReportProblemOutlinedIcon sx={{ fontSize: 14 }} />
+          )}
+          {exempt ? 'Deux armes · sans dé malus' : 'Deux armes · dé malus'}
+        </Box>
+      </AppTooltip>
+    </Box>
   );
 }
