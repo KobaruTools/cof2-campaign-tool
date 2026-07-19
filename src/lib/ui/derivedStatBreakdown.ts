@@ -214,9 +214,10 @@ export function derivedStatBreakdown(
         { label: 'Base', value: 10 },
         { label: `${ABILITY_NAMES[defAbility]} (${defAbility})`, value: cappedValue },
         ...mod('Armure / bouclier', defenseEquipment.defBonus),
-        // DEF magique de l'armure portée (PER-85), sur une ligne distincte de la DEF
-        // mondaine : le surcoût de mana des sorts en armure (p. 178) l'exclura.
-        ...mod('Bonus magique d’armure', defenseEquipment.magicDefBonus ?? 0),
+        // DEF magique des objets portés (PER-85 généralisé : armure, mais aussi accessoires
+        // enchantés), sur une ligne distincte de la DEF mondaine : le surcoût de mana des
+        // sorts en armure (p. 178) l'exclut.
+        ...mod('Bonus magique d’équipement', defenseEquipment.magicDefBonus ?? 0),
         ...capacities('def'),
       ];
       // Substitution de caractéristique (Peau de pierre : CON au lieu de l'AGI, p. 80) et/ou

@@ -31,7 +31,7 @@ import { PageRefText } from '@/components/SourceRef';
  */
 type WeaponPosition = 'mainHand' | 'offHand' | 'twoHands';
 
-/** Icône d'un emplacement de port (armure, bouclier, main). */
+/** Icône d'un emplacement de port (armure, bouclier, main, accessoire). */
 function slotIcon(slot: EquipSlot, size = 16) {
   switch (slot) {
     case 'armor':
@@ -41,6 +41,8 @@ function slotIcon(slot: EquipSlot, size = 16) {
     case 'mainHand':
     case 'offHand':
       return <PanToolIcon sx={{ fontSize: size }} />;
+    case 'accessory':
+      return <AutoAwesomeOutlinedIcon sx={{ fontSize: size }} />;
   }
 }
 
@@ -55,6 +57,8 @@ function slotLabel(worn: WornState): string {
       return worn.grip === 'twoHands' ? 'En main (à deux mains)' : 'Main principale';
     case 'offHand':
       return 'Main secondaire';
+    case 'accessory':
+      return 'Accessoire équipé';
   }
 }
 
@@ -96,7 +100,9 @@ export function WornBadge({ worn }: { worn: WornState }) {
  *    « à une ou deux mains ». Un nouveau clic sur l'état actif déséquipe.
  *
  * Les objets personnalisés (hors catalogue) et le matériel (`gear`) n'ont pas de
- * contrôle : le moteur ne connaît pas leurs statistiques. Rien n'est rendu pour eux.
+ * statistiques mondaines connues du moteur, mais peuvent être équipés comme ACCESSOIRE
+ * (bottes, cape, anneau…) : un simple bouton « Équiper » (slot `accessory`, non
+ * exclusif) sert de support à un éventuel bonus de DEF magique (`magicDef`, PER-85).
  */
 export function WornControls({
   line,
@@ -105,10 +111,12 @@ export function WornControls({
   line: EquipmentLine;
   onWear: (worn: WornState | undefined) => void;
 }) {
-  const item = isCustomItem(line) ? null : equipmentById.get(line.itemId);
-  if (!item) return null;
+  const custom = isCustomItem(line);
+  const item = custom ? null : equipmentById.get(line.itemId);
+  // Ligne de catalogue introuvable (id inconnu) : aucun contrôle fiable.
+  if (!custom && !item) return null;
 
-  if (item.category === 'armor' || item.category === 'shield') {
+  if (item && (item.category === 'armor' || item.category === 'shield')) {
     const slot: EquipSlot = item.category;
     const worn = !!line.worn;
     return (
@@ -126,7 +134,7 @@ export function WornControls({
     );
   }
 
-  if (item.category === 'weapon') {
+  if (item && item.category === 'weapon') {
     const intrinsicTwoHands = item.weaponCategory === 'twoHands';
     const canChooseGrip = item.weaponCategory === 'oneOrTwoHands';
 
@@ -192,7 +200,22 @@ export function WornControls({
     );
   }
 
-  return null;
+  // Tout autre objet (matériel du catalogue OU objet libre) : équipable comme ACCESSOIRE
+  // (slot non exclusif). Sert de support à un bonus de DEF magique ; n'occupe aucune main.
+  const accessoryWorn = line.worn?.slot === 'accessory';
+  return (
+    <ToggleButton
+      value="worn"
+      selected={accessoryWorn}
+      color="success"
+      size="small"
+      onChange={() => onWear(accessoryWorn ? undefined : { slot: 'accessory' })}
+      sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}
+    >
+      {slotIcon('accessory')}
+      {accessoryWorn ? 'Équipé' : 'Équiper'}
+    </ToggleButton>
+  );
 }
 
 /**

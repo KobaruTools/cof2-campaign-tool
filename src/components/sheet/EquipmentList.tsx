@@ -21,7 +21,7 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { equipment as equipmentCatalog } from '@/data';
 import type { CharacterClass, EquipmentItem } from '@/data/schema';
-import type { EquipmentLine, EquipmentRef, ItemType, WornState } from '@/lib/character/types';
+import type { EquipmentLine, ItemType, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { effectiveItem, groupEquipmentByType, itemType } from '@/lib/character/items';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
@@ -95,8 +95,8 @@ function MagicDefBadge({ value }: { value: number }) {
     <AppTooltip
       title={
         <PageRefText>
-          Bonus magique de l’armure : s’ajoute à la DEF totale, hors surcoût de mana des sorts en
-          armure (p. 178).
+          Bonus magique de l’équipement : s’ajoute à la DEF totale (cumulable avec les autres
+          objets équipés), hors surcoût de mana des sorts en armure (p. 178).
         </PageRefText>
       }
     >
@@ -357,12 +357,19 @@ export function EquipmentList({
           line.overrides?.description ??
           (item?.category === 'gear' ? item.description : undefined);
     const descPinned = pinnedDesc.has(i);
-    // Bonus de DEF magique de l'armure enchantée (PER-85) : rendu à part de la DEF
+    // Bonus de DEF magique de l'objet enchanté (PER-85 généralisé) : porté par n'importe
+    // quel objet (armure, mais aussi accessoire enchanté) et rendu à part de la DEF
     // mondaine, pour ne pas les confondre visuellement (retour propriétaire).
-    const magicDef = !custom && item?.category === 'armor' ? (line as EquipmentRef).magicDef : undefined;
-    // Objet équipable (a un emplacement de port) : armure, bouclier ou arme du catalogue.
+    const magicDef = line.magicDef;
+    // Objet équipable dans un emplacement DÉDIÉ (armure, bouclier, main) : ouvre aussi le
+    // crayon d'édition « variante mécanique ».
     const equippable =
       !!item && (item.category === 'armor' || item.category === 'shield' || item.category === 'weapon');
+    // Objet ÉQUIPABLE au sens large : tout ce que `WornControls` sait porter — objets à
+    // emplacement dédié, plus les objets libres et le matériel du catalogue portés comme
+    // ACCESSOIRE (bottes/cape/anneau…, support d'un bonus de DEF magique). Exclut seulement
+    // une ligne de catalogue à l'id inconnu.
+    const wearable = custom || !!item;
     // Arme à poudre INDISPONIBLE (PER-185, retour PER-93) : autorisation effective des armes
     // à feu à `false` (campagne « pas d'arme à feu » ou choix du joueur). La ligne est grisée
     // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
@@ -481,12 +488,12 @@ export function EquipmentList({
           )}
           {/* État de port (PER-77) : contrôles équiper/déséquiper si disponibles (état de jeu,
               hors mode édition), sinon un simple badge « équipé » en lecture. */}
-          {equippable && onWear && (
+          {wearable && onWear && (
             <Box sx={{ mt: 0.5 }}>
               <WornControls line={line} onWear={(w) => onWear(i, w)} />
             </Box>
           )}
-          {equippable && !onWear && line.worn && (
+          {wearable && !onWear && line.worn && (
             <Box sx={{ mt: 0.5 }}>
               <WornBadge worn={line.worn} />
             </Box>

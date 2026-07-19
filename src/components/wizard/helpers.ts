@@ -75,10 +75,11 @@ export function equipmentLabel(line: EquipmentLine, characterClass?: CharacterCl
  * des données incohérentes. L'AGI maximale provient de l'armure portée (les
  * boucliers n'en imposent pas, colonne « — » p. 188).
  *
- * Le bonus magique éventuel de l'armure portée (`EquipmentRef.magicDef`, PER-85) est
- * tenu SÉPARÉ de la DEF mondaine (`magicDefBonus`) : il compte dans la DEF totale mais
- * reste distinct pour le surcoût de mana des sorts en armure (p. 178, PER-82). Il n'est
- * lu QUE sur l'armure portée (hors périmètre : boucliers/armes ; ignoré si rangée).
+ * Le bonus magique éventuel (`magicDef`, PER-85 généralisé) est tenu SÉPARÉ de la DEF
+ * mondaine (`magicDefBonus`) : il compte dans la DEF totale mais reste distinct pour le
+ * surcoût de mana des sorts en armure (p. 178, PER-82). Il est lu sur N'IMPORTE QUEL
+ * objet PORTÉ (armure de corps, mais aussi bottes/cape/anneau en `accessory`, y compris
+ * un objet libre) et tous les bonus se CUMULENT ; ignoré si l'objet est rangé.
  */
 export function defenseFromEquipment(equipment: EquipmentLine[]): DefenseEquipment {
   let defBonus = 0;
@@ -87,14 +88,18 @@ export function defenseFromEquipment(equipment: EquipmentLine[]): DefenseEquipme
   let armorCounted = false;
   let shieldCounted = false;
   for (const line of equipment) {
-    if (isCustomItem(line) || !line.worn) continue;
+    if (!line.worn) continue;
+    // Bonus de DEF MAGIQUE : porté par tout objet équipé (custom compris) et cumulable.
+    magicDefBonus += line.magicDef ?? 0;
+    // La DEF MONDAINE et le plafond d'AGI ne proviennent que du catalogue (une armure de
+    // corps + un bouclier au plus) ; un objet libre n'a pas de stats mondaines connues.
+    if (isCustomItem(line)) continue;
     // Résolveur de variante (PER-211) : DEF/plafond AGI EFFECTIFS (surcharges d'instance
     // appliquées), pas les seules valeurs du catalogue.
     const item = effectiveItem(line);
     if (!item) continue;
     if (item.category === 'armor' && !armorCounted) {
       defBonus += item.def;
-      magicDefBonus += line.magicDef ?? 0;
       maxAgi = item.maxAgi;
       armorCounted = true;
     } else if (item.category === 'shield' && !shieldCounted) {

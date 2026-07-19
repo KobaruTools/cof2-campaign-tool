@@ -99,7 +99,8 @@ export function wornWeaponIsTwoHanded(line: EquipmentLine): boolean {
  * Nombre de mains occupées par une ligne PORTÉE (0 si rangée) :
  *  - armure : 0 (ne prend pas de main) ;
  *  - bouclier : 1 (occupe physiquement la main secondaire, p. 188) ;
- *  - arme en main : 2 si tenue à deux mains (voir `wornWeaponIsTwoHanded`), sinon 1.
+ *  - arme en main : 2 si tenue à deux mains (voir `wornWeaponIsTwoHanded`), sinon 1 ;
+ *  - accessoire : 0 (bottes/cape/anneau…, n'occupe aucune main).
  */
 function handsUsedByLine(line: EquipmentLine): number {
   const worn = line.worn;
@@ -113,6 +114,9 @@ function handsUsedByLine(line: EquipmentLine): number {
       return wornWeaponIsTwoHanded(line) ? 2 : 1;
     case 'offHand':
       return 1;
+    case 'accessory':
+      // Bottes/cape/anneau… n'occupent aucune main (support d'un bonus magique).
+      return 0;
   }
 }
 

@@ -184,7 +184,7 @@ interface FormState {
   weaponCategory: WeaponCategory;
   def: string;
   maxAgi: string; // vide = pas de plafond (null)
-  magicDef: string; // armure uniquement
+  magicDef: string; // bonus de DEF magique, tout type d'objet (PER-85 généralisé)
 }
 
 const EMPTY_FORM: FormState = {
@@ -223,7 +223,12 @@ function formFromBase(base: EquipmentItem): FormState {
 /** Pré-remplit le formulaire à partir d'une ligne existante (mode édition). */
 function formFromLine(line: EquipmentLine): FormState {
   if (isCustomItem(line)) {
-    return { ...EMPTY_FORM, name: line.name, description: line.details ?? '' };
+    return {
+      ...EMPTY_FORM,
+      name: line.name,
+      description: line.details ?? '',
+      magicDef: line.magicDef ? String(line.magicDef) : '',
+    };
   }
   const item = effectiveItem(line);
   const base = { ...EMPTY_FORM, name: item?.name ?? line.itemId };
@@ -323,6 +328,9 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
     if (!valid || type === null) return;
     const quantity = initial?.quantity ?? 1;
     const worn = initial?.worn;
+    // Bonus de DEF magique (PER-85 généralisé) : saisissable sur N'IMPORTE QUEL type
+    // d'objet (armure de corps, mais aussi accessoire enchanté — bottes, cape…).
+    const magic = Math.max(0, Number(form.magicDef) || 0);
     if (mechanical && baseId) {
       const overrides = snapshotOverrides(type, {
         name: trimmedName,
@@ -338,7 +346,6 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         def: form.def.trim() === '' ? undefined : Number(form.def) || 0,
         maxAgi: type === 'armor' ? (form.maxAgi.trim() === '' ? null : Number(form.maxAgi) || 0) : undefined,
       });
-      const magic = type === 'armor' ? Math.max(0, Number(form.magicDef) || 0) : 0;
       const line: EquipmentRef = {
         itemId: baseId,
         quantity,
@@ -355,6 +362,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         ...(worn ? { worn } : {}),
         type,
         details: form.description.trim() || undefined,
+        ...(magic > 0 ? { magicDef: magic } : {}),
       });
     }
   };
@@ -503,7 +511,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 </>
               )}
 
-              {/* Stats d'armure : DEF + plafond AGI + bonus magique (PER-85, retour recette). */}
+              {/* Stats d'armure de corps : DEF mondaine + plafond AGI (catalogue). */}
               {type === 'armor' && (
                 <Stack direction="row" spacing={1}>
                   <TextField
@@ -524,16 +532,22 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                     onChange={(e) => setField('maxAgi', e.target.value)}
                     sx={{ flex: 1 }}
                   />
-                  <TextField
-                    type="number"
-                    size="small"
-                    label="DEF magique"
-                    value={form.magicDef}
-                    onChange={(e) => setField('magicDef', e.target.value)}
-                    sx={{ flex: 1 }}
-                  />
                 </Stack>
               )}
+
+              {/* Bonus de DEF MAGIQUE (PER-85 généralisé) : disponible sur TOUT type d'objet
+                  (armure, mais aussi bottes/cape/anneau enchantés). Se cumule dans la DEF
+                  totale quand l'objet est porté, hors surcoût de mana des sorts en armure. */}
+              <TextField
+                type="number"
+                size="small"
+                label="DEF magique"
+                placeholder="0"
+                helperText="bonus magique cumulable si l’objet est équipé (hors surcoût de mana)"
+                value={form.magicDef}
+                onChange={(e) => setField('magicDef', e.target.value)}
+                sx={{ maxWidth: 320 }}
+              />
 
               {/* Stat de bouclier : DEF seule. */}
               {type === 'shield' && (

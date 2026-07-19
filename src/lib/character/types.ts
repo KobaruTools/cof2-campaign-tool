@@ -203,9 +203,13 @@ export interface Identity {
  *    secondaire, mais reste un emplacement distinct d'une arme en main secondaire
  *    (permet de discriminer bouclier vs seconde arme du combat à deux armes) ;
  *  - `mainHand` / `offHand` : arme(s) tenue(s) en main. Une arme à deux mains
- *    (`twoHands`, ou `oneOrTwoHands` avec `grip: 'twoHands'`) occupe les deux mains.
+ *    (`twoHands`, ou `oneOrTwoHands` avec `grip: 'twoHands'`) occupe les deux mains ;
+ *  - `accessory` : objet équipé hors de ces emplacements (bottes, cape, anneau,
+ *    amulette…). NON exclusif (on peut en porter plusieurs, aucun conflit), n'occupe
+ *    aucune main et n'apporte pas de DEF mondaine. Sert de support à un bonus de DEF
+ *    MAGIQUE cumulable (`magicDef`) porté par n'importe quel objet équipé.
  */
-export const EQUIP_SLOTS = ['armor', 'shield', 'mainHand', 'offHand'] as const;
+export const EQUIP_SLOTS = ['armor', 'shield', 'mainHand', 'offHand', 'accessory'] as const;
 export type EquipSlot = (typeof EQUIP_SLOTS)[number];
 
 /** Prise d'une arme tenue en main (p. 184) : à une main ou à deux mains. */
@@ -291,15 +295,16 @@ export interface EquipmentRef {
    */
   overrides?: EquipmentOverrides;
   /**
-   * Bonus de DEF MAGIQUE de cette instance d'armure enchantée (PER-85), en points
-   * de défense qui s'ajoutent à la DEF mondaine du catalogue (`Armor.def`). Propriété
-   * du PERSONNAGE (pas du catalogue, qui ne contient que des armures non magiques) :
-   * l'enchantement est intrinsèque à l'objet, il survit au déséquipement. Ne concerne
-   * QUE l'armure (l'enchantement des boucliers/armes est hors périmètre) et ne
-   * contribue à la défense que lorsque l'armure est PORTÉE. Absent / 0 = non magique.
-   * Distinct de la DEF mondaine car le surcoût de mana des sorts en armure (p. 178,
-   * PER-82) se calcule HORS bonus magique. Champ additif optionnel absent-safe → pas
-   * de bump de `schemaVersion` (cf. précédent `rolledHp`).
+   * Bonus de DEF MAGIQUE de cette instance d'objet enchanté (PER-85, généralisé),
+   * en points de défense qui s'ajoutent à la DEF totale. Propriété du PERSONNAGE
+   * (pas du catalogue, qui ne contient que des objets non magiques) : l'enchantement
+   * est intrinsèque à l'objet, il survit au déséquipement. Porté par N'IMPORTE QUEL
+   * objet ÉQUIPÉ (armure de corps, mais aussi bottes, cape, anneau… via le slot
+   * `accessory`) ; les bonus de tous les objets portés se CUMULENT. Ne contribue à la
+   * défense que lorsque l'objet est PORTÉ. Absent / 0 = non magique. Distinct de la
+   * DEF mondaine car le surcoût de mana des sorts en armure (p. 178, PER-82) se
+   * calcule HORS bonus magique (et n'y regarde que l'armure de corps). Champ additif
+   * optionnel absent-safe → pas de bump de `schemaVersion` (cf. précédent `rolledHp`).
    */
   magicDef?: number;
 }
@@ -325,10 +330,19 @@ export interface CustomItem {
   details?: string;
   /**
    * État de port (PER-76). Absent = rangé. Un objet personnalisé peut être marqué
-   * porté pour l'affichage, mais n'a pas de statistiques structurées : il ne
-   * contribue pas au calcul de la défense (le moteur ne lit que le catalogue).
+   * porté pour l'affichage. Ses statistiques mondaines (DM, DEF de catalogue) restent
+   * inconnues du moteur, MAIS un bonus de DEF magique (`magicDef`) éventuel est bien
+   * pris en compte quand l'objet est porté (typiquement en `accessory`).
    */
   worn?: WornState;
+  /**
+   * Bonus de DEF MAGIQUE de cet objet libre enchanté (PER-85, généralisé). Même
+   * sémantique que `EquipmentRef.magicDef` : s'ajoute à la DEF totale quand l'objet
+   * est PORTÉ, se cumule avec les autres objets portés, reste HORS surcoût de mana.
+   * Permet d'enchanter un objet libre (bottes, cape…) absent du catalogue. Champ
+   * additif optionnel absent-safe → pas de bump de `schemaVersion`.
+   */
+  magicDef?: number;
 }
 
 export type EquipmentLine = EquipmentRef | CustomItem;

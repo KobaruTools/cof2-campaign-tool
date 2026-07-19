@@ -68,12 +68,37 @@ describe('defenseFromEquipment', () => {
     expect(defenseFromEquipment(equipment)).toEqual({ defBonus: 0, maxAgi: null, magicDefBonus: 0 });
   });
 
-  it('ignore un bonus magique posé sur un bouclier (hors périmètre PER-85 : armure seule)', () => {
+  // PER-85 GÉNÉRALISÉ : le bonus magique est porté par N'IMPORTE QUEL objet équipé.
+  it('compte le bonus magique d’un bouclier porté (généralisation, ex-hors-périmètre)', () => {
     const equipment: EquipmentLine[] = [
       { itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } }, // def 5
-      { itemId: 'grand-bouclier', quantity: 1, worn: { slot: 'shield' }, magicDef: 3 }, // magie ignorée
+      { itemId: 'grand-bouclier', quantity: 1, worn: { slot: 'shield' }, magicDef: 3 }, // magie +3
     ];
-    expect(defenseFromEquipment(equipment)).toEqual({ defBonus: 7, maxAgi: 3, magicDefBonus: 0 });
+    expect(defenseFromEquipment(equipment)).toEqual({ defBonus: 7, maxAgi: 3, magicDefBonus: 3 });
+  });
+
+  it('compte le bonus magique d’un ACCESSOIRE porté (bottes enchantées), sans DEF mondaine', () => {
+    const equipment: EquipmentLine[] = [
+      { itemId: 'cuir-simple', quantity: 1, worn: { slot: 'armor' } }, // def 2, agi 6
+      { custom: true, name: 'Bottes de rapidité', quantity: 1, worn: { slot: 'accessory' }, magicDef: 1 },
+    ];
+    expect(defenseFromEquipment(equipment)).toEqual({ defBonus: 2, maxAgi: 6, magicDefBonus: 1 });
+  });
+
+  it('cumule les bonus magiques de plusieurs objets portés', () => {
+    const equipment: EquipmentLine[] = [
+      { itemId: 'cuir-simple', quantity: 1, worn: { slot: 'armor' }, magicDef: 2 }, // def 2 + magie 2
+      { custom: true, name: 'Cape de protection', quantity: 1, worn: { slot: 'accessory' }, magicDef: 1 },
+      { custom: true, name: 'Anneau de défense', quantity: 1, worn: { slot: 'accessory' }, magicDef: 1 },
+    ];
+    expect(defenseFromEquipment(equipment)).toEqual({ defBonus: 2, maxAgi: 6, magicDefBonus: 4 });
+  });
+
+  it('ignore le bonus magique d’un accessoire RANGÉ (non porté)', () => {
+    const equipment: EquipmentLine[] = [
+      { custom: true, name: 'Bottes de rapidité', quantity: 1, magicDef: 1 }, // rangé → ignoré
+    ];
+    expect(defenseFromEquipment(equipment)).toEqual({ defBonus: 0, maxAgi: null, magicDefBonus: 0 });
   });
 
   // PER-211 : une VARIANTE (base catalogue + overrides) contribue à la DEF avec ses
