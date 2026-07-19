@@ -7,8 +7,17 @@ import {
   armorRestrictionViolations,
   featureArmorRestrictionViolations,
   isArmorWorn,
+  isShieldWorn,
+  shieldDisabledFeatureIds,
 } from './armorRestrictions';
-import { activeFeatureIdsForMods, effectContext, effectiveAbilities, modsFromFeatures } from './effects';
+import {
+  activeFeatureIdsForMods,
+  damageReductionSources,
+  effectContext,
+  effectiveAbilities,
+  modsFromFeatures,
+} from './effects';
+import { featureById } from '@/data';
 
 const ctx = rulesContext;
 
@@ -320,5 +329,74 @@ describe('isArmorWorn — une armure est-elle portée ? (PER-132)', () => {
       worn: { slot: 'armor' },
     };
     expect(isArmorWorn([customArmor])).toBe(true);
+  });
+});
+
+describe('isShieldWorn — bouclier réellement manié (PER-142)', () => {
+  it("faux quand aucun bouclier n'est porté", () => {
+    expect(isShieldWorn([])).toBe(false);
+    expect(isShieldWorn([{ itemId: 'petit-bouclier', quantity: 1 }])).toBe(false);
+    expect(isShieldWorn([wornArmor('cuir-simple')])).toBe(false);
+  });
+
+  it('vrai dès qu’un bouclier du catalogue est porté', () => {
+    expect(isShieldWorn([wornShield('grand-bouclier')])).toBe(true);
+  });
+
+  it('vrai pour un bouclier personnalisé porté (sans stats connues)', () => {
+    expect(
+      isShieldWorn([{ custom: true, name: 'Bouclier de fortune', quantity: 1, worn: { slot: 'shield' } }]),
+    ).toBe(true);
+  });
+});
+
+describe('shieldDisabledFeatureIds / Voie du bouclier désactivée sans bouclier (PER-142)', () => {
+  const mods = (c: Character) => modsFromFeatures(activeFeatureIdsForMods(c), effectContext(c));
+
+  it("la donnée bouclier-r3 n'a plus d'interrupteur manuel (bonus DEF inconditionnel)", () => {
+    const r3 = featureById.get('bouclier-r3');
+    expect(r3?.effects?.some((e) => e.kind === 'conditional-stat-bonus')).toBe(false);
+    expect(r3?.effects?.some((e) => e.kind === 'stat-bonus' && e.stat === 'def')).toBe(true);
+  });
+
+  it('sans bouclier : les capacités de la Voie du bouclier sont désactivées', () => {
+    const guerrier = makeChar({
+      classId: 'guerrier',
+      featureIds: ['bouclier-r1', 'bouclier-r2', 'bouclier-r3', 'bouclier-r4', 'bouclier-r5'],
+    });
+    expect(shieldDisabledFeatureIds(guerrier, ctx)).toEqual(
+      new Set(['bouclier-r1', 'bouclier-r2', 'bouclier-r3', 'bouclier-r4', 'bouclier-r5']),
+    );
+    // Le +1/+2 DEF de Défense au bouclier ne compte pas, la RD de zone non plus.
+    expect(mods(guerrier)).toEqual({});
+    expect(damageReductionSources(guerrier).some((s) => s.featureId === 'bouclier-r3')).toBe(false);
+  });
+
+  it('avec un bouclier porté : les capacités sont actives automatiquement (DEF +2, RD zone 5 au rang 5)', () => {
+    const guerrier = makeChar({
+      classId: 'guerrier',
+      featureIds: ['bouclier-r1', 'bouclier-r2', 'bouclier-r3', 'bouclier-r4', 'bouclier-r5'],
+      equipment: [wornShield('grand-bouclier')],
+    });
+    expect(shieldDisabledFeatureIds(guerrier, ctx).size).toBe(0);
+    expect(mods(guerrier)).toEqual({ def: 2 });
+    const rd = damageReductionSources(guerrier).find((s) => s.featureId === 'bouclier-r3');
+    expect(rd?.reduction).toMatchObject({ kind: 'flat', value: 5, scopes: ['area'] });
+  });
+
+  it('au rang 3, DEF +1 et RD de zone 3 avec un bouclier porté', () => {
+    const guerrier = makeChar({
+      classId: 'guerrier',
+      featureIds: ['bouclier-r3'],
+      equipment: [wornShield('petit-bouclier')],
+    });
+    expect(mods(guerrier)).toEqual({ def: 1 });
+    const rd = damageReductionSources(guerrier).find((s) => s.featureId === 'bouclier-r3');
+    expect(rd?.reduction).toMatchObject({ value: 3, scopes: ['area'] });
+  });
+
+  it('une voie sans exigence de bouclier n’est jamais désactivée (Voie du combat)', () => {
+    const guerrier = makeChar({ classId: 'guerrier', featureIds: ['combat-r1'] });
+    expect(shieldDisabledFeatureIds(guerrier, ctx).size).toBe(0);
   });
 });

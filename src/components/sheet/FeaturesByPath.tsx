@@ -75,6 +75,8 @@ import { rulesContext } from '@/lib/character/rulesContext';
 import {
   featureArmorRestrictionViolations,
   featureArmorRestrictionMessage,
+  shieldDisabledFeatureIds,
+  shieldRequiredMessage,
 } from '@/lib/character/armorRestrictions';
 import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
 import { AppAlert } from '@/components/AppAlert';
@@ -3375,15 +3377,18 @@ export function FeaturesByPath({
   const disabled = disabledReasons ? new Set(disabledReasons.keys()) : undefined;
 
   // Capacités dont l'USAGE est gêné par l'armure portée (restriction fine par profil d'origine,
-  // PER-86) : id → message d'avertissement. Rendu visuellement par PathBlock (rang désaturé +
-  // infobulle/notice), et non en avertissement de conformité (choix propriétaire).
+  // PER-86) OU désactivées faute de bouclier (Voie du bouclier, PER-142) : id → message
+  // d'avertissement. Rendu visuellement par PathBlock (rang désaturé + infobulle/notice), et non
+  // en avertissement de conformité (choix propriétaire). Même patron pour les deux causes.
   const armorRestrictedReasons = character
-    ? new Map(
-        featureArmorRestrictionViolations(character, rulesContext).map((v) => [
-          v.featureId,
-          featureArmorRestrictionMessage(v),
-        ]),
-      )
+    ? new Map<string, string>([
+        ...featureArmorRestrictionViolations(character, rulesContext).map(
+          (v) => [v.featureId, featureArmorRestrictionMessage(v)] as const,
+        ),
+        ...[...shieldDisabledFeatureIds(character, rulesContext)].map(
+          (id) => [id, shieldRequiredMessage()] as const,
+        ),
+      ])
     : undefined;
 
   const owned = new Set(featureIds);

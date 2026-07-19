@@ -36,7 +36,7 @@ import type {
 import { ABILITY_IDS, IMMUNITY_LABELS, RESISTIBLE_DAMAGE_TYPES } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
 import { borrowedHostPathByFeatureId, effectiveFeatureIdsForMods, getOptionSelections } from './choices';
-import { armorDisabledFeatureIds, isArmorWorn } from './armorRestrictions';
+import { armorDisabledFeatureIds, isArmorWorn, shieldDisabledFeatureIds } from './armorRestrictions';
 import { rulesContext } from './rulesContext';
 import type { Character, FeatureChoiceSelection } from './types';
 
@@ -91,7 +91,10 @@ export interface EffectContext {
  */
 export function activeFeatureIdsForMods(character: Character): string[] {
   const ids = effectiveFeatureIdsForMods(character);
+  // Capacités désactivées par le port d'armure (PER-83) OU par l'absence de bouclier
+  // (PER-142, Voie du bouclier) : dans les deux cas leurs bonus ne comptent plus.
   const disabled = armorDisabledFeatureIds(character, rulesContext);
+  for (const id of shieldDisabledFeatureIds(character, rulesContext)) disabled.add(id);
   return disabled.size ? ids.filter((id) => !disabled.has(id)) : ids;
 }
 
@@ -1660,9 +1663,14 @@ export function damageReductionSources(character: Character): DamageReductionSou
   const pathRanks = pathRanksFromFeatures(character.featureIds);
   const ctx = effectContext(character);
   const out: DamageReductionSource[] = [];
+  // Capacité de Voie du bouclier sans bouclier manié (PER-142) : sa RD (retrait de DM des attaques
+  // de zone, Défense au bouclier) ne compte plus tant qu'aucun bouclier n'est porté. Cet agrégateur
+  // lit `character` directement (hors `activeFeatureIdsForMods`), d'où le filtrage explicite ici.
+  const shieldDisabled = shieldDisabledFeatureIds(character, rulesContext);
   // Capacités acquises ET empruntées : une capacité empruntée fonctionne comme une capacité normale,
   // sa RD comprise (PER-73). Son rang se résout sur la VOIE A (cf. `borrowedHostPaths`).
   for (const id of effectiveFeatureIdsForMods(character)) {
+    if (shieldDisabled.has(id)) continue;
     const feature = featureById.get(id);
     if (!feature?.damageReduction) continue;
     const rankPathId = ctx.borrowedHostPaths?.get(id) ?? feature.pathId;

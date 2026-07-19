@@ -234,6 +234,9 @@ export const fighterPaths: ClassPath[] = [
     featureIds: ['bouclier-r1', 'bouclier-r2', 'bouclier-r3', 'bouclier-r4', 'bouclier-r5'],
     // Phrase d'introduction de la voie, p. 87.
     note: 'Pour utiliser les capacités suivantes, le guerrier doit obligatoirement manier un bouclier.',
+    // PER-142 : condition structurée de la note ci-dessus. Sans bouclier porté, toutes les capacités
+    // de la voie sont désactivées (cf. `shieldDisabledFeatureIds`) ; un bouclier les réactive auto.
+    requiresShield: true,
     sourcePage: 87,
   },
   {
@@ -1455,26 +1458,19 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le guerrier obtient un bonus de +1 en DEF lorsqu’il manie un bouclier. Ce bonus passe à +2 au rang 5. De plus, lorsqu’il tient son bouclier en main, il retranche son rang à tous les DM des attaques de zone (sorts d’Explosion de feu, mains brûlantes, foudre, etc. et aux souffles) sauf s’il est surpris.',
-    // PER-72 : le +1 en DEF (passant à +2 au rang 5) est CONDITIONNÉ au maniement d'un bouclier.
-    // Comme la milestone Armures (PER-76) ne câble pas encore l'équipement porté, l'effet suit un
-    // INTERRUPTEUR manuel « bouclier en main » (conditional-stat-bonus, comme Armure de vent du
-    // barbare / Cavalier émérite) ; DEF SCALANTE stepped path-rank {1:1, 5:2}. La RÉDUCTION DE DM
-    // « son rang » contre les attaques de ZONE/souffles est portée par `damageReduction` (type `area`,
-    // PER-72) : valeur = rang de la voie (stepped {3:3, 4:4, 5:5}). Elle SUIT le même interrupteur
-    // « bouclier en main » que la DEF (cf. damageReductionSources : RD affichée seulement s'il est
-    // actif). La nuance « sauf s'il est surpris » reste verbatim (état de combat non modélisé).
-    // PER-142 (milestone Armures) : remplacer cet interrupteur manuel par une détection AUTOMATIQUE
-    // du bouclier porté et désactiver toute la voie du bouclier quand aucun bouclier n'est équipé.
+    // PER-142 : le +1 en DEF (passant à +2 au rang 5) est CONDITIONNÉ au maniement d'un bouclier.
+    // La condition est désormais AUTOMATIQUE (déduite de l'équipement porté) : toute la Voie du
+    // bouclier est marquée `requiresShield` et désactivée sans bouclier (cf. `shieldDisabledFeatureIds`).
+    // Le bonus est donc un `stat-bonus` INCONDITIONNEL (plus d'interrupteur manuel « bouclier en main ») ;
+    // DEF SCALANTE stepped path-rank {1:1, 5:2}. La RÉDUCTION DE DM « son rang » contre les attaques de
+    // ZONE/souffles est portée par `damageReduction` (type `area`, PER-72) : valeur = rang de la voie
+    // (stepped {3:3, 4:4, 5:5}) ; `damageReductionSources` la retire elle aussi quand aucun bouclier
+    // n'est porté. La nuance « sauf s'il est surpris » reste verbatim (état de combat non modélisé).
     effects: [
       {
-        kind: 'conditional-stat-bonus',
-        bonuses: [
-          {
-            stat: 'def',
-            value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 5, value: 2 }] },
-          },
-        ],
-        activation: { kind: 'condition', label: 'bouclier en main', activeByDefault: false },
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 1 }, { min: 5, value: 2 }] },
       },
     ],
     damageReduction: {

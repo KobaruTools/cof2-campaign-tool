@@ -352,6 +352,15 @@ interface PathBase {
   featureIds: string[];
   /** Encadré ou note spécifique à la voie (verbatim), le cas échéant. */
   note?: string;
+  /**
+   * La voie EXIGE de manier un bouclier pour que ses capacités fonctionnent (PER-142) —
+   * ex. Voie du bouclier du guerrier (p. 87 : « Pour utiliser les capacités suivantes,
+   * le guerrier doit obligatoirement manier un bouclier. »). Quand AUCUN bouclier n'est
+   * porté, toutes les capacités de la voie sont DÉSACTIVÉES (grisées + effets non comptés,
+   * cf. `shieldDisabledFeatureIds`) ; un bouclier porté les réactive AUTOMATIQUEMENT, sans
+   * interrupteur manuel. Absent/false = aucune exigence de bouclier.
+   */
+  requiresShield?: boolean;
   sourcePage: SourcePage;
 }
 

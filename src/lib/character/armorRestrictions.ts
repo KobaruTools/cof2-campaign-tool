@@ -237,6 +237,45 @@ export function armorDisabledFeatureIds(character: Character, ctx: RulesContext)
   return new Set(featureArmorRestrictionViolations(character, ctx).map((v) => v.featureId));
 }
 
+/**
+ * Un bouclier est-il RÉELLEMENT manié (slot `shield`) ? Compte TOUT bouclier porté, objet
+ * personnalisé inclus (la règle « manier un bouclier », p. 87, ne dépend que de la présence
+ * d'un bouclier en main, pas de ses stats). Sans-safe. Miroir de `isArmorWorn` (PER-132).
+ */
+export function isShieldWorn(equipment: EquipmentLine[] = []): boolean {
+  return equipment.some((line) => line.worn?.slot === 'shield');
+}
+
+/**
+ * PER-142 — ids des capacités DÉSACTIVÉES faute de manier un bouclier : toutes les capacités
+ * acquises d'une voie marquée `requiresShield` (Voie du bouclier du guerrier, p. 87) quand AUCUN
+ * bouclier n'est porté. Exactement comme `armorDisabledFeatureIds` (PER-83) : ces ids sont exclus
+ * de la liste des capacités actives (`activeFeatureIdsForMods`) — leurs bonus (le +1/+2 DEF de
+ * Défense au bouclier) et leur RD (retrait de DM des attaques de zone) ne comptent plus tant
+ * qu'aucun bouclier n'est manié. Réversible : équiper un bouclier les réactive AUTOMATIQUEMENT,
+ * sans interrupteur manuel. Le rendu « désactivée » (rang désaturé + notice) est porté par la
+ * fiche sur le même patron que PER-86 (cf. `shieldRequiredMessage`).
+ */
+export function shieldDisabledFeatureIds(character: Character, ctx: RulesContext): Set<string> {
+  if (isShieldWorn(character.equipment)) return new Set();
+  const disabled = new Set<string>();
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    if (ctx.pathById.get(feature.pathId)?.requiresShield) disabled.add(id);
+  }
+  return disabled;
+}
+
+/**
+ * Message français prêt à afficher (infobulle / notice) pour une capacité désactivée faute de
+ * bouclier (PER-142), sourcé p. 87. « (p. 87) » y est en parenthèse AUTONOME → parsé par
+ * `PageRefText`/`SourceRef` côté UI.
+ */
+export function shieldRequiredMessage(): string {
+  return "Capacité inutilisable sans bouclier : équipez un bouclier pour en profiter (p. 87).";
+}
+
 /** Écart de port d'armure/bouclier à signaler (avertissement non bloquant). */
 export interface ArmorRestrictionViolation {
   kind: 'armor-too-heavy' | 'shield-not-allowed';
