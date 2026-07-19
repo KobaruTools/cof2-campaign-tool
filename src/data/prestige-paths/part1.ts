@@ -519,10 +519,11 @@ export const prestigeFeatures1: Feature[] = [
     // PER-138 : le joueur choisit UNE FOIS la couleur de dragon de son ascendance (« Choisissez une
     // couleur de dragon… »). C'est un CHOIX PERMANENT de construction (pas un état échangeable à la table) :
     // `choices` option → `Character.featureChoices`, rendu en « choix à faire » orange, immuable hors mode
-    // édition. Le livre ne fournit PAS de table chromatique complète (seule la Chimère draconique, p. 277,
-    // atteste « rouge pour feu, blanc pour froid, etc. » ; l'encadré « Ascendance démoniaque », p. 131,
-    // ajoute « acide ou feu ») : on ne modélise que le TYPE D'ÉNERGIE du souffle, les couleurs attestées
-    // figurant en libellé, les autres restant narratives.
+    // édition. Le livre de BASE n'atteste que rouge→feu et blanc→froid (Chimère draconique p. 277 ; prêtre
+    // kobold p. 284 ; il dit « etc. » pour le reste). La correspondance couleur→énergie COMPLÈTE vient de
+    // la correspondance officielle CO2 (source communautaire, validée par le propriétaire le 2026-07-19) :
+    // rouge=feu, bleu=foudre, vert=acide, noir=poison, blanc=froid (glace). On modélise le TYPE D'ÉNERGIE
+    // du souffle (mécanique), la couleur figurant en libellé.
     choices: [
       {
         kind: 'option',
@@ -530,9 +531,9 @@ export const prestigeFeatures1: Feature[] = [
         options: [
           { id: 'fire', label: 'Feu (dragon rouge)' },
           { id: 'cold', label: 'Froid (dragon blanc)' },
-          { id: 'lightning', label: 'Foudre' },
-          { id: 'acid', label: 'Acide' },
-          { id: 'poison', label: 'Poison' },
+          { id: 'lightning', label: 'Foudre (dragon bleu)' },
+          { id: 'acid', label: 'Acide (dragon vert)' },
+          { id: 'poison', label: 'Poison (dragon noir)' },
         ],
       },
     ],
