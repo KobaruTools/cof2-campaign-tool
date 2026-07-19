@@ -29,10 +29,11 @@ import {
 export interface CharacterPreviewCardProps {
   character: Character;
   /**
-   * Colore les 7 caractéristiques (chiffre ET icône) selon l'échelle fort/faible
-   * (`abilityTotalColor`) au lieu du gris neutre. Utilisé par l'écran de MJ pour
-   * un résumé plus parlant ; les autres usages (import, infobulle de liste) gardent
-   * le rendu neutre par défaut.
+   * Colore le CHIFFRE des 7 caractéristiques selon l'échelle fort/faible
+   * (`abilityTotalColor`) au lieu du neutre. Utilisé par l'écran de MJ pour un résumé
+   * plus parlant ; les autres usages (import, infobulle de liste) gardent un chiffre
+   * neutre. L'ICÔNE, elle, porte TOUJOURS la teinte propre de la carac (`ABILITY_COLORS`,
+   * PER-224) — indépendante de cette échelle de valeur.
    */
   colorAbilities?: boolean;
 }
@@ -232,7 +233,8 @@ export function CharacterPreviewCard({ character, colorAbilities = false }: Char
       >
         {ABILITY_IDS.map((id) => {
           const value = character.abilities[id] ?? 0;
-          // Teinte fort/faible optionnelle (chiffre + icône), sinon gris neutre.
+          // Teinte fort/faible optionnelle du CHIFFRE (écran MJ), sinon neutre. L'icône
+          // garde sa teinte propre de carac (défaut d'`AbilityIcon`), indépendante.
           const abilityColor = colorAbilities ? abilityTotalColor(value) : undefined;
           return (
             <Box
@@ -257,13 +259,8 @@ export function CharacterPreviewCard({ character, colorAbilities = false }: Char
               {/* Icône + chiffre regroupés dans une boîte unique, centrée comme un bloc. */}
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
                 {/* Icône de la caractéristique (même jeu d'icônes que la fiche), à la
-                    place du code court FOR/CON/… */}
-                <AbilityIcon
-                  ability={id}
-                  size={18}
-                  color={abilityColor ?? 'rgba(255, 255, 255, 0.7)'}
-                  title={ABILITY_NAMES[id]}
-                />
+                    place du code court FOR/CON/… — teinte propre de la carac (défaut). */}
+                <AbilityIcon ability={id} size={18} title={ABILITY_NAMES[id]} />
                 {/* `lineHeight: 1` : supprime l'espace bas du line-box qui décentrait le chiffre. */}
                 <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1, color: abilityColor }}>
                   {value >= 0 ? `+${value}` : value}

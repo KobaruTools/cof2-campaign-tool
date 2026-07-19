@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { effectiveItem, itemType, snapshotOverrides } from './items';
-import type { EquipmentRef } from './types';
+import {
+  ITEM_TYPE_ORDER,
+  effectiveItem,
+  groupEquipmentByType,
+  itemType,
+  snapshotOverrides,
+} from './items';
+import { isCustomItem } from './types';
+import type { EquipmentLine, EquipmentRef } from './types';
 
 describe('itemType', () => {
   it('déduit le type d’une référence catalogue depuis sa catégorie', () => {
@@ -25,6 +32,57 @@ describe('itemType', () => {
   it('renvoie le type déclaré d’un objet personnalisé, « misc » par défaut', () => {
     expect(itemType({ custom: true, name: 'Rubis', quantity: 1, type: 'treasure' })).toBe('treasure');
     expect(itemType({ custom: true, name: 'Bricole', quantity: 1 })).toBe('misc');
+  });
+});
+
+describe('groupEquipmentByType', () => {
+  // Inventaire mêlé : deux armes, une armure, un consommable, un objet custom trésor.
+  const sample: EquipmentLine[] = [
+    { itemId: 'epee-longue', quantity: 1 }, // arme (idx 0)
+    { itemId: 'potion-de-soins', quantity: 2 }, // consommable (idx 1)
+    { itemId: 'cuir-simple', quantity: 1 }, // armure (idx 2)
+    { itemId: 'dague', quantity: 1 }, // arme (idx 3)
+    { custom: true, name: 'Rubis', quantity: 1, type: 'treasure' }, // trésor (idx 4)
+  ];
+
+  it('émet les groupes non vides dans l’ordre de ITEM_TYPE_ORDER', () => {
+    const groups = groupEquipmentByType(sample);
+    expect(groups.map((g) => g.type)).toEqual(['weapon', 'armor', 'consumable', 'treasure']);
+  });
+
+  it('regroupe les lignes du même type en conservant leur index d’origine', () => {
+    const groups = groupEquipmentByType(sample);
+    const weapons = groups.find((g) => g.type === 'weapon');
+    // Les deux armes, dans l'ordre stocké, avec leur index d'origine (0 puis 3).
+    expect(weapons?.entries.map((e) => e.index)).toEqual([0, 3]);
+    expect(weapons?.entries.map((e) => e.line)).toEqual([sample[0], sample[3]]);
+  });
+
+  it('conserve l’ordre stocké à l’intérieur d’un groupe (pas de tri secondaire)', () => {
+    // Deux objets du même type dont l'ordre stocké contredit l'ordre alphabétique
+    // (« Zircon » avant « Ambre ») : on doit retrouver l'ordre stocké, pas l'alpha.
+    const treasures: EquipmentLine[] = [
+      { custom: true, name: 'Zircon', quantity: 1, type: 'treasure' },
+      { custom: true, name: 'Ambre', quantity: 1, type: 'treasure' },
+    ];
+    const group = groupEquipmentByType(treasures).find((g) => g.type === 'treasure');
+    const names = group?.entries.map((e) => (isCustomItem(e.line) ? e.line.name : null));
+    expect(names).toEqual(['Zircon', 'Ambre']);
+  });
+
+  it('omet les catégories vides et rend un tableau vide sur un inventaire vide', () => {
+    expect(groupEquipmentByType([])).toEqual([]);
+  });
+
+  it('couvre toutes les lignes exactement une fois', () => {
+    const total = groupEquipmentByType(sample).reduce((n, g) => n + g.entries.length, 0);
+    expect(total).toBe(sample.length);
+  });
+
+  it('ITEM_TYPE_ORDER liste les 7 types une seule fois', () => {
+    expect([...ITEM_TYPE_ORDER].sort()).toEqual(
+      ['armor', 'consumable', 'gear', 'misc', 'shield', 'treasure', 'weapon'].sort(),
+    );
   });
 });
 

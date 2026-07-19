@@ -62,6 +62,58 @@ export function itemType(line: EquipmentLine): ItemType {
 }
 
 /**
+ * Ordre canonique d'affichage des 7 types d'objet (PER-221) : mécaniques d'abord
+ * (arme → armure → bouclier), puis consommable → équipement → trésor → divers.
+ * Source unique partagée par le regroupement de l'inventaire, le sélecteur d'ajout
+ * (`EquipmentCatalogAutocomplete`) et le sélecteur de type (`ItemDialog`).
+ */
+export const ITEM_TYPE_ORDER: readonly ItemType[] = [
+  'weapon',
+  'armor',
+  'shield',
+  'consumable',
+  'gear',
+  'treasure',
+  'misc',
+];
+
+/** Une ligne d'inventaire avec son index d'ORIGINE dans le tableau `equipment`. */
+export interface EquipmentEntry {
+  line: EquipmentLine;
+  /** Index d'origine dans `Character.equipment` — sert aux mutations par index. */
+  index: number;
+}
+
+/** Un groupe de lignes d'un même type d'objet (PER-221). */
+export interface EquipmentGroup {
+  type: ItemType;
+  entries: EquipmentEntry[];
+}
+
+/**
+ * Regroupe l'inventaire par type d'objet pour l'affichage « Organiser par catégorie »
+ * (PER-221) — regroupement PUREMENT VISUEL : le tableau `equipment` n'est jamais
+ * réordonné, chaque ligne conserve son `index` d'origine (indispensable aux mutations
+ * par index de `EquipmentList`). Les groupes sortent dans l'ordre de `ITEM_TYPE_ORDER`,
+ * les catégories vides sont omises, et l'ordre stocké est conservé À L'INTÉRIEUR de
+ * chaque groupe (aucun tri secondaire — cohérent avec la liste à plat et le futur
+ * réordonnancement manuel de PER-222).
+ */
+export function groupEquipmentByType(equipment: EquipmentLine[]): EquipmentGroup[] {
+  const buckets = new Map<ItemType, EquipmentEntry[]>();
+  equipment.forEach((line, index) => {
+    const type = itemType(line);
+    const bucket = buckets.get(type);
+    if (bucket) bucket.push({ line, index });
+    else buckets.set(type, [{ line, index }]);
+  });
+  return ITEM_TYPE_ORDER.filter((type) => buckets.has(type)).map((type) => ({
+    type,
+    entries: buckets.get(type)!,
+  }));
+}
+
+/**
  * Objet du catalogue résolu pour une référence, surcharges d'instance appliquées
  * (PER-211). Sans `overrides`, renvoie l'objet du catalogue tel quel (référence
  * partagée, aucune copie — comportement identique à l'ancien `equipmentById.get`).

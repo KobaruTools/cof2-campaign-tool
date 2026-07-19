@@ -340,7 +340,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                   bgcolor: 'action.hover',
                 }}
               >
-                <AbilityIcon ability={ability} size={24} sx={{ color: 'text.secondary' }} />
+                <AbilityIcon ability={ability} size={24} />
                 <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
                   {ABILITY_NAMES[ability]} ({ability})
                 </Typography>

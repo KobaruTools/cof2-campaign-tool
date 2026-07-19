@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack';
 import type { SxProps, Theme } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import type { AbilityId } from '@/data/schema';
-import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { ABILITY_COLORS, ABILITY_NAMES } from '@/lib/ui/ability';
 
 export interface AbilityBadgeProps {
   ability: AbilityId;
@@ -14,7 +14,8 @@ export interface AbilityBadgeProps {
   /**
    * Couleur d'accent (chaîne CSS, ex. `#4caf50`) appliquée à la bordure, au
    * texte et à un fond légèrement teinté. Sert à signaler un bonus/malus ou à
-   * coder une catégorie. Rendu neutre si absent.
+   * coder une catégorie. Par défaut, la TEINTE PROPRE de la caractéristique
+   * (`ABILITY_COLORS`, PER-224), cohérente avec son icône partout dans l'app.
    */
   color?: string;
   /** Style additionnel fusionné par-dessus le style de base. */
@@ -33,6 +34,9 @@ const SIZES = {
  */
 export function AbilityBadge({ ability, size = 'sm', color, sx }: AbilityBadgeProps) {
   const t = SIZES[size];
+  // Sans couleur explicite (bonus/malus, catégorie), on retombe sur la teinte propre de
+  // la caractéristique (`ABILITY_COLORS`) : chip cohérent avec son icône partout (PER-224).
+  const accent = color ?? ABILITY_COLORS[ability];
   return (
     <AppTooltip title={ABILITY_NAMES[ability]}>
       <Box
@@ -50,9 +54,9 @@ export function AbilityBadge({ ability, size = 'sm', color, sx }: AbilityBadgePr
           lineHeight: 1.4,
           borderRadius: 1,
           border: 1,
-          borderColor: color ?? 'divider',
-          bgcolor: color ? `color-mix(in srgb, ${color} 18%, transparent)` : 'action.hover',
-          color: color ?? 'text.primary',
+          borderColor: accent,
+          bgcolor: `color-mix(in srgb, ${accent} 18%, transparent)`,
+          color: accent,
           cursor: 'default',
           userSelect: 'none',
           ...sx,

@@ -18,6 +18,7 @@ import { WEAPON_CATEGORIES, type EquipmentItem, type WeaponCategory } from '@/da
 import type { EquipmentLine, EquipmentRef, ItemType } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import {
+  ITEM_TYPE_ORDER,
   effectiveItem,
   snapshotOverrides,
   type MechanicalCategory,
@@ -35,8 +36,8 @@ export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   misc: 'Divers',
 };
 
-/** Ordre d'affichage des types dans le sélecteur (mécaniques puis cosmétiques). */
-const TYPE_ORDER: ItemType[] = ['weapon', 'armor', 'shield', 'consumable', 'gear', 'treasure', 'misc'];
+/** Ordre d'affichage des types dans le sélecteur (ordre canonique partagé). */
+const TYPE_ORDER = ITEM_TYPE_ORDER;
 
 /** Types de la famille cosmétique (objet libre, sans base du livre). */
 const COSMETIC_TYPES: ItemType[] = ['consumable', 'gear', 'treasure', 'misc'];

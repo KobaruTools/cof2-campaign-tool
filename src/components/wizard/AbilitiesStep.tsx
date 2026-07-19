@@ -175,12 +175,7 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
           return (
             <Grid key={id} size={12}>
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                <AbilityIcon
-                  ability={id}
-                  title
-                  size={24}
-                  sx={{ color: 'text.secondary', flexShrink: 0 }}
-                />
+                <AbilityIcon ability={id} title size={24} sx={{ flexShrink: 0 }} />
                 <SignedNumberField
                   label={id}
                   size="small"

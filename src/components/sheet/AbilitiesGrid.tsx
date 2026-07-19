@@ -140,7 +140,7 @@ export function AbilitiesGrid({
               '&:hover': { bgcolor: 'action.hover', borderColor: 'divider' },
             }}
           >
-            <AbilityIcon ability={id} title size={32} sx={{ color: 'text.secondary' }} />
+            <AbilityIcon ability={id} title size={32} />
             <Typography variant="subtitle2" color="text.secondary" title={ABILITY_NAMES[id]} sx={{ fontWeight: 'bold' }}>
               {id}
             </Typography>

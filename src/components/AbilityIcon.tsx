@@ -2,7 +2,7 @@ import Box from '@mui/material/Box';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { AbilityId } from '@/data/schema';
 import { ABILITY_ICON_PATHS } from '@/lib/ui/abilityIcons';
-import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { ABILITY_COLORS, ABILITY_NAMES } from '@/lib/ui/ability';
 
 export interface AbilityIconProps {
   /** Id de la caractéristique (ex. `'FOR'`) — clé dans `ABILITY_ICON_PATHS`. */
@@ -10,8 +10,10 @@ export interface AbilityIconProps {
   /** Taille en pixels (carré). Défaut 24. */
   size?: number;
   /**
-   * Couleur de l'icône (chaîne CSS). Par défaut `currentColor`, pour hériter de
-   * la couleur du texte.
+   * Couleur de l'icône (chaîne CSS). Par défaut, la TEINTE PROPRE de la caractéristique
+   * (`ABILITY_COLORS`, PER-224) : chaque carac est identifiable d'un coup d'œil, partout
+   * où son icône apparaît (fiche, wizard, résumés, écran MJ, profils de créature…).
+   * Passer une chaîne force une autre couleur (ex. `#fff` sur un fond de profil).
    */
   color?: string;
   /**
@@ -44,7 +46,7 @@ export function AbilityIcon({ ability, size = 24, color, title, sx }: AbilityIco
         flexShrink: 0,
         width: size,
         height: size,
-        fill: color ?? 'currentColor',
+        fill: color ?? ABILITY_COLORS[ability],
         ...sx,
       }}
       dangerouslySetInnerHTML={{ __html: markup }}

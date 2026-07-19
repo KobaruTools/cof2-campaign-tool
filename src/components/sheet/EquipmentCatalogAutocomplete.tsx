@@ -21,21 +21,12 @@ import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { EquipmentItem } from '@/data/schema';
 import type { ItemType } from '@/lib/character/types';
-import { itemType } from '@/lib/character/items';
+import { ITEM_TYPE_ORDER, itemType } from '@/lib/character/items';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
 
-/** Ordre d'affichage des groupes de type (mêmes 7 types que `ItemType`). */
-const TYPE_ORDER: ItemType[] = [
-  'weapon',
-  'armor',
-  'shield',
-  'consumable',
-  'gear',
-  'treasure',
-  'misc',
-];
-const TYPE_RANK: Record<ItemType, number> = TYPE_ORDER.reduce(
+/** Rang d'affichage de chaque type (ordre canonique partagé `ITEM_TYPE_ORDER`). */
+const TYPE_RANK: Record<ItemType, number> = ITEM_TYPE_ORDER.reduce(
   (acc, t, i) => ({ ...acc, [t]: i }),
   {} as Record<ItemType, number>,
 );

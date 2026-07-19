@@ -2,8 +2,10 @@
 
 import { useState, type ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import NoMeetingRoomOutlinedIcon from '@mui/icons-material/NoMeetingRoomOutlined';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
@@ -13,20 +15,23 @@ import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { equipment as equipmentCatalog } from '@/data';
 import type { CharacterClass, EquipmentItem } from '@/data/schema';
-import type { EquipmentLine, EquipmentRef, WornState } from '@/lib/character/types';
+import type { EquipmentLine, EquipmentRef, ItemType, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
-import { effectiveItem, itemType } from '@/lib/character/items';
+import { effectiveItem, groupEquipmentByType, itemType } from '@/lib/character/items';
+import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { isFirearmItemId } from '@/lib/character/firearms';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { isConsumable } from '@/lib/character/consumables';
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
-import { ItemDialog } from '@/components/sheet/ItemDialog';
+import { ItemDialog, ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
 import { EquipmentCatalogAutocomplete } from '@/components/sheet/EquipmentCatalogAutocomplete';
 import { PageRefText } from '@/components/SourceRef';
 import { DamageValue } from '@/components/DamageValue';
@@ -160,6 +165,71 @@ function FirearmUnavailableBadge() {
   );
 }
 
+/**
+ * Bascule d'affichage de l'inventaire (PER-221) : « Par catégorie » (regroupement
+ * visuel par type d'objet) ou « À plat » (liste dans l'ordre stocké). Calquée sur
+ * `FeaturesLayoutToggle` des Voies (`ToggleButtonGroup` à 2 boutons). L'état est une
+ * préférence UI GLOBALE persistée (localStorage), gérée par l'appelant.
+ */
+function InventoryLayoutToggle({
+  grouped,
+  onChange,
+}: {
+  grouped: boolean;
+  onChange: (grouped: boolean) => void;
+}) {
+  return (
+    <ToggleButtonGroup
+      value={grouped ? 'grouped' : 'flat'}
+      exclusive
+      size="small"
+      onChange={(_, next) => {
+        if (next) onChange(next === 'grouped');
+      }}
+    >
+      <ToggleButton value="grouped" aria-label="Organiser par catégorie">
+        <AppTooltip title="Organiser par catégorie">
+          <CategoryOutlinedIcon fontSize="small" />
+        </AppTooltip>
+      </ToggleButton>
+      <ToggleButton value="flat" aria-label="Liste à plat">
+        <AppTooltip title="Liste à plat">
+          <FormatListBulletedIcon fontSize="small" />
+        </AppTooltip>
+      </ToggleButton>
+    </ToggleButtonGroup>
+  );
+}
+
+/**
+ * En-tête d'un groupe de type d'objet (PER-221) : icône du type + libellé FR + décompte,
+ * posé au-dessus des lignes du groupe en mode « Par catégorie ». Bloc custom (≠ Chip MUI,
+ * cf. conventions), en tonalité secondaire discrète pour ne pas voler la vedette aux lignes.
+ */
+function GroupHeader({ type, count }: { type: ItemType; count: number }) {
+  return (
+    <Box
+      sx={(theme) => ({
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.75,
+        pt: 0.5,
+        pb: 0.25,
+        color: theme.palette.text.secondary,
+        borderBottom: `2px solid ${theme.palette.divider}`,
+      })}
+    >
+      <ItemTypeIcon type={type} size={18} />
+      <Typography variant="overline" sx={{ fontWeight: 700, lineHeight: 1.6 }}>
+        {ITEM_TYPE_LABELS[type]}
+      </Typography>
+      <Box component="span" sx={{ ml: 'auto', fontSize: '0.75rem', fontWeight: 600, opacity: 0.7 }}>
+        {count}
+      </Box>
+    </Box>
+  );
+}
+
 export interface EquipmentListProps {
   equipment: EquipmentLine[];
   /** Édition en place : si fourni, ajout / suppression / quantité / objet libre. */
@@ -237,6 +307,10 @@ export function EquipmentList({
   const addCatalog = (itemId: string) => onChange?.([...equipment, { itemId, quantity: 1 }]);
   const addLine = (line: EquipmentLine) => onChange?.([...equipment, line]);
 
+  // Bascule « Organiser par catégorie » (PER-221) : préférence UI GLOBALE persistée
+  // (localStorage), groupé par défaut. Le regroupement est purement VISUEL.
+  const [grouped, setGrouped] = usePersistedBoolean('cof2-inventory-grouped', true);
+
   if (equipment.length === 0 && !onChange) {
     return (
       <Typography variant="body2" color="text.secondary">
@@ -245,236 +319,265 @@ export function EquipmentList({
     );
   }
 
+  // Rendu d'UNE ligne d'inventaire, indexée par sa position d'ORIGINE `i` dans
+  // `equipment` (les mutations setLine/remove/onWear/onUse passent par cet index).
+  // Réutilisé tel quel par l'affichage à plat ET par l'affichage groupé (PER-221) :
+  // le regroupement étant purement visuel, l'index d'origine reste la clé stable.
+  const renderLine = (line: EquipmentLine, i: number) => {
+    const custom = isCustomItem(line);
+    // Type d'objet (PER-213) : sert à l'icône affichée à gauche du nom.
+    const lineType = itemType(line);
+    // Résolveur de variante (PER-211) : l'objet effectif porte les surcharges
+    // d'instance (nom via `equipmentLabel`, DM/DEF/plafond AGI via `itemDetail`).
+    const item = custom ? null : effectiveItem(line);
+    // Dose d'élixir (objet custom nommé par `elixirItemName`) : on met en avant la CAPACITÉ
+    // reproduite via une puce (sort choisi pour un mineur/majeur, sinon capacité du forgesort).
+    const elixirFeatureId = custom ? ELIXIR_FEATURE_BY_ITEM.get(line.name) : undefined;
+    // Détail STRUCTURÉ (DM des armes, DEF des protections) : toujours affiché en ligne.
+    const structuredDetail = elixirFeatureId || custom || !item ? null : itemDetail(item);
+    // Description LIBRE (notes du matériel du catalogue ou d'un objet custom) : masquée par
+    // défaut, révélée au survol du titre (tooltip) et épinglable sous le titre via l'œil.
+    const description = elixirFeatureId
+      ? undefined
+      : custom
+        ? line.details
+        : // Variante mécanique (PER-214) : sa description vit dans `overrides.description`
+          // (hors catalogue) ; à défaut, description du matériel du catalogue.
+          line.overrides?.description ??
+          (item?.category === 'gear' ? item.description : undefined);
+    const descPinned = pinnedDesc.has(i);
+    // Bonus de DEF magique de l'armure enchantée (PER-85) : rendu à part de la DEF
+    // mondaine, pour ne pas les confondre visuellement (retour propriétaire).
+    const magicDef = !custom && item?.category === 'armor' ? (line as EquipmentRef).magicDef : undefined;
+    // Objet équipable (a un emplacement de port) : armure, bouclier ou arme du catalogue.
+    const equippable =
+      !!item && (item.category === 'armor' || item.category === 'shield' || item.category === 'weapon');
+    // Arme à poudre INDISPONIBLE (PER-185, retour PER-93) : autorisation effective des armes
+    // à feu à `false` (campagne « pas d'arme à feu » ou choix du joueur). La ligne est grisée
+    // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
+    // L'identité « arme à feu » se lit sur l'id de BASE (une variante n'y change rien).
+    const firearmUnavailable = !custom && !firearmsAllowed && isFirearmItemId(line.itemId);
+    return (
+      <Stack
+        key={i}
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: 'center',
+          py: 0.75,
+          // Ligne PORTÉE : léger fond teinté pour distinguer d'un coup d'œil (PER-77).
+          ...(line.worn && {
+            px: 1,
+            borderRadius: 1,
+            bgcolor: (theme) => alpha(theme.palette.success.main, 0.06),
+          }),
+        }}
+      >
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          {elixirFeatureId ? (
+            // Nom d'élixir : « Élixir — » suivi de la puce de la capacité reproduite (couleurs +
+            // icône du profil source, cf. CapabilityChip — style unique lisible sur tout fond).
+            <Typography
+              variant="body2"
+              component="span"
+              sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+            >
+              <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
+              Élixir —
+              <CapabilityChip featureId={elixirFeatureId} label={null} />
+            </Typography>
+          ) : (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                flexWrap: 'wrap',
+                // Ligne d'arme à feu indisponible : titre + détail grisés (PER-185).
+                ...(firearmUnavailable && { opacity: 0.5 }),
+              }}
+            >
+              {/* Icône du type d'objet (PER-213), teinte neutre, à gauche du nom. */}
+              <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
+              {/* Titre de l'objet. S'il porte une description libre, il devient survolable
+                  (tooltip) — la description reste masquée par défaut. */}
+              {description ? (
+                <AppTooltip title={<GlossaryText>{description}</GlossaryText>} maxWidth={360}>
+                  <Typography
+                    variant="body2"
+                    component="span"
+                    sx={{ fontWeight: 500, cursor: 'help' }}
+                  >
+                    {equipmentLabel(line, characterClass)}
+                  </Typography>
+                </AppTooltip>
+              ) : (
+                <Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>
+                  {equipmentLabel(line, characterClass)}
+                </Typography>
+              )}
+              {structuredDetail && (
+                <Typography variant="caption" color="text.secondary" component="span">
+                  {structuredDetail}
+                </Typography>
+              )}
+              {magicDef ? <MagicDefBadge value={magicDef} /> : null}
+              {/* Bascule œil : épingle la description sous le titre (état d'affichage local). */}
+              {description && (
+                <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>
+                  <IconButton
+                    size="small"
+                    onClick={() => togglePinned(i)}
+                    sx={{ p: 0.25 }}
+                    aria-label={descPinned ? 'Masquer la description' : 'Afficher la description'}
+                  >
+                    {descPinned ? (
+                      <VisibilityIcon fontSize="inherit" />
+                    ) : (
+                      <VisibilityOffOutlinedIcon fontSize="inherit" />
+                    )}
+                  </IconButton>
+                </AppTooltip>
+              )}
+              {/* Crayon (mode édition, PER-214) : ouvre la modale d'édition. Présent sur
+                  les objets custom ET sur toute arme/armure/bouclier (ref catalogue ou
+                  variante) — sur une ref simple, la 1re modification écrit `overrides` et
+                  elle devient une variante. Absent du matériel/consommable du catalogue. */}
+              {onChange && (custom || equippable) && (
+                <AppTooltip title="Modifier l’objet">
+                  <IconButton
+                    size="small"
+                    onClick={() => setItemEdit(i)}
+                    sx={{ p: 0.25 }}
+                    aria-label="Modifier l’objet"
+                  >
+                    <EditOutlinedIcon fontSize="inherit" />
+                  </IconButton>
+                </AppTooltip>
+              )}
+            </Box>
+          )}
+          {/* Description ÉPINGLÉE sous le titre (œil ouvert). */}
+          {description && descPinned && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              component="div"
+              sx={{ mt: 0.25, whiteSpace: 'pre-line' }}
+            >
+              <GlossaryText>{description}</GlossaryText>
+            </Typography>
+          )}
+          {/* État de port (PER-77) : contrôles équiper/déséquiper si disponibles (état de jeu,
+              hors mode édition), sinon un simple badge « équipé » en lecture. */}
+          {equippable && onWear && (
+            <Box sx={{ mt: 0.5 }}>
+              <WornControls line={line} onWear={(w) => onWear(i, w)} />
+            </Box>
+          )}
+          {equippable && !onWear && line.worn && (
+            <Box sx={{ mt: 0.5 }}>
+              <WornBadge worn={line.worn} />
+            </Box>
+          )}
+          {/* Indicateur consultatif (PER-79) : arme en main non maîtrisée → dé malus. */}
+          {masteredIds && (
+            <WeaponMasteryBadge
+              line={line}
+              masteredIds={masteredIds}
+              firearmsAllowed={firearmsAllowed}
+              sacredWeaponIds={sacredWeaponIds}
+            />
+          )}
+          {/* Affinité d'arme (PER-218) : badge POSITIF si l'arme est spéciale pour le perso
+              (arme sacrée du prêtre spécialiste). S'affiche sur l'objet du catalogue, porté ou non. */}
+          {resolveWeaponAffinities && !custom && item?.category === 'weapon' && (
+            <WeaponAffinityBadge affinities={resolveWeaponAffinities(line.itemId)} />
+          )}
+          {/* Avertissement (PER-185) : arme à poudre grisée quand la poudre est indisponible. */}
+          {firearmUnavailable && <FirearmUnavailableBadge />}
+        </Box>
+        {/* Le bonus de DEF MAGIQUE de l'armure (PER-85) se saisit désormais dans la
+            modale d'édition (crayon), plus en ligne (retour recette PER-214). */}
+        {onChange ? (
+          <TextField
+            type="number"
+            size="small"
+            label="Qté"
+            value={line.quantity}
+            onChange={(e) =>
+              setLine(i, { ...line, quantity: Math.max(1, Number(e.target.value) || 1) })
+            }
+            sx={{ width: 80 }}
+          />
+        ) : (
+          line.quantity > 1 && (
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ fontWeight: 700, fontSize: '1.1rem', flexShrink: 0 }}
+            >
+              ×{line.quantity}
+            </Typography>
+          )
+        )}
+        {/* « Utiliser » : consomme une unité (état de jeu, dispo hors édition), à DROITE du
+            nombre. Décrémente, puis supprime la ligne à 0 (géré par l'appelant). Réservé aux
+            consommables (potions, parchemins, doses d'élixir) — jamais le matériel durable. */}
+        {onUse && isConsumable(line) && (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => onUse(i)}
+            sx={{ flexShrink: 0 }}
+          >
+            Utiliser
+          </Button>
+        )}
+        {onChange && (
+          <IconButton size="small" color="error" onClick={() => remove(i)}>
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
+        )}
+      </Stack>
+    );
+  };
+
   return (
     <Stack spacing={onChange ? 1.5 : 0}>
       {/* Conflits de port DURS (bouclier + arme à 2 mains, >1 armure/bouclier) — non bloquant (PER-77). */}
       <EquipConflictsAlert equipment={equipment} />
-      <Stack divider={<Divider />}>
-        {equipment.map((line, i) => {
-          const custom = isCustomItem(line);
-          // Type d'objet (PER-213) : sert à l'icône affichée à gauche du nom.
-          const lineType = itemType(line);
-          // Résolveur de variante (PER-211) : l'objet effectif porte les surcharges
-          // d'instance (nom via `equipmentLabel`, DM/DEF/plafond AGI via `itemDetail`).
-          const item = custom ? null : effectiveItem(line);
-          // Dose d'élixir (objet custom nommé par `elixirItemName`) : on met en avant la CAPACITÉ
-          // reproduite via une puce (sort choisi pour un mineur/majeur, sinon capacité du forgesort).
-          const elixirFeatureId = custom ? ELIXIR_FEATURE_BY_ITEM.get(line.name) : undefined;
-          // Détail STRUCTURÉ (DM des armes, DEF des protections) : toujours affiché en ligne.
-          const structuredDetail = elixirFeatureId || custom || !item ? null : itemDetail(item);
-          // Description LIBRE (notes du matériel du catalogue ou d'un objet custom) : masquée par
-          // défaut, révélée au survol du titre (tooltip) et épinglable sous le titre via l'œil.
-          const description = elixirFeatureId
-            ? undefined
-            : custom
-              ? line.details
-              : // Variante mécanique (PER-214) : sa description vit dans `overrides.description`
-                // (hors catalogue) ; à défaut, description du matériel du catalogue.
-                line.overrides?.description ??
-                (item?.category === 'gear' ? item.description : undefined);
-          const descPinned = pinnedDesc.has(i);
-          // Bonus de DEF magique de l'armure enchantée (PER-85) : rendu à part de la DEF
-          // mondaine, pour ne pas les confondre visuellement (retour propriétaire).
-          const magicDef = !custom && item?.category === 'armor' ? (line as EquipmentRef).magicDef : undefined;
-          // Objet équipable (a un emplacement de port) : armure, bouclier ou arme du catalogue.
-          const equippable =
-            !!item && (item.category === 'armor' || item.category === 'shield' || item.category === 'weapon');
-          // Arme à poudre INDISPONIBLE (PER-185, retour PER-93) : autorisation effective des armes
-          // à feu à `false` (campagne « pas d'arme à feu » ou choix du joueur). La ligne est grisée
-          // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
-          // L'identité « arme à feu » se lit sur l'id de BASE (une variante n'y change rien).
-          const firearmUnavailable = !custom && !firearmsAllowed && isFirearmItemId(line.itemId);
-          return (
-            <Stack
-              key={i}
-              direction="row"
-              spacing={1}
-              sx={{
-                alignItems: 'center',
-                py: 0.75,
-                // Ligne PORTÉE : léger fond teinté pour distinguer d'un coup d'œil (PER-77).
-                ...(line.worn && {
-                  px: 1,
-                  borderRadius: 1,
-                  bgcolor: (theme) => alpha(theme.palette.success.main, 0.06),
-                }),
-              }}
-            >
-              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                {elixirFeatureId ? (
-                  // Nom d'élixir : « Élixir — » suivi de la puce de la capacité reproduite (couleurs +
-                  // icône du profil source, cf. CapabilityChip — style unique lisible sur tout fond).
-                  <Typography
-                    variant="body2"
-                    component="span"
-                    sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                  >
-                    <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
-                    Élixir —
-                    <CapabilityChip featureId={elixirFeatureId} label={null} />
-                  </Typography>
-                ) : (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                      flexWrap: 'wrap',
-                      // Ligne d'arme à feu indisponible : titre + détail grisés (PER-185).
-                      ...(firearmUnavailable && { opacity: 0.5 }),
-                    }}
-                  >
-                    {/* Icône du type d'objet (PER-213), teinte neutre, à gauche du nom. */}
-                    <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
-                    {/* Titre de l'objet. S'il porte une description libre, il devient survolable
-                        (tooltip) — la description reste masquée par défaut. */}
-                    {description ? (
-                      <AppTooltip title={<GlossaryText>{description}</GlossaryText>} maxWidth={360}>
-                        <Typography
-                          variant="body2"
-                          component="span"
-                          sx={{ fontWeight: 500, cursor: 'help' }}
-                        >
-                          {equipmentLabel(line, characterClass)}
-                        </Typography>
-                      </AppTooltip>
-                    ) : (
-                      <Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>
-                        {equipmentLabel(line, characterClass)}
-                      </Typography>
-                    )}
-                    {structuredDetail && (
-                      <Typography variant="caption" color="text.secondary" component="span">
-                        {structuredDetail}
-                      </Typography>
-                    )}
-                    {magicDef ? <MagicDefBadge value={magicDef} /> : null}
-                    {/* Bascule œil : épingle la description sous le titre (état d'affichage local). */}
-                    {description && (
-                      <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>
-                        <IconButton
-                          size="small"
-                          onClick={() => togglePinned(i)}
-                          sx={{ p: 0.25 }}
-                          aria-label={descPinned ? 'Masquer la description' : 'Afficher la description'}
-                        >
-                          {descPinned ? (
-                            <VisibilityIcon fontSize="inherit" />
-                          ) : (
-                            <VisibilityOffOutlinedIcon fontSize="inherit" />
-                          )}
-                        </IconButton>
-                      </AppTooltip>
-                    )}
-                    {/* Crayon (mode édition, PER-214) : ouvre la modale d'édition. Présent sur
-                        les objets custom ET sur toute arme/armure/bouclier (ref catalogue ou
-                        variante) — sur une ref simple, la 1re modification écrit `overrides` et
-                        elle devient une variante. Absent du matériel/consommable du catalogue. */}
-                    {onChange && (custom || equippable) && (
-                      <AppTooltip title="Modifier l’objet">
-                        <IconButton
-                          size="small"
-                          onClick={() => setItemEdit(i)}
-                          sx={{ p: 0.25 }}
-                          aria-label="Modifier l’objet"
-                        >
-                          <EditOutlinedIcon fontSize="inherit" />
-                        </IconButton>
-                      </AppTooltip>
-                    )}
-                  </Box>
-                )}
-                {/* Description ÉPINGLÉE sous le titre (œil ouvert). */}
-                {description && descPinned && (
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    component="div"
-                    sx={{ mt: 0.25, whiteSpace: 'pre-line' }}
-                  >
-                    <GlossaryText>{description}</GlossaryText>
-                  </Typography>
-                )}
-                {/* État de port (PER-77) : contrôles équiper/déséquiper si disponibles (état de jeu,
-                    hors mode édition), sinon un simple badge « équipé » en lecture. */}
-                {equippable && onWear && (
-                  <Box sx={{ mt: 0.5 }}>
-                    <WornControls line={line} onWear={(w) => onWear(i, w)} />
-                  </Box>
-                )}
-                {equippable && !onWear && line.worn && (
-                  <Box sx={{ mt: 0.5 }}>
-                    <WornBadge worn={line.worn} />
-                  </Box>
-                )}
-                {/* Indicateur consultatif (PER-79) : arme en main non maîtrisée → dé malus. */}
-                {masteredIds && (
-                  <WeaponMasteryBadge
-                    line={line}
-                    masteredIds={masteredIds}
-                    firearmsAllowed={firearmsAllowed}
-                    sacredWeaponIds={sacredWeaponIds}
-                  />
-                )}
-                {/* Affinité d'arme (PER-218) : badge POSITIF si l'arme est spéciale pour le perso
-                    (arme sacrée du prêtre spécialiste). S'affiche sur l'objet du catalogue, porté ou non. */}
-                {resolveWeaponAffinities && !custom && item?.category === 'weapon' && (
-                  <WeaponAffinityBadge affinities={resolveWeaponAffinities(line.itemId)} />
-                )}
-                {/* Avertissement (PER-185) : arme à poudre grisée quand la poudre est indisponible. */}
-                {firearmUnavailable && <FirearmUnavailableBadge />}
-              </Box>
-              {/* Le bonus de DEF MAGIQUE de l'armure (PER-85) se saisit désormais dans la
-                  modale d'édition (crayon), plus en ligne (retour recette PER-214). */}
-              {onChange ? (
-                <TextField
-                  type="number"
-                  size="small"
-                  label="Qté"
-                  value={line.quantity}
-                  onChange={(e) =>
-                    setLine(i, { ...line, quantity: Math.max(1, Number(e.target.value) || 1) })
-                  }
-                  sx={{ width: 80 }}
-                />
-              ) : (
-                line.quantity > 1 && (
-                  <Typography
-                    variant="body1"
-                    color="text.secondary"
-                    sx={{ fontWeight: 700, fontSize: '1.1rem', flexShrink: 0 }}
-                  >
-                    ×{line.quantity}
-                  </Typography>
-                )
-              )}
-              {/* « Utiliser » : consomme une unité (état de jeu, dispo hors édition), à DROITE du
-                  nombre. Décrémente, puis supprime la ligne à 0 (géré par l'appelant). Réservé aux
-                  consommables (potions, parchemins, doses d'élixir) — jamais le matériel durable. */}
-              {onUse && isConsumable(line) && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => onUse(i)}
-                  sx={{ flexShrink: 0 }}
-                >
-                  Utiliser
-                </Button>
-              )}
-              {onChange && (
-                <IconButton size="small" color="error" onClick={() => remove(i)}>
-                  <DeleteOutlineIcon fontSize="small" />
-                </IconButton>
-              )}
-            </Stack>
-          );
-        })}
-        {equipment.length === 0 && onChange && (
-          <Typography variant="body2" color="text.secondary" sx={{ py: 0.75 }}>
-            Aucun équipement.
-          </Typography>
-        )}
-      </Stack>
+      {/* Bascule d'affichage (PER-221) : « Par catégorie » / « À plat », préférence UI
+          globale persistée. Affichée dès qu'il y a au moins une ligne d'inventaire. */}
+      {equipment.length > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <InventoryLayoutToggle grouped={grouped} onChange={setGrouped} />
+        </Box>
+      )}
+      {grouped && equipment.length > 0 ? (
+        // Affichage GROUPÉ (PER-221) : un bloc par type d'objet présent, en-tête + lignes.
+        // `groupEquipmentByType` conserve l'index d'origine de chaque ligne pour les mutations.
+        <Stack spacing={1.5}>
+          {groupEquipmentByType(equipment).map((group) => (
+            <Box key={group.type}>
+              <GroupHeader type={group.type} count={group.entries.length} />
+              <Stack divider={<Divider />}>
+                {group.entries.map((e) => renderLine(e.line, e.index))}
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+      ) : (
+        // Affichage À PLAT : ordre stocké, comme avant PER-221.
+        <Stack divider={<Divider />}>
+          {equipment.map((line, i) => renderLine(line, i))}
+          {equipment.length === 0 && onChange && (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 0.75 }}>
+              Aucun équipement.
+            </Typography>
+          )}
+        </Stack>
+      )}
 
       {onChange && (
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
