@@ -15,6 +15,7 @@
  * à SIGNALER la non-maîtrise. L'indicateur consultatif est posé par l'UI sur l'arme
  * en main (cf. `WeaponMasteryBadge` / `WeaponMasteryAlert`).
  */
+import { priestGodById } from '@/data';
 import type { CharacterClass, Weapon } from '@/data/schema';
 import type { RulesContext } from '@/lib/engine';
 import { ownedRanks } from '@/lib/engine';
@@ -87,6 +88,30 @@ export function masteredClassIds(character: Character, ctx: RulesContext): Set<s
   return ids;
 }
 
+/**
+ * Armes sacrées maîtrisées PAR EXCEPTION par un prêtre spécialiste (PER-96). Le
+ * prêtre ne manie normalement que les armes contondantes à une main + le bâton
+ * ferré (interdiction de faire couler le sang, p. 122) ; mais le héraut d'un seul
+ * dieu MAÎTRISE l'arme sacrée de ce dieu, même tranchante ou perçante (épée longue
+ * d'Axénder, dague de Méphistre, faux de Morn…, table p. 126-127). Les variantes
+ * « au choix » (arc long/court, faux/rouleau/poêle) sont toutes retenues. Chaque
+ * arme est étendue à sa famille (`WEAPON_FAMILIES`) pour rester cohérent avec le
+ * reste de la maîtrise (bâton ⇄ bâton ferré). Ensemble vide pour un généraliste ou
+ * un personnage sans vocation de prêtre (`priestVocation` gate suffisant : il n'est
+ * renseigné que pour un prêtre).
+ */
+export function sacredWeaponMasteryIds(character: Character): ReadonlySet<string> {
+  const ids = new Set<string>();
+  const vocation = character.priestVocation;
+  if (vocation?.mode !== 'specialist') return ids;
+  const god = priestGodById.get(vocation.godId);
+  if (!god) return ids;
+  for (const weaponId of god.sacredWeaponIds) {
+    for (const familyId of weaponFamilyIds(weaponId)) ids.add(familyId);
+  }
+  return ids;
+}
+
 /** Un profil donné maîtrise-t-il cette arme ? Interprète ses accès (`WeaponAccess`). */
 function classMastersWeapon(weapon: Weapon, cls: CharacterClass, firearmsAllowed: boolean): boolean {
   // Arme explicitement listée comme maîtrisée par le profil (ex. magicien : dague, bâton),
@@ -118,14 +143,19 @@ function classMastersWeapon(weapon: Weapon, cls: CharacterClass, firearmsAllowed
 /**
  * L'arme est-elle maîtrisée par le personnage, c.-à-d. par AU MOINS un des profils
  * qu'il maîtrise (`masteredClassIds`) ? `firearmsAllowed` = autorisation EFFECTIVE
- * des armes à feu (règle campagne ∧ choix perso, PER-185).
+ * des armes à feu (règle campagne ∧ choix perso, PER-185). `extraMasteredWeaponIds`
+ * = maîtrises PAR EXCEPTION liées à une arme précise plutôt qu'à un profil (arme
+ * sacrée du prêtre spécialiste, `sacredWeaponMasteryIds`, PER-96) : elle court-circuite
+ * l'analyse des accès de profil.
  */
 export function isWeaponMastered(
   weapon: Weapon,
   masteredIds: Set<string>,
   ctx: RulesContext,
   firearmsAllowed: boolean,
+  extraMasteredWeaponIds?: ReadonlySet<string>,
 ): boolean {
+  if (extraMasteredWeaponIds?.has(weapon.id)) return true;
   for (const id of masteredIds) {
     const cls = ctx.classById.get(id);
     if (cls && classMastersWeapon(weapon, cls, firearmsAllowed)) return true;

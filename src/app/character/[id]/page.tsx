@@ -35,7 +35,7 @@ import { setWornAt } from '@/lib/character/equipment';
 import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { classDisplayName } from '@/lib/character/classDisplay';
-import { masteredClassIds } from '@/lib/character/mastery';
+import { masteredClassIds, sacredWeaponMasteryIds } from '@/lib/character/mastery';
 import { firearmsEffective } from '@/lib/character/firearms';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
@@ -1153,6 +1153,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Indicateur « arme non maîtrisée → dé malus » (PER-79) sur les armes en main.
               masteredIds={masteredClassIds(character, rulesContext)}
               firearmsAllowed={firearmsAllowed}
+              // Exception d'arme sacrée du prêtre spécialiste (PER-96).
+              sacredWeaponIds={sacredWeaponMasteryIds(character)}
             />
           </SheetSection>
 

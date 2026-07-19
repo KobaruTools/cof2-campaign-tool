@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 17,
+  "id": "recette-per96-pretre-axender-epee-sacree",
+  "name": "Recette PER-96 — Prêtre spécialiste d’Axénder (épée longue sacrée)",
+  "identity": {
+    "description": "ATTENDU : l’épée longue (arme sacrée d’Axénder, TRANCHANTE) est MAÎTRISÉE — pas de badge « Non maîtrisée · dé malus » dessus, malgré l’interdiction de sang du prêtre. La dague en main secondaire (autre tranchante, NON sacrée) reste NON maîtrisée → badge dé malus attendu."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 1,
+  "priestVocation": {
+    "mode": "specialist",
+    "godId": "axender"
+  },
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 0,
+    "CHA": 2,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "foi-r1",
+    "guerre-sainte-r1",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1,
+      "worn": {
+        "slot": "offHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-96 — arme sacrée du prêtre spécialiste (exception à la restriction d’armes, p. 122).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

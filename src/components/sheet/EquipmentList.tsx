@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import NoMeetingRoomOutlinedIcon from '@mui/icons-material/NoMeetingRoomOutlined';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -20,6 +21,7 @@ import type { CharacterClass, EquipmentItem } from '@/data/schema';
 import type { EquipmentLine, EquipmentRef, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { effectiveItem, itemType } from '@/lib/character/items';
+import { isFirearmItemId } from '@/lib/character/firearms';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { isConsumable } from '@/lib/character/consumables';
 import { equipmentLabel } from '@/components/wizard/helpers';
@@ -109,6 +111,50 @@ function MagicDefBadge({ value }: { value: number }) {
         +{value} magique
       </Box>
     </AppTooltip>
+  );
+}
+
+/**
+ * Panneau d'avertissement (PER-185, retour propriétaire PER-93) posé sur une ligne d'arme
+ * à poudre (pétoire, mousquet — cf. `FIREARM_ITEM_IDS`) quand la poudre est INDISPONIBLE
+ * (autorisation effective des armes à feu à `false` : règle campagne « pas d'arme à feu »
+ * ou choix du joueur). La ligne est grisée mais JAMAIS retirée : le MJ garde la liberté de
+ * la conserver pour un effet de style. Pastille custom en tonalité « warning » (≠ Chip MUI).
+ */
+function FirearmUnavailableBadge() {
+  return (
+    <Box sx={{ mt: 0.5 }}>
+      <AppTooltip
+        title={
+          <PageRefText>
+            La poudre n’existe pas dans cette campagne : cette arme à feu ne peut pas être utilisée.
+            Conservée par choix (effet de style) ; le MJ peut l’activer via les réglages de campagne (p. 185).
+          </PageRefText>
+        }
+      >
+        <Box
+          component="span"
+          sx={(theme) => ({
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+            px: 0.75,
+            height: 22,
+            borderRadius: 1,
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            cursor: 'help',
+            color: theme.palette.warning.main,
+            bgcolor: alpha(theme.palette.warning.main, 0.12),
+            border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+          })}
+        >
+          <NoMeetingRoomOutlinedIcon sx={{ fontSize: 14 }} />
+          Poudre indisponible dans cette campagne
+        </Box>
+      </AppTooltip>
+    </Box>
   );
 }
 
@@ -216,6 +262,11 @@ export function EquipmentList({
           // Objet équipable (a un emplacement de port) : armure, bouclier ou arme du catalogue.
           const equippable =
             !!item && (item.category === 'armor' || item.category === 'shield' || item.category === 'weapon');
+          // Arme à poudre INDISPONIBLE (PER-185, retour PER-93) : autorisation effective des armes
+          // à feu à `false` (campagne « pas d'arme à feu » ou choix du joueur). La ligne est grisée
+          // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
+          // L'identité « arme à feu » se lit sur l'id de BASE (une variante n'y change rien).
+          const firearmUnavailable = !custom && !firearmsAllowed && isFirearmItemId(line.itemId);
           return (
             <Stack
               key={i}
@@ -246,7 +297,16 @@ export function EquipmentList({
                     <CapabilityChip featureId={elixirFeatureId} label={null} />
                   </Typography>
                 ) : (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      flexWrap: 'wrap',
+                      // Ligne d'arme à feu indisponible : titre + détail grisés (PER-185).
+                      ...(firearmUnavailable && { opacity: 0.5 }),
+                    }}
+                  >
                     {/* Icône du type d'objet (PER-213), teinte neutre, à gauche du nom. */}
                     <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
                     {/* Titre de l'objet. S'il porte une description libre, il devient survolable
@@ -338,6 +398,8 @@ export function EquipmentList({
                     firearmsAllowed={firearmsAllowed}
                   />
                 )}
+                {/* Avertissement (PER-185) : arme à poudre grisée quand la poudre est indisponible. */}
+                {firearmUnavailable && <FirearmUnavailableBadge />}
               </Box>
               {/* Le bonus de DEF MAGIQUE de l'armure (PER-85) se saisit désormais dans la
                   modale d'édition (crayon), plus en ligne (retour recette PER-214). */}

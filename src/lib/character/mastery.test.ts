@@ -4,7 +4,7 @@ import type { Weapon } from '@/data/schema';
 import { rulesContext } from './rulesContext';
 import { createBlankCharacter } from './factory';
 import type { Character } from './types';
-import { isWeaponMastered, masteredClassIds } from './mastery';
+import { isWeaponMastered, masteredClassIds, sacredWeaponMasteryIds } from './mastery';
 
 const ctx = rulesContext;
 const weapon = (id: string) => equipmentById.get(id) as Weapon;
@@ -132,5 +132,65 @@ describe('isWeaponMastered', () => {
     // mais pas l’espadon/bâton (à deux mains).
     expect(isWeaponMastered(weapon('epee-longue'), arquebusierIds, ctx, true)).toBe(true);
     expect(isWeaponMastered(weapon('baton'), arquebusierIds, ctx, true)).toBe(false);
+  });
+});
+
+describe('sacredWeaponMasteryIds (arme sacrée du prêtre spécialiste, PER-96)', () => {
+  it('généraliste : aucune arme sacrée ajoutée', () => {
+    const pretre = makeChar({ classId: 'pretre', priestVocation: { mode: 'generalist' } });
+    expect(sacredWeaponMasteryIds(pretre).size).toBe(0);
+  });
+
+  it('personnage sans vocation de prêtre : aucune arme sacrée ajoutée', () => {
+    const magicien = makeChar({ classId: 'magicien', priestVocation: undefined });
+    expect(sacredWeaponMasteryIds(magicien).size).toBe(0);
+  });
+
+  it('spécialiste d’Axénder : l’épée longue (tranchante) devient sacrée', () => {
+    const pretre = makeChar({ classId: 'pretre', priestVocation: { mode: 'specialist', godId: 'axender' } });
+    expect(sacredWeaponMasteryIds(pretre).has('epee-longue')).toBe(true);
+  });
+
+  it('variantes « au choix » : toutes prises en compte (Arwendée = arc long OU court)', () => {
+    const pretre = makeChar({ classId: 'pretre', priestVocation: { mode: 'specialist', godId: 'arwendee' } });
+    const ids = sacredWeaponMasteryIds(pretre);
+    expect(ids.has('arc-long')).toBe(true);
+    expect(ids.has('arc-court')).toBe(true);
+  });
+
+  it('cohérence des familles d’armes : un dieu au bâton couvre aussi le bâton ferré', () => {
+    // Arcanna → arme sacrée « bâton ». Le bâton ferré est de la même famille (p. 184).
+    const pretre = makeChar({ classId: 'pretre', priestVocation: { mode: 'specialist', godId: 'arcanna' } });
+    const ids = sacredWeaponMasteryIds(pretre);
+    expect(ids.has('baton')).toBe(true);
+    expect(ids.has('baton-ferre')).toBe(true);
+  });
+});
+
+describe('isWeaponMastered avec arme sacrée (PER-96)', () => {
+  const pretreIds = masteredClassIds(makeChar({ classId: 'pretre' }), ctx);
+
+  it('le prêtre de base ne maîtrise pas les armes tranchantes/perçantes', () => {
+    // Sans exception : l’épée longue reste non maîtrisée (accès none/none, contondantes only).
+    expect(isWeaponMastered(weapon('epee-longue'), pretreIds, ctx, true)).toBe(false);
+  });
+
+  it('spécialiste : son arme sacrée est maîtrisée même tranchante (Axénder / épée longue)', () => {
+    const pretre = makeChar({ classId: 'pretre', priestVocation: { mode: 'specialist', godId: 'axender' } });
+    const sacred = sacredWeaponMasteryIds(pretre);
+    expect(isWeaponMastered(weapon('epee-longue'), pretreIds, ctx, true, sacred)).toBe(true);
+  });
+
+  it('spécialiste : les AUTRES armes tranchantes/perçantes restent non maîtrisées', () => {
+    const pretre = makeChar({ classId: 'pretre', priestVocation: { mode: 'specialist', godId: 'axender' } });
+    const sacred = sacredWeaponMasteryIds(pretre);
+    expect(isWeaponMastered(weapon('dague'), pretreIds, ctx, true, sacred)).toBe(false);
+    expect(isWeaponMastered(weapon('rapiere'), pretreIds, ctx, true, sacred)).toBe(false);
+  });
+
+  it('généraliste : aucune exception, l’épée longue reste non maîtrisée', () => {
+    const pretre = makeChar({ classId: 'pretre', priestVocation: { mode: 'generalist' } });
+    const sacred = sacredWeaponMasteryIds(pretre);
+    expect(isWeaponMastered(weapon('epee-longue'), pretreIds, ctx, true, sacred)).toBe(false);
   });
 });

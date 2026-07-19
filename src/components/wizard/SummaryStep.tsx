@@ -22,7 +22,7 @@ import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
 import { PageRefText } from '@/components/SourceRef';
 import { EquipConflictsAlert, WeaponMasteryAlert } from '@/components/sheet/WornEquipmentControls';
-import { masteredClassIds } from '@/lib/character/mastery';
+import { masteredClassIds, sacredWeaponMasteryIds } from '@/lib/character/mastery';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { ClassIcon } from '@/components/ClassIcon';
@@ -267,6 +267,7 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
         equipment={draft.equipment}
         masteredIds={masteredClassIds(preview, rulesContext)}
         firearmsAllowed={firearmsAllowed}
+        sacredWeaponIds={sacredWeaponMasteryIds(preview)}
       />
 
       {warnings.length > 0 && (
