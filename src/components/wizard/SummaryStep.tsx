@@ -16,9 +16,7 @@ import { activeFeatureIdsForMods, defenseAbility, effectContext, effectiveAbilit
 import { hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { defenseFromEquipment } from './helpers';
-import { abilityTotalColor, abilityTotalFontSize } from '@/lib/ui/abilityColors';
 import { classColor } from '@/lib/ui/classColors';
-import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
 import { PageRefText } from '@/components/SourceRef';
 import {
@@ -29,7 +27,7 @@ import {
 import { masteredClassIds, sacredWeaponMasteryIds } from '@/lib/character/mastery';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
-import { AbilityIcon } from '@/components/AbilityIcon';
+import { AbilityValueBadge } from '@/components/AbilityValueBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
@@ -110,41 +108,25 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
           Caractéristiques
         </Typography>
         <Stack direction="row" spacing={1}>
-          {ABILITY_IDS.map((id) => {
-            const total = abilities[id];
-            const color = abilityTotalColor(total, id);
-            return (
-              <Box
-                key={id}
-                title={ABILITY_NAMES[id]}
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 0.25,
-                  px: 0.5,
-                }}
-              >
-                <AbilityIcon ability={id} title size={32} />
-                <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
-                  {id}
-                </Typography>
-                <AbilityBreakdownTooltip
-                  abilityId={id}
-                  baseAbilities={draft.baseAbilities}
-                  ancestry={ancestry}
-                  ancestryChoices={draft.ancestryChoices}
-                >
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color, cursor: 'help', fontSize: abilityTotalFontSize(total, '1.25rem') }}>
-                    {total > 0 ? '+' : ''}
-                    {total}
-                  </Typography>
-                </AbilityBreakdownTooltip>
-              </Box>
-            );
-          })}
+          {ABILITY_IDS.map((id) => (
+            <AbilityBreakdownTooltip
+              key={id}
+              abilityId={id}
+              baseAbilities={draft.baseAbilities}
+              ancestry={ancestry}
+              ancestryChoices={draft.ancestryChoices}
+            >
+              <AbilityValueBadge
+                ability={id}
+                value={abilities[id]}
+                iconSize={32}
+                showCode
+                valueVariant="h6"
+                scaleBase="1.25rem"
+                sx={{ flex: 1, minWidth: 0, px: 0.5, cursor: 'help' }}
+              />
+            </AbilityBreakdownTooltip>
+          ))}
         </Stack>
       </Box>
 

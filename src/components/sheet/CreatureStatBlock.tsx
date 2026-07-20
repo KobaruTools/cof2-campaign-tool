@@ -18,11 +18,9 @@ import { ABILITY_IDS, type AbilityId, type CreatureProfile, type DerivedStatId, 
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppTooltip } from '@/components/AppTooltip';
-import { AbilityIcon } from '@/components/AbilityIcon';
+import { AbilityValueBadge } from '@/components/AbilityValueBadge';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { RichInline } from './FeatureRichText';
-
-const signed = (n: number) => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
 
 /** Libellés des stats dérivées recopiées du maître (info-bulle). */
 const MASTER_STAT_LABEL: Partial<Record<DerivedStatId, string>> = {
@@ -144,27 +142,18 @@ export function CreatureStatBlock({
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 0.75 }}>
           {ABILITY_IDS.map((id) => (
             <AppTooltip key={id} title={ABILITY_NAMES[id]}>
-              <Stack
-                spacing={0.1}
-                sx={{
-                  alignItems: 'center',
-                  borderRadius: 0.5,
-                  py: 0.4,
-                  cursor: 'help',
-                  bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
-                }}
-              >
-                <AbilityIcon ability={id} size={16} />
-                <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1 }}>
-                  {id}
-                </Typography>
-                <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
-                  <Typography variant="caption" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {signed(profile.abilities![id])}
-                  </Typography>
-                  {allBonusDice.has(id) && <BonusDieBadge ability={id} size={12} />}
-                </Stack>
-              </Stack>
+              {/* Bloc « icône + code + valeur » partagé (`AbilityValueBadge`) : chiffre
+                  teinté fort/faible comme partout ailleurs, dé bonus posé en ornement. */}
+              <AbilityValueBadge
+                ability={id}
+                value={profile.abilities![id]}
+                iconSize={16}
+                showCode
+                codeVariant="caption"
+                valueVariant="caption"
+                adornment={allBonusDice.has(id) ? <BonusDieBadge ability={id} size={12} /> : undefined}
+                sx={{ borderRadius: 0.5, py: 0.4, cursor: 'help', bgcolor: (t) => alpha(t.palette.text.primary, 0.05) }}
+              />
             </AppTooltip>
           ))}
         </Box>

@@ -64,7 +64,7 @@ export function GmScreenCard({ character, playerName, href }: GmScreenCardProps)
             </IconButton>
           </AppTooltip>
         </Stack>
-        <CharacterPreviewCard character={character} colorAbilities />
+        <CharacterPreviewCard character={character} />
         {view.derivedInput && (
           <CompactDerivedStats
             input={view.derivedInput}

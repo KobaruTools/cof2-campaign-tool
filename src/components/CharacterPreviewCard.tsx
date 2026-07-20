@@ -11,14 +11,13 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { ClassIcon } from '@/components/ClassIcon';
-import { AbilityIcon } from '@/components/AbilityIcon';
+import { AbilityValueBadge } from '@/components/AbilityValueBadge';
 import { featureById, pathById } from '@/data';
 import { ABILITY_IDS } from '@/data/schema';
 import type { Feature, Path } from '@/data/schema';
 import type { Character } from '@/lib/character/types';
 import { summarize } from '@/lib/character/summary';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
-import { abilityTotalColor } from '@/lib/ui/abilityColors';
 import {
   ANCESTRY_COLOR,
   MAGE_PATH_COLOR,
@@ -28,14 +27,6 @@ import {
 
 export interface CharacterPreviewCardProps {
   character: Character;
-  /**
-   * Colore le CHIFFRE des 7 caractéristiques selon l'échelle fort/faible
-   * (`abilityTotalColor`) au lieu du neutre. Utilisé par l'écran de MJ pour un résumé
-   * plus parlant ; les autres usages (import, infobulle de liste) gardent un chiffre
-   * neutre. L'ICÔNE, elle, porte TOUJOURS la teinte propre de la carac (`ABILITY_COLORS`,
-   * PER-224) — indépendante de cette échelle de valeur.
-   */
-  colorAbilities?: boolean;
 }
 
 /**
@@ -165,7 +156,7 @@ function pathColumns(character: Character): PathColumn[] {
     });
 }
 
-export function CharacterPreviewCard({ character, colorAbilities = false }: CharacterPreviewCardProps) {
+export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
   const summary = summarize(character);
   return (
     // `minWidth` : sans largeur définie (ex. dans une infobulle qui se dimensionne
@@ -231,44 +222,30 @@ export function CharacterPreviewCard({ character, colorAbilities = false }: Char
           gap: 0.75,
         }}
       >
-        {ABILITY_IDS.map((id) => {
-          const value = character.abilities[id] ?? 0;
-          // Teinte fort/faible optionnelle du CHIFFRE (écran MJ), sinon neutre. L'icône
-          // garde sa teinte propre de carac (défaut d'`AbilityIcon`), indépendante.
-          const abilityColor = colorAbilities ? abilityTotalColor(value, id) : undefined;
-          return (
-            <Box
-              key={id}
-              title={ABILITY_NAMES[id]}
-              sx={{
-                borderRadius: 1,
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                bgcolor: 'rgba(255, 255, 255, 0.04)',
-                aspectRatio: '1',
-                minHeight: 44,
-                // Grille + `place-items: center` : centrage garanti (deux axes) de
-                // l'unique enfant, quel que soit le surplus de hauteur du carré.
-                display: 'grid',
-                placeItems: 'center',
-                // Léger padding-top : le line-box du chiffre laisse de l'espace SOUS le
-                // glyphe (descente de la police), ce qui tire le contenu vers le haut ;
-                // 2px compensent visuellement pour un rendu bien centré.
-                pt: '2px',
-              }}
-            >
-              {/* Icône + chiffre regroupés dans une boîte unique, centrée comme un bloc. */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
-                {/* Icône de la caractéristique (même jeu d'icônes que la fiche), à la
-                    place du code court FOR/CON/… — teinte propre de la carac (défaut). */}
-                <AbilityIcon ability={id} size={18} title={ABILITY_NAMES[id]} />
-                {/* `lineHeight: 1` : supprime l'espace bas du line-box qui décentrait le chiffre. */}
-                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1, color: abilityColor }}>
-                  {value >= 0 ? `+${value}` : value}
-                </Typography>
-              </Box>
-            </Box>
-          );
-        })}
+        {ABILITY_IDS.map((id) => (
+          <Box
+            key={id}
+            title={ABILITY_NAMES[id]}
+            sx={{
+              borderRadius: 1,
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              bgcolor: 'rgba(255, 255, 255, 0.04)',
+              aspectRatio: '1',
+              minHeight: 44,
+              // Grille + `place-items: center` : centrage garanti (deux axes) de
+              // l'unique enfant, quel que soit le surplus de hauteur du carré.
+              display: 'grid',
+              placeItems: 'center',
+              // Léger padding-top : le line-box du chiffre laisse de l'espace SOUS le
+              // glyphe (descente de la police), ce qui tire le contenu vers le haut ;
+              // 2px compensent visuellement pour un rendu bien centré.
+              pt: '2px',
+            }}
+          >
+            {/* Icône (teinte propre) + chiffre teinté fort/faible — bloc partagé partout. */}
+            <AbilityValueBadge ability={id} value={character.abilities[id] ?? 0} />
+          </Box>
+        ))}
       </Box>
     </Stack>
   );
