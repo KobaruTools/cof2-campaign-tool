@@ -212,7 +212,7 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         {status === 'unconfigured' ? (
-          <Paper variant="outlined" sx={{ ...glassPaper, p: 6, textAlign: 'center' }}>
+          <Paper variant="outlined" sx={{ ...glassPaper, p: { xs: 3, sm: 6 }, textAlign: 'center' }}>
             <Typography variant="h6" sx={{ mb: 1 }}>
               Campagnes indisponibles
             </Typography>

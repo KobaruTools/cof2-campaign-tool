@@ -159,11 +159,11 @@ function pathColumns(character: Character): PathColumn[] {
 export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
   const summary = summarize(character);
   return (
-    // `minWidth` : sans largeur définie (ex. dans une infobulle qui se dimensionne
-    // au contenu), les colonnes `1fr` de la grille des caractéristiques retombent
-    // sur la largeur de leur contenu et ne sont plus égales. Une largeur plancher
-    // donne aux 7 badges une largeur définie à se répartir → strictement égaux.
-    <Stack spacing={2} sx={{ minWidth: 264 }}>
+    // `minWidth` : dans une infobulle qui se dimensionne au contenu (survol desktop),
+    // un plancher garde les 7 badges de carac d'égale largeur. Mais réutilisée dans une
+    // colonne contrainte (écran MJ sur mobile, PER-232), ce plancher faisait déborder la
+    // carte de sa colonne → plancher retiré sous « sm » (xs: 0), conservé au-delà.
+    <Stack spacing={2} sx={{ minWidth: { xs: 0, sm: 264 } }}>
       <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
         <Box
           component="img"
@@ -213,9 +213,11 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
         sx={{
           display: 'grid',
           width: '100%',
-          // `1fr` × 7 : chaque cellule de largeur égale ; la largeur MINIMALE (~icône +
-          // code + chiffre) évite qu'une colonne se comprime sous son contenu.
-          gridTemplateColumns: 'repeat(7, minmax(40px, 1fr))',
+          // `minmax(0, 1fr)` × 7 (PER-232) : 7 colonnes égales qui rétrécissent SANS
+          // jamais déborder leur conteneur, même très étroit (colonne d'écran MJ mobile).
+          // Le badge (icône / code / chiffre, empilés) reste lisible sous ~30px ; l'ancien
+          // plancher de 40px forçait ~316px et débordait la colonne.
+          gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
           gap: 0.75,
         }}
       >

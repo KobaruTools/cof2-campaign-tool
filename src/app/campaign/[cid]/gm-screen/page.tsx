@@ -81,7 +81,11 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+              gridTemplateColumns: {
+                xs: 'minmax(0, 1fr)',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                lg: 'repeat(3, minmax(0, 1fr))',
+              },
               gap: 2,
               alignItems: 'start',
             }}
@@ -145,7 +149,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           <Paper
             variant="outlined"
             sx={{
-              p: 6,
+              p: { xs: 3, sm: 6 },
               textAlign: 'center',
               bgcolor: 'rgba(30, 30, 34, 0.55)',
               backdropFilter: 'blur(6px)',
@@ -167,7 +171,11 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               // Grille de 3 colonnes (les fiches de personnage), avec un palier
               // INTERMÉDIAIRE à 2 colonnes (tablette) avant le repli à 1 colonne
               // sur mobile où 3 de front seraient illisibles.
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+              gridTemplateColumns: {
+                xs: 'minmax(0, 1fr)',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                lg: 'repeat(3, minmax(0, 1fr))',
+              },
               gap: 2,
               alignItems: 'start',
             }}

@@ -330,7 +330,7 @@ export default function HomePage() {
           <Paper
             variant="outlined"
             sx={{
-              p: 6,
+              p: { xs: 3, sm: 6 },
               textAlign: 'center',
               bgcolor: 'rgba(30, 30, 34, 0.55)',
               backdropFilter: 'blur(6px)',
