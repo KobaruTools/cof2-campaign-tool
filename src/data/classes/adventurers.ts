@@ -1384,6 +1384,14 @@ export const adventurerFeatures: Feature[] = [
           ],
         },
       },
+      // « ajoute sa PER aux DM qu'il inflige à l'arc » (PER-115) : bonus PERMANENT de carac aux DM
+      // d'arme, conditionné à une arme à distance de type ARC en main. (La variante « voie du
+      // lancer » — +FOR aux armes de jet — reste un build alternatif décrit en prose, non actif.)
+      {
+        kind: 'weapon-damage-bonus',
+        ability: 'PER',
+        condition: { attackMode: 'ranged', rangedKinds: ['bow'] },
+      },
     ],
     sourcePage: 70,
   },
@@ -1712,6 +1720,16 @@ export const adventurerFeatures: Feature[] = [
     // pour cette attaque limitée) → pas d'effet permanent.
     richText:
       "Le rôdeur peut effectuer une attaque au contact très rapide. Il ajoute son [AGI] en attaque et aux DM pour cette attaque. À partir du rang 5, cette attaque peut être associée à 10 m de déplacement.",
+    // « ajoute son AGI […] aux DM pour cette attaque » (PER-115) : bonus SITUATIONNEL (une attaque
+    // au contact précise, action limitée) → badge distinct, pas agrégé au DM permanent.
+    effects: [
+      {
+        kind: 'weapon-damage-bonus',
+        ability: 'AGI',
+        condition: { attackMode: 'melee', label: 'attaque rapide (action limitée)' },
+        situational: true,
+      },
+    ],
     sourcePage: 72,
   },
   {
@@ -1746,6 +1764,16 @@ export const adventurerFeatures: Feature[] = [
           { id: 'insects', label: 'Insectes (arthropodes inclus)' },
           { id: 'demons', label: 'Démons' },
         ],
+      },
+    ],
+    // « +1d4° aux DM […] au contact ou à distance […] contre des animaux » (PER-115) : bonus de
+    // DÉ SITUATIONNEL (contre une catégorie de cible), les deux modes d'attaque → badge distinct.
+    effects: [
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 1, die: 'd4', evolving: true },
+        condition: { label: 'contre les animaux (même géants) ou un ennemi juré' },
+        situational: true,
       },
     ],
     sourcePage: 72,

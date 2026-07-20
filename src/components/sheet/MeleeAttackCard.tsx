@@ -10,46 +10,19 @@ import CardContent from '@mui/material/CardContent';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import type { AbilityId } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import type { UnarmedStrikeView } from '@/lib/character/unarmedStrike';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 import { AppTooltip } from '@/components/AppTooltip';
-import { DamageValue } from '@/components/DamageValue';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
-import { RichInline } from '@/components/sheet/FeatureRichText';
 import { UnarmedStrikeBadges } from '@/components/sheet/UnarmedStrikeBadges';
+import { WeaponDamageExpr, NoWeaponHint } from '@/components/sheet/WeaponDamageExpr';
+import { WeaponDamageBonusBadge } from '@/components/sheet/WeaponDamageBonusBadge';
 import type { MeleeWeaponDamageView } from '@/components/sheet/characterDerivedView';
+import type { SituationalDamageBonus } from '@/lib/character/weaponDamageBonus';
 
 type MeleeMode = 'weapon' | 'unarmed';
-
-/**
- * DM affichés en réutilisant le rendu des rangs de voies (`RichInline`) : le(s) dé(s) via
- * `<DamageValue>` (qui gère `d3`, le `°` évolutif et le nombre de dés), puis la ou les
- * caractéristiques ajoutées, RÉSOLUES dynamiquement à leur valeur — meilleure de plusieurs
- * (FOR/AGI/VOL) le cas échéant, comme dans le texte des capacités. Pas de « + FOR » figé.
- */
-function DamageExpr({
-  dice,
-  abilities,
-  charAbilities,
-  level,
-}: {
-  dice: string;
-  abilities: AbilityId[];
-  charAbilities: Abilities;
-  level: number;
-}) {
-  return (
-    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, flexWrap: 'wrap' }}>
-      <DamageValue damage={dice} size={22} />
-      {abilities.length > 0 && (
-        <RichInline text={`+ [${abilities.join('/')}]`} abilities={charAbilities} level={level} rank={0} />
-      )}
-    </Box>
-  );
-}
 
 /** Contenu d'un cadre (arme ou mains nues) : titre, valeur de touche, DM, badges. */
 function Face({
@@ -62,6 +35,7 @@ function Face({
   meleeWeaponDamage,
   weaponCriticalRanges,
   unarmedCriticalRanges,
+  situationalBonuses,
 }: {
   mode: MeleeMode;
   touch: number | null;
@@ -72,6 +46,7 @@ function Face({
   meleeWeaponDamage: MeleeWeaponDamageView | null;
   weaponCriticalRanges: DefenseBadgeData[];
   unarmedCriticalRanges: DefenseBadgeData[];
+  situationalBonuses: SituationalDamageBonus[];
 }) {
   const title = mode === 'weapon' ? 'Attaque au contact (arme)' : 'Attaque au contact (mains)';
   const unarmedDice = `${unarmed.damage.count}${unarmed.damage.die}${unarmed.evolving ? '°' : ''}`;
@@ -116,14 +91,22 @@ function Face({
               </Typography>
               {mode === 'weapon' ? (
                 meleeWeaponDamage ? (
-                  <DamageExpr dice={meleeWeaponDamage.dice} abilities={['FOR']} charAbilities={abilities} level={level} />
+                  <WeaponDamageExpr
+                    dice={meleeWeaponDamage.dice}
+                    abilities={meleeWeaponDamage.abilities}
+                    charAbilities={abilities}
+                    level={level}
+                  />
                 ) : (
-                  <Typography variant="body2" sx={{ color: 'text.disabled' }}>
-                    Aucune arme
-                  </Typography>
+                  <NoWeaponHint />
                 )
               ) : (
-                <DamageExpr dice={unarmedDice} abilities={unarmed.damageAbilities} charAbilities={abilities} level={level} />
+                <WeaponDamageExpr
+                  dice={unarmedDice}
+                  abilities={unarmed.damageAbilities}
+                  charAbilities={abilities}
+                  level={level}
+                />
               )}
             </Box>
           </Box>
@@ -148,6 +131,17 @@ function Face({
           <UnarmedStrikeBadges view={unarmed} />
         </Box>
       )}
+
+      {/* Bonus de DM SITUATIONNELS au contact (Attaque éclair +AGI, Chasseur émérite +1d4°…) — PER-115.
+          Communs aux deux modes (contact armé / mains nues) : une attaque au contact rapide, un ennemi
+          désigné… s'appliquent quelle que soit l'arme. */}
+      {situationalBonuses.length > 0 && (
+        <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+          {situationalBonuses.map((b) => (
+            <WeaponDamageBonusBadge key={b.featureId} bonus={b} />
+          ))}
+        </Box>
+      )}
     </CardContent>
   );
 }
@@ -170,6 +164,8 @@ export interface MeleeAttackCardProps {
   weaponCriticalRanges: DefenseBadgeData[];
   /** Badges de plage de critique À MAINS NUES (mode mains nues). */
   unarmedCriticalRanges: DefenseBadgeData[];
+  /** PER-115 — bonus de DM SITUATIONNELS au contact (Attaque éclair, Chasseur émérite…), en badges. */
+  situationalBonuses: SituationalDamageBonus[];
 }
 
 /**
@@ -201,6 +197,7 @@ export function MeleeAttackCard({
   meleeWeaponDamage,
   weaponCriticalRanges,
   unarmedCriticalRanges,
+  situationalBonuses,
 }: MeleeAttackCardProps) {
   const [mode, setMode] = useState<MeleeMode>(meleeWeaponDamage ? 'weapon' : 'unarmed');
   const swap = () => setMode((m) => (m === 'weapon' ? 'unarmed' : 'weapon'));
@@ -214,6 +211,7 @@ export function MeleeAttackCard({
     meleeWeaponDamage,
     weaponCriticalRanges,
     unarmedCriticalRanges,
+    situationalBonuses,
   };
 
   // Chaque cadre est en position ABSOLUE : il ne contribue PAS à la hauteur de la pile. C'est un

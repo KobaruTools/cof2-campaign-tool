@@ -86,7 +86,42 @@ describe('buildCharacterDerivedView', () => {
         equipment: [{ itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } }],
       }),
     );
-    expect(view.meleeWeaponDamage).toEqual({ dice: '1d8', nonLethal: false, name: 'Épée longue' });
+    expect(view.meleeWeaponDamage).toEqual({
+      dice: '1d8',
+      abilities: ['FOR'],
+      nonLethal: false,
+      name: 'Épée longue',
+    });
+  });
+
+  it('PER-115 : DM de l’arme à distance portée (dé seul, aucune carac — p. 185)', () => {
+    const view = buildCharacterDerivedView(
+      makeCharacter({
+        equipment: [{ itemId: 'arc-long', quantity: 1, worn: { slot: 'mainHand' } }],
+      }),
+    );
+    expect(view.rangedWeaponDamage).toEqual({
+      dice: '1d8',
+      abilities: [],
+      nonLethal: false,
+      name: 'Arc long',
+    });
+  });
+
+  it('PER-115 : rôdeur Archer émérite avec un arc → +PER agrégé au DM à distance', () => {
+    const view = buildCharacterDerivedView(
+      makeCharacter({
+        classId: 'rodeur',
+        featureIds: ['archer-r1'],
+        equipment: [{ itemId: 'arc-long', quantity: 1, worn: { slot: 'mainHand' } }],
+      }),
+    );
+    expect(view.rangedWeaponDamage?.abilities).toEqual(['PER']);
+  });
+
+  it('PER-115 : sans arme à distance portée, DM à distance null', () => {
+    const view = buildCharacterDerivedView(makeCharacter());
+    expect(view.rangedWeaponDamage).toBeNull();
   });
 
   it('PER-141 : une arme de contact simplement rangée ne compte pas', () => {

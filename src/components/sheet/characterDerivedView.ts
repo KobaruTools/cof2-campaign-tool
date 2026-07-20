@@ -31,7 +31,13 @@ import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } fro
 import { rulesContext } from '@/lib/character/rulesContext';
 import { effectiveItem } from '@/lib/character/items';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
+import {
+  weaponDamageBonuses,
+  type AttackMode,
+  type SituationalDamageBonus,
+} from '@/lib/character/weaponDamageBonus';
 import { unarmedStrike, type UnarmedStrikeView } from '@/lib/character/unarmedStrike';
+import type { AbilityId, Weapon } from '@/data/schema';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
@@ -39,46 +45,65 @@ import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
-/** DM d'une arme de CONTACT équipée, pour la vue « arme » de la bascule (PER-141). */
-export interface MeleeWeaponDamageView {
+/** DM d'une arme équipée, pour l'affichage des cartes d'attaque (PER-141 contact, PER-115 distance). */
+export interface WeaponDamageView {
   /**
-   * Dé(s) de DM seuls, prêts pour `<DamageValue>` (ex. « 1d8 », « 2d6 », « 1d8+2 »). La
-   * caractéristique (FOR) est ajoutée dynamiquement au rendu (via le rich-text, comme les
-   * rangs de voies), pas figée dans cette chaîne.
+   * Dé(s) de DM seuls, prêts pour `<DamageValue>` (ex. « 1d8 », « 2d6 », « 1d8+2 »). La ou les
+   * caractéristiques ajoutées (`abilities`) sont rendues dynamiquement à côté, pas figées ici.
    */
   dice: string;
+  /**
+   * Caractéristique(s) ajoutée(s) aux DM, RÉSOLUES au rendu (best-of affiché comme les rangs de
+   * voies). Contact : `['FOR']` de base (p. 183) + bonus permanents des capacités. Distance :
+   * vide de base (aucune carac, p. 185) + bonus permanents (Archer émérite : `['PER']`).
+   */
+  abilities: AbilityId[];
   /** DM non létal (arme aux « DM temporaires possibles » : gourdin, bâton…). */
   nonLethal: boolean;
   /** Nom de l'arme (libellé + tooltip). */
   name: string;
 }
 
+/** Ancien nom conservé pour la carte de contact (PER-141). */
+export type MeleeWeaponDamageView = WeaponDamageView;
+
 /**
- * DM de l'arme de CONTACT tenue en main (main principale prioritaire, sinon secondaire),
- * pour la vue « arme » de la bascule arme ⇄ mains nues (PER-141). Renvoie le(s) dé(s) seuls ;
- * la FOR est ajoutée au rendu (règle de base des armes de contact) — la couche fine des
- * capacités qui modifient les DM d'arme reste PER-115. Retourne `null` si aucune arme de
- * contact n'est portée (le personnage se bat alors à mains nues). Les objets libres
- * (`CustomItem`) n'ont pas de DM structuré et sont ignorés.
+ * Arme tenue en main pour un `mode` d'attaque donné (main principale prioritaire, sinon
+ * secondaire pour le combat à deux armes). `null` si aucune arme de ce mode n'est portée. Les
+ * objets libres (`CustomItem`) n'ont pas de DM structuré et sont ignorés.
  */
-function wornMeleeWeaponDamage(character: Character): MeleeWeaponDamageView | null {
-  const meleeRefs = character.equipment.filter(
-    (line): line is EquipmentRef => {
-      if (isCustomItem(line)) return false;
-      const item = effectiveItem(line);
-      return item?.category === 'weapon' && item.melee;
-    },
-  );
-  // Main principale prioritaire, sinon main secondaire (combat à deux armes).
-  const line = meleeRefs.find((l) => l.worn?.slot === 'mainHand') ?? meleeRefs.find((l) => l.worn?.slot === 'offHand');
+function wornWeaponForMode(character: Character, mode: AttackMode): { item: Weapon; line: EquipmentRef } | null {
+  const refs = character.equipment.filter((line): line is EquipmentRef => {
+    if (isCustomItem(line)) return false;
+    const item = effectiveItem(line);
+    if (item?.category !== 'weapon') return false;
+    return mode === 'melee' ? item.melee : item.ranged;
+  });
+  const line = refs.find((l) => l.worn?.slot === 'mainHand') ?? refs.find((l) => l.worn?.slot === 'offHand');
   if (!line) return null;
   const item = effectiveItem(line);
   if (!item || item.category !== 'weapon') return null;
-  // Prise à deux mains : DM à deux mains si l'arme en propose (p. 184).
-  const dmg = line.worn?.grip === 'twoHands' && item.twoHandedDamage ? item.twoHandedDamage : item.damage;
+  return { item, line };
+}
+
+/**
+ * DM de l'arme portée pour un `mode`, prêt pour l'affichage. Le(s) dé(s) seul(s) + les caracs
+ * ajoutées (base + bonus permanents des capacités, PER-115). `null` si aucune arme de ce mode
+ * n'est portée. Prise à deux mains : DM à deux mains si l'arme en propose (contact, p. 184).
+ */
+function wornWeaponDamage(character: Character, mode: AttackMode): WeaponDamageView | null {
+  const worn = wornWeaponForMode(character, mode);
+  if (!worn) return null;
+  const { item, line } = worn;
+  const dmg =
+    mode === 'melee' && line.worn?.grip === 'twoHands' && item.twoHandedDamage ? item.twoHandedDamage : item.damage;
   // Parenthèses de non-létalité gérées par un badge dédié, pas par le formateur ici.
   const dice = formatWeaponDamage({ ...dmg, nonLethal: false });
-  return { dice, nonLethal: !!dmg.nonLethal, name: item.name };
+  // Carac de base : FOR au contact (p. 183), aucune à distance (p. 185). Les capacités ajoutent
+  // leurs bonus PERMANENTS par-dessus (Archer émérite : +PER à l'arc).
+  const baseAbilities: AbilityId[] = mode === 'melee' ? ['FOR'] : [];
+  const added = weaponDamageBonuses(character, mode, item).addedAbilities.map((b) => b.ability);
+  return { dice, abilities: [...baseAbilities, ...added], nonLethal: !!dmg.nonLethal, name: item.name };
 }
 
 export interface CharacterDerivedView {
@@ -97,9 +122,15 @@ export interface CharacterDerivedView {
   /** PER-141 — attaque à mains nues (dé, carac, létalité, magie, critique). Alimente la bascule de la carte Attaque au contact. */
   unarmed: UnarmedStrikeView;
   /** PER-141 — DM de l'arme de CONTACT équipée (vue « arme » de la bascule). `null` = aucune arme de contact portée. */
-  meleeWeaponDamage: MeleeWeaponDamageView | null;
+  meleeWeaponDamage: WeaponDamageView | null;
   /** PER-141 — plage de critique au contact À MAINS NUES (Morsure du serpent), pour la vue mains nues de la bascule. */
   unarmedCriticalRanges: DefenseBadgeData[];
+  /** PER-115 — DM de l'arme à DISTANCE équipée (carte Attaque à distance). `null` = aucune arme à distance portée. */
+  rangedWeaponDamage: WeaponDamageView | null;
+  /** PER-115 — bonus de DM SITUATIONNELS au contact (Attaque éclair, Chasseur émérite…), en badges. */
+  meleeSituationalDamage: SituationalDamageBonus[];
+  /** PER-115 — bonus de DM SITUATIONNELS à distance (Chasseur émérite…), en badges. */
+  rangedSituationalDamage: SituationalDamageBonus[];
 }
 
 /**
@@ -192,7 +223,13 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // Attaque à mains nues (PER-141) + DM de l'arme de contact équipée, pour la bascule
   // de la carte « Attaque au contact ».
   const unarmed = unarmedStrike(character);
-  const meleeWeaponDamage = wornMeleeWeaponDamage(character);
+  const meleeWeaponDamage = wornWeaponDamage(character, 'melee');
+  // DM de l'arme à distance équipée + bonus situationnels des deux modes (PER-115).
+  const rangedWeaponDamage = wornWeaponDamage(character, 'ranged');
+  const meleeWorn = wornWeaponForMode(character, 'melee')?.item ?? null;
+  const rangedWorn = wornWeaponForMode(character, 'ranged')?.item ?? null;
+  const meleeSituationalDamage = weaponDamageBonuses(character, 'melee', meleeWorn).situational;
+  const rangedSituationalDamage = weaponDamageBonuses(character, 'ranged', rangedWorn).situational;
   // Plage de critique au contact ACTIVE à mains nues (Morsure du serpent) : construite depuis
   // la vue mains nues (indépendante de l'interrupteur manuel de la vue « arme »).
   const unarmedCriticalRanges: DefenseBadgeData[] =
@@ -259,5 +296,8 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     unarmed,
     meleeWeaponDamage,
     unarmedCriticalRanges,
+    rangedWeaponDamage,
+    meleeSituationalDamage,
+    rangedSituationalDamage,
   };
 }

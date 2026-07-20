@@ -37,7 +37,15 @@ import {
   FEATURE_NATURE_TAGS,
   CONDITIONAL_KINDS,
 } from '../src/data/index';
-import { ABILITY_IDS, DERIVED_STAT_IDS, IMMUNITY_IDS, RESISTIBLE_DAMAGE_TYPES, STATUS_EFFECT_IDS } from '../src/data/schema';
+import {
+  ABILITY_IDS,
+  DERIVED_STAT_IDS,
+  IMMUNITY_IDS,
+  RANGED_WEAPON_KINDS,
+  RESISTIBLE_DAMAGE_TYPES,
+  STATUS_EFFECT_IDS,
+  WEAPON_CATEGORIES,
+} from '../src/data/schema';
 
 const errors: string[] = [];
 const warnings: string[] = [];
@@ -163,6 +171,9 @@ const validStats = new Set<string>(DERIVED_STAT_IDS);
 const validAbilities = new Set<string>(ABILITY_IDS);
 const validActivationKinds = new Set(['condition', 'temporary']);
 const validImmunities = new Set<string>(IMMUNITY_IDS);
+const validRangedKinds = new Set<string>(RANGED_WEAPON_KINDS);
+const validWeaponCategories = new Set<string>(WEAPON_CATEGORIES);
+const validDamageDies = new Set<string>(['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20']);
 
 /** Valide une `EffectValue` (constante ou scalante) ; renvoie un message ou null. */
 function effectValueError(value: unknown): string | null {
@@ -324,6 +335,29 @@ for (const c of features) {
       if (unarmoredError) err(`[capacite ${c.id}] effect: armor-def-bonus whenUnarmored ${unarmoredError}`);
       const armoredError = effectValueError(e.whenArmored);
       if (armoredError) err(`[capacite ${c.id}] effect: armor-def-bonus whenArmored ${armoredError}`);
+    } else if (e.kind === 'weapon-damage-bonus') {
+      // Bonus de DM d'arme (PER-115) : exactement UN de `ability` / `dice` ; condition avec des
+      // sous-types d'arme à distance / catégories de contact reconnus ; dé valide le cas échéant.
+      if ((e.ability === undefined) === (e.dice === undefined))
+        err(`[capacite ${c.id}] effect: weapon-damage-bonus doit porter soit ability soit dice (exclusifs)`);
+      if (e.ability !== undefined && !validAbilities.has(e.ability))
+        err(`[capacite ${c.id}] effect: weapon-damage-bonus caractéristique inconnue : ${e.ability}`);
+      if (e.dice !== undefined) {
+        if (!Number.isInteger(e.dice.count) || e.dice.count < 1)
+          err(`[capacite ${c.id}] effect: weapon-damage-bonus dice.count invalide`);
+        if (!validDamageDies.has(e.dice.die))
+          err(`[capacite ${c.id}] effect: weapon-damage-bonus dé inconnu : ${e.dice.die}`);
+      }
+      const cond = e.condition;
+      if (!cond) err(`[capacite ${c.id}] effect: weapon-damage-bonus condition absente`);
+      else {
+        if (cond.attackMode !== undefined && cond.attackMode !== 'melee' && cond.attackMode !== 'ranged')
+          err(`[capacite ${c.id}] effect: weapon-damage-bonus attackMode inconnu : ${cond.attackMode}`);
+        for (const rk of cond.rangedKinds ?? [])
+          if (!validRangedKinds.has(rk)) err(`[capacite ${c.id}] effect: weapon-damage-bonus rangedKind inconnu : ${rk}`);
+        for (const wc of cond.weaponCategories ?? [])
+          if (!validWeaponCategories.has(wc)) err(`[capacite ${c.id}] effect: weapon-damage-bonus weaponCategory inconnue : ${wc}`);
+      }
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }

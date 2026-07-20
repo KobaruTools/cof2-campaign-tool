@@ -23,7 +23,9 @@ import { DieIcon } from '@/components/DieIcon';
 import { SignedNumberField } from '@/components/SignedNumberField';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { MeleeAttackCard } from '@/components/sheet/MeleeAttackCard';
-import type { MeleeWeaponDamageView } from '@/components/sheet/characterDerivedView';
+import { RangedAttackCard } from '@/components/sheet/RangedAttackCard';
+import type { MeleeWeaponDamageView, WeaponDamageView } from '@/components/sheet/characterDerivedView';
+import type { SituationalDamageBonus } from '@/lib/character/weaponDamageBonus';
 
 /**
  * Pont entre l'id d'affichage (UI) et la clé de surcharge du modèle (moteur).
@@ -97,6 +99,15 @@ export interface DerivedStatsGridProps {
   meleeWeaponDamage?: MeleeWeaponDamageView | null;
   /** PER-141 — plage de critique au contact À MAINS NUES (Morsure du serpent), pour la vue mains nues. */
   unarmedCriticalRanges?: DefenseBadgeData[];
+  /**
+   * PER-115 — DM de l'arme à DISTANCE équipée. Présent (même `null`) → la carte « Attaque à distance »
+   * affiche le DM / « Aucune arme ». Absent (récap du wizard, écran de MJ) → carte générique inchangée.
+   */
+  rangedWeaponDamage?: WeaponDamageView | null;
+  /** PER-115 — bonus de DM situationnels au contact, en badges sous la carte « Attaque au contact ». */
+  meleeSituationalDamage?: SituationalDamageBonus[];
+  /** PER-115 — bonus de DM situationnels à distance, en badges sous la carte « Attaque à distance ». */
+  rangedSituationalDamage?: SituationalDamageBonus[];
 }
 
 interface StatLine {
@@ -129,6 +140,9 @@ export function DerivedStatsGrid({
   unarmedStrike,
   meleeWeaponDamage,
   unarmedCriticalRanges,
+  rangedWeaponDamage,
+  meleeSituationalDamage,
+  rangedSituationalDamage,
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
 
@@ -192,6 +206,37 @@ export function DerivedStatsGrid({
                 meleeWeaponDamage={meleeWeaponDamage ?? null}
                 weaponCriticalRanges={meleeCriticalRanges ?? []}
                 unarmedCriticalRanges={unarmedCriticalRanges ?? []}
+                situationalBonuses={meleeSituationalDamage ?? []}
+              />
+            </Grid>
+          );
+        }
+
+        // PER-115 — carte « Attaque à distance » : DM de l'arme à distance portée (+ bonus permanents),
+        // « Aucune arme » à défaut, et bonus situationnels. Réservée à la vue (pas en mode édition des
+        // surcharges). `rangedWeaponDamage` présent (même `null`) signale qu'on est sur la fiche.
+        if (id === 'rangedAttack' && rangedWeaponDamage !== undefined && !onOverride) {
+          return (
+            <Grid key={id} size={size}>
+              <RangedAttackCard
+                touch={display}
+                forced={forced}
+                statHint={
+                  <DerivedStatHint
+                    statId={id}
+                    input={input}
+                    featureIds={featureIds}
+                    effectContext={effectContext}
+                    extraModSources={extraModSources}
+                    className="derived-stat-hint"
+                    enterDelay={200}
+                  />
+                }
+                abilities={input.abilities}
+                level={input.level}
+                rangedWeaponDamage={rangedWeaponDamage}
+                criticalRanges={rangedCriticalRanges ?? []}
+                situationalBonuses={rangedSituationalDamage ?? []}
               />
             </Grid>
           );

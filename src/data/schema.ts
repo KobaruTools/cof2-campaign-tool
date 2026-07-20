@@ -484,7 +484,8 @@ export type FeatureEffect =
   | UniversalTestBonusEffect
   | ImmunityEffect
   | ArmorAccessEffect
-  | ArmorDefBonusEffect;
+  | ArmorDefBonusEffect
+  | WeaponDamageBonusEffect;
 
 /**
  * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
@@ -1032,6 +1033,59 @@ export interface ArmorDefBonusEffect {
   whenUnarmored: EffectValue;
   /** Bonus de DEF quand une armure EST portée (ex. +1). */
   whenArmored: EffectValue;
+}
+
+/**
+ * Condition d'application d'un bonus de DM d'arme (PER-115), selon le mode d'attaque et l'arme
+ * réellement en main. Le filtrage automatique porte sur `attackMode`, `rangedKinds` et
+ * `weaponCategories` ; `label` ne sert qu'à afficher une condition situationnelle non modélisable.
+ */
+export interface WeaponDamageCondition {
+  /** Mode d'attaque requis. Absent = les deux (contact ET distance). */
+  attackMode?: 'melee' | 'ranged';
+  /**
+   * Sous-types d'arme à DISTANCE admissibles (ex. `['bow']` pour « à l'arc »). Implique une arme
+   * à distance de ce sous-type en main. Absent = tout sous-type (aucune contrainte de sous-type).
+   */
+  rangedKinds?: RangedWeaponKind[];
+  /**
+   * Catégories d'arme de CONTACT admissibles (ex. `['light']` pour « arme légère »). Implique une
+   * arme de contact de cette catégorie en main. Absent = toute catégorie.
+   */
+  weaponCategories?: WeaponCategory[];
+  /**
+   * Condition situationnelle NON modélisable mécaniquement (ex. « contre les animaux », « sur un
+   * adversaire surpris »), affichée en toutes lettres sur le badge. N'entre PAS dans le filtrage
+   * automatique. Absent = aucune (bonus applicable dès que les critères ci-dessus sont remplis).
+   */
+  label?: string;
+}
+
+/**
+ * Bonus aux DM d'ARME (PER-115) — une capacité ajoute une CARACTÉRISTIQUE (ex. Archer émérite :
+ * +PER aux DM à l'arc) ou un/des DÉ(S) (ex. Chasseur émérite : +1d4° contre les animaux) aux DM
+ * de l'arme utilisée, sous une `condition` portant sur le mode d'attaque et le type d'arme portée.
+ *
+ * Deux natures d'affichage :
+ *  - PERMANENT (`situational` absent/false) : agrégé DIRECTEMENT à l'expression de DM de l'arme
+ *    portée dès que la condition est satisfaite (arc en main → « 1d8 + PER »).
+ *  - SITUATIONNEL (`situational: true`) : rendu en BADGE distinct sous la carte d'attaque (une
+ *    attaque précise, une cible désignée…), sans entrer dans le DM principal.
+ *
+ * `ability` et `dice` sont exclusifs (l'un OU l'autre). La règle de base — contact +FOR, distance
+ * sans carac (p. 185) — n'est PAS un effet : elle vit dans le rendu de l'arme portée. Ici on ne
+ * modélise QUE les suppléments accordés par les capacités.
+ */
+export interface WeaponDamageBonusEffect {
+  kind: 'weapon-damage-bonus';
+  /** Caractéristique ajoutée aux DM (ex. `'PER'`, `'AGI'`, `'FOR'`). Exclusif avec `dice`. */
+  ability?: AbilityId;
+  /** Dé(s) de DM ajoutés, situationnels (ex. +1d4°). Exclusif avec `ability`. */
+  dice?: { count: number; die: DamageDie; evolving?: boolean };
+  /** Condition d'application (mode d'attaque, type d'arme, libellé situationnel). */
+  condition: WeaponDamageCondition;
+  /** Bonus SITUATIONNEL (badge séparé) au lieu de permanent (agrégé au DM). Défaut `false`. */
+  situational?: boolean;
 }
 
 export interface TestBonusEffect {
@@ -2050,6 +2104,16 @@ interface EquipmentBase {
 export const WEAPON_CATEGORIES = ['light', 'oneHand', 'oneOrTwoHands', 'twoHands'] as const;
 export type WeaponCategory = (typeof WEAPON_CATEGORIES)[number];
 
+/**
+ * Sous-type d'une arme d'attaque à DISTANCE (PER-115) — le livre ne le nomme pas comme une
+ * catégorie formelle, mais plusieurs capacités ciblent un sous-type précis : Archer émérite
+ * s'applique « à l'arc », sa variante « voie du lancer » aux « armes de jet (dague, hachette,
+ * javelot) ». On distingue donc l'arc, l'arbalète, l'arme de jet, la fronde et l'arme à poudre
+ * (table p. 185). Ne concerne que les armes `ranged: true` ; absent sur les armes de contact pures.
+ */
+export const RANGED_WEAPON_KINDS = ['bow', 'crossbow', 'thrown', 'sling', 'firearm'] as const;
+export type RangedWeaponKind = (typeof RANGED_WEAPON_KINDS)[number];
+
 /** Types de DM provoqués par les armes — p. 183 (colonne « Type de DM »). */
 export const DAMAGE_TYPES = ['bludgeoning', 'piercing', 'slashing'] as const;
 export type DamageType = (typeof DAMAGE_TYPES)[number];
@@ -2076,6 +2140,12 @@ export interface Weapon extends EquipmentBase {
    * critique élargi se déclare ici, sans code spécifique.
    */
   criticalRange?: CriticalRange;
+  /**
+   * Sous-type d'arme à distance (PER-115) — arc, arbalète, arme de jet, fronde, arme à poudre.
+   * Requis sur une arme `ranged: true`, sinon absent. Sert à cibler les capacités qui ne dopent
+   * qu'un sous-type précis (Archer émérite « à l'arc », sa variante « armes de jet »).
+   */
+  rangedKind?: RangedWeaponKind;
   /** Portée, notation du livre (ex. « 20 m », « 1d6 à 10 m » pour le lancer). */
   range?: string;
 }
