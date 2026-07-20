@@ -40,6 +40,7 @@ import {
   pathRanksFromFeatures,
   pruneEffectToggles,
   resetUsageCounters,
+  resolveValue,
   setEffectToggle,
   testBonusSources,
   universalTestBonus,
@@ -1523,5 +1524,83 @@ describe('Armure de vent — bonus de DEF selon l’armure portée (PER-132)', (
     // Le bonus suit l'état porté sans interrupteur manuel.
     expect(modsFromFeatures(['primitif-r2'], effectContext(sansArmure)).def).toBe(2);
     expect(modsFromFeatures(['primitif-r2'], effectContext(avecArmure)).def).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PER-106 — valeurs scalantes `path-rank` (rang brut de la voie) et `min`
+// ---------------------------------------------------------------------------
+
+describe('resolveValue — path-rank et min (PER-106)', () => {
+  it('path-rank rend le rang atteint dans la voie hôte', () => {
+    expect(resolveValue({ scale: 'path-rank' }, 'seduction', { seduction: 3 }, ctx())).toBe(3);
+  });
+
+  it('path-rank vaut 0 pour une voie absente', () => {
+    expect(resolveValue({ scale: 'path-rank' }, 'seduction', {}, ctx())).toBe(0);
+  });
+
+  it('path-rank applique le facteur', () => {
+    expect(resolveValue({ scale: 'path-rank', factor: 2 }, 'seduction', { seduction: 2 }, ctx())).toBe(4);
+  });
+
+  it('path-rank exige le contexte (null en catalogue seul)', () => {
+    expect(resolveValue({ scale: 'path-rank' }, 'seduction', { seduction: 3 })).toBeNull();
+  });
+
+  it('min rend le plus petit des composants résolus', () => {
+    const value = { scale: 'min' as const, parts: [{ scale: 'ability' as const, ability: 'CHA' as const }, { scale: 'path-rank' as const }] };
+    // CHA 4 > rang 2 → plafonné à 2.
+    expect(resolveValue(value, 'seduction', { seduction: 2 }, ctx({ abilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 4, INT: 0, VOL: 0 } }))).toBe(2);
+    // CHA 1 < rang 5 → 1.
+    expect(resolveValue(value, 'seduction', { seduction: 5 }, ctx({ abilities: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 1, INT: 0, VOL: 0 } }))).toBe(1);
+  });
+
+  it('min renvoie null si un composant est non résoluble', () => {
+    const value = { scale: 'min' as const, parts: [3, { scale: 'path-rank' as const }] };
+    expect(resolveValue(value, 'seduction', { seduction: 2 })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PER-106 — Dentelles et rapière (barde, seduction-r2) : DEF sans armure,
+// plafonnée au rang atteint dans la voie, résolue depuis le port effectif
+// ---------------------------------------------------------------------------
+
+describe('Dentelles et rapière — DEF += min(CHA, rang) sans armure (PER-106)', () => {
+  const cha = (v: number): Record<AbilityId, number> => ({ AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: v, INT: 0, VOL: 0 });
+
+  it('sans armure, ajoute le CHA quand il ne dépasse pas le rang', () => {
+    // seduction-r2 → rang 2 dans la voie ; CHA 2 → min(2, 2) = 2.
+    expect(modsFromFeatures(['seduction-r2'], ctx({ armorWorn: false, abilities: cha(2) })).def).toBe(2);
+  });
+
+  it('sans armure, plafonne le bonus au rang atteint dans la voie', () => {
+    // CHA 5, rang 2 → plafonné à 2.
+    expect(modsFromFeatures(['seduction-r2'], ctx({ armorWorn: false, abilities: cha(5) })).def).toBe(2);
+    // Au rang 5 de la voie, le plafond monte : CHA 5, rang 5 → 5.
+    expect(modsFromFeatures(['seduction-r2', 'seduction-r5'], ctx({ armorWorn: false, abilities: cha(5) })).def).toBe(5);
+    // CHA 3 sous le rang 5 → 3 (le CHA est en dessous du plafond).
+    expect(modsFromFeatures(['seduction-r2', 'seduction-r5'], ctx({ armorWorn: false, abilities: cha(3) })).def).toBe(3);
+  });
+
+  it('avec une armure portée, aucun bonus de DEF', () => {
+    expect(modsFromFeatures(['seduction-r2'], ctx({ armorWorn: true, abilities: cha(5) })).def ?? 0).toBe(0);
+  });
+
+  it('suit le port effectif sans interrupteur manuel', () => {
+    const base = createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' });
+    const sansArmure: Character = { ...base, classId: 'barde', abilities: cha(3), featureIds: ['seduction-r2'] };
+    const avecArmure: Character = {
+      ...sansArmure,
+      equipment: [{ itemId: 'cuir-simple', quantity: 1, worn: { slot: 'armor' } }],
+    };
+    expect(modsFromFeatures(['seduction-r2'], effectContext(sansArmure)).def).toBe(2); // min(3, 2)
+    expect(modsFromFeatures(['seduction-r2'], effectContext(avecArmure)).def ?? 0).toBe(0);
+  });
+
+  it('détaille la capacité dans les sources de DEF sans armure', () => {
+    const sources = featureModSources(['seduction-r2'], ctx({ armorWorn: false, abilities: cha(2) })).def ?? [];
+    expect(sources.some((s) => s.featureId === 'seduction-r2' && s.value === 2)).toBe(true);
   });
 });

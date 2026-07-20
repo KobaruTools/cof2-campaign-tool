@@ -1215,19 +1215,21 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le barde ne met pas d'armure, cela ne sied point en société. Sa seule armure est la dentelle, sa seule défense, la rapière. Lorsqu'il ne porte aucune armure, le barde ajoute son CHA en DEF (en plus de son AGI), toutefois ce bonus ne peut pas dépasser le rang atteint dans la voie.",
-    // PER-71 (#6) — règle ajoutée « bêtement » : bonus de DEF CONDITIONNEL (« aucune armure »,
-    // interrupteur manuel) valant le CHA. Le PLAFOND par le rang (min(CHA, rang)) et le branchement
-    // sur le PORT EFFECTIF d'armure sont DIFFÉRÉS à PER-106 (milestone Armures) — les valeurs
-    // scalantes actuelles n'ont pas de `min`, et la détection d'armure portée relève de cette
-    // milestone. Tant que le plafond n'est pas posé, le bonus = CHA (surévalué si CHA > rang).
+    // PER-106 — bonus de DEF résolu AUTOMATIQUEMENT depuis le port effectif d'armure
+    // (`armor-def-bonus`, comme Armure de vent, primitif-r2), sans interrupteur manuel :
+    // aucune armure portée → DEF += min(CHA, rang atteint dans la voie) ; armure portée → 0.
+    // Le plafond « ne peut pas dépasser le rang » est le `min(CHA, path-rank)`. Le bouclier et
+    // la DEF magique se cumulent naturellement (un bouclier n'est pas une armure, p. 87).
     effects: [
       {
-        kind: 'conditional-stat-bonus',
-        bonuses: [{ stat: 'def', value: { scale: 'ability', ability: 'CHA' } }],
-        activation: { kind: 'condition', label: 'aucune armure portée', activeByDefault: false },
+        kind: 'armor-def-bonus',
+        whenUnarmored: {
+          scale: 'min',
+          parts: [{ scale: 'ability', ability: 'CHA' }, { scale: 'path-rank' }],
+        },
+        whenArmored: 0,
       },
     ],
-    wip: "Bonus de DEF (CHA) à plafonner par min(CHA, rang) et à conditionner au PORT EFFECTIF d'armure — plafond non posé (valeur surévaluée si CHA > rang) et détection automatique différés à la milestone Armures (PER-106).",
     sourcePage: 68,
   },
   {

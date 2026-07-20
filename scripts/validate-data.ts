@@ -244,6 +244,18 @@ function effectValueError(value: unknown): string | null {
       return 'milestone-count : classIds invalide';
     return null;
   }
+  if (v.scale === 'path-rank') {
+    if (v.factor !== undefined && !Number.isFinite(v.factor)) return 'path-rank : facteur non fini';
+    return null;
+  }
+  if (v.scale === 'min') {
+    if (!Array.isArray(v.parts) || v.parts.length === 0) return 'min : parts vide';
+    for (const part of v.parts) {
+      const e = effectValueError(part);
+      if (e) return `min : ${e}`;
+    }
+    return null;
+  }
   if (v.scale === 'sum') {
     if (!Array.isArray(v.parts) || v.parts.length === 0) return 'sum : parts vide';
     for (const part of v.parts) {

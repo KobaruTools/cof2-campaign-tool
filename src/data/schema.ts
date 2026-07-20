@@ -504,6 +504,8 @@ export type ScalingValue =
   | AbilityScalingValue
   | LevelScalingValue
   | MilestoneCountScalingValue
+  | PathRankScalingValue
+  | MinScalingValue
   | SumScalingValue;
 
 /**
@@ -563,6 +565,30 @@ export interface MilestoneCountScalingValue {
   classIds: string[];
   /** Compter aussi la voie du mage si elle atteint `rank` (« ou dans la voie du mage »). */
   includeMagePath?: boolean;
+}
+
+/**
+ * Valeur égale au RANG BRUT atteint dans la VOIE de la capacité hôte (× un
+ * facteur), 0 si la voie est absente. À distinguer de `stepped` `path-rank` qui
+ * mappe le rang vers des paliers arbitraires : ici la valeur EST le rang. Sert
+ * notamment de composant à un plafond « ne peut pas dépasser le rang atteint dans
+ * la voie » (Dentelles et rapière, barde, seduction-r2, p. 68 — via `min`).
+ */
+export interface PathRankScalingValue {
+  scale: 'path-rank';
+  /** Multiplicateur appliqué au rang (défaut 1). */
+  factor?: number;
+}
+
+/**
+ * MINIMUM de plusieurs composantes — pour PLAFONNER une valeur par une autre
+ * (symétrique de `sum`). Ex. Dentelles et rapière (barde, seduction-r2, p. 68) :
+ * DEF += min(CHA, rang atteint dans la voie) → `{ scale: 'min', parts: [CHA,
+ * path-rank] }`. Non résoluble (null) si un composant l'est (ex. sans contexte).
+ */
+export interface MinScalingValue {
+  scale: 'min';
+  parts: EffectValue[];
 }
 
 /**

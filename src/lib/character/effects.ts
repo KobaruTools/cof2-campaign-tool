@@ -215,6 +215,19 @@ export function resolveValue(
       return ctx.abilities[value.ability] * (value.factor ?? 1);
     case 'level':
       return ctx.level * (value.factor ?? 1);
+    case 'path-rank':
+      // Rang BRUT atteint dans la voie hôte (0 si absente) — cf. `pathRanks`.
+      return (pathRanks[pathId] ?? 0) * (value.factor ?? 1);
+    case 'min': {
+      // Minimum des composants — plafonne une valeur par une autre (ex. min(CHA, rang)).
+      let acc: number | null = null;
+      for (const part of value.parts) {
+        const v = resolveValue(part, pathId, pathRanks, ctx);
+        if (v === null) return null;
+        acc = acc === null ? v : Math.min(acc, v);
+      }
+      return acc;
+    }
     case 'stepped': {
       // Palier de plus haut seuil atteint (0 sous le premier).
       const ref = value.by === 'level' ? ctx.level : (pathRanks[pathId] ?? 0);

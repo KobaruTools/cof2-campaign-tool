@@ -20,7 +20,6 @@ import {
   criticalRangeSources,
   defenseAbility,
   effectContext,
-  isEffectActive,
   manaCastingAbility,
   modsFromFeatures,
   stackedDamageReductions,
@@ -291,13 +290,10 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
 
   // Carac de base des PM : VOL, ou substitution (Charisme héroïque → CHA, PER-101).
   const manaCast = manaCastingAbility(modFeatureIds, effectCtx.abilities);
-  // Dentelles et rapière (seduction-r2, PER-71) : tant que l'interrupteur « aucune armure » est actif,
-  // la DEF d'armure/bouclier est ignorée (la rapière+CHA la remplace).
-  const dentellesActive =
-    character.featureIds.includes('seduction-r2') && isEffectActive(character, 'seduction-r2', 0);
-  const defenseEquip = dentellesActive
-    ? { defBonus: 0, maxAgi: null }
-    : defenseFromEquipment(character.equipment);
+  // DEF d'équipement : uniquement le PORTÉ (PER-76). Dentelles et rapière (seduction-r2) n'annule
+  // plus l'équipement (PER-106) : sans armure, l'armure vaut 0 DEF naturellement, tandis que le
+  // bouclier et la DEF magique se cumulent avec son bonus `armor-def-bonus` (min(CHA, rang)).
+  const defenseEquip = defenseFromEquipment(character.equipment);
 
   // Caractéristique de DEF : AGI par défaut, ou substitution retenue par une capacité
   // (Peau de pierre du barbare : CON, PER-131). Le plafond d'armure s'appliquera à elle.

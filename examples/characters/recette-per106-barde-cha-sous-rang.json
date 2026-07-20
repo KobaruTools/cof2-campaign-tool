@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per106-barde-cha-sous-rang",
+  "name": "Recette PER-106 — Barde CHA sous le rang (rang 5)",
+  "identity": {
+    "description": "ATTENDU : DEF = 10 + AGI(1) + min(CHA effectif 4, rang 5) = 15. CHA saisi 3, +1 par Charisme héroïque (seduction-r4) → 4 ; sous le plafond de rang 5 → CHA effectif plein."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barde",
+  "level": 9,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 1,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 1,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "seduction-r1",
+    "seduction-r2",
+    "seduction-r3",
+    "seduction-r4",
+    "seduction-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "rapiere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-106 — au rang 5 de la voie, le plafond monte à 5 ; le CHA effectif (4, Charisme héroïque inclus) s’applique en entier.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
