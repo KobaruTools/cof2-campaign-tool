@@ -139,7 +139,7 @@ export function CreatureStatBlock({
           créatures n'ont PAS de bloc de caractéristiques dans le livre (ex. écuyer du chevalier :
           seulement Init/DEF/PV/Att/DM) → grille omise. */}
       {profile.abilities && (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 0.75 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5, mb: 0.75 }}>
           {ABILITY_IDS.map((id) => (
             <AppTooltip key={id} title={ABILITY_NAMES[id]}>
               {/* Bloc « icône + code + valeur » partagé (`AbilityValueBadge`) : chiffre

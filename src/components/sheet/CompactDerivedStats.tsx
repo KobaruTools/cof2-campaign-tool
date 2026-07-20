@@ -74,9 +74,11 @@ export function CompactDerivedStats({
     <Box
       sx={{
         display: 'grid',
-        // 3 blocs par ligne (structure « de base » proche de la fiche) ; blocs alignés
-        // en haut (une stat avec puces est plus haute, elle ne doit pas étirer les autres).
-        gridTemplateColumns: 'repeat(3, 1fr)',
+        // Blocs alignés en haut (une stat avec puces est plus haute, elle ne doit pas
+        // étirer les autres). 2 blocs par ligne sur mobile (PER-230) — à 3, chaque bloc
+        // était trop étroit (icône + chiffre + puces tassés) —, 3 dès « sm ». `minmax(0,1fr)`
+        // garantit qu'aucun bloc ne déborde sa colonne quelle que soit la largeur.
+        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' },
         alignItems: 'start',
         gap: 0.75,
       }}

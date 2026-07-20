@@ -1,7 +1,6 @@
 'use client';
 
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { AbilityId, Ancestry } from '@/data/schema';
@@ -69,7 +68,25 @@ export function AbilitiesGrid({
 }: AbilitiesGridProps) {
   const canExplain = baseAbilities != null && ancestry != null && ancestryChoices != null;
   return (
-    <Grid container spacing={1}>
+    // Lecture : grille de 7 colonnes ÉGALES (`minmax(0, 1fr)`) — les 7 caractéristiques
+    // tiennent TOUJOURS sur une seule ligne. Le minimum `0` de `minmax` neutralise la
+    // largeur mini du contenu (icône, texte), donc les colonnes rétrécissent sans jamais
+    // déborder ni passer à la ligne (indispensable ici : `body { overflow-x: hidden }`
+    // rognerait tout débordement au lieu de le rendre scrollable). En pleine largeur,
+    // les colonnes égales recréent l'espacement maximal d'origine. En ÉDITION (champs
+    // larges) on bascule sur un `auto-fit` qui, lui, s'autorise le retour à la ligne.
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: onChange
+          ? 'repeat(auto-fit, minmax(88px, 1fr))'
+          : 'repeat(7, minmax(0, 1fr))',
+        justifyItems: 'center',
+        alignItems: 'start',
+        columnGap: { xs: 0.5, sm: 1 },
+        rowGap: 1,
+      }}
+    >
       {ABILITY_IDS.map((id) => {
         const entered = abilities[id];
         const mod = abilityMods?.[id] ?? 0;
@@ -131,10 +148,16 @@ export function AbilitiesGrid({
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 0.5,
-              px: 1,
-              py: 1,
-              minWidth: 88,
+              gap: 0.25,
+              // `minWidth: 0` + `width: 100%` : le bloc remplit sa cellule de grille et
+              // peut rétrécir sous la largeur mini de son contenu (sinon un item de
+              // grille garde `min-width: auto` et déborderait). Contenu centré à
+              // l'intérieur. Paddings horizontaux quasi nuls sur mobile pour gagner de
+              // la place quand les colonnes deviennent étroites.
+              width: '100%',
+              minWidth: 0,
+              px: { xs: 0, sm: 0.5 },
+              py: { xs: 0.25, sm: 0.5 },
               borderRadius: 2,
               border: 1,
               borderColor: 'transparent',
@@ -150,27 +173,24 @@ export function AbilitiesGrid({
             {valueRow}
           </Box>
         );
-        return (
-          <Grid key={id} size={{ xs: 6, sm: 12 / 7 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-              {canExplain ? (
-                <AbilityBreakdownTooltip
-                  abilityId={id}
-                  baseAbilities={baseAbilities}
-                  ancestry={ancestry}
-                  ancestryChoices={ancestryChoices}
-                  featureTerms={featureTerms}
-                  bonusDieSources={dieSources}
-                >
-                  {block}
-                </AbilityBreakdownTooltip>
-              ) : (
-                block
-              )}
-            </Box>
-          </Grid>
+        return canExplain ? (
+          <AbilityBreakdownTooltip
+            key={id}
+            abilityId={id}
+            baseAbilities={baseAbilities}
+            ancestry={ancestry}
+            ancestryChoices={ancestryChoices}
+            featureTerms={featureTerms}
+            bonusDieSources={dieSources}
+          >
+            {block}
+          </AbilityBreakdownTooltip>
+        ) : (
+          <Box key={id} sx={{ display: 'contents' }}>
+            {block}
+          </Box>
         );
       })}
-    </Grid>
+    </Box>
   );
 }
