@@ -70,39 +70,45 @@ type RefTone = 'ability' | 'derived';
 function AbilityChipBox({
   ability,
   title,
+  noTooltip = false,
   children,
 }: {
   ability: AbilityId;
   title: string;
+  /**
+   * Omet l'info-bulle propre de la puce : à utiliser quand un conteneur parent porte déjà une
+   * info-bulle englobante (ex. la puce de carac imbriquée dans un `TermWord` « AGI + 2 (4) »), pour
+   * ne pas superposer deux info-bulles sur la même zone survolée.
+   */
+  noTooltip?: boolean;
   children: ReactNode;
 }) {
   const color = ABILITY_COLORS[ability];
-  return (
-    <AppTooltip title={title}>
-      <Box
-        component="span"
-        sx={{
-          display: 'inline-block',
-          verticalAlign: 'baseline',
-          px: 0.6,
-          mx: 0.2,
-          borderRadius: 0.75,
-          fontWeight: 700,
-          fontSize: '0.95em',
-          letterSpacing: 0.3,
-          lineHeight: 1.4,
-          cursor: 'help',
-          color,
-          bgcolor: alpha(color, 0.12),
-          border: 1,
-          borderStyle: 'dashed',
-          borderColor: alpha(color, 0.55),
-        }}
-      >
-        {children}
-      </Box>
-    </AppTooltip>
+  const box = (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-block',
+        verticalAlign: 'baseline',
+        px: 0.6,
+        mx: 0.2,
+        borderRadius: 0.75,
+        fontWeight: 700,
+        fontSize: '0.95em',
+        letterSpacing: 0.3,
+        lineHeight: 1.4,
+        cursor: 'help',
+        color,
+        bgcolor: alpha(color, 0.12),
+        border: 1,
+        borderStyle: 'dashed',
+        borderColor: alpha(color, 0.55),
+      }}
+    >
+      {children}
+    </Box>
   );
+  return noTooltip ? box : <AppTooltip title={title}>{box}</AppTooltip>;
 }
 
 /**
@@ -124,10 +130,25 @@ export function AbilityValueChip({ ability, value }: { ability: AbilityId; value
  * on GARDE le code de la carac : dans une phrase (« réduit de INT (4) mètres »), retirer le mot casse
  * le sens. `symbol` = code affiché (carac retenue pour un « meilleure de »), toujours un `AbilityId`.
  */
-function AbilityFormulaChip({ symbol, value }: { symbol: string; value: number }) {
-  const ability = symbol as AbilityId;
+function AbilityFormulaChip({
+  symbol,
+  value,
+  noTooltip = false,
+}: {
+  symbol: string;
+  value: number;
+  /** Omet l'info-bulle propre : quand la puce est imbriquée dans un conteneur qui en porte déjà une. */
+  noTooltip?: boolean;
+}) {
+  // `symbol` peut porter un multiplicateur (« AGI × 2 ») : la teinte et le libellé suivent la carac
+  // (code avant le « × »), la puce affichant le symbole complet.
+  const ability = symbol.split(' × ')[0] as AbilityId;
   return (
-    <AbilityChipBox ability={ability} title={`${ABILITY_NAMES[ability]} (${ability}) = ${value}`}>
+    <AbilityChipBox
+      ability={ability}
+      title={`${ABILITY_NAMES[ability]} (${ability}) = ${value}`}
+      noTooltip={noTooltip}
+    >
       {symbol} ({value})
     </AbilityChipBox>
   );
@@ -334,7 +355,22 @@ function StatusEffectChip({ label, stateId }: { label: string; stateId: StatusEf
  * numérique (`[=…]`, bleu) et de la formule de modificateur (primaire). Info-bulle
  * = libellé complet (« Rang atteint dans la voie = 5 »).
  */
-function TermWord({ word, value, title }: { word: string; value: number; title: string }) {
+function TermWord({
+  word,
+  value,
+  title,
+  total = false,
+}: {
+  word: ReactNode;
+  value: number;
+  title: string;
+  /**
+   * Suffixe de valeur : `false` → « mot (valeur) » (terme NU, ex. « rang (5) ») ; `true` → « … =
+   * valeur » (formule COMPOSITE dont les caracs affichent déjà leur propre valeur, ex. « AGI (3) + 2
+   * = 5 ») — le « = » évite l'ambiguïté d'un second « (5) » derrière un « (3) ».
+   */
+  total?: boolean;
+}) {
   return (
     <AppTooltip title={title}>
       <Box
@@ -357,7 +393,8 @@ function TermWord({ word, value, title }: { word: string; value: number; title: 
           borderColor: (theme) => alpha(theme.palette.success.main, 0.4),
         }}
       >
-        {word} ({value})
+        {word}
+        {total ? ` = ${value}` : ` (${value})`}
       </Box>
     </AppTooltip>
   );
@@ -883,7 +920,23 @@ export function RichInline({
                   ? `Niveau = ${value}`
                   : `${part.label} = ${value}`
               : `${word} = ${value}`;
-          return <TermWord key={i} word={word} value={value} title={title} />;
+          // Formule COMPOSITE (« AGI + 2 ») : chaque terme CARAC devient une puce teintée + tiretée
+          // AVEC sa valeur (« AGI (3) », norme PER-224), le reste (nombres, opérateurs) restant en
+          // texte ; le `TermWord` fait suivre le total résolu « = 5 » (piste 2). La puce imbriquée n'a
+          // pas d'info-bulle propre (`noTooltip`) : celle du `TermWord` englobe déjà tout le terme.
+          const wordNodes = resolved.parts.map((p, idx) => {
+            const connector = idx > 0 ? ` ${p.sign === -1 ? '−' : '+'} ` : p.sign === -1 ? '−' : '';
+            if (p.kind === 'ability' || p.kind === 'abilityBest') {
+              return (
+                <Fragment key={idx}>
+                  {connector}
+                  <AbilityFormulaChip symbol={p.symbol} value={p.value ?? 0} noTooltip />
+                </Fragment>
+              );
+            }
+            return <Fragment key={idx}>{connector + p.symbol}</Fragment>;
+          });
+          return <TermWord key={i} word={wordNodes} value={value} title={title} total />;
         }
         if (seg.kind === 'quantity') return <QuantityValue key={i} resolved={resolved} />;
         return resolved.hasDie ? (
