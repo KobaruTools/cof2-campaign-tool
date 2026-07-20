@@ -118,6 +118,21 @@ export function AbilityValueChip({ ability, value }: { ability: AbilityId; value
   );
 }
 
+/**
+ * Terme de formule qui est une CARACTÉRISTIQUE, rendu « SYMBOLE (valeur) » (ex. « INT (4) ») dans la
+ * puce teintée + tiretée de cette carac. Contrairement à `AbilityValueChip` (valeur seule, DM d'arme),
+ * on GARDE le code de la carac : dans une phrase (« réduit de INT (4) mètres »), retirer le mot casse
+ * le sens. `symbol` = code affiché (carac retenue pour un « meilleure de »), toujours un `AbilityId`.
+ */
+function AbilityFormulaChip({ symbol, value }: { symbol: string; value: number }) {
+  const ability = symbol as AbilityId;
+  return (
+    <AbilityChipBox ability={ability} title={`${ABILITY_NAMES[ability]} (${ability}) = ${value}`}>
+      {symbol} ({value})
+    </AbilityChipBox>
+  );
+}
+
 function RefChip({
   label,
   title,
@@ -507,6 +522,15 @@ function SubstitutionMark() {
 }
 
 function FormulaTotal({ resolved }: { resolved: ResolvedExpr }) {
+  // Substitution de carac appliquée (PER-163) → accent AMBRE + avertissement (calculé tôt : il
+  // conditionne aussi le rendu « puce de carac » ci-dessous, qu'on n'applique PAS si substitution).
+  const sub = resolvedSubstitution(resolved);
+  // Terme carac UNIQUE (« INT (4) », « AGI (5) ») sans substitution → puce teintée + tiretée de la
+  // carac (norme PER-224), en gardant « SYMBOLE (valeur) » pour la lisibilité de la phrase.
+  const only = resolved.parts.length === 1 ? resolved.parts[0] : undefined;
+  if (!sub && only && (only.kind === 'ability' || only.kind === 'abilityBest')) {
+    return <AbilityFormulaChip symbol={only.symbol} value={only.value ?? 0} />;
+  }
   // Lecture claire : chaque variable résolue à sa valeur BRUTE entre parenthèses,
   // opérateurs de la formule, puis « = total » — « 10 + CHA (4) = 14 ». Une formule
   // à un seul terme variable s'affiche sans « = » (« CHA (4) »). Sans variable, on
@@ -545,8 +569,6 @@ function FormulaTotal({ resolved }: { resolved: ResolvedExpr }) {
       )}
     </Box>
   );
-  // Substitution de carac appliquée (PER-163) → accent AMBRE + avertissement.
-  const sub = resolvedSubstitution(resolved);
   const finalTooltip = sub ? (
     <SubstitutionWarningPanel from={sub.from} to={sub.to} derivation={tooltip} />
   ) : (
@@ -758,12 +780,17 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
                   noTooltip
                 />
               ) : p.kind === 'ability' || p.kind === 'abilityBest' ? (
-                // On montre toujours le code de la stat + sa valeur BRUTE entre
-                // parenthèses (ex. « CHA (4) ») ; pour une « meilleure de », le code
-                // est celui de la carac retenue (ex. « AGI (3) »).
-                <Box component="span">
-                  {p.symbol} ({p.value ?? 0})
-                </Box>
+                // On montre toujours le code de la stat + sa valeur BRUTE entre parenthèses (ex.
+                // « CHA (4) ») ; pour une « meilleure de », le code est celui de la carac retenue
+                // (ex. « AGI (3) »). Puce teintée + tiretée de la carac (norme PER-224), SAUF en cas de
+                // substitution (forgesort → INT) où l'accent AMBRE de l'encadré porte l'avertissement.
+                sub ? (
+                  <Box component="span">
+                    {p.symbol} ({p.value ?? 0})
+                  </Box>
+                ) : (
+                  <AbilityFormulaChip symbol={p.symbol} value={p.value ?? 0} />
+                )
               ) : (
                 <Box component="span">{p.value}</Box>
               )}
@@ -839,6 +866,11 @@ export function RichInline({
             .join('');
           const value = resolved.total ?? 0;
           const part = resolved.parts[0];
+          // Terme carac UNIQUE (« INT (4) », `[#INT]`) → puce teintée + tiretée de la carac (norme
+          // PER-224), en gardant « SYMBOLE (valeur) » : dans une phrase, retirer le mot casse le sens.
+          if (resolved.parts.length === 1 && (part.kind === 'ability' || part.kind === 'abilityBest')) {
+            return <AbilityFormulaChip key={i} symbol={part.symbol} value={value} />;
+          }
           const title =
             resolved.parts.length === 1
               ? part.kind === 'rank'
