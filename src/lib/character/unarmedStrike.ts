@@ -147,17 +147,16 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
     sources = addSource(sources, 'maitrise-r2');
   }
 
-  // Morsure du serpent (p. 119) : plage de critique au contact +1 à mains nues.
-  // La valeur est un littéral (1) sur toutes les capacités concernées du catalogue ;
-  // une valeur scalante nécessiterait le contexte d'effets (aucune aujourd'hui).
+  // Morsure du serpent (p. 119) : plage de critique au contact +1 à mains nues. La capacité déclare
+  // sa condition d'arme de façon structurée (`criticalRange.weaponCondition.kind === 'unarmed'`,
+  // PER-136) — c'est la source unique de la plage à mains nues (la vue « arme »,
+  // `criticalRangeSources`, l'ignore justement). La valeur est un littéral (1) sur toutes les
+  // capacités concernées du catalogue ; une valeur scalante nécessiterait le contexte d'effets.
   for (const id of acquired) {
     const feature = featureById.get(id);
     const crit = feature?.criticalRange;
     if (!crit || crit.scope !== 'melee') continue;
-    const isBareHanded = (feature.effects ?? []).some(
-      (e) => e.kind === 'conditional-stat-bonus' && /mains.?nues/i.test(e.activation.label ?? ''),
-    );
-    if (!isBareHanded) continue;
+    if (crit.weaponCondition?.kind !== 'unarmed') continue;
     if (typeof crit.value === 'number') criticalRangeBonus += crit.value;
     sources = addSource(sources, id);
   }

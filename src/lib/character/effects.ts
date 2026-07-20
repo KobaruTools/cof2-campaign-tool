@@ -32,6 +32,8 @@ import type {
   ResistibleDamageType,
   UsageCounter,
   UsageResetTrigger,
+  Weapon,
+  WeaponCriticalCondition,
 } from '@/data/schema';
 import { ABILITY_IDS, IMMUNITY_LABELS, RESISTIBLE_DAMAGE_TYPES } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
@@ -1792,41 +1794,79 @@ export interface CriticalRangeSource {
 }
 
 /**
- * Plages de critique élargies ACTIVES du personnage (PER-133), pour l'affichage sous les cartes
- * Attaque au contact / à distance. Même logique d'activation que `damageReductionSources` : une
- * capacité PASSIVE (aucun effet conditionnel) accorde une plage PERMANENTE (Briseur d'os, Écuyer,
- * Tir précis) ; une capacité dont l'élargissement est conditionné à l'arme porte un effet
- * conditionnel (marqueur d'état) et n'est retenue que si son interrupteur est ACTIF (Science du
- * critique, Morsure du serpent, Frappe chirurgicale — câblage automatique différé à PER-76). La
- * valeur scalante éventuelle (Tir précis : 1 puis 2 au rang 5) est résolue ici. Donnée informative,
- * non lue par le moteur (aucun jet simulé).
+ * La condition d'ARME d'une plage de critique (PER-136) est-elle satisfaite par l'arme de contact
+ * PORTÉE ? `unarmed` renvoie TOUJOURS `false` ici : la plage à mains nues est décrite par la vue
+ * « mains nues » de la carte d'attaque (`unarmedStrike`), pas par `criticalRangeSources` (qui décrit
+ * la vue « arme »). `weaponFamiliesFromChoice` lit les familles choisies sur la capacité `choiceFeatureId`
+ * (choix `option` à l'index 0, ex. Armes de prédilection `maitre-d-armes-r1`) et vérifie que l'arme
+ * portée en partage au moins une (`weaponFamilies`).
+ */
+function weaponCriticalConditionMet(
+  condition: WeaponCriticalCondition,
+  weapon: Weapon | null,
+  character: Character,
+): boolean {
+  switch (condition.kind) {
+    case 'unarmed':
+      return false;
+    case 'weaponCategory':
+      return weapon?.weaponCategory === condition.category;
+    case 'weaponFamiliesFromChoice': {
+      const families = weapon?.weaponFamilies;
+      if (!families?.length) return false;
+      const selected = getOptionSelections(character, condition.choiceFeatureId, 0);
+      return families.some((f) => selected.includes(f));
+    }
+  }
+}
+
+/**
+ * Plages de critique élargies ACTIVES du personnage (PER-133/136), pour l'affichage sous les cartes
+ * Attaque au contact / à distance. Une capacité PASSIVE (aucune condition) accorde une plage
+ * PERMANENTE (Briseur d'os, Tir précis) ; une capacité dont l'élargissement est CONDITIONNÉ AU TYPE
+ * D'ARME (`criticalRange.weaponCondition`, PER-136) est activée AUTOMATIQUEMENT d'après l'arme de
+ * contact réellement portée (Science du critique = arme de prédilection, Frappe chirurgicale = arme
+ * légère ; Morsure du serpent = mains nues, IGNORÉE ici car rendue par la vue mains nues) ; enfin une
+ * capacité à interrupteur d'état indépendant de l'arme (Écuyer « en vie ») n'est retenue que tant que
+ * son interrupteur reste actif. La valeur scalante éventuelle (Tir précis : 1 puis 2 au rang 5) est
+ * résolue ici. Donnée informative, non lue par le moteur (aucun jet simulé).
  */
 export function criticalRangeSources(character: Character): CriticalRangeSource[] {
   const pathRanks = pathRanksFromFeatures(character.featureIds);
   const ctx = effectContext(character);
   const out: CriticalRangeSource[] = [];
+  // Arme de contact réellement PORTÉE (résolveur canonique `wornMeleeWeapon`, PER-76/77) : sert à
+  // évaluer les conditions d'arme (PER-136) ET la plage intrinsèque de l'arme (PER-225).
+  const weapon = wornMeleeWeapon(character.equipment ?? []);
   // Capacités acquises ET empruntées : une capacité empruntée fonctionne comme une capacité normale,
   // sa plage de critique comprise (PER-73). Son rang se résout sur la VOIE A (cf. `borrowedHostPaths`).
   for (const id of effectiveFeatureIdsForMods(character)) {
     const feature = featureById.get(id);
     if (!feature?.criticalRange) continue;
-    const conditionalIndexes = (feature.effects ?? [])
-      .map((e, i) => (e.kind === 'conditional-stat-bonus' ? i : -1))
-      .filter((i) => i >= 0);
-    const active =
-      conditionalIndexes.length === 0 || conditionalIndexes.some((i) => isEffectActive(character, id, i));
-    if (!active) continue;
+    const crit = feature.criticalRange;
+    if (crit.weaponCondition) {
+      // PER-136 : activation AUTOMATIQUE d'après l'arme portée, sans interrupteur manuel.
+      if (!weaponCriticalConditionMet(crit.weaponCondition, weapon, character)) continue;
+    } else {
+      // Plage permanente, ou pilotée par un interrupteur d'état indépendant de l'arme (Écuyer « en
+      // vie ») : retenue tant qu'aucun interrupteur conditionnel n'est explicitement coupé.
+      const conditionalIndexes = (feature.effects ?? [])
+        .map((e, i) => (e.kind === 'conditional-stat-bonus' ? i : -1))
+        .filter((i) => i >= 0);
+      const active =
+        conditionalIndexes.length === 0 || conditionalIndexes.some((i) => isEffectActive(character, id, i));
+      if (!active) continue;
+    }
     const rankPathId = ctx.borrowedHostPaths?.get(id) ?? feature.pathId;
-    const value = resolveValue(feature.criticalRange.value, rankPathId, pathRanks, ctx);
+    const value = resolveValue(crit.value, rankPathId, pathRanks, ctx);
     if (value === null || value <= 0) continue;
-    out.push({ featureId: id, name: feature.name, scope: feature.criticalRange.scope, value });
+    out.push({ featureId: id, name: feature.name, scope: crit.scope, value });
   }
   // Plage de critique INTRINSÈQUE de l'arme de contact tenue en main (PER-225) — rapière,
   // vivelame (19-20, p. 183). Source d'affichage SUPPLÉMENTAIRE, cumulée avec les capacités
   // par `combineCriticalRanges`. N'apparaît que si l'arme concernée est réellement portée en
-  // main (résolveur canonique `wornMeleeWeapon`, PER-76/77) : déséquiper l'arme retire la puce.
-  // Sur une arme, `value` est un littéral fixe (pas de rang → pas de valeur scalante).
-  const weapon = wornMeleeWeapon(character.equipment ?? []);
+  // main : déséquiper l'arme retire la puce. Sur une arme, `value` est un littéral fixe (pas de
+  // rang → pas de valeur scalante).
   const weaponCrit = weapon?.criticalRange;
   if (weaponCrit && typeof weaponCrit.value === 'number' && weaponCrit.value > 0) {
     out.push({ name: weapon!.name, scope: weaponCrit.scope, value: weaponCrit.value });

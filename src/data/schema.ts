@@ -1240,6 +1240,25 @@ export interface DamageReduction {
  * est différé à la milestone « Armures et équipement porté » (PER-76) ; ces capacités portent
  * en attendant un badge `wip`.
  */
+/**
+ * Condition d'ARME sous laquelle une plage de critique de capacité s'applique (PER-136). Absente =
+ * la plage est PERMANENTE (Briseur d'os, Écuyer, Tir précis) ou pilotée par un interrupteur d'état
+ * indépendant de l'arme (cf. `criticalRangeSources`). Présente = le moteur détermine l'activation
+ * AUTOMATIQUEMENT d'après l'arme de contact réellement PORTÉE (`wornMeleeWeapon`, PER-76/77), sans
+ * interrupteur manuel :
+ *  - `unarmed` : combat À MAINS NUES (aucune arme de contact en main) — Morsure du serpent (moine).
+ *    Rendue par la vue « mains nues » de la carte d'attaque (`unarmedStrike`), donc IGNORÉE par
+ *    `criticalRangeSources` (qui décrit la vue « arme »).
+ *  - `weaponCategory` : arme de la CATÉGORIE mécanique donnée (`light`…) — Frappe chirurgicale (voleur).
+ *  - `weaponFamiliesFromChoice` : l'arme portée appartient à une des FAMILLES choisies par le
+ *    personnage sur la capacité `choiceFeatureId` (choix `option`, ex. Armes de prédilection du
+ *    guerrier, `maitre-d-armes-r1`) — Science du critique (maître d'armes).
+ */
+export type WeaponCriticalCondition =
+  | { kind: 'unarmed' }
+  | { kind: 'weaponCategory'; category: WeaponCategory }
+  | { kind: 'weaponFamiliesFromChoice'; choiceFeatureId: string };
+
 export interface CriticalRange {
   /** Portée concernée : attaques au contact (`melee`) ou à distance (`ranged`). */
   scope: 'melee' | 'ranged';
@@ -1249,6 +1268,11 @@ export interface CriticalRange {
    * rang 5 de la voie — `stepped` `path-rank`). Résolue à l'affichage par `criticalRangeSources`.
    */
   value: EffectValue;
+  /**
+   * Condition d'arme conditionnant l'élargissement (PER-136). Absente = plage permanente / pilotée
+   * hors de l'arme portée. Cf. `WeaponCriticalCondition`.
+   */
+  weaponCondition?: WeaponCriticalCondition;
 }
 
 // ---------------------------------------------------------------------------
@@ -2113,6 +2137,25 @@ export const WEAPON_CATEGORIES = ['light', 'oneHand', 'oneOrTwoHands', 'twoHands
 export type WeaponCategory = (typeof WEAPON_CATEGORIES)[number];
 
 /**
+ * Catégories d'« armes de prédilection » du maître d'armes (guerrier) — p. 88 : « épées, haches,
+ * mains nues, masses, lances (épieu, lance, pique) et enfin armes de jet (dague de lancer, javelot,
+ * etc.) ». C'est un classement PAR TYPE d'arme, distinct des `WEAPON_CATEGORIES` mécaniques
+ * (légère / à une ou deux mains…). Les ids sont EXACTEMENT les options du choix `maitre-d-armes-r1`.
+ * Le livre ne donne aucune liste pour « masses » (interprétation maison : armes contondantes hors
+ * bâton — cf. `weaponFamilies` sur les armes) ; « bâton / bâton ferré » y est traité à part (p. 184)
+ * et reste donc sans famille de prédilection.
+ */
+export const MASTER_AT_ARMS_CATEGORIES = [
+  'swords',
+  'axes',
+  'unarmed',
+  'maces',
+  'polearms',
+  'thrown',
+] as const;
+export type MasterAtArmsCategory = (typeof MASTER_AT_ARMS_CATEGORIES)[number];
+
+/**
  * Sous-type d'une arme d'attaque à DISTANCE (PER-115) — le livre ne le nomme pas comme une
  * catégorie formelle, mais plusieurs capacités ciblent un sous-type précis : Archer émérite
  * s'applique « à l'arc », sa variante « voie du lancer » aux « armes de jet (dague, hachette,
@@ -2129,6 +2172,15 @@ export type DamageType = (typeof DAMAGE_TYPES)[number];
 export interface Weapon extends EquipmentBase {
   category: 'weapon';
   weaponCategory: WeaponCategory;
+  /**
+   * Familles d'« armes de prédilection » du maître d'armes auxquelles l'arme appartient (PER-136).
+   * Sert aux capacités conditionnées au TYPE d'arme (Science du critique du guerrier, et à terme le
+   * +1 att / +DM des armes de prédilection, PER-72). Une arme lançable cumule sa famille de contact
+   * et `thrown` (ex. épieu = `['polearms', 'thrown']`). Absent = aucune catégorie de prédilection ne
+   * s'applique (bâton/bâton ferré, stylet, armes sacrées, arcs/arbalètes/frondes/poudre). Cf.
+   * `MASTER_AT_ARMS_CATEGORIES`.
+   */
+  weaponFamilies?: MasterAtArmsCategory[];
   /** L'arme est-elle une arme de contact, à distance, ou les deux (lancer) ? */
   melee: boolean;
   ranged: boolean;

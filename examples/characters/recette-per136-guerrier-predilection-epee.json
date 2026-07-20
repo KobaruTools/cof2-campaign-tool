@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per136-guerrier-predilection-epee",
+  "name": "Recette PER-136 — Science du critique (épée de prédilection)",
+  "identity": {
+    "description": "ATTENDU : guerrier maître d'armes (r2 Science du critique) ayant choisi « épées » comme arme de prédilection (choix Armes de prédilection, maitre-d-armes-r1). Il tient une ÉPÉE LONGUE (famille 'swords'). La plage de critique au contact passe à 19-20 AUTOMATIQUEMENT, sans aucun interrupteur (PER-136). Déséquiper l'épée ou tenir une arme hors catégorie retire la puce (cf. la variante « masse »)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "maitre-d-armes-r1",
+    "maitre-d-armes-r2"
+  ],
+  "featureChoices": {
+    "maitre-d-armes-r1": [
+      [
+        "swords"
+      ]
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-136 — Science du critique auto : arme portée ∈ catégorie de prédilection choisie.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

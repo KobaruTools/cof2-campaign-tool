@@ -1668,19 +1668,16 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le guerrier augmente de 1 point les chances d’obtenir un critique sur les attaques effectuées avec une arme de prédilection (par exemple, 19-20 au lieu de 20).',
-    // PER-133 : élargissement de la plage de critique au CONTACT (+1 → 19-20), CONDITIONNÉ à une arme
-    // de prédilection en main. En attendant le câblage automatique au type d'arme porté (PER-136), un
-    // interrupteur manuel (effet conditionnel « marqueur d'état », bonuses vide) pilote l'affichage de
-    // la puce sous la carte Attaque au contact.
-    effects: [
-      {
-        kind: 'conditional-stat-bonus',
-        bonuses: [],
-        activation: { kind: 'condition', label: 'arme de prédilection en main' },
-      },
-    ],
-    criticalRange: { scope: 'melee', value: 1 },
-    wip: "Plage de critique conditionnée à l'arme de prédilection — activation manuelle en attendant le câblage automatique au type d'arme porté (PER-136).",
+    // PER-133/136 : élargissement de la plage de critique au CONTACT (+1 → 19-20), CONDITIONNÉ à une
+    // arme de PRÉDILECTION en main. Câblage AUTOMATIQUE (PER-136) : `criticalRangeSources` active la
+    // plage dès que l'arme de contact portée (`wornMeleeWeapon`) appartient à une des familles
+    // choisies sur « Armes de prédilection » (`maitre-d-armes-r1`), sans interrupteur manuel. Affiché
+    // en puce sous la carte Attaque au contact.
+    criticalRange: {
+      scope: 'melee',
+      value: 1,
+      weaponCondition: { kind: 'weaponFamiliesFromChoice', choiceFeatureId: 'maitre-d-armes-r1' },
+    },
     sourcePage: 89,
   },
   {

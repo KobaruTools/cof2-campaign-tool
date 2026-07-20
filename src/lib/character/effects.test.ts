@@ -943,7 +943,7 @@ describe('disabledFeatureReasons — grisage des capacités (exclusion / remplac
   });
 });
 
-describe('criticalRangeSources — plage de critique élargie (PER-133)', () => {
+describe('criticalRangeSources — plage de critique élargie (PER-133/136)', () => {
   const char = (featureIds: string[], toggles: Record<string, boolean[]> = {}): Character =>
     ({ level: 7, abilities: ctx().abilities, featureIds, effectToggles: toggles, featureChoices: {} }) as Character;
 
@@ -977,17 +977,48 @@ describe('criticalRangeSources — plage de critique élargie (PER-133)', () => 
     });
   });
 
-  it('Science du critique (maitre-d-armes-r2) : conditionnée à l’arme → masquée tant que l’interrupteur est éteint', () => {
-    expect(criticalRangeSources(char(['maitre-d-armes-r2']))).toEqual([]);
-    expect(criticalRangeSources(char(['maitre-d-armes-r2'], { 'maitre-d-armes-r2': [true] }))).toEqual([
-      { featureId: 'maitre-d-armes-r2', name: 'Science du critique', scope: 'melee', value: 1 },
-    ]);
+  it('Science du critique (maitre-d-armes-r2) : AUTO selon l’arme de prédilection portée (PER-136)', () => {
+    // Guerrier maître d'armes ayant choisi « épées » comme catégorie de prédilection (maitre-d-armes-r1).
+    const guerrier = (equipment: EquipmentLine[]): Character =>
+      ({
+        level: 7,
+        abilities: ctx().abilities,
+        featureIds: ['maitre-d-armes-r1', 'maitre-d-armes-r2'],
+        effectToggles: {},
+        featureChoices: { 'maitre-d-armes-r1': [['swords']] },
+        equipment,
+      }) as unknown as Character;
+    // Épée longue (famille 'swords') en main → plage +1 activée automatiquement, sans interrupteur.
+    expect(
+      criticalRangeSources(guerrier([{ itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } }])),
+    ).toEqual([{ featureId: 'maitre-d-armes-r2', name: 'Science du critique', scope: 'melee', value: 1 }]);
+    // Masse (famille 'maces', NON choisie) en main → aucune plage.
+    expect(criticalRangeSources(guerrier([{ itemId: 'masse', quantity: 1, worn: { slot: 'mainHand' } }]))).toEqual([]);
+    // Aucune arme de contact portée → aucune plage (l'arme de prédilection n'est pas en main).
+    expect(criticalRangeSources(guerrier([]))).toEqual([]);
   });
 
-  it('Frappe chirurgicale (spadassin-r3) : +2 au contact (18-20) quand l’interrupteur « arme légère » est actif', () => {
-    expect(criticalRangeSources(char(['spadassin-r3'], { 'spadassin-r3': [true] }))).toEqual([
-      { featureId: 'spadassin-r3', name: 'Frappe chirurgicale', scope: 'melee', value: 2 },
-    ]);
+  it('Frappe chirurgicale (spadassin-r3) : AUTO +2 (18-20) dès qu’une arme LÉGÈRE est portée (PER-136)', () => {
+    // Rapière (arme légère) en main → +2 automatiquement (+ sa plage intrinsèque d'arme, PER-225).
+    expect(
+      criticalRangeSources(
+        charEquip(['spadassin-r3'], [{ itemId: 'rapiere', quantity: 1, worn: { slot: 'mainHand' } }]),
+      ),
+    ).toContainEqual({ featureId: 'spadassin-r3', name: 'Frappe chirurgicale', scope: 'melee', value: 2 });
+    // Épée longue (à une main, NON légère) en main → aucune plage de Frappe.
+    expect(
+      criticalRangeSources(
+        charEquip(['spadassin-r3'], [{ itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } }]),
+      ),
+    ).toEqual([]);
+    // Aucune arme portée → aucune plage.
+    expect(criticalRangeSources(charEquip(['spadassin-r3'], []))).toEqual([]);
+  });
+
+  it('Morsure du serpent (maitrise-r3) : IGNORÉE par la vue « arme » (rendue par la vue mains nues, PER-136)', () => {
+    // La plage à mains nues (weaponCondition unarmed) n'apparaît jamais dans `criticalRangeSources` —
+    // même sans arme portée — car elle est décrite par `unarmedStrike` (vue mains nues de la carte).
+    expect(criticalRangeSources(char(['maitrise-r3']))).toEqual([]);
   });
 
   // --- PER-225 : plage de critique INTRINSÈQUE de l'arme ÉQUIPÉE ---
@@ -1029,15 +1060,12 @@ describe('criticalRangeSources — plage de critique élargie (PER-133)', () => 
     ).toEqual([]);
   });
 
-  it('CUMUL (PER-225) : voleur/spadassin demi-orc portant une rapière → arme + Frappe chirurgicale + Critique brutal', () => {
-    // Rapière (arme légère) tenue en main + Frappe chirurgicale ACTIVE (interrupteur « arme légère »)
-    // + Critique brutal du demi-orc (passif). Les trois sources melee remontent, prêtes au cumul.
+  it('CUMUL (PER-225/136) : voleur/spadassin demi-orc portant une rapière → arme + Frappe chirurgicale + Critique brutal', () => {
+    // Rapière (arme légère) tenue en main → Frappe chirurgicale AUTO (arme légère, PER-136) + plage
+    // intrinsèque de la rapière (PER-225) + Critique brutal du demi-orc (passif). Les trois sources
+    // melee remontent, prêtes au cumul — sans aucun interrupteur manuel.
     const src = criticalRangeSources(
-      charEquip(
-        ['spadassin-r3', 'demi-orc-r3'],
-        [{ itemId: 'rapiere', quantity: 1, worn: { slot: 'mainHand' } }],
-        { 'spadassin-r3': [true] },
-      ),
+      charEquip(['spadassin-r3', 'demi-orc-r3'], [{ itemId: 'rapiere', quantity: 1, worn: { slot: 'mainHand' } }]),
     );
     expect(src).toContainEqual({ featureId: 'spadassin-r3', name: 'Frappe chirurgicale', scope: 'melee', value: 2 });
     expect(src).toContainEqual({ featureId: 'demi-orc-r3', name: 'Critique brutal', scope: 'melee', value: 1 });

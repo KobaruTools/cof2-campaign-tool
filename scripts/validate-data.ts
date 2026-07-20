@@ -41,6 +41,7 @@ import {
   ABILITY_IDS,
   DERIVED_STAT_IDS,
   IMMUNITY_IDS,
+  MASTER_AT_ARMS_CATEGORIES,
   RANGED_WEAPON_KINDS,
   RESISTIBLE_DAMAGE_TYPES,
   STATUS_EFFECT_IDS,
@@ -173,6 +174,7 @@ const validActivationKinds = new Set(['condition', 'temporary']);
 const validImmunities = new Set<string>(IMMUNITY_IDS);
 const validRangedKinds = new Set<string>(RANGED_WEAPON_KINDS);
 const validWeaponCategories = new Set<string>(WEAPON_CATEGORIES);
+const validWeaponFamilies = new Set<string>(MASTER_AT_ARMS_CATEGORIES);
 const validDamageDies = new Set<string>(['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20']);
 
 /** Valide une `EffectValue` (constante ou scalante) ; renvoie un message ou null. */
@@ -454,10 +456,11 @@ for (const c of features) {
   }
 }
 
-// --- Plage de critique élargie (PER-133) -------------------------------------
-// Donnée d'affichage informatif (non lue par le moteur) : on vérifie la portée (melee/ranged)
-// et la résolubilité de la valeur (constante ou scalante). Une plage conditionnée à l'arme doit
-// s'appuyer sur un effet conditionnel (marqueur d'état) pour que son interrupteur existe.
+// --- Plage de critique élargie (PER-133/136) ---------------------------------
+// Donnée d'affichage informatif (non lue par le moteur) : on vérifie la portée (melee/ranged) et la
+// résolubilité de la valeur. Une plage CONDITIONNÉE AU TYPE D'ARME (`weaponCondition`, PER-136) est
+// activée automatiquement d'après l'arme portée : sa condition doit être bien formée (catégorie
+// mécanique reconnue ; capacité de choix existante et porteuse d'un choix `option`).
 let featuresWithCriticalRange = 0;
 for (const c of features) {
   const cr = c.criticalRange;
@@ -467,6 +470,29 @@ for (const c of features) {
     err(`[capacite ${c.id}] criticalRange.scope inconnu : ${cr.scope}`);
   const ve = effectValueError(cr.value);
   if (ve) err(`[capacite ${c.id}] criticalRange value: ${ve}`);
+  const wc = cr.weaponCondition;
+  if (wc) {
+    if (wc.kind === 'weaponCategory') {
+      if (!validWeaponCategories.has(wc.category))
+        err(`[capacite ${c.id}] criticalRange.weaponCondition catégorie d'arme inconnue : ${wc.category}`);
+    } else if (wc.kind === 'weaponFamiliesFromChoice') {
+      const choiceFeature = featureById.get(wc.choiceFeatureId);
+      if (!choiceFeature)
+        err(`[capacite ${c.id}] criticalRange.weaponCondition choiceFeatureId inexistant : ${wc.choiceFeatureId}`);
+      else if (!(choiceFeature.choices ?? []).some((ch) => ch.kind === 'option'))
+        err(`[capacite ${c.id}] criticalRange.weaponCondition choiceFeatureId ${wc.choiceFeatureId} ne porte aucun choix 'option'`);
+    } else if (wc.kind !== 'unarmed') {
+      err(`[capacite ${c.id}] criticalRange.weaponCondition genre inconnu : ${(wc as { kind: string }).kind}`);
+    }
+  }
+}
+
+// --- Familles d'armes de prédilection (PER-136) ------------------------------
+// Chaque famille déclarée sur une arme doit être une catégorie de prédilection reconnue.
+for (const item of equipment) {
+  if (item.category !== 'weapon' || !item.weaponFamilies) continue;
+  for (const fam of item.weaponFamilies)
+    if (!validWeaponFamilies.has(fam)) err(`[arme ${item.id}] weaponFamilies famille inconnue : ${fam}`);
 }
 
 // --- Remplacement inconditionnel de capacité (PER-70) ------------------------

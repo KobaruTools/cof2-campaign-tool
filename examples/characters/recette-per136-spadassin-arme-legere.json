@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per136-spadassin-arme-legere",
+  "name": "Recette PER-136 — Frappe chirurgicale (arme légère auto)",
+  "identity": {
+    "description": "ATTENDU : voleur spadassin (r3 Frappe chirurgicale) tenant une RAPIÈRE (arme légère). La plage de critique au contact passe à 18-20 AUTOMATIQUEMENT (élargissement +2), sans interrupteur (PER-136). La rapière ajoute EN PLUS sa plage intrinsèque +1 (PER-225) : total 3 → puce « 17-20 ». Tenir une arme NON légère (ex. épée longue) désactive Frappe chirurgicale."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "voleur",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "spadassin-r1",
+    "spadassin-r2",
+    "spadassin-r3"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "rapiere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-136 — Frappe chirurgicale auto sur arme légère (+ plage intrinsèque rapière PER-225).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

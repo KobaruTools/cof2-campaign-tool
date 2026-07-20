@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per136-moine-morsure-mains-nues",
+  "name": "Recette PER-136 — Morsure du serpent (mains nues auto)",
+  "identity": {
+    "description": "ATTENDU : moine (voie de la maîtrise r3 Morsure du serpent), AUCUNE arme de contact en main. La plage de critique au contact à MAINS NUES passe à 19-20 automatiquement, portée par la vue « mains nues » de la carte d'attaque (PER-136). La vue « arme » (criticalRangeSources) ne l'affiche PAS — elle n'a de sens qu'à mains nues."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "moine",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "maitrise-r1",
+    "maitrise-r2",
+    "maitrise-r3"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-136 — Morsure du serpent : plage mains nues auto (vue mains nues, pas la vue arme).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

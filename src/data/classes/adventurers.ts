@@ -2333,19 +2333,16 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Par sa science de l'escrime (et de la fourberie), le voleur augmente ses chances de faire des coups critiques avec une arme légère de 2 points (ainsi, au lieu de 20, le critique standard est obtenu entre 18 et 20). Toutefois, la valeur minimale requise pour obtenir un critique ne peut être inférieure à 16 (voir page 213).",
-    // PER-133 : élargissement de la plage de critique au CONTACT de 2 points (18-20), CONDITIONNÉ à
-    // une arme légère en main. En attendant le câblage automatique au type d'arme porté (PER-136), un
-    // interrupteur manuel (effet conditionnel « marqueur d'état », bonuses vide) pilote l'affichage de
-    // la puce sous la carte Attaque au contact. Le plancher de 16 (p. 213) est appliqué à l'affichage.
-    effects: [
-      {
-        kind: 'conditional-stat-bonus',
-        bonuses: [],
-        activation: { kind: 'condition', label: 'arme légère en main' },
-      },
-    ],
-    criticalRange: { scope: 'melee', value: 2 },
-    wip: "Plage de critique conditionnée à l'arme légère — activation manuelle en attendant le câblage automatique au type d'arme porté (PER-136).",
+    // PER-133/136 : élargissement de la plage de critique au CONTACT de 2 points (18-20), CONDITIONNÉ à
+    // une arme LÉGÈRE en main. Câblage AUTOMATIQUE (PER-136) via `weaponCondition: { kind:
+    // 'weaponCategory', category: 'light' }` : `criticalRangeSources` active la plage dès que l'arme de
+    // contact portée est légère, sans interrupteur manuel. Le plancher de 16 (p. 213) est appliqué à
+    // l'affichage (`formatCriticalRange`).
+    criticalRange: {
+      scope: 'melee',
+      value: 2,
+      weaponCondition: { kind: 'weaponCategory', category: 'light' },
+    },
     sourcePage: 77,
   },
   {
