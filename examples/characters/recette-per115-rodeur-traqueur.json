@@ -3,14 +3,14 @@
   "id": "recette-per115-rodeur-traqueur",
   "name": "Recette PER-115 — Rôdeur traqueur (bonus situationnels)",
   "identity": {
-    "description": "ATTENDU — Carte Attaque au contact : « 1d8 + FOR » + DEUX badges situationnels ambre (Attaque éclair +AGI, Chasseur émérite +1d4°). Carte Attaque à distance : « 1d6 » seul + UN badge situationnel (Chasseur émérite +1d4°). Tooltips = capacité + condition."
+    "description": "ATTENDU — Carte Attaque au contact : « 1d8 + FOR » + UN badge situationnel ambre « + [icône dé d4] » (Chasseur émérite +1d4°). Carte Attaque à distance : « 1d6 » seul + le même badge. Attaque éclair n'apparaît PAS (capacité à activer). Tooltip du badge : capacité + condition « contre les animaux (même géants), Dragons » (ennemi juré choisi, dynamique)."
   },
   "campaignId": null,
   "playerId": null,
   "status": "active",
   "ancestryId": "humain",
   "classId": "rodeur",
-  "level": 6,
+  "level": 8,
   "priestVocation": null,
   "portraitVariant": "default",
   "firearmsAllowed": true,
@@ -37,9 +37,17 @@
   "featureIds": [
     "traqueur-r1",
     "traqueur-r2",
-    "traqueur-r3"
+    "traqueur-r3",
+    "traqueur-r4",
+    "traqueur-r5"
   ],
-  "featureChoices": {},
+  "featureChoices": {
+    "traqueur-r3": [
+      [
+        "dragons"
+      ]
+    ]
+  },
   "effectToggles": {},
   "effectInputs": {},
   "usageCounters": {},

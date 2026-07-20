@@ -84,6 +84,8 @@ function Face({
                 </AppTooltip>
               )}
             </Typography>
+            {/* Petit séparateur : la valeur de touche et le calcul des DM sont deux choses distinctes. */}
+            <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
             {/* DM accolés au chiffre d'attaque : dé + caractéristique(s) résolue(s) dynamiquement. */}
             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
               <Typography variant="caption" color="text.secondary">
@@ -238,6 +240,9 @@ export function MeleeAttackCard({
     <Box
       sx={{
         position: 'relative',
+        // Comme les cartes génériques : s'étire à la hauteur de la ligne de grille (toutes les cartes
+        // de stats dérivées à la même hauteur). Le sizer donne la hauteur MINIMALE (cadre actif).
+        height: '100%',
         // Le cadre arrière décalé dépasse hors du bloc (aucune marge réservée).
         overflow: 'visible',
         // L'icône « i » de détail n'apparaît qu'au survol de la carte (comme les autres cartes).
@@ -296,9 +301,10 @@ export function MeleeAttackCard({
       {/* Détail du calcul de la touche, en haut à droite (partagé par les deux cadres). */}
       <Box sx={{ position: 'absolute', top: 6, right: 18, zIndex: 3 }}>{statHint}</Box>
 
-      {/* Pile de cadres. Le SIZER (cadre actif, masqué) impose la hauteur ; les deux cadres réels sont
-          superposés en absolu et s'échangent avec animation. */}
-      <Box sx={{ position: 'relative' }}>
+      {/* Pile de cadres. Le SIZER (cadre actif, masqué) impose la hauteur MINIMALE ; les deux cadres
+          réels sont superposés en absolu et s'échangent avec animation. `height: 100%` pour que les
+          cadres (inset: 0) remplissent la carte quand la ligne de grille l'étire au-delà du sizer. */}
+      <Box sx={{ position: 'relative', height: '100%' }}>
         <Card variant="outlined" aria-hidden sx={{ visibility: 'hidden' }}>
           <Face mode={mode} {...faceProps} />
         </Card>

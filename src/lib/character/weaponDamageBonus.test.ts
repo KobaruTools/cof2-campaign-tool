@@ -81,22 +81,10 @@ describe('weaponDamageBonuses — Archer émérite (+PER à l\'arc, permanent)',
   });
 });
 
-describe('weaponDamageBonuses — Attaque éclair (+AGI au contact, situationnel)', () => {
-  const traqueur = makeCharacter({ featureIds: ['traqueur-r2'] });
-
-  it('contact → badge situationnel +AGI, rien d\'agrégé', () => {
-    const r = weaponDamageBonuses(traqueur, 'melee', epeeLongue);
-    expect(r.addedAbilities).toEqual([]);
-    expect(r.situational).toHaveLength(1);
-    expect(r.situational[0]).toMatchObject({ ability: 'AGI', featureId: 'traqueur-r2' });
-  });
-
-  it('même à mains nues (arme null) le badge situationnel contact s\'affiche', () => {
-    expect(weaponDamageBonuses(traqueur, 'melee', null).situational).toHaveLength(1);
-  });
-
-  it('mode distance → aucun badge (bonus au contact)', () => {
-    expect(weaponDamageBonuses(traqueur, 'ranged', arcLong).situational).toEqual([]);
+describe('weaponDamageBonuses — Attaque éclair (bonus à ACTIVATION, non modélisé)', () => {
+  it('traqueur-r2 : aucun badge — le +AGI relève d\'une capacité activée, pas de l\'attaque régulière', () => {
+    const traqueur = makeCharacter({ featureIds: ['traqueur-r2'] });
+    expect(weaponDamageBonuses(traqueur, 'melee', epeeLongue)).toEqual({ addedAbilities: [], situational: [] });
   });
 });
 
@@ -112,5 +100,19 @@ describe('weaponDamageBonuses — Chasseur émérite (+1d4° situationnel, les d
     });
     expect(melee.situational[0].conditionLabel).toMatch(/animaux/);
     expect(ranged.situational).toHaveLength(1);
+  });
+
+  it('libellé de condition DYNAMIQUE : les ennemis jurés choisis sont ajoutés', () => {
+    const withChoices = makeCharacter({
+      featureIds: ['traqueur-r3'],
+      featureChoices: { 'traqueur-r3': [['dragons', 'undead']] },
+    });
+    const label = weaponDamageBonuses(withChoices, 'melee', epeeLongue).situational[0].conditionLabel;
+    expect(label).toBe('contre les animaux (même géants), Dragons, Morts-vivants');
+  });
+
+  it('sans ennemi juré choisi : libellé de base seul', () => {
+    const label = weaponDamageBonuses(traqueur, 'melee', epeeLongue).situational[0].conditionLabel;
+    expect(label).toBe('contre les animaux (même géants)');
   });
 });

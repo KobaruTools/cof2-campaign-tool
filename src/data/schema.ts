@@ -1059,6 +1059,14 @@ export interface WeaponDamageCondition {
    * automatique. Absent = aucune (bonus applicable dès que les critères ci-dessus sont remplis).
    */
   label?: string;
+  /**
+   * Index d'un choix `option` de la capacité hôte dont les LIBELLÉS des options retenues sont
+   * ajoutés dynamiquement à `label` (PER-115). Ex. Chasseur émérite (`traqueur-r3`) : la condition
+   * « contre les animaux » se complète des ENNEMIS JURÉS choisis (un par voie de rôdeur au rang 5) →
+   * « …, les dragons, les morts-vivants ». Résolu au rendu depuis `Character.featureChoices`. Absent
+   * = `label` reste tel quel.
+   */
+  appendChoiceLabels?: number;
 }
 
 /**

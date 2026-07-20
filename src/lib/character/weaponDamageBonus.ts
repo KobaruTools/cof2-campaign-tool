@@ -13,6 +13,7 @@
 import { featureById } from '@/data';
 import type { AbilityId, DamageDie, Weapon, WeaponDamageBonusEffect } from '@/data/schema';
 import { activeFeatureIdsForMods } from '@/lib/character/effects';
+import { getOptionSelections } from '@/lib/character/choices';
 import type { Character } from '@/lib/character/types';
 
 /** Mode d'attaque considéré. */
@@ -65,6 +66,29 @@ function weaponMatchesType(cond: WeaponDamageBonusEffect['condition'], weapon: W
 }
 
 /**
+ * Libellé de condition, complété dynamiquement (PER-115) des LIBELLÉS des options retenues d'un
+ * choix `option` de la capacité (`condition.appendChoiceLabels`) — ex. les ennemis jurés choisis de
+ * Chasseur émérite. Sans ce champ (ou sans choix retenu), on renvoie `label` tel quel.
+ */
+function resolveConditionLabel(
+  character: Character,
+  featureId: string,
+  condition: WeaponDamageBonusEffect['condition'],
+): string | undefined {
+  const base = condition.label;
+  if (condition.appendChoiceLabels === undefined) return base;
+  const choice = featureById.get(featureId)?.choices?.[condition.appendChoiceLabels];
+  if (choice?.kind !== 'option') return base;
+  const labelById = new Map(choice.options.map((o) => [o.id, o.label]));
+  const chosen = getOptionSelections(character, featureId, condition.appendChoiceLabels)
+    .map((id) => labelById.get(id))
+    .filter((l): l is string => !!l);
+  if (chosen.length === 0) return base;
+  const suffix = chosen.join(', ');
+  return base ? `${base}, ${suffix}` : suffix;
+}
+
+/**
  * Bonus de DM des capacités actives, pour un `mode` d'attaque et l'arme (`weapon`) en main dans ce
  * mode (`null` = aucune arme de ce mode / mains nues). Voir en-tête de module.
  */
@@ -99,7 +123,7 @@ export function weaponDamageBonuses(
           ...source,
           ability: effect.ability,
           dice: effect.dice,
-          conditionLabel: condition.label,
+          conditionLabel: resolveConditionLabel(character, featureId, condition),
         });
       } else {
         // Permanent : n'est agrégé au DM que si une arme satisfait la condition de type.

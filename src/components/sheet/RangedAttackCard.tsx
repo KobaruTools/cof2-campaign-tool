@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import Divider from '@mui/material/Divider';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import Typography from '@mui/material/Typography';
 import type { Abilities } from '@/lib/engine';
@@ -54,6 +55,7 @@ export function RangedAttackCard({
     <Card
       variant="outlined"
       sx={{
+        position: 'relative',
         height: '100%',
         transition: 'border-color 120ms ease',
         '& .derived-stat-hint': { opacity: 0, transition: 'opacity 120ms ease' },
@@ -63,6 +65,9 @@ export function RangedAttackCard({
         },
       }}
     >
+      {/* Détail du calcul de la touche, en haut à droite, HORS FLUX (comme la carte de contact) :
+          libère toute la largeur de l'en-tête pour que le DM reste sur la même ligne que la touche. */}
+      <Box sx={{ position: 'absolute', top: 6, right: 18, zIndex: 3 }}>{statHint}</Box>
       <CardContent sx={{ py: 1, height: '100%', display: 'flex', flexDirection: 'column', '&:last-child': { pb: 1 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
           <DerivedStatIcon statId="rangedAttack" title size={40} />
@@ -88,6 +93,8 @@ export function RangedAttackCard({
                   </AppTooltip>
                 )}
               </Typography>
+              {/* Petit séparateur : la valeur de touche et le calcul des DM sont deux choses distinctes. */}
+              <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
               {/* DM accolés au chiffre d'attaque. */}
               <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
@@ -106,7 +113,6 @@ export function RangedAttackCard({
               </Box>
             </Box>
           </Box>
-          <Box sx={{ alignSelf: 'flex-start' }}>{statHint}</Box>
         </Box>
 
         {/* Plage de critique à distance. */}

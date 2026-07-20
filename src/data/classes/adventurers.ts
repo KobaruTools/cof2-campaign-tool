@@ -1720,16 +1720,10 @@ export const adventurerFeatures: Feature[] = [
     // pour cette attaque limitée) → pas d'effet permanent.
     richText:
       "Le rôdeur peut effectuer une attaque au contact très rapide. Il ajoute son [AGI] en attaque et aux DM pour cette attaque. À partir du rang 5, cette attaque peut être associée à 10 m de déplacement.",
-    // « ajoute son AGI […] aux DM pour cette attaque » (PER-115) : bonus SITUATIONNEL (une attaque
-    // au contact précise, action limitée) → badge distinct, pas agrégé au DM permanent.
-    effects: [
-      {
-        kind: 'weapon-damage-bonus',
-        ability: 'AGI',
-        condition: { attackMode: 'melee', label: 'attaque rapide (action limitée)' },
-        situational: true,
-      },
-    ],
+    // PER-115 : PAS de `weapon-damage-bonus` ici. Le +AGI s'applique à une CAPACITÉ ACTIVÉE (l'attaque
+    // rapide, action limitée que le joueur DÉCLARE), pas à l'attaque au contact normale → à gérer depuis
+    // la carte de capacité, pas en badge de la carte d'attaque (décision proprio). `weapon-damage-bonus`
+    // est réservé aux bonus qui modifient l'attaque RÉGULIÈRE (permanents ou passivement conditionnels).
     sourcePage: 72,
   },
   {
@@ -1772,7 +1766,9 @@ export const adventurerFeatures: Feature[] = [
       {
         kind: 'weapon-damage-bonus',
         dice: { count: 1, die: 'd4', evolving: true },
-        condition: { label: 'contre les animaux (même géants) ou un ennemi juré' },
+        // « contre les animaux » + ENNEMIS JURÉS choisis (choix 0, un par voie de rôdeur au rang 5),
+        // ajoutés dynamiquement au libellé (PER-115).
+        condition: { label: 'contre les animaux (même géants)', appendChoiceLabels: 0 },
         situational: true,
       },
     ],

@@ -357,6 +357,12 @@ for (const c of features) {
           if (!validRangedKinds.has(rk)) err(`[capacite ${c.id}] effect: weapon-damage-bonus rangedKind inconnu : ${rk}`);
         for (const wc of cond.weaponCategories ?? [])
           if (!validWeaponCategories.has(wc)) err(`[capacite ${c.id}] effect: weapon-damage-bonus weaponCategory inconnue : ${wc}`);
+        // appendChoiceLabels doit pointer vers un choix `option` de la capacité.
+        if (cond.appendChoiceLabels !== undefined) {
+          const choice = c.choices?.[cond.appendChoiceLabels];
+          if (choice?.kind !== 'option')
+            err(`[capacite ${c.id}] effect: weapon-damage-bonus appendChoiceLabels ${cond.appendChoiceLabels} ne pointe pas vers un choix 'option'`);
+        }
       }
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);

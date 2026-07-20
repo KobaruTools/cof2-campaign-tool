@@ -6,13 +6,19 @@ import BoltIcon from '@mui/icons-material/Bolt';
 import { alpha } from '@mui/material/styles';
 import type { SituationalDamageBonus } from '@/lib/character/weaponDamageBonus';
 import { AppTooltip } from '@/components/AppTooltip';
+import { DamageValue } from '@/components/DamageValue';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 
-/** Libellé court du bonus (« +AGI », « +1d4° »), selon carac ou dé(s). */
+/** Notation du/des dé(s) d'un bonus (ex. « 1d4° »), pour `DamageValue`. */
+function diceNotation(b: SituationalDamageBonus): string | null {
+  return b.dice ? `${b.dice.count}${b.dice.die}${b.dice.evolving ? '°' : ''}` : null;
+}
+
+/** Libellé TEXTE court du bonus (« +AGI », « +1d4° »), pour le titre du tooltip. */
 function bonusLabel(b: SituationalDamageBonus): string {
   if (b.ability) return `+${b.ability}`;
-  if (b.dice) return `+${b.dice.count}${b.dice.die}${b.dice.evolving ? '°' : ''}`;
-  return '+DM';
+  const d = diceNotation(b);
+  return d ? `+${d}` : '+DM';
 }
 
 /**
@@ -59,7 +65,15 @@ export function WeaponDamageBonusBadge({ bonus }: { bonus: SituationalDamageBonu
         })}
       >
         <BoltIcon sx={{ fontSize: 18 }} />
-        <Box component="span">{bonusLabel(bonus)}</Box>
+        {/* Un bonus de DÉ est rendu avec l'ICÔNE du dé (plus lisible que « 1d4° » en texte) ; un
+            bonus de carac reste en texte court (« +AGI »). */}
+        {diceNotation(bonus) ? (
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+            +<DamageValue damage={diceNotation(bonus)!} size={16} />
+          </Box>
+        ) : (
+          <Box component="span">{bonusLabel(bonus)}</Box>
+        )}
       </Box>
     </AppTooltip>
   );
