@@ -26,7 +26,6 @@ import {
 } from '@/components/sheet/WornEquipmentControls';
 import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/mastery';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
-import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { AbilityValueBadge } from '@/components/AbilityValueBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
@@ -107,25 +106,20 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
         <Typography variant="subtitle2" gutterBottom>
           Caractéristiques
         </Typography>
+        {/* Résumé simple : le modèle de carac unique (icône + code + chiffre teinté),
+            juste en grande taille. Le détail (breakdown au survol) et l'agrandissement
+            du chiffre selon la valeur restent RÉSERVÉS à la fiche (`AbilitiesGrid`). */}
         <Stack direction="row" spacing={1}>
           {ABILITY_IDS.map((id) => (
-            <AbilityBreakdownTooltip
+            <AbilityValueBadge
               key={id}
-              abilityId={id}
-              baseAbilities={draft.baseAbilities}
-              ancestry={ancestry}
-              ancestryChoices={draft.ancestryChoices}
-            >
-              <AbilityValueBadge
-                ability={id}
-                value={abilities[id]}
-                iconSize={32}
-                showCode
-                valueVariant="h6"
-                scaleBase="1.25rem"
-                sx={{ flex: 1, minWidth: 0, px: 0.5, cursor: 'help' }}
-              />
-            </AbilityBreakdownTooltip>
+              ability={id}
+              value={abilities[id]}
+              iconSize={32}
+              showCode
+              valueVariant="h6"
+              sx={{ flex: 1, minWidth: 0, px: 0.5 }}
+            />
           ))}
         </Stack>
       </Box>

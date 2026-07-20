@@ -206,19 +206,16 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
         <PathsMiniGrid character={character} />
       </Stack>
 
-      {/* Les 7 caractéristiques, en badges compacts (pas de Chip MUI). */}
+      {/* Les 7 caractéristiques, en badges compacts (pas de Chip MUI). Résumé simple :
+          le modèle de carac UNIQUE (icône + code + chiffre teinté), ici en petite taille.
+          Le détail au survol et l'agrandissement du chiffre restent réservés à la fiche. */}
       <Box
         sx={{
           display: 'grid',
           width: '100%',
-          // Largeur MINIMALE des colonnes = ~hauteur d'un badge → chaque badge est
-          // (au moins) carré ; `1fr` les garde de largeur égale s'il reste de la place.
-          gridTemplateColumns: 'repeat(7, minmax(44px, 1fr))',
-          // `start` (et non le `stretch` par défaut) : sinon la grille étire chaque
-          // badge à la hauteur de la piste, ce qui ANNULE son `aspect-ratio`. En
-          // désactivant l'étirement, l'aspect-ratio impose une vraie hauteur = largeur
-          // (carré), et le `justifyContent: center` du badge centre alors son contenu.
-          alignItems: 'start',
+          // `1fr` × 7 : chaque cellule de largeur égale ; la largeur MINIMALE (~icône +
+          // code + chiffre) évite qu'une colonne se comprime sous son contenu.
+          gridTemplateColumns: 'repeat(7, minmax(40px, 1fr))',
           gap: 0.75,
         }}
       >
@@ -230,20 +227,20 @@ export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
               borderRadius: 1,
               border: '1px solid rgba(255, 255, 255, 0.12)',
               bgcolor: 'rgba(255, 255, 255, 0.04)',
-              aspectRatio: '1',
-              minHeight: 44,
-              // Grille + `place-items: center` : centrage garanti (deux axes) de
-              // l'unique enfant, quel que soit le surplus de hauteur du carré.
+              py: 0.5,
+              // Grille + `place-items: center` : centrage garanti (deux axes) de l'unique
+              // enfant ; la cellule prend la hauteur de son contenu (icône + code + chiffre).
               display: 'grid',
               placeItems: 'center',
-              // Léger padding-top : le line-box du chiffre laisse de l'espace SOUS le
-              // glyphe (descente de la police), ce qui tire le contenu vers le haut ;
-              // 2px compensent visuellement pour un rendu bien centré.
-              pt: '2px',
             }}
           >
-            {/* Icône (teinte propre) + chiffre teinté fort/faible — bloc partagé partout. */}
-            <AbilityValueBadge ability={id} value={character.abilities[id] ?? 0} />
+            {/* Icône (teinte propre) + code + chiffre teinté fort/faible — modèle partagé partout. */}
+            <AbilityValueBadge
+              ability={id}
+              value={character.abilities[id] ?? 0}
+              showCode
+              codeVariant="caption"
+            />
           </Box>
         ))}
       </Box>
