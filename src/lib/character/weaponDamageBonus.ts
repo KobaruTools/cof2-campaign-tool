@@ -105,7 +105,7 @@ export function weaponConditionMet(
 function resolveFlat(character: Character, flat: number | WeaponDamageFlatFromChoice): number {
   if (typeof flat === 'number') return flat;
   const { repeatCounts } = splitRepeatableSelections(character, flat.featureId, flat.choiceIndex);
-  const count = repeatCounts[flat.optionId] ?? 0;
+  const count = (flat.base ?? 0) + (repeatCounts[flat.optionId] ?? 0);
   return flat.max === undefined ? count : Math.min(count, flat.max);
 }
 

@@ -130,10 +130,10 @@ describe('weaponDamageBonuses — Spécialisation du maître d\'armes (+N DM pla
     featureChoices: { 'maitre-d-armes-r1': [['swords', 'dm-bonus', 'dm-bonus']] },
   });
 
-  it('arme de prédilection en main (épée) → +2 DM plat permanent', () => {
+  it('arme de prédilection en main (épée) → +3 DM plat permanent (socle 1 + 2 jalons)', () => {
     const r = weaponDamageBonuses(maitre, 'melee', epeeLongue);
     expect(r.addedFlat).toHaveLength(1);
-    expect(r.addedFlat[0]).toMatchObject({ value: 2, featureId: 'maitre-d-armes-r3' });
+    expect(r.addedFlat[0]).toMatchObject({ value: 3, featureId: 'maitre-d-armes-r3' });
   });
 
   it('arme HORS prédilection (masse) → aucun +DM', () => {
@@ -144,13 +144,24 @@ describe('weaponDamageBonuses — Spécialisation du maître d\'armes (+N DM pla
     expect(weaponDamageBonuses(maitre, 'melee', null).addedFlat).toEqual([]);
   });
 
-  it('sans « +1 DM » retenu → aucun +DM (budget dépensé ailleurs)', () => {
+  it('sans « +1 DM » retenu (aucun jalon) → +1 DM socle (verbatim : « il gagne un bonus de +1 DM » dès r3)', () => {
     const sansBonus = makeCharacter({
       classId: 'guerrier',
       featureIds: ['maitre-d-armes-r1', 'maitre-d-armes-r3'],
       featureChoices: { 'maitre-d-armes-r1': [['swords']] },
     });
-    expect(weaponDamageBonuses(sansBonus, 'melee', epeeLongue).addedFlat).toEqual([]);
+    const r = weaponDamageBonuses(sansBonus, 'melee', epeeLongue);
+    expect(r.addedFlat).toHaveLength(1);
+    expect(r.addedFlat[0]).toMatchObject({ value: 1, featureId: 'maitre-d-armes-r3' });
+  });
+
+  it('r1 SANS Spécialisation (r3) → aucun +DM (le socle exige r3)', () => {
+    const sansR3 = makeCharacter({
+      classId: 'guerrier',
+      featureIds: ['maitre-d-armes-r1'],
+      featureChoices: { 'maitre-d-armes-r1': [['swords']] },
+    });
+    expect(weaponDamageBonuses(sansR3, 'melee', epeeLongue).addedFlat).toEqual([]);
   });
 
   it('plafonné à +6 même si davantage de « +1 DM » sont retenus', () => {

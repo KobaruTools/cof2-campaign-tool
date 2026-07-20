@@ -1703,15 +1703,16 @@ export const fighterFeatures: Feature[] = [
     // PER-72 : cette capacité DÉBLOQUE les picks supplémentaires du choix « Armes de prédilection »
     // (maitre-d-armes-r1, `requiresFeatureId: maitre-d-armes-r3`) — catégories additionnelles + « +1 DM »
     // par voie de guerrier au rang 5. Le CHOIX est hébergé sur r1 (lecture regroupée du système de
-    // prédilection), pas ici. PER-226 : le +DM (jusqu'à +6) est un `weapon-damage-bonus` PLAT dont la
-    // valeur = nombre de « +1 DM » (`dm-bonus`) retenus sur ce choix (index 0), plafonné à 6, appliqué
+    // prédilection), pas ici. PER-226 : le +DM (jusqu'à +6) est un `weapon-damage-bonus` PLAT = `base: 1`
+    // (le +1 DM acquis dès r3, verbatim « il gagne un bonus de +1 DM ») + le nombre de « +1 DM »
+    // (`dm-bonus`) retenus sur ce choix (index 0), plafonné à 6 (socle 1 + 5 voies au rang 5), appliqué
     // à l'arme portée si elle appartient à une famille de prédilection retenue. Agrégé à l'expression de
     // DM comme la carac de base. « avantages des rangs 1 à 3 » pour une catégorie additionnelle : le +1
     // att / la Science du critique suivent d'eux-mêmes l'arme portée (r1/r2 lisent les MÊMES familles).
     effects: [
       {
         kind: 'weapon-damage-bonus',
-        flat: { featureId: 'maitre-d-armes-r1', choiceIndex: 0, optionId: 'dm-bonus', max: 6 },
+        flat: { featureId: 'maitre-d-armes-r1', choiceIndex: 0, optionId: 'dm-bonus', base: 1, max: 6 },
         condition: { weaponFamiliesFromChoice: { choiceFeatureId: 'maitre-d-armes-r1' } },
       },
     ],

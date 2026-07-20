@@ -11,7 +11,7 @@ function loadFixture(name: string) {
 }
 
 describe('PER-226 — maître d’armes : +1 att FONDU au score et +N DM câblés à l’arme de prédilection (recette end-to-end)', () => {
-  it('épée de prédilection + Spécialisation → touche +1 (fondue, attribuée dans le breakdown) ET +2 DM (+ crit 19-20)', () => {
+  it('épée de prédilection + Spécialisation → touche +1 (fondue, attribuée dans le breakdown) ET +3 DM (socle 1 + 2 jalons, + crit 19-20)', () => {
     const view = buildCharacterDerivedView(loadFixture('recette-per226-maitre-armes-epee-specialisation'));
     const stats = deriveStats(view.derivedInput!);
     // Niveau 12 (base 10) + FOR 3 + 1 (maître d'armes, fondu dans le score) = 14.
@@ -20,8 +20,9 @@ describe('PER-226 — maître d’armes : +1 att FONDU au score et +N DM câblé
     expect(view.attackBonusModSources.meleeAttack).toEqual([
       { label: 'Armes de prédilection', value: 1, featureId: 'maitre-d-armes-r1' },
     ]);
-    // +2 DM plat de Spécialisation, agrégé à l'expression de DM AVEC sa source (breakdown de la puce).
-    expect(view.meleeWeaponDamage?.flatBonuses).toMatchObject([{ featureId: 'maitre-d-armes-r3', value: 2 }]);
+    // +3 DM plat de Spécialisation (socle +1 dès r3 + 2 jalons « +1 DM »), agrégé à l'expression de DM
+    // AVEC sa source (breakdown de la puce).
+    expect(view.meleeWeaponDamage?.flatBonuses).toMatchObject([{ featureId: 'maitre-d-armes-r3', value: 3 }]);
     expect(view.meleeWeaponDamage?.abilities).toEqual(['FOR']);
     // Science du critique (r2) suit la même arme de prédilection.
     expect(view.meleeCriticalRanges[0]?.text).toBe('19-20');
@@ -37,7 +38,7 @@ describe('PER-226 — maître d’armes : +1 att FONDU au score et +N DM câblé
     expect(view.meleeCriticalRanges).toHaveLength(0);
   });
 
-  it('arme de jet de prédilection à distance → touche à distance +1 (fondue) ET +1 DM (aucune carac, p. 185)', () => {
+  it('arme de jet de prédilection à distance → touche à distance +1 (fondue) ET +2 DM (socle 1 + 1 jalon, aucune carac, p. 185)', () => {
     const view = buildCharacterDerivedView(loadFixture('recette-per226-maitre-armes-jet-distance'));
     const stats = deriveStats(view.derivedInput!);
     // Niveau 9 + AGI 2 + 1 (maître d'armes, arme de jet) = 12.
@@ -45,7 +46,7 @@ describe('PER-226 — maître d’armes : +1 att FONDU au score et +N DM câblé
     expect(view.attackBonusModSources.rangedAttack).toEqual([
       { label: 'Armes de prédilection', value: 1, featureId: 'maitre-d-armes-r1' },
     ]);
-    expect(view.rangedWeaponDamage?.flatBonuses).toMatchObject([{ featureId: 'maitre-d-armes-r3', value: 1 }]);
+    expect(view.rangedWeaponDamage?.flatBonuses).toMatchObject([{ featureId: 'maitre-d-armes-r3', value: 2 }]);
     expect(view.rangedWeaponDamage?.abilities).toEqual([]);
     // Le contact ne bénéficie de rien (pas d'arme de contact portée) → pas d'attribution melee.
     expect(view.attackBonusModSources.meleeAttack).toBeUndefined();

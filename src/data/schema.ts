@@ -1133,6 +1133,13 @@ export interface WeaponDamageFlatFromChoice {
   choiceIndex: number;
   /** Id de l'option répétable dont on compte les instances (ex. `'dm-bonus'`). */
   optionId: string;
+  /**
+   * Socle AJOUTÉ au nombre d'instances (avant plafonnement). Ex. Spécialisation du maître d'armes :
+   * `base: 1` = le +1 DM acquis dès r3 avec une arme de prédilection, INDÉPENDAMMENT des jalons de
+   * rang 5 (verbatim p. 89 : « il gagne un bonus de +1 DM » — la couche `dm-bonus` s'y ajoute).
+   * Absent = 0.
+   */
+  base?: number;
   /** Plafond du bonus (ex. 6). Absent = aucun plafond. */
   max?: number;
 }
