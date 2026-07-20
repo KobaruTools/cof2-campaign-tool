@@ -1117,6 +1117,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               manualFeatureIds={manualFeatureIds(character)}
               character={character}
               onChoiceChange={editingBlocks.features ? setChoice : undefined}
+              // Clic sur la puce d'un choix HORS édition (fiche du propriétaire) : bascule
+              // le bloc « Voies » en édition et ouvre la modale du choix dans la foulée.
+              // Absent en lecture seule stricte (fiche d'autrui) : pas d'édition possible.
+              onEnableFeatureEditing={
+                readOnly ? undefined : () => setEditingBlocks((s) => ({ ...s, features: true }))
+              }
               // Les interrupteurs d'effets conditionnels sont des ÉTATS DE JEU
               // transitoires : activables à tout moment, y compris hors édition.
               onToggleEffect={setEffectToggleValue}

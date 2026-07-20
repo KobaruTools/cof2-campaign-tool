@@ -49,7 +49,6 @@ import {
   getSelection,
   hasActionableChoice,
   hasIncompleteCustomSkill,
-  hasUnmadeChoice,
 } from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
 import {
@@ -1036,6 +1035,14 @@ export interface FeaturesByPathProps {
    */
   onChoiceChange?: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
   /**
+   * Passe le bloc « Voies » en mode édition (allume le crayon des capacités). Permet, en cliquant
+   * la puce d'un choix affichée HORS édition, de basculer automatiquement en édition PUIS d'ouvrir
+   * la modale du choix (les choix de construction sont trop importants pour n'être accessibles
+   * qu'après un détour par le crayon). Absent (ou fiche en lecture seule stricte) → la puce n'ouvre
+   * l'éditeur que si l'on est déjà en édition.
+   */
+  onEnableFeatureEditing?: () => void;
+  /**
    * Bascule d'un interrupteur d'effet conditionnel (PER-67). État de jeu
    * transitoire, activable à tout moment (même hors mode édition). Absent (sans
    * `character`) → interrupteurs désactivés.
@@ -1944,6 +1951,7 @@ function PathBlock({
   retainedPathName,
   character,
   onChoiceChange,
+  onEnableFeatureEditing,
   onToggleEffect,
   onSetEffectInput,
   onSetUsageCounter,
@@ -1978,6 +1986,8 @@ function PathBlock({
   character?: Character;
   /** Édition d'un choix porté par une capacité (fiche permissive). */
   onChoiceChange?: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
+  /** Passe le bloc « Voies » en édition (clic sur une puce de choix hors édition → édition + modale). */
+  onEnableFeatureEditing?: () => void;
   /** Bascule d'un interrupteur d'effet conditionnel (fiche permissive, PER-67). */
   onToggleEffect?: (featureId: string, index: number, active: boolean) => void;
   /** Saisie libre corrélée à une capacité (animal de Forme animale, PER-70). */
@@ -2105,14 +2115,30 @@ function PathBlock({
   // Vue colonne : la capacité ouverte dans la modale de détail (null = fermée).
   const [openFeature, setOpenFeature] = useState<Feature | null>(null);
   // Vue colonne : capacité dont on édite le choix dans une modale dédiée (le bloc
-  // est trop petit pour héberger un sélecteur — un bouton crayon l'ouvre, PER-68).
+  // est trop petit pour héberger un sélecteur — la puce du choix l'ouvre, PER-68).
   const [choiceEditFeature, setChoiceEditFeature] = useState<Feature | null>(null);
+
+  // Édition d'un choix POSSIBLE ⟺ on peut déjà écrire (`onChoiceChange`, mode édition actif) OU on
+  // peut demander l'activation de l'édition (`onEnableFeatureEditing`, fiche du propriétaire hors
+  // édition). Faux uniquement en lecture seule stricte (fiche d'autrui).
+  const canEditChoices = !!onChoiceChange || !!onEnableFeatureEditing;
+  // Ouvre la modale d'édition d'un choix depuis sa puce. Si l'on n'est pas encore en édition, on
+  // bascule d'abord le bloc « Voies » en édition (React batche les deux setState : la modale s'ouvre
+  // avec l'éditeur déjà actif). Les choix de construction sont trop importants pour n'être joignables
+  // qu'après un détour par le crayon.
+  const requestChoiceEdit = (feature: Feature) => {
+    onEnableFeatureEditing?.();
+    setChoiceEditFeature(feature);
+  };
 
   // Choix portés par une capacité (PER-66/68), en LECTURE SEULE : affichés sous
   // la description (modale / bloc déployé) et en compact dans le bloc colonne.
   // L'édition passe toujours par un sélecteur dédié (accordéon en vue liste,
   // modale crayon en vue colonne), jamais inline dans le petit bloc.
-  const renderChoiceDisplay = (feature: Feature, opts: { compact?: boolean } = {}) => {
+  const renderChoiceDisplay = (
+    feature: Feature,
+    opts: { compact?: boolean; onEdit?: () => void } = {},
+  ) => {
     if (!character || featureChoiceDefs(feature.id).length === 0) return null;
     return (
       <FeatureChoiceField
@@ -2120,6 +2146,7 @@ function PathBlock({
         featureId={feature.id}
         mode="display"
         compact={opts.compact}
+        onEditRequest={opts.onEdit}
       />
     );
   };
@@ -2508,11 +2535,11 @@ function PathBlock({
             {feature.inflictableStates && character && (
               <CompactInflictedStatesIndicator feature={feature} character={character} />
             )}
-            {/* Choix porté par la capacité, poussé en bas du bloc : valeur retenue
-                (chip compact, lecture seule) + bouton crayon ouvrant la modale
-                d'édition (second niveau d'édition — PER-68). Masqué pour un emprunt
-                (PER-120) : la carte de la capacité empruntée affiche déjà le choix
-                retenu → le tag serait redondant (édition possible via la modale). */}
+            {/* Choix porté par la capacité, poussé en bas du bloc : la puce du choix
+                (« Choisir » orange qui pulse tant que rien n'est retenu, sinon la valeur)
+                est elle-même CLIQUABLE et ouvre la modale d'édition (PER-68) — plus de
+                crayon accolé qui déformait la carte. Masqué pour un emprunt (PER-120) :
+                la carte de la capacité empruntée affiche déjà le choix retenu. */}
             {hasChoices(feature) && !borrowed && (
               <Box
                 sx={{
@@ -2527,22 +2554,10 @@ function PathBlock({
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {onChoiceChange && (
-                  <AppTooltip title="Modifier le choix">
-                    <IconButton
-                      size="small"
-                      color={hasUnmadeChoice(character!, feature.id) ? 'warning' : 'primary'}
-                      sx={{ p: 0.25, flexShrink: 0 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setChoiceEditFeature(feature);
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </AppTooltip>
-                )}
-                {renderChoiceDisplay(feature, { compact: true })}
+                {renderChoiceDisplay(feature, {
+                  compact: true,
+                  onEdit: canEditChoices ? () => requestChoiceEdit(feature) : undefined,
+                })}
               </Box>
             )}
             {/* Choix PROPRE de la capacité empruntée (ex. catégorie d'animaux de Langage des
@@ -2562,22 +2577,10 @@ function PathBlock({
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {onChoiceChange && (
-                  <AppTooltip title="Modifier le choix">
-                    <IconButton
-                      size="small"
-                      color={hasUnmadeChoice(character!, borrowed.id) ? 'warning' : 'primary'}
-                      sx={{ p: 0.25, flexShrink: 0 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setChoiceEditFeature(borrowed);
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </AppTooltip>
-                )}
-                {renderChoiceDisplay(borrowed, { compact: true })}
+                {renderChoiceDisplay(borrowed, {
+                  compact: true,
+                  onEdit: canEditChoices ? () => requestChoiceEdit(borrowed) : undefined,
+                })}
               </Box>
             )}
             {onRemove && (
@@ -3329,6 +3332,7 @@ export function FeaturesByPath({
   manualFeatureIds,
   character,
   onChoiceChange,
+  onEnableFeatureEditing,
   onToggleEffect,
   onSetEffectInput,
   onSetUsageCounter,
@@ -3469,6 +3473,7 @@ export function FeaturesByPath({
               retainedPathName={group === mageGroup ? retainedPathName : undefined}
               character={character}
               onChoiceChange={onChoiceChange}
+              onEnableFeatureEditing={onEnableFeatureEditing}
               onToggleEffect={onToggleEffect}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
@@ -3499,6 +3504,7 @@ export function FeaturesByPath({
               gridColumn={PATH_COLUMN_COUNT - prestige.length + 1 + i}
               character={character}
               onChoiceChange={onChoiceChange}
+              onEnableFeatureEditing={onEnableFeatureEditing}
               onToggleEffect={onToggleEffect}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
@@ -3529,6 +3535,7 @@ export function FeaturesByPath({
               retainedPathName={group === mageGroup ? retainedPathName : undefined}
               character={character}
               onChoiceChange={onChoiceChange}
+              onEnableFeatureEditing={onEnableFeatureEditing}
               onToggleEffect={onToggleEffect}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}

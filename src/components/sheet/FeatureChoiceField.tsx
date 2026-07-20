@@ -14,6 +14,7 @@
  * pour la longue liste des capacités empruntables (un rang d'une autre voie), et
  * Select/Radio pour une liste d'options énumérées.
  */
+import type { MouseEvent } from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -22,6 +23,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { featureById, pathById, testDomains, testDomainById } from '@/data';
 import { ABILITY_IDS } from '@/data/schema';
 import type { AbilityId, FeatureChoice, OptionFeatureChoice } from '@/data/schema';
@@ -43,6 +45,7 @@ import {
 } from '@/lib/character/choices';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
+import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 
@@ -481,6 +484,94 @@ export const COMPACT_CHIP_SX = {
 } as const;
 
 /**
+ * Badge « choix non résolu » (custom, ≠ Chip MUI, dans l'esprit de `DefenseBadge`) :
+ * orange, mot unique « Choisir », avec un léger halo qui pulse toutes les 2 s pour
+ * attirer l'œil sur la décision à prendre. Quand `onClick` est fourni il devient
+ * cliquable et ouvre directement l'éditeur du choix — il remplace ainsi l'ancien
+ * crayon accolé qui alourdissait/déformait la carte compacte (PER-68).
+ */
+export function ChoiceTodoBadge({
+  compact = false,
+  onClick,
+}: {
+  compact?: boolean;
+  onClick?: () => void;
+}) {
+  const interactive = !!onClick;
+  return (
+    <AppTooltip title={interactive ? 'Choix à faire — cliquer pour choisir' : 'Choix à faire'}>
+      <Box
+        component={interactive ? 'button' : 'span'}
+        {...(interactive ? { type: 'button' as const } : {})}
+        onClick={
+          interactive
+            ? (e: MouseEvent) => {
+                e.stopPropagation();
+                onClick();
+              }
+            : undefined
+        }
+        sx={(theme) => ({
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: compact ? 18 : 24,
+          px: compact ? 0.75 : 1,
+          m: 0,
+          borderRadius: 1,
+          fontFamily: 'inherit',
+          fontSize: compact ? '0.62rem' : '0.72rem',
+          fontWeight: 700,
+          lineHeight: 1,
+          letterSpacing: '0.02em',
+          whiteSpace: 'nowrap',
+          color: theme.palette.warning.main,
+          bgcolor: alpha(theme.palette.warning.main, 0.12),
+          border: `1px solid ${alpha(theme.palette.warning.main, 0.5)}`,
+          cursor: interactive ? 'pointer' : 'default',
+          transition: 'background-color 120ms, border-color 120ms',
+          transformOrigin: 'center',
+          // Halo qui pulse (toutes les 2 s) : anneau orange assez marqué qui s'étend puis
+          // s'estompe, accompagné d'un léger battement d'échelle pour bien capter l'œil.
+          animation: 'choiceTodoPulse 2s ease-in-out infinite',
+          '@keyframes choiceTodoPulse': {
+            '0%': { boxShadow: `0 0 0 0 ${alpha(theme.palette.warning.main, 0.55)}`, transform: 'scale(1)' },
+            '55%': { boxShadow: `0 0 0 8px ${alpha(theme.palette.warning.main, 0)}`, transform: 'scale(1.06)' },
+            '100%': { boxShadow: `0 0 0 0 ${alpha(theme.palette.warning.main, 0)}`, transform: 'scale(1)' },
+          },
+          // Respecte la préférence système « animations réduites ».
+          '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+          ...(interactive && {
+            '&:hover': {
+              bgcolor: alpha(theme.palette.warning.main, 0.22),
+              borderColor: theme.palette.warning.main,
+            },
+          }),
+        })}
+      >
+        Choisir
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
+ * Props communes rendant une chip de VALEUR retenue cliquable (ouvre l'éditeur du
+ * choix), pour conserver l'édition en place une fois le crayon retiré de la carte
+ * compacte. Sans `onEdit`, la chip reste en lecture seule.
+ */
+function chipEditProps(onEdit?: () => void) {
+  if (!onEdit) return {};
+  return {
+    clickable: true,
+    onClick: (e: MouseEvent) => {
+      e.stopPropagation();
+      onEdit();
+    },
+  } as const;
+}
+
+/**
  * Affichage (lecture seule) d'un choix `option` RÉPÉTABLE : un badge par option DISTINCTE
  * retenue (nom court ; détail entre parenthèses à côté en vue liste), plus un badge « label ×N »
  * par option `repeatable` (ex. « +1 DM ×4 », Spécialisation), + un compteur « consommé/budget ».
@@ -492,12 +583,15 @@ function RepeatOptionDisplay({
   featureId,
   index,
   compact,
+  onEdit,
 }: {
   choice: OptionFeatureChoice;
   character: Character;
   featureId: string;
   index: number;
   compact: boolean;
+  /** Rend les chips (« Choisir » et valeurs) cliquables → ouvre l'éditeur du choix. */
+  onEdit?: () => void;
 }) {
   const { distinct, repeatCounts, used } = splitRepeatableSelections(character, featureId, index);
   const allowed = repeatableChoiceCount(character, choice);
@@ -519,22 +613,14 @@ function RepeatOptionDisplay({
   ];
 
   if (entries.length === 0) {
-    const chip = (
-      <Chip
-        label="Choix à faire"
-        size="small"
-        color="warning"
-        variant="outlined"
-        sx={compact ? COMPACT_CHIP_SX : undefined}
-      />
-    );
-    if (compact) return <Box>{chip}</Box>;
+    const badge = <ChoiceTodoBadge compact={compact} onClick={onEdit} />;
+    if (compact) return <Box>{badge}</Box>;
     return (
       <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
           {choice.prompt} ({counter}) :
         </Typography>
-        {chip}
+        {badge}
       </Stack>
     );
   }
@@ -550,6 +636,7 @@ function RepeatOptionDisplay({
             variant="outlined"
             color="primary"
             sx={COMPACT_CHIP_SX}
+            {...chipEditProps(onEdit)}
           />
         ))}
         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
@@ -567,7 +654,7 @@ function RepeatOptionDisplay({
       <Stack spacing={0.25} sx={{ mt: 0.25 }}>
         {entries.map((e) => (
           <Stack key={e.key} direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <Chip label={e.label} size="small" variant="outlined" color="primary" />
+            <Chip label={e.label} size="small" variant="outlined" color="primary" {...chipEditProps(onEdit)} />
             {e.complement && (
               <Typography variant="caption" color="text.secondary">
                 {e.complement}
@@ -597,6 +684,12 @@ export interface FeatureChoiceFieldProps {
   compact?: boolean;
   /** Requis en mode `edit`. Persiste le i-ème choix de la capacité. */
   onChange?: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
+  /**
+   * Mode `display` uniquement : rend les puces (« Choisir » et valeurs retenues)
+   * CLIQUABLES et ouvre l'éditeur du choix. Remplace le crayon accolé sur la carte
+   * compacte (PER-68). Absent : puces en lecture seule.
+   */
+  onEditRequest?: () => void;
 }
 
 /**
@@ -610,6 +703,7 @@ export function FeatureChoiceField({
   blocking = false,
   compact = false,
   onChange,
+  onEditRequest,
 }: FeatureChoiceFieldProps) {
   const defs = featureChoiceDefs(featureId);
   if (defs.length === 0) return null;
@@ -636,6 +730,7 @@ export function FeatureChoiceField({
                 featureId={featureId}
                 index={i}
                 compact={compact}
+                onEdit={onEditRequest}
               />
             );
           }
@@ -651,15 +746,10 @@ export function FeatureChoiceField({
                 variant="outlined"
                 color="primary"
                 sx={compact ? COMPACT_CHIP_SX : undefined}
+                {...chipEditProps(onEditRequest)}
               />
             ) : (
-              <Chip
-                label="Choix à faire"
-                size="small"
-                color="warning"
-                variant="outlined"
-                sx={compact ? COMPACT_CHIP_SX : undefined}
-              />
+              <ChoiceTodoBadge compact={compact} onClick={onEditRequest} />
             );
             if (compact) return <Box key={i}>{chip}</Box>;
             return (
@@ -693,15 +783,10 @@ export function FeatureChoiceField({
               variant="outlined"
               color="primary"
               sx={compact ? COMPACT_CHIP_SX : undefined}
+              {...chipEditProps(onEditRequest)}
             />
           ) : (
-            <Chip
-              label="Choix à faire"
-              size="small"
-              color="warning"
-              variant="outlined"
-              sx={compact ? COMPACT_CHIP_SX : undefined}
-            />
+            <ChoiceTodoBadge compact={compact} onClick={onEditRequest} />
           );
           if (compact) return <Box key={i}>{valueChip}</Box>;
           return (
