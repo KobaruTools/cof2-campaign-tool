@@ -44,6 +44,9 @@ export function initialEquipment(characterClass: CharacterClass): EquipmentLine[
     if (ref.itemId) {
       lines.push({ itemId: ref.itemId, quantity: ref.quantity });
     } else {
+      // Placeholder libre (`itemId: null`) : simple ligne custom nommée par le libellé du
+      // livre. Un choix « X ou Y » (PER-220) est reconnu à l'affichage PAR SON NOM
+      // (`startingChoiceOptionsFor`), comme la « Bourse de 2d6 pa » — pas de champ stocké.
       lines.push({ custom: true, name: ref.label, quantity: ref.quantity });
     }
   }

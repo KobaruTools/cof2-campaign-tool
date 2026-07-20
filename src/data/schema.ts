@@ -321,14 +321,34 @@ export interface CharacterClass {
 }
 
 /**
+ * Une OPTION d'un choix d'équipement de départ « X ou Y » (PER-220). Chaque option
+ * porte un libellé français et la LISTE des objets du catalogue qu'elle octroie —
+ * une seule dans le cas courant (« Épée à deux mains »), plusieurs pour un LOT
+ * (« Arme à une main + bouclier » du barbare, p. 79). Résolue par le joueur via la
+ * modale « Choisir » sur la fiche ; la ligne placeholder est alors remplacée par
+ * ces objets.
+ */
+export interface StartingEquipmentChoiceOption {
+  /** Libellé de l'option (français), ex. « Hache à deux mains (2d6) ». */
+  label: string;
+  /** Objet(s) du catalogue octroyés par cette option (un LOT peut en contenir plusieurs). */
+  items: { itemId: string; quantity: number }[];
+}
+
+/**
  * Ligne d'équipement de départ d'un profil. `itemId` pointe vers le
  * catalogue quand l'objet y figure ; `label` conserve le texte du livre
  * (ex. « pétoire (DM 1d10, portée 20 m) » — p. 62).
+ *
+ * `choice` (PER-220) : quand la ligne est un CHOIX « X ou Y » (`itemId: null`),
+ * la liste des options concrètes résolvables par le joueur. `label` reste le texte
+ * du livre affiché tant que le choix n'est pas fait.
  */
 export interface StartingEquipmentRef {
   itemId: string | null;
   label: string;
   quantity: number;
+  choice?: StartingEquipmentChoiceOption[];
 }
 
 // ---------------------------------------------------------------------------
@@ -2071,6 +2091,16 @@ export interface Gear extends EquipmentBase {
    * consommable (matériel durable, monture…). Voir `isConsumable`.
    */
   consumable?: boolean;
+  /**
+   * Emplacement d'équipement du matériel ÉQUIPABLE (PER-220). Absent = objet rangé
+   * dans le sac, jamais « équipé » (torche… non, briquet, corde, ration, etc.) :
+   *  - `'hand'` : tenu en main principale OU secondaire, comme une arme légère
+   *    (torche, grimoire, instrument de musique — outils actifs tenus en main) ;
+   *  - `'accessory'` : porté sur soi sans occuper de main (sac à dos, carquois…).
+   * Note : tout objet portant un bonus de DEF magique (`magicDef`) reste équipable
+   * en accessoire indépendamment de ce champ (objets enchantés, PER-85).
+   */
+  equipSlot?: 'hand' | 'accessory';
 }
 
 export type EquipmentItem = Weapon | Armor | Shield | Gear;

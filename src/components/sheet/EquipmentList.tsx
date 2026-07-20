@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
+import AltRouteIcon from '@mui/icons-material/AltRoute';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -28,6 +29,8 @@ import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { isFirearmItemId } from '@/lib/character/firearms';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { isConsumable } from '@/lib/character/consumables';
+import { isStartingChoiceLine } from '@/lib/character/startingChoices';
+import { COIN_POUCH_ITEM_NAME } from '@/data/progression';
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
@@ -165,6 +168,47 @@ function FirearmUnavailableBadge() {
         </Box>
       </AppTooltip>
     </Box>
+  );
+}
+
+/** Ligne « Bourse de 2d6 pa » du sac de départ (résolue par `CoinPouchDialog`). */
+function isCoinPouchLine(line: EquipmentLine): boolean {
+  return isCustomItem(line) && line.name === COIN_POUCH_ITEM_NAME;
+}
+
+/**
+ * Puce « Choisir » (PER-220) : pastille custom (≠ Chip MUI) posée sur une ligne
+ * placeholder « à résoudre » (choix « X ou Y » d'un profil, ou Bourse de départ) pour
+ * signaler qu'elle n'est qu'INDICATIVE et inciter le joueur à la remplacer par le vrai
+ * objet via « Utiliser ». Purement visuelle (non interactive) ; l'action reste le bouton
+ * « Utiliser » adjacent. Tonalité « primary » pour attirer l'œil.
+ */
+function ChoiceBadge() {
+  return (
+    <AppTooltip title="Objet à choisir : cette ligne n’est qu’un rappel du livre. Utilisez « Utiliser » pour obtenir le vrai objet.">
+      <Box
+        component="span"
+        sx={(theme) => ({
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          px: 0.75,
+          height: 28,
+          borderRadius: 1,
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          whiteSpace: 'nowrap',
+          cursor: 'help',
+          flexShrink: 0,
+          color: theme.palette.primary.main,
+          bgcolor: alpha(theme.palette.primary.main, 0.12),
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.45)}`,
+        })}
+      >
+        <AltRouteIcon sx={{ fontSize: 14 }} />
+        Choisir
+      </Box>
+    </AppTooltip>
   );
 }
 
@@ -365,11 +409,22 @@ export function EquipmentList({
     // crayon d'édition « variante mécanique ».
     const equippable =
       !!item && (item.category === 'armor' || item.category === 'shield' || item.category === 'weapon');
-    // Objet ÉQUIPABLE au sens large : tout ce que `WornControls` sait porter — objets à
-    // emplacement dédié, plus les objets libres et le matériel du catalogue portés comme
-    // ACCESSOIRE (bottes/cape/anneau…, support d'un bonus de DEF magique). Exclut seulement
-    // une ligne de catalogue à l'id inconnu.
-    const wearable = custom || !!item;
+    // Objet ÉQUIPABLE (PER-220, resserré) : seul ce qui a vraiment vocation à être porté
+    // expose un contrôle d'équipement —
+    //  - arme / armure / bouclier (emplacement dédié) ;
+    //  - matériel du catalogue explicitement équipable (`equipSlot` : torche, grimoire,
+    //    instrument, sac à dos, carquois…) ;
+    //  - tout objet portant un bonus de DEF MAGIQUE (anneau/cape enchantés, objet libre
+    //    compris — PER-85), qui doit pouvoir être porté pour compter.
+    // Le reste du matériel (corde, ration…) et les placeholders de choix ne sont plus
+    // « équipables » : fini le bouton « Équiper » inutile sur chaque ligne.
+    const wearable =
+      (!!item &&
+        (item.category === 'weapon' ||
+          item.category === 'armor' ||
+          item.category === 'shield' ||
+          (item.category === 'gear' && !!item.equipSlot))) ||
+      !!line.magicDef;
     // Arme à poudre INDISPONIBLE (PER-185, retour PER-93) : autorisation effective des armes
     // à feu à `false` (campagne « pas d'arme à feu » ou choix du joueur). La ligne est grisée
     // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
@@ -542,10 +597,17 @@ export function EquipmentList({
             </Typography>
           )
         )}
-        {/* « Utiliser » : consomme une unité (état de jeu, dispo hors édition), à DROITE du
-            nombre. Décrémente, puis supprime la ligne à 0 (géré par l'appelant). Réservé aux
-            consommables (potions, parchemins, doses d'élixir) — jamais le matériel durable. */}
-        {onUse && isConsumable(line) && (
+        {/* Puce « Choisir » (PER-220), à côté du bouton « Utiliser » : rappelle qu'une ligne
+            placeholder (choix « X ou Y » d'un profil, ou Bourse de départ) est INDICATIVE et
+            à résoudre. Purement visuelle. */}
+        {onUse && (isStartingChoiceLine(line) || isCoinPouchLine(line)) && <ChoiceBadge />}
+        {/* « Utiliser » : à DROITE du nombre (état de jeu, dispo hors édition). Selon la ligne,
+            l'appelant (`onUse`) route vers :
+             - un CHOIX de départ à résoudre (`startingChoice`, PER-220) → modale de choix ;
+             - la Bourse de départ → modale de saisie des pa (CoinPouchDialog) ;
+             - un consommable (potion, parchemin, dose d'élixir) → décrément/suppression.
+            Jamais sur le matériel durable ordinaire. */}
+        {onUse && (isConsumable(line) || isStartingChoiceLine(line)) && (
           <Button
             size="small"
             variant="outlined"

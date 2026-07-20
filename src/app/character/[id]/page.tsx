@@ -28,7 +28,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, progression } from '@/data';
 import { checkCompliance, deriveStats } from '@/lib/engine';
-import type { AbilityId } from '@/data/schema';
+import type { AbilityId, StartingEquipmentChoiceOption } from '@/data/schema';
 import type { Character, CharacterStatus, CustomItem, DerivedStatId, EquipmentLine, Identity, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { armorEncumbrancePenalty, setWornAt } from '@/lib/character/equipment';
@@ -104,6 +104,8 @@ import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { PurseField } from '@/components/sheet/PurseField';
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
+import { StartingChoiceDialog } from '@/components/sheet/StartingChoiceDialog';
+import { startingChoiceOptionsFor } from '@/lib/character/startingChoices';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
 import {
@@ -204,6 +206,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const { showToast } = useToast();
   // Index de la ligne « Bourse de 2d6 pa » dont l'ouverture est en cours (modale) ; null = fermée.
   const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
+  // Index de la ligne de CHOIX d'équipement de départ en cours de résolution (PER-220) ; null = fermée.
+  const [choiceIndex, setChoiceIndex] = useState<number | null>(null);
   // Ancre du menu de statut (PER-183) ; null = fermé.
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   // Statut d'archivage en attente de confirmation (mort/retiré) ; null = aucune. Le
@@ -523,6 +527,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const useEquipmentItem = (i: number) => {
     const line = character.equipment[i];
     if (!line) return;
+    // Choix d'équipement de départ à résoudre (PER-220) : ouvre la modale de choix.
+    if (startingChoiceOptionsFor(line)) {
+      setChoiceIndex(i);
+      return;
+    }
     if (isCustomItem(line) && line.name === COIN_POUCH_ITEM_NAME) {
       setCoinPouchIndex(i);
       return;
@@ -537,6 +546,20 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       purse: { ...character.purse, silver: character.purse.silver + silver },
     });
     setCoinPouchIndex(null);
+  };
+  // Validation d'un choix d'équipement de départ (PER-220) : remplace la ligne placeholder
+  // par le(s) vrai(s) objet(s) du catalogue de l'option retenue (un LOT en produit plusieurs).
+  const confirmStartingChoice = (option: StartingEquipmentChoiceOption) => {
+    if (choiceIndex === null) return;
+    const chosen = option.items.map((it) => ({ itemId: it.itemId, quantity: it.quantity }));
+    update({
+      equipment: [
+        ...character.equipment.slice(0, choiceIndex),
+        ...chosen,
+        ...character.equipment.slice(choiceIndex + 1),
+      ],
+    });
+    setChoiceIndex(null);
   };
   // Jauge de PV (PER-148) : dépletion transitoire (manque létal/temp), état de jeu
   // modifiable HORS mode « Modifier » (comme les compteurs d'usages). Le max reste
@@ -1301,6 +1324,23 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         onClose={() => setCoinPouchIndex(null)}
         onConfirm={confirmCoinPouch}
       />
+
+      {/* Résolution d'un choix d'équipement de départ « X ou Y » (PER-220). */}
+      {choiceIndex !== null &&
+        (() => {
+          const line = character.equipment[choiceIndex];
+          const options = line ? startingChoiceOptionsFor(line) : undefined;
+          if (!line || !isCustomItem(line) || !options) return null;
+          return (
+            <StartingChoiceDialog
+              open
+              label={line.name}
+              options={options}
+              onClose={() => setChoiceIndex(null)}
+              onConfirm={confirmStartingChoice}
+            />
+          );
+        })()}
 
       {/* Confirmation d'archivage (PER-183) : passer un personnage en mort/retraité
           est un acte narratif volontaire. Réversible (on peut le repasser « Vivant »

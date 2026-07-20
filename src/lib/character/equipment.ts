@@ -130,7 +130,11 @@ function handsUsedByLine(line: EquipmentLine): number {
  *    armes à une main = 2 mains) reste LÉGAL et n'est pas un conflit (décision
  *    propriétaire 2026-06-14).
  */
-export type EquipConflictKind = 'multiple-armor' | 'multiple-shield' | 'hands-overbooked';
+export type EquipConflictKind =
+  | 'multiple-armor'
+  | 'multiple-shield'
+  | 'hands-overbooked'
+  | 'quiver-with-backpack';
 
 export interface EquipConflict {
   kind: EquipConflictKind;
@@ -148,11 +152,17 @@ export function equipConflicts(equipment: EquipmentLine[]): EquipConflict[] {
   let armorCount = 0;
   let shieldCount = 0;
   let handsUsed = 0;
+  let quiverWorn = false;
+  let backpackWorn = false;
   for (const line of equipment) {
     if (!line.worn) continue;
     if (line.worn.slot === 'armor') armorCount += 1;
     else if (line.worn.slot === 'shield') shieldCount += 1;
     handsUsed += handsUsedByLine(line);
+    if (!isCustomItem(line)) {
+      if (line.itemId === 'carquois-de-20-fleches') quiverWorn = true;
+      else if (line.itemId === 'sac-a-dos') backpackWorn = true;
+    }
   }
   if (armorCount > 1) {
     conflicts.push({
@@ -171,6 +181,13 @@ export function equipConflicts(equipment: EquipmentLine[]): EquipConflict[] {
       kind: 'hands-overbooked',
       message:
         'Les deux mains sont déjà prises : une arme à deux mains ne peut pas être tenue avec un bouclier ou une autre arme.',
+    });
+  }
+  if (quiverWorn && backpackWorn) {
+    conflicts.push({
+      kind: 'quiver-with-backpack',
+      message:
+        'Un carquois et un sac à dos portés en même temps se gênent dans le dos : difficile de dégainer les flèches rapidement.',
     });
   }
   return conflicts;

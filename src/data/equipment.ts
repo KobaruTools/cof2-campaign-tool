@@ -741,6 +741,9 @@ export const gear: Gear[] = [
     name: 'Carquois de 20 flèches',
     category: 'gear',
     price: { amount: 3, unit: 'pa' },
+    // Porté sur soi (dans le dos) sans occuper de main. Un carquois ET un sac à dos
+    // portés ensemble se gênent (avertissement non bloquant, cf. equipConflicts).
+    equipSlot: 'accessory',
     sourcePage: 190,
   },
   {
@@ -826,6 +829,8 @@ export const gear: Gear[] = [
     name: 'Sac à dos',
     category: 'gear',
     price: { amount: 1, unit: 'pa' },
+    // Porté sur le dos, n'occupe aucune main (accessoire).
+    equipSlot: 'accessory',
     sourcePage: 190,
   },
 
@@ -881,6 +886,8 @@ export const gear: Gear[] = [
     name: 'Grimoire de sorts',
     category: 'gear',
     price: null,
+    // Outil du magicien, tenu en main pour lancer ses sorts (comme une arme légère).
+    equipSlot: 'hand',
     description:
       'Le bien le plus précieux du magicien, le livre où il a inscrit tous ses sorts (p. 102). Équipement de départ du magicien et du sorcier ; absent de la table des prix (liste non exhaustive, p. 181), le MJ en fixe le tarif s’il doit être remplacé.',
     sourcePage: 102,
@@ -890,6 +897,8 @@ export const gear: Gear[] = [
     name: 'Instrument de musique',
     category: 'gear',
     price: null,
+    // Outil de la voie du musicien, tenu en main pour jouer (comme une arme légère).
+    equipSlot: 'hand',
     description:
       'Équipement de départ du barde (p. 66), nécessaire aux capacités de la voie du musicien. Absent de la table des prix (liste non exhaustive, p. 181), le MJ en fixe le tarif.',
     sourcePage: 66,
@@ -899,6 +908,8 @@ export const gear: Gear[] = [
     name: 'Torche',
     category: 'gear',
     price: null,
+    // Tenue en main (principale ou secondaire) pour éclairer, comme une arme légère.
+    equipSlot: 'hand',
     description:
       'Éclaire dans un rayon de 10 m pendant 1 h (p. 190). Contenue à l’unité dans le sac d’aventurier (p. 31) ; la table des prix ne vend que des lots de trois (« Torches (x3) », 5 pa, p. 190).',
     sourcePage: 31,

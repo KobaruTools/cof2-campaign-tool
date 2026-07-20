@@ -166,6 +166,37 @@ describe('equipConflicts', () => {
     ];
     expect(equipConflicts(lines)).toEqual([]);
   });
+
+  it('signale un carquois ET un sac à dos portés ensemble (PER-220, non bloquant)', () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'carquois-de-20-fleches', quantity: 1, worn: { slot: 'accessory' } },
+      { itemId: 'sac-a-dos', quantity: 1, worn: { slot: 'accessory' } },
+    ];
+    expect(equipConflicts(lines).map((c) => c.kind)).toEqual(['quiver-with-backpack']);
+  });
+
+  it('ne signale rien pour un carquois seul, ou carquois + sac à dos rangé', () => {
+    expect(
+      equipConflicts([{ itemId: 'carquois-de-20-fleches', quantity: 1, worn: { slot: 'accessory' } }]),
+    ).toEqual([]);
+    expect(
+      equipConflicts([
+        { itemId: 'carquois-de-20-fleches', quantity: 1, worn: { slot: 'accessory' } },
+        { itemId: 'sac-a-dos', quantity: 1 }, // rangé
+      ]),
+    ).toEqual([]);
+  });
+
+  it('compte une torche tenue en main comme occupant une main (PER-220)', () => {
+    // Torche (gear equipSlot 'hand') en main principale + arme à deux mains = 3 mains.
+    const lines: EquipmentLine[] = [
+      { itemId: 'torche', quantity: 1, worn: { slot: 'mainHand' } },
+      { itemId: 'epee-a-deux-mains', quantity: 1, worn: { slot: 'mainHand' } },
+    ];
+    // Deux objets en main principale : setWornAt gère l'exclusivité, mais equipConflicts
+    // additionne bien les mains occupées → l'espadon seul occupe déjà 2 mains, + torche = 3.
+    expect(equipConflicts(lines).map((c) => c.kind)).toContain('hands-overbooked');
+  });
 });
 
 describe('armorEncumbrancePenalty', () => {

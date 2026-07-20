@@ -45,6 +45,25 @@ export const fighterClasses: CharacterClass[] = [
         itemId: null,
         label: 'Hache à deux mains (DM 2d6) ou Arme à une main (d8) et bouclier (+2 en DEF)',
         quantity: 1,
+        // Choix « X ou Y » (p. 79). Le lot « arme à une main (d8) + bouclier » est
+        // aplati en options concrètes (les deux armes à une main d8 possibles).
+        choice: [
+          { label: 'Hache à deux mains (DM 2d6)', items: [{ itemId: 'hache-a-deux-mains', quantity: 1 }] },
+          {
+            label: 'Épée longue (DM 1d8) + grand bouclier (DEF +2)',
+            items: [
+              { itemId: 'epee-longue', quantity: 1 },
+              { itemId: 'grand-bouclier', quantity: 1 },
+            ],
+          },
+          {
+            label: 'Hache (DM 1d8) + grand bouclier (DEF +2)',
+            items: [
+              { itemId: 'hache', quantity: 1 },
+              { itemId: 'grand-bouclier', quantity: 1 },
+            ],
+          },
+        ],
       },
       { itemId: 'javelot', label: 'Javelots (DM 1d6, portée 20 m)', quantity: 2 },
       { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
@@ -98,8 +117,24 @@ export const fighterClasses: CharacterClass[] = [
     allowedWeaponIds: [],
     startingEquipment: [
       { itemId: 'epee-longue', label: 'Épée longue (DM 1d8)', quantity: 1 },
-      { itemId: null, label: 'Épée ou hache à deux mains (DM 2d6)', quantity: 1 },
-      { itemId: null, label: 'Dague ou hachette de lancer', quantity: 1 },
+      {
+        itemId: null,
+        label: 'Épée ou hache à deux mains (DM 2d6)',
+        quantity: 1,
+        choice: [
+          { label: 'Épée à deux mains (DM 2d6)', items: [{ itemId: 'epee-a-deux-mains', quantity: 1 }] },
+          { label: 'Hache à deux mains (DM 2d6)', items: [{ itemId: 'hache-a-deux-mains', quantity: 1 }] },
+        ],
+      },
+      {
+        itemId: null,
+        label: 'Dague ou hachette de lancer',
+        quantity: 1,
+        choice: [
+          { label: 'Dague (DM 1d4)', items: [{ itemId: 'dague', quantity: 1 }] },
+          { label: 'Hachette (DM 1d6)', items: [{ itemId: 'hachette', quantity: 1 }] },
+        ],
+      },
       { itemId: 'grand-bouclier', label: 'Grand bouclier (DEF +2)', quantity: 1 },
       { itemId: 'chemise-de-mailles', label: 'Chemise de mailles (DEF +4)', quantity: 1 },
     ],

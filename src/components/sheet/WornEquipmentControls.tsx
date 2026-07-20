@@ -14,14 +14,17 @@ import { alpha } from '@mui/material/styles';
 import { equipmentById } from '@/data';
 import type { Weapon } from '@/data/schema';
 import { equipConflicts } from '@/lib/character/equipment';
+import { itemType } from '@/lib/character/items';
 import { isWeaponMastered } from '@/lib/character/mastery';
 import type { TwoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { rulesContext } from '@/lib/character/rulesContext';
 import type { EquipmentLine, EquipSlot, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import type { WeaponAffinity } from '@/lib/character/weaponAffinity';
+import { ITEM_TYPE_ICON_PATHS } from '@/lib/ui/itemTypeIcons';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
+import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { PageRefText } from '@/components/SourceRef';
 
 /**
@@ -44,6 +47,21 @@ function slotIcon(slot: EquipSlot, size = 16) {
     case 'accessory':
       return <AutoAwesomeOutlinedIcon sx={{ fontSize: size }} />;
   }
+}
+
+/**
+ * Icône du bouton « Équiper » en ACCESSOIRE : on réutilise l'icône du TYPE de l'objet
+ * (sac à dos, carquois, anneau enchanté…) plutôt qu'une étoile générique ; l'étoile
+ * (`accessory`) ne sert que de repli quand le type n'a pas d'icône dédiée (retour
+ * propriétaire PER-220 : « l'étoile juste par défaut si on n'a pas d'autre icône »).
+ */
+function accessoryIcon(line: EquipmentLine, size = 16) {
+  const type = itemType(line);
+  return ITEM_TYPE_ICON_PATHS[type] ? (
+    <ItemTypeIcon type={type} size={size} />
+  ) : (
+    slotIcon('accessory', size)
+  );
 }
 
 /** Libellé court d'un emplacement de port (français). */
@@ -200,8 +218,38 @@ export function WornControls({
     );
   }
 
-  // Tout autre objet (matériel du catalogue OU objet libre) : équipable comme ACCESSOIRE
-  // (slot non exclusif). Sert de support à un bonus de DEF magique ; n'occupe aucune main.
+  // Matériel du catalogue TENU EN MAIN (PER-220) : torche, grimoire, instrument… se
+  // portent en main principale OU secondaire, comme une arme légère (pas de « deux mains »).
+  // Le moteur (handsUsedByLine/equipConflicts/setWornAt) traite cette main génériquement.
+  if (item && item.category === 'gear' && item.equipSlot === 'hand') {
+    const position: 'mainHand' | 'offHand' | null =
+      line.worn?.slot === 'mainHand' ? 'mainHand' : line.worn?.slot === 'offHand' ? 'offHand' : null;
+    return (
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={position}
+        color="success"
+        onChange={(_, next: 'mainHand' | 'offHand' | null) =>
+          onWear(next ? { slot: next } : undefined)
+        }
+      >
+        <ToggleButton value="mainHand" sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}>
+          {slotIcon('mainHand')}
+          Main principale
+        </ToggleButton>
+        <ToggleButton value="offHand" sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}>
+          {slotIcon('offHand')}
+          Main secondaire
+        </ToggleButton>
+      </ToggleButtonGroup>
+    );
+  }
+
+  // Tout autre objet équipable (matériel « accessoire » — sac à dos, carquois… — OU objet
+  // libre enchanté) : bouton « Équiper » en ACCESSOIRE (slot non exclusif, n'occupe aucune
+  // main). Sert aussi de support à un bonus de DEF magique (PER-85). L'icône reprend le
+  // type de l'objet (étoile en repli).
   const accessoryWorn = line.worn?.slot === 'accessory';
   return (
     <ToggleButton
@@ -212,7 +260,7 @@ export function WornControls({
       onChange={() => onWear(accessoryWorn ? undefined : { slot: 'accessory' })}
       sx={{ py: 0.25, px: 1, textTransform: 'none', gap: 0.5 }}
     >
-      {slotIcon('accessory')}
+      {accessoryIcon(line)}
       {accessoryWorn ? 'Équipé' : 'Équiper'}
     </ToggleButton>
   );
