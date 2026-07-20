@@ -741,7 +741,11 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
   ) : (
     tooltip
   );
-  const accent = sub ? 'warning' : 'secondary';
+  // Encadré ACHROMATIQUE (gris/blanc translucide) : la formule à dé sert de conteneur neutre — la
+  // couleur est portée par la puce de carac qu'il contient (« 3d4° + INT (4) »), pas par la boîte,
+  // pour ne pas mélanger deux teintes ni fausser le code couleur. Substitution (forgesort → INT) :
+  // on garde l'accent AMBRE, qui EST le signal d'avertissement.
+  const boxMain = (theme: Theme) => (sub ? theme.palette.warning.main : theme.palette.common.white);
   return (
     <AppTooltip title={finalTooltip} maxWidth={sub ? 320 : undefined}>
       {/* Boîte inline-block : le texte (caractéristiques, nombres) reste sur la
@@ -759,9 +763,9 @@ function FormulaWithDie({ resolved, level }: { resolved: ResolvedExpr; level: nu
           fontWeight: 600,
           fontVariantNumeric: 'tabular-nums',
           cursor: 'help',
-          bgcolor: (theme) => alpha(theme.palette[accent].main, 0.1),
+          bgcolor: (theme) => alpha(boxMain(theme), 0.1),
           border: 1,
-          borderColor: (theme) => alpha(theme.palette[accent].main, 0.35),
+          borderColor: (theme) => alpha(boxMain(theme), 0.35),
         }}
       >
         {resolved.parts.map((p, i) => {
