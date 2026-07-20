@@ -1,13 +1,13 @@
 'use client';
 
-import { createTheme } from '@mui/material/styles';
+import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 
 /**
  * Thème MUI par défaut (PRD décision #11 : ambiance médiéval-fantasy plus tard,
  * composant par composant). Thème sombre par défaut (PER-38) : confort de lecture
  * en session de jeu, souvent jouée le soir. En français.
  */
-const theme = createTheme({
+const baseTheme = createTheme({
   cssVariables: true,
   palette: {
     mode: 'dark',
@@ -16,6 +16,24 @@ const theme = createTheme({
     fontFamily: 'var(--font-roboto), Roboto, Helvetica, Arial, sans-serif',
   },
   components: {
+    // Fenêtres modales (PER-227) : sur mobile (< breakpoint « sm »), on maximise la
+    // largeur utile et on garantit qu'aucune modale ne peut déborder le viewport.
+    // MUI laisse par défaut 32px de marge de chaque côté (64px perdus) : sur un écran
+    // de 320px il ne reste que ~256px pour le contenu, et les champs à largeur fixe
+    // débordent. On réduit la marge à 16px (32px perdus) et on borne la largeur/hauteur
+    // au viewport. Fix GLOBAL (toutes les modales) plutôt que du cas par cas.
+    MuiDialog: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          [theme.breakpoints.down('sm')]: {
+            margin: 16,
+            width: 'calc(100% - 32px)',
+            maxWidth: 'calc(100% - 32px)',
+            maxHeight: 'calc(100% - 32px)',
+          },
+        }),
+      },
+    },
     // Menus déroulants (Select, Menu) et popovers : ne PAS verrouiller le scroll
     // de la page à l'ouverture. Par défaut MUI fige le body (overflow:hidden +
     // compensation de padding) tant que le menu est ouvert, ce qui donne
@@ -67,5 +85,13 @@ const theme = createTheme({
     },
   },
 });
+
+/**
+ * Typographie adaptative (PER-227) : `responsiveFontSizes` ajoute des points d'arrêt
+ * de taille de police aux variantes de titre (h1…h6, etc.), qui rétrécissent sur les
+ * petits écrans. Corrige notamment le nom de personnage (`h4`, 2.125rem) qui débordait
+ * sur mobile faute d'adaptation. N'affecte pas les tailles fixes posées en `sx`.
+ */
+const theme = responsiveFontSizes(baseTheme);
 
 export default theme;
