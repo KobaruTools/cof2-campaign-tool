@@ -164,3 +164,38 @@ describe('weaponDamageBonuses — Spécialisation du maître d\'armes (+N DM pla
     expect(weaponDamageBonuses(surbudget, 'melee', epeeLongue).addedFlat[0]).toMatchObject({ value: 6 });
   });
 });
+
+describe('weaponDamageBonuses — nain « Haches et marteaux » (+1 DM, familles STATIQUES, PER-154)', () => {
+  const nain = makeCharacter({
+    classId: 'magicien',
+    ancestryId: 'nain',
+    ancestryPathId: 'nain',
+    featureIds: ['nain-r2'],
+  });
+  const hache = weapon('hache'); // famille 'axes'
+  const marteau = weapon('marteau'); // famille 'hammers' (+ 'maces')
+  const hachette = weapon('hachette'); // familles 'axes' + 'thrown'
+
+  it('hache → +1 DM plat permanent (source nain-r2)', () => {
+    const r = weaponDamageBonuses(nain, 'melee', hache);
+    expect(r.addedFlat).toHaveLength(1);
+    expect(r.addedFlat[0]).toMatchObject({ value: 1, featureId: 'nain-r2' });
+  });
+
+  it('marteau de guerre → +1 DM plat permanent', () => {
+    expect(weaponDamageBonuses(nain, 'melee', marteau).addedFlat[0]).toMatchObject({ value: 1 });
+  });
+
+  it('masse (contondante hors marteau) → aucun +DM', () => {
+    expect(weaponDamageBonuses(nain, 'melee', masse).addedFlat).toEqual([]);
+  });
+
+  it('hachette LANCÉE → +1 DM même à distance', () => {
+    expect(weaponDamageBonuses(nain, 'ranged', hachette).addedFlat[0]).toMatchObject({ value: 1 });
+  });
+
+  it('sans nain-r2 → aucun +DM', () => {
+    const c = makeCharacter({ ancestryId: 'nain', ancestryPathId: 'nain', featureIds: [] });
+    expect(weaponDamageBonuses(c, 'melee', hache).addedFlat).toEqual([]);
+  });
+});

@@ -36,7 +36,7 @@ import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { classDisplayName } from '@/lib/character/classDisplay';
-import { masteredClassIds, sacredWeaponMasteryIds } from '@/lib/character/mastery';
+import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/mastery';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { weaponAffinities } from '@/lib/character/weaponAffinity';
 import {
@@ -1223,9 +1223,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Indicateur « arme non maîtrisée → dé malus » (PER-79) sur les armes en main.
               masteredIds={masteredClassIds(character, rulesContext)}
               firearmsAllowed={firearmsAllowed}
-              // Exception d'arme sacrée du prêtre spécialiste (PER-96).
-              sacredWeaponIds={sacredWeaponMasteryIds(character)}
-              // Badge positif d'affinité d'arme (PER-218) : arme sacrée « maîtrisée ».
+              // Maîtrises par exception : arme sacrée du prêtre spécialiste (PER-96) + octroi de peuple nain (PER-154).
+              extraMasteredWeaponIds={extraMasteredWeaponIds(character)}
+              // Badge positif d'affinité d'arme (PER-218) : arme sacrée / arme de peuple « maîtrisée ».
               resolveWeaponAffinities={(itemId) => weaponAffinities(character, itemId)}
               // Indicateur « combat à deux armes → dé malus » (PER-116) par arme en main.
               twoWeaponStatus={twoWeaponCombatStatus(character)}

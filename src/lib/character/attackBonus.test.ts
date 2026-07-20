@@ -89,3 +89,39 @@ describe('weaponAttackBonuses — Armes de prédilection du maître d\'armes (+1
     expect(weaponAttackBonuses(maitreJet, 'melee', epeeLongue).total).toBe(0);
   });
 });
+
+describe('weaponAttackBonuses — nain « Haches et marteaux » (+1 att, familles STATIQUES, PER-154)', () => {
+  // Nain magicien : la maîtrise/le bonus viennent du PEUPLE, pas du profil (« quel que soit son profil »).
+  const nain = makeCharacter({
+    classId: 'magicien',
+    ancestryId: 'nain',
+    ancestryPathId: 'nain',
+    featureIds: ['nain-r2'],
+  });
+  const hache = weapon('hache'); // famille 'axes'
+  const marteau = weapon('marteau'); // famille 'hammers' (+ 'maces')
+  const hachette = weapon('hachette'); // familles 'axes' + 'thrown'
+
+  it('hache au contact → +1 en attaque (source nain-r2)', () => {
+    const r = weaponAttackBonuses(nain, 'melee', hache);
+    expect(r.total).toBe(1);
+    expect(r.sources[0]).toMatchObject({ featureId: 'nain-r2', value: 1 });
+  });
+
+  it('marteau de guerre → +1 en attaque', () => {
+    expect(weaponAttackBonuses(nain, 'melee', marteau).total).toBe(1);
+  });
+
+  it('masse / autre contondante (hors marteau) → aucun bonus', () => {
+    expect(weaponAttackBonuses(nain, 'melee', masse).total).toBe(0);
+  });
+
+  it('hachette LANCÉE (une « hache ») → +1 même à distance', () => {
+    expect(weaponAttackBonuses(nain, 'ranged', hachette).total).toBe(1);
+  });
+
+  it('sans nain-r2 → aucun bonus', () => {
+    const c = makeCharacter({ ancestryId: 'nain', ancestryPathId: 'nain', featureIds: [] });
+    expect(weaponAttackBonuses(c, 'melee', hache).total).toBe(0);
+  });
+});

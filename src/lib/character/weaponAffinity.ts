@@ -16,10 +16,10 @@
  */
 import { priestGodById } from '@/data';
 import type { Character } from './types';
-import { sacredWeaponMasteryIds } from './mastery';
+import { ancestryWeaponMasteryIds, sacredWeaponMasteryIds } from './mastery';
 
 /** Nature d'une affinité (fermée, extensible à mesure que les sources sont branchées). */
-export type WeaponAffinityKind = 'sacred-weapon';
+export type WeaponAffinityKind = 'sacred-weapon' | 'ancestry-weapon';
 
 /** Ce qui rend une arme spéciale pour un personnage (une par source qui s'applique). */
 export interface WeaponAffinity {
@@ -35,8 +35,11 @@ export interface WeaponAffinity {
 
 /**
  * Affinités d'arme du personnage pour l'objet du catalogue `itemId` (0..n). Pur.
- * Aujourd'hui : l'arme sacrée d'un prêtre spécialiste (PER-96), y compris ses variantes
- * « au choix » et les familles d'armes (bâton ⇄ bâton ferré), via `sacredWeaponMasteryIds`.
+ * Sources :
+ *  - arme sacrée d'un prêtre spécialiste (PER-96), variantes « au choix » et familles d'armes incluses,
+ *    via `sacredWeaponMasteryIds` ;
+ *  - octroi de maîtrise de PEUPLE (PER-154) : le nain « Haches et marteaux » maîtrise haches et marteau
+ *    de guerre quel que soit son profil, via `ancestryWeaponMasteryIds`.
  */
 export function weaponAffinities(character: Character, itemId: string): WeaponAffinity[] {
   const affinities: WeaponAffinity[] = [];
@@ -50,6 +53,17 @@ export function weaponAffinities(character: Character, itemId: string): WeaponAf
       tooltip:
         `Arme sacrée${god ? ` de ${god.name}` : ''} : un prêtre spécialiste la maîtrise, même ` +
         `tranchante ou perçante, par exception à la restriction d’armes du prêtre (p. 122).`,
+    });
+  }
+
+  // Arme de peuple (PER-154). Aujourd'hui seul le nain octroie une telle maîtrise ; l'appartenance à
+  // l'ensemble implique donc « Haches et marteaux » (nain-r2). L'elfe sylvain (arc) viendra s'y ajouter.
+  if (ancestryWeaponMasteryIds(character).has(itemId)) {
+    affinities.push({
+      kind: 'ancestry-weapon',
+      label: 'Arme de peuple · maîtrisée',
+      tooltip:
+        'Le nain sait utiliser les haches et les marteaux de guerre, quel que soit son profil (p. 59).',
     });
   }
 

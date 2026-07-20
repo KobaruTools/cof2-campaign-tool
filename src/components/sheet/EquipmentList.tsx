@@ -308,11 +308,11 @@ export interface EquipmentListProps {
   /** Autorisation EFFECTIVE des armes à feu (PER-185), pour l'indicateur de maîtrise. */
   firearmsAllowed?: boolean;
   /**
-   * Armes maîtrisées PAR EXCEPTION (arme sacrée du prêtre spécialiste,
-   * `sacredWeaponMasteryIds`, PER-96) : suppriment l'indicateur de dé malus sur
-   * l'arme sacrée même tranchante/perçante. Absent → aucune exception.
+   * Armes maîtrisées PAR EXCEPTION à une arme précise (`extraMasteredWeaponIds`) : arme sacrée du
+   * prêtre spécialiste (PER-96) et octroi de maîtrise de peuple (nain « Haches et marteaux », PER-154).
+   * Suppriment l'indicateur de dé malus sur ces armes. Absent → aucune exception.
    */
-  sacredWeaponIds?: ReadonlySet<string>;
+  extraMasteredWeaponIds?: ReadonlySet<string>;
   /**
    * Résolveur d'affinités d'arme (PER-218) : pour l'id d'objet d'une ligne, ce qui
    * rend l'arme SPÉCIALE pour ce personnage (arme sacrée du prêtre spécialiste, et à
@@ -338,7 +338,7 @@ export function EquipmentList({
   characterClass,
   masteredIds,
   firearmsAllowed = true,
-  sacredWeaponIds,
+  extraMasteredWeaponIds,
   resolveWeaponAffinities,
   twoWeaponStatus,
 }: EquipmentListProps) {
@@ -559,7 +559,7 @@ export function EquipmentList({
               line={line}
               masteredIds={masteredIds}
               firearmsAllowed={firearmsAllowed}
-              sacredWeaponIds={sacredWeaponIds}
+              extraMasteredWeaponIds={extraMasteredWeaponIds}
             />
           )}
           {/* Indicateur consultatif (PER-116) : arme tenue en main → dé malus du combat

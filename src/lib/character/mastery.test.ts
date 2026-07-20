@@ -4,7 +4,12 @@ import type { Weapon } from '@/data/schema';
 import { rulesContext } from './rulesContext';
 import { createBlankCharacter } from './factory';
 import type { Character } from './types';
-import { isWeaponMastered, masteredClassIds, sacredWeaponMasteryIds } from './mastery';
+import {
+  ancestryWeaponMasteryIds,
+  isWeaponMastered,
+  masteredClassIds,
+  sacredWeaponMasteryIds,
+} from './mastery';
 
 const ctx = rulesContext;
 const weapon = (id: string) => equipmentById.get(id) as Weapon;
@@ -192,5 +197,57 @@ describe('isWeaponMastered avec arme sacrée (PER-96)', () => {
     const pretre = makeChar({ classId: 'pretre', priestVocation: { mode: 'generalist' } });
     const sacred = sacredWeaponMasteryIds(pretre);
     expect(isWeaponMastered(weapon('epee-longue'), pretreIds, ctx, true, sacred)).toBe(false);
+  });
+});
+
+describe('ancestryWeaponMasteryIds (nain « Haches et marteaux », PER-154)', () => {
+  it('nain avec nain-r2 : haches et marteau maîtrisés, quel que soit le profil', () => {
+    const nain = makeChar({
+      classId: 'magicien',
+      ancestryId: 'nain',
+      ancestryPathId: 'nain',
+      featureIds: ['nain-r2'],
+    });
+    const ids = ancestryWeaponMasteryIds(nain);
+    // Familles hache (axes) + marteau de guerre (hammers).
+    expect(ids.has('hache')).toBe(true);
+    expect(ids.has('hache-a-deux-mains')).toBe(true);
+    expect(ids.has('hachette')).toBe(true);
+    expect(ids.has('marteau')).toBe(true);
+    // Autres armes contondantes : PAS couvertes (masse, fléau, gourdin).
+    expect(ids.has('masse')).toBe(false);
+    expect(ids.has('fleau')).toBe(false);
+    expect(ids.has('gourdin')).toBe(false);
+  });
+
+  it('nain sans nain-r2 (rang 1 seulement) : ensemble vide', () => {
+    const nain = makeChar({ ancestryId: 'nain', ancestryPathId: 'nain', featureIds: ['nain-r1'] });
+    expect(ancestryWeaponMasteryIds(nain).size).toBe(0);
+  });
+
+  it('non-nain : ensemble vide', () => {
+    const humain = makeChar({ classId: 'guerrier', featureIds: [] });
+    expect(ancestryWeaponMasteryIds(humain).size).toBe(0);
+  });
+});
+
+describe('isWeaponMastered avec octroi de peuple (nain, PER-154)', () => {
+  const magicienIds = masteredClassIds(makeChar({ classId: 'magicien' }), ctx);
+
+  it('un nain magicien maîtrise la hache par octroi de peuple, malgré son profil', () => {
+    const nain = makeChar({
+      classId: 'magicien',
+      ancestryId: 'nain',
+      ancestryPathId: 'nain',
+      featureIds: ['nain-r2'],
+    });
+    const extra = ancestryWeaponMasteryIds(nain);
+    // Sans l'octroi : un magicien ne maîtrise pas la hache.
+    expect(isWeaponMastered(weapon('hache'), magicienIds, ctx, true)).toBe(false);
+    // Avec l'octroi de peuple : maîtrisée.
+    expect(isWeaponMastered(weapon('hache'), magicienIds, ctx, true, extra)).toBe(true);
+    expect(isWeaponMastered(weapon('marteau'), magicienIds, ctx, true, extra)).toBe(true);
+    // La masse reste non maîtrisée (hors haches/marteau).
+    expect(isWeaponMastered(weapon('masse'), magicienIds, ctx, true, extra)).toBe(false);
   });
 });

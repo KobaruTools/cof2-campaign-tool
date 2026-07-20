@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per154-nain-guerrier-hache",
+  "name": "Recette PER-154 — Nain guerrier, hache (+1 att / +1 DM)",
+  "identity": {
+    "description": "ATTENDU : hache en main → touche au contact +1 (fondue, attribuée « Haches et marteaux » dans l’infobulle « i ») et +1 DM plat agrégé à l’expression de DM. Badge « Arme de peuple · maîtrisée » sur la ligne de la hache."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "nain",
+  "classId": "guerrier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "nain",
+  "featureIds": [
+    "nain-r1",
+    "nain-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "hache",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-154 — hache : +1 att / +1 DM (nain-r2).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

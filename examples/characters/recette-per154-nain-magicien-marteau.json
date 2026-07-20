@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per154-nain-magicien-marteau",
+  "name": "Recette PER-154 — Nain magicien, marteau de guerre (maîtrise de peuple)",
+  "identity": {
+    "description": "ATTENDU : un magicien ne maîtrise normalement PAS le marteau ; grâce à « Haches et marteaux » (nain-r2), il le manie quel que soit son profil → PAS de badge « Non maîtrisée », badge « Arme de peuple · maîtrisée », et +1 att / +1 DM."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "nain",
+  "classId": "magicien",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "nain",
+  "featureIds": [
+    "nain-r1",
+    "nain-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "marteau",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-154 — marteau de guerre + maîtrise de peuple sur un profil qui ne maîtrise pas les contondantes.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -299,13 +299,13 @@ function unmasteredWornWeapon(
   line: EquipmentLine,
   masteredIds: Set<string>,
   firearmsAllowed: boolean,
-  sacredWeaponIds?: ReadonlySet<string>,
+  extraMasteredWeaponIds?: ReadonlySet<string>,
 ): Weapon | null {
   if (isCustomItem(line) || !line.worn) return null;
   if (line.worn.slot !== 'mainHand' && line.worn.slot !== 'offHand') return null;
   const item = equipmentById.get(line.itemId);
   if (!item || item.category !== 'weapon') return null;
-  return isWeaponMastered(item, masteredIds, rulesContext, firearmsAllowed, sacredWeaponIds)
+  return isWeaponMastered(item, masteredIds, rulesContext, firearmsAllowed, extraMasteredWeaponIds)
     ? null
     : item;
 }
@@ -339,15 +339,15 @@ export function WeaponMasteryBadge({
   line,
   masteredIds,
   firearmsAllowed,
-  sacredWeaponIds,
+  extraMasteredWeaponIds,
 }: {
   line: EquipmentLine;
   masteredIds: Set<string>;
   firearmsAllowed: boolean;
-  /** Armes maîtrisées par exception (arme sacrée du prêtre spécialiste, PER-96). */
-  sacredWeaponIds?: ReadonlySet<string>;
+  /** Armes maîtrisées par exception : arme sacrée du prêtre spécialiste (PER-96), octroi de peuple nain (PER-154). */
+  extraMasteredWeaponIds?: ReadonlySet<string>;
 }) {
-  if (!unmasteredWornWeapon(line, masteredIds, firearmsAllowed, sacredWeaponIds)) return null;
+  if (!unmasteredWornWeapon(line, masteredIds, firearmsAllowed, extraMasteredWeaponIds)) return null;
   return (
     <Box sx={{ mt: 0.5 }}>
       <AppTooltip title={MASTERY_TOOLTIP}>
@@ -427,16 +427,16 @@ export function WeaponMasteryAlert({
   equipment,
   masteredIds,
   firearmsAllowed,
-  sacredWeaponIds,
+  extraMasteredWeaponIds,
 }: {
   equipment: EquipmentLine[];
   masteredIds: Set<string>;
   firearmsAllowed: boolean;
-  /** Armes maîtrisées par exception (arme sacrée du prêtre spécialiste, PER-96). */
-  sacredWeaponIds?: ReadonlySet<string>;
+  /** Armes maîtrisées par exception : arme sacrée du prêtre spécialiste (PER-96), octroi de peuple nain (PER-154). */
+  extraMasteredWeaponIds?: ReadonlySet<string>;
 }) {
   const unmastered = equipment
-    .map((line) => unmasteredWornWeapon(line, masteredIds, firearmsAllowed, sacredWeaponIds))
+    .map((line) => unmasteredWornWeapon(line, masteredIds, firearmsAllowed, extraMasteredWeaponIds))
     .filter((w): w is Weapon => w !== null);
   if (unmastered.length === 0) return null;
   return (

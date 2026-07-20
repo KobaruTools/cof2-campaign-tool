@@ -40,6 +40,7 @@ import {
 import {
   ABILITY_IDS,
   DERIVED_STAT_IDS,
+  EXTRA_WEAPON_FAMILIES,
   IMMUNITY_IDS,
   MASTER_AT_ARMS_CATEGORIES,
   RANGED_WEAPON_KINDS,
@@ -175,7 +176,7 @@ const validActivationKinds = new Set(['condition', 'temporary']);
 const validImmunities = new Set<string>(IMMUNITY_IDS);
 const validRangedKinds = new Set<string>(RANGED_WEAPON_KINDS);
 const validWeaponCategories = new Set<string>(WEAPON_CATEGORIES);
-const validWeaponFamilies = new Set<string>(MASTER_AT_ARMS_CATEGORIES);
+const validWeaponFamilies = new Set<string>([...MASTER_AT_ARMS_CATEGORIES, ...EXTRA_WEAPON_FAMILIES]);
 const validDamageDies = new Set<string>(['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20']);
 
 /**
@@ -209,6 +210,9 @@ function validateWeaponCondition(cId: string, cond: WeaponDamageCondition | unde
     else if (!(choiceFeature.choices ?? []).some((ch) => ch.kind === 'option'))
       err(`[capacite ${cId}] effect: ${label} weaponFamiliesFromChoice.choiceFeatureId ${choiceFeatureId} ne porte aucun choix 'option'`);
   }
+  // weaponFamilies STATIQUES (octroi fixe de peuple, PER-154) : chaque famille doit être connue.
+  for (const fam of cond.weaponFamilies ?? [])
+    if (!validWeaponFamilies.has(fam)) err(`[capacite ${cId}] effect: ${label} weaponFamilies famille inconnue : ${fam}`);
 }
 
 /** Valide une `EffectValue` (constante ou scalante) ; renvoie un message ou null. */

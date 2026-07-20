@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per154-nain-magicien-masse-controle",
+  "name": "Recette PER-154 — Nain magicien, masse (contrôle négatif)",
+  "identity": {
+    "description": "ATTENDU (contrôle négatif) : la masse n’est ni une hache ni un marteau de guerre → AUCUN +1 att / +1 DM, AUCUNE affinité de peuple, et le magicien ne la maîtrise pas → badge « Non maîtrisée · dé malus ». Prouve que l’octroi du nain se limite bien aux haches et marteaux."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "nain",
+  "classId": "magicien",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "nain",
+  "featureIds": [
+    "nain-r1",
+    "nain-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "masse",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-154 — masse : aucun effet (scoping haches/marteaux uniquement).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

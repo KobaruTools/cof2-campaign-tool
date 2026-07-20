@@ -285,7 +285,10 @@ export const weapons: Weapon[] = [
     name: 'Marteau',
     category: 'weapon',
     weaponCategory: 'oneHand',
-    weaponFamilies: ['maces'],
+    // Contondante (`maces`, pour la prédilection « Masses » du maître d'armes) ET marteau de guerre
+    // (`hammers`) : c'est le seul marteau de la table (p. 183) — la capacité nain « Haches et marteaux »
+    // (PER-154) le vise via `hammers`, ce qui l'isole des autres contondantes (masse/fléau/gourdin).
+    weaponFamilies: ['maces', 'hammers'],
     melee: true,
     ranged: false,
     damage: { count: 1, die: 'd6' },

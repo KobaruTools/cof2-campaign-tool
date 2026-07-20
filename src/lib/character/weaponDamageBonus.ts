@@ -90,6 +90,11 @@ export function weaponConditionMet(
     if (!weaponFamiliesMatchChoice(character, weapon.weaponFamilies, cond.weaponFamiliesFromChoice.choiceFeatureId))
       return false;
   }
+  if (cond.weaponFamilies && cond.weaponFamilies.length > 0) {
+    // Familles EN DUR (octroi fixe de peuple, PER-154) : l'arme doit partager au moins une famille.
+    if (!weapon?.weaponFamilies?.length) return false;
+    if (!cond.weaponFamilies.some((f) => weapon.weaponFamilies!.includes(f))) return false;
+  }
   return true;
 }
 

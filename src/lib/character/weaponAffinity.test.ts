@@ -44,4 +44,35 @@ describe('weaponAffinities (PER-218)', () => {
     const magicien = makeChar({ classId: 'magicien', priestVocation: undefined });
     expect(weaponAffinities(magicien, 'baton')).toHaveLength(0);
   });
+
+  describe('arme de peuple du nain (PER-154)', () => {
+    const nain = makeChar({
+      classId: 'magicien',
+      ancestryId: 'nain',
+      ancestryPathId: 'nain',
+      featureIds: ['nain-r2'],
+      priestVocation: undefined,
+    });
+
+    it('hache : affinité « arme de peuple · maîtrisée » avec source p. 59', () => {
+      const aff = weaponAffinities(nain, 'hache');
+      expect(aff).toHaveLength(1);
+      expect(aff[0].kind).toBe('ancestry-weapon');
+      expect(aff[0].label).toContain('maîtrisée');
+      expect(aff[0].tooltip).toContain('(p. 59)');
+    });
+
+    it('marteau de guerre : affinité présente', () => {
+      expect(weaponAffinities(nain, 'marteau')).toHaveLength(1);
+    });
+
+    it('masse (contondante hors marteau) : aucune affinité', () => {
+      expect(weaponAffinities(nain, 'masse')).toHaveLength(0);
+    });
+
+    it('nain sans nain-r2 : aucune affinité', () => {
+      const nainR1 = makeChar({ ancestryId: 'nain', ancestryPathId: 'nain', featureIds: ['nain-r1'] });
+      expect(weaponAffinities(nainR1, 'hache')).toHaveLength(0);
+    });
+  });
 });

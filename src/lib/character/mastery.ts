@@ -15,8 +15,8 @@
  * à SIGNALER la non-maîtrise. L'indicateur consultatif est posé par l'UI sur l'arme
  * en main (cf. `WeaponMasteryBadge` / `WeaponMasteryAlert`).
  */
-import { priestGodById } from '@/data';
-import type { CharacterClass, Weapon } from '@/data/schema';
+import { priestGodById, weapons } from '@/data';
+import type { CharacterClass, Weapon, WeaponFamily } from '@/data/schema';
 import type { RulesContext } from '@/lib/engine';
 import { ownedRanks } from '@/lib/engine';
 import type { Character } from './types';
@@ -110,6 +110,37 @@ export function sacredWeaponMasteryIds(character: Character): ReadonlySet<string
     for (const familyId of weaponFamilyIds(weaponId)) ids.add(familyId);
   }
   return ids;
+}
+
+/**
+ * Familles d'armes qu'un nain « sait utiliser, quel que soit son profil » (nain-r2, p. 59) : les
+ * haches (`axes`) et le marteau de guerre (`hammers`). Doit rester aligné avec la condition du bonus
+ * +1 att / +1 DM posée sur `nain-r2` (mêmes familles).
+ */
+const DWARF_MASTERED_WEAPON_FAMILIES: readonly WeaponFamily[] = ['axes', 'hammers'];
+
+/**
+ * Ids d'armes maîtrisées PAR OCTROI DE PEUPLE, indépendamment du profil (PER-154). Aujourd'hui : le
+ * nain « Haches et marteaux » (nain-r2, p. 59) maîtrise toutes les haches et le marteau de guerre.
+ * (Point d'extension pour l'arc de l'elfe sylvain, même mécanique.) Ensemble vide sinon. Alimente
+ * `extraMasteredWeaponIds` d'`isWeaponMastered`, comme l'arme sacrée du prêtre (`sacredWeaponMasteryIds`).
+ */
+export function ancestryWeaponMasteryIds(character: Character): ReadonlySet<string> {
+  const ids = new Set<string>();
+  if (character.featureIds.includes('nain-r2')) {
+    for (const w of weapons)
+      if (w.weaponFamilies?.some((f) => DWARF_MASTERED_WEAPON_FAMILIES.includes(f))) ids.add(w.id);
+  }
+  return ids;
+}
+
+/**
+ * Ensemble des maîtrises PAR EXCEPTION à une arme précise (union), à passer en `extraMasteredWeaponIds`
+ * d'`isWeaponMastered` : arme sacrée du prêtre spécialiste (`sacredWeaponMasteryIds`, PER-96) ET octrois
+ * de peuple (`ancestryWeaponMasteryIds`, PER-154). Court-circuite l'analyse des accès de profil.
+ */
+export function extraMasteredWeaponIds(character: Character): ReadonlySet<string> {
+  return new Set<string>([...sacredWeaponMasteryIds(character), ...ancestryWeaponMasteryIds(character)]);
 }
 
 /** Un profil donné maîtrise-t-il cette arme ? Interprète ses accès (`WeaponAccess`). */

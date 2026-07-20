@@ -728,7 +728,16 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le nain gagne un bonus de +1 en attaque et aux DM lorsqu’il utilise une hache ou un marteau de guerre. Il sait utiliser ces armes, quel que soit son profil.',
-    wip: 'Bonus conditionnel à l’arme portée : « +1 en attaque et aux DM lorsqu’il utilise une hache ou un marteau de guerre », plus la maîtrise de base de ces armes quel que soit le profil — non encore appliqués, en attente du modèle d’arme portée (PER-154).',
+    // PER-154 : +1 en attaque et +1 aux DM avec une hache ou un marteau de guerre. Familles EN DUR
+    // (aucun choix : le nain manie TOUJOURS ces armes) — `axes` (hache, hache à deux mains, hachette)
+    // + `hammers` (le seul marteau de la table, p. 183). Pas d'`attackMode` → contact ET jet (une
+    // hachette lancée reste une « hache »), cohérent avec les armes de jet du maître d'armes (PER-226).
+    // La maîtrise « quel que soit son profil » (lever le dé malus) est portée à part par
+    // `ancestryWeaponMasteryIds` (mastery.ts), et rendue en badge positif par `weaponAffinities`.
+    effects: [
+      { kind: 'attack-bonus', value: 1, condition: { weaponFamilies: ['axes', 'hammers'] } },
+      { kind: 'weapon-damage-bonus', flat: 1, condition: { weaponFamilies: ['axes', 'hammers'] } },
+    ],
     sourcePage: 59,
   },
   {

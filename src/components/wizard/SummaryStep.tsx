@@ -24,7 +24,7 @@ import {
   TwoWeaponPenaltyAlert,
   WeaponMasteryAlert,
 } from '@/components/sheet/WornEquipmentControls';
-import { masteredClassIds, sacredWeaponMasteryIds } from '@/lib/character/mastery';
+import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/mastery';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
 import { AbilityValueBadge } from '@/components/AbilityValueBadge';
@@ -256,7 +256,7 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
         equipment={draft.equipment}
         masteredIds={masteredClassIds(preview, rulesContext)}
         firearmsAllowed={firearmsAllowed}
-        sacredWeaponIds={sacredWeaponMasteryIds(preview)}
+        extraMasteredWeaponIds={extraMasteredWeaponIds(preview)}
       />
 
       {/* Combat à deux armes (PER-116) : dé malus sur chaque attaque (p. 215) — consultatif. */}

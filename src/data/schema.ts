@@ -1077,6 +1077,14 @@ export interface WeaponDamageCondition {
    * contrainte de famille.
    */
   weaponFamiliesFromChoice?: { choiceFeatureId: string };
+  /**
+   * L'arme portée doit appartenir à une des FAMILLES données EN DUR (sans choix joueur), comparées
+   * aux `weaponFamilies` de l'arme. Pendant STATIQUE de `weaponFamiliesFromChoice`, pour un octroi
+   * FIXE indépendant de tout choix — capacité de peuple du nain « Haches et marteaux » (PER-154) :
+   * `['axes', 'hammers']`, le nain manie toujours haches et marteaux de guerre. Implique une arme (du
+   * bon mode) en main. Absent = aucune contrainte de famille statique.
+   */
+  weaponFamilies?: WeaponFamily[];
 }
 
 /**
@@ -2205,6 +2213,19 @@ export const MASTER_AT_ARMS_CATEGORIES = [
 export type MasterAtArmsCategory = (typeof MASTER_AT_ARMS_CATEGORIES)[number];
 
 /**
+ * Familles d'armes SUPPLÉMENTAIRES, hors des catégories de prédilection du maître d'armes
+ * (`MASTER_AT_ARMS_CATEGORIES`). `hammers` (« marteau de guerre ») isole le marteau des autres
+ * armes contondantes (`maces` = masse, fléau, gourdin…) pour la capacité de peuple du nain
+ * « Haches et marteaux » (PER-154, p. 59) : le nain ne gagne son bonus et sa maîtrise qu'avec une
+ * hache ou un marteau de guerre, pas avec une masse. Le marteau reste AUSSI dans `maces` (une
+ * prédilection « Masses » du maître d'armes le couvre toujours). Ces familles ne sont donc PAS des
+ * options de prédilection : c'est une taxonomie d'arme, dont les catégories de prédilection sont un
+ * sous-ensemble.
+ */
+export const EXTRA_WEAPON_FAMILIES = ['hammers'] as const;
+export type WeaponFamily = MasterAtArmsCategory | (typeof EXTRA_WEAPON_FAMILIES)[number];
+
+/**
  * Sous-type d'une arme d'attaque à DISTANCE (PER-115) — le livre ne le nomme pas comme une
  * catégorie formelle, mais plusieurs capacités ciblent un sous-type précis : Archer émérite
  * s'applique « à l'arc », sa variante « voie du lancer » aux « armes de jet (dague, hachette,
@@ -2227,9 +2248,9 @@ export interface Weapon extends EquipmentBase {
    * +1 att / +DM des armes de prédilection, PER-72). Une arme lançable cumule sa famille de contact
    * et `thrown` (ex. épieu = `['polearms', 'thrown']`). Absent = aucune catégorie de prédilection ne
    * s'applique (bâton/bâton ferré, stylet, armes sacrées, arcs/arbalètes/frondes/poudre). Cf.
-   * `MASTER_AT_ARMS_CATEGORIES`.
+   * `MASTER_AT_ARMS_CATEGORIES` et `EXTRA_WEAPON_FAMILIES` (ex. `hammers` = marteau de guerre).
    */
-  weaponFamilies?: MasterAtArmsCategory[];
+  weaponFamilies?: WeaponFamily[];
   /** L'arme est-elle une arme de contact, à distance, ou les deux (lancer) ? */
   melee: boolean;
   ranged: boolean;
