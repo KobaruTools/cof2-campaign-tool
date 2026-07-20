@@ -98,37 +98,30 @@ export function CompactDerivedStats({
             key={id}
             sx={{
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
-              gap: 0.25,
-              px: 0.5,
+              gap: 0.5,
+              px: 0.75,
               py: 0.75,
               borderRadius: 1,
               border: '1px solid rgba(255, 255, 255, 0.10)',
               bgcolor: 'rgba(255, 255, 255, 0.04)',
             }}
           >
-            {/* Icône ANCRÉE à gauche ; le chiffre (+ dé de récup.) CENTRÉ sur l'espace
-                restant à droite. Infobulle du nom limitée à ce couple : les puces portent
-                déjà leur propre infobulle (breakdown), on évite ainsi deux infobulles
-                rivales. Une stat non applicable (ex. mana d'un non-lanceur) s'affiche « — »
-                comme sur la fiche. */}
+            {/* Icône + chiffre ANCRÉS à gauche (le chiffre collé à l'icône, plus le dé de récup.
+                éventuel) ; les puces sont poussées à DROITE (`ml: auto`) sur la place ainsi libérée.
+                Infobulle du nom limitée au couple icône/chiffre : les puces portent déjà leur propre
+                infobulle (breakdown), on évite ainsi deux infobulles rivales. Une stat non applicable
+                (ex. mana d'un non-lanceur) s'affiche « — » comme sur la fiche. */}
             <AppTooltip title={DERIVED_STAT_NAMES[id]}>
-              <Stack direction="row" sx={{ alignItems: 'center', width: '100%' }}>
+              <Stack direction="row" spacing={0.4} sx={{ alignItems: 'center', flexShrink: 0 }}>
                 <DerivedStatIcon statId={id} size={26} color="rgba(255, 255, 255, 0.75)" />
-                <Stack
-                  direction="row"
-                  spacing={0.4}
-                  sx={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: 700, lineHeight: 1, color: forced ? 'warning.main' : undefined }}
                 >
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ fontWeight: 700, lineHeight: 1, color: forced ? 'warning.main' : undefined }}
-                  >
-                    {display === null ? '—' : display}
-                  </Typography>
-                  {suffix}
-                </Stack>
+                  {display === null ? '—' : display}
+                </Typography>
+                {suffix}
               </Stack>
             </AppTooltip>
             {badges && badges.length > 0 && (
@@ -136,13 +129,14 @@ export function CompactDerivedStats({
                   sx={{
                     display: 'flex',
                     flexWrap: 'wrap',
-                    justifyContent: 'center',
+                    justifyContent: 'flex-end',
                     gap: 0.4,
-                    mt: 0.25,
+                    ml: 'auto',
+                    minWidth: 0,
                   }}
                 >
                   {badges.map(({ key: badgeKey, ...rest }) => (
-                    <DefenseBadge key={badgeKey} {...rest} fullWidth={false} />
+                    <DefenseBadge key={badgeKey} {...rest} fullWidth={false} compact />
                   ))}
                 </Box>
               )}

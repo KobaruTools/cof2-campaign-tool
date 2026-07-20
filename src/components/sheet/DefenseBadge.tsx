@@ -65,8 +65,15 @@ export function DefenseBadge({
   title,
   sources,
   fullWidth = true,
-}: Omit<DefenseBadgeData, 'key'> & { fullWidth?: boolean }) {
+  compact = false,
+}: Omit<DefenseBadgeData, 'key'> & { fullWidth?: boolean; compact?: boolean }) {
   const paletteKey = PALETTE[variant];
+  // Métriques réduites de la variante COMPACTE (écran de MJ) : puce plus petite pour tenir à
+  // droite du chiffre sans l'écraser. Sinon, métriques standard de la fiche.
+  const iconSize = compact ? 14 : 18;
+  // En compact, une plage de critique (« 19-20 ») est réduite à sa seule borne basse (« 19 ») :
+  // le « -20 » est toujours implicite (le critique va jusqu'à 20). Le tooltip garde la plage complète.
+  const displayText = compact && variant === 'critical' && text ? text.split('-')[0] : text;
   // Tooltip en « breakdown » au style des statistiques dérivées : titre de l'effet, puis la/les
   // capacité(s) source(s) en sous-détail gris (nom + contribution si cumul). PER-137.
   const tooltip = (
@@ -106,15 +113,15 @@ export function DefenseBadge({
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 0.5,
+          gap: compact ? 0.35 : 0.5,
           width: fullWidth ? '100%' : 'auto',
           minWidth: 0,
-          height: 28,
-          px: 1,
+          height: compact ? 20 : 28,
+          px: compact ? 0.6 : 1,
           borderRadius: 1,
           cursor: 'help',
           lineHeight: 1,
-          fontSize: '0.85rem',
+          fontSize: compact ? '0.72rem' : '0.85rem',
           fontWeight: 700,
           whiteSpace: 'nowrap',
           color: theme.palette[paletteKey].main,
@@ -124,13 +131,13 @@ export function DefenseBadge({
       >
         {/* Immunité d'ÉTAT : icône dédiée (game-icons) à la place du bouclier générique — le libellé
             texte étant souvent tronqué, l'icône porte l'identification, le tooltip donne le nom complet. */}
-        {statusEffect && <StatusEffectIcon effect={statusEffect} size={18} />}
+        {statusEffect && <StatusEffectIcon effect={statusEffect} size={iconSize} />}
         {/* Bouclier générique conservé pour les immunités SANS icône dédiée (ex. « tous DM »). */}
-        {variant === 'immunity' && !scope && !statusEffect && <ShieldIcon sx={{ fontSize: 18 }} />}
-        {variant === 'critical' && <GpsFixedIcon sx={{ fontSize: 18 }} />}
-        {scope && <DamageTypeIcon type={scope} size={18} />}
+        {variant === 'immunity' && !scope && !statusEffect && <ShieldIcon sx={{ fontSize: iconSize }} />}
+        {variant === 'critical' && <GpsFixedIcon sx={{ fontSize: iconSize }} />}
+        {scope && <DamageTypeIcon type={scope} size={iconSize} />}
         {!scope && variant === 'reduction' && <Box component="span">RD</Box>}
-        {text && <Box component="span">{text}</Box>}
+        {displayText && <Box component="span">{displayText}</Box>}
       </Box>
     </AppTooltip>
   );

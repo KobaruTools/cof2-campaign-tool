@@ -81,7 +81,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
               gap: 2,
               alignItems: 'start',
             }}
@@ -164,9 +164,10 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           <Box
             sx={{
               display: 'grid',
-              // Grille de 3 colonnes (les fiches de personnage), repliée à 1 colonne
+              // Grille de 3 colonnes (les fiches de personnage), avec un palier
+              // INTERMÉDIAIRE à 2 colonnes (tablette) avant le repli à 1 colonne
               // sur mobile où 3 de front seraient illisibles.
-              gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
               gap: 2,
               alignItems: 'start',
             }}
