@@ -72,4 +72,36 @@ describe('buildCharacterDerivedView', () => {
     expect(Array.isArray(view.defenseBadges)).toBe(true);
     expect(Array.isArray(view.modFeatureIds)).toBe(true);
   });
+
+  it('PER-141 : sans arme de contact portée, vue mains nues présente et DM d’arme null', () => {
+    const view = buildCharacterDerivedView(makeCharacter());
+    expect(view.meleeWeaponDamage).toBeNull();
+    expect(view.unarmed.damage).toEqual({ count: 1, die: 'd3', nonLethal: true });
+    expect(Array.isArray(view.unarmedCriticalRanges)).toBe(true);
+  });
+
+  it('PER-141 : DM de l’arme de contact tenue en main principale (dé + FOR)', () => {
+    const view = buildCharacterDerivedView(
+      makeCharacter({
+        equipment: [{ itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } }],
+      }),
+    );
+    expect(view.meleeWeaponDamage).toEqual({ dice: '1d8', nonLethal: false, name: 'Épée longue' });
+  });
+
+  it('PER-141 : une arme de contact simplement rangée ne compte pas', () => {
+    const view = buildCharacterDerivedView(
+      makeCharacter({ equipment: [{ itemId: 'epee-longue', quantity: 1 }] }),
+    );
+    expect(view.meleeWeaponDamage).toBeNull();
+  });
+
+  it('PER-141 : moine avec Morsure du serpent → badge de critique mains nues', () => {
+    const view = buildCharacterDerivedView(
+      makeCharacter({ classId: 'moine', featureIds: ['maitrise-r3'] }),
+    );
+    expect(view.unarmed.lethality).toBe('choice');
+    expect(view.unarmedCriticalRanges).toHaveLength(1);
+    expect(view.unarmedCriticalRanges[0].text).toBe('19-20');
+  });
 });

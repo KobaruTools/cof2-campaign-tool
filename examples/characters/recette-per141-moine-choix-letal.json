@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per141-moine-choix-letal",
+  "name": "Recette PER-141 — Moine sans poing (létal au choix)",
+  "identity": {
+    "description": "ATTENDU (mains nues) : 1d3 + FOR (2). Badge « Létal au choix » (trait de moine, sans Poings de fer). 1=max + type au choix (Griffes du tigre), critique 19-20 (Morsure). Démontre le choix létal/non létal."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "moine",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 2,
+    "CON": 2,
+    "FOR": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "AGI": 2,
+    "CON": 2,
+    "FOR": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "maitrise-r1",
+    "maitrise-r2",
+    "maitrise-r3"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-141 — badge « Létal au choix » sans Poings de fer ; dé de base 1d3.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

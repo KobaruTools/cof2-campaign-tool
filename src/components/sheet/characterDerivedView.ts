@@ -13,7 +13,7 @@
  */
 import { classById, families, featureById } from '@/data';
 import type { DerivedInput } from '@/lib/engine';
-import type { Character } from '@/lib/character/types';
+import { isCustomItem, type Character, type EquipmentRef } from '@/lib/character/types';
 import {
   activeFeatureIdsForMods,
   aggregateImmunities,
@@ -29,12 +29,57 @@ import {
 import { mergeMods, orphanMods } from '@/lib/character/orphanPoints';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { rulesContext } from '@/lib/character/rulesContext';
+import { effectiveItem } from '@/lib/character/items';
+import { formatWeaponDamage } from '@/lib/character/weaponDamage';
+import { unarmedStrike, type UnarmedStrikeView } from '@/lib/character/unarmedStrike';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
+
+/** DM d'une arme de CONTACT équipée, pour la vue « arme » de la bascule (PER-141). */
+export interface MeleeWeaponDamageView {
+  /**
+   * Dé(s) de DM seuls, prêts pour `<DamageValue>` (ex. « 1d8 », « 2d6 », « 1d8+2 »). La
+   * caractéristique (FOR) est ajoutée dynamiquement au rendu (via le rich-text, comme les
+   * rangs de voies), pas figée dans cette chaîne.
+   */
+  dice: string;
+  /** DM non létal (arme aux « DM temporaires possibles » : gourdin, bâton…). */
+  nonLethal: boolean;
+  /** Nom de l'arme (libellé + tooltip). */
+  name: string;
+}
+
+/**
+ * DM de l'arme de CONTACT tenue en main (main principale prioritaire, sinon secondaire),
+ * pour la vue « arme » de la bascule arme ⇄ mains nues (PER-141). Renvoie le(s) dé(s) seuls ;
+ * la FOR est ajoutée au rendu (règle de base des armes de contact) — la couche fine des
+ * capacités qui modifient les DM d'arme reste PER-115. Retourne `null` si aucune arme de
+ * contact n'est portée (le personnage se bat alors à mains nues). Les objets libres
+ * (`CustomItem`) n'ont pas de DM structuré et sont ignorés.
+ */
+function wornMeleeWeaponDamage(character: Character): MeleeWeaponDamageView | null {
+  const meleeRefs = character.equipment.filter(
+    (line): line is EquipmentRef => {
+      if (isCustomItem(line)) return false;
+      const item = effectiveItem(line);
+      return item?.category === 'weapon' && item.melee;
+    },
+  );
+  // Main principale prioritaire, sinon main secondaire (combat à deux armes).
+  const line = meleeRefs.find((l) => l.worn?.slot === 'mainHand') ?? meleeRefs.find((l) => l.worn?.slot === 'offHand');
+  if (!line) return null;
+  const item = effectiveItem(line);
+  if (!item || item.category !== 'weapon') return null;
+  // Prise à deux mains : DM à deux mains si l'arme en propose (p. 184).
+  const dmg = line.worn?.grip === 'twoHands' && item.twoHandedDamage ? item.twoHandedDamage : item.damage;
+  // Parenthèses de non-létalité gérées par un badge dédié, pas par le formateur ici.
+  const dice = formatWeaponDamage({ ...dmg, nonLethal: false });
+  return { dice, nonLethal: !!dmg.nonLethal, name: item.name };
+}
 
 export interface CharacterDerivedView {
   /** Capacités acquises + empruntées (base des mods) — réutilisé par les autres panneaux de la fiche. */
@@ -49,6 +94,12 @@ export interface CharacterDerivedView {
   meleeCriticalRanges: DefenseBadgeData[];
   /** Puces de plage de critique ACTIVE à distance. */
   rangedCriticalRanges: DefenseBadgeData[];
+  /** PER-141 — attaque à mains nues (dé, carac, létalité, magie, critique). Alimente la bascule de la carte Attaque au contact. */
+  unarmed: UnarmedStrikeView;
+  /** PER-141 — DM de l'arme de CONTACT équipée (vue « arme » de la bascule). `null` = aucune arme de contact portée. */
+  meleeWeaponDamage: MeleeWeaponDamageView | null;
+  /** PER-141 — plage de critique au contact À MAINS NUES (Morsure du serpent), pour la vue mains nues de la bascule. */
+  unarmedCriticalRanges: DefenseBadgeData[];
 }
 
 /**
@@ -138,6 +189,27 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const meleeCriticalRanges = critBadgeForScope('melee');
   const rangedCriticalRanges = critBadgeForScope('ranged');
 
+  // Attaque à mains nues (PER-141) + DM de l'arme de contact équipée, pour la bascule
+  // de la carte « Attaque au contact ».
+  const unarmed = unarmedStrike(character);
+  const meleeWeaponDamage = wornMeleeWeaponDamage(character);
+  // Plage de critique au contact ACTIVE à mains nues (Morsure du serpent) : construite depuis
+  // la vue mains nues (indépendante de l'interrupteur manuel de la vue « arme »).
+  const unarmedCriticalRanges: DefenseBadgeData[] =
+    unarmed.criticalRangeBonus > 0
+      ? [
+          {
+            key: 'crit-melee-unarmed',
+            variant: 'critical',
+            text: formatCriticalRange('melee', unarmed.criticalRangeBonus).short,
+            title: `Critique ${formatCriticalRange('melee', unarmed.criticalRangeBonus).short}`,
+            sources: unarmed.sources
+              .filter((s) => featureById.get(s.featureId)?.criticalRange?.scope === 'melee')
+              .map((s) => ({ name: s.name, featureId: s.featureId })),
+          },
+        ]
+      : [];
+
   // Carac de base des PM : VOL, ou substitution (Charisme héroïque → CHA, PER-101).
   const manaCast = manaCastingAbility(modFeatureIds, effectCtx.abilities);
   // Dentelles et rapière (seduction-r2, PER-71) : tant que l'interrupteur « aucune armure » est actif,
@@ -184,5 +256,8 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     defenseBadges,
     meleeCriticalRanges,
     rangedCriticalRanges,
+    unarmed,
+    meleeWeaponDamage,
+    unarmedCriticalRanges,
   };
 }

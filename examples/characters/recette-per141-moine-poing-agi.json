@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per141-moine-poing-agi",
+  "name": "Recette PER-141 — Moine poing r5 (AGI > FOR)",
+  "identity": {
+    "description": "ATTENDU (mains nues) : 2d6 + best-of FOR/AGI/VOL → doit afficher AGI (4). Létal (Poings de fer), magique (Mains d'énergie), 1=max + type au choix (Griffes du tigre), critique 19-20 (Morsure). Mode « arme » : épée longue 1d8 + FOR (2). Bascule via le bouton rond en haut à gauche."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "moine",
+  "level": 12,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 4,
+    "CON": 2,
+    "FOR": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 3
+  },
+  "baseAbilities": {
+    "AGI": 4,
+    "CON": 2,
+    "FOR": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 3
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "poing-r1",
+    "poing-r2",
+    "poing-r3",
+    "poing-r4",
+    "poing-r5",
+    "energie-vitale-r1",
+    "maitrise-r2",
+    "maitrise-r3"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-141 — recette bascule arme⇄mains nues, best-of dynamique FOR/AGI/VOL, dé r5 = 2d6.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

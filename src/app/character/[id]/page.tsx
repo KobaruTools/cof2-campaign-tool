@@ -601,6 +601,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     defenseBadges,
     meleeCriticalRanges,
     rangedCriticalRanges,
+    unarmed,
+    meleeWeaponDamage,
+    unarmedCriticalRanges,
   } = buildCharacterDerivedView(character);
   // Modificateurs permanents de caractéristiques et dés bonus apportés par les
   // capacités (mécanique core) — appliqués PAR-DESSUS la valeur saisie des caracs.
@@ -1053,6 +1056,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 defenseBadges={defenseBadges}
                 meleeCriticalRanges={meleeCriticalRanges}
                 rangedCriticalRanges={rangedCriticalRanges}
+                unarmedStrike={unarmed}
+                meleeWeaponDamage={meleeWeaponDamage}
+                unarmedCriticalRanges={unarmedCriticalRanges}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">

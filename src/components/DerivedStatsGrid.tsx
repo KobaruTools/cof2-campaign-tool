@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import { deriveStats, type DerivedInput } from '@/lib/engine';
 import type { EffectContext } from '@/lib/character/effects';
 import type { DerivedStatId as OverrideKey } from '@/lib/character/types';
+import type { UnarmedStrikeView } from '@/lib/character/unarmedStrike';
 import { DERIVED_STAT_NAMES, type DerivedStatId } from '@/lib/ui/derivedStats';
 import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -21,6 +22,8 @@ import { DerivedStatHint } from '@/components/DerivedStatHint';
 import { DieIcon } from '@/components/DieIcon';
 import { SignedNumberField } from '@/components/SignedNumberField';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
+import { MeleeAttackCard } from '@/components/sheet/MeleeAttackCard';
+import type { MeleeWeaponDamageView } from '@/components/sheet/characterDerivedView';
 
 /**
  * Pont entre l'id d'affichage (UI) et la clé de surcharge du modèle (moteur).
@@ -84,6 +87,16 @@ export interface DerivedStatsGridProps {
   meleeCriticalRanges?: DefenseBadgeData[];
   /** Badges de plage de critique ACTIVE À DISTANCE, sous la carte « Attaque à distance » (PER-133). */
   rangedCriticalRanges?: DefenseBadgeData[];
+  /**
+   * PER-141 — attaque à MAINS NUES. Présent → la carte « Attaque au contact » propose une bascule
+   * arme ⇄ mains nues (état d'UI local non persisté). Absent (récap du wizard, écran de MJ) → aucune
+   * bascule, comportement inchangé.
+   */
+  unarmedStrike?: UnarmedStrikeView;
+  /** PER-141 — DM de l'arme de contact équipée, pour la vue « arme » de la bascule. Null = aucune arme portée. */
+  meleeWeaponDamage?: MeleeWeaponDamageView | null;
+  /** PER-141 — plage de critique au contact À MAINS NUES (Morsure du serpent), pour la vue mains nues. */
+  unarmedCriticalRanges?: DefenseBadgeData[];
 }
 
 interface StatLine {
@@ -113,6 +126,9 @@ export function DerivedStatsGrid({
   defenseBadges,
   meleeCriticalRanges,
   rangedCriticalRanges,
+  unarmedStrike,
+  meleeWeaponDamage,
+  unarmedCriticalRanges,
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
 
@@ -149,6 +165,37 @@ export function DerivedStatsGrid({
               : id === 'rangedAttack'
                 ? rangedCriticalRanges
                 : undefined;
+
+        // PER-141 — carte « Attaque au contact » avec bascule arme ⇄ mains nues : double cadre
+        // superposé qui s'échangent avec animation. Réservée à la vue (pas en mode édition des
+        // surcharges, où l'on garde la carte simple). Ailleurs → carte générique ci-dessous.
+        if (id === 'meleeAttack' && unarmedStrike && !onOverride) {
+          return (
+            <Grid key={id} size={size}>
+              <MeleeAttackCard
+                touch={display}
+                forced={forced}
+                statHint={
+                  <DerivedStatHint
+                    statId={id}
+                    input={input}
+                    featureIds={featureIds}
+                    effectContext={effectContext}
+                    extraModSources={extraModSources}
+                    className="derived-stat-hint"
+                    enterDelay={200}
+                  />
+                }
+                abilities={input.abilities}
+                level={input.level}
+                unarmed={unarmedStrike}
+                meleeWeaponDamage={meleeWeaponDamage ?? null}
+                weaponCriticalRanges={meleeCriticalRanges ?? []}
+                unarmedCriticalRanges={unarmedCriticalRanges ?? []}
+              />
+            </Grid>
+          );
+        }
 
         return (
           <Grid key={id} size={size}>
