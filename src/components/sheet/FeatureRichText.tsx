@@ -61,6 +61,63 @@ type RefTone = 'ability' | 'derived';
  * une CARAC porte une teinte propre + un contour TIRETÉ (PER-224), une stat dérivée
  * reste en ambre + contour plein. Info-bulle = nom complet.
  */
+/**
+ * Puce d'une CARACTÉRISTIQUE (PER-224) : teinte propre (source unique `ABILITY_COLORS`) + contour
+ * TIRETÉ, fond/bordure/TEXTE colorés. Le tireté la distingue de TOUTE autre puce (toutes en plein).
+ * Visuel PARTAGÉ entre l'affichage du TERME (« FOR », `RefChip`) et d'une VALEUR (« 3 »,
+ * `AbilityValueChip`) : c'est la NORME d'affichage d'une caractéristique, terme comme valeur.
+ */
+function AbilityChipBox({
+  ability,
+  title,
+  children,
+}: {
+  ability: AbilityId;
+  title: string;
+  children: ReactNode;
+}) {
+  const color = ABILITY_COLORS[ability];
+  return (
+    <AppTooltip title={title}>
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-block',
+          verticalAlign: 'baseline',
+          px: 0.6,
+          mx: 0.2,
+          borderRadius: 0.75,
+          fontWeight: 700,
+          fontSize: '0.95em',
+          letterSpacing: 0.3,
+          lineHeight: 1.4,
+          cursor: 'help',
+          color,
+          bgcolor: alpha(color, 0.12),
+          border: 1,
+          borderStyle: 'dashed',
+          borderColor: alpha(color, 0.55),
+        }}
+      >
+        {children}
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
+ * Affiche la VALEUR courante d'une caractéristique (ex. « 3 ») dans la puce de cette caractéristique
+ * (couleur propre + tireté) — norme d'affichage compact d'une carac là où l'espace manque (expression
+ * de DM d'arme). Info-bulle = nom complet + valeur (« Force (FOR) = 3 »).
+ */
+export function AbilityValueChip({ ability, value }: { ability: AbilityId; value: number }) {
+  return (
+    <AbilityChipBox ability={ability} title={`${ABILITY_NAMES[ability]} = ${value}`}>
+      {value}
+    </AbilityChipBox>
+  );
+}
+
 function RefChip({
   label,
   title,
@@ -73,36 +130,12 @@ function RefChip({
   /** Caractéristique concernée quand `tone === 'ability'` : détermine la teinte propre (PER-224). */
   ability?: AbilityId;
 }) {
-  // CARACTÉRISTIQUE (PER-224) → teinte propre (source unique `ABILITY_COLORS`) + contour TIRETÉ,
-  // fond/bordure/TEXTE colorés : le tireté la distingue de TOUTE autre puce (toutes en plein),
-  // ce qui libère le choix des teintes même quand elles frôlent une couleur déjà employée.
+  // CARACTÉRISTIQUE (PER-224) → puce tiretée teintée (visuel partagé `AbilityChipBox`).
   if (tone === 'ability' && ability) {
-    const color = ABILITY_COLORS[ability];
     return (
-      <AppTooltip title={title}>
-        <Box
-          component="span"
-          sx={{
-            display: 'inline-block',
-            verticalAlign: 'baseline',
-            px: 0.6,
-            mx: 0.2,
-            borderRadius: 0.75,
-            fontWeight: 700,
-            fontSize: '0.95em',
-            letterSpacing: 0.3,
-            lineHeight: 1.4,
-            cursor: 'help',
-            color,
-            bgcolor: alpha(color, 0.12),
-            border: 1,
-            borderStyle: 'dashed',
-            borderColor: alpha(color, 0.55),
-          }}
-        >
-          {label}
-        </Box>
-      </AppTooltip>
+      <AbilityChipBox ability={ability} title={title}>
+        {label}
+      </AbilityChipBox>
     );
   }
   // Stat dérivée (« DEF », « PV », jet d'attaque) → ambre/orange pâle (`warning`), contour PLEIN,

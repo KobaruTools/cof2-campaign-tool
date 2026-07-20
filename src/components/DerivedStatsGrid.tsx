@@ -201,7 +201,6 @@ export function DerivedStatsGrid({
                   />
                 }
                 abilities={input.abilities}
-                level={input.level}
                 unarmed={unarmedStrike}
                 meleeWeaponDamage={meleeWeaponDamage ?? null}
                 weaponCriticalRanges={meleeCriticalRanges ?? []}
@@ -233,7 +232,6 @@ export function DerivedStatsGrid({
                   />
                 }
                 abilities={input.abilities}
-                level={input.level}
                 rangedWeaponDamage={rangedWeaponDamage}
                 criticalRanges={rangedCriticalRanges ?? []}
                 situationalBonuses={rangedSituationalDamage ?? []}

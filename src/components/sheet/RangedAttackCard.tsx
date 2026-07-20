@@ -25,7 +25,6 @@ export interface RangedAttackCardProps {
   statHint: ReactNode;
   /** Caractéristiques effectives (résolution dynamique des DM). */
   abilities: Abilities;
-  level: number;
   /** DM de l'arme à distance équipée. `null` = aucune arme à distance en main. */
   rangedWeaponDamage: WeaponDamageView | null;
   /** Badges de plage de critique à distance. */
@@ -46,7 +45,6 @@ export function RangedAttackCard({
   forced,
   statHint,
   abilities,
-  level,
   rangedWeaponDamage,
   criticalRanges,
   situationalBonuses,
@@ -106,7 +104,6 @@ export function RangedAttackCard({
                     abilities={rangedWeaponDamage.abilities}
                     flat={rangedWeaponDamage.flat}
                     charAbilities={abilities}
-                    level={level}
                   />
                 ) : (
                   <NoWeaponHint />

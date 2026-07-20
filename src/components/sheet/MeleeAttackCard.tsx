@@ -30,7 +30,6 @@ function Face({
   touch,
   forced,
   abilities,
-  level,
   unarmed,
   meleeWeaponDamage,
   weaponCriticalRanges,
@@ -41,7 +40,6 @@ function Face({
   touch: number | null;
   forced: boolean;
   abilities: Abilities;
-  level: number;
   unarmed: UnarmedStrikeView;
   meleeWeaponDamage: MeleeWeaponDamageView | null;
   weaponCriticalRanges: DefenseBadgeData[];
@@ -98,7 +96,6 @@ function Face({
                     abilities={meleeWeaponDamage.abilities}
                     flat={meleeWeaponDamage.flat}
                     charAbilities={abilities}
-                    level={level}
                   />
                 ) : (
                   <NoWeaponHint />
@@ -108,7 +105,6 @@ function Face({
                   dice={unarmedDice}
                   abilities={unarmed.damageAbilities}
                   charAbilities={abilities}
-                  level={level}
                 />
               )}
             </Box>
@@ -158,7 +154,6 @@ export interface MeleeAttackCardProps {
   statHint: ReactNode;
   /** Caractéristiques effectives du personnage (résolution dynamique des DM). */
   abilities: Abilities;
-  level: number;
   /** Vue « mains nues » (moteur `unarmedStrike`). */
   unarmed: UnarmedStrikeView;
   /** DM de l'arme de contact équipée (mode « arme »). `null` = aucune arme portée. */
@@ -195,7 +190,6 @@ export function MeleeAttackCard({
   forced,
   statHint,
   abilities,
-  level,
   unarmed,
   meleeWeaponDamage,
   weaponCriticalRanges,
@@ -209,7 +203,6 @@ export function MeleeAttackCard({
     touch,
     forced,
     abilities,
-    level,
     unarmed,
     meleeWeaponDamage,
     weaponCriticalRanges,
