@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per115-rodeur-arbalete",
+  "name": "Recette PER-115 — Rôdeur, arbalète (contrôle négatif)",
+  "identity": {
+    "description": "ATTENDU — Carte Attaque à distance : « 2d4 » SEUL, aucune carac (Archer émérite ne s’applique qu’à l’ARC, pas à l’arbalète, p. 70/185). Contraste avec le rôdeur archer."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "rodeur",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 3,
+    "CON": 1,
+    "FOR": 1,
+    "PER": 4,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 3,
+    "CON": 1,
+    "FOR": 1,
+    "PER": 4,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "archer-r1",
+    "archer-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "arbalete-legere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-115 : contrôle négatif du câblage rangedKind (crossbow ≠ bow).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

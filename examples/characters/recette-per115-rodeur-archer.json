@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per115-rodeur-archer",
+  "name": "Recette PER-115 — Rôdeur archer (Archer émérite)",
+  "identity": {
+    "description": "ATTENDU — Carte Attaque à distance : « 1d8 + PER » (PER=4, Archer émérite ajoute PER aux DM à l’arc, p. 70). Carte Attaque au contact : « 1d6 + FOR » (épée courte, règle de base). Aucun badge situationnel."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "rodeur",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 3,
+    "CON": 1,
+    "FOR": 1,
+    "PER": 4,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 3,
+    "CON": 1,
+    "FOR": 1,
+    "PER": 4,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "archer-r1",
+    "archer-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "arc-long",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "epee-courte",
+      "quantity": 1,
+      "worn": {
+        "slot": "offHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-115 : +PER aux DM à l’arc (permanent, agrégé). Distance sans carac de base (p. 185).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
