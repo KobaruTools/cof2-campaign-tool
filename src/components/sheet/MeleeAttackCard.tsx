@@ -225,9 +225,12 @@ export function MeleeAttackCard({
     return {
       position: 'absolute',
       inset: 0,
-      transition: 'transform 260ms ease, opacity 260ms ease',
+      transition: 'transform 260ms ease, opacity 260ms ease, filter 260ms ease',
       transform: front ? 'none' : 'translate(9px, 11px) scale(0.97)',
-      opacity: front ? 1 : 0.5,
+      // Le cadre arrière est nettement flouté : on ne devine plus que sa silhouette derrière
+      // le cadre actif (au lieu d'éléments nets tronqués, peu lisibles).
+      filter: front ? 'none' : 'blur(4px)',
+      opacity: front ? 1 : 0.45,
       zIndex: front ? 2 : 1,
       pointerEvents: front ? 'auto' : 'none',
     } as const;
