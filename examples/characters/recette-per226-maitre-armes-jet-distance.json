@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per226-maitre-armes-jet-distance",
+  "name": "Recette PER-226 — Maître d’armes (armes de jet, à distance)",
+  "identity": {
+    "description": "ATTENDU : guerrier maître d'armes (voie r1-r5) ayant choisi « armes de jet » + « +1 DM » ×1 (budget 2). Il tient des COUTEAUX DE LANCER (arme de jet, famille 'thrown'). Carte Attaque à DISTANCE : la touche inclut +1 (fondu dans le score, détaillé dans l'infobulle « i ») ET DM « 1d4 + 1 » (aucune carac de base à distance, p. 185, + le +1 DM de Spécialisation). Montre que le +1 att / +DM du maître d'armes s'applique aussi aux armes de jet, à distance."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 9,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "maitre-d-armes-r1",
+    "maitre-d-armes-r2",
+    "maitre-d-armes-r3",
+    "maitre-d-armes-r4",
+    "maitre-d-armes-r5"
+  ],
+  "featureChoices": {
+    "maitre-d-armes-r1": [
+      [
+        "thrown",
+        "dm-bonus"
+      ]
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "couteaux-de-lancer",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-226 — +1 att + +1 DM à distance avec une arme de jet de prédilection.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

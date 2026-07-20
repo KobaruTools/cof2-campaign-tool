@@ -1623,8 +1623,10 @@ export const fighterFeatures: Feature[] = [
       'Le guerrier choisit une catégorie d’armes de prédilection parmi épées, haches, mains nues, masses, lances (épieu, lance, pique) et enfin armes de jet (dague de lancer, javelot, etc.), et il gagne +1 en attaque lorsqu’il l’utilise une arme de cette catégorie. De plus, vous ajoutez votre rang + 2 à tous les tests destinés à estimer la valeur d’une arme ou la réputation martiale d’un adversaire.',
     // PER-66 : CHOIX d'option (6 catégories d'armes de prédilection). PER-89 : bonus de compétence
     // INCONDITIONNEL au domaine connaissance martiale (`martial-lore`, « estimer la valeur d'une arme
-    // ou la réputation martiale d'un adversaire ») — « votre rang + 2 » → [rang + 2]. Le +1 en attaque
-    // avec une arme de la catégorie choisie dépend du TYPE d'arme porté → WIP (PER-136 / PER-115).
+    // ou la réputation martiale d'un adversaire ») — « votre rang + 2 » → [rang + 2]. PER-226 : le +1 en
+    // attaque est un effet `attack-bonus` conditionné aux familles de prédilection CHOISIES (ce même
+    // choix, index 0) et à l'arme réellement portée (`weaponFamiliesFromChoice`) — contact OU distance
+    // (arme de jet), câblage AUTOMATIQUE sans interrupteur, comme la Science du critique (PER-136).
     // PER-72 : le choix est RÉPÉTABLE et regroupe ICI tout le système d'armes de prédilection (lecture) :
     // `base: 1` = la catégorie de base (toujours, dès le rang 1) ; `requiresFeatureId: maitre-d-armes-r3`
     // débloque les picks supplémentaires (Spécialisation) — chaque voie de guerrier au rang 5 ajoute un
@@ -1655,8 +1657,17 @@ export const fighterFeatures: Feature[] = [
         ],
       },
     ],
-    effects: [{ kind: 'test-bonus', domains: ['martial-lore'] }],
-    wip: "+1 en attaque avec une arme de la catégorie de prédilection — bonus dépendant du type d'arme porté, câblage différé à la milestone Armures (PER-136 / PER-115).",
+    effects: [
+      { kind: 'test-bonus', domains: ['martial-lore'] },
+      // PER-226 : +1 en attaque avec une arme d'une famille de prédilection retenue (choix index 0).
+      // Pas d'`attackMode` → s'applique au contact comme à distance (armes de jet). Actif d'après l'arme
+      // portée (`weaponAttackBonuses`) : aucune famille retenue / arme hors familles → aucun bonus.
+      {
+        kind: 'attack-bonus',
+        value: 1,
+        condition: { weaponFamiliesFromChoice: { choiceFeatureId: 'maitre-d-armes-r1' } },
+      },
+    ],
     sourcePage: 88,
   },
   {
@@ -1692,10 +1703,18 @@ export const fighterFeatures: Feature[] = [
     // PER-72 : cette capacité DÉBLOQUE les picks supplémentaires du choix « Armes de prédilection »
     // (maitre-d-armes-r1, `requiresFeatureId: maitre-d-armes-r3`) — catégories additionnelles + « +1 DM »
     // par voie de guerrier au rang 5. Le CHOIX est hébergé sur r1 (lecture regroupée du système de
-    // prédilection), pas ici. Reste WIP ici : le CALCUL effectif du +DM (jusqu'à +6) dépend de l'arme
-    // PORTÉE → différé à la milestone Armures (PER-136 / PER-115). « avantages des rangs 1 à 3 » pour
-    // une catégorie additionnelle : non câblé (att/critique/DM dépendent aussi de l'arme portée).
-    wip: "Bonus de +1 DM (jusqu'à +6) avec une arme de prédilection — calcul dépendant de l'arme portée, différé à la milestone Armures (PER-136 / PER-115). Le CHOIX (catégories additionnelles + « +1 DM » débloquées par cette capacité) est modélisé sur Armes de prédilection (maitre-d-armes-r1).",
+    // prédilection), pas ici. PER-226 : le +DM (jusqu'à +6) est un `weapon-damage-bonus` PLAT dont la
+    // valeur = nombre de « +1 DM » (`dm-bonus`) retenus sur ce choix (index 0), plafonné à 6, appliqué
+    // à l'arme portée si elle appartient à une famille de prédilection retenue. Agrégé à l'expression de
+    // DM comme la carac de base. « avantages des rangs 1 à 3 » pour une catégorie additionnelle : le +1
+    // att / la Science du critique suivent d'eux-mêmes l'arme portée (r1/r2 lisent les MÊMES familles).
+    effects: [
+      {
+        kind: 'weapon-damage-bonus',
+        flat: { featureId: 'maitre-d-armes-r1', choiceIndex: 0, optionId: 'dm-bonus', max: 6 },
+        condition: { weaponFamiliesFromChoice: { choiceFeatureId: 'maitre-d-armes-r1' } },
+      },
+    ],
     sourcePage: 89,
   },
   {

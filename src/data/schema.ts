@@ -485,7 +485,8 @@ export type FeatureEffect =
   | ImmunityEffect
   | ArmorAccessEffect
   | ArmorDefBonusEffect
-  | WeaponDamageBonusEffect;
+  | WeaponDamageBonusEffect
+  | AttackBonusEffect;
 
 /**
  * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
@@ -1067,6 +1068,15 @@ export interface WeaponDamageCondition {
    * = `label` reste tel quel.
    */
   appendChoiceLabels?: number;
+  /**
+   * L'arme portée doit appartenir à une des FAMILLES de prédilection choisies sur la capacité
+   * `choiceFeatureId` (choix `option` à l'index 0, ids = `MasterAtArmsCategory` — ex. Armes de
+   * prédilection `maitre-d-armes-r1`), comparées aux `weaponFamilies` de l'arme. Miroir de
+   * `WeaponCriticalCondition.weaponFamiliesFromChoice` (PER-136) pour le +1 en attaque / +DM du
+   * maître d'armes (PER-72/PER-226). Implique une arme (du bon mode) en main. Absent = aucune
+   * contrainte de famille.
+   */
+  weaponFamiliesFromChoice?: { choiceFeatureId: string };
 }
 
 /**
@@ -1086,14 +1096,53 @@ export interface WeaponDamageCondition {
  */
 export interface WeaponDamageBonusEffect {
   kind: 'weapon-damage-bonus';
-  /** Caractéristique ajoutée aux DM (ex. `'PER'`, `'AGI'`, `'FOR'`). Exclusif avec `dice`. */
+  /** Caractéristique ajoutée aux DM (ex. `'PER'`, `'AGI'`, `'FOR'`). Exclusif avec `dice`/`flat`. */
   ability?: AbilityId;
-  /** Dé(s) de DM ajoutés, situationnels (ex. +1d4°). Exclusif avec `ability`. */
+  /** Dé(s) de DM ajoutés, situationnels (ex. +1d4°). Exclusif avec `ability`/`flat`. */
   dice?: { count: number; die: DamageDie; evolving?: boolean };
+  /**
+   * Bonus PLAT (entier) aux DM, agrégé à l'expression comme une carac. Valeur FIXE (nombre) ou
+   * dérivée du NOMBRE d'instances retenues d'une option répétable d'un choix (Spécialisation du
+   * maître d'armes : « +1 DM » ×N, plafonné à +6 — PER-72/PER-226). Exclusif avec `ability`/`dice`.
+   */
+  flat?: number | WeaponDamageFlatFromChoice;
   /** Condition d'application (mode d'attaque, type d'arme, libellé situationnel). */
   condition: WeaponDamageCondition;
   /** Bonus SITUATIONNEL (badge séparé) au lieu de permanent (agrégé au DM). Défaut `false`. */
   situational?: boolean;
+}
+
+/**
+ * Bonus plat aux DM dérivé du NOMBRE d'instances retenues d'une option répétable d'un choix
+ * `option` (PER-72). Ex. Spécialisation du maître d'armes : chaque « +1 DM » (`optionId: 'dm-bonus'`)
+ * retenu sur `maitre-d-armes-r1` (choix index 0) ajoute +1, plafonné par `max` (6). Résolu par le
+ * moteur au rendu depuis `Character.featureChoices`.
+ */
+export interface WeaponDamageFlatFromChoice {
+  /** Capacité portant le choix `option` répétable. */
+  featureId: string;
+  /** Index du choix sur la capacité. */
+  choiceIndex: number;
+  /** Id de l'option répétable dont on compte les instances (ex. `'dm-bonus'`). */
+  optionId: string;
+  /** Plafond du bonus (ex. 6). Absent = aucun plafond. */
+  max?: number;
+}
+
+/**
+ * Bonus à la VALEUR D'ATTAQUE (touche), conditionné au type d'arme réellement portée (PER-72/PER-226).
+ * Ex. maître d'armes r1 : « +1 en attaque avec une arme de prédilection » ; nain « Haches et
+ * marteaux » (PER-154) : +1 avec hache/marteau. Le mode (contact/distance) et le type d'arme sont
+ * filtrés par `condition` — la MÊME que `weapon-damage-bonus`. Agrégé par `weaponAttackBonuses`, puis
+ * ajouté à la touche de la carte d'attaque du mode concerné. Distinct d'un `stat-bonus meleeAttack`
+ * (inconditionnel, global) : ce bonus-ci ne s'applique que si une arme du bon type est en main.
+ */
+export interface AttackBonusEffect {
+  kind: 'attack-bonus';
+  /** Valeur du bonus (constante — ex. +1 —, ou scalante par rang de voie). */
+  value: EffectValue;
+  /** Condition d'application (mode d'attaque + type d'arme). Cf. `WeaponDamageCondition`. */
+  condition: WeaponDamageCondition;
 }
 
 export interface TestBonusEffect {

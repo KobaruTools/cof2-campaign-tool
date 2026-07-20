@@ -89,6 +89,7 @@ describe('buildCharacterDerivedView', () => {
     expect(view.meleeWeaponDamage).toEqual({
       dice: '1d8',
       abilities: ['FOR'],
+      flat: 0,
       nonLethal: false,
       name: 'Épée longue',
     });
@@ -103,6 +104,7 @@ describe('buildCharacterDerivedView', () => {
     expect(view.rangedWeaponDamage).toEqual({
       dice: '1d8',
       abilities: [],
+      flat: 0,
       nonLethal: false,
       name: 'Arc long',
     });

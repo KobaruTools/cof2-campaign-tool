@@ -36,6 +36,8 @@ import {
   type AttackMode,
   type SituationalDamageBonus,
 } from '@/lib/character/weaponDamageBonus';
+import { weaponAttackBonuses } from '@/lib/character/attackBonus';
+import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { unarmedStrike, type UnarmedStrikeView } from '@/lib/character/unarmedStrike';
 import type { AbilityId, Weapon } from '@/data/schema';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
@@ -58,6 +60,11 @@ export interface WeaponDamageView {
    * vide de base (aucune carac, p. 185) + bonus permanents (Archer émérite : `['PER']`).
    */
   abilities: AbilityId[];
+  /**
+   * Bonus PLAT permanent ajouté aux DM par les capacités (ex. Spécialisation du maître d'armes,
+   * +N selon l'arme portée — PER-226). 0 si aucun. Rendu « +N » après les caracs dans l'expression.
+   */
+  flat: number;
   /** DM non létal (arme aux « DM temporaires possibles » : gourdin, bâton…). */
   nonLethal: boolean;
   /** Nom de l'arme (libellé + tooltip). */
@@ -102,8 +109,10 @@ function wornWeaponDamage(character: Character, mode: AttackMode): WeaponDamageV
   // Carac de base : FOR au contact (p. 183), aucune à distance (p. 185). Les capacités ajoutent
   // leurs bonus PERMANENTS par-dessus (Archer émérite : +PER à l'arc).
   const baseAbilities: AbilityId[] = mode === 'melee' ? ['FOR'] : [];
-  const added = weaponDamageBonuses(character, mode, item).addedAbilities.map((b) => b.ability);
-  return { dice, abilities: [...baseAbilities, ...added], nonLethal: !!dmg.nonLethal, name: item.name };
+  const bonuses = weaponDamageBonuses(character, mode, item);
+  const added = bonuses.addedAbilities.map((b) => b.ability);
+  const flat = bonuses.addedFlat.reduce((sum, b) => sum + b.value, 0);
+  return { dice, abilities: [...baseAbilities, ...added], flat, nonLethal: !!dmg.nonLethal, name: item.name };
 }
 
 export interface CharacterDerivedView {
@@ -131,6 +140,13 @@ export interface CharacterDerivedView {
   meleeSituationalDamage: SituationalDamageBonus[];
   /** PER-115 — bonus de DM SITUATIONNELS à distance (Chasseur émérite…), en badges. */
   rangedSituationalDamage: SituationalDamageBonus[];
+  /**
+   * PER-226 — sous-termes de breakdown des bonus à la touche conditionnés à l'arme portée (maître
+   * d'armes : +1 au contact / à distance avec une arme de prédilection). Le TOTAL est déjà FONDU dans
+   * `derivedInput.mods` (donc dans le score affiché) — ceci ne sert qu'à l'attribution dans l'infobulle
+   * « i » de la touche (aucun badge : interface légère, décision propriétaire).
+   */
+  attackBonusModSources: ModSources;
 }
 
 /**
@@ -230,6 +246,24 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const rangedWorn = wornWeaponForMode(character, 'ranged')?.item ?? null;
   const meleeSituationalDamage = weaponDamageBonuses(character, 'melee', meleeWorn).situational;
   const rangedSituationalDamage = weaponDamageBonuses(character, 'ranged', rangedWorn).situational;
+  // Bonus à la touche conditionnés à l'arme portée (PER-226) : maître d'armes +1 au contact avec une
+  // arme de prédilection, +1 à distance avec une arme de jet de prédilection. Le total est FONDU dans
+  // les mods (score) plus bas ; on garde le détail des sources pour l'infobulle de la touche.
+  const meleeAttackBonus = weaponAttackBonuses(character, 'melee', meleeWorn);
+  const rangedAttackBonus = weaponAttackBonuses(character, 'ranged', rangedWorn);
+  const attackBonusModSources: ModSources = {};
+  if (meleeAttackBonus.sources.length)
+    attackBonusModSources.meleeAttack = meleeAttackBonus.sources.map((s) => ({
+      label: s.name,
+      value: s.value,
+      featureId: s.featureId,
+    }));
+  if (rangedAttackBonus.sources.length)
+    attackBonusModSources.rangedAttack = rangedAttackBonus.sources.map((s) => ({
+      label: s.name,
+      value: s.value,
+      featureId: s.featureId,
+    }));
   // Plage de critique au contact ACTIVE à mains nues (Morsure du serpent) : construite depuis
   // la vue mains nues (indépendante de l'interrupteur manuel de la vue « arme »).
   const unarmedCriticalRanges: DefenseBadgeData[] =
@@ -273,8 +307,12 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         spellCount: modFeatureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
         manaAbility: manaCast.ability,
         // Bonus des capacités acquises (PER-63) + empruntées par choix (PER-66), fusionnés avec les
-        // points de capacité orphelins convertis (p. 40).
-        mods: mergeMods(modsFromFeatures(modFeatureIds, effectCtx), orphanMods(character)),
+        // points de capacité orphelins convertis (p. 40) ET les bonus à la touche conditionnés à
+        // l'arme portée (maître d'armes, PER-226) — fondus dans le score, détaillés dans l'infobulle.
+        mods: mergeMods(modsFromFeatures(modFeatureIds, effectCtx), orphanMods(character), {
+          meleeAttack: meleeAttackBonus.total,
+          rangedAttack: rangedAttackBonus.total,
+        }),
         // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique au mono-famille sinon.
         hpFamilyGains: familyHpGains(character, rulesContext),
         // PV de base d'un profil hybride créé au niveau 1 (somme des deux familles, p. 180).
@@ -299,5 +337,6 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     rangedWeaponDamage,
     meleeSituationalDamage,
     rangedSituationalDamage,
+    attackBonusModSources,
   };
 }

@@ -168,6 +168,23 @@ export function getOptionSelections(
 }
 
 /**
+ * L'arme portée (via ses `weaponFamilies`) partage-t-elle au moins une des FAMILLES de prédilection
+ * retenues sur le choix `option` à l'index 0 de `choiceFeatureId` (PER-136/PER-226) ? Helper partagé
+ * par la plage de critique (`weaponCriticalConditionMet`, effects.ts) et les bonus d'attaque/DM
+ * conditionnés à l'arme (weaponDamageBonus/attackBonus), pour éviter la duplication du même filtrage.
+ * Prend les familles en `string[]` (pas de dépendance au type `Weapon`).
+ */
+export function weaponFamiliesMatchChoice(
+  character: Character,
+  families: readonly string[] | undefined,
+  choiceFeatureId: string,
+): boolean {
+  if (!families?.length) return false;
+  const selected = getOptionSelections(character, choiceFeatureId, 0);
+  return families.some((f) => selected.includes(f));
+}
+
+/**
  * Sélection d'un choix `custom-skill` (PER-73) décomposée : le NOM libre saisi (gagne-pain) et
  * les ids de domaines de test retenus. La sélection est persistée en `[nom, ...domaines]`. Tolère
  * une saisie absente ou partielle : nom vide, domaines manquants ; les entrées vides sont filtrées.

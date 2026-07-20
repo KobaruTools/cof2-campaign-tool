@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per226-maitre-armes-masse-controle",
+  "name": "Recette PER-226 — Maître d’armes (masse, contrôle négatif)",
+  "identity": {
+    "description": "ATTENDU (contrôle négatif) : même maître d'armes que la variante « épée » (prédilection « épées » + « +1 DM » ×2), mais il tient une MASSE (famille 'maces', HORS prédilection). Aucun bonus : pas de +1 en touche, DM « 1d6 + FOR » sans +DM, pas de plage de critique élargie. Prouve que les bonus suivent l'arme portée."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 12,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "maitre-d-armes-r1",
+    "maitre-d-armes-r2",
+    "maitre-d-armes-r3",
+    "maitre-d-armes-r4",
+    "maitre-d-armes-r5",
+    "combat-r1",
+    "combat-r2",
+    "combat-r3",
+    "combat-r4",
+    "combat-r5"
+  ],
+  "featureChoices": {
+    "maitre-d-armes-r1": [
+      [
+        "swords",
+        "dm-bonus",
+        "dm-bonus"
+      ]
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "masse",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-226 — contrôle négatif : arme hors prédilection → aucun bonus.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -48,13 +48,14 @@ const weapon = (id: string): Weapon => {
 
 const arcLong = weapon('arc-long'); // rangedKind 'bow'
 const arbaleteLegere = weapon('arbalete-legere'); // rangedKind 'crossbow'
-const epeeLongue = weapon('epee-longue'); // arme de contact
+const epeeLongue = weapon('epee-longue'); // arme de contact, famille 'swords'
+const masse = weapon('masse'); // arme de contact, famille 'maces' (contrôle négatif)
 
 describe('weaponDamageBonuses — règle de base (aucune capacité)', () => {
   it('sans capacité : aucun bonus, quel que soit le mode/arme', () => {
     const c = makeCharacter();
-    expect(weaponDamageBonuses(c, 'ranged', arcLong)).toEqual({ addedAbilities: [], situational: [] });
-    expect(weaponDamageBonuses(c, 'melee', epeeLongue)).toEqual({ addedAbilities: [], situational: [] });
+    expect(weaponDamageBonuses(c, 'ranged', arcLong)).toEqual({ addedAbilities: [], addedFlat: [], situational: [] });
+    expect(weaponDamageBonuses(c, 'melee', epeeLongue)).toEqual({ addedAbilities: [], addedFlat: [], situational: [] });
   });
 });
 
@@ -84,7 +85,11 @@ describe('weaponDamageBonuses — Archer émérite (+PER à l\'arc, permanent)',
 describe('weaponDamageBonuses — Attaque éclair (bonus à ACTIVATION, non modélisé)', () => {
   it('traqueur-r2 : aucun badge — le +AGI relève d\'une capacité activée, pas de l\'attaque régulière', () => {
     const traqueur = makeCharacter({ featureIds: ['traqueur-r2'] });
-    expect(weaponDamageBonuses(traqueur, 'melee', epeeLongue)).toEqual({ addedAbilities: [], situational: [] });
+    expect(weaponDamageBonuses(traqueur, 'melee', epeeLongue)).toEqual({
+      addedAbilities: [],
+      addedFlat: [],
+      situational: [],
+    });
   });
 });
 
@@ -114,5 +119,48 @@ describe('weaponDamageBonuses — Chasseur émérite (+1d4° situationnel, les d
   it('sans ennemi juré choisi : libellé de base seul', () => {
     const label = weaponDamageBonuses(traqueur, 'melee', epeeLongue).situational[0].conditionLabel;
     expect(label).toBe('contre les animaux (même géants)');
+  });
+});
+
+describe('weaponDamageBonuses — Spécialisation du maître d\'armes (+N DM plat, PER-226)', () => {
+  // Guerrier maître d'armes r1+r3, prédilection « Épées » + « +1 DM » ×2 (budget de Spécialisation).
+  const maitre = makeCharacter({
+    classId: 'guerrier',
+    featureIds: ['maitre-d-armes-r1', 'maitre-d-armes-r3'],
+    featureChoices: { 'maitre-d-armes-r1': [['swords', 'dm-bonus', 'dm-bonus']] },
+  });
+
+  it('arme de prédilection en main (épée) → +2 DM plat permanent', () => {
+    const r = weaponDamageBonuses(maitre, 'melee', epeeLongue);
+    expect(r.addedFlat).toHaveLength(1);
+    expect(r.addedFlat[0]).toMatchObject({ value: 2, featureId: 'maitre-d-armes-r3' });
+  });
+
+  it('arme HORS prédilection (masse) → aucun +DM', () => {
+    expect(weaponDamageBonuses(maitre, 'melee', masse).addedFlat).toEqual([]);
+  });
+
+  it('aucune arme en main → aucun +DM', () => {
+    expect(weaponDamageBonuses(maitre, 'melee', null).addedFlat).toEqual([]);
+  });
+
+  it('sans « +1 DM » retenu → aucun +DM (budget dépensé ailleurs)', () => {
+    const sansBonus = makeCharacter({
+      classId: 'guerrier',
+      featureIds: ['maitre-d-armes-r1', 'maitre-d-armes-r3'],
+      featureChoices: { 'maitre-d-armes-r1': [['swords']] },
+    });
+    expect(weaponDamageBonuses(sansBonus, 'melee', epeeLongue).addedFlat).toEqual([]);
+  });
+
+  it('plafonné à +6 même si davantage de « +1 DM » sont retenus', () => {
+    const surbudget = makeCharacter({
+      classId: 'guerrier',
+      featureIds: ['maitre-d-armes-r1', 'maitre-d-armes-r3'],
+      featureChoices: {
+        'maitre-d-armes-r1': [['swords', ...Array<string>(8).fill('dm-bonus')]],
+      },
+    });
+    expect(weaponDamageBonuses(surbudget, 'melee', epeeLongue).addedFlat[0]).toMatchObject({ value: 6 });
   });
 });

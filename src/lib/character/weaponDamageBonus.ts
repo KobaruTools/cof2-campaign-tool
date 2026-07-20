@@ -11,9 +11,20 @@
  * Fonction PURE : aucune dépendance à React, aucun jet (on affiche, on ne résout pas le combat).
  */
 import { featureById } from '@/data';
-import type { AbilityId, DamageDie, Weapon, WeaponDamageBonusEffect } from '@/data/schema';
+import type {
+  AbilityId,
+  DamageDie,
+  Weapon,
+  WeaponDamageBonusEffect,
+  WeaponDamageCondition,
+  WeaponDamageFlatFromChoice,
+} from '@/data/schema';
 import { activeFeatureIdsForMods } from '@/lib/character/effects';
-import { getOptionSelections } from '@/lib/character/choices';
+import {
+  getOptionSelections,
+  splitRepeatableSelections,
+  weaponFamiliesMatchChoice,
+} from '@/lib/character/choices';
 import type { Character } from '@/lib/character/types';
 
 /** Mode d'attaque considéré. */
@@ -31,6 +42,11 @@ export interface PermanentAbilityBonus extends WeaponDamageBonusSource {
   ability: AbilityId;
 }
 
+/** Bonus PLAT PERMANENT (entier) retenu (agrégé au DM de l'arme portée, ex. +2 de Spécialisation). */
+export interface PermanentFlatBonus extends WeaponDamageBonusSource {
+  value: number;
+}
+
 /** Bonus SITUATIONNEL (carac ou dé(s)) rendu en badge distinct. */
 export interface SituationalDamageBonus extends WeaponDamageBonusSource {
   /** Caractéristique ajoutée (exclusif avec `dice`). */
@@ -44,16 +60,23 @@ export interface SituationalDamageBonus extends WeaponDamageBonusSource {
 export interface WeaponDamageBonusResult {
   /** Caracs permanentes à AJOUTER à l'expression de DM (ordre stable = ordre des capacités). */
   addedAbilities: PermanentAbilityBonus[];
+  /** Bonus PLATS permanents (entiers) à AJOUTER à l'expression de DM (ex. +2 Spécialisation). */
+  addedFlat: PermanentFlatBonus[];
   /** Bonus situationnels à afficher en badges. */
   situational: SituationalDamageBonus[];
 }
 
 /**
- * L'arme portée satisfait-elle la contrainte de TYPE de la condition (sous-type à distance /
- * catégorie de contact) ? Une contrainte de type sur une main VIDE (pas d'arme, ou arme du mauvais
- * mode) n'est jamais satisfaite. Sans contrainte de type, toute arme (voire aucune) convient.
+ * L'arme portée satisfait-elle la contrainte de TYPE d'une condition d'arme (sous-type à distance,
+ * catégorie de contact, ou familles de prédilection choisies) ? Une contrainte sur une main VIDE
+ * (pas d'arme, ou arme du mauvais mode) n'est jamais satisfaite. Sans contrainte, toute arme (voire
+ * aucune) convient. Partagé par les bonus de DM (`weaponDamageBonuses`) et d'attaque (`attackBonus`).
  */
-function weaponMatchesType(cond: WeaponDamageBonusEffect['condition'], weapon: Weapon | null): boolean {
+export function weaponConditionMet(
+  cond: WeaponDamageCondition,
+  weapon: Weapon | null,
+  character: Character,
+): boolean {
   if (cond.rangedKinds && cond.rangedKinds.length > 0) {
     if (!weapon || !weapon.ranged || !weapon.rangedKind) return false;
     if (!cond.rangedKinds.includes(weapon.rangedKind)) return false;
@@ -62,7 +85,23 @@ function weaponMatchesType(cond: WeaponDamageBonusEffect['condition'], weapon: W
     if (!weapon || !weapon.melee) return false;
     if (!cond.weaponCategories.includes(weapon.weaponCategory)) return false;
   }
+  if (cond.weaponFamiliesFromChoice) {
+    if (!weapon) return false;
+    if (!weaponFamiliesMatchChoice(character, weapon.weaponFamilies, cond.weaponFamiliesFromChoice.choiceFeatureId))
+      return false;
+  }
   return true;
+}
+
+/**
+ * Valeur numérique d'un bonus plat aux DM (`weapon-damage-bonus.flat`) : soit la constante, soit le
+ * NOMBRE d'instances retenues de l'option répétable visée (Spécialisation « +1 DM » ×N), plafonné.
+ */
+function resolveFlat(character: Character, flat: number | WeaponDamageFlatFromChoice): number {
+  if (typeof flat === 'number') return flat;
+  const { repeatCounts } = splitRepeatableSelections(character, flat.featureId, flat.choiceIndex);
+  const count = repeatCounts[flat.optionId] ?? 0;
+  return flat.max === undefined ? count : Math.min(count, flat.max);
 }
 
 /**
@@ -98,6 +137,7 @@ export function weaponDamageBonuses(
   weapon: Weapon | null,
 ): WeaponDamageBonusResult {
   const addedAbilities: PermanentAbilityBonus[] = [];
+  const addedFlat: PermanentFlatBonus[] = [];
   const situational: SituationalDamageBonus[] = [];
 
   for (const featureId of activeFeatureIdsForMods(character)) {
@@ -118,7 +158,7 @@ export function weaponDamageBonuses(
       if (effect.situational) {
         // Situationnel : le badge est informatif. On respecte tout de même une contrainte de TYPE
         // d'arme si elle est déclarée (rare), pour ne pas proposer un bonus « à l'arc » sans arc.
-        if (!weaponMatchesType(condition, weapon)) continue;
+        if (!weaponConditionMet(condition, weapon, character)) continue;
         situational.push({
           ...source,
           ability: effect.ability,
@@ -127,11 +167,15 @@ export function weaponDamageBonuses(
         });
       } else {
         // Permanent : n'est agrégé au DM que si une arme satisfait la condition de type.
-        if (!weaponMatchesType(condition, weapon)) continue;
+        if (!weaponConditionMet(condition, weapon, character)) continue;
         if (effect.ability) addedAbilities.push({ ...source, ability: effect.ability });
+        if (effect.flat !== undefined) {
+          const value = resolveFlat(character, effect.flat);
+          if (value > 0) addedFlat.push({ ...source, value });
+        }
       }
     }
   }
 
-  return { addedAbilities, situational };
+  return { addedAbilities, addedFlat, situational };
 }

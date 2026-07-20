@@ -20,11 +20,14 @@ import { RichInline } from '@/components/sheet/FeatureRichText';
 export function WeaponDamageExpr({
   dice,
   abilities,
+  flat = 0,
   charAbilities,
   level,
 }: {
   dice: string;
   abilities: AbilityId[];
+  /** Bonus PLAT permanent ajouté aux DM (ex. Spécialisation du maître d'armes, PER-226). 0 = rien. */
+  flat?: number;
   charAbilities: Abilities;
   level: number;
 }) {
@@ -33,6 +36,11 @@ export function WeaponDamageExpr({
       <DamageValue damage={dice} size={22} />
       {abilities.length > 0 && (
         <RichInline text={`+ [${abilities.join('/')}]`} abilities={charAbilities} level={level} rank={0} />
+      )}
+      {flat > 0 && (
+        <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>
+          + {flat}
+        </Typography>
       )}
     </Box>
   );

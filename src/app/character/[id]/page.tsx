@@ -48,6 +48,7 @@ import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
 import { orphanSourceTerms } from '@/lib/character/orphanPoints';
+import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import {
   abilityBonusDiceFromFeatures,
   abilityBonusDiceSources,
@@ -607,7 +608,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     rangedWeaponDamage,
     meleeSituationalDamage,
     rangedSituationalDamage,
+    attackBonusModSources,
   } = buildCharacterDerivedView(character);
+  // Détail « i » des stats dérivées : points de capacité orphelins convertis (p. 40) + bonus à la
+  // touche conditionnés à l'arme portée (maître d'armes, PER-226), fusionnés par stat. Le TOTAL de
+  // ces derniers est déjà FONDU dans le score (via `derivedInput.mods`) ; ici on n'ajoute que
+  // l'attribution de la source dans l'infobulle (pas de badge).
+  const derivedExtraModSources: ModSources = { ...orphanSourceTerms(character) };
+  for (const [key, list] of Object.entries(attackBonusModSources)) {
+    const k = key as keyof ModSources;
+    derivedExtraModSources[k] = [...(derivedExtraModSources[k] ?? []), ...(list ?? [])];
+  }
   // Modificateurs permanents de caractéristiques et dés bonus apportés par les
   // capacités (mécanique core) — appliqués PAR-DESSUS la valeur saisie des caracs.
   const abilityMods = abilityModsFromFeatures(modFeatureIds, character.featureChoices);
@@ -1053,7 +1064,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 input={derivedInput}
                 featureIds={modFeatureIds}
                 effectContext={effectCtx}
-                extraModSources={orphanSourceTerms(character)}
+                extraModSources={derivedExtraModSources}
                 overrides={character.overrides}
                 onOverride={editingBlocks.derived ? setOverride : undefined}
                 defenseBadges={defenseBadges}

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per226-maitre-armes-epee-specialisation",
+  "name": "Recette PER-226 — Maître d’armes (épée + Spécialisation)",
+  "identity": {
+    "description": "ATTENDU : guerrier maître d'armes (voie r1-r5) + voie du combat r5 → budget de Spécialisation 3, dépensé en « épées » + « +1 DM » ×2. Il tient une ÉPÉE LONGUE (famille 'swords'). Carte Attaque au contact : la touche inclut +1 (fondu dans le score, détaillé dans l'infobulle « i » → « Maître d'armes ») ET DM « 1d8 + FOR + 2 » (Spécialisation, maitre-d-armes-r3), plus plage de critique 19-20 (Science du critique, r2). Tout AUTOMATIQUE d'après l'arme portée."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 12,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "maitre-d-armes-r1",
+    "maitre-d-armes-r2",
+    "maitre-d-armes-r3",
+    "maitre-d-armes-r4",
+    "maitre-d-armes-r5",
+    "combat-r1",
+    "combat-r2",
+    "combat-r3",
+    "combat-r4",
+    "combat-r5"
+  ],
+  "featureChoices": {
+    "maitre-d-armes-r1": [
+      [
+        "swords",
+        "dm-bonus",
+        "dm-bonus"
+      ]
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-226 — +1 att + +2 DM avec une arme de prédilection portée (épée).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

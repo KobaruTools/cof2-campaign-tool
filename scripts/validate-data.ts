@@ -46,6 +46,7 @@ import {
   RESISTIBLE_DAMAGE_TYPES,
   STATUS_EFFECT_IDS,
   WEAPON_CATEGORIES,
+  type WeaponDamageCondition,
 } from '../src/data/schema';
 
 const errors: string[] = [];
@@ -176,6 +177,39 @@ const validRangedKinds = new Set<string>(RANGED_WEAPON_KINDS);
 const validWeaponCategories = new Set<string>(WEAPON_CATEGORIES);
 const validWeaponFamilies = new Set<string>(MASTER_AT_ARMS_CATEGORIES);
 const validDamageDies = new Set<string>(['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20']);
+
+/**
+ * Valide une `WeaponDamageCondition` (partagée par `weapon-damage-bonus` PER-115 et `attack-bonus`
+ * PER-226) : mode, sous-types à distance, catégories de contact, familles de prédilection et
+ * `appendChoiceLabels`. `cId` = id de la capacité hôte (pour les choix référencés sur elle-même).
+ */
+function validateWeaponCondition(cId: string, cond: WeaponDamageCondition | undefined, label: string) {
+  if (!cond) {
+    err(`[capacite ${cId}] effect: ${label} condition absente`);
+    return;
+  }
+  if (cond.attackMode !== undefined && cond.attackMode !== 'melee' && cond.attackMode !== 'ranged')
+    err(`[capacite ${cId}] effect: ${label} attackMode inconnu : ${cond.attackMode}`);
+  for (const rk of cond.rangedKinds ?? [])
+    if (!validRangedKinds.has(rk)) err(`[capacite ${cId}] effect: ${label} rangedKind inconnu : ${rk}`);
+  for (const wc of cond.weaponCategories ?? [])
+    if (!validWeaponCategories.has(wc)) err(`[capacite ${cId}] effect: ${label} weaponCategory inconnue : ${wc}`);
+  // appendChoiceLabels doit pointer vers un choix `option` de la capacité hôte.
+  if (cond.appendChoiceLabels !== undefined) {
+    const choice = featureById.get(cId)?.choices?.[cond.appendChoiceLabels];
+    if (choice?.kind !== 'option')
+      err(`[capacite ${cId}] effect: ${label} appendChoiceLabels ${cond.appendChoiceLabels} ne pointe pas vers un choix 'option'`);
+  }
+  // weaponFamiliesFromChoice doit référencer une capacité existante portant un choix `option` (PER-226).
+  if (cond.weaponFamiliesFromChoice) {
+    const { choiceFeatureId } = cond.weaponFamiliesFromChoice;
+    const choiceFeature = featureById.get(choiceFeatureId);
+    if (!choiceFeature)
+      err(`[capacite ${cId}] effect: ${label} weaponFamiliesFromChoice.choiceFeatureId inexistant : ${choiceFeatureId}`);
+    else if (!(choiceFeature.choices ?? []).some((ch) => ch.kind === 'option'))
+      err(`[capacite ${cId}] effect: ${label} weaponFamiliesFromChoice.choiceFeatureId ${choiceFeatureId} ne porte aucun choix 'option'`);
+  }
+}
 
 /** Valide une `EffectValue` (constante ou scalante) ; renvoie un message ou null. */
 function effectValueError(value: unknown): string | null {
@@ -338,10 +372,11 @@ for (const c of features) {
       const armoredError = effectValueError(e.whenArmored);
       if (armoredError) err(`[capacite ${c.id}] effect: armor-def-bonus whenArmored ${armoredError}`);
     } else if (e.kind === 'weapon-damage-bonus') {
-      // Bonus de DM d'arme (PER-115) : exactement UN de `ability` / `dice` ; condition avec des
-      // sous-types d'arme à distance / catégories de contact reconnus ; dé valide le cas échéant.
-      if ((e.ability === undefined) === (e.dice === undefined))
-        err(`[capacite ${c.id}] effect: weapon-damage-bonus doit porter soit ability soit dice (exclusifs)`);
+      // Bonus de DM d'arme (PER-115/PER-226) : exactement UN de `ability` / `dice` / `flat` ; condition
+      // partagée ; dé et bonus plat valides le cas échéant.
+      const provided = [e.ability !== undefined, e.dice !== undefined, e.flat !== undefined].filter(Boolean).length;
+      if (provided !== 1)
+        err(`[capacite ${c.id}] effect: weapon-damage-bonus doit porter exactement un de ability / dice / flat`);
       if (e.ability !== undefined && !validAbilities.has(e.ability))
         err(`[capacite ${c.id}] effect: weapon-damage-bonus caractéristique inconnue : ${e.ability}`);
       if (e.dice !== undefined) {
@@ -350,22 +385,30 @@ for (const c of features) {
         if (!validDamageDies.has(e.dice.die))
           err(`[capacite ${c.id}] effect: weapon-damage-bonus dé inconnu : ${e.dice.die}`);
       }
-      const cond = e.condition;
-      if (!cond) err(`[capacite ${c.id}] effect: weapon-damage-bonus condition absente`);
-      else {
-        if (cond.attackMode !== undefined && cond.attackMode !== 'melee' && cond.attackMode !== 'ranged')
-          err(`[capacite ${c.id}] effect: weapon-damage-bonus attackMode inconnu : ${cond.attackMode}`);
-        for (const rk of cond.rangedKinds ?? [])
-          if (!validRangedKinds.has(rk)) err(`[capacite ${c.id}] effect: weapon-damage-bonus rangedKind inconnu : ${rk}`);
-        for (const wc of cond.weaponCategories ?? [])
-          if (!validWeaponCategories.has(wc)) err(`[capacite ${c.id}] effect: weapon-damage-bonus weaponCategory inconnue : ${wc}`);
-        // appendChoiceLabels doit pointer vers un choix `option` de la capacité.
-        if (cond.appendChoiceLabels !== undefined) {
-          const choice = c.choices?.[cond.appendChoiceLabels];
-          if (choice?.kind !== 'option')
-            err(`[capacite ${c.id}] effect: weapon-damage-bonus appendChoiceLabels ${cond.appendChoiceLabels} ne pointe pas vers un choix 'option'`);
+      if (e.flat !== undefined) {
+        if (typeof e.flat === 'number') {
+          if (!Number.isInteger(e.flat)) err(`[capacite ${c.id}] effect: weapon-damage-bonus flat non entier`);
+        } else {
+          const f = e.flat;
+          const host = featureById.get(f.featureId);
+          if (!host) err(`[capacite ${c.id}] effect: weapon-damage-bonus flat.featureId inexistant : ${f.featureId}`);
+          else {
+            const choice = host.choices?.[f.choiceIndex];
+            if (choice?.kind !== 'option')
+              err(`[capacite ${c.id}] effect: weapon-damage-bonus flat.choiceIndex ${f.choiceIndex} ne pointe pas vers un choix 'option' de ${f.featureId}`);
+            else if (!choice.options.some((o) => o.id === f.optionId && o.repeatable))
+              err(`[capacite ${c.id}] effect: weapon-damage-bonus flat.optionId ${f.optionId} n'est pas une option 'repeatable' du choix`);
+          }
+          if (f.max !== undefined && (!Number.isInteger(f.max) || f.max < 1))
+            err(`[capacite ${c.id}] effect: weapon-damage-bonus flat.max invalide`);
         }
       }
+      validateWeaponCondition(c.id, e.condition, 'weapon-damage-bonus');
+    } else if (e.kind === 'attack-bonus') {
+      // Bonus à la touche conditionné à l'arme (PER-226) : valeur valide + condition partagée.
+      const valueError = effectValueError(e.value);
+      if (valueError) err(`[capacite ${c.id}] effect: attack-bonus value ${valueError}`);
+      validateWeaponCondition(c.id, e.condition, 'attack-bonus');
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }

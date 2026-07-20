@@ -37,7 +37,12 @@ import type {
 } from '@/data/schema';
 import { ABILITY_IDS, IMMUNITY_LABELS, RESISTIBLE_DAMAGE_TYPES } from '@/data/schema';
 import type { DerivedMods } from '@/lib/engine';
-import { borrowedHostPathByFeatureId, effectiveFeatureIdsForMods, getOptionSelections } from './choices';
+import {
+  borrowedHostPathByFeatureId,
+  effectiveFeatureIdsForMods,
+  getOptionSelections,
+  weaponFamiliesMatchChoice,
+} from './choices';
 import { armorDisabledFeatureIds, isArmorWorn, shieldDisabledFeatureIds } from './armorRestrictions';
 import { wornMeleeWeapon } from './equipment';
 import { rulesContext } from './rulesContext';
@@ -197,7 +202,7 @@ export function usageCounterMaximum(
  * (et du rang atteint dans la voie hôte) ; sans contexte, seule une constante est
  * résoluble → `null` pour signaler « non résoluble ici ».
  */
-function resolveValue(
+export function resolveValue(
   value: EffectValue,
   pathId: string,
   pathRanks: Record<string, number>,
@@ -1811,12 +1816,8 @@ function weaponCriticalConditionMet(
       return false;
     case 'weaponCategory':
       return weapon?.weaponCategory === condition.category;
-    case 'weaponFamiliesFromChoice': {
-      const families = weapon?.weaponFamilies;
-      if (!families?.length) return false;
-      const selected = getOptionSelections(character, condition.choiceFeatureId, 0);
-      return families.some((f) => selected.includes(f));
-    }
+    case 'weaponFamiliesFromChoice':
+      return weaponFamiliesMatchChoice(character, weapon?.weaponFamilies, condition.choiceFeatureId);
   }
 }
 
