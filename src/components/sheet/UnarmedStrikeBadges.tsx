@@ -131,7 +131,10 @@ export function UnarmedStrikeBadges({ view }: { view: UnarmedStrikeView }) {
           color="secondary"
           icon={<AutoAwesomeIcon sx={{ fontSize: 18 }} />}
           label="Magique"
-          tooltip={badgeTooltip(featureById.get('energie-vitale-r1')?.text ?? '', energyHands)}
+          tooltip={badgeTooltip(
+            'Attaques à mains nues toujours considérées comme magiques, même sans utiliser l’action Mains d’énergie.',
+            energyHands,
+          )}
         />
       )}
       {view.minRollBecomesMax && (
@@ -139,7 +142,10 @@ export function UnarmedStrikeBadges({ view }: { view: UnarmedStrikeView }) {
           color="success"
           icon={<CasinoIcon sx={{ fontSize: 18 }} />}
           label="1 = max"
-          tooltip={badgeTooltip(featureById.get('maitrise-r2')?.text ?? '', tigerClaws)}
+          tooltip={badgeTooltip(
+            'Un résultat de 1 au dé de DM à mains nues est remplacé par le résultat maximal du dé.',
+            tigerClaws,
+          )}
         />
       )}
       {view.damageTypeChoice && (
@@ -147,7 +153,10 @@ export function UnarmedStrikeBadges({ view }: { view: UnarmedStrikeView }) {
           color="success"
           icon={<TuneIcon sx={{ fontSize: 18 }} />}
           label="Tranch./perf."
-          tooltip={badgeTooltip(featureById.get('maitrise-r2')?.text ?? '', tigerClaws)}
+          tooltip={badgeTooltip(
+            'Le moine peut infliger des DM tranchants ou perforants à mains nues, au lieu de contondants.',
+            tigerClaws,
+          )}
         />
       )}
     </Box>

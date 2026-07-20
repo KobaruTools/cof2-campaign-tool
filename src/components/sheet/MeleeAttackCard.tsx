@@ -12,6 +12,7 @@ import Typography from '@mui/material/Typography';
 import type { AbilityId } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import type { UnarmedStrikeView } from '@/lib/character/unarmedStrike';
+import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DamageValue } from '@/components/DamageValue';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
@@ -125,7 +126,7 @@ function Face({
             <DamageExpr dice={meleeWeaponDamage.dice} abilities={['FOR']} charAbilities={abilities} level={level} />
           ) : (
             <Typography variant="body2" sx={{ color: 'text.disabled' }}>
-              Aucune arme de contact équipée
+              Aucune arme
             </Typography>
           )
         ) : (
@@ -175,6 +176,18 @@ export interface MeleeAttackCardProps {
  * persisté (cf. autres états de jeu hors mode édition). Par défaut on montre l'arme équipée, ou
  * directement les mains nues si aucune arme de contact n'est portée.
  */
+/** Icône d'épée (même dessin que la carte Attaque au contact), pour l'état « arme » du bouton. */
+function SwordGlyph() {
+  return (
+    <Box
+      component="svg"
+      viewBox="0 0 512 512"
+      sx={{ width: 18, height: 18, fill: 'currentColor' }}
+      dangerouslySetInnerHTML={{ __html: DERIVED_STAT_ICON_PATHS.meleeAttack }}
+    />
+  );
+}
+
 export function MeleeAttackCard({
   touch,
   forced,
@@ -189,16 +202,27 @@ export function MeleeAttackCard({
   const [mode, setMode] = useState<MeleeMode>(meleeWeaponDamage ? 'weapon' : 'unarmed');
   const swap = () => setMode((m) => (m === 'weapon' ? 'unarmed' : 'weapon'));
 
-  // Style d'un cadre selon qu'il est AU-DESSUS (actif) ou DERRIÈRE (inactif). Le cadre arrière est
-  // décalé par un simple `transform` : il DÉPASSE visuellement (« en plus ») sans peser sur la
-  // hauteur de la pile — le cadre actif garde donc la même hauteur que les cartes voisines (Attaque
-  // à distance / magique), imposée par la ligne de la grille via `height: 100%`.
+  const faceProps = {
+    touch,
+    forced,
+    abilities,
+    level,
+    unarmed,
+    meleeWeaponDamage,
+    weaponCriticalRanges,
+    unarmedCriticalRanges,
+  };
+
+  // Chaque cadre est en position ABSOLUE : il ne contribue PAS à la hauteur de la pile. C'est un
+  // « sizer » invisible (le cadre ACTIF, rendu en flux mais masqué) qui donne sa hauteur au bloc →
+  // la hauteur SUIT le cadre actif (et non le plus grand des deux), et le cadre arrière décalé
+  // vient « en plus » sans agrandir le cadre actif.
   const layerSx = (layer: MeleeMode) => {
     const front = layer === mode;
     return {
-      gridArea: '1 / 1',
-      height: '100%',
-      transition: 'transform 260ms ease, opacity 260ms ease, box-shadow 260ms ease',
+      position: 'absolute',
+      inset: 0,
+      transition: 'transform 260ms ease, opacity 260ms ease',
       transform: front ? 'none' : 'translate(9px, 11px) scale(0.97)',
       opacity: front ? 1 : 0.5,
       zIndex: front ? 2 : 1,
@@ -210,17 +234,16 @@ export function MeleeAttackCard({
     <Box
       sx={{
         position: 'relative',
-        height: '100%',
-        // Le cadre arrière décalé dépasse en dehors du bloc (aucune marge réservée) : il vient « en
-        // plus » sans agrandir le cadre actif.
+        // Le cadre arrière décalé dépasse hors du bloc (aucune marge réservée).
         overflow: 'visible',
         // L'icône « i » de détail n'apparaît qu'au survol de la carte (comme les autres cartes).
         '& .derived-stat-hint': { opacity: 0, transition: 'opacity 120ms ease' },
         '&:hover .derived-stat-hint': { opacity: 1 },
       }}
     >
-      {/* Bouton d'échange, en haut à gauche : paume (repos) → flèches circulaires qui tournent (survol). */}
-      <AppTooltip title="Échanger arme / mains nues">
+      {/* Bouton d'échange, en haut à gauche : icône de l'état COURANT (épée = arme / main = mains nues),
+          remplacée par des flèches circulaires qui tournent au survol. */}
+      <AppTooltip title={mode === 'weapon' ? 'Voir l’attaque à mains nues' : 'Voir l’attaque avec l’arme'}>
         <IconButton
           size="small"
           onClick={swap}
@@ -238,11 +261,20 @@ export function MeleeAttackCard({
             '&:hover .mn-swap': { opacity: 1, transform: 'rotate(180deg)' },
           }}
         >
-          <Box sx={{ position: 'relative', width: 20, height: 20 }}>
-            <FrontHandIcon
+          <Box sx={{ position: 'relative', width: 20, height: 20, display: 'inline-flex' }}>
+            <Box
               className="mn-rest"
-              sx={{ position: 'absolute', inset: 0, fontSize: 20, transition: 'opacity 180ms ease' }}
-            />
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'opacity 180ms ease',
+              }}
+            >
+              {mode === 'weapon' ? <SwordGlyph /> : <FrontHandIcon sx={{ fontSize: 20 }} />}
+            </Box>
             <AutorenewIcon
               className="mn-swap"
               sx={{
@@ -260,22 +292,15 @@ export function MeleeAttackCard({
       {/* Détail du calcul de la touche, en haut à droite (partagé par les deux cadres). */}
       <Box sx={{ position: 'absolute', top: 6, right: 18, zIndex: 3 }}>{statHint}</Box>
 
-      {/* Pile de cadres : les deux occupent la même cellule de grille ; `height: 100%` aligne la
-          hauteur du cadre actif sur celle des cartes voisines de la ligne. */}
-      <Box sx={{ display: 'grid', height: '100%' }}>
+      {/* Pile de cadres. Le SIZER (cadre actif, masqué) impose la hauteur ; les deux cadres réels sont
+          superposés en absolu et s'échangent avec animation. */}
+      <Box sx={{ position: 'relative' }}>
+        <Card variant="outlined" aria-hidden sx={{ visibility: 'hidden' }}>
+          <Face mode={mode} {...faceProps} />
+        </Card>
         {(['weapon', 'unarmed'] as const).map((layer) => (
-          <Card key={layer} variant="outlined" sx={layerSx(layer)}>
-            <Face
-              mode={layer}
-              touch={touch}
-              forced={forced}
-              abilities={abilities}
-              level={level}
-              unarmed={unarmed}
-              meleeWeaponDamage={meleeWeaponDamage}
-              weaponCriticalRanges={weaponCriticalRanges}
-              unarmedCriticalRanges={unarmedCriticalRanges}
-            />
+          <Card key={layer} variant="outlined" aria-hidden={layer !== mode} sx={layerSx(layer)}>
+            <Face mode={layer} {...faceProps} />
           </Card>
         ))}
       </Box>
