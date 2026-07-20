@@ -7,6 +7,7 @@ import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import type { AbilityId } from '@/data/schema';
@@ -75,73 +76,75 @@ function Face({
   const title = mode === 'weapon' ? 'Attaque au contact (arme)' : 'Attaque au contact (mains)';
   const unarmedDice = `${unarmed.damage.count}${unarmed.damage.die}${unarmed.evolving ? '°' : ''}`;
   const criticalRanges = mode === 'weapon' ? weaponCriticalRanges : unarmedCriticalRanges;
+  // Chips d'indication supplémentaires (létalité, magie, 1=max, type) — mode mains nues uniquement
+  // (il y a toujours au moins la létalité). Le séparateur ne s'affiche que si ces chips existent.
+  const hasExtraChips = mode === 'unarmed';
 
   return (
     <CardContent
       sx={{ py: 1, height: '100%', display: 'flex', flexDirection: 'column', '&:last-child': { pb: 1 } }}
     >
-      {/* En-tête : icône + titre + valeur de touche (identique dans les deux modes, non recalculée). */}
+      {/* En-tête : icône + titre + valeur de touche ET DM sur la même ligne (gagne une ligne). */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
         <DerivedStatIcon statId="meleeAttack" title size={40} />
         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
             {title}
           </Typography>
-          <Typography
-            variant="h5"
-            sx={{
-              fontWeight: 600,
-              color: forced ? 'warning.main' : undefined,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 0.75,
-            }}
-          >
-            {touch === null ? '—' : touch}
-            {forced && (
-              <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
-                <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
-              </AppTooltip>
-            )}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 600,
+                color: forced ? 'warning.main' : undefined,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.5,
+              }}
+            >
+              {touch === null ? '—' : touch}
+              {forced && (
+                <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
+                  <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
+                </AppTooltip>
+              )}
+            </Typography>
+            {/* DM accolés au chiffre d'attaque : dé + caractéristique(s) résolue(s) dynamiquement. */}
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                DM
+              </Typography>
+              {mode === 'weapon' ? (
+                meleeWeaponDamage ? (
+                  <DamageExpr dice={meleeWeaponDamage.dice} abilities={['FOR']} charAbilities={abilities} level={level} />
+                ) : (
+                  <Typography variant="body2" sx={{ color: 'text.disabled' }}>
+                    Aucune arme
+                  </Typography>
+                )
+              ) : (
+                <DamageExpr dice={unarmedDice} abilities={unarmed.damageAbilities} charAbilities={abilities} level={level} />
+              )}
+            </Box>
+          </Box>
         </Box>
       </Box>
 
-      {/* Plage de critique AU-DESSUS du calcul des DM (retour proprio). */}
+      {/* Plage de critique. */}
       {criticalRanges.length > 0 && (
-        <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+        <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
           {criticalRanges.map(({ key, ...rest }) => (
             <DefenseBadge key={key} {...rest} fullWidth={false} />
           ))}
         </Box>
       )}
 
-      {/* Ligne de DM : dé + caractéristique(s) résolue(s) dynamiquement (aucun jet). */}
-      <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.75, minHeight: 28 }}>
-        <Typography variant="caption" color="text.secondary">
-          DM
-        </Typography>
-        {mode === 'weapon' ? (
-          meleeWeaponDamage ? (
-            <DamageExpr dice={meleeWeaponDamage.dice} abilities={['FOR']} charAbilities={abilities} level={level} />
-          ) : (
-            <Typography variant="body2" sx={{ color: 'text.disabled' }}>
-              Aucune arme
-            </Typography>
-          )
-        ) : (
-          <DamageExpr
-            dice={unarmedDice}
-            abilities={unarmed.damageAbilities}
-            charAbilities={abilities}
-            level={level}
-          />
-        )}
-      </Box>
+      {/* Séparateur entre critique et chips supplémentaires — uniquement si les DEUX existent. */}
+      {criticalRanges.length > 0 && hasExtraChips && <Divider sx={{ my: 0.75 }} />}
 
-      {/* Qualificatifs mains nues (létalité, magie, 1=max, type) en bas — mode mains nues seulement. */}
-      {mode === 'unarmed' && (
-        <Box sx={{ mt: 'auto', pt: 0.75 }}>
+      {/* Chips d'indication mains nues (létalité, magie, 1=max, type). */}
+      {hasExtraChips && (
+        <Box sx={{ mt: criticalRanges.length > 0 ? 0 : 0.75 }}>
           <UnarmedStrikeBadges view={unarmed} />
         </Box>
       )}

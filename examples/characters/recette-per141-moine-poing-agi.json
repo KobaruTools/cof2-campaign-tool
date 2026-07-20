@@ -3,7 +3,7 @@
   "id": "recette-per141-moine-poing-agi",
   "name": "Recette PER-141 — Moine poing r5 (AGI > FOR)",
   "identity": {
-    "description": "ATTENDU (mains nues) : 2d6 + best-of FOR/AGI/VOL → doit afficher AGI (4). Létal (Poings de fer), magique (Mains d'énergie), 1=max + type au choix (Griffes du tigre), critique 19-20 (Morsure). Mode « arme » : épée longue 1d8 + FOR (2). Bascule via le bouton rond en haut à gauche."
+    "description": "ATTENDU (mains nues) : 2d6 + best-of FOR/AGI/VOL → doit afficher AGI (4). Létal AU CHOIX (le moine décide), magique (Mains d'énergie), 1=max + type au choix (Griffes du tigre), critique 19-20 (Morsure). Mode « arme » : épée longue 1d8 + FOR (2). Bascule via le bouton rond en haut à gauche."
   },
   "campaignId": null,
   "playerId": null,

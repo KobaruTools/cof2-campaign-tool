@@ -16,7 +16,7 @@ describe('PER-141 — recette end-to-end sur fixtures réelles', () => {
     const u = view.unarmed;
     expect(u.damage).toMatchObject({ count: 2, die: 'd6' });
     expect(u.damageAbilities).toEqual(['FOR', 'AGI', 'VOL']);
-    expect(u.lethality).toBe('lethal');
+    expect(u.lethality).toBe('choice');
     expect(u.magical).toBe(true);
     expect(u.minRollBecomesMax).toBe(true);
     expect(u.damageTypeChoice).toBe(true);
@@ -35,11 +35,11 @@ describe('PER-141 — recette end-to-end sur fixtures réelles', () => {
     expect(formatUnarmedDamage(u)).toBe('1d4°');
   });
 
-  it('test-hybride-moine-druide-nain (Poings de fer r5) : 2d6 + FOR/AGI, létal', () => {
+  it('test-hybride-moine-druide-nain (Poings de fer r5) : 2d6 + FOR/AGI, létalité au choix', () => {
     const view = buildCharacterDerivedView(loadFixture('test-hybride-moine-druide-nain'));
     const u = view.unarmed;
     expect(u.damage).toMatchObject({ count: 2, die: 'd6' });
     expect(u.damageAbilities).toEqual(['FOR', 'AGI']);
-    expect(u.lethality).toBe('lethal');
+    expect(u.lethality).toBe('choice');
   });
 });

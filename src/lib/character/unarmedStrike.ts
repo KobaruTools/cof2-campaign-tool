@@ -36,8 +36,12 @@ export interface UnarmedStrikeView {
    * `FOR/AGI` du livre). Vide = aucune (Pilier de bar).
    */
   damageAbilities: AbilityId[];
-  /** Non létal (défaut, p. 219), létal (Poings de fer), ou au choix (trait de moine). */
-  lethality: 'non-lethal' | 'lethal' | 'choice';
+  /**
+   * Non létal (défaut, p. 219) ou AU CHOIX (moine). Un moine garde TOUJOURS le choix d'infliger
+   * des DM létaux ou non à mains nues (« lorsqu'il le souhaite », p. 119) — y compris avec Poings
+   * de fer (« il peut, s'il le souhaite… »), donc jamais forcé létal.
+   */
+  lethality: 'non-lethal' | 'choice';
   /** Attaques considérées comme magiques (Mains d'énergie, p. 119). */
   magical: boolean;
   /** « 1 au dé remplacé par le résultat maximal » (Griffes du tigre, p. 119). */
@@ -115,17 +119,17 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
     sources = addSource(sources, 'mercenaire-r1');
   }
 
-  // Trait de profil du moine (p. 119) : DM létaux au choix à mains nues.
+  // Trait de profil du moine (p. 119) : DM létaux AU CHOIX à mains nues — le moine maîtrise sa force
+  // et décide toujours si le coup est létal ou non (jamais forcé).
   if (isMonk) lethality = 'choice';
 
-  // Poings de fer (p. 121) : dé qui monte avec le rang de la voie du poing, DM létaux,
-  // FOR→AGI possible (best-of, choix de table validé sur `poing-r1`).
+  // Poings de fer (p. 121) : dé qui monte avec le rang de la voie du poing ; FOR→AGI possible (best-of,
+  // choix de table validé sur `poing-r1`). La létalité reste AU CHOIX (« il peut, s'il le souhaite… »).
   if (has('poing-r1')) {
     const rank = Math.min(5, Math.max(1, pathRanks['poing'] ?? 1));
     damage = { ...IRON_FIST_DIE_BY_RANK[rank] };
     evolving = false;
     damageAbilities = ['FOR', 'AGI'];
-    lethality = 'lethal';
     sources = addSource(sources, 'poing-r1');
   }
 

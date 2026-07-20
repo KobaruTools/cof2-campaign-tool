@@ -3,7 +3,7 @@
   "id": "recette-per141-moine-poing-r1",
   "name": "Recette PER-141 — Moine poing r1 (FOR > AGI)",
   "identity": {
-    "description": "ATTENDU (mains nues) : 1d6 + best-of FOR/AGI → doit afficher FOR (3). Létal (Poings de fer). Contraste avec le moine r5 : le dé reste 1d6 au rang 1. Pas d’arme → vue mains nues par défaut."
+    "description": "ATTENDU (mains nues) : 1d6 + best-of FOR/AGI → doit afficher FOR (3). Létal AU CHOIX. Contraste avec le moine r5 : le dé reste 1d6 au rang 1. Pas d’arme → vue mains nues par défaut."
   },
   "campaignId": null,
   "playerId": null,

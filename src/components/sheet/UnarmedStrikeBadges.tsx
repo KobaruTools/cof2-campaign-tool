@@ -8,7 +8,6 @@ import TuneIcon from '@mui/icons-material/Tune';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { featureById } from '@/data';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PageRefText } from '@/components/SourceRef';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
@@ -88,32 +87,19 @@ export function UnarmedStrikeBadges({ view }: { view: UnarmedStrikeView }) {
   /** Capacité source (si acquise) d'un qualificatif, pour la puce de voie et son verbatim. */
   const sourceOf = (featureId: string) =>
     view.sources.some((s) => s.featureId === featureId) ? featureId : undefined;
-  const ironFist = sourceOf('poing-r1');
   const energyHands = sourceOf('energie-vitale-r1');
   const tigerClaws = sourceOf('maitrise-r2');
 
-  const lethalityBadge = (() => {
-    if (view.lethality === 'lethal') {
-      return (
-        <QualifierBadge
-          color="error"
-          icon={<SportsMartialArtsIcon sx={{ fontSize: 18 }} />}
-          label="Létal"
-          tooltip={badgeTooltip(featureById.get('poing-r1')?.text ?? MONK_LETHAL_CHOICE, ironFist)}
-        />
-      );
-    }
-    if (view.lethality === 'choice') {
-      return (
-        <QualifierBadge
-          color="warning"
-          icon={<SportsMartialArtsIcon sx={{ fontSize: 18 }} />}
-          label="Létal au choix"
-          tooltip={badgeTooltip(MONK_LETHAL_CHOICE)}
-        />
-      );
-    }
-    return (
+  // Létalité : un moine choisit toujours (jamais forcé) ; sinon non létal (DM temporaires, p. 219).
+  const lethalityBadge =
+    view.lethality === 'choice' ? (
+      <QualifierBadge
+        color="warning"
+        icon={<SportsMartialArtsIcon sx={{ fontSize: 18 }} />}
+        label="Létal au choix"
+        tooltip={badgeTooltip(MONK_LETHAL_CHOICE)}
+      />
+    ) : (
       <QualifierBadge
         color="info"
         icon={<SportsMartialArtsIcon sx={{ fontSize: 18 }} />}
@@ -121,7 +107,6 @@ export function UnarmedStrikeBadges({ view }: { view: UnarmedStrikeView }) {
         tooltip={badgeTooltip(NON_LETHAL_RULE)}
       />
     );
-  })();
 
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>

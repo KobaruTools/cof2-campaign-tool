@@ -66,11 +66,11 @@ describe('unarmedStrike — moine', () => {
     expect(v.damageAbilities).toEqual(['FOR']);
   });
 
-  it('Poings de fer rang 1 : 1d6 + FOR/AGI, létaux (p. 121)', () => {
+  it('Poings de fer rang 1 : 1d6 + FOR/AGI, létalité AU CHOIX (le moine décide, p. 121)', () => {
     const v = unarmedStrike(makeCharacter({ classId: 'moine', featureIds: ['poing-r1'] }));
     expect(v.damage).toEqual({ count: 1, die: 'd6', nonLethal: false });
     expect(v.damageAbilities).toEqual(['FOR', 'AGI']);
-    expect(v.lethality).toBe('lethal');
+    expect(v.lethality).toBe('choice');
     expect(v.sources).toContainEqual({ featureId: 'poing-r1', name: 'Poings de fer' });
     expect(formatUnarmedDamage(v)).toBe('1d6 + FOR/AGI');
   });
@@ -91,12 +91,12 @@ describe('unarmedStrike — moine', () => {
     expect(formatUnarmedDamage(v)).toBe('1d3 + FOR/VOL');
   });
 
-  it('Poings de fer + Mains d\'énergie : best-of FOR/AGI/VOL, magique, létal', () => {
+  it('Poings de fer + Mains d\'énergie : best-of FOR/AGI/VOL, magique, létalité au choix', () => {
     const v = unarmedStrike(makeCharacter({ classId: 'moine', featureIds: ['poing-r1', 'energie-vitale-r1'] }));
     expect(v.damage.die).toBe('d6');
     expect(v.damageAbilities).toEqual(['FOR', 'AGI', 'VOL']);
     expect(v.magical).toBe(true);
-    expect(v.lethality).toBe('lethal');
+    expect(v.lethality).toBe('choice');
     expect(formatUnarmedDamage(v)).toBe('1d6 + FOR/AGI/VOL');
   });
 
