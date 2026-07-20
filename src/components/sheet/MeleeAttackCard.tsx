@@ -94,7 +94,7 @@ function Face({
                   <WeaponDamageExpr
                     dice={meleeWeaponDamage.dice}
                     abilities={meleeWeaponDamage.abilities}
-                    flat={meleeWeaponDamage.flat}
+                    flatBonuses={meleeWeaponDamage.flatBonuses}
                     charAbilities={abilities}
                   />
                 ) : (

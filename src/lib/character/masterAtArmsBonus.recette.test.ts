@@ -20,8 +20,8 @@ describe('PER-226 — maître d’armes : +1 att FONDU au score et +N DM câblé
     expect(view.attackBonusModSources.meleeAttack).toEqual([
       { label: 'Armes de prédilection', value: 1, featureId: 'maitre-d-armes-r1' },
     ]);
-    // +2 DM plat de Spécialisation, agrégé à l'expression de DM.
-    expect(view.meleeWeaponDamage?.flat).toBe(2);
+    // +2 DM plat de Spécialisation, agrégé à l'expression de DM AVEC sa source (breakdown de la puce).
+    expect(view.meleeWeaponDamage?.flatBonuses).toMatchObject([{ featureId: 'maitre-d-armes-r3', value: 2 }]);
     expect(view.meleeWeaponDamage?.abilities).toEqual(['FOR']);
     // Science du critique (r2) suit la même arme de prédilection.
     expect(view.meleeCriticalRanges[0]?.text).toBe('19-20');
@@ -33,7 +33,7 @@ describe('PER-226 — maître d’armes : +1 att FONDU au score et +N DM câblé
     // Niveau 12 (base 10) + FOR 3, sans +1 (masse hors prédilection).
     expect(stats.meleeAttack).toBe(13);
     expect(view.attackBonusModSources.meleeAttack).toBeUndefined();
-    expect(view.meleeWeaponDamage?.flat).toBe(0);
+    expect(view.meleeWeaponDamage?.flatBonuses).toEqual([]);
     expect(view.meleeCriticalRanges).toHaveLength(0);
   });
 
@@ -45,7 +45,7 @@ describe('PER-226 — maître d’armes : +1 att FONDU au score et +N DM câblé
     expect(view.attackBonusModSources.rangedAttack).toEqual([
       { label: 'Armes de prédilection', value: 1, featureId: 'maitre-d-armes-r1' },
     ]);
-    expect(view.rangedWeaponDamage?.flat).toBe(1);
+    expect(view.rangedWeaponDamage?.flatBonuses).toMatchObject([{ featureId: 'maitre-d-armes-r3', value: 1 }]);
     expect(view.rangedWeaponDamage?.abilities).toEqual([]);
     // Le contact ne bénéficie de rien (pas d'arme de contact portée) → pas d'attribution melee.
     expect(view.attackBonusModSources.meleeAttack).toBeUndefined();

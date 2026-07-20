@@ -34,6 +34,7 @@ import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import {
   weaponDamageBonuses,
   type AttackMode,
+  type PermanentFlatBonus,
   type SituationalDamageBonus,
 } from '@/lib/character/weaponDamageBonus';
 import { weaponAttackBonuses } from '@/lib/character/attackBonus';
@@ -61,10 +62,12 @@ export interface WeaponDamageView {
    */
   abilities: AbilityId[];
   /**
-   * Bonus PLAT permanent ajouté aux DM par les capacités (ex. Spécialisation du maître d'armes,
-   * +N selon l'arme portée — PER-226). 0 si aucun. Rendu « +N » après les caracs dans l'expression.
+   * Bonus PLATS permanents ajoutés aux DM par les capacités (ex. Spécialisation du maître d'armes,
+   * +N selon l'arme portée — PER-226), AVEC leur source. Vide si aucun. Le TOTAL est rendu dans une
+   * puce grise (contour tireté blanc, non liée à une carac) après les caracs ; l'info-bulle détaille
+   * chaque source et sa contribution (breakdown), pour comprendre la somme quand plusieurs s'ajoutent.
    */
-  flat: number;
+  flatBonuses: PermanentFlatBonus[];
   /** DM non létal (arme aux « DM temporaires possibles » : gourdin, bâton…). */
   nonLethal: boolean;
   /** Nom de l'arme (libellé + tooltip). */
@@ -111,8 +114,13 @@ function wornWeaponDamage(character: Character, mode: AttackMode): WeaponDamageV
   const baseAbilities: AbilityId[] = mode === 'melee' ? ['FOR'] : [];
   const bonuses = weaponDamageBonuses(character, mode, item);
   const added = bonuses.addedAbilities.map((b) => b.ability);
-  const flat = bonuses.addedFlat.reduce((sum, b) => sum + b.value, 0);
-  return { dice, abilities: [...baseAbilities, ...added], flat, nonLethal: !!dmg.nonLethal, name: item.name };
+  return {
+    dice,
+    abilities: [...baseAbilities, ...added],
+    flatBonuses: bonuses.addedFlat,
+    nonLethal: !!dmg.nonLethal,
+    name: item.name,
+  };
 }
 
 export interface CharacterDerivedView {
