@@ -307,7 +307,9 @@ export function CharacterList({
   // survol prolongé de la ligne : sert aussi à révéler un nom tronqué en entier.
   const previewFor = (r: CharacterSummary) => {
     const character = getById(r.id);
-    return character ? <CharacterPreviewCard character={character} /> : '';
+    // `colorAbilities` : même teinte fort/faible du chiffre que l'écran MJ (l'aperçu
+    // partagé `CharacterPreviewCard` reste neutre pour l'import et la réclamation).
+    return character ? <CharacterPreviewCard character={character} colorAbilities /> : '';
   };
 
   // ---- Menu d'actions --------------------------------------------------------
