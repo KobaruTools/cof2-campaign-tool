@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per138-sang-dragon-r4-sans-choix",
+  "name": "Recette PER-138 — Sang-dragon r4 (choix à faire, pas de RD)",
+  "identity": {
+    "description": "CONTRÔLE NÉGATIF : même capacité « Ascendance draconique » (rang 4) mais le choix de couleur/énergie n'est PAS fait → il apparaît en « choix à faire » orange, et AUCUNE puce RD ne s'affiche à côté de la Défense. Faire le choix (en mode édition) fait apparaître « RD <énergie> 5 »."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-r1",
+    "soldat-r1",
+    "humain-r1",
+    "prestige-sang-dragon-r4"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-138 — contrôle négatif : choix non fait → « choix à faire » orange, pas de RD.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

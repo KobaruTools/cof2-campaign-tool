@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per138-sang-dragon-r4-feu",
+  "name": "Recette PER-138 — Sang-dragon r4 (RD Feu 5)",
+  "identity": {
+    "description": "ATTENDU : la capacité « Ascendance draconique » (rang 4) porte un CHOIX de construction « Type d'énergie du souffle (couleur de dragon) » — un « choix à faire » orange comme les autres choix de rang, figé une fois fait (immuable hors mode édition). Ici « Feu (dragon rouge) » est retenu → une puce « RD Feu 5 » apparaît à côté de la Défense. Le choix se change UNIQUEMENT en mode édition (pas un interrupteur de partie)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-r1",
+    "soldat-r1",
+    "humain-r1",
+    "prestige-sang-dragon-r4"
+  ],
+  "featureChoices": {
+    "prestige-sang-dragon-r4": [
+      "fire"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-138 — RD typée de l’Ascendance draconique, rang 4, choix permanent Feu → RD Feu 5.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
