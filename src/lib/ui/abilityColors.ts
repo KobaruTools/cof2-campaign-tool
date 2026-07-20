@@ -52,6 +52,53 @@ export function abilityTotalFontSize(total: number, base: string): string {
   return above === 0 ? base : `calc(${base} + ${above * ABILITY_VALUE_FONT_STEP_PX}px)`;
 }
 
+/**
+ * Réglages du dégradé de fond des blocs du panneau « Compétences & tests » (préoccupation
+ * purement UI, aucune règle CO2). Chaque bloc part du GRIS de fond actuel (à gauche) et va
+ * vers la teinte d'identité de la carac (à droite). `saturation` (0..1) désature légèrement
+ * cette teinte ; `strength` (0..1) est l'opacité du bout droit du dégradé.
+ * — `header` : en-têtes de carac (peu nombreux) → dégradé bien visible.
+ * — `cell`   : cellules de test individuelles (ex. Discrétion, très nombreuses) → beaucoup
+ *   moins intense, volontairement subtil pour ne pas saturer la grille.
+ */
+export const ABILITY_TEST_GRADIENT = {
+  header: { saturation: 0.75, strength: 0.4 },
+  cell: { saturation: 0.6, strength: 0.14 },
+} as const;
+
+/**
+ * Dégradé de fond gauche→droite d'un bloc du panneau « Compétences & tests » : part du gris
+ * de fond actuel `base` (translucide — celui de l'en-tête ou de la cellule) et va vers la
+ * teinte d'identité de la carac, désaturée et faiblement opaque à droite. Comme
+ * `abilityTotalColor`, on module la teinte via `hsl(from …)` (relative color CSS), ce qui
+ * baked l'alpha directement dans le `<color>` du bout droit. Réglages : `ABILITY_TEST_GRADIENT`.
+ */
+export function abilityTestGradient(
+  abilityId: AbilityId,
+  base: string,
+  { saturation, strength }: { saturation: number; strength: number },
+): string {
+  const tint = `hsl(from ${ABILITY_COLORS[abilityId]} h calc(s * ${saturation}) l / ${strength})`;
+  return `linear-gradient(to right, ${base}, ${tint})`;
+}
+
+/**
+ * Opacité (bout droit) et saturation du FOND PLAT posé derrière la grille des tests d'une
+ * carac, pour matérialiser chaque « tableau » (bloc en-tête + ses domaines). Très faible :
+ * il ne fait que teinter la zone, sous les cellules qui portent déjà leur propre dégradé.
+ */
+export const ABILITY_TEST_PANEL_BG = { saturation: 0.6, strength: 0.06 } as const;
+
+/**
+ * Fond plat teinté de la carac (faible opacité) posé sous la grille des domaines d'un
+ * « tableau » de tests, pour distinguer visuellement les blocs entre eux. Même teinte
+ * d'identité que le dégradé (`hsl(from …)`), sans direction : une couleur unie discrète.
+ */
+export function abilityTestPanelBg(abilityId: AbilityId): string {
+  const { saturation, strength } = ABILITY_TEST_PANEL_BG;
+  return `hsl(from ${ABILITY_COLORS[abilityId]} h calc(s * ${saturation}) l / ${strength})`;
+}
+
 /** Couleurs des modificateurs de peuple : bonus vert, malus rouge. */
 export const ANCESTRY_MODIFIER_COLORS = {
   bonus: '#81c784', // vert pastel
