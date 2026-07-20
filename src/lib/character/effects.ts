@@ -37,6 +37,7 @@ import { ABILITY_IDS, IMMUNITY_LABELS, RESISTIBLE_DAMAGE_TYPES } from '@/data/sc
 import type { DerivedMods } from '@/lib/engine';
 import { borrowedHostPathByFeatureId, effectiveFeatureIdsForMods, getOptionSelections } from './choices';
 import { armorDisabledFeatureIds, isArmorWorn, shieldDisabledFeatureIds } from './armorRestrictions';
+import { wornMeleeWeapon } from './equipment';
 import { rulesContext } from './rulesContext';
 import type { Character, FeatureChoiceSelection } from './types';
 
@@ -1774,10 +1775,15 @@ export function stackedDamageReductions(character: Character): StackedDamageRedu
   return out;
 }
 
-/** Une plage de critique ACTIVE octroyée par une capacité, valeur résolue (PER-133). */
+/** Une plage de critique ACTIVE octroyée par une capacité OU une arme équipée, valeur résolue (PER-133/225). */
 export interface CriticalRangeSource {
-  featureId: string;
-  /** Nom de la capacité (français). */
+  /**
+   * Capacité d'origine, si la source EST une capacité. ABSENT quand la source est l'arme
+   * elle-même (plage intrinsèque de la rapière / vivelame, PER-225) : le badge retombe alors
+   * sur le `name` en texte simple, faute de puce de voie.
+   */
+  featureId?: string;
+  /** Nom de la capacité ou de l'arme (français). */
   name: string;
   /** Portée concernée (cf. `CriticalRange`). */
   scope: CriticalRange['scope'];
@@ -1814,6 +1820,16 @@ export function criticalRangeSources(character: Character): CriticalRangeSource[
     const value = resolveValue(feature.criticalRange.value, rankPathId, pathRanks, ctx);
     if (value === null || value <= 0) continue;
     out.push({ featureId: id, name: feature.name, scope: feature.criticalRange.scope, value });
+  }
+  // Plage de critique INTRINSÈQUE de l'arme de contact tenue en main (PER-225) — rapière,
+  // vivelame (19-20, p. 183). Source d'affichage SUPPLÉMENTAIRE, cumulée avec les capacités
+  // par `combineCriticalRanges`. N'apparaît que si l'arme concernée est réellement portée en
+  // main (résolveur canonique `wornMeleeWeapon`, PER-76/77) : déséquiper l'arme retire la puce.
+  // Sur une arme, `value` est un littéral fixe (pas de rang → pas de valeur scalante).
+  const weapon = wornMeleeWeapon(character.equipment ?? []);
+  const weaponCrit = weapon?.criticalRange;
+  if (weaponCrit && typeof weaponCrit.value === 'number' && weaponCrit.value > 0) {
+    out.push({ name: weapon!.name, scope: weaponCrit.scope, value: weaponCrit.value });
   }
   return out;
 }

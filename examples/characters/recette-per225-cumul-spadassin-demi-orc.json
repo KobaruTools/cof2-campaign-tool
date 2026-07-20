@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per225-cumul-spadassin-demi-orc",
+  "name": "Recette PER-225 — Cumul rapière + Frappe chirurgicale + demi-orc",
+  "identity": {
+    "description": "ATTENDU : voleur/spadassin demi-orc portant une rapière. Trois sources élargissent le critique AU CONTACT et se CUMULENT en une seule puce : la rapière (arme, +1 → 19-20), Frappe chirurgicale (spadassin r3, +2 sur arme légère — interrupteur « arme légère en main » activé) et Critique brutal (demi-orc r3, +1, passif). Total 2+1+1 = 4 ; le plancher de 16 (p. 213) borne l'affichage → puce « 16-20 ». Aucun double comptage. Couper l'interrupteur de Frappe chirurgicale ou déséquiper la rapière réduit la plage en conséquence."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "demi-orc",
+  "classId": "voleur",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "demi-orc",
+  "featureIds": [
+    "spadassin-r1",
+    "spadassin-r2",
+    "spadassin-r3",
+    "demi-orc-r1",
+    "demi-orc-r2",
+    "demi-orc-r3"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "spadassin-r3": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "rapiere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-225 — cumul plage de critique de l’arme + capacités (spadassin, demi-orc).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

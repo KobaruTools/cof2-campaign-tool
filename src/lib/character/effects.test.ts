@@ -989,6 +989,63 @@ describe('criticalRangeSources — plage de critique élargie (PER-133)', () => 
       { featureId: 'spadassin-r3', name: 'Frappe chirurgicale', scope: 'melee', value: 2 },
     ]);
   });
+
+  // --- PER-225 : plage de critique INTRINSÈQUE de l'arme ÉQUIPÉE ---
+  const charEquip = (
+    featureIds: string[],
+    equipment: EquipmentLine[],
+    toggles: Record<string, boolean[]> = {},
+  ): Character =>
+    ({
+      level: 7,
+      abilities: ctx().abilities,
+      featureIds,
+      effectToggles: toggles,
+      featureChoices: {},
+      equipment,
+    }) as Character;
+
+  it('Rapière tenue en main : plage intrinsèque 19-20 au contact (source d’arme, sans capacité)', () => {
+    const src = criticalRangeSources(
+      charEquip([], [{ itemId: 'rapiere', quantity: 1, worn: { slot: 'mainHand' } }]),
+    );
+    expect(src).toEqual([{ name: 'Rapière', scope: 'melee', value: 1 }]);
+  });
+
+  it('Rapière RANGÉE (non portée en main) : aucune plage — la puce ne dépend que du port', () => {
+    expect(criticalRangeSources(charEquip([], [{ itemId: 'rapiere', quantity: 1 }]))).toEqual([]);
+  });
+
+  it('Vivelame tenue à deux mains : plage intrinsèque 19-20 au contact', () => {
+    const src = criticalRangeSources(
+      charEquip([], [{ itemId: 'vivelame', quantity: 1, worn: { slot: 'mainHand', grip: 'twoHands' } }]),
+    );
+    expect(src).toEqual([{ name: 'Vivelame', scope: 'melee', value: 1 }]);
+  });
+
+  it('Épée longue (sans critique intrinsèque) tenue en main : aucune plage d’arme', () => {
+    expect(
+      criticalRangeSources(charEquip([], [{ itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } }])),
+    ).toEqual([]);
+  });
+
+  it('CUMUL (PER-225) : voleur/spadassin demi-orc portant une rapière → arme + Frappe chirurgicale + Critique brutal', () => {
+    // Rapière (arme légère) tenue en main + Frappe chirurgicale ACTIVE (interrupteur « arme légère »)
+    // + Critique brutal du demi-orc (passif). Les trois sources melee remontent, prêtes au cumul.
+    const src = criticalRangeSources(
+      charEquip(
+        ['spadassin-r3', 'demi-orc-r3'],
+        [{ itemId: 'rapiere', quantity: 1, worn: { slot: 'mainHand' } }],
+        { 'spadassin-r3': [true] },
+      ),
+    );
+    expect(src).toContainEqual({ featureId: 'spadassin-r3', name: 'Frappe chirurgicale', scope: 'melee', value: 2 });
+    expect(src).toContainEqual({ featureId: 'demi-orc-r3', name: 'Critique brutal', scope: 'melee', value: 1 });
+    expect(src).toContainEqual({ name: 'Rapière', scope: 'melee', value: 1 });
+    // Total cumulé au contact = 2 + 1 + 1 = 4 (borné à 16-20 au formatage). Pas de double comptage.
+    const total = src.filter((s) => s.scope === 'melee').reduce((acc, s) => acc + s.value, 0);
+    expect(total).toBe(4);
+  });
 });
 
 describe('damageReductionSources — réduction de dégâts (PER-137)', () => {

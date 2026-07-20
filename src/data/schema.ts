@@ -2064,6 +2064,18 @@ export interface Weapon extends EquipmentBase {
   damage: WeaponDamage;
   /** DM à deux mains STRUCTURÉS pour les armes à une ou deux mains (PER-217). */
   twoHandedDamage?: WeaponDamage;
+  /**
+   * PLAGE DE CRITIQUE INTRINSÈQUE de l'arme (PER-225) — certaines armes élargissent le
+   * critique par leur nature même (rapière, vivelame : 19-20 au lieu de 20, p. 183),
+   * indépendamment de toute capacité. MÊME modèle que `Feature.criticalRange` : `value`
+   * = points retranchés au seuil de 20 (1 → 19-20). `scope` explicite (`melee` pour une
+   * arme de contact) pour rester générique. Sur une arme, `value` est un LITTÉRAL fixe
+   * (pas de valeur scalante : une arme n'a pas de rang). Donnée d'affichage cumulée avec
+   * les plages des capacités (`criticalRangeSources` → `combineCriticalRanges`), non
+   * consommée par le moteur (aucun jet simulé). Champ GÉNÉRIQUE : une future arme à
+   * critique élargi se déclare ici, sans code spécifique.
+   */
+  criticalRange?: CriticalRange;
   /** Portée, notation du livre (ex. « 20 m », « 1d6 à 10 m » pour le lancer). */
   range?: string;
 }

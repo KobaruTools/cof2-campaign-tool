@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per225-rapiere-crit-intrinseque",
+  "name": "Recette PER-225 — Rapière (crit 19-20 intrinsèque)",
+  "identity": {
+    "description": "ATTENDU : la rapière (arme légère, 1d6 perforants) a une plage de critique INTRINSÈQUE 19-20 (p. 183), désormais structurée. Elle est portée en MAIN → une puce « 19-20 » apparaît sous « Attaque au contact », sans aucune capacité de critique. Déséquiper la rapière (la ranger au sac) RETIRE la puce : la plage ne dépend que du port en main. Aucune capacité n'élargit le critique ici — c'est le contrôle isolé de PER-225."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "voleur",
+  "level": 2,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 0,
+    "CON": 0,
+    "FOR": 0,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "roublard-r1",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "rapiere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-225 — plage de critique intrinsèque de l’arme portée en main.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

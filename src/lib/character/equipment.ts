@@ -11,7 +11,8 @@
  * équiper d'office »). L'UI d'équipement/déséquipement manuel relève de PER-77.
  */
 import { equipmentById } from '@/data';
-import type { EquipmentLine, WornState } from './types';
+import type { Weapon } from '@/data/schema';
+import type { EquipmentLine, EquipmentRef, WornState } from './types';
 import { isCustomItem } from './types';
 import { effectiveItem } from './items';
 
@@ -93,6 +94,40 @@ export function wornWeaponIsTwoHanded(line: EquipmentLine): boolean {
   if (item.weaponCategory === 'twoHands') return true;
   if (item.weaponCategory === 'oneOrTwoHands') return line.worn.grip === 'twoHands';
   return false;
+}
+
+/**
+ * Ligne de l'arme de CONTACT effectivement TENUE EN MAIN — résolveur CANONIQUE de
+ * « l'arme au contact courante » : main principale prioritaire, sinon main secondaire
+ * (combat à deux armes). `null` si aucune arme de contact n'est portée (le personnage
+ * combat alors à mains nues). Les objets libres (`CustomItem`) sont ignorés (pas d'item
+ * de catalogue). Point d'entrée UNIQUE pour éviter des résolveurs concurrents de l'arme
+ * active : DM de la carte « Attaque au contact » (PER-141) ET plage de critique
+ * intrinsèque de l'arme (PER-225) doivent se baser sur la MÊME arme.
+ */
+export function wornMeleeWeaponLine(equipment: EquipmentLine[]): EquipmentRef | null {
+  const meleeRefs = equipment.filter((line): line is EquipmentRef => {
+    if (isCustomItem(line)) return false;
+    const item = effectiveItem(line);
+    return item?.category === 'weapon' && item.melee;
+  });
+  return (
+    meleeRefs.find((l) => l.worn?.slot === 'mainHand') ??
+    meleeRefs.find((l) => l.worn?.slot === 'offHand') ??
+    null
+  );
+}
+
+/**
+ * Arme de contact EFFECTIVE tenue en main (surcharges de variante appliquées, PER-211),
+ * ou `null` à mains nues. Raccourci sur `wornMeleeWeaponLine` pour les appelants qui n'ont
+ * besoin que de l'item (plage de critique intrinsèque, PER-225) et pas de la prise.
+ */
+export function wornMeleeWeapon(equipment: EquipmentLine[]): Weapon | null {
+  const line = wornMeleeWeaponLine(equipment);
+  if (!line) return null;
+  const item = effectiveItem(line);
+  return item?.category === 'weapon' ? item : null;
 }
 
 /**

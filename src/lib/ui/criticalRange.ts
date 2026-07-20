@@ -32,9 +32,14 @@ export function formatCriticalRange(
   };
 }
 
-/** Une source d'élargissement de plage de critique (capacité ACTIVE), résolue à sa valeur. */
+/** Une source d'élargissement de plage de critique (capacité ACTIVE ou arme équipée), résolue à sa valeur. */
 export interface CriticalRangeSourceLike {
-  featureId: string;
+  /**
+   * Capacité d'origine, si la source EST une capacité (le badge la rend en puce de voie).
+   * ABSENT quand la source est l'arme elle-même (plage intrinsèque, PER-225) : le badge
+   * retombe alors sur le `name` en texte simple.
+   */
+  featureId?: string;
   name: string;
   scope: CriticalRange['scope'];
   value: number;

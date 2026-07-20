@@ -5,6 +5,8 @@ import {
   autoEquipStartingGear,
   equipConflicts,
   setWornAt,
+  wornMeleeWeapon,
+  wornMeleeWeaponLine,
   wornWeaponIsTwoHanded,
 } from './equipment';
 import type { EquipmentLine } from './types';
@@ -415,5 +417,36 @@ describe('setWornAt', () => {
     const out = setWornAt(lines, 1, { slot: 'mainHand', grip: 'twoHands' });
     expect(out[1].worn).toEqual({ slot: 'mainHand', grip: 'twoHands' });
     expect(out[0].worn).toBeUndefined();
+  });
+});
+
+describe('wornMeleeWeaponLine / wornMeleeWeapon (arme au contact courante, PER-225)', () => {
+  it('retourne la ligne de l’arme de contact tenue en MAIN PRINCIPALE', () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'rapiere', quantity: 1, worn: { slot: 'mainHand' } },
+      { itemId: 'dague', quantity: 1, worn: { slot: 'offHand' } },
+    ];
+    expect(wornMeleeWeaponLine(lines)).toEqual(lines[0]);
+    expect(wornMeleeWeapon(lines)?.id).toBe('rapiere');
+  });
+
+  it('retombe sur la MAIN SECONDAIRE si aucune arme de contact en main principale', () => {
+    const lines: EquipmentLine[] = [
+      { itemId: 'petit-bouclier', quantity: 1, worn: { slot: 'mainHand' } },
+      { itemId: 'dague', quantity: 1, worn: { slot: 'offHand' } },
+    ];
+    expect(wornMeleeWeaponLine(lines)?.itemId).toBe('dague');
+  });
+
+  it('null si aucune arme de contact PORTÉE (arme seulement rangée dans le sac)', () => {
+    expect(wornMeleeWeaponLine([{ itemId: 'rapiere', quantity: 1 }])).toBeNull();
+    expect(wornMeleeWeapon([{ itemId: 'rapiere', quantity: 1 }])).toBeNull();
+  });
+
+  it('ignore les objets personnalisés (pas d’item de catalogue)', () => {
+    const lines: EquipmentLine[] = [
+      { custom: true, name: 'Lame exotique', quantity: 1, worn: { slot: 'mainHand' } },
+    ];
+    expect(wornMeleeWeaponLine(lines)).toBeNull();
   });
 });

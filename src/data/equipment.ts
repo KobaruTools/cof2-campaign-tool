@@ -51,9 +51,9 @@ import type { Weapon, Armor, Shield, Gear } from './schema';
 //   Marteau 1d6 (4 pa) Contondants
 //   Masse 1d6 (4 pa) Contondants
 //   Pique 1d10 (5 pa) Perforants      « Arme à deux mains, spécial (voir description) »
-//   Rapière 1d6 (6 pa) Perforants     « Arme légère, critique sur 19-20 »
+//   Rapière 1d6 (6 pa) Perforants     « Arme légère » — critique 19-20 → champ `criticalRange` (PER-225)
 //   Stylet 1d3 (4 pa) Perforants      « Arme légère ; pas de FOR aux DM, mais 1d6+AGI DM si surpris »
-//   Vivelame 1d10 (15 pa) Tranchants  « Arme à deux mains, critique sur 19-20 »
+//   Vivelame 1d10 (15 pa) Tranchants  « Arme à deux mains » — critique 19-20 → champ `criticalRange` (PER-225)
 
 export const weapons: Weapon[] = [
   {
@@ -308,8 +308,10 @@ export const weapons: Weapon[] = [
     melee: true,
     ranged: false,
     damage: { count: 1, die: 'd6' },
+    // Critique intrinsèque 19-20 (p. 183) — structuré, plus en texte libre (PER-225).
+    criticalRange: { scope: 'melee', value: 1 },
     price: { amount: 6, unit: 'pa' },
-    properties: 'Type de DM : perforants. Arme légère, critique sur 19-20.',
+    properties: 'Type de DM : perforants. Arme légère.',
     sourcePage: 183,
   },
   {
@@ -333,9 +335,11 @@ export const weapons: Weapon[] = [
     melee: true,
     ranged: false,
     damage: { count: 1, die: 'd10' },
+    // Critique intrinsèque 19-20 (p. 183) — structuré, plus en texte libre (PER-225).
+    criticalRange: { scope: 'melee', value: 1 },
     price: { amount: 15, unit: 'pa' },
     properties:
-      'Type de DM : tranchants. Arme à deux mains, critique sur 19-20. Vivelame : cette arme n’a pas de réalité historique, il s’agit de la version occidentale (ou elfique) du katana, une arme à deux mains légère et très rapide, au tranchant aussi affûté que le fil d’un rasoir. Si le personnage obtient une capacité qui permet d’utiliser l’AGI au lieu de la FOR pour attaquer au contact, il peut aussi l’appliquer à cette arme s’il maîtrise les armes de contact à deux mains. Pour autant, la vivelame n’est pas considérée comme une arme légère pour les attaques sournoises.',
+      'Type de DM : tranchants. Arme à deux mains. Vivelame : cette arme n’a pas de réalité historique, il s’agit de la version occidentale (ou elfique) du katana, une arme à deux mains légère et très rapide, au tranchant aussi affûté que le fil d’un rasoir. Si le personnage obtient une capacité qui permet d’utiliser l’AGI au lieu de la FOR pour attaquer au contact, il peut aussi l’appliquer à cette arme s’il maîtrise les armes de contact à deux mains. Pour autant, la vivelame n’est pas considérée comme une arme légère pour les attaques sournoises.',
     sourcePage: 183,
   },
 
