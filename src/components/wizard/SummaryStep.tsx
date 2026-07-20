@@ -16,7 +16,7 @@ import { activeFeatureIdsForMods, defenseAbility, effectContext, effectiveAbilit
 import { hasActionableChoice, setFeatureChoice } from '@/lib/character/choices';
 import { FeatureChoiceField } from '@/components/sheet/FeatureChoiceField';
 import { defenseFromEquipment } from './helpers';
-import { abilityTotalColor } from '@/lib/ui/abilityColors';
+import { abilityTotalColor, abilityTotalFontSize } from '@/lib/ui/abilityColors';
 import { classColor } from '@/lib/ui/classColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AppAlert } from '@/components/AppAlert';
@@ -112,7 +112,7 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
         <Stack direction="row" spacing={1}>
           {ABILITY_IDS.map((id) => {
             const total = abilities[id];
-            const color = abilityTotalColor(total);
+            const color = abilityTotalColor(total, id);
             return (
               <Box
                 key={id}
@@ -137,7 +137,7 @@ export function SummaryStep({ draft, patch, campaignAllowsFirearms }: StepProps)
                   ancestry={ancestry}
                   ancestryChoices={draft.ancestryChoices}
                 >
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color, cursor: 'help' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color, cursor: 'help', fontSize: abilityTotalFontSize(total, '1.25rem') }}>
                     {total > 0 ? '+' : ''}
                     {total}
                   </Typography>

@@ -171,7 +171,7 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
         </Grid>
         {ABILITY_IDS.map((id) => {
           const total = draft.baseAbilities[id] + deltas[id];
-          const color = abilityTotalColor(total);
+          const color = abilityTotalColor(total, id);
           return (
             <Grid key={id} size={12}>
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>

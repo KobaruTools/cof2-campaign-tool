@@ -8,7 +8,7 @@ import type { AbilityId, Ancestry } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import type { AncestryChoice } from '@/lib/character/ancestry';
 import type { AbilityModSource, BonusDieSource } from '@/lib/character/effects';
-import { abilityTotalColor } from '@/lib/ui/abilityColors';
+import { abilityTotalColor, abilityTotalFontSize } from '@/lib/ui/abilityColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
@@ -89,7 +89,7 @@ export function AbilitiesGrid({
               value={entered}
               onChange={(v) => onChange(id, v)}
               slotProps={{
-                htmlInput: { style: { textAlign: 'center', fontWeight: 700, color: abilityTotalColor(entered) } },
+                htmlInput: { style: { textAlign: 'center', fontWeight: 700, color: abilityTotalColor(entered, id) } },
               }}
               sx={{ width: 64 }}
             />
@@ -101,7 +101,10 @@ export function AbilitiesGrid({
             )}
           </Stack>
         ) : (
-          <Typography variant="h6" sx={{ fontWeight: 'bold', color: abilityTotalColor(effective) }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 'bold', color: abilityTotalColor(effective, id), fontSize: abilityTotalFontSize(effective, '1.25rem') }}
+          >
             {effective > 0 ? '+' : ''}
             {effective}
           </Typography>

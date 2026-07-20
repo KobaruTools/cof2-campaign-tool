@@ -235,7 +235,7 @@ export function CharacterPreviewCard({ character, colorAbilities = false }: Char
           const value = character.abilities[id] ?? 0;
           // Teinte fort/faible optionnelle du CHIFFRE (écran MJ), sinon neutre. L'icône
           // garde sa teinte propre de carac (défaut d'`AbilityIcon`), indépendante.
-          const abilityColor = colorAbilities ? abilityTotalColor(value) : undefined;
+          const abilityColor = colorAbilities ? abilityTotalColor(value, id) : undefined;
           return (
             <Box
               key={id}
