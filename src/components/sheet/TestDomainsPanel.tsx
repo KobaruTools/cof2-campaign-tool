@@ -19,12 +19,15 @@ import {
   type UniversalTestBonus,
 } from '@/lib/character/effects';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { abilityTestGradient, abilityTestPanelBg, ABILITY_TEST_GRADIENT } from '@/lib/ui/abilityColors';
 import { agiTestArmorAdjustment } from '@/lib/character/equipment';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 import { AbilityIcon } from '@/components/AbilityIcon';
+import { ItemTypeIcon } from '@/components/ItemTypeIcon';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DieIcon } from '@/components/DieIcon';
 import { SheetSection } from '@/components/sheet/SheetSection';
@@ -156,9 +159,11 @@ function BreakdownRow({
 
 /**
  * Pastille d'avertissement compacte (même langage visuel que le badge « +15 » et
- * `DefenseBadge` — PAS un Chip MUI). `outlined` (fond transparent + bord tireté) sert au
- * rappel MJ *optionnel* (CON survie) pour le distinguer du malus RÉELLEMENT appliqué (AGI,
- * fond plein).
+ * `DefenseBadge` — PAS un Chip MUI). Sert à porter une ICÔNE (armure, avertissement) plutôt
+ * qu'à réécrire un chiffre déjà affiché ailleurs : la teinte warning et son tooltip suffisent.
+ * `outlined` (fond transparent + bord tireté) est le style par défaut de ces rappels ; l'icône
+ * distingue leur nature (cuirasse = malus d'armure AGI appliqué ; triangle = rappel MJ optionnel
+ * sur les tests de survie CON).
  */
 function WarnPill({ children, outlined = false }: { children: ReactNode; outlined?: boolean }) {
   return (
@@ -333,11 +338,17 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                 spacing={1}
                 sx={{
                   alignItems: 'center',
-                  mb: 1,
+                  // Collé au tableau des domaines qui suit : pas de marge basse et coins bas
+                  // carrés (le tableau reprend les coins arrondis en bas). Sans domaines, l'en-tête
+                  // reste une pastille entièrement arrondie.
+                  mb: 0,
                   px: 1,
                   py: 0.5,
-                  borderRadius: 1,
-                  bgcolor: 'action.hover',
+                  borderRadius: group.length > 0 ? '4px 4px 0 0' : 1,
+                  // Dégradé gauche→droite : du gris de fond actuel (`action.hover`) vers la
+                  // teinte d'identité de la carac légèrement désaturée (PER-224 → tests).
+                  background: (theme) =>
+                    abilityTestGradient(ability, theme.palette.action.hover, ABILITY_TEST_GRADIENT.header),
                 }}
               >
                 <AbilityIcon ability={ability} size={24} />
@@ -373,12 +384,27 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                     }
                   >
                     <Box component="span" sx={{ display: 'inline-flex', cursor: 'help' }}>
-                      <WarnPill>{signed(-agiPenalty)}</WarnPill>
+                      {/* Le chiffre est DÉJÀ dans le total « d20 −N » à gauche : plutôt que de le
+                          réécrire, la pastille signale seulement la SOURCE — l'armure portée — via
+                          son icône (cuirasse). Le tooltip porte la valeur et la référence de page. */}
+                      <WarnPill outlined>
+                        <ItemTypeIcon type="armor" size={13} />
+                      </WarnPill>
                     </Box>
                   </AppTooltip>
                 )}
               </Stack>
               {group.length > 0 && (
+                <Box
+                  sx={{
+                    p: 1,
+                    // Coins bas arrondis + haut carré : le tableau prolonge l'en-tête au-dessus.
+                    borderRadius: '0 0 4px 4px',
+                    // Fond plat très faible de la teinte de la carac, sous les cellules (qui
+                    // portent leur propre dégradé) : matérialise chaque « tableau » de tests.
+                    background: abilityTestPanelBg(ability),
+                  }}
+                >
                 <Grid container spacing={1}>
                   {group.map(({ d, bonus }) => {
                     const flat = bonus?.total ?? 0;
@@ -538,12 +564,19 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                           px: 1,
                           py: 0.5,
                           borderRadius: 1,
-                          // Fond plus discret que celui des en-têtes de carac (`action.hover`),
-                          // pour mieux démarquer les blocs : moitié de l'opacité de survol.
-                          bgcolor: has
-                            ? (theme) =>
-                                alpha(theme.palette.text.primary, theme.palette.action.hoverOpacity / 2)
-                            : undefined,
+                          // Même dégradé carac que l'en-tête, mais BEAUCOUP moins intense (cellules
+                          // très nombreuses → volontairement subtil). Les cellules bonifiées gardent
+                          // le gris de fond discret comme base (moitié de l'opacité de survol) ; les
+                          // cellules à 0 partent de transparent — dans les deux cas la teinte de la
+                          // carac colore faiblement le bord droit pour rattacher visuellement le test.
+                          background: (theme) =>
+                            abilityTestGradient(
+                              ability,
+                              has
+                                ? alpha(theme.palette.text.primary, theme.palette.action.hoverOpacity / 2)
+                                : 'transparent',
+                              ABILITY_TEST_GRADIENT.cell,
+                            ),
                           cursor: breakdown ? 'help' : undefined,
                         }}
                       >
@@ -591,9 +624,13 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                             </Box>
                           )}
                           {/* Rappel MJ (non appliqué) du malus d'armure sur les tests de survie CON :
-                              pastille warning TIRETÉE (distincte du malus AGI réellement appliqué, plein).
-                              « MJ ? » souligne que rien n'est imposé — le détail est dans le tooltip. */}
-                          {survivalConReminder && <WarnPill outlined>MJ ?</WarnPill>}
+                              pastille warning TIRETÉE, réduite à une icône d'avertissement (rien n'est
+                              imposé). Le détail — valeur du malus et libre appréciation — est dans le tooltip. */}
+                          {survivalConReminder && (
+                            <WarnPill outlined>
+                              <WarningAmberRoundedIcon sx={{ fontSize: 14 }} />
+                            </WarnPill>
+                          )}
                         </Stack>
                       </Box>
                     );
@@ -611,6 +648,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                     );
                   })}
                 </Grid>
+                </Box>
               )}
             </Box>
           );
