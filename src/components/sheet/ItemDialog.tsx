@@ -15,6 +15,8 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import type { Theme } from '@mui/material/styles';
 import { equipment as equipmentCatalog, equipmentById } from '@/data';
 import {
   WEAPON_CATEGORIES,
@@ -130,7 +132,10 @@ function WeaponDamageFields({
           label="Nombre de dés"
           value={value.count}
           onChange={(e) => set('count', e.target.value)}
-          sx={{ width: 120 }}
+          // Champs fluides (PER-231) : ils se partagent la largeur de la ligne et
+          // rétrécissent proprement dans une modale plein cadre mobile, au lieu d'une
+          // largeur fixe qui débordait. `flexWrap` (Stack parent) gère le repli.
+          sx={{ flex: '1 1 110px', minWidth: 100 }}
           slotProps={{ htmlInput: { min: 1 } }}
         />
         <TextField
@@ -139,7 +144,7 @@ function WeaponDamageFields({
           label="Dé"
           value={value.die}
           onChange={(e) => set('die', e.target.value as DamageDie)}
-          sx={{ width: 110 }}
+          sx={{ flex: '1 1 96px', minWidth: 92 }}
         >
           {DAMAGE_DICE.map((d) => (
             <MenuItem key={d} value={d}>
@@ -157,7 +162,7 @@ function WeaponDamageFields({
           placeholder="0"
           value={value.modifier}
           onChange={(e) => set('modifier', e.target.value)}
-          sx={{ width: 110 }}
+          sx={{ flex: '1 1 110px', minWidth: 100 }}
         />
         <FormControlLabel
           control={
@@ -276,6 +281,9 @@ export interface ItemDialogProps {
  * on peut re-typer un objet cosmétique (icône + « Utiliser » du consommable).
  */
 export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProps) {
+  // Plein écran sur mobile (PER-231) : formulaire de saisie d'objet, plus confortable
+  // en plein cadre qu'en petite boîte centrée sur téléphone.
+  const fullScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
   const editing = initial !== undefined;
   // Type initial : dérivé de la ligne en édition, sinon `null` (écran de choix).
   const initialType: ItemType | null = !initial
@@ -373,7 +381,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
   const selectedBase = baseId ? equipmentById.get(baseId) : undefined;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth fullScreen={fullScreen}>
       <DialogTitle>{editing ? 'Modifier l’objet' : 'Ajouter un objet'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

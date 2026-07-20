@@ -30,7 +30,8 @@ import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { alpha, type Theme } from '@mui/material/styles';
 import { classById, families, featureById, pathById, progression } from '@/data';
 import type { Family, Feature } from '@/data/schema';
 import { featureCost, maxHp, minLevelForRank } from '@/lib/engine';
@@ -382,7 +383,13 @@ function DivineAcquisitionCard({
       </Typography>
 
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 1.5 }}>
-        <FormControl size="small" sx={{ minWidth: 220 }} disabled={picked || hosts.length === 0}>
+        <FormControl
+          size="small"
+          // Fluide (PER-231) : occupe la largeur dispo et peut rétrécir sous 220px dans
+          // une modale plein cadre mobile, au lieu d'une largeur mini dure qui débordait.
+          sx={{ flex: '1 1 220px', minWidth: 0 }}
+          disabled={picked || hosts.length === 0}
+        >
           <InputLabel id="divine-host-label">Voie d’accueil</InputLabel>
           <Select
             labelId="divine-host-label"
@@ -504,6 +511,10 @@ export function LevelUpDialog({
   onClose,
   onConfirm,
 }: LevelUpDialogProps) {
+  // Plein écran sur mobile (PER-231) : le flux de montée de niveau est long et
+  // multi-étapes — une petite boîte centrée y est inconfortable. Sur grand écran on
+  // garde la modale « sm » centrée.
+  const fullScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
   const [picked, setPicked] = useState<string[]>([]);
   // Règle maison « dé de vie » (PER-87) : mode de gain de PV de CE niveau et, si
   // « dé de vie », le résultat saisi librement (le dé est lancé à la vraie table).
@@ -922,7 +933,7 @@ export function LevelUpDialog({
   return (
     <>
       <GlobalStyles styles={BORDER_ANGLE_STYLES} />
-      <Dialog open={open} onClose={close} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={close} maxWidth="sm" fullWidth fullScreen={fullScreen}>
         <DialogTitle>Montée au niveau {newLevel}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={3}>

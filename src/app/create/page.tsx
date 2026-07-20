@@ -11,6 +11,8 @@ import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import type { Theme } from '@mui/material/styles';
 import { ancestryById, classById, priestGods } from '@/data';
 import { choicesComplete } from '@/lib/character/ancestry';
 import { featuresWithUnmadeChoices } from '@/lib/character/choices';
@@ -163,6 +165,11 @@ export default function CreatePage() {
   // l'effet de démarrage ci-dessous recréerait aussitôt un brouillon vierge et
   // ferait clignoter l'étape « Peuple » le temps que `router.push` aboutisse.
   const [redirecting, setRedirecting] = useState(false);
+  // Indicateur d'étapes compact sur mobile (PER-231) : le Stepper « alternativeLabel »
+  // horizontal écrase ses libellés sur 320-360px. Sous « sm », on le remplace par des
+  // pastilles numérotées (sans libellé) + une ligne « Étape X / Y — <nom> ». Hook placé
+  // en tête (avant les retours anticipés d'hydratation) pour respecter les règles de hooks.
+  const compactStepper = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
 
   // Démarre un brouillon si aucun n'est en cours (après hydratation). La campagne
   // de rattachement est optionnelle (PER-180) : passée en query `?campaign=cid`
@@ -310,26 +317,47 @@ export default function CreatePage() {
       />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Stepper activeStep={step} alternativeLabel sx={{ mb: 4 }}>
-          {STEPS.map((s) => {
-            const choice = s.summary?.(draft) ?? null;
-            return (
-              <Step key={s.label}>
-                <StepLabel
-                  optional={
-                    choice ? (
-                      <Typography variant="caption" color="text.secondary">
-                        ({choice})
-                      </Typography>
-                    ) : undefined
-                  }
-                >
-                  {s.label}
-                </StepLabel>
-              </Step>
-            );
-          })}
-        </Stepper>
+        {compactStepper ? (
+          <Box sx={{ mb: 3 }}>
+            {/* Pastilles numérotées seules (sans libellé) : tiennent sur écran étroit. */}
+            <Stepper activeStep={step}>
+              {STEPS.map((s) => (
+                <Step key={s.label}>
+                  <StepLabel />
+                </Step>
+              ))}
+            </Stepper>
+            <Typography variant="subtitle2" align="center" sx={{ mt: 1.5 }}>
+              Étape {step + 1} / {STEPS.length} — {current.label}
+            </Typography>
+            {current.summary?.(draft) && (
+              <Typography variant="caption" color="text.secondary" align="center" sx={{ display: 'block' }}>
+                ({current.summary(draft)})
+              </Typography>
+            )}
+          </Box>
+        ) : (
+          <Stepper activeStep={step} alternativeLabel sx={{ mb: 4 }}>
+            {STEPS.map((s) => {
+              const choice = s.summary?.(draft) ?? null;
+              return (
+                <Step key={s.label}>
+                  <StepLabel
+                    optional={
+                      choice ? (
+                        <Typography variant="caption" color="text.secondary">
+                          ({choice})
+                        </Typography>
+                      ) : undefined
+                    }
+                  >
+                    {s.label}
+                  </StepLabel>
+                </Step>
+              );
+            })}
+          </Stepper>
+        )}
 
         <Box sx={{ mb: 3 }}>{navButtons}</Box>
 
