@@ -36,8 +36,8 @@ export interface AbilityBreakdownTooltipProps {
 /**
  * Enrobe le chiffre d'une caractéristique : au survol, détaille « valeur de
  * base + modificateur(s) de peuple + capacité(s) = total », avec la page source CO2.
- * Même langage visuel que le détail des statistiques dérivées (`DerivedStatHint`),
- * mais déclenché directement par le chiffre plutôt que par une icône « i ».
+ * Même langage visuel que le détail des statistiques dérivées
+ * (`DerivedStatBreakdownTooltip`), déclenché directement par le chiffre.
  */
 export function AbilityBreakdownTooltip({
   abilityId,

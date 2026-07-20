@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -21,8 +21,8 @@ export interface RangedAttackCardProps {
   touch: number | null;
   /** La valeur de touche est-elle forcée (surcharge épinglée) ? */
   forced: boolean;
-  /** Icône « i » de détail du calcul de la touche (rendue en haut à droite, au survol). */
-  statHint: ReactNode;
+  /** Enrobe la touche pour ouvrir le détail du calcul à son survol (curseur « ? »). */
+  wrapTouch: (child: ReactElement) => ReactNode;
   /** Caractéristiques effectives (résolution dynamique des DM). */
   abilities: Abilities;
   /** DM de l'arme à distance équipée. `null` = aucune arme à distance en main. */
@@ -43,7 +43,7 @@ export interface RangedAttackCardProps {
 export function RangedAttackCard({
   touch,
   forced,
-  statHint,
+  wrapTouch,
   abilities,
   rangedWeaponDamage,
   criticalRanges,
@@ -56,16 +56,11 @@ export function RangedAttackCard({
         position: 'relative',
         height: '100%',
         transition: 'border-color 120ms ease',
-        '& .derived-stat-hint': { opacity: 0, transition: 'opacity 120ms ease' },
         '&:hover, &:focus-within': {
           borderColor: 'rgba(255, 255, 255, 0.2)',
-          '& .derived-stat-hint': { opacity: 1 },
         },
       }}
     >
-      {/* Détail du calcul de la touche, en haut à droite, HORS FLUX (comme la carte de contact) :
-          libère toute la largeur de l'en-tête pour que le DM reste sur la même ligne que la touche. */}
-      <Box sx={{ position: 'absolute', top: 6, right: 18, zIndex: 3 }}>{statHint}</Box>
       <CardContent sx={{ py: 1, height: '100%', display: 'flex', flexDirection: 'column', '&:last-child': { pb: 1 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
           <DerivedStatIcon statId="rangedAttack" title size={40} />
@@ -74,23 +69,27 @@ export function RangedAttackCard({
               Attaque à distance
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 600,
-                  color: forced ? 'warning.main' : undefined,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                }}
-              >
-                {touch === null ? '—' : touch}
-                {forced && (
-                  <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
-                    <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
-                  </AppTooltip>
-                )}
-              </Typography>
+              {/* La touche porte le détail du calcul au survol (curseur « ? »), via `wrapTouch`. */}
+              {wrapTouch(
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 600,
+                    color: forced ? 'warning.main' : undefined,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    cursor: 'help',
+                  }}
+                >
+                  {touch === null ? '—' : touch}
+                  {forced && (
+                    <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
+                      <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
+                    </AppTooltip>
+                  )}
+                </Typography>,
+              )}
               {/* Petit séparateur : la valeur de touche et le calcul des DM sont deux choses distinctes. */}
               <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
               {/* DM accolés au chiffre d'attaque. */}

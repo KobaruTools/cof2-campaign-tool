@@ -1,14 +1,14 @@
 'use client';
 
-import type { SxProps, Theme } from '@mui/material/styles';
+import type { ReactElement } from 'react';
 import type { DerivedInput } from '@/lib/engine';
 import { featureModSources, type EffectContext } from '@/lib/character/effects';
 import { DERIVED_STAT_NAMES, type DerivedStatId } from '@/lib/ui/derivedStats';
 import { derivedStatBreakdown, type ModSources } from '@/lib/ui/derivedStatBreakdown';
+import { AppTooltip } from '@/components/AppTooltip';
 import { BreakdownContent } from '@/components/BreakdownContent';
-import { InfoHint } from '@/components/InfoHint';
 
-export interface DerivedStatHintProps {
+export interface DerivedStatBreakdownTooltipProps {
   statId: DerivedStatId;
   /** Mêmes entrées que `deriveStats` — sert à recalculer le détail. */
   input: DerivedInput;
@@ -27,27 +27,27 @@ export interface DerivedStatHintProps {
    * divers » de chaque stat — ex. points de capacité orphelins convertis (p. 40).
    */
   extraModSources?: ModSources;
-  /** Classe CSS posée sur l'icône « i » — permet au parent de la révéler au survol du bloc. */
-  className?: string;
   /** Délai (ms) avant apparition de l'infobulle au survol (cf. `AppTooltip.enterDelay`). */
   enterDelay?: number;
-  sx?: SxProps<Theme>;
+  /** Le chiffre survolé pour afficher le détail du calcul. */
+  children: ReactElement;
 }
 
 /**
- * Icône « i » à poser à côté d'une statistique dérivée : au survol, détaille
- * d'où vient le total (terme par terme), avec la page source CO2.
+ * Enrobe le chiffre d'une statistique dérivée : au survol, détaille d'où vient
+ * le total (terme par terme), avec la page source CO2. Même langage visuel que
+ * le détail des caractéristiques (`AbilityBreakdownTooltip`), déclenché
+ * directement par le chiffre plutôt que par une icône « i ».
  */
-export function DerivedStatHint({
+export function DerivedStatBreakdownTooltip({
   statId,
   input,
   featureIds,
   effectContext,
   extraModSources,
-  className,
   enterDelay,
-  sx,
-}: DerivedStatHintProps) {
+  children,
+}: DerivedStatBreakdownTooltipProps) {
   // Inventaire des capacités contribuant à chaque modificateur, mis en forme de
   // sous-termes : libellé = nom nu de la capacité + `featureId` → l'UI rend la puce
   // de voie complète (`CapabilityChip` : couleur + icône) au lieu du nom brut ; le
@@ -72,11 +72,13 @@ export function DerivedStatHint({
   }
   const bd = derivedStatBreakdown(statId, input, modSources);
   // La page source est rendue par `BreakdownContent` en haut à droite du titre (et non
-  // par `InfoHint`/`AppTooltip` en pied de bulle) : elle qualifie la stat, sa place est
-  // auprès de son nom.
+  // en pied de bulle) : elle qualifie la stat, sa place est auprès de son nom.
   return (
-    <InfoHint className={className} enterDelay={enterDelay} sx={sx}>
-      <BreakdownContent title={DERIVED_STAT_NAMES[statId]} breakdown={bd} page={bd.page} />
-    </InfoHint>
+    <AppTooltip
+      title={<BreakdownContent title={DERIVED_STAT_NAMES[statId]} breakdown={bd} page={bd.page} />}
+      enterDelay={enterDelay}
+    >
+      {children}
+    </AppTooltip>
   );
 }

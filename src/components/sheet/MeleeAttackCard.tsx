@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import FrontHandIcon from '@mui/icons-material/FrontHand';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
@@ -29,6 +29,7 @@ function Face({
   mode,
   touch,
   forced,
+  wrapTouch,
   abilities,
   unarmed,
   meleeWeaponDamage,
@@ -39,6 +40,7 @@ function Face({
   mode: MeleeMode;
   touch: number | null;
   forced: boolean;
+  wrapTouch: (child: ReactElement) => ReactNode;
   abilities: Abilities;
   unarmed: UnarmedStrikeView;
   meleeWeaponDamage: MeleeWeaponDamageView | null;
@@ -65,23 +67,27 @@ function Face({
             {title}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: 600,
-                color: forced ? 'warning.main' : undefined,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.5,
-              }}
-            >
-              {touch === null ? '—' : touch}
-              {forced && (
-                <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
-                  <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
-                </AppTooltip>
-              )}
-            </Typography>
+            {/* La touche porte le détail du calcul au survol (curseur « ? »), via `wrapTouch`. */}
+            {wrapTouch(
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 600,
+                  color: forced ? 'warning.main' : undefined,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  cursor: 'help',
+                }}
+              >
+                {touch === null ? '—' : touch}
+                {forced && (
+                  <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
+                    <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
+                  </AppTooltip>
+                )}
+              </Typography>,
+            )}
             {/* Petit séparateur : la valeur de touche et le calcul des DM sont deux choses distinctes. */}
             <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
             {/* DM accolés au chiffre d'attaque : dé + caractéristique(s) résolue(s) dynamiquement. */}
@@ -150,8 +156,8 @@ export interface MeleeAttackCardProps {
   touch: number | null;
   /** La valeur de touche est-elle forcée (surcharge épinglée) ? */
   forced: boolean;
-  /** Icône « i » de détail du calcul de la touche (rendue en haut à droite, au survol). */
-  statHint: ReactNode;
+  /** Enrobe la touche pour ouvrir le détail du calcul à son survol (curseur « ? »). */
+  wrapTouch: (child: ReactElement) => ReactNode;
   /** Caractéristiques effectives du personnage (résolution dynamique des DM). */
   abilities: Abilities;
   /** Vue « mains nues » (moteur `unarmedStrike`). */
@@ -188,7 +194,7 @@ function SwordGlyph() {
 export function MeleeAttackCard({
   touch,
   forced,
-  statHint,
+  wrapTouch,
   abilities,
   unarmed,
   meleeWeaponDamage,
@@ -202,6 +208,7 @@ export function MeleeAttackCard({
   const faceProps = {
     touch,
     forced,
+    wrapTouch,
     abilities,
     unarmed,
     meleeWeaponDamage,
@@ -239,9 +246,6 @@ export function MeleeAttackCard({
         height: '100%',
         // Le cadre arrière décalé dépasse hors du bloc (aucune marge réservée).
         overflow: 'visible',
-        // L'icône « i » de détail n'apparaît qu'au survol de la carte (comme les autres cartes).
-        '& .derived-stat-hint': { opacity: 0, transition: 'opacity 120ms ease' },
-        '&:hover .derived-stat-hint': { opacity: 1 },
       }}
     >
       {/* Bouton d'échange, en haut à gauche : icône de l'état COURANT (épée = arme / main = mains nues),
@@ -291,9 +295,6 @@ export function MeleeAttackCard({
           </Box>
         </IconButton>
       </AppTooltip>
-
-      {/* Détail du calcul de la touche, en haut à droite (partagé par les deux cadres). */}
-      <Box sx={{ position: 'absolute', top: 6, right: 18, zIndex: 3 }}>{statHint}</Box>
 
       {/* Pile de cadres. Le SIZER (cadre actif, masqué) impose la hauteur MINIMALE ; les deux cadres
           réels sont superposés en absolu et s'échangent avec animation. `height: 100%` pour que les

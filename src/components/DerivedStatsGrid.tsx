@@ -18,7 +18,7 @@ import { DERIVED_STAT_NAMES, type DerivedStatId } from '@/lib/ui/derivedStats';
 import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
-import { DerivedStatHint } from '@/components/DerivedStatHint';
+import { DerivedStatBreakdownTooltip } from '@/components/DerivedStatBreakdownTooltip';
 import { DieIcon } from '@/components/DieIcon';
 import { SignedNumberField } from '@/components/SignedNumberField';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
@@ -180,6 +180,19 @@ export function DerivedStatsGrid({
                 ? rangedCriticalRanges
                 : undefined;
 
+        // Détail du calcul (breakdown + page source), désormais porté par le CHIFFRE de la
+        // carte (survol = infobulle, curseur « ? ») plutôt que par une icône « i » dédiée.
+        // Props communes réutilisées par les cartes d'attaque (enrobent leur touche) et par
+        // la carte générique (enrobe le chiffre en lecture, le libellé en édition).
+        const breakdownProps = {
+          statId: id,
+          input,
+          featureIds,
+          effectContext,
+          extraModSources,
+          enterDelay: 200,
+        };
+
         // PER-141 — carte « Attaque au contact » avec bascule arme ⇄ mains nues : double cadre
         // superposé qui s'échangent avec animation. Réservée à la vue (pas en mode édition des
         // surcharges, où l'on garde la carte simple). Ailleurs → carte générique ci-dessous.
@@ -189,17 +202,9 @@ export function DerivedStatsGrid({
               <MeleeAttackCard
                 touch={display}
                 forced={forced}
-                statHint={
-                  <DerivedStatHint
-                    statId={id}
-                    input={input}
-                    featureIds={featureIds}
-                    effectContext={effectContext}
-                    extraModSources={extraModSources}
-                    className="derived-stat-hint"
-                    enterDelay={200}
-                  />
-                }
+                wrapTouch={(child) => (
+                  <DerivedStatBreakdownTooltip {...breakdownProps}>{child}</DerivedStatBreakdownTooltip>
+                )}
                 abilities={input.abilities}
                 unarmed={unarmedStrike}
                 meleeWeaponDamage={meleeWeaponDamage ?? null}
@@ -220,17 +225,9 @@ export function DerivedStatsGrid({
               <RangedAttackCard
                 touch={display}
                 forced={forced}
-                statHint={
-                  <DerivedStatHint
-                    statId={id}
-                    input={input}
-                    featureIds={featureIds}
-                    effectContext={effectContext}
-                    extraModSources={extraModSources}
-                    className="derived-stat-hint"
-                    enterDelay={200}
-                  />
-                }
+                wrapTouch={(child) => (
+                  <DerivedStatBreakdownTooltip {...breakdownProps}>{child}</DerivedStatBreakdownTooltip>
+                )}
                 abilities={input.abilities}
                 rangedWeaponDamage={rangedWeaponDamage}
                 criticalRanges={rangedCriticalRanges ?? []}
@@ -247,12 +244,10 @@ export function DerivedStatsGrid({
               sx={{
                 height: '100%',
                 transition: 'border-color 120ms ease',
-                // L'icône « i » du détail reste masquée et n'apparaît qu'au survol
-                // (ou focus clavier) de la carte. Bordure très légèrement éclaircie au survol.
-                '& .derived-stat-hint': { opacity: 0, transition: 'opacity 120ms ease' },
+                // Bordure très légèrement éclaircie au survol / focus clavier de la carte.
+                // Le détail du calcul est désormais accessible en survolant le chiffre (curseur « ? »).
                 '&:hover, &:focus-within': {
                   borderColor: 'rgba(255, 255, 255, 0.2)',
-                  '& .derived-stat-hint': { opacity: 1 },
                 },
               }}
             >
@@ -265,17 +260,31 @@ export function DerivedStatsGrid({
                   '&:last-child': { pb: 1 },
                 }}
               >
-                {/* Ligne du haut : icône + libellé + valeur + bouton info, alignée EN HAUT du bloc. */}
+                {/* Ligne du haut : icône + libellé + valeur, alignée EN HAUT du bloc. Le détail du
+                    calcul s'ouvre au survol du CHIFFRE (curseur « ? ») ; en édition, où le chiffre
+                    devient un champ de saisie, il est porté par le LIBELLÉ à la place. */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
                   <DerivedStatIcon statId={id} title size={40} />
                   <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: 'block', lineHeight: 1.2 }}
-                    >
-                      {DERIVED_STAT_NAMES[id]}
-                    </Typography>
+                    {onOverride ? (
+                      <DerivedStatBreakdownTooltip {...breakdownProps}>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: 'inline-block', lineHeight: 1.2, cursor: 'help' }}
+                        >
+                          {DERIVED_STAT_NAMES[id]}
+                        </Typography>
+                      </DerivedStatBreakdownTooltip>
+                    ) : (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', lineHeight: 1.2 }}
+                      >
+                        {DERIVED_STAT_NAMES[id]}
+                      </Typography>
+                    )}
 
                     {onOverride ? (
                       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.25 }}>
@@ -309,36 +318,29 @@ export function DerivedStatsGrid({
                         </AppTooltip>
                       </Stack>
                     ) : (
-                      <Typography
-                        variant="h5"
-                        sx={{
-                          fontWeight: 600,
-                          color: forced ? 'warning.main' : undefined,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 0.75,
-                        }}
-                      >
-                        {display === null ? '—' : display}
-                        {suffix}
-                        {forced && (
-                          <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
-                            <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
-                          </AppTooltip>
-                        )}
-                      </Typography>
+                      <DerivedStatBreakdownTooltip {...breakdownProps}>
+                        <Typography
+                          variant="h5"
+                          sx={{
+                            fontWeight: 600,
+                            color: forced ? 'warning.main' : undefined,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.75,
+                            cursor: 'help',
+                          }}
+                        >
+                          {display === null ? '—' : display}
+                          {suffix}
+                          {forced && (
+                            <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
+                              <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
+                            </AppTooltip>
+                          )}
+                        </Typography>
+                      </DerivedStatBreakdownTooltip>
                     )}
                   </Box>
-                  <DerivedStatHint
-                    statId={id}
-                    input={input}
-                    featureIds={featureIds}
-                    effectContext={effectContext}
-                    extraModSources={extraModSources}
-                    className="derived-stat-hint"
-                    enterDelay={200}
-                    sx={{ alignSelf: 'flex-start' }}
-                  />
                 </Box>
 
                 {/* Badges alignés EN BAS du bloc (mt: auto). Les IMMUNITÉS ont leur PROPRE grille,
