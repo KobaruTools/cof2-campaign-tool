@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
@@ -26,6 +26,8 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import type { Theme } from '@mui/material/styles';
 import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, progression } from '@/data';
 import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId, StartingEquipmentChoiceOption } from '@/data/schema';
@@ -197,7 +199,21 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       return { abilities: next, derived: next, features: next, equipment: next, identity: next, notes: next };
     });
   const [levelUpOpen, setLevelUpOpen] = useState(false);
+  // Disposition des voies : « colonnes » sur grand écran (défaut historique), mais
+  // « lignes » par défaut sur mobile (PER-229) — en colonnes, le bloc central de la
+  // fiche rend une grille large à défilement horizontal, très inconfortable au doigt.
+  // On respecte un choix manuel : dès que l'utilisateur bascule, on ne réimpose plus
+  // le défaut lié à la largeur d'écran (`layoutTouchedRef`).
+  const isNarrowViewport = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
   const [voiesLayout, setVoiesLayout] = useState<FeaturesLayout>('columns');
+  const layoutTouchedRef = useRef(false);
+  useEffect(() => {
+    if (!layoutTouchedRef.current) setVoiesLayout(isNarrowViewport ? 'rows' : 'columns');
+  }, [isNarrowViewport]);
+  const changeVoiesLayout = useCallback((layout: FeaturesLayout) => {
+    layoutTouchedRef.current = true;
+    setVoiesLayout(layout);
+  }, []);
   // Texte d'origine (PER-88) : OFF (défaut) → rendu enrichi des capacités ; ON →
   // verbatim du livre. Préférence d'affichage transitoire, comme la disposition des voies.
   const [featuresVerbatim, setFeaturesVerbatim] = useState(false);
@@ -1143,7 +1159,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   <ConcentrationToggle value={concentration} onChange={setConcentration} />
                 )}
                 <VerbatimToggle value={featuresVerbatim} onChange={setFeaturesVerbatim} />
-                <FeaturesLayoutToggle value={voiesLayout} onChange={setVoiesLayout} />
+                <FeaturesLayoutToggle value={voiesLayout} onChange={changeVoiesLayout} />
                 {!readOnly && (
                   <BlockEditButton
                     editing={editingBlocks.features}
