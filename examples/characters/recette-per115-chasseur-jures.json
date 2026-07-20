@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per115-chasseur-jures",
+  "name": "Recette PER-115 — Chasseur émérite, 2 ennemis jurés (tooltip dynamique)",
+  "identity": {
+    "description": "ATTENDU — Chasseur émérite : badge situationnel « + [dé d4°] » au contact ET à distance. Tooltip : capacité + condition « contre les animaux (même géants), Dragons, Morts-vivants » (DEUX ennemis jurés, car DEUX voies de rôdeur au rang 5 : traqueur + survie). Retirer un ennemi juré → le tooltip se raccourcit dynamiquement."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "rodeur",
+  "level": 10,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 4,
+    "CON": 2,
+    "FOR": 2,
+    "PER": 3,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 4,
+    "CON": 2,
+    "FOR": 2,
+    "PER": 3,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "traqueur-r1",
+    "traqueur-r2",
+    "traqueur-r3",
+    "traqueur-r4",
+    "traqueur-r5",
+    "survie-r1",
+    "survie-r2",
+    "survie-r3",
+    "survie-r4",
+    "survie-r5"
+  ],
+  "featureChoices": {
+    "traqueur-r3": [
+      [
+        "dragons",
+        "undead"
+      ]
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "arc-court",
+      "quantity": 1,
+      "worn": {
+        "slot": "offHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-115 : démonstration du libellé de condition dynamique (appendChoiceLabels) selon featureChoices.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
