@@ -273,8 +273,22 @@ export default function HomePage() {
         title="Personnages — Chroniques Oubliées Fantasy 2"
         action={
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            <Button color="inherit" startIcon={<QuestIcon />} component={Link} href="/campaigns">
-              Campagnes
+            {/* Bouton condensé sur mobile (PER-228) : icône seule < sm (le libellé
+                mangeait la place du titre sur écran étroit), libellé complet dès sm. */}
+            <Button
+              color="inherit"
+              startIcon={<QuestIcon />}
+              component={Link}
+              href="/campaigns"
+              sx={{
+                minWidth: { xs: 0, sm: 64 },
+                px: { xs: 1, sm: 2 },
+                '& .MuiButton-startIcon': { mr: { xs: 0, sm: 0.5 } },
+              }}
+            >
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Campagnes
+              </Box>
             </Button>
             <AccountMenu />
           </Stack>

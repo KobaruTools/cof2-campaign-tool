@@ -75,6 +75,11 @@ export function HeaderIllustrations({
           alt=""
           aria-hidden
           sx={{
+            // Masquées sur mobile (< md) — PER-228. Sur petit écran, ces filigranes
+            // ancrés aux bords de l'écran (±50vw) passaient derrière le texte de
+            // l'en-tête sans contraste garanti et nuisaient à sa lisibilité. On calque
+            // le comportement propre de HomeBackground (fonds d'accueil masqués < md).
+            display: { xs: 'none', md: 'block' },
             position: 'absolute',
             top: ancestryTop,
             // Ancré au bord GAUCHE de l'écran : le centre du bloc = centre du viewport,
@@ -99,6 +104,8 @@ export function HeaderIllustrations({
           alt=""
           aria-hidden
           sx={{
+            // Masqué sur mobile (< md) — PER-228, cf. la vitruve du peuple ci-dessus.
+            display: { xs: 'none', md: 'block' },
             position: 'absolute',
             top: 0,
             // Ancré au bord DROIT de l'écran (symétrique de la vitruve) : right 50 %

@@ -879,7 +879,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                   }}
                 />
               ) : (
-                <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
+                <Typography
+                  variant="h4"
+                  component="h2"
+                  // `overflowWrap: anywhere` (PER-228) : un nom d'un seul mot très long
+                  // (sans espace où couper) ne déborde plus horizontalement sur mobile ;
+                  // la taille du h4 est déjà réduite sur petit écran par responsiveFontSizes.
+                  sx={{ fontWeight: 'bold', overflowWrap: 'anywhere' }}
+                >
                   {character.name || 'Sans nom'}
                 </Typography>
               )}

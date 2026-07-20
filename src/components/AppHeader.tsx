@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AppBar from '@mui/material/AppBar';
+import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -85,10 +86,19 @@ export function AppHeader({ title, backHref, onBack, backLabel, action }: AppHea
             )}
           </AppTooltip>
         )}
-        <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
+        {/* Titre tronqué proprement (PER-228) : `noWrap` + `minWidth: 0` permettent au
+            titre de rétrécir dans le Toolbar et de finir en « … » plutôt que de s'écraser
+            sur plusieurs lignes contre les actions à droite sur écran étroit. `mr` réserve
+            un filet d'espace avant les actions. */}
+        <Typography
+          variant="h6"
+          component="h1"
+          noWrap
+          sx={{ flexGrow: 1, minWidth: 0, mr: action ? 1 : 0 }}
+        >
           {title}
         </Typography>
-        {action}
+        {action && <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{action}</Box>}
       </Toolbar>
     </AppBar>
   );
