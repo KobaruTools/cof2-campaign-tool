@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per144-rang1-en-armure",
+  "name": "Recette PER-144 — emprunt rang 1 + armure (CONTRÔLE : rien)",
+  "identity": {
+    "description": "ATTENDU (contrôle) : l'emprunt « Projectile de mana » (rang 1) s'utilise « en armure sans pénalité » — carte NORMALE, aucune notice, aucun grisage, MÊME en armure."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "elfe-haut",
+  "classId": "guerrier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 2,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 2,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "elfe-haut",
+  "featureIds": [
+    "elfe-haut-r1",
+    "elfe-haut-r2",
+    "elfe-haut-r3"
+  ],
+  "featureChoices": {
+    "elfe-haut-r3": [
+      "magie-des-arcanes-r1"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-144 — contrôle : emprunt rang 1 (Projectile de mana) en armure → rien à signaler.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

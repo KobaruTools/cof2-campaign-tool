@@ -9,6 +9,7 @@ import {
   featureArmorRestrictionViolations,
   isArmorWorn,
   isShieldWorn,
+  magicTalentSpellsBlockedByArmor,
   shieldDisabledFeatureIds,
 } from './armorRestrictions';
 import {
@@ -18,6 +19,7 @@ import {
   effectiveAbilities,
   modsFromFeatures,
 } from './effects';
+import { borrowedFeatureIds } from './choices';
 import { featureById } from '@/data';
 
 const ctx = rulesContext;
@@ -308,6 +310,68 @@ describe('armorDisabledFeatureIds / activeFeatureIdsForMods — retrait des bonu
     expect(activeFeatureIdsForMods(enArmure)).not.toContain('poing-r2');
     const sansArmure = makeChar({ classId: 'moine', featureIds: ['poing-r2'], equipment: [] });
     expect(activeFeatureIdsForMods(sansArmure)).toContain('poing-r2');
+  });
+});
+
+describe('PER-144 — Talent pour la magie : emprunt de rang 2 non lançable en armure', () => {
+  // Un elfe haut acquiert « Talent pour la magie » (elfe-haut-r3, p. 50) puis EMPRUNTE une capacité
+  // de magicien/ensorceleur via son choix `feature-from-path` (index 0). Le texte : le rang 1
+  // s'utilise « en armure sans pénalité », le rang 2 « ne doit alors pas porter d'armure pour lancer
+  // le sort ». On isole donc le rang de l'emprunt × présence d'armure. `magie-des-arcanes-r1`
+  // (Projectile de mana, rang 1) et `magie-des-arcanes-r2` (Lévitation, rang 2) sont des sorts.
+  const talentPourLaMagie = (borrowedId: string, over: Partial<Character> = {}): Character =>
+    makeChar({
+      ancestryId: 'elfe-haut',
+      ancestryPathId: 'elfe-haut',
+      classId: 'magicien',
+      featureIds: ['elfe-haut-r3'],
+      featureChoices: { 'elfe-haut-r3': [borrowedId] },
+      ...over,
+    });
+
+  describe('magicTalentSpellsBlockedByArmor — emprunt de rang 2 gêné par l’armure (p. 50)', () => {
+    it('retient un emprunt de RANG 2 (magie-des-arcanes-r2) quand une armure est portée', () => {
+      const c = talentPourLaMagie('magie-des-arcanes-r2', { equipment: [wornArmor('cuir-simple')] });
+      expect(magicTalentSpellsBlockedByArmor(c)).toEqual(new Set(['magie-des-arcanes-r2']));
+    });
+
+    it('IGNORE un emprunt de rang 2 quand AUCUNE armure n’est portée (utilisable sans armure)', () => {
+      const c = talentPourLaMagie('magie-des-arcanes-r2', { equipment: [] });
+      expect(magicTalentSpellsBlockedByArmor(c).size).toBe(0);
+    });
+
+    it('IGNORE un emprunt de RANG 1 même en armure (utilisable en armure sans pénalité)', () => {
+      const c = talentPourLaMagie('magie-des-arcanes-r1', { equipment: [wornArmor('cuir-simple')] });
+      expect(magicTalentSpellsBlockedByArmor(c).size).toBe(0);
+    });
+
+    it('compte TOUTE armure portée, objet personnalisé inclus (isArmorWorn)', () => {
+      const custom: EquipmentLine = { custom: true, name: 'Armure de fortune', quantity: 1, worn: { slot: 'armor' } };
+      const c = talentPourLaMagie('magie-des-arcanes-r2', { equipment: [custom] });
+      expect(magicTalentSpellsBlockedByArmor(c)).toEqual(new Set(['magie-des-arcanes-r2']));
+    });
+
+    it('vide si « Talent pour la magie » (elfe-haut-r3) n’est pas acquise', () => {
+      const sansTalent = makeChar({
+        classId: 'magicien',
+        featureChoices: { 'elfe-haut-r3': ['magie-des-arcanes-r2'] },
+        equipment: [wornArmor('cuir-simple')],
+      });
+      expect(magicTalentSpellsBlockedByArmor(sansTalent).size).toBe(0);
+    });
+  });
+
+  describe('avertissement, PAS désactivation (le sort reste acquis)', () => {
+    it('l’emprunt de rang 2 reste une capacité empruntée et n’est jamais désactivé par l’armure', () => {
+      const c = talentPourLaMagie('magie-des-arcanes-r2', { equipment: [wornArmor('cuir-simple')] });
+      // Le sort est signalé (avertissement)…
+      expect(magicTalentSpellsBlockedByArmor(c).has('magie-des-arcanes-r2')).toBe(true);
+      // …mais il reste acquis (borrowé) et n'est PAS retiré du moteur (≠ PER-83/86 : les sorts en
+      // sont exclus). L'elfe PEUT le lancer en retirant son armure — ce n'est pas une désactivation.
+      expect(borrowedFeatureIds(c)).toContain('magie-des-arcanes-r2');
+      expect(armorDisabledFeatureIds(c, ctx).has('magie-des-arcanes-r2')).toBe(false);
+      expect(featureArmorRestrictionViolations(c, ctx).some((v) => v.featureId === 'magie-des-arcanes-r2')).toBe(false);
+    });
   });
 });
 

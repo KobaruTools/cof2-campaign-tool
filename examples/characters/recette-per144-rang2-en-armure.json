@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per144-rang2-en-armure",
+  "name": "Recette PER-144 — emprunt rang 2 + armure (AVERTISSEMENT)",
+  "identity": {
+    "description": "ATTENDU : la carte de l'emprunt « Lévitation » (rang 2, Voie de la magie des arcanes) est désaturée + barrée, avec une notice « Sort emprunté de rang 2 : ne peut pas être lancé tant qu'une armure est portée… (p. 50) ». Retirer l'armure fait disparaître notice + grisage."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "elfe-haut",
+  "classId": "guerrier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 2,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 2,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "elfe-haut",
+  "featureIds": [
+    "elfe-haut-r1",
+    "elfe-haut-r2",
+    "elfe-haut-r3"
+  ],
+  "featureChoices": {
+    "elfe-haut-r3": [
+      "magie-des-arcanes-r2"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-144 — Talent pour la magie : emprunt rang 2 (Lévitation) en armure → avertissement non bloquant.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

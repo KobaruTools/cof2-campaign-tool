@@ -171,3 +171,36 @@ describe('spellArmorManaSurcharge — condition de maîtrise (p. 178)', () => {
     expect(res?.blockedByMastery).toBe(false);
   });
 });
+
+describe('spellArmorManaSurcharge — Talent pour la magie affranchit du surcoût (PER-144, p. 50)', () => {
+  // Un sort emprunté via « Talent pour la magie » (elfe-haut-r3) s'utilise « en armure sans pénalité »
+  // (rang 1) — donc AUCUN surcoût d'armure, contrairement à un sort de magicien natif. Le rang 2 est,
+  // lui, non lançable en armure (avertissement, cf. magicTalentSpellsBlockedByArmor) : la notion de
+  // surcoût ne s'applique pas non plus. Base : un elfe haut guerrier (peut porter du cuir).
+  const talent = (borrowedId: string): Character =>
+    makeChar({
+      ancestryId: 'elfe-haut',
+      ancestryPathId: 'elfe-haut',
+      classId: 'guerrier',
+      featureIds: ['elfe-haut-r3'],
+      featureChoices: { 'elfe-haut-r3': [borrowedId] },
+      equipment: [wornArmor('cuir-simple')],
+    });
+
+  it('emprunt de RANG 1 en armure → aucun surcoût (null), « en armure sans pénalité »', () => {
+    expect(spellArmorManaSurcharge(talent('magie-des-arcanes-r1'), ctx, feat('magie-des-arcanes-r1'))).toBeNull();
+  });
+
+  it('emprunt de RANG 2 en armure → aucun surcoût (null), l’interdiction est rendue en avertissement', () => {
+    expect(spellArmorManaSurcharge(talent('magie-des-arcanes-r2'), ctx, feat('magie-des-arcanes-r2'))).toBeNull();
+  });
+
+  it('CONTRÔLE : le MÊME sort possédé NATIVEMENT (magicien pur, sans Talent) garde son surcoût +2', () => {
+    const magicien = makeChar({
+      classId: 'magicien',
+      featureIds: ['magie-des-arcanes-r1'],
+      equipment: [wornArmor('cuir-simple')],
+    });
+    expect(spellArmorManaSurcharge(magicien, ctx, feat('magie-des-arcanes-r1'))?.surcharge).toBe(2);
+  });
+});

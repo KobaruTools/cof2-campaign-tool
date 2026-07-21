@@ -57,6 +57,63 @@ export function armorLimitedBorrowedFeatureIds(character: Character): Set<string
 }
 
 /**
+ * PER-144 — capacité de rang 3 de la voie de l'elfe haut (« Talent pour la magie », p. 50) : le
+ * joueur EMPRUNTE une capacité de magicien ou d'ensorceleur. Id de contenu persisté (slug figé).
+ */
+const TALENT_POUR_LA_MAGIE_ID = 'elfe-haut-r3';
+
+/**
+ * PER-144 — ids des capacités EMPRUNTÉES via « Talent pour la magie » (elfe-haut-r3, p. 50), tous rangs
+ * confondus. Sert de base aux deux règles de la p. 50 :
+ *  - rang 1 → « en armure sans pénalité » : AUCUN surcoût de mana d'incantation (PER-82) ;
+ *  - rang 2 → « ne doit alors pas porter d'armure pour lancer le sort » : non lançable en armure.
+ * Dans les deux cas, la notion de surcoût d'armure ne s'applique pas à ces emprunts (cf.
+ * `spellArmorManaSurcharge`), l'affranchissement étant total. Ensemble vide si la capacité n'est pas
+ * acquise. Ne dépend PAS de l'armure portée (contrairement à `magicTalentSpellsBlockedByArmor`).
+ */
+export function magicTalentBorrowedFeatureIds(character: Character): Set<string> {
+  const result = new Set<string>();
+  if (!character.featureIds.includes(TALENT_POUR_LA_MAGIE_ID)) return result;
+  const defs = featureChoiceDefs(TALENT_POUR_LA_MAGIE_ID);
+  const selections = character.featureChoices?.[TALENT_POUR_LA_MAGIE_ID] ?? [];
+  selections.forEach((sel, i) => {
+    if (defs[i]?.kind !== 'feature-from-path' || typeof sel !== 'string') return;
+    if (featureById.has(sel)) result.add(sel);
+  });
+  return result;
+}
+
+/**
+ * PER-144 — ids des SORTS empruntés via « Talent pour la magie » (elfe-haut-r3, p. 50) qui NE PEUVENT
+ * PAS être lancés tant qu'une armure est portée. Verbatim p. 50 : un emprunt de rang 1 « peut utiliser
+ * cette capacité en armure sans pénalité » ; « à la place, il peut choisir une capacité de rang 2, mais
+ * ne doit alors pas porter d'armure pour lancer le sort ». Seul un emprunt de RANG 2 est donc concerné,
+ * et UNIQUEMENT tant qu'une armure est portée (`isArmorWorn` : toute armure compte, objet personnalisé
+ * inclus). Contrairement à PER-153, les SORTS ne sont PAS écartés — c'est justement le lancer du sort
+ * emprunté qui est visé. Ce n'est PAS une désactivation (PER-83/86, dont les sorts sont de toute façon
+ * exclus) : la capacité reste acquise ; le moteur SIGNALE seulement (avertissement non bloquant), l'elfe
+ * PEUT lancer le sort en retirant son armure. Ensemble vide sans armure, sans la capacité, ou pour un
+ * emprunt de rang 1.
+ */
+export function magicTalentSpellsBlockedByArmor(character: Character): Set<string> {
+  const result = new Set<string>();
+  if (!isArmorWorn(character.equipment)) return result;
+  for (const id of magicTalentBorrowedFeatureIds(character)) {
+    if (featureById.get(id)?.rank === 2) result.add(id);
+  }
+  return result;
+}
+
+/**
+ * Message français prêt à afficher (notice) pour un sort emprunté de rang 2 non lançable en armure
+ * (« Talent pour la magie », PER-144, p. 50). « (p. 50) » y est en parenthèse AUTONOME → parsé par
+ * `PageRefText`/`SourceRef` côté UI.
+ */
+export function magicTalentArmorBlockMessage(): string {
+  return "Sort emprunté de rang 2 : ne peut pas être lancé tant qu'une armure est portée — retirez votre armure pour le lancer (p. 50).";
+}
+
+/**
  * DEF de l'armure la plus lourde autorisée par un profil : la `def` de son
  * `maxArmorId`, ou 0 si le profil n'autorise AUCUNE armure (`maxArmorId === null`
  * → seul « aucune armure » (DEF 0) est permis, p. 188).

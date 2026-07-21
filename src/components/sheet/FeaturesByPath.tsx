@@ -74,6 +74,8 @@ import { rulesContext } from '@/lib/character/rulesContext';
 import {
   featureArmorRestrictionViolations,
   featureArmorRestrictionMessage,
+  magicTalentSpellsBlockedByArmor,
+  magicTalentArmorBlockMessage,
   shieldDisabledFeatureIds,
   shieldRequiredMessage,
 } from '@/lib/character/armorRestrictions';
@@ -3425,6 +3427,13 @@ export function FeaturesByPath({
         ),
         ...[...shieldDisabledFeatureIds(character, rulesContext)].map(
           (id) => [id, shieldRequiredMessage()] as const,
+        ),
+        // PER-144 — sort emprunté de rang 2 via « Talent pour la magie » (elfe haut) non lançable
+        // tant qu'une armure est portée (p. 50). Même rendu (désaturé + barré + notice) que PER-153,
+        // sur retour propriétaire : ce n'est pas une désactivation d'effet mais l'elfe ne peut lancer
+        // le sort qu'en retirant son armure.
+        ...[...magicTalentSpellsBlockedByArmor(character)].map(
+          (id) => [id, magicTalentArmorBlockMessage()] as const,
         ),
       ])
     : undefined;

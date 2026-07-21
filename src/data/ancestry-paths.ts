@@ -232,8 +232,10 @@ export const ancestryFeatures: Feature[] = [
     // (`excludeDefBonus`) : sinon on empilerait Armure de mana / Murmures dans le vent /
     // Divination / Familier sur une armure physique (DEF ahurissante). Détection via
     // `featureGrantsDefBonus` (effets `def` plats ou conditionnels).
-    // WIP (PER-144) : la variante « capacité de rang 2 → ne doit pas porter d'armure pour
-    // lancer le sort » attend le modèle d'armure portée (milestone Armures et équipement porté).
+    // PER-144 : la variante « capacité de rang 2 → ne doit pas porter d'armure pour lancer le sort »
+    // est gérée par `magicTalentSpellsBlockedByArmor` (armorRestrictions.ts) — avertissement non
+    // bloquant sur la carte de l'emprunt (désaturé + barré + notice, p. 50) tant qu'une armure est
+    // portée. Un emprunt de rang 1 s'utilise en armure sans pénalité (rien à signaler).
     choices: [
       {
         kind: 'feature-from-path',
@@ -243,7 +245,6 @@ export const ancestryFeatures: Feature[] = [
         excludeDefBonus: true,
       },
     ],
-    wip: 'Variante rang 2 : « ne doit pas porter d’armure pour lancer le sort » — en attente du modèle d’armure portée (PER-144).',
     sourcePage: 50,
   },
   {

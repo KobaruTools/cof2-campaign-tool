@@ -30,7 +30,12 @@ import { pathById } from '@/data';
 import type { CharacterClass, Feature } from '@/data/schema';
 import type { RulesContext } from '@/lib/engine';
 import type { Character } from './types';
-import { wornArmorAllowedDef, wornArmorWorldlyDef, classMaxArmorDef } from './armorRestrictions';
+import {
+  wornArmorAllowedDef,
+  wornArmorWorldlyDef,
+  classMaxArmorDef,
+  magicTalentBorrowedFeatureIds,
+} from './armorRestrictions';
 
 /**
  * Profil d'origine (id de `CharacterClass`) d'un sort, d'après SA voie
@@ -103,6 +108,11 @@ export function spellArmorManaSurcharge(
   feature: Feature,
 ): SpellArmorSurcharge | null {
   if (!feature.isSpell) return null;
+  // PER-144 — un sort emprunté via « Talent pour la magie » (elfe haut, p. 50) est affranchi du
+  // surcoût d'armure : rang 1 « en armure sans pénalité » (aucun surcoût), rang 2 non lançable en
+  // armure (interdiction binaire rendue en avertissement, cf. `magicTalentSpellsBlockedByArmor`).
+  // Dans les deux cas la notion de surcoût ne s'applique pas → on ne devine pas de profil d'origine.
+  if (magicTalentBorrowedFeatureIds(character).has(feature.id)) return null;
   const path = pathById.get(feature.pathId);
   if (!path) return null;
 
