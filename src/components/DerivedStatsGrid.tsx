@@ -45,6 +45,14 @@ export const OVERRIDE_KEY: Record<DerivedStatId, OverrideKey> = {
   magicAttack: 'magicAttack',
 };
 
+/**
+ * Lignes d'ATTAQUE (contact, distance, magique) : sur mobile elles restent en pleine
+ * largeur (une seule colonne) — les cartes de contact/distance sont riches (DM, badges,
+ * bascule arme ⇄ mains nues) et l'attaque magique leur est accolée par cohérence. Toutes
+ * les AUTRES stats passent en grille compacte à 2 colonnes (PER-230, suite responsive).
+ */
+const FULL_WIDTH_ON_MOBILE = new Set<DerivedStatId>(['meleeAttack', 'rangedAttack', 'magicAttack']);
+
 export interface DerivedStatsGridProps {
   /** Entrées du moteur — sert au calcul des stats et au détail des infobulles. */
   input: DerivedInput;
@@ -65,9 +73,9 @@ export interface DerivedStatsGridProps {
    */
   extraModSources?: ModSources;
   /**
-   * Tailles de colonne MUI Grid. Par défaut : une carte par ligne sur mobile
-   * (les contrôles d'édition tiennent à l'aise), deux sur tablette, trois sur
-   * desktop.
+   * Tailles de colonne MUI Grid des cartes SIMPLES. Par défaut : deux par ligne sur
+   * mobile (grille compacte), deux sur tablette, trois sur desktop. Les lignes d'attaque
+   * (cf. `FULL_WIDTH_ON_MOBILE`) et le mode édition forcent la pleine largeur sur mobile.
    */
   size?: Record<string, number>;
   /** Surcharges manuelles actives (clé présente = valeur forcée). PER-48. */
@@ -131,7 +139,7 @@ export function DerivedStatsGrid({
   featureIds,
   effectContext,
   extraModSources,
-  size = { xs: 12, sm: 6, md: 4 },
+  size = { xs: 6, sm: 6, md: 4 },
   overrides,
   onOverride,
   defenseBadges,
@@ -169,6 +177,19 @@ export function DerivedStatsGrid({
         const forced = overrides ? key in overrides : false;
         const overrideValue = forced ? (overrides![key] ?? 0) : null;
         const display = forced ? overrideValue : computed;
+        // Vue compacte à 2 colonnes (mobile) réservée aux stats SIMPLES en lecture : titre
+        // masqué et icône réduite pour gagner de la place. Les lignes d'attaque restent en
+        // pleine largeur ; l'ÉDITION (champs + épingle) aussi, pour garder ses contrôles au large.
+        const isAttack = FULL_WIDTH_ON_MOBILE.has(id);
+        const compact = !onOverride && !isAttack;
+        // Attaques : pleine largeur sur mobile ET petite tablette (xs + sm), multi-colonnes
+        // seulement à partir de « md ». Édition hors attaque : pleine largeur mobile, 2 colonnes
+        // dès « sm » (contrôles au large), comportement inchangé.
+        const cardSize = isAttack
+          ? { ...size, xs: 12, sm: 12 }
+          : compact
+            ? size
+            : { ...size, xs: 12 };
         // Badges du bas de carte selon la stat : immunités/RD pour la Défense, plage de critique
         // pour les attaques de contact / à distance (PER-133/137).
         const badges =
@@ -198,7 +219,7 @@ export function DerivedStatsGrid({
         // surcharges, où l'on garde la carte simple). Ailleurs → carte générique ci-dessous.
         if (id === 'meleeAttack' && unarmedStrike && !onOverride) {
           return (
-            <Grid key={id} size={size}>
+            <Grid key={id} size={cardSize}>
               <MeleeAttackCard
                 touch={display}
                 forced={forced}
@@ -221,7 +242,7 @@ export function DerivedStatsGrid({
         // surcharges). `rangedWeaponDamage` présent (même `null`) signale qu'on est sur la fiche.
         if (id === 'rangedAttack' && rangedWeaponDamage !== undefined && !onOverride) {
           return (
-            <Grid key={id} size={size}>
+            <Grid key={id} size={cardSize}>
               <RangedAttackCard
                 touch={display}
                 forced={forced}
@@ -238,7 +259,7 @@ export function DerivedStatsGrid({
         }
 
         return (
-          <Grid key={id} size={size}>
+          <Grid key={id} size={cardSize}>
             <Card
               variant="outlined"
               sx={{
@@ -263,8 +284,15 @@ export function DerivedStatsGrid({
                 {/* Ligne du haut : icône + libellé + valeur, alignée EN HAUT du bloc. Le détail du
                     calcul s'ouvre au survol du CHIFFRE (curseur « ? ») ; en édition, où le chiffre
                     devient un champ de saisie, il est porté par le LIBELLÉ à la place. */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
-                  <DerivedStatIcon statId={id} title size={40} />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: compact ? 1 : 1.5, sm: 1.5 }, width: '100%' }}>
+                  {/* Icône réduite sur mobile dans la vue compacte (PER-230, suite) ; taille
+                      pleine (40) sur tablette+ et pour les cartes pleine largeur / l'édition. */}
+                  <DerivedStatIcon
+                    statId={id}
+                    title
+                    size={40}
+                    sx={compact ? { width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } } : undefined}
+                  />
                   <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                     {onOverride ? (
                       <DerivedStatBreakdownTooltip {...breakdownProps}>
@@ -280,7 +308,10 @@ export function DerivedStatsGrid({
                       <Typography
                         variant="caption"
                         color="text.secondary"
-                        sx={{ display: 'block', lineHeight: 1.2 }}
+                        // Titre masqué sur mobile dans la vue compacte (PER-230, suite) :
+                        // l'icône + le chiffre suffisent à identifier la stat, le détail au survol
+                        // porte le nom. Réaffiché dès « sm » et pour les cartes pleine largeur.
+                        sx={{ display: compact ? { xs: 'none', sm: 'block' } : 'block', lineHeight: 1.2 }}
                       >
                         {DERIVED_STAT_NAMES[id]}
                       </Typography>
