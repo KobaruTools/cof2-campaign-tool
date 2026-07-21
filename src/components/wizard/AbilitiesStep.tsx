@@ -201,7 +201,17 @@ export function AbilitiesStep({ draft, patch }: StepProps) {
                   }}
                 />
                 {deltas[id] !== 0 && (
-                  <Typography variant="caption" sx={{ color: ancestryModifierColor(deltas[id]) }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: ancestryModifierColor(deltas[id]),
+                      // Mobile : le modificateur de peuple passe sous la ligne (verbatim)
+                      // pour ne pas écraser les champs de saisie ; inline sur desktop.
+                      flexBasis: { xs: '100%', sm: 'auto' },
+                      pl: { xs: 3, sm: 0 },
+                      mt: { xs: 0.25, sm: 0 },
+                    }}
+                  >
                     {ancestry.name} {deltas[id] > 0 ? '+' : ''}
                     {deltas[id]}
                   </Typography>
