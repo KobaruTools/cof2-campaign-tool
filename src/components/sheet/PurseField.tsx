@@ -386,10 +386,17 @@ function CoinInput({
   coin,
   value,
   onCommit,
+  fillBelow,
 }: {
   coin: CoinMeta;
   value: number;
   onCommit: (value: number) => void;
+  /**
+   * Largeur de container (px) SOUS laquelle le champ occupe toute sa cellule (pleine
+   * largeur en 1 colonne, 50 % en 2 colonnes) au lieu de sa largeur compacte fixe.
+   * Absent = toujours compact. Piloté par container query (cf. `PurseField`).
+   */
+  fillBelow?: number;
 }) {
   const [text, setText] = useState(String(value));
   const [focused, setFocused] = useState(false);
@@ -451,6 +458,16 @@ function CoinInput({
       // Survoler n'importe où dans le champ fait « briller » la pièce (balaie la barre)
       // et, pour les jetons précieux, déclenche le scintillement des étincelles.
       sx={{
+        // Pleine largeur sous le seuil (PER-230, suite) : une fois la bourse passée en
+        // 2 colonnes (50 %) puis 1 colonne (100 %), le champ remplit sa cellule au lieu de
+        // rester à sa largeur compacte. La racine s'étire et le nombre s'étale entre le jeton
+        // et le stepper. Au-dessus du seuil (ligne unique), largeur compacte inchangée.
+        ...(fillBelow != null && {
+          [`@container (max-width: ${fillBelow}px)`]: {
+            width: '100%',
+            '& input[type=number]': { width: 'auto', flex: 1 },
+          },
+        }),
         // Étincelles clippées à l'input : `overflow: hidden` sur la racine les contient
         // dans le champ (elles ne débordent plus dans la rangée). On réaligne le contour
         // (`top: 0`, sinon son décalage de −5px pour l'encoche du label serait rogné, sans
@@ -472,7 +489,8 @@ function CoinInput({
           transition: 'border-color .3s ease',
         },
         // Masque les flèches haut/bas natives du champ number (remplacées par les boutons −/+).
-        '& input[type=number]': { MozAppearance: 'textfield' },
+        // Largeur compacte de base (ligne unique) ; élargie à `auto/flex` sous le seuil ci-dessus.
+        '& input[type=number]': { MozAppearance: 'textfield', width: 40 },
         '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
           WebkitAppearance: 'none',
           margin: 0,
@@ -509,7 +527,7 @@ function CoinInput({
         },
       }}
       slotProps={{
-        htmlInput: { min: 0, step: 1, style: { width: 40, textAlign: 'center' } },
+        htmlInput: { min: 0, step: 1, style: { textAlign: 'center' } },
         input: {
           startAdornment: (
             <InputAdornment position="start" sx={{ mr: 0.75 }}>
@@ -661,69 +679,133 @@ export interface PurseFieldProps {
  * par un repos). En mode édition, des flèches entre unités permettent de regrouper / faire de
  * la monnaie (pp ↔ po ↔ pa ↔ pc) sans changer la valeur totale.
  *
- * Mise en page adaptative par **container query** (pas de retour à la ligne) : dès que le
- * conteneur devient trop étroit pour tenir la rangée sur une ligne, on bascule d'un coup en
- * colonne (un champ par ligne). Les flèches de conversion passent alors de gauche/droite à
- * haut/bas et se placent entre les blocs empilés. Le seuil dépend du mode (les flèches, présentes
- * en édition, élargissent la rangée).
+ * Mise en page adaptative par **container query**, selon le mode :
+ * - **Consultation** : grille des 4 pièces qui passe de 4 colonnes (ligne unique) à 2 colonnes
+ *   (breakpoint intermédiaire) puis 1 colonne. Dès qu'elle quitte la ligne unique, chaque champ
+ *   remplit sa cellule (50 % en 2 colonnes, 100 % en 1 colonne).
+ * - **Édition** : les flèches de conversion relient des pièces adjacentes (pp↔po↔pa↔pc), chaîne
+ *   qui n'a de sens qu'en ligne unique ou en 1 colonne → on bascule directement rangée → colonne
+ *   (champs en pleine largeur, flèches recentrées entre les blocs empilés).
  */
 export function PurseField({ purse, onChange, editing = false }: PurseFieldProps) {
-  const breakpoint = editing ? 800 : 620;
-  const vertQuery = `@container (max-width: ${breakpoint}px)`;
+  // En-tête (icône + titre « Bourse ») partagé. `titleQuery` : largeur de container sous
+  // laquelle le titre s'affiche (quand la bourse n'est plus sur une seule ligne) et où
+  // l'en-tête se recentre au-dessus des blocs empilés.
+  const renderHeader = (titleQuery: string) => (
+    <Box
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.75,
+        color: 'text.secondary',
+        flexShrink: 0,
+        [titleQuery]: { alignSelf: 'center' },
+      }}
+    >
+      <AppTooltip title="Bourse — argent possédé" page={181}>
+        <Box sx={{ display: 'inline-flex', cursor: 'help' }}>
+          <PurseIcon size={20} title="Bourse" />
+        </Box>
+      </AppTooltip>
+      <Typography
+        variant="subtitle2"
+        sx={{ display: 'none', fontWeight: 700, [titleQuery]: { display: 'block' } }}
+      >
+        Bourse
+      </Typography>
+    </Box>
+  );
+
+  // ── ÉDITION : les flèches de conversion relient des pièces ADJACENTES (pp↔po↔pa↔pc) ;
+  //    cette chaîne n'a de sens qu'en ligne unique ou empilée en 1 colonne (pas en 2 colonnes,
+  //    où po↔pa deviendrait diagonal). On garde donc la bascule ligne → colonne, mais une fois
+  //    empilés les champs passent en PLEINE LARGEUR (fillBelow), les flèches restent centrées.
+  if (editing) {
+    const breakpoint = 800;
+    const vertQuery = `@container (max-width: ${breakpoint}px)`;
+    return (
+      <Box sx={{ containerType: 'inline-size' }}>
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: 'center',
+            flexWrap: 'nowrap',
+            gap: 1,
+            [vertQuery]: { flexDirection: 'column', alignItems: 'stretch', gap: 1.5 },
+          }}
+        >
+          {renderHeader(vertQuery)}
+          {COINS.map((coin, i) => {
+            const next = COINS[i + 1];
+            return (
+              <Fragment key={coin.key}>
+                <CoinInput
+                  coin={coin}
+                  value={purse[coin.key]}
+                  onCommit={(v) => onChange({ ...purse, [coin.key]: v })}
+                  fillBelow={breakpoint}
+                />
+                {next && (
+                  <CoinConvert
+                    purse={purse}
+                    onChange={onChange}
+                    higher={coin.key}
+                    lower={next.key}
+                    higherCode={coin.code}
+                    lowerCode={next.code}
+                    ratio={CONVERSION_RATIO[coin.key]}
+                    breakpoint={breakpoint}
+                  />
+                )}
+              </Fragment>
+            );
+          })}
+        </Stack>
+      </Box>
+    );
+  }
+
+  // ── CONSULTATION : pas de flèches → grille des 4 pièces qui passe de 4 colonnes (ligne unique)
+  //    à 2 colonnes (breakpoint intermédiaire) puis 1 colonne, via container queries. Sous le seuil
+  //    de 2 colonnes, chaque champ REMPLIT sa cellule (50 %, puis 100 %). L'en-tête passe au-dessus.
+  const TWO_COL = 560;
+  const ONE_COL = 380;
+  const twoColQuery = `@container (max-width: ${TWO_COL}px)`;
+  const oneColQuery = `@container (max-width: ${ONE_COL}px)`;
   return (
     <Box sx={{ containerType: 'inline-size' }}>
-      <Stack
-        direction="row"
+      <Box
         sx={{
+          display: 'flex',
           alignItems: 'center',
-          flexWrap: 'nowrap',
           gap: 1,
-          // Bascule instantanée en colonne quand la rangée ne tiendrait plus sur une ligne.
-          // En colonne : tout centré (les champs ET les flèches → flèches alignées sur les champs)
-          // et un peu plus d'espacement vertical entre les lignes.
-          [vertQuery]: { flexDirection: 'column', alignItems: 'center', gap: 1.5 },
+          [twoColQuery]: { flexDirection: 'column', alignItems: 'stretch', gap: 1.25 },
         }}
       >
-        {/* En-tête de la bourse : icône seule en ligne (desktop) ; icône + titre « Bourse » en colonne (mobile). */}
-        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, color: 'text.secondary', flexShrink: 0 }}>
-          <AppTooltip title="Bourse — argent possédé" page={181}>
-            <Box sx={{ display: 'inline-flex', cursor: 'help' }}>
-              <PurseIcon size={20} title="Bourse" />
-            </Box>
-          </AppTooltip>
-          <Typography
-            variant="subtitle2"
-            sx={{ display: 'none', fontWeight: 700, [vertQuery]: { display: 'block' } }}
-          >
-            Bourse
-          </Typography>
+        {renderHeader(twoColQuery)}
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1,
+            // Ligne unique : 4 colonnes au contenu (champs compacts). Intermédiaire : 2 colonnes
+            // égales (50 %). Étroit : 1 colonne (100 %). Le remplissage des champs est piloté en
+            // parallèle par `fillBelow` (même seuil de 2 colonnes).
+            gridTemplateColumns: 'repeat(4, auto)',
+            [twoColQuery]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
+            [oneColQuery]: { gridTemplateColumns: 'minmax(0, 1fr)' },
+          }}
+        >
+          {COINS.map((coin) => (
+            <CoinInput
+              key={coin.key}
+              coin={coin}
+              value={purse[coin.key]}
+              onCommit={(v) => onChange({ ...purse, [coin.key]: v })}
+              fillBelow={TWO_COL}
+            />
+          ))}
         </Box>
-
-        {COINS.map((coin, i) => {
-          const next = COINS[i + 1];
-          return (
-            <Fragment key={coin.key}>
-              <CoinInput
-                coin={coin}
-                value={purse[coin.key]}
-                onCommit={(v) => onChange({ ...purse, [coin.key]: v })}
-              />
-              {editing && next && (
-                <CoinConvert
-                  purse={purse}
-                  onChange={onChange}
-                  higher={coin.key}
-                  lower={next.key}
-                  higherCode={coin.code}
-                  lowerCode={next.code}
-                  ratio={CONVERSION_RATIO[coin.key]}
-                  breakpoint={breakpoint}
-                />
-              )}
-            </Fragment>
-          );
-        })}
-      </Stack>
+      </Box>
     </Box>
   );
 }
