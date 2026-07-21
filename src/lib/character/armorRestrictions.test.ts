@@ -6,6 +6,10 @@ import {
   armorDisabledFeatureIds,
   armorLimitedBorrowedFeatureIds,
   armorRestrictionViolations,
+  borrowedArmorUsageCounters,
+  DON_ETRANGE_ARMOR_USAGE_KEY,
+  donEtrangeArmorUsageCounter,
+  donEtrangeBorrowedFeatureId,
   featureArmorRestrictionViolations,
   isArmorWorn,
   isShieldWorn,
@@ -523,5 +527,90 @@ describe('shieldDisabledFeatureIds / Voie du bouclier désactivée sans bouclier
   it('une voie sans exigence de bouclier n’est jamais désactivée (Voie du combat)', () => {
     const guerrier = makeChar({ classId: 'guerrier', featureIds: ['combat-r1'] });
     expect(shieldDisabledFeatureIds(guerrier, ctx).size).toBe(0);
+  });
+});
+
+describe('PER-146 — Don étrange (gnome) : sort emprunté limité à 1/jour en armure (p. 53)', () => {
+  // « Don étrange » (gnome-r1) fait EMPRUNTER une capacité de rang 1 d'ensorceleur (feature-from-path,
+  // index 0). `air-r1` (Murmures dans le vent) est un sort d'ensorceleur de rang 1. Verbatim p. 53 :
+  // « S'il porte une armure, il ne peut pas utiliser ce sort plus d'une fois par jour (il doit payer
+  // le coût en PM de façon normale). »
+  const donEtrange = (borrowedId: string | null, over: Partial<Character> = {}): Character =>
+    makeChar({
+      ancestryId: 'gnome',
+      ancestryPathId: 'gnome',
+      classId: 'ensorceleur',
+      featureIds: ['gnome-r1'],
+      featureChoices: borrowedId ? { 'gnome-r1': [borrowedId] } : {},
+      ...over,
+    });
+
+  describe('donEtrangeBorrowedFeatureId — résolution de l’emprunt', () => {
+    it('retourne l’id du sort d’ensorceleur emprunté quand « Don étrange » est acquise', () => {
+      expect(donEtrangeBorrowedFeatureId(donEtrange('air-r1'))).toBe('air-r1');
+    });
+
+    it('retourne null si aucun emprunt n’est encore retenu', () => {
+      expect(donEtrangeBorrowedFeatureId(donEtrange(null))).toBeNull();
+    });
+
+    it('retourne null si « Don étrange » (gnome-r1) n’est pas acquise', () => {
+      const sansCapacite = makeChar({ featureChoices: { 'gnome-r1': ['air-r1'] } });
+      expect(donEtrangeBorrowedFeatureId(sansCapacite)).toBeNull();
+    });
+  });
+
+  describe('donEtrangeArmorUsageCounter — compteur synthétique 1/jour', () => {
+    it('retourne un compteur 1 charge/jour par carte quand une armure est portée', () => {
+      const c = donEtrange('air-r1', { equipment: [wornArmor('cuir-simple')] });
+      expect(donEtrangeArmorUsageCounter(c)).toEqual({
+        max: 1,
+        resetOn: 'day',
+        hideFromStatusPanel: true,
+        sharedKey: DON_ETRANGE_ARMOR_USAGE_KEY,
+        label: expect.any(String),
+      });
+    });
+
+    it('compte TOUTE armure portée, objet personnalisé inclus (isArmorWorn)', () => {
+      const custom: EquipmentLine = { custom: true, name: 'Armure de fortune', quantity: 1, worn: { slot: 'armor' } };
+      const c = donEtrange('air-r1', { equipment: [custom] });
+      expect(donEtrangeArmorUsageCounter(c)).not.toBeNull();
+    });
+
+    it('retourne null SANS armure portée (aucune limite d’usage)', () => {
+      expect(donEtrangeArmorUsageCounter(donEtrange('air-r1', { equipment: [] }))).toBeNull();
+    });
+
+    it('retourne null si un bouclier seul est porté (ce n’est pas une armure)', () => {
+      const c = donEtrange('air-r1', { equipment: [wornShield('petit-bouclier')] });
+      expect(donEtrangeArmorUsageCounter(c)).toBeNull();
+    });
+
+    it('retourne null en armure mais sans emprunt retenu', () => {
+      const c = donEtrange(null, { equipment: [wornArmor('cuir-simple')] });
+      expect(donEtrangeArmorUsageCounter(c)).toBeNull();
+    });
+
+    it('retourne null si « Don étrange » n’est pas acquise, même en armure', () => {
+      const c = makeChar({
+        featureChoices: { 'gnome-r1': ['air-r1'] },
+        equipment: [wornArmor('cuir-simple')],
+      });
+      expect(donEtrangeArmorUsageCounter(c)).toBeNull();
+    });
+  });
+
+  describe('borrowedArmorUsageCounters — carte hôte → compteur', () => {
+    it('indexe le compteur sous l’id de la capacité HÔTE (gnome-r1) en armure', () => {
+      const c = donEtrange('air-r1', { equipment: [wornArmor('cuir-simple')] });
+      const map = borrowedArmorUsageCounters(c);
+      expect(map.get('gnome-r1')).not.toBeUndefined();
+      expect(map.get('gnome-r1')?.sharedKey).toBe(DON_ETRANGE_ARMOR_USAGE_KEY);
+    });
+
+    it('est vide sans armure portée', () => {
+      expect(borrowedArmorUsageCounters(donEtrange('air-r1', { equipment: [] })).size).toBe(0);
+    });
   });
 });

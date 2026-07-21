@@ -43,7 +43,13 @@ import {
   getOptionSelections,
   weaponFamiliesMatchChoice,
 } from './choices';
-import { armorDisabledFeatureIds, isArmorWorn, shieldDisabledFeatureIds } from './armorRestrictions';
+import {
+  armorDisabledFeatureIds,
+  DON_ETRANGE_ARMOR_USAGE_KEY,
+  DON_ETRANGE_ID,
+  isArmorWorn,
+  shieldDisabledFeatureIds,
+} from './armorRestrictions';
 import { wornMeleeWeapon } from './equipment';
 import { rulesContext } from './rulesContext';
 import type { Character, FeatureChoiceSelection } from './types';
@@ -1151,6 +1157,11 @@ export function resetUsageCounters(
       if (triggers.has('day')) toReset.add(borrowedPowerUsedKey(id, spellId));
       if (triggers.has('short-rest')) toReset.add(borrowedPowerIntegrityKey(id, spellId));
     }
+    // PER-146 : compteur synthétique « 1 usage/jour en armure » du sort emprunté du gnome
+    // (« Don étrange », gnome-r1) — NON déclaré sur une `Feature` (conditionné au port d'armure),
+    // donc invisible pour la boucle `feature.usageCounter` ci-dessus. Il suit le cycle journalier :
+    // on le réinitialise (clé retirée = compteur plein) avec les autres compteurs 'day'.
+    if (id === DON_ETRANGE_ID && triggers.has('day')) toReset.add(DON_ETRANGE_ARMOR_USAGE_KEY);
     // PER-206 : marqueurs d'états infligés (Botte secrète) — réinitialisés selon `resetOn` (défaut
     // 'combat', donc à toute récupération rapide / repos long). « À plein » = clé retirée (disponible).
     const states = feature?.inflictableStates;

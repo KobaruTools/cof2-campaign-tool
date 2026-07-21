@@ -1218,6 +1218,26 @@ describe('resetUsageCounters — réinitialisation par repos (PER-151)', () => {
   it('préserve les clés inconnues (capacité non possédée)', () => {
     expect(resetUsageCounters({ mystere: 1 }, ['rage-r3'], new Set(['day'] as const))).toEqual({ mystere: 1 });
   });
+
+  it('PER-146 : le repos long réinitialise le compteur synthétique du gnome (« Don étrange »)', () => {
+    // Compteur synthétique 1/jour (clé partagée dédiée), non déclaré sur une Feature : le reset
+    // journalier doit tout de même le vider dès que « Don étrange » (gnome-r1) est acquise.
+    const next = resetUsageCounters(
+      { 'gnome-don-etrange-armor': 0 },
+      ['gnome-r1'],
+      new Set(['day', 'short-rest', 'combat'] as const),
+    );
+    expect(next).toEqual({});
+  });
+
+  it('PER-146 : un repos court ne réinitialise PAS le compteur synthétique du gnome (cycle « day »)', () => {
+    const next = resetUsageCounters(
+      { 'gnome-don-etrange-armor': 0 },
+      ['gnome-r1'],
+      new Set(['short-rest', 'combat'] as const),
+    );
+    expect(next).toEqual({ 'gnome-don-etrange-armor': 0 });
+  });
 });
 
 describe('usageCounterMaximum — max scalant par paliers de rang (PER-159)', () => {

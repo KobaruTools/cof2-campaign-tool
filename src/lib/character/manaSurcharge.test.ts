@@ -204,3 +204,38 @@ describe('spellArmorManaSurcharge — Talent pour la magie affranchit du surcoû
     expect(spellArmorManaSurcharge(magicien, ctx, feat('magie-des-arcanes-r1'))?.surcharge).toBe(2);
   });
 });
+
+describe('spellArmorManaSurcharge — Don étrange affranchit du surcoût (PER-146, p. 53)', () => {
+  // « il doit payer le coût en PM de façon normale » = coût de BASE, non majoré : le sort d'ensorceleur
+  // emprunté par le gnome est affranchi du surcoût d'armure (la contrepartie du port d'armure est la
+  // limite 1/jour, pas un surcoût). Sans exemption, l'allocation d'armure de l'ensorceleur (0) rendrait
+  // le sort injouable en armure lourde. Base : un gnome guerrier (peut porter jusqu'à la cotte de mailles).
+  const donEtrange = (over: Partial<Character> = {}): Character =>
+    makeChar({
+      ancestryId: 'gnome',
+      ancestryPathId: 'gnome',
+      classId: 'guerrier',
+      featureIds: ['gnome-r1'],
+      featureChoices: { 'gnome-r1': ['air-r1'] },
+      ...over,
+    });
+
+  it('sort emprunté en armure légère → aucun surcoût (null), coût normal', () => {
+    const c = donEtrange({ equipment: [wornArmor('cuir-simple')] });
+    expect(spellArmorManaSurcharge(c, ctx, feat('air-r1'))).toBeNull();
+  });
+
+  it('sort emprunté en cotte de mailles → aucun surcoût (null) : le sort reste jouable', () => {
+    const c = donEtrange({ equipment: [wornArmor('cotte-de-mailles')] });
+    expect(spellArmorManaSurcharge(c, ctx, feat('air-r1'))).toBeNull();
+  });
+
+  it('CONTRÔLE : le MÊME sort possédé NATIVEMENT (ensorceleur, sans Don étrange) garde un surcoût', () => {
+    const ensorceleur = makeChar({
+      classId: 'ensorceleur',
+      featureIds: ['air-r1'],
+      equipment: [wornArmor('cuir-simple')],
+    });
+    expect(spellArmorManaSurcharge(ensorceleur, ctx, feat('air-r1'))?.surcharge).toBeGreaterThan(0);
+  });
+});

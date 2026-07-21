@@ -385,9 +385,10 @@ export const ancestryFeatures: Feature[] = [
       'Le gnome possède un talent inné pour les sciences, qu’elles soient occultes ou plus ordinaires. Il gagne un bonus de +3 à tous les tests scientifiques (INT) et il choisit une capacité de rang 1 d’ensorceleur. S’il porte une armure, il ne peut pas utiliser ce sort plus d’une fois par jour (il doit payer le coût en PM de façon normale). Dans le noir total, le gnome voit comme dans la pénombre jusqu’à 10 m.',
     // Bonus de compétence (PER-89) : science (INT), domaine annoté de sa carac. Choix (PER-66) :
     // capacité de rang 1 d'ensorceleur. La limitation en armure et la vision dans le noir restent verbatim.
-    // WIP (PER-146) : « s'il porte une armure, il ne peut pas utiliser ce sort plus d'une fois par
-    // jour » → compteur 1 charge/jour sur le sort emprunté, conditionné au PORT EFFECTIF d'armure —
-    // en attente du modèle d'armure portée (milestone Armures et équipement porté).
+    // PER-146 : « s'il porte une armure, il ne peut pas utiliser ce sort plus d'une fois par jour » →
+    // compteur d'usage SYNTHÉTIQUE (1/jour, `donEtrangeArmorUsageCounter`, armorRestrictions.ts) injecté
+    // sur la carte du sort emprunté quand une armure est effectivement portée. Le coût en PM reste dû
+    // (la limite s'ajoute au coût). Pas de champ `usageCounter` ici : il est conditionné au port d'armure.
     effects: [{ kind: 'test-bonus', domains: ['science'] }],
     choices: [
       {
@@ -397,7 +398,6 @@ export const ancestryFeatures: Feature[] = [
         classIds: ['ensorceleur'],
       },
     ],
-    wip: 'Limitation d’armure : « s’il porte une armure, il ne peut pas utiliser ce sort plus d’une fois par jour » — compteur 1 charge/jour conditionné au port effectif d’armure, en attente du modèle d’armure portée (PER-146).',
     sourcePage: 53,
   },
   {

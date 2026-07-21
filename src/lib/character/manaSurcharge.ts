@@ -35,6 +35,7 @@ import {
   wornArmorWorldlyDef,
   classMaxArmorDef,
   magicTalentBorrowedFeatureIds,
+  donEtrangeBorrowedFeatureId,
 } from './armorRestrictions';
 
 /**
@@ -113,6 +114,13 @@ export function spellArmorManaSurcharge(
   // armure (interdiction binaire rendue en avertissement, cf. `magicTalentSpellsBlockedByArmor`).
   // Dans les deux cas la notion de surcoût ne s'applique pas → on ne devine pas de profil d'origine.
   if (magicTalentBorrowedFeatureIds(character).has(feature.id)) return null;
+  // PER-146 — le sort d'ensorceleur emprunté via « Don étrange » (gnome, p. 53) est lui aussi affranchi
+  // du surcoût d'armure : « il doit payer le coût en PM de façon normale » = coût de BASE, non majoré.
+  // La contrepartie du port d'armure est la limite « pas plus d'une fois par jour » (compteur 1/jour,
+  // cf. `donEtrangeArmorUsageCounter`), PAS un surcoût. Sans cette exemption, l'allocation d'armure de
+  // l'ensorceleur (0) rendrait le sort injouable sur un profil en armure lourde (ex. cotte de mailles :
+  // +5 PM pour un réservoir d'environ 1 PM), à rebours de l'intention d'un don de peuple.
+  if (donEtrangeBorrowedFeatureId(character) === feature.id) return null;
   const path = pathById.get(feature.pathId);
   if (!path) return null;
 

@@ -19,7 +19,7 @@
  * il ne retire rien de force (la fiche reste permissive). Cf. `checkCompliance`.
  */
 import { equipmentById, featureById } from '@/data';
-import type { CharacterClass, ShieldAccess } from '@/data/schema';
+import type { CharacterClass, ShieldAccess, UsageCounter } from '@/data/schema';
 import type { RulesContext } from '@/lib/engine';
 import type { Character, EquipmentLine } from './types';
 import { isCustomItem } from './types';
@@ -111,6 +111,71 @@ export function magicTalentSpellsBlockedByArmor(character: Character): Set<strin
  */
 export function magicTalentArmorBlockMessage(): string {
   return "Sort emprunté de rang 2 : ne peut pas être lancé tant qu'une armure est portée — retirez votre armure pour le lancer (p. 50).";
+}
+
+/**
+ * PER-146 — capacité de rang 1 de la voie du gnome (« Don étrange », p. 53) : le gnome EMPRUNTE une
+ * capacité de rang 1 d'ensorceleur. Id de contenu persisté (slug figé).
+ */
+export const DON_ETRANGE_ID = 'gnome-r1';
+
+/**
+ * PER-146 — clé d'état PARTAGÉE (`sharedKey`) sous laquelle est stocké, dans `Character.usageCounters`,
+ * le décompte « 1 usage/jour en armure » du sort emprunté via « Don étrange » (p. 53). Clé DÉDIÉE (et
+ * non l'id du sort emprunté) : le décompte du jour survit à un changement de sort emprunté et ne peut
+ * pas entrer en collision avec un compteur natif du même sort. Suivi journalier (`resetOn: 'day'`).
+ */
+export const DON_ETRANGE_ARMOR_USAGE_KEY = 'gnome-don-etrange-armor';
+
+/**
+ * PER-146 — id de la capacité de rang 1 d'ensorceleur EMPRUNTÉE via « Don étrange » (gnome-r1, p. 53),
+ * ou `null` si « Don étrange » n'est pas acquise ou si aucun emprunt n'est encore retenu. Miroir scopé
+ * de `magicTalentBorrowedFeatureIds` : la voie du gnome n'offre qu'un unique emprunt (choix d'index 0).
+ */
+export function donEtrangeBorrowedFeatureId(character: Character): string | null {
+  if (!character.featureIds.includes(DON_ETRANGE_ID)) return null;
+  const defs = featureChoiceDefs(DON_ETRANGE_ID);
+  const selections = character.featureChoices?.[DON_ETRANGE_ID] ?? [];
+  for (let i = 0; i < defs.length; i++) {
+    if (defs[i]?.kind !== 'feature-from-path') continue;
+    const sel = selections[i];
+    if (typeof sel === 'string' && featureById.has(sel)) return sel;
+  }
+  return null;
+}
+
+/**
+ * PER-146 — compteur d'usage SYNTHÉTIQUE (1 charge/jour) à afficher sur le sort d'ensorceleur emprunté
+ * via « Don étrange » (gnome-r1, p. 53) UNIQUEMENT tant qu'une armure est portée. Verbatim p. 53 :
+ * « S'il porte une armure, il ne peut pas utiliser ce sort plus d'une fois par jour (il doit payer le
+ * coût en PM de façon normale) ». La limite s'AJOUTE au coût en PM (elle ne le remplace pas) — d'où un
+ * simple compteur d'usages, la goutte de mana restant affichée par ailleurs. Suivi PAR CARTE, à faible
+ * cadence (`hideFromStatusPanel: true` : pas une réserve tactique du tableau de bord). `null` sans
+ * armure, sans la capacité, ou sans emprunt retenu → aucun compteur (comportement normal du sort).
+ */
+export function donEtrangeArmorUsageCounter(character: Character): UsageCounter | null {
+  if (!isArmorWorn(character.equipment)) return null;
+  if (!donEtrangeBorrowedFeatureId(character)) return null;
+  return {
+    max: 1,
+    resetOn: 'day',
+    hideFromStatusPanel: true,
+    sharedKey: DON_ETRANGE_ARMOR_USAGE_KEY,
+    label: 'Usage en armure',
+  };
+}
+
+/**
+ * PER-146 — compteurs d'usage SYNTHÉTIQUES (non déclarés sur la `Feature`) à injecter sur la carte
+ * d'une capacité HÔTE quand une armure est portée : id de la capacité hôte → compteur. Aujourd'hui
+ * seule « Don étrange » du gnome (gnome-r1 → compteur 1/jour, p. 53) est concernée, mais la forme en
+ * table permet d'en ajouter d'autres sans retoucher le rendu. Vide sans armure / capacité / emprunt.
+ */
+export function borrowedArmorUsageCounters(character: Character): Map<string, UsageCounter> {
+  const map = new Map<string, UsageCounter>();
+  const donEtrange = donEtrangeArmorUsageCounter(character);
+  if (donEtrange) map.set(DON_ETRANGE_ID, donEtrange);
+  return map;
 }
 
 /**

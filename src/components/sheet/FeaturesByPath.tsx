@@ -76,6 +76,7 @@ import {
   featureArmorRestrictionMessage,
   magicTalentSpellsBlockedByArmor,
   magicTalentArmorBlockMessage,
+  borrowedArmorUsageCounters as computeBorrowedArmorUsageCounters,
   shieldDisabledFeatureIds,
   shieldRequiredMessage,
 } from '@/lib/character/armorRestrictions';
@@ -1607,16 +1608,20 @@ function UsageCounterField({
   character,
   onSet,
   onLiftShortRestLock,
+  counterOverride,
 }: {
   feature: Feature;
   character: Character;
   onSet?: (counterKey: string, value: number, max: number) => void;
   onLiftShortRestLock?: (featureId: string) => void;
+  /** Compteur synthétique injecté (PER-146), prioritaire sur `feature.usageCounter`. Cf. `CompactUsageIndicator`. */
+  counterOverride?: UsageCounter;
 }) {
-  if (!feature.usageCounter) return null;
+  const counter = counterOverride ?? feature.usageCounter;
+  if (!counter) return null;
   return (
     <UsageCounterRow
-      counter={feature.usageCounter}
+      counter={counter}
       feature={feature}
       character={character}
       onSet={onSet}
@@ -1696,8 +1701,21 @@ function EscalatingManaCostRow({
  * modale de détail). Au-delà de ~8 usages, on retombe sur un simple « N/max » pour
  * ne pas surcharger le petit bloc.
  */
-function CompactUsageIndicator({ feature, character }: { feature: Feature; character: Character }) {
-  const counter = feature.usageCounter;
+function CompactUsageIndicator({
+  feature,
+  character,
+  counterOverride,
+}: {
+  feature: Feature;
+  character: Character;
+  /**
+   * Compteur SYNTHÉTIQUE injecté à l'affichage (PER-146) — non déclaré sur la `Feature` : le sort
+   * emprunté du gnome (« Don étrange ») n'a de compteur 1/jour que tant qu'une armure est portée.
+   * Prioritaire sur `feature.usageCounter`. Absent → compteur natif de la capacité.
+   */
+  counterOverride?: UsageCounter;
+}) {
+  const counter = counterOverride ?? feature.usageCounter;
   if (!counter) return null;
   const max = usageCounterMaximum(counter, character, feature);
   const key = usageCounterKey(counter, feature);
@@ -1986,6 +2004,7 @@ function PathBlock({
   disabledIds,
   disabledReasons,
   armorRestrictedReasons,
+  borrowedArmorUsageCounters,
   replacements,
   concentration = false,
   testBonuses,
@@ -2039,6 +2058,14 @@ function PathBlock({
    * capacité reste pleinement interactive — c'est un simple signal visuel « inutilisable en armure ».
    */
   armorRestrictedReasons?: Map<string, string>;
+  /**
+   * PER-146 — compteurs d'usage SYNTHÉTIQUES à afficher sur la carte d'une capacité HÔTE quand une
+   * armure est portée, indexés par id de la capacité hôte. Aujourd'hui : « Don étrange » du gnome
+   * (gnome-r1 → 1 usage/jour sur son sort d'ensorceleur emprunté, p. 53). Ces compteurs ne sont PAS
+   * déclarés sur la `Feature` (ils dépendent du port effectif d'armure) : ils sont injectés au rendu
+   * du compteur (compact + modale + liste). Absent / sans entrée → aucun compteur synthétique.
+   */
+  borrowedArmorUsageCounters?: Map<string, UsageCounter>;
   /**
    * Capacités occupant un slot par REMPLACEMENT (capacité divine du prêtre spécialiste,
    * p. 122) : rendues avec un cadre fantôme du slot natif + bordure couleur d'origine
@@ -2231,6 +2258,15 @@ function PathBlock({
 
   /** Vrai si l'usage de la capacité est gêné par l'armure portée (restriction fine, PER-86). */
   const isArmorRestricted = (feature: Feature) => armorRestrictedReasons?.has(feature.id) ?? false;
+
+  /**
+   * PER-146 — compteur d'usage SYNTHÉTIQUE (1/jour) à afficher sur la carte de la capacité HÔTE (indexé
+   * par son id) quand une armure est portée : le sort emprunté du gnome (« Don étrange ») n'est limité
+   * que sous armure. `undefined` = aucun compteur synthétique (pas de gnome-r1, pas d'armure, ou pas
+   * d'emprunt retenu). Cf. `borrowedArmorUsageCounters` (armorRestrictions.ts).
+   */
+  const synthArmorUsageCounter = (feature: Feature): UsageCounter | undefined =>
+    borrowedArmorUsageCounters?.get(feature.id);
 
   /** Message « inutilisable avec l'armure portée » de la capacité (`null` si non gênée). */
   const armorRestrictedMessage = (feature: Feature): string | null =>
@@ -2562,6 +2598,16 @@ function PathBlock({
                 de type pool (élixirs) : elle est suivie dans la barre de l'en-tête de voie. */}
             {feature.usageCounter && !feature.usageCounter.poolInPathHeader && character && (
               <CompactUsageIndicator feature={feature} character={character} />
+            )}
+            {/* PER-146 : compteur synthétique « 1 usage/jour en armure » du sort emprunté du gnome
+                (« Don étrange »), affiché sur la carte de l'emprunt (feature = capacité empruntée) tant
+                qu'une armure est portée. Le coût en PM reste dû (goutte de mana affichée par ailleurs). */}
+            {borrowed && character && synthArmorUsageCounter(feature) && (
+              <CompactUsageIndicator
+                feature={borrowed}
+                character={character}
+                counterOverride={synthArmorUsageCounter(feature)}
+              />
             )}
             {feature.inflictableStates && character && (
               <CompactInflictedStatesIndicator feature={feature} character={character} />
@@ -2933,6 +2979,24 @@ function PathBlock({
                     </Box>
                   ) : null;
                 })()}
+                {/* PER-146 : compteur « 1 usage/jour en armure » du sort emprunté du gnome
+                    (« Don étrange »), éditable ici (±1) tant qu'une armure est portée. Rendu sous le
+                    bloc de l'emprunt, contre la capacité empruntée (nom + clé partagée dédiée). */}
+                {(() => {
+                  const synth = synthArmorUsageCounter(openFeature);
+                  const borrowed = character ? borrowedFeatureOf(character, openFeature) : undefined;
+                  return synth && borrowed && character ? (
+                    <>
+                      <Divider sx={{ my: 1.5 }} />
+                      <UsageCounterField
+                        feature={borrowed}
+                        character={character}
+                        onSet={onSetUsageCounter}
+                        counterOverride={synth}
+                      />
+                    </>
+                  ) : null;
+                })()}
                 {hasEffectToggles(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -3244,6 +3308,23 @@ function PathBlock({
                   </Box>
                 ) : null;
               })()}
+              {/* PER-146 : compteur « 1 usage/jour en armure » du sort emprunté du gnome (« Don étrange »),
+                  éditable en vue liste sous le bloc de l'emprunt, tant qu'une armure est portée. */}
+              {(() => {
+                const synth = synthArmorUsageCounter(feature);
+                const borrowed = character ? borrowedFeatureOf(character, feature) : undefined;
+                return synth && borrowed && character ? (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <UsageCounterField
+                      feature={borrowed}
+                      character={character}
+                      onSet={onSetUsageCounter}
+                      counterOverride={synth}
+                    />
+                  </>
+                ) : null;
+              })()}
               {hasEffectToggles(feature) && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
@@ -3438,6 +3519,13 @@ export function FeaturesByPath({
       ])
     : undefined;
 
+  // PER-146 — compteurs d'usage SYNTHÉTIQUES injectés sur la carte d'une capacité hôte quand une armure
+  // est portée (aujourd'hui : « Don étrange » du gnome → 1 usage/jour sur son sort d'ensorceleur
+  // emprunté, p. 53). Indexés par id de la capacité hôte ; vide sans armure / capacité / emprunt.
+  const borrowedArmorUsageCounters = character
+    ? computeBorrowedArmorUsageCounters(character)
+    : undefined;
+
   const owned = new Set(featureIds);
   // `FeaturePathAutocomplete` regroupe/trie lui-même par voie (en-têtes colorés par profil) :
   // on ne lui passe que les ids acquérables (non détenus).
@@ -3525,6 +3613,7 @@ export function FeaturesByPath({
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}
+              borrowedArmorUsageCounters={borrowedArmorUsageCounters}
               replacements={replacements}
               concentration={concentration}
               testBonuses={testBonuses}
@@ -3556,6 +3645,7 @@ export function FeaturesByPath({
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}
+              borrowedArmorUsageCounters={borrowedArmorUsageCounters}
               replacements={replacements}
               concentration={concentration}
               testBonuses={testBonuses}
@@ -3587,6 +3677,7 @@ export function FeaturesByPath({
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}
+              borrowedArmorUsageCounters={borrowedArmorUsageCounters}
               replacements={replacements}
               concentration={concentration}
               testBonuses={testBonuses}
