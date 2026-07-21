@@ -24,6 +24,37 @@ import type { RulesContext } from '@/lib/engine';
 import type { Character, EquipmentLine } from './types';
 import { isCustomItem } from './types';
 import { masteredClassIds } from './mastery';
+import { featureChoiceDefs, featureGrantsDefBonus } from './choices';
+
+/**
+ * PER-153 — capacité de rang 3 de la voie de l'humain (« Touche-à-tout », p. 57) qui fait EMPRUNTER
+ * une capacité de rang 1 ou 2 de n'importe quel profil. Id de contenu persisté (slug français figé).
+ */
+const TOUCHE_A_TOUT_ID = 'humain-r3';
+
+/**
+ * PER-153 — ids des capacités EMPRUNTÉES via « Touche-à-tout » (humain-r3, p. 57) qui « doivent
+ * respecter les limitations d'armure ». Verbatim p. 57 : « Si la capacité est de rang 2 ou accorde un
+ * bonus de DEF, il doit respecter les limitations d'armure. » Un emprunt de rang 1 SANS bonus de DEF
+ * en est donc EXEMPT (souplesse propre à Touche-à-tout). Les SORTS sont écartés : l'armure leur impose
+ * un surcoût de mana d'incantation (PER-82, p. 178), pas l'interdiction binaire des capacités non-sorts
+ * (p. 188). Ces ids sont ensuite traités comme des capacités NATIVES de leur PROFIL SOURCE par
+ * `featureArmorRestrictionViolations` — p. 177 : « chaque capacité impose TOUJOURS les restrictions
+ * d'armure qui correspondent au profil dont elle est issue ».
+ */
+export function armorLimitedBorrowedFeatureIds(character: Character): Set<string> {
+  const result = new Set<string>();
+  if (!character.featureIds.includes(TOUCHE_A_TOUT_ID)) return result;
+  const defs = featureChoiceDefs(TOUCHE_A_TOUT_ID);
+  const selections = character.featureChoices?.[TOUCHE_A_TOUT_ID] ?? [];
+  selections.forEach((sel, i) => {
+    if (defs[i]?.kind !== 'feature-from-path' || typeof sel !== 'string') return;
+    const feature = featureById.get(sel);
+    if (!feature || feature.isSpell) return; // sorts empruntés → surcoût de mana (PER-82)
+    if (feature.rank === 2 || featureGrantsDefBonus(feature.id)) result.add(feature.id);
+  });
+  return result;
+}
 
 /**
  * DEF de l'armure la plus lourde autorisée par un profil : la `def` de son
@@ -169,7 +200,12 @@ export function featureArmorRestrictionViolations(
   const accessByClass = usageArmorAccessByClass(character, ctx);
   const violations: FeatureArmorRestrictionViolation[] = [];
 
-  for (const id of character.featureIds) {
+  // Capacités NATIVES acquises + emprunts « Touche-à-tout » qualifiants (PER-153) : ces derniers
+  // suivent les limitations d'armure de leur PROFIL SOURCE, exactement comme une capacité native
+  // (p. 177). Dédoublonné (le domaine d'emprunt exclut déjà les capacités déjà possédées).
+  const featureIds = new Set([...character.featureIds, ...armorLimitedBorrowedFeatureIds(character)]);
+
+  for (const id of featureIds) {
     const feature = featureById.get(id);
     if (!feature || feature.isSpell) continue; // sorts → PER-82
     const path = ctx.pathById.get(feature.pathId);

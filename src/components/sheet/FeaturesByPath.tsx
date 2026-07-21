@@ -425,6 +425,8 @@ function BorrowedFeatureBlock({
   concentration = false,
   dominatedTestBonuses = [],
   footer,
+  armorRestricted = false,
+  armorRestrictedMessage = null,
 }: {
   feature: Feature;
   abilities?: Abilities;
@@ -453,6 +455,15 @@ function BorrowedFeatureBlock({
    * est décidé par l'appelant, qui possède `character`/`onChoiceChange`. Absent = rien.
    */
   footer?: ReactNode;
+  /**
+   * PER-153 — la capacité empruntée est INTERDITE par l'armure portée (« Touche-à-tout » : un emprunt
+   * de rang 2 ou qui accorde un bonus de DEF doit respecter les limitations d'armure de son profil
+   * source, p. 57/177/188). Quand vrai, la carte est désaturée + barrée comme une capacité native
+   * gênée (PER-86) et `armorRestrictedMessage` s'affiche en notice sourcée.
+   */
+  armorRestricted?: boolean;
+  /** Message français sourcé (p. 177) de l'interdiction d'armure, affiché en notice. `null` = aucun. */
+  armorRestrictedMessage?: string | null;
 }) {
   const path = pathById.get(feature.pathId);
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
@@ -460,19 +471,31 @@ function BorrowedFeatureBlock({
   const pathName = path?.name ?? feature.pathId;
   const className = classId ? classById.get(classId)?.name : undefined;
   return (
-    // Carte teintée/bordée à la couleur de la VOIE SOURCE, façon « slot divin » du prêtre —
-    // mais SANS remplacement : elle se superpose, l'hôte reste actif (PER-120).
-    <Box
-      sx={{
-        p: 1,
-        // Cadre discret (1px) comme les autres cartes ; la couleur de bordure/teinte rappelle
-        // simplement la voie source, sans surcharger visuellement (retour propriétaire).
-        border: 1,
-        borderColor: color ?? 'divider',
-        borderRadius: 1,
-        bgcolor: color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
-      }}
-    >
+    <>
+      {/* Notice d'interdiction d'armure (PER-153) rendue AU-DESSUS de la carte, en pleine couleur —
+          la carte, elle, est désaturée. Même patron que les capacités natives gênées (PER-86). */}
+      {armorRestricted && armorRestrictedMessage ? (
+        <AppAlert severity="warning" sx={{ mb: 1 }}>
+          {/* « (p. 177) » cité en source (PER-207). */}
+          <PageRefText>{armorRestrictedMessage}</PageRefText>
+        </AppAlert>
+      ) : null}
+      {/* Carte teintée/bordée à la couleur de la VOIE SOURCE, façon « slot divin » du prêtre —
+          mais SANS remplacement : elle se superpose, l'hôte reste actif (PER-120). */}
+      <Box
+        sx={{
+          p: 1,
+          // Cadre discret (1px) comme les autres cartes ; la couleur de bordure/teinte rappelle
+          // simplement la voie source, sans surcharger visuellement (retour propriétaire).
+          border: 1,
+          borderColor: color ?? 'divider',
+          borderRadius: 1,
+          bgcolor: color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
+          // Interdite par l'armure (PER-153) : désaturée + croix diagonale, comme une capacité native
+          // gênée (PER-86). `position: relative` pour ancrer les barres du pseudo-élément.
+          ...(armorRestricted ? { position: 'relative', filter: 'grayscale(0.75)', opacity: 0.72, ...ARMOR_RESTRICTED_BARS_SX } : {}),
+        }}
+      >
       <Typography variant="caption" sx={{ color: color ?? 'text.secondary', fontWeight: 700, display: 'block', mb: 0.25 }}>
         <Box component="span" sx={{ mr: 0.5 }}>✦</Box>
         Capacité empruntée — {pathName}
@@ -547,7 +570,8 @@ function BorrowedFeatureBlock({
         );
       })}
       {footer}
-    </Box>
+      </Box>
+    </>
   );
 }
 
@@ -2364,6 +2388,11 @@ function PathBlock({
           const borrowedPath = borrowed ? pathById.get(borrowed.pathId) : undefined;
           const borrowedClassId = borrowedPath?.type === 'class' ? borrowedPath.classIds[0] : undefined;
           const borrowedColor = borrowedClassId ? classColor(borrowedClassId) : undefined;
+          // PER-153 : la restriction d'armure porte sur la capacité EMPRUNTÉE (ex. « Peau de fer »),
+          // pas sur l'hôte « Touche-à-tout » — qui n'est jamais gêné et dont les autres effets restent
+          // actifs. Le style « désaturé + barré » ne frappe donc que la carte de devant (`cardInner`),
+          // laissant la bande de l'hôte intacte. Pour une carte non-emprunt, on retombe sur `feature`.
+          const armorRestrictedFeature = borrowed ?? feature;
           const cardInner = (
           // Ligne cliquable : le détail s'ouvre dans une modale.
           <Box
@@ -2435,10 +2464,10 @@ function PathBlock({
               // Désactivée par exclusion mutuelle : grisée + transparente, mais le
               // clic d'ouverture du détail reste actif.
               ...(disabledSx(feature) ?? {}),
-              // Inutilisable avec l'armure portée (PER-86) : désaturée + croix diagonale,
-              // l'interrupteur reste actif.
-              ...(armorRestrictedSx(feature) ?? {}),
-              ...(isArmorRestricted(feature) ? ARMOR_RESTRICTED_BARS_SX : {}),
+              // Inutilisable avec l'armure portée (PER-86/153) : désaturée + croix diagonale, l'interrupteur
+              // reste actif. Sur une carte d'emprunt, c'est la capacité EMPRUNTÉE qui est jugée (pas l'hôte).
+              ...(armorRestrictedSx(armorRestrictedFeature) ?? {}),
+              ...(isArmorRestricted(armorRestrictedFeature) ? ARMOR_RESTRICTED_BARS_SX : {}),
             }}
           >
             {/* Marqueurs hexagonaux centrés sur la ligne du haut du bloc. Sur une carte d'emprunt
@@ -2692,13 +2721,14 @@ function PathBlock({
           ) : (
             cardInner
           );
-          // Restriction d'armure (PER-86) : infobulle d'avertissement au survol du rang (vue colonne).
-          // La carte est déjà désaturée par `armorRestrictedSx` ; le tooltip porte le détail sourcé.
-          return isArmorRestricted(feature) ? (
+          // Restriction d'armure (PER-86/153) : infobulle d'avertissement au survol du bloc (vue colonne).
+          // La carte est déjà désaturée par `armorRestrictedSx` ; le tooltip porte le détail sourcé. Pour un
+          // emprunt, c'est la capacité EMPRUNTÉE qui est jugée (l'hôte « Touche-à-tout » n'est pas gêné).
+          return isArmorRestricted(armorRestrictedFeature) ? (
             <AppTooltip
               key={feature.id}
-              enterDelay={1000}
-              title={<PageRefText>{armorRestrictedMessage(feature) ?? ''}</PageRefText>}
+              enterDelay={400}
+              title={<PageRefText>{armorRestrictedMessage(armorRestrictedFeature) ?? ''}</PageRefText>}
             >
               {rendered}
             </AppTooltip>
@@ -2874,6 +2904,8 @@ function PathBlock({
                         hostPathRank={pathRank}
                         concentration={concentration}
                         dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
+                        armorRestricted={isArmorRestricted(borrowed)}
+                        armorRestrictedMessage={armorRestrictedMessage(borrowed)}
                         footer={
                           hasChoices(borrowed) ? (
                             <>
@@ -3196,6 +3228,8 @@ function PathBlock({
                       hostPathRank={pathRank}
                       concentration={concentration}
                       dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
+                      armorRestricted={isArmorRestricted(borrowed)}
+                      armorRestrictedMessage={armorRestrictedMessage(borrowed)}
                       footer={
                         hasChoices(borrowed) ? (
                           <>

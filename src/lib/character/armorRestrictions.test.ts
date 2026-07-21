@@ -4,6 +4,7 @@ import { createBlankCharacter } from './factory';
 import type { Character, EquipmentLine } from './types';
 import {
   armorDisabledFeatureIds,
+  armorLimitedBorrowedFeatureIds,
   armorRestrictionViolations,
   featureArmorRestrictionViolations,
   isArmorWorn,
@@ -307,6 +308,66 @@ describe('armorDisabledFeatureIds / activeFeatureIdsForMods — retrait des bonu
     expect(activeFeatureIdsForMods(enArmure)).not.toContain('poing-r2');
     const sansArmure = makeChar({ classId: 'moine', featureIds: ['poing-r2'], equipment: [] });
     expect(activeFeatureIdsForMods(sansArmure)).toContain('poing-r2');
+  });
+});
+
+describe('PER-153 — Touche-à-tout : emprunts soumis aux limitations d’armure', () => {
+  // Un humain acquiert « Touche-à-tout » (humain-r3) puis EMPRUNTE une capacité via son choix
+  // `feature-from-path` (index 0). classId 'guerrier' : le personnage a le droit de PORTER une armure
+  // lourde (plafond de PORT respecté) — on isole ainsi la restriction d'USAGE de la capacité EMPRUNTÉE,
+  // qui suit les limitations d'armure de son PROFIL SOURCE (p. 177), pas celles du guerrier.
+  const toucheATout = (borrowedId: string, over: Partial<Character> = {}): Character =>
+    makeChar({
+      classId: 'guerrier',
+      featureIds: ['humain-r3'],
+      featureChoices: { 'humain-r3': [borrowedId] },
+      ...over,
+    });
+
+  describe('armorLimitedBorrowedFeatureIds — sélection des emprunts qualifiants (p. 57)', () => {
+    it('retient un emprunt de RANG 2 (poing-r2, moine)', () => {
+      expect(armorLimitedBorrowedFeatureIds(toucheATout('poing-r2'))).toEqual(new Set(['poing-r2']));
+    });
+
+    it('retient un emprunt de rang 1 qui ACCORDE UN BONUS DE DEF (pourfendeur-r1, barbare)', () => {
+      expect(armorLimitedBorrowedFeatureIds(toucheATout('pourfendeur-r1'))).toEqual(new Set(['pourfendeur-r1']));
+    });
+
+    it('IGNORE un emprunt de rang 1 sans bonus de DEF (vent-r1, moine) — souplesse de Touche-à-tout', () => {
+      expect(armorLimitedBorrowedFeatureIds(toucheATout('vent-r1')).size).toBe(0);
+    });
+
+    it('IGNORE un SORT même qualifiant (air-r1, +1 DEF) — les sorts relèvent du surcoût de mana (PER-82)', () => {
+      expect(armorLimitedBorrowedFeatureIds(toucheATout('air-r1')).size).toBe(0);
+    });
+
+    it('vide si « Touche-à-tout » (humain-r3) n’est pas acquise', () => {
+      const sansTouche = makeChar({ classId: 'guerrier', featureChoices: { 'humain-r3': ['poing-r2'] } });
+      expect(armorLimitedBorrowedFeatureIds(sansTouche).size).toBe(0);
+    });
+  });
+
+  describe('intégration featureArmorRestrictionViolations / armorDisabledFeatureIds (PER-86/83)', () => {
+    it('un emprunt qualifiant (poing-r2, moine = aucune armure) est interdit dès qu’une armure est portée', () => {
+      const c = toucheATout('poing-r2', { equipment: [wornArmor('cotte-de-mailles')] });
+      const violation = featureArmorRestrictionViolations(c, ctx).find((v) => v.featureId === 'poing-r2');
+      expect(violation).toMatchObject({ featureId: 'poing-r2', className: 'Moine', allowedDef: 0 });
+      expect(armorDisabledFeatureIds(c, ctx).has('poing-r2')).toBe(true);
+      // Le +2 DEF de l'emprunt ne compte plus tant que l'armure est portée (retrait effectif).
+      expect(activeFeatureIdsForMods(c)).not.toContain('poing-r2');
+    });
+
+    it('sans armure : l’emprunt qualifiant reste actif', () => {
+      const c = toucheATout('poing-r2');
+      expect(featureArmorRestrictionViolations(c, ctx).some((v) => v.featureId === 'poing-r2')).toBe(false);
+      expect(activeFeatureIdsForMods(c)).toContain('poing-r2');
+    });
+
+    it('un emprunt NON qualifiant (vent-r1, rang 1 sans DEF) reste actif même en armure lourde', () => {
+      const c = toucheATout('vent-r1', { equipment: [wornArmor('cotte-de-mailles')] });
+      expect(armorDisabledFeatureIds(c, ctx).has('vent-r1')).toBe(false);
+      expect(activeFeatureIdsForMods(c)).toContain('vent-r1');
+    });
   });
 });
 

@@ -653,6 +653,11 @@ export const ancestryFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le personnage obtient une capacité de rang 1 ou 2 de n’importe quel profil au choix du joueur. Si la capacité est de rang 2 ou accorde un bonus de DEF, il doit respecter les limitations d’armure.',
+    // PER-153 : la restriction d'armure est APPLIQUÉE à la capacité empruntée quand elle est de rang 2
+    // ou qu'elle accorde un bonus de DEF (p. 57) — l'emprunt suit alors les limitations d'armure de son
+    // PROFIL SOURCE (p. 177), comme une capacité native (désactivée si l'armure portée dépasse le plafond,
+    // cf. `armorLimitedBorrowedFeatureIds`). Un rang 1 sans bonus de DEF en reste exempt. Les SORTS
+    // empruntés relèvent du surcoût de mana (PER-82), pas de l'interdiction binaire.
     choices: [
       {
         kind: 'feature-from-path',
@@ -660,7 +665,6 @@ export const ancestryFeatures: Feature[] = [
         allowedRanks: [1, 2],
       },
     ],
-    wip: 'Limitation d’armure : « Si la capacité est de rang 2 ou accorde un bonus de DEF, il doit respecter les limitations d’armure » — contrainte non encore appliquée à la capacité empruntée, en attente du modèle d’armure portée (PER-153).',
     sourcePage: 57,
   },
   {

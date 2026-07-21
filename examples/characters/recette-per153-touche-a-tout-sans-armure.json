@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per153-touche-a-tout-sans-armure",
+  "name": "Recette PER-153 — Touche-à-tout : emprunt actif sans armure",
+  "identity": {
+    "description": "ATTENDU : même humain, MÊME emprunt « Peau de fer » (poing-r2, +2 DEF), mais SANS armure → l’emprunt est actif et son +2 DEF compte. Contraste avec la fixture « armure »."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-r1",
+    "combat-r2",
+    "humain-r1",
+    "humain-r2",
+    "humain-r3"
+  ],
+  "featureChoices": {
+    "humain-r3": [
+      "poing-r2"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-153 — contrôle négatif : sans armure, l’emprunt qualifiant n’est pas gêné.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
