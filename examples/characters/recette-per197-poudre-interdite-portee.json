@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per197-poudre-interdite-portee",
+  "name": "Recette PER-197 — poudre interdite, mousquet porté",
+  "identity": {
+    "description": "ATTENDU : un avertissement « arme à poudre indisponible dans ce cadre de jeu » (armes à feu interdites, p. 62). Détection data-driven via le sous-type rangedKind=firearm (PER-197), plus aucune liste d’ids codée en dur."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": false,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "mousquet",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "twoHands"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-197 — cas principal : arquebusier bâti autour de la poudre, univers qui l’interdit (firearmsAllowed=false). Le mousquet compte désormais comme l’arbalète lourde correspondante ; la fiche le signale sans rien retirer.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

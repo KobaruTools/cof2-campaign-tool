@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { equipmentById } from '@/data';
 import type { Campaign } from '@/lib/campaign/types';
-import { firearmsEffective } from './firearms';
+import { firearmsEffective, isFirearmItem, isFirearmItemId } from './firearms';
 
 function makeCampaign(firearmsAllowed: boolean): Campaign {
   return {
@@ -37,5 +38,40 @@ describe('firearmsEffective', () => {
 
   it('les deux interdisent : false', () => {
     expect(firearmsEffective({ firearmsAllowed: false }, makeCampaign(false))).toBe(false);
+  });
+});
+
+// Identité « arme à poudre » DATA-DRIVEN (PER-197) : dérivée du sous-type d'arme à
+// distance `rangedKind: 'firearm'` (PER-115), et NON d'une liste d'ids codée en dur.
+describe('isFirearmItem', () => {
+  it('vrai pour les armes à distance de sous-type « firearm » (mousquet, pétoire)', () => {
+    expect(isFirearmItem(equipmentById.get('mousquet'))).toBe(true);
+    expect(isFirearmItem(equipmentById.get('petoire'))).toBe(true);
+  });
+
+  it('faux pour une arbalète (même famille duale, mais sous-type crossbow)', () => {
+    expect(isFirearmItem(equipmentById.get('arbalete-legere'))).toBe(false);
+    expect(isFirearmItem(equipmentById.get('arbalete-de-poing'))).toBe(false);
+  });
+
+  it('faux pour une arme de contact (aucun rangedKind)', () => {
+    expect(isFirearmItem(equipmentById.get('epee-longue'))).toBe(false);
+  });
+
+  it('faux pour un objet absent (undefined)', () => {
+    expect(isFirearmItem(undefined)).toBe(false);
+  });
+});
+
+describe('isFirearmItemId', () => {
+  it('résout l’id de base du catalogue puis lit le sous-type', () => {
+    expect(isFirearmItemId('mousquet')).toBe(true);
+    expect(isFirearmItemId('petoire')).toBe(true);
+    expect(isFirearmItemId('arbalete-legere')).toBe(false);
+    expect(isFirearmItemId('epee-longue')).toBe(false);
+  });
+
+  it('faux pour un id inconnu', () => {
+    expect(isFirearmItemId('id-inexistant')).toBe(false);
   });
 });

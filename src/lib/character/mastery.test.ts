@@ -120,9 +120,10 @@ describe('isWeaponMastered', () => {
     expect(isWeaponMastered(weapon('mousquet'), arquebusierIds, ctx, true)).toBe(true);
   });
 
-  it('armes à feu interdites : l’objet dual compte comme arbalète et suit l’accès à distance', () => {
-    // Poudre interdite (firearmsAllowed = false) : le « Mousquet ou arbalète lourde »
-    // est l’arbalète → maîtrisé par l’accès à distance normal du guerrier.
+  it('armes à feu interdites : l’arme à feu retombe sur l’accès à distance normal', () => {
+    // Poudre interdite (firearmsAllowed = false) : la branche « poudre » est court-circuitée,
+    // le mousquet (ranged) suit l’accès à distance normal → maîtrisé par le guerrier. Le
+    // joueur est censé le remplacer à la main par l’arbalète lourde (items distincts, p. 62).
     expect(isWeaponMastered(weapon('mousquet'), guerrierIds, ctx, false)).toBe(true);
   });
 

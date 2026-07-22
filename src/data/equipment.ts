@@ -627,7 +627,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'petoire',
-    name: 'Pétoire ou arbalète de poing',
+    name: 'Pétoire',
     category: 'weapon',
     weaponCategory: 'oneHand',
     melee: false,
@@ -642,7 +642,7 @@ export const weapons: Weapon[] = [
   },
   {
     id: 'mousquet',
-    name: 'Mousquet ou arbalète lourde',
+    name: 'Mousquet',
     category: 'weapon',
     weaponCategory: 'twoHands',
     melee: false,

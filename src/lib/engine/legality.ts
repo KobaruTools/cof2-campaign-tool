@@ -30,9 +30,9 @@ import type { Character } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { priestDivineFeatureId, priestDivineSlot, type DivineSlot } from '@/lib/character/choices';
 import { effectiveClassPathIds, firearmsInactivePathIds } from '@/lib/character/classDisplay';
-// Détection LÉGÈRE (PER-185) des objets « à poudre » du catalogue — source unique
-// partagée avec la maîtrise des armes (PER-79). Cf. `FIREARM_ITEM_IDS`.
-import { FIREARM_ITEM_IDS } from '@/lib/character/firearms';
+// Détection DATA-DRIVEN (PER-197) des armes « à poudre » : dérivée du sous-type d'arme
+// `rangedKind: 'firearm'` (PER-115), source unique partagée avec la maîtrise (PER-79).
+import { isFirearmItemId } from '@/lib/character/firearms';
 // Plafond de port d'armure/bouclier par profil (PER-80) — module pur dédié. La restriction
 // FINE d'usage par capacité d'origine (PER-86) n'est PAS un avertissement de conformité :
 // elle est rendue visuellement (rang désaturé + infobulle) par `FeaturesByPath`, pas ici.
@@ -606,18 +606,21 @@ export function checkCompliance(
     });
   }
 
-  // Arme à poudre équipée alors que les armes à feu sont interdites (PER-185,
-  // détection légère — cf. `FIREARM_ITEM_IDS`). Objet dual devenu arbalète : on
-  // signale la ligne à vérifier sans rien retirer (fiche permissive).
+  // Arme à poudre possédée alors que les armes à feu sont interdites (PER-185/PER-197).
+  // Détection DATA-DRIVEN sur le sous-type `rangedKind: 'firearm'` (via `isFirearmItemId`),
+  // sur l'objet de BASE de toute ligne du catalogue (un objet personnalisé n'est jamais une
+  // arme à feu). Objet dual devenu arbalète : on signale la ligne à vérifier sans rien
+  // retirer (fiche permissive). Portée « possédée » (toute ligne, pas seulement le slot
+  // porté) — comportement inchangé depuis PER-185.
   if (firearmsAllowed === false) {
     const hasFirearmItem = character.equipment.some(
-      (line) => !isCustomItem(line) && FIREARM_ITEM_IDS.has(line.itemId),
+      (line) => !isCustomItem(line) && isFirearmItemId(line.itemId),
     );
     if (hasFirearmItem) {
       warnings.push({
         code: 'FIREARMS_DISABLED_ITEM',
         message:
-          'Une arme à poudre équipée n\'est pas disponible dans ce cadre de jeu (armes à feu interdites, p. 62) : elle compte désormais comme l\'arbalète correspondante. Vérifiez la ligne d\'équipement.',
+          'Une arme à poudre n\'est pas disponible dans ce cadre de jeu (armes à feu interdites, p. 62) : remplacez-la par l\'arbalète correspondante (arbalète de poing pour la pétoire, arbalète lourde pour le mousquet). Vérifiez la ligne d\'équipement.',
         severity: 'warning',
       });
     }

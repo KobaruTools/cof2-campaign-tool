@@ -129,7 +129,7 @@ function MagicDefBadge({ value }: { value: number }) {
 
 /**
  * Panneau d'avertissement (PER-185, retour propriétaire PER-93) posé sur une ligne d'arme
- * à poudre (pétoire, mousquet — cf. `FIREARM_ITEM_IDS`) quand la poudre est INDISPONIBLE
+ * à poudre (pétoire, mousquet — cf. `isFirearmItem`) quand la poudre est INDISPONIBLE
  * (autorisation effective des armes à feu à `false` : règle campagne « pas d'arme à feu »
  * ou choix du joueur). La ligne est grisée mais JAMAIS retirée : le MJ garde la liberté de
  * la conserver pour un effet de style. Pastille custom en tonalité « warning » (≠ Chip MUI).

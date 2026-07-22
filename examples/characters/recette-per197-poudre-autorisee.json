@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per197-poudre-autorisee",
+  "name": "Recette PER-197 — poudre autorisée (contrôle négatif)",
+  "identity": {
+    "description": "ATTENDU : AUCUN avertissement d’arme à feu — la poudre est autorisée (firearmsAllowed=true). Contrôle négatif du cas principal."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "mousquet",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "twoHands"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-197 — contrôle négatif : même arme, univers qui autorise la poudre.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

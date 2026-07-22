@@ -20,7 +20,7 @@ import type { CharacterClass, Weapon, WeaponFamily } from '@/data/schema';
 import type { RulesContext } from '@/lib/engine';
 import { ownedRanks } from '@/lib/engine';
 import type { Character } from './types';
-import { isFirearmItemId } from './firearms';
+import { isFirearmItem } from './firearms';
 
 /** Seuil de rangs pour maîtriser un AUTRE profil (« au moins deux rangs », p. 177). */
 export const MASTERY_RANK_THRESHOLD = 2;
@@ -155,7 +155,7 @@ function classMastersWeapon(weapon: Weapon, cls: CharacterClass, firearmsAllowed
   // uniquement quand les armes à feu sont EFFECTIVEMENT autorisées. Poudre interdite →
   // l'objet dual EST l'arbalète correspondante : on retombe sur l'accès à distance
   // normal ci-dessous (p. 185, p. 62).
-  if (firearmsAllowed && isFirearmItemId(weapon.id)) return cls.powderAllowed === true;
+  if (firearmsAllowed && isFirearmItem(weapon)) return cls.powderAllowed === true;
 
   // Accès aux armes de contact.
   if (weapon.melee) {

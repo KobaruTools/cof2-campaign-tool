@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per197-poudre-interdite-sac",
+  "name": "Recette PER-197 — poudre interdite, mousquet rangé",
+  "identity": {
+    "description": "ATTENDU : le MÊME avertissement, alors que le mousquet est seulement RANGÉ (non porté). Prouve la portée « possédée » (toute ligne d’inventaire) — comportement inchangé depuis PER-185."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": false,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "mousquet",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-197 — démontre la décision de portée : la détection couvre la POSSESSION (toute ligne), pas seulement le slot porté.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

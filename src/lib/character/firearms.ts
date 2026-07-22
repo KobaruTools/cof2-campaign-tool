@@ -16,21 +16,34 @@
  * la campagne à `true` restaure l'Arquebusier. Un Arbalétrier (snapshot `false`)
  * reste Arbalétrier quelle que soit la campagne.
  */
+import { equipmentById } from '@/data';
+import type { EquipmentItem } from '@/data/schema';
 import type { Campaign } from '@/lib/campaign/types';
 import type { Character } from './types';
 
 /**
- * Objets « à poudre » du catalogue (ids). Ces objets sont DUAUX (« Mousquet ou
- * arbalète lourde », « Pétoire ou arbalète de poing », p. 62) : quand la poudre est
- * autorisée ils sont des armes à feu (maîtrisées par le seul profil poudrier, p. 185) ;
- * quand elle est interdite, l'objet EST déjà l'arbalète correspondante (maîtrisée par
- * l'accès à distance normal). Source unique partagée par la légalité et la maîtrise.
+ * L'objet est-il une arme à poudre ? (PER-197) DÉTECTION DATA-DRIVEN : dérivée du
+ * sous-type d'arme à distance `rangedKind: 'firearm'` (PER-115), la représentation
+ * officielle de la catégorie « poudre », et NON d'une liste d'ids codée en dur.
+ *
+ * L'arme à feu (mousquet, pétoire) et son équivalent arbalète (arbalète lourde, arbalète
+ * de poing) sont des objets de catalogue DISTINCTS (p. 62) : seule l'arme à feu porte
+ * `rangedKind: 'firearm'`, maîtrisée par le seul profil poudrier quand la poudre est
+ * autorisée (p. 185) ; interdite, elle se remplace à la main par l'arbalète correspondante
+ * (accès à distance normal). Source unique partagée par la légalité (`checkCompliance`) et
+ * la maîtrise des armes (PER-79).
  */
-export const FIREARM_ITEM_IDS = new Set(['mousquet', 'petoire']);
+export function isFirearmItem(item: EquipmentItem | undefined | null): boolean {
+  return item?.category === 'weapon' && item.rangedKind === 'firearm';
+}
 
-/** L'objet du catalogue est-il une arme à poudre (cf. `FIREARM_ITEM_IDS`) ? */
+/**
+ * Idem à partir d'un id du catalogue : résout l'objet de BASE puis lit son sous-type.
+ * Le sous-type n'est jamais surchargé par une variante (cf. `items.ts`), donc l'identité
+ * « arme à feu » se lit toujours sur la base — inutile de passer par `effectiveItem`.
+ */
 export function isFirearmItemId(itemId: string): boolean {
-  return FIREARM_ITEM_IDS.has(itemId);
+  return isFirearmItem(equipmentById.get(itemId));
 }
 
 export function firearmsEffective(
