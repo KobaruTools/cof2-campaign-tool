@@ -41,4 +41,32 @@ describe('splitPageRefs', () => {
   it("omet le texte vide autour d'une référence isolée", () => {
     expect(splitPageRefs('(p. 42)')).toEqual([{ kind: 'page', page: '42' }]);
   });
+
+  it('extrait la forme en prose « (voir page 78) » en remplaçant tout le renvoi', () => {
+    expect(
+      splitPageRefs('une capacité issue de la famille des combattants (voir page 78).'),
+    ).toEqual([
+      { kind: 'text', value: 'une capacité issue de la famille des combattants ' },
+      { kind: 'page', page: '78' },
+      { kind: 'text', value: '.' },
+    ]);
+  });
+
+  it('accepte « (voir p. 60) » et une plage « (voir pages 219-220) »', () => {
+    expect(splitPageRefs('voie du mage (voir p. 60)')).toEqual([
+      { kind: 'text', value: 'voie du mage ' },
+      { kind: 'page', page: '60' },
+    ]);
+    expect(splitPageRefs('règle (voir pages 219-220) suite')).toEqual([
+      { kind: 'text', value: 'règle ' },
+      { kind: 'page', page: '219-220' },
+      { kind: 'text', value: ' suite' },
+    ]);
+  });
+
+  it('laisse en texte une double référence « (voir pages 51 et 56) » (non tronquée)', () => {
+    expect(splitPageRefs('noms (voir pages 51 et 56).')).toEqual([
+      { kind: 'text', value: 'noms (voir pages 51 et 56).' },
+    ]);
+  });
 });

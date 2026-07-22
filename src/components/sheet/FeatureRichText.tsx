@@ -28,6 +28,7 @@ import { ANCESTRY_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColor
 import { dieAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
 import { splitNotes } from '@/lib/ui/featureNotes';
 import { splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
+import { splitPageRefs } from '@/lib/ui/pageRefs';
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
 
@@ -457,7 +458,11 @@ export function GlossaryText({ children }: { children: string }) {
   return <RichTextRun value={children} />;
 }
 
-function RichTextRun({ value }: { value: string }) {
+/**
+ * Rendu des locutions de jeu + glossaire d'une portion de texte SANS référence de page
+ * (déjà isolée par `RichTextRun`). Sépare les enrichissements de jargon du renvoi au livre.
+ */
+function GameTermsRun({ value }: { value: string }) {
   return (
     <>
       {splitGameTerms(value).map((piece, i) =>
@@ -476,6 +481,28 @@ function RichTextRun({ value }: { value: string }) {
           <GlossaryMark key={i} label={piece.term} title={piece.entry.label} />
         ) : (
           <GameAction key={i} label={piece.term} />
+        ),
+      )}
+    </>
+  );
+}
+
+/**
+ * Rend un TEXTE LITTÉRAL de règle. Isole d'abord les RÉFÉRENCES DE PAGE (« (p. 188) »,
+ * « (voir page 78) »…) — remplacées INTÉGRALEMENT par la puce de source (`SourceRef`,
+ * renvoi au livre, notion globale `splitPageRefs`) — puis passe le reste au rendu des
+ * locutions de jeu et du glossaire (`GameTermsRun`). Chokepoint UNIQUE : toute prose de
+ * règle rendue enrichie (descriptions de capacités, détail d'objet, info-bulles d'états)
+ * convertit ainsi ses renvois de page en puce, plutôt que de laisser un « (voir page N) » brut.
+ */
+function RichTextRun({ value }: { value: string }) {
+  return (
+    <>
+      {splitPageRefs(value).map((seg, i) =>
+        seg.kind === 'page' ? (
+          <SourceRef key={i} page={seg.page} sx={{ mx: 0.25 }} />
+        ) : (
+          <GameTermsRun key={i} value={seg.value} />
         ),
       )}
     </>
