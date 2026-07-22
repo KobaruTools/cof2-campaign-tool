@@ -59,6 +59,33 @@ export function creatureDefenseAltActive(
   return character.featureIds.includes(alt.sourceFeatureId) && isEffectActive(character, alt.sourceFeatureId, 0);
 }
 
+/**
+ * Un compagnon est-il PRÉSENT (donc à afficher) ? Un compagnon d'INVOCATION — un sort que
+ * le joueur lance à la table (démon, arbre animé…) — se reconnaît à un effet d'activation
+ * TEMPORAIRE (`conditional-stat-bonus` dont `activation.kind === 'temporary'`, ex.
+ * « Démon invoqué ») : il ne doit apparaître que quand cette invocation est ACTIVE. À
+ * DISTINGUER des compagnons PERMANENTS (loup, golem, monture, écuyer, familier du druide/
+ * magicien) : ceux-ci existent en continu — leur éventuel interrupteur est une simple
+ * CONDITION (« familier en vue », « en selle ») qui module un bonus, pas leur présence.
+ *
+ * Renvoie `true` si le compagnon est visible : soit ce n'est pas une invocation (aucun
+ * interrupteur temporaire), soit au moins une invocation est active. `isSpell` ne suffit
+ * pas à trancher (le familier du magicien est un sort mais permanent) ; c'est bien la
+ * nature TEMPORAIRE de l'activation qui marque une invocation.
+ */
+function companionPresent(feature: Feature, character: Character): boolean {
+  const effects = feature.effects ?? [];
+  let isSummon = false;
+  for (let i = 0; i < effects.length; i += 1) {
+    const effect = effects[i];
+    if (effect.kind === 'conditional-stat-bonus' && effect.activation?.kind === 'temporary') {
+      isSummon = true;
+      if (isEffectActive(character, feature.id, i)) return true;
+    }
+  }
+  return !isSummon;
+}
+
 /** Un compagnon débloqué, prêt à afficher. */
 export interface CompanionEntry {
   /**
@@ -113,6 +140,9 @@ export function listCompanions(character: Character): CompanionEntry[] {
     if (!feature) continue;
     const profile = effectiveCreatureProfile(feature, character);
     if (!profile) continue;
+    // Invocation (démon, arbre animé…) : masquée tant que le sort n'est pas actif (action
+    // du joueur). Les compagnons permanents (loup, golem, familiers…) passent toujours.
+    if (!companionPresent(feature, character)) continue;
     const prev = byPath.get(feature.pathId);
     if (prev && prev.feature.rank >= feature.rank) continue;
     byPath.set(feature.pathId, {

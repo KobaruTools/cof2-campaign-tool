@@ -69,6 +69,24 @@ describe('listCompanions', () => {
     expect(companions[0].profile.abilities).toBeUndefined();
   });
 
+  it('invocation (démon) : masquée tant que le sort n’est pas actif, visible une fois invoqué', () => {
+    // « Démon invoqué » non coché → pas de compagnon affiché.
+    expect(listCompanions(char({ classId: 'sorcier', featureIds: ['demon-r5'] }))).toHaveLength(0);
+    // Interrupteur temporaire actif (index 0) → le démon apparaît.
+    const invoked = listCompanions(
+      char({ classId: 'sorcier', featureIds: ['demon-r5'], effectToggles: { 'demon-r5': [true] } }),
+    );
+    expect(invoked).toHaveLength(1);
+    expect(invoked[0].profile.name).toBe('Démon');
+  });
+
+  it('familier permanent (magicien) : visible sans activation malgré isSpell', () => {
+    // magie-universelle-r2 est un sort (isSpell) mais un familier PERMANENT : son interrupteur
+    // « familier en vue » est une condition (bonus de DEF), pas une invocation → toujours affiché.
+    const companions = listCompanions(char({ classId: 'magicien', featureIds: ['magie-universelle-r2'] }));
+    expect(companions.map((e) => e.profile.name)).toEqual(['Familier']);
+  });
+
   it('plusieurs compagnons de voies distinctes coexistent', () => {
     const c = char({ classId: 'chevalier', featureIds: ['cavalier-r1', 'noblesse-r2'] });
     const companions = listCompanions(c);
