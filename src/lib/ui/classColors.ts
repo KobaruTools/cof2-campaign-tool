@@ -1,4 +1,4 @@
-import { decomposeColor, recomposeColor } from '@mui/material/styles';
+import { alpha, decomposeColor, recomposeColor } from '@mui/material/styles';
 
 /**
  * Couleurs d'accentuation par profil — préoccupation purement UI (aucune règle
@@ -45,6 +45,19 @@ export function desaturateColor(color: string, amount: number): string {
   const gray = 0.299 * r + 0.587 * g + 0.114 * b;
   const mix = (c: number) => Math.round(gray + (c - gray) * (1 - amount));
   return recomposeColor({ type: 'rgb', values: [mix(r), mix(g), mix(b)] });
+}
+
+/**
+ * Léger dégradé d'accentuation teinté à la couleur d'un profil, un peu désaturée
+ * (« moins flashy », retour propriétaire) et posée en `backgroundImage` par-dessus le
+ * fond d'un bloc : part de `direction` (teinte discrète) vers la transparence. Source
+ * UNIQUE de la recette (désaturation + opacité), partagée par les lignes de liste
+ * (`to left`) et les blocs résumé de personnage (`to top left`). Repli neutre si l'id
+ * est inconnu (via `classColor`).
+ */
+export function profileAccentGradient(classId: string, direction = 'to left'): string {
+  const tint = desaturateColor(classColor(classId), 0.45);
+  return `linear-gradient(${direction}, ${alpha(tint, 0.18)}, transparent)`;
 }
 
 /**

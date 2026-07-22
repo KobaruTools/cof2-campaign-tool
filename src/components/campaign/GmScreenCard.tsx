@@ -22,6 +22,7 @@ import { CharacterPreviewCard } from '@/components/CharacterPreviewCard';
 import { CompactDerivedStats } from '@/components/sheet/CompactDerivedStats';
 import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
+import { profileAccentGradient } from '@/lib/ui/classColors';
 import type { Character } from '@/lib/character/types';
 
 export interface GmScreenCardProps {
@@ -41,6 +42,10 @@ export function GmScreenCard({ character, playerName, href }: GmScreenCardProps)
       sx={{
         p: 2,
         bgcolor: 'rgba(20, 20, 23, 0.72)',
+        // Léger dégradé teinté au profil (bas droite → haut gauche), posé sur toute la
+        // carte condensée. L'aperçu interne est donc rendu SANS sa propre teinte
+        // (`tinted={false}`) pour ne pas doubler le dégradé.
+        backgroundImage: profileAccentGradient(character.classId, 'to top left'),
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -64,7 +69,7 @@ export function GmScreenCard({ character, playerName, href }: GmScreenCardProps)
             </IconButton>
           </AppTooltip>
         </Stack>
-        <CharacterPreviewCard character={character} />
+        <CharacterPreviewCard character={character} tinted={false} />
         {view.derivedInput && (
           <CompactDerivedStats
             input={view.derivedInput}

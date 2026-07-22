@@ -23,10 +23,18 @@ import {
   MAGE_PATH_COLOR,
   PRESTIGE_PATH_COLOR,
   classColor,
+  profileAccentGradient,
 } from '@/lib/ui/classColors';
 
 export interface CharacterPreviewCardProps {
   character: Character;
+  /**
+   * Teinte le bloc au profil du personnage : léger dégradé désaturé partant du bas
+   * droite (`to top left`) + padding/arrondi, pour un « bloc résumé » cohérent au
+   * survol d'une ligne, à l'import et à sa confirmation. `false` quand un conteneur
+   * parent porte déjà la teinte (carte de l'écran MJ) — évite un dégradé en double.
+   */
+  tinted?: boolean;
 }
 
 /**
@@ -156,14 +164,26 @@ function pathColumns(character: Character): PathColumn[] {
     });
 }
 
-export function CharacterPreviewCard({ character }: CharacterPreviewCardProps) {
+export function CharacterPreviewCard({ character, tinted = true }: CharacterPreviewCardProps) {
   const summary = summarize(character);
   return (
     // `minWidth` : dans une infobulle qui se dimensionne au contenu (survol desktop),
     // un plancher garde les 7 badges de carac d'égale largeur. Mais réutilisée dans une
     // colonne contrainte (écran MJ sur mobile, PER-232), ce plancher faisait déborder la
     // carte de sa colonne → plancher retiré sous « sm » (xs: 0), conservé au-delà.
-    <Stack spacing={2} sx={{ minWidth: { xs: 0, sm: 264 } }}>
+    // `tinted` : léger dégradé teinté au profil (bas droite → haut gauche), qui fait de
+    // l'aperçu un « bloc résumé » cohérent (survol, import, succès).
+    <Stack
+      spacing={2}
+      sx={{
+        minWidth: { xs: 0, sm: 264 },
+        ...(tinted && {
+          p: 1.5,
+          borderRadius: 2,
+          backgroundImage: profileAccentGradient(summary.classId, 'to top left'),
+        }),
+      }}
+    >
       <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
         <Box
           component="img"
