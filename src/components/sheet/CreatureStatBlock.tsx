@@ -75,7 +75,52 @@ function MasterStatValue({ stat, masterDerived }: { stat: DerivedStatId; masterD
   );
 }
 
-export interface CreatureStatBlockProps {
+export interface CreatureAbilitiesGridProps {
+  profile: CreatureProfile;
+  /**
+   * Caractéristiques de la créature bénéficiant d'un DÉ BONUS (icône double-d20),
+   * octroyé par une amélioration retenue (ex. golem « Forme de félin » → AGI). Voir
+   * `creatureBonusDiceForPath`.
+   */
+  bonusDieAbilities?: Set<AbilityId>;
+}
+
+/**
+ * Grille compacte des 7 caractéristiques d'une créature (valeurs fixes), avec l'icône
+ * de la fiche et l'éventuel dé bonus inné/octroyé (double-d20). `null` si le profil n'a
+ * pas de bloc de caractéristiques dans le livre (ex. écuyer du chevalier). Extraite pour
+ * être réutilisée par la mini-fiche « Voies & capacités » ET la carte de la section
+ * « Compagnons » (PER-233), où elle est posée en haut à droite, à côté de la barre de vie.
+ */
+export function CreatureAbilitiesGrid({ profile, bonusDieAbilities }: CreatureAbilitiesGridProps) {
+  if (!profile.abilities) return null;
+  // Dés bonus de la créature = dés INNÉS (notés « * » dans le livre, portés par le profil)
+  // UNIS aux dés octroyés par une option de voie retenue (ex. golem « Forme de félin »). Système
+  // unifié avec la fiche de personnage (PER-107) : icône double-d20 à droite de la valeur.
+  const allBonusDice = new Set<AbilityId>([...(profile.bonusDieAbilities ?? []), ...(bonusDieAbilities ?? [])]);
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5 }}>
+      {ABILITY_IDS.map((id) => (
+        <AppTooltip key={id} title={ABILITY_NAMES[id]}>
+          {/* Bloc « icône + code + valeur » partagé (`AbilityValueBadge`) : chiffre
+              teinté fort/faible comme partout ailleurs, dé bonus posé en ornement. */}
+          <AbilityValueBadge
+            ability={id}
+            value={profile.abilities![id]}
+            iconSize={16}
+            showCode
+            codeVariant="caption"
+            valueVariant="caption"
+            adornment={allBonusDice.has(id) ? <BonusDieBadge ability={id} size={12} /> : undefined}
+            sx={{ borderRadius: 0.5, py: 0.4, cursor: 'help', bgcolor: (t) => alpha(t.palette.text.primary, 0.05) }}
+          />
+        </AppTooltip>
+      ))}
+    </Box>
+  );
+}
+
+export interface CreatureStatsLineProps {
   profile: CreatureProfile;
   /** Caractéristiques du personnage MAÎTRE — pour résoudre les valeurs richText. */
   abilities: Abilities;
@@ -86,79 +131,37 @@ export interface CreatureStatBlockProps {
   /** Stats dérivées du maître — pour recopier Init./attaque (absent → libellé de repli). */
   masterDerived?: DerivedStats;
   /**
-   * Caractéristiques de la créature bénéficiant d'un DÉ BONUS (icône double-d20),
-   * octroyé par une amélioration retenue (ex. golem « Forme de félin » → AGI). Voir
-   * `creatureBonusDiceForPath`.
-   */
-  bonusDieAbilities?: Set<AbilityId>;
-  /**
    * La DÉFENSE ALTERNATIVE (`profile.defenseAlt`) est-elle active ? Résolu en amont par le
    * maître (capacité acquise + interrupteur de condition actif, ex. cavalier-r2 « en selle »).
    * `true` → la DEF affichée devient l'alternative ; sinon la DEF de base.
    */
   defenseAltActive?: boolean;
+  /**
+   * Affiche le PV verbatim dans la ligne (défaut `true`). La section « Compagnons »
+   * (PER-233) le passe à `false` : les PV y sont rendus par la BARRE DE VIE interactive,
+   * plus par un texte.
+   */
+  showHitPoints?: boolean;
 }
 
-export function CreatureStatBlock({
+/**
+ * Ligne des stats dérivées d'une créature : DEF, PV (optionnel), Init., puis attaque
+ * (label + DM) et note verbatim. Extraite de `CreatureStatBlock` pour être partagée avec
+ * la carte de la section « Compagnons » (PER-233), qui masque les PV (`showHitPoints=false`).
+ */
+export function CreatureStatsLine({
   profile,
   abilities,
   level,
   rank,
   masterDerived,
-  bonusDieAbilities,
   defenseAltActive,
-}: CreatureStatBlockProps) {
+  showHitPoints = true,
+}: CreatureStatsLineProps) {
   const rich = (text: string) => <RichInline text={text} abilities={abilities} level={level} rank={rank} />;
   const defAlt = profile.defenseAlt;
-  // Dés bonus de la créature = dés INNÉS (notés « * » dans le livre, portés par le profil)
-  // UNIS aux dés octroyés par une option de voie retenue (ex. golem « Forme de félin »). Système
-  // unifié avec la fiche de personnage (PER-107) : icône double-d20 à droite de la valeur.
-  const allBonusDice = new Set<AbilityId>([...(profile.bonusDieAbilities ?? []), ...(bonusDieAbilities ?? [])]);
   return (
-    <Box
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        p: 1.25,
-        bgcolor: (t) => alpha(t.palette.text.primary, 0.025),
-      }}
-    >
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap', mb: 0.75 }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>
-          {profile.name.toUpperCase()}
-        </Typography>
-        {profile.type && (
-          <Typography variant="caption" color="text.secondary">
-            {profile.type}
-          </Typography>
-        )}
-      </Stack>
-
-      {/* Caractéristiques de la créature (valeurs fixes), avec l'icône de la fiche. Certaines
-          créatures n'ont PAS de bloc de caractéristiques dans le livre (ex. écuyer du chevalier :
-          seulement Init/DEF/PV/Att/DM) → grille omise. */}
-      {profile.abilities && (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5, mb: 0.75 }}>
-          {ABILITY_IDS.map((id) => (
-            <AppTooltip key={id} title={ABILITY_NAMES[id]}>
-              {/* Bloc « icône + code + valeur » partagé (`AbilityValueBadge`) : chiffre
-                  teinté fort/faible comme partout ailleurs, dé bonus posé en ornement. */}
-              <AbilityValueBadge
-                ability={id}
-                value={profile.abilities![id]}
-                iconSize={16}
-                showCode
-                codeVariant="caption"
-                valueVariant="caption"
-                adornment={allBonusDice.has(id) ? <BonusDieBadge ability={id} size={12} /> : undefined}
-                sx={{ borderRadius: 0.5, py: 0.4, cursor: 'help', bgcolor: (t) => alpha(t.palette.text.primary, 0.05) }}
-              />
-            </AppTooltip>
-          ))}
-        </Box>
-      )}
-
+    <>
       {/* Stats dérivées + attaque. */}
       <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}>
         <StatItem label="DEF">
@@ -179,7 +182,7 @@ export function CreatureStatBlock({
             rich(profile.defense)
           )}
         </StatItem>
-        <StatItem label="PV">{rich(profile.hitPoints)}</StatItem>
+        {showHitPoints && <StatItem label="PV">{rich(profile.hitPoints)}</StatItem>}
         <StatItem label="Init.">
           {isMasterRef(profile.initiative) ? (
             <MasterStatValue stat={profile.initiative.fromMaster} masterDerived={masterDerived} />
@@ -208,6 +211,71 @@ export function CreatureStatBlock({
           {profile.note}
         </Typography>
       )}
+    </>
+  );
+}
+
+export interface CreatureStatBlockProps {
+  profile: CreatureProfile;
+  /** Caractéristiques du personnage MAÎTRE — pour résoudre les valeurs richText. */
+  abilities: Abilities;
+  /** Niveau du personnage — pour `niveau` et les dés évolutifs. */
+  level: number;
+  /** Rang atteint dans la voie hôte — pour le terme `rang` des stats de la créature. */
+  rank: number;
+  /** Stats dérivées du maître — pour recopier Init./attaque (absent → libellé de repli). */
+  masterDerived?: DerivedStats;
+  /** Caractéristiques de la créature bénéficiant d'un DÉ BONUS (icône double-d20). */
+  bonusDieAbilities?: Set<AbilityId>;
+  /** La DÉFENSE ALTERNATIVE (`profile.defenseAlt`) est-elle active ? */
+  defenseAltActive?: boolean;
+}
+
+export function CreatureStatBlock({
+  profile,
+  abilities,
+  level,
+  rank,
+  masterDerived,
+  bonusDieAbilities,
+  defenseAltActive,
+}: CreatureStatBlockProps) {
+  return (
+    <Box
+      sx={{
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 1,
+        p: 1.25,
+        bgcolor: (t) => alpha(t.palette.text.primary, 0.025),
+      }}
+    >
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap', mb: 0.75 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>
+          {profile.name.toUpperCase()}
+        </Typography>
+        {profile.type && (
+          <Typography variant="caption" color="text.secondary">
+            {profile.type}
+          </Typography>
+        )}
+      </Stack>
+
+      {/* Caractéristiques de la créature (grille compacte), omises si le livre n'en donne pas. */}
+      {profile.abilities && (
+        <Box sx={{ mb: 0.75 }}>
+          <CreatureAbilitiesGrid profile={profile} bonusDieAbilities={bonusDieAbilities} />
+        </Box>
+      )}
+
+      <CreatureStatsLine
+        profile={profile}
+        abilities={abilities}
+        level={level}
+        rank={rank}
+        masterDerived={masterDerived}
+        defenseAltActive={defenseAltActive}
+      />
     </Box>
   );
 }

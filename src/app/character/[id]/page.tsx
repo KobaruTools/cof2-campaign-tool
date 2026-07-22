@@ -86,7 +86,8 @@ import {
   spendMana,
 } from '@/lib/character/gauges';
 import { longRest, shortRest } from '@/lib/character/rest';
-import type { FeatureChoiceSelection } from '@/lib/character/types';
+import { listCompanions, pruneCompanionDepletion, resolveCreatureMaxHp } from '@/lib/character/companions';
+import type { Depletion, FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -105,6 +106,7 @@ import { SheetSection } from '@/components/sheet/SheetSection';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
+import { CompanionsPanel } from '@/components/sheet/CompanionsPanel';
 import { PurseField } from '@/components/sheet/PurseField';
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
 import { StartingChoiceDialog } from '@/components/sheet/StartingChoiceDialog';
@@ -397,6 +399,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       effectInputs: pruneEffectInputs(character.effectInputs, featureIds),
       usageCounters: pruneUsageCounters(character.usageCounters, featureIds),
       depletion: pruneDepletion(character.depletion),
+      // Purge les PV des compagnons désormais disparus (rang non acquis après un respec /
+      // une baisse de niveau) — cf. `pruneCompanionDepletion` (PER-233). L'objet mis à jour
+      // n'est pas encore appliqué, mais l'énumération se base sur les nouveaux `featureIds`.
+      companionDepletion: pruneCompanionDepletion(character.companionDepletion, { ...character, featureIds }),
     });
   // Résolution rétroactive d'un choix porté par une capacité (PER-66/68). La
   // fiche est permissive : on persiste sans bloquer (recalcul en direct).
@@ -595,6 +601,28 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     });
   const setHpHeal = (amount: number) => update({ depletion: healHp(character.depletion, amount) });
   const setHpReset = () => update({ depletion: resetHp(character.depletion) });
+  // PV des COMPAGNONS (PER-233) : même mécanique que la barre du joueur, indexée par la clé
+  // du compagnon (id du rang porteur). Le manque est plafonné au max EFFECTIF de la créature
+  // (résolu depuis son `CreatureProfile`), et une entrée redevenue pleine est retirée (clé
+  // absente = compagnon à PV pleins). `effectCtx`/`character` sont en portée à l'appel.
+  const setCompanionDepletion = (key: string, next: Depletion) => {
+    const companionDepletion = { ...character.companionDepletion };
+    const pruned = pruneDepletion(next);
+    if (Object.keys(pruned).length === 0) delete companionDepletion[key];
+    else companionDepletion[key] = pruned;
+    update({ companionDepletion });
+  };
+  const companionMaxHp = (key: string): number | undefined => {
+    const entry = listCompanions(character).find((c) => c.key === key);
+    if (!entry) return undefined;
+    return resolveCreatureMaxHp(entry.profile, effectCtx.abilities, character.level, entry.pathRank) ?? undefined;
+  };
+  const setCompanionDamage = (key: string, amount: number, kind: 'lethal' | 'temp') =>
+    setCompanionDepletion(key, applyDamage(character.companionDepletion[key] ?? {}, amount, kind, companionMaxHp(key)));
+  const setCompanionHeal = (key: string, amount: number) =>
+    setCompanionDepletion(key, healHp(character.companionDepletion[key] ?? {}, amount));
+  const setCompanionReset = (key: string) =>
+    setCompanionDepletion(key, resetHp(character.companionDepletion[key] ?? {}));
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
   // supprime la clé et rétablit le calcul automatique.
   const setOverride = (key: DerivedStatId, value: number | null) => {
@@ -1150,6 +1178,30 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             </SheetSection>
           )}
 
+          {/* Section « Compagnons » (PER-233) : un bloc condensé par compagnon débloqué
+              (monture, familier, écuyer, golem, loup, invocation…), avec barre de vie
+              interactive. Entièrement dérivée des rangs de voie ; absente si aucun
+              compagnon (pas de section vide). Requiert les stats du maître (Init./attaque
+              recopiées, résolution des PV). */}
+          {masterDerived &&
+            (() => {
+              const companions = listCompanions(character);
+              return companions.length > 0 ? (
+                <SheetSection title="Compagnons" icon="companions">
+                  <CompanionsPanel
+                    companions={companions}
+                    abilities={effectCtx.abilities}
+                    level={character.level}
+                    masterDerived={masterDerived}
+                    companionDepletion={character.companionDepletion}
+                    onDamage={setCompanionDamage}
+                    onHeal={setCompanionHeal}
+                    onReset={setCompanionReset}
+                  />
+                </SheetSection>
+              ) : null;
+            })()}
+
           <SheetSection
             title="Voies & capacités"
             icon="paths"
@@ -1382,6 +1434,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               open
               label={line.name}
               options={options}
+              firearmsEffective={firearmsAllowed}
               onClose={() => setChoiceIndex(null)}
               onConfirm={confirmStartingChoice}
             />

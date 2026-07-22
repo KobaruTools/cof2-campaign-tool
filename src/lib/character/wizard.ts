@@ -312,6 +312,7 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     effectInputs: {},
     usageCounters: {},
     depletion: {},
+    companionDepletion: {},
     purse: { platinum: 0, gold: 0, silver: 0, copper: 0 },
     levelUpHistory: [{ level: 1, chosenFeatureIds: featureIds }],
     equipment: draft.equipment,

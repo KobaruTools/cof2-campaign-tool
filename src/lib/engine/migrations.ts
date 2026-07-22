@@ -428,6 +428,18 @@ function migrateV17toV18(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v18 → v19 : ajout de `companionDepletion` (dépletion transitoire des PV par compagnon,
+ * PER-233). Purement additif : on initialise une map vide (aucun compagnon blessé au
+ * chargement) si le champ est absent, en préservant une éventuelle valeur déjà présente.
+ */
+function migrateV18toV19(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.companionDepletion) === null) next.companionDepletion = {};
+  next.schemaVersion = 19;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -449,6 +461,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   15: migrateV15toV16,
   16: migrateV16toV17,
   17: migrateV17toV18,
+  18: migrateV18toV19,
 };
 
 export class MigrationError extends Error {}
@@ -525,6 +538,9 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   }
   if (typeof data.depletion !== 'object' || data.depletion === null) {
     fail('Champ « depletion » manquant ou invalide.');
+  }
+  if (typeof data.companionDepletion !== 'object' || data.companionDepletion === null) {
+    fail('Champ « companionDepletion » manquant ou invalide.');
   }
   if (typeof data.purse !== 'object' || data.purse === null) {
     fail('Champ « purse » manquant ou invalide.');

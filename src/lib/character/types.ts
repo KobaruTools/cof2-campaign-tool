@@ -58,8 +58,12 @@ import type { AncestryChoice } from './ancestry';
  *   non parsable est retirée (la ligne retombe sur le DM structuré de l'arme de base,
  *   le nom et les autres surcharges survivant). Le catalogue `equipment.ts` (code
  *   source) est réécrit à la main en littéraux structurés — hors migration.
+ * v19 : ajout de `companionDepletion` (dépletion transitoire des PV PAR COMPAGNON —
+ *   monture, familier, écuyer, golem, loup, invocation… ; PER-233). Suivi de jeu
+ *   indexé par l'`id` du rang de voie qui octroie le compagnon. La migration ajoute
+ *   simplement `{}` (aucun compagnon blessé au chargement).
  */
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 19;
 
 /**
  * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
@@ -527,6 +531,19 @@ export interface Character {
    * `Depletion` et `src/lib/character/gauges.ts`. `{}` = toutes les jauges pleines.
    */
   depletion: Depletion;
+
+  /**
+   * Dépletion transitoire des PV, PAR COMPAGNON (PER-233). Clé = `id` du rang de voie
+   * qui octroie le compagnon (ex. `golem-r2`, `cavalier-r1`, `compagnon-animal-r4`) —
+   * un rang = un compagnon. La valeur réutilise la MÊME structure de manque que le
+   * personnage (`Depletion`, dont seul `.hp` est renseigné en pratique), pour partager
+   * tels quels les helpers de `src/lib/character/gauges.ts` (aucune duplication de
+   * logique de PV). État de jeu transitoire, comme `depletion` : modifiable hors mode
+   * « Modifier », reclampé au changement de max (via le recalcul du courant), et purgé
+   * quand un compagnon disparaît (respec / baisse de niveau). `{}` = tous les
+   * compagnons à PV pleins. Énumération et max dans `src/lib/character/companions.ts`.
+   */
+  companionDepletion: Record<string, Depletion>;
 
   /**
    * Argent possédé (PER-152). État de jeu transitoire (modifiable hors mode

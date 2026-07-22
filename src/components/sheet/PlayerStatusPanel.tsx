@@ -1,39 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import AddIcon from '@mui/icons-material/Add';
 import HotelIcon from '@mui/icons-material/Hotel';
-import RemoveIcon from '@mui/icons-material/Remove';
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import TimerIcon from '@mui/icons-material/Timer';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
-import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import Typography from '@mui/material/Typography';
-import { alpha, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import type { Depletion } from '@/lib/character/types';
 import type { Die } from '@/data/schema';
 import type { CapacityResourceGauge } from '@/lib/character/effects';
-import { currentHp, currentLuck, currentMana, currentRecoveryDice, hpHealthState, type HealthState } from '@/lib/character/gauges';
+import { currentLuck, currentMana, currentRecoveryDice } from '@/lib/character/gauges';
 import { classColor } from '@/lib/ui/classColors';
 import { AppTooltip } from '@/components/AppTooltip';
-import { SourceRef } from '@/components/SourceRef';
 import { ClassIcon } from '@/components/ClassIcon';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DieIcon } from '@/components/DieIcon';
-import { GaugeBar, GaugeValueLabel, type GaugeSegment } from './GaugeBar';
-import { GaugeExpandToggle } from './GaugeExpandToggle';
-import { GaugeIconCap } from './GaugeIconCap';
 import { GaugeRow } from './GaugeRow';
+import { HpGauge, type DamageKind } from './HpGauge';
 import { LongRestDialog } from './LongRestDialog';
 import { ShortRestDialog } from './ShortRestDialog';
-import { usePersistentBoolean } from './usePersistentBoolean';
 
 /**
  * Icône de profil dans un cercle blanc (même présentation cerclée que les icônes de
@@ -116,87 +103,6 @@ function RecoveryDicePips({
       </AppTooltip>
       <DieIcon die={die} size={22} />
     </Stack>
-  );
-}
-
-/** Nature des dégâts saisis dans les contrôles de PV. */
-type DamageKind = 'lethal' | 'temp';
-
-/**
- * Métadonnées d'affichage des états de santé préjudiciables (p. 219-220), verbatim
- * du livre de base + page source (convention projet : verbatim de règle en
- * info-bulle). `normal` n'a pas de badge.
- */
-const HEALTH_STATE_META: Record<
-  Exclude<HealthState, 'normal'>,
-  { label: string; palette: 'warning' | 'error' | 'secondary'; rule: string; sourcePage: number | string }
-> = {
-  weakened: {
-    label: 'Affaibli',
-    palette: 'warning',
-    rule:
-      'Un personnage ou une créature à 1 PV subit l’état préjudiciable affaibli. ' +
-      'L’état affaibli disparaît dès que les PV repassent au-dessus de 1.',
-    sourcePage: 220,
-  },
-  down: {
-    label: 'À terre / mourant',
-    palette: 'error',
-    rule:
-      'Quand un PJ tombe à 0 PV, il tombe au sol, inconscient, et perd 1 dé de récupération (DR). ' +
-      'Lorsqu’un PJ est à 0 PV, il ne peut plus agir, et s’il ne bénéficie pas d’un sort de soins, ' +
-      'd’une potion ou de premiers soins dans l’heure qui suit, il meurt.',
-    sourcePage: 220,
-  },
-  stunned: {
-    label: 'Assommé',
-    palette: 'secondary',
-    rule:
-      'Lorsque les DM temporaires dépassent le nombre de PV restants et que le dernier coup a infligé ' +
-      'des DM temporaires, la créature est assommée (inconsciente). Une créature élimine 1 DM ' +
-      'temporaire subi par minute.',
-    sourcePage: '219-220',
-  },
-};
-
-/**
- * Badge d'état de santé custom (≠ Chip MUI, convention projet) : pastille colorée
- * avec le libellé, l'info-bulle portant le verbatim de règle + la page source.
- */
-function HealthStateBadge({ state }: { state: Exclude<HealthState, 'normal'> }) {
-  const meta = HEALTH_STATE_META[state];
-  const tooltip = (
-    <Box sx={{ maxWidth: 280 }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-        {meta.label}
-      </Typography>
-      <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', mb: 0.5 }}>
-        « {meta.rule} »
-      </Typography>
-      <SourceRef page={meta.sourcePage} />
-    </Box>
-  );
-  return (
-    <AppTooltip title={tooltip}>
-      <Box
-        sx={(theme) => ({
-          display: 'inline-flex',
-          alignItems: 'center',
-          height: 24,
-          px: 1,
-          borderRadius: 1,
-          cursor: 'help',
-          fontSize: '0.8rem',
-          fontWeight: 700,
-          whiteSpace: 'nowrap',
-          color: theme.palette[meta.palette].main,
-          bgcolor: alpha(theme.palette[meta.palette].main, 0.12),
-          border: `1px solid ${alpha(theme.palette[meta.palette].main, 0.45)}`,
-        })}
-      >
-        {meta.label}
-      </Box>
-    </AppTooltip>
   );
 }
 
@@ -297,117 +203,25 @@ export function PlayerStatusPanel({
   const theme = useTheme();
   const [shortRestOpen, setShortRestOpen] = useState(false);
   const [longRestOpen, setLongRestOpen] = useState(false);
-  // Couleurs CONCRÈTES (résolues) pour les caps assombris : PV en vert, mana en bleu.
-  const hpColor = theme.palette.success.main;
+  // Couleurs CONCRÈTES (résolues) pour les caps assombris : mana en bleu.
   const manaColor = theme.palette.info.main;
   // Chance en violet (secondary) : distinct du vert PV, du bleu mana et de l'ambre des capacités.
   const luckColor = theme.palette.secondary.main;
-  const [amount, setAmount] = useState('1');
-  const [kind, setKind] = useState<DamageKind>('lethal');
-  const [expanded, toggleExpanded] = usePersistentBoolean('gauge-expanded:hp', false);
 
-  const current = currentHp(maxHp, depletion);
   const lethal = Math.max(0, depletion.hp?.lethal ?? 0);
-  const temp = Math.max(0, depletion.hp?.temp ?? 0);
-  const state = hpHealthState(maxHp, depletion);
-  const hasDamage = lethal > 0 || temp > 0;
-
-  const parsedAmount = Math.max(0, Math.round(Number.parseInt(amount, 10) || 0));
-
-  // Barre : PV actuels (vert), puis dégâts temporaires (ambre, récupérés à 1/min),
-  // puis dégâts létaux (rouge). La somme des trois vaut le max → barre pleine à neuf.
-  const segments: GaugeSegment[] = [
-    { key: 'current', value: current, color: 'success.main', label: `PV actuels : ${current}` },
-    { key: 'temp', value: temp, color: 'warning.main', label: `Dégâts temporaires : ${temp}` },
-    { key: 'lethal', value: lethal, color: 'error.main', label: `Dégâts létaux : ${lethal}` },
-  ];
-
-  const applyDamage = () => {
-    if (parsedAmount > 0) onDamage(parsedAmount, kind);
-  };
-  const applyHeal = () => {
-    if (parsedAmount > 0) onHeal(parsedAmount);
-  };
 
   return (
     <Stack spacing={1.25}>
-      <Stack spacing={1.25}>
-      {/* Cap d'expansion + icône cœur (libellé en tooltip) + barre (courant/max intégré +
-          badge d'état) + ajustement fin (±1, reset) accolés à sa droite. */}
-      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-        <Stack direction="row" spacing={0} sx={{ alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
-          <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} color={hpColor} />
-          <GaugeIconCap color={hpColor} label="Points de vie">
-            <DerivedStatIcon statId="maxHp" size={28} color="#fff" />
-          </GaugeIconCap>
-          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <GaugeBar
-              max={maxHp}
-              segments={segments}
-              roundedLeft={false}
-              overlay={<GaugeValueLabel current={current} max={maxHp} />}
-            />
-          </Box>
-        </Stack>
-        {state !== 'normal' && <HealthStateBadge state={state} />}
-        <AppTooltip title="Infliger 1 dégât létal">
-          <span>
-            <IconButton size="small" aria-label="Retirer 1 PV" onClick={() => onDamage(1, 'lethal')}>
-              <RemoveIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </AppTooltip>
-        <AppTooltip title="Soigner 1 PV">
-          <span>
-            <IconButton
-              size="small"
-              aria-label="Rendre 1 PV"
-              disabled={!hasDamage}
-              onClick={() => onHeal(1)}
-            >
-              <AddIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </AppTooltip>
-        <AppTooltip title="Remettre les PV à plein (outil manuel, hors règles de repos)">
-          <span>
-            <IconButton size="small" aria-label="Remettre les PV à plein" disabled={!hasDamage} onClick={onResetHp}>
-              <RestartAltIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </AppTooltip>
-      </Stack>
-
-      {/* Contrôles détaillés : montant + nature (létal/temp) + Dégâts / Soin. Repliés par défaut. */}
-      <Collapse in={expanded} unmountOnExit>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-          <TextField
-            type="number"
-            size="small"
-            label="Montant"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            slotProps={{ htmlInput: { min: 0, style: { width: 64 } } }}
-          />
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={kind}
-            onChange={(_, next: DamageKind | null) => next && setKind(next)}
-            aria-label="Nature des dégâts"
-          >
-            <ToggleButton value="lethal">Létal</ToggleButton>
-            <ToggleButton value="temp">Temp.</ToggleButton>
-          </ToggleButtonGroup>
-          <Button variant="outlined" color="error" onClick={applyDamage} disabled={parsedAmount <= 0}>
-            Dégâts
-          </Button>
-          <Button variant="outlined" color="success" onClick={applyHeal} disabled={parsedAmount <= 0}>
-            Soin
-          </Button>
-        </Stack>
-      </Collapse>
-      </Stack>
+      {/* Barre de vie interactive (PV actuels / temp / létaux + état préjudiciable),
+          composant partagé avec les compagnons (PER-233). */}
+      <HpGauge
+        depletion={depletion}
+        maxHp={maxHp}
+        onDamage={onDamage}
+        onHeal={onHeal}
+        onReset={onResetHp}
+        persistKey="hp"
+      />
 
       {/* Jauge de mana — seulement pour un lanceur de sorts (manaMax non nul), PER-149. */}
       {manaMax !== null && (

@@ -40,7 +40,7 @@ import Typography from '@mui/material/Typography';
 import { alpha, type Theme } from '@mui/material/styles';
 import { useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
-import type { AbilityId, AbilitySubstitution, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
+import type { AbilityId, AbilitySubstitution, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import { STATUS_EFFECT_LABELS } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
@@ -51,6 +51,7 @@ import {
   hasIncompleteCustomSkill,
 } from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
+import { creatureDefenseAltActive, effectiveCreatureProfile } from '@/lib/character/companions';
 import {
   borrowedPowerIntegrityKey,
   borrowedPowerUsedKey,
@@ -59,7 +60,6 @@ import {
   creatureBonusDiceForPath,
   disabledFeatureReasons,
   escalatingManaSurcharge,
-  isEffectActive,
   shortRestLockKey,
   usageCounterMaximum,
   type DisabledFeatureReason,
@@ -1292,37 +1292,6 @@ function RetainedAncestryCapacity({
  * animaux » (animaux-r1), hors animaux fantastiques. Rendu discret (légende), aligné
  * sur le style des notes.
  */
-/**
- * La DÉFENSE ALTERNATIVE de la créature (`profile.defenseAlt`, ex. monture « en selle ») est-elle
- * active ? Active = capacité source ACQUISE (ex. cavalier-r2) ET son interrupteur de condition (index 0)
- * actif. Cas localisé en attendant la propagation maître→créature générale (PER-94).
- */
-function creatureDefenseAltActive(profile: CreatureProfile, character: Character | undefined): boolean {
-  const alt = profile.defenseAlt;
-  if (!alt || !character) return false;
-  return character.featureIds.includes(alt.sourceFeatureId) && isEffectActive(character, alt.sourceFeatureId, 0);
-}
-
-/**
- * Profil de créature EFFECTIF d'une capacité (PER-140) : si la capacité porte un choix `option`
- * dont l'option retenue déclare son propre `creatureProfile` (ex. Monture fantastique → la monture
- * choisie), celui-ci PRIME ; sinon on retombe sur le `creatureProfile` de la capacité. `undefined`
- * = aucune créature à afficher (ex. choix de monture pas encore fait).
- */
-function effectiveCreatureProfile(feature: Feature, character: Character | undefined): CreatureProfile | undefined {
-  if (character) {
-    const defs = feature.choices ?? [];
-    for (let i = 0; i < defs.length; i += 1) {
-      const def = defs[i];
-      if (def.kind !== 'option') continue;
-      const raw = getSelection(character, feature.id, i);
-      const id = Array.isArray(raw) ? raw[0] : raw;
-      const opt = id ? def.options.find((o) => o.id === id) : undefined;
-      if (opt?.creatureProfile) return opt.creatureProfile;
-    }
-  }
-  return feature.creatureProfile;
-}
 
 function AnimalFormsNote({ character }: { character: Character }) {
   const forms = animalFormCategories(character);
