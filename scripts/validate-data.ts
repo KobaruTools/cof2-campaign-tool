@@ -461,6 +461,15 @@ for (const c of features) {
         err(`[capacite ${c.id}] option ${opt.id}: defAbility carac inconnue : ${opt.defAbility}`);
     }
   }
+  // Exception d'armure de la voie A sur un emprunt (PER-143, `borrowArmorMax`) : doit désigner une
+  // armure du catalogue (relève le plafond d'usage de la capacité empruntée, ex. Enfant de la forêt).
+  for (const choice of c.choices ?? []) {
+    if (choice.kind !== 'feature-from-path' || choice.borrowArmorMax === undefined) continue;
+    const armor = equipmentById.get(choice.borrowArmorMax);
+    if (!armor) err(`[capacite ${c.id}] feature-from-path borrowArmorMax inconnu : ${choice.borrowArmorMax}`);
+    else if (armor.category !== 'armor')
+      err(`[capacite ${c.id}] feature-from-path borrowArmorMax n'est pas une armure : ${choice.borrowArmorMax}`);
+  }
 }
 
 // --- Réduction de dégâts (préparation « stats avancées ») --------------------

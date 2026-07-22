@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per143-elfe-sylvain-chemise",
+  "name": "Recette PER-143 — Enfant de la forêt (exception dépassée)",
+  "identity": {
+    "description": "ATTENDU : en chemise de mailles (DEF +4), la capacité EMPRUNTÉE « Langage des animaux » (druide) redevient désaturée + barrée avec la notice — le plafond affiché est « Cuir renforcé, broigne maximum » (le plafond de l’exception, pas le cuir simple natif du druide)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "elfe-sylvain",
+  "classId": "rodeur",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "elfe-sylvain",
+  "featureIds": [
+    "elfe-sylvain-r1",
+    "elfe-sylvain-r2",
+    "archer-r1"
+  ],
+  "featureChoices": {
+    "elfe-sylvain-r2": [
+      "animaux-r1"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "chemise-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-143 — exception voie A : contrôle NÉGATIF (chemise > cuir renforcé → gêné).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

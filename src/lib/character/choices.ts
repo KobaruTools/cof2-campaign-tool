@@ -510,6 +510,33 @@ export function borrowedHostPathByFeatureId(character: Character): Map<string, s
   return map;
 }
 
+/**
+ * Mapping `id de capacité EMPRUNTÉE → { hostFeatureId, choice }` : la capacité HÔTE (voie A) et le
+ * choix `feature-from-path` précis qui a fait emprunter cette capacité. Sert aux règles qui dépendent
+ * du texte de la voie A — notamment les EXCEPTIONS d'armure de l'encadré « Appel à une autre capacité »
+ * (`PathFeatureChoice.borrowArmorMax`, PER-143) et le cas particulier de « Touche-à-tout » (humain-r3,
+ * PER-153, souplesse propre). Complément de `borrowedHostPathByFeatureId` (qui, lui, ne donne que la
+ * voie A pour le scaling). Un même id emprunté par deux hôtes est écrasé (dernier gagne — les emprunts
+ * redondants sont exclus du domaine, cas de bord).
+ */
+export function borrowedFeatureChoices(
+  character: Character,
+): Map<string, { hostFeatureId: string; choice: PathFeatureChoice }> {
+  const owned = new Set(character.featureIds);
+  const map = new Map<string, { hostFeatureId: string; choice: PathFeatureChoice }>();
+  for (const [hostId, selections] of Object.entries(character.featureChoices ?? {})) {
+    if (!owned.has(hostId)) continue;
+    const defs = featureChoiceDefs(hostId);
+    selections.forEach((sel, i) => {
+      const def = defs[i];
+      if (def?.kind === 'feature-from-path' && typeof sel === 'string' && featureById.has(sel)) {
+        map.set(sel, { hostFeatureId: hostId, choice: def });
+      }
+    });
+  }
+  return map;
+}
+
 // ---------------------------------------------------------------------------
 // État « choix à faire »
 // ---------------------------------------------------------------------------

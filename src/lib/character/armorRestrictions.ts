@@ -24,7 +24,7 @@ import type { RulesContext } from '@/lib/engine';
 import type { Character, EquipmentLine } from './types';
 import { isCustomItem } from './types';
 import { masteredClassIds } from './mastery';
-import { featureChoiceDefs, featureGrantsDefBonus } from './choices';
+import { borrowedFeatureChoices, featureChoiceDefs, featureGrantsDefBonus } from './choices';
 
 /**
  * PER-153 — capacité de rang 3 de la voie de l'humain (« Touche-à-tout », p. 57) qui fait EMPRUNTER
@@ -299,12 +299,57 @@ export interface FeatureArmorRestrictionViolation {
 }
 
 /**
+ * PER-143 — capacités EMPRUNTÉES (choix `feature-from-path`) soumises à la règle de BASE des
+ * limitations d'armure (encadré « Appel à une autre capacité », p. 41 : « ce sont les limitations
+ * d'armure qui correspondent à la capacité de la voie B qui s'appliquent »). Renvoie les ids empruntés
+ * de TOUTES les voies A qui empruntent (demi-orc « Talent pour la violence », elfe sylvain « Enfant de
+ * la forêt », chevalier « Formation d'élite », expert de prestige…), traités ensuite comme des
+ * capacités NATIVES de leur PROFIL D'ORIGINE par `featureArmorRestrictionViolations`.
+ *
+ * EXCLUT « Touche-à-tout » (humain-r3) : son emprunt suit une souplesse PROPRE (un rang 1 sans bonus de
+ * DEF est exempté, p. 57), gérée à part par `armorLimitedBorrowedFeatureIds` (PER-153) — sans quoi la
+ * règle de base ré-attraperait des emprunts que Touche-à-tout affranchit. Les SORTS ne sont pas filtrés
+ * ici (l'appelant les écarte via `isSpell` : leur surcoût de mana en armure relève de PER-82).
+ */
+function generallyArmorLimitedBorrowedFeatureIds(character: Character): Set<string> {
+  const result = new Set<string>();
+  for (const [borrowedId, { hostFeatureId }] of borrowedFeatureChoices(character)) {
+    if (hostFeatureId === TOUCHE_A_TOUT_ID) continue;
+    result.add(borrowedId);
+  }
+  return result;
+}
+
+/**
+ * PER-143 — plafonds d'armure d'usage RELEVÉS par une EXCEPTION de la voie A
+ * (`PathFeatureChoice.borrowArmorMax`) pour les capacités empruntées (encadré p. 41 : « Lorsqu'il
+ * existe des exceptions, elles sont indiquées dans le texte de la capacité de la voie A »). Map
+ * `id emprunté → ArmorCeiling`. Aujourd'hui : Enfant de la forêt (elfe sylvain, p. 52) → cuir renforcé.
+ * Le plafond effectif retenu par `featureArmorRestrictionViolations` est le MAX de ce plafond et de
+ * celui du profil d'origine. Vide si aucune exception n'est déclarée.
+ */
+function borrowedArmorExceptionCeilings(character: Character): Map<string, ArmorCeiling> {
+  const map = new Map<string, ArmorCeiling>();
+  for (const [borrowedId, { choice }] of borrowedFeatureChoices(character)) {
+    if (choice.borrowArmorMax === undefined) continue;
+    map.set(borrowedId, armorCeilingOf(choice.borrowArmorMax));
+  }
+  return map;
+}
+
+/**
  * Restrictions d'USAGE d'armure par capacité d'origine (PER-86, p. 177/178/180) : chaque
  * capacité NON-SORT impose l'armure maximale de SON profil d'origine, indépendamment du profil
  * principal. Renvoie une entrée par capacité acquise dont l'armure portée (DEF MONDAINE, hors
  * bonus magique — la restriction porte sur le TYPE d'armure) dépasse ce plafond d'usage.
  *
  * Portée :
+ *  - capacités NATIVES acquises + capacités EMPRUNTÉES (choix `feature-from-path`, PER-143) : une
+ *    capacité empruntée suit les limitations d'armure de son PROFIL D'ORIGINE (voie B), exactement
+ *    comme une capacité native (encadré « Appel à une autre capacité », p. 41). Les exceptions de la
+ *    voie A (ex. Enfant de la forêt → cuir renforcé, p. 52) RELÈVENT ce plafond
+ *    (`borrowedArmorExceptionCeilings`). « Touche-à-tout » (humain-r3) garde sa souplesse propre
+ *    (PER-153, `armorLimitedBorrowedFeatureIds`) ;
  *  - SORTS exclus (leur surcoût de mana en armure relève de PER-82) ;
  *  - seules les capacités de VOIE DE PROFIL portent une restriction d'origine (les voies de
  *    peuple, du mage et de prestige n'en fixent pas ici) ;
@@ -322,10 +367,16 @@ export function featureArmorRestrictionViolations(
   const accessByClass = usageArmorAccessByClass(character, ctx);
   const violations: FeatureArmorRestrictionViolation[] = [];
 
-  // Capacités NATIVES acquises + emprunts « Touche-à-tout » qualifiants (PER-153) : ces derniers
-  // suivent les limitations d'armure de leur PROFIL SOURCE, exactement comme une capacité native
-  // (p. 177). Dédoublonné (le domaine d'emprunt exclut déjà les capacités déjà possédées).
-  const featureIds = new Set([...character.featureIds, ...armorLimitedBorrowedFeatureIds(character)]);
+  // Capacités NATIVES acquises + capacités EMPRUNTÉES : la règle de base (PER-143) traite tout emprunt
+  // comme natif de son PROFIL SOURCE (p. 41), sauf « Touche-à-tout » (humain-r3) dont la souplesse
+  // propre (rang 1 sans bonus de DEF exempté, p. 57) est portée par `armorLimitedBorrowedFeatureIds`
+  // (PER-153). Dédoublonné (le domaine d'emprunt exclut déjà les capacités déjà possédées).
+  const featureIds = new Set([
+    ...character.featureIds,
+    ...generallyArmorLimitedBorrowedFeatureIds(character), // règle de base (PER-143), hors Touche-à-tout
+    ...armorLimitedBorrowedFeatureIds(character), // Touche-à-tout, souplesse propre (PER-153)
+  ]);
+  const exceptionCeilings = borrowedArmorExceptionCeilings(character); // exceptions de la voie A (PER-143)
 
   for (const id of featureIds) {
     const feature = featureById.get(id);
@@ -344,6 +395,10 @@ export function featureArmorRestrictionViolations(
       if (access && access.def > ceiling.def) ceiling = access;
       if (!best || ceiling.def > best.ceiling.def) best = { classId, ceiling };
     }
+    // PER-143 — exception d'armure de la voie A : relève le plafond d'usage de l'emprunt (Enfant de la
+    // forêt → cuir renforcé, p. 52), au-delà du plafond natif du profil d'origine.
+    const exception = exceptionCeilings.get(id);
+    if (best && exception && exception.def > best.ceiling.def) best = { classId: best.classId, ceiling: exception };
     if (!best || wornDef <= best.ceiling.def) continue; // armure d'usage respectée
 
     const cls = ctx.classById.get(best.classId)!;

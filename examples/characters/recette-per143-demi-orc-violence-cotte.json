@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per143-demi-orc-violence-cotte",
+  "name": "Recette PER-143 — Talent pour la violence (règle de base)",
+  "identity": {
+    "description": "ATTENDU : la capacité EMPRUNTÉE « Réflexes éclair » (barbare) est désaturée + barrée avec la notice « inutilisable avec l'armure portée » sur la carte de demi-orc-r2. Cotte de mailles (DEF +5) > plafond barbare (cuir renforcé DEF +3). Ses bonus Init +3 / DEF +1 ne comptent plus."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "demi-orc",
+  "classId": "guerrier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "demi-orc",
+  "featureIds": [
+    "demi-orc-r1",
+    "demi-orc-r2",
+    "combat-r1"
+  ],
+  "featureChoices": {
+    "demi-orc-r2": [
+      "pourfendeur-r1"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cotte-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-143 — règle de base : un emprunt suit les limitations d’armure de son profil d’origine (voie B).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

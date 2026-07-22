@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 18,
+  "id": "recette-per143-elfe-sylvain-cuir-renforce",
+  "name": "Recette PER-143 — Enfant de la forêt (exception tolérée)",
+  "identity": {
+    "description": "ATTENDU : la capacité EMPRUNTÉE « Langage des animaux » (druide) est NORMALE (ni désaturée ni barrée) sur la carte d’elfe-sylvain-r2. L’exception « jusqu’à l’armure de cuir renforcé sans pénalité » (p. 52) relève le plafond du druide (cuir simple DEF +2) au cuir renforcé (DEF +3)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "elfe-sylvain",
+  "classId": "rodeur",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "elfe-sylvain",
+  "featureIds": [
+    "elfe-sylvain-r1",
+    "elfe-sylvain-r2",
+    "archer-r1"
+  ],
+  "featureChoices": {
+    "elfe-sylvain-r2": [
+      "animaux-r1"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-143 — exception voie A (borrowArmorMax cuir renforcé) : contrôle POSITIF (toléré).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

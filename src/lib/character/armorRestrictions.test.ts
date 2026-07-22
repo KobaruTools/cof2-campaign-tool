@@ -24,6 +24,7 @@ import {
   modsFromFeatures,
 } from './effects';
 import { borrowedFeatureIds } from './choices';
+import { spellManaCost } from '@/lib/engine';
 import { featureById } from '@/data';
 
 const ctx = rulesContext;
@@ -435,6 +436,115 @@ describe('PER-153 — Touche-à-tout : emprunts soumis aux limitations d’armur
       const c = toucheATout('vent-r1', { equipment: [wornArmor('cotte-de-mailles')] });
       expect(armorDisabledFeatureIds(c, ctx).has('vent-r1')).toBe(false);
       expect(activeFeatureIdsForMods(c)).toContain('vent-r1');
+    });
+  });
+});
+
+describe('PER-143 — Appel à une autre capacité : limites d’armure généralisées (encadré p. 41)', () => {
+  // Règle de BASE (p. 41) : une capacité EMPRUNTÉE (choix feature-from-path) suit les limitations
+  // d'armure de son PROFIL D'ORIGINE (voie B), exactement comme une capacité native. Généralisé à
+  // TOUTES les voies A qui empruntent (pas seulement Touche-à-tout, cf. PER-153). Le classId de
+  // l'emprunteur lui permet de PORTER l'armure (plafond de port respecté) : on isole ainsi l'USAGE
+  // de l'emprunt.
+
+  describe('règle de base — Talent pour la violence (demi-orc-r2 → barbare, sans exception)', () => {
+    // demi-orc-r2 fait emprunter une capacité de rang 1 de barbare/guerrier. pourfendeur-r1 (barbare,
+    // plafond cuir renforcé DEF +3) est gêné dès qu'une armure plus lourde est portée.
+    const talentViolence = (borrowedId: string, over: Partial<Character> = {}): Character =>
+      makeChar({
+        ancestryId: 'demi-orc',
+        ancestryPathId: 'demi-orc',
+        classId: 'guerrier',
+        featureIds: ['demi-orc-r2'],
+        featureChoices: { 'demi-orc-r2': [borrowedId] },
+        ...over,
+      });
+
+    it('gêne un emprunt de barbare (pourfendeur-r1) sous une armure plus lourde que le cuir renforcé', () => {
+      const c = talentViolence('pourfendeur-r1', { equipment: [wornArmor('cotte-de-mailles')] });
+      const v = featureArmorRestrictionViolations(c, ctx).find((x) => x.featureId === 'pourfendeur-r1');
+      expect(v).toMatchObject({ featureId: 'pourfendeur-r1', className: 'Barbare', allowedDef: 3 });
+    });
+
+    it('respecte le plafond du profil d’origine (cuir renforcé, DEF +3) → aucun signalement', () => {
+      const c = talentViolence('pourfendeur-r1', { equipment: [wornArmor('cuir-renforce-broigne')] });
+      expect(featureArmorRestrictionViolations(c, ctx).some((x) => x.featureId === 'pourfendeur-r1')).toBe(false);
+    });
+
+    it('désactive effectivement l’emprunt gêné (PER-83) : ses bonus ne comptent plus en armure lourde', () => {
+      const c = talentViolence('pourfendeur-r1', { equipment: [wornArmor('cotte-de-mailles')] });
+      expect(armorDisabledFeatureIds(c, ctx).has('pourfendeur-r1')).toBe(true);
+      expect(activeFeatureIdsForMods(c)).not.toContain('pourfendeur-r1');
+    });
+
+    it('sans armure : l’emprunt reste actif', () => {
+      const c = talentViolence('pourfendeur-r1');
+      expect(featureArmorRestrictionViolations(c, ctx).some((x) => x.featureId === 'pourfendeur-r1')).toBe(false);
+      expect(activeFeatureIdsForMods(c)).toContain('pourfendeur-r1');
+    });
+  });
+
+  describe('exception voie A — Enfant de la forêt (elfe-sylvain-r2, borrowArmorMax cuir renforcé, p. 52)', () => {
+    // elfe-sylvain-r2 fait emprunter une capacité de rang 1 de druide/rôdeur, utilisable « jusqu'à
+    // l'armure de cuir renforcé sans pénalité ». animaux-r1 (druide, plafond natif cuir simple DEF +2)
+    // est donc utilisable jusqu'au cuir renforcé (DEF +3), au-delà du plafond du druide.
+    const enfantForet = (borrowedId: string, over: Partial<Character> = {}): Character =>
+      makeChar({
+        ancestryId: 'elfe-sylvain',
+        ancestryPathId: 'elfe-sylvain',
+        classId: 'rodeur',
+        featureIds: ['elfe-sylvain-r2'],
+        featureChoices: { 'elfe-sylvain-r2': [borrowedId] },
+        ...over,
+      });
+
+    it('l’exception relève le plafond du druide jusqu’au cuir renforcé : cuir renforcé toléré', () => {
+      const c = enfantForet('animaux-r1', { equipment: [wornArmor('cuir-renforce-broigne')] });
+      expect(featureArmorRestrictionViolations(c, ctx).some((x) => x.featureId === 'animaux-r1')).toBe(false);
+    });
+
+    it('au-delà du cuir renforcé (chemise de mailles), l’emprunt est de nouveau gêné, au plafond de l’exception', () => {
+      const c = enfantForet('animaux-r1', { equipment: [wornArmor('chemise-de-mailles')] });
+      const v = featureArmorRestrictionViolations(c, ctx).find((x) => x.featureId === 'animaux-r1');
+      // Le plafond retenu est celui de l'exception (cuir renforcé DEF +3), PAS le cuir simple natif du druide.
+      expect(v).toMatchObject({ featureId: 'animaux-r1', allowedDef: 3, allowedArmorName: 'Cuir renforcé, broigne' });
+    });
+  });
+
+  describe('non-régression', () => {
+    it('Touche-à-tout garde sa souplesse : un emprunt rang 1 sans DEF (vent-r1) reste libre en armure lourde', () => {
+      // vent-r1 (moine, aucune armure) serait gêné par la règle de BASE, mais Touche-à-tout l'exempte (p. 57).
+      const c = makeChar({
+        classId: 'guerrier',
+        featureIds: ['humain-r3'],
+        featureChoices: { 'humain-r3': ['vent-r1'] },
+        equipment: [wornArmor('cotte-de-mailles')],
+      });
+      expect(featureArmorRestrictionViolations(c, ctx).some((v) => v.featureId === 'vent-r1')).toBe(false);
+      expect(activeFeatureIdsForMods(c)).toContain('vent-r1');
+    });
+
+    it('un SORT emprunté hors Touche-à-tout n’est jamais signalé ici (surcoût de mana, PER-82)', () => {
+      // gnome-r1 « Don étrange » fait emprunter un sort d'ensorceleur (air-r1) : la règle des non-sorts l'ignore.
+      const c = makeChar({
+        ancestryId: 'gnome',
+        ancestryPathId: 'gnome',
+        classId: 'guerrier',
+        featureIds: ['gnome-r1'],
+        featureChoices: { 'gnome-r1': ['air-r1'] },
+        equipment: [wornArmor('armure-de-plaques')],
+      });
+      expect(featureArmorRestrictionViolations(c, ctx).some((v) => v.featureId === 'air-r1')).toBe(false);
+    });
+
+    it('Règle 2 : le coût mana d’un sort emprunté se dérive de son rang NATIF, pas du rang de la voie A (p. 41)', () => {
+      // Encadré p. 41 : « le coût du sort en points de mana est toujours calculé à partir du rang
+      // habituel du sort (…si une capacité de rang 5 vous permet d'apprendre un sort de rang 1,
+      // alors il coûte toujours 1 PM) ». Le coût se dérive de la Feature NATIVE du sort
+      // (`spellManaCost`), que l'emprunt conserve → correct par construction.
+      const spell = featureById.get('air-r1')!; // sort d'ensorceleur de rang 1
+      expect(spell.rank).toBe(1);
+      expect(spellManaCost(spell)).toBe(1);
     });
   });
 });

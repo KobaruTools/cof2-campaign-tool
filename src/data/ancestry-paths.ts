@@ -306,13 +306,17 @@ export const ancestryFeatures: Feature[] = [
     text:
       'Le joueur choisit une capacité de rang 1 de n’importe quelle voie de druide ou de rôdeur. Il peut utiliser cette capacité en armure jusqu’à l’armure de cuir renforcé sans pénalité.',
     // Choix (PER-66) : capacité de rang 1 d'une voie de druide ou de rôdeur ; ses propres effets
-    // comptent côté moteur une fois retenue. La tolérance d'armure (jusqu'au cuir renforcé) reste verbatim.
+    // comptent côté moteur une fois retenue. PER-143 : l'exception d'armure de la voie A (« jusqu'à
+    // l'armure de cuir renforcé sans pénalité », p. 52) est déclarée sur le choix via `borrowArmorMax`
+    // → relève le plafond d'usage de l'emprunt (cuir renforcé DEF +3), au-delà du plafond natif du
+    // druide (cuir simple). Résolu par `featureArmorRestrictionViolations`.
     choices: [
       {
         kind: 'feature-from-path',
         prompt: 'Capacité de rang 1 (voie de druide ou de rôdeur)',
         allowedRanks: [1],
         classIds: ['druide', 'rodeur'],
+        borrowArmorMax: 'cuir-renforce-broigne',
       },
     ],
     sourcePage: 52,

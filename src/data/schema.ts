@@ -1457,6 +1457,18 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    * via les `effects` structurés (cf. `featureGrantsDefBonus`).
    */
   excludeDefBonus?: boolean;
+  /**
+   * EXCEPTION d'armure de la voie A (PER-143, encadré « Appel à une autre capacité », p. 41 :
+   * « Lorsqu'il existe des exceptions, elles sont indiquées dans le texte de la capacité de la
+   * voie A »). Par défaut une capacité EMPRUNTÉE suit les limitations d'armure de son profil
+   * d'origine (voie B) ; ce champ RELÈVE le plafond d'usage de l'emprunt jusqu'à l'armure
+   * désignée (id de catalogue). Ex. Enfant de la forêt (elfe sylvain, p. 52) : l'emprunt de
+   * druide/rôdeur est utilisable « jusqu'à l'armure de cuir renforcé sans pénalité »
+   * (`'cuir-renforce-broigne'`), au-delà du plafond natif du druide (cuir simple). Le plafond
+   * effectif = MAX(plafond du profil d'origine, ce plafond). Absent = règle de base (plafond de
+   * la voie B). Résolu par `featureArmorRestrictionViolations` (armorRestrictions.ts).
+   */
+  borrowArmorMax?: string;
 }
 
 /** Une option énumérée d'un `OptionFeatureChoice`. */
