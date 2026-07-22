@@ -17,10 +17,63 @@ import type { ReactNode } from 'react';
 import { ABILITY_IDS, type AbilityId, type CreatureProfile, type DerivedStatId, type MasterStatRef } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import type { DerivedStatId as UiDerivedStatId } from '@/lib/ui/derivedStats';
 import { AppTooltip } from '@/components/AppTooltip';
 import { AbilityValueBadge } from '@/components/AbilityValueBadge';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
+import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { RichInline } from './FeatureRichText';
+
+/**
+ * Bloc compact « icône de stat dérivée cerclée + valeur » (PER-233), calqué sur le
+ * résumé de l'écran de MJ (`CompactDerivedStats`) : l'icône remplace le libellé texte
+ * (« DEF », « Init. », « Attaque »…), le nom complet passe en info-bulle. Sert à rendre
+ * les stats d'une créature (DEF, PV, Init., attaque + DM) sur UNE seule ligne.
+ */
+function CreatureStatChip({
+  statId,
+  label,
+  children,
+}: {
+  statId: UiDerivedStatId;
+  label: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <AppTooltip title={label}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: 'center',
+          px: 0.75,
+          py: 0.4,
+          borderRadius: 0.75,
+          border: 1,
+          borderColor: 'divider',
+          bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
+          cursor: 'help',
+        }}
+      >
+        <DerivedStatIcon statId={statId} size={22} />
+        <Box
+          component="span"
+          sx={{
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+            fontSize: '0.9rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {children}
+        </Box>
+      </Stack>
+    </AppTooltip>
+  );
+}
 
 /** Libellés des stats dérivées recopiées du maître (info-bulle). */
 const MASTER_STAT_LABEL: Partial<Record<DerivedStatId, string>> = {
@@ -38,20 +91,6 @@ const isMasterRef = (v: string | MasterStatRef): v is MasterStatRef =>
 /** Valeur d'une stat dérivée du maître (gère l'écart de nom `def` ↔ `defense`). */
 const masterValue = (derived: DerivedStats, stat: DerivedStatId): number =>
   stat === 'def' ? derived.defense : (derived[stat] as number);
-
-/** Un libellé court + sa valeur (DEF, PV, Init., Attaque, DM). */
-function StatItem({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-      <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-        {label}
-      </Typography>
-      <Box component="span" sx={{ fontSize: '0.9rem' }}>
-        {children}
-      </Box>
-    </Stack>
-  );
-}
 
 /**
  * Stat recopiée du maître : son total dérivé (info-bulle « Initiative du maître »).
@@ -160,52 +199,62 @@ export function CreatureStatsLine({
 }: CreatureStatsLineProps) {
   const rich = (text: string) => <RichInline text={text} abilities={abilities} level={level} rank={rank} />;
   const defAlt = profile.defenseAlt;
+  const attack = profile.attack;
+  // Icône de l'attaque : l'attaque d'un compagnon est PHYSIQUE (Ruade, Morsure, contact…),
+  // même quand son JET recopie l'attaque MAGIQUE du maître (`fromMaster: 'magicAttack'` ne
+  // désigne que la source du bonus, pas la nature de l'attaque). On affiche donc l'épée de
+  // l'attaque au contact par défaut — l'icône d'attaque magique laisserait croire, à tort,
+  // que la créature lance des sorts. Seule une attaque explicitement à distance garde son icône.
+  const attackStatId: UiDerivedStatId = attack?.fromMaster === 'rangedAttack' ? 'rangedAttack' : 'meleeAttack';
   return (
     <>
-      {/* Stats dérivées + attaque. */}
-      <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}>
-        <StatItem label="DEF">
-          {defAlt && defenseAltActive ? (
-            // DEF alternative active (ex. en selle) : DEF égale à celle du maître, info-bulle de provenance.
-            <AppTooltip
-              title={`${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`}
-            >
-              <Box component="span" sx={{ fontWeight: 700, cursor: 'help', fontVariantNumeric: 'tabular-nums' }}>
-                {isMasterRef(defAlt.value)
-                  ? masterDerived
-                    ? masterValue(masterDerived, defAlt.value.fromMaster)
-                    : 'DEF du maître'
-                  : rich(defAlt.value)}
-              </Box>
-            </AppTooltip>
-          ) : (
-            rich(profile.defense)
-          )}
-        </StatItem>
-        {showHitPoints && <StatItem label="PV">{rich(profile.hitPoints)}</StatItem>}
-        <StatItem label="Init.">
+      {/* Stats dérivées + attaque, en blocs « icône + valeur » (comme le résumé MJ), sur une
+          seule ligne (retour à la ligne seulement si la largeur l'impose). */}
+      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}>
+        <CreatureStatChip
+          statId="defense"
+          label={
+            defAlt && defenseAltActive
+              ? `${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`
+              : 'Défense'
+          }
+        >
+          {defAlt && defenseAltActive
+            ? isMasterRef(defAlt.value)
+              ? masterDerived
+                ? masterValue(masterDerived, defAlt.value.fromMaster)
+                : 'DEF du maître'
+              : rich(defAlt.value)
+            : rich(profile.defense)}
+        </CreatureStatChip>
+        {showHitPoints && (
+          <CreatureStatChip statId="maxHp" label="Points de vigueur">
+            {rich(profile.hitPoints)}
+          </CreatureStatChip>
+        )}
+        <CreatureStatChip statId="initiative" label="Initiative">
           {isMasterRef(profile.initiative) ? (
             <MasterStatValue stat={profile.initiative.fromMaster} masterDerived={masterDerived} />
           ) : (
             rich(profile.initiative)
           )}
-        </StatItem>
-      </Stack>
-      {profile.attack && (
-        <Stack direction="row" spacing={2} sx={{ mt: 0.5, flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}>
-          <StatItem label={profile.attack.label ?? 'Attaque'}>
-            {profile.attack.fromMaster ? (
-              <MasterStatValue stat={profile.attack.fromMaster} masterDerived={masterDerived} />
+        </CreatureStatChip>
+        {attack && (
+          // Attaque + DM réunis dans un seul bloc : valeur du jet (recopiée du maître ou propre) ·
+          // dégâts. Le libellé du jet (« Ruade », « Morsure et griffes »…) passe en info-bulle.
+          <CreatureStatChip statId={attackStatId} label={attack.label ?? 'Attaque'}>
+            {attack.fromMaster ? (
+              <MasterStatValue stat={attack.fromMaster} masterDerived={masterDerived} />
             ) : (
-              // Valeur PROPRE à la créature (bonus fixe, ex. Ruade +5) — affichée telle quelle.
-              <Box component="span" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                {profile.attack.value}
-              </Box>
+              <Box component="span">{attack.value}</Box>
             )}
-          </StatItem>
-          <StatItem label="DM">{rich(profile.attack.damage)}</StatItem>
-        </Stack>
-      )}
+            <Box component="span" sx={{ opacity: 0.5 }}>
+              ·
+            </Box>
+            {rich(attack.damage)}
+          </CreatureStatChip>
+        )}
+      </Stack>
       {profile.note && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>
           {profile.note}
