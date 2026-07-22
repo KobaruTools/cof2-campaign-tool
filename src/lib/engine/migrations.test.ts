@@ -60,6 +60,7 @@ function validRaw(): Record<string, unknown> {
     usageCounters: {},
     depletion: {},
     companionDepletion: {},
+    companionInstances: {},
     purse: { platinum: 0, gold: 0, silver: 0, copper: 0 },
     levelUpHistory: [],
     equipment: [],
@@ -587,7 +588,24 @@ describe('migrateCharacter', () => {
     expect(c.companionDepletion).toEqual({ 'golem-r2': { hp: { lethal: 5, temp: 0 } } });
   });
 
-  it('expose les migrations 1→2 … 18→19 dans le registre', () => {
+  it('v19→v20 ajoute companionInstances vide s’il est absent', () => {
+    const v19 = validRaw() as Record<string, unknown>;
+    v19.schemaVersion = 19;
+    delete v19.companionInstances;
+    const c = migrateCharacter(v19);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.companionInstances).toEqual({});
+  });
+
+  it('v19→v20 préserve un companionInstances déjà présent', () => {
+    const v19 = validRaw() as Record<string, unknown>;
+    v19.schemaVersion = 19;
+    v19.companionInstances = { 'outre-tombe-r3': ['a1', 'b2'] };
+    const c = migrateCharacter(v19);
+    expect(c.companionInstances).toEqual({ 'outre-tombe-r3': ['a1', 'b2'] });
+  });
+
+  it('expose les migrations 1→2 … 19→20 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -606,5 +624,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[16]).toBe('function');
     expect(typeof MIGRATIONS[17]).toBe('function');
     expect(typeof MIGRATIONS[18]).toBe('function');
+    expect(typeof MIGRATIONS[19]).toBe('function');
   });
 });

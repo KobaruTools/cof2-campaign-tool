@@ -778,6 +778,27 @@ export const mageFeatures: Feature[] = [
     // mêle une référence de stat (@FOR/@AGI/@INT) et un encadré de formule `[CHA]`.
     richText:
       "Ce sort crée une force invisible pendant [=CHA] minutes. Le serviteur peut effectuer à distance des tâches simples ne nécessitant pas de test de réussite avec une @AGI et une @INT de +0 et une @FOR égale au [CHA] de l’ensorceleur (portée 20 m). Il peut par exemple rapporter un objet ou actionner un levier, voire faire la vaisselle. Le serviteur invisible se déplace à la même vitesse que l’ensorceleur, ne pèse rien, ne parle pas, n’a pas vraiment d’existence et peut se déplacer dans toutes les directions. Concevez‑le davantage comme une force qui obéit aux injonctions télépathiques de son créateur que comme une créature. Il n’attaque pas et ne peut pas être combattu, mais il peut être dissipé grâce au sort de maîtrise de la magie.",
+    // Marqueur d'INVOCATION (PER-235) : le serviteur dure CHA minutes → effet TEMPORAIRE sans
+    // bonus (marqueur d'état), affiché en bouton « Invoquer » sur la carte du rang ; le bloc de
+    // compagnon n'apparaît que lorsqu'il est actif, et un repos complet le renvoie.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Serviteur invoqué', activeByDefault: false },
+      },
+    ],
+    // Profil LÉGER (PER-235, validé propriétaire) : le livre (p. 96) décrit le serviteur comme
+    // « une force, pas une créature » — SANS bloc de stats (pas de PV/DEF/Init., n'attaque pas,
+    // ne peut être combattu). On ne connaît que 3 caractéristiques (FOR = CHA du maître, AGI et
+    // INT à +0) : pas de grille des 7 caracs (aucune donnée devinée), pas de barre de vie. Tout
+    // est porté par `descriptionRich` (résolu sur les caracs du MAÎTRE : `[CHA]`, `[=CHA]`).
+    creatureProfile: {
+      name: 'Serviteur invisible',
+      type: 'force invisible — pas une créature',
+      descriptionRich:
+        "@FOR égale au [CHA] du maître, @AGI et @INT à +0. Portée 20 m, durée [=CHA] minutes. N’attaque pas et ne peut pas être combattu.",
+    },
     sourcePage: 96,
   },
   {
@@ -1809,13 +1830,25 @@ export const mageFeatures: Feature[] = [
       {
         kind: 'conditional-stat-bonus',
         // « +2 en Initiative ET en DEF lorsque son familier est en vue » : un seul
-        // interrupteur pilote les deux bonus (pas deux toggles séparés).
+        // interrupteur pilote les deux bonus (pas deux toggles séparés). INDEX 0 conservé
+        // (des personnages sauvegardés portent déjà `effectToggles[...][0]` pour « en vue »).
         bonuses: [
           { stat: 'initiative', value: 2 },
           { stat: 'def', value: 2 },
         ],
         activation: { kind: 'condition', label: 'familier en vue', activeByDefault: false },
         disablesFeatures: ['animaux-r2'],
+      },
+      {
+        // Marqueur d'INVOCATION (PER-235) : le livre fait du familier une créature qu'on invoque
+        // (« le maître pourra à nouveau invoquer son familier dès qu'il aura terminé une
+        // récupération complète », p. 96). Effet TEMPORAIRE sans bonus (marqueur d'état on/off) :
+        // le bloc de compagnon n'apparaît que lorsqu'il est actif, et un repos complet le
+        // renvoie (cf. `clearTemporaryEffectToggles`). DISTINCT de « familier en vue » (index 0),
+        // qui ne conditionne que le bonus de DEF/Init.
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Familier invoqué', activeByDefault: false },
       },
     ],
     sourcePage: 106,
@@ -2125,6 +2158,10 @@ export const mageFeatures: Feature[] = [
       initiative: '8',
       attack: { fromMaster: 'magicAttack', damage: '[1d4° + 2]' },
       note: 'Se déplace de 5 m par action de mouvement.',
+      // Compagnon MULTI-INSTANCES (PER-235) : « le sorcier peut contrôler un seul zombie, plus un
+      // zombie chaque fois qu'il atteint le rang 5 dans une voie de sorcier » (p. 109) → limite
+      // = 1 + nombre de voies de sorcier au rang 5 (voie hôte incluse).
+      instances: { limit: { base: 1, rank: 5, classIds: ['sorcier'] } },
     },
     sourcePage: 109,
   },

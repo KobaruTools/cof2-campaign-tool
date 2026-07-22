@@ -82,7 +82,16 @@ import {
   spendMana,
 } from '@/lib/character/gauges';
 import { longRest, shortRest } from '@/lib/character/rest';
-import { listCompanions, pruneCompanionDepletion, resolveCreatureMaxHp } from '@/lib/character/companions';
+import {
+  effectiveCreatureProfile,
+  listCompanions,
+  parseCompanionKey,
+  pruneCompanionDepletion,
+  pruneCompanionInstances,
+  resolveCompanionInstanceLimit,
+  resolveCreatureMaxHp,
+} from '@/lib/character/companions';
+import { newId } from '@/lib/character/factory';
 import type { Depletion, FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { AppHeader } from '@/components/AppHeader';
@@ -408,7 +417,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     update({ equipment: setWornAt(character.equipment, i, worn) });
   // L'édition des capacités élague les choix orphelins (capacité retirée → ses
   // choix persistés sont supprimés), pour ne pas conserver de choix fantôme.
-  const setFeatureIds = (featureIds: string[]) =>
+  const setFeatureIds = (featureIds: string[]) => {
+    // Purge d'ABORD les instances de compagnons multi-instances (zombies, PER-235) dont la
+    // capacité a disparu, PUIS les PV : `pruneCompanionDepletion` énumère les compagnons via
+    // `listCompanions`, qui dérive les clés composites des instances survivantes → les PV des
+    // instances retirées sont ainsi purgés en cohérence.
+    const companionInstances = pruneCompanionInstances(character.companionInstances, { ...character, featureIds });
     update({
       featureIds,
       featureChoices: pruneFeatureChoices(character.featureChoices, featureIds),
@@ -419,8 +433,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       // Purge les PV des compagnons désormais disparus (rang non acquis après un respec /
       // une baisse de niveau) — cf. `pruneCompanionDepletion` (PER-233). L'objet mis à jour
       // n'est pas encore appliqué, mais l'énumération se base sur les nouveaux `featureIds`.
-      companionDepletion: pruneCompanionDepletion(character.companionDepletion, { ...character, featureIds }),
+      companionDepletion: pruneCompanionDepletion(character.companionDepletion, {
+        ...character,
+        featureIds,
+        companionInstances,
+      }),
+      companionInstances,
     });
+  };
   // Résolution rétroactive d'un choix porté par une capacité (PER-66/68). La
   // fiche est permissive : on persiste sans bloquer (recalcul en direct).
   const setChoice = (featureId: string, index: number, value: FeatureChoiceSelection) =>
@@ -634,12 +654,49 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     if (!entry) return undefined;
     return resolveCreatureMaxHp(entry.profile, effectCtx.abilities, character.level, entry.pathRank) ?? undefined;
   };
-  const setCompanionDamage = (key: string, amount: number, kind: 'lethal' | 'temp') =>
-    setCompanionDepletion(key, applyDamage(character.companionDepletion[key] ?? {}, amount, kind, companionMaxHp(key)));
+  const setCompanionDamage = (key: string, amount: number, kind: 'lethal' | 'temp') => {
+    const max = companionMaxHp(key);
+    const next = applyDamage(character.companionDepletion[key] ?? {}, amount, kind, max);
+    // Zombie réduit à 0 PV → « tombe en poussière » (p. 109) : l'instance est auto-supprimée et
+    // libère un emplacement (PER-235). Ne concerne que les compagnons multi-instances (clé
+    // composite) ; les compagnons classiques restent affichés à 0 PV (à terre/assommé).
+    const { instanceId } = parseCompanionKey(key);
+    if (instanceId !== undefined && max !== undefined) {
+      const current = max - (next.hp?.lethal ?? 0) - (next.hp?.temp ?? 0);
+      if (current <= 0) {
+        deleteCompanionInstance(key);
+        return;
+      }
+    }
+    setCompanionDepletion(key, next);
+  };
   const setCompanionHeal = (key: string, amount: number) =>
     setCompanionDepletion(key, healHp(character.companionDepletion[key] ?? {}, amount));
   const setCompanionReset = (key: string) =>
     setCompanionDepletion(key, resetHp(character.companionDepletion[key] ?? {}));
+  // Invocation d'un nouvel exemplaire d'un compagnon multi-instances (zombie, PER-235) : ajoute un
+  // id d'instance frais dans la limite du profil (garde-fou redondant avec le badge désactivé).
+  const summonCompanionInstance = (featureId: string) => {
+    const feature = featureById.get(featureId);
+    const profile = feature ? effectiveCreatureProfile(feature, character) : undefined;
+    if (!profile?.instances) return;
+    const list = character.companionInstances[featureId] ?? [];
+    if (list.length >= resolveCompanionInstanceLimit(profile, character)) return;
+    update({ companionInstances: { ...character.companionInstances, [featureId]: [...list, newId()] } });
+  };
+  // Suppression d'une instance (corbeille manuelle OU auto-suppression à 0 PV) : retire l'id de
+  // `companionInstances` et purge ses PV (`companionDepletion`) sous la clé composite (PER-235).
+  const deleteCompanionInstance = (key: string) => {
+    const { featureId, instanceId } = parseCompanionKey(key);
+    if (instanceId === undefined) return;
+    const list = (character.companionInstances[featureId] ?? []).filter((id) => id !== instanceId);
+    const companionInstances = { ...character.companionInstances };
+    if (list.length > 0) companionInstances[featureId] = list;
+    else delete companionInstances[featureId];
+    const companionDepletion = { ...character.companionDepletion };
+    delete companionDepletion[key];
+    update({ companionInstances, companionDepletion });
+  };
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
   // supprime la clé et rétablit le calcul automatique.
   const setOverride = (key: DerivedStatId, value: number | null) => {
@@ -1211,6 +1268,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                     onDamage={setCompanionDamage}
                     onHeal={setCompanionHeal}
                     onReset={setCompanionReset}
+                    onDelete={deleteCompanionInstance}
                   />
                 </SheetSection>
               ) : null;
@@ -1270,6 +1328,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               onLiftShortRestLock={liftShortRestLock}
               // Créer un élixir (forgesort) : décompte la réserve + ajoute la dose à l'équipement.
               onCreateElixir={createElixir}
+              // Invoquer un zombie (badge bleu « Invoquer ») : crée une instance à PV propres, dans
+              // la limite du profil — état de jeu, comme les interrupteurs/compteurs (PER-235).
+              onSummonCompanionInstance={summonCompanionInstance}
               // Stats du maître : Init./attaque des compagnons recopient ce total.
               masterDerived={masterDerived}
               // Bonus de compétence par domaine : sert à signaler, sur une capacité EMPRUNTÉE, que son

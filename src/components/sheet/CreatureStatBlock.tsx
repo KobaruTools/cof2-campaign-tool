@@ -198,6 +198,17 @@ export function CreatureStatsLine({
   showHitPoints = true,
 }: CreatureStatsLineProps) {
   const rich = (text: string) => <RichInline text={text} abilities={abilities} level={level} rank={rank} />;
+  // Créature SANS bloc de stats (Serviteur invisible, p. 96 — « une force, pas une créature ») :
+  // description enrichie à la place des blocs DEF/PV/Init./attaque, résolue sur les caractéristiques
+  // du MAÎTRE (ex. `[CHA]`, `[=CHA]`). Pas de barre de vie ni de grille de caractéristiques (gérées
+  // en amont par l'absence de `hitPoints`/`abilities`).
+  if (profile.descriptionRich) {
+    return (
+      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+        {rich(profile.descriptionRich)}
+      </Typography>
+    );
+  }
   const defAlt = profile.defenseAlt;
   const attack = profile.attack;
   // Icône de l'attaque : l'attaque d'un compagnon est PHYSIQUE (Ruade, Morsure, contact…),
@@ -211,34 +222,38 @@ export function CreatureStatsLine({
       {/* Stats dérivées + attaque, en blocs « icône + valeur » (comme le résumé MJ), sur une
           seule ligne (retour à la ligne seulement si la largeur l'impose). */}
       <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', alignItems: 'center', rowGap: 0.5 }}>
-        <CreatureStatChip
-          statId="defense"
-          label={
-            defAlt && defenseAltActive
-              ? `${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`
-              : 'Défense'
-          }
-        >
-          {defAlt && defenseAltActive
-            ? isMasterRef(defAlt.value)
-              ? masterDerived
-                ? masterValue(masterDerived, defAlt.value.fromMaster)
-                : 'DEF du maître'
-              : rich(defAlt.value)
-            : rich(profile.defense)}
-        </CreatureStatChip>
-        {showHitPoints && (
+        {(profile.defense || defAlt) && (
+          <CreatureStatChip
+            statId="defense"
+            label={
+              defAlt && defenseAltActive
+                ? `${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`
+                : 'Défense'
+            }
+          >
+            {defAlt && defenseAltActive
+              ? isMasterRef(defAlt.value)
+                ? masterDerived
+                  ? masterValue(masterDerived, defAlt.value.fromMaster)
+                  : 'DEF du maître'
+                : rich(defAlt.value)
+              : rich(profile.defense ?? '')}
+          </CreatureStatChip>
+        )}
+        {showHitPoints && profile.hitPoints && (
           <CreatureStatChip statId="maxHp" label="Points de vigueur">
             {rich(profile.hitPoints)}
           </CreatureStatChip>
         )}
-        <CreatureStatChip statId="initiative" label="Initiative">
-          {isMasterRef(profile.initiative) ? (
-            <MasterStatValue stat={profile.initiative.fromMaster} masterDerived={masterDerived} />
-          ) : (
-            rich(profile.initiative)
-          )}
-        </CreatureStatChip>
+        {profile.initiative && (
+          <CreatureStatChip statId="initiative" label="Initiative">
+            {isMasterRef(profile.initiative) ? (
+              <MasterStatValue stat={profile.initiative.fromMaster} masterDerived={masterDerived} />
+            ) : (
+              rich(profile.initiative)
+            )}
+          </CreatureStatChip>
+        )}
         {attack && (
           // Attaque + DM réunis dans un seul bloc : valeur du jet (recopiée du maître ou propre) ·
           // dégâts. Le libellé du jet (« Ruade », « Morsure et griffes »…) passe en info-bulle.

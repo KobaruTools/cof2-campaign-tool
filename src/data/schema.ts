@@ -1672,8 +1672,12 @@ export interface CreatureProfile {
    * les deux ensembles fusionnent à l'affichage. Absent = aucun dé bonus inné.
    */
   bonusDieAbilities?: AbilityId[];
-  /** Défense (S) : nombre fixe ou expression `richText` (« 10 + rang »). */
-  defense: string;
+  /**
+   * Défense (S) : nombre fixe ou expression `richText` (« 10 + rang »). OPTIONNELLE : absente
+   * pour une créature que le livre décrit SANS bloc de stats (« une force, pas une créature »,
+   * ex. Serviteur invisible, invocation-r2, p. 96) — voir `descriptionRich`.
+   */
+  defense?: string;
   /**
    * DÉFENSE ALTERNATIVE conditionnelle (PER-72, cavalier). Quand une capacité du maître
    * l'accorde et que son interrupteur est actif, la DEF affichée devient cette valeur —
@@ -1695,10 +1699,17 @@ export interface CreatureProfile {
     /** Capacité du maître qui octroie l'alternative (ex. `cavalier-r2`) ; interrupteur index 0. */
     sourceFeatureId: string;
   };
-  /** Points de vigueur (V) : expression `richText` (« niveau × 5 »). */
-  hitPoints: string;
-  /** Initiative (I) : nombre fixe (`richText`, ex. « 8 ») ou recopie d'une stat du maître. */
-  initiative: string | MasterStatRef;
+  /**
+   * Points de vigueur (V) : expression `richText` (« niveau × 5 »). OPTIONNELS : absents pour
+   * une créature SANS PV (Serviteur invisible, p. 96 : « ne peut pas être combattu ») — la
+   * section « Compagnons » n'affiche alors PAS de barre de vie (`resolveCreatureMaxHp` → `null`).
+   */
+  hitPoints?: string;
+  /**
+   * Initiative (I) : nombre fixe (`richText`, ex. « 8 ») ou recopie d'une stat du maître.
+   * OPTIONNELLE (même raison que `defense`/`hitPoints`).
+   */
+  initiative?: string | MasterStatRef;
   /**
    * Attaque, si la créature attaque. Le jet est SOIT recopié d'une stat dérivée du
    * MAÎTRE (`fromMaster`, ex. « attaque magique du rôdeur » du loup), SOIT une valeur
@@ -1711,6 +1722,34 @@ export interface CreatureProfile {
   attack?: { label?: string; fromMaster?: DerivedStatId; value?: string; damage: string };
   /** Particularités libres (déplacement, « trop petit pour attaquer »…). */
   note?: string;
+  /**
+   * Description ENRICHIE d'une créature que le livre présente SANS bloc de stats (PER-235) :
+   * une « force, pas une créature » (Serviteur invisible, invocation-r2, p. 96). Rendue en une
+   * ligne `richText` (résolution des caractéristiques/formules du MAÎTRE, ex. `[CHA]`, `[=CHA]`)
+   * À LA PLACE des blocs DEF/PV/Init./attaque (absents ici), sans barre de vie ni grille de
+   * caractéristiques. Ne pas cumuler avec `defense`/`hitPoints`/`abilities` : c'est le rendu de
+   * repli pour les créatures atypiques dont on ne connaît pas les 7 caractéristiques.
+   */
+  descriptionRich?: string;
+  /**
+   * La créature s'invoque en PLUSIEURS EXEMPLAIRES INDÉPENDANTS (PER-235), chacun avec ses
+   * propres PV suivis à part (ex. Zombie, outre-tombe-r3, p. 109 : « le sorcier peut contrôler un
+   * seul zombie, plus un zombie chaque fois qu'il atteint le rang 5 dans une voie de sorcier »).
+   * Absent = compagnon à instance UNIQUE (cas par défaut). Présent = la section « Compagnons »
+   * affiche un bloc par instance créée (bouton « Invoquer » sur la carte du rang), avec
+   * suppression manuelle et auto-suppression à 0 PV. La persistance des instances vit dans
+   * `Character.companionInstances` (ids d'instance) + `Character.companionDepletion` (PV par
+   * instance, clé composite `<featureId>#<instanceId>`).
+   */
+  instances?: {
+    /**
+     * Limite d'instances simultanées = `base` + nombre de voies d'un profil des `classIds` dont
+     * le rang `rank` est atteint (même comptage cross-voie que `MilestoneCountScalingValue` /
+     * `UsageCounter.maxByRankCount`). Ex. zombie : `{ base: 1, rank: 5, classIds: ['sorcier'] }`
+     * → 1 + une par voie de sorcier au rang 5. Résolu par `resolveCompanionInstanceLimit`.
+     */
+    limit: { base: number; rank: number; classIds: string[] };
+  };
 }
 
 /**

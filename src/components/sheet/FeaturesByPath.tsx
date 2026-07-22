@@ -40,7 +40,7 @@ import Typography from '@mui/material/Typography';
 import { alpha, type Theme } from '@mui/material/styles';
 import { useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
-import type { AbilityId, AbilitySubstitution, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
+import type { AbilityId, AbilitySubstitution, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import { STATUS_EFFECT_LABELS } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
@@ -51,7 +51,11 @@ import {
   hasIncompleteCustomSkill,
 } from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
-import { creatureDefenseAltActive, effectiveCreatureProfile } from '@/lib/character/companions';
+import {
+  creatureDefenseAltActive,
+  effectiveCreatureProfile,
+  resolveCompanionInstanceLimit,
+} from '@/lib/character/companions';
 import {
   borrowedPowerIntegrityKey,
   borrowedPowerUsedKey,
@@ -1102,6 +1106,13 @@ export interface FeaturesByPathProps {
    */
   onCreateElixir?: (counterKey: string, cost: number, max: number, elixirName: string) => void;
   /**
+   * Invoque un nouvel exemplaire d'un compagnon MULTI-INSTANCES (zombie, PER-235) : crée une
+   * instance à PV pleins, dans la limite du profil (`CreatureProfile.instances.limit`). Rendu par
+   * le badge bleu « Invoquer » sur la carte du rang porteur. Absent → badge en lecture seule (pas
+   * de création). État de jeu, modifiable hors édition.
+   */
+  onSummonCompanionInstance?: (featureId: string) => void;
+  /**
    * Bonus de compétence par domaine (cf. `testBonusSources`) — utilisé pour signaler, sur une
    * capacité EMPRUNTÉE, que son bonus de test est DOMINÉ (ne se cumule pas), affiché barré + la
    * capacité qui le domine (PER-73). Absent → aucun signalement.
@@ -1949,6 +1960,77 @@ function countClassPathsAtRank(
   return [...pathMaxRank.values()].filter((r) => r >= rank).length;
 }
 
+/**
+ * Contrôle d'invocation d'un compagnon MULTI-INSTANCES (zombie, PER-235), rendu sous la mini-fiche
+ * de créature de la carte du rang. Badge CUSTOM bleu « Invoquer » (convention projet : pas de `Chip`
+ * MUI) + compteur « instances / limite ». Le badge est désactivé quand la limite est atteinte (ou en
+ * lecture seule, sans `onSummon`). Chaque clic crée un exemplaire (un bloc de compagnon apparaît dans
+ * la section « Compagnons » avec sa propre barre de vie). `null` si le profil n'est pas multi-instances.
+ */
+function SummonInstanceBadge({
+  feature,
+  profile,
+  character,
+  onSummon,
+}: {
+  feature: Feature;
+  profile: CreatureProfile;
+  character: Character;
+  onSummon?: (featureId: string) => void;
+}) {
+  if (!profile.instances) return null;
+  const count = character.companionInstances?.[feature.id]?.length ?? 0;
+  const limit = resolveCompanionInstanceLimit(profile, character);
+  const atLimit = count >= limit;
+  const disabled = !onSummon || atLimit;
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 1, flexWrap: 'wrap', rowGap: 0.5 }}>
+      <AppTooltip
+        title={
+          atLimit
+            ? `Limite atteinte (${limit}) — un zombie doit tomber avant d'en invoquer un autre`
+            : 'Invoquer un nouvel exemplaire (PV suivis à part)'
+        }
+      >
+        <Box
+          component="button"
+          type="button"
+          disabled={disabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSummon?.(feature.id);
+          }}
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.4,
+            px: 1,
+            py: 0.4,
+            borderRadius: 1,
+            border: 1,
+            borderColor: 'info.main',
+            color: 'info.main',
+            bgcolor: (t) => alpha(t.palette.info.main, 0.12),
+            fontWeight: 700,
+            fontSize: '0.8rem',
+            lineHeight: 1.2,
+            cursor: disabled ? 'default' : 'pointer',
+            opacity: disabled ? 0.45 : 1,
+            transition: 'background-color 0.15s',
+            '&:hover': disabled ? undefined : { bgcolor: (t) => alpha(t.palette.info.main, 0.22) },
+          }}
+        >
+          <AddIcon sx={{ fontSize: 16 }} />
+          Invoquer
+        </Box>
+      </AppTooltip>
+      <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+        {count} / {limit}
+      </Typography>
+    </Stack>
+  );
+}
+
 /** Une voie et ses capacités acquises, chaque capacité dépliable (texte complet). */
 function PathBlock({
   group,
@@ -1970,6 +2052,7 @@ function PathBlock({
   onSetUsageCounter,
   onLiftShortRestLock,
   onCreateElixir,
+  onSummonCompanionInstance,
   disabledIds,
   disabledReasons,
   armorRestrictedReasons,
@@ -2012,6 +2095,8 @@ function PathBlock({
   onLiftShortRestLock?: (featureId: string) => void;
   /** Produit un élixir : consomme la réserve + matérialise la dose dans l'équipement (forgesort). */
   onCreateElixir?: (counterKey: string, cost: number, max: number, elixirName: string) => void;
+  /** Invoque un exemplaire d'un compagnon multi-instances (zombie, PER-235) — badge bleu « Invoquer ». */
+  onSummonCompanionInstance?: (featureId: string) => void;
   /**
    * Capacités désactivées par exclusion mutuelle (un interrupteur actif les grise) :
    * rendues semi-transparentes + grisées, interrupteur non-interactif, détail conservé.
@@ -2886,6 +2971,14 @@ function PathBlock({
                         }
                         defenseAltActive={creatureDefenseAltActive(profile, character)}
                       />
+                      {character && (
+                        <SummonInstanceBadge
+                          feature={openFeature}
+                          profile={profile}
+                          character={character}
+                          onSummon={onSummonCompanionInstance}
+                        />
+                      )}
                     </Box>
                   ) : null;
                 })()}
@@ -3241,6 +3334,14 @@ function PathBlock({
                       }
                       defenseAltActive={creatureDefenseAltActive(profile, character)}
                     />
+                    {character && (
+                      <SummonInstanceBadge
+                        feature={feature}
+                        profile={profile}
+                        character={character}
+                        onSummon={onSummonCompanionInstance}
+                      />
+                    )}
                   </Box>
                 ) : null;
               })()}
@@ -3424,6 +3525,7 @@ export function FeaturesByPath({
   onSetUsageCounter,
   onLiftShortRestLock,
   onCreateElixir,
+  onSummonCompanionInstance,
   concentration = false,
   testBonuses,
   verbatim = false,
@@ -3579,6 +3681,7 @@ export function FeaturesByPath({
               onSetUsageCounter={onSetUsageCounter}
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
+              onSummonCompanionInstance={onSummonCompanionInstance}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}
@@ -3611,6 +3714,7 @@ export function FeaturesByPath({
               onSetUsageCounter={onSetUsageCounter}
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
+              onSummonCompanionInstance={onSummonCompanionInstance}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}
@@ -3643,6 +3747,7 @@ export function FeaturesByPath({
               onSetUsageCounter={onSetUsageCounter}
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
+              onSummonCompanionInstance={onSummonCompanionInstance}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}

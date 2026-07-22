@@ -62,8 +62,13 @@ import type { AncestryChoice } from './ancestry';
  *   monture, familier, écuyer, golem, loup, invocation… ; PER-233). Suivi de jeu
  *   indexé par l'`id` du rang de voie qui octroie le compagnon. La migration ajoute
  *   simplement `{}` (aucun compagnon blessé au chargement).
+ * v20 : ajout de `companionInstances` (compagnons MULTI-INSTANCES — les zombies du
+ *   sorcier, outre-tombe-r3 ; PER-235). Table `id de capacité → liste ordonnée d'ids
+ *   d'instance` ; les PV de chaque instance vivent dans `companionDepletion` sous la clé
+ *   composite `<featureId>#<instanceId>`. La migration ajoute `{}` (aucune instance au
+ *   chargement).
  */
-export const SCHEMA_VERSION = 19;
+export const SCHEMA_VERSION = 20;
 
 /**
  * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
@@ -544,6 +549,20 @@ export interface Character {
    * compagnons à PV pleins. Énumération et max dans `src/lib/character/companions.ts`.
    */
   companionDepletion: Record<string, Depletion>;
+
+  /**
+   * Compagnons MULTI-INSTANCES (PER-235) : clé = `id` de la capacité qui les octroie (ex.
+   * `outre-tombe-r3` pour les zombies du sorcier) ; valeur = liste ORDONNÉE d'ids d'instance,
+   * une par exemplaire invoqué. Chaque « Invoquer » ajoute un id ; l'auto-suppression à 0 PV
+   * (« tombe en poussière », p. 109) et la suppression manuelle le retirent. Les PV de chaque
+   * instance sont suivis dans `companionDepletion` sous la clé composite
+   * `<featureId>#<instanceId>` (même mécanique de barre de vie que les autres compagnons). Le
+   * nombre d'instances vivantes est plafonné par la limite du profil (`CreatureProfile.instances`,
+   * résolue par `resolveCompanionInstanceLimit`). État de jeu transitoire (modifiable hors mode
+   * « Modifier »), purgé quand la capacité disparaît (respec / baisse de niveau). `{}` = aucune
+   * instance. Voir `src/lib/character/companions.ts`.
+   */
+  companionInstances: Record<string, string[]>;
 
   /**
    * Argent possédé (PER-152). État de jeu transitoire (modifiable hors mode

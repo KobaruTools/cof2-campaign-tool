@@ -11,7 +11,7 @@
  * persisté par compagnon est le manque de PV (`Character.companionDepletion`), suivi de
  * jeu au même titre que la barre de vie du personnage.
  */
-import { featureById, progression } from '@/data';
+import { featureById, pathById, progression } from '@/data';
 import type { AbilityId, CreatureProfile, Feature } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { getSelection } from './choices';
@@ -86,11 +86,31 @@ function companionPresent(feature: Feature, character: Character): boolean {
   return !isSummon;
 }
 
+/** Séparateur de la clé composite d'une instance de compagnon (`<featureId>#<instanceId>`). */
+export const COMPANION_INSTANCE_SEP = '#';
+
+/** Clé de PV (barre de vie / `companionDepletion`) d'une instance de compagnon multi-instances. */
+export function companionInstanceKey(featureId: string, instanceId: string): string {
+  return `${featureId}${COMPANION_INSTANCE_SEP}${instanceId}`;
+}
+
+/**
+ * Décompose une clé de compagnon : `{ featureId, instanceId }` pour une instance
+ * (`outre-tombe-r3#<id>`), `{ featureId, instanceId: undefined }` pour un compagnon à instance
+ * unique (`golem-r2`). Utilisé par les setters de PV (page personnage) pour router vers
+ * `companionInstances` (zombies) ou `companionDepletion` (compagnons classiques).
+ */
+export function parseCompanionKey(key: string): { featureId: string; instanceId?: string } {
+  const i = key.indexOf(COMPANION_INSTANCE_SEP);
+  return i < 0 ? { featureId: key } : { featureId: key.slice(0, i), instanceId: key.slice(i + 1) };
+}
+
 /** Un compagnon débloqué, prêt à afficher. */
 export interface CompanionEntry {
   /**
-   * Clé de persistance de l'état de PV = `id` du rang de voie qui octroie le compagnon
-   * (ex. `golem-r2`, `cavalier-r5`, `compagnon-animal-r4`). Un rang = un compagnon.
+   * Clé de persistance de l'état de PV. Compagnon à instance unique = `id` du rang de voie qui
+   * l'octroie (ex. `golem-r2`, `cavalier-r5`, `compagnon-animal-r4`). Compagnon multi-instances
+   * (zombie) = clé composite `<featureId>#<instanceId>` (cf. `companionInstanceKey`).
    */
   key: string;
   /** Rang de voie porteur du compagnon (celui retenu quand une voie en a plusieurs). */
@@ -103,6 +123,13 @@ export interface CompanionEntry {
   bonusDieAbilities: Set<AbilityId>;
   /** La DEF alternative (« en selle ») est-elle active ? */
   defenseAltActive: boolean;
+  /**
+   * Id d'instance, UNIQUEMENT pour un compagnon multi-instances (zombie) — absent pour les
+   * compagnons classiques. Sa présence signale que ce bloc est une instance supprimable.
+   */
+  instanceId?: string;
+  /** Position (0-based) de l'instance dans la liste, pour la numéroter (« Zombie 1, 2… »). */
+  instanceIndex?: number;
 }
 
 /**
@@ -133,28 +160,72 @@ export function listCompanions(character: Character): CompanionEntry[] {
   }
   // Un compagnon par voie : on garde le rang porteur de profil le plus élevé, dans
   // l'ordre d'acquisition (Map = ordre de première insertion par voie).
-  const byPath = new Map<string, CompanionEntry>();
+  const byPath = new Map<string, { feature: Feature; profile: CreatureProfile }>();
   for (const id of character.featureIds) {
     if (disabled.has(id)) continue;
     const feature = featureById.get(id);
     if (!feature) continue;
     const profile = effectiveCreatureProfile(feature, character);
     if (!profile) continue;
-    // Invocation (démon, arbre animé…) : masquée tant que le sort n'est pas actif (action
-    // du joueur). Les compagnons permanents (loup, golem, familiers…) passent toujours.
-    if (!companionPresent(feature, character)) continue;
+    // Invocation à instance UNIQUE (démon, arbre animé, familier/serviteur invoqués…) : masquée
+    // tant que son marqueur d'invocation n'est pas actif. Les compagnons multi-instances (zombie)
+    // ont leur propre gating (présence = au moins une instance créée) — le marqueur ne s'applique
+    // pas. Les compagnons permanents (loup, golem, monture, écuyer) passent toujours.
+    if (!profile.instances && !companionPresent(feature, character)) continue;
     const prev = byPath.get(feature.pathId);
     if (prev && prev.feature.rank >= feature.rank) continue;
-    byPath.set(feature.pathId, {
-      key: feature.id,
-      feature,
-      profile,
-      pathRank: maxRankByPath.get(feature.pathId) ?? feature.rank,
-      bonusDieAbilities: creatureBonusDiceForPath(feature.pathId, character),
-      defenseAltActive: creatureDefenseAltActive(profile, character),
-    });
+    byPath.set(feature.pathId, { feature, profile });
   }
-  return [...byPath.values()];
+  // Développe chaque voie retenue en entrées d'affichage : une seule pour un compagnon classique,
+  // N pour un compagnon multi-instances (une par instance vivante de `companionInstances`).
+  const out: CompanionEntry[] = [];
+  for (const { feature, profile } of byPath.values()) {
+    const pathRank = maxRankByPath.get(feature.pathId) ?? feature.rank;
+    const bonusDieAbilities = creatureBonusDiceForPath(feature.pathId, character);
+    const defenseAltActive = creatureDefenseAltActive(profile, character);
+    if (profile.instances) {
+      const ids = character.companionInstances?.[feature.id] ?? [];
+      ids.forEach((instanceId, instanceIndex) => {
+        out.push({
+          key: companionInstanceKey(feature.id, instanceId),
+          feature,
+          profile,
+          pathRank,
+          bonusDieAbilities,
+          defenseAltActive,
+          instanceId,
+          instanceIndex,
+        });
+      });
+    } else {
+      out.push({ key: feature.id, feature, profile, pathRank, bonusDieAbilities, defenseAltActive });
+    }
+  }
+  return out;
+}
+
+/**
+ * Limite d'instances simultanées d'un compagnon multi-instances (PER-235). Pour le zombie
+ * (outre-tombe-r3, p. 109) : 1 + une par voie de sorcier au rang 5 — comptage cross-voie
+ * identique à `MilestoneCountScalingValue` (la voie hôte comptée incluse, cf. « chaque fois qu'il
+ * atteint le rang 5 dans une voie de sorcier »). `0` si le profil n'est pas multi-instances.
+ */
+export function resolveCompanionInstanceLimit(profile: CreatureProfile, character: Character): number {
+  const spec = profile.instances?.limit;
+  if (!spec) return 0;
+  const maxRankByPath = new Map<string, number>();
+  for (const id of character.featureIds) {
+    const f = featureById.get(id);
+    if (!f) continue;
+    maxRankByPath.set(f.pathId, Math.max(maxRankByPath.get(f.pathId) ?? 0, f.rank));
+  }
+  let count = 0;
+  for (const [pid, maxRank] of maxRankByPath) {
+    if (maxRank < spec.rank) continue;
+    const path = pathById.get(pid);
+    if (path?.type === 'class' && path.classIds.some((c) => spec.classIds.includes(c))) count += 1;
+  }
+  return spec.base + count;
 }
 
 /**
@@ -171,6 +242,8 @@ export function resolveCreatureMaxHp(
   level: number,
   rank: number,
 ): number | null {
+  // Créature SANS PV (Serviteur invisible, p. 96 — « ne peut pas être combattu ») : aucune barre.
+  if (profile.hitPoints == null) return null;
   const segments = parseRichText(profile.hitPoints);
   let total = 0;
   let found = false;
@@ -201,6 +274,31 @@ export function pruneCompanionDepletion(
     if (!liveKeys.has(key)) continue;
     const pruned = pruneDepletion(dep);
     if (Object.keys(pruned).length > 0) next[key] = pruned;
+  }
+  return next;
+}
+
+/**
+ * Élague les instances de compagnons multi-instances (`companionInstances`, PER-235) : retire les
+ * listes dont la capacité n'est plus acquise ou n'octroie plus un profil multi-instances (respec /
+ * baisse de niveau), et normalise chaque liste (ids vides / doublons retirés, ordre préservé). À
+ * appeler AVANT `pruneCompanionDepletion` lors des mutations structurelles : les PV d'instance
+ * (clés composites) sont ensuite purgés en cohérence, car `listCompanions` ne produit plus les
+ * clés des instances disparues. Fonction pure.
+ */
+export function pruneCompanionInstances(
+  companionInstances: Record<string, string[]>,
+  character: Character,
+): Record<string, string[]> {
+  const owned = new Set(character.featureIds);
+  const next: Record<string, string[]> = {};
+  for (const [featureId, ids] of Object.entries(companionInstances)) {
+    if (!owned.has(featureId)) continue;
+    const feature = featureById.get(featureId);
+    const profile = feature ? effectiveCreatureProfile(feature, character) : undefined;
+    if (!profile?.instances) continue;
+    const clean = ids.filter((id, i) => !!id && ids.indexOf(id) === i);
+    if (clean.length > 0) next[featureId] = clean;
   }
   return next;
 }

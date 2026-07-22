@@ -2,11 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { featureById } from '@/data';
 import { createBlankCharacter } from './factory';
 import type { Character, Depletion } from './types';
-import { listCompanions, pruneCompanionDepletion, resolveCreatureMaxHp } from './companions';
+import {
+  listCompanions,
+  pruneCompanionDepletion,
+  pruneCompanionInstances,
+  resolveCompanionInstanceLimit,
+  resolveCreatureMaxHp,
+} from './companions';
 
 /** Personnage de test : niveau + capacités + choix, le reste par défaut. */
 function char(over: Partial<Character> = {}): Character {
   return { ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }), level: 5, ...over };
+}
+
+/** Profil de créature d'une capacité (raccourci de test). */
+function _profile(id: string) {
+  return featureById.get(id)!.creatureProfile!;
 }
 
 describe('listCompanions', () => {
@@ -80,11 +91,55 @@ describe('listCompanions', () => {
     expect(invoked[0].profile.name).toBe('Démon');
   });
 
-  it('familier permanent (magicien) : visible sans activation malgré isSpell', () => {
-    // magie-universelle-r2 est un sort (isSpell) mais un familier PERMANENT : son interrupteur
-    // « familier en vue » est une condition (bonus de DEF), pas une invocation → toujours affiché.
-    const companions = listCompanions(char({ classId: 'magicien', featureIds: ['magie-universelle-r2'] }));
-    expect(companions.map((e) => e.profile.name)).toEqual(['Familier']);
+  it('familier du magicien (PER-235) : invocation masquée tant que non invoquée', () => {
+    // Depuis PER-235, le familier du magicien s'invoque (p. 96). Effets : index 0 « familier en
+    // vue » (condition, bonus DEF), index 1 « Familier invoqué » (marqueur temporaire d'invocation).
+    // Non invoqué (ou seulement « en vue ») → aucun compagnon affiché.
+    expect(listCompanions(char({ classId: 'magicien', featureIds: ['magie-universelle-r2'] }))).toHaveLength(0);
+    expect(
+      listCompanions(
+        char({ classId: 'magicien', featureIds: ['magie-universelle-r2'], effectToggles: { 'magie-universelle-r2': [true] } }),
+      ),
+    ).toHaveLength(0);
+    // Marqueur d'invocation (index 1) actif → le familier apparaît.
+    const invoked = listCompanions(
+      char({ classId: 'magicien', featureIds: ['magie-universelle-r2'], effectToggles: { 'magie-universelle-r2': [false, true] } }),
+    );
+    expect(invoked.map((e) => e.profile.name)).toEqual(['Familier']);
+  });
+
+  it('serviteur invisible (PER-235) : invocation légère sans PV, masquée tant que non invoquée', () => {
+    // Non invoqué → absent.
+    expect(listCompanions(char({ classId: 'ensorceleur', featureIds: ['invocation-r2'] }))).toHaveLength(0);
+    // Invoqué (marqueur index 0) → un bloc léger : profil SANS caractéristiques ni PV, avec descriptionRich.
+    const invoked = listCompanions(
+      char({ classId: 'ensorceleur', featureIds: ['invocation-r2'], effectToggles: { 'invocation-r2': [true] } }),
+    );
+    expect(invoked).toHaveLength(1);
+    expect(invoked[0].profile.name).toBe('Serviteur invisible');
+    expect(invoked[0].profile.abilities).toBeUndefined();
+    expect(invoked[0].profile.hitPoints).toBeUndefined();
+    expect(invoked[0].profile.descriptionRich).toBeTruthy();
+    // Pas de PV résolubles → aucune barre de vie.
+    expect(resolveCreatureMaxHp(invoked[0].profile, char().abilities, 5, 2)).toBeNull();
+  });
+
+  it('zombies (PER-235) : une entrée par instance, clé composite + numérotation, supprimable', () => {
+    // Sans instance créée → aucun zombie affiché, même capacité acquise.
+    expect(listCompanions(char({ classId: 'sorcier', featureIds: ['outre-tombe-r3'] }))).toHaveLength(0);
+    // Deux instances créées → deux entrées indépendantes, clés composites, instanceIndex ordonné.
+    const zombies = listCompanions(
+      char({
+        classId: 'sorcier',
+        featureIds: ['outre-tombe-r3'],
+        companionInstances: { 'outre-tombe-r3': ['a1', 'b2'] },
+      }),
+    );
+    expect(zombies).toHaveLength(2);
+    expect(zombies.map((e) => e.key)).toEqual(['outre-tombe-r3#a1', 'outre-tombe-r3#b2']);
+    expect(zombies.map((e) => e.instanceId)).toEqual(['a1', 'b2']);
+    expect(zombies.map((e) => e.instanceIndex)).toEqual([0, 1]);
+    expect(zombies.every((e) => e.profile.name === 'Zombie')).toBe(true);
   });
 
   it('plusieurs compagnons de voies distinctes coexistent', () => {
@@ -122,5 +177,56 @@ describe('pruneCompanionDepletion', () => {
   it('retire une entrée redevenue pleine même pour un compagnon vivant', () => {
     const c = char({ classId: 'forgesort', featureIds: ['golem-r2'] });
     expect(pruneCompanionDepletion({ 'golem-r2': { hp: { lethal: 0, temp: 0 } } }, c)).toEqual({});
+  });
+
+  it('purge les PV d’une instance de zombie disparue (clé composite)', () => {
+    const c = char({
+      classId: 'sorcier',
+      featureIds: ['outre-tombe-r3'],
+      companionInstances: { 'outre-tombe-r3': ['a1'] },
+    });
+    const record: Record<string, Depletion> = {
+      'outre-tombe-r3#a1': { hp: { lethal: 3, temp: 0 } }, // instance vivante → conservée
+      'outre-tombe-r3#zz': { hp: { lethal: 5, temp: 0 } }, // instance disparue → purgée
+    };
+    expect(pruneCompanionDepletion(record, c)).toEqual({ 'outre-tombe-r3#a1': { hp: { lethal: 3, temp: 0 } } });
+  });
+});
+
+describe('resolveCompanionInstanceLimit', () => {
+  it('zombie : 1 + une par voie de sorcier au rang 5', () => {
+    const profile = _profile('outre-tombe-r3');
+    // Voie outre-tombe au rang 3 seulement → aucune voie au rang 5 → limite 1.
+    expect(resolveCompanionInstanceLimit(profile, char({ classId: 'sorcier', featureIds: ['outre-tombe-r3'] }))).toBe(1);
+    // Voie outre-tombe au rang 5 (voie hôte incluse) → limite 2.
+    expect(
+      resolveCompanionInstanceLimit(
+        profile,
+        char({ classId: 'sorcier', featureIds: ['outre-tombe-r3', 'outre-tombe-r5'] }),
+      ),
+    ).toBe(2);
+  });
+
+  it('0 pour un profil non multi-instances', () => {
+    expect(resolveCompanionInstanceLimit(_profile('golem-r2'), char())).toBe(0);
+  });
+});
+
+describe('pruneCompanionInstances', () => {
+  it('conserve les instances d’une capacité multi-instances acquise, purge les autres', () => {
+    const c = char({ classId: 'sorcier', featureIds: ['outre-tombe-r3'] });
+    const record: Record<string, string[]> = {
+      'outre-tombe-r3': ['a1', 'b2'], // capacité acquise + multi-instances → conservé
+      'golem-r2': ['x'], // pas acquise (et pas multi-instances) → purgé
+    };
+    expect(pruneCompanionInstances(record, c)).toEqual({ 'outre-tombe-r3': ['a1', 'b2'] });
+  });
+
+  it('normalise ids vides/doublons et retire une liste vidée', () => {
+    const c = char({ classId: 'sorcier', featureIds: ['outre-tombe-r3'] });
+    expect(pruneCompanionInstances({ 'outre-tombe-r3': ['a', 'a', '', 'b'] }, c)).toEqual({
+      'outre-tombe-r3': ['a', 'b'],
+    });
+    expect(pruneCompanionInstances({ 'outre-tombe-r3': [] }, c)).toEqual({});
   });
 });

@@ -440,6 +440,18 @@ function migrateV18toV19(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v19 → v20 : ajout de `companionInstances` (compagnons multi-instances — zombies du sorcier,
+ * PER-235). Purement additif : on initialise une map vide (aucune instance au chargement) si le
+ * champ est absent, en préservant une éventuelle valeur déjà présente.
+ */
+function migrateV19toV20(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (asRecord(next.companionInstances) === null) next.companionInstances = {};
+  next.schemaVersion = 20;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -462,6 +474,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   16: migrateV16toV17,
   17: migrateV17toV18,
   18: migrateV18toV19,
+  19: migrateV19toV20,
 };
 
 export class MigrationError extends Error {}
@@ -541,6 +554,9 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
   }
   if (typeof data.companionDepletion !== 'object' || data.companionDepletion === null) {
     fail('Champ « companionDepletion » manquant ou invalide.');
+  }
+  if (typeof data.companionInstances !== 'object' || data.companionInstances === null) {
+    fail('Champ « companionInstances » manquant ou invalide.');
   }
   if (typeof data.purse !== 'object' || data.purse === null) {
     fail('Champ « purse » manquant ou invalide.');

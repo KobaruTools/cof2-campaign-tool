@@ -472,13 +472,16 @@ describe('interrupteurs des effets conditionnels', () => {
     expect(conditionalEffectBonuses(charWith({}), 'air-r1', 0)).toBeNull();
   });
 
-  it('Familier : un seul interrupteur pilote +2 Init. ET +2 DEF (pas deux toggles)', () => {
-    // Un seul effet conditionnel → un seul interrupteur.
-    expect(conditionalEffectsOf('magie-universelle-r2')).toHaveLength(1);
+  it('Familier : « familier en vue » (index 0) pilote +2 Init. ET +2 DEF (marqueur d’invocation à part)', () => {
+    // Deux effets conditionnels depuis PER-235 : index 0 « familier en vue » (bonus DEF/Init.),
+    // index 1 « Familier invoqué » (marqueur d'invocation temporaire, sans bonus).
+    expect(conditionalEffectsOf('magie-universelle-r2')).toHaveLength(2);
+    // Seul l'index 0 porte les bonus ; le marqueur d'invocation (index 1) n'ajoute rien.
     expect(modsFromFeatures(['magie-universelle-r2'], ctx({ toggles: { 'magie-universelle-r2': [true] } }))).toEqual({
       initiative: 2,
       def: 2,
     });
+    expect(modsFromFeatures(['magie-universelle-r2'], ctx({ toggles: { 'magie-universelle-r2': [false, true] } }))).toEqual({});
     expect(modsFromFeatures(['magie-universelle-r2'], ctx())).toEqual({});
   });
 

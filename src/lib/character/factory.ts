@@ -56,6 +56,7 @@ export function createBlankCharacter(
     usageCounters: {},
     depletion: {},
     companionDepletion: {},
+    companionInstances: {},
     purse: { platinum: 0, gold: 0, silver: 0, copper: 0 },
     levelUpHistory: [],
     equipment: [],

@@ -1,9 +1,12 @@
 'use client';
 
 import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import { alpha } from '@mui/material/styles';
+import { AppTooltip } from '@/components/AppTooltip';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Depletion } from '@/lib/character/types';
 import { resolveCreatureMaxHp, type CompanionEntry } from '@/lib/character/companions';
@@ -27,6 +30,12 @@ interface CompanionCardProps {
   onHeal: (amount: number) => void;
   /** Remet les PV du compagnon à plein. */
   onReset: () => void;
+  /**
+   * Supprime CETTE instance (zombie uniquement, PER-235). Fourni seulement pour un compagnon
+   * multi-instances (`entry.instanceId` présent) : rend une corbeille rouge en bas à droite du
+   * bloc. Absent → aucun contrôle de suppression (compagnons classiques).
+   */
+  onDelete?: () => void;
 }
 
 /**
@@ -37,10 +46,14 @@ interface CompanionCardProps {
  * `CreatureProfile` (résolution de `hitPoints`) ; s'ils ne se résolvent pas en nombre, on
  * retombe sur l'affichage textuel des PV dans la ligne de stats (pas de barre).
  */
-function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDamage, onHeal, onReset }: CompanionCardProps) {
-  const { profile, pathRank, bonusDieAbilities, defenseAltActive } = entry;
+function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDamage, onHeal, onReset, onDelete }: CompanionCardProps) {
+  const { profile, pathRank, bonusDieAbilities, defenseAltActive, instanceId, instanceIndex } = entry;
   const maxHp = resolveCreatureMaxHp(profile, abilities, level, pathRank);
   const hasAbilities = !!profile.abilities;
+  // Compagnon multi-instances (zombie) : numéroter les exemplaires (« ZOMBIE 1, 2… ») pour les
+  // distinguer d'un coup d'œil ; un seul compagnon classique n'est jamais numéroté.
+  const displayName =
+    instanceId !== undefined ? `${profile.name.toUpperCase()} ${(instanceIndex ?? 0) + 1}` : profile.name.toUpperCase();
   return (
     <Box
       sx={{
@@ -53,7 +66,7 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
     >
       <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap', mb: 0.75 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>
-          {profile.name.toUpperCase()}
+          {displayName}
         </Typography>
         {profile.type && (
           <Typography variant="caption" color="text.secondary">
@@ -99,6 +112,24 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
         defenseAltActive={defenseAltActive}
         showHitPoints={maxHp === null}
       />
+
+      {/* Suppression manuelle d'une instance (zombie, PER-235) : corbeille rouge en bas à droite.
+          Exception propre aux compagnons multi-instances — les autres n'ont aucun contrôle d'ajout/
+          suppression (pilotés par les rangs de voie). */}
+      {onDelete && (
+        <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 0.5 }}>
+          <AppTooltip title={`Supprimer ${displayName.toLowerCase()}`}>
+            <IconButton
+              size="small"
+              color="error"
+              aria-label={`Supprimer ${displayName.toLowerCase()}`}
+              onClick={onDelete}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          </AppTooltip>
+        </Stack>
+      )}
     </Box>
   );
 }
@@ -120,6 +151,12 @@ export interface CompanionsPanelProps {
   onHeal: (key: string, amount: number) => void;
   /** Remet le compagnon `key` à plein. */
   onReset: (key: string) => void;
+  /**
+   * Supprime l'instance `key` d'un compagnon multi-instances (zombie, PER-235). Appelé
+   * uniquement pour les entrées dont `entry.instanceId` est défini (corbeille rouge). Absent →
+   * aucune suppression manuelle possible.
+   */
+  onDelete?: (key: string) => void;
 }
 
 /**
@@ -136,6 +173,7 @@ export function CompanionsPanel({
   onDamage,
   onHeal,
   onReset,
+  onDelete,
 }: CompanionsPanelProps) {
   return (
     <Stack spacing={1.5}>
@@ -150,6 +188,8 @@ export function CompanionsPanel({
           onDamage={(amount, kind) => onDamage(entry.key, amount, kind)}
           onHeal={(amount) => onHeal(entry.key, amount)}
           onReset={() => onReset(entry.key)}
+          // Corbeille rendue seulement pour une instance supprimable (zombie).
+          onDelete={onDelete && entry.instanceId !== undefined ? () => onDelete(entry.key) : undefined}
         />
       ))}
     </Stack>
