@@ -767,6 +767,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         title={character.name || 'Sans nom'}
         backHref={backTarget.href}
         backLabel={backTarget.label}
+        // Teinte l'en-tête à la couleur du profil principal (dégradé, bordure basse
+        // foncée, ombre portée) — repli neutre tant que le profil n'est pas défini.
+        accentColor={characterClass ? classColor(characterClass.id) : undefined}
         action={
           readOnly ? undefined : (
             <Button

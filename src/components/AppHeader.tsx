@@ -8,6 +8,7 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
+import { alpha, darken } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 
 interface AppHeaderProps {
@@ -32,6 +33,13 @@ interface AppHeaderProps {
   backLabel?: string;
   /** Contenu optionnel aligné à droite (boutons d'action). */
   action?: ReactNode;
+  /**
+   * Couleur d'accent (couleur de profil principal), utilisée pour teinter l'en-tête
+   * de la fiche : dégradé partant de la droite (25 % d'opacité) vers la transparence,
+   * bordure basse en variante plus foncée, et légère ombre portée. Absent = en-tête
+   * neutre (accueil, wizard).
+   */
+  accentColor?: string;
 }
 
 /**
@@ -40,20 +48,29 @@ interface AppHeaderProps {
  * Modèle unique — calqué sur l'en-tête de la fiche de personnage — pour l'accueil,
  * le wizard de création et la fiche. Reste visible au défilement.
  */
-export function AppHeader({ title, backHref, onBack, backLabel, action }: AppHeaderProps) {
+export function AppHeader({ title, backHref, onBack, backLabel, action, accentColor }: AppHeaderProps) {
   return (
     <AppBar
       position="sticky"
       // Verre dépoli, plus sombre que les sections de la fiche : gris quasi-noir à
       // peine transparent + le même flou d'arrière-plan (blur 10px) que les sections
       // (cf. SheetSection), pour laisser transparaître l'illustration au défilement.
+      //
+      // Avec `accentColor` (couleur de profil sur la fiche) : dégradé teinté partant
+      // de la DROITE (25 % d'opacité) vers la transparence à gauche, posé PAR-DESSUS
+      // le verre dépoli ; bordure basse en variante plus foncée de la couleur ; et
+      // une légère ombre portée sous toute la longueur, elle aussi teintée.
       sx={{
         bgcolor: 'rgba(20, 20, 23, 0.85)',
-        backgroundImage: 'none',
+        backgroundImage: accentColor
+          ? `linear-gradient(to left, ${alpha(accentColor, 0.25)}, transparent)`
+          : 'none',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
-        boxShadow: 'none',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        boxShadow: accentColor ? `0 4px 16px ${alpha(accentColor, 0.2)}` : 'none',
+        borderBottom: accentColor
+          ? `1px solid ${darken(accentColor, 0.4)}`
+          : '1px solid rgba(255, 255, 255, 0.08)',
       }}
     >
       <Toolbar>
