@@ -360,7 +360,10 @@ function SortableEquipmentRow({ id, children }: { id: string; children: ReactNod
   return (
     <Box
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      // `Translate` (translation seule) et NON `Transform` : avec `verticalListSortingStrategy`,
+      // @dnd-kit ajoute un scaleX/scaleY au transform quand les lignes ont des hauteurs
+      // différentes, ce qui étirerait/compresserait verticalement le texte de la ligne glissée.
+      style={{ transform: CSS.Translate.toString(transform), transition }}
       sx={{
         display: 'flex',
         alignItems: 'center',
