@@ -34,6 +34,26 @@ interface AppHeaderProps {
   /** Contenu optionnel aligné à droite (boutons d'action). */
   action?: ReactNode;
   /**
+   * Titre affiché AU REPOS, tant que le sous-titre est masqué (ex. « Fiche de
+   * personnage »). Quand `subtitleVisible` passe à `true`, il cède la place à `title`
+   * par un fondu croisé (le titre « change » vers le nom), puis le `subtitle` s'anime.
+   * Absent = `title` est toujours affiché tel quel (accueil, wizard).
+   */
+  restingTitle?: ReactNode;
+  /**
+   * Sous-titre optionnel révélé à droite du titre (ex. « peuple · profil · niveau »
+   * de la fiche). Reste monté en permanence pour pouvoir s'animer dans les deux sens ;
+   * sa visibilité est pilotée par `subtitleVisible`.
+   */
+  subtitle?: ReactNode;
+  /**
+   * Pilote la bascule repos → révélé : fondu croisé du titre (`restingTitle` → `title`)
+   * puis, avec un léger décalage, apparition du `subtitle` (slide depuis le bas +
+   * fondu). Animation inverse au retour. Sans effet visible si ni `restingTitle` ni
+   * `subtitle` ne sont fournis.
+   */
+  subtitleVisible?: boolean;
+  /**
    * Couleur d'accent (couleur de profil principal), utilisée pour teinter l'en-tête
    * de la fiche : dégradé partant de la droite (25 % d'opacité) vers la transparence,
    * bordure basse en variante plus foncée, et légère ombre portée. Absent = en-tête
@@ -48,7 +68,21 @@ interface AppHeaderProps {
  * Modèle unique — calqué sur l'en-tête de la fiche de personnage — pour l'accueil,
  * le wizard de création et la fiche. Reste visible au défilement.
  */
-export function AppHeader({ title, backHref, onBack, backLabel, action, accentColor }: AppHeaderProps) {
+export function AppHeader({
+  title,
+  backHref,
+  onBack,
+  backLabel,
+  action,
+  accentColor,
+  restingTitle,
+  subtitle,
+  subtitleVisible = false,
+}: AppHeaderProps) {
+  // Quand un titre de repos existe, le groupe « nom + sous-titre » n'est visible qu'une
+  // fois l'en-tête dépassé ; sinon (accueil, wizard) le titre est affiché en permanence.
+  const hasRestingTitle = restingTitle != null;
+  const revealed = !hasRestingTitle || subtitleVisible;
   return (
     <AppBar
       position="sticky"
@@ -103,18 +137,99 @@ export function AppHeader({ title, backHref, onBack, backLabel, action, accentCo
             )}
           </AppTooltip>
         )}
-        {/* Titre tronqué proprement (PER-228) : `noWrap` + `minWidth: 0` permettent au
-            titre de rétrécir dans le Toolbar et de finir en « … » plutôt que de s'écraser
-            sur plusieurs lignes contre les actions à droite sur écran étroit. `mr` réserve
-            un filet d'espace avant les actions. */}
-        <Typography
-          variant="h6"
-          component="h1"
-          noWrap
-          sx={{ flexGrow: 1, minWidth: 0, mr: action ? 1 : 0 }}
+        {/* Zone de titre. Le groupe occupe l'espace libre (`flexGrow: 1`) et sert
+            d'ancre (`relative`) au titre de repos superposé. Deux couches se croisent
+            en fondu selon `revealed` :
+              • couche « repos » (`restingTitle`, ex. « Fiche de personnage »), en
+                surimpression absolue — hors flux, elle n'influence pas la largeur ;
+              • groupe « révélé » (`title` = nom + `subtitle`), dans le flux normal :
+                c'est lui qui dimensionne et tronque (PER-228 : `noWrap` + `minWidth: 0`).
+            Le sous-titre entre APRÈS le nom (léger `transition-delay`) : slide depuis le
+            bas + fondu, sans aucun mouvement horizontal. `mr` réserve un filet d'espace
+            avant les actions. */}
+        <Box
+          sx={{
+            position: 'relative',
+            flexGrow: 1,
+            minWidth: 0,
+            display: 'flex',
+            alignItems: 'center',
+            mr: action ? 1 : 0,
+          }}
         >
-          {title}
-        </Typography>
+          {hasRestingTitle && (
+            <Box
+              aria-hidden={revealed}
+              sx={(theme) => ({
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                pointerEvents: revealed ? 'none' : 'auto',
+                opacity: revealed ? 0 : 1,
+                transform: revealed ? 'translateY(-0.4rem)' : 'translateY(0)',
+                transition: theme.transitions.create(['opacity', 'transform'], {
+                  duration: theme.transitions.duration.standard,
+                  easing: theme.transitions.easing.easeOut,
+                }),
+              })}
+            >
+              <Typography variant="h6" noWrap sx={{ minWidth: 0 }}>
+                {restingTitle}
+              </Typography>
+            </Box>
+          )}
+          <Box
+            aria-hidden={hasRestingTitle && !revealed}
+            sx={(theme) => ({
+              display: 'flex',
+              alignItems: 'center',
+              minWidth: 0,
+              flexGrow: 1,
+              opacity: revealed ? 1 : 0,
+              transform: revealed ? 'translateY(0)' : 'translateY(0.4rem)',
+              transition: theme.transitions.create(['opacity', 'transform'], {
+                duration: theme.transitions.duration.standard,
+                easing: theme.transitions.easing.easeOut,
+              }),
+            })}
+          >
+            <Typography variant="h6" component="h1" noWrap sx={{ minWidth: 0, flexShrink: 1 }}>
+              {title}
+            </Typography>
+            {/* Sous-titre : slide depuis le bas + fondu, décalé après le nom (le
+                `transition-delay` ne s'applique qu'à l'entrée ; à la sortie il repart
+                aussitôt). Barre verticale entre le nom et la ligne d'identité — le « · »
+                reste réservé aux séparations internes (peuple · profil · niveau). */}
+            {subtitle && (
+              <Box
+                aria-hidden={!subtitleVisible}
+                sx={(theme) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                  color: 'text.secondary',
+                  opacity: subtitleVisible ? 1 : 0,
+                  transform: subtitleVisible ? 'translateY(0)' : 'translateY(0.5rem)',
+                  ml: 1,
+                  transition: theme.transitions.create(['opacity', 'transform'], {
+                    duration: theme.transitions.duration.standard,
+                    easing: theme.transitions.easing.easeOut,
+                  }),
+                  transitionDelay: subtitleVisible ? '120ms' : '0ms',
+                })}
+              >
+                <Box
+                  component="span"
+                  aria-hidden="true"
+                  sx={{ alignSelf: 'center', width: '1px', height: 20, mr: 1, bgcolor: 'divider' }}
+                />
+                {subtitle}
+              </Box>
+            )}
+          </Box>
+        </Box>
         {action && <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{action}</Box>}
       </Toolbar>
     </AppBar>

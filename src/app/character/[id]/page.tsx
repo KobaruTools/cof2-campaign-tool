@@ -37,14 +37,10 @@ import { armorEncumbrancePenalty, setWornAt } from '@/lib/character/equipment';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
-import { classDisplayName } from '@/lib/character/classDisplay';
 import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/mastery';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { weaponAffinities } from '@/lib/character/weaponAffinity';
-import {
-  PriestVocationBadge,
-  PriestVocationIdentityLine,
-} from '@/components/sheet/PriestVocationBadge';
+import { PriestVocationIdentityLine } from '@/components/sheet/PriestVocationBadge';
 import { firearmsEffective } from '@/lib/character/firearms';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
@@ -90,6 +86,8 @@ import { listCompanions, pruneCompanionDepletion, resolveCreatureMaxHp } from '@
 import type { Depletion, FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { AppHeader } from '@/components/AppHeader';
+import { ScrollToTopButton } from '@/components/ScrollToTopButton';
+import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine';
 import { AppTooltip } from '@/components/AppTooltip';
 import { useToast } from '@/components/toast/ToastProvider';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
@@ -97,7 +95,7 @@ import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedVi
 import { HeaderIllustrations } from '@/components/HeaderIllustrations';
 import { HomeBackground } from '@/components/HomeBackground';
 import { CharacterSheetSkeleton } from '@/components/sheet/CharacterSheetSkeleton';
-import { ClassIcon, FirearmsAllowedProvider } from '@/components/ClassIcon';
+import { FirearmsAllowedProvider } from '@/components/ClassIcon';
 import { TombstoneIcon } from '@/components/TombstoneIcon';
 import { CampaignBadge } from '@/components/home/CampaignBadge';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
@@ -201,6 +199,25 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       return { abilities: next, derived: next, features: next, equipment: next, identity: next, notes: next };
     });
   const [levelUpOpen, setLevelUpOpen] = useState(false);
+  // Défilement au-delà de l'en-tête : quand la ligne d'identité passe sous la barre
+  // d'application collée, on révèle cette même ligne en sous-titre du header et le
+  // bouton « Haut de page ». Sentinelle = la ligne d'identité elle-même ; `rootMargin`
+  // négatif en haut ≈ hauteur de la barre collée, pour déclencher pile quand la ligne
+  // disparaît derrière elle (et non seulement en haut du viewport).
+  const identityLineRef = useRef<HTMLDivElement>(null);
+  const [scrolledPastHeader, setScrolledPastHeader] = useState(false);
+  useEffect(() => {
+    const el = identityLineRef.current;
+    if (el == null) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setScrolledPastHeader(!entry.isIntersecting),
+      { rootMargin: '-72px 0px 0px 0px', threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+    // La ligne d'identité est toujours montée dès que la fiche est chargée ; on
+    // (ré)attache l'observer quand la cible peut changer (chargement, id de perso).
+  }, [character?.id]);
   // Disposition des voies : « colonnes » sur grand écran (défaut historique), mais
   // « lignes » par défaut sur mobile (PER-229) — en colonnes, le bloc central de la
   // fiche rend une grille large à défilement horizontal, très inconfortable au doigt.
@@ -765,11 +782,26 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
       <AppHeader
         title={character.name || 'Sans nom'}
+        // Au repos (en haut de page), le header affiche « Fiche de personnage » ; au
+        // défilement il cède la place au nom (fondu croisé), puis la ligne d'identité.
+        restingTitle="Fiche de personnage"
         backHref={backTarget.href}
         backLabel={backTarget.label}
         // Teinte l'en-tête à la couleur du profil principal (dégradé, bordure basse
         // foncée, ombre portée) — repli neutre tant que le profil n'est pas défini.
         accentColor={characterClass ? classColor(characterClass.id) : undefined}
+        // Sous-titre « peuple · profil · niveau » révélé une fois l'en-tête dépassé
+        // (même mise en forme que dans l'en-tête de la fiche, composant partagé).
+        subtitle={
+          <CharacterIdentityLine
+            ancestryName={ancestry?.name}
+            characterClass={characterClass}
+            firearmsAllowed={firearmsAllowed}
+            priestVocation={character.priestVocation}
+            level={character.level}
+          />
+        }
+        subtitleVisible={scrolledPastHeader}
         action={
           readOnly ? undefined : (
             <Button
@@ -938,39 +970,18 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 </Typography>
               )}
             </Stack>
-            <Stack
-              direction="row"
-              spacing={0.75}
-              sx={{
-                alignItems: 'center',
-                color: 'text.secondary',
-                flexWrap: 'wrap',
-                position: 'relative',
-                zIndex: 1,
-              }}
-            >
-              <Typography variant="body1" component="span">
-                {ancestry?.name ?? 'Peuple à définir'} ·
-              </Typography>
-              {characterClass && <ClassIcon classId={characterClass.id} size={20} />}
-              <Typography
-                variant="body1"
-                component="span"
-                sx={{
-                  color: characterClass ? classColor(characterClass.id) : 'text.secondary',
-                  fontWeight: 600,
-                }}
-              >
-                {characterClass
-                  ? classDisplayName(characterClass, firearmsAllowed)
-                  : 'Profil à définir'}
-              </Typography>
-              {/* Vocation du prêtre spécialiste (PER-218) : trait d'identité, visible d'un coup d'œil. */}
-              <PriestVocationBadge vocation={character.priestVocation} />
-              <Typography variant="body1" component="span">
-                · niveau {character.level}
-              </Typography>
-            </Stack>
+            {/* Ligne d'identité « peuple · profil · niveau ». La ref sert de sentinelle
+                au défilement : quand elle passe sous la barre d'application collée, on
+                révèle la même ligne en sous-titre du header et le bouton « Haut de page ». */}
+            <CharacterIdentityLine
+              ref={identityLineRef}
+              ancestryName={ancestry?.name}
+              characterClass={characterClass}
+              firearmsAllowed={firearmsAllowed}
+              priestVocation={character.priestVocation}
+              level={character.level}
+              sx={{ flexWrap: 'wrap', position: 'relative', zIndex: 1 }}
+            />
 
             {/* Montée de niveau (PER-49) : toujours accessible (sauf en lecture
                 seule d'une fiche qui n'est pas la sienne). Le niveau max (20) est une
@@ -1406,6 +1417,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         </Stack>
       </Container>
       <HomeBackground variant="footer" />
+
+      {/* Bouton flottant « Haut de page », révélé par le même trigger que le sous-titre
+          du header. Ancré bas-droite, SOUS la pile de toasts (cf. z-index). */}
+      <ScrollToTopButton visible={scrolledPastHeader} />
 
       <LevelUpDialog
         open={levelUpOpen}
