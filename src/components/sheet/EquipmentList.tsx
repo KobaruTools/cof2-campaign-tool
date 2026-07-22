@@ -9,6 +9,8 @@ import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import NoMeetingRoomOutlinedIcon from '@mui/icons-material/NoMeetingRoomOutlined';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import ViewStreamIcon from '@mui/icons-material/ViewStream';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import Box from '@mui/material/Box';
@@ -32,6 +34,7 @@ import {
 } from '@dnd-kit/core';
 import {
   SortableContext,
+  rectSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
@@ -267,6 +270,65 @@ function InventoryLayoutToggle({
 }
 
 /**
+ * Bascule d'affichage liste / colonnes de l'inventaire (PER-223) : « Liste » (une ligne
+ * par objet, rendu historique) ou « Colonnes » (grille de cartes compactes). Calquée sur
+ * `FeaturesLayoutToggle` des Voies (`ToggleButtonGroup` à 2 boutons, mêmes icônes
+ * `ViewStreamIcon` / `ViewColumnIcon`). Orthogonale au regroupement par catégorie
+ * (`InventoryLayoutToggle`) : les deux bascules cohabitent dans l'en-tête. L'état est une
+ * préférence UI GLOBALE persistée (localStorage), gérée par l'appelant.
+ */
+function InventoryViewToggle({
+  cards,
+  onChange,
+}: {
+  cards: boolean;
+  onChange: (cards: boolean) => void;
+}) {
+  return (
+    <ToggleButtonGroup
+      value={cards ? 'cards' : 'list'}
+      exclusive
+      size="small"
+      onChange={(_, next) => {
+        if (next) onChange(next === 'cards');
+      }}
+    >
+      <ToggleButton value="list" aria-label="Affichage en liste">
+        <AppTooltip title="Affichage en liste">
+          <ViewStreamIcon fontSize="small" />
+        </AppTooltip>
+      </ToggleButton>
+      <ToggleButton value="cards" aria-label="Affichage en colonnes">
+        <AppTooltip title="Affichage en colonnes">
+          <ViewColumnIcon fontSize="small" />
+        </AppTooltip>
+      </ToggleButton>
+    </ToggleButtonGroup>
+  );
+}
+
+/**
+ * Grille responsive de cartes d'inventaire (PER-223, mode « colonnes ») : autant de
+ * colonnes que la largeur le permet, chaque carte occupant au minimum 260px (retour
+ * propriétaire). `alignItems` par défaut (`stretch`) → les cartes d'une même rangée
+ * s'alignent en hauteur ; combiné au pied poussé en bas dans la carte, le rendu reste
+ * régulier même quand les contenus diffèrent.
+ */
+function CardGrid({ children }: { children: ReactNode }) {
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+        gap: 1.5,
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+/**
  * En-tête d'un groupe de type d'objet (PER-221) : icône du type + libellé FR + décompte,
  * posé au-dessus des lignes du groupe en mode « Par catégorie ». Bloc custom (≠ Chip MUI,
  * cf. conventions), en tonalité secondaire discrète pour ne pas voler la vedette aux lignes.
@@ -396,6 +458,59 @@ function SortableEquipmentRow({ id, children }: { id: string; children: ReactNod
   );
 }
 
+/**
+ * Carte d'inventaire RÉORDONNABLE en grille (PER-223) : équivalent « colonnes » de
+ * `SortableEquipmentRow`. Le tri s'étend à la grille 2D (`rectSortingStrategy` côté
+ * `SortableContext`) — décision propriétaire, au-delà de la v1. La poignée de préhension
+ * (`DragIndicator`) est FOURNIE à la carte via le render-prop `children(dragHandle)` : elle
+ * se loge dans l'en-tête de la carte, à gauche du nom, et seule elle démarre le glisser
+ * (`setActivatorNodeRef` + `listeners`) — les boutons de la carte restent cliquables.
+ * `CSS.Translate` (translation seule, pas `Transform`) évite la déformation du contenu quand
+ * @dnd-kit ajouterait un scale sur des cartes de hauteurs différentes.
+ */
+function SortableEquipmentCard({
+  id,
+  children,
+}: {
+  id: string;
+  children: (dragHandle: ReactNode) => ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  const dragHandle = (
+    <AppTooltip title="Glisser pour réordonner">
+      <IconButton
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        size="small"
+        aria-label="Réordonner cet objet"
+        sx={{
+          flexShrink: 0,
+          p: 0.25,
+          color: 'text.secondary',
+          cursor: 'grab',
+          // Indispensable en tactile : empêche le scroll de la page de capturer le geste.
+          touchAction: 'none',
+          '&:active': { cursor: 'grabbing' },
+        }}
+      >
+        <DragIndicatorIcon fontSize="small" />
+      </IconButton>
+    </AppTooltip>
+  );
+  return (
+    <Box
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      // Carte en cours de glissement : passe au-dessus + légèrement estompée.
+      sx={{ ...(isDragging && { position: 'relative', zIndex: 1, opacity: 0.85 }) }}
+    >
+      {children(dragHandle)}
+    </Box>
+  );
+}
+
 /** Liste de l'équipement possédé, en lecture ou en édition. */
 export function EquipmentList({
   equipment,
@@ -432,6 +547,10 @@ export function EquipmentList({
   // Bascule « Organiser par catégorie » (PER-221) : préférence UI GLOBALE persistée
   // (localStorage), groupé par défaut. Le regroupement est purement VISUEL.
   const [grouped, setGrouped] = usePersistedBoolean('cof2-inventory-grouped', true);
+  // Bascule d'affichage liste / colonnes (PER-223) : préférence UI GLOBALE persistée
+  // (localStorage), orthogonale au regroupement. Défaut « liste » (rendu historique) —
+  // le mode cartes est un opt-in. `true` = cartes, `false` = liste.
+  const [cards, setCards] = usePersistedBoolean('cof2-inventory-cards', false);
 
   // Réordonnancement manuel (PER-222) : disponible en mode ÉDITION (`onChange`), à plat
   // uniquement (regroupement désactivé), et seulement s'il y a au moins deux lignes.
@@ -485,11 +604,19 @@ export function EquipmentList({
     );
   }
 
-  // Rendu d'UNE ligne d'inventaire, indexée par sa position d'ORIGINE `i` dans
+  // Rendu d'UN objet d'inventaire, indexé par sa position d'ORIGINE `i` dans
   // `equipment` (les mutations setLine/remove/onWear/onUse passent par cet index).
-  // Réutilisé tel quel par l'affichage à plat ET par l'affichage groupé (PER-221) :
-  // le regroupement étant purement visuel, l'index d'origine reste la clé stable.
-  const renderLine = (line: EquipmentLine, i: number) => {
+  // Réutilisé par l'affichage à plat ET groupé (PER-221), en LIGNE (`variant: 'row'`,
+  // défaut) ou en CARTE (`variant: 'card'`, mode colonnes PER-223) : le contenu (titre,
+  // badges, actions) est construit une fois puis agencé selon le variant, pour ne pas
+  // dupliquer la logique. En carte, `dragHandle` (fourni par `SortableEquipmentCard`) se
+  // loge dans l'en-tête pour le tri en grille.
+  const renderLine = (
+    line: EquipmentLine,
+    i: number,
+    opts?: { variant?: 'row' | 'card'; dragHandle?: ReactNode },
+  ) => {
+    const asCard = opts?.variant === 'card';
     const custom = isCustomItem(line);
     // Type d'objet (PER-213) : sert à l'icône affichée à gauche du nom.
     const lineType = itemType(line);
@@ -541,6 +668,239 @@ export function EquipmentList({
     // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
     // L'identité « arme à feu » se lit sur l'id de BASE (une variante n'y change rien).
     const firearmUnavailable = !custom && !firearmsAllowed && isFirearmItemId(line.itemId);
+    // === Pièces de contenu PARTAGÉES entre la ligne (row) et la carte (card) ===
+
+    // Titre : nom d'élixir (puce de capacité) OU icône de type + nom (+ détail structuré,
+    // badge DEF magique, bascule œil, crayon d'édition).
+    const titleContent = elixirFeatureId ? (
+      // Nom d'élixir : « Élixir — » suivi de la puce de la capacité reproduite (couleurs +
+      // icône du profil source, cf. CapabilityChip — style unique lisible sur tout fond).
+      <Typography
+        variant="body2"
+        component="span"
+        sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+      >
+        <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
+        Élixir —
+        <CapabilityChip featureId={elixirFeatureId} label={null} />
+      </Typography>
+    ) : (
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          flexWrap: 'wrap',
+          // Arme à feu indisponible : titre + détail grisés (PER-185).
+          ...(firearmUnavailable && { opacity: 0.5 }),
+        }}
+      >
+        {/* Icône du type d'objet (PER-213), teinte neutre, à gauche du nom. */}
+        <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
+        {/* Titre de l'objet. S'il porte une description libre, il devient survolable
+            (tooltip) — la description reste masquée par défaut. */}
+        {description ? (
+          <AppTooltip title={<GlossaryText>{description}</GlossaryText>} maxWidth={360}>
+            <Typography variant="body2" component="span" sx={{ fontWeight: 500, cursor: 'help' }}>
+              {equipmentLabel(line, characterClass)}
+            </Typography>
+          </AppTooltip>
+        ) : (
+          <Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>
+            {equipmentLabel(line, characterClass)}
+          </Typography>
+        )}
+        {structuredDetail && (
+          <Typography variant="caption" color="text.secondary" component="span">
+            {structuredDetail}
+          </Typography>
+        )}
+        {magicDef ? <MagicDefBadge value={magicDef} /> : null}
+        {/* Bascule œil : épingle la description sous le titre (état d'affichage local). */}
+        {description && (
+          <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>
+            <IconButton
+              size="small"
+              onClick={() => togglePinned(i)}
+              sx={{ p: 0.25 }}
+              aria-label={descPinned ? 'Masquer la description' : 'Afficher la description'}
+            >
+              {descPinned ? (
+                <VisibilityIcon fontSize="inherit" />
+              ) : (
+                <VisibilityOffOutlinedIcon fontSize="inherit" />
+              )}
+            </IconButton>
+          </AppTooltip>
+        )}
+        {/* Crayon (mode édition, PER-214) : ouvre la modale d'édition. Présent sur les objets
+            custom ET sur toute arme/armure/bouclier (ref catalogue ou variante) — sur une ref
+            simple, la 1re modification écrit `overrides` et elle devient une variante. Absent
+            du matériel/consommable du catalogue. */}
+        {onChange && (custom || equippable) && (
+          <AppTooltip title="Modifier l’objet">
+            <IconButton
+              size="small"
+              onClick={() => setItemEdit(i)}
+              sx={{ p: 0.25 }}
+              aria-label="Modifier l’objet"
+            >
+              <EditOutlinedIcon fontSize="inherit" />
+            </IconButton>
+          </AppTooltip>
+        )}
+      </Box>
+    );
+
+    // Description ÉPINGLÉE sous le titre (œil ouvert).
+    const pinnedDescription =
+      description && descPinned ? (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          component="div"
+          sx={{ mt: 0.25, whiteSpace: 'pre-line' }}
+        >
+          <GlossaryText>{description}</GlossaryText>
+        </Typography>
+      ) : null;
+
+    // Badges d'état : port (contrôles/badge), maîtrise, combat à deux armes, affinité, arme à feu.
+    const stateBadges = (
+      <>
+        {/* État de port (PER-77) : contrôles équiper/déséquiper si disponibles (état de jeu,
+            hors mode édition), sinon un simple badge « équipé » en lecture. */}
+        {wearable && onWear && (
+          <Box sx={{ mt: 0.5 }}>
+            <WornControls line={line} onWear={(w) => onWear(i, w)} />
+          </Box>
+        )}
+        {wearable && !onWear && line.worn && (
+          <Box sx={{ mt: 0.5 }}>
+            <WornBadge worn={line.worn} />
+          </Box>
+        )}
+        {/* Indicateur consultatif (PER-79) : arme en main non maîtrisée → dé malus. */}
+        {masteredIds && (
+          <WeaponMasteryBadge
+            line={line}
+            masteredIds={masteredIds}
+            firearmsAllowed={firearmsAllowed}
+            extraMasteredWeaponIds={extraMasteredWeaponIds}
+          />
+        )}
+        {/* Indicateur consultatif (PER-116) : arme tenue en main → dé malus du combat
+            à deux armes (p. 215), sauf exemption Combattant héroïque (p. 73). */}
+        {twoWeaponStatus && <TwoWeaponPenaltyBadge line={line} status={twoWeaponStatus} />}
+        {/* Affinité d'arme (PER-218) : badge POSITIF si l'arme est spéciale pour le perso
+            (arme sacrée du prêtre spécialiste). S'affiche sur l'objet du catalogue, porté ou non. */}
+        {resolveWeaponAffinities && !custom && item?.category === 'weapon' && (
+          <WeaponAffinityBadge affinities={resolveWeaponAffinities(line.itemId)} />
+        )}
+        {/* Avertissement (PER-185) : arme à poudre grisée quand la poudre est indisponible. */}
+        {firearmUnavailable && <FirearmUnavailableBadge />}
+      </>
+    );
+
+    // Contrôle de quantité : champ éditable (édition) ou « ×N » (lecture, masqué si N=1). Le
+    // bonus de DEF MAGIQUE (PER-85) se saisit dans la modale (crayon), plus en ligne (PER-214).
+    const quantityControl = onChange ? (
+      <TextField
+        type="number"
+        size="small"
+        label="Qté"
+        value={line.quantity}
+        onChange={(e) => setLine(i, { ...line, quantity: Math.max(1, Number(e.target.value) || 1) })}
+        sx={{ width: 80 }}
+      />
+    ) : line.quantity > 1 ? (
+      <Typography
+        variant="body1"
+        color="text.secondary"
+        sx={{ fontWeight: 700, fontSize: '1.1rem', flexShrink: 0 }}
+      >
+        ×{line.quantity}
+      </Typography>
+    ) : null;
+
+    // Puce « Choisir » (PER-220) : rappelle qu'une ligne placeholder (choix « X ou Y » d'un
+    // profil, ou Bourse de départ) est INDICATIVE et à résoudre. Purement visuelle.
+    const choiceBadge =
+      onUse && (isStartingChoiceLine(line) || isCoinPouchLine(line)) ? <ChoiceBadge /> : null;
+    // « Utiliser » (état de jeu, dispo hors édition) : route (via `onUse`) vers un choix de
+    // départ (PER-220), la Bourse de départ, ou un consommable (décrément/suppression).
+    const useButton =
+      onUse && (isConsumable(line) || isStartingChoiceLine(line)) ? (
+        <Button size="small" variant="outlined" onClick={() => onUse(i)} sx={{ flexShrink: 0 }}>
+          Utiliser
+        </Button>
+      ) : null;
+    const deleteButton = onChange ? (
+      <IconButton size="small" color="error" onClick={() => remove(i)}>
+        <DeleteOutlineIcon fontSize="small" />
+      </IconButton>
+    ) : null;
+
+    // === Carte verticale compacte (PER-223, mode colonnes) ===
+    if (asCard) {
+      // En-tête (poignée de tri éventuelle + titre), corps (description épinglée + badges),
+      // pied (quantité + Choisir/Utiliser/Supprimer). Un espaceur pousse le pied en bas pour
+      // que les cartes d'une même rangée s'alignent (`height: 100%` + grille en `stretch`).
+      const hasFooter = !!(quantityControl || choiceBadge || useButton || deleteButton);
+      return (
+        <Box
+          key={i}
+          sx={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            p: 1,
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: 1,
+            // Carte PORTÉE : léger fond teinté, comme la ligne (PER-77).
+            ...(line.worn && { bgcolor: (theme) => alpha(theme.palette.success.main, 0.06) }),
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+            {opts?.dragHandle}
+            <Box sx={{ flexGrow: 1, minWidth: 0 }}>{titleContent}</Box>
+          </Box>
+          {pinnedDescription}
+          {stateBadges}
+          {/* Espaceur : pousse le pied de carte en bas (hauteur régulière entre cartes). */}
+          <Box sx={{ flexGrow: 1 }} />
+          {hasFooter && (
+            <>
+              <Divider sx={{ mt: 0.75 }} />
+              <Stack
+                direction="row"
+                spacing={0.5}
+                sx={{ alignItems: 'center', mt: 0.75, flexWrap: 'wrap', rowGap: 0.5 }}
+              >
+                {quantityControl}
+                <Box
+                  sx={{
+                    ml: 'auto',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  {choiceBadge}
+                  {useButton}
+                  {deleteButton}
+                </Box>
+              </Stack>
+            </>
+          )}
+        </Box>
+      );
+    }
+
+    // === Ligne horizontale (variant « row ») — rendu historique inchangé ===
     return (
       <Stack
         key={i}
@@ -558,181 +918,14 @@ export function EquipmentList({
         }}
       >
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          {elixirFeatureId ? (
-            // Nom d'élixir : « Élixir — » suivi de la puce de la capacité reproduite (couleurs +
-            // icône du profil source, cf. CapabilityChip — style unique lisible sur tout fond).
-            <Typography
-              variant="body2"
-              component="span"
-              sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-            >
-              <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
-              Élixir —
-              <CapabilityChip featureId={elixirFeatureId} label={null} />
-            </Typography>
-          ) : (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                flexWrap: 'wrap',
-                // Ligne d'arme à feu indisponible : titre + détail grisés (PER-185).
-                ...(firearmUnavailable && { opacity: 0.5 }),
-              }}
-            >
-              {/* Icône du type d'objet (PER-213), teinte neutre, à gauche du nom. */}
-              <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
-              {/* Titre de l'objet. S'il porte une description libre, il devient survolable
-                  (tooltip) — la description reste masquée par défaut. */}
-              {description ? (
-                <AppTooltip title={<GlossaryText>{description}</GlossaryText>} maxWidth={360}>
-                  <Typography
-                    variant="body2"
-                    component="span"
-                    sx={{ fontWeight: 500, cursor: 'help' }}
-                  >
-                    {equipmentLabel(line, characterClass)}
-                  </Typography>
-                </AppTooltip>
-              ) : (
-                <Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>
-                  {equipmentLabel(line, characterClass)}
-                </Typography>
-              )}
-              {structuredDetail && (
-                <Typography variant="caption" color="text.secondary" component="span">
-                  {structuredDetail}
-                </Typography>
-              )}
-              {magicDef ? <MagicDefBadge value={magicDef} /> : null}
-              {/* Bascule œil : épingle la description sous le titre (état d'affichage local). */}
-              {description && (
-                <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>
-                  <IconButton
-                    size="small"
-                    onClick={() => togglePinned(i)}
-                    sx={{ p: 0.25 }}
-                    aria-label={descPinned ? 'Masquer la description' : 'Afficher la description'}
-                  >
-                    {descPinned ? (
-                      <VisibilityIcon fontSize="inherit" />
-                    ) : (
-                      <VisibilityOffOutlinedIcon fontSize="inherit" />
-                    )}
-                  </IconButton>
-                </AppTooltip>
-              )}
-              {/* Crayon (mode édition, PER-214) : ouvre la modale d'édition. Présent sur
-                  les objets custom ET sur toute arme/armure/bouclier (ref catalogue ou
-                  variante) — sur une ref simple, la 1re modification écrit `overrides` et
-                  elle devient une variante. Absent du matériel/consommable du catalogue. */}
-              {onChange && (custom || equippable) && (
-                <AppTooltip title="Modifier l’objet">
-                  <IconButton
-                    size="small"
-                    onClick={() => setItemEdit(i)}
-                    sx={{ p: 0.25 }}
-                    aria-label="Modifier l’objet"
-                  >
-                    <EditOutlinedIcon fontSize="inherit" />
-                  </IconButton>
-                </AppTooltip>
-              )}
-            </Box>
-          )}
-          {/* Description ÉPINGLÉE sous le titre (œil ouvert). */}
-          {description && descPinned && (
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              component="div"
-              sx={{ mt: 0.25, whiteSpace: 'pre-line' }}
-            >
-              <GlossaryText>{description}</GlossaryText>
-            </Typography>
-          )}
-          {/* État de port (PER-77) : contrôles équiper/déséquiper si disponibles (état de jeu,
-              hors mode édition), sinon un simple badge « équipé » en lecture. */}
-          {wearable && onWear && (
-            <Box sx={{ mt: 0.5 }}>
-              <WornControls line={line} onWear={(w) => onWear(i, w)} />
-            </Box>
-          )}
-          {wearable && !onWear && line.worn && (
-            <Box sx={{ mt: 0.5 }}>
-              <WornBadge worn={line.worn} />
-            </Box>
-          )}
-          {/* Indicateur consultatif (PER-79) : arme en main non maîtrisée → dé malus. */}
-          {masteredIds && (
-            <WeaponMasteryBadge
-              line={line}
-              masteredIds={masteredIds}
-              firearmsAllowed={firearmsAllowed}
-              extraMasteredWeaponIds={extraMasteredWeaponIds}
-            />
-          )}
-          {/* Indicateur consultatif (PER-116) : arme tenue en main → dé malus du combat
-              à deux armes (p. 215), sauf exemption Combattant héroïque (p. 73). */}
-          {twoWeaponStatus && <TwoWeaponPenaltyBadge line={line} status={twoWeaponStatus} />}
-          {/* Affinité d'arme (PER-218) : badge POSITIF si l'arme est spéciale pour le perso
-              (arme sacrée du prêtre spécialiste). S'affiche sur l'objet du catalogue, porté ou non. */}
-          {resolveWeaponAffinities && !custom && item?.category === 'weapon' && (
-            <WeaponAffinityBadge affinities={resolveWeaponAffinities(line.itemId)} />
-          )}
-          {/* Avertissement (PER-185) : arme à poudre grisée quand la poudre est indisponible. */}
-          {firearmUnavailable && <FirearmUnavailableBadge />}
+          {titleContent}
+          {pinnedDescription}
+          {stateBadges}
         </Box>
-        {/* Le bonus de DEF MAGIQUE de l'armure (PER-85) se saisit désormais dans la
-            modale d'édition (crayon), plus en ligne (retour recette PER-214). */}
-        {onChange ? (
-          <TextField
-            type="number"
-            size="small"
-            label="Qté"
-            value={line.quantity}
-            onChange={(e) =>
-              setLine(i, { ...line, quantity: Math.max(1, Number(e.target.value) || 1) })
-            }
-            sx={{ width: 80 }}
-          />
-        ) : (
-          line.quantity > 1 && (
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              sx={{ fontWeight: 700, fontSize: '1.1rem', flexShrink: 0 }}
-            >
-              ×{line.quantity}
-            </Typography>
-          )
-        )}
-        {/* Puce « Choisir » (PER-220), à côté du bouton « Utiliser » : rappelle qu'une ligne
-            placeholder (choix « X ou Y » d'un profil, ou Bourse de départ) est INDICATIVE et
-            à résoudre. Purement visuelle. */}
-        {onUse && (isStartingChoiceLine(line) || isCoinPouchLine(line)) && <ChoiceBadge />}
-        {/* « Utiliser » : à DROITE du nombre (état de jeu, dispo hors édition). Selon la ligne,
-            l'appelant (`onUse`) route vers :
-             - un CHOIX de départ à résoudre (`startingChoice`, PER-220) → modale de choix ;
-             - la Bourse de départ → modale de saisie des pa (CoinPouchDialog) ;
-             - un consommable (potion, parchemin, dose d'élixir) → décrément/suppression.
-            Jamais sur le matériel durable ordinaire. */}
-        {onUse && (isConsumable(line) || isStartingChoiceLine(line)) && (
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => onUse(i)}
-            sx={{ flexShrink: 0 }}
-          >
-            Utiliser
-          </Button>
-        )}
-        {onChange && (
-          <IconButton size="small" color="error" onClick={() => remove(i)}>
-            <DeleteOutlineIcon fontSize="small" />
-          </IconButton>
-        )}
+        {quantityControl}
+        {choiceBadge}
+        {useButton}
+        {deleteButton}
       </Stack>
     );
   };
@@ -741,48 +934,79 @@ export function EquipmentList({
     <Stack spacing={onChange ? 1.5 : 0}>
       {/* Conflits de port DURS (bouclier + arme à 2 mains, >1 armure/bouclier) — non bloquant (PER-77). */}
       <EquipConflictsAlert equipment={equipment} />
-      {/* Bascule d'affichage (PER-221) : « Par catégorie » / « À plat », préférence UI
-          globale persistée. Affichée dès qu'il y a au moins une ligne d'inventaire. */}
+      {/* Bascules d'affichage, préférences UI globales persistées et ORTHOGONALES : liste /
+          colonnes (PER-223) et regroupement par catégorie (PER-221). Affichées dès qu'il y a
+          au moins un objet d'inventaire. */}
       {equipment.length > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+          <InventoryViewToggle cards={cards} onChange={setCards} />
           <InventoryLayoutToggle grouped={grouped} onChange={setGrouped} />
         </Box>
       )}
       {grouped && equipment.length > 0 ? (
-        // Affichage GROUPÉ (PER-221) : un bloc par type d'objet présent, en-tête + lignes.
-        // `groupEquipmentByType` conserve l'index d'origine de chaque ligne pour les mutations.
+        // Affichage GROUPÉ (PER-221) : un bloc par type d'objet présent, en-tête + lignes/cartes
+        // (PER-223). `groupEquipmentByType` conserve l'index d'origine de chaque objet pour les
+        // mutations. Le tri par glisser-déposer est désactivé en groupé (réordonner entre
+        // catégories serait ambigu), quel que soit le layout.
         <Stack spacing={1.5}>
           {groupEquipmentByType(equipment).map((group) => (
             <Box key={group.type}>
               <GroupHeader type={group.type} count={group.entries.length} />
-              <Stack divider={<Divider />}>
-                {group.entries.map((e) => renderLine(e.line, e.index))}
-              </Stack>
+              {cards ? (
+                <Box sx={{ mt: 1 }}>
+                  <CardGrid>
+                    {group.entries.map((e) => renderLine(e.line, e.index, { variant: 'card' }))}
+                  </CardGrid>
+                </Box>
+              ) : (
+                <Stack divider={<Divider />}>
+                  {group.entries.map((e) => renderLine(e.line, e.index))}
+                </Stack>
+              )}
             </Box>
           ))}
         </Stack>
       ) : canReorder ? (
-        // Affichage À PLAT, RÉORDONNABLE (PER-222) : chaque ligne devient triable par
-        // glisser-déposer (poignée à gauche). Le glisser est borné à l'axe vertical et au
-        // conteneur ; l'ordre n'est réécrit qu'au drop (`handleReorder`).
+        // Affichage À PLAT, RÉORDONNABLE (PER-222/223) : chaque objet devient triable par
+        // glisser-déposer. En LISTE, tri vertical (poignée à gauche, axe borné à la verticale) ;
+        // en CARTES, tri en grille 2D (`rectSortingStrategy`, poignée dans l'en-tête). L'ordre
+        // n'est réécrit qu'au drop (`handleReorder`, via `reorderEquipment`).
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          modifiers={
+            cards ? [restrictToParentElement] : [restrictToVerticalAxis, restrictToParentElement]
+          }
           onDragEnd={handleReorder}
         >
-          <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
-            <Stack divider={<Divider />}>
-              {equipment.map((line, i) => (
-                <SortableEquipmentRow key={rowIds[i]} id={rowIds[i]}>
-                  {renderLine(line, i)}
-                </SortableEquipmentRow>
-              ))}
-            </Stack>
+          <SortableContext
+            items={rowIds}
+            strategy={cards ? rectSortingStrategy : verticalListSortingStrategy}
+          >
+            {cards ? (
+              <CardGrid>
+                {equipment.map((line, i) => (
+                  <SortableEquipmentCard key={rowIds[i]} id={rowIds[i]}>
+                    {(dragHandle) => renderLine(line, i, { variant: 'card', dragHandle })}
+                  </SortableEquipmentCard>
+                ))}
+              </CardGrid>
+            ) : (
+              <Stack divider={<Divider />}>
+                {equipment.map((line, i) => (
+                  <SortableEquipmentRow key={rowIds[i]} id={rowIds[i]}>
+                    {renderLine(line, i)}
+                  </SortableEquipmentRow>
+                ))}
+              </Stack>
+            )}
           </SortableContext>
         </DndContext>
+      ) : cards && equipment.length > 0 ? (
+        // Affichage À PLAT en CARTES (PER-223), non réordonnable (lecture seule, ou < 2 objets).
+        <CardGrid>{equipment.map((line, i) => renderLine(line, i, { variant: 'card' }))}</CardGrid>
       ) : (
-        // Affichage À PLAT : ordre stocké, comme avant PER-221.
+        // Affichage À PLAT en LIGNES : ordre stocké, comme avant PER-221.
         <Stack divider={<Divider />}>
           {equipment.map((line, i) => renderLine(line, i))}
           {equipment.length === 0 && onChange && (
