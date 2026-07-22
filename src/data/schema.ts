@@ -2321,6 +2321,14 @@ export interface Weapon extends EquipmentBase {
    * qu'un sous-type précis (Archer émérite « à l'arc », sa variante « armes de jet »).
    */
   rangedKind?: RangedWeaponKind;
+  /**
+   * Équivalent arbalète de remplacement quand les armes à poudre sont interdites dans
+   * l'univers (p. 62 / p. 185) — id d'une arme du catalogue de sous-type `crossbow`
+   * (pétoire → arbalète de poing, mousquet → arbalète lourde). Renseigné UNIQUEMENT sur
+   * les armes à poudre (`rangedKind: 'firearm'`), sinon absent. Représente en DONNÉE la
+   * substitution du livre (PER-234), qui n'était jusqu'ici qu'une liste de noms en dur.
+   */
+  equivalentCrossbowId?: string;
   /** Portée, notation du livre (ex. « 20 m », « 1d6 à 10 m » pour le lancer). */
   range?: string;
 }

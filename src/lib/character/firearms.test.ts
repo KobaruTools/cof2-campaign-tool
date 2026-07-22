@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { equipmentById } from '@/data';
 import type { Campaign } from '@/lib/campaign/types';
-import { firearmsEffective, isFirearmItem, isFirearmItemId } from './firearms';
+import { firearmsEffective, isFirearmChoiceOption, isFirearmItem, isFirearmItemId } from './firearms';
 
 function makeCampaign(firearmsAllowed: boolean): Campaign {
   return {
@@ -73,5 +73,56 @@ describe('isFirearmItemId', () => {
 
   it('faux pour un id inconnu', () => {
     expect(isFirearmItemId('id-inexistant')).toBe(false);
+  });
+});
+
+// Détection « cette option de choix d'équipement de départ octroie une arme à poudre »
+// (PER-234) : DATA-DRIVEN via `isFirearmItemId` sur les objets de l'option, jamais une
+// liste de noms. Sert à l'avertissement « poudre indisponible » de la modale de choix.
+describe('isFirearmChoiceOption', () => {
+  it('vrai si l’option octroie une arme à poudre (pétoire)', () => {
+    expect(
+      isFirearmChoiceOption({ label: 'Pétoire', items: [{ itemId: 'petoire', quantity: 1 }] }),
+    ).toBe(true);
+  });
+
+  it('faux pour l’option arbalète de poing (équivalent non-poudre)', () => {
+    expect(
+      isFirearmChoiceOption({
+        label: 'Arbalète de poing',
+        items: [{ itemId: 'arbalete-de-poing', quantity: 1 }],
+      }),
+    ).toBe(false);
+  });
+
+  it('vrai si un LOT contient une arme à poudre parmi plusieurs objets', () => {
+    expect(
+      isFirearmChoiceOption({
+        label: 'Pétoire + dague',
+        items: [
+          { itemId: 'dague', quantity: 1 },
+          { itemId: 'petoire', quantity: 1 },
+        ],
+      }),
+    ).toBe(true);
+  });
+});
+
+// Équivalent arbalète d'une arme à poudre quand la poudre est interdite (p. 62 / p. 185) :
+// représenté en DONNÉE sur l'objet arme à feu (PER-234), plus aucune table de noms en dur.
+describe('equivalentCrossbowId (données catalogue)', () => {
+  it('pétoire → arbalète de poing, mousquet → arbalète lourde', () => {
+    const petoire = equipmentById.get('petoire');
+    const mousquet = equipmentById.get('mousquet');
+    expect(isFirearmItem(petoire) && petoire.equivalentCrossbowId).toBe('arbalete-de-poing');
+    expect(isFirearmItem(mousquet) && mousquet.equivalentCrossbowId).toBe('arbalete-lourde');
+  });
+
+  it('chaque arme à poudre pointe vers une arbalète existante du catalogue', () => {
+    for (const item of equipmentById.values()) {
+      if (!isFirearmItem(item)) continue;
+      const equiv = item.equivalentCrossbowId ? equipmentById.get(item.equivalentCrossbowId) : undefined;
+      expect(equiv?.category === 'weapon' && equiv.rangedKind === 'crossbow').toBe(true);
+    }
   });
 });

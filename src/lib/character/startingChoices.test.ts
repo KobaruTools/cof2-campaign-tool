@@ -31,6 +31,14 @@ describe('startingChoiceOptionsFor', () => {
     expect(options?.[2].items.map((i) => i.itemId)).toEqual(['hache', 'grand-bouclier']);
   });
 
+  it('reconnaît le choix « Pétoire ou arbalète de poing » de l’arquebusier (PER-234)', () => {
+    const line: EquipmentLine = { custom: true, name: 'Pétoire ou arbalète de poing', quantity: 1 };
+    expect(startingChoiceOptionsFor(line)?.map((o) => o.items[0].itemId)).toEqual([
+      'petoire',
+      'arbalete-de-poing',
+    ]);
+  });
+
   it('ignore la Bourse, un objet du catalogue et un objet libre quelconque', () => {
     expect(startingChoiceOptionsFor({ custom: true, name: 'Bourse de 2d6 pa', quantity: 1 })).toBeUndefined();
     expect(startingChoiceOptionsFor({ itemId: 'epee-longue', quantity: 1 })).toBeUndefined();

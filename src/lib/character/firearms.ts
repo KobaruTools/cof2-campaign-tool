@@ -17,7 +17,7 @@
  * reste Arbalétrier quelle que soit la campagne.
  */
 import { equipmentById } from '@/data';
-import type { EquipmentItem } from '@/data/schema';
+import type { EquipmentItem, StartingEquipmentChoiceOption, Weapon } from '@/data/schema';
 import type { Campaign } from '@/lib/campaign/types';
 import type { Character } from './types';
 
@@ -33,7 +33,7 @@ import type { Character } from './types';
  * (accès à distance normal). Source unique partagée par la légalité (`checkCompliance`) et
  * la maîtrise des armes (PER-79).
  */
-export function isFirearmItem(item: EquipmentItem | undefined | null): boolean {
+export function isFirearmItem(item: EquipmentItem | undefined | null): item is Weapon {
   return item?.category === 'weapon' && item.rangedKind === 'firearm';
 }
 
@@ -44,6 +44,16 @@ export function isFirearmItem(item: EquipmentItem | undefined | null): boolean {
  */
 export function isFirearmItemId(itemId: string): boolean {
   return isFirearmItem(equipmentById.get(itemId));
+}
+
+/**
+ * Une option de CHOIX d'équipement de départ (PER-220) octroie-t-elle une arme à poudre ?
+ * (PER-234) DATA-DRIVEN via `isFirearmItemId` sur les objets de l'option — jamais une liste
+ * de noms. Sert à l'avertissement « poudre indisponible » de la modale de choix : sélectionner
+ * la pétoire alors que la poudre est interdite (effectif) part avec une arme absente de l'univers.
+ */
+export function isFirearmChoiceOption(option: StartingEquipmentChoiceOption): boolean {
+  return option.items.some((it) => isFirearmItemId(it.itemId));
 }
 
 export function firearmsEffective(

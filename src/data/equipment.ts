@@ -633,6 +633,8 @@ export const weapons: Weapon[] = [
     melee: false,
     ranged: true,
     rangedKind: 'firearm',
+    // Poudre interdite dans l'univers → la pétoire est remplacée par une arbalète de poing (p. 62).
+    equivalentCrossbowId: 'arbalete-de-poing',
     damage: { count: 1, die: 'd10' },
     range: '20 m',
     price: { amount: 50, unit: 'pa' },
@@ -648,6 +650,8 @@ export const weapons: Weapon[] = [
     melee: false,
     ranged: true,
     rangedKind: 'firearm',
+    // Poudre interdite dans l'univers → le mousquet est remplacé par une arbalète lourde (p. 62).
+    equivalentCrossbowId: 'arbalete-lourde',
     damage: { count: 2, die: 'd6' },
     range: '50 m',
     price: { amount: 100, unit: 'pa' },

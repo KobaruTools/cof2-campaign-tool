@@ -39,7 +39,7 @@ import {
   pathById,
   priestGods,
 } from '@/data';
-import type { Armor, CharacterClass, Feature, Shield } from '@/data/schema';
+import type { Armor, CharacterClass, Feature, Shield, Weapon } from '@/data/schema';
 import { AppAlert } from '@/components/AppAlert';
 import { IdentityForm } from '@/components/IdentityForm';
 import {
@@ -66,6 +66,7 @@ import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { DamageValue } from '@/components/DamageValue';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
+import { isFirearmItem } from '@/lib/character/firearms';
 import { FeatureLabel } from '@/components/FeatureLabel';
 import type { StepProps } from './types';
 
@@ -82,13 +83,16 @@ const SHIELDS: Shield[] = equipment
   .sort((a, b) => a.def - b.def);
 
 /**
- * Armes à poudre de l'arquebusier — noms courts pour le chip de restrictions
- * (p. 185). Si les armes à feu sont interdites dans l'univers, chacune est
- * remplacée par son équivalent arbalète (p. 62 : mousquet → arbalète lourde ; la
- * pétoire par l'arbalète de poing, cf. catalogue d'équipement).
+ * Armes à poudre de l'arquebusier — noms pour le chip de restrictions (p. 185), et leurs
+ * équivalents arbalète quand la poudre est interdite dans l'univers (p. 62 : pétoire → arbalète
+ * de poing, mousquet → arbalète lourde). DATA-DRIVEN (PER-234) : dérivés du sous-type d'arme à
+ * poudre (`isFirearmItem`) et du champ `equivalentCrossbowId`, plus aucune liste de noms en dur.
  */
-const FIREARM_SHORT_NAMES = ['pétoire', 'mousquet'];
-const CROSSBOW_EQUIVALENT_NAMES = ['Arbalète de poing', 'Arbalète lourde'];
+const FIREARMS: Weapon[] = equipment.filter(isFirearmItem);
+const FIREARM_SHORT_NAMES = FIREARMS.map((f) => f.name);
+const CROSSBOW_EQUIVALENT_NAMES = FIREARMS.map(
+  (f) => (f.equivalentCrossbowId ? equipmentById.get(f.equivalentCrossbowId)?.name : undefined) ?? f.name,
+);
 
 /** Icône épée (MUI n'en fournit pas) — tracé Material Design Icons « sword ». */
 function SwordIcon(props: SvgIconProps) {

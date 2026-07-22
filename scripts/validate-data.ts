@@ -123,8 +123,12 @@ for (const v of ancestryPaths)
 const itemMiss = new Set<string>();
 for (const p of classes) {
   if (p.maxArmorId && !equipmentById.has(p.maxArmorId)) itemMiss.add(p.maxArmorId);
-  for (const e of p.startingEquipment)
+  for (const e of p.startingEquipment) {
     if (e.itemId && !equipmentById.has(e.itemId)) itemMiss.add(e.itemId);
+    // Options d'un choix « X ou Y » (PER-220/234) : chaque objet octroyé doit exister.
+    for (const opt of e.choice ?? [])
+      for (const it of opt.items) if (!equipmentById.has(it.itemId)) itemMiss.add(it.itemId);
+  }
   for (const wid of p.allowedWeaponIds)
     if (!equipmentById.has(wid)) itemMiss.add(wid);
   for (const wid of p.excludedWeaponIds ?? [])
@@ -136,6 +140,17 @@ for (const p of classes) {
 }
 if (itemMiss.size)
   warn(`[équipement] ${itemMiss.size} slug(s) référencés par les profils absents du catalogue : ${[...itemMiss].sort().join(', ')}`);
+
+// Équivalent arbalète des armes à poudre (PER-234) : quand la poudre est interdite, l'arme à
+// feu est remplacée par son équivalent (p. 62). L'id doit exister et pointer une arbalète.
+for (const item of equipment) {
+  if (item.category !== 'weapon' || item.equivalentCrossbowId === undefined) continue;
+  const equiv = equipmentById.get(item.equivalentCrossbowId);
+  if (!equiv || equiv.category !== 'weapon' || equiv.rangedKind !== 'crossbow')
+    err(`[équipement ${item.id}] equivalentCrossbowId doit pointer une arbalète : ${item.equivalentCrossbowId}`);
+  if (item.rangedKind !== 'firearm')
+    err(`[équipement ${item.id}] equivalentCrossbowId réservé aux armes à poudre (rangedKind firearm)`);
+}
 
 // --- Classification des capacités (PER-62) -----------------------------------
 // Couverture : exactement une classification par capacité, ids existants,

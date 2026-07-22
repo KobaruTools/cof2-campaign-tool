@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 19,
+  "id": "recette-per234-arquebusier-choix-depart",
+  "name": "Recette PER-234 — Arquebusier (poudre autorisée)",
+  "identity": {
+    "description": "ATTENDU (PER-234) : à la création, une SEULE ligne de choix « Pétoire ou arbalète de poing » dans l’inventaire (au lieu des 2 armes séparées). Cliquez « Choisir » sur cette ligne → modale radio 2 options. Poudre autorisée ici → AUCUN avertissement, quelle que soit l’option."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 1,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 2,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 2,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "mercenaire-r1",
+    "precision-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "custom": true,
+      "name": "Pétoire ou arbalète de poing",
+      "quantity": 1
+    },
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    },
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "couverture",
+      "quantity": 1
+    },
+    {
+      "itemId": "torche",
+      "quantity": 1
+    },
+    {
+      "itemId": "briquet-a-silex",
+      "quantity": 1
+    },
+    {
+      "itemId": "outre",
+      "quantity": 1
+    },
+    {
+      "itemId": "gamelle",
+      "quantity": 1
+    },
+    {
+      "custom": true,
+      "name": "Bourse de 2d6 pa",
+      "quantity": 1
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-234 — Vérifier : l’inventaire ne contient PAS deux armes à distance (pétoire ET arbalète) mais une ligne de choix unique. La modale « Choisir » propose « Pétoire (1d10) » et « Arbalète de poing (1d6) » ; valider remplace la ligne par l’arme retenue.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

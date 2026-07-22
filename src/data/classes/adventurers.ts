@@ -48,12 +48,23 @@ export const adventurerClasses: CharacterClass[] = [
     nameWithoutFirearms: 'Arbalétrier',
     weaponNotes: "Fabrique sa propre poudre, sans risque d'explosion accidentelle.",
     startingEquipment: [
-      // « Pétoire OU arbalète de poing » (p. 62) : deux lignes catalogue distinctes plutôt
-      // qu'un choix `null` (retour propriétaire PER-93). Quand la poudre est interdite en
-      // campagne, la ligne pétoire est GRISÉE + avertie dans l'inventaire (PER-185), sans être
-      // retirée : le MJ garde la liberté de la conserver pour un effet de style.
-      { itemId: 'petoire', label: 'Pétoire (DM 1d10, portée 20 m)', quantity: 1 },
-      { itemId: 'arbalete-de-poing', label: 'Arbalète de poing (DM 1d6, portée 10 m)', quantity: 1 },
+      // « Pétoire OU arbalète de poing » (p. 62) : un seul CHOIX à la création (PER-234), sur le
+      // patron « épée ou hache » du guerrier — le joueur ne repart qu'avec l'arme retenue. Seul le
+      // palier de départ (pétoire / arbalète de poing) est proposé ; mousquet et arbalète lourde
+      // restent des achats ultérieurs. Résolu par la modale « Choisir » de la fiche, qui avertit
+      // si la pétoire est choisie alors que la poudre est interdite dans l'univers (PER-185).
+      {
+        itemId: null,
+        label: 'Pétoire ou arbalète de poing',
+        quantity: 1,
+        choice: [
+          { label: 'Pétoire (DM 1d10, portée 20 m)', items: [{ itemId: 'petoire', quantity: 1 }] },
+          {
+            label: 'Arbalète de poing (DM 1d6, portée 10 m)',
+            items: [{ itemId: 'arbalete-de-poing', quantity: 1 }],
+          },
+        ],
+      },
       { itemId: 'epee-longue', label: 'Épée longue (DM 1d8)', quantity: 1 },
       { itemId: 'dague', label: 'Dague (DM 1d4)', quantity: 1 },
       { itemId: 'cuir-renforce-broigne', label: 'Cuir renforcé (DEF +3)', quantity: 1 },

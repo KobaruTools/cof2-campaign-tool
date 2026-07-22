@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -12,6 +13,7 @@ import RadioGroup from '@mui/material/RadioGroup';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
+import { isFirearmChoiceOption } from '@/lib/character/firearms';
 
 export interface StartingChoiceDialogProps {
   open: boolean;
@@ -19,6 +21,12 @@ export interface StartingChoiceDialogProps {
   label: string;
   /** Options concrètes résolvables (PER-220). */
   options: StartingEquipmentChoiceOption[];
+  /**
+   * Autorisation EFFECTIVE des armes à feu du personnage (PER-185). Quand elle est `false` et
+   * qu'une option octroie une arme à poudre (arquebusier, PER-234), la modale AVERTIT à la
+   * sélection sans bloquer : le joueur partirait avec une arme absente de l'univers.
+   */
+  firearmsEffective?: boolean;
   onClose: () => void;
   /** Valide le choix : la ligne placeholder est remplacée par l'objet (ou le lot) de l'option retenue. */
   onConfirm: (option: StartingEquipmentChoiceOption) => void;
@@ -34,11 +42,17 @@ export function StartingChoiceDialog({
   open,
   label,
   options,
+  firearmsEffective = true,
   onClose,
   onConfirm,
 }: StartingChoiceDialogProps) {
   const [selected, setSelected] = useState(0);
   const valid = selected >= 0 && selected < options.length;
+
+  // Avertissement non bloquant (PER-234) : l'option retenue octroie une arme à poudre alors que
+  // la poudre est interdite dans cet univers (effectif). Détection data-driven (`isFirearmChoiceOption`).
+  const firearmWarning =
+    !firearmsEffective && valid && isFirearmChoiceOption(options[selected]);
 
   const confirm = () => {
     if (!valid) return;
@@ -66,6 +80,12 @@ export function StartingChoiceDialog({
               />
             ))}
           </RadioGroup>
+          {firearmWarning && (
+            <Alert severity="warning" sx={{ mt: 0.5 }}>
+              Les armes à feu sont interdites dans cet univers : vous partiriez avec une arme à
+              poudre inutilisable. L’équivalent arbalète est recommandé.
+            </Alert>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions>
