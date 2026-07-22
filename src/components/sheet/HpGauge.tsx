@@ -120,6 +120,12 @@ export interface HpGaugeProps {
   persistKey: string;
   /** Libellé de l'icône cœur (info-bulle du cap). Défaut « Points de vie ». */
   iconLabel?: string;
+  /**
+   * Place les boutons rapides (−1 / +1 / remise à plein) sur une ligne DÉDIÉE sous la barre,
+   * plutôt qu'à sa droite (défaut). Sert aux dispositions étroites (colonnes du tracker
+   * d'initiative de l'écran de MJ, PER-236) où la barre a besoin de toute la largeur.
+   */
+  controlsBelow?: boolean;
 }
 
 /**
@@ -132,7 +138,7 @@ export interface HpGaugeProps {
  * Le maximum est piloté ailleurs. Sert à la fois au personnage (`PlayerStatusPanel`) et à
  * chaque compagnon (`CompanionCard`), pour un comportement de suivi de PV identique.
  */
-export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKey, iconLabel = 'Points de vie' }: HpGaugeProps) {
+export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKey, iconLabel = 'Points de vie', controlsBelow = false }: HpGaugeProps) {
   const theme = useTheme();
   const hpColor = theme.palette.success.main;
   const [amount, setAmount] = useState('1');
@@ -162,10 +168,38 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
     if (parsedAmount > 0) onHeal(parsedAmount);
   };
 
+  // Boutons rapides (−1 / +1 / remise à plein) : rendus soit à droite de la barre (défaut),
+  // soit sur une ligne dédiée en dessous (`controlsBelow`, colonnes étroites du tracker MJ).
+  const quickControls = (
+    <>
+      <AppTooltip title="Infliger 1 dégât létal">
+        <span>
+          <IconButton size="small" aria-label="Retirer 1 PV" onClick={() => onDamage(1, 'lethal')}>
+            <RemoveIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </AppTooltip>
+      <AppTooltip title="Soigner 1 PV">
+        <span>
+          <IconButton size="small" aria-label="Rendre 1 PV" disabled={!hasDamage} onClick={() => onHeal(1)}>
+            <AddIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </AppTooltip>
+      <AppTooltip title="Remettre les PV à plein (outil manuel, hors règles de repos)">
+        <span>
+          <IconButton size="small" aria-label="Remettre les PV à plein" disabled={!hasDamage} onClick={onReset}>
+            <RestartAltIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </AppTooltip>
+    </>
+  );
+
   return (
     <Stack spacing={1.25}>
       {/* Cap d'expansion + icône cœur (libellé en tooltip) + barre (courant/max intégré +
-          badge d'état) + ajustement fin (±1, reset) accolés à sa droite. */}
+          badge d'état) + ajustement fin (±1, reset) accolés à sa droite (ou en dessous). */}
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
         <Stack direction="row" spacing={0} sx={{ alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
           <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} color={hpColor} />
@@ -182,28 +216,15 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
           </Box>
         </Stack>
         {state !== 'normal' && <HealthStateBadge state={state} />}
-        <AppTooltip title="Infliger 1 dégât létal">
-          <span>
-            <IconButton size="small" aria-label="Retirer 1 PV" onClick={() => onDamage(1, 'lethal')}>
-              <RemoveIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </AppTooltip>
-        <AppTooltip title="Soigner 1 PV">
-          <span>
-            <IconButton size="small" aria-label="Rendre 1 PV" disabled={!hasDamage} onClick={() => onHeal(1)}>
-              <AddIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </AppTooltip>
-        <AppTooltip title="Remettre les PV à plein (outil manuel, hors règles de repos)">
-          <span>
-            <IconButton size="small" aria-label="Remettre les PV à plein" disabled={!hasDamage} onClick={onReset}>
-              <RestartAltIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </AppTooltip>
+        {!controlsBelow && quickControls}
       </Stack>
+
+      {/* Boutons rapides sur leur propre ligne (disposition étroite) — alignés à droite. */}
+      {controlsBelow && (
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
+          {quickControls}
+        </Stack>
+      )}
 
       {/* Contrôles détaillés : montant + nature (létal/temp) + Dégâts / Soin. Repliés par défaut. */}
       <Collapse in={expanded} unmountOnExit>
