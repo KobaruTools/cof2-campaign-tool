@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 19,
+  "id": "recette-per222-inventaire-reordonnancement",
+  "name": "Recette PER-222 — Réordonnancement inventaire",
+  "identity": {
+    "description": "ATTENDU (PER-222) : en MODE ÉDITION (« Modifier ») et avec la bascule « À plat » (regroupement par catégorie DÉSACTIVÉ), chaque ligne d’inventaire porte une poignée « ⠿ » à gauche. On glisse une ligne pour la réordonner ; l’ordre est persisté (survit au rechargement). Hors édition, OU en mode « Par catégorie » : ni poignée ni glisser-déposer. Réordonnancement aussi au clavier (Tab jusqu’à la poignée, Espace, flèches, Espace pour déposer)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1
+    },
+    {
+      "itemId": "potion-de-soins",
+      "quantity": 3
+    },
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    },
+    {
+      "custom": true,
+      "name": "Carte au trésor",
+      "quantity": 1,
+      "type": "misc",
+      "details": "Menant à une crypte oubliée."
+    },
+    {
+      "itemId": "grand-bouclier",
+      "quantity": 1
+    },
+    {
+      "custom": true,
+      "name": "Ration de voyage",
+      "quantity": 5,
+      "type": "consumable"
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-222 — fiche de recette du glisser-déposer d’inventaire. Inventaire volontairement à plat et mêlé.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -5,6 +5,7 @@ import AddIcon from '@mui/icons-material/Add';
 import AltRouteIcon from '@mui/icons-material/AltRoute';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import NoMeetingRoomOutlinedIcon from '@mui/icons-material/NoMeetingRoomOutlined';
@@ -20,11 +21,28 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { equipment as equipmentCatalog } from '@/data';
 import type { CharacterClass, EquipmentItem } from '@/data/schema';
 import type { EquipmentLine, ItemType, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
-import { effectiveItem, groupEquipmentByType, itemType } from '@/lib/character/items';
+import { effectiveItem, groupEquipmentByType, itemType, reorderEquipment } from '@/lib/character/items';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { isFirearmItemId } from '@/lib/character/firearms';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
@@ -329,6 +347,52 @@ export interface EquipmentListProps {
   twoWeaponStatus?: TwoWeaponCombatStatus;
 }
 
+/**
+ * Ligne d'inventaire RÉORDONNABLE (PER-222) : enrobe le rendu d'une ligne d'une poignée
+ * de préhension `DragIndicator` à gauche. Le glisser ne démarre QUE depuis la poignée
+ * (`setActivatorNodeRef` + `listeners` portés par elle seule) — les boutons/tooltips de
+ * la ligne restent cliquables. `id` = index d'origine (chaîne) : stable pendant tout un
+ * glisser (le tableau n'est réécrit qu'au drop), c'est l'identité déjà utilisée en clé.
+ */
+function SortableEquipmentRow({ id, children }: { id: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <Box
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.5,
+        // Ligne en cours de glissement : passe au-dessus + légèrement estompée.
+        ...(isDragging && { position: 'relative', zIndex: 1, opacity: 0.85 }),
+      }}
+    >
+      <AppTooltip title="Glisser pour réordonner">
+        <IconButton
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          size="small"
+          aria-label="Réordonner cet objet"
+          sx={{
+            flexShrink: 0,
+            color: 'text.secondary',
+            cursor: 'grab',
+            // Indispensable en tactile : empêche le scroll de la page de capturer le geste.
+            touchAction: 'none',
+            '&:active': { cursor: 'grabbing' },
+          }}
+        >
+          <DragIndicatorIcon fontSize="small" />
+        </IconButton>
+      </AppTooltip>
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>{children}</Box>
+    </Box>
+  );
+}
+
 /** Liste de l'équipement possédé, en lecture ou en édition. */
 export function EquipmentList({
   equipment,
@@ -365,6 +429,23 @@ export function EquipmentList({
   // Bascule « Organiser par catégorie » (PER-221) : préférence UI GLOBALE persistée
   // (localStorage), groupé par défaut. Le regroupement est purement VISUEL.
   const [grouped, setGrouped] = usePersistedBoolean('cof2-inventory-grouped', true);
+
+  // Réordonnancement manuel (PER-222) : disponible en mode ÉDITION (`onChange`), à plat
+  // uniquement (regroupement désactivé), et seulement s'il y a au moins deux lignes.
+  const canReorder = !!onChange && !grouped && equipment.length > 1;
+  // PointerSensor couvre souris + tactile + stylet ; une distance d'activation évite qu'un
+  // simple clic sur la poignée ne déclenche un glisser. KeyboardSensor rend le tri accessible
+  // au clavier (flèches haut/bas après Espace/Entrée sur la poignée).
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const handleReorder = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    // `id` = index d'origine (chaîne). Réécrit l'ordre du tableau et remonte via `onChange`.
+    onChange?.(reorderEquipment(equipment, Number(active.id), Number(over.id)));
+  };
 
   if (equipment.length === 0 && !onChange) {
     return (
@@ -650,6 +731,29 @@ export function EquipmentList({
             </Box>
           ))}
         </Stack>
+      ) : canReorder ? (
+        // Affichage À PLAT, RÉORDONNABLE (PER-222) : chaque ligne devient triable par
+        // glisser-déposer (poignée à gauche). Le glisser est borné à l'axe vertical et au
+        // conteneur ; l'ordre n'est réécrit qu'au drop (`handleReorder`).
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          onDragEnd={handleReorder}
+        >
+          <SortableContext
+            items={equipment.map((_, i) => String(i))}
+            strategy={verticalListSortingStrategy}
+          >
+            <Stack divider={<Divider />}>
+              {equipment.map((line, i) => (
+                <SortableEquipmentRow key={i} id={String(i)}>
+                  {renderLine(line, i)}
+                </SortableEquipmentRow>
+              ))}
+            </Stack>
+          </SortableContext>
+        </DndContext>
       ) : (
         // Affichage À PLAT : ordre stocké, comme avant PER-221.
         <Stack divider={<Divider />}>

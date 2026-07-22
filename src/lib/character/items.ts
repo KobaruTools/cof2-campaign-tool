@@ -114,6 +114,26 @@ export function groupEquipmentByType(equipment: EquipmentLine[]): EquipmentGroup
 }
 
 /**
+ * Réordonne l'inventaire (PER-222) : déplace la ligne d'index `from` à la position `to`,
+ * en conservant l'ordre relatif des autres. `Character.equipment` étant un tableau où la
+ * POSITION EST l'ordre d'affichage, réordonner = réécrire ce tableau (aucune migration).
+ * Fonction PURE : ne mute jamais la source et renvoie toujours une NOUVELLE référence
+ * (l'appelant remonte le résultat via `onChange`). Un index hors bornes (garde-fou) ou
+ * `from === to` renvoie une simple copie inchangée.
+ */
+export function reorderEquipment(
+  equipment: EquipmentLine[],
+  from: number,
+  to: number,
+): EquipmentLine[] {
+  const next = equipment.slice();
+  if (from < 0 || from >= next.length || to < 0 || to >= next.length || from === to) return next;
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
+/**
  * Objet du catalogue résolu pour une référence, surcharges d'instance appliquées
  * (PER-211). Sans `overrides`, renvoie l'objet du catalogue tel quel (référence
  * partagée, aucune copie — comportement identique à l'ancien `equipmentById.get`).

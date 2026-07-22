@@ -4,6 +4,7 @@ import {
   effectiveItem,
   groupEquipmentByType,
   itemType,
+  reorderEquipment,
   snapshotOverrides,
 } from './items';
 import { isCustomItem } from './types';
@@ -176,5 +177,45 @@ describe('snapshotOverrides', () => {
       name: 'Dague',
       damage: { count: 1, die: 'd4' },
     });
+  });
+});
+
+describe('reorderEquipment (PER-222 — réordonnancement manuel à plat)', () => {
+  // Lignes minimales, distinguées par `itemId` pour lire l'ordre résultant.
+  const a: EquipmentLine = { itemId: 'a', quantity: 1 };
+  const b: EquipmentLine = { itemId: 'b', quantity: 1 };
+  const c: EquipmentLine = { itemId: 'c', quantity: 1 };
+  const d: EquipmentLine = { itemId: 'd', quantity: 1 };
+  const ids = (list: EquipmentLine[]) => list.map((l) => (isCustomItem(l) ? l.name : l.itemId));
+
+  it('déplace une ligne vers le bas (index inférieur → supérieur)', () => {
+    expect(ids(reorderEquipment([a, b, c, d], 0, 2))).toEqual(['b', 'c', 'a', 'd']);
+  });
+
+  it('déplace une ligne vers le haut (index supérieur → inférieur)', () => {
+    expect(ids(reorderEquipment([a, b, c, d], 3, 1))).toEqual(['a', 'd', 'b', 'c']);
+  });
+
+  it('déplace en tête et en queue', () => {
+    expect(ids(reorderEquipment([a, b, c], 2, 0))).toEqual(['c', 'a', 'b']);
+    expect(ids(reorderEquipment([a, b, c], 0, 2))).toEqual(['b', 'c', 'a']);
+  });
+
+  it('retourne un tableau inchangé (mais NOUVELLE référence) si from === to', () => {
+    const list = [a, b, c];
+    const out = reorderEquipment(list, 1, 1);
+    expect(ids(out)).toEqual(['a', 'b', 'c']);
+    expect(out).not.toBe(list);
+  });
+
+  it('ne mute pas le tableau source', () => {
+    const list = [a, b, c];
+    reorderEquipment(list, 0, 2);
+    expect(ids(list)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('indice hors bornes : renvoie une copie inchangée (garde-fou)', () => {
+    expect(ids(reorderEquipment([a, b, c], -1, 1))).toEqual(['a', 'b', 'c']);
+    expect(ids(reorderEquipment([a, b, c], 1, 5))).toEqual(['a', 'b', 'c']);
   });
 });
