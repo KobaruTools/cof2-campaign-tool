@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import AltRouteIcon from '@mui/icons-material/AltRoute';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
@@ -440,12 +440,39 @@ export function EquipmentList({
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  // Identité STABLE par ligne pour @dnd-kit et pour la `key` React : un id qui SUIT l'objet-ligne
+  // à travers un réordonnancement. `reorderEquipment` préserve les références d'objet, donc la
+  // WeakMap reste valide après le drop. Un id fondé sur l'index changerait de cible au réordre :
+  // @dnd-kit perdrait la trace de l'élément glissé et rejouerait une animation « retour à
+  // l'origine puis re-déplacement », et React recréerait les nœuds au lieu de les déplacer.
+  // WeakMap : aucune fuite, l'id d'une ligne supprimée disparaît avec elle.
+  const lineIdsRef = useRef<{ map: WeakMap<object, string>; seq: number }>({
+    map: new WeakMap(),
+    seq: 0,
+  });
+  const lineId = (line: EquipmentLine): string => {
+    const store = lineIdsRef.current;
+    let id = store.map.get(line);
+    if (!id) {
+      id = `eq-${store.seq++}`;
+      store.map.set(line, id);
+    }
+    return id;
+  };
   const handleReorder = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    // `id` = index d'origine (chaîne). Réécrit l'ordre du tableau et remonte via `onChange`.
-    onChange?.(reorderEquipment(equipment, Number(active.id), Number(over.id)));
+    // `id` = identité stable de ligne : on retrouve les index courants pour réécrire l'ordre.
+    const from = equipment.findIndex((l) => lineId(l) === active.id);
+    const to = equipment.findIndex((l) => lineId(l) === over.id);
+    if (from === -1 || to === -1) return;
+    onChange?.(reorderEquipment(equipment, from, to));
   };
+  // Ids stables alignés sur `equipment`, calculés UNE fois par rendu (consommés tels quels
+  // par @dnd-kit et la `key` React). Le cache `lineId` (WeakMap) est un pur mémo — l'id d'un
+  // objet-ligne est déterministe et immuable —, sa lecture en rendu est donc bénigne.
+  // eslint-disable-next-line react-hooks/refs
+  const rowIds = canReorder ? equipment.map(lineId) : [];
 
   if (equipment.length === 0 && !onChange) {
     return (
@@ -741,13 +768,10 @@ export function EquipmentList({
           modifiers={[restrictToVerticalAxis, restrictToParentElement]}
           onDragEnd={handleReorder}
         >
-          <SortableContext
-            items={equipment.map((_, i) => String(i))}
-            strategy={verticalListSortingStrategy}
-          >
+          <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
             <Stack divider={<Divider />}>
               {equipment.map((line, i) => (
-                <SortableEquipmentRow key={i} id={String(i)}>
+                <SortableEquipmentRow key={rowIds[i]} id={rowIds[i]}>
                   {renderLine(line, i)}
                 </SortableEquipmentRow>
               ))}
