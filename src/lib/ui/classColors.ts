@@ -1,3 +1,5 @@
+import { decomposeColor, recomposeColor } from '@mui/material/styles';
+
 /**
  * Couleurs d'accentuation par profil — préoccupation purement UI (aucune règle
  * CO2), donc en dehors des données sourcées du PDF. Les teintes sont regroupées
@@ -31,6 +33,18 @@ export const CLASS_COLORS: Record<string, string> = {
 /** Couleur d'un profil, avec repli neutre si l'id est inconnu. */
 export function classColor(classId: string): string {
   return CLASS_COLORS[classId] ?? '#90a4ae';
+}
+
+/**
+ * Désature une couleur en la rapprochant de son niveau de gris perçu (luminance),
+ * d'une fraction `amount` (0 = inchangé, 1 = gris pur). Sert à adoucir une teinte
+ * de profil pour qu'elle soit « moins flashy » sans changer sa clarté. Purement UI.
+ */
+export function desaturateColor(color: string, amount: number): string {
+  const [r, g, b] = decomposeColor(color).values;
+  const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+  const mix = (c: number) => Math.round(gray + (c - gray) * (1 - amount));
+  return recomposeColor({ type: 'rgb', values: [mix(r), mix(g), mix(b)] });
 }
 
 /**

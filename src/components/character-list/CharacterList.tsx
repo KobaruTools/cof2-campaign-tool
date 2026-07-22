@@ -38,13 +38,14 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CampaignBadge } from '@/components/home/CampaignBadge';
 import { CharacterPreviewCard } from '@/components/CharacterPreviewCard';
 import { ClassIcon } from '@/components/ClassIcon';
 import { formatDate } from '@/lib/character/summary';
 import type { CharacterSummary } from '@/lib/character/summary';
-import { classColor } from '@/lib/ui/classColors';
+import { classColor, desaturateColor } from '@/lib/ui/classColors';
 import { useCharactersStore } from '@/stores/characters';
 import type { SortKey, SortState } from './sort';
 
@@ -101,6 +102,18 @@ export interface CharacterListProps {
 }
 
 const UNASSIGNED = 'Non attribué';
+
+/**
+ * Léger dégradé teinté à la couleur du profil du personnage, repris de l'en-tête de
+ * la fiche (`AppHeader`) : part de la droite (teinte discrète) vers la transparence à
+ * gauche. Posé PAR-DESSUS le fond (zébrures/verre dépoli), il reste assez léger pour
+ * laisser lire le survol. Chaque ligne/carte prend ainsi la couleur de son profil,
+ * un peu DÉSATURÉE (retour propriétaire : « moins flashy ») pour rester feutrée.
+ */
+function accentGradient(classId: string): string {
+  const tint = desaturateColor(classColor(classId), 0.45);
+  return `linear-gradient(to left, ${alpha(tint, 0.18)}, transparent)`;
+}
 
 // Animation d'ouverture/fermeture des groupes : courte et vive, à la manière des
 // accordéons MUI (le défaut MUI est de 300 ms).
@@ -327,6 +340,10 @@ export function CharacterList({
         sx={{
           cursor: 'pointer',
           bgcolor: i % 2 ? 'rgba(255, 255, 255, 0.035)' : 'transparent',
+          // Léger dégradé teinté à la couleur du profil (repris de l'en-tête de la
+          // fiche), posé par-dessus la zébrure. Le survol (background-color) passe
+          // derrière ce calque, qui reste discret.
+          backgroundImage: accentGradient(r.classId),
           // Fondu doux du fond au survol (inspiré des rangs de voie de la fiche) :
           // le délai (.2s) porté par l'état de BASE ne joue qu'à la SORTIE — le fond
           // met un court instant à revenir. À l'ENTRÉE, la transition de `:hover`
@@ -406,6 +423,8 @@ export function CharacterList({
       sx={{
         p: 2,
         ...LIST_PAPER_SX,
+        // Même dégradé teinté au profil que les lignes desktop (repris de l'en-tête).
+        backgroundImage: accentGradient(r.classId),
         // Même fondu au survol que les lignes desktop (délai de sortie).
         transition: 'background-color .15s ease .2s',
         '&:hover': {
