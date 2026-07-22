@@ -419,6 +419,10 @@ for (const c of features) {
       if (e.flat !== undefined) {
         if (typeof e.flat === 'number') {
           if (!Number.isInteger(e.flat)) err(`[capacite ${c.id}] effect: weapon-damage-bonus flat non entier`);
+        } else if ('scale' in e.flat) {
+          // Valeur SCALANTE (PER-139, ex. Cavalier émérite +1/+2 au rang 5) — validée comme EffectValue.
+          const scaleError = effectValueError(e.flat);
+          if (scaleError) err(`[capacite ${c.id}] effect: weapon-damage-bonus flat ${scaleError}`);
         } else {
           const f = e.flat;
           const host = featureById.get(f.featureId);
@@ -433,6 +437,14 @@ for (const c of features) {
           if (f.max !== undefined && (!Number.isInteger(f.max) || f.max < 1))
             err(`[capacite ${c.id}] effect: weapon-damage-bonus flat.max invalide`);
         }
+      }
+      // Interrupteur d'état requis (PER-139) : doit pointer un effet `conditional-stat-bonus` de la capacité.
+      if (e.requiresActiveEffectIndex !== undefined) {
+        const target = c.effects?.[e.requiresActiveEffectIndex];
+        if (!target || target.kind !== 'conditional-stat-bonus')
+          err(
+            `[capacite ${c.id}] effect: weapon-damage-bonus requiresActiveEffectIndex ${e.requiresActiveEffectIndex} ne pointe pas vers un effet 'conditional-stat-bonus' de la capacité`,
+          );
       }
       validateWeaponCondition(c.id, e.condition, 'weapon-damage-bonus');
     } else if (e.kind === 'attack-bonus') {

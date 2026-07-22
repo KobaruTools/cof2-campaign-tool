@@ -1135,13 +1135,23 @@ export interface WeaponDamageBonusEffect {
   /** Dé(s) de DM ajoutés, situationnels (ex. +1d4°). Exclusif avec `ability`/`flat`. */
   dice?: { count: number; die: DamageDie; evolving?: boolean };
   /**
-   * Bonus PLAT (entier) aux DM, agrégé à l'expression comme une carac. Valeur FIXE (nombre) ou
-   * dérivée du NOMBRE d'instances retenues d'une option répétable d'un choix (Spécialisation du
-   * maître d'armes : « +1 DM » ×N, plafonné à +6 — PER-72/PER-226). Exclusif avec `ability`/`dice`.
+   * Bonus PLAT (entier) aux DM, agrégé à l'expression comme une carac. Valeur FIXE (nombre),
+   * SCALANTE (`ScalingValue` — ex. Cavalier émérite : +1, passant à +2 au rang 5 de la voie,
+   * `stepped` `path-rank`, PER-139) ou dérivée du NOMBRE d'instances retenues d'une option
+   * répétable d'un choix (Spécialisation du maître d'armes : « +1 DM » ×N, plafonné à +6 —
+   * PER-72/PER-226). Exclusif avec `ability`/`dice`.
    */
-  flat?: number | WeaponDamageFlatFromChoice;
+  flat?: number | ScalingValue | WeaponDamageFlatFromChoice;
   /** Condition d'application (mode d'attaque, type d'arme, libellé situationnel). */
   condition: WeaponDamageCondition;
+  /**
+   * Index d'un effet `conditional-stat-bonus` de la MÊME capacité (INTERRUPTEUR d'état) qui doit
+   * être ACTIF pour que ce bonus compte (PER-139). Ex. Cavalier émérite (`cavalier-r2`) : le +DM au
+   * contact ne s'applique que « en selle » — le même interrupteur qui pilote la DEF de la monture
+   * (effet index 0). Absent = aucun interrupteur requis (bonus permanent dès que la condition d'arme
+   * est remplie). Résolu par `weaponDamageBonuses` via `isEffectActive`.
+   */
+  requiresActiveEffectIndex?: number;
   /** Bonus SITUATIONNEL (badge séparé) au lieu de permanent (agrégé au DM). Défaut `false`. */
   situational?: boolean;
 }

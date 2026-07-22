@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per139-cavalier-a-pied",
+  "name": "Recette PER-139 — Cavalier rang 5, à pied (contrôle négatif)",
+  "identity": {
+    "description": "ATTENDU (contrôle négatif) : MÊME chevalier rang 5 mais À PIED (interrupteur « en selle » ÉTEINT) → AUCUN bonus aux DM au contact (« 1d8 + FOR »)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 2,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 2,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "cavalier-r1",
+    "cavalier-r2",
+    "cavalier-r3",
+    "cavalier-r4",
+    "cavalier-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-139 — contrôle négatif : hors selle, pas de +DM. Activer « en selle » doit faire apparaître +2.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

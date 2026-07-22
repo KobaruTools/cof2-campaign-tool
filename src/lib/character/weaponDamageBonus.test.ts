@@ -178,6 +178,51 @@ describe('weaponDamageBonuses — Spécialisation du maître d\'armes (+N DM pla
   });
 });
 
+describe('weaponDamageBonuses — Cavalier émérite en selle (+1, +2 au rang 5, PER-139)', () => {
+  // Chevalier de la voie du cavalier. L'interrupteur « en selle » est l'effet index 0 de
+  // cavalier-r2 ; le +DM au contact le suit (`requiresActiveEffectIndex: 0`).
+  const chevalier = (ranks: string[], mounted: boolean) =>
+    makeCharacter({
+      classId: 'chevalier',
+      featureIds: ranks,
+      effectToggles: mounted ? { 'cavalier-r2': [true] } : {},
+    });
+
+  it('interrupteur « en selle » éteint (défaut) → aucun bonus', () => {
+    const c = chevalier(['cavalier-r1', 'cavalier-r2'], false);
+    expect(weaponDamageBonuses(c, 'melee', epeeLongue).addedFlat).toEqual([]);
+  });
+
+  it('en selle, rang 2 → +1 DM plat au contact (source cavalier-r2)', () => {
+    const c = chevalier(['cavalier-r1', 'cavalier-r2'], true);
+    const r = weaponDamageBonuses(c, 'melee', epeeLongue);
+    expect(r.addedFlat).toHaveLength(1);
+    expect(r.addedFlat[0]).toMatchObject({ value: 1, featureId: 'cavalier-r2' });
+  });
+
+  it('en selle, rang 4 → toujours +1 DM (le +2 n\'arrive qu\'au rang 5)', () => {
+    const c = chevalier(['cavalier-r1', 'cavalier-r2', 'cavalier-r3', 'cavalier-r4'], true);
+    expect(weaponDamageBonuses(c, 'melee', epeeLongue).addedFlat[0]).toMatchObject({ value: 1 });
+  });
+
+  it('en selle, rang 5 → +2 DM', () => {
+    const c = chevalier(['cavalier-r1', 'cavalier-r2', 'cavalier-r3', 'cavalier-r4', 'cavalier-r5'], true);
+    const r = weaponDamageBonuses(c, 'melee', epeeLongue);
+    expect(r.addedFlat).toHaveLength(1);
+    expect(r.addedFlat[0]).toMatchObject({ value: 2, featureId: 'cavalier-r2' });
+  });
+
+  it('en selle mais mode distance → aucun bonus (contact seulement)', () => {
+    const c = chevalier(['cavalier-r1', 'cavalier-r2', 'cavalier-r3', 'cavalier-r4', 'cavalier-r5'], true);
+    expect(weaponDamageBonuses(c, 'ranged', arcLong).addedFlat).toEqual([]);
+  });
+
+  it('en selle mais aucune arme de contact en main → aucun bonus (suit l\'arme maniée)', () => {
+    const c = chevalier(['cavalier-r1', 'cavalier-r2'], true);
+    expect(weaponDamageBonuses(c, 'melee', null).addedFlat).toEqual([]);
+  });
+});
+
 describe('weaponDamageBonuses — nain « Haches et marteaux » (+1 DM, familles STATIQUES, PER-154)', () => {
   const nain = makeCharacter({
     classId: 'magicien',

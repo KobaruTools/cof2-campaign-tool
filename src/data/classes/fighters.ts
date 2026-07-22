@@ -915,18 +915,24 @@ export const fighterFeatures: Feature[] = [
     text:
       'Lorsqu’il est en selle, le chevalier gagne un bonus de +1 aux DM de ses attaques au contact, et sa monture obtient une DEF égale à celle du chevalier. Monter ou descendre de cheval est désormais une action gratuite. Le bonus aux DM passe à +2 au rang 5.',
     // PER-72 : « en selle » est un ÉTAT → interrupteur (conditional-stat-bonus marqueur, sans bonus de
-    // stat dérivée du chevalier ; activeByDefault false). Il pilote DEUX rendus :
+    // stat dérivée du chevalier ; activeByDefault false, effet index 0). Il pilote DEUX rendus :
     //  · la DEF de la FIDÈLE MONTURE = celle du chevalier en selle (cavalier-r1 `defenseAlt`, déjà câblé) ;
-    //  · le +1 (puis +2 au rang 5) aux DM d'arme au contact en selle → dépend de l'arme/équipement porté,
-    //    différé à la milestone « Armures et équipement porté » (PER-139). Verbatim ; badge WIP.
+    //  · PER-139 : le +1 (puis +2 au rang 5 de la voie) aux DM d'arme au CONTACT, suivant l'arme de contact
+    //    effectivement maniée. Modélisé en `weapon-damage-bonus` plat SCALANT (`stepped` `path-rank`),
+    //    gaté sur l'interrupteur « en selle » via `requiresActiveEffectIndex: 0`.
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
         activation: { kind: 'condition', label: 'en selle', activeByDefault: false },
       },
+      {
+        kind: 'weapon-damage-bonus',
+        flat: { scale: 'stepped', by: 'path-rank', steps: [{ min: 2, value: 1 }, { min: 5, value: 2 }] },
+        condition: { attackMode: 'melee' },
+        requiresActiveEffectIndex: 0,
+      },
     ],
-    wip: "+1 (puis +2 au rang 5) aux DM au contact en selle — bonus aux DM d'arme dépendant de l'équipement porté, modélisation différée à la milestone Armures et équipement porté (PER-139).",
     sourcePage: 83,
   },
   {

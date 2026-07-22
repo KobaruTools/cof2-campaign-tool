@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per139-cavalier-rang5-en-selle",
+  "name": "Recette PER-139 — Cavalier rang 5, en selle (+2 DM)",
+  "identity": {
+    "description": "ATTENDU : en selle et AU RANG 5 de la voie du cavalier, le bonus passe à +2 → carte Attaque au contact « 1d8 + FOR + 2 ». Épée longue en main."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 2,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 2,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "cavalier-r1",
+    "cavalier-r2",
+    "cavalier-r3",
+    "cavalier-r4",
+    "cavalier-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "cavalier-r2": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-139 — Cavalier émérite au rang 5 : le +1 « en selle » passe à +2. Contrôle : à pied (interrupteur OFF), aucun bonus.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

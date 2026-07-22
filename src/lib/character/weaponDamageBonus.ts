@@ -14,12 +14,20 @@ import { featureById } from '@/data';
 import type {
   AbilityId,
   DamageDie,
+  ScalingValue,
   Weapon,
   WeaponDamageBonusEffect,
   WeaponDamageCondition,
   WeaponDamageFlatFromChoice,
 } from '@/data/schema';
-import { activeFeatureIdsForMods } from '@/lib/character/effects';
+import {
+  activeFeatureIdsForMods,
+  effectContext,
+  isEffectActive,
+  pathRanksFromFeatures,
+  resolveValue,
+  type EffectContext,
+} from '@/lib/character/effects';
 import {
   getOptionSelections,
   splitRepeatableSelections,
@@ -77,6 +85,11 @@ export function weaponConditionMet(
   weapon: Weapon | null,
   character: Character,
 ): boolean {
+  // Un `attackMode` exige une arme du bon mode en main : un supplément de DM d'arme n'a rien à
+  // agrémenter sans arme (PER-139, « suit l'arme de contact effectivement maniée »). Les conditions
+  // de sous-type/famille ci-dessous l'imposaient déjà indirectement ; ici on couvre le mode SEUL.
+  if (cond.attackMode === 'melee' && !weapon?.melee) return false;
+  if (cond.attackMode === 'ranged' && !weapon?.ranged) return false;
   if (cond.rangedKinds && cond.rangedKinds.length > 0) {
     if (!weapon || !weapon.ranged || !weapon.rangedKind) return false;
     if (!cond.rangedKinds.includes(weapon.rangedKind)) return false;
@@ -99,11 +112,20 @@ export function weaponConditionMet(
 }
 
 /**
- * Valeur numérique d'un bonus plat aux DM (`weapon-damage-bonus.flat`) : soit la constante, soit le
- * NOMBRE d'instances retenues de l'option répétable visée (Spécialisation « +1 DM » ×N), plafonné.
+ * Valeur numérique d'un bonus plat aux DM (`weapon-damage-bonus.flat`) : constante, valeur SCALANTE
+ * (résolue contre la voie hôte — ex. Cavalier émérite +1/+2 au rang 5, PER-139), ou NOMBRE
+ * d'instances retenues de l'option répétable visée (Spécialisation « +1 DM » ×N), plafonné. Une
+ * valeur scalante non résoluble (contexte manquant) est traitée comme nulle.
  */
-function resolveFlat(character: Character, flat: number | WeaponDamageFlatFromChoice): number {
+function resolveFlat(
+  character: Character,
+  flat: number | ScalingValue | WeaponDamageFlatFromChoice,
+  pathId: string,
+  pathRanks: Record<string, number>,
+  ctx: EffectContext,
+): number {
   if (typeof flat === 'number') return flat;
+  if ('scale' in flat) return resolveValue(flat, pathId, pathRanks, ctx) ?? 0;
   const { repeatCounts } = splitRepeatableSelections(character, flat.featureId, flat.choiceIndex);
   const count = (flat.base ?? 0) + (repeatCounts[flat.optionId] ?? 0);
   return flat.max === undefined ? count : Math.min(count, flat.max);
@@ -145,14 +167,24 @@ export function weaponDamageBonuses(
   const addedFlat: PermanentFlatBonus[] = [];
   const situational: SituationalDamageBonus[] = [];
 
+  const pathRanks = pathRanksFromFeatures(character.featureIds);
+  const ctx = effectContext(character);
+
   for (const featureId of activeFeatureIdsForMods(character)) {
     const feature = featureById.get(featureId);
     if (!feature?.effects) continue;
-    for (const effect of feature.effects) {
-      if (effect.kind !== 'weapon-damage-bonus') continue;
+    feature.effects.forEach((effect) => {
+      if (effect.kind !== 'weapon-damage-bonus') return;
       const { condition } = effect;
       // Filtre de mode : une condition qui exige l'autre mode est écartée.
-      if (condition.attackMode && condition.attackMode !== mode) continue;
+      if (condition.attackMode && condition.attackMode !== mode) return;
+      // Interrupteur d'état requis (PER-139, « en selle ») : le bonus ne compte que si l'effet
+      // conditionnel référencé de la même capacité est actif.
+      if (
+        effect.requiresActiveEffectIndex !== undefined &&
+        !isEffectActive(character, featureId, effect.requiresActiveEffectIndex)
+      )
+        return;
 
       const source: WeaponDamageBonusSource = {
         featureId,
@@ -163,7 +195,7 @@ export function weaponDamageBonuses(
       if (effect.situational) {
         // Situationnel : le badge est informatif. On respecte tout de même une contrainte de TYPE
         // d'arme si elle est déclarée (rare), pour ne pas proposer un bonus « à l'arc » sans arc.
-        if (!weaponConditionMet(condition, weapon, character)) continue;
+        if (!weaponConditionMet(condition, weapon, character)) return;
         situational.push({
           ...source,
           ability: effect.ability,
@@ -172,14 +204,14 @@ export function weaponDamageBonuses(
         });
       } else {
         // Permanent : n'est agrégé au DM que si une arme satisfait la condition de type.
-        if (!weaponConditionMet(condition, weapon, character)) continue;
+        if (!weaponConditionMet(condition, weapon, character)) return;
         if (effect.ability) addedAbilities.push({ ...source, ability: effect.ability });
         if (effect.flat !== undefined) {
-          const value = resolveFlat(character, effect.flat);
+          const value = resolveFlat(character, effect.flat, feature.pathId, pathRanks, ctx);
           if (value > 0) addedFlat.push({ ...source, value });
         }
       }
-    }
+    });
   }
 
   return { addedAbilities, addedFlat, situational };
