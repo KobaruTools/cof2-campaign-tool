@@ -269,6 +269,18 @@ export function CreatureStatsLine({
             {rich(attack.damage)}
           </CreatureStatChip>
         )}
+        {/* Attaques SUPPLÉMENTAIRES (PER-94, ex. Baliste du Golem supérieur). Le jet reprend
+            l'attaque magique du maître (comme l'attaque de base d'un compagnon) ; le DM est déjà
+            baké (dé + carac de la créature résolue). Icône à distance / contact selon `ranged`. */}
+        {profile.extraAttacks?.map((extra, i) => (
+          <CreatureStatChip key={i} statId={extra.ranged ? 'rangedAttack' : 'meleeAttack'} label={extra.label}>
+            <MasterStatValue stat="magicAttack" masterDerived={masterDerived} />
+            <Box component="span" sx={{ opacity: 0.5 }}>
+              ·
+            </Box>
+            {rich(extra.damage)}
+          </CreatureStatChip>
+        ))}
       </Stack>
       {profile.note && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>

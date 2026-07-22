@@ -12,7 +12,7 @@
  * jeu au même titre que la barre de vie du personnage.
  */
 import { featureById, pathById, progression } from '@/data';
-import type { AbilityId, CreatureProfile, Feature } from '@/data/schema';
+import type { AbilityId, CreatureProfile, Feature, FeatureChoiceOption } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { getSelection } from './choices';
 import { creatureBonusDiceForPath, disabledFeatureIds, isEffectActive } from './effects';
@@ -43,6 +43,126 @@ export function effectiveCreatureProfile(
     }
   }
   return feature.creatureProfile;
+}
+
+type CreatureUpgrade = NonNullable<FeatureChoiceOption['creatureUpgrade']>;
+
+/**
+ * Améliorations de créature retenues dans une voie (PER-94) : options `creatureUpgrade` des
+ * capacités ACQUISES de la voie `pathId` dont l'id est sélectionné (ex. Golem supérieur, golem-r5).
+ * Même balayage que `creatureBonusDiceForPath` (options retenues, `featureChoices`).
+ */
+function gatherCreatureUpgrades(character: Character, pathId: string): CreatureUpgrade[] {
+  const out: CreatureUpgrade[] = [];
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature || feature.pathId !== pathId || !feature.choices) continue;
+    const selections = character.featureChoices[id] ?? [];
+    feature.choices.forEach((choice, i) => {
+      if (choice.kind !== 'option') return;
+      const sel = selections[i];
+      const chosenIds = Array.isArray(sel) ? sel : sel ? [sel] : [];
+      for (const opt of choice.options) {
+        if (opt.creatureUpgrade && chosenIds.includes(opt.id)) out.push(opt.creatureUpgrade);
+      }
+    });
+  }
+  return out;
+}
+
+/**
+ * Injecte des termes additionnels dans une expression richText à UN SEUL bloc `[...]` (les stats
+ * de créature concernées : `[10 + rang]`, `[=niveau × 5]`, `[1d4° + 1]`), avant le `]` final —
+ * réutilise ainsi tout le rendu/résolution existant (chip DEF, barre de PV via `resolveCreatureMaxHp`,
+ * DM). Format inattendu (pas un unique `[...]`) → chaîne inchangée (sécurité). Tous les termes ajoutés
+ * sont positifs (bonus d'amélioration), d'où le `+`.
+ */
+function injectExprTerms(rich: string, additions: string[]): string {
+  if (additions.length === 0) return rich;
+  const trimmed = rich.trim();
+  if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) return rich;
+  return `${trimmed.slice(0, -1)} + ${additions.join(' + ')}]`;
+}
+
+/** DM baké d'une attaque supplémentaire : dé + carac de la CRÉATURE résolue en nombre (pas de token). */
+function bakeExtraAttackDamage(
+  ea: NonNullable<CreatureUpgrade['extraAttack']>,
+  abilities: Record<AbilityId, number> | undefined,
+): string {
+  const v = ea.damageAbility && abilities ? abilities[ea.damageAbility] ?? 0 : 0;
+  if (v === 0) return `[${ea.damageDice}]`;
+  return `[${ea.damageDice} ${v > 0 ? '+' : '-'} ${Math.abs(v)}]`;
+}
+
+/**
+ * Applique les améliorations de créature d'une voie (PER-94) PAR-DESSUS un profil de base et renvoie
+ * le profil EFFECTIF affiché (caracs, DEF, PV, DM, attaques supplémentaires, notes). Cumule toutes les
+ * options `creatureUpgrade` retenues dans la voie (ex. Golem supérieur : une amélioration par voie de
+ * forgesort au rang 5). Sans amélioration, renvoie le profil inchangé (référence d'origine). Les deltas
+ * de caractéristiques sont pliés numériquement ; DEF/PV/DM sont injectés dans le richText (rendu/PV
+ * réutilisés tels quels) ; la Baliste devient une attaque supplémentaire au DM baké sur l'AGI du golem.
+ */
+export function applyCreatureUpgrades(
+  base: CreatureProfile,
+  character: Character,
+  pathId: string,
+): CreatureProfile {
+  const upgrades = gatherCreatureUpgrades(character, pathId);
+  if (upgrades.length === 0) return base;
+  const abilityDelta: Partial<Record<AbilityId, number>> = {};
+  let defBonus = 0;
+  let hpPerLevel = 0;
+  let dmgFlat = 0;
+  const dmgDice: string[] = [];
+  const notes: string[] = [];
+  const extraAttackSpecs: NonNullable<CreatureUpgrade['extraAttack']>[] = [];
+  for (const u of upgrades) {
+    if (u.abilities) {
+      for (const [k, v] of Object.entries(u.abilities) as [AbilityId, number][]) {
+        abilityDelta[k] = (abilityDelta[k] ?? 0) + v;
+      }
+    }
+    if (u.def) defBonus += u.def;
+    if (u.hitPointsPerLevel) hpPerLevel += u.hitPointsPerLevel;
+    if (u.meleeDamageFlat) dmgFlat += u.meleeDamageFlat;
+    if (u.meleeDamageDice) dmgDice.push(u.meleeDamageDice);
+    if (u.note) notes.push(u.note);
+    if (u.extraAttack) extraAttackSpecs.push(u.extraAttack);
+  }
+  const next: CreatureProfile = { ...base };
+  if (base.abilities && Object.keys(abilityDelta).length > 0) {
+    const ab = { ...base.abilities };
+    for (const [k, v] of Object.entries(abilityDelta) as [AbilityId, number][]) ab[k] = (ab[k] ?? 0) + v;
+    next.abilities = ab;
+  }
+  if (defBonus !== 0 && base.defense) next.defense = injectExprTerms(base.defense, [String(defBonus)]);
+  if (hpPerLevel !== 0 && base.hitPoints) next.hitPoints = injectExprTerms(base.hitPoints, [`niveau × ${hpPerLevel}`]);
+  if ((dmgFlat !== 0 || dmgDice.length > 0) && base.attack) {
+    const adds = [...dmgDice];
+    if (dmgFlat !== 0) adds.push(String(dmgFlat));
+    next.attack = { ...base.attack, damage: injectExprTerms(base.attack.damage, adds) };
+  }
+  if (extraAttackSpecs.length > 0) {
+    const eff = next.abilities ?? base.abilities;
+    next.extraAttacks = [
+      ...(base.extraAttacks ?? []),
+      ...extraAttackSpecs.map((ea) => ({ label: ea.label, ranged: ea.ranged, damage: bakeExtraAttackDamage(ea, eff) })),
+    ];
+  }
+  if (notes.length > 0) next.note = [base.note, ...notes].filter(Boolean).join(' ');
+  return next;
+}
+
+/**
+ * Profil de créature EFFECTIF pour l'AFFICHAGE (PER-94) : profil de base (option retenue > rang) via
+ * `effectiveCreatureProfile`, AUGMENTÉ des améliorations de la voie (`applyCreatureUpgrades`, ex. Golem
+ * supérieur). `undefined` si aucune créature. Utilisé partout où on REND la créature (section
+ * « Compagnons » et mini-fiche « Voies & capacités »), pour que les deux reflètent les améliorations.
+ */
+export function displayCreatureProfile(feature: Feature, character: Character | undefined): CreatureProfile | undefined {
+  const base = effectiveCreatureProfile(feature, character);
+  if (!base || !character) return base;
+  return applyCreatureUpgrades(base, character, feature.pathId);
 }
 
 /**
@@ -179,7 +299,9 @@ export function listCompanions(character: Character): CompanionEntry[] {
   // Développe chaque voie retenue en entrées d'affichage : une seule pour un compagnon classique,
   // N pour un compagnon multi-instances (une par instance vivante de `companionInstances`).
   const out: CompanionEntry[] = [];
-  for (const { feature, profile } of byPath.values()) {
+  for (const { feature, profile: baseProfile } of byPath.values()) {
+    // Profil AFFICHÉ = base + améliorations de la voie (PER-94, ex. options de Golem supérieur).
+    const profile = applyCreatureUpgrades(baseProfile, character, feature.pathId);
     const pathRank = maxRankByPath.get(feature.pathId) ?? feature.rank;
     const bonusDieAbilities = creatureBonusDiceForPath(feature.pathId, character);
     const defenseAltActive = creatureDefenseAltActive(profile, character);

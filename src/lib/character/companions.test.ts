@@ -3,6 +3,7 @@ import { featureById } from '@/data';
 import { createBlankCharacter } from './factory';
 import type { Character, Depletion } from './types';
 import {
+  displayCreatureProfile,
   listCompanions,
   pruneCompanionDepletion,
   pruneCompanionInstances,
@@ -209,6 +210,54 @@ describe('resolveCompanionInstanceLimit', () => {
 
   it('0 pour un profil non multi-instances', () => {
     expect(resolveCompanionInstanceLimit(_profile('golem-r2'), char())).toBe(0);
+  });
+});
+
+describe('applyCreatureUpgrades (Golem supérieur, PER-94)', () => {
+  function forgesortGolem(options: string[]): Character {
+    return char({
+      classId: 'forgesort',
+      featureIds: ['golem-r1', 'golem-r2', 'golem-r5'],
+      featureChoices: { 'golem-r5': [options] },
+    });
+  }
+
+  it('cumule les bonus chiffrés des options retenues (Armure + Grande taille + Puissant)', () => {
+    const c = forgesortGolem(['armor', 'large', 'mighty']);
+    const p = displayCreatureProfile(featureById.get('golem-r2')!, c)!;
+    // FOR : base 1 + Grande taille 1 + Puissant 2 = 4.
+    expect(p.abilities!.FOR).toBe(4);
+    // DEF : Armure +5 injecté dans l'expression.
+    expect(p.defense).toBe('[10 + rang + 5]');
+    // PV : Grande taille +2/niveau injecté.
+    expect(p.hitPoints).toBe('[=niveau × 5 + niveau × 2]');
+    // DM au contact : +1 (Grande taille) +2 (Puissant) = +3 plat.
+    expect(p.attack!.damage).toBe('[1d4° + 1 + 3]');
+    // Barre de vie : niveau × 7 au niveau 5 → 35.
+    expect(resolveCreatureMaxHp(p, c.abilities, 5, 2)).toBe(35);
+  });
+
+  it('Baliste : attaque à distance supplémentaire, DM baké sur l’AGI du golem', () => {
+    // AGI de base du golem = -1 → DM baliste = 1d4° - 1.
+    const c = forgesortGolem(['ballista']);
+    const p = displayCreatureProfile(featureById.get('golem-r2')!, c)!;
+    expect(p.extraAttacks).toHaveLength(1);
+    expect(p.extraAttacks![0]).toMatchObject({ label: 'Baliste', ranged: true, damage: '[1d4° - 1]' });
+
+    // Avec Forme de félin (AGI +3 → +2) : DM baliste = 1d4° + 2.
+    const c2 = forgesortGolem(['ballista', 'feline-form']);
+    const p2 = displayCreatureProfile(featureById.get('golem-r2')!, c2)!;
+    expect(p2.abilities!.AGI).toBe(2);
+    expect(p2.extraAttacks![0].damage).toBe('[1d4° + 2]');
+    // Forme de félin : +3 DEF aussi.
+    expect(p2.defense).toBe('[10 + rang + 3]');
+  });
+
+  it('sans amélioration retenue, le profil de base est inchangé', () => {
+    const c = char({ classId: 'forgesort', featureIds: ['golem-r1', 'golem-r2'] });
+    const p = displayCreatureProfile(featureById.get('golem-r2')!, c)!;
+    expect(p.defense).toBe('[10 + rang]');
+    expect(p.extraAttacks).toBeUndefined();
   });
 });
 

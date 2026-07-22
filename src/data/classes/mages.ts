@@ -1292,15 +1292,47 @@ export const mageFeatures: Feature[] = [
           // Convention « Nom (détail) » (comme Diversité, voie de l'humain) : le rendu
           // n'affiche que le NOM dans le badge et sort le détail entre parenthèses à
           // côté (vue liste) ou le masque (vue colonne compacte).
-          { id: 'armor', label: 'Armure (+5 en DEF)' },
+          // PER-94 : chaque amélioration propage ses bonus chiffrés au profil effectif du golem
+          // (`creatureUpgrade`, appliqué par `applyCreatureUpgrades`), en plus du dé bonus éventuel.
+          { id: 'armor', label: 'Armure (+5 en DEF)', creatureUpgrade: { def: 5 } },
           // Dé bonus du GOLEM (icône double-d20 sur sa mini-fiche) quand l'option est retenue.
-          { id: 'feline-form', label: 'Forme de félin (+3 en AGI et en DEF, dé bonus en AGI)', creatureAbilityBonusDie: 'AGI' },
-          { id: 'ballista', label: 'Baliste (portée 20 m, 1d4°+AGI DM)' },
-          { id: 'large', label: 'Grande taille (+2 PV par niveau et +1 en FOR et DM)' },
-          { id: 'flight', label: 'Vol (des « sauts » de 40 m en action limitée)' },
-          { id: 'enhanced-brain', label: 'Cerveau amélioré (+2 en INT, PER et CHA, doué de parole)' },
-          { id: 'mighty', label: 'Puissant (+2 en FOR et aux DM, dé bonus en FOR)', creatureAbilityBonusDie: 'FOR' },
-          { id: 'two-handed-weapon', label: 'Arme à deux mains (+1d4° aux DM au contact)' },
+          {
+            id: 'feline-form',
+            label: 'Forme de félin (+3 en AGI et en DEF, dé bonus en AGI)',
+            creatureAbilityBonusDie: 'AGI',
+            creatureUpgrade: { abilities: { AGI: 3 }, def: 3 },
+          },
+          {
+            id: 'ballista',
+            label: 'Baliste (portée 20 m, 1d4°+AGI DM)',
+            creatureUpgrade: { extraAttack: { label: 'Baliste', damageDice: '1d4°', damageAbility: 'AGI', ranged: true } },
+          },
+          {
+            id: 'large',
+            label: 'Grande taille (+2 PV par niveau et +1 en FOR et DM)',
+            creatureUpgrade: { hitPointsPerLevel: 2, abilities: { FOR: 1 }, meleeDamageFlat: 1 },
+          },
+          {
+            id: 'flight',
+            label: 'Vol (des « sauts » de 40 m en action limitée)',
+            creatureUpgrade: { note: 'Vol : « sauts » de 40 m en action limitée.' },
+          },
+          {
+            id: 'enhanced-brain',
+            label: 'Cerveau amélioré (+2 en INT, PER et CHA, doué de parole)',
+            creatureUpgrade: { abilities: { INT: 2, PER: 2, CHA: 2 }, note: 'Doué de parole.' },
+          },
+          {
+            id: 'mighty',
+            label: 'Puissant (+2 en FOR et aux DM, dé bonus en FOR)',
+            creatureAbilityBonusDie: 'FOR',
+            creatureUpgrade: { abilities: { FOR: 2 }, meleeDamageFlat: 2 },
+          },
+          {
+            id: 'two-handed-weapon',
+            label: 'Arme à deux mains (+1d4° aux DM au contact)',
+            creatureUpgrade: { meleeDamageDice: '1d4°' },
+          },
         ],
       },
     ],

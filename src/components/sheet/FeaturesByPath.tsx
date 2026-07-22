@@ -53,7 +53,7 @@ import {
 import { animalFormCategories } from '@/lib/character/animalForms';
 import {
   creatureDefenseAltActive,
-  effectiveCreatureProfile,
+  displayCreatureProfile,
   resolveCompanionInstanceLimit,
 } from '@/lib/character/companions';
 import {
@@ -2957,7 +2957,7 @@ function PathBlock({
                   <AnimalFormsNote character={character} />
                 )}
                 {(() => {
-                  const profile = effectiveCreatureProfile(openFeature, character);
+                  const profile = displayCreatureProfile(openFeature, character);
                   return profile && abilities && level != null ? (
                     <Box sx={{ mt: 1.5 }}>
                       <CreatureStatBlock
@@ -3320,7 +3320,7 @@ function PathBlock({
               )}
               {feature.id === 'animaux-r5' && character && <AnimalFormsNote character={character} />}
               {(() => {
-                const profile = effectiveCreatureProfile(feature, character);
+                const profile = displayCreatureProfile(feature, character);
                 return profile && abilities && level != null ? (
                   <Box sx={{ mt: 1.5 }}>
                     <CreatureStatBlock

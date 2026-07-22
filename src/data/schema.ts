@@ -1553,6 +1553,34 @@ export interface FeatureChoiceOption {
    */
   creatureProfile?: CreatureProfile;
   /**
+   * AMÉLIORATIONS apportées à la CRÉATURE de la même voie lorsque cette option est retenue
+   * (PER-94, ex. Golem supérieur, golem-r5, p. 100) — appliquées PAR-DESSUS le profil de base
+   * (`golem-r2`) par `applyCreatureUpgrades`, et CUMULÉES si plusieurs options sont retenues (une
+   * par voie de forgesort au rang 5). À DISTINGUER de `creatureProfile` (qui REMPLACE le profil,
+   * ex. Monture fantastique) : ici on n'ajoute que des deltas chiffrés à un profil existant. Le dé
+   * bonus reste porté séparément par `creatureAbilityBonusDie`. Absent = aucune amélioration.
+   */
+  creatureUpgrade?: {
+    /** Deltas de caractéristiques de la créature (ex. Forme de félin → AGI +3). */
+    abilities?: Partial<Record<AbilityId, number>>;
+    /** Bonus de DÉFENSE (ex. Armure → +5, Forme de félin → +3). */
+    def?: number;
+    /** PV supplémentaires PAR NIVEAU du maître (ex. Grande taille → +2/niveau). */
+    hitPointsPerLevel?: number;
+    /** Bonus PLAT aux DM au contact (ex. Grande taille → +1, Puissant → +2). */
+    meleeDamageFlat?: number;
+    /** Dé supplémentaire aux DM au contact, au format richText (ex. Arme à deux mains → `1d4°`). */
+    meleeDamageDice?: string;
+    /**
+     * Attaque SUPPLÉMENTAIRE octroyée (ex. Baliste → attaque à distance). Le DM est un dé + la
+     * caractéristique de la CRÉATURE `damageAbility` (baked en nombre par le résolveur, car le DM
+     * d'un compagnon se résout sinon contre le maître). Rendue en chip d'attaque distinct.
+     */
+    extraAttack?: { label: string; damageDice: string; damageAbility?: AbilityId; ranged?: boolean };
+    /** Note libre ajoutée à la fiche de la créature (ex. Vol, « doué de parole »). */
+    note?: string;
+  };
+  /**
    * Option RÉPÉTABLE au sein d'un choix `repeat` (PER-72) : contrairement aux options normales
    * (DISTINCTES, retenues une seule fois), celle-ci peut être retenue PLUSIEURS fois dans le même
    * choix — ex. Spécialisation (maitre-d-armes-r3) : « +1 DM » dépensable à CHAQUE jalon de rang 5,
@@ -1720,6 +1748,14 @@ export interface CreatureProfile {
    * résoudrait contre le MAÎTRE, pas contre la créature).
    */
   attack?: { label?: string; fromMaster?: DerivedStatId; value?: string; damage: string };
+  /**
+   * Attaques SUPPLÉMENTAIRES de la créature, en plus de `attack` (PER-94) — ex. Baliste du Golem
+   * supérieur (attaque à distance ajoutée par une amélioration). Le `damage` est déjà résolu (dé +
+   * constante bakée : la carac d'une créature ne peut pas être un token richText, qui se résoudrait
+   * contre le maître). Rendu en chips d'attaque additionnels. Absent = aucune. Alimenté par
+   * `applyCreatureUpgrades` depuis `FeatureChoiceOption.creatureUpgrade.extraAttack`.
+   */
+  extraAttacks?: { label: string; damage: string; ranged?: boolean }[];
   /** Particularités libres (déplacement, « trop petit pour attaquer »…). */
   note?: string;
   /**
