@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per235-magicien-familier",
+  "name": "Recette PER-235 — Magicien (familier invocable)",
+  "identity": {
+    "description": "ATTENDU : « Familier invoqué » (interrupteur) ACTIF → un bloc FAMILIER apparaît dans « Compagnons ». Le décocher (dans « Voies & capacités ») masque le bloc. « familier en vue » (index 0) reste un interrupteur DISTINCT (bonus +2 Init./DEF)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 4,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 1,
+    "CON": 1,
+    "FOR": -1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "AGI": 1,
+    "CON": 1,
+    "FOR": -1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "magie-universelle-r1",
+    "magie-universelle-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "magie-universelle-r2": [
+      false,
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-235 — bouton « Invoquer » (marqueur temporaire) du familier du magicien.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
