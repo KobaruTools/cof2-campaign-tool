@@ -2289,7 +2289,7 @@ export interface Feature {
    * jeu. Présent quand la capacité dépend d'un ticket EXTÉRIEUR non terminé (ex. calcul de DEF de
    * Peau de pierre en attente de la milestone Armures, PER-131) : une partie de son effet n'est donc
    * pas encore branchée. La chaîne sert d'info-bulle (raison + ticket). Recensement systématique des
-   * capacités concernées : ticket dédié (milestone « Structuration des capacités »). Absent = rien.
+   * capacités concernées : PER-236 (milestone « Structuration des capacités »). Absent = rien.
    */
   wip?: string;
   sourcePage: SourcePage;

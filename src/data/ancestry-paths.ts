@@ -344,7 +344,7 @@ export const ancestryFeatures: Feature[] = [
       },
     ],
     criticalRange: { scope: 'ranged', value: 1 },
-    wip: "Plage de critique conditionnée à l'arc — activation manuelle en attendant le câblage automatique au type d'arme porté (PER-136).",
+    wip: "Plage de critique conditionnée à l'arc — activation manuelle ; le câblage automatique à l'arme à distance portée reste à faire (PER-136 n'a couvert que le contact) — suivi : PER-236.",
     sourcePage: 52,
   },
   {

@@ -519,7 +519,7 @@ export const adventurerFeatures: Feature[] = [
       },
     ],
     effects: [{ kind: 'test-bonus', domains: ['martial-lore'] }],
-    wip: "+1 en attaque avec une arbalète — bonus dépendant du type d'arme porté, câblage différé à la milestone Armures (PER-136 / PER-115).",
+    wip: "+1 en attaque avec une arbalète — bonus dépendant de l'arbalète portée, effet attack-bonus pas encore branché — suivi : PER-236.",
     sourcePage: 62,
   },
   {
@@ -543,7 +543,7 @@ export const adventurerFeatures: Feature[] = [
       },
     ],
     criticalRange: { scope: 'ranged', value: 1 },
-    wip: "Plage de critique conditionnée à l'arbalète en main — activation manuelle en attendant le câblage automatique au type d'arme porté (PER-136).",
+    wip: "Plage de critique conditionnée à l'arbalète en main — activation manuelle ; le câblage automatique à l'arme à distance portée reste à faire (PER-136 n'a couvert que le contact) — suivi : PER-236.",
     sourcePage: 62,
   },
   {
@@ -560,7 +560,7 @@ export const adventurerFeatures: Feature[] = [
     // « +1 DM » (max +6). Cette capacité DÉBLOQUE le choix répétable « +1 DM » hébergé sur r1
     // (`maitre-des-arbaletes-r1`, `requiresFeatureId`). Le CALCUL effectif du +DM (jusqu'à +6) dépend
     // de l'arme PORTÉE → différé à la milestone Armures (PER-136 / PER-115).
-    wip: "Bonus de +1 DM (jusqu'à +6) avec une arbalète — calcul dépendant de l'arme portée, différé à la milestone Armures (PER-136 / PER-115). Le CHOIX (« +1 DM » répétable, débloqué par cette capacité) est modélisé sur Maîtrise de l’arbalète (maitre-des-arbaletes-r1).",
+    wip: "Bonus de +1 DM (jusqu'à +6) avec une arbalète — calcul dépendant de l'arbalète portée, effet weapon-damage-bonus pas encore branché — suivi : PER-236. Le CHOIX (« +1 DM » répétable, débloqué par cette capacité) est modélisé sur Maîtrise de l’arbalète (maitre-des-arbaletes-r1).",
     sourcePage: 62,
   },
   {

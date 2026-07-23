@@ -812,7 +812,7 @@ export const fighterFeatures: Feature[] = [
     // PER-129 (différé, dépend de PER-115) : le +1d4° DM au contact est CONDITIONNEL à l'état de rage
     // (même interrupteur que le -2 DEF) ; son AFFICHAGE dans le bloc Attaque au contact attend l'infra
     // DM d'arme (PER-115). Modélisé pour l'instant par le {1d4°} du richText (à brancher sur la couche DM).
-    wip: "+1d4° DM au contact conditionnel à la rage — visible dans le texte mais pas encore câblé dans le bloc Attaque au contact, en attente de l'infrastructure DM d'arme (PER-115 / PER-129).",
+    wip: "+1d4° DM au contact conditionnel à la rage — visible dans le texte mais pas encore câblé dans le bloc Attaque au contact (effet weapon-damage-bonus à poser, gaté sur l'interrupteur de rage) — suivi : PER-236.",
     sourcePage: 82,
   },
   {
@@ -863,7 +863,7 @@ export const fighterFeatures: Feature[] = [
     },
     // PER-129 (différé, dépend de PER-115) : le +2d4° DM au contact est CONDITIONNEL à l'état de furie
     // (même interrupteur que le -4 DEF) ; affichage dans le bloc Attaque au contact différé à PER-115.
-    wip: "+2d4° DM au contact conditionnel à la furie — visible dans le texte mais pas encore câblé dans le bloc Attaque au contact, en attente de l'infrastructure DM d'arme (PER-115 / PER-129).",
+    wip: "+2d4° DM au contact conditionnel à la furie — visible dans le texte mais pas encore câblé dans le bloc Attaque au contact (effet weapon-damage-bonus à poser, gaté sur l'interrupteur de furie) — suivi : PER-236.",
     sourcePage: 82,
   },
 
@@ -1087,7 +1087,7 @@ export const fighterFeatures: Feature[] = [
     // retranchée aux pénalités d'armure ; et +1 en DEF par rang 5 atteint dans une voie de chevalier,
     // SEULEMENT en armure lourde (plaque / plaque complète). Non résoluble sans l'équipement porté
     // → modélisation différée à la milestone Armures (PER-76). Verbatim ; badge WIP.
-    wip: "Armure sur mesure dépend de l'armure portée — pénalités d'armure réduites de moitié, et +1 en DEF par rang 5 de voie de chevalier en armure lourde — modélisation différée à la milestone Armures (PER-76).",
+    wip: "Armure sur mesure dépend de l'armure portée — pénalités d'armure réduites de moitié, et +1 en DEF par rang 5 de voie de chevalier en armure lourde — non branché sur le calcul du malus d'armure — suivi : PER-236.",
     sourcePage: 84,
   },
   {
@@ -1102,7 +1102,7 @@ export const fighterFeatures: Feature[] = [
     // PER-137 : RD = valeur de DEF de l'armure (et du bouclier au rang 5) PORTÉE, sur une attaque,
     // 1×/round. La valeur dépend de l'équipement porté → modélisation différée à PER-76. Laissé
     // verbatim ; badge WIP pour la relecture.
-    wip: "Réduction de DM égale à la DEF de l'armure (puis du bouclier) portée — valeur dépendante de l'équipement porté, modélisation différée à la milestone Armures (PER-137 / PER-76).",
+    wip: "Réduction de DM égale à la DEF de l'armure (puis du bouclier) portée — manœuvre 1×/round dépendante de l'équipement porté, hors du modèle de RD continue — suivi : PER-236.",
     sourcePage: 85,
   },
   {
@@ -1181,7 +1181,7 @@ export const fighterFeatures: Feature[] = [
       'Le chevalier obtient une réduction des DM (RD) des attaques à distance (arcs, arbalètes, lances, etc.) qui dépend de l’armure qu’il porte. Armure de plaques (complète ou non) RD 3, armure intermédiaire (Chemise ou cotte de mailles) RD 2, armure de cuir (simple ou renforcée) RD 1. Les DM infligés par une attaque sont toujours au minimum d’un point.',
     // PER-137 : RD contre les attaques à DISTANCE, valeur (1/2/3) fonction du TYPE d'armure portée.
     // Non résoluble sans l'équipement porté → modélisation différée à PER-76. Verbatim ; badge WIP.
-    wip: "RD contre les attaques à distance dont la valeur (1/2/3) dépend du type d'armure portée — modélisation différée à la milestone Armures (PER-137 / PER-76).",
+    wip: "RD contre les attaques à distance dont la valeur (1/2/3) dépend du type d'armure portée — dépendante de l'équipement porté — suivi : PER-236.",
     sourcePage: 85,
   },
   {
@@ -1269,7 +1269,7 @@ export const fighterFeatures: Feature[] = [
     // ce qui évite sa glose parasite « catégorie d'arthropodes » (terme de jeu du rôdeur, PER-114).
     richText:
       'Une fois par round, le chevalier peut encaisser une attaque au contact ou à distance à la place d’un allié à son contact. Il utilise sa DEF plutôt que celle de la cible initiale et retranche son [#rang] dans la voie aux DM (en cas de synergie avec la capacité [&preux-r2] ou [&guerre-r2], la réduction des DM se cumule). Le joueur doit annoncer son intention d’intercepter avant de connaître le résultat de l’attaque.',
-    wip: "Interception : réduit de son rang les DM d'une attaque encaissée pour un allié (manœuvre 1×/round, cumul avec les RD d'armure) — modélisation différée à la milestone Armures (PER-137 / PER-76).",
+    wip: "Interception : réduit de son rang les DM d'une attaque encaissée pour un allié (manœuvre 1×/round, cumul avec les RD d'armure) — manœuvre au tour par tour hors du modèle de RD continue — suivi : PER-236.",
     sourcePage: 85,
   },
   {
@@ -1487,7 +1487,7 @@ export const fighterFeatures: Feature[] = [
     // PER-137 : parade au bouclier (test opposé) qui ANNULE les DM (moitié contre créatures énorme/
     // colossale) — manœuvre liée au bouclier porté et au suivi de combat, pas une RD continue.
     // Modélisation différée. Verbatim ; badge WIP.
-    wip: "Parade au bouclier (test opposé) annulant les DM d'une attaque (moitié contre les créatures énormes/colossales) — manœuvre liée à l'équipement porté, modélisation différée à la milestone Armures (PER-137 / PER-76).",
+    wip: "Parade au bouclier (test opposé) annulant les DM d'une attaque (moitié contre les créatures énormes/colossales) — manœuvre liée à l'équipement porté, hors du modèle de RD continue — suivi : PER-236.",
     sourcePage: 87,
   },
   {
@@ -1850,7 +1850,7 @@ export const fighterFeatures: Feature[] = [
         ],
       },
     ],
-    wip: "Option « port de l'armure de plaque » (accès d'armure + usage des capacités en plaque, relèvement d'un cran pour les hybrides) — dépendante de l'équipement porté, modélisation différée à la milestone Armures (PER-76).",
+    wip: "Option « port de l'armure de plaque » (accès d'armure + usage des capacités en plaque, relèvement d'un cran pour les hybrides) — effet armor-access à poser sur l'option (comme barbare/chevalier) — suivi : PER-236.",
     sourcePage: 90,
   },
   {
