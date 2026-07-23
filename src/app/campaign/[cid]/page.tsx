@@ -24,7 +24,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
-import ShieldIcon from '@mui/icons-material/Shield';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -273,6 +272,8 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           { label: 'Campagnes', href: '/campaigns' },
           { label: campaign.name },
         ]}
+        // Vue campagne = owner-only (gating proxy) : l'utilisateur est toujours le MJ ici.
+        gmScreenCampaignId={cid}
       />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -299,22 +300,14 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
           >
             Rattacher un personnage
           </Button>
-          {/* Outils MJ (écran de MJ + réglages) poussés tout à droite via la marge
-              automatique sur le premier de la paire. */}
-          <Button
-            variant="outlined"
-            startIcon={<ShieldIcon />}
-            component={Link}
-            href={`/campaign/${cid}/gm-screen`}
-            sx={{ ml: { sm: 'auto' } }}
-          >
-            Écran de MJ
-          </Button>
+          {/* Réglages poussés tout à droite via la marge automatique. L'accès à l'écran
+              de MJ vit désormais dans l'en-tête (bouton « Écran de MJ »), plus ici. */}
           <Button
             variant="outlined"
             startIcon={<SettingsIcon />}
             component={Link}
             href={`/campaign/${cid}/settings`}
+            sx={{ ml: { sm: 'auto' } }}
           >
             Réglages de la campagne
           </Button>

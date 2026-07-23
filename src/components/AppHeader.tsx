@@ -11,6 +11,7 @@ import { alpha, darken } from '@mui/material/styles';
 import { AccountMenu } from '@/components/AccountMenu';
 import { AppBreadcrumbs, type Crumb } from '@/components/AppBreadcrumbs';
 import { AppHeaderBrand } from '@/components/AppHeaderBrand';
+import { GmScreenIcon } from '@/components/GmScreenIcon';
 import { QuestIcon } from '@/components/QuestIcon';
 import { SectionIcon } from '@/components/SectionIcon';
 
@@ -46,6 +47,15 @@ interface AppHeaderProps {
    * neutre (accueil, wizard).
    */
   accentColor?: string;
+  /**
+   * Id de campagne dont l'utilisateur courant est le MJ (propriétaire). Présent → un
+   * lien « Écran de MJ » apparaît dans le cluster de droite de l'étage 1 (entre
+   * « Campagnes » et le menu compte), pointant vers `/campaign/{id}/gm-screen`. À passer
+   * par les pages où l'on sait l'utilisateur MJ de la campagne du contexte : vue campagne
+   * (owner-only) et fiche d'un personnage rattaché à une campagne qu'il possède. Absent =
+   * pas de lien (joueur, ou hors contexte campagne).
+   */
+  gmScreenCampaignId?: string;
 }
 
 /**
@@ -125,6 +135,7 @@ export function AppHeader({
   accentColor,
   subtitle,
   subtitleVisible = false,
+  gmScreenCampaignId,
 }: AppHeaderProps) {
   // Le sous-header n'apparaît que s'il y a quelque chose à y montrer : rien sur
   // l'accueil (pas de fil, pas d'action), présent partout ailleurs. Le sous-titre de
@@ -207,6 +218,14 @@ export function AppHeader({
             label="Campagnes"
             condensed={condensed}
           />
+          {gmScreenCampaignId && (
+            <HeaderNavButton
+              href={`/campaign/${gmScreenCampaignId}/gm-screen`}
+              icon={<GmScreenIcon />}
+              label="Écran de MJ"
+              condensed={condensed}
+            />
+          )}
           <AccountMenu />
         </Stack>
       </Toolbar>

@@ -850,6 +850,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         // Teinte l'en-tête à la couleur du profil principal (dégradé, bordure basse
         // foncée, ombre portée) — repli neutre tant que le profil n'est pas défini.
         accentColor={characterClass ? classColor(characterClass.id) : undefined}
+        // Lien « Écran de MJ » si l'utilisateur est le MJ de la campagne du personnage :
+        // `currentCampaign` n'est résolu que depuis le store des campagnes POSSÉDÉES
+        // (RLS owner), donc défini ⟺ utilisateur propriétaire/MJ. Absent pour un joueur.
+        gmScreenCampaignId={currentCampaign?.id}
         // Sous-titre « peuple · profil · niveau » révélé une fois l'en-tête dépassé
         // (même mise en forme que dans l'en-tête de la fiche, composant partagé).
         subtitle={
