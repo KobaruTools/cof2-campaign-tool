@@ -970,9 +970,10 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le moine gagne un bonus de +2 en DEF et il divise tous les DM temporaires subis par deux. Le bonus de DEF passe à +3 au rang 5.",
-    // DEF +2→+3 (r5) permanent. TODO(résistances) : « DM temporaires /2 » → DamageReduction (différé).
+    // DEF +2→+3 (r5) permanent, câblé. PER-236 : le « ÷2 des DM temporaires subis » est ACTÉ NON
+    // MODÉLISÉ (décision proprio 2026-07-23) — pas de « passe Résistances » planifiée ; il reste dans
+    // le texte verbatim et s'applique à la table. Seul le bonus de DEF est porté par un effet.
     effects: [{ kind: 'stat-bonus', stat: 'def', value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 5, value: 3 }] } }],
-    wip: "« DM temporaires divisés par deux » non encore modélisé en réduction de dégâts (seul le bonus de DEF est posé) — suivi : PER-236.",
     sourcePage: 121,
   },
   {
@@ -1441,34 +1442,28 @@ export const mysticFeatures: Feature[] = [
     actionTypes: [],
     text:
       "La tenue religieuse du prêtre est bénie et le protège. Lorsqu'il ne porte aucune armure (bouclier autorisé), il obtient un dé bonus à tous les tests pour résister à un contrôle mental (injonction, charme, domination…) et +2 en DEF. Ce bonus passe à +3 au rang 3 et +4 au rang 5. Éventuellement, si le prêtre prie une divinité guerrière, il peut choisir d'obtenir la maîtrise de la cotte de mailles (DEF +5) et l'autorisation d'utiliser les capacités des voies de prêtre avec cette armure (dans le cas d'un profil hybride, la maîtrise de la chemise de mailles est un prérequis pour bénéficier de cette variante).",
-    // DEF +2→+3 (r3)→+4 (r5) « sans armure » : câblée comme Bouclier de la foi
-    // (guerre-sainte-r2) — conditional-stat-bonus à interrupteur MANUEL. La condition
-    // « sans armure (bouclier autorisé) » se coche à la main ; sa DÉTECTION AUTOMATIQUE
-    // depuis l'équipement porté est différée au milestone Armures (PER-83, cas « bonus
-    // si sans armure »). La variante cotte de mailles (DEF +5 + maîtrise d'armure +
-    // capacités utilisables avec) est différée à PER-81 (accès armure par capacité).
-    // Dé bonus « résister au contrôle mental » = situationnel → verbatim.
+    // DEF +2→+3 (r3)→+4 (r5) « sans armure » : résolue AUTOMATIQUEMENT depuis le port effectif
+    // d'armure (`armor-def-bonus`, patron Dentelles et rapière / Armure de vent), sans interrupteur
+    // manuel (PER-236). Aucune armure portée → DEF += valeur du rang ; armure portée → 0. Le bouclier
+    // n'est pas une armure (p. 87) et `isArmorWorn` l'ignore → « bouclier autorisé » naturellement
+    // respecté. La variante cotte de mailles du prêtre guerrier (DEF +5 + maîtrise + capacités
+    // utilisables avec) reste DESCOPÉE (décision proprio 2026-07-23). Dé bonus « résister au contrôle
+    // mental » = situationnel → verbatim.
     effects: [
       {
-        kind: 'conditional-stat-bonus',
-        bonuses: [
-          {
-            stat: 'def',
-            value: {
-              scale: 'stepped',
-              by: 'path-rank',
-              steps: [
-                { min: 1, value: 2 },
-                { min: 3, value: 3 },
-                { min: 5, value: 4 },
-              ],
-            },
-          },
-        ],
-        activation: { kind: 'condition', label: 'sans armure (bouclier autorisé)', activeByDefault: false },
+        kind: 'armor-def-bonus',
+        whenUnarmored: {
+          scale: 'stepped',
+          by: 'path-rank',
+          steps: [
+            { min: 1, value: 2 },
+            { min: 3, value: 3 },
+            { min: 5, value: 4 },
+          ],
+        },
+        whenArmored: 0,
       },
     ],
-    wip: "Bonus de DEF « sans armure » à interrupteur manuel — détection automatique de l'absence d'armure et variante cotte de mailles (maîtrise + capacités utilisables avec) non branchées — suivi : PER-236.",
     sourcePage: 125,
   },
   {
