@@ -280,14 +280,39 @@ export function equipConflicts(equipment: EquipmentLine[]): EquipConflict[] {
  *
  * Fonction pure réutilisable telle quelle par l'Écran MJ (PER-210).
  */
-export function armorEncumbrancePenalty(equipment: EquipmentLine[]): number {
+export function armorEncumbrancePenalty(equipment: EquipmentLine[], divisor = 1): number {
   for (const line of equipment) {
     if (isCustomItem(line) || line.worn?.slot !== 'armor') continue;
     const item = effectiveItem(line);
     if (item?.category !== 'armor') continue;
-    return Math.max(0, item.def - (line.magicDef ?? 0));
+    const penalty = Math.max(0, item.def - (line.magicDef ?? 0));
+    // Diviseur (PER-236, Armure sur mesure `guerre-r1`, p. 84) : le chevalier « n'ajoute que la
+    // moitié de sa DEF » aux tests que l'armure pénalise → malus divisé, arrondi à l'inférieur
+    // (favorable au joueur, arrondi CO2 par défaut). Diviseur 1 (défaut) = malus inchangé.
+    return divisor > 1 ? Math.floor(penalty / divisor) : penalty;
   }
   return 0;
+}
+
+/**
+ * Ids (catalogue `armors`) des armures LOURDES au sens des capacités (« plaque ou plaque
+ * complète », p. 84) : `armure-de-plaques` (DEF +6) et `plaque-complete` (DEF +7). Notion
+ * de RÈGLE (« armure lourde »), distincte du plafond de PORT (PER-80) et du malus (PER-209).
+ */
+export const HEAVY_ARMOR_IDS: readonly string[] = ['armure-de-plaques', 'plaque-complete'];
+
+/**
+ * Une armure LOURDE (plaque / plaque complète) est-elle RÉELLEMENT portée (slot `armor`) ?
+ * Détection sur l'itemId de BASE — une variante enchantée d'une plaque reste une plaque ;
+ * une armure légère surchargée à DEF +6 n'en est PAS une. Sert au bonus de DEF « en armure
+ * lourde » d'Armure sur mesure (`guerre-r1`, PER-236). Objets personnalisés ignorés.
+ */
+export function isHeavyArmorWorn(equipment: EquipmentLine[] = []): boolean {
+  for (const line of equipment) {
+    if (isCustomItem(line) || line.worn?.slot !== 'armor') continue;
+    return HEAVY_ARMOR_IDS.includes(line.itemId);
+  }
+  return false;
 }
 
 /** Effet combiné de l'armure portée sur la valeur d'AGI d'un test (PER-78 + PER-209). */

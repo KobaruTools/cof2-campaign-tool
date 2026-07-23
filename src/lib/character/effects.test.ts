@@ -16,6 +16,7 @@ import {
   abilityTestBonusByAbility,
   activeConditionalTestDice,
   aggregateImmunities,
+  armorPenaltyDivisor,
   capacityResourceGauges,
   conditionalEffectsOf,
   conditionalEffectBonuses,
@@ -515,6 +516,8 @@ describe('effectContext', () => {
       borrowedHostPaths: new Map(),
       // Armure réellement portée (PER-132) : aucune ici (personnage minimal sans équipement).
       armorWorn: false,
+      // Armure lourde portée (PER-236) : aucune non plus.
+      heavyArmorWorn: false,
     });
   });
 });
@@ -1583,6 +1586,51 @@ describe('Armure de vent — bonus de DEF selon l’armure portée (PER-132)', (
     // Le bonus suit l'état porté sans interrupteur manuel.
     expect(modsFromFeatures(['primitif-r2'], effectContext(sansArmure)).def).toBe(2);
     expect(modsFromFeatures(['primitif-r2'], effectContext(avecArmure)).def).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PER-236 — Armure sur mesure (chevalier, guerre-r1) : demi-malus d'armure +
+// bonus de DEF par voie de chevalier au rang 5, EN ARMURE LOURDE
+// ---------------------------------------------------------------------------
+
+describe('Armure sur mesure — demi-malus + DEF en armure lourde (guerre-r1, PER-236)', () => {
+  it('armorPenaltyDivisor vaut 2 avec Armure sur mesure', () => {
+    expect(armorPenaltyDivisor(['guerre-r1'])).toBe(2);
+  });
+
+  it('armorPenaltyDivisor vaut 1 (aucune réduction) sans la capacité', () => {
+    expect(armorPenaltyDivisor([])).toBe(1);
+    expect(armorPenaltyDivisor(['guerre-r2'])).toBe(1);
+  });
+
+  it('+1 en DEF par voie de chevalier au rang 5, uniquement en armure lourde', () => {
+    // guerre atteint le rang 5 → une voie de chevalier au rang 5 → +1.
+    expect(modsFromFeatures(['guerre-r1', 'guerre-r5'], ctx({ heavyArmorWorn: true })).def).toBe(1);
+    // guerre + cavalier au rang 5 → deux voies → +2.
+    expect(
+      modsFromFeatures(['guerre-r1', 'guerre-r5', 'cavalier-r5'], ctx({ heavyArmorWorn: true })).def,
+    ).toBe(2);
+  });
+
+  it('aucun bonus de DEF hors armure lourde', () => {
+    expect(modsFromFeatures(['guerre-r1', 'guerre-r5'], ctx({ heavyArmorWorn: false })).def ?? 0).toBe(0);
+  });
+
+  it('aucun bonus de DEF en armure lourde sans voie de chevalier au rang 5', () => {
+    expect(modsFromFeatures(['guerre-r1'], ctx({ heavyArmorWorn: true })).def ?? 0).toBe(0);
+  });
+
+  it('sans contexte (catalogue seul), aucune contribution résoluble', () => {
+    expect(modsFromFeatures(['guerre-r1', 'guerre-r5']).def ?? 0).toBe(0);
+  });
+
+  it('effectContext expose l’armure lourde réellement portée', () => {
+    const base = createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' });
+    const heavy: EquipmentLine = { itemId: 'plaque-complete', quantity: 1, worn: { slot: 'armor' } };
+    const medium: EquipmentLine = { itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } };
+    expect(effectContext({ ...base, equipment: [heavy] }).heavyArmorWorn).toBe(true);
+    expect(effectContext({ ...base, equipment: [medium] }).heavyArmorWorn).toBe(false);
   });
 });
 

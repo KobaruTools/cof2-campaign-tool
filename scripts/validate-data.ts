@@ -407,6 +407,14 @@ for (const c of features) {
       if (unarmoredError) err(`[capacite ${c.id}] effect: armor-def-bonus whenUnarmored ${unarmoredError}`);
       const armoredError = effectValueError(e.whenArmored);
       if (armoredError) err(`[capacite ${c.id}] effect: armor-def-bonus whenArmored ${armoredError}`);
+    } else if (e.kind === 'armor-penalty-reduction') {
+      // Réduction du malus d'armure (PER-236, Armure sur mesure) : diviseur entier ≥ 2.
+      if (!Number.isInteger(e.divisor) || e.divisor < 2)
+        err(`[capacite ${c.id}] effect: armor-penalty-reduction divisor doit être un entier ≥ 2 : ${e.divisor}`);
+    } else if (e.kind === 'heavy-armor-def-bonus') {
+      // Bonus de DEF en armure lourde (PER-236) : valeur constante ou scalante.
+      const valueError = effectValueError(e.value);
+      if (valueError) err(`[capacite ${c.id}] effect: heavy-armor-def-bonus value ${valueError}`);
     } else if (e.kind === 'weapon-damage-bonus') {
       // Bonus de DM d'arme (PER-115/PER-226) : exactement UN de `ability` / `dice` / `flat` ; condition
       // partagée ; dé et bonus plat valides le cas échéant.

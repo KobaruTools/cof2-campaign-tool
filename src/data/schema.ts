@@ -495,6 +495,8 @@ export type FeatureEffect =
   | ImmunityEffect
   | ArmorAccessEffect
   | ArmorDefBonusEffect
+  | ArmorPenaltyReductionEffect
+  | HeavyArmorDefBonusEffect
   | WeaponDamageBonusEffect
   | AttackBonusEffect;
 
@@ -1070,6 +1072,33 @@ export interface ArmorDefBonusEffect {
   whenUnarmored: EffectValue;
   /** Bonus de DEF quand une armure EST portée (ex. +1). */
   whenArmored: EffectValue;
+}
+
+/**
+ * Réduction du MALUS D'ARMURE (« malus d'encombrement », p. 188) apporté par cette capacité :
+ * le personnage n'ajoute que `1/divisor` de la DEF de son armure aux tests que celle-ci pénalise.
+ * Ex. Armure sur mesure (chevalier, `guerre-r1`, p. 84) : « n'ajoute que la MOITIÉ de sa DEF » →
+ * `divisor: 2`. Résolu par `armorEncumbrancePenalty` (arrondi à l'inférieur, favorable au joueur) ;
+ * ne touche ni la DEF ni les autres calculs. PER-236.
+ */
+export interface ArmorPenaltyReductionEffect {
+  kind: 'armor-penalty-reduction';
+  /** Diviseur du malus d'armure (2 = moitié). Arrondi à l'inférieur. */
+  divisor: number;
+}
+
+/**
+ * Bonus de DEF conditionné au port d'une armure LOURDE (plaque / plaque complète, cf.
+ * `HEAVY_ARMOR_IDS`), résolu AUTOMATIQUEMENT depuis l'équipement (comme `ArmorDefBonusEffect`,
+ * sans interrupteur). Distinct de ce dernier qui ne distingue qu'armure/pas-armure. La valeur
+ * est le plus souvent SCALANTE : Armure sur mesure (`guerre-r1`, p. 84) octroie « +1 en DEF à
+ * chaque fois qu'il atteint le rang 5 dans une voie de chevalier » →
+ * `{ scale: 'milestone-count', per: 1, rank: 5, classIds: ['chevalier'] }`. PER-236.
+ */
+export interface HeavyArmorDefBonusEffect {
+  kind: 'heavy-armor-def-bonus';
+  /** Bonus de DEF appliqué UNIQUEMENT en armure lourde (constante ou scalante). */
+  value: EffectValue;
 }
 
 /**

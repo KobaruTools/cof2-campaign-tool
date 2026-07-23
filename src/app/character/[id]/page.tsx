@@ -56,6 +56,7 @@ import {
   abilityTestBonusSources,
   abilityTestBonusByAbility,
   activeConditionalTestDice,
+  armorPenaltyDivisor,
   capacityResourceGauges,
   conditionalEffectsOf,
   pruneEffectInputs,
@@ -761,7 +762,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // tests de survie CON. Le plafond d'AGI de l'armure portée (PER-78) est appliqué AVANT le
   // malus sur la ligne « test de AGI » ; on lit ce plafond directement sur l'équipement
   // (indépendant de la dérogation de défense « Dentelles », seduction-r2).
-  const armorPenalty = armorEncumbrancePenalty(character.equipment);
+  // Armure sur mesure (chevalier, guerre-r1, PER-236) peut diviser ce malus (ici de moitié).
+  const armorPenalty = armorEncumbrancePenalty(character.equipment, armorPenaltyDivisor(modFeatureIds));
   const armorMaxAgi = defenseFromEquipment(character.equipment).maxAgi;
 
   // Le personnage dispose-t-il d'une réserve de mana ? Uniquement s'il connaît au

@@ -50,7 +50,7 @@ import {
   isArmorWorn,
   shieldDisabledFeatureIds,
 } from './armorRestrictions';
-import { wornMeleeWeapon, wornRangedWeapon } from './equipment';
+import { isHeavyArmorWorn, wornMeleeWeapon, wornRangedWeapon } from './equipment';
 import { rulesContext } from './rulesContext';
 import type { Character, FeatureChoiceSelection } from './types';
 
@@ -91,6 +91,12 @@ export interface EffectContext {
    * (les appels « catalogue seul » n'ont pas d'équipement ; `effectContext` le renseigne).
    */
   armorWorn?: boolean;
+  /**
+   * Une armure LOURDE (plaque / plaque complète, cf. `isHeavyArmorWorn`) est-elle réellement
+   * portée ? Sert aux effets `heavy-armor-def-bonus` résolus AUTOMATIQUEMENT (Armure sur mesure,
+   * `guerre-r1`, PER-236). Absent → traité comme « pas d'armure lourde ».
+   */
+  heavyArmorWorn?: boolean;
 }
 
 /**
@@ -146,7 +152,26 @@ export function effectContext(character: Character): EffectContext {
     featureChoices: character.featureChoices,
     borrowedHostPaths: borrowedHostPathByFeatureId(character),
     armorWorn: isArmorWorn(character.equipment),
+    heavyArmorWorn: isHeavyArmorWorn(character.equipment),
   };
+}
+
+/**
+ * Diviseur du MALUS D'ARMURE apporté par les capacités possédées (effet `armor-penalty-reduction`,
+ * PER-236). Ex. Armure sur mesure (`guerre-r1`) : « n'ajoute que la moitié de sa DEF » → diviseur 2.
+ * Retient le diviseur le PLUS FAVORABLE (max) parmi les effets présents ; 1 si aucun (malus intact).
+ * Fonction pure sur des ids de capacité — l'appelant filtre les capacités actives (armure) en amont.
+ */
+export function armorPenaltyDivisor(featureIds: string[]): number {
+  let divisor = 1;
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const effect of feature.effects) {
+      if (effect.kind === 'armor-penalty-reduction' && effect.divisor > divisor) divisor = effect.divisor;
+    }
+  }
+  return divisor;
 }
 
 /**
@@ -312,6 +337,13 @@ function effectContributions(
     if (!ctx) return [];
     const branch = ctx.armorWorn ? effect.whenArmored : effect.whenUnarmored;
     const v = resolveValue(branch, pathId, pathRanks, ctx);
+    return v === null ? [] : [{ stat: 'def', value: v }];
+  }
+  // Bonus de DEF conditionné à l'ARMURE LOURDE portée (PER-236, Armure sur mesure) — résolu
+  // automatiquement depuis `ctx.heavyArmorWorn`. Non résoluble sans contexte, et nul hors armure lourde.
+  if (effect.kind === 'heavy-armor-def-bonus') {
+    if (!ctx?.heavyArmorWorn) return [];
+    const v = resolveValue(effect.value, pathId, pathRanks, ctx);
     return v === null ? [] : [{ stat: 'def', value: v }];
   }
   // Les genres ciblant une CARACTÉRISTIQUE (`ability-bonus`, `ability-bonus-die`) ne

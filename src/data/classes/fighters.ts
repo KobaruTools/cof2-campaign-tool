@@ -1100,11 +1100,19 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'L’armure du chevalier est parfaitement ajustée, aussi il n’ajoute que la moitié de sa DEF à la difficulté des tests pour lesquels l’armure inflige une pénalité. De plus, lorsqu’il porte une armure lourde (plaque ou plaque complète), il obtient un bonus de +1 en DEF à chaque fois qu’il atteint le rang 5 dans une voie de chevalier.',
-    // PER-72 : les deux effets dépendent de l'ARMURE réellement portée — moitié de la DEF d'armure
-    // retranchée aux pénalités d'armure ; et +1 en DEF par rang 5 atteint dans une voie de chevalier,
-    // SEULEMENT en armure lourde (plaque / plaque complète). Non résoluble sans l'équipement porté
-    // → modélisation différée à la milestone Armures (PER-76). Verbatim ; badge WIP.
-    wip: "Armure sur mesure dépend de l'armure portée — pénalités d'armure réduites de moitié, et +1 en DEF par rang 5 de voie de chevalier en armure lourde — non branché sur le calcul du malus d'armure — suivi : PER-236.",
+    // PER-236 : les deux effets sont résolus depuis l'ARMURE réellement portée.
+    //  1) `armor-penalty-reduction` (diviseur 2) : le malus d'armure (p. 188) est divisé par deux
+    //     (arrondi à l'inférieur), appliqué par `armorEncumbrancePenalty` via `armorPenaltyDivisor`.
+    //  2) `heavy-armor-def-bonus` : +1 en DEF PAR voie de chevalier atteignant le rang 5
+    //     (`milestone-count`), SEULEMENT en armure lourde (plaque / plaque complète, cf.
+    //     `isHeavyArmorWorn`). La voie de la guerre elle-même compte si elle atteint le rang 5.
+    effects: [
+      { kind: 'armor-penalty-reduction', divisor: 2 },
+      {
+        kind: 'heavy-armor-def-bonus',
+        value: { scale: 'milestone-count', per: 1, rank: 5, classIds: ['chevalier'] },
+      },
+    ],
     sourcePage: 84,
   },
   {

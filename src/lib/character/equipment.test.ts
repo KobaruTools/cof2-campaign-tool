@@ -4,6 +4,7 @@ import {
   armorEncumbrancePenalty,
   autoEquipStartingGear,
   equipConflicts,
+  isHeavyArmorWorn,
   setWornAt,
   wornMeleeWeapon,
   wornMeleeWeaponLine,
@@ -273,6 +274,36 @@ describe('armorEncumbrancePenalty', () => {
         { itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } }, // DEF 5
       ]),
     ).toBe(2);
+  });
+
+  it("réduit le malus par un diviseur (Armure sur mesure : moitié, arrondi à l'inférieur)", () => {
+    // Armure de plaques DEF 6 → malus 6, moitié = 3 (guerre-r1, p. 84).
+    expect(
+      armorEncumbrancePenalty([{ itemId: 'armure-de-plaques', quantity: 1, worn: { slot: 'armor' } }], 2),
+    ).toBe(3);
+    // Plaque complète DEF 7 → malus 7, moitié = 3 (arrondi à l'inférieur).
+    expect(
+      armorEncumbrancePenalty([{ itemId: 'plaque-complete', quantity: 1, worn: { slot: 'armor' } }], 2),
+    ).toBe(3);
+  });
+
+  it("un diviseur de 1 (défaut) laisse le malus inchangé", () => {
+    const lines: EquipmentLine[] = [{ itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } }];
+    expect(armorEncumbrancePenalty(lines, 1)).toBe(5);
+    expect(armorEncumbrancePenalty(lines)).toBe(5);
+  });
+});
+
+describe('isHeavyArmorWorn', () => {
+  it("est vrai pour une armure de plaques ou une plaque complète PORTÉE", () => {
+    expect(isHeavyArmorWorn([{ itemId: 'armure-de-plaques', quantity: 1, worn: { slot: 'armor' } }])).toBe(true);
+    expect(isHeavyArmorWorn([{ itemId: 'plaque-complete', quantity: 1, worn: { slot: 'armor' } }])).toBe(true);
+  });
+
+  it("est faux pour une armure légère/moyenne, une armure lourde RANGÉE, ou sans armure", () => {
+    expect(isHeavyArmorWorn([{ itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } }])).toBe(false);
+    expect(isHeavyArmorWorn([{ itemId: 'armure-de-plaques', quantity: 1 }])).toBe(false); // rangée
+    expect(isHeavyArmorWorn([])).toBe(false);
   });
 });
 
