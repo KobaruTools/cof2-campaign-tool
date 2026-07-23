@@ -195,7 +195,7 @@ export const adventurerPaths: ClassPath[] = [
     type: 'class',
     classIds: ['arquebusier'],
     featureIds: ['pistolero-r1', 'pistolero-r2', 'pistolero-r3', 'pistolero-r4', 'pistolero-r5'],
-    sourcePage: 64,
+    sourcePage: 65,
   },
   {
     id: 'precision',
@@ -299,7 +299,7 @@ export const adventurerPaths: ClassPath[] = [
       'compagnon-animal-r5',
     ],
     note: "GÉRER UN COMPAGNON ANIMAL\n\nEn ville : le loup du rôdeur n'est pas très à l'aise en milieu urbain. Généralement, il préfère rester à l'extérieur de l'agglomération et se débrouiller seul en attendant que son maître le réclame. Toutefois le joueur peut décider que son personnage adopte un très gros chien plutôt qu'un loup ; dans ce cas, les aventures urbaines ne poseront aucun problème. En revanche, le chien voudra suivre son maître partout.\n\nSoigner un compagnon animal : un compagnon animal peut être soigné par magie et récupère tous les PV perdus après une récupération complète.\n\nCompagnon animal à 0 PV : lorsque le compagnon animal tombe à 0 PV, s'il est en milieu naturel considérez qu'il s'enfuit (il revient au bout de 8 h avec tous ses PV). S'il ne peut pas, il doit être soigné comme le serait un personnage.\n\nMort d'un compagnon animal : le PJ pourra retrouver un nouveau compagnon au passage de niveau suivant. Joueur et MJ doivent se mettre d'accord quant au moment opportun et cela peut faire l'objet d'une scène de jeu.\n\nMontreur d'ours : alternativement, le MJ peut autoriser le joueur à adopter un autre animal et modifier la voie en conséquence. Par exemple, un montreur d'ours pourrait bénéficier des modifications suivantes : au rang 2, remplacer le bonus aux tests pour pister et de surprise par un bonus en intimidation et en spectacle. Retrancher 2 en DEF et ajouter +2 en FOR (et donc +2 aux DM) du compagnon.",
-    sourcePage: 70,
+    sourcePage: 71,
   },
   {
     id: 'survie',
@@ -350,7 +350,7 @@ export const adventurerPaths: ClassPath[] = [
     type: 'class',
     classIds: ['voleur'],
     featureIds: ['aventurier-r1', 'aventurier-r2', 'aventurier-r3', 'aventurier-r4', 'aventurier-r5'],
-    sourcePage: 74,
+    sourcePage: 75,
   },
   {
     id: 'deplacement',
@@ -821,7 +821,7 @@ export const adventurerFeatures: Feature[] = [
     // fausserait l'Init dès que le perso ne tire pas). Laissé VERBATIM ; le cas « +5 Init seulement si
     // l'action est un tir » est reporté au tracker de combat (PER-121, milestone Rencontres). La
     // suppression du dé malus en tirant engagé au contact relève de l'exception au dé malus (PER-116).
-    sourcePage: 64,
+    sourcePage: 65,
   },
   {
     id: 'pistolero-r2',
@@ -832,7 +832,7 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Après avoir raté une attaque à distance, l'arquebusier déclare qu'il s'agissait d'un tir de réglage. Il obtient +5 sur le test de sa prochaine attaque à distance, si son prochain tir vise la même cible avant la fin du prochain round.",
-    sourcePage: 64,
+    sourcePage: 65,
   },
   {
     id: 'pistolero-r3',
@@ -845,7 +845,7 @@ export const adventurerFeatures: Feature[] = [
       "L'arquebusier est capable de tirer simultanément avec une pétoire (ou une arbalète de poing) dans chaque main avec un malus de -2 à chaque attaque. S'il décharge ses deux armes sur la même cible, il ne subit aucun malus.",
     // PER-71 : combat à deux armes à distance (malus de -2, annulé si même cible) → relève de la gestion
     // du dé malus / combat à deux armes (PER-116, milestone Armures). Pas d'effet structuré ; verbatim.
-    sourcePage: 64,
+    sourcePage: 65,
   },
   {
     id: 'pistolero-r4',
@@ -861,7 +861,7 @@ export const adventurerFeatures: Feature[] = [
       { kind: 'ability-bonus', ability: 'AGI', value: 1 },
       { kind: 'ability-bonus-die', ability: 'AGI' },
     ],
-    sourcePage: 64,
+    sourcePage: 65,
   },
   {
     id: 'pistolero-r5',
@@ -876,7 +876,7 @@ export const adventurerFeatures: Feature[] = [
     // tir) → pas d'effet permanent (calqué sur le barde escrime-r5/saltimbanque, même structure de seuil).
     richText:
       "Lors d'une attaque à distance avec une arme à poudre ou une arbalète, s'il obtient un résultat d'attaque supérieur ou égal à la DEF de son adversaire +10 points, l'arquebusier obtient un bonus de +{2d4°} aux DM de son attaque.",
-    sourcePage: 64,
+    sourcePage: 65,
   },
 
   // --- Voie de la précision (p. 65) ---
@@ -1007,7 +1007,7 @@ export const adventurerFeatures: Feature[] = [
       "Une fois par combat, le barde peut au choix désarmer, renverser ou aveugler pour une durée de 1 round un adversaire dont le NC est inférieur au sien en emportant un test opposé d'INT. S'il a réussi une feinte contre cet adversaire à son tour précédent, il bénéficie d'un bonus de +5 au test d'INT.",
     // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
     usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
-    sourcePage: 66,
+    sourcePage: 67,
   },
   {
     id: 'escrime-r4',
@@ -1022,7 +1022,7 @@ export const adventurerFeatures: Feature[] = [
     // (attaque au contact à l'arme légère, action limitée) → pas d'effet permanent.
     richText:
       "Le style de combat du barde est flamboyant et surprenant : Il effectue une attaque de contact avec une arme légère et obtient un bonus d'attaque et de DM égal à son [CHA] (en plus de sa FOR ou de son AGI).",
-    sourcePage: 66,
+    sourcePage: 67,
   },
   {
     id: 'escrime-r5',
@@ -1037,7 +1037,7 @@ export const adventurerFeatures: Feature[] = [
     // la cible (auto-détectée comme stat dérivée, non calculée contre le joueur).
     richText:
       "Lors d'une attaque au contact avec une arme légère, s'il obtient un résultat d'attaque supérieur ou égal à (la DEF de son adversaire + 10 points), le barde obtient un bonus de +{2d4°} aux DM de son attaque (les dés bonus ne sont jamais multipliés en cas de critique).",
-    sourcePage: 66,
+    sourcePage: 67,
   },
 
   // --- Voie du musicien (p. 67) ---
@@ -1461,7 +1461,7 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le rôdeur peut faire deux attaques à distance pendant son tour avec un malus de -2.",
-    sourcePage: 70,
+    sourcePage: 71,
   },
   {
     id: 'archer-r5',
@@ -1479,7 +1479,7 @@ export const adventurerFeatures: Feature[] = [
     // « chaque état préjudiciable une seule fois par combat » → 4 états (aveuglé, affaibli, ralenti,
     // immobilisé), soit 4 utilisations par combat ; réinitialisé au repos court (PER-73/151).
     usageCounter: { max: 4, resetOn: 'combat', hideFromStatusPanel: true, label: 'États infligés' },
-    sourcePage: 70,
+    sourcePage: 71,
   },
 
   // --- Voie du compagnon animal (p. 70) ---
@@ -1499,8 +1499,8 @@ export const adventurerFeatures: Feature[] = [
     // tests ») → `bonusDieAbilities` (rendu double-d20, système unifié PER-107).
     richText:
       "Le rôdeur obtient un loup pour compagnon animal. En combat, le loup attaque en même temps que le rôdeur. Le loup comprend des ordres simples comme : garde, reste, apporte, attaque, etc.",
-    creatureProfile: { name: 'Loup', type: 'Créature vivante', abilities: { AGI: 1, CON: 1, FOR: 2, PER: 2, CHA: -2, INT: -3, VOL: 2 }, defense: '[12 + rang]', hitPoints: '[=niveau × 4]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4 + 2]' }, bonusDieAbilities: ['CON', 'PER'] },
-    sourcePage: 70,
+    creatureProfile: { name: 'Loup', type: 'Créature vivante', companionType: 'animal', abilities: { AGI: 1, CON: 1, FOR: 2, PER: 2, CHA: -2, INT: -3, VOL: 2 }, defense: '[12 + rang]', hitPoints: '[=niveau × 4]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4 + 2]' }, bonusDieAbilities: ['CON', 'PER'] },
+    sourcePage: 71,
   },
   {
     id: 'compagnon-animal-r2',
@@ -1554,7 +1554,7 @@ export const adventurerFeatures: Feature[] = [
     // Bloc de stats retiré du richText. Dés bonus innés (CON* de l'alpha + PER* reporté) →
     // `bonusDieAbilities` (rendu double-d20, PER-107).
     richText: "Le loup du rôdeur devient un spécimen particulièrement puissant.",
-    creatureProfile: { name: 'Mâle alpha', type: 'Créature vivante', abilities: { AGI: 1, CON: 3, FOR: 5, PER: 2, CHA: -2, INT: -3, VOL: 2 }, defense: '18', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' }, bonusDieAbilities: ['CON', 'PER'] },
+    creatureProfile: { name: 'Mâle alpha', type: 'Créature vivante', companionType: 'animal', abilities: { AGI: 1, CON: 3, FOR: 5, PER: 2, CHA: -2, INT: -3, VOL: 2 }, defense: '18', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' }, bonusDieAbilities: ['CON', 'PER'] },
     replacesFeatures: ['compagnon-animal-r1'],
     sourcePage: 72,
   },
@@ -2012,7 +2012,7 @@ export const adventurerFeatures: Feature[] = [
     // Rendu enrichi (PER-71) : bonus aux DM de l'attaque sournoise {2d4°}.
     richText:
       "Contre un adversaire surpris, le voleur peut réaliser une attaque sournoise en utilisant une action d'attaque plutôt qu'une action limitée et il augmente les DM de son attaque sournoise de {2d4°}.",
-    sourcePage: 74,
+    sourcePage: 75,
   },
   {
     id: 'assassin-r4',
@@ -2025,7 +2025,7 @@ export const adventurerFeatures: Feature[] = [
       "Une fois par combat, le voleur peut disparaître dans un flash lumineux et un nuage de fumée. Aucun adversaire ne peut l'attaquer pendant qu'il a disparu, mais il peut subir des DM de zone. Il ne réapparaît qu'au début de son prochain tour à une distance maximale de 20 m de sa position initiale. À ce moment, si le voleur a l'initiative, il peut réaliser une attaque sournoise.",
     // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
     usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
-    sourcePage: 74,
+    sourcePage: 75,
   },
   {
     id: 'assassin-r5',
@@ -2038,7 +2038,7 @@ export const adventurerFeatures: Feature[] = [
       "Une fois par combat, le voleur obtient une réussite critique automatique contre la cible de son choix. Il profite donc d'une réussite automatique, des dommages multipliés par 2 prévus dans ce cas et d'une attaque sournoise (dont les DM ne sont pas doublés).",
     // « Une fois par combat » → compteur réinitialisé au repos court (PER-73/151).
     usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
-    sourcePage: 74,
+    sourcePage: 75,
   },
 
   // --- Voie de l'aventurier (p. 74) ---
@@ -2059,7 +2059,7 @@ export const adventurerFeatures: Feature[] = [
     richText:
       "Le voleur ajoute son [rang + 2] aux tests destinés à baratiner, séduire, négocier, mentir ou pour trouver un objet au marché noir. De plus, il devient capable d'utiliser les parchemins ou les baguettes magiques en réussissant un test d'attaque magique (L) contre une difficulté de (10 + (2 x rang du sort inscrit)). En cas d'échec, le sort n'est pas lancé et le voleur peut faire une nouvelle tentative.",
     effects: [{ kind: 'test-bonus', domains: ['fast-talk', 'seduction', 'persuasion', 'deception'] }],
-    sourcePage: 74,
+    sourcePage: 75,
   },
   {
     id: 'aventurier-r2',

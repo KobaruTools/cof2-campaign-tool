@@ -586,3 +586,29 @@ describe('cohérence du catalogue', () => {
     }
   });
 });
+
+describe('free-text choice (PER-175) — type d’animal du familier fantastique', () => {
+  const R3 = 'prestige-familier-fantastique-r3';
+  const freeText = () => featureChoiceDefs(R3)[1];
+
+  it('visible seulement pour Animal céleste ou Animal mort-vivant (visibleIfOption multi-options)', () => {
+    // Aucun familier choisi → masqué.
+    expect(isChoiceActionable(makeCharacter({ featureIds: [R3] }), R3, freeText())).toBe(false);
+    // Céleste et mort-vivant → visible.
+    expect(
+      isChoiceActionable(makeCharacter({ featureIds: [R3], featureChoices: { [R3]: ['familier-celeste'] } }), R3, freeText()),
+    ).toBe(true);
+    expect(
+      isChoiceActionable(makeCharacter({ featureIds: [R3], featureChoices: { [R3]: ['familier-mort-vivant'] } }), R3, freeText()),
+    ).toBe(true);
+    // Fée (hors liste) → masqué.
+    expect(
+      isChoiceActionable(makeCharacter({ featureIds: [R3], featureChoices: { [R3]: ['fee'] } }), R3, freeText()),
+    ).toBe(false);
+  });
+
+  it('OPTIONNEL : jamais compté « à faire », même visible et vide', () => {
+    const c = makeCharacter({ featureIds: [R3], featureChoices: { [R3]: ['familier-celeste'] } });
+    expect(unmadeChoiceIndexes(c, R3)).not.toContain(1);
+  });
+});

@@ -37,6 +37,7 @@ import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DamageValue } from '@/components/DamageValue';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
+import { MetaPill } from '@/components/MetaPill';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { GlossaryText, RichInline } from '@/components/sheet/FeatureRichText';
 import { VerbatimToggle } from '@/components/sheet/FeaturesByPath';
@@ -70,36 +71,7 @@ const interactiveBlockSx = (theme: Theme) => ({
   },
 });
 
-/** Pilule d'identité neutre (NC, taille, nature) : même habillage discret que `SourceRef`. */
-function MetaPill({ label, children }: { label?: string; children: ReactNode }) {
-  return (
-    <Box
-      component="span"
-      sx={(theme) => ({
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 0.5,
-        px: 0.75,
-        py: 0.25,
-        borderRadius: 1,
-        lineHeight: 1,
-        fontSize: '0.75rem',
-        fontVariantNumeric: 'tabular-nums',
-        whiteSpace: 'nowrap',
-        color: 'text.secondary',
-        bgcolor: alpha(theme.palette.text.primary, 0.06),
-        border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
-      })}
-    >
-      {label && (
-        <Box component="span" sx={{ fontWeight: 700, color: 'text.primary', letterSpacing: 0.3 }}>
-          {label}
-        </Box>
-      )}
-      {children}
-    </Box>
-  );
-}
+// `MetaPill` (NC, taille, nature) est désormais partagé — cf. `@/components/MetaPill` (PER-175).
 
 /**
  * Découpe le nom VERBATIM d'une capacité de créature (« Regard envoûtant (A) »,

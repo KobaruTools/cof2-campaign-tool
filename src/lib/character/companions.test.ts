@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { featureById } from '@/data';
+import { resolveCreatureAbilities } from '@/lib/ui/creature';
 import { createBlankCharacter } from './factory';
 import type { Character, Depletion } from './types';
 import {
@@ -147,6 +148,98 @@ describe('listCompanions', () => {
     const c = char({ classId: 'chevalier', featureIds: ['cavalier-r1', 'noblesse-r2'] });
     const companions = listCompanions(c);
     expect(companions.map((e) => e.profile.name).sort()).toEqual(['Fidèle monture', 'Écuyer']);
+  });
+});
+
+describe('companionType (PER-175)', () => {
+  it('recopie le type déclaré sur le profil pour chaque famille de compagnon', () => {
+    const golem = listCompanions(char({ classId: 'forgesort', featureIds: ['golem-r1', 'golem-r2'] }));
+    expect(golem[0].companionType).toBe('summon');
+
+    const ecuyer = listCompanions(char({ classId: 'chevalier', featureIds: ['noblesse-r1', 'noblesse-r2'] }));
+    expect(ecuyer[0].companionType).toBe('companion');
+
+    const monture = listCompanions(char({ classId: 'chevalier', featureIds: ['cavalier-r1'] }));
+    expect(monture[0].companionType).toBe('mount');
+
+    const loup = listCompanions(char({ classId: 'rodeur', featureIds: ['compagnon-animal-r1'] }));
+    expect(loup[0].companionType).toBe('animal');
+  });
+
+  it('présence et taxonomie sont orthogonales : le familier du magicien (invoqué) reste `familiar`', () => {
+    const invoked = listCompanions(
+      char({
+        classId: 'magicien',
+        featureIds: ['magie-universelle-r2'],
+        effectToggles: { 'magie-universelle-r2': [false, true] },
+      }),
+    );
+    expect(invoked[0].companionType).toBe('familiar');
+  });
+
+  it('familier fantastique choisi : s’affiche via la mini-fiche commune avec ses écarts de carac', () => {
+    // Rang 3 acquis mais aucun familier choisi → pas de profil effectif → aucun compagnon.
+    expect(listCompanions(char({ featureIds: ['prestige-familier-fantastique-r3'] }))).toHaveLength(0);
+
+    // Lézard voltaïque choisi → un compagnon `familiar`, FOR -6 (écart -2 sur le gabarit -4).
+    const lezard = listCompanions(
+      char({
+        featureIds: ['prestige-familier-fantastique-r3'],
+        featureChoices: { 'prestige-familier-fantastique-r3': ['lezard-voltaique'] },
+      }),
+    );
+    expect(lezard).toHaveLength(1);
+    expect(lezard[0].companionType).toBe('familiar');
+    expect(lezard[0].profile.name).toBe('Lézard voltaïque');
+    expect(lezard[0].profile.size).toBe('petite');
+    expect(lezard[0].profile.abilities!.FOR).toBe(-6);
+    // PV du gabarit minuscule [=niveau × 2] au niveau 5 → 10.
+    expect(resolveCreatureMaxHp(lezard[0].profile, char().abilities, 5, 3)).toBe(10);
+
+    // Fée : choix distinct du lutin, écart CHA +2 sur le gabarit -2 → CHA 0.
+    const fee = listCompanions(
+      char({
+        featureIds: ['prestige-familier-fantastique-r3'],
+        featureChoices: { 'prestige-familier-fantastique-r3': ['fee'] },
+      }),
+    );
+    expect(fee[0].profile.abilities!.CHA).toBe(0);
+  });
+
+  it('minimoï : caractéristiques DÉRIVÉES du maître (FOR fixe -3, AGI = maître +2, autres = maître -2)', () => {
+    const master = char({
+      abilities: { FOR: 0, AGI: 1, CON: 2, PER: 0, CHA: -1, INT: 3, VOL: 1 },
+      featureIds: ['prestige-familier-fantastique-r3'],
+      featureChoices: { 'prestige-familier-fantastique-r3': ['minimoi'] },
+    });
+    const minimoi = listCompanions(master);
+    expect(minimoi[0].companionType).toBe('familiar');
+    expect(minimoi[0].profile.size).toBe('minuscule');
+    // FOR fixe -3 ; AGI 1+2=3 ; CON 2-2=0 ; PER 0-2=-2 ; CHA -1-2=-3 ; INT 3-2=1 ; VOL 1-2=-1.
+    expect(resolveCreatureAbilities(minimoi[0].profile, master.abilities)).toEqual({
+      FOR: -3,
+      AGI: 3,
+      CON: 0,
+      PER: -2,
+      CHA: -3,
+      INT: 1,
+      VOL: -1,
+    });
+  });
+
+  it('particularités modélisées en capacités (specialAbilities) avec richText parsable', () => {
+    const araignee = listCompanions(
+      char({
+        featureIds: ['prestige-familier-fantastique-r3'],
+        featureChoices: { 'prestige-familier-fantastique-r3': ['araignee-geante'] },
+      }),
+    )[0];
+    const abilities = araignee.profile.specialAbilities ?? [];
+    expect(abilities.map((a) => a.name)).toEqual(['Poison', 'Escalade']);
+    // Le richText du Poison porte les jetons (dé + difficulté) → parsé, pas laissé littéral.
+    const poison = abilities.find((a) => a.name === 'Poison')!;
+    expect(poison.richText).toContain('{1d4°}');
+    expect(poison.richText).toContain('[10 + rang]');
   });
 });
 

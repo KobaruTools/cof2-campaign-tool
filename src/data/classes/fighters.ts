@@ -911,6 +911,7 @@ export const fighterFeatures: Feature[] = [
     // (cas d'affichage maître→créature trivial, traité en avance de PER-94).
     creatureProfile: {
       name: 'Fidèle monture',
+      companionType: 'mount',
       abilities: { AGI: 0, CON: 4, FOR: 5, PER: 0, CHA: 0, INT: -2, VOL: 2 },
       bonusDieAbilities: ['CON'],
       defense: '[12 + rang]',
@@ -1011,6 +1012,7 @@ export const fighterFeatures: Feature[] = [
             label: 'Cheval de guerre lourd',
             creatureProfile: {
               name: 'Cheval de guerre lourd',
+              companionType: 'mount',
               abilities: { AGI: 0, CON: 4, FOR: 5, PER: 0, CHA: -1, INT: -4, VOL: 0 },
               defense: '20',
               hitPoints: '[=10 + niveau × 6]',
@@ -1023,6 +1025,7 @@ export const fighterFeatures: Feature[] = [
             label: 'Ours',
             creatureProfile: {
               name: 'Ours',
+              companionType: 'mount',
               abilities: { AGI: 1, CON: 6, FOR: 6, PER: 2, CHA: -2, INT: -4, VOL: 1 },
               defense: '20',
               hitPoints: '[=10 + niveau × 6]',
@@ -1035,6 +1038,7 @@ export const fighterFeatures: Feature[] = [
             label: 'Félin géant',
             creatureProfile: {
               name: 'Félin géant',
+              companionType: 'mount',
               abilities: { AGI: 4, CON: 5, FOR: 5, PER: 2, CHA: -2, INT: -3, VOL: 0 },
               defense: '20',
               hitPoints: '[=10 + niveau × 6]',
@@ -1048,6 +1052,7 @@ export const fighterFeatures: Feature[] = [
             minLevel: 9,
             creatureProfile: {
               name: 'Pégase',
+              companionType: 'mount',
               abilities: { AGI: 2, CON: 4, FOR: 5, PER: 2, CHA: 0, INT: -3, VOL: 1 },
               defense: '20',
               hitPoints: '[=10 + niveau × 5]',
@@ -1062,6 +1067,7 @@ export const fighterFeatures: Feature[] = [
             minLevel: 9,
             creatureProfile: {
               name: 'Griffon',
+              companionType: 'mount',
               abilities: { AGI: 3, CON: 5, FOR: 5, PER: 3, CHA: -2, INT: -3, VOL: 2 },
               defense: '20',
               hitPoints: '[=10 + niveau × 5]',
@@ -1076,6 +1082,7 @@ export const fighterFeatures: Feature[] = [
             minLevel: 9,
             creatureProfile: {
               name: 'Hippogriffe',
+              companionType: 'mount',
               abilities: { AGI: 3, CON: 4, FOR: 5, PER: 3, CHA: -1, INT: -4, VOL: 1 },
               defense: '20',
               hitPoints: '[=10 + niveau × 5]',
@@ -1391,6 +1398,7 @@ export const fighterFeatures: Feature[] = [
     // DM [1d4° + 1] (dé évolutif au niveau courant).
     creatureProfile: {
       name: 'Écuyer',
+      companionType: 'companion',
       defense: '[10 + rang]',
       hitPoints: '[=niveau × 4]',
       initiative: { fromMaster: 'initiative' },

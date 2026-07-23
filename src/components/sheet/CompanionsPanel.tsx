@@ -12,7 +12,14 @@ import type { Depletion } from '@/lib/character/types';
 import { resolveCreatureMaxHp, type CompanionEntry } from '@/lib/character/companions';
 import type { DamageKind } from './HpGauge';
 import { HpGauge } from './HpGauge';
-import { CreatureAbilitiesGrid, CreatureStatsLine } from './CreatureStatBlock';
+import { resolveCreatureAbilities } from '@/lib/ui/creature';
+import {
+  CompanionSizePill,
+  CreatureAbilitiesGrid,
+  CreatureDerivedStats,
+  CreatureDescriptionRich,
+  CreatureSpecialAbilityBlocks,
+} from './CreatureStatBlock';
 
 interface CompanionCardProps {
   entry: CompanionEntry;
@@ -49,7 +56,19 @@ interface CompanionCardProps {
 function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDamage, onHeal, onReset, onDelete }: CompanionCardProps) {
   const { profile, pathRank, bonusDieAbilities, defenseAltActive, instanceId, instanceIndex } = entry;
   const maxHp = resolveCreatureMaxHp(profile, abilities, level, pathRank);
-  const hasAbilities = !!profile.abilities;
+  const hasAbilities = !!resolveCreatureAbilities(profile, abilities);
+  // La colonne DROITE (carac + stats dérivées) n'existe que si le profil porte des caracs OU au
+  // moins une stat dérivée. Une créature « force, pas une créature » (Serviteur invisible :
+  // descriptionRich, sans caracs ni DEF/Init.) n'a donc qu'une colonne (gauche pleine largeur).
+  const hasDerived = !!(
+    profile.defense ||
+    profile.defenseAlt ||
+    profile.initiative ||
+    profile.attack ||
+    (maxHp === null && profile.hitPoints) ||
+    profile.extraAttacks?.length
+  );
+  const hasRight = hasAbilities || hasDerived;
   // Compagnon multi-instances (zombie) : numéroter les exemplaires (« ZOMBIE 1, 2… ») pour les
   // distinguer d'un coup d'œil ; un seul compagnon classique n'est jamais numéroté.
   const displayName =
@@ -68,6 +87,7 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
         <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>
           {displayName}
         </Typography>
+        {profile.size && <CompanionSizePill size={profile.size} />}
         {profile.type && (
           <Typography variant="caption" color="text.secondary">
             {profile.type}
@@ -75,15 +95,20 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
         )}
       </Stack>
 
-      {/* Ligne du haut : barre de vie (~50 %) + grille des caractéristiques. Sans bloc de
-          caractéristiques (ex. écuyer), la barre prend toute la ligne. */}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.5}
-        sx={{ alignItems: { sm: 'center' }, mb: maxHp !== null ? 0.75 : 0 }}
+      {/* Deux colonnes (empilées sous md) — modèle bestiaire :
+          — GAUCHE : barre de vie + petite note (déplacement…) + capacités (blocs sur 2 colonnes) ;
+          — DROITE : caractéristiques (style bestiaire) puis stats dérivées (DEF, Init., attaque). */}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: hasRight ? '1fr 1fr' : '1fr' },
+          gap: 1.5,
+          alignItems: 'start',
+        }}
       >
-        {maxHp !== null && (
-          <Box sx={{ flex: hasAbilities ? '1 1 50%' : '1 1 100%', minWidth: 0, width: '100%' }}>
+        {/* Colonne gauche : PV + note + capacités */}
+        <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+          {maxHp !== null && (
             <HpGauge
               depletion={depletion}
               maxHp={maxHp}
@@ -93,25 +118,41 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
               persistKey={`companion:${entry.key}`}
               iconLabel={`Points de vigueur — ${profile.name}`}
             />
-          </Box>
-        )}
-        {hasAbilities && (
-          <Box sx={{ flex: '1 1 50%', minWidth: 0, width: '100%' }}>
-            <CreatureAbilitiesGrid profile={profile} bonusDieAbilities={bonusDieAbilities} />
-          </Box>
-        )}
-      </Stack>
+          )}
+          <CreatureDescriptionRich profile={profile} abilities={abilities} level={level} rank={pathRank} />
+          {profile.note && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', lineHeight: 1.5 }}>
+              {profile.note}
+            </Typography>
+          )}
+          <CreatureSpecialAbilityBlocks profile={profile} abilities={abilities} level={level} rank={pathRank} />
+        </Stack>
 
-      {/* Reste de la description — PV masqués si la barre les affiche déjà. */}
-      <CreatureStatsLine
-        profile={profile}
-        abilities={abilities}
-        level={level}
-        rank={pathRank}
-        masterDerived={masterDerived}
-        defenseAltActive={defenseAltActive}
-        showHitPoints={maxHp === null}
-      />
+        {/* Colonne droite : caractéristiques (style bestiaire) + stats dérivées empilées */}
+        {hasRight && (
+          <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+            {hasAbilities && (
+              <CreatureAbilitiesGrid
+                profile={profile}
+                masterAbilities={abilities}
+                bonusDieAbilities={bonusDieAbilities}
+              />
+            )}
+            <CreatureDerivedStats
+              profile={profile}
+              abilities={abilities}
+              level={level}
+              rank={pathRank}
+              masterDerived={masterDerived}
+              defenseAltActive={defenseAltActive}
+              showHitPoints={maxHp === null}
+            />
+          </Stack>
+        )}
+      </Box>
+
+      {/* Le TEXTE D'ORIGINE verbatim n'est affiché QUE sur la mini-fiche du RANG (Voies & capacités),
+          pas ici (la carte compagnon reste centrée sur le jeu : PV + stats + capacités). */}
 
       {/* Suppression manuelle d'une instance (zombie, PER-235) : corbeille rouge en bas à droite.
           Exception propre aux compagnons multi-instances — les autres n'ont aucun contrôle d'ajout/

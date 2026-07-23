@@ -12,7 +12,7 @@
  * jeu au même titre que la barre de vie du personnage.
  */
 import { featureById, pathById, progression } from '@/data';
-import type { AbilityId, CreatureProfile, Feature, FeatureChoiceOption } from '@/data/schema';
+import type { AbilityId, CompanionType, CreatureProfile, Feature, FeatureChoiceOption } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { getSelection } from './choices';
 import { creatureBonusDiceForPath, disabledFeatureIds, isEffectActive } from './effects';
@@ -87,7 +87,7 @@ function injectExprTerms(rich: string, additions: string[]): string {
 /** DM baké d'une attaque supplémentaire : dé + carac de la CRÉATURE résolue en nombre (pas de token). */
 function bakeExtraAttackDamage(
   ea: NonNullable<CreatureUpgrade['extraAttack']>,
-  abilities: Record<AbilityId, number> | undefined,
+  abilities: Partial<Record<AbilityId, number>> | undefined,
 ): string {
   const v = ea.damageAbility && abilities ? abilities[ea.damageAbility] ?? 0 : 0;
   if (v === 0) return `[${ea.damageDice}]`;
@@ -137,7 +137,7 @@ export function applyCreatureUpgrades(
   }
   if (defBonus !== 0 && base.defense) next.defense = injectExprTerms(base.defense, [String(defBonus)]);
   if (hpPerLevel !== 0 && base.hitPoints) next.hitPoints = injectExprTerms(base.hitPoints, [`niveau × ${hpPerLevel}`]);
-  if ((dmgFlat !== 0 || dmgDice.length > 0) && base.attack) {
+  if ((dmgFlat !== 0 || dmgDice.length > 0) && base.attack?.damage) {
     const adds = [...dmgDice];
     if (dmgFlat !== 0) adds.push(String(dmgFlat));
     next.attack = { ...base.attack, damage: injectExprTerms(base.attack.damage, adds) };
@@ -237,6 +237,11 @@ export interface CompanionEntry {
   feature: Feature;
   /** Profil effectif (option retenue > profil de rang). */
   profile: CreatureProfile;
+  /**
+   * Type de compagnon (PER-175), recopié de `profile.companionType` : familier / monture /
+   * allié PNJ / invocation / animal. `undefined` si le profil n'est pas encore classé.
+   */
+  companionType?: CompanionType;
   /** Rang ATTEINT dans la voie hôte — résout le terme `rang` des stats de la créature. */
   pathRank: number;
   /** Caractéristiques bénéficiant d'un dé bonus (innés + octroyés par une option retenue). */
@@ -312,6 +317,7 @@ export function listCompanions(character: Character): CompanionEntry[] {
           key: companionInstanceKey(feature.id, instanceId),
           feature,
           profile,
+          companionType: profile.companionType,
           pathRank,
           bonusDieAbilities,
           defenseAltActive,
@@ -320,7 +326,15 @@ export function listCompanions(character: Character): CompanionEntry[] {
         });
       });
     } else {
-      out.push({ key: feature.id, feature, profile, pathRank, bonusDieAbilities, defenseAltActive });
+      out.push({
+        key: feature.id,
+        feature,
+        profile,
+        companionType: profile.companionType,
+        pathRank,
+        bonusDieAbilities,
+        defenseAltActive,
+      });
     }
   }
   return out;

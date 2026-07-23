@@ -1447,7 +1447,8 @@ export type FeatureChoice =
   | AbilityFeatureChoice
   | PathFeatureChoice
   | OptionFeatureChoice
-  | CustomSkillFeatureChoice;
+  | CustomSkillFeatureChoice
+  | FreeTextFeatureChoice;
 export type FeatureChoiceKind = FeatureChoice['kind'];
 
 interface FeatureChoiceBase {
@@ -1459,7 +1460,7 @@ interface FeatureChoiceBase {
    * gagne-pain LIBRE d'`humain-r1` : la saisie personnalisée n'apparaît que si l'origine « Libre » est
    * choisie. Résolu par `isChoiceActionable`. Absent = toujours proposé.
    */
-  visibleIfOption?: { choiceIndex: number; optionId: string };
+  visibleIfOption?: { choiceIndex: number; optionId: string | string[] };
 }
 
 /** Choix d'une caractéristique parmi un domaine autorisé. */
@@ -1718,6 +1719,21 @@ export interface CustomSkillFeatureChoice extends FeatureChoiceBase {
   domainCount: number;
 }
 
+/**
+ * Choix de TEXTE LIBRE purement NARRATIF (PER-175) — sans aucun effet mécanique. Ex. le type
+ * d'animal d'un familier fantastique (Animal céleste / mort-vivant : « rat, chat, corbeau… »),
+ * laissé au RP. OPTIONNEL : jamais compté « à faire » (pas de badge « Choisir »). Typiquement
+ * gardé derrière un `visibleIfOption` (n'apparaît que pour les options concernées). Persisté
+ * comme une simple chaîne dans le slot de `featureChoices` (comme l'id d'une option).
+ */
+export interface FreeTextFeatureChoice extends FeatureChoiceBase {
+  kind: 'free-text';
+  /** Exemple/placeholder dans le champ (ex. « rat, chat, corbeau… »). */
+  placeholder?: string;
+  /** Avertissement affiché sous le champ (ex. décision RP à convenir avec le MJ). */
+  note?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Profil de créature / compagnon invoqué — PER-69
 // ---------------------------------------------------------------------------
@@ -1744,17 +1760,83 @@ export interface MasterStatRef {
   fromMaster: DerivedStatId;
 }
 
+/**
+ * Taxonomie des compagnons (PER-175) — nature de la créature attachée au personnage.
+ * Portée par le `CreatureProfile` (pas par la capacité) pour couvrir aussi les profils
+ * venus d'une OPTION de choix (monture/familier fantastique). Valeurs fermées, code anglais :
+ *  - `familiar`  : petit compagnon lié, souvent magique (familier du magicien/druide, les
+ *                  12 familiers fantastiques) ;
+ *  - `mount`     : monture (fidèle monture, monture magique, monture fantastique) ;
+ *  - `companion` : allié / serviteur PNJ, ni familier ni monture (écuyer du chevalier) ;
+ *  - `summon`    : créature invoquée, magique et/ou temporaire (golem, démon, zombie,
+ *                  serviteur invisible, arbre animé) ;
+ *  - `animal`    : compagnon animal / bête liée non magique — catégorie que CO2 distingue
+ *                  du familier (loup du rôdeur, panthère puis grand félin du druide/fauve).
+ *
+ * PRÉSENCE ⟂ TAXONOMIE : le `companionType` ne présume PAS de la présence. Le gating de
+ * présence (bloc affiché seulement quand « invoqué ») est piloté SÉPARÉMENT par un effet
+ * d'activation TEMPORAIRE (`companionPresent` dans `src/lib/character/companions.ts`, marqueur
+ * PER-235) — et ce marqueur s'applique à des compagnons de types variés, pas seulement aux
+ * `summon` : le familier du magicien (`familiar`) est présence-gaté (p. 96, « le maître pourra
+ * à nouveau invoquer son familier »), tandis que le golem (`summon`) est permanent et le zombie
+ * (`summon`) est multi-instances. Les deux axes sont donc indépendants : aucune implication
+ * « temporaire ⇒ `summon` » ni l'inverse.
+ */
+export const COMPANION_TYPES = ['familiar', 'mount', 'companion', 'summon', 'animal'] as const;
+export type CompanionType = (typeof COMPANION_TYPES)[number];
+
 export interface CreatureProfile {
   /** Nom de la créature (ex. « Golem »). */
   name: string;
   /** Mention de nature/type si le livre la donne (ex. « Créature non vivante »). */
   type?: string;
   /**
-   * Les 7 caractéristiques (valeurs fixes de la créature). ABSENT pour les créatures que le
-   * livre décrit SANS bloc de caractéristiques — seulement Init/DEF/PV/Att/DM (ex. écuyer du
-   * chevalier, `noblesse-r2`) : la mini-fiche omet alors la grille de caractéristiques.
+   * Taxonomie du compagnon (PER-175) : familier / monture / allié PNJ / invocation. Voir
+   * `CompanionType`. Absent = créature non encore classée (ne devrait pas rester après la
+   * passe d'annotation). Consommé par `listCompanions` (`CompanionEntry.companionType`).
    */
-  abilities?: Record<AbilityId, number>;
+  companionType?: CompanionType;
+  /**
+   * Taille de la créature (PER-175) — même échelle que le bestiaire (`CreatureSize`, p. 260).
+   * Rendue en pastille « tag » (info-bulle « Taille ») à droite du nom, comme le bestiaire.
+   * Absente = pas de pastille. Ex. familiers fantastiques : `minuscule` (stat-block générique
+   * p. 132).
+   */
+  size?: CreatureSize;
+  /**
+   * Caractéristiques dérivées du MAÎTRE (PER-175), pour les créatures « clones/copies » dont
+   * le livre exprime les valeurs relativement au personnage (ex. Minimoï, p. 135 : « AGI [AGI
+   * du personnage + 2] ; autres = celles du personnage - 2 »). Chaque entrée est un DELTA
+   * ajouté à la caractéristique homonyme du maître ; une caractéristique absente d'ici retombe
+   * sur `abilities` (valeur fixe). Résolu à l'affichage (`resolveCreatureAbilities`) — comme
+   * `defense`/`initiative` recopiées du maître. Coexiste avec `abilities` : le Minimoï a FOR
+   * fixe (`abilities.FOR = -3`) et le reste en `abilitiesFromMaster`.
+   */
+  abilitiesFromMaster?: Partial<Record<AbilityId, number>>;
+  /**
+   * Capacités spéciales de la créature (PER-175) — MÊME modèle que le bestiaire
+   * (`CreatureSpecialAbility` : nom + `text` verbatim + `richText` optionnel). Rendues sous la
+   * ligne de stats via `RichInline`, dés/formules/`rang`/`niveau` résolus contre le MAÎTRE
+   * (comme `attack.damage`). Remplacent les particularités RÈGLE jadis entassées en texte brut
+   * dans `note` (poison, immunité, drain, sommeil…) — qui n'étaient donc pas parsées. `note`
+   * reste réservé au pur descriptif sans règle (déplacement, « doué de parole »).
+   */
+  specialAbilities?: CreatureSpecialAbility[];
+  /**
+   * TEXTE D'ORIGINE verbatim de la créature + sa page source (PER-175), affiché en bas de la
+   * mini-fiche (comme la description du bestiaire) pour que chaque stat/capacité DÉRIVÉE reste
+   * traçable au livre. Ex. familier fantastique : la description complète de l'entité
+   * `FantasticFamiliar` (p. 133-136), d'où sont tirés l'attaque, le poison, l'immunité, etc.
+   */
+  verbatimSource?: { text: string; sourcePage: SourcePage };
+  /**
+   * Caractéristiques FIXES de la créature. Généralement les 7, mais PARTIEL possible quand
+   * certaines sont dérivées du maître (`abilitiesFromMaster`, ex. Minimoï : seul FOR est fixe).
+   * ABSENT pour les créatures que le livre décrit SANS bloc de caractéristiques — seulement
+   * Init/DEF/PV/Att/DM (ex. écuyer du chevalier, `noblesse-r2`) : la mini-fiche omet alors la
+   * grille. Le rendu passe TOUJOURS par `resolveCreatureAbilities` (fusion fixe + maître).
+   */
+  abilities?: Partial<Record<AbilityId, number>>;
   /**
    * Caractéristiques dont les TESTS bénéficient d'un DÉ BONUS INNÉ (notées « * » dans
    * les blocs de stats du livre, ex. loup « CON +1* | PER +2* »). Rendu par l'icône
@@ -1811,7 +1893,7 @@ export interface CreatureProfile {
    * `damage` est au format `richText` (dés + constantes uniquement : une carac s'y
    * résoudrait contre le MAÎTRE, pas contre la créature).
    */
-  attack?: { label?: string; fromMaster?: DerivedStatId; value?: string; damage: string };
+  attack?: { label?: string; fromMaster?: DerivedStatId; value?: string; damage?: string };
   /**
    * Attaques SUPPLÉMENTAIRES de la créature, en plus de `attack` (PER-94) — ex. Baliste du Golem
    * supérieur (attaque à distance ajoutée par une amélioration). Le `damage` est déjà résolu (dé +

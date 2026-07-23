@@ -42,6 +42,7 @@ import {
 import { creatures, creatureById } from '../src/data/creatures';
 import {
   ABILITY_IDS,
+  COMPANION_TYPES,
   CREATURE_CATEGORIES,
   CREATURE_NATURES,
   CREATURE_SIZES,
@@ -194,6 +195,7 @@ for (const cl of FEATURE_CLASSIFICATIONS) {
 const validStats = new Set<string>(DERIVED_STAT_IDS);
 const validAbilities = new Set<string>(ABILITY_IDS);
 const validActivationKinds = new Set(['condition', 'temporary']);
+const validCompanionTypes = new Set<string>(COMPANION_TYPES);
 const validImmunities = new Set<string>(IMMUNITY_IDS);
 const validRangedKinds = new Set<string>(RANGED_WEAPON_KINDS);
 const validWeaponCategories = new Set<string>(WEAPON_CATEGORIES);
@@ -468,6 +470,29 @@ for (const c of features) {
       validateWeaponCondition(c.id, e.condition, 'attack-bonus');
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
+    }
+  }
+}
+
+// --- Taxonomie des compagnons (PER-175) --------------------------------------
+// Chaque `creatureProfile` (porté par la capacité OU par une option de choix) doit déclarer
+// un `companionType` valide. Le gating de PRÉSENCE (marqueur temporaire, PER-235) est un axe
+// INDÉPENDANT de la taxonomie (cf. doc de `CompanionType`) : aucune cohérence croisée à exiger.
+for (const c of features) {
+  const profiles: { where: string; name: string; companionType?: string }[] = [];
+  if (c.creatureProfile)
+    profiles.push({ where: 'capacité', name: c.creatureProfile.name, companionType: c.creatureProfile.companionType });
+  for (const choice of c.choices ?? []) {
+    if (choice.kind !== 'option') continue;
+    for (const opt of choice.options)
+      if (opt.creatureProfile)
+        profiles.push({ where: `option ${opt.id}`, name: opt.creatureProfile.name, companionType: opt.creatureProfile.companionType });
+  }
+  for (const { where, name, companionType } of profiles) {
+    if (companionType === undefined) {
+      warn(`[capacite ${c.id}] ${where}: creatureProfile « ${name} » sans companionType (PER-175)`);
+    } else if (!validCompanionTypes.has(companionType)) {
+      err(`[capacite ${c.id}] ${where}: companionType inconnu : ${companionType}`);
     }
   }
 }

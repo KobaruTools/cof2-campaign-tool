@@ -279,7 +279,10 @@ export function isChoiceActionable(
   if (choice.visibleIfOption) {
     const gov = getSelection(character, featureId, choice.visibleIfOption.choiceIndex);
     const ids = Array.isArray(gov) ? gov : gov ? [gov] : [];
-    if (!ids.includes(choice.visibleIfOption.optionId)) return false;
+    // `optionId` peut cibler UNE option ou PLUSIEURS (visible si l'une d'elles est retenue).
+    const need = choice.visibleIfOption.optionId;
+    const needIds = Array.isArray(need) ? need : [need];
+    if (!needIds.some((id) => ids.includes(id))) return false;
   }
   if (choice.kind === 'option' && choice.repeat) return repeatableChoiceCount(character, choice) > 0;
   return true;
@@ -573,6 +576,8 @@ export function unmadeChoiceIndexes(character: Character, featureId: string): nu
       if (name.trim().length === 0 || domains.length < choice.domainCount) pending.push(i);
       return;
     }
+    // Choix `free-text` (PER-175) : purement narratif et OPTIONNEL → jamais « à faire ».
+    if (choice.kind === 'free-text') return;
     // Autres natures : non fait = aucune valeur (ou tableau vide normalisé).
     if (sel == null || (Array.isArray(sel) && sel.length === 0)) pending.push(i);
   });

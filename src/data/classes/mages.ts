@@ -299,7 +299,7 @@ export const magePaths: ClassPath[] = [
       'magie-protectrice-r4',
       'magie-protectrice-r5',
     ],
-    sourcePage: 104,
+    sourcePage: 105,
   },
   {
     id: 'magie-universelle',
@@ -323,7 +323,7 @@ export const magePaths: ClassPath[] = [
     type: 'class',
     classIds: ['sorcier'],
     featureIds: ['demon-r1', 'demon-r2', 'demon-r3', 'demon-r4', 'demon-r5'],
-    sourcePage: 107,
+    sourcePage: 108,
   },
   {
     id: 'mort',
@@ -355,7 +355,7 @@ export const magePaths: ClassPath[] = [
     type: 'class',
     classIds: ['sorcier'],
     featureIds: ['sang-r1', 'sang-r2', 'sang-r3', 'sang-r4', 'sang-r5'],
-    sourcePage: 109,
+    sourcePage: 110,
   },
   {
     id: 'sombre-magie',
@@ -369,7 +369,7 @@ export const magePaths: ClassPath[] = [
       'sombre-magie-r4',
       'sombre-magie-r5',
     ],
-    sourcePage: 110,
+    sourcePage: 111,
   },
 ];
 
@@ -752,7 +752,7 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['A'],
     text:
       "Ce sort invoque les pires terreurs d’une créature humanoïde vivante et lui fait croire à sa propre mort. L’ensorceleur doit faire un test opposé d’attaque magique contre sa cible (portée 20 m). En cas de succès la victime tombe à 0 PV ou si la cible est de niveau supérieur ou égal à l’ensorceleur, elle est étourdie (‑5 DEF et pas d’action) pendant 1 round. Une créature ne peut être la cible de ce sort qu’une fois par jour. Les créatures sans esprit (créatures artificielles, certaines plantes et certains morts‑vivants) sont immunisées à ce sort.",
-    sourcePage: 95,
+    sourcePage: 96,
   },
 
   // --- Voie de l’invocation (p. 96) ---
@@ -802,6 +802,7 @@ export const mageFeatures: Feature[] = [
     // est porté par `descriptionRich` (résolu sur les caracs du MAÎTRE : `[CHA]`, `[=CHA]`).
     creatureProfile: {
       name: 'Serviteur invisible',
+      companionType: 'summon',
       type: 'force invisible — pas une créature',
       descriptionRich:
         "@FOR égale au [CHA] du maître, @AGI et @INT à +0. Portée 20 m, durée [=CHA] minutes. N’attaque pas et ne peut pas être combattu.",
@@ -882,7 +883,7 @@ export const mageFeatures: Feature[] = [
     // sur l’objet scellé (pas une stat dérivée du joueur) → texte.
     richText:
       "Le forgesort peut ouvrir une porte fermée à clef en la touchant, il doit réussir un test d’attaque magique contre la difficulté pour la crocheter. Il peut aussi sceller une porte ou un coffre pour [=INT] minutes. Seul un mot de commande qu’il choisit permet d’ouvrir l’objet. Celui‑ci peut toujours être brisé par la force, mais il bénéficie d’un bonus de +5 en solidité et en RD pour toute la durée du sort. À partir du rang 4, le forgesort peut rendre ce sort permanent en sacrifiant une gemme d’une valeur de 100 pa et en prolongeant l’incantation par un rituel de 10 min.",
-    sourcePage: 97,
+    sourcePage: 98,
   },
   {
     id: 'artefacts-r3',
@@ -897,7 +898,7 @@ export const mageFeatures: Feature[] = [
     // multiplicateur [=50 × rang] kg ; le reste (25 pa, 50 kg, 1 m, 1 m³) reste littéral.
     richText:
       "Le forgesort possède un sac magique dans lequel il peut entreposer [=50 × rang] kg de matériel, tandis que le sac semble toujours peser un kilogramme. Le sac ne fonctionne pas si on tente d’y mettre une créature vivante. Le sac est de plus capable de fournir au forgesort les objets qu’il désire. Une fois par heure, il peut en retirer un ou plusieurs objets dont la valeur totale ne dépasse pas 25 pa, le poids 50 kg, la circonférence 1 m et le volume 1 m3. Ces objets ont hélas la propriété de disparaître au bout d’une heure. De ce fait, la nourriture magique retirée du sac ne nourrit pas vraiment celui qui la consomme.",
-    sourcePage: 97,
+    sourcePage: 98,
   },
   {
     id: 'artefacts-r4',
@@ -912,7 +913,7 @@ export const mageFeatures: Feature[] = [
     // (référence) ; difficulté [10 + INT] (INT du joueur).
     richText:
       "Le forgesort frappe le sol de son bâton et provoque une onde dévastatrice dans un rayon de 10 m autour de lui. Toutes les créatures dans la zone subissent automatiquement [3d4° + INT] DM et doivent réussir un test de @FOR difficulté [10 + INT] pour ne pas être renversées.",
-    sourcePage: 97,
+    sourcePage: 98,
   },
   {
     id: 'artefacts-r5',
@@ -937,7 +938,7 @@ export const mageFeatures: Feature[] = [
     // (carac de l'ensorceleur) qui n'a aucun sens pour lui → substitution CHA→INT (si INT plus élevée),
     // signalée à l'affichage. Sans effet sur les autres pouvoirs empruntés (ils ne citent pas CHA).
     reproducedAbilitySubstitutions: [{ from: 'CHA', to: 'INT' }],
-    sourcePage: 97,
+    sourcePage: 98,
   },
 
   // --- Voie des élixirs (p. 98) ---
@@ -1054,7 +1055,7 @@ export const mageFeatures: Feature[] = [
       resetOn: 'day',
       label: 'Élixirs du jour',
     },
-    sourcePage: 98,
+    sourcePage: 99,
   },
   {
     id: 'elixirs-r5',
@@ -1089,7 +1090,7 @@ export const mageFeatures: Feature[] = [
       resetOn: 'day',
       label: 'Élixirs du jour',
     },
-    sourcePage: 98,
+    sourcePage: 99,
   },
 
   // --- Voie du métal (p. 99) ---
@@ -1242,6 +1243,7 @@ export const mageFeatures: Feature[] = [
     // (niveau du forgesort), DM [1d4° + 1] ; Initiative et Attaque renvoient au maître.
     creatureProfile: {
       name: 'Golem',
+      companionType: 'summon',
       type: 'Créature non vivante',
       abilities: { AGI: -1, CON: 10, FOR: 1, PER: -3, CHA: -4, INT: -3, VOL: 4 },
       defense: '[10 + rang]',
@@ -1550,7 +1552,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : DM initiaux [3d4° + INT] ; DM sur la durée {1d6} par round.
     richText:
       "Le magicien choisit une cible située à moins de 30 m. Si son attaque magique réussit (contre DEF), la cible subit [3d4° + INT] DM. Chaque round de combat suivant, le feu inflige {1d6} DM supplémentaires. Sur un résultat de 1 ou 2, le sort prend fin. Les DM sur la durée ne sont pas cumulables si le sort est lancé plusieurs fois.",
-    sourcePage: 103,
+    sourcePage: 104,
   },
   {
     id: 'magie-destructrice-r4',
@@ -1565,7 +1567,7 @@ export const mageFeatures: Feature[] = [
     // difficulté [10 + INT] (INT du joueur).
     richText:
       "Le magicien choisit un point situé à moins de 30 m. Toutes les créatures (y compris le magicien et ses compagnons) se trouvant dans un rayon de 5 m autour de ce point subissent [4d4° + INT] DM et peuvent effectuer un test d’@AGI difficulté [10 + INT] pour ne subir que la moitié des DM.",
-    sourcePage: 103,
+    sourcePage: 104,
   },
   {
     id: 'magie-destructrice-r5',
@@ -1579,7 +1581,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : DM [2d4° + INT].
     richText:
       "Le magicien projette des traits de foudre sur toutes les cibles de son choix dans un rayon de 10 m autour de lui. Il fait un seul test d’attaque magique et toutes les créatures ciblées dont il atteint la DEF subissent [2d4° + INT] DM d’électricité.",
-    sourcePage: 103,
+    sourcePage: 104,
   },
 
   // --- Voie de la magie élémentaire (p. 104) ---
@@ -1659,7 +1661,7 @@ export const mageFeatures: Feature[] = [
     // égal à l’INT → quantité [=INT]. La durée (10 minutes) est fixe → littéral.
     richText:
       "Le magicien peut respirer sous l’eau pendant 10 minutes. Cette capacité peut être étendue à un compagnon par point d’[#INT].",
-    sourcePage: 104,
+    sourcePage: 105,
   },
   {
     id: 'magie-elementaire-r5',
@@ -1706,7 +1708,7 @@ export const mageFeatures: Feature[] = [
       endsEffectAtZero: true,
       label: 'Absorption restante (DM)',
     },
-    sourcePage: 104,
+    sourcePage: 105,
   },
 
   // --- Voie de la magie protectrice (p. 104) ---
@@ -1745,7 +1747,7 @@ export const mageFeatures: Feature[] = [
         activation: { kind: 'temporary', label: 'Armure de mana active', activeByDefault: false },
       },
     ],
-    sourcePage: 104,
+    sourcePage: 105,
   },
   {
     id: 'magie-protectrice-r2',
@@ -1853,6 +1855,7 @@ export const mageFeatures: Feature[] = [
     // Initiative renvoie au maître. Ne peut pas attaquer (note).
     creatureProfile: {
       name: 'Familier',
+      companionType: 'familiar',
       abilities: { AGI: 3, CON: 0, FOR: -4, PER: 2, CHA: -2, INT: -2, VOL: 2 },
       // « AGI +3* » dans le livre — le PER +2 n'a PAS d'astérisque ici (≠ familier du druide).
       bonusDieAbilities: ['AGI'],
@@ -1940,7 +1943,7 @@ export const mageFeatures: Feature[] = [
 
   // ===================== SORCIER =====================
 
-  // --- Voie du démon (p. 107) ---
+  // --- Voie du démon (p. 108) ---
   {
     id: 'demon-r1',
     name: 'Malédiction',
@@ -1950,7 +1953,7 @@ export const mageFeatures: Feature[] = [
     actionTypes: ['M', 'L'],
     text:
       "Le sorcier effectue un test opposé d’attaque magique contre une cible à moins de 20 m. En cas de succès, si l’incantation était une action de mouvement (M), la victime subit un dé malus à son prochain test. Si l’incantation était une action limitée (L), le dé malus s’applique à ses 3 prochains tests. Dans tous les cas, la cible ne peut subir les effets de ce sort qu’une fois par combat.",
-    sourcePage: 107,
+    sourcePage: 108,
   },
   {
     id: 'demon-r2',
@@ -1964,7 +1967,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée [=INT] minutes ; DM de l’attaque [1d4° + INT].
     richText:
       "Le sorcier acquiert une beauté fascinante pour [=INT] minutes. Il gagne un dé bonus aux tests de CHA ainsi qu’une attaque de contact nécessitant un test d’attaque magique (contre DEF, action d’attaque), qui inflige [1d4° + INT] DM. Le sorcier récupère autant de PV (sans dépasser son maximum de PV) que la cible en a perdu.",
-    sourcePage: 107,
+    sourcePage: 108,
   },
   {
     id: 'demon-r3',
@@ -1982,7 +1985,7 @@ export const mageFeatures: Feature[] = [
     effects: [
       { kind: 'stat-bonus', stat: 'recoveryDiceCount', value: { scale: 'ability', ability: 'VOL' } },
     ],
-    sourcePage: 107,
+    sourcePage: 108,
   },
   {
     id: 'demon-r4',
@@ -2009,7 +2012,7 @@ export const mageFeatures: Feature[] = [
         disablesFeatures: ['demon-r2'],
       },
     ],
-    sourcePage: 107,
+    sourcePage: 108,
   },
   {
     id: 'demon-r5',
@@ -2039,6 +2042,7 @@ export const mageFeatures: Feature[] = [
     // DM [2d4° + 5] ; Initiative et Attaque renvoient au maître.
     creatureProfile: {
       name: 'Démon',
+      companionType: 'summon',
       abilities: { AGI: 2, CON: 4, FOR: 5, PER: 2, CHA: 0, INT: 2, VOL: 4 },
       // « CON +4* | FOR +5* » dans le livre.
       bonusDieAbilities: ['CON', 'FOR'],
@@ -2047,10 +2051,10 @@ export const mageFeatures: Feature[] = [
       initiative: { fromMaster: 'initiative' },
       attack: { fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
     },
-    sourcePage: 107,
+    sourcePage: 108,
   },
 
-  // --- Voie de la mort (p. 108) ---
+  // --- Voie de la mort (p. 108-109) ---
   {
     id: 'mort-r1',
     name: 'Siphon des âmes',
@@ -2088,7 +2092,7 @@ export const mageFeatures: Feature[] = [
       { kind: 'divide', value: 2, scopes: ['cold'] },
       { kind: 'immunity', scopes: ['poison', 'disease'] },
     ],
-    sourcePage: 108,
+    sourcePage: 109,
   },
   {
     id: 'mort-r3',
@@ -2102,7 +2106,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : DM [2d4° + INT].
     richText:
       "Ce sort nécessite la réussite d’un test opposé d’attaque magique (portée 30 m). La victime subit [2d4° + INT] DM et le sorcier récupère autant de PV (sans dépasser son maximum de PV).",
-    sourcePage: 108,
+    sourcePage: 109,
   },
   {
     id: 'mort-r4',
@@ -2116,7 +2120,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée de fuite « pendant [=INT] rounds ».
     richText:
       "Le sorcier effectue un test opposé d’attaque magique contre une cible (portée 20 m). S’il l’emporte, la victime fuit aussi loin du sorcier que possible pendant [=INT] rounds (il lui faut généralement autant de temps pour revenir !). Les créatures dont le NC est supérieur ou égal au niveau du sorcier ne fuient qu’un seul round. Le sorcier peut choisir de lancer ce sort en action limitée et toutes les créatures à son contact sont affectées (faire un test d’attaque magique par adversaire).",
-    sourcePage: 108,
+    sourcePage: 109,
   },
   {
     id: 'mort-r5',
@@ -2130,10 +2134,10 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : DM [5d4° + INT].
     richText:
       "Le sorcier fait mine d’arracher le cœur de sa victime, puis de broyer dans sa main (l’image du cœur de la victime apparaît dans la main du sorcier). Il doit faire un test opposé d’attaque magique contre une cible vivante (portée 20 m) et, en cas de réussite, il inflige [5d4° + INT] DM, la moitié en cas de test raté. Ce sort ne peut affecter une même cible qu’une seule fois par combat.",
-    sourcePage: 108,
+    sourcePage: 109,
   },
 
-  // --- Voie de l’outre‑tombe (p. 109) ---
+  // --- Voie de l’outre‑tombe (p. 109-110) ---
   {
     id: 'outre-tombe-r1',
     name: 'Un pied dans la tombe',
@@ -2191,6 +2195,7 @@ export const mageFeatures: Feature[] = [
     // (niveau du sorcier), DM [1d4° + 2] ; Attaque renvoie au maître.
     creatureProfile: {
       name: 'Zombie',
+      companionType: 'summon',
       abilities: { AGI: -1, CON: 1, FOR: 2, PER: -2, CHA: -4, INT: -4, VOL: 6 },
       defense: '10',
       hitPoints: '[=10 + niveau]',
@@ -2217,7 +2222,7 @@ export const mageFeatures: Feature[] = [
     // sont ceux de la CIBLE (difficulté 15, bonus d’aide +2/+10 fixes).
     richText:
       "Une fois par combat, si le sorcier réussit un test opposé d’attaque magique (portée 20 m), des mains squelettiques surgissent sous les pieds d’une cible de taille moyenne ou inférieure et l’enterrent vivante. Tant qu’elle est ensevelie, elle subit {2d4°} DM par round, ne peut agir ni être la cible d’attaques extérieures. À son tour, elle peut tenter de sortir de terre en réussissant un test de @FOR ou d’@AGI (au choix de la cible) difficulté 15 au prix d’une action limitée. Si elle tombe à 0 PV, elle reste enterrée et décède au tour suivant. Chaque personne qui creuse pour l’aider lui octroie un bonus de +2 sur son test (maximum +10).",
-    sourcePage: 109,
+    sourcePage: 110,
   },
   {
     id: 'outre-tombe-r5',
@@ -2234,10 +2239,10 @@ export const mageFeatures: Feature[] = [
       "Une fois par jour, le sorcier peut invoquer d’innombrables squelettes qui émergent du sol pour attaquer ses ennemis pendant [=niveau] rounds. Tous les adversaires situés dans un rayon de 10 m autour du sorcier subissent automatiquement {2d4°} DM par round. Les squelettes se déplacent avec le sorcier, mais tous les déplacements dans cette zone (même ceux du sorcier) sont divisés par deux.",
     // « Une fois par jour » → compteur 1 usage, rechargé au repos long.
     usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
-    sourcePage: 109,
+    sourcePage: 110,
   },
 
-  // --- Voie du sang (p. 109) ---
+  // --- Voie du sang (p. 110-111) ---
   {
     id: 'sang-r1',
     name: 'Saignements',
@@ -2252,7 +2257,7 @@ export const mageFeatures: Feature[] = [
     // DM {1d4°} par round ; durée [=INT] rounds.
     richText:
       "Le sorcier doit réussir un test d’attaque magique (portée 10 m) contre une difficulté de 10 + @CON de la cible. Du sang s’écoule de la bouche, du nez, des oreilles et même des yeux de la victime, qui subit {1d4°} DM par round pendant [=INT] rounds.",
-    sourcePage: 109,
+    sourcePage: 110,
   },
   {
     id: 'sang-r2',
@@ -2266,7 +2271,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée [=INT] minutes ; DM de représailles {1d4°}.
     richText:
       "Pendant [=INT] minutes, le sang du sorcier se transforme en un acide qui gicle lorsqu’il subit une blessure. Chaque fois qu’un ennemi au contact le blesse, ce dernier subit {1d4°} DM d’acide.",
-    sourcePage: 109,
+    sourcePage: 110,
   },
   {
     id: 'sang-r3',
@@ -2302,7 +2307,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : sacrifice {1d4°} PV ; bonus de DM +{1d4°} ; durée [=INT] rounds.
     richText:
       "Le sorcier s’ouvre les veines et sacrifie {1d4°} PV pour cibler une créature vivante (portée 20 m), la victime saigne à la moindre blessure. Tous les DM infligés à la cible par des armes tranchantes ou perçantes (griffes et crocs inclus) augmentent de +{1d4°} pendant [=INT] rounds.",
-    sourcePage: 110,
+    sourcePage: 111,
   },
   {
     id: 'sang-r5',
@@ -2316,10 +2321,10 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée « Pendant [=INT] minutes ».
     richText:
       "En réussissant un test opposé d’attaque magique (portée 20 m), le sorcier tisse un lien avec sa victime. Pendant [=INT] minutes, la moitié des DM reçus par le sorcier sont également subis par la cible (les DM infligés au sorcier ne sont pas pour autant réduits) et le sorcier peut lui lancer un sort sans la voir (si elle est à portée).",
-    sourcePage: 110,
+    sourcePage: 111,
   },
 
-  // --- Voie de la sombre magie (p. 110) ---
+  // --- Voie de la sombre magie (p. 111) ---
   {
     id: 'sombre-magie-r1',
     name: 'Ténèbres',
@@ -2335,7 +2340,7 @@ export const mageFeatures: Feature[] = [
     richText:
       "Le sorcier invoque une zone fixe de ténèbres magiques, de 10 m de diamètre, à une portée de 20 m pour une durée d’[#INT] minutes. Toutes les créatures, même celles capables de voir dans le noir, sont aveuglées dans cette zone. En plus de ce sort, le sorcier ajoute son [rang + 2] à tous les tests d’INT basés sur les savoirs sombres (démons, morts‑vivants, rituels impies, etc.).",
     effects: [{ kind: 'test-bonus', domains: ['occult-lore'] }],
-    sourcePage: 110,
+    sourcePage: 111,
   },
   {
     id: 'sombre-magie-r2',
@@ -2349,7 +2354,7 @@ export const mageFeatures: Feature[] = [
     // Rendu enrichi (PER-69) : durée « Pendant [=INT] minutes ».
     richText:
       "Pendant [=INT] minutes, le sorcier peut ramper de 5 m par action de mouvement sur les murs et les plafonds. Il peut lancer des sorts dans cette posture.",
-    sourcePage: 110,
+    sourcePage: 111,
   },
   {
     id: 'sombre-magie-r3',
@@ -2400,6 +2405,6 @@ export const mageFeatures: Feature[] = [
       { kind: 'ability-bonus', ability: 'CON', value: 1 },
       { kind: 'ability-bonus-die', ability: 'CON' },
     ],
-    sourcePage: 110,
+    sourcePage: 111,
   },
 ];

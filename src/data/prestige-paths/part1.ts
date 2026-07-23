@@ -11,7 +11,285 @@
  * Le rang réel (3) est conservé.
  */
 
-import type { PrestigePath, Feature } from '../schema';
+import type { PrestigePath, Feature, CreatureProfile, FeatureChoiceOption } from '../schema';
+import { fantasticFamiliarById } from '../fantastic-familiars';
+
+/**
+ * Option → id de l'entité `FantasticFamiliar` : fée/lutin et pantin/poupée sont deux choix
+ * distincts qui PARTAGENT une même entité (mêmes stats + mêmes pouvoirs conférés).
+ */
+const FAMILIAR_ENTITY_BY_OPTION: Record<string, string> = {
+  fee: 'fee-ou-lutin',
+  lutin: 'fee-ou-lutin',
+  pantin: 'pantin-ou-poupee',
+  poupee: 'pantin-ou-poupee',
+};
+
+/**
+ * Injecte dans le profil de l'option le TEXTE D'ORIGINE verbatim + la page source, tirés de
+ * l'entité `FantasticFamiliar` (p. 133-136) — source unique de la description, pour que l'attaque,
+ * le poison, l'immunité… affichés dans la mini-fiche restent traçables au livre (PER-175).
+ */
+function withVerbatim(o: FeatureChoiceOption): FeatureChoiceOption {
+  const fam = fantasticFamiliarById.get(FAMILIAR_ENTITY_BY_OPTION[o.id] ?? o.id);
+  if (!fam || !o.creatureProfile) return o;
+  return {
+    ...o,
+    creatureProfile: { ...o.creatureProfile, verbatimSource: { text: fam.description, sourcePage: fam.sourcePage } },
+  };
+}
+
+/**
+ * Gabarit du familier fantastique — stat-block générique « TAILLE MINUSCULE » (p. 132),
+ * partagé par les 12 familiers et porté par la capacité de rang 3 de la voie. Chaque option
+ * de choix (PER-175) le reprend et n'ajuste que ses ÉCARTS : caractéristiques (fée/lutin
+ * CHA 0, lézard voltaïque FOR -6), type « non-vivant » (animal mort-vivant, pantin), attaque
+ * innée et particularités. `companionType: 'familiar'`. Les pouvoirs CONFÉRÉS aux rangs 4/5/7
+ * (mineur, sorts, supérieur) restent portés par l'entité `FantasticFamiliar`
+ * (`src/data/fantastic-familiars.ts`) — hors de cette mini-fiche.
+ */
+const MINUSCULE_FAMILIAR: Omit<CreatureProfile, 'name'> = {
+  companionType: 'familiar',
+  size: 'minuscule',
+  abilities: { AGI: 3, CON: 2, FOR: -4, PER: 2, CHA: -2, INT: 1, VOL: 2 },
+  bonusDieAbilities: ['AGI'],
+  defense: '[14 + rang]',
+  hitPoints: '[=niveau × 2]',
+  initiative: { fromMaster: 'initiative' },
+};
+
+/**
+ * Les 12 familiers fantastiques (p. 133-136) comme options de choix de la capacité de rang 3,
+ * sur le patron de la Monture fantastique (`cavalier-r5`). `id` = id de l'entité
+ * `FantasticFamiliar` correspondante (jointure pour les pouvoirs R4/R5/R7). Profils dérivés du
+ * gabarit minuscule ci-dessus. Les particularités RÈGLE sont des `specialAbilities` (modèle
+ * bestiaire : nom + `text` verbatim + `richText` parsé — dés/formules/`rang`) ; `note` ne garde
+ * que le pur descriptif (déplacement, parole). Attaque STRUCTURÉE quand le livre donne un DM.
+ */
+const FAMILIAR_OPTION_LIST: FeatureChoiceOption[] = [
+    {
+      id: 'familier-celeste',
+      label: 'Animal céleste',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Animal céleste',
+        note: 'Doué de parole ; vole 20 m par action de mouvement.',
+      },
+    },
+    {
+      id: 'familier-mort-vivant',
+      label: 'Animal mort-vivant',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Animal mort-vivant',
+        type: 'Créature non vivante',
+        attack: { label: 'Drain', fromMaster: 'magicAttack', damage: '[1d4°]' },
+        specialAbilities: [
+          {
+            name: 'Drain vital',
+            text: 'Le maître ou le familier récupère 1 PV par attaque réussie.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'araignee-geante',
+      label: 'Araignée géante',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Araignée géante',
+        // DM plat de 1 (verbatim « inflige 1 DM ») : littéral, pas `[1]` (qui se rendrait « +1 »).
+        attack: { label: 'Morsure', fromMaster: 'magicAttack', damage: '1' },
+        specialAbilities: [
+          {
+            name: 'Poison',
+            text: 'Sur une touche, la cible réussit un test de CON difficulté [10 + rang] ou subit 1d4° DM de poison.',
+            richText: 'Sur une touche, la cible réussit un test de CON difficulté [10 + rang] ou subit {1d4°} DM de poison.',
+          },
+          { name: 'Escalade', text: 'Peut grimper aux murs.' },
+        ],
+      },
+    },
+    {
+      id: 'diablotin',
+      label: 'Diablotin',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Diablotin',
+        note: 'Vole 10 m par action de mouvement ; doué de parole.',
+      },
+    },
+    {
+      id: 'dragon-feerique',
+      label: 'Dragon féérique',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Dragon féérique',
+        specialAbilities: [
+          { name: 'Télépathie', text: 'Communique par télépathie jusqu’à 20 m (langage commun ou sylvestre).' },
+        ],
+        note: 'Vole 10 m par action de mouvement.',
+      },
+    },
+    // Fée et Lutin : deux choix DISTINCTS partageant les mêmes statistiques (CHA +2 sur le
+    // gabarit → CHA 0) ; seul le mode de déplacement diffère. Pouvoirs R4/R5/R7 communs :
+    // entité `FantasticFamiliar` 'fee-ou-lutin' (jointure future, PER-74).
+    {
+      id: 'fee',
+      label: 'Fée',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Fée',
+        abilities: { ...MINUSCULE_FAMILIAR.abilities!, CHA: 0 },
+        specialAbilities: [{ name: 'Invisibilité', text: 'Peut se rendre invisible à volonté.' }],
+        note: 'Vole 10 m par action de mouvement.',
+      },
+    },
+    {
+      id: 'lutin',
+      label: 'Lutin',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Lutin',
+        abilities: { ...MINUSCULE_FAMILIAR.abilities!, CHA: 0 },
+        specialAbilities: [{ name: 'Invisibilité', text: 'Peut se rendre invisible à volonté.' }],
+        note: 'Se téléporte 10 m par action de mouvement.',
+      },
+    },
+    {
+      id: 'grig',
+      label: 'Grig',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Grig',
+        note: 'Au violon, reproduit Danse irrésistible (rang 5, voie du musicien, barde) une fois par jour.',
+      },
+    },
+    {
+      id: 'lezard-voltaique',
+      label: 'Lézard voltaïque',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Lézard voltaïque',
+        // Seul familier « plus grand que les autres… taille d’un petit chien » (p. 135) → petite.
+        size: 'petite',
+        abilities: { ...MINUSCULE_FAMILIAR.abilities!, FOR: -6 },
+        attack: { label: 'Décharge', fromMaster: 'magicAttack', damage: '[1d4°]' },
+        specialAbilities: [
+          { name: 'Immunité (électricité)', text: 'Immunisé aux DM d’électricité.' },
+          {
+            name: 'Décharge étourdissante',
+            text: 'Sur une touche, la cible réussit un test de CON difficulté 10 ou est affaiblie durant 1 tour.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'minimoi',
+      label: 'Minimoï',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Minimoï',
+        // Réplique du maître (p. 135) : FOR fixe -3 ; AGI = AGI du personnage + 2 ; toutes les
+        // AUTRES caractéristiques = celles du personnage - 2. D'où `abilitiesFromMaster` (deltas
+        // sur le maître) + FOR en valeur fixe. Pas de dé bonus inné (créature atypique, clone).
+        abilities: { FOR: -3 },
+        abilitiesFromMaster: { AGI: 2, CON: -2, PER: -2, CHA: -2, INT: -2, VOL: -2 },
+        bonusDieAbilities: undefined,
+        specialAbilities: [
+          {
+            name: 'Transfert de vigueur',
+            text: 'Au contact, le personnage peut le soigner en lui transférant ses propres PV.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'pseudo-dragon',
+      label: 'Pseudo-dragon',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Pseudo-dragon',
+        // Le pseudo-dragon attaque avec l'attaque magique du maître mais SANS DM : son effet est
+        // le poison soporifique (d'où `attack` sans `damage`, et la capacité « Poison » ci-dessous).
+        attack: { label: 'Dard', fromMaster: 'magicAttack' },
+        specialAbilities: [
+          {
+            name: 'Poison',
+            text: 'Sur une touche, la cible réussit un test de CON difficulté 10 ou s’endort 2d6 minutes (créatures de NC supérieur à 1 immunisées).',
+            richText: 'Sur une touche, la cible réussit un test de CON difficulté 10 ou s’endort {2d6} minutes (créatures de NC supérieur à 1 immunisées).',
+          },
+          { name: 'Télépathie', text: 'Communique par télépathie jusqu’à 20 m.' },
+        ],
+        note: 'Vole 10 m par action de mouvement.',
+      },
+    },
+    // Pantin et Poupée : deux choix DISTINCTS aux statistiques identiques (familier artificiel,
+    // type non-vivant). Pouvoirs R4/R5/R7 communs : entité `FantasticFamiliar` 'pantin-ou-poupee'.
+    // RD 5 NON modélisée : interprétation « s’ajoute à la RD du rang 6 » à trancher (PER-176).
+    {
+      id: 'pantin',
+      label: 'Pantin',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Pantin',
+        type: 'Créature non vivante',
+        specialAbilities: [
+          { name: 'Réduction des dégâts', text: 'Possède une RD 5.' },
+        ],
+        note: 'Familier artificiel.',
+      },
+    },
+    {
+      id: 'poupee',
+      label: 'Poupée',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Poupée',
+        type: 'Créature non vivante',
+        specialAbilities: [
+          { name: 'Réduction des dégâts', text: 'Possède une RD 5.' },
+        ],
+        note: 'Familier artificiel.',
+      },
+    },
+    {
+      id: 'stique',
+      label: 'Stique',
+      creatureProfile: {
+        ...MINUSCULE_FAMILIAR,
+        name: 'Stique',
+        attack: { label: 'Piqûre', fromMaster: 'magicAttack', damage: '[1d4°]' },
+        specialAbilities: [
+          {
+            name: 'Étreinte sanguine',
+            text: 'Sur une touche, la stique s’agrippe à sa proie et lui inflige 1d4° DM par round en aspirant son sang.',
+            richText: 'Sur une touche, la stique s’agrippe à sa proie et lui inflige {1d4°} DM par round en aspirant son sang.',
+          },
+        ],
+        note: 'Vole 10 m par action de mouvement.',
+      },
+    },
+];
+
+const FANTASTIC_FAMILIAR_OPTIONS: NonNullable<Feature['choices']>[number] = {
+  kind: 'option',
+  prompt: 'Familier fantastique',
+  options: FAMILIAR_OPTION_LIST.map(withVerbatim),
+};
+
+/**
+ * Type d'animal LIBRE (PER-175) pour l'Animal céleste et l'Animal mort-vivant : le livre laisse
+ * le joueur choisir l'animal ordinaire de base (« rat, chat, corbeau, etc. »). Purement RP, sans
+ * effet sur les statistiques ; visible seulement quand l'un de ces deux familiers est retenu.
+ */
+const ANIMAL_TYPE_FREE_TEXT: NonNullable<Feature['choices']>[number] = {
+  kind: 'free-text',
+  prompt: "Type d'animal",
+  placeholder: 'rat, chat, corbeau, dragonnet…',
+  note: "Purement narratif (aucun effet sur les statistiques) : convenez du type d'animal avec votre MJ pour rester fidèle au lore et à l'univers de la campagne.",
+  visibleIfOption: { choiceIndex: 0, optionId: ['familier-celeste', 'familier-mort-vivant'] },
+};
 
 export const prestigePaths1: PrestigePath[] = [
   // ----- Voies génériques (p. 129-136) -----
@@ -404,7 +682,7 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le joueur augmente d'un point la valeur de la plus haute caractéristique de son personnage. De plus, lorsqu'il obtient un résultat de 1 sur un test sur cette caractéristique, il peut relancer le dé une fois (il garde le nouveau résultat).",
-    sourcePage: 129,
+    sourcePage: 130,
   },
   {
     id: 'prestige-specialiste-r7',
@@ -415,7 +693,7 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le joueur choisit une capacité que connaît son personnage. Lorsqu'il utilise cette capacité, il ajoute +1d4° aux DM produits une fois par round (sur une seule attaque si la capacité permet plusieurs attaques).",
-    sourcePage: 129,
+    sourcePage: 130,
   },
   {
     id: 'prestige-specialiste-r8',
@@ -426,7 +704,7 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le joueur choisit une capacité (A), (M) ou (L) que connaît son personnage. Une fois par combat, il peut utiliser cette capacité en plus de ses actions normales à son tour (sauf s'il est surpris), sans dépasser les limitations normalement imposées par la capacité (par exemple, une seule fois par round, ou une seule fois par combat, etc.). Si la capacité est un sort, il doit payer le coût normal de points de mana.",
-    sourcePage: 129,
+    sourcePage: 130,
   },
 
   // ===== Voie du lycanthrope (p. 130) =====
@@ -460,7 +738,7 @@ export const prestigeFeatures1: Feature[] = [
       },
     ],
     damageReduction: { kind: 'flat', value: 5, scopes: ['non-silver-weapon'] },
-    sourcePage: 130,
+    sourcePage: 131,
   },
   {
     id: 'prestige-lycanthrope-r6',
@@ -620,6 +898,12 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage fait l'acquisition d'un familier fantastique. Le familier récupère tous les PV perdus après une récupération rapide.\n\nFAMILIER — TAILLE MINUSCULE\n| AGI +3* | CON +2 | FOR -4 | PER +2 | CHA -2 | INT +1 | VOL +2 |\nDéfense [14 + rang dans la voie] · Points de vigueur [niv. du personnage × 2] · Initiative [Init. du personnage]\nLe personnage peut utiliser les sens de son familier (voir par ses yeux, entendre ce qu'il entend, etc.) et communiquer avec lui à distance illimitée. Vous trouverez les caractéristiques spéciales de ces créatures plus loin.",
+    // PER-175 : le STATBLOCK générique est RETIRÉ du richText (conservé dans `text` verbatim,
+    // source) — il est désormais rendu en mini-fiche `creatureProfile` par le familier choisi
+    // (options ci-dessous), comme la Monture fantastique (`cavalier-r5`).
+    richText:
+      "Le personnage fait l'acquisition d'un familier fantastique. Le familier récupère tous les PV perdus après une récupération rapide.\nLe personnage peut utiliser les sens de son familier (voir par ses yeux, entendre ce qu'il entend, etc.) et communiquer avec lui à distance illimitée. Vous trouverez les caractéristiques spéciales de ces créatures plus loin.",
+    choices: [FANTASTIC_FAMILIAR_OPTIONS, ANIMAL_TYPE_FREE_TEXT],
     sourcePage: 132,
   },
   {
@@ -721,7 +1005,7 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage fabrique et enchante une flèche particulière pour un ennemi unique dont il possède une relique (morceau de peau, griffe, poils, etc.). Il lui faut une journée complète pour créer la flèche et il ne peut en posséder plus d'une à un moment donné (ni pour la même cible ni pour une autre). Lorsqu'il utilise sa flèche contre l'ennemi désigné, il touche automatiquement. Si la cible est d'un niveau inférieur au sien, elle est immédiatement réduite à 0 PV, sinon elle a droit à un test de CON difficulté [10 + rang]. En cas de réussite, la flèche est tout de même un critique automatique.",
-    sourcePage: 137,
+    sourcePage: 138,
   },
 
   // ===== Voie de l'espion (p. 138) =====
@@ -984,7 +1268,7 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "À chaque round durant lequel il attaque la cible qu'il a défiée, le personnage obtient un bonus +2 en DEF contre toutes les attaques provenant d'autres adversaires.",
-    sourcePage: 142,
+    sourcePage: 141,
   },
   {
     id: 'prestige-duelliste-r7',
@@ -995,7 +1279,7 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Au début de son tour, le personnage peut faire un test opposé d'INT contre un adversaire qu'il a défié. S'il l'emporte, il obtient un dé bonus sur une attaque de son choix contre cet adversaire d'ici la fin du round (à annoncer avant de lancer le dé). Si l'adversaire l'emporte d'au moins 10 points, c'est lui qui bénéficie d'un dé bonus en attaque.",
-    sourcePage: 142,
+    sourcePage: 141,
   },
   {
     id: 'prestige-duelliste-r8',
@@ -1006,7 +1290,7 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Chaque fois que le personnage réussit une attaque contre l'adversaire qu'il a défié, en plus des DM habituels, il gagne 1 point de préparation sur cette créature (ceci est une action gratuite). Au moment de son choix, il peut utiliser une action limitée pour exécuter sa botte mortelle. S'il réussit son attaque, il ajoute +1d4° DM par point de préparation. Il ne peut tenter qu'une seule botte mortelle par combat, les points sont dépensés que l'attaque soit un succès ou un échec.",
-    sourcePage: 142,
+    sourcePage: 141,
   },
 
   // ===== Voie du flibustier (p. 141) =====

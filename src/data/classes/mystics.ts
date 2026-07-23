@@ -330,7 +330,7 @@ export const mysticFeatures: Feature[] = [
     richText:
       "Le druide choisit un petit animal (écureuil, corbeau, chat). Il peut utiliser les sens de son familier (voir par ses yeux, entendre ce qu'il entend, etc.) et communiquer avec lui à distance illimitée. Il gagne +2 en DEF lorsque son familier est en vue. Le familier récupère tous les PV perdus après une récupération rapide. S'il est réduit à 0 PV, le familier prend la fuite et réapparaît auprès de son maître 24 h plus tard, complètement soigné. S'il est tué (lors d'un fait de jeu que le MJ juge inévitable), le druide perd {1d4°} PV en contrecoup et pourra trouver un autre familier au prochain passage de niveau (pas forcément le même animal).\n\nNote : Petit compagnon est une version non magique du Familier du magicien (voie de la magie universelle). Si un personnage décide de faire l'acquisition de ces deux capacités, le bonus de DEF ne se cumule pas.",
     effects: [{ kind: 'conditional-stat-bonus', bonuses: [{ stat: 'def', value: 2 }], activation: { kind: 'condition', label: 'familier en vue', activeByDefault: false }, disablesFeatures: ['magie-universelle-r2'] }],
-    creatureProfile: { name: 'Familier', abilities: { AGI: 3, CON: 0, FOR: -4, PER: 2, CHA: -2, INT: -2, VOL: 2 }, bonusDieAbilities: ['AGI', 'PER'], defense: '[13 + rang]', hitPoints: '[=niveau × 2]', initiative: { fromMaster: 'initiative' }, note: 'Créature trop petite pour attaquer ou infliger des dommages.' },
+    creatureProfile: { name: 'Familier', companionType: 'familiar', abilities: { AGI: 3, CON: 0, FOR: -4, PER: 2, CHA: -2, INT: -2, VOL: 2 }, bonusDieAbilities: ['AGI', 'PER'], defense: '[13 + rang]', hitPoints: '[=niveau × 2]', initiative: { fromMaster: 'initiative' }, note: 'Créature trop petite pour attaquer ou infliger des dommages.' },
     sourcePage: 114,
   },
   {
@@ -417,7 +417,7 @@ export const mysticFeatures: Feature[] = [
     // Profil structuré de la panthère (mini-fiche) ; bloc de stats retiré du richText.
     richText:
       "Le druide apprivoise une panthère (ou un puma) qui lui obéit au doigt et à l'œil.",
-    creatureProfile: { name: 'Panthère', abilities: { AGI: 4, CON: 2, FOR: 2, PER: 2, CHA: -2, INT: -3, VOL: 2 }, bonusDieAbilities: ['AGI', 'PER'], defense: '[13 + rang]', hitPoints: '[=niveau × 4]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4 + 2]' } },
+    creatureProfile: { name: 'Panthère', companionType: 'animal', abilities: { AGI: 4, CON: 2, FOR: 2, PER: 2, CHA: -2, INT: -3, VOL: 2 }, bonusDieAbilities: ['AGI', 'PER'], defense: '[13 + rang]', hitPoints: '[=niveau × 4]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4 + 2]' } },
     sourcePage: 115,
   },
   {
@@ -445,7 +445,7 @@ export const mysticFeatures: Feature[] = [
     // Profil structuré de l'animal fabuleux (mini-fiche) ; bloc de stats retiré du richText.
     richText:
       "La panthère devient un animal fabuleux ou est remplacée par un félin plus grand (tigre, lion). Le grand félin peut servir de monture au druide et il se déplace de 20 m par action de mouvement. Le druide peut communiquer avec son félin par télépathie et le guérir à distance en dépensant ses propres PV (-1 PV au druide par PV octroyé au félin).",
-    creatureProfile: { name: 'Animal fabuleux', abilities: { AGI: 4, CON: 5, FOR: 5, PER: 2, CHA: -2, INT: -2, VOL: 4 }, bonusDieAbilities: ['AGI', 'PER'], defense: '[15 + rang]', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' } },
+    creatureProfile: { name: 'Animal fabuleux', companionType: 'animal', abilities: { AGI: 4, CON: 5, FOR: 5, PER: 2, CHA: -2, INT: -2, VOL: 4 }, bonusDieAbilities: ['AGI', 'PER'], defense: '[15 + rang]', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' } },
     // « La panthère devient un animal fabuleux ou est remplacée par un félin plus
     // grand » : Grand félin supplante définitivement la Panthère (fauve-r2) dès son
     // acquisition → remplacement inconditionnel (≠ exclusion par interrupteur).
@@ -669,7 +669,7 @@ export const mysticFeatures: Feature[] = [
     // Profil structuré de l'arbre animé (mini-fiche) ; bloc de stats retiré du richText.
     richText:
       "Le druide peut animer un arbre en le touchant. Il combat à son service pendant [=niveau] rounds. Il peut animer un seul arbre à la fois.",
-    creatureProfile: { name: 'Arbre animé', abilities: { AGI: -2, CON: 3, FOR: 3, PER: -2, CHA: -2, INT: -2, VOL: 0 }, defense: '[10 + rang]', hitPoints: '[=niveau × 5]', initiative: '8', attack: { fromMaster: 'magicAttack', damage: '[1d4° + 3]' }, note: 'Déplacement 5 m par action de mouvement.' },
+    creatureProfile: { name: 'Arbre animé', companionType: 'summon', abilities: { AGI: -2, CON: 3, FOR: 3, PER: -2, CHA: -2, INT: -2, VOL: 0 }, defense: '[10 + rang]', hitPoints: '[=niveau × 5]', initiative: '8', attack: { fromMaster: 'magicAttack', damage: '[1d4° + 3]' }, note: 'Déplacement 5 m par action de mouvement.' },
     sourcePage: 117,
   },
   {

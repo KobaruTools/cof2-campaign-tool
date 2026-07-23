@@ -84,6 +84,9 @@ export function choiceSelectionLabel(
       // La sélection normalisée d'un `custom-skill` est son NOM (1er élément) ; l'affichage
       // détaillé (nom + domaines) est traité par un rendu dédié en mode `display`.
       return selection;
+    case 'free-text':
+      // Texte libre narratif (PER-175) : la sélection EST le texte saisi.
+      return selection;
   }
 }
 
@@ -441,6 +444,29 @@ function ChoiceControl({
     );
   }
 
+  // free-text : saisie libre purement narrative (PER-175, ex. type d'animal d'un familier
+  // fantastique). Optionnel (aucune erreur si vide) ; l'avertissement `note` (décision RP à
+  // convenir avec le MJ) s'affiche sous le champ.
+  if (choice.kind === 'free-text') {
+    return (
+      <Box>
+        <TextField
+          size="small"
+          fullWidth
+          label={choice.prompt}
+          placeholder={choice.placeholder}
+          value={single ?? ''}
+          onChange={(e) => onChange(index, e.target.value.length ? e.target.value : null)}
+        />
+        {choice.note && (
+          <AppAlert severity="info" sx={{ mt: 1, py: 0 }}>
+            {choice.note}
+          </AppAlert>
+        )}
+      </Box>
+    );
+  }
+
   // feature-from-path : longue liste de capacités empruntables, groupée par voie
   // (couleur + icône de profil) via le composant unifié `FeaturePathAutocomplete`.
   // Règle des poupées russes (p. 41) : les capacités elles-mêmes « emprunteuses »
@@ -763,6 +789,32 @@ export function FeatureChoiceField({
                     {domLabels}
                   </Typography>
                 )}
+              </Stack>
+            );
+          }
+          // Choix `free-text` (PER-175) : purement narratif et optionnel. On montre la valeur
+          // saisie en chip (cliquable pour éditer) ; RIEN si vide (pas de badge « Choisir »).
+          if (choice.kind === 'free-text') {
+            const rawText = getSelection(character, featureId, i);
+            const text = typeof rawText === 'string' ? rawText : null;
+            if (!text) return null;
+            const chip = (
+              <Chip
+                label={text}
+                size="small"
+                variant="outlined"
+                color="primary"
+                sx={compact ? COMPACT_CHIP_SX : undefined}
+                {...chipEditProps(onEditRequest)}
+              />
+            );
+            if (compact) return <Box key={i}>{chip}</Box>;
+            return (
+              <Stack key={i} direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  {choice.prompt} :
+                </Typography>
+                {chip}
               </Stack>
             );
           }

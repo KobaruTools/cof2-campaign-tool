@@ -1514,7 +1514,9 @@ function rawTestContributions(featureIds: string[], ctx?: EffectContext): RawTes
         if (choice.visibleIfOption) {
           const gov = selections[choice.visibleIfOption.choiceIndex];
           const govIds = Array.isArray(gov) ? gov : gov ? [gov] : [];
-          if (!govIds.includes(choice.visibleIfOption.optionId)) return;
+          const need = choice.visibleIfOption.optionId;
+          const needIds = Array.isArray(need) ? need : [need];
+          if (!needIds.some((id) => govIds.includes(id))) return;
         }
         const sel = selections[i];
         const domains = Array.isArray(sel)

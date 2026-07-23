@@ -13,16 +13,36 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
+import HistoryEduOutlinedIcon from '@mui/icons-material/HistoryEduOutlined';
 import type { ReactNode } from 'react';
-import { ABILITY_IDS, type AbilityId, type CreatureProfile, type DerivedStatId, type MasterStatRef } from '@/data/schema';
+import { ABILITY_IDS, type AbilityId, type CreatureProfile, type CreatureSize, type DerivedStatId, type MasterStatRef } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { CREATURE_SIZE_LABELS, resolveCreatureAbilities } from '@/lib/ui/creature';
 import type { DerivedStatId as UiDerivedStatId } from '@/lib/ui/derivedStats';
+import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { AbilityValueBadge } from '@/components/AbilityValueBadge';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
+import { PageRefText, SourceRef } from '@/components/SourceRef';
+import { MetaPill } from '@/components/MetaPill';
 import { RichInline } from './FeatureRichText';
+
+/**
+ * Pastille de TAILLE d'un compagnon (PER-175) — même « tag » que le bestiaire (`MetaPill`),
+ * avec info-bulle « Taille » au survol, posée à droite du nom. Rendue seulement si le profil
+ * porte une `size`.
+ */
+export function CompanionSizePill({ size }: { size: CreatureSize }) {
+  return (
+    <AppTooltip title="Taille">
+      <Box component="span" sx={{ cursor: 'help' }}>
+        <MetaPill>{CREATURE_SIZE_LABELS[size]}</MetaPill>
+      </Box>
+    </AppTooltip>
+  );
+}
 
 /**
  * Bloc compact « icône de stat dérivée cerclée + valeur » (PER-233), calqué sur le
@@ -117,41 +137,61 @@ function MasterStatValue({ stat, masterDerived }: { stat: DerivedStatId; masterD
 export interface CreatureAbilitiesGridProps {
   profile: CreatureProfile;
   /**
+   * Caractéristiques du MAÎTRE — pour résoudre les valeurs `abilitiesFromMaster` (ex. Minimoï,
+   * dont les carac sont des deltas sur celles du personnage). Absent → deltas seuls (maître à 0).
+   */
+  masterAbilities?: Abilities;
+  /**
    * Caractéristiques de la créature bénéficiant d'un DÉ BONUS (icône double-d20),
    * octroyé par une amélioration retenue (ex. golem « Forme de félin » → AGI). Voir
    * `creatureBonusDiceForPath`.
    */
   bonusDieAbilities?: Set<AbilityId>;
+  /**
+   * Style : `compact` (défaut, petites puces — mini-fiche « Voies & capacités ») ou `large`
+   * (grandes puces bordées, chiffre qui grandit avec la valeur — même rendu que le bloc du
+   * bestiaire, PER-175, pour la colonne droite de la carte compagnon).
+   */
+  variant?: 'compact' | 'large';
 }
 
 /**
- * Grille compacte des 7 caractéristiques d'une créature (valeurs fixes), avec l'icône
- * de la fiche et l'éventuel dé bonus inné/octroyé (double-d20). `null` si le profil n'a
- * pas de bloc de caractéristiques dans le livre (ex. écuyer du chevalier). Extraite pour
- * être réutilisée par la mini-fiche « Voies & capacités » ET la carte de la section
- * « Compagnons » (PER-233), où elle est posée en haut à droite, à côté de la barre de vie.
+ * Grille des 7 caractéristiques d'une créature, avec l'icône de la fiche et l'éventuel dé bonus
+ * inné/octroyé (double-d20). Les valeurs sont RÉSOLUES (`resolveCreatureAbilities`) : fixes
+ * (`abilities`) ou dérivées du maître (`abilitiesFromMaster`). `null` si le profil n'a pas de bloc
+ * de caractéristiques dans le livre (ex. écuyer). Le variant `large` reprend le style du bestiaire.
  */
-export function CreatureAbilitiesGrid({ profile, bonusDieAbilities }: CreatureAbilitiesGridProps) {
-  if (!profile.abilities) return null;
+export function CreatureAbilitiesGrid({ profile, masterAbilities, bonusDieAbilities, variant = 'compact' }: CreatureAbilitiesGridProps) {
+  const resolved = resolveCreatureAbilities(profile, masterAbilities);
+  if (!resolved) return null;
   // Dés bonus de la créature = dés INNÉS (notés « * » dans le livre, portés par le profil)
   // UNIS aux dés octroyés par une option de voie retenue (ex. golem « Forme de félin »). Système
   // unifié avec la fiche de personnage (PER-107) : icône double-d20 à droite de la valeur.
   const allBonusDice = new Set<AbilityId>([...(profile.bonusDieAbilities ?? []), ...(bonusDieAbilities ?? [])]);
+  const large = variant === 'large';
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: large ? 0.75 : 0.5 }}>
       {ABILITY_IDS.map((id) => (
         <AppTooltip key={id} title={ABILITY_NAMES[id]}>
           {/* Bloc « icône + code + valeur » partagé (`AbilityValueBadge`) : chiffre
               teinté fort/faible comme partout ailleurs, dé bonus posé en ornement. */}
           <AbilityValueBadge
             ability={id}
-            value={profile.abilities![id]}
-            iconSize={16}
+            value={resolved[id]}
+            iconSize={large ? 30 : 16}
             showCode
-            codeVariant="caption"
-            valueVariant="caption"
-            adornment={allBonusDice.has(id) ? <BonusDieBadge ability={id} size={12} /> : undefined}
-            sx={{ borderRadius: 0.5, py: 0.4, cursor: 'help', bgcolor: (t) => alpha(t.palette.text.primary, 0.05) }}
+            codeVariant={large ? 'subtitle2' : 'caption'}
+            valueVariant={large ? 'h6' : 'caption'}
+            scaleBase={large ? '1.2rem' : undefined}
+            adornment={allBonusDice.has(id) ? <BonusDieBadge ability={id} size={large ? 14 : 12} /> : undefined}
+            sx={{
+              borderRadius: large ? 1.5 : 0.5,
+              border: 1,
+              borderColor: 'divider',
+              py: large ? { xs: 0.5, sm: 0.6 } : 0.4,
+              cursor: 'help',
+              bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
+            }}
           />
         </AppTooltip>
       ))}
@@ -265,10 +305,16 @@ export function CreatureStatsLine({
             ) : (
               <Box component="span">{attack.value}</Box>
             )}
-            <Box component="span" sx={{ opacity: 0.5 }}>
-              ·
-            </Box>
-            {rich(attack.damage)}
+            {/* DM optionnel : certaines attaques n'infligent pas de DM (ex. dard du pseudo-dragon,
+                dont l'effet est le poison). On omet alors le « · DM ». */}
+            {attack.damage && (
+              <>
+                <Box component="span" sx={{ opacity: 0.5 }}>
+                  ·
+                </Box>
+                {rich(attack.damage)}
+              </>
+            )}
           </CreatureStatChip>
         )}
         {/* Attaques SUPPLÉMENTAIRES (PER-94, ex. Baliste du Golem supérieur). Le jet reprend
@@ -284,12 +330,242 @@ export function CreatureStatsLine({
           </CreatureStatChip>
         ))}
       </Stack>
+      {/* Capacités spéciales (PER-175, modèle bestiaire) : nom en gras + texte enrichi
+          (dés/formules/`rang`/`niveau` résolus contre le maître, glossaire auto). */}
+      {profile.specialAbilities && profile.specialAbilities.length > 0 && (
+        <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+          {profile.specialAbilities.map((ab, i) => (
+            <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.5 }}>
+              <Box component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                {ab.name}.
+              </Box>{' '}
+              {rich(ab.richText ?? ab.text)}
+            </Typography>
+          ))}
+        </Stack>
+      )}
       {profile.note && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>
           {profile.note}
         </Typography>
       )}
     </>
+  );
+}
+
+/** Description enrichie d'une créature SANS bloc de stats (Serviteur invisible) — `null` sinon. */
+export function CreatureDescriptionRich({
+  profile,
+  abilities,
+  level,
+  rank,
+}: {
+  profile: CreatureProfile;
+  abilities: Abilities;
+  level: number;
+  rank: number;
+}) {
+  if (!profile.descriptionRich) return null;
+  return (
+    <Typography variant="body2" color="text.secondary" component="div" sx={{ lineHeight: 1.5 }}>
+      <RichInline text={profile.descriptionRich} abilities={abilities} level={level} rank={rank} />
+    </Typography>
+  );
+}
+
+/**
+ * Bloc COMPACT « icône de stat dérivée + valeur » façon bestiaire (PER-175) — bordé, centré.
+ * Disposés côte à côte sur UNE seule ligne (grille) dans la colonne droite de la carte compagnon.
+ */
+function DerivedStatBlock({ statId, children }: { statId: UiDerivedStatId; children: ReactNode }) {
+  return (
+    <Stack
+      direction="row"
+      spacing={0.5}
+      sx={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 0,
+        px: 0.6,
+        py: 0.4,
+        borderRadius: 1,
+        border: 1,
+        borderColor: 'divider',
+        bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
+      }}
+    >
+      <DerivedStatIcon statId={statId} size={20} title />
+      <Box
+        component="span"
+        sx={{ fontWeight: 700, fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', gap: 0.4, whiteSpace: 'nowrap' }}
+      >
+        {children}
+      </Box>
+    </Stack>
+  );
+}
+
+/**
+ * Statistiques dérivées d'une créature sur UNE SEULE LIGNE (PER-175) — DEF, (PV), Init.,
+ * attaque(s) en petits blocs bordés côte à côte, pour la colonne droite de la carte compagnon,
+ * sous la grille de caractéristiques (même esprit que le bloc DEF/PV/Init. du bestiaire). Reprend
+ * la résolution de `CreatureStatsLine` (richText DEF, recopie du maître Init./attaque, DEF « en selle »).
+ */
+export function CreatureDerivedStats({
+  profile,
+  abilities,
+  level,
+  rank,
+  masterDerived,
+  defenseAltActive,
+  showHitPoints = false,
+}: CreatureStatsLineProps) {
+  const rich = (text: string) => <RichInline text={text} abilities={abilities} level={level} rank={rank} />;
+  const defAlt = profile.defenseAlt;
+  const attack = profile.attack;
+  const attackStatId: UiDerivedStatId = attack?.fromMaster === 'rangedAttack' ? 'rangedAttack' : 'meleeAttack';
+  type Block = { key: string; statId: UiDerivedStatId; content: ReactNode };
+  // Rangée 1 : DEF / (PV) / Init. — Rangée 2 : attaque(s), à la ligne (1 attaque = pleine largeur,
+  // 2 attaques = 2 colonnes), pour ne pas serrer les DM contre les stats défensives.
+  const statBlocks: Block[] = [];
+  const attackBlocks: Block[] = [];
+  if (profile.defense || defAlt) {
+    statBlocks.push({
+      key: 'def',
+      statId: 'defense',
+      content:
+        defAlt && defenseAltActive ? (
+          <AppTooltip
+            title={`${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`}
+          >
+            <Box component="span" sx={{ cursor: 'help' }}>
+              {isMasterRef(defAlt.value)
+                ? masterDerived
+                  ? masterValue(masterDerived, defAlt.value.fromMaster)
+                  : 'DEF du maître'
+                : rich(defAlt.value)}
+            </Box>
+          </AppTooltip>
+        ) : (
+          rich(profile.defense ?? '')
+        ),
+    });
+  }
+  if (showHitPoints && profile.hitPoints) statBlocks.push({ key: 'hp', statId: 'maxHp', content: rich(profile.hitPoints) });
+  if (profile.initiative) {
+    statBlocks.push({
+      key: 'init',
+      statId: 'initiative',
+      content: isMasterRef(profile.initiative) ? (
+        <MasterStatValue stat={profile.initiative.fromMaster} masterDerived={masterDerived} />
+      ) : (
+        rich(profile.initiative)
+      ),
+    });
+  }
+  if (attack) {
+    attackBlocks.push({
+      key: 'atk',
+      statId: attackStatId,
+      content: (
+        <>
+          {attack.fromMaster ? (
+            <MasterStatValue stat={attack.fromMaster} masterDerived={masterDerived} />
+          ) : (
+            <Box component="span">{attack.value}</Box>
+          )}
+          {/* DM optionnel (ex. dard du pseudo-dragon : effet = poison, pas de DM). */}
+          {attack.damage && (
+            <>
+              <Box component="span" sx={{ opacity: 0.5 }}>·</Box>
+              {rich(attack.damage)}
+            </>
+          )}
+        </>
+      ),
+    });
+  }
+  (profile.extraAttacks ?? []).forEach((extra, i) => {
+    attackBlocks.push({
+      key: `xa${i}`,
+      statId: extra.ranged ? 'rangedAttack' : 'meleeAttack',
+      content: (
+        <>
+          <MasterStatValue stat="magicAttack" masterDerived={masterDerived} />
+          <Box component="span" sx={{ opacity: 0.5 }}>·</Box>
+          {rich(extra.damage)}
+        </>
+      ),
+    });
+  });
+  if (statBlocks.length === 0 && attackBlocks.length === 0) return null;
+  const row = (items: Block[]) => (
+    <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, gap: 0.6 }}>
+      {items.map((b) => (
+        <DerivedStatBlock key={b.key} statId={b.statId}>
+          {b.content}
+        </DerivedStatBlock>
+      ))}
+    </Box>
+  );
+  return (
+    <Stack spacing={0.6}>
+      {statBlocks.length > 0 && row(statBlocks)}
+      {attackBlocks.length > 0 && row(attackBlocks)}
+    </Stack>
+  );
+}
+
+/**
+ * Capacités spéciales d'une créature en BLOCS bordés sur 2 colonnes (PER-175) — même présentation
+ * que les « Capacités » du bestiaire (nom en gras + texte enrichi RichInline). `null` si aucune.
+ */
+export function CreatureSpecialAbilityBlocks({
+  profile,
+  abilities,
+  level,
+  rank,
+}: {
+  profile: CreatureProfile;
+  abilities: Abilities;
+  level: number;
+  rank: number;
+}) {
+  const list = profile.specialAbilities ?? [];
+  if (list.length === 0) return null;
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 0.75 }}>
+      {list.map((ab, i) => (
+        <Box
+          key={i}
+          sx={{ border: 1, borderColor: 'divider', borderRadius: 1, px: 1, py: 0.75, bgcolor: (t) => alpha(t.palette.text.primary, 0.03) }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.3, mb: 0.25 }}>
+            {ab.name}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" component="div" sx={{ lineHeight: 1.5 }}>
+            <RichInline text={ab.richText ?? ab.text} abilities={abilities} level={level} rank={rank} />
+          </Typography>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+/**
+ * TEXTE D'ORIGINE verbatim d'une créature + page source (PER-175), en bas de la mini-fiche — comme
+ * la description du bestiaire (encadré info italique, icône plume). Rend TRAÇABLE au livre chaque
+ * stat/capacité dérivée (ex. le « 1d4° DM » du lézard voltaïque, p. 135). `null` si absent.
+ */
+export function CreatureVerbatimSource({ profile }: { profile: CreatureProfile }) {
+  const v = profile.verbatimSource;
+  if (!v) return null;
+  return (
+    <AppAlert severity="info" icon={<HistoryEduOutlinedIcon />}>
+      <Typography variant="caption" component="div" sx={{ whiteSpace: 'pre-line', lineHeight: 1.55, fontStyle: 'italic' }}>
+        <PageRefText>{v.text}</PageRefText> <SourceRef page={v.sourcePage} />
+      </Typography>
+    </AppAlert>
   );
 }
 
@@ -332,6 +608,7 @@ export function CreatureStatBlock({
         <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>
           {profile.name.toUpperCase()}
         </Typography>
+        {profile.size && <CompanionSizePill size={profile.size} />}
         {profile.type && (
           <Typography variant="caption" color="text.secondary">
             {profile.type}
@@ -340,9 +617,9 @@ export function CreatureStatBlock({
       </Stack>
 
       {/* Caractéristiques de la créature (grille compacte), omises si le livre n'en donne pas. */}
-      {profile.abilities && (
+      {resolveCreatureAbilities(profile, abilities) && (
         <Box sx={{ mb: 0.75 }}>
-          <CreatureAbilitiesGrid profile={profile} bonusDieAbilities={bonusDieAbilities} />
+          <CreatureAbilitiesGrid profile={profile} masterAbilities={abilities} bonusDieAbilities={bonusDieAbilities} />
         </Box>
       )}
 
@@ -354,6 +631,13 @@ export function CreatureStatBlock({
         masterDerived={masterDerived}
         defenseAltActive={defenseAltActive}
       />
+
+      {/* Texte d'origine verbatim + page source (PER-175), en bas du bloc — traçabilité au livre. */}
+      {profile.verbatimSource && (
+        <Box sx={{ mt: 0.75 }}>
+          <CreatureVerbatimSource profile={profile} />
+        </Box>
+      )}
     </Box>
   );
 }
