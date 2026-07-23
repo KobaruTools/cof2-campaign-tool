@@ -520,7 +520,8 @@ function DiePart({
   count: number;
   die: Die;
   evolving: boolean;
-  level: number;
+  /** Niveau pour l'info-bulle d'un dé évolutif ; `undefined` → info-bulle sans « niveau X » (créatures). */
+  level?: number;
   /** Laisse l'info-bulle au conteneur parent (ex. encadré de formule). */
   noTooltip?: boolean;
 }) {
@@ -885,6 +886,7 @@ export function RichInline({
   rank,
   milestoneBonus = 0,
   abilitySubstitutions,
+  evolvingDieBase = false,
 }: {
   text: string;
   abilities: Abilities;
@@ -894,6 +896,15 @@ export function RichInline({
   milestoneBonus?: number;
   /** Substitutions de carac contextuelles (PER-163, ex. forgesort → INT). Passées à `resolveExpr`. */
   abilitySubstitutions?: AbilitySubstitution[];
+  /**
+   * Affiche un dé ÉVOLUTIF à sa FACE DE BASE (le dé imprimé, ex. `d4°`) au lieu de le résoudre au
+   * niveau courant, tout en CONSERVANT le marqueur « ° » (violet) qui l'identifie, et SANS « niveau X »
+   * dans l'info-bulle. Utilisé pour les créatures du bestiaire (PER-238) : leurs dés évolutifs (dé de
+   * chute, fièvre…) sont indexés sur le niveau de la VICTIME — non résolvable ici —, donc on montre le
+   * dé de base marqué évolutif plutôt qu'une taille résolue au NC de la créature (qui serait fausse).
+   * Défaut `false` → comportement normal (dé évolutif résolu au niveau, cf. fiche de perso).
+   */
+  evolvingDieBase?: boolean;
 }) {
   return (
     <>
@@ -915,9 +926,17 @@ export function RichInline({
           // Nombre, faces ET caractère évolutif résolus au rang de voie (un palier `|1d4°@R`
           // peut rendre le dé évolutif) ; dé évolutif → valeur au niveau courant.
           const { count, die, evolving } = dieAtRank(seg.token, rank);
-          const displayDie = evolving ? scalingDie(level, progression) : die;
+          // `evolvingDieBase` (créatures, PER-238) : on garde la FACE DE BASE `die` + le « ° », sans
+          // résoudre au niveau (non pertinent) ni afficher de « niveau X » dans l'info-bulle.
+          const displayDie = evolving && !evolvingDieBase ? scalingDie(level, progression) : die;
           return (
-            <DiePart key={i} count={count} die={displayDie} evolving={evolving} level={level} />
+            <DiePart
+              key={i}
+              count={count}
+              die={displayDie}
+              evolving={evolving}
+              level={evolvingDieBase ? undefined : level}
+            />
           );
         }
         const resolved = resolveExpr(seg.terms, abilities, level, progression, rank, milestoneBonus, abilitySubstitutions);
