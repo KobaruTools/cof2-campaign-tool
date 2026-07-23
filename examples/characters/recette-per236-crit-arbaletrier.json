@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per236-crit-arbaletrier",
+  "name": "Recette PER-236 — Arbalétrier (Science du critique)",
+  "identity": {
+    "description": "ATTENDU : carte d’attaque À DISTANCE avec l’arbalète légère → puce « Critique 19-20 » (Science du critique). Déséquipez l’arbalète ou tenez un arc à la place → la puce disparaît (le sous-type doit être une arbalète)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "maitre-des-arbaletes-r1",
+    "maitre-des-arbaletes-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "arbalete-legere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-236 (lot A, item 3/4) — plage de critique à distance câblée automatiquement à l’arme portée. maitre-des-arbaletes-r2 : criticalRange.weaponCondition { kind: \"rangedKinds\", rangedKinds: [\"crossbow\"] }.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

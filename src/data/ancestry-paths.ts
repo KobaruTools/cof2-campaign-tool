@@ -331,20 +331,17 @@ export const ancestryFeatures: Feature[] = [
     text:
       'L’elfe augmente de 1 la zone de critique lorsqu’il utilise un arc (19-20 au d20) et ajoute +1d4° aux DM en cas de critique. Il sait utiliser les arcs courts, quel que soit son profil.',
     // PER-133 : élargissement de la plage de critique à DISTANCE (+1 → 19-20), CONDITIONNÉ À L'ARME
-    // (« lorsqu'il utilise un arc ») → suit un interrupteur manuel (conditional-stat-bonus marqueur
-    // d'état) en attendant le câblage automatique au type d'arme porté (PER-136). Même patron que
-    // maitre-d-armes-r2. Le +1d4° de DM sur critique et la maîtrise des arcs courts restent verbatim.
+    // (« lorsqu'il utilise un arc »). Câblage AUTOMATIQUE (PER-236) : `criticalRangeSources` active la
+    // plage dès qu'un arc (`rangedKind: 'bow'`, arc court ou long) est réellement PORTÉ, sans
+    // interrupteur manuel. Même patron que maitre-d-armes-r2 (au contact) et l'arbalétrier (à distance).
+    // Le +1d4° de DM sur critique et la maîtrise des arcs courts restent verbatim.
     richText:
       'L’elfe augmente de 1 la zone de critique lorsqu’il utilise un arc (19-20 au d20) et ajoute +{1d4°} aux DM en cas de critique. Il sait utiliser les arcs courts, quel que soit son profil.',
-    effects: [
-      {
-        kind: 'conditional-stat-bonus',
-        bonuses: [],
-        activation: { kind: 'condition', label: 'arc en main' },
-      },
-    ],
-    criticalRange: { scope: 'ranged', value: 1 },
-    wip: "Plage de critique conditionnée à l'arc — activation manuelle ; le câblage automatique à l'arme à distance portée reste à faire (PER-136 n'a couvert que le contact) — suivi : PER-236.",
+    criticalRange: {
+      scope: 'ranged',
+      value: 1,
+      weaponCondition: { kind: 'rangedKinds', rangedKinds: ['bow'] },
+    },
     sourcePage: 52,
   },
   {

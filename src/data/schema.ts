@@ -1360,6 +1360,9 @@ export interface DamageReduction {
  *    Rendue par la vue « mains nues » de la carte d'attaque (`unarmedStrike`), donc IGNORÉE par
  *    `criticalRangeSources` (qui décrit la vue « arme »).
  *  - `weaponCategory` : arme de la CATÉGORIE mécanique donnée (`light`…) — Frappe chirurgicale (voleur).
+ *  - `rangedKinds` : l'arme À DISTANCE portée appartient à un des SOUS-TYPES donnés (`bow`, `crossbow`…,
+ *    cf. `RangedWeaponKind`) — Science du critique de l'arquebusier (`crossbow`), Archer émérite de
+ *    l'elfe (`bow`). Ne s'évalue que sur une plage `scope: 'ranged'` (arme à distance portée).
  *  - `weaponFamiliesFromChoice` : l'arme portée appartient à une des FAMILLES choisies par le
  *    personnage sur la capacité `choiceFeatureId` (choix `option`, ex. Armes de prédilection du
  *    guerrier, `maitre-d-armes-r1`) — Science du critique (maître d'armes).
@@ -1367,6 +1370,7 @@ export interface DamageReduction {
 export type WeaponCriticalCondition =
   | { kind: 'unarmed' }
   | { kind: 'weaponCategory'; category: WeaponCategory }
+  | { kind: 'rangedKinds'; rangedKinds: RangedWeaponKind[] }
   | { kind: 'weaponFamiliesFromChoice'; choiceFeatureId: string };
 
 export interface CriticalRange {

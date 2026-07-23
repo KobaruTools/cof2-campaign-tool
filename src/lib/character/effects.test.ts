@@ -1002,6 +1002,42 @@ describe('criticalRangeSources — plage de critique élargie (PER-133/136)', ()
     expect(criticalRangeSources(guerrier([]))).toEqual([]);
   });
 
+  it('Science du critique de l’arquebusier (maitre-des-arbaletes-r2) : AUTO dès qu’une ARBALÈTE est portée (PER-236)', () => {
+    // Arbalète légère (rangedKind 'crossbow') en main → plage +1 À DISTANCE activée automatiquement.
+    expect(
+      criticalRangeSources(
+        charEquip(['maitre-des-arbaletes-r2'], [{ itemId: 'arbalete-legere', quantity: 1, worn: { slot: 'mainHand' } }]),
+      ),
+    ).toEqual([{ featureId: 'maitre-des-arbaletes-r2', name: 'Science du critique', scope: 'ranged', value: 1 }]);
+    // Arc (sous-type 'bow', pas 'crossbow') en main → aucune plage (le sous-type ne correspond pas).
+    expect(
+      criticalRangeSources(
+        charEquip(['maitre-des-arbaletes-r2'], [{ itemId: 'arc-court', quantity: 1, worn: { slot: 'mainHand' } }]),
+      ),
+    ).toEqual([]);
+    // Arbalète RANGÉE (non portée en main) → aucune plage : la puce ne dépend que du port.
+    expect(
+      criticalRangeSources(charEquip(['maitre-des-arbaletes-r2'], [{ itemId: 'arbalete-legere', quantity: 1 }])),
+    ).toEqual([]);
+    // Aucune arme portée → aucune plage.
+    expect(criticalRangeSources(charEquip(['maitre-des-arbaletes-r2'], []))).toEqual([]);
+  });
+
+  it('Archer émérite de l’elfe (elfe-sylvain-r3) : AUTO dès qu’un ARC est porté ; jamais avec une arbalète (PER-236)', () => {
+    // Arc long (rangedKind 'bow') en main → plage +1 à distance activée automatiquement.
+    expect(
+      criticalRangeSources(
+        charEquip(['elfe-sylvain-r3'], [{ itemId: 'arc-long', quantity: 1, worn: { slot: 'mainHand' } }]),
+      ),
+    ).toEqual([{ featureId: 'elfe-sylvain-r3', name: 'Archer émérite', scope: 'ranged', value: 1 }]);
+    // Arbalète (sous-type 'crossbow', pas 'bow') en main → aucune plage.
+    expect(
+      criticalRangeSources(
+        charEquip(['elfe-sylvain-r3'], [{ itemId: 'arbalete-legere', quantity: 1, worn: { slot: 'mainHand' } }]),
+      ),
+    ).toEqual([]);
+  });
+
   it('Frappe chirurgicale (spadassin-r3) : AUTO +2 (18-20) dès qu’une arme LÉGÈRE est portée (PER-136)', () => {
     // Rapière (arme légère) en main → +2 automatiquement (+ sa plage intrinsèque d'arme, PER-225).
     expect(

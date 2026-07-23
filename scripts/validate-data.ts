@@ -575,6 +575,13 @@ for (const c of features) {
     if (wc.kind === 'weaponCategory') {
       if (!validWeaponCategories.has(wc.category))
         err(`[capacite ${c.id}] criticalRange.weaponCondition catégorie d'arme inconnue : ${wc.category}`);
+    } else if (wc.kind === 'rangedKinds') {
+      // Plage à distance conditionnée au sous-type d'arme porté (PER-236) : arbalète, arc…
+      if (!wc.rangedKinds.length)
+        err(`[capacite ${c.id}] criticalRange.weaponCondition rangedKinds vide`);
+      for (const rk of wc.rangedKinds)
+        if (!validRangedKinds.has(rk))
+          err(`[capacite ${c.id}] criticalRange.weaponCondition rangedKind inconnu : ${rk}`);
     } else if (wc.kind === 'weaponFamiliesFromChoice') {
       const choiceFeature = featureById.get(wc.choiceFeatureId);
       if (!choiceFeature)

@@ -544,18 +544,15 @@ export const adventurerFeatures: Feature[] = [
     text:
       'L’arbalétrier augmente de 1 point les chances d’obtenir un critique sur les attaques effectuées avec une arbalète (par exemple, 19-20 au lieu de 20).',
     // Adapté du maître d'armes r2. L'élargissement de plage de critique vise ici les attaques à
-    // DISTANCE (l'arbalète est une arme à distance) → `criticalRange.scope: 'ranged'`. CONDITIONNÉ à
-    // une arbalète en main : interrupteur manuel (effet conditionnel « marqueur d'état », bonuses
-    // vide) en attendant le câblage automatique au type d'arme porté (PER-136).
-    effects: [
-      {
-        kind: 'conditional-stat-bonus',
-        bonuses: [],
-        activation: { kind: 'condition', label: 'arbalète en main' },
-      },
-    ],
-    criticalRange: { scope: 'ranged', value: 1 },
-    wip: "Plage de critique conditionnée à l'arbalète en main — activation manuelle ; le câblage automatique à l'arme à distance portée reste à faire (PER-136 n'a couvert que le contact) — suivi : PER-236.",
+    // DISTANCE (l'arbalète est une arme à distance) → `criticalRange.scope: 'ranged'`. Câblage
+    // AUTOMATIQUE (PER-236) : `criticalRangeSources` active la plage dès qu'une arbalète
+    // (`rangedKind: 'crossbow'`) est réellement PORTÉE, sans interrupteur manuel. Affiché en puce
+    // sous la carte Attaque à distance.
+    criticalRange: {
+      scope: 'ranged',
+      value: 1,
+      weaponCondition: { kind: 'rangedKinds', rangedKinds: ['crossbow'] },
+    },
     sourcePage: 62,
   },
   {

@@ -131,6 +131,40 @@ export function wornMeleeWeapon(equipment: EquipmentLine[]): Weapon | null {
 }
 
 /**
+ * Ligne de l'arme À DISTANCE effectivement TENUE EN MAIN — pendant à distance de
+ * `wornMeleeWeaponLine` : main principale prioritaire, sinon main secondaire. `null` si
+ * aucune arme à distance n'est portée. Les objets libres (`CustomItem`) sont ignorés. Sert
+ * à évaluer les capacités conditionnées à l'arme à distance portée (plage de critique à
+ * distance PER-136/236 : Science du critique de l'arquebusier, Archer émérite de l'elfe).
+ * NB : une arme lançable (dague, épieu…) est à la fois de contact et à distance ; elle peut
+ * donc être retenue ici comme là — son `rangedKind: 'thrown'` la distingue des arcs/arbalètes.
+ */
+export function wornRangedWeaponLine(equipment: EquipmentLine[]): EquipmentRef | null {
+  const rangedRefs = equipment.filter((line): line is EquipmentRef => {
+    if (isCustomItem(line)) return false;
+    const item = effectiveItem(line);
+    return item?.category === 'weapon' && item.ranged;
+  });
+  return (
+    rangedRefs.find((l) => l.worn?.slot === 'mainHand') ??
+    rangedRefs.find((l) => l.worn?.slot === 'offHand') ??
+    null
+  );
+}
+
+/**
+ * Arme à distance EFFECTIVE tenue en main (surcharges de variante appliquées, PER-211), ou
+ * `null` si aucune n'est portée. Raccourci sur `wornRangedWeaponLine` pour les appelants qui
+ * n'ont besoin que de l'item (plage de critique à distance, PER-236).
+ */
+export function wornRangedWeapon(equipment: EquipmentLine[]): Weapon | null {
+  const line = wornRangedWeaponLine(equipment);
+  if (!line) return null;
+  const item = effectiveItem(line);
+  return item?.category === 'weapon' ? item : null;
+}
+
+/**
  * Nombre de mains occupées par une ligne PORTÉE (0 si rangée) :
  *  - armure : 0 (ne prend pas de main) ;
  *  - bouclier : 1 (occupe physiquement la main secondaire, p. 188) ;

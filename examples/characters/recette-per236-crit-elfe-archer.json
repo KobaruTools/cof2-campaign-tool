@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per236-crit-elfe-archer",
+  "name": "Recette PER-236 — Elfe sylvain (Archer émérite)",
+  "identity": {
+    "description": "ATTENDU : carte d’attaque À DISTANCE avec l’arc long → puce « Critique 19-20 » (Archer émérite). Avec une arbalète à la place → la puce disparaît (Archer émérite ne vise que les arcs)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "elfe",
+  "classId": "rodeur",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 3,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 3,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "elfe-sylvain",
+  "featureIds": [
+    "elfe-sylvain-r1",
+    "elfe-sylvain-r2",
+    "elfe-sylvain-r3"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "arc-long",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-236 (lot A, item 3/4) — plage de critique à distance câblée automatiquement à l’arme portée. elfe-sylvain-r3 : criticalRange.weaponCondition { kind: \"rangedKinds\", rangedKinds: [\"bow\"] }.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
