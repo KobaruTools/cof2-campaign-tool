@@ -92,6 +92,34 @@ describe('weaponAttackBonuses — Armes de prédilection du maître d\'armes (+1
   });
 });
 
+describe('weaponAttackBonuses — Maîtrise de l\'arbalète de l\'arquebusier (+1 att, PER-236)', () => {
+  // Arquebusier maître des arbalètes r1 : la prédilection est FIXÉE aux arbalètes (sous-type distance).
+  const arbaletrier = makeCharacter({
+    classId: 'arquebusier',
+    featureIds: ['maitre-des-arbaletes-r1'],
+  });
+  const arbaleteLegere = weapon('arbalete-legere'); // rangedKind 'crossbow'
+
+  it('arbalète en main → +1 à distance (source maitre-des-arbaletes-r1)', () => {
+    const r = weaponAttackBonuses(arbaletrier, 'ranged', arbaleteLegere);
+    expect(r.total).toBe(1);
+    expect(r.sources[0]).toMatchObject({ featureId: 'maitre-des-arbaletes-r1', value: 1 });
+  });
+
+  it('autre arme à distance (couteaux de lancer) → aucun bonus', () => {
+    expect(weaponAttackBonuses(arbaletrier, 'ranged', couteauxDeLancer).total).toBe(0);
+  });
+
+  it('aucune arme à distance en main → aucun bonus', () => {
+    expect(weaponAttackBonuses(arbaletrier, 'ranged', null).total).toBe(0);
+  });
+
+  it('sans maitre-des-arbaletes-r1 → aucun bonus', () => {
+    const c = makeCharacter({ classId: 'arquebusier', featureIds: [] });
+    expect(weaponAttackBonuses(c, 'ranged', arbaleteLegere).total).toBe(0);
+  });
+});
+
 describe('weaponAttackBonuses — nain « Haches et marteaux » (+1 att, familles STATIQUES, PER-154)', () => {
   // Nain magicien : la maîtrise/le bonus viennent du PEUPLE, pas du profil (« quel que soit son profil »).
   const nain = makeCharacter({

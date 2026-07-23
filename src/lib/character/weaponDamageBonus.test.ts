@@ -178,6 +178,56 @@ describe('weaponDamageBonuses — Spécialisation du maître d\'armes (+N DM pla
   });
 });
 
+describe('weaponDamageBonuses — Spécialisation de l\'arbalétrier (+N DM plat, PER-236)', () => {
+  // Arquebusier r1+r3, prédilection FIXÉE aux arbalètes + « +1 DM » ×2 (budget de Spécialisation).
+  const arbaletrier = makeCharacter({
+    classId: 'arquebusier',
+    featureIds: ['maitre-des-arbaletes-r1', 'maitre-des-arbaletes-r3'],
+    featureChoices: { 'maitre-des-arbaletes-r1': [['dm-bonus', 'dm-bonus']] },
+  });
+
+  it('arbalète en main → +3 DM plat permanent à distance (socle 1 + 2 jalons)', () => {
+    const r = weaponDamageBonuses(arbaletrier, 'ranged', arbaleteLegere);
+    expect(r.addedFlat).toHaveLength(1);
+    expect(r.addedFlat[0]).toMatchObject({ value: 3, featureId: 'maitre-des-arbaletes-r3' });
+  });
+
+  it('arc en main (autre arme à distance) → aucun +DM', () => {
+    expect(weaponDamageBonuses(arbaletrier, 'ranged', arcLong).addedFlat).toEqual([]);
+  });
+
+  it('aucune arme à distance en main → aucun +DM', () => {
+    expect(weaponDamageBonuses(arbaletrier, 'ranged', null).addedFlat).toEqual([]);
+  });
+
+  it('sans « +1 DM » retenu → +1 DM socle (verbatim : « il gagne un bonus de +1 DM » dès r3)', () => {
+    const sansBonus = makeCharacter({
+      classId: 'arquebusier',
+      featureIds: ['maitre-des-arbaletes-r1', 'maitre-des-arbaletes-r3'],
+    });
+    const r = weaponDamageBonuses(sansBonus, 'ranged', arbaleteLegere);
+    expect(r.addedFlat).toHaveLength(1);
+    expect(r.addedFlat[0]).toMatchObject({ value: 1, featureId: 'maitre-des-arbaletes-r3' });
+  });
+
+  it('r1 SANS Spécialisation (r3) → aucun +DM (le socle exige r3)', () => {
+    const sansR3 = makeCharacter({
+      classId: 'arquebusier',
+      featureIds: ['maitre-des-arbaletes-r1'],
+    });
+    expect(weaponDamageBonuses(sansR3, 'ranged', arbaleteLegere).addedFlat).toEqual([]);
+  });
+
+  it('plafonné à +6 même si davantage de « +1 DM » sont retenus', () => {
+    const surbudget = makeCharacter({
+      classId: 'arquebusier',
+      featureIds: ['maitre-des-arbaletes-r1', 'maitre-des-arbaletes-r3'],
+      featureChoices: { 'maitre-des-arbaletes-r1': [Array<string>(8).fill('dm-bonus')] },
+    });
+    expect(weaponDamageBonuses(surbudget, 'ranged', arbaleteLegere).addedFlat[0]).toMatchObject({ value: 6 });
+  });
+});
+
 describe('weaponDamageBonuses — Cavalier émérite en selle (+1, +2 au rang 5, PER-139)', () => {
   // Chevalier de la voie du cavalier. L'interrupteur « en selle » est l'effet index 0 de
   // cavalier-r2 ; le +DM au contact le suit (`requiresActiveEffectIndex: 0`).

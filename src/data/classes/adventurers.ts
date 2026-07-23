@@ -496,7 +496,9 @@ export const adventurerFeatures: Feature[] = [
     // Adapté du maître d'armes r1 « Armes de prédilection ». La catégorie de prédilection n'est plus
     // un choix : elle est FIXÉE aux arbalètes. Le bonus de compétence (PER-89) INCONDITIONNEL au
     // domaine connaissance martiale (`martial-lore`) est conservé → « son rang + 2 » → [rang + 2].
-    // Le +1 en attaque avec une arbalète dépend du TYPE d'arme porté → WIP (PER-136 / PER-115).
+    // PER-236 : le +1 en attaque est un effet `attack-bonus` conditionné au sous-type d'arme à distance
+    // porté (`rangedKinds: ['crossbow']`, qui impose une arbalète en main), câblage AUTOMATIQUE sans
+    // interrupteur (patron PER-226 « Armes de prédilection », ici la famille est fixée aux arbalètes).
     // Jalons de spécialisation (PER-72) : comme il n'existe qu'une catégorie (arbalètes), le seul
     // choix résiduel est « +1 DM » (répétable), débloqué par r3 (`requiresFeatureId`) et budgété par
     // les voies d'ARQUEBUSIER au rang 5. `base: 0` : la prédilection « arbalètes » est acquise
@@ -519,8 +521,17 @@ export const adventurerFeatures: Feature[] = [
         ],
       },
     ],
-    effects: [{ kind: 'test-bonus', domains: ['martial-lore'] }],
-    wip: "+1 en attaque avec une arbalète — bonus dépendant de l'arbalète portée, effet attack-bonus pas encore branché — suivi : PER-236.",
+    effects: [
+      { kind: 'test-bonus', domains: ['martial-lore'] },
+      // PER-236 : +1 en attaque avec une arbalète. Pas d'`attackMode` (le sous-type impose déjà le
+      // mode distance) : actif d'après l'arme portée (`weaponAttackBonuses`) — aucune arbalète en main
+      // (autre arme, ou main vide) → aucun bonus.
+      {
+        kind: 'attack-bonus',
+        value: 1,
+        condition: { rangedKinds: ['crossbow'] },
+      },
+    ],
     sourcePage: 62,
   },
   {
@@ -559,9 +570,18 @@ export const adventurerFeatures: Feature[] = [
     // Adapté du maître d'armes r3. Comme l'arbalétrier n'a qu'une catégorie de prédilection (arbalètes),
     // les jalons de rang-5 ne débloquent PLUS de nouvelle catégorie : ils ne servent qu'à empiler
     // « +1 DM » (max +6). Cette capacité DÉBLOQUE le choix répétable « +1 DM » hébergé sur r1
-    // (`maitre-des-arbaletes-r1`, `requiresFeatureId`). Le CALCUL effectif du +DM (jusqu'à +6) dépend
-    // de l'arme PORTÉE → différé à la milestone Armures (PER-136 / PER-115).
-    wip: "Bonus de +1 DM (jusqu'à +6) avec une arbalète — calcul dépendant de l'arbalète portée, effet weapon-damage-bonus pas encore branché — suivi : PER-236. Le CHOIX (« +1 DM » répétable, débloqué par cette capacité) est modélisé sur Maîtrise de l’arbalète (maitre-des-arbaletes-r1).",
+    // (`maitre-des-arbaletes-r1`, `requiresFeatureId`). PER-236 : le +DM (jusqu'à +6) est un
+    // `weapon-damage-bonus` PLAT = `base: 1` (le +1 DM acquis dès r3, verbatim « il gagne un bonus de
+    // +1 DM ») + le nombre de « +1 DM » (`dm-bonus`) retenus sur le choix de r1 (index 0), plafonné à 6
+    // (socle 1 + 5 voies au rang 5), appliqué si une arbalète est portée (`rangedKinds: ['crossbow']`).
+    // Agrégé à l'expression de DM comme un bonus plat permanent (patron PER-226, maître d'armes r3).
+    effects: [
+      {
+        kind: 'weapon-damage-bonus',
+        flat: { featureId: 'maitre-des-arbaletes-r1', choiceIndex: 0, optionId: 'dm-bonus', base: 1, max: 6 },
+        condition: { rangedKinds: ['crossbow'] },
+      },
+    ],
     sourcePage: 62,
   },
   {

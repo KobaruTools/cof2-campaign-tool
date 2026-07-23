@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per236-arbaletrier-arbalete",
+  "name": "Recette PER-236 — Arbalétrier (maîtrise + spécialisation)",
+  "identity": {
+    "description": "ATTENDU : carte d’attaque À DISTANCE avec l’arbalète légère → +1 à la touche (Maîtrise de l’arbalète) et +3 aux DM (Spécialisation : socle +1 dès r3 + 2 jalons « +1 DM »). Aucun de ces bonus si une autre arme à distance (arc) ou aucune arme n’est en main."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 11,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "maitre-des-arbaletes-r1",
+    "maitre-des-arbaletes-r2",
+    "maitre-des-arbaletes-r3"
+  ],
+  "featureChoices": {
+    "maitre-des-arbaletes-r1": [
+      [
+        "dm-bonus",
+        "dm-bonus"
+      ]
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "arbalete-legere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-236 (lot A, item 2/4) — câblage de la maîtrise de l’arbalète de l’arquebusier. Maîtrise de l’arbalète = +1 att (attack-bonus, rangedKinds:[\"crossbow\"]) ; Spécialisation = +1 DM socle + jalons (weapon-damage-bonus flat, max +6).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
