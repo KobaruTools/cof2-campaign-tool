@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per177-pretre-divine-acquise",
+  "name": "Recette PER-177 — Prêtre spécialiste, divine acquise (orientation OK)",
+  "identity": {
+    "description": "ATTENDU (p.122/p.43) : même prêtre, divine « brute-r2 » DÉJÀ acquise (logée dans la voie d'accueil foi). Le verrou divin tombe → l'accordéon « Changement d'orientation » réapparaît. La capacité DIVINE elle-même n'est JAMAIS proposée à l'oubli (elle porte la vocation) ; on peut en revanche oublier priere-r2 / soins-r1."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "pretre",
+  "level": 3,
+  "priestVocation": {
+    "mode": "specialist",
+    "godId": "forthur",
+    "hostPathId": "foi"
+  },
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 3
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 3
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "foi-r1",
+    "priere-r1",
+    "humain-r1",
+    "priere-r2",
+    "soins-r1",
+    "brute-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "foi-r1",
+        "priere-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "priere-r2",
+        "soins-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "brute-r2"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-177 recette — verrou OFF ; divine non oubliable ; reste de l'orientation actif.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

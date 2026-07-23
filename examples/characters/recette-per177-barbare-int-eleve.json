@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per177-barbare-int-eleve",
+  "name": "Recette PER-177 — Barbare INT +2 (2 reconversions)",
+  "identity": {
+    "description": "ATTENDU (p.43) : identique au barbare cascade, mais INT +2 → le compteur autorise 2 oublis/remplacements dans la même montée de niveau (contrôle contrasté du quota)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 4,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 2,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 2,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "rage-r1",
+    "brute-r1",
+    "humain-r1",
+    "rage-r2",
+    "pagne-r1",
+    "rage-r3",
+    "brute-r2",
+    "pourfendeur-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "rage-r1",
+        "brute-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "rage-r2",
+        "pagne-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "rage-r3"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "brute-r2",
+        "pourfendeur-r1"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-177 recette — quota 2 grâce à INT ≥ +2.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

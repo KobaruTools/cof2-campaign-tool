@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per177-barbare-cascade",
+  "name": "Recette PER-177 — Barbare cascade (INT +0, 1 reconversion)",
+  "identity": {
+    "description": "ATTENDU (p.43) : ouvrir « Monter de niveau » → accordéon « Changement d'orientation » (1 seul oubli, INT +0). Oubliables = rang le plus HAUT de chaque voie achetée : rage-r3, brute-r2, pagne-r1, pourfendeur-r1. PAS rage-r1/rage-r2 (rangs inférieurs), PAS humain-r1 (peuple), PAS brute-r1 (gratuit de départ). Oublier rage-r3 → rage-r2 devient à son tour oubliable (cascade LIFO)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 4,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "rage-r1",
+    "brute-r1",
+    "humain-r1",
+    "rage-r2",
+    "pagne-r1",
+    "rage-r3",
+    "brute-r2",
+    "pourfendeur-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [
+    {
+      "level": 1,
+      "chosenFeatureIds": [
+        "rage-r1",
+        "brute-r1",
+        "humain-r1"
+      ]
+    },
+    {
+      "level": 2,
+      "chosenFeatureIds": [
+        "rage-r2",
+        "pagne-r1"
+      ]
+    },
+    {
+      "level": 3,
+      "chosenFeatureIds": [
+        "rage-r3"
+      ]
+    },
+    {
+      "level": 4,
+      "chosenFeatureIds": [
+        "brute-r2",
+        "pourfendeur-r1"
+      ]
+    }
+  ],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-177 recette — cascade LIFO + exclusions gratuit/peuple. INT +0 = 1 seule reconversion.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
