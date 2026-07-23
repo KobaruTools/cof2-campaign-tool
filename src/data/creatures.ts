@@ -339,7 +339,7 @@ const animals: Creature[] = [
       {
         name: 'Emporter dans les airs',
         text: "La créature peut emporter dans les airs une créature de taille minuscule ou moins. En cas de chute, les créatures de taille minuscule subissent seulement 1 DM par dé de chute (au lieu de 1d4°).",
-        richText: "La créature peut emporter dans les airs une créature de taille minuscule ou moins. En cas de chute, les créatures de taille minuscule subissent seulement 1 DM par dé de chute (au lieu de {1d4}).",
+        richText: "La créature peut emporter dans les airs une créature de taille minuscule ou moins. En cas de chute, les créatures de taille minuscule subissent seulement 1 DM par dé de chute (au lieu de {1d4°}).",
       },
     ],
     sourcePage: 266,
@@ -1121,7 +1121,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Emporter dans les airs',
         text: "Sur un résultat de 17 à 20 au test d'attaque, le dragon peut emporter dans les airs une victime de taille inférieure à la sienne au prix d'une action de mouvement. Au premier round, si la victime se libère (test de FOR difficulté 18), elle subit, 4d4° DM de chute. Au round suivant, si la créature décide de prendre de l'altitude, les DM passent à 7d4° et enfin 10d4° aux rounds suivants. Le dé évolutif des DM de chute est indexé sur le niveau de la victime, et non sur celui de la créature.",
-        richText: "Sur un résultat de 17 à 20 au test d'attaque, le dragon peut emporter dans les airs une victime de taille inférieure à la sienne au prix d'une action de mouvement. Au premier round, si la victime se libère (test de FOR difficulté 18), elle subit, {4d4} DM de chute. Au round suivant, si la créature décide de prendre de l'altitude, les DM passent à {7d4} et enfin {10d4} aux rounds suivants. Le dé évolutif des DM de chute est indexé sur le niveau de la victime, et non sur celui de la créature.",
+        richText: "Sur un résultat de 17 à 20 au test d'attaque, le dragon peut emporter dans les airs une victime de taille inférieure à la sienne au prix d'une action de mouvement. Au premier round, si la victime se libère (test de FOR difficulté 18), elle subit, {4d4°} DM de chute. Au round suivant, si la créature décide de prendre de l'altitude, les DM passent à {7d4°} et enfin {10d4°} aux rounds suivants. Le dé évolutif des DM de chute est indexé sur le niveau de la victime, et non sur celui de la créature.",
       },
       {
         name: 'Immunités',
@@ -1509,7 +1509,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Fièvre des goules',
         text: "À la fin du combat, si le personnage a été blessé au moins une fois par la morsure d'une goule, il doit réussir un test de CON difficulté 15 ou contracter la maladie. Chaque jour, il subit 1d4° DM retranchés directement à sa valeur de PV maximale (il ne peut plus dépasser cette nouvelle valeur) et doit faire un nouveau test de CON difficulté 15 pour vaincre la maladie. Lorsqu'il arrive à 0 PV, il meurt et se transforme en goule. S'il guérit, les PV perdus peuvent être récupérés normalement. Un sort de Délivrance (rang 3 de la voie de la spiritualité) peut mettre fin à la fièvre des goules.",
-        richText: "À la fin du combat, si le personnage a été blessé au moins une fois par la morsure d'une goule, il doit réussir un test de CON difficulté 15 ou contracter la maladie. Chaque jour, il subit {1d4} DM retranchés directement à sa valeur de PV maximale (il ne peut plus dépasser cette nouvelle valeur) et doit faire un nouveau test de CON difficulté 15 pour vaincre la maladie. Lorsqu'il arrive à 0 PV, il meurt et se transforme en goule. S'il guérit, les PV perdus peuvent être récupérés normalement. Un sort de Délivrance (rang 3 de la voie de la spiritualité) peut mettre fin à la fièvre des goules.",
+        richText: "À la fin du combat, si le personnage a été blessé au moins une fois par la morsure d'une goule, il doit réussir un test de CON difficulté 15 ou contracter la maladie. Chaque jour, il subit {1d4°} DM retranchés directement à sa valeur de PV maximale (il ne peut plus dépasser cette nouvelle valeur) et doit faire un nouveau test de CON difficulté 15 pour vaincre la maladie. Lorsqu'il arrive à 0 PV, il meurt et se transforme en goule. S'il guérit, les PV perdus peuvent être récupérés normalement. Un sort de Délivrance (rang 3 de la voie de la spiritualité) peut mettre fin à la fièvre des goules.",
       },
     ],
     sourcePage: 285,
@@ -1733,7 +1733,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Corne magique (L)',
         text: "Si la licorne touche une créature à 0 PV de sa corne, celle-ci récupère 2d4° PV. Si la créature est empoisonnée, elle a immédiatement droit à un test de CON difficulté 10 pour neutraliser les effets du poison.",
-        richText: "Si la licorne touche une créature à 0 PV de sa corne, celle-ci récupère {2d4} PV. Si la créature est empoisonnée, elle a immédiatement droit à un test de CON difficulté 10 pour neutraliser les effets du poison.",
+        richText: "Si la licorne touche une créature à 0 PV de sa corne, celle-ci récupère {2d4°} PV. Si la créature est empoisonnée, elle a immédiatement droit à un test de CON difficulté 10 pour neutraliser les effets du poison.",
       },
       {
         name: 'Déplacement magique',
