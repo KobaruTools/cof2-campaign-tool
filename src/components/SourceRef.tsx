@@ -6,6 +6,7 @@ import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
 import { BOOKS, DEFAULT_BOOK_ID, type BookId } from '@/lib/ui/books';
 import { splitPageRefs } from '@/lib/ui/pageRefs';
+import { usePdfViewerStore } from '@/stores/pdfViewer';
 
 export interface SourceRefProps {
   /**
@@ -26,15 +27,42 @@ export interface SourceRefProps {
  * Le nom du livre passe en infobulle native (`title`) — `SourceRef` s'affichant à l'intérieur des
  * infobulles MUI de l'app, on évite ainsi d'imbriquer un `Tooltip` MUI dans un autre. À utiliser
  * partout où l'on renvoie le joueur au livre (infobulles, texte de règle verbatim, cartes de capacité…).
+ *
+ * Le badge est **cliquable** : il ouvre le visualiseur PDF intégré sur le livre, à la page citée
+ * (PER-240). Comme `PageRefText` transforme tout « (p. N) » en `SourceRef`, ce seul point rend
+ * cliquables tous les renvois de page de l'app. Pour une PLAGE (« 219-220 »), on saute à la
+ * première page. Sans page, on ouvre simplement le livre au début.
  */
 export function SourceRef({ page, section, book = DEFAULT_BOOK_ID, sx }: SourceRefProps) {
+  const openAt = usePdfViewerStore((s) => s.openAt);
   const meta = BOOKS[book];
   const { Icon } = meta;
   const label = [section, page != null ? `p. ${page}` : null].filter(Boolean).join(', ');
+  const targetPage = page != null ? Number.parseInt(String(page), 10) : NaN;
+
+  const open = (e: React.SyntheticEvent) => {
+    // Empêche l'ouverture du visualiseur d'activer un conteneur cliquable englobant
+    // (ligne de liste, résumé d'accordéon, carte de capacité…).
+    e.stopPropagation();
+    openAt(book, Number.isFinite(targetPage) ? targetPage : 1);
+  };
+
   return (
+    // `span[role=button]` plutôt qu'un vrai `<button>` : `SourceRef` s'affiche parfois À
+    // L'INTÉRIEUR d'éléments interactifs (résumé d'accordéon, ligne de liste) et un bouton
+    // imbriqué dans un bouton est du HTML invalide (erreur d'hydratation).
     <Box
       component="span"
-      title={meta.name}
+      role="button"
+      tabIndex={0}
+      title={`${meta.name} — ouvrir dans le visualiseur`}
+      onClick={open}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          open(e);
+        }
+      }}
       sx={[
         (theme) => ({
           display: 'inline-flex',
@@ -46,13 +74,19 @@ export function SourceRef({ page, section, book = DEFAULT_BOOK_ID, sx }: SourceR
           px: 0.75,
           py: 0.25,
           borderRadius: 1,
-          cursor: 'help',
+          cursor: 'pointer',
           lineHeight: 1,
           fontSize: '0.75rem',
           fontVariantNumeric: 'tabular-nums',
           color: 'text.secondary',
           bgcolor: alpha(theme.palette.text.primary, 0.06),
           border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
+          transition: theme.transitions.create(['background-color', 'border-color', 'color']),
+          '&:hover': {
+            color: 'text.primary',
+            bgcolor: alpha(theme.palette.primary.main, 0.12),
+            borderColor: alpha(theme.palette.primary.main, 0.4),
+          },
         }),
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}

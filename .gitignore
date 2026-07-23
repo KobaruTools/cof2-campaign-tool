@@ -24,8 +24,13 @@
 .DS_Store
 *.pem
 
-# règles CO2 — les PDF ne doivent jamais entrer dans git ni dans le bundle
+# règles CO2 — les PDF ne doivent jamais entrer dans git ni dans le bundle…
 *.pdf
+# …EXCEPTION ciblée (milestone « Visualiseur PDF », app strictement privée) : le
+# livre de base et Le Compagnon sont servis par le visualiseur intégré, commités
+# via Git LFS depuis public/rules/. Cf. .gitattributes et le ticket PER-57 (revenir
+# à un import local si l'app est un jour distribuée).
+!/public/rules/*.pdf
 
 # debug
 npm-debug.log*

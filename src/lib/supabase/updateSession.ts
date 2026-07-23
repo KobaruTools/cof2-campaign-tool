@@ -119,6 +119,16 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return redirectTo('/login', target !== '/' ? `?next=${encodeURIComponent(target)}` : '');
   }
 
+  // Assets du visualiseur PDF (livres de règles, PER-240) : gardés derrière
+  // l'authentification (respect du copyright — aucun accès anonyme, cf. le `if
+  // (!user)` ci-dessus) mais ouverts à TOUS les rôles. On court-circuite donc le
+  // confinement de rôle ci-dessous : sans ça, une session JOUEUR serait renvoyée
+  // vers `/play` et pdf.js recevrait une redirection au lieu du PDF, alors que les
+  // renvois de page (`SourceRef`) sont partout, y compris sur les fiches du joueur.
+  if (pathname.startsWith('/rules/')) {
+    return response;
+  }
+
   // Confinement des rôles (PER-191). Une session JOUEUR (claim `player_id`) est
   // cantonnée à son espace ; une session MJ n'a rien à faire dans `/play`.
   const isPlayer = Boolean(
