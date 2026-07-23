@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per186-mono-guerrier",
+  "name": "Recette PER-186 — Guerrier mono-profil (contrôle)",
+  "identity": {
+    "description": "CONTRÔLE de non-régression : au clic « Monter de niveau », toutes les voies du guerrier restent à plat, prestige en accordéon, et l'interrupteur « Voies d'autres profils » reste proposé (hybridation encore possible). Aucun profil « autre engagé »."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": false,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "combat-r1",
+    "combat-r2",
+    "resistance-r1",
+    "soldat-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-186 — contrôle mono-profil. Voir description.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -635,13 +635,14 @@ export function LevelUpDialog({
       ? { rank: acquiredSlot.rank, feature: divineSkipFeature, hostPathName: divineSkipHostName }
       : undefined;
 
-  // Une capacité « hybride à ouvrir » = rang 1 d'une voie de profil qui n'est ni
-  // du profil principal ni déjà entamée. On peut toujours poursuivre une voie
-  // hybride existante ; seule l'ouverture d'une nouvelle voie est masquable.
-  // La capacité divine est EXCLUE : emprunter une capacité d'un autre profil (p. 122)
-  // n'est pas de l'hybridation, donc sa voie d'origine n'est « entamée » que si on en
-  // a pris le rang 1 NATIF (sinon elle resterait masquée derrière « Voies d'autres
-  // profils », comme toute voie hybride non encore ouverte).
+  // L'hybridation (p. 176) se raisonne par PROFIL ENGAGÉ, pas par voie entamée
+  // (PER-186). Un profil est « engagé » dès qu'une de ses voies a un rang acquis
+  // (état perso + picks du niveau). Une fois un profil engagé, TOUTES ses voies
+  // s'affichent en liste normale (on peut y ajouter d'autres voies directement) ;
+  // l'accordéon « Voies d'autres profils » ne sert plus qu'à ENTRER dans un profil
+  // encore vierge. La capacité divine est EXCLUE : emprunter une capacité d'un autre
+  // profil (p. 122) ne rend pas ce profil « engagé » (sinon sa voie d'origine
+  // sortirait de l'accordéon sans qu'on l'ait vraiment ouverte).
   const characterClassForPaths = classById.get(character.classId);
   const mainPathIds = new Set(
     characterClassForPaths
@@ -655,9 +656,29 @@ export function LevelUpDialog({
       .map((id) => featureById.get(id)?.pathId)
       .filter((p): p is string => !!p),
   );
+  // Profils (classId) ENGAGÉS hors profil principal : au moins une de leurs voies
+  // entamée. Le profil principal est traité à part (ses voies sont toujours à plat).
+  const engagedOtherProfiles = new Set<string>();
+  for (const pathId of startedPaths) {
+    const path = pathById.get(pathId);
+    if (!path || path.type !== 'class' || mainPathIds.has(path.id)) continue;
+    const classId = path.classIds[0];
+    if (classId) engagedOtherProfiles.add(classId);
+  }
+  // Une voie de profil « autre profil engagé » : de type class, hors profil principal,
+  // dont le profil (classId) compte déjà une voie entamée.
+  const isEngagedOtherPath = (path: NonNullable<ReturnType<typeof pathById.get>>) =>
+    path.type === 'class' &&
+    !mainPathIds.has(path.id) &&
+    engagedOtherProfiles.has(path.classIds[0]);
+  // Une capacité « hybride à ouvrir » (masquable derrière l'accordéon) = voie d'un
+  // profil encore VIERGE (ni principal, ni déjà engagé). Poursuivre/ouvrir une voie
+  // d'un profil déjà engagé n'est plus masqué (il passe en liste normale).
   const isNewHybridFeature = (f: Feature) => {
     const path = pathById.get(f.pathId);
-    return !!path && path.type === 'class' && !mainPathIds.has(path.id) && !startedPaths.has(path.id);
+    return (
+      !!path && path.type === 'class' && !mainPathIds.has(path.id) && !isEngagedOtherPath(path)
+    );
   };
   const hasHybridOption = available.some(isNewHybridFeature);
   const visible = showHybrid ? available : available.filter((f) => !isNewHybridFeature(f));
@@ -675,25 +696,34 @@ export function LevelUpDialog({
     return classColor(mainPathIds.has(path.id) ? character.classId : path.classIds[0]);
   };
 
-  // Ordre d'affichage des voies (priorités UX) :
-  //  0 voie de peuple · 1 voies déjà entamées · 2 voies restantes du profil
-  //  principal · 3 voies de prestige · 4 voies d'un autre profil (hybride).
+  // Ordre d'affichage des voies (PER-186) :
+  //  0 voie de peuple · 1 profil principal (toutes ses voies) · 2 autres profils
+  //  déjà engagés (toutes leurs voies) · 3 voies de prestige · 4 profils non
+  //  engagés (accordéon d'hybridation).
   const groupCategory = (group: FeatureGroup): number => {
     const path = group.path;
     if (!path) return 4;
     if (path.type === 'ancestry' || path.type === 'mage') return 0;
-    if (startedPaths.has(path.id)) return 1;
-    if (path.type === 'class' && mainPathIds.has(path.id)) return 2;
+    if (path.type === 'class' && mainPathIds.has(path.id)) return 1;
+    if (isEngagedOtherPath(path)) return 2;
     if (path.type === 'prestige') return 3;
     return 4;
   };
   const groupName = (g: FeatureGroup) => g.path?.name ?? g.pathId;
+  // Au sein d'un même bucket, les voies déjà entamées passent d'abord (nicety UX
+  // historique, évite tout réordonnancement en mono-profil).
+  const startedFirst = (g: FeatureGroup) => (g.path && startedPaths.has(g.path.id) ? 0 : 1);
 
-  // Voies des catégories 0-2 (peuple, entamées, profil principal), affichées à
-  // plat dans l'ordre de priorité.
+  // Voies des catégories 0-2 (peuple, profil principal, autres profils engagés),
+  // affichées à plat dans l'ordre de priorité.
   const flatGroups = availableGroups
     .filter((g) => groupCategory(g) < 3)
-    .sort((a, b) => groupCategory(a) - groupCategory(b) || groupName(a).localeCompare(groupName(b)));
+    .sort(
+      (a, b) =>
+        groupCategory(a) - groupCategory(b) ||
+        startedFirst(a) - startedFirst(b) ||
+        groupName(a).localeCompare(groupName(b)),
+    );
 
   // Voies de prestige (catégorie 3) réunies dans un accordéon dédié, comme les
   // voies d'autres profils en hybride — un choix délibéré qu'on ne déploie qu'au
