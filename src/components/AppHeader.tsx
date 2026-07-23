@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import AppBar from '@mui/material/AppBar';
@@ -49,18 +49,22 @@ interface AppHeaderProps {
 }
 
 /**
- * Style partagé des boutons de navigation globaux (Bestiaire, Campagnes) : libellé
- * masqué sous `sm` (icône seule, pour ne pas manger la place du fil d'Ariane sur
- * écran étroit), libellé complet dès `sm` (PER-228, repris de l'ancien en-tête).
+ * Style partagé des boutons de navigation globaux (Bestiaire, Campagnes). Le libellé
+ * est masqué sous `sm` (icône seule, pour ne pas manger la place du fil d'Ariane sur
+ * écran étroit), affiché dès `sm` (PER-228). Au défilement (`condensed`), le libellé se
+ * replie AUSSI sur grand écran et le bouton se resserre — le tout en transition douce
+ * (max-width + opacité animées, jamais `display: none` qui ne s'anime pas).
  */
 function HeaderNavButton({
   href,
   icon,
   label,
+  condensed,
 }: {
   href: string;
   icon: ReactNode;
   label: string;
+  condensed: boolean;
 }) {
   return (
     <Button
@@ -68,14 +72,37 @@ function HeaderNavButton({
       startIcon={icon}
       component={Link}
       href={href}
-      sx={{
-        minWidth: { xs: 0, sm: 64 },
-        px: { xs: 1, sm: 2 },
+      sx={(theme) => ({
+        minWidth: 0,
+        px: condensed ? 0.75 : { xs: 1, sm: 2 },
+        py: condensed ? 0.25 : 0.5,
         flexShrink: 0,
-        '& .MuiButton-startIcon': { mr: { xs: 0, sm: 0.5 } },
-      }}
+        // On inclut `background-color` : sinon cette transition sur mesure écraserait la
+        // transition par défaut de MUI et le voile blanc de survol apparaîtrait d'un coup.
+        transition: theme.transitions.create(['padding', 'background-color'], {
+          duration: theme.transitions.duration.short,
+        }),
+        '& .MuiButton-startIcon': {
+          mr: { xs: 0, sm: condensed ? 0 : 0.5 },
+          transition: theme.transitions.create('margin', {
+            duration: theme.transitions.duration.short,
+          }),
+        },
+      })}
     >
-      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+      <Box
+        component="span"
+        sx={(theme) => ({
+          display: 'inline-block',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          maxWidth: { xs: 0, sm: condensed ? 0 : '12ch' },
+          opacity: { xs: 0, sm: condensed ? 0 : 1 },
+          transition: theme.transitions.create(['max-width', 'opacity'], {
+            duration: theme.transitions.duration.short,
+          }),
+        })}
+      >
         {label}
       </Box>
     </Button>
@@ -107,6 +134,22 @@ export function AppHeader({
   // Padding horizontal aligné sur les gouttières de la `Toolbar` MUI (16 px / 24 px),
   // pour que le fil d'Ariane s'aligne verticalement avec le logo au-dessus.
   const gutterPx = { xs: 2, sm: 3 };
+
+  // Condensation au défilement : dès qu'on scrolle un peu, l'étage 1 se resserre
+  // (hauteur + padding réduits, libellés des boutons repliés, icônes rétrécies) pour
+  // dégager de la place, surtout sur mobile. Hystérésis (16 px pour condenser, 4 px
+  // pour rétablir) afin d'éviter tout clignotement autour du seuil. Écouteur passif.
+  const [condensed, setCondensed] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      setCondensed((prev) => (prev ? y > 4 : y > 16));
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
     <AppBar
       position="sticky"
@@ -136,15 +179,34 @@ export function AppHeader({
       {/* Étage 1 — nav globale PURE : logo de marque (→ accueil) + Bestiaire à gauche ;
           Campagnes + menu compte à droite. Ni fil d'Ariane ni action de page ici : tous
           deux vivent dans le sous-header en dessous. */}
-      <Toolbar>
-        <AppHeaderBrand />
-        <HeaderNavButton href="/bestiary" icon={<MenuBookIcon />} label="Bestiaire" />
+      <Toolbar
+        sx={(theme) => ({
+          // Hauteur resserrée au défilement (le padding vertical de la barre EST sa
+          // min-height ici), en transition douce.
+          minHeight: condensed ? { xs: 44, sm: 48 } : { xs: 56, sm: 64 },
+          transition: theme.transitions.create('min-height', {
+            duration: theme.transitions.duration.short,
+          }),
+        })}
+      >
+        <AppHeaderBrand condensed={condensed} />
+        <HeaderNavButton
+          href="/bestiary"
+          icon={<MenuBookIcon />}
+          label="Bestiaire"
+          condensed={condensed}
+        />
 
         {/* Espace flexible qui pousse le cluster droit tout à droite. */}
         <Box sx={{ flexGrow: 1 }} />
 
         <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0, alignItems: 'center' }}>
-          <HeaderNavButton href="/campaigns" icon={<QuestIcon />} label="Campagnes" />
+          <HeaderNavButton
+            href="/campaigns"
+            icon={<QuestIcon />}
+            label="Campagnes"
+            condensed={condensed}
+          />
           <AccountMenu />
         </Stack>
       </Toolbar>
@@ -159,7 +221,7 @@ export function AppHeader({
           sx={{
             display: 'flex',
             alignItems: 'center',
-            minHeight: { xs: 40, sm: 44 },
+            minHeight: { xs: 36, sm: 40 },
             px: gutterPx,
             bgcolor: 'rgba(255, 255, 255, 0.03)',
             borderTop: '1px solid rgba(255, 255, 255, 0.06)',
@@ -190,7 +252,7 @@ export function AppHeader({
               <Box
                 component="span"
                 aria-hidden="true"
-                sx={{ alignSelf: 'center', width: '1px', height: 18, mr: 1, bgcolor: 'divider' }}
+                sx={{ alignSelf: 'center', width: '1px', height: 16, mr: 1, bgcolor: 'divider' }}
               />
               {subtitle}
             </Box>

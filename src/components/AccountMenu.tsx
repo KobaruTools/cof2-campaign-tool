@@ -73,7 +73,17 @@ export function AccountMenu() {
   return (
     <>
       <AppTooltip title="Compte">
-        <IconButton color="inherit" onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Compte">
+        <IconButton
+          color="inherit"
+          onClick={(e) => setAnchorEl(e.currentTarget)}
+          aria-label="Compte"
+          sx={(theme) => ({
+            // Voile blanc de survol en fondu doux (aligné sur les boutons nav de l'en-tête).
+            transition: theme.transitions.create('background-color', {
+              duration: theme.transitions.duration.short,
+            }),
+          })}
+        >
           <AccountCircleIcon />
         </IconButton>
       </AppTooltip>

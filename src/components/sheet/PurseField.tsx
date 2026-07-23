@@ -17,6 +17,7 @@ import { COPPER_PER_SILVER, GOLD_PER_PLATINUM, SILVER_PER_GOLD } from '@/lib/cha
 import { AppTooltip } from '@/components/AppTooltip';
 import { PurseIcon } from '@/components/PurseIcon';
 import { SourceRef } from '@/components/SourceRef';
+import { shineBackground, type ShineGradient } from '@/lib/ui/shine';
 
 /** Unité de monnaie affichée dans la bourse (clé du modèle + présentation). */
 interface CoinMeta {
@@ -43,21 +44,6 @@ interface CoinMeta {
   sparkle?: SparkleProfile;
   /** Verbatim de règle (p. 181) affiché en info-bulle. */
   rule: string;
-}
-
-/** Brillance en dégradé : deux teintes balayées le long de la barre (bord → bord). */
-interface ShineGradient {
-  from: string;
-  to: string;
-}
-
-/** Construit le fond de la barre de brillance : monochrome (couleur unique) ou dégradé. */
-function shineBackground(shine: CoinMeta['shine']): string {
-  if (shine && typeof shine === 'object') {
-    return `linear-gradient(120deg, transparent 0%, ${shine.from} 38%, ${shine.to} 62%, transparent 100%)`;
-  }
-  const color = shine ?? 'rgba(255,255,255,0.85)';
-  return `linear-gradient(120deg, transparent 0%, ${color} 50%, transparent 100%)`;
 }
 
 /** Position/taille d'une étincelle (px relatifs au jeton 24×24) + son décalage d'animation. */
