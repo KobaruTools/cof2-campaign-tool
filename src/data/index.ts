@@ -29,6 +29,12 @@ import type {
   TestDomain,
   PriestGod,
   FantasticFamiliar,
+  Creature,
+  CreatureAttack,
+  CreatureSpecialAbility,
+  CreatureCategory,
+  CreatureSize,
+  CreatureNature,
 } from './schema';
 
 import { families } from './families';
@@ -47,6 +53,7 @@ import { weapons, armors, shields, gear } from './equipment';
 import { priestGods, priestGodById } from './priest-gods';
 import { testDomains, testDomainById } from './test-domains';
 import { fantasticFamiliars, fantasticFamiliarById } from './fantastic-familiars';
+import { creatures, creatureById } from './creatures';
 import {
   FEATURE_CLASSIFICATIONS,
   FEATURE_NATURE_TAGS,
@@ -114,6 +121,9 @@ export { priestGods, priestGodById };
 // --- Familiers fantastiques — voie du familier fantastique (p. 133-136) -------
 export { fantasticFamiliars, fantasticFamiliarById };
 
+// --- Bestiaire — créatures du livre de base (PER-95, p. 259-303) -------------
+export { creatures, creatureById };
+
 // --- Classification analytique des capacités (PER-62) ------------------------
 export { FEATURE_CLASSIFICATIONS, FEATURE_NATURE_TAGS, CONDITIONAL_KINDS };
 
@@ -128,4 +138,5 @@ export const featureClassificationById = new Map<string, FeatureClassification>(
 );
 
 export type { Family, ProgressionRules, ValueSet, IdealFlaw, Weapon, Armor, Shield, Gear, TestDomain, PriestGod, FantasticFamiliar };
+export type { Creature, CreatureAttack, CreatureSpecialAbility, CreatureCategory, CreatureSize, CreatureNature };
 export type { FeatureClassification, FeatureNatureTag, ConditionalKind };

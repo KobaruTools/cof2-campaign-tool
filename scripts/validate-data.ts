@@ -33,12 +33,17 @@ import {
   testDomains,
   testDomainById,
   fantasticFamiliars,
+  creatures,
+  creatureById,
   FEATURE_CLASSIFICATIONS,
   FEATURE_NATURE_TAGS,
   CONDITIONAL_KINDS,
 } from '../src/data/index';
 import {
   ABILITY_IDS,
+  CREATURE_CATEGORIES,
+  CREATURE_NATURES,
+  CREATURE_SIZES,
   DERIVED_STAT_IDS,
   EXTRA_WEAPON_FAMILIES,
   IMMUNITY_IDS,
@@ -716,6 +721,49 @@ for (const f of fantasticFamiliars) {
       err(`[familier ${f.id}] abilityOverride invalide : ${k}`);
 }
 
+// --- Bestiaire (PER-95, p. 259-303) ------------------------------------------
+// Intégrité : ids uniques ; catégorie/taille/nature/caractéristiques valides ;
+// variantes (`baseCreatureId`) pointant une créature existante d'une AUTRE entrée
+// de MÊME catégorie ; `sourcePage` présent ; NC présent sauf gabarit (sans bloc
+// chiffré). On ne contrôle pas les textes verbatim (source).
+checkUnique('creatures', creatures.map((c) => c.id));
+const validCreatureCategories = new Set<string>(CREATURE_CATEGORIES);
+const validCreatureSizes = new Set<string>(CREATURE_SIZES);
+const validCreatureNatures = new Set<string>(CREATURE_NATURES);
+let creatureVariants = 0;
+let creatureTemplates = 0;
+for (const c of creatures) {
+  if (!validCreatureCategories.has(c.category)) err(`[creature ${c.id}] catégorie inconnue : ${c.category}`);
+  if (c.size !== undefined && !validCreatureSizes.has(c.size)) err(`[creature ${c.id}] taille inconnue : ${c.size}`);
+  for (const n of c.nature ?? [])
+    if (!validCreatureNatures.has(n)) err(`[creature ${c.id}] nature inconnue : ${n}`);
+  if (typeof c.sourcePage !== 'number') err(`[creature ${c.id}] sourcePage manquant`);
+  // Caractéristiques : quand présentes, les 7 clés valides et des nombres finis.
+  if (c.abilities) {
+    for (const a of ABILITY_IDS)
+      if (!Number.isFinite(c.abilities[a])) err(`[creature ${c.id}] caractéristique ${a} absente ou non finie`);
+    for (const k of Object.keys(c.abilities))
+      if (!validAbilities.has(k)) err(`[creature ${c.id}] caractéristique inconnue : ${k}`);
+  }
+  for (const a of c.bonusDieAbilities ?? [])
+    if (!validAbilities.has(a)) err(`[creature ${c.id}] bonusDieAbilities carac inconnue : ${a}`);
+  // Un GABARIT (ex. Zombie) est sans NC ni bloc chiffré : toléré. Sinon NC exigé.
+  const isTemplate = c.nc === undefined && c.abilities === undefined && c.defense === undefined;
+  if (isTemplate) creatureTemplates++;
+  else if (c.nc === undefined) err(`[creature ${c.id}] nc manquant (attendu sauf gabarit)`);
+  // Variante : cible existante, distincte de soi, même catégorie.
+  if (c.baseCreatureId !== undefined) {
+    creatureVariants++;
+    const base = creatureById.get(c.baseCreatureId);
+    if (!base) err(`[creature ${c.id}] baseCreatureId inexistant : ${c.baseCreatureId}`);
+    else {
+      if (base.id === c.id) err(`[creature ${c.id}] baseCreatureId s'auto-référence`);
+      if (base.category !== c.category)
+        err(`[creature ${c.id}] baseCreatureId ${c.baseCreatureId} hors catégorie (${base.category} ≠ ${c.category})`);
+    }
+  }
+}
+
 // --- Rapport -----------------------------------------------------------------
 const spells = features.filter((c) => c.isSpell).length;
 console.log('=== Comptages ===');
@@ -734,6 +782,9 @@ console.log(`  · coût mana dérogé : ${spellsWithManaCost} (sinon = rang, p. 
 console.log(`équipement (total) : ${equipment.length}`);
 console.log(`dieux du prêtre    : ${priestGods.length}`);
 console.log(`familiers fantast. : ${fantasticFamiliars.length}`);
+console.log(
+  `créatures (bestiaire) : ${creatures.length}  (dont variantes : ${creatureVariants}, gabarits : ${creatureTemplates})`,
+);
 console.log('');
 console.log(`=== Avertissements (${warnings.length}) ===`);
 warnings.forEach((w) => console.log('  ⚠ ' + w));

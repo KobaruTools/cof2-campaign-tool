@@ -2549,3 +2549,124 @@ export interface ProgressionRules {
   adventurerPack: StartingEquipmentRef[];
   sourcePage: SourcePage;
 }
+
+// ---------------------------------------------------------------------------
+// Bestiaire — créatures du livre de base (PER-95)
+// ---------------------------------------------------------------------------
+
+/**
+ * BESTIAIRE (chapitre 3 « Opposition », p. 259-303). Entité DISTINCTE du
+ * `CreatureProfile` (qui décrit une créature OCTROYÉE par une capacité et résout
+ * ses stats contre le personnage MAÎTRE) : une créature de bestiaire est un
+ * adversaire AUTONOME à stats FIXES, lu directement depuis le bloc de stats du
+ * livre. Textes affichés (nom, description, capacités) en français verbatim
+ * (décision PRD #3) ; clés en anglais.
+ *
+ * Chaque BLOC de stats imprimé = une entrée `Creature`. Les variantes nommées
+ * (« Grand mâle », « Chef gnoll », « Vampire ancien », « Cryohydre »…) sont des
+ * entrées top-level à part entière reliées à leur base par `baseCreatureId`.
+ *
+ * Source : CBHS_06_Chroniques_Oubliees_2_web_v2.pdf, p. 259-303.
+ */
+
+/** Section du livre dont la créature provient (« Profils de créatures : … »). */
+export const CREATURE_CATEGORIES = ['humanoides', 'animaux', 'creatures-fantastiques'] as const;
+export type CreatureCategory = (typeof CREATURE_CATEGORIES)[number];
+
+/** Catégorie de taille (table p. 260). */
+export const CREATURE_SIZES = [
+  'minuscule',
+  'tres-petite',
+  'petite',
+  'moyenne',
+  'grande',
+  'enorme',
+  'colossale',
+] as const;
+export type CreatureSize = (typeof CREATURE_SIZES)[number];
+
+/** Type de créature (p. 259-261) ; une créature peut en cumuler deux (ex. humanoïde non vivant). */
+export const CREATURE_NATURES = ['vivant', 'humanoide', 'vegetatif', 'non-vivant'] as const;
+export type CreatureNature = (typeof CREATURE_NATURES)[number];
+
+/**
+ * Une attaque du bloc de stats, verbatim. Le livre l'écrit « Mode +bonus · DM dégâts »,
+ * avec parfois « (N attaques) », une portée « (30 m) » et un effet accolé (« + poison »).
+ */
+export interface CreatureAttack {
+  /** Mode d'attaque, verbatim (ex. « Morsure », « Morsure et griffes », « Attaque magique »). */
+  name: string;
+  /** Nombre d'attaques quand le livre précise « (N attaques) ». Absent = 1. */
+  attackCount?: number;
+  /** Bonus à l'attaque, verbatim (ex. « +3 »). Absent si le livre n'en donne pas. */
+  bonus?: string;
+  /** Portée d'une attaque à distance, verbatim (ex. « 30 m »). Absent = attaque au contact. */
+  range?: string;
+  /** Dégâts, verbatim (ex. « 1d6+1 », « 2d10+12 »). Absent si l'attaque n'inflige pas de DM chiffrés. */
+  damage?: string;
+  /** Effet additionnel accolé aux DM, verbatim (ex. « + poison », « + étreinte », « + 1d6 de froid »). */
+  rider?: string;
+}
+
+/** Capacité spéciale : titre (marqueur d'action inclus) + texte de règle, verbatim. */
+export interface CreatureSpecialAbility {
+  /** Nom de la capacité, verbatim, marqueur d'action inclus (ex. « Charge (L) », « Souffle (L) »). */
+  name: string;
+  /** Texte de règle verbatim. */
+  text: string;
+}
+
+export interface Creature {
+  /** Slug FR unique (ex. 'loup', 'ours-brun', 'lion-grand-male'). */
+  id: string;
+  /** Nom affiché, verbatim (ex. « Loup », « Grand mâle »). */
+  name: string;
+  /** Section du livre. */
+  category: CreatureCategory;
+  /**
+   * Niveau de créature (NC) — indicateur de puissance (p. 259). Valeur numérique
+   * du NC principal imprimé (« 1/2 » → 0.5). Quand l'imprimé n'est pas un simple
+   * nombre (NC conditionnel « 2 (3) », « 8+ », modificateur « +1 Niveau »), la
+   * forme exacte est conservée dans `ncNote` et `nc` porte le nombre principal.
+   * ABSENT pour une entrée GABARIT que le livre imprime sans NC ni bloc chiffré
+   * (ex. « Zombie », p. 301 : recette générique appliquée à n'importe quelle
+   * créature, dont deux exemples chiffrés dérivent via `baseCreatureId`).
+   */
+  nc?: number;
+  /** NC verbatim quand il diffère d'un simple nombre (ex. « 2 (3) », « 8+ », « +1 Niveau »). */
+  ncNote?: string;
+  /** Taille. Absente si le livre n'en imprime pas (rare). */
+  size?: CreatureSize;
+  /** Type(s) de créature, depuis le badge du bloc (ex. « Créature non vivante · Taille grande »). */
+  nature?: CreatureNature[];
+  /** Paragraphe d'introduction/description imprimé avant/avec le bloc, verbatim. */
+  description?: string;
+  /**
+   * Les 7 caractéristiques (valeurs fixes). Absentes quand la variante renvoie aux
+   * caractéristiques de la base (« Voir ci-dessus ») → voir `baseCreatureId` / `sharedAbilitiesNote`.
+   */
+  abilities?: Record<AbilityId, number>;
+  /** Caractéristiques marquées d'un « * » (dé bonus inné à leurs tests, hors attaque, p. 261). */
+  bonusDieAbilities?: AbilityId[];
+  /** Défense (valeur principale imprimée). */
+  defense?: number;
+  /** Précision entre parenthèses sur la DEF, verbatim (ex. « 16 » pour « Défense 13 (16) » du loup). */
+  defenseNote?: string;
+  /** Points de vigueur (valeur principale imprimée). */
+  hitPoints?: number;
+  /** Précision entre parenthèses sur les PV, verbatim (ex. « RD3 » pour « 90 (RD3) »). */
+  hitPointsNote?: string;
+  /** Initiative. */
+  initiative?: number;
+  /** Précision entre parenthèses sur l'Initiative, verbatim (ex. « 19 » pour « Initiative 14 (19) » du skrambler). */
+  initiativeNote?: string;
+  /** Attaques du bloc « gras » (les attaques de zone/souffle restent dans `specialAbilities`). */
+  attacks?: CreatureAttack[];
+  /** Capacités spéciales, verbatim. */
+  specialAbilities?: CreatureSpecialAbility[];
+  /** Variante d'une créature de base : id de la créature de base (ex. 'lion' pour « Grand mâle »). */
+  baseCreatureId?: string;
+  /** Renvoi verbatim aux capacités de la base (« Voir ci-dessus ») quand la variante ne les réimprime pas. */
+  sharedAbilitiesNote?: string;
+  sourcePage: SourcePage;
+}
