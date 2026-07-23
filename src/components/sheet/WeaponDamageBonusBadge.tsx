@@ -69,7 +69,10 @@ export function WeaponDamageBonusBadge({ bonus }: { bonus: SituationalDamageBonu
             bonus de carac reste en texte court (« +AGI »). */}
         {diceNotation(bonus) ? (
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
-            +<DamageValue damage={diceNotation(bonus)!} size={16} />
+            {/* Le « + » garde la teinte ambre du badge ; l'ICÔNE du dé est forcée en couleur de texte
+                (blanche en thème sombre) via le `sx` de DamageValue — lisible sur le fond ambre, là où
+                le jaune sur jaune ne l'était pas. `DieIcon` peint en `currentColor`, donc il l'hérite. */}
+            +<DamageValue damage={diceNotation(bonus)!} size={16} sx={{ color: 'text.primary' }} />
           </Box>
         ) : (
           <Box component="span">{bonusLabel(bonus)}</Box>

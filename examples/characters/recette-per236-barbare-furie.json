@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per236-barbare-furie",
+  "name": "Recette PER-236 — Barbare niv. 12, furie du berserk active (+2d10°)",
+  "identity": {
+    "description": "ATTENDU : interrupteur « pendant la furie du berserk » ACTIF → badge situationnel +2d10° sous la carte Attaque au contact (2 dés, face évolutive résolue au niveau 12 = d10). Rage et furie sont exclusives (activer l’une éteint l’autre)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 12,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "rage-r1",
+    "rage-r2",
+    "rage-r3",
+    "rage-r4",
+    "rage-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "rage-r5": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-236 — Furie du berserk (rage-r5) : +2d4° DM au contact conditionnel à l’état de furie, affiché à sa face courante (niv. 12 → 2d10). Même patron que la rage, nombre de dés doublé (le count n’évolue pas, seule la face monte).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

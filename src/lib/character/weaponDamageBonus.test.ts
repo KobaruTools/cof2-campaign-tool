@@ -258,6 +258,15 @@ describe('weaponDamageBonuses — barbare rage/furie du berserk (+Nd4° situatio
     // La rage (r3) reste éteinte → pas de double comptage.
     expect(r.situational.some((b) => b.featureId === 'rage-r3')).toBe(false);
   });
+
+  it('dé ÉVOLUTIF résolu au NIVEAU : rage à haut niveau → face montée, count inchangé, marqueur ° gardé', () => {
+    // p. 43 : d4° → d6 (niv. 6-8), d8 (9-11), d10 (12-14)… Seule la FACE monte, le nombre de dés non.
+    const niv12 = { ...makeCharacter({ classId: 'barbare', level: 12, featureIds: ['rage-r3', 'rage-r5'] }) };
+    const rage = weaponDamageBonuses({ ...niv12, effectToggles: { 'rage-r3': [true] } }, 'melee', epeeLongue);
+    expect(rage.situational[0].dice).toEqual({ count: 1, die: 'd10', evolving: true });
+    const furie = weaponDamageBonuses({ ...niv12, effectToggles: { 'rage-r5': [true] } }, 'melee', epeeLongue);
+    expect(furie.situational[0].dice).toEqual({ count: 2, die: 'd10', evolving: true });
+  });
 });
 
 describe('weaponDamageBonuses — nain « Haches et marteaux » (+1 DM, familles STATIQUES, PER-154)', () => {

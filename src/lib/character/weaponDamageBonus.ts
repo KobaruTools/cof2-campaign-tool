@@ -10,7 +10,7 @@
  *
  * Fonction PURE : aucune dépendance à React, aucun jet (on affiche, on ne résout pas le combat).
  */
-import { featureById } from '@/data';
+import { featureById, progression } from '@/data';
 import type {
   AbilityId,
   DamageDie,
@@ -20,6 +20,7 @@ import type {
   WeaponDamageCondition,
   WeaponDamageFlatFromChoice,
 } from '@/data/schema';
+import { scalingDie } from '@/lib/engine';
 import {
   activeFeatureIdsForMods,
   effectContext,
@@ -59,7 +60,11 @@ export interface PermanentFlatBonus extends WeaponDamageBonusSource {
 export interface SituationalDamageBonus extends WeaponDamageBonusSource {
   /** Caractéristique ajoutée (exclusif avec `dice`). */
   ability?: AbilityId;
-  /** Dé(s) ajoutés (exclusif avec `ability`). */
+  /**
+   * Dé(s) ajoutés (exclusif avec `ability`). `die` est la face CONCRÈTE à afficher : pour un dé
+   * ÉVOLUTIF (`evolving`), déjà résolue au niveau du personnage (`scalingDie`, p. 43) — le marqueur
+   * `°` ne sert plus qu'à signaler qu'elle grandira. `count` n'évolue pas (seule la face monte).
+   */
   dice?: { count: number; die: DamageDie; evolving?: boolean };
   /** Condition en toutes lettres (ex. « contre les animaux »). */
   conditionLabel?: string;
@@ -155,6 +160,18 @@ function resolveConditionLabel(
 }
 
 /**
+ * Résout le dé d'un bonus situationnel pour l'AFFICHAGE : un dé évolutif (`°`, p. 43) prend la face
+ * concrète atteinte au niveau du personnage (`scalingDie`), les autres sont rendus tels quels. On
+ * garde `evolving` pour que le badge conserve le marqueur `°` (règle p. 43, cf. `DieIcon`).
+ */
+function resolveDisplayDice(
+  dice: NonNullable<WeaponDamageBonusEffect['dice']>,
+  level: number,
+): NonNullable<SituationalDamageBonus['dice']> {
+  return dice.evolving ? { ...dice, die: scalingDie(level, progression) } : dice;
+}
+
+/**
  * Bonus de DM des capacités actives, pour un `mode` d'attaque et l'arme (`weapon`) en main dans ce
  * mode (`null` = aucune arme de ce mode / mains nues). Voir en-tête de module.
  */
@@ -199,7 +216,7 @@ export function weaponDamageBonuses(
         situational.push({
           ...source,
           ability: effect.ability,
-          dice: effect.dice,
+          dice: effect.dice ? resolveDisplayDice(effect.dice, character.level) : undefined,
           conditionLabel: resolveConditionLabel(character, featureId, condition),
         });
       } else {
