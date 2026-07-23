@@ -37,6 +37,7 @@ import { armorEncumbrancePenalty, setWornAt } from '@/lib/character/equipment';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
+import { armorRestrictionByLine } from '@/lib/character/armorRestrictions';
 import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/mastery';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { weaponAffinities } from '@/lib/character/weaponAffinity';
@@ -1379,6 +1380,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               resolveWeaponAffinities={(itemId) => weaponAffinities(character, itemId)}
               // Indicateur « combat à deux armes → dé malus » (PER-116) par arme en main.
               twoWeaponStatus={twoWeaponCombatStatus(character)}
+              // Indicateur « armure trop lourde / bouclier interdit » (PER-80) par ligne équipée.
+              resolveArmorRestriction={(line) => armorRestrictionByLine(character, rulesContext).get(line) ?? null}
             />
           </SheetSection>
 

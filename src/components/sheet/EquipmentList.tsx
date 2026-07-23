@@ -62,6 +62,7 @@ import { DamageValue } from '@/components/DamageValue';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
 import {
+  ArmorRestrictionBadge,
   EquipConflictsAlert,
   TwoWeaponPenaltyBadge,
   WeaponAffinityBadge,
@@ -69,6 +70,7 @@ import {
   WornBadge,
   WornControls,
 } from '@/components/sheet/WornEquipmentControls';
+import type { ArmorRestrictionViolation } from '@/lib/character/armorRestrictions';
 import type { WeaponAffinity } from '@/lib/character/weaponAffinity';
 import type { TwoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 
@@ -407,6 +409,14 @@ export interface EquipmentListProps {
    * aucun indicateur de combat à deux armes.
    */
   twoWeaponStatus?: TwoWeaponCombatStatus;
+  /**
+   * Résolveur d'écart de port armure/bouclier (PER-80) : pour une ligne d'inventaire, rend la
+   * violation de plafond de port qui la concerne (armure trop lourde, bouclier interdit), ou
+   * `null`. Pose sur la ligne fautive un badge « warning » (pendant du badge « Non maîtrisée »
+   * des armes), en plus de l'avertissement agrégé en tête de fiche. Absent → aucun badge. Fourni
+   * par l'appelant lié au personnage (`armorRestrictionByLine`).
+   */
+  resolveArmorRestriction?: (line: EquipmentLine) => ArmorRestrictionViolation | null;
 }
 
 /**
@@ -523,6 +533,7 @@ export function EquipmentList({
   extraMasteredWeaponIds,
   resolveWeaponAffinities,
   twoWeaponStatus,
+  resolveArmorRestriction,
 }: EquipmentListProps) {
   // Modale d'objet (PER-214) : `null` = fermée, `'new'` = création, un index = édition de
   // la ligne correspondante (bouton crayon, objet custom OU arme/armure/bouclier).
@@ -780,6 +791,9 @@ export function EquipmentList({
             <WornBadge worn={line.worn} />
           </Box>
         )}
+        {/* Indicateur consultatif (PER-80) : armure trop lourde / bouclier interdit pour le
+            profil → badge sur la ligne équipée fautive (pendant du badge « Non maîtrisée »). */}
+        {resolveArmorRestriction && <ArmorRestrictionBadge violation={resolveArmorRestriction(line)} />}
         {/* Indicateur consultatif (PER-79) : arme en main non maîtrisée → dé malus. */}
         {masteredIds && (
           <WeaponMasteryBadge

@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { equipmentById } from '@/data';
 import type { Weapon } from '@/data/schema';
+import type { ArmorRestrictionViolation } from '@/lib/character/armorRestrictions';
 import { equipConflicts } from '@/lib/character/equipment';
 import { itemType } from '@/lib/character/items';
 import { isWeaponMastered } from '@/lib/character/mastery';
@@ -414,6 +415,50 @@ export function WeaponAffinityBadge({ affinities }: { affinities: WeaponAffinity
         </AppTooltip>
       ))}
     </Stack>
+  );
+}
+
+/**
+ * Badge consultatif (PER-80) posé sur la LIGNE d'inventaire d'une armure trop lourde ou d'un
+ * bouclier interdit pour le profil du personnage : pendant, par ligne, de l'avertissement agrégé
+ * en tête de fiche (`checkCompliance`). Calqué sur le badge « Non maîtrisée · dé malus » des armes
+ * (`WeaponMasteryBadge`) : pastille custom en tonalité « warning » (≠ Chip MUI), info-bulle citant
+ * le message sourcé (p. 188, parsé en puce de source). `null` si la ligne ne viole aucune
+ * restriction de port. Le moteur SIGNALE seulement — la fiche reste permissive (rien n'est retiré).
+ */
+export function ArmorRestrictionBadge({
+  violation,
+}: {
+  violation: ArmorRestrictionViolation | null | undefined;
+}) {
+  if (!violation) return null;
+  const label = violation.kind === 'shield-not-allowed' ? 'Bouclier non autorisé' : 'Armure trop lourde';
+  return (
+    <Box sx={{ mt: 0.5 }}>
+      <AppTooltip title={<PageRefText>{violation.message}</PageRefText>}>
+        <Box
+          component="span"
+          sx={(theme) => ({
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+            px: 0.75,
+            height: 22,
+            borderRadius: 1,
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            cursor: 'help',
+            color: theme.palette.warning.main,
+            bgcolor: alpha(theme.palette.warning.main, 0.12),
+            border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+          })}
+        >
+          <ReportProblemOutlinedIcon sx={{ fontSize: 14 }} />
+          {label}
+        </Box>
+      </AppTooltip>
+    </Box>
   );
 }
 

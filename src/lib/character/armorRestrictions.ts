@@ -19,7 +19,7 @@
  * il ne retire rien de force (la fiche reste permissive). Cf. `checkCompliance`.
  */
 import { equipmentById, featureById } from '@/data';
-import type { CharacterClass, ShieldAccess, UsageCounter } from '@/data/schema';
+import type { Armor, CharacterClass, Shield, ShieldAccess, UsageCounter } from '@/data/schema';
 import type { RulesContext } from '@/lib/engine';
 import type { Character, EquipmentLine } from './types';
 import { isCustomItem } from './types';
@@ -496,14 +496,22 @@ export interface ArmorRestrictionViolation {
   message: string;
 }
 
-/** Première armure du CATALOGUE effectivement portée (au plus une compte, p. 188). */
-function wornCatalogArmor(equipment: EquipmentLine[]) {
+/**
+ * Première ARMURE du CATALOGUE effectivement portée (au plus une compte, p. 188), avec sa
+ * LIGNE d'inventaire — pour poser un badge sur la ligne exacte (rendu par ligne, PER-80).
+ */
+function wornCatalogArmorEntry(equipment: EquipmentLine[]): { line: EquipmentLine; item: Armor } | null {
   for (const line of equipment) {
     if (line.worn?.slot !== 'armor' || isCustomItem(line)) continue;
     const item = equipmentById.get(line.itemId);
-    if (item?.category === 'armor') return item;
+    if (item?.category === 'armor') return { line, item };
   }
   return null;
+}
+
+/** Première armure du CATALOGUE effectivement portée (au plus une compte, p. 188). */
+function wornCatalogArmor(equipment: EquipmentLine[]): Armor | null {
+  return wornCatalogArmorEntry(equipment)?.item ?? null;
 }
 
 /**
@@ -545,14 +553,22 @@ export function wornArmorAllowedDef(character: Character, ctx: RulesContext): nu
   return Math.max(allowedDef, armorAccessDef(character));
 }
 
-/** Premier bouclier du CATALOGUE effectivement porté (au plus un compte, p. 188). */
-function wornCatalogShield(equipment: EquipmentLine[]) {
+/**
+ * Premier BOUCLIER du CATALOGUE effectivement porté (au plus un compte, p. 188), avec sa
+ * LIGNE d'inventaire — pour poser un badge sur la ligne exacte (rendu par ligne, PER-80).
+ */
+function wornCatalogShieldEntry(equipment: EquipmentLine[]): { line: EquipmentLine; item: Shield } | null {
   for (const line of equipment) {
     if (line.worn?.slot !== 'shield' || isCustomItem(line)) continue;
     const item = equipmentById.get(line.itemId);
-    if (item?.category === 'shield') return item;
+    if (item?.category === 'shield') return { line, item };
   }
   return null;
+}
+
+/** Premier bouclier du CATALOGUE effectivement porté (au plus un compte, p. 188). */
+function wornCatalogShield(equipment: EquipmentLine[]): Shield | null {
+  return wornCatalogShieldEntry(equipment)?.item ?? null;
 }
 
 /**
@@ -602,4 +618,27 @@ export function armorRestrictionViolations(
   }
 
   return violations;
+}
+
+/**
+ * Écart de port d'armure/bouclier RATTACHÉ à sa ligne d'inventaire exacte (PER-80, rendu par
+ * ligne) : Map identité de ligne → violation. Sert à poser un badge sur la ligne fautive de
+ * l'inventaire (pendant du badge « Non maîtrisée · dé malus » des armes, PER-79), en plus de
+ * l'avertissement agrégé en tête de fiche. Réutilise `armorRestrictionViolations` (même règle,
+ * même message, même plafond) et n'affecte que la PREMIÈRE armure/bouclier du catalogue porté
+ * (celle qui compte, p. 188). Vide si aucun écart.
+ */
+export function armorRestrictionByLine(
+  character: Character,
+  ctx: RulesContext,
+): Map<EquipmentLine, ArmorRestrictionViolation> {
+  const map = new Map<EquipmentLine, ArmorRestrictionViolation>();
+  for (const violation of armorRestrictionViolations(character, ctx)) {
+    const entry =
+      violation.kind === 'armor-too-heavy'
+        ? wornCatalogArmorEntry(character.equipment)
+        : wornCatalogShieldEntry(character.equipment);
+    if (entry) map.set(entry.line, violation);
+  }
+  return map;
 }
