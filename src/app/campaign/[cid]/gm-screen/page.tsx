@@ -16,7 +16,7 @@
  * Vocation à grandir (jets rapides, PV/mana en direct, notes de session…), d'où
  * une page dédiée plutôt qu'une modale.
  */
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -41,7 +41,7 @@ import { applyDamage, healHp, resetHp } from '@/lib/character/gauges';
 import { summarize } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
 import type { DamageKind } from '@/components/sheet/HpGauge';
-import type { Depletion } from '@/lib/character/types';
+import { useGmCombatState } from './useGmCombatState';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
@@ -56,27 +56,20 @@ const BANDIT_INITIATIVE = Number.parseInt(
 export default function GmScreenPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
 
-  // Bandits ajoutés au combat en cours — état LOCAL éphémère (non persisté) : un
-  // simple compteur d'ids stables pour les clés/retraits + leur manque de PV (barre
-  // de vie du tracker d'initiative). Le bouton « + Ajouter un bandit » est laissé sur
-  // TOUTES les campagnes (temporaire, cf. PER-236) : par défaut aucun bandit.
-  const [banditIds, setBanditIds] = useState<number[]>([]);
-  const [nextBanditId, setNextBanditId] = useState(1);
-  const [banditDepletions, setBanditDepletions] = useState<Record<number, Depletion>>({});
-  const addBandit = () => {
-    setBanditIds((ids) => [...ids, nextBanditId]);
-    setNextBanditId((n) => n + 1);
-  };
-  const removeBandit = (id: number) => {
-    setBanditIds((ids) => ids.filter((x) => x !== id));
-    setBanditDepletions((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  };
-  const setBanditDepletion = (id: number, next: Depletion) =>
-    setBanditDepletions((prev) => ({ ...prev, [id]: next }));
+  // Combat en cours — état persisté dans un `localStorage` DÉDIÉ (par campagne) : le
+  // roster des bandits (ids stables + PV) et la position dans l'ordre d'initiative. Les
+  // PV joueurs vivent sur la fiche (store des personnages), donc hors de ce stockage.
+  // Le bouton « + Ajouter un bandit » est laissé sur TOUTES les campagnes (temporaire,
+  // cf. PER-236) : par défaut aucun bandit.
+  const {
+    banditIds,
+    banditDepletions,
+    currentTurnKey,
+    addBandit,
+    removeBandit,
+    setBanditDepletion,
+    setCurrentTurnKey,
+  } = useGmCombatState(cid);
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
   const characters = useCharactersStore((s) => s.characters);
   const loadCharacters = useCharactersStore((s) => s.load);
@@ -316,7 +309,11 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         {/* Séparateur horizontal, puis tracker d'initiative (PER-236) : personnages
             reliés à un joueur + bandits, en colonnes classées par initiative. */}
         <Divider sx={{ my: { xs: 3, sm: 4 } }} />
-        <InitiativeTracker rows={initiativeRows} />
+        <InitiativeTracker
+          rows={initiativeRows}
+          currentTurnKey={currentTurnKey}
+          onCurrentTurnKeyChange={setCurrentTurnKey}
+        />
       </Box>
     </>
   );

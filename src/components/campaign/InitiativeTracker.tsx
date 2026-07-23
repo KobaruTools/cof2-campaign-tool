@@ -8,9 +8,10 @@
  * (`HpGauge`, même composant et même mécanique de dégâts/soin). Un bouton « Tour
  * suivant » fait avancer le tour dans l'ordre d'initiative ; le combattant actif est
  * mis en évidence (contour blanc épais + halo blanc). Purement présentatif : les
- * lignes (calcul d'initiative, câblage des PV) sont assemblées par l'appelant.
+ * lignes (calcul d'initiative, câblage des PV) sont assemblées par l'appelant, et le
+ * TOUR COURANT est CONTRÔLÉ par l'appelant (`currentTurnKey` / `onCurrentTurnKeyChange`)
+ * afin d'être persisté avec le reste du combat.
  */
-import { useState } from 'react';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -117,19 +118,26 @@ function CombatantPortrait({ src, name }: { src?: string; name: string }) {
 
 export interface InitiativeTrackerProps {
   rows: InitiativeRow[];
+  /**
+   * Tour courant suivi par CLÉ (robuste aux ajouts/retraits de bandits, contrairement
+   * à un index). `null` = combat pas encore démarré (aucune mise en évidence).
+   * Contrôlé/persisté par l'appelant.
+   */
+  currentTurnKey: string | null;
+  onCurrentTurnKeyChange: (key: string | null) => void;
 }
 
-export function InitiativeTracker({ rows }: InitiativeTrackerProps) {
-  // Tour courant suivi par CLÉ (robuste aux ajouts/retraits de bandits, contrairement à
-  // un index). `null` = combat pas encore démarré (aucune mise en évidence).
-  const [currentTurnKey, setCurrentTurnKey] = useState<string | null>(null);
-
+export function InitiativeTracker({
+  rows,
+  currentTurnKey,
+  onCurrentTurnKeyChange,
+}: InitiativeTrackerProps) {
   const advanceTurn = () => {
     if (rows.length === 0) return;
     const idx = rows.findIndex((r) => r.key === currentTurnKey);
     // Introuvable (−1, ex. bandit retiré) ou pas encore démarré → on démarre au premier.
     const next = idx < 0 ? 0 : (idx + 1) % rows.length;
-    setCurrentTurnKey(rows[next].key);
+    onCurrentTurnKeyChange(rows[next].key);
   };
 
   return (
