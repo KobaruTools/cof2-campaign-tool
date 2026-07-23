@@ -487,6 +487,16 @@ function BorrowedFeatureBlock({
           <PageRefText>{armorRestrictedMessage}</PageRefText>
         </AppAlert>
       ) : null}
+      {/* Rappel de la PARTICULARITÉ de la voie source (`borrowedNote`) : quand une capacité est
+          empruntée, le titre de sa voie d'origine — et donc l'infobulle `note` rendue à côté —
+          n'apparaît pas. La règle qui suit la capacité (ex. envoûteur : immunité 24 h) serait
+          perdue ; on la re-surface ici, au-dessus de la carte. */}
+      {path?.borrowedNote ? (
+        <AppAlert severity="info" title={`Rappel — ${pathName}`} sx={{ mb: 1 }}>
+          {/* Parse tout « (p. N) » éventuel en source cliquable. */}
+          <PageRefText>{path.borrowedNote}</PageRefText>
+        </AppAlert>
+      ) : null}
       {/* Carte teintée/bordée à la couleur de la VOIE SOURCE, façon « slot divin » du prêtre —
           mais SANS remplacement : elle se superpose, l'hôte reste actif (PER-120). */}
       <Box

@@ -330,6 +330,7 @@ export const adventurerPaths: ClassPath[] = [
       'combat-a-deux-armes-r5',
     ],
     note: "Les capacités de cette voie nécessitent toutes l'usage d'une arme dans chaque main (à l'exception de Combattant héroïque). Cette voie est une exception aux règles sur les profils hybrides, un personnage peut l'utiliser en portant toutes les armures autorisées pas son profil principal. Les capacités de cette voie fonctionnent avec des armes de contact, mais aussi avec des armes de lancer.",
+    borrowedNote: "Cette capacité nécessite l'usage d'une arme dans chaque main (sauf Combattant héroïque). Elle fonctionne avec des armes de contact comme de lancer.",
     sourcePage: 73,
   },
 

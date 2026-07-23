@@ -373,6 +373,16 @@ interface PathBase {
   /** Encadré ou note spécifique à la voie (verbatim), le cas échéant. */
   note?: string;
   /**
+   * Rappel COURT à afficher quand une capacité de cette voie est EMPRUNTÉE dans une
+   * autre voie (« Don étrange », « Touche-à-tout », « Appel à une autre capacité »…).
+   * Contrairement à `note` (grab-bag pouvant contenir du RP ou de longs encadrés de
+   * gestion), ce champ ne porte QUE la particularité de voie qui suit la capacité une
+   * fois isolée de son contexte (ex. envoûteur : immunité 24 h ; nécromancie : sans
+   * effet sur les non-vivants). Rendu en encadré au-dessus de la carte de la capacité
+   * empruntée (cf. `BorrowedFeatureBlock`), là où le titre de voie natif — et donc son
+   * infobulle `note` — n'apparaît pas. Absent = aucun rappel. */
+  borrowedNote?: string;
+  /**
    * La voie EXIGE de manier un bouclier pour que ses capacités fonctionnent (PER-142) —
    * ex. Voie du bouclier du guerrier (p. 87 : « Pour utiliser les capacités suivantes,
    * le guerrier doit obligatoirement manier un bouclier. »). Quand AUCUN bouclier n'est

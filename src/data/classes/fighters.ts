@@ -269,6 +269,9 @@ export const fighterPaths: ClassPath[] = [
     featureIds: ['bouclier-r1', 'bouclier-r2', 'bouclier-r3', 'bouclier-r4', 'bouclier-r5'],
     // Phrase d'introduction de la voie, p. 87.
     note: 'Pour utiliser les capacités suivantes, le guerrier doit obligatoirement manier un bouclier.',
+    // Le gating moteur (`requiresShield`/`shieldDisabledFeatureIds`, PER-142) porte sur la voie
+    // native ; une capacité EMPRUNTÉE échappe à ce gating, d'où ce rappel explicite sur sa carte.
+    borrowedNote: 'Pour utiliser cette capacité, il faut obligatoirement manier un bouclier.',
     // PER-142 : condition structurée de la note ci-dessus. Sans bouclier porté, toutes les capacités
     // de la voie sont désactivées (cf. `shieldDisabledFeatureIds`) ; un bouclier les réactive auto.
     requiresShield: true,

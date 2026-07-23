@@ -155,6 +155,9 @@ export const magePaths: ClassPath[] = [
       'envouteur-r5',
     ],
     note: "Note : si une victime résiste à un sort de cette voie, elle y est immunisée pendant 24 h.",
+    // Particularité qui suit un sort de la voie même emprunté : le rappel est rendu sur la carte
+    // de la capacité empruntée, où le titre de voie (et son infobulle `note`) n'apparaît pas.
+    borrowedNote: "Si une victime résiste à un sort de cette voie, elle y est immunisée pendant 24 h.",
     sourcePage: 94,
   },
   {
@@ -208,6 +211,8 @@ export const magePaths: ClassPath[] = [
     classIds: ['forgesort'],
     featureIds: ['elixirs-r1', 'elixirs-r2', 'elixirs-r3', 'elixirs-r4', 'elixirs-r5'],
     note: "Chaque jour, le forgesort peut créer et utiliser (sur lui‑même ou un allié vivant) un élixir par rang acquis dans cette voie. Il ajoute un élixir supplémentaire à chaque fois qu’il atteint le rang 3 dans une voie de forgesort (celle‑ci incluse). Il doit préparer les élixirs le matin après sa période de récupération complète, et cela lui prend environ une demi‑heure. Boire un élixir est une action limitée. Les élixirs qui ne sont pas utilisés le jour même sont perdus.\n\nNote : si un personnage choisit une capacité issue de la voie des élixirs par l’intermédiaire d’une autre voie, il acquiert seulement deux élixirs par jour (ou un seul dans le cas d’un élixir majeur). Consommer un élixir n’est pas limité par le type d’armure que porte celui qui le boit.",
+    // Le livre traite explicitement l'emprunt : seule cette partie de `note` suit la capacité.
+    borrowedNote: "Capacité de la voie des élixirs acquise par emprunt : elle ne procure que deux élixirs par jour (un seul dans le cas d’un élixir majeur).",
     sourcePage: 98,
   },
   {
@@ -234,6 +239,7 @@ export const magePaths: ClassPath[] = [
     classIds: ['forgesort'],
     featureIds: ['runes-r1', 'runes-r2', 'runes-r3', 'runes-r4', 'runes-r5'],
     note: "Un personnage ne peut porter qu’une seule rune de chaque type sur lui‑même ou son équipement à la fois. Si l’équipement change de main ou si le sort est utilisé, la rune est dissipée. Une fois la rune dissipée, il est possible de relancer le sort.",
+    borrowedNote: "Une seule rune de chaque type à la fois sur soi ou son équipement. La rune est dissipée si l’équipement change de main ou si le sort est réutilisé.",
     sourcePage: 101,
   },
 
@@ -326,6 +332,7 @@ export const magePaths: ClassPath[] = [
     classIds: ['sorcier'],
     featureIds: ['mort-r1', 'mort-r2', 'mort-r3', 'mort-r4', 'mort-r5'],
     note: "Les sorts de cette voie n’affectent pas les créatures non vivantes (golem, élémentaires, morts‑vivants…).",
+    borrowedNote: "Les sorts de cette voie n’affectent pas les créatures non vivantes (golem, élémentaires, morts‑vivants…).",
     sourcePage: 108,
   },
   {
