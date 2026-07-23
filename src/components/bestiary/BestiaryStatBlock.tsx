@@ -8,14 +8,20 @@
  * (dé bonus inné compris), DEF/PV/Init. avec leurs précisions, attaques et capacités
  * spéciales verbatim. Toute référence de page passe par `SourceRef`/`PageRefText`.
  */
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import HistoryEduOutlinedIcon from '@mui/icons-material/HistoryEduOutlined';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
-import { ABILITY_IDS, type ActionType, type Creature, type Feature } from '@/data/schema';
+import { alpha, type Theme } from '@mui/material/styles';
+import {
+  ABILITY_IDS,
+  type ActionType,
+  type Creature,
+  type CreatureSpecialAbility,
+  type Feature,
+} from '@/data/schema';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { ANCESTRY_MARKER_COLOR } from '@/lib/ui/classColors';
 import {
@@ -32,6 +38,8 @@ import { DamageValue } from '@/components/DamageValue';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
+import { GlossaryText, RichInline } from '@/components/sheet/FeatureRichText';
+import { VerbatimToggle } from '@/components/sheet/FeaturesByPath';
 
 /**
  * Espacement unique (unités MUI) du bloc de stats : sert À LA FOIS d'écart INTERNE
@@ -40,6 +48,27 @@ import { PageRefText, SourceRef } from '@/components/SourceRef';
  * harmonieux (retour propriétaire).
  */
 const BLOCK_GAP = 1;
+
+/**
+ * Habillage commun d'une carte d'attaque / de capacité : bord + fond discrets, et surtout une
+ * INTERACTIVITÉ au survol (retour propriétaire) — le bord gagne en opacité et une très légère ombre
+ * portée BLANCHE apparaît, pour signaler la carte pointée. `height: '100%'` : la carte remplit toute
+ * la hauteur de sa cellule de grille (les cellules d'une même ligne s'égalisent via le `stretch` par
+ * défaut de la grille, cf. retrait de `alignItems: 'start'`), pour des blocs de même hauteur, plus
+ * lisibles. Le padding (`px`/`py`) reste propre à chaque type de carte (fusionné via `sx` en tableau).
+ */
+const interactiveBlockSx = (theme: Theme) => ({
+  height: '100%',
+  borderRadius: 0.75,
+  border: 1,
+  borderColor: alpha(theme.palette.text.primary, 0.12),
+  bgcolor: alpha(theme.palette.text.primary, 0.04),
+  transition: theme.transitions.create(['border-color', 'box-shadow'], { duration: 120 }),
+  '&:hover': {
+    borderColor: alpha(theme.palette.text.primary, 0.3),
+    boxShadow: '0 2px 10px rgba(255, 255, 255, 0.1)',
+  },
+});
 
 /** Pilule d'identité neutre (NC, taille, nature) : même habillage discret que `SourceRef`. */
 function MetaPill({ label, children }: { label?: string; children: ReactNode }) {
@@ -170,11 +199,61 @@ function StatChip({
   );
 }
 
+/**
+ * Rend le texte d'une capacité de créature. En mode ENRICHI (défaut), le même moteur que les rangs
+ * de voie (`RichInline`) : dés en icônes, formules calculées contre les caractéristiques FIXES de la
+ * créature, refs de page cliquables, puces de glossaire/états — le tout depuis `richText` s'il existe,
+ * sinon depuis le `text` verbatim (déjà glosé). Sans caractéristiques (variante « Voir ci-dessus »),
+ * on retombe sur `GlossaryText` (glossaire/refs de page sans résolution de formule). En mode VERBATIM
+ * (toggle « Texte d'origine »), on rend le `text` brut, sans aucun traitement (relecture « comme dans
+ * le livre »). Les créatures n'ayant ni dé évolutif ni rang de voie, `level`/`rank` sont inertes.
+ */
+function CreatureAbilityText({
+  ability,
+  creature,
+  verbatim,
+}: {
+  ability: CreatureSpecialAbility;
+  creature: Creature;
+  verbatim: boolean;
+}) {
+  if (verbatim) {
+    return (
+      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line', lineHeight: 1.55 }}>
+        {ability.text}
+      </Typography>
+    );
+  }
+  const source = ability.richText ?? ability.text;
+  return (
+    <Typography variant="body2" color="text.secondary" component="div" sx={{ whiteSpace: 'pre-line', lineHeight: 1.55 }}>
+      {creature.abilities ? (
+        <RichInline
+          text={source}
+          abilities={creature.abilities}
+          // Inertes pour une créature (stats fixes) : pas de rang de voie (→ `rank`). `level` sert
+          // seulement au scaling des dés évolutifs, qu'on DÉSACTIVE ici (`evolvingDieBase`) : un dé
+          // évolutif de créature est indexé sur le niveau de la VICTIME, non résolvable → on affiche
+          // le dé de base + le « ° » (cf. RichInline). `nc` arrondi passé par acquit de conscience.
+          level={Math.max(1, Math.round(creature.nc ?? 1))}
+          rank={0}
+          evolvingDieBase
+        />
+      ) : (
+        <GlossaryText>{source}</GlossaryText>
+      )}
+    </Typography>
+  );
+}
+
 export interface BestiaryStatBlockProps {
   creature: Creature;
 }
 
 export function BestiaryStatBlock({ creature }: BestiaryStatBlockProps) {
+  // Bascule « Texte d'origine » (comme la fiche, PER-88) : rend le verbatim brut des capacités au
+  // lieu du rendu enrichi. État LOCAL au bloc (se réinitialise en changeant de créature).
+  const [verbatim, setVerbatim] = useState(false);
   const nc = creatureNcLabel(creature);
   const bonusDice = new Set(creature.bonusDieAbilities ?? []);
   // Stats dérivées fixes présentes : rendues en grille pleine largeur, une colonne
@@ -191,23 +270,59 @@ export function BestiaryStatBlock({ creature }: BestiaryStatBlockProps) {
   return (
     <Box
       sx={{
+        position: 'relative',
+        // Rogne l'illustration en filigrane qui déborde du bloc (effet de style « crop »).
+        overflow: 'hidden',
         border: 1,
         borderColor: 'divider',
         borderRadius: 1,
         p: { xs: 1.25, sm: 1.75 },
         // Fond NOIR (pas blanc) légèrement plus opaque que les autres blocs de la page,
         // avec le même flou d'arrière-plan que l'en-tête : améliore la lisibilité du bloc
-        // de stats par-dessus l'illustration de fond.
+        // de stats par-dessus l'illustration de fond. `backdropFilter` crée aussi le contexte
+        // d'empilement qui garde le filigrane (z-index -1) DERRIÈRE le contenu.
         bgcolor: 'rgba(0, 0, 0, 0.45)',
         backdropFilter: 'blur(6px)',
         WebkitBackdropFilter: 'blur(6px)',
       }}
     >
+      {/* Illustration de la créature (extraite du livre, détourée) en FILIGRANE : ancrée en haut à
+          droite, dans une ENVELOPPE de taille FIXE (indépendante de la hauteur du bloc → rendu
+          cohérent d'une créature à l'autre) ; `contain` fait tenir toute la silhouette dans cette
+          enveloppe. Léger débord en haut/à droite rogné par `overflow` (effet de style), et fondu
+          vers la gauche pour ne pas gêner la lecture. Purement décoratif (`aria-hidden`). Les
+          variantes héritent de l'illustration de leur base (cf. `withIllustrations` dans
+          `creatures.ts`). */}
+      {creature.illustration && (
+        <Box
+          aria-hidden
+          sx={{
+            position: 'absolute',
+            top: -14,
+            right: -8,
+            width: { xs: 200, sm: 288 },
+            height: { xs: 240, sm: 340 },
+            maxWidth: '70%',
+            zIndex: -1,
+            pointerEvents: 'none',
+            opacity: 0.35,
+            backgroundImage: `url(${creature.illustration})`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'top right',
+            backgroundSize: 'contain',
+            maskImage: 'linear-gradient(to left, #000 55%, transparent 96%)',
+            WebkitMaskImage: 'linear-gradient(to left, #000 55%, transparent 96%)',
+          }}
+        />
+      )}
+
       {/* Identité : nom + NC/taille/nature + page source. */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap', mb: 1 }}>
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700, letterSpacing: 0.5, mr: 'auto' }}>
           {creature.name}
         </Typography>
+        {/* Bascule « Texte d'origine » : proposée seulement s'il y a des capacités à enrichir. */}
+        {hasSpecialAbilities && <VerbatimToggle value={verbatim} onChange={setVerbatim} />}
         <SourceRef page={creature.sourcePage} />
       </Stack>
       <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', gap: 0.75, mb: BLOCK_GAP }}>
@@ -283,21 +398,10 @@ export function BestiaryStatBlock({ creature }: BestiaryStatBlockProps) {
               display: 'grid',
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
               gap: BLOCK_GAP,
-              alignItems: 'start',
             }}
           >
             {creature.attacks.map((atk, i) => (
-              <Box
-                key={i}
-                sx={{
-                  px: 1,
-                  py: 0.6,
-                  borderRadius: 0.75,
-                  border: 1,
-                  borderColor: 'divider',
-                  bgcolor: (t) => alpha(t.palette.text.primary, 0.04),
-                }}
-              >
+              <Box key={i} sx={[interactiveBlockSx, { px: 1, py: 0.6 }]}>
                 {/* Nom seul (l'icône de score d'attaque descend devant le bonus, cf. fiche de perso). */}
                 <Typography component="div" variant="body2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
                   {atk.name}
@@ -356,23 +460,12 @@ export function BestiaryStatBlock({ creature }: BestiaryStatBlockProps) {
               display: 'grid',
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
               gap: BLOCK_GAP,
-              alignItems: 'start',
             }}
           >
             {creature.specialAbilities!.map((ability, i) => {
               const { baseName } = parseAbilityMarkers(ability.name);
               return (
-                <Box
-                  key={i}
-                  sx={{
-                    px: 1,
-                    py: 0.75,
-                    borderRadius: 0.75,
-                    border: 1,
-                    borderColor: 'divider',
-                    bgcolor: (t) => alpha(t.palette.text.primary, 0.04),
-                  }}
-                >
+                <Box key={i} sx={[interactiveBlockSx, { px: 1, py: 0.75 }]}>
                   <Stack
                     direction="row"
                     spacing={0.75}
@@ -383,9 +476,7 @@ export function BestiaryStatBlock({ creature }: BestiaryStatBlockProps) {
                     </Typography>
                     <CreatureAbilityMarkers name={ability.name} />
                   </Stack>
-                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.55 }}>
-                    <PageRefText>{ability.text}</PageRefText>
-                  </Typography>
+                  <CreatureAbilityText ability={ability} creature={creature} verbatim={verbatim} />
                 </Box>
               );
             })}

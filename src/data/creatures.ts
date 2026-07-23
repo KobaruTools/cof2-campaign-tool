@@ -2476,6 +2476,55 @@ const fantasticCreatures: Creature[] = [
   },
 ];
 
-export const creatures: Creature[] = [...humanoids, ...animals, ...fantasticCreatures];
+/**
+ * Illustrations détourées (fond transparent) extraites du livre de base et servies depuis
+ * `public/bestiary/`. Clé = id de la créature que le livre illustre (une seule illustration par
+ * espèce, posée sur la créature de BASE). Injectées dans `illustration` ci-dessous ; les VARIANTES
+ * de même espèce (`baseCreatureId`) héritent de l'illustration de leur base à défaut d'en avoir une.
+ */
+const CREATURE_ILLUSTRATIONS: Record<string, string> = {
+  assassin: '/bestiary/assassin.webp',
+  milicien: '/bestiary/milicien.webp',
+  loup: '/bestiary/loup.webp',
+  panthere: '/bestiary/panthere.webp',
+  basilic: '/bestiary/basilic.webp',
+  chimere: '/bestiary/chimere.webp',
+  'dragon-des-forets': '/bestiary/dragon-des-forets.webp',
+  'elementaire-eau-grand': '/bestiary/elementaire-eau-grand.webp',
+  geoselachis: '/bestiary/geoselachis.webp',
+  'gnoll-de-base': '/bestiary/gnoll-de-base.webp',
+  'gobelin-de-base': '/bestiary/gobelin-de-base.webp',
+  'golem-de-chair': '/bestiary/golem-de-chair.webp',
+  goule: '/bestiary/goule.webp',
+  griffon: '/bestiary/griffon.webp',
+  'hydre-cinq-tetes': '/bestiary/hydre-cinq-tetes.webp',
+  'kobold-de-base': '/bestiary/kobold-de-base.webp',
+  licorne: '/bestiary/licorne.webp',
+  momie: '/bestiary/momie.webp',
+  'ogre-de-base': '/bestiary/ogre-de-base.webp',
+  'orc-de-base': '/bestiary/orc-de-base.webp',
+  ourhible: '/bestiary/ourhible.webp',
+  'squelette-de-base': '/bestiary/squelette-de-base.webp',
+  skrambler: '/bestiary/skrambler.webp',
+  troll: '/bestiary/troll.webp',
+  vampire: '/bestiary/vampire.webp',
+  worg: '/bestiary/worg.webp',
+  'zombie-humain': '/bestiary/zombie-humain.webp',
+};
+
+/** Attache l'illustration propre de chaque créature, avec repli sur celle de sa base. */
+const withIllustrations = (list: Creature[]): Creature[] =>
+  list.map((c) => {
+    const illustration =
+      CREATURE_ILLUSTRATIONS[c.id] ??
+      (c.baseCreatureId ? CREATURE_ILLUSTRATIONS[c.baseCreatureId] : undefined);
+    return illustration ? { ...c, illustration } : c;
+  });
+
+export const creatures: Creature[] = withIllustrations([
+  ...humanoids,
+  ...animals,
+  ...fantasticCreatures,
+]);
 
 export const creatureById = new Map<string, Creature>(creatures.map((c) => [c.id, c]));

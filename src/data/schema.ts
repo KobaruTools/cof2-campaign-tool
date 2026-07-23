@@ -2721,5 +2721,13 @@ export interface Creature {
   baseCreatureId?: string;
   /** Renvoi verbatim aux capacités de la base (« Voir ci-dessus ») quand la variante ne les réimprime pas. */
   sharedAbilitiesNote?: string;
+  /**
+   * Chemin public de l'illustration détourée (die-cut, fond transparent) extraite du livre de base,
+   * ex. `/bestiary/loup.webp`. Affichée en FILIGRANE derrière le bloc de stats (semi-transparente,
+   * ancrée en haut à droite, rognée par le bloc — pur habillage). Renseignée seulement sur les
+   * créatures que le livre illustre ; une VARIANTE sans illustration propre retombe sur celle de sa
+   * base (`baseCreatureId`) côté rendu. Absente → aucun filigrane.
+   */
+  illustration?: string;
   sourcePage: SourcePage;
 }
