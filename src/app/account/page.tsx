@@ -199,7 +199,7 @@ export default function AccountPage() {
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <HomeBackground />
-      <AppHeader title="Réglages du compte" backHref="/" />
+      <AppHeader breadcrumbs={[{ label: 'Réglages du compte' }]} />
 
       <Container maxWidth="sm" sx={{ py: 4 }}>
         {!IS_CONFIGURED ? (

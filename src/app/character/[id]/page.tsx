@@ -214,7 +214,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // d'application collée, on révèle cette même ligne en sous-titre du header et le
   // bouton « Haut de page ». Sentinelle = la ligne d'identité elle-même ; `rootMargin`
   // négatif en haut ≈ hauteur de la barre collée, pour déclencher pile quand la ligne
-  // disparaît derrière elle (et non seulement en haut du viewport).
+  // disparaît derrière elle (et non seulement en haut du viewport). Depuis PER-239 la
+  // barre a DEUX étages (nav globale + sous-header du fil d'Ariane) : ≈ 104 px de haut,
+  // d'où la marge relevée pour déclencher pile quand la ligne passe sous le sous-header.
   const identityLineRef = useRef<HTMLDivElement>(null);
   const [scrolledPastHeader, setScrolledPastHeader] = useState(false);
   useEffect(() => {
@@ -222,7 +224,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     if (el == null) return;
     const observer = new IntersectionObserver(
       ([entry]) => setScrolledPastHeader(!entry.isIntersecting),
-      { rootMargin: '-72px 0px 0px 0px', threshold: 0 },
+      { rootMargin: '-104px 0px 0px 0px', threshold: 0 },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -342,17 +344,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const currentPlayer = character.playerId
     ? roster.find((p) => p.id === character.playerId)
     : undefined;
-  // Retour contextuel (PER-184) : la navigation vers une fiche passe surtout par
-  // la campagne. On y renvoie donc quand le perso y est rattaché, sinon vers
-  // l'accueil. Choix piloté par la DONNÉE (pas l'historique) : robuste sur lien
-  // direct / rechargement. Le libellé nomme la destination (infobulle + a11y).
-  const backTarget = character.campaignId
-    ? {
-        href: `/campaign/${character.campaignId}`,
-        label: `Retour à ${currentCampaign?.name ?? 'la campagne'}`,
-      }
-    : { href: '/', label: 'Retour à l’accueil' };
-
   // Destination du raccourci de recréation (perso mort rattaché à une campagne,
   // cf. bouton plus bas) : même campagne + même joueur pré-remplis. Calculée ici
   // en amont pour rendre le bouton en vraie ancre (Ctrl/⌘+Clic → nouvel onglet).
@@ -841,12 +832,21 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           (clignotement nom → titre de base). Réactif : suit l'édition du nom. */}
       <title>{`${character.name || 'Sans nom'} — Éditeur de personnage CO2`}</title>
       <AppHeader
-        title={character.name || 'Sans nom'}
-        // Au repos (en haut de page), le header affiche « Fiche de personnage » ; au
-        // défilement il cède la place au nom (fondu croisé), puis la ligne d'identité.
-        restingTitle="Fiche de personnage"
-        backHref={backTarget.href}
-        backLabel={backTarget.label}
+        // Fil d'Ariane : rattaché à une campagne → « {campagne} / {nom} » (le parent
+        // pointe vers la vue campagne) ; sinon le nom seul (page de premier niveau).
+        // Le nom (dernier maillon) est TOUJOURS visible : l'ancien fondu croisé
+        // « Fiche de personnage → nom » n'a plus lieu d'être (PER-239).
+        breadcrumbs={
+          character.campaignId
+            ? [
+                {
+                  label: currentCampaign?.name ?? 'la campagne',
+                  href: `/campaign/${character.campaignId}`,
+                },
+                { label: character.name || 'Sans nom' },
+              ]
+            : [{ label: character.name || 'Sans nom' }]
+        }
         // Teinte l'en-tête à la couleur du profil principal (dégradé, bordure basse
         // foncée, ombre portée) — repli neutre tant que le profil n'est pas défini.
         accentColor={characterClass ? classColor(characterClass.id) : undefined}

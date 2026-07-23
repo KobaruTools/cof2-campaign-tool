@@ -18,7 +18,7 @@ export default function BestiaryPage() {
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <title>Bestiaire — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader title="Bestiaire — Chroniques Oubliées Fantasy 2" backHref="/" backLabel="Retour aux personnages" />
+      <AppHeader breadcrumbs={[{ label: 'Bestiaire' }]} />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <BestiaryBrowser />

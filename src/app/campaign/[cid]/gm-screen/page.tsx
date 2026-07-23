@@ -28,7 +28,6 @@ import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
 import { GmScreenCard } from '@/components/campaign/GmScreenCard';
@@ -227,10 +226,10 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       <title>{`Écran de MJ — ${campaign.name} — Éditeur de personnage CO2`}</title>
       <HomeBackground />
       <AppHeader
-        title={`Écran de MJ — ${campaign.name}`}
-        backHref={`/campaign/${cid}`}
-        backLabel={`Retour à ${campaign.name}`}
-        action={<AccountMenu />}
+        breadcrumbs={[
+          { label: campaign.name, href: `/campaign/${cid}` },
+          { label: 'Écran de MJ' },
+        ]}
       />
 
       {/* Volontairement HORS du `Container` habituel du site : l'écran de MJ occupe

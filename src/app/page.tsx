@@ -20,7 +20,6 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadIcon from '@mui/icons-material/Upload';
@@ -40,7 +39,6 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
-import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import {
@@ -55,7 +53,6 @@ import { SortControl } from '@/components/character-list/SortControl';
 import { pickSortReducer, type SortKey } from '@/components/character-list/sort';
 import { usePersistedSort } from '@/components/character-list/usePersistedSort';
 import { HomeBackground } from '@/components/HomeBackground';
-import { QuestIcon } from '@/components/QuestIcon';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import { UploadCharacterDialog } from '@/components/home/UploadCharacterDialog';
@@ -270,46 +267,10 @@ export default function HomePage() {
     <>
       <title>Personnages — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader
-        title="Personnages — Chroniques Oubliées Fantasy 2"
-        action={
-          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            {/* Boutons condensés sur mobile (PER-228) : icône seule < sm (le libellé
-                mangeait la place du titre sur écran étroit), libellé complet dès sm. */}
-            <Button
-              color="inherit"
-              startIcon={<MenuBookIcon />}
-              component={Link}
-              href="/bestiary"
-              sx={{
-                minWidth: { xs: 0, sm: 64 },
-                px: { xs: 1, sm: 2 },
-                '& .MuiButton-startIcon': { mr: { xs: 0, sm: 0.5 } },
-              }}
-            >
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                Bestiaire
-              </Box>
-            </Button>
-            <Button
-              color="inherit"
-              startIcon={<QuestIcon />}
-              component={Link}
-              href="/campaigns"
-              sx={{
-                minWidth: { xs: 0, sm: 64 },
-                px: { xs: 1, sm: 2 },
-                '& .MuiButton-startIcon': { mr: { xs: 0, sm: 0.5 } },
-              }}
-            >
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                Campagnes
-              </Box>
-            </Button>
-            <AccountMenu />
-          </Stack>
-        }
-      />
+      {/* Accueil : pas de fil d'Ariane (le logo de marque couvre déjà l'accueil).
+          Les liens globaux Bestiaire/Campagnes + menu compte sont injectés en dur
+          par l'en-tête (PER-239). */}
+      <AppHeader />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>

@@ -121,7 +121,7 @@ export default function PrivacyPage() {
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <title>Politique de vie privée — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader title="Politique de vie privée" backHref="/" />
+      <AppHeader breadcrumbs={[{ label: 'Politique de vie privée' }]} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>

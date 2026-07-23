@@ -175,6 +175,21 @@ composant `src/components/QuestIcon.tsx` (rendu via `SvgIcon`, sans requête ré
 | --- | --- | --- |
 | Campagnes (quête) | `lorc/scroll-unfurled.svg` | Lorc |
 
+## Icône de marque (logo)
+
+L'icône « tête de dragon » servant de logo de marque de l'application (en-tête global,
+PER-239) provient de [game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteur : **Lorc** (https://game-icons.net).
+
+Le SVG a été nettoyé (fond retiré, couleur neutralisée) et embarqué en dur dans le
+composant `src/components/AppHeaderBrand.tsx` (rendu via `SvgIcon`, sans requête réseau).
+
+| Élément | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Logo (tête de dragon) | `lorc/dragon-head.svg` | Lorc |
+
 ## Icônes des types d'objet
 
 Les icônes des 7 types d'objet d'inventaire (arme, armure, bouclier, consommable,

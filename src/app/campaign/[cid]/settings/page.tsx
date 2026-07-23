@@ -34,7 +34,6 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
-import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { CampaignRulesFields } from '@/components/campaign/CampaignRulesFields';
 import { PlayersSection } from '@/components/campaign/PlayersSection';
@@ -205,9 +204,10 @@ export default function CampaignSettingsPage({ params }: { params: Promise<{ cid
       <title>Réglages de la campagne — Éditeur de personnage CO2</title>
       <HomeBackground />
       <AppHeader
-        title="Réglages de la campagne"
-        backHref={`/campaign/${cid}`}
-        action={<AccountMenu />}
+        breadcrumbs={[
+          { label: campaign?.name ?? 'Campagne', href: `/campaign/${cid}` },
+          { label: 'Réglages' },
+        ]}
       />
 
       <Container maxWidth="md" sx={{ py: 4 }}>

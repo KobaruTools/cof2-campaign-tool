@@ -311,10 +311,7 @@ export default function CreatePage() {
       {/* Même illustration de fond que l'accueil : la couverture scindée en deux
           moitiés encadrant le contenu (fixe, parallaxe + léger suivi de la souris). */}
       <HomeBackground />
-      <AppHeader
-        title="Nouveau personnage"
-        backHref={draft.campaignId ? `/campaign/${draft.campaignId}` : '/'}
-      />
+      <AppHeader breadcrumbs={[{ label: 'Nouveau personnage' }]} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         {compactStepper ? (

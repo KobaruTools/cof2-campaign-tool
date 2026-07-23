@@ -35,7 +35,6 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
-import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CampaignListSkeleton } from '@/components/campaign/CampaignListSkeleton';
@@ -102,7 +101,7 @@ export default function CampaignsPage() {
     <>
       <title>Campagnes — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader title="Campagnes" backHref="/" action={<AccountMenu />} />
+      <AppHeader breadcrumbs={[{ label: 'Campagnes' }]} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }}>

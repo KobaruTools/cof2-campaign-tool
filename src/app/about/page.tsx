@@ -39,7 +39,7 @@ export default function AboutPage() {
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <title>À propos — Éditeur de personnage CO2</title>
       <HomeBackground />
-      <AppHeader title="À propos" backHref="/" />
+      <AppHeader breadcrumbs={[{ label: 'À propos' }]} />
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>

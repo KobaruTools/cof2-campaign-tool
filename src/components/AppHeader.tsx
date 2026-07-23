@@ -2,55 +2,41 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
-import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
 import { alpha, darken } from '@mui/material/styles';
-import { AppTooltip } from '@/components/AppTooltip';
+import { AccountMenu } from '@/components/AccountMenu';
+import { AppBreadcrumbs, type Crumb } from '@/components/AppBreadcrumbs';
+import { AppHeaderBrand } from '@/components/AppHeaderBrand';
+import { QuestIcon } from '@/components/QuestIcon';
 
 interface AppHeaderProps {
-  /** Titre affiché (rendu en `<h1>`). */
-  title: ReactNode;
   /**
-   * Destination du bouton retour (flèche à gauche). Rend le bouton en vraie ancre
-   * `<a href>` : Ctrl/⌘+Clic et clic-molette ouvrent la destination dans un
-   * nouvel onglet. À privilégier sur `onBack` pour une simple navigation.
+   * Fil d'Ariane de la page (PER-239) : chaîne parent → page courante, SANS maillon
+   * « Accueil » (couvert par le logo). Le dernier maillon est rendu en `<h1>`. Absent
+   * ou vide = pas de fil (accueil) : la zone centrale reste vide.
    */
-  backHref?: string;
+  breadcrumbs?: Crumb[];
   /**
-   * Callback impératif du bouton retour, pour les cas sans URL fixe. Ignoré si
-   * `backHref` est fourni. Absent (avec `backHref` absent) = pas de bouton retour.
+   * Contenu optionnel SPÉCIFIQUE à la page, aligné à droite AVANT le cluster global
+   * « Campagnes + compte » (ex. bouton « Modifier / Terminer » de la fiche). Les liens
+   * globaux (Bestiaire, Campagnes, menu compte) sont désormais injectés en dur par
+   * l'en-tête et n'ont plus à être passés ici.
    */
-  onBack?: () => void;
-  /**
-   * Libellé de la destination du bouton retour (ex. « Retour à {campagne} »).
-   * Sert d'infobulle au survol et d'`aria-label`, quand le retour n'est pas
-   * toujours l'accueil (PER-184). Absent = pas d'infobulle, `aria-label` neutre.
-   */
-  backLabel?: string;
-  /** Contenu optionnel aligné à droite (boutons d'action). */
   action?: ReactNode;
   /**
-   * Titre affiché AU REPOS, tant que le sous-titre est masqué (ex. « Fiche de
-   * personnage »). Quand `subtitleVisible` passe à `true`, il cède la place à `title`
-   * par un fondu croisé (le titre « change » vers le nom), puis le `subtitle` s'anime.
-   * Absent = `title` est toujours affiché tel quel (accueil, wizard).
-   */
-  restingTitle?: ReactNode;
-  /**
-   * Sous-titre optionnel révélé à droite du titre (ex. « peuple · profil · niveau »
-   * de la fiche). Reste monté en permanence pour pouvoir s'animer dans les deux sens ;
-   * sa visibilité est pilotée par `subtitleVisible`.
+   * Sous-titre optionnel révélé à droite du fil d'Ariane (ex. « peuple · profil ·
+   * niveau » de la fiche). Reste monté en permanence pour pouvoir s'animer dans les
+   * deux sens ; sa visibilité est pilotée par `subtitleVisible`.
    */
   subtitle?: ReactNode;
   /**
-   * Pilote la bascule repos → révélé : fondu croisé du titre (`restingTitle` → `title`)
-   * puis, avec un léger décalage, apparition du `subtitle` (slide depuis le bas +
-   * fondu). Animation inverse au retour. Sans effet visible si ni `restingTitle` ni
-   * `subtitle` ne sont fournis.
+   * Pilote la révélation du `subtitle` au défilement : slide depuis le bas + fondu
+   * (animation inverse au retour). Sans effet visible si `subtitle` est absent.
    */
   subtitleVisible?: boolean;
   /**
@@ -63,26 +49,64 @@ interface AppHeaderProps {
 }
 
 /**
- * En-tête d'application partagé : barre collée en haut de page (`position: sticky`),
- * avec un bouton retour optionnel, un titre, et des actions optionnelles à droite.
- * Modèle unique — calqué sur l'en-tête de la fiche de personnage — pour l'accueil,
- * le wizard de création et la fiche. Reste visible au défilement.
+ * Style partagé des boutons de navigation globaux (Bestiaire, Campagnes) : libellé
+ * masqué sous `sm` (icône seule, pour ne pas manger la place du fil d'Ariane sur
+ * écran étroit), libellé complet dès `sm` (PER-228, repris de l'ancien en-tête).
+ */
+function HeaderNavButton({
+  href,
+  icon,
+  label,
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <Button
+      color="inherit"
+      startIcon={icon}
+      component={Link}
+      href={href}
+      sx={{
+        minWidth: { xs: 0, sm: 64 },
+        px: { xs: 1, sm: 2 },
+        flexShrink: 0,
+        '& .MuiButton-startIcon': { mr: { xs: 0, sm: 0.5 } },
+      }}
+    >
+      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+        {label}
+      </Box>
+    </Button>
+  );
+}
+
+/**
+ * Barre de navigation globale de l'application (PER-239). Collée en haut de page
+ * (`position: sticky`), en verre dépoli, présente sur toutes les pages avec trois
+ * zones constantes :
+ *   • gauche : logo de marque → accueil + lien Bestiaire ;
+ *   • centre : fil d'Ariane (`breadcrumbs`), page courante en `<h1>`, + sous-titre
+ *     optionnel révélé au défilement (ligne d'identité de la fiche) ;
+ *   • droite : `action` spécifique à la page, puis lien Campagnes + menu compte.
+ * Reste visible au défilement.
  */
 export function AppHeader({
-  title,
-  backHref,
-  onBack,
-  backLabel,
+  breadcrumbs,
   action,
   accentColor,
-  restingTitle,
   subtitle,
   subtitleVisible = false,
 }: AppHeaderProps) {
-  // Quand un titre de repos existe, le groupe « nom + sous-titre » n'est visible qu'une
-  // fois l'en-tête dépassé ; sinon (accueil, wizard) le titre est affiché en permanence.
-  const hasRestingTitle = restingTitle != null;
-  const revealed = !hasRestingTitle || subtitleVisible;
+  // Le sous-header n'apparaît que s'il y a quelque chose à y montrer : rien sur
+  // l'accueil (pas de fil, pas d'action), présent partout ailleurs. Le sous-titre de
+  // la fiche y est monté en permanence (pour pouvoir s'animer), donc sa seule présence
+  // suffit aussi à afficher le bandeau — de même que l'`action` de page (« Modifier »).
+  const hasSubHeader = (breadcrumbs?.length ?? 0) > 0 || Boolean(subtitle) || Boolean(action);
+  // Padding horizontal aligné sur les gouttières de la `Toolbar` MUI (16 px / 24 px),
+  // pour que le fil d'Ariane s'aligne verticalement avec le logo au-dessus.
+  const gutterPx = { xs: 2, sm: 3 };
   return (
     <AppBar
       position="sticky"
@@ -93,7 +117,9 @@ export function AppHeader({
       // Avec `accentColor` (couleur de profil sur la fiche) : dégradé teinté partant
       // de la DROITE (25 % d'opacité) vers la transparence à gauche, posé PAR-DESSUS
       // le verre dépoli ; bordure basse en variante plus foncée de la couleur ; et
-      // une légère ombre portée sous toute la longueur, elle aussi teintée.
+      // une légère ombre portée sous toute la longueur, elle aussi teintée. La barre
+      // est structurée en DEUX étages empilés (nav globale + sous-header du fil
+      // d'Ariane), tous deux collés ensemble en haut de page.
       sx={{
         bgcolor: 'rgba(20, 20, 23, 0.85)',
         backgroundImage: accentColor
@@ -107,131 +133,78 @@ export function AppHeader({
           : '1px solid rgba(255, 255, 255, 0.08)',
       }}
     >
+      {/* Étage 1 — nav globale PURE : logo de marque (→ accueil) + Bestiaire à gauche ;
+          Campagnes + menu compte à droite. Ni fil d'Ariane ni action de page ici : tous
+          deux vivent dans le sous-header en dessous. */}
       <Toolbar>
-        {(backHref || onBack) && (
-          <AppTooltip title={backLabel ?? ''}>
-            {/* `backHref` → ancre (Ctrl/⌘+Clic → nouvel onglet) ; sinon `onBack`
-                → bouton impératif. Une ancre ne prenant pas `onClick` de retour,
-                on rend deux variantes plutôt qu'un spread de props. */}
-            {backHref ? (
-              <IconButton
-                edge="start"
-                color="inherit"
-                component={Link}
-                href={backHref}
-                aria-label={backLabel ?? 'Retour'}
-                sx={{ mr: 1 }}
-              >
-                <ArrowBackIcon />
-              </IconButton>
-            ) : (
-              <IconButton
-                edge="start"
-                color="inherit"
-                onClick={onBack}
-                aria-label={backLabel ?? 'Retour'}
-                sx={{ mr: 1 }}
-              >
-                <ArrowBackIcon />
-              </IconButton>
-            )}
-          </AppTooltip>
-        )}
-        {/* Zone de titre. Le groupe occupe l'espace libre (`flexGrow: 1`) et sert
-            d'ancre (`relative`) au titre de repos superposé. Deux couches se croisent
-            en fondu selon `revealed` :
-              • couche « repos » (`restingTitle`, ex. « Fiche de personnage »), en
-                surimpression absolue — hors flux, elle n'influence pas la largeur ;
-              • groupe « révélé » (`title` = nom + `subtitle`), dans le flux normal :
-                c'est lui qui dimensionne et tronque (PER-228 : `noWrap` + `minWidth: 0`).
-            Le sous-titre entre APRÈS le nom (léger `transition-delay`) : slide depuis le
-            bas + fondu, sans aucun mouvement horizontal. `mr` réserve un filet d'espace
-            avant les actions. */}
+        <AppHeaderBrand />
+        <HeaderNavButton href="/bestiary" icon={<MenuBookIcon />} label="Bestiaire" />
+
+        {/* Espace flexible qui pousse le cluster droit tout à droite. */}
+        <Box sx={{ flexGrow: 1 }} />
+
+        <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0, alignItems: 'center' }}>
+          <HeaderNavButton href="/campaigns" icon={<QuestIcon />} label="Campagnes" />
+          <AccountMenu />
+        </Stack>
+      </Toolbar>
+
+      {/* Étage 2 — sous-header LÉGER : bande fine, fond très peu contrasté (voile clair
+          par-dessus le verre), séparée de l'étage 1 par un filet. Contient à GAUCHE le
+          fil d'Ariane (page courante en `<h1>`) et, sur la fiche, la ligne d'identité
+          révélée au défilement ; à DROITE l'`action` de page (« Modifier / Terminer »),
+          qui ne concerne que la fiche. Masqué sur l'accueil. */}
+      {hasSubHeader && (
         <Box
           sx={{
-            position: 'relative',
-            flexGrow: 1,
-            minWidth: 0,
             display: 'flex',
             alignItems: 'center',
-            mr: action ? 1 : 0,
+            minHeight: { xs: 40, sm: 44 },
+            px: gutterPx,
+            bgcolor: 'rgba(255, 255, 255, 0.03)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
           }}
         >
-          {hasRestingTitle && (
+          <AppBreadcrumbs crumbs={breadcrumbs ?? []} />
+          {subtitle && (
             <Box
-              aria-hidden={revealed}
+              aria-hidden={!subtitleVisible}
               sx={(theme) => ({
-                position: 'absolute',
-                inset: 0,
                 display: 'flex',
                 alignItems: 'center',
-                pointerEvents: revealed ? 'none' : 'auto',
-                opacity: revealed ? 0 : 1,
-                transform: revealed ? 'translateY(-0.4rem)' : 'translateY(0)',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+                color: 'text.secondary',
+                opacity: subtitleVisible ? 1 : 0,
+                transform: subtitleVisible ? 'translateY(0)' : 'translateY(0.5rem)',
+                ml: 1,
                 transition: theme.transitions.create(['opacity', 'transform'], {
                   duration: theme.transitions.duration.standard,
                   easing: theme.transitions.easing.easeOut,
                 }),
+                transitionDelay: subtitleVisible ? '120ms' : '0ms',
               })}
             >
-              <Typography variant="h6" noWrap sx={{ minWidth: 0 }}>
-                {restingTitle}
-              </Typography>
+              {/* Barre verticale entre le nom (dernier maillon) et la ligne d'identité —
+                  le « · » reste réservé aux séparations internes (peuple · profil · niveau). */}
+              <Box
+                component="span"
+                aria-hidden="true"
+                sx={{ alignSelf: 'center', width: '1px', height: 18, mr: 1, bgcolor: 'divider' }}
+              />
+              {subtitle}
             </Box>
           )}
-          <Box
-            aria-hidden={hasRestingTitle && !revealed}
-            sx={(theme) => ({
-              display: 'flex',
-              alignItems: 'center',
-              minWidth: 0,
-              flexGrow: 1,
-              opacity: revealed ? 1 : 0,
-              transform: revealed ? 'translateY(0)' : 'translateY(0.4rem)',
-              transition: theme.transitions.create(['opacity', 'transform'], {
-                duration: theme.transitions.duration.standard,
-                easing: theme.transitions.easing.easeOut,
-              }),
-            })}
-          >
-            <Typography variant="h6" component="h1" noWrap sx={{ minWidth: 0, flexShrink: 1 }}>
-              {title}
-            </Typography>
-            {/* Sous-titre : slide depuis le bas + fondu, décalé après le nom (le
-                `transition-delay` ne s'applique qu'à l'entrée ; à la sortie il repart
-                aussitôt). Barre verticale entre le nom et la ligne d'identité — le « · »
-                reste réservé aux séparations internes (peuple · profil · niveau). */}
-            {subtitle && (
-              <Box
-                aria-hidden={!subtitleVisible}
-                sx={(theme) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  flexShrink: 0,
-                  whiteSpace: 'nowrap',
-                  color: 'text.secondary',
-                  opacity: subtitleVisible ? 1 : 0,
-                  transform: subtitleVisible ? 'translateY(0)' : 'translateY(0.5rem)',
-                  ml: 1,
-                  transition: theme.transitions.create(['opacity', 'transform'], {
-                    duration: theme.transitions.duration.standard,
-                    easing: theme.transitions.easing.easeOut,
-                  }),
-                  transitionDelay: subtitleVisible ? '120ms' : '0ms',
-                })}
-              >
-                <Box
-                  component="span"
-                  aria-hidden="true"
-                  sx={{ alignSelf: 'center', width: '1px', height: 20, mr: 1, bgcolor: 'divider' }}
-                />
-                {subtitle}
-              </Box>
-            )}
-          </Box>
+
+          {/* Espace flexible : pousse l'`action` de page tout à droite du sous-header. */}
+          <Box sx={{ flexGrow: 1 }} />
+          {action && (
+            <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', ml: 1 }}>
+              {action}
+            </Box>
+          )}
         </Box>
-        {action && <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{action}</Box>}
-      </Toolbar>
+      )}
     </AppBar>
   );
 }

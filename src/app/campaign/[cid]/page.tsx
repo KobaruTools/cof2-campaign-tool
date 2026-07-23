@@ -43,7 +43,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { useToast } from '@/components/toast/ToastProvider';
-import { AccountMenu } from '@/components/AccountMenu';
 import { AppHeader } from '@/components/AppHeader';
 import {
   CharacterList,
@@ -270,9 +269,10 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
       <title>{`${campaign.name} — Éditeur de personnage CO2`}</title>
       <HomeBackground />
       <AppHeader
-        title={campaign.name}
-        backHref="/campaigns"
-        action={<AccountMenu />}
+        breadcrumbs={[
+          { label: 'Campagnes', href: '/campaigns' },
+          { label: campaign.name },
+        ]}
       />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
