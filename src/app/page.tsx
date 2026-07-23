@@ -20,6 +20,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadIcon from '@mui/icons-material/Upload';
@@ -273,8 +274,23 @@ export default function HomePage() {
         title="Personnages — Chroniques Oubliées Fantasy 2"
         action={
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            {/* Bouton condensé sur mobile (PER-228) : icône seule < sm (le libellé
+            {/* Boutons condensés sur mobile (PER-228) : icône seule < sm (le libellé
                 mangeait la place du titre sur écran étroit), libellé complet dès sm. */}
+            <Button
+              color="inherit"
+              startIcon={<MenuBookIcon />}
+              component={Link}
+              href="/bestiary"
+              sx={{
+                minWidth: { xs: 0, sm: 64 },
+                px: { xs: 1, sm: 2 },
+                '& .MuiButton-startIcon': { mr: { xs: 0, sm: 0.5 } },
+              }}
+            >
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Bestiaire
+              </Box>
+            </Button>
             <Button
               color="inherit"
               startIcon={<QuestIcon />}
