@@ -1852,22 +1852,40 @@ export const fighterFeatures: Feature[] = [
     text:
       'Au choix le guerrier gagne +1 en DEF ou il apprend à porter l’armure de plaque (DEF +6) et désormais, il peut utiliser toutes les capacités de guerrier avec cette armure*.\n' +
       '* Dans le cas d’un profil hybride, le personnage apprend à utiliser une armure d’une catégorie au-dessus de celles autorisées par son profil principal et il peut désormais utiliser toutes les capacités de ce profil avec cette armure. Par exemple, un barbare qui choisit cette capacité peut désormais entrer en rage en portant une chemise de mailles.',
-    // PER-66 : CHOIX entre deux bénéfices. (a) « +1 en DEF » → bonus PERMANENT plat à la DEF, porté par
-    // l'option (`statBonuses`, comme l'option DR de l'Éclaireur du rôdeur). (b) « apprend à porter
-    // l'armure de plaque (DEF +6) » → accès d'armure, dépendant de l'équipement porté → différé à la
-    // milestone Armures (PER-76), d'où le badge WIP. La note de bas de page (« * », profil hybride :
-    // relèvement d'un cran) reste verbatim, comme les déblocages d'armure du barbare/chevalier.
+    // PER-66/PER-236 : CHOIX entre deux bénéfices. (a) « +1 en DEF » → bonus PERMANENT plat à la DEF,
+    // porté par l'option (`statBonuses`, comme l'option DR de l'Éclaireur du rôdeur). (b) « apprend à
+    // porter l'armure de plaque (DEF +6) » → effet `armor-access` porté par l'OPTION (PER-236) et non
+    // par `Feature.effects` : il ne doit débloquer l'accès QUE si cette option est retenue (l'option
+    // « +1 DEF » n'octroie aucun accès). Il relève ainsi le plafond de port (PER-80/82) à l'armure de
+    // plaques (DEF +6) et l'armure d'usage des voies de GUERRIER (profil d'origine de la voie).
+    // La note de bas de page (« * », profil hybride : relèvement d'un cran des AUTRES voies de
+    // combattant) est modélisée par `hybridClassRaises`, comme Autorité naturelle du chevalier
+    // (noblesse-r5, p. 86) : barbare → chemise de mailles (DEF +4, l'exemple du livre — « entrer en
+    // rage en portant une chemise de mailles »), chevalier → plaque complète (DEF +7). Ces relèvements
+    // ne concernent que l'USAGE des capacités de ces voies (hors sorts) ; le plafond de PORT global
+    // suit `maxArmorId` (armure de plaques).
     choices: [
       {
         kind: 'option',
         prompt: 'Bénéfice de l’armure lourde',
         options: [
           { id: 'def-bonus', label: '+1 en DEF', shortLabel: '+1 DEF', statBonuses: [{ stat: 'def', value: 1 }] },
-          { id: 'plate-armor', label: 'Port de l’armure de plaque (DEF +6)', shortLabel: 'Plaque' },
+          {
+            id: 'plate-armor',
+            label: 'Port de l’armure de plaque (DEF +6)',
+            shortLabel: 'Plaque',
+            armorAccess: {
+              kind: 'armor-access',
+              maxArmorId: 'armure-de-plaques',
+              hybridClassRaises: [
+                { classId: 'barbare', maxArmorId: 'chemise-de-mailles' },
+                { classId: 'chevalier', maxArmorId: 'plaque-complete' },
+              ],
+            },
+          },
         ],
       },
     ],
-    wip: "Option « port de l'armure de plaque » (accès d'armure + usage des capacités en plaque, relèvement d'un cran pour les hybrides) — effet armor-access à poser sur l'option (comme barbare/chevalier) — suivi : PER-236.",
     sourcePage: 90,
   },
   {

@@ -1543,6 +1543,17 @@ export interface FeatureChoiceOption {
    */
   statBonuses?: StatBonus[];
   /**
+   * Accès d'armure amélioré octroyé UNIQUEMENT lorsque cette option est retenue (PER-236). Miroir,
+   * porté par l'OPTION, de l'effet `armor-access` habituellement posé inconditionnellement sur
+   * `Feature.effects` (barbare Tour de force, chevalier Autorité naturelle — PER-81). Sert au cas où
+   * un même choix oppose un bénéfice d'armure à un autre bénéfice sans rapport : ex. Guerrier « Armure
+   * lourde » (resistance-r3, p. 90) oppose « +1 en DEF » à « port de l'armure de plaque » ; seule la
+   * seconde option doit débloquer l'accès. Agrégé aux effets `armor-access` des capacités par
+   * `armorAccessEffects` (armorRestrictions.ts) — donc soumis au même relèvement de port (PER-80/82)
+   * et d'usage par voie d'origine, y compris `hybridClassRaises` (PER-86). Absent = aucun accès.
+   */
+  armorAccess?: ArmorAccessEffect;
+  /**
    * Caractéristique utilisée pour calculer la DEF À LA PLACE de l'AGI lorsque cette option
    * est retenue (PER-131). Ex. Peau de pierre (barbare, pagne-r2, p. 80) : option « CON pour
    * la DEF » → `defAbility: 'CON'`. Le plafond d'armure (« AGI maximale », p. 188) s'applique

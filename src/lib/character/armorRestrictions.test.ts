@@ -549,6 +549,104 @@ describe('PER-143 — Appel à une autre capacité : limites d’armure généra
   });
 });
 
+describe('PER-236 — Guerrier « Armure lourde » : accès plaque porté par l’OPTION retenue (resistance-r3, p. 90)', () => {
+  // Le choix de resistance-r3 oppose « +1 en DEF » (def-bonus) à « port de l'armure de plaque »
+  // (plate-armor). Seule l'option plate-armor porte un effet `armor-access` (armure de plaques
+  // DEF +6) : l'accès ne doit se débloquer QUE si elle est retenue.
+  const guerrier = (option: string | null, over: Partial<Character> = {}): Character =>
+    makeChar({
+      classId: 'guerrier',
+      featureIds: ['resistance-r3'],
+      featureChoices: option ? { 'resistance-r3': [option] } : {},
+      ...over,
+    });
+
+  describe('plafond de PORT (PER-80/82)', () => {
+    it('option « plaque » retenue : l’armure de plaques (DEF +6) est portable sans avertissement', () => {
+      const c = guerrier('plate-armor', { equipment: [wornArmor('armure-de-plaques')] });
+      expect(armorRestrictionViolations(c, ctx).some((v) => v.kind === 'armor-too-heavy')).toBe(false);
+    });
+
+    it('option « +1 DEF » retenue : l’armure de plaques dépasse le plafond du guerrier (cotte, DEF +5)', () => {
+      const c = guerrier('def-bonus', { equipment: [wornArmor('armure-de-plaques')] });
+      expect(armorRestrictionViolations(c, ctx).some((v) => v.kind === 'armor-too-heavy')).toBe(true);
+    });
+
+    it('aucun choix retenu : l’accès n’est pas débloqué (armure de plaques signalée)', () => {
+      const c = guerrier(null, { equipment: [wornArmor('armure-de-plaques')] });
+      expect(armorRestrictionViolations(c, ctx).some((v) => v.kind === 'armor-too-heavy')).toBe(true);
+    });
+
+    it('l’accès ne va pas au-delà de la plaque : la plaque complète (DEF +7) reste signalée', () => {
+      const c = guerrier('plate-armor', { equipment: [wornArmor('plaque-complete')] });
+      expect(armorRestrictionViolations(c, ctx).some((v) => v.kind === 'armor-too-heavy')).toBe(true);
+    });
+  });
+
+  describe('usage des capacités par voie d’origine (PER-86)', () => {
+    it('les voies de GUERRIER deviennent utilisables en armure de plaques (profil d’origine)', () => {
+      // combat-r1 (guerrier, plafond natif cotte DEF +5) est gêné en plaques (DEF +6) sans l'accès…
+      const sansAcces = makeChar({
+        classId: 'guerrier',
+        featureIds: ['resistance-r3', 'combat-r1'],
+        featureChoices: { 'resistance-r3': ['def-bonus'] },
+        equipment: [wornArmor('armure-de-plaques')],
+      });
+      expect(featureArmorRestrictionViolations(sansAcces, ctx).some((v) => v.featureId === 'combat-r1')).toBe(true);
+      // …et cesse de l'être dès que l'option « plaque » est retenue.
+      const avecAcces = makeChar({
+        classId: 'guerrier',
+        featureIds: ['resistance-r3', 'combat-r1'],
+        featureChoices: { 'resistance-r3': ['plate-armor'] },
+        equipment: [wornArmor('armure-de-plaques')],
+      });
+      expect(featureArmorRestrictionViolations(avecAcces, ctx).some((v) => v.featureId === 'combat-r1')).toBe(false);
+    });
+
+    it('relèvement hybride BARBARE : les voies de barbare passent à la chemise de mailles (exemple du livre)', () => {
+      // pourfendeur-r1 (barbare, plafond natif cuir renforcé DEF +3) sous une chemise de mailles (DEF +4).
+      const sansAcces = makeChar({
+        classId: 'barbare',
+        featureIds: ['resistance-r3', 'pourfendeur-r1'],
+        featureChoices: { 'resistance-r3': ['def-bonus'] },
+        equipment: [wornArmor('chemise-de-mailles')],
+      });
+      expect(featureArmorRestrictionViolations(sansAcces, ctx).some((v) => v.featureId === 'pourfendeur-r1')).toBe(true);
+      const avecAcces = makeChar({
+        classId: 'barbare',
+        featureIds: ['resistance-r3', 'pourfendeur-r1'],
+        featureChoices: { 'resistance-r3': ['plate-armor'] },
+        equipment: [wornArmor('chemise-de-mailles')],
+      });
+      expect(featureArmorRestrictionViolations(avecAcces, ctx).some((v) => v.featureId === 'pourfendeur-r1')).toBe(false);
+    });
+
+    it('relèvement hybride CHEVALIER : les voies de chevalier passent à la plaque complète', () => {
+      // cavalier-r1 (chevalier, plafond natif armure de plaques DEF +6) sous la plaque complète (DEF +7).
+      const sansAcces = makeChar({
+        classId: 'chevalier',
+        featureIds: ['resistance-r3', 'cavalier-r1'],
+        featureChoices: { 'resistance-r3': ['def-bonus'] },
+        equipment: [wornArmor('plaque-complete')],
+      });
+      expect(featureArmorRestrictionViolations(sansAcces, ctx).some((v) => v.featureId === 'cavalier-r1')).toBe(true);
+      const avecAcces = makeChar({
+        classId: 'chevalier',
+        featureIds: ['resistance-r3', 'cavalier-r1'],
+        featureChoices: { 'resistance-r3': ['plate-armor'] },
+        equipment: [wornArmor('plaque-complete')],
+      });
+      expect(featureArmorRestrictionViolations(avecAcces, ctx).some((v) => v.featureId === 'cavalier-r1')).toBe(false);
+    });
+  });
+
+  it('option « +1 DEF » : le bonus de DEF plat reste appliqué (non-régression PER-66)', () => {
+    const c = guerrier('def-bonus');
+    const mods = modsFromFeatures(activeFeatureIdsForMods(c), effectContext(c));
+    expect(mods.def).toBe(1);
+  });
+});
+
 describe('isArmorWorn — une armure est-elle portée ? (PER-132)', () => {
   it('faux quand aucune ligne d’équipement n’est portée en slot armure', () => {
     expect(isArmorWorn([])).toBe(false);

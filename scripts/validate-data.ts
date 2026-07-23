@@ -491,6 +491,24 @@ for (const c of features) {
       // Caractéristique de DEF substituée par une option (PER-131, ex. Peau de pierre : CON).
       if (opt.defAbility !== undefined && !validAbilities.has(opt.defAbility))
         err(`[capacite ${c.id}] option ${opt.id}: defAbility carac inconnue : ${opt.defAbility}`);
+      // Accès d'armure débloqué par une option (PER-236, ex. Guerrier « Armure lourde » → plaque) :
+      // mêmes contraintes que l'effet `armor-access` de capacité (armure + relèvements hybrides valides).
+      const aa = opt.armorAccess;
+      if (aa) {
+        const armor = aa.maxArmorId ? equipmentById.get(aa.maxArmorId) : undefined;
+        if (!armor) err(`[capacite ${c.id}] option ${opt.id}: armorAccess maxArmorId inconnu : ${aa.maxArmorId}`);
+        else if (armor.category !== 'armor')
+          err(`[capacite ${c.id}] option ${opt.id}: armorAccess maxArmorId n'est pas une armure : ${aa.maxArmorId}`);
+        for (const hr of aa.hybridClassRaises ?? []) {
+          if (!classById.has(hr.classId))
+            err(`[capacite ${c.id}] option ${opt.id}: armorAccess hybridClassRaises classId inconnu : ${hr.classId}`);
+          const raiseArmor = hr.maxArmorId ? equipmentById.get(hr.maxArmorId) : undefined;
+          if (!raiseArmor)
+            err(`[capacite ${c.id}] option ${opt.id}: armorAccess hybridClassRaises maxArmorId inconnu : ${hr.maxArmorId}`);
+          else if (raiseArmor.category !== 'armor')
+            err(`[capacite ${c.id}] option ${opt.id}: armorAccess hybridClassRaises maxArmorId n'est pas une armure : ${hr.maxArmorId}`);
+        }
+      }
     }
   }
   // Exception d'armure de la voie A sur un emprunt (PER-143, `borrowArmorMax`) : doit désigner une

@@ -19,12 +19,25 @@
  * il ne retire rien de force (la fiche reste permissive). Cf. `checkCompliance`.
  */
 import { equipmentById, featureById } from '@/data';
-import type { Armor, CharacterClass, Shield, ShieldAccess, UsageCounter } from '@/data/schema';
+import type {
+  Armor,
+  ArmorAccessEffect,
+  CharacterClass,
+  Feature,
+  Shield,
+  ShieldAccess,
+  UsageCounter,
+} from '@/data/schema';
 import type { RulesContext } from '@/lib/engine';
 import type { Character, EquipmentLine } from './types';
 import { isCustomItem } from './types';
 import { masteredClassIds } from './mastery';
-import { borrowedFeatureChoices, featureChoiceDefs, featureGrantsDefBonus } from './choices';
+import {
+  borrowedFeatureChoices,
+  featureChoiceDefs,
+  featureGrantsDefBonus,
+  getOptionSelections,
+} from './choices';
 
 /**
  * PER-153 — capacité de rang 3 de la voie de l'humain (« Touche-à-tout », p. 57) qui fait EMPRUNTER
@@ -202,24 +215,51 @@ function shieldRequiredRank(shieldDef: number): number {
 }
 
 /**
- * DEF plafond débloquée par les capacités ACQUISES portant un effet `armor-access`
- * (PER-81) : certaines capacités relèvent l'armure maximale au-delà du plafond du
- * profil (barbare Tour de force → chemise de mailles, Briseur d'os → cotte de mailles ;
- * chevalier Autorité naturelle → plaque complète, p. 178/86). On retient la MEILLEURE
- * armure débloquée (`maxArmorId` du catalogue) ; 0 si aucune capacité de ce genre n'est
- * acquise. La possession de la capacité suffit (on ne double pas la vérification de
- * maîtrise : investir dans la voie porteuse la garantit déjà).
+ * Effets `armor-access` EFFECTIFS d'un personnage, avec leur capacité porteuse. Deux origines,
+ * traitées de façon UNIFORME par tous les lecteurs (plafond de port PER-80/82, relèvement d'usage
+ * par voie d'origine PER-86) :
+ *  - effets posés INCONDITIONNELLEMENT sur `Feature.effects` (barbare Tour de force, chevalier
+ *    Autorité naturelle — PER-81) ;
+ *  - effets portés par une OPTION de choix RETENUE (`FeatureChoiceOption.armorAccess`, PER-236) :
+ *    l'accès n'est débloqué que si le joueur a effectivement retenu l'option (ex. Guerrier « Armure
+ *    lourde », resistance-r3 : l'option « plaque » débloque l'accès, l'option « +1 DEF » non).
+ * La possession/la sélection suffit (on ne double pas la vérification de maîtrise : investir dans la
+ * voie porteuse la garantit déjà). Ordre : effets de capacité puis effets d'option.
+ */
+function* armorAccessEffects(
+  character: Character,
+): Iterable<{ feature: Feature; effect: ArmorAccessEffect }> {
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    for (const effect of feature.effects ?? []) {
+      if (effect.kind === 'armor-access') yield { feature, effect };
+    }
+    // Accès d'armure débloqué par une OPTION de choix retenue (PER-236).
+    const choices = feature.choices ?? [];
+    for (let i = 0; i < choices.length; i++) {
+      const choice = choices[i];
+      if (choice.kind !== 'option') continue;
+      for (const optId of getOptionSelections(character, id, i)) {
+        const option = choice.options.find((o) => o.id === optId);
+        if (option?.armorAccess) yield { feature, effect: option.armorAccess };
+      }
+    }
+  }
+}
+
+/**
+ * DEF plafond débloquée par les effets `armor-access` EFFECTIFS (PER-81/236) : certaines capacités
+ * (ou options retenues) relèvent l'armure maximale au-delà du plafond du profil (barbare Tour de
+ * force → chemise de mailles, Briseur d'os → cotte de mailles ; chevalier Autorité naturelle →
+ * plaque complète ; guerrier Armure lourde option « plaque » → armure de plaques, p. 178/86/90). On
+ * retient la MEILLEURE armure débloquée (`maxArmorId` du catalogue) ; 0 si aucun accès n'est actif.
  */
 function armorAccessDef(character: Character): number {
   let def = 0;
-  for (const id of character.featureIds) {
-    const feature = featureById.get(id);
-    if (!feature?.effects) continue;
-    for (const effect of feature.effects) {
-      if (effect.kind !== 'armor-access') continue;
-      const armor = equipmentById.get(effect.maxArmorId);
-      if (armor?.category === 'armor') def = Math.max(def, armor.def);
-    }
+  for (const { effect } of armorAccessEffects(character)) {
+    const armor = equipmentById.get(effect.maxArmorId);
+    if (armor?.category === 'armor') def = Math.max(def, armor.def);
   }
   return def;
 }
@@ -257,20 +297,15 @@ function usageArmorAccessByClass(character: Character, ctx: RulesContext): Map<s
     const prev = byClass.get(classId);
     if (!prev || ceiling.def > prev.def) byClass.set(classId, ceiling);
   };
-  for (const id of character.featureIds) {
-    const feature = featureById.get(id);
-    if (!feature?.effects) continue;
+  for (const { feature, effect } of armorAccessEffects(character)) {
     const path = ctx.pathById.get(feature.pathId);
-    for (const effect of feature.effects) {
-      if (effect.kind !== 'armor-access') continue;
-      // Relèvement du ou des profils d'origine de la capacité porteuse.
-      if (path?.type === 'class') {
-        const ceiling = armorCeilingOf(effect.maxArmorId);
-        for (const classId of path.classIds) raise(classId, ceiling);
-      }
-      // Relèvements CROISÉS explicites (hybride de combattant, p. 86).
-      for (const hr of effect.hybridClassRaises ?? []) raise(hr.classId, armorCeilingOf(hr.maxArmorId));
+    // Relèvement du ou des profils d'origine de la capacité porteuse.
+    if (path?.type === 'class') {
+      const ceiling = armorCeilingOf(effect.maxArmorId);
+      for (const classId of path.classIds) raise(classId, ceiling);
     }
+    // Relèvements CROISÉS explicites (hybride de combattant, p. 86/90).
+    for (const hr of effect.hybridClassRaises ?? []) raise(hr.classId, armorCeilingOf(hr.maxArmorId));
   }
   return byClass;
 }
