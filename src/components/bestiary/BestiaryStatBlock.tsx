@@ -9,6 +9,7 @@
  * spéciales verbatim. Toute référence de page passe par `SourceRef`/`PageRefText`.
  */
 import type { ReactNode } from 'react';
+import HistoryEduOutlinedIcon from '@mui/icons-material/HistoryEduOutlined';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
@@ -23,6 +24,7 @@ import {
   creatureNcLabel,
 } from '@/lib/ui/creature';
 import type { DerivedStatId } from '@/lib/ui/derivedStats';
+import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { AbilityValueBadge } from '@/components/AbilityValueBadge';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
@@ -391,35 +393,26 @@ export function BestiaryStatBlock({ creature }: BestiaryStatBlockProps) {
         </Box>
       )}
 
-      {/* Notes de fin de bloc : la description (« note » en italique gris clair) puis le
-          renvoi « Voir ci-dessus » des variantes — séparées du reste par un séparateur,
-          affichées tout en bas (retour propriétaire). */}
+      {/* Notes de fin de bloc : la description (lore) puis le renvoi « Voir ci-dessus »
+          des variantes — affichées tout en bas, dans un encadré façon « Alert » info
+          (bleu clair désaturé, verre dépoli) avec une icône de plume/parchemin à
+          gauche (retour propriétaire). */}
       {(creature.description || creature.sharedAbilitiesNote) && (
-        <>
-          <Divider sx={{ my: BLOCK_GAP }} />
+        <AppAlert severity="info" icon={<HistoryEduOutlinedIcon />} sx={{ mt: BLOCK_GAP }}>
           {creature.description && (
-            <Typography
-              variant="body2"
-              sx={{
-                whiteSpace: 'pre-line',
-                lineHeight: 1.55,
-                fontStyle: 'italic',
-                color: 'rgba(255, 255, 255, 0.72)',
-              }}
-            >
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.55, fontStyle: 'italic' }}>
               <PageRefText>{creature.description}</PageRefText>
             </Typography>
           )}
           {creature.sharedAbilitiesNote && (
             <Typography
               variant="body2"
-              color="text.secondary"
               sx={{ fontStyle: 'italic', mt: creature.description ? 0.75 : 0 }}
             >
               <PageRefText>{creature.sharedAbilitiesNote}</PageRefText>
             </Typography>
           )}
-        </>
+        </AppAlert>
       )}
     </Box>
   );
