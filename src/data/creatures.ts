@@ -47,6 +47,7 @@ const humanoids: Creature[] = [
       {
         name: 'Attaque mortelle (A)',
         text: "Une attaque qui doit être exécutée dans le dos ou par surprise. L'assassin obtient un dé bonus en attaque et ajoute +4d6 aux DM de sa première attaque (il fait ensuite sa seconde attaque dans des conditions normales).",
+        richText: "Une attaque qui doit être exécutée dans le dos ou par surprise. L'assassin obtient un dé bonus en attaque et ajoute +{4d6} aux DM de sa première attaque (il fait ensuite sa seconde attaque dans des conditions normales).",
       },
       {
         name: 'Assassinat (L)',
@@ -135,6 +136,7 @@ const humanoids: Creature[] = [
       {
         name: 'Attaque en traître (L)',
         text: "Si la créature attaque en même temps qu'un allié ou par surprise, elle obtient +1d4 DM.",
+        richText: "Si la créature attaque en même temps qu'un allié ou par surprise, elle obtient +{1d4} DM.",
       },
       {
         name: 'Chef',
@@ -206,6 +208,7 @@ const humanoids: Creature[] = [
       {
         name: 'Imparable',
         text: "Si la créature obtient 15-20 au d20 d'un test d'attaque (17 à 20 si la créature possède 2 attaques), elle inflige +2d4 DM supplémentaire et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire). Les dés bonus ne sont pas multipliés en cas de critique.",
+        richText: "Si la créature obtient 15-20 au d20 d'un test d'attaque (17 à 20 si la créature possède 2 attaques), elle inflige +{2d4} DM supplémentaire et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire). Les dés bonus ne sont pas multipliés en cas de critique.",
       },
       {
         name: 'Sergent (G)',
@@ -292,6 +295,7 @@ const humanoids: Creature[] = [
       {
         name: 'Injonction mortelle (L)',
         text: "Une cible située à une distance maximum de 30 m doit réussir un test de CON difficulté 15 ou tomber à 0 PV (et mourir immédiatement s'il s'agit d'un PNJ). En cas de succès, la cible subit tout de même 2d6+5 DM. Ce pouvoir ne peut prendre une même créature pour cible qu'une seule fois par combat.",
+        richText: "Une cible située à une distance maximum de 30 m doit réussir un test de CON difficulté 15 ou tomber à 0 PV (et mourir immédiatement s'il s'agit d'un PNJ). En cas de succès, la cible subit tout de même {2d6}+5 DM. Ce pouvoir ne peut prendre une même créature pour cible qu'une seule fois par combat.",
       },
       {
         name: "Pas de l'ombre (L)",
@@ -300,6 +304,7 @@ const humanoids: Creature[] = [
       {
         name: 'Vampirisation (L)',
         text: "Le sorcier doit réussir un test opposé d'attaque magique contre une cible vivante à une distance maximum de 30 m. En cas de réussite, la cible subit 2d8 DM et le sorcier régénère autant de PV que de DM infligés. De plus, à chaque fois qu'une créature meurt à moins de 20 mètres de lui, il siphonne son énergie et gagne un nombre de PV égal au double du NC de la créature qui vient de mourir.",
+        richText: "Le sorcier doit réussir un test opposé d'attaque magique contre une cible vivante à une distance maximum de 30 m. En cas de réussite, la cible subit {2d8} DM et le sorcier régénère autant de PV que de DM infligés. De plus, à chaque fois qu'une créature meurt à moins de 20 mètres de lui, il siphonne son énergie et gagne un nombre de PV égal au double du NC de la créature qui vient de mourir.",
       },
     ],
     sourcePage: 265,
@@ -329,10 +334,12 @@ const animals: Creature[] = [
       {
         name: 'Vol rapide',
         text: "La créature obtient une action de mouvement supplémentaire par round lorsqu'elle est en vol. Au premier round de combat, la créature obtient un dé bonus en attaque et +1d4 aux DM si elle est en vol et attaque une créature au sol.",
+        richText: "La créature obtient une action de mouvement supplémentaire par round lorsqu'elle est en vol. Au premier round de combat, la créature obtient un dé bonus en attaque et +{1d4} aux DM si elle est en vol et attaque une créature au sol.",
       },
       {
         name: 'Emporter dans les airs',
         text: "La créature peut emporter dans les airs une créature de taille minuscule ou moins. En cas de chute, les créatures de taille minuscule subissent seulement 1 DM par dé de chute (au lieu de 1d4°).",
+        richText: "La créature peut emporter dans les airs une créature de taille minuscule ou moins. En cas de chute, les créatures de taille minuscule subissent seulement 1 DM par dé de chute (au lieu de {1d4}).",
       },
     ],
     sourcePage: 266,
@@ -577,6 +584,7 @@ const animals: Creature[] = [
       {
         name: 'Embuscade',
         text: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 19 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d4 aux DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
+        richText: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 19 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +{1d4} aux DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
       },
       {
         name: 'Dévorer',
@@ -648,6 +656,7 @@ const animals: Creature[] = [
       {
         name: 'Chef de meute',
         text: "Le chef de meute donne un bonus de +2 en initiative, en attaque et aux DM, à tous les loups de sa meute à portée de vue. De plus, s'il attaque en même temps qu'un autre loup, il réalise une attaque avec un dé bonus et +2d4 DM.",
+        richText: "Le chef de meute donne un bonus de +2 en initiative, en attaque et aux DM, à tous les loups de sa meute à portée de vue. De plus, s'il attaque en même temps qu'un autre loup, il réalise une attaque avec un dé bonus et +{2d4} DM.",
       },
     ],
     sourcePage: 270,
@@ -690,6 +699,7 @@ const animals: Creature[] = [
       {
         name: 'Enragé',
         text: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et ses DM de +1d4. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
+        richText: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et ses DM de +{1d4}. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
       },
     ],
     sourcePage: 271,
@@ -720,6 +730,7 @@ const animals: Creature[] = [
       {
         name: 'Enragé',
         text: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et ses DM d'attaque de +1d4. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
+        richText: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et ses DM d'attaque de +{1d4}. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
       },
     ],
     sourcePage: 271,
@@ -742,6 +753,7 @@ const animals: Creature[] = [
       {
         name: 'Embuscade',
         text: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 19 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d4 DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
+        richText: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 19 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +{1d4} DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
       },
       {
         name: 'Dévorer',
@@ -795,6 +807,7 @@ const animals: Creature[] = [
       {
         name: 'Enragé',
         text: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et ses DM de +1d4. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
+        richText: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et ses DM de +{1d4}. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
       },
     ],
     sourcePage: 273,
@@ -825,6 +838,7 @@ const animals: Creature[] = [
       {
         name: 'Enragé',
         text: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et ses DM de +1d4. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
+        richText: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et ses DM de +{1d4}. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
       },
     ],
     sourcePage: 273,
@@ -847,10 +861,12 @@ const animals: Creature[] = [
       {
         name: 'Embuscade',
         text: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 15 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d4 DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
+        richText: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 15 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +{1d4} DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
       },
       {
         name: 'Étreinte',
         text: "Chaque fois que le serpent réussit une attaque, la cible doit réussir un test de FOR (ou d'AGI au choix) difficulté 10. En cas d'échec, le serpent s'enroule autour d'elle et commence à l'étouffer, infligeant automatiquement 1d4 DM supplémentaires par round. La victime est immobilisée. Elle peut tenter de se libérer au prix d'une action de mouvement à son tour, en réussissant un test de FOR difficulté 14.",
+        richText: "Chaque fois que le serpent réussit une attaque, la cible doit réussir un test de FOR (ou d'AGI au choix) difficulté 10. En cas d'échec, le serpent s'enroule autour d'elle et commence à l'étouffer, infligeant automatiquement {1d4} DM supplémentaires par round. La victime est immobilisée. Elle peut tenter de se libérer au prix d'une action de mouvement à son tour, en réussissant un test de FOR difficulté 14.",
       },
     ],
     sourcePage: 274,
@@ -876,10 +892,12 @@ const animals: Creature[] = [
       {
         name: 'Venin',
         text: "La victime d'une morsure de serpent venimeux doit faire un test de CON difficulté 15 à chaque morsure. En cas d'échec la victime subit 1 DM supplémentaire par round pendant 1d6 rounds. De plus, la victime est affaiblie pour une durée similaire exprimée en heures. Chaque nouvelle morsure augmente la durée (mais pas les DM par round).",
+        richText: "La victime d'une morsure de serpent venimeux doit faire un test de CON difficulté 15 à chaque morsure. En cas d'échec la victime subit 1 DM supplémentaire par round pendant {1d6} rounds. De plus, la victime est affaiblie pour une durée similaire exprimée en heures. Chaque nouvelle morsure augmente la durée (mais pas les DM par round).",
       },
       {
         name: 'Crachat (A)',
         text: "Certains serpents crachent leur venin dans les yeux de leur adversaire pour l'aveugler. La victime doit réussir un test d'AGI difficulté 12 ou être aveuglée pour 1d6 rounds.",
+        richText: "Certains serpents crachent leur venin dans les yeux de leur adversaire pour l'aveugler. La victime doit réussir un test d'AGI difficulté 12 ou être aveuglée pour {1d6} rounds.",
       },
     ],
     sourcePage: 274,
@@ -909,6 +927,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Poison mortel',
         text: "Le poison inflige 2d6 DM supplémentaires à la victime à chaque attaque. Si la victime réussit un test de CON de la difficulté indiquée, elle subit seulement la moitié des DM.",
+        richText: "Le poison inflige {2d6} DM supplémentaires à la victime à chaque attaque. Si la victime réussit un test de CON de la difficulté indiquée, elle subit seulement la moitié des DM.",
       },
       {
         name: 'Vermine',
@@ -921,6 +940,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Araignée chasseuse',
         text: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 19 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d4 DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
+        richText: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 19 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +{1d4} DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
       },
       {
         name: 'Toile (L)',
@@ -980,6 +1000,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Poison',
         text: "La victime subit 1d6 DM de poison et elle doit faire un test de CON difficulté 16. En cas d'échec, elle subit 1d6 DM supplémentaires par round pendant 5 rounds.",
+        richText: "La victime subit {1d6} DM de poison et elle doit faire un test de CON difficulté 16. En cas d'échec, elle subit {1d6} DM supplémentaires par round pendant 5 rounds.",
       },
       {
         name: 'Riposte sournoise',
@@ -988,6 +1009,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Vol rapide',
         text: "La créature obtient une action de mouvement supplémentaire par round lorsqu'elle est en vol. Au premier round de combat, la créature obtient un dé bonus en attaque et +1d6 aux DM si elle est en vol et attaque une créature au sol.",
+        richText: "La créature obtient une action de mouvement supplémentaire par round lorsqu'elle est en vol. Au premier round de combat, la créature obtient un dé bonus en attaque et +{1d6} aux DM si elle est en vol et attaque une créature au sol.",
       },
     ],
     sourcePage: 276,
@@ -1008,6 +1030,7 @@ const fantasticCreatures: Creature[] = [
         // propriétaire, 2026-07-23) — CO2 n'a pas de caractéristique DEX.
         name: 'Souffle (L)',
         text: "Le souffle est une attaque de zone affectant toutes les créatures dans un cône de 10 m de long sur 10 m de large. L'attaque inflige automatiquement (pas de test d'attaque) 6d6+9 DM. Les DM sont divisés par deux si la victime réussit un test d'AGI difficulté 15. La créature doit attendre 2d4 rounds avant d'utiliser à nouveau son souffle après chaque utilisation.",
+        richText: "Le souffle est une attaque de zone affectant toutes les créatures dans un cône de 10 m de long sur 10 m de large. L'attaque inflige automatiquement (pas de test d'attaque) {6d6}+9 DM. Les DM sont divisés par deux si la victime réussit un test d'AGI difficulté 15. La créature doit attendre {2d4} rounds avant d'utiliser à nouveau son souffle après chaque utilisation.",
       },
     ],
     sourcePage: 277,
@@ -1041,6 +1064,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Invisibilité (A)*',
         text: "Le démon se rend invisible pendant 1d4 min. Une fois invisible, personne ne peut plus détecter sa présence ou lui porter d'attaque directe. S'il attaque, il redevient visible.",
+        richText: "Le démon se rend invisible pendant {1d4} min. Une fois invisible, personne ne peut plus détecter sa présence ou lui porter d'attaque directe. S'il attaque, il redevient visible.",
       },
       { name: 'Vol', text: "Un démonet peut se déplacer en vol de 10 m par action de mouvement." },
       {
@@ -1097,6 +1121,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Emporter dans les airs',
         text: "Sur un résultat de 17 à 20 au test d'attaque, le dragon peut emporter dans les airs une victime de taille inférieure à la sienne au prix d'une action de mouvement. Au premier round, si la victime se libère (test de FOR difficulté 18), elle subit, 4d4° DM de chute. Au round suivant, si la créature décide de prendre de l'altitude, les DM passent à 7d4° et enfin 10d4° aux rounds suivants. Le dé évolutif des DM de chute est indexé sur le niveau de la victime, et non sur celui de la créature.",
+        richText: "Sur un résultat de 17 à 20 au test d'attaque, le dragon peut emporter dans les airs une victime de taille inférieure à la sienne au prix d'une action de mouvement. Au premier round, si la victime se libère (test de FOR difficulté 18), elle subit, {4d4} DM de chute. Au round suivant, si la créature décide de prendre de l'altitude, les DM passent à {7d4} et enfin {10d4} aux rounds suivants. Le dé évolutif des DM de chute est indexé sur le niveau de la victime, et non sur celui de la créature.",
       },
       {
         name: 'Immunités',
@@ -1105,14 +1130,17 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Inspirer la terreur',
         text: "Lorsque le dragon attaque pour la première fois, toutes les créatures à moins de 30 m doivent réussir un test d'attaque magique contre 25 ou être submergées par la peur et subir l'état affaibli pendant 1d4 rounds. Si le test est raté avec une marge de 10 plus, la victime doit fuir aussi loin que possible pendant la même durée.",
+        richText: "Lorsque le dragon attaque pour la première fois, toutes les créatures à moins de 30 m doivent réussir un test d'attaque magique contre 25 ou être submergées par la peur et subir l'état affaibli pendant {1d4} rounds. Si le test est raté avec une marge de 10 plus, la victime doit fuir aussi loin que possible pendant la même durée.",
       },
       {
         name: 'Souffle (L)',
         text: "Le souffle est un nuage de gaz empoisonné affectant toutes les créatures dans un cône 15 m × 15 m. Retenir sa respiration est inutile, le poison fonctionne par simple contact. L'attaque inflige automatiquement (pas de test d'attaque) 6d6+18 DM de poison. Les DM sont divisés par deux si la victime réussit un test d'AGI difficulté 15. La créature doit attendre 1d4 rounds avant d'utiliser à nouveau son souffle après chaque utilisation.",
+        richText: "Le souffle est un nuage de gaz empoisonné affectant toutes les créatures dans un cône 15 m × 15 m. Retenir sa respiration est inutile, le poison fonctionne par simple contact. L'attaque inflige automatiquement (pas de test d'attaque) {6d6}+18 DM de poison. Les DM sont divisés par deux si la victime réussit un test d'AGI difficulté 15. La créature doit attendre {1d4} rounds avant d'utiliser à nouveau son souffle après chaque utilisation.",
       },
       {
         name: 'Vol rapide',
         text: "La créature obtient une action de mouvement supplémentaire par round lorsqu'elle est en vol. Au premier round de combat, la créature obtient un dé bonus en attaque et +1d8 DM si elle est en vol et attaque une créature au sol.",
+        richText: "La créature obtient une action de mouvement supplémentaire par round lorsqu'elle est en vol. Au premier round de combat, la créature obtient un dé bonus en attaque et +{1d8} DM si elle est en vol et attaque une créature au sol.",
       },
     ],
     sourcePage: 278,
@@ -1205,6 +1233,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Embuscade',
         text: "Au premier round de combat, si le geoselachis peut se dissimuler sous terre, la cible doit faire un test de PER difficulté 15 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d6 DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
+        richText: "Au premier round de combat, si le geoselachis peut se dissimuler sous terre, la cible doit faire un test de PER difficulté 15 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +{1d6} DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
       },
       {
         name: 'Encorner',
@@ -1411,6 +1440,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Attaque magique (A)',
         text: "La créature possède un pouvoir magique qui inflige 2d6 DM sur un test d'attaque magique réussi (portée 30 m) sur une cible unique.",
+        richText: "La créature possède un pouvoir magique qui inflige {2d6} DM sur un test d'attaque magique réussi (portée 30 m) sur une cible unique.",
       },
     ],
     sourcePage: 284,
@@ -1443,6 +1473,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Enragé',
         text: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle augmente de +3 sa valeur d'attaque au contact et ses DM de +1d6. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
+        richText: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle augmente de +3 sa valeur d'attaque au contact et ses DM de +{1d6}. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
       },
       {
         name: 'Résistance',
@@ -1472,11 +1503,13 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Paralysie',
         text: "Une créature blessée par la morsure d'une goule doit réussir un test de CON difficulté 10 ou être paralysée pendant 1d6 rounds.",
+        richText: "Une créature blessée par la morsure d'une goule doit réussir un test de CON difficulté 10 ou être paralysée pendant {1d6} rounds.",
       },
       { name: 'Devenir une goule', text: 'Une créature tuée par une goule en devient une à son tour au prochain crépuscule.' },
       {
         name: 'Fièvre des goules',
         text: "À la fin du combat, si le personnage a été blessé au moins une fois par la morsure d'une goule, il doit réussir un test de CON difficulté 15 ou contracter la maladie. Chaque jour, il subit 1d4° DM retranchés directement à sa valeur de PV maximale (il ne peut plus dépasser cette nouvelle valeur) et doit faire un nouveau test de CON difficulté 15 pour vaincre la maladie. Lorsqu'il arrive à 0 PV, il meurt et se transforme en goule. S'il guérit, les PV perdus peuvent être récupérés normalement. Un sort de Délivrance (rang 3 de la voie de la spiritualité) peut mettre fin à la fièvre des goules.",
+        richText: "À la fin du combat, si le personnage a été blessé au moins une fois par la morsure d'une goule, il doit réussir un test de CON difficulté 15 ou contracter la maladie. Chaque jour, il subit {1d4} DM retranchés directement à sa valeur de PV maximale (il ne peut plus dépasser cette nouvelle valeur) et doit faire un nouveau test de CON difficulté 15 pour vaincre la maladie. Lorsqu'il arrive à 0 PV, il meurt et se transforme en goule. S'il guérit, les PV perdus peuvent être récupérés normalement. Un sort de Délivrance (rang 3 de la voie de la spiritualité) peut mettre fin à la fièvre des goules.",
       },
     ],
     sourcePage: 285,
@@ -1502,10 +1535,12 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Paralysie',
         text: "Une créature blessée par la morsure d'une goule puissante doit réussir un test de CON difficulté 15 ou être paralysée pendant 1d6 rounds.",
+        richText: "Une créature blessée par la morsure d'une goule puissante doit réussir un test de CON difficulté 15 ou être paralysée pendant {1d6} rounds.",
       },
       {
         name: 'Miasmes',
         text: "La goule puissante émet une odeur de cadavre en décomposition absolument infâme et des miasmes toxiques dans un rayon de 2 m. À chaque round, à la fin du tour de la goule, ses adversaires au contact doivent réussir un test de CON difficulté 10 ou être affaiblis et perdre 1d4 PV.",
+        richText: "La goule puissante émet une odeur de cadavre en décomposition absolument infâme et des miasmes toxiques dans un rayon de 2 m. À chaque round, à la fin du tour de la goule, ses adversaires au contact doivent réussir un test de CON difficulté 10 ou être affaiblis et perdre {1d4} PV.",
       },
       { name: 'Fièvre des goules', text: 'Comme pour la goule, avec un test de CON difficulté 18.' },
     ],
@@ -1529,10 +1564,12 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Vol rapide',
         text: "La créature obtient une action de mouvement supplémentaire par round lorsqu'elle est en vol. Au premier round de combat, la créature obtient un dé bonus en attaque et +1d4 aux DM si elle est en vol et attaque une créature au sol.",
+        richText: "La créature obtient une action de mouvement supplémentaire par round lorsqu'elle est en vol. Au premier round de combat, la créature obtient un dé bonus en attaque et +{1d4} aux DM si elle est en vol et attaque une créature au sol.",
       },
       {
         name: 'Agripper',
         text: "Sur un résultat de 15-20 au d20 en attaque, la créature agrippe sa proie et ne la lâche plus. Elle obtient un bonus de +5 en attaque et inflige +1d4 aux DM contre la cible qu'elle agrippe et celle-ci est immobilisée si elle est de taille inférieure. Une fois par round, la victime peut essayer de se libérer au prix d'une action de mouvement en réussissant un test de FOR difficulté 16.\nUn œuf de griffon viable est un bien très précieux, il vaut 3 000 pa, un tout jeune animal se vend autour de 5 000 pa. Les dresseurs professionnels demandent 1 000 pa pour apprivoiser ou entraîner un griffon.",
+        richText: "Sur un résultat de 15-20 au d20 en attaque, la créature agrippe sa proie et ne la lâche plus. Elle obtient un bonus de +5 en attaque et inflige +{1d4} aux DM contre la cible qu'elle agrippe et celle-ci est immobilisée si elle est de taille inférieure. Une fois par round, la victime peut essayer de se libérer au prix d'une action de mouvement en réussissant un test de FOR difficulté 16.\nUn œuf de griffon viable est un bien très précieux, il vaut 3 000 pa, un tout jeune animal se vend autour de 5 000 pa. Les dresseurs professionnels demandent 1 000 pa pour apprivoiser ou entraîner un griffon.",
       },
     ],
     sourcePage: 286,
@@ -1588,6 +1625,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Souffle glacial',
         text: "Cône de 20 m, tous les 1d4 rounds. DM 6d6+18 (test d'AGI difficulté 15 pour réduire les DM de moitié). Immunité aux DM de froid.",
+        richText: "Cône de 20 m, tous les {1d4} rounds. DM {6d6}+18 (test d'AGI difficulté 15 pour réduire les DM de moitié). Immunité aux DM de froid.",
       },
       {
         name: 'Guérison accélérée',
@@ -1600,6 +1638,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Créature élémentaire',
         text: "La cryohydre possède un souffle glacial (voir plus haut), elle est immunisée aux DM de froid et les DM de morsure augmentent de +1d6. Ces éléments augmentent le NC global de la créature de +1. Il existe aussi des hydres de feu, appelées pyrohydre. Elles sont immunisées aux DM de feu et seul l'acide permet de les empêcher de se régénérer.",
+        richText: "La cryohydre possède un souffle glacial (voir plus haut), elle est immunisée aux DM de froid et les DM de morsure augmentent de +{1d6}. Ces éléments augmentent le NC global de la créature de +1. Il existe aussi des hydres de feu, appelées pyrohydre. Elles sont immunisées aux DM de feu et seul l'acide permet de les empêcher de se régénérer.",
       },
     ],
     sourcePage: 288,
@@ -1645,6 +1684,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Imparable',
         text: "Si la créature obtient 15-20 au d20 d'un test d'attaque, elle inflige 2d4 DM supplémentaires et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire). Les dés bonus ne sont pas multipliés en cas de critique.",
+        richText: "Si la créature obtient 15-20 au d20 d'un test d'attaque, elle inflige {2d4} DM supplémentaires et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire). Les dés bonus ne sont pas multipliés en cas de critique.",
       },
     ],
     sourcePage: 289,
@@ -1693,6 +1733,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Corne magique (L)',
         text: "Si la licorne touche une créature à 0 PV de sa corne, celle-ci récupère 2d4° PV. Si la créature est empoisonnée, elle a immédiatement droit à un test de CON difficulté 10 pour neutraliser les effets du poison.",
+        richText: "Si la licorne touche une créature à 0 PV de sa corne, celle-ci récupère {2d4} PV. Si la créature est empoisonnée, elle a immédiatement droit à un test de CON difficulté 10 pour neutraliser les effets du poison.",
       },
       {
         name: 'Déplacement magique',
@@ -1726,6 +1767,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Putréfaction',
         text: "Toute créature blessée par une momie doit réussir un test de CON difficulté 15 ou contracter une horrible maladie qui occasionne le pourrissement rapide de ses chairs, une sorte de lèpre fulgurante. La victime subit 1d6 DM par round pendant 5 rounds. Tant qu'elle est sous l'effet de la putréfaction, il n'est pas nécessaire de réaliser un nouveau test de CON lorsque la victime est la cible d'une attaque de la momie. L'utilisation de la capacité de prêtre Délivrance permet de soigner cette maladie.",
+        richText: "Toute créature blessée par une momie doit réussir un test de CON difficulté 15 ou contracter une horrible maladie qui occasionne le pourrissement rapide de ses chairs, une sorte de lèpre fulgurante. La victime subit {1d6} DM par round pendant 5 rounds. Tant qu'elle est sous l'effet de la putréfaction, il n'est pas nécessaire de réaliser un nouveau test de CON lorsque la victime est la cible d'une attaque de la momie. L'utilisation de la capacité de prêtre Délivrance permet de soigner cette maladie.",
       },
     ],
     sourcePage: 290,
@@ -1748,10 +1790,12 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Putréfaction',
         text: "Toute créature blessée par une momie doit réussir un test de CON difficulté 15 ou contracter une horrible maladie qui occasionne le pourrissement rapide de ses chairs. Une sorte de lèpre fulgurante. La victime subit 1d10 DM par round pendant 5 rounds. Tant qu'elle est sous l'effet de la putréfaction, il n'est pas nécessaire de réaliser un nouveau test de CON lorsque la victime est la cible d'une attaque de la momie.",
+        richText: "Toute créature blessée par une momie doit réussir un test de CON difficulté 15 ou contracter une horrible maladie qui occasionne le pourrissement rapide de ses chairs. Une sorte de lèpre fulgurante. La victime subit {1d10} DM par round pendant 5 rounds. Tant qu'elle est sous l'effet de la putréfaction, il n'est pas nécessaire de réaliser un nouveau test de CON lorsque la victime est la cible d'une attaque de la momie.",
       },
       {
         name: 'Injonction mortelle (L)',
         text: "Une cible située à une distance maximale de 30 m doit réussir un test de CON difficulté 15 ou tomber à 0 PV (et mourir immédiatement s'il s'agit d'un PNJ). En cas de succès, la cible subit tout de même 2d8+10 DM. Ce pouvoir ne peut prendre une même créature pour cible qu'une seule fois par combat.",
+        richText: "Une cible située à une distance maximale de 30 m doit réussir un test de CON difficulté 15 ou tomber à 0 PV (et mourir immédiatement s'il s'agit d'un PNJ). En cas de succès, la cible subit tout de même {2d8}+10 DM. Ce pouvoir ne peut prendre une même créature pour cible qu'une seule fois par combat.",
       },
       {
         name: 'Voie de la magie universelle rang 5',
@@ -1786,6 +1830,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Imparable (L)',
         text: "L'ogre réalise une attaque avec un dé bonus et garde le meilleur résultat. S'il obtient 15-20 au d20 d'un test d'attaque (même sans utiliser Imparable), il inflige +1d6 DM et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire).",
+        richText: "L'ogre réalise une attaque avec un dé bonus et garde le meilleur résultat. S'il obtient 15-20 au d20 d'un test d'attaque (même sans utiliser Imparable), il inflige +{1d6} DM et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire).",
       },
       {
         name: 'Note de conception',
@@ -1817,14 +1862,17 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Imparable (L)',
         text: "L'ogre réalise une attaque avec un dé bonus et garde le meilleur résultat. S'il obtient 15-20 au d20 d'un test d'attaque (même sans utiliser Imparable), il inflige +1d6 DM et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire).",
+        richText: "L'ogre réalise une attaque avec un dé bonus et garde le meilleur résultat. S'il obtient 15-20 au d20 d'un test d'attaque (même sans utiliser Imparable), il inflige +{1d6} DM et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire).",
       },
       {
         name: 'Teigneuse',
         text: "Si la créature rate une attaque, sa prochaine attaque bénéficie d'un dé bonus et de +2d6 DM.",
+        richText: "Si la créature rate une attaque, sa prochaine attaque bénéficie d'un dé bonus et de +{2d6} DM.",
       },
       {
         name: 'Enragé',
         text: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et de +1d6 ses DM. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
+        richText: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et de +{1d6} ses DM. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
       },
     ],
     sourcePage: 292,
@@ -1888,10 +1936,12 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Imparable',
         text: "Si la créature obtient 15-20 sur le d20 d'un test d'attaque, elle inflige +2d4 DM et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire). Les dés bonus ne sont pas multipliés en cas de critique.",
+        richText: "Si la créature obtient 15-20 sur le d20 d'un test d'attaque, elle inflige +{2d4} DM et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire). Les dés bonus ne sont pas multipliés en cas de critique.",
       },
       {
         name: 'Teigneuse',
         text: "Si la créature rate une attaque, sa prochaine attaque bénéficie d'un dé bonus et de +2d4 DM.",
+        richText: "Si la créature rate une attaque, sa prochaine attaque bénéficie d'un dé bonus et de +{2d4} DM.",
       },
     ],
     sourcePage: 293,
@@ -1913,6 +1963,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Imparable',
         text: "Si la créature obtient 15-20 sur le d20 d'un test d'attaque, elle inflige +2d4 DM et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire). Les dés bonus ne sont pas multipliés en cas de critique.",
+        richText: "Si la créature obtient 15-20 sur le d20 d'un test d'attaque, elle inflige +{2d4} DM et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire). Les dés bonus ne sont pas multipliés en cas de critique.",
       },
     ],
     sourcePage: 293,
@@ -1936,6 +1987,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Vampirisation (L)',
         text: "La créature doit réussir un test opposé d'attaque magique contre une cible vivante à une distance maximum de 30 m. En cas de réussite, la cible subit 2d8 DM et la créature régénère autant de PV que de DM infligés. De plus, chaque fois qu'une créature meurt à moins de 20 m d'elle, la créature siphonne son énergie et gagne un nombre de PV égal au double du NC de la créature.",
+        richText: "La créature doit réussir un test opposé d'attaque magique contre une cible vivante à une distance maximum de 30 m. En cas de réussite, la cible subit {2d8} DM et la créature régénère autant de PV que de DM infligés. De plus, chaque fois qu'une créature meurt à moins de 20 m d'elle, la créature siphonne son énergie et gagne un nombre de PV égal au double du NC de la créature.",
       },
       {
         name: 'Animer un cadavre (L)',
@@ -1961,6 +2013,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Imparable',
         text: "Si la créature obtient 15-20 sur le d20 d'un test d'attaque, elle inflige +2d6 DM et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire). Les dés bonus ne sont pas multipliés en cas de critique.",
+        richText: "Si la créature obtient 15-20 sur le d20 d'un test d'attaque, elle inflige +{2d6} DM et l'attaque est automatiquement réussie (quelle que soit la DEF de son adversaire). Les dés bonus ne sont pas multipliés en cas de critique.",
       },
       {
         name: 'Brise-genou',
@@ -2000,6 +2053,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Enragé',
         text: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et de +1d4 ses DM. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
+        richText: "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et de +{1d4} ses DM. Elle peut encore agir un tour complet après avoir atteint 0 PV.",
       },
     ],
     sourcePage: 294,
@@ -2023,6 +2077,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Maladie',
         text: "Chaque créature mordue par un rat doit faire un test de CON difficulté 10 à la fin du combat. En cas d'échec, elle contracte une maladie dont les symptômes se manifestent après 2d6 h. La victime est affaiblie et perd 1d4 PV toutes les 24 h, qui ne peuvent pas être soignés par le repos. Réalisez un nouveau test de CON difficulté 15 chaque jour pour tenter de mettre fin à la maladie. Les PV perdus sont alors récupérés au rythme de 1 par jour de repos.",
+        richText: "Chaque créature mordue par un rat doit faire un test de CON difficulté 10 à la fin du combat. En cas d'échec, elle contracte une maladie dont les symptômes se manifestent après {2d6} h. La victime est affaiblie et perd {1d4} PV toutes les 24 h, qui ne peuvent pas être soignés par le repos. Réalisez un nouveau test de CON difficulté 15 chaque jour pour tenter de mettre fin à la maladie. Les PV perdus sont alors récupérés au rythme de 1 par jour de repos.",
       },
     ],
     sourcePage: 295,
@@ -2050,10 +2105,12 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Embuscade',
         text: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 16 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d4 DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion et en Init.",
+        richText: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 16 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +{1d4} DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion et en Init.",
       },
       {
         name: 'Onde dévastatrice (A)',
         text: "Cette onde fracture la roche dans un cône de 10 m de long pour 3 m de large. Une créature dans la zone d'effet (même s'il n'y a pas de roche !) subit 5d6 DM et peut faire un test de CON difficulté 15 pour diviser les DM par deux.",
+        richText: "Cette onde fracture la roche dans un cône de 10 m de long pour 3 m de large. Une créature dans la zone d'effet (même s'il n'y a pas de roche !) subit {5d6} DM et peut faire un test de CON difficulté 15 pour diviser les DM par deux.",
       },
     ],
     sourcePage: 296,
@@ -2184,6 +2241,8 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Regard envoûtant (M)',
         text: "Le regard du vampire sape la volonté de ses opposants. 3 fois par combat, il peut utiliser une action de mouvement pour tenter d'envoûter son adversaire. La cible doit réussir un test de VOL difficulté 15 ou être affaiblie pour 1d6 rounds. Les créatures de niveau 1 ou inférieur passent sous le contrôle du vampire.",
+        richText:
+          "Le regard du vampire sape la volonté de ses opposants. 3 fois par combat, il peut utiliser une action de mouvement pour tenter d'envoûter son adversaire. La cible doit réussir un test de VOL difficulté 15 ou être affaiblie pour {1d6} rounds. Les créatures de niveau 1 ou inférieur passent sous le contrôle du vampire.",
       },
       {
         name: 'Résistance impie',
@@ -2200,6 +2259,8 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Vulnérabilité au soleil',
         text: "Un vampire exposé au soleil subit 2d10 DM par tour sur son maximum de PV (il ne peut pas le régénérer tant qu'il reste à la lumière). Si son maximum de PV est réduit à 0 de cette façon, il est réduit en cendre et définitivement détruit.",
+        richText:
+          "Un vampire exposé au soleil subit {2d10} DM par tour sur son maximum de PV (il ne peut pas le régénérer tant qu'il reste à la lumière). Si son maximum de PV est réduit à 0 de cette façon, il est réduit en cendre et définitivement détruit.",
       },
     ],
     sourcePage: 298,
@@ -2242,6 +2303,8 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Regard envoûtant (M)',
         text: "Le regard du vampire sape la volonté de ses opposants. Il peut utiliser une action de mouvement pour tenter d'envoûter son adversaire. La cible doit réussir un test de VOL difficulté 20 ou être affaiblie pour 1d6 rounds ; les créatures de niveau 3 ou inférieur passent sous le contrôle du vampire.",
+        richText:
+          "Le regard du vampire sape la volonté de ses opposants. Il peut utiliser une action de mouvement pour tenter d'envoûter son adversaire. La cible doit réussir un test de VOL difficulté 20 ou être affaiblie pour {1d6} rounds ; les créatures de niveau 3 ou inférieur passent sous le contrôle du vampire.",
       },
     ],
     sourcePage: 299,
@@ -2286,6 +2349,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Vulnérabilité au soleil',
         text: "Un vampirien exposé au soleil subit 2d6 DM par tour sur son maximum de PV (il ne peut pas le régénérer tant qu'il reste à la lumière). Si son maximum de PV est réduit à 0 de cette façon, il est réduit en cendre et définitivement détruit.",
+        richText: "Un vampirien exposé au soleil subit {2d6} DM par tour sur son maximum de PV (il ne peut pas le régénérer tant qu'il reste à la lumière). Si son maximum de PV est réduit à 0 de cette façon, il est réduit en cendre et définitivement détruit.",
       },
     ],
     sourcePage: 300,
@@ -2310,6 +2374,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Embuscade',
         text: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 16 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d4 DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
+        richText: "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 16 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +{1d4} DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.",
       },
       {
         name: 'Brise-genou',
@@ -2335,6 +2400,7 @@ const fantasticCreatures: Creature[] = [
       {
         name: 'Attaque en traître (L)',
         text: "Si le worg attaque en même temps qu'un autre worg, dans le dos ou par surprise, il réalise une attaque sournoise avec un dé bonus et +2d4 DM.",
+        richText: "Si le worg attaque en même temps qu'un autre worg, dans le dos ou par surprise, il réalise une attaque sournoise avec un dé bonus et +{2d4} DM.",
       },
       {
         name: "L'hallali",

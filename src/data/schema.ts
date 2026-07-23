@@ -2656,8 +2656,17 @@ export interface CreatureAttack {
 export interface CreatureSpecialAbility {
   /** Nom de la capacité, verbatim, marqueur d'action inclus (ex. « Charge (L) », « Souffle (L) »). */
   name: string;
-  /** Texte de règle verbatim. */
+  /** Texte de règle verbatim. TOUJOURS conservé tel quel (relecture « comme dans le livre »). */
   text: string;
+  /**
+   * Version BALISÉE du même texte (mini-langage `richText`, cf. `featureRichText.ts`), pour le rendu
+   * ENRICHI du bloc de bestiaire — dés en icônes (`{2d10}`), formules calculées contre les
+   * caractéristiques FIXES de la créature (`[FOR + 2]`, `@CON`), refs de page cliquables (PER-238).
+   * DOUBLE le `text` verbatim (ne le remplace pas) : absent → le rendu enrichi retombe sur `text`
+   * (déjà glosé : états préjudiciables, DM/RD/DEF, codes de carac). Les créatures n'ayant ni dé
+   * évolutif ni rang de voie, seuls les dés/formules/refs justifient de le renseigner.
+   */
+  richText?: string;
 }
 
 export interface Creature {
