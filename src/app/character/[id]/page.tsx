@@ -854,6 +854,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         // (même mise en forme que dans l'en-tête de la fiche, composant partagé).
         subtitle={
           <CharacterIdentityLine
+            dense
             ancestryName={ancestry?.name}
             characterClass={characterClass}
             firearmsAllowed={firearmsAllowed}
@@ -866,8 +867,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           readOnly ? undefined : (
             <Button
               color="inherit"
+              size="small"
               startIcon={allEditing ? <DoneIcon /> : <EditIcon />}
               onClick={toggleAllEditing}
+              // Compact : n'impose pas la hauteur du sous-header (sinon la hauteur de ce
+              // bouton devient le plancher et `minHeight` de la barre n'a plus d'effet).
+              sx={{ py: 0.25, minHeight: 0 }}
             >
               {allEditing ? 'Terminer' : 'Modifier'}
             </Button>

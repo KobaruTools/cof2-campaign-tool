@@ -221,10 +221,11 @@ export function AppHeader({
           sx={{
             display: 'flex',
             alignItems: 'center',
-            minHeight: { xs: 36, sm: 40 },
+            minHeight: { xs: 30, sm: 34 },
             px: gutterPx,
             bgcolor: 'rgba(255, 255, 255, 0.03)',
-            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+            // Même teinte que le séparateur logo / nav (bordure droite du bouton Accueil).
+            borderTop: '1px solid rgba(255, 255, 255, 0.18)',
           }}
         >
           <AppBreadcrumbs crumbs={breadcrumbs ?? []} />
