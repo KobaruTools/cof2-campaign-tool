@@ -120,7 +120,12 @@ export function BestiaryStatBlock({ creature }: BestiaryStatBlockProps) {
         borderColor: 'divider',
         borderRadius: 1,
         p: { xs: 1.25, sm: 1.75 },
-        bgcolor: (t) => alpha(t.palette.text.primary, 0.025),
+        // Fond NOIR (pas blanc) légèrement plus opaque que les autres blocs de la page,
+        // avec le même flou d'arrière-plan que l'en-tête : améliore la lisibilité du bloc
+        // de stats par-dessus l'illustration de fond.
+        bgcolor: 'rgba(0, 0, 0, 0.45)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
       }}
     >
       {/* Identité : nom + NC/taille/nature + page source. */}

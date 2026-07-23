@@ -262,6 +262,8 @@ export function BestiaryBrowser() {
             overflow: 'hidden',
             border: '1px solid rgba(255, 255, 255, 0.10)',
             bgcolor: 'rgba(0, 0, 0, 0.35)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
             // Sous md la liste peut être longue : on la borne et on la rend défilable
             // pour garder le détail atteignable ; en md+ elle colle au défilement.
             maxHeight: { xs: 360, md: 'calc(100vh - 220px)' },
