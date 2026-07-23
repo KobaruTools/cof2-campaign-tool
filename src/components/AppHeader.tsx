@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -13,6 +12,7 @@ import { AccountMenu } from '@/components/AccountMenu';
 import { AppBreadcrumbs, type Crumb } from '@/components/AppBreadcrumbs';
 import { AppHeaderBrand } from '@/components/AppHeaderBrand';
 import { QuestIcon } from '@/components/QuestIcon';
+import { SectionIcon } from '@/components/SectionIcon';
 
 interface AppHeaderProps {
   /**
@@ -192,7 +192,7 @@ export function AppHeader({
         <AppHeaderBrand condensed={condensed} />
         <HeaderNavButton
           href="/bestiary"
-          icon={<MenuBookIcon />}
+          icon={<SectionIcon name="companions" size={20} />}
           label="Bestiaire"
           condensed={condensed}
         />
