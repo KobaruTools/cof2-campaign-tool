@@ -804,6 +804,17 @@ export const fighterFeatures: Feature[] = [
         // Exclusif de la Furie du berserk (rage-r5) : activer l'un éteint l'autre, sans le désactiver.
         mutuallyExclusiveWith: ['rage-r5'],
       },
+      // PER-129/PER-236 : le +1d4° DM au CONTACT est conditionnel à l'état de rage → `weapon-damage-bonus`
+      // en dé SITUATIONNEL (badge sous la carte d'attaque au contact), gaté sur l'interrupteur de rage
+      // ci-dessus (`requiresActiveEffectIndex: 0`), suivant l'arme de contact effectivement maniée
+      // (patron Cavalier émérite, cavalier-r2). Le {1d4°} du richText reste l'affichage sur la carte de voie.
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 1, die: 'd4', evolving: true },
+        condition: { attackMode: 'melee', label: 'pendant la rage berserk' },
+        requiresActiveEffectIndex: 0,
+        situational: true,
+      },
     ],
     // PER-130 : réserve quotidienne de RAGE, partagée avec Furie du berserk (rage-r5). Max scalant =
     // 1 + une par capacité de rang 4 atteinte dans une voie de barbare (maxByRankCount).
@@ -812,10 +823,6 @@ export const fighterFeatures: Feature[] = [
       sharedKey: 'rage',
       label: 'Rages',
     },
-    // PER-129 (différé, dépend de PER-115) : le +1d4° DM au contact est CONDITIONNEL à l'état de rage
-    // (même interrupteur que le -2 DEF) ; son AFFICHAGE dans le bloc Attaque au contact attend l'infra
-    // DM d'arme (PER-115). Modélisé pour l'instant par le {1d4°} du richText (à brancher sur la couche DM).
-    wip: "+1d4° DM au contact conditionnel à la rage — visible dans le texte mais pas encore câblé dans le bloc Attaque au contact (effet weapon-damage-bonus à poser, gaté sur l'interrupteur de rage) — suivi : PER-236.",
     sourcePage: 82,
   },
   {
@@ -854,6 +861,16 @@ export const fighterFeatures: Feature[] = [
         // Exclusif de la Rage du berserk (rage-r3) : activer l'un éteint l'autre, sans le désactiver.
         mutuallyExclusiveWith: ['rage-r3'],
       },
+      // PER-129/PER-236 : le +2d4° DM au CONTACT est conditionnel à l'état de furie → `weapon-damage-bonus`
+      // en dé SITUATIONNEL, gaté sur l'interrupteur de furie ci-dessus (`requiresActiveEffectIndex: 0`),
+      // suivant l'arme de contact maniée (même patron que Rage du berserk, rage-r3).
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 2, die: 'd4', evolving: true },
+        condition: { attackMode: 'melee', label: 'pendant la furie du berserk' },
+        requiresActiveEffectIndex: 0,
+        situational: true,
+      },
     ],
     // PER-130 : la Furie puise dans la MÊME réserve de rage (sharedKey 'rage') mais consomme 2 points
     // (« cela consomme deux utilisations de la rage ») → `cost: 2` ; le décrément est bloqué s'il reste
@@ -864,9 +881,6 @@ export const fighterFeatures: Feature[] = [
       label: 'Rages',
       cost: 2,
     },
-    // PER-129 (différé, dépend de PER-115) : le +2d4° DM au contact est CONDITIONNEL à l'état de furie
-    // (même interrupteur que le -4 DEF) ; affichage dans le bloc Attaque au contact différé à PER-115.
-    wip: "+2d4° DM au contact conditionnel à la furie — visible dans le texte mais pas encore câblé dans le bloc Attaque au contact (effet weapon-damage-bonus à poser, gaté sur l'interrupteur de furie) — suivi : PER-236.",
     sourcePage: 82,
   },
 

@@ -223,6 +223,43 @@ describe('weaponDamageBonuses — Cavalier émérite en selle (+1, +2 au rang 5,
   });
 });
 
+describe('weaponDamageBonuses — barbare rage/furie du berserk (+Nd4° situationnel au contact, PER-236)', () => {
+  // L'interrupteur d'état (rage / furie) est l'effet conditional-stat-bonus index 0 ; le dé de DM au
+  // contact le suit (`requiresActiveEffectIndex: 0`). Rage et furie sont des états exclusifs.
+  const barbare = (features: string[], toggles: Record<string, boolean[]>) =>
+    makeCharacter({ classId: 'barbare', featureIds: features, effectToggles: toggles });
+
+  it('rage éteinte (défaut) → aucun bonus situationnel', () => {
+    expect(weaponDamageBonuses(barbare(['rage-r3'], {}), 'melee', epeeLongue).situational).toEqual([]);
+  });
+
+  it('rage active → +1d4° situationnel au contact (source rage-r3)', () => {
+    const r = weaponDamageBonuses(barbare(['rage-r3'], { 'rage-r3': [true] }), 'melee', epeeLongue);
+    expect(r.situational).toHaveLength(1);
+    expect(r.situational[0]).toMatchObject({
+      dice: { count: 1, die: 'd4', evolving: true },
+      featureId: 'rage-r3',
+    });
+    expect(r.situational[0].conditionLabel).toMatch(/rage berserk/);
+  });
+
+  it('rage active mais mode distance → aucun bonus (contact seulement)', () => {
+    expect(weaponDamageBonuses(barbare(['rage-r3'], { 'rage-r3': [true] }), 'ranged', arcLong).situational).toEqual([]);
+  });
+
+  it('rage active mais mains nues → aucun bonus (suit l\'arme de contact maniée)', () => {
+    expect(weaponDamageBonuses(barbare(['rage-r3'], { 'rage-r3': [true] }), 'melee', null).situational).toEqual([]);
+  });
+
+  it('furie active → +2d4° situationnel au contact (source rage-r5)', () => {
+    const r = weaponDamageBonuses(barbare(['rage-r3', 'rage-r5'], { 'rage-r5': [true] }), 'melee', epeeLongue);
+    const furie = r.situational.find((b) => b.featureId === 'rage-r5');
+    expect(furie).toMatchObject({ dice: { count: 2, die: 'd4', evolving: true } });
+    // La rage (r3) reste éteinte → pas de double comptage.
+    expect(r.situational.some((b) => b.featureId === 'rage-r3')).toBe(false);
+  });
+});
+
 describe('weaponDamageBonuses — nain « Haches et marteaux » (+1 DM, familles STATIQUES, PER-154)', () => {
   const nain = makeCharacter({
     classId: 'magicien',
