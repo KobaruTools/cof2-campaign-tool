@@ -1236,9 +1236,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par round, en action gratuite, le personnage retranche la valeur de DEF de son bouclier (bonus de magie inclus) aux DM subis d'une attaque au contact ou à distance, sauf s'il est surpris.",
-    // PER-137 : RD = valeur de DEF du BOUCLIER porté, sur une attaque, 1×/round. Valeur dépendante de
-    // l'équipement porté → modélisation différée à PER-76. Verbatim ; badge WIP pour la relecture.
-    wip: "Réduction de DM égale à la DEF du bouclier porté (manœuvre 1×/round) — valeur dépendante de l'équipement porté, manœuvre au tour par tour hors du modèle de RD continue — suivi : PER-236.",
+    // PER-137/PER-236 : RD = valeur de DEF du BOUCLIER porté, sur UNE attaque, 1×/round → ACTÉE NON
+    // MODÉLISÉE (décision proprio 2026-07-23), manœuvre au tour par tour hors du modèle de RD continue,
+    // jouée à la table. Verbatim.
     sourcePage: 152,
   },
   {

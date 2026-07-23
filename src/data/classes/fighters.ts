@@ -1124,10 +1124,9 @@ export const fighterFeatures: Feature[] = [
     actionTypes: ['M'],
     text:
       'Le chevalier se place de façon à dévier un coup sur son armure. Jusqu’à son tour au round suivant, il peut retrancher la valeur de DEF de son armure (bonus de magie inclus si elle est enchantée) aux DM d’une seule attaque au contact qu’il subit (minimum 1 DM). Au rang 5, il peut ajouter son bonus de bouclier (là aussi, bonus de magie inclus et cumulable au bonus d’armure). Le chevalier ne peut pas être étourdi ou renversé par une attaque qu’il a décidé d’encaisser.',
-    // PER-137 : RD = valeur de DEF de l'armure (et du bouclier au rang 5) PORTÉE, sur une attaque,
-    // 1×/round. La valeur dépend de l'équipement porté → modélisation différée à PER-76. Laissé
-    // verbatim ; badge WIP pour la relecture.
-    wip: "Réduction de DM égale à la DEF de l'armure (puis du bouclier) portée — manœuvre 1×/round dépendante de l'équipement porté, hors du modèle de RD continue — suivi : PER-236.",
+    // PER-137/PER-236 : RD = valeur de DEF de l'armure (et du bouclier au rang 5) PORTÉE, sur UNE
+    // attaque précise, 1×/round. Manœuvre au tour par tour (cible et round donnés) hors du modèle de
+    // RD continue → ACTÉE NON MODÉLISÉE (décision proprio 2026-07-23), jouée à la table. Verbatim.
     sourcePage: 85,
   },
   {
@@ -1204,9 +1203,9 @@ export const fighterFeatures: Feature[] = [
     actionTypes: [],
     text:
       'Le chevalier obtient une réduction des DM (RD) des attaques à distance (arcs, arbalètes, lances, etc.) qui dépend de l’armure qu’il porte. Armure de plaques (complète ou non) RD 3, armure intermédiaire (Chemise ou cotte de mailles) RD 2, armure de cuir (simple ou renforcée) RD 1. Les DM infligés par une attaque sont toujours au minimum d’un point.',
-    // PER-137 : RD contre les attaques à DISTANCE, valeur (1/2/3) fonction du TYPE d'armure portée.
-    // Non résoluble sans l'équipement porté → modélisation différée à PER-76. Verbatim ; badge WIP.
-    wip: "RD contre les attaques à distance dont la valeur (1/2/3) dépend du type d'armure portée — dépendante de l'équipement porté — suivi : PER-236.",
+    // PER-137/PER-236 : RD contre les attaques à DISTANCE, valeur (1/2/3) fonction du TYPE d'armure
+    // portée, appliquée par le joueur sur les attaques d'un round → ACTÉE NON MODÉLISÉE (décision
+    // proprio 2026-07-23), hors du modèle de RD continue, jouée à la table. Verbatim.
     sourcePage: 85,
   },
   {
@@ -1294,7 +1293,8 @@ export const fighterFeatures: Feature[] = [
     // ce qui évite sa glose parasite « catégorie d'arthropodes » (terme de jeu du rôdeur, PER-114).
     richText:
       'Une fois par round, le chevalier peut encaisser une attaque au contact ou à distance à la place d’un allié à son contact. Il utilise sa DEF plutôt que celle de la cible initiale et retranche son [#rang] dans la voie aux DM (en cas de synergie avec la capacité [&preux-r2] ou [&guerre-r2], la réduction des DM se cumule). Le joueur doit annoncer son intention d’intercepter avant de connaître le résultat de l’attaque.',
-    wip: "Interception : réduit de son rang les DM d'une attaque encaissée pour un allié (manœuvre 1×/round, cumul avec les RD d'armure) — manœuvre au tour par tour hors du modèle de RD continue — suivi : PER-236.",
+    // PER-236 : interception d'une attaque pour un ALLIÉ, 1×/round → ACTÉE NON MODÉLISÉE (décision
+    // proprio 2026-07-23), manœuvre au tour par tour hors du modèle de RD continue, jouée à la table.
     sourcePage: 85,
   },
   {
@@ -1509,10 +1509,9 @@ export const fighterFeatures: Feature[] = [
     actionTypesFromRank: { rank: 5, actionTypes: ['G'] },
     text:
       'Le guerrier utilise une action de mouvement pour se mettre en posture défensive. Il peut alors essayer de parer une attaque à tout moment avant son prochain tour. Il doit faire un test d’attaque au contact (il peut remplacer la FOR par l’AGI pour ce test) en opposition au test de l’attaque au contact ou à distance réussie par son adversaire. S’il l’emporte, l’attaque adverse est bloquée par le bouclier. Il ne subit aucun DM sauf si la créature est de taille énorme ou colossale, auquel cas, il subit tout de même la moitié des DM. À partir du rang 5, le guerrier peut utiliser cette capacité en action gratuite (toujours une fois par round), mais dans ce cas, il subit un dé malus au test opposé.',
-    // PER-137 : parade au bouclier (test opposé) qui ANNULE les DM (moitié contre créatures énorme/
-    // colossale) — manœuvre liée au bouclier porté et au suivi de combat, pas une RD continue.
-    // Modélisation différée. Verbatim ; badge WIP.
-    wip: "Parade au bouclier (test opposé) annulant les DM d'une attaque (moitié contre les créatures énormes/colossales) — manœuvre liée à l'équipement porté, hors du modèle de RD continue — suivi : PER-236.",
+    // PER-137/PER-236 : parade au bouclier (test opposé) qui ANNULE les DM (moitié contre créatures
+    // énorme/colossale) — manœuvre liée au bouclier porté et au suivi de combat → ACTÉE NON MODÉLISÉE
+    // (décision proprio 2026-07-23), hors du modèle de RD continue, jouée à la table. Verbatim.
     sourcePage: 87,
   },
   {
