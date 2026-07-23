@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per236-armure-sur-mesure-plaque",
+  "name": "Recette PER-236 — Armure sur mesure (plaque complète)",
+  "identity": {
+    "description": "ATTENDU : Armure sur mesure (guerre-r1). En plaque complète (armure lourde, DEF 7) : malus d’armure DIVISÉ PAR DEUX (7 → 3), et +1 en DEF (une voie de chevalier — la guerre — atteint le rang 5). Le +1 DEF n’apparaît QU’EN armure lourde."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 9,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 1,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "guerre-r1",
+    "guerre-r2",
+    "guerre-r3",
+    "guerre-r4",
+    "guerre-r5",
+    "noblesse-r1",
+    "noblesse-r2",
+    "noblesse-r3",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "plaque-complete",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-236 — guerre-r1 : demi-malus (7→3) + heavy-armor-def-bonus +1.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
