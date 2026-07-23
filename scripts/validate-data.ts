@@ -33,12 +33,13 @@ import {
   testDomains,
   testDomainById,
   fantasticFamiliars,
-  creatures,
-  creatureById,
   FEATURE_CLASSIFICATIONS,
   FEATURE_NATURE_TAGS,
   CONDITIONAL_KINDS,
 } from '../src/data/index';
+// Bestiaire : lu en DIRECT depuis l'artefact d'extraction (PER-241) — plus
+// ré-exporté par le barrel `@/data` (le navigateur ne l'embarque plus).
+import { creatures, creatureById } from '../src/data/creatures';
 import {
   ABILITY_IDS,
   CREATURE_CATEGORIES,

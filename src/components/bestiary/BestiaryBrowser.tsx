@@ -1,13 +1,21 @@
 "use client";
 
 /**
- * Navigateur du bestiaire (PER-237) : consultation en LECTURE SEULE des 85 créatures
- * du livre de base. Disposition maître-détail — liste filtrable (groupée par catégorie,
- * variantes imbriquées sous leur base via `baseCreatureId`) à gauche, bloc de stats
- * complet à droite. Recherche par nom + filtres catégorie / taille / nature / plage de NC.
- * Aucune écriture : on lit `creatures` / `creatureById`, on n'altère ni donnée ni moteur.
+ * Navigateur du bestiaire (PER-237, migré en lecture DB par PER-241) : consultation
+ * en LECTURE SEULE des créatures du contenu GRATUIT. Disposition maître-détail —
+ * liste filtrable (groupée par catégorie, variantes imbriquées sous leur base via
+ * `baseCreatureId`) à gauche, bloc de stats complet à droite. Recherche par nom +
+ * filtres catégorie / taille / nature / plage de NC.
+ *
+ * Lecture en DEUX ÉTAGES (store `bestiary`, cache mémoire session) :
+ *   1. `BestiaryBrowser` (ci-dessous) charge la LISTE LÉGÈRE (colonnes projetées) et
+ *      gère les états de chargement/erreur/vide ;
+ *   2. `BestiaryBrowserView` porte tout le filtrage/tri sur cette liste légère, et
+ *      délègue le rendu du détail à `CreatureDetail`, qui charge le BLOB complet de
+ *      la seule créature sélectionnée à la demande. `BestiaryStatBlock` est inchangé.
+ * Aucune écriture : on lit le store, on n'altère ni donnée ni moteur.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CategoryIcon from "@mui/icons-material/Category";
 import ClearIcon from "@mui/icons-material/Clear";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -23,6 +31,7 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import Select from "@mui/material/Select";
+import Skeleton from "@mui/material/Skeleton";
 import Slider from "@mui/material/Slider";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
@@ -31,16 +40,15 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { alpha } from "@mui/material/styles";
-import { creatures } from "@/data";
 import {
   CREATURE_CATEGORIES,
   CREATURE_NATURES,
   CREATURE_SIZES,
-  type Creature,
   type CreatureCategory,
   type CreatureNature,
   type CreatureSize,
 } from "@/data/schema";
+import type { CreatureListItem } from "@/lib/bestiary";
 import {
   CREATURE_CATEGORY_LABELS,
   CREATURE_NATURE_LABELS,
@@ -49,6 +57,8 @@ import {
   formatNc,
 } from "@/lib/ui/creature";
 import { usePersistedState } from "@/lib/ui/usePersistedState";
+import { useBestiaryStore } from "@/stores/bestiary";
+import { AppAlert } from "@/components/AppAlert";
 import { BestiaryStatBlock } from "./BestiaryStatBlock";
 
 /** Normalise pour une recherche insensible aux accents et à la casse. */
@@ -57,8 +67,8 @@ const norm = (s: string) =>
 
 /** Famille = créature de base + ses variantes (`baseCreatureId`). Une créature autonome est une base sans variante. */
 interface Family {
-  base: Creature;
-  variants: Creature[];
+  base: CreatureListItem;
+  variants: CreatureListItem[];
 }
 
 /**
@@ -92,17 +102,130 @@ const SORT_MODES: { value: SortMode; label: string; icon: React.ReactElement }[]
 const isSortMode = (v: unknown): v is SortMode =>
   v === "category" || v === "alpha" || v === "nc";
 
+/**
+ * Étage 1 : charge la liste légère du bestiaire (store cache mémoire) et arbitre les
+ * états de chargement/erreur/vide avant de monter la vue de filtrage. La vue n'est
+ * rendue qu'une fois une liste NON VIDE disponible (elle suppose des bornes de NC
+ * calculables) ; l'orchestration async reste ici, la vue reste synchrone.
+ */
 export function BestiaryBrowser() {
+  const list = useBestiaryStore((s) => s.list);
+  const status = useBestiaryStore((s) => s.status);
+  const loadList = useBestiaryStore((s) => s.loadList);
+
+  useEffect(() => {
+    void loadList();
+  }, [loadList]);
+
+  if (status === "error") {
+    return (
+      <AppAlert
+        severity="error"
+        title="Chargement du bestiaire impossible"
+        action={
+          <Button color="inherit" size="small" onClick={() => loadList({ force: true })}>
+            Réessayer
+          </Button>
+        }
+      >
+        Une erreur est survenue en chargeant les créatures.
+      </AppAlert>
+    );
+  }
+
+  if (status === "unconfigured") {
+    return (
+      <AppAlert severity="info" title="Bestiaire indisponible">
+        Le bestiaire est servi depuis la base de données, qui n&apos;est pas
+        configurée dans cet environnement.
+      </AppAlert>
+    );
+  }
+
+  if (!list || status === "idle" || status === "loading") {
+    return <BestiaryLoadingSkeleton />;
+  }
+
+  if (list.length === 0) {
+    return (
+      <AppAlert severity="info">Aucune créature disponible pour le moment.</AppAlert>
+    );
+  }
+
+  return <BestiaryBrowserView list={list} />;
+}
+
+/** Squelette de chargement de l'étage 1 (mime la disposition maître-détail). */
+function BestiaryLoadingSkeleton() {
+  return (
+    <Stack spacing={2}>
+      <Skeleton variant="rounded" height={112} />
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "300px 1fr" },
+          gap: 2,
+          alignItems: "start",
+        }}
+      >
+        <Skeleton variant="rounded" height={420} />
+        <Skeleton variant="rounded" height={420} />
+      </Box>
+    </Stack>
+  );
+}
+
+/**
+ * Étage 1 (détail) : charge à la demande le BLOB complet de la créature sélectionnée
+ * et le rend via `BestiaryStatBlock`. Squelette pendant le chargement, alerte en cas
+ * d'échec. Le blob est mis en cache par le store (une créature n'est chargée qu'une fois).
+ */
+function CreatureDetail({ slug }: { slug: string }) {
+  const blob = useBestiaryStore((s) => (slug ? s.blobs[slug] : undefined));
+  const blobStatus = useBestiaryStore((s) => (slug ? s.blobStatus[slug] : undefined));
+  const loadBlob = useBestiaryStore((s) => s.loadBlob);
+
+  useEffect(() => {
+    if (slug) void loadBlob(slug);
+  }, [slug, loadBlob]);
+
+  if (!slug) {
+    return (
+      <Typography color="text.secondary" sx={{ p: 2 }}>
+        Sélectionnez une créature.
+      </Typography>
+    );
+  }
+  if (blob) return <BestiaryStatBlock creature={blob} />;
+  if (blobStatus === "error") {
+    return (
+      <AppAlert severity="error">
+        Impossible de charger le détail de cette créature.
+      </AppAlert>
+    );
+  }
+  return (
+    <Stack spacing={1.5} sx={{ p: 1 }}>
+      <Skeleton variant="text" width="45%" height={40} />
+      <Skeleton variant="rounded" height={72} />
+      <Skeleton variant="rounded" height={180} />
+      <Skeleton variant="rounded" height={120} />
+    </Stack>
+  );
+}
+
+/** Étage 1 bis : tout le filtrage/tri, sur la liste LÉGÈRE déjà chargée (non vide). */
+function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
   // NC numériques présents dans le bestiaire (le gabarit sans NC est exclu), triés — servent
   // aux bornes du curseur et à ses graduations (le curseur ne s'arrête que sur ces valeurs).
   const ncValues = useMemo(
     () =>
       [
         ...new Set(
-          creatures.map((c) => c.nc).filter((n): n is number => n != null),
+          list.map((c) => c.nc).filter((n): n is number => n != null),
         ),
       ].sort((a, b) => a - b),
-    [],
+    [list],
   );
   const ncMin = ncValues[0];
   const ncMax = ncValues[ncValues.length - 1];
@@ -111,22 +234,23 @@ export function BestiaryBrowser() {
     [ncValues],
   );
 
-  // Familles dans l'ordre du livre : base d'abord, variantes rattachées à leur base.
+  // Familles dans l'ordre du livre (la liste est déjà triée par `sort_order`) :
+  // base d'abord, variantes rattachées à leur base.
   const families = useMemo<Family[]>(() => {
     const byId = new Map<string, Family>();
     const order: Family[] = [];
-    for (const c of creatures) {
+    for (const c of list) {
       if (!c.baseCreatureId) {
         const family: Family = { base: c, variants: [] };
         byId.set(c.id, family);
         order.push(family);
       }
     }
-    for (const c of creatures) {
+    for (const c of list) {
       if (c.baseCreatureId) byId.get(c.baseCreatureId)?.variants.push(c);
     }
     return order;
-  }, []);
+  }, [list]);
 
   // Filtres et tri persistés dans localStorage : le choix de l'utilisateur survit au
   // rechargement. Chaque `revive` valide la valeur relue (forme périmée / borne hors plage
@@ -183,7 +307,7 @@ export function BestiaryBrowser() {
     "category",
     (raw) => (isSortMode(raw) ? raw : undefined),
   );
-  const [selectedId, setSelectedId] = useState<string>(creatures[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState<string>(list[0]?.id ?? "");
 
   // Un filtre (hors tri) est-il actif ? Sert à (dés)activer le bouton de réinitialisation.
   const filtersActive =
@@ -210,7 +334,7 @@ export function BestiaryBrowser() {
     const natureSet = new Set(natures);
     const [lo, hi] = ncRange;
     const isFullNcRange = lo <= ncMin && hi >= ncMax;
-    return (c: Creature): boolean => {
+    return (c: CreatureListItem): boolean => {
       if (q && !norm(c.name).includes(q)) return false;
       if (category !== "all" && c.category !== category) return false;
       if (sizeSet.size > 0 && (!c.size || !sizeSet.has(c.size))) return false;
@@ -241,17 +365,17 @@ export function BestiaryBrowser() {
   // Liste plate, triée, des créatures visibles — utilisée par les modes `alpha` et `nc`
   // (sans regroupement par catégorie ni imbrication de variante).
   const sortedFlat = useMemo(() => {
-    const list = creatures.filter(matches);
+    const filtered = list.filter(matches);
     if (sortMode === "nc") {
       // NC croissant ; le gabarit sans NC (nc == null) tombe en fin ; départage par nom.
-      return [...list].sort((a, b) => {
+      return [...filtered].sort((a, b) => {
         const na = a.nc ?? Number.POSITIVE_INFINITY;
         const nb = b.nc ?? Number.POSITIVE_INFINITY;
         return na - nb || a.name.localeCompare(b.name, "fr");
       });
     }
-    return [...list].sort((a, b) => a.name.localeCompare(b.name, "fr"));
-  }, [matches, sortMode]);
+    return [...filtered].sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  }, [list, matches, sortMode]);
 
   // Ids visibles à plat, dans l'ordre d'affichage du mode courant, pour dériver la sélection.
   const visibleIds = useMemo(() => {
@@ -269,7 +393,6 @@ export function BestiaryBrowser() {
   const effectiveId = visibleIds.includes(selectedId)
     ? selectedId
     : (visibleIds[0] ?? "");
-  const selected = creatures.find((c) => c.id === effectiveId) ?? null;
 
   return (
     <Stack spacing={2}>
@@ -564,15 +687,9 @@ export function BestiaryBrowser() {
           </Box>
         </Stack>
 
-        {/* Détail : bloc de stats de la créature sélectionnée. */}
+        {/* Détail : bloc de stats de la créature sélectionnée (blob chargé à la demande). */}
         <Box sx={{ minWidth: 0 }}>
-          {selected ? (
-            <BestiaryStatBlock creature={selected} />
-          ) : (
-            <Typography color="text.secondary" sx={{ p: 2 }}>
-              Sélectionnez une créature.
-            </Typography>
-          )}
+          <CreatureDetail slug={effectiveId} />
         </Box>
       </Box>
     </Stack>
@@ -586,7 +703,7 @@ function CreatureRow({
   selected,
   onSelect,
 }: {
-  creature: Creature;
+  creature: CreatureListItem;
   variant?: boolean;
   selected: boolean;
   onSelect: () => void;

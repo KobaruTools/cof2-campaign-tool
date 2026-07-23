@@ -71,6 +71,38 @@ Provisionnement (en plus du socle) :
 3. Recette locale du login joueur : ajouter `http://localhost:3000/**` aux
    *Redirect URLs* Supabase.
 
+## Bestiaire en base + sources gatables (PER-241)
+
+- `migrations/0006_bestiary_sources.sql` — tables `sources` (`is_paid`,
+  `content_version`) et `creatures` (blob JSONB + colonnes projetées), RLS
+  **lecture publique du contenu gratuit** (`is_paid = false`), écriture réservée
+  à la `service_role`.
+- `scripts/ingest-bestiary.ts` — ingestion locale (`npm run ingest`).
+
+Le bestiaire n'est plus embarqué dans le bundle : `BestiaryBrowser` lit la base en
+deux étages (liste légère projetée + blob à la demande) via le store `bestiary`.
+`src/data/creatures.ts` est conservé comme **artefact d'extraction** (lu par le
+script d'ingestion), mais n'est plus ré-exporté par `@/data`.
+
+Provisionnement (en plus du socle) :
+
+1. **Appliquer la migration** `0006` (éditeur SQL Supabase, ou `supabase db push`).
+2. **Ingérer le contenu gratuit** : `SUPABASE_SECRET_KEY` (service_role) et
+   `NEXT_PUBLIC_SUPABASE_URL` doivent être en `.env.local`, puis
+   ```sh
+   npm run ingest
+   ```
+   Idempotent : ré-exécutable sans doublon (upsert sur `(source_id, slug)`),
+   incrémente `content_version`, synchronise les suppressions. La `service_role`
+   reste **locale** — jamais commitée ni déployée en CI.
+3. **Recette** : `/bestiary` en anonyme doit afficher les 85 créatures DRS depuis
+   la base ; filtres/recherche/tri instantanés (liste légère client) ; la
+   sélection charge le blob de détail à la demande.
+
+L'ingestion du futur PDF **payant** « Le Bestiaire » passera par le même script,
+depuis une source distincte (`is_paid = true`, contenu hors git) — gating par
+entitlement livré en PER-242.
+
 ## Authentification CLI PAR DOSSIER (pas globale)
 
 `supabase login` stocke un token **global** à la machine : sur un poste qui gère

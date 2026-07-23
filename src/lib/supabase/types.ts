@@ -69,6 +69,95 @@ export type Database = {
         }
         Relationships: []
       }
+      creatures: {
+        Row: {
+          base_creature_id: string | null
+          category: string
+          created_at: string
+          data: Json
+          id: string
+          name: string
+          nature: string[]
+          nc: number | null
+          nc_note: string | null
+          size: string | null
+          slug: string
+          sort_order: number
+          source_id: string
+          updated_at: string
+        }
+        Insert: {
+          base_creature_id?: string | null
+          category: string
+          created_at?: string
+          data: Json
+          id?: string
+          name: string
+          nature?: string[]
+          nc?: number | null
+          nc_note?: string | null
+          size?: string | null
+          slug: string
+          sort_order: number
+          source_id: string
+          updated_at?: string
+        }
+        Update: {
+          base_creature_id?: string | null
+          category?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          name?: string
+          nature?: string[]
+          nc?: number | null
+          nc_note?: string | null
+          size?: string | null
+          slug?: string
+          sort_order?: number
+          source_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creatures_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sources: {
+        Row: {
+          content_version: number
+          created_at: string
+          id: string
+          is_paid: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          content_version?: number
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          content_version?: number
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       characters: {
         Row: {
           campaign_id: string | null

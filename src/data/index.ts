@@ -53,7 +53,6 @@ import { weapons, armors, shields, gear } from './equipment';
 import { priestGods, priestGodById } from './priest-gods';
 import { testDomains, testDomainById } from './test-domains';
 import { fantasticFamiliars, fantasticFamiliarById } from './fantastic-familiars';
-import { creatures, creatureById } from './creatures';
 import {
   FEATURE_CLASSIFICATIONS,
   FEATURE_NATURE_TAGS,
@@ -121,8 +120,11 @@ export { priestGods, priestGodById };
 // --- Familiers fantastiques — voie du familier fantastique (p. 133-136) -------
 export { fantasticFamiliars, fantasticFamiliarById };
 
-// --- Bestiaire — créatures du livre de base (PER-95, p. 259-303) -------------
-export { creatures, creatureById };
+// --- Bestiaire — désormais servi depuis la base de données (PER-241) ---------
+// `creatures.ts` reste l'artefact d'extraction (lu par le script d'ingestion
+// `scripts/ingest-bestiary.ts`), mais N'EST PLUS ré-exporté ici : le navigateur
+// ne l'embarque plus dans son bundle — il lit le bestiaire via le store `bestiary`
+// (deux étages, RLS lecture publique du contenu gratuit).
 
 // --- Classification analytique des capacités (PER-62) ------------------------
 export { FEATURE_CLASSIFICATIONS, FEATURE_NATURE_TAGS, CONDITIONAL_KINDS };

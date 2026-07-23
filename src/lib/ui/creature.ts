@@ -1,5 +1,4 @@
 import type {
-  Creature,
   CreatureCategory,
   CreatureNature,
   CreatureSize,
@@ -50,7 +49,10 @@ export function formatNc(nc: number): string {
  * le symbole « ½ ». `null` pour une entrée GABARIT que le livre imprime sans NC
  * (ex. « Zombie », p. 301).
  */
-export function creatureNcLabel(creature: Creature): string | null {
+export function creatureNcLabel(creature: {
+  nc?: number;
+  ncNote?: string;
+}): string | null {
   if (creature.ncNote) return creature.ncNote.replace("1/2", "½");
   if (creature.nc != null) return formatNc(creature.nc);
   return null;
