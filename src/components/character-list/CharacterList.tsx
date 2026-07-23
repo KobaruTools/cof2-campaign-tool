@@ -341,7 +341,9 @@ export function CharacterList({
           // (sans délai) prend le relais, donc le fondu démarre immédiatement.
           transition: 'background-color .15s ease .2s',
           '&:hover': {
-            bgcolor: 'action.hover',
+            // Blanc de survol adouci : `action.hover` (~8 %) tapait trop fort sur la
+            // zébrure + le dégradé de profil ; on descend l'opacité de moitié.
+            bgcolor: 'rgba(255, 255, 255, 0.04)',
             transition: 'background-color .15s ease',
           },
         }}

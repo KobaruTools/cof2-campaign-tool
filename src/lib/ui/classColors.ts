@@ -13,12 +13,12 @@ export const CLASS_COLORS: Record<string, string> = {
   // Aventuriers
   arquebusier: '#fb8c00', // orange
   barde: '#ec407a', // rose
-  rodeur: '#1b5e20', // vert foncé
+  rodeur: '#38723c', // vert foncé (légèrement éclairci depuis #1b5e20 pour le contraste)
   voleur: '#b08d57', // bronze / cuir
   // Combattants
   barbare: '#e53935', // rouge vif
   chevalier: '#607d8b', // gris/bleu
-  guerrier: '#8d3b2e', // rouge foncé / marron
+  guerrier: '#9b5448', // rouge foncé / marron (légèrement éclairci depuis #8d3b2e pour le contraste)
   // Mages
   ensorceleur: '#42a5f5',
   forgesort: '#26c6da',
