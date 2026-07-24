@@ -362,6 +362,12 @@ for (const c of features) {
         err(`[capacite ${c.id}] effect: ability-bonus-die-from-choice → choiceIndex ${e.choiceIndex} ne pointe pas vers un choix 'ability'`);
       for (const ab of e.onlyIfAbility ?? [])
         if (!validAbilities.has(ab)) err(`[capacite ${c.id}] effect: ability-bonus-die-from-choice carac inconnue : ${ab}`);
+    } else if (e.kind === 'ability-bonus-from-familiar') {
+      // Carac déterminée par le familier fantastique choisi au rang 3 (PER-74) : la capacité doit
+      // appartenir à la voie du familier fantastique (seule à porter le choix R3) et `value` finie.
+      if (c.pathId !== 'prestige-familier-fantastique')
+        err(`[capacite ${c.id}] effect: ability-bonus-from-familiar hors de la voie du familier fantastique`);
+      if (!Number.isFinite(e.value)) err(`[capacite ${c.id}] effect: ability-bonus-from-familiar value non finie`);
     } else if (e.kind === 'test-bonus') {
       // Bonus de compétence à un/des domaine(s) nommé(s) (PER-89). `domains` non vide,
       // chaque id présent dans le catalogue ; `value` optionnelle (sinon déduite).
@@ -773,6 +779,17 @@ for (const f of fantasticFamiliars) {
     const g = power.grants;
     if (g && !isKnownProfile(g.profile))
       err(`[familier ${f.id} ${rank}] profil de la capacité conférée inconnu : ${g.profile}`);
+    // PER-74 : featureId de la capacité conférée RÉSOLU → doit pointer une capacité existante.
+    if (g?.featureId && !featureById.has(g.featureId))
+      err(`[familier ${f.id} ${rank}] grants.featureId inconnu : ${g.featureId}`);
+    // PER-74 : limite d'usage mécanisée — max entier > 0, déclencheur de reset valide.
+    if (power.usageLimit) {
+      const { max, reset } = power.usageLimit;
+      if (!Number.isInteger(max) || max <= 0)
+        err(`[familier ${f.id} ${rank}] usageLimit.max invalide : ${max}`);
+      if (!(['day', 'short-rest', 'combat', 'manual'] as const).includes(reset))
+        err(`[familier ${f.id} ${rank}] usageLimit.reset invalide : ${reset}`);
+    }
   }
   // Écarts de caractéristiques : clés valides.
   for (const k of Object.keys(f.abilityOverrides ?? {}))

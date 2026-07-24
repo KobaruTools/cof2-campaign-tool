@@ -131,7 +131,10 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: 'voie des illusions',
         profile: 'ensorceleur',
         usage: '2 fois par jour',
+        // PER-74 (pilote) : capacité RÉELLE peuplée (illusions-r2 = « Image décalée ») → carte empruntée.
+        featureId: 'illusions-r2',
       },
+      usageLimit: { max: 2, reset: 'day' },
     },
     spellProfile: 'ensorceleur',
     superiorPower: {
@@ -142,8 +145,11 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: 'voie des illusions',
         profile: 'ensorceleur',
         usage: '1 fois par combat',
+        // PER-74 (pilote) : illusions-r1 = « Mirage ».
+        featureId: 'illusions-r1',
       },
       abilityBonus: 'CHA',
+      usageLimit: { max: 1, reset: 'combat' },
     },
     sourcePage: 134,
   },
@@ -354,3 +360,31 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
 export const fantasticFamiliarById = new Map<string, FantasticFamiliar>(
   fantasticFamiliars.map((f) => [f.id, f]),
 );
+
+/** Id de la capacité de RANG 3 de la voie, qui porte le choix du familier (option index 0). */
+export const FANTASTIC_FAMILIAR_R3_ID = 'prestige-familier-fantastique-r3';
+
+/**
+ * Option de choix du rang 3 → id de l'entité `FantasticFamiliar` : fée/lutin et pantin/poupée sont
+ * deux choix DISTINCTS qui PARTAGENT une même entité (mêmes stats + mêmes pouvoirs conférés). Les
+ * autres options ont un id identique à leur entité. Source unique de la jointure, consommée par la
+ * mini-fiche du R3 (`part1.ts`, `withVerbatim`) ET par la résolution des pouvoirs conférés R4/R5/R7
+ * (PER-74 : `familiarFromOptionId`).
+ */
+export const FAMILIAR_ENTITY_BY_OPTION: Record<string, string> = {
+  fee: 'fee-ou-lutin',
+  lutin: 'fee-ou-lutin',
+  pantin: 'pantin-ou-poupee',
+  poupee: 'pantin-ou-poupee',
+};
+
+/**
+ * Entité `FantasticFamiliar` correspondant à une OPTION retenue au rang 3 (ex. `'fee'` → 'fee-ou-lutin',
+ * `'stique'` → 'stique'). `undefined` si aucune option / option inconnue. Brique de la primitive « effet
+ * conditionné au familier choisi » (PER-74) : le +1 de carac du rang 7 et l'affichage des pouvoirs
+ * mineur/supérieur/profil de sorts en dérivent tous.
+ */
+export function familiarFromOptionId(optionId: string | undefined): FantasticFamiliar | undefined {
+  if (!optionId) return undefined;
+  return fantasticFamiliarById.get(FAMILIAR_ENTITY_BY_OPTION[optionId] ?? optionId);
+}

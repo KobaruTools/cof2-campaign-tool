@@ -542,7 +542,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Sanctuaire ; la réserve /jour de Transe reste inchangée, comme lors d'un vrai repos court).
   const liftShortRestLock = (featureId: string) =>
     update({
-      usageCounters: resetUsageCounters(character.usageCounters, [featureId], new Set(['short-rest', 'combat'])),
+      usageCounters: resetUsageCounters(character.usageCounters, [featureId], new Set(['short-rest', 'combat']), character.featureChoices),
     });
   // Créer un élixir (forgesort, p. 98) : consomme la réserve partagée d'un cran (`cost`) ET
   // matérialise la dose dans l'équipement (objet custom, quantité incrémentée si déjà présent).

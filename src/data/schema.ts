@@ -487,6 +487,7 @@ export type FeatureEffect =
   | ConditionalStatBonusEffect
   | AbilityBonusEffect
   | AbilityBonusFromChoiceEffect
+  | AbilityBonusFromFamiliarEffect
   | AbilityBonusDieEffect
   | AbilityBonusDieFromChoiceEffect
   | TestBonusEffect
@@ -783,6 +784,22 @@ export interface AbilityBonusFromChoiceEffect {
    */
   choiceIndex: number;
   /** Valeur ajoutée — constante (les cas du livre sont des +1). */
+  value: number;
+}
+
+/**
+ * Bonus de caractéristique dont la CIBLE dépend du FAMILIER FANTASTIQUE choisi au rang 3 de la voie
+ * du familier fantastique (PER-74). Porté par le rang 7 (« Pouvoir supérieur ») : « +1 sur la valeur
+ * de caractéristique indiquée dans la description du familier ». La carac visée n'est PAS un choix du
+ * joueur mais une donnée de l'entité `FantasticFamiliar` retenue (`superiorPower.abilityBonus`, ex.
+ * Animal céleste → CHA, Araignée géante → AGI). Le moteur lit le choix du rang 3
+ * (`FANTASTIC_FAMILIAR_R3_ID`) via `familiarFromOptionId` et applique `value` à cette carac ; si aucun
+ * familier n'est retenu, l'effet ne contribue à rien. Distinct d'`ability-bonus-from-choice` (qui lit
+ * un choix `ability` de LA MÊME capacité).
+ */
+export interface AbilityBonusFromFamiliarEffect {
+  kind: 'ability-bonus-from-familiar';
+  /** Valeur ajoutée à la carac désignée par le familier (rang 7 : +1). */
   value: number;
 }
 
@@ -1994,6 +2011,14 @@ export interface FantasticFamiliar {
     text: string;
     /** Capacité de profil référencée, si le pouvoir en est une (sinon pouvoir propre au familier). */
     grants?: FamiliarGrantedPower;
+    /**
+     * Limite d'usage MÉCANISÉE du pouvoir conféré (PER-74), parsée de la fréquence verbatim
+     * (« 2 fois par jour » → `{ max: 2, reset: 'day' }` ; « une fois par combat » → `{ max: 1,
+     * reset: 'combat' }`). Le pouvoir est CONFÉRÉ par le familier : il s'utilise dans cette limite
+     * SANS coût en mana (arbitrage proprio 2026-07-24). Absent = pouvoir non compté (propre au
+     * familier sans fréquence, ou à volonté). Le compteur est suivi sous `familiarPowerUsedKey`.
+     */
+    usageLimit?: { max: number; reset: UsageResetTrigger };
   };
   /**
    * R5 — Profil de magie associé : le maître apprend un ou deux sorts de rang 1 ou 2 de ce
@@ -2009,6 +2034,8 @@ export interface FantasticFamiliar {
     grants?: FamiliarGrantedPower;
     /** Caractéristique bénéficiant du bonus de +1 (rang 7). */
     abilityBonus: AbilityId;
+    /** Limite d'usage MÉCANISÉE du pouvoir supérieur (PER-74) — mêmes règles que `minorPower.usageLimit`. */
+    usageLimit?: { max: number; reset: UsageResetTrigger };
   };
   /** Page source dans le livre de base. */
   sourcePage: number;

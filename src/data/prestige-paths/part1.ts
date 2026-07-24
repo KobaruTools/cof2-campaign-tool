@@ -12,18 +12,7 @@
  */
 
 import type { PrestigePath, Feature, CreatureProfile, FeatureChoiceOption } from '../schema';
-import { fantasticFamiliarById } from '../fantastic-familiars';
-
-/**
- * Option → id de l'entité `FantasticFamiliar` : fée/lutin et pantin/poupée sont deux choix
- * distincts qui PARTAGENT une même entité (mêmes stats + mêmes pouvoirs conférés).
- */
-const FAMILIAR_ENTITY_BY_OPTION: Record<string, string> = {
-  fee: 'fee-ou-lutin',
-  lutin: 'fee-ou-lutin',
-  pantin: 'pantin-ou-poupee',
-  poupee: 'pantin-ou-poupee',
-};
+import { fantasticFamiliarById, FAMILIAR_ENTITY_BY_OPTION } from '../fantastic-familiars';
 
 /**
  * Injecte dans le profil de l'option le TEXTE D'ORIGINE verbatim + la page source, tirés de
@@ -926,6 +915,12 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le familier transmet une RD de 1 par rang de la voie à tous les types de DM. De plus, il fait apprendre un ou deux choix d'un profil indiqué dans la description du familier. Il peut utiliser ce sort deux fois par jour dans le cas d'un rang 1 (une seule fois dans le cas d'un rang 2).",
+    // PER-74 : RD PLATE de 1 par rang atteint dans la voie, TOUS types de DM (`scopes` absent). Valeur
+    // scalante par le rang de la voie hôte, sur le même patron que la RD de sang-dragon (rang → valeur).
+    // INDÉPENDANTE du familier choisi. L'apprentissage de sorts (profil `spellProfile`) reste affiché
+    // (FamiliarGrantedPowerNote) sans effet moteur. RD 5 propre au pantin/poupée laissée sur la créature
+    // (specialAbility, PER-176 différé) : distincte de cette RD du maître, pas de cumul modélisé.
+    damageReduction: { kind: 'flat', value: { scale: 'path-rank', factor: 1 } },
     sourcePage: 133,
   },
   {
@@ -937,6 +932,8 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['M'],
     text:
       "Le personnage rappelle son familier à son contact par magie. Le familier est téléporté sur son maître au prix d'une action de mouvement. De plus le familier confère au personnage 1 PC supplémentaire.",
+    // PER-74 : +1 point de chance (PC) au personnage. INDÉPENDANT du familier choisi.
+    effects: [{ kind: 'stat-bonus', stat: 'luckPoints', value: 1 }],
     sourcePage: 133,
   },
   {
@@ -948,6 +945,11 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le familier confère au personnage un second pouvoir magique indiqué dans sa description, ainsi qu'un bonus de +1 sur la valeur de caractéristique indiquée dans la description du familier.",
+    // PER-74 : +1 à la caractéristique DÉSIGNÉE PAR LE FAMILIER retenu au rang 3
+    // (`superiorPower.abilityBonus`). La cible dépend du choix → effet `ability-bonus-from-familiar`
+    // (le moteur lit le choix du rang 3, cf. effects.ts). Le 2e pouvoir magique reste affiché sans effet
+    // moteur (FamiliarGrantedPowerNote ; résolution vers un featureId réel différée).
+    effects: [{ kind: 'ability-bonus-from-familiar', value: 1 }],
     sourcePage: 133,
   },
 

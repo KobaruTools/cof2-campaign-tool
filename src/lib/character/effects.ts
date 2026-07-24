@@ -19,6 +19,7 @@
  * cas plat constant est sommé (suffit aux appels « catalogue seul »).
  */
 import { featureById, pathById } from '@/data';
+import { familiarFromOptionId, FANTASTIC_FAMILIAR_R3_ID } from '@/data/fantastic-familiars';
 import type {
   AbilityId,
   ConditionalStatBonusEffect,
@@ -26,6 +27,7 @@ import type {
   DamageReduction,
   DerivedStatId,
   EffectValue,
+  FantasticFamiliar,
   Feature,
   FeatureEffect,
   ImmunityId,
@@ -1007,6 +1009,65 @@ export function inflictedStateKey(hostId: string, stateId: string): string {
 }
 
 /**
+ * PER-74 — clé d'état du compteur d'usage d'un pouvoir conféré par le familier fantastique, porté par
+ * la capacité HÔTE (rang 4 « Pouvoir mineur » ou rang 7 « Pouvoir supérieur »). Convention « absence =
+ * plein » : clé absente ⇒ toutes les charges disponibles ; la valeur stockée est le nombre d'usages
+ * RESTANTS. Rechargée selon la fréquence du familier choisi (`usageLimit.reset` : 'day' ou 'combat').
+ */
+export function familiarPowerUsedKey(hostFeatureId: string): string {
+  return `${hostFeatureId}::familiar-power`;
+}
+
+/** Capacités hôtes de la voie du familier fantastique conférant un pouvoir → slot de l'entité (PER-74). */
+const FAMILIAR_POWER_HOSTS: Record<string, 'minor' | 'superior'> = {
+  'prestige-familier-fantastique-r4': 'minor',
+  'prestige-familier-fantastique-r7': 'superior',
+};
+
+/**
+ * Familier fantastique retenu au R3 (choix `option` index 0 de `FANTASTIC_FAMILIAR_R3_ID`), joint à son
+ * entité via `familiarFromOptionId`. `undefined` si aucun familier retenu. Brique commune PER-74 (bonus
+ * de carac du R7 ET pouvoirs conférés R4/R7).
+ */
+function selectedFamiliar(
+  featureChoices?: Record<string, FeatureChoiceSelection[]>,
+): FantasticFamiliar | undefined {
+  const sel = featureChoices?.[FANTASTIC_FAMILIAR_R3_ID]?.[0];
+  return familiarFromOptionId(typeof sel === 'string' ? sel : undefined);
+}
+
+/** Pouvoir conféré par le familier choisi, résolu pour une capacité hôte (R4/R7). PER-74. */
+export interface ResolvedFamiliarPower {
+  slot: 'minor' | 'superior';
+  /** Texte verbatim du pouvoir (repli d'affichage si non résolu vers une capacité peuplée). */
+  text: string;
+  /** Nom de la capacité conférée si le livre la nomme (ex. « Image décalée »). */
+  name?: string;
+  /** Capacité RÉELLE peuplée référencée → rendu en carte + puce du profil. Absent = résolution différée. */
+  featureId?: string;
+  /** Limite d'usage mécanisée (sans mana). Absent = pas de compteur (pouvoir à volonté / non chiffré). */
+  usage?: { max: number; reset: UsageResetTrigger };
+}
+
+/**
+ * Pouvoir que le familier CHOISI au R3 confère au maître, pour une capacité hôte de la voie du familier
+ * fantastique (R4 → pouvoir mineur, R7 → pouvoir supérieur). `null` si `hostFeatureId` n'est pas un hôte
+ * concerné ou si aucun familier n'est retenu. Résout le `featureId` de la capacité peuplée quand il existe
+ * (rendu carte) ; sinon on ne dispose que du texte verbatim (repli). PER-74.
+ */
+export function resolveFamiliarGrantedPower(
+  hostFeatureId: string,
+  featureChoices?: Record<string, FeatureChoiceSelection[]>,
+): ResolvedFamiliarPower | null {
+  const slot = FAMILIAR_POWER_HOSTS[hostFeatureId];
+  if (!slot) return null;
+  const familiar = selectedFamiliar(featureChoices);
+  if (!familiar) return null;
+  const power = slot === 'minor' ? familiar.minorPower : familiar.superiorPower;
+  return { slot, text: power.text, name: power.grants?.name, featureId: power.grants?.featureId, usage: power.usageLimit };
+}
+
+/**
  * PER-161 — la RÉACTIVATION de l'interrupteur du i-ème effet TEMPORAIRE d'une capacité est-elle
  * verrouillée jusqu'au prochain repos court ? Vrai quand l'effet est un `conditional-stat-bonus`
  * temporaire dont le compteur porteur a `oncePerShortRest` ET dont le verrou de repos court est posé
@@ -1075,6 +1136,9 @@ export function pruneUsageCounters(
     for (const stateId of featureById.get(id)?.inflictableStates?.stateIds ?? []) {
       validKeys.add(inflictedStateKey(id, stateId));
     }
+    // PER-74 : compteur d'usage du pouvoir conféré par le familier (R4/R7) — clé fonction du seul id
+    // hôte (indépendante du familier choisi), valide tant que la capacité hôte est possédée.
+    if (FAMILIAR_POWER_HOSTS[id]) validKeys.add(familiarPowerUsedKey(id));
   }
   // PER-162 : le surcoût croissant stocke ses lancements sous l'id de la capacité — déjà couvert par
   // `owned`, donc rien à ajouter ici (mentionné pour mémoire ; la clé survit à l'élagage).
@@ -1163,11 +1227,16 @@ export function capacityResourceGauges(character: Character): CapacityResourceGa
  * `'day'` par défaut (cas le plus courant) ; `'manual'` n'est jamais réinitialisé par
  * un repos. Remettre à plein = retirer la clé (absence ⇒ compteur au max). Ne touche
  * pas aux clés inconnues (compteurs d'une capacité non possédée : préservés).
+ *
+ * `featureChoices` (optionnel) sert au compteur d'usage du pouvoir conféré par le familier fantastique
+ * (PER-74) : sa fréquence de reset (jour / combat) dépend du familier CHOISI au R3 — sans les choix, ce
+ * compteur n'est pas résolu (les appels historiques restent inchangés).
  */
 export function resetUsageCounters(
   usageCounters: Record<string, number>,
   featureIds: string[],
   triggers: Set<UsageResetTrigger>,
+  featureChoices?: Record<string, FeatureChoiceSelection[]>,
 ): Record<string, number> {
   const toReset = new Set<string>();
   for (const id of featureIds) {
@@ -1200,6 +1269,12 @@ export function resetUsageCounters(
     if (states && triggers.has(states.resetOn ?? 'combat')) {
       for (const stateId of states.stateIds) toReset.add(inflictedStateKey(id, stateId));
     }
+    // PER-74 : compteur d'usage du pouvoir conféré par le familier (R4/R7) — rechargé selon la fréquence
+    // du familier CHOISI (`usageLimit.reset` : 'day' → repos long ; 'combat' → récupération rapide/combat).
+    if (FAMILIAR_POWER_HOSTS[id]) {
+      const usage = resolveFamiliarGrantedPower(id, featureChoices)?.usage;
+      if (usage && triggers.has(usage.reset)) toReset.add(familiarPowerUsedKey(id));
+    }
   }
   const next: Record<string, number> = {};
   for (const [key, value] of Object.entries(usageCounters)) {
@@ -1221,11 +1296,25 @@ export interface AbilityModSource {
 }
 
 /**
+ * Caractéristique cible du +1 du rang 7 de la voie du familier fantastique (PER-74) : celle indiquée
+ * par le familier CHOISI au rang 3 (`superiorPower.abilityBonus` de l'entité `FantasticFamiliar`). Lit
+ * l'option retenue au rang 3 (`FANTASTIC_FAMILIAR_R3_ID`, choix 0 = un id d'option string) et la joint
+ * à l'entité via `familiarFromOptionId`. `undefined` si aucun familier n'est retenu (effet ignoré).
+ */
+function familiarSuperiorAbility(
+  featureChoices?: Record<string, FeatureChoiceSelection[]>,
+): AbilityId | undefined {
+  return selectedFamiliar(featureChoices)?.superiorPower.abilityBonus;
+}
+
+/**
  * Modificateurs PERMANENTS de caractéristiques apportés par les capacités acquises.
- * Gère deux genres :
+ * Gère trois genres :
  *  - `ability-bonus` : cible fixe (ex. « +1 CON » d'Endurer) ;
  *  - `ability-bonus-from-choice` : cible lue depuis `featureChoices[id][choiceIndex]`
- *    (ex. Projection mentale : « +1 à la carac la plus faible »).
+ *    (ex. Projection mentale : « +1 à la carac la plus faible ») ;
+ *  - `ability-bonus-from-familiar` : cible désignée par le familier retenu au rang 3 (rang 7 de
+ *    la voie du familier fantastique, PER-74).
  * Ids inconnus ignorés.
  */
 export function abilityModsFromFeatures(
@@ -1244,6 +1333,9 @@ export function abilityModsFromFeatures(
         if (typeof chosen === 'string' && (ABILITY_IDS as readonly string[]).includes(chosen)) {
           mods[chosen as AbilityId] = (mods[chosen as AbilityId] ?? 0) + e.value;
         }
+      } else if (e.kind === 'ability-bonus-from-familiar' && featureChoices) {
+        const ability = familiarSuperiorAbility(featureChoices);
+        if (ability) mods[ability] = (mods[ability] ?? 0) + e.value;
       }
     }
   }
@@ -1267,6 +1359,9 @@ export function abilityModSources(
         if (typeof chosen === 'string' && (ABILITY_IDS as readonly string[]).includes(chosen)) {
           (sources[chosen as AbilityId] ??= []).push({ featureId: id, name: feature.name, value: e.value });
         }
+      } else if (e.kind === 'ability-bonus-from-familiar' && featureChoices) {
+        const ability = familiarSuperiorAbility(featureChoices);
+        if (ability) (sources[ability] ??= []).push({ featureId: id, name: feature.name, value: e.value });
       }
     }
   }

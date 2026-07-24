@@ -21,6 +21,8 @@ import {
   conditionalEffectsOf,
   conditionalEffectBonuses,
   criticalRangeSources,
+  familiarPowerUsedKey,
+  resolveFamiliarGrantedPower,
   damageReductionSources,
   stackedDamageReductions,
   creatureBonusDiceForPath,
@@ -1709,5 +1711,98 @@ describe('Dentelles et rapière — DEF += min(CHA, rang) sans armure (PER-106)'
   it('détaille la capacité dans les sources de DEF sans armure', () => {
     const sources = featureModSources(['seduction-r2'], ctx({ armorWorn: false, abilities: cha(2) })).def ?? [];
     expect(sources.some((s) => s.featureId === 'seduction-r2' && s.value === 2)).toBe(true);
+  });
+});
+
+describe('Voie du familier fantastique — rangs R5/R6/R7 (PER-74)', () => {
+  const R3 = 'prestige-familier-fantastique-r3';
+  const R5 = 'prestige-familier-fantastique-r5';
+  const R6 = 'prestige-familier-fantastique-r6';
+  const R7 = 'prestige-familier-fantastique-r7';
+  const char = (featureIds: string[], featureChoices: Record<string, string[]> = {}): Character =>
+    ({ level: 8, abilities: ctx().abilities, featureIds, effectToggles: {}, featureChoices }) as Character;
+
+  it('R5 « Résistance » : RD plate = rang atteint dans la voie, tous types (scopes absent)', () => {
+    // Voie prise jusqu’au rang 5 → rang de voie 5 → RD 5 sur tous les DM.
+    const upTo5 = damageReductionSources(char([R3, 'prestige-familier-fantastique-r4', R5]));
+    expect(upTo5).toHaveLength(1);
+    expect(upTo5[0].reduction).toMatchObject({ kind: 'flat', value: 5 });
+    expect(upTo5[0].reduction.scopes).toBeUndefined();
+    // Voie poussée jusqu’au rang 7 → RD 7 (1 par rang).
+    const upTo7 = damageReductionSources(char([R3, R5, R6, R7]));
+    expect(upTo7[0].reduction).toMatchObject({ kind: 'flat', value: 7 });
+  });
+
+  it('R6 « Inséparables » : +1 point de chance (indépendant du familier)', () => {
+    expect(modsFromFeatures([R6]).luckPoints).toBe(1);
+  });
+
+  it('R7 « Pouvoir supérieur » : +1 à la carac désignée par le familier choisi au R3', () => {
+    // Animal céleste → CHA ; Araignée géante → AGI ; Diablotin → INT.
+    expect(abilityModsFromFeatures([R7], { [R3]: ['familier-celeste'] }).CHA).toBe(1);
+    expect(abilityModsFromFeatures([R7], { [R3]: ['araignee-geante'] }).AGI).toBe(1);
+    expect(abilityModsFromFeatures([R7], { [R3]: ['diablotin'] }).INT).toBe(1);
+  });
+
+  it('R7 : le choix « fée » (option distincte) partage l’entité fee-ou-lutin → +1 AGI', () => {
+    expect(abilityModsFromFeatures([R7], { [R3]: ['fee'] }).AGI).toBe(1);
+    expect(abilityModsFromFeatures([R7], { [R3]: ['lutin'] }).AGI).toBe(1);
+  });
+
+  it('R7 sans familier choisi (ou option inconnue) : aucun bonus de carac', () => {
+    expect(abilityModsFromFeatures([R7], {})).toEqual({});
+    expect(abilityModsFromFeatures([R7], { [R3]: ['inexistant'] })).toEqual({});
+  });
+
+  it('R7 : le +1 est détaillé dans les sources de la carac visée', () => {
+    const sources = abilityModSources([R7], { [R3]: ['stique'] }).CON ?? []; // stique → CON
+    expect(sources.some((s) => s.featureId === R7 && s.value === 1)).toBe(true);
+  });
+});
+
+describe('Pouvoirs conférés par le familier — pilote Dragon féérique (PER-74)', () => {
+  const R3 = 'prestige-familier-fantastique-r3';
+  const R4 = 'prestige-familier-fantastique-r4';
+  const R7 = 'prestige-familier-fantastique-r7';
+  const dragon = { [R3]: ['dragon-feerique'] };
+
+  it('R4 résout le pouvoir mineur → Image décalée (illusions-r2), 2×/jour', () => {
+    expect(resolveFamiliarGrantedPower(R4, dragon)).toMatchObject({
+      slot: 'minor',
+      featureId: 'illusions-r2',
+      usage: { max: 2, reset: 'day' },
+    });
+  });
+
+  it('R7 résout le pouvoir supérieur → Mirage (illusions-r1), 1×/combat', () => {
+    expect(resolveFamiliarGrantedPower(R7, dragon)).toMatchObject({
+      slot: 'superior',
+      featureId: 'illusions-r1',
+      usage: { max: 1, reset: 'combat' },
+    });
+  });
+
+  it('null hors capacité hôte ou sans familier choisi', () => {
+    expect(resolveFamiliarGrantedPower('brute-r1', dragon)).toBeNull();
+    expect(resolveFamiliarGrantedPower(R4, {})).toBeNull();
+  });
+
+  it('reset : le compteur 2×/jour (R4) se recharge au repos LONG (day), pas au repos court', () => {
+    const key = familiarPowerUsedKey(R4);
+    // Repos court (short-rest + combat) : « day » non déclenché → charge restante conservée.
+    expect(resetUsageCounters({ [key]: 0 }, [R4], new Set(['short-rest', 'combat']), dragon)).toEqual({ [key]: 0 });
+    // Repos long (inclut day) → clé retirée = plein.
+    expect(resetUsageCounters({ [key]: 0 }, [R4], new Set(['day', 'short-rest', 'combat']), dragon)).toEqual({});
+  });
+
+  it('reset : le compteur 1×/combat (R7) se recharge dès le repos court (combat)', () => {
+    const key = familiarPowerUsedKey(R7);
+    expect(resetUsageCounters({ [key]: 0 }, [R7], new Set(['short-rest', 'combat']), dragon)).toEqual({});
+  });
+
+  it('prune : la clé du compteur survit tant que la capacité hôte est possédée', () => {
+    const key = familiarPowerUsedKey(R4);
+    expect(pruneUsageCounters({ [key]: 1 }, [R4])).toEqual({ [key]: 1 });
+    expect(pruneUsageCounters({ [key]: 1 }, ['brute-r1'])).toEqual({});
   });
 });

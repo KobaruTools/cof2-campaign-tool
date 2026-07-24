@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per74-familier-dragon-feerique",
+  "name": "Recette PER-74 — Dragon féérique (cartes empruntées + compteurs)",
+  "identity": {
+    "description": "ATTENDU (PER-74) : familier « dragon-feerique » choisi au R3. R5 → RD 7 tous types ; R6 → +1 PC ; R7 → +1 CHA."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 8,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -1,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 3,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": -1,
+    "AGI": 2,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 3,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "prestige-familier-fantastique-r3",
+    "prestige-familier-fantastique-r4",
+    "prestige-familier-fantastique-r5",
+    "prestige-familier-fantastique-r6",
+    "prestige-familier-fantastique-r7"
+  ],
+  "featureChoices": {
+    "prestige-familier-fantastique-r3": [
+      "dragon-feerique"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-74 — voie du familier fantastique prise jusqu’au rang 7. Vérifier RD (R5), +1 PC (R6), +1 carac (R7).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
