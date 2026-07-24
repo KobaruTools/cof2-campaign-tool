@@ -16,7 +16,7 @@
  * Vocation à grandir (jets rapides, PV/mana en direct, notes de session…), d'où
  * une page dédiée plutôt qu'une modale.
  */
-import { use, useEffect, useMemo } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -31,7 +31,8 @@ import Typography from '@mui/material/Typography';
 import { AppHeader } from '@/components/AppHeader';
 import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
 import { GmScreenCard } from '@/components/campaign/GmScreenCard';
-import { GmScreenBanditCard, BANDIT_BASE_PROFILE } from '@/components/campaign/GmScreenBanditCard';
+import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard';
+import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
 import { InitiativeTracker, type InitiativeRow } from '@/components/campaign/InitiativeTracker';
 import { HomeBackground } from '@/components/HomeBackground';
 import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
@@ -39,36 +40,35 @@ import { deriveStats } from '@/lib/engine';
 import { applyDamage, healHp, resetHp } from '@/lib/character/gauges';
 import { summarize } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
+import { creatureNcLabel } from '@/lib/ui/creature';
 import type { DamageKind } from '@/components/sheet/HpGauge';
 import { useGmCombatState } from './useGmCombatState';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
+import { useBestiaryStore } from '@/stores/bestiary';
 
-/** PV/initiative du bandit de base (livre de base p. 263), lus depuis son profil. */
-const BANDIT_MAX_HP = Number.parseInt(BANDIT_BASE_PROFILE.hitPoints ?? '9', 10);
-const BANDIT_INITIATIVE = Number.parseInt(
-  typeof BANDIT_BASE_PROFILE.initiative === 'string' ? BANDIT_BASE_PROFILE.initiative : '10',
-  10,
-);
+/** Couleur d'accent des cartes/lignes de créatures adverses (PNJ). */
+const CREATURE_ACCENT = '#e57373';
 
 export default function GmScreenPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
 
   // Combat en cours — état persisté dans un `localStorage` DÉDIÉ (par campagne) : le
-  // roster des bandits (ids stables + PV) et la position dans l'ordre d'initiative. Les
-  // PV joueurs vivent sur la fiche (store des personnages), donc hors de ce stockage.
-  // Le bouton « + Ajouter un bandit » est laissé sur TOUTES les campagnes (temporaire,
-  // cf. PER-236) : par défaut aucun bandit.
+  // roster des créatures (instances stables { id + slug } + PV) et la position dans
+  // l'ordre d'initiative. Les PV joueurs vivent sur la fiche (store des personnages),
+  // donc hors de ce stockage. Le bouton « + Ajouter une créature » est laissé sur
+  // TOUTES les campagnes (temporaire, cf. PER-236) : par défaut aucune créature.
   const {
-    banditIds,
-    banditDepletions,
+    creatures,
+    depletions,
     currentTurnKey,
-    addBandit,
-    removeBandit,
-    setBanditDepletion,
+    addCreature,
+    removeCreature,
+    setCreatureDepletion,
     setCurrentTurnKey,
   } = useGmCombatState(cid);
+  const [addOpen, setAddOpen] = useState(false);
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
   const characters = useCharactersStore((s) => s.characters);
   const loadCharacters = useCharactersStore((s) => s.load);
@@ -78,6 +78,12 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
   const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === cid));
   const players = usePlayersStore((s) => s.players);
   const loadPlayers = usePlayersStore((s) => s.load);
+  // Bestiaire : liste légère (nom des créatures ajoutées, pour l'étiquette) + blobs
+  // (Init./PV lus à la demande, cache PER-244). Aucune source codée en dur.
+  const bestiaryList = useBestiaryStore((s) => s.list);
+  const loadBestiaryList = useBestiaryStore((s) => s.loadList);
+  const blobs = useBestiaryStore((s) => s.blobs);
+  const loadBlob = useBestiaryStore((s) => s.loadBlob);
 
   // Rafraîchit depuis le cloud (persos + campagnes + roster) comme les autres
   // pages MJ : la vue campagne s'appuyant sur l'hydratation localStorage, on
@@ -86,12 +92,37 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     void loadCharacters();
     void loadCampaigns();
     void loadPlayers(cid);
-  }, [loadCharacters, loadCampaigns, loadPlayers, cid]);
+    void loadBestiaryList();
+  }, [loadCharacters, loadCampaigns, loadPlayers, loadBestiaryList, cid]);
+
+  // Charge le blob de chaque créature du roster (Init./PV lus depuis le bloc) ;
+  // idempotent côté store (blob déjà chargé/en cours = no-op).
+  useEffect(() => {
+    for (const inst of creatures) void loadBlob(inst.slug);
+  }, [creatures, loadBlob]);
 
   const playerNameById = useMemo(
     () => new Map(players.map((p) => [p.id, p.name])),
     [players],
   );
+
+  // Nom de chaque créature (liste légère) pour l'étiquette, avant même le blob.
+  const creatureNameBySlug = useMemo(
+    () => new Map((bestiaryList ?? []).map((c) => [c.id, c.name])),
+    [bestiaryList],
+  );
+
+  // Instances numérotées PAR CRÉATURE (« Gobelin 1 / 2 », comme « Bandit 1 / 2 »
+  // autrefois), dans l'ordre d'ajout.
+  const labeledCreatures = useMemo(() => {
+    const counts = new Map<string, number>();
+    return creatures.map((inst) => {
+      const n = (counts.get(inst.slug) ?? 0) + 1;
+      counts.set(inst.slug, n);
+      const name = creatureNameBySlug.get(inst.slug) ?? inst.slug;
+      return { ...inst, label: `${name} ${n}` };
+    });
+  }, [creatures, creatureNameBySlug]);
 
   // Personnages de CETTE campagne réclamés par un joueur (`playerId` non nul).
   const claimed = useMemo(
@@ -137,28 +168,36 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     [characters, cid, upsert, playerNameById],
   );
 
-  // Lignes des bandits ajoutés (PV suivis en local, non persistés). Numérotés dans
-  // l'ordre d'ajout ; initiative/PV du profil de base p. 263.
-  const banditRows: InitiativeRow[] = banditIds.map((id, i) => {
-    const depletion = banditDepletions[id] ?? {};
-    return {
-      key: `bandit-${id}`,
-      name: `Bandit ${i + 1}`,
-      profileLabel: 'Bandit de base',
-      profileColor: '#e57373',
-      initiative: BANDIT_INITIATIVE,
-      maxHp: BANDIT_MAX_HP,
-      depletion,
-      onDamage: (amount: number, kind: DamageKind) =>
-        setBanditDepletion(id, applyDamage(depletion, amount, kind, BANDIT_MAX_HP)),
-      onHeal: (amount: number) => setBanditDepletion(id, healHp(depletion, amount)),
-      onReset: () => setBanditDepletion(id, resetHp(depletion)),
-      persistKey: `gm-init:bandit-${id}`,
-    };
+  // Lignes des créatures ajoutées (PV suivis en local, non persistés). Init./PV lus
+  // depuis le blob du bestiaire ; tant que le blob n'est pas chargé, l'instance n'a pas
+  // encore de ligne d'initiative (la carte affiche un squelette en attendant).
+  const creatureRows: InitiativeRow[] = labeledCreatures.flatMap((inst) => {
+    const blob = blobs[inst.slug];
+    if (!blob) return [];
+    const maxHp = blob.hitPoints ?? 0;
+    const initiative = blob.initiative ?? 0;
+    const depletion = depletions[inst.id] ?? {};
+    const nc = creatureNcLabel(blob);
+    return [
+      {
+        key: inst.id,
+        name: inst.label,
+        profileLabel: nc ? `NC ${nc}` : 'PNJ',
+        profileColor: CREATURE_ACCENT,
+        initiative,
+        maxHp,
+        depletion,
+        onDamage: (amount: number, kind: DamageKind) =>
+          setCreatureDepletion(inst.id, applyDamage(depletion, amount, kind, maxHp)),
+        onHeal: (amount: number) => setCreatureDepletion(inst.id, healHp(depletion, amount)),
+        onReset: () => setCreatureDepletion(inst.id, resetHp(depletion)),
+        persistKey: `gm-init:${inst.id}`,
+      },
+    ];
   });
 
   // Ordre d'initiative décroissant (tri stable : à égalité, l'ordre d'entrée est conservé).
-  const initiativeRows = [...characterRows, ...banditRows].sort((a, b) => b.initiative - a.initiative);
+  const initiativeRows = [...characterRows, ...creatureRows].sort((a, b) => b.initiative - a.initiative);
 
   const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';
   if (!charactersHydrated || campaignsLoading) {
@@ -236,7 +275,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           toute la largeur pour afficher un maximum de cartes de front. Padding
           symétrique (gauche/droite = haut/bas) pour laisser respirer les bords. */}
       <Box sx={{ p: { xs: 2, sm: 4 } }}>
-        {/* Combat tracker (PER-236) : barre d'ajout de bandits, laissée sur toutes les campagnes. */}
+        {/* Combat tracker (PER-236, PER-247) : barre d'ajout de créatures, laissée sur toutes les campagnes. */}
         <Stack
           direction="row"
           spacing={1}
@@ -245,11 +284,16 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
             Combat en cours
           </Typography>
-          <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={addBandit}>
-            Ajouter un bandit de base
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => setAddOpen(true)}
+          >
+            Ajouter une créature
           </Button>
         </Stack>
-        {claimed.length === 0 && banditIds.length === 0 ? (
+        {claimed.length === 0 && creatures.length === 0 ? (
           <Paper
             variant="outlined"
             sx={{
@@ -294,12 +338,13 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                 href={`/character/${character.id}`}
               />
             ))}
-            {/* Cartes bandits (adversaires du combat), à la suite des joueurs. */}
-            {banditIds.map((id, i) => (
-              <GmScreenBanditCard
-                key={id}
-                label={`Bandit ${i + 1}`}
-                onRemove={() => removeBandit(id)}
+            {/* Cartes des créatures (adversaires du combat), à la suite des joueurs. */}
+            {labeledCreatures.map((inst) => (
+              <GmScreenCreatureCard
+                key={inst.id}
+                slug={inst.slug}
+                label={inst.label}
+                onRemove={() => removeCreature(inst.id)}
               />
             ))}
           </Box>
@@ -314,6 +359,13 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           onCurrentTurnKeyChange={setCurrentTurnKey}
         />
       </Box>
+
+      {/* Modale d'ajout d'une créature du bestiaire au combat (sélecteur + aperçu). */}
+      <AddCreatureDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdd={(slug) => addCreature(slug)}
+      />
     </>
   );
 }

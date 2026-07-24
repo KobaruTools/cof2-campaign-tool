@@ -220,9 +220,15 @@ function CreatureAbilityText({
 
 export interface BestiaryStatBlockProps {
   creature: Creature;
+  /**
+   * Masque le pavé de notes de fin de bloc (description/lore + renvoi « Voir ci-dessus »).
+   * Utilisé par l'écran de MJ où seule la partie chiffrée du combat compte (PER-247) ;
+   * le bestiaire les affiche (défaut `false`).
+   */
+  hideNotes?: boolean;
 }
 
-export function BestiaryStatBlock({ creature }: BestiaryStatBlockProps) {
+export function BestiaryStatBlock({ creature, hideNotes = false }: BestiaryStatBlockProps) {
   // Bascule « Texte d'origine » (comme la fiche, PER-88) : rend le verbatim brut des capacités au
   // lieu du rendu enrichi. État LOCAL au bloc (se réinitialise en changeant de créature).
   const [verbatim, setVerbatim] = useState(false);
@@ -460,7 +466,7 @@ export function BestiaryStatBlock({ creature }: BestiaryStatBlockProps) {
           des variantes — affichées tout en bas, dans un encadré façon « Alert » info
           (bleu clair désaturé, verre dépoli) avec une icône de plume/parchemin à
           gauche (retour propriétaire). */}
-      {(creature.description || creature.sharedAbilitiesNote) && (
+      {!hideNotes && (creature.description || creature.sharedAbilitiesNote) && (
         <AppAlert severity="info" icon={<HistoryEduOutlinedIcon />} sx={{ mt: BLOCK_GAP }}>
           {creature.description && (
             <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.55, fontStyle: 'italic' }}>
