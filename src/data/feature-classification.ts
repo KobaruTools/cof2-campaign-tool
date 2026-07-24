@@ -103,11 +103,11 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'mercenaire-r3', tags: ['flat-bonus', 'choice'], sourcePage: 64 }, // Combattant aguerri
   { id: 'mercenaire-r4', tags: ['flat-bonus'], sourcePage: 64 }, // Constitution héroïque
   { id: 'mercenaire-r5', tags: ['flat-bonus', 'choice', 'conditional'], conditionalKinds: ['condition'], sourcePage: 64 }, // Combat de masse
-  { id: 'pistolero-r1', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 64 }, // Plus vite que son ombre
-  { id: 'pistolero-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 64 }, // Ajuster le tir
-  { id: 'pistolero-r3', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 64 }, // Tir double
-  { id: 'pistolero-r4', tags: ['flat-bonus'], sourcePage: 64 }, // Agilité héroïque
-  { id: 'pistolero-r5', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 64 }, // As de la gâchette
+  { id: 'pistolero-r1', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 65 }, // Plus vite que son ombre
+  { id: 'pistolero-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 65 }, // Ajuster le tir
+  { id: 'pistolero-r3', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 65 }, // Tir double
+  { id: 'pistolero-r4', tags: ['flat-bonus'], sourcePage: 65 }, // Agilité héroïque
+  { id: 'pistolero-r5', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 65 }, // As de la gâchette
   { id: 'precision-r1', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 65 }, // Joli coup
   { id: 'precision-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 65 }, // Défaut dans la cuirasse
   { id: 'precision-r3', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 65 }, // Tir précis
@@ -115,9 +115,9 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'precision-r5', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 65 }, // Tir fatal
   { id: 'escrime-r1', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 66 }, // Précision
   { id: 'escrime-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 66 }, // Feinte
-  { id: 'escrime-r3', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 66 }, // Intelligence du combat
-  { id: 'escrime-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 66 }, // Attaque flamboyante
-  { id: 'escrime-r5', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 66 }, // Botte mortelle
+  { id: 'escrime-r3', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 67 }, // Intelligence du combat
+  { id: 'escrime-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 67 }, // Attaque flamboyante
+  { id: 'escrime-r5', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 67 }, // Botte mortelle
   { id: 'musicien-r1', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 67 }, // Chant des héros
   { id: 'musicien-r2', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 67 }, // Chant de réconfort
   { id: 'musicien-r3', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 67 }, // Attaque sonore
@@ -141,9 +141,9 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'archer-r1', tags: ['flat-bonus', 'choice', 'conditional'], conditionalKinds: ['scaling'], sourcePage: 70 }, // Archer émérite
   { id: 'archer-r2', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 70 }, // Tir chirurgical
   { id: 'archer-r3', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 70 }, // Dans le mille
-  { id: 'archer-r4', tags: ['conditional'], sourcePage: 70 }, // Tir rapide
-  { id: 'archer-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 70 }, // Flèche de mort
-  { id: 'compagnon-animal-r1', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 70 }, // Le loup
+  { id: 'archer-r4', tags: ['conditional'], sourcePage: 71 }, // Tir rapide
+  { id: 'archer-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 71 }, // Flèche de mort
+  { id: 'compagnon-animal-r1', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 71 }, // Le loup
   { id: 'compagnon-animal-r2', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 71 }, // Travail d'équipe
   { id: 'compagnon-animal-r3', tags: ['conditional'], sourcePage: 71 }, // Lien empathique
   { id: 'compagnon-animal-r4', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 72 }, // Loup alpha
@@ -165,10 +165,10 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'combat-a-deux-armes-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 73 }, // Double peine
   { id: 'assassin-r1', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 74 }, // Discrétion
   { id: 'assassin-r2', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 74 }, // Attaque sournoise
-  { id: 'assassin-r3', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 74 }, // Attaque par surprise
-  { id: 'assassin-r4', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 74 }, // Disparition
-  { id: 'assassin-r5', tags: ['choice', 'conditional'], conditionalKinds: ['temporary'], sourcePage: 74 }, // Ouverture mortelle
-  { id: 'aventurier-r1', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 74 }, // Baratin
+  { id: 'assassin-r3', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 75 }, // Attaque par surprise
+  { id: 'assassin-r4', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 75 }, // Disparition
+  { id: 'assassin-r5', tags: ['choice', 'conditional'], conditionalKinds: ['temporary'], sourcePage: 75 }, // Ouverture mortelle
+  { id: 'aventurier-r1', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 75 }, // Baratin
   { id: 'aventurier-r2', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 75 }, // Provocation
   { id: 'aventurier-r3', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['scaling'], sourcePage: 75 }, // Souplesse du félin
   { id: 'aventurier-r4', tags: ['flat-bonus'], sourcePage: 75 }, // Charisme héroïque
@@ -290,22 +290,22 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'illusions-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 95 }, // Image décalée
   { id: 'illusions-r3', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 95 }, // Sort illusoire
   { id: 'illusions-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 95 }, // Imitation
-  { id: 'illusions-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 95 }, // Exécution mentale
+  { id: 'illusions-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 96 }, // Exécution mentale
   { id: 'invocation-r1', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 96 }, // Choc
   { id: 'invocation-r2', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 96 }, // Serviteur invisible
   { id: 'invocation-r3', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 96 }, // Arme de mana
   { id: 'invocation-r4', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 96 }, // Porte dimensionnelle
   { id: 'invocation-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 96 }, // Mur de mana
   { id: 'artefacts-r1', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 97 }, // Bâton de mage
-  { id: 'artefacts-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 97 }, // Ouverture ‑ fermeture
-  { id: 'artefacts-r3', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 97 }, // Sac sans fond
-  { id: 'artefacts-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 97 }, // Frappe des arcanes
-  { id: 'artefacts-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 97 }, // Artefact étrange
+  { id: 'artefacts-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 98 }, // Ouverture ‑ fermeture
+  { id: 'artefacts-r3', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 98 }, // Sac sans fond
+  { id: 'artefacts-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 98 }, // Frappe des arcanes
+  { id: 'artefacts-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 98 }, // Artefact étrange
   { id: 'elixirs-r1', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 98 }, // Fortifiant
   { id: 'elixirs-r2', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 98 }, // Feu grégeois
   { id: 'elixirs-r3', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 98 }, // Élixir de guérison
-  { id: 'elixirs-r4', tags: ['choice', 'conditional'], conditionalKinds: ['scaling'], sourcePage: 98 }, // Élixirs mineurs
-  { id: 'elixirs-r5', tags: ['choice', 'conditional'], conditionalKinds: ['scaling'], sourcePage: 98 }, // Élixirs majeurs
+  { id: 'elixirs-r4', tags: ['choice', 'conditional'], conditionalKinds: ['scaling'], sourcePage: 99 }, // Élixirs mineurs
+  { id: 'elixirs-r5', tags: ['choice', 'conditional'], conditionalKinds: ['scaling'], sourcePage: 99 }, // Élixirs majeurs
   { id: 'metal-r1', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 99 }, // Morsure de la forge
   { id: 'metal-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 99 }, // Métal brûlant
   { id: 'metal-r3', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 99 }, // Magnétisme
@@ -328,15 +328,15 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'magie-des-arcanes-r5', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 103 }, // Désintégration
   { id: 'magie-destructrice-r1', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 103 }, // Arc de feu
   { id: 'magie-destructrice-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 103 }, // Saper les forces
-  { id: 'magie-destructrice-r3', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 103 }, // Flèche de feu
-  { id: 'magie-destructrice-r4', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 103 }, // Explosion de feu
-  { id: 'magie-destructrice-r5', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 103 }, // Appel de la foudre
+  { id: 'magie-destructrice-r3', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 104 }, // Flèche de feu
+  { id: 'magie-destructrice-r4', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 104 }, // Explosion de feu
+  { id: 'magie-destructrice-r5', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 104 }, // Appel de la foudre
   { id: 'magie-elementaire-r1', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 104 }, // Asphyxie
   { id: 'magie-elementaire-r2', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 104 }, // Maîtrise des éléments
   { id: 'magie-elementaire-r3', tags: ['choice', 'mana-cost', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 104 }, // Arme élémentaire
-  { id: 'magie-elementaire-r4', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 104 }, // Respiration aquatique
-  { id: 'magie-elementaire-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 104 }, // Armure de pierre
-  { id: 'magie-protectrice-r1', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 104 }, // Armure de mana
+  { id: 'magie-elementaire-r4', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 105 }, // Respiration aquatique
+  { id: 'magie-elementaire-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 105 }, // Armure de pierre
+  { id: 'magie-protectrice-r1', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 105 }, // Armure de mana
   { id: 'magie-protectrice-r2', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 105 }, // Chute ralentie
   { id: 'magie-protectrice-r3', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 105 }, // Déphasage
   { id: 'magie-protectrice-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 105 }, // Cercle de protection
@@ -346,31 +346,31 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'magie-universelle-r3', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 106 }, // Invisibilité
   { id: 'magie-universelle-r4', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 106 }, // Vol
   { id: 'magie-universelle-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 106 }, // Téléportation
-  { id: 'demon-r1', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 107 }, // Malédiction
-  { id: 'demon-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 107 }, // Beauté de la succube
-  { id: 'demon-r3', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 107 }, // Pacte démoniaque
-  { id: 'demon-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 107 }, // Aspect du démon
-  { id: 'demon-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 107 }, // Invocation d’un démon
+  { id: 'demon-r1', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 108 }, // Malédiction
+  { id: 'demon-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 108 }, // Beauté de la succube
+  { id: 'demon-r3', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 108 }, // Pacte démoniaque
+  { id: 'demon-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 108 }, // Aspect du démon
+  { id: 'demon-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 108 }, // Invocation d’un démon
   { id: 'mort-r1', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 108 }, // Siphon des âmes
-  { id: 'mort-r2', tags: ['conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 108 }, // Masque mortuaire
-  { id: 'mort-r3', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 108 }, // Baiser du vampire
-  { id: 'mort-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 108 }, // Peur
-  { id: 'mort-r5', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 108 }, // Briser les cœurs
+  { id: 'mort-r2', tags: ['conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 109 }, // Masque mortuaire
+  { id: 'mort-r3', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 109 }, // Baiser du vampire
+  { id: 'mort-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 109 }, // Peur
+  { id: 'mort-r5', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 109 }, // Briser les cœurs
   { id: 'outre-tombe-r1', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 109 }, // Un pied dans la tombe
   { id: 'outre-tombe-r2', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['scaling'], sourcePage: 109 }, // Armure d’os
   { id: 'outre-tombe-r3', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 109 }, // Animation des morts
-  { id: 'outre-tombe-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 109 }, // Ensevelissement
-  { id: 'outre-tombe-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 109 }, // Armée des morts
-  { id: 'sang-r1', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 109 }, // Saignements
-  { id: 'sang-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 109 }, // Sang mordant
+  { id: 'outre-tombe-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 110 }, // Ensevelissement
+  { id: 'outre-tombe-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 110 }, // Armée des morts
+  { id: 'sang-r1', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 110 }, // Saignements
+  { id: 'sang-r2', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 110 }, // Sang mordant
   { id: 'sang-r3', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 110 }, // Exsangue
-  { id: 'sang-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 110 }, // Rituel de sang
-  { id: 'sang-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 110 }, // Lien de sang
-  { id: 'sombre-magie-r1', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 110 }, // Ténèbres
-  { id: 'sombre-magie-r2', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 110 }, // Reptation
+  { id: 'sang-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 111 }, // Rituel de sang
+  { id: 'sang-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 111 }, // Lien de sang
+  { id: 'sombre-magie-r1', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 111 }, // Ténèbres
+  { id: 'sombre-magie-r2', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 111 }, // Reptation
   { id: 'sombre-magie-r3', tags: ['mana-cost', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 111 }, // Strangulation
   { id: 'sombre-magie-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 111 }, // Manteau d’ombre
-  { id: 'sombre-magie-r5', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 110 }, // Pacte ténébreux
+  { id: 'sombre-magie-r5', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 111 }, // Pacte ténébreux
 
   // ---------------------------------------------------------------------------
   // Mystiques (chap. 4, p. 61-77)
@@ -505,11 +505,11 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'prestige-expert-r8', tags: ['choice'], sourcePage: 129 }, // Capacité de maître
   { id: 'prestige-specialiste-r4', tags: ['flat-bonus', 'choice'], sourcePage: 129 }, // Expertise
   { id: 'prestige-specialiste-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition'], sourcePage: 129 }, // Capacité fabuleuse
-  { id: 'prestige-specialiste-r6', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition'], sourcePage: 129 }, // Caractéristique fabuleuse
-  { id: 'prestige-specialiste-r7', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 129 }, // Capacité supérieure
-  { id: 'prestige-specialiste-r8', tags: ['choice', 'mana-cost', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 129 }, // Capacité signature
+  { id: 'prestige-specialiste-r6', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition'], sourcePage: 130 }, // Caractéristique fabuleuse
+  { id: 'prestige-specialiste-r7', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 130 }, // Capacité supérieure
+  { id: 'prestige-specialiste-r8', tags: ['choice', 'mana-cost', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 130 }, // Capacité signature
   { id: 'prestige-lycanthrope-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 130 }, // Forme hybride
-  { id: 'prestige-lycanthrope-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 130 }, // Transformation en loup
+  { id: 'prestige-lycanthrope-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 131 }, // Transformation en loup
   { id: 'prestige-lycanthrope-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 131 }, // Éventration
   { id: 'prestige-lycanthrope-r7', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 131 }, // Résistance surnaturelle
   { id: 'prestige-lycanthrope-r8', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 131 }, // Forme puissante
@@ -527,7 +527,7 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'prestige-archer-arcanique-r5', tags: ['conditional'], sourcePage: 137 }, // Flèche intangible
   { id: 'prestige-archer-arcanique-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 137 }, // Flèche chercheuse
   { id: 'prestige-archer-arcanique-r7', tags: ['choice', 'conditional'], conditionalKinds: ['temporary'], sourcePage: 137 }, // Flèche élémentaire
-  { id: 'prestige-archer-arcanique-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 137 }, // Flèche tueuse
+  { id: 'prestige-archer-arcanique-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 138 }, // Flèche tueuse
   { id: 'prestige-espion-r4', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['scaling'], sourcePage: 138 }, // Secrets d'alcôves
   { id: 'prestige-espion-r5', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 138 }, // À la garde
   { id: 'prestige-espion-r6', tags: ['flat-bonus'], sourcePage: 138 }, // Mémoire eidétique
@@ -550,9 +550,9 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'prestige-chasseur-de-prime-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 140 }, // Instinct du Traqueur
   { id: 'prestige-duelliste-r4', tags: ['choice', 'conditional'], conditionalKinds: ['condition'], sourcePage: 140 }, // Vive attaque
   { id: 'prestige-duelliste-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 140 }, // Défi
-  { id: 'prestige-duelliste-r6', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition'], sourcePage: 142 }, // Juste toi et moi
-  { id: 'prestige-duelliste-r7', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 142 }, // Duel mental
-  { id: 'prestige-duelliste-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 142 }, // Botte mortelle
+  { id: 'prestige-duelliste-r6', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition'], sourcePage: 141 }, // Juste toi et moi
+  { id: 'prestige-duelliste-r7', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 141 }, // Duel mental
+  { id: 'prestige-duelliste-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 141 }, // Botte mortelle
   { id: 'prestige-flibustier-r4', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 141 }, // Pied marin
   { id: 'prestige-flibustier-r5', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 141 }, // Coup de crosse
   { id: 'prestige-flibustier-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 142 }, // À l'abordage
@@ -607,56 +607,56 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'prestige-combattant-des-tunnels-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 148 }, // Briseur de hordes
   { id: 'prestige-combattant-des-tunnels-r7', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 148 }, // Tueur de nuées
   { id: 'prestige-combattant-des-tunnels-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 148 }, // Briseur de voûte
-  { id: 'prestige-combat-du-mal-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 148 }, // Juste courroux
-  { id: 'prestige-combat-du-mal-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 148 }, // Épée de lumière
-  { id: 'prestige-combat-du-mal-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 148 }, // Sentir la corruption
-  { id: 'prestige-combat-du-mal-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 148 }, // Frappe suppressive
-  { id: 'prestige-combat-du-mal-r8', tags: ['conditional', 'immunity'], conditionalKinds: ['temporary'], sourcePage: 148 }, // Résister à la corruption
+  { id: 'prestige-combat-du-mal-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 149 }, // Juste courroux
+  { id: 'prestige-combat-du-mal-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 149 }, // Épée de lumière
+  { id: 'prestige-combat-du-mal-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 149 }, // Sentir la corruption
+  { id: 'prestige-combat-du-mal-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 149 }, // Frappe suppressive
+  { id: 'prestige-combat-du-mal-r8', tags: ['conditional', 'immunity'], conditionalKinds: ['temporary'], sourcePage: 149 }, // Résister à la corruption
   { id: 'prestige-colosse-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 149 }, // Stature de géant
   { id: 'prestige-colosse-r5', tags: ['flat-bonus'], sourcePage: 149 }, // Résistance colossale
   { id: 'prestige-colosse-r6', tags: ['flat-bonus'], sourcePage: 149 }, // Force du titan
   { id: 'prestige-colosse-r7', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 149 }, // Poigne de fer
-  { id: 'prestige-colosse-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 149 }, // Attaque monumentale
-  { id: 'prestige-danseur-de-guerre-r4', tags: ['choice', 'conditional'], conditionalKinds: ['condition'], sourcePage: 149 }, // Vent des lames
-  { id: 'prestige-danseur-de-guerre-r5', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 149 }, // Pirouettes
-  { id: 'prestige-danseur-de-guerre-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 149 }, // Attaque en mouvement
-  { id: 'prestige-danseur-de-guerre-r7', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 149 }, // Danse des lames
-  { id: 'prestige-danseur-de-guerre-r8', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 149 }, // Volte-face
+  { id: 'prestige-colosse-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 150 }, // Attaque monumentale
+  { id: 'prestige-danseur-de-guerre-r4', tags: ['choice', 'conditional'], conditionalKinds: ['condition'], sourcePage: 150 }, // Vent des lames
+  { id: 'prestige-danseur-de-guerre-r5', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 150 }, // Pirouettes
+  { id: 'prestige-danseur-de-guerre-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 150 }, // Attaque en mouvement
+  { id: 'prestige-danseur-de-guerre-r7', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 150 }, // Danse des lames
+  { id: 'prestige-danseur-de-guerre-r8', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 150 }, // Volte-face
   { id: 'prestige-ecorcheur-r4', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 150 }, // Armes dentelées
   { id: 'prestige-ecorcheur-r5', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 150 }, // Armure à pointes
-  { id: 'prestige-ecorcheur-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 150 }, // Blessures affreuses
-  { id: 'prestige-ecorcheur-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 150 }, // Hémorragie interne
-  { id: 'prestige-ecorcheur-r8', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 150 }, // Impitoyable
-  { id: 'prestige-guerrier-mage-r4', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 150 }, // Magie en armure
-  { id: 'prestige-guerrier-mage-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition'], sourcePage: 150 }, // Rituel de combat
-  { id: 'prestige-guerrier-mage-r6', tags: ['mana-cost', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 150 }, // Déflexion arcanique
-  { id: 'prestige-guerrier-mage-r7', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 150 }, // Magie de combat
-  { id: 'prestige-guerrier-mage-r8', tags: ['mana-cost', 'conditional'], conditionalKinds: ['condition'], sourcePage: 150 }, // Frappe des arcanes
+  { id: 'prestige-ecorcheur-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 151 }, // Blessures affreuses
+  { id: 'prestige-ecorcheur-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 151 }, // Hémorragie interne
+  { id: 'prestige-ecorcheur-r8', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 151 }, // Impitoyable
+  { id: 'prestige-guerrier-mage-r4', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 151 }, // Magie en armure
+  { id: 'prestige-guerrier-mage-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition'], sourcePage: 151 }, // Rituel de combat
+  { id: 'prestige-guerrier-mage-r6', tags: ['mana-cost', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 151 }, // Déflexion arcanique
+  { id: 'prestige-guerrier-mage-r7', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 151 }, // Magie de combat
+  { id: 'prestige-guerrier-mage-r8', tags: ['mana-cost', 'conditional'], conditionalKinds: ['condition'], sourcePage: 151 }, // Frappe des arcanes
   { id: 'prestige-ours-r4', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 151 }, // Caractère d'ours
-  { id: 'prestige-ours-r5', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 151 }, // Hibernation
-  { id: 'prestige-ours-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 151 }, // Métamorphose
+  { id: 'prestige-ours-r5', tags: ['conditional'], conditionalKinds: ['scaling'], sourcePage: 152 }, // Hibernation
+  { id: 'prestige-ours-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 152 }, // Métamorphose
   { id: 'prestige-ours-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 152 }, // Étreinte de l'ours
   { id: 'prestige-ours-r8', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 152 }, // Métamorphose supérieure
   { id: 'prestige-porteur-de-bouclier-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 152 }, // Parade au bouclier
   { id: 'prestige-porteur-de-bouclier-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 152 }, // Attaque au bouclier
   { id: 'prestige-porteur-de-bouclier-r6', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 152 }, // Bousculade
   { id: 'prestige-porteur-de-bouclier-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 152 }, // Dévier les coups
-  { id: 'prestige-porteur-de-bouclier-r8', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 152 }, // Lancer de bouclier
-  { id: 'prestige-tueur-de-geants-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 152 }, // Profil bas
-  { id: 'prestige-tueur-de-geants-r5', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 152 }, // Ventre mou
-  { id: 'prestige-tueur-de-geants-r6', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 152 }, // Réduire la distance
-  { id: 'prestige-tueur-de-geants-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 152 }, // Pieds d'argile
-  { id: 'prestige-tueur-de-geants-r8', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 152 }, // Tueur de géants
+  { id: 'prestige-porteur-de-bouclier-r8', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 153 }, // Lancer de bouclier
+  { id: 'prestige-tueur-de-geants-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 153 }, // Profil bas
+  { id: 'prestige-tueur-de-geants-r5', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 153 }, // Ventre mou
+  { id: 'prestige-tueur-de-geants-r6', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 153 }, // Réduire la distance
+  { id: 'prestige-tueur-de-geants-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 153 }, // Pieds d'argile
+  { id: 'prestige-tueur-de-geants-r8', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 153 }, // Tueur de géants
   { id: 'prestige-archimage-r4', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 154 }, // Sceptre défensif
   { id: 'prestige-archimage-r5', tags: ['choice', 'conditional'], conditionalKinds: ['scaling'], sourcePage: 154 }, // Bâton magique
   { id: 'prestige-archimage-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 154 }, // Paralysie
   { id: 'prestige-archimage-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 154 }, // Barrière magique
-  { id: 'prestige-archimage-r8', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 154 }, // Métamorphose d'autrui
+  { id: 'prestige-archimage-r8', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 155 }, // Métamorphose d'autrui
   { id: 'prestige-chaos-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 155 }, // Arc-en-ciel
   { id: 'prestige-chaos-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 155 }, // Mur arc-en-ciel
   { id: 'prestige-chaos-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 155 }, // Pont arc-en-ciel
   { id: 'prestige-chaos-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 155 }, // Explosion multicolore
-  { id: 'prestige-chaos-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 155 }, // Sphère multicolore
+  { id: 'prestige-chaos-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 156 }, // Sphère multicolore
   { id: 'prestige-cristaux-r4', tags: ['choice'], sourcePage: 156 }, // Premier cristal
   { id: 'prestige-cristaux-r5', tags: ['choice'], sourcePage: 156 }, // Second cristal
   { id: 'prestige-cristaux-r6', tags: ['choice'], sourcePage: 156 }, // Troisième cristal
@@ -672,41 +672,41 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'prestige-enchanteur-r6', tags: ['pure-text'], sourcePage: 157 }, // Enchantement (niveau 3 — fabrication d'objets, hors stats)
   { id: 'prestige-enchanteur-r7', tags: ['pure-text'], sourcePage: 157 }, // Enchantement (niveau 4 — fabrication d'objets, hors stats)
   { id: 'prestige-enchanteur-r8', tags: ['pure-text'], sourcePage: 157 }, // Enchantement (niveau 5 — fabrication d'objets, hors stats)
-  { id: 'prestige-gel-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 157 }, // Verglas
-  { id: 'prestige-gel-r5', tags: ['immunity'], sourcePage: 157 }, // Cœur de glace
-  { id: 'prestige-gel-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 157 }, // Souffle glacial
-  { id: 'prestige-gel-r7', tags: ['conditional', 'immunity'], conditionalKinds: ['temporary'], sourcePage: 157 }, // Présence glaciale
-  { id: 'prestige-gel-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 157 }, // Cryogénisation
+  { id: 'prestige-gel-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 158 }, // Verglas
+  { id: 'prestige-gel-r5', tags: ['immunity'], sourcePage: 158 }, // Cœur de glace
+  { id: 'prestige-gel-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 158 }, // Souffle glacial
+  { id: 'prestige-gel-r7', tags: ['conditional', 'immunity'], conditionalKinds: ['temporary'], sourcePage: 158 }, // Présence glaciale
+  { id: 'prestige-gel-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 158 }, // Cryogénisation
   { id: 'prestige-invocation-majeure-r4', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 158 }, // Monture fantôme
-  { id: 'prestige-invocation-majeure-r5', tags: ['choice', 'conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 158 }, // Manoir d'outre-monde
+  { id: 'prestige-invocation-majeure-r5', tags: ['choice', 'conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 159 }, // Manoir d'outre-monde
   { id: 'prestige-invocation-majeure-r6', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 159 }, // Navire fantôme
-  { id: 'prestige-invocation-majeure-r7', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 159 }, // Chasseur ailé
-  { id: 'prestige-invocation-majeure-r8', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 159 }, // Portail magique
-  { id: 'prestige-mage-de-guerre-r4', tags: ['choice', 'mana-cost', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 160 }, // Coup au but
-  { id: 'prestige-mage-de-guerre-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 160 }, // Explosion différée
-  { id: 'prestige-mage-de-guerre-r6', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 160 }, // Aura du chef de guerre
-  { id: 'prestige-mage-de-guerre-r7', tags: ['mana-cost', 'conditional'], conditionalKinds: ['condition'], sourcePage: 160 }, // Épargner les alliés
-  { id: 'prestige-mage-de-guerre-r8', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 160 }, // Vague de feu
+  { id: 'prestige-invocation-majeure-r7', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 160 }, // Chasseur ailé
+  { id: 'prestige-invocation-majeure-r8', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 160 }, // Portail magique
+  { id: 'prestige-mage-de-guerre-r4', tags: ['choice', 'mana-cost', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 161 }, // Coup au but
+  { id: 'prestige-mage-de-guerre-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 161 }, // Explosion différée
+  { id: 'prestige-mage-de-guerre-r6', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 161 }, // Aura du chef de guerre
+  { id: 'prestige-mage-de-guerre-r7', tags: ['mana-cost', 'conditional'], conditionalKinds: ['condition'], sourcePage: 161 }, // Épargner les alliés
+  { id: 'prestige-mage-de-guerre-r8', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 161 }, // Vague de feu
   { id: 'prestige-magie-de-l-esprit-r4', tags: ['flat-bonus', 'conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 161 }, // Esprit impénétrable
   { id: 'prestige-magie-de-l-esprit-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 161 }, // Lire les pensées
-  { id: 'prestige-magie-de-l-esprit-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 161 }, // Prison mentale
-  { id: 'prestige-magie-de-l-esprit-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 161 }, // Attaque mentale
-  { id: 'prestige-magie-de-l-esprit-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 161 }, // Contrôle mental
+  { id: 'prestige-magie-de-l-esprit-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 162 }, // Prison mentale
+  { id: 'prestige-magie-de-l-esprit-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 162 }, // Attaque mentale
+  { id: 'prestige-magie-de-l-esprit-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 162 }, // Contrôle mental
   { id: 'prestige-magie-des-mots-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 162 }, // Chant fascinant
-  { id: 'prestige-magie-des-mots-r5', tags: ['pure-text'], sourcePage: 162 }, // Poids des mots
-  { id: 'prestige-magie-des-mots-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 162 }, // Cri de la banshee
-  { id: 'prestige-magie-des-mots-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 162 }, // Mot de mana
-  { id: 'prestige-magie-des-mots-r8', tags: ['choice', 'conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 162 }, // Souhait
-  { id: 'prestige-magie-du-temps-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 163 }, // Fuite en avant
-  { id: 'prestige-magie-du-temps-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 163 }, // Lenteur
-  { id: 'prestige-magie-du-temps-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 163 }, // Décalage
-  { id: 'prestige-magie-du-temps-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 163 }, // Enkystement lointain
-  { id: 'prestige-magie-du-temps-r8', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 163 }, // Arrêt du temps
+  { id: 'prestige-magie-des-mots-r5', tags: ['pure-text'], sourcePage: 163 }, // Poids des mots
+  { id: 'prestige-magie-des-mots-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 163 }, // Cri de la banshee
+  { id: 'prestige-magie-des-mots-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 163 }, // Mot de mana
+  { id: 'prestige-magie-des-mots-r8', tags: ['choice', 'conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 163 }, // Souhait
+  { id: 'prestige-magie-du-temps-r4', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 164 }, // Fuite en avant
+  { id: 'prestige-magie-du-temps-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 164 }, // Lenteur
+  { id: 'prestige-magie-du-temps-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 164 }, // Décalage
+  { id: 'prestige-magie-du-temps-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 164 }, // Enkystement lointain
+  { id: 'prestige-magie-du-temps-r8', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 164 }, // Arrêt du temps
   { id: 'prestige-maitre-des-sorts-r4', tags: ['choice'], sourcePage: 164 }, // Connaissance des arcanes inférieures
   { id: 'prestige-maitre-des-sorts-r5', tags: ['choice'], sourcePage: 164 }, // Connaissance des arcanes mineures
   { id: 'prestige-maitre-des-sorts-r6', tags: ['choice'], sourcePage: 164 }, // Connaissance des arcanes supérieures
-  { id: 'prestige-maitre-des-sorts-r7', tags: ['choice'], sourcePage: 164 }, // Connaissance des arcanes majeures
-  { id: 'prestige-maitre-des-sorts-r8', tags: ['choice'], sourcePage: 164 }, // Connaissance des arcanes suprêmes
+  { id: 'prestige-maitre-des-sorts-r7', tags: ['choice'], sourcePage: 165 }, // Connaissance des arcanes majeures
+  { id: 'prestige-maitre-des-sorts-r8', tags: ['choice'], sourcePage: 165 }, // Connaissance des arcanes suprêmes
   { id: 'prestige-vision-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 165 }, // Cécité
   { id: 'prestige-vision-r5', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 165 }, // Œil magique
   { id: 'prestige-vision-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 165 }, // Motif hypnotique
@@ -716,52 +716,52 @@ export const FEATURE_CLASSIFICATIONS: FeatureClassification[] = [
   { id: 'prestige-armure-sacree-r5', tags: ['choice', 'conditional'], conditionalKinds: ['temporary'], sourcePage: 166 }, // Pouvoir unique
   { id: 'prestige-armure-sacree-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 166 }, // Armure d'argent
   { id: 'prestige-armure-sacree-r7', tags: ['choice', 'conditional'], conditionalKinds: ['temporary'], sourcePage: 166 }, // Pouvoir puissant
-  { id: 'prestige-armure-sacree-r8', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 166 }, // Armure d'or
-  { id: 'prestige-elementaire-du-feu-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 166 }, // Mur de feu
-  { id: 'prestige-elementaire-du-feu-r5', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 166 }, // Tornade de feu
-  { id: 'prestige-elementaire-du-feu-r6', tags: ['immunity'], sourcePage: 166 }, // Insensible au feu
-  { id: 'prestige-elementaire-du-feu-r7', tags: ['conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 166 }, // Immolation
-  { id: 'prestige-elementaire-du-feu-r8', tags: ['conditional', 'immunity'], conditionalKinds: ['temporary'], sourcePage: 166 }, // Forme élémentaire de feu
+  { id: 'prestige-armure-sacree-r8', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 167 }, // Armure d'or
+  { id: 'prestige-elementaire-du-feu-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 167 }, // Mur de feu
+  { id: 'prestige-elementaire-du-feu-r5', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 167 }, // Tornade de feu
+  { id: 'prestige-elementaire-du-feu-r6', tags: ['immunity'], sourcePage: 167 }, // Insensible au feu
+  { id: 'prestige-elementaire-du-feu-r7', tags: ['conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 167 }, // Immolation
+  { id: 'prestige-elementaire-du-feu-r8', tags: ['conditional', 'immunity'], conditionalKinds: ['temporary'], sourcePage: 167 }, // Forme élémentaire de feu
   { id: 'prestige-elementaire-de-la-terre-r4', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 167 }, // Mur de pierre
-  { id: 'prestige-elementaire-de-la-terre-r5', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 167 }, // Litomorphose
-  { id: 'prestige-elementaire-de-la-terre-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 167 }, // Pétrification
-  { id: 'prestige-elementaire-de-la-terre-r7', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 167 }, // Séisme
-  { id: 'prestige-elementaire-de-la-terre-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 167 }, // Forme élémentaire de terre
+  { id: 'prestige-elementaire-de-la-terre-r5', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 168 }, // Litomorphose
+  { id: 'prestige-elementaire-de-la-terre-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 168 }, // Pétrification
+  { id: 'prestige-elementaire-de-la-terre-r7', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 168 }, // Séisme
+  { id: 'prestige-elementaire-de-la-terre-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 168 }, // Forme élémentaire de terre
   { id: 'prestige-elementaire-de-l-air-r4', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 168 }, // Bourrasque
   { id: 'prestige-elementaire-de-l-air-r5', tags: ['conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 168 }, // Chevaucher les nuées
-  { id: 'prestige-elementaire-de-l-air-r6', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 168 }, // Mur de vent
-  { id: 'prestige-elementaire-de-l-air-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 168 }, // Cyclone
-  { id: 'prestige-elementaire-de-l-air-r8', tags: ['conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 168 }, // Forme élémentaire d'air
+  { id: 'prestige-elementaire-de-l-air-r6', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 169 }, // Mur de vent
+  { id: 'prestige-elementaire-de-l-air-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 169 }, // Cyclone
+  { id: 'prestige-elementaire-de-l-air-r8', tags: ['conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 169 }, // Forme élémentaire d'air
   { id: 'prestige-elementaire-de-l-eau-r4', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 169 }, // Brouillard
   { id: 'prestige-elementaire-de-l-eau-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 169 }, // Mur acide
   { id: 'prestige-elementaire-de-l-eau-r6', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 169 }, // Armure d'eau
   { id: 'prestige-elementaire-de-l-eau-r7', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 169 }, // Écartement des eaux
-  { id: 'prestige-elementaire-de-l-eau-r8', tags: ['conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 169 }, // Forme élémentaire d'eau
+  { id: 'prestige-elementaire-de-l-eau-r8', tags: ['conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 170 }, // Forme élémentaire d'eau
   { id: 'prestige-changeforme-r4', tags: ['choice', 'conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 170 }, // Forme de voyage
   { id: 'prestige-changeforme-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 170 }, // Transformation en animal
   { id: 'prestige-changeforme-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 170 }, // Transformation puissante
   { id: 'prestige-changeforme-r7', tags: ['mana-cost', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 170 }, // Grande forme animale
   { id: 'prestige-changeforme-r8', tags: ['mana-cost', 'conditional'], conditionalKinds: ['condition'], sourcePage: 170 }, // Forme animale énorme
-  { id: 'prestige-combat-mystique-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 170 }, // Attaque étourdissante
-  { id: 'prestige-combat-mystique-r5', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 170 }, // Frappe concentrée
-  { id: 'prestige-combat-mystique-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 170 }, // Pression nerveuse
-  { id: 'prestige-combat-mystique-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 170 }, // Paume mortelle
-  { id: 'prestige-combat-mystique-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 170 }, // Main du tout puissant
+  { id: 'prestige-combat-mystique-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 171 }, // Attaque étourdissante
+  { id: 'prestige-combat-mystique-r5', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 171 }, // Frappe concentrée
+  { id: 'prestige-combat-mystique-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 171 }, // Pression nerveuse
+  { id: 'prestige-combat-mystique-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 171 }, // Paume mortelle
+  { id: 'prestige-combat-mystique-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 171 }, // Main du tout puissant
   { id: 'prestige-guerisseur-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 171 }, // Premiers soins
   { id: 'prestige-guerisseur-r5', tags: ['conditional'], sourcePage: 171 }, // Soins rapides
   { id: 'prestige-guerisseur-r6', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 171 }, // Rappel à la vie
   { id: 'prestige-guerisseur-r7', tags: ['conditional'], conditionalKinds: ['temporary'], sourcePage: 171 }, // Zone de vie
-  { id: 'prestige-guerisseur-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 171 }, // Résurrection
+  { id: 'prestige-guerisseur-r8', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 172 }, // Résurrection
   { id: 'prestige-maitre-de-la-nature-r4', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 172 }, // Amitié animale
-  { id: 'prestige-maitre-de-la-nature-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 172 }, // Seigneur de la nature
-  { id: 'prestige-maitre-de-la-nature-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 172 }, // Invisibilité aux animaux
-  { id: 'prestige-maitre-de-la-nature-r7', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 172 }, // Monture géante
-  { id: 'prestige-maitre-de-la-nature-r8', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 172 }, // Magie druidique innée
+  { id: 'prestige-maitre-de-la-nature-r5', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 173 }, // Seigneur de la nature
+  { id: 'prestige-maitre-de-la-nature-r6', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 173 }, // Invisibilité aux animaux
+  { id: 'prestige-maitre-de-la-nature-r7', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'scaling'], sourcePage: 173 }, // Monture géante
+  { id: 'prestige-maitre-de-la-nature-r8', tags: ['choice', 'conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 173 }, // Magie druidique innée
   { id: 'prestige-saisons-r4', tags: ['flat-bonus', 'conditional'], conditionalKinds: ['condition'], sourcePage: 173 }, // Vigueur du printemps
   { id: 'prestige-saisons-r5', tags: ['conditional'], conditionalKinds: ['condition'], sourcePage: 173 }, // Flamme de l'été
   { id: 'prestige-saisons-r6', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 173 }, // Tourbillon d'automne
   { id: 'prestige-saisons-r7', tags: ['conditional'], conditionalKinds: ['condition', 'temporary'], sourcePage: 173 }, // Frimas de l'hiver
-  { id: 'prestige-saisons-r8', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 173 }, // Contrôle climatique
+  { id: 'prestige-saisons-r8', tags: ['conditional'], conditionalKinds: ['temporary', 'scaling'], sourcePage: 174 }, // Contrôle climatique
   { id: 'prestige-templier-r4', tags: ['flat-bonus', 'conditional', 'immunity'], conditionalKinds: ['condition', 'temporary'], sourcePage: 174 }, // Résistance au mal
   { id: 'prestige-templier-r5', tags: ['conditional'], conditionalKinds: ['condition', 'temporary', 'scaling'], sourcePage: 174 }, // Quête
   { id: 'prestige-templier-r6', tags: ['flat-bonus', 'conditional', 'immunity'], conditionalKinds: ['condition'], sourcePage: 174 }, // Résistance au mal supérieure

@@ -799,6 +799,10 @@ function PathCard({
                 <FeatureLabel feature={feature} />
               </Typography>
               <FeatureText feature={feature} />
+              {/* Renvoi cliquable vers la page du rang dans le livre (PER-246). */}
+              <Box sx={{ mt: 1 }}>
+                <SourceRef page={feature.sourcePage} />
+              </Box>
             </>
           ) : (
             <Typography variant="caption" color="text.secondary">
