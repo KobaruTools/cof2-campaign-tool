@@ -9,8 +9,10 @@
  * spéciales verbatim. Toute référence de page passe par `SourceRef`/`PageRefText`.
  */
 import { useState, type ReactNode } from 'react';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HistoryEduOutlinedIcon from '@mui/icons-material/HistoryEduOutlined';
 import Box from '@mui/material/Box';
+import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -123,15 +125,21 @@ function SectionTitle({ children }: { children: ReactNode }) {
   );
 }
 
-/** Bloc « icône cerclée + valeur (+ précision) » d'une stat dérivée fixe (DEF/PV/Init.). */
+/**
+ * Bloc « icône cerclée + valeur (+ précision) » d'une stat dérivée fixe (DEF/PV/Init.).
+ * En mode `dense` (écran de MJ), icône et chiffre sont rétrécis pour s'aligner
+ * visuellement sur les cartes de personnages joueurs (moins imposant).
+ */
 function StatChip({
   statId,
   value,
   note,
+  dense = false,
 }: {
   statId: DerivedStatId;
   value: number;
   note?: string;
+  dense?: boolean;
 }) {
   return (
     <Stack
@@ -140,21 +148,21 @@ function StatChip({
       sx={{
         alignItems: 'center',
         justifyContent: 'center',
-        px: 1,
-        py: 0.75,
+        px: dense ? 0.75 : 1,
+        py: dense ? 0.5 : 0.75,
         borderRadius: 1,
         border: 1,
         borderColor: 'divider',
         bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
       }}
     >
-      <DerivedStatIcon statId={statId} size={28} title />
+      <DerivedStatIcon statId={statId} size={dense ? 20 : 28} title />
       <Box
         component="span"
         sx={{
           fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
-          fontSize: '1.15rem',
+          fontSize: dense ? '0.95rem' : '1.15rem',
           display: 'inline-flex',
           alignItems: 'baseline',
           gap: 0.5,
@@ -162,7 +170,10 @@ function StatChip({
       >
         {value}
         {note && (
-          <Box component="span" sx={{ fontWeight: 500, fontSize: '0.85rem', color: 'text.secondary' }}>
+          <Box
+            component="span"
+            sx={{ fontWeight: 500, fontSize: dense ? '0.75rem' : '0.85rem', color: 'text.secondary' }}
+          >
             ({note})
           </Box>
         )}
@@ -226,12 +237,32 @@ export interface BestiaryStatBlockProps {
    * le bestiaire les affiche (défaut `false`).
    */
   hideNotes?: boolean;
+  /**
+   * Rend le bloc en version COMPACTE (caractéristiques + stats dérivées rétrécies),
+   * pour s'aligner visuellement sur les cartes de personnages joueurs de l'écran de
+   * MJ (PER-247) — le bestiaire l'affiche en taille pleine (défaut `false`).
+   */
+  dense?: boolean;
+  /**
+   * Rend la section « Capacités » REPLIABLE et REPLIÉE par défaut (écran de MJ, où les
+   * cartes doivent rester compactes) — sans persistance. Le bestiaire l'affiche toujours
+   * dépliée (défaut `false`).
+   */
+  collapsibleAbilities?: boolean;
 }
 
-export function BestiaryStatBlock({ creature, hideNotes = false }: BestiaryStatBlockProps) {
+export function BestiaryStatBlock({
+  creature,
+  hideNotes = false,
+  dense = false,
+  collapsibleAbilities = false,
+}: BestiaryStatBlockProps) {
   // Bascule « Texte d'origine » (comme la fiche, PER-88) : rend le verbatim brut des capacités au
   // lieu du rendu enrichi. État LOCAL au bloc (se réinitialise en changeant de créature).
   const [verbatim, setVerbatim] = useState(false);
+  // Section « Capacités » dépliée ? Repliée d'entrée quand `collapsibleAbilities` (pas de
+  // persistance : simple état local qui se réinitialise en changeant de créature).
+  const [abilitiesOpen, setAbilitiesOpen] = useState(!collapsibleAbilities);
   const nc = creatureNcLabel(creature);
   const bonusDice = new Set(creature.bonusDieAbilities ?? []);
   // Stats dérivées fixes présentes : rendues en grille pleine largeur, une colonne
@@ -319,26 +350,31 @@ export function BestiaryStatBlock({ creature, hideNotes = false }: BestiaryStatB
           sx={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-            gap: BLOCK_GAP,
+            gap: dense ? 0.75 : BLOCK_GAP,
             mb: BLOCK_GAP,
           }}
         >
           {ABILITY_IDS.map((id) => (
             <AppTooltip key={id} title={ABILITY_NAMES[id]}>
+              {/* En mode dense, mêmes réglages que la carte de personnage joueur
+                  (`CharacterPreviewCard`) : icône/chiffre à la taille par défaut,
+                  code en `caption` — pour une parité visuelle sur l'écran de MJ. */}
               <AbilityValueBadge
                 ability={id}
                 value={creature.abilities![id]}
-                iconSize={32}
+                iconSize={dense ? undefined : 32}
                 showCode
-                codeVariant="subtitle2"
-                valueVariant="h6"
-                scaleBase="1.25rem"
-                adornment={bonusDice.has(id) ? <BonusDieBadge ability={id} size={16} /> : undefined}
+                codeVariant={dense ? 'caption' : 'subtitle2'}
+                valueVariant={dense ? undefined : 'h6'}
+                scaleBase={dense ? undefined : '1.25rem'}
+                adornment={
+                  bonusDice.has(id) ? <BonusDieBadge ability={id} size={dense ? 12 : 16} /> : undefined
+                }
                 sx={{
-                  borderRadius: 2,
+                  borderRadius: dense ? 1 : 2,
                   border: 1,
                   borderColor: 'divider',
-                  py: { xs: 0.5, sm: 0.75 },
+                  py: dense ? 0.5 : { xs: 0.5, sm: 0.75 },
                   cursor: 'help',
                   bgcolor: (t) => alpha(t.palette.text.primary, 0.05),
                 }}
@@ -359,7 +395,7 @@ export function BestiaryStatBlock({ creature, hideNotes = false }: BestiaryStatB
           }}
         >
           {derivedStats.map((s) => (
-            <StatChip key={s.statId} statId={s.statId} value={s.value} note={s.note} />
+            <StatChip key={s.statId} statId={s.statId} value={s.value} note={s.note} dense={dense} />
           ))}
         </Box>
       )}
@@ -374,7 +410,12 @@ export function BestiaryStatBlock({ creature, hideNotes = false }: BestiaryStatB
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
+              // 3 colonnes dans le bestiaire (panneau large) ; 2 colonnes en mode dense
+              // (carte étroite de l'écran de MJ) pour ne pas tasser les blocs d'attaque.
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: dense ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))',
+              },
               gap: BLOCK_GAP,
             }}
           >
@@ -432,11 +473,63 @@ export function BestiaryStatBlock({ creature, hideNotes = false }: BestiaryStatB
           (nom + hexagones de marqueurs sur une ligne, puis texte de règle verbatim). */}
       {hasSpecialAbilities && (
         <Box>
-          <SectionTitle>Capacités</SectionTitle>
+          {/* En-tête : titre simple dans le bestiaire, ou bouton repli/déploie (avec
+              décompte) en mode repliable (écran de MJ), sans persistance. */}
+          {collapsibleAbilities ? (
+            <Box
+              role="button"
+              tabIndex={0}
+              aria-expanded={abilitiesOpen}
+              onClick={() => setAbilitiesOpen((o) => !o)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setAbilitiesOpen((o) => !o);
+                }
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                cursor: 'pointer',
+                userSelect: 'none',
+                mb: abilitiesOpen ? 0.75 : 0,
+              }}
+            >
+              <ExpandMoreIcon
+                sx={{
+                  fontSize: 16,
+                  color: 'text.secondary',
+                  transition: 'transform 0.15s',
+                  transform: abilitiesOpen ? 'none' : 'rotate(-90deg)',
+                }}
+              />
+              <Box
+                component="span"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '0.7rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.6,
+                  color: 'text.secondary',
+                }}
+              >
+                Capacités
+                <Box component="span" sx={{ ml: 0.5, opacity: 0.7 }}>
+                  ({creature.specialAbilities!.length})
+                </Box>
+              </Box>
+            </Box>
+          ) : (
+            <SectionTitle>Capacités</SectionTitle>
+          )}
+          <Collapse in={abilitiesOpen} unmountOnExit>
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+              // 2 colonnes dans le bestiaire (panneau large) ; 1 seule colonne en mode
+              // dense (carte étroite de l'écran de MJ), le texte des capacités étant verbeux.
+              gridTemplateColumns: dense ? '1fr' : { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
               gap: BLOCK_GAP,
             }}
           >
@@ -459,6 +552,7 @@ export function BestiaryStatBlock({ creature, hideNotes = false }: BestiaryStatB
               );
             })}
           </Box>
+          </Collapse>
         </Box>
       )}
 

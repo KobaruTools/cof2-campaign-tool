@@ -17,10 +17,16 @@ import { BestiaryStatBlock } from './BestiaryStatBlock';
 export function CreatureBlobView({
   slug,
   hideNotes = false,
+  dense = false,
+  collapsibleAbilities = false,
 }: {
   slug: string;
   /** Masque le pavé de notes/description du bloc (transmis à `BestiaryStatBlock`). */
   hideNotes?: boolean;
+  /** Rend le bloc en version compacte (transmis à `BestiaryStatBlock`). */
+  dense?: boolean;
+  /** Rend la section « Capacités » repliable/repliée (transmis à `BestiaryStatBlock`). */
+  collapsibleAbilities?: boolean;
 }) {
   const blob = useBestiaryStore((s) => (slug ? s.blobs[slug] : undefined));
   const blobStatus = useBestiaryStore((s) => (slug ? s.blobStatus[slug] : undefined));
@@ -30,7 +36,15 @@ export function CreatureBlobView({
     if (slug) void loadBlob(slug);
   }, [slug, loadBlob]);
 
-  if (blob) return <BestiaryStatBlock creature={blob} hideNotes={hideNotes} />;
+  if (blob)
+    return (
+      <BestiaryStatBlock
+        creature={blob}
+        hideNotes={hideNotes}
+        dense={dense}
+        collapsibleAbilities={collapsibleAbilities}
+      />
+    );
   if (blobStatus === 'error') {
     return (
       <AppAlert severity="error">Impossible de charger le détail de cette créature.</AppAlert>

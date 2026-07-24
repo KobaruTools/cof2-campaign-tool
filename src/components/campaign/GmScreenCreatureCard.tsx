@@ -69,7 +69,7 @@ export function GmScreenCreatureCard({ slug, label, onRemove }: GmScreenCreature
             </IconButton>
           </AppTooltip>
         </Stack>
-        <CreatureBlobView slug={slug} hideNotes />
+        <CreatureBlobView slug={slug} hideNotes dense collapsibleAbilities />
       </Stack>
     </Paper>
   );
