@@ -128,11 +128,17 @@ function escapeHtml(input: string): string {
  * Rend un item de la couche texte en enrobant les occurrences de `rawQuery` d'un `<mark>`.
  * Utilisé par le `customTextRenderer` de react-pdf : le retour est une chaîne HTML (échappée hors
  * des balises `<mark>`). Sans requête (ou trop courte), renvoie simplement le texte échappé.
+ *
+ * `markClass` (optionnel) ajoute une classe CSS aux `<mark>` émis : sert à DISTINGUER un terme
+ * CIBLÉ par un renvoi (« (p. N) » d'une capacité/créature, PER-59/61) des correspondances d'une
+ * recherche tapée (PER-58) — les deux passent par cette même fonction mais avec un style distinct.
+ * La valeur est une constante interne (jamais une saisie utilisateur), donc pas d'échappement.
  */
-export function renderTextItemWithHighlight(str: string, rawQuery: string): string {
+export function renderTextItemWithHighlight(str: string, rawQuery: string, markClass?: string): string {
   const query = normalizeQuery(rawQuery);
   if (query.length < MIN_QUERY_LENGTH) return escapeHtml(str);
 
+  const openTag = markClass ? `<mark class="${markClass}">` : '<mark>';
   const { value, map } = normalizeWithMap(str);
   let result = '';
   let cursor = 0; // dernier index d'origine déjà émis
@@ -143,7 +149,7 @@ export function renderTextItemWithHighlight(str: string, rawQuery: string): stri
     const origStart = map[idx];
     const origEnd = map[idx + query.length - 1] + 1;
     result += escapeHtml(str.slice(cursor, origStart));
-    result += `<mark>${escapeHtml(str.slice(origStart, origEnd))}</mark>`;
+    result += `${openTag}${escapeHtml(str.slice(origStart, origEnd))}</mark>`;
     cursor = origEnd;
     from = idx + query.length;
   }

@@ -799,9 +799,10 @@ function PathCard({
                 <FeatureLabel feature={feature} />
               </Typography>
               <FeatureText feature={feature} />
-              {/* Renvoi cliquable vers la page du rang dans le livre (PER-246). */}
+              {/* Renvoi cliquable vers la page du rang dans le livre (PER-246). Le nom de la
+                  capacité sert de terme à cibler/surligner dans le visualiseur (PER-59/61). */}
               <Box sx={{ mt: 1 }}>
-                <SourceRef page={feature.sourcePage} />
+                <SourceRef page={feature.sourcePage} term={feature.name} />
               </Box>
             </>
           ) : (

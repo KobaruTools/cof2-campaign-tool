@@ -20,9 +20,12 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
+import FitScreenIcon from '@mui/icons-material/FitScreen';
+import HighlightIcon from '@mui/icons-material/Highlight';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import SearchIcon from '@mui/icons-material/Search';
+import WidthFullIcon from '@mui/icons-material/WidthFull';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import Box from '@mui/material/Box';
@@ -30,6 +33,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
 import GlobalStyles from '@mui/material/GlobalStyles';
+import { alpha } from '@mui/material/styles';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Stack from '@mui/material/Stack';
@@ -54,6 +58,9 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 3;
 const ZOOM_STEP = 0.25;
+
+/** Classe CSS des `<mark>` du terme CIBLÉ par un renvoi (couleur distincte de la recherche). */
+const TARGET_MARK_CLASS = 'pdf-target';
 
 /** Délai (ms) avant de lancer une recherche après la dernière frappe. */
 const SEARCH_DEBOUNCE_MS = 300;
@@ -84,13 +91,20 @@ async function buildTextIndex(
 }
 
 export default function PdfViewerDialog() {
-  const { open, bookId, page, nonce, close } = usePdfViewerStore();
+  const { open, bookId, page, term, nonce, close } = usePdfViewerStore();
   const book = bookId ? BOOKS[bookId] : null;
 
   const [numPages, setNumPages] = useState<number | null>(null);
   const [current, setCurrent] = useState(page);
   const [pageInput, setPageInput] = useState(String(page));
   const [zoom, setZoom] = useState(1);
+  // Ajustement de la page : « page entière » (contain, défaut) ou « pleine largeur » (remplit la
+  // largeur, on défile verticalement). Éphémère (comme le zoom) ; le zoom se multiplie par-dessus.
+  const [fitMode, setFitMode] = useState<'page' | 'width'>('page');
+  // Surlignage du passage ciblé par un renvoi (PER-59/61) : affiché par défaut à l'ouverture (et
+  // recentré), masquable à la demande pour la lisibilité une fois le passage repéré. Remis à ON à
+  // chaque nouveau renvoi (cf. resync sur `nonce`).
+  const [showTarget, setShowTarget] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
   // Dimensions du conteneur (largeur ET hauteur) + ratio hauteur/largeur de la page courante :
@@ -132,6 +146,9 @@ export default function PdfViewerDialog() {
     setLastNonce(nonce);
     setCurrent(page);
     setPageInput(String(page));
+    // Nouveau renvoi → on ré-affiche le surlignage du passage ciblé (l'utilisateur a pu le masquer
+    // lors d'une ouverture précédente).
+    setShowTarget(true);
   }
   const [lastBookId, setLastBookId] = useState(bookId);
   if (bookId !== lastBookId) {
@@ -139,6 +156,7 @@ export default function PdfViewerDialog() {
     setNumPages(null);
     setLoadError(false);
     setZoom(1);
+    setFitMode('page');
     // Nouveau livre → nouveau document pdf.js et recherche remise à zéro (l'index resté en cache
     // par livre sera réutilisé si l'on revient sur ce livre).
     setPdfDoc(null);
@@ -169,8 +187,11 @@ export default function PdfViewerDialog() {
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
 
-  // Ctrl/Cmd+F : ouvre la recherche dans la modale (et re-sélectionne si déjà ouverte), au lieu de
-  // la recherche du navigateur qui ne verrait que la page rendue.
+  // Raccourcis clavier de la modale :
+  //  • Ctrl/Cmd+F ouvre la recherche (et re-sélectionne si déjà ouverte), au lieu de la recherche
+  //    du navigateur qui ne verrait que la page rendue ;
+  //  • Échap ferme le visualiseur — SAUF si la recherche est ouverte, auquel cas la barre de
+  //    recherche gère son propre Échap (elle se ferme d'abord, cf. son `onKeyDown`).
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -179,11 +200,13 @@ export default function PdfViewerDialog() {
         setSearchOpen(true);
         searchInputRef.current?.focus();
         searchInputRef.current?.select();
+      } else if (e.key === 'Escape' && !searchOpen) {
+        close();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [open, searchOpen, close]);
 
   // Indexation paresseuse : dès l'ouverture de la recherche sur un livre, on lit la couche texte
   // de toutes ses pages (une seule fois, mise en cache par livre) → la 1re requête est instantanée.
@@ -237,14 +260,21 @@ export default function PdfViewerDialog() {
     return () => clearTimeout(timer);
   }, [searchOpen, query, bookId, indexVersion]);
 
-  // Enrobe le terme recherché d'un `<mark>` dans la couche texte de la page rendue (surlignage).
+  // Surlignage de la couche texte. Deux sources, JAMAIS enchevêtrées : la RECHERCHE tapée (ambre,
+  // toutes pages, PER-58) a la PRIORITÉ ; à défaut, le terme CIBLÉ par le renvoi (couleur distincte,
+  // PER-59/61) est surligné sur sa SEULE page. Une même fonction rend les deux (classe différente).
   const highlightQuery = searchOpen && query.trim().length >= MIN_QUERY_LENGTH ? query.trim() : '';
+  // Terme ciblé actif : bascule ON, hors recherche, terme non vide, et on est bien sur la page citée.
+  const targetActive =
+    showTarget && !highlightQuery && term.length >= MIN_QUERY_LENGTH && current === page;
   const textRenderer = useMemo(
     () =>
       highlightQuery
         ? (item: { str: string }) => renderTextItemWithHighlight(item.str, highlightQuery)
-        : undefined,
-    [highlightQuery],
+        : targetActive
+          ? (item: { str: string }) => renderTextItemWithHighlight(item.str, term, TARGET_MARK_CLASS)
+          : undefined,
+    [highlightQuery, targetActive, term],
   );
 
   if (!book) return null;
@@ -280,9 +310,11 @@ export default function PdfViewerDialog() {
   const hasQuery = query.trim().length >= MIN_QUERY_LENGTH;
   const indexing = indexProgress !== null;
 
-  // Ajustement « page entière » (contain) : largeur du plus grand rendu qui tient à la fois en
-  // largeur (dispoW) et en hauteur (dispoH via le ratio), puis × zoom. `PAGE_MARGIN` = padding du
-  // conteneur (`p: 2` = 16 px de chaque côté). Zoom 100 % = page entière ; au-delà, on défile.
+  // Largeur de base de la page selon l'ajustement choisi, puis × zoom. `PAGE_MARGIN` = padding du
+  // conteneur (`p: 2` = 16 px de chaque côté).
+  // - « page entière » (contain) : le plus grand rendu qui tient à la fois en largeur (dispoW) et
+  //   en hauteur (dispoH via le ratio). Zoom 100 % = page entière ; au-delà, on défile.
+  // - « pleine largeur » : on remplit la largeur disponible et on défile verticalement.
   // Repli : tant que le ratio n'est pas connu (avant le 1er chargement de page), on ajuste sur la
   // largeur — la page reçoit AUSSITÔT une largeur (donc le zoom agit), puis le ratio affine.
   const PAGE_MARGIN = 16;
@@ -290,31 +322,41 @@ export default function PdfViewerDialog() {
   const availH = container.h - PAGE_MARGIN * 2;
   const fitWidth =
     availW > 0 && availH > 0
-      ? pageRatio
-        ? Math.min(availW, availH / pageRatio)
-        : availW
+      ? fitMode === 'width'
+        ? availW
+        : pageRatio
+          ? Math.min(availW, availH / pageRatio)
+          : availW
       : undefined;
   const pageWidth = fitWidth != null ? fitWidth * zoom : undefined;
 
   return (
     <Dialog open={open} onClose={close} maxWidth="lg" fullWidth>
-      {/* Surlignage du terme recherché dans la couche texte pdf.js : les spans ont `color:
-          transparent` (texte de sélection posé sur le canvas), donc le <mark> doit garder ce
-          texte transparent et n'apporter qu'un fond translucide (le canvas reste lisible). */}
+      {/* Surlignage dans la couche texte pdf.js : les spans ont `color: transparent` (texte de
+          sélection posé sur le canvas), donc le <mark> doit garder ce texte transparent et
+          n'apporter qu'un fond translucide (le canvas reste lisible). Ambre = recherche (PER-58) ;
+          teinte primaire + halo = terme ciblé par un renvoi (PER-59/61), pour les distinguer. */}
       <GlobalStyles
-        styles={{
+        styles={(theme) => ({
           '.textLayer mark': {
             color: 'transparent',
             backgroundColor: 'rgba(255, 196, 0, 0.45)',
             borderRadius: '2px',
             padding: 0,
           },
-        }}
+          [`.textLayer mark.${TARGET_MARK_CLASS}`]: {
+            backgroundColor: alpha(theme.palette.primary.main, 0.4),
+            boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.55)}`,
+          },
+        })}
       />
       <Stack
         direction="row"
         spacing={1}
         sx={{
+          // Pleine largeur du Paper : sans ça la barre épouse son contenu et le `ml: 'auto'` de la
+          // croix (ci-dessous) n'aurait aucun espace libre à absorber pour la pousser à droite.
+          width: '100%',
           alignItems: 'center',
           px: 2,
           py: 1,
@@ -323,7 +365,7 @@ export default function PdfViewerDialog() {
         }}
       >
         <book.Icon sx={{ fontSize: 20, color: 'text.secondary' }} />
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, mr: 'auto' }} noWrap>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
           {book.name}
         </Typography>
 
@@ -361,6 +403,17 @@ export default function PdfViewerDialog() {
           </Tooltip>
         </Stack>
 
+        <Tooltip title={fitMode === 'page' ? 'Pleine largeur' : 'Page entière'}>
+          <IconButton
+            size="small"
+            onClick={() => setFitMode((m) => (m === 'page' ? 'width' : 'page'))}
+            color={fitMode === 'width' ? 'primary' : 'default'}
+            sx={{ ml: 1 }}
+          >
+            {fitMode === 'page' ? <WidthFullIcon /> : <FitScreenIcon />}
+          </IconButton>
+        </Tooltip>
+
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', ml: 1 }}>
           <Tooltip title="Dézoomer">
             <span>
@@ -389,6 +442,21 @@ export default function PdfViewerDialog() {
           </Tooltip>
         </Stack>
 
+        {/* Bascule du surlignage du passage ciblé par le renvoi (PER-59/61) : proposée seulement
+            quand un terme a été fourni. Permet de masquer le repère pour la lisibilité. */}
+        {term.length >= MIN_QUERY_LENGTH && (
+          <Tooltip title={showTarget ? 'Masquer le surlignage du passage' : 'Afficher le surlignage du passage'}>
+            <IconButton
+              size="small"
+              onClick={() => setShowTarget((v) => !v)}
+              color={showTarget ? 'primary' : 'default'}
+              sx={{ ml: 1 }}
+            >
+              <HighlightIcon />
+            </IconButton>
+          </Tooltip>
+        )}
+
         <Tooltip title="Rechercher dans le livre (Ctrl+F)">
           <IconButton
             size="small"
@@ -400,8 +468,12 @@ export default function PdfViewerDialog() {
           </IconButton>
         </Tooltip>
 
+        {/* Espaceur flexible : pousse la croix TOUT À DROITE de la barre, isolée du groupe d'outils
+            (croix « en haut à droite d'un bloc »). `flexGrow` plutôt qu'une marge auto, qui serait
+            écrasée par l'espacement (`spacing`) du Stack. */}
+        <Box sx={{ flexGrow: 1 }} />
         <Tooltip title="Fermer">
-          <IconButton size="small" onClick={close} sx={{ ml: 0.5 }}>
+          <IconButton size="small" onClick={close}>
             <CloseIcon />
           </IconButton>
         </Tooltip>
@@ -426,6 +498,9 @@ export default function PdfViewerDialog() {
                 goToMatch(e.shiftKey ? -1 : 1);
               } else if (e.key === 'Escape') {
                 e.preventDefault();
+                // Ne pas laisser remonter jusqu'à l'écouteur global (qui fermerait la modale) :
+                // ici Échap ne fait que fermer la barre de recherche.
+                e.stopPropagation();
                 closeSearch();
               }
             }}
@@ -524,6 +599,13 @@ export default function PdfViewerDialog() {
                 onLoadSuccess={({ originalWidth, originalHeight }) =>
                   setPageRatio(originalHeight / originalWidth)
                 }
+                onRenderTextLayerSuccess={() => {
+                  // Centrage du passage ciblé par un renvoi (PER-59/61) : la couche texte n'existe
+                  // qu'ICI (après rendu), d'où le déclenchement sur ce callback plutôt qu'un effet.
+                  if (!targetActive) return;
+                  const mark = scrollRef.current?.querySelector(`.textLayer mark.${TARGET_MARK_CLASS}`);
+                  mark?.scrollIntoView({ block: 'center' });
+                }}
                 loading={
                   <Box sx={{ py: 8, textAlign: 'center' }}>
                     <CircularProgress size={28} />

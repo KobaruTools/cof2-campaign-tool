@@ -16,6 +16,13 @@ export interface SourceRefProps {
   page?: number | string;
   /** Section ou titre de paragraphe, affiché avant la page (ex. « Touche finale »). */
   section?: string;
+  /**
+   * Terme à CIBLER dans le visualiseur à l'ouverture (PER-59/61) : le nom de l'entité dont ce
+   * renvoi cite la page (capacité, créature, état…). Le visualiseur surligne (couleur distincte)
+   * et centre sa 1re occurrence sur la page citée. Absent = simple saut de page (renvoi générique).
+   * N'apparaît PAS dans le libellé du badge — c'est une aide de navigation, pas un texte affiché.
+   */
+  term?: string;
   /** Livre source (défaut : livre des règles). Identifie l'icône et le nom en infobulle. */
   book?: BookId;
   /** Style additionnel fusionné par-dessus le badge. */
@@ -33,7 +40,7 @@ export interface SourceRefProps {
  * cliquables tous les renvois de page de l'app. Pour une PLAGE (« 219-220 »), on saute à la
  * première page. Sans page, on ouvre simplement le livre au début.
  */
-export function SourceRef({ page, section, book = DEFAULT_BOOK_ID, sx }: SourceRefProps) {
+export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, sx }: SourceRefProps) {
   const openAt = usePdfViewerStore((s) => s.openAt);
   const meta = BOOKS[book];
   const { Icon } = meta;
@@ -44,7 +51,7 @@ export function SourceRef({ page, section, book = DEFAULT_BOOK_ID, sx }: SourceR
     // Empêche l'ouverture du visualiseur d'activer un conteneur cliquable englobant
     // (ligne de liste, résumé d'accordéon, carte de capacité…).
     e.stopPropagation();
-    openAt(book, Number.isFinite(targetPage) ? targetPage : 1);
+    openAt(book, Number.isFinite(targetPage) ? targetPage : 1, term);
   };
 
   return (

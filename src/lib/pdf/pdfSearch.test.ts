@@ -74,4 +74,10 @@ describe('renderTextItemWithHighlight', () => {
     expect(renderTextItemWithHighlight('a < b', '')).toBe('a &lt; b');
     expect(renderTextItemWithHighlight('a < b', 'x')).toBe('a &lt; b');
   });
+
+  it('ajoute la classe CSS fournie au <mark> (terme ciblé vs recherche)', () => {
+    expect(renderTextItemWithHighlight('la chute', 'chute', 'pdf-target')).toBe(
+      'la <mark class="pdf-target">chute</mark>',
+    );
+  });
 });

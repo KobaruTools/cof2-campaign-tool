@@ -7,13 +7,15 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
-import { alpha, darken } from '@mui/material/styles';
+import { alpha, darken, type Theme } from '@mui/material/styles';
 import { AccountMenu } from '@/components/AccountMenu';
 import { AppBreadcrumbs, type Crumb } from '@/components/AppBreadcrumbs';
 import { AppHeaderBrand } from '@/components/AppHeaderBrand';
 import { GmScreenIcon } from '@/components/GmScreenIcon';
 import { QuestIcon } from '@/components/QuestIcon';
 import { SectionIcon } from '@/components/SectionIcon';
+import { BOOKS, DEFAULT_BOOK_ID } from '@/lib/ui/books';
+import { usePdfViewerStore } from '@/stores/pdfViewer';
 
 interface AppHeaderProps {
   /**
@@ -67,54 +69,61 @@ interface AppHeaderProps {
  */
 function HeaderNavButton({
   href,
+  onClick,
   icon,
   label,
   condensed,
 }: {
-  href: string;
+  /** Cible de navigation (bouton-lien interne). Fournir `href` OU `onClick`. */
+  href?: string;
+  /** Action au clic (bouton d'action, ex. ouvrir le visualiseur PDF). Fournir `href` OU `onClick`. */
+  onClick?: () => void;
   icon: ReactNode;
   label: string;
   condensed: boolean;
 }) {
-  return (
-    <Button
-      color="inherit"
-      startIcon={icon}
-      component={Link}
-      href={href}
+  const buttonSx = (theme: Theme) => ({
+    minWidth: 0,
+    px: condensed ? 0.75 : { xs: 1, sm: 2 },
+    py: condensed ? 0.25 : 0.5,
+    flexShrink: 0,
+    // On inclut `background-color` : sinon cette transition sur mesure écraserait la
+    // transition par défaut de MUI et le voile blanc de survol apparaîtrait d'un coup.
+    transition: theme.transitions.create(['padding', 'background-color'], {
+      duration: theme.transitions.duration.short,
+    }),
+    '& .MuiButton-startIcon': {
+      mr: { xs: 0, sm: condensed ? 0 : 0.5 },
+      transition: theme.transitions.create('margin', {
+        duration: theme.transitions.duration.short,
+      }),
+    },
+  });
+  const labelSpan = (
+    <Box
+      component="span"
       sx={(theme) => ({
-        minWidth: 0,
-        px: condensed ? 0.75 : { xs: 1, sm: 2 },
-        py: condensed ? 0.25 : 0.5,
-        flexShrink: 0,
-        // On inclut `background-color` : sinon cette transition sur mesure écraserait la
-        // transition par défaut de MUI et le voile blanc de survol apparaîtrait d'un coup.
-        transition: theme.transitions.create(['padding', 'background-color'], {
+        display: 'inline-block',
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        maxWidth: { xs: 0, sm: condensed ? 0 : '18ch' },
+        opacity: { xs: 0, sm: condensed ? 0 : 1 },
+        transition: theme.transitions.create(['max-width', 'opacity'], {
           duration: theme.transitions.duration.short,
         }),
-        '& .MuiButton-startIcon': {
-          mr: { xs: 0, sm: condensed ? 0 : 0.5 },
-          transition: theme.transitions.create('margin', {
-            duration: theme.transitions.duration.short,
-          }),
-        },
       })}
     >
-      <Box
-        component="span"
-        sx={(theme) => ({
-          display: 'inline-block',
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
-          maxWidth: { xs: 0, sm: condensed ? 0 : '12ch' },
-          opacity: { xs: 0, sm: condensed ? 0 : 1 },
-          transition: theme.transitions.create(['max-width', 'opacity'], {
-            duration: theme.transitions.duration.short,
-          }),
-        })}
-      >
-        {label}
-      </Box>
+      {label}
+    </Box>
+  );
+  // Bouton-lien (navigation interne) OU bouton d'action (onClick) selon la prop fournie.
+  return href ? (
+    <Button color="inherit" startIcon={icon} component={Link} href={href} sx={buttonSx}>
+      {labelSpan}
+    </Button>
+  ) : (
+    <Button color="inherit" startIcon={icon} onClick={onClick} sx={buttonSx}>
+      {labelSpan}
     </Button>
   );
 }
@@ -141,6 +150,10 @@ export function AppHeader({
   // l'accueil (pas de fil, pas d'action), présent partout ailleurs. Le sous-titre de
   // la fiche y est monté en permanence (pour pouvoir s'animer), donc sa seule présence
   // suffit aussi à afficher le bandeau — de même que l'`action` de page (« Modifier »).
+  // Ouverture du visualiseur PDF sur le livre des règles depuis l'en-tête (bouton global).
+  const openViewer = usePdfViewerStore((s) => s.openAt);
+  const RulesBookIcon = BOOKS[DEFAULT_BOOK_ID].Icon;
+
   const hasSubHeader = (breadcrumbs?.length ?? 0) > 0 || Boolean(subtitle) || Boolean(action);
   // Padding horizontal aligné sur les gouttières de la `Toolbar` MUI (16 px / 24 px),
   // pour que le fil d'Ariane s'aligne verticalement avec le logo au-dessus.
@@ -226,6 +239,12 @@ export function AppHeader({
               condensed={condensed}
             />
           )}
+          <HeaderNavButton
+            onClick={() => openViewer(DEFAULT_BOOK_ID)}
+            icon={<RulesBookIcon sx={{ fontSize: 20 }} />}
+            label="Livre des règles"
+            condensed={condensed}
+          />
           <AccountMenu />
         </Stack>
       </Toolbar>
