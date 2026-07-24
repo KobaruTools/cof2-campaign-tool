@@ -253,7 +253,8 @@ export function FamiliarPowerCompactCard({
           display: 'flex',
           flexDirection: 'column',
           flexGrow: 1,
-          px: 1,
+          // Padding horizontal resserré (6px), aligné sur les cartes de rang en vue colonne (option 4, PER-74).
+          px: 0.75,
           pt: 1.75,
           pb: 0.75,
           border: 1,
