@@ -182,6 +182,10 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
           {
             key: inst.id,
             name: inst.label,
+            // Illustration détourée de la créature (si le livre l'illustre) à la place de
+            // l'avatar générique ; une variante sans illustration propre hérite de celle de
+            // sa base côté données. Absente → repli sur l'icône « person » du tracker.
+            portraitSrc: blob.illustration,
             profileLabel: nc ? `NC ${nc}` : 'PNJ',
             profileColor: CREATURE_ACCENT,
             initiative,
