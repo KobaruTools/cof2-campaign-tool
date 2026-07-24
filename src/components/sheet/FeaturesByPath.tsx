@@ -149,8 +149,21 @@ const PATH_TYPE_ORDER: Record<Path['type'], number> = {
   prestige: 2,
 };
 
-/** Nombre de colonnes affichées (6 voies maximum, cf. règles CO2). */
-const PATH_COLUMN_COUNT = 6;
+/**
+ * Colonnes des voies ORDINAIRES : la voie de peuple (ou du mage, qui la remplace)
+ * + 5 voies de profil (p. 42). La voie de PRESTIGE n'en fait PAS partie : elle
+ * occupe une 7ᵉ colonne DÉDIÉE et réservée, à part (cf. `PRESTIGE_COLUMN`), qu'on
+ * ne peut remplir qu'avec UNE seule voie de prestige. Ne pas confondre les deux :
+ * le prestige était compté à tort comme l'une des 6, ce qui interdisait d'avoir à
+ * la fois 5 voies de profil et une voie de prestige (incident corrigé le 2026-07-24).
+ */
+const PROFILE_COLUMN_COUNT = 6;
+
+/**
+ * Indice (1-based) de la colonne réservée à l'unique voie de prestige : juste après
+ * les 6 colonnes de voies ordinaires. TOUJOURS affichée, même vide (emplacement réservé).
+ */
+const PRESTIGE_COLUMN = PROFILE_COLUMN_COUNT + 1;
 
 /** Nombre de rangs (lignes de capacités) par voie. */
 const PATH_RANK_COUNT = 5;
@@ -2052,6 +2065,7 @@ function PathBlock({
   masterDerived,
   compact = false,
   gridColumn,
+  separated = false,
   retainedFeature,
   retainedPathName,
   character,
@@ -2085,6 +2099,12 @@ function PathBlock({
   compact?: boolean;
   /** Vue colonne : index de colonne (1-based) dans la grille subgrid. */
   gridColumn?: number;
+  /**
+   * Vue colonne : la voie occupe la colonne DÉDIÉE de prestige (7ᵉ), à part des 6 voies
+   * ordinaires. Rendue avec un séparateur (bordure gauche + retrait) pour matérialiser
+   * qu'elle est réservée et distincte des voies de peuple/profil.
+   */
+  separated?: boolean;
   /** Voie du mage : capacité de peuple de rang 1 conservée, fusionnée au rang 1. */
   retainedFeature?: Feature;
   /** Nom de la voie de peuple dont la capacité de rang 1 est conservée. */
@@ -2477,6 +2497,11 @@ function PathBlock({
           gridRow: `1 / span ${PATH_RANK_COUNT + 1}`,
           display: 'grid',
           gridTemplateRows: 'subgrid',
+          // Colonne de prestige réservée (7ᵉ) : trait de séparation à gauche + retrait, pour
+          // la détacher visuellement des 6 voies ordinaires (peuple/mage + profils).
+          ...(separated
+            ? { borderLeft: 1, borderColor: 'divider', pl: 1, ml: 0.5 }
+            : {}),
         }}
       >
         {header}
@@ -3517,6 +3542,40 @@ function GhostColumn({ gridColumn }: { gridColumn: number }) {
   );
 }
 
+/**
+ * Colonne de PRESTIGE réservée mais VIDE (aucune voie de prestige choisie). Contrairement
+ * à `GhostColumn`, elle porte un en-tête libellé « Voie de prestige » pour signaler que cet
+ * emplacement est réservé à l'unique voie de prestige, à part des 6 voies ordinaires. Rendue
+ * avec le même trait de séparation à gauche que le `PathBlock` de prestige (`separated`).
+ */
+function PrestigeGhostColumn({ gridColumn }: { gridColumn: number }) {
+  return (
+    <Box
+      sx={{
+        gridColumn,
+        gridRow: `1 / span ${PATH_RANK_COUNT + 1}`,
+        display: 'grid',
+        gridTemplateRows: 'subgrid',
+        borderLeft: 1,
+        borderColor: 'divider',
+        pl: 1,
+        ml: 0.5,
+        opacity: 0.6,
+      }}
+    >
+      {/* En-tête : libellé de l'emplacement réservé (pas de voie encore choisie). */}
+      <Box sx={{ display: 'flex', alignItems: 'flex-end', pb: 0.5 }}>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, fontStyle: 'italic' }}>
+          Voie de prestige
+        </Typography>
+      </Box>
+      {Array.from({ length: PATH_RANK_COUNT }).map((_, i) => (
+        <GhostBlock key={i} />
+      ))}
+    </Box>
+  );
+}
+
 /** Toutes les voies acquises d'un personnage, regroupées et consultables / éditables. */
 export function FeaturesByPath({
   featureIds,
@@ -3633,16 +3692,21 @@ export function FeaturesByPath({
   };
   const featureName = (id: string) => featureById.get(id)?.name ?? id;
 
-  // La voie de prestige (souvent unique) est épinglée aux dernières colonnes ;
-  // les autres voies s'écoulent depuis la gauche (voie du peuple en premier).
+  // La voie de prestige occupe une COLONNE DÉDIÉE et réservée (la 7ᵉ), à part des 6 voies
+  // ordinaires (peuple/mage + 5 profils). Les autres voies s'écoulent depuis la gauche (voie
+  // de peuple en premier) ; la voie de prestige, elle, reste isolée dans sa colonne réservée.
   const prestige = displayGroups.filter((g) => g.path?.type === 'prestige');
   const others = displayGroups.filter((g) => g.path?.type !== 'prestige');
-  // Colonnes vides entre les voies de gauche et la voie de prestige : remplies
-  // par des colonnes fantômes (emplacements de voies non encore choisies).
+  // Colonnes fantômes des voies ORDINAIRES non encore choisies : de la première libre jusqu'à
+  // la 6ᵉ colonne incluse (la voie de prestige n'entre PAS dans ce décompte).
   const ghostColumns: number[] = [];
-  for (let c = others.length + 1; c <= PATH_COLUMN_COUNT - prestige.length; c++) {
+  for (let c = others.length + 1; c <= PROFILE_COLUMN_COUNT; c++) {
     ghostColumns.push(c);
   }
+  // Largeur de la zone de prestige : 1 colonne réservée dans le cas normal. On tolère >1 voie
+  // de prestige (données incohérentes) sans casser la grille, en élargissant la zone réservée.
+  const prestigeColSpan = Math.max(1, prestige.length);
+  const totalColumnCount = PROFILE_COLUMN_COUNT + prestigeColSpan;
 
   return (
     <FeatureVerbatimContext.Provider value={verbatim}>
@@ -3655,11 +3719,11 @@ export function FeaturesByPath({
         <Box
           sx={{
             display: 'grid',
-            // ≥ md : les 6 colonnes se partagent la largeur dispo (aucun débordement).
-            // < md : largeur minimale par colonne, le bloc défile horizontalement.
+            // ≥ md : les 6 voies ordinaires + la colonne de prestige réservée se partagent la
+            // largeur dispo (aucun débordement). < md : largeur minimale par colonne, défilement H.
             gridTemplateColumns: {
-              xs: `repeat(${PATH_COLUMN_COUNT}, minmax(160px, 1fr))`,
-              md: `repeat(${PATH_COLUMN_COUNT}, minmax(0, 1fr))`,
+              xs: `repeat(${totalColumnCount}, minmax(160px, 1fr))`,
+              md: `repeat(${totalColumnCount}, minmax(0, 1fr))`,
             },
             // Lignes partagées par toutes les colonnes (subgrid) : en-tête + rangs.
             // L'en-tête prend la hauteur du titre le plus haut, les rangs s'alignent.
@@ -3704,6 +3768,9 @@ export function FeaturesByPath({
           {ghostColumns.map((c) => (
             <GhostColumn key={`ghost-col-${c}`} gridColumn={c} />
           ))}
+          {/* Colonne de prestige RÉSERVÉE mais vide : aucune voie de prestige choisie. Toujours
+              affichée (emplacement réservé), avec son libellé et son trait de séparation. */}
+          {prestige.length === 0 && <PrestigeGhostColumn gridColumn={PRESTIGE_COLUMN} />}
           {prestige.map((group, i) => (
             <PathBlock
               key={group.pathId}
@@ -3715,7 +3782,9 @@ export function FeaturesByPath({
               level={level}
               masterDerived={masterDerived}
               compact
-              gridColumn={PATH_COLUMN_COUNT - prestige.length + 1 + i}
+              gridColumn={PRESTIGE_COLUMN + i}
+              // Trait de séparation sur la 1re colonne de prestige : la détache des 6 voies ordinaires.
+              separated={i === 0}
               character={character}
               onChoiceChange={onChoiceChange}
               onEnableFeatureEditing={onEnableFeatureEditing}
