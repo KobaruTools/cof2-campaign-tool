@@ -22,6 +22,11 @@ interface CharacterIdentityLineProps {
   priestVocation?: PriestVocation | null;
   /** Niveau du personnage. */
   level: number;
+  /**
+   * Version compacte (icône + police réduites), pour le sous-header de la barre au
+   * défilement (PER-239) — le bloc nom du corps de la fiche reste en taille normale.
+   */
+  dense?: boolean;
   /** Styles supplémentaires posés sur le conteneur (ex. `flexWrap`, positionnement). */
   sx?: SxProps<Theme>;
   /** Ref sur l'élément racine — sert de sentinelle au défilement (cf. en-tête de fiche). */
@@ -43,22 +48,24 @@ export function CharacterIdentityLine({
   firearmsAllowed,
   priestVocation,
   level,
+  dense = false,
   sx,
   ref,
 }: CharacterIdentityLineProps) {
+  const textVariant = dense ? 'body2' : 'body1';
   return (
     <Stack
       ref={ref}
       direction="row"
-      spacing={0.75}
+      spacing={dense ? 0.5 : 0.75}
       sx={[{ alignItems: 'center', color: 'text.secondary' }, ...(Array.isArray(sx) ? sx : [sx])]}
     >
-      <Typography variant="body1" component="span">
+      <Typography variant={textVariant} component="span">
         {ancestryName ?? 'Peuple à définir'} ·
       </Typography>
-      {characterClass && <ClassIcon classId={characterClass.id} size={20} />}
+      {characterClass && <ClassIcon classId={characterClass.id} size={dense ? 16 : 20} />}
       <Typography
-        variant="body1"
+        variant={textVariant}
         component="span"
         sx={{
           color: characterClass ? classColor(characterClass.id) : 'text.secondary',
@@ -69,7 +76,7 @@ export function CharacterIdentityLine({
       </Typography>
       {/* Vocation du prêtre spécialiste (PER-218) : trait d'identité, visible d'un coup d'œil. */}
       <PriestVocationBadge vocation={priestVocation} />
-      <Typography variant="body1" component="span">
+      <Typography variant={textVariant} component="span">
         · niveau {level}
       </Typography>
     </Stack>
