@@ -325,14 +325,16 @@ export function BestiaryStatBlock({
         />
       )}
 
-      {/* Identité : nom + NC/taille/nature + page source. */}
+      {/* Identité : nom + page source + bascule « Texte d'origine » calée tout à DROITE
+          (coin haut-droite du bloc, sur la ligne du titre — PER-248). */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap', mb: 1 }}>
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700, letterSpacing: 0.5, mr: 'auto' }}>
           {creature.name}
         </Typography>
+        {/* Le nom de la créature sert de terme à cibler/surligner dans le visualiseur (PER-59/61). */}
+        <SourceRef page={creature.sourcePage} term={creature.name} />
         {/* Bascule « Texte d'origine » : proposée seulement s'il y a des capacités à enrichir. */}
         {hasSpecialAbilities && <VerbatimToggle value={verbatim} onChange={setVerbatim} />}
-        <SourceRef page={creature.sourcePage} />
       </Stack>
       <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', gap: 0.75, mb: BLOCK_GAP }}>
         {nc && <MetaPill label="NC">{nc}</MetaPill>}

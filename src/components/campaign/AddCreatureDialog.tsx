@@ -11,25 +11,30 @@
  * en dur, le contenu entitlé remontera tout seul le jour de PER-242.
  */
 import { useEffect, useState } from 'react';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
+import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import { useBestiaryStore } from '@/stores/bestiary';
 import { AppAlert } from '@/components/AppAlert';
+import { AppTooltip } from '@/components/AppTooltip';
 import { CreatureBlobView } from '@/components/bestiary/CreatureBlobView';
 import { CreatureCatalogAutocomplete } from './CreatureCatalogAutocomplete';
 
 export interface AddCreatureDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Ajoute une instance de la créature `slug` au combat. */
-  onAdd: (slug: string) => void;
+  /** Ajoute une instance de la créature `slug` au combat, avec sa visibilité joueurs initiale. */
+  onAdd: (slug: string, visible: boolean) => void;
 }
 
 export function AddCreatureDialog({ open, onClose, onAdd }: AddCreatureDialogProps) {
@@ -37,22 +42,25 @@ export function AddCreatureDialog({ open, onClose, onAdd }: AddCreatureDialogPro
   const status = useBestiaryStore((s) => s.status);
   const loadList = useBestiaryStore((s) => s.loadList);
   const [selected, setSelected] = useState<string | null>(null);
+  // Visibilité joueurs (fenêtre projetée) de la créature à ajouter — ON par défaut.
+  const [visible, setVisible] = useState(true);
 
   // Charge la liste à l'ouverture (idempotent côté store).
   useEffect(() => {
     if (open) void loadList();
   }, [open, loadList]);
 
-  // Ferme la modale en repartant d'un aperçu vierge (sélection remise à zéro à la
-  // fermeture plutôt que dans un effet à l'ouverture, cf. `set-state-in-effect`).
+  // Ferme la modale en repartant d'un aperçu vierge (sélection + visibilité remises à
+  // zéro à la fermeture plutôt que dans un effet à l'ouverture, cf. `set-state-in-effect`).
   const handleClose = () => {
     setSelected(null);
+    setVisible(true);
     onClose();
   };
 
   const handleAdd = () => {
     if (!selected) return;
-    onAdd(selected);
+    onAdd(selected, visible);
     handleClose();
   };
 
@@ -110,11 +118,37 @@ export function AddCreatureDialog({ open, onClose, onAdd }: AddCreatureDialogPro
           )}
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose}>Annuler</Button>
-        <Button variant="contained" onClick={handleAdd} disabled={!selected}>
-          Ajouter au combat
-        </Button>
+      <DialogActions sx={{ justifyContent: 'space-between' }}>
+        {/* Visibilité joueurs initiale : ON par défaut. Une créature ajoutée « masquée »
+            se prépare sans apparaître dans la fenêtre projetée aux joueurs (PER-248). */}
+        <AppTooltip
+          title={
+            visible
+              ? 'La créature sera visible dans la fenêtre projetée aux joueurs'
+              : 'La créature sera masquée aux joueurs (préparée à l’avance)'
+          }
+        >
+          <FormControlLabel
+            control={<Switch checked={visible} onChange={(e) => setVisible(e.target.checked)} />}
+            label={
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                {visible ? (
+                  <VisibilityOutlinedIcon fontSize="small" />
+                ) : (
+                  <VisibilityOffOutlinedIcon fontSize="small" />
+                )}
+                <span>Visible par les joueurs</span>
+              </Stack>
+            }
+            sx={{ ml: 0.5 }}
+          />
+        </AppTooltip>
+        <Stack direction="row" spacing={1}>
+          <Button onClick={handleClose}>Annuler</Button>
+          <Button variant="contained" onClick={handleAdd} disabled={!selected}>
+            Ajouter au combat
+          </Button>
+        </Stack>
       </DialogActions>
     </Dialog>
   );

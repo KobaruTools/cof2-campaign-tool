@@ -130,8 +130,8 @@ function reviveState(raw: string): GmCombatState {
 }
 
 export interface GmCombatStateApi extends GmCombatState {
-  /** Ajoute une instance de la créature `slug` (id = `c-<nextInstanceId>`). */
-  addCreature: (slug: string) => void;
+  /** Ajoute une instance de la créature `slug` (id = `c-<nextInstanceId>`), visible par défaut. */
+  addCreature: (slug: string, visible?: boolean) => void;
   /** Retire l'instance `instanceId` (et son manque de PV). */
   removeCreature: (instanceId: string) => void;
   /** Bascule la visibilité joueurs de l'instance `instanceId` (fenêtre projetée). */
@@ -190,10 +190,10 @@ export function useGmCombatState(cid: string): GmCombatStateApi {
   );
 
   const addCreature = useCallback(
-    (slug: string) =>
+    (slug: string, visible = true) =>
       update((prev) => ({
         ...prev,
-        creatures: [...prev.creatures, { id: `c-${prev.nextInstanceId}`, slug, visible: true }],
+        creatures: [...prev.creatures, { id: `c-${prev.nextInstanceId}`, slug, visible }],
         nextInstanceId: prev.nextInstanceId + 1,
       })),
     [update],

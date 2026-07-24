@@ -228,7 +228,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       <AddCreatureDialog
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onAdd={(slug) => addCreature(slug)}
+        onAdd={(slug, visible) => addCreature(slug, visible)}
       />
     </>
   );

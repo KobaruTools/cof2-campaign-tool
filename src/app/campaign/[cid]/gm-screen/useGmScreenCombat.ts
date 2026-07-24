@@ -60,8 +60,8 @@ export interface GmScreenCombat {
   currentTurnKey: string | null;
   /** Fixe le combattant dont c'est le tour. */
   setCurrentTurnKey: (key: string | null) => void;
-  /** Ajoute une instance de la créature `slug` au combat. */
-  addCreature: (slug: string) => void;
+  /** Ajoute une instance de la créature `slug` au combat, avec sa visibilité joueurs initiale. */
+  addCreature: (slug: string, visible?: boolean) => void;
   /** Retire l'instance `instanceId` du combat. */
   removeCreature: (instanceId: string) => void;
   /** Bascule la visibilité joueurs d'une instance de créature (fenêtre projetée). */
