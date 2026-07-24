@@ -1023,8 +1023,36 @@ const fantasticCreatures: Creature[] = [
     baseCreatureId: 'chimere',
     description:
       "La chimère draconique est une cousine de la chimère ordinaire, mais sa tête d'aigle est remplacée par une tête de dragon. Encore plus dangereuse, elle est dotée d'un souffle qui dépend de la couleur de la tête de dragon (rouge pour feu, blanc pour froid, etc.). Elle parle le draconique.",
-    sharedAbilitiesNote: 'Caractéristiques et autres capacités : comme la Chimère.',
+    // Le livre (p. 277) n'imprime pour cette variante que la description et le Souffle,
+    // tout le reste étant implicitement « comme la Chimère » (p. 276). On reconstruit ici
+    // le bloc COMPLET en recopiant les stats de la Chimère de base (caractéristiques, DEF,
+    // PV, initiative, attaques, Poison/Riposte sournoise/Vol rapide) pour que la fiche soit
+    // autonome et lisible dans /bestiary, tout en conservant `baseCreatureId` (imbrication
+    // sous la Chimère dans la liste). Seul le Souffle est propre à la draconique.
+    abilities: { AGI: 1, CON: 6, FOR: 6, PER: 2, CHA: -4, INT: -2, VOL: 2 },
+    bonusDieAbilities: ['AGI', 'PER'],
+    defense: 21,
+    hitPoints: 100,
+    initiative: 15,
+    attacks: [
+      { name: 'Morsure, bec ou cornes', attackCount: 3, bonus: '+14', damage: '1d6+6' },
+      { name: 'Morsure de serpent', bonus: '+14', damage: '1d4+3', rider: '+ poison' },
+    ],
     specialAbilities: [
+      {
+        name: 'Poison',
+        text: "La victime subit 1d6 DM de poison et elle doit faire un test de CON difficulté 16. En cas d'échec, elle subit 1d6 DM supplémentaires par round pendant 5 rounds.",
+        richText: "La victime subit {1d6} DM de poison et elle doit faire un test de CON difficulté 16. En cas d'échec, elle subit {1d6} DM supplémentaires par round pendant 5 rounds.",
+      },
+      {
+        name: 'Riposte sournoise',
+        text: "Si une créature attaque la chimère dans le dos, la chimère obtient une attaque supplémentaire de serpent contre cet attaquant en plus de ces attaques normales à ce tour.",
+      },
+      {
+        name: 'Vol rapide',
+        text: "La créature obtient une action de mouvement supplémentaire par round lorsqu'elle est en vol. Au premier round de combat, la créature obtient un dé bonus en attaque et +1d6 aux DM si elle est en vol et attaque une créature au sol.",
+        richText: "La créature obtient une action de mouvement supplémentaire par round lorsqu'elle est en vol. Au premier round de combat, la créature obtient un dé bonus en attaque et +{1d6} aux DM si elle est en vol et attaque une créature au sol.",
+      },
       {
         // Le livre imprime « test de DEX » (terminologie héritée) ; corrigé en AGI (validé par le
         // propriétaire, 2026-07-23) — CO2 n'a pas de caractéristique DEX.
