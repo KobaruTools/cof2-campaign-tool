@@ -109,13 +109,13 @@ function borrowedColorOf(character: Character, feature: Feature): string | undef
 }
 
 /**
- * Résume les voies d'un personnage en colonnes de progression : une par voie
- * entamée (dans l'ordre peuple → profils → prestige, puis ordre d'acquisition),
- * chaque rang débloqué portant sa couleur (celle de la voie, ou du profil emprunté
- * pour un rang à capacité empruntée). Les ids inconnus sont ignorés (comme sur la
- * fiche).
+ * Résume les voies d'un personnage en une grille de 7 emplacements FIXES : peuple/mage
+ * en tête, profils au milieu, prestige toujours en dernier (voir placement plus bas).
+ * Les emplacements sans voie valent `undefined`. Chaque rang débloqué porte sa couleur
+ * (celle de la voie, ou du profil emprunté pour un rang à capacité empruntée). Les ids
+ * inconnus sont ignorés (comme sur la fiche).
  */
-function pathColumns(character: Character): PathColumn[] {
+function pathColumns(character: Character): (PathColumn | undefined)[] {
   const byPath = new Map<string, { path: Path | undefined; features: Map<number, Feature>; order: number }>();
   for (const id of character.featureIds) {
     const feature = featureById.get(id);
@@ -147,21 +147,40 @@ function pathColumns(character: Character): PathColumn[] {
       byPath.delete(pathId);
     }
   }
-  return [...byPath.values()]
-    .sort((a, b) => {
-      const ta = a.path ? PATH_TYPE_ORDER[a.path.type] : 99;
-      const tb = b.path ? PATH_TYPE_ORDER[b.path.type] : 99;
-      return ta - tb || a.order - b.order;
-    })
-    .map((entry) => {
-      const baseColor = pathColor(entry.path, character.classId);
-      const rankColors = [...entry.features.entries()]
-        .sort((a, b) => a[0] - b[0])
-        .slice(0, PATH_RANK_COUNT)
-        // Un rang qui a emprunté une capacité prend la couleur du profil emprunté.
-        .map(([, feature]) => borrowedColorOf(character, feature) ?? baseColor);
-      return { name: entry.path?.name, rankColors };
-    });
+  const buildColumn = (entry: { path: Path | undefined; features: Map<number, Feature> }): PathColumn => {
+    const baseColor = pathColor(entry.path, character.classId);
+    const rankColors = [...entry.features.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .slice(0, PATH_RANK_COUNT)
+      // Un rang qui a emprunté une capacité prend la couleur du profil emprunté.
+      .map(([, feature]) => borrowedColorOf(character, feature) ?? baseColor);
+    return { name: entry.path?.name, rankColors };
+  };
+  // Chaque voie occupe un EMPLACEMENT FIXE, pas une colonne compactée : peuple/mage
+  // à gauche (col. 0), voies de profil au milieu (col. 1-5, dans l'ordre d'acquisition),
+  // voie de prestige toujours à la dernière colonne (col. 6). Ainsi la prestige reste
+  // à droite même quand le personnage a moins de 7 voies (sinon elle remontait dans une
+  // colonne du milieu — cf. recettes PER-175).
+  const slots: (PathColumn | undefined)[] = new Array(PATH_COLUMN_COUNT).fill(undefined);
+  let classSlot = 1;
+  const entries = [...byPath.values()].sort((a, b) => {
+    const ta = a.path ? PATH_TYPE_ORDER[a.path.type] : 99;
+    const tb = b.path ? PATH_TYPE_ORDER[b.path.type] : 99;
+    return ta - tb || a.order - b.order;
+  });
+  for (const entry of entries) {
+    const column = buildColumn(entry);
+    const type = entry.path?.type;
+    if (type === 'ancestry' || type === 'mage') {
+      slots[0] = column;
+    } else if (type === 'prestige') {
+      slots[PATH_COLUMN_COUNT - 1] = column;
+    } else if (classSlot < PATH_COLUMN_COUNT - 1) {
+      slots[classSlot] = column;
+      classSlot += 1;
+    }
+  }
+  return slots;
 }
 
 export function CharacterPreviewCard({ character, tinted = true }: CharacterPreviewCardProps) {
