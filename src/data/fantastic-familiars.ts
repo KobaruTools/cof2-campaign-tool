@@ -11,9 +11,12 @@
  *   - R7 « Pouvoir supérieur » → `superiorPower` (+ caractéristique du bonus de +1)
  *
  * Textes verbatim (décision PRD #3). Les capacités de profil CONFÉRÉES (Prescience,
- * Siphon des âmes, Foudre…) sont décrites telles quelles ; leur résolution vers un
- * `featureId` réel est différée car les voies de profil citées ne sont pas toutes
- * peuplées dans les données (voir `FamiliarGrantedPower`).
+ * Siphon des âmes, Foudre…) sont résolues vers un `featureId` réel (rendu en carte façon
+ * capacité empruntée) dès que la voie de profil citée est peuplée — PER-74, les 12 familiers.
+ * SEULE exception : « Exsangue » (Animal mort-vivant, R7) → la voie du sang de SORCIER n'est
+ * pas peuplée dans les données → repli descriptif verbatim (pas de `featureId`). Les pouvoirs
+ * PROPRES au familier (Toile, Poison, Clone, Télépathie, transformation du diablotin) n'ont
+ * volontairement pas de `featureId` : ce ne sont pas des capacités de profil (repli descriptif).
  *
  * Source : CBHS_06_Chroniques_Oubliees_2_web_v2.pdf, p. 133-136.
  */
@@ -35,7 +38,10 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: 'voie du vagabond',
         profile: 'barde',
         usage: "1 fois par jour, seulement à l'oral, pas à l'écrit",
+        // PER-74 : vagabond-r4 = « Compréhension des langues » (nom + rang confirmés).
+        featureId: 'vagabond-r4',
       },
+      usageLimit: { max: 1, reset: 'day' },
     },
     spellProfile: 'pretre',
     superiorPower: {
@@ -46,8 +52,11 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: 'voie de la divination',
         profile: 'ensorceleur',
         usage: 'une fois par jour',
+        // PER-74 : divination-r5 = « Prescience » (nom + rang confirmés).
+        featureId: 'divination-r5',
       },
       abilityBonus: 'CHA',
+      usageLimit: { max: 1, reset: 'day' },
     },
     sourcePage: 133,
   },
@@ -64,6 +73,10 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         rank: 1,
         pathName: 'voie de la mort',
         profile: 'sorcier',
+        // PER-74 : mort-r1 = « Siphon des âmes ». ACQUISITION PERMANENTE (le livre ne donne
+        // aucune fréquence : « Le personnage obtient la capacité ») → pas d'`usageLimit`,
+        // la carte s'affiche sans compteur d'usage.
+        featureId: 'mort-r1',
       },
     },
     spellProfile: 'sorcier',
@@ -112,6 +125,9 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         rank: 3,
         pathName: 'voie du démon',
         profile: 'sorcier',
+        // PER-74 : demon-r3 = « Pacte démoniaque ». ACQUISITION PERMANENTE (aucune fréquence
+        // dans le livre : « Le personnage obtient la capacité ») → pas d'`usageLimit`.
+        featureId: 'demon-r3',
       },
       abilityBonus: 'INT',
     },
@@ -163,22 +179,30 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     minorPower: {
       text: "2 fois par jour, le personnage peut se rendre invisible comme avec la capacité de magicien (rang 3, voie de la magie universelle).",
       grants: {
+        name: 'Invisibilité',
         rank: 3,
         pathName: 'voie de la magie universelle',
         profile: 'magicien',
         usage: '2 fois par jour',
+        // PER-74 : magie-universelle-r3 = « Invisibilité » (rang 3 confirmé p. 106).
+        featureId: 'magie-universelle-r3',
       },
+      usageLimit: { max: 2, reset: 'day' },
     },
     spellProfile: 'ensorceleur',
     superiorPower: {
       text: "Une fois par jour, le personnage peut basculer dans le monde invisible et s'y déplacer pour en ressortir là où il le souhaite. Ce pouvoir fonctionne exactement comme la capacité Marche des plans de la voie de la spiritualité du profil de prêtre.",
       grants: {
         name: 'Marche des plans',
+        rank: 5,
         pathName: 'voie de la spiritualité',
         profile: 'pretre',
         usage: 'une fois par jour',
+        // PER-74 : spiritualite-r5 = « Marche des plans » (rang 5, prêtre).
+        featureId: 'spiritualite-r5',
       },
       abilityBonus: 'AGI',
+      usageLimit: { max: 1, reset: 'day' },
     },
     sourcePage: 134,
   },
@@ -196,7 +220,10 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: 'voie des végétaux',
         profile: 'druide',
         usage: '2 fois par jour',
+        // PER-74 : vegetaux-r2 = « Prison végétale » (nom + rang confirmés).
+        featureId: 'vegetaux-r2',
       },
+      usageLimit: { max: 2, reset: 'day' },
     },
     spellProfile: 'druide',
     superiorPower: {
@@ -207,8 +234,11 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: 'voie des animaux',
         profile: 'druide',
         usage: '3 fois par jour',
+        // PER-74 : animaux-r3 = « Nuée d'insectes » (nom + rang confirmés).
+        featureId: 'animaux-r3',
       },
       abilityBonus: 'AGI',
+      usageLimit: { max: 3, reset: 'day' },
     },
     sourcePage: 135,
   },
@@ -227,7 +257,13 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: "voie de l'air",
         profile: 'ensorceleur',
         usage: '2 fois par jour',
+        // PER-74 : air-r2 = « Sous tension ». Le livre cite « rang 1 » ICI, mais la voie de
+        // l'air (p. 93) place bien « Sous tension » au RANG 2 (rang 1 = « Murmures dans le
+        // vent ») → coquille du livre dans l'encadré du familier ; `rank` reste verbatim, le
+        // `featureId` pointe la capacité réelle.
+        featureId: 'air-r2',
       },
+      usageLimit: { max: 2, reset: 'day' },
     },
     spellProfile: 'magicien',
     superiorPower: {
@@ -238,8 +274,11 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: "voie de l'air",
         profile: 'ensorceleur',
         usage: '2 fois par jour',
+        // PER-74 : air-r4 = « Foudre » (rang 4 confirmé p. 93).
+        featureId: 'air-r4',
       },
       abilityBonus: 'INT',
+      usageLimit: { max: 2, reset: 'day' },
     },
     sourcePage: 135,
   },
@@ -259,7 +298,10 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: 'voie des illusions',
         profile: 'ensorceleur',
         usage: 'une fois par jour',
+        // PER-74 : illusions-r4 = « Imitation » (nom + rang confirmés).
+        featureId: 'illusions-r4',
       },
+      usageLimit: { max: 1, reset: 'day' },
     },
     spellProfile: 'main-profile',
     superiorPower: {
@@ -286,8 +328,11 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: "voie de l'envoûteur",
         profile: 'ensorceleur',
         usage: 'une fois par combat',
+        // PER-74 : envouteur-r2 = « Sommeil » (nom + rang confirmés).
+        featureId: 'envouteur-r2',
       },
       abilityBonus: 'CHA',
+      usageLimit: { max: 1, reset: 'combat' },
     },
     sourcePage: 136,
   },
@@ -308,7 +353,10 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: "voie de l'invocation",
         profile: 'ensorceleur',
         usage: '3 fois par jour',
+        // PER-74 : invocation-r2 = « Serviteur invisible » (nom + rang confirmés).
+        featureId: 'invocation-r2',
       },
+      usageLimit: { max: 3, reset: 'day' },
     },
     spellProfile: 'forgesort',
     superiorPower: {
@@ -319,8 +367,15 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: 'voie de la magie élémentaire',
         profile: 'magicien',
         usage: 'une fois par jour',
+        // PER-74 : magie-elementaire-r5 = « Armure de pierre » (rang 5, magie élémentaire,
+        // magicien — confirmé p. 105). L'encadré du familier l'appelle « Peau de pierre » :
+        // incohérence de nom du livre (une capacité « Peau de pierre » distincte existe chez
+        // le moine, pagne-r2, mais elle n'est PAS de la magie élémentaire) ; le triplet
+        // rang + voie + profil identifie sans ambiguïté magie-elementaire-r5.
+        featureId: 'magie-elementaire-r5',
       },
       abilityBonus: 'CON',
+      usageLimit: { max: 1, reset: 'day' },
     },
     sourcePage: 136,
   },
@@ -338,7 +393,11 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: 'voie du sang',
         profile: 'sorcier',
         usage: '3 fois par jour',
+        // PER-74 : sang-r1 = « Saignements » (pluriel dans les données ; l'encadré du
+        // familier écrit « Saignement » au singulier — même capacité, rang 1 voie du sang).
+        featureId: 'sang-r1',
       },
+      usageLimit: { max: 3, reset: 'day' },
     },
     spellProfile: 'sorcier',
     superiorPower: {
@@ -349,8 +408,11 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
         pathName: 'voie du sang',
         profile: 'sorcier',
         usage: '1 fois par combat',
+        // PER-74 : sang-r4 = « Rituel de sang » (nom + rang confirmés).
+        featureId: 'sang-r4',
       },
       abilityBonus: 'CON',
+      usageLimit: { max: 1, reset: 'combat' },
     },
     sourcePage: 136,
   },
