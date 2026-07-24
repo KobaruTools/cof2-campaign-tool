@@ -26,7 +26,6 @@
  */
 import { use, useState } from 'react';
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
 import { useGmScreenCombat } from '../useGmScreenCombat';
@@ -48,30 +47,28 @@ export default function GmTrackerWindowPage({ params }: { params: Promise<{ cid:
 
   return (
     <>
+      {/* `<title>` (onglet du navigateur uniquement, non rendu dans la vue) : sert à
+          identifier la fenêtre. La vue elle-même est volontairement DÉPOUILLÉE — pas de
+          fond décoratif, pas de titre visible, pas de footer (masqué via AppFooter). */}
       <title>
         {campaign
           ? `Tracker — ${campaign.name} — Éditeur de personnage CO2`
           : 'Tracker de combat — Éditeur de personnage CO2'}
       </title>
-      {/* Fond sombre uni pleine fenêtre. */}
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', p: { xs: 2, sm: 3 } }}>
-        <Stack spacing={2}>
-          <Typography variant="h5" sx={{ fontWeight: 800 }}>
-            {campaign ? campaign.name : 'Combat en cours'}
+      <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+        {loading ? (
+          <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
+            Chargement du combat…
           </Typography>
-          {loading ? (
-            <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-              Chargement du combat…
-            </Typography>
-          ) : (
-            <InitiativeTracker
-              rows={initiativeRows}
-              currentTurnKey={turnKey}
-              onCurrentTurnKeyChange={setTurnKey}
-              readOnly
-            />
-          )}
-        </Stack>
+        ) : (
+          <InitiativeTracker
+            rows={initiativeRows}
+            currentTurnKey={turnKey}
+            onCurrentTurnKeyChange={setTurnKey}
+            readOnly
+            hideTitle
+          />
+        )}
       </Box>
     </>
   );

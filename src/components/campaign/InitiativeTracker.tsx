@@ -138,6 +138,12 @@ export interface InitiativeTrackerProps {
    * (ex. « Ouvrir dans une nouvelle fenêtre », PER-248).
    */
   headerAction?: ReactNode;
+  /**
+   * Masque le titre de section « Ordre d'initiative » (PER-248) : la fenêtre
+   * « présentation » sur second écran est dépouillée de tout habillage. Le bouton
+   * « Tour suivant » reste aligné à droite.
+   */
+  hideTitle?: boolean;
 }
 
 export function InitiativeTracker({
@@ -146,6 +152,7 @@ export function InitiativeTracker({
   onCurrentTurnKeyChange,
   readOnly = false,
   headerAction,
+  hideTitle = false,
 }: InitiativeTrackerProps) {
   const advanceTurn = () => {
     if (rows.length === 0) return;
@@ -158,9 +165,13 @@ export function InitiativeTracker({
   return (
     <Stack spacing={2}>
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
-          {"Ordre d'initiative"}
-        </Typography>
+        {hideTitle ? (
+          <Box sx={{ flexGrow: 1 }} />
+        ) : (
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
+            {"Ordre d'initiative"}
+          </Typography>
+        )}
         {headerAction}
         <Button
           variant="contained"

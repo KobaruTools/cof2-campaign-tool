@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import NextLink from 'next/link';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
@@ -31,7 +32,17 @@ const YEAR = new Date().getFullYear();
  * règles proviennent du DRS (Document de Référence du Système) de Chroniques
  * Oubliées, mis en accès libre et gratuit par Black Book Éditions.
  */
+/**
+ * Route de la fenêtre « présentation » du tracker d'initiative (second écran, PER-248),
+ * volontairement DÉPOUILLÉE (pas de footer, ni titre, ni fond) : le pied de page global
+ * s'y masque. Format : `/campaign/<cid>/gm-screen/tracker`.
+ */
+const TRACKER_WINDOW_ROUTE = /^\/campaign\/[^/]+\/gm-screen\/tracker\/?$/;
+
 export function AppFooter() {
+  const pathname = usePathname();
+  if (pathname && TRACKER_WINDOW_ROUTE.test(pathname)) return null;
+
   return (
     <Box
       component="footer"
