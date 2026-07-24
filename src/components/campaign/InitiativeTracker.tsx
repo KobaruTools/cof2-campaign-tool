@@ -28,7 +28,12 @@ export interface InitiativeRow {
   key: string;
   /** Nom affiché (personnage ou « Bandit N »). */
   name: string;
-  /** Libellé de profil (nom du profil, ou « Bandit » pour un PNJ). */
+  /**
+   * Combattant PNJ (créature du bestiaire) plutôt que personnage de joueur. En mode
+   * projection (PER-248), on masque son profil (NC) — information réservée au MJ.
+   */
+  isCreature: boolean;
+  /** Libellé de profil (nom du profil, ou « NC X » pour une créature). */
   profileLabel: string;
   /** Couleur d'accent du profil (teinte du texte de profil). */
   profileColor: string;
@@ -127,32 +132,27 @@ export interface InitiativeTrackerProps {
   currentTurnKey: string | null;
   onCurrentTurnKeyChange: (key: string | null) => void;
   /**
-   * Barres de vie en LECTURE SEULE (PER-248) : masque les contrôles de PV des jauges.
-   * Le bouton « Tour suivant » reste, lui, disponible (le tour peut être piloté
-   * localement). Sert à la fenêtre « présentation » sur un second écran, où les PV se
-   * modifient depuis la fenêtre principale mais où l'on veut quand même avancer le tour.
+   * Mode PROJECTION (PER-248) : la fenêtre « présentation » destinée à être projetée
+   * pour les joueurs. On y masque tout ce qui est réservé au MJ ou qui prend de la place
+   * inutilement — barres de PV (joueurs ET créatures), NC des créatures, en-tête et
+   * bouton « Tour suivant ». Le tour courant reste mis en évidence (piloté depuis
+   * l'écran de MJ, reflété ici via la synchro). Ne restent que portrait + initiative +
+   * identité, en compact.
    */
-  readOnly?: boolean;
+  projection?: boolean;
   /**
    * Action optionnelle rendue dans l'en-tête, à gauche du bouton « Tour suivant »
-   * (ex. « Ouvrir dans une nouvelle fenêtre », PER-248).
+   * (ex. « Ouvrir dans une nouvelle fenêtre », PER-248). Ignorée en mode projection.
    */
   headerAction?: ReactNode;
-  /**
-   * Masque le titre de section « Ordre d'initiative » (PER-248) : la fenêtre
-   * « présentation » sur second écran est dépouillée de tout habillage. Le bouton
-   * « Tour suivant » reste aligné à droite.
-   */
-  hideTitle?: boolean;
 }
 
 export function InitiativeTracker({
   rows,
   currentTurnKey,
   onCurrentTurnKeyChange,
-  readOnly = false,
+  projection = false,
   headerAction,
-  hideTitle = false,
 }: InitiativeTrackerProps) {
   const advanceTurn = () => {
     if (rows.length === 0) return;
@@ -164,25 +164,25 @@ export function InitiativeTracker({
 
   return (
     <Stack spacing={2}>
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-        {hideTitle ? (
-          <Box sx={{ flexGrow: 1 }} />
-        ) : (
+      {/* En-tête (titre + actions + « Tour suivant ») : tout se pilote depuis l'écran de
+          MJ, donc rien de tout ça en mode projection. */}
+      {!projection && (
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
             {"Ordre d'initiative"}
           </Typography>
-        )}
-        {headerAction}
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<SkipNextIcon />}
-          onClick={advanceTurn}
-          disabled={rows.length === 0}
-        >
-          Tour suivant
-        </Button>
-      </Stack>
+          {headerAction}
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<SkipNextIcon />}
+            onClick={advanceTurn}
+            disabled={rows.length === 0}
+          >
+            Tour suivant
+          </Button>
+        </Stack>
+      )}
 
       {rows.length === 0 ? (
         <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
@@ -235,22 +235,29 @@ export function InitiativeTracker({
                           ({row.playerName})
                         </Typography>
                       )}
-                      <Typography variant="caption" sx={{ display: 'block', color: row.profileColor, fontWeight: 600 }} noWrap>
-                        {row.profileLabel}
-                      </Typography>
+                      {/* NC des créatures masqué en projection (info réservée au MJ) ;
+                          le profil des personnages (classe) reste, il n'a rien de secret. */}
+                      {!(projection && row.isCreature) && (
+                        <Typography variant="caption" sx={{ display: 'block', color: row.profileColor, fontWeight: 600 }} noWrap>
+                          {row.profileLabel}
+                        </Typography>
+                      )}
                     </Box>
                   </Stack>
-                  {/* Barre de vie interactive (même composant que la fiche), boutons dessous. */}
-                  <HpGauge
-                    depletion={row.depletion}
-                    maxHp={row.maxHp}
-                    onDamage={row.onDamage}
-                    onHeal={row.onHeal}
-                    onReset={row.onReset}
-                    persistKey={row.persistKey}
-                    controlsBelow
-                    readOnly={readOnly}
-                  />
+                  {/* Barre de vie interactive (même composant que la fiche), boutons dessous.
+                      Masquée en projection : les PV (joueurs ET créatures) ne sont pas montrés
+                      aux joueurs, et ça libère de la hauteur. */}
+                  {!projection && (
+                    <HpGauge
+                      depletion={row.depletion}
+                      maxHp={row.maxHp}
+                      onDamage={row.onDamage}
+                      onHeal={row.onHeal}
+                      onReset={row.onReset}
+                      persistKey={row.persistKey}
+                      controlsBelow
+                    />
+                  )}
                 </Stack>
               </Box>
             );

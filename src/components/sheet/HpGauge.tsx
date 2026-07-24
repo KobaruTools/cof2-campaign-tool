@@ -126,13 +126,6 @@ export interface HpGaugeProps {
    * d'initiative de l'écran de MJ, PER-236) où la barre a besoin de toute la largeur.
    */
   controlsBelow?: boolean;
-  /**
-   * Affichage NON interactif (PER-248) : masque tous les contrôles (ajustement ±1,
-   * remise à plein, dépliage, formulaire dégâts/soin) — seule la barre et l'éventuel
-   * badge d'état sont rendus. Sert à la fenêtre « présentation » du tracker de l'écran
-   * de MJ (second écran en miroir, où les PV se modifient depuis la fenêtre principale).
-   */
-  readOnly?: boolean;
 }
 
 /**
@@ -145,7 +138,7 @@ export interface HpGaugeProps {
  * Le maximum est piloté ailleurs. Sert à la fois au personnage (`PlayerStatusPanel`) et à
  * chaque compagnon (`CompanionCard`), pour un comportement de suivi de PV identique.
  */
-export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKey, iconLabel = 'Points de vie', controlsBelow = false, readOnly = false }: HpGaugeProps) {
+export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKey, iconLabel = 'Points de vie', controlsBelow = false }: HpGaugeProps) {
   const theme = useTheme();
   const hpColor = theme.palette.success.main;
   const [amount, setAmount] = useState('1');
@@ -209,7 +202,7 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
           badge d'état) + ajustement fin (±1, reset) accolés à sa droite (ou en dessous). */}
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
         <Stack direction="row" spacing={0} sx={{ alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
-          {!readOnly && <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} color={hpColor} />}
+          <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} color={hpColor} />
           <GaugeIconCap color={hpColor} label={iconLabel}>
             <DerivedStatIcon statId="maxHp" size={28} color="#fff" />
           </GaugeIconCap>
@@ -223,18 +216,18 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
           </Box>
         </Stack>
         {state !== 'normal' && <HealthStateBadge state={state} />}
-        {!controlsBelow && !readOnly && quickControls}
+        {!controlsBelow && quickControls}
       </Stack>
 
       {/* Boutons rapides sur leur propre ligne (disposition étroite) — alignés à droite. */}
-      {controlsBelow && !readOnly && (
+      {controlsBelow && (
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
           {quickControls}
         </Stack>
       )}
 
       {/* Contrôles détaillés : montant + nature (létal/temp) + Dégâts / Soin. Repliés par défaut. */}
-      <Collapse in={expanded && !readOnly} unmountOnExit>
+      <Collapse in={expanded} unmountOnExit>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
           <TextField
             type="number"

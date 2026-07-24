@@ -7,15 +7,18 @@
  * `window.open` depuis l'écran de MJ pour être affichée sur un SECOND écran pendant
  * une partie.
  *
- * Elle rend UNIQUEMENT le tracker d'initiative, avec les PV en LECTURE SEULE (ils se
- * modifient depuis la fenêtre principale) mais un bouton « Tour suivant » fonctionnel —
- * le tour courant est suivi LOCALEMENT à cette fenêtre (indépendant de la principale).
- * Elle reste synchronisée en direct pour le reste :
- *  - l'état du combat (créatures, PV créatures) via l'événement `storage` déjà écouté
- *    par `useGmCombatState` (partagé par `useGmScreenCombat`) ;
+ * Vue de PROJECTION destinée à être affichée pour les joueurs : elle ne montre que
+ * portrait + initiative + identité, dans un mode `projection` qui masque tout ce qui est
+ * réservé au MJ ou superflu — barres de PV (joueurs ET créatures), NC des créatures,
+ * en-tête et bouton « Tour suivant ». Tout se pilote depuis l'écran de MJ ; cette fenêtre
+ * ne fait que refléter, en direct :
+ *  - l'état du combat (créatures, tour courant) via l'événement `storage` déjà écouté par
+ *    `useGmCombatState` (partagé par `useGmScreenCombat`) — d'où le tour courant SYNCHRONISÉ
+ *    depuis la fenêtre principale (mise en évidence du combattant actif) ;
  *  - les PV des personnages via une réhydratation du store des personnages sur le même
  *    événement `storage` (le middleware `persist` écrit la clé `cof2-characters` à chaque
- *    modification dans la fenêtre principale — cf. `useCharacterStoreSync`).
+ *    modification — cf. `useCharacterStoreSync`) : utile au calcul même si les PV ne sont
+ *    plus affichés ici.
  *
  * Fond sombre uni (pas l'illustration `HomeBackground`, calibrée en `vh` et dégradée
  * sur les formats larges/courts de cette fenêtre) : la fenêtre est panoramique
@@ -24,24 +27,23 @@
  * Lecture de l'état APRÈS montage (client-only, pas de rendu serveur de l'état local) —
  * même contrat que la page complète.
  */
-import { use, useState } from 'react';
+import { use } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
 import { useGmScreenCombat } from '../useGmScreenCombat';
 import { useCharacterStoreSync } from './useCharacterStoreSync';
 
+/** Le tour se pilote depuis l'écran de MJ : la projection ne le modifie jamais. */
+const noop = () => {};
+
 export default function GmTrackerWindowPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
-  const { charactersHydrated, campaignsLoading, campaign, initiativeRows } =
+  const { charactersHydrated, campaignsLoading, campaign, initiativeRows, currentTurnKey } =
     useGmScreenCombat(cid);
 
   // Réhydrate le store des personnages quand la fenêtre principale écrit leurs PV.
   useCharacterStoreSync();
-
-  // Tour courant LOCAL à cette fenêtre (le proprio accepte qu'il diverge de la fenêtre
-  // principale) : la fenêtre présentation est ainsi pleinement utilisable en autonomie.
-  const [turnKey, setTurnKey] = useState<string | null>(null);
 
   const loading = !charactersHydrated || campaignsLoading;
 
@@ -63,10 +65,9 @@ export default function GmTrackerWindowPage({ params }: { params: Promise<{ cid:
         ) : (
           <InitiativeTracker
             rows={initiativeRows}
-            currentTurnKey={turnKey}
-            onCurrentTurnKeyChange={setTurnKey}
-            readOnly
-            hideTitle
+            currentTurnKey={currentTurnKey}
+            onCurrentTurnKeyChange={noop}
+            projection
           />
         )}
       </Box>

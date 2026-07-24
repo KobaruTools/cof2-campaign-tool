@@ -150,6 +150,7 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
         return {
           key: character.id,
           name: summary.name,
+          isCreature: false,
           playerName: character.playerId ? playerNameById.get(character.playerId) ?? null : null,
           profileLabel: summary.characterClass,
           profileColor: classColor(summary.classId),
@@ -182,6 +183,7 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
           {
             key: inst.id,
             name: inst.label,
+            isCreature: true,
             // Illustration détourée de la créature (si le livre l'illustre) à la place de
             // l'avatar générique ; une variante sans illustration propre hérite de celle de
             // sa base côté données. Absente → repli sur l'icône « person » du tracker.
