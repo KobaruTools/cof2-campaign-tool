@@ -1,26 +1,26 @@
 'use client';
 
-import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { alpha, type Theme } from '@mui/material/styles';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { alpha } from '@mui/material/styles';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
-import { CapabilityChip, FeatureText } from '@/components/sheet/FeatureRichText';
-import { classById, featureById } from '@/data';
+import { ClassIcon } from '@/components/ClassIcon';
+import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
+import { FeatureText } from '@/components/sheet/FeatureRichText';
+import { classById, featureById, pathById } from '@/data';
 import { familiarFromOptionId, FANTASTIC_FAMILIAR_R3_ID } from '@/data/fantastic-familiars';
 import type { FantasticFamiliar, Feature, UsageResetTrigger } from '@/data/schema';
 import { familiarPowerUsedKey, resolveFamiliarGrantedPower } from '@/lib/character/effects';
 import type { Character } from '@/lib/character/types';
 import type { Abilities } from '@/lib/engine';
+import { classColor } from '@/lib/ui/classColors';
 
 /** Familier fantastique retenu au R3 (choix `option` index 0), ou undefined. Même jointure que le moteur. */
 function selectedFamiliar(character: Character): FantasticFamiliar | undefined {
@@ -41,29 +41,20 @@ function resetLabel(reset: UsageResetTrigger): string {
   return '';
 }
 
-/** Cadre commun des blocs listant une capacité conférée (mêmes tons que les blocs de sorts empruntés). */
-const GRANTED_POWER_BLOCK_SX = {
-  border: 1,
-  borderColor: 'divider',
-  borderRadius: 1,
-  px: 1.25,
-  py: 0.75,
-  mt: 1.5,
-  bgcolor: (theme: Theme) => alpha(theme.palette.common.black, 0.2),
-};
-
 /**
  * Carte de la capacité RÉELLE conférée par le familier (ex. Dragon féérique → `illusions-r2` « Image
- * décalée »), sur le patron des pouvoirs empruntés (PER-163) : puce `CapabilityChip` aux couleurs/icône
- * du profil source + carte dépliable `FeatureText` (texte enrichi résolu sur les stats du perso, SANS
- * coût en mana — le pouvoir est conféré, pas lancé). À droite, le compteur d'usage mécanisé : bouton
- * « Utiliser » (consomme une charge) + restauration, dans la limite du familier (2×/jour, 1×/combat…).
- * Le décompte vit dans `Character.usageCounters` sous `familiarPowerUsedKey(host.id)` (convention
- * « absence = plein »), rechargé par les repos selon `usage.reset` (cf. `resetUsageCounters`).
+ * décalée »), calquée VISUELLEMENT sur la carte des capacités empruntées (`BorrowedFeatureBlock`, PER-120) :
+ * cadre + teinte + titre à la COULEUR DE LA VOIE SOURCE, nom + marqueurs d'action (hexagones), puis le
+ * texte enrichi COMPLET (pas de repli) résolu sur les stats du perso. Particularités du familier :
+ *   - AUCUN coût en mana (pouvoir conféré, pas lancé) → pas de goutte de PM ;
+ *   - à la place, un COMPTEUR d'usage mécanisé (« Utiliser » / restauration) dans la limite du familier
+ *     (2×/jour, 1×/combat…), suivi dans `Character.usageCounters` sous `familiarPowerUsedKey(host.id)`
+ *     (convention « absence = plein »), rechargé par les repos selon `usage.reset`.
  */
 function FamiliarPowerCard({
   host,
-  title,
+  slotLabel,
+  familiarName,
   referenced,
   usage,
   character,
@@ -72,7 +63,8 @@ function FamiliarPowerCard({
   onSet,
 }: {
   host: Feature;
-  title: string;
+  slotLabel: string;
+  familiarName: string;
   referenced: Feature;
   usage?: { max: number; reset: UsageResetTrigger };
   character: Character;
@@ -80,29 +72,48 @@ function FamiliarPowerCard({
   level?: number;
   onSet?: (counterKey: string, value: number, max: number) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const path = pathById.get(referenced.pathId);
+  const classId = path?.type === 'class' ? path.classIds[0] : undefined;
+  const color = classId ? classColor(classId) : undefined;
+  const pathName = path?.name ?? referenced.pathId;
+  const className = classId ? classById.get(classId)?.name : undefined;
+
   const key = familiarPowerUsedKey(host.id);
   const max = usage?.max ?? 0;
   const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+
   return (
-    <Box sx={GRANTED_POWER_BLOCK_SX}>
-      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
-        {title}
+    <Box
+      sx={{
+        mt: 1.5,
+        p: 1,
+        border: 1,
+        borderColor: color ?? 'divider',
+        borderRadius: 1,
+        bgcolor: color ? alpha(color, 0.06) : (theme) => alpha(theme.palette.text.primary, 0.04),
+      }}
+    >
+      <Typography variant="caption" sx={{ color: color ?? 'text.secondary', fontWeight: 700, display: 'block', mb: 0.25 }}>
+        <Box component="span" sx={{ mr: 0.5 }}>✦</Box>
+        {slotLabel} — {familiarName}
+        {className && classId ? (
+          <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
+            {' · '}
+            {pathName} ({className}
+            <ClassIcon classId={classId} size={13} sx={{ ml: 0.4, verticalAlign: 'text-bottom' }} />
+            {')'}
+          </Box>
+        ) : (
+          ''
+        )}
       </Typography>
-      {/* `gap` (pas `spacing`) pour ne pas écraser le `ml: auto` de la boîte de droite. */}
-      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
-        <IconButton
-          size="small"
-          aria-label={expanded ? 'Replier la capacité' : 'Déplier la capacité'}
-          aria-expanded={expanded}
-          onClick={() => setExpanded((v) => !v)}
-          sx={{ p: 0.25 }}
-        >
-          <ExpandMoreIcon
-            sx={{ fontSize: 20, transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none' }}
-          />
-        </IconButton>
-        <CapabilityChip featureId={referenced.id} label={referenced.name} />
+      {/* Ligne « nom + marqueurs d'action + compteur d'usage » — même gabarit que la carte empruntée,
+          mais la goutte de PM est remplacée par le compteur (le pouvoir est conféré, sans coût en mana). */}
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          {referenced.name}
+        </Typography>
+        <FeatureMarkerHexes feature={referenced} color={color} pathRank={referenced.rank} />
         {usage && (
           <Box sx={{ ml: 'auto', display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap' }}>
             <AppTooltip title={`Usages restants ${resetLabel(usage.reset)}`}>
@@ -139,11 +150,17 @@ function FamiliarPowerCard({
           </Box>
         )}
       </Stack>
-      <Collapse in={expanded} unmountOnExit>
-        <Box sx={{ pl: 3.5, pt: 0.25 }}>
-          <FeatureText feature={referenced} abilities={abilities} level={level} pathRank={referenced.rank} dense />
-        </Box>
-      </Collapse>
+      <Box sx={{ mt: 0.25 }}>
+        <FeatureText feature={referenced} abilities={abilities} level={level} pathRank={referenced.rank} />
+      </Box>
+      <Typography
+        variant="caption"
+        component="div"
+        sx={{ mt: 0.75, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
+      >
+        Pouvoir conféré par le familier{usage ? ` — ${usage.max} usage${usage.max > 1 ? 's' : ''} ${resetLabel(usage.reset)}` : ''}, sans
+        coût en mana.
+      </Typography>
     </Box>
   );
 }
@@ -151,9 +168,9 @@ function FamiliarPowerCard({
 /**
  * Affichage du pouvoir que le familier fantastique CHOISI confère au personnage, sous la carte des rangs
  * 4/5/7 de la voie du familier fantastique (PER-74) :
- *   - rang 4 « Pouvoir mineur » / rang 7 « Pouvoir supérieur » → CARTE de la capacité réelle conférée
- *     (puce du profil + carte dépliable + compteur d'usage), sur le modèle des pouvoirs empruntés ; repli
- *     en texte descriptif quand la capacité citée n'est pas peuplée (résolution différée) ;
+ *   - rang 4 « Pouvoir mineur » / rang 7 « Pouvoir supérieur » → CARTE de la capacité réelle conférée,
+ *     calquée sur les capacités empruntées (cadre coloré, non repliable) + compteur d'usage ; repli en
+ *     encadré descriptif quand la capacité citée n'est pas peuplée (résolution différée) ;
  *   - rang 5 « Résistance » → profil dont on apprend 1-2 sorts (la RD, elle, est un effet moteur).
  * `null` si la capacité n'est pas concernée ou si aucun familier n'est choisi.
  */
@@ -185,7 +202,7 @@ export function FamiliarGrantedPowerNote({
   // Rangs 4 / 7 : pouvoir conféré.
   const power = resolveFamiliarGrantedPower(feature.id, character.featureChoices);
   if (!power) return null;
-  const title = power.slot === 'minor' ? `Pouvoir mineur — ${familiar.name}` : `Pouvoir supérieur — ${familiar.name}`;
+  const slotLabel = power.slot === 'minor' ? 'Pouvoir mineur' : 'Pouvoir supérieur';
   const referenced = power.featureId ? featureById.get(power.featureId) : undefined;
 
   // Capacité peuplée → carte empruntée + compteur. Sinon → repli descriptif verbatim (résolution différée).
@@ -193,7 +210,8 @@ export function FamiliarGrantedPowerNote({
     return (
       <FamiliarPowerCard
         host={feature}
-        title={title}
+        slotLabel={slotLabel}
+        familiarName={familiar.name}
         referenced={referenced}
         usage={power.usage}
         character={character}
@@ -204,7 +222,7 @@ export function FamiliarGrantedPowerNote({
     );
   }
   return (
-    <AppAlert severity="info" title={title} sx={{ mt: 1.5 }}>
+    <AppAlert severity="info" title={`${slotLabel} — ${familiar.name}`} sx={{ mt: 1.5 }}>
       {power.text}
     </AppAlert>
   );
