@@ -198,7 +198,10 @@ export function InitiativeTracker({
               <Box
                 key={row.key}
                 sx={{
-                  width: 220,
+                  // Un peu plus large que la disposition d'origine (220) : depuis que
+                  // l'identité passe à DROITE de l'initiative (au lieu de dessous), la
+                  // rangée a besoin de largeur pour le nom / joueur / profil.
+                  width: 260,
                   flexShrink: 0,
                   p: 1.25,
                   borderRadius: 2,
@@ -213,28 +216,30 @@ export function InitiativeTracker({
                 }}
               >
                 <Stack spacing={1}>
-                  {/* Identité : portrait + init au-dessus, nom / joueur / profil dessous. */}
+                  {/* Identité sur UNE rangée : portrait + initiative, puis nom / joueur /
+                      profil À DROITE (au lieu d'une rangée dédiée en dessous) — gagne de
+                      la place en hauteur sur chaque bloc. */}
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                     <CombatantPortrait src={row.portraitSrc} name={row.name} />
                     <InitiativeBadge value={row.initiative} />
-                  </Stack>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
-                      {row.name}
-                    </Typography>
-                    {row.playerName && (
-                      <Typography
-                        variant="caption"
-                        sx={{ display: 'block', color: 'grey.500', fontStyle: 'italic', lineHeight: 1.2 }}
-                        noWrap
-                      >
-                        ({row.playerName})
+                    <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
+                        {row.name}
                       </Typography>
-                    )}
-                    <Typography variant="caption" sx={{ color: row.profileColor, fontWeight: 600 }} noWrap>
-                      {row.profileLabel}
-                    </Typography>
-                  </Box>
+                      {row.playerName && (
+                        <Typography
+                          variant="caption"
+                          sx={{ display: 'block', color: 'grey.500', fontStyle: 'italic', lineHeight: 1.2 }}
+                          noWrap
+                        >
+                          ({row.playerName})
+                        </Typography>
+                      )}
+                      <Typography variant="caption" sx={{ display: 'block', color: row.profileColor, fontWeight: 600 }} noWrap>
+                        {row.profileLabel}
+                      </Typography>
+                    </Box>
+                  </Stack>
                   {/* Barre de vie interactive (même composant que la fiche), boutons dessous. */}
                   <HpGauge
                     depletion={row.depletion}
