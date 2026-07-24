@@ -166,6 +166,115 @@ function FamiliarPowerCard({
 }
 
 /**
+ * Rendu COMPACT (vue colonne) du pouvoir conféré par le familier, calqué sur la carte « stackée » des
+ * capacités empruntées (PER-120) : un cadre décalé derrière (l'hôte « Pouvoir mineur »/« Pouvoir
+ * supérieur ») + une carte de devant à la couleur de la voie source portant la capacité RÉELLE conférée
+ * (nom + hexagones d'action + indicateur d'usage en lecture seule). Tout le bloc ouvre le détail (modale)
+ * au clic — comme un emprunt. `null` si la capacité n'est pas un hôte familier avec pouvoir résolu (le
+ * garde côté FeaturesByPath ne l'appelle alors pas ; ce repli reste une sécurité).
+ */
+export function FamiliarPowerCompactCard({
+  host,
+  character,
+  concentration = false,
+  onOpen,
+}: {
+  host: Feature;
+  character: Character;
+  concentration?: boolean;
+  onOpen: () => void;
+}) {
+  const power = resolveFamiliarGrantedPower(host.id, character.featureChoices);
+  const front = power?.featureId ? featureById.get(power.featureId) : undefined;
+  if (!front) return null;
+  const path = pathById.get(front.pathId);
+  const classId = path?.type === 'class' ? path.classIds[0] : undefined;
+  const color = classId ? classColor(classId) : undefined;
+  const key = familiarPowerUsedKey(host.id);
+  const max = power?.usage?.max ?? 0;
+  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+  return (
+    <Box onClick={onOpen} sx={{ position: 'relative', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
+      {/* Cadre décalé décoratif (offset bas-droite) DERRIÈRE — représente la capacité hôte (le rang). */}
+      <Box
+        aria-hidden
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: -5,
+          bottom: 0,
+          borderRadius: 1,
+          border: 1,
+          borderColor: 'divider',
+          bgcolor: (theme) => alpha(theme.palette.text.primary, 0.04),
+          zIndex: 0,
+        }}
+      />
+      {/* Carte de devant : la capacité RÉELLE conférée, teintée à la couleur de la voie source. */}
+      <Box
+        sx={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          flexGrow: 1,
+          px: 1,
+          pt: 1.75,
+          pb: 0.75,
+          border: 1,
+          borderColor: color ?? 'divider',
+          borderRadius: 1,
+          // Fond OPAQUE pour masquer le cadre décalé derrière (comme la carte de devant d'un emprunt).
+          backgroundColor: 'background.paper',
+          backgroundImage: color ? `linear-gradient(${alpha(color, 0.06)}, ${alpha(color, 0.06)})` : undefined,
+        }}
+      >
+        <FeatureMarkerHexes
+          feature={front}
+          color={color}
+          concentration={concentration}
+          pathRank={front.rank}
+          sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
+        />
+        {max > 0 && (
+          <AppTooltip title={`Usages restants ${resetLabel(power!.usage!.reset)}`}>
+            <Chip
+              label={`${remaining}/${max}`}
+              size="small"
+              variant="outlined"
+              sx={{ position: 'absolute', top: -8, right: -8, height: 20, zIndex: 1, bgcolor: 'background.paper' }}
+            />
+          </AppTooltip>
+        )}
+        <Typography variant="body2" sx={{ fontWeight: 600, width: '100%', textAlign: 'left', wordBreak: 'break-word' }}>
+          {front.name}
+        </Typography>
+      </Box>
+      {/* Bande de l'hôte EN FLUX, alignée bas-droite : le nom du rang (« Pouvoir mineur ») reste visible. */}
+      <Box
+        sx={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          flexWrap: 'wrap',
+          gap: 0.5,
+          px: 1,
+          pt: 0.25,
+          pb: 0.25,
+        }}
+      >
+        <Typography variant="caption" sx={{ fontWeight: 600, lineHeight: 1.2, textAlign: 'right', color: 'text.primary', wordBreak: 'break-word' }}>
+          {host.name}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
+
+/**
  * Affichage du pouvoir que le familier fantastique CHOISI confère au personnage, sous la carte des rangs
  * 4/5/7 de la voie du familier fantastique (PER-74) :
  *   - rang 4 « Pouvoir mineur » / rang 7 « Pouvoir supérieur » → CARTE de la capacité réelle conférée,
