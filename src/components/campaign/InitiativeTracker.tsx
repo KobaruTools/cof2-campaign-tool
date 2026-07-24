@@ -14,13 +14,17 @@
  */
 import type { ReactNode } from 'react';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import type { Depletion } from '@/lib/character/types';
+import { AppTooltip } from '@/components/AppTooltip';
 import { HpGauge, type DamageKind } from '@/components/sheet/HpGauge';
 
 export interface InitiativeRow {
@@ -52,6 +56,16 @@ export interface InitiativeRow {
   onReset: () => void;
   /** Clé `localStorage` de l'état déplié de la jauge (unique par ligne). */
   persistKey: string;
+  /**
+   * Combattant masqué aux joueurs (PER-248) : il s'affiche sur l'écran de MJ (œil fermé)
+   * mais est EXCLU de la fenêtre projetée. Seules les créatures peuvent l'être.
+   */
+  hidden?: boolean;
+  /**
+   * Bascule la visibilité joueurs (créatures seulement). Présent ⇒ un bouton œil est
+   * rendu (hors projection) ; absent ⇒ pas de bouton (personnages, toujours visibles).
+   */
+  onToggleVisible?: () => void;
 }
 
 /** Pastille circulaire d'initiative (nombre en gros, en tête de colonne). */
@@ -162,6 +176,10 @@ export function InitiativeTracker({
     onCurrentTurnKeyChange(rows[next].key);
   };
 
+  // En PROJECTION, on retire les combattants masqués aux joueurs (créatures cachées) :
+  // ils restent visibles côté MJ mais absents de l'écran projeté. Ailleurs, tout s'affiche.
+  const displayedRows = projection ? rows.filter((r) => !r.hidden) : rows;
+
   return (
     <Stack spacing={2}>
       {/* En-tête (titre + actions + « Tour suivant ») : tout se pilote depuis l'écran de
@@ -184,7 +202,7 @@ export function InitiativeTracker({
         </Stack>
       )}
 
-      {rows.length === 0 ? (
+      {displayedRows.length === 0 ? (
         <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
           Aucun combattant : les personnages reliés à un joueur et les bandits ajoutés apparaîtront
           ici, classés par initiative.
@@ -192,7 +210,7 @@ export function InitiativeTracker({
       ) : (
         // Colonnes côte à côte ; défilement horizontal si la largeur est dépassée.
         <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 1, alignItems: 'stretch' }}>
-          {rows.map((row) => {
+          {displayedRows.map((row) => {
             const isActive = row.key === currentTurnKey;
             return (
               <Box
@@ -205,7 +223,9 @@ export function InitiativeTracker({
                   flexShrink: 0,
                   p: 1.25,
                   borderRadius: 2,
-                  bgcolor: 'rgba(20, 20, 23, 0.6)',
+                  // Bloc quasi opaque (90 %) : lisible même par-dessus l'illustration de
+                  // fond de l'écran de MJ et sur la projection.
+                  bgcolor: 'rgba(20, 20, 23, 0.9)',
                   // Bordure toujours de 2px (seule la couleur change) pour éviter tout
                   // saut de mise en page quand le tour bascule. Actif = contour blanc épais.
                   border: isActive
@@ -243,6 +263,26 @@ export function InitiativeTracker({
                         </Typography>
                       )}
                     </Box>
+                    {/* Bascule de visibilité joueurs (créatures uniquement, hors projection) :
+                        œil ouvert = visible dans la projection, œil fermé = masquée. */}
+                    {!projection && row.onToggleVisible && (
+                      <AppTooltip
+                        title={row.hidden ? 'Masquée aux joueurs — cliquer pour révéler' : 'Visible par les joueurs — cliquer pour masquer'}
+                      >
+                        <IconButton
+                          size="small"
+                          onClick={row.onToggleVisible}
+                          aria-label={row.hidden ? `Rendre ${row.name} visible` : `Masquer ${row.name}`}
+                          sx={{ flexShrink: 0, color: row.hidden ? 'text.disabled' : 'inherit' }}
+                        >
+                          {row.hidden ? (
+                            <VisibilityOffOutlinedIcon fontSize="small" />
+                          ) : (
+                            <VisibilityOutlinedIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </AppTooltip>
+                    )}
                   </Stack>
                   {/* Barre de vie interactive (même composant que la fiche), boutons dessous.
                       Masquée en projection : les PV (joueurs ET créatures) ne sont pas montrés

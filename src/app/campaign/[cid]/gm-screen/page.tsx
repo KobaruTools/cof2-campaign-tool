@@ -57,6 +57,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     setCurrentTurnKey,
     addCreature,
     removeCreature,
+    setCreatureVisibility,
   } = useGmScreenCombat(cid);
   const [addOpen, setAddOpen] = useState(false);
 
@@ -204,6 +205,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                 key={inst.id}
                 slug={inst.slug}
                 label={inst.label}
+                visible={inst.visible !== false}
+                onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
                 onRemove={() => removeCreature(inst.id)}
               />
             ))}

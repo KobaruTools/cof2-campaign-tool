@@ -31,6 +31,12 @@ export interface CreatureInstance {
   id: string;
   /** Slug de la créature du bestiaire (`Creature.id` / `CreatureListItem.id`). */
   slug: string;
+  /**
+   * Visible par les joueurs sur la fenêtre projetée (PER-248). Absent ou `true` = visible ;
+   * `false` = masquée (le MJ la voit sur son écran, avec un œil fermé, mais elle n'apparaît
+   * PAS dans la projection). Permet de préparer un combat sans le révéler d'emblée.
+   */
+  visible?: boolean;
 }
 
 export interface GmCombatState {
@@ -128,6 +134,8 @@ export interface GmCombatStateApi extends GmCombatState {
   addCreature: (slug: string) => void;
   /** Retire l'instance `instanceId` (et son manque de PV). */
   removeCreature: (instanceId: string) => void;
+  /** Bascule la visibilité joueurs de l'instance `instanceId` (fenêtre projetée). */
+  setCreatureVisibility: (instanceId: string, visible: boolean) => void;
   /** Fixe le manque de PV de l'instance `instanceId`. */
   setCreatureDepletion: (instanceId: string, depletion: Depletion) => void;
   /** Fixe le combattant dont c'est le tour. */
@@ -185,7 +193,7 @@ export function useGmCombatState(cid: string): GmCombatStateApi {
     (slug: string) =>
       update((prev) => ({
         ...prev,
-        creatures: [...prev.creatures, { id: `c-${prev.nextInstanceId}`, slug }],
+        creatures: [...prev.creatures, { id: `c-${prev.nextInstanceId}`, slug, visible: true }],
         nextInstanceId: prev.nextInstanceId + 1,
       })),
     [update],
@@ -202,6 +210,15 @@ export function useGmCombatState(cid: string): GmCombatStateApi {
           depletions,
         };
       }),
+    [update],
+  );
+
+  const setCreatureVisibility = useCallback(
+    (instanceId: string, visible: boolean) =>
+      update((prev) => ({
+        ...prev,
+        creatures: prev.creatures.map((c) => (c.id === instanceId ? { ...c, visible } : c)),
+      })),
     [update],
   );
 
@@ -223,6 +240,7 @@ export function useGmCombatState(cid: string): GmCombatStateApi {
     ...state,
     addCreature,
     removeCreature,
+    setCreatureVisibility,
     setCreatureDepletion,
     setCurrentTurnKey,
   };

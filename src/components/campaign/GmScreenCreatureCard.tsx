@@ -9,6 +9,8 @@
  * (`BestiaryStatBlock` via `CreatureBlobView`, blob chargé à la demande).
  */
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
@@ -22,11 +24,18 @@ export interface GmScreenCreatureCardProps {
   slug: string;
   /** Libellé du badge (ex. « Gobelin 2 ») pour distinguer plusieurs instances. */
   label: string;
+  /**
+   * Visible par les joueurs (fenêtre projetée) : `false` = masquée (œil fermé ; le MJ la
+   * voit toujours, mais elle n'apparaît pas dans la projection).
+   */
+  visible: boolean;
+  /** Bascule la visibilité joueurs de cette créature. */
+  onToggleVisible: () => void;
   /** Retire cette instance du combat tracker. */
   onRemove: () => void;
 }
 
-export function GmScreenCreatureCard({ slug, label, onRemove }: GmScreenCreatureCardProps) {
+export function GmScreenCreatureCard({ slug, label, visible, onToggleVisible, onRemove }: GmScreenCreatureCardProps) {
   return (
     <Paper
       sx={{
@@ -63,6 +72,24 @@ export function GmScreenCreatureCard({ slug, label, onRemove }: GmScreenCreature
               {label} · PNJ
             </Box>
           </Box>
+          {/* Visibilité joueurs (projection) : œil ouvert = visible, fermé = masquée.
+              Placé à GAUCHE de la corbeille, dans l'en-tête du bloc EXTERNE. */}
+          <AppTooltip
+            title={visible ? 'Visible par les joueurs — cliquer pour masquer' : 'Masquée aux joueurs — cliquer pour révéler'}
+          >
+            <IconButton
+              size="small"
+              onClick={onToggleVisible}
+              aria-label={visible ? `Masquer ${label}` : `Rendre ${label} visible`}
+              sx={{ color: visible ? 'inherit' : 'text.disabled' }}
+            >
+              {visible ? (
+                <VisibilityOutlinedIcon fontSize="small" />
+              ) : (
+                <VisibilityOffOutlinedIcon fontSize="small" />
+              )}
+            </IconButton>
+          </AppTooltip>
           <AppTooltip title="Retirer du combat">
             <IconButton size="small" onClick={onRemove} aria-label={`Retirer ${label}`}>
               <DeleteOutlineIcon fontSize="small" />

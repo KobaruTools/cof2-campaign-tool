@@ -64,6 +64,8 @@ export interface GmScreenCombat {
   addCreature: (slug: string) => void;
   /** Retire l'instance `instanceId` du combat. */
   removeCreature: (instanceId: string) => void;
+  /** Bascule la visibilité joueurs d'une instance de créature (fenêtre projetée). */
+  setCreatureVisibility: (instanceId: string, visible: boolean) => void;
 }
 
 export function useGmScreenCombat(cid: string): GmScreenCombat {
@@ -73,6 +75,7 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
     currentTurnKey,
     addCreature,
     removeCreature,
+    setCreatureVisibility,
     setCreatureDepletion,
     setCurrentTurnKey,
   } = useGmCombatState(cid);
@@ -151,6 +154,7 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
           key: character.id,
           name: summary.name,
           isCreature: false,
+          hidden: false,
           playerName: character.playerId ? playerNameById.get(character.playerId) ?? null : null,
           profileLabel: summary.characterClass,
           profileColor: classColor(summary.classId),
@@ -179,11 +183,15 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
         const initiative = blob.initiative ?? 0;
         const depletion = depletions[inst.id] ?? {};
         const nc = creatureNcLabel(blob);
+        const isVisible = inst.visible !== false;
         return [
           {
             key: inst.id,
             name: inst.label,
             isCreature: true,
+            // Masquée aux joueurs (absente de la projection) si visibilité désactivée.
+            hidden: !isVisible,
+            onToggleVisible: () => setCreatureVisibility(inst.id, !isVisible),
             // Illustration détourée de la créature (si le livre l'illustre) à la place de
             // l'avatar générique ; une variante sans illustration propre hérite de celle de
             // sa base côté données. Absente → repli sur l'icône « person » du tracker.
@@ -201,7 +209,7 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
           },
         ];
       }),
-    [labeledCreatures, blobs, depletions, setCreatureDepletion],
+    [labeledCreatures, blobs, depletions, setCreatureDepletion, setCreatureVisibility],
   );
 
   // Ordre d'initiative décroissant (tri stable : à égalité, l'ordre d'entrée est conservé).
@@ -224,5 +232,6 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
     setCurrentTurnKey,
     addCreature,
     removeCreature,
+    setCreatureVisibility,
   };
 }
