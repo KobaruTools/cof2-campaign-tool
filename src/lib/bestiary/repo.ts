@@ -15,13 +15,17 @@
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import type { Database } from '@/lib/supabase/types';
 import type { Creature } from '@/data/schema';
-import type { CreatureListItem } from './types';
+import type { CreatureListItem, SourceManifestEntry } from './types';
 
 type CreatureRow = Database['public']['Tables']['creatures']['Row'];
 
-/** Colonnes projetées de la liste légère (le blob `data` est exclu). */
+/**
+ * Colonnes projetées de la liste légère (le blob `data` est exclu). Inclut
+ * `source_id` et `updated_at` : le cache persistant (PER-244) regroupe la liste par
+ * source et estampille chaque créature par son `updated_at` (invalidation fine).
+ */
 const LIST_COLUMNS =
-  'slug, name, category, nc, nc_note, size, nature, base_creature_id, sort_order';
+  'slug, name, category, nc, nc_note, size, nature, base_creature_id, sort_order, source_id, updated_at';
 
 /** Mappe une ligne projetée `creatures` vers une entrée de liste légère. */
 export function rowToListItem(
@@ -36,6 +40,8 @@ export function rowToListItem(
     | 'nature'
     | 'base_creature_id'
     | 'sort_order'
+    | 'source_id'
+    | 'updated_at'
   >,
 ): CreatureListItem {
   return {
@@ -50,22 +56,52 @@ export function rowToListItem(
     nature: (row.nature ?? []) as CreatureListItem['nature'],
     baseCreatureId: row.base_creature_id ?? undefined,
     sortOrder: row.sort_order,
+    sourceId: row.source_id,
+    updatedAt: row.updated_at,
   };
 }
 
 /**
- * Liste légère de toutes les créatures LISIBLES (RLS = contenu gratuit), triée par
- * ordre d'impression du livre (`sort_order`) — le tri par catégorie et
+ * Liste légère des créatures LISIBLES (RLS = contenu gratuit + sources entitlées),
+ * triée par ordre d'impression du livre (`sort_order`) — le tri par catégorie et
  * l'imbrication base→variantes en dépendent.
+ *
+ * `sourceIds` (optionnel) restreint la requête à ces sources : c'est le **re-fetch
+ * ciblé** du cache (PER-244), qui ne recharge que les sources dont la version a
+ * changé plutôt que tout le bestiaire.
  */
-export async function fetchCreatureList(): Promise<CreatureListItem[]> {
+export async function fetchCreatureList(opts?: {
+  sourceIds?: string[];
+}): Promise<CreatureListItem[]> {
   const supabase = createBrowserSupabaseClient();
-  const { data, error } = await supabase
-    .from('creatures')
-    .select(LIST_COLUMNS)
-    .order('sort_order', { ascending: true });
+  let query = supabase.from('creatures').select(LIST_COLUMNS);
+  if (opts?.sourceIds) {
+    // Aucune source à recharger : évite un `in.()` vide (requête inutile / invalide).
+    if (opts.sourceIds.length === 0) return [];
+    query = query.in('source_id', opts.sourceIds);
+  }
+  const { data, error } = await query.order('sort_order', { ascending: true });
   if (error) throw error;
   return (data ?? []).map(rowToListItem);
+}
+
+/**
+ * Manifeste des sources ACCESSIBLES au rôle courant : `id → content_version`
+ * (PER-244). Seul appel toujours frais, jamais mis en cache. La RLS filtre à
+ * l'identique de `creatures` (gratuit + entitlé), donc une source qui disparaît
+ * du manifeste doit être purgée du cache local.
+ */
+export async function fetchSourceManifest(): Promise<SourceManifestEntry[]> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase
+    .from('sources')
+    .select('id, slug, content_version');
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    contentVersion: row.content_version,
+  }));
 }
 
 /**

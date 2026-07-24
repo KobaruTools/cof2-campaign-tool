@@ -103,6 +103,24 @@ L'ingestion du futur PDF **payant** « Le Bestiaire » passera par le même scri
 depuis une source distincte (`is_paid = true`, contenu hors git) — gating par
 entitlement livré en PER-242.
 
+### Cache persistant côté client (PER-244)
+
+Le navigateur met en cache la liste légère et les blobs déjà consultés dans
+**IndexedDB** (base `cof2-bestiary`), estampillés par la `content_version` de leur
+source. Au refresh / hors-ligne, le contenu déjà vu s'affiche instantanément sans
+re-requête. Le seul appel toujours frais est le **manifeste** des sources
+(`sources → content_version`) : le client ne re-fetche que les sources dont la
+version a bougé.
+
+- **Recette F5** : recharger `/bestiary` → affichage immédiat depuis le cache, un
+  seul appel manifeste en fond (pas de squelette).
+- **Recette bump de version** : relancer `npm run ingest` (incrémente
+  `content_version` de `drs`) → au prochain chargement, seule la source `drs` est
+  re-fetchée. Note : l'ingestion actuelle réécrit toutes les créatures (upsert
+  global), donc un bump touche l'`updated_at` de toutes ; l'invalidation FINE des
+  blobs (ne jeter que les créatures réellement modifiées) ne portera ses fruits que
+  si l'ingestion n'écrit un jour que les lignes changées.
+
 ## Authentification CLI PAR DOSSIER (pas globale)
 
 `supabase login` stocke un token **global** à la machine : sur un poste qui gère
