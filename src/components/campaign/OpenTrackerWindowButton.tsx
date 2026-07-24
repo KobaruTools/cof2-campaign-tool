@@ -19,10 +19,10 @@ export function OpenTrackerWindowButton({ cid }: { cid: string }) {
   const open = () => {
     if (typeof window === 'undefined') return;
     // Fenêtre PANORAMIQUE : pleine largeur de l'écran, hauteur réduite (les combattants
-    // s'alignent sur une rangée), calée en haut à gauche. On borne à l'espace écran
-    // disponible (`availWidth`/`availHeight`).
+    // s'alignent sur une seule rangée), calée en haut à gauche. On borne à l'espace écran
+    // disponible (`availWidth`/`availHeight`). 270 px = meilleur ratio retenu (recette proprio).
     const width = window.screen.availWidth;
-    const height = Math.min(520, window.screen.availHeight);
+    const height = Math.min(270, window.screen.availHeight);
     // Pas de `noopener` ici (contrairement aux liens externes) : on veut que le nom de
     // fenêtre soit honoré pour réutiliser/refocaliser la fenêtre déjà ouverte. Route
     // interne de confiance, même origine.
