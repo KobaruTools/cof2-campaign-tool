@@ -14,9 +14,10 @@
  * Siphon des âmes, Foudre…) sont résolues vers un `featureId` réel (rendu en carte façon
  * capacité empruntée) dès que la voie de profil citée est peuplée — PER-74, les 12 familiers.
  * SEULE exception : « Exsangue » (Animal mort-vivant, R7) → la voie du sang de SORCIER n'est
- * pas peuplée dans les données → repli descriptif verbatim (pas de `featureId`). Les pouvoirs
- * PROPRES au familier (Toile, Poison, Clone, Télépathie, transformation du diablotin) n'ont
- * volontairement pas de `featureId` : ce ne sont pas des capacités de profil (repli descriptif).
+ * pas peuplée dans les données → repli descriptif verbatim (pas de `featureId` ni d'`original`).
+ * Les pouvoirs PROPRES au familier (Toile, Poison, Clone, Télépathie, transformation du diablotin)
+ * ne sont pas des capacités de profil (pas de `featureId`) mais portent un descripteur `original`
+ * → rendus en CARTE « pouvoir original » (titre + hexagones + corps enrichi), même gabarit que les cartes conférées.
  *
  * Source : CBHS_06_Chroniques_Oubliees_2_web_v2.pdf, p. 133-136.
  */
@@ -100,10 +101,25 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
       "Une araignée de la taille d'un familier normal, c'est-à-dire un monstre d'environ 30 cm de diamètre pattes comprises ! L'araignée possède une attaque (attaque = attaque magique du personnage) qui inflige 1 DM et oblige la victime à faire un test de CON difficulté [10 + rang atteint dans la voie]. En cas d'échec, la cible subit 1d4° DM de poison. Elle est capable de grimper aux murs.",
     minorPower: {
       text: "Toile (L). Une fois par combat, le personnage peut projeter des toiles gluantes du bout de ses doigts sur une cible à une distance maximale de 5 m. Cette action lui demande la réussite d'un test d'attaque magique contre la DEF de la cible. La victime de cette attaque est immobilisée par la toile pour 1d6 rounds. À son tour, la victime peut tenter un test de FOR difficulté 12 pour se libérer par une action de mouvement (M). Une réussite lui restitue sa complète liberté d'action.",
+      // PER-74 : pouvoir PROPRE au familier (aucune capacité de profil) → carte « pouvoir original ».
+      original: {
+        name: 'Toile',
+        actionTypes: ['L'],
+        richText:
+          "Une fois par combat, le personnage peut projeter des toiles gluantes du bout de ses doigts sur une cible à une distance maximale de 5 m. Cette action lui demande la réussite d'un test d'attaque magique contre la DEF de la cible. La victime de cette attaque est immobilisée par la toile pour {1d6} rounds. À son tour, la victime peut tenter un test de FOR difficulté 12 pour se libérer par une action de mouvement (M). Une réussite lui restitue sa complète liberté d'action.",
+      },
+      usageLimit: { max: 1, reset: 'combat' },
     },
     spellProfile: 'sorcier',
     superiorPower: {
       text: "Poison. Une fois par round, une attaque que le personnage effectue avec une arme tranchante ou perforante inflige +1d4° DM supplémentaires de poison.",
+      // PER-74 : pouvoir PROPRE. « Une fois par round » = rider permanent (pas une réserve chiffrée)
+      // → pas d'`usageLimit`, la carte s'affiche sans compteur.
+      original: {
+        name: 'Poison',
+        richText:
+          "Une fois par round, une attaque que le personnage effectue avec une arme tranchante ou perforante inflige +{1d4°} DM supplémentaires de poison.",
+      },
       abilityBonus: 'AGI',
     },
     sourcePage: 134,
@@ -116,6 +132,12 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
       "Cette créature a tout du démon miniature : ailes de chauve-souris, queue fourchue et surtout caractère pervers et cruel. Heureusement, le diablotin est aussi un couard et obéit à son maître dès lors que celui-ci se montre suffisamment persuasif… Ce qui ne l'empêche pas de passer son temps à lui suggérer les actions les plus dépravées possibles. Le diablotin vole à une vitesse de 10 m par action de mouvement et est doué de parole.",
     minorPower: {
       text: "Le diablotin devient capable de se transformer en animal (de taille très petite) de son choix (corbeau, chouette, serpent, chat, chien, singe ou même saumon). Cela lui demande une action de mouvement pour changer de forme. Une fois transformé, il acquiert tous les modes de locomotion de l'animal imité.",
+      // PER-74 : pouvoir PROPRE au familier (le texte ne commence pas par un libellé → pas de `richText`,
+      // le corps rend le `text` verbatim). Transformation par une action de mouvement (M), à volonté.
+      original: {
+        name: 'Transformation',
+        actionTypes: ['M'],
+      },
     },
     spellProfile: 'sorcier',
     superiorPower: {
@@ -306,7 +328,15 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
     spellProfile: 'main-profile',
     superiorPower: {
       text: "Clone. Une fois par jour, par une action limitée, le minimoï peut grandir jusqu'à prendre une taille normale et devenir le double exact du personnage pendant INT rounds. Les deux personnages ont exactement les mêmes caractéristiques, le joueur les fait agir une fois par round de façon indépendante. Toutefois, ils partagent une unique réserve de PM (celle du PJ) et tous les sorts lancés par le familier sont déduits des PM du personnage. Durant sa transformation, le familier perd sa RD (il conserve ses PV habituels).",
+      // PER-74 : pouvoir PROPRE au familier → carte « pouvoir original ».
+      original: {
+        name: 'Clone',
+        actionTypes: ['L'],
+        richText:
+          "Une fois par jour, par une action limitée, le minimoï peut grandir jusqu'à prendre une taille normale et devenir le double exact du personnage pendant [=INT] rounds. Les deux personnages ont exactement les mêmes caractéristiques, le joueur les fait agir une fois par round de façon indépendante. Toutefois, ils partagent une unique réserve de PM (celle du PJ) et tous les sorts lancés par le familier sont déduits des PM du personnage. Durant sa transformation, le familier perd sa RD (il conserve ses PV habituels).",
+      },
       abilityBonus: 'CHA',
+      usageLimit: { max: 1, reset: 'day' },
     },
     sourcePage: 135,
   },
@@ -318,6 +348,13 @@ export const fantasticFamiliars: FantasticFamiliar[] = [
       "Le pseudo-dragon est un petit lézard ailé de 30 cm environ pourvu d'une longue queue de 60 cm qui se termine par un dard empoisonné. Le pseudo-dragon vole à une vitesse de 10 m par action de mouvement. Il est capable de communiquer par télépathie avec toutes les créatures comprenant le langage commun ou celui de la forêt (le sylvestre) à une portée de 20 m. Il attaque avec la valeur d'attaque magique du personnage et, en cas de réussite, son poison oblige la victime à réussir un test de CON difficulté 10 ou à s'endormir pendant 2d6 min. Les créatures de NC supérieur à 1 sont immunisées à ce poison.",
     minorPower: {
       text: 'Télépathie. Le personnage peut communiquer par télépathie à une distance de 50 m avec toutes les créatures douées de conscience avec lesquelles il partage un langage commun.',
+      // PER-74 : pouvoir PROPRE au familier, passif (aucun type d'action). `richText` retire le libellé
+      // de tête « Télépathie. » (relocalisé en titre).
+      original: {
+        name: 'Télépathie',
+        richText:
+          'Le personnage peut communiquer par télépathie à une distance de 50 m avec toutes les créatures douées de conscience avec lesquelles il partage un langage commun.',
+      },
     },
     spellProfile: 'ensorceleur',
     superiorPower: {

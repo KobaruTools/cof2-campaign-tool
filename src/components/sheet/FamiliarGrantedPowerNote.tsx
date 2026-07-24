@@ -17,7 +17,7 @@ import { FeatureText } from '@/components/sheet/FeatureRichText';
 import { classById, featureById, pathById } from '@/data';
 import { familiarFromOptionId, FANTASTIC_FAMILIAR_R3_ID } from '@/data/fantastic-familiars';
 import type { FantasticFamiliar, Feature, UsageResetTrigger } from '@/data/schema';
-import { familiarPowerUsedKey, resolveFamiliarGrantedPower } from '@/lib/character/effects';
+import { familiarPowerUsedKey, resolveFamiliarGrantedPower, type ResolvedFamiliarPower } from '@/lib/character/effects';
 import type { Character } from '@/lib/character/types';
 import type { Abilities } from '@/lib/engine';
 import { classColor } from '@/lib/ui/classColors';
@@ -42,6 +42,29 @@ function resetLabel(reset: UsageResetTrigger): string {
 }
 
 /**
+ * Feature SYNTHÉTIQUE représentant un pouvoir PROPRE au familier (ex. « Toile »), pour réutiliser TEL
+ * QUEL le rendu standard (`FamiliarPowerCard`, `FeatureMarkerHexes`, `FeatureText` enrichi/verbatim/notes).
+ * Rattachée à la voie de prestige (`host.pathId`, type prestige → couleur neutre, pas de profil affiché).
+ * `sourcePage` est nominal (repris de l'hôte) : le renvoi de page du modal cite l'hôte, pas cette carte.
+ * `undefined` si le pouvoir n'est pas « propre » (pas de descripteur `original`). PER-74.
+ */
+function originalPowerFeature(host: Feature, power: ResolvedFamiliarPower): Feature | undefined {
+  const o = power.original;
+  if (!o) return undefined;
+  return {
+    id: `${host.id}--original`,
+    name: o.name,
+    pathId: host.pathId,
+    rank: host.rank,
+    isSpell: false,
+    actionTypes: o.actionTypes ?? [],
+    text: power.text,
+    richText: o.richText,
+    sourcePage: host.sourcePage,
+  };
+}
+
+/**
  * Carte de la capacité RÉELLE conférée par le familier (ex. Dragon féérique → `illusions-r2` « Image
  * décalée »), calquée VISUELLEMENT sur la carte des capacités empruntées (`BorrowedFeatureBlock`, PER-120) :
  * cadre + teinte + titre à la COULEUR DE LA VOIE SOURCE, nom + marqueurs d'action (hexagones), puis le
@@ -61,6 +84,7 @@ function FamiliarPowerCard({
   abilities,
   level,
   onSet,
+  origin = 'granted',
 }: {
   host: Feature;
   slotLabel: string;
@@ -71,6 +95,12 @@ function FamiliarPowerCard({
   abilities?: Abilities;
   level?: number;
   onSet?: (counterKey: string, value: number, max: number) => void;
+  /**
+   * `'granted'` = capacité de profil CONFÉRÉE (teinte + voie + profil dans l'en-tête) ; `'own'` = pouvoir
+   * PROPRE au familier (voie de prestige neutre, `referenced` = Feature synthétique) → tag « propre au
+   * familier » et pied adapté. PER-74.
+   */
+  origin?: 'granted' | 'own';
 }) {
   const path = pathById.get(referenced.pathId);
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
@@ -96,7 +126,9 @@ function FamiliarPowerCard({
       <Typography variant="caption" sx={{ color: color ?? 'text.secondary', fontWeight: 700, display: 'block', mb: 0.25 }}>
         <Box component="span" sx={{ mr: 0.5 }}>✦</Box>
         {slotLabel} — {familiarName}
-        {className && classId ? (
+        {origin === 'own' ? (
+          <Box component="span" sx={{ whiteSpace: 'nowrap' }}>{' · propre au familier'}</Box>
+        ) : className && classId ? (
           <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
             {' · '}
             {pathName} ({className}
@@ -158,8 +190,8 @@ function FamiliarPowerCard({
         component="div"
         sx={{ mt: 0.75, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
       >
-        Pouvoir conféré par le familier{usage ? ` — ${usage.max} usage${usage.max > 1 ? 's' : ''} ${resetLabel(usage.reset)}` : ''}, sans
-        coût en mana.
+        {origin === 'own' ? 'Pouvoir propre au familier' : 'Pouvoir conféré par le familier'}
+        {usage ? ` — ${usage.max} usage${usage.max > 1 ? 's' : ''} ${resetLabel(usage.reset)}` : ''}, sans coût en mana.
       </Typography>
     </Box>
   );
@@ -185,7 +217,9 @@ export function FamiliarPowerCompactCard({
   onOpen: () => void;
 }) {
   const power = resolveFamiliarGrantedPower(host.id, character.featureChoices);
-  const front = power?.featureId ? featureById.get(power.featureId) : undefined;
+  if (!power) return null;
+  // Capacité peuplée → sa Feature ; pouvoir propre au familier → Feature synthétique (même carte stackée).
+  const front = power.featureId ? featureById.get(power.featureId) : originalPowerFeature(host, power);
   if (!front) return null;
   const path = pathById.get(front.pathId);
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
@@ -238,7 +272,7 @@ export function FamiliarPowerCompactCard({
           sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
         />
         {max > 0 && (
-          <AppTooltip title={`Usages restants ${resetLabel(power!.usage!.reset)}`}>
+          <AppTooltip title={`Usages restants ${resetLabel(power.usage!.reset)}`}>
             <Chip
               label={`${remaining}/${max}`}
               size="small"
@@ -247,7 +281,7 @@ export function FamiliarPowerCompactCard({
             />
           </AppTooltip>
         )}
-        <Typography variant="body2" sx={{ fontWeight: 600, width: '100%', textAlign: 'left', wordBreak: 'break-word' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8125rem', width: '100%', textAlign: 'left', wordBreak: 'break-word' }}>
           {front.name}
         </Typography>
       </Box>
@@ -277,9 +311,11 @@ export function FamiliarPowerCompactCard({
 /**
  * Affichage du pouvoir que le familier fantastique CHOISI confère au personnage, sous la carte des rangs
  * 4/5/7 de la voie du familier fantastique (PER-74) :
- *   - rang 4 « Pouvoir mineur » / rang 7 « Pouvoir supérieur » → CARTE de la capacité réelle conférée,
- *     calquée sur les capacités empruntées (cadre coloré, non repliable) + compteur d'usage ; repli en
- *     encadré descriptif quand la capacité citée n'est pas peuplée (résolution différée) ;
+ *   - rang 4 « Pouvoir mineur » / rang 7 « Pouvoir supérieur » → CARTE, calquée sur les capacités
+ *     empruntées (cadre + hexagones + texte enrichi + compteur d'usage) : soit la capacité de profil
+ *     CONFÉRÉE (`featureId`), soit — pour un pouvoir PROPRE au familier (`original`, ex. Toile/Poison) —
+ *     une carte « pouvoir original » neutre (Feature synthétique) ; repli en encadré descriptif seulement
+ *     quand la capacité citée n'est ni peuplée ni propre (ex. Exsangue, voie du sang de sorcier absente) ;
  *   - rang 5 « Résistance » → profil dont on apprend 1-2 sorts (la RD, elle, est un effet moteur).
  * `null` si la capacité n'est pas concernée ou si aucun familier n'est choisi.
  */
@@ -312,9 +348,9 @@ export function FamiliarGrantedPowerNote({
   const power = resolveFamiliarGrantedPower(feature.id, character.featureChoices);
   if (!power) return null;
   const slotLabel = power.slot === 'minor' ? 'Pouvoir mineur' : 'Pouvoir supérieur';
-  const referenced = power.featureId ? featureById.get(power.featureId) : undefined;
-
-  // Capacité peuplée → carte empruntée + compteur. Sinon → repli descriptif verbatim (résolution différée).
+  // Capacité de profil peuplée → carte conférée ; sinon pouvoir PROPRE au familier → carte « pouvoir
+  // original » (Feature synthétique) ; sinon (ex. Exsangue, voie non peuplée) → repli descriptif verbatim.
+  const referenced = power.featureId ? featureById.get(power.featureId) : originalPowerFeature(feature, power);
   if (referenced) {
     return (
       <FamiliarPowerCard
@@ -327,6 +363,7 @@ export function FamiliarGrantedPowerNote({
         abilities={abilities}
         level={level}
         onSet={onSetUsageCounter}
+        origin={power.featureId ? 'granted' : 'own'}
       />
     );
   }

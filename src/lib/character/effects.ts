@@ -27,6 +27,7 @@ import type {
   DamageReduction,
   DerivedStatId,
   EffectValue,
+  FamiliarOriginalPower,
   FantasticFamiliar,
   Feature,
   FeatureEffect,
@@ -1045,6 +1046,8 @@ export interface ResolvedFamiliarPower {
   name?: string;
   /** Capacité RÉELLE peuplée référencée → rendu en carte + puce du profil. Absent = résolution différée. */
   featureId?: string;
+  /** Pouvoir PROPRE au familier (pas une capacité de profil) → rendu en carte « pouvoir original ». */
+  original?: FamiliarOriginalPower;
   /** Limite d'usage mécanisée (sans mana). Absent = pas de compteur (pouvoir à volonté / non chiffré). */
   usage?: { max: number; reset: UsageResetTrigger };
 }
@@ -1064,7 +1067,14 @@ export function resolveFamiliarGrantedPower(
   const familiar = selectedFamiliar(featureChoices);
   if (!familiar) return null;
   const power = slot === 'minor' ? familiar.minorPower : familiar.superiorPower;
-  return { slot, text: power.text, name: power.grants?.name, featureId: power.grants?.featureId, usage: power.usageLimit };
+  return {
+    slot,
+    text: power.text,
+    name: power.grants?.name ?? power.original?.name,
+    featureId: power.grants?.featureId,
+    original: power.original,
+    usage: power.usageLimit,
+  };
 }
 
 /**

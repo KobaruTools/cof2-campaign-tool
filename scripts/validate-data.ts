@@ -42,6 +42,7 @@ import {
 import { creatures, creatureById } from '../src/data/creatures';
 import {
   ABILITY_IDS,
+  ACTION_TYPES,
   COMPANION_TYPES,
   CREATURE_CATEGORIES,
   CREATURE_NATURES,
@@ -789,6 +790,15 @@ for (const f of fantasticFamiliars) {
         err(`[familier ${f.id} ${rank}] usageLimit.max invalide : ${max}`);
       if (!(['day', 'short-rest', 'combat', 'manual'] as const).includes(reset))
         err(`[familier ${f.id} ${rank}] usageLimit.reset invalide : ${reset}`);
+    }
+    // PER-74 : pouvoir PROPRE au familier (carte « pouvoir original ») — exclusif de `grants`, nom
+    // non vide, types d'action valides.
+    const o = power.original;
+    if (o) {
+      if (g) err(`[familier ${f.id} ${rank}] pouvoir à la fois 'grants' et 'original' (exclusifs)`);
+      if (!o.name?.trim()) err(`[familier ${f.id} ${rank}] original.name vide`);
+      for (const a of o.actionTypes ?? [])
+        if (!ACTION_TYPES.includes(a)) err(`[familier ${f.id} ${rank}] original.actionTypes invalide : ${a}`);
     }
   }
   // Écarts de caractéristiques : clés valides.

@@ -1977,6 +1977,27 @@ export interface FamiliarGrantedPower {
 }
 
 /**
+ * Pouvoir PROPRE au familier (PER-74) — le pouvoir mineur/supérieur N'EST PAS une capacité de
+ * profil empruntée (pas de `grants`/`featureId`), mais une aptitude inventée pour ce familier
+ * (ex. Toile et Poison de l'araignée géante, Clone du minimoï, Télépathie du pseudo-dragon,
+ * transformation du diablotin). Ce descripteur permet de le RENDRE EN CARTE — au même gabarit que
+ * les capacités conférées — au lieu d'un simple encadré : titre + hexagones d'action + corps enrichi
+ * (+ compteur d'usage via `usageLimit` du pouvoir quand une fréquence chiffrée existe).
+ */
+export interface FamiliarOriginalPower {
+  /** Nom court servant de TITRE à la carte (ex. « Toile », « Poison », « Clone »). */
+  name: string;
+  /** Types d'action pour les hexagones de marqueur (ex. `['L']`). Absent = pouvoir passif, aucun marqueur. */
+  actionTypes?: ActionType[];
+  /**
+   * Corps enrichi (mini-langage richText : dés `{1d6}`/`{1d4°}`, formules `[=INT]`…) SANS le libellé de
+   * tête « Nom (X). » — celui-ci est relocalisé en titre + hexagone. Rendu quand les stats du perso sont
+   * disponibles ; sinon repli sur le `text` verbatim du pouvoir. Absent = on rend `text` tel quel.
+   */
+  richText?: string;
+}
+
+/**
  * FAMILIER FANTASTIQUE (PER-84) — une des 12 créatures de l'encadré « Les familiers
  * fantastiques » (p. 133-136) que le joueur CHOISIT en prenant la voie du familier
  * fantastique (`prestige-familier-fantastique`). Le stat-block de base (taille minuscule)
@@ -2011,6 +2032,8 @@ export interface FantasticFamiliar {
     text: string;
     /** Capacité de profil référencée, si le pouvoir en est une (sinon pouvoir propre au familier). */
     grants?: FamiliarGrantedPower;
+    /** Descripteur de carte quand le pouvoir est PROPRE au familier (pas une capacité de profil). */
+    original?: FamiliarOriginalPower;
     /**
      * Limite d'usage MÉCANISÉE du pouvoir conféré (PER-74), parsée de la fréquence verbatim
      * (« 2 fois par jour » → `{ max: 2, reset: 'day' }` ; « une fois par combat » → `{ max: 1,
@@ -2032,6 +2055,8 @@ export interface FantasticFamiliar {
     text: string;
     /** Capacité de profil référencée, si le pouvoir en est une. */
     grants?: FamiliarGrantedPower;
+    /** Descripteur de carte quand le pouvoir supérieur est PROPRE au familier (pas une capacité de profil). */
+    original?: FamiliarOriginalPower;
     /** Caractéristique bénéficiant du bonus de +1 (rang 7). */
     abilityBonus: AbilityId;
     /** Limite d'usage MÉCANISÉE du pouvoir supérieur (PER-74) — mêmes règles que `minorPower.usageLimit`. */
