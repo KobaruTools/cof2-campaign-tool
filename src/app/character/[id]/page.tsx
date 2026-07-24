@@ -26,8 +26,6 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import type { Theme } from '@mui/material/styles';
 import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, progression } from '@/data';
 import { checkCompliance, deriveStats } from '@/lib/engine';
 import type { AbilityId, StartingEquipmentChoiceOption } from '@/data/schema';
@@ -231,19 +229,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     // La ligne d'identité est toujours montée dès que la fiche est chargée ; on
     // (ré)attache l'observer quand la cible peut changer (chargement, id de perso).
   }, [character?.id]);
-  // Disposition des voies : « colonnes » sur grand écran (défaut historique), mais
-  // « lignes » par défaut sur mobile (PER-229) — en colonnes, le bloc central de la
-  // fiche rend une grille large à défilement horizontal, très inconfortable au doigt.
-  // On respecte un choix manuel : dès que l'utilisateur bascule, on ne réimpose plus
-  // le défaut lié à la largeur d'écran (`layoutTouchedRef`).
-  const isNarrowViewport = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
-  const [voiesLayout, setVoiesLayout] = useState<FeaturesLayout>('columns');
-  const layoutTouchedRef = useRef(false);
-  useEffect(() => {
-    if (!layoutTouchedRef.current) setVoiesLayout(isNarrowViewport ? 'rows' : 'columns');
-  }, [isNarrowViewport]);
+  // Disposition des voies : « lignes » (une seule colonne, voies empilées) par défaut sur
+  // toutes les largeurs — le plus lisible, et sans grille large à défilement horizontal (qui
+  // reste inconfortable même sur desktop, cf. PER-229 pour le mobile). La bascule « colonnes »
+  // reste disponible pour qui préfère la grille côte à côte.
+  const [voiesLayout, setVoiesLayout] = useState<FeaturesLayout>('rows');
   const changeVoiesLayout = useCallback((layout: FeaturesLayout) => {
-    layoutTouchedRef.current = true;
     setVoiesLayout(layout);
   }, []);
   // Texte d'origine (PER-88) : OFF (défaut) → rendu enrichi des capacités ; ON →
