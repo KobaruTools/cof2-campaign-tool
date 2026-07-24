@@ -227,10 +227,10 @@ export function InitiativeTracker({
                   // fond de l'écran de MJ et sur la projection.
                   bgcolor: 'rgba(20, 20, 23, 0.9)',
                   // Créature masquée aux joueurs : légèrement estompée sur l'écran de MJ
-                  // (90 % d'opacité) pour la distinguer d'un coup d'œil — elle est de toute
+                  // (80 % d'opacité) pour la distinguer d'un coup d'œil — elle est de toute
                   // façon absente de la projection (filtrée plus haut). Les personnages ne
                   // sont jamais masqués (`hidden` toujours faux).
-                  opacity: row.hidden ? 0.9 : 1,
+                  opacity: row.hidden ? 0.8 : 1,
                   // Bordure toujours de 2px (seule la couleur change) pour éviter tout
                   // saut de mise en page quand le tour bascule. Actif = contour blanc épais.
                   border: isActive
