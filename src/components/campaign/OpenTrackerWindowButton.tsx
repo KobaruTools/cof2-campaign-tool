@@ -7,6 +7,9 @@
  * direct le combat piloté depuis la fenêtre principale (synchro via l'événement
  * `storage`, même navigateur / même origine).
  *
+ * Masqué en dessous de `md` (mobile + tablette) : un second écran n'a pas de sens sur
+ * ces formats et les popups y sont de toute façon bloquées.
+ *
  * `window.open` (et non un lien) est volontaire : on veut une VRAIE fenêtre séparée
  * (popup dimensionnée), pas un onglet ni une navigation dans l'onglet courant. Le nom
  * de fenêtre est dérivé du `cid` pour qu'un second clic réutilise/refocalise la fenêtre
@@ -33,7 +36,13 @@ export function OpenTrackerWindowButton({ cid }: { cid: string }) {
     );
   };
   return (
-    <Button variant="outlined" size="small" startIcon={<OpenInNewIcon />} onClick={open}>
+    <Button
+      variant="outlined"
+      size="small"
+      startIcon={<OpenInNewIcon />}
+      onClick={open}
+      sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+    >
       Ouvrir dans une nouvelle fenêtre
     </Button>
   );
