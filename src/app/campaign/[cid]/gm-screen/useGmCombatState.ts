@@ -143,12 +143,27 @@ export function useGmCombatState(cid: string): GmCombatStateApi {
   useEffect(() => {
     hydratedCidRef.current = null;
     if (typeof window === 'undefined') return;
-    const raw = window.localStorage.getItem(storageKey(cid));
+    const key = storageKey(cid);
+    const raw = window.localStorage.getItem(key);
     const next = raw ? reviveState(raw) : EMPTY;
     // Synchronisation ponctuelle depuis localStorage après montage (pas une boucle).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setState(next);
     hydratedCidRef.current = cid;
+
+    // Synchro cross-fenêtre (PER-248) : l'événement `storage` se déclenche dans les
+    // AUTRES fenêtres de même origine à chaque écriture de la clé du combat. On re-lit
+    // et re-hydrate donc l'état ici pour qu'une seconde fenêtre (« présentation » sur un
+    // second écran) reflète en direct les changements pilotés depuis la fenêtre du MJ.
+    // La fenêtre qui écrit ne reçoit pas son propre événement — mais elle a déjà l'état
+    // à jour en mémoire, donc rien à faire de ce côté (édition bidirectionnelle sûre,
+    // ce combat vivant à 100 % dans localStorage). `newValue` null = clé effacée → EMPTY.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== key) return;
+      setState(e.newValue ? reviveState(e.newValue) : EMPTY);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, [cid]);
 
   const update = useCallback(

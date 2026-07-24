@@ -12,6 +12,7 @@
  * TOUR COURANT est CONTRÔLÉ par l'appelant (`currentTurnKey` / `onCurrentTurnKeyChange`)
  * afin d'être persisté avec le reste du combat.
  */
+import type { ReactNode } from 'react';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -125,12 +126,26 @@ export interface InitiativeTrackerProps {
    */
   currentTurnKey: string | null;
   onCurrentTurnKeyChange: (key: string | null) => void;
+  /**
+   * Barres de vie en LECTURE SEULE (PER-248) : masque les contrôles de PV des jauges.
+   * Le bouton « Tour suivant » reste, lui, disponible (le tour peut être piloté
+   * localement). Sert à la fenêtre « présentation » sur un second écran, où les PV se
+   * modifient depuis la fenêtre principale mais où l'on veut quand même avancer le tour.
+   */
+  readOnly?: boolean;
+  /**
+   * Action optionnelle rendue dans l'en-tête, à gauche du bouton « Tour suivant »
+   * (ex. « Ouvrir dans une nouvelle fenêtre », PER-248).
+   */
+  headerAction?: ReactNode;
 }
 
 export function InitiativeTracker({
   rows,
   currentTurnKey,
   onCurrentTurnKeyChange,
+  readOnly = false,
+  headerAction,
 }: InitiativeTrackerProps) {
   const advanceTurn = () => {
     if (rows.length === 0) return;
@@ -146,6 +161,7 @@ export function InitiativeTracker({
         <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
           {"Ordre d'initiative"}
         </Typography>
+        {headerAction}
         <Button
           variant="contained"
           size="small"
@@ -217,6 +233,7 @@ export function InitiativeTracker({
                     onReset={row.onReset}
                     persistKey={row.persistKey}
                     controlsBelow
+                    readOnly={readOnly}
                   />
                 </Stack>
               </Box>
