@@ -1,1 +1,1 @@
-public/rules/*.pdf filter=lfs diff=lfs merge=lfs -text
+public/pdf/*.pdf filter=lfs diff=lfs merge=lfs -text

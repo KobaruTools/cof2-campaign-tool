@@ -18,7 +18,9 @@ export interface BookMeta {
   Icon: SvgIconComponent;
   /**
    * URL du PDF servi par l'app, consommée par le visualiseur (milestone « Visualiseur PDF »).
-   * Fichier commité via Git LFS sous `public/rules/` (choix assumé et temporaire, cf. PER-57).
+   * Les PDF libres sont commités via Git LFS sous `public/pdf/` (choix assumé et temporaire,
+   * cf. PER-57). Les PDF payants/sous copyright vivent hors du repo (`pdf-payants/`, gitignored)
+   * et ne sont donc pas servis : leur entrée reste dormante tant que le fichier n'est pas fourni.
    */
   file: string;
 }
@@ -33,13 +35,15 @@ export const BOOKS: Record<BookId, BookMeta> = {
     id: 'core-rulebook',
     name: 'Livre des règles',
     Icon: MenuBookOutlinedIcon,
-    file: '/rules/core-rulebook.pdf',
+    file: '/pdf/core-rulebook.pdf',
   },
   companion: {
     id: 'companion',
     name: 'Le Compagnon',
     Icon: AutoStoriesOutlinedIcon,
-    file: '/rules/companion.pdf',
+    // PDF payant/sous copyright : hors du repo (`pdf-payants/compagnon.pdf`, non servi).
+    // Entrée dormante — aucune donnée ne pointe encore ce livre (hors scope d'extraction).
+    file: '/pdf/companion.pdf',
   },
 };
 

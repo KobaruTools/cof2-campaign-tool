@@ -26,11 +26,14 @@
 
 # règles CO2 — les PDF ne doivent jamais entrer dans git ni dans le bundle…
 *.pdf
-# …EXCEPTION ciblée (milestone « Visualiseur PDF », app strictement privée) : le
-# livre de base et Le Compagnon sont servis par le visualiseur intégré, commités
-# via Git LFS depuis public/rules/. Cf. .gitattributes et le ticket PER-57 (revenir
-# à un import local si l'app est un jour distribuée).
-!/public/rules/*.pdf
+# …EXCEPTION ciblée (milestone « Visualiseur PDF », app strictement privée) : les
+# PDF libres/non-propriété de BBE (livre de base, feuille de perso, écran MJ) sont
+# servis par l'app et commités via Git LFS depuis public/pdf/. Cf. .gitattributes et
+# le ticket PER-57 (revenir à un import local si l'app est un jour distribuée).
+!/public/pdf/*.pdf
+# PDF payants/sous copyright (bestiaire, atlas, Le Compagnon) : consultés en local
+# uniquement, JAMAIS commités. Le dossier reste hors du repo pour raisons de droits.
+/pdf-payants/
 
 # debug
 npm-debug.log*
