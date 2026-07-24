@@ -40,6 +40,10 @@ export function GmScreenCreatureCard({ slug, label, visible, onToggleVisible, on
     <Paper
       sx={{
         p: 2,
+        // Créature masquée aux joueurs : légèrement estompée (90 % d'opacité) pour la
+        // distinguer d'un coup d'œil sur l'écran de MJ ; elle reste pleinement lisible et
+        // gérable (elle est simplement absente de la fenêtre projetée).
+        opacity: visible ? 1 : 0.9,
         bgcolor: 'rgba(20, 20, 23, 0.72)',
         // Teinte rouge discrète (bas droite → haut gauche) : marque un adversaire,
         // en parité de facture avec le dégradé de profil des cartes joueurs.
