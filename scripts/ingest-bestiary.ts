@@ -36,10 +36,13 @@ const DRS_SOURCE = {
 } as const;
 
 // ── Source PAYANTE de TEST (PER-242), seedée seulement avec `--with-test-source`. ──
+// `redeemCode` (PER-243) : code de déblocage self-service à saisir dans l'UI pour
+// recetter la RPC `redeem_source_code` de bout en bout.
 const TEST_PAID_SOURCE = {
   slug: 'test-bestiaire-payant',
   name: 'Bestiaire de test (payant)',
   is_paid: true,
+  redeemCode: 'TEST-BESTIAIRE',
 } as const;
 
 /**
@@ -109,7 +112,9 @@ function loadDotEnvLocal(): void {
 }
 
 type SupabaseAdmin = ReturnType<typeof createClient<Database>>;
-type SourceDef = { slug: string; name: string; is_paid: boolean };
+// `redeemCode` (PER-243) : code de déblocage rotable, posé seulement sur les sources
+// payantes ; `null` pour le contenu gratuit (aucun code).
+type SourceDef = { slug: string; name: string; is_paid: boolean; redeemCode?: string };
 
 /**
  * Ingère UNE source et ses créatures (idempotent) : bump de `content_version`,
@@ -139,6 +144,8 @@ async function ingestSource(
         name: def.name,
         is_paid: def.is_paid,
         content_version: nextVersion,
+        // Code de déblocage (PER-243) : posé sur les payantes, null sur le gratuit.
+        redeem_code: def.redeemCode ?? null,
       },
       { onConflict: 'slug' },
     )

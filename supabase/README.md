@@ -139,6 +139,53 @@ main) :
 5. **Nettoyage** : supprimer la source de test (`delete from public.sources where
    slug = 'test-bestiaire-payant'` — cascade sur créatures + entitlements).
 
+### Déblocage par code (PER-243)
+
+- `migrations/0008_source_redeem.sql` — colonne `sources.redeem_code` (secret, sur
+  les payantes seulement ; index unique partiel insensible à la casse) + RPC
+  `redeem_source_code(p_code)` `SECURITY DEFINER` : valide le code contre le secret
+  stocké et pose l'entitlement de l'utilisateur COURANT (`auth.uid()`), sans exposer
+  la `service_role`. Code inconnu/vide → `{ ok: false }` sans fuite ni entitlement ;
+  sessions anonymes (joueurs) refusées (`is_anonymous()`). GRANT `execute` à
+  `authenticated` uniquement.
+- `migrations/0009_redeem_allowlist.sql` — **resserrement (raisons légales)** : le
+  déblocage est réservé aux comptes d'une **allowlist** `redeem_allowlist(user_id)`.
+  La RPC refuse (`{ ok: false }`) tout compte absent de l'allowlist — vraie barrière
+  serveur, pas un simple masquage d'UI. RLS : chacun lit **seulement sa propre ligne**
+  (l'UI en déduit « suis-je habilité ? ») ; aucune policy d'écriture (pose manuelle
+  `service_role`). ⚠️ **La ligne du propriétaire se pose À LA MAIN sur le remote**,
+  JAMAIS dans git (dépôt public) :
+  ```sql
+  insert into public.redeem_allowlist (user_id, note)
+  values ('<AUTH_USER_UUID>', 'propriétaire');
+  ```
+- **Code ROTABLE** : `update public.sources set redeem_code = '…' where slug = '…'`
+  ne touche pas les `source_entitlements` déjà posés (accès conservés).
+- `migrations/0010_entitlement_self_delete.sql` — policy DELETE **own-row** sur
+  `source_entitlements` : un compte peut RETIRER ses propres déblocages (action
+  inoffensive, utile pour rejouer des tests). L'octroi reste verrouillé (RPC only).
+- Côté application : `redeemSourceCode(code)` + `canRedeemSource()` +
+  `listUnlockedSources()` / `removeSourceEntitlement(sourceId)` (repo bestiaire) ;
+  UI = section « Débloquer du contenu » dans **`/account`** (`AccountUnlockSection`),
+  qui **ne s'affiche que pour un compte habilité** (auto-gating via `canRedeemSource`) :
+  saisie du code **+ liste des contenus débloqués avec retrait individuel**. Le
+  contenu débloqué apparaît au prochain passage dans `/bestiary`.
+
+Recette (code de test posé par l'ingestion `--with-test-source`) :
+
+1. **Poser le code de test** : `npm run ingest -- --with-test-source` seede la source
+   `test-bestiaire-payant` avec `redeem_code = 'TEST-BESTIAIRE'`.
+2. **Habiliter le compte** : insérer sa ligne dans `redeem_allowlist` (SQL ci-dessus).
+   Sans elle, la section `/account` reste cachée et la RPC refuse même le bon code.
+3. **Compte habilité** : dans `/account`, « Débloquer du contenu » → saisir
+   `TEST-BESTIAIRE` → succès ; la source apparaît ensuite dans `/bestiary`. Code bidon
+   → échec propre, aucun entitlement.
+4. **Rotation** : `update public.sources set redeem_code = 'AUTRE-CODE' where slug =
+   'test-bestiaire-payant'` → les comptes déjà débloqués conservent l'accès ;
+   l'ancien code ne débloque plus.
+5. **Compte non habilité / joueur anonyme** : la RPC renvoie `{ ok: false }` même avec
+   le bon code (barrière allowlist + `is_anonymous()`).
+
 ### Cache persistant côté client (PER-244)
 
 Le navigateur met en cache la liste légère et les blobs déjà consultés dans

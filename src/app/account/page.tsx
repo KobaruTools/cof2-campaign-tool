@@ -38,6 +38,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppHeader } from '@/components/AppHeader';
+import { AccountUnlockSection } from '@/components/account/AccountUnlockSection';
 import { useToast } from '@/components/toast/ToastProvider';
 import { BackgroundMotionToggle } from '@/components/BackgroundMotionToggle';
 import { HomeBackground } from '@/components/HomeBackground';
@@ -198,6 +199,7 @@ export default function AccountPage() {
 
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
+      <title>Réglages du compte — Éditeur de personnage CO2</title>
       <HomeBackground />
       <AppHeader breadcrumbs={[{ label: 'Réglages du compte' }]} />
 
@@ -279,6 +281,10 @@ export default function AccountPage() {
                 système demande de réduire les animations.
               </Typography>
             </Section>
+
+            {/* Débloquer du contenu (PER-243) — auto-gaté : ne s'affiche que pour un
+                compte habilité (allowlist), sinon le composant ne rend rien. */}
+            <AccountUnlockSection />
 
             {/* Identités liées */}
             <Section title="Identités liées">

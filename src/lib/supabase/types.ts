@@ -246,6 +246,24 @@ export type Database = {
           },
         ]
       }
+      redeem_allowlist: {
+        Row: {
+          granted_at: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       source_entitlements: {
         Row: {
           granted_at: string
@@ -279,6 +297,7 @@ export type Database = {
           id: string
           is_paid: boolean
           name: string
+          redeem_code: string | null
           slug: string
           updated_at: string
         }
@@ -288,6 +307,7 @@ export type Database = {
           id?: string
           is_paid?: boolean
           name: string
+          redeem_code?: string | null
           slug: string
           updated_at?: string
         }
@@ -297,6 +317,7 @@ export type Database = {
           id?: string
           is_paid?: boolean
           name?: string
+          redeem_code?: string | null
           slug?: string
           updated_at?: string
         }
@@ -314,6 +335,7 @@ export type Database = {
         Returns: boolean
       }
       is_anonymous: { Args: never; Returns: boolean }
+      redeem_source_code: { Args: { p_code: string }; Returns: Json }
       touch_player_presence: { Args: never; Returns: undefined }
     }
     Enums: {

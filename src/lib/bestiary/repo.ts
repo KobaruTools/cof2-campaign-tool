@@ -119,3 +119,95 @@ export async function fetchCreatureBlob(slug: string): Promise<Creature | null> 
   if (error) throw error;
   return (data?.data as Creature | undefined) ?? null;
 }
+
+/**
+ * Résultat du déblocage d'une source par code (PER-243) :
+ *   - `ok: true`  → entitlement posé (le nom de la source alimente le message UX) ;
+ *   - `ok: false` → code inconnu/invalide (aucun entitlement, sans fuite d'existence).
+ *
+ * Une erreur d'infrastructure (Supabase indisponible…) n'est pas un statut : la
+ * fonction **lève**, l'appelant l'affiche comme une erreur générique.
+ */
+export type RedeemSourceResult =
+  | { ok: true; sourceSlug: string; sourceName: string }
+  | { ok: false };
+
+/**
+ * Débloque une source payante en saisissant son code. Appelle la RPC
+ * `redeem_source_code` (`SECURITY DEFINER`, PER-243) avec la session de
+ * l'utilisateur courant : le code n'est jamais la barrière (la RLS de PER-242 l'est),
+ * il ne fait que REMPLIR l'entitlement en base. La `service_role` n'est donc jamais
+ * exposée côté client. Après un succès, un rechargement de la liste (manifeste)
+ * fait apparaître la source débloquée — rien à recâbler côté cache.
+ */
+export async function redeemSourceCode(code: string): Promise<RedeemSourceResult> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase.rpc('redeem_source_code', { p_code: code });
+  if (error) throw error;
+  const res = data as
+    | { ok?: boolean; source_slug?: string; source_name?: string }
+    | null;
+  if (res?.ok && res.source_slug && res.source_name) {
+    return { ok: true, sourceSlug: res.source_slug, sourceName: res.source_name };
+  }
+  return { ok: false };
+}
+
+/**
+ * L'utilisateur courant est-il HABILITÉ à débloquer du contenu (allowlist, PER-243) ?
+ * La RLS de `redeem_allowlist` ne remonte que sa propre ligne : une ligne présente
+ * ⇒ habilité. Sert uniquement à AFFICHER ou non le point d'entrée de déblocage — la
+ * vraie barrière reste la RPC `redeem_source_code`, qui refuse tout compte non
+ * allowlisté côté serveur. Renvoie `false` sur erreur (fail-safe : on cache l'UI).
+ */
+export async function canRedeemSource(): Promise<boolean> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase
+    .from('redeem_allowlist')
+    .select('user_id')
+    .maybeSingle();
+  if (error) return false;
+  return data != null;
+}
+
+/** Une source payante débloquée par l'utilisateur courant (PER-243, gestion compte). */
+export interface UnlockedSource {
+  sourceId: string;
+  slug: string;
+  name: string;
+}
+
+/**
+ * Sources débloquées par l'utilisateur courant (ses entitlements), avec leur libellé.
+ * La RLS de `source_entitlements` ne remonte que ses propres lignes, et la jointure
+ * sur `sources` ne remonte que les sources qui lui sont visibles (donc débloquées) —
+ * aucun filtre client requis. LÈVE en cas d'erreur.
+ */
+export async function listUnlockedSources(): Promise<UnlockedSource[]> {
+  const supabase = createBrowserSupabaseClient();
+  const { data, error } = await supabase
+    .from('source_entitlements')
+    .select('source_id, sources(slug, name)');
+  if (error) throw error;
+  return (data ?? [])
+    .filter((row) => row.sources != null)
+    .map((row) => ({
+      sourceId: row.source_id,
+      slug: row.sources!.slug,
+      name: row.sources!.name,
+    }));
+}
+
+/**
+ * Retire l'entitlement de l'utilisateur courant sur une source (re-verrouille l'accès).
+ * La RLS (policy `source_entitlements_delete_own`, migration 0010) borne la suppression
+ * à ses propres lignes : `user_id` est implicite. LÈVE en cas d'erreur.
+ */
+export async function removeSourceEntitlement(sourceId: string): Promise<void> {
+  const supabase = createBrowserSupabaseClient();
+  const { error } = await supabase
+    .from('source_entitlements')
+    .delete()
+    .eq('source_id', sourceId);
+  if (error) throw error;
+}

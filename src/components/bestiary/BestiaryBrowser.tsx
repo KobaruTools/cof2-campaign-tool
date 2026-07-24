@@ -249,6 +249,15 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
     for (const c of list) {
       if (c.baseCreatureId) byId.get(c.baseCreatureId)?.variants.push(c);
     }
+    // Groupe RÉELLEMENT par catégorie (ordre canonique), en conservant l'ordre du
+    // livre (`sort_order`) À L'INTÉRIEUR de chaque catégorie via un tri STABLE.
+    // Indispensable dès que plusieurs sources coexistent : leurs `sort_order` se
+    // chevauchent (chaque source repart de 0), donc la liste fusionnée peut
+    // intercaler des catégories. Sans ce regroupement, les catégories deviennent
+    // NON CONTIGUËS → en-têtes répétés ET clés React `cat-…` dupliquées, ce qui
+    // laisse des nœuds orphelins (doublons) au changement de mode de tri.
+    const rank = (c: CreatureCategory) => CREATURE_CATEGORIES.indexOf(c);
+    order.sort((a, b) => rank(a.base.category) - rank(b.base.category));
     return order;
   }, [list]);
 
