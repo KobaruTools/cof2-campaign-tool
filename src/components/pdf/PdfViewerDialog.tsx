@@ -12,24 +12,38 @@
  * défini dans le module même où l'on rend `<Document>` (contrainte react-pdf : sinon l'ordre
  * d'exécution des modules réécrit la valeur par défaut).
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import SearchIcon from '@mui/icons-material/Search';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
+import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
+import GlobalStyles from '@mui/material/GlobalStyles';
 import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { BOOKS } from '@/lib/ui/books';
+import { BOOKS, type BookId } from '@/lib/ui/books';
+import {
+  MIN_QUERY_LENGTH,
+  renderTextItemWithHighlight,
+  searchIndexedPages,
+  type IndexedPage,
+  type PdfSearchMatch,
+} from '@/lib/pdf/pdfSearch';
 import { usePdfViewerStore } from '@/stores/pdfViewer';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -40,6 +54,34 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 3;
 const ZOOM_STEP = 0.25;
+
+/** Délai (ms) avant de lancer une recherche après la dernière frappe. */
+const SEARCH_DEBOUNCE_MS = 300;
+
+/**
+ * Lit la couche texte de TOUTES les pages du PDF pour en constituer un index de recherche
+ * (PER-58). Séquentiel : pdf.js déroule un seul worker, et le résultat est mis en cache par livre
+ * côté appelant — on ne paie l'indexation qu'une fois. `onProgress` alimente la barre d'attente ;
+ * `shouldCancel` permet d'abandonner si le livre change ou la modale se ferme en cours de route.
+ */
+async function buildTextIndex(
+  pdf: PDFDocumentProxy,
+  onProgress: (done: number, total: number) => void,
+  shouldCancel: () => boolean,
+): Promise<IndexedPage[] | null> {
+  const total = pdf.numPages;
+  const pages: IndexedPage[] = [];
+  for (let n = 1; n <= total; n++) {
+    if (shouldCancel()) return null;
+    const page = await pdf.getPage(n);
+    const content = await page.getTextContent();
+    const text = content.items.map((it) => ('str' in it ? it.str : '')).join(' ');
+    pages.push({ page: n, text });
+    page.cleanup();
+    onProgress(n, total);
+  }
+  return pages;
+}
 
 export default function PdfViewerDialog() {
   const { open, bookId, page, nonce, close } = usePdfViewerStore();
@@ -57,6 +99,22 @@ export default function PdfViewerDialog() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [container, setContainer] = useState({ w: 0, h: 0 });
   const [pageRatio, setPageRatio] = useState<number | null>(null);
+
+  // --- Recherche plein-texte (PER-58) ---------------------------------------------------------
+  // Le document pdf.js chargé, capté à `onLoadSuccess` : c'est la source des couches texte à
+  // indexer. L'index (texte de chaque page) est mis en cache PAR LIVRE dans une ref, pour ne le
+  // reconstruire ni à la réouverture ni au changement de requête.
+  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
+  const indexCacheRef = useRef<Map<BookId, IndexedPage[]>>(new Map());
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [matches, setMatches] = useState<PdfSearchMatch[] | null>(null);
+  const [activeMatch, setActiveMatch] = useState(0);
+  // Progression de l'indexation (0–100), `null` hors indexation.
+  const [indexProgress, setIndexProgress] = useState<number | null>(null);
+  // Bump quand un index vient d'être mis en cache : réveille l'effet de recherche qui attendait.
+  const [indexVersion, setIndexVersion] = useState(0);
 
   // Mesure du conteneur via REF CALLBACK (exécuté au commit, `clientWidth/Height` force un
   // reflow synchrone → taille déjà mise en page, fiable dès le montage), là où `ResizeObserver`
@@ -81,6 +139,13 @@ export default function PdfViewerDialog() {
     setNumPages(null);
     setLoadError(false);
     setZoom(1);
+    // Nouveau livre → nouveau document pdf.js et recherche remise à zéro (l'index resté en cache
+    // par livre sera réutilisé si l'on revient sur ce livre).
+    setPdfDoc(null);
+    setQuery('');
+    setMatches(null);
+    setActiveMatch(0);
+    setIndexProgress(null);
   }
 
   // Suivi des redimensionnements (fenêtre, rotation…) une fois monté. La mesure INITIALE est
@@ -99,6 +164,89 @@ export default function PdfViewerDialog() {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [current]);
 
+  // Focus le champ dès l'ouverture de la barre de recherche.
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
+
+  // Ctrl/Cmd+F : ouvre la recherche dans la modale (et re-sélectionne si déjà ouverte), au lieu de
+  // la recherche du navigateur qui ne verrait que la page rendue.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setSearchOpen(true);
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  // Indexation paresseuse : dès l'ouverture de la recherche sur un livre, on lit la couche texte
+  // de toutes ses pages (une seule fois, mise en cache par livre) → la 1re requête est instantanée.
+  // Le bump d'`indexVersion` réveille l'effet de recherche resté en attente de l'index.
+  useEffect(() => {
+    if (!open || !searchOpen || !pdfDoc || !bookId) return;
+    if (indexCacheRef.current.has(bookId)) return;
+    let cancelled = false;
+    setIndexProgress(0);
+    void buildTextIndex(
+      pdfDoc,
+      (done, total) => {
+        if (!cancelled) setIndexProgress(Math.round((done / total) * 100));
+      },
+      () => cancelled,
+    ).then((built) => {
+      if (cancelled || !built) return;
+      indexCacheRef.current.set(bookId, built);
+      setIndexProgress(null);
+      setIndexVersion((v) => v + 1);
+    });
+    return () => {
+      // Annule une indexation en cours (fermeture / changement de livre) et efface sa progression.
+      cancelled = true;
+      setIndexProgress(null);
+    };
+  }, [open, searchOpen, pdfDoc, bookId]);
+
+  // Recherche débattue : recalcule les occurrences quand la requête change (ou dès que l'index
+  // devient disponible), positionne sur la 1re occurrence.
+  useEffect(() => {
+    if (!searchOpen || !bookId) return;
+    const raw = query.trim();
+    // Tout est fait dans le callback débattu (jamais de setState synchrone dans le corps d'effet).
+    const timer = setTimeout(() => {
+      if (raw.length < MIN_QUERY_LENGTH) {
+        setMatches(null);
+        setActiveMatch(0);
+        return;
+      }
+      const index = indexCacheRef.current.get(bookId);
+      if (!index) return; // pas encore indexé — l'effet d'indexation relancera via `indexVersion`
+      const found = searchIndexedPages(index, raw);
+      setMatches(found);
+      setActiveMatch(0);
+      if (found.length > 0) {
+        setCurrent(found[0].page);
+        setPageInput(String(found[0].page));
+      }
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchOpen, query, bookId, indexVersion]);
+
+  // Enrobe le terme recherché d'un `<mark>` dans la couche texte de la page rendue (surlignage).
+  const highlightQuery = searchOpen && query.trim().length >= MIN_QUERY_LENGTH ? query.trim() : '';
+  const textRenderer = useMemo(
+    () =>
+      highlightQuery
+        ? (item: { str: string }) => renderTextItemWithHighlight(item.str, highlightQuery)
+        : undefined,
+    [highlightQuery],
+  );
+
   if (!book) return null;
 
   const clampPage = (p: number) => Math.min(Math.max(1, p), numPages ?? p);
@@ -112,6 +260,25 @@ export default function PdfViewerDialog() {
     if (Number.isFinite(parsed)) goTo(parsed);
     else setPageInput(String(current));
   };
+
+  // Occurrence précédente/suivante (cyclique) : déplace le curseur et saute à sa page.
+  const goToMatch = (delta: number) => {
+    if (!matches || matches.length === 0) return;
+    const next = (activeMatch + delta + matches.length) % matches.length;
+    setActiveMatch(next);
+    goTo(matches[next].page);
+  };
+
+  // Ferme la barre de recherche et purge son état (l'index reste en cache pour plus tard).
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setQuery('');
+    setMatches(null);
+    setActiveMatch(0);
+  };
+
+  const hasQuery = query.trim().length >= MIN_QUERY_LENGTH;
+  const indexing = indexProgress !== null;
 
   // Ajustement « page entière » (contain) : largeur du plus grand rendu qui tient à la fois en
   // largeur (dispoW) et en hauteur (dispoH via le ratio), puis × zoom. `PAGE_MARGIN` = padding du
@@ -131,6 +298,19 @@ export default function PdfViewerDialog() {
 
   return (
     <Dialog open={open} onClose={close} maxWidth="lg" fullWidth>
+      {/* Surlignage du terme recherché dans la couche texte pdf.js : les spans ont `color:
+          transparent` (texte de sélection posé sur le canvas), donc le <mark> doit garder ce
+          texte transparent et n'apporter qu'un fond translucide (le canvas reste lisible). */}
+      <GlobalStyles
+        styles={{
+          '.textLayer mark': {
+            color: 'transparent',
+            backgroundColor: 'rgba(255, 196, 0, 0.45)',
+            borderRadius: '2px',
+            padding: 0,
+          },
+        }}
+      />
       <Stack
         direction="row"
         spacing={1}
@@ -209,12 +389,100 @@ export default function PdfViewerDialog() {
           </Tooltip>
         </Stack>
 
+        <Tooltip title="Rechercher dans le livre (Ctrl+F)">
+          <IconButton
+            size="small"
+            onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+            color={searchOpen ? 'primary' : 'default'}
+            sx={{ ml: 1 }}
+          >
+            <SearchIcon />
+          </IconButton>
+        </Tooltip>
+
         <Tooltip title="Fermer">
-          <IconButton size="small" onClick={close} sx={{ ml: 1 }}>
+          <IconButton size="small" onClick={close} sx={{ ml: 0.5 }}>
             <CloseIcon />
           </IconButton>
         </Tooltip>
       </Stack>
+
+      <Collapse in={searchOpen} unmountOnExit>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: 'center', px: 2, py: 1, borderBottom: 1, borderColor: 'divider' }}
+        >
+          <TextField
+            inputRef={searchInputRef}
+            size="small"
+            fullWidth
+            placeholder="Rechercher dans le livre…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                goToMatch(e.shiftKey ? -1 : 1);
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeSearch();
+              }
+            }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" color="disabled" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ whiteSpace: 'nowrap', minWidth: 92, textAlign: 'right' }}
+          >
+            {indexing
+              ? `Indexation… ${indexProgress} %`
+              : !hasQuery
+                ? ''
+                : matches && matches.length > 0
+                  ? `${activeMatch + 1} / ${matches.length}`
+                  : 'Aucun résultat'}
+          </Typography>
+
+          <Tooltip title="Occurrence précédente (Maj+Entrée)">
+            <span>
+              <IconButton
+                size="small"
+                onClick={() => goToMatch(-1)}
+                disabled={!matches || matches.length === 0}
+              >
+                <KeyboardArrowUpIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Occurrence suivante (Entrée)">
+            <span>
+              <IconButton
+                size="small"
+                onClick={() => goToMatch(1)}
+                disabled={!matches || matches.length === 0}
+              >
+                <KeyboardArrowDownIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Fermer la recherche">
+            <IconButton size="small" onClick={closeSearch}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Collapse>
 
       <Box
         ref={setScrollEl}
@@ -238,7 +506,10 @@ export default function PdfViewerDialog() {
           <Box sx={{ m: 'auto' }}>
             <Document
               file={book.file}
-              onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+              onLoadSuccess={(pdf) => {
+                setNumPages(pdf.numPages);
+                setPdfDoc(pdf);
+              }}
               onLoadError={() => setLoadError(true)}
               loading={
                 <Box sx={{ py: 8, textAlign: 'center' }}>
@@ -249,6 +520,7 @@ export default function PdfViewerDialog() {
               <Page
                 pageNumber={current}
                 width={pageWidth}
+                customTextRenderer={textRenderer}
                 onLoadSuccess={({ originalWidth, originalHeight }) =>
                   setPageRatio(originalHeight / originalWidth)
                 }
