@@ -1,12 +1,12 @@
 'use client';
 
 import { Fragment } from 'react';
+import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import { alpha } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
-import { BOOKS, DEFAULT_BOOK_ID, type BookId } from '@/lib/ui/books';
+import { BOOKS, DEFAULT_BOOK_ID, rulesHref, type BookId } from '@/lib/ui/books';
 import { splitPageRefs } from '@/lib/ui/pageRefs';
-import { usePdfViewerStore } from '@/stores/pdfViewer';
 
 export interface SourceRefProps {
   /**
@@ -35,23 +35,28 @@ export interface SourceRefProps {
  * infobulles MUI de l'app, on évite ainsi d'imbriquer un `Tooltip` MUI dans un autre. À utiliser
  * partout où l'on renvoie le joueur au livre (infobulles, texte de règle verbatim, cartes de capacité…).
  *
- * Le badge est **cliquable** : il ouvre le visualiseur PDF intégré sur le livre, à la page citée
- * (PER-240). Comme `PageRefText` transforme tout « (p. N) » en `SourceRef`, ce seul point rend
- * cliquables tous les renvois de page de l'app. Pour une PLAGE (« 219-220 »), on saute à la
- * première page. Sans page, on ouvre simplement le livre au début.
+ * Le badge est **cliquable** : il navigue vers l'URL canonique du visualiseur (`rulesHref`,
+ * PER-60), qui ouvre le livre à la page citée. Depuis une page de l'app c'est une navigation
+ * DOUCE → le visualiseur s'ouvre en overlay (route interceptée `@viewer/(.)rules/...`) sans
+ * quitter la page courante, et l'URL devient partageable ; un rechargement de cette URL affiche
+ * la page plein écran. Comme `PageRefText` transforme tout « (p. N) » en `SourceRef`, ce seul
+ * point rend cliquables tous les renvois de page. Pour une PLAGE (« 219-220 »), on saute à la
+ * première page. Sans page, on ouvre le livre au début.
  */
 export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, sx }: SourceRefProps) {
-  const openAt = usePdfViewerStore((s) => s.openAt);
+  const router = useRouter();
   const meta = BOOKS[book];
   const { Icon } = meta;
   const label = [section, page != null ? `p. ${page}` : null].filter(Boolean).join(', ');
   const targetPage = page != null ? Number.parseInt(String(page), 10) : NaN;
 
   const open = (e: React.SyntheticEvent) => {
-    // Empêche l'ouverture du visualiseur d'activer un conteneur cliquable englobant
-    // (ligne de liste, résumé d'accordéon, carte de capacité…).
+    // Empêche le clic d'activer un conteneur cliquable englobant (ligne de liste, résumé
+    // d'accordéon, carte de capacité…). `SourceRef` reste un `span[role=button]` plutôt qu'un
+    // `<Link>` car il s'affiche parfois DANS un élément interactif (imbriquer une ancre y serait
+    // du HTML invalide) : on navigue donc par programme.
     e.stopPropagation();
-    openAt(book, Number.isFinite(targetPage) ? targetPage : 1, term);
+    router.push(rulesHref(book, Number.isFinite(targetPage) ? targetPage : 1, term));
   };
 
   return (

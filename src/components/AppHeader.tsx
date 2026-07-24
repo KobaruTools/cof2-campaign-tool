@@ -14,8 +14,7 @@ import { AppHeaderBrand } from '@/components/AppHeaderBrand';
 import { GmScreenIcon } from '@/components/GmScreenIcon';
 import { QuestIcon } from '@/components/QuestIcon';
 import { SectionIcon } from '@/components/SectionIcon';
-import { BOOKS, DEFAULT_BOOK_ID } from '@/lib/ui/books';
-import { usePdfViewerStore } from '@/stores/pdfViewer';
+import { BOOKS, DEFAULT_BOOK_ID, rulesHref } from '@/lib/ui/books';
 
 interface AppHeaderProps {
   /**
@@ -150,8 +149,6 @@ export function AppHeader({
   // l'accueil (pas de fil, pas d'action), présent partout ailleurs. Le sous-titre de
   // la fiche y est monté en permanence (pour pouvoir s'animer), donc sa seule présence
   // suffit aussi à afficher le bandeau — de même que l'`action` de page (« Modifier »).
-  // Ouverture du visualiseur PDF sur le livre des règles depuis l'en-tête (bouton global).
-  const openViewer = usePdfViewerStore((s) => s.openAt);
   const RulesBookIcon = BOOKS[DEFAULT_BOOK_ID].Icon;
 
   const hasSubHeader = (breadcrumbs?.length ?? 0) > 0 || Boolean(subtitle) || Boolean(action);
@@ -240,7 +237,7 @@ export function AppHeader({
             />
           )}
           <HeaderNavButton
-            onClick={() => openViewer(DEFAULT_BOOK_ID)}
+            href={rulesHref(DEFAULT_BOOK_ID, 1)}
             icon={<RulesBookIcon sx={{ fontSize: 20 }} />}
             label="Livre des règles"
             condensed={condensed}

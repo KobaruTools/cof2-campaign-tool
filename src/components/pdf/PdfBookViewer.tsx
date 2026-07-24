@@ -1,16 +1,20 @@
 'use client';
 
 /**
- * Visualiseur PDF intégré (milestone « Visualiseur PDF », socle v1 PER-240) : une modale
- * unique, partagée par l'app, qui ouvre un livre de règles à une page donnée depuis un renvoi.
+ * Visualiseur PDF intégré (milestone « Visualiseur PDF »). Rend un livre de règles à une page
+ * donnée, avec recherche plein-texte (PER-58) et surlignage/centrage d'un passage ciblé (PER-59/61).
  *
- * Rendu via **pdf.js** (`react-pdf`) et non la visionneuse native du navigateur : c'est le socle
- * qu'exigent PER-58 (recherche dans la couche texte), PER-59 (surlignage) et PER-61 (paragraphe).
+ * **Piloté par PROPS** (PER-60), plus par un store : `bookId`/`initialPage`/`term` viennent
+ * désormais de l'URL `/rules/{book}/{page}?q={term}`. Deux habillages via `chrome` :
+ *  - `'dialog'` : modale MUI superposée (route INTERCEPTÉE `@viewer/(.)rules/...`) — l'ouverture
+ *    depuis un renvoi in-app est une navigation douce qui préserve la page en dessous ;
+ *  - `'page'` : plein écran (route réelle `/rules/...`), servie au rechargement / lien partagé.
  *
- * Ce module est chargé PARESSEUSEMENT et sans SSR (cf. [[PdfViewerHost]]) : react-pdf touche à
- * `window`/`DOMMatrix` et le worker pdf.js n'existe qu'au navigateur. Le `workerSrc` DOIT être
- * défini dans le module même où l'on rend `<Document>` (contrainte react-pdf : sinon l'ordre
- * d'exécution des modules réécrit la valeur par défaut).
+ * Rendu via **pdf.js** (`react-pdf`) et non la visionneuse native : socle qu'exigent la recherche
+ * (couche texte), le surlignage et le ciblage de paragraphe. Ce module touche à `window`/`DOMMatrix`
+ * et au worker pdf.js : il DOIT être chargé sans SSR (via un wrapper `dynamic(..., { ssr: false })`,
+ * cf. [[RulesViewerModal]] / [[RulesViewerPage]]). Le `workerSrc` est défini dans ce module même
+ * (contrainte react-pdf : sinon l'ordre d'exécution des modules réécrit la valeur par défaut).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -48,7 +52,6 @@ import {
   type IndexedPage,
   type PdfSearchMatch,
 } from '@/lib/pdf/pdfSearch';
-import { usePdfViewerStore } from '@/stores/pdfViewer';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -64,6 +67,26 @@ const TARGET_MARK_CLASS = 'pdf-target';
 
 /** Délai (ms) avant de lancer une recherche après la dernière frappe. */
 const SEARCH_DEBOUNCE_MS = 300;
+
+export interface PdfBookViewerProps {
+  /** Livre à afficher (validé en amont par la route). */
+  bookId: BookId;
+  /** Page d'ENTRÉE demandée par l'URL (numéro imprimé = numéro de page du PDF). */
+  initialPage: number;
+  /**
+   * Terme à CIBLER sur la page d'entrée (PER-59/61) : nom de l'entité (capacité/créature/état)
+   * dont le renvoi cite la page. Surligné (couleur distincte) et centré à l'ouverture. Vide/absent
+   * = simple saut de page.
+   */
+  term?: string;
+  /**
+   * Habillage : `'dialog'` = modale superposée (route interceptée) ; `'page'` = plein écran
+   * (route réelle, rechargement / lien partagé).
+   */
+  chrome: 'dialog' | 'page';
+  /** Ferme le visualiseur (modale : `router.back()` ; page : retour historique ou accueil). */
+  onClose: () => void;
+}
 
 /**
  * Lit la couche texte de TOUTES les pages du PDF pour en constituer un index de recherche
@@ -90,20 +113,25 @@ async function buildTextIndex(
   return pages;
 }
 
-export default function PdfViewerDialog() {
-  const { open, bookId, page, term, nonce, close } = usePdfViewerStore();
-  const book = bookId ? BOOKS[bookId] : null;
+export default function PdfBookViewer({
+  bookId,
+  initialPage,
+  term = '',
+  chrome,
+  onClose,
+}: PdfBookViewerProps) {
+  const book = BOOKS[bookId];
 
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [current, setCurrent] = useState(page);
-  const [pageInput, setPageInput] = useState(String(page));
+  const [current, setCurrent] = useState(initialPage);
+  const [pageInput, setPageInput] = useState(String(initialPage));
   const [zoom, setZoom] = useState(1);
   // Ajustement de la page : « page entière » (contain, défaut) ou « pleine largeur » (remplit la
   // largeur, on défile verticalement). Éphémère (comme le zoom) ; le zoom se multiplie par-dessus.
   const [fitMode, setFitMode] = useState<'page' | 'width'>('page');
   // Surlignage du passage ciblé par un renvoi (PER-59/61) : affiché par défaut à l'ouverture (et
   // recentré), masquable à la demande pour la lisibilité une fois le passage repéré. Remis à ON à
-  // chaque nouveau renvoi (cf. resync sur `nonce`).
+  // chaque nouveau renvoi (cf. resync sur la clé page/terme).
   const [showTarget, setShowTarget] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
@@ -138,18 +166,21 @@ export default function PdfViewerDialog() {
     if (el) setContainer({ w: el.clientWidth, h: el.clientHeight });
   }, []);
 
-  // Resynchronisation en PHASE DE RENDU (pattern React « adjust state while rendering », plutôt
-  // qu'un effet à setState) : chaque ouverture (`nonce`) recale la page affichée sur la page
-  // demandée, et un changement de livre réinitialise chargement/zoom.
-  const [lastNonce, setLastNonce] = useState(nonce);
-  if (nonce !== lastNonce) {
-    setLastNonce(nonce);
-    setCurrent(page);
-    setPageInput(String(page));
-    // Nouveau renvoi → on ré-affiche le surlignage du passage ciblé (l'utilisateur a pu le masquer
-    // lors d'une ouverture précédente).
+  // Resynchronisation en PHASE DE RENDU (pattern React « adjust state while rendering ») : quand
+  // l'URL désigne une nouvelle page/terme d'entrée (navigation vers un autre renvoi), on recale la
+  // page affichée. La clé combine page + terme, ce qui rejoue aussi le ciblage quand deux renvois
+  // visent la même page avec des termes différents.
+  const targetKey = `${initialPage}::${term}`;
+  const [lastKey, setLastKey] = useState(targetKey);
+  if (targetKey !== lastKey) {
+    setLastKey(targetKey);
+    setCurrent(initialPage);
+    setPageInput(String(initialPage));
+    // Nouveau renvoi → on ré-affiche le surlignage du passage ciblé (l'utilisateur a pu le masquer).
     setShowTarget(true);
   }
+  // Changement de livre → nouveau document pdf.js, chargement/zoom réinitialisés, recherche remise
+  // à zéro (l'index resté en cache par livre sera réutilisé si l'on revient sur ce livre).
   const [lastBookId, setLastBookId] = useState(bookId);
   if (bookId !== lastBookId) {
     setLastBookId(bookId);
@@ -157,8 +188,6 @@ export default function PdfViewerDialog() {
     setLoadError(false);
     setZoom(1);
     setFitMode('page');
-    // Nouveau livre → nouveau document pdf.js et recherche remise à zéro (l'index resté en cache
-    // par livre sera réutilisé si l'on revient sur ce livre).
     setPdfDoc(null);
     setQuery('');
     setMatches(null);
@@ -169,13 +198,12 @@ export default function PdfViewerDialog() {
   // Suivi des redimensionnements (fenêtre, rotation…) une fois monté. La mesure INITIALE est
   // faite par le ref callback ci-dessus ; ici on ne fait que réagir aux changements de taille.
   useEffect(() => {
-    if (!open) return;
     const el = scrollRef.current;
     if (!el) return;
     const ro = new ResizeObserver(() => setContainer({ w: el.clientWidth, h: el.clientHeight }));
     ro.observe(el);
     return () => ro.disconnect();
-  }, [open, bookId]);
+  }, [bookId]);
 
   // Amène la page courante en haut du conteneur à chaque changement de page.
   useEffect(() => {
@@ -187,13 +215,12 @@ export default function PdfViewerDialog() {
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
 
-  // Raccourcis clavier de la modale :
+  // Raccourcis clavier :
   //  • Ctrl/Cmd+F ouvre la recherche (et re-sélectionne si déjà ouverte), au lieu de la recherche
   //    du navigateur qui ne verrait que la page rendue ;
   //  • Échap ferme le visualiseur — SAUF si la recherche est ouverte, auquel cas la barre de
   //    recherche gère son propre Échap (elle se ferme d'abord, cf. son `onKeyDown`).
   useEffect(() => {
-    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
@@ -201,18 +228,18 @@ export default function PdfViewerDialog() {
         searchInputRef.current?.focus();
         searchInputRef.current?.select();
       } else if (e.key === 'Escape' && !searchOpen) {
-        close();
+        onClose();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, searchOpen, close]);
+  }, [searchOpen, onClose]);
 
   // Indexation paresseuse : dès l'ouverture de la recherche sur un livre, on lit la couche texte
   // de toutes ses pages (une seule fois, mise en cache par livre) → la 1re requête est instantanée.
   // Le bump d'`indexVersion` réveille l'effet de recherche resté en attente de l'index.
   useEffect(() => {
-    if (!open || !searchOpen || !pdfDoc || !bookId) return;
+    if (!searchOpen || !pdfDoc) return;
     if (indexCacheRef.current.has(bookId)) return;
     let cancelled = false;
     setIndexProgress(0);
@@ -233,12 +260,12 @@ export default function PdfViewerDialog() {
       cancelled = true;
       setIndexProgress(null);
     };
-  }, [open, searchOpen, pdfDoc, bookId]);
+  }, [searchOpen, pdfDoc, bookId]);
 
   // Recherche débattue : recalcule les occurrences quand la requête change (ou dès que l'index
   // devient disponible), positionne sur la 1re occurrence.
   useEffect(() => {
-    if (!searchOpen || !bookId) return;
+    if (!searchOpen) return;
     const raw = query.trim();
     // Tout est fait dans le callback débattu (jamais de setState synchrone dans le corps d'effet).
     const timer = setTimeout(() => {
@@ -266,7 +293,7 @@ export default function PdfViewerDialog() {
   const highlightQuery = searchOpen && query.trim().length >= MIN_QUERY_LENGTH ? query.trim() : '';
   // Terme ciblé actif : bascule ON, hors recherche, terme non vide, et on est bien sur la page citée.
   const targetActive =
-    showTarget && !highlightQuery && term.length >= MIN_QUERY_LENGTH && current === page;
+    showTarget && !highlightQuery && term.length >= MIN_QUERY_LENGTH && current === initialPage;
   const textRenderer = useMemo(
     () =>
       highlightQuery
@@ -276,8 +303,6 @@ export default function PdfViewerDialog() {
           : undefined,
     [highlightQuery, targetActive, term],
   );
-
-  if (!book) return null;
 
   const clampPage = (p: number) => Math.min(Math.max(1, p), numPages ?? p);
   const goTo = (p: number) => {
@@ -312,11 +337,6 @@ export default function PdfViewerDialog() {
 
   // Largeur de base de la page selon l'ajustement choisi, puis × zoom. `PAGE_MARGIN` = padding du
   // conteneur (`p: 2` = 16 px de chaque côté).
-  // - « page entière » (contain) : le plus grand rendu qui tient à la fois en largeur (dispoW) et
-  //   en hauteur (dispoH via le ratio). Zoom 100 % = page entière ; au-delà, on défile.
-  // - « pleine largeur » : on remplit la largeur disponible et on défile verticalement.
-  // Repli : tant que le ratio n'est pas connu (avant le 1er chargement de page), on ajuste sur la
-  // largeur — la page reçoit AUSSITÔT une largeur (donc le zoom agit), puis le ratio affine.
   const PAGE_MARGIN = 16;
   const availW = container.w - PAGE_MARGIN * 2;
   const availH = container.h - PAGE_MARGIN * 2;
@@ -330,8 +350,8 @@ export default function PdfViewerDialog() {
       : undefined;
   const pageWidth = fitWidth != null ? fitWidth * zoom : undefined;
 
-  return (
-    <Dialog open={open} onClose={close} maxWidth="lg" fullWidth>
+  const content = (
+    <>
       {/* Surlignage dans la couche texte pdf.js : les spans ont `color: transparent` (texte de
           sélection posé sur le canvas), donc le <mark> doit garder ce texte transparent et
           n'apporter qu'un fond translucide (le canvas reste lisible). Ambre = recherche (PER-58) ;
@@ -354,8 +374,8 @@ export default function PdfViewerDialog() {
         direction="row"
         spacing={1}
         sx={{
-          // Pleine largeur du Paper : sans ça la barre épouse son contenu et le `ml: 'auto'` de la
-          // croix (ci-dessous) n'aurait aucun espace libre à absorber pour la pousser à droite.
+          // Pleine largeur du conteneur : sans ça la barre épouse son contenu et le `flexGrow` de
+          // l'espaceur (ci-dessous) n'aurait aucun espace libre à absorber pour pousser la croix à droite.
           width: '100%',
           alignItems: 'center',
           px: 2,
@@ -473,7 +493,7 @@ export default function PdfViewerDialog() {
             écrasée par l'espacement (`spacing`) du Stack. */}
         <Box sx={{ flexGrow: 1 }} />
         <Tooltip title="Fermer">
-          <IconButton size="small" onClick={close}>
+          <IconButton size="small" onClick={onClose}>
             <CloseIcon />
           </IconButton>
         </Tooltip>
@@ -498,7 +518,7 @@ export default function PdfViewerDialog() {
                 goToMatch(e.shiftKey ? -1 : 1);
               } else if (e.key === 'Escape') {
                 e.preventDefault();
-                // Ne pas laisser remonter jusqu'à l'écouteur global (qui fermerait la modale) :
+                // Ne pas laisser remonter jusqu'à l'écouteur global (qui fermerait le visualiseur) :
                 // ici Échap ne fait que fermer la barre de recherche.
                 e.stopPropagation();
                 closeSearch();
@@ -521,7 +541,7 @@ export default function PdfViewerDialog() {
             sx={{ whiteSpace: 'nowrap', minWidth: 92, textAlign: 'right' }}
           >
             {indexing
-              ? `Indexation… ${indexProgress} %`
+              ? `Indexation… ${indexProgress} %`
               : !hasQuery
                 ? ''
                 : matches && matches.length > 0
@@ -562,7 +582,10 @@ export default function PdfViewerDialog() {
       <Box
         ref={setScrollEl}
         sx={{
-          height: '85vh',
+          // Modale : hauteur fixe (85 % de la fenêtre). Plein écran : occupe tout l'espace restant.
+          height: chrome === 'dialog' ? '85vh' : 'auto',
+          flex: chrome === 'page' ? 1 : 'none',
+          minHeight: 0,
           overflow: 'auto',
           display: 'flex',
           bgcolor: 'action.hover',
@@ -616,6 +639,22 @@ export default function PdfViewerDialog() {
           </Box>
         )}
       </Box>
-    </Dialog>
+    </>
+  );
+
+  // Modale superposée (route interceptée) : ferme au clic sur le fond / Échap via `onClose`.
+  if (chrome === 'dialog') {
+    return (
+      <Dialog open onClose={onClose} maxWidth="lg" fullWidth>
+        {content}
+      </Dialog>
+    );
+  }
+
+  // Plein écran (route réelle) : colonne pleine hauteur, la zone de page prend l'espace restant.
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', bgcolor: 'background.paper' }}>
+      {content}
+    </Box>
   );
 }

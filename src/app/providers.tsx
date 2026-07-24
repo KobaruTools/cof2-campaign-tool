@@ -5,7 +5,6 @@ import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
 import { ThemeProvider } from '@mui/material/styles';
 import { CharacterSyncNotifier } from '@/components/CharacterSyncNotifier';
-import { PdfViewerHost } from '@/components/pdf/PdfViewerHost';
 import { ToastProvider } from '@/components/toast/ToastProvider';
 import theme from '@/theme';
 
@@ -30,8 +29,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <ToastProvider>{children}</ToastProvider>
         {/* Bandeau global de conflit de synchro + filet de flush avant fermeture (PER-192). */}
         <CharacterSyncNotifier />
-        {/* Visualiseur PDF global : ouvert par tout renvoi de page (`SourceRef`), PER-240. */}
-        <PdfViewerHost />
+        {/* Le visualiseur PDF n'est plus monté ici : il est porté par le slot parallèle `@viewer`
+            (route `/rules/...`, PER-60), overlay quand l'URL est interceptée. */}
       </ThemeProvider>
     </AppRouterCacheProvider>
   );

@@ -2,7 +2,7 @@
  * Recherche plein-texte dans un livre de règles (milestone « Visualiseur PDF », PER-58).
  *
  * Fonctions PURES : l'indexation (lecture de la couche texte de pdf.js, asynchrone et propre
- * au navigateur) est faite par l'appelant ([[PdfViewerDialog]]) ; ici on ne manipule que du
+ * au navigateur) est faite par l'appelant ([[PdfBookViewer]]) ; ici on ne manipule que du
  * texte déjà extrait. La recherche est insensible à la CASSE **et** aux ACCENTS — à la table on
  * tape « chute », « epee » ou « surprise » sans se soucier des diacritiques ni des majuscules.
  *

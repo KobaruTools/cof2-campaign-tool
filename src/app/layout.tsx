@@ -22,11 +22,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+// `viewer` : slot parallèle du visualiseur PDF (PER-60), rendu par-dessus la page courante quand
+// une URL `/rules/{book}/{page}` est interceptée (navigation douce), `null` sinon. C'est ce qui
+// fait de l'ouverture du visualiseur une URL partageable tout en préservant la page en dessous.
+// On s'appuie sur le type `LayoutProps<'/'>` généré par Next (inclut `children` + le slot `viewer`).
+export default function RootLayout({ children, viewer }: LayoutProps<'/'>) {
   return (
     <html lang="fr" className={roboto.variable} style={{ colorScheme: 'dark' }}>
       <body>
@@ -49,6 +49,9 @@ export default function RootLayout({
             <div style={{ flex: '1 0 auto' }}>{children}</div>
             <AppFooter />
           </div>
+          {/* Visualiseur PDF (slot parallèle `@viewer`, PER-60) : overlay superposé quand une URL
+              `/rules/...` est interceptée, `null` autrement. Sous `Providers` pour hériter du thème. */}
+          {viewer}
         </Providers>
       </body>
     </html>

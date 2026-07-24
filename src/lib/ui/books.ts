@@ -52,3 +52,20 @@ export const BOOKS: Record<BookId, BookMeta> = {
  * livre de base (leur `sourcePage` ne porte pas encore d'identifiant de livre).
  */
 export const DEFAULT_BOOK_ID: BookId = 'core-rulebook';
+
+/** Vrai si `value` est un identifiant de livre connu (garde de validation d'URL, PER-60). */
+export function isBookId(value: string): value is BookId {
+  return value in BOOKS;
+}
+
+/**
+ * URL canonique d'une page du visualiseur PDF (PER-60) : `/rules/{book}/{page}[?q=terme]`.
+ * Point d'entrée unique — tout renvoi (`SourceRef`) et le bouton d'en-tête pointent ici, ce
+ * qui rend l'ouverture du visualiseur **partageable et favorisable**. Le `term` (passage ciblé
+ * à surligner/centrer, PER-59/61) est porté par `?q=` quand il est fourni.
+ */
+export function rulesHref(bookId: BookId, page: number = 1, term?: string): string {
+  const safePage = Math.max(1, Math.trunc(page) || 1);
+  const query = term && term.trim() ? `?q=${encodeURIComponent(term.trim())}` : '';
+  return `/rules/${bookId}/${safePage}${query}`;
+}
