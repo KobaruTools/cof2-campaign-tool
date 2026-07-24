@@ -11,15 +11,21 @@
  * Idempotent :
  *   - source upsertée sur `slug`, `content_version` incrémentée à chaque passage ;
  *   - créatures upsertées sur `(source_id, slug)` — ré-exécution sans doublon ;
- *   - créatures de la source disparues de `creatures.ts` supprimées (sync).
+ *   - créatures de la source disparues de la liste supprimées (sync).
  *
- * Le contenu PAYANT (futur PDF « Le Bestiaire ») s'ingérera par le même script
- * depuis une source distincte (`private/`, gitignoré) — hors périmètre PER-241.
+ * Option de recette (PER-242) : `npm run ingest -- --with-test-source` seede EN
+ * PLUS une source PAYANTE de test (`is_paid = true`) avec des créatures FACTICES,
+ * pour recetter le gating par entitlement de bout en bout (aucun vrai contenu
+ * payant en jeu ici). Sans le flag, cette source n'est pas touchée.
+ *
+ * Le contenu PAYANT réel (futur PDF « Le Bestiaire ») s'ingérera par le même
+ * script depuis une source distincte (`private/`, gitignoré) — hors périmètre.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { creatures } from '../src/data/creatures';
+import type { Creature } from '../src/data/schema';
 import type { Database } from '../src/lib/supabase/types';
 
 // ── Source GRATUITE du contenu ingéré ici (livre de base / DRS). ──
@@ -28,6 +34,51 @@ const DRS_SOURCE = {
   name: 'Chroniques Oubliées Fantasy 2 — Livre de base (DRS)',
   is_paid: false,
 } as const;
+
+// ── Source PAYANTE de TEST (PER-242), seedée seulement avec `--with-test-source`. ──
+const TEST_PAID_SOURCE = {
+  slug: 'test-bestiaire-payant',
+  name: 'Bestiaire de test (payant)',
+  is_paid: true,
+} as const;
+
+/**
+ * Créatures FACTICES de la source de test payante — servent UNIQUEMENT à recetter
+ * le gating par entitlement (PER-242). Aucun contenu réel du livre ; à supprimer
+ * (avec la source) une fois la recette faite.
+ */
+const TEST_PAID_CREATURES: Creature[] = [
+  {
+    id: 'gobelin-de-test',
+    name: 'Gobelin de test',
+    category: 'creatures-fantastiques',
+    nc: 1,
+    size: 'petite',
+    nature: ['vivant', 'humanoide'],
+    description:
+      'Créature FACTICE de recette (PER-242) — sert à vérifier le gating par source. Ne provient d’aucun livre.',
+    abilities: { AGI: 2, CON: 0, FOR: -1, PER: 1, CHA: -2, INT: 0, VOL: 0 },
+    defense: 12,
+    hitPoints: 8,
+    initiative: 12,
+    sourcePage: 0,
+  },
+  {
+    id: 'dragon-de-test',
+    name: 'Dragon de test',
+    category: 'creatures-fantastiques',
+    nc: 12,
+    size: 'enorme',
+    nature: ['vivant'],
+    description:
+      'Créature FACTICE de recette (PER-242) — sert à vérifier le gating par source. Ne provient d’aucun livre.',
+    abilities: { AGI: 3, CON: 6, FOR: 8, PER: 4, CHA: 3, INT: 2, VOL: 5 },
+    defense: 22,
+    hitPoints: 180,
+    initiative: 18,
+    sourcePage: 0,
+  },
+];
 
 /**
  * Charge `.env.local` (racine projet) dans `process.env` sans écraser une variable
@@ -57,26 +108,24 @@ function loadDotEnvLocal(): void {
   }
 }
 
-async function main(): Promise<void> {
-  loadDotEnvLocal();
+type SupabaseAdmin = ReturnType<typeof createClient<Database>>;
+type SourceDef = { slug: string; name: string; is_paid: boolean };
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
-  if (!url || !secretKey) {
-    throw new Error(
-      "Ingestion impossible : NEXT_PUBLIC_SUPABASE_URL et SUPABASE_SECRET_KEY requis dans l'environnement local (.env.local).",
-    );
-  }
-
-  const supabase = createClient<Database>(url, secretKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
+/**
+ * Ingère UNE source et ses créatures (idempotent) : bump de `content_version`,
+ * upsert de la source puis des créatures (blob + colonnes projetées), et sync des
+ * suppressions (les créatures de la source disparues de `list` sont retirées).
+ */
+async function ingestSource(
+  supabase: SupabaseAdmin,
+  def: SourceDef,
+  list: Creature[],
+): Promise<void> {
   // 1. Version courante de la source (pour l'incrémenter).
   const { data: existing, error: readErr } = await supabase
     .from('sources')
     .select('content_version')
-    .eq('slug', DRS_SOURCE.slug)
+    .eq('slug', def.slug)
     .maybeSingle();
   if (readErr) throw readErr;
   const nextVersion = (existing?.content_version ?? 0) + 1;
@@ -86,9 +135,9 @@ async function main(): Promise<void> {
     .from('sources')
     .upsert(
       {
-        slug: DRS_SOURCE.slug,
-        name: DRS_SOURCE.name,
-        is_paid: DRS_SOURCE.is_paid,
+        slug: def.slug,
+        name: def.name,
+        is_paid: def.is_paid,
         content_version: nextVersion,
       },
       { onConflict: 'slug' },
@@ -97,11 +146,11 @@ async function main(): Promise<void> {
     .single();
   if (srcErr) throw srcErr;
   console.log(
-    `Source « ${DRS_SOURCE.slug} » → content_version ${source.content_version} (id ${source.id}).`,
+    `Source « ${def.slug} »${def.is_paid ? ' [payante]' : ''} → content_version ${source.content_version} (id ${source.id}).`,
   );
 
   // 3. Upsert des créatures (sur (source_id, slug)) : blob + colonnes projetées.
-  const rows = creatures.map((c, index) => ({
+  const rows = list.map((c, index) => ({
     source_id: source.id,
     slug: c.id,
     name: c.name,
@@ -121,7 +170,7 @@ async function main(): Promise<void> {
   if (upErr) throw upErr;
   console.log(`Upsert de ${rows.length} créatures.`);
 
-  // 4. Sync : supprime les créatures de la source disparues de `creatures.ts`.
+  // 4. Sync : supprime les créatures de la source disparues de la liste.
   const currentSlugs = new Set(rows.map((r) => r.slug));
   const { data: dbRows, error: listErr } = await supabase
     .from('creatures')
@@ -137,6 +186,33 @@ async function main(): Promise<void> {
       .in('slug', stale);
     if (delErr) throw delErr;
     console.log(`Suppression de ${stale.length} créatures obsolètes : ${stale.join(', ')}.`);
+  }
+}
+
+async function main(): Promise<void> {
+  loadDotEnvLocal();
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const secretKey = process.env.SUPABASE_SECRET_KEY;
+  if (!url || !secretKey) {
+    throw new Error(
+      "Ingestion impossible : NEXT_PUBLIC_SUPABASE_URL et SUPABASE_SECRET_KEY requis dans l'environnement local (.env.local).",
+    );
+  }
+
+  const supabase = createClient<Database>(url, secretKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  // Source gratuite du livre de base : toujours ingérée.
+  await ingestSource(supabase, DRS_SOURCE, creatures);
+
+  // Source de test payante (recette du gating PER-242) : opt-in par flag.
+  if (process.argv.includes('--with-test-source')) {
+    await ingestSource(supabase, TEST_PAID_SOURCE, TEST_PAID_CREATURES);
+    console.log(
+      `Source de test payante « ${TEST_PAID_SOURCE.slug} » seedée (${TEST_PAID_CREATURES.length} créatures factices).`,
+    );
   }
 
   console.log('Ingestion du bestiaire terminée.');

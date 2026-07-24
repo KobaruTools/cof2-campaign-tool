@@ -101,7 +101,43 @@ Provisionnement (en plus du socle) :
 
 L'ingestion du futur PDF **payant** « Le Bestiaire » passera par le même script,
 depuis une source distincte (`is_paid = true`, contenu hors git) — gating par
-entitlement livré en PER-242.
+entitlement livré en PER-242 (ci-dessous).
+
+### Gating par source : entitlements (PER-242)
+
+- `migrations/0007_source_entitlements.sql` — table `source_entitlements
+  (user_id, source_id)` (une ligne = accès accordé) + resserrement de la RLS :
+  une source (et donc ses créatures) est **visible ssi** `is_paid = false` **OU**
+  l'utilisateur courant possède un entitlement dessus (helper
+  `current_user_is_entitled`, qui exclut les sessions anonymes via
+  `is_anonymous()`). Un non-entitled ne reçoit **aucune** ligne d'une source
+  payante — invisibilité totale (ni liste, ni détail, ni count). La policy
+  `creatures` **délègue** entièrement le gating à `sources`.
+- L'écriture de `source_entitlements` reste réservée à la `service_role` (aucune
+  policy d'écriture) : pose manuelle en recette, RPC de déblocage par code en
+  PER-243. Les sessions joueur anonymes (PER-191) ne peuvent donc jamais obtenir
+  d'accès payant.
+
+Recette du gating (l'octroi par code = PER-243 ; ici on pose l'entitlement à la
+main) :
+
+1. **Seeder une source de test payante** (créatures factices, aucun vrai contenu) :
+   ```sh
+   npm run ingest -- --with-test-source
+   ```
+   Crée la source `test-bestiaire-payant` (`is_paid = true`) + 2 créatures FACTICES.
+2. **Vérifier l'invisibilité** : `/bestiary` en anonyme et avec un compte SANS
+   entitlement → la source de test est ABSENTE (créatures factices non listées).
+3. **Accorder l'accès** (SQL Supabase, `service_role`), pour un utilisateur réel :
+   ```sql
+   insert into public.source_entitlements (user_id, source_id)
+   select '<AUTH_USER_UUID>', id from public.sources where slug = 'test-bestiaire-payant';
+   ```
+   → au rechargement, ce compte VOIT désormais la source de test et ses créatures.
+4. **Retrait d'accès** (`delete` de la ligne) → la source disparaît du manifeste,
+   le cache IndexedDB (PER-244) la purge automatiquement au chargement suivant.
+5. **Nettoyage** : supprimer la source de test (`delete from public.sources where
+   slug = 'test-bestiaire-payant'` — cascade sur créatures + entitlements).
 
 ### Cache persistant côté client (PER-244)
 

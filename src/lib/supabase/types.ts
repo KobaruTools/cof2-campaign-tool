@@ -69,6 +69,60 @@ export type Database = {
         }
         Relationships: []
       }
+      characters: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          data: Json
+          id: string
+          owner_id: string
+          player_id: string | null
+          schema_version: number
+          status: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          data: Json
+          id?: string
+          owner_id: string
+          player_id?: string | null
+          schema_version: number
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          owner_id?: string
+          player_id?: string | null
+          schema_version?: number
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "characters_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "characters_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creatures: {
         Row: {
           base_creature_id: string | null
@@ -124,90 +178,6 @@ export type Database = {
             columns: ["source_id"]
             isOneToOne: false
             referencedRelation: "sources"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      sources: {
-        Row: {
-          content_version: number
-          created_at: string
-          id: string
-          is_paid: boolean
-          name: string
-          slug: string
-          updated_at: string
-        }
-        Insert: {
-          content_version?: number
-          created_at?: string
-          id?: string
-          is_paid?: boolean
-          name: string
-          slug: string
-          updated_at?: string
-        }
-        Update: {
-          content_version?: number
-          created_at?: string
-          id?: string
-          is_paid?: boolean
-          name?: string
-          slug?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      characters: {
-        Row: {
-          campaign_id: string | null
-          created_at: string
-          data: Json
-          id: string
-          owner_id: string
-          player_id: string | null
-          schema_version: number
-          status: string
-          updated_at: string
-          version: number
-        }
-        Insert: {
-          campaign_id?: string | null
-          created_at?: string
-          data: Json
-          id?: string
-          owner_id: string
-          player_id?: string | null
-          schema_version: number
-          status?: string
-          updated_at?: string
-          version?: number
-        }
-        Update: {
-          campaign_id?: string | null
-          created_at?: string
-          data?: Json
-          id?: string
-          owner_id?: string
-          player_id?: string | null
-          schema_version?: number
-          status?: string
-          updated_at?: string
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "characters_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "characters_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "players"
             referencedColumns: ["id"]
           },
         ]
@@ -276,6 +246,62 @@ export type Database = {
           },
         ]
       }
+      source_entitlements: {
+        Row: {
+          granted_at: string
+          source_id: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          source_id: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          source_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_entitlements_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sources: {
+        Row: {
+          content_version: number
+          created_at: string
+          id: string
+          is_paid: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          content_version?: number
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          content_version?: number
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -283,6 +309,11 @@ export type Database = {
     Functions: {
       current_player_campaign_id: { Args: never; Returns: string }
       current_player_id: { Args: never; Returns: string }
+      current_user_is_entitled: {
+        Args: { p_source_id: string }
+        Returns: boolean
+      }
+      is_anonymous: { Args: never; Returns: boolean }
       touch_player_presence: { Args: never; Returns: undefined }
     }
     Enums: {
