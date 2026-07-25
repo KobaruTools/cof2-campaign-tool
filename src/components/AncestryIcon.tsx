@@ -18,9 +18,10 @@ export interface AncestryIconProps {
 }
 
 /**
- * Icône d'illustration d'un peuple (game-icons.net, cf. ancestryIcons.ts). Rendue
- * en SVG inline pour pouvoir être recolorée via `currentColor`. Ne rend rien si
- * l'id est inconnu (ex. voie du mage, voies de prestige).
+ * Icône d'illustration d'un peuple (game-icons.net, cf. ancestryIcons.ts). Le jeu
+ * héberge aussi deux clés hors-peuple pour les voies sans profil : `mage` (chapeau)
+ * et `prestige` (étoile). Rendue en SVG inline pour être recolorée via `currentColor`.
+ * Ne rend rien si l'id est inconnu.
  */
 export function AncestryIcon({ ancestryId, size = 24, color, title, sx }: AncestryIconProps) {
   const markup = ANCESTRY_ICON_PATHS[ancestryId];

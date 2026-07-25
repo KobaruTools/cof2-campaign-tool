@@ -53,6 +53,7 @@ conservée dans `ANCESTRY_ICON_SOURCES` (même fichier) et dans
 | Humain | `delapouite/person.svg` | Delapouite |
 | Nain | `delapouite/dwarf-face.svg` | Delapouite |
 | Voie du mage | `lorc/pointy-hat.svg` | Lorc |
+| Voie de prestige | `delapouite/round-star.svg` | Delapouite |
 
 ## Icônes des statistiques dérivées
 
