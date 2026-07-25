@@ -4,9 +4,10 @@
  * Carte d'une créature ajoutée au combat tracker de l'écran de MJ (PER-247, remplace
  * l'ancienne `GmScreenBanditCard` spécifique au bandit). Réutilise la MÊME coque que
  * {@link GmScreenCard} (Paper vitré sombre, coins arrondis) pour rester cohérente avec
- * les cartes des personnages joueurs, mais teintée de rouge pour marquer un adversaire,
- * et rend le bloc de stats de la créature TEL QU'IL APPARAÎT DANS LE BESTIAIRE
- * (`BestiaryStatBlock` via `CreatureBlobView`, blob chargé à la demande).
+ * les cartes des personnages joueurs, mais teintée selon le CAMP (PER-249 : rouge pour
+ * un adversaire, vert pour un allié), et rend le bloc de stats de la créature TEL QU'IL
+ * APPARAÎT DANS LE BESTIAIRE (`BestiaryStatBlock` via `CreatureBlobView`, blob chargé à
+ * la demande).
  */
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -18,12 +19,15 @@ import Stack from '@mui/material/Stack';
 import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CreatureBlobView } from '@/components/bestiary/CreatureBlobView';
+import { SIDE_ACCENT, SIDE_LABELS, type CreatureSide } from '@/lib/ui/creature';
 
 export interface GmScreenCreatureCardProps {
   /** Slug de la créature du bestiaire à afficher (`Creature.id`). */
   slug: string;
   /** Libellé du badge (ex. « Gobelin 2 ») pour distinguer plusieurs instances. */
   label: string;
+  /** Camp de la créature (PER-249) : teinte la carte (rouge adversaire / vert allié). */
+  side: CreatureSide;
   /**
    * Visible par les joueurs (fenêtre projetée) : `false` = masquée (œil fermé ; le MJ la
    * voit toujours, mais elle n'apparaît pas dans la projection).
@@ -35,7 +39,8 @@ export interface GmScreenCreatureCardProps {
   onRemove: () => void;
 }
 
-export function GmScreenCreatureCard({ slug, label, visible, onToggleVisible, onRemove }: GmScreenCreatureCardProps) {
+export function GmScreenCreatureCard({ slug, label, side, visible, onToggleVisible, onRemove }: GmScreenCreatureCardProps) {
+  const accent = SIDE_ACCENT[side];
   return (
     <Paper
       sx={{
@@ -45,12 +50,12 @@ export function GmScreenCreatureCard({ slug, label, visible, onToggleVisible, on
         // gérable (elle est simplement absente de la fenêtre projetée).
         opacity: visible ? 1 : 0.8,
         bgcolor: 'rgba(20, 20, 23, 0.72)',
-        // Teinte rouge discrète (bas droite → haut gauche) : marque un adversaire,
-        // en parité de facture avec le dégradé de profil des cartes joueurs.
-        backgroundImage: `linear-gradient(to top left, ${alpha('#e57373', 0.16)}, transparent)`,
+        // Teinte discrète du camp (bas droite → haut gauche) : rouge = adversaire, vert =
+        // allié, en parité de facture avec le dégradé de profil des cartes joueurs.
+        backgroundImage: `linear-gradient(to top left, ${alpha(accent, 0.16)}, transparent)`,
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
-        border: '1px solid rgba(229, 115, 115, 0.28)',
+        border: `1px solid ${alpha(accent, 0.28)}`,
         borderRadius: 3,
       }}
     >
@@ -68,12 +73,12 @@ export function GmScreenCreatureCard({ slug, label, visible, onToggleVisible, on
                 borderRadius: 1,
                 fontSize: '0.8125rem',
                 lineHeight: 1.4,
-                border: '1px solid rgba(229, 115, 115, 0.35)',
-                bgcolor: 'rgba(229, 115, 115, 0.12)',
+                border: `1px solid ${alpha(accent, 0.35)}`,
+                bgcolor: alpha(accent, 0.12),
                 color: 'text.primary',
               }}
             >
-              {label} · PNJ
+              {label} · {SIDE_LABELS[side]}
             </Box>
           </Box>
           {/* Visibilité joueurs (projection) : œil ouvert = visible, fermé = masquée.

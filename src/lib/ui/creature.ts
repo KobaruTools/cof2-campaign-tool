@@ -62,6 +62,29 @@ export function resolveCreatureAbilities(
 }
 
 /**
+ * Camp d'une créature dans le combat de l'écran de MJ (PER-249) : `'ally'` = alliée des
+ * joueurs, `'enemy'` = adversaire. Absent, sur les instances déjà enregistrées ou les
+ * bandits legacy, vaut adversaire (migration douce, cf. `useGmCombatState`).
+ */
+export type CreatureSide = "ally" | "enemy";
+
+/**
+ * Couleurs d'accent par camp sur l'écran de MJ (PER-249) : rouge pour les adversaires
+ * (accent créature historique), vert pour les alliés. Choisies claires pour rester
+ * lisibles sur le fond sombre de l'écran de MJ et de la fenêtre projetée.
+ */
+export const SIDE_ACCENT: Record<CreatureSide, string> = {
+  enemy: "#e57373",
+  ally: "#81c784",
+};
+
+/** Libellés français du camp (badges + titres de section de l'écran de MJ). */
+export const SIDE_LABELS: Record<CreatureSide, string> = {
+  enemy: "Adversaire",
+  ally: "Allié",
+};
+
+/**
  * Formate une valeur numérique de NC pour l'affichage : le demi se montre avec le
  * symbole « ½ » (U+00BD), les autres valeurs telles quelles. La donnée reste numérique
  * (`nc: 0.5`) pour permettre le tri ; seul l'affichage utilise le symbole.

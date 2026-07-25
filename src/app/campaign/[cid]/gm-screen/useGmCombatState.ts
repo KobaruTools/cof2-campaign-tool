@@ -24,6 +24,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Depletion } from '@/lib/character/types';
+import type { CreatureSide } from '@/lib/ui/creature';
 
 /** Instance d'une créature dans le combat en cours. */
 export interface CreatureInstance {
@@ -37,6 +38,20 @@ export interface CreatureInstance {
    * PAS dans la projection). Permet de préparer un combat sans le révéler d'emblée.
    */
   visible?: boolean;
+  /**
+   * Camp de la créature (PER-249) : `'ally'` = alliée des joueurs, `'enemy'` = adversaire.
+   * **Absent = adversaire** (migration douce : les instances déjà enregistrées et les
+   * bandits legacy, dépourvus de ce champ, sont traités comme adverses partout).
+   */
+  side?: CreatureSide;
+}
+
+/** Options d'ajout d'une créature au combat (PER-247, PER-248, PER-249). */
+export interface AddCreatureOptions {
+  /** Visible par les joueurs sur la fenêtre projetée. Défaut `true`. */
+  visible?: boolean;
+  /** Camp de la créature. Défaut `'enemy'` (adversaire). */
+  side?: CreatureSide;
 }
 
 export interface GmCombatState {
@@ -130,8 +145,8 @@ function reviveState(raw: string): GmCombatState {
 }
 
 export interface GmCombatStateApi extends GmCombatState {
-  /** Ajoute une instance de la créature `slug` (id = `c-<nextInstanceId>`), visible par défaut. */
-  addCreature: (slug: string, visible?: boolean) => void;
+  /** Ajoute une instance de la créature `slug` (id = `c-<nextInstanceId>`) ; visible + adversaire par défaut. */
+  addCreature: (slug: string, options?: AddCreatureOptions) => void;
   /** Retire l'instance `instanceId` (et son manque de PV). */
   removeCreature: (instanceId: string) => void;
   /** Bascule la visibilité joueurs de l'instance `instanceId` (fenêtre projetée). */
@@ -190,10 +205,18 @@ export function useGmCombatState(cid: string): GmCombatStateApi {
   );
 
   const addCreature = useCallback(
-    (slug: string, visible = true) =>
+    (slug: string, options?: AddCreatureOptions) =>
       update((prev) => ({
         ...prev,
-        creatures: [...prev.creatures, { id: `c-${prev.nextInstanceId}`, slug, visible }],
+        creatures: [
+          ...prev.creatures,
+          {
+            id: `c-${prev.nextInstanceId}`,
+            slug,
+            visible: options?.visible ?? true,
+            side: options?.side ?? 'enemy',
+          },
+        ],
         nextInstanceId: prev.nextInstanceId + 1,
       })),
     [update],

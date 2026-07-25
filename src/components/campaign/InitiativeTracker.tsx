@@ -41,6 +41,12 @@ export interface InitiativeRow {
   profileLabel: string;
   /** Couleur d'accent du profil (teinte du texte de profil). */
   profileColor: string;
+  /**
+   * Couleur d'accent de la COLONNE (PER-249) : teinte la bordure du bloc selon le camp de
+   * la créature (rouge = adversaire, vert = allié). Absente pour les personnages joueurs
+   * (bordure neutre). N'a pas d'effet sur le combattant actif, dont la bordure reste blanche.
+   */
+  accentColor?: string;
   /** URL du portrait (personnage). Absent → avatar de repli (bandit). */
   portraitSrc?: string;
   /** Nom du joueur qui incarne le personnage (affiché entre parenthèses sous le nom). */
@@ -232,10 +238,12 @@ export function InitiativeTracker({
                   // sont jamais masqués (`hidden` toujours faux).
                   opacity: row.hidden ? 0.8 : 1,
                   // Bordure toujours de 2px (seule la couleur change) pour éviter tout
-                  // saut de mise en page quand le tour bascule. Actif = contour blanc épais.
+                  // saut de mise en page quand le tour bascule. Actif = contour blanc épais ;
+                  // sinon on teinte selon le camp (PER-249 : rouge adversaire / vert allié),
+                  // repli neutre pour les personnages joueurs (pas d'accent de camp).
                   border: isActive
                     ? '2px solid rgba(255, 255, 255, 0.9)'
-                    : '2px solid rgba(255, 255, 255, 0.08)',
+                    : `2px solid ${row.accentColor ? alpha(row.accentColor, 0.5) : 'rgba(255, 255, 255, 0.08)'}`,
                   boxShadow: isActive ? '0 0 14px 2px rgba(255, 255, 255, 0.35)' : 'none',
                   transition: 'border-color 0.15s, box-shadow 0.15s',
                 }}

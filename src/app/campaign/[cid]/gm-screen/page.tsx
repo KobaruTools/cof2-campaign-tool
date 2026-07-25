@@ -36,7 +36,40 @@ import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
 import { HomeBackground } from '@/components/HomeBackground';
+import { SIDE_ACCENT } from '@/lib/ui/creature';
 import { useGmScreenCombat } from './useGmScreenCombat';
+
+/**
+ * Gabarit de colonnes commun aux trois grilles (joueurs / alliés / adversaires) : 3
+ * colonnes sur grand écran, palier tablette à 2, repli mobile à 1.
+ */
+const GRID_SX = {
+  display: 'grid',
+  gridTemplateColumns: {
+    xs: 'minmax(0, 1fr)',
+    sm: 'repeat(2, minmax(0, 1fr))',
+    lg: 'repeat(3, minmax(0, 1fr))',
+  },
+  gap: 2,
+  alignItems: 'start',
+} as const;
+
+/** Titre d'une section de la grille de combat (joueurs / alliés / adversaires). */
+function SectionHeading({ label, color }: { label: string; color?: string }) {
+  return (
+    <Typography
+      variant="subtitle2"
+      sx={{
+        fontWeight: 700,
+        color: color ?? 'text.secondary',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+      }}
+    >
+      {label}
+    </Typography>
+  );
+}
 
 export default function GmScreenPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
@@ -52,6 +85,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     claimed,
     playerNameById,
     labeledCreatures,
+    allies,
+    enemies,
     initiativeRows,
     currentTurnKey,
     setCurrentTurnKey,
@@ -174,43 +209,63 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             </Typography>
           </Paper>
         ) : (
-          <Box
-            sx={{
-              display: 'grid',
-              // Grille de 3 colonnes (les fiches de personnage), avec un palier
-              // INTERMÉDIAIRE à 2 colonnes (tablette) avant le repli à 1 colonne
-              // sur mobile où 3 de front seraient illisibles.
-              gridTemplateColumns: {
-                xs: 'minmax(0, 1fr)',
-                sm: 'repeat(2, minmax(0, 1fr))',
-                lg: 'repeat(3, minmax(0, 1fr))',
-              },
-              gap: 2,
-              alignItems: 'start',
-            }}
-          >
-            {claimed.map((character) => (
-              <GmScreenCard
-                key={character.id}
-                character={character}
-                playerName={
-                  character.playerId ? playerNameById.get(character.playerId) ?? null : null
-                }
-                href={`/character/${character.id}`}
-              />
-            ))}
-            {/* Cartes des créatures (adversaires du combat), à la suite des joueurs. */}
-            {labeledCreatures.map((inst) => (
-              <GmScreenCreatureCard
-                key={inst.id}
-                slug={inst.slug}
-                label={inst.label}
-                visible={inst.visible !== false}
-                onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
-                onRemove={() => removeCreature(inst.id)}
-              />
-            ))}
-          </Box>
+          // Trois grilles distinctes (PER-249) : joueurs, puis alliés (si présents), puis
+          // adversaires (si présents). Chacune reprend le même gabarit de colonnes.
+          <Stack spacing={{ xs: 3, sm: 4 }}>
+            {claimed.length > 0 && (
+              <Box>
+                <SectionHeading label="Joueurs" />
+                <Box sx={{ ...GRID_SX, mt: 1.5 }}>
+                  {claimed.map((character) => (
+                    <GmScreenCard
+                      key={character.id}
+                      character={character}
+                      playerName={
+                        character.playerId ? playerNameById.get(character.playerId) ?? null : null
+                      }
+                      href={`/character/${character.id}`}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+            {allies.length > 0 && (
+              <Box>
+                <SectionHeading label="Alliés" color={SIDE_ACCENT.ally} />
+                <Box sx={{ ...GRID_SX, mt: 1.5 }}>
+                  {allies.map((inst) => (
+                    <GmScreenCreatureCard
+                      key={inst.id}
+                      slug={inst.slug}
+                      label={inst.label}
+                      side="ally"
+                      visible={inst.visible !== false}
+                      onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
+                      onRemove={() => removeCreature(inst.id)}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+            {enemies.length > 0 && (
+              <Box>
+                <SectionHeading label="Adversaires" color={SIDE_ACCENT.enemy} />
+                <Box sx={{ ...GRID_SX, mt: 1.5 }}>
+                  {enemies.map((inst) => (
+                    <GmScreenCreatureCard
+                      key={inst.id}
+                      slug={inst.slug}
+                      label={inst.label}
+                      side="enemy"
+                      visible={inst.visible !== false}
+                      onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
+                      onRemove={() => removeCreature(inst.id)}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+          </Stack>
         )}
 
         {/* Séparateur horizontal, puis tracker d'initiative (PER-236) : personnages
@@ -228,7 +283,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       <AddCreatureDialog
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onAdd={(slug, visible) => addCreature(slug, visible)}
+        onAdd={(slug, options) => addCreature(slug, options)}
       />
     </>
   );

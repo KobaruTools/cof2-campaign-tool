@@ -24,19 +24,21 @@ import { deriveStats } from '@/lib/engine';
 import { applyDamage, healHp, resetHp } from '@/lib/character/gauges';
 import { summarize } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
-import { creatureNcLabel } from '@/lib/ui/creature';
+import { creatureNcLabel, SIDE_ACCENT, SIDE_LABELS } from '@/lib/ui/creature';
 import type { DamageKind } from '@/components/sheet/HpGauge';
 import type { InitiativeRow } from '@/components/campaign/InitiativeTracker';
 import type { Character } from '@/lib/character/types';
 import type { Campaign } from '@/lib/campaign/types';
-import { useGmCombatState, type CreatureInstance } from './useGmCombatState';
+import { useGmCombatState, type CreatureInstance, type AddCreatureOptions } from './useGmCombatState';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
 import { useBestiaryStore } from '@/stores/bestiary';
 
 /** Couleur d'accent des lignes de créatures adverses (PNJ). */
-export const CREATURE_ACCENT = '#e57373';
+export const CREATURE_ACCENT = SIDE_ACCENT.enemy;
+/** Couleur d'accent des lignes de créatures alliées (PER-249). */
+export const ALLY_ACCENT = SIDE_ACCENT.ally;
 
 /** Instance de créature enrichie de son étiquette numérotée (« Gobelin 1 / 2 »). */
 export type LabeledCreature = CreatureInstance & { label: string };
@@ -52,16 +54,20 @@ export interface GmScreenCombat {
   claimed: Character[];
   /** Nom du joueur par id (pour l'étiquette « (Joueur) »). */
   playerNameById: Map<string, string>;
-  /** Créatures du combat, numérotées par créature dans l'ordre d'ajout. */
+  /** Créatures du combat, numérotées par créature dans l'ordre d'ajout (tous camps confondus). */
   labeledCreatures: LabeledCreature[];
+  /** Créatures ALLIÉES du combat (sous-ensemble de `labeledCreatures`), dans l'ordre d'ajout. */
+  allies: LabeledCreature[];
+  /** Créatures ADVERSES du combat (sous-ensemble de `labeledCreatures`), dans l'ordre d'ajout. */
+  enemies: LabeledCreature[];
   /** Lignes du tracker (persos réclamés + créatures), classées par initiative décroissante. */
   initiativeRows: InitiativeRow[];
   /** Clé du combattant dont c'est le tour (`null` = combat non démarré). */
   currentTurnKey: string | null;
   /** Fixe le combattant dont c'est le tour. */
   setCurrentTurnKey: (key: string | null) => void;
-  /** Ajoute une instance de la créature `slug` au combat, avec sa visibilité joueurs initiale. */
-  addCreature: (slug: string, visible?: boolean) => void;
+  /** Ajoute une instance de la créature `slug` au combat (visibilité joueurs + camp initiaux). */
+  addCreature: (slug: string, options?: AddCreatureOptions) => void;
   /** Retire l'instance `instanceId` du combat. */
   removeCreature: (instanceId: string) => void;
   /** Bascule la visibilité joueurs d'une instance de créature (fenêtre projetée). */
@@ -130,6 +136,17 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
     });
   }, [creatures, creatureNameBySlug]);
 
+  // Séparation par camp (PER-249) : alliés d'un côté, adversaires de l'autre. Le camp
+  // absent (instances / bandits legacy) vaut adversaire, d'où le test explicite `=== 'ally'`.
+  const allies = useMemo(
+    () => labeledCreatures.filter((inst) => inst.side === 'ally'),
+    [labeledCreatures],
+  );
+  const enemies = useMemo(
+    () => labeledCreatures.filter((inst) => inst.side !== 'ally'),
+    [labeledCreatures],
+  );
+
   // Personnages de CETTE campagne réclamés par un joueur (`playerId` non nul).
   const claimed = useMemo(
     () =>
@@ -184,6 +201,9 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
         const depletion = depletions[inst.id] ?? {};
         const nc = creatureNcLabel(blob);
         const isVisible = inst.visible !== false;
+        // Camp (PER-249) : accent de colonne + libellé de repli quand la créature n'a pas de NC.
+        const isAlly = inst.side === 'ally';
+        const accent = isAlly ? ALLY_ACCENT : CREATURE_ACCENT;
         return [
           {
             key: inst.id,
@@ -196,8 +216,9 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
             // l'avatar générique ; une variante sans illustration propre hérite de celle de
             // sa base côté données. Absente → repli sur l'icône « person » du tracker.
             portraitSrc: blob.illustration,
-            profileLabel: nc ? `NC ${nc}` : 'PNJ',
-            profileColor: CREATURE_ACCENT,
+            profileLabel: nc ? `NC ${nc}` : isAlly ? SIDE_LABELS.ally : 'PNJ',
+            profileColor: accent,
+            accentColor: accent,
             initiative,
             maxHp,
             depletion,
@@ -227,6 +248,8 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
     claimed,
     playerNameById,
     labeledCreatures,
+    allies,
+    enemies,
     initiativeRows,
     currentTurnKey,
     setCurrentTurnKey,
