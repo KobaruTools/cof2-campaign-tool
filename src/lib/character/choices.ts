@@ -16,6 +16,7 @@
  * pas le moteur de calcul (qui, lui, reste pur et sans dépendance aux données).
  */
 import { classById, classes, featureById, pathById, paths, priestGodById } from '@/data';
+import { familiarFromOptionId, FANTASTIC_FAMILIAR_R3_ID } from '@/data/fantastic-familiars';
 import {
   ABILITY_IDS,
   type AbilityId,
@@ -384,12 +385,21 @@ function featuresInChoiceDomain(
   const allowedRanks = new Set(choice.allowedRanks);
   const owned = new Set(character.featureIds);
 
+  // Scope DYNAMIQUE « profil de magie du familier » (PER-74, Résistance r5) : le profil admissible
+  // dépend du familier retenu au rang 3. Sans familier choisi → domaine vide (rien à apprendre encore).
+  let familiarProfileClassId: string | undefined;
+  if (choice.familiarSpellProfile) {
+    familiarProfileClassId = familiarSpellProfileClassId(character);
+    if (!familiarProfileClassId) return [];
+  }
+
   // Ensemble des voies de profil admissibles selon les contraintes.
   const classPathIds = new Set<string>();
   for (const path of paths) {
     if (path.type !== 'class') continue;
     if (choice.pathIds && !choice.pathIds.includes(path.id)) continue;
     if (choice.classIds && !path.classIds.some((c) => choice.classIds!.includes(c))) continue;
+    if (familiarProfileClassId && !path.classIds.includes(familiarProfileClassId)) continue;
     if (choice.familyScope === 'same-family') {
       const family = classById.get(character.classId)?.familyId;
       const sameFamilyClasses = new Set(
@@ -409,10 +419,24 @@ function featuresInChoiceDomain(
         !owned.has(f.id) &&
         allowedRanks.has(f.rank) &&
         classPathIds.has(f.pathId) &&
+        // Scope familier (r5) : « un SORT » → on ne retient que les sorts.
+        !(choice.familiarSpellProfile && !f.isSpell) &&
         // Talent pour la magie : pas de capacité qui octroie un bonus de DEF (p. 50).
         !(choice.excludeDefBonus && featureGrantsDefBonus(f.id)),
     )
     .sort((a, b) => a.pathId.localeCompare(b.pathId) || a.rank - b.rank);
+}
+
+/**
+ * Profil de magie (classId) dont le familier fantastique retenu au rang 3 fait apprendre un sort
+ * (PER-74, Résistance r5) : `FantasticFamiliar.spellProfile`, avec la valeur spéciale `'main-profile'`
+ * (minimoï) résolue vers le PROFIL PRINCIPAL du personnage. `undefined` si aucun familier n'est choisi.
+ */
+export function familiarSpellProfileClassId(character: Character): string | undefined {
+  const sel = character.featureChoices?.[FANTASTIC_FAMILIAR_R3_ID]?.[0];
+  const familiar = familiarFromOptionId(typeof sel === 'string' ? sel : undefined);
+  if (!familiar) return undefined;
+  return familiar.spellProfile === 'main-profile' ? character.classId : familiar.spellProfile;
 }
 
 /**

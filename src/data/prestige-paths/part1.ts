@@ -706,6 +706,10 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Au prix d'une action limitée, le personnage peut se transformer en forme hybride, mi-homme, mi-loup pendant 1 min. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité. Sous cette forme, il ne peut pas lancer de sort ou utiliser d'arme pour attaquer à distance, en revanche il obtient une attaque de morsure (Attaque au contact) qui inflige [1d4°+FOR] DM en action gratuite une fois par round. Il reprend immédiatement sa forme normale s'il tombe à 0 PV.",
+    // PER-74 : DM de la morsure conférée = formule dé évolutif + FOR (`[1d4° + FOR]`). Le reste
+    // (durée « 1 min », « Attaque au contact » auto-glosé) reste littéral.
+    richText:
+      "Au prix d'une action limitée, le personnage peut se transformer en forme hybride, mi-homme, mi-loup pendant 1 min. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité. Sous cette forme, il ne peut pas lancer de sort ou utiliser d'arme pour attaquer à distance, en revanche il obtient une attaque de morsure (Attaque au contact) qui inflige [1d4° + FOR] DM en action gratuite une fois par round. Il reprend immédiatement sa forme normale s'il tombe à 0 PV.",
     sourcePage: 130,
   },
   {
@@ -717,6 +721,12 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage peut prendre la forme d'un loup pendant une durée maximale de 1 h par rang chaque jour. Le personnage conserve toutes ses caractéristiques sauf celles ci-dessous, ainsi que sa valeur d'attaque au contact habituelle.\n\nLOUP\n| FOR +3 | AGI +1 |\nDéfense [12 + rang] · Initiative 15\nDM 1d4+3\nBonus de +5 aux tests basés sur la PER. Sous cette forme, il réduit de 5 les DM qui lui sont infligés par des armes qui ne sont pas en argent, et il gagne un bonus de +5 à tous les tests de poursuite et pour pister une trace.",
+    // PER-74 : dans le stat-block du loup, seuls la Défense (`[12 + rang]`) et le DM (`[1d4 + 3]`)
+    // sont balisés (résolus au rang de voie / au dé). Le « +5 aux tests basés sur la PER » et le
+    // « +5 aux tests de poursuite » restent VERBATIM (bonus TEMPORAIRES, propres à la forme de loup —
+    // hors périmètre test-bonus PER-89, réservé aux bonus inconditionnels du porteur). La RD est modélisée.
+    richText:
+      "Le personnage peut prendre la forme d'un loup pendant une durée maximale de 1 h par rang chaque jour. Le personnage conserve toutes ses caractéristiques sauf celles ci-dessous, ainsi que sa valeur d'attaque au contact habituelle.\n\nLOUP\n| FOR +3 | AGI +1 |\nDéfense [12 + rang] · Initiative 15\nDM [1d4 + 3]\nBonus de +5 aux tests basés sur la PER. Sous cette forme, il réduit de 5 les DM qui lui sont infligés par des armes qui ne sont pas en argent, et il gagne un bonus de +5 à tous les tests de poursuite et pour pister une trace.",
     // PER-137 : RD −5 contre les armes non argentées, CONDITIONNELLE à la forme de loup. Marqueur
     // d'état (interrupteur manuel) pour n'afficher la RD que sous cette forme.
     effects: [
@@ -738,6 +748,11 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Désormais, lorsqu'il obtient 15-20 sur son attaque de morsure, le lycanthrope ajoute 1d4° aux DM de sa morsure (sous forme de loup ou d'hybride).",
+    // PER-74 : seul le dé évolutif conféré (`{1d4°}`) est balisé. La plage « 15-20 » reste VERBATIM
+    // (plage de critique de la morsure, attaque conférée non maniée — modélisation `criticalRange`
+    // à trancher en relecture, hors passe richText).
+    richText:
+      "Désormais, lorsqu'il obtient 15-20 sur son attaque de morsure, le lycanthrope ajoute {1d4°} aux DM de sa morsure (sous forme de loup ou d'hybride).",
     sourcePage: 131,
   },
   {
@@ -831,6 +846,10 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le personnage voit ses muscles se développer de façon spectaculaire pendant [rang] rounds tandis que des griffes poussent subitement au bout de ses doigts. Pendant toute la durée de la transformation, il obtient un bonus de +2 en FOR (attaque et DM) et une attaque de contact de griffes par round en action gratuite (G) infligeant [1d6°+FOR] DM.",
+    // PER-74 : durée en quantité (`[=rang] rounds`) + DM des griffes conféré (`[1d6° + FOR]`). Le
+    // « +2 en FOR » reste VERBATIM (bonus TEMPORAIRE de la transformation, pas un `ability-bonus` permanent).
+    richText:
+      "Une fois par combat, le personnage voit ses muscles se développer de façon spectaculaire pendant [=rang] rounds tandis que des griffes poussent subitement au bout de ses doigts. Pendant toute la durée de la transformation, il obtient un bonus de +2 en FOR (attaque et DM) et une attaque de contact de griffes par round en action gratuite (G) infligeant [1d6° + FOR] DM.",
     sourcePage: 131,
   },
   {
@@ -842,6 +861,10 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le personnage peut produire un souffle létal correspondant à son ascendance. Ce souffle couvre une zone conique de 5 m de long sur 5 m de large à son extrémité et inflige 5d4° DM. Les victimes peuvent diviser les DM par 2 à condition de réussir un test d'AGI difficulté [8 + rang].",
+    // PER-74 : dé de DM autonome (`{5d4°}`) + difficulté du jet d'AGI (`[8 + rang]`). Dimensions de
+    // zone « 5 m » littérales ; « test d'AGI » auto-glosé.
+    richText:
+      "Une fois par combat, le personnage peut produire un souffle létal correspondant à son ascendance. Ce souffle couvre une zone conique de 5 m de long sur 5 m de large à son extrémité et inflige {5d4°} DM. Les victimes peuvent diviser les DM par 2 à condition de réussir un test d'AGI difficulté [8 + rang].",
     sourcePage: 131,
   },
   {
@@ -853,6 +876,9 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le personnage déploie des ailes de dragon pendant CON minutes (minimum 1 min). Ces ailes lui permettent de se déplacer en vol à une vitesse de 15 m par action de mouvement. Faire du surplace est une action de mouvement.",
+    // PER-74 : durée en quantité brute (`[=CON] minutes` → « 5 minutes »). Vitesses « 15 m » littérales.
+    richText:
+      "Une fois par combat, le personnage déploie des ailes de dragon pendant [=CON] minutes (minimum 1 min). Ces ailes lui permettent de se déplacer en vol à une vitesse de 15 m par action de mouvement. Faire du surplace est une action de mouvement.",
     sourcePage: 132,
   },
   {
@@ -914,13 +940,30 @@ export const prestigeFeatures1: Feature[] = [
     isSpell: false,
     actionTypes: [],
     text:
-      "Le familier transmet une RD de 1 par rang de la voie à tous les types de DM. De plus, il fait apprendre un ou deux choix d'un profil indiqué dans la description du familier. Il peut utiliser ce sort deux fois par jour dans le cas d'un rang 1 (une seule fois dans le cas d'un rang 2).",
-    // PER-74 : RD PLATE de 1 par rang atteint dans la voie, TOUS types de DM (`scopes` absent). Valeur
-    // scalante par le rang de la voie hôte, sur le même patron que la RD de sang-dragon (rang → valeur).
-    // INDÉPENDANTE du familier choisi. L'apprentissage de sorts (profil `spellProfile`) reste affiché
-    // (FamiliarGrantedPowerNote) sans effet moteur. RD 5 propre au pantin/poupée laissée sur la créature
-    // (specialAbility, PER-176 différé) : distincte de cette RD du maître, pas de cumul modélisé.
-    damageReduction: { kind: 'flat', value: { scale: 'path-rank', factor: 1 } },
+      "Le familier obtient une RD de 1 par rang face à tous les types de DM. De plus, le personnage apprend un sort de rang 1 ou 2 de son choix d'un profil indiqué dans la description du familier. Il peut utiliser ce sort deux fois par jour dans le cas d'un rang 1 et une seule fois dans le cas d'un rang 2.",
+    // PER-74 : RD PLATE de « 1 par rang », TOUS types de DM (`scopes` absent).
+    // VALEUR (correction relecture proprio 2026-07-25) : « 1 par rang » compte les rangs ACQUIS, pas le
+    // NUMÉRO du rang. La voie du familier est numérotée 3→7 (anomalie, capacité Familier de rang 3, p. 132) :
+    // au sommet on a investi 5 rangs (r3→r7) → RD 5, PAS 7. D'où `path-rank-count` (nombre de rangs) et non
+    // `path-rank` (numéro). Scale : RD 3 au rang 5 (r3+r4+r5), 4 au rang 6, 5 au rang 7.
+    // ENTITÉ (écart au RAW assumé, décision proprio 2026-07-25) : le livre p. 133 dit « Le FAMILIER obtient
+    // une RD » (la créature, par contraste avec R4/R6/R7 « confère au personnage ») ; on la modélise sur le
+    // MAÎTRE (RD peu utile sur un familier minuscule, plus lisible côté joueur). Le `text` reste verbatim.
+    // INDÉPENDANTE du familier choisi. RD 5 propre au pantin/poupée laissée sur la créature (PER-176 différé).
+    damageReduction: { kind: 'flat', value: { scale: 'path-rank-count', factor: 1 } },
+    // PER-74 : APPRENTISSAGE DE SORT (2e volet R5). « Le personnage apprend un sort de rang 1 ou 2 de son
+    // choix d'un profil indiqué dans la description du familier » → choix `feature-from-path` scoppé
+    // DYNAMIQUEMENT au profil de magie du familier retenu au rang 3 (`familiarSpellProfile`), rangs 1-2,
+    // SORTS uniquement. Le sort appris devient une capacité empruntée (castable). La fréquence d'usage
+    // (2×/jour si rang 1, 1×/jour si rang 2) est DÉRIVÉE du rang du sort choisi (cf. affichage).
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Sort appris (rang 1 ou 2 du profil du familier)',
+        allowedRanks: [1, 2],
+        familiarSpellProfile: true,
+      },
+    ],
     sourcePage: 133,
   },
   {

@@ -238,6 +238,30 @@ describe('eligibleFeaturesForChoice', () => {
     expect(eligible.every((f) => f.rank === 1)).toBe(true);
     expect(eligible.map((f) => f.id)).toContain('air-r1'); // voie de l'air (magicien)
   });
+
+  it('familiarSpellProfile (familier r5) : sorts rang 1-2 du profil du familier retenu, sorts seulement', () => {
+    const R5 = 'prestige-familier-fantastique-r5';
+    const choice = featureChoiceDefs(R5)[0] as PathFeatureChoice;
+    expect(choice.familiarSpellProfile).toBe(true);
+    // Dragon féérique → profil ensorceleur.
+    const c = makeCharacter({
+      classId: 'magicien',
+      featureIds: ['prestige-familier-fantastique-r3', R5],
+      featureChoices: { 'prestige-familier-fantastique-r3': ['dragon-feerique'] },
+    });
+    const eligible = eligibleFeaturesForChoice(c, R5, choice);
+    expect(eligible.length).toBeGreaterThan(0);
+    // Uniquement des SORTS de rang 1 ou 2.
+    expect(eligible.every((f) => f.isSpell && (f.rank === 1 || f.rank === 2))).toBe(true);
+    // Toutes issues de voies de l'ensorceleur (ex. Divination, voie de la divination).
+    expect(eligible.map((f) => f.id)).toContain('divination-r1');
+    // Aucune voie hors ensorceleur (ex. voie de la prière = prêtre).
+    expect(eligible.map((f) => f.id)).not.toContain('priere-r1'); // prêtre, pas ensorceleur
+
+    // Sans familier choisi → domaine vide (rien à apprendre encore).
+    const noFam = makeCharacter({ featureIds: [R5], featureChoices: {} });
+    expect(eligibleFeaturesForChoice(noFam, R5, choice)).toHaveLength(0);
+  });
 });
 
 describe('featureOffersBorrow (pivot des poupées russes)', () => {

@@ -518,6 +518,7 @@ export type ScalingValue =
   | LevelScalingValue
   | MilestoneCountScalingValue
   | PathRankScalingValue
+  | PathRankCountScalingValue
   | MinScalingValue
   | SumScalingValue;
 
@@ -590,6 +591,22 @@ export interface MilestoneCountScalingValue {
 export interface PathRankScalingValue {
   scale: 'path-rank';
   /** Multiplicateur appliqué au rang (défaut 1). */
+  factor?: number;
+}
+
+/**
+ * Valeur égale au NOMBRE DE RANGS ACQUIS dans la VOIE de la capacité hôte (× un
+ * facteur), 0 si la voie est absente. À DISTINGUER de `path-rank` qui rend le NUMÉRO
+ * du rang le plus élevé atteint : pour une voie numérotée normalement (rangs 1→5) les
+ * deux coïncident, mais elles DIVERGENT sur la voie du familier fantastique, numérotée
+ * 3→7 (anomalie du livre, capacité Familier de rang 3, p. 132). « Le familier transmet
+ * une RD de 1 par rang de la voie » (Résistance, r5, p. 133) compte les rangs INVESTIS
+ * (5 au sommet), et non le numéro 7. Utiliser ce scaling — et non `path-rank` — chaque
+ * fois que le livre dit « par rang de la voie » sur une voie non numérotée à partir de 1.
+ */
+export interface PathRankCountScalingValue {
+  scale: 'path-rank-count';
+  /** Multiplicateur appliqué au nombre de rangs (défaut 1). */
   factor?: number;
 }
 
@@ -1519,6 +1536,15 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    * qui connaît le personnage.
    */
   familyScope?: 'same-family';
+  /**
+   * Domaine DYNAMIQUE dérivé du FAMILIER retenu (PER-74, Résistance r5, p. 133 : « le personnage
+   * apprend un sort de rang 1 ou 2 de son choix d'un profil indiqué dans la description du familier »).
+   * Quand `true`, les voies admissibles sont celles du PROFIL DE MAGIE du familier choisi au rang 3
+   * (`FantasticFamiliar.spellProfile` — ex. dragon féérique → ensorceleur ; `main-profile` du minimoï →
+   * le profil PRINCIPAL du personnage), et le domaine est restreint aux SORTS (`isSpell`), le livre
+   * disant « un sort ». Se combine avec `allowedRanks: [1, 2]`. Résolu par `featuresInChoiceDomain`.
+   */
+  familiarSpellProfile?: boolean;
   /**
    * Exclut du domaine toute capacité qui octroie un bonus de DEF *à soi* (plat ou
    * conditionnel). Sert la restriction explicite de Talent pour la magie (elfe haut,

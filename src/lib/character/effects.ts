@@ -88,6 +88,13 @@ export interface EffectContext {
    */
   borrowedHostPaths?: Map<string, string>;
   /**
+   * Nombre de rangs ACQUIS dans chaque voie (pathId → compte) — pour les valeurs scalantes
+   * `scale: 'path-rank-count'` (« RD de 1 par rang de la voie »). Distinct de `pathRanks` (NUMÉRO
+   * du rang max) : compté sur `character.featureIds` (cf. `pathRankCountsFromFeatures`). Absent →
+   * traité comme 0 (appels « catalogue seul » sans contexte de progression).
+   */
+  pathRankCounts?: Record<string, number>;
+  /**
    * Une armure est-elle RÉELLEMENT portée par le personnage (slot `armor`) ? Sert aux
    * effets `armor-def-bonus` résolus AUTOMATIQUEMENT depuis l'équipement (Armure de vent,
    * PER-132) — sans interrupteur manuel. Absent → traité comme « aucune armure portée »
@@ -154,6 +161,7 @@ export function effectContext(character: Character): EffectContext {
     toggles: character.effectToggles,
     featureChoices: character.featureChoices,
     borrowedHostPaths: borrowedHostPathByFeatureId(character),
+    pathRankCounts: pathRankCountsFromFeatures(character.featureIds),
     armorWorn: isArmorWorn(character.equipment),
     heavyArmorWorn: isHeavyArmorWorn(character.equipment),
   };
@@ -190,6 +198,23 @@ export function pathRanksFromFeatures(featureIds: string[]): Record<string, numb
     ranks[feature.pathId] = Math.max(ranks[feature.pathId] ?? 0, feature.rank);
   }
   return ranks;
+}
+
+/**
+ * NOMBRE de rangs ACQUIS dans chaque voie (pathId → compte) — pour les valeurs scalantes
+ * `scale: 'path-rank-count'` (« RD de 1 par rang de la voie »). Distinct de
+ * `pathRanksFromFeatures` (NUMÉRO du rang max) : on COMPTE les capacités acquises, ce qui
+ * DIVERGE pour les voies non numérotées à partir de 1 — la voie du familier fantastique
+ * (3→7) a 5 rangs mais un rang max de 7. Les ids inconnus sont ignorés.
+ */
+export function pathRankCountsFromFeatures(featureIds: string[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    counts[feature.pathId] = (counts[feature.pathId] ?? 0) + 1;
+  }
+  return counts;
 }
 
 /**
@@ -252,6 +277,10 @@ export function resolveValue(
     case 'path-rank':
       // Rang BRUT atteint dans la voie hôte (0 si absente) — cf. `pathRanks`.
       return (pathRanks[pathId] ?? 0) * (value.factor ?? 1);
+    case 'path-rank-count':
+      // NOMBRE de rangs acquis dans la voie hôte (0 si absente) — cf. `ctx.pathRankCounts`.
+      // Diverge de `path-rank` sur la voie du familier fantastique (numérotée 3→7).
+      return (ctx.pathRankCounts?.[pathId] ?? 0) * (value.factor ?? 1);
     case 'min': {
       // Minimum des composants — plafonne une valeur par une autre (ex. min(CHA, rang)).
       let acc: number | null = null;
@@ -1078,6 +1107,37 @@ export function resolveFamiliarGrantedPower(
 }
 
 /**
+ * Hôte du SORT APPRIS au rang 5 de la voie du familier (PER-74, « le personnage apprend un sort de rang
+ * 1 ou 2 de son choix », p. 133). Le sort est choisi par un `feature-from-path` scoppé au profil du
+ * familier (cf. `familiarSpellProfile`) : c'est une capacité EMPRUNTÉE ordinaire, mais utilisée SANS mana
+ * et plafonnée à un compteur QUOTIDIEN (2× si rang 1, 1× si rang 2) — arbitrage proprio 2026-07-25.
+ */
+export const FAMILIAR_LEARNED_SPELL_HOST = 'prestige-familier-fantastique-r5';
+
+/**
+ * Id du sort appris au rang 5 (sélection `feature-from-path` de `FAMILIAR_LEARNED_SPELL_HOST`).
+ * `undefined` si le rang 5 n'est pas acquis ou si aucun sort n'a encore été choisi.
+ */
+export function familiarLearnedSpellId(character: Character): string | undefined {
+  if (!character.featureIds.includes(FAMILIAR_LEARNED_SPELL_HOST)) return undefined;
+  const sel = character.featureChoices?.[FAMILIAR_LEARNED_SPELL_HOST]?.[0];
+  return typeof sel === 'string' ? sel : undefined;
+}
+
+/**
+ * Nombre d'usages QUOTIDIENS du sort appris au rang 5 (PER-74) : 2 si le sort choisi est de rang 1,
+ * 1 s'il est de rang 2 (« deux fois par jour dans le cas d'un rang 1 et une seule fois dans le cas d'un
+ * rang 2 », p. 133). `undefined` si aucun sort appris. Le compteur EST la contrainte (pas de coût mana).
+ */
+export function familiarLearnedSpellUsageMax(character: Character): number | undefined {
+  const spellId = familiarLearnedSpellId(character);
+  if (!spellId) return undefined;
+  const rank = featureById.get(spellId)?.rank;
+  if (rank === undefined) return undefined;
+  return rank <= 1 ? 2 : 1;
+}
+
+/**
  * PER-161 — la RÉACTIVATION de l'interrupteur du i-ème effet TEMPORAIRE d'une capacité est-elle
  * verrouillée jusqu'au prochain repos court ? Vrai quand l'effet est un `conditional-stat-bonus`
  * temporaire dont le compteur porteur a `oncePerShortRest` ET dont le verrou de repos court est posé
@@ -1149,6 +1209,9 @@ export function pruneUsageCounters(
     // PER-74 : compteur d'usage du pouvoir conféré par le familier (R4/R7) — clé fonction du seul id
     // hôte (indépendante du familier choisi), valide tant que la capacité hôte est possédée.
     if (FAMILIAR_POWER_HOSTS[id]) validKeys.add(familiarPowerUsedKey(id));
+    // PER-74 : compteur d'usage QUOTIDIEN du sort appris au rang 5 — clé fonction du seul id hôte (R5),
+    // valide tant que le rang 5 est acquis (le sort choisi peut changer sans invalider la clé).
+    if (id === FAMILIAR_LEARNED_SPELL_HOST) validKeys.add(familiarPowerUsedKey(id));
   }
   // PER-162 : le surcoût croissant stocke ses lancements sous l'id de la capacité — déjà couvert par
   // `owned`, donc rien à ajouter ici (mentionné pour mémoire ; la clé survit à l'élagage).
@@ -1285,6 +1348,9 @@ export function resetUsageCounters(
       const usage = resolveFamiliarGrantedPower(id, featureChoices)?.usage;
       if (usage && triggers.has(usage.reset)) toReset.add(familiarPowerUsedKey(id));
     }
+    // PER-74 : sort APPRIS au rang 5 — compteur QUOTIDIEN (2×/1× selon le rang du sort), rechargé au
+    // repos long (`'day'`). La fréquence est toujours journalière (indépendante du sort choisi).
+    if (id === FAMILIAR_LEARNED_SPELL_HOST && triggers.has('day')) toReset.add(familiarPowerUsedKey(id));
   }
   const next: Record<string, number> = {};
   for (const [key, value] of Object.entries(usageCounters)) {

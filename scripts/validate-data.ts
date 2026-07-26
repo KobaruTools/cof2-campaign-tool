@@ -272,6 +272,10 @@ function effectValueError(value: unknown): string | null {
     if (v.factor !== undefined && !Number.isFinite(v.factor)) return 'path-rank : facteur non fini';
     return null;
   }
+  if (v.scale === 'path-rank-count') {
+    if (v.factor !== undefined && !Number.isFinite(v.factor)) return 'path-rank-count : facteur non fini';
+    return null;
+  }
   if (v.scale === 'min') {
     if (!Array.isArray(v.parts) || v.parts.length === 0) return 'min : parts vide';
     for (const part of v.parts) {

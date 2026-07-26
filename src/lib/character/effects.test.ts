@@ -22,6 +22,9 @@ import {
   conditionalEffectBonuses,
   criticalRangeSources,
   familiarPowerUsedKey,
+  familiarLearnedSpellId,
+  familiarLearnedSpellUsageMax,
+  FAMILIAR_LEARNED_SPELL_HOST,
   resolveFamiliarGrantedPower,
   damageReductionSources,
   stackedDamageReductions,
@@ -514,6 +517,8 @@ describe('effectContext', () => {
       abilities: c.abilities,
       toggles: { 'rage-r3': [true] },
       featureChoices: {},
+      // Nombre de rangs acquis par voie (PER-74) : vide ici (aucune capacité).
+      pathRankCounts: {},
       // Mapping emprunt → voie A (PER-73) : vide ici (aucune capacité empruntée).
       borrowedHostPaths: new Map(),
       // Armure réellement portée (PER-132) : aucune ici (personnage minimal sans équipement).
@@ -1722,15 +1727,18 @@ describe('Voie du familier fantastique — rangs R5/R6/R7 (PER-74)', () => {
   const char = (featureIds: string[], featureChoices: Record<string, string[]> = {}): Character =>
     ({ level: 8, abilities: ctx().abilities, featureIds, effectToggles: {}, featureChoices }) as Character;
 
-  it('R5 « Résistance » : RD plate = rang atteint dans la voie, tous types (scopes absent)', () => {
-    // Voie prise jusqu’au rang 5 → rang de voie 5 → RD 5 sur tous les DM.
-    const upTo5 = damageReductionSources(char([R3, 'prestige-familier-fantastique-r4', R5]));
+  const R4 = 'prestige-familier-fantastique-r4';
+  it('R5 « Résistance » : RD plate = NOMBRE de rangs acquis (pas le numéro), tous types (scopes absent)', () => {
+    // CORRECTION relecture proprio (2026-07-25) : « 1 par rang de la voie » compte les rangs INVESTIS.
+    // La voie est numérotée 3→7 (anomalie) : au rang 5 on a acquis r3+r4+r5 = 3 rangs → RD 3 (et NON 5,
+    // le numéro du rang). C'est ce qui distingue `path-rank-count` de `path-rank`.
+    const upTo5 = damageReductionSources(char([R3, R4, R5]));
     expect(upTo5).toHaveLength(1);
-    expect(upTo5[0].reduction).toMatchObject({ kind: 'flat', value: 5 });
+    expect(upTo5[0].reduction).toMatchObject({ kind: 'flat', value: 3 });
     expect(upTo5[0].reduction.scopes).toBeUndefined();
-    // Voie poussée jusqu’au rang 7 → RD 7 (1 par rang).
-    const upTo7 = damageReductionSources(char([R3, R5, R6, R7]));
-    expect(upTo7[0].reduction).toMatchObject({ kind: 'flat', value: 7 });
+    // Voie complète (r3→r7) = 5 rangs acquis → RD 5 (et NON 7, le numéro du rang max).
+    const full = damageReductionSources(char([R3, R4, R5, R6, R7]));
+    expect(full[0].reduction).toMatchObject({ kind: 'flat', value: 5 });
   });
 
   it('R6 « Inséparables » : +1 point de chance (indépendant du familier)', () => {
@@ -1757,6 +1765,36 @@ describe('Voie du familier fantastique — rangs R5/R6/R7 (PER-74)', () => {
   it('R7 : le +1 est détaillé dans les sources de la carac visée', () => {
     const sources = abilityModSources([R7], { [R3]: ['stique'] }).CON ?? []; // stique → CON
     expect(sources.some((s) => s.featureId === R7 && s.value === 1)).toBe(true);
+  });
+
+  it('R5 sort appris : id résolu + compteur quotidien 2×/1× selon le rang du sort (PER-74)', () => {
+    const base = (choices: Record<string, string[]>): Character =>
+      ({ level: 8, abilities: ctx().abilities, featureIds: [R3, R5], effectToggles: {}, featureChoices: choices }) as Character;
+    // Aucun sort choisi → pas de compteur.
+    expect(familiarLearnedSpellId(base({ [R3]: ['dragon-feerique'] }))).toBeUndefined();
+    expect(familiarLearnedSpellUsageMax(base({ [R3]: ['dragon-feerique'] }))).toBeUndefined();
+    // Sort de rang 1 (invocation-r1) → 2 usages/jour.
+    const r1 = base({ [R3]: ['dragon-feerique'], [FAMILIAR_LEARNED_SPELL_HOST]: ['invocation-r1'] });
+    expect(familiarLearnedSpellId(r1)).toBe('invocation-r1');
+    expect(familiarLearnedSpellUsageMax(r1)).toBe(2);
+    // Sort de rang 2 (air-r2) → 1 usage/jour.
+    const r2 = base({ [R3]: ['dragon-feerique'], [FAMILIAR_LEARNED_SPELL_HOST]: ['air-r2'] });
+    expect(familiarLearnedSpellUsageMax(r2)).toBe(1);
+    // Rang 5 non acquis → pas de sort appris même si un choix traîne.
+    const noR5 = base({ [R3]: ['dragon-feerique'], [FAMILIAR_LEARNED_SPELL_HOST]: ['invocation-r1'] });
+    noR5.featureIds = [R3];
+    expect(familiarLearnedSpellId(noR5)).toBeUndefined();
+  });
+
+  it('R5 sort appris : le compteur quotidien se recharge au repos long, pas au repos court (PER-74)', () => {
+    const key = familiarPowerUsedKey(FAMILIAR_LEARNED_SPELL_HOST);
+    // Repos long ('day') → clé retirée (compteur plein).
+    expect(resetUsageCounters({ [key]: 0 }, [R5], new Set(['day'] as const))).toEqual({});
+    // Repos court seul → inchangé.
+    expect(resetUsageCounters({ [key]: 0 }, [R5], new Set(['short-rest'] as const))).toEqual({ [key]: 0 });
+    // Élagage : clé valide tant que R5 est acquis, retirée sinon.
+    expect(key in pruneUsageCounters({ [key]: 1 }, [R5])).toBe(true);
+    expect(key in pruneUsageCounters({ [key]: 1 }, [R3])).toBe(false);
   });
 });
 

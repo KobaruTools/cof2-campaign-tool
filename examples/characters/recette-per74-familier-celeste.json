@@ -3,7 +3,7 @@
   "id": "recette-per74-familier-celeste",
   "name": "Recette PER-74 — Familier céleste (+1 CHA)",
   "identity": {
-    "description": "ATTENDU (PER-74) : familier « familier-celeste » choisi au R3. R5 → RD 7 tous types ; R6 → +1 PC ; R7 → +1 CHA."
+    "description": "ATTENDU (PER-74) : familier « familier-celeste » choisi au R3. R5 → RD 5 tous types (= nombre de rangs acquis, voie 3→7) ; R6 → +1 PC ; R7 → +1 CHA."
   },
   "campaignId": null,
   "playerId": null,

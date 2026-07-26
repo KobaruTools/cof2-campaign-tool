@@ -3,7 +3,7 @@
   "id": "recette-per74-familier-araignee",
   "name": "Recette PER-74 — Araignée géante (+1 AGI)",
   "identity": {
-    "description": "ATTENDU (PER-74) : familier « araignee-geante » choisi au R3. R5 → RD 7 tous types ; R6 → +1 PC ; R7 → +1 AGI."
+    "description": "ATTENDU (PER-74) : familier « araignee-geante » choisi au R3. R5 → RD 5 tous types (= nombre de rangs acquis, voie 3→7) ; R6 → +1 PC ; R7 → +1 AGI."
   },
   "campaignId": null,
   "playerId": null,
