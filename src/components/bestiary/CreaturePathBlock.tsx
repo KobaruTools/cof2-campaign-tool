@@ -28,8 +28,8 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { featureById, pathById } from '@/data';
-import type { AbilityId, CreaturePathReference, Feature } from '@/data/schema';
+import type { AbilityId, CreaturePathReference } from '@/data/schema';
+import { resolvePath, type ResolvedPath } from '@/lib/bestiary/creaturePaths';
 import { classColor } from '@/lib/ui/classColors';
 import { ClassIcon } from '@/components/ClassIcon';
 import { FeatureLabel } from '@/components/FeatureLabel';
@@ -44,42 +44,6 @@ export interface CreaturePathBlockProps {
   nc?: number;
   /** Rendu compact (écran de MJ) : réduit un poil la typo, comme le reste du bloc. */
   dense?: boolean;
-}
-
-/** Une voie résolue + la capacité de son rang indiqué (règle : ce rang SEUL). */
-interface ResolvedPath {
-  ref: CreaturePathReference;
-  name: string;
-  classId?: string;
-  color?: string;
-  /** Page de la CAPACITÉ affichée (pas du début de voie) — cf. `resolvePath`. */
-  sourcePage?: number;
-  /** Nom de la capacité affichée, pour le surlignage `SourceRef` sur la bonne page. */
-  featureName?: string;
-  features: Feature[];
-}
-
-function resolvePath(ref: CreaturePathReference): ResolvedPath | null {
-  const path = pathById.get(ref.pathId);
-  if (!path) return null; // Voie inconnue : on n'invente rien, on l'ignore.
-  const classId = path.type === 'class' ? path.classIds[0] : undefined;
-  // Capacité du rang indiqué UNIQUEMENT (généralement une seule ; on capte les rares
-  // voies à plusieurs capacités au même rang). On ne déroule pas les rangs inférieurs.
-  const features = path.featureIds
-    .map((id) => featureById.get(id))
-    .filter((f): f is Feature => !!f && f.rank === ref.rank);
-  // La source pointe la CAPACITÉ affichée (ex. « Exécution mentale » p. 96), pas le
-  // début de la voie (p. 95) : depuis qu'on ne montre que ce rang, c'est la bonne page.
-  const feature = features[0];
-  return {
-    ref,
-    name: path.name,
-    classId,
-    color: classId ? classColor(classId) : undefined,
-    sourcePage: feature?.sourcePage ?? path.sourcePage,
-    featureName: feature?.name,
-    features,
-  };
 }
 
 export function CreaturePathBlock({ paths, abilities, nc, dense = false }: CreaturePathBlockProps) {
@@ -98,7 +62,10 @@ export function CreaturePathBlock({ paths, abilities, nc, dense = false }: Creat
         gap: 1.25,
       }}
     >
-      {resolved.map(({ ref, name, classId, color, sourcePage, featureName, features }) => (
+      {resolved.map(({ ref, name, classId, sourcePage, featureName, features }) => {
+        // Couleur de profil dérivée au RENDU (le module de résolution reste sans UI).
+        const color = classId ? classColor(classId) : undefined;
+        return (
         <Box key={ref.pathId}>
           {/* Titre de voie : icône de profil (teintée) + nom canonique + rang, façon fiche. */}
           <Stack
@@ -146,7 +113,8 @@ export function CreaturePathBlock({ paths, abilities, nc, dense = false }: Creat
             ))}
           </Stack>
         </Box>
-      ))}
+        );
+      })}
     </Box>
   );
 }
