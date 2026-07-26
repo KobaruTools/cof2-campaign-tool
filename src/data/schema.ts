@@ -2829,6 +2829,21 @@ export interface CreatureSpecialAbility {
   richText?: string;
 }
 
+/**
+ * Référence à une VOIE (de profil) que la créature POSSÈDE à un rang donné — le
+ * livre l'imprime « Voie des illusions rang 5 » sous les attaques. La créature a
+ * accès à la SEULE capacité du rang indiqué, pas aux rangs inférieurs (confirmé
+ * par les auteurs, Discord officiel 2026-07-27 : « rang N » = la capacité de rang N
+ * uniquement). `pathId` référence une `Path` existante (`pathById`) ; le rendu
+ * résout le nom canonique et affiche cette capacité au format « Voies & capacités ».
+ */
+export interface CreaturePathReference {
+  /** id de la voie (`Path.id`, ex. 'illusions', 'envouteur'). */
+  pathId: string;
+  /** Rang de la capacité possédée (1..5) — la créature a la SEULE capacité de ce rang. */
+  rank: number;
+}
+
 export interface Creature {
   /** Slug FR unique (ex. 'loup', 'ours-brun', 'lion-grand-male'). */
   id: string;
@@ -2877,6 +2892,14 @@ export interface Creature {
   attacks?: CreatureAttack[];
   /** Capacités spéciales, verbatim. */
   specialAbilities?: CreatureSpecialAbility[];
+  /**
+   * Voies de profil que la créature POSSÈDE (ex. aberratus : illusions rang 5,
+   * envoûteur rang 5), imprimées sous les attaques. Rendues au format « Voies &
+   * capacités » de la fiche (nom canonique + carte de la SEULE capacité du rang
+   * indiqué), résolues contre les données de voies. À DISTINGUER d'une `specialAbility` :
+   * ce n'est pas un texte verbatim mais un renvoi structuré vers une vraie voie.
+   */
+  paths?: CreaturePathReference[];
   /** Variante d'une créature de base : id de la créature de base (ex. 'lion' pour « Grand mâle »). */
   baseCreatureId?: string;
   /** Renvoi verbatim aux capacités de la base (« Voir ci-dessus ») quand la variante ne les réimprime pas. */
