@@ -304,8 +304,13 @@ for (const cfg of CONFIGS) {
         }
         return choice.allowed?.[0] ?? 'FOR';
       }
-      // custom-skill / free-text / known-feature (saisie libre ou descriptif) : pas d'auto-remplissage.
-      if (choice.kind === 'custom-skill' || choice.kind === 'free-text' || choice.kind === 'known-feature')
+      // custom-skill / free-text / known-feature / test-domain (libre ou descriptif) : pas d'auto-remplissage.
+      if (
+        choice.kind === 'custom-skill' ||
+        choice.kind === 'free-text' ||
+        choice.kind === 'known-feature' ||
+        choice.kind === 'test-domain'
+      )
         return null;
       // option : première option (les choix de peuple ici ne sont pas répétables).
       return choice.options[0]?.id ?? null;

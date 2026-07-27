@@ -1492,6 +1492,7 @@ export type FeatureChoice =
   | AbilityFeatureChoice
   | PathFeatureChoice
   | KnownFeatureChoice
+  | TestDomainFeatureChoice
   | OptionFeatureChoice
   | CustomSkillFeatureChoice
   | FreeTextFeatureChoice;
@@ -1617,6 +1618,21 @@ export interface KnownFeatureChoice extends FeatureChoiceBase {
    * Absent = pas de filtre sort/non-sort.
    */
   spellsOnly?: boolean;
+}
+
+/**
+ * Choix d'une COMPÉTENCE (domaine de test) dans le catalogue exhaustif `src/data/test-domains.ts`
+ * (PER-74, Expertise r4, branche « +5 sur une compétence acquise par une capacité », p. 129). Le
+ * joueur choisit directement la compétence visée (ex. Discrétion) plutôt qu'une capacité. Descriptif :
+ * le +5 n'est PAS calculé sur la fiche (verbatim, appliqué à la table). Persisté comme l'id du domaine.
+ */
+export interface TestDomainFeatureChoice extends FeatureChoiceBase {
+  kind: 'test-domain';
+  /**
+   * Inclure les compétences à coloration COMBAT (`TestDomain.combat`, ex. Esquive/Intimidation) ?
+   * Défaut `false` (comme le gagne-pain libre `custom-skill` : on liste les compétences hors combat).
+   */
+  includeCombat?: boolean;
 }
 
 /** Une option énumérée d'un `OptionFeatureChoice`. */

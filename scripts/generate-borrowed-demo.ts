@@ -131,7 +131,12 @@ for (const fid of built.featureIds) {
       }
       return choice.allowed?.[0] ?? 'FOR';
     }
-    if (choice.kind === 'custom-skill' || choice.kind === 'free-text' || choice.kind === 'known-feature')
+    if (
+      choice.kind === 'custom-skill' ||
+      choice.kind === 'free-text' ||
+      choice.kind === 'known-feature' ||
+      choice.kind === 'test-domain'
+    )
       return null; // libre / descriptif : pas d'auto-remplissage
     return choice.options[0]?.id ?? null; // option (non répétable ici)
   });

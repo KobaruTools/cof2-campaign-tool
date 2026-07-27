@@ -683,20 +683,34 @@ export const prestigeFeatures1: Feature[] = [
       {
         kind: 'option',
         prompt: 'Proposition retenue',
+        // `shortLabel` : puce compacte (vues liste/colonne) sans déformer le cadre ; le menu de
+        // sélection garde le `label` complet (PER-74).
         options: [
-          { id: 'attack-bonus', label: '+1 en attaque lorsqu’il utilise une capacité à définir' },
-          { id: 'skill-bonus', label: '+5 sur une compétence acquise par une capacité' },
+          {
+            id: 'attack-bonus',
+            label: '+1 en attaque lorsqu’il utilise une capacité à définir',
+            shortLabel: '+1 en attaque',
+          },
+          {
+            id: 'skill-bonus',
+            label: '+5 sur une compétence acquise par une capacité',
+            shortLabel: '+5 aux tests',
+          },
         ],
       },
       {
+        // +1 en attaque : domaine LARGE (toute capacité actionnable possédée) — aucun drapeau
+        // structuré « a une attaque » n'existe, on laisse le joueur pointer la sienne (arbitrage
+        // proprio 2026-07-27, éviter les faux négatifs).
         kind: 'known-feature',
         prompt: 'Capacité concernée par le +1 en attaque',
         visibleIfOption: { choiceIndex: 0, optionId: 'attack-bonus' },
       },
       {
-        kind: 'free-text',
+        // +5 : compétence visée, choisie dans le catalogue exhaustif des compétences (p. 129,
+        // « +5 sur une compétence acquise par une capacité »). Descriptif (le +5 reste manuel).
+        kind: 'test-domain',
         prompt: 'Compétence concernée par le +5',
-        placeholder: 'ex. discrétion',
         visibleIfOption: { choiceIndex: 0, optionId: 'skill-bonus' },
       },
     ],

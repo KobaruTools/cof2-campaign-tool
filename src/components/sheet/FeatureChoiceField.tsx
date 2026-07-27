@@ -83,6 +83,9 @@ export function choiceSelectionLabel(
       const pathName = pathById.get(feature.pathId)?.name ?? feature.pathId;
       return `${pathName} — Rang ${feature.rank} — ${feature.name}`;
     }
+    case 'test-domain':
+      // Sélection = id d'un domaine de test (compétence) ; on affiche son libellé français.
+      return testDomainById.get(selection)?.label ?? selection;
     case 'custom-skill':
       // La sélection normalisée d'un `custom-skill` est son NOM (1er élément) ; l'affichage
       // détaillé (nom + domaines) est traité par un rendu dédié en mode `display`.
@@ -475,6 +478,48 @@ function ChoiceControl({
           </AppAlert>
         )}
       </Box>
+    );
+  }
+
+  // test-domain : choisir une COMPÉTENCE dans le catalogue exhaustif (PER-74, Expertise r4, +5).
+  // Descriptif (le +5 n'est pas calculé). Liste groupée par caractéristique gouvernante, comme le
+  // gagne-pain libre (`custom-skill`) ; domaines de combat exclus sauf `includeCombat`.
+  if (choice.kind === 'test-domain') {
+    const domainGroupLabel = (id: string) =>
+      (testDomainById.get(id)?.abilities ?? []).map((a) => ABILITY_NAMES[a]).join(' / ') || 'Autres';
+    const domainIds = testDomains
+      .filter((d) => choice.includeCombat || !d.combat)
+      .map((d) => d.id)
+      .sort((x, y) => {
+        const dx = testDomainById.get(x)!;
+        const dy = testDomainById.get(y)!;
+        const byAbility = ABILITY_IDS.indexOf(dx.abilities[0]) - ABILITY_IDS.indexOf(dy.abilities[0]);
+        if (byAbility !== 0) return byAbility;
+        const byGroup = domainGroupLabel(x).localeCompare(domainGroupLabel(y));
+        return byGroup !== 0 ? byGroup : dx.label.localeCompare(dy.label);
+      });
+    return (
+      <Autocomplete
+        size="small"
+        options={domainIds}
+        groupBy={(id) => domainGroupLabel(id)}
+        getOptionLabel={(id) => testDomainById.get(id)?.label ?? id}
+        value={single}
+        isOptionEqualToValue={(opt, val) => opt === val}
+        onChange={(_, value) => onChange(index, value ?? null)}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label={choice.prompt}
+            error={blocking && missing}
+            helperText={
+              blocking && missing
+                ? 'Choix obligatoire'
+                : 'Le +5 s’applique à la table (non calculé sur la fiche).'
+            }
+          />
+        )}
+      />
     );
   }
 
