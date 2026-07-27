@@ -4,11 +4,11 @@
  * Rendu des VOIES d'une créature de bestiaire (`Creature.paths`, ex. aberratus :
  * « Voie des illusions rang 5 », « Voie de l'envoûteur rang 5 ») au format
  * « Voies & capacités » de la fiche de personnage : un titre de voie (icône + nom
- * canonique + rang) puis la carte de la SEULE capacité du rang indiqué.
+ * canonique + rang) puis une carte par capacité des rangs 1..N.
  *
- * RÈGLE : « Voie X rang N » signifie que la créature possède la capacité de rang N
- * UNIQUEMENT, pas les rangs inférieurs (confirmé par les auteurs, Discord officiel
- * 2026-07-27). On ne déroule donc PAS les rangs 1..N.
+ * RÈGLE (propriétaire, 2026-07-27) : « Voie X rang N » (voie de profil de joueur) =
+ * la voie ENTIÈRE jusqu'au rang indiqué, donc les capacités des rangs 1..N (cf.
+ * `resolvePath`). L'aberratus au rang 5 possède ainsi les 5 rangs de la voie.
  *
  * Les voies sont disposées en GRILLE 2 colonnes (1 seule en mode `dense`, cf. le bloc
  * des capacités spéciales), sinon la colonne unique étroite est illisible.
@@ -62,7 +62,7 @@ export function CreaturePathBlock({ paths, abilities, nc, dense = false }: Creat
         gap: 1.25,
       }}
     >
-      {resolved.map(({ ref, name, classId, sourcePage, featureName, features }) => {
+      {resolved.map(({ ref, name, classId, sourcePage, features }) => {
         // Couleur de profil dérivée au RENDU (le module de résolution reste sans UI).
         const color = classId ? classColor(classId) : undefined;
         return (
@@ -82,7 +82,7 @@ export function CreaturePathBlock({ paths, abilities, nc, dense = false }: Creat
             <Typography component="span" variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
               rang {ref.rank}
             </Typography>
-            {sourcePage != null && <SourceRef page={sourcePage} term={featureName ?? name} />}
+            {sourcePage != null && <SourceRef page={sourcePage} term={name} />}
           </Stack>
 
           {/* La carte de la capacité du rang indiqué (mêmes briques que la fiche). */}

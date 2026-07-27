@@ -4,25 +4,29 @@
  * pour être testable en environnement node — d'où l'absence de toute dépendance UI :
  * la COULEUR de profil (concern de présentation) est dérivée par le composant, pas ici.
  *
- * ⚠️ RÈGLE VERROUILLÉE — « Voie X rang N » = la SEULE capacité de rang N, PAS les rangs
- * 1..N (confirmé par les auteurs, Discord officiel 2026-07-27). Le filtre est donc
- * `feature.rank === ref.rank`. NE JAMAIS revenir à `<=` : `creaturePaths.test.ts` fige
- * cet invariant et cassera si la faute (dérouler toute la voie) est réintroduite — c'est
- * précisément ce qui protège les ~140 créatures du bestiaire d'une régression silencieuse.
+ * RÈGLE (confirmée par le propriétaire, 2026-07-27) — quand « Voie X rang N » désigne une
+ * VOIE DE PROFIL de joueur (une `Path` de classe), la créature possède la voie ENTIÈRE
+ * jusqu'au rang indiqué, c.-à-d. les capacités des rangs 1..N (comme un personnage qui
+ * atteint le rang N). Le filtre est donc `feature.rank <= ref.rank`. Ex. aberratus,
+ * « Voie des illusions rang 5 » → rangs 1 à 5.
+ *
+ * (Une brève hypothèse « rang N seul » avait été codée puis figée par erreur le
+ * 2026-07-27 ; corrigée ici. Les éventuelles « voies de créatures » propres au Bestiaire
+ * — p. 209-212, hors périmètre actuel, cf. PER-251 — pourront avoir une autre sémantique
+ * et seront traitées à part le moment venu.)
  */
 import { featureById, pathById } from '@/data';
 import type { CreaturePathReference, Feature } from '@/data/schema';
 
-/** Une voie résolue + la capacité de son rang indiqué (règle : ce rang SEUL). */
+/** Une voie résolue + ses capacités jusqu'au rang indiqué (rangs 1..rank). */
 export interface ResolvedPath {
   ref: CreaturePathReference;
   name: string;
   /** id de classe de la voie (si voie de classe) — le composant en dérive la couleur. */
   classId?: string;
-  /** Page de la CAPACITÉ affichée (pas du début de voie) — cf. ci-dessous. */
+  /** Page de DÉBUT de la voie (`Path.sourcePage`) — le renvoi du titre y pointe. */
   sourcePage?: number;
-  /** Nom de la capacité affichée, pour le surlignage `SourceRef` sur la bonne page. */
-  featureName?: string;
+  /** Capacités des rangs 1..rank, triées par rang croissant. */
   features: Feature[];
 }
 
@@ -30,20 +34,16 @@ export function resolvePath(ref: CreaturePathReference): ResolvedPath | null {
   const path = pathById.get(ref.pathId);
   if (!path) return null; // Voie inconnue : on n'invente rien, on l'ignore.
   const classId = path.type === 'class' ? path.classIds[0] : undefined;
-  // Capacité du rang indiqué UNIQUEMENT (généralement une seule ; on capte les rares
-  // voies à plusieurs capacités au même rang). On ne déroule PAS les rangs inférieurs.
+  // Voie ENTIÈRE jusqu'au rang indiqué : capacités des rangs 1..N (règle ci-dessus).
   const features = path.featureIds
     .map((id) => featureById.get(id))
-    .filter((f): f is Feature => !!f && f.rank === ref.rank);
-  // La source pointe la CAPACITÉ affichée (ex. « Exécution mentale » p. 96), pas le
-  // début de la voie (p. 95) : depuis qu'on ne montre que ce rang, c'est la bonne page.
-  const feature = features[0];
+    .filter((f): f is Feature => !!f && f.rank <= ref.rank)
+    .sort((a, b) => a.rank - b.rank);
   return {
     ref,
     name: path.name,
     classId,
-    sourcePage: feature?.sourcePage ?? path.sourcePage,
-    featureName: feature?.name,
+    sourcePage: path.sourcePage,
     features,
   };
 }
