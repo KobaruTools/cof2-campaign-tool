@@ -28,8 +28,9 @@ export function prestigeStaticBorderSx(thickness = 1, radius: string | number = 
       inset: 0,
       borderRadius: radius,
       padding: `${thickness}px`,
-      // 50/50 blanc/gris orienté à 45° (retour proprio) : moitié blanche, moitié grise en diagonale.
-      background: 'linear-gradient(45deg, #ffffff 0%, #ffffff 50%, #8c8c8c 50%, #8c8c8c 100%)',
+      // Dégradé LISSÉ légèrement JAUNE → gris chaud, équilibré 50/50, orienté à 45° (retour proprio) :
+      // jaune pâle dans un coin, gris (teinté chaud) dans le coin opposé, transition continue.
+      background: 'linear-gradient(45deg, #fff2c2, #968f74)',
       // Ne garder que le liseré : le remplissage (content-box) est soustrait de la surface complète.
       WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
       WebkitMaskComposite: 'xor',
