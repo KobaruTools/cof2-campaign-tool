@@ -44,6 +44,7 @@ import { MetaPill } from '@/components/MetaPill';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { bookIdForSourceSlug } from '@/lib/ui/books';
 import { CreaturePathBlock } from './CreaturePathBlock';
+import { lookupRiderKeyword } from '@/lib/bestiary/riderKeywords';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { GlossaryText, RichInline } from '@/components/sheet/FeatureRichText';
 import { VerbatimToggle } from '@/components/sheet/FeaturesByPath';
@@ -176,6 +177,36 @@ function AbilityRefChip({
 }
 
 /**
+ * Chip d'un MOT-CLÉ D'EFFET récurrent (« régénération ») qui n'a pas de capacité du même nom sur la
+ * créature (le livre nomme le mécanisme autrement). Teinte neutre (≠ chip violet d'une vraie capacité,
+ * ≠ chip jaune d'un dé) : info-bulle GÉNÉRIQUE, aucune carte à surligner. Cf. `lookupRiderKeyword`.
+ */
+function KeywordChip({ label, explanation }: { label: string; explanation: string }) {
+  return (
+    <AppTooltip title={<Box sx={{ maxWidth: 300, lineHeight: 1.4 }}>{explanation}</Box>}>
+      <Box
+        component="span"
+        sx={(theme) => ({
+          display: 'inline-block',
+          verticalAlign: 'baseline',
+          px: 0.6,
+          borderRadius: 0.75,
+          fontWeight: 700,
+          fontSize: '0.85em',
+          lineHeight: 1.4,
+          cursor: 'help',
+          color: 'text.primary',
+          bgcolor: alpha(theme.palette.text.primary, 0.08),
+          border: `1px solid ${alpha(theme.palette.text.primary, 0.28)}`,
+        })}
+      >
+        {label}
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
  * Rend le RIDER d'une attaque (« + 1d8 d'électricité », « + poison », « + pétrification ») en ligne
  * enrichie : les dés en chip jaune (`RiderDiceChip`), les mots qui correspondent à une capacité de la
  * créature en chip violet cliquable-au-survol (`AbilityRefChip`, surligne la carte), le reste passé au
@@ -222,26 +253,39 @@ function AttackRider({
       }
     };
     while (i < tokens.length) {
-      let matched: { label: string; key: string; len: number } | null = null;
-      for (let len = Math.min(6, tokens.length - i); len >= 1; len--) {
-        const label = tokens.slice(i, i + len).join('');
-        const key = normalizeAbilityKey(label);
-        if (key && abilityByKey.has(key)) {
-          matched = { label, key, len };
-          break;
-        }
+      // Rapprochement du plus long segment de tokens : une capacité de la créature (précis, avec
+      // surlignage) l'emporte ; à défaut un mot-clé d'effet générique (« régénération »).
+      let matched: { label: string; key: string; len: number; kind: 'ability' | 'keyword' } | null =
+        null;
+      for (let len = Math.min(6, tokens.length - i); len >= 1 && !matched; len--) {
+        const raw = tokens.slice(i, i + len).join('');
+        const label = raw.trim(); // enlève un token espace de bord (« ␣régénération »)
+        const key = normalizeAbilityKey(raw);
+        if (!key || !label) continue;
+        if (abilityByKey.has(key)) matched = { label, key, len, kind: 'ability' };
+        else if (lookupRiderKeyword(key)) matched = { label, key, len, kind: 'keyword' };
       }
       if (matched) {
         flushText(`t${si}-${i}`);
-        nodes.push(
-          <AbilityRefChip
-            key={`a${si}-${i}`}
-            label={matched.label}
-            ability={abilityByKey.get(matched.key)!}
-            abilityKey={matched.key}
-            onHover={onHoverAbility}
-          />,
-        );
+        if (matched.kind === 'ability') {
+          nodes.push(
+            <AbilityRefChip
+              key={`a${si}-${i}`}
+              label={matched.label}
+              ability={abilityByKey.get(matched.key)!}
+              abilityKey={matched.key}
+              onHover={onHoverAbility}
+            />,
+          );
+        } else {
+          nodes.push(
+            <KeywordChip
+              key={`k${si}-${i}`}
+              label={matched.label}
+              explanation={lookupRiderKeyword(matched.key)!.explanation}
+            />,
+          );
+        }
         i += matched.len;
       } else {
         textRun += tokens[i];
