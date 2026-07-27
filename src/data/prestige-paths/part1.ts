@@ -674,11 +674,10 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Lorsqu'il acquiert cette capacité, le personnage peut choisir entre deux propositions. Soit il gagne un bonus de +1 en attaque lorsqu'il utilise une capacité à définir. Soit il obtient un bonus de +5 sur une compétence acquise par une capacité (par exemple, discrétion).",
-    // PER-74 : on TRACE le détail retenu (capacité visée / compétence) via des sous-choix conditionnels,
-    // mais le +1 en attaque et le +5 en compétence restent MANUELS (verbatim) : le +1 est conditionné à
-    // « l'usage d'une capacité à définir » (aucune primitive ne gate une attaque sur l'emploi d'une
-    // capacité), et le +5 vise « une compétence acquise par une capacité » (domaine flou, pas de bonus
-    // chiffré sur domaine choisi). Arbitrage proprio 2026-07-27 (registre lycanthrope/sang-dragon).
+    // PER-74 : le +5 aux tests est MÉCANISÉ (effet `test-bonus-from-choice` sur la compétence choisie,
+    // index 2) → il apparaît dans « Compétences & tests ». Le +1 en attaque reste MANUEL/verbatim (aucune
+    // primitive ne gate une attaque sur l'emploi d'une capacité) ; on TRACE juste la capacité visée.
+    effects: [{ kind: 'test-bonus-from-choice', choiceIndex: 2, value: 5 }],
     choices: [
       {
         kind: 'option',

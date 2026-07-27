@@ -491,6 +491,7 @@ export type FeatureEffect =
   | AbilityBonusDieEffect
   | AbilityBonusDieFromChoiceEffect
   | TestBonusEffect
+  | TestBonusFromChoiceEffect
   | ManaAbilityOverrideEffect
   | UniversalTestBonusEffect
   | ImmunityEffect
@@ -1294,6 +1295,22 @@ export interface TestBonusEffect {
    * fixe (+5) et les rares exceptions. Constante ou scalante (`EffectValue`).
    */
   value?: EffectValue;
+}
+
+/**
+ * Bonus de compétence dont le DOMAINE est déterminé par un choix `test-domain` de la même capacité
+ * (PER-74, Expertise r4 : « +5 sur une compétence acquise par une capacité », p. 129). Analogue de
+ * `ability-bonus-from-choice` (carac lue depuis un choix `ability`) : ici le domaine visé est lu
+ * depuis `Character.featureChoices[id][choiceIndex]` (la compétence choisie), et `value` (le +5) lui
+ * est appliqué. La catégorie de cumul est celle de la voie hôte (prestige → +5 fixe, max par
+ * catégorie p. 203). Sans sélection, aucune contribution. Résolu par `rawTestContributions`.
+ */
+export interface TestBonusFromChoiceEffect {
+  kind: 'test-bonus-from-choice';
+  /** Index du choix `test-domain` de `Feature.choices` qui détermine le domaine visé. */
+  choiceIndex: number;
+  /** Valeur du bonus (constante — ex. +5 — ou scalante). */
+  value: EffectValue;
 }
 
 // ---------------------------------------------------------------------------

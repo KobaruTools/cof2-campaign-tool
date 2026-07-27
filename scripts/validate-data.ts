@@ -384,6 +384,13 @@ for (const c of features) {
         const valueError = effectValueError(e.value);
         if (valueError) err(`[capacite ${c.id}] effect: test-bonus ${valueError}`);
       }
+    } else if (e.kind === 'test-bonus-from-choice') {
+      // Domaine déterminé par un choix `test-domain` de la capacité (PER-74, Expertise r4 +5).
+      const choice = c.choices?.[e.choiceIndex];
+      if (!choice || choice.kind !== 'test-domain')
+        err(`[capacite ${c.id}] effect: test-bonus-from-choice → choiceIndex ${e.choiceIndex} ne pointe pas vers un choix 'test-domain'`);
+      const valueError = effectValueError(e.value);
+      if (valueError) err(`[capacite ${c.id}] effect: test-bonus-from-choice ${valueError}`);
     } else if (e.kind === 'mana-ability-override') {
       // Substitution de la carac de calcul des PM (« CHA au lieu de VOL »).
       if (!validAbilities.has(e.ability)) err(`[capacite ${c.id}] effect: caractéristique inconnue : ${e.ability}`);

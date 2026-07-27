@@ -28,7 +28,8 @@ import { featureById, pathById, testDomains, testDomainById } from '@/data';
 import { ABILITY_IDS } from '@/data/schema';
 import type { AbilityId, FeatureChoice, OptionFeatureChoice } from '@/data/schema';
 import { highestAbilities, lowestAbilities } from '@/lib/character/ancestry';
-import { effectiveAbilities } from '@/lib/character/effects';
+import { effectiveAbilities, testDomainSourceFeatureIds } from '@/lib/character/effects';
+import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
   allowedAbilitiesForChoice,
@@ -498,28 +499,53 @@ function ChoiceControl({
         const byGroup = domainGroupLabel(x).localeCompare(domainGroupLabel(y));
         return byGroup !== 0 ? byGroup : dx.label.localeCompare(dy.label);
       });
+    // Compétences « acquises par une capacité » (périmètre légal du +5) : les AUTRES restent
+    // proposées mais GRISÉES et déclenchent un avertissement si retenues (fiche permissive). Pour
+    // chaque compétence disponible, une puce au NOM de la capacité source (CapabilityChip) à droite.
+    const sourcesByDomain = testDomainSourceFeatureIds(character);
+    const offScope = !!single && !sourcesByDomain.has(single);
     return (
-      <Autocomplete
-        size="small"
-        options={domainIds}
-        groupBy={(id) => domainGroupLabel(id)}
-        getOptionLabel={(id) => testDomainById.get(id)?.label ?? id}
-        value={single}
-        isOptionEqualToValue={(opt, val) => opt === val}
-        onChange={(_, value) => onChange(index, value ?? null)}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label={choice.prompt}
-            error={blocking && missing}
-            helperText={
-              blocking && missing
-                ? 'Choix obligatoire'
-                : 'Le +5 s’applique à la table (non calculé sur la fiche).'
-            }
-          />
+      <Box>
+        <Autocomplete
+          size="small"
+          options={domainIds}
+          groupBy={(id) => domainGroupLabel(id)}
+          getOptionLabel={(id) => testDomainById.get(id)?.label ?? id}
+          value={single}
+          isOptionEqualToValue={(opt, val) => opt === val}
+          onChange={(_, value) => onChange(index, value ?? null)}
+          renderOption={(props, id) => {
+            const sourceId = sourcesByDomain.get(id)?.[0];
+            return (
+              <li {...props} style={{ ...props.style, opacity: sourceId ? 1 : 0.45 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, width: '100%' }}>
+                  <Box component="span">{testDomainById.get(id)?.label ?? id}</Box>
+                  {sourceId && <CapabilityChip featureId={sourceId} label={null} />}
+                </Box>
+              </li>
+            );
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={choice.prompt}
+              error={blocking && missing}
+              helperText={
+                blocking && missing
+                  ? 'Choix obligatoire'
+                  : 'Compétences grisées = non acquises par une capacité. Le +5 s’applique à la table.'
+              }
+            />
+          )}
+        />
+        {offScope && (
+          <AppAlert severity="warning" sx={{ mt: 1 }}>
+            {testDomainById.get(single)?.label ?? single} n’est pas identifiée comme acquise par une
+            capacité : vous dérogez à la règle (« +5 sur une compétence acquise par une capacité »,{' '}
+            <SourceRef page={129} />).
+          </AppAlert>
         )}
-      />
+      </Box>
     );
   }
 

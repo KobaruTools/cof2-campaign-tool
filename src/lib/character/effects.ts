@@ -18,7 +18,7 @@
  * Les deux derniers exigent un contexte (`EffectContext`). Sans contexte, seul le
  * cas plat constant est sommé (suffit aux appels « catalogue seul »).
  */
-import { featureById, pathById } from '@/data';
+import { featureById, pathById, testDomains } from '@/data';
 import { familiarFromOptionId, FANTASTIC_FAMILIAR_R3_ID } from '@/data/fantastic-familiars';
 import type {
   AbilityId,
@@ -1708,6 +1708,18 @@ function rawTestContributions(featureIds: string[], ctx?: EffectContext): RawTes
         out.push({ domain, featureId: id, name: feature.name, category, value });
     }
 
+    // (a ter) bonus dont le DOMAINE vient d'un choix `test-domain` (PER-74, Expertise r4 +5) : la
+    // compétence retenue reçoit `value`. Nécessite les choix (ctx) ; sans sélection, rien.
+    for (const effect of feature.effects ?? []) {
+      if (effect.kind !== 'test-bonus-from-choice') continue;
+      const sel = ctx?.featureChoices?.[id]?.[effect.choiceIndex];
+      const domain = typeof sel === 'string' ? sel : undefined;
+      if (!domain) continue;
+      const value = resolveValue(effect.value, feature.pathId, pathRanks, ctx);
+      if (value === null) continue;
+      out.push({ domain, featureId: id, name: feature.name, category, value });
+    }
+
     // (a bis) bonus de compétence CONDITIONNEL (PER-117) : domaines portés par un
     // conditional-stat-bonus ACTIF (ex. « en milieu naturel » : Survie, Éclaireur). Même valeur
     // déduite de la catégorie (fallback) qu'un test-bonus statique ; comptés seulement si le
@@ -1800,6 +1812,57 @@ export function universalTestBonus(featureIds: string[]): UniversalTestBonus | n
     }
   }
   return null;
+}
+
+/**
+ * Ids des COMPÉTENCES (domaines de test) que le personnage a « acquises par une capacité » — le
+ * périmètre légal du +5 de l'Expertise (spécialiste r4, p. 129), servant à SIGNALER dans le sélecteur
+ * les compétences hors périmètre (grisées mais sélectionnables, avec avertissement — fiche permissive).
+ * Réunit les trois sources structurées de bonus de test :
+ *  1. domaines PRÉCIS gagnés via une capacité/peuple (`testBonusSources`, ex. Voie de la brute →
+ *     négociation/persuasion/intimidation ; Voie du pagne → course/saut/escalade) ;
+ *  2. bonus à TOUTE une caractéristique → toutes ses compétences (`abilityTestBonusByAbility`, ex.
+ *     Tatouages/Prescience) ;
+ *  3. buff UNIFORME à toutes les caracs (`abilityTestBonusSources`, ex. Bénédiction) ou bonus
+ *     UNIVERSEL à tous les tests (`universalTestBonus`, Éclectique) → toutes les compétences.
+ * Utilise le contexte courant (les bonus conditionnels comptent s'ils sont actifs) ; c'est un indice,
+ * pas une contrainte bloquante.
+ */
+export function acquiredTestDomainIds(character: Character): Set<string> {
+  return new Set(testDomainSourceFeatureIds(character).keys());
+}
+
+/**
+ * Pour chaque COMPÉTENCE acquise par une capacité (cf. {@link acquiredTestDomainIds}), les ids des
+ * CAPACITÉS qui l'accordent (ordre de rencontre, dédoublonnés). Sert à afficher, à droite d'une
+ * compétence disponible du sélecteur +5 (Expertise r4), une puce au NOM de la capacité source
+ * (`CapabilityChip`). Une compétence sans source n'apparaît pas (elle serait « grisée »).
+ */
+export function testDomainSourceFeatureIds(character: Character): Map<string, string[]> {
+  const featureIds = effectiveFeatureIdsForMods(character);
+  const ctx = effectContext(character);
+  const map = new Map<string, string[]>();
+  const add = (domain: string, featureId: string) => {
+    const list = map.get(domain);
+    if (list) {
+      if (!list.includes(featureId)) list.push(featureId);
+    } else {
+      map.set(domain, [featureId]);
+    }
+  };
+  // (1) Domaines PRÉCIS gagnés via une capacité/peuple.
+  for (const src of testBonusSources(featureIds, ctx))
+    for (const s of src.sources) add(src.domain, s.featureId);
+  // (2) Bonus à TOUTE une carac → toutes ses compétences ; (3) uniforme / universel → toutes.
+  const byAbility = abilityTestBonusByAbility(featureIds, ctx);
+  const uniformSources = abilityTestBonusSources(featureIds, ctx);
+  const universal = universalTestBonus(featureIds);
+  for (const d of testDomains) {
+    for (const a of d.abilities) for (const s of byAbility[a] ?? []) add(d.id, s.featureId);
+    for (const s of uniformSources) add(d.id, s.featureId);
+    if (universal) add(d.id, universal.featureId);
+  }
+  return map;
 }
 
 /**

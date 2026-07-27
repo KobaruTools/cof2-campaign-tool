@@ -30,6 +30,7 @@ import {
   stackedDamageReductions,
   activeAbilityOverrideSources,
   creatureBonusDiceForPath,
+  acquiredTestDomainIds,
   defenseAbility,
   disabledFeatureIds,
   disabledFeatureReasons,
@@ -975,6 +976,36 @@ describe('effectiveAbilities — saisie + modificateurs permanents de capacités
 
   it('Caractéristique fabuleuse : sans choix retenu, aucune carac modifiée', () => {
     expect(effectiveAbilities(charWithFeatures(ABILITIES_3, ['prestige-specialiste-r6']))).toEqual(ABILITIES_3);
+  });
+
+  it('acquiredTestDomainIds : compétences gagnées par capacité (Expertise r4 +5)', () => {
+    // Voie du pagne r1 → course/saut/escalade ; Voie de la brute r1 → négociation/persuasion/intimidation.
+    const domains = acquiredTestDomainIds(charWithFeatures(ABILITIES_3, ['pagne-r1', 'brute-r1']));
+    for (const d of ['running', 'jumping', 'climbing', 'negotiation', 'persuasion', 'intimidation'])
+      expect(domains.has(d)).toBe(true);
+    // Une compétence non octroyée n'est pas dans le périmètre (grisée dans le sélecteur).
+    expect(domains.has('acrobatics')).toBe(false);
+  });
+
+  it('Expertise (spécialiste r4) : +5 MÉCANISÉ sur la compétence choisie (test-bonus-from-choice)', () => {
+    const c = charWithFeatures(ABILITIES_3, ['prestige-specialiste-r4'], {
+      'prestige-specialiste-r4': ['skill-bonus', null, 'stealth'],
+    });
+    const stealth = testBonusSources(effectiveFeatureIdsForMods(c), effectContext(c)).find(
+      (b) => b.domain === 'stealth',
+    );
+    expect(stealth?.total).toBe(5);
+    expect(stealth?.sources.map((s) => s.featureId)).toContain('prestige-specialiste-r4');
+  });
+
+  it('Expertise : branche « +1 attaque » (aucune compétence choisie) → aucun +5', () => {
+    const c = charWithFeatures(ABILITIES_3, ['prestige-specialiste-r4'], {
+      'prestige-specialiste-r4': ['attack-bonus', 'rage-r1', null],
+    });
+    const stealth = testBonusSources(effectiveFeatureIdsForMods(c), effectContext(c)).find(
+      (b) => b.domain === 'stealth',
+    );
+    expect(stealth).toBeUndefined();
   });
 });
 
