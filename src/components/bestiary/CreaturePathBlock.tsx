@@ -44,9 +44,15 @@ export interface CreaturePathBlockProps {
   nc?: number;
   /** Rendu compact (écran de MJ) : réduit un poil la typo, comme le reste du bloc. */
   dense?: boolean;
+  /**
+   * Dispose les voies sur 2 colonnes (sm+). En temps normal on suit `!dense` (bestiaire
+   * large = 2 col, carte MJ étroite = 1 col), mais une carte MJ « large » (2 colonnes)
+   * repasse ici à 2 colonnes malgré `dense`. Décidé par l'appelant.
+   */
+  twoColumns?: boolean;
 }
 
-export function CreaturePathBlock({ paths, abilities, nc, dense = false }: CreaturePathBlockProps) {
+export function CreaturePathBlock({ paths, abilities, nc, dense = false, twoColumns = !dense }: CreaturePathBlockProps) {
   const resolved = paths.map(resolvePath).filter((p): p is ResolvedPath => p !== null);
   if (resolved.length === 0) return null;
   // Niveau proxy pour les dés évolutifs (cf. en-tête de fichier). Entier ≥ 1.
@@ -56,9 +62,9 @@ export function CreaturePathBlock({ paths, abilities, nc, dense = false }: Creat
     <Box
       sx={{
         display: 'grid',
-        // 2 colonnes dans le bestiaire (panneau large) ; 1 seule en mode dense (carte
-        // étroite de l'écran de MJ). Même modèle que le bloc des capacités spéciales.
-        gridTemplateColumns: dense ? '1fr' : { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+        // 2 colonnes quand il y a la place (bestiaire large, ou carte MJ « large ») ;
+        // 1 seule sur carte MJ étroite. Même modèle que le bloc des capacités spéciales.
+        gridTemplateColumns: twoColumns ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' } : '1fr',
         gap: 1.25,
       }}
     >

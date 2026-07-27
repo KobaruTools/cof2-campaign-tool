@@ -49,6 +49,9 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, sx }: S
   const { Icon } = meta;
   const label = [section, page != null ? `p. ${page}` : null].filter(Boolean).join(', ');
   const targetPage = page != null ? Number.parseInt(String(page), 10) : NaN;
+  // Livre DORMANT (PDF pas encore servi, ex. Bestiaire payant) : on garde le badge
+  // (bon libellé + icône) mais NON cliquable — sinon le clic ouvrirait le mauvais PDF.
+  const available = meta.available !== false;
 
   const open = (e: React.SyntheticEvent) => {
     // Empêche le clic d'activer un conteneur cliquable englobant (ligne de liste, résumé
@@ -62,19 +65,28 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, sx }: S
   return (
     // `span[role=button]` plutôt qu'un vrai `<button>` : `SourceRef` s'affiche parfois À
     // L'INTÉRIEUR d'éléments interactifs (résumé d'accordéon, ligne de liste) et un bouton
-    // imbriqué dans un bouton est du HTML invalide (erreur d'hydratation).
+    // imbriqué dans un bouton est du HTML invalide (erreur d'hydratation). Non interactif
+    // quand le livre est dormant (ni `role`, ni handlers, ni surbrillance au survol).
     <Box
       component="span"
-      role="button"
-      tabIndex={0}
-      title={`${meta.name} — ouvrir dans le visualiseur`}
-      onClick={open}
-      onKeyDown={(e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          open(e);
-        }
-      }}
+      role={available ? 'button' : undefined}
+      tabIndex={available ? 0 : undefined}
+      title={
+        available
+          ? `${meta.name} — ouvrir dans le visualiseur`
+          : `${meta.name} — bientôt disponible dans le visualiseur`
+      }
+      onClick={available ? open : undefined}
+      onKeyDown={
+        available
+          ? (e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                open(e);
+              }
+            }
+          : undefined
+      }
       sx={[
         (theme) => ({
           display: 'inline-flex',
@@ -86,7 +98,7 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, sx }: S
           px: 0.75,
           py: 0.25,
           borderRadius: 1,
-          cursor: 'pointer',
+          cursor: available ? 'pointer' : 'default',
           lineHeight: 1,
           fontSize: '0.75rem',
           fontVariantNumeric: 'tabular-nums',
@@ -94,11 +106,14 @@ export function SourceRef({ page, section, term, book = DEFAULT_BOOK_ID, sx }: S
           bgcolor: alpha(theme.palette.text.primary, 0.06),
           border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
           transition: theme.transitions.create(['background-color', 'border-color', 'color']),
-          '&:hover': {
-            color: 'text.primary',
-            bgcolor: alpha(theme.palette.primary.main, 0.12),
-            borderColor: alpha(theme.palette.primary.main, 0.4),
-          },
+          // Surbrillance au survol réservée au badge cliquable.
+          ...(available && {
+            '&:hover': {
+              color: 'text.primary',
+              bgcolor: alpha(theme.palette.primary.main, 0.12),
+              borderColor: alpha(theme.palette.primary.main, 0.4),
+            },
+          }),
         }),
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}

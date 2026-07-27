@@ -31,8 +31,8 @@ function item(
   };
 }
 
-function source(id: string, contentVersion: number): SourceManifestEntry {
-  return { id, slug: id, contentVersion };
+function source(id: string, contentVersion: number, isPaid = false): SourceManifestEntry {
+  return { id, slug: id, contentVersion, isPaid };
 }
 
 describe('planSourceReconciliation', () => {

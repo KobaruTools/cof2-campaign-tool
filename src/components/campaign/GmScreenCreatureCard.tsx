@@ -19,7 +19,23 @@ import Stack from '@mui/material/Stack';
 import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CreatureBlobView } from '@/components/bestiary/CreatureBlobView';
+import type { Creature } from '@/data/schema';
 import { SIDE_ACCENT, SIDE_LABELS, type CreatureSide } from '@/lib/ui/creature';
+import { useBestiaryStore } from '@/stores/bestiary';
+
+/**
+ * Une créature « lourde » mérite 2 colonnes dans la grille de l'écran de MJ pour ne
+ * pas tasser son contenu (retour proprio) : au moins 2 voies OU au moins 4 capacités
+ * (héritées de la base comprises, comme le bloc les affiche). Blob absent = pas encore
+ * chargé → carte étroite le temps du chargement, puis reflow.
+ */
+export function isWideCreatureCard(blob?: Creature, baseBlob?: Creature): boolean {
+  if (!blob) return false;
+  const pathCount = blob.paths?.length ?? 0;
+  const inheritedCount = blob.sharedAbilitiesNote ? baseBlob?.specialAbilities?.length ?? 0 : 0;
+  const abilityCount = (blob.specialAbilities?.length ?? 0) + inheritedCount;
+  return pathCount >= 2 || abilityCount >= 4;
+}
 
 export interface GmScreenCreatureCardProps {
   /** Slug de la créature du bestiaire à afficher (`Creature.id`). */
@@ -41,10 +57,19 @@ export interface GmScreenCreatureCardProps {
 
 export function GmScreenCreatureCard({ slug, label, side, visible, onToggleVisible, onRemove }: GmScreenCreatureCardProps) {
   const accent = SIDE_ACCENT[side];
+  // Créature « lourde » (≥ 2 voies ou ≥ 4 capacités) → carte sur 2 colonnes. On lit le
+  // blob (et sa base pour les capacités héritées) dans le store, alimenté par le rendu.
+  const blob = useBestiaryStore((s) => s.blobs[slug]);
+  const baseId = blob?.sharedAbilitiesNote ? blob.baseCreatureId : undefined;
+  const baseBlob = useBestiaryStore((s) => (baseId ? s.blobs[baseId] : undefined));
+  const wide = isWideCreatureCard(blob, baseBlob);
   return (
     <Paper
       sx={{
         p: 2,
+        // Étalement sur 2 colonnes quand la carte est dense — seulement là où la grille a
+        // ≥ 2 colonnes (sm+), sinon (xs, 1 colonne) on reste sur la colonne unique.
+        ...(wide ? { gridColumn: { xs: 'auto', sm: 'span 2' } } : {}),
         // Créature masquée aux joueurs : légèrement estompée (80 % d'opacité) pour la
         // distinguer d'un coup d'œil sur l'écran de MJ ; elle reste pleinement lisible et
         // gérable (elle est simplement absente de la fenêtre projetée).
@@ -105,7 +130,8 @@ export function GmScreenCreatureCard({ slug, label, side, visible, onToggleVisib
             </IconButton>
           </AppTooltip>
         </Stack>
-        <CreatureBlobView slug={slug} hideNotes dense collapsibleAbilities />
+        {/* Carte large (2 colonnes) → sections voies/capacités elles aussi sur 2 colonnes. */}
+        <CreatureBlobView slug={slug} hideNotes dense collapsibleAbilities wideColumns={wide} />
       </Stack>
     </Paper>
   );

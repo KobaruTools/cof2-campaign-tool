@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useState } from "react";
 import CategoryIcon from "@mui/icons-material/Category";
 import ClearIcon from "@mui/icons-material/Clear";
+import PetsOutlinedIcon from "@mui/icons-material/PetsOutlined";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import SearchIcon from "@mui/icons-material/Search";
 import SortByAlphaIcon from "@mui/icons-material/SortByAlpha";
@@ -59,7 +60,7 @@ import {
 import { usePersistedState } from "@/lib/ui/usePersistedState";
 import { useBestiaryStore } from "@/stores/bestiary";
 import { AppAlert } from "@/components/AppAlert";
-import { BestiaryStatBlock } from "./BestiaryStatBlock";
+import { CreatureBlobView } from "./CreatureBlobView";
 
 /** Normalise pour une recherche insensible aux accents et à la casse. */
 const norm = (s: string) =>
@@ -176,19 +177,11 @@ function BestiaryLoadingSkeleton() {
 }
 
 /**
- * Étage 1 (détail) : charge à la demande le BLOB complet de la créature sélectionnée
- * et le rend via `BestiaryStatBlock`. Squelette pendant le chargement, alerte en cas
- * d'échec. Le blob est mis en cache par le store (une créature n'est chargée qu'une fois).
+ * Étage 1 (détail) : rend la créature sélectionnée via `CreatureBlobView` (partagé avec
+ * l'écran de MJ) — chargement du blob, cache, résolution de l'héritage des capacités et
+ * squelette/erreur y sont mutualisés. Ici on ne gère que l'état « aucune sélection ».
  */
-function CreatureDetail({ slug }: { slug: string }) {
-  const blob = useBestiaryStore((s) => (slug ? s.blobs[slug] : undefined));
-  const blobStatus = useBestiaryStore((s) => (slug ? s.blobStatus[slug] : undefined));
-  const loadBlob = useBestiaryStore((s) => s.loadBlob);
-
-  useEffect(() => {
-    if (slug) void loadBlob(slug);
-  }, [slug, loadBlob]);
-
+function CreatureDetail({ slug, paidSource = false }: { slug: string; paidSource?: boolean }) {
   if (!slug) {
     return (
       <Typography color="text.secondary" sx={{ p: 2 }}>
@@ -196,26 +189,17 @@ function CreatureDetail({ slug }: { slug: string }) {
       </Typography>
     );
   }
-  if (blob) return <BestiaryStatBlock creature={blob} />;
-  if (blobStatus === "error") {
-    return (
-      <AppAlert severity="error">
-        Impossible de charger le détail de cette créature.
-      </AppAlert>
-    );
-  }
-  return (
-    <Stack spacing={1.5} sx={{ p: 1 }}>
-      <Skeleton variant="text" width="45%" height={40} />
-      <Skeleton variant="rounded" height={72} />
-      <Skeleton variant="rounded" height={180} />
-      <Skeleton variant="rounded" height={120} />
-    </Stack>
-  );
+  // Chargement du blob + résolution de l'héritage des capacités : mutualisés dans
+  // `CreatureBlobView` (partagé avec l'écran de MJ) → rendu identique partout.
+  return <CreatureBlobView slug={slug} paidSource={paidSource} />;
 }
 
 /** Étage 1 bis : tout le filtrage/tri, sur la liste LÉGÈRE déjà chargée (non vide). */
 function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
+  // Sources payantes débloquées : une créature dont le `sourceId` y figure vient d'un
+  // supplément premium → marquée d'une tête de loup à côté de son NC (liste + détail).
+  const paidSourceIds = useBestiaryStore((s) => s.paidSourceIds);
+  const isPaidCreature = (c: CreatureListItem) => paidSourceIds.has(c.sourceId);
   // NC numériques présents dans le bestiaire (le gabarit sans NC est exclu), triés — servent
   // aux bornes du curseur et à ses graduations (le curseur ne s'arrête que sur ces valeurs).
   const ncValues = useMemo(
@@ -638,6 +622,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
                   key={c.id}
                   creature={c}
                   selected={effectiveId === c.id}
+                  paid={isPaidCreature(c)}
                   onSelect={() => setSelectedId(c.id)}
                 />
               ))
@@ -675,6 +660,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
                       key={family.base.id}
                       creature={family.base}
                       selected={effectiveId === family.base.id}
+                      paid={isPaidCreature(family.base)}
                       onSelect={() => setSelectedId(family.base.id)}
                     />,
                   );
@@ -685,6 +671,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
                         creature={v}
                         variant
                         selected={effectiveId === v.id}
+                        paid={isPaidCreature(v)}
                         onSelect={() => setSelectedId(v.id)}
                       />,
                     );
@@ -698,7 +685,10 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
 
         {/* Détail : bloc de stats de la créature sélectionnée (blob chargé à la demande). */}
         <Box sx={{ minWidth: 0 }}>
-          <CreatureDetail slug={effectiveId} />
+          <CreatureDetail
+            slug={effectiveId}
+            paidSource={list.some((c) => c.id === effectiveId && isPaidCreature(c))}
+          />
         </Box>
       </Box>
     </Stack>
@@ -710,11 +700,14 @@ function CreatureRow({
   creature,
   variant = false,
   selected,
+  paid = false,
   onSelect,
 }: {
   creature: CreatureListItem;
   variant?: boolean;
   selected: boolean;
+  /** Créature d'un supplément payant → tête de loup à gauche du NC. */
+  paid?: boolean;
   onSelect: () => void;
 }) {
   const nc = creatureNcLabel(creature);
@@ -759,14 +752,32 @@ function CreatureRow({
       >
         {creature.name}
       </Typography>
-      {nc && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ fontVariantNumeric: "tabular-nums", flexShrink: 0 }}
+      {/* Marqueur « payant » (tête de loup) à gauche du NC + libellé NC. */}
+      {(paid || nc) && (
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}
         >
-          NC {nc}
-        </Typography>
+          {paid && (
+            <Tooltip title="Supplément Bestiaire (contenu payant)">
+              <Box
+                component="span"
+                aria-label="Contenu payant"
+                sx={{ display: "inline-flex", color: "text.secondary" }}
+              >
+                <PetsOutlinedIcon sx={{ fontSize: 14 }} />
+              </Box>
+            </Tooltip>
+          )}
+          {nc && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              NC {nc}
+            </Typography>
+          )}
+        </Box>
       )}
     </Box>
   );

@@ -592,7 +592,13 @@ export default function PdfBookViewer({
           p: 2,
         }}
       >
-        {loadError ? (
+        {book.available === false ? (
+          // Livre DORMANT (PDF pas encore servi, ex. Bestiaire payant en attente de la
+          // livraison gatée) : message clair plutôt qu'un chargement voué à l'échec.
+          <Typography color="text.secondary" sx={{ m: 'auto', textAlign: 'center', px: 3 }}>
+            « {book.name} » n&apos;est pas encore disponible dans le visualiseur.
+          </Typography>
+        ) : loadError ? (
           <Typography color="error" sx={{ m: 'auto', textAlign: 'center', px: 3 }}>
             Impossible de charger le livre. Vérifiez que le fichier PDF est bien disponible.
           </Typography>

@@ -1,13 +1,16 @@
 import type { SvgIconComponent } from '@mui/icons-material';
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 
 /**
  * Identifiant d'un livre source (clé de contenu, en anglais). Le livre de base porte
  * toutes les données actuelles ; Le Compagnon est consultable dans le visualiseur mais
- * n'alimente aucune donnée extraite (hors scope d'extraction, cf. CLAUDE.md).
+ * n'alimente aucune donnée extraite (hors scope d'extraction, cf. CLAUDE.md). Le
+ * Bestiaire (payant) alimente les créatures de la source `bestiaire` mais n'est pas
+ * encore servi dans le visualiseur (`available: false`, cf. ticket PDF payant gaté).
  */
-export type BookId = 'core-rulebook' | 'companion';
+export type BookId = 'core-rulebook' | 'companion' | 'bestiaire';
 
 /** Métadonnées d'affichage d'un livre source. */
 export interface BookMeta {
@@ -23,6 +26,15 @@ export interface BookMeta {
    * et ne sont donc pas servis : leur entrée reste dormante tant que le fichier n'est pas fourni.
    */
   file: string;
+  /**
+   * Le livre est-il RÉELLEMENT servi dans le visualiseur ? `false` = entrée DORMANTE :
+   * le renvoi de source (`SourceRef`) affiche le bon libellé/icône mais n'est PAS
+   * cliquable (le PDF n'est pas encore disponible), et le visualiseur affiche un
+   * message plutôt que de tenter un chargement voué à échouer. Défaut (absent) = `true`.
+   * Le Bestiaire payant repassera à `true` quand son PDF sera servi de façon gatée
+   * (Supabase Storage privé + URL signée — ticket dédié).
+   */
+  available?: boolean;
 }
 
 /**
@@ -44,6 +56,17 @@ export const BOOKS: Record<BookId, BookMeta> = {
     // PDF payant/sous copyright : hors du repo (`pdf-payants/compagnon.pdf`, non servi).
     // Entrée dormante — aucune donnée ne pointe encore ce livre (hors scope d'extraction).
     file: '/pdf/companion.pdf',
+    available: false,
+  },
+  bestiaire: {
+    id: 'bestiaire',
+    name: 'Le Bestiaire',
+    Icon: PetsOutlinedIcon,
+    // PDF payant/sous copyright : hors du repo (`pdf-payants/bestiaire.pdf`, non servi
+    // publiquement). Sera servi de façon GATÉE (Supabase Storage privé + URL signée par
+    // entitlement) — ticket dédié. Dormant en attendant : renvoi non cliquable.
+    file: '/pdf/bestiaire.pdf',
+    available: false,
   },
 };
 

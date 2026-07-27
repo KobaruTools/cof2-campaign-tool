@@ -83,6 +83,10 @@ export function CreatureCatalogAutocomplete({
       value={selectedItem}
       openOnFocus
       getOptionLabel={(o) => o.name}
+      // Clé d'option = slug UNIQUE (pas le nom) : plusieurs créatures peuvent partager
+      // un libellé (« Grand mâle » du lion et du bison, variantes homonymes), ce qui
+      // provoquait des clés React en double. `getOptionKey` fixe la clé de `renderOption`.
+      getOptionKey={(o) => o.id}
       isOptionEqualToValue={(opt, val) => opt.id === val.id}
       groupBy={(o) => o.category}
       onChange={(_, item) => onSelect(item ? item.id : null)}

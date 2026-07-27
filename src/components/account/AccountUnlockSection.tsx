@@ -37,6 +37,7 @@ import {
   type UnlockedSource,
 } from '@/lib/bestiary';
 import { AppAlert } from '@/components/AppAlert';
+import { useBestiaryStore } from '@/stores/bestiary';
 
 /** Fond « verre dépoli » d'une carte de section (aligné sur AccountPage). */
 const SECTION_SX = {
@@ -99,6 +100,10 @@ export function AccountUnlockSection() {
         setFeedback({ kind: 'success', sourceName: result.sourceName });
         setCode('');
         void refreshUnlocked();
+        // Le store du bestiaire est idempotent pour la session (il ne re-réconcilie
+        // pas à chaque visite de /bestiary). Un déblocage change ce que la RLS expose :
+        // on force donc une réconciliation pour que la source apparaisse SANS F5.
+        void useBestiaryStore.getState().loadList({ force: true });
       } else {
         setFeedback({ kind: 'invalid' });
       }
@@ -115,6 +120,9 @@ export function AccountUnlockSection() {
     try {
       await removeSourceEntitlement(sourceId);
       setUnlocked((prev) => prev.filter((s) => s.sourceId !== sourceId));
+      // Symétrique du déblocage : le retrait re-ferme l'accès → on force la
+      // réconciliation pour que la source (et ses créatures) soit purgée de /bestiary.
+      void useBestiaryStore.getState().loadList({ force: true });
     } catch {
       setFeedback({ kind: 'error' });
     } finally {

@@ -163,6 +163,12 @@ export interface ReconcileResult {
   list: CreatureListItem[];
   /** Slugs des blobs à évincer du cache MÉMOIRE (déjà supprimés du disque). */
   droppedBlobSlugs: string[];
+  /**
+   * Ids des sources PAYANTES actuellement accessibles (débloquées), depuis le
+   * manifeste frais. Sert à marquer dans l'UI les créatures d'un supplément payant.
+   * Vide sans manifeste (fallback SSR/tests sans IndexedDB).
+   */
+  paidSourceIds: string[];
 }
 
 /**
@@ -176,10 +182,11 @@ export interface ReconcileResult {
  */
 export async function reconcileBestiaryCache(): Promise<ReconcileResult> {
   if (!isIndexedDbAvailable()) {
-    return { list: await fetchCreatureList(), droppedBlobSlugs: [] };
+    return { list: await fetchCreatureList(), droppedBlobSlugs: [], paidSourceIds: [] };
   }
 
   const manifest = await fetchSourceManifest(); // Toujours frais — lève hors-ligne.
+  const paidSourceIds = manifest.filter((m) => m.isPaid).map((m) => m.id);
   const cachedSources = await idbGetAll<CachedSource>(SOURCES_STORE);
   const plan = planSourceReconciliation(manifest, cachedSources);
 
@@ -221,7 +228,7 @@ export async function reconcileBestiaryCache(): Promise<ReconcileResult> {
 
   // 3. Liste à jour = union de toutes les sources désormais en cache.
   const finalSources = await idbGetAll<CachedSource>(SOURCES_STORE);
-  return { list: flattenSources(finalSources), droppedBlobSlugs };
+  return { list: flattenSources(finalSources), droppedBlobSlugs, paidSourceIds };
 }
 
 /**

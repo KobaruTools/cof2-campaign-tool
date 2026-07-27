@@ -54,4 +54,11 @@ export interface SourceManifestEntry {
   slug: string;
   /** Version du contenu, incrémentée à chaque ingestion. */
   contentVersion: number;
+  /**
+   * Source PAYANTE (`sources.is_paid`) — vraie seulement pour un contenu débloqué
+   * (une source payante non entitlée n'apparaît pas dans le manifeste, RLS 0007).
+   * Sert à MARQUER dans l'UI les créatures issues d'un supplément payant (tête de
+   * loup à côté du NC), sans coder en dur un slug.
+   */
+  isPaid: boolean;
 }

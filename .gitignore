@@ -34,6 +34,9 @@
 # PDF payants/sous copyright (bestiaire, atlas, Le Compagnon) : consultés en local
 # uniquement, JAMAIS commités. Le dossier reste hors du repo pour raisons de droits.
 /pdf-payants/
+# Données EXTRAITES d'un contenu payant (ex. bestiaire → private/bestiary-paid.ts) :
+# ingérées en DB localement par le propriétaire, JAMAIS commitées (copyright BBE).
+/private/
 
 # debug
 npm-debug.log*

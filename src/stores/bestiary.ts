@@ -43,6 +43,12 @@ export type BlobStatus = 'loading' | 'ready' | 'error';
 interface BestiaryState {
   /** Liste légère (étage 1). `null` tant qu'elle n'est pas chargée. */
   list: CreatureListItem[] | null;
+  /**
+   * Ids des sources PAYANTES débloquées (depuis le manifeste de la dernière
+   * réconciliation). Une créature dont le `sourceId` y figure vient d'un supplément
+   * payant → marquée dans l'UI (tête de loup à côté du NC). Vide avant réconciliation.
+   */
+  paidSourceIds: Set<string>;
   status: BestiaryStatus;
   /** Vrai pendant la réconciliation réseau en arrière-plan (cache déjà affiché). */
   revalidating: boolean;
@@ -84,6 +90,7 @@ function messageOf(e: unknown): string {
 
 export const useBestiaryStore = create<BestiaryState>()((set, get) => ({
   list: null,
+  paidSourceIds: new Set<string>(),
   status: 'idle',
   revalidating: false,
   error: null,
@@ -131,9 +138,10 @@ export const useBestiaryStore = create<BestiaryState>()((set, get) => ({
       }
 
       // 2. Réconciliation réseau (manifeste + re-fetch ciblé).
-      const { list, droppedBlobSlugs } = await reconcileBestiaryCache();
+      const { list, droppedBlobSlugs, paidSourceIds } = await reconcileBestiaryCache();
       set((s) => ({
         list,
+        paidSourceIds: new Set(paidSourceIds),
         status: 'ready',
         error: null,
         revalidating: false,

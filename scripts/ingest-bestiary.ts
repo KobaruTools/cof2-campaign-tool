@@ -18,8 +18,11 @@
  * pour recetter le gating par entitlement de bout en bout (aucun vrai contenu
  * payant en jeu ici). Sans le flag, cette source n'est pas touchée.
  *
- * Le contenu PAYANT réel (futur PDF « Le Bestiaire ») s'ingérera par le même
- * script depuis une source distincte (`private/`, gitignoré) — hors périmètre.
+ * Contenu PAYANT réel (« Le Bestiaire ») : `npm run ingest -- --with-bestiary`
+ * ingère EN PLUS la source payante `bestiaire` (code de déblocage `bestiaire-bbe`)
+ * depuis `private/bestiary-paid.ts` — fichier GITIGNORÉ (copyright BBE), importé de
+ * façon TOLÉRANTE : s'il est absent (CI, autre machine), la source est ignorée sans
+ * erreur. Sans le flag, cette source n'est pas touchée.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -44,6 +47,30 @@ const TEST_PAID_SOURCE = {
   is_paid: true,
   redeemCode: 'TEST-BESTIAIRE',
 } as const;
+
+// ── Source PAYANTE RÉELLE « Le Bestiaire » (BBE), seedée avec `--with-bestiary`. ──
+// Contenu ingéré depuis `private/bestiary-paid.ts` (gitignoré, copyright). Le code
+// `bestiaire-bbe` ne vit QU'ICI (posé dans `sources.redeem_code` en DB), jamais en git.
+const PAID_BESTIARY_SOURCE = {
+  slug: 'bestiaire',
+  name: 'Chroniques Oubliées Fantasy 2 — Le Bestiaire',
+  is_paid: true,
+  redeemCode: 'bestiaire-bbe',
+} as const;
+
+/**
+ * Charge le contenu payant extrait (`private/bestiary-paid.ts`) de façon TOLÉRANTE :
+ * le fichier est gitignoré, donc absent en CI ou sur une autre machine → on renvoie
+ * `null` sans casser (import dynamique dans un try/catch).
+ */
+async function loadPaidBestiary(): Promise<Creature[] | null> {
+  try {
+    const mod = await import('../private/bestiary-paid');
+    return (mod as { paidBestiary?: Creature[] }).paidBestiary ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Créatures FACTICES de la source de test payante — servent UNIQUEMENT à recetter
@@ -220,6 +247,21 @@ async function main(): Promise<void> {
     console.log(
       `Source de test payante « ${TEST_PAID_SOURCE.slug} » seedée (${TEST_PAID_CREATURES.length} créatures factices).`,
     );
+  }
+
+  // Source payante RÉELLE « Le Bestiaire » : opt-in par flag, contenu gitignoré.
+  if (process.argv.includes('--with-bestiary')) {
+    const paid = await loadPaidBestiary();
+    if (!paid || paid.length === 0) {
+      console.warn(
+        'Flag --with-bestiary : private/bestiary-paid.ts introuvable ou vide — source « bestiaire » ignorée.',
+      );
+    } else {
+      await ingestSource(supabase, PAID_BESTIARY_SOURCE, paid);
+      console.log(
+        `Source payante « ${PAID_BESTIARY_SOURCE.slug} » ingérée (${paid.length} créatures).`,
+      );
+    }
   }
 
   console.log('Ingestion du bestiaire terminée.');

@@ -11,6 +11,7 @@
 import { useState, type ReactNode } from 'react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HistoryEduOutlinedIcon from '@mui/icons-material/HistoryEduOutlined';
+import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import Box from '@mui/material/Box';
 import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
@@ -41,6 +42,7 @@ import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { MetaPill } from '@/components/MetaPill';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
+import { CreaturePathBlock } from './CreaturePathBlock';
 import { GlossaryText, RichInline } from '@/components/sheet/FeatureRichText';
 import { VerbatimToggle } from '@/components/sheet/FeaturesByPath';
 
@@ -122,6 +124,76 @@ function SectionTitle({ children }: { children: ReactNode }) {
     >
       {children}
     </Typography>
+  );
+}
+
+/**
+ * En-tête de section. En mode `collapsible` (écran de MJ), rend un bouton repli/déploie
+ * (chevron + libellé + décompte) piloté par `open`/`onToggle` — pour que « Voies &
+ * capacités » et « Capacités » se replient d'un même geste et ne noient pas l'écran.
+ * Sinon (bestiaire), simple `SectionTitle` toujours dépliée.
+ */
+function CollapsibleSectionHeader({
+  label,
+  count,
+  collapsible,
+  open,
+  onToggle,
+}: {
+  label: string;
+  count?: number;
+  collapsible: boolean;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  if (!collapsible) return <SectionTitle>{label}</SectionTitle>;
+  return (
+    <Box
+      role="button"
+      tabIndex={0}
+      aria-expanded={open}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.5,
+        cursor: 'pointer',
+        userSelect: 'none',
+        mb: open ? 0.75 : 0,
+      }}
+    >
+      <ExpandMoreIcon
+        sx={{
+          fontSize: 16,
+          color: 'text.secondary',
+          transition: 'transform 0.15s',
+          transform: open ? 'none' : 'rotate(-90deg)',
+        }}
+      />
+      <Box
+        component="span"
+        sx={{
+          fontWeight: 700,
+          fontSize: '0.7rem',
+          textTransform: 'uppercase',
+          letterSpacing: 0.6,
+          color: 'text.secondary',
+        }}
+      >
+        {label}
+        {count != null && (
+          <Box component="span" sx={{ ml: 0.5, opacity: 0.7 }}>
+            ({count})
+          </Box>
+        )}
+      </Box>
+    </Box>
   );
 }
 
@@ -249,6 +321,27 @@ export interface BestiaryStatBlockProps {
    * dépliée (défaut `false`).
    */
   collapsibleAbilities?: boolean;
+  /**
+   * La créature provient d'un supplément PAYANT (source `is_paid`) → on marque son
+   * NC d'une tête de loup (même icône que le Bestiaire dans la nav) pour signaler le
+   * contenu premium. Défaut `false` (contenu gratuit : aucun marqueur).
+   */
+  paidSource?: boolean;
+  /**
+   * Capacités HÉRITÉES de la créature de base (`baseCreatureId`), résolues par
+   * l'appelant (qui charge le blob de la base). Le livre écrit « possède toutes les
+   * capacités de X plus les suivantes » : on affiche donc RÉELLEMENT ces capacités —
+   * marquées « hérité de X » — au lieu de les laisser en simple note. Vide/absent =
+   * créature autonome (aucun héritage). `inheritedFromName` = nom de la base (libellé).
+   */
+  inheritedAbilities?: CreatureSpecialAbility[];
+  inheritedFromName?: string;
+  /**
+   * Force les sections « Voies & capacités » et « Capacités » sur 2 colonnes MALGRÉ
+   * `dense` — utilisé quand la carte de l'écran de MJ s'étale sur 2 colonnes (créature
+   * lourde) : il y a alors la place. Sans effet hors `dense` (déjà 2 colonnes).
+   */
+  wideColumns?: boolean;
 }
 
 export function BestiaryStatBlock({
@@ -256,13 +349,23 @@ export function BestiaryStatBlock({
   hideNotes = false,
   dense = false,
   collapsibleAbilities = false,
+  paidSource = false,
+  inheritedAbilities,
+  inheritedFromName,
+  wideColumns = false,
 }: BestiaryStatBlockProps) {
+  // Sections voies/capacités sur 2 colonnes dès qu'il y a la place : hors mode dense
+  // (bestiaire), ou en dense quand la carte MJ est « large » (`wideColumns`).
+  const sectionsTwoCols = !dense || wideColumns;
+  const twoColTemplate = { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' } as const;
   // Bascule « Texte d'origine » (comme la fiche, PER-88) : rend le verbatim brut des capacités au
   // lieu du rendu enrichi. État LOCAL au bloc (se réinitialise en changeant de créature).
   const [verbatim, setVerbatim] = useState(false);
-  // Section « Capacités » dépliée ? Repliée d'entrée quand `collapsibleAbilities` (pas de
-  // persistance : simple état local qui se réinitialise en changeant de créature).
+  // Sections « Voies & capacités » et « Capacités » dépliées ? Repliées d'entrée quand
+  // `collapsibleAbilities` (écran de MJ) pour ne pas noyer l'écran — pas de persistance
+  // (simple état local qui se réinitialise en changeant de créature).
   const [abilitiesOpen, setAbilitiesOpen] = useState(!collapsibleAbilities);
+  const [pathsOpen, setPathsOpen] = useState(!collapsibleAbilities);
   const nc = creatureNcLabel(creature);
   const bonusDice = new Set(creature.bonusDieAbilities ?? []);
   // Stats dérivées fixes présentes : rendues en grille pleine largeur, une colonne
@@ -275,7 +378,18 @@ export function BestiaryStatBlock({
   if (creature.initiative != null)
     derivedStats.push({ statId: 'initiative', value: creature.initiative, note: creature.initiativeNote });
   const hasAttacks = !!creature.attacks && creature.attacks.length > 0;
-  const hasSpecialAbilities = !!creature.specialAbilities && creature.specialAbilities.length > 0;
+  const hasPaths = !!creature.paths && creature.paths.length > 0;
+  // Capacités affichées = héritées de la base (résolues par l'appelant) PUIS propres.
+  const ownAbilities = creature.specialAbilities ?? [];
+  const inherited = inheritedAbilities ?? [];
+  const hasInheritedAbilities = inherited.length > 0;
+  const abilityCount = inherited.length + ownAbilities.length;
+  const hasSpecialAbilities = abilityCount > 0;
+  // Cartes de capacité à rendre : héritées d'abord (marquées « hérité de X »), puis propres.
+  const abilityCards: { ability: CreatureSpecialAbility; inheritedFrom?: string }[] = [
+    ...inherited.map((ability) => ({ ability, inheritedFrom: inheritedFromName })),
+    ...ownAbilities.map((ability) => ({ ability })),
+  ];
   return (
     <Box
       sx={{
@@ -332,14 +446,32 @@ export function BestiaryStatBlock({
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>
           {creature.name}
         </Typography>
-        {/* Le nom de la créature sert de terme à cibler/surligner dans le visualiseur (PER-59/61). */}
-        <SourceRef page={creature.sourcePage} term={creature.name} />
+        {/* Le nom de la créature sert de terme à cibler/surligner dans le visualiseur (PER-59/61).
+            Créature payante → renvoi vers « Le Bestiaire » (dormant : non cliquable tant que son
+            PDF n'est pas servi de façon gatée) ; sinon le livre de base par défaut. */}
+        <SourceRef
+          page={creature.sourcePage}
+          term={creature.name}
+          book={paidSource ? 'bestiaire' : undefined}
+        />
         {/* Espace flexible : pousse la bascule à l'extrême droite. */}
         <Box sx={{ flexGrow: 1 }} />
         {/* Bascule « Texte d'origine » : proposée seulement s'il y a des capacités à enrichir. */}
         {hasSpecialAbilities && <VerbatimToggle value={verbatim} onChange={setVerbatim} />}
       </Stack>
-      <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', gap: 0.75, mb: BLOCK_GAP }}>
+      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.75, mb: BLOCK_GAP }}>
+        {/* Marqueur « contenu payant » (patte, comme le badge de livre du Bestiaire) à GAUCHE du NC. */}
+        {paidSource && (
+          <AppTooltip title="Créature du supplément Bestiaire (contenu payant)">
+            <Box
+              component="span"
+              aria-label="Contenu payant : Bestiaire"
+              sx={{ display: 'inline-flex', color: 'text.secondary' }}
+            >
+              <PetsOutlinedIcon sx={{ fontSize: 18 }} />
+            </Box>
+          </AppTooltip>
+        )}
         {nc && <MetaPill label="NC">{nc}</MetaPill>}
         {creature.size && <MetaPill>{CREATURE_SIZE_LABELS[creature.size]}</MetaPill>}
         {creature.nature?.map((n) => (
@@ -405,8 +537,10 @@ export function BestiaryStatBlock({
         </Box>
       )}
 
-      {/* Séparateur entre les stats dérivées et le reste (attaques / capacités). */}
-      {derivedStats.length > 0 && (hasAttacks || hasSpecialAbilities) && <Divider sx={{ mb: BLOCK_GAP }} />}
+      {/* Séparateur entre les stats dérivées et le reste (attaques / voies / capacités). */}
+      {derivedStats.length > 0 && (hasAttacks || hasPaths || hasSpecialAbilities) && (
+        <Divider sx={{ mb: BLOCK_GAP }} />
+      )}
 
       {/* Attaques du bloc gras : titre + grille 3 colonnes de blocs compacts. */}
       {creature.attacks && creature.attacks.length > 0 && (
@@ -471,8 +605,33 @@ export function BestiaryStatBlock({
         </Box>
       )}
 
-      {/* Séparateur entre les attaques et les capacités spéciales. */}
-      {hasAttacks && hasSpecialAbilities && <Divider sx={{ mb: BLOCK_GAP }} />}
+      {/* Voies de profil de la créature (ex. « Voie des illusions rang 5 »), rendues au
+          format « Voies & capacités » de la fiche — insérées entre attaques et capacités,
+          comme dans le bloc imprimé. */}
+      {hasPaths && (
+        <Box sx={{ mb: BLOCK_GAP }}>
+          {hasAttacks && <Divider sx={{ mb: BLOCK_GAP }} />}
+          <CollapsibleSectionHeader
+            label="Voies & capacités"
+            count={creature.paths!.length}
+            collapsible={collapsibleAbilities}
+            open={pathsOpen}
+            onToggle={() => setPathsOpen((o) => !o)}
+          />
+          <Collapse in={pathsOpen} unmountOnExit>
+            <CreaturePathBlock
+              paths={creature.paths!}
+              abilities={creature.abilities}
+              nc={creature.nc}
+              dense={dense}
+              twoColumns={sectionsTwoCols}
+            />
+          </Collapse>
+        </Box>
+      )}
+
+      {/* Séparateur entre les attaques/voies et les capacités spéciales. */}
+      {(hasAttacks || hasPaths) && hasSpecialAbilities && <Divider sx={{ mb: BLOCK_GAP }} />}
 
       {/* Capacités : titre + grille 2 colonnes, chaque carte façon « rang de voie »
           (nom + hexagones de marqueurs sur une ligne, puis texte de règle verbatim). */}
@@ -480,68 +639,43 @@ export function BestiaryStatBlock({
         <Box>
           {/* En-tête : titre simple dans le bestiaire, ou bouton repli/déploie (avec
               décompte) en mode repliable (écran de MJ), sans persistance. */}
-          {collapsibleAbilities ? (
-            <Box
-              role="button"
-              tabIndex={0}
-              aria-expanded={abilitiesOpen}
-              onClick={() => setAbilitiesOpen((o) => !o)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setAbilitiesOpen((o) => !o);
-                }
-              }}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                cursor: 'pointer',
-                userSelect: 'none',
-                mb: abilitiesOpen ? 0.75 : 0,
-              }}
-            >
-              <ExpandMoreIcon
-                sx={{
-                  fontSize: 16,
-                  color: 'text.secondary',
-                  transition: 'transform 0.15s',
-                  transform: abilitiesOpen ? 'none' : 'rotate(-90deg)',
-                }}
-              />
-              <Box
-                component="span"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '0.7rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.6,
-                  color: 'text.secondary',
-                }}
-              >
-                Capacités
-                <Box component="span" sx={{ ml: 0.5, opacity: 0.7 }}>
-                  ({creature.specialAbilities!.length})
-                </Box>
-              </Box>
-            </Box>
-          ) : (
-            <SectionTitle>Capacités</SectionTitle>
-          )}
+          <CollapsibleSectionHeader
+            label="Capacités"
+            count={abilityCount}
+            collapsible={collapsibleAbilities}
+            open={abilitiesOpen}
+            onToggle={() => setAbilitiesOpen((o) => !o)}
+          />
           <Collapse in={abilitiesOpen} unmountOnExit>
+          {/* Intro d'héritage (« possède toutes les capacités de X plus les suivantes »),
+              rendue en tête de la section quand les capacités de la base sont affichées. */}
+          {hasInheritedAbilities && creature.sharedAbilitiesNote && (
+            <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary', mb: BLOCK_GAP }}>
+              <PageRefText>{creature.sharedAbilitiesNote}</PageRefText>
+            </Typography>
+          )}
           <Box
             sx={{
               display: 'grid',
-              // 2 colonnes dans le bestiaire (panneau large) ; 1 seule colonne en mode
-              // dense (carte étroite de l'écran de MJ), le texte des capacités étant verbeux.
-              gridTemplateColumns: dense ? '1fr' : { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+              // 2 colonnes quand il y a la place (bestiaire large, ou carte MJ « large ») ;
+              // 1 seule sur carte MJ étroite, le texte des capacités étant verbeux.
+              gridTemplateColumns: sectionsTwoCols ? twoColTemplate : '1fr',
               gap: BLOCK_GAP,
             }}
           >
-            {creature.specialAbilities!.map((ability, i) => {
+            {abilityCards.map(({ ability, inheritedFrom }, i) => {
               const { baseName } = parseAbilityMarkers(ability.name);
               return (
                 <Box key={i} sx={[interactiveBlockSx, { px: 1, py: 0.75 }]}>
+                  {/* Capacité héritée de la base : rappel discret de sa provenance. */}
+                  {inheritedFrom && (
+                    <Typography
+                      variant="caption"
+                      sx={{ display: 'block', color: 'text.secondary', fontStyle: 'italic', mb: 0.25 }}
+                    >
+                      Hérité — {inheritedFrom}
+                    </Typography>
+                  )}
                   <Stack
                     direction="row"
                     spacing={0.75}
@@ -565,14 +699,16 @@ export function BestiaryStatBlock({
           des variantes — affichées tout en bas, dans un encadré façon « Alert » info
           (bleu clair désaturé, verre dépoli) avec une icône de plume/parchemin à
           gauche (retour propriétaire). */}
-      {!hideNotes && (creature.description || creature.sharedAbilitiesNote) && (
+      {!hideNotes && (creature.description || (creature.sharedAbilitiesNote && !hasInheritedAbilities)) && (
         <AppAlert severity="info" icon={<HistoryEduOutlinedIcon />} sx={{ mt: BLOCK_GAP }}>
           {creature.description && (
             <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.55, fontStyle: 'italic' }}>
               <PageRefText>{creature.description}</PageRefText>
             </Typography>
           )}
-          {creature.sharedAbilitiesNote && (
+          {/* Renvoi aux capacités de la base SEULEMENT si elles ne sont pas déjà affichées
+              (base non chargée / héritage non résolu) : sinon la note vit en intro de section. */}
+          {creature.sharedAbilitiesNote && !hasInheritedAbilities && (
             <Typography
               variant="body2"
               sx={{ fontStyle: 'italic', mt: creature.description ? 0.75 : 0 }}
