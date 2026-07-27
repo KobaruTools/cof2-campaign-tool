@@ -77,6 +77,198 @@ const interactiveBlockSx = (theme: Theme) => ({
   },
 });
 
+/**
+ * Même apparence que le `:hover` de `interactiveBlockSx`, mais FORCÉE — pour surligner une carte de
+ * capacité à distance (survol d'un rider d'attaque qui la référence, cf. `AttackRider`).
+ */
+const activeBlockSx = (theme: Theme) => ({
+  borderColor: alpha(theme.palette.text.primary, 0.3),
+  boxShadow: '0 2px 10px rgba(255, 255, 255, 0.1)',
+});
+
+/** Clé de rapprochement d'un nom de capacité (insensible à la casse/aux accents/aux espaces). */
+function normalizeAbilityKey(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Chip JAUNE (ambre) d'un dé de rider d'attaque — même teinte que le badge de DM bonus de la fiche
+ * (`WeaponDamageBonusBadge`) : `DamageValue` (icône du dé + nombre) sur fond ambre désaturé.
+ */
+function RiderDiceChip({ dice, dense }: { dice: string; dense: boolean }) {
+  return (
+    <Box
+      component="span"
+      sx={(theme) => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        verticalAlign: 'baseline',
+        px: 0.5,
+        borderRadius: 0.75,
+        color: 'text.primary',
+        bgcolor: alpha(theme.palette.warning.main, 0.12),
+        border: `1px solid ${alpha(theme.palette.warning.main, 0.4)}`,
+      })}
+    >
+      <DamageValue damage={dice} size={dense ? 15 : 17} sx={{ fontSize: dense ? '0.8rem' : '0.9rem' }} />
+    </Box>
+  );
+}
+
+/**
+ * Chip d'un rider d'attaque qui RÉFÉRENCE une capacité de la créature (« + pétrification » →
+ * capacité « Pétrification » du karcaillou). Teinte violette (secondary). Info-bulle = la capacité
+ * (nom + texte de règle). Au survol, remonte la clé au parent (`onHover`) pour SURLIGNER la carte
+ * de la capacité correspondante plus bas (même effet que son propre survol).
+ */
+function AbilityRefChip({
+  label,
+  ability,
+  onHover,
+  abilityKey,
+}: {
+  label: string;
+  ability: CreatureSpecialAbility;
+  onHover: (key: string | null) => void;
+  abilityKey: string;
+}) {
+  const tooltip = (
+    <Box sx={{ maxWidth: 320 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+        {ability.name}
+      </Typography>
+      <Typography variant="body2" component="div" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>
+        <GlossaryText>{ability.text}</GlossaryText>
+      </Typography>
+    </Box>
+  );
+  return (
+    <AppTooltip title={tooltip}>
+      <Box
+        component="span"
+        onMouseEnter={() => onHover(abilityKey)}
+        onMouseLeave={() => onHover(null)}
+        sx={(theme) => ({
+          display: 'inline-block',
+          verticalAlign: 'baseline',
+          px: 0.6,
+          borderRadius: 0.75,
+          fontWeight: 700,
+          fontSize: '0.85em',
+          lineHeight: 1.4,
+          cursor: 'help',
+          color: theme.palette.secondary.main,
+          bgcolor: alpha(theme.palette.secondary.main, 0.14),
+          border: `1px solid ${alpha(theme.palette.secondary.main, 0.45)}`,
+          transition: theme.transitions.create('background-color', { duration: 120 }),
+          '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.24) },
+        })}
+      >
+        {label}
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
+ * Rend le RIDER d'une attaque (« + 1d8 d'électricité », « + poison », « + pétrification ») en ligne
+ * enrichie : les dés en chip jaune (`RiderDiceChip`), les mots qui correspondent à une capacité de la
+ * créature en chip violet cliquable-au-survol (`AbilityRefChip`, surligne la carte), le reste passé au
+ * glossaire (`GlossaryText` : états préjudiciables, refs de page). `abilityByKey` = index nom→capacité.
+ */
+function AttackRider({
+  rider,
+  abilityByKey,
+  onHoverAbility,
+  dense,
+}: {
+  rider: string;
+  abilityByKey: Map<string, CreatureSpecialAbility>;
+  onHoverAbility: (key: string | null) => void;
+  dense: boolean;
+}) {
+  // 1) On isole d'abord les dés (chip jaune) ; entre les dés, des segments de texte.
+  const diceRe = /\d*d\d+/g; // local (mutable lastIndex) — pas de regex de module partagé.
+  const segments: { kind: 'dice' | 'text'; value: string }[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = diceRe.exec(rider))) {
+    if (m.index > last) segments.push({ kind: 'text', value: rider.slice(last, m.index) });
+    segments.push({ kind: 'dice', value: m[0] });
+    last = m.index + m[0].length;
+  }
+  if (last < rider.length) segments.push({ kind: 'text', value: rider.slice(last) });
+
+  // 2) Dans chaque segment de texte, on repère les NOMS DE CAPACITÉ (le plus long d'abord, en
+  //    tokenisant sur espaces/ponctuation pour matcher « sucer le sang » aussi bien que « poison »).
+  const nodes: ReactNode[] = [];
+  segments.forEach((seg, si) => {
+    if (seg.kind === 'dice') {
+      nodes.push(<RiderDiceChip key={`d${si}`} dice={seg.value} dense={dense} />);
+      return;
+    }
+    const tokens = seg.value.split(/(\s+|[(),])/).filter((t) => t !== '');
+    let i = 0;
+    let textRun = '';
+    const flushText = (k: string) => {
+      if (textRun) {
+        nodes.push(<GlossaryText key={k}>{textRun}</GlossaryText>);
+        textRun = '';
+      }
+    };
+    while (i < tokens.length) {
+      let matched: { label: string; key: string; len: number } | null = null;
+      for (let len = Math.min(6, tokens.length - i); len >= 1; len--) {
+        const label = tokens.slice(i, i + len).join('');
+        const key = normalizeAbilityKey(label);
+        if (key && abilityByKey.has(key)) {
+          matched = { label, key, len };
+          break;
+        }
+      }
+      if (matched) {
+        flushText(`t${si}-${i}`);
+        nodes.push(
+          <AbilityRefChip
+            key={`a${si}-${i}`}
+            label={matched.label}
+            ability={abilityByKey.get(matched.key)!}
+            abilityKey={matched.key}
+            onHover={onHoverAbility}
+          />,
+        );
+        i += matched.len;
+      } else {
+        textRun += tokens[i];
+        i++;
+      }
+    }
+    flushText(`t${si}-end`);
+  });
+
+  return (
+    <Box
+      sx={{
+        mt: 0.4,
+        lineHeight: 1.5,
+        fontSize: '0.875rem',
+        color: 'text.secondary',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: 0.35,
+      }}
+    >
+      {nodes}
+    </Box>
+  );
+}
+
 // `MetaPill` (NC, taille, nature) est désormais partagé — cf. `@/components/MetaPill` (PER-175).
 
 /**
@@ -398,6 +590,9 @@ export function BestiaryStatBlock({
   // Bascule « Texte d'origine » (comme la fiche, PER-88) : rend le verbatim brut des capacités au
   // lieu du rendu enrichi. État LOCAL au bloc (se réinitialise en changeant de créature).
   const [verbatim, setVerbatim] = useState(false);
+  // Capacité actuellement pointée depuis un rider d'attaque (clé normalisée), pour surligner sa
+  // carte plus bas. `null` = aucune. Cf. `AttackRider` (survol du chip) ↔ cartes de capacité.
+  const [hoveredAbilityKey, setHoveredAbilityKey] = useState<string | null>(null);
   // Sections « Voies & capacités » et « Capacités » dépliées ? Repliées d'entrée quand
   // `collapsibleAbilities` (écran de MJ) pour ne pas noyer l'écran — pas de persistance
   // (simple état local qui se réinitialise en changeant de créature).
@@ -430,6 +625,11 @@ export function BestiaryStatBlock({
     ...inherited.map((ability) => ({ ability, inheritedFrom: inheritedFromName })),
     ...ownAbilities.map((ability) => ({ ability })),
   ];
+  // Index nom-de-capacité (clé normalisée) → capacité : permet à un rider d'attaque de reconnaître
+  // « + pétrification » comme un renvoi à la capacité « Pétrification » (chip + surlignage de sa carte).
+  const abilityByKey = new Map<string, CreatureSpecialAbility>();
+  for (const { ability } of abilityCards)
+    abilityByKey.set(normalizeAbilityKey(parseAbilityMarkers(ability.name).baseName), ability);
   return (
     <Box
       sx={{
@@ -616,11 +816,19 @@ export function BestiaryStatBlock({
                   spacing={0.75}
                   sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.25, mt: 0.4 }}
                 >
-                  {/* Icône de score d'attaque (contact/distance) devant le bonus, comme sur la fiche. */}
+                  {/* Icône de score d'attaque (contact/distance) devant le bonus, comme sur la fiche.
+                      Agrandie hors mode dense (bestiaire) — retour proprio : trop petit à l'origine. */}
                   {atk.bonus && (
                     <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                      <DerivedStatIcon statId={atk.range ? 'rangedAttack' : 'meleeAttack'} size={18} title />
-                      <Typography component="span" variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                      <DerivedStatIcon statId={atk.range ? 'rangedAttack' : 'meleeAttack'} size={dense ? 18 : 24} title />
+                      <Typography
+                        component="span"
+                        sx={{
+                          fontVariantNumeric: 'tabular-nums',
+                          fontWeight: 700,
+                          fontSize: dense ? '0.875rem' : '1.1rem',
+                        }}
+                      >
                         {atk.bonus}
                       </Typography>
                     </Stack>
@@ -631,14 +839,21 @@ export function BestiaryStatBlock({
                       <Box component="span" sx={{ color: 'text.secondary' }}>
                         ·
                       </Box>
-                      <DamageValue damage={atk.damage} size={16} sx={{ fontSize: '0.875rem' }} />
+                      <DamageValue
+                        damage={atk.damage}
+                        size={dense ? 16 : 20}
+                        sx={{ fontSize: dense ? '0.875rem' : '1.05rem', fontWeight: 700 }}
+                      />
                     </>
                   )}
                 </Stack>
                 {atk.rider && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.4, lineHeight: 1.4 }}>
-                    {atk.rider}
-                  </Typography>
+                  <AttackRider
+                    rider={atk.rider}
+                    abilityByKey={abilityByKey}
+                    onHoverAbility={setHoveredAbilityKey}
+                    dense={dense}
+                  />
                 )}
               </Box>
             ))}
@@ -706,8 +921,13 @@ export function BestiaryStatBlock({
           >
             {abilityCards.map(({ ability, inheritedFrom }, i) => {
               const { baseName } = parseAbilityMarkers(ability.name);
+              // Surlignée si un rider d'attaque pointant cette capacité est actuellement survolé.
+              const highlighted = hoveredAbilityKey === normalizeAbilityKey(baseName);
               return (
-                <Box key={i} sx={[interactiveBlockSx, { px: 1, py: 0.75 }]}>
+                <Box
+                  key={i}
+                  sx={[interactiveBlockSx, { px: 1, py: 0.75 }, highlighted && activeBlockSx]}
+                >
                   {/* Capacité héritée de la base : rappel discret de sa provenance. */}
                   {inheritedFrom && (
                     <Typography
