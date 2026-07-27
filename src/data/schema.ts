@@ -770,6 +770,17 @@ export interface ConditionalStatBonusEffect {
    * Réciprocité déclarée des DEUX côtés. Absent = aucun basculement.
    */
   mutuallyExclusiveWith?: string[];
+  /**
+   * SURCHARGE ABSOLUE des caractéristiques du personnage tant que cet interrupteur est ACTIF (PER-74) :
+   * une TRANSFORMATION qui impose un nouveau stat-block (ex. Transformation en loup, voie du lycanthrope
+   * p. 131 : « FOR +3, AGI +1 » — « le personnage conserve toutes ses caractéristiques sauf celles-ci »).
+   * Chaque entrée REMPLACE (SET, valeur absolue) la caractéristique homonyme — ce n'est PAS un delta — et
+   * se répercute sur TOUTE la fiche (attaque, DM, DEF, tests, PV dérivés), via `effectiveAbilities`. Les
+   * caractéristiques absentes gardent leur valeur normale. La surcharge ÉCRASE aussi les modificateurs
+   * permanents (`ability-bonus`) de la caractéristique visée (la forme impose sa valeur). Distinct de
+   * `bonuses` (stats dérivées) et de `abilityTestBonus` (jets seuls). Absent = pas de surcharge.
+   */
+  abilityOverrides?: Partial<Record<AbilityId, number>>;
 }
 
 /**
@@ -1839,6 +1850,16 @@ export interface CreatureProfile {
    * passe d'annotation). Consommé par `listCompanions` (`CompanionEntry.companionType`).
    */
   companionType?: CompanionType;
+  /**
+   * La créature EST une FORME que le PERSONNAGE prend lui-même (PER-74) — ce n'est pas un
+   * compagnon distinct, mais une transformation (ex. Transformation en loup, voie du lycanthrope
+   * p. 131 : « Le personnage peut prendre la forme d'un loup »). Le stat-block est rendu EN LIGNE
+   * dans la carte de la capacité (via `displayCreatureProfile`, comme n'importe quel profil), mais
+   * la créature n'apparaît PAS dans la section « Compagnons » (`listCompanions` saute les profils
+   * `transformation`). Mutuellement exclusif de `companionType` (une forme n'est pas un compagnon).
+   * Absent = créature normale (compagnon si un `companionType` est posé).
+   */
+  transformation?: boolean;
   /**
    * Taille de la créature (PER-175) — même échelle que le bestiaire (`CreatureSize`, p. 260).
    * Rendue en pastille « tag » (info-bulle « Taille ») à droite du nom, comme le bestiaire.

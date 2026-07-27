@@ -6,11 +6,13 @@ import Typography from '@mui/material/Typography';
 import type { AbilityId, Ancestry } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import type { AncestryChoice } from '@/lib/character/ancestry';
-import type { AbilityModSource, BonusDieSource } from '@/lib/character/effects';
+import type { AbilityModSource, AbilityOverrideSource, BonusDieSource } from '@/lib/character/effects';
 import { abilityTotalColor, abilityTotalFontSize } from '@/lib/ui/abilityColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { AbilityBreakdownTooltip } from '@/components/AbilityBreakdownTooltip';
+import { AppTooltip } from '@/components/AppTooltip';
+import { BreakdownContent } from '@/components/BreakdownContent';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { SignedNumberField } from '@/components/SignedNumberField';
 
@@ -43,6 +45,13 @@ export interface AbilitiesGridProps {
   /** Capacités sources de ces modificateurs, par caractéristique (pour le détail). */
   abilityModSources?: Partial<Record<AbilityId, AbilityModSource[]>>;
   /**
+   * SURCHARGES de caractéristiques par une TRANSFORMATION active (PER-74, ex. Transformation en loup) :
+   * la valeur est IMPOSÉE (absolue) tant que la forme est active, ÉCRASANT saisie + modificateurs. En
+   * LECTURE, le total affiché devient cette valeur (couleur d'alerte + détail « imposée par la forme »).
+   * Absent = aucune transformation active. Ignoré en édition (on édite la valeur saisie).
+   */
+  abilityOverrides?: Partial<Record<AbilityId, AbilityOverrideSource>>;
+  /**
    * Caractéristiques bénéficiant d'un DÉ BONUS permanent (genre `ability-bonus-die`),
    * chacune avec la/les capacité(s) source(s) — icône double-d20 + pastille de capacité
    * dans le détail.
@@ -64,6 +73,7 @@ export function AbilitiesGrid({
   ancestryChoices,
   abilityMods,
   abilityModSources,
+  abilityOverrides,
   bonusDieSources,
 }: AbilitiesGridProps) {
   const canExplain = baseAbilities != null && ancestry != null && ancestryChoices != null;
@@ -90,9 +100,11 @@ export function AbilitiesGrid({
       {ABILITY_IDS.map((id) => {
         const entered = abilities[id];
         const mod = abilityMods?.[id] ?? 0;
-        // Lecture : on montre le total effectif (saisie + capacités). Édition : on édite
-        // la valeur SAISIE, le bonus de capacité restant appliqué par-dessus (chip « +N »).
-        const effective = entered + mod;
+        // Surcharge de transformation (PER-74) : uniquement en LECTURE (en édition on édite la saisie).
+        const override = onChange ? undefined : abilityOverrides?.[id];
+        // Lecture : on montre le total effectif (saisie + capacités), ou la valeur IMPOSÉE par une
+        // transformation active. Édition : on édite la valeur SAISIE (chip « +N » par-dessus).
+        const effective = override ? override.value : entered + mod;
         const dieSources = bonusDieSources?.[id];
         const dieSourceNames = dieSources?.map((s) => s.name);
         // Tout le bloc porte l'infobulle de détail ; l'icône de dé bonus reste À CÔTÉ
@@ -120,7 +132,13 @@ export function AbilitiesGrid({
         ) : (
           <Typography
             variant="h6"
-            sx={{ fontWeight: 'bold', color: abilityTotalColor(effective, id), fontSize: abilityTotalFontSize(effective, '1.25rem') }}
+            sx={{
+              fontWeight: 'bold',
+              // Valeur imposée par une transformation → couleur d'alerte pour signaler l'état temporaire.
+              color: override ? 'warning.main' : abilityTotalColor(effective, id),
+              fontStyle: override ? 'italic' : 'normal',
+              fontSize: abilityTotalFontSize(effective, '1.25rem'),
+            }}
           >
             {effective > 0 ? '+' : ''}
             {effective}
@@ -173,6 +191,31 @@ export function AbilitiesGrid({
             {valueRow}
           </Box>
         );
+        // Transformation active : le détail additif (base + peuple + capacités) n'a plus de sens
+        // (la forme IMPOSE une valeur absolue) → info-bulle dédiée expliquant la surcharge + sa source.
+        if (override) {
+          return (
+            <AppTooltip
+              key={id}
+              title={
+                <Box sx={{ py: 0.5 }}>
+                  <BreakdownContent
+                    title={ABILITY_NAMES[id]}
+                    breakdown={{
+                      total: override.value,
+                      terms: [{ label: override.name, value: override.value, featureId: override.featureId }],
+                      note: `Valeur imposée par la transformation (${override.name}).`,
+                      page: override.page,
+                    }}
+                    page={override.page}
+                  />
+                </Box>
+              }
+            >
+              {block}
+            </AppTooltip>
+          );
+        }
         return canExplain ? (
           <AbilityBreakdownTooltip
             key={id}

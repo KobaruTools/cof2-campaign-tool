@@ -28,6 +28,7 @@ import {
   resolveFamiliarGrantedPower,
   damageReductionSources,
   stackedDamageReductions,
+  activeAbilityOverrideSources,
   creatureBonusDiceForPath,
   defenseAbility,
   disabledFeatureIds,
@@ -606,6 +607,46 @@ describe('modificateurs permanents de caractéristiques (ability-bonus)', () => 
 
   it('détaille les capacités sources (pour le détail de la carac)', () => {
     expect(abilityModSources(['metal-r5']).CON).toEqual([{ featureId: 'metal-r5', name: 'Endurer', value: 1 }]);
+  });
+});
+
+describe('surcharge de caractéristiques par transformation (PER-74, forme de loup)', () => {
+  const wolf = (toggles: Record<string, boolean[]> = {}): Character =>
+    ({
+      ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+      level: 10,
+      // Base FOR 4 exprès : prouve que la forme IMPOSE 3 (SET), pas +3 (delta).
+      abilities: { FOR: 4, AGI: 2, CON: 2, PER: 1, CHA: 0, INT: -1, VOL: 1 },
+      baseAbilities: { FOR: 4, AGI: 2, CON: 2, PER: 1, CHA: 0, INT: -1, VOL: 1 },
+      featureIds: ['prestige-lycanthrope-r5', 'prestige-lycanthrope-r7'],
+      effectToggles: toggles,
+    }) as Character;
+
+  it('forme inactive → caractéristiques inchangées, aucune surcharge', () => {
+    const c = wolf();
+    expect(effectiveAbilities(c).FOR).toBe(4);
+    expect(effectiveAbilities(c).AGI).toBe(2);
+    expect(activeAbilityOverrideSources(c)).toEqual({});
+  });
+
+  it('« Sous forme de loup » actif → FOR imposée à +3, AGI à +1 (écrase la base)', () => {
+    const c = wolf({ 'prestige-lycanthrope-r5': [true] });
+    expect(effectiveAbilities(c).FOR).toBe(3);
+    expect(effectiveAbilities(c).AGI).toBe(1);
+    // Les autres caractéristiques restent celles du personnage.
+    expect(effectiveAbilities(c).CON).toBe(2);
+    const src = activeAbilityOverrideSources(c);
+    expect(src.FOR).toMatchObject({ featureId: 'prestige-lycanthrope-r5', value: 3, name: 'Transformation en loup' });
+    expect(src.AGI?.value).toBe(1);
+  });
+
+  it('formes loup et hybride mutuellement exclusives (jamais les deux à la fois)', () => {
+    const fromHybrid = setEffectToggle(wolf({ 'prestige-lycanthrope-r7': [true] }), 'prestige-lycanthrope-r5', 0, true);
+    expect(fromHybrid['prestige-lycanthrope-r5']?.[0]).toBe(true);
+    expect(fromHybrid['prestige-lycanthrope-r7']?.[0]).toBe(false);
+    const fromWolf = setEffectToggle(wolf({ 'prestige-lycanthrope-r5': [true] }), 'prestige-lycanthrope-r7', 0, true);
+    expect(fromWolf['prestige-lycanthrope-r7']?.[0]).toBe(true);
+    expect(fromWolf['prestige-lycanthrope-r5']?.[0]).toBe(false);
   });
 });
 

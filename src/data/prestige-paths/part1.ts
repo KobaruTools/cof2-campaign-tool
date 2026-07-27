@@ -710,6 +710,9 @@ export const prestigeFeatures1: Feature[] = [
     // (durée « 1 min », « Attaque au contact » auto-glosé) reste littéral.
     richText:
       "Au prix d'une action limitée, le personnage peut se transformer en forme hybride, mi-homme, mi-loup pendant 1 min. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité. Sous cette forme, il ne peut pas lancer de sort ou utiliser d'arme pour attaquer à distance, en revanche il obtient une attaque de morsure (Attaque au contact) qui inflige [1d4° + FOR] DM en action gratuite une fois par round. Il reprend immédiatement sa forme normale s'il tombe à 0 PV.",
+    // PER-74 : « Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette
+    // capacité » → 1 usage, rechargé au repos court (compteur d'usage décompté à la table).
+    usageCounter: { max: 1, resetOn: 'short-rest' },
     sourcePage: 130,
   },
   {
@@ -721,22 +724,42 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage peut prendre la forme d'un loup pendant une durée maximale de 1 h par rang chaque jour. Le personnage conserve toutes ses caractéristiques sauf celles ci-dessous, ainsi que sa valeur d'attaque au contact habituelle.\n\nLOUP\n| FOR +3 | AGI +1 |\nDéfense [12 + rang] · Initiative 15\nDM 1d4+3\nBonus de +5 aux tests basés sur la PER. Sous cette forme, il réduit de 5 les DM qui lui sont infligés par des armes qui ne sont pas en argent, et il gagne un bonus de +5 à tous les tests de poursuite et pour pister une trace.",
-    // PER-74 : dans le stat-block du loup, seuls la Défense (`[12 + rang]`) et le DM (`[1d4 + 3]`)
-    // sont balisés (résolus au rang de voie / au dé). Le « +5 aux tests basés sur la PER » et le
-    // « +5 aux tests de poursuite » restent VERBATIM (bonus TEMPORAIRES, propres à la forme de loup —
-    // hors périmètre test-bonus PER-89, réservé aux bonus inconditionnels du porteur). La RD est modélisée.
+    // PER-74 : le stat-block du LOUP est désormais rendu en MINI-FICHE (creatureProfile ci-dessous),
+    // donc RETIRÉ du richText affiché pour éviter le doublon — le `text` verbatim ci-dessus le CONSERVE
+    // comme source. Le richText ne garde que l'intro + les bonus de forme (+5 PER, +5 poursuite/pister),
+    // qui restent VERBATIM (bonus TEMPORAIRES propres à la forme, hors test-bonus PER-89). La RD est modélisée.
     richText:
-      "Le personnage peut prendre la forme d'un loup pendant une durée maximale de 1 h par rang chaque jour. Le personnage conserve toutes ses caractéristiques sauf celles ci-dessous, ainsi que sa valeur d'attaque au contact habituelle.\n\nLOUP\n| FOR +3 | AGI +1 |\nDéfense [12 + rang] · Initiative 15\nDM [1d4 + 3]\nBonus de +5 aux tests basés sur la PER. Sous cette forme, il réduit de 5 les DM qui lui sont infligés par des armes qui ne sont pas en argent, et il gagne un bonus de +5 à tous les tests de poursuite et pour pister une trace.",
+      "Le personnage peut prendre la forme d'un loup pendant une durée maximale de 1 h par rang chaque jour. Le personnage conserve toutes ses caractéristiques sauf celles du stat-block ci-dessous, ainsi que sa valeur d'attaque au contact habituelle.\n\nSous cette forme, il gagne un bonus de +5 aux tests basés sur la PER, il réduit de 5 les DM qui lui sont infligés par des armes qui ne sont pas en argent, et il gagne un bonus de +5 à tous les tests de poursuite et pour pister une trace.",
     // PER-137 : RD −5 contre les armes non argentées, CONDITIONNELLE à la forme de loup. Marqueur
     // d'état (interrupteur manuel) pour n'afficher la RD que sous cette forme.
+    // PER-74 : (a) `abilityOverrides` → sous forme de loup, FOR/AGI imposées (+3/+1) sur TOUTE la fiche ;
+    // (b) `mutuallyExclusiveWith` r7 → loup et hybride sont EXCLUSIFS (on ne peut être dans les deux formes),
+    // donc les RD ne se cumulent jamais à 10 (arbitrage proprio : « pas 10 mais 5 »).
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
         activation: { kind: 'temporary', label: 'Sous forme de loup', activeByDefault: false },
+        abilityOverrides: { FOR: 3, AGI: 1 },
+        mutuallyExclusiveWith: ['prestige-lycanthrope-r7'],
       },
     ],
     damageReduction: { kind: 'flat', value: 5, scopes: ['non-silver-weapon'] },
+    // PER-74 : le stat-block du LOUP (p. 131) rendu en mini-fiche inline. `transformation: true` →
+    // le personnage PREND cette forme (pas un compagnon), donc EXCLU de la section « Compagnons ».
+    // Le livre dit « conserve toutes ses caractéristiques sauf celles ci-dessous » : FOR/AGI fixées
+    // (+3/+1), les 5 autres héritées du maître (`abilitiesFromMaster` delta 0). Attaque au contact =
+    // « sa valeur d'attaque au contact habituelle » (`fromMaster: 'meleeAttack'`), DM 1d4+3. Les +5
+    // aux tests (PER, poursuite/pister) et la RD restent dans le texte/`damageReduction` de la capacité.
+    creatureProfile: {
+      name: 'Loup',
+      transformation: true,
+      abilities: { FOR: 3, AGI: 1 },
+      abilitiesFromMaster: { CON: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 },
+      defense: '[12 + rang]',
+      initiative: '15',
+      attack: { label: 'Morsure', fromMaster: 'meleeAttack', damage: '[1d4 + 3]' },
+    },
     sourcePage: 131,
   },
   {
@@ -764,13 +787,15 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Désormais le lycanthrope réduit de 5 tous les DM qui lui sont infligés par des armes qui ne sont pas en argent lorsqu'il est sous forme hybride. Cette réduction des DM ne peut pas être cumulée à une autre forme de RD.",
-    // PER-137 : RD −5 contre les armes non argentées, CONDITIONNELLE à la forme hybride. Marqueur
-    // d'état. Le non-cumul « avec une autre forme de RD » reste verbatim (non modélisé).
+    // PER-137 : RD −5 contre les armes non argentées, CONDITIONNELLE à la forme hybride. Marqueur d'état.
+    // PER-74 : `mutuallyExclusiveWith` r5 → forme hybride et forme de loup EXCLUSIVES (jamais les deux),
+    // ce qui matérialise le non-cumul « avec une autre forme de RD » du verbatim (RD plafonnée à 5, pas 10).
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
         activation: { kind: 'temporary', label: 'Sous forme hybride', activeByDefault: false },
+        mutuallyExclusiveWith: ['prestige-lycanthrope-r5'],
       },
     ],
     damageReduction: { kind: 'flat', value: 5, scopes: ['non-silver-weapon'] },

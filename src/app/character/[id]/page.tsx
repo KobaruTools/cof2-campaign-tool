@@ -55,6 +55,7 @@ import {
   abilityModsFromFeatures,
   abilityTestBonusSources,
   abilityTestBonusByAbility,
+  activeAbilityOverrideSources,
   activeConditionalTestDice,
   armorPenaltyDivisor,
   capacityResourceGauges,
@@ -734,6 +735,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // capacités (mécanique core) — appliqués PAR-DESSUS la valeur saisie des caracs.
   const abilityMods = abilityModsFromFeatures(modFeatureIds, character.featureChoices);
   const abilityModSrc = abilityModSources(modFeatureIds, character.featureChoices);
+  // Surcharges de caractéristiques par une transformation ACTIVE (PER-74, ex. forme de loup) : imposent
+  // une valeur absolue en lecture, cohérente avec les stats dérivées (toutes via `effectiveAbilities`).
+  const abilityOverrideSrc = activeAbilityOverrideSources(character);
   const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds, character.featureChoices);
   // Variante détaillée (avec `featureId`) pour rendre les sources en pastilles de capacité
   // dans le détail d'une caractéristique (l'icône double-d20 n'affiche, elle, que les noms).
@@ -1176,6 +1180,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               ancestryChoices={character.ancestryChoices}
               abilityMods={abilityMods}
               abilityModSources={abilityModSrc}
+              abilityOverrides={abilityOverrideSrc}
               bonusDieSources={bonusDieSrcDetailed}
             />
           </SheetSection>

@@ -33,6 +33,7 @@ import type {
   FeatureEffect,
   ImmunityId,
   ResistibleDamageType,
+  SourcePage,
   UsageCounter,
   UsageResetTrigger,
   Weapon,
@@ -144,6 +145,62 @@ export function effectiveAbilities(character: Character): Record<AbilityId, numb
   const out: Record<AbilityId, number> = { ...character.abilities };
   for (const [ability, value] of Object.entries(mods) as [AbilityId, number][]) {
     out[ability] = (out[ability] ?? 0) + value;
+  }
+  // SURCHARGE de transformation (PER-74) : un interrupteur de forme ACTIF impose des caracs ABSOLUES
+  // (ex. loup : FOR +3 / AGI +1), qui ÉCRASENT la valeur saisie ET les modificateurs permanents.
+  const overrides = activeAbilityOverrides(character);
+  for (const [ability, value] of Object.entries(overrides) as [AbilityId, number][]) {
+    out[ability] = value;
+  }
+  return out;
+}
+
+/**
+ * Source d'une SURCHARGE de caractéristique par transformation active (PER-74) — capacité + valeur
+ * imposée + page, pour l'affichage (grid + détail de la carac). Une seule forme peut être active à la
+ * fois (interrupteurs mutuellement exclusifs), mais la structure gère plusieurs caracs surchargées.
+ */
+export interface AbilityOverrideSource {
+  featureId: string;
+  /** Nom de la capacité (français, ex. « Transformation en loup »). */
+  name: string;
+  /** Valeur ABSOLUE imposée à la caractéristique. */
+  value: number;
+  /** Page source CO2. */
+  page: SourcePage;
+}
+
+/**
+ * SURCHARGES de caractéristiques imposées par les transformations ACTIVES (PER-74), par caractéristique,
+ * avec leur capacité source. Parcourt les capacités acquises ; pour chaque `conditional-stat-bonus`
+ * porteur d'`abilityOverrides` dont l'interrupteur est ACTIF (`isEffectActive`), enregistre la valeur
+ * absolue. En cas de conflit (plusieurs formes actives — normalement impossible via `mutuallyExclusiveWith`),
+ * la dernière rencontrée l'emporte. Vide = aucune transformation active.
+ */
+export function activeAbilityOverrideSources(
+  character: Character,
+): Partial<Record<AbilityId, AbilityOverrideSource>> {
+  const out: Partial<Record<AbilityId, AbilityOverrideSource>> = {};
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    feature.effects.forEach((e, index) => {
+      if (e.kind !== 'conditional-stat-bonus' || !e.abilityOverrides) return;
+      if (!isEffectActive(character, id, index)) return;
+      for (const [ability, value] of Object.entries(e.abilityOverrides) as [AbilityId, number][]) {
+        out[ability] = { featureId: id, name: feature.name, value, page: feature.sourcePage };
+      }
+    });
+  }
+  return out;
+}
+
+/** Valeurs absolues des caractéristiques surchargées par les transformations actives (PER-74). */
+export function activeAbilityOverrides(character: Character): Partial<Record<AbilityId, number>> {
+  const sources = activeAbilityOverrideSources(character);
+  const out: Partial<Record<AbilityId, number>> = {};
+  for (const [ability, src] of Object.entries(sources) as [AbilityId, AbilityOverrideSource][]) {
+    out[ability] = src.value;
   }
   return out;
 }

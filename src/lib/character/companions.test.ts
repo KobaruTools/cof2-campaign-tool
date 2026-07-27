@@ -74,6 +74,27 @@ describe('listCompanions', () => {
     expect(r5Chosen[0].profile.name).toBe('Cheval de guerre lourd');
   });
 
+  it('forme de loup (PER-74, transformation) : EXCLUE de la section Compagnons mais rendue inline', () => {
+    const c = char({
+      classId: 'barbare',
+      level: 10,
+      abilities: { FOR: 3, AGI: 2, CON: 2, PER: 1, CHA: 0, INT: -1, VOL: 1 },
+      featureIds: ['prestige-lycanthrope-r4', 'prestige-lycanthrope-r5'],
+    });
+    // La transformation n'est PAS un compagnon → aucune entrée dans « Compagnons ».
+    expect(listCompanions(c)).toHaveLength(0);
+    // Mais le stat-block du loup reste disponible pour le rendu inline de la carte.
+    const wolf = displayCreatureProfile(featureById.get('prestige-lycanthrope-r5')!, c)!;
+    expect(wolf.name).toBe('Loup');
+    expect(wolf.transformation).toBe(true);
+    // FOR/AGI fixées (+3/+1) ; les autres héritées du maître (delta 0).
+    const ab = resolveCreatureAbilities(wolf, c.abilities)!;
+    expect(ab.FOR).toBe(3);
+    expect(ab.AGI).toBe(1);
+    expect(ab.CON).toBe(2); // = celle du maître
+    expect(ab.VOL).toBe(1);
+  });
+
   it('écuyer : compagnon sans bloc de caractéristiques (grille masquée)', () => {
     const c = char({ classId: 'chevalier', featureIds: ['noblesse-r1', 'noblesse-r2'] });
     const companions = listCompanions(c);

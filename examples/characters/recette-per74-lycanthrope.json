@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per74-lycanthrope",
+  "name": "Recette PER-74 — Lycanthrope (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du lycanthrope p. 130-131) : vérifier le RENDU richText de chaque rang. R4 Forme hybride → morsure [1d4° + FOR] (dé évolutif + FOR, encadré de formule) + COMPTEUR 1 usage rechargé à la RÉCUPÉRATION RAPIDE. R5 Transformation en loup → STAT-BLOCK du loup rendu INLINE (type compagnon mais PAS dans la section Compagnons) : FOR +3 / AGI +1, autres caracs héritées du perso, Défense [12 + rang], Initiative 15, DM [1d4 + 3]. Le tableau verbatim a été RETIRÉ du texte (doublon avec la mini-fiche). CARACS DYNAMIQUES : activer l'interrupteur « Sous forme de loup » IMPOSE FOR→+3 (la base est +4 → tu DOIS voir la FOR passer de +4 à +3, en orange italique) et AGI→+1, répercuté sur TOUTE la fiche (attaque, DM, DEF, tests). RD 5 contre armes non argentées, CONDITIONNELLE à cette forme. EXCLUSIF : activer « Sous forme de loup » éteint « Sous forme hybride » (R7) et inversement → la RD ne cumule jamais à 10. R6 Éventration → ajoute {1d4°} sur 15-20 (plage verbatim). R7 Résistance surnaturelle → RD 5 armes non argentées, interrupteur « Sous forme hybride ». R8 Forme puissante → +2 FOR sous forme (verbatim, bonus temporaire). À VÉRIFIER : basculer les interrupteurs de forme fait apparaître/disparaître les puces de RD."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 10,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 4,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 4,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "brute-r1",
+    "humain-r1",
+    "prestige-lycanthrope-r4",
+    "prestige-lycanthrope-r5",
+    "prestige-lycanthrope-r6",
+    "prestige-lycanthrope-r7",
+    "prestige-lycanthrope-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-74 — recette lycanthrope : rendu richText rangs 4-8 + RD conditionnelles par forme.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
