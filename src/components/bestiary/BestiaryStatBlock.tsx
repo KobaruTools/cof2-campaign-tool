@@ -44,6 +44,7 @@ import { MetaPill } from '@/components/MetaPill';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { bookIdForSourceSlug } from '@/lib/ui/books';
 import { CreaturePathBlock } from './CreaturePathBlock';
+import { DefenseBadge } from '@/components/sheet/DefenseBadge';
 import { GlossaryText, RichInline } from '@/components/sheet/FeatureRichText';
 import { VerbatimToggle } from '@/components/sheet/FeaturesByPath';
 
@@ -207,11 +208,14 @@ function StatChip({
   statId,
   value,
   note,
+  rd,
   dense = false,
 }: {
   statId: DerivedStatId;
   value: number;
   note?: string;
+  /** Valeur de RÉDUCTION DE DÉGÂTS (« 5 »), rendue en badge RD bleu à droite du chiffre, comme la fiche. */
+  rd?: string;
   dense?: boolean;
 }) {
   return (
@@ -251,8 +255,33 @@ function StatChip({
           </Box>
         )}
       </Box>
+      {/* Réduction de dégâts imprimée avec les PV (« 90 (RD 5) ») rendue avec le MÊME badge bleu que la
+          fiche de personnage (DefenseBadge, variante reduction), accolé à droite du chiffre de PV. */}
+      {rd && (
+        <DefenseBadge
+          variant="reduction"
+          text={rd}
+          title={`RD ${rd}`}
+          sources={[{ name: 'Réduit tous les dégâts subis', value: rd }]}
+          compact={dense}
+          fullWidth={false}
+        />
+      )}
     </Stack>
   );
+}
+
+/**
+ * Sépare la note de PV en une éventuelle RÉDUCTION DE DÉGÂTS en tête (« RD 5 », « RD3 ») — rendue en
+ * badge RD comme la fiche — et le RESTE verbatim (rare : les formes de PV du nécrocrâne). `rd` = valeur
+ * numérique seule (« 5 ») pour le badge « RD 5 » ; `note` = ce qui reste (sinon absent).
+ */
+function splitHitPointsNote(note?: string): { rd?: string; note?: string } {
+  if (!note) return {};
+  const m = note.match(/^RD\s*(\d+)\s*;?\s*(.*)$/i);
+  if (!m) return { note };
+  const rest = m[2].trim();
+  return { rd: m[1], note: rest || undefined };
 }
 
 /**
@@ -378,11 +407,14 @@ export function BestiaryStatBlock({
   const bonusDice = new Set(creature.bonusDieAbilities ?? []);
   // Stats dérivées fixes présentes : rendues en grille pleine largeur, une colonne
   // chacune, sans retour à la ligne (il n'y a pas d'autre bloc sur cette ligne).
-  const derivedStats: { statId: DerivedStatId; value: number; note?: string }[] = [];
+  const derivedStats: { statId: DerivedStatId; value: number; note?: string; rd?: string }[] = [];
   if (creature.defense != null)
     derivedStats.push({ statId: 'defense', value: creature.defense, note: creature.defenseNote });
-  if (creature.hitPoints != null)
-    derivedStats.push({ statId: 'maxHp', value: creature.hitPoints, note: creature.hitPointsNote });
+  if (creature.hitPoints != null) {
+    // La note de PV du livre est presque toujours une RD (« 90 (RD 5) ») : on la sort en badge RD.
+    const hp = splitHitPointsNote(creature.hitPointsNote);
+    derivedStats.push({ statId: 'maxHp', value: creature.hitPoints, note: hp.note, rd: hp.rd });
+  }
   if (creature.initiative != null)
     derivedStats.push({ statId: 'initiative', value: creature.initiative, note: creature.initiativeNote });
   const hasAttacks = !!creature.attacks && creature.attacks.length > 0;
@@ -541,7 +573,7 @@ export function BestiaryStatBlock({
           }}
         >
           {derivedStats.map((s) => (
-            <StatChip key={s.statId} statId={s.statId} value={s.value} note={s.note} dense={dense} />
+            <StatChip key={s.statId} statId={s.statId} value={s.value} note={s.note} rd={s.rd} dense={dense} />
           ))}
         </Box>
       )}
