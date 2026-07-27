@@ -52,6 +52,12 @@ export interface SourceManifestEntry {
   id: string;
   /** Slug stable de la source (débogage / lisibilité). */
   slug: string;
+  /**
+   * Libellé lisible de la source (`sources.name`) — alimente le groupe de boutons
+   * « livre source » de la liste (filtre affiché dès qu'au moins deux sources sont
+   * accessibles, donc qu'un supplément payant est débloqué).
+   */
+  name: string;
   /** Version du contenu, incrémentée à chaque ingestion. */
   contentVersion: number;
   /**

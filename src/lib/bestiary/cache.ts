@@ -169,6 +169,13 @@ export interface ReconcileResult {
    * Vide sans manifeste (fallback SSR/tests sans IndexedDB).
    */
   paidSourceIds: string[];
+  /**
+   * Sources ACCESSIBLES au rôle courant (gratuit + payants débloqués), depuis le
+   * manifeste frais — avec leur libellé. Alimente le groupe de boutons « livre
+   * source » de la liste, affiché dès qu'il y en a plus d'une. Vide sans manifeste
+   * (fallback SSR/tests sans IndexedDB).
+   */
+  sources: SourceManifestEntry[];
 }
 
 /**
@@ -182,7 +189,12 @@ export interface ReconcileResult {
  */
 export async function reconcileBestiaryCache(): Promise<ReconcileResult> {
   if (!isIndexedDbAvailable()) {
-    return { list: await fetchCreatureList(), droppedBlobSlugs: [], paidSourceIds: [] };
+    return {
+      list: await fetchCreatureList(),
+      droppedBlobSlugs: [],
+      paidSourceIds: [],
+      sources: [],
+    };
   }
 
   const manifest = await fetchSourceManifest(); // Toujours frais — lève hors-ligne.
@@ -228,7 +240,12 @@ export async function reconcileBestiaryCache(): Promise<ReconcileResult> {
 
   // 3. Liste à jour = union de toutes les sources désormais en cache.
   const finalSources = await idbGetAll<CachedSource>(SOURCES_STORE);
-  return { list: flattenSources(finalSources), droppedBlobSlugs, paidSourceIds };
+  return {
+    list: flattenSources(finalSources),
+    droppedBlobSlugs,
+    paidSourceIds,
+    sources: manifest,
+  };
 }
 
 /**

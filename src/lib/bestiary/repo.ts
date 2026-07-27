@@ -95,11 +95,12 @@ export async function fetchSourceManifest(): Promise<SourceManifestEntry[]> {
   const supabase = createBrowserSupabaseClient();
   const { data, error } = await supabase
     .from('sources')
-    .select('id, slug, content_version, is_paid');
+    .select('id, slug, name, content_version, is_paid');
   if (error) throw error;
   return (data ?? []).map((row) => ({
     id: row.id,
     slug: row.slug,
+    name: row.name,
     contentVersion: row.content_version,
     isPaid: row.is_paid,
   }));

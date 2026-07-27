@@ -32,7 +32,7 @@ function item(
 }
 
 function source(id: string, contentVersion: number, isPaid = false): SourceManifestEntry {
-  return { id, slug: id, contentVersion, isPaid };
+  return { id, slug: id, name: id, contentVersion, isPaid };
 }
 
 describe('planSourceReconciliation', () => {

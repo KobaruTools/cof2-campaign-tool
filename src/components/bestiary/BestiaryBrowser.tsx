@@ -57,6 +57,7 @@ import {
   creatureNcLabel,
   formatNc,
 } from "@/lib/ui/creature";
+import { BOOKS, DEFAULT_BOOK_ID } from "@/lib/ui/books";
 import { usePersistedState } from "@/lib/ui/usePersistedState";
 import { useBestiaryStore } from "@/stores/bestiary";
 import { AppAlert } from "@/components/AppAlert";
@@ -65,6 +66,20 @@ import { CreatureBlobView } from "./CreatureBlobView";
 /** Normalise pour une recherche insensible aux accents et à la casse. */
 const norm = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/**
+ * Libellé court d'une source pour l'infobulle des boutons « livre » : retire le
+ * préfixe de collection (« Chroniques Oubliées Fantasy 2 — ») et un éventuel suffixe
+ * entre parenthèses, pour ne garder que l'essentiel (« Livre de base », « Le Bestiaire »).
+ */
+const cleanSourceName = (name: string): string =>
+  name
+    .replace(/^Chroniques Oubliées Fantasy 2\s*[—–-]\s*/i, "")
+    .replace(/\s*\([^)]*\)\s*$/, "")
+    .trim() || name;
+
+/** Icône du livre de base (celle du header « Livre des règles »), pour le bouton source. */
+const RulesBookIcon = BOOKS[DEFAULT_BOOK_ID].Icon;
 
 /** Famille = créature de base + ses variantes (`baseCreatureId`). Une créature autonome est une base sans variante. */
 interface Family {
@@ -200,6 +215,22 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
   // supplément premium → marquée d'une tête de loup à côté de son NC (liste + détail).
   const paidSourceIds = useBestiaryStore((s) => s.paidSourceIds);
   const isPaidCreature = (c: CreatureListItem) => paidSourceIds.has(c.sourceId);
+
+  // Sources accessibles (contenu gratuit + suppléments payants débloqués), avec leur
+  // libellé : alimentent le groupe de boutons « livre source ». Trié contenu de base
+  // d'abord, puis les payants, chacun par nom. Le groupe n'apparaît qu'à partir de
+  // DEUX sources — donc, en pratique, dès qu'un supplément payant est débloqué.
+  const sources = useBestiaryStore((s) => s.sources);
+  const sortedSources = useMemo(
+    () =>
+      [...sources].sort(
+        (a, b) =>
+          Number(a.isPaid) - Number(b.isPaid) || a.name.localeCompare(b.name, "fr"),
+      ),
+    [sources],
+  );
+  const showSourceFilter = sortedSources.length > 1;
+  const sourceIds = useMemo(() => new Set(sources.map((s) => s.id)), [sources]);
   // NC numériques présents dans le bestiaire (le gabarit sans NC est exclu), triés — servent
   // aux bornes du curseur et à ses graduations (le curseur ne s'arrête que sur ces valeurs).
   const ncValues = useMemo(
@@ -262,6 +293,14 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
         ? (raw as CreatureCategory | "all")
         : undefined,
   );
+  // Filtre « livre source » : id de source ou `"all"`. Une valeur périmée (source
+  // devenue inaccessible, ou groupe masqué faute d'une 2ᵉ source) est neutralisée
+  // par `effectiveSource` plus bas — sans réécrire le localStorage.
+  const [source, setSource] = usePersistedState<string>(
+    "bestiary:source",
+    "all",
+    (raw) => (typeof raw === "string" ? raw : undefined),
+  );
   const [sizes, setSizes] = usePersistedState<CreatureSize[]>(
     "bestiary:sizes",
     [],
@@ -302,9 +341,15 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
   );
   const [selectedId, setSelectedId] = useState<string>(list[0]?.id ?? "");
 
+  // Filtre source EFFECTIF : le choix persisté n'est retenu que si le groupe est
+  // affiché ET que la source existe toujours (entitlement conservé) ; sinon `"all"`.
+  const effectiveSource =
+    showSourceFilter && source !== "all" && sourceIds.has(source) ? source : "all";
+
   // Un filtre (hors tri) est-il actif ? Sert à (dés)activer le bouton de réinitialisation.
   const filtersActive =
     query !== "" ||
+    effectiveSource !== "all" ||
     category !== "all" ||
     sizes.length > 0 ||
     natures.length > 0 ||
@@ -314,6 +359,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
   // Réinitialise TOUS les filtres — pas le tri, conservé volontairement.
   const resetFilters = () => {
     setQuery("");
+    setSource("all");
     setCategory("all");
     setSizes([]);
     setNatures([]);
@@ -329,6 +375,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
     const isFullNcRange = lo <= ncMin && hi >= ncMax;
     return (c: CreatureListItem): boolean => {
       if (q && !norm(c.name).includes(q)) return false;
+      if (effectiveSource !== "all" && c.sourceId !== effectiveSource) return false;
       if (category !== "all" && c.category !== category) return false;
       if (sizeSet.size > 0 && (!c.size || !sizeSet.has(c.size))) return false;
       if (natureSet.size > 0 && !(c.nature ?? []).some((n) => natureSet.has(n)))
@@ -337,7 +384,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
       if (c.nc == null) return isFullNcRange;
       return c.nc >= lo && c.nc <= hi;
     };
-  }, [query, category, sizes, natures, ncRange, ncMin, ncMax]);
+  }, [query, effectiveSource, category, sizes, natures, ncRange, ncMin, ncMax]);
 
   // Familles visibles + variantes à montrer : si la base correspond, on déploie toute la
   // famille ; sinon on ne montre que les variantes qui correspondent (la base sert d'en-tête).
@@ -400,35 +447,65 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
           WebkitBackdropFilter: "blur(6px)",
         }}
       >
-        <TextField
-          fullWidth
-          size="small"
-          placeholder="Rechercher une créature par nom"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-              // Croix d'effacement à droite quand la recherche est renseignée (motif usuel).
-              endAdornment: query ? (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    edge="end"
-                    aria-label="Effacer la recherche"
-                    onClick={() => setQuery("")}
-                  >
-                    <ClearIcon fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ) : undefined,
-            },
-          }}
-        />
+        {/* Recherche + groupe « livre source » sur la même ligne (gain de place
+            vertical). Le groupe n'apparaît qu'à partir de deux sources accessibles
+            (donc dès qu'un supplément payant est débloqué) et se limite aux icônes :
+            livre de base → icône du livre des règles ; Bestiaire → patte. Nom complet
+            en infobulle. */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Rechercher une créature par nom"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+                // Croix d'effacement à droite quand la recherche est renseignée (motif usuel).
+                endAdornment: query ? (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      edge="end"
+                      aria-label="Effacer la recherche"
+                      onClick={() => setQuery("")}
+                    >
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : undefined,
+              },
+            }}
+          />
+
+          {showSourceFilter && (
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={effectiveSource}
+              onChange={(_, v: string | null) => v != null && setSource(v)}
+              sx={{ flexShrink: 0 }}
+            >
+              <ToggleButton value="all">Tous</ToggleButton>
+              {sortedSources.map((s) => {
+                const Icon = s.isPaid ? PetsOutlinedIcon : RulesBookIcon;
+                const label = cleanSourceName(s.name);
+                return (
+                  <ToggleButton key={s.id} value={s.id} aria-label={label}>
+                    <Tooltip title={label}>
+                      <Icon sx={{ fontSize: 18 }} />
+                    </Tooltip>
+                  </ToggleButton>
+                );
+              })}
+            </ToggleButtonGroup>
+          )}
+        </Box>
 
         <Stack
           direction={{ xs: "column", md: "row" }}

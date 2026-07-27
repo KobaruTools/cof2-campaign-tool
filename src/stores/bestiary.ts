@@ -31,6 +31,7 @@ import {
   writeCachedBlob,
   type CachedBlob,
   type CreatureListItem,
+  type SourceManifestEntry,
 } from '@/lib/bestiary';
 import type { Creature } from '@/data/schema';
 
@@ -49,6 +50,13 @@ interface BestiaryState {
    * payant → marquée dans l'UI (tête de loup à côté du NC). Vide avant réconciliation.
    */
   paidSourceIds: Set<string>;
+  /**
+   * Sources ACCESSIBLES au rôle courant (gratuit + payants débloqués), avec leur
+   * libellé — depuis le manifeste de la dernière réconciliation. Alimente le groupe
+   * de boutons « livre source » de la liste, affiché dès qu'il y en a plus d'une
+   * (donc dès qu'un supplément payant est débloqué). Vide avant réconciliation.
+   */
+  sources: SourceManifestEntry[];
   status: BestiaryStatus;
   /** Vrai pendant la réconciliation réseau en arrière-plan (cache déjà affiché). */
   revalidating: boolean;
@@ -91,6 +99,7 @@ function messageOf(e: unknown): string {
 export const useBestiaryStore = create<BestiaryState>()((set, get) => ({
   list: null,
   paidSourceIds: new Set<string>(),
+  sources: [],
   status: 'idle',
   revalidating: false,
   error: null,
@@ -138,10 +147,11 @@ export const useBestiaryStore = create<BestiaryState>()((set, get) => ({
       }
 
       // 2. Réconciliation réseau (manifeste + re-fetch ciblé).
-      const { list, droppedBlobSlugs, paidSourceIds } = await reconcileBestiaryCache();
+      const { list, droppedBlobSlugs, paidSourceIds, sources } = await reconcileBestiaryCache();
       set((s) => ({
         list,
         paidSourceIds: new Set(paidSourceIds),
+        sources,
         status: 'ready',
         error: null,
         revalidating: false,
