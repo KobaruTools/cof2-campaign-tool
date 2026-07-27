@@ -572,6 +572,17 @@ for (const c of features) {
     else if (armor.category !== 'armor')
       err(`[capacite ${c.id}] feature-from-path borrowArmorMax n'est pas une armure : ${choice.borrowArmorMax}`);
   }
+  // Choix `known-feature` (PER-74, voie du spécialiste) : `actionTypes` optionnels valides.
+  for (const choice of c.choices ?? []) {
+    if (choice.kind !== 'known-feature') continue;
+    for (const a of choice.actionTypes ?? [])
+      if (!ACTION_TYPES.includes(a)) err(`[capacite ${c.id}] known-feature actionTypes invalide : ${a}`);
+  }
+  // Choix `ability` (PER-74 r6) : les indices `lowestHint`/`highestHint` sont mutuellement exclusifs.
+  for (const choice of c.choices ?? []) {
+    if (choice.kind === 'ability' && choice.lowestHint && choice.highestHint)
+      err(`[capacite ${c.id}] choix 'ability' : lowestHint et highestHint sont exclusifs`);
+  }
 }
 
 // --- Réduction de dégâts (préparation « stats avancées ») --------------------

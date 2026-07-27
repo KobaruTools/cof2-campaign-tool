@@ -16,6 +16,7 @@ import {
   hasIncompleteCustomSkill,
   featuresWithUnmadeChoices,
   ineligibleBorrowersForChoice,
+  expertPathReuseWarning,
   getOptionSelections,
   getSelection,
   getSelections,
@@ -23,6 +24,7 @@ import {
   hasRepeatableOption,
   hasUnmadeChoice,
   isChoiceActionable,
+  knownFeaturesForChoice,
   pendingDivineAcquisition,
   pruneFeatureChoices,
   repeatableChoiceCount,
@@ -30,7 +32,8 @@ import {
   splitRepeatableSelections,
   unmadeChoiceIndexes,
 } from './choices';
-import type { OptionFeatureChoice, PathFeatureChoice } from '@/data/schema';
+import { highestAbilities } from './ancestry';
+import type { KnownFeatureChoice, OptionFeatureChoice, PathFeatureChoice } from '@/data/schema';
 
 function makeCharacter(over: Partial<Character> = {}): Character {
   return {
@@ -122,6 +125,76 @@ describe('eligibleDivineHostPaths', () => {
     const hosts = eligibleDivineHostPaths(char, 2).map((p) => p.id);
     expect(hosts).not.toContain('foi'); // rang 2 déjà pris
     expect(hosts).toContain('guerre-sainte');
+  });
+});
+
+// PER-74 — voie du spécialiste : sélecteur `known-feature` + indices « plus haute carac ».
+describe('knownFeaturesForChoice (PER-74, spécialiste)', () => {
+  // brute-r2 [G], brute-r3 [L], rage-r1 [G], rage-r3 [L] sont actionnables ; pagne-r1 est passif.
+  const owned = ['brute-r2', 'brute-r3', 'rage-r1', 'rage-r3', 'pagne-r1'];
+
+  it('ne retient que les capacités ACTIONNABLES possédées (exclut les passifs)', () => {
+    const char = makeCharacter({ featureIds: owned });
+    const ids = knownFeaturesForChoice(char, 'prestige-specialiste-r5', {
+      kind: 'known-feature',
+      prompt: 'x',
+    }).map((f) => f.id);
+    expect(ids).toEqual(expect.arrayContaining(['brute-r2', 'brute-r3', 'rage-r1', 'rage-r3']));
+    expect(ids).not.toContain('pagne-r1'); // passif : aucun type d'action
+  });
+
+  it('restreint par actionTypes (r8 : A/M/L)', () => {
+    const char = makeCharacter({ featureIds: owned });
+    const choice: KnownFeatureChoice = { kind: 'known-feature', prompt: 'x', actionTypes: ['L'] };
+    const ids = knownFeaturesForChoice(char, 'prestige-specialiste-r8', choice).map((f) => f.id);
+    expect(ids).toEqual(expect.arrayContaining(['brute-r3', 'rage-r3']));
+    expect(ids).not.toContain('brute-r2'); // action (G), pas (L)
+    expect(ids).not.toContain('rage-r1');
+  });
+
+  it('exclut la capacité hôte elle-même', () => {
+    const char = makeCharacter({ featureIds: [...owned, 'rage-r3'] });
+    const ids = knownFeaturesForChoice(char, 'rage-r3', {
+      kind: 'known-feature',
+      prompt: 'x',
+    }).map((f) => f.id);
+    expect(ids).not.toContain('rage-r3');
+  });
+});
+
+describe('expertPathReuseWarning (PER-74, expert)', () => {
+  it('avertit quand deux rangs expert empruntent à la même voie', () => {
+    const char = makeCharacter({
+      featureIds: ['prestige-expert-r4', 'prestige-expert-r5'],
+      featureChoices: { 'prestige-expert-r4': ['brute-r1'] },
+    });
+    // Le rang 5 en cours d'édition pointe brute-r3 : même voie « brute » que le rang 4.
+    expect(expertPathReuseWarning(char, 'prestige-expert-r5', 'brute-r3')).toBeTruthy();
+  });
+
+  it('ne dit rien quand les voies diffèrent', () => {
+    const char = makeCharacter({
+      featureIds: ['prestige-expert-r4', 'prestige-expert-r5'],
+      featureChoices: { 'prestige-expert-r4': ['brute-r1'] },
+    });
+    expect(expertPathReuseWarning(char, 'prestige-expert-r5', 'rage-r3')).toBeNull();
+  });
+
+  it('ne s’applique pas hors de la voie de l’expert', () => {
+    const char = makeCharacter({ featureChoices: { 'prestige-expert-r4': ['brute-r1'] } });
+    expect(expertPathReuseWarning(char, 'prestige-specialiste-r5', 'brute-r3')).toBeNull();
+  });
+});
+
+describe('highestAbilities (PER-74, r6)', () => {
+  it('retourne la carac la plus haute', () => {
+    expect(highestAbilities({ AGI: 1, CON: 2, FOR: 4, PER: 0, CHA: -1, INT: 3, VOL: 2 })).toEqual(['FOR']);
+  });
+
+  it('retourne toutes les caracs à égalité au maximum', () => {
+    const res = highestAbilities({ AGI: 3, CON: 3, FOR: 1, PER: 0, CHA: 0, INT: 0, VOL: 0 });
+    expect(res).toEqual(expect.arrayContaining(['AGI', 'CON']));
+    expect(res).toHaveLength(2);
   });
 });
 

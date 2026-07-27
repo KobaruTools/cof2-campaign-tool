@@ -22,6 +22,7 @@ import {
   type AbilityId,
   type Feature,
   type FeatureChoice,
+  type KnownFeatureChoice,
   type OptionFeatureChoice,
   type Path,
   type PathFeatureChoice,
@@ -474,6 +475,63 @@ export function ineligibleBorrowersForChoice(
   return featuresInChoiceDomain(character, hostFeatureId, choice).filter((f) =>
     featureOffersBorrow(f.id),
   );
+}
+
+/**
+ * Domaine d'un choix `known-feature` (PER-74, voie du spécialiste) : les capacités que le
+ * personnage POSSÈDE DÉJÀ (`featureIds`), restreintes aux capacités ACTIONNABLES (au moins un type
+ * d'action — on écarte les passifs, non pertinents pour « améliorer une capacité »), puis affinées
+ * par `actionTypes` (r8 : A/M/L) et `spellsOnly` (r5, branche sort). La capacité hôte s'exclut
+ * elle-même. Tri par voie puis rang, comme `featuresInChoiceDomain`, pour un regroupement lisible.
+ */
+export function knownFeaturesForChoice(
+  character: Character,
+  hostFeatureId: string,
+  choice: KnownFeatureChoice,
+): Feature[] {
+  const allowedActions = choice.actionTypes ? new Set(choice.actionTypes) : null;
+  return character.featureIds
+    .map((id) => featureById.get(id))
+    .filter((f): f is Feature => {
+      if (!f || f.id === hostFeatureId) return false;
+      // Capacité actionnable : au moins un type d'action (on ne pointe pas un passif).
+      if (!f.actionTypes || f.actionTypes.length === 0) return false;
+      if (allowedActions && !f.actionTypes.some((a) => allowedActions.has(a))) return false;
+      if (choice.spellsOnly && !f.isSpell) return false;
+      return true;
+    })
+    .sort((a, b) => a.pathId.localeCompare(b.pathId) || a.rank - b.rank);
+}
+
+/**
+ * Avertissement NON BLOQUANT de la voie de l'expert (PER-74, p. 129) : « chacune des capacités
+ * choisies doit provenir d'une VOIE DIFFÉRENTE de la même famille de profils ». On ne bloque pas le
+ * sélecteur (fiche permissive) ; on signale simplement si un AUTRE rang de la voie de l'expert a déjà
+ * emprunté une capacité de la même VOIE source que `candidateId`. Renvoie le nom de la voie en double
+ * (français) ou `null` si aucun conflit. `hostFeatureId` = le rang expert en cours d'édition (exclu
+ * du comparatif). Pure — sert l'UI d'édition et l'affichage.
+ */
+export function expertPathReuseWarning(
+  character: Character,
+  hostFeatureId: string,
+  candidateId: string | null,
+): string | null {
+  const host = featureById.get(hostFeatureId);
+  if (host?.pathId !== 'prestige-expert' || !candidateId) return null;
+  const candidatePathId = featureById.get(candidateId)?.pathId;
+  if (!candidatePathId) return null;
+  // Voies sources empruntées par les AUTRES rangs de la voie de l'expert.
+  for (const [otherHostId, selections] of Object.entries(character.featureChoices ?? {})) {
+    if (otherHostId === hostFeatureId) continue;
+    if (featureById.get(otherHostId)?.pathId !== 'prestige-expert') continue;
+    const defs = featureChoiceDefs(otherHostId);
+    const reused = selections.some((sel, i) => {
+      if (defs[i]?.kind !== 'feature-from-path' || typeof sel !== 'string') return false;
+      return featureById.get(sel)?.pathId === candidatePathId;
+    });
+    if (reused) return pathById.get(candidatePathId)?.name ?? candidatePathId;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------

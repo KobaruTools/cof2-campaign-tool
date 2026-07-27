@@ -593,6 +593,14 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Choisissez une capacité de rang 2 de n'importe quelle voie issue d'un profil de votre famille.",
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 2 (voie d’un profil de votre famille)',
+        allowedRanks: [2],
+        familyScope: 'same-family',
+      },
+    ],
     sourcePage: 129,
   },
   {
@@ -604,6 +612,14 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Choisissez une capacité de rang 3 de n'importe quelle voie issue d'un profil de votre famille.",
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 3 (voie d’un profil de votre famille)',
+        allowedRanks: [3],
+        familyScope: 'same-family',
+      },
+    ],
     sourcePage: 129,
   },
   {
@@ -615,6 +631,14 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Choisissez une capacité de rang 4 de n'importe quelle voie issue d'un profil de votre famille.",
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 4 (voie d’un profil de votre famille)',
+        allowedRanks: [4],
+        familyScope: 'same-family',
+      },
+    ],
     sourcePage: 129,
   },
   {
@@ -626,6 +650,17 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Choisissez une capacité de rang 5 de n'importe quelle voie issue d'un profil de votre famille.\nAttention : chacune des capacités choisies doit provenir d'une voie différente de la même famille de profils.",
+    // PER-74 : contrainte « voie différente » NON appliquée dans le sélecteur (arbitrage
+    // proprio 2026-07-27) — avertissement non bloquant si deux rangs expert empruntent à la
+    // même voie (cf. expertPathReuseWarning). Le sélecteur exclut déjà les capacités acquises.
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 5 (voie d’un profil de votre famille)',
+        allowedRanks: [5],
+        familyScope: 'same-family',
+      },
+    ],
     sourcePage: 129,
   },
 
@@ -639,6 +674,11 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Lorsqu'il acquiert cette capacité, le personnage peut choisir entre deux propositions. Soit il gagne un bonus de +1 en attaque lorsqu'il utilise une capacité à définir. Soit il obtient un bonus de +5 sur une compétence acquise par une capacité (par exemple, discrétion).",
+    // PER-74 : on TRACE le détail retenu (capacité visée / compétence) via des sous-choix conditionnels,
+    // mais le +1 en attaque et le +5 en compétence restent MANUELS (verbatim) : le +1 est conditionné à
+    // « l'usage d'une capacité à définir » (aucune primitive ne gate une attaque sur l'emploi d'une
+    // capacité), et le +5 vise « une compétence acquise par une capacité » (domaine flou, pas de bonus
+    // chiffré sur domaine choisi). Arbitrage proprio 2026-07-27 (registre lycanthrope/sang-dragon).
     choices: [
       {
         kind: 'option',
@@ -647,6 +687,17 @@ export const prestigeFeatures1: Feature[] = [
           { id: 'attack-bonus', label: '+1 en attaque lorsqu’il utilise une capacité à définir' },
           { id: 'skill-bonus', label: '+5 sur une compétence acquise par une capacité' },
         ],
+      },
+      {
+        kind: 'known-feature',
+        prompt: 'Capacité concernée par le +1 en attaque',
+        visibleIfOption: { choiceIndex: 0, optionId: 'attack-bonus' },
+      },
+      {
+        kind: 'free-text',
+        prompt: 'Compétence concernée par le +5',
+        placeholder: 'ex. discrétion',
+        visibleIfOption: { choiceIndex: 0, optionId: 'skill-bonus' },
       },
     ],
     sourcePage: 129,
@@ -660,6 +711,15 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le joueur choisit une capacité limitée que son personnage connaît. Désormais, il lui suffit d'une action d'attaque pour l'utiliser. S'il s'agit d'un sort (*), il peut choisir un sort en action d'attaque (A) et bénéficier de la concentration (L) sur ce sort sans prendre une action limitée.",
+    // PER-74 : on TRACE la capacité visée (sélecteur), mais le passage à une action d'attaque n'est PAS
+    // mécanisé (économie d'action non modélisée) — verbatim, appliqué à la table. Domaine = capacités
+    // connues actionnables (« limitée » non filtrable de façon fiable → le joueur pointe la sienne).
+    choices: [
+      {
+        kind: 'known-feature',
+        prompt: 'Capacité limitée concernée',
+      },
+    ],
     sourcePage: 129,
   },
   {
@@ -671,6 +731,18 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le joueur augmente d'un point la valeur de la plus haute caractéristique de son personnage. De plus, lorsqu'il obtient un résultat de 1 sur un test sur cette caractéristique, il peut relancer le dé une fois (il garde le nouveau résultat).",
+    // PER-74 : le +1 s'applique à la « plus haute caractéristique » — modélisé, comme Projection
+    // mentale (+1 à la plus faible), en choix GUIDÉ (`highestHint`) + `ability-bonus-from-choice`
+    // (le moteur pré-signale la plus haute et l'ajoute au total, PV/DEF/tests compris). La RELANCE
+    // du 1 reste VERBATIM (aucun moteur de jets de dé).
+    choices: [
+      {
+        kind: 'ability',
+        prompt: 'Caractéristique la plus haute',
+        highestHint: true,
+      },
+    ],
+    effects: [{ kind: 'ability-bonus-from-choice', choiceIndex: 0, value: 1 }],
     sourcePage: 130,
   },
   {
@@ -682,6 +754,16 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le joueur choisit une capacité que connaît son personnage. Lorsqu'il utilise cette capacité, il ajoute +1d4° aux DM produits une fois par round (sur une seule attaque si la capacité permet plusieurs attaques).",
+    // PER-74 : le dé bonus +1d4° s'affiche via richText ({1d4°}) ; on TRACE la capacité visée (sélecteur).
+    // Le +1d4° n'est PAS ajouté automatiquement aux DM (dépend de la capacité choisie) → appliqué à la table.
+    richText:
+      "Le joueur choisit une capacité que connaît son personnage. Lorsqu'il utilise cette capacité, il ajoute {1d4°} aux DM produits une fois par round (sur une seule attaque si la capacité permet plusieurs attaques).",
+    choices: [
+      {
+        kind: 'known-feature',
+        prompt: 'Capacité concernée',
+      },
+    ],
     sourcePage: 130,
   },
   {
@@ -693,6 +775,15 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le joueur choisit une capacité (A), (M) ou (L) que connaît son personnage. Une fois par combat, il peut utiliser cette capacité en plus de ses actions normales à son tour (sauf s'il est surpris), sans dépasser les limitations normalement imposées par la capacité (par exemple, une seule fois par round, ou une seule fois par combat, etc.). Si la capacité est un sort, il doit payer le coût normal de points de mana.",
+    // PER-74 : on TRACE la capacité signature (sélecteur restreint aux actions A/M/L, verbatim). L'action
+    // supplémentaire 1×/combat n'est PAS mécanisée (économie d'action) → appliquée à la table.
+    choices: [
+      {
+        kind: 'known-feature',
+        prompt: 'Capacité signature (A/M/L)',
+        actionTypes: ['A', 'M', 'L'],
+      },
+    ],
     sourcePage: 130,
   },
 

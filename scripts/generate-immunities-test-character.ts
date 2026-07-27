@@ -115,7 +115,8 @@ for (const fid of ancestryFeatureIds) {
       }
       return choice.allowed?.[0] ?? 'FOR';
     }
-    if (choice.kind === 'custom-skill' || choice.kind === 'free-text') return null;
+    if (choice.kind === 'custom-skill' || choice.kind === 'free-text' || choice.kind === 'known-feature')
+      return null;
     return choice.options[0]?.id ?? null;
   });
 }

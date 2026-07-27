@@ -80,3 +80,14 @@ export function lowestAbilities(base: Record<AbilityId, number>): AbilityId[] {
   const threshold = base[sorted[1]];
   return sorted.filter((id) => base[id] <= threshold);
 }
+
+/**
+ * Caractéristiques les plus HAUTES (symétrique de `lowestAbilities`, PER-74, Caractéristique
+ * fabuleuse r6, p. 130 : « la plus haute caractéristique »). Toutes les caracs partageant la
+ * valeur MAXIMALE sont éligibles (le livre parle d'UNE carac, mais en cas d'égalité on laisse le
+ * joueur choisir parmi celles qui plafonnent). Retourne les ids triés par valeur décroissante.
+ */
+export function highestAbilities(base: Record<AbilityId, number>): AbilityId[] {
+  const max = Math.max(...ABILITY_IDS.map((id) => base[id]));
+  return [...ABILITY_IDS].filter((id) => base[id] === max).sort((a, b) => base[b] - base[a]);
+}

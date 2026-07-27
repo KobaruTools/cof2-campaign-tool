@@ -964,6 +964,18 @@ describe('effectiveAbilities — saisie + modificateurs permanents de capacités
     const c = charWithFeatures(ABILITIES_3, ['metal-r5', 'golem-r1'], { 'golem-r1': ['pv-from-int'] });
     expect(modsFromFeatures(['metal-r5', 'golem-r1'], effectContext(c)).maxHp).toBe(-1);
   });
+
+  it('Caractéristique fabuleuse (spécialiste r6) : +1 à la carac RETENUE via ability-bonus-from-choice', () => {
+    const eff = effectiveAbilities(
+      charWithFeatures(ABILITIES_3, ['prestige-specialiste-r6'], { 'prestige-specialiste-r6': ['CON'] }),
+    );
+    expect(eff.CON).toBe(4); // 3 + 1
+    expect(eff.INT).toBe(3); // inchangée
+  });
+
+  it('Caractéristique fabuleuse : sans choix retenu, aucune carac modifiée', () => {
+    expect(effectiveAbilities(charWithFeatures(ABILITIES_3, ['prestige-specialiste-r6']))).toEqual(ABILITIES_3);
+  });
 });
 
 describe('disabledFeatureReasons — grisage des capacités (exclusion / remplacement)', () => {

@@ -27,12 +27,13 @@ import { alpha } from '@mui/material/styles';
 import { featureById, pathById, testDomains, testDomainById } from '@/data';
 import { ABILITY_IDS } from '@/data/schema';
 import type { AbilityId, FeatureChoice, OptionFeatureChoice } from '@/data/schema';
-import { lowestAbilities } from '@/lib/character/ancestry';
+import { highestAbilities, lowestAbilities } from '@/lib/character/ancestry';
 import { effectiveAbilities } from '@/lib/character/effects';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
   allowedAbilitiesForChoice,
   eligibleFeaturesForChoice,
+  expertPathReuseWarning,
   featureChoiceDefs,
   getOptionSelections,
   getSelection,
@@ -40,6 +41,7 @@ import {
   hasRepeatableOption,
   ineligibleBorrowersForChoice,
   isChoiceActionable,
+  knownFeaturesForChoice,
   repeatableChoiceCount,
   splitRepeatableSelections,
 } from '@/lib/character/choices';
@@ -73,7 +75,8 @@ export function choiceSelectionLabel(
       // sinon on coupe au premier complément entre parenthèses.
       return short ? (option?.shortLabel ?? label.replace(/\s*\(.*$/, '')) : label;
     }
-    case 'feature-from-path': {
+    case 'feature-from-path':
+    case 'known-feature': {
       const feature = featureById.get(selection);
       if (!feature) return selection;
       if (short) return feature.name;
@@ -131,19 +134,27 @@ function ChoiceControl({
 
   if (choice.kind === 'ability') {
     const allowed = allowedAbilitiesForChoice(choice);
-    const lowest: AbilityId[] = choice.lowestHint ? lowestAbilities(effectiveAbilities(character)) : [];
-    const deviates = lowest.length > 0 && !!single && !lowest.includes(single as AbilityId);
-    const lowestNames = lowest.map((id) => ABILITY_NAMES[id]);
-    const lowestLabel =
-      lowestNames.length > 1
-        ? `${lowestNames.slice(0, -1).join(', ')} et ${lowestNames[lowestNames.length - 1]}`
-        : (lowestNames[0] ?? '');
-    const lowestPhrase =
-      lowest.length === 1
-        ? 'votre caractéristique la plus faible'
-        : lowest.length === 2
+    // Indices « plus faible » (lowestHint) OU « plus haute » (highestHint, PER-74 r6) : mêmes
+    // mécaniques de pré-signalement (gras) + avertissement de dérogation, sur l'extrémité opposée.
+    const hinted: AbilityId[] = choice.lowestHint
+      ? lowestAbilities(effectiveAbilities(character))
+      : choice.highestHint
+        ? highestAbilities(effectiveAbilities(character))
+        : [];
+    const isHint = choice.lowestHint || choice.highestHint;
+    const deviates = hinted.length > 0 && !!single && !hinted.includes(single as AbilityId);
+    const hintedNames = hinted.map((id) => ABILITY_NAMES[id]);
+    const hintedLabel =
+      hintedNames.length > 1
+        ? `${hintedNames.slice(0, -1).join(', ')} et ${hintedNames[hintedNames.length - 1]}`
+        : (hintedNames[0] ?? '');
+    const extreme = choice.highestHint ? 'haute' : 'faible';
+    const hintedPhrase =
+      hinted.length === 1
+        ? `votre caractéristique la plus ${extreme}`
+        : hinted.length === 2 && choice.lowestHint
           ? 'vos deux caractéristiques les plus faibles'
-          : 'vos caractéristiques les plus faibles';
+          : `vos caractéristiques les plus ${extreme}s`;
 
     const field = (
       <TextField
@@ -156,8 +167,8 @@ function ChoiceControl({
         helperText={
           blocking && missing
             ? 'Choix obligatoire'
-            : lowest.length > 0
-              ? `Plus faible${lowest.length > 1 ? 's' : ''} : ${lowestLabel}`
+            : hinted.length > 0
+              ? `Plus ${extreme}${hinted.length > 1 ? 's' : ''} : ${hintedLabel}`
               : undefined
         }
         onChange={(e) => onChange(index, e.target.value || null)}
@@ -169,8 +180,8 @@ function ChoiceControl({
           <MenuItem
             key={id}
             value={id}
-            sx={lowest.length > 0
-              ? lowest.includes(id)
+            sx={hinted.length > 0
+              ? hinted.includes(id)
                 ? { fontWeight: 700 }
                 : { opacity: 0.35 }
               : undefined}
@@ -181,15 +192,15 @@ function ChoiceControl({
       </TextField>
     );
 
-    if (!choice.lowestHint) return field;
+    if (!isHint) return field;
     return (
       <Box>
         {field}
         {deviates && single && (
           <AppAlert severity="warning" sx={{ mt: 1 }}>
             {ABILITY_NAMES[single as keyof typeof ABILITY_NAMES] ?? single} ne fait pas partie de{' '}
-            {lowestPhrase}
-            {lowestLabel ? ` (${lowestLabel})` : ''} : vous dérogez à la règle.
+            {hintedPhrase}
+            {hintedLabel ? ` (${hintedLabel})` : ''} : vous dérogez à la règle.
           </AppAlert>
         )}
       </Box>
@@ -467,6 +478,27 @@ function ChoiceControl({
     );
   }
 
+  // known-feature : DÉSIGNE une capacité DÉJÀ POSSÉDÉE (PER-74, voie du spécialiste) — pointeur
+  // descriptif, sans mécaniser la modification (verbatim). Même contrôle groupé par voie que
+  // l'emprunt, mais alimenté par `knownFeaturesForChoice` (capacités acquises actionnables).
+  if (choice.kind === 'known-feature') {
+    const known = knownFeaturesForChoice(character, featureId, choice);
+    return (
+      <FeaturePathAutocomplete
+        label={choice.prompt}
+        options={known.map((f) => f.id)}
+        value={single}
+        onChange={(id) => onChange(index, id)}
+        error={blocking && missing}
+        helperText={
+          blocking && missing
+            ? 'Choix obligatoire'
+            : 'La modification s’applique à la table (non calculée sur la fiche).'
+        }
+      />
+    );
+  }
+
   // feature-from-path : longue liste de capacités empruntables, groupée par voie
   // (couleur + icône de profil) via le composant unifié `FeaturePathAutocomplete`.
   // Règle des poupées russes (p. 41) : les capacités elles-mêmes « emprunteuses »
@@ -477,28 +509,40 @@ function ChoiceControl({
   const blocked = ineligibleBorrowersForChoice(character, featureId, choice);
   const blockedIds = new Set(blocked.map((f) => f.id));
   const options = [...eligible, ...blocked].map((f) => f.id);
+  // Avertissement NON BLOQUANT de la voie de l'expert (p. 129) : la capacité retenue vient d'une
+  // voie déjà utilisée par un autre rang expert (règle « une voie différente par capacité »).
+  const reusedPathName = expertPathReuseWarning(character, featureId, single);
   return (
-    <FeaturePathAutocomplete
-      label={choice.prompt}
-      options={options}
-      value={single}
-      onChange={(id) => onChange(index, id)}
-      disabledIds={blockedIds}
-      optionSuffix={(id) =>
-        blockedIds.has(id) ? ' — emprunte déjà une capacité (non cumulable)' : undefined
-      }
-      error={blocking && missing}
-      helperText={
-        blocking && missing
-          ? 'Choix obligatoire'
-          : blocked.length > 0 ? (
-              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                Les capacités grisées empruntent elles-mêmes une capacité : non sélectionnables
-                (poupées russes, <SourceRef page={41} />).
-              </Box>
-            ) : undefined
-      }
-    />
+    <Box>
+      <FeaturePathAutocomplete
+        label={choice.prompt}
+        options={options}
+        value={single}
+        onChange={(id) => onChange(index, id)}
+        disabledIds={blockedIds}
+        optionSuffix={(id) =>
+          blockedIds.has(id) ? ' — emprunte déjà une capacité (non cumulable)' : undefined
+        }
+        error={blocking && missing}
+        helperText={
+          blocking && missing
+            ? 'Choix obligatoire'
+            : blocked.length > 0 ? (
+                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                  Les capacités grisées empruntent elles-mêmes une capacité : non sélectionnables
+                  (poupées russes, <SourceRef page={41} />).
+                </Box>
+              ) : undefined
+        }
+      />
+      {reusedPathName && (
+        <AppAlert severity="warning" sx={{ mt: 1 }}>
+          La voie « {reusedPathName} » est déjà utilisée par un autre rang de la voie de l’expert :
+          chaque capacité choisie doit provenir d’une voie différente de la même famille (
+          <SourceRef page={129} />).
+        </AppAlert>
+      )}
+    </Box>
   );
 }
 

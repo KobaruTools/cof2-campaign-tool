@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per74-specialiste",
+  "name": "Recette PER-74 — Spécialiste (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du spécialiste p. 129-130). R4 Expertise : proposition « +1 attaque » retenue → un SÉLECTEUR « Capacité concernée » apparaît (ici Furie/rage-r3) ; basculer sur « +5 compétence » révèle À LA PLACE un champ texte libre (ex. « discrétion »). Les bonus +1/+5 restent MANUELS (verbatim). R5 Capacité fabuleuse : sélecteur de capacité limitée connue (ici brute-r2). R6 Caractéristique fabuleuse : +1 à la PLUS HAUTE carac (FOR pré-signalée ; FOR passe de +4 à +5, répercuté PV/DEF/attaque/tests). La RELANCE du 1 reste verbatim. R7 Capacité supérieure : {1d4°} rendu comme dé + sélecteur de capacité (ici rage-r1) ; +1d4° manuel. R8 Capacité signature : sélecteur RESTREINT aux capacités (A)/(M)/(L) (ici brute-r3, en L) ; l'action supplémentaire 1×/combat reste verbatim. Les sélecteurs ne CALCULENT rien : ils TRACENT le choix."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 10,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 4,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 4,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "brute-r1",
+    "brute-r2",
+    "brute-r3",
+    "rage-r1",
+    "rage-r3",
+    "pagne-r1",
+    "humain-r1",
+    "prestige-specialiste-r4",
+    "prestige-specialiste-r5",
+    "prestige-specialiste-r6",
+    "prestige-specialiste-r7",
+    "prestige-specialiste-r8"
+  ],
+  "featureChoices": {
+    "prestige-specialiste-r4": [
+      "attack-bonus",
+      "rage-r3",
+      null
+    ],
+    "prestige-specialiste-r5": [
+      "brute-r2"
+    ],
+    "prestige-specialiste-r6": [
+      "FOR"
+    ],
+    "prestige-specialiste-r7": [
+      "rage-r1"
+    ],
+    "prestige-specialiste-r8": [
+      "brute-r3"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-74 — recette spécialiste : sélecteurs de capacité connue + R6 +1 plus haute carac + R4 sous-choix.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
