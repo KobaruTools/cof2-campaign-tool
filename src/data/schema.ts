@@ -1491,6 +1491,7 @@ export interface CriticalRange {
 export type FeatureChoice =
   | AbilityFeatureChoice
   | PathFeatureChoice
+  | KnownFeatureChoice
   | OptionFeatureChoice
   | CustomSkillFeatureChoice
   | FreeTextFeatureChoice;
@@ -1518,6 +1519,16 @@ export interface AbilityFeatureChoice extends FeatureChoiceBase {
    * L'UI affiche un hint et un avertissement si la valeur retenue dévie.
    */
   lowestHint?: boolean;
+  /**
+   * Si true : le choix est censé porter sur la caractéristique la plus HAUTE (symétrique de
+   * `lowestHint`). Le livre décrit certains bonus comme automatiques sur « la plus haute
+   * caractéristique » (Caractéristique fabuleuse, spécialiste r6, p. 130) — on le modélise, comme
+   * « Projection mentale » (+1 à la plus faible), en choix GUIDÉ : l'UI pré-signale la/les carac(s)
+   * la/les plus haute(s) et avertit en cas de dérogation, tout en laissant le joueur trancher une
+   * égalité. Se combine à `ability-bonus-from-choice` pour appliquer le +1. Mutuellement exclusif
+   * avec `lowestHint`.
+   */
+  highestHint?: boolean;
 }
 
 /**
@@ -1577,6 +1588,35 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    * la voie B). Résolu par `featureArmorRestrictionViolations` (armorRestrictions.ts).
    */
   borrowArmorMax?: string;
+}
+
+/**
+ * Choix DÉSIGNANT une capacité que le personnage POSSÈDE DÉJÀ (PER-74, voie du spécialiste,
+ * p. 129-130). À l'opposé de `feature-from-path` (qui EMPRUNTE une capacité NON possédée), ce choix
+ * ne fait que POINTER une capacité connue : la voie du spécialiste améliore une capacité existante
+ * — Capacité fabuleuse (r5), Capacité supérieure (r7), Capacité signature (r8).
+ *
+ * La sélection est PUREMENT DESCRIPTIVE : le moteur NE mécanise PAS la modification (réduction à une
+ * action d'attaque, +1d4° aux DM, action supplémentaire) — aucune primitive ne l'exprime, elle reste
+ * VERBATIM et s'applique à la table. On l'affiche seulement pour TRACER le choix du joueur. Persistée
+ * comme l'id de la capacité (une chaîne, comme `feature-from-path`).
+ *
+ * Le domaine = les capacités ACQUISES du personnage (`featureIds`), restreintes aux capacités
+ * ACTIONNABLES (au moins un type d'action) pour rester pertinent, puis affinées par les filtres
+ * ci-dessous. Résolu par `knownFeaturesForChoice` (`src/lib/character/choices.ts`).
+ */
+export interface KnownFeatureChoice extends FeatureChoiceBase {
+  kind: 'known-feature';
+  /**
+   * Restreint aux capacités dont le type d'action figure dans cette liste (ex. Capacité signature
+   * r8 : « une capacité (A), (M) ou (L) » → `['A', 'M', 'L']`). Absent = pas de filtre sur l'action.
+   */
+  actionTypes?: ActionType[];
+  /**
+   * Restreint aux SORTS (`Feature.isSpell`). Sert la branche « sort » de Capacité fabuleuse (r5).
+   * Absent = pas de filtre sort/non-sort.
+   */
+  spellsOnly?: boolean;
 }
 
 /** Une option énumérée d'un `OptionFeatureChoice`. */
@@ -2852,16 +2892,16 @@ export interface CreatureSpecialAbility {
 
 /**
  * Référence à une VOIE (de profil) que la créature POSSÈDE à un rang donné — le
- * livre l'imprime « Voie des illusions rang 5 » sous les attaques. La créature a
- * accès à la SEULE capacité du rang indiqué, pas aux rangs inférieurs (confirmé
- * par les auteurs, Discord officiel 2026-07-27 : « rang N » = la capacité de rang N
- * uniquement). `pathId` référence une `Path` existante (`pathById`) ; le rendu
- * résout le nom canonique et affiche cette capacité au format « Voies & capacités ».
+ * livre l'imprime « Voie des illusions rang 5 » sous les attaques. La créature
+ * possède la voie ENTIÈRE jusqu'au rang indiqué, c.-à-d. les capacités des rangs
+ * 1..N (règle FINALE du propriétaire, 2026-07-27 ; comme un personnage qui atteint
+ * le rang N). `pathId` référence une `Path` existante (`pathById`) ; le rendu résout
+ * le nom canonique et affiche ces capacités au format « Voies & capacités ».
  */
 export interface CreaturePathReference {
   /** id de la voie (`Path.id`, ex. 'illusions', 'envouteur'). */
   pathId: string;
-  /** Rang de la capacité possédée (1..5) — la créature a la SEULE capacité de ce rang. */
+  /** Rang atteint (1..5) — la créature possède les capacités des rangs 1..rank. */
   rank: number;
 }
 
@@ -2916,8 +2956,8 @@ export interface Creature {
   /**
    * Voies de profil que la créature POSSÈDE (ex. aberratus : illusions rang 5,
    * envoûteur rang 5), imprimées sous les attaques. Rendues au format « Voies &
-   * capacités » de la fiche (nom canonique + carte de la SEULE capacité du rang
-   * indiqué), résolues contre les données de voies. À DISTINGUER d'une `specialAbility` :
+   * capacités » de la fiche (nom canonique + cartes des capacités des rangs 1..N),
+   * résolues contre les données de voies. À DISTINGUER d'une `specialAbility` :
    * ce n'est pas un texte verbatim mais un renvoi structuré vers une vraie voie.
    */
   paths?: CreaturePathReference[];
