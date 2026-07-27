@@ -45,6 +45,7 @@ import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { BOOKS, type BookId } from '@/lib/ui/books';
+import { downloadPaidBook, PaidBookAccessError } from '@/lib/pdf/paidBooks';
 import {
   MIN_QUERY_LENGTH,
   renderTextItemWithHighlight,
@@ -71,7 +72,12 @@ const SEARCH_DEBOUNCE_MS = 300;
 export interface PdfBookViewerProps {
   /** Livre à afficher (validé en amont par la route). */
   bookId: BookId;
-  /** Page d'ENTRÉE demandée par l'URL (numéro imprimé = numéro de page du PDF). */
+  /**
+   * Page d'ENTRÉE demandée par l'URL, en numéro IMPRIMÉ (cohérent avec le livre papier).
+   * Le visualiseur la convertit en numéro de FICHIER via `book.printedPageOffset`
+   * (`pageFichier = imprimé + offset`) — sans décalage pour le livre de base, +3 pour
+   * le Bestiaire (pages de garde).
+   */
   initialPage: number;
   /**
    * Terme à CIBLER sur la page d'entrée (PER-59/61) : nom de l'entité (capacité/créature/état)
@@ -122,9 +128,15 @@ export default function PdfBookViewer({
 }: PdfBookViewerProps) {
   const book = BOOKS[bookId];
 
+  // Décalage de pagination du livre : le visualiseur travaille en numéro de FICHIER
+  // (ce que pdf.js indexe), l'URL/les badges en numéro IMPRIMÉ. `fileInitialPage` est
+  // la page d'entrée convertie ; le compteur « X / N » affiche donc un n° de fichier.
+  const pageOffset = book.printedPageOffset;
+  const fileInitialPage = initialPage + pageOffset;
+
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [current, setCurrent] = useState(initialPage);
-  const [pageInput, setPageInput] = useState(String(initialPage));
+  const [current, setCurrent] = useState(fileInitialPage);
+  const [pageInput, setPageInput] = useState(String(fileInitialPage));
   const [zoom, setZoom] = useState(1);
   // Ajustement de la page : « page entière » (contain, défaut) ou « pleine largeur » (remplit la
   // largeur, on défile verticalement). Éphémère (comme le zoom) ; le zoom se multiplie par-dessus.
@@ -134,6 +146,15 @@ export default function PdfBookViewer({
   // chaque nouveau renvoi (cf. resync sur la clé page/terme).
   const [showTarget, setShowTarget] = useState(true);
   const [loadError, setLoadError] = useState(false);
+
+  // --- Livraison du PDF (PER-252) -------------------------------------------------------------
+  // Livre PUBLIC (livre de base) : chargé par URL statique (`book.file`). Livre PAYANT
+  // (Bestiaire) : TÉLÉCHARGÉ de façon authentifiée depuis le bucket privé et gardé en mémoire
+  // (`pdfBlob`), avec progression. `accessDenied` = la RLS a refusé (non entitlé) → message clair.
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
+  // Fraction téléchargée (0..1) ; `null` = pas de téléchargement en cours OU taille inconnue.
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
 
   // Dimensions du conteneur (largeur ET hauteur) + ratio hauteur/largeur de la page courante :
   // de quoi ajuster la page en mode « page entière » (contain) — le plus grand rendu qui tient
@@ -174,8 +195,8 @@ export default function PdfBookViewer({
   const [lastKey, setLastKey] = useState(targetKey);
   if (targetKey !== lastKey) {
     setLastKey(targetKey);
-    setCurrent(initialPage);
-    setPageInput(String(initialPage));
+    setCurrent(fileInitialPage);
+    setPageInput(String(fileInitialPage));
     // Nouveau renvoi → on ré-affiche le surlignage du passage ciblé (l'utilisateur a pu le masquer).
     setShowTarget(true);
   }
@@ -193,6 +214,10 @@ export default function PdfBookViewer({
     setMatches(null);
     setActiveMatch(0);
     setIndexProgress(null);
+    // Livraison : oublier le PDF payant du livre précédent (l'effet de téléchargement rechargera).
+    setPdfBlob(null);
+    setAccessDenied(false);
+    setDownloadProgress(null);
   }
 
   // Suivi des redimensionnements (fenêtre, rotation…) une fois monté. La mesure INITIALE est
@@ -204,6 +229,36 @@ export default function PdfBookViewer({
     ro.observe(el);
     return () => ro.disconnect();
   }, [bookId]);
+
+  // Téléchargement du PDF payant (PER-252) : à l'ouverture du visualiseur sur un livre
+  // en mode `paid-bucket`, on télécharge le fichier via la session authentifiée (gardé par
+  // la RLS Storage) et on le garde en mémoire. Le cache de session (dans `paidBooks`) rend
+  // une réouverture instantanée. Un refus RLS → `accessDenied` (message clair), toute autre
+  // erreur → `loadError`. Les livres publics (`public-file`) ne passent pas par ici.
+  useEffect(() => {
+    if (book.delivery !== 'paid-bucket' || book.available === false || !book.sourceSlug) return;
+    // La progression démarre à `null` (spinner indéterminé) le temps de l'ouverture de session
+    // et des en-têtes ; `downloadPaidBook` la passe en déterminée dès qu'il connaît la taille.
+    // Pas de `setState` synchrone ici (les `setState` restent dans les callbacks async).
+    let cancelled = false;
+    downloadPaidBook(book.sourceSlug, (fraction) => {
+      if (!cancelled) setDownloadProgress(fraction);
+    })
+      .then((blob) => {
+        if (cancelled) return;
+        setPdfBlob(blob);
+        setDownloadProgress(null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setDownloadProgress(null);
+        if (err instanceof PaidBookAccessError) setAccessDenied(true);
+        else setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [book.delivery, book.available, book.sourceSlug]);
 
   // Amène la page courante en haut du conteneur à chaque changement de page.
   useEffect(() => {
@@ -291,9 +346,10 @@ export default function PdfBookViewer({
   // toutes pages, PER-58) a la PRIORITÉ ; à défaut, le terme CIBLÉ par le renvoi (couleur distincte,
   // PER-59/61) est surligné sur sa SEULE page. Une même fonction rend les deux (classe différente).
   const highlightQuery = searchOpen && query.trim().length >= MIN_QUERY_LENGTH ? query.trim() : '';
-  // Terme ciblé actif : bascule ON, hors recherche, terme non vide, et on est bien sur la page citée.
+  // Terme ciblé actif : bascule ON, hors recherche, terme non vide, et on est bien sur la page
+  // citée (comparée en n° de FICHIER, d'où la conversion de `initialPage` via l'offset).
   const targetActive =
-    showTarget && !highlightQuery && term.length >= MIN_QUERY_LENGTH && current === initialPage;
+    showTarget && !highlightQuery && term.length >= MIN_QUERY_LENGTH && current === fileInitialPage;
   const textRenderer = useMemo(
     () =>
       highlightQuery
@@ -593,15 +649,34 @@ export default function PdfBookViewer({
         }}
       >
         {book.available === false ? (
-          // Livre DORMANT (PDF pas encore servi, ex. Bestiaire payant en attente de la
-          // livraison gatée) : message clair plutôt qu'un chargement voué à l'échec.
+          // Livre DORMANT (PDF pas encore servi) : message clair plutôt qu'un chargement
+          // voué à l'échec.
           <Typography color="text.secondary" sx={{ m: 'auto', textAlign: 'center', px: 3 }}>
             « {book.name} » n&apos;est pas encore disponible dans le visualiseur.
+          </Typography>
+        ) : accessDenied ? (
+          // Livre PAYANT non débloqué (RLS Storage refuse le téléchargement, PER-252) :
+          // message clair, jamais une erreur technique.
+          <Typography color="text.secondary" sx={{ m: 'auto', textAlign: 'center', px: 3 }}>
+            Vous n&apos;avez pas débloqué « {book.name} ». Débloquez ce livre pour le consulter ici.
           </Typography>
         ) : loadError ? (
           <Typography color="error" sx={{ m: 'auto', textAlign: 'center', px: 3 }}>
             Impossible de charger le livre. Vérifiez que le fichier PDF est bien disponible.
           </Typography>
+        ) : book.delivery === 'paid-bucket' && pdfBlob === null ? (
+          // Livre payant en cours de TÉLÉCHARGEMENT (via la session authentifiée) : indicateur
+          // de progression (déterminé si la taille est connue, indéterminé sinon).
+          <Stack sx={{ m: 'auto', alignItems: 'center', gap: 2, px: 3 }}>
+            <CircularProgress
+              variant={downloadProgress != null ? 'determinate' : 'indeterminate'}
+              value={downloadProgress != null ? Math.round(downloadProgress * 100) : undefined}
+            />
+            <Typography color="text.secondary" sx={{ textAlign: 'center' }}>
+              Téléchargement du livre…
+              {downloadProgress != null ? ` ${Math.round(downloadProgress * 100)} %` : ''}
+            </Typography>
+          </Stack>
         ) : (
           // `margin: auto` sur le conteneur flex : la page est CENTRÉE quand elle tient, et
           // alignée au début (donc entièrement atteignable au défilement) quand le zoom la fait
@@ -609,7 +684,9 @@ export default function PdfBookViewer({
           // `justify-content: center` qui rognerait et rendrait le bord inatteignable.
           <Box sx={{ m: 'auto' }}>
             <Document
-              file={book.file}
+              // Livre public : URL statique. Livre payant : Blob téléchargé (immuable → sûr
+              // pour react-pdf, pas de détachement d'ArrayBuffer au transfert vers le worker).
+              file={book.delivery === 'paid-bucket' ? pdfBlob! : book.file}
               onLoadSuccess={(pdf) => {
                 setNumPages(pdf.numPages);
                 setPdfDoc(pdf);

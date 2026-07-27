@@ -27,6 +27,7 @@ export function CreatureBlobView({
   dense = false,
   collapsibleAbilities = false,
   paidSource = false,
+  sourceSlug,
   wideColumns = false,
 }: {
   slug: string;
@@ -38,6 +39,8 @@ export function CreatureBlobView({
   collapsibleAbilities?: boolean;
   /** La créature provient d'un supplément payant → marqueur « patte » à côté du NC. */
   paidSource?: boolean;
+  /** Slug de la source de la créature → livre du renvoi `SourceRef` (transmis au bloc). */
+  sourceSlug?: string;
   /** Force les sections voies/capacités sur 2 colonnes malgré `dense` (carte MJ large). */
   wideColumns?: boolean;
 }) {
@@ -64,6 +67,7 @@ export function CreatureBlobView({
         dense={dense}
         collapsibleAbilities={collapsibleAbilities}
         paidSource={paidSource}
+        sourceSlug={sourceSlug}
         wideColumns={wideColumns}
         inheritedAbilities={baseBlob?.specialAbilities}
         inheritedFromName={baseBlob?.name}

@@ -196,7 +196,16 @@ function BestiaryLoadingSkeleton() {
  * l'écran de MJ) — chargement du blob, cache, résolution de l'héritage des capacités et
  * squelette/erreur y sont mutualisés. Ici on ne gère que l'état « aucune sélection ».
  */
-function CreatureDetail({ slug, paidSource = false }: { slug: string; paidSource?: boolean }) {
+function CreatureDetail({
+  slug,
+  paidSource = false,
+  sourceSlug,
+}: {
+  slug: string;
+  paidSource?: boolean;
+  /** Slug de la source de la créature → mappé vers le livre du renvoi (`SourceRef`). */
+  sourceSlug?: string;
+}) {
   if (!slug) {
     return (
       <Typography color="text.secondary" sx={{ p: 2 }}>
@@ -206,7 +215,7 @@ function CreatureDetail({ slug, paidSource = false }: { slug: string; paidSource
   }
   // Chargement du blob + résolution de l'héritage des capacités : mutualisés dans
   // `CreatureBlobView` (partagé avec l'écran de MJ) → rendu identique partout.
-  return <CreatureBlobView slug={slug} paidSource={paidSource} />;
+  return <CreatureBlobView slug={slug} paidSource={paidSource} sourceSlug={sourceSlug} />;
 }
 
 /** Étage 1 bis : tout le filtrage/tri, sur la liste LÉGÈRE déjà chargée (non vide). */
@@ -765,6 +774,13 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
           <CreatureDetail
             slug={effectiveId}
             paidSource={list.some((c) => c.id === effectiveId && isPaidCreature(c))}
+            // Slug de la source de la créature sélectionnée → mappé vers son livre pour rendre
+            // le renvoi (« p. N ») cliquable vers le bon PDF (au lieu d'un livre codé en dur).
+            sourceSlug={
+              sources.find(
+                (s) => s.id === list.find((c) => c.id === effectiveId)?.sourceId,
+              )?.slug
+            }
           />
         </Box>
       </Box>

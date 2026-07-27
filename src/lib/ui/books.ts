@@ -20,19 +20,39 @@ export interface BookMeta {
   /** Icône identifiant le livre d'un coup d'œil (accolée au numéro de page). */
   Icon: SvgIconComponent;
   /**
-   * URL du PDF servi par l'app, consommée par le visualiseur (milestone « Visualiseur PDF »).
-   * Les PDF libres sont commités via Git LFS sous `public/pdf/` (choix assumé et temporaire,
-   * cf. PER-57). Les PDF payants/sous copyright vivent hors du repo (`pdf-payants/`, gitignored)
-   * et ne sont donc pas servis : leur entrée reste dormante tant que le fichier n'est pas fourni.
+   * Slug de la SOURCE de contenu (`sources.slug` en base) correspondant à ce livre.
+   * Sert de MAPPING réel source → livre (`bookIdForSourceSlug`), remplaçant le codage
+   * en dur côté `BestiaryStatBlock` ; et de premier segment du chemin Storage pour les
+   * livres payants (`{sourceSlug}/book.pdf`, PER-252). Absent pour un livre non adossé
+   * à une source de données (Le Compagnon, hors scope d'extraction).
    */
-  file: string;
+  sourceSlug?: string;
+  /**
+   * Décalage de pagination du PDF : `pageFichier = pageImprimée + printedPageOffset`.
+   * Les badges (`SourceRef`) et l'URL portent le numéro IMPRIMÉ (cohérent avec le livre
+   * papier) ; le visualiseur convertit en interne. `0` pour le livre de base, `3` pour
+   * le Bestiaire (3 pages de garde non numérotées avant la page imprimée « 1 »).
+   */
+  printedPageOffset: number;
+  /**
+   * Mode de livraison du PDF au visualiseur (milestone « Visualiseur PDF ») :
+   *  - `'public-file'` : PDF LIBRE servi statiquement depuis `public/pdf/` (commité via
+   *    Git LFS, choix assumé et temporaire, cf. PER-57), chargé par URL (`file`) ;
+   *  - `'paid-bucket'` : PDF PAYANT/sous copyright du bucket privé `paid-books`, jamais
+   *    dans git ni public : TÉLÉCHARGÉ de façon authentifiée et gaté par entitlement
+   *    (RLS Storage, PER-252) au chemin `{sourceSlug}/book.pdf`.
+   */
+  delivery: 'public-file' | 'paid-bucket';
+  /**
+   * URL du PDF public statique (mode `'public-file'` seulement), consommée par le
+   * visualiseur. Absente en mode `'paid-bucket'` (le fichier vient du bucket privé).
+   */
+  file?: string;
   /**
    * Le livre est-il RÉELLEMENT servi dans le visualiseur ? `false` = entrée DORMANTE :
    * le renvoi de source (`SourceRef`) affiche le bon libellé/icône mais n'est PAS
    * cliquable (le PDF n'est pas encore disponible), et le visualiseur affiche un
    * message plutôt que de tenter un chargement voué à échouer. Défaut (absent) = `true`.
-   * Le Bestiaire payant repassera à `true` quand son PDF sera servi de façon gatée
-   * (Supabase Storage privé + URL signée — ticket dédié).
    */
   available?: boolean;
 }
@@ -47,6 +67,9 @@ export const BOOKS: Record<BookId, BookMeta> = {
     id: 'core-rulebook',
     name: 'Livre des règles',
     Icon: MenuBookOutlinedIcon,
+    sourceSlug: 'drs',
+    printedPageOffset: 0,
+    delivery: 'public-file',
     file: '/pdf/core-rulebook.pdf',
   },
   companion: {
@@ -55,6 +78,8 @@ export const BOOKS: Record<BookId, BookMeta> = {
     Icon: AutoStoriesOutlinedIcon,
     // PDF payant/sous copyright : hors du repo (`pdf-payants/compagnon.pdf`, non servi).
     // Entrée dormante — aucune donnée ne pointe encore ce livre (hors scope d'extraction).
+    printedPageOffset: 0,
+    delivery: 'public-file',
     file: '/pdf/companion.pdf',
     available: false,
   },
@@ -62,13 +87,30 @@ export const BOOKS: Record<BookId, BookMeta> = {
     id: 'bestiaire',
     name: 'Le Bestiaire',
     Icon: PetsOutlinedIcon,
-    // PDF payant/sous copyright : hors du repo (`pdf-payants/bestiaire.pdf`, non servi
-    // publiquement). Sera servi de façon GATÉE (Supabase Storage privé + URL signée par
-    // entitlement) — ticket dédié. Dormant en attendant : renvoi non cliquable.
-    file: '/pdf/bestiaire.pdf',
-    available: false,
+    // PDF payant/sous copyright : jamais dans git ni public. Servi de façon GATÉE
+    // (bucket privé `paid-books` + RLS par entitlement, PER-252) : le visualiseur le
+    // TÉLÉCHARGE via la session au chemin `bestiaire/book.pdf`. 3 pages de garde non
+    // numérotées → `printedPageOffset: 3` (page fichier = page imprimée + 3).
+    sourceSlug: 'bestiaire',
+    printedPageOffset: 3,
+    delivery: 'paid-bucket',
+    available: true,
   },
 };
+
+/**
+ * Livre correspondant à une source de contenu (`sources.slug`), ou `undefined` si
+ * aucun livre n'est adossé à ce slug. Mapping réel source → livre : un renvoi de
+ * créature (`SourceRef`) le résout depuis le slug de la source de la créature, au lieu
+ * de coder le livre en dur — prêt pour d'autres livres payants (PER-252).
+ */
+export function bookIdForSourceSlug(sourceSlug: string | undefined): BookId | undefined {
+  if (!sourceSlug) return undefined;
+  for (const book of Object.values(BOOKS)) {
+    if (book.sourceSlug === sourceSlug) return book.id;
+  }
+  return undefined;
+}
 
 /**
  * Livre par défaut quand aucun n'est précisé : toutes les données actuelles proviennent du

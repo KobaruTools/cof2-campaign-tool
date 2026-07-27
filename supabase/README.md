@@ -186,6 +186,37 @@ Recette (code de test posé par l'ingestion `--with-test-source`) :
 5. **Compte non habilité / joueur anonyme** : la RPC renvoie `{ ok: false }` même avec
    le bon code (barrière allowlist + `is_anonymous()`).
 
+### PDF payant servi gaté par entitlement (PER-252)
+
+- `migrations/0011_paid_books_storage.sql` — bucket Storage **privé** `paid-books` +
+  policy RLS SELECT sur `storage.objects` : lecture autorisée seulement si le chemin
+  (`{sourceSlug}/book.pdf`) correspond à une source **débloquée** par l'utilisateur
+  courant. La policy extrait le slug (1er segment), le résout en `sources.id` et délègue
+  au helper `current_user_is_entitled` (PER-242) — **même prédicat que les créatures** :
+  un retrait d'entitlement referme aussi le PDF ; sessions anonymes exclues. Aucune
+  policy d'écriture → upload réservé à la `service_role`.
+- `scripts/upload-paid-book.ts` — téléversement local one-shot (`npm run upload-book`)
+  du `pdf-payants/bestiaire.pdf` (gitignoré, copyright) vers `paid-books/bestiaire/book.pdf`
+  avec la `service_role`. Jamais dans git ni la CI.
+- Côté application : le visualiseur (`PdfBookViewer`) **télécharge** le PDF via la session
+  authentifiée (`src/lib/pdf/paidBooks.ts`, fetch streamé + progression), gardé en cache
+  MÉMOIRE de session. **Pas d'URL signée**. Décalage de pagination du Bestiaire (`+3`,
+  pages de garde) porté par `BOOKS.printedPageOffset` (badge en n° imprimé, visualiseur
+  en n° fichier). Un compte non débloqué reçoit un refus RLS → message clair.
+
+Provisionnement (en plus du gating PER-242/243) :
+
+1. **Appliquer la migration** `0011` (`supabase db push` ou éditeur SQL) → crée le bucket
+   privé + la policy RLS.
+2. **Téléverser le PDF** : `SUPABASE_SECRET_KEY` + `NEXT_PUBLIC_SUPABASE_URL` en
+   `.env.local`, PDF présent en `pdf-payants/bestiaire.pdf`, puis `npm run upload-book`.
+   Idempotent (`upsert`).
+3. **Recette** (compte propriétaire débloqué de `bestiaire-bbe`) : `/bestiary` → une
+   créature payante → clic « p. N » → le PDF s'ouvre **à la bonne page** (offset appliqué),
+   recherche plein-texte OK, réouverture instantanée (cache session). Un compte SANS
+   entitlement → message « Vous n'avez pas débloqué… » (la RLS refuse le téléchargement),
+   même sur ouverture directe de `/rules/bestiaire/…`.
+
 ### Cache persistant côté client (PER-244)
 
 Le navigateur met en cache la liste légère et les blobs déjà consultés dans

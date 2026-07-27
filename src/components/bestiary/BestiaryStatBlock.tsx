@@ -42,6 +42,7 @@ import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { MetaPill } from '@/components/MetaPill';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
+import { bookIdForSourceSlug } from '@/lib/ui/books';
 import { CreaturePathBlock } from './CreaturePathBlock';
 import { GlossaryText, RichInline } from '@/components/sheet/FeatureRichText';
 import { VerbatimToggle } from '@/components/sheet/FeaturesByPath';
@@ -328,6 +329,12 @@ export interface BestiaryStatBlockProps {
    */
   paidSource?: boolean;
   /**
+   * Slug de la SOURCE de contenu de la créature (`sources.slug`). Résolu vers le LIVRE
+   * du renvoi (`SourceRef`) via `bookIdForSourceSlug` — mapping réel source → livre, à la
+   * place d'un livre codé en dur. Absent (écran de MJ, contenu de base) → livre par défaut.
+   */
+  sourceSlug?: string;
+  /**
    * Capacités HÉRITÉES de la créature de base (`baseCreatureId`), résolues par
    * l'appelant (qui charge le blob de la base). Le livre écrit « possède toutes les
    * capacités de X plus les suivantes » : on affiche donc RÉELLEMENT ces capacités —
@@ -350,6 +357,7 @@ export function BestiaryStatBlock({
   dense = false,
   collapsibleAbilities = false,
   paidSource = false,
+  sourceSlug,
   inheritedAbilities,
   inheritedFromName,
   wideColumns = false,
@@ -447,12 +455,13 @@ export function BestiaryStatBlock({
           {creature.name}
         </Typography>
         {/* Le nom de la créature sert de terme à cibler/surligner dans le visualiseur (PER-59/61).
-            Créature payante → renvoi vers « Le Bestiaire » (dormant : non cliquable tant que son
-            PDF n'est pas servi de façon gatée) ; sinon le livre de base par défaut. */}
+            Le livre du renvoi est résolu depuis le slug de la source de la créature (mapping réel
+            source → livre) : une créature du Bestiaire ouvre son PDF payant gaté, sinon le livre
+            de base par défaut (slug absent, ou source sans livre adossé). */}
         <SourceRef
           page={creature.sourcePage}
           term={creature.name}
-          book={paidSource ? 'bestiaire' : undefined}
+          book={bookIdForSourceSlug(sourceSlug)}
         />
         {/* Espace flexible : pousse la bascule à l'extrême droite. */}
         <Box sx={{ flexGrow: 1 }} />

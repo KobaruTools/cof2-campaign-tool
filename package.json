@@ -9,6 +9,7 @@
     "lint": "eslint",
     "validate:data": "tsx scripts/validate-data.ts",
     "ingest": "tsx scripts/ingest-bestiary.ts",
+    "upload-book": "tsx scripts/upload-paid-book.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
