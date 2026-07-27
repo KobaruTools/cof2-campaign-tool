@@ -1635,6 +1635,14 @@ export interface KnownFeatureChoice extends FeatureChoiceBase {
    * Absent = pas de filtre sort/non-sort.
    */
   spellsOnly?: boolean;
+  /**
+   * Domaine spécial de la Capacité fabuleuse (spécialiste r5, p. 129) : les capacités marquées **(L)**
+   * que possède le personnage (transformables en action d'attaque), UNION les **sorts lancés en (A)**
+   * (éligibles à la concentration sans passer en (L)). Dérivation des règles de base : quand présent,
+   * il PRIME sur `actionTypes`/`spellsOnly` (résolu par `knownFeaturesForChoice`). La transformation
+   * effective ((L)→(A) ou −2 PM permanent) est portée par le moteur `fabulousCapacityTarget`.
+   */
+  fabulousCapacity?: boolean;
 }
 
 /**

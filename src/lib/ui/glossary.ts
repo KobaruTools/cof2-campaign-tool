@@ -282,3 +282,43 @@ export function splitGameTerms(text: string): GameTermPiece[] {
   pushText(text.slice(last));
   return pieces;
 }
+
+// ---------------------------------------------------------------------------
+// Marqueurs de type d'action cités en prose (PER-74)
+// ---------------------------------------------------------------------------
+
+/** Marqueur d'action reconnu dans un texte de règle : les 4 types d'action + le marqueur de sort. */
+export type ActionMarker = 'A' | 'L' | 'M' | 'G' | 'spell';
+
+/** Un fragment de texte : texte brut, ou marqueur d'action parenthésé reconnu. */
+export type ActionMarkerPiece =
+  | { kind: 'text'; value: string }
+  | { kind: 'marker'; marker: ActionMarker };
+
+// Marqueurs d'action parenthésés « (A) (L) (M) (G) » et de sort « (*) » (p. 227), tels qu'ils
+// apparaissent dans les textes de règle. Casse SENSIBLE (majuscules seules — évite un « (a) »/« (l) »
+// d'énumération) ; les parenthèses sont CONSOMMÉES (remplacées par l'hexagone, pas conservées autour).
+const ACTION_MARKER_RE = /\((\*|A|L|M|G)\)/g;
+
+/**
+ * Découpe une chaîne en alternant texte brut et marqueurs d'action parenthésés. Rendu en aval par un
+ * hexagone inline (`ActionMarkerHex`), au même style que les marqueurs de capacité. Pur, testable.
+ * Appliqué au NIVEAU LE PLUS FIN du rendu (après locutions + glossaire), sur du texte déjà littéral.
+ */
+export function splitActionMarkers(text: string): ActionMarkerPiece[] {
+  const pieces: ActionMarkerPiece[] = [];
+  let last = 0;
+  ACTION_MARKER_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  const pushText = (v: string) => {
+    if (v) pieces.push({ kind: 'text', value: v });
+  };
+  while ((m = ACTION_MARKER_RE.exec(text)) !== null) {
+    pushText(text.slice(last, m.index));
+    const c = m[1];
+    pieces.push({ kind: 'marker', marker: c === '*' ? 'spell' : (c as 'A' | 'L' | 'M' | 'G') });
+    last = ACTION_MARKER_RE.lastIndex;
+  }
+  pushText(text.slice(last));
+  return pieces;
+}

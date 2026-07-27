@@ -160,6 +160,17 @@ describe('knownFeaturesForChoice (PER-74, spécialiste)', () => {
     }).map((f) => f.id);
     expect(ids).not.toContain('rage-r3');
   });
+
+  it('domaine « Capacité fabuleuse » (r5) : capacités (L) ∪ sorts (A) — exclut les (G) non-sort', () => {
+    // brute-r3/rage-r3 sont (L) ; invocation-r1 est un sort (A) ; brute-r2/rage-r1 sont (G) non-sort.
+    const char = makeCharacter({ featureIds: [...owned, 'invocation-r1'] });
+    const choice: KnownFeatureChoice = { kind: 'known-feature', prompt: 'x', fabulousCapacity: true };
+    const ids = knownFeaturesForChoice(char, 'prestige-specialiste-r5', choice).map((f) => f.id);
+    expect(ids).toEqual(expect.arrayContaining(['brute-r3', 'rage-r3', 'invocation-r1']));
+    expect(ids).not.toContain('brute-r2'); // action (G), non-sort
+    expect(ids).not.toContain('rage-r1');
+    expect(ids).not.toContain('pagne-r1'); // passif
+  });
 });
 
 describe('expertPathReuseWarning (PER-74, expert)', () => {

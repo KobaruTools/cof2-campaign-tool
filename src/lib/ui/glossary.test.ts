@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { splitGlossary, splitGameTerms, GLOSSARY } from './glossary';
+import { splitGlossary, splitGameTerms, splitActionMarkers, GLOSSARY } from './glossary';
 
 describe('splitGlossary', () => {
   it('renvoie un seul fragment texte sans terme connu', () => {
@@ -83,6 +83,37 @@ describe('splitGlossary', () => {
       .filter((p) => p.kind === 'term')
       .map((p) => (p.kind === 'term' ? p.term : ''));
     expect(terms).toEqual(['AGI', 'CON', 'FOR']);
+  });
+});
+
+describe('splitActionMarkers (PER-74)', () => {
+  it('texte sans marqueur → un seul fragment texte', () => {
+    expect(splitActionMarkers("le personnage attaque")).toEqual([
+      { kind: 'text', value: 'le personnage attaque' },
+    ]);
+  });
+
+  it('reconnaît (A)/(L)/(*) et consomme les parenthèses', () => {
+    expect(splitActionMarkers('un sort (*) en action (A) avec concentration (L)')).toEqual([
+      { kind: 'text', value: 'un sort ' },
+      { kind: 'marker', marker: 'spell' },
+      { kind: 'text', value: ' en action ' },
+      { kind: 'marker', marker: 'A' },
+      { kind: 'text', value: ' avec concentration ' },
+      { kind: 'marker', marker: 'L' },
+    ]);
+  });
+
+  it('reconnaît (M) et (G)', () => {
+    expect(splitActionMarkers('(M) puis (G)')).toEqual([
+      { kind: 'marker', marker: 'M' },
+      { kind: 'text', value: ' puis ' },
+      { kind: 'marker', marker: 'G' },
+    ]);
+  });
+
+  it('casse SENSIBLE : une minuscule d’énumération « (a) » n’est pas un marqueur', () => {
+    expect(splitActionMarkers('cas (a) et (b)')).toEqual([{ kind: 'text', value: 'cas (a) et (b)' }]);
   });
 });
 

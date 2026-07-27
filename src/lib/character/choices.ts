@@ -496,6 +496,11 @@ export function knownFeaturesForChoice(
       if (!f || f.id === hostFeatureId) return false;
       // Capacité actionnable : au moins un type d'action (on ne pointe pas un passif).
       if (!f.actionTypes || f.actionTypes.length === 0) return false;
+      // Domaine spécial « Capacité fabuleuse » (r5) : capacités (L) ∪ sorts (A). PRIME sur les autres
+      // filtres. La transformation elle-même est portée par le moteur (`fabulousCapacityTarget`).
+      if (choice.fabulousCapacity) {
+        return f.actionTypes.includes('L') || (f.isSpell && f.actionTypes.includes('A'));
+      }
       if (allowedActions && !f.actionTypes.some((a) => allowedActions.has(a))) return false;
       if (choice.spellsOnly && !f.isSpell) return false;
       return true;

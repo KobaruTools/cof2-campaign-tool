@@ -724,13 +724,15 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le joueur choisit une capacité limitée que son personnage connaît. Désormais, il lui suffit d'une action d'attaque pour l'utiliser. S'il s'agit d'un sort (*), il peut choisir un sort en action d'attaque (A) et bénéficier de la concentration (L) sur ce sort sans prendre une action limitée.",
-    // PER-74 : on TRACE la capacité visée (sélecteur), mais le passage à une action d'attaque n'est PAS
-    // mécanisé (économie d'action non modélisée) — verbatim, appliqué à la table. Domaine = capacités
-    // connues actionnables (« limitée » non filtrable de façon fiable → le joueur pointe la sienne).
+    // PER-74 : dérivation des règles de base MÉCANISÉE (arbitrage proprio 2026-07-27) — domaine =
+    // capacités (L) possédées ∪ sorts (A). La capacité (L) choisie voit son marqueur devenir (A) dans
+    // sa voie d'origine ; un sort (A) choisi bénéficie de la concentration (−2 PM PERMANENT) SANS
+    // passer en (L). Résolu par `fabulousCapacityTarget` (effects.ts) et appliqué à l'affichage.
     choices: [
       {
         kind: 'known-feature',
-        prompt: 'Capacité limitée concernée',
+        prompt: 'Capacité (L), ou sort (A), à sublimer',
+        fabulousCapacity: true,
       },
     ],
     sourcePage: 129,

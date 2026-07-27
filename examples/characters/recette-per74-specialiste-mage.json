@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 20,
+  "id": "recette-per74-specialiste-mage",
+  "name": "Recette PER-74 — Spécialiste mage (Capacité fabuleuse sur un sort)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du spécialiste p. 129, branche SORT). R5 Capacité fabuleuse : le sort choisi invocation-r4 est lancé en (A) → il bénéficie de la CONCENTRATION (−2 PM) EN PERMANENCE (coût 4 → 2 sur la goutte de mana) SANS passer en (L) : son marqueur reste (A) (l'inverse de la règle de base p. 228). Comparer avec la concentration globale (interrupteur) qui, elle, ferait passer le sort en (L). Les marqueurs (*)/(A)/(L) cités dans les descriptions sont désormais rendus en HEXAGONES inline. R6 +1 à la plus haute carac (INT). Autres rangs : sélecteurs de traçage (verbatim)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "nain",
+  "classId": "magicien",
+  "level": 10,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": -1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": -1,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "nain",
+  "featureIds": [
+    "nain-r1",
+    "invocation-r1",
+    "invocation-r2",
+    "invocation-r3",
+    "invocation-r4",
+    "invocation-r5",
+    "prestige-specialiste-r4",
+    "prestige-specialiste-r5",
+    "prestige-specialiste-r6",
+    "prestige-specialiste-r7",
+    "prestige-specialiste-r8"
+  ],
+  "featureChoices": {
+    "prestige-specialiste-r4": [
+      "attack-bonus",
+      "invocation-r1",
+      null
+    ],
+    "prestige-specialiste-r5": [
+      "invocation-r4"
+    ],
+    "prestige-specialiste-r6": [
+      "INT"
+    ],
+    "prestige-specialiste-r7": [
+      "invocation-r3"
+    ],
+    "prestige-specialiste-r8": [
+      "invocation-r2"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "overrides": {},
+  "notes": "PER-74 — recette spécialiste mage : R5 Capacité fabuleuse sur un sort (A) → concentration −2 PM permanente.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

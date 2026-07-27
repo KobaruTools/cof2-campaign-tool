@@ -36,6 +36,7 @@ import {
   disabledFeatureReasons,
   effectContext,
   effectiveAbilities,
+  fabulousCapacityTarget,
   featureModSources,
   hpAbilitySwapSources,
   escalatingManaSurcharge,
@@ -1800,6 +1801,39 @@ describe('Dentelles et rapière — DEF += min(CHA, rang) sans armure (PER-106)'
   it('détaille la capacité dans les sources de DEF sans armure', () => {
     const sources = featureModSources(['seduction-r2'], ctx({ armorWorn: false, abilities: cha(2) })).def ?? [];
     expect(sources.some((s) => s.featureId === 'seduction-r2' && s.value === 2)).toBe(true);
+  });
+});
+
+describe('fabulousCapacityTarget — Capacité fabuleuse (spécialiste r5, PER-74)', () => {
+  const HOST = 'prestige-specialiste-r5';
+  const make = (featureIds: string[], sel: string | null): Character =>
+    ({
+      level: 10,
+      featureIds,
+      featureChoices: sel === null ? {} : { [HOST]: [sel] },
+      effectToggles: {},
+    }) as Character;
+
+  it('capacité (L) → mode « promote » (le marqueur (L) devient (A))', () => {
+    // rage-r3 est une capacité (L).
+    const target = fabulousCapacityTarget(make([HOST, 'rage-r3'], 'rage-r3'));
+    expect(target).toEqual({ featureId: 'rage-r3', mode: 'promote' });
+  });
+
+  it('sort (A) → mode « concentrate » (−2 PM permanent, reste en (A))', () => {
+    // invocation-r1 (Choc) est un sort (A).
+    const target = fabulousCapacityTarget(make([HOST, 'invocation-r1'], 'invocation-r1'));
+    expect(target).toEqual({ featureId: 'invocation-r1', mode: 'concentrate' });
+  });
+
+  it('capacité (G) non-sort → aucune cible (hors dérivation)', () => {
+    // brute-r2 est une action (G) : ni (L) ni sort (A).
+    expect(fabulousCapacityTarget(make([HOST, 'brute-r2'], 'brute-r2'))).toBeNull();
+  });
+
+  it('null si le rang r5 n’est pas acquis, ou si aucun choix n’est renseigné', () => {
+    expect(fabulousCapacityTarget(make(['rage-r3'], 'rage-r3'))).toBeNull(); // host absent
+    expect(fabulousCapacityTarget(make([HOST, 'rage-r3'], null))).toBeNull(); // pas de choix
   });
 });
 

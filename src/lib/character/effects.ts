@@ -1865,6 +1865,34 @@ export function testDomainSourceFeatureIds(character: Character): Map<string, st
   return map;
 }
 
+/** Rang hôte de la Capacité fabuleuse (spécialiste r5, p. 129). */
+export const FABULOUS_CAPACITY_HOST = 'prestige-specialiste-r5';
+
+/**
+ * Cible de la Capacité fabuleuse (spécialiste r5, p. 129), le cas échéant : la capacité pointée par
+ * le choix `known-feature` du rang, et le MODE de sublimation qui en découle (dérivation des règles
+ * de base MÉCANISÉE, arbitrage proprio 2026-07-27) :
+ *  - `promote` : capacité marquée **(L)** → son marqueur d'action devient **(A)** dans sa voie
+ *    d'origine (« il lui suffit désormais d'une action d'attaque pour l'utiliser ») ;
+ *  - `concentrate` : **SORT lancé en (A)** → il bénéficie de la concentration (−2 PM PERMANENT,
+ *    p. 228) SANS passer en (L) (le marqueur reste (A) — l'inverse de la règle de base).
+ * Une capacité (L) qui est AUSSI un sort reste en `promote` (elle devient (A) ; c'est la 1re phrase
+ * du texte). Résolue seulement si le rang r5 est acquis et le choix renseigné ; sert l'AFFICHAGE
+ * (marqueurs + coût de mana), pas les `effects` structurés. `null` si aucune cible valide.
+ */
+export function fabulousCapacityTarget(
+  character: Character,
+): { featureId: string; mode: 'promote' | 'concentrate' } | null {
+  if (!character.featureIds.includes(FABULOUS_CAPACITY_HOST)) return null;
+  const sel = character.featureChoices?.[FABULOUS_CAPACITY_HOST]?.[0];
+  if (typeof sel !== 'string') return null;
+  const f = featureById.get(sel);
+  if (!f || !f.actionTypes || f.actionTypes.length === 0) return null;
+  if (f.actionTypes.includes('L')) return { featureId: sel, mode: 'promote' };
+  if (f.isSpell && f.actionTypes.includes('A')) return { featureId: sel, mode: 'concentrate' };
+  return null;
+}
+
 /**
  * Bonus de compétence PAR DOMAINE pour un personnage, AVEC détail de provenance —
  * applique la règle du livre (p. 203) : par domaine, MAX par catégorie de source, maxima

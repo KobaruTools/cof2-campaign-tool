@@ -5,7 +5,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import { darken, type SxProps, type Theme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
-import type { Feature } from '@/data/schema';
+import type { ActionType, Feature } from '@/data/schema';
 import { canConcentrate } from '@/lib/engine';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ACTION_TYPE_LABELS } from '@/components/FeatureLabel';
@@ -26,6 +26,7 @@ function Hex({
   label,
   page,
   glow = false,
+  glyphOffsetY = '4%',
   children,
 }: {
   fill: string;
@@ -35,6 +36,12 @@ function Hex({
   page?: number | string;
   /** Halo bleu mana autour de l'hexagone : signale une transformation de concentration. */
   glow?: boolean;
+  /**
+   * Décalage vertical du glyphe centré (valeur CSS `translateY`). Défaut `4%` (léger recentrage vers
+   * le bas pour l'œil). Les hexagones inline dans la prose (`ActionMarkerHex`) le remontent (le glyphe
+   * y paraît trop bas à cette taille).
+   */
+  glyphOffsetY?: string;
   children: ReactNode;
 }) {
   return (
@@ -79,8 +86,8 @@ function Hex({
             lineHeight: 1,
             // Le centrage géométrique laisse le glyphe visuellement un peu haut
             // (la boîte de ligne réserve de la place pour les jambages) : léger
-            // décalage vers le bas pour recentrer l'œil.
-            transform: 'translateY(4%)',
+            // décalage vertical pour recentrer l'œil (ajustable par `glyphOffsetY`).
+            transform: `translateY(${glyphOffsetY})`,
             textShadow: '0 1px 2px rgba(0,0,0,0.7)',
             pointerEvents: 'none',
           }}
@@ -89,6 +96,40 @@ function Hex({
         </Box>
       </Box>
     </AppTooltip>
+  );
+}
+
+/**
+ * Hexagone d'action UNIQUE, rendu INLINE dans la prose (PER-74) : un marqueur `(*)`/`(A)`/`(L)`/
+ * `(M)`/`(G)` cité dans un texte de règle est converti en hexagone au même style que les marqueurs
+ * de capacité (`FeatureMarkerHexes`), pour l'uniformité. Teinte neutre (bleu mana `info.main`), faute
+ * de contexte de voie dans la prose. Aligné verticalement au milieu de la ligne de texte.
+ */
+export function ActionMarkerHex({
+  marker,
+  size = 21,
+}: {
+  marker: ActionType | 'spell';
+  size?: number;
+}) {
+  const label = marker === 'spell' ? 'Sort' : ACTION_TYPE_LABELS[marker];
+  return (
+    <Box
+      component="span"
+      sx={{ display: 'inline-flex', verticalAlign: 'text-bottom', mx: '1.5px' }}
+    >
+      {/* Glyphe légèrement remonté (`glyphOffsetY`) : centrage optique à cette taille inline (retour
+          proprio). Lettre agrandie (0.6 au lieu du 0.5 par défaut de `Hex`). */}
+      <Hex fill="info.main" size={size} label={label} glyphOffsetY="3.5%">
+        {marker === 'spell' ? (
+          <EmergencyIcon sx={{ fontSize: size * 0.62, color: 'inherit' }} />
+        ) : (
+          <Box component="span" sx={{ fontSize: size * 0.6, lineHeight: 1 }}>
+            {marker}
+          </Box>
+        )}
+      </Hex>
+    </Box>
   );
 }
 
@@ -108,6 +149,13 @@ export interface FeatureMarkerHexesProps {
    * sort en action limitée — avec un halo bleu mana. Sans effet sinon.
    */
   concentration?: boolean;
+  /**
+   * Capacité fabuleuse (spécialiste r5, p. 129) en mode « promotion » : la capacité choisie, marquée
+   * (L), voit son marqueur (L) devenir (A) (« il lui suffit désormais d'une action d'attaque »). Les
+   * hexagones (A) issus de cette promotion portent un halo bleu mana et une info-bulle dédiée.
+   * `concentration` et `promoteToAttack` ne sont jamais actifs ensemble (modes distincts de r5).
+   */
+  promoteToAttack?: boolean;
   /**
    * Rang ATTEINT dans la voie hôte (PER-72) : affiche les types d'action conditionnels
    * (`feature.actionTypesFromRank`, ex. Parer un coup → hexagone (G) au rang 5). Absent →
@@ -129,6 +177,7 @@ export function FeatureMarkerHexes({
   color,
   size = 20,
   concentration = false,
+  promoteToAttack = false,
   pathRank,
   sx,
 }: FeatureMarkerHexesProps) {
@@ -141,6 +190,13 @@ export function FeatureMarkerHexes({
   // Concentration active ET sort éligible (lancé en (A) seulement) : son hexagone
   // d'action (A) devient (L), avec halo (p. 228).
   const concentrated = concentration && canConcentrate(feature);
+  // Capacité fabuleuse (r5) « promotion » : le (L) devient (A). On remplace les (L) par (A) et on
+  // dédoublonne (au cas où la capacité a déjà un (A)) ; le vrai « était (L) » est repéré ci-dessous
+  // pour le halo et l'info-bulle.
+  const alreadyHadAttack = feature.actionTypes.includes('A');
+  const displayActionTypes = promoteToAttack
+    ? Array.from(new Set(feature.actionTypes.map((a) => (a === 'L' ? 'A' : a))))
+    : feature.actionTypes;
   return (
     <Stack direction="row" spacing={0.25} sx={sx}>
       {feature.isSpell && (
@@ -148,24 +204,40 @@ export function FeatureMarkerHexes({
           <EmergencyIcon sx={{ fontSize: size * 0.6, color: 'inherit' }} />
         </Hex>
       )}
-      {feature.actionTypes.map((a) =>
-        concentrated && a === 'A' ? (
+      {displayActionTypes.map((a) => {
+        // (A) issu d'une promotion Capacité fabuleuse (n'était pas déjà (A)) : halo + info-bulle.
+        const promoted = promoteToAttack && a === 'A' && !alreadyHadAttack;
+        if (concentrated && a === 'A') {
+          return (
+            <Hex
+              key={a}
+              fill={fill}
+              size={size}
+              glow
+              label="Concentration : action limitée (L) au lieu de (A)"
+              page={228}
+            >
+              L
+            </Hex>
+          );
+        }
+        return (
           <Hex
             key={a}
             fill={fill}
             size={size}
-            glow
-            label="Concentration : action limitée (L) au lieu de (A)"
-            page={228}
+            glow={promoted}
+            label={
+              promoted
+                ? 'Capacité fabuleuse : action limitée (L) sublimée en attaque (A)'
+                : ACTION_TYPE_LABELS[a]
+            }
+            page={promoted ? 129 : undefined}
           >
-            L
-          </Hex>
-        ) : (
-          <Hex key={a} fill={fill} size={size} label={ACTION_TYPE_LABELS[a]}>
             {a}
           </Hex>
-        ),
-      )}
+        );
+      })}
       {extraActionTypes.map((a) => (
         <Hex
           key={`fromRank-${a}`}
