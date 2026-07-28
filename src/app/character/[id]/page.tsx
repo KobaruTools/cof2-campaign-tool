@@ -28,13 +28,11 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
-import { ancestryById, classById, families, featureById, progression } from '@/data';
+import { ancestryById, classById, families, progression } from '@/data';
 import { checkCompliance } from '@/lib/engine';
 import type { AbilityId, StartingEquipmentChoiceOption } from '@/data/schema';
 import type { CharacterStatus, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
-import { armorEncumbrancePenalty } from '@/lib/character/equipment';
-import { defenseFromEquipment } from '@/components/wizard/helpers';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { armorRestrictionByLine } from '@/lib/character/armorRestrictions';
 import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/mastery';
@@ -45,24 +43,10 @@ import { firearmsEffective } from '@/lib/character/firearms';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
 import { canUndoLastLevelUp, manualFeatureIds, undoLastLevelUp } from '@/lib/character/levelUp';
-import { orphanSourceTerms } from '@/lib/character/orphanPoints';
-import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import {
-  abilityBonusDiceFromFeatures,
-  abilityBonusDiceSources,
-  abilityModSources,
-  abilityModsFromFeatures,
-  abilityTestBonusSources,
-  abilityTestBonusByAbility,
-  activeAbilityOverrideSources,
-  activeFormAbilityBonusSources,
-  activeConditionalTestDice,
-  armorPenaltyDivisor,
   pruneEffectInputs,
   pruneEffectToggles,
   pruneUsageCounters,
-  testBonusSources,
-  universalTestBonus,
 } from '@/lib/character/effects';
 import { pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
 import { pruneDepletion } from '@/lib/character/gauges';
@@ -82,6 +66,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { useToast } from '@/components/toast/ToastProvider';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { useCharacterGameState } from '@/components/sheet/useCharacterGameState';
+import { buildSheetDisplayView } from '@/components/sheet/sheetDisplayView';
 import { HeaderIllustrations } from '@/components/HeaderIllustrations';
 import { HomeBackground } from '@/components/HomeBackground';
 import { CharacterSheetSkeleton } from '@/components/sheet/CharacterSheetSkeleton';
@@ -328,7 +313,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       rangedAttackMagicalSourceId,
       rangedAttackElement,
       rangedReplacingFormAttack: formAttackReplacingRanged,
-      attackBonusModSources,
     },
     masterDerived,
     manaMax,
@@ -516,53 +500,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // l'édition). Non bloquante — simple aide affichée (PER-47).
   const warnings = checkCompliance(character, rulesContext, firearmsAllowed);
 
-  // Détail « i » des stats dérivées : points de capacité orphelins convertis (p. 40) + bonus à la
-  // touche conditionnés à l'arme portée (maître d'armes, PER-226), fusionnés par stat. Le TOTAL de
-  // ces derniers est déjà FONDU dans le score (via `derivedInput.mods`) ; ici on n'ajoute que
-  // l'attribution de la source dans l'infobulle (pas de badge).
-  const derivedExtraModSources: ModSources = { ...orphanSourceTerms(character) };
-  for (const [key, list] of Object.entries(attackBonusModSources)) {
-    const k = key as keyof ModSources;
-    derivedExtraModSources[k] = [...(derivedExtraModSources[k] ?? []), ...(list ?? [])];
-  }
-  // Modificateurs permanents de caractéristiques et dés bonus apportés par les
-  // capacités (mécanique core) — appliqués PAR-DESSUS la valeur saisie des caracs.
-  const abilityMods = abilityModsFromFeatures(modFeatureIds, character.featureChoices);
-  const abilityModSrc = abilityModSources(modFeatureIds, character.featureChoices);
-  // Surcharges de caractéristiques par une transformation ACTIVE (PER-74, ex. forme de loup) : imposent
-  // une valeur absolue en lecture, cohérente avec les stats dérivées (toutes via `effectiveAbilities`).
-  const abilityOverrideSrc = activeAbilityOverrideSources(character);
-  // Bonus de carac EN DELTA conditionnés à une forme active (PER-74, ex. Forme puissante : +2 FOR sous
-  // loup/hybride) — appliqués par-dessus l'override en lecture, cohérents avec `effectiveAbilities`.
-  const abilityFormBonusSrc = activeFormAbilityBonusSources(character);
-  const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds, character.featureChoices);
-  // Variante détaillée (avec `featureId`) pour rendre les sources en pastilles de capacité
-  // dans le détail d'une caractéristique (l'icône double-d20 n'affiche, elle, que les noms).
-  const bonusDieSrcDetailed = abilityBonusDiceSources(modFeatureIds, character.featureChoices);
-  // Bonus de compétence par domaine de test (PER-89) — règle de cumul du livre (p. 203).
-  const testBonuses = testBonusSources(modFeatureIds, effectCtx);
-  // Dés bonus CONDITIONNELS actifs sur des domaines (ex. Travail d'équipe, via son interrupteur).
-  const testDice = activeConditionalTestDice(character);
-  // Buffs ACTIFS à tous les tests de carac (ex. Bénédiction, via son interrupteur).
-  const abilityTestBonus = abilityTestBonusSources(modFeatureIds, effectCtx);
-  // Bonus aux tests d'UNE carac précise, par option retenue (ex. Tatouages, PER-125).
-  const perAbilityTestBonus = abilityTestBonusByAbility(modFeatureIds, effectCtx);
-  // Plancher de compétence universel (Éclectique, PER-102).
-  const universalTest = universalTestBonus(modFeatureIds);
-  // Malus d'armure (p. 188, PER-209) : DEF mondaine de l'armure portée − bonus magique,
-  // plancher 0. Minore les tests d'AGI (application automatique) et rappelle le MJ sur les
-  // tests de survie CON. Le plafond d'AGI de l'armure portée (PER-78) est appliqué AVANT le
-  // malus sur la ligne « test de AGI » ; on lit ce plafond directement sur l'équipement
-  // (indépendant de la dérogation de défense « Dentelles », seduction-r2).
-  // Armure sur mesure (chevalier, guerre-r1, PER-236) peut diviser ce malus (ici de moitié).
-  const armorPenalty = armorEncumbrancePenalty(character.equipment, armorPenaltyDivisor(modFeatureIds));
-  const armorMaxAgi = defenseFromEquipment(character.equipment).maxAgi;
-
-  // Le personnage dispose-t-il d'une réserve de mana ? Uniquement s'il connaît au
-  // moins un sort (cf. `manaPoints`, qui retourne null sinon). Sert à n'afficher la
-  // Concentration accrue (p. 228) que pour les lanceurs de sorts : sans sort, le
-  // toggle ne change rien.
-  const hasSpells = modFeatureIds.some((fid) => featureById.get(fid)?.isSpell);
+  // Dérivations d'AFFICHAGE (PER-262) : tout ce que les blocs « Caractéristiques »,
+  // « Statistiques dérivées » et « Compétences & tests » attendent en props — modificateurs
+  // permanents de caractéristiques, dés bonus, bonus par domaine de test, malus d'armure,
+  // sources de l'infobulle « i »… La fiche ne les calcule plus : elle les lit depuis le module
+  // partagé avec le panneau latéral de l'écran de MJ (PER-258), qui porte le détail des règles.
+  const display = buildSheetDisplayView(character, game.derived);
 
   return (
     // Toutes les icônes de profil de la fiche (en-tête, voies, montée de niveau,
@@ -917,11 +860,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               baseAbilities={character.baseAbilities}
               ancestry={ancestry}
               ancestryChoices={character.ancestryChoices}
-              abilityMods={abilityMods}
-              abilityModSources={abilityModSrc}
-              abilityOverrides={abilityOverrideSrc}
-              abilityFormBonuses={abilityFormBonusSrc}
-              bonusDieSources={bonusDieSrcDetailed}
+              abilityMods={display.abilityMods}
+              abilityModSources={display.abilityModSources}
+              abilityOverrides={display.abilityOverrides}
+              abilityFormBonuses={display.abilityFormBonuses}
+              bonusDieSources={display.bonusDieSourcesDetailed}
             />
           </SheetSection>
 
@@ -943,7 +886,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 input={derivedInput}
                 featureIds={modFeatureIds}
                 effectContext={effectCtx}
-                extraModSources={derivedExtraModSources}
+                extraModSources={display.extraModSources}
                 overrides={character.overrides}
                 onOverride={editingBlocks.derived ? setOverride : undefined}
                 defenseBadges={defenseBadges}
@@ -967,15 +910,15 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </SheetSection>
 
           <TestDomainsPanel
-            bonuses={testBonuses}
+            bonuses={display.testBonuses}
             abilities={effectCtx.abilities}
-            abilityTestBonus={abilityTestBonus}
-            perAbilityTestBonus={perAbilityTestBonus}
-            bonusDice={bonusDieSrc}
-            universalBonus={universalTest}
-            testDice={testDice}
-            armorPenalty={armorPenalty}
-            armorMaxAgi={armorMaxAgi}
+            abilityTestBonus={display.abilityTestBonus}
+            perAbilityTestBonus={display.perAbilityTestBonus}
+            bonusDice={display.bonusDieSources}
+            universalBonus={display.universalBonus}
+            testDice={display.testDice}
+            armorPenalty={display.armorPenalty}
+            armorMaxAgi={display.armorMaxAgi}
           />
 
           {masterDerived && (
@@ -1074,7 +1017,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             icon="paths"
             action={
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                {hasSpells && (
+                {display.hasSpells && (
                   <ConcentrationToggle value={concentration} onChange={setConcentration} />
                 )}
                 <VerbatimToggle value={featuresVerbatim} onChange={setFeaturesVerbatim} />
@@ -1130,7 +1073,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               masterDerived={masterDerived}
               // Bonus de compétence par domaine : sert à signaler, sur une capacité EMPRUNTÉE, que son
               // bonus de test est DOMINÉ (ne se cumule pas) — barré + capacité qui le domine (PER-73).
-              testBonuses={testBonuses}
+              testBonuses={display.testBonuses}
             />
           </SheetSection>
 

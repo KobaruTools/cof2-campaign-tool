@@ -11,8 +11,8 @@
  * Ici, rien que de la lecture : une fonction pure, sans React, testable.
  *
  * Extrait pour que le panneau latéral de l'écran de MJ monte les mêmes blocs que la
- * fiche sans recopier ses calculs. La fiche (`character/[id]/page.tsx`) fait encore ces
- * calculs en ligne : elle devra adopter ce module (elle en est le modèle exact).
+ * fiche sans recopier ses calculs. La fiche (`character/[id]/page.tsx`) l'a adopté à son
+ * tour (PER-262) : ce module est l'unique source de ces dérivations pour les deux vues.
  */
 import { featureById } from '@/data';
 import { armorEncumbrancePenalty } from '@/lib/character/equipment';
