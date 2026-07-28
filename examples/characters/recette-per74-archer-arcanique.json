@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per74-archer-arcanique",
+  "name": "Recette PER-74 — Archer arcanique (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie de l'archer arcanique p. 137-138) : vérifier le RENDU de chaque rang prestige. Base = rôdeur archer, ARC LONG équipé → la carte d'attaque à distance doit apparaître (PER doit s'ajouter aux DM de l'arc via Archer émérite). R4 Flèche magique → VERBATIM (pas de balise) : « 1 sur le dé de DM → maximum » et « DM magiques » non modélisés (fiche à formules, pas de drapeau dégâts magiques). Rien de calculé, texte littéral, « DM » auto-glosé. R5 Flèche intangible → « 10 + AGI de la CIBLE » : AGI rendu en PUCE NON CALCULÉE (@AGI, c'est la carac de l'adversaire, pas la tienne) ; aucune valeur ajoutée à ta fiche. R6 Flèche chercheuse → bonus « +2d4° aux DM » rendu en DÉ {2d4°} + COMPTEUR 1 usage/JOUR (masqué du bloc « État du personnage », suivi sur la carte). R7 Flèche élémentaire → bonus « +1d4° » rendu en DÉ {1d4°} + COMPTEUR 1 usage/COMBAT (masqué du bloc d'état) ; le choix d'énergie reste en PROSE (choix par activation, non permanent). R8 Flèche tueuse → difficulté du test de CON = FORMULE [10 + rang] (rang atteint dans la voie = 8 → doit afficher 18) ; touche/critique automatiques restent verbatim. COULEUR PAR FAMILLE (nouveau) : l'archer arcanique est une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude) : étoile d'en-tête de voie verte, cartes de rang à liseré métallique vert + léger reflet vert, et puces de capacité (breakdowns caracs/dérivées/tests) en vert (texte vert clair sur fond vert très sombre) — le liseré tournant de la puce reste métallique neutre (signature « précieuse » commune). Comparer : les voies génériques (lycanthrope, expert…) restent OR."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "elfe-sylvain",
+  "classId": "rodeur",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 4,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 4,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "elfe-sylvain",
+  "featureIds": [
+    "archer-r1",
+    "archer-r2",
+    "archer-r3",
+    "archer-r4",
+    "archer-r5",
+    "prestige-archer-arcanique-r4",
+    "prestige-archer-arcanique-r5",
+    "prestige-archer-arcanique-r6",
+    "prestige-archer-arcanique-r7",
+    "prestige-archer-arcanique-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "arc-long",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-74 — recette archer arcanique : rendu richText rangs 4-8 (@AGI cible, dés {2d4°}/{1d4°}, formule [10+rang]) + compteurs jour/combat.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

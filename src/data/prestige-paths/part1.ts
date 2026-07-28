@@ -832,6 +832,23 @@ export const prestigeFeatures1: Feature[] = [
     // PER-74 : la fréquence « 1× par récupération rapide » reste VERBATIM dans le texte — pas de
     // compteur d'usage dédié (une jauge à 1 seul point n'apporte rien à la table, retiré à la demande
     // du proprio 2026-07-28 ; l'interrupteur de forme suffit).
+    // PER-74 : MORSURE conférée par la forme hybride. Le verbatim interdit d'« utiliser d'arme pour
+    // attaquer à distance » sous cette forme ET donne en échange une attaque de morsure AU CONTACT →
+    // `replacesRangedAttack` : forme active, la carte « Attaque à distance » de la fiche est remplacée
+    // par la morsure (touche = attaque au contact habituelle, DM `1d4° + FOR`, action gratuite 1×/round).
+    // Gatée STRICTEMENT sur l'interrupteur de forme hybride (effet 0 de cette capacité) : sous forme de
+    // LOUP (r5), la morsure est déjà décrite par la mini-fiche du loup (`creatureProfile`), pas ici.
+    formAttack: {
+      name: 'Morsure',
+      damage: { count: 1, die: 'd4' },
+      evolving: true,
+      damageAbilities: ['FOR'],
+      scope: 'melee',
+      actionTypes: ['G'],
+      frequency: 'une fois par round',
+      replacesRangedAttack: true,
+      requiresActiveEffect: { featureId: 'prestige-lycanthrope-r4', index: 0 },
+    },
     sourcePage: 130,
   },
   {
@@ -1163,6 +1180,12 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage enchante ses flèches. S'il obtient un résultat de 1 sur son dé de DM, il remplace ce résultat par le maximum du dé (exemple, 1 sur le d8 devient 8). Cet effet ne s'applique pas aux dés bonus. Les DM de ses flèches sont considérés comme magiques.",
+    // PER-74 : passif VERBATIM. Deux mécaniques non modélisables sur une fiche à formules :
+    //  (1) « 1 sur le dé de DM devient le maximum » = re-résolution AU JET (la fiche affiche une
+    //      formule, pas un résultat de dé) → aucune primitive de « plancher de dé » ;
+    //  (2) « DM considérés comme magiques » = passe-résistance/type magique — aucun drapeau
+    //      « dégâts magiques » sur l'arme dans le modèle actuel.
+    // Rien à baliser (pas de dé/formule/quantité) : le glossaire rend « DM » automatiquement.
     sourcePage: 137,
   },
   {
@@ -1174,6 +1197,11 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage enchante sa flèche pour lui permettre de passer au travers des obstacles physiques et des protections. Le joueur réalise un test d'attaque normal, mais remplace la DEF par 10 + AGI de la cible pour fixer sa difficulté. De surcroît, il ignore toutes les pénalités de couverture. S'il sait précisément où se situe sa cible, il peut même tirer à travers un mur ou une porte.",
+    // PER-74 : « AGI de la CIBLE » = caractéristique d'un adversaire → référence NON calculée (`@AGI`,
+    // cf. doc rich-text §5) ; le « 10 + » reste littéral. Aucun effet côté joueur (la DEF de substitution
+    // dépend de la cible, hors éditeur).
+    richText:
+      "Le personnage enchante sa flèche pour lui permettre de passer au travers des obstacles physiques et des protections. Le joueur réalise un test d'attaque normal, mais remplace la DEF par 10 + @AGI de la cible pour fixer sa difficulté. De surcroît, il ignore toutes les pénalités de couverture. S'il sait précisément où se situe sa cible, il peut même tirer à travers un mur ou une porte.",
     sourcePage: 137,
   },
   {
@@ -1185,6 +1213,12 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, l'archer arcanique peut enchanter une flèche afin qu'elle trouve sa cible de façon infaillible. Pour utiliser ce pouvoir, l'archer arcanique doit avoir blessé ou vu directement la créature ciblée moins de 10 rounds (1 min) plus tôt. Il tire ensuite sa flèche en l'air et celle-ci voyage aussi loin que nécessaire (y compris à travers les plans) pour trouver sa cible. L'archer arcanique fait un test d'attaque normal et obtient un bonus de +2d4° aux DM.",
+    // PER-74 : bonus de DM ponctuel (une flèche, 1×/jour) → dé autonome `{2d4°}` (le « + » reste
+    // littéral). Bonus SITUATIONNEL (pas un `weapon-damage-bonus` permanent). « 10 rounds » = nombre
+    // fixe littéral. Cadence gérée par le compteur d'usages ci-dessous.
+    richText:
+      "Une fois par jour, l'archer arcanique peut enchanter une flèche afin qu'elle trouve sa cible de façon infaillible. Pour utiliser ce pouvoir, l'archer arcanique doit avoir blessé ou vu directement la créature ciblée moins de 10 rounds (1 min) plus tôt. Il tire ensuite sa flèche en l'air et celle-ci voyage aussi loin que nécessaire (y compris à travers les plans) pour trouver sa cible. L'archer arcanique fait un test d'attaque normal et obtient un bonus de +{2d4°} aux DM.",
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 137,
   },
   {
@@ -1196,6 +1230,12 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le personnage enchante ses flèches et choisit une source de DM parmi poison, feu, froid, foudre et acide. Pendant tout le combat, il ajoute +1d4° aux DM de chacune des flèches qu'il tire. Ce bonus aux DM ne peut pas se cumuler à un autre bonus magique élémentaire (arc de feu, sort élémentaire, etc.).",
+    // PER-74 : bonus de DM `{1d4°}` (le « + » reste littéral). Le CHOIX du type d'énergie est fait À
+    // CHAQUE activation (par combat), donc PAS un choix permanent de construction (`choices`) ni un
+    // `scopeChoice` (il ne gate aucun effet mécanisé — le bonus reste verbatim). Laissé en prose.
+    richText:
+      "Une fois par combat, le personnage enchante ses flèches et choisit une source de DM parmi poison, feu, froid, foudre et acide. Pendant tout le combat, il ajoute +{1d4°} aux DM de chacune des flèches qu'il tire. Ce bonus aux DM ne peut pas se cumuler à un autre bonus magique élémentaire (arc de feu, sort élémentaire, etc.).",
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 137,
   },
   {
@@ -1206,6 +1246,12 @@ export const prestigeFeatures1: Feature[] = [
     isSpell: false,
     actionTypes: ['L'],
     text:
+      "Le personnage fabrique et enchante une flèche particulière pour un ennemi unique dont il possède une relique (morceau de peau, griffe, poils, etc.). Il lui faut une journée complète pour créer la flèche et il ne peut en posséder plus d'une à un moment donné (ni pour la même cible ni pour une autre). Lorsqu'il utilise sa flèche contre l'ennemi désigné, il touche automatiquement. Si la cible est d'un niveau inférieur au sien, elle est immédiatement réduite à 0 PV, sinon elle a droit à un test de CON difficulté [10 + rang]. En cas de réussite, la flèche est tout de même un critique automatique.",
+    // PER-74 : difficulté du test de CON = formule `[10 + rang]` (rang = rang atteint dans la voie
+    // hôte, cf. doc rich-text §3/a — même patron que Souffle du dragon `[8 + rang]`). Le reste
+    // (touche/critique automatiques, « niveau inférieur au sien », relique, une par cible) reste
+    // verbatim : non mécanisable (limite de possession, pas un compteur journalier).
+    richText:
       "Le personnage fabrique et enchante une flèche particulière pour un ennemi unique dont il possède une relique (morceau de peau, griffe, poils, etc.). Il lui faut une journée complète pour créer la flèche et il ne peut en posséder plus d'une à un moment donné (ni pour la même cible ni pour une autre). Lorsqu'il utilise sa flèche contre l'ennemi désigné, il touche automatiquement. Si la cible est d'un niveau inférieur au sien, elle est immédiatement réduite à 0 PV, sinon elle a droit à un test de CON difficulté [10 + rang]. En cas de réussite, la flèche est tout de même un critique automatique.",
     sourcePage: 138,
   },
