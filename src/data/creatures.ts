@@ -2527,10 +2527,13 @@ const fantasticCreatures: Creature[] = [
     name: 'Zombie',
     category: 'creatures-fantastiques',
     // GABARIT : le livre n'imprime AUCUN NC (p. 301) — la recette s'applique à n'importe quelle
-    // créature, qui garde le sien, éventuellement REVU À LA BAISSE si elle perd des capacités au
-    // passage (« Le zombie choursette voit son NC réduit par rapport à la créature originale, car il
-    // a perdu les capacités charge et enragé », p. 302). Le NC affiché le dit au lieu de rester vide.
-    ncNote: 'celui de la créature transformée',
+    // créature. NC DÉDUIT des deux exemples chiffrés qu'il en donne (p. 302) : la créature garde le
+    // NC de l'original (zombie humain NC 1, comme un humain), REVU À LA BAISSE si elle perd des
+    // capacités au passage (choursette = ourhible NC 5 → zombie choursette NC 4, « car il a perdu
+    // les capacités charge et enragé »). On affiche donc le NC du zombie de référence, celui de
+    // l'exemple humain, et la note dit d'où il vient (le tri et le filtre par NC en dépendent).
+    nc: 1,
+    ncNote: '1 (zombie humain)',
     nature: ['non-vivant'],
     description:
       "Un zombie est un mort-vivant animé à partir d'un cadavre récent. Les chairs peuvent être à un stade plus ou moins avancé de putréfaction, mais le corps doit être globalement complet. Le zombie est une créature stupide qui suit les ordres de son créateur ou erre sans but et attaque toute créature vivante à portée.\nPour obtenir un zombie, vous pouvez partir de n'importe quelle créature, qui acquiert le type non-vivante. Ajoutez les capacités suivantes.",

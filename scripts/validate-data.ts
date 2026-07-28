@@ -942,8 +942,13 @@ for (const c of creatures) {
     if (dr.kind !== 'immunity' && typeof dr.value !== 'number')
       err(`[creature ${c.id}] damageReduction ${dr.kind} sans valeur numérique`);
   }
-  // Un GABARIT (ex. Zombie) est sans NC ni bloc chiffré : toléré. Sinon NC exigé.
-  const isTemplate = c.nc === undefined && c.abilities === undefined && c.defense === undefined;
+  // Un GABARIT (ex. Zombie) est une RECETTE sans bloc chiffré : ni caractéristiques ni DEF. Son NC
+  // peut manquer (le livre n'en imprime pas) — le Zombie en porte tout de même un, DÉDUIT de ses
+  // exemples chiffrés (PER-260), ce qui ne l'empêche pas de rester un gabarit.
+  // (Une variante de GROUPE — meute de gnolls, worgs en meute — n'a pas non plus de bloc chiffré,
+  // mais elle renvoie à sa base : ce n'est pas un gabarit autonome.)
+  const isTemplate =
+    c.abilities === undefined && c.defense === undefined && c.baseCreatureId === undefined;
   if (isTemplate) creatureTemplates++;
   else if (c.nc === undefined) err(`[creature ${c.id}] nc manquant (attendu sauf gabarit)`);
   // Variante : cible existante, distincte de soi, même catégorie.
