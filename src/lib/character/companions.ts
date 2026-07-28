@@ -16,7 +16,7 @@ import type { AbilityId, CompanionType, CreatureProfile, Feature, FeatureChoiceO
 import type { Abilities } from '@/lib/engine';
 import { getSelection } from './choices';
 import { creatureBonusDiceForPath, disabledFeatureIds, isEffectActive } from './effects';
-import { enSelleLink, isEnSelleActive } from './mounts';
+import { enSelleLink } from './mounts';
 import { pruneDepletion } from './gauges';
 import { parseRichText, resolveExpr } from '@/lib/ui/featureRichText';
 import type { Character, Depletion } from './types';
@@ -193,7 +193,8 @@ export function companionMountEnSelle(character: Character, entry: CompanionEntr
   const link = enSelleLink(character);
   if (!link || entry.companionType !== 'mount') return null;
   if (featureById.get(link.featureId)?.pathId !== entry.feature.pathId) return null;
-  return isEnSelleActive(character);
+  // « En selle » = cette monture de voie est CELLE actuellement chevauchée (`mountedKey`), exclusif.
+  return character.mountedKey === entry.key;
 }
 
 /**
@@ -329,7 +330,10 @@ export function listCompanions(character: Character): CompanionEntry[] {
     const profile = applyCreatureUpgrades(baseProfile, character, feature.pathId);
     const pathRank = maxRankByPath.get(feature.pathId) ?? feature.rank;
     const bonusDieAbilities = creatureBonusDiceForPath(feature.pathId, character);
-    const defenseAltActive = creatureDefenseAltActive(profile, character);
+    // DEF alternative « en selle » (Fidèle monture) : active seulement quand CETTE monture est celle
+    // actuellement chevauchée (`mountedKey`), pas dès qu'une monture quelconque l'est (PER-216) — le
+    // +DM générique de Cavalier émérite, lui, reste piloté par l'interrupteur pour toute monture.
+    const defenseAltActive = creatureDefenseAltActive(profile, character) && character.mountedKey === feature.id;
     if (profile.instances) {
       const ids = character.companionInstances?.[feature.id] ?? [];
       ids.forEach((instanceId, instanceIndex) => {

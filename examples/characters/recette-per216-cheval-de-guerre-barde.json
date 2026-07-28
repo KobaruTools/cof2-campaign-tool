@@ -55,8 +55,7 @@
       "id": "mount-cdg",
       "catalogId": "cheval-de-guerre",
       "bardeId": "barde-de-plaque",
-      "hp": {},
-      "mounted": false
+      "hp": {}
     }
   ],
   "overrides": {},

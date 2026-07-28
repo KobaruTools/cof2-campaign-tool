@@ -1,9 +1,9 @@
 {
   "schemaVersion": 21,
   "id": "recette-per216-cavalier-en-selle-barde",
-  "name": "Recette PER-216 — Cavalier en selle (barde liée à la voie)",
+  "name": "Recette PER-216 — Chevalier sur monture possédée bardée",
   "identity": {
-    "description": "ATTENDU : chevalier avec Cavalier émérite (cavalier-r2). Le toggle « En selle » de la carte MONTURE et l’interrupteur « en selle » de la voie du cavalier sont LE MÊME état : basculer l’un bascule l’autre. En selle (état livré = ON), le caparaçon de mailles (+2) applique −2 à l’Initiative de la fiche (10 → 8), la Fidèle monture prend la DEF du chevalier et le +DM au contact s’active."
+    "description": "ATTENDU : chevalier monté (EN SELLE) sur un cheval de guerre POSSÉDÉ, caparaçon de mailles (+2) → −2 à l’Initiative de la fiche (10 → 8). EXCLUSIVITÉ : sa Fidèle monture (compagnon de voie) reste « à pied » ; monter l’une démonte l’autre (une seule monture en selle à la fois). Vérifier qu’en cliquant « En selle » sur la Fidèle monture, le cheval de guerre repasse « à pied »."
   },
   "campaignId": null,
   "playerId": null,
@@ -66,7 +66,8 @@
     }
   ],
   "overrides": {},
-  "notes": "PER-216 — « en selle » lié à cavalier-r2 ; caparaçon +2 DEF / −2 Init au cavalier.",
+  "notes": "PER-216 — monture possédée bardée en selle (caparaçon +2 → −2 Init) ; Cavalier émérite reste actif ; exclusivité vs Fidèle monture.",
   "createdAt": "2026-01-01T00:00:00.000Z",
-  "updatedAt": "2026-01-01T00:00:00.000Z"
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "mountedKey": "mount-cdg2"
 }

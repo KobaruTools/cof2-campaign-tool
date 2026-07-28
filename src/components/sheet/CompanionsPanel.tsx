@@ -129,11 +129,9 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
             />
           )}
           <CreatureDescriptionRich profile={profile} abilities={abilities} level={level} rank={pathRank} />
-          {profile.note && (
-            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', lineHeight: 1.5 }}>
-              {profile.note}
-            </Typography>
-          )}
+          {/* Le `note` du profil (déplacement, lore, régénération, variantes de peuple…) reste sur la
+              mini-fiche de la carte de VOIE (verbatim de la capacité) ; la carte compagnon reste
+              centrée sur le jeu (PV + stats + capacités) et ne le duplique pas (PER-216). */}
           <CreatureSpecialAbilityBlocks profile={profile} abilities={abilities} level={level} rank={pathRank} />
         </Stack>
 

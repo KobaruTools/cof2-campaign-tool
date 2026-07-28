@@ -66,7 +66,8 @@
   "equipment": [],
   "mounts": [],
   "overrides": {},
-  "notes": "PER-216 — toggle « en selle » sur la monture de voie (compagnon), lié à cavalier-r2.",
+  "notes": "PER-216 — toggle « en selle » sur la monture de voie (compagnon) ; Cavalier émérite générique.",
   "createdAt": "2026-01-01T00:00:00.000Z",
-  "updatedAt": "2026-01-01T00:00:00.000Z"
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "mountedKey": "cavalier-r5"
 }

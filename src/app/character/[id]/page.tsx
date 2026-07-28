@@ -56,6 +56,7 @@ import {
   abilityTestBonusSources,
   abilityTestBonusByAbility,
   activeAbilityOverrideSources,
+  activeFormAbilityBonusSources,
   activeConditionalTestDice,
   armorPenaltyDivisor,
   capacityResourceGauges,
@@ -442,9 +443,28 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // fiche est permissive : on persiste sans bloquer (recalcul en direct).
   const setChoice = (featureId: string, index: number, value: FeatureChoiceSelection) =>
     update({ featureChoices: setFeatureChoice(character, featureId, index, value) });
+  // PER-216 : mutateur central de l'état « en selle ». Clé UNIQUE (`mountedKey`) → exclusivité
+  // structurelle (une seule monture montée). Synchronise l'interrupteur « en selle » du cavalier
+  // (`enSelleLink`) = « une monture est montée » : mécanique GÉNÉRIQUE, n'importe quelle monture
+  // (possédée ou de voie) garde Cavalier émérite actif. `null` = à pied.
+  const setMountedTarget = (key: string | null) => {
+    const patch: Partial<typeof character> = { mountedKey: key ?? undefined };
+    const link = enSelleLink(character);
+    if (link) patch.effectToggles = setEffectToggle(character, link.featureId, link.index, key != null);
+    update(patch);
+  };
   // Bascule d'un interrupteur d'effet conditionnel/temporaire (PER-67). Recalcul
   // en direct : le moteur n'inclut l'effet que lorsqu'il est actif.
   const setEffectToggleValue = (featureId: string, index: number, active: boolean) => {
+    // PER-216 : l'interrupteur « en selle » du cavalier n'est pas piloté en direct — c'est un état
+    // DÉRIVÉ de la monture chevauchée. Le basculer depuis la carte de voie = monter/démonter la
+    // monture de VOIE (délégué à `setMountedTarget`, qui resync l'interrupteur et garde l'exclusivité).
+    const enSelle = enSelleLink(character);
+    if (enSelle && enSelle.featureId === featureId && enSelle.index === index) {
+      const voieMount = listCompanions(character).find((e) => companionMountEnSelle(character, e) !== null);
+      setMountedTarget(active ? voieMount?.key ?? null : null);
+      return;
+    }
     const nextToggles = setEffectToggle(character, featureId, index, active);
     const patch: Partial<typeof character> = { effectToggles: nextToggles };
     // PER-130 : ACTIVER un état TEMPORAIRE doté d'un compteur d'usages le CONSOMME (ex. Rage / Furie
@@ -738,14 +758,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     if (!mount) return;
     setMountHp(id, resetHp(mount.hp ?? {}));
   };
-  // Bascule « en selle » (état de jeu) : quand une capacité chevalier « en selle » existe, on pilote
-  // SON interrupteur (source de vérité partagée avec la carte de voie, ce qui met aussi à jour la DEF
-  // de la monture fantastique et le +DM au contact) ; sinon on stocke l'état sur la monture même.
-  const setMountMounted = (id: string, on: boolean) => {
-    const link = enSelleLink(character);
-    if (link) setEffectToggleValue(link.featureId, link.index, on);
-    else updateMount(id, { mounted: on });
-  };
+  // Bascule « en selle » d'une monture POSSÉDÉE (état de jeu) — délègue au mutateur exclusif : monter
+  // `id` démonte automatiquement toute autre monture (possédée ou de voie), démonter `id` repasse à pied.
+  const setMountMounted = (id: string, on: boolean) => setMountedTarget(on ? id : null);
 
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
   // supprime la clé et rétablit le calcul automatique.
@@ -794,6 +809,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Surcharges de caractéristiques par une transformation ACTIVE (PER-74, ex. forme de loup) : imposent
   // une valeur absolue en lecture, cohérente avec les stats dérivées (toutes via `effectiveAbilities`).
   const abilityOverrideSrc = activeAbilityOverrideSources(character);
+  // Bonus de carac EN DELTA conditionnés à une forme active (PER-74, ex. Forme puissante : +2 FOR sous
+  // loup/hybride) — appliqués par-dessus l'override en lecture, cohérents avec `effectiveAbilities`.
+  const abilityFormBonusSrc = activeFormAbilityBonusSources(character);
   const bonusDieSrc = abilityBonusDiceFromFeatures(modFeatureIds, character.featureChoices);
   // Variante détaillée (avec `featureId`) pour rendre les sources en pastilles de capacité
   // dans le détail d'une caractéristique (l'icône double-d20 n'affiche, elle, que les noms).
@@ -1237,6 +1255,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               abilityMods={abilityMods}
               abilityModSources={abilityModSrc}
               abilityOverrides={abilityOverrideSrc}
+              abilityFormBonuses={abilityFormBonusSrc}
               bonusDieSources={bonusDieSrcDetailed}
             />
           </SheetSection>
@@ -1355,14 +1374,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                         // Toggle « En selle » sur une monture de voie (PER-216) : même interrupteur
                         // partagé que la carte de voie et les montures possédées. Masqué en lecture seule.
                         enSelleFor={readOnly ? undefined : (entry) => companionMountEnSelle(character, entry)}
-                        onSetMounted={
-                          readOnly
-                            ? undefined
-                            : (_entry, on) => {
-                                const link = enSelleLink(character);
-                                if (link) setEffectToggleValue(link.featureId, link.index, on);
-                              }
-                        }
+                        onSetMounted={readOnly ? undefined : (entry, on) => setMountedTarget(on ? entry.key : null)}
                       />
                     )}
                     {ownedMounts.length > 0 && (

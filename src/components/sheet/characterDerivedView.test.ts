@@ -60,14 +60,15 @@ describe('buildCharacterDerivedView', () => {
   it('barde « en selle » (PER-216) : le malus d’Init. du cavalier est fondu dans l’Initiative', () => {
     const base = makeCharacter(); // PER 0 → Initiative de base 10.
     expect(deriveStats(buildCharacterDerivedView(base).derivedInput!).initiative).toBe(10);
-    // Barde de plaque (−4) sur un cheval de guerre, à pied → aucun impact sur la fiche.
+    // Barde de plaque (−4) sur un cheval de guerre, à pied (mountedKey absent) → aucun impact.
     const afoot = makeCharacter({
-      mounts: [{ id: 'm', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {}, mounted: false }],
+      mounts: [{ id: 'm', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {} }],
     });
     expect(deriveStats(buildCharacterDerivedView(afoot).derivedInput!).initiative).toBe(10);
-    // En selle → −4 appliqué à l’Initiative de la fiche.
+    // En selle (mountedKey pointe sur la monture) → −4 appliqué à l’Initiative de la fiche.
     const mounted = makeCharacter({
-      mounts: [{ id: 'm', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {}, mounted: true }],
+      mounts: [{ id: 'm', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {} }],
+      mountedKey: 'm',
     });
     expect(deriveStats(buildCharacterDerivedView(mounted).derivedInput!).initiative).toBe(6);
   });

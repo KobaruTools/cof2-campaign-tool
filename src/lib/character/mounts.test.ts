@@ -89,34 +89,37 @@ describe('mounts — en selle & malus d’Initiative de barde', () => {
     ...over,
   });
 
-  it('non-chevalier : le malus d’Init n’est appliqué qu’en selle', () => {
+  it('le malus d’Init n’est appliqué qu’à la monture CHEVAUCHÉE (mountedKey)', () => {
     const bardedWarHorse: OwnedMount = { id: 'm1', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {} };
-    const afoot = withMounts({ mounts: [{ ...bardedWarHorse, mounted: false }] });
-    const mounted = withMounts({ mounts: [{ ...bardedWarHorse, mounted: true }] });
-    expect(enSelleLink(afoot)).toBeUndefined();
+    const afoot = withMounts({ mounts: [bardedWarHorse] }); // mountedKey absent
+    const mounted = withMounts({ mounts: [bardedWarHorse], mountedKey: 'm1' });
+    expect(isMountMounted(afoot, afoot.mounts[0])).toBe(false);
     expect(mountedInitiativePenalty(afoot)).toBe(0);
+    expect(isMountMounted(mounted, mounted.mounts[0])).toBe(true);
     expect(mountedInitiativePenalty(mounted)).toBe(4);
   });
 
-  it('barde sans être en selle = aucun malus cavalier ; en selle sans barde = aucun malus', () => {
-    const noBardeMounted = withMounts({ mounts: [{ id: 'm2', catalogId: 'cheval-de-guerre', hp: {}, mounted: true }] });
-    expect(mountedInitiativePenalty(noBardeMounted)).toBe(0);
+  it('en selle sans barde = aucun malus', () => {
+    const noBarde = withMounts({ mounts: [{ id: 'm2', catalogId: 'cheval-de-guerre', hp: {} }], mountedKey: 'm2' });
+    expect(mountedInitiativePenalty(noBarde)).toBe(0);
   });
 
-  it('chevalier (cavalier-r2) : l’interrupteur « en selle » de la voie fait foi', () => {
-    const mount: OwnedMount = { id: 'm3', catalogId: 'cheval-de-guerre', bardeId: 'caparacon-de-mailles', hp: {} };
-    const base = withMounts({ featureIds: ['cavalier-r1', 'cavalier-r2'], mounts: [mount] });
-    // Le lien pointe sur l’effet « en selle » (conditional-stat-bonus) de cavalier-r2.
-    const link = enSelleLink(base);
-    expect(link).toEqual({ featureId: 'cavalier-r2', index: 0 });
-    // Interrupteur éteint (défaut) → à pied → aucun malus, même si la monture avait mounted:true.
-    const off = withMounts({ ...base, mounts: [{ ...mount, mounted: true }] });
-    expect(isMountMounted(off, off.mounts[0])).toBe(false);
-    expect(mountedInitiativePenalty(off)).toBe(0);
-    // Interrupteur allumé → en selle → malus = bonus de barde (caparaçon +2).
-    const on = withMounts({ ...base, effectToggles: { 'cavalier-r2': [true] } });
-    expect(isMountMounted(on, on.mounts[0])).toBe(true);
-    expect(mountedInitiativePenalty(on)).toBe(2);
+  it('EXCLUSIF : mountedKey ne désigne qu’une seule monture (pas de cumul de malus)', () => {
+    const c = withMounts({
+      mounts: [
+        { id: 'a', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {} }, // −4 si montée
+        { id: 'b', catalogId: 'cheval-de-guerre', bardeId: 'caparacon-de-mailles', hp: {} }, // −2 si montée
+      ],
+      mountedKey: 'a',
+    });
+    expect(isMountMounted(c, c.mounts[0])).toBe(true);
+    expect(isMountMounted(c, c.mounts[1])).toBe(false);
+    expect(mountedInitiativePenalty(c)).toBe(4); // seulement la monture 'a', jamais 4+2
+  });
+
+  it('chevalier : enSelleLink détecte cavalier-r2 (interrupteur Cavalier émérite piloté côté page)', () => {
+    const c = withMounts({ featureIds: ['cavalier-r1', 'cavalier-r2'], mounts: [{ id: 'm', catalogId: 'cheval-de-guerre', hp: {} }] });
+    expect(enSelleLink(c)).toEqual({ featureId: 'cavalier-r2', index: 0 });
   });
 });
 

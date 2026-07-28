@@ -146,16 +146,6 @@ export interface OwnedMount {
    * véhicules / bêtes de somme sans stats n'ont pas de barre de vie).
    */
   hp: Depletion;
-  /**
-   * Le personnage est-il actuellement EN SELLE sur cette monture (état de jeu transitoire) ? Pilote
-   * l'application du malus d'Initiative d'une barde au CAVALIER (le malus au cheval, lui, est
-   * permanent tant que la barde est portée). Absent/false = à pied. Champ optionnel additif (aucune
-   * migration). NB : quand le personnage possède la capacité chevalier « en selle » (interrupteur
-   * `conditional-stat-bonus` de `cavalier-r2`), c'est CET interrupteur qui fait foi — les deux
-   * commandes pilotent alors le même état (cf. `src/lib/character/mounts.ts`), et ce champ n'est
-   * pas utilisé.
-   */
-  mounted?: boolean;
 }
 
 /**
@@ -630,6 +620,18 @@ export interface Character {
    * = aucune monture. Voir `OwnedMount` et `src/lib/character/mounts.ts`.
    */
   mounts: OwnedMount[];
+
+  /**
+   * Monture actuellement CHEVAUCHÉE (« en selle »), état de jeu transitoire (PER-216). Clé UNIQUE :
+   * on ne peut être en selle que d'une seule monture à la fois → l'exclusivité est structurelle (un
+   * seul champ). Valeur = `OwnedMount.id` (monture possédée) OU la clé du compagnon monture de voie
+   * (`CompanionEntry.key`, ex. `cavalier-r1` / `cavalier-r5`) ; absent = à pied. Pilote le malus
+   * d'Initiative d'une barde sur le cavalier (monture possédée) et, s'il est chevalier, l'interrupteur
+   * « en selle » de Cavalier émérite (`cavalier-r2`), maintenu synchronisé = « une monture est montée »
+   * (mécanique GÉNÉRIQUE : n'importe quelle monture en selle active Cavalier émérite). Champ optionnel
+   * additif (aucune migration). Voir `src/lib/character/mounts.ts`.
+   */
+  mountedKey?: string;
 
   /** Surcharges manuelles de valeurs dérivées (réversibles). */
   overrides: Partial<Record<DerivedStatId, number>>;

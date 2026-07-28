@@ -11,7 +11,6 @@
 import type { Creature, CreatureProfile } from '@/data/schema';
 import { featureById } from '@/data';
 import { bardeById, mountById, type BardeCatalogEntry, type MountCatalogEntry } from '@/data/mounts';
-import { isEffectActive } from './effects';
 import type { Character, Depletion, OwnedMount } from './types';
 
 /** Entrée de catalogue d'une monture possédée (`undefined` si l'id de catalogue est inconnu). */
@@ -152,38 +151,22 @@ export function enSelleLink(character: Character): { featureId: string; index: n
 }
 
 /**
- * L'état « en selle » d'une capacité de voie (`enSelleLink`) est-il actif ? `false` si le personnage
- * n'a pas de telle capacité. Sert d'état PARTAGÉ : montures possédées, monture de voie (compagnon) et
- * carte de voie lisent/écrivent le même interrupteur.
- */
-export function isEnSelleActive(character: Character): boolean {
-  const link = enSelleLink(character);
-  return link ? isEffectActive(character, link.featureId, link.index) : false;
-}
-
-/**
- * Le personnage est-il EN SELLE sur cette monture ? Si une capacité « en selle » de voie existe
- * (`enSelleLink`), son interrupteur fait foi (état partagé) ; sinon on lit l'état propre à la monture
- * (`OwnedMount.mounted`).
+ * Le personnage est-il EN SELLE sur cette monture POSSÉDÉE ? = `Character.mountedKey` pointe sur elle.
+ * `mountedKey` étant une clé UNIQUE, l'exclusivité (une seule monture en selle) est structurelle.
  */
 export function isMountMounted(character: Character, owned: OwnedMount): boolean {
-  const link = enSelleLink(character);
-  if (link) return isEffectActive(character, link.featureId, link.index);
-  return owned.mounted === true;
+  return character.mountedKey === owned.id;
 }
 
 /**
- * Malus d'Initiative subi par le CAVALIER du fait des bardes, à retrancher de l'Initiative calculée
- * de la fiche : somme des bonus de DEF des bardes portées par les montures sur lesquelles le
- * personnage est actuellement EN SELLE (le malus au cheval, lui, est permanent tant que la barde est
- * portée — appliqué au bloc de la monture, cf. `resolveMountCreature`). `0` à pied ou sans barde.
+ * Malus d'Initiative subi par le CAVALIER du fait de la barde, à retrancher de l'Initiative calculée
+ * de la fiche : bonus de DEF de la barde de la monture actuellement CHEVAUCHÉE (le malus au cheval,
+ * lui, est permanent tant que la barde est portée — appliqué au bloc via `resolveMountCreature`).
+ * `0` à pied, sur une monture de voie, ou sans barde. Une seule monture montée → pas de cumul.
  */
 export function mountedInitiativePenalty(character: Character): number {
-  let penalty = 0;
-  for (const owned of character.mounts) {
-    const entry = mountCatalogEntry(owned);
-    const barde = resolveBarde(owned, entry);
-    if (barde && isMountMounted(character, owned)) penalty += barde.defBonus;
-  }
-  return penalty;
+  const owned = character.mounts.find((m) => m.id === character.mountedKey);
+  if (!owned) return 0;
+  const barde = resolveBarde(owned, mountCatalogEntry(owned));
+  return barde ? barde.defBonus : 0;
 }
