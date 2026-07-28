@@ -97,7 +97,7 @@ import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { FeatureText, CapabilityChip, FeatureVerbatimContext } from '@/components/sheet/FeatureRichText';
 import { CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
-import { FeatureChoiceField, COMPACT_CHIP_SX } from '@/components/sheet/FeatureChoiceField';
+import { FeatureChoiceField, ChoiceValueBadge } from '@/components/sheet/FeatureChoiceField';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
@@ -2284,6 +2284,9 @@ function PathBlock({
         mode="display"
         compact={opts.compact}
         onEditRequest={opts.onEdit}
+        // La valeur DÉJÀ retenue n'est cliquable qu'en mode édition (`onChoiceChange`) ; la
+        // puce « Choisir », elle, reste joignable hors édition (cf. `opts.onEdit`).
+        editing={!!onChoiceChange}
       />
     );
   };
@@ -2718,7 +2721,10 @@ function PathBlock({
                   // Réserve la place du bouton de suppression (coin bas droite).
                   pr: onRemove ? 2.5 : 0,
                 }}
-                onClick={(e) => e.stopPropagation()}
+                // PAS de stopPropagation ici : chaque puce CLIQUABLE arrête déjà l'événement
+                // elle-même. Sinon cette bande deviendrait une zone morte quand la puce est en
+                // lecture seule (valeur retenue hors édition) — un clic doit alors ouvrir le
+                // détail de la capacité, comme partout ailleurs sur la carte.
               >
                 {renderChoiceDisplay(feature, {
                   compact: true,
@@ -2741,7 +2747,7 @@ function PathBlock({
                   gap: 0.5,
                   pr: onRemove ? 2.5 : 0,
                 }}
-                onClick={(e) => e.stopPropagation()}
+                // Cf. ci-dessus : la puce arrête elle-même le clic quand elle est cliquable.
               >
                 {renderChoiceDisplay(borrowed, {
                   compact: true,
@@ -2840,18 +2846,10 @@ function PathBlock({
                 >
                   {feature.name}
                 </Typography>
-                {/* Carac retenue : chip de choix standard (bleu primaire), code court « CON »
+                {/* Carac retenue : badge de choix standard (bleu primaire), code court « CON »
                     pour gagner de la place ; nom complet (« Constitution ») en infobulle. */}
                 {abilityCode && (
-                  <AppTooltip title={ABILITY_NAMES[abilityCode]}>
-                    <Chip
-                      label={abilityCode}
-                      size="small"
-                      variant="outlined"
-                      color="primary"
-                      sx={COMPACT_CHIP_SX}
-                    />
-                  </AppTooltip>
+                  <ChoiceValueBadge label={abilityCode} compact title={ABILITY_NAMES[abilityCode]} />
                 )}
               </Box>
             </Box>
@@ -3020,7 +3018,17 @@ function PathBlock({
                 {hasChoices(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
-                    {renderChoiceDisplay(openFeature)}
+                    {/* La puce « Choisir » est cliquable même hors édition : elle ferme le détail
+                        et ouvre la modale du choix (en basculant en édition si besoin) — sans elle,
+                        un choix non fait n'était joignable qu'après un détour par le crayon. */}
+                    {renderChoiceDisplay(openFeature, {
+                      onEdit: canEditChoices
+                        ? () => {
+                            setOpenFeature(null);
+                            requestChoiceEdit(openFeature);
+                          }
+                        : undefined,
+                    })}
                     {onChoiceChange && (
                       <Button
                         size="small"
@@ -3055,7 +3063,14 @@ function PathBlock({
                           hasChoices(borrowed) ? (
                             <>
                               <Divider sx={{ my: 1 }} />
-                              {renderChoiceDisplay(borrowed)}
+                              {renderChoiceDisplay(borrowed, {
+                                onEdit: canEditChoices
+                                  ? () => {
+                                      setOpenFeature(null);
+                                      requestChoiceEdit(borrowed);
+                                    }
+                                  : undefined,
+                              })}
                               {onChoiceChange && (
                                 <Button
                                   size="small"
@@ -3383,7 +3398,12 @@ function PathBlock({
               {hasChoices(feature) && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
-                  {onChoiceChange ? renderChoiceEditor(feature) : renderChoiceDisplay(feature)}
+                  {/* Vue liste : le sélecteur s'affiche EN PLACE en mode édition. Hors édition, la
+                      puce « Choisir » bascule le bloc « Voies » en édition — le sélecteur apparaît
+                      alors à l'endroit même de la puce (aucune modale dans cette vue). */}
+                  {onChoiceChange
+                    ? renderChoiceEditor(feature)
+                    : renderChoiceDisplay(feature, { onEdit: onEnableFeatureEditing })}
                 </>
               )}
               {(() => {
@@ -3405,7 +3425,9 @@ function PathBlock({
                         hasChoices(borrowed) ? (
                           <>
                             <Divider sx={{ my: 1 }} />
-                            {onChoiceChange ? renderChoiceEditor(borrowed) : renderChoiceDisplay(borrowed)}
+                            {onChoiceChange
+                              ? renderChoiceEditor(borrowed)
+                              : renderChoiceDisplay(borrowed, { onEdit: onEnableFeatureEditing })}
                           </>
                         ) : null
                       }

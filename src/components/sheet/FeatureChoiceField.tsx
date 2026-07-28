@@ -14,11 +14,10 @@
  * pour la longue liste des capacités empruntables (un rang d'une autre voie), et
  * Select/Radio pour une liste d'options énumérées.
  */
-import type { MouseEvent } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
@@ -617,12 +616,81 @@ function ChoiceControl({
   );
 }
 
-/** Style compact partagé des chips de choix (vue colonne, blocs étroits). */
-export const COMPACT_CHIP_SX = {
-  maxWidth: '100%',
-  height: 18,
-  '& .MuiChip-label': { px: 0.75, fontSize: '0.62rem', fontWeight: 700 },
-} as const;
+/**
+ * Badge « valeur retenue » (custom, ≠ `Chip` MUI — convention projet, cf. `DefenseBadge`
+ * et `ChoiceTodoBadge`) : bleu primaire, pendant du badge orange « Choisir ».
+ *
+ * Raison d'être : un `Chip` MUI garde son libellé sur UNE ligne (`nowrap` + ellipse), ce
+ * qui déformait les blocs étroits de la vue colonne dès qu'un choix était long (« Cheval
+ * de guerre lourd », capacité empruntée « voie — rang — nom »…). Ici le libellé revient à
+ * la ligne (`whiteSpace: normal`) et peut casser un mot interminable — `overflowWrap:
+ * anywhere` (et non `break-word`) car lui seul compte dans la largeur *min-content* : la
+ * largeur minimale du badge tombe à un caractère, donc il ne peut JAMAIS élargir son bloc.
+ * Hauteur libre (`minHeight`) pour laisser le badge grandir sur deux lignes ou plus.
+ */
+export function ChoiceValueBadge({
+  label,
+  compact = false,
+  onClick,
+  title,
+}: {
+  label: ReactNode;
+  /** Vue colonne / blocs étroits : typo et gabarit resserrés. */
+  compact?: boolean;
+  /** Rend le badge cliquable (ouvre l'éditeur du choix). */
+  onClick?: () => void;
+  /** Infobulle facultative (ex. nom complet d'une caractéristique abrégée). */
+  title?: string;
+}) {
+  const interactive = !!onClick;
+  const badge = (
+    <Box
+      component={interactive ? 'button' : 'span'}
+      {...(interactive ? { type: 'button' as const } : {})}
+      onClick={
+        interactive
+          ? (e: MouseEvent) => {
+              e.stopPropagation();
+              onClick();
+            }
+          : undefined
+      }
+      sx={(theme) => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        textAlign: 'left',
+        minWidth: 0,
+        maxWidth: '100%',
+        minHeight: compact ? 18 : 24,
+        px: compact ? 0.75 : 1,
+        py: compact ? '1px' : '2px',
+        m: 0,
+        borderRadius: 1,
+        fontFamily: 'inherit',
+        fontSize: compact ? '0.62rem' : '0.72rem',
+        fontWeight: 700,
+        lineHeight: 1.3,
+        letterSpacing: '0.02em',
+        whiteSpace: 'normal',
+        overflowWrap: 'anywhere',
+        color: theme.palette.primary.main,
+        bgcolor: alpha(theme.palette.primary.main, 0.12),
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.5)}`,
+        cursor: interactive ? 'pointer' : 'default',
+        transition: 'background-color 120ms, border-color 120ms',
+        ...(interactive && {
+          '&:hover': {
+            bgcolor: alpha(theme.palette.primary.main, 0.22),
+            borderColor: theme.palette.primary.main,
+          },
+        }),
+      })}
+    >
+      {label}
+    </Box>
+  );
+  return title ? <AppTooltip title={title}>{badge}</AppTooltip> : badge;
+}
 
 /**
  * Badge « choix non résolu » (custom, ≠ Chip MUI, dans l'esprit de `DefenseBadge`) :
@@ -697,22 +765,6 @@ export function ChoiceTodoBadge({
 }
 
 /**
- * Props communes rendant une chip de VALEUR retenue cliquable (ouvre l'éditeur du
- * choix), pour conserver l'édition en place une fois le crayon retiré de la carte
- * compacte. Sans `onEdit`, la chip reste en lecture seule.
- */
-function chipEditProps(onEdit?: () => void) {
-  if (!onEdit) return {};
-  return {
-    clickable: true,
-    onClick: (e: MouseEvent) => {
-      e.stopPropagation();
-      onEdit();
-    },
-  } as const;
-}
-
-/**
  * Affichage (lecture seule) d'un choix `option` RÉPÉTABLE : un badge par option DISTINCTE
  * retenue (nom court ; détail entre parenthèses à côté en vue liste), plus un badge « label ×N »
  * par option `repeatable` (ex. « +1 DM ×4 », Spécialisation), + un compteur « consommé/budget ».
@@ -725,14 +777,17 @@ function RepeatOptionDisplay({
   index,
   compact,
   onEdit,
+  onEditValue,
 }: {
   choice: OptionFeatureChoice;
   character: Character;
   featureId: string;
   index: number;
   compact: boolean;
-  /** Rend les chips (« Choisir » et valeurs) cliquables → ouvre l'éditeur du choix. */
+  /** Rend la puce « Choisir » cliquable → ouvre l'éditeur du choix (même hors édition). */
   onEdit?: () => void;
+  /** Rend les badges de VALEUR cliquables → mode édition uniquement (cf. `editing`). */
+  onEditValue?: () => void;
 }) {
   const { distinct, repeatCounts, used } = splitRepeatableSelections(character, featureId, index);
   const allowed = repeatableChoiceCount(character, choice);
@@ -770,15 +825,7 @@ function RepeatOptionDisplay({
     return (
       <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
         {entries.map((e) => (
-          <Chip
-            key={e.key}
-            label={e.label}
-            size="small"
-            variant="outlined"
-            color="primary"
-            sx={COMPACT_CHIP_SX}
-            {...chipEditProps(onEdit)}
-          />
+          <ChoiceValueBadge key={e.key} label={e.label} compact onClick={onEditValue} />
         ))}
         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
           {counter}
@@ -795,7 +842,7 @@ function RepeatOptionDisplay({
       <Stack spacing={0.25} sx={{ mt: 0.25 }}>
         {entries.map((e) => (
           <Stack key={e.key} direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <Chip label={e.label} size="small" variant="outlined" color="primary" {...chipEditProps(onEdit)} />
+            <ChoiceValueBadge label={e.label} onClick={onEditValue} />
             {e.complement && (
               <Typography variant="caption" color="text.secondary">
                 {e.complement}
@@ -826,11 +873,20 @@ export interface FeatureChoiceFieldProps {
   /** Requis en mode `edit`. Persiste le i-ème choix de la capacité. */
   onChange?: (featureId: string, index: number, value: FeatureChoiceSelection) => void;
   /**
-   * Mode `display` uniquement : rend les puces (« Choisir » et valeurs retenues)
-   * CLIQUABLES et ouvre l'éditeur du choix. Remplace le crayon accolé sur la carte
-   * compacte (PER-68). Absent : puces en lecture seule.
+   * Mode `display` uniquement : ouvre l'éditeur du choix. Remplace le crayon accolé sur
+   * la carte compacte (PER-68). Absent : puces en lecture seule.
+   *
+   * La puce orange « Choisir » l'appelle TOUJOURS (même hors mode édition : un choix de
+   * construction non fait doit rester joignable d'un clic — l'appelant se charge de
+   * basculer en édition si besoin). Le badge bleu de la valeur retenue, lui, n'est
+   * cliquable qu'en mode édition (`editing`) : hors édition la fiche se consulte.
    */
   onEditRequest?: () => void;
+  /**
+   * Mode édition actif : rend AUSSI les badges de valeur retenue cliquables (avec
+   * `onEditRequest`). Défaut : faux — seule la puce « Choisir » réagit.
+   */
+  editing?: boolean;
 }
 
 /**
@@ -845,9 +901,13 @@ export function FeatureChoiceField({
   compact = false,
   onChange,
   onEditRequest,
+  editing = false,
 }: FeatureChoiceFieldProps) {
   const defs = featureChoiceDefs(featureId);
   if (defs.length === 0) return null;
+  // Édition d'une valeur DÉJÀ retenue : réservée au mode édition (la puce « Choisir »,
+  // elle, reste cliquable en toute circonstance).
+  const onEditValue = editing ? onEditRequest : undefined;
   // On ne propose un choix répétable qu'une fois un palier atteint (cf.
   // `isChoiceActionable`) : avant cela il n'y a rien à retenir, on masque le contrôle
   // (et sa puce « Choix à faire ») pour ne pas embrouiller l'utilisateur. On conserve
@@ -872,6 +932,7 @@ export function FeatureChoiceField({
                 index={i}
                 compact={compact}
                 onEdit={onEditRequest}
+                onEditValue={onEditValue}
               />
             );
           }
@@ -881,14 +942,7 @@ export function FeatureChoiceField({
             const complete = name.trim().length > 0 && domains.length >= choice.domainCount;
             const domLabels = domains.map((d) => testDomainById.get(d)?.label ?? d).join(', ');
             const chip = complete ? (
-              <Chip
-                label={name}
-                size="small"
-                variant="outlined"
-                color="primary"
-                sx={compact ? COMPACT_CHIP_SX : undefined}
-                {...chipEditProps(onEditRequest)}
-              />
+              <ChoiceValueBadge label={name} compact={compact} onClick={onEditValue} />
             ) : (
               <ChoiceTodoBadge compact={compact} onClick={onEditRequest} />
             );
@@ -913,16 +967,7 @@ export function FeatureChoiceField({
             const rawText = getSelection(character, featureId, i);
             const text = typeof rawText === 'string' ? rawText : null;
             if (!text) return null;
-            const chip = (
-              <Chip
-                label={text}
-                size="small"
-                variant="outlined"
-                color="primary"
-                sx={compact ? COMPACT_CHIP_SX : undefined}
-                {...chipEditProps(onEditRequest)}
-              />
-            );
+            const chip = <ChoiceValueBadge label={text} compact={compact} onClick={onEditValue} />;
             if (compact) return <Box key={i}>{chip}</Box>;
             return (
               <Stack key={i} direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
@@ -944,14 +989,7 @@ export function FeatureChoiceField({
           const label = choiceSelectionLabel(choice, selection, shortInChip);
           const complement = compact ? null : choiceSelectionComplement(choice, selection);
           const valueChip = label ? (
-            <Chip
-              label={label}
-              size="small"
-              variant="outlined"
-              color="primary"
-              sx={compact ? COMPACT_CHIP_SX : undefined}
-              {...chipEditProps(onEditRequest)}
-            />
+            <ChoiceValueBadge label={label} compact={compact} onClick={onEditValue} />
           ) : (
             <ChoiceTodoBadge compact={compact} onClick={onEditRequest} />
           );

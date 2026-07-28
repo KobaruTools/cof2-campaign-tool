@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-badge-choix-expert-emprunts",
+  "name": "Recette badge de choix — Guerrier expert (5 emprunts très longs)",
+  "identity": {
+    "description": "ATTENDU : les 5 rangs de la voie de l’expert portent chacun une capacité empruntée au libellé « Voie — Rang N — Nom » (les chips les plus longues de l’app). En vue COLONNE, la colonne de prestige reste à sa largeur : le badge bleu revient à la ligne (2-3 lignes) au lieu d’élargir la carte ; en vue LISTE, aucune ligne ne déborde. Vérifier aussi la carte d’EMPRUNT (badge « CON/INT » de la bande de l’hôte). Interaction : badge bleu cliquable UNIQUEMENT en mode « Modifier » (mais partout) ; puce orange « Choisir » cliquable même hors édition, y compris dans la modale de détail et dans le bloc déplié de la vue liste."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 20,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 4,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 4,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "bouclier-r1",
+    "bouclier-r2",
+    "bouclier-r3",
+    "bouclier-r4",
+    "bouclier-r5",
+    "combat-r1",
+    "combat-r2",
+    "maitre-d-armes-r1",
+    "maitre-d-armes-r2",
+    "humain-r1",
+    "humain-r2",
+    "humain-r3",
+    "humain-r4",
+    "humain-r5",
+    "prestige-expert-r4",
+    "prestige-expert-r5",
+    "prestige-expert-r6",
+    "prestige-expert-r7",
+    "prestige-expert-r8"
+  ],
+  "featureChoices": {
+    "maitre-d-armes-r1": [
+      [
+        "thrown"
+      ]
+    ],
+    "humain-r1": [
+      "custom",
+      [
+        "Maître fauconnier des marches du Piémont",
+        "stone-secrets",
+        "weakened-resistance"
+      ]
+    ],
+    "humain-r3": [
+      "maitre-des-arbaletes-r1"
+    ],
+    "humain-r5": [
+      "INT"
+    ],
+    "prestige-expert-r4": [
+      "primitif-r1"
+    ],
+    "prestige-expert-r5": [
+      "guerre-r2"
+    ],
+    "prestige-expert-r6": [
+      "noblesse-r3"
+    ],
+    "prestige-expert-r7": [
+      "resistance-r4"
+    ],
+    "prestige-expert-r8": [
+      "guerre-r5"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "overrides": {},
+  "notes": "Recette du badge bleu de choix — voie de l’expert : 5 emprunts « Voie — Rang — Nom » + humain-r1/r3/r5. Une seule voie de prestige (convention de recette).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
