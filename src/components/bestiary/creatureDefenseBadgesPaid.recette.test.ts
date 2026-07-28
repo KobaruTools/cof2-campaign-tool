@@ -58,6 +58,20 @@ describePaid('Bestiaire payant — badges du cadre Défense (PER-261)', () => {
     expect(titles('ame-damnee')).toEqual(['RD Feu, Acide 10', 'RD Non magiques 5']);
   });
 
+  it('ange : le livre se contredit (RD 11 imprimée / RD 10 en capacité) → un seul badge, RD 10', () => {
+    // Décision du propriétaire (2026-07-28) : c'est la valeur de la CAPACITÉ qui compte, et elle
+    // remplace la RD imprimée avec les PV malgré la différence de valeur (`replacesPrintedRd`).
+    expect(byId.get('ange')?.hitPointsNote).toBe('RD 11');
+    expect(titles('ange')).toEqual(['RD 10']);
+    expect(notes('ange')).toEqual([
+      'Magie incluse, sauf les armes maléfiques et la magie des sorciers. La ligne de stats du livre imprime « RD 11 ».',
+    ]);
+  });
+
+  it('archange : RD 15, cohérente entre la ligne de stats et la capacité (p. 14)', () => {
+    expect(titles('archange')).toEqual(['RD 15']);
+  });
+
   it('dragon ancien : sommeil + paralysie, et la RD 6 de taille reste imprimée (p. 84)', () => {
     // L'immunité au type de son SOUFFLE dépend de l'espèce choisie → volontairement pas de badge.
     expect(titles('dragon-ancien')).toEqual([

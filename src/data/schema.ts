@@ -1543,6 +1543,17 @@ export interface DamageReduction {
    * informatif (comme le reste de la RD, non lu par le moteur).
    */
   note?: string;
+  /**
+   * Cette entrée REMPLACE la « RD N » imprimée avec les points de vigueur d'une CRÉATURE, même si
+   * sa valeur DIFFÈRE (PER-261). Sert aux incohérences du livre : l'ange (Bestiaire p. 13) imprime
+   * « RD 11 » dans sa ligne de stats et « RD 10 » dans sa capacité « Réduction des DM » — c'est une
+   * seule et même protection, et le propriétaire a tranché pour la valeur de la CAPACITÉ. Sans ce
+   * drapeau, `defenseCoversPrintedRd` ne dédoublonne que les valeurs ÉGALES, et les deux badges
+   * s'afficheraient côte à côte. À n'utiliser QUE quand les deux chiffres décrivent la même
+   * protection : deux RD réellement distinctes (RD imprimée + RD conditionnelle d'une capacité)
+   * doivent rester deux badges.
+   */
+  replacesPrintedRd?: boolean;
 }
 
 /**

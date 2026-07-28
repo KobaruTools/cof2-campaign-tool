@@ -199,6 +199,17 @@ describe('defenseCoversPrintedRd — dédoublonnage de la RD imprimée (PER-260)
   it('aucun trait défensif → la RD imprimée est rendue telle quelle', () => {
     expect(defenseCoversPrintedRd(creature({}), '3')).toBe(false);
   });
+
+  it('`replacesPrintedRd` couvre la RD imprimée MALGRÉ une valeur différente (PER-261)', () => {
+    // Incohérence du livre (ange p. 13 du Bestiaire : « RD 11 » imprimée, « RD 10 » en capacité) :
+    // une seule protection, donc un seul badge — celui de la capacité.
+    const c = creature({
+      hitPointsNote: 'RD 11',
+      damageReduction: { kind: 'flat', value: 10, replacesPrintedRd: true },
+    });
+    expect(defenseCoversPrintedRd(c, '11')).toBe(true);
+    expect(creatureDefenseBadges(c).map((b) => b.title)).toEqual(['RD 10']);
+  });
 });
 
 describe('damageImmunityTitle — terminologie du livre', () => {

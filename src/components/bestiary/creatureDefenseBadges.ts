@@ -157,9 +157,15 @@ export function creatureDefenseBadges(creature: Creature): DefenseBadgeData[] {
  * entrée de `damageReduction` ? Le livre imprime souvent un raccourci à côté des PV que la capacité
  * détaille ensuite (démonet : « RD 5 » imprimée, « RD 5 sur les armes non magiques » en capacité) :
  * on ne garde alors que la version PRÉCISE (PER-260).
+ *
+ * Deuxième cas, PER-261 : le livre se contredit (ange p. 13 du Bestiaire, « RD 11 » dans la ligne de
+ * stats contre « RD 10 » dans la capacité). La valeur retenue étant celle de la capacité, l'entrée
+ * porte alors `replacesPrintedRd` et remplace la RD imprimée MALGRÉ la différence de valeur.
  */
 export function defenseCoversPrintedRd(creature: Creature, printedRd: string): boolean {
   const value = Number(printedRd);
   if (!Number.isFinite(value)) return false;
-  return asList(creature.damageReduction).some((dr) => dr.kind === 'flat' && dr.value === value);
+  return asList(creature.damageReduction).some(
+    (dr) => dr.kind === 'flat' && (dr.value === value || dr.replacesPrintedRd === true),
+  );
 }
