@@ -1739,6 +1739,44 @@ export interface TestDomainFeatureChoice extends FeatureChoiceBase {
 }
 
 /** Une option énumérée d'un `OptionFeatureChoice`. */
+/**
+ * AMÉLIORATIONS apportées à une CRÉATURE liée (PER-94) — deltas chiffrés appliqués PAR-DESSUS un
+ * profil de base (`applyCreatureUpgrades`) et CUMULÉS. À DISTINGUER de `creatureProfile` (qui
+ * REMPLACE le profil). Portée soit par une OPTION retenue (ex. Golem supérieur, golem-r5, p. 100),
+ * soit directement par une CAPACITÉ (ex. Runes de défense → golem, cross-voie). Le dé bonus de la
+ * créature reste porté séparément par `creatureAbilityBonusDie`.
+ */
+export interface CreatureUpgrade {
+  /**
+   * Voies des CRÉATURES ciblées par l'amélioration (PER-94). Absent = la créature de la voie de la
+   * capacité/option SOURCE (rétro-compatible : Golem supérieur améliore le golem de sa propre voie).
+   * Présent = ciblage CROSS-VOIE explicite — ex. Runes de défense (voie `runes`) → `['golem']`.
+   */
+  targetPaths?: string[];
+  /** Deltas de caractéristiques de la créature (ex. Forme de félin → AGI +3). */
+  abilities?: Partial<Record<AbilityId, number>>;
+  /**
+   * Bonus de DÉFENSE. Nombre plat (ex. Armure → +5) OU valeur scalante (PER-94), résolue contre la
+   * voie de la capacité SOURCE — ex. Runes de défense : `stepped` par rang de la voie `runes`
+   * (+2/+3/+4), identique à l'effet DEF que la rune confère au maître.
+   */
+  def?: number | ScalingValue;
+  /** PV supplémentaires PAR NIVEAU du maître (ex. Grande taille → +2/niveau). */
+  hitPointsPerLevel?: number;
+  /** Bonus PLAT aux DM au contact (ex. Grande taille → +1, Puissant → +2). */
+  meleeDamageFlat?: number;
+  /** Dé supplémentaire aux DM au contact, au format richText (ex. Arme à deux mains → `1d4°`). */
+  meleeDamageDice?: string;
+  /**
+   * Attaque SUPPLÉMENTAIRE octroyée (ex. Baliste → attaque à distance). Le DM est un dé + la
+   * caractéristique de la CRÉATURE `damageAbility` (baked en nombre par le résolveur, car le DM
+   * d'un compagnon se résout sinon contre le maître). Rendue en chip d'attaque distinct.
+   */
+  extraAttack?: { label: string; damageDice: string; damageAbility?: AbilityId; ranged?: boolean };
+  /** Note libre ajoutée à la fiche de la créature (ex. Vol, « doué de parole »). */
+  note?: string;
+}
+
 export interface FeatureChoiceOption {
   /** Id stable persisté sur le personnage (clé de contenu, en anglais). */
   id: string;
@@ -1838,26 +1876,7 @@ export interface FeatureChoiceOption {
    * ex. Monture fantastique) : ici on n'ajoute que des deltas chiffrés à un profil existant. Le dé
    * bonus reste porté séparément par `creatureAbilityBonusDie`. Absent = aucune amélioration.
    */
-  creatureUpgrade?: {
-    /** Deltas de caractéristiques de la créature (ex. Forme de félin → AGI +3). */
-    abilities?: Partial<Record<AbilityId, number>>;
-    /** Bonus de DÉFENSE (ex. Armure → +5, Forme de félin → +3). */
-    def?: number;
-    /** PV supplémentaires PAR NIVEAU du maître (ex. Grande taille → +2/niveau). */
-    hitPointsPerLevel?: number;
-    /** Bonus PLAT aux DM au contact (ex. Grande taille → +1, Puissant → +2). */
-    meleeDamageFlat?: number;
-    /** Dé supplémentaire aux DM au contact, au format richText (ex. Arme à deux mains → `1d4°`). */
-    meleeDamageDice?: string;
-    /**
-     * Attaque SUPPLÉMENTAIRE octroyée (ex. Baliste → attaque à distance). Le DM est un dé + la
-     * caractéristique de la CRÉATURE `damageAbility` (baked en nombre par le résolveur, car le DM
-     * d'un compagnon se résout sinon contre le maître). Rendue en chip d'attaque distinct.
-     */
-    extraAttack?: { label: string; damageDice: string; damageAbility?: AbilityId; ranged?: boolean };
-    /** Note libre ajoutée à la fiche de la créature (ex. Vol, « doué de parole »). */
-    note?: string;
-  };
+  creatureUpgrade?: CreatureUpgrade;
   /**
    * Option RÉPÉTABLE au sein d'un choix `repeat` (PER-72) : contrairement aux options normales
    * (DISTINCTES, retenues une seule fois), celle-ci peut être retenue PLUSIEURS fois dans le même
@@ -2614,6 +2633,13 @@ export interface Feature {
    * (cf. `CriticalRange`). Absent = la capacité n'élargit pas la plage de critique.
    */
   criticalRange?: CriticalRange;
+  /**
+   * AMÉLIORATION propagée à une CRÉATURE liée directement par cette capacité (PER-94) — cross-voie
+   * possible via `targetPaths`. Ex. Runes de défense (`runes-r1`) qui octroie au golem le même bonus
+   * de DEF `stepped` qu'à son maître. Cumulée par `applyCreatureUpgrades` avec les améliorations
+   * portées par les options retenues (`FeatureChoiceOption.creatureUpgrade`). Absent = aucune.
+   */
+  creatureUpgrade?: CreatureUpgrade;
   /**
    * Attaque naturelle conférée par une FORME prise via cette capacité (PER-74) — morsure de la
    * forme hybride du lycanthrope. Donnée d'affichage, gatée par l'interrupteur de forme (cf.

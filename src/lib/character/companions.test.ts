@@ -413,6 +413,57 @@ describe('applyCreatureUpgrades (Golem supérieur, PER-94)', () => {
   });
 });
 
+describe('bonus maître → créature (PER-94)', () => {
+  describe('Runes de défense → golem (cross-voie, DEF stepped par rang de la voie runes)', () => {
+    function forgesort(...featureIds: string[]): Character {
+      return char({ classId: 'forgesort', featureIds: ['golem-r1', 'golem-r2', ...featureIds] });
+    }
+    const golemDef = (c: Character) => displayCreatureProfile(featureById.get('golem-r2')!, c)!.defense;
+
+    it('sans rune → golem inchangé (rétro-compat)', () => {
+      expect(golemDef(forgesort())).toBe('[10 + rang]');
+    });
+
+    it('rune au rang 1 → +2 en DEF du golem', () => {
+      expect(golemDef(forgesort('runes-r1'))).toBe('[10 + rang + 2]');
+    });
+
+    it('rune au rang 3 → +3, au rang 5 → +4 (palier par rang de la voie runes)', () => {
+      expect(golemDef(forgesort('runes-r1', 'runes-r2', 'runes-r3'))).toBe('[10 + rang + 3]');
+      expect(golemDef(forgesort('runes-r1', 'runes-r2', 'runes-r3', 'runes-r4', 'runes-r5'))).toBe(
+        '[10 + rang + 4]',
+      );
+    });
+  });
+
+  describe('Tactiques de meute → loup (même voie, DEF milestone par voie de rôdeur au rang 5)', () => {
+    function rodeur(...featureIds: string[]): Character {
+      return char({ classId: 'rodeur', featureIds: ['compagnon-animal-r1', 'compagnon-animal-r4', ...featureIds] });
+    }
+    const loupDef = (c: Character) => listCompanions(c)[0].profile.defense;
+
+    it('sans Tactiques de meute → Mâle alpha à DEF 18 (fix `[18]` littéral)', () => {
+      expect(loupDef(rodeur())).toBe('[18]');
+    });
+
+    it('Tactiques de meute (compagnon-animal au rang 5) → +1 en DEF du loup', () => {
+      expect(loupDef(rodeur('compagnon-animal-r5'))).toBe('[18 + 1]');
+    });
+
+    it('deux voies de rôdeur au rang 5 → +2 (palier de famille, cross-voie)', () => {
+      const c = rodeur(
+        'compagnon-animal-r5',
+        'survie-r1',
+        'survie-r2',
+        'survie-r3',
+        'survie-r4',
+        'survie-r5',
+      );
+      expect(loupDef(c)).toBe('[18 + 2]');
+    });
+  });
+});
+
 describe('pruneCompanionInstances', () => {
   it('conserve les instances d’une capacité multi-instances acquise, purge les autres', () => {
     const c = char({ classId: 'sorcier', featureIds: ['outre-tombe-r3'] });

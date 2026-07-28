@@ -12,10 +12,17 @@
  * jeu au même titre que la barre de vie du personnage.
  */
 import { featureById, pathById, progression } from '@/data';
-import type { AbilityId, CompanionType, CreatureProfile, Feature, FeatureChoiceOption } from '@/data/schema';
+import type { AbilityId, CompanionType, CreatureProfile, CreatureUpgrade, Feature } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { getSelection } from './choices';
-import { creatureBonusDiceForPath, disabledFeatureIds, isEffectActive } from './effects';
+import {
+  creatureBonusDiceForPath,
+  disabledFeatureIds,
+  effectContext,
+  isEffectActive,
+  pathRanksFromFeatures,
+  resolveValue,
+} from './effects';
 import { enSelleLink } from './mounts';
 import { pruneDepletion } from './gauges';
 import { parseRichText, resolveExpr } from '@/lib/ui/featureRichText';
@@ -46,27 +53,49 @@ export function effectiveCreatureProfile(
   return feature.creatureProfile;
 }
 
-type CreatureUpgrade = NonNullable<FeatureChoiceOption['creatureUpgrade']>;
+/**
+ * Amélioration de créature dont le champ `def` scalant a déjà été RÉSOLU en nombre (les autres
+ * champs sont inchangés). La résolution se fait AU GATHER, contre la voie de la capacité SOURCE
+ * (`resolveValue`), car le rang pertinent est celui du maître dans SA voie (ex. rang `runes`), pas
+ * celui de la créature. Le pliage aval (`applyCreatureUpgrades`) reste ainsi purement numérique.
+ */
+type ResolvedCreatureUpgrade = Omit<CreatureUpgrade, 'def'> & { def?: number };
 
 /**
- * Améliorations de créature retenues dans une voie (PER-94) : options `creatureUpgrade` des
- * capacités ACQUISES de la voie `pathId` dont l'id est sélectionné (ex. Golem supérieur, golem-r5).
- * Même balayage que `creatureBonusDiceForPath` (options retenues, `featureChoices`).
+ * Améliorations propagées à la créature de la voie `creaturePathId` (PER-94). Balaye TOUTES les
+ * capacités acquises — améliorations portées directement par une capacité (`Feature.creatureUpgrade`,
+ * ex. Runes de défense → golem, cross-voie) ET par les options retenues d'un choix `option`
+ * (`FeatureChoiceOption.creatureUpgrade`, ex. Golem supérieur, golem-r5) — et retient celles dont la
+ * cible (`targetPaths ?? [voie source]`) inclut `creaturePathId`. Le `def` scalant est résolu ici même
+ * contre la voie SOURCE (rang du maître), pour que Runes de défense donne +2/+3/+4 selon le rang runes.
  */
-function gatherCreatureUpgrades(character: Character, pathId: string): CreatureUpgrade[] {
-  const out: CreatureUpgrade[] = [];
+function gatherCreatureUpgrades(character: Character, creaturePathId: string): ResolvedCreatureUpgrade[] {
+  const out: ResolvedCreatureUpgrade[] = [];
+  const pathRanks = pathRanksFromFeatures(character.featureIds);
+  const ctx = effectContext(character);
+  const consider = (upgrade: CreatureUpgrade, sourcePathId: string) => {
+    const targets = upgrade.targetPaths ?? [sourcePathId];
+    if (!targets.includes(creaturePathId)) return;
+    const def = upgrade.def == null ? undefined : resolveValue(upgrade.def, sourcePathId, pathRanks, ctx) ?? undefined;
+    out.push({ ...upgrade, def });
+  };
   for (const id of character.featureIds) {
     const feature = featureById.get(id);
-    if (!feature || feature.pathId !== pathId || !feature.choices) continue;
-    const selections = character.featureChoices[id] ?? [];
-    feature.choices.forEach((choice, i) => {
-      if (choice.kind !== 'option') return;
-      const sel = selections[i];
-      const chosenIds = Array.isArray(sel) ? sel : sel ? [sel] : [];
-      for (const opt of choice.options) {
-        if (opt.creatureUpgrade && chosenIds.includes(opt.id)) out.push(opt.creatureUpgrade);
-      }
-    });
+    if (!feature) continue;
+    // Amélioration portée DIRECTEMENT par la capacité (cross-voie via `targetPaths`).
+    if (feature.creatureUpgrade) consider(feature.creatureUpgrade, feature.pathId);
+    // Améliorations portées par les OPTIONS retenues (même balayage que `creatureBonusDiceForPath`).
+    if (feature.choices) {
+      const selections = character.featureChoices[id] ?? [];
+      feature.choices.forEach((choice, i) => {
+        if (choice.kind !== 'option') return;
+        const sel = selections[i];
+        const chosenIds = Array.isArray(sel) ? sel : sel ? [sel] : [];
+        for (const opt of choice.options) {
+          if (opt.creatureUpgrade && chosenIds.includes(opt.id)) consider(opt.creatureUpgrade, feature.pathId);
+        }
+      });
+    }
   }
   return out;
 }

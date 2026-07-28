@@ -1554,7 +1554,7 @@ export const adventurerFeatures: Feature[] = [
     // Bloc de stats retiré du richText. Dés bonus innés (CON* de l'alpha + PER* reporté) →
     // `bonusDieAbilities` (rendu double-d20, PER-107).
     richText: "Le loup du rôdeur devient un spécimen particulièrement puissant.",
-    creatureProfile: { name: 'Mâle alpha', type: 'Créature vivante', companionType: 'animal', abilities: { AGI: 1, CON: 3, FOR: 5, PER: 2, CHA: -2, INT: -3, VOL: 2 }, defense: '18', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' }, bonusDieAbilities: ['CON', 'PER'] },
+    creatureProfile: { name: 'Mâle alpha', type: 'Créature vivante', companionType: 'animal', abilities: { AGI: 1, CON: 3, FOR: 5, PER: 2, CHA: -2, INT: -3, VOL: 2 }, defense: '[18]', hitPoints: '[=niveau × 5]', initiative: { fromMaster: 'initiative' }, attack: { fromMaster: 'magicAttack', damage: '[1d4° + 5]' }, bonusDieAbilities: ['CON', 'PER'] },
     replacesFeatures: ['compagnon-animal-r1'],
     sourcePage: 72,
   },
@@ -1582,6 +1582,13 @@ export const adventurerFeatures: Feature[] = [
         value: { scale: 'milestone-count', per: 1, rank: 5, classIds: ['rodeur'] },
       },
     ],
+    // PER-94 : « le rôdeur ET SON LOUP augmentent leur DEF de +1 chaque fois qu'il atteint le rang 5
+    // dans une voie de rôdeur (celle-ci incluse) ». Le +1 côté LOUP (même voie `compagnon-animal`) est
+    // propagé au profil du Mâle alpha par `applyCreatureUpgrades` — même `milestone-count` que l'effet
+    // DEF du maître ci-dessus. Le +1d4° « même cible » et le soin 2 PV restent situationnels (hors PER-94).
+    creatureUpgrade: {
+      def: { scale: 'milestone-count', per: 1, rank: 5, classIds: ['rodeur'] },
+    },
     sourcePage: 72,
   },
 

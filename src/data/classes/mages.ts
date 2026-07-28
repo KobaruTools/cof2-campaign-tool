@@ -1370,6 +1370,14 @@ export const mageFeatures: Feature[] = [
         value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 3, value: 3 }, { min: 5, value: 4 }] },
       },
     ],
+    // PER-94 : le forgesort peut apposer une rune de défense sur son GOLEM (voie `golem`, cross-voie)
+    // → même bonus de DEF `stepped` que celui qu'il s'octroie, résolu contre le rang de la voie
+    // `runes` (+2/+3/+4). Propagé au profil effectif du golem par `applyCreatureUpgrades` (aucun
+    // toggle : la possession du golem suffit). ScalingValue LITTÉRALEMENT identique à l'effet ci-dessus.
+    creatureUpgrade: {
+      targetPaths: ['golem'],
+      def: { scale: 'stepped', by: 'path-rank', steps: [{ min: 1, value: 2 }, { min: 3, value: 3 }, { min: 5, value: 4 }] },
+    },
     sourcePage: 101,
   },
   {
