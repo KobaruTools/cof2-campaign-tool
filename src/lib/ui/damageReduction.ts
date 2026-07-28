@@ -29,6 +29,7 @@ const SCOPE_SHORT: Record<ResistibleDamageType, string> = {
   slashing: 'Tranchants',
   'non-cold-iron-weapon': 'Armes hors fer froid',
   'non-blessed-weapon': 'Armes non bénies',
+  weapon: 'Armes',
 };
 
 /** Libellé LONG (info-bulle), tournure prépositionnelle — « les DM de froid ». */
@@ -51,6 +52,7 @@ const SCOPE_LONG: Record<ResistibleDamageType, string> = {
   slashing: 'tranchants',
   'non-cold-iron-weapon': "des armes qui ne sont pas en fer froid",
   'non-blessed-weapon': 'des armes non bénies / non sacrées',
+  weapon: 'des armes',
 };
 
 /** Portée(s) au format court, jointes — ou chaîne vide si la RD couvre tous les DM. */

@@ -275,6 +275,7 @@ dans `DAMAGE_TYPE_ICON_SOURCES` (même fichier) et dans
 | Tranchants | `lorc/sword-slice.svg` | Lorc |
 | Armes hors fer froid | `lorc/anvil.svg` | Lorc |
 | Armes non bénies | `lorc/holy-symbol.svg` | Lorc |
+| Armes | `lorc/broadsword.svg` | Lorc |
 
 ## Icônes des immunités d'état
 

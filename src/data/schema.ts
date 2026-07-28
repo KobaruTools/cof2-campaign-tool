@@ -1447,6 +1447,11 @@ export const RESISTIBLE_DAMAGE_TYPES = [
   // (morts-vivants). La RD ne joue PAS contre l'arme nommée.
   'non-cold-iron-weapon',
   'non-blessed-weapon',
+  // PER-261 : « RD N contre les ARMES » — tournure propre au supplément Bestiaire (arthropodes
+  // « Cuirassé », arme/armure animée « Solide », golems de pierre et de métal), à distinguer de
+  // `physical` (« contre tous les DM physiques », tricératops) et de `non-magical` (« armes
+  // ordinaires »). Ne couvre pas les sorts ni les DM d'environnement.
+  'weapon',
 ] as const;
 export type ResistibleDamageType = (typeof RESISTIBLE_DAMAGE_TYPES)[number];
 
