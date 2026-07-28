@@ -104,11 +104,25 @@ export function planBlobInvalidation(
   return drop;
 }
 
-/** Aplatit les tranches de sources en une liste légère unique, triée par ordre du livre. */
+/**
+ * Aplatit les tranches de sources en une liste légère unique, triée par ordre du
+ * livre. Déduplique par `id` (défensif) : un cache disque incohérent — p. ex. deux
+ * tranches se chevauchant après une réconciliation interrompue ou une écriture
+ * concurrente — ne doit jamais produire deux items de même `id`, sous peine de clé
+ * React dupliquée qui FAIT PLANTER le rendu de la liste (au lieu de dégrader). La
+ * réconciliation réécrit chaque source entière, donc ce filet ne masque aucune
+ * donnée légitime (aucun `id` n'est partagé entre sources).
+ */
 export function flattenSources(sources: CachedSource[]): CreatureListItem[] {
-  return sources
-    .flatMap((s) => s.items)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const sorted = sources.flatMap((s) => s.items).sort((a, b) => a.sortOrder - b.sortOrder);
+  const seen = new Set<string>();
+  const deduped: CreatureListItem[] = [];
+  for (const item of sorted) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    deduped.push(item);
+  }
+  return deduped;
 }
 
 /** Groupe des items par `sourceId` (helper d'orchestration). */

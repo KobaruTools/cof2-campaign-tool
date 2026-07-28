@@ -126,4 +126,26 @@ describe('flattenSources', () => {
       'demon',
     ]);
   });
+
+  it('déduplique par id (cache incohérent → jamais de clé dupliquée)', () => {
+    // Deux tranches se chevauchant (réconciliation interrompue / écriture concurrente)
+    // ne doivent produire qu'un seul item par id, sinon le rendu de la liste plante.
+    const sources: CachedSource[] = [
+      {
+        id: 'bestiaire',
+        slug: 'bestiaire',
+        contentVersion: 1,
+        items: [item('eau-grand', 'bestiaire', 't1', 2), item('feu-petit', 'bestiaire', 't1', 3)],
+      },
+      {
+        id: 'bestiaire-stale',
+        slug: 'bestiaire',
+        contentVersion: 1,
+        items: [item('eau-grand', 'bestiaire', 't0', 2)],
+      },
+    ];
+    const ids = flattenSources(sources).map((c) => c.id);
+    expect(ids).toEqual(['eau-grand', 'feu-petit']);
+    expect(ids.filter((id) => id === 'eau-grand')).toHaveLength(1);
+  });
 });
