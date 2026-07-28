@@ -110,16 +110,34 @@ export async function fetchSourceManifest(): Promise<SourceManifestEntry[]> {
  * Blob complet d'une créature par son slug (`Creature.id`). `null` si aucune ligne
  * lisible ne correspond (créature inexistante ou gatée par la RLS). Le blob est
  * rendu tel quel par `BestiaryStatBlock`.
+ *
+ * PLUSIEURS sources peuvent porter le MÊME slug (un supplément qui réimprime une
+ * créature du livre de base — l'élémentaire d'eau (grand) l'était dans le Bestiaire).
+ * L'unicité est garantie en amont par `ingest-bestiary` (qui refuse une collision),
+ * mais on ne LÈVE jamais ici pour autant : le blob resterait introuvable et la
+ * créature s'afficherait « impossible à charger ». On prend donc la ligne de la
+ * source GRATUITE (le livre de base est canonique), à défaut la première lisible.
  */
 export async function fetchCreatureBlob(slug: string): Promise<Creature | null> {
   const supabase = createBrowserSupabaseClient();
   const { data, error } = await supabase
     .from('creatures')
-    .select('data')
-    .eq('slug', slug)
-    .maybeSingle();
+    .select('data, sources(is_paid)')
+    .eq('slug', slug);
   if (error) throw error;
-  return (data?.data as Creature | undefined) ?? null;
+  return pickBlobRow((data ?? []) as BlobRow[]);
+}
+
+/** Ligne de blob telle que projetée par `fetchCreatureBlob` (source embarquée). */
+export type BlobRow = { data: unknown; sources: { is_paid: boolean } | null };
+
+/**
+ * Choisit la ligne à rendre quand plusieurs sources portent le même slug : la GRATUITE d'abord
+ * (le livre de base est canonique), à défaut la première lisible. Pure, pour être testable.
+ */
+export function pickBlobRow(rows: BlobRow[]): Creature | null {
+  const row = rows.find((r) => r.sources?.is_paid === false) ?? rows[0];
+  return (row?.data as Creature | undefined) ?? null;
 }
 
 /**

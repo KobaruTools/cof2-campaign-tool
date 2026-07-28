@@ -184,6 +184,32 @@ async function ingestSource(
     `Source « ${def.slug} »${def.is_paid ? ' [payante]' : ''} → content_version ${source.content_version} (id ${source.id}).`,
   );
 
+  // 2 bis. GARDE-FOU d'unicité des slugs ENTRE SOURCES. Toute l'app indexe une créature par son
+  // seul slug (blobs en mémoire, cache IndexedDB, instances du tracker de combat) : deux sources
+  // qui portent le même slug se marchent dessus (symptôme observé : « Impossible de charger le
+  // détail de cette créature », le blob remontant deux lignes). Un supplément qui RÉIMPRIME une
+  // créature du livre de base ne doit donc pas la ré-ingérer.
+  const slugs = list.map((c) => c.id);
+  const { data: foreign, error: dupErr } = await supabase
+    .from('creatures')
+    .select('slug, source_id')
+    .in('slug', slugs)
+    .neq('source_id', source.id);
+  if (dupErr) throw dupErr;
+  // On AVERTIT sans bloquer : l'ingestion du livre de base ne doit pas être prise en otage par une
+  // ligne périmée d'un supplément (elle disparaîtra à la prochaine ingestion de ce supplément), et
+  // le rendu retombe de son côté sur la source gratuite (cf. `fetchCreatureBlob`).
+  if ((foreign ?? []).length > 0) {
+    const dups = [...new Set((foreign ?? []).map((r) => r.slug))].sort();
+    console.warn(
+      `⚠ Source « ${def.slug} » : ${dups.length} slug(s) déjà porté(s) par une AUTRE source — ` +
+        `${dups.join(', ')}.\n` +
+        `  Une créature réimprimée par un supplément ne doit être ingérée QUE par la source du ` +
+        `livre de base (ou recevoir un slug propre) : sinon les deux lignes se disputent le même ` +
+        `blob (« Impossible de charger le détail de cette créature »).`,
+    );
+  }
+
   // 3. Upsert des créatures (sur (source_id, slug)) : blob + colonnes projetées.
   // Les VARIANTES héritent au passage des traits défensifs de leur base (PER-260) : le blob
   // stocké porte donc déjà les badges du cadre Défense, quelle que soit la source.
