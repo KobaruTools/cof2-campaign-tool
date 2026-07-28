@@ -98,6 +98,10 @@ export const testDomains: TestDomain[] = [
 
   // --- PER — exemples p. 202 + survie (humain-r1) ----------------------------
   { id: 'senses', label: 'Sens', abilities: ['PER'], sourcePage: 202 },
+  // perception auditive (Secrets d'alcôves, espion prestige-espion-r4, p. 138) : entendre /
+  // écouter aux portes → sous-domaine de l'ouïe, PER (carac explicitée par le livre). Distinct
+  // du domaine générique `senses` (tous les sens) : le +5 de l'espion ne vise QUE l'ouïe.
+  { id: 'hearing', label: 'Perception auditive', abilities: ['PER'], sourcePage: 138 },
   { id: 'intuition', label: 'Intuition', abilities: ['PER'], sourcePage: 202 },
   { id: 'empathy', label: 'Empathie', abilities: ['PER'], sourcePage: 202 },
   { id: 'tracking', label: 'Pister', abilities: ['PER'], sourcePage: 202 },

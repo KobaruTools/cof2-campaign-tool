@@ -1278,6 +1278,12 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage obtient un bonus de +5 pour tous les tests visant à trouver ou obtenir des informations secrètes ou sensibles, et +5 à tous les tests de perception auditive (PER). De plus, il est capable de suivre une conversation en lisant sur les lèvres en réussissant un test de PER dont la difficulté est égale à la distance entre sa cible et lui en mètres. Il obtient un bonus égal à son rang pour ce test.",
+    // Le +5 à la « perception auditive » est MÉCANISÉ (domaine `hearing`, PER). Le +5 aux
+    // « informations secrètes ou sensibles » reste VERBATIM (situationnel, sans carac ni
+    // domaine propre) ; le bonus égal au rang au test de lecture labiale reste descriptif.
+    richText:
+      "Le personnage obtient un bonus de +5 pour tous les tests visant à trouver ou obtenir des informations secrètes ou sensibles, et +5 à tous les tests de perception auditive (PER). De plus, il est capable de suivre une conversation en lisant sur les lèvres en réussissant un test de PER dont la difficulté est égale à la distance entre sa cible et lui en mètres. Il obtient un bonus égal à son [#rang] pour ce test.",
+    effects: [{ kind: 'test-bonus', domains: ['hearing'], value: 5 }],
     sourcePage: 138,
   },
   {
@@ -1289,6 +1295,8 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage développe un sixième sens qui lui assure un coup d'avance sur les gardes et autres forces adverses. Le MJ doit prévenir le joueur 1d4 rounds complets avant que des PNJ n'interviennent sur le lieu où il opère. Il doit aussi indiquer la direction d'où provient la menace. Cette capacité n'est d'aucune utilité contre une embuscade (des adversaire cachés et préparés à l'arrivée des PJ).",
+    richText:
+      "Le personnage développe un sixième sens qui lui assure un coup d'avance sur les gardes et autres forces adverses. Le MJ doit prévenir le joueur {1d4} rounds complets avant que des PNJ n'interviennent sur le lieu où il opère. Il doit aussi indiquer la direction d'où provient la menace. Cette capacité n'est d'aucune utilité contre une embuscade (des adversaire cachés et préparés à l'arrivée des PJ).",
     sourcePage: 138,
   },
   {
@@ -1300,6 +1308,10 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage a une parfaite mémoire de tout ce qu'il a vu et entendu. Si le joueur le demande, le MJ doit lui rappeler tous les détails relatifs à un lieu qu'il a visité ou à une conversation qu'il a entendue. De plus, le personnage gagne un bonus de +5 à tous ses tests de connaissance (INT) et de recherche d'indice basé sur l'INT.",
+    // Le +5 aux tests de « connaissance (INT) » est MÉCANISÉ (domaine `knowledge`). Le +5 à la
+    // « recherche d'indice basé sur l'INT » reste VERBATIM : le domaine `clue-finding` est gouverné
+    // par la PER dans le catalogue ; l'espion le rebase sur l'INT (variante situationnelle) → non câblé.
+    effects: [{ kind: 'test-bonus', domains: ['knowledge'], value: 5 }],
     sourcePage: 138,
   },
   {
