@@ -1,9 +1,9 @@
 {
-  "schemaVersion": 20,
+  "schemaVersion": 21,
   "id": "recette-per74-lycanthrope",
   "name": "Recette PER-74 — Lycanthrope (voie de prestige, rangs 4-8)",
   "identity": {
-    "description": "ATTENDU (PER-74, voie du lycanthrope p. 130-131) : vérifier le RENDU richText de chaque rang. R4 Forme hybride → morsure [1d4° + FOR] (dé évolutif + FOR, encadré de formule) + COMPTEUR 1 usage rechargé à la RÉCUPÉRATION RAPIDE. R5 Transformation en loup → STAT-BLOCK du loup rendu INLINE (type compagnon mais PAS dans la section Compagnons) : FOR +3 / AGI +1, autres caracs héritées du perso, Défense [12 + rang], Initiative 15, DM [1d4 + 3]. Le tableau verbatim a été RETIRÉ du texte (doublon avec la mini-fiche). CARACS DYNAMIQUES : activer l'interrupteur « Sous forme de loup » IMPOSE FOR→+3 (la base est +4 → tu DOIS voir la FOR passer de +4 à +3, en orange italique) et AGI→+1, répercuté sur TOUTE la fiche (attaque, DM, DEF, tests). RD 5 contre armes non argentées, CONDITIONNELLE à cette forme. EXCLUSIF : activer « Sous forme de loup » éteint « Sous forme hybride » (R7) et inversement → la RD ne cumule jamais à 10. R6 Éventration → ajoute {1d4°} sur 15-20 (plage verbatim). R7 Résistance surnaturelle → RD 5 armes non argentées, interrupteur « Sous forme hybride ». R8 Forme puissante → +2 FOR sous forme (verbatim, bonus temporaire). À VÉRIFIER : basculer les interrupteurs de forme fait apparaître/disparaître les puces de RD."
+    "description": "ATTENDU (PER-74, voie du lycanthrope p. 130-131) : vérifier le RENDU richText de chaque rang. R4 Forme hybride → morsure [1d4° + FOR] (dé évolutif + FOR, encadré de formule). MORSURE SUR LA FICHE : hors forme, la carte « Attaque à distance » montre l'ARC LONG équipé ; activer l'interrupteur « Sous forme hybride » REMPLACE cette carte par la carte « Morsure (Forme hybride) » — touche = attaque au CONTACT (donc +2 de FOR de R8 inclus), DM 1d4° + FOR, puce « (G) une fois par round ». Le verbatim interdit d'attaquer à distance sous cette forme : c'est pour cela que la carte de tir cède la place (aucune bascule). R5 Transformation en loup → STAT-BLOCK du loup rendu INLINE (type compagnon mais PAS dans la section Compagnons) : FOR +3 / AGI +1, autres caracs héritées du perso, Défense [12 + rang], Initiative 15, DM [1d4 + 3]. Le tableau verbatim a été RETIRÉ du texte (doublon avec la mini-fiche). CARACS DYNAMIQUES : activer l'interrupteur « Sous forme de loup » IMPOSE FOR→+3 (la base est +4 → tu DOIS voir la FOR passer de +4 à +3, en orange italique) et AGI→+1, répercuté sur TOUTE la fiche (attaque, DM, DEF, tests). RD 5 contre armes non argentées, CONDITIONNELLE à cette forme. EXCLUSIF : activer « Sous forme de loup » éteint « Sous forme hybride » (R7) et inversement → la RD ne cumule jamais à 10. R6 Éventration → ajoute {1d4°} sur 15-20 (plage verbatim). R7 Résistance surnaturelle → RD 5 armes non argentées, interrupteur « Sous forme hybride ». R8 Forme puissante → +2 FOR sous forme (verbatim, bonus temporaire). À VÉRIFIER : basculer les interrupteurs de forme fait apparaître/disparaître les puces de RD."
   },
   "campaignId": null,
   "playerId": null,
@@ -59,16 +59,23 @@
   "levelUpHistory": [],
   "equipment": [
     {
-      "itemId": "epee-longue",
+      "itemId": "arc-long",
       "quantity": 1,
       "worn": {
-        "slot": "mainHand",
-        "grip": "oneHand"
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "epee-courte",
+      "quantity": 1,
+      "worn": {
+        "slot": "offHand"
       }
     }
   ],
+  "mounts": [],
   "overrides": {},
-  "notes": "PER-74 — recette lycanthrope : rendu richText rangs 4-8 + RD conditionnelles par forme + FOR conditionnelle (Forme puissante r8). Épée longue équipée pour VOIR le +2 de r8 sur la touche ET le DM d'arme (contact) selon la forme active.",
+  "notes": "PER-74 — recette lycanthrope : rendu richText rangs 4-8 + RD conditionnelles par forme + morsure de la forme hybride (remplace la carte de tir).",
   "createdAt": "2026-01-01T00:00:00.000Z",
   "updatedAt": "2026-01-01T00:00:00.000Z"
 }

@@ -40,6 +40,7 @@ import {
 import { weaponAttackBonuses } from '@/lib/character/attackBonus';
 import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { unarmedStrike, type UnarmedStrikeView } from '@/lib/character/unarmedStrike';
+import { rangedReplacingFormAttack, type FormAttackView } from '@/lib/character/formAttack';
 import type { AbilityId, Weapon } from '@/data/schema';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
@@ -149,6 +150,12 @@ export interface CharacterDerivedView {
   /** PER-115 — bonus de DM SITUATIONNELS à distance (Chasseur émérite…), en badges. */
   rangedSituationalDamage: SituationalDamageBonus[];
   /**
+   * PER-74 — attaque conférée par une FORME active qui CONFISQUE l'attaque à distance (morsure de la
+   * forme hybride du lycanthrope, p. 130 : sous cette forme, aucune arme à distance n'est utilisable).
+   * `null` = aucune forme de ce genre active → la carte « Attaque à distance » reste affichée.
+   */
+  rangedReplacingFormAttack: FormAttackView | null;
+  /**
    * PER-226 — sous-termes de breakdown des bonus à la touche conditionnés à l'arme portée (maître
    * d'armes : +1 au contact / à distance avec une arme de prédilection). Le TOTAL est déjà FONDU dans
    * `derivedInput.mods` (donc dans le score affiché) — ceci ne sert qu'à l'attribution dans l'infobulle
@@ -254,6 +261,10 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const rangedWorn = wornWeaponForMode(character, 'ranged')?.item ?? null;
   const meleeSituationalDamage = weaponDamageBonuses(character, 'melee', meleeWorn).situational;
   const rangedSituationalDamage = weaponDamageBonuses(character, 'ranged', rangedWorn).situational;
+  // Attaque conférée par une FORME active qui interdit le tir (PER-74) : sous forme hybride, le
+  // lycanthrope perd l'usage des armes à distance mais gagne une morsure au contact → la carte
+  // « Attaque à distance » de la fiche est remplacée par celle de la morsure tant que la forme est ON.
+  const formAttackReplacingRanged = rangedReplacingFormAttack(character);
   // Bonus à la touche conditionnés à l'arme portée (PER-226) : maître d'armes +1 au contact avec une
   // arme de prédilection, +1 à distance avec une arme de jet de prédilection. Le total est FONDU dans
   // les mods (score) plus bas ; on garde le détail des sources pour l'infobulle de la touche.
@@ -345,6 +356,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     rangedWeaponDamage,
     meleeSituationalDamage,
     rangedSituationalDamage,
+    rangedReplacingFormAttack: formAttackReplacingRanged,
     attackBonusModSources,
   };
 }

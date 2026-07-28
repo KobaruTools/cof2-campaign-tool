@@ -791,6 +791,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     rangedWeaponDamage,
     meleeSituationalDamage,
     rangedSituationalDamage,
+    rangedReplacingFormAttack: formAttackReplacingRanged,
     attackBonusModSources,
   } = buildCharacterDerivedView(character);
   // Détail « i » des stats dérivées : points de capacité orphelins convertis (p. 40) + bonus à la
@@ -1290,6 +1291,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 rangedWeaponDamage={rangedWeaponDamage}
                 meleeSituationalDamage={meleeSituationalDamage}
                 rangedSituationalDamage={rangedSituationalDamage}
+                rangedReplacingFormAttack={formAttackReplacingRanged}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">

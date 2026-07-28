@@ -714,6 +714,38 @@ for (const c of features) {
   }
 }
 
+// --- Attaque conférée par une forme (PER-74) ---------------------------------
+// `formAttack` (morsure de la forme hybride du lycanthrope) : donnée d'affichage gatée par un
+// interrupteur de forme. On vérifie le dé, les caracs de DM, la portée, les types d'action et que
+// le gating pointe un `conditional-stat-bonus` EXISTANT (même contrat que `requiresActiveEffect`
+// de la RD — le marqueur de forme peut vivre sur une autre capacité).
+let featuresWithFormAttack = 0;
+for (const c of features) {
+  const fa = c.formAttack;
+  if (!fa) continue;
+  featuresWithFormAttack++;
+  if (!fa.name) err(`[capacite ${c.id}] formAttack: name vide`);
+  if (typeof fa.damage?.count !== 'number' || fa.damage.count < 1)
+    err(`[capacite ${c.id}] formAttack: damage.count invalide : ${fa.damage?.count}`);
+  if (!validDamageDies.has(fa.damage?.die))
+    err(`[capacite ${c.id}] formAttack: dé inconnu : ${fa.damage?.die}`);
+  for (const a of fa.damageAbilities ?? [])
+    if (!validAbilities.has(a)) err(`[capacite ${c.id}] formAttack: caractéristique inconnue : ${a}`);
+  if (fa.scope !== 'melee' && fa.scope !== 'ranged')
+    err(`[capacite ${c.id}] formAttack: scope inconnu : ${fa.scope}`);
+  for (const a of fa.actionTypes ?? [])
+    if (!ACTION_TYPES.includes(a)) err(`[capacite ${c.id}] formAttack: type d'action invalide : ${a}`);
+  const gate = fa.requiresActiveEffect;
+  const target = gate ? featureById.get(gate.featureId) : undefined;
+  if (!gate) err(`[capacite ${c.id}] formAttack: requiresActiveEffect manquant (attaque non gatée par une forme)`);
+  else if (!target)
+    err(`[capacite ${c.id}] formAttack requiresActiveEffect : capacité inexistante ${gate.featureId}`);
+  else if (target.effects?.[gate.index]?.kind !== 'conditional-stat-bonus')
+    err(
+      `[capacite ${c.id}] formAttack requiresActiveEffect ${gate.featureId}:${gate.index} n'est pas un marqueur d'état (conditional-stat-bonus)`,
+    );
+}
+
 // --- Familles d'armes de prédilection (PER-136) ------------------------------
 // Chaque famille déclarée sur une arme doit être une catégorie de prédilection reconnue.
 for (const item of equipment) {
@@ -925,6 +957,7 @@ console.log(`  · classées       : ${FEATURE_CLASSIFICATIONS.length}  (dont TOD
 console.log(`  · avec effects   : ${featuresWithEffects}`);
 console.log(`  · avec RD        : ${featuresWithDamageReduction} (réduction de dégâts, non lue par le moteur)`);
 console.log(`  · avec plage crit. : ${featuresWithCriticalRange} (plage de critique élargie, non lue par le moteur)`);
+console.log(`  · attaque de forme : ${featuresWithFormAttack} (morsure/griffes conférées par une forme active)`);
 console.log(`  · coût mana dérogé : ${spellsWithManaCost} (sinon = rang, p. 228)`);
 console.log(`équipement (total) : ${equipment.length}`);
 console.log(`dieux du prêtre    : ${priestGods.length}`);

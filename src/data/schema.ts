@@ -1496,6 +1496,52 @@ export type WeaponCriticalCondition =
   | { kind: 'rangedKinds'; rangedKinds: RangedWeaponKind[] }
   | { kind: 'weaponFamiliesFromChoice'; choiceFeatureId: string };
 
+/**
+ * ATTAQUE NATURELLE CONFÉRÉE PAR UNE FORME (PER-74) — une capacité de transformation octroie une
+ * attaque propre à la forme prise, active seulement tant que la forme est active. Ex. lycanthrope
+ * « Forme hybride » (r4, p. 130) : « sous cette forme, il ne peut pas lancer de sort ou utiliser
+ * d'arme pour attaquer à distance, en revanche il obtient une attaque de morsure (Attaque au
+ * contact) qui inflige 1d4°+FOR DM en action gratuite une fois par round ».
+ *
+ * Comme la RD (`DamageReduction`) et la plage de critique (`CriticalRange`), c'est une donnée
+ * d'AFFICHAGE : aucun jet n'est résolu. La TOUCHE n'est pas redéfinie ici — l'attaque suit la
+ * valeur d'attaque du `scope` (au contact = « son attaque au contact habituelle »).
+ *
+ * `replacesRangedAttack` matérialise l'interdiction du tir sous la forme : la carte « Attaque à
+ * distance » de la fiche est REMPLACÉE par celle de l'attaque conférée (aucune bascule — ce n'est
+ * pas un choix du joueur, contrairement à l'arme ⇄ mains nues de PER-141).
+ */
+export interface FormAttack {
+  /** Nom de l'attaque conférée, verbatim (« Morsure »). */
+  name: string;
+  /** Dés de DM structurés (`{ count: 1, die: 'd4' }`). */
+  damage: WeaponDamage;
+  /** Dé ÉVOLUTIF « ° » (p. 43), rendu « 1d4° ». Absent = dé fixe. */
+  evolving?: boolean;
+  /**
+   * Caractéristique(s) ajoutée(s) aux DM (best-of si plusieurs, comme la notation `FOR/AGI` du
+   * livre). Vide = dé seul.
+   */
+  damageAbilities: AbilityId[];
+  /** Portée de l'attaque → valeur de touche employée (contact ou distance). */
+  scope: 'melee' | 'ranged';
+  /** Types d'action de l'attaque elle-même (`['G']` = action gratuite). Vide = non précisé. */
+  actionTypes: ActionType[];
+  /** Cadence VERBATIM de l'attaque (« une fois par round »). Absent = aucune limite énoncée. */
+  frequency?: string;
+  /**
+   * L'attaque REMPLACE la carte « Attaque à distance » de la fiche : la forme interdit d'utiliser
+   * une arme à distance (verbatim). Absent = l'attaque s'ajoute sans rien remplacer (non rendu
+   * à ce jour — aucune donnée du livre n'en a besoin).
+   */
+  replacesRangedAttack?: boolean;
+  /**
+   * Interrupteur (`conditional-stat-bonus`) qui doit être ACTIF pour que l'attaque existe — même
+   * patron que `DamageReduction.requiresActiveEffect`. Pointe normalement l'interrupteur de forme
+   * de la capacité elle-même (Forme hybride r4, effet 0), mais reste cross-capacité.
+   */
+  requiresActiveEffect: { featureId: string; index: number };
+}
 export interface CriticalRange {
   /** Portée concernée : attaques au contact (`melee`) ou à distance (`ranged`). */
   scope: 'melee' | 'ranged';
@@ -2568,6 +2614,13 @@ export interface Feature {
    * (cf. `CriticalRange`). Absent = la capacité n'élargit pas la plage de critique.
    */
   criticalRange?: CriticalRange;
+  /**
+   * Attaque naturelle conférée par une FORME prise via cette capacité (PER-74) — morsure de la
+   * forme hybride du lycanthrope. Donnée d'affichage, gatée par l'interrupteur de forme (cf.
+   * `FormAttack`) : la carte d'attaque n'apparaît que forme active, et peut REMPLACER la carte
+   * « Attaque à distance » quand la forme interdit le tir. Absent = aucune attaque de forme.
+   */
+  formAttack?: FormAttack;
   /**
    * Compteur d'usages limités (« utilisable N fois ») — déclare le maximum ; le
    * décompte courant est un état de jeu du personnage (`Character.usageCounters`).

@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import { deriveStats, type DerivedInput } from '@/lib/engine';
 import type { EffectContext } from '@/lib/character/effects';
 import type { DerivedStatId as OverrideKey } from '@/lib/character/types';
+import type { FormAttackView } from '@/lib/character/formAttack';
 import type { UnarmedStrikeView } from '@/lib/character/unarmedStrike';
 import { DERIVED_STAT_NAMES, type DerivedStatId } from '@/lib/ui/derivedStats';
 import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
@@ -22,6 +23,7 @@ import { DerivedStatBreakdownTooltip } from '@/components/DerivedStatBreakdownTo
 import { DieIcon } from '@/components/DieIcon';
 import { SignedNumberField } from '@/components/SignedNumberField';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
+import { FormAttackCard } from '@/components/sheet/FormAttackCard';
 import { MeleeAttackCard } from '@/components/sheet/MeleeAttackCard';
 import { RangedAttackCard } from '@/components/sheet/RangedAttackCard';
 import type { MeleeWeaponDamageView, WeaponDamageView } from '@/components/sheet/characterDerivedView';
@@ -116,6 +118,13 @@ export interface DerivedStatsGridProps {
   meleeSituationalDamage?: SituationalDamageBonus[];
   /** PER-115 — bonus de DM situationnels à distance, en badges sous la carte « Attaque à distance ». */
   rangedSituationalDamage?: SituationalDamageBonus[];
+  /**
+   * PER-74 — attaque conférée par une FORME active qui REMPLACE l'attaque à distance (morsure de la
+   * forme hybride du lycanthrope : sous cette forme, aucune arme à distance ne peut être utilisée).
+   * Présent → la carte « Attaque à distance » cède la place à la carte de cette attaque. Absent /
+   * `null` (forme inactive, récap du wizard, écran de MJ) → carte à distance inchangée.
+   */
+  rangedReplacingFormAttack?: FormAttackView | null;
 }
 
 interface StatLine {
@@ -151,6 +160,7 @@ export function DerivedStatsGrid({
   rangedWeaponDamage,
   meleeSituationalDamage,
   rangedSituationalDamage,
+  rangedReplacingFormAttack,
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
 
@@ -232,6 +242,32 @@ export function DerivedStatsGrid({
                 weaponCriticalRanges={meleeCriticalRanges ?? []}
                 unarmedCriticalRanges={unarmedCriticalRanges ?? []}
                 situationalBonuses={meleeSituationalDamage ?? []}
+              />
+            </Grid>
+          );
+        }
+
+        // PER-74 — une FORME active peut CONFISQUER l'attaque à distance et la remplacer par une
+        // attaque naturelle (morsure de la forme hybride du lycanthrope). La touche affichée est celle
+        // du `scope` de l'attaque (au contact pour une morsure), donc PAS la valeur de cette carte :
+        // on relit la stat correspondante (et sa surcharge éventuelle) et son détail de calcul.
+        if (id === 'rangedAttack' && rangedReplacingFormAttack && !onOverride) {
+          const attackStatId = rangedReplacingFormAttack.scope === 'melee' ? 'meleeAttack' : 'rangedAttack';
+          const attackKey = OVERRIDE_KEY[attackStatId];
+          const attackForced = overrides ? attackKey in overrides : false;
+          const attackTouch = attackForced ? (overrides![attackKey] ?? 0) : stats[attackStatId];
+          return (
+            <Grid key={id} size={cardSize}>
+              <FormAttackCard
+                attack={rangedReplacingFormAttack}
+                touch={attackTouch}
+                forced={attackForced}
+                wrapTouch={(child) => (
+                  <DerivedStatBreakdownTooltip {...breakdownProps} statId={attackStatId}>
+                    {child}
+                  </DerivedStatBreakdownTooltip>
+                )}
+                abilities={input.abilities}
               />
             </Grid>
           );

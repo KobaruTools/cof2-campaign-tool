@@ -849,6 +849,23 @@ export const prestigeFeatures1: Feature[] = [
       replacesRangedAttack: true,
       requiresActiveEffect: { featureId: 'prestige-lycanthrope-r4', index: 0 },
     },
+    // PER-74 : MORSURE conférée par la forme hybride. Le verbatim interdit d'« utiliser d'arme pour
+    // attaquer à distance » sous cette forme ET donne en échange une attaque de morsure AU CONTACT →
+    // `replacesRangedAttack` : forme active, la carte « Attaque à distance » de la fiche est remplacée
+    // par la morsure (touche = attaque au contact habituelle, DM `1d4° + FOR`, action gratuite 1×/round).
+    // Gatée STRICTEMENT sur l'interrupteur de forme hybride (effet 0 de cette capacité) : sous forme de
+    // LOUP (r5), la morsure est déjà décrite par la mini-fiche du loup (`creatureProfile`), pas ici.
+    formAttack: {
+      name: 'Morsure',
+      damage: { count: 1, die: 'd4' },
+      evolving: true,
+      damageAbilities: ['FOR'],
+      scope: 'melee',
+      actionTypes: ['G'],
+      frequency: 'une fois par round',
+      replacesRangedAttack: true,
+      requiresActiveEffect: { featureId: 'prestige-lycanthrope-r4', index: 0 },
+    },
     sourcePage: 130,
   },
   {
