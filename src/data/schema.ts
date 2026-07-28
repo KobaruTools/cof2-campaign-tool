@@ -981,7 +981,19 @@ export interface UniversalTestBonusEffect {
 }
 
 /** États/effets auxquels une capacité peut rendre IMMUNISÉ (liste fermée, extensible). PER-103. */
-export const IMMUNITY_IDS = ['fear', 'mind-control', 'slowed', 'immobilized', 'magic-sleep'] as const;
+export const IMMUNITY_IDS = [
+  'fear',
+  'mind-control',
+  'slowed',
+  'immobilized',
+  'magic-sleep',
+  // PER-260 : états ajoutés au fil de la passe défensive du BESTIAIRE (`Creature.statusImmunities`).
+  // Dragon des forêts (p. 274) : « immunisé au sommeil et à la paralysie » ; garde du corps
+  // (p. 265) / garde animé : « immunisée aux états préjudiciables Surpris, Immobilisé, Renversé ».
+  'paralyzed',
+  'prone',
+  'surprised',
+] as const;
 export type ImmunityId = (typeof IMMUNITY_IDS)[number];
 
 /** Libellés français des immunités (affichés au joueur). */
@@ -992,6 +1004,10 @@ export const IMMUNITY_LABELS: Record<ImmunityId, string> = {
   immobilized: 'Immobilisé',
   // Force d'âme (elfe haut, elfe-haut-r2, p. 50) : « immunisé à la peur et au sommeil magique ».
   'magic-sleep': 'Sommeil magique',
+  // PER-260 — libellés des états préjudiciables du glossaire (p. 214-215), cf. `STATUS_EFFECT_IDS`.
+  paralyzed: 'Paralysé',
+  prone: 'Renversé',
+  surprised: 'Surpris',
 };
 
 /**
@@ -1370,6 +1386,18 @@ export const RESISTIBLE_DAMAGE_TYPES = [
   // (Explosion de feu, mains brûlantes, foudre…) et souffles. Mode de DÉLIVRANCE plutôt que type
   // élémentaire — une boule de feu est à la fois `fire` ET `area` ; les RD se cumulent par source.
   'area',
+  // PER-260 : types ajoutés au fil de la passe défensive du BESTIAIRE. Les trois catégories
+  // PHYSIQUES du livre (`DAMAGE_TYPES`, qui décrit l'arme) deviennent aussi des portées de RD —
+  // le bestiaire les nomme explicitement (squelette « sauf arme contondante » = tranchant +
+  // perforant, golem de chair « ainsi que les DM contondants », limace « DM tranchant ou de feu »).
+  'bludgeoning',
+  'piercing',
+  'slashing',
+  // Matières/qualités d'arme dont l'ABSENCE laisse la RD s'appliquer, sur le patron de
+  // `non-silver-weapon` : fer froid (licorne p. 285, créatures féeriques) et armes bénies/sacrées
+  // (morts-vivants). La RD ne joue PAS contre l'arme nommée.
+  'non-cold-iron-weapon',
+  'non-blessed-weapon',
 ] as const;
 export type ResistibleDamageType = (typeof RESISTIBLE_DAMAGE_TYPES)[number];
 
@@ -1452,6 +1480,15 @@ export interface DamageReduction {
    * explicitement l'interrupteur porteur. Absent = gating par interrupteur(s) propre(s) (défaut).
    */
   requiresActiveEffect?: { featureId: string; index: number };
+  /**
+   * PRÉCISION courte affichée en SOURCE du badge (PER-260) : exception ou condition que la portée
+   * typée ne sait pas exprimer — « Sauf les armes en argent et le feu. », « Les armes contondantes
+   * infligent des DM pleins. », « Seulement tant qu'au moins 4 créatures sous ses ordres sont à
+   * moins de 20 m. ». Reformulation COURTE du verbatim (qui reste affiché en entier à côté), pour
+   * qu'un badge ne laisse jamais croire à une protection plus large qu'elle ne l'est. Purement
+   * informatif (comme le reste de la RD, non lu par le moteur).
+   */
+  note?: string;
 }
 
 /**
@@ -3101,6 +3138,27 @@ export interface Creature {
   initiative?: number;
   /** Précision entre parenthèses sur l'Initiative, verbatim (ex. « 19 » pour « Initiative 14 (19) » du skrambler). */
   initiativeNote?: string;
+  /**
+   * TRAITS DÉFENSIFS de la créature remontés en BADGE dans la cellule DEF du bloc de stats
+   * (PER-260) : immunité à un type de dégâts (`kind: 'immunity'`), réduction plate ou typée
+   * (`'flat'`), division des dégâts (`'divide'`). MÊME type que sur `Feature` → même rendu
+   * (`DefenseBadge`) que la carte Défense d'une fiche de personnage.
+   *
+   * Le texte VERBATIM de la capacité qui décrit le trait reste affiché tel quel : ce champ ne
+   * fait que le REPRÉSENTER visuellement pour qu'il saute aux yeux du MJ. Une entrée n'existe
+   * donc que si le livre la décrit (aucune règle déduite) ; les champs de gating d'une capacité
+   * (`minPathRank`, `scopeChoice`, `requiresActiveEffect`…) sont inertes ici — une créature n'a
+   * ni rang de voie ni interrupteur. Absent → aucun badge de RD.
+   *
+   * Remplace l'ancien champ étroit `damageImmunities` (replié en `{ kind: 'immunity', scopes }`).
+   */
+  damageReduction?: DamageReduction | DamageReduction[];
+  /**
+   * Immunités aux ÉTATS préjudiciables (peur, sommeil magique, paralysie, renversé…) décrites
+   * par une capacité, remontées en badge vert (icône d'état dédiée) dans la cellule DEF —
+   * pendant des `immunities` d'une capacité de personnage (PER-260).
+   */
+  statusImmunities?: ImmunityId[];
   /** Attaques du bloc « gras » (les attaques de zone/souffle restent dans `specialAbilities`). */
   attacks?: CreatureAttack[];
   /** Capacités spéciales, verbatim. */

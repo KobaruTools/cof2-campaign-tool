@@ -240,3 +240,64 @@ L'affichage passe par le composant commun `src/components/SectionIcon.tsx`.
 | Identité | `delapouite/id-card.svg` | Delapouite |
 | Notes | `lorc/quill-ink.svg` | Lorc |
 | Historique des niveaux | `delapouite/upgrade.svg` | Delapouite |
+
+## Icônes des types de dégât
+
+Les icônes des types de dégât réductibles (feu, froid, foudre, acide, poison, DM
+physiques/contondants/perforants/tranchants…) proviennent également de
+[game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteurs : **Lorc**, **Delapouite** et **Carl Olsen** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/damageTypeIcons.ts`. La correspondance type → fichier source est conservée
+dans `DAMAGE_TYPE_ICON_SOURCES` (même fichier) et dans
+`scripts/game-icons/damage-types/map.tsv`. L'affichage passe par le composant commun
+`src/components/DamageTypeIcon.tsx` (puces de réduction de dégâts et d'immunité).
+
+| Type de dégât | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Physiques | `lorc/punch.svg` | Lorc |
+| Non magiques / armes non argentées | `lorc/crossed-swords.svg` | Lorc |
+| Magiques | `lorc/magic-swirl.svg` | Lorc |
+| Feu | `carl-olsen/flame.svg` | Carl Olsen |
+| Froid | `lorc/snowflake-1.svg` | Lorc |
+| Foudre | `lorc/lightning-trio.svg` | Lorc |
+| Acide | `lorc/chemical-drop.svg` | Lorc |
+| Poison | `lorc/poison-bottle.svg` | Lorc |
+| Maladie | `lorc/virus.svg` | Lorc |
+| Projectiles métalliques | `lorc/arrow-cluster.svg` | Lorc |
+| Naturels non magiques | `delapouite/forest.svg` | Delapouite |
+| Zone / souffles | `delapouite/expand.svg` | Delapouite |
+| Contondants | `lorc/mace-head.svg` | Lorc |
+| Perforants | `lorc/spear-hook.svg` | Lorc |
+| Tranchants | `lorc/sword-slice.svg` | Lorc |
+| Armes hors fer froid | `lorc/anvil.svg` | Lorc |
+| Armes non bénies | `lorc/holy-symbol.svg` | Lorc |
+
+## Icônes des immunités d'état
+
+Les icônes des immunités d'état (peur, charme/possession, ralenti, immobilisé, sommeil
+magique, paralysé, renversé, surpris) proviennent également de
+[game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteurs : **Lorc** et **Sbed** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/statusEffectIcons.ts`. La correspondance état → fichier source est conservée
+dans `STATUS_EFFECT_ICON_SOURCES` (même fichier) et dans
+`scripts/game-icons/status-effects/map.tsv`. L'affichage passe par le composant commun
+`src/components/StatusEffectIcon.tsx`.
+
+| Immunité | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Peur | `lorc/terror.svg` | Lorc |
+| Charme / possession | `lorc/psychic-waves.svg` | Lorc |
+| Ralenti | `lorc/snail.svg` | Lorc |
+| Immobilisé | `lorc/manacles.svg` | Lorc |
+| Sommeil magique | `lorc/sleepy.svg` | Lorc |
+| Paralysé | `lorc/nailed-foot.svg` | Lorc |
+| Renversé | `sbed/falling.svg` | Sbed |
+| Surpris | `lorc/surprised.svg` | Lorc |

@@ -11,3 +11,8 @@ metallic-projectile	lorc/arrow-cluster.svg
 non-silver-weapon	lorc/crossed-swords.svg
 natural-non-magical	delapouite/forest.svg
 area	delapouite/expand.svg
+bludgeoning	lorc/mace-head.svg
+piercing	lorc/spear-hook.svg
+slashing	lorc/sword-slice.svg
+non-cold-iron-weapon	lorc/anvil.svg
+non-blessed-weapon	lorc/holy-symbol.svg

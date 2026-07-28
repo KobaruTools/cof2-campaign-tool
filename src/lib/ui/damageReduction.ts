@@ -24,6 +24,11 @@ const SCOPE_SHORT: Record<ResistibleDamageType, string> = {
   'non-silver-weapon': 'Armes non argentées',
   'natural-non-magical': 'Naturels non magiques',
   area: 'Zone',
+  bludgeoning: 'Contondants',
+  piercing: 'Perforants',
+  slashing: 'Tranchants',
+  'non-cold-iron-weapon': 'Armes hors fer froid',
+  'non-blessed-weapon': 'Armes non bénies',
 };
 
 /** Libellé LONG (info-bulle), tournure prépositionnelle — « les DM de froid ». */
@@ -41,6 +46,11 @@ const SCOPE_LONG: Record<ResistibleDamageType, string> = {
   'non-silver-weapon': 'des armes non argentées',
   'natural-non-magical': 'naturels non magiques',
   area: 'des attaques de zone et des souffles',
+  bludgeoning: 'contondants',
+  piercing: 'perforants',
+  slashing: 'tranchants',
+  'non-cold-iron-weapon': "des armes qui ne sont pas en fer froid",
+  'non-blessed-weapon': 'des armes non bénies / non sacrées',
 };
 
 /** Portée(s) au format court, jointes — ou chaîne vide si la RD couvre tous les DM. */

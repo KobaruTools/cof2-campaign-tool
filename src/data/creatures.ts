@@ -23,6 +23,7 @@
  */
 
 import type { Creature } from './schema';
+import { withInheritedDefense } from '@/lib/bestiary/creatureDefense';
 
 // ===========================================================================
 // 1. HUMANOÏDES (p. 262-266)
@@ -256,6 +257,9 @@ const humanoids: Creature[] = [
     defense: 20,
     hitPoints: 45,
     initiative: 13,
+    // Inamovible (p. 265) : « immunisée aux états préjudiciables suivants : Surpris, Immobilisé,
+    // Renversé ». Le reste de la capacité (désarmement, attaque sournoise) reste verbatim.
+    statusImmunities: ['surprised', 'immobilized', 'prone'],
     attacks: [{ name: 'Épée longue', bonus: '+6', damage: '1d8+3' }],
     specialAbilities: [
       {
@@ -1079,6 +1083,13 @@ const fantasticCreatures: Creature[] = [
     hitPoints: 15,
     hitPointsNote: 'RD 5',
     initiative: 15,
+    // Démon (p. 278) : « immunisés au poison et aux maladies non magiques ». Résistance aux armes
+    // (p. 278) : « une RD 5 sur les armes non magiques » — c'est la portée PRÉCISE de la RD 5
+    // imprimée à côté des PV, donc le badge remonte dans le cadre Défense.
+    damageReduction: [
+      { kind: 'immunity', scopes: ['poison', 'disease'], note: 'Maladies non magiques seulement.' },
+      { kind: 'flat', value: 5, scopes: ['non-magical'] },
+    ],
     attacks: [
       { name: 'Griffes et morsure', bonus: '+4', damage: '1d4' },
       { name: 'Queue fourchue', bonus: '+4', damage: '1', rider: '+ venin' },
@@ -1137,6 +1148,9 @@ const fantasticCreatures: Creature[] = [
     defense: 24,
     hitPoints: 140,
     initiative: 16,
+    // Immunités (p. 279) : « immunisé au sommeil et à la paralysie et ne subit aucun DM de poison ».
+    statusImmunities: ['magic-sleep', 'paralyzed'],
+    damageReduction: { kind: 'immunity', scopes: ['poison'] },
     attacks: [
       { name: 'Morsure et griffes', attackCount: 2, bonus: '+14', damage: '1d12+8' },
       { name: 'Attaque magique', bonus: '+15' },
@@ -1188,6 +1202,13 @@ const fantasticCreatures: Creature[] = [
     hitPoints: 70,
     hitPointsNote: 'RD 3',
     initiative: 10,
+    // Résistance (p. 280) : « divisent par deux tous les DM des armes non magiques » + « les
+    // élémentaires d'eau sont immunisés aux DM d'acide ». La RD 3 imprimée avec les PV est une
+    // AUTRE protection (capacité « Grand ») : elle reste dans le badge des PV.
+    damageReduction: [
+      { kind: 'immunity', scopes: ['acid'] },
+      { kind: 'divide', value: 2, scopes: ['non-magical'] },
+    ],
     attacks: [{ name: 'Coups', attackCount: 2, bonus: '+10', damage: '1d8+6' }],
     specialAbilities: [
       { name: 'Eau de vie', text: "L'élémentaire d'eau régénère 5 PV par round (sauf DM de feu)." },
@@ -1226,6 +1247,8 @@ const fantasticCreatures: Creature[] = [
     hitPoints: 160,
     hitPointsNote: 'RD 6',
     initiative: 12,
+    // Immunisé au feu (p. 280) : « Le géant du feu est immunisé aux DM de feu. »
+    damageReduction: { kind: 'immunity', scopes: ['fire'] },
     attacks: [
       { name: 'Marteau de guerre', bonus: '+14', damage: '4d8+16' },
       { name: 'Lancer de rocher', range: '20 m', bonus: '+14', damage: '2d8+12' },
@@ -1353,6 +1376,13 @@ const fantasticCreatures: Creature[] = [
     defense: 17,
     hitPoints: 50,
     initiative: 10,
+    // Commandant (p. 283) : « il ne subit que la moitié des DM qui lui sont infligés » — protection
+    // CONDITIONNELLE (4 subordonnés à moins de 20 m), rappelée dans la précision du badge.
+    damageReduction: {
+      kind: 'divide',
+      value: 2,
+      note: "Seulement tant qu'au moins 4 créatures sous ses ordres sont à moins de 20 m (Commandant).",
+    },
     attacks: [{ name: 'Hache', attackCount: 2, bonus: '+8', damage: '1d8+4' }],
     specialAbilities: [
       {
@@ -1488,6 +1518,13 @@ const fantasticCreatures: Creature[] = [
     defense: 20,
     hitPoints: 90,
     initiative: 10,
+    // Résistance (p. 285) : « divise par 2 tous les DM élémentaires (feu, froid, acide) ainsi que
+    // les DM contondants. Il est immunisé au poison. » + Absorber l'électricité (p. 285) :
+    // « immunisé à l'électricité » (la régénération associée reste verbatim).
+    damageReduction: [
+      { kind: 'immunity', scopes: ['poison', 'lightning'] },
+      { kind: 'divide', value: 2, scopes: ['fire', 'cold', 'acid', 'bludgeoning'] },
+    ],
     attacks: [{ name: 'Poings', attackCount: 2, bonus: '+11', damage: '1d10+6' }],
     specialAbilities: [
       {
@@ -1648,6 +1685,8 @@ const fantasticCreatures: Creature[] = [
     defense: 23,
     hitPoints: 150,
     initiative: 10,
+    // Créature élémentaire (p. 288) : « elle est immunisée aux DM de froid ».
+    damageReduction: { kind: 'immunity', scopes: ['cold'] },
     attacks: [{ name: 'Morsure', attackCount: 10, bonus: '+13', damage: '1d8+4', rider: '+1d6 de froid' }],
     specialAbilities: [
       {
@@ -1752,6 +1791,14 @@ const fantasticCreatures: Creature[] = [
     defense: 18,
     hitPoints: 35,
     initiative: 17,
+    // Résistance aux DM (p. 289) : « réduit de 5 les DM de toutes les armes qui ne sont pas en fer
+    // froid » — et double les DM des armes en fer froid (vulnérabilité, rappelée en précision).
+    damageReduction: {
+      kind: 'flat',
+      value: 5,
+      scopes: ['non-cold-iron-weapon'],
+      note: 'En revanche, les armes en fer froid lui infligent le DOUBLE des DM.',
+    },
     attacks: [{ name: 'Corne et sabots', bonus: '+8', damage: '2d6+5' }],
     specialAbilities: [
       {
@@ -1789,6 +1836,8 @@ const fantasticCreatures: Creature[] = [
     defense: 20,
     hitPoints: 70,
     initiative: 11,
+    // Résistance aux DM (p. 290) : « réduit de 5 tous les DM subis, sauf par le feu ».
+    damageReduction: { kind: 'flat', value: 5, note: 'Sauf les DM de feu.' },
     attacks: [{ name: 'Coup', attackCount: 2, bonus: '+10', damage: '1d8+5', rider: '+ putréfaction' }],
     specialAbilities: [
       { name: 'Résistance aux DM', text: 'La momie réduit de 5 tous les DM subis, sauf par le feu.' },
@@ -2036,6 +2085,13 @@ const fantasticCreatures: Creature[] = [
     defense: 20,
     hitPoints: 60,
     initiative: 10,
+    // Commandant (p. 294) : « il ne subit que la moitié des DM qui lui sont infligés » — protection
+    // CONDITIONNELLE (4 subordonnés à moins de 20 m), rappelée dans la précision du badge.
+    damageReduction: {
+      kind: 'divide',
+      value: 2,
+      note: "Seulement tant qu'au moins 4 créatures sous ses ordres sont à moins de 20 m (Commandant).",
+    },
     attacks: [{ name: 'Épée deux mains', attackCount: 2, bonus: '+10', damage: '2d6+5' }],
     specialAbilities: [
       {
@@ -2157,6 +2213,19 @@ const fantasticCreatures: Creature[] = [
     defense: 13,
     hitPoints: 9,
     initiative: 9,
+    // Sans esprit + Résistance aux DM + Réduction des DM de froid (p. 297) : « divisés par deux,
+    // sauf si l'attaquant utilise une arme contondante » (= tranchantes et perforantes) et
+    // « Réduit de 5 tous les DM de froid reçus ».
+    damageReduction: [
+      {
+        kind: 'divide',
+        value: 2,
+        scopes: ['slashing', 'piercing'],
+        note: 'Les armes CONTONDANTES infligent des DM pleins.',
+      },
+      { kind: 'flat', value: 5, scopes: ['cold'] },
+    ],
+    statusImmunities: ['mind-control'],
     attacks: [{ name: 'Épée (ou autre)', bonus: '+4', damage: '1d6+1' }],
     specialAbilities: [
       {
@@ -2245,6 +2314,14 @@ const fantasticCreatures: Creature[] = [
     defense: 20,
     hitPoints: 70,
     initiative: 17,
+    // Résistance impie (p. 299) : « retranche 10 à tous les DM qu'il subit (magie incluse) à
+    // l'exception des blessures des armes en argent et du feu ». Rien n'est imprimé à côté des PV :
+    // cette RD n'existait donc nulle part en badge avant PER-260.
+    damageReduction: {
+      kind: 'flat',
+      value: 10,
+      note: "Sauf les armes en argent et le feu. Ne s'ajoute pas à la RD des morts-vivants contre le froid.",
+    },
     attacks: [
       { name: 'Griffes et morsure', attackCount: 2, bonus: '+11', damage: '1d8+5', rider: "+ absorption d'énergie" },
       { name: 'Épée longue', attackCount: 2, bonus: '+11', damage: '1d8+7' },
@@ -2352,6 +2429,10 @@ const fantasticCreatures: Creature[] = [
     hitPoints: 35,
     hitPointsNote: 'RD 5',
     initiative: 10,
+    // Résistances (p. 300) : « retranche 5 à tous les DM, sauf s'ils sont infligés par des armes en
+    // argent ou par le feu » — portée PRÉCISE de la RD 5 imprimée à côté des PV : le badge remonte
+    // donc dans le cadre Défense (avec son exception).
+    damageReduction: { kind: 'flat', value: 5, note: 'Sauf les armes en argent et le feu.' },
     attacks: [{ name: 'Morsure et griffes', attackCount: 2, bonus: '+6', damage: '1d6+3' }],
     specialAbilities: [
       {
@@ -2448,6 +2529,17 @@ const fantasticCreatures: Creature[] = [
     nature: ['non-vivant'],
     description:
       "Un zombie est un mort-vivant animé à partir d'un cadavre récent. Les chairs peuvent être à un stade plus ou moins avancé de putréfaction, mais le corps doit être globalement complet. Le zombie est une créature stupide qui suit les ordres de son créateur ou erre sans but et attaque toute créature vivante à portée.\nPour obtenir un zombie, vous pouvez partir de n'importe quelle créature, qui acquiert le type non-vivante. Ajoutez les capacités suivantes.",
+    // Recette du zombie (p. 301) : « Divisez par deux tous les DM infligés au zombie par des armes,
+    // sauf s'il s'agit d'armes tranchantes » (= armes contondantes et perforantes) + Sans esprit
+    // (« immunisé à tous les sorts qui affectent l'esprit »). Les zombies chiffrés héritent de ces
+    // traits via `withInheritedDefense` (comme de la recette elle-même).
+    damageReduction: {
+      kind: 'divide',
+      value: 2,
+      scopes: ['bludgeoning', 'piercing'],
+      note: 'Les armes TRANCHANTES infligent des DM pleins.',
+    },
+    statusImmunities: ['mind-control'],
     specialAbilities: [
       {
         name: 'Résistance aux DM',
@@ -2549,10 +2641,8 @@ const withIllustrations = (list: Creature[]): Creature[] =>
     return illustration ? { ...c, illustration } : c;
   });
 
-export const creatures: Creature[] = withIllustrations([
-  ...humanoids,
-  ...animals,
-  ...fantasticCreatures,
-]);
+export const creatures: Creature[] = withInheritedDefense(
+  withIllustrations([...humanoids, ...animals, ...fantasticCreatures]),
+);
 
 export const creatureById = new Map<string, Creature>(creatures.map((c) => [c.id, c]));

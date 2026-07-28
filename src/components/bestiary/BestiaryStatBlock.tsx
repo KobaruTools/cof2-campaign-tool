@@ -44,8 +44,9 @@ import { MetaPill } from '@/components/MetaPill';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { bookIdForSourceSlug } from '@/lib/ui/books';
 import { CreaturePathBlock } from './CreaturePathBlock';
+import { creatureDefenseBadges, defenseCoversPrintedRd } from './creatureDefenseBadges';
 import { lookupRiderKeyword } from '@/lib/bestiary/riderKeywords';
-import { DefenseBadge } from '@/components/sheet/DefenseBadge';
+import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { GlossaryText, RichInline } from '@/components/sheet/FeatureRichText';
 import { VerbatimToggle } from '@/components/sheet/FeaturesByPath';
 
@@ -445,6 +446,7 @@ function StatChip({
   value,
   note,
   rd,
+  badges,
   dense = false,
 }: {
   statId: DerivedStatId;
@@ -452,6 +454,11 @@ function StatChip({
   note?: string;
   /** Valeur de RÉDUCTION DE DÉGÂTS (« 5 »), rendue en badge RD bleu à droite du chiffre, comme la fiche. */
   rd?: string;
+  /**
+   * Badges de TRAITS DÉFENSIFS (immunités d'état, immunités de type de dégât, réductions) rendus à
+   * droite du chiffre — cellule DEF seulement (PER-260). Cf. `creatureDefenseBadges`.
+   */
+  badges?: DefenseBadgeData[];
   dense?: boolean;
 }) {
   return (
@@ -461,6 +468,10 @@ function StatChip({
       sx={{
         alignItems: 'center',
         justifyContent: 'center',
+        // Les traits défensifs peuvent être nombreux (jusqu'à 4-5 badges sur un golem ou un
+        // dragon) : la cellule les fait RETOMBER à la ligne plutôt que d'écraser le chiffre.
+        flexWrap: 'wrap',
+        rowGap: 0.5,
         px: dense ? 0.75 : 1,
         py: dense ? 0.5 : 0.75,
         borderRadius: 1,
@@ -503,6 +514,12 @@ function StatChip({
           fullWidth={false}
         />
       )}
+      {/* Traits défensifs (immunités d'état, immunités de type de dégât, RD plates/typées, ÷2) :
+          MÊMES badges que la carte Défense d'une fiche, accolés au chiffre de DEF — ils
+          représentent dans le cadre défensif ce que décrit le texte verbatim des capacités. */}
+      {badges?.map(({ key, ...badge }) => (
+        <DefenseBadge key={key} {...badge} compact={dense} fullWidth={false} />
+      ))}
     </Stack>
   );
 }
@@ -646,13 +663,30 @@ export function BestiaryStatBlock({
   const bonusDice = new Set(creature.bonusDieAbilities ?? []);
   // Stats dérivées fixes présentes : rendues en grille pleine largeur, une colonne
   // chacune, sans retour à la ligne (il n'y a pas d'autre bloc sur cette ligne).
-  const derivedStats: { statId: DerivedStatId; value: number; note?: string; rd?: string }[] = [];
+  const derivedStats: {
+    statId: DerivedStatId;
+    value: number;
+    note?: string;
+    rd?: string;
+    badges?: DefenseBadgeData[];
+  }[] = [];
+  // Traits défensifs de la créature (immunités d'état/de type, RD plates ou typées, ÷2) : tous
+  // remontés en badges dans le cadre DEF (PER-260).
+  const defenseBadges = creatureDefenseBadges(creature);
   if (creature.defense != null)
-    derivedStats.push({ statId: 'defense', value: creature.defense, note: creature.defenseNote });
+    derivedStats.push({
+      statId: 'defense',
+      value: creature.defense,
+      note: creature.defenseNote,
+      badges: defenseBadges,
+    });
   if (creature.hitPoints != null) {
     // La note de PV du livre est presque toujours une RD (« 90 (RD 5) ») : on la sort en badge RD.
+    // Sauf quand une capacité en donne la version PRÉCISE (portée nommée) : le cadre Défense prend
+    // alors la main et on n'affiche pas deux fois la même protection.
     const hp = splitHitPointsNote(creature.hitPointsNote);
-    derivedStats.push({ statId: 'maxHp', value: creature.hitPoints, note: hp.note, rd: hp.rd });
+    const rd = hp.rd && !defenseCoversPrintedRd(creature, hp.rd) ? hp.rd : undefined;
+    derivedStats.push({ statId: 'maxHp', value: creature.hitPoints, note: hp.note, rd });
   }
   if (creature.initiative != null)
     derivedStats.push({ statId: 'initiative', value: creature.initiative, note: creature.initiativeNote });
@@ -817,7 +851,15 @@ export function BestiaryStatBlock({
           }}
         >
           {derivedStats.map((s) => (
-            <StatChip key={s.statId} statId={s.statId} value={s.value} note={s.note} rd={s.rd} dense={dense} />
+            <StatChip
+              key={s.statId}
+              statId={s.statId}
+              value={s.value}
+              note={s.note}
+              rd={s.rd}
+              badges={s.badges}
+              dense={dense}
+            />
           ))}
         </Box>
       )}

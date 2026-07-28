@@ -911,6 +911,10 @@ const validCreatureSizes = new Set<string>(CREATURE_SIZES);
 const validCreatureNatures = new Set<string>(CREATURE_NATURES);
 let creatureVariants = 0;
 let creatureTemplates = 0;
+// Traits défensifs remontés en badge dans le cadre Défense (PER-260).
+let creaturesWithDefenseTraits = 0;
+const validImmunityIds = new Set<string>(IMMUNITY_IDS);
+const validResistibleTypes = new Set<string>(RESISTIBLE_DAMAGE_TYPES);
 for (const c of creatures) {
   if (!validCreatureCategories.has(c.category)) err(`[creature ${c.id}] catégorie inconnue : ${c.category}`);
   if (c.size !== undefined && !validCreatureSizes.has(c.size)) err(`[creature ${c.id}] taille inconnue : ${c.size}`);
@@ -926,6 +930,18 @@ for (const c of creatures) {
   }
   for (const a of c.bonusDieAbilities ?? [])
     if (!validAbilities.has(a)) err(`[creature ${c.id}] bonusDieAbilities carac inconnue : ${a}`);
+  // Traits défensifs (PER-260) : ids d'états et de types de dégât dans les listes fermées, et une
+  // valeur exigée pour une réduction plate ou par division (l'immunité n'en porte pas).
+  const drs = c.damageReduction ? (Array.isArray(c.damageReduction) ? c.damageReduction : [c.damageReduction]) : [];
+  if (drs.length > 0 || (c.statusImmunities ?? []).length > 0) creaturesWithDefenseTraits++;
+  for (const id of c.statusImmunities ?? [])
+    if (!validImmunityIds.has(id)) err(`[creature ${c.id}] statusImmunities état inconnu : ${id}`);
+  for (const dr of drs) {
+    for (const s of dr.scopes ?? [])
+      if (!validResistibleTypes.has(s)) err(`[creature ${c.id}] damageReduction portée inconnue : ${s}`);
+    if (dr.kind !== 'immunity' && typeof dr.value !== 'number')
+      err(`[creature ${c.id}] damageReduction ${dr.kind} sans valeur numérique`);
+  }
   // Un GABARIT (ex. Zombie) est sans NC ni bloc chiffré : toléré. Sinon NC exigé.
   const isTemplate = c.nc === undefined && c.abilities === undefined && c.defense === undefined;
   if (isTemplate) creatureTemplates++;
@@ -964,6 +980,9 @@ console.log(`dieux du prêtre    : ${priestGods.length}`);
 console.log(`familiers fantast. : ${fantasticFamiliars.length}`);
 console.log(
   `créatures (bestiaire) : ${creatures.length}  (dont variantes : ${creatureVariants}, gabarits : ${creatureTemplates})`,
+);
+console.log(
+  `  · traits défensifs : ${creaturesWithDefenseTraits} (immunités / RD remontées en badge dans le cadre Défense)`,
 );
 console.log('');
 console.log(`=== Avertissements (${warnings.length}) ===`);

@@ -28,6 +28,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { creatures } from '../src/data/creatures';
+import { withInheritedDefense } from '../src/lib/bestiary/creatureDefense';
 import type { Creature } from '../src/data/schema';
 import type { Database } from '../src/lib/supabase/types';
 
@@ -184,7 +185,9 @@ async function ingestSource(
   );
 
   // 3. Upsert des créatures (sur (source_id, slug)) : blob + colonnes projetées.
-  const rows = list.map((c, index) => ({
+  // Les VARIANTES héritent au passage des traits défensifs de leur base (PER-260) : le blob
+  // stocké porte donc déjà les badges du cadre Défense, quelle que soit la source.
+  const rows = withInheritedDefense(list).map((c, index) => ({
     source_id: source.id,
     slug: c.id,
     name: c.name,
