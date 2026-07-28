@@ -136,13 +136,57 @@ describe('creatureDefenseBadges — traits défensifs en badges (PER-260)', () =
   });
 });
 
-describe('defenseCoversPrintedRd — dédoublonnage du badge accolé aux PV (PER-260)', () => {
-  it('RD plate de même valeur dans le cadre Défense → le badge des PV s’efface', () => {
+describe('RD imprimée avec les PV — rendue dans le cadre Défense (PER-260)', () => {
+  it('la « RD N » de la note de PV devient un badge du cadre Défense', () => {
+    const badges = creatureDefenseBadges(creature({ hitPoints: 90, hitPointsNote: 'RD3' }));
+    expect(badges.map((b) => b.title)).toEqual(['RD 3']);
+    expect(badges[0].sources.map((s) => s.name)).toEqual([
+      'Réduit de 3 les DM subis.',
+      'Valeur imprimée avec les points de vigueur.',
+    ]);
+  });
+
+  it('une note de PV sans RD ne produit aucun badge', () => {
+    expect(creatureDefenseBadges(creature({ hitPoints: 300, hitPointsNote: '300 (crâne) / 30 (cristal)' }))).toEqual(
+      [],
+    );
+  });
+
+  it('la RD imprimée passe APRÈS les immunités et AVANT les RD des capacités', () => {
+    const badges = creatureDefenseBadges(
+      creature({
+        hitPointsNote: 'RD 3',
+        damageReduction: [
+          { kind: 'immunity', scopes: ['acid'] },
+          { kind: 'divide', value: 2, scopes: ['non-magical'] },
+        ],
+      }),
+    );
+    expect(badges.map((b) => b.title)).toEqual([
+      "Immunité à l'acide",
+      'RD 3',
+      'RD Non magiques ÷2',
+    ]);
+  });
+
+  it('une capacité qui détaille la RD imprimée la remplace (pas de doublon)', () => {
+    const badges = creatureDefenseBadges(
+      creature({
+        hitPointsNote: 'RD 5',
+        damageReduction: { kind: 'flat', value: 5, scopes: ['non-magical'] },
+      }),
+    );
+    expect(badges.map((b) => b.title)).toEqual(['RD Non magiques 5']);
+  });
+});
+
+describe('defenseCoversPrintedRd — dédoublonnage de la RD imprimée (PER-260)', () => {
+  it('RD plate de même valeur décrite par une capacité → la version précise gagne', () => {
     const c = creature({ damageReduction: { kind: 'flat', value: 5, scopes: ['non-magical'] } });
     expect(defenseCoversPrintedRd(c, '5')).toBe(true);
   });
 
-  it('valeur différente → les deux badges restent (protections distinctes)', () => {
+  it('valeur différente → les deux RD restent (protections distinctes)', () => {
     const c = creature({ damageReduction: { kind: 'flat', value: 10, scopes: ['cold'] } });
     expect(defenseCoversPrintedRd(c, '5')).toBe(false);
   });
@@ -152,7 +196,7 @@ describe('defenseCoversPrintedRd — dédoublonnage du badge accolé aux PV (PER
     expect(defenseCoversPrintedRd(c, '2')).toBe(false);
   });
 
-  it('aucun trait défensif → le badge imprimé reste', () => {
+  it('aucun trait défensif → la RD imprimée est rendue telle quelle', () => {
     expect(defenseCoversPrintedRd(creature({}), '3')).toBe(false);
   });
 });

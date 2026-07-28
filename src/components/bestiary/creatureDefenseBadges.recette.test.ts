@@ -15,17 +15,6 @@ function titles(id: string): string[] {
 }
 
 describe('Bestiaire gratuit — badges du cadre Défense (PER-260)', () => {
-  it('géant du feu : immunité au feu (p. 280)', () => {
-    expect(titles('geant-du-feu')).toEqual(['Immunité au feu']);
-  });
-
-  it("élémentaire d'eau : immunité à l'acide + ÷2 sur les armes non magiques (p. 280)", () => {
-    expect(titles('elementaire-eau-grand')).toEqual([
-      "Immunité à l'acide",
-      'RD Non magiques ÷2',
-    ]);
-  });
-
   it('golem de chair : immunités poison/électricité + ÷2 élémentaire et contondant (p. 285)', () => {
     expect(titles('golem-de-chair')).toEqual([
       'Immunité au poison',
@@ -101,15 +90,15 @@ describe('Bestiaire gratuit — héritage des traits défensifs par les variante
   });
 });
 
-describe('Bestiaire gratuit — badge de RD accolé aux PV', () => {
-  it('éléphant et troll : la RD imprimée avec les PV reste à côté des PV (rien ne la détaille)', () => {
+describe('Bestiaire gratuit — RD imprimée avec les PV', () => {
+  it('éléphant et troll : leur RD 3 imprimée est un badge du cadre Défense, pas un badge de PV', () => {
     for (const id of ['elephant', 'troll']) {
+      expect(titles(id)).toEqual(['RD 3']);
       expect(defenseCoversPrintedRd(creatureById.get(id)!, '3')).toBe(false);
-      expect(titles(id)).toEqual([]);
     }
   });
 
-  it('démonet : la RD 5 imprimée passe dans le cadre Défense avec sa portée (armes non magiques)', () => {
+  it('démonet : la RD 5 imprimée est remplacée par sa version précise (armes non magiques)', () => {
     const demonet = creatureById.get('demonet')!;
     expect(defenseCoversPrintedRd(demonet, '5')).toBe(true);
     expect(titles('demonet')).toEqual([
@@ -119,11 +108,25 @@ describe('Bestiaire gratuit — badge de RD accolé aux PV', () => {
     ]);
   });
 
-  it("élémentaire d'eau : la RD 3 imprimée (capacité « Grand ») reste, la ÷2 est une autre protection", () => {
-    expect(defenseCoversPrintedRd(creatureById.get('elementaire-eau-grand')!, '3')).toBe(false);
+  it("élémentaire d'eau : RD 3 imprimée (capacité « Grand ») ET ÷2 non magiques, deux protections", () => {
+    expect(titles('elementaire-eau-grand')).toEqual([
+      "Immunité à l'acide",
+      'RD 3',
+      'RD Non magiques ÷2',
+    ]);
   });
 
-  it('vampirien : la RD 5 imprimée passe dans le cadre Défense (elle a une exception)', () => {
+  it('géant du feu : immunité au feu + RD 6 imprimée', () => {
+    expect(titles('geant-du-feu')).toEqual(['Immunité au feu', 'RD 6']);
+  });
+
+  it('vampirien : la RD 5 imprimée est remplacée par sa version avec exception', () => {
     expect(defenseCoversPrintedRd(creatureById.get('vampirien')!, '5')).toBe(true);
+    expect(titles('vampirien')).toEqual(['RD 5']);
+  });
+
+  it('nécrocrâne : une note de PV sans RD ne crée pas de badge (formes de PV verbatim)', () => {
+    const necro = creatureById.get('necrocrane');
+    if (necro) expect(defenseCoversPrintedRd(necro, 'x')).toBe(false);
   });
 });

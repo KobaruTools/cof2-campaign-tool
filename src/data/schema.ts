@@ -3132,7 +3132,11 @@ export interface Creature {
   defenseNote?: string;
   /** Points de vigueur (valeur principale imprimée). */
   hitPoints?: number;
-  /** Précision entre parenthèses sur les PV, verbatim (ex. « RD3 » pour « 90 (RD3) »). */
+  /**
+   * Précision entre parenthèses sur les PV, verbatim (ex. « RD3 » pour « 90 (RD3) »). La « RD N »
+   * éventuelle est une PROTECTION : elle est remontée en badge dans le cadre DÉFENSE, pas à côté du
+   * chiffre de PV (PER-260, cf. `creatureDefenseBadges`) ; seul le reste de la note s'affiche ici.
+   */
   hitPointsNote?: string;
   /** Initiative. */
   initiative?: number;

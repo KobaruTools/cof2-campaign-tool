@@ -96,8 +96,40 @@ function reductionBadge(dr: DamageReduction, index: number): DefenseBadgeData {
 }
 
 /**
+ * Sépare la note de PV en une éventuelle RÉDUCTION DE DÉGÂTS en tête (« RD 5 », « RD3 ») et le
+ * RESTE verbatim (rare : les formes de PV du nécrocrâne). `rd` = valeur numérique seule (« 5 ») ;
+ * `note` = ce qui reste (sinon absent).
+ */
+export function splitHitPointsNote(note?: string): { rd?: string; note?: string } {
+  if (!note) return {};
+  const m = note.match(/^RD\s*(\d+)\s*;?\s*(.*)$/i);
+  if (!m) return { note };
+  const rest = m[2].trim();
+  return { rd: m[1], note: rest || undefined };
+}
+
+/**
+ * Badge de la RD IMPRIMÉE AVEC LES PV (« PV 90 (RD 3) »). Elle reste une protection comme les
+ * autres : sa place est le cadre DÉFENSE, pas la cellule des points de vigueur (décision proprio,
+ * 2026-07-28). La source rappelle d'où vient le chiffre.
+ */
+function printedRdBadge(rd: string): DefenseBadgeData {
+  return {
+    key: `rd-pv-${rd}`,
+    variant: 'reduction',
+    text: rd,
+    title: `RD ${rd}`,
+    sources: [
+      { name: `Réduit de ${rd} les DM subis.` },
+      { name: 'Valeur imprimée avec les points de vigueur.' },
+    ],
+  };
+}
+
+/**
  * Badges du cadre Défense d'une créature : immunités d'état, immunités de type de dégât, puis
- * réductions. Liste vide si la créature n'a aucun trait défensif renseigné.
+ * réductions — RD imprimée avec les PV d'abord (la protection « de base »), puis celles décrites
+ * par les capacités. Liste vide si la créature n'a aucun trait défensif.
  */
 export function creatureDefenseBadges(creature: Creature): DefenseBadgeData[] {
   const statusBadges: DefenseBadgeData[] = (creature.statusImmunities ?? []).map((id) => ({
@@ -113,15 +145,18 @@ export function creatureDefenseBadges(creature: Creature): DefenseBadgeData[] {
     .map((dr, i) => ({ dr, i }))
     .filter(({ dr }) => dr.kind !== 'immunity')
     .map(({ dr, i }) => reductionBadge(dr, i));
-  return [...statusBadges, ...damageImmunities, ...reductions];
+  // RD imprimée avec les PV : rendue ici, SAUF si une capacité en donne la version précise (même
+  // valeur, portée nommée) — sinon la même protection s'afficherait deux fois.
+  const { rd } = splitHitPointsNote(creature.hitPointsNote);
+  const printed = rd && !defenseCoversPrintedRd(creature, rd) ? [printedRdBadge(rd)] : [];
+  return [...statusBadges, ...damageImmunities, ...printed, ...reductions];
 }
 
 /**
- * La RD imprimée avec les PV (« PV 15 (RD 5) ») est-elle DÉJÀ portée, en plus précis, par un badge
- * du cadre Défense ? Le livre imprime souvent un raccourci à côté des PV que la capacité détaille
- * ensuite (démonet : « RD 5 » imprimée, « RD 5 sur les armes non magiques » en capacité). Dans ce
- * cas le cadre Défense prend la main (portée nommée) et le badge accolé aux PV s'efface, pour ne
- * pas afficher deux fois la même protection (PER-260).
+ * La RD imprimée avec les PV (« PV 15 (RD 5) ») est-elle DÉJÀ portée, en plus précis, par une
+ * entrée de `damageReduction` ? Le livre imprime souvent un raccourci à côté des PV que la capacité
+ * détaille ensuite (démonet : « RD 5 » imprimée, « RD 5 sur les armes non magiques » en capacité) :
+ * on ne garde alors que la version PRÉCISE (PER-260).
  */
 export function defenseCoversPrintedRd(creature: Creature, printedRd: string): boolean {
   const value = Number(printedRd);

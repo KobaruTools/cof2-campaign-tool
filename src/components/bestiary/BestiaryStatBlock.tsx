@@ -44,7 +44,7 @@ import { MetaPill } from '@/components/MetaPill';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { bookIdForSourceSlug } from '@/lib/ui/books';
 import { CreaturePathBlock } from './CreaturePathBlock';
-import { creatureDefenseBadges, defenseCoversPrintedRd } from './creatureDefenseBadges';
+import { creatureDefenseBadges, splitHitPointsNote } from './creatureDefenseBadges';
 import { lookupRiderKeyword } from '@/lib/bestiary/riderKeywords';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { GlossaryText, RichInline } from '@/components/sheet/FeatureRichText';
@@ -445,18 +445,16 @@ function StatChip({
   statId,
   value,
   note,
-  rd,
   badges,
   dense = false,
 }: {
   statId: DerivedStatId;
   value: number;
   note?: string;
-  /** Valeur de RÉDUCTION DE DÉGÂTS (« 5 »), rendue en badge RD bleu à droite du chiffre, comme la fiche. */
-  rd?: string;
   /**
-   * Badges de TRAITS DÉFENSIFS (immunités d'état, immunités de type de dégât, réductions) rendus à
-   * droite du chiffre — cellule DEF seulement (PER-260). Cf. `creatureDefenseBadges`.
+   * Badges de TRAITS DÉFENSIFS (immunités d'état, immunités de type de dégât, réductions — dont la
+   * RD imprimée avec les PV) rendus à droite du chiffre : cellule DEF seulement, c'est LE cadre
+   * défensif (PER-260). Cf. `creatureDefenseBadges`.
    */
   badges?: DefenseBadgeData[];
   dense?: boolean;
@@ -502,39 +500,14 @@ function StatChip({
           </Box>
         )}
       </Box>
-      {/* Réduction de dégâts imprimée avec les PV (« 90 (RD 5) ») rendue avec le MÊME badge bleu que la
-          fiche de personnage (DefenseBadge, variante reduction), accolé à droite du chiffre de PV. */}
-      {rd && (
-        <DefenseBadge
-          variant="reduction"
-          text={rd}
-          title={`RD ${rd}`}
-          sources={[{ name: 'Réduit tous les dégâts subis', value: rd }]}
-          compact={dense}
-          fullWidth={false}
-        />
-      )}
-      {/* Traits défensifs (immunités d'état, immunités de type de dégât, RD plates/typées, ÷2) :
-          MÊMES badges que la carte Défense d'une fiche, accolés au chiffre de DEF — ils
-          représentent dans le cadre défensif ce que décrit le texte verbatim des capacités. */}
+      {/* Traits défensifs (immunités d'état, immunités de type de dégât, RD plates/typées, ÷2, et la
+          RD imprimée avec les PV) : MÊMES badges que la carte Défense d'une fiche, TOUS accolés au
+          chiffre de DEF — une protection se lit dans le cadre défensif, jamais à côté de la vie. */}
       {badges?.map(({ key, ...badge }) => (
         <DefenseBadge key={key} {...badge} compact={dense} fullWidth={false} />
       ))}
     </Stack>
   );
-}
-
-/**
- * Sépare la note de PV en une éventuelle RÉDUCTION DE DÉGÂTS en tête (« RD 5 », « RD3 ») — rendue en
- * badge RD comme la fiche — et le RESTE verbatim (rare : les formes de PV du nécrocrâne). `rd` = valeur
- * numérique seule (« 5 ») pour le badge « RD 5 » ; `note` = ce qui reste (sinon absent).
- */
-function splitHitPointsNote(note?: string): { rd?: string; note?: string } {
-  if (!note) return {};
-  const m = note.match(/^RD\s*(\d+)\s*;?\s*(.*)$/i);
-  if (!m) return { note };
-  const rest = m[2].trim();
-  return { rd: m[1], note: rest || undefined };
 }
 
 /**
@@ -667,11 +640,10 @@ export function BestiaryStatBlock({
     statId: DerivedStatId;
     value: number;
     note?: string;
-    rd?: string;
     badges?: DefenseBadgeData[];
   }[] = [];
-  // Traits défensifs de la créature (immunités d'état/de type, RD plates ou typées, ÷2) : tous
-  // remontés en badges dans le cadre DEF (PER-260).
+  // Traits défensifs de la créature (immunités d'état/de type, RD plates ou typées, ÷2, et la RD
+  // imprimée avec les PV) : TOUS remontés en badges dans le cadre DEF (PER-260).
   const defenseBadges = creatureDefenseBadges(creature);
   if (creature.defense != null)
     derivedStats.push({
@@ -681,12 +653,10 @@ export function BestiaryStatBlock({
       badges: defenseBadges,
     });
   if (creature.hitPoints != null) {
-    // La note de PV du livre est presque toujours une RD (« 90 (RD 5) ») : on la sort en badge RD.
-    // Sauf quand une capacité en donne la version PRÉCISE (portée nommée) : le cadre Défense prend
-    // alors la main et on n'affiche pas deux fois la même protection.
+    // La note de PV du livre est presque toujours une RD (« 90 (RD 5) ») : elle part en badge dans
+    // le cadre Défense. Ne reste ici que le RESTE verbatim (rare : les formes de PV du nécrocrâne).
     const hp = splitHitPointsNote(creature.hitPointsNote);
-    const rd = hp.rd && !defenseCoversPrintedRd(creature, hp.rd) ? hp.rd : undefined;
-    derivedStats.push({ statId: 'maxHp', value: creature.hitPoints, note: hp.note, rd });
+    derivedStats.push({ statId: 'maxHp', value: creature.hitPoints, note: hp.note });
   }
   if (creature.initiative != null)
     derivedStats.push({ statId: 'initiative', value: creature.initiative, note: creature.initiativeNote });
@@ -856,7 +826,6 @@ export function BestiaryStatBlock({
               statId={s.statId}
               value={s.value}
               note={s.note}
-              rd={s.rd}
               badges={s.badges}
               dense={dense}
             />
