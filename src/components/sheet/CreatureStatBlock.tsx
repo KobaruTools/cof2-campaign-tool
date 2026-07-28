@@ -10,6 +10,7 @@
  * personnage. Conçu pour être INSÉRÉ partout où une capacité porte un profil.
  */
 import Box from '@mui/material/Box';
+import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
@@ -27,7 +28,9 @@ import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { MetaPill } from '@/components/MetaPill';
-import { RichInline } from './FeatureRichText';
+import { creatureDefenseBreakdown } from '@/lib/character/companions';
+import type { StatBreakdown } from '@/lib/character/statBreakdown';
+import { CapabilityChip, RichInline } from './FeatureRichText';
 
 /**
  * Pastille de TAILLE d'un compagnon (PER-175) — même « tag » que le bestiaire (`MetaPill`),
@@ -199,6 +202,91 @@ export function CreatureAbilitiesGrid({ profile, masterAbilities, bonusDieAbilit
   );
 }
 
+/** Montant signé court d'une contribution de breakdown (« +3 », « −1 »). */
+function signedContribution(n: number): string {
+  return n >= 0 ? `+${n}` : `−${Math.abs(n)}`;
+}
+
+/**
+ * Valeur de DÉFENSE d'une créature AVEC ventilation par source (PER-256) : le total dans un encadré
+ * (même style que l'encadré de formule de la fiche), dont l'info-bulle liste les contributions —
+ * termes de la valeur de base en texte (« Base », « Rang »), bonus propagés du maître en PUCE DE VOIE
+ * (`CapabilityChip`), exactement comme le breakdown des stats du personnage (DefenseBadge, PER-137).
+ * N'est utilisé que quand un bonus du maître touche la DEF ; sinon on rend la valeur simple (RichInline).
+ */
+function CreatureDefenseValue({ breakdown }: { breakdown: StatBreakdown }) {
+  const tooltip = (
+    <Box sx={{ minWidth: 170 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+        Défense
+      </Typography>
+      {breakdown.contributions.map((c, i) => (
+        <Box
+          key={i}
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 2,
+            fontVariantNumeric: 'tabular-nums',
+            mb: 0.25,
+          }}
+        >
+          {/* Source liée à une capacité → puce de voie (couleur + icône + rang) ; terme de base → texte. */}
+          {c.featureId ? <CapabilityChip featureId={c.featureId} label={null} /> : <span>{c.label}</span>}
+          {/* La valeur de BASE (1re contribution) s'affiche nue (« 10 ») ; les apports suivants signés. */}
+          <span style={{ fontWeight: 600 }}>{i === 0 ? String(c.value) : signedContribution(c.value)}</span>
+        </Box>
+      ))}
+      <Divider sx={{ my: 0.5 }} />
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, fontWeight: 700 }}>
+        <span>Total</span>
+        <span>{breakdown.total}</span>
+      </Box>
+    </Box>
+  );
+  return (
+    <AppTooltip title={tooltip}>
+      <Box
+        component="span"
+        sx={(theme) => ({
+          display: 'inline-flex',
+          alignItems: 'center',
+          verticalAlign: 'middle',
+          minHeight: '22px',
+          whiteSpace: 'nowrap',
+          px: 0.6,
+          lineHeight: 1,
+          borderRadius: 1,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          cursor: 'help',
+          bgcolor: alpha(theme.palette.primary.main, 0.1),
+          border: 1,
+          borderColor: alpha(theme.palette.primary.main, 0.35),
+        })}
+      >
+        {breakdown.total}
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
+ * Rend la valeur de DÉFENSE d'une créature (hors DEF alternative « en selle », traitée à part) : avec
+ * ventilation par source si un bonus du maître y contribue (PER-256), sinon la valeur enrichie simple.
+ */
+function creatureDefenseNode(
+  profile: CreatureProfile,
+  abilities: Abilities,
+  level: number,
+  rank: number,
+): ReactNode {
+  const breakdown = creatureDefenseBreakdown(profile, abilities, level, rank);
+  if (breakdown) return <CreatureDefenseValue breakdown={breakdown} />;
+  return <RichInline text={profile.defense ?? ''} abilities={abilities} level={level} rank={rank} />;
+}
+
 export interface CreatureStatsLineProps {
   profile: CreatureProfile;
   /** Caractéristiques du personnage MAÎTRE — pour résoudre les valeurs richText. */
@@ -280,7 +368,7 @@ export function CreatureStatsLine({
                 </Box>
               </AppTooltip>
             ) : (
-              rich(profile.defense ?? '')
+              creatureDefenseNode(profile, abilities, level, rank)
             )}
           </CreatureStatChip>
         )}
@@ -447,7 +535,7 @@ export function CreatureDerivedStats({
             </Box>
           </AppTooltip>
         ) : (
-          rich(profile.defense ?? '')
+          creatureDefenseNode(profile, abilities, level, rank)
         ),
     });
   }

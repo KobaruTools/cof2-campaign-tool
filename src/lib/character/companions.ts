@@ -26,6 +26,7 @@ import {
 import { enSelleLink } from './mounts';
 import { pruneDepletion } from './gauges';
 import { parseRichText, resolveExpr } from '@/lib/ui/featureRichText';
+import { buildDefenseBreakdown, type CreatureDefenseUpgrade, type StatBreakdown } from './statBreakdown';
 import type { Character, Depletion } from './types';
 
 /**
@@ -59,7 +60,30 @@ export function effectiveCreatureProfile(
  * (`resolveValue`), car le rang pertinent est celui du maître dans SA voie (ex. rang `runes`), pas
  * celui de la créature. Le pliage aval (`applyCreatureUpgrades`) reste ainsi purement numérique.
  */
-type ResolvedCreatureUpgrade = Omit<CreatureUpgrade, 'def'> & { def?: number };
+type ResolvedCreatureUpgrade = Omit<CreatureUpgrade, 'def'> & {
+  def?: number;
+  /** Capacité qui octroie l'amélioration (PER-256) — voie hôte pour une option retenue. Puce de source. */
+  sourceFeatureId: string;
+  /** Nom affiché de la source : nom de la capacité, ou libellé de l'option retenue (repli texte). */
+  sourceName: string;
+};
+
+/** Sources du bonus de DÉFENSE d'un profil AFFICHÉ (PER-256), pour ventiler la valeur en info-bulle. */
+interface CreatureDefenseSources {
+  /** Expression de DEF de BASE (avant injection des bonus), pour décomposer « Base + Rang ». */
+  baseDefense?: string;
+  /** Bonus de DEF propagés par le maître, déjà résolus, avec leur capacité source. */
+  upgrades: CreatureDefenseUpgrade[];
+}
+
+/**
+ * Rattache au profil AFFICHÉ (l'objet retourné par `applyCreatureUpgrades`) les sources de son bonus
+ * de DEF, pour en exposer la ventilation à l'affichage (PER-256) SANS repasser `character` aux
+ * composants de rendu ni ajouter un champ calculé au type de données `CreatureProfile`. WeakMap (clé =
+ * le profil affiché) → l'entrée est collectée avec le profil. Peuplé UNIQUEMENT quand au moins un
+ * bonus du maître touche la DEF (créature « nue » → aucune entrée, rendu numérique inchangé).
+ */
+const defenseSourcesByProfile = new WeakMap<CreatureProfile, CreatureDefenseSources>();
 
 /**
  * Améliorations propagées à la créature de la voie `creaturePathId` (PER-94). Balaye TOUTES les
@@ -73,18 +97,19 @@ function gatherCreatureUpgrades(character: Character, creaturePathId: string): R
   const out: ResolvedCreatureUpgrade[] = [];
   const pathRanks = pathRanksFromFeatures(character.featureIds);
   const ctx = effectContext(character);
-  const consider = (upgrade: CreatureUpgrade, sourcePathId: string) => {
+  const consider = (upgrade: CreatureUpgrade, sourcePathId: string, sourceFeatureId: string, sourceName: string) => {
     const targets = upgrade.targetPaths ?? [sourcePathId];
     if (!targets.includes(creaturePathId)) return;
     const def = upgrade.def == null ? undefined : resolveValue(upgrade.def, sourcePathId, pathRanks, ctx) ?? undefined;
-    out.push({ ...upgrade, def });
+    out.push({ ...upgrade, def, sourceFeatureId, sourceName });
   };
   for (const id of character.featureIds) {
     const feature = featureById.get(id);
     if (!feature) continue;
     // Amélioration portée DIRECTEMENT par la capacité (cross-voie via `targetPaths`).
-    if (feature.creatureUpgrade) consider(feature.creatureUpgrade, feature.pathId);
+    if (feature.creatureUpgrade) consider(feature.creatureUpgrade, feature.pathId, feature.id, feature.name);
     // Améliorations portées par les OPTIONS retenues (même balayage que `creatureBonusDiceForPath`).
+    // Source affichée = libellé de l'OPTION (ex. « Armure »), plus parlant que le nom de la capacité hôte.
     if (feature.choices) {
       const selections = character.featureChoices[id] ?? [];
       feature.choices.forEach((choice, i) => {
@@ -92,7 +117,7 @@ function gatherCreatureUpgrades(character: Character, creaturePathId: string): R
         const sel = selections[i];
         const chosenIds = Array.isArray(sel) ? sel : sel ? [sel] : [];
         for (const opt of choice.options) {
-          if (opt.creatureUpgrade && chosenIds.includes(opt.id)) consider(opt.creatureUpgrade, feature.pathId);
+          if (opt.creatureUpgrade && chosenIds.includes(opt.id)) consider(opt.creatureUpgrade, feature.pathId, feature.id, opt.label);
         }
       });
     }
@@ -180,7 +205,35 @@ export function applyCreatureUpgrades(
     ];
   }
   if (notes.length > 0) next.note = [base.note, ...notes].filter(Boolean).join(' ');
+  // PER-256 : mémorise les sources du bonus de DEF (capacité + montant) pour ventiler la valeur en
+  // info-bulle. Rattaché au profil AFFICHÉ (`next`), consommé par `creatureDefenseBreakdown`. On ne le
+  // pose que si un bonus touche RÉELLEMENT la DEF (sinon rien à expliquer → rendu numérique habituel).
+  const defUpgrades: CreatureDefenseUpgrade[] = upgrades
+    .filter((u): u is ResolvedCreatureUpgrade & { def: number } => !!u.def)
+    .map((u) => ({ featureId: u.sourceFeatureId, name: u.sourceName, value: u.def }));
+  if (defUpgrades.length > 0 && base.defense) {
+    defenseSourcesByProfile.set(next, { baseDefense: base.defense, upgrades: defUpgrades });
+  }
   return next;
+}
+
+/**
+ * Ventilation de la DÉFENSE d'une créature par SOURCE (PER-256), pour l'info-bulle de sa mini-fiche :
+ * « Base 10 + Rang 2 + Runes de défense 3 = 15 ». `undefined` si le profil ne porte aucun bonus de DEF
+ * propagé (créature « nue » → le rendu numérique habituel suffit) ou si sa DEF n'est pas décomposable
+ * en un total (dé). `abilities`/`level`/`rank` = même contexte que le rendu de la valeur (caractéristiques
+ * du maître, niveau, rang atteint dans la voie hôte). À appeler avec le profil AFFICHÉ (issu de
+ * `displayCreatureProfile`/`listCompanions`), seul porteur de l'entrée WeakMap.
+ */
+export function creatureDefenseBreakdown(
+  profile: CreatureProfile,
+  abilities: Abilities,
+  level: number,
+  rank: number,
+): StatBreakdown | undefined {
+  const sources = defenseSourcesByProfile.get(profile);
+  if (!sources) return undefined;
+  return buildDefenseBreakdown(sources.baseDefense, sources.upgrades, abilities, level, rank) ?? undefined;
 }
 
 /**

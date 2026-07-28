@@ -5,6 +5,7 @@ import { createBlankCharacter } from './factory';
 import type { Character, Depletion } from './types';
 import {
   companionMountEnSelle,
+  creatureDefenseBreakdown,
   displayCreatureProfile,
   listCompanions,
   pruneCompanionDepletion,
@@ -433,6 +434,28 @@ describe('bonus maître → créature (PER-94)', () => {
       expect(golemDef(forgesort('runes-r1', 'runes-r2', 'runes-r3', 'runes-r4', 'runes-r5'))).toBe(
         '[10 + rang + 4]',
       );
+    });
+
+    // PER-256 : la ventilation par source explique l'écart de DEF (Base + Rang + capacité propagée).
+    it('creatureDefenseBreakdown ventile la DEF du golem par source (Base + Rang + Runes)', () => {
+      const c = forgesort('runes-r1');
+      const profile = displayCreatureProfile(featureById.get('golem-r2')!, c)!;
+      // Rang atteint dans la voie du golem = 2 ; niveau inerte pour la DEF.
+      const bd = creatureDefenseBreakdown(profile, c.abilities, c.level, 2);
+      expect(bd).toBeDefined();
+      // 10 (base) + 2 (rang) + 2 (Runes de défense au rang 1) = 14.
+      expect(bd!.total).toBe(14);
+      expect(bd!.contributions).toEqual([
+        { label: 'Base', value: 10 },
+        { label: 'Rang', value: 2 },
+        { label: featureById.get('runes-r1')!.name, value: 2, featureId: 'runes-r1' },
+      ]);
+    });
+
+    it('creatureDefenseBreakdown = undefined pour un golem SANS bonus de maître (rendu numérique simple)', () => {
+      const c = forgesort();
+      const profile = displayCreatureProfile(featureById.get('golem-r2')!, c)!;
+      expect(creatureDefenseBreakdown(profile, c.abilities, c.level, 2)).toBeUndefined();
     });
   });
 
