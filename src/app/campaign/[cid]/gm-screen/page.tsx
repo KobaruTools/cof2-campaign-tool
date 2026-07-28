@@ -10,13 +10,14 @@
  * non nul). C'est la vue « coup d'œil » du MJ sur sa table : chaque carte est une
  * fiche de personnage SIMPLIFIÉE (portrait, identité, caractéristiques, micro-grille
  * des voies et statistiques dérivées compactes), chapeautée du nom du joueur qui
- * incarne le personnage. Un petit bouton dédié (ligne du joueur) ouvre la fiche
- * complète — la carte elle-même n'est pas cliquable.
+ * incarne le personnage. Depuis PER-258, **cliquer une carte ouvre le panneau latéral
+ * de fiche** (`?sheet=<id>`) sans quitter l'écran ; le petit bouton dédié (ligne du
+ * joueur) reste l'échappatoire vers la fiche complète, dans un onglet au besoin.
  *
  * Vocation à grandir (jets rapides, PV/mana en direct, notes de session…), d'où
  * une page dédiée plutôt qu'une modale.
  */
-import { use, useState } from 'react';
+import { Suspense, use, useState } from 'react';
 import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -31,6 +32,7 @@ import Typography from '@mui/material/Typography';
 import { AppHeader } from '@/components/AppHeader';
 import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
 import { GmScreenCard } from '@/components/campaign/GmScreenCard';
+import { GmSheetDrawerHost } from '@/components/campaign/GmSheetDrawerHost';
 import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard';
 import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
@@ -224,6 +226,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                         character.playerId ? playerNameById.get(character.playerId) ?? null : null
                       }
                       href={`/character/${character.id}`}
+                      panelHref={`/campaign/${cid}/gm-screen?sheet=${character.id}`}
                     />
                   ))}
                 </Box>
@@ -285,6 +288,19 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         onClose={() => setAddOpen(false)}
         onAdd={(slug, options) => addCreature(slug, options)}
       />
+
+      {/* Panneau latéral de fiche (PER-258), piloté par `?sheet=<id>`. La frontière
+          Suspense est imposée par la lecture des paramètres d'URL (useSearchParams) et
+          la cantonne à ce sous-arbre : l'état du combat en cours, qui vit au-dessus,
+          n'est jamais remonté. Le panneau ne rappelle PAS `useGmScreenCombat` — il
+          reçoit en props ce dont il a besoin, pour ne pas dupliquer cet état. */}
+      <Suspense>
+        <GmSheetDrawerHost
+          characters={claimed}
+          campaign={campaign}
+          playerNameById={playerNameById}
+        />
+      </Suspense>
     </>
   );
 }

@@ -1,0 +1,115 @@
+/**
+ * Dérivations d'AFFICHAGE de la fiche (PER-258) : tout ce que les blocs de la fiche
+ * (`AbilitiesGrid`, `DerivedStatsGrid`, `TestDomainsPanel`) attendent en props et qui
+ * se déduit du personnage sans aucune écriture — modificateurs permanents de
+ * caractéristiques, dés bonus, bonus par domaine de test, malus d'armure, sources de
+ * l'infobulle « i » des stats dérivées.
+ *
+ * Distinct de deux voisins, à ne pas confondre :
+ *  - `characterDerivedView` = entrée du MOTEUR + badges (partagée avec l'écran de MJ) ;
+ *  - `useCharacterGameState` = actions d'ÉCRITURE de l'état de jeu (PER-257).
+ * Ici, rien que de la lecture : une fonction pure, sans React, testable.
+ *
+ * Extrait pour que le panneau latéral de l'écran de MJ monte les mêmes blocs que la
+ * fiche sans recopier ses calculs. La fiche (`character/[id]/page.tsx`) fait encore ces
+ * calculs en ligne : elle devra adopter ce module (elle en est le modèle exact).
+ */
+import { featureById } from '@/data';
+import { armorEncumbrancePenalty } from '@/lib/character/equipment';
+import { defenseFromEquipment } from '@/components/wizard/helpers';
+import {
+  abilityBonusDiceFromFeatures,
+  abilityBonusDiceSources,
+  abilityModSources,
+  abilityModsFromFeatures,
+  abilityTestBonusByAbility,
+  abilityTestBonusSources,
+  activeAbilityOverrideSources,
+  activeConditionalTestDice,
+  activeFormAbilityBonusSources,
+  armorPenaltyDivisor,
+  testBonusSources,
+  universalTestBonus,
+} from '@/lib/character/effects';
+import { orphanSourceTerms } from '@/lib/character/orphanPoints';
+import type { Character } from '@/lib/character/types';
+import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
+import type { CharacterDerivedView } from './characterDerivedView';
+
+export interface SheetDisplayView {
+  /**
+   * Sources supplémentaires de l'infobulle « i » des stats dérivées : points de capacité
+   * orphelins convertis (p. 40) + bonus à la touche conditionnés à l'arme portée (PER-226),
+   * fusionnés par stat. Le TOTAL de ces derniers est déjà FONDU dans le score (via
+   * `derivedInput.mods`) ; on n'ajoute ici que l'attribution de la source.
+   */
+  extraModSources: ModSources;
+  /** Modificateurs PERMANENTS de caractéristiques apportés par les capacités. */
+  abilityMods: ReturnType<typeof abilityModsFromFeatures>;
+  /** Capacités à l'origine de ces modificateurs (détail d'une caractéristique). */
+  abilityModSources: ReturnType<typeof abilityModSources>;
+  /** Valeurs ABSOLUES imposées par une transformation active (PER-74, forme de loup). */
+  abilityOverrides: ReturnType<typeof activeAbilityOverrideSources>;
+  /** Bonus de carac EN DELTA conditionnés à une forme active (PER-74, Forme puissante). */
+  abilityFormBonuses: ReturnType<typeof activeFormAbilityBonusSources>;
+  /** Caractéristiques bénéficiant d'un dé bonus permanent (badge double-d20). */
+  bonusDieSources: ReturnType<typeof abilityBonusDiceFromFeatures>;
+  /** Même information avec la capacité source, pour les pastilles du détail d'une carac. */
+  bonusDieSourcesDetailed: ReturnType<typeof abilityBonusDiceSources>;
+  /** Bonus de compétence par domaine de test (PER-89), règle de cumul p. 203. */
+  testBonuses: ReturnType<typeof testBonusSources>;
+  /** Dés bonus CONDITIONNELS actifs sur des domaines (Travail d'équipe, via interrupteur). */
+  testDice: ReturnType<typeof activeConditionalTestDice>;
+  /** Buffs ACTIFS à tous les tests de caractéristique (Bénédiction, via interrupteur). */
+  abilityTestBonus: ReturnType<typeof abilityTestBonusSources>;
+  /** Bonus aux tests d'UNE caractéristique précise, par option retenue (Tatouages, PER-125). */
+  perAbilityTestBonus: ReturnType<typeof abilityTestBonusByAbility>;
+  /** Plancher de compétence universel (Éclectique, PER-102). */
+  universalBonus: ReturnType<typeof universalTestBonus>;
+  /** Malus d'armure appliqué aux tests d'AGI (p. 188, PER-209) — divisé si Armure sur mesure. */
+  armorPenalty: number;
+  /** Plafond d'AGI imposé par l'armure portée (p. 188), ou `null` si aucun. */
+  armorMaxAgi: number | null;
+  /** Le personnage connaît-il au moins un sort ? Gate la Concentration accrue (p. 228). */
+  hasSpells: boolean;
+}
+
+/**
+ * Calcule les dérivations d'affichage de `character`, à partir de sa vue dérivée
+ * (`buildCharacterDerivedView`) dont on réutilise `modFeatureIds`, `effectContext` et
+ * les sources de bonus à la touche — pour ne pas les recalculer.
+ */
+export function buildSheetDisplayView(
+  character: Character,
+  derived: CharacterDerivedView,
+): SheetDisplayView {
+  const { modFeatureIds, effectContext, attackBonusModSources } = derived;
+
+  const extraModSources: ModSources = { ...orphanSourceTerms(character) };
+  for (const [key, list] of Object.entries(attackBonusModSources)) {
+    const k = key as keyof ModSources;
+    extraModSources[k] = [...(extraModSources[k] ?? []), ...(list ?? [])];
+  }
+
+  return {
+    extraModSources,
+    abilityMods: abilityModsFromFeatures(modFeatureIds, character.featureChoices),
+    abilityModSources: abilityModSources(modFeatureIds, character.featureChoices),
+    abilityOverrides: activeAbilityOverrideSources(character),
+    abilityFormBonuses: activeFormAbilityBonusSources(character),
+    bonusDieSources: abilityBonusDiceFromFeatures(modFeatureIds, character.featureChoices),
+    bonusDieSourcesDetailed: abilityBonusDiceSources(modFeatureIds, character.featureChoices),
+    testBonuses: testBonusSources(modFeatureIds, effectContext),
+    testDice: activeConditionalTestDice(character),
+    abilityTestBonus: abilityTestBonusSources(modFeatureIds, effectContext),
+    perAbilityTestBonus: abilityTestBonusByAbility(modFeatureIds, effectContext),
+    universalBonus: universalTestBonus(modFeatureIds),
+    // Malus d'armure (p. 188) : DEF mondaine de l'armure portée − bonus magique, plancher 0.
+    // Armure sur mesure (chevalier, guerre-r1, PER-236) peut le diviser (ici de moitié).
+    armorPenalty: armorEncumbrancePenalty(character.equipment, armorPenaltyDivisor(modFeatureIds)),
+    // Plafond d'AGI lu directement sur l'équipement porté (indépendant de la dérogation
+    // de défense « Dentelles », seduction-r2).
+    armorMaxAgi: defenseFromEquipment(character.equipment).maxAgi,
+    hasSpells: modFeatureIds.some((fid) => featureById.get(fid)?.isSpell),
+  };
+}

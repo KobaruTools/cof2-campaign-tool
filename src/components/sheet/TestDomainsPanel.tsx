@@ -84,6 +84,12 @@ export interface TestDomainsPanelProps {
    * effective AVANT le malus d'armure sur la ligne « test de AGI » et les domaines AGI.
    */
   armorMaxAgi?: number | null;
+  /**
+   * Clé de mémorisation du repli du bloc (`SheetSection`). Défaut `'test-domains'` = la
+   * fiche. Le panneau latéral de l'écran de MJ (PER-258) en passe une qui lui est propre,
+   * pour que replier le bloc là-bas ne replie pas celui de la vraie fiche.
+   */
+  persistKey?: string;
 }
 
 /**
@@ -200,7 +206,7 @@ function WarnPill({ children, outlined = false }: { children: ReactNode; outline
  * à 0. Au survol : provenance (capacité par catégorie de source, p. 203) et plafond +15.
  * Lecture seule (les interrupteurs des buffs vivent sur les cartes de capacité).
  */
-export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbilityTestBonus, bonusDice, universalBonus, testDice, armorPenalty, armorMaxAgi }: TestDomainsPanelProps) {
+export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbilityTestBonus, bonusDice, universalBonus, testDice, armorPenalty, armorMaxAgi, persistKey = 'test-domains' }: TestDomainsPanelProps) {
   const penalty = armorPenalty ?? 0;
   const [includeAbility, setIncludeAbility] = usePersistedBoolean('test-domains:include-ability', false);
   // Coché par défaut : on n'affiche d'emblée que les domaines effectivement bonifiés
@@ -241,7 +247,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
       icon="tests"
       collapsible
       defaultCollapsed
-      persistKey="test-domains"
+      persistKey={persistKey}
       // Les toggles n'ont aucun sens quand le bloc est replié : on ne les affiche que déplié.
       action={(collapsed) => (collapsed ? null : toggles)}
     >
