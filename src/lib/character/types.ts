@@ -67,8 +67,12 @@ import type { AncestryChoice } from './ancestry';
  *   d'instance` ; les PV de chaque instance vivent dans `companionDepletion` sous la clé
  *   composite `<featureId>#<instanceId>`. La migration ajoute `{}` (aucune instance au
  *   chargement).
+ * v21 : ajout de `mounts` (montures & véhicules POSSÉDÉS, rattachés comme compagnons hors
+ *   inventaire — table « Prix des montures » p. 191 ; PER-216). Liste d'`OwnedMount`
+ *   (id d'instance + entrée de catalogue + barde + PV). La migration ajoute `[]` (aucune
+ *   monture au chargement).
  */
-export const SCHEMA_VERSION = 20;
+export const SCHEMA_VERSION = 21;
 
 /**
  * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
@@ -110,6 +114,48 @@ export interface Depletion {
   luck?: number;
   /** Dés de récupération (DR) dépensés (PER-151). Absent = réserve de DR pleine. */
   recoveryDice?: number;
+}
+
+/**
+ * Monture ou véhicule POSSÉDÉ par le personnage (PER-216, table « Prix des montures »,
+ * livre de base p. 191). Distinct d'un objet d'inventaire (`EquipmentLine`) : une monture
+ * est une entité rattachée au personnage comme COMPAGNON — elle a ses propres stats de
+ * combat (via son entrée de catalogue `src/data/mounts.ts`, rendue comme un bloc de
+ * bestiaire) et sa propre barre de vie. Contrairement aux compagnons dérivés d'un rang de
+ * voie (`listCompanions`), une monture achetée n'a pas de voie porteuse : c'est une
+ * possession, ajoutée/retirée manuellement sur la fiche.
+ */
+export interface OwnedMount {
+  /** Id d'instance stable (une monture possédée = une instance). Voir `newId`. */
+  id: string;
+  /** Id de l'entrée de catalogue (`MountCatalogEntry.id`, ex. `cheval-de-guerre`, `carriole`). */
+  catalogId: string;
+  /** Nom personnalisé donné par le joueur (ex. « Bucéphale ») ; absent = nom du catalogue. */
+  name?: string;
+  /**
+   * Barde portée (`BardeCatalogEntry.id`), UNIQUEMENT pour une monture de combat apte au
+   * caparaçon (cheval de guerre, `MountCatalogEntry.canWearBarde`). Ajoute son bonus de DEF
+   * au bloc de la monture et un malus d'Init. équivalent (au cheval ET au cavalier — ce
+   * dernier est un RAPPEL affiché, non soustrait de l'Init. calculée du personnage, PER-216).
+   * Absent = pas de barde.
+   */
+  bardeId?: string;
+  /**
+   * Manque de PV courant de la monture (état de jeu transitoire, comme `companionDepletion`).
+   * `{}` = PV pleins. N'a de sens que pour une monture portant un bloc de stats (les
+   * véhicules / bêtes de somme sans stats n'ont pas de barre de vie).
+   */
+  hp: Depletion;
+  /**
+   * Le personnage est-il actuellement EN SELLE sur cette monture (état de jeu transitoire) ? Pilote
+   * l'application du malus d'Initiative d'une barde au CAVALIER (le malus au cheval, lui, est
+   * permanent tant que la barde est portée). Absent/false = à pied. Champ optionnel additif (aucune
+   * migration). NB : quand le personnage possède la capacité chevalier « en selle » (interrupteur
+   * `conditional-stat-bonus` de `cavalier-r2`), c'est CET interrupteur qui fait foi — les deux
+   * commandes pilotent alors le même état (cf. `src/lib/character/mounts.ts`), et ce champ n'est
+   * pas utilisé.
+   */
+  mounted?: boolean;
 }
 
 /**
@@ -576,6 +622,14 @@ export interface Character {
 
   /** Équipement possédé (références catalogue + objets personnalisés). */
   equipment: EquipmentLine[];
+
+  /**
+   * Montures et véhicules POSSÉDÉS (PER-216) — rattachés au personnage comme compagnons,
+   * hors inventaire (une monture n'est pas un objet porté). Ajoutés/retirés manuellement
+   * sur la fiche ; leurs stats de combat viennent du catalogue `src/data/mounts.ts`. `[]`
+   * = aucune monture. Voir `OwnedMount` et `src/lib/character/mounts.ts`.
+   */
+  mounts: OwnedMount[];
 
   /** Surcharges manuelles de valeurs dérivées (réversibles). */
   overrides: Partial<Record<DerivedStatId, number>>;

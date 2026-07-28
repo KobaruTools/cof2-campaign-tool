@@ -64,6 +64,7 @@ function validRaw(): Record<string, unknown> {
     purse: { platinum: 0, gold: 0, silver: 0, copper: 0 },
     levelUpHistory: [],
     equipment: [],
+    mounts: [],
     overrides: {},
     notes: '',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -605,7 +606,24 @@ describe('migrateCharacter', () => {
     expect(c.companionInstances).toEqual({ 'outre-tombe-r3': ['a1', 'b2'] });
   });
 
-  it('expose les migrations 1→2 … 19→20 dans le registre', () => {
+  it('v20→v21 ajoute mounts vide s’il est absent', () => {
+    const v20 = validRaw() as Record<string, unknown>;
+    v20.schemaVersion = 20;
+    delete v20.mounts;
+    const c = migrateCharacter(v20);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.mounts).toEqual([]);
+  });
+
+  it('v20→v21 préserve une liste de mounts déjà présente', () => {
+    const v20 = validRaw() as Record<string, unknown>;
+    v20.schemaVersion = 20;
+    v20.mounts = [{ id: 'm1', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {} }];
+    const c = migrateCharacter(v20);
+    expect(c.mounts).toEqual([{ id: 'm1', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {} }]);
+  });
+
+  it('expose les migrations 1→2 … 20→21 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -625,5 +643,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[17]).toBe('function');
     expect(typeof MIGRATIONS[18]).toBe('function');
     expect(typeof MIGRATIONS[19]).toBe('function');
+    expect(typeof MIGRATIONS[20]).toBe('function');
   });
 });

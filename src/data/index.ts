@@ -111,6 +111,10 @@ export const features: Feature[] = [
 export { weapons, armors, shields, gear };
 export const equipment: EquipmentItem[] = [...weapons, ...armors, ...shields, ...gear];
 
+// --- Montures, véhicules & bardes (PER-216, p. 191) --------------------------
+export { mounts, mountById, bardes, bardeById } from './mounts';
+export type { MountCatalogEntry, BardeCatalogEntry, MountKind } from './mounts';
+
 // --- Domaines de compétence (PER-89) -----------------------------------------
 export { testDomains, testDomainById };
 

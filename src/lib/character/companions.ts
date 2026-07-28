@@ -16,6 +16,7 @@ import type { AbilityId, CompanionType, CreatureProfile, Feature, FeatureChoiceO
 import type { Abilities } from '@/lib/engine';
 import { getSelection } from './choices';
 import { creatureBonusDiceForPath, disabledFeatureIds, isEffectActive } from './effects';
+import { enSelleLink, isEnSelleActive } from './mounts';
 import { pruneDepletion } from './gauges';
 import { parseRichText, resolveExpr } from '@/lib/ui/featureRichText';
 import type { Character, Depletion } from './types';
@@ -177,6 +178,22 @@ export function creatureDefenseAltActive(
   const alt = profile.defenseAlt;
   if (!alt || !character) return false;
   return character.featureIds.includes(alt.sourceFeatureId) && isEffectActive(character, alt.sourceFeatureId, 0);
+}
+
+/**
+ * État « en selle » d'un compagnon MONTURE de voie (PER-216) : si le personnage possède une capacité
+ * « en selle » (`enSelleLink`, ex. Cavalier émérite `cavalier-r2`) ET que ce compagnon est une monture
+ * de la MÊME voie (Fidèle monture `cavalier-r1`, Monture fantastique `cavalier-r5`), renvoie l'état
+ * courant de cet interrupteur (partagé avec la carte de voie et les montures possédées) → la carte
+ * compagnon affiche alors un toggle « En selle ». Renvoie `null` si le compagnon n'est pas une monture
+ * dotée d'un tel état (aucun toggle). Le malus d'Init. d'une barde ne concerne PAS ces montures : leur
+ * DEF tient déjà compte d'une barde (livre p. 267), elles ne portent donc pas d'équipement de barde.
+ */
+export function companionMountEnSelle(character: Character, entry: CompanionEntry): boolean | null {
+  const link = enSelleLink(character);
+  if (!link || entry.companionType !== 'mount') return null;
+  if (featureById.get(link.featureId)?.pathId !== entry.feature.pathId) return null;
+  return isEnSelleActive(character);
 }
 
 /**

@@ -86,6 +86,7 @@ import {
 } from '@/lib/character/gauges';
 import { longRest, shortRest } from '@/lib/character/rest';
 import {
+  companionMountEnSelle,
   effectiveCreatureProfile,
   listCompanions,
   parseCompanionKey,
@@ -94,8 +95,9 @@ import {
   resolveCompanionInstanceLimit,
   resolveCreatureMaxHp,
 } from '@/lib/character/companions';
+import { enSelleLink, isMountMounted, listOwnedMounts, mountCatalogEntry, mountMaxHp } from '@/lib/character/mounts';
 import { newId } from '@/lib/character/factory';
-import type { Depletion, FeatureChoiceSelection } from '@/lib/character/types';
+import type { Depletion, FeatureChoiceSelection, OwnedMount } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { AppHeader } from '@/components/AppHeader';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
@@ -117,6 +119,7 @@ import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { CompanionsPanel } from '@/components/sheet/CompanionsPanel';
+import { AddMountButton, OwnedMountsPanel } from '@/components/sheet/OwnedMountsPanel';
 import { PurseField } from '@/components/sheet/PurseField';
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
 import { StartingChoiceDialog } from '@/components/sheet/StartingChoiceDialog';
@@ -691,6 +694,59 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     delete companionDepletion[key];
     update({ companionInstances, companionDepletion });
   };
+
+  // --- Montures & véhicules possédés (PER-216) — possessions rattachées comme compagnons, hors
+  // inventaire. Ajout/retrait/barde disponibles hors mode édition (comme l'invocation d'instances) ;
+  // les PV vivent INLINE sur chaque `OwnedMount.hp` (état de jeu propre à la monture).
+  const updateMount = (id: string, patch: Partial<OwnedMount>) => {
+    update({ mounts: character.mounts.map((m) => (m.id === id ? { ...m, ...patch } : m)) });
+  };
+  const addMount = (catalogId: string) => {
+    update({ mounts: [...character.mounts, { id: newId(), catalogId, hp: {} }] });
+  };
+  const removeMount = (id: string) => {
+    update({ mounts: character.mounts.filter((m) => m.id !== id) });
+  };
+  // Change (ou retire, `undefined`) la barde d'une monture : on omet la clé quand aucune barde n'est
+  // portée pour garder le blob propre (une barde absente n'est pas `bardeId: undefined`).
+  const setMountBarde = (id: string, bardeId: string | undefined) => {
+    const mount = character.mounts.find((m) => m.id === id);
+    if (!mount) return;
+    const next: OwnedMount = { ...mount };
+    if (bardeId) next.bardeId = bardeId;
+    else delete next.bardeId;
+    update({ mounts: character.mounts.map((m) => (m.id === id ? next : m)) });
+  };
+  // PV : mêmes helpers que le personnage/compagnons, mais l'état est stocké inline sur la monture.
+  const mountHpMax = (id: string): number | undefined => {
+    const mount = character.mounts.find((m) => m.id === id);
+    return mount ? mountMaxHp(mountCatalogEntry(mount)) ?? undefined : undefined;
+  };
+  const setMountHp = (id: string, next: Depletion) => updateMount(id, { hp: pruneDepletion(next) });
+  const setMountDamage = (id: string, amount: number, kind: 'lethal' | 'temp') => {
+    const mount = character.mounts.find((m) => m.id === id);
+    if (!mount) return;
+    setMountHp(id, applyDamage(mount.hp ?? {}, amount, kind, mountHpMax(id)));
+  };
+  const setMountHeal = (id: string, amount: number) => {
+    const mount = character.mounts.find((m) => m.id === id);
+    if (!mount) return;
+    setMountHp(id, healHp(mount.hp ?? {}, amount));
+  };
+  const setMountReset = (id: string) => {
+    const mount = character.mounts.find((m) => m.id === id);
+    if (!mount) return;
+    setMountHp(id, resetHp(mount.hp ?? {}));
+  };
+  // Bascule « en selle » (état de jeu) : quand une capacité chevalier « en selle » existe, on pilote
+  // SON interrupteur (source de vérité partagée avec la carte de voie, ce qui met aussi à jour la DEF
+  // de la monture fantastique et le +DM au contact) ; sinon on stocke l'état sur la monture même.
+  const setMountMounted = (id: string, on: boolean) => {
+    const link = enSelleLink(character);
+    if (link) setEffectToggleValue(link.featureId, link.index, on);
+    else updateMount(id, { mounted: on });
+  };
+
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
   // supprime la clé et rétablit le calcul automatique.
   const setOverride = (key: DerivedStatId, value: number | null) => {
@@ -1274,21 +1330,63 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           {masterDerived &&
             (() => {
               const companions = listCompanions(character);
-              return companions.length > 0 ? (
-                <SheetSection title="Compagnons" icon="companions">
-                  <CompanionsPanel
-                    companions={companions}
-                    abilities={effectCtx.abilities}
-                    level={character.level}
-                    masterDerived={masterDerived}
-                    companionDepletion={character.companionDepletion}
-                    onDamage={setCompanionDamage}
-                    onHeal={setCompanionHeal}
-                    onReset={setCompanionReset}
-                    onDelete={deleteCompanionInstance}
-                  />
+              const ownedMounts = listOwnedMounts(character.mounts);
+              // La section apparaît dès qu'il y a un compagnon OU une monture ; le bouton « Ajouter
+              // une monture » reste dispo même sans monture, pour pouvoir en acquérir (hors lecture seule).
+              if (companions.length === 0 && ownedMounts.length === 0 && readOnly) return null;
+              return (
+                <SheetSection
+                  title="Compagnons"
+                  icon="companions"
+                  action={readOnly ? undefined : <AddMountButton onAdd={addMount} />}
+                >
+                  <Stack spacing={1.5}>
+                    {companions.length > 0 && (
+                      <CompanionsPanel
+                        companions={companions}
+                        abilities={effectCtx.abilities}
+                        level={character.level}
+                        masterDerived={masterDerived}
+                        companionDepletion={character.companionDepletion}
+                        onDamage={setCompanionDamage}
+                        onHeal={setCompanionHeal}
+                        onReset={setCompanionReset}
+                        onDelete={deleteCompanionInstance}
+                        // Toggle « En selle » sur une monture de voie (PER-216) : même interrupteur
+                        // partagé que la carte de voie et les montures possédées. Masqué en lecture seule.
+                        enSelleFor={readOnly ? undefined : (entry) => companionMountEnSelle(character, entry)}
+                        onSetMounted={
+                          readOnly
+                            ? undefined
+                            : (_entry, on) => {
+                                const link = enSelleLink(character);
+                                if (link) setEffectToggleValue(link.featureId, link.index, on);
+                              }
+                        }
+                      />
+                    )}
+                    {ownedMounts.length > 0 && (
+                      <OwnedMountsPanel
+                        mounts={ownedMounts}
+                        readOnly={readOnly}
+                        abilities={effectCtx.abilities}
+                        level={character.level}
+                        masterDerived={masterDerived}
+                        isMounted={(id) => {
+                          const m = character.mounts.find((x) => x.id === id);
+                          return m ? isMountMounted(character, m) : false;
+                        }}
+                        onSetMounted={setMountMounted}
+                        onRemove={removeMount}
+                        onSetBarde={setMountBarde}
+                        onDamage={setMountDamage}
+                        onHeal={setMountHeal}
+                        onReset={setMountReset}
+                      />
+                    )}
+                  </Stack>
                 </SheetSection>
-              ) : null;
+              );
             })()}
 
           <SheetSection

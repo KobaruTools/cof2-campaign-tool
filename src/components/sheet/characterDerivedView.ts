@@ -26,6 +26,7 @@ import {
   type EffectContext,
 } from '@/lib/character/effects';
 import { mergeMods, orphanMods } from '@/lib/character/orphanPoints';
+import { mountedInitiativePenalty } from '@/lib/character/mounts';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { effectiveItem } from '@/lib/character/items';
@@ -316,6 +317,9 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         mods: mergeMods(modsFromFeatures(modFeatureIds, effectCtx), orphanMods(character), {
           meleeAttack: meleeAttackBonus.total,
           rangedAttack: rangedAttackBonus.total,
+          // Malus d'Initiative au CAVALIER d'une monture bardée « en selle » (PER-216) : négatif,
+          // fondu dans le score d'Initiative comme les autres modificateurs de capacités.
+          initiative: -mountedInitiativePenalty(character),
         }),
         // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique au mono-famille sinon.
         hpFamilyGains: familyHpGains(character, rulesContext),

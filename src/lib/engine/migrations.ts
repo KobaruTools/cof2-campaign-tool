@@ -452,6 +452,18 @@ function migrateV19toV20(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v20 → v21 : ajout de `mounts` (montures & véhicules possédés, rattachés comme compagnons hors
+ * inventaire — PER-216). Purement additif : on initialise une liste vide (aucune monture au
+ * chargement) si le champ est absent ou mal typé, en préservant un tableau déjà présent.
+ */
+function migrateV20toV21(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (!Array.isArray(next.mounts)) next.mounts = [];
+  next.schemaVersion = 21;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -475,6 +487,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   17: migrateV17toV18,
   18: migrateV18toV19,
   19: migrateV19toV20,
+  20: migrateV20toV21,
 };
 
 export class MigrationError extends Error {}
@@ -573,6 +586,7 @@ export function validateCharacterShape(input: unknown): asserts input is Charact
     fail('Champ « status » manquant ou invalide.');
   }
   if (!Array.isArray(data.equipment)) fail('Champ « equipment » manquant ou invalide.');
+  if (!Array.isArray(data.mounts)) fail('Champ « mounts » manquant ou invalide.');
   if (!Array.isArray(data.levelUpHistory)) fail('Champ « levelUpHistory » manquant ou invalide.');
 }
 

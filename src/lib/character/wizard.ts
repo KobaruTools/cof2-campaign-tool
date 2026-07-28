@@ -317,6 +317,7 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     purse: { platinum: 0, gold: 0, silver: 0, copper: 0 },
     levelUpHistory: [{ level: 1, chosenFeatureIds: featureIds }],
     equipment: draft.equipment,
+    mounts: [],
     overrides: {},
     notes: '',
     createdAt: draft.createdAt,

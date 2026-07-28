@@ -4,6 +4,7 @@ import { resolveCreatureAbilities } from '@/lib/ui/creature';
 import { createBlankCharacter } from './factory';
 import type { Character, Depletion } from './types';
 import {
+  companionMountEnSelle,
   displayCreatureProfile,
   listCompanions,
   pruneCompanionDepletion,
@@ -21,6 +22,43 @@ function char(over: Partial<Character> = {}): Character {
 function _profile(id: string) {
   return featureById.get(id)!.creatureProfile!;
 }
+
+describe('companionMountEnSelle (PER-216)', () => {
+  it('Fidèle monture (cavalier-r1) SANS Cavalier émérite → pas de toggle (null)', () => {
+    const c = char({ classId: 'chevalier', featureIds: ['cavalier-r1'] });
+    const mount = listCompanions(c)[0];
+    expect(companionMountEnSelle(c, mount)).toBeNull();
+  });
+
+  it('avec Cavalier émérite (cavalier-r2) → toggle reflétant l’interrupteur « en selle »', () => {
+    const off = char({ classId: 'chevalier', featureIds: ['cavalier-r1', 'cavalier-r2'] });
+    expect(companionMountEnSelle(off, listCompanions(off)[0])).toBe(false);
+
+    const on = char({
+      classId: 'chevalier',
+      featureIds: ['cavalier-r1', 'cavalier-r2'],
+      effectToggles: { 'cavalier-r2': [true] },
+    });
+    expect(companionMountEnSelle(on, listCompanions(on)[0])).toBe(true);
+  });
+
+  it('Monture fantastique (cavalier-r5) est aussi chevauchable', () => {
+    const c = char({
+      classId: 'chevalier',
+      featureIds: ['cavalier-r1', 'cavalier-r2', 'cavalier-r5'],
+      featureChoices: { 'cavalier-r5': ['war-horse'] },
+      effectToggles: { 'cavalier-r2': [true] },
+    });
+    const mount = listCompanions(c)[0];
+    expect(mount.profile.name).toBe('Cheval de guerre lourd');
+    expect(companionMountEnSelle(c, mount)).toBe(true);
+  });
+
+  it('un compagnon NON monture (golem) n’a jamais de toggle', () => {
+    const c = char({ classId: 'forgesort', featureIds: ['golem-r1', 'golem-r2'] });
+    expect(companionMountEnSelle(c, listCompanions(c)[0])).toBeNull();
+  });
+});
 
 describe('listCompanions', () => {
   it('liste un compagnon débloqué (golem) avec sa clé = id du rang porteur', () => {

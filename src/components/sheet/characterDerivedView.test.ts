@@ -30,6 +30,7 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     depletion: {},
     companionDepletion: {},
     companionInstances: {},
+    mounts: [],
     purse: { platinum: 0, gold: 0, silver: 0, copper: 0 },
     levelUpHistory: [],
     equipment: [],
@@ -54,6 +55,21 @@ describe('buildCharacterDerivedView', () => {
     expect(Array.isArray(view.defenseBadges)).toBe(true);
     expect(Array.isArray(view.meleeCriticalRanges)).toBe(true);
     expect(Array.isArray(view.rangedCriticalRanges)).toBe(true);
+  });
+
+  it('barde « en selle » (PER-216) : le malus d’Init. du cavalier est fondu dans l’Initiative', () => {
+    const base = makeCharacter(); // PER 0 → Initiative de base 10.
+    expect(deriveStats(buildCharacterDerivedView(base).derivedInput!).initiative).toBe(10);
+    // Barde de plaque (−4) sur un cheval de guerre, à pied → aucun impact sur la fiche.
+    const afoot = makeCharacter({
+      mounts: [{ id: 'm', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {}, mounted: false }],
+    });
+    expect(deriveStats(buildCharacterDerivedView(afoot).derivedInput!).initiative).toBe(10);
+    // En selle → −4 appliqué à l’Initiative de la fiche.
+    const mounted = makeCharacter({
+      mounts: [{ id: 'm', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {}, mounted: true }],
+    });
+    expect(deriveStats(buildCharacterDerivedView(mounted).derivedInput!).initiative).toBe(6);
   });
 
   it('caractéristiques effectives : la défense suit l’AGI saisie', () => {

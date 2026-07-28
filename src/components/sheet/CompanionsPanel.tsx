@@ -3,6 +3,7 @@
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
+import ToggleButton from '@mui/material/ToggleButton';
 import Typography from '@mui/material/Typography';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import { alpha } from '@mui/material/styles';
@@ -43,6 +44,14 @@ interface CompanionCardProps {
    * bloc. Absent → aucun contrôle de suppression (compagnons classiques).
    */
   onDelete?: () => void;
+  /**
+   * État « en selle » d'une monture de voie (PER-216) : `null`/absent = ce compagnon n'est pas une
+   * monture chevauchable (aucun toggle) ; `boolean` = affiche un toggle « En selle / À pied » dans
+   * ce même état, piloté par `onSetMounted`. Partagé avec la carte de voie et les montures possédées.
+   */
+  mounted?: boolean | null;
+  /** Bascule l'état « en selle » (fourni seulement si `mounted` n'est pas `null`). */
+  onSetMounted?: (on: boolean) => void;
 }
 
 /**
@@ -53,7 +62,7 @@ interface CompanionCardProps {
  * `CreatureProfile` (résolution de `hitPoints`) ; s'ils ne se résolvent pas en nombre, on
  * retombe sur l'affichage textuel des PV dans la ligne de stats (pas de barre).
  */
-function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDamage, onHeal, onReset, onDelete }: CompanionCardProps) {
+function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDamage, onHeal, onReset, onDelete, mounted, onSetMounted }: CompanionCardProps) {
   const { profile, pathRank, bonusDieAbilities, defenseAltActive, instanceId, instanceIndex } = entry;
   const maxHp = resolveCreatureMaxHp(profile, abilities, level, pathRank);
   const hasAbilities = !!resolveCreatureAbilities(profile, abilities);
@@ -151,6 +160,27 @@ function CompanionCard({ entry, abilities, level, masterDerived, depletion, onDa
         )}
       </Box>
 
+      {/* Toggle « En selle » d'une monture de voie (PER-216) : piloté par l'interrupteur « en selle »
+          de la voie du cavalier (état partagé avec la carte de voie et les montures possédées). Rendu
+          seulement quand ce compagnon est une monture chevauchable (`mounted` non nul). */}
+      {mounted != null && onSetMounted && (
+        <Stack direction="row" sx={{ mt: 1 }}>
+          <AppTooltip title="Le chevalier est-il actuellement en selle sur cette monture ? Active les bonus « en selle » de sa voie (DEF de la monture, +DM au contact, attaque de monture).">
+            <span>
+              <ToggleButton
+                value="mounted"
+                size="small"
+                selected={mounted}
+                onChange={() => onSetMounted(!mounted)}
+                sx={{ textTransform: 'none', px: 1.5, py: 0.25 }}
+              >
+                {mounted ? 'En selle' : 'À pied'}
+              </ToggleButton>
+            </span>
+          </AppTooltip>
+        </Stack>
+      )}
+
       {/* Le TEXTE D'ORIGINE verbatim n'est affiché QUE sur la mini-fiche du RANG (Voies & capacités),
           pas ici (la carte compagnon reste centrée sur le jeu : PV + stats + capacités). */}
 
@@ -198,6 +228,14 @@ export interface CompanionsPanelProps {
    * aucune suppression manuelle possible.
    */
   onDelete?: (key: string) => void;
+  /**
+   * État « en selle » d'une monture de voie (PER-216) : `null` = ce compagnon n'est pas une monture
+   * chevauchable (aucun toggle) ; `boolean` = affiche le toggle dans cet état. Absent → jamais de
+   * toggle (fiche en lecture seule). Cf. `companionMountEnSelle`.
+   */
+  enSelleFor?: (entry: CompanionEntry) => boolean | null;
+  /** Bascule l'état « en selle » du compagnon `entry` (fourni avec `enSelleFor`, hors lecture seule). */
+  onSetMounted?: (entry: CompanionEntry, on: boolean) => void;
 }
 
 /**
@@ -215,24 +253,32 @@ export function CompanionsPanel({
   onHeal,
   onReset,
   onDelete,
+  enSelleFor,
+  onSetMounted,
 }: CompanionsPanelProps) {
   return (
     <Stack spacing={1.5}>
-      {companions.map((entry) => (
-        <CompanionCard
-          key={entry.key}
-          entry={entry}
-          abilities={abilities}
-          level={level}
-          masterDerived={masterDerived}
-          depletion={companionDepletion[entry.key] ?? {}}
-          onDamage={(amount, kind) => onDamage(entry.key, amount, kind)}
-          onHeal={(amount) => onHeal(entry.key, amount)}
-          onReset={() => onReset(entry.key)}
-          // Corbeille rendue seulement pour une instance supprimable (zombie).
-          onDelete={onDelete && entry.instanceId !== undefined ? () => onDelete(entry.key) : undefined}
-        />
-      ))}
+      {companions.map((entry) => {
+        const mounted = enSelleFor ? enSelleFor(entry) : null;
+        return (
+          <CompanionCard
+            key={entry.key}
+            entry={entry}
+            abilities={abilities}
+            level={level}
+            masterDerived={masterDerived}
+            depletion={companionDepletion[entry.key] ?? {}}
+            onDamage={(amount, kind) => onDamage(entry.key, amount, kind)}
+            onHeal={(amount) => onHeal(entry.key, amount)}
+            onReset={() => onReset(entry.key)}
+            // Corbeille rendue seulement pour une instance supprimable (zombie).
+            onDelete={onDelete && entry.instanceId !== undefined ? () => onDelete(entry.key) : undefined}
+            // Toggle « En selle » seulement pour une monture de voie (`mounted` non nul) et hors lecture seule.
+            mounted={mounted}
+            onSetMounted={mounted != null && onSetMounted ? (on) => onSetMounted(entry, on) : undefined}
+          />
+        );
+      })}
     </Stack>
   );
 }

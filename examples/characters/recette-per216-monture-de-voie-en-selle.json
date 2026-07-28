@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per216-monture-de-voie-en-selle",
+  "name": "Recette PER-216 — Monture de voie « en selle »",
+  "identity": {
+    "description": "ATTENDU : section « Compagnons » avec la Monture fantastique (Félin géant, cavalier-r5) rendue en carte COMPAGNON compacte, portant un toggle « En selle / À pied ». Ce toggle pilote le MÊME interrupteur « en selle » que la carte de la voie du cavalier (Cavalier émérite). Livré EN SELLE. Aucune barde sur une monture de voie (sa DEF en tient déjà compte, livre p. 267)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 9,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "cavalier-r1",
+    "cavalier-r2",
+    "cavalier-r3",
+    "cavalier-r4",
+    "cavalier-r5"
+  ],
+  "featureChoices": {
+    "cavalier-r5": [
+      "giant-cat"
+    ]
+  },
+  "effectToggles": {
+    "cavalier-r2": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-216 — toggle « en selle » sur la monture de voie (compagnon), lié à cavalier-r2.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
