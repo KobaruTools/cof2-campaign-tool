@@ -509,6 +509,14 @@ for (const c of features) {
       const valueError = effectValueError(e.value);
       if (valueError) err(`[capacite ${c.id}] effect: attack-bonus value ${valueError}`);
       validateWeaponCondition(c.id, e.condition, 'attack-bonus');
+    } else if (e.kind === 'ranged-attack-magical') {
+      // PER-74 — effet purement descriptif (attaques à distance magiques) : aucune donnée à valider.
+    } else if (e.kind === 'ranged-attack-elemental') {
+      // PER-74 — élément ajouté aux attaques à distance : au moins un choix, tous des types de DM valides.
+      const types = new Set<string>(RESISTIBLE_DAMAGE_TYPES);
+      if (!e.choices.length) err(`[capacite ${c.id}] effect: ranged-attack-elemental sans choix`);
+      for (const s of e.choices)
+        if (!types.has(s)) err(`[capacite ${c.id}] effect: ranged-attack-elemental type inconnu : ${s}`);
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }

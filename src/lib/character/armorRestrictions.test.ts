@@ -14,7 +14,9 @@ import {
   isArmorWorn,
   isShieldWorn,
   magicTalentSpellsBlockedByArmor,
+  rangedWeaponDisabledFeatureIds,
   shieldDisabledFeatureIds,
+  wornRangedWeaponMatchesKinds,
 } from './armorRestrictions';
 import {
   activeFeatureIdsForMods,
@@ -819,6 +821,61 @@ describe('PER-146 — Don étrange (gnome) : sort emprunté limité à 1/jour en
 
     it('est vide sans armure portée', () => {
       expect(borrowedArmorUsageCounters(donEtrange('air-r1', { equipment: [] })).size).toBe(0);
+    });
+  });
+});
+
+describe("PER-74 — Voie de l'archer arcanique : gatée par l'arc/l'arbalète en main", () => {
+  const wornMain = (itemId: string): EquipmentLine => ({ itemId, quantity: 1, worn: { slot: 'mainHand' } });
+  // Un personnage ayant acquis « Flèche magique » (r4) — le classId est indifférent (la fonction ne
+  // regarde que la voie hôte de chaque capacité acquise et son `requiresRangedKinds`).
+  const archer = (equipment: EquipmentLine[]): Character =>
+    makeChar({ classId: 'rodeur', featureIds: ['prestige-archer-arcanique-r4', 'prestige-archer-arcanique-r5'], equipment });
+
+  describe('wornRangedWeaponMatchesKinds', () => {
+    it('reconnaît un arc et une arbalète', () => {
+      expect(wornRangedWeaponMatchesKinds([wornMain('arc-long')], ['bow', 'crossbow'])).toBe(true);
+      expect(wornRangedWeaponMatchesKinds([wornMain('arbalete-legere')], ['bow', 'crossbow'])).toBe(true);
+    });
+
+    it("rejette une arme lançable, une fronde et l'absence d'arme à distance", () => {
+      expect(wornRangedWeaponMatchesKinds([wornMain('couteaux-de-lancer')], ['bow', 'crossbow'])).toBe(false);
+      expect(wornRangedWeaponMatchesKinds([wornMain('fronde')], ['bow', 'crossbow'])).toBe(false);
+      expect(wornRangedWeaponMatchesKinds([], ['bow', 'crossbow'])).toBe(false);
+    });
+  });
+
+  describe('rangedWeaponDisabledFeatureIds', () => {
+    it("est vide quand un arc est en main (voie active)", () => {
+      expect(rangedWeaponDisabledFeatureIds(archer([wornMain('arc-long')]), ctx).size).toBe(0);
+    });
+
+    it("est vide quand une arbalète est en main (voie active)", () => {
+      expect(rangedWeaponDisabledFeatureIds(archer([wornMain('arbalete-lourde')]), ctx).size).toBe(0);
+    });
+
+    it("désactive TOUTES les capacités de la voie sans arc ni arbalète en main", () => {
+      expect(rangedWeaponDisabledFeatureIds(archer([]), ctx)).toEqual(
+        new Set(['prestige-archer-arcanique-r4', 'prestige-archer-arcanique-r5']),
+      );
+    });
+
+    it("désactive la voie si seule une arme lançable est en main (thrown ≠ bow/crossbow)", () => {
+      expect(rangedWeaponDisabledFeatureIds(archer([wornMain('couteaux-de-lancer')]), ctx)).toEqual(
+        new Set(['prestige-archer-arcanique-r4', 'prestige-archer-arcanique-r5']),
+      );
+    });
+
+    it("ne touche pas une capacité d'une voie SANS exigence d'arme à distance", () => {
+      const c = makeChar({ classId: 'moine', featureIds: ['poing-r1'], equipment: [] });
+      expect(rangedWeaponDisabledFeatureIds(c, ctx).size).toBe(0);
+    });
+  });
+
+  describe('activeFeatureIdsForMods — réversibilité', () => {
+    it("exclut les capacités de la voie sans arc, les réintègre avec un arc", () => {
+      expect(activeFeatureIdsForMods(archer([]))).not.toContain('prestige-archer-arcanique-r4');
+      expect(activeFeatureIdsForMods(archer([wornMain('arc-court')]))).toContain('prestige-archer-arcanique-r4');
     });
   });
 });

@@ -3,7 +3,7 @@
   "id": "recette-per74-archer-arcanique",
   "name": "Recette PER-74 — Archer arcanique (voie de prestige, rangs 4-8)",
   "identity": {
-    "description": "ATTENDU (PER-74, voie de l'archer arcanique p. 137-138) : vérifier le RENDU de chaque rang prestige. Base = rôdeur archer, ARC LONG équipé → la carte d'attaque à distance doit apparaître (PER doit s'ajouter aux DM de l'arc via Archer émérite). R4 Flèche magique → VERBATIM (pas de balise) : « 1 sur le dé de DM → maximum » et « DM magiques » non modélisés (fiche à formules, pas de drapeau dégâts magiques). Rien de calculé, texte littéral, « DM » auto-glosé. R5 Flèche intangible → « 10 + AGI de la CIBLE » : AGI rendu en PUCE NON CALCULÉE (@AGI, c'est la carac de l'adversaire, pas la tienne) ; aucune valeur ajoutée à ta fiche. R6 Flèche chercheuse → bonus « +2d4° aux DM » rendu en DÉ {2d4°} + COMPTEUR 1 usage/JOUR (masqué du bloc « État du personnage », suivi sur la carte). R7 Flèche élémentaire → bonus « +1d4° » rendu en DÉ {1d4°} + COMPTEUR 1 usage/COMBAT (masqué du bloc d'état) ; le choix d'énergie reste en PROSE (choix par activation, non permanent). R8 Flèche tueuse → difficulté du test de CON = FORMULE [10 + rang] (rang atteint dans la voie = 8 → doit afficher 18) ; touche/critique automatiques restent verbatim. COULEUR PAR FAMILLE (nouveau) : l'archer arcanique est une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude) : étoile d'en-tête de voie verte, cartes de rang à liseré métallique vert + léger reflet vert, et puces de capacité (breakdowns caracs/dérivées/tests) en vert (texte vert clair sur fond vert très sombre) — le liseré tournant de la puce reste métallique neutre (signature « précieuse » commune). Comparer : les voies génériques (lycanthrope, expert…) restent OR."
+    "description": "ATTENDU (PER-74, voie de l'archer arcanique p. 137-138) : vérifier le RENDU de chaque rang prestige. Base = rôdeur archer, ARC LONG équipé → la carte d'attaque à distance doit apparaître (PER doit s'ajouter aux DM de l'arc via Archer émérite). R4 Flèche magique → VERBATIM (pas de balise) : « 1 sur le dé de DM → maximum » et « DM magiques » non modélisés (fiche à formules, pas de drapeau dégâts magiques). Rien de calculé, texte littéral, « DM » auto-glosé. R5 Flèche intangible → « 10 + AGI de la CIBLE » : AGI rendu en PUCE NON CALCULÉE (@AGI, c'est la carac de l'adversaire, pas la tienne) ; aucune valeur ajoutée à ta fiche. R6 Flèche chercheuse → bonus « +2d4° aux DM » rendu en DÉ {2d4°} + COMPTEUR 1 usage/JOUR (masqué du bloc « État du personnage », suivi sur la carte). R7 Flèche élémentaire → bonus « +1d4° » rendu en DÉ {1d4°} + COMPTEUR 1 usage/COMBAT (masqué du bloc d'état). NOUVEAU : SÉLECTEUR D'ÉLÉMENT « à la table » (poison/feu/froid/foudre/acide) sur la carte de la capacité (hors mode édition, comme l'élément résisté d'une RD) → l'élément choisi s'affiche en PUCE sur la carte « Attaque à distance » sous la forme « +[dé] Feu », avec le dé de bonus RÉSOLU AU NIVEAU (1d4° évolutif → d12° au niveau 16) rendu en icône (comme le dé de rage du barbare). Info-bulle courte + puce de la capacité. Ici pré-réglé sur FEU. R8 Flèche tueuse → difficulté du test de CON = FORMULE [10 + rang] (rang atteint dans la voie = 8 → doit afficher 18) ; touche/critique automatiques restent verbatim. GATING (NOUVEAU) : la voie ne fonctionne QUE si un arc ou une arbalète est en main (comme la Voie du bouclier). Arc long équipé ici → les 5 rangs sont ACTIFS. Déséquipe l'arc (ou mets une dague de lancer) → les 5 rangs GRISENT avec notice « … sans arc ni arbalète (p. 137) », le badge « Magique » et la puce d'élément DISPARAISSENT, et l'attaque à distance dit « Aucune arme ». BADGE MAGIQUE (NOUVEAU) : avec l'arc équipé, la carte « Attaque à distance » porte un badge « Magique » (R4 Flèche magique : DM des flèches magiques), au gabarit exact du badge « Magique » du moine (Mains d'énergie). COULEUR PAR FAMILLE : l'archer arcanique est une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude) : étoile d'en-tête de voie verte, cartes de rang à liseré métallique vert + léger reflet vert, et puces de capacité (breakdowns caracs/dérivées/tests) en vert (texte vert clair sur fond vert très sombre) — le liseré tournant de la puce reste métallique neutre (signature « précieuse » commune). Comparer : les voies génériques (lycanthrope, expert…) restent OR."
   },
   "campaignId": null,
   "playerId": null,
@@ -48,7 +48,9 @@
   ],
   "featureChoices": {},
   "effectToggles": {},
-  "effectInputs": {},
+  "effectInputs": {
+    "prestige-archer-arcanique-r7": "fire"
+  },
   "usageCounters": {},
   "depletion": {},
   "companionDepletion": {},
@@ -71,7 +73,7 @@
   ],
   "mounts": [],
   "overrides": {},
-  "notes": "PER-74 — recette archer arcanique : rendu richText rangs 4-8 (@AGI cible, dés {2d4°}/{1d4°}, formule [10+rang]) + compteurs jour/combat.",
+  "notes": "PER-74 — recette archer arcanique : gating arc/arbalète + badge Magique (r4) + puce élément (r7) + richText rangs 4-8 + compteurs jour/combat.",
   "createdAt": "2026-01-01T00:00:00.000Z",
   "updatedAt": "2026-01-01T00:00:00.000Z"
 }

@@ -24,10 +24,12 @@ import type {
   ArmorAccessEffect,
   CharacterClass,
   Feature,
+  RangedWeaponKind,
   Shield,
   ShieldAccess,
   UsageCounter,
 } from '@/data/schema';
+import { wornRangedWeapon } from './equipment';
 import type { RulesContext } from '@/lib/engine';
 import type { Character, EquipmentLine } from './types';
 import { isCustomItem } from './types';
@@ -522,6 +524,51 @@ export function shieldDisabledFeatureIds(character: Character, ctx: RulesContext
  */
 export function shieldRequiredMessage(): string {
   return "Capacité inutilisable sans bouclier : équipez un bouclier pour en profiter (p. 87).";
+}
+
+/**
+ * PER-74 — l'arme À DISTANCE réellement en main appartient-elle à un des sous-types requis ?
+ * S'appuie sur `wornRangedWeapon` (main principale prioritaire, PER-76/77) et son `rangedKind`.
+ * Une arme lançable (`thrown`) ou une fronde ne satisfait PAS `['bow', 'crossbow']` : seule
+ * l'arme du sous-type exact compte.
+ */
+export function wornRangedWeaponMatchesKinds(
+  equipment: EquipmentLine[] = [],
+  kinds: RangedWeaponKind[],
+): boolean {
+  const kind = wornRangedWeapon(equipment)?.rangedKind;
+  return kind !== undefined && kinds.includes(kind);
+}
+
+/**
+ * PER-74 — ids des capacités DÉSACTIVÉES faute de manier l'arme à distance requise par leur voie :
+ * toutes les capacités acquises d'une voie marquée `requiresRangedKinds` (Voie de l'archer arcanique,
+ * p. 137) quand AUCUNE arme à distance d'un des sous-types requis n'est portée. Miroir à distance de
+ * `shieldDisabledFeatureIds` (PER-142) : ces ids sont exclus des capacités actives
+ * (`activeFeatureIdsForMods`) — leurs effets (le caractère magique de l'attaque à distance conféré par
+ * « Flèche magique ») ne comptent plus tant que l'arc/l'arbalète n'est pas en main. Réversible :
+ * équiper une telle arme les réactive AUTOMATIQUEMENT. Le rendu « désactivée » (rang désaturé + notice)
+ * est porté par la fiche sur le même patron que PER-142 (cf. `rangedWeaponRequiredMessage`).
+ */
+export function rangedWeaponDisabledFeatureIds(character: Character, ctx: RulesContext): Set<string> {
+  const disabled = new Set<string>();
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    const kinds = ctx.pathById.get(feature.pathId)?.requiresRangedKinds;
+    if (!kinds?.length) continue;
+    if (!wornRangedWeaponMatchesKinds(character.equipment, kinds)) disabled.add(id);
+  }
+  return disabled;
+}
+
+/**
+ * PER-74 — message français prêt à afficher (infobulle / notice) pour une capacité désactivée faute
+ * d'arme à distance adéquate (Voie de l'archer arcanique, p. 137). « (p. 137) » y est en parenthèse
+ * AUTONOME → parsé par `PageRefText`/`SourceRef` côté UI.
+ */
+export function rangedWeaponRequiredMessage(): string {
+  return "Capacité inutilisable sans arc ni arbalète en main : équipez-en un pour en profiter (p. 137).";
 }
 
 /** Écart de port d'armure/bouclier à signaler (avertissement non bloquant). */

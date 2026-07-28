@@ -22,6 +22,9 @@ import {
   effectContext,
   manaCastingAbility,
   modsFromFeatures,
+  rangedAttackElement,
+  type RangedAttackElementView,
+  rangedAttackMagicalSourceId,
   stackedDamageReductions,
   type EffectContext,
 } from '@/lib/character/effects';
@@ -150,6 +153,18 @@ export interface CharacterDerivedView {
   /** PER-115 — bonus de DM SITUATIONNELS à distance (Chasseur émérite…), en badges. */
   rangedSituationalDamage: SituationalDamageBonus[];
   /**
+   * PER-74 — id de la capacité ACTIVE rendant l'attaque à distance MAGIQUE (Flèche magique de l'archer
+   * arcanique), ou `null`. Gaté par l'arme requise (arc/arbalète en main) via `activeFeatureIdsForMods`
+   * → non `null` seulement quand le badge « Magique » doit s'afficher sur la carte d'attaque à distance.
+   */
+  rangedAttackMagicalSourceId: string | null;
+  /**
+   * PER-74 — élément de DM AJOUTÉ aux attaques à distance (Flèche élémentaire de l'archer arcanique),
+   * choisi « à la table » (`effectInputs`), ou `null`. Gaté par l'arme requise en main → non `null`
+   * seulement quand la puce d'élément doit s'afficher sur la carte d'attaque à distance.
+   */
+  rangedAttackElement: RangedAttackElementView | null;
+  /**
    * PER-74 — attaque conférée par une FORME active qui CONFISQUE l'attaque à distance (morsure de la
    * forme hybride du lycanthrope, p. 130 : sous cette forme, aucune arme à distance n'est utilisable).
    * `null` = aucune forme de ce genre active → la carte « Attaque à distance » reste affichée.
@@ -261,6 +276,12 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const rangedWorn = wornWeaponForMode(character, 'ranged')?.item ?? null;
   const meleeSituationalDamage = weaponDamageBonuses(character, 'melee', meleeWorn).situational;
   const rangedSituationalDamage = weaponDamageBonuses(character, 'ranged', rangedWorn).situational;
+  // Caractère MAGIQUE de l'attaque à distance (Flèche magique, PER-74) — non nul seulement si la voie
+  // de l'archer arcanique est active (arc/arbalète en main), d'où le badge « Magique » sur la carte.
+  const rangedAttackMagical = rangedAttackMagicalSourceId(character);
+  // Élément de DM ajouté aux attaques à distance (Flèche élémentaire, PER-74) — choisi « à la table »,
+  // gaté par l'arme requise en main : puce d'élément sur la carte d'attaque à distance.
+  const rangedAttackEl = rangedAttackElement(character);
   // Attaque conférée par une FORME active qui interdit le tir (PER-74) : sous forme hybride, le
   // lycanthrope perd l'usage des armes à distance mais gagne une morsure au contact → la carte
   // « Attaque à distance » de la fiche est remplacée par celle de la morsure tant que la forme est ON.
@@ -356,6 +377,8 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     rangedWeaponDamage,
     meleeSituationalDamage,
     rangedSituationalDamage,
+    rangedAttackMagicalSourceId: rangedAttackMagical,
+    rangedAttackElement: rangedAttackEl,
     rangedReplacingFormAttack: formAttackReplacingRanged,
     attackBonusModSources,
   };

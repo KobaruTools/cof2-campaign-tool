@@ -391,6 +391,17 @@ interface PathBase {
    * interrupteur manuel. Absent/false = aucune exigence de bouclier.
    */
   requiresShield?: boolean;
+  /**
+   * La voie EXIGE de manier une arme À DISTANCE d'un des SOUS-TYPES donnés (`RangedWeaponKind`)
+   * pour que ses capacités fonctionnent (PER-74) — ex. Voie de l'archer arcanique (p. 137 :
+   * « Les capacités issues de cette voie peuvent être déclinées pour un arc ou pour une
+   * arbalète » → `['bow', 'crossbow']`). Miroir à distance de `requiresShield` : quand AUCUNE
+   * arme à distance de ces sous-types n'est portée, toutes les capacités acquises de la voie
+   * sont DÉSACTIVÉES (grisées + effets non comptés, cf. `rangedWeaponDisabledFeatureIds`) ;
+   * équiper une telle arme les réactive AUTOMATIQUEMENT, sans interrupteur manuel. Absent =
+   * aucune exigence d'arme à distance.
+   */
+  requiresRangedKinds?: RangedWeaponKind[];
   sourcePage: SourcePage;
 }
 
@@ -501,7 +512,9 @@ export type FeatureEffect =
   | ArmorPenaltyReductionEffect
   | HeavyArmorDefBonusEffect
   | WeaponDamageBonusEffect
-  | AttackBonusEffect;
+  | AttackBonusEffect
+  | RangedAttackMagicalEffect
+  | RangedAttackElementalEffect;
 
 /**
  * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
@@ -1318,6 +1331,42 @@ export interface AttackBonusEffect {
   value: EffectValue;
   /** Condition d'application (mode d'attaque + type d'arme). Cf. `WeaponDamageCondition`. */
   condition: WeaponDamageCondition;
+}
+
+/**
+ * Les ATTAQUES À DISTANCE du personnage sont considérées comme MAGIQUES (PER-74) — ex. Voie de
+ * l'archer arcanique « Flèche magique » (r4, p. 137 : « Les DM de ses flèches sont considérés
+ * comme magiques »). Effet PUREMENT DESCRIPTIF (aucun jet redéfini) : la carte « Attaque à
+ * distance » de la fiche affiche un badge « Magique », comme la vue mains nues du moine (Mains
+ * d'énergie). Sans valeur ni condition — la portée dépend uniquement de l'ACTIVITÉ de la capacité
+ * porteuse (une voie gatée `requiresRangedKinds` ne compte plus quand l'arme requise n'est pas en
+ * main, cf. `activeFeatureIdsForMods`), donc le badge n'apparaît qu'avec l'arme adéquate équipée.
+ */
+export interface RangedAttackMagicalEffect {
+  kind: 'ranged-attack-magical';
+}
+
+/**
+ * Les ATTAQUES À DISTANCE gagnent un ÉLÉMENT de DM choisi À LA TABLE (PER-74) — ex. Voie de l'archer
+ * arcanique « Flèche élémentaire » (r7, p. 137 : « choisit une source de DM parmi poison, feu, froid,
+ * foudre et acide … +1d4° aux DM »). L'élément est un ÉTAT DE JEU échangeable à chaque combat (stocké
+ * dans `Character.effectInputs[featureId]`, éditable HORS mode édition — comme le `scopeChoice` d'une
+ * RD), PAS un choix figé de construction. Purement DESCRIPTIF côté fiche : le +1d4° reste en `richText`
+ * verbatim ; cet effet ne pilote QUE la puce d'élément affichée sur la carte « Attaque à distance ».
+ * Comme `ranged-attack-magical`, la portée dépend de l'ACTIVITÉ de la capacité (voie gatée
+ * `requiresRangedKinds`) → la puce n'apparaît qu'avec l'arme requise en main ET un élément choisi.
+ */
+export interface RangedAttackElementalEffect {
+  kind: 'ranged-attack-elemental';
+  /** Éléments proposés au choix (un seul retenu à la fois dans `effectInputs`). */
+  choices: ResistibleDamageType[];
+  /**
+   * Notation du DÉ de DM bonus ajouté par l'effet (ex. `1d4°`, marqueur `°` = évolutif), affichée sur
+   * la puce d'attaque à distance à côté de l'élément — comme le dé de bonus de la Rage du barbare.
+   * Absent = puce sans dé (élément seul). Le dé reste aussi en `richText` verbatim (source unique de
+   * la règle) ; ce champ ne sert qu'au rendu compact de la puce.
+   */
+  bonusDie?: string;
 }
 
 export interface TestBonusEffect {

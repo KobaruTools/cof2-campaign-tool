@@ -325,6 +325,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       rangedWeaponDamage,
       meleeSituationalDamage,
       rangedSituationalDamage,
+      rangedAttackMagicalSourceId,
+      rangedAttackElement,
       rangedReplacingFormAttack: formAttackReplacingRanged,
       attackBonusModSources,
     },
@@ -953,6 +955,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 rangedWeaponDamage={rangedWeaponDamage}
                 meleeSituationalDamage={meleeSituationalDamage}
                 rangedSituationalDamage={rangedSituationalDamage}
+                rangedAttackMagicalSourceId={rangedAttackMagicalSourceId}
+                rangedAttackElement={rangedAttackElement}
                 rangedReplacingFormAttack={formAttackReplacingRanged}
               />
             ) : (

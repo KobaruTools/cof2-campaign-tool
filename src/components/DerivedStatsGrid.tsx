@@ -11,7 +11,7 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { deriveStats, type DerivedInput } from '@/lib/engine';
-import type { EffectContext } from '@/lib/character/effects';
+import type { EffectContext, RangedAttackElementView } from '@/lib/character/effects';
 import type { DerivedStatId as OverrideKey } from '@/lib/character/types';
 import type { FormAttackView } from '@/lib/character/formAttack';
 import type { UnarmedStrikeView } from '@/lib/character/unarmedStrike';
@@ -119,6 +119,16 @@ export interface DerivedStatsGridProps {
   /** PER-115 — bonus de DM situationnels à distance, en badges sous la carte « Attaque à distance ». */
   rangedSituationalDamage?: SituationalDamageBonus[];
   /**
+   * PER-74 — id de la capacité ACTIVE rendant l'attaque à distance MAGIQUE (Flèche magique de l'archer
+   * arcanique), ou `null`. Affiche un badge « Magique » sous la carte « Attaque à distance ».
+   */
+  rangedAttackMagicalSourceId?: string | null;
+  /**
+   * PER-74 — élément de DM ajouté aux attaques à distance (Flèche élémentaire de l'archer arcanique),
+   * choisi « à la table », ou `null`. Affiche une puce d'élément sous la carte « Attaque à distance ».
+   */
+  rangedAttackElement?: RangedAttackElementView | null;
+  /**
    * PER-74 — attaque conférée par une FORME active qui REMPLACE l'attaque à distance (morsure de la
    * forme hybride du lycanthrope : sous cette forme, aucune arme à distance ne peut être utilisée).
    * Présent → la carte « Attaque à distance » cède la place à la carte de cette attaque. Absent /
@@ -160,6 +170,8 @@ export function DerivedStatsGrid({
   rangedWeaponDamage,
   meleeSituationalDamage,
   rangedSituationalDamage,
+  rangedAttackMagicalSourceId,
+  rangedAttackElement,
   rangedReplacingFormAttack,
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
@@ -289,6 +301,8 @@ export function DerivedStatsGrid({
                 rangedWeaponDamage={rangedWeaponDamage}
                 criticalRanges={rangedCriticalRanges ?? []}
                 situationalBonuses={rangedSituationalDamage ?? []}
+                magicalSourceId={rangedAttackMagicalSourceId}
+                elemental={rangedAttackElement}
               />
             </Grid>
           );

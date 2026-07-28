@@ -18,7 +18,7 @@
  * Les deux derniers exigent un contexte (`EffectContext`). Sans contexte, seul le
  * cas plat constant est sommé (suffit aux appels « catalogue seul »).
  */
-import { featureById, pathById, testDomains } from '@/data';
+import { featureById, pathById, progression, testDomains } from '@/data';
 import { familiarFromOptionId, FANTASTIC_FAMILIAR_R3_ID } from '@/data/fantastic-familiars';
 import type {
   AbilityId,
@@ -26,6 +26,7 @@ import type {
   CriticalRange,
   DamageReduction,
   DerivedStatId,
+  Die,
   EffectValue,
   FamiliarOriginalPower,
   FantasticFamiliar,
@@ -40,7 +41,7 @@ import type {
   WeaponCriticalCondition,
 } from '@/data/schema';
 import { ABILITY_IDS, IMMUNITY_LABELS, RESISTIBLE_DAMAGE_TYPES } from '@/data/schema';
-import type { DerivedMods } from '@/lib/engine';
+import { scalingDie, type DerivedMods } from '@/lib/engine';
 import {
   borrowedHostPathByFeatureId,
   effectiveFeatureIdsForMods,
@@ -52,6 +53,7 @@ import {
   DON_ETRANGE_ARMOR_USAGE_KEY,
   DON_ETRANGE_ID,
   isArmorWorn,
+  rangedWeaponDisabledFeatureIds,
   shieldDisabledFeatureIds,
 } from './armorRestrictions';
 import { isHeavyArmorWorn, wornMeleeWeapon, wornRangedWeapon } from './equipment';
@@ -122,11 +124,79 @@ export interface EffectContext {
  */
 export function activeFeatureIdsForMods(character: Character): string[] {
   const ids = effectiveFeatureIdsForMods(character);
-  // Capacités désactivées par le port d'armure (PER-83) OU par l'absence de bouclier
-  // (PER-142, Voie du bouclier) : dans les deux cas leurs bonus ne comptent plus.
+  // Capacités désactivées par le port d'armure (PER-83), par l'absence de bouclier (PER-142, Voie du
+  // bouclier) OU par l'absence de l'arme à distance requise (PER-74, Voie de l'archer arcanique :
+  // arc/arbalète en main) : dans tous ces cas leurs effets ne comptent plus.
   const disabled = armorDisabledFeatureIds(character, rulesContext);
   for (const id of shieldDisabledFeatureIds(character, rulesContext)) disabled.add(id);
+  for (const id of rangedWeaponDisabledFeatureIds(character, rulesContext)) disabled.add(id);
   return disabled.size ? ids.filter((id) => !disabled.has(id)) : ids;
+}
+
+/**
+ * PER-74 — id de la capacité ACTIVE qui rend les attaques à distance MAGIQUES (effet
+ * `ranged-attack-magical`), ou `null` sinon. « Active » au sens de `activeFeatureIdsForMods` : la Voie
+ * de l'archer arcanique étant gatée `requiresRangedKinds`, « Flèche magique » (r4) n'est retenue que
+ * si un arc/une arbalète est en main → le badge « Magique » de la carte d'attaque à distance
+ * n'apparaît qu'avec l'arme adéquate équipée. On renvoie la PREMIÈRE source (une seule dans le livre).
+ */
+export function rangedAttackMagicalSourceId(character: Character): string | null {
+  for (const id of activeFeatureIdsForMods(character)) {
+    const feature = featureById.get(id);
+    if (feature?.effects?.some((e) => e.kind === 'ranged-attack-magical')) return id;
+  }
+  return null;
+}
+
+/**
+ * PER-74 — élément de DM AJOUTÉ aux attaques à distance (effet `ranged-attack-elemental`, ex. Flèche
+ * élémentaire r7), choisi « à la table » (`effectInputs[featureId]`). Renvoie `{ featureId, element }`
+ * si la capacité est ACTIVE (arc/arbalète en main, gating `requiresRangedKinds`) ET qu'un élément
+ * VALIDE est retenu, sinon `null` (aucune puce). Comme le `scopeChoice` d'une RD, l'absence de choix =
+ * pas d'effet affiché (l'élément change à chaque combat).
+ */
+export interface RangedAttackElementView {
+  /** Capacité source (Flèche élémentaire r7). */
+  featureId: string;
+  /** Élément retenu « à la table ». */
+  element: ResistibleDamageType;
+  /**
+   * Notation du dé de DM bonus RÉSOLU AU NIVEAU (ex. `1d4°` → `d12°` au niveau 16 pour un dé évolutif),
+   * pour la puce ; absent si l'effet n'en déclare pas. Le marqueur `°` est conservé (dé évolutif).
+   */
+  bonusDie?: string;
+}
+
+/**
+ * Résout une notation de dé SIMPLE (sans palier `|C@R`) à un niveau donné : un dé évolutif `°` prend
+ * sa face au niveau courant (`scalingDie`, p. 43), un dé fixe reste tel quel. Le nombre de dés `1` est
+ * omis (convention d'affichage). Notation inattendue → renvoyée telle quelle.
+ */
+function resolveSimpleBonusDie(notation: string, level: number): string {
+  const m = /^(\d*)d(\d+)(°?)$/.exec(notation.trim());
+  if (!m) return notation;
+  const [, countStr, faces, marker] = m;
+  const evolving = marker === '°';
+  const die: Die = evolving ? scalingDie(level, progression) : (`d${faces}` as Die);
+  const count = countStr && countStr !== '1' ? countStr : '';
+  return `${count}${die}${evolving ? '°' : ''}`;
+}
+
+export function rangedAttackElement(character: Character): RangedAttackElementView | null {
+  for (const id of activeFeatureIdsForMods(character)) {
+    const feature = featureById.get(id);
+    const effect = feature?.effects?.find((e) => e.kind === 'ranged-attack-elemental');
+    if (effect?.kind !== 'ranged-attack-elemental' || !feature) continue;
+    const chosen = character.effectInputs?.[id];
+    if (typeof chosen === 'string' && (effect.choices as string[]).includes(chosen)) {
+      return {
+        featureId: id,
+        element: chosen as ResistibleDamageType,
+        bonusDie: effect.bonusDie ? resolveSimpleBonusDie(effect.bonusDie, character.level) : undefined,
+      };
+    }
+  }
+  return null;
 }
 
 /**

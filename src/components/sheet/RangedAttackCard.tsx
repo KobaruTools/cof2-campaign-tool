@@ -14,7 +14,9 @@ import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { WeaponDamageExpr, NoWeaponHint } from '@/components/sheet/WeaponDamageExpr';
 import { WeaponDamageBonusBadge } from '@/components/sheet/WeaponDamageBonusBadge';
+import { ElementalAttackBadge, MagicalAttackBadge } from '@/components/sheet/AttackQualifierBadge';
 import type { WeaponDamageView } from '@/components/sheet/characterDerivedView';
+import type { RangedAttackElementView } from '@/lib/character/effects';
 
 export interface RangedAttackCardProps {
   /** Valeur de touche à distance (base + AGI, éventuellement forcée). */
@@ -31,6 +33,16 @@ export interface RangedAttackCardProps {
   criticalRanges: DefenseBadgeData[];
   /** Bonus de DM situationnels à distance (Chasseur émérite +1d4°…), en badges. */
   situationalBonuses: SituationalDamageBonus[];
+  /**
+   * Id de la capacité ACTIVE rendant l'attaque à distance MAGIQUE (Flèche magique de l'archer
+   * arcanique, PER-74), ou `null`. Affiche un badge « Magique » (comme Mains d'énergie du moine).
+   */
+  magicalSourceId?: string | null;
+  /**
+   * Élément de DM ajouté aux attaques à distance (Flèche élémentaire de l'archer arcanique, PER-74),
+   * choisi « à la table », ou `null`. Affiche une puce d'élément (Feu/Froid/…) avec le dé de bonus.
+   */
+  elemental?: RangedAttackElementView | null;
 }
 
 /**
@@ -48,6 +60,8 @@ export function RangedAttackCard({
   rangedWeaponDamage,
   criticalRanges,
   situationalBonuses,
+  magicalSourceId,
+  elemental,
 }: RangedAttackCardProps) {
   return (
     <Card
@@ -127,6 +141,19 @@ export function RangedAttackCard({
             {situationalBonuses.map((b) => (
               <WeaponDamageBonusBadge key={b.featureId} bonus={b} />
             ))}
+          </Box>
+        )}
+
+        {/* Qualificatifs (Magique / élément choisi, PER-74) — même gabarit que la vue mains nues. */}
+        {(magicalSourceId || elemental) && (
+          <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {magicalSourceId && (
+              <MagicalAttackBadge
+                verbatim="Les DM des flèches (ou carreaux) sont considérés comme magiques (p. 137)."
+                featureId={magicalSourceId}
+              />
+            )}
+            {elemental && <ElementalAttackBadge view={elemental} />}
           </Box>
         )}
       </CardContent>

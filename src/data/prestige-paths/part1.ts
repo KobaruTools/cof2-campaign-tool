@@ -383,6 +383,10 @@ export const prestigePaths1: PrestigePath[] = [
       'prestige-archer-arcanique-r8',
     ],
     note: "La magie mystérieuse et terrible de cette voie de prestige fait de votre archer ou de votre arbalétrier un chasseur implacable dont les traits deviennent mortels et impossibles à esquiver.\nLes capacités issues de cette voie peuvent être déclinées pour un arc ou pour une arbalète.",
+    // PER-74 — la voie ne fonctionne que si un arc OU une arbalète est effectivement en main
+    // (p. 137, note ci-dessus). Comme la Voie du bouclier (`requiresShield`) : sans arme adéquate
+    // portée, toutes ses capacités sont grisées et ne comptent plus (cf. `rangedWeaponDisabledFeatureIds`).
+    requiresRangedKinds: ['bow', 'crossbow'],
     sourcePage: 137,
   },
   {
@@ -849,23 +853,6 @@ export const prestigeFeatures1: Feature[] = [
       replacesRangedAttack: true,
       requiresActiveEffect: { featureId: 'prestige-lycanthrope-r4', index: 0 },
     },
-    // PER-74 : MORSURE conférée par la forme hybride. Le verbatim interdit d'« utiliser d'arme pour
-    // attaquer à distance » sous cette forme ET donne en échange une attaque de morsure AU CONTACT →
-    // `replacesRangedAttack` : forme active, la carte « Attaque à distance » de la fiche est remplacée
-    // par la morsure (touche = attaque au contact habituelle, DM `1d4° + FOR`, action gratuite 1×/round).
-    // Gatée STRICTEMENT sur l'interrupteur de forme hybride (effet 0 de cette capacité) : sous forme de
-    // LOUP (r5), la morsure est déjà décrite par la mini-fiche du loup (`creatureProfile`), pas ici.
-    formAttack: {
-      name: 'Morsure',
-      damage: { count: 1, die: 'd4' },
-      evolving: true,
-      damageAbilities: ['FOR'],
-      scope: 'melee',
-      actionTypes: ['G'],
-      frequency: 'une fois par round',
-      replacesRangedAttack: true,
-      requiresActiveEffect: { featureId: 'prestige-lycanthrope-r4', index: 0 },
-    },
     sourcePage: 130,
   },
   {
@@ -1197,12 +1184,15 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage enchante ses flèches. S'il obtient un résultat de 1 sur son dé de DM, il remplace ce résultat par le maximum du dé (exemple, 1 sur le d8 devient 8). Cet effet ne s'applique pas aux dés bonus. Les DM de ses flèches sont considérés comme magiques.",
-    // PER-74 : passif VERBATIM. Deux mécaniques non modélisables sur une fiche à formules :
+    // PER-74 : passif VERBATIM pour la mécanique de dé, effet DESCRIPTIF pour le caractère magique :
     //  (1) « 1 sur le dé de DM devient le maximum » = re-résolution AU JET (la fiche affiche une
-    //      formule, pas un résultat de dé) → aucune primitive de « plancher de dé » ;
-    //  (2) « DM considérés comme magiques » = passe-résistance/type magique — aucun drapeau
-    //      « dégâts magiques » sur l'arme dans le modèle actuel.
-    // Rien à baliser (pas de dé/formule/quantité) : le glossaire rend « DM » automatiquement.
+    //      formule, pas un résultat de dé) → aucune primitive de « plancher de dé » ; laissé en prose ;
+    //  (2) « DM considérés comme magiques » → effet `ranged-attack-magical` : badge « Magique » sur la
+    //      carte d'attaque à distance (comme Mains d'énergie du moine). L'effet ne compte que si la voie
+    //      est ACTIVE (arc/arbalète en main, gating `requiresRangedKinds`) → le badge n'apparaît qu'avec
+    //      l'arme adéquate équipée.
+    // Rien à baliser côté richText (pas de dé/formule/quantité) : le glossaire rend « DM » automatiquement.
+    effects: [{ kind: 'ranged-attack-magical' }],
     sourcePage: 137,
   },
   {
@@ -1247,9 +1237,14 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le personnage enchante ses flèches et choisit une source de DM parmi poison, feu, froid, foudre et acide. Pendant tout le combat, il ajoute +1d4° aux DM de chacune des flèches qu'il tire. Ce bonus aux DM ne peut pas se cumuler à un autre bonus magique élémentaire (arc de feu, sort élémentaire, etc.).",
-    // PER-74 : bonus de DM `{1d4°}` (le « + » reste littéral). Le CHOIX du type d'énergie est fait À
-    // CHAQUE activation (par combat), donc PAS un choix permanent de construction (`choices`) ni un
-    // `scopeChoice` (il ne gate aucun effet mécanisé — le bonus reste verbatim). Laissé en prose.
+    // PER-74 : bonus de DM `{1d4°}` (le « + » reste littéral, non cumulable → laissé en prose). Le CHOIX
+    // du type d'énergie est fait À CHAQUE activation (par combat) → ÉTAT DE JEU échangeable « à la table »
+    // (`ranged-attack-elemental`, stocké dans `effectInputs`, comme le `scopeChoice` d'une RD), PAS un
+    // choix figé de construction. Il pilote uniquement la PUCE d'élément de la carte d'attaque à distance
+    // (le +1d4° reste verbatim). Gaté par la voie (arc/arbalète en main) → puce visible seulement alors.
+    effects: [
+      { kind: 'ranged-attack-elemental', choices: ['poison', 'fire', 'cold', 'lightning', 'acid'], bonusDie: '1d4°' },
+    ],
     richText:
       "Une fois par combat, le personnage enchante ses flèches et choisit une source de DM parmi poison, feu, froid, foudre et acide. Pendant tout le combat, il ajoute +{1d4°} aux DM de chacune des flèches qu'il tire. Ce bonus aux DM ne peut pas se cumuler à un autre bonus magique élémentaire (arc de feu, sort élémentaire, etc.).",
     usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },

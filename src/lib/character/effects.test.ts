@@ -21,6 +21,8 @@ import {
   conditionalEffectsOf,
   conditionalEffectBonuses,
   criticalRangeSources,
+  rangedAttackElement,
+  rangedAttackMagicalSourceId,
   familiarPowerUsedKey,
   familiarLearnedSpellId,
   familiarLearnedSpellUsageMax,
@@ -2014,5 +2016,62 @@ describe('Pouvoirs conférés par le familier — pilote Dragon féérique (PER-
     const key = familiarPowerUsedKey(R4);
     expect(pruneUsageCounters({ [key]: 1 }, [R4])).toEqual({ [key]: 1 });
     expect(pruneUsageCounters({ [key]: 1 }, ['brute-r1'])).toEqual({});
+  });
+});
+
+describe('rangedAttackMagicalSourceId — attaque à distance magique (Flèche magique, PER-74)', () => {
+  const base = () => createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' });
+  const archer = (equipment: EquipmentLine[]): Character =>
+    ({ ...base(), classId: 'rodeur', featureIds: ['prestige-archer-arcanique-r4'], equipment }) as Character;
+  const bow: EquipmentLine = { itemId: 'arc-long', quantity: 1, worn: { slot: 'mainHand' } };
+
+  it('renvoie la capacité source quand un arc est en main (voie active)', () => {
+    expect(rangedAttackMagicalSourceId(archer([bow]))).toBe('prestige-archer-arcanique-r4');
+  });
+
+  it("renvoie null sans arc/arbalète en main (voie désactivée → effet non compté)", () => {
+    expect(rangedAttackMagicalSourceId(archer([]))).toBeNull();
+    const thrown: EquipmentLine = { itemId: 'couteaux-de-lancer', quantity: 1, worn: { slot: 'mainHand' } };
+    expect(rangedAttackMagicalSourceId(archer([thrown]))).toBeNull();
+  });
+
+  it('renvoie null pour un personnage sans la capacité, arc en main', () => {
+    const sansCapacite = { ...base(), featureIds: [], equipment: [bow] } as Character;
+    expect(rangedAttackMagicalSourceId(sansCapacite)).toBeNull();
+  });
+});
+
+describe('rangedAttackElement — élément ajouté aux flèches (Flèche élémentaire, PER-74)', () => {
+  const base = () => createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' });
+  const bow: EquipmentLine = { itemId: 'arc-long', quantity: 1, worn: { slot: 'mainHand' } };
+  const R7 = 'prestige-archer-arcanique-r7';
+  const archer = (equipment: EquipmentLine[], element?: string): Character =>
+    ({
+      ...base(),
+      classId: 'rodeur',
+      level: 16,
+      featureIds: [R7],
+      equipment,
+      effectInputs: element ? { [R7]: element } : {},
+    }) as Character;
+
+  it("renvoie l'élément choisi + dé RÉSOLU au niveau (1d4° → d12° au niveau 16)", () => {
+    expect(rangedAttackElement(archer([bow], 'fire'))).toMatchObject({
+      featureId: R7,
+      element: 'fire',
+      bonusDie: 'd12°',
+    });
+  });
+
+  it("renvoie null tant qu'aucun élément n'est choisi (change à chaque combat)", () => {
+    expect(rangedAttackElement(archer([bow]))).toBeNull();
+  });
+
+  it('renvoie null sans arc en main même si un élément est choisi (voie désactivée)', () => {
+    expect(rangedAttackElement(archer([], 'cold'))).toBeNull();
+  });
+
+  it('renvoie null pour un élément hors liste', () => {
+    expect(rangedAttackElement(archer([bow], 'physical'))).toBeNull();
   });
 });

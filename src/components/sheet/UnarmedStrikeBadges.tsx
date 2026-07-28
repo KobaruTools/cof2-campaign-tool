@@ -1,74 +1,15 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CasinoIcon from '@mui/icons-material/Casino';
 import SportsMartialArtsIcon from '@mui/icons-material/SportsMartialArts';
 import TuneIcon from '@mui/icons-material/Tune';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
-import { AppTooltip } from '@/components/AppTooltip';
-import { PageRefText } from '@/components/SourceRef';
-import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import {
+  AttackQualifierBadge as QualifierBadge,
+  attackBadgeTooltip as badgeTooltip,
+  MagicalAttackBadge,
+} from '@/components/sheet/AttackQualifierBadge';
 import type { UnarmedStrikeView } from '@/lib/character/unarmedStrike';
-
-type BadgeColor = 'info' | 'warning' | 'error' | 'secondary' | 'success';
-
-/**
- * Badge compact CUSTOM (≠ Chip MUI) d'un qualificatif du combat à mains nues, au même
- * gabarit que `DefenseBadge` : icône + libellé court, l'explication (verbatim + source)
- * passant en info-bulle.
- */
-function QualifierBadge({
-  color,
-  icon,
-  label,
-  tooltip,
-}: {
-  color: BadgeColor;
-  icon: ReactNode;
-  label: string;
-  tooltip: ReactNode;
-}) {
-  return (
-    <AppTooltip title={tooltip}>
-      <Box
-        sx={(theme) => ({
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 0.5,
-          height: 28,
-          px: 1,
-          borderRadius: 1,
-          cursor: 'help',
-          lineHeight: 1,
-          fontSize: '0.85rem',
-          fontWeight: 700,
-          whiteSpace: 'nowrap',
-          color: theme.palette[color].main,
-          bgcolor: alpha(theme.palette[color].main, 0.12),
-          border: `1px solid ${alpha(theme.palette[color].main, 0.45)}`,
-        })}
-      >
-        {icon}
-        <Box component="span">{label}</Box>
-      </Box>
-    </AppTooltip>
-  );
-}
-
-/** Info-bulle « breakdown » : verbatim (avec réfs de page cliquables) + puce de la capacité source. */
-function badgeTooltip(verbatim: string, featureId?: string) {
-  return (
-    <Box sx={{ minWidth: 180 }}>
-      <Typography variant="body2" sx={{ mb: featureId ? 0.75 : 0 }}>
-        <PageRefText>{verbatim}</PageRefText>
-      </Typography>
-      {featureId && <CapabilityChip featureId={featureId} label={null} />}
-    </Box>
-  );
-}
 
 /** Verbatim de la règle des DM temporaires (arme `mains-nues`, p. 183/219). */
 const NON_LETHAL_RULE =
@@ -112,14 +53,9 @@ export function UnarmedStrikeBadges({ view }: { view: UnarmedStrikeView }) {
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
       {lethalityBadge}
       {view.magical && (
-        <QualifierBadge
-          color="secondary"
-          icon={<AutoAwesomeIcon sx={{ fontSize: 18 }} />}
-          label="Magique"
-          tooltip={badgeTooltip(
-            'Attaques à mains nues toujours considérées comme magiques, même sans utiliser l’action Mains d’énergie.',
-            energyHands,
-          )}
+        <MagicalAttackBadge
+          verbatim="Attaques à mains nues toujours considérées comme magiques, même sans utiliser l’action Mains d’énergie."
+          featureId={energyHands}
         />
       )}
       {view.minRollBecomesMax && (
