@@ -7,6 +7,7 @@
  * comportement (recherche, filtres, maître-détail) vit dans `BestiaryBrowser` ; ici on ne
  * pose que l'ossature de page.
  */
+import { Suspense } from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import { AppHeader } from '@/components/AppHeader';
@@ -21,7 +22,12 @@ export default function BestiaryPage() {
       <AppHeader breadcrumbs={[{ label: 'Bestiaire' }]} />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <BestiaryBrowser />
+        {/* Suspense requis : `BestiaryBrowser` lit la sélection dans l'URL (`?c=`) via
+            useSearchParams — une frontière évite de déporter tout l'arbre en rendu client
+            au prérendu (Next 16). Le navigateur gère lui-même ses états de chargement. */}
+        <Suspense>
+          <BestiaryBrowser />
+        </Suspense>
       </Container>
     </Box>
   );

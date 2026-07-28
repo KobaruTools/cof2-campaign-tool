@@ -15,8 +15,11 @@
  *      la seule créature sélectionnée à la demande. `BestiaryStatBlock` est inchangé.
  * Aucune écriture : on lit le store, on n'altère ni donnée ni moteur.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, type Ref } from "react";
+import NextLink from "next/link";
+import { useSearchParams } from "next/navigation";
 import CategoryIcon from "@mui/icons-material/Category";
+import LaunchIcon from "@mui/icons-material/Launch";
 import ClearIcon from "@mui/icons-material/Clear";
 import PetsOutlinedIcon from "@mui/icons-material/PetsOutlined";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -58,10 +61,14 @@ import {
   formatNc,
 } from "@/lib/ui/creature";
 import { BOOKS, DEFAULT_BOOK_ID } from "@/lib/ui/books";
+import { bestiaryCreatureHref } from "@/lib/ui/creatureLinks";
 import { usePersistedState } from "@/lib/ui/usePersistedState";
 import { useBestiaryStore } from "@/stores/bestiary";
 import { AppAlert } from "@/components/AppAlert";
 import { CreatureBlobView } from "./CreatureBlobView";
+
+/** Boutique de l'éditeur (Black Book Éditions) — page d'accueil (fiche produit à préciser plus tard). */
+const BBE_STORE_URL = "https://www.black-book-editions.fr/";
 
 /** Normalise pour une recherche insensible aux accents et à la casse. */
 const norm = (s: string) =>
@@ -218,6 +225,60 @@ function CreatureDetail({
   return <CreatureBlobView slug={slug} paidSource={paidSource} sourceSlug={sourceSlug} />;
 }
 
+/**
+ * Panneau affiché quand l'URL cible une créature ABSENTE de la liste accessible : soit un
+ * supplément payant non débloqué (masqué par la RLS — on ne connaît ni son nom ni sa
+ * source), soit un slug inexistant. Message GÉNÉRIQUE (aucune fuite de contenu payant) :
+ * on oriente vers le déblocage par code (compte) ou l'achat du livre chez l'éditeur.
+ */
+function UnavailableCreatureNotice() {
+  return (
+    <Box
+      sx={{
+        p: 3,
+        borderRadius: 2,
+        border: "1px solid rgba(255, 255, 255, 0.10)",
+        bgcolor: "rgba(0, 0, 0, 0.35)",
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
+      }}
+    >
+      <Stack spacing={2} sx={{ alignItems: "flex-start" }}>
+        <PetsOutlinedIcon sx={{ fontSize: 40, color: "text.secondary" }} />
+        <Typography variant="h6">Créature indisponible</Typography>
+        <Typography color="text.secondary">
+          Cette créature fait partie d&apos;un supplément payant (par exemple «&nbsp;Le
+          Bestiaire&nbsp;» de Chroniques Oubliées Fantasy 2, Black Book Éditions) que vous
+          n&apos;avez pas débloqué — ou le lien est erroné.
+        </Typography>
+        <Typography color="text.secondary">
+          Si vous possédez le livre, débloquez-le dans votre compte à l&apos;aide de son code.
+          Sinon, vous pouvez vous le procurer sur la boutique de l&apos;éditeur.
+        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ pt: 0.5 }}>
+          <Button variant="contained" component={NextLink} href="/account">
+            Débloquer dans mon compte
+          </Button>
+          <Button
+            variant="outlined"
+            color="inherit"
+            component="a"
+            href={BBE_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            endIcon={<LaunchIcon />}
+          >
+            Boutique Black Book Éditions
+          </Button>
+        </Stack>
+        <Button variant="text" color="inherit" component={NextLink} href="/bestiary">
+          ← Retour au bestiaire
+        </Button>
+      </Stack>
+    </Box>
+  );
+}
+
 /** Étage 1 bis : tout le filtrage/tri, sur la liste LÉGÈRE déjà chargée (non vide). */
 function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
   // Sources payantes débloquées : une créature dont le `sourceId` y figure vient d'un
@@ -348,7 +409,15 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
     "category",
     (raw) => (isSortMode(raw) ? raw : undefined),
   );
-  const [selectedId, setSelectedId] = useState<string>(list[0]?.id ?? "");
+  // Sélection pilotée par l'URL (`?c=<slug>`) : un refresh ou un lien partagé retombe sur
+  // la bonne fiche. Lue via useSearchParams (réactif aux clics de ligne / de lien croisé,
+  // qui sont de VRAIES ancres) ; la page monte cette vue sous une frontière Suspense.
+  const searchParams = useSearchParams();
+  const urlSlug = searchParams.get("c") ?? "";
+  // La créature ciblée est-elle dans la liste ACCESSIBLE (gratuit + payant débloqué) ? Sinon
+  // (slug d'un payant non débloqué — masqué par la RLS — ou slug inexistant) → panneau d'info.
+  const urlCreature = urlSlug ? list.find((c) => c.id === urlSlug) : undefined;
+  const urlUnavailable = urlSlug !== "" && !urlCreature;
 
   // Filtre source EFFECTIF : le choix persisté n'est retenu que si le groupe est
   // affiché ET que la source existe toujours (entitlement conservé) ; sinon `"all"`.
@@ -437,11 +506,25 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
     return ids;
   }, [sortMode, sortedFlat, visibleFamilies]);
 
-  // Sélection EFFECTIVE dérivée au rendu (pas de correction via un effet) : la créature
-  // choisie tant qu'elle reste visible, sinon la première de la liste filtrée.
-  const effectiveId = visibleIds.includes(selectedId)
-    ? selectedId
-    : (visibleIds[0] ?? "");
+  // Fiche à afficher, dérivée au rendu : la créature de l'URL si elle est accessible — même
+  // filtrée hors de la liste, un lien profond doit la montrer — sinon la première visible
+  // (défaut à l'arrivée sur /bestiary sans `?c=`). Sert aussi au surlignage de sa ligne.
+  const detailId = urlCreature ? urlCreature.id : (visibleIds[0] ?? "");
+
+  // Amène la ligne sélectionnée dans la vue de la sidebar quand la sélection change (clic de
+  // lien croisé, refresh sur `?c=`, lien partagé) — on scrolle UNIQUEMENT le conteneur de la
+  // liste, jamais la fenêtre. No-op si la ligne est filtrée hors de la liste (ref non montée).
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const selectedRowRef = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    const container = listContainerRef.current;
+    const row = selectedRowRef.current;
+    if (!container || !row) return;
+    const cr = container.getBoundingClientRect();
+    const rr = row.getBoundingClientRect();
+    if (rr.top < cr.top) container.scrollTop += rr.top - cr.top - 8;
+    else if (rr.bottom > cr.bottom) container.scrollTop += rr.bottom - cr.bottom + 8;
+  }, [detailId]);
 
   return (
     <Stack spacing={2}>
@@ -684,6 +767,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
 
           {/* Liste : groupée par catégorie (variantes indentées) ou plate (alpha / NC). */}
           <Box
+            ref={listContainerRef}
             sx={{
               borderRadius: 2,
               overflow: "hidden",
@@ -707,9 +791,10 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
                 <CreatureRow
                   key={c.id}
                   creature={c}
-                  selected={effectiveId === c.id}
+                  selected={detailId === c.id}
                   paid={isPaidCreature(c)}
-                  onSelect={() => setSelectedId(c.id)}
+                  href={bestiaryCreatureHref(c.id)}
+                  innerRef={detailId === c.id ? selectedRowRef : undefined}
                 />
               ))
             ) : (
@@ -745,9 +830,10 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
                     <CreatureRow
                       key={family.base.id}
                       creature={family.base}
-                      selected={effectiveId === family.base.id}
+                      selected={detailId === family.base.id}
                       paid={isPaidCreature(family.base)}
-                      onSelect={() => setSelectedId(family.base.id)}
+                      href={bestiaryCreatureHref(family.base.id)}
+                      innerRef={detailId === family.base.id ? selectedRowRef : undefined}
                     />,
                   );
                   for (const v of family.variants) {
@@ -756,9 +842,10 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
                         key={v.id}
                         creature={v}
                         variant
-                        selected={effectiveId === v.id}
+                        selected={detailId === v.id}
                         paid={isPaidCreature(v)}
-                        onSelect={() => setSelectedId(v.id)}
+                        href={bestiaryCreatureHref(v.id)}
+                        innerRef={detailId === v.id ? selectedRowRef : undefined}
                       />,
                     );
                   }
@@ -769,58 +856,67 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
           </Box>
         </Stack>
 
-        {/* Détail : bloc de stats de la créature sélectionnée (blob chargé à la demande). */}
+        {/* Détail : soit le panneau « contenu payant » (lien profond vers une créature non
+            accessible), soit le bloc de stats de la créature sélectionnée (blob à la demande). */}
         <Box sx={{ minWidth: 0 }}>
-          <CreatureDetail
-            slug={effectiveId}
-            paidSource={list.some((c) => c.id === effectiveId && isPaidCreature(c))}
-            // Slug de la source de la créature sélectionnée → mappé vers son livre pour rendre
-            // le renvoi (« p. N ») cliquable vers le bon PDF (au lieu d'un livre codé en dur).
-            sourceSlug={
-              sources.find(
-                (s) => s.id === list.find((c) => c.id === effectiveId)?.sourceId,
-              )?.slug
-            }
-          />
+          {urlUnavailable ? (
+            <UnavailableCreatureNotice />
+          ) : (
+            <CreatureDetail
+              slug={detailId}
+              paidSource={list.some((c) => c.id === detailId && isPaidCreature(c))}
+              // Slug de la source de la créature sélectionnée → mappé vers son livre pour rendre
+              // le renvoi (« p. N ») cliquable vers le bon PDF (au lieu d'un livre codé en dur).
+              sourceSlug={
+                sources.find(
+                  (s) => s.id === list.find((c) => c.id === detailId)?.sourceId,
+                )?.slug
+              }
+            />
+          )}
         </Box>
       </Box>
     </Stack>
   );
 }
 
-/** Ligne cliquable de la liste : nom + NC, indentée pour une variante, surlignée si sélectionnée. */
+/**
+ * Ligne de la liste : nom + NC, indentée pour une variante, surlignée si sélectionnée.
+ * VRAIE ANCRE (`next/link`) vers `?c=<slug>` — la sélection vit dans l'URL (refresh /
+ * partage OK) ; `scroll={false}` pour ne pas remonter la page (on reste en maître-détail).
+ */
 function CreatureRow({
   creature,
   variant = false,
   selected,
   paid = false,
-  onSelect,
+  href,
+  innerRef,
 }: {
   creature: CreatureListItem;
   variant?: boolean;
   selected: boolean;
   /** Créature d'un supplément payant → tête de loup à gauche du NC. */
   paid?: boolean;
-  onSelect: () => void;
+  href: string;
+  /** Ref vers l'ancre, posé sur la SEULE ligne sélectionnée → défilement de la sidebar. */
+  innerRef?: Ref<HTMLAnchorElement>;
 }) {
   const nc = creatureNcLabel(creature);
   return (
     <Box
-      role="button"
-      tabIndex={0}
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
+      ref={innerRef}
+      component={NextLink}
+      href={href}
+      scroll={false}
       sx={{
         display: "flex",
         alignItems: "center",
         gap: 1,
         cursor: "pointer",
         userSelect: "none",
+        color: "inherit",
+        textDecoration: "none",
         pl: variant ? 3 : 1.5,
         pr: 1.5,
         py: 0.75,
