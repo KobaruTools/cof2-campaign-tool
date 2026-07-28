@@ -6,7 +6,12 @@ import Typography from '@mui/material/Typography';
 import type { AbilityId, Ancestry } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import type { AncestryChoice } from '@/lib/character/ancestry';
-import type { AbilityModSource, AbilityOverrideSource, BonusDieSource } from '@/lib/character/effects';
+import type {
+  AbilityFormBonusSource,
+  AbilityModSource,
+  AbilityOverrideSource,
+  BonusDieSource,
+} from '@/lib/character/effects';
 import { abilityTotalColor, abilityTotalFontSize } from '@/lib/ui/abilityColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
@@ -57,6 +62,13 @@ export interface AbilitiesGridProps {
    * dans le détail.
    */
   bonusDieSources?: Partial<Record<AbilityId, BonusDieSource[]>>;
+  /**
+   * Bonus de caractéristique EN DELTA conditionnés à une FORME active (PER-74, ex. Forme puissante :
+   * +2 FOR sous forme de loup ou d'hybride). S'ajoutent au total affiché en lecture — PAR-DESSUS la
+   * surcharge de forme (loup FOR 3 → 5) comme par-dessus la valeur de base (hybride). Absent = aucun.
+   * Ignoré en édition. Cohérent avec `effectiveAbilities` (qui applique le même delta aux stats dérivées).
+   */
+  abilityFormBonuses?: Partial<Record<AbilityId, AbilityFormBonusSource[]>>;
 }
 
 /**
@@ -75,6 +87,7 @@ export function AbilitiesGrid({
   abilityModSources,
   abilityOverrides,
   bonusDieSources,
+  abilityFormBonuses,
 }: AbilitiesGridProps) {
   const canExplain = baseAbilities != null && ancestry != null && ancestryChoices != null;
   return (
@@ -102,9 +115,13 @@ export function AbilitiesGrid({
         const mod = abilityMods?.[id] ?? 0;
         // Surcharge de transformation (PER-74) : uniquement en LECTURE (en édition on édite la saisie).
         const override = onChange ? undefined : abilityOverrides?.[id];
-        // Lecture : on montre le total effectif (saisie + capacités), ou la valeur IMPOSÉE par une
-        // transformation active. Édition : on édite la valeur SAISIE (chip « +N » par-dessus).
-        const effective = override ? override.value : entered + mod;
+        // Bonus de forme en delta (PER-74, ex. Forme puissante) : en LECTURE seulement, s'ajoute au total
+        // PAR-DESSUS l'override (loup FOR 3 → 5) comme par-dessus la valeur de base (hybride).
+        const formSources = (onChange ? undefined : abilityFormBonuses?.[id]) ?? [];
+        const formSum = formSources.reduce((sum, s) => sum + s.value, 0);
+        // Lecture : on montre le total effectif (saisie + capacités + forme), ou la valeur IMPOSÉE par une
+        // transformation active (+ delta de forme). Édition : on édite la valeur SAISIE (chip « +N » par-dessus).
+        const effective = (override ? override.value : entered + mod) + formSum;
         const dieSources = bonusDieSources?.[id];
         const dieSourceNames = dieSources?.map((s) => s.name);
         // Tout le bloc porte l'infobulle de détail ; l'icône de dé bonus reste À CÔTÉ
@@ -144,7 +161,7 @@ export function AbilitiesGrid({
             {effective}
           </Typography>
         );
-        const featureTerms = (abilityModSources?.[id] ?? []).map((s) => ({
+        const featureTerms = [...(abilityModSources?.[id] ?? []), ...formSources].map((s) => ({
           name: s.name,
           value: s.value,
           featureId: s.featureId,
@@ -202,9 +219,15 @@ export function AbilitiesGrid({
                   <BreakdownContent
                     title={ABILITY_NAMES[id]}
                     breakdown={{
-                      total: override.value,
-                      terms: [{ label: override.name, value: override.value, featureId: override.featureId }],
-                      note: `Valeur imposée par la transformation (${override.name}).`,
+                      // Total imposé par la forme + delta(s) de forme éventuel(s) (ex. loup 3 + Forme puissante 2 = 5).
+                      total: override.value + formSum,
+                      terms: [
+                        { label: override.name, value: override.value, featureId: override.featureId },
+                        ...formSources.map((s) => ({ label: s.name, value: s.value, featureId: s.featureId })),
+                      ],
+                      note: `Valeur imposée par la transformation (${override.name}).${
+                        formSources.length ? ' Bonus de forme ajouté par-dessus.' : ''
+                      }`,
                       page: override.page,
                     }}
                     page={override.page}

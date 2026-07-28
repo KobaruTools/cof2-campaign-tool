@@ -816,6 +816,19 @@ export const prestigeFeatures1: Feature[] = [
     // (durée « 1 min », « Attaque au contact » auto-glosé) reste littéral.
     richText:
       "Au prix d'une action limitée, le personnage peut se transformer en forme hybride, mi-homme, mi-loup pendant 1 min. Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité. Sous cette forme, il ne peut pas lancer de sort ou utiliser d'arme pour attaquer à distance, en revanche il obtient une attaque de morsure (Attaque au contact) qui inflige [1d4° + FOR] DM en action gratuite une fois par round. Il reprend immédiatement sa forme normale s'il tombe à 0 PV.",
+    // PER-74 : interrupteur de FORME HYBRIDE (marqueur d'état, `bonuses` vide) porté par la capacité qui
+    // OCTROIE la forme (r4) — et non par r7. Mutuellement exclusif avec la forme de loup (r5) : on ne peut
+    // être dans les deux formes à la fois. La RD de « Résistance surnaturelle » (r7) SUIT cet interrupteur
+    // (`damageReduction.requiresActiveEffect` → r4:0), et le +2 FOR de « Forme puissante » (r8) s'active
+    // quand cet interrupteur OU celui du loup est ON.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Sous forme hybride', activeByDefault: false },
+        mutuallyExclusiveWith: ['prestige-lycanthrope-r5'],
+      },
+    ],
     // PER-74 : « Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette
     // capacité » → 1 usage, rechargé au repos court (compteur d'usage décompté à la table).
     usageCounter: { max: 1, resetOn: 'short-rest' },
@@ -839,15 +852,16 @@ export const prestigeFeatures1: Feature[] = [
     // PER-137 : RD −5 contre les armes non argentées, CONDITIONNELLE à la forme de loup. Marqueur
     // d'état (interrupteur manuel) pour n'afficher la RD que sous cette forme.
     // PER-74 : (a) `abilityOverrides` → sous forme de loup, FOR/AGI imposées (+3/+1) sur TOUTE la fiche ;
-    // (b) `mutuallyExclusiveWith` r7 → loup et hybride sont EXCLUSIFS (on ne peut être dans les deux formes),
-    // donc les RD ne se cumulent jamais à 10 (arbitrage proprio : « pas 10 mais 5 »).
+    // (b) `mutuallyExclusiveWith` r4 → forme de loup et forme HYBRIDE (interrupteur porté par r4) sont
+    // EXCLUSIVES (on ne peut être dans les deux formes), donc leurs RD ne se cumulent jamais à 10
+    // (arbitrage proprio : « pas 10 mais 5 »).
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
         activation: { kind: 'temporary', label: 'Sous forme de loup', activeByDefault: false },
         abilityOverrides: { FOR: 3, AGI: 1 },
-        mutuallyExclusiveWith: ['prestige-lycanthrope-r7'],
+        mutuallyExclusiveWith: ['prestige-lycanthrope-r4'],
       },
     ],
     damageReduction: { kind: 'flat', value: 5, scopes: ['non-silver-weapon'] },
@@ -893,18 +907,17 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Désormais le lycanthrope réduit de 5 tous les DM qui lui sont infligés par des armes qui ne sont pas en argent lorsqu'il est sous forme hybride. Cette réduction des DM ne peut pas être cumulée à une autre forme de RD.",
-    // PER-137 : RD −5 contre les armes non argentées, CONDITIONNELLE à la forme hybride. Marqueur d'état.
-    // PER-74 : `mutuallyExclusiveWith` r5 → forme hybride et forme de loup EXCLUSIVES (jamais les deux),
+    // PER-137/PER-74 : RD −5 contre les armes non argentées, CONDITIONNELLE à la forme hybride. Cette
+    // capacité (r7) N'A PAS d'interrupteur propre : la forme hybride est pilotée par l'interrupteur de
+    // « Forme hybride » (r4, effet 0). La RD SUIT donc cet interrupteur via `requiresActiveEffect`. Comme
+    // r4 et r5 (loup) sont mutuellement exclusifs, la RD hybride ne se cumule jamais avec la RD du loup —
     // ce qui matérialise le non-cumul « avec une autre forme de RD » du verbatim (RD plafonnée à 5, pas 10).
-    effects: [
-      {
-        kind: 'conditional-stat-bonus',
-        bonuses: [],
-        activation: { kind: 'temporary', label: 'Sous forme hybride', activeByDefault: false },
-        mutuallyExclusiveWith: ['prestige-lycanthrope-r5'],
-      },
-    ],
-    damageReduction: { kind: 'flat', value: 5, scopes: ['non-silver-weapon'] },
+    damageReduction: {
+      kind: 'flat',
+      value: 5,
+      scopes: ['non-silver-weapon'],
+      requiresActiveEffect: { featureId: 'prestige-lycanthrope-r4', index: 0 },
+    },
     sourcePage: 131,
   },
   {
@@ -916,6 +929,19 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le lycanthrope augmente sa FOR de +2 lorsqu'il est sous forme de loup ou d'hybride (il gagne +2 en attaque au contact et aux DM sur toutes ses attaques basées sur la force).",
+    // PER-74 : +2 FOR EN DELTA, actif dès que la forme de loup (r5:0) OU la forme hybride (r4:0) est ON.
+    // Appliqué après l'override du loup (FOR 3 → 5) et par-dessus la FOR de base en hybride. Les +2 à
+    // l'attaque au contact et aux DM d'armes basées sur la FOR en découlent AUTOMATIQUEMENT (dérivés de FOR).
+    effects: [
+      {
+        kind: 'active-form-ability-bonus',
+        abilities: { FOR: 2 },
+        whenAnyActive: [
+          { featureId: 'prestige-lycanthrope-r4', index: 0 },
+          { featureId: 'prestige-lycanthrope-r5', index: 0 },
+        ],
+      },
+    ],
     sourcePage: 131,
   },
 

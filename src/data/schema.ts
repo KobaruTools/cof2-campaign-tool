@@ -488,6 +488,7 @@ export type FeatureEffect =
   | AbilityBonusEffect
   | AbilityBonusFromChoiceEffect
   | AbilityBonusFromFamiliarEffect
+  | ActiveFormAbilityBonusEffect
   | AbilityBonusDieEffect
   | AbilityBonusDieFromChoiceEffect
   | TestBonusEffect
@@ -830,6 +831,28 @@ export interface AbilityBonusFromFamiliarEffect {
   kind: 'ability-bonus-from-familiar';
   /** Valeur ajoutée à la carac désignée par le familier (rang 7 : +1). */
   value: number;
+}
+
+/**
+ * Bonus de caractéristique CONDITIONNEL EN DELTA, actif tant qu'AU MOINS UNE des transformations
+ * référencées est active (PER-74, ex. lycanthrope « Forme puissante » r8 : « +2 en FOR sous forme de
+ * loup OU d'hybride »). Contrairement à `abilityOverrides` d'un `conditional-stat-bonus` (qui IMPOSE une
+ * valeur ABSOLUE), ce delta s'AJOUTE — et il est appliqué APRÈS les overrides dans `effectiveAbilities` :
+ * sous forme de loup (FOR imposée à 3), un +2 porte le total à 5 ; sous forme hybride (aucun override),
+ * il s'ajoute à la valeur de base. L'activation n'est PAS un interrupteur propre : elle SUIT les
+ * interrupteurs d'AUTRES capacités (les formes), listés dans `whenAnyActive`. Distinct d'`ability-bonus`
+ * (permanent) et d'`abilityOverrides` (absolu, propre à une forme).
+ */
+export interface ActiveFormAbilityBonusEffect {
+  kind: 'active-form-ability-bonus';
+  /** Deltas signés par caractéristique (ex. `{ FOR: 2 }`). */
+  abilities: Partial<Record<AbilityId, number>>;
+  /**
+   * Interrupteurs de forme qui activent ce bonus : `{ featureId, index }` désigne un
+   * `conditional-stat-bonus` (marqueur de forme) d'une AUTRE capacité. Le bonus compte dès qu'au
+   * moins un de ces interrupteurs est actif (« loup OU hybride »).
+   */
+  whenAnyActive: { featureId: string; index: number }[];
 }
 
 /**
@@ -1420,6 +1443,15 @@ export interface DamageReduction {
    * Exclusif avec `scopes` et `scopeChoice`.
    */
   scopeFromChoice?: number;
+  /**
+   * Gating CROSS-CAPACITÉ (PER-74) : cette entrée de RD n'est ACTIVE que si l'interrupteur
+   * (`conditional-stat-bonus`) d'une AUTRE capacité est actif. Ex. lycanthrope « Résistance
+   * surnaturelle » (r7) : la RD −5 (armes non argentées) ne s'applique que « sous forme hybride » —
+   * or l'interrupteur de forme hybride vit sur « Forme hybride » (r4), pas sur r7. Le gating par
+   * interrupteur PROPRE (cf. `damageReductionSources`) ne couvre pas ce cas ; ce champ pointe
+   * explicitement l'interrupteur porteur. Absent = gating par interrupteur(s) propre(s) (défaut).
+   */
+  requiresActiveEffect?: { featureId: string; index: number };
 }
 
 /**

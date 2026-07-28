@@ -29,6 +29,7 @@ import {
   damageReductionSources,
   stackedDamageReductions,
   activeAbilityOverrideSources,
+  activeFormAbilityBonuses,
   creatureBonusDiceForPath,
   acquiredTestDomainIds,
   defenseAbility,
@@ -642,13 +643,66 @@ describe('surcharge de caractéristiques par transformation (PER-74, forme de lo
     expect(src.AGI?.value).toBe(1);
   });
 
-  it('formes loup et hybride mutuellement exclusives (jamais les deux à la fois)', () => {
-    const fromHybrid = setEffectToggle(wolf({ 'prestige-lycanthrope-r7': [true] }), 'prestige-lycanthrope-r5', 0, true);
+  it('formes loup (r5) et hybride (r4) mutuellement exclusives (jamais les deux à la fois)', () => {
+    // PER-74 : l'interrupteur de forme HYBRIDE vit sur r4 (Forme hybride), pas sur r7. Activer le loup
+    // éteint l'hybride, et inversement.
+    const fromHybrid = setEffectToggle(wolf({ 'prestige-lycanthrope-r4': [true] }), 'prestige-lycanthrope-r5', 0, true);
     expect(fromHybrid['prestige-lycanthrope-r5']?.[0]).toBe(true);
-    expect(fromHybrid['prestige-lycanthrope-r7']?.[0]).toBe(false);
-    const fromWolf = setEffectToggle(wolf({ 'prestige-lycanthrope-r5': [true] }), 'prestige-lycanthrope-r7', 0, true);
-    expect(fromWolf['prestige-lycanthrope-r7']?.[0]).toBe(true);
+    expect(fromHybrid['prestige-lycanthrope-r4']?.[0]).toBe(false);
+    const fromWolf = setEffectToggle(wolf({ 'prestige-lycanthrope-r5': [true] }), 'prestige-lycanthrope-r4', 0, true);
+    expect(fromWolf['prestige-lycanthrope-r4']?.[0]).toBe(true);
     expect(fromWolf['prestige-lycanthrope-r5']?.[0]).toBe(false);
+  });
+});
+
+describe('lycanthrope — Forme puissante (r8) : +2 FOR en delta conditionné à une forme (PER-74)', () => {
+  const lycan = (toggles: Record<string, boolean[]> = {}): Character =>
+    ({
+      ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+      level: 10,
+      abilities: { FOR: 4, AGI: 2, CON: 2, PER: 1, CHA: 0, INT: -1, VOL: 1 },
+      baseAbilities: { FOR: 4, AGI: 2, CON: 2, PER: 1, CHA: 0, INT: -1, VOL: 1 },
+      featureIds: ['prestige-lycanthrope-r4', 'prestige-lycanthrope-r5', 'prestige-lycanthrope-r8'],
+      effectToggles: toggles,
+    }) as Character;
+
+  it('aucune forme active → aucun delta', () => {
+    expect(activeFormAbilityBonuses(lycan())).toEqual({});
+    expect(effectiveAbilities(lycan()).FOR).toBe(4);
+  });
+
+  it('forme de loup active → FOR imposée 3 PUIS +2 = 5 (delta appliqué après l’override)', () => {
+    const c = lycan({ 'prestige-lycanthrope-r5': [true] });
+    expect(activeFormAbilityBonuses(c)).toEqual({ FOR: 2 });
+    expect(effectiveAbilities(c).FOR).toBe(5);
+    expect(effectiveAbilities(c).AGI).toBe(1);
+  });
+
+  it('forme hybride active → base 4 + 2 = 6 (aucun override)', () => {
+    const c = lycan({ 'prestige-lycanthrope-r4': [true] });
+    expect(effectiveAbilities(c).FOR).toBe(6);
+    expect(effectiveAbilities(c).AGI).toBe(2);
+  });
+});
+
+describe('lycanthrope — Résistance surnaturelle (r7) : RD gatée sur l’interrupteur hybride de r4 (PER-74)', () => {
+  const lycan = (toggles: Record<string, boolean[]> = {}): Character =>
+    ({
+      ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+      level: 10,
+      featureIds: ['prestige-lycanthrope-r4', 'prestige-lycanthrope-r7'],
+      effectToggles: toggles,
+    }) as Character;
+
+  it('forme hybride inactive → RD de r7 absente (pas passive malgré l’absence d’interrupteur propre)', () => {
+    const sources = damageReductionSources(lycan());
+    expect(sources.some((s) => s.featureId === 'prestige-lycanthrope-r7')).toBe(false);
+  });
+
+  it('forme hybride active (r4) → RD −5 de r7 présente', () => {
+    const sources = damageReductionSources(lycan({ 'prestige-lycanthrope-r4': [true] }));
+    const r7 = sources.find((s) => s.featureId === 'prestige-lycanthrope-r7');
+    expect(r7?.reduction).toMatchObject({ kind: 'flat', value: 5, scopes: ['non-silver-weapon'] });
   });
 });
 

@@ -57,9 +57,18 @@
     "copper": 0
   },
   "levelUpHistory": [],
-  "equipment": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    }
+  ],
   "overrides": {},
-  "notes": "PER-74 — recette lycanthrope : rendu richText rangs 4-8 + RD conditionnelles par forme.",
+  "notes": "PER-74 — recette lycanthrope : rendu richText rangs 4-8 + RD conditionnelles par forme + FOR conditionnelle (Forme puissante r8). Épée longue équipée pour VOIR le +2 de r8 sur la touche ET le DM d'arme (contact) selon la forme active.",
   "createdAt": "2026-01-01T00:00:00.000Z",
   "updatedAt": "2026-01-01T00:00:00.000Z"
 }

@@ -152,6 +152,13 @@ export function effectiveAbilities(character: Character): Record<AbilityId, numb
   for (const [ability, value] of Object.entries(overrides) as [AbilityId, number][]) {
     out[ability] = value;
   }
+  // BONUS DE FORME EN DELTA (PER-74, ex. Forme puissante r8 : +2 FOR « loup ou hybride ») : appliqué
+  // APRÈS l'override absolu — sous forme de loup, FOR imposée à 3 devient 5 ; sous forme hybride (pas
+  // d'override), le delta s'ajoute à la valeur de base. Ne compte que si une forme référencée est active.
+  const formBonuses = activeFormAbilityBonuses(character);
+  for (const [ability, value] of Object.entries(formBonuses) as [AbilityId, number][]) {
+    out[ability] = (out[ability] ?? 0) + value;
+  }
   return out;
 }
 
@@ -201,6 +208,53 @@ export function activeAbilityOverrides(character: Character): Partial<Record<Abi
   const out: Partial<Record<AbilityId, number>> = {};
   for (const [ability, src] of Object.entries(sources) as [AbilityId, AbilityOverrideSource][]) {
     out[ability] = src.value;
+  }
+  return out;
+}
+
+/** Une capacité apportant un bonus de carac EN DELTA conditionné à une forme active (PER-74). */
+export interface AbilityFormBonusSource {
+  featureId: string;
+  /** Nom de la capacité (français, ex. « Forme puissante »). */
+  name: string;
+  value: number;
+}
+
+/**
+ * Sources des bonus de carac EN DELTA conditionnés à une forme active (PER-74, effet
+ * `active-form-ability-bonus`, ex. Forme puissante r8). Pour chaque effet dont AU MOINS UN des
+ * interrupteurs de forme référencés (`whenAnyActive`) est actif, enregistre le delta par caractéristique
+ * avec sa capacité source. Vide si aucune forme référencée n'est active. Alimente le total
+ * (`effectiveAbilities`) ET le détail affiché de la caractéristique (breakdown de la grille).
+ */
+export function activeFormAbilityBonusSources(
+  character: Character,
+): Partial<Record<AbilityId, AbilityFormBonusSource[]>> {
+  const out: Partial<Record<AbilityId, AbilityFormBonusSource[]>> = {};
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const e of feature.effects) {
+      if (e.kind !== 'active-form-ability-bonus') continue;
+      const active = e.whenAnyActive.some((ref) => isEffectActive(character, ref.featureId, ref.index));
+      if (!active) continue;
+      for (const [ability, value] of Object.entries(e.abilities) as [AbilityId, number][]) {
+        if (!value) continue;
+        (out[ability] ??= []).push({ featureId: id, name: feature.name, value });
+      }
+    }
+  }
+  return out;
+}
+
+/** Deltas de caractéristiques (sommés par carac) apportés par les bonus de forme actifs (PER-74). */
+export function activeFormAbilityBonuses(character: Character): Partial<Record<AbilityId, number>> {
+  const out: Partial<Record<AbilityId, number>> = {};
+  for (const [ability, sources] of Object.entries(activeFormAbilityBonusSources(character)) as [
+    AbilityId,
+    AbilityFormBonusSource[],
+  ][]) {
+    out[ability] = sources.reduce((sum, s) => sum + s.value, 0);
   }
   return out;
 }
@@ -2071,6 +2125,13 @@ export function damageReductionSources(character: Character): DamageReductionSou
     const entries = Array.isArray(feature.damageReduction) ? feature.damageReduction : [feature.damageReduction];
     const rank = pathRanks[rankPathId] ?? 0;
     for (const dr of entries) {
+      // Gating CROSS-CAPACITÉ (PER-74) : RD active seulement si l'interrupteur d'une AUTRE capacité
+      // (la forme porteuse) est actif — ex. la RD hybride de r7 suit l'interrupteur de r4 (Forme hybride).
+      if (
+        dr.requiresActiveEffect &&
+        !isEffectActive(character, dr.requiresActiveEffect.featureId, dr.requiresActiveEffect.index)
+      )
+        continue;
       // Gating par RANG de voie (ex. Invulnérable : ÷2 poison/maladie ≤ r4, immunité ≥ r5).
       if (dr.minPathRank !== undefined && rank < dr.minPathRank) continue;
       if (dr.maxPathRank !== undefined && rank > dr.maxPathRank) continue;

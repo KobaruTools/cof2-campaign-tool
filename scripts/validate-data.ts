@@ -373,6 +373,29 @@ for (const c of features) {
       if (c.pathId !== 'prestige-familier-fantastique')
         err(`[capacite ${c.id}] effect: ability-bonus-from-familiar hors de la voie du familier fantastique`);
       if (!Number.isFinite(e.value)) err(`[capacite ${c.id}] effect: ability-bonus-from-familiar value non finie`);
+    } else if (e.kind === 'active-form-ability-bonus') {
+      // Bonus de carac EN DELTA conditionné à une forme active (PER-74, ex. Forme puissante r8).
+      // `abilities` : caracs valides à valeurs finies non nulles ; `whenAnyActive` : refs vers un
+      // `conditional-stat-bonus` (marqueur de forme) EXISTANT d'une autre capacité.
+      const abilities = e.abilities ?? {};
+      if (Object.keys(abilities).length === 0)
+        err(`[capacite ${c.id}] effect: active-form-ability-bonus abilities vide`);
+      for (const [ab, v] of Object.entries(abilities)) {
+        if (!validAbilities.has(ab)) err(`[capacite ${c.id}] effect: active-form-ability-bonus carac inconnue : ${ab}`);
+        if (!Number.isFinite(v) || v === 0)
+          err(`[capacite ${c.id}] effect: active-form-ability-bonus delta invalide pour ${ab} : ${v}`);
+      }
+      if (!Array.isArray(e.whenAnyActive) || e.whenAnyActive.length === 0)
+        err(`[capacite ${c.id}] effect: active-form-ability-bonus whenAnyActive vide`);
+      for (const ref of e.whenAnyActive ?? []) {
+        const target = featureById.get(ref.featureId);
+        if (!target) {
+          err(`[capacite ${c.id}] effect: active-form-ability-bonus référence inexistante : ${ref.featureId}`);
+          continue;
+        }
+        if (target.effects?.[ref.index]?.kind !== 'conditional-stat-bonus')
+          err(`[capacite ${c.id}] effect: active-form-ability-bonus ${ref.featureId}:${ref.index} n'est pas un marqueur de forme (conditional-stat-bonus)`);
+      }
     } else if (e.kind === 'test-bonus') {
       // Bonus de compétence à un/des domaine(s) nommé(s) (PER-89). `domains` non vide,
       // chaque id présent dans le catalogue ; `value` optionnelle (sinon déduite).
@@ -641,6 +664,15 @@ for (const c of features) {
     for (const k of ['minPathRank', 'maxPathRank'] as const)
       if (dr[k] !== undefined && (typeof dr[k] !== 'number' || dr[k]! < 1 || dr[k]! > 8))
         err(`[capacite ${c.id}] damageReduction ${k} hors plage 1-8 : ${dr[k]}`);
+    // Gating CROSS-CAPACITÉ (PER-74) : la ref doit pointer un `conditional-stat-bonus` EXISTANT
+    // (marqueur de forme) d'une autre capacité — ex. RD hybride de r7 pilotée par l'interrupteur de r4.
+    if (dr.requiresActiveEffect) {
+      const target = featureById.get(dr.requiresActiveEffect.featureId);
+      if (!target)
+        err(`[capacite ${c.id}] damageReduction requiresActiveEffect : capacité inexistante ${dr.requiresActiveEffect.featureId}`);
+      else if (target.effects?.[dr.requiresActiveEffect.index]?.kind !== 'conditional-stat-bonus')
+        err(`[capacite ${c.id}] damageReduction requiresActiveEffect ${dr.requiresActiveEffect.featureId}:${dr.requiresActiveEffect.index} n'est pas un marqueur d'état (conditional-stat-bonus)`);
+    }
   }
 }
 
