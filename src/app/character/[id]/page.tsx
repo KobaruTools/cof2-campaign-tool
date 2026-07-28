@@ -28,14 +28,13 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
-import { ancestryById, classById, COIN_POUCH_ITEM_NAME, families, featureById, progression } from '@/data';
-import { checkCompliance, deriveStats } from '@/lib/engine';
+import { ancestryById, classById, families, featureById, progression } from '@/data';
+import { checkCompliance } from '@/lib/engine';
 import type { AbilityId, StartingEquipmentChoiceOption } from '@/data/schema';
-import type { Character, CharacterStatus, CustomItem, DerivedStatId, EquipmentLine, Identity, WornState } from '@/lib/character/types';
+import type { CharacterStatus, DerivedStatId, EquipmentLine, Identity } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
-import { armorEncumbrancePenalty, setWornAt } from '@/lib/character/equipment';
+import { armorEncumbrancePenalty } from '@/lib/character/equipment';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
-import { elixirItemName, isElixirItemName } from '@/lib/character/elixirs';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { armorRestrictionByLine } from '@/lib/character/armorRestrictions';
 import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/mastery';
@@ -59,46 +58,22 @@ import {
   activeFormAbilityBonusSources,
   activeConditionalTestDice,
   armorPenaltyDivisor,
-  capacityResourceGauges,
-  conditionalEffectsOf,
   pruneEffectInputs,
   pruneEffectToggles,
   pruneUsageCounters,
-  resetUsageCounters,
-  setEffectToggle,
-  shortRestLockKey,
-  usageCounterMaximum,
   testBonusSources,
   universalTestBonus,
 } from '@/lib/character/effects';
 import { pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
-import {
-  applyDamage,
-  healHp,
-  pruneDepletion,
-  resetHp,
-  resetLuck,
-  resetMana,
-  restoreLuck,
-  restoreMana,
-  setRecoveryDiceMissing,
-  spendLuck,
-  spendMana,
-} from '@/lib/character/gauges';
-import { longRest, shortRest } from '@/lib/character/rest';
+import { pruneDepletion } from '@/lib/character/gauges';
 import {
   companionMountEnSelle,
-  effectiveCreatureProfile,
   listCompanions,
-  parseCompanionKey,
   pruneCompanionDepletion,
   pruneCompanionInstances,
-  resolveCompanionInstanceLimit,
-  resolveCreatureMaxHp,
 } from '@/lib/character/companions';
-import { enSelleLink, isMountMounted, listOwnedMounts, mountCatalogEntry, mountMaxHp } from '@/lib/character/mounts';
-import { newId } from '@/lib/character/factory';
-import type { Depletion, FeatureChoiceSelection, OwnedMount } from '@/lib/character/types';
+import { isMountMounted, listOwnedMounts } from '@/lib/character/mounts';
+import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { AppHeader } from '@/components/AppHeader';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
@@ -106,7 +81,7 @@ import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine'
 import { AppTooltip } from '@/components/AppTooltip';
 import { useToast } from '@/components/toast/ToastProvider';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
-import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
+import { useCharacterGameState } from '@/components/sheet/useCharacterGameState';
 import { HeaderIllustrations } from '@/components/HeaderIllustrations';
 import { HomeBackground } from '@/components/HomeBackground';
 import { CharacterSheetSkeleton } from '@/components/sheet/CharacterSheetSkeleton';
@@ -190,6 +165,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Présence (PER-195) : une session joueur qui édite/consulte une fiche reste
   // « active » aux yeux du MJ (couvre les longues sessions passées hors de /play).
   usePresenceHeartbeat(isPlayer);
+  // Lecture seule (PER-196) : session joueur consultant une fiche qui n'est pas la
+  // sienne. La RLS refuserait toute écriture (update 0 ligne → conflit silencieux),
+  // donc on neutralise l'édition en amont — les écritures deviennent des no-op et les
+  // affordances d'édition (Modifier, crayons, montée de niveau, recréation) sont
+  // masquées plus bas.
+  const readOnly = character != null && isPlayer && character.playerId !== sessionPlayerId;
+  // État de JEU du personnage (PER-257) : vue dérivée, maxima et actions de jeu (interrupteurs,
+  // compteurs, PV, repos, compagnons, montures, inventaire) branchés sur le store par un hook
+  // mince, adossé aux fonctions PURES de `lib/character/sheetActions`. `null` tant que le
+  // personnage n'est pas chargé — d'où l'appel ici, avant les retours anticipés ci-dessous.
+  const game = useCharacterGameState(character, { readOnly });
 
   // Charge le personnage depuis le cloud (RLS `owner_id`, PER-192) en cas d'accès
   // direct à l'URL, et les campagnes pour résoudre le libellé d'attribution.
@@ -299,7 +285,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     );
   }
 
-  if (!character) {
+  // `game` accompagne `character` (le hook renvoie `null` pour lui seul) : la garde couvre les deux
+  // pour que le reste du composant les manipule sans test de nullité.
+  if (!character || !game) {
     return (
       <Container maxWidth="sm" sx={{ py: 8, textAlign: 'center' }}>
         <title>Personnage introuvable — Éditeur de personnage CO2</title>
@@ -317,20 +305,72 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const family = characterClass ? familyById.get(characterClass.familyId) : undefined;
   const ancestry = ancestryById.get(character.ancestryId);
 
-  // Lecture seule (PER-196) : session joueur consultant une fiche qui n'est pas la
-  // sienne. La RLS refuserait toute écriture (update 0 ligne → conflit silencieux),
-  // donc on neutralise l'édition en amont — `update` devient un no-op et les
-  // affordances d'édition (Modifier, crayons, montée de niveau, recréation) sont
-  // masquées plus bas.
-  const readOnly = isPlayer && character.playerId !== sessionPlayerId;
-
-  // Sauvegarde permissive : chaque modification persiste immédiatement (le store
-  // applique `updatedAt`). La fiche n'empêche aucun écart aux règles (PER-45).
-  // En lecture seule, aucune écriture (garde-fou : évite les rejets RLS silencieux).
-  const update = (patch: Partial<Character>) => {
-    if (readOnly) return;
-    upsert({ ...character, ...patch });
-  };
+  // État de jeu (PER-257) : tout ce qui suit vient du hook — `update` (sauvegarde permissive :
+  // chaque modification persiste immédiatement, le store applique `updatedAt`, aucun écart aux
+  // règles n'est empêché — PER-45), la vue dérivée partagée avec l'écran de MJ, les maxima
+  // effectifs des jauges, et les actions de jeu. La fiche n'en garde que le CÂBLAGE : les
+  // setters du mode « Modifier » ci-dessous et les modales (dont l'état React reste local).
+  const {
+    update,
+    derived: {
+      modFeatureIds,
+      effectContext: effectCtx,
+      derivedInput,
+      defenseBadges,
+      meleeCriticalRanges,
+      rangedCriticalRanges,
+      unarmed,
+      meleeWeaponDamage,
+      unarmedCriticalRanges,
+      rangedWeaponDamage,
+      meleeSituationalDamage,
+      rangedSituationalDamage,
+      rangedReplacingFormAttack: formAttackReplacingRanged,
+      attackBonusModSources,
+    },
+    masterDerived,
+    manaMax,
+    luckMax,
+    recoveryDiceMax,
+    recoveryDie,
+    capacityGauges,
+    elixirDosesToLose,
+    setEffectToggleValue,
+    setEffectInputValue,
+    setUsageCounterValue,
+    liftShortRestLock,
+    createElixir,
+    applyItemUse,
+    openCoinPouch,
+    resolveStartingChoice,
+    setWorn,
+    setPurse,
+    setHpDamage,
+    setHpHeal,
+    setHpReset,
+    setManaSpend,
+    setManaRestore,
+    setManaReset,
+    setLuckSpend,
+    setLuckRestore,
+    setLuckReset,
+    setDrCurrent,
+    doShortRest,
+    doLongRest,
+    setCompanionDamage,
+    setCompanionHeal,
+    setCompanionReset,
+    summonCompanionInstance,
+    deleteCompanionInstance,
+    addMount,
+    removeMount,
+    setMountBarde,
+    setMountDamage,
+    setMountHeal,
+    setMountReset,
+    setMountMounted,
+    setMountedTarget,
+  } = game;
   // Attribution de campagne (PER-180) : rattache le personnage à une campagne ou le
   // remet « Non attribué » (`null`). Le joueur étant local à la campagne, on le
   // réinitialise à chaque changement (l'attribution d'un joueur relève de PER-184).
@@ -408,11 +448,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const setIdentity = (identityPatch: Partial<Identity>) =>
     update({ identity: { ...character.identity, ...identityPatch } });
   const setEquipment = (equipment: EquipmentLine[]) => update({ equipment });
-  // Équiper / déséquiper une ligne (PER-77) : état de jeu (on change d'arme, on lève le
-  // bouclier), donc disponible hors mode « Modifier ». Le port ne réajuste pas les autres
-  // lignes ; les conflits durs sont SIGNALÉS (non bloquant), pas empêchés.
-  const setWorn = (i: number, worn: WornState | undefined) =>
-    update({ equipment: setWornAt(character.equipment, i, worn) });
   // L'édition des capacités élague les choix orphelins (capacité retirée → ses
   // choix persistés sont supprimés), pour ne pas conserver de choix fantôme.
   const setFeatureIds = (featureIds: string[]) => {
@@ -443,324 +478,28 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // fiche est permissive : on persiste sans bloquer (recalcul en direct).
   const setChoice = (featureId: string, index: number, value: FeatureChoiceSelection) =>
     update({ featureChoices: setFeatureChoice(character, featureId, index, value) });
-  // PER-216 : mutateur central de l'état « en selle ». Clé UNIQUE (`mountedKey`) → exclusivité
-  // structurelle (une seule monture montée). Synchronise l'interrupteur « en selle » du cavalier
-  // (`enSelleLink`) = « une monture est montée » : mécanique GÉNÉRIQUE, n'importe quelle monture
-  // (possédée ou de voie) garde Cavalier émérite actif. `null` = à pied.
-  const setMountedTarget = (key: string | null) => {
-    const patch: Partial<typeof character> = { mountedKey: key ?? undefined };
-    const link = enSelleLink(character);
-    if (link) patch.effectToggles = setEffectToggle(character, link.featureId, link.index, key != null);
-    update(patch);
-  };
-  // Bascule d'un interrupteur d'effet conditionnel/temporaire (PER-67). Recalcul
-  // en direct : le moteur n'inclut l'effet que lorsqu'il est actif.
-  const setEffectToggleValue = (featureId: string, index: number, active: boolean) => {
-    // PER-216 : l'interrupteur « en selle » du cavalier n'est pas piloté en direct — c'est un état
-    // DÉRIVÉ de la monture chevauchée. Le basculer depuis la carte de voie = monter/démonter la
-    // monture de VOIE (délégué à `setMountedTarget`, qui resync l'interrupteur et garde l'exclusivité).
-    const enSelle = enSelleLink(character);
-    if (enSelle && enSelle.featureId === featureId && enSelle.index === index) {
-      const voieMount = listCompanions(character).find((e) => companionMountEnSelle(character, e) !== null);
-      setMountedTarget(active ? voieMount?.key ?? null : null);
-      return;
-    }
-    const nextToggles = setEffectToggle(character, featureId, index, active);
-    const patch: Partial<typeof character> = { effectToggles: nextToggles };
-    // PER-130 : ACTIVER un état TEMPORAIRE doté d'un compteur d'usages le CONSOMME (ex. Rage / Furie
-    // du berserk) — équivaut à un clic « − » de `cost`, clampé à [0, max] (jamais sous 0). Pas de
-    // remboursement à l'extinction (comme le « − »). Les autres interrupteurs ne touchent pas le compteur.
-    const feature = featureById.get(featureId);
-    const effect = feature?.effects?.[index];
-    const counter = feature?.usageCounter;
-    if (
-      active &&
-      feature &&
-      counter &&
-      counter.consumeOnActivate !== false &&
-      effect?.kind === 'conditional-stat-bonus' &&
-      effect.activation.kind === 'temporary'
-    ) {
-      const key = counter.sharedKey ?? feature.id;
-      const max = usageCounterMaximum(counter, character, feature);
-      const cost = counter.cost ?? 1;
-      const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
-      const nextVal = Math.max(0, remaining - cost);
-      const nextCounters = { ...character.usageCounters };
-      if (nextVal >= max) delete nextCounters[key];
-      else nextCounters[key] = nextVal;
-      // PER-161 : si le compteur est verrouillé « 1 dépense par repos court » (`oncePerShortRest`,
-      // ex. Sanctuaire), activer l'interrupteur pose le verrou (miroir du « − » de setUsageCounterValue)
-      // — la réactivation reste bloquée jusqu'au prochain repos court, indépendamment du reste.
-      if (counter.oncePerShortRest && nextVal < remaining) nextCounters[shortRestLockKey(key)] = 1;
-      patch.usageCounters = nextCounters;
-    }
-    // PER-150 : ACTIVER un effet temporaire doté d'un compteur de SUIVI `resetOnActivate` le remet à
-    // PLEIN (absorption d'Armure de pierre rechargée au relancement du sort). Absence de clé = plein.
-    if (
-      active &&
-      feature &&
-      counter?.resetOnActivate &&
-      effect?.kind === 'conditional-stat-bonus' &&
-      effect.activation.kind === 'temporary'
-    ) {
-      const key = counter.sharedKey ?? feature.id;
-      const nextCounters = { ...character.usageCounters };
-      delete nextCounters[key];
-      patch.usageCounters = nextCounters;
-    }
-    update(patch);
-  };
-  // Saisie libre d'état de jeu corrélée à une capacité (PER-70, ex. animal de Forme
-  // animale). Une chaîne vide supprime la clé (pas de note fantôme).
-  const setEffectInputValue = (featureId: string, value: string) => {
-    const next = { ...character.effectInputs };
-    if (value.trim() === '') delete next[featureId];
-    else next[featureId] = value;
-    update({ effectInputs: next });
-  };
-  // Décompte d'une capacité à usages limités (PER-70, ex. Les sept vies du chat).
-  // Borné à [0, max] ; au maximum, on supprime la clé (= compteur plein par défaut). La CLÉ peut
-  // être une `sharedKey` (réserve partagée, PER-119) et non un id de capacité → le max effectif
-  // (constant ou scalant) est calculé par le composant et fourni ici, plutôt que relu via l'id.
-  const setUsageCounterValue = (counterKey: string, value: number, max: number) => {
-    // PER-162 : compteur CROISSANT (surcoût mana, ex. Foudres divines) — sémantique inverse : pas de
-    // plafond, baseline = 0 (clé absente), aucun verrou. `counterKey` = id de la capacité.
-    const escalating = featureById.get(counterKey)?.escalatingManaCost;
-    if (escalating) {
-      const raised = Math.max(0, value);
-      const nextEsc = { ...character.usageCounters };
-      if (raised <= 0) delete nextEsc[counterKey];
-      else nextEsc[counterKey] = raised;
-      update({ usageCounters: nextEsc });
-      return;
-    }
-    const clamped = Math.max(0, Math.min(max, value));
-    const next = { ...character.usageCounters };
-    if (clamped >= max) delete next[counterKey];
-    else next[counterKey] = clamped;
-    const patch: Partial<typeof character> = { usageCounters: next };
-    // PER-150 : un compteur de SUIVI `endsEffectAtZero` qui tombe à 0 COUPE l'interrupteur des effets
-    // de la capacité porteuse (Armure de pierre prend fin dès son plafond d'absorption atteint). La
-    // clé du compteur vaut alors l'id de la capacité (compteur propre, non partagé).
-    const feature = featureById.get(counterKey);
-    if (clamped <= 0 && feature?.usageCounter?.endsEffectAtZero) {
-      let toggles = character.effectToggles;
-      for (const { index } of conditionalEffectsOf(counterKey)) {
-        toggles = setEffectToggle({ ...character, effectToggles: toggles }, counterKey, index, false);
-      }
-      patch.effectToggles = toggles;
-    }
-    // PER-160 : DÉPENSE (valeur en baisse) d'un compteur `oncePerShortRest` → pose le verrou « repos
-    // court requis avant un nouvel usage » (levé par tout repos court/long). Incrément/reset : rien.
-    if (feature?.usageCounter?.oncePerShortRest) {
-      const prev = character.usageCounters?.[counterKey] ?? max;
-      if (clamped < prev) next[shortRestLockKey(counterKey)] = 1;
-    }
-    update(patch);
-  };
-  // PER-160/161 : lever le verrou « repos court requis » d'UNE capacité sans forcer un vrai repos —
-  // pour ne jamais OBLIGER le joueur à cliquer « Repos court » (usage app-first). Applique EXACTEMENT
-  // l'effet d'un repos court, mais restreint à cette seule capacité (mêmes déclencheurs que shortRest :
-  // lève le verrou `oncePerShortRest` et recharge ce qu'un repos court rechargerait — ex. la charge de
-  // Sanctuaire ; la réserve /jour de Transe reste inchangée, comme lors d'un vrai repos court).
-  const liftShortRestLock = (featureId: string) =>
-    update({
-      usageCounters: resetUsageCounters(character.usageCounters, [featureId], new Set(['short-rest', 'combat']), character.featureChoices),
-    });
-  // Créer un élixir (forgesort, p. 98) : consomme la réserve partagée d'un cran (`cost`) ET
-  // matérialise la dose dans l'équipement (objet custom, quantité incrémentée si déjà présent).
-  // Les deux mutations partent dans UNE seule mise à jour, pour ne pas s'écraser l'une l'autre.
-  // Matérialisation minimale (le transfert à un autre personnage relève de PER-158).
-  const createElixir = (counterKey: string, cost: number, max: number, elixirName: string) => {
-    const remaining = Math.max(0, Math.min(max, character.usageCounters?.[counterKey] ?? max));
-    if (remaining < cost) return;
-    const usageCounters = { ...character.usageCounters };
-    const nextValue = remaining - cost;
-    if (nextValue >= max) delete usageCounters[counterKey];
-    else usageCounters[counterKey] = nextValue;
-    const itemName = elixirItemName(elixirName);
-    const equipment = [...character.equipment];
-    const idx = equipment.findIndex((line) => isCustomItem(line) && line.name === itemName);
-    if (idx >= 0) {
-      const line = equipment[idx] as CustomItem;
-      equipment[idx] = { ...line, quantity: line.quantity + 1 };
-    } else {
-      equipment.push({ custom: true, name: itemName, quantity: 1, details: 'Élixir préparé (voie des élixirs, p. 98).' });
-    }
-    update({ usageCounters, equipment });
-  };
-  // Consomme une unité de la ligne `i` : décrémente la quantité, retire la ligne à 0.
-  const consumeEquipmentLine = (i: number): EquipmentLine[] => {
-    const line = character.equipment[i];
-    if (!line) return character.equipment;
-    return line.quantity <= 1
-      ? character.equipment.filter((_, j) => j !== i)
-      : character.equipment.map((l, j) => (j === i ? { ...l, quantity: l.quantity - 1 } : l));
-  };
   // Utiliser un objet (PER-158) : consommer une unité est un état de jeu (hors édition).
-  // Cas particulier de la « Bourse de 2d6 pa » (p. 31) : au lieu de simplement la consommer,
-  // on ouvre une modale pour saisir les pa tirés, qui s'ajoutent à la fortune (PER-152).
-  const useEquipmentItem = (i: number) => {
-    const line = character.equipment[i];
-    if (!line) return;
-    // Choix d'équipement de départ à résoudre (PER-220) : ouvre la modale de choix.
-    if (startingChoiceOptionsFor(line)) {
-      setChoiceIndex(i);
-      return;
-    }
-    if (isCustomItem(line) && line.name === COIN_POUCH_ITEM_NAME) {
-      setCoinPouchIndex(i);
-      return;
-    }
-    update({ equipment: consumeEquipmentLine(i) });
+  // L'action de jeu renvoie une INTENTION — deux objets du sac de départ n'y sont pas consommés
+  // mais ouvrent une modale de saisie : la « Bourse de 2d6 pa » (p. 31), dont les pa tirés
+  // s'ajoutent à la fortune (PER-152), et un choix d'équipement « X ou Y » (PER-220).
+  const handleUseItem = (index: number) => {
+    const intent = applyItemUse(index);
+    if (intent.kind === 'starting-choice') setChoiceIndex(intent.index);
+    else if (intent.kind === 'coin-pouch') setCoinPouchIndex(intent.index);
   };
   // Validation de la modale de bourse : ajoute `silver` pa à la fortune et consomme la dose.
   const confirmCoinPouch = (silver: number) => {
     if (coinPouchIndex === null) return;
-    update({
-      equipment: consumeEquipmentLine(coinPouchIndex),
-      purse: { ...character.purse, silver: character.purse.silver + silver },
-    });
+    openCoinPouch(coinPouchIndex, silver);
     setCoinPouchIndex(null);
   };
   // Validation d'un choix d'équipement de départ (PER-220) : remplace la ligne placeholder
   // par le(s) vrai(s) objet(s) du catalogue de l'option retenue (un LOT en produit plusieurs).
   const confirmStartingChoice = (option: StartingEquipmentChoiceOption) => {
     if (choiceIndex === null) return;
-    const chosen = option.items.map((it) => ({ itemId: it.itemId, quantity: it.quantity }));
-    update({
-      equipment: [
-        ...character.equipment.slice(0, choiceIndex),
-        ...chosen,
-        ...character.equipment.slice(choiceIndex + 1),
-      ],
-    });
+    resolveStartingChoice(choiceIndex, option);
     setChoiceIndex(null);
   };
-  // Jauge de PV (PER-148) : dépletion transitoire (manque létal/temp), état de jeu
-  // modifiable HORS mode « Modifier » (comme les compteurs d'usages). Le max reste
-  // piloté par « Statistiques dérivées » ; ces setters ne touchent que le courant.
-  // Le manque de PV est plafonné au max EFFECTIF (surcharge ?? dérivé) : on ne descend
-  // jamais sous 0 PV, et le manque ne s'accumule pas au-delà (sinon les « - » à vide
-  // exigeraient autant de soins pour remonter). `masterDerived` est en portée à l'appel.
-  const setHpDamage = (amount: number, kind: 'lethal' | 'temp') =>
-    update({
-      depletion: applyDamage(
-        character.depletion,
-        amount,
-        kind,
-        character.overrides.maxHp ?? masterDerived?.maxHp,
-      ),
-    });
-  const setHpHeal = (amount: number) => update({ depletion: healHp(character.depletion, amount) });
-  const setHpReset = () => update({ depletion: resetHp(character.depletion) });
-  // PV des COMPAGNONS (PER-233) : même mécanique que la barre du joueur, indexée par la clé
-  // du compagnon (id du rang porteur). Le manque est plafonné au max EFFECTIF de la créature
-  // (résolu depuis son `CreatureProfile`), et une entrée redevenue pleine est retirée (clé
-  // absente = compagnon à PV pleins). `effectCtx`/`character` sont en portée à l'appel.
-  const setCompanionDepletion = (key: string, next: Depletion) => {
-    const companionDepletion = { ...character.companionDepletion };
-    const pruned = pruneDepletion(next);
-    if (Object.keys(pruned).length === 0) delete companionDepletion[key];
-    else companionDepletion[key] = pruned;
-    update({ companionDepletion });
-  };
-  const companionMaxHp = (key: string): number | undefined => {
-    const entry = listCompanions(character).find((c) => c.key === key);
-    if (!entry) return undefined;
-    return resolveCreatureMaxHp(entry.profile, effectCtx.abilities, character.level, entry.pathRank) ?? undefined;
-  };
-  const setCompanionDamage = (key: string, amount: number, kind: 'lethal' | 'temp') => {
-    const max = companionMaxHp(key);
-    const next = applyDamage(character.companionDepletion[key] ?? {}, amount, kind, max);
-    // Zombie réduit à 0 PV → « tombe en poussière » (p. 109) : l'instance est auto-supprimée et
-    // libère un emplacement (PER-235). Ne concerne que les compagnons multi-instances (clé
-    // composite) ; les compagnons classiques restent affichés à 0 PV (à terre/assommé).
-    const { instanceId } = parseCompanionKey(key);
-    if (instanceId !== undefined && max !== undefined) {
-      const current = max - (next.hp?.lethal ?? 0) - (next.hp?.temp ?? 0);
-      if (current <= 0) {
-        deleteCompanionInstance(key);
-        return;
-      }
-    }
-    setCompanionDepletion(key, next);
-  };
-  const setCompanionHeal = (key: string, amount: number) =>
-    setCompanionDepletion(key, healHp(character.companionDepletion[key] ?? {}, amount));
-  const setCompanionReset = (key: string) =>
-    setCompanionDepletion(key, resetHp(character.companionDepletion[key] ?? {}));
-  // Invocation d'un nouvel exemplaire d'un compagnon multi-instances (zombie, PER-235) : ajoute un
-  // id d'instance frais dans la limite du profil (garde-fou redondant avec le badge désactivé).
-  const summonCompanionInstance = (featureId: string) => {
-    const feature = featureById.get(featureId);
-    const profile = feature ? effectiveCreatureProfile(feature, character) : undefined;
-    if (!profile?.instances) return;
-    const list = character.companionInstances[featureId] ?? [];
-    if (list.length >= resolveCompanionInstanceLimit(profile, character)) return;
-    update({ companionInstances: { ...character.companionInstances, [featureId]: [...list, newId()] } });
-  };
-  // Suppression d'une instance (corbeille manuelle OU auto-suppression à 0 PV) : retire l'id de
-  // `companionInstances` et purge ses PV (`companionDepletion`) sous la clé composite (PER-235).
-  const deleteCompanionInstance = (key: string) => {
-    const { featureId, instanceId } = parseCompanionKey(key);
-    if (instanceId === undefined) return;
-    const list = (character.companionInstances[featureId] ?? []).filter((id) => id !== instanceId);
-    const companionInstances = { ...character.companionInstances };
-    if (list.length > 0) companionInstances[featureId] = list;
-    else delete companionInstances[featureId];
-    const companionDepletion = { ...character.companionDepletion };
-    delete companionDepletion[key];
-    update({ companionInstances, companionDepletion });
-  };
-
-  // --- Montures & véhicules possédés (PER-216) — possessions rattachées comme compagnons, hors
-  // inventaire. Ajout/retrait/barde disponibles hors mode édition (comme l'invocation d'instances) ;
-  // les PV vivent INLINE sur chaque `OwnedMount.hp` (état de jeu propre à la monture).
-  const updateMount = (id: string, patch: Partial<OwnedMount>) => {
-    update({ mounts: character.mounts.map((m) => (m.id === id ? { ...m, ...patch } : m)) });
-  };
-  const addMount = (catalogId: string) => {
-    update({ mounts: [...character.mounts, { id: newId(), catalogId, hp: {} }] });
-  };
-  const removeMount = (id: string) => {
-    update({ mounts: character.mounts.filter((m) => m.id !== id) });
-  };
-  // Change (ou retire, `undefined`) la barde d'une monture : on omet la clé quand aucune barde n'est
-  // portée pour garder le blob propre (une barde absente n'est pas `bardeId: undefined`).
-  const setMountBarde = (id: string, bardeId: string | undefined) => {
-    const mount = character.mounts.find((m) => m.id === id);
-    if (!mount) return;
-    const next: OwnedMount = { ...mount };
-    if (bardeId) next.bardeId = bardeId;
-    else delete next.bardeId;
-    update({ mounts: character.mounts.map((m) => (m.id === id ? next : m)) });
-  };
-  // PV : mêmes helpers que le personnage/compagnons, mais l'état est stocké inline sur la monture.
-  const mountHpMax = (id: string): number | undefined => {
-    const mount = character.mounts.find((m) => m.id === id);
-    return mount ? mountMaxHp(mountCatalogEntry(mount)) ?? undefined : undefined;
-  };
-  const setMountHp = (id: string, next: Depletion) => updateMount(id, { hp: pruneDepletion(next) });
-  const setMountDamage = (id: string, amount: number, kind: 'lethal' | 'temp') => {
-    const mount = character.mounts.find((m) => m.id === id);
-    if (!mount) return;
-    setMountHp(id, applyDamage(mount.hp ?? {}, amount, kind, mountHpMax(id)));
-  };
-  const setMountHeal = (id: string, amount: number) => {
-    const mount = character.mounts.find((m) => m.id === id);
-    if (!mount) return;
-    setMountHp(id, healHp(mount.hp ?? {}, amount));
-  };
-  const setMountReset = (id: string) => {
-    const mount = character.mounts.find((m) => m.id === id);
-    if (!mount) return;
-    setMountHp(id, resetHp(mount.hp ?? {}));
-  };
-  // Bascule « en selle » d'une monture POSSÉDÉE (état de jeu) — délègue au mutateur exclusif : monter
-  // `id` démonte automatiquement toute autre monture (possédée ou de voie), démonter `id` repasse à pied.
-  const setMountMounted = (id: string, on: boolean) => setMountedTarget(on ? id : null);
 
   // Surcharge d'une stat dérivée (PER-48) : une valeur force le calcul, `null`
   // supprime la clé et rétablit le calcul automatique.
@@ -775,25 +514,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // l'édition). Non bloquante — simple aide affichée (PER-47).
   const warnings = checkCompliance(character, rulesContext, firearmsAllowed);
 
-  // Statistiques dérivées : entrée moteur + badges (immunités / RD / plages de critique),
-  // calculés par le helper partagé avec l'écran de MJ (source unique — cf.
-  // `buildCharacterDerivedView`, qui portait auparavant ce calcul inline dans la fiche).
-  const {
-    modFeatureIds,
-    effectContext: effectCtx,
-    derivedInput,
-    defenseBadges,
-    meleeCriticalRanges,
-    rangedCriticalRanges,
-    unarmed,
-    meleeWeaponDamage,
-    unarmedCriticalRanges,
-    rangedWeaponDamage,
-    meleeSituationalDamage,
-    rangedSituationalDamage,
-    rangedReplacingFormAttack: formAttackReplacingRanged,
-    attackBonusModSources,
-  } = buildCharacterDerivedView(character);
   // Détail « i » des stats dérivées : points de capacité orphelins convertis (p. 40) + bonus à la
   // touche conditionnés à l'arme portée (maître d'armes, PER-226), fusionnés par stat. Le TOTAL de
   // ces derniers est déjà FONDU dans le score (via `derivedInput.mods`) ; ici on n'ajoute que
@@ -841,64 +561,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Concentration accrue (p. 228) que pour les lanceurs de sorts : sans sort, le
   // toggle ne change rien.
   const hasSpells = modFeatureIds.some((fid) => featureById.get(fid)?.isSpell);
-
-  // Stats dérivées finales du MAÎTRE (mods inclus), avec surcharges manuelles pour les
-  // stats recopiées par les profils de créature (Init., attaque). Sert aux mini-fiches
-  // de compagnons (golem, familier, démon…), dont l'Init/attaque = celle du maître.
-  const masterDerived = derivedInput
-    ? (() => {
-        const s = deriveStats(derivedInput);
-        const ov = character.overrides;
-        return { ...s, initiative: ov.initiative ?? s.initiative, magicAttack: ov.magicAttack ?? s.magicAttack };
-      })()
-    : undefined;
-
-  // Réserve de mana EFFECTIVE (PER-149) : surcharge manuelle si présente, sinon la
-  // valeur dérivée (`null` = aucun sort → pas de jauge de mana). Ces setters bornent
-  // le manque au max courant, comme le compteur d'usages.
-  const manaMax = masterDerived ? character.overrides.manaPoints ?? masterDerived.manaPoints : null;
-  const setManaSpend = (amount: number) =>
-    update({ depletion: spendMana(character.depletion, amount, manaMax ?? 0) });
-  const setManaRestore = (amount: number) =>
-    update({ depletion: restoreMana(character.depletion, amount, manaMax ?? 0) });
-  const setManaReset = () => update({ depletion: resetMana(character.depletion) });
-  // Points de chance (PER-155) : max EFFECTIF (surcharge ?? dérivé). Universel (pas de condition).
-  const luckMax = masterDerived ? character.overrides.luckPoints ?? masterDerived.luckPoints : 0;
-  const setLuckSpend = (amount: number) =>
-    update({ depletion: spendLuck(character.depletion, amount, luckMax) });
-  const setLuckRestore = (amount: number) =>
-    update({ depletion: restoreLuck(character.depletion, amount, luckMax) });
-  const setLuckReset = () => update({ depletion: resetLuck(character.depletion) });
-  // Dés de récupération (PER-151) : max EFFECTIF (surcharge ?? dérivé) et type de dé pour la jauge.
-  const recoveryDiceMax = masterDerived
-    ? character.overrides.recoveryDiceCount ?? masterDerived.recoveryDiceCount
-    : 0;
-  const recoveryDie = masterDerived?.recoveryDie ?? 'd6';
-  // Matrice de DR (PER-151) : on fixe le nombre de DR DISPONIBLES (le manque = max − dispo).
-  const setDrCurrent = (value: number) =>
-    update({ depletion: setRecoveryDiceMissing(character.depletion, recoveryDiceMax - value, recoveryDiceMax) });
-  // Repos (PER-151) : applique la récupération réglementaire (patch depletion + usageCounters).
-  // Repos court : `recoveryDieRoll` = résultat du dé saisi pour dépenser 1 DR et soigner ; null sinon.
-  const doShortRest = (recoveryDieRoll: number | null) =>
-    update(
-      shortRest(
-        character,
-        recoveryDieRoll != null ? { dieRoll: recoveryDieRoll, recoveryDiceMax } : undefined,
-      ),
-    );
-  // Repos long : `heal` → dépenser le DR gagné pour un soin à la valeur MAX du dé (p. 222).
-  const doLongRest = (heal: boolean) =>
-    update(longRest(character, heal ? { dieFaces: Number.parseInt(recoveryDie.slice(1), 10) || 0 } : undefined));
-  // Bourse (PER-152) : argent possédé, état de jeu transitoire (non touché par un repos).
-  const setPurse = (purse: Character['purse']) => update({ purse });
-  // Doses d'élixir en inventaire, perdues par un repos long (voie des élixirs, p. 98) — pour l'avertissement.
-  const elixirDosesToLose = character.equipment.reduce(
-    (n, line) => (isCustomItem(line) && isElixirItemName(line.name) ? n + line.quantity : n),
-    0,
-  );
-  // Ressources de capacité (rage, sept vies…) surfacées en jauges (PER-150) : lues depuis les
-  // MÊMES `usageCounters` que FeaturesByPath (source unique). L'écriture passe par le setter existant.
-  const capacityGauges = capacityResourceGauges(character);
 
   return (
     // Toutes les icônes de profil de la fiche (en-tête, voies, montée de niveau,
@@ -1493,7 +1155,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               equipment={character.equipment}
               onChange={editingBlocks.equipment ? setEquipment : undefined}
               // « Utiliser » : consommer une unité est un état de jeu → disponible hors mode édition.
-              onUse={useEquipmentItem}
+              onUse={handleUseItem}
               // Équiper/déséquiper (PER-77) : état de jeu, hors mode édition ; masqué en lecture seule
               // (le porté reste montré par un badge). Voir `setWorn`.
               onWear={readOnly ? undefined : setWorn}
