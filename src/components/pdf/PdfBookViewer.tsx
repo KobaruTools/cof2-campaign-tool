@@ -4,6 +4,14 @@
  * Visualiseur PDF intégré (milestone « Visualiseur PDF »). Rend un livre de règles à une page
  * donnée, avec recherche plein-texte (PER-58) et surlignage/centrage d'un passage ciblé (PER-59/61).
  *
+ * **Défilement CONTINU** (PER-255) : le livre entier est une colonne d'emplacements de hauteur
+ * uniforme, et seules les pages proches du viewport sont réellement montées (virtualisation).
+ * L'inversion tient en une phrase : `current` ne décide plus ce qui est rendu, il est **déduit
+ * de la position de défilement** — « aller à la page N » veut dire « défiler jusqu'à son
+ * emplacement ». Toute l'arithmétique est dans [[pageColumn]] (pure, testée). Si le sondage
+ * détecte des pages de formats différents (hypothèse d'uniformité cassée), on se rabat sur le
+ * rendu page à page plutôt que de laisser les offsets dériver en silence.
+ *
  * **Piloté par PROPS** (PER-60), plus par un store : `bookId`/`initialPage`/`term` viennent
  * désormais de l'URL `/rules/{book}/{page}?q={term}`. Deux habillages via `chrome` :
  *  - `'dialog'` : modale MUI superposée (route INTERCEPTÉE `@viewer/(.)rules/...`) — l'ouverture
@@ -47,6 +55,15 @@ import Typography from '@mui/material/Typography';
 import { BOOKS, type BookId } from '@/lib/ui/books';
 import { downloadPaidBook, PaidBookAccessError } from '@/lib/pdf/paidBooks';
 import {
+  dominantPage,
+  pageAnchor,
+  scrollTopForAnchor,
+  scrollTopForPage,
+  visiblePageRange,
+  type PageAnchor,
+  type PageColumnGeometry,
+} from '@/lib/pdf/pageColumn';
+import {
   MIN_QUERY_LENGTH,
   renderTextItemWithHighlight,
   searchIndexedPages,
@@ -68,6 +85,18 @@ const TARGET_MARK_CLASS = 'pdf-target';
 
 /** Délai (ms) avant de lancer une recherche après la dernière frappe. */
 const SEARCH_DEBOUNCE_MS = 300;
+
+/** Espace vertical entre deux pages de la colonne continue (PER-255), en px. */
+const PAGE_GAP = 12;
+
+/**
+ * Nombre de pages pré-rendues de chaque côté du viewport. Assez pour ne pas voir d'emplacement
+ * vide en feuilletant, assez peu pour ne garder qu'une poignée de canvas en mémoire (~360 pages).
+ */
+const PAGE_OVERSCAN = 2;
+
+/** Écart de ratio hauteur/largeur toléré entre deux pages avant de les juger de formats différents. */
+const RATIO_TOLERANCE = 0.01;
 
 export interface PdfBookViewerProps {
   /** Livre à afficher (validé en amont par la route). */
@@ -163,6 +192,36 @@ export default function PdfBookViewer({
   const [container, setContainer] = useState({ w: 0, h: 0 });
   const [pageRatio, setPageRatio] = useState<number | null>(null);
 
+  // --- Colonne à défilement continu (PER-255) -------------------------------------------------
+  // `uniformPages` : verdict du sondage de formats (cf. effet plus bas). `true` = toutes les pages
+  // ont le même ratio → colonne continue ; `false` = repli page à page ; `null` = pas encore su.
+  const [uniformPages, setUniformPages] = useState<boolean | null>(null);
+  const continuous = uniformPages === true;
+  // Élément de la colonne : sert à lire son `offsetTop` réel (padding du conteneur compris)
+  // plutôt qu'à le recalculer à la main.
+  const columnRef = useRef<HTMLDivElement | null>(null);
+  // Fenêtre de pages réellement montées. Initialisée sur la page d'entrée : la première page
+  // rendue est déjà celle qu'on vise, sans monter puis démonter la page 1.
+  const [visibleRange, setVisibleRange] = useState({ start: fileInitialPage, end: fileInitialPage });
+  // Renvoi (livre + page + terme) dont le saut d'entrée a DÉJÀ été fait. Tant qu'il diffère du
+  // renvoi courant, la première mise en page connue doit amener le défilement sur la page citée —
+  // une seule fois par renvoi, sans drapeau à armer en phase de rendu.
+  const jumpedRefKeyRef = useRef<string | null>(null);
+  // Ciblage du passage EN ATTENTE (PER-59/61) : consommé une seule fois, au rendu de la couche
+  // texte de la page citée — le seul moment où le `<mark>` existe dans le DOM.
+  const [pendingTarget, setPendingTarget] = useState(term.length >= MIN_QUERY_LENGTH);
+  // Ancre de lecture à restaurer après un changement d'échelle (zoom, ajustement, resize) :
+  // toutes les hauteurs changent, garder le `scrollTop` en pixels téléporterait ailleurs.
+  const anchorRef = useRef<PageAnchor | null>(null);
+  // Coalescence du suivi de défilement sur une frame (le scroll tire beaucoup d'événements).
+  const scrollRafRef = useRef<number | null>(null);
+  // Le champ « page » a-t-il le focus ? On ne le resynchronise pas pendant la saisie.
+  const pageInputFocusedRef = useRef(false);
+  // Dernière version de `goTo` (définie plus bas, elle dépend de la géométrie), pour l'appeler
+  // depuis un effet sans l'y déclarer en dépendance — sinon un changement de zoom relancerait
+  // la recherche débattue et remettrait le curseur d'occurrence à zéro.
+  const goToRef = useRef<(page: number) => void>(() => {});
+
   // --- Recherche plein-texte (PER-58) ---------------------------------------------------------
   // Le document pdf.js chargé, capté à `onLoadSuccess` : c'est la source des couches texte à
   // indexer. L'index (texte de chaque page) est mis en cache PAR LIVRE dans une ref, pour ne le
@@ -192,6 +251,9 @@ export default function PdfBookViewer({
   // page affichée. La clé combine page + terme, ce qui rejoue aussi le ciblage quand deux renvois
   // visent la même page avec des termes différents.
   const targetKey = `${initialPage}::${term}`;
+  // Même clé, préfixée du livre : identifie le RENVOI à honorer par un saut de défilement (changer
+  // de livre en gardant page et terme reste un nouveau saut à faire).
+  const jumpKey = `${bookId}::${targetKey}`;
   const [lastKey, setLastKey] = useState(targetKey);
   if (targetKey !== lastKey) {
     setLastKey(targetKey);
@@ -199,6 +261,10 @@ export default function PdfBookViewer({
     setPageInput(String(fileInitialPage));
     // Nouveau renvoi → on ré-affiche le surlignage du passage ciblé (l'utilisateur a pu le masquer).
     setShowTarget(true);
+    // …et on réarme les deux mouvements du renvoi : défiler jusqu'à la page (via `jumpedRefKeyRef`,
+    // qui ne correspond plus au renvoi courant), puis centrer le passage.
+    setVisibleRange({ start: fileInitialPage, end: fileInitialPage });
+    setPendingTarget(term.length >= MIN_QUERY_LENGTH);
   }
   // Changement de livre → nouveau document pdf.js, chargement/zoom réinitialisés, recherche remise
   // à zéro (l'index resté en cache par livre sera réutilisé si l'on revient sur ce livre).
@@ -210,6 +276,10 @@ export default function PdfBookViewer({
     setZoom(1);
     setFitMode('page');
     setPdfDoc(null);
+    // Géométrie de colonne à resonder sur le nouveau livre (formats potentiellement différents).
+    setPageRatio(null);
+    setUniformPages(null);
+    setVisibleRange({ start: fileInitialPage, end: fileInitialPage });
     setQuery('');
     setMatches(null);
     setActiveMatch(0);
@@ -220,15 +290,156 @@ export default function PdfBookViewer({
     setDownloadProgress(null);
   }
 
+  // Largeur de base de la page selon l'ajustement choisi, puis × zoom. `PAGE_MARGIN` = padding du
+  // conteneur (`p: 2` = 16 px de chaque côté). Calculé AVANT les effets : la géométrie de la
+  // colonne en dépend.
+  const PAGE_MARGIN = 16;
+  const availW = container.w - PAGE_MARGIN * 2;
+  const availH = container.h - PAGE_MARGIN * 2;
+  const fitWidth =
+    availW > 0 && availH > 0
+      ? fitMode === 'width'
+        ? availW
+        : pageRatio
+          ? Math.min(availW, availH / pageRatio)
+          : availW
+      : undefined;
+  const pageWidth = fitWidth != null ? fitWidth * zoom : undefined;
+  // Hauteur d'un emplacement de page : c'est CETTE valeur qui est posée en CSS sur chaque
+  // emplacement, donc l'arithmétique d'offsets et la mise en page ne peuvent pas diverger.
+  const slotHeight = pageWidth != null && pageRatio != null ? pageWidth * pageRatio : undefined;
+
+  // Géométrie de la colonne, relue à la demande. `null` hors défilement continu ou tant que les
+  // mesures manquent — tous les appels ci-dessous s'abstiennent alors proprement. L'identité de
+  // cette fonction ne change QUE quand la mise en page change (zoom, ajustement, resize, livre) :
+  // les effets qui en dépendent se rejouent exactement à ces moments-là, et pas à chaque scroll.
+  const readColumn = useCallback((): PageColumnGeometry | null => {
+    if (!continuous || numPages == null || slotHeight == null || !(slotHeight > 0)) return null;
+    return {
+      numPages,
+      pageHeight: slotHeight,
+      gap: PAGE_GAP,
+      columnTop: columnRef.current?.offsetTop ?? PAGE_MARGIN,
+    };
+  }, [continuous, numPages, slotHeight]);
+
+  // Déduit du défilement la page courante (compteur + champ « page ») et la fenêtre de pages à
+  // monter. C'est ici que s'opère l'inversion de PER-255 : `current` SUIT le défilement.
+  const syncFromScroll = useCallback(() => {
+    const el = scrollRef.current;
+    const g = readColumn();
+    if (!el || !g) return;
+    const page = dominantPage(g, el.scrollTop, el.clientHeight);
+    setCurrent(page);
+    if (!pageInputFocusedRef.current) setPageInput(String(page));
+    // Moins de voisines pré-rendues quand une page dépasse déjà l'écran (zoom fort) : chaque
+    // canvas y coûte cher en mémoire, et on ne peut de toute façon pas feuilleter vite.
+    const overscan = g.pageHeight > el.clientHeight ? 1 : PAGE_OVERSCAN;
+    const next = visiblePageRange(g, el.scrollTop, el.clientHeight, overscan);
+    setVisibleRange((prev) => (prev.start === next.start && prev.end === next.end ? prev : next));
+  }, [readColumn]);
+
+  // Amène le défilement sur une page (n° de FICHIER). Instantané : un défilement animé se
+  // battrait avec le centrage du passage ciblé, qui s'enchaîne juste après.
+  const scrollToPage = useCallback(
+    (page: number) => {
+      const el = scrollRef.current;
+      const g = readColumn();
+      if (!el || !g) return;
+      el.scrollTo({ top: scrollTopForPage(g, page) });
+    },
+    [readColumn],
+  );
+
+  // Mémorise l'endroit lu, à appeler AVANT tout changement d'échelle.
+  const rememberAnchor = useCallback(() => {
+    const el = scrollRef.current;
+    const g = readColumn();
+    if (el && g) anchorRef.current = pageAnchor(g, el.scrollTop);
+  }, [readColumn]);
+
+  // Suivi du défilement, coalescé sur une frame.
+  const handleScroll = useCallback(() => {
+    if (scrollRafRef.current != null) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      syncFromScroll();
+    });
+  }, [syncFromScroll]);
+
+  useEffect(
+    () => () => {
+      if (scrollRafRef.current != null) cancelAnimationFrame(scrollRafRef.current);
+    },
+    [],
+  );
+
+  // Sondage des formats de page (garde-fou de l'hypothèse d'uniformité) : on compare le ratio
+  // de la première page, d'une page du milieu et de la dernière. Identiques → colonne continue,
+  // avec un `pageRatio` connu AVANT tout rendu (pas de saut de mise en page). Divergents →
+  // repli page à page, seul mode où les offsets ne peuvent pas dériver.
+  useEffect(() => {
+    if (!pdfDoc) return;
+    let cancelled = false;
+    const ratioOf = async (n: number) => {
+      const page = await pdfDoc.getPage(n);
+      const { width, height } = page.getViewport({ scale: 1 });
+      page.cleanup();
+      return height / width;
+    };
+    const last = pdfDoc.numPages;
+    const probes = [...new Set([1, Math.ceil(last / 2), last])].filter((n) => n >= 1 && n <= last);
+    void Promise.all(probes.map(ratioOf))
+      .then((ratios) => {
+        if (cancelled || ratios.length === 0) return;
+        const [first] = ratios;
+        setPageRatio(first);
+        setUniformPages(ratios.every((r) => Math.abs(r - first) <= RATIO_TOLERANCE));
+      })
+      .catch(() => {
+        // Sondage impossible : on reste en repli page à page (le rendu, lui, fonctionne).
+        if (!cancelled) setUniformPages(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pdfDoc]);
+
   // Suivi des redimensionnements (fenêtre, rotation…) une fois monté. La mesure INITIALE est
-  // faite par le ref callback ci-dessus ; ici on ne fait que réagir aux changements de taille.
+  // faite par le ref callback ci-dessus ; ici on ne fait que réagir aux changements de taille —
+  // en mémorisant d'abord l'endroit lu, puisque les hauteurs vont changer.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setContainer({ w: el.clientWidth, h: el.clientHeight }));
+    const ro = new ResizeObserver(() => {
+      rememberAnchor();
+      setContainer({ w: el.clientWidth, h: el.clientHeight });
+    });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [bookId]);
+  }, [bookId, rememberAnchor]);
+
+  // Mise en page (re)calculée : on replace le défilement, puis on resynchronise page courante et
+  // fenêtre de rendu. Deux mouvements possibles, dans cet ordre de priorité :
+  //  1. le saut d'entrée en attente (ouverture, nouveau renvoi) ;
+  //  2. l'ancre de lecture (zoom, ajustement, redimensionnement).
+  // Cet effet ne se rejoue qu'aux changements de mise en page (cf. identité de `readColumn`),
+  // jamais au fil du défilement.
+  useEffect(() => {
+    const el = scrollRef.current;
+    const g = readColumn();
+    if (!el || !g) return;
+    if (jumpedRefKeyRef.current !== jumpKey) {
+      jumpedRefKeyRef.current = jumpKey;
+      anchorRef.current = null;
+      el.scrollTo({ top: scrollTopForPage(g, fileInitialPage) });
+    } else if (anchorRef.current) {
+      const anchor = anchorRef.current;
+      anchorRef.current = null;
+      el.scrollTo({ top: scrollTopForAnchor(g, anchor) });
+    }
+    syncFromScroll();
+  }, [readColumn, syncFromScroll, jumpKey, fileInitialPage]);
 
   // Téléchargement du PDF payant (PER-252) : à l'ouverture du visualiseur sur un livre
   // en mode `paid-bucket`, on télécharge le fichier via la session authentifiée (gardé par
@@ -260,10 +471,12 @@ export default function PdfBookViewer({
     };
   }, [book.delivery, book.available, book.sourceSlug]);
 
-  // Amène la page courante en haut du conteneur à chaque changement de page.
+  // Repli page à page SEULEMENT (pages de formats différents) : la page rendue change, on revient
+  // en haut du conteneur. En défilement continu, c'est l'inverse — le défilement commande la page.
   useEffect(() => {
+    if (continuous) return;
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [current]);
+  }, [current, continuous]);
 
   // Focus le champ dès l'ouverture de la barre de recherche.
   useEffect(() => {
@@ -334,10 +547,7 @@ export default function PdfBookViewer({
       const found = searchIndexedPages(index, raw);
       setMatches(found);
       setActiveMatch(0);
-      if (found.length > 0) {
-        setCurrent(found[0].page);
-        setPageInput(String(found[0].page));
-      }
+      if (found.length > 0) goToRef.current(found[0].page);
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchOpen, query, bookId, indexVersion]);
@@ -346,26 +556,62 @@ export default function PdfBookViewer({
   // toutes pages, PER-58) a la PRIORITÉ ; à défaut, le terme CIBLÉ par le renvoi (couleur distincte,
   // PER-59/61) est surligné sur sa SEULE page. Une même fonction rend les deux (classe différente).
   const highlightQuery = searchOpen && query.trim().length >= MIN_QUERY_LENGTH ? query.trim() : '';
-  // Terme ciblé actif : bascule ON, hors recherche, terme non vide, et on est bien sur la page
-  // citée (comparée en n° de FICHIER, d'où la conversion de `initialPage` via l'offset).
+  // Terme ciblé actif : bascule ON, hors recherche, terme non vide. En défilement continu, le
+  // surlignage est porté par la SEULE page citée (cf. `textRendererFor`), donc rien à conditionner
+  // à la page courante — la lier au compteur ferait clignoter le repère au moindre défilement, et
+  // le centrage du passage (qui remonte d'une demi-page) suffirait déjà à l'éteindre. En repli page
+  // à page, il faut en revanche vérifier qu'on est bien sur la page citée (en n° de FICHIER).
   const targetActive =
-    showTarget && !highlightQuery && term.length >= MIN_QUERY_LENGTH && current === fileInitialPage;
-  const textRenderer = useMemo(
+    showTarget &&
+    !highlightQuery &&
+    term.length >= MIN_QUERY_LENGTH &&
+    (continuous || current === fileInitialPage);
+  // Deux renderers d'identité STABLE (react-pdf reconstruit la couche texte dès que le renderer
+  // change d'identité : en défilement continu, en fabriquer un par rendu la reconstruirait à
+  // chaque frame de scroll). La recherche s'applique à toutes les pages rendues ; le terme ciblé
+  // à la SEULE page citée — d'où la sélection par page dans `textRendererFor`.
+  const searchRenderer = useMemo(
     () =>
       highlightQuery
         ? (item: { str: string }) => renderTextItemWithHighlight(item.str, highlightQuery)
-        : targetActive
-          ? (item: { str: string }) => renderTextItemWithHighlight(item.str, term, TARGET_MARK_CLASS)
-          : undefined,
-    [highlightQuery, targetActive, term],
+        : undefined,
+    [highlightQuery],
   );
+  const targetRenderer = useMemo(
+    () =>
+      targetActive
+        ? (item: { str: string }) => renderTextItemWithHighlight(item.str, term, TARGET_MARK_CLASS)
+        : undefined,
+    [targetActive, term],
+  );
+  const textRendererFor = (page: number) =>
+    searchRenderer ?? (page === fileInitialPage ? targetRenderer : undefined);
+
+  // Centrage du passage ciblé par un renvoi (PER-59/61), second des deux mouvements d'un renvoi.
+  // Déclenché au rendu de la couche texte de la page citée (le `<mark>` n'existe pas avant) et
+  // consommé UNE SEULE FOIS : sans ce drapeau, chaque reconstruction de couche texte
+  // (recherche, zoom, aller-retour de défilement) recentrerait de force sur le passage.
+  const centerTargetMark = () => {
+    if (!pendingTarget || !targetActive) return;
+    setPendingTarget(false);
+    const mark = scrollRef.current?.querySelector(`.textLayer mark.${TARGET_MARK_CLASS}`);
+    mark?.scrollIntoView({ block: 'center', behavior: 'auto' });
+  };
 
   const clampPage = (p: number) => Math.min(Math.max(1, p), numPages ?? p);
+  // « Aller à la page N » : en défilement continu, défiler jusqu'à son emplacement (le suivi de
+  // défilement reconfirmera la page) ; en repli, changer la page rendue.
   const goTo = (p: number) => {
     const next = clampPage(p);
     setCurrent(next);
     setPageInput(String(next));
+    if (continuous) scrollToPage(next);
   };
+  // Publie la dernière version de `goTo` pour les effets (cf. `goToRef`).
+  useEffect(() => {
+    goToRef.current = goTo;
+  });
+
   const commitPageInput = () => {
     const parsed = Number.parseInt(pageInput, 10);
     if (Number.isFinite(parsed)) goTo(parsed);
@@ -390,21 +636,6 @@ export default function PdfBookViewer({
 
   const hasQuery = query.trim().length >= MIN_QUERY_LENGTH;
   const indexing = indexProgress !== null;
-
-  // Largeur de base de la page selon l'ajustement choisi, puis × zoom. `PAGE_MARGIN` = padding du
-  // conteneur (`p: 2` = 16 px de chaque côté).
-  const PAGE_MARGIN = 16;
-  const availW = container.w - PAGE_MARGIN * 2;
-  const availH = container.h - PAGE_MARGIN * 2;
-  const fitWidth =
-    availW > 0 && availH > 0
-      ? fitMode === 'width'
-        ? availW
-        : pageRatio
-          ? Math.min(availW, availH / pageRatio)
-          : availW
-      : undefined;
-  const pageWidth = fitWidth != null ? fitWidth * zoom : undefined;
 
   const content = (
     <>
@@ -457,7 +688,14 @@ export default function PdfBookViewer({
             size="small"
             value={pageInput}
             onChange={(e) => setPageInput(e.target.value)}
-            onBlur={commitPageInput}
+            // Pendant la saisie, le suivi de défilement ne réécrit pas le champ sous les doigts.
+            onFocus={() => {
+              pageInputFocusedRef.current = true;
+            }}
+            onBlur={() => {
+              pageInputFocusedRef.current = false;
+              commitPageInput();
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') commitPageInput();
             }}
@@ -482,7 +720,11 @@ export default function PdfBookViewer({
         <Tooltip title={fitMode === 'page' ? 'Pleine largeur' : 'Page entière'}>
           <IconButton
             size="small"
-            onClick={() => setFitMode((m) => (m === 'page' ? 'width' : 'page'))}
+            onClick={() => {
+              // Toutes les hauteurs vont changer : on note d'abord l'endroit lu.
+              rememberAnchor();
+              setFitMode((m) => (m === 'page' ? 'width' : 'page'));
+            }}
             color={fitMode === 'width' ? 'primary' : 'default'}
             sx={{ ml: 1 }}
           >
@@ -495,7 +737,10 @@ export default function PdfBookViewer({
             <span>
               <IconButton
                 size="small"
-                onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))}
+                onClick={() => {
+                  rememberAnchor();
+                  setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP));
+                }}
                 disabled={zoom <= ZOOM_MIN}
               >
                 <ZoomOutIcon />
@@ -509,7 +754,10 @@ export default function PdfBookViewer({
             <span>
               <IconButton
                 size="small"
-                onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))}
+                onClick={() => {
+                  rememberAnchor();
+                  setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP));
+                }}
                 disabled={zoom >= ZOOM_MAX}
               >
                 <ZoomInIcon />
@@ -637,6 +885,7 @@ export default function PdfBookViewer({
 
       <Box
         ref={setScrollEl}
+        onScroll={continuous ? handleScroll : undefined}
         sx={{
           // Modale : hauteur fixe (85 % de la fenêtre). Plein écran : occupe tout l'espace restant.
           height: chrome === 'dialog' ? '85vh' : 'auto',
@@ -644,6 +893,9 @@ export default function PdfBookViewer({
           minHeight: 0,
           overflow: 'auto',
           display: 'flex',
+          // Repère de positionnement de la colonne : son `offsetTop` (lu pour la géométrie) est
+          // alors mesuré dans CE conteneur, padding compris.
+          position: 'relative',
           bgcolor: 'action.hover',
           p: 2,
         }}
@@ -698,26 +950,88 @@ export default function PdfBookViewer({
                 </Box>
               }
             >
-              <Page
-                pageNumber={current}
-                width={pageWidth}
-                customTextRenderer={textRenderer}
-                onLoadSuccess={({ originalWidth, originalHeight }) =>
-                  setPageRatio(originalHeight / originalWidth)
-                }
-                onRenderTextLayerSuccess={() => {
-                  // Centrage du passage ciblé par un renvoi (PER-59/61) : la couche texte n'existe
-                  // qu'ICI (après rendu), d'où le déclenchement sur ce callback plutôt qu'un effet.
-                  if (!targetActive) return;
-                  const mark = scrollRef.current?.querySelector(`.textLayer mark.${TARGET_MARK_CLASS}`);
-                  mark?.scrollIntoView({ block: 'center' });
-                }}
-                loading={
-                  <Box sx={{ py: 8, textAlign: 'center' }}>
-                    <CircularProgress size={28} />
-                  </Box>
-                }
-              />
+              {uniformPages == null || (continuous && slotHeight == null) ? (
+                // Formats de page pas encore sondés (ou conteneur pas encore mesuré) : on attend
+                // plutôt que de rendre une page qu'il faudrait aussitôt remplacer — un premier
+                // rendu jeté consommerait le ciblage du passage pour rien.
+                <Box sx={{ py: 8, textAlign: 'center' }}>
+                  <CircularProgress size={28} />
+                </Box>
+              ) : continuous ? (
+                // COLONNE CONTINUE (PER-255) : un emplacement par page, tous de la même hauteur,
+                // dont seuls ceux proches du viewport portent une vraie `<Page>`. Les autres
+                // gardent la place exacte — barre de défilement et sauts de page justes.
+                <Box
+                  ref={columnRef}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: `${PAGE_GAP}px`,
+                    // Emplacements stylés DEPUIS LA COLONNE, et non un par un : chaque page est un
+                    // `div` nu (seules largeur/hauteur en style inline). Traverser le livre
+                    // remonte la colonne entière à chaque franchissement de page — autant que ce
+                    // soit 360 éléments nus plutôt que 360 composants stylés.
+                    '& > .pdf-slot': {
+                      flex: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      bgcolor: 'background.paper',
+                      boxShadow: 1,
+                    },
+                    // Emplacement pas encore monté : son numéro suffit à se repérer en feuilletant
+                    // vite (rendu en CSS pour garder le `div` nu).
+                    '& > .pdf-slot-empty::after': {
+                      content: 'attr(data-page-label)',
+                      color: 'text.disabled',
+                      fontSize: '0.75rem',
+                    },
+                  }}
+                >
+                  {Array.from({ length: numPages ?? 0 }, (_, i) => i + 1).map((page) => {
+                    const rendered = page >= visibleRange.start && page <= visibleRange.end;
+                    return (
+                      <div
+                        key={page}
+                        className={rendered ? 'pdf-slot' : 'pdf-slot pdf-slot-empty'}
+                        data-page-label={`Page ${page}`}
+                        style={{ width: pageWidth, height: slotHeight }}
+                      >
+                        {rendered && (
+                          <Page
+                            pageNumber={page}
+                            width={pageWidth}
+                            customTextRenderer={textRendererFor(page)}
+                            onRenderTextLayerSuccess={
+                              page === fileInitialPage ? centerTargetMark : undefined
+                            }
+                            loading={<CircularProgress size={24} />}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </Box>
+              ) : (
+                // Repli page à page : pages de formats différents (ou sondage impossible), où une
+                // colonne à hauteur uniforme ferait dériver les offsets. Comportement d'origine.
+                <Page
+                  pageNumber={current}
+                  width={pageWidth}
+                  customTextRenderer={textRendererFor(current)}
+                  onLoadSuccess={({ originalWidth, originalHeight }) =>
+                    setPageRatio(originalHeight / originalWidth)
+                  }
+                  onRenderTextLayerSuccess={centerTargetMark}
+                  loading={
+                    <Box sx={{ py: 8, textAlign: 'center' }}>
+                      <CircularProgress size={28} />
+                    </Box>
+                  }
+                />
+              )}
             </Document>
           </Box>
         )}
