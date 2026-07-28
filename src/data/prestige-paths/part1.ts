@@ -829,9 +829,9 @@ export const prestigeFeatures1: Feature[] = [
         mutuallyExclusiveWith: ['prestige-lycanthrope-r5'],
       },
     ],
-    // PER-74 : « Il doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette
-    // capacité » → 1 usage, rechargé au repos court (compteur d'usage décompté à la table).
-    usageCounter: { max: 1, resetOn: 'short-rest' },
+    // PER-74 : la fréquence « 1× par récupération rapide » reste VERBATIM dans le texte — pas de
+    // compteur d'usage dédié (une jauge à 1 seul point n'apporte rien à la table, retiré à la demande
+    // du proprio 2026-07-28 ; l'interrupteur de forme suffit).
     sourcePage: 130,
   },
   {
