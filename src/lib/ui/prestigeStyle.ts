@@ -5,9 +5,22 @@
  * qui tourne lentement dans les puces de breakdown (`CapabilityChip`) et se pose en anneau STATIQUE
  * (sans animation, trop lourde en liste) sur les cartes de rang de la fiche. Source unique du dégradé.
  */
+import { darken, lighten } from '@mui/material/styles';
 
 /** Arrêts du dégradé conique du liseré TOURNANT (chip) : blanc franc balayé d'un gris (pas de teinte chaude). */
 export const PRESTIGE_GRADIENT_STOPS = '#ffffff, #8c8c8c, #ffffff';
+
+/**
+ * Dégradé « métal précieux » à 45° utilisé comme REMPLISSAGE (liseré de carte, petits carrés de la
+ * mini-grille de progression). Par défaut (génériques, `color` absent) : le dégradé JAUNE → gris chaud
+ * exactement tuné par le proprio. Pour une famille de prestige (`color` fourni) : reflet clair
+ * (coin bas-gauche) → nuance sombre (coin haut-droit) dérivé de la teinte de famille. Source unique.
+ */
+export function prestigeMetalGradient(color?: string): string {
+  return color
+    ? `linear-gradient(45deg, ${lighten(color, 0.72)}, ${darken(color, 0.32)})`
+    : 'linear-gradient(45deg, #fff2c2, #968f74)';
+}
 
 /**
  * Anneau de bordure en dégradé (respecte le `border-radius`, contrairement à `border-image`) via la
@@ -19,7 +32,13 @@ export const PRESTIGE_GRADIENT_STOPS = '#ffffff, #8c8c8c, #ffffff';
  * @param thickness épaisseur du liseré, en px (défaut 1.5).
  * @param radius rayon des coins de l'anneau (défaut `inherit` = celui du conteneur).
  */
-export function prestigeStaticBorderSx(thickness = 1, radius: string | number = 'inherit') {
+export function prestigeStaticBorderSx(
+  thickness = 1,
+  radius: string | number = 'inherit',
+  color?: string,
+) {
+  // Dégradé du liseré : or tuné par défaut, teinté par famille si `color` fourni (cf. helper partagé).
+  const metal = prestigeMetalGradient(color);
   return {
     position: 'relative' as const,
     '&::before': {
@@ -28,9 +47,8 @@ export function prestigeStaticBorderSx(thickness = 1, radius: string | number = 
       inset: 0,
       borderRadius: radius,
       padding: `${thickness}px`,
-      // Dégradé LISSÉ légèrement JAUNE → gris chaud, équilibré 50/50, orienté à 45° (retour proprio) :
-      // jaune pâle dans un coin, gris (teinté chaud) dans le coin opposé, transition continue.
-      background: 'linear-gradient(45deg, #fff2c2, #968f74)',
+      // Dégradé LISSÉ (voir `metal` ci-dessus), orienté à 45°.
+      background: metal,
       // Ne garder que le liseré : le remplissage (content-box) est soustrait de la surface complète.
       WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
       WebkitMaskComposite: 'xor',

@@ -1,4 +1,5 @@
 import { alpha, decomposeColor, recomposeColor } from '@mui/material/styles';
+import type { PrestigeCategory } from '@/data/schema';
 
 /**
  * Couleurs d'accentuation par profil — préoccupation purement UI (aucune règle
@@ -82,6 +83,28 @@ export const MAGE_PATH_COLOR = '#5c6bc0';
  * pour signaler son statut à part. Purement UI.
  */
 export const PRESTIGE_PATH_COLOR = '#d4af37';
+
+/**
+ * Teinte des voies de PRESTIGE PAR FAMILLE (table récapitulative p. 128 — décision proprio
+ * 2026-07-28). Le prestige garde son traitement « précieux » commun (liseré métallique, étoile),
+ * mais la teinte de base varie selon la famille de la voie (`PrestigeCategory`), en écho aux
+ * familles de profils de `CLASS_COLORS` (verts=aventuriers, rouges/oranges=combattants, bleus=mages,
+ * violets=mystiques). Les génériques (choisissables par tous) gardent l'or historique, à part.
+ * Teintes choisies « gemme » (émeraude/grenat/saphir/améthyste) pour rester dans le registre précieux.
+ * Purement UI, aucune règle CO2.
+ */
+export const PRESTIGE_CATEGORY_COLORS: Record<PrestigeCategory, string> = {
+  generic: PRESTIGE_PATH_COLOR, // or ancien (inchangé)
+  adventurer: '#43a047', // vert émeraude
+  fighter: '#d84315', // rouge/orange (grenat/cuivre)
+  mage: '#3f7fe0', // bleu saphir
+  mystic: '#9c4dcc', // violet améthyste
+};
+
+/** Teinte d'une voie de prestige selon sa famille, avec repli sur l'or générique. */
+export function prestigeCategoryColor(category: PrestigeCategory | undefined): string {
+  return (category && PRESTIGE_CATEGORY_COLORS[category]) || PRESTIGE_PATH_COLOR;
+}
 
 /**
  * Gris foncé NEUTRE des hexagones de marqueur d'action (A/L/G/M) d'une voie de PEUPLE : sans

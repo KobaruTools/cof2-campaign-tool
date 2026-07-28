@@ -21,10 +21,11 @@ import { ABILITY_NAMES } from '@/lib/ui/ability';
 import {
   ANCESTRY_COLOR,
   MAGE_PATH_COLOR,
-  PRESTIGE_PATH_COLOR,
   classColor,
+  prestigeCategoryColor,
   profileAccentGradient,
 } from '@/lib/ui/classColors';
+import { prestigeMetalGradient } from '@/lib/ui/prestigeStyle';
 
 export interface CharacterPreviewCardProps {
   character: Character;
@@ -61,10 +62,12 @@ const PATH_RANK_COUNT = 5;
 interface PathColumn {
   name: string | undefined;
   /**
-   * Couleur de chaque rang débloqué (index 0 = premier rang débloqué, en haut).
+   * Fond CSS de chaque rang débloqué (index 0 = premier rang débloqué, en haut).
    * Un carré est plein ssi son index est < `rankColors.length`. Normalement la
-   * couleur de la voie, sauf pour un rang qui a EMPRUNTÉ une capacité (PER-120) :
-   * il prend alors la couleur du profil de la capacité empruntée.
+   * couleur PLATE de la voie ; pour une voie de PRESTIGE, un DÉGRADÉ « précieux »
+   * (or générique, teinté par famille — PER-74). Exception : un rang qui a EMPRUNTÉ
+   * une capacité (PER-120) prend la couleur plate du profil de la capacité empruntée.
+   * Valeur utilisable telle quelle en `background` (couleur unie OU dégradé).
    */
   rankColors: string[];
 }
@@ -82,7 +85,7 @@ function pathColor(path: Path | undefined, classId: string): string {
     case 'mage':
       return MAGE_PATH_COLOR;
     case 'prestige':
-      return PRESTIGE_PATH_COLOR;
+      return prestigeCategoryColor(path.category);
     case 'class':
       return classColor(path.classIds.includes(classId) ? classId : path.classIds[0]);
   }
@@ -149,11 +152,20 @@ function pathColumns(character: Character): (PathColumn | undefined)[] {
   }
   const buildColumn = (entry: { path: Path | undefined; features: Map<number, Feature> }): PathColumn => {
     const baseColor = pathColor(entry.path, character.classId);
+    // Voie de PRESTIGE : les rangs NON empruntés reçoivent le DÉGRADÉ « précieux » (or par défaut pour
+    // les génériques, teinté par famille sinon) plutôt qu'une couleur plate — plus joli (demande proprio).
+    const prestigeFill =
+      entry.path?.type === 'prestige'
+        ? prestigeMetalGradient(
+            entry.path.category !== 'generic' ? prestigeCategoryColor(entry.path.category) : undefined,
+          )
+        : undefined;
     const rankColors = [...entry.features.entries()]
       .sort((a, b) => a[0] - b[0])
       .slice(0, PATH_RANK_COUNT)
-      // Un rang qui a emprunté une capacité prend la couleur du profil emprunté.
-      .map(([, feature]) => borrowedColorOf(character, feature) ?? baseColor);
+      // Un rang qui a emprunté une capacité prend la couleur plate du profil emprunté ; sinon la couleur
+      // de la voie — ou le dégradé précieux pour le prestige.
+      .map(([, feature]) => borrowedColorOf(character, feature) ?? prestigeFill ?? baseColor);
     return { name: entry.path?.name, rankColors };
   };
   // Chaque voie occupe un EMPLACEMENT FIXE, pas une colonne compactée : peuple/mage
@@ -323,7 +335,9 @@ function PathsMiniGrid({ character }: { character: Character }) {
                     width: PATH_CELL_SIZE,
                     height: PATH_CELL_SIZE,
                     borderRadius: '1px',
-                    bgcolor: color ?? 'transparent',
+                    // `background` (pas `bgcolor`) : la valeur peut être une couleur unie OU un dégradé
+                    // (carrés de prestige, PER-74).
+                    background: color ?? 'transparent',
                     border: color ? 'none' : '1px solid rgba(255, 255, 255, 0.14)',
                   }}
                 />
