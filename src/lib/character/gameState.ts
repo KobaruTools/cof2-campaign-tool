@@ -19,7 +19,17 @@ import type { Character, OwnedMount } from './types';
 
 /**
  * Clés top-level d'ÉTAT DE JEU synchronisées en session (allowlist). MIROIR de l'allowlist
- * de `merge_game_state` (migration 0012) — toute évolution doit rester alignée des deux côtés.
+ * de `merge_game_state` (migrations 0012 puis 0015) — toute évolution doit rester alignée des
+ * deux côtés.
+ *
+ * `equipment` et `purse` (PER-266, migration 0015) sont ici bien qu'ils portent aussi de la
+ * CONSTRUCTION (objets possédés, quantités) : leur part état de jeu — port (`worn` : main
+ * principale/secondaire, équipé/non, deux mains), consommation de doses, argent gagné/dépensé —
+ * est FRÉQUENTE en partie et mérite le chemin sans verrou. Faute d'id stable sur les lignes, on ne
+ * peut pas fusionner finement (comme `mounts[].hp`) : `merge_game_state` REMPLACE le tableau
+ * `equipment` / l'objet `purse` en entier (LWW valeur absolue). Une édition de CONSTRUCTION
+ * d'inventaire concurrente (mode « Modifier ») peut donc être écrasée — rare en pleine partie,
+ * risque assumé (cohérent avec l'ADR LWW).
  */
 export const GAME_STATE_KEYS = [
   'depletion',
@@ -30,6 +40,8 @@ export const GAME_STATE_KEYS = [
   'companionInstances',
   'mountedKey',
   'mounts',
+  'equipment',
+  'purse',
 ] as const;
 
 export type GameStateKey = (typeof GAME_STATE_KEYS)[number];

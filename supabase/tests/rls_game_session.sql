@@ -138,10 +138,11 @@ begin
     where id = 'd0000000-0000-0000-0000-0000000000a1';
 
   -- Patch : depletion (état de jeu, remplacé), characteristics (CONSTRUCTION →
-  -- doit être IGNORÉE), mounts (m1 mis à jour, id inconnu « ghost » ignoré).
+  -- doit être IGNORÉE), mounts (m1 mis à jour, id inconnu « ghost » ignoré),
+  -- equipment + purse (état de jeu depuis 0015, remplacés en entier).
   perform public.merge_game_state(
     'd0000000-0000-0000-0000-0000000000a1',
-    '{"depletion":{"mana":3},"characteristics":{"HACK":true},"mounts":[{"id":"m1","hp":{"hp":{"lethal":5}}},{"id":"ghost","hp":{"hp":{"lethal":99}}}]}'::jsonb
+    '{"depletion":{"mana":3},"characteristics":{"HACK":true},"mounts":[{"id":"m1","hp":{"hp":{"lethal":5}}},{"id":"ghost","hp":{"hp":{"lethal":99}}}],"equipment":[{"itemId":"epee-longue","quantity":1,"worn":{"slot":"mainHand"}}],"purse":{"platinum":0,"gold":0,"silver":7,"copper":0}}'::jsonb
   );
 
   select version, data into v_after, d from public.characters
@@ -162,6 +163,10 @@ begin
   assert d -> 'mounts' -> 0 -> 'hp' -> 'hp' ->> 'lethal' = '5', 'hp de la monture m1 doit être fusionné';
   assert d -> 'mounts' -> 0 ->> 'catalogId' = 'cheval-de-guerre', 'catalogId (construction) de la monture préservé';
   assert d -> 'mounts' -> 0 ->> 'name' = 'Bucéphale', 'name (construction) de la monture préservé';
+
+  -- Equipment + purse (0015) : remplacés en entier (port + bourse synchronisés).
+  assert d -> 'equipment' -> 0 -> 'worn' ->> 'slot' = 'mainHand', 'le port (worn) de l''équipement doit être appliqué';
+  assert d -> 'purse' ->> 'silver' = '7', 'la bourse (purse) doit être appliquée';
 end $$;
 
 -- ════════════════════════════════════════════════════════════════════════════

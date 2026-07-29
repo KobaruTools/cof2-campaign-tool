@@ -55,15 +55,17 @@ describe('isGameStatePatch', () => {
     expect(isGameStatePatch({ effectToggles: {}, usageCounters: {} })).toBe(true);
     expect(isGameStatePatch({ mountedKey: 'm1' })).toBe(true);
     expect(isGameStatePatch({ mounts: [] })).toBe(true);
+    // PER-266 (0015) : equipment (port/consommation) et purse (bourse) sont de l'état de jeu.
+    expect(isGameStatePatch({ equipment: [] })).toBe(true);
+    expect(isGameStatePatch({ usageCounters: {}, equipment: [] })).toBe(true); // createElixir
+    expect(isGameStatePatch({ purse: { platinum: 0, gold: 0, silver: 1, copper: 0 } })).toBe(true);
+    expect(isGameStatePatch({ equipment: [], purse: { platinum: 0, gold: 0, silver: 0, copper: 0 } })).toBe(true); // openCoinPouch
   });
 
-  it('rejette un patch de construction ou MIXTE (une clé hors allowlist)', () => {
+  it('rejette un patch de CONSTRUCTION pure (clé hors allowlist)', () => {
     expect(isGameStatePatch({ name: 'X' })).toBe(false);
-    expect(isGameStatePatch({ equipment: [] })).toBe(false);
-    // createElixir : usageCounters (allowlist) + equipment (hors) → mixte → verrou.
-    expect(isGameStatePatch({ usageCounters: {}, equipment: [] })).toBe(false);
-    // openCoinPouch : purse hors allowlist.
-    expect(isGameStatePatch({ purse: { platinum: 0, gold: 0, silver: 1, copper: 0 } })).toBe(false);
+    expect(isGameStatePatch({ identity: {} })).toBe(false);
+    expect(isGameStatePatch({ name: 'X', equipment: [] })).toBe(false); // mixte construction+equipment
   });
 
   it('rejette un patch vide (rien à écrire)', () => {
@@ -113,9 +115,9 @@ describe('mergeMountHp', () => {
 describe('containsGameStateKey', () => {
   it('vrai dès qu’une clé ∈ allowlist (même patch mixte), faux pour construction pure', () => {
     expect(containsGameStateKey({ depletion: {} })).toBe(true);
-    // repos long avec perte d'élixirs : depletion + equipment → mixte mais routé état de jeu
-    expect(containsGameStateKey({ depletion: {}, equipment: [] })).toBe(true);
-    expect(containsGameStateKey({ usageCounters: {}, equipment: [] })).toBe(true);
+    expect(containsGameStateKey({ equipment: [] })).toBe(true);
+    // patch mixte construction + état de jeu (rare) : contient au moins une clé état de jeu
+    expect(containsGameStateKey({ name: 'X', depletion: {} })).toBe(true);
     expect(containsGameStateKey({ name: 'X', identity: {} })).toBe(false);
     expect(containsGameStateKey({})).toBe(false);
   });
@@ -124,9 +126,14 @@ describe('containsGameStateKey', () => {
 describe('gameStateSlice', () => {
   const c = makeCharacter({ mounts: [{ id: 'a', catalogId: 'cheval', hp: {} }] });
 
-  it('extrait la part état de jeu d’un patch mixte (repos long avec élixirs)', () => {
-    const patch = { depletion: { mana: 0 }, usageCounters: {}, equipment: [] } as never;
-    expect(gameStateSlice(patch)).toEqual({ depletion: { mana: 0 }, usageCounters: {} });
+  it('extrait la part état de jeu, écarte la construction pure (ex. name)', () => {
+    const patch = { depletion: { mana: 0 }, equipment: [], name: 'X' } as never;
+    expect(gameStateSlice(patch)).toEqual({ depletion: { mana: 0 }, equipment: [] });
+  });
+
+  it('inclut equipment et purse (PER-266 0015)', () => {
+    const patch = { equipment: [], purse: { platinum: 0, gold: 0, silver: 5, copper: 0 } };
+    expect(gameStateSlice(patch)).toEqual(patch);
   });
 
   it('inclut mounts tel quel, même structurel (le flag replaceMounts décide chez le pair)', () => {
@@ -135,8 +142,8 @@ describe('gameStateSlice', () => {
   });
 
   it('null pour un patch de construction pure', () => {
-    expect(gameStateSlice({ equipment: [] } as never)).toBeNull();
     expect(gameStateSlice({ name: 'X' })).toBeNull();
+    expect(gameStateSlice({ identity: {} })).toBeNull();
   });
 });
 
