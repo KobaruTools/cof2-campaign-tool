@@ -36,6 +36,8 @@ import {
   type AddCreatureOptions,
 } from './useGmCombatState';
 import type { AnyStatusEffectId, AppliedStatus } from '@/lib/character/statusEffects';
+import { featureById } from '@/data';
+import { SITUATIONAL_EFFECT_IDS, type SituationalEffectId } from '@/data/schema';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
@@ -80,6 +82,12 @@ export interface GmScreenCombat {
   setCreatureVisibility: (instanceId: string, visible: boolean) => void;
   /** États de combat appliqués par combattant (clé = id de perso OU d'instance de créature). */
   statuses: Record<string, AppliedStatus[]>;
+  /**
+   * Effets situationnels DÉBLOQUÉS par la table (PER-279) : ceux qu'au moins un personnage réclamé
+   * confère via une capacité acquise (`character.featureIds` → `situationalEffectIds`). Dans l'ordre
+   * du catalogue. Vide = aucun ; la palette masque alors le groupe « Effets situationnels ».
+   */
+  situationalEffectIds: SituationalEffectId[];
   /** Applique un état sur un combattant (intensité 1 ; PER-279). */
   applyStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Retire un état d'un combattant (PER-279). */
@@ -170,6 +178,19 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
         .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
     [characters, cid],
   );
+
+  // Effets situationnels débloqués par la table (PER-279) : on balaie les capacités acquises de
+  // chaque personnage réclamé et on collecte les `situationalEffectIds` qu'elles confèrent. Restreint
+  // aux ids connus du catalogue, dédupliqué, rendu dans l'ordre du catalogue (affichage stable).
+  const situationalEffectIds = useMemo<SituationalEffectId[]>(() => {
+    const unlocked = new Set<SituationalEffectId>();
+    for (const character of claimed) {
+      for (const featureId of character.featureIds) {
+        for (const id of featureById.get(featureId)?.situationalEffectIds ?? []) unlocked.add(id);
+      }
+    }
+    return SITUATIONAL_EFFECT_IDS.filter((id) => unlocked.has(id));
+  }, [claimed]);
 
   // Lignes des personnages réclamés : Initiative + PV max = stats dérivées (surcharge
   // manuelle prioritaire, comme la fiche) ; la barre de vie édite le VRAI personnage via
@@ -272,6 +293,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     removeCreature,
     setCreatureVisibility,
     statuses,
+    situationalEffectIds,
     applyStatus,
     removeStatus,
   };

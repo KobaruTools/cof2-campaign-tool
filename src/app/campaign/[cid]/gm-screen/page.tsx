@@ -110,6 +110,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     removeCreature,
     setCreatureVisibility,
     statuses,
+    situationalEffectIds,
     applyStatus,
     removeStatus,
   } = useGmScreenCombat(cid, 'gm');
@@ -331,14 +332,19 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
               Glissez une puce sur un combattant, ou cliquez son en-tête pour cocher un état.
             </Typography>
-            <CombatStatusPalette />
+            <CombatStatusPalette situationalIds={situationalEffectIds} />
           </Box>
           <InitiativeTracker
             rows={initiativeRows}
             currentTurnKey={currentTurnKey}
             onCurrentTurnKeyChange={setCurrentTurnKey}
             headerAction={<OpenTrackerWindowButton cid={cid} />}
-            statusControls={{ statusesByKey: statuses, onApply: applyStatus, onRemove: removeStatus }}
+            statusControls={{
+              statusesByKey: statuses,
+              situationalIds: situationalEffectIds,
+              onApply: applyStatus,
+              onRemove: removeStatus,
+            }}
           />
           {/* Surcouche : la puce « réelle » suit le curseur pendant le glissement (l'originale s'estompe). */}
           <DragOverlay>

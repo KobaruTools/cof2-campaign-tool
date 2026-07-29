@@ -20,10 +20,10 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useDraggable } from '@dnd-kit/core';
 import {
-  SITUATIONAL_EFFECT_IDS,
   SITUATIONAL_EFFECT_LABELS,
   STATUS_EFFECT_IDS,
   STATUS_EFFECT_LABELS,
+  type SituationalEffectId,
   type StatusEffectId,
 } from '@/data/schema';
 import { statusEntry, type AnyStatusEffectId } from '@/lib/character/statusEffects';
@@ -40,11 +40,18 @@ export interface StatusGroup {
   ids: readonly AnyStatusEffectId[];
 }
 
-/** Les deux groupes de la palette, dans l'ordre d'affichage. */
-export const STATUS_GROUPS: readonly StatusGroup[] = [
-  { title: 'États préjudiciables', ids: STATUS_EFFECT_IDS },
-  { title: 'Effets situationnels', ids: SITUATIONAL_EFFECT_IDS },
-];
+/**
+ * Construit les groupes affichés. Les états préjudiciables du glossaire sont TOUJOURS proposés
+ * (liste fermée universelle) ; les effets situationnels ne sont proposés que si au moins une
+ * capacité débloquée de la table les confère — `situationalIds` en est le sous-ensemble filtré
+ * par l'appelant (via `character.featureIds` → `situationalEffectIds`). Groupe situationnel omis
+ * quand aucun effet n'est débloqué (rien à poser).
+ */
+export function buildStatusGroups(situationalIds: readonly SituationalEffectId[]): StatusGroup[] {
+  const groups: StatusGroup[] = [{ title: 'États préjudiciables', ids: STATUS_EFFECT_IDS }];
+  if (situationalIds.length > 0) groups.push({ title: 'Effets situationnels', ids: situationalIds });
+  return groups;
+}
 
 /** Ensemble des ids d'états du glossaire (pour narrower l'id vers une icône). */
 const STATUS_EFFECT_ID_SET: ReadonlySet<string> = new Set(STATUS_EFFECT_IDS);
@@ -160,14 +167,19 @@ function DraggableStatusChip({ id }: { id: AnyStatusEffectId }) {
 }
 
 /**
- * Palette complète : les deux groupes de puces glissables. Purement présentative — elle suppose
- * un `DndContext` ancêtre (fourni par la page MJ), qui relie le glisser d'une puce au drop sur une
- * carte de combattant.
+ * Palette complète : les groupes de puces glissables. Purement présentative — elle suppose un
+ * `DndContext` ancêtre (fourni par la page MJ), qui relie le glisser d'une puce au drop sur une
+ * carte de combattant. `situationalIds` = effets situationnels débloqués par la table (le groupe
+ * disparaît s'il est vide).
  */
-export function CombatStatusPalette() {
+export function CombatStatusPalette({
+  situationalIds,
+}: {
+  situationalIds: readonly SituationalEffectId[];
+}) {
   return (
     <Stack spacing={1.5}>
-      {STATUS_GROUPS.map((group) => (
+      {buildStatusGroups(situationalIds).map((group) => (
         <Box key={group.title}>
           <Typography
             variant="caption"

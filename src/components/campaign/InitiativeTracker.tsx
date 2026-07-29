@@ -36,12 +36,13 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useDroppable } from '@dnd-kit/core';
+import type { SituationalEffectId } from '@/data/schema';
 import type { Depletion } from '@/lib/character/types';
 import type { AnyStatusEffectId, AppliedStatus } from '@/lib/character/statusEffects';
 import { AppTooltip } from '@/components/AppTooltip';
 import { HpGauge, type DamageKind } from '@/components/sheet/HpGauge';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
-import { STATUS_GROUPS, statusIconId, statusLabel } from '@/components/campaign/CombatStatusPalette';
+import { buildStatusGroups, statusIconId, statusLabel } from '@/components/campaign/CombatStatusPalette';
 
 export interface InitiativeRow {
   /** Clé React stable (id de perso ou clé de bandit). */
@@ -98,6 +99,11 @@ export interface InitiativeRow {
 export interface CombatStatusControls {
   /** États appliqués par combattant (clé = `InitiativeRow.key`). */
   statusesByKey: Record<string, AppliedStatus[]>;
+  /**
+   * Effets situationnels débloqués par la table (sous-ensemble filtré par `character.featureIds`).
+   * Le groupe « Effets situationnels » du menu n'apparaît que s'il est non vide.
+   */
+  situationalIds: readonly SituationalEffectId[];
   /** Applique un état sur un combattant (intensité 1). */
   onApply: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Retire un état d'un combattant. */
@@ -198,10 +204,11 @@ function CombatantColumn({
   interactive?: ColumnStatusInteractive;
 }) {
   const identityClickable = !!interactive;
+  const isOver = interactive?.isOver ?? false;
   return (
     <Box
       ref={interactive?.dropRef}
-      sx={{
+      sx={(t) => ({
         // Un peu plus large que la disposition d'origine (220) : depuis que
         // l'identité passe à DROITE de l'initiative (au lieu de dessous), la
         // rangée a besoin de largeur pour le nom / joueur / profil.
@@ -217,22 +224,26 @@ function CombatantColumn({
         // façon absente de la projection (filtrée plus haut). Les personnages ne
         // sont jamais masqués (`hidden` toujours faux).
         opacity: row.hidden ? 0.8 : 1,
-        // Bordure toujours de 2px (seule la couleur change) pour éviter tout
-        // saut de mise en page quand le tour bascule. Actif = contour blanc épais ;
-        // sinon on teinte selon le camp (PER-249 : rouge adversaire / vert allié),
-        // repli neutre pour les personnages joueurs (pas d'accent de camp).
-        border: isActive
-          ? '2px solid rgba(255, 255, 255, 0.9)'
-          : `2px solid ${row.accentColor ? alpha(row.accentColor, 0.5) : 'rgba(255, 255, 255, 0.08)'}`,
-        boxShadow: isActive ? '0 0 14px 2px rgba(255, 255, 255, 0.35)' : 'none',
-        transition: 'border-color 0.15s, box-shadow 0.15s, outline-color 0.15s',
-        // Survol d'une puce d'état au-dessus de la colonne : liseré bleu net (par-dessus la bordure,
-        // sans déplacer la mise en page).
-        ...(interactive?.isOver && {
-          outline: (t) => `2px solid ${t.palette.primary.main}`,
-          outlineOffset: 2,
-        }),
-      }}
+        // Bordure toujours de 2px (seule la COULEUR change) pour éviter tout saut de mise en page.
+        // Priorité : survol d'une puce d'état (bleu) > tour actif (blanc) > camp (PER-249 : rouge
+        // adversaire / vert allié) > neutre (personnages joueurs). On modifie la couleur de la
+        // bordure EXISTANTE plutôt que d'ajouter un `outline` (qui cassait le rendu arrondi).
+        border: `2px solid ${
+          isOver
+            ? t.palette.primary.main
+            : isActive
+              ? 'rgba(255, 255, 255, 0.9)'
+              : row.accentColor
+                ? alpha(row.accentColor, 0.5)
+                : 'rgba(255, 255, 255, 0.08)'
+        }`,
+        boxShadow: isOver
+          ? `0 0 12px 1px ${alpha(t.palette.primary.main, 0.55)}`
+          : isActive
+            ? '0 0 14px 2px rgba(255, 255, 255, 0.35)'
+            : 'none',
+        transition: 'border-color 0.15s, box-shadow 0.15s',
+      })}
     >
       <Stack spacing={1}>
         {/* Identité sur UNE rangée : portrait + initiative, puis nom / joueur /
@@ -373,7 +384,7 @@ function StatusDroppableColumn({
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
         slotProps={{ paper: { sx: { maxHeight: 420 } } }}
       >
-        {STATUS_GROUPS.flatMap((group) => [
+        {buildStatusGroups(controls.situationalIds).flatMap((group) => [
           <ListSubheader key={group.title} sx={{ bgcolor: 'transparent', lineHeight: '2.2em' }}>
             {group.title}
           </ListSubheader>,
