@@ -6,7 +6,10 @@
  * qui incarne le personnage + un petit bouton d'ouverture de la fiche complète,
  * l'aperçu (`CharacterPreviewCard`, caractéristiques colorées fort/faible) et la
  * grille compacte des statistiques dérivées (`CompactDerivedStats`, avec puces
- * immunités / RD / critiques).
+ * immunités / RD / critiques). Un bandeau de jauges condensées PV / mana / chance
+ * (`CompactGauges`) est plaqué contre le bord supérieur, HORS du flux : son nombre de
+ * pistes varie d'un personnage à l'autre (pas de mana sans sort) sans jamais décaler le
+ * contenu des cartes entre elles.
  *
  * Depuis PER-258, **la carte entière est cliquable** et ouvre le panneau latéral de
  * fiche (`panelHref`) — cela renverse le choix d'origine (« la carte elle-même n'est
@@ -30,8 +33,10 @@ import Stack from '@mui/material/Stack';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CharacterPreviewCard } from '@/components/CharacterPreviewCard';
 import { CompactDerivedStats } from '@/components/sheet/CompactDerivedStats';
+import { CompactGauges, COMPACT_GAUGES_STRIP_HEIGHT } from '@/components/sheet/CompactGauges';
 import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
+import { deriveStats } from '@/lib/engine';
 import { profileAccentGradient } from '@/lib/ui/classColors';
 import type { Character } from '@/lib/character/types';
 
@@ -49,11 +54,22 @@ export function GmScreenCard({ character, playerName, href, panelHref }: GmScree
   // Vue dérivée partagée avec la fiche (mêmes stats + puces). `null` si profil
   // incomplet : on n'affiche alors que l'aperçu.
   const view = buildCharacterDerivedView(character);
+  // Maxima des jauges condensées, avec la surcharge manuelle prioritaire — mêmes
+  // expressions que `useCharacterGameState` pour la fiche et le panneau latéral.
+  const stats = view.derivedInput ? deriveStats(view.derivedInput) : null;
+  const gaugeMaxHp = stats ? character.overrides.maxHp ?? stats.maxHp : null;
+  const gaugeManaMax = stats ? character.overrides.manaPoints ?? stats.manaPoints : null;
+  const gaugeLuckMax = stats ? character.overrides.luckPoints ?? stats.luckPoints : 0;
   return (
     <Paper
       sx={{
         position: 'relative',
         p: 2,
+        // Réserve FIXE en haut pour le bandeau de jauges (hors du flux) : sa hauteur ne
+        // dépend pas du nombre de pistes réellement rendues, donc toutes les cartes
+        // démarrent leur contenu à la même ordonnée — pas de décalage entre un
+        // personnage avec mana et un sans.
+        pt: `${COMPACT_GAUGES_STRIP_HEIGHT + 12}px`,
         bgcolor: 'rgba(20, 20, 23, 0.72)',
         // Léger dégradé teinté au profil (bas droite → haut gauche), posé sur toute la
         // carte condensée. L'aperçu interne est donc rendu SANS sa propre teinte
@@ -77,6 +93,32 @@ export function GmScreenCard({ character, playerName, href, panelHref }: GmScree
         aria-label={`Consulter la fiche de ${character.name || 'ce personnage'} dans le panneau`}
         sx={{ position: 'absolute', inset: 0, zIndex: 0, borderRadius: 'inherit' }}
       />
+      {/* Bandeau de jauges plaqué contre le bord SUPÉRIEUR, hors du flux : il ne pousse
+          rien vers le bas (la réserve `pt` de la carte lui garde la place) et suit
+          l'arrondi de la carte, qui l'écrête. Transparent aux clics comme le reste du
+          contenu, pour ne pas trouer la zone cliquable de la carte. */}
+      {gaugeMaxHp !== null && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1,
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            borderTopLeftRadius: 'inherit',
+            borderTopRightRadius: 'inherit',
+          }}
+        >
+          <CompactGauges
+            depletion={character.depletion}
+            maxHp={gaugeMaxHp}
+            manaMax={gaugeManaMax}
+            luckMax={gaugeLuckMax}
+          />
+        </Box>
+      )}
       <Stack spacing={1.5} sx={{ position: 'relative', zIndex: 1, pointerEvents: 'none' }}>
         {/* Ligne du joueur : badge à gauche, petit bouton d'ouverture poussé à droite. */}
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', pointerEvents: 'auto' }}>

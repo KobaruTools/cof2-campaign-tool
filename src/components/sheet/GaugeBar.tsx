@@ -39,6 +39,12 @@ export interface GaugeBarProps {
    * le texte `courant / max`. Sans interaction (pointer-events désactivés).
    */
   overlay?: ReactNode;
+  /**
+   * Barre SOUDÉE : ni bordure ni coins arrondis, la piste occupe toute la boîte. Sert aux
+   * bandeaux de jauges plaqués contre le bord d'une carte (écran de MJ), où c'est le
+   * conteneur qui porte l'arrondi et l'écrêtage. Prime sur `roundedLeft`.
+   */
+  flush?: boolean;
 }
 
 /**
@@ -49,7 +55,7 @@ export interface GaugeBarProps {
  * elle ne connaît ni la sémantique des segments ni les règles, seulement des
  * largeurs et des couleurs.
  */
-export function GaugeBar({ max, segments, height = 24, roundedLeft = true, overlay }: GaugeBarProps) {
+export function GaugeBar({ max, segments, height = 24, roundedLeft = true, overlay, flush = false }: GaugeBarProps) {
   const safeMax = Math.max(0, max);
   const pct = (value: number) => (safeMax > 0 ? `${Math.max(0, Math.min(100, (value / safeMax) * 100))}%` : '0%');
   return (
@@ -64,12 +70,16 @@ export function GaugeBar({ max, segments, height = 24, roundedLeft = true, overl
           height: '100%',
           overflow: 'hidden',
           bgcolor: alpha(theme.palette.text.primary, 0.1),
-          border: `1px solid ${alpha(theme.palette.text.primary, 0.15)}`,
-          borderTopRightRadius: theme.shape.borderRadius,
-          borderBottomRightRadius: theme.shape.borderRadius,
-          borderTopLeftRadius: roundedLeft ? theme.shape.borderRadius : 0,
-          borderBottomLeftRadius: roundedLeft ? theme.shape.borderRadius : 0,
-          borderLeftWidth: roundedLeft ? 1 : 0,
+          ...(flush
+            ? { border: 'none', borderRadius: 0 }
+            : {
+                border: `1px solid ${alpha(theme.palette.text.primary, 0.15)}`,
+                borderTopRightRadius: theme.shape.borderRadius,
+                borderBottomRightRadius: theme.shape.borderRadius,
+                borderTopLeftRadius: roundedLeft ? theme.shape.borderRadius : 0,
+                borderBottomLeftRadius: roundedLeft ? theme.shape.borderRadius : 0,
+                borderLeftWidth: roundedLeft ? 1 : 0,
+              }),
         })}
       >
         {segments.map((seg) =>
