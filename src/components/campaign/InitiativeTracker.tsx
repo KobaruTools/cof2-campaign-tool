@@ -17,6 +17,12 @@
  * puces de la palette, et un clic sur son en-tête ouvre un MENU À COCHER de tous les états (repli
  * tactile/accessibilité). L'application/le retrait passent par les mutations de la tranche 2. Sans
  * cette prop (fenêtre de projection), les colonnes restent purement présentatives.
+ *
+ * PER-280 : sur l'écran de MJ, chaque colonne affiche EN PLUS des PV la DEF et les attaques
+ * (contact/distance/magie), en valeurs AJUSTÉES par les états appliqués (valeur baissée en rouge,
+ * indicateur de dé malus), et un BADGE par état posé — effet verbatim en tooltip, ✕ de retrait, et
+ * compteur ±N pour les états cumulatifs. Ces éléments ne sont rendus qu'en mode MJ (jamais en
+ * projection : les nombres ajustés restent secrets, cf. PER-282).
  */
 import { useState, type ReactNode } from 'react';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -24,6 +30,9 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
+import RemoveIcon from '@mui/icons-material/Remove';
+import AddIcon from '@mui/icons-material/Add';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -38,11 +47,56 @@ import { alpha } from '@mui/material/styles';
 import { useDroppable } from '@dnd-kit/core';
 import type { SituationalEffectId } from '@/data/schema';
 import type { Depletion } from '@/lib/character/types';
-import type { AnyStatusEffectId, AppliedStatus } from '@/lib/character/statusEffects';
+import {
+  clampIntensity,
+  isStackingStatus,
+  resolveStatusModifiers,
+  statusMaxIntensity,
+  type AnyStatusEffectId,
+  type AppliedStatus,
+  type ResolvedStatusModifiers,
+} from '@/lib/character/statusEffects';
 import { AppTooltip } from '@/components/AppTooltip';
 import { HpGauge, type DamageKind } from '@/components/sheet/HpGauge';
+import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
-import { buildStatusGroups, statusIconId, statusLabel } from '@/components/campaign/CombatStatusPalette';
+import {
+  buildStatusGroups,
+  StatusEffectTooltip,
+  statusIconId,
+  statusLabel,
+} from '@/components/campaign/CombatStatusPalette';
+import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
+
+/**
+ * Type d'attaque d'une valeur de combat affichée — détermine QUEL delta d'état lui appliquer
+ * (`meleeAttack`/`rangedAttack`/`magicAttack`) : un état comme Aveuglé baisse le contact de −5 mais
+ * la distance de −10.
+ */
+export type CombatAttackKind = 'melee' | 'ranged' | 'magic';
+
+/** Une valeur d'attaque affichée sur la carte MJ (PER-280), en valeur de BASE (avant états). */
+export interface CombatAttackStat {
+  /** Clé React stable. */
+  key: string;
+  /** Libellé court (perso : « Contact »/« Distance »/« Magie » ; créature : nom de l'attaque). */
+  label: string;
+  /** Valeur de base (avant états). */
+  base: number;
+  /** Type d'attaque → delta d'état appliqué. */
+  kind: CombatAttackKind;
+}
+
+/**
+ * Statistiques de COMBAT affichées sur la carte de l'écran de MJ (PER-280) : DEF + attaques, en
+ * valeurs de BASE (avant états). L'ajustement par les états appliqués est calculé À L'AFFICHAGE
+ * (`resolveStatusModifiers`), jamais stocké. Absent = pas encore calculable (blob de créature non
+ * chargé, ou personnage sans dérivées).
+ */
+export interface CombatStats {
+  def: number;
+  attacks: CombatAttackStat[];
+}
 
 export interface InitiativeRow {
   /** Clé React stable (id de perso ou clé de bandit). */
@@ -72,6 +126,12 @@ export interface InitiativeRow {
   initiative: number;
   /** PV maximum. */
   maxHp: number;
+  /**
+   * Statistiques de combat (DEF + attaques) affichées sur la carte de l'écran de MJ (PER-280), en
+   * valeurs de BASE. Absent = non calculable (blob de créature non chargé). Rendu UNIQUEMENT sur
+   * l'écran de MJ (jamais en projection : les nombres restent secrets, cf. PER-282).
+   */
+  combatStats?: CombatStats;
   /** Dépletion courante (manque létal + temporaire). */
   depletion: Depletion;
   onDamage: (amount: number, kind: DamageKind) => void;
@@ -108,6 +168,8 @@ export interface CombatStatusControls {
   onApply: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Retire un état d'un combattant. */
   onRemove: (combatantKey: string, id: AnyStatusEffectId) => void;
+  /** Ajuste de `delta` (±) l'intensité d'un état cumulatif d'un combattant (PER-280). */
+  onAdjust: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
 }
 
 /** Pastille circulaire d'initiative (nombre en gros, en tête de colonne). */
@@ -178,6 +240,279 @@ function CombatantPortrait({ src, name }: { src?: string; name: string }) {
   );
 }
 
+/** Mappe un type d'attaque vers la clé `DerivedStatId` de son delta d'état (et de son icône dérivée). */
+const ATTACK_KIND_DERIVED: Record<CombatAttackKind, 'meleeAttack' | 'rangedAttack' | 'magicAttack'> = {
+  melee: 'meleeAttack',
+  ranged: 'rangedAttack',
+  magic: 'magicAttack',
+};
+
+/** Formate une valeur d'attaque signée (« +5 », « -2 »). */
+function formatSigned(n: number): string {
+  return n >= 0 ? `+${n}` : String(n);
+}
+
+/** Petite glyphe SVG d'une stat dérivée (même banque d'icônes que les cartes de la fiche). */
+function StatGlyph({ path, size = 14 }: { path: string; size?: number }) {
+  return (
+    <Box
+      component="svg"
+      viewBox="0 0 512 512"
+      aria-hidden
+      sx={{ width: size, height: size, fill: 'currentColor', flexShrink: 0, opacity: 0.75 }}
+      dangerouslySetInnerHTML={{ __html: path }}
+    />
+  );
+}
+
+/** Infobulle « base → ajusté » d'une pastille de stat de combat (PER-280). */
+function StatValueTooltip({
+  label,
+  base,
+  adjusted,
+  signed,
+  malusDie,
+  damageMalus,
+}: {
+  label: string;
+  base: number;
+  adjusted: number;
+  signed?: boolean;
+  malusDie?: boolean;
+  damageMalus?: number;
+}) {
+  const fmt = signed ? formatSigned : (n: number) => String(n);
+  const changed = adjusted !== base;
+  return (
+    <Box sx={{ maxWidth: 240 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
+        {label}
+      </Typography>
+      {changed ? (
+        <Typography variant="caption" sx={{ display: 'block' }}>
+          {`Base ${fmt(base)} → `}
+          <Box component="span" sx={{ color: 'error.light', fontWeight: 700 }}>
+            {fmt(adjusted)}
+          </Box>
+          {' (états)'}
+        </Typography>
+      ) : (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+          Aucun ajustement d&apos;état.
+        </Typography>
+      )}
+      {malusDie && (
+        <Typography variant="caption" sx={{ display: 'block', color: 'error.light' }}>
+          Dé malus (2d20, garde le pire).
+        </Typography>
+      )}
+      {damageMalus != null && damageMalus < 0 && (
+        <Typography variant="caption" sx={{ display: 'block', color: 'error.light' }}>
+          {`${damageMalus} aux DM infligés.`}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+/** Pastille compacte d'une stat de combat (glyphe + valeur ; rouge si un état l'a baissée). */
+function StatPill({
+  glyph,
+  value,
+  lowered,
+  malusDie,
+  tooltip,
+}: {
+  glyph: string;
+  value: string;
+  lowered: boolean;
+  malusDie?: boolean;
+  tooltip: ReactNode;
+}) {
+  return (
+    <AppTooltip title={tooltip}>
+      <Box
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.4,
+          height: 22,
+          px: 0.6,
+          borderRadius: 1,
+          cursor: 'help',
+          lineHeight: 1,
+          bgcolor: 'rgba(255, 255, 255, 0.05)',
+          border: '1px solid rgba(255, 255, 255, 0.10)',
+          color: 'text.secondary',
+        }}
+      >
+        <StatGlyph path={glyph} />
+        <Box
+          component="span"
+          sx={{
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+            color: lowered ? 'error.light' : 'text.primary',
+          }}
+        >
+          {value}
+        </Box>
+        {malusDie && <MalusDieBadge size={12} noTooltip />}
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
+ * Rangée DEF + attaques d'une carte MJ (PER-280). Les valeurs de base (`stats`) sont ajustées par les
+ * modificateurs d'état déjà résolus (`resolved`) : delta de DEF, deltas d'attaque par type, malus plat
+ * « à tous les tests » (Attaque invalidante) replié dans les attaques, et dé malus (Affaibli/Immobilisé).
+ */
+function CombatStatsRow({ stats, resolved }: { stats: CombatStats; resolved: ResolvedStatusModifiers }) {
+  const defDelta = resolved.derived.def ?? 0;
+  const defAdjusted = stats.def + defDelta;
+  // Dé malus aux tests d'attaque : Affaibli (tous les tests) OU Immobilisé (tests d'attaque).
+  const attackMalusDie = resolved.allTestsMalusDie || resolved.attackTestsMalusDie;
+  return (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6, alignItems: 'center' }}>
+      <StatPill
+        glyph={DERIVED_STAT_ICON_PATHS.defense}
+        value={String(defAdjusted)}
+        lowered={defDelta < 0}
+        tooltip={<StatValueTooltip label="Défense" base={stats.def} adjusted={defAdjusted} />}
+      />
+      {stats.attacks.map((atk) => {
+        // Delta d'attaque = modificateur dérivé du type + malus plat « à tous les tests » (cumulatif).
+        const delta = (resolved.derived[ATTACK_KIND_DERIVED[atk.kind]] ?? 0) + resolved.allTestsFlat;
+        const adjusted = atk.base + delta;
+        return (
+          <StatPill
+            key={atk.key}
+            glyph={DERIVED_STAT_ICON_PATHS[ATTACK_KIND_DERIVED[atk.kind]]}
+            value={formatSigned(adjusted)}
+            lowered={delta < 0}
+            malusDie={attackMalusDie}
+            tooltip={
+              <StatValueTooltip
+                label={atk.label}
+                base={atk.base}
+                adjusted={adjusted}
+                signed
+                malusDie={attackMalusDie}
+                damageMalus={resolved.damageDealt}
+              />
+            }
+          />
+        );
+      })}
+    </Box>
+  );
+}
+
+/** Petit bouton icône d'un badge d'état (± intensité, ✕ retrait). */
+function StatusMiniButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <IconButton
+      size="small"
+      disabled={disabled}
+      aria-label={label}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      sx={{ p: 0.15, color: 'error.light', '&.Mui-disabled': { color: 'rgba(255, 255, 255, 0.25)' } }}
+    >
+      {children}
+    </IconButton>
+  );
+}
+
+/**
+ * Badge d'un état APPLIQUÉ sur une carte (PER-280) : icône + libellé, effet verbatim en tooltip, ✕ de
+ * retrait, et — pour un état cumulatif — le compteur d'intensité « ×N » avec des boutons ± (bornés au
+ * plafond du catalogue). Badge custom rouge (jamais un `Chip` MUI, cf. préférence UI).
+ */
+function AppliedStatusBadge({
+  applied,
+  onRemove,
+  onAdjust,
+}: {
+  applied: AppliedStatus;
+  onRemove: () => void;
+  onAdjust: (delta: number) => void;
+}) {
+  const { id } = applied;
+  const iconId = statusIconId(id);
+  const stacking = isStackingStatus(id);
+  const intensity = clampIntensity(id, applied.intensity ?? 1);
+  const max = statusMaxIntensity(id);
+  return (
+    <Box
+      sx={(theme) => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.25,
+        pl: 0.75,
+        pr: 0.15,
+        height: 24,
+        borderRadius: 1,
+        color: theme.palette.error.light,
+        bgcolor: alpha(theme.palette.error.main, 0.14),
+        border: `1px solid ${alpha(theme.palette.error.main, 0.45)}`,
+      })}
+    >
+      <AppTooltip title={<StatusEffectTooltip id={id} />}>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, cursor: 'help', minWidth: 0 }}>
+          {iconId && <StatusEffectIcon effect={iconId} size={14} />}
+          <Box component="span" sx={{ fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {statusLabel(id)}
+          </Box>
+          {stacking && (
+            <Box
+              component="span"
+              sx={{ fontSize: '0.72rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {`×${intensity}`}
+            </Box>
+          )}
+        </Box>
+      </AppTooltip>
+      {stacking && (
+        <>
+          <StatusMiniButton
+            label={`Diminuer l'intensité — ${statusLabel(id)}`}
+            disabled={intensity <= 1}
+            onClick={() => onAdjust(-1)}
+          >
+            <RemoveIcon sx={{ fontSize: 13 }} />
+          </StatusMiniButton>
+          <StatusMiniButton
+            label={`Augmenter l'intensité — ${statusLabel(id)}`}
+            disabled={intensity >= max}
+            onClick={() => onAdjust(1)}
+          >
+            <AddIcon sx={{ fontSize: 13 }} />
+          </StatusMiniButton>
+        </>
+      )}
+      <StatusMiniButton label={`Retirer ${statusLabel(id)}`} onClick={onRemove}>
+        <CloseIcon sx={{ fontSize: 13 }} />
+      </StatusMiniButton>
+    </Box>
+  );
+}
+
 /** Interactions d'états attachées à une colonne (mode écran de MJ uniquement). */
 interface ColumnStatusInteractive {
   /** Réf de la zone de drop (`@dnd-kit`). */
@@ -189,6 +524,20 @@ interface ColumnStatusInteractive {
 }
 
 /**
+ * Rendu des ÉTATS appliqués à une colonne (mode écran de MJ) : la liste des états posés + les rappels
+ * de retrait/ajustement. Séparé de `ColumnStatusInteractive` (drop/menu) car présent dès qu'on est en
+ * mode MJ, indépendamment du survol d'une puce.
+ */
+interface ColumnStatusRender {
+  /** États actuellement appliqués sur ce combattant. */
+  applied: AppliedStatus[];
+  /** Retire l'état `id` de ce combattant. */
+  onRemove: (id: AnyStatusEffectId) => void;
+  /** Ajuste de `delta` (±) l'intensité de l'état cumulatif `id`. */
+  onAdjust: (id: AnyStatusEffectId, delta: number) => void;
+}
+
+/**
  * Colonne d'un combattant (présentation). `interactive` (optionnel, écran de MJ) transforme la
  * colonne en zone de drop et rend son en-tête cliquable (ouverture du menu d'états).
  */
@@ -197,11 +546,13 @@ function CombatantColumn({
   isActive,
   projection,
   interactive,
+  status,
 }: {
   row: InitiativeRow;
   isActive: boolean;
   projection: boolean;
   interactive?: ColumnStatusInteractive;
+  status?: ColumnStatusRender;
 }) {
   const identityClickable = !!interactive;
   const isOver = interactive?.isOver ?? false;
@@ -334,6 +685,24 @@ function CombatantColumn({
             controlsBelow
           />
         )}
+        {/* DEF + attaques ajustées (PER-280) : rendues UNIQUEMENT en mode MJ (`status` fourni),
+            jamais en projection. Base = `row.combatStats`, ajustement résolu depuis les états posés. */}
+        {status && row.combatStats && (
+          <CombatStatsRow stats={row.combatStats} resolved={resolveStatusModifiers(status.applied)} />
+        )}
+        {/* Badges des états appliqués : effet verbatim en tooltip, ✕ de retrait, ±N si cumulatif. */}
+        {status && status.applied.length > 0 && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {status.applied.map((s) => (
+              <AppliedStatusBadge
+                key={s.id}
+                applied={s}
+                onRemove={() => status.onRemove(s.id)}
+                onAdjust={(delta) => status.onAdjust(s.id, delta)}
+              />
+            ))}
+          </Box>
+        )}
       </Stack>
     </Box>
   );
@@ -374,6 +743,11 @@ function StatusDroppableColumn({
           dropRef: setNodeRef,
           isOver,
           onOpenMenu: (e) => setAnchorEl(e.currentTarget),
+        }}
+        status={{
+          applied,
+          onRemove: (id) => controls.onRemove(row.key, id),
+          onAdjust: (id, delta) => controls.onAdjust(row.key, id, delta),
         }}
       />
       <Menu

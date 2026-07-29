@@ -113,6 +113,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     situationalEffectIds,
     applyStatus,
     removeStatus,
+    adjustStatus,
   } = useGmScreenCombat(cid, 'gm');
   const [addOpen, setAddOpen] = useState(false);
 
@@ -344,6 +345,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               situationalIds: situationalEffectIds,
               onApply: applyStatus,
               onRemove: removeStatus,
+              onAdjust: adjustStatus,
             }}
           />
           {/* Surcouche : la puce « réelle » suit le curseur pendant le glissement (l'originale s'estompe). */}

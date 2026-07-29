@@ -26,9 +26,14 @@ import { summarize } from '@/lib/character/summary';
 import { classColor } from '@/lib/ui/classColors';
 import { creatureNcLabel, SIDE_ACCENT, SIDE_LABELS } from '@/lib/ui/creature';
 import type { DamageKind } from '@/components/sheet/HpGauge';
-import type { InitiativeRow } from '@/components/campaign/InitiativeTracker';
+import type {
+  CombatAttackKind,
+  CombatStats,
+  InitiativeRow,
+} from '@/components/campaign/InitiativeTracker';
 import type { Character } from '@/lib/character/types';
 import type { Campaign } from '@/lib/campaign/types';
+import type { CreatureAttack } from '@/data/schema';
 import {
   useGmCombatState,
   type CombatRole,
@@ -47,6 +52,28 @@ import { useBestiaryStore } from '@/stores/bestiary';
 export const CREATURE_ACCENT = SIDE_ACCENT.enemy;
 /** Couleur d'accent des lignes de créatures alliées (PER-249). */
 export const ALLY_ACCENT = SIDE_ACCENT.ally;
+
+/**
+ * Parse le bonus d'attaque VERBATIM d'une créature (« +7 », « -2 », « +12 ») en nombre (PER-280),
+ * pour lui appliquer les deltas d'état. `null` si le livre ne donne pas de bonus chiffré (attaque
+ * alors non affichée en pastille ajustable).
+ */
+function parseAttackBonus(bonus: string | undefined): number | null {
+  if (!bonus) return null;
+  const match = bonus.match(/-?\d+/);
+  return match ? parseInt(match[0], 10) : null;
+}
+
+/**
+ * Type d'attaque d'une entrée de bloc de créature (PER-280) : à distance si le livre imprime une
+ * portée, magique si le mode le nomme (« Attaque magique »), sinon contact. Détermine le delta d'état
+ * appliqué (un état comme Aveuglé baisse le contact de −5 mais la distance de −10).
+ */
+function creatureAttackKind(attack: CreatureAttack): CombatAttackKind {
+  if (attack.range) return 'ranged';
+  if (/magi/i.test(attack.name)) return 'magic';
+  return 'melee';
+}
 
 /** Instance de créature enrichie de son étiquette numérotée (« Gobelin 1 / 2 »). */
 export type LabeledCreature = CreatureInstance & { label: string };
@@ -92,6 +119,8 @@ export interface GmScreenCombat {
   applyStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Retire un état d'un combattant (PER-279). */
   removeStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
+  /** Ajuste de `delta` (±) l'intensité d'un état cumulatif d'un combattant (PER-280). */
+  adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
 }
 
 export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmScreenCombat {
@@ -107,6 +136,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     setCurrentTurnKey,
     applyStatus,
     removeStatus,
+    adjustStatus,
   } = useGmCombatState(cid, role);
 
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
@@ -203,6 +233,18 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
         const summary = summarize(character);
         const maxHp = character.overrides.maxHp ?? derived?.maxHp ?? 0;
         const initiative = character.overrides.initiative ?? derived?.initiative ?? 0;
+        // DEF + attaques de BASE (PER-280) : dérivées, surcharge manuelle prioritaire (comme la fiche).
+        // L'ajustement par les états est calculé à l'affichage (tracker), pas ici.
+        const combatStats: CombatStats | undefined = derived
+          ? {
+              def: character.overrides.def ?? derived.defense,
+              attacks: [
+                { key: 'melee', label: 'Contact', base: character.overrides.meleeAttack ?? derived.meleeAttack, kind: 'melee' },
+                { key: 'ranged', label: 'Distance', base: character.overrides.rangedAttack ?? derived.rangedAttack, kind: 'ranged' },
+                { key: 'magic', label: 'Magie', base: character.overrides.magicAttack ?? derived.magicAttack, kind: 'magic' },
+              ],
+            }
+          : undefined;
         return {
           key: character.id,
           name: summary.name,
@@ -214,6 +256,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           portraitSrc: `/classes/${summary.classId}${character.portraitVariant === 'alt' ? '-2' : ''}.webp`,
           initiative,
           maxHp,
+          combatStats,
           depletion: character.depletion,
           onDamage: (amount: number, kind: DamageKind) =>
             upsert({ ...character, depletion: applyDamage(character.depletion, amount, kind, maxHp) }),
@@ -235,6 +278,15 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
         const maxHp = blob.hitPoints ?? 0;
         const initiative = blob.initiative ?? 0;
         const depletion = depletions[inst.id] ?? {};
+        // DEF (nombre du bloc) + attaques (bonus verbatim « +7 » parsé) — PER-280. Une attaque sans
+        // bonus chiffré (ex. souffle) est omise des pastilles ajustables.
+        const combatStats: CombatStats = {
+          def: blob.defense ?? 0,
+          attacks: (blob.attacks ?? []).flatMap((atk, i) => {
+            const base = parseAttackBonus(atk.bonus);
+            return base === null ? [] : [{ key: `atk-${i}`, label: atk.name, base, kind: creatureAttackKind(atk) }];
+          }),
+        };
         const nc = creatureNcLabel(blob);
         const isVisible = inst.visible !== false;
         // Camp (PER-249) : accent de colonne + libellé de repli quand la créature n'a pas de NC.
@@ -257,6 +309,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             accentColor: accent,
             initiative,
             maxHp,
+            combatStats,
             depletion,
             onDamage: (amount: number, kind: DamageKind) =>
               setCreatureDepletion(inst.id, applyDamage(depletion, amount, kind, maxHp)),
@@ -296,5 +349,6 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     situationalEffectIds,
     applyStatus,
     removeStatus,
+    adjustStatus,
   };
 }
