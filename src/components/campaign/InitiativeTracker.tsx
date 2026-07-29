@@ -333,8 +333,13 @@ function StatPill({
     <AppTooltip title={tooltip}>
       <Box
         sx={{
-          display: 'inline-flex',
+          // `flex: 1 1 0` : les pastilles se répartissent la largeur de la carte à parts égales
+          // (DEF + attaques occupent toute la rangée), avec repli si ça déborde.
+          display: 'flex',
+          flex: '1 1 0',
+          minWidth: 0,
           alignItems: 'center',
+          justifyContent: 'center',
           gap: 0.4,
           height: 22,
           px: 0.6,
