@@ -79,6 +79,14 @@ interface CampaignCombatState {
    * same-browser) : remplace l'état du store, SANS réécrire ni re-diffuser.
    */
   applyRemoteCombat: (cid: string, state: unknown) => void;
+  /**
+   * Réconciliation du combat à la reconnexion d'une session (PER-269), côté MJ (auteur
+   * unique) : re-diffuse et re-persiste l'état de combat courant. Le MJ étant le seul
+   * auteur, sa vue locale EST autoritative → aucun risque d'écraser un pair (contrairement
+   * aux fiches multi-auteurs) : on re-pousse inconditionnellement si la campagne est
+   * hydratée. No-op si pas encore chargée. À n'appeler que depuis un client MJ.
+   */
+  resyncCombat: (cid: string) => void;
 }
 
 export const useCampaignCombatStore = create<CampaignCombatState>()((set, get) => ({
@@ -159,5 +167,19 @@ export const useCampaignCombatStore = create<CampaignCombatState>()((set, get) =
       byCampaign: { ...s.byCampaign, [cid]: revived },
       hydrated: { ...s.hydrated, [cid]: true },
     }));
+  },
+
+  resyncCombat: (cid) => {
+    // Rien à re-pousser tant que la campagne n'est pas hydratée (on écraserait la table
+    // avec du vide) — miroir de la garde de `applyLocalCombat`.
+    if (!get().hydrated[cid]) return;
+    const state = get().byCampaign[cid] ?? EMPTY_COMBAT_STATE;
+    // Re-persiste (source de vérité) puis re-diffuse l'état absolu sur le canal si une
+    // session est active. Best-effort : un échec réseau résiduel ne casse pas l'écran de MJ.
+    if (isSupabaseConfigured()) {
+      void upsertCampaignCombat(cid, state).catch(() => {});
+    }
+    const send = sessionSendFor(cid);
+    if (send) send(COMBAT_STATE_EVENT, { state });
   },
 }));

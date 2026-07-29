@@ -25,9 +25,12 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { useToast } from '@/components/toast/ToastProvider';
+import { SessionConnectionBadge } from '@/components/session/SessionConnectionBadge';
 import { SessionPresence } from '@/components/session/SessionPresence';
+import { sessionConnectionState } from '@/lib/session/connectionState';
 import { endSession, startSession } from '@/lib/session/repo';
 import { useActiveSession } from '@/lib/session/useActiveSession';
+import { useOnlineStatus } from '@/lib/session/useOnlineStatus';
 import { useSessionChannel } from '@/lib/session/useSessionChannel';
 
 export interface GmSessionControlProps {
@@ -43,7 +46,8 @@ export function GmSessionControl({ campaignId }: GmSessionControlProps) {
   });
   // Rejoint le canal de session (présence) tant qu'une session est active. Le MJ est
   // toujours « lui-même » (`selfKey = 'gm'`).
-  const { present } = useSessionChannel(campaignId, session, GM_IDENTITY);
+  const { present, status } = useSessionChannel(campaignId, session, GM_IDENTITY);
+  const online = useOnlineStatus();
   const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -110,6 +114,10 @@ export function GmSessionControl({ campaignId }: GmSessionControlProps) {
             : 'Démarrez une session pour synchroniser la table.'}
         </Typography>
       </Stack>
+      {/* Signal 3 états de la connexion du MJ à la session (PER-269). */}
+      {isActive && (
+        <SessionConnectionBadge state={sessionConnectionState(status, online)} showLabel />
+      )}
       {isActive ? (
         <Button
           variant="outlined"

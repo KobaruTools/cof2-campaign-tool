@@ -60,7 +60,7 @@ import { isMountMounted, listOwnedMounts } from '@/lib/character/mounts';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { AppHeader } from '@/components/AppHeader';
-import { SessionLiveBar } from '@/components/session/SessionLiveBar';
+import { SessionHeaderIndicator } from '@/components/session/SessionHeaderIndicator';
 import type { SessionIdentity } from '@/lib/session/useSessionChannel';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine';
@@ -562,6 +562,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         // `currentCampaign` n'est résolu que depuis le store des campagnes POSSÉDÉES
         // (RLS owner), donc défini ⟺ utilisateur propriétaire/MJ. Absent pour un joueur.
         gmScreenCampaignId={currentCampaign?.id}
+        // Voyant de session compact (PER-269) dans l'en-tête, entre le livre des règles et
+        // le menu compte : point 3 états (connecté / reconnexion… / hors ligne), détail des
+        // connectés au survol. C'est LUI qui ouvre le canal + le battement sur la fiche
+        // (plus la barre inline) : un seul point de montage. S'auto-efface hors session.
+        sessionIndicator={
+          <SessionHeaderIndicator campaignId={character.campaignId} identity={sessionIdentity} />
+        }
         // Au repos (en haut de page), le dernier maillon annonce la nature de la page ; au
         // défilement il cède la place au nom du personnage (fondu croisé), puis la ligne
         // d'identité s'ajoute à la suite du fil.
@@ -606,11 +613,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           le footer. */}
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>
-          {/* Session synchronisée (PER-264/PER-265) : badge « en cours » + présence
-              live. N'affiche rien hors session. Maintient aussi la présence du
-              spectateur — le joueur reste connecté tant qu'il consulte sa fiche, pas
-              seulement sur /play. */}
-          <SessionLiveBar campaignId={character.campaignId} identity={sessionIdentity} />
+          {/* Session synchronisée (PER-264/PER-265) : le voyant + la présence live vivent
+              désormais dans l'en-tête (`SessionHeaderIndicator`, PER-269), qui porte aussi
+              le canal et le battement de présence de la fiche. */}
           {/* Bandeau lecture seule (PER-196) : session joueur consultant la fiche
               d'un colistier. Consultable (RLS roster) mais non éditable. */}
           {readOnly && (
@@ -946,6 +951,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             abilities={effectCtx.abilities}
             abilityTestBonus={display.abilityTestBonus}
             perAbilityTestBonus={display.perAbilityTestBonus}
+            magicTestBonuses={display.magicTestBonuses}
             bonusDice={display.bonusDieSources}
             universalBonus={display.universalBonus}
             testDice={display.testDice}

@@ -65,6 +65,14 @@ interface AppHeaderProps {
    * pas de lien (joueur, ou hors contexte campagne).
    */
   gmScreenCampaignId?: string;
+  /**
+   * Voyant de session temps réel (PER-269), inséré dans le cluster droit de l'étage 1
+   * ENTRE le livre des règles et le menu compte. Réservé aux pages où l'on sait résoudre
+   * la campagne + l'identité de présence du spectateur (fiche de personnage) ; il s'auto-
+   * efface hors session active. Absent ailleurs (le voyant vit alors dans la barre inline
+   * de la page, ex. `/play`).
+   */
+  sessionIndicator?: ReactNode;
 }
 
 /**
@@ -85,6 +93,7 @@ export function AppHeader({
   subtitle,
   subtitleVisible = false,
   gmScreenCampaignId,
+  sessionIndicator,
 }: AppHeaderProps) {
   // Le sous-header n'apparaît que s'il y a quelque chose à y montrer : rien sur
   // l'accueil (pas de fil, pas d'action), présent partout ailleurs. Le sous-titre de
@@ -176,6 +185,7 @@ export function AppHeader({
             />
           )}
           <RulesBookSplitButton condensed={condensed} />
+          {sessionIndicator}
           <AccountMenu />
         </Stack>
       </Toolbar>

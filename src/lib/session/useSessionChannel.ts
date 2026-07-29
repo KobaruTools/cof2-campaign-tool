@@ -34,6 +34,7 @@ import { useCharactersStore } from '@/stores/characters';
 import { COMBAT_STATE_EVENT, useCampaignCombatStore } from '@/stores/campaignCombat';
 import { registerSessionChannel } from './sessionBridge';
 import { joinSessionParticipant, leaveSessionParticipant } from './participantsRepo';
+import { resolveActiveSession } from './repo';
 import {
   presenceKeyFor,
   presenceListFromState,
@@ -43,8 +44,42 @@ import {
 } from './presence';
 import type { GameSession } from './types';
 
-/** État de connexion du canal (utile au futur mode dégradé, PER-269). */
+/** État de connexion du canal (source du signal 3 états, PER-269). */
 export type SessionChannelStatus = 'idle' | 'connecting' | 'joined' | 'error';
+
+/**
+ * Réconciliation par INSTANTANÉ à la reconnexion (PER-269, §10 de l'ADR PER-259). Appelée
+ * quand le canal re-émet `SUBSCRIBED` sur le MÊME objet (rejoin automatique Phoenix après
+ * une coupure socket — vérifié : `joinPush.resend()` préserve les `recHooks`), donc APRÈS
+ * la première souscription.
+ *
+ * Ordre (cf. grilling PER-269) : garde-fou session active → re-pousser NOS édits hors ligne
+ * et attendre leur persistance → PUIS relire l'autoritatif (qui porte alors nos valeurs +
+ * les changements des pairs manqués) → le MJ re-diffuse le combat. On re-pousse uniquement
+ * les fiches réellement éditées hors ligne (jamais toute la campagne), pour ne pas écraser
+ * d'une copie périmée une valeur qu'un pair aurait modifiée pendant notre coupure.
+ */
+async function reconcileOnReconnect(
+  campaignId: string,
+  kind: SessionPresenceKind,
+): Promise<void> {
+  // Garde-fou : re-poussée auto SEULEMENT si la session est encore active côté serveur
+  // (`ended_at IS NULL`). La policy RLS du canal ne gate PAS sur `ended_at` → un rejoin
+  // peut survenir sur une session déjà close ; sans ce contrôle on re-pousserait en
+  // conflict-free hors session au lieu de retomber sur le verrou de version.
+  let sessionActive = false;
+  try {
+    sessionActive = (await resolveActiveSession(campaignId)) !== null;
+  } catch {
+    return; // réseau encore incertain : ne rien tenter, un prochain rejoin réessaiera
+  }
+  if (!sessionActive) return; // session finie → chemin verrou (le poll fermera le canal)
+  const characters = useCharactersStore.getState();
+  await characters.resyncGameState(campaignId);
+  await characters.load({ force: true });
+  // Le MJ est l'auteur unique du combat : sa vue locale fait foi, il la re-diffuse.
+  if (kind === 'gm') useCampaignCombatStore.getState().resyncCombat(campaignId);
+}
 
 /** Identité annoncée par ce client sur le canal. `null` tant que non résolue. */
 export interface SessionIdentity {
@@ -169,10 +204,14 @@ export function useSessionChannel(
               });
             }
             // Entrée en session : lecture de l'état autoritatif AVANT de vivre des deltas (un
-            // client qui rejoint en cours). Une seule fois — pas à chaque reconnexion socket.
+            // client qui rejoint en cours). Le PREMIER SUBSCRIBED se contente de lire ; chaque
+            // re-SUBSCRIBED ultérieur (reconnexion après coupure) déclenche la réconciliation
+            // par instantané (PER-269) : re-pousser nos édits hors ligne puis relire l'autoritatif.
             if (!didInitialLoad) {
               didInitialLoad = true;
               void useCharactersStore.getState().load({ force: true });
+            } else {
+              void reconcileOnReconnect(campaignId, kind);
             }
             if (logParticipant && participantId === null) {
               try {

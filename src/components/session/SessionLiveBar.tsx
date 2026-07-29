@@ -13,10 +13,12 @@
  */
 import Box from '@mui/material/Box';
 
+import { sessionConnectionState } from '@/lib/session/connectionState';
 import { presenceKeyFor } from '@/lib/session/presence';
 import { useActiveSession } from '@/lib/session/useActiveSession';
+import { useOnlineStatus } from '@/lib/session/useOnlineStatus';
 import { useSessionChannel, type SessionIdentity } from '@/lib/session/useSessionChannel';
-import { SessionActiveBadge } from './SessionActiveBadge';
+import { SessionConnectionBadge } from './SessionConnectionBadge';
 import { SessionPresence } from './SessionPresence';
 
 export interface SessionLiveBarProps {
@@ -28,13 +30,14 @@ export interface SessionLiveBarProps {
 
 export function SessionLiveBar({ campaignId, identity }: SessionLiveBarProps) {
   const { session, isActive } = useActiveSession(campaignId, { heartbeat: true });
-  const { present } = useSessionChannel(campaignId, session, identity);
+  const { present, status } = useSessionChannel(campaignId, session, identity);
+  const online = useOnlineStatus();
 
   if (!isActive) return null;
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', rowGap: 1 }}>
-      <SessionActiveBadge />
+      <SessionConnectionBadge state={sessionConnectionState(status, online)} showLabel />
       <SessionPresence
         present={present}
         selfKey={identity ? presenceKeyFor(identity.kind, identity.playerId) : undefined}

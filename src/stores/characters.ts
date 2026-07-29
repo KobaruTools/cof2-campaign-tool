@@ -120,6 +120,16 @@ interface CharactersState {
     replaceMounts?: boolean,
   ) => void;
   /**
+   * Réconciliation par INSTANTANÉ à la reconnexion d'une session (PER-269) : re-pousse
+   * l'état de jeu ABSOLU courant des persos de la campagne **édités pendant la coupure**
+   * (marqués faute de réseau), en broadcast + `merge_game_state` (LWW → nos valeurs, plus
+   * récentes, gagnent). Vide le marqueur au succès. Ne touche PAS les persos non édités
+   * hors ligne (le `load({force})` qui suit les ramène frais depuis la base, sans écraser
+   * une valeur qu'un pair aurait modifiée pendant notre coupure). À appeler AVANT `load`
+   * pour que la base porte nos valeurs quand le rechargement les relit. No-op hors session.
+   */
+  resyncGameState: (campaignId: string) => Promise<void>;
+  /**
    * Commit d'un personnage neuf en fin de wizard : insertion cloud (si configuré)
    * puis ajout au cache. Sans Supabase, retombe sur un ajout local (staging). Lève
    * si l'insertion cloud échoue (le wizard conserve alors le brouillon).
@@ -209,6 +219,14 @@ export const useCharactersStore = create<CharactersState>()(
       // deux flushs concurrents du MÊME client (réseau lent + édition rapide)
       // liraient la même version chargée et le second se rejetterait lui-même.
       const flushChains = new Map<string, Promise<void>>();
+      // Persos dont une écriture d'ÉTAT DE JEU en session a échoué faute de réseau
+      // (édités PENDANT une coupure, PER-269) : le broadcast est perdu et `merge_game_state`
+      // rejette. À la reconnexion, `resyncGameState` les re-pousse (état absolu → LWW) et
+      // vide ce set au succès. Hors état zustand (transitoire, non persisté), comme
+      // `flushTimers`. On ne re-pousse QUE ces persos, jamais toute la campagne : re-pousser
+      // une copie périmée d'un perso qu'un pair a modifié pendant la coupure écraserait sa
+      // valeur fraîche (cf. grilling PER-269).
+      const pendingResyncIds = new Set<string>();
 
       /** Écrit un personnage cloud sous verrou optimiste ; pose `conflictId` si périmé. */
       const doFlush = async (id: string) => {
@@ -338,7 +356,14 @@ export const useCharactersStore = create<CharactersState>()(
           const wire = toWireGameStatePatch(slice);
           if (pure) {
             send('game-state', { characterId: stamped.id, patch: wire });
-            void mergeGameState(stamped.id, wire).catch((e) => set({ error: messageOf(e) }));
+            // Le succès persiste (et confirme qu'on n'était pas hors ligne) ; l'échec
+            // (réseau coupé) marque le perso pour re-poussée à la reconnexion (PER-269).
+            void mergeGameState(stamped.id, wire)
+              .then(() => pendingResyncIds.delete(stamped.id))
+              .catch((e) => {
+                pendingResyncIds.add(stamped.id);
+                set({ error: messageOf(e) });
+              });
             return;
           }
           // Patch MIXTE (repos long avec élixirs, création d'élixir…) ou montures structurelles : on
@@ -363,6 +388,43 @@ export const useCharactersStore = create<CharactersState>()(
             );
             return { characters: next };
           });
+        },
+
+        resyncGameState: async (campaignId) => {
+          if (!isSupabaseConfigured()) return;
+          const send = sessionSendFor(campaignId);
+          if (!send) return; // pas de canal actif branché ici → rien à re-pousser
+          const { characters, cloudVersions } = get();
+          // Uniquement les persos de CETTE campagne, cloud-backed, ET marqués « édités
+          // hors ligne » : leur état de jeu absolu courant est notre vérité à re-pousser.
+          const targets = characters.filter(
+            (c) =>
+              c.campaignId === campaignId &&
+              c.id in cloudVersions &&
+              pendingResyncIds.has(c.id),
+          );
+          await Promise.all(
+            targets.map(async (c) => {
+              const slice = gameStateSlice(c);
+              if (!slice) {
+                pendingResyncIds.delete(c.id);
+                return;
+              }
+              const wire = toWireGameStatePatch(slice);
+              // Re-poussée COMPLÈTE : les montures partent en tableau entier (`replaceMounts`)
+              // pour que les pairs adoptent notre vue absolue (LWW) — la persistance fine des
+              // PV reste gérée par `merge_game_state`.
+              send('game-state', { characterId: c.id, patch: wire, replaceMounts: true });
+              try {
+                await mergeGameState(c.id, wire);
+                pendingResyncIds.delete(c.id); // persisté → plus en attente
+              } catch (e) {
+                // Reconnexion encore instable : on garde le perso en attente pour la
+                // prochaine tentative, sans vider le set.
+                set({ error: messageOf(e) });
+              }
+            }),
+          );
         },
 
         commitNewCharacter: async (character) => {
