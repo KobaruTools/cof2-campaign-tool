@@ -39,6 +39,7 @@ import {
 } from '@/lib/character/effects';
 import { orphanSourceTerms } from '@/lib/character/orphanPoints';
 import type { Character } from '@/lib/character/types';
+import type { StatusSheetImpact } from '@/lib/character/statusEffects';
 import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import type { CharacterDerivedView } from './characterDerivedView';
 
@@ -108,6 +109,7 @@ export function buildSheetDisplayView(
   character: Character,
   derived: CharacterDerivedView,
   maxHp?: number,
+  statusImpact?: StatusSheetImpact,
 ): SheetDisplayView {
   const { modFeatureIds, effectContext, attackBonusModSources, itemDerivedModSources } = derived;
 
@@ -117,6 +119,15 @@ export function buildSheetDisplayView(
   const extraModSources: ModSources = { ...orphanSourceTerms(character) };
   for (const bag of [itemDerivedModSources, attackBonusModSources]) {
     for (const [key, list] of Object.entries(bag)) {
+      const k = key as keyof ModSources;
+      extraModSources[k] = [...(extraModSources[k] ?? []), ...(list ?? [])];
+    }
+  }
+  // États de combat appliqués par le MJ en session (PER-281) : leurs deltas chiffrés (DEF/Init./
+  // attaques) sont fondus dans `derivedInput.mods` par l'appelant ; ici on n'ajoute que la
+  // ventilation « État : Aveuglé -5 » au détail « i ». `undefined` hors session → aucun terme.
+  if (statusImpact) {
+    for (const [key, list] of Object.entries(statusImpact.modSources)) {
       const k = key as keyof ModSources;
       extraModSources[k] = [...(extraModSources[k] ?? []), ...(list ?? [])];
     }

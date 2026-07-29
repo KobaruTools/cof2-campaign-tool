@@ -21,6 +21,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DerivedStatBreakdownTooltip } from '@/components/DerivedStatBreakdownTooltip';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
+import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { DieIcon } from '@/components/DieIcon';
 import { SignedNumberField } from '@/components/SignedNumberField';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
@@ -142,6 +143,12 @@ export interface DerivedStatsGridProps {
    * ou absent = aucun.
    */
   attackBonusDie?: AttackBonusDie[];
+  /**
+   * PER-281 — libellés des états de combat imposant un DÉ MALUS aux tests d'attaque (Affaibli à tous
+   * les tests, Immobilisé aux seules attaques). Affiche un badge « double-d20 barré » rouge sur les
+   * trois cartes d'attaque. Vide ou absent = aucun (hors session, ou aucun état de ce type).
+   */
+  attackMalusDie?: string[];
 }
 
 interface StatLine {
@@ -181,6 +188,7 @@ export function DerivedStatsGrid({
   rangedAttackElement,
   rangedReplacingFormAttack,
   attackBonusDie = [],
+  attackMalusDie = [],
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
 
@@ -263,6 +271,7 @@ export function DerivedStatsGrid({
                 unarmedCriticalRanges={unarmedCriticalRanges ?? []}
                 situationalBonuses={meleeSituationalDamage ?? []}
                 attackBonusDie={attackBonusDie}
+                attackMalusDie={attackMalusDie}
               />
             </Grid>
           );
@@ -289,6 +298,7 @@ export function DerivedStatsGrid({
                   </DerivedStatBreakdownTooltip>
                 )}
                 abilities={input.abilities}
+                attackMalusDie={attackMalusDie}
               />
             </Grid>
           );
@@ -313,6 +323,7 @@ export function DerivedStatsGrid({
                 magicalSourceId={rangedAttackMagicalSourceId}
                 elemental={rangedAttackElement}
                 attackBonusDie={attackBonusDie}
+                attackMalusDie={attackMalusDie}
               />
             </Grid>
           );
@@ -436,6 +447,10 @@ export function DerivedStatsGrid({
                               noTooltip
                               tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
                             />
+                          )}
+                          {/* Dé MALUS aux tests d'attaque (état de combat : Affaibli/Immobilisé, PER-281). */}
+                          {id === 'magicAttack' && attackMalusDie.length > 0 && (
+                            <MalusDieBadge label={`aux attaques (${attackMalusDie.join(', ')})`} size={18} noTooltip />
                           )}
                         </Typography>
                       </DerivedStatBreakdownTooltip>

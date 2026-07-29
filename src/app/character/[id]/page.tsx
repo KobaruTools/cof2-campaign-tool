@@ -61,6 +61,11 @@ import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { AppHeader } from '@/components/AppHeader';
 import { SessionHeaderIndicator } from '@/components/session/SessionHeaderIndicator';
+import { useActiveSession } from '@/lib/session/useActiveSession';
+import { useCampaignCombatStore } from '@/stores/campaignCombat';
+import { statusSheetImpact } from '@/lib/character/statusEffects';
+import { mergeMods } from '@/lib/character/orphanPoints';
+import { ActiveStatusPanel } from '@/components/sheet/ActiveStatusPanel';
 import type { SessionIdentity } from '@/lib/session/useSessionChannel';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine';
@@ -192,6 +197,21 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     }
     return { kind: 'gm', playerId: null, name: 'MJ' };
   }, [characterCampaignId, isPlayer, sessionPlayerId, playersCampaignId, players]);
+  // États de combat sur la fiche (PER-281) : le joueur voit ET subit, EN DIRECT pendant une session
+  // active, les états que le MJ lui applique ; hors session, rien (états propres au combat).
+  //  - `useActiveSession` (observateur, SANS battement — le battement/canal sont portés par le
+  //    `SessionHeaderIndicator` de l'en-tête, un seul par page) sert de garde-fou « session active ».
+  //  - Le store `campaignCombat` est alimenté en direct par le canal (broadcast `combat-state`) ; on
+  //    le CHARGE aussi depuis la table autoritative à l'entrée en session, pour voir les états déjà
+  //    posés avant qu'on rejoigne (le canal ne rediffuse qu'à la prochaine mutation du MJ).
+  const { isActive: sessionActive } = useActiveSession(characterCampaignId);
+  const loadCombat = useCampaignCombatStore((s) => s.load);
+  const combatStatuses = useCampaignCombatStore((s) =>
+    characterCampaignId ? s.byCampaign[characterCampaignId]?.statuses[id] : undefined,
+  );
+  useEffect(() => {
+    if (sessionActive && characterCampaignId) void loadCombat(characterCampaignId);
+  }, [sessionActive, characterCampaignId, loadCombat]);
   // Édition par bloc : chaque bloc a son propre scope, activable via son crayon.
   const [editingBlocks, setEditingBlocks] = useState<Record<EditBlock, boolean>>(NO_EDIT);
   const allEditing = EDIT_BLOCKS.every((k) => editingBlocks[k]);
@@ -523,11 +543,32 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // permanents de caractéristiques, dés bonus, bonus par domaine de test, malus d'armure,
   // sources de l'infobulle « i »… La fiche ne les calcule plus : elle les lit depuis le module
   // partagé avec le panneau latéral de l'écran de MJ (PER-258), qui porte le détail des règles.
+  // États de combat appliqués à CE personnage, uniquement en session active (PER-281). Hors
+  // session, la liste reste vide → aucune répercussion (les états sont propres au combat).
+  const appliedStatuses = sessionActive ? (combatStatuses ?? []) : [];
+  // Impact CHIFFRÉ résolu (pur) : deltas DEF/Init./attaques à fondre dans le calcul, ventilation
+  // pour le détail « i », et drapeaux de dé malus / malus plats. `null` si aucun état actif.
+  const statusImpact = appliedStatuses.length > 0 ? statusSheetImpact(appliedStatuses) : null;
   const display = buildSheetDisplayView(
     character,
     game.derived,
     masterDerived ? (character.overrides.maxHp ?? masterDerived.maxHp) : undefined,
+    statusImpact ?? undefined,
   );
+  // Entrée moteur AJUSTÉE par les états : on FOND les deltas dans `mods` pour que DEF/Init./attaques
+  // reflètent le malus, le détail « i » les attribuant à « État : … » (via `display.extraModSources`).
+  // Les jauges (PV/mana) restent sur `masterDerived` NON ajusté : un état de combat ne change pas les
+  // maxima. Reste `derivedInput` tel quel hors session ou sans état.
+  const adjustedDerivedInput = derivedInput
+    ? statusImpact
+      ? { ...derivedInput, mods: mergeMods(derivedInput.mods ?? {}, statusImpact.mods) }
+      : derivedInput
+    : null;
+  // Dé malus aux tests d'attaque, tous états confondus (Affaibli = tous les tests, Immobilisé =
+  // attaques seules) → badge « double-d20 barré » sur les trois cartes d'attaque.
+  const attackMalusDie = statusImpact
+    ? [...statusImpact.allTestsMalusDie, ...statusImpact.attackTestsMalusDie]
+    : [];
 
   return (
     // Toutes les icônes de profil de la fiche (en-tête, voies, montée de niveau,
@@ -877,6 +918,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <ComplianceWarnings warnings={warnings} />
 
+          {/* États de combat appliqués par le MJ en session (PER-281) : rappel visuel en lecture
+              seule (badges + effet verbatim). Le malus chiffré est, lui, déjà répercuté sur les
+              stats/attaques ci-dessous. Ne rend rien hors session ou sans état posé. */}
+          <ActiveStatusPanel statuses={appliedStatuses} />
+
           <SheetSection
             title="Caractéristiques"
             icon="abilities"
@@ -918,9 +964,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               )
             }
           >
-            {derivedInput ? (
+            {adjustedDerivedInput ? (
               <DerivedStatsGrid
-                input={derivedInput}
+                input={adjustedDerivedInput}
                 featureIds={modFeatureIds}
                 effectContext={effectCtx}
                 extraModSources={display.extraModSources}
@@ -939,6 +985,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 rangedAttackElement={rangedAttackElement}
                 rangedReplacingFormAttack={formAttackReplacingRanged}
                 attackBonusDie={display.attackBonusDieSources}
+                attackMalusDie={attackMalusDie}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">

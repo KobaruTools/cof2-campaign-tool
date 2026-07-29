@@ -64,6 +64,9 @@ const DERIVED_KEYS: DerivedStatId[] = [
   'magicAttack',
 ];
 
+/** Les trois stats d'ATTAQUE (contact/distance/magie) — leurs jets SONT des tests d'attaque. */
+const ATTACK_KEYS: DerivedStatId[] = ['meleeAttack', 'rangedAttack', 'magicAttack'];
+
 /**
  * Retourne l'entrée de catalogue d'un id d'état, qu'il soit du glossaire ou situationnel
  * (les deux espaces d'ids sont disjoints). `undefined` si l'id est inconnu (défensif).
@@ -138,4 +141,84 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
   }
 
   return { derived, allTestsMalusDie, attackTestsMalusDie, allTestsFlat, damageDealt };
+}
+
+/**
+ * IMPACT sur la FICHE du joueur (PER-281) — même catalogue que `resolveStatusModifiers`, mais
+ * façonné pour l'injection dans la fiche et son détail « i ». Contrairement à la sortie « écran de
+ * MJ » (agrégat plat), ici on conserve l'ATTRIBUTION par état pour le breakdown, et on reporte le
+ * malus plat « à tous les tests » sur les trois attaques (leurs jets SONT des tests d'attaque).
+ * Fonction PURE : n'observe que son entrée. Les états purement comportementaux (sans `modifiers`)
+ * restent dans `statuses` (badge + verbatim) sans rien ajouter aux chiffres.
+ */
+export interface StatusSheetImpact {
+  /** États appliqués CONNUS du catalogue (rappel visuel en badges, verbatim en info-bulle). */
+  statuses: AppliedStatus[];
+  /**
+   * Modificateurs à FONDRE dans `derivedInput.mods` (forme d'un `DerivedMods`) : deltas de DEF/Init./
+   * attaques + le malus plat « à tous les tests » reporté sur les trois attaques. Vide si aucun.
+   */
+  mods: DerivedMods;
+  /**
+   * Attribution par stat dérivée pour le détail « i » (« État : Aveuglé -5 »), keyée comme un
+   * `DerivedMods`. Le TOTAL par clé est déjà fondu dans `mods` ; ceci n'en porte que la ventilation.
+   */
+  modSources: Partial<Record<DerivedStatId, { label: string; value: number }[]>>;
+  /** Libellés des états imposant un dé malus à TOUS les tests (Affaibli). Vide = aucun. */
+  allTestsMalusDie: string[];
+  /** Libellés des états imposant un dé malus aux seuls tests d'ATTAQUE (Immobilisé). Vide = aucun. */
+  attackTestsMalusDie: string[];
+  /** Malus plat cumulé à tous les tests (Attaque invalidante). ≤ 0. */
+  allTestsFlat: number;
+  /** Malus plat cumulé aux DM infligés (Attaque invalidante). ≤ 0. */
+  damageDealt: number;
+}
+
+export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
+  const statuses: AppliedStatus[] = [];
+  const modSources: Partial<Record<DerivedStatId, { label: string; value: number }[]>> = {};
+  const allTestsMalusDie: string[] = [];
+  const attackTestsMalusDie: string[] = [];
+  let allTestsFlat = 0;
+  let damageDealt = 0;
+
+  const pushSource = (key: DerivedStatId, label: string, value: number) => {
+    if (value === 0) return;
+    (modSources[key] ??= []).push({ label, value });
+  };
+
+  for (const entry of applied) {
+    const cat = statusEntry(entry.id);
+    if (!cat) continue; // id inconnu : ignoré (défensif)
+    statuses.push(entry);
+    const mods = cat.modifiers;
+    if (!mods) continue; // état purement comportemental : badge + verbatim seulement
+    const intensity = effectiveIntensity(entry);
+    const label = `État : ${cat.label}`;
+
+    if (mods.derived) {
+      for (const key of DERIVED_KEYS) {
+        const v = mods.derived[key];
+        if (v !== undefined) pushSource(key, label, v * intensity);
+      }
+    }
+    if (mods.allTestsMalusDie) allTestsMalusDie.push(cat.label);
+    if (mods.attackTestsMalusDie) attackTestsMalusDie.push(cat.label);
+    if (mods.allTestsFlat !== undefined) {
+      const flat = mods.allTestsFlat * intensity;
+      allTestsFlat += flat;
+      // Un malus « à tous les tests » vaut aussi pour les jets d'ATTAQUE (contact/distance/magie).
+      for (const key of ATTACK_KEYS) pushSource(key, label, flat);
+    }
+    if (mods.damageDealt !== undefined) damageDealt += mods.damageDealt * intensity;
+  }
+
+  // Totaux par stat (somme des sources) → modificateurs injectables dans le calcul dérivé.
+  const mods: DerivedMods = {};
+  for (const key of DERIVED_KEYS) {
+    const total = (modSources[key] ?? []).reduce((s, t) => s + t.value, 0);
+    if (total !== 0) mods[key] = total;
+  }
+
+  return { statuses, mods, modSources, allTestsMalusDie, attackTestsMalusDie, allTestsFlat, damageDealt };
 }

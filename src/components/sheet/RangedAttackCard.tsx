@@ -11,6 +11,7 @@ import type { Abilities } from '@/lib/engine';
 import type { SituationalDamageBonus } from '@/lib/character/weaponDamageBonus';
 import { AppTooltip } from '@/components/AppTooltip';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
+import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import type { AttackBonusDie } from '@/components/sheet/MeleeAttackCard';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
@@ -47,6 +48,8 @@ export interface RangedAttackCardProps {
   elemental?: RangedAttackElementView | null;
   /** PER-74 — dé bonus à toutes les attaques (flibustier r8, PV bas), en badge double-d20. */
   attackBonusDie?: AttackBonusDie[];
+  /** PER-281 — libellés des états imposant un dé MALUS aux tests d'attaque (Affaibli/Immobilisé). */
+  attackMalusDie?: string[];
 }
 
 /**
@@ -67,6 +70,7 @@ export function RangedAttackCard({
   magicalSourceId,
   elemental,
   attackBonusDie = [],
+  attackMalusDie = [],
 }: RangedAttackCardProps) {
   return (
     <Card
@@ -116,6 +120,10 @@ export function RangedAttackCard({
                   size={18}
                   tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
                 />
+              )}
+              {/* Dé MALUS aux tests d'attaque (état de combat : Affaibli/Immobilisé, PER-281). */}
+              {attackMalusDie.length > 0 && (
+                <MalusDieBadge label={`aux attaques (${attackMalusDie.join(', ')})`} size={18} />
               )}
               {/* Petit séparateur : la valeur de touche et le calcul des DM sont deux choses distinctes. */}
               <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />

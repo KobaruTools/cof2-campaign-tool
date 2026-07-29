@@ -15,6 +15,7 @@ import type { UnarmedStrikeView } from '@/lib/character/unarmedStrike';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 import { AppTooltip } from '@/components/AppTooltip';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
+import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { UnarmedStrikeBadges } from '@/components/sheet/UnarmedStrikeBadges';
@@ -43,6 +44,7 @@ function Face({
   unarmedCriticalRanges,
   situationalBonuses,
   attackBonusDie,
+  attackMalusDie,
 }: {
   mode: MeleeMode;
   touch: number | null;
@@ -55,6 +57,7 @@ function Face({
   unarmedCriticalRanges: DefenseBadgeData[];
   situationalBonuses: SituationalDamageBonus[];
   attackBonusDie: AttackBonusDie[];
+  attackMalusDie: string[];
 }) {
   const title = mode === 'weapon' ? 'Attaque au contact (arme)' : 'Attaque au contact (mains)';
   const unarmedDice = `${unarmed.damage.count}${unarmed.damage.die}${unarmed.evolving ? '°' : ''}`;
@@ -103,6 +106,10 @@ function Face({
                 size={18}
                 tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
               />
+            )}
+            {/* Dé MALUS aux tests d'attaque (état de combat : Affaibli/Immobilisé, PER-281). */}
+            {attackMalusDie.length > 0 && (
+              <MalusDieBadge label={`aux attaques (${attackMalusDie.join(', ')})`} size={18} />
             )}
             {/* Petit séparateur : la valeur de touche et le calcul des DM sont deux choses distinctes. */}
             <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
@@ -188,6 +195,8 @@ export interface MeleeAttackCardProps {
   situationalBonuses: SituationalDamageBonus[];
   /** PER-74 — dé bonus à toutes les attaques (flibustier r8, PV bas), en badge double-d20. */
   attackBonusDie?: AttackBonusDie[];
+  /** PER-281 — libellés des états imposant un dé MALUS aux tests d'attaque (Affaibli/Immobilisé). */
+  attackMalusDie?: string[];
 }
 
 /**
@@ -220,6 +229,7 @@ export function MeleeAttackCard({
   unarmedCriticalRanges,
   situationalBonuses,
   attackBonusDie = [],
+  attackMalusDie = [],
 }: MeleeAttackCardProps) {
   const [mode, setMode] = useState<MeleeMode>(meleeWeaponDamage ? 'weapon' : 'unarmed');
   const swap = () => setMode((m) => (m === 'weapon' ? 'unarmed' : 'weapon'));
@@ -235,6 +245,7 @@ export function MeleeAttackCard({
     unarmedCriticalRanges,
     situationalBonuses,
     attackBonusDie,
+    attackMalusDie,
   };
 
   // Chaque cadre est en position ABSOLUE : il ne contribue PAS à la hauteur de la pile. C'est un

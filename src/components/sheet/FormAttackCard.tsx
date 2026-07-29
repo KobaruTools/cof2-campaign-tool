@@ -12,6 +12,7 @@ import type { Abilities } from '@/lib/engine';
 import type { FormAttackView } from '@/lib/character/formAttack';
 import { formAttackDice } from '@/lib/character/formAttack';
 import { AppTooltip } from '@/components/AppTooltip';
+import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { SourceRef } from '@/components/SourceRef';
@@ -77,6 +78,8 @@ export interface FormAttackCardProps {
   wrapTouch: (child: ReactElement) => ReactNode;
   /** Caractéristiques effectives (résolution dynamique des DM). */
   abilities: Abilities;
+  /** PER-281 — libellés des états imposant un dé MALUS aux tests d'attaque (Affaibli/Immobilisé). */
+  attackMalusDie?: string[];
 }
 
 /**
@@ -89,7 +92,7 @@ export interface FormAttackCardProps {
  * libellé et son info-bulle le disent explicitement. Aucune bascule (contrairement à arme ⇄ mains
  * nues, PER-141) : ce n'est pas un choix du joueur mais l'état de sa forme.
  */
-export function FormAttackCard({ attack, touch, forced, wrapTouch, abilities }: FormAttackCardProps) {
+export function FormAttackCard({ attack, touch, forced, wrapTouch, abilities, attackMalusDie = [] }: FormAttackCardProps) {
   const statId = attack.scope === 'melee' ? 'meleeAttack' : 'rangedAttack';
   const scopeLabel = attack.scope === 'melee' ? 'au contact' : 'à distance';
   const titleTooltip = (
@@ -161,6 +164,10 @@ export function FormAttackCard({ attack, touch, forced, wrapTouch, abilities }: 
                     </AppTooltip>
                   )}
                 </Typography>,
+              )}
+              {/* Dé MALUS aux tests d'attaque (état de combat : Affaibli/Immobilisé, PER-281). */}
+              {attackMalusDie.length > 0 && (
+                <MalusDieBadge label={`aux attaques (${attackMalusDie.join(', ')})`} size={18} />
               )}
               {/* Petit séparateur : la valeur de touche et le calcul des DM sont deux choses distinctes. */}
               <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
