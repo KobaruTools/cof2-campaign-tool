@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  abilityBonusSourcesFromEquipment,
+  abilityBonusesFromEquipment,
   agiTestArmorAdjustment,
   armorEncumbrancePenalty,
   autoEquipStartingGear,
@@ -479,5 +481,71 @@ describe('wornMeleeWeaponLine / wornMeleeWeapon (arme au contact courante, PER-2
       { custom: true, name: 'Lame exotique', quantity: 1, worn: { slot: 'mainHand' } },
     ];
     expect(wornMeleeWeaponLine(lines)).toBeNull();
+  });
+});
+
+describe('abilityBonusesFromEquipment (apports de caractéristiques des objets, PER-272)', () => {
+  it("ne compte que les objets PORTÉS (le sac n'apporte rien)", () => {
+    const lines: EquipmentLine[] = [
+      { custom: true, name: 'Bottes de vivacité', quantity: 1, worn: { slot: 'accessory' }, abilityBonuses: { AGI: 1 } },
+      { custom: true, name: 'Anneau rangé', quantity: 1, abilityBonuses: { INT: 3 } },
+    ];
+    expect(abilityBonusesFromEquipment(lines)).toEqual({ AGI: 1 });
+  });
+
+  it('CUMULE les apports de tous les objets portés, sur la même carac comme sur des caracs différentes', () => {
+    const lines: EquipmentLine[] = [
+      { custom: true, name: 'Bottes de vivacité', quantity: 1, worn: { slot: 'accessory' }, abilityBonuses: { AGI: 1 } },
+      { custom: true, name: 'Cape du vent', quantity: 1, worn: { slot: 'accessory' }, abilityBonuses: { AGI: 2, PER: 1 } },
+    ];
+    expect(abilityBonusesFromEquipment(lines)).toEqual({ AGI: 3, PER: 1 });
+  });
+
+  it('gère les MALUS (score négatif) et leur compensation par un bonus', () => {
+    const lines: EquipmentLine[] = [
+      { custom: true, name: 'Heaume maudit', quantity: 1, worn: { slot: 'armor' }, abilityBonuses: { PER: -2, FOR: 1 } },
+      { custom: true, name: 'Lunettes du guetteur', quantity: 1, worn: { slot: 'accessory' }, abilityBonuses: { PER: 1 } },
+    ];
+    expect(abilityBonusesFromEquipment(lines)).toEqual({ PER: -1, FOR: 1 });
+  });
+
+  it("porte l'apport sur une VARIANTE d'objet du livre (arme/armure enchantée) comme sur un objet libre", () => {
+    const lines: EquipmentLine[] = [
+      {
+        itemId: 'epee-longue',
+        quantity: 1,
+        worn: { slot: 'mainHand' },
+        overrides: { name: 'Lame du duelliste' },
+        abilityBonuses: { AGI: 1 },
+      },
+    ];
+    expect(abilityBonusesFromEquipment(lines)).toEqual({ AGI: 1 });
+    // Le détail nomme la VARIANTE (`overrides.name`), pas l'objet du catalogue.
+    expect(abilityBonusSourcesFromEquipment(lines).AGI).toEqual([{ name: 'Lame du duelliste', value: 1 }]);
+  });
+
+  it('ignore un apport à 0 et une ligne sans apport (aucun terme parasite dans le détail)', () => {
+    const lines: EquipmentLine[] = [
+      { custom: true, name: 'Babiole', quantity: 1, worn: { slot: 'accessory' }, abilityBonuses: { CHA: 0 } },
+      { custom: true, name: 'Corde', quantity: 1, worn: { slot: 'accessory' } },
+    ];
+    expect(abilityBonusesFromEquipment(lines)).toEqual({});
+    expect(abilityBonusSourcesFromEquipment(lines)).toEqual({});
+  });
+
+  it('liste chaque objet source par caractéristique, dans l’ordre de l’inventaire', () => {
+    const lines: EquipmentLine[] = [
+      { custom: true, name: 'Bottes de vivacité', quantity: 1, worn: { slot: 'accessory' }, abilityBonuses: { AGI: 1 } },
+      { custom: true, name: 'Cape du vent', quantity: 1, worn: { slot: 'accessory' }, abilityBonuses: { AGI: 2 } },
+    ];
+    expect(abilityBonusSourcesFromEquipment(lines).AGI).toEqual([
+      { name: 'Bottes de vivacité', value: 1 },
+      { name: 'Cape du vent', value: 2 },
+    ]);
+  });
+
+  it('accepte un inventaire absent ou vide', () => {
+    expect(abilityBonusesFromEquipment()).toEqual({});
+    expect(abilityBonusesFromEquipment([])).toEqual({});
   });
 });

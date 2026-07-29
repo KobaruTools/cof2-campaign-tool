@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per272-plafond-agi",
+  "name": "Recette PER-272 — Plafond d’AGI vs bottes enchantées",
+  "identity": {
+    "description": "ATTENDU (PER-272 + p. 188) : l'apport d'un objet modifie la CARACTÉRISTIQUE ; le plafond d'AGI de l'armure portée s'applique ENSUITE, sur la valeur déjà augmentée. Caracs saisies : AGI +2. Équipement : PLAQUE COMPLÈTE (DEF +7, plafond d'AGI 1) + « Bottes de vivacité » (AGI +2). À VÉRIFIER : la grille des caracs affiche bien AGI +4 (2 saisi + 2 des bottes) — la carac elle-même monte ; MAIS la DÉFENSE ne bouge PAS quand on équipe/déséquipe les bottes, car l'AGI qui alimente la DEF est plafonnée à 1 par la plaque. Le détail de la DÉFENSE doit afficher la note ambrée « AGI plafonnée à 1 par l'armure portée (p. 188) ». Déséquipe la plaque → la DÉFENSE gagne d'un coup les 3 points d'AGI (4 − 1) que le plafond retenait, moins les 7 de DEF de la plaque. Les tests d'AGI subissent en plus le malus d'armure (p. 188)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 2,
+    "INT": 1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 2,
+    "INT": 1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "guerre-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "plaque-complete",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "custom": true,
+      "name": "Bottes de vivacité",
+      "quantity": 1,
+      "type": "gear",
+      "details": "Apport bloqué en aval par le plafond d’AGI de la plaque.",
+      "worn": {
+        "slot": "accessory"
+      },
+      "abilityBonuses": {
+        "AGI": 2
+      }
+    },
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-272 — contrôle du plafond d’AGI (p. 188) : la carac monte, la DEF non. À comparer avec recette-per272-objets-enchantes (aucune armure, donc aucun plafond).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

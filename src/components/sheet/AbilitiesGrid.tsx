@@ -12,6 +12,7 @@ import type {
   AbilityOverrideSource,
   BonusDieSource,
 } from '@/lib/character/effects';
+import type { AbilityBonusItemSource } from '@/lib/character/equipment';
 import { abilityTotalColor, abilityTotalFontSize } from '@/lib/ui/abilityColors';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { AbilityIcon } from '@/components/AbilityIcon';
@@ -69,6 +70,14 @@ export interface AbilitiesGridProps {
    * Ignoré en édition. Cohérent avec `effectiveAbilities` (qui applique le même delta aux stats dérivées).
    */
   abilityFormBonuses?: Partial<Record<AbilityId, AbilityFormBonusSource[]>>;
+  /**
+   * Bonus/malus de caractéristique apportés par les OBJETS PORTÉS (PER-272, ex. « Bottes de
+   * vivacité » +1 AGI). S'ajoutent au total affiché et se listent dans le détail sous le nom
+   * de l'objet (libellé texte : la source est un objet, pas une capacité — pas de puce de
+   * voie). Contrairement aux bonus de forme, ils sont comptés MÊME EN ÉDITION : on édite la
+   * valeur saisie, et un objet équipé reste équipé pendant qu'on la corrige.
+   */
+  abilityEquipmentBonuses?: Partial<Record<AbilityId, AbilityBonusItemSource[]>>;
 }
 
 /**
@@ -88,6 +97,7 @@ export function AbilitiesGrid({
   abilityOverrides,
   bonusDieSources,
   abilityFormBonuses,
+  abilityEquipmentBonuses,
 }: AbilitiesGridProps) {
   const canExplain = baseAbilities != null && ancestry != null && ancestryChoices != null;
   return (
@@ -112,16 +122,24 @@ export function AbilitiesGrid({
     >
       {ABILITY_IDS.map((id) => {
         const entered = abilities[id];
-        const mod = abilityMods?.[id] ?? 0;
+        const featureMod = abilityMods?.[id] ?? 0;
         // Surcharge de transformation (PER-74) : uniquement en LECTURE (en édition on édite la saisie).
         const override = onChange ? undefined : abilityOverrides?.[id];
         // Bonus de forme en delta (PER-74, ex. Forme puissante) : en LECTURE seulement, s'ajoute au total
         // PAR-DESSUS l'override (loup FOR 3 → 5) comme par-dessus la valeur de base (hybride).
         const formSources = (onChange ? undefined : abilityFormBonuses?.[id]) ?? [];
         const formSum = formSources.reduce((sum, s) => sum + s.value, 0);
-        // Lecture : on montre le total effectif (saisie + capacités + forme), ou la valeur IMPOSÉE par une
-        // transformation active (+ delta de forme). Édition : on édite la valeur SAISIE (chip « +N » par-dessus).
-        const effective = (override ? override.value : entered + mod) + formSum;
+        // Apport des OBJETS PORTÉS (PER-272) : compté en lecture ET en édition (l'objet reste équipé
+        // pendant qu'on corrige la valeur saisie), et par-dessus une surcharge de forme comme les
+        // bonus de forme. Cohérent avec `effectiveAbilities`, qui l'applique en dernier.
+        const equipmentSources = abilityEquipmentBonuses?.[id] ?? [];
+        const equipmentSum = equipmentSources.reduce((sum, s) => sum + s.value, 0);
+        // Modificateur affiché à côté du champ en ÉDITION : capacités + objets portés (tout ce qui
+        // s'ajoute à la valeur saisie).
+        const mod = featureMod + equipmentSum;
+        // Lecture : on montre le total effectif (saisie + capacités + objets + forme), ou la valeur IMPOSÉE
+        // par une transformation active (+ deltas). Édition : on édite la valeur SAISIE (chip « +N » par-dessus).
+        const effective = (override ? override.value : entered + featureMod) + formSum + equipmentSum;
         const dieSources = bonusDieSources?.[id];
         const dieSourceNames = dieSources?.map((s) => s.name);
         // Tout le bloc porte l'infobulle de détail ; l'icône de dé bonus reste À CÔTÉ
@@ -161,11 +179,16 @@ export function AbilitiesGrid({
             {effective}
           </Typography>
         );
-        const featureTerms = [...(abilityModSources?.[id] ?? []), ...formSources].map((s) => ({
-          name: s.name,
-          value: s.value,
-          featureId: s.featureId,
-        }));
+        const featureTerms = [
+          ...[...(abilityModSources?.[id] ?? []), ...formSources].map((s) => ({
+            name: s.name,
+            value: s.value,
+            featureId: s.featureId,
+          })),
+          // Objets portés (PER-272) : sans `featureId` → rendus en libellé texte (nom de l'objet),
+          // là où une capacité s'affiche en puce de voie.
+          ...equipmentSources.map((s) => ({ name: s.name, value: s.value })),
+        ];
         // Chiffre (ou champ) + dé bonus inline, sur la même rangée, l'ensemble centré
         // dans le bloc. Le badge est posé en `noTooltip` : c'est le bloc entier qui
         // déclenche l'unique infobulle.
@@ -219,15 +242,17 @@ export function AbilitiesGrid({
                   <BreakdownContent
                     title={ABILITY_NAMES[id]}
                     breakdown={{
-                      // Total imposé par la forme + delta(s) de forme éventuel(s) (ex. loup 3 + Forme puissante 2 = 5).
-                      total: override.value + formSum,
+                      // Total imposé par la forme + delta(s) de forme éventuel(s) (ex. loup 3 + Forme puissante 2 = 5)
+                      // + apport des objets portés (PER-272), qui agissent aussi sous forme animale.
+                      total: override.value + formSum + equipmentSum,
                       terms: [
                         { label: override.name, value: override.value, featureId: override.featureId },
                         ...formSources.map((s) => ({ label: s.name, value: s.value, featureId: s.featureId })),
+                        ...equipmentSources.map((s) => ({ label: s.name, value: s.value })),
                       ],
                       note: `Valeur imposée par la transformation (${override.name}).${
                         formSources.length ? ' Bonus de forme ajouté par-dessus.' : ''
-                      }`,
+                      }${equipmentSources.length ? ' Apport des objets portés ajouté par-dessus.' : ''}`,
                       page: override.page,
                     }}
                     page={override.page}

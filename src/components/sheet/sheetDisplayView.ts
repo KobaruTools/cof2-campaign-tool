@@ -16,7 +16,7 @@
  */
 import { featureById } from '@/data';
 import { ABILITY_IDS } from '@/data/schema';
-import { armorEncumbrancePenalty } from '@/lib/character/equipment';
+import { abilityBonusSourcesFromEquipment, armorEncumbrancePenalty } from '@/lib/character/equipment';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import {
   abilityBonusDiceFromFeatures,
@@ -56,6 +56,12 @@ export interface SheetDisplayView {
   abilityOverrides: ReturnType<typeof activeAbilityOverrideSources>;
   /** Bonus de carac EN DELTA conditionnés à une forme active (PER-74, Forme puissante). */
   abilityFormBonuses: ReturnType<typeof activeFormAbilityBonusSources>;
+  /**
+   * Bonus/malus de carac apportés par les OBJETS PORTÉS (PER-272), avec l'objet source.
+   * Déjà FONDUS dans les caractéristiques effectives (donc dans toutes les stats dérivées) :
+   * on ne les expose ici que pour l'attribution de la source dans le détail d'une carac.
+   */
+  abilityEquipmentBonuses: ReturnType<typeof abilityBonusSourcesFromEquipment>;
   /** Caractéristiques bénéficiant d'un dé bonus permanent (badge double-d20). */
   bonusDieSources: ReturnType<typeof abilityBonusDiceFromFeatures>;
   /** Même information avec la capacité source, pour les pastilles du détail d'une carac. */
@@ -128,6 +134,7 @@ export function buildSheetDisplayView(
     abilityModSources: abilityModSources(modFeatureIds, character.featureChoices),
     abilityOverrides: activeAbilityOverrideSources(character),
     abilityFormBonuses: activeFormAbilityBonusSources(character),
+    abilityEquipmentBonuses: abilityBonusSourcesFromEquipment(character.equipment),
     bonusDieSources,
     bonusDieSourcesDetailed,
     testBonuses: testBonusSources(modFeatureIds, effectContext),

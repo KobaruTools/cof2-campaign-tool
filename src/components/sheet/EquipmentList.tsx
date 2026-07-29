@@ -43,7 +43,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { equipment as equipmentCatalog } from '@/data';
 import type { CharacterClass, EquipmentItem } from '@/data/schema';
-import type { EquipmentLine, ItemType, WornState } from '@/lib/character/types';
+import { ABILITY_IDS } from '@/data/schema';
+import type { EquipmentLine, ItemAbilityBonuses, ItemType, WornState } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { effectiveItem, groupEquipmentByType, itemType, reorderEquipment } from '@/lib/character/items';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
@@ -52,7 +53,9 @@ import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
 import { isConsumable } from '@/lib/character/consumables';
 import { isStartingChoiceLine } from '@/lib/character/startingChoices';
 import { COIN_POUCH_ITEM_NAME } from '@/data/progression';
+import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { equipmentLabel } from '@/components/wizard/helpers';
+import { AbilityIcon } from '@/components/AbilityIcon';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { ItemDialog, ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
@@ -147,6 +150,60 @@ function MagicDefBadge({ value }: { value: number }) {
         +{value} magique
       </Box>
     </AppTooltip>
+  );
+}
+
+/**
+ * Badges des bonus/malus de CARACTÉRISTIQUES d'un objet enchanté (PER-272) : une pastille par
+ * caractéristique (icône de la carac + score signé), dans l'ordre canonique. Même langage
+ * visuel que `MagicDefBadge` (pastille custom, ≠ Chip MUI), mais teintée par le SIGNE : un
+ * malus se lit en « warning » pour qu'un objet maudit ne passe pas pour un bonus. L'info-bulle
+ * rappelle la condition (l'objet doit être équipé).
+ */
+function AbilityBonusBadges({ bonuses }: { bonuses: ItemAbilityBonuses }) {
+  return (
+    <>
+      {ABILITY_IDS.filter((id) => bonuses[id]).map((id) => {
+        const value = bonuses[id]!;
+        const positive = value > 0;
+        return (
+          <AppTooltip
+            key={id}
+            title={`${positive ? 'Bonus' : 'Malus'} de ${ABILITY_NAMES[id]} (${
+              positive ? '+' : '−'
+            }${Math.abs(value)}) apporté par cet objet : compte tant qu’il est équipé, et se répercute sur tout ce qui découle de la caractéristique (DEF, PV, initiative, tests…).`}
+          >
+            <Box
+              component="span"
+              sx={(theme) => {
+                const color = positive ? theme.palette.secondary.main : theme.palette.warning.main;
+                return {
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.25,
+                  verticalAlign: 'baseline',
+                  ml: 0.75,
+                  px: 0.6,
+                  borderRadius: 0.75,
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                  lineHeight: 1.4,
+                  whiteSpace: 'nowrap',
+                  cursor: 'help',
+                  color,
+                  bgcolor: alpha(color, 0.12),
+                  border: `1px solid ${alpha(color, 0.45)}`,
+                };
+              }}
+            >
+              <AbilityIcon ability={id} size={13} color="currentColor" />
+              {positive ? '+' : '−'}
+              {Math.abs(value)} {id}
+            </Box>
+          </AppTooltip>
+        );
+      })}
+    </>
   );
 }
 
@@ -654,6 +711,9 @@ export function EquipmentList({
     // quel objet (armure, mais aussi accessoire enchanté) et rendu à part de la DEF
     // mondaine, pour ne pas les confondre visuellement (retour propriétaire).
     const magicDef = line.magicDef;
+    // Bonus/malus de caractéristiques de l'objet enchanté (PER-272), badgés à côté du nom :
+    // ils ne comptent que si l'objet est équipé, comme la DEF magique.
+    const abilityBonuses = line.abilityBonuses;
     // Objet équipable dans un emplacement DÉDIÉ (armure, bouclier, main) : ouvre aussi le
     // crayon d'édition « variante mécanique ».
     const equippable =
@@ -664,7 +724,9 @@ export function EquipmentList({
     //  - matériel du catalogue explicitement équipable (`equipSlot` : torche, grimoire,
     //    instrument, sac à dos, carquois…) ;
     //  - tout objet portant un bonus de DEF MAGIQUE (anneau/cape enchantés, objet libre
-    //    compris — PER-85), qui doit pouvoir être porté pour compter.
+    //    compris — PER-85), qui doit pouvoir être porté pour compter ;
+    //  - tout objet portant un apport de CARACTÉRISTIQUES (PER-272), pour la même raison
+    //    (des bottes de vivacité n'ont d'effet qu'aux pieds).
     // Le reste du matériel (corde, ration…) et les placeholders de choix ne sont plus
     // « équipables » : fini le bouton « Équiper » inutile sur chaque ligne.
     const wearable =
@@ -673,7 +735,8 @@ export function EquipmentList({
           item.category === 'armor' ||
           item.category === 'shield' ||
           (item.category === 'gear' && !!item.equipSlot))) ||
-      !!line.magicDef;
+      !!line.magicDef ||
+      !!line.abilityBonuses;
     // Arme à poudre INDISPONIBLE (PER-185, retour PER-93) : autorisation effective des armes
     // à feu à `false` (campagne « pas d'arme à feu » ou choix du joueur). La ligne est grisée
     // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
@@ -727,6 +790,7 @@ export function EquipmentList({
           </Typography>
         )}
         {magicDef ? <MagicDefBadge value={magicDef} /> : null}
+        {abilityBonuses ? <AbilityBonusBadges bonuses={abilityBonuses} /> : null}
         {/* Bascule œil : épingle la description sous le titre (état d'affichage local). */}
         {description && (
           <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>

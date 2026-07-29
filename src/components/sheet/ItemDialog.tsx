@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -19,13 +22,20 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
 import { equipment as equipmentCatalog, equipmentById } from '@/data';
 import {
+  ABILITY_IDS,
   WEAPON_CATEGORIES,
+  type AbilityId,
   type DamageDie,
   type EquipmentItem,
   type WeaponCategory,
   type WeaponDamage,
 } from '@/data/schema';
-import type { EquipmentLine, EquipmentRef, ItemType } from '@/lib/character/types';
+import type {
+  EquipmentLine,
+  EquipmentRef,
+  ItemAbilityBonuses,
+  ItemType,
+} from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import {
   ITEM_TYPE_ORDER,
@@ -33,8 +43,11 @@ import {
   snapshotOverrides,
   type MechanicalCategory,
 } from '@/lib/character/items';
+import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { AbilityIcon } from '@/components/AbilityIcon';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { DieIcon } from '@/components/DieIcon';
+import { SignedNumberField } from '@/components/SignedNumberField';
 
 /** Libellés FR des 7 types d'objet (le CODE reste en anglais, cf. CLAUDE.md). */
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
@@ -179,6 +192,125 @@ function WeaponDamageFields({
   );
 }
 
+/**
+ * Ligne de saisie d'un apport de caractéristique (PER-272) : UNE caractéristique + un score
+ * signé. Le tableau de lignes est la forme d'ÉDITION (ordre d'ajout conservé) ; il est réduit
+ * en `ItemAbilityBonuses` (clé → valeur) à la validation, ce qui interdit structurellement les
+ * doublons de caractéristique.
+ */
+interface AbilityBonusRow {
+  ability: AbilityId;
+  value: number;
+}
+
+/** Lignes d'édition depuis les apports persistés, dans l'ordre canonique des caracs. */
+function rowsFromBonuses(bonuses: ItemAbilityBonuses | undefined): AbilityBonusRow[] {
+  if (!bonuses) return [];
+  return ABILITY_IDS.filter((id) => bonuses[id]).map((id) => ({ ability: id, value: bonuses[id]! }));
+}
+
+/**
+ * Apports persistés depuis les lignes d'édition : les lignes à 0 sont ABANDONNÉES (une carac
+ * sans effet n'a rien à faire dans les données), et le résultat est `undefined` s'il ne reste
+ * rien — le champ n'est alors simplement pas écrit sur la ligne d'inventaire.
+ */
+function bonusesFromRows(rows: AbilityBonusRow[]): ItemAbilityBonuses | undefined {
+  const out: ItemAbilityBonuses = {};
+  for (const row of rows) {
+    if (!row.value) continue;
+    out[row.ability] = row.value;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * Saisie des bonus/malus de CARACTÉRISTIQUES d'un objet enchanté (PER-272), par LIGNES : une
+ * ligne = une caractéristique + un score signé. On peut ajouter autant de lignes qu'il reste
+ * de caractéristiques libres (7 au maximum) ; une caractéristique déjà prise disparaît des
+ * sélecteurs des autres lignes, donc jamais deux lignes pour la même carac. Disponible sur
+ * TOUT type d'objet (comme la DEF magique) : anneau, cape, bottes ou arme enchantée.
+ */
+function AbilityBonusRows({
+  rows,
+  onChange,
+}: {
+  rows: AbilityBonusRow[];
+  onChange: (rows: AbilityBonusRow[]) => void;
+}) {
+  const used = new Set(rows.map((r) => r.ability));
+  const firstFree = ABILITY_IDS.find((id) => !used.has(id));
+  const setRow = (index: number, next: Partial<AbilityBonusRow>) =>
+    onChange(rows.map((r, i) => (i === index ? { ...r, ...next } : r)));
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+        Bonus de caractéristiques
+      </Typography>
+      <Stack spacing={1}>
+        {rows.map((row, i) => (
+          <Stack
+            key={row.ability}
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}
+          >
+            <TextField
+              select
+              size="small"
+              label="Caractéristique"
+              value={row.ability}
+              onChange={(e) => setRow(i, { ability: e.target.value as AbilityId })}
+              sx={{ flex: '1 1 190px', minWidth: 150 }}
+            >
+              {/* Caracs proposées = celles qui ne sont pas déjà prises par une AUTRE ligne
+                  (la carac courante reste sélectionnable, sinon le champ paraîtrait vide). */}
+              {ABILITY_IDS.filter((id) => id === row.ability || !used.has(id)).map((id) => (
+                <MenuItem key={id} value={id}>
+                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+                    <AbilityIcon ability={id} size={18} />
+                    {id} — {ABILITY_NAMES[id]}
+                  </Box>
+                </MenuItem>
+              ))}
+            </TextField>
+            {/* Score SIGNÉ : les boutons − / + rendent le malus atteignable sans clavier
+                (les claviers mobiles `type=number` n'exposent pas le signe moins). */}
+            <SignedNumberField
+              size="small"
+              label="Score"
+              value={row.value}
+              onChange={(v) => setRow(i, { value: v })}
+              containerSx={{ flex: '0 0 auto' }}
+              sx={{ width: 88 }}
+            />
+            <IconButton
+              size="small"
+              aria-label="Retirer cette ligne"
+              onClick={() => onChange(rows.filter((_, j) => j !== i))}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+        ))}
+      </Stack>
+      <Button
+        size="small"
+        startIcon={<AddIcon />}
+        disabled={firstFree === undefined}
+        onClick={() => firstFree && onChange([...rows, { ability: firstFree, value: 1 }])}
+        sx={{ textTransform: 'none', mt: rows.length ? 1 : 0 }}
+      >
+        Ajouter une ligne
+      </Button>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+        {firstFree === undefined
+          ? 'Les 7 caractéristiques sont déjà couvertes.'
+          : 'Score positif (bonus) ou négatif (malus), pris en compte quand l’objet est équipé.'}
+      </Typography>
+    </Box>
+  );
+}
+
 /** État de formulaire mutualisé (les champs sans rapport avec le type sont ignorés). */
 interface FormState {
   name: string;
@@ -190,6 +322,8 @@ interface FormState {
   def: string;
   maxAgi: string; // vide = pas de plafond (null)
   magicDef: string; // bonus de DEF magique, tout type d'objet (PER-85 généralisé)
+  /** Apports de caractéristiques en lignes (PER-272), tout type d'objet. */
+  abilityBonuses: AbilityBonusRow[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -202,6 +336,7 @@ const EMPTY_FORM: FormState = {
   def: '',
   maxAgi: '',
   magicDef: '',
+  abilityBonuses: [],
 };
 
 /** Pré-remplit le formulaire à partir d'un objet du livre (valeurs par défaut du catalogue). */
@@ -233,6 +368,7 @@ function formFromLine(line: EquipmentLine): FormState {
       name: line.name,
       description: line.details ?? '',
       magicDef: line.magicDef ? String(line.magicDef) : '',
+      abilityBonuses: rowsFromBonuses(line.abilityBonuses),
     };
   }
   const item = effectiveItem(line);
@@ -258,6 +394,7 @@ function formFromLine(line: EquipmentLine): FormState {
   // catalogue) ; celle d'une variante de matériel passe déjà par `effectiveItem`.
   base.description = line.overrides?.description ?? (item?.category === 'gear' ? item.description ?? '' : '');
   base.magicDef = line.magicDef ? String(line.magicDef) : '';
+  base.abilityBonuses = rowsFromBonuses(line.abilityBonuses);
   return base;
 }
 
@@ -339,6 +476,9 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
     // Bonus de DEF magique (PER-85 généralisé) : saisissable sur N'IMPORTE QUEL type
     // d'objet (armure de corps, mais aussi accessoire enchanté — bottes, cape…).
     const magic = Math.max(0, Number(form.magicDef) || 0);
+    // Apports de caractéristiques (PER-272) : mêmes règles pour une variante mécanique et pour
+    // un objet libre — l'apport est une propriété de l'INSTANCE, pas du catalogue.
+    const abilityBonuses = bonusesFromRows(form.abilityBonuses);
     if (mechanical && baseId) {
       const overrides = snapshotOverrides(type, {
         name: trimmedName,
@@ -360,6 +500,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         ...(worn ? { worn } : {}),
         overrides,
         ...(magic > 0 ? { magicDef: magic } : {}),
+        ...(abilityBonuses ? { abilityBonuses } : {}),
       };
       onConfirm(line);
     } else {
@@ -371,6 +512,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         type,
         details: form.description.trim() || undefined,
         ...(magic > 0 ? { magicDef: magic } : {}),
+        ...(abilityBonuses ? { abilityBonuses } : {}),
       });
     }
   };
@@ -555,6 +697,14 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 value={form.magicDef}
                 onChange={(e) => setField('magicDef', e.target.value)}
                 sx={{ maxWidth: 320 }}
+              />
+
+              {/* Bonus/malus de CARACTÉRISTIQUES (PER-272), par lignes : même famille que la DEF
+                  magique (propriété de l'instance enchantée, pas du catalogue), donc disponible
+                  sur TOUT type d'objet. Ne comptent que si l'objet est équipé. */}
+              <AbilityBonusRows
+                rows={form.abilityBonuses}
+                onChange={(rows) => setField('abilityBonuses', rows)}
               />
 
               {/* Stat de bouclier : DEF seule. */}

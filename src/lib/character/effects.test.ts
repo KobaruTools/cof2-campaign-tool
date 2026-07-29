@@ -2170,3 +2170,63 @@ describe('rangedAttackElement — élément ajouté aux flèches (Flèche élém
     expect(rangedAttackElement(archer([bow], 'physical'))).toBeNull();
   });
 });
+
+describe('effectiveAbilities — apport des objets PORTÉS (PER-272)', () => {
+  const hero = (equipment: EquipmentLine[] = []): Character =>
+    ({
+      ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+      level: 3,
+      abilities: { FOR: 2, AGI: 1, CON: 2, PER: 1, CHA: 0, INT: -1, VOL: 1 },
+      baseAbilities: { FOR: 2, AGI: 1, CON: 2, PER: 1, CHA: 0, INT: -1, VOL: 1 },
+      equipment,
+    }) as Character;
+
+  const boots = (worn: boolean): EquipmentLine => ({
+    custom: true,
+    name: 'Bottes de vivacité',
+    quantity: 1,
+    ...(worn ? { worn: { slot: 'accessory' as const } } : {}),
+    abilityBonuses: { AGI: 1 },
+  });
+
+  it("un objet PORTÉ modifie la caractéristique effective ; le même objet RANGÉ ne change rien", () => {
+    expect(effectiveAbilities(hero([boots(true)])).AGI).toBe(2);
+    expect(effectiveAbilities(hero([boots(false)])).AGI).toBe(1);
+  });
+
+  it('un MALUS abaisse la caractéristique effective', () => {
+    const cursed: EquipmentLine = {
+      custom: true,
+      name: 'Heaume maudit',
+      quantity: 1,
+      worn: { slot: 'armor' },
+      abilityBonuses: { PER: -2 },
+    };
+    expect(effectiveAbilities(hero([cursed])).PER).toBe(-1);
+  });
+
+  it("l'apport se propage au contexte d'effets (donc aux stats dérivées et aux valeurs scalantes)", () => {
+    // `effectContext` expose les caracs EFFECTIVES : c'est le canal par lequel la DEF (AGI),
+    // les PV (CON) et l'initiative (PER) voient l'objet équipé, sans code dédié.
+    expect(effectContext(hero([boots(true)])).abilities.AGI).toBe(2);
+  });
+
+  it("s'ajoute PAR-DESSUS une caractéristique imposée par une transformation active", () => {
+    const lycan = {
+      ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+      level: 10,
+      abilities: { FOR: 4, AGI: 2, CON: 2, PER: 1, CHA: 0, INT: -1, VOL: 1 },
+      baseAbilities: { FOR: 4, AGI: 2, CON: 2, PER: 1, CHA: 0, INT: -1, VOL: 1 },
+      featureIds: ['prestige-lycanthrope-r5'],
+      effectToggles: { 'prestige-lycanthrope-r5': [true] },
+      equipment: [boots(true)],
+    } as Character;
+    // Forme de loup : AGI IMPOSÉE à 1 ; les bottes enchantées ajoutent leur +1 par-dessus.
+    expect(effectiveAbilities(lycan).AGI).toBe(2);
+  });
+
+  it('un personnage sans objet enchanté garde exactement ses caractéristiques saisies', () => {
+    expect(effectiveAbilities(hero()).AGI).toBe(1);
+    expect(effectiveAbilities(hero([{ custom: true, name: 'Corde', quantity: 1 }])).AGI).toBe(1);
+  });
+});

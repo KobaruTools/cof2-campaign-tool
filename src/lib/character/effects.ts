@@ -56,7 +56,12 @@ import {
   rangedWeaponDisabledFeatureIds,
   shieldDisabledFeatureIds,
 } from './armorRestrictions';
-import { isHeavyArmorWorn, wornMeleeWeapon, wornRangedWeapon } from './equipment';
+import {
+  abilityBonusesFromEquipment,
+  isHeavyArmorWorn,
+  wornMeleeWeapon,
+  wornRangedWeapon,
+} from './equipment';
 import { currentHp } from './gauges';
 import { rulesContext } from './rulesContext';
 import type { Character, FeatureChoiceSelection } from './types';
@@ -210,6 +215,11 @@ export function rangedAttackElement(character: Character): RangedAttackElementVi
  * Les capacités sont prises sur le même périmètre que les modificateurs dérivés
  * (`effectiveFeatureIdsForMods` : acquises + empruntées par choix), pour rester
  * cohérent avec l'inventaire affiché par `abilityModSources`.
+ *
+ * S'y ajoute enfin l'apport des OBJETS PORTÉS (PER-272, `abilityBonusesFromEquipment`) :
+ * un objet enchanté modifie la caractéristique elle-même, donc tout ce qui en découle
+ * (DEF via l'AGI, PV via la CON, initiative via la PER, tests, attaques…) sans que
+ * chaque consommateur ait à le savoir.
  */
 export function effectiveAbilities(character: Character): Record<AbilityId, number> {
   const mods = abilityModsFromFeatures(activeFeatureIdsForMods(character), character.featureChoices);
@@ -228,6 +238,14 @@ export function effectiveAbilities(character: Character): Record<AbilityId, numb
   // d'override), le delta s'ajoute à la valeur de base. Ne compte que si une forme référencée est active.
   const formBonuses = activeFormAbilityBonuses(character);
   for (const [ability, value] of Object.entries(formBonuses) as [AbilityId, number][]) {
+    out[ability] = (out[ability] ?? 0) + value;
+  }
+  // APPORT DE L'ÉQUIPEMENT PORTÉ (PER-272, ex. bottes de vivacité +1 AGI, heaume maudit −2 PER) :
+  // appliqué EN DERNIER, en delta, comme les bonus de forme — un anneau enchanté agit aussi sous
+  // forme animale (la transformation impose la carac de la bête, l'objet enchanté s'ajoute par-dessus).
+  // Le plafond d'AGI de l'armure (p. 188) s'applique en AVAL, sur cette valeur finale (cf. `deriveStats`).
+  const itemBonuses = abilityBonusesFromEquipment(character.equipment);
+  for (const [ability, value] of Object.entries(itemBonuses) as [AbilityId, number][]) {
     out[ability] = (out[ability] ?? 0) + value;
   }
   return out;

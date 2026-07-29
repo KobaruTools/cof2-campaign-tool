@@ -11,7 +11,7 @@
  * équiper d'office »). L'UI d'équipement/déséquipement manuel relève de PER-77.
  */
 import { equipmentById } from '@/data';
-import type { Weapon } from '@/data/schema';
+import type { AbilityId, Weapon } from '@/data/schema';
 import type { EquipmentLine, EquipmentRef, WornState } from './types';
 import { isCustomItem } from './types';
 import { effectiveItem } from './items';
@@ -313,6 +313,76 @@ export function isHeavyArmorWorn(equipment: EquipmentLine[] = []): boolean {
     return HEAVY_ARMOR_IDS.includes(line.itemId);
   }
   return false;
+}
+
+/**
+ * Objet PORTÉ à l'origine d'un apport de caractéristique (PER-272), pour le détail
+ * affiché au joueur (« Bottes de vivacité +1 »). Pas de `featureId` : la source est un
+ * objet, pas une capacité — le détail le rend donc en libellé texte, sans puce de voie.
+ */
+export interface AbilityBonusItemSource {
+  /** Nom de l'objet tel qu'affiché dans l'inventaire (français). */
+  name: string;
+  /** Apport signé à la caractéristique (positif = bonus, négatif = malus). */
+  value: number;
+}
+
+/**
+ * Nom d'affichage d'une ligne d'inventaire pour le détail d'une caractéristique. Reprend
+ * la logique de `equipmentLabel` MOINS les reskins de profil (PER-181), volontairement :
+ * ce module reste pur (aucune dépendance vers les composants) et un objet porteur d'un
+ * apport de carac est en pratique une variante nommée explicitement par le joueur — son
+ * `overrides.name`, capté par `effectiveItem`, prime de toute façon sur tout reskin.
+ */
+function lineDisplayName(line: EquipmentLine): string {
+  if (isCustomItem(line)) return line.name;
+  return effectiveItem(line)?.name ?? line.itemId;
+}
+
+/**
+ * Apports de CARACTÉRISTIQUES de l'équipement PORTÉ (PER-272), par caractéristique, avec
+ * l'objet source de chaque apport.
+ *
+ * Périmètre, calqué sur celui de `magicDef` (`defenseFromEquipment`) :
+ *  - seuls les objets marqués `worn` comptent — un objet rangé dans le sac n'apporte rien ;
+ *  - N'IMPORTE QUEL emplacement porte l'apport (armure, arme en main, mais surtout
+ *    `accessory` : anneau, cape, bottes…), objets LIBRES compris ;
+ *  - tous les apports se CUMULENT (aucune notion d'exclusivité entre objets enchantés) ;
+ *  - un apport de 0 est ignoré (n'apparaît pas dans le détail).
+ *
+ * Fonction pure, réutilisable telle quelle par l'écran de MJ.
+ */
+export function abilityBonusSourcesFromEquipment(
+  equipment: EquipmentLine[] = [],
+): Partial<Record<AbilityId, AbilityBonusItemSource[]>> {
+  const out: Partial<Record<AbilityId, AbilityBonusItemSource[]>> = {};
+  for (const line of equipment) {
+    if (!line.worn || !line.abilityBonuses) continue;
+    const name = lineDisplayName(line);
+    for (const [ability, value] of Object.entries(line.abilityBonuses) as [AbilityId, number][]) {
+      if (!value) continue;
+      (out[ability] ??= []).push({ name, value });
+    }
+  }
+  return out;
+}
+
+/**
+ * Apports de caractéristiques de l'équipement porté SOMMÉS par caractéristique (PER-272) —
+ * ce que consomme `effectiveAbilities`. Même périmètre que
+ * `abilityBonusSourcesFromEquipment`, dont ce raccourci est la réduction.
+ */
+export function abilityBonusesFromEquipment(
+  equipment: EquipmentLine[] = [],
+): Partial<Record<AbilityId, number>> {
+  const out: Partial<Record<AbilityId, number>> = {};
+  for (const [ability, sources] of Object.entries(abilityBonusSourcesFromEquipment(equipment)) as [
+    AbilityId,
+    AbilityBonusItemSource[],
+  ][]) {
+    out[ability] = sources.reduce((sum, s) => sum + s.value, 0);
+  }
+  return out;
 }
 
 /** Effet combiné de l'armure portée sur la valeur d'AGI d'un test (PER-78 + PER-209). */

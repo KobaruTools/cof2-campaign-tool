@@ -161,3 +161,86 @@ describe('buildCharacterDerivedView', () => {
     expect(view.unarmedCriticalRanges[0].text).toBe('19-20');
   });
 });
+
+describe('objets enchantés : apport de caractéristiques (PER-272)', () => {
+  const boots = (bonus: number) => ({
+    custom: true as const,
+    name: 'Bottes de vivacité',
+    quantity: 1,
+    worn: { slot: 'accessory' as const },
+    abilityBonuses: { AGI: bonus },
+  });
+
+  it('un objet porté qui donne +AGI fait monter la DÉFENSE d’autant', () => {
+    const bare = deriveStats(buildCharacterDerivedView(makeCharacter()).derivedInput!);
+    const enchanted = deriveStats(
+      buildCharacterDerivedView(makeCharacter({ equipment: [boots(2)] })).derivedInput!,
+    );
+    expect(enchanted.defense).toBe(bare.defense + 2);
+    // Même objet RANGÉ (pas d'état `worn`) : aucun effet.
+    const stowed = deriveStats(
+      buildCharacterDerivedView(
+        makeCharacter({ equipment: [{ custom: true, name: 'Bottes de vivacité', quantity: 1, abilityBonuses: { AGI: 2 } }] }),
+      ).derivedInput!,
+    );
+    expect(stowed.defense).toBe(bare.defense);
+  });
+
+  it('un objet porté qui donne +CON fait monter les PV et l’attaque à distance suit l’AGI', () => {
+    const bare = deriveStats(buildCharacterDerivedView(makeCharacter()).derivedInput!);
+    const tough = deriveStats(
+      buildCharacterDerivedView(
+        makeCharacter({
+          equipment: [
+            {
+              custom: true,
+              name: 'Amulette de vigueur',
+              quantity: 1,
+              worn: { slot: 'accessory' },
+              abilityBonuses: { CON: 2, AGI: 1 },
+            },
+          ],
+        }),
+      ).derivedInput!,
+    );
+    expect(tough.maxHp).toBeGreaterThan(bare.maxHp);
+    expect(tough.rangedAttack).toBe(bare.rangedAttack + 1);
+  });
+
+  it('un MALUS d’objet fait BAISSER la statistique dérivée correspondante', () => {
+    const bare = deriveStats(buildCharacterDerivedView(makeCharacter()).derivedInput!);
+    const cursed = deriveStats(
+      buildCharacterDerivedView(
+        makeCharacter({
+          equipment: [
+            {
+              custom: true,
+              name: 'Heaume maudit',
+              quantity: 1,
+              worn: { slot: 'accessory' },
+              abilityBonuses: { PER: -2 },
+            },
+          ],
+        }),
+      ).derivedInput!,
+    );
+    expect(cursed.initiative).toBe(bare.initiative - 2);
+  });
+
+  it('le PLAFOND d’AGI de l’armure portée s’applique APRÈS l’apport de l’objet (p. 188)', () => {
+    // Plaque complète : DEF +7, plafond d'AGI 1. Le personnage a AGI 1 (déjà au plafond) :
+    // les bottes +2 ne peuvent RIEN ajouter à la défense, le plafond mordant en aval.
+    const plated = makeCharacter({
+      equipment: [{ itemId: 'plaque-complete', quantity: 1, worn: { slot: 'armor' } }],
+    });
+    const platedBoots = makeCharacter({
+      equipment: [
+        { itemId: 'plaque-complete', quantity: 1, worn: { slot: 'armor' } },
+        boots(2),
+      ],
+    });
+    const withoutBoots = deriveStats(buildCharacterDerivedView(plated).derivedInput!);
+    const withBoots = deriveStats(buildCharacterDerivedView(platedBoots).derivedInput!);
+    expect(withBoots.defense).toBe(withoutBoots.defense);
+  });
+});

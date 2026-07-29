@@ -314,6 +314,23 @@ export type ItemType = 'weapon' | 'armor' | 'shield' | 'consumable' | 'gear' | '
  * le schéma v18 ; les variantes d'avant v18 (DM en chaîne) sont converties par la
  * migration v17→v18 (parser gelé), cf. `src/lib/engine/migrations.ts`.
  */
+/**
+ * Apport de CARACTÉRISTIQUES d'un objet enchanté (PER-272) : une entrée par
+ * caractéristique, valeur signée (positive = bonus, négative = malus). Ex. des bottes de
+ * vivacité `{ AGI: 1 }`, un heaume maudit `{ PER: -2 }`.
+ *
+ * Propriété du PERSONNAGE (comme `magicDef`, et non `EquipmentOverrides`) pour deux
+ * raisons : le catalogue ne contient que des objets non magiques, et l'apport doit être
+ * portable par un objet LIBRE (`CustomItem`) autant que par une variante d'objet du livre.
+ * Une caractéristique ne peut donc apparaître qu'UNE fois par objet (clé d'objet), ce qui
+ * est exactement la règle de saisie voulue (« une ligne par caractéristique »).
+ *
+ * Ne compte que lorsque l'objet est PORTÉ (`worn`) ; les apports de tous les objets portés
+ * se CUMULENT. Voir `abilityBonusesFromEquipment` (agrégation) et `effectiveAbilities`
+ * (application). Une valeur 0 n'est jamais persistée (équivaut à l'absence de ligne).
+ */
+export type ItemAbilityBonuses = Partial<Record<AbilityId, number>>;
+
 export interface EquipmentOverrides {
   name?: string;
   description?: string;
@@ -352,6 +369,12 @@ export interface EquipmentRef {
    * optionnel absent-safe → pas de bump de `schemaVersion` (cf. précédent `rolledHp`).
    */
   magicDef?: number;
+  /**
+   * Bonus/malus de CARACTÉRISTIQUES de cette instance d'objet enchanté (PER-272), actifs
+   * seulement quand l'objet est PORTÉ. Voir `ItemAbilityBonuses`. Champ additif optionnel
+   * absent-safe → pas de bump de `schemaVersion` (même logique que `magicDef`).
+   */
+  abilityBonuses?: ItemAbilityBonuses;
 }
 
 /**
@@ -388,6 +411,14 @@ export interface CustomItem {
    * additif optionnel absent-safe → pas de bump de `schemaVersion`.
    */
   magicDef?: number;
+  /**
+   * Bonus/malus de CARACTÉRISTIQUES de cet objet libre enchanté (PER-272). Même sémantique
+   * que `EquipmentRef.abilityBonuses` : ne comptent que si l'objet est PORTÉ et se cumulent
+   * avec ceux des autres objets portés. Contrairement aux stats mondaines d'un objet libre
+   * (DM, DEF, inconnus du moteur), cet apport EST pris en compte — c'est une saisie
+   * structurée, pas une note libre.
+   */
+  abilityBonuses?: ItemAbilityBonuses;
 }
 
 export type EquipmentLine = EquipmentRef | CustomItem;

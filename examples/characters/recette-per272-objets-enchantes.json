@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per272-objets-enchantes",
+  "name": "Recette PER-272 — Panoplie enchantée (bonus/malus de caracs)",
+  "identity": {
+    "description": "ATTENDU (PER-272) : chaque objet PORTÉ apporte ses bonus/malus de caractéristiques, et l'apport se répercute sur tout ce qui découle de la carac. Caracs SAISIES : FOR +1, AGI +1, CON +2, PER +1, CHA +2, INT +1, VOL 0. Objets ÉQUIPÉS : « Bottes de vivacité » (AGI +1) ; « Cape du vent » (AGI +2, PER +1) ; « Amulette du sanglier » (FOR +1, INT −2, objet MAUDIT) ; « Lame du duelliste » (variante d'épée longue, AGI +1, tenue en main principale). Objet RANGÉ (témoin) : « Anneau de l'érudit » (INT +3) — il ne doit RIEN apporter tant qu'il est dans le sac. À VÉRIFIER sur la fiche : (1) grille des caracs → AGI affiche +5 (1 saisi + 1 + 2 + 1), PER +2, FOR +2, INT −1 ; (2) au survol d'une carac, le détail liste chaque OBJET par son nom (libellé texte, pas une puce de voie) à côté des apports de capacités ; (3) inventaire → chaque objet enchanté porte des pastilles « +1 AGI » (teinte secondaire) et « −2 INT » (teinte warning pour un malus) ; (4) stats dérivées → DÉFENSE +4 (les 4 points d'AGI des objets) et INITIATIVE +5 : +1 par la PER de la cape, MAIS AUSSI +4 parce que « Prompt à dégainer » (spadassin, rang 1, p. 77) ajoute l'AGI à l'Initiative. C'est le point clé du ticket : l'objet modifie la CARACTÉRISTIQUE, donc tout ce qui en découle suit, y compris les capacités qui scalent sur elle ; (5) DÉSÉQUIPE les bottes → AGI et DÉFENSE baissent immédiatement de 1 ; ÉQUIPE l'anneau de l'érudit → INT passe de −1 à +2. (6) La modale d'édition d'un de ces objets (crayon) doit rouvrir les LIGNES déjà saisies, une par carac."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "voleur",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 2,
+    "INT": 1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 2,
+    "INT": 1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "roublard-r1",
+    "spadassin-r1",
+    "deplacement-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "custom": true,
+      "name": "Bottes de vivacité",
+      "quantity": 1,
+      "type": "gear",
+      "details": "Bonus simple sur une seule carac.",
+      "worn": {
+        "slot": "accessory"
+      },
+      "abilityBonuses": {
+        "AGI": 1
+      }
+    },
+    {
+      "custom": true,
+      "name": "Cape du vent",
+      "quantity": 1,
+      "type": "gear",
+      "details": "Apport MULTI-caracs + cumul sur AGI avec les bottes.",
+      "worn": {
+        "slot": "accessory"
+      },
+      "abilityBonuses": {
+        "AGI": 2,
+        "PER": 1
+      }
+    },
+    {
+      "custom": true,
+      "name": "Amulette du sanglier",
+      "quantity": 1,
+      "type": "gear",
+      "details": "Objet maudit : un bonus ET un malus sur le même objet.",
+      "worn": {
+        "slot": "accessory"
+      },
+      "abilityBonuses": {
+        "FOR": 1,
+        "INT": -2
+      }
+    },
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      },
+      "overrides": {
+        "name": "Lame du duelliste",
+        "description": "Variante du livre porteuse d’un apport de carac."
+      },
+      "abilityBonuses": {
+        "AGI": 1
+      }
+    },
+    {
+      "custom": true,
+      "name": "Anneau de l’érudit",
+      "quantity": 1,
+      "type": "gear",
+      "details": "TÉMOIN : rangé dans le sac → aucun effet.",
+      "abilityBonuses": {
+        "INT": 3
+      }
+    },
+    {
+      "itemId": "dague",
+      "quantity": 2
+    }
+  ],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-272 — objets customs porteurs de bonus/malus de caractéristiques. Personnage de recette : la panoplie est DÉJÀ créée, il reste à recetter l’ajout d’un NOUVEL objet via « Ajouter un objet » → section « Bonus de caractéristiques » (lignes ajoutables tant qu’il reste des caracs, une carac déjà prise disparaît des autres sélecteurs, score positif ou négatif).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

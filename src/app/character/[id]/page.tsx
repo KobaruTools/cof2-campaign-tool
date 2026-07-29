@@ -895,6 +895,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               abilityModSources={display.abilityModSources}
               abilityOverrides={display.abilityOverrides}
               abilityFormBonuses={display.abilityFormBonuses}
+              abilityEquipmentBonuses={display.abilityEquipmentBonuses}
               bonusDieSources={display.bonusDieSourcesDetailed}
             />
           </SheetSection>

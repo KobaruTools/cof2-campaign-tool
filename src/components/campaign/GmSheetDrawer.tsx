@@ -361,6 +361,7 @@ function GmSheetDrawerContent({
               abilityModSources={display.abilityModSources}
               abilityOverrides={display.abilityOverrides}
               abilityFormBonuses={display.abilityFormBonuses}
+              abilityEquipmentBonuses={display.abilityEquipmentBonuses}
               bonusDieSources={display.bonusDieSourcesDetailed}
             />
           </SheetSection>
