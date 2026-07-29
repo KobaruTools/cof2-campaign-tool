@@ -32,6 +32,7 @@ import type {
   FantasticFamiliar,
   Feature,
   FeatureEffect,
+  FinesseAttackMode,
   ImmunityId,
   ResistibleDamageType,
   SourcePage,
@@ -202,6 +203,40 @@ export function rangedAttackElement(character: Character): RangedAttackElementVi
         bonusDie: effect.bonusDie ? resolveSimpleBonusDie(effect.bonusDie, character.level) : undefined,
       };
     }
+  }
+  return null;
+}
+
+/**
+ * PER-74 — ATTAQUE EN FINESSE ACTIVE (effet `finesse-attack`, ex. Vive attaque du duelliste r4, p. 140),
+ * choisie « à la table » (`effectInputs[featureId]`). Renvoie le mode retenu (`'attack'` = AGI à la
+ * touche, `'damage'` = AGI aux DM) si (a) une arme de contact ÉLIGIBLE est tenue en main (id ∈
+ * `weaponIds`), (b) la capacité est ACTIVE, et (c) un mode valide est enregistré ; sinon `null` (finesse
+ * inactive). L'arme retenue est l'arme de contact CANONIQUE (main principale prioritaire), cohérente avec
+ * la carte « Attaque au contact » qui en affiche les DM.
+ */
+export interface FinesseAttackView {
+  /** Capacité source (Vive attaque r4). */
+  featureId: string;
+  /** Mode retenu : substitution à la TOUCHE ou aux DM (jamais les deux). */
+  mode: FinesseAttackMode;
+  /** Caractéristique de substitution (AGI). */
+  ability: AbilityId;
+  /** Caractéristique remplacée (FOR). */
+  replaces: AbilityId;
+}
+
+export function finesseAttackChoice(character: Character): FinesseAttackView | null {
+  const weapon = wornMeleeWeapon(character.equipment);
+  if (!weapon) return null;
+  for (const id of activeFeatureIdsForMods(character)) {
+    const feature = featureById.get(id);
+    const effect = feature?.effects?.find((e) => e.kind === 'finesse-attack');
+    if (effect?.kind !== 'finesse-attack' || !feature) continue;
+    if (!effect.weaponIds.includes(weapon.id)) continue;
+    const chosen = character.effectInputs?.[id];
+    if (chosen !== 'attack' && chosen !== 'damage') continue;
+    return { featureId: id, mode: chosen, ability: effect.ability, replaces: effect.replaces };
   }
   return null;
 }

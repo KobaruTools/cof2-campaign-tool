@@ -21,6 +21,8 @@ import {
   criticalRangeSources,
   defenseAbility,
   effectContext,
+  finesseAttackChoice,
+  type FinesseAttackView,
   manaCastingAbility,
   modsFromFeatures,
   rangedAttackElement,
@@ -121,6 +123,13 @@ function wornWeaponDamage(character: Character, mode: AttackMode): WeaponDamageV
   // Carac de base : FOR au contact (p. 183), aucune à distance (p. 185). Les capacités ajoutent
   // leurs bonus PERMANENTS par-dessus (Archer émérite : +PER à l'arc).
   const baseAbilities: AbilityId[] = mode === 'melee' ? ['FOR'] : [];
+  // Attaque en finesse (Vive attaque du duelliste r4, PER-74) : au contact, SI le mode « DM » est retenu
+  // « à la table » avec une arme éligible en main, la carac de base des DM devient AGI AU LIEU de FOR
+  // (substitution, pas cumul — verbatim p. 140). Les bonus permanents restent ajoutés par-dessus.
+  if (mode === 'melee') {
+    const finesse = finesseAttackChoice(character);
+    if (finesse?.mode === 'damage') baseAbilities[0] = finesse.ability;
+  }
   const bonuses = weaponDamageBonuses(character, mode, item);
   const added = bonuses.addedAbilities.map((b) => b.ability);
   return {
@@ -338,6 +347,14 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
       value: s.value,
       featureId: s.featureId,
     }));
+  // Attaque en finesse (Vive attaque du duelliste r4, PER-74) : si le mode « attaque » est retenu « à la
+  // table » avec une arme éligible en main, la touche au contact se calcule sur l'AGI AU LIEU de la FOR
+  // (SUBSTITUTION de carac, pas cumul — même patron que la DEF sur la CON de Peau de pierre). Le breakdown
+  // affiche alors « Agilité (AGI) » à la place de « Force (FOR) ». Le mode « DM » n'y touche pas (il
+  // modifie la carac de base des DM de l'arme via `wornWeaponDamage`).
+  const finesse: FinesseAttackView | null = finesseAttackChoice(character);
+  const meleeAttackAbility: AbilityId = finesse?.mode === 'attack' ? finesse.ability : 'FOR';
+  const meleeAttackAbilitySourceId = finesse?.mode === 'attack' ? finesse.featureId : undefined;
   // Plage de critique au contact ACTIVE à mains nues (Morsure du serpent) : construite depuis
   // la vue mains nues (indépendante de l'interrupteur manuel de la vue « arme »).
   const unarmedCriticalRanges: DefenseBadgeData[] =
@@ -374,6 +391,9 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         family,
         defenseEquipment: defenseEquip,
         defAbility,
+        // Carac de la touche au contact : FOR, ou AGI si l'attaque en finesse « attaque » est active (r4).
+        meleeAttackAbility,
+        meleeAttackAbilitySourceId,
         // Sorts connus = acquis ET EMPRUNTÉS (encadré « Appel à une autre capacité », p. 60). PER-73.
         spellCount: modFeatureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
         manaAbility: manaCast.ability,

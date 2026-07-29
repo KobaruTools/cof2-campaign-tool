@@ -23,6 +23,7 @@ import {
   conditionalEffectsOf,
   conditionalEffectBonuses,
   criticalRangeSources,
+  finesseAttackChoice,
   rangedAttackElement,
   rangedAttackMagicalSourceId,
   familiarPowerUsedKey,
@@ -2241,6 +2242,50 @@ describe('rangedAttackElement — élément ajouté aux flèches (Flèche élém
 
   it('renvoie null pour un élément hors liste', () => {
     expect(rangedAttackElement(archer([bow], 'physical'))).toBeNull();
+  });
+});
+
+describe('finesseAttackChoice — attaque en finesse (Vive attaque du duelliste r4, PER-74)', () => {
+  const base = () => createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' });
+  const R4 = 'prestige-duelliste-r4';
+  const rapiere: EquipmentLine = { itemId: 'rapiere', quantity: 1, worn: { slot: 'mainHand' } };
+  const masse: EquipmentLine = { itemId: 'masse', quantity: 1, worn: { slot: 'mainHand' } };
+  const duelliste = (equipment: EquipmentLine[], mode?: string): Character =>
+    ({
+      ...base(),
+      classId: 'barde',
+      level: 16,
+      featureIds: [R4],
+      equipment,
+      effectInputs: mode ? { [R4]: mode } : {},
+    }) as Character;
+
+  it("renvoie le mode retenu avec une arme éligible en main (rapière)", () => {
+    expect(finesseAttackChoice(duelliste([rapiere], 'damage'))).toMatchObject({
+      featureId: R4,
+      mode: 'damage',
+      ability: 'AGI',
+      replaces: 'FOR',
+    });
+    expect(finesseAttackChoice(duelliste([rapiere], 'attack'))?.mode).toBe('attack');
+  });
+
+  it('renvoie null tant qu\'aucun mode n\'est retenu (échangeable à la table)', () => {
+    expect(finesseAttackChoice(duelliste([rapiere]))).toBeNull();
+  });
+
+  it("renvoie null sans arme éligible en main (arme non listée ou aucune)", () => {
+    expect(finesseAttackChoice(duelliste([], 'damage'))).toBeNull();
+    expect(finesseAttackChoice(duelliste([masse], 'damage'))).toBeNull();
+  });
+
+  it("renvoie null pour un mode hors liste", () => {
+    expect(finesseAttackChoice(duelliste([rapiere], 'both'))).toBeNull();
+  });
+
+  it("renvoie null pour un personnage sans la capacité, rapière en main", () => {
+    const sansCapacite = { ...base(), featureIds: [], equipment: [rapiere], effectInputs: { [R4]: 'damage' } } as Character;
+    expect(finesseAttackChoice(sansCapacite)).toBeNull();
   });
 });
 

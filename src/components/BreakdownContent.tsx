@@ -66,7 +66,18 @@ export function BreakdownContent({ title, breakdown, page, section }: BreakdownC
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            {t.featureId ? <CapabilityChip featureId={t.featureId} label={null} /> : <span>{t.label}</span>}
+            {t.featureId && t.label ? (
+              // Terme portant À LA FOIS un libellé et une capacité source (ex. « Agilité (AGI) » calculée
+              // via Vive attaque, PER-74) : on garde le libellé ET on accole la puce de la capacité.
+              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                <span>{t.label}</span>
+                <CapabilityChip featureId={t.featureId} label={null} />
+              </Box>
+            ) : t.featureId ? (
+              <CapabilityChip featureId={t.featureId} label={null} />
+            ) : (
+              <span>{t.label}</span>
+            )}
             <Box component="span" sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
               {signed(t.value)}
             </Box>

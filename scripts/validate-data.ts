@@ -533,6 +533,18 @@ for (const c of features) {
       if (!e.choices.length) err(`[capacite ${c.id}] effect: ranged-attack-elemental sans choix`);
       for (const s of e.choices)
         if (!types.has(s)) err(`[capacite ${c.id}] effect: ranged-attack-elemental type inconnu : ${s}`);
+    } else if (e.kind === 'finesse-attack') {
+      // PER-74 — attaque en finesse (duelliste r4) : au moins une arme éligible, toutes des armes du
+      // catalogue, et les deux caracs (substitution/remplacée) distinctes.
+      if (!e.weaponIds.length) err(`[capacite ${c.id}] effect: finesse-attack sans arme éligible`);
+      for (const wid of e.weaponIds) {
+        const item = equipmentById.get(wid);
+        if (!item) err(`[capacite ${c.id}] effect: finesse-attack arme inconnue : ${wid}`);
+        else if (item.category !== 'weapon')
+          err(`[capacite ${c.id}] effect: finesse-attack id non-arme : ${wid}`);
+      }
+      if (e.ability === e.replaces)
+        err(`[capacite ${c.id}] effect: finesse-attack ability === replaces (${e.ability})`);
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }
@@ -546,6 +558,10 @@ for (const c of features) {
   const cf = c.usageCounter?.conditionalFrequency;
   if (cf && !featureById.has(cf.featureId))
     err(`[capacite ${c.id}] usageCounter.conditionalFrequency référence inexistante : ${cf.featureId}`);
+  // PER-74 — un compteur d'ACCUMULATION (countUp) suit une convention « absence = 0 » incompatible avec
+  // les jauges d'état (qui supposent un décompte « restant/max ») → il doit être masqué du panneau.
+  if (c.usageCounter?.countUp && !c.usageCounter.hideFromStatusPanel)
+    err(`[capacite ${c.id}] usageCounter.countUp exige hideFromStatusPanel`);
 }
 
 // --- Taxonomie des compagnons (PER-175) --------------------------------------

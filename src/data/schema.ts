@@ -516,7 +516,8 @@ export type FeatureEffect =
   | WeaponDamageBonusEffect
   | AttackBonusEffect
   | RangedAttackMagicalEffect
-  | RangedAttackElementalEffect;
+  | RangedAttackElementalEffect
+  | FinesseAttackEffect;
 
 /**
  * Valeur d'un effet (PER-67) : soit une CONSTANTE (cas courant — ex. « +1 en
@@ -1438,6 +1439,34 @@ export interface RangedAttackElementalEffect {
    * la règle) ; ce champ ne sert qu'au rendu compact de la puce.
    */
   bonusDie?: string;
+}
+
+/**
+ * Modes d'une ATTAQUE EN FINESSE (`finesse-attack`) : la substitution de caractéristique s'applique
+ * SOIT à la touche (`'attack'`) SOIT aux DM (`'damage'`), jamais aux deux (verbatim p. 140). Le mode
+ * retenu « à la table » est stocké dans `effectInputs[featureId]` ; son absence = finesse inactive.
+ */
+export const FINESSE_ATTACK_MODES = ['attack', 'damage'] as const;
+export type FinesseAttackMode = (typeof FINESSE_ATTACK_MODES)[number];
+
+/**
+ * PER-74 — ATTAQUE EN FINESSE (Vive attaque du duelliste r4, p. 140). Avec une arme éligible EN MAIN
+ * PRINCIPALE (dague, épée courte/longue, rapière, ou vivelame tenue à deux mains), le personnage
+ * remplace sa FOR par son AGI SOIT à la touche au contact SOIT aux DM (au choix, jamais les deux en
+ * même temps). C'est un ÉTAT DE JEU ÉCHANGEABLE « à la table » — stocké dans `effectInputs[featureId]`
+ * (`'attack'` = AGI à la touche, `'damage'` = AGI aux DM, absent = inactif), comme le `scopeChoice`
+ * d'une RD et NON un choix permanent de construction (cf. [[choix-permanent-vs-dynamique]]). Gaté par
+ * l'arme requise : sans arme éligible en main, aucune substitution ne s'applique (résolveur
+ * `finesseAttackChoice`).
+ */
+export interface FinesseAttackEffect {
+  kind: 'finesse-attack';
+  /** Caractéristique de substitution proposée (AGI). */
+  ability: AbilityId;
+  /** Caractéristique remplacée (FOR au contact). */
+  replaces: AbilityId;
+  /** Ids d'armes de contact éligibles (main principale, ou vivelame tenue à deux mains). */
+  weaponIds: string[];
 }
 
 /**
@@ -2674,6 +2703,17 @@ export interface UsageCounter {
    * fin dès qu'elle a absorbé son plafond de DM (`niveau × 3`). Défaut : `false`.
    */
   endsEffectAtZero?: boolean;
+  /**
+   * Compteur d'ACCUMULATION (PER-74, Botte mortelle du duelliste r8, p. 141) : au lieu d'un DÉCOMPTE
+   * (max → 0, « absence = plein »), le compteur part de 0 et MONTE de `cost` à chaque cran, borné à
+   * `max`. Convention INVERSÉE : « absence = 0 » (rien accumulé) ; le reset (bouton manuel ou
+   * déclencheur `resetOn`) le ramène à 0. Sert à suivre une ressource qui se GAGNE en jeu (points de
+   * préparation de la Botte mortelle : +1 par attaque réussie contre la cible défiée, dépensés d'un
+   * coup, remis à 0 au repos). Rendu sans « épuisé » ni « /max » (le nombre nu suffit). Défaut :
+   * `false` (compteur classique décroissant). Incompatible avec les jauges d'état → à combiner avec
+   * `hideFromStatusPanel`.
+   */
+  countUp?: boolean;
   /** Libellé affiché (français). Défaut : « Usages restants ». */
   label?: string;
 }

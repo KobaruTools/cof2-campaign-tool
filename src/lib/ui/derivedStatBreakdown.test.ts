@@ -182,6 +182,38 @@ describe('derivedStatBreakdown ↔ deriveStats', () => {
     expect(bd.noteTone).toBe('warning');
   });
 
+  it('Touche au contact : substitution AGI pour la FOR + puce Vive attaque (PER-74)', () => {
+    const bd = derivedStatBreakdown('meleeAttack', {
+      abilities: abilities({ FOR: 1, AGI: 4 }),
+      level: 16,
+      family: family('adventurers'),
+      defenseEquipment: { defBonus: 0, maxAgi: null },
+      spellCount: 0,
+      meleeAttackAbility: 'AGI',
+      meleeAttackAbilitySourceId: 'prestige-duelliste-r4',
+    });
+    // La ligne de carac porte l'AGI (4), pas la FOR (1), et attribue la capacité source (puce).
+    const abilityTerm = bd.terms.find((t) => t.label.includes('(AGI)'));
+    expect(abilityTerm?.value).toBe(4);
+    expect(abilityTerm?.featureId).toBe('prestige-duelliste-r4');
+    expect(bd.terms.find((t) => t.label.includes('(FOR)'))).toBeUndefined();
+    expect(bd.note).toContain('Vive attaque');
+  });
+
+  it('Touche au contact : FOR par défaut (aucune substitution, pas de puce)', () => {
+    const bd = derivedStatBreakdown('meleeAttack', {
+      abilities: abilities({ FOR: 3, AGI: 1 }),
+      level: 10,
+      family: family('adventurers'),
+      defenseEquipment: { defBonus: 0, maxAgi: null },
+      spellCount: 0,
+    });
+    const abilityTerm = bd.terms.find((t) => t.label.includes('(FOR)'));
+    expect(abilityTerm?.value).toBe(3);
+    expect(abilityTerm?.featureId).toBeUndefined();
+    expect(bd.note).toBeUndefined();
+  });
+
   it('PV hybrides niveau 1 : une sous-ligne par famille + renvoi p. 180', () => {
     const bd = derivedStatBreakdown('maxHp', {
       abilities: abilities({ CON: 2 }),

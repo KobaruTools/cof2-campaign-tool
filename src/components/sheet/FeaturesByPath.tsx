@@ -1464,6 +1464,73 @@ function ElementResistanceSelector({
 }
 
 /**
+ * Effet `finesse-attack` porté par une capacité (Vive attaque du duelliste r4, PER-74), ou `null`.
+ */
+function finesseAttackEffect(feature: Feature) {
+  const e = feature.effects?.find((x) => x.kind === 'finesse-attack');
+  return e?.kind === 'finesse-attack' ? e : null;
+}
+
+/**
+ * Sélecteur d'ATTAQUE EN FINESSE « à la table » (Vive attaque du duelliste r4, PER-74). État de jeu
+ * échangeable (stocké dans `Character.effectInputs[featureId]`, éditable HORS mode édition) : la
+ * substitution FOR→AGI s'applique SOIT à la touche (`'attack'`) SOIT aux DM (`'damage'`), jamais aux
+ * deux (verbatim p. 140). « Aucun » = inactif. Comme le sélecteur d'élément, le choix tient lieu
+ * d'activation. Rendu effectif seulement si une arme éligible est en main (le résolveur moteur gate ;
+ * ici le sélecteur reste visible pour permettre le réglage même arme rangée).
+ */
+function FinesseAttackSelector({
+  feature,
+  character,
+  onSetInput,
+}: {
+  feature: Feature;
+  character: Character;
+  onSetInput?: (featureId: string, value: string) => void;
+}) {
+  const effect = finesseAttackEffect(feature);
+  if (!effect) return null;
+  const value = character.effectInputs?.[feature.id] ?? '';
+  const labelFor = (mode: string) =>
+    mode === 'attack'
+      ? `${effect.ability} en attaque`
+      : mode === 'damage'
+        ? `${effect.ability} aux DM`
+        : 'Aucun';
+  if (!onSetInput) {
+    return value ? (
+      <Typography variant="caption" component="div" sx={{ mt: 1, fontWeight: 600 }}>
+        Vive attaque : {labelFor(value)}
+      </Typography>
+    ) : null;
+  }
+  return (
+    <Box sx={{ mt: 1 }} onClick={(e) => e.stopPropagation()}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
+        Vive attaque : {effect.ability} au lieu de {effect.replaces} (à choisir à la table)
+      </Typography>
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={value}
+        onChange={(_, next: string | null) => onSetInput(feature.id, next ?? '')}
+        sx={{ flexWrap: 'wrap' }}
+      >
+        <ToggleButton value="" sx={{ textTransform: 'none' }}>
+          Aucun
+        </ToggleButton>
+        <ToggleButton value="attack" sx={{ textTransform: 'none' }}>
+          {labelFor('attack')}
+        </ToggleButton>
+        <ToggleButton value="damage" sx={{ textTransform: 'none' }}>
+          {labelFor('damage')}
+        </ToggleButton>
+      </ToggleButtonGroup>
+    </Box>
+  );
+}
+
+/**
  * Clé d'état d'un compteur (PER-119) : la clé PARTAGÉE `sharedKey` si la capacité puise dans
  * une réserve commune (ex. charges explosives), sinon l'id de la capacité (compteur propre).
  */
@@ -1494,12 +1561,15 @@ function UsageCounterRow({
 }) {
   const max = usageCounterMaximum(counter, character, feature);
   const key = usageCounterKey(counter, feature);
-  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
+  // Compteur d'ACCUMULATION (PER-74, Botte mortelle) : « absence = 0 », part de 0 et monte ; sinon
+  // DÉCOMPTE classique « absence = plein » (= max).
+  const countUp = !!counter.countUp;
+  const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? (countUp ? 0 : max)));
   // Coût d'un usage de CETTE capacité (PER-130) : le pas de décrément/incrément. La Furie du berserk
   // consomme 2 points de rage et n'est utilisable que s'il en reste au moins 2.
   const cost = counter.cost ?? 1;
-  const label = counter.label ?? 'Usages restants';
-  const exhausted = remaining <= 0;
+  const label = counter.label ?? (countUp ? 'Points accumulés' : 'Usages restants');
+  const exhausted = !countUp && remaining <= 0;
   // Verrou « une dépense par récupération rapide » (PER-160) : une fois un point dépensé, le décrément
   // est bloqué (avec une note) jusqu'au prochain repos court — indépendamment du total restant.
   const locked = !!counter.oncePerShortRest && (character.usageCounters?.[shortRestLockKey(key)] ?? 0) > 0;
@@ -1530,7 +1600,7 @@ function UsageCounterRow({
           variant="body2"
           sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 36, textAlign: 'center' }}
         >
-          {remaining} / {max}
+          {countUp ? remaining : `${remaining} / ${max}`}
         </Typography>
         {onSet && (
           <IconButton
@@ -1543,13 +1613,13 @@ function UsageCounterRow({
           </IconButton>
         )}
         {onSet && (
-          <AppTooltip title="Réinitialiser au maximum">
+          <AppTooltip title={countUp ? 'Réinitialiser à 0' : 'Réinitialiser au maximum'}>
             <span>
               <IconButton
                 size="small"
                 aria-label="Réinitialiser"
-                disabled={remaining >= max}
-                onClick={() => onSet(key, max, max)}
+                disabled={countUp ? remaining <= 0 : remaining >= max}
+                onClick={() => onSet(key, countUp ? 0 : max, max)}
               >
                 <RestartAltIcon fontSize="small" />
               </IconButton>
@@ -1723,6 +1793,17 @@ function CompactUsageIndicator({
   if (!counter) return null;
   const max = usageCounterMaximum(counter, character, feature);
   const key = usageCounterKey(counter, feature);
+  // Compteur d'ACCUMULATION (PER-74, Botte mortelle) : « absence = 0 », on affiche le NOMBRE nu (pas de
+  // pastilles ni de « /max » : compter jusqu'à un plafond n'aurait aucun sens pour des points gagnés).
+  if (counter.countUp) {
+    const current = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? 0));
+    const label = counter.label ?? 'Points accumulés';
+    return (
+      <Typography variant="caption" sx={{ mt: 0.5, display: 'block', fontWeight: 700, color: 'text.secondary' }}>
+        {label} : {current}
+      </Typography>
+    );
+  }
   const remaining = Math.max(0, Math.min(max, character.usageCounters?.[key] ?? max));
   const label = counter.label ?? 'Usages restants';
   return (
@@ -3134,6 +3215,16 @@ function PathBlock({
                     />
                   </>
                 )}
+                {finesseAttackEffect(openFeature) && character && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <FinesseAttackSelector
+                      feature={openFeature}
+                      character={character}
+                      onSetInput={onSetEffectInput}
+                    />
+                  </>
+                )}
                 {openFeature.usageCounter &&
                   character &&
                   // r4/r5 (pool + sorts reproduits) : les boutons « Créer cet élixir » vivent DANS
@@ -3473,6 +3564,12 @@ function PathBlock({
                 <>
                   <Divider sx={{ my: 1.5 }} />
                   <ElementResistanceSelector feature={feature} character={character} onSetInput={onSetEffectInput} />
+                </>
+              )}
+              {finesseAttackEffect(feature) && character && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  <FinesseAttackSelector feature={feature} character={character} onSetInput={onSetEffectInput} />
                 </>
               )}
               {feature.usageCounter &&

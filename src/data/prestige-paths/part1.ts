@@ -1662,6 +1662,21 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Lorsqu'il utilise une dague, une épée courte, longue ou une rapière sur les attaques de sa main principale (ou encore sur une vivelame tenue à deux mains), le personnage peut ajouter son AGI en attaque au contact ou aux DM (au choix, mais pas les deux en même temps, sauf s'il dispose d'une autre capacité qui lui permet, par exemple attaque en finesse) au lieu de sa FOR.",
+    // ATTAQUE EN FINESSE MÉCANISÉE (PER-74) : effet `finesse-attack` = substitution FOR→AGI gatée par une
+    // arme éligible en main principale. Le choix « attaque OU DM » est un ÉTAT DE JEU ÉCHANGEABLE (sélecteur
+    // « à la table » stocké dans `effectInputs`, hors mode édition — cf. [[choix-permanent-vs-dynamique]]),
+    // jamais les deux à la fois (verbatim). Résolu par `finesseAttackChoice` → la fiche recalcule la touche
+    // (delta AGI−FOR) ou les DM de l'arme au contact (carac de base AGI) selon le mode retenu. Les armes
+    // éligibles sont la liste EXPLICITE du livre (dague, épée courte/longue, rapière, vivelame) — la dague
+    // n'est pas dans la famille `swords`, d'où l'énumération d'ids plutôt qu'une catégorie.
+    effects: [
+      {
+        kind: 'finesse-attack',
+        ability: 'AGI',
+        replaces: 'FOR',
+        weaponIds: ['dague', 'epee-courte', 'epee-longue', 'rapiere', 'vivelame'],
+      },
+    ],
     sourcePage: 140,
   },
   {
@@ -1673,6 +1688,12 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le personnage peut défier une cible humanoïde de son choix (portée 20 m). Il obtient +1d6 aux DM de chaque attaque au contact pour le reste du combat contre cette cible. S'il attaque une autre cible, le défi prend fin.",
+    // richText : « +1d6 aux DM » → dé {1d6} ; « portée 20 m » reste littéral. Le +1d6 DM ne porte que
+    // contre la CIBLE DÉFIÉE (situationnel) → pas de badge de dé bonus sur la carte d'attaque (différé).
+    richText:
+      "Une fois par combat, le personnage peut défier une cible humanoïde de son choix (portée 20 m). Il obtient {1d6} aux DM de chaque attaque au contact pour le reste du combat contre cette cible. S'il attaque une autre cible, le défi prend fin.",
+    // « Une fois par combat » = l'action de DÉFIER (compteur d'usages 1×/combat, réinitialisé au combat).
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true },
     sourcePage: 140,
   },
   {
@@ -1684,6 +1705,10 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "À chaque round durant lequel il attaque la cible qu'il a défiée, le personnage obtient un bonus +2 en DEF contre toutes les attaques provenant d'autres adversaires.",
+    // VERBATIM (pas d'effet mécanisé) : le +2 en DEF ne vaut que contre les AUTRES adversaires que la
+    // cible défiée, pas contre elle → ce n'est PAS un bonus global au personnage (arbitrage proprio
+    // 2026-07-29). Impossible de le porter sur la DEF de fiche sans être faux face à la cible défiée →
+    // laissé à la gestion de table (comme les malus « sur la cible » des autres voies aventurier).
     sourcePage: 141,
   },
   {
@@ -1706,6 +1731,24 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Chaque fois que le personnage réussit une attaque contre l'adversaire qu'il a défié, en plus des DM habituels, il gagne 1 point de préparation sur cette créature (ceci est une action gratuite). Au moment de son choix, il peut utiliser une action limitée pour exécuter sa botte mortelle. S'il réussit son attaque, il ajoute +1d4° DM par point de préparation. Il ne peut tenter qu'une seule botte mortelle par combat, les points sont dépensés que l'attaque soit un succès ou un échec.",
+    // richText : « +1d4° DM par point de préparation » → dé {1d4°} (le NOMBRE de dés = points de
+    // préparation accumulés sur la cible → situationnel, non calculable ; « par point de préparation »
+    // reste littéral). L'accumulation de points est verbatim (par cible défiée). « une seule botte
+    // mortelle par combat » = compteur d'usages 1×/combat.
+    richText:
+      "Chaque fois que le personnage réussit une attaque contre l'adversaire qu'il a défié, en plus des DM habituels, il gagne 1 point de préparation sur cette créature (ceci est une action gratuite). Au moment de son choix, il peut utiliser une action limitée pour exécuter sa botte mortelle. S'il réussit son attaque, il ajoute {1d4°} DM par point de préparation. Il ne peut tenter qu'une seule botte mortelle par combat, les points sont dépensés que l'attaque soit un succès ou un échec.",
+    // COMPTEUR D'ACCUMULATION (PER-74, arbitrage proprio 2026-07-29) : suit les POINTS DE PRÉPARATION
+    // gagnés (+1 par attaque réussie contre la cible défiée) — part de 0, monte à la main, bouton reset
+    // pour la dépense de la botte mortelle. Reset automatique à 0 au repos court OU long (`'short-rest'`),
+    // « un minimum d'automatisation ». Suivi UNIQUEMENT sur la carte (hors panneau d'état). La limite
+    // « une seule botte par combat » reste verbatim (gestion de table).
+    usageCounter: {
+      max: 20,
+      countUp: true,
+      resetOn: 'short-rest',
+      hideFromStatusPanel: true,
+      label: 'Points de préparation',
+    },
     sourcePage: 141,
   },
 

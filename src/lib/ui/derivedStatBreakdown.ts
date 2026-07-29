@@ -285,12 +285,25 @@ export function derivedStatBreakdown(
       return { terms, total: Math.max(0, sum(terms)), note, page: 31 };
     }
     case 'meleeAttack': {
+      // Carac de base de la touche : FOR (p. 32), ou substitution retenue par une capacité (Vive
+      // attaque du duelliste : AGI au lieu de FOR en attaque en finesse, PER-74). Substitution, PAS cumul.
+      const meleeAbility = input.meleeAttackAbility ?? 'FOR';
+      const substitutedMelee = meleeAbility !== 'FOR';
       const terms: BreakdownTerm[] = [
         { label: `Niveau (max ${MAX_ATTACK_LEVEL})`, value: baseAttack },
-        { label: 'Force (FOR)', value: abilities.FOR },
+        {
+          label: `${ABILITY_NAMES[meleeAbility]} (${meleeAbility})`,
+          value: abilities[meleeAbility],
+          // Substitution en finesse : accole la puce de la capacité source (Vive attaque) à la ligne de
+          // la carac, pour que l'origine du calcul inhabituel reste visible (demande proprio).
+          featureId: substitutedMelee ? input.meleeAttackAbilitySourceId : undefined,
+        },
         ...capacities('meleeAttack'),
       ];
-      return { terms, total: sum(terms), page: 32 };
+      const note = substitutedMelee
+        ? `Touche au contact calculée sur l'${ABILITY_NAMES[meleeAbility]} (${meleeAbility}) au lieu de la Force (Vive attaque, p. 140).`
+        : undefined;
+      return { terms, total: sum(terms), note, page: 32 };
     }
     case 'rangedAttack': {
       const terms: BreakdownTerm[] = [

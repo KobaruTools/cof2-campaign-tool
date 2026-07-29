@@ -298,6 +298,18 @@ export interface DerivedInput {
    * `defenseAbility`). Le plafond d'armure s'applique à la caractéristique retenue.
    */
   defAbility?: AbilityId;
+  /**
+   * Caractéristique servant de base à la TOUCHE AU CONTACT. Défaut `FOR` (p. 32) ; une capacité peut
+   * la remplacer (ex. Vive attaque du duelliste : `AGI` au lieu de `FOR` en attaque en finesse, PER-74 —
+   * cf. `finesseAttackChoice`). Substitution, PAS cumul : la touche = base + carac retenue + mods.
+   */
+  meleeAttackAbility?: AbilityId;
+  /**
+   * Id de la capacité à l'origine de la substitution `meleeAttackAbility` (Vive attaque, PER-74), pour
+   * l'attribuer par une puce de capacité dans l'infobulle de la touche. Métadonnée d'affichage : non lue
+   * par `deriveStats`. Absent hors substitution.
+   */
+  meleeAttackAbilitySourceId?: string;
   /** Nombre de capacités de sorts connues (pour les PM). */
   spellCount: number;
   /**
@@ -359,7 +371,7 @@ export function deriveStats(input: DerivedInput): DerivedStats {
     manaPoints: manaPoints(abilities[input.manaAbility ?? 'VOL'], spellCount, mods),
     initiative: initiative(abilities.PER, mods),
     defense: defense(abilities[input.defAbility ?? 'AGI'], defenseEquipment, mods),
-    meleeAttack: meleeAttack(level, abilities.FOR, mods),
+    meleeAttack: meleeAttack(level, abilities[input.meleeAttackAbility ?? 'FOR'], mods),
     rangedAttack: rangedAttack(level, abilities.AGI, mods),
     magicAttack: magicAttack(level, abilities.VOL, mods),
   };

@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per74-duelliste",
+  "name": "Recette PER-74 — Duelliste (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du duelliste p. 140-141) : vérifier le RENDU de chaque rang prestige. Base = barde/escrime, escrimeur finaud (AGI 4 dominante, FOR 1 faible), rapière en MAIN PRINCIPALE. R4 Vive attaque → ATTAQUE EN FINESSE MÉCANISÉE : avec la rapière en main, un sélecteur « à la table » (hors mode édition) propose « AGI en attaque » / « AGI aux DM » / « Aucun ». CETTE recette est livrée sur « AGI aux DM » → sur la carte « Attaque au contact », les DM de la rapière affichent « + AGI (4) » AU LIEU de « + FOR (1) ». Bascule sur « AGI en attaque » → c'est la TOUCHE au contact qui se calcule sur l'AGI (4) au lieu de la FOR (1) : l'infobulle « i » de la touche affiche « Agilité (AGI) 4 » (SUBSTITUTION, pas +3 ajouté) + une note « Touche calculée sur l'Agilité au lieu de la Force (Vive attaque) » ; les DM redeviennent FOR. « Aucun » = rien. Sans arme éligible en main, la finesse ne s'applique pas. R5 Défi (L) → richText : « +1d6 aux DM » rendu en DÉ {1d6} (« portée 20 m » en texte) ; « une fois par combat » = compteur d'usages 1×/combat (masqué du panneau d'état). R6 Juste toi et moi → VERBATIM : le +2 en DEF ne vaut que contre les AUTRES adversaires que la cible défiée (pas un bonus global au personnage) → laissé à la gestion de table, aucun interrupteur. R7 Duel mental → verbatim pur (test opposé d'INT, dé bonus narratif). R8 Botte mortelle → richText : « +1d4° DM par point de préparation » rendu en DÉ {1d4°} (le reste littéral) ; un COMPTEUR « Points de préparation » (part de 0, bouton +1 à chaque attaque réussie, bouton reset manuel, remis à 0 au repos court ou long) apparaît sur la carte. COULEUR PAR FAMILLE : le duelliste est une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "demi-elfe",
+  "classId": "barde",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 3,
+    "INT": 1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 3,
+    "INT": 1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "demi-elfe",
+  "featureIds": [
+    "escrime-r1",
+    "escrime-r2",
+    "escrime-r3",
+    "escrime-r4",
+    "escrime-r5",
+    "prestige-duelliste-r4",
+    "prestige-duelliste-r5",
+    "prestige-duelliste-r6",
+    "prestige-duelliste-r7",
+    "prestige-duelliste-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {
+    "prestige-duelliste-r4": "damage"
+  },
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "rapiere",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-74 — recette duelliste : R4 finesse (rapière, effectInputs=damage → DM en AGI ; bascule attack → touche substituée AGI) ; R5 {1d6}+compteur 1×/combat ; R6 verbatim ; R8 {1d4°}+compteur « Points de préparation » (countUp, reset repos).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
