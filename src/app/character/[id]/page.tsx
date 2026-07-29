@@ -524,8 +524,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       <AppHeader
         // Fil d'Ariane : rattaché à une campagne → « {campagne} / {nom} » (le parent
         // pointe vers la vue campagne) ; sinon le nom seul (page de premier niveau).
-        // Le nom (dernier maillon) est TOUJOURS visible : l'ancien fondu croisé
-        // « Fiche de personnage → nom » n'a plus lieu d'être (PER-239).
+        // Le fil se DÉPLIE au défilement : « {campagne} / Fiche de personnage » en haut
+        // de page → « {campagne} / {nom} | {peuple · profil · niveau} » ensuite.
         breadcrumbs={
           character.campaignId
             ? [
@@ -544,7 +544,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
         // `currentCampaign` n'est résolu que depuis le store des campagnes POSSÉDÉES
         // (RLS owner), donc défini ⟺ utilisateur propriétaire/MJ. Absent pour un joueur.
         gmScreenCampaignId={currentCampaign?.id}
-        // Sous-titre « peuple · profil · niveau » révélé une fois l'en-tête dépassé
+        // Au repos (en haut de page), le dernier maillon annonce la nature de la page ; au
+        // défilement il cède la place au nom du personnage (fondu croisé), puis la ligne
+        // d'identité s'ajoute à la suite du fil.
+        restingLabel="Fiche de personnage"
+        // Ligne « peuple · profil · niveau » révélée une fois l'en-tête dépassé
         // (même mise en forme que dans l'en-tête de la fiche, composant partagé).
         subtitle={
           <CharacterIdentityLine

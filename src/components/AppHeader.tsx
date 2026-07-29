@@ -30,14 +30,23 @@ interface AppHeaderProps {
    */
   action?: ReactNode;
   /**
-   * Sous-titre optionnel révélé à droite du fil d'Ariane (ex. « peuple · profil ·
-   * niveau » de la fiche). Reste monté en permanence pour pouvoir s'animer dans les
-   * deux sens ; sa visibilité est pilotée par `subtitleVisible`.
+   * Libellé AU REPOS du dernier maillon du fil (ex. « Fiche de personnage »), tant que
+   * `subtitleVisible` est faux : « {campagne} / Fiche de personnage » en haut de page,
+   * puis fondu croisé vers le libellé réel du maillon au défilement. Absent = le dernier
+   * maillon est affiché tel quel en permanence (accueil, wizard, listes).
+   */
+  restingLabel?: ReactNode;
+  /**
+   * Sous-titre optionnel ajouté à la SUITE du fil d'Ariane (ex. « peuple · profil ·
+   * niveau » de la fiche), séparé par une barre verticale — pas par un « / », qui le
+   * ferait passer pour un niveau de navigation. Reste monté en permanence pour pouvoir
+   * s'animer dans les deux sens ; sa visibilité est pilotée par `subtitleVisible`.
    */
   subtitle?: ReactNode;
   /**
-   * Pilote la révélation du `subtitle` au défilement : slide depuis le bas + fondu
-   * (animation inverse au retour). Sans effet visible si `subtitle` est absent.
+   * Pilote la bascule repos → révélé au défilement : fondu croisé du dernier maillon
+   * (`restingLabel` → libellé réel) puis apparition du `subtitle` (slide depuis le bas +
+   * fondu). Animation inverse au retour. Sans effet si ni `restingLabel` ni `subtitle`.
    */
   subtitleVisible?: boolean;
   /**
@@ -72,6 +81,7 @@ export function AppHeader({
   breadcrumbs,
   action,
   accentColor,
+  restingLabel,
   subtitle,
   subtitleVisible = false,
   gmScreenCampaignId,
@@ -187,36 +197,12 @@ export function AppHeader({
             borderTop: '1px solid rgba(255, 255, 255, 0.18)',
           }}
         >
-          <AppBreadcrumbs crumbs={breadcrumbs ?? []} />
-          {subtitle && (
-            <Box
-              aria-hidden={!subtitleVisible}
-              sx={(theme) => ({
-                display: 'flex',
-                alignItems: 'center',
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-                color: 'text.secondary',
-                opacity: subtitleVisible ? 1 : 0,
-                transform: subtitleVisible ? 'translateY(0)' : 'translateY(0.5rem)',
-                ml: 1,
-                transition: theme.transitions.create(['opacity', 'transform'], {
-                  duration: theme.transitions.duration.standard,
-                  easing: theme.transitions.easing.easeOut,
-                }),
-                transitionDelay: subtitleVisible ? '120ms' : '0ms',
-              })}
-            >
-              {/* Barre verticale entre le nom (dernier maillon) et la ligne d'identité —
-                  le « · » reste réservé aux séparations internes (peuple · profil · niveau). */}
-              <Box
-                component="span"
-                aria-hidden="true"
-                sx={{ alignSelf: 'center', width: '1px', height: 16, mr: 1, bgcolor: 'divider' }}
-              />
-              {subtitle}
-            </Box>
-          )}
+          <AppBreadcrumbs
+            crumbs={breadcrumbs ?? []}
+            restingLabel={restingLabel}
+            trailing={subtitle}
+            revealed={restingLabel == null && subtitle == null ? true : subtitleVisible}
+          />
 
           {/* Espace flexible : pousse l'`action` de page tout à droite du sous-header. */}
           <Box sx={{ flexGrow: 1 }} />
