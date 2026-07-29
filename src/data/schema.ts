@@ -1092,7 +1092,49 @@ export const STATUS_EFFECT_IDS = [
 ] as const;
 export type StatusEffectId = (typeof STATUS_EFFECT_IDS)[number];
 
-/** Une entrée du catalogue des états : libellé FR, effet VERBATIM du glossaire, page source. */
+/**
+ * Part CHIFFRÉE d'un état de combat (PER-277) — le « mécanique », par opposition au « comportemental »
+ * (« aucune action », « touché automatiquement », « déplacement 5 m »…) qui reste géré à l'oral et
+ * n'existe que dans le verbatim `effect`. Format PLAT et dédié (pas l'union `FeatureEffect`) : un état
+ * n'a ni valeur scalante, ni condition, ni choix — juste des modificateurs constants. Réutilise le
+ * vocabulaire du moteur (`DerivedStatId`) pour que la résolution produise un `DerivedMods` injectable
+ * tel quel dans le calcul dérivé (tranches PER-280/281). Pour un état CUMULATIF (cf. `stacking`), les
+ * valeurs numériques sont exprimées PAR PALIER d'intensité (le résolveur les multiplie par l'intensité).
+ */
+export interface StatusModifiers {
+  /**
+   * Modificateurs plats (signés, négatifs pour un préjudice) aux stats DÉRIVÉES, keyés par
+   * `DerivedStatId` — la même forme que `DerivedMods`. Ex. Aveuglé → `{ def: -5, initiative: -5,
+   * meleeAttack: -5, magicAttack: -5, rangedAttack: -10 }`. Absent = aucun modificateur de stat dérivée.
+   */
+  derived?: Partial<Record<DerivedStatId, number>>;
+  /**
+   * L'état impose un DÉ MALUS (« 2d20, garde le PIRE ») à TOUS les tests du combattant (Affaibli, p. 214).
+   * Aucun primitif d'effet existant ne convient (`allTestsDie`/`test-die`/`low-hp-test-die` sont des dés
+   * BONUS) : d'où ce drapeau dédié. Le rendu viendra avec les tranches d'UI. Absent = pas de dé malus.
+   */
+  allTestsMalusDie?: boolean;
+  /**
+   * Dé malus (« garde le pire ») limité aux tests d'ATTAQUE (Immobilisé, p. 214 : « dé malus aux tests
+   * d'attaque »). Distinct de `allTestsMalusDie` (tous les tests). Absent = pas de dé malus d'attaque.
+   */
+  attackTestsMalusDie?: boolean;
+  /**
+   * Malus CHIFFRÉ PLAT (pas un dé) à TOUS les tests, PAR PALIER d'intensité — Attaque invalidante (p. 140,
+   * « -1 à tous les tests … jusqu'à -3 »). Combiné à `stacking: { max: 3 }`, donne −1/−2/−3. Absent = 0.
+   */
+  allTestsFlat?: number;
+  /**
+   * Malus CHIFFRÉ PLAT aux DM INFLIGÉS par le combattant, PAR PALIER d'intensité — Attaque invalidante
+   * (p. 140, « … et aux DM infligés par la cible »). Absent = 0.
+   */
+  damageDealt?: number;
+}
+
+/**
+ * Une entrée du catalogue des états : libellé FR, effet VERBATIM du glossaire, page source, et
+ * (PER-277) la part CHIFFRÉE structurée (`modifiers`) + le mode de cumul (`stacking`).
+ */
 export interface StatusEffectEntry {
   /** Libellé français (nom de l'état, tel qu'affiché). */
   label: string;
@@ -1100,6 +1142,18 @@ export interface StatusEffectEntry {
   effect: string;
   /** Page du livre de base où l'état est défini. */
   sourcePage: number;
+  /**
+   * Part CHIFFRÉE de l'état, réellement appliquée aux stats calculées (PER-277). ABSENT = état
+   * PUREMENT comportemental (ex. Essoufflé, Invalide, Ralenti, Paralysé) : rien à calculer, tout est
+   * dans le verbatim `effect`. Le verbatim reste TOUJOURS la source des clauses comportementales.
+   */
+  modifiers?: StatusModifiers;
+  /**
+   * Mode de CUMUL (PER-277). ABSENT = état BINAIRE (présent/absent — les 10 états du glossaire).
+   * PRÉSENT = état CUMULATIF avec un compteur d'intensité plafonné à `max` (effets situationnels, ex.
+   * Attaque invalidante ×1→×3) ; les valeurs numériques de `modifiers` sont alors PAR PALIER.
+   */
+  stacking?: { max: number };
 }
 
 /**
@@ -1112,43 +1166,69 @@ export const STATUS_EFFECTS: Record<StatusEffectId, StatusEffectEntry> = {
     effect:
       "-5 en Init., attaque et DEF, -10 en attaque à distance. Les attaques magiques nécessitant de voir la cible sont impossibles.",
     sourcePage: 214,
+    // « attaque » générique = -5 (contact/magie) ; « attaque à distance » = -10 (total, remplace le -5).
+    // L'impossibilité des attaques magiques à vue reste comportementale (verbatim).
+    modifiers: {
+      derived: { initiative: -5, def: -5, meleeAttack: -5, magicAttack: -5, rangedAttack: -10 },
+    },
   },
-  weakened: { label: 'Affaibli', effect: 'Dé malus à tous les tests.', sourcePage: 214 },
+  weakened: {
+    label: 'Affaibli',
+    effect: 'Dé malus à tous les tests.',
+    sourcePage: 214,
+    modifiers: { allTestsMalusDie: true },
+  },
   winded: {
     label: 'Essoufflé',
+    // Purement comportemental (déplacement) : aucun modificateur chiffré.
     effect: 'Le déplacement est limité à 5 m par action de mouvement.',
     sourcePage: 214,
   },
-  dazed: { label: 'Étourdi', effect: 'Aucune action possible et -5 en DEF.', sourcePage: 214 },
+  dazed: {
+    label: 'Étourdi',
+    // « Aucune action possible » = comportemental ; seul le -5 en DEF est chiffré.
+    effect: 'Aucune action possible et -5 en DEF.',
+    sourcePage: 214,
+    modifiers: { derived: { def: -5 } },
+  },
   immobilized: {
     label: 'Immobilisé',
+    // « Pas de déplacement » = comportemental ; « dé malus aux tests d'attaque » = chiffré.
     effect: "Pas de déplacement et dé malus aux tests d'attaque.",
     sourcePage: 214,
+    modifiers: { attackTestsMalusDie: true },
   },
   crippled: {
     label: 'Invalide',
+    // Purement comportemental (déplacement) : aucun modificateur chiffré.
     effect: 'Le déplacement est limité à 5 m par action de mouvement.',
     sourcePage: 214,
   },
   paralyzed: {
     label: 'Paralysé',
+    // Entièrement comportemental (aucune action, touché automatiquement, critique) : rien de chiffré.
     effect: "Aucune action possible, en cas d'attaque touché automatiquement et subit un critique.",
     sourcePage: 215,
   },
   slowed: {
     label: 'Ralenti',
+    // Purement comportemental (économie d'actions) : aucun modificateur chiffré.
     effect: "Une seule action par round (action d'attaque ou de mouvement).",
     sourcePage: 215,
   },
   prone: {
     label: 'Renversé',
+    // « -5 en attaque et DEF » = chiffré ; « se relever » = comportemental.
     effect: "-5 en attaque et DEF, nécessite une action d'attaque pour se relever.",
     sourcePage: 215,
+    modifiers: { derived: { def: -5, meleeAttack: -5, rangedAttack: -5, magicAttack: -5 } },
   },
   surprised: {
     label: 'Surpris',
+    // « Pas d'action » + « au premier round » = comportemental ; seul le -5 en DEF est chiffré.
     effect: 'Pas d’action et -5 en DEF au premier round de combat.',
     sourcePage: 215,
+    modifiers: { derived: { def: -5 } },
   },
 };
 
@@ -1176,6 +1256,9 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "Malus cumulatif de -1 à tous les tests et aux DM infligés par la cible pour le reste du combat, jusqu'à un cumul maximal de -3.",
     sourcePage: 140,
+    // CUMULATIF : -1 PAR PALIER (le résolveur multiplie par l'intensité), plafonné à 3 paliers (-3).
+    modifiers: { allTestsFlat: -1, damageDealt: -1 },
+    stacking: { max: 3 },
   },
 };
 
