@@ -21,6 +21,7 @@
  */
 import * as actions from '@/lib/character/sheetActions';
 import type { UseItemIntent } from '@/lib/character/sheetActions';
+import { isGameStatePatch } from '@/lib/character/gameState';
 import { capacityResourceGauges, type CapacityResourceGauge } from '@/lib/character/effects';
 import type { Character, Purse, WornState } from '@/lib/character/types';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
@@ -117,6 +118,7 @@ export function useCharacterGameState(
   options: { readOnly?: boolean } = {},
 ): CharacterGameState | null {
   const upsert = useCharactersStore((s) => s.upsert);
+  const applyGameState = useCharactersStore((s) => s.applyGameState);
   if (!character) return null;
   // Copie `const` : conserve le narrowing de `character` dans les fermetures ci-dessous.
   const target: Character = character;
@@ -126,7 +128,11 @@ export function useCharacterGameState(
     if (readOnly) return;
     // Garde-fou du contrat de `sheetActions` : un correctif vide signifie « ne rien écrire ».
     if (Object.keys(patch).length === 0) return;
-    upsert({ ...target, ...patch });
+    // Aiguillage PER-266 : un patch PUREMENT état de jeu (toutes clés ∈ allowlist) passe par
+    // `applyGameState` (chemin sans verrou EN SESSION, verrou sinon) ; tout le reste (construction,
+    // patch mixte comme `createElixir` = usageCounters + equipment) garde le verrou de version.
+    if (isGameStatePatch(patch)) applyGameState(target, patch);
+    else upsert({ ...target, ...patch });
   };
   /** Branche une action pure sur le store : `character` en 1er argument, patch persisté. */
   const bind =

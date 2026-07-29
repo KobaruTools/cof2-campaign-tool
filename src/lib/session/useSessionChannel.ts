@@ -1,11 +1,16 @@
 'use client';
 
 /**
- * Canal Realtime de session + présence (PER-265, milestone PER-259) — le TUYAU et le
- * VOYANT. Ouvre UN canal `session:<campaign_id>` par appareil membre, **uniquement
- * pendant qu'une session est active**, y annonce la présence de ce client, et expose
- * la liste vivante des connectés. Aucune donnée de jeu ne transite ici (ça, c'est
- * PER-266) — seulement présence + journal.
+ * Canal Realtime de session + présence + synchro d'état de jeu (PER-265/PER-266, milestone
+ * PER-259) — le TUYAU, le VOYANT et le DIRECT. Ouvre UN canal `session:<campaign_id>` par
+ * appareil membre, **uniquement pendant qu'une session est active**, y annonce la présence de
+ * ce client, expose la liste vivante des connectés, ET (PER-266) porte les deltas d'état de
+ * jeu : reçoit les broadcasts `game-state` des pairs et les applique au store, et branche le
+ * pont `sessionBridge` pour que le store puisse ÉMETTRE ses propres deltas sur ce canal.
+ *
+ * Entrée en session : au premier `SUBSCRIBED`, on lit l'état autoritatif en base
+ * (`load({force})`) AVANT de vivre des deltas — un client qui rejoint en cours voit l'état
+ * correct puis le direct (modèle « C1 : Broadcast-first »).
  *
  * Confinement du coût (levier n°1 de la conception) : **aucun socket hors session**.
  * Le hook ne s'abonne que lorsqu'on lui passe une `session` active ET une `identity`
@@ -25,6 +30,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { useCharactersStore } from '@/stores/characters';
+import { registerSessionChannel } from './sessionBridge';
 import { joinSessionParticipant, leaveSessionParticipant } from './participantsRepo';
 import {
   presenceKeyFor,
@@ -102,10 +109,27 @@ export function useSessionChannel(
     // Entrée de journal de ce client (best-effort) : posée à l'abonnement, fermée au
     // démontage. Conservée à travers les reconnexions (pas de doublon par rejoin).
     let participantId: string | null = null;
+    // Désenregistrement du pont d'émission (PER-266) + garde anti-double-lecture de l'état
+    // autoritatif : posés une seule fois au premier `SUBSCRIBED`, survivent aux reconnexions.
+    let unregisterBridge: (() => void) | null = null;
+    let didInitialLoad = false;
 
     channel.on('presence', { event: 'sync' }, () => {
       if (active) {
         setPresent(presenceListFromState(channel.presenceState() as RawPresenceState));
+      }
+    });
+
+    // Réception des deltas d'état de jeu des pairs (PER-266) : application immédiate à la vue
+    // en mémoire, sans re-diffuser ni flusher (l'émetteur a déjà persisté via merge_game_state).
+    // `self` est faux par défaut → on ne reçoit pas nos propres broadcasts (aucune boucle).
+    channel.on('broadcast', { event: 'game-state' }, ({ payload }) => {
+      if (!active) return;
+      const p = payload as { characterId?: unknown; patch?: unknown };
+      if (typeof p.characterId === 'string' && p.patch && typeof p.patch === 'object') {
+        useCharactersStore
+          .getState()
+          .applyRemoteGameState(p.characterId, p.patch as Record<string, unknown>);
       }
     });
 
@@ -120,6 +144,19 @@ export function useSessionChannel(
           if (!active) return;
           if (st === 'SUBSCRIBED') {
             setStatus('joined');
+            // Pont d'émission (PER-266) : le store peut désormais diffuser ses deltas d'état de
+            // jeu sur CE canal (`sessionBridge`). Enregistré une seule fois (survit aux rejoins).
+            if (unregisterBridge === null) {
+              unregisterBridge = registerSessionChannel(campaignId, (event, payload) => {
+                void channel.send({ type: 'broadcast', event, payload });
+              });
+            }
+            // Entrée en session : lecture de l'état autoritatif AVANT de vivre des deltas (un
+            // client qui rejoint en cours). Une seule fois — pas à chaque reconnexion socket.
+            if (!didInitialLoad) {
+              didInitialLoad = true;
+              void useCharactersStore.getState().load({ force: true });
+            }
             if (logParticipant && participantId === null) {
               try {
                 participantId = await joinSessionParticipant(campaignId);
@@ -141,6 +178,9 @@ export function useSessionChannel(
     return () => {
       active = false;
       channelRef.current = null;
+      // Débranche l'émission (PER-266) : plus aucune écriture d'état de jeu ne sera diffusée
+      // pour cette campagne tant qu'un canal n'est pas rouvert (le store retombe sur le verrou).
+      if (unregisterBridge !== null) unregisterBridge();
       if (participantId !== null) {
         void leaveSessionParticipant(participantId).catch(() => {});
       }

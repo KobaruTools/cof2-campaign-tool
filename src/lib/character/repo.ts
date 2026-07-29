@@ -158,6 +158,28 @@ export async function updateCharacterRow(
   return data?.version ?? null;
 }
 
+/**
+ * Écrit les clés d'ÉTAT DE JEU d'un personnage via la RPC `merge_game_state` (0012, PER-263)
+ * — chemin SANS verrou de version (PER-266) : la RPC fusionne dans `characters.data`
+ * UNIQUEMENT les clés d'état de jeu (allowlist), sans toucher ni vérifier `version`, pour
+ * cohabiter sans conflit avec le verrou de version des éditions de construction.
+ *
+ * `patch` = état ABSOLU des clés d'état de jeu (représentation « fil », cf.
+ * `toWireGameStatePatch`). N'utiliser QUE pendant une session (l'aiguillage relève du store).
+ * Lève en cas d'erreur Supabase (l'appelant capte et le signale via `error`).
+ */
+export async function mergeGameState(
+  characterId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const supabase = createBrowserSupabaseClient();
+  const { error } = await supabase.rpc('merge_game_state', {
+    character_id: characterId,
+    patch: patch as Json,
+  });
+  if (error) throw error;
+}
+
 /** Supprime un personnage cloud (RLS propriétaire). */
 export async function deleteCharacter(id: string): Promise<void> {
   const supabase = createBrowserSupabaseClient();

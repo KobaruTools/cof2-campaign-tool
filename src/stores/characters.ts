@@ -45,9 +45,17 @@ import {
   isUniqueViolation,
   isUuid,
   mergeCharacters,
+  mergeGameState,
   updateCharacterRow,
 } from '@/lib/character/repo';
 import type { Character } from '@/lib/character/types';
+import {
+  applyRemoteGameStatePatch,
+  isBroadcastableGameStatePatch,
+  toWireGameStatePatch,
+  type GameStatePatch,
+} from '@/lib/character/gameState';
+import { sessionSendFor } from '@/lib/session/sessionBridge';
 import { migrateCharacter } from '@/lib/engine';
 
 /** Délai d'inactivité avant flush cloud d'un personnage modifié (ms). */
@@ -89,6 +97,22 @@ interface CharactersState {
   load: (opts?: { force?: boolean }) => Promise<void>;
   /** Ajoute ou remplace un personnage (par id) ; met à jour `updatedAt`. Flush cloud débouncé si cloud. */
   upsert: (character: Character) => void;
+  /**
+   * Écriture d'ÉTAT DE JEU (PER-266) : applique le patch localement puis AIGUILLE selon la
+   * session. Si une session est active pour la campagne du personnage (pont `sessionBridge`)
+   * et que le perso est cloud-backed, diffuse l'état absolu sur le canal + persiste via
+   * `merge_game_state` (SANS verrou de version, donc sans `conflictId`) et N'ARME PAS le flush.
+   * Sinon, retombe EXACTEMENT sur le chemin de `upsert` (flush débouncé sous verrou) → comportement
+   * hors session strictement inchangé. L'appelant (`useCharacterGameState`) ne route ici que les
+   * patches PUREMENT état de jeu (cf. `isGameStatePatch`).
+   */
+  applyGameState: (character: Character, patch: Partial<Character>) => void;
+  /**
+   * Applique un delta d'état de jeu REÇU d'un pair sur le canal de session (PER-266), à la vue
+   * en mémoire, SANS re-diffuser ni flusher (l'émetteur a déjà persisté via `merge_game_state`).
+   * No-op si le personnage n'est pas chargé ici. `mounts` est fusionné finement par id.
+   */
+  applyRemoteGameState: (characterId: string, patch: Record<string, unknown>) => void;
   /**
    * Commit d'un personnage neuf en fin de wizard : insertion cloud (si configuré)
    * puis ajout au cache. Sans Supabase, retombe sur un ajout local (staging). Lève
@@ -273,6 +297,48 @@ export const useCharactersStore = create<CharactersState>()(
             return { characters: next };
           });
           scheduleFlush(stamped.id);
+        },
+
+        applyGameState: (character, patch) => {
+          // 1) Application locale immédiate (identique à `upsert` : réactivité + staging).
+          const stamped = withTimestamp({ ...character, ...patch });
+          set((state) => {
+            const i = state.characters.findIndex((c) => c.id === stamped.id);
+            if (i === -1) return { characters: [...state.characters, stamped] };
+            const next = state.characters.slice();
+            next[i] = stamped;
+            return { characters: next };
+          });
+          // 2) Aiguillage. En session (pont branché), perso cloud-backed ET patch fidèlement
+          // persistable par merge_game_state → chemin sans verrou : diffuser l'état ABSOLU (le patch
+          // l'est déjà) aux pairs + persister, sans armer le flush (donc jamais de `conflictId`).
+          // Un patch `mounts` STRUCTUREL (ajout/retrait/barde) N'EST PAS diffusable (le merge ne
+          // fusionne que hp) → il retombe sur le verrou de version comme la construction.
+          const send = sessionSendFor(character.campaignId);
+          if (
+            isSupabaseConfigured() &&
+            send &&
+            stamped.id in get().cloudVersions &&
+            isBroadcastableGameStatePatch(character, patch as GameStatePatch)
+          ) {
+            const wire = toWireGameStatePatch(patch as GameStatePatch);
+            send('game-state', { characterId: stamped.id, patch: wire });
+            void mergeGameState(stamped.id, wire).catch((e) => set({ error: messageOf(e) }));
+            return;
+          }
+          // 3) Hors session (ou patch de construction routé ici) : chemin inchangé (flush débouncé
+          // sous verrou ; no-op si local-only).
+          scheduleFlush(stamped.id);
+        },
+
+        applyRemoteGameState: (characterId, patch) => {
+          set((state) => {
+            const i = state.characters.findIndex((c) => c.id === characterId);
+            if (i === -1) return {}; // perso non chargé ici : rien à mettre à jour
+            const next = state.characters.slice();
+            next[i] = withTimestamp(applyRemoteGameStatePatch(state.characters[i], patch));
+            return { characters: next };
+          });
         },
 
         commitNewCharacter: async (character) => {
