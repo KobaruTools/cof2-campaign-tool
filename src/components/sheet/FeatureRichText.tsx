@@ -98,7 +98,9 @@ function AbilityChipBox({
         fontSize: '0.95em',
         letterSpacing: 0.3,
         lineHeight: 1.4,
-        cursor: 'help',
+        // Pas de curseur « help » sans info-bulle propre : la puce laisse alors le curseur du
+        // conteneur (pointeur d'une option de liste, ou help du parent qui porte l'info-bulle).
+        cursor: noTooltip ? undefined : 'help',
         color,
         bgcolor: alpha(color, 0.12),
         border: 1,
@@ -121,6 +123,32 @@ export function AbilityValueChip({ ability, value }: { ability: AbilityId; value
   return (
     <AbilityChipBox ability={ability} title={`${ABILITY_NAMES[ability]} = ${value}`}>
       {value}
+    </AbilityChipBox>
+  );
+}
+
+/**
+ * Puce du CODE d'une caractéristique SEUL (« FOR »), à la norme d'affichage des caracs (teinte
+ * propre + bord tireté, cf. `AbilityChipBox`). Sert HORS texte de règle, là où il faut rendre une
+ * caractéristique repérable d'un coup d'œil dans une liste — les caracs gouvernantes d'un domaine
+ * de compétence dans le sélecteur de cible d'un bonus aux tests (PER-275), par exemple, où un
+ * libellé gris se perdait. `noTooltip` dans une liste déroulante : une info-bulle par option
+ * gênerait la sélection.
+ */
+export function AbilityCodeChip({
+  ability,
+  noTooltip = false,
+}: {
+  ability: AbilityId;
+  noTooltip?: boolean;
+}) {
+  return (
+    <AbilityChipBox
+      ability={ability}
+      title={`${ABILITY_NAMES[ability]} (${ability})`}
+      noTooltip={noTooltip}
+    >
+      {ability}
     </AbilityChipBox>
   );
 }

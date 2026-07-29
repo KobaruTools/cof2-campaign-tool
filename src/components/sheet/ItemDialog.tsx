@@ -48,6 +48,7 @@ import { ITEM_TEST_TARGET_IDS } from '@/lib/character/equipment';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { DERIVED_MOD_DISPLAY_ID, DERIVED_MOD_NAMES } from '@/lib/ui/derivedStats';
 import { AbilityIcon } from '@/components/AbilityIcon';
+import { AbilityCodeChip } from '@/components/sheet/FeatureRichText';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { DieIcon } from '@/components/DieIcon';
@@ -845,17 +846,22 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 }}
                 renderOption={(id) => {
                   const domain = testDomainById.get(id);
+                  // Le code de la carac passe par la puce tiretée teintée qui est la NORME
+                  // d'affichage d'une caractéristique dans l'app (`AbilityCodeChip`) : dans une
+                  // liste d'une centaine de domaines, c'est ce qui rend la carac gouvernante
+                  // repérable d'un coup d'œil. Un domaine multi-carac en porte une par carac.
                   return domain ? (
                     <>
                       <Box component="span">{domain.label}</Box>
-                      <Typography variant="caption" color="text.secondary">
-                        {domain.abilities.join(' / ')}
-                      </Typography>
+                      {domain.abilities.map((a) => (
+                        <AbilityCodeChip key={a} ability={a} noTooltip />
+                      ))}
                     </>
                   ) : (
                     <>
                       <AbilityIcon ability={id as AbilityId} size={18} />
-                      {id} — {ABILITY_NAMES[id as AbilityId]}
+                      <AbilityCodeChip ability={id as AbilityId} noTooltip />
+                      {ABILITY_NAMES[id as AbilityId]}
                     </>
                   );
                 }}
