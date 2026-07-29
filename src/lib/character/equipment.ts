@@ -11,7 +11,7 @@
  * équiper d'office »). L'UI d'équipement/déséquipement manuel relève de PER-77.
  */
 import { equipmentById } from '@/data';
-import type { AbilityId, Weapon } from '@/data/schema';
+import type { AbilityId, DerivedStatId, Weapon } from '@/data/schema';
 import type { EquipmentLine, EquipmentRef, WornState } from './types';
 import { isCustomItem } from './types';
 import { effectiveItem } from './items';
@@ -316,14 +316,15 @@ export function isHeavyArmorWorn(equipment: EquipmentLine[] = []): boolean {
 }
 
 /**
- * Objet PORTÉ à l'origine d'un apport de caractéristique (PER-272), pour le détail
- * affiché au joueur (« Bottes de vivacité +1 »). Pas de `featureId` : la source est un
- * objet, pas une capacité — le détail le rend donc en libellé texte, sans puce de voie.
+ * Objet PORTÉ à l'origine d'un apport (de caractéristique, PER-272, ou de statistique
+ * dérivée, PER-273), pour le détail affiché au joueur (« Bottes de vivacité +1 »). Pas de
+ * `featureId` : la source est un objet, pas une capacité — le détail le rend donc en
+ * libellé texte, sans puce de voie.
  */
 export interface AbilityBonusItemSource {
   /** Nom de l'objet tel qu'affiché dans l'inventaire (français). */
   name: string;
-  /** Apport signé à la caractéristique (positif = bonus, négatif = malus). */
+  /** Apport signé (positif = bonus, négatif = malus). */
   value: number;
 }
 
@@ -340,31 +341,57 @@ function lineDisplayName(line: EquipmentLine): string {
 }
 
 /**
- * Apports de CARACTÉRISTIQUES de l'équipement PORTÉ (PER-272), par caractéristique, avec
- * l'objet source de chaque apport.
+ * Apports de l'équipement PORTÉ lus dans un champ d'apports de la ligne d'inventaire
+ * (`abilityBonuses` pour les caractéristiques, PER-272 ; `derivedBonuses` pour les stats
+ * dérivées, PER-273), regroupés par clé avec l'objet source de chaque apport.
  *
- * Périmètre, calqué sur celui de `magicDef` (`defenseFromEquipment`) :
+ * Périmètre commun, calqué sur celui de `magicDef` (`defenseFromEquipment`) :
  *  - seuls les objets marqués `worn` comptent — un objet rangé dans le sac n'apporte rien ;
  *  - N'IMPORTE QUEL emplacement porte l'apport (armure, arme en main, mais surtout
  *    `accessory` : anneau, cape, bottes…), objets LIBRES compris ;
  *  - tous les apports se CUMULENT (aucune notion d'exclusivité entre objets enchantés) ;
  *  - un apport de 0 est ignoré (n'apparaît pas dans le détail).
+ */
+function bonusSourcesFromEquipment<K extends string>(
+  equipment: EquipmentLine[],
+  field: 'abilityBonuses' | 'derivedBonuses',
+): Partial<Record<K, AbilityBonusItemSource[]>> {
+  const out: Partial<Record<K, AbilityBonusItemSource[]>> = {};
+  for (const line of equipment) {
+    const bonuses = line[field];
+    if (!line.worn || !bonuses) continue;
+    const name = lineDisplayName(line);
+    for (const [key, value] of Object.entries(bonuses) as [K, number][]) {
+      if (!value) continue;
+      (out[key] ??= []).push({ name, value });
+    }
+  }
+  return out;
+}
+
+/** Somme des apports par clé — la réduction d'un détail par source en sac de totaux. */
+function sumBonusSources<K extends string>(
+  sources: Partial<Record<K, AbilityBonusItemSource[]>>,
+): Partial<Record<K, number>> {
+  // Accumulation sur un `Record<string, number>` (et non `Partial<Record<K, number>>`) :
+  // écrire dans un type indexé par un PARAMÈTRE de type dérouterait l'inférence.
+  const out: Record<string, number> = {};
+  for (const [key, list] of Object.entries(sources) as [string, AbilityBonusItemSource[]][]) {
+    out[key] = list.reduce((sum, s) => sum + s.value, 0);
+  }
+  return out as Partial<Record<K, number>>;
+}
+
+/**
+ * Apports de CARACTÉRISTIQUES de l'équipement PORTÉ (PER-272), par caractéristique, avec
+ * l'objet source de chaque apport. Périmètre : cf. `bonusSourcesFromEquipment`.
  *
  * Fonction pure, réutilisable telle quelle par l'écran de MJ.
  */
 export function abilityBonusSourcesFromEquipment(
   equipment: EquipmentLine[] = [],
 ): Partial<Record<AbilityId, AbilityBonusItemSource[]>> {
-  const out: Partial<Record<AbilityId, AbilityBonusItemSource[]>> = {};
-  for (const line of equipment) {
-    if (!line.worn || !line.abilityBonuses) continue;
-    const name = lineDisplayName(line);
-    for (const [ability, value] of Object.entries(line.abilityBonuses) as [AbilityId, number][]) {
-      if (!value) continue;
-      (out[ability] ??= []).push({ name, value });
-    }
-  }
-  return out;
+  return bonusSourcesFromEquipment<AbilityId>(equipment, 'abilityBonuses');
 }
 
 /**
@@ -375,14 +402,36 @@ export function abilityBonusSourcesFromEquipment(
 export function abilityBonusesFromEquipment(
   equipment: EquipmentLine[] = [],
 ): Partial<Record<AbilityId, number>> {
-  const out: Partial<Record<AbilityId, number>> = {};
-  for (const [ability, sources] of Object.entries(abilityBonusSourcesFromEquipment(equipment)) as [
-    AbilityId,
-    AbilityBonusItemSource[],
-  ][]) {
-    out[ability] = sources.reduce((sum, s) => sum + s.value, 0);
-  }
-  return out;
+  return sumBonusSources(abilityBonusSourcesFromEquipment(equipment));
+}
+
+/**
+ * Apports de STATISTIQUES DÉRIVÉES de l'équipement PORTÉ (PER-273), par stat, avec l'objet
+ * source de chaque apport — le détail rendu dans l'infobulle « i » de la stat. Périmètre
+ * identique à celui des caracs (cf. `bonusSourcesFromEquipment`).
+ *
+ * Fonction pure, réutilisable telle quelle par l'écran de MJ.
+ */
+export function derivedBonusSourcesFromEquipment(
+  equipment: EquipmentLine[] = [],
+): Partial<Record<DerivedStatId, AbilityBonusItemSource[]>> {
+  return bonusSourcesFromEquipment<DerivedStatId>(equipment, 'derivedBonuses');
+}
+
+/**
+ * Apports de stats dérivées de l'équipement porté SOMMÉS par stat (PER-273) — un sac de
+ * `DerivedMods` prêt à être fusionné (`mergeMods`) avec ceux des capacités et des points
+ * orphelins : les objets ALIMENTENT la couche de modificateurs du moteur, ils ne la
+ * doublent pas. Réduction de `derivedBonusSourcesFromEquipment`.
+ *
+ * Ces apports n'ont AUCUN effet de règle au-delà de la stat visée : une ligne `def` ne
+ * réduit pas le malus d'armure (p. 188) et ne change pas le surcoût de mana des sorts en
+ * armure (p. 178) — cf. `ItemDerivedBonuses`, seul `magicDef` porte ces effets.
+ */
+export function derivedBonusesFromEquipment(
+  equipment: EquipmentLine[] = [],
+): Partial<Record<DerivedStatId, number>> {
+  return sumBonusSources(derivedBonusSourcesFromEquipment(equipment));
 }
 
 /** Effet combiné de l'armure portée sur la valeur d'AGI d'un test (PER-78 + PER-209). */

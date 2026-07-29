@@ -331,6 +331,28 @@ export type ItemType = 'weapon' | 'armor' | 'shield' | 'consumable' | 'gear' | '
  */
 export type ItemAbilityBonuses = Partial<Record<AbilityId, number>>;
 
+/**
+ * Apport de STATISTIQUES DÉRIVÉES d'un objet enchanté (PER-273) : une entrée par stat,
+ * valeur signée (positive = bonus, négative = malus). Ex. un anneau de protection
+ * `{ def: 1 }`, une amulette de vitalité `{ maxHp: 5 }`, un talisman `{ luckPoints: 1 }`.
+ *
+ * Jumeau de `ItemAbilityBonuses`, et propriété de l'INSTANCE pour les mêmes raisons.
+ * Les clés sont celles du sac de modificateurs du moteur (`DerivedMods`) : l'apport
+ * ALIMENTE cette couche au lieu de la doubler, donc il se cumule naturellement avec les
+ * bonus des voies. Une stat ne peut apparaître qu'UNE fois par objet (clé d'objet), ce qui
+ * est exactement la règle de saisie voulue (« une ligne par statistique »).
+ *
+ * Ne compte que lorsque l'objet est PORTÉ (`worn`) ; les apports de tous les objets portés
+ * se CUMULENT. Voir `derivedBonusesFromEquipment` (agrégation) et `characterDerivedView`
+ * (application). Une valeur 0 n'est jamais persistée (équivaut à l'absence de ligne).
+ *
+ * DISTINCT de `magicDef` (décision de conception PER-273 : on garde les deux). Une ligne
+ * `def` est un bonus de défense PUR — il n'entre ni dans la réduction du malus d'armure
+ * (p. 188), ni dans le surcoût de mana des sorts en armure (p. 178), deux effets de règle
+ * qui restent l'apanage de `magicDef` et de la seule armure de corps.
+ */
+export type ItemDerivedBonuses = Partial<Record<DerivedStatId, number>>;
+
 export interface EquipmentOverrides {
   name?: string;
   description?: string;
@@ -375,6 +397,12 @@ export interface EquipmentRef {
    * absent-safe → pas de bump de `schemaVersion` (même logique que `magicDef`).
    */
   abilityBonuses?: ItemAbilityBonuses;
+  /**
+   * Bonus/malus de STATISTIQUES DÉRIVÉES de cette instance d'objet enchanté (PER-273),
+   * actifs seulement quand l'objet est PORTÉ. Voir `ItemDerivedBonuses`. Champ additif
+   * optionnel absent-safe → pas de bump de `schemaVersion` (même logique que `magicDef`).
+   */
+  derivedBonuses?: ItemDerivedBonuses;
 }
 
 /**
@@ -419,6 +447,13 @@ export interface CustomItem {
    * structurée, pas une note libre.
    */
   abilityBonuses?: ItemAbilityBonuses;
+  /**
+   * Bonus/malus de STATISTIQUES DÉRIVÉES de cet objet libre enchanté (PER-273). Même
+   * sémantique que `EquipmentRef.derivedBonuses` : ne comptent que si l'objet est PORTÉ
+   * et se cumulent avec ceux des autres objets portés. Comme les apports de caracs, cette
+   * saisie structurée EST prise en compte par le moteur (≠ note libre `details`).
+   */
+  derivedBonuses?: ItemDerivedBonuses;
 }
 
 export type EquipmentLine = EquipmentRef | CustomItem;

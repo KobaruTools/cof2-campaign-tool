@@ -20,7 +20,7 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import { AppTooltip } from '@/components/AppTooltip';
-import type { ConditionalStatBonusEffect, DerivedStatId } from '@/data/schema';
+import type { ConditionalStatBonusEffect } from '@/data/schema';
 import { testDomainById } from '@/data';
 import type { Character } from '@/lib/character/types';
 import {
@@ -30,19 +30,9 @@ import {
   isEffectActive,
   isTemporaryActivationShortRestLocked,
 } from '@/lib/character/effects';
-
-/** Libellés courts (français) des stats dérivées, indexés par clé moteur. */
-const STAT_SHORT: Record<DerivedStatId, string> = {
-  maxHp: 'PV',
-  def: 'DEF',
-  initiative: 'Init.',
-  luckPoints: 'PC',
-  manaPoints: 'PM',
-  recoveryDiceCount: 'DR',
-  meleeAttack: 'Att. contact',
-  rangedAttack: 'Att. distance',
-  magicAttack: 'Att. magique',
-};
+// Libellés courts des stats dérivées (« +1 DEF ») — source unique partagée avec les badges
+// d'apport d'objet (PER-273).
+import { DERIVED_MOD_SHORT_NAMES as STAT_SHORT } from '@/lib/ui/derivedStats';
 
 /** Valeur signée à la française (− U+2212 pour le négatif), ex. « +1 », « −2 ». */
 const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);

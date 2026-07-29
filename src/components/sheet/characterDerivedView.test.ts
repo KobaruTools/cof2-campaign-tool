@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { featureById } from '@/data';
 import { deriveStats } from '@/lib/engine';
-import { SCHEMA_VERSION, type Character } from '@/lib/character/types';
+import {
+  SCHEMA_VERSION,
+  type Character,
+  type EquipmentLine,
+  type ItemDerivedBonuses,
+} from '@/lib/character/types';
+import { rulesContext } from '@/lib/character/rulesContext';
+import { spellArmorManaSurcharge } from '@/lib/character/manaSurcharge';
 import { buildCharacterDerivedView } from './characterDerivedView';
 
 function makeCharacter(over: Partial<Character> = {}): Character {
@@ -242,5 +250,126 @@ describe('objets enchantés : apport de caractéristiques (PER-272)', () => {
     const withoutBoots = deriveStats(buildCharacterDerivedView(plated).derivedInput!);
     const withBoots = deriveStats(buildCharacterDerivedView(platedBoots).derivedInput!);
     expect(withBoots.defense).toBe(withoutBoots.defense);
+  });
+});
+
+describe('objets enchantés : apport de statistiques dérivées (PER-273)', () => {
+  /** Objet libre porté en accessoire, avec les apports donnés. */
+  const trinket = (name: string, derivedBonuses: ItemDerivedBonuses): EquipmentLine => ({
+    custom: true,
+    name,
+    quantity: 1,
+    worn: { slot: 'accessory' },
+    derivedBonuses,
+  });
+
+  const statsOf = (over: Partial<Character> = {}) =>
+    deriveStats(buildCharacterDerivedView(makeCharacter(over)).derivedInput!);
+
+  it('un objet porté fait bouger la stat visée, et rien de plus', () => {
+    const bare = statsOf();
+    const ringed = statsOf({ equipment: [trinket('Anneau de protection', { def: 1 })] });
+    expect(ringed.defense).toBe(bare.defense + 1);
+    expect(ringed.maxHp).toBe(bare.maxHp);
+    expect(ringed.initiative).toBe(bare.initiative);
+  });
+
+  it('le même objet RANGÉ n’apporte rien (le déséquipement rend la valeur d’origine)', () => {
+    const bare = statsOf();
+    const stowed = statsOf({
+      equipment: [{ custom: true, name: 'Anneau de protection', quantity: 1, derivedBonuses: { def: 1 } }],
+    });
+    expect(stowed.defense).toBe(bare.defense);
+  });
+
+  it('couvre les neuf statistiques, malus compris, et CUMULE les objets portés', () => {
+    const bare = statsOf();
+    const loaded = statsOf({
+      equipment: [
+        trinket('Amulette de vitalité', { maxHp: 5, luckPoints: 1, recoveryDiceCount: 1 }),
+        trinket('Cape du voyageur', { initiative: 2, def: 1 }),
+        // Malus : la cape maudite retire de l'initiative et de la touche magique.
+        trinket('Cape maudite', { initiative: -1, magicAttack: -2 }),
+        trinket('Gantelets du duelliste', { meleeAttack: 1, rangedAttack: 1 }),
+      ],
+    });
+    expect(loaded.maxHp).toBe(bare.maxHp + 5);
+    expect(loaded.luckPoints).toBe(bare.luckPoints + 1);
+    expect(loaded.recoveryDiceCount).toBe(bare.recoveryDiceCount + 1);
+    expect(loaded.defense).toBe(bare.defense + 1);
+    // +2 puis −1 sur la même stat, portés par deux objets différents.
+    expect(loaded.initiative).toBe(bare.initiative + 1);
+    expect(loaded.magicAttack).toBe(bare.magicAttack - 2);
+    expect(loaded.meleeAttack).toBe(bare.meleeAttack + 1);
+    expect(loaded.rangedAttack).toBe(bare.rangedAttack + 1);
+  });
+
+  it("se CUMULE avec le bonus d'une capacité de voie sans le remplacer", () => {
+    // « Combattant aguerri » (arquebusier, voie du mercenaire r3, p. 64) : +1 DEF permanent.
+    const feature = { classId: 'arquebusier', level: 3, featureIds: ['mercenaire-r3'] };
+    const bare = statsOf();
+    const seasoned = statsOf(feature);
+    expect(seasoned.defense).toBe(bare.defense + 1);
+    const both = statsOf({ ...feature, equipment: [trinket('Anneau de protection', { def: 1 })] });
+    expect(both.defense).toBe(seasoned.defense + 1);
+  });
+
+  it('un apport aux PM ne CRÉE PAS de réserve de mana à qui n’en a pas (p. 42)', () => {
+    // Guerrier sans aucun sort : la réserve reste inexistante (null), l'apport n'y change rien.
+    const noMana = statsOf({ equipment: [trinket('Talisman de mana', { manaPoints: 5 })] });
+    expect(noMana.manaPoints).toBeNull();
+    // Magicien (au moins un sort connu) : là, l'apport s'ajoute bien à la réserve.
+    const mage = { classId: 'magicien', level: 1, featureIds: ['magie-des-arcanes-r1'] };
+    const bareMage = statsOf(mage);
+    expect(bareMage.manaPoints).not.toBeNull();
+    const manaMage = statsOf({ ...mage, equipment: [trinket('Talisman de mana', { manaPoints: 5 })] });
+    expect(manaMage.manaPoints).toBe(bareMage.manaPoints! + 5);
+  });
+
+  it('une ligne « Défense » laisse le SURCOÛT DE MANA en armure inchangé (p. 178)', () => {
+    // Le surcoût ne regarde que la DEF MONDAINE de l'armure de corps : un bonus de DEF
+    // apporté par un anneau (ou par l'armure elle-même) n'a pas à le renchérir.
+    const spell = featureById.get('magie-des-arcanes-r1')!;
+    const armor: EquipmentLine = { itemId: 'chemise-de-mailles', quantity: 1, worn: { slot: 'armor' } };
+    const plain = makeCharacter({ classId: 'magicien', featureIds: [spell.id], equipment: [armor] });
+    const boosted = makeCharacter({
+      classId: 'magicien',
+      featureIds: [spell.id],
+      equipment: [{ ...armor, derivedBonuses: { def: 3 } }, trinket('Anneau de protection', { def: 2 })],
+    });
+    expect(spellArmorManaSurcharge(boosted, rulesContext, spell)).toEqual(
+      spellArmorManaSurcharge(plain, rulesContext, spell),
+    );
+    // La défense, elle, monte bien des 5 points apportés par les deux objets.
+    expect(deriveStats(buildCharacterDerivedView(boosted).derivedInput!).defense).toBe(
+      deriveStats(buildCharacterDerivedView(plain).derivedInput!).defense + 5,
+    );
+  });
+
+  it('une ligne « Défense » n’est pas plafonnée par l’armure portée (≠ apport d’AGI)', () => {
+    // Plaque complète : plafond d'AGI 1, déjà atteint → un +2 AGI d'objet est absorbé (PER-272).
+    // Un apport DIRECT à la DEF, lui, agit en aval du plafond : il passe intégralement.
+    const plated: EquipmentLine[] = [{ itemId: 'plaque-complete', quantity: 1, worn: { slot: 'armor' } }];
+    const bare = statsOf({ equipment: plated });
+    const ringed = statsOf({ equipment: [...plated, trinket('Anneau de protection', { def: 2 })] });
+    expect(ringed.defense).toBe(bare.defense + 2);
+  });
+
+  it("expose le détail par objet pour l'infobulle, sans doubler le score", () => {
+    const view = buildCharacterDerivedView(
+      makeCharacter({
+        equipment: [
+          trinket('Anneau de protection', { def: 1 }),
+          trinket('Broche de garde', { def: 2, maxHp: 4 }),
+        ],
+      }),
+    );
+    expect(view.itemDerivedModSources.def).toEqual([
+      { label: 'Anneau de protection', value: 1 },
+      { label: 'Broche de garde', value: 2 },
+    ]);
+    expect(view.itemDerivedModSources.maxHp).toEqual([{ label: 'Broche de garde', value: 4 }]);
+    // Le total est FONDU une seule fois dans les mods du moteur (pas d'addition en double).
+    expect(view.derivedInput!.mods?.def).toBe(3);
   });
 });

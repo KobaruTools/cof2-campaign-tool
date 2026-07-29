@@ -94,12 +94,17 @@ export function buildSheetDisplayView(
   derived: CharacterDerivedView,
   maxHp?: number,
 ): SheetDisplayView {
-  const { modFeatureIds, effectContext, attackBonusModSources } = derived;
+  const { modFeatureIds, effectContext, attackBonusModSources, itemDerivedModSources } = derived;
 
+  // Sous-termes de breakdown qui ne viennent PAS d'une capacité : points de capacité orphelins
+  // convertis (p. 40), apports de stats dérivées des objets portés (PER-273) et bonus à la
+  // touche conditionnés à l'arme portée (PER-226). Tous déjà fondus dans le score.
   const extraModSources: ModSources = { ...orphanSourceTerms(character) };
-  for (const [key, list] of Object.entries(attackBonusModSources)) {
-    const k = key as keyof ModSources;
-    extraModSources[k] = [...(extraModSources[k] ?? []), ...(list ?? [])];
+  for (const bag of [itemDerivedModSources, attackBonusModSources]) {
+    for (const [key, list] of Object.entries(bag)) {
+      const k = key as keyof ModSources;
+      extraModSources[k] = [...(extraModSources[k] ?? []), ...(list ?? [])];
+    }
   }
 
   // Dés bonus « à TOUS les tests » injectés sur les 7 caracs → badge double-d20 sur chaque carac

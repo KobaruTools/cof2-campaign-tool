@@ -30,6 +30,10 @@ import {
   type EffectContext,
 } from '@/lib/character/effects';
 import { mergeMods, orphanMods } from '@/lib/character/orphanPoints';
+import {
+  derivedBonusSourcesFromEquipment,
+  derivedBonusesFromEquipment,
+} from '@/lib/character/equipment';
 import { mountedInitiativePenalty } from '@/lib/character/mounts';
 import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } from '@/lib/character/hp';
 import { rulesContext } from '@/lib/character/rulesContext';
@@ -178,6 +182,13 @@ export interface CharacterDerivedView {
    * « i » de la touche (aucun badge : interface légère, décision propriétaire).
    */
   attackBonusModSources: ModSources;
+  /**
+   * PER-273 — sous-termes de breakdown des apports de stats dérivées des OBJETS PORTÉS
+   * (anneau de protection, amulette de vitalité…). Le TOTAL est déjà FONDU dans
+   * `derivedInput.mods` (donc dans le score affiché) ; ceci ne sert qu'à l'attribution dans
+   * l'infobulle « i » de la stat, en libellé texte (la source est un objet, pas une capacité).
+   */
+  itemDerivedModSources: ModSources;
 }
 
 /**
@@ -303,6 +314,17 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // les mods (score) plus bas ; on garde le détail des sources pour l'infobulle de la touche.
   const meleeAttackBonus = weaponAttackBonuses(character, 'melee', meleeWorn);
   const rangedAttackBonus = weaponAttackBonuses(character, 'ranged', rangedWorn);
+  // Apports de stats dérivées des OBJETS PORTÉS (PER-273) : anneau +1 DEF, amulette +5 PV…
+  // Ils alimentent le MÊME sac de modificateurs que les capacités (fondus dans le score
+  // plus bas) ; on garde ici le détail par objet pour l'attribution dans l'infobulle « i ».
+  const itemDerivedBonuses = derivedBonusesFromEquipment(character.equipment);
+  const itemDerivedModSources: ModSources = {};
+  for (const [stat, sources] of Object.entries(derivedBonusSourcesFromEquipment(character.equipment))) {
+    itemDerivedModSources[stat as keyof ModSources] = sources.map((s) => ({
+      label: s.name,
+      value: s.value,
+    }));
+  }
   const attackBonusModSources: ModSources = {};
   if (meleeAttackBonus.sources.length)
     attackBonusModSources.meleeAttack = meleeAttackBonus.sources.map((s) => ({
@@ -356,9 +378,10 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         spellCount: modFeatureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
         manaAbility: manaCast.ability,
         // Bonus des capacités acquises (PER-63) + empruntées par choix (PER-66), fusionnés avec les
-        // points de capacité orphelins convertis (p. 40) ET les bonus à la touche conditionnés à
-        // l'arme portée (maître d'armes, PER-226) — fondus dans le score, détaillés dans l'infobulle.
-        mods: mergeMods(modsFromFeatures(modFeatureIds, effectCtx), orphanMods(character), {
+        // points de capacité orphelins convertis (p. 40), les apports de stats dérivées des OBJETS
+        // PORTÉS (PER-273) ET les bonus à la touche conditionnés à l'arme portée (maître d'armes,
+        // PER-226) — tous fondus dans le score, détaillés dans l'infobulle.
+        mods: mergeMods(modsFromFeatures(modFeatureIds, effectCtx), orphanMods(character), itemDerivedBonuses, {
           meleeAttack: meleeAttackBonus.total,
           rangedAttack: rangedAttackBonus.total,
           // Malus d'Initiative au CAVALIER d'une monture bardée « en selle » (PER-216) : négatif,
@@ -393,5 +416,6 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     rangedAttackElement: rangedAttackEl,
     rangedReplacingFormAttack: formAttackReplacingRanged,
     attackBonusModSources,
+    itemDerivedModSources,
   };
 }

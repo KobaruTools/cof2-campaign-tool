@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
@@ -23,19 +23,16 @@ import type { Theme } from '@mui/material/styles';
 import { equipment as equipmentCatalog, equipmentById } from '@/data';
 import {
   ABILITY_IDS,
+  DERIVED_STAT_IDS,
   WEAPON_CATEGORIES,
   type AbilityId,
   type DamageDie,
+  type DerivedStatId,
   type EquipmentItem,
   type WeaponCategory,
   type WeaponDamage,
 } from '@/data/schema';
-import type {
-  EquipmentLine,
-  EquipmentRef,
-  ItemAbilityBonuses,
-  ItemType,
-} from '@/lib/character/types';
+import type { EquipmentLine, EquipmentRef, ItemType } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import {
   ITEM_TYPE_ORDER,
@@ -44,7 +41,9 @@ import {
   type MechanicalCategory,
 } from '@/lib/character/items';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { DERIVED_MOD_DISPLAY_ID, DERIVED_MOD_NAMES } from '@/lib/ui/derivedStats';
 import { AbilityIcon } from '@/components/AbilityIcon';
+import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { DieIcon } from '@/components/DieIcon';
 import { SignedNumberField } from '@/components/SignedNumberField';
@@ -193,63 +192,84 @@ function WeaponDamageFields({
 }
 
 /**
- * Ligne de saisie d'un apport de caractéristique (PER-272) : UNE caractéristique + un score
- * signé. Le tableau de lignes est la forme d'ÉDITION (ordre d'ajout conservé) ; il est réduit
- * en `ItemAbilityBonuses` (clé → valeur) à la validation, ce qui interdit structurellement les
- * doublons de caractéristique.
+ * Ligne de saisie d'un apport d'objet enchanté : UNE clé (caractéristique, PER-272, ou
+ * statistique dérivée, PER-273) + un score signé. Le tableau de lignes est la forme
+ * d'ÉDITION (ordre d'ajout conservé) ; il est réduit en objet clé → valeur à la validation,
+ * ce qui interdit structurellement les doublons de clé.
  */
-interface AbilityBonusRow {
-  ability: AbilityId;
+interface BonusRow<Id extends string> {
+  key: Id;
   value: number;
 }
 
-/** Lignes d'édition depuis les apports persistés, dans l'ordre canonique des caracs. */
-function rowsFromBonuses(bonuses: ItemAbilityBonuses | undefined): AbilityBonusRow[] {
+/** Lignes d'édition depuis les apports persistés, dans l'ordre canonique des clés. */
+function rowsFromBonuses<Id extends string>(
+  ids: readonly Id[],
+  bonuses: Partial<Record<Id, number>> | undefined,
+): BonusRow<Id>[] {
   if (!bonuses) return [];
-  return ABILITY_IDS.filter((id) => bonuses[id]).map((id) => ({ ability: id, value: bonuses[id]! }));
+  return ids.filter((id) => bonuses[id]).map((id) => ({ key: id, value: bonuses[id]! }));
 }
 
 /**
- * Apports persistés depuis les lignes d'édition : les lignes à 0 sont ABANDONNÉES (une carac
+ * Apports persistés depuis les lignes d'édition : les lignes à 0 sont ABANDONNÉES (une clé
  * sans effet n'a rien à faire dans les données), et le résultat est `undefined` s'il ne reste
  * rien — le champ n'est alors simplement pas écrit sur la ligne d'inventaire.
  */
-function bonusesFromRows(rows: AbilityBonusRow[]): ItemAbilityBonuses | undefined {
-  const out: ItemAbilityBonuses = {};
+function bonusesFromRows<Id extends string>(
+  rows: BonusRow<Id>[],
+): Partial<Record<Id, number>> | undefined {
+  const out: Partial<Record<Id, number>> = {};
   for (const row of rows) {
     if (!row.value) continue;
-    out[row.ability] = row.value;
+    out[row.key] = row.value;
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /**
- * Saisie des bonus/malus de CARACTÉRISTIQUES d'un objet enchanté (PER-272), par LIGNES : une
- * ligne = une caractéristique + un score signé. On peut ajouter autant de lignes qu'il reste
- * de caractéristiques libres (7 au maximum) ; une caractéristique déjà prise disparaît des
- * sélecteurs des autres lignes, donc jamais deux lignes pour la même carac. Disponible sur
- * TOUT type d'objet (comme la DEF magique) : anneau, cape, bottes ou arme enchantée.
+ * Saisie des bonus/malus d'un objet enchanté, par LIGNES : une ligne = une clé + un score
+ * signé. Coquille commune aux apports de CARACTÉRISTIQUES (PER-272) et de STATISTIQUES
+ * DÉRIVÉES (PER-273), dont l'ergonomie est volontairement identique. On peut ajouter autant
+ * de lignes qu'il reste de clés libres ; une clé déjà prise disparaît des sélecteurs des
+ * autres lignes, donc jamais deux lignes pour la même. Disponible sur TOUT type d'objet
+ * (comme la DEF magique) : anneau, cape, bottes ou arme enchantée.
  */
-function AbilityBonusRows({
+function BonusRows<Id extends string>({
+  ids,
+  title,
+  selectLabel,
+  fullMessage,
+  renderOption,
   rows,
   onChange,
 }: {
-  rows: AbilityBonusRow[];
-  onChange: (rows: AbilityBonusRow[]) => void;
+  /** Clés proposées, dans l'ordre canonique. */
+  ids: readonly Id[];
+  /** Intitulé de la section (français). */
+  title: string;
+  /** Libellé du sélecteur de clé (français). */
+  selectLabel: string;
+  /** Message affiché quand toutes les clés sont déjà prises. */
+  fullMessage: string;
+  /** Rendu d'une option du sélecteur (icône + libellé). */
+  renderOption: (id: Id) => ReactNode;
+  rows: BonusRow<Id>[];
+  onChange: (rows: BonusRow<Id>[]) => void;
 }) {
-  const used = new Set(rows.map((r) => r.ability));
-  const firstFree = ABILITY_IDS.find((id) => !used.has(id));
-  const setRow = (index: number, next: Partial<AbilityBonusRow>) =>
+  const used = new Set(rows.map((r) => r.key));
+  const firstFree = ids.find((id) => !used.has(id));
+  const setRow = (index: number, next: Partial<BonusRow<Id>>) =>
     onChange(rows.map((r, i) => (i === index ? { ...r, ...next } : r)));
   return (
     <Box>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-        Bonus de caractéristiques
+        {title}
       </Typography>
       <Stack spacing={1}>
         {rows.map((row, i) => (
           <Stack
-            key={row.ability}
+            key={row.key}
             direction="row"
             spacing={1}
             sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}
@@ -257,21 +277,22 @@ function AbilityBonusRows({
             <TextField
               select
               size="small"
-              label="Caractéristique"
-              value={row.ability}
-              onChange={(e) => setRow(i, { ability: e.target.value as AbilityId })}
+              label={selectLabel}
+              value={row.key}
+              onChange={(e) => setRow(i, { key: e.target.value as Id })}
               sx={{ flex: '1 1 190px', minWidth: 150 }}
             >
-              {/* Caracs proposées = celles qui ne sont pas déjà prises par une AUTRE ligne
-                  (la carac courante reste sélectionnable, sinon le champ paraîtrait vide). */}
-              {ABILITY_IDS.filter((id) => id === row.ability || !used.has(id)).map((id) => (
-                <MenuItem key={id} value={id}>
-                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
-                    <AbilityIcon ability={id} size={18} />
-                    {id} — {ABILITY_NAMES[id]}
-                  </Box>
-                </MenuItem>
-              ))}
+              {/* Clés proposées = celles qui ne sont pas déjà prises par une AUTRE ligne
+                  (la clé courante reste sélectionnable, sinon le champ paraîtrait vide). */}
+              {ids
+                .filter((id) => id === row.key || !used.has(id))
+                .map((id) => (
+                  <MenuItem key={id} value={id}>
+                    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+                      {renderOption(id)}
+                    </Box>
+                  </MenuItem>
+                ))}
             </TextField>
             {/* Score SIGNÉ : les boutons − / + rendent le malus atteignable sans clavier
                 (les claviers mobiles `type=number` n'exposent pas le signe moins). */}
@@ -297,14 +318,14 @@ function AbilityBonusRows({
         size="small"
         startIcon={<AddIcon />}
         disabled={firstFree === undefined}
-        onClick={() => firstFree && onChange([...rows, { ability: firstFree, value: 1 }])}
+        onClick={() => firstFree && onChange([...rows, { key: firstFree, value: 1 }])}
         sx={{ textTransform: 'none', mt: rows.length ? 1 : 0 }}
       >
         Ajouter une ligne
       </Button>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
         {firstFree === undefined
-          ? 'Les 7 caractéristiques sont déjà couvertes.'
+          ? fullMessage
           : 'Score positif (bonus) ou négatif (malus), pris en compte quand l’objet est équipé.'}
       </Typography>
     </Box>
@@ -323,7 +344,9 @@ interface FormState {
   maxAgi: string; // vide = pas de plafond (null)
   magicDef: string; // bonus de DEF magique, tout type d'objet (PER-85 généralisé)
   /** Apports de caractéristiques en lignes (PER-272), tout type d'objet. */
-  abilityBonuses: AbilityBonusRow[];
+  abilityBonuses: BonusRow<AbilityId>[];
+  /** Apports de statistiques dérivées en lignes (PER-273), tout type d'objet. */
+  derivedBonuses: BonusRow<DerivedStatId>[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -337,6 +360,7 @@ const EMPTY_FORM: FormState = {
   maxAgi: '',
   magicDef: '',
   abilityBonuses: [],
+  derivedBonuses: [],
 };
 
 /** Pré-remplit le formulaire à partir d'un objet du livre (valeurs par défaut du catalogue). */
@@ -368,7 +392,8 @@ function formFromLine(line: EquipmentLine): FormState {
       name: line.name,
       description: line.details ?? '',
       magicDef: line.magicDef ? String(line.magicDef) : '',
-      abilityBonuses: rowsFromBonuses(line.abilityBonuses),
+      abilityBonuses: rowsFromBonuses(ABILITY_IDS, line.abilityBonuses),
+      derivedBonuses: rowsFromBonuses(DERIVED_STAT_IDS, line.derivedBonuses),
     };
   }
   const item = effectiveItem(line);
@@ -394,7 +419,8 @@ function formFromLine(line: EquipmentLine): FormState {
   // catalogue) ; celle d'une variante de matériel passe déjà par `effectiveItem`.
   base.description = line.overrides?.description ?? (item?.category === 'gear' ? item.description ?? '' : '');
   base.magicDef = line.magicDef ? String(line.magicDef) : '';
-  base.abilityBonuses = rowsFromBonuses(line.abilityBonuses);
+  base.abilityBonuses = rowsFromBonuses(ABILITY_IDS, line.abilityBonuses);
+  base.derivedBonuses = rowsFromBonuses(DERIVED_STAT_IDS, line.derivedBonuses);
   return base;
 }
 
@@ -479,6 +505,10 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
     // Apports de caractéristiques (PER-272) : mêmes règles pour une variante mécanique et pour
     // un objet libre — l'apport est une propriété de l'INSTANCE, pas du catalogue.
     const abilityBonuses = bonusesFromRows(form.abilityBonuses);
+    // Apports de stats dérivées (PER-273) : même règle d'instance. Une ligne « Défense » est un
+    // bonus de DEF PUR, distinct de la DEF magique ci-dessus (qui, elle, réduit aussi le malus
+    // d'armure p. 188) — les deux coexistent et se cumulent.
+    const derivedBonuses = bonusesFromRows(form.derivedBonuses);
     if (mechanical && baseId) {
       const overrides = snapshotOverrides(type, {
         name: trimmedName,
@@ -501,6 +531,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         overrides,
         ...(magic > 0 ? { magicDef: magic } : {}),
         ...(abilityBonuses ? { abilityBonuses } : {}),
+        ...(derivedBonuses ? { derivedBonuses } : {}),
       };
       onConfirm(line);
     } else {
@@ -513,6 +544,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         details: form.description.trim() || undefined,
         ...(magic > 0 ? { magicDef: magic } : {}),
         ...(abilityBonuses ? { abilityBonuses } : {}),
+        ...(derivedBonuses ? { derivedBonuses } : {}),
       });
     }
   };
@@ -702,9 +734,39 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
               {/* Bonus/malus de CARACTÉRISTIQUES (PER-272), par lignes : même famille que la DEF
                   magique (propriété de l'instance enchantée, pas du catalogue), donc disponible
                   sur TOUT type d'objet. Ne comptent que si l'objet est équipé. */}
-              <AbilityBonusRows
+              <BonusRows
+                ids={ABILITY_IDS}
+                title="Bonus de caractéristiques"
+                selectLabel="Caractéristique"
+                fullMessage="Les 7 caractéristiques sont déjà couvertes."
+                renderOption={(id) => (
+                  <>
+                    <AbilityIcon ability={id} size={18} />
+                    {id} — {ABILITY_NAMES[id]}
+                  </>
+                )}
                 rows={form.abilityBonuses}
                 onChange={(rows) => setField('abilityBonuses', rows)}
+              />
+
+              {/* Bonus/malus de STATISTIQUES DÉRIVÉES (PER-273), par lignes : même mécanique que
+                  ci-dessus, appliquée directement à la stat (DEF, PV, initiative…) au lieu de la
+                  caractéristique. Une ligne « Défense » est un bonus de DEF PUR — la « DEF
+                  magique » au-dessus reste le canal de l'enchantement d'armure (elle réduit
+                  aussi le malus d'armure, p. 188). */}
+              <BonusRows
+                ids={DERIVED_STAT_IDS}
+                title="Bonus de statistiques dérivées"
+                selectLabel="Statistique"
+                fullMessage="Les 9 statistiques dérivées sont déjà couvertes."
+                renderOption={(id) => (
+                  <>
+                    <DerivedStatIcon statId={DERIVED_MOD_DISPLAY_ID[id]} size={18} />
+                    {DERIVED_MOD_NAMES[id]}
+                  </>
+                )}
+                rows={form.derivedBonuses}
+                onChange={(rows) => setField('derivedBonuses', rows)}
               />
 
               {/* Stat de bouclier : DEF seule. */}

@@ -43,8 +43,14 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { equipment as equipmentCatalog } from '@/data';
 import type { CharacterClass, EquipmentItem } from '@/data/schema';
-import { ABILITY_IDS } from '@/data/schema';
-import type { EquipmentLine, ItemAbilityBonuses, ItemType, WornState } from '@/lib/character/types';
+import { ABILITY_IDS, DERIVED_STAT_IDS } from '@/data/schema';
+import type {
+  EquipmentLine,
+  ItemAbilityBonuses,
+  ItemDerivedBonuses,
+  ItemType,
+  WornState,
+} from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 import { effectiveItem, groupEquipmentByType, itemType, reorderEquipment } from '@/lib/character/items';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
@@ -54,8 +60,14 @@ import { isConsumable } from '@/lib/character/consumables';
 import { isStartingChoiceLine } from '@/lib/character/startingChoices';
 import { COIN_POUCH_ITEM_NAME } from '@/data/progression';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import {
+  DERIVED_MOD_DISPLAY_ID,
+  DERIVED_MOD_NAMES,
+  DERIVED_MOD_SHORT_NAMES,
+} from '@/lib/ui/derivedStats';
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { AbilityIcon } from '@/components/AbilityIcon';
+import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { ItemDialog, ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
@@ -154,53 +166,120 @@ function MagicDefBadge({ value }: { value: number }) {
 }
 
 /**
+ * Pastille d'un apport signé d'objet enchanté (caractéristique PER-272, statistique dérivée
+ * PER-273) : icône + score signé + libellé court. Même langage visuel que `MagicDefBadge`
+ * (pastille custom, ≠ Chip MUI), mais teintée par le SIGNE : un malus se lit en « warning »
+ * pour qu'un objet maudit ne passe pas pour un bonus. L'info-bulle rappelle la condition
+ * (l'objet doit être équipé).
+ */
+function ItemBonusBadge({
+  value,
+  icon,
+  label,
+  tooltip,
+}: {
+  value: number;
+  icon: ReactNode;
+  label: string;
+  tooltip: ReactNode;
+}) {
+  const positive = value > 0;
+  return (
+    <AppTooltip title={tooltip}>
+      <Box
+        component="span"
+        sx={(theme) => {
+          const color = positive ? theme.palette.secondary.main : theme.palette.warning.main;
+          return {
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.25,
+            verticalAlign: 'baseline',
+            ml: 0.75,
+            px: 0.6,
+            borderRadius: 0.75,
+            fontWeight: 700,
+            fontSize: '0.72rem',
+            lineHeight: 1.4,
+            whiteSpace: 'nowrap',
+            cursor: 'help',
+            color,
+            bgcolor: alpha(color, 0.12),
+            border: `1px solid ${alpha(color, 0.45)}`,
+          };
+        }}
+      >
+        {icon}
+        {positive ? '+' : '−'}
+        {Math.abs(value)} {label}
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
  * Badges des bonus/malus de CARACTÉRISTIQUES d'un objet enchanté (PER-272) : une pastille par
- * caractéristique (icône de la carac + score signé), dans l'ordre canonique. Même langage
- * visuel que `MagicDefBadge` (pastille custom, ≠ Chip MUI), mais teintée par le SIGNE : un
- * malus se lit en « warning » pour qu'un objet maudit ne passe pas pour un bonus. L'info-bulle
- * rappelle la condition (l'objet doit être équipé).
+ * caractéristique, dans l'ordre canonique.
  */
 function AbilityBonusBadges({ bonuses }: { bonuses: ItemAbilityBonuses }) {
   return (
     <>
       {ABILITY_IDS.filter((id) => bonuses[id]).map((id) => {
         const value = bonuses[id]!;
-        const positive = value > 0;
         return (
-          <AppTooltip
+          <ItemBonusBadge
             key={id}
-            title={`${positive ? 'Bonus' : 'Malus'} de ${ABILITY_NAMES[id]} (${
-              positive ? '+' : '−'
+            value={value}
+            label={id}
+            icon={<AbilityIcon ability={id} size={13} color="currentColor" />}
+            tooltip={`${value > 0 ? 'Bonus' : 'Malus'} de ${ABILITY_NAMES[id]} (${
+              value > 0 ? '+' : '−'
             }${Math.abs(value)}) apporté par cet objet : compte tant qu’il est équipé, et se répercute sur tout ce qui découle de la caractéristique (DEF, PV, initiative, tests…).`}
-          >
-            <Box
-              component="span"
-              sx={(theme) => {
-                const color = positive ? theme.palette.secondary.main : theme.palette.warning.main;
-                return {
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 0.25,
-                  verticalAlign: 'baseline',
-                  ml: 0.75,
-                  px: 0.6,
-                  borderRadius: 0.75,
-                  fontWeight: 700,
-                  fontSize: '0.72rem',
-                  lineHeight: 1.4,
-                  whiteSpace: 'nowrap',
-                  cursor: 'help',
-                  color,
-                  bgcolor: alpha(color, 0.12),
-                  border: `1px solid ${alpha(color, 0.45)}`,
-                };
-              }}
-            >
-              <AbilityIcon ability={id} size={13} color="currentColor" />
-              {positive ? '+' : '−'}
-              {Math.abs(value)} {id}
-            </Box>
-          </AppTooltip>
+          />
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * Badges des bonus/malus de STATISTIQUES DÉRIVÉES d'un objet enchanté (PER-273) : une
+ * pastille par stat touchée (DEF, PV, initiative…), dans l'ordre canonique. L'apport agit
+ * DIRECTEMENT sur la stat, comme un bonus de voie. Cas particulier de la Défense : l'apport
+ * est un bonus de DEF pur, à ne pas confondre avec la DEF magique de l'objet (`MagicDefBadge`),
+ * seule à réduire le malus d'armure et à rester hors du surcoût de mana.
+ */
+function DerivedBonusBadges({ bonuses }: { bonuses: ItemDerivedBonuses }) {
+  return (
+    <>
+      {DERIVED_STAT_IDS.filter((id) => bonuses[id]).map((id) => {
+        const value = bonuses[id]!;
+        const sign = value > 0 ? '+' : '−';
+        return (
+          <ItemBonusBadge
+            key={id}
+            value={value}
+            label={DERIVED_MOD_SHORT_NAMES[id]}
+            icon={
+              <DerivedStatIcon
+                statId={DERIVED_MOD_DISPLAY_ID[id]}
+                size={13}
+                color="currentColor"
+                sx={{ border: 'none' }}
+              />
+            }
+            tooltip={
+              id === 'def' ? (
+                <PageRefText>
+                  {`${value > 0 ? 'Bonus' : 'Malus'} de Défense (${sign}${Math.abs(value)}) apporté par cet objet tant qu’il est équipé. Bonus de DEF pur : contrairement à la DEF magique, il ne réduit pas le malus d’armure (p. 188) et n’entre pas dans le surcoût de mana des sorts en armure (p. 178).`}
+                </PageRefText>
+              ) : (
+                `${value > 0 ? 'Bonus' : 'Malus'} de ${DERIVED_MOD_NAMES[id]} (${sign}${Math.abs(
+                  value,
+                )}) apporté par cet objet : compte tant qu’il est équipé et s’ajoute à la statistique, comme un bonus de voie.`
+              )
+            }
+          />
         );
       })}
     </>
@@ -714,6 +793,9 @@ export function EquipmentList({
     // Bonus/malus de caractéristiques de l'objet enchanté (PER-272), badgés à côté du nom :
     // ils ne comptent que si l'objet est équipé, comme la DEF magique.
     const abilityBonuses = line.abilityBonuses;
+    // Bonus/malus de stats dérivées de l'objet enchanté (PER-273), badgés à côté du nom :
+    // même condition de port que les apports de caracs.
+    const derivedBonuses = line.derivedBonuses;
     // Objet équipable dans un emplacement DÉDIÉ (armure, bouclier, main) : ouvre aussi le
     // crayon d'édition « variante mécanique ».
     const equippable =
@@ -725,8 +807,9 @@ export function EquipmentList({
     //    instrument, sac à dos, carquois…) ;
     //  - tout objet portant un bonus de DEF MAGIQUE (anneau/cape enchantés, objet libre
     //    compris — PER-85), qui doit pouvoir être porté pour compter ;
-    //  - tout objet portant un apport de CARACTÉRISTIQUES (PER-272), pour la même raison
-    //    (des bottes de vivacité n'ont d'effet qu'aux pieds).
+    //  - tout objet portant un apport de CARACTÉRISTIQUES (PER-272) ou de STATISTIQUES
+    //    DÉRIVÉES (PER-273), pour la même raison (des bottes de vivacité n'ont d'effet
+    //    qu'aux pieds, un anneau de protection qu'au doigt).
     // Le reste du matériel (corde, ration…) et les placeholders de choix ne sont plus
     // « équipables » : fini le bouton « Équiper » inutile sur chaque ligne.
     const wearable =
@@ -736,7 +819,8 @@ export function EquipmentList({
           item.category === 'shield' ||
           (item.category === 'gear' && !!item.equipSlot))) ||
       !!line.magicDef ||
-      !!line.abilityBonuses;
+      !!line.abilityBonuses ||
+      !!line.derivedBonuses;
     // Arme à poudre INDISPONIBLE (PER-185, retour PER-93) : autorisation effective des armes
     // à feu à `false` (campagne « pas d'arme à feu » ou choix du joueur). La ligne est grisée
     // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
@@ -791,6 +875,7 @@ export function EquipmentList({
         )}
         {magicDef ? <MagicDefBadge value={magicDef} /> : null}
         {abilityBonuses ? <AbilityBonusBadges bonuses={abilityBonuses} /> : null}
+        {derivedBonuses ? <DerivedBonusBadges bonuses={derivedBonuses} /> : null}
         {/* Bascule œil : épingle la description sous le titre (état d'affichage local). */}
         {description && (
           <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>

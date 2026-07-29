@@ -5,6 +5,8 @@ import {
   agiTestArmorAdjustment,
   armorEncumbrancePenalty,
   autoEquipStartingGear,
+  derivedBonusSourcesFromEquipment,
+  derivedBonusesFromEquipment,
   equipConflicts,
   isHeavyArmorWorn,
   setWornAt,
@@ -547,5 +549,132 @@ describe('abilityBonusesFromEquipment (apports de caractéristiques des objets, 
   it('accepte un inventaire absent ou vide', () => {
     expect(abilityBonusesFromEquipment()).toEqual({});
     expect(abilityBonusesFromEquipment([])).toEqual({});
+  });
+});
+
+describe('derivedBonusesFromEquipment (apports de stats dérivées des objets, PER-273)', () => {
+  it("ne compte que les objets PORTÉS (le sac n'apporte rien)", () => {
+    const lines: EquipmentLine[] = [
+      {
+        custom: true,
+        name: 'Anneau de protection',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        derivedBonuses: { def: 1 },
+      },
+      { custom: true, name: 'Amulette rangée', quantity: 1, derivedBonuses: { maxHp: 5 } },
+    ];
+    expect(derivedBonusesFromEquipment(lines)).toEqual({ def: 1 });
+  });
+
+  it('CUMULE les apports de tous les objets portés, sur la même stat comme sur des stats différentes', () => {
+    const lines: EquipmentLine[] = [
+      {
+        custom: true,
+        name: 'Anneau de protection',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        derivedBonuses: { def: 1 },
+      },
+      {
+        custom: true,
+        name: 'Amulette de vitalité',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        derivedBonuses: { def: 2, maxHp: 5, luckPoints: 1 },
+      },
+    ];
+    expect(derivedBonusesFromEquipment(lines)).toEqual({ def: 3, maxHp: 5, luckPoints: 1 });
+  });
+
+  it('gère les MALUS (score négatif) et leur compensation par un bonus', () => {
+    const lines: EquipmentLine[] = [
+      {
+        custom: true,
+        name: 'Cape alourdie',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        derivedBonuses: { initiative: -3, maxHp: 4 },
+      },
+      {
+        custom: true,
+        name: 'Bottes ailées',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        derivedBonuses: { initiative: 1 },
+      },
+    ];
+    expect(derivedBonusesFromEquipment(lines)).toEqual({ initiative: -2, maxHp: 4 });
+  });
+
+  it("porte l'apport sur une VARIANTE d'objet du livre comme sur un objet libre", () => {
+    const lines: EquipmentLine[] = [
+      {
+        itemId: 'epee-longue',
+        quantity: 1,
+        worn: { slot: 'mainHand' },
+        overrides: { name: 'Lame du bretteur' },
+        derivedBonuses: { meleeAttack: 1 },
+      },
+    ];
+    expect(derivedBonusesFromEquipment(lines)).toEqual({ meleeAttack: 1 });
+    // Le détail nomme la VARIANTE (`overrides.name`), pas l'objet du catalogue.
+    expect(derivedBonusSourcesFromEquipment(lines).meleeAttack).toEqual([
+      { name: 'Lame du bretteur', value: 1 },
+    ]);
+  });
+
+  it('ignore un apport à 0 et une ligne sans apport (aucun terme parasite dans le détail)', () => {
+    const lines: EquipmentLine[] = [
+      { custom: true, name: 'Babiole', quantity: 1, worn: { slot: 'accessory' }, derivedBonuses: { def: 0 } },
+      { custom: true, name: 'Corde', quantity: 1, worn: { slot: 'accessory' } },
+    ];
+    expect(derivedBonusesFromEquipment(lines)).toEqual({});
+    expect(derivedBonusSourcesFromEquipment(lines)).toEqual({});
+  });
+
+  it('liste chaque objet source par stat, dans l’ordre de l’inventaire', () => {
+    const lines: EquipmentLine[] = [
+      {
+        custom: true,
+        name: 'Anneau de protection',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        derivedBonuses: { def: 1 },
+      },
+      {
+        custom: true,
+        name: 'Broche de garde',
+        quantity: 1,
+        worn: { slot: 'accessory' },
+        derivedBonuses: { def: 2 },
+      },
+    ];
+    expect(derivedBonusSourcesFromEquipment(lines).def).toEqual([
+      { name: 'Anneau de protection', value: 1 },
+      { name: 'Broche de garde', value: 2 },
+    ]);
+  });
+
+  it("est INDÉPENDANT de la DEF magique : les deux canaux coexistent sur le même objet", () => {
+    // Décision de conception PER-273 : `magicDef` (enchantement d'armure, qui réduit aussi le
+    // malus d'armure p. 188) et la ligne `def` (bonus de DEF pur) sont deux apports distincts.
+    const lines: EquipmentLine[] = [
+      {
+        itemId: 'cuir-simple',
+        quantity: 1,
+        worn: { slot: 'armor' },
+        magicDef: 2,
+        derivedBonuses: { def: 1 },
+      },
+    ];
+    expect(derivedBonusesFromEquipment(lines)).toEqual({ def: 1 });
+    // La ligne `def` n'entre PAS dans le malus d'armure : cuir simple DEF 2, magicDef 2 → 0.
+    expect(armorEncumbrancePenalty(lines)).toBe(0);
+  });
+
+  it('accepte un inventaire absent ou vide', () => {
+    expect(derivedBonusesFromEquipment()).toEqual({});
+    expect(derivedBonusesFromEquipment([])).toEqual({});
   });
 });
