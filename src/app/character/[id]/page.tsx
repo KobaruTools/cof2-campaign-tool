@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useEffect, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DoneIcon from '@mui/icons-material/Done';
@@ -60,6 +60,8 @@ import { isMountMounted, listOwnedMounts } from '@/lib/character/mounts';
 import type { FeatureChoiceSelection } from '@/lib/character/types';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { AppHeader } from '@/components/AppHeader';
+import { SessionLiveBar } from '@/components/session/SessionLiveBar';
+import type { SessionIdentity } from '@/lib/session/useSessionChannel';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -174,6 +176,22 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     if (characterCampaignId) void loadPlayers(characterCampaignId);
   }, [characterCampaignId, loadPlayers]);
+  // Identité de présence du SPECTATEUR sur le canal de session (PER-265) : le joueur
+  // de la session (avec son nom de roster) ou le MJ. `null` hors campagne → pas de
+  // canal. Sert à ce que le spectateur reste « connecté » tant qu'il consulte cette
+  // fiche (pas seulement sur /play), et à afficher les présents ici aussi.
+  const sessionIdentity = useMemo<SessionIdentity | null>(() => {
+    if (!characterCampaignId) return null;
+    if (isPlayer) {
+      if (!sessionPlayerId) return null;
+      const rosterName =
+        playersCampaignId === characterCampaignId
+          ? players.find((p) => p.id === sessionPlayerId)?.name
+          : undefined;
+      return { kind: 'player', playerId: sessionPlayerId, name: rosterName ?? 'Joueur' };
+    }
+    return { kind: 'gm', playerId: null, name: 'MJ' };
+  }, [characterCampaignId, isPlayer, sessionPlayerId, playersCampaignId, players]);
   // Édition par bloc : chaque bloc a son propre scope, activable via son crayon.
   const [editingBlocks, setEditingBlocks] = useState<Record<EditBlock, boolean>>(NO_EDIT);
   const allEditing = EDIT_BLOCKS.every((k) => editingBlocks[k]);
@@ -588,6 +606,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           le footer. */}
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Stack spacing={3}>
+          {/* Session synchronisée (PER-264/PER-265) : badge « en cours » + présence
+              live. N'affiche rien hors session. Maintient aussi la présence du
+              spectateur — le joueur reste connecté tant qu'il consulte sa fiche, pas
+              seulement sur /play. */}
+          <SessionLiveBar campaignId={character.campaignId} identity={sessionIdentity} />
           {/* Bandeau lecture seule (PER-196) : session joueur consultant la fiche
               d'un colistier. Consultable (RLS roster) mais non éditable. */}
           {readOnly && (
