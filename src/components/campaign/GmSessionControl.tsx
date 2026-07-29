@@ -25,15 +25,25 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { useToast } from '@/components/toast/ToastProvider';
+import { SessionPresence } from '@/components/session/SessionPresence';
 import { endSession, startSession } from '@/lib/session/repo';
 import { useActiveSession } from '@/lib/session/useActiveSession';
+import { useSessionChannel } from '@/lib/session/useSessionChannel';
 
 export interface GmSessionControlProps {
   campaignId: string;
 }
 
+/** Identité MJ sur le canal : propriétaire de la campagne, sans joueur de roster. */
+const GM_IDENTITY = { kind: 'gm', playerId: null, name: 'MJ' } as const;
+
 export function GmSessionControl({ campaignId }: GmSessionControlProps) {
-  const { isActive, loading, refresh } = useActiveSession(campaignId, { heartbeat: true });
+  const { session, isActive, loading, refresh } = useActiveSession(campaignId, {
+    heartbeat: true,
+  });
+  // Rejoint le canal de session (présence) tant qu'une session est active. Le MJ est
+  // toujours « lui-même » (`selfKey = 'gm'`).
+  const { present } = useSessionChannel(campaignId, session, GM_IDENTITY);
   const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -121,6 +131,12 @@ export function GmSessionControl({ campaignId }: GmSessionControlProps) {
         >
           Démarrer la session
         </Button>
+      )}
+      {/* Présence live : qui est connecté à la session (nouvelle ligne pleine largeur). */}
+      {isActive && present.length > 0 && (
+        <Box sx={{ width: '100%' }}>
+          <SessionPresence present={present} selfKey="gm" />
+        </Box>
       )}
     </Paper>
   );

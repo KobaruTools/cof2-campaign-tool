@@ -455,6 +455,11 @@ export type Database = {
           started_at: string
         }[]
       }
+      session_participant_join: { Args: { cid: string }; Returns: string | null }
+      session_participant_leave: {
+        Args: { participant_id: string }
+        Returns: undefined
+      }
       touch_game_session: { Args: { cid: string }; Returns: undefined }
       touch_player_presence: { Args: never; Returns: undefined }
     }
