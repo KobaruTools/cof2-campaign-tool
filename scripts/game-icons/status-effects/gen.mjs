@@ -20,20 +20,25 @@ const out = `// FICHIER GÉNÉRÉ — ne pas éditer à la main.
 // Source : game-icons.net (https://game-icons.net), licence CC BY 3.0.
 // Voir NOTICE.md à la racine pour l'attribution. Régénérer : scripts/game-icons/status-effects.
 //
-// Icônes des IMMUNITÉS D'ÉTAT (peur, charme/possession, ralenti, immobilisé, sommeil
-// magique — cf. \`IMMUNITY_IDS\`). Pur UI, hors règles CO2. Le markup interne est nettoyé
-// (fond retiré, couleur neutralisée) pour hériter de \`currentColor\`. L'affichage passe
-// par le composant <StatusEffectIcon>, utilisé dans les puces d'immunité de la carte Défense.
+// Icônes des ÉTATS DE COMBAT — deux usages qui partagent le même jeu d'icônes :
+//  - les IMMUNITÉS D'ÉTAT (peur, charme/possession, sommeil magique… cf. \`ImmunityId\`),
+//    puces de la carte Défense ;
+//  - les ÉTATS PRÉJUDICIABLES du glossaire (aveuglé, affaibli, étourdi, invalide… cf.
+//    \`StatusEffectId\`), palette du Combat Tracker (PER-279).
+// Les deux espaces d'ids se recoupent (ralenti, immobilisé, paralysé, renversé, surpris) ;
+// la clé est donc l'UNION \`ImmunityId | StatusEffectId\`. Pur UI, hors règles CO2. Le markup
+// interne est nettoyé (fond retiré, couleur neutralisée) pour hériter de \`currentColor\`.
+// L'affichage passe par le composant <StatusEffectIcon>.
 
-import type { ImmunityId } from '@/data/schema';
+import type { ImmunityId, StatusEffectId } from '@/data/schema';
 
-/** Markup SVG interne (sans la balise <svg>) de l'icône d'une immunité d'état, indexé par id. */
-export const STATUS_EFFECT_ICON_PATHS: Record<ImmunityId, string> = {
+/** Markup SVG interne (sans la balise <svg>) de l'icône d'un état de combat, indexé par id. */
+export const STATUS_EFFECT_ICON_PATHS: Record<ImmunityId | StatusEffectId, string> = {
 ${rows.map(([id]) => `  ${JSON.stringify(id)}: ${JSON.stringify(paths[id])},`).join('\n')}
 };
 
 /** Fichier game-icons.net source de chaque icône (pour audit / attribution). */
-export const STATUS_EFFECT_ICON_SOURCES: Record<ImmunityId, string> = {
+export const STATUS_EFFECT_ICON_SOURCES: Record<ImmunityId | StatusEffectId, string> = {
 ${rows.map(([id]) => `  ${JSON.stringify(id)}: ${JSON.stringify(sources[id])},`).join('\n')}
 };
 `;

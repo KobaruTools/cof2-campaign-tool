@@ -277,14 +277,15 @@ dans `DAMAGE_TYPE_ICON_SOURCES` (même fichier) et dans
 | Armes non bénies | `lorc/holy-symbol.svg` | Lorc |
 | Armes | `lorc/broadsword.svg` | Lorc |
 
-## Icônes des immunités d'état
+## Icônes des états de combat
 
-Les icônes des immunités d'état (peur, charme/possession, ralenti, immobilisé, sommeil
-magique, paralysé, renversé, surpris) proviennent également de
-[game-icons.net](https://game-icons.net), sous licence
+Les icônes des états de combat — immunités d'état (peur, charme/possession, ralenti,
+immobilisé, sommeil magique, paralysé, renversé, surpris) et états préjudiciables du
+glossaire (aveuglé, affaibli, essoufflé, étourdi, invalide…, palette du Combat Tracker,
+PER-279) — proviennent également de [game-icons.net](https://game-icons.net), sous licence
 [Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 
-Auteurs : **Lorc** et **Sbed** (https://game-icons.net).
+Auteurs : **Lorc**, **Sbed** et **Delapouite** (https://game-icons.net).
 
 Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
 `src/lib/ui/statusEffectIcons.ts`. La correspondance état → fichier source est conservée
@@ -292,7 +293,7 @@ dans `STATUS_EFFECT_ICON_SOURCES` (même fichier) et dans
 `scripts/game-icons/status-effects/map.tsv`. L'affichage passe par le composant commun
 `src/components/StatusEffectIcon.tsx`.
 
-| Immunité | Fichier game-icons.net | Auteur |
+| État | Fichier game-icons.net | Auteur |
 | --- | --- | --- |
 | Peur | `lorc/terror.svg` | Lorc |
 | Charme / possession | `lorc/psychic-waves.svg` | Lorc |
@@ -302,3 +303,8 @@ dans `STATUS_EFFECT_ICON_SOURCES` (même fichier) et dans
 | Paralysé | `lorc/nailed-foot.svg` | Lorc |
 | Renversé | `sbed/falling.svg` | Sbed |
 | Surpris | `lorc/surprised.svg` | Lorc |
+| Aveuglé | `delapouite/blindfold.svg` | Delapouite |
+| Affaibli | `delapouite/arm-sling.svg` | Delapouite |
+| Essoufflé | `delapouite/lungs.svg` | Delapouite |
+| Étourdi | `lorc/star-swirl.svg` | Lorc |
+| Invalide | `lorc/broken-bone.svg` | Lorc |

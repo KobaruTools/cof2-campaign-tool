@@ -35,6 +35,7 @@ import {
   type CreatureInstance,
   type AddCreatureOptions,
 } from './useGmCombatState';
+import type { AnyStatusEffectId, AppliedStatus } from '@/lib/character/statusEffects';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
@@ -77,18 +78,27 @@ export interface GmScreenCombat {
   removeCreature: (instanceId: string) => void;
   /** Bascule la visibilité joueurs d'une instance de créature (fenêtre projetée). */
   setCreatureVisibility: (instanceId: string, visible: boolean) => void;
+  /** États de combat appliqués par combattant (clé = id de perso OU d'instance de créature). */
+  statuses: Record<string, AppliedStatus[]>;
+  /** Applique un état sur un combattant (intensité 1 ; PER-279). */
+  applyStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
+  /** Retire un état d'un combattant (PER-279). */
+  removeStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
 }
 
 export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmScreenCombat {
   const {
     creatures,
     depletions,
+    statuses,
     currentTurnKey,
     addCreature,
     removeCreature,
     setCreatureVisibility,
     setCreatureDepletion,
     setCurrentTurnKey,
+    applyStatus,
+    removeStatus,
   } = useGmCombatState(cid, role);
 
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
@@ -261,5 +271,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     addCreature,
     removeCreature,
     setCreatureVisibility,
+    statuses,
+    applyStatus,
+    removeStatus,
   };
 }

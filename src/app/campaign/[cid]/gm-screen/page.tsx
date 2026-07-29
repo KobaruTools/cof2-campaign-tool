@@ -19,6 +19,17 @@
  */
 import { Suspense, use, useState } from 'react';
 import Link from 'next/link';
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Box from '@mui/material/Box';
@@ -37,9 +48,11 @@ import { GmSessionControl } from '@/components/campaign/GmSessionControl';
 import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard';
 import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
+import { CombatStatusPalette, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
 import { HomeBackground } from '@/components/HomeBackground';
 import { SIDE_ACCENT } from '@/lib/ui/creature';
+import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
 import { useGmScreenCombat } from './useGmScreenCombat';
 
 /**
@@ -96,8 +109,31 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     addCreature,
     removeCreature,
     setCreatureVisibility,
+    statuses,
+    applyStatus,
+    removeStatus,
   } = useGmScreenCombat(cid, 'gm');
   const [addOpen, setAddOpen] = useState(false);
+
+  // Glisser-déposer des états (PER-279) : les puces de la palette (`useDraggable`, id préfixé) sont
+  // déposées sur les colonnes du tracker (`useDroppable`, id = clé de combattant). Le capteur pointeur
+  // couvre souris + tactile (l'écran de MJ peut être sur tablette) ; une distance d'activation évite de
+  // déclencher un glisser sur un simple clic. `activeStatus` alimente la surcouche qui suit le curseur.
+  const [activeStatus, setActiveStatus] = useState<AnyStatusEffectId | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor),
+  );
+  const onDragStart = (event: DragStartEvent) => {
+    const id = event.active.data.current?.statusId as AnyStatusEffectId | undefined;
+    setActiveStatus(id ?? null);
+  };
+  const onDragEnd = (event: DragEndEvent) => {
+    setActiveStatus(null);
+    const statusId = event.active.data.current?.statusId as AnyStatusEffectId | undefined;
+    const combatantKey = event.over?.id;
+    if (statusId && typeof combatantKey === 'string') applyStatus(combatantKey, statusId);
+  };
 
   if (!charactersHydrated || campaignsLoading) {
     // Nom de campagne pas encore résolu (donc pas d'en-tête) : on préfigure la
@@ -278,12 +314,37 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         {/* Séparateur horizontal, puis tracker d'initiative (PER-236) : personnages
             reliés à un joueur + bandits, en colonnes classées par initiative. */}
         <Divider sx={{ my: { xs: 3, sm: 4 } }} />
-        <InitiativeTracker
-          rows={initiativeRows}
-          currentTurnKey={currentTurnKey}
-          onCurrentTurnKeyChange={setCurrentTurnKey}
-          headerAction={<OpenTrackerWindowButton cid={cid} />}
-        />
+        {/* États de combat (PER-279) : la palette de puces glissables ET le tracker (dont les colonnes
+            sont zones de drop) partagent un même `DndContext`. `pointerWithin` cible la colonne SOUS le
+            pointeur (plus juste que la superposition de rectangles pour des zones larges côte à côte). */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={pointerWithin}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDragCancel={() => setActiveStatus(null)}
+        >
+          <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Appliquer un état
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+              Glissez une puce sur un combattant, ou cliquez son en-tête pour cocher un état.
+            </Typography>
+            <CombatStatusPalette />
+          </Box>
+          <InitiativeTracker
+            rows={initiativeRows}
+            currentTurnKey={currentTurnKey}
+            onCurrentTurnKeyChange={setCurrentTurnKey}
+            headerAction={<OpenTrackerWindowButton cid={cid} />}
+            statusControls={{ statusesByKey: statuses, onApply: applyStatus, onRemove: removeStatus }}
+          />
+          {/* Surcouche : la puce « réelle » suit le curseur pendant le glissement (l'originale s'estompe). */}
+          <DragOverlay>
+            {activeStatus ? <StatusChipVisual id={activeStatus} withTooltip={false} dragging /> : null}
+          </DragOverlay>
+        </DndContext>
       </Box>
 
       {/* Modale d'ajout d'une créature du bestiaire au combat (sélecteur + aperçu). */}
