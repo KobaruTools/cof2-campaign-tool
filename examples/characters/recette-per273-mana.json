@@ -3,7 +3,7 @@
   "id": "recette-per273-mana",
   "name": "Recette PER-273 — Talisman de mana (contrôle du piège PM)",
   "identity": {
-    "description": "ATTENDU (PER-273, piège des PM) : le MÊME « Talisman de mana » (+5 PM) que sur la panoplie, mais porté par un MAGICIEN qui connaît un sort. Ici la réserve EXISTE, donc l’apport s’applique : PM = VOL 2 + 1 sort + 5 = 8. À VÉRIFIER : (1) la jauge de mana affiche bien 8 points ; (2) DÉSÉQUIPE le talisman → la réserve retombe à 3 ; (3) comparer avec le perso « Panoplie », qui n’a aucun sort : chez lui la carte des points de mana reste ABSENTE malgré le même talisman — un objet ne crée jamais une réserve de mana (p. 42). (4) SURCOÛT DE MANA EN ARMURE inchangé : le magicien porte une chemise de mailles enchantée (« Cotte de l’aube », +2 DEF magique ET +1 ligne Défense) ; le surcoût des sorts en armure (p. 178) ne doit compter QUE la DEF mondaine de l’armure — ni la DEF magique, ni la ligne « Défense »."
+    "description": "ATTENDU (PER-273, piège des PM) : le MÊME « Talisman de mana » (+5 PM) que sur la panoplie, mais porté par un MAGICIEN qui connaît un sort. Ici la réserve EXISTE, donc l’apport s’applique : PM = VOL 2 + 1 sort + 5 = 8. À VÉRIFIER : (1) la jauge de mana affiche bien 8 points ; (2) DÉSÉQUIPE le talisman → la réserve retombe à 3 ; (3) comparer avec le perso « Panoplie », qui n’a aucun sort : chez lui la carte des points de mana reste ABSENTE malgré le même talisman — un objet ne crée jamais une réserve de mana (p. 42) ; (4) SURCOÛT DE MANA EN ARMURE inchangé : le magicien porte une chemise de mailles enchantée (« Cotte de l’aube », +2 de DEF magique) ; le surcoût des sorts en armure (p. 178) ne compte QUE la DEF mondaine de l’armure, jamais la DEF magique — et aucun objet ne peut ajouter de DEF plate."
   },
   "campaignId": null,
   "playerId": null,
@@ -75,10 +75,7 @@
       "overrides": {
         "name": "Cotte de l’aube"
       },
-      "magicDef": 2,
-      "derivedBonuses": {
-        "def": 1
-      }
+      "magicDef": 2
     }
   ],
   "mounts": [],

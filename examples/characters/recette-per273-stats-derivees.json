@@ -3,7 +3,7 @@
   "id": "recette-per273-stats-derivees",
   "name": "Recette PER-273 — Panoplie (bonus/malus de stats dérivées)",
   "identity": {
-    "description": "ATTENDU (PER-273) : chaque objet PORTÉ apporte ses bonus/malus de STATISTIQUES DÉRIVÉES, directement sur la stat visée (≠ PER-272, qui passait par la caractéristique). Objets ÉQUIPÉS : « Anneau de protection » (+1 DEF) ; « Cape du voyageur » (+2 Init.) ; « Amulette plombée » (−1 Init.) ; « Talisman du gardien » (+5 PV, +1 chance, +1 dé de récupération) ; « Diadème brouillé » (−2 att. magique) ; « Talisman de mana » (+5 PM) ; « Lame du bretteur » (variante d’épée longue, +1 att. contact, en main) ; « Cotte de l’aube » (variante de chemise de mailles portant À LA FOIS +2 DEF magique ET une ligne +1 Défense). Objet RANGÉ témoin : « Anneau de secours » (+3 DEF) — il ne doit RIEN apporter dans le sac. À VÉRIFIER sur la fiche : (1) DÉFENSE = 19 = 10 + AGI 1 + armure 4 + DEF magique 2 + ligne « Défense » de la cotte 1 + anneau de protection 1 (l’armure seule, sans les objets libres, donnerait 18) ; (2) INITIATIVE = 10 + PER 1 + 2 − 1 = 12 (les deux objets se cumulent, malus compris) ; (3) PV +5, POINTS DE CHANCE +1, DÉS DE RÉCUPÉRATION +1 par le seul talisman du gardien ; (4) ATT. CONTACT +1 (la lame) et ATT. MAGIQUE −2 (le diadème) ; (5) POINTS DE MANA : le personnage n’a AUCUN sort → la réserve reste ABSENTE malgré le talisman +5 PM (piège du ticket ; voir le second perso de recette pour le cas d’un lanceur de sorts) ; (6) au survol du « i » d’une stat, le détail nomme chaque OBJET (libellé texte, pas une puce de voie) ; (7) inventaire → pastilles « +1 DEF » / « +5 PV » en teinte secondaire, « −1 Init. » et « −2 Att. magique » en teinte warning ; la « Cotte de l’aube » porte DEUX pastilles distinctes (« +2 magique » et « +1 DEF ») ; (8) DÉSÉQUIPE l’anneau de protection → la DEF baisse de 1 immédiatement ; ÉQUIPE l’anneau de secours → +3 DEF ; (9) la modale d’édition (crayon) rouvre les LIGNES déjà saisies, une par statistique, et une stat déjà prise ne réapparaît pas dans les sélecteurs des autres lignes ; (10) MALUS D’ARMURE inchangé par la ligne « Défense » : la cotte (DEF 4) avec +2 de DEF magique donne un malus de 2 aux tests d’AGI — la ligne +1 Défense ne le change pas."
+    "description": "ATTENDU (PER-273) : chaque objet PORTÉ apporte ses bonus/malus de STATISTIQUES DÉRIVÉES, directement sur la stat visée (≠ PER-272, qui passait par la caractéristique). La DÉFENSE est volontairement HORS du dispositif (décision propriétaire) : elle n’apparaît pas dans la liste des statistiques de la modale, et l’enchantement défensif reste le champ « DEF magique ». Objets ÉQUIPÉS : « Broche de garde » (+3 PV) ; « Cape du voyageur » (+2 Init.) ; « Amulette plombée » (−1 Init.) ; « Talisman du gardien » (+5 PV, +1 chance, +1 dé de récupération) ; « Diadème brouillé » (−2 att. magique) ; « Talisman de mana » (+5 PM) ; « Lame du bretteur » (variante d’épée longue, +1 att. contact, en main) ; « Cotte de l’aube » (variante de chemise de mailles, +2 de DEF magique — le SEUL canal défensif). Objet RANGÉ témoin : « Trèfle de secours » (+2 chance) — il ne doit RIEN apporter dans le sac. À VÉRIFIER sur la fiche : (1) PV = base + 8 (broche 3 + talisman 5) ; (2) INITIATIVE = 10 + PER 1 + 2 − 1 = 12 (les deux objets se cumulent, malus compris) ; (3) POINTS DE CHANCE +1 et DÉS DE RÉCUPÉRATION +1 par le seul talisman du gardien ; (4) ATT. CONTACT +1 (la lame) et ATT. MAGIQUE −2 (le diadème) ; (5) POINTS DE MANA : le personnage n’a AUCUN sort → la réserve reste ABSENTE malgré le talisman +5 PM (piège du ticket ; voir le second perso de recette pour le cas d’un lanceur de sorts) ; (6) au survol du « i » d’une stat, le détail nomme chaque OBJET (libellé texte, pas une puce de voie) ; (7) inventaire → pastilles « +3 PV » et « +5 PV » en teinte secondaire, « −1 Init. » et « −2 Att. magique » en teinte warning ; la « Cotte de l’aube » ne porte QUE sa pastille « +2 magique » ; (8) DÉSÉQUIPE la broche de garde → les PV baissent de 3 immédiatement ; ÉQUIPE le trèfle de secours → +2 points de chance ; (9) la modale d’édition (crayon) rouvre les LIGNES déjà saisies, une par statistique ; une stat déjà prise ne réapparaît pas dans les sélecteurs des autres lignes ; et la DÉFENSE n’est JAMAIS proposée ; (10) DÉFENSE = 17 = 10 + AGI 1 + armure 4 + DEF magique 2 — aucun objet libre ne la touche. MALUS D’ARMURE : la cotte (DEF 4) avec +2 de DEF magique laisse un malus de 2 aux tests d’AGI."
   },
   "campaignId": null,
   "playerId": null,
@@ -56,7 +56,7 @@
   "equipment": [
     {
       "custom": true,
-      "name": "Anneau de protection",
+      "name": "Broche de garde",
       "quantity": 1,
       "type": "gear",
       "details": "Bonus simple sur une seule stat.",
@@ -64,7 +64,7 @@
         "slot": "accessory"
       },
       "derivedBonuses": {
-        "def": 1
+        "maxHp": 3
       }
     },
     {
@@ -136,12 +136,12 @@
     },
     {
       "custom": true,
-      "name": "Anneau de secours",
+      "name": "Trèfle de secours",
       "quantity": 1,
       "type": "gear",
       "details": "TÉMOIN : rangé dans le sac, il ne doit RIEN apporter.",
       "derivedBonuses": {
-        "def": 3
+        "luckPoints": 2
       }
     },
     {
@@ -167,15 +167,12 @@
       "overrides": {
         "name": "Cotte de l’aube"
       },
-      "magicDef": 2,
-      "derivedBonuses": {
-        "def": 1
-      }
+      "magicDef": 2
     }
   ],
   "mounts": [],
   "overrides": {},
-  "notes": "PER-273 — apports de stats dérivées portés par des objets. Le « Talisman de mana » est le contrôle négatif du piège mana : sans sort connu, aucune réserve ne doit apparaître.",
+  "notes": "PER-273 — apports de stats dérivées portés par des objets (DÉFENSE exclue par conception). Le « Talisman de mana » est le contrôle négatif du piège mana : sans sort connu, aucune réserve ne doit apparaître.",
   "createdAt": "2026-01-01T00:00:00.000Z",
   "updatedAt": "2026-01-01T00:00:00.000Z"
 }

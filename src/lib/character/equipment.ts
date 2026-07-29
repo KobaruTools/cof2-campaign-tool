@@ -11,9 +11,9 @@
  * équiper d'office »). L'UI d'équipement/déséquipement manuel relève de PER-77.
  */
 import { equipmentById } from '@/data';
-import type { AbilityId, DerivedStatId, Weapon } from '@/data/schema';
-import type { EquipmentLine, EquipmentRef, WornState } from './types';
-import { isCustomItem } from './types';
+import type { AbilityId, Weapon } from '@/data/schema';
+import type { EquipmentLine, EquipmentRef, ItemDerivedStatId, WornState } from './types';
+import { ITEM_DERIVED_STAT_IDS, isCustomItem } from './types';
 import { effectiveItem } from './items';
 
 /**
@@ -355,6 +355,7 @@ function lineDisplayName(line: EquipmentLine): string {
 function bonusSourcesFromEquipment<K extends string>(
   equipment: EquipmentLine[],
   field: 'abilityBonuses' | 'derivedBonuses',
+  allowed?: readonly K[],
 ): Partial<Record<K, AbilityBonusItemSource[]>> {
   const out: Partial<Record<K, AbilityBonusItemSource[]>> = {};
   for (const line of equipment) {
@@ -363,6 +364,11 @@ function bonusSourcesFromEquipment<K extends string>(
     const name = lineDisplayName(line);
     for (const [key, value] of Object.entries(bonuses) as [K, number][]) {
       if (!value) continue;
+      // Clé hors liste blanche → ignorée en silence. Sert de garde-fou aux DONNÉES : un
+      // fichier importé (ou un personnage d'avant la décision de conception) peut porter une
+      // clé qu'on n'accepte plus, sans que l'apport prenne effet. Cf. `ItemDerivedStatId`,
+      // qui exclut la Défense.
+      if (allowed && !allowed.includes(key)) continue;
       (out[key] ??= []).push({ name, value });
     }
   }
@@ -408,29 +414,33 @@ export function abilityBonusesFromEquipment(
 /**
  * Apports de STATISTIQUES DÉRIVÉES de l'équipement PORTÉ (PER-273), par stat, avec l'objet
  * source de chaque apport — le détail rendu dans l'infobulle « i » de la stat. Périmètre
- * identique à celui des caracs (cf. `bonusSourcesFromEquipment`).
+ * identique à celui des caracs (cf. `bonusSourcesFromEquipment`), à une restriction près :
+ * la **Défense** n'est pas modifiable par un objet (cf. `ItemDerivedStatId`) et une clé
+ * `def` traînant dans les données est donc ignorée ici — la DEF magique (`magicDef`) reste
+ * le seul canal d'enchantement défensif.
  *
  * Fonction pure, réutilisable telle quelle par l'écran de MJ.
  */
 export function derivedBonusSourcesFromEquipment(
   equipment: EquipmentLine[] = [],
-): Partial<Record<DerivedStatId, AbilityBonusItemSource[]>> {
-  return bonusSourcesFromEquipment<DerivedStatId>(equipment, 'derivedBonuses');
+): Partial<Record<ItemDerivedStatId, AbilityBonusItemSource[]>> {
+  return bonusSourcesFromEquipment<ItemDerivedStatId>(
+    equipment,
+    'derivedBonuses',
+    ITEM_DERIVED_STAT_IDS,
+  );
 }
 
 /**
  * Apports de stats dérivées de l'équipement porté SOMMÉS par stat (PER-273) — un sac de
  * `DerivedMods` prêt à être fusionné (`mergeMods`) avec ceux des capacités et des points
  * orphelins : les objets ALIMENTENT la couche de modificateurs du moteur, ils ne la
- * doublent pas. Réduction de `derivedBonusSourcesFromEquipment`.
- *
- * Ces apports n'ont AUCUN effet de règle au-delà de la stat visée : une ligne `def` ne
- * réduit pas le malus d'armure (p. 188) et ne change pas le surcoût de mana des sorts en
- * armure (p. 178) — cf. `ItemDerivedBonuses`, seul `magicDef` porte ces effets.
+ * doublent pas. Réduction de `derivedBonusSourcesFromEquipment`, dont il reprend la
+ * restriction (aucun apport possible à la Défense).
  */
 export function derivedBonusesFromEquipment(
   equipment: EquipmentLine[] = [],
-): Partial<Record<DerivedStatId, number>> {
+): Partial<Record<ItemDerivedStatId, number>> {
   return sumBonusSources(derivedBonusSourcesFromEquipment(equipment));
 }
 

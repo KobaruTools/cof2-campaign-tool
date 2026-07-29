@@ -43,7 +43,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { equipment as equipmentCatalog } from '@/data';
 import type { CharacterClass, EquipmentItem } from '@/data/schema';
-import { ABILITY_IDS, DERIVED_STAT_IDS } from '@/data/schema';
+import { ABILITY_IDS } from '@/data/schema';
 import type {
   EquipmentLine,
   ItemAbilityBonuses,
@@ -51,7 +51,7 @@ import type {
   ItemType,
   WornState,
 } from '@/lib/character/types';
-import { isCustomItem } from '@/lib/character/types';
+import { ITEM_DERIVED_STAT_IDS, isCustomItem } from '@/lib/character/types';
 import { effectiveItem, groupEquipmentByType, itemType, reorderEquipment } from '@/lib/character/items';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { isFirearmItemId } from '@/lib/character/firearms';
@@ -244,15 +244,15 @@ function AbilityBonusBadges({ bonuses }: { bonuses: ItemAbilityBonuses }) {
 
 /**
  * Badges des bonus/malus de STATISTIQUES DÉRIVÉES d'un objet enchanté (PER-273) : une
- * pastille par stat touchée (DEF, PV, initiative…), dans l'ordre canonique. L'apport agit
- * DIRECTEMENT sur la stat, comme un bonus de voie. Cas particulier de la Défense : l'apport
- * est un bonus de DEF pur, à ne pas confondre avec la DEF magique de l'objet (`MagicDefBadge`),
- * seule à réduire le malus d'armure et à rester hors du surcoût de mana.
+ * pastille par stat touchée (PV, initiative, chance…), dans l'ordre canonique. L'apport agit
+ * DIRECTEMENT sur la stat, comme un bonus de voie. La DÉFENSE en est absente par conception
+ * (cf. `ItemDerivedStatId`) : l'enchantement défensif passe par la DEF magique, seul canal à
+ * savoir se répercuter sur les calculs d'armure (`MagicDefBadge`).
  */
 function DerivedBonusBadges({ bonuses }: { bonuses: ItemDerivedBonuses }) {
   return (
     <>
-      {DERIVED_STAT_IDS.filter((id) => bonuses[id]).map((id) => {
+      {ITEM_DERIVED_STAT_IDS.filter((id) => bonuses[id]).map((id) => {
         const value = bonuses[id]!;
         const sign = value > 0 ? '+' : '−';
         return (
@@ -268,17 +268,9 @@ function DerivedBonusBadges({ bonuses }: { bonuses: ItemDerivedBonuses }) {
                 sx={{ border: 'none' }}
               />
             }
-            tooltip={
-              id === 'def' ? (
-                <PageRefText>
-                  {`${value > 0 ? 'Bonus' : 'Malus'} de Défense (${sign}${Math.abs(value)}) apporté par cet objet tant qu’il est équipé. Bonus de DEF pur : contrairement à la DEF magique, il ne réduit pas le malus d’armure (p. 188) et n’entre pas dans le surcoût de mana des sorts en armure (p. 178).`}
-                </PageRefText>
-              ) : (
-                `${value > 0 ? 'Bonus' : 'Malus'} de ${DERIVED_MOD_NAMES[id]} (${sign}${Math.abs(
-                  value,
-                )}) apporté par cet objet : compte tant qu’il est équipé et s’ajoute à la statistique, comme un bonus de voie.`
-              )
-            }
+            tooltip={`${value > 0 ? 'Bonus' : 'Malus'} de ${DERIVED_MOD_NAMES[id]} (${sign}${Math.abs(
+              value,
+            )}) apporté par cet objet : compte tant qu’il est équipé et s’ajoute à la statistique, comme un bonus de voie.`}
           />
         );
       })}

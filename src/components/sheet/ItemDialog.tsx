@@ -23,17 +23,20 @@ import type { Theme } from '@mui/material/styles';
 import { equipment as equipmentCatalog, equipmentById } from '@/data';
 import {
   ABILITY_IDS,
-  DERIVED_STAT_IDS,
   WEAPON_CATEGORIES,
   type AbilityId,
   type DamageDie,
-  type DerivedStatId,
   type EquipmentItem,
   type WeaponCategory,
   type WeaponDamage,
 } from '@/data/schema';
-import type { EquipmentLine, EquipmentRef, ItemType } from '@/lib/character/types';
-import { isCustomItem } from '@/lib/character/types';
+import type {
+  EquipmentLine,
+  EquipmentRef,
+  ItemDerivedStatId,
+  ItemType,
+} from '@/lib/character/types';
+import { ITEM_DERIVED_STAT_IDS, isCustomItem } from '@/lib/character/types';
 import {
   ITEM_TYPE_ORDER,
   effectiveItem,
@@ -346,7 +349,7 @@ interface FormState {
   /** Apports de caractéristiques en lignes (PER-272), tout type d'objet. */
   abilityBonuses: BonusRow<AbilityId>[];
   /** Apports de statistiques dérivées en lignes (PER-273), tout type d'objet. */
-  derivedBonuses: BonusRow<DerivedStatId>[];
+  derivedBonuses: BonusRow<ItemDerivedStatId>[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -393,7 +396,7 @@ function formFromLine(line: EquipmentLine): FormState {
       description: line.details ?? '',
       magicDef: line.magicDef ? String(line.magicDef) : '',
       abilityBonuses: rowsFromBonuses(ABILITY_IDS, line.abilityBonuses),
-      derivedBonuses: rowsFromBonuses(DERIVED_STAT_IDS, line.derivedBonuses),
+      derivedBonuses: rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses),
     };
   }
   const item = effectiveItem(line);
@@ -420,7 +423,7 @@ function formFromLine(line: EquipmentLine): FormState {
   base.description = line.overrides?.description ?? (item?.category === 'gear' ? item.description ?? '' : '');
   base.magicDef = line.magicDef ? String(line.magicDef) : '';
   base.abilityBonuses = rowsFromBonuses(ABILITY_IDS, line.abilityBonuses);
-  base.derivedBonuses = rowsFromBonuses(DERIVED_STAT_IDS, line.derivedBonuses);
+  base.derivedBonuses = rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses);
   return base;
 }
 
@@ -750,15 +753,15 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
               />
 
               {/* Bonus/malus de STATISTIQUES DÉRIVÉES (PER-273), par lignes : même mécanique que
-                  ci-dessus, appliquée directement à la stat (DEF, PV, initiative…) au lieu de la
-                  caractéristique. Une ligne « Défense » est un bonus de DEF PUR — la « DEF
-                  magique » au-dessus reste le canal de l'enchantement d'armure (elle réduit
-                  aussi le malus d'armure, p. 188). */}
+                  ci-dessus, appliquée directement à la stat (PV, initiative, chance…) au lieu de
+                  la caractéristique. La DÉFENSE n'y figure pas volontairement (cf.
+                  `ItemDerivedStatId`) : trop de règles se calculent depuis les valeurs d'armure,
+                  et la « DEF magique » ci-dessus reste le seul canal d'enchantement défensif. */}
               <BonusRows
-                ids={DERIVED_STAT_IDS}
+                ids={ITEM_DERIVED_STAT_IDS}
                 title="Bonus de statistiques dérivées"
                 selectLabel="Statistique"
-                fullMessage="Les 9 statistiques dérivées sont déjà couvertes."
+                fullMessage="Toutes les statistiques modifiables sont déjà couvertes."
                 renderOption={(id) => (
                   <>
                     <DerivedStatIcon statId={DERIVED_MOD_DISPLAY_ID[id]} size={18} />
