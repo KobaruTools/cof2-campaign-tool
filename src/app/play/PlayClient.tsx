@@ -43,6 +43,7 @@ import { CharacterListSkeleton } from '@/components/character-list/CharacterList
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
 import { ClassIcon } from '@/components/ClassIcon';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
+import { SessionStatusBadge } from '@/components/session/SessionStatusBadge';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { summarize } from '@/lib/character/summary';
 import { downloadCharacterExport } from '@/lib/character/transferExport';
@@ -270,6 +271,12 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
 
   return (
     <>
+      {/* Indicateur « session en cours » (PER-264) : signale au joueur que sa table est
+          synchronisée en direct. N'affiche rien hors session. Sa présence sur cette page
+          maintient aussi la session vivante (battement du hook). */}
+      <Box sx={{ mb: 2 }}>
+        <SessionStatusBadge campaignId={campaignId} />
+      </Box>
       <Paper elevation={0} sx={sectionSx}>
         <Stack
           direction="row"

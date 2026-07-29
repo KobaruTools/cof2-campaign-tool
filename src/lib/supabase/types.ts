@@ -39,6 +39,32 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_combat: {
+        Row: {
+          campaign_id: string
+          state: Json
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          state?: Json
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          state?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_combat_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           created_at: string
@@ -178,6 +204,83 @@ export type Database = {
             columns: ["source_id"]
             isOneToOne: false
             referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_session_participants: {
+        Row: {
+          id: string
+          joined_at: string
+          left_at: string | null
+          player_id: string | null
+          session_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          player_id?: string | null
+          session_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          player_id?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_session_participants_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_session_participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_sessions: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          ended_at: string | null
+          ended_reason: string | null
+          id: string
+          last_active_at: string
+          started_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          last_active_at?: string
+          started_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          last_active_at?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_sessions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -335,7 +438,24 @@ export type Database = {
         Returns: boolean
       }
       is_anonymous: { Args: never; Returns: boolean }
+      merge_game_state: {
+        Args: { character_id: string; patch: Json }
+        Returns: Json
+      }
       redeem_source_code: { Args: { p_code: string }; Returns: Json }
+      resolve_active_session: {
+        Args: { cid: string }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          ended_at: string | null
+          ended_reason: string | null
+          id: string
+          last_active_at: string
+          started_at: string
+        }[]
+      }
+      touch_game_session: { Args: { cid: string }; Returns: undefined }
       touch_player_presence: { Args: never; Returns: undefined }
     }
     Enums: {

@@ -33,6 +33,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
 import { GmScreenCard } from '@/components/campaign/GmScreenCard';
 import { GmSheetDrawerHost } from '@/components/campaign/GmSheetDrawerHost';
+import { GmSessionControl } from '@/components/campaign/GmSessionControl';
 import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard';
 import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
@@ -173,6 +174,9 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           toute la largeur pour afficher un maximum de cartes de front. Padding
           symétrique (gauche/droite = haut/bas) pour laisser respirer les bords. */}
       <Box sx={{ p: { xs: 2, sm: 4 } }}>
+        {/* Cycle de vie de la session synchronisée (PER-264) : démarrer/terminer + état
+            « session en cours ». C'est le gate du temps réel (PER-265+ s'y accrocheront). */}
+        <GmSessionControl campaignId={cid} />
         {/* Combat tracker (PER-236, PER-247) : barre d'ajout de créatures, laissée sur toutes les campagnes. */}
         <Stack
           direction="row"
