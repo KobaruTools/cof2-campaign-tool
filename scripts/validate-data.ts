@@ -53,6 +53,7 @@ import {
   MASTER_AT_ARMS_CATEGORIES,
   RANGED_WEAPON_KINDS,
   RESISTIBLE_DAMAGE_TYPES,
+  SITUATIONAL_EFFECT_IDS,
   STATUS_EFFECT_IDS,
   WEAPON_CATEGORIES,
   type WeaponDamageCondition,
@@ -833,6 +834,22 @@ for (const c of features) {
   for (const s of states.stateIds ?? []) {
     if (!validStates.has(s)) err(`[capacite ${c.id}] inflictableStates: état inconnu : ${s}`);
     if (seen.has(s)) err(`[capacite ${c.id}] inflictableStates: état en double : ${s}`);
+    seen.add(s);
+  }
+}
+
+// --- Effets situationnels (catalogue SITUATIONAL_EFFECTS, PER-74) --------------
+// `situationalEffectIds` : liste non vide, sans doublon, chaque id reconnu (SITUATIONAL_EFFECT_IDS).
+const validSituational = new Set<string>(SITUATIONAL_EFFECT_IDS);
+for (const c of features) {
+  const ids = c.situationalEffectIds;
+  if (!ids) continue;
+  if (!Array.isArray(ids) || ids.length === 0)
+    err(`[capacite ${c.id}] situationalEffectIds: liste vide`);
+  const seen = new Set<string>();
+  for (const s of ids ?? []) {
+    if (!validSituational.has(s)) err(`[capacite ${c.id}] situationalEffectIds: effet inconnu : ${s}`);
+    if (seen.has(s)) err(`[capacite ${c.id}] situationalEffectIds: effet en double : ${s}`);
     seen.add(s);
   }
 }

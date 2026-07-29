@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per74-chasseur-de-prime",
+  "name": "Recette PER-74 — Chasseur de prime (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du chasseur de prime p. 140) : vérifier le RENDU de chaque rang prestige. Base = rôdeur/traqueur, voie NARRATIVE (traque implacable d'une proie marquée). R4 Marque du chasseur (L) → le +5 aux tests « pour retrouver la proie » est CONDITIONNEL À LA TRAQUE : un INTERRUPTEUR « Traque de la proie marquée » apparaît dans « État du personnage ». ACTIVÉ → un bonus de +5 s'ajoute à Pister ET à Discrétion dans « Compétences & tests », attribué à « Marque du chasseur ». DÉSACTIVÉ → aucun bonus (défaut). « renseignement, etc. » reste ouvert (texte). Le « +1d4° aux DM contre elle » reste en TEXTE (dé rendu {1d4°}, pas de badge de dé bonus sur les cartes d'attaque aujourd'hui). R5 Assommer (L) → richText : « assommée pour 1d4° min » rendu en DÉ {1d4°} (unité « min » en texte). « étourdie » = pastille d'état, « attaque au contact » = puce, « NC » = jargon souligné (auto-glosés). « une seule fois par combat » reste en TEXTE (limite par cible, PAS un compteur d'usages). R6 Traqueur infatigable (passif) → richText : « maximum égal à votre rang » rendu en TERME NOMMÉ vert [#rang] (« rang (6) »). Le reste (récupération ÷2, bonus cumulatif +1/jour) reste en TEXTE : situationnel, non mécanisé. Aucun marqueur d'action (passif). R7 Attaque invalidante (L) → verbatim pur : le malus -1 cumulatif (max -3) porte sur la CIBLE, pas sur la fiche du joueur. « DM » et « tests » auto-glosés. R8 Instinct du Traqueur (L) → verbatim pur : détection narrative (direction de la proie, alerte à moins de 50 m). COULEUR PAR FAMILLE : le chasseur de prime est une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude) : étoile d'en-tête, liseré métallique des cartes de rang + reflet vert, puces de capacité vertes."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "rodeur",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 4,
+    "CHA": 0,
+    "INT": 1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 4,
+    "CHA": 0,
+    "INT": 1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "traqueur-r1",
+    "traqueur-r2",
+    "traqueur-r3",
+    "traqueur-r4",
+    "traqueur-r5",
+    "prestige-chasseur-de-prime-r4",
+    "prestige-chasseur-de-prime-r5",
+    "prestige-chasseur-de-prime-r6",
+    "prestige-chasseur-de-prime-r7",
+    "prestige-chasseur-de-prime-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-74 — recette chasseur de prime : R4 +5 conditionnel (interrupteur « Traque de la proie marquée ») sur Pister + Discrétion ; R5 richText {1d4°} ; R6 richText [#rang] ; R7/R8 verbatim.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -1562,8 +1562,27 @@ export const prestigeFeatures1: Feature[] = [
     rank: 4,
     isSpell: false,
     actionTypes: ['L'],
+    // Le +5 est CONDITIONNEL à la traque de la proie marquée (« pour la retrouver ») → INTERRUPTEUR
+    // d'état de jeu « Traque de la proie marquée » (patron ombres r4 « Dans la pénombre »). On mécanise
+    // le +5 (`testBonusValue: 5`, sinon le fallback de catégorie prestige 2 + min(rang, 5) vaudrait 7)
+    // sur les deux domaines nommés sans ambiguïté : Pister (`tracking`) et Discrétion (`stealth`).
+    // « renseignement, etc. » reste OUVERT (verbatim) : le livre liste des exemples, pas une liste close.
+    // Le « +1d4° aux DM contre elle » est SITUATIONNEL (contre la seule proie marquée) et n'est PAS porté
+    // sur la fiche (aucun badge de dé bonus sur les cartes d'attaque aujourd'hui) → tokenisé en richText
+    // uniquement (verbatim {1d4°}).
     text:
       "Le personnage désigne une proie soit en la voyant, soit en étant mandaté pour la traquer. Il obtient un bonus de +5 à tous les tests de compétence qu'il réalise pour la retrouver (pistage, renseignement, discrétion, etc.) et +1d4° aux DM contre elle. Le personnage doit attendre d'avoir terminé une récupération complète avant de changer de proie. Il ne peut marquer plus d'une proie à la fois.",
+    richText:
+      "Le personnage désigne une proie soit en la voyant, soit en étant mandaté pour la traquer. Il obtient un bonus de +5 à tous les tests de compétence qu'il réalise pour la retrouver (pistage, renseignement, discrétion, etc.) et +{1d4°} aux DM contre elle. Le personnage doit attendre d'avoir terminé une récupération complète avant de changer de proie. Il ne peut marquer plus d'une proie à la fois.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        testBonusDomains: ['tracking', 'stealth'],
+        testBonusValue: 5,
+        activation: { kind: 'condition', label: 'Traque de la proie marquée', activeByDefault: false },
+      },
+    ],
     sourcePage: 140,
   },
   {
@@ -1573,8 +1592,13 @@ export const prestigeFeatures1: Feature[] = [
     rank: 5,
     isSpell: false,
     actionTypes: ['L'],
+    // richText : durée d'assommement « 1d4° min » → {1d4°} (unité « min » littérale). « étourdie »,
+    // « attaque au contact » et « NC » sont auto-glosés. « La cible ne peut subir cet effet qu'une seule
+    // fois par combat » = limite PAR CIBLE (pas une ressource du personnage) → PAS de `usageCounter`, verbatim.
     text:
       "Sur un test d'attaque au contact réussi avec une arme contondante ou le pommeau d'une épée (dague, etc.), si la cible est de niveau (ou NC) inférieur au niveau du personnage et qu'elle porte la marque du chasseur, elle est assommée pour 1d4° min. Sinon, elle est étourdie pour un round. La cible ne peut subir cet effet qu'une seule fois par combat.",
+    richText:
+      "Sur un test d'attaque au contact réussi avec une arme contondante ou le pommeau d'une épée (dague, etc.), si la cible est de niveau (ou NC) inférieur au niveau du personnage et qu'elle porte la marque du chasseur, elle est assommée pour {1d4°} min. Sinon, elle est étourdie pour un round. La cible ne peut subir cet effet qu'une seule fois par combat.",
     sourcePage: 140,
   },
   {
@@ -1584,8 +1608,14 @@ export const prestigeFeatures1: Feature[] = [
     rank: 6,
     isSpell: false,
     actionTypes: [],
+    // Passif. Le bonus cumulatif « +1 en attaque et aux DM par jour de traque, max = rang » est
+    // SITUATIONNEL (dépend du nombre de jours passés à traquer LA proie marquée) → non mécanisé, verbatim.
+    // Seul « votre rang » est balisé [#rang] (substantif : « égal à votre rang »). La division par deux du
+    // temps de récupération reste narrative.
     text:
       "Tant que vous traquez une créature que vous avez marquée, vous divisez par deux le temps nécessaire à une récupération (rapide ou complète). De plus, chaque jour durant lequel vous traquez la même proie, vous gagnez un bonus cumulatif de +1 en attaque et aux DM sur la première attaque que vous lui portez, pour un maximum égal à votre rang.",
+    richText:
+      "Tant que vous traquez une créature que vous avez marquée, vous divisez par deux le temps nécessaire à une récupération (rapide ou complète). De plus, chaque jour durant lequel vous traquez la même proie, vous gagnez un bonus cumulatif de +1 en attaque et aux DM sur la première attaque que vous lui portez, pour un maximum égal à votre [#rang].",
     sourcePage: 140,
   },
   {
@@ -1595,6 +1625,14 @@ export const prestigeFeatures1: Feature[] = [
     rank: 7,
     isSpell: false,
     actionTypes: ['L'],
+    // Le malus « -1 cumulatif à tous les tests et aux DM, max -3 » s'applique à la CIBLE (l'adversaire),
+    // pas au personnage → aucune valeur portée sur la fiche du joueur (cf. § 5 du format richText : stat
+    // d'une autre créature, non calculée). Les paliers -1/-3 restent en texte littéral. « DM » et « tests »
+    // sont auto-glosés. Verbatim (pas de richText).
+    // PREMIER EFFET SITUATIONNEL (catalogue `SITUATIONAL_EFFECTS`, id `invalidating-attack`) : ce malus
+    // nommé n'est PAS un état du glossaire p. 214-215 mais suit le même schéma. Data-only ici ; son
+    // application/suivi en combat relève du Combat Tracker (ticket dédié).
+    situationalEffectIds: ['invalidating-attack'],
     text:
       "Vous portez une attaque qui a pour but de saper la volonté et les forces de votre adversaire. En cas de réussite, en plus des DM habituels, l'attaque inflige un malus cumulatif de -1 à tous les tests et aux DM infligés par la cible pour le reste du combat, jusqu'à un cumul maximal de -3.",
     sourcePage: 140,
@@ -1606,6 +1644,9 @@ export const prestigeFeatures1: Feature[] = [
     rank: 8,
     isSpell: false,
     actionTypes: ['L'],
+    // Capacité de détection purement narrative (direction de la proie marquée, alerte à moins de 50 m).
+    // « 1 min » et « 50 m » sont des distances/durées littérales (pas dérivées d'une carac) → pas de
+    // balisage. Verbatim (pas de richText).
     text:
       "En se concentrant 1 min, le chasseur de prime peut déterminer dans quelle direction approximative se trouve la cible de sa marque du chasseur. Si la créature ciblée s'approche à moins de 50 m, le personnage en est averti par un frisson dans le dos ou les poils de la nuque qui se hérissent…",
     sourcePage: 140,

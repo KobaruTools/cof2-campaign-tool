@@ -1157,6 +1157,33 @@ export const STATUS_EFFECT_LABELS: Record<StatusEffectId, string> = Object.fromE
 ) as Record<StatusEffectId, string>;
 
 /**
+ * EFFETS SITUATIONNELS (PER-74, première entrée). MÊME schéma qu'un état préjudiciable
+ * (`StatusEffectEntry` : libellé FR + effet verbatim + page source) mais catalogue DISTINCT et OUVERT :
+ * ce ne sont PAS les 10 états fermés du glossaire p. 214-215 (`STATUS_EFFECTS`), ce sont des malus/effets
+ * NOMMÉS conférés par des capacités (première : « Attaque invalidante », chasseur de prime r7, p. 140 —
+ * malus cumulatif de -1 à tous les tests et aux DM infligés par la cible, jusqu'à -3). La liste s'étoffera
+ * au fil des voies. Destinés à être APPLIQUÉS/SUIVIS dans le Combat Tracker (ticket dédié dans la milestone
+ * Combat Tracker) : le catalogue est la source unique, la mécanique d'application viendra ensuite.
+ */
+export const SITUATIONAL_EFFECT_IDS = ['invalidating-attack'] as const;
+export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
+
+/** Catalogue des effets situationnels. Effet recopié VERBATIM de la capacité source. */
+export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry> = {
+  'invalidating-attack': {
+    label: 'Attaque invalidante',
+    effect:
+      "Malus cumulatif de -1 à tous les tests et aux DM infligés par la cible pour le reste du combat, jusqu'à un cumul maximal de -3.",
+    sourcePage: 140,
+  },
+};
+
+/** Libellés français des effets situationnels (affichés au joueur). Dérivé de `SITUATIONAL_EFFECTS`. */
+export const SITUATIONAL_EFFECT_LABELS: Record<SituationalEffectId, string> = Object.fromEntries(
+  SITUATIONAL_EFFECT_IDS.map((id) => [id, SITUATIONAL_EFFECTS[id].label]),
+) as Record<SituationalEffectId, string>;
+
+/**
  * IMMUNITÉ permanente à un ou plusieurs états/effets (PER-103). Ex. Liberté d'action
  * (barde, saltimbanque-r4) : immunisé à la peur, aux sorts d'asservissement mental
  * (charme/possession), aux états ralenti et immobilisé. Agrégé sur le porteur et rendu
@@ -2842,6 +2869,13 @@ export interface Feature {
    * = la capacité n'inflige aucun état suivi.
    */
   inflictableStates?: InflictableStates;
+  /**
+   * EFFETS SITUATIONNELS (catalogue `SITUATIONAL_EFFECTS`) que cette capacité applique — malus/effets
+   * NOMMÉS hors des 10 états fermés du glossaire (première : « Attaque invalidante », chasseur de prime
+   * r7, p. 140). Data-only pour l'instant : la source unique du catalogue. L'APPLICATION/SUIVI en combat
+   * relève du Combat Tracker (ticket dédié). Absent = la capacité n'applique aucun effet situationnel.
+   */
+  situationalEffectIds?: SituationalEffectId[];
   /**
    * REMPLACEMENT INCONDITIONNEL entre capacités d'une même voie : ids des capacités
    * que CETTE capacité, DÈS QU'ELLE EST ACQUISE, supplante définitivement (« la
