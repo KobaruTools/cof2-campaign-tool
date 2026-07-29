@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per74-ombres",
+  "name": "Recette PER-74 — Ombres (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie des ombres p. 139) : vérifier le RENDU de chaque rang prestige. Base = voleur/assassin, voie TRÈS NARRATIVE (infiltration, disparition). R4 Vision des ombres → le +5 est CONDITIONNEL À LA PÉNOMBRE : un INTERRUPTEUR « Dans la pénombre » apparaît dans « État du personnage ». ACTIVÉ → un bonus de +5 s'ajoute à la Discrétion ET à la Perception visuelle (nouveau domaine « PER basés sur la vue ») dans « Compétences & tests », attribué à « Vision des ombres ». DÉSACTIVÉ → aucun bonus (c'est le défaut). La vision dans le noir et l'absence de pénalité en attaque restent en TEXTE (narratif). R5 Caméléon (L) → verbatim pur (invisible tant qu'immobile) : aucun calcul, juste le marqueur d'action (L). R6 Ombre mouvante (M) → « une fois par combat » MÉCANISÉ en COMPTEUR d'usages 1×/combat. MAIS ce perso connaît « Disparition » (voie de l'assassin) → d'après la note du livre, l'usage devient ILLIMITÉ → le COMPTEUR EST MASQUÉ (aucun indicateur sur la carte du rang, ni jauge). La note de bas (« Si… Disparition… ») ne s'affiche PLUS (règle mécanisée). Le dé bonus « s'il attaque » reste en TEXTE. Contrôle : sur un perso qui ne connaît PAS Disparition, le compteur 1×/combat réapparaît. R7 Cape d'ombre (L) → COMPTEUR d'usages 1×/jour (AFFICHÉ ici : ce perso ne connaît pas « Manteau d'ombre »). richText : « pendant CHA minutes » rendu en QUANTITÉ [=CHA] (« 3 minutes » pour CHA 3) ; « 1d6 km », « 1d4° PV », « 1d6 minutes » rendus en DÉS {1d6}/{1d4°}/{1d6}. La note de bas (« Si… Manteau d'ombre… ») ne s'affiche PLUS ; elle est mécanisée : un perso qui connaît Manteau d'ombre verrait la recharge passer à « par combat ». R7 — INTERRUPTEUR « Cape d'ombre déployée » (état de jeu) qui pilote DEUX effets : (a) quand ON, un DÉ BONUS apparaît sur la ligne « Discrétion » de « Compétences & tests » ; (b) quand ON, un BADGE ambre « dé malus » (œil barré) apparaît sous la carte DÉFENSE, infobulle « Attaques à distance qui vous ciblent : dé malus » (le perso impose un dé malus aux tirs qui le visent — effet sur l'adversaire, sans valeur numérique). OFF → ni dé bonus discrétion, ni badge Défense. R8 Passe-muraille → verbatim pur (traverser un mur avec Ombre mouvante). COULEUR PAR FAMILLE : les ombres sont une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude) : étoile d'en-tête, liseré métallique des cartes de rang + reflet vert, puces de capacité vertes."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "elfe-haut",
+  "classId": "voleur",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 3,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 3,
+    "CHA": 3,
+    "INT": 2,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "elfe-haut",
+  "featureIds": [
+    "assassin-r1",
+    "assassin-r2",
+    "assassin-r3",
+    "assassin-r4",
+    "assassin-r5",
+    "prestige-ombres-r4",
+    "prestige-ombres-r5",
+    "prestige-ombres-r6",
+    "prestige-ombres-r7",
+    "prestige-ombres-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-74 — recette ombres : R4 +5 conditionnel (interrupteur « Dans la pénombre ») sur discrétion+perception visuelle ; R6/R7 compteurs 1×combat / 1×jour ; R7 richText [=CHA]/{1d6}/{1d4°} ; R5/R8 verbatim.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

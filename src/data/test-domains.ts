@@ -102,6 +102,10 @@ export const testDomains: TestDomain[] = [
   // écouter aux portes → sous-domaine de l'ouïe, PER (carac explicitée par le livre). Distinct
   // du domaine générique `senses` (tous les sens) : le +5 de l'espion ne vise QUE l'ouïe.
   { id: 'hearing', label: 'Perception auditive', abilities: ['PER'], sourcePage: 138 },
+  // perception visuelle (Vision des ombres, ombres prestige-ombres-r4, p. 139) : « tests de PER
+  // basés sur la vue » (repérer, distinguer dans la pénombre) → sous-domaine de la vue, PER (carac
+  // explicitée par le livre). Symétrique de `hearing` (ouïe) ; distinct du générique `senses`.
+  { id: 'sight', label: 'Perception visuelle', abilities: ['PER'], sourcePage: 139 },
   { id: 'intuition', label: 'Intuition', abilities: ['PER'], sourcePage: 202 },
   { id: 'empathy', label: 'Empathie', abilities: ['PER'], sourcePage: 202 },
   { id: 'tracking', label: 'Pister', abilities: ['PER'], sourcePage: 202 },

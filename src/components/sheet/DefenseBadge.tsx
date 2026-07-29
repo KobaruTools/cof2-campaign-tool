@@ -10,9 +10,11 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { MalusDieBadge } from '@/components/MalusDieBadge';
+import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 
 /** Variante d'un badge de stat dérivée (couleur + icône de tête). */
-export type DefenseBadgeVariant = 'immunity' | 'reduction' | 'critical';
+export type DefenseBadgeVariant = 'immunity' | 'reduction' | 'critical' | 'ranged-malus';
 
 /**
  * Donnée d'un BADGE de carte de statistique dérivée (PER-137) : IMMUNITÉ (vert, bouclier),
@@ -49,6 +51,9 @@ const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary'> = {
   immunity: 'success',
   reduction: 'info',
   critical: 'secondary',
+  // Dé malus imposé aux tirs adverses (Cape d'ombre) : c'est un AVANTAGE pour le joueur (plus dur à
+  // toucher) → chip BLEUE (comme les réductions). Seuls les DÉS malus, à l'intérieur, restent rouges.
+  'ranged-malus': 'info',
 };
 
 /**
@@ -135,6 +140,20 @@ export function DefenseBadge({
         {/* Bouclier générique conservé pour les immunités SANS icône dédiée (ex. « tous DM »). */}
         {variant === 'immunity' && !scope && !statusEffect && <ShieldIcon sx={{ fontSize: iconSize }} />}
         {variant === 'critical' && <GpsFixedIcon sx={{ fontSize: iconSize }} />}
+        {/* Dé malus aux tirs adverses (Cape d'ombre) : ARC (attaque à distance, en BLEU comme la chip)
+            + dé malus (double d20 dont un barré, en ROUGE via MalusDieBadge). Pas de texte. */}
+        {variant === 'ranged-malus' && (
+          <>
+            <Box
+              component="svg"
+              viewBox="0 0 512 512"
+              aria-hidden
+              sx={{ width: iconSize, height: iconSize, fill: 'currentColor', flexShrink: 0 }}
+              dangerouslySetInnerHTML={{ __html: DERIVED_STAT_ICON_PATHS.rangedAttack }}
+            />
+            <MalusDieBadge size={iconSize} noTooltip />
+          </>
+        )}
         {scope && <DamageTypeIcon type={scope} size={iconSize} />}
         {!scope && variant === 'reduction' && <Box component="span">RD</Box>}
         {displayText && <Box component="span">{displayText}</Box>}

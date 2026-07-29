@@ -332,6 +332,11 @@ for (const c of features) {
       // Bonus de compétence conditionnel sur des domaines (PER-117) — ids du catalogue.
       for (const d of e.testBonusDomains ?? [])
         if (!testDomainById.has(d)) err(`[capacite ${c.id}] effect: domaine inconnu (testBonusDomains) : ${d}`);
+      // Valeur explicite du bonus conditionnel de domaine (PER-74, Vision des ombres r4).
+      if (e.testBonusValue !== undefined) {
+        const valueError = effectValueError(e.testBonusValue);
+        if (valueError) err(`[capacite ${c.id}] effect: testBonusValue ${valueError}`);
+      }
       // Dépendance intra-capacité (PER-109) : l'index référencé doit exister et différer de soi.
       if (e.deactivatesWithEffectIndex !== undefined) {
         const target = c.effects?.[e.deactivatesWithEffectIndex];
@@ -531,6 +536,15 @@ for (const c of features) {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }
   }
+}
+
+// --- Cadence conditionnelle des compteurs d'usages (PER-74) ------------------
+// Un `usageCounter.conditionalFrequency` doit pointer une capacité EXISTANTE (la possession de
+// laquelle lève/améliore la fréquence : Ombre mouvante → Disparition, Cape d'ombre → Manteau d'ombre).
+for (const c of features) {
+  const cf = c.usageCounter?.conditionalFrequency;
+  if (cf && !featureById.has(cf.featureId))
+    err(`[capacite ${c.id}] usageCounter.conditionalFrequency référence inexistante : ${cf.featureId}`);
 }
 
 // --- Taxonomie des compagnons (PER-175) --------------------------------------

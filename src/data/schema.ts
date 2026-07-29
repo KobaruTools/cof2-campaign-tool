@@ -762,6 +762,15 @@ export interface ConditionalStatBonusEffect {
    */
   allTestsDie?: boolean;
   /**
+   * Tant que cet effet est ACTIF, le personnage IMPOSE un DÉ MALUS (« 2d20, garde le pire ») à tous les
+   * jets d'ATTAQUE À DISTANCE qui le prennent pour cible (PER-74, Cape d'ombre r7, p. 139). Effet
+   * DÉFENSIF SITUATIONNEL : il porte sur les jets de l'ADVERSAIRE, pas sur une stat du personnage — donc
+   * AUCUNE valeur numérique sur la fiche. Rendu par un BADGE sous la carte Défense (variante 'ranged-malus')
+   * quand l'interrupteur est actif. Piloté par le MÊME interrupteur que `bonuses`/`testDieDomains` (ici :
+   * « Cape d'ombre déployée »). Agrégé par `activeRangedTargetMalusDieSources`. Absent = aucun.
+   */
+  imposesRangedTargetMalusDie?: boolean;
+  /**
    * Domaines de test (ids du catalogue) recevant un BONUS DE COMPÉTENCE CHIFFRÉ (« rang + 2 »,
    * valeur déduite de la catégorie de voie comme un `TestBonusEffect` sans `value`) tant que cet
    * effet est ACTIF (PER-117). Pour les bonus de compétence CONDITIONNELS d'une situation de jeu
@@ -769,6 +778,15 @@ export interface ConditionalStatBonusEffect {
    * vide. Agrégé par `testBonusSources` via l'interrupteur. Absent = aucun.
    */
   testBonusDomains?: string[];
+  /**
+   * Valeur EXPLICITE du bonus de `testBonusDomains` (PER-74, Vision des ombres r4, p. 139 :
+   * « +5 à ses tests de discrétion et de PER basés sur la vue » dans la pénombre). PRÉSENT →
+   * override du fallback de catégorie (le prestige fixe vaut +5, alors que `2 + min(rang, 5)`
+   * donnerait 7) ; symétrique du `value` explicite d'un `TestBonusEffect`. ABSENT → la valeur
+   * reste déduite de la catégorie de la voie hôte (cas d'usage historique « rang + 2 »).
+   * Constante ou scalante. Sans `testBonusDomains`, ce champ n'a aucun effet.
+   */
+  testBonusValue?: EffectValue;
   /**
    * DÉPENDANCE intra-capacité À SENS UNIQUE : index (dans `Feature.effects`) d'un effet dont CET
    * effet dépend — DÉSACTIVER l'effet référencé désactive aussi celui-ci (PER-109). Ex. Parade
@@ -1685,6 +1703,7 @@ export interface FormAttack {
    */
   requiresActiveEffect: { featureId: string; index: number };
 }
+
 export interface CriticalRange {
   /** Portée concernée : attaques au contact (`melee`) ou à distance (`ranged`). */
   scope: 'melee' | 'ranged';
@@ -2556,6 +2575,24 @@ export interface UsageCounter {
    * une autre règle), afin que le futur bouton « Nouvelle journée » ne les remette pas à tort.
    */
   resetOn?: UsageResetTrigger;
+  /**
+   * Cadence CONDITIONNELLE à la possession d'une AUTRE capacité (PER-74, voie des ombres p. 139).
+   * Certaines capacités lèvent ou améliorent leur fréquence quand le personnage connaît déjà une
+   * capacité citée : Ombre mouvante (r6) → usage ILLIMITÉ s'il connaît Disparition (assassin-r4) ;
+   * Cape d'ombre (r7) → 1×/combat au lieu de 1×/jour s'il connaît Manteau d'ombre (sombre-magie-r4).
+   * Quand le personnage possède `featureId` : `unlimited` → la limite tombe et le compteur est MASQUÉ
+   * de l'affichage (plus rien à suivre) ; sinon `resetOn` REMPLACE le cycle de recharge. Sans possession,
+   * la cadence de base (`max` + `resetOn` ci-dessus) s'applique. Résolu par `effectiveUsageResetOn` /
+   * `isUsageCounterHidden` (effects.ts).
+   */
+  conditionalFrequency?: {
+    /** Id de la capacité citée dont la POSSESSION modifie la cadence. */
+    featureId: string;
+    /** La possession rend l'usage ILLIMITÉ → compteur masqué de l'affichage. */
+    unlimited?: boolean;
+    /** La possession REMPLACE le cycle de recharge (ex. `'day'` → `'combat'`). */
+    resetOn?: UsageResetTrigger;
+  };
   /**
    * Verrou « une seule dépense entre deux récupérations rapides » (PER-160). Quand `true`, dès qu'un
    * point est dépensé, toute nouvelle dépense est BLOQUÉE jusqu'au prochain repos court — INDÉPENDAMMENT

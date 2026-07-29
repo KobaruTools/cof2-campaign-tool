@@ -1516,6 +1516,28 @@ export function capacityResourceGauges(character: Character): CapacityResourceGa
 }
 
 /**
+ * Cycle de recharge EFFECTIF d'un compteur d'usages (PER-74) : si sa `conditionalFrequency`
+ * pointe une capacité POSSÉDÉE et fournit un `resetOn`, ce dernier remplace le cycle de base
+ * (ex. Cape d'ombre : 'day' → 'combat' si le personnage connaît Manteau d'ombre). Sinon, le
+ * `resetOn` déclaré (défaut `'day'`).
+ */
+export function effectiveUsageResetOn(counter: UsageCounter, featureIds: string[]): UsageResetTrigger {
+  const cf = counter.conditionalFrequency;
+  if (cf?.resetOn && featureIds.includes(cf.featureId)) return cf.resetOn;
+  return counter.resetOn ?? 'day';
+}
+
+/**
+ * Le compteur d'usages est-il MASQUÉ de l'affichage (PER-74) parce qu'une capacité POSSÉDÉE lève
+ * toute limite (`conditionalFrequency.unlimited`) ? Ex. Ombre mouvante : usage illimité — donc plus
+ * rien à suivre — si le personnage connaît Disparition (assassin). Sinon `false` (compteur affiché).
+ */
+export function isUsageCounterHidden(counter: UsageCounter | undefined, featureIds: string[]): boolean {
+  const cf = counter?.conditionalFrequency;
+  return !!cf?.unlimited && featureIds.includes(cf.featureId);
+}
+
+/**
  * Réinitialise (remet à plein) les compteurs d'usages dont le `resetOn` figure dans
  * `triggers` — pour les boutons de repos (PER-151). Un compteur sans `resetOn` vaut
  * `'day'` par défaut (cas le plus courant) ; `'manual'` n'est jamais réinitialisé par
@@ -1538,7 +1560,7 @@ export function resetUsageCounters(
     const counter = feature?.usageCounter;
     if (counter) {
       const key = counter.sharedKey ?? id;
-      if (triggers.has(counter.resetOn ?? 'day')) toReset.add(key);
+      if (triggers.has(effectiveUsageResetOn(counter, featureIds))) toReset.add(key);
       // Verrou « 1 dépense par repos court » (PER-160) : levé par tout repos court (donc aussi long).
       if (counter.oncePerShortRest && triggers.has('short-rest')) toReset.add(shortRestLockKey(key));
     }
@@ -1763,6 +1785,26 @@ export function activeAllTestsDieSources(character: Character): BonusDieSource[]
 }
 
 /**
+ * Capacités ACTIVES qui IMPOSENT un dé malus aux attaques à distance ciblant le personnage
+ * (`conditional-stat-bonus.imposesRangedTargetMalusDie`, PER-74, Cape d'ombre r7). Effet défensif
+ * situationnel SANS valeur numérique (il porte sur le jet de l'adversaire) → rendu en badge sous la
+ * carte Défense. Vide si aucun interrupteur concerné n'est actif.
+ */
+export function activeRangedTargetMalusDieSources(character: Character): BonusDieSource[] {
+  const out: BonusDieSource[] = [];
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    feature.effects.forEach((effect, i) => {
+      if (effect.kind !== 'conditional-stat-bonus' || !effect.imposesRangedTargetMalusDie) return;
+      if (!isEffectActive(character, id, i)) return;
+      out.push({ featureId: id, name: feature.name });
+    });
+  }
+  return out;
+}
+
+/**
  * Dés bonus octroyés à la CRÉATURE d'une voie par les options retenues du personnage
  * (option `creatureAbilityBonusDie`, ex. Golem supérieur « Forme de félin » → AGI du
  * golem). Lit `character.featureChoices` aligné par POSITION sur `Feature.choices`,
@@ -1931,8 +1973,14 @@ function rawTestContributions(featureIds: string[], ctx?: EffectContext): RawTes
     (feature.effects ?? []).forEach((effect, i) => {
       if (effect.kind !== 'conditional-stat-bonus' || !effect.testBonusDomains?.length) return;
       if (!isConditionalActive(effect, id, i, ctx)) return;
+      // Valeur EXPLICITE (ex. Vision des ombres r4 : +5 fixe) sinon fallback de catégorie (« rang + 2 »).
+      const value =
+        effect.testBonusValue === undefined
+          ? fallback
+          : resolveValue(effect.testBonusValue, feature.pathId, pathRanks, ctx);
+      if (value === null) return; // valeur scalante non résoluble sans contexte
       for (const domain of effect.testBonusDomains)
-        out.push({ domain, featureId: id, name: feature.name, category, value: fallback });
+        out.push({ domain, featureId: id, name: feature.name, category, value });
     });
 
     // (b) domaines octroyés par une OPTION retenue (ex. humain-r1 : origine → 2 domaines).

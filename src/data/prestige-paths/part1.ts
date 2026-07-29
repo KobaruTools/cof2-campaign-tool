@@ -1448,6 +1448,20 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage tisse un lien avec le demi-plan des ombres. Ses yeux deviennent violets et, désormais, il voit dans le noir même total comme s'il s'agissait de pénombre. Lorsqu'il est dans la pénombre (mais pas dans le noir), il obtient un bonus de +5 à ses tests de discrétion et de PER basés sur la vue, et il ne souffre d'aucune pénalité en attaque.",
+    // Le +5 est CONDITIONNEL à la pénombre (« mais pas dans le noir ») → INTERRUPTEUR d'état de jeu
+    // « Dans la pénombre » (comme « Lieu dangereux »/casse-cou r6) qui octroie +5 sur la Discrétion
+    // (`stealth`) et la Perception visuelle (`sight`, nouveau domaine « PER basés sur la vue »). Le
+    // +5 est FIXE (`testBonusValue: 5`), car le fallback de catégorie prestige (2 + min(rang, 5))
+    // vaudrait 7. La vision dans le noir et l'absence de pénalité en attaque restent VERBATIM.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        testBonusDomains: ['stealth', 'sight'],
+        testBonusValue: 5,
+        activation: { kind: 'condition', label: 'Dans la pénombre', activeByDefault: false },
+      },
+    ],
     sourcePage: 139,
   },
   {
@@ -1468,8 +1482,21 @@ export const prestigeFeatures1: Feature[] = [
     rank: 6,
     isSpell: false,
     actionTypes: ['M'],
+    // « Une fois par combat » → compteur d'usages (patron standard 1×/combat, masqué du tableau d'état).
+    // « 20 m » = distance fixe (nombre littéral). Le dé bonus « s'il attaque » après réapparition reste
+    // VERBATIM (conditionnel narratif, non porté sur la carte d'attaque).
+    // NOTE DE BAS DU LIVRE (verbatim : « ** Si le personnage connaît déjà la capacité Disparition grâce à
+    // la voie de l'assassin du voleur, il peut désormais l'utiliser aussi souvent qu'il le veut. ») →
+    // MÉCANISÉE via `conditionalFrequency` : si le personnage possède Disparition (assassin-r4), l'usage
+    // est ILLIMITÉ, donc le compteur est masqué. La note est retirée du texte (règle portée par le moteur).
     text:
-      "Une fois par combat, le personnage peut disparaître dans les ombres et ne réapparaître qu'au début de son prochain tour. Aucun adversaire ne peut l'attaquer pendant qu'il a disparu dans les ombres, mais il peut subir des DM de zone. Le personnage réapparaît à une distance maximale de 20 m de sa position initiale. S'il attaque, il obtient un dé bonus et peut effectuer une Attaque sournoise s'il dispose de cette capacité.\n** Si le personnage connaît déjà la capacité Disparition grâce à la voie de l'assassin du voleur, il peut désormais l'utiliser aussi souvent qu'il le veut.",
+      "Une fois par combat, le personnage peut disparaître dans les ombres et ne réapparaître qu'au début de son prochain tour. Aucun adversaire ne peut l'attaquer pendant qu'il a disparu dans les ombres, mais il peut subir des DM de zone. Le personnage réapparaît à une distance maximale de 20 m de sa position initiale. S'il attaque, il obtient un dé bonus et peut effectuer une Attaque sournoise s'il dispose de cette capacité.",
+    usageCounter: {
+      max: 1,
+      resetOn: 'combat',
+      hideFromStatusPanel: true,
+      conditionalFrequency: { featureId: 'assassin-r4', unlimited: true },
+    },
     sourcePage: 139,
   },
   {
@@ -1479,8 +1506,40 @@ export const prestigeFeatures1: Feature[] = [
     rank: 7,
     isSpell: false,
     actionTypes: ['L'],
+    // « Une fois par jour » → compteur d'usages (1×/jour, masqué du tableau d'état). richText :
+    // durée « CHA minutes » = quantité brute [=CHA] ; les valeurs aléatoires (1d6 km, 1d4° PV,
+    // 1d6 minutes) = dés simples {…}.
+    // DEUX effets pilotés par un SEUL interrupteur d'état de jeu « Cape d'ombre déployée » :
+    //  (1) dé BONUS aux tests de discrétion → `testDieDomains: ['stealth']` (badge sur la ligne Discrétion) ;
+    //  (2) dé MALUS imposé aux attaques à distance qui le ciblent → `imposesRangedTargetMalusDie` (badge
+    //      défensif sous la carte Défense — l'effet porte sur le jet de l'adversaire, aucune valeur sur la fiche).
+    // Activation `temporary` (effet de DURÉE à usage limité, patron Rage) : DÉPLOYER la cape CONSOMME
+    // une charge du compteur (1×/jour) via `toggleEffect` (consumeOnActivate par défaut). L'éteindre ne
+    // rembourse pas (la cape a été utilisée pour la journée).
+    // NOTE DE BAS DU LIVRE (verbatim : « *** Si le personnage connaît déjà la capacité Manteau d'ombre
+    // grâce à la voie de la sombre magie de sorcier, il peut désormais l'utiliser une fois par combat. »)
+    // → MÉCANISÉE via `conditionalFrequency` : si le personnage possède Manteau d'ombre (sombre-magie-r4),
+    // la recharge passe de 'day' à 'combat' (le compteur reste 1×, mais se recharge à chaque combat). La
+    // note est retirée du texte (règle portée par le moteur).
     text:
-      "Une fois par jour, le personnage s'enveloppe d'ombre pendant CHA minutes. Il gagne un dé bonus à tous les tests de discrétion et impose un dé malus à tous les tests d'attaque à distance qui le prennent pour cible. S'il tombe à 0 PV pendant la durée de la capacité, il peut choisir de disparaître dans son ombre et de réapparaître à 1d6 km dans la direction de son choix avec 1d4° PV, 1d6 minutes plus tard.\n*** Si le personnage connaît déjà la capacité Manteau d'ombre grâce à la voie de la sombre magie de sorcier, il peut désormais l'utiliser une fois par combat.",
+      "Une fois par jour, le personnage s'enveloppe d'ombre pendant CHA minutes. Il gagne un dé bonus à tous les tests de discrétion et impose un dé malus à tous les tests d'attaque à distance qui le prennent pour cible. S'il tombe à 0 PV pendant la durée de la capacité, il peut choisir de disparaître dans son ombre et de réapparaître à 1d6 km dans la direction de son choix avec 1d4° PV, 1d6 minutes plus tard.",
+    richText:
+      "Une fois par jour, le personnage s'enveloppe d'ombre pendant [=CHA] minutes. Il gagne un dé bonus à tous les tests de discrétion et impose un dé malus à tous les tests d'attaque à distance qui le prennent pour cible. S'il tombe à 0 PV pendant la durée de la capacité, il peut choisir de disparaître dans son ombre et de réapparaître à {1d6} km dans la direction de son choix avec {1d4°} PV, {1d6} minutes plus tard.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        testDieDomains: ['stealth'],
+        imposesRangedTargetMalusDie: true,
+        activation: { kind: 'temporary', label: "Cape d'ombre déployée", activeByDefault: false },
+      },
+    ],
+    usageCounter: {
+      max: 1,
+      resetOn: 'day',
+      hideFromStatusPanel: true,
+      conditionalFrequency: { featureId: 'sombre-magie-r4', resetOn: 'combat' },
+    },
     sourcePage: 139,
   },
   {

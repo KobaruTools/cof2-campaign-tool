@@ -66,6 +66,7 @@ import {
   escalatingManaSurcharge,
   shortRestLockKey,
   usageCounterMaximum,
+  isUsageCounterHidden,
   type DisabledFeatureReason,
   type TestDomainBonus,
   type DominatedTestSource,
@@ -2688,9 +2689,14 @@ function PathBlock({
             {/* Indicateur compact du compteur d'usages (lecture seule ; édition en
                 modale). Ex. Les sept vies du chat : pastilles « N/6 ». Masqué pour une réserve
                 de type pool (élixirs) : elle est suivie dans la barre de l'en-tête de voie. */}
-            {feature.usageCounter && !feature.usageCounter.poolInPathHeader && character && (
-              <CompactUsageIndicator feature={feature} character={character} />
-            )}
+            {feature.usageCounter &&
+              !feature.usageCounter.poolInPathHeader &&
+              character &&
+              // PER-74 : compteur MASQUÉ si une capacité possédée lève toute limite (Ombre mouvante r6 →
+              // usage illimité quand le personnage connaît Disparition).
+              !isUsageCounterHidden(feature.usageCounter, character.featureIds) && (
+                <CompactUsageIndicator feature={feature} character={character} />
+              )}
             {/* PER-146 : compteur synthétique « 1 usage/jour en armure » du sort emprunté du gnome
                 (« Don étrange »), affiché sur la carte de l'emprunt (feature = capacité empruntée) tant
                 qu'une armure est portée. Le coût en PM reste dû (goutte de mana affichée par ailleurs). */}
@@ -3132,7 +3138,9 @@ function PathBlock({
                   character &&
                   // r4/r5 (pool + sorts reproduits) : les boutons « Créer cet élixir » vivent DANS
                   // les blocs de sorts ci-dessus (on y précise la recette) → pas de bouton unique ici.
-                  !(openFeature.usageCounter.poolInPathHeader && openFeature.referencedFeatures?.length) && (
+                  !(openFeature.usageCounter.poolInPathHeader && openFeature.referencedFeatures?.length) &&
+                  // PER-74 : masqué si une capacité possédée lève toute limite (usage illimité).
+                  !isUsageCounterHidden(openFeature.usageCounter, character.featureIds) && (
                     <>
                       <Divider sx={{ my: 1.5 }} />
                       {openFeature.usageCounter.poolInPathHeader ? (
@@ -3471,7 +3479,9 @@ function PathBlock({
                 character &&
                 // r4/r5 (pool + sorts reproduits) : les boutons « Créer cet élixir » vivent dans les
                 // blocs de sorts reproduits ci-dessus → pas de bouton unique ici.
-                !(feature.usageCounter.poolInPathHeader && feature.referencedFeatures?.length) && (
+                !(feature.usageCounter.poolInPathHeader && feature.referencedFeatures?.length) &&
+                // PER-74 : masqué si une capacité possédée lève toute limite (usage illimité).
+                !isUsageCounterHidden(feature.usageCounter, character.featureIds) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
                     {feature.usageCounter.poolInPathHeader ? (

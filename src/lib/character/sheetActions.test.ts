@@ -82,6 +82,17 @@ describe('toggleEffect — interrupteurs d’effets conditionnels', () => {
     expect(toggleEffect(c, 'rage-r3', 0, true).usageCounters).toEqual({ rage: 0 });
   });
 
+  it('déployer la Cape d’ombre CONSOMME la charge quotidienne (ombres r7, PER-74)', () => {
+    // prestige-ombres-r7 : activation `temporary` + usageCounter 1×/jour → activer dépense 1 charge.
+    const c = char({ classId: 'voleur', featureIds: ['prestige-ombres-r7'] });
+    const patch = toggleEffect(c, 'prestige-ombres-r7', 0, true);
+    expect(patch.effectToggles?.['prestige-ombres-r7']).toEqual([true]);
+    expect(patch.usageCounters).toEqual({ 'prestige-ombres-r7': 0 });
+    // Éteindre ne rembourse pas.
+    const off = toggleEffect({ ...c, usageCounters: { 'prestige-ombres-r7': 0 } }, 'prestige-ombres-r7', 0, false);
+    expect(off.usageCounters).toBeUndefined();
+  });
+
   it('éteindre ne rembourse pas l’usage consommé', () => {
     const c = char({ classId: 'barbare', featureIds: ['rage-r3'], usageCounters: { rage: 0 } });
     const patch = toggleEffect(c, 'rage-r3', 0, false);

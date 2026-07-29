@@ -16,6 +16,7 @@ import {
   abilityTestBonusSources,
   abilityTestBonusByAbility,
   activeConditionalTestDice,
+  activeRangedTargetMalusDieSources,
   aggregateImmunities,
   armorPenaltyDivisor,
   capacityResourceGauges,
@@ -55,6 +56,8 @@ import {
   pathRanksFromFeatures,
   pruneEffectToggles,
   resetUsageCounters,
+  effectiveUsageResetOn,
+  isUsageCounterHidden,
   resolveValue,
   setEffectToggle,
   testBonusSources,
@@ -870,6 +873,29 @@ describe('activeConditionalTestDice — Travail d’équipe (rôdeur, PER-108)',
   });
 });
 
+describe('Cape d\'ombre — dé bonus discrétion + dé malus tirs adverses (ombres r7, PER-74)', () => {
+  const cape = (active: boolean): Character =>
+    ({
+      ...charWith(active ? { 'prestige-ombres-r7': [true] } : {}),
+      featureIds: ['prestige-ombres-r7'],
+    }) as Character;
+
+  it('interrupteur actif → dé bonus sur la Discrétion (stealth)', () => {
+    expect(activeConditionalTestDice(cape(true)).get('stealth')).toEqual(["Cape d'ombre"]);
+  });
+
+  it('interrupteur actif → impose un dé malus aux attaques à distance ciblant le perso', () => {
+    expect(activeRangedTargetMalusDieSources(cape(true))).toEqual([
+      { featureId: 'prestige-ombres-r7', name: "Cape d'ombre" },
+    ]);
+  });
+
+  it('interrupteur inactif → ni dé bonus discrétion ni dé malus', () => {
+    expect(activeConditionalTestDice(cape(false)).size).toBe(0);
+    expect(activeRangedTargetMalusDieSources(cape(false))).toEqual([]);
+  });
+});
+
 describe('test-bonus CONDITIONNEL « en milieu naturel » (rôdeur, PER-117)', () => {
   it('Survie : interrupteur actif → escalade et survie bonifiées (rang + 2 = 3 au rang 1)', () => {
     const on = ctx({ toggles: { 'survie-r1': [true] } });
@@ -886,6 +912,19 @@ describe('test-bonus CONDITIONNEL « en milieu naturel » (rôdeur, PER-117)', (
     const on = ctx({ toggles: { 'traqueur-r1': [true] } });
     const domains = testBonusSources(['traqueur-r1'], on).map((b) => b.domain);
     expect(domains).toEqual(expect.arrayContaining(['stealth', 'vigilance', 'tracking']));
+  });
+});
+
+describe('test-bonus CONDITIONNEL à valeur EXPLICITE (Vision des ombres, PER-74)', () => {
+  it('« Dans la pénombre » actif → +5 FIXE sur discrétion et perception visuelle', () => {
+    const on = ctx({ toggles: { 'prestige-ombres-r4': [true] } });
+    const bonuses = testBonusSources(['prestige-ombres-r4'], on);
+    expect(bonuses.find((b) => b.domain === 'stealth')?.total).toBe(5);
+    expect(bonuses.find((b) => b.domain === 'sight')?.total).toBe(5);
+  });
+
+  it('interrupteur inactif → aucun bonus', () => {
+    expect(testBonusSources(['prestige-ombres-r4'], ctx()).length).toBe(0);
   });
 });
 
@@ -1562,6 +1601,36 @@ describe('resetUsageCounters — verrou « oncePerShortRest » (PER-160)', () =>
       new Set(['day', 'short-rest', 'combat'] as const),
     );
     expect(next).toEqual({});
+  });
+});
+
+describe('cadence conditionnelle des compteurs (voie des ombres, PER-74)', () => {
+  const r6 = featureById.get('prestige-ombres-r6')!.usageCounter!;
+  const r7 = featureById.get('prestige-ombres-r7')!.usageCounter!;
+
+  it('R6 Ombre mouvante : compteur MASQUÉ si le personnage connaît Disparition (assassin-r4)', () => {
+    expect(isUsageCounterHidden(r6, ['prestige-ombres-r6', 'assassin-r4'])).toBe(true);
+  });
+
+  it('R6 : compteur AFFICHÉ sans Disparition', () => {
+    expect(isUsageCounterHidden(r6, ['prestige-ombres-r6'])).toBe(false);
+  });
+
+  it('R7 Cape d\'ombre : jamais masqué (la possession change la cadence, pas la limite)', () => {
+    expect(isUsageCounterHidden(r7, ['prestige-ombres-r7', 'sombre-magie-r4'])).toBe(false);
+  });
+
+  it('R7 : recharge par COMBAT si le personnage connaît Manteau d\'ombre (sombre-magie-r4)', () => {
+    expect(effectiveUsageResetOn(r7, ['prestige-ombres-r7', 'sombre-magie-r4'])).toBe('combat');
+  });
+
+  it('R7 : recharge par JOUR (cadence de base) sans Manteau d\'ombre', () => {
+    expect(effectiveUsageResetOn(r7, ['prestige-ombres-r7'])).toBe('day');
+  });
+
+  it('R6 sans Disparition : la récupération rapide (combat) recharge le compteur ; le repos long aussi', () => {
+    // resetOn de base 'combat' → réinitialisé par un déclencheur 'combat'.
+    expect(resetUsageCounters({ 'prestige-ombres-r6': 0 }, ['prestige-ombres-r6'], new Set(['combat'] as const))).toEqual({});
   });
 });
 

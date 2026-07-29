@@ -16,6 +16,7 @@ import type { DerivedInput } from '@/lib/engine';
 import { isCustomItem, type Character, type EquipmentRef } from '@/lib/character/types';
 import {
   activeFeatureIdsForMods,
+  activeRangedTargetMalusDieSources,
   aggregateImmunities,
   criticalRangeSources,
   defenseAbility,
@@ -238,11 +239,22 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     title: `Immunité : ${imm.label}`,
     sources: imm.sources.map((s) => ({ name: s.name, featureId: s.featureId })),
   }));
-  // Ordre voulu : immunités d'abord, réductions ensuite.
+  // Dé MALUS imposé aux attaques à distance ciblant le personnage (Cape d'ombre r7, PER-74) — effet
+  // DÉFENSIF situationnel piloté par l'interrupteur « Cape d'ombre déployée » : rendu en badge ambre
+  // (œil barré) sous la carte Défense uniquement quand l'interrupteur est actif. Aucune valeur numérique.
+  const rangedMalusBadges: DefenseBadgeData[] = activeRangedTargetMalusDieSources(character).map((s) => ({
+    key: `ranged-malus-${s.featureId}`,
+    variant: 'ranged-malus',
+    // Pas de texte : l'arc (attaque à distance) + le dé malus rouge suffisent ; l'infobulle explicite.
+    title: 'Attaques à distance qui vous ciblent : dé malus (2d20, l’adversaire garde le pire)',
+    sources: [{ name: s.name, featureId: s.featureId }],
+  }));
+  // Ordre voulu : immunités d'abord, réductions, puis effets défensifs situationnels (dé malus).
   const defenseBadges: DefenseBadgeData[] = [
     ...statusImmunityBadges,
     ...damageImmunityBadges,
     ...reductionBadges,
+    ...rangedMalusBadges,
   ];
 
   // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — badges custom (variante 'critical')
