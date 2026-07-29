@@ -14,6 +14,11 @@
  */
 import type { Depletion } from '@/lib/character/types';
 import type { CreatureSide } from '@/lib/ui/creature';
+import {
+  clampIntensity,
+  type AnyStatusEffectId,
+  type AppliedStatus,
+} from '@/lib/character/statusEffects';
 
 /** Instance d'une créature dans le combat en cours. */
 export interface CreatureInstance {
@@ -52,6 +57,14 @@ export interface GmCombatState {
   depletions: Record<string, Depletion>;
   /** Clé du combattant dont c'est le tour (`null` = combat pas encore démarré). */
   currentTurnKey: string | null;
+  /**
+   * États négatifs appliqués par combattant (PER-278, milestone PER-276). La clé est la
+   * MÊME que `currentTurnKey` et les lignes du tracker : id de personnage joueur OU id
+   * d'instance de créature. Chaque valeur liste les états posés (forme `AppliedStatus`,
+   * consommée telle quelle par `resolveStatusModifiers`), avec l'intensité pour les états
+   * cumulatifs. **MJ seul auteur** ; vide par défaut (migration douce des combats antérieurs).
+   */
+  statuses: Record<string, AppliedStatus[]>;
 }
 
 /**
@@ -74,6 +87,7 @@ export const EMPTY_COMBAT_STATE: GmCombatState = {
   nextInstanceId: 1,
   depletions: {},
   currentTurnKey: null,
+  statuses: {},
 };
 
 /** Clé `localStorage` dédiée au combat en cours d'une campagne. */
@@ -101,6 +115,7 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
           : current.creatures.length + 1,
       depletions: current.depletions ?? {},
       currentTurnKey: current.currentTurnKey ?? null,
+      statuses: reviveStatuses(current.statuses),
     };
   }
 
@@ -124,10 +139,40 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
           : legacy.banditIds.length + 1,
       currentTurnKey: legacy.currentTurnKey ?? null,
       depletions,
+      statuses: {},
     };
   }
 
   return EMPTY_COMBAT_STATE;
+}
+
+/**
+ * Reconstruit défensivement la carte des états appliqués (`state.statuses`) : tolère
+ * l'absence (défaut `{}`, migration douce des combats d'avant PER-278) et écarte les entrées
+ * mal formées. Purement STRUCTUREL — l'intensité n'est PAS re-clampée ici (le résolveur et les
+ * mutations s'en chargent) ; on normalise juste la forme (`{ id }` / `{ id, intensity }`) et on
+ * omet les intensités ≤ 1 (convention « absent = 1 »). Les combattants sans état sont écartés.
+ */
+function reviveStatuses(raw: unknown): Record<string, AppliedStatus[]> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, AppliedStatus[]> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(value)) continue;
+    const applied: AppliedStatus[] = [];
+    for (const item of value) {
+      if (!item || typeof item !== 'object') continue;
+      const id = (item as { id?: unknown }).id;
+      if (typeof id !== 'string') continue;
+      const intensity = (item as { intensity?: unknown }).intensity;
+      applied.push(
+        typeof intensity === 'number' && Number.isFinite(intensity) && intensity > 1
+          ? { id: id as AnyStatusEffectId, intensity: Math.trunc(intensity) }
+          : { id: id as AnyStatusEffectId },
+      );
+    }
+    if (applied.length > 0) out[key] = applied;
+  }
+  return out;
 }
 
 /**
@@ -142,4 +187,84 @@ export function reviveState(raw: string): GmCombatState {
     return EMPTY_COMBAT_STATE;
   }
   return reviveStateObject(parsed);
+}
+
+/* ------------------------------------------------------------------------- *
+ * RÉDUCTEURS D'ÉTATS DE COMBAT (PER-278, milestone PER-276) — purs, testés.
+ * Le MJ (auteur unique) les applique via le store `campaignCombat`
+ * (`applyLocalCombat` → localStorage + upsert `campaign_combat` + broadcast
+ * `combat-state`). Aucun accès store/réseau ici : entrée → nouvel état.
+ * ------------------------------------------------------------------------- */
+
+/** Entrée canonique : on omet `intensity` quand elle vaut 1 (convention « absent = 1 »). */
+function makeApplied(id: AnyStatusEffectId, intensity: number): AppliedStatus {
+  return intensity > 1 ? { id, intensity } : { id };
+}
+
+/**
+ * Applique un état sur un combattant (clé = id de perso joueur OU id d'instance de créature).
+ * Idempotent par (combattant, état) : ajoute l'état s'il est absent, sinon fixe son intensité.
+ * L'intensité est bornée à [1, plafond du catalogue] via `clampIntensity` (toujours 1 pour un
+ * état binaire). Défaut `intensity = 1`.
+ */
+export function applyStatusTo(
+  state: GmCombatState,
+  key: string,
+  id: AnyStatusEffectId,
+  intensity = 1,
+): GmCombatState {
+  const clamped = clampIntensity(id, intensity);
+  const current = state.statuses[key] ?? [];
+  const next = current.some((s) => s.id === id)
+    ? current.map((s) => (s.id === id ? makeApplied(id, clamped) : s))
+    : [...current, makeApplied(id, clamped)];
+  return { ...state, statuses: { ...state.statuses, [key]: next } };
+}
+
+/**
+ * Retire un état d'un combattant. No-op si l'état n'est pas posé. Nettoie la clé du combattant
+ * quand il ne lui reste aucun état (carte `statuses` sans entrée vide).
+ */
+export function removeStatusFrom(
+  state: GmCombatState,
+  key: string,
+  id: AnyStatusEffectId,
+): GmCombatState {
+  const current = state.statuses[key];
+  if (!current || !current.some((s) => s.id === id)) return state;
+  const next = current.filter((s) => s.id !== id);
+  const statuses = { ...state.statuses };
+  if (next.length === 0) delete statuses[key];
+  else statuses[key] = next;
+  return { ...state, statuses };
+}
+
+/**
+ * Ajuste de `delta` (±) l'intensité d'un état cumulatif DÉJÀ posé sur un combattant, bornée à
+ * [1, plafond]. No-op si l'état n'est pas posé (le retrait passe par `removeStatusFrom`, pas par
+ * un décrément) ; reste 1 pour un état binaire (plafond 1).
+ */
+export function adjustStatusIntensity(
+  state: GmCombatState,
+  key: string,
+  id: AnyStatusEffectId,
+  delta: number,
+): GmCombatState {
+  const current = state.statuses[key];
+  const entry = current?.find((s) => s.id === id);
+  if (!current || !entry) return state;
+  const clamped = clampIntensity(id, (entry.intensity ?? 1) + delta);
+  const next = current.map((s) => (s.id === id ? makeApplied(id, clamped) : s));
+  return { ...state, statuses: { ...state.statuses, [key]: next } };
+}
+
+/**
+ * Retire TOUS les états d'un combattant (au retrait de sa carte, ou à la réinitialisation du
+ * combat côté PER-283). No-op si le combattant n'a aucun état.
+ */
+export function clearStatusesOf(state: GmCombatState, key: string): GmCombatState {
+  if (!state.statuses[key]) return state;
+  const statuses = { ...state.statuses };
+  delete statuses[key];
+  return { ...state, statuses };
 }

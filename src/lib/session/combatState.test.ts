@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EMPTY_COMBAT_STATE,
+  adjustStatusIntensity,
+  applyStatusTo,
+  clearStatusesOf,
+  removeStatusFrom,
   reviveState,
   reviveStateObject,
   storageKey,
@@ -30,6 +34,7 @@ describe('reviveStateObject', () => {
       nextInstanceId: 3,
       depletions: { 'c-1': { hp: { lethal: 2, temp: 0 } } },
       currentTurnKey: 'c-2',
+      statuses: { 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] },
     };
     expect(reviveStateObject(state)).toEqual(state);
   });
@@ -59,6 +64,151 @@ describe('reviveStateObject', () => {
 
   it('renvoie l’état vide pour un objet non reconnu', () => {
     expect(reviveStateObject({ foo: 'bar' })).toBe(EMPTY_COMBAT_STATE);
+  });
+
+  it('défaute statuses à {} pour un combat antérieur à PER-278 (migration douce)', () => {
+    const revived = reviveStateObject({ creatures: [{ id: 'c-1', slug: 'rat' }] });
+    expect(revived.statuses).toEqual({});
+  });
+
+  it('défaute statuses à {} en migrant l’ancien format « bandits »', () => {
+    const revived = reviveStateObject({ banditIds: [1] });
+    expect(revived.statuses).toEqual({});
+  });
+
+  it('assainit statuses : écarte les entrées mal formées et les combattants sans état', () => {
+    const revived = reviveStateObject({
+      creatures: [],
+      statuses: {
+        'char-1': [
+          { id: 'blinded' },
+          { id: 'invalidating-attack', intensity: 3 },
+          { id: 42 }, // id non-chaîne → écarté
+          'nope', // entrée non-objet → écartée
+        ],
+        'char-2': [], // combattant sans état → écarté
+        'char-3': 'boom', // valeur non-tableau → écartée
+      },
+    });
+    expect(revived.statuses).toEqual({
+      'char-1': [{ id: 'blinded' }, { id: 'invalidating-attack', intensity: 3 }],
+    });
+  });
+
+  it('normalise l’intensité : omet les valeurs ≤ 1 et tronque les décimales', () => {
+    const revived = reviveStateObject({
+      creatures: [],
+      statuses: { 'char-1': [{ id: 'blinded', intensity: 1 }, { id: 'invalidating-attack', intensity: 2.9 }] },
+    });
+    expect(revived.statuses['char-1']).toEqual([{ id: 'blinded' }, { id: 'invalidating-attack', intensity: 2 }]);
+  });
+});
+
+describe('applyStatusTo', () => {
+  const base: GmCombatState = { ...EMPTY_COMBAT_STATE, statuses: {} };
+
+  it('pose un état binaire sans intensité (convention « absent = 1 »)', () => {
+    const next = applyStatusTo(base, 'char-1', 'blinded');
+    expect(next.statuses).toEqual({ 'char-1': [{ id: 'blinded' }] });
+  });
+
+  it('borne l’intensité d’un état binaire à 1 (plafond du catalogue)', () => {
+    const next = applyStatusTo(base, 'char-1', 'blinded', 5);
+    expect(next.statuses['char-1']).toEqual([{ id: 'blinded' }]);
+  });
+
+  it('pose un état cumulatif à l’intensité demandée, plafonnée', () => {
+    expect(applyStatusTo(base, 'c-1', 'invalidating-attack', 2).statuses['c-1']).toEqual([
+      { id: 'invalidating-attack', intensity: 2 },
+    ]);
+    // Au-delà du plafond (max 3) → borné à 3.
+    expect(applyStatusTo(base, 'c-1', 'invalidating-attack', 9).statuses['c-1']).toEqual([
+      { id: 'invalidating-attack', intensity: 3 },
+    ]);
+  });
+
+  it('est idempotent par (combattant, état) : ré-appliquer fixe l’intensité sans dupliquer', () => {
+    const once = applyStatusTo(base, 'c-1', 'invalidating-attack', 1);
+    const twice = applyStatusTo(once, 'c-1', 'invalidating-attack', 3);
+    expect(twice.statuses['c-1']).toEqual([{ id: 'invalidating-attack', intensity: 3 }]);
+  });
+
+  it('cumule des états distincts sur le même combattant', () => {
+    const next = applyStatusTo(applyStatusTo(base, 'c-1', 'blinded'), 'c-1', 'invalidating-attack', 2);
+    expect(next.statuses['c-1']).toEqual([
+      { id: 'blinded' },
+      { id: 'invalidating-attack', intensity: 2 },
+    ]);
+  });
+
+  it('ne mute pas l’état source (pur)', () => {
+    applyStatusTo(base, 'c-1', 'blinded');
+    expect(base.statuses).toEqual({});
+  });
+});
+
+describe('removeStatusFrom', () => {
+  const withStatuses: GmCombatState = {
+    ...EMPTY_COMBAT_STATE,
+    statuses: { 'c-1': [{ id: 'blinded' }, { id: 'invalidating-attack', intensity: 2 }] },
+  };
+
+  it('retire un état et conserve les autres', () => {
+    expect(removeStatusFrom(withStatuses, 'c-1', 'blinded').statuses['c-1']).toEqual([
+      { id: 'invalidating-attack', intensity: 2 },
+    ]);
+  });
+
+  it('nettoie la clé du combattant quand il ne reste aucun état', () => {
+    const only: GmCombatState = { ...EMPTY_COMBAT_STATE, statuses: { 'c-1': [{ id: 'blinded' }] } };
+    expect(removeStatusFrom(only, 'c-1', 'blinded').statuses).toEqual({});
+  });
+
+  it('no-op si l’état n’est pas posé', () => {
+    expect(removeStatusFrom(withStatuses, 'c-1', 'slowed')).toBe(withStatuses);
+    expect(removeStatusFrom(withStatuses, 'absent', 'blinded')).toBe(withStatuses);
+  });
+});
+
+describe('adjustStatusIntensity', () => {
+  const withStacking: GmCombatState = {
+    ...EMPTY_COMBAT_STATE,
+    statuses: { 'c-1': [{ id: 'invalidating-attack', intensity: 2 }] },
+  };
+
+  it('incrémente l’intensité, plafonnée', () => {
+    expect(adjustStatusIntensity(withStacking, 'c-1', 'invalidating-attack', 1).statuses['c-1']).toEqual([
+      { id: 'invalidating-attack', intensity: 3 },
+    ]);
+    // Déjà à 2, +5 → borné à 3.
+    expect(adjustStatusIntensity(withStacking, 'c-1', 'invalidating-attack', 5).statuses['c-1']).toEqual([
+      { id: 'invalidating-attack', intensity: 3 },
+    ]);
+  });
+
+  it('décrémente jusqu’à 1 (omission de l’intensité), sans retirer l’état', () => {
+    const down = adjustStatusIntensity(withStacking, 'c-1', 'invalidating-attack', -5);
+    expect(down.statuses['c-1']).toEqual([{ id: 'invalidating-attack' }]);
+  });
+
+  it('no-op si l’état n’est pas posé', () => {
+    expect(adjustStatusIntensity(withStacking, 'c-1', 'blinded', 1)).toBe(withStacking);
+    expect(adjustStatusIntensity(withStacking, 'absent', 'invalidating-attack', 1)).toBe(withStacking);
+  });
+});
+
+describe('clearStatusesOf', () => {
+  it('retire tous les états d’un combattant', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      statuses: { 'c-1': [{ id: 'blinded' }], 'c-2': [{ id: 'slowed' }] },
+    };
+    expect(clearStatusesOf(state, 'c-1').statuses).toEqual({ 'c-2': [{ id: 'slowed' }] });
+  });
+
+  it('no-op si le combattant n’a aucun état', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, statuses: { 'c-1': [{ id: 'blinded' }] } };
+    expect(clearStatusesOf(state, 'absent')).toBe(state);
   });
 });
 

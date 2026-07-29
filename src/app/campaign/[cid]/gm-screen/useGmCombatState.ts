@@ -25,10 +25,15 @@ import { useCallback, useEffect } from 'react';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import {
   EMPTY_COMBAT_STATE,
+  applyStatusTo,
+  removeStatusFrom,
+  adjustStatusIntensity,
+  clearStatusesOf,
   type AddCreatureOptions,
   type CreatureInstance,
   type GmCombatState,
 } from '@/lib/session/combatState';
+import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
 import type { Depletion } from '@/lib/character/types';
 
 export type { AddCreatureOptions, CreatureInstance, GmCombatState };
@@ -47,6 +52,15 @@ export interface GmCombatStateApi extends GmCombatState {
   setCreatureDepletion: (instanceId: string, depletion: Depletion) => void;
   /** Fixe le combattant dont c'est le tour. */
   setCurrentTurnKey: (key: string | null) => void;
+  /**
+   * Applique un état négatif sur un combattant (`combatantKey` = id de perso joueur OU id
+   * d'instance de créature). Idempotent : ré-appliquer fixe l'intensité (bornée au plafond).
+   */
+  applyStatus: (combatantKey: string, id: AnyStatusEffectId, intensity?: number) => void;
+  /** Retire un état négatif d'un combattant. */
+  removeStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
+  /** Ajuste de `delta` (±) l'intensité d'un état cumulatif posé sur un combattant. */
+  adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
 }
 
 export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCombatStateApi {
@@ -86,8 +100,10 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
       applyLocalCombat(cid, (prev) => {
         const depletions = { ...prev.depletions };
         delete depletions[instanceId];
+        // Retire aussi les états posés sur l'instance (sinon ils orphelineraient la carte).
+        const withoutStatuses = clearStatusesOf(prev, instanceId);
         return {
-          ...prev,
+          ...withoutStatuses,
           creatures: prev.creatures.filter((c) => c.id !== instanceId),
           depletions,
         };
@@ -118,6 +134,24 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const applyStatus = useCallback(
+    (combatantKey: string, id: AnyStatusEffectId, intensity?: number) =>
+      applyLocalCombat(cid, (prev) => applyStatusTo(prev, combatantKey, id, intensity)),
+    [applyLocalCombat, cid],
+  );
+
+  const removeStatus = useCallback(
+    (combatantKey: string, id: AnyStatusEffectId) =>
+      applyLocalCombat(cid, (prev) => removeStatusFrom(prev, combatantKey, id)),
+    [applyLocalCombat, cid],
+  );
+
+  const adjustStatus = useCallback(
+    (combatantKey: string, id: AnyStatusEffectId, delta: number) =>
+      applyLocalCombat(cid, (prev) => adjustStatusIntensity(prev, combatantKey, id, delta)),
+    [applyLocalCombat, cid],
+  );
+
   return {
     ...state,
     addCreature,
@@ -125,5 +159,8 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     setCreatureVisibility,
     setCreatureDepletion,
     setCurrentTurnKey,
+    applyStatus,
+    removeStatus,
+    adjustStatus,
   };
 }
