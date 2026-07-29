@@ -11,10 +11,11 @@
  *  - **`'gm'`** : l'écran de MJ complet, AUTEUR unique. `load({seed:true})` migre au besoin
  *    le combat encore en `localStorage` vers la table ; les mutations passent par
  *    `applyLocalCombat` (store + localStorage + upsert table + broadcast).
- *  - **`'reader'`** : la fenêtre de projection (PER-248). `load({seed:false})` (aucune
- *    écriture) ; elle ne mute jamais et reçoit les changements du MJ soit par le canal
- *    (quand elle sera cliente de session, PER-268), soit — même navigateur, aujourd'hui —
- *    par l'événement `storage` (relayé vers `applyRemoteCombat`).
+ *  - **`'reader'`** : la fenêtre de projection (PER-248), devenue cliente de session (PER-268).
+ *    `load({seed:false})` (aucune écriture) au montage pour l'état initial ; elle ne mute jamais
+ *    et reçoit les changements du MJ EN DIRECT via le canal de session (`combat-state` →
+ *    `applyRemoteCombat`, câblé dans `useSessionChannel`). Le pont same-browser `storage` a été
+ *    retiré : canal seul (plus de synchro live hors session, mais source de vérité unique).
  *
  * L'API publique (`GmCombatStateApi`) est inchangée : `useGmScreenCombat` et ses pages
  * consommateurs n'ont pas à connaître le store.
@@ -24,7 +25,6 @@ import { useCallback, useEffect } from 'react';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import {
   EMPTY_COMBAT_STATE,
-  storageKey,
   type AddCreatureOptions,
   type CreatureInstance,
   type GmCombatState,
@@ -53,33 +53,15 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
   const state = useCampaignCombatStore((s) => s.byCampaign[cid] ?? EMPTY_COMBAT_STATE);
   const load = useCampaignCombatStore((s) => s.load);
   const applyLocalCombat = useCampaignCombatStore((s) => s.applyLocalCombat);
-  const applyRemoteCombat = useCampaignCombatStore((s) => s.applyRemoteCombat);
 
-  // Chargement au montage (table → localStorage → vide ; migration douce si rôle MJ) +
-  // synchro cross-fenêtre same-browser (projection PER-248) : l'événement `storage` se
-  // déclenche dans les AUTRES fenêtres de même origine à chaque écriture de la clé du
-  // combat. On relaie la valeur reçue vers `applyRemoteCombat` (remplacement, pas de
-  // réécriture). La fenêtre qui écrit ne reçoit pas son propre événement — elle a déjà
-  // l'état à jour dans le store.
+  // Chargement au montage (table → localStorage → vide ; migration douce si rôle MJ).
+  // La synchro EN DIRECT ne passe plus par l'événement `storage` (retiré en PER-268) :
+  // le rôle MJ écrit lui-même le store (`applyLocalCombat`), et la projection reçoit les
+  // changements via le canal de session (`combat-state` → `applyRemoteCombat`, câblé dans
+  // `useSessionChannel`). Canal seul → source de vérité unique, pas de double application.
   useEffect(() => {
     void load(cid, { seed: role === 'gm' });
-    if (typeof window === 'undefined') return;
-    const key = storageKey(cid);
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== key) return;
-      let parsed: unknown = null;
-      if (e.newValue) {
-        try {
-          parsed = JSON.parse(e.newValue);
-        } catch {
-          parsed = null;
-        }
-      }
-      applyRemoteCombat(cid, parsed);
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, [cid, role, load, applyRemoteCombat]);
+  }, [cid, role, load]);
 
   const addCreature = useCallback(
     (slug: string, options?: AddCreatureOptions) =>
