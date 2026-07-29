@@ -2039,10 +2039,14 @@ export interface FeatureChoiceOption {
    * (`ability-bonus`, qui change PV/DEF/formules) : ici on ne modifie QUE le jet « d20 + carac » des
    * tests de cette caractéristique (et donc des domaines qu'elle gouverne). Agrégé par
    * `abilityTestBonusByAbility` et rendu sur la ligne de la carac dans « Compétences & tests ».
-   * Le livre précise « bonus de magie, non cumulable avec un objet magique » — non modélisé (pas
-   * d'objets magiques) → reste verbatim. Absent = aucun.
+   * Absent = aucun.
+   *
+   * `magic: true` marque un **bonus de magie** au sens du livre (PER-134) : ce n'est pas un bonus
+   * de compétence, et il ne se cumule PAS avec le bonus de magie d'un objet magique sur le même
+   * test — on retient le meilleur (note de bas de page des Tatouages, p. 80). Arbitré par
+   * `resolveTestBonus` avec les apports aux tests des objets portés (`ItemTestBonuses`, PER-275).
    */
-  abilityTestBonus?: { ability: AbilityId; value: number };
+  abilityTestBonus?: { ability: AbilityId; value: number; magic?: boolean };
   /**
    * Niveau de personnage MINIMUM requis pour retenir cette option (PER-140). Absent = aucune
    * condition. Ex. Monture fantastique (cavalier-r5) : les montures VOLANTES (pégase, griffon,

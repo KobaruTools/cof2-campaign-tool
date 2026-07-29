@@ -518,21 +518,22 @@ export const fighterFeatures: Feature[] = [
     // PER-66 / PER-125 : le tatouage est un CHOIX d'option (7 totems) ; l'option retenue octroie un
     // bonus CHIFFRÉ de +3 aux tests de SA caractéristique (`abilityTestBonus`), rendu sur la ligne de
     // la carac dans Compétences & tests. C'est un bonus aux tests d'une CARAC (axe distinct des domaines
-    // de compétence PER-89). La note de bas de page (« bonus de magie, non cumulable avec un objet
-    // magique ») reste verbatim — pas d'objets magiques en jeu. « étourdi → ralenti » : état (tracker
-    // PER-104/105).
+    // de compétence PER-89). La note de bas de page est désormais MODÉLISÉE (PER-134) : `magic: true`
+    // sur chaque option en fait un bonus de MAGIE, qui ne se cumule pas avec le bonus d'un objet
+    // magique sur le même test (on retient le meilleur — arbitré par `resolveTestBonus`).
+    // « étourdi → ralenti » : état (tracker PER-104/105).
     choices: [
       {
         kind: 'option',
         prompt: 'Tatouage magique',
         options: [
-          { id: 'bull', label: 'Taureau (+3 aux tests de FOR)', abilityTestBonus: { ability: 'FOR', value: 3 } },
-          { id: 'bear', label: 'Ours (+3 aux tests de CON)', abilityTestBonus: { ability: 'CON', value: 3 } },
-          { id: 'panther', label: 'Panthère (+3 aux tests d’AGI)', abilityTestBonus: { ability: 'AGI', value: 3 } },
-          { id: 'owl', label: 'Chouette (+3 aux tests de PER)', abilityTestBonus: { ability: 'PER', value: 3 } },
-          { id: 'wolf', label: 'Loup (+3 aux tests de CHA)', abilityTestBonus: { ability: 'CHA', value: 3 } },
-          { id: 'fox', label: 'Renard (+3 aux tests d’INT)', abilityTestBonus: { ability: 'INT', value: 3 } },
-          { id: 'snake', label: 'Serpent (+3 aux tests de VOL)', abilityTestBonus: { ability: 'VOL', value: 3 } },
+          { id: 'bull', label: 'Taureau (+3 aux tests de FOR)', abilityTestBonus: { ability: 'FOR', value: 3, magic: true } },
+          { id: 'bear', label: 'Ours (+3 aux tests de CON)', abilityTestBonus: { ability: 'CON', value: 3, magic: true } },
+          { id: 'panther', label: 'Panthère (+3 aux tests d’AGI)', abilityTestBonus: { ability: 'AGI', value: 3, magic: true } },
+          { id: 'owl', label: 'Chouette (+3 aux tests de PER)', abilityTestBonus: { ability: 'PER', value: 3, magic: true } },
+          { id: 'wolf', label: 'Loup (+3 aux tests de CHA)', abilityTestBonus: { ability: 'CHA', value: 3, magic: true } },
+          { id: 'fox', label: 'Renard (+3 aux tests d’INT)', abilityTestBonus: { ability: 'INT', value: 3, magic: true } },
+          { id: 'snake', label: 'Serpent (+3 aux tests de VOL)', abilityTestBonus: { ability: 'VOL', value: 3, magic: true } },
         ],
       },
     ],

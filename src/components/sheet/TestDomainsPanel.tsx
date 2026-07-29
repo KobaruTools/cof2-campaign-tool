@@ -14,7 +14,10 @@ import type { AbilityId } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import {
   COMPETENCE_CATEGORY_LABEL,
+  freelyStackingAbilityTestBonuses,
+  resolveTestBonus,
   type AbilityTestBonusSource,
+  type MagicTestSource,
   type TestDomainBonus,
   type UniversalTestBonus,
 } from '@/lib/character/effects';
@@ -54,6 +57,14 @@ export interface TestDomainsPanelProps {
    * coché, à ses domaines). Distinct de `abilityTestBonus` (buff uniforme à toutes les caracs).
    */
   perAbilityTestBonus?: Partial<Record<AbilityId, AbilityTestBonusSource[]>>;
+  /**
+   * Sources de bonus de MAGIE aux tests (PER-275) : capacités marquées (Tatouages, p. 80) et
+   * objets magiques PORTÉS. Elles NE se cumulent PAS entre elles — l'arbitrage (« on garde le
+   * meilleur ») et l'addition au bonus de compétence sont faits par `resolveTestBonus`. Celles
+   * de portée carac recoupent `perAbilityTestBonus`, dont on n'additionne donc que la part
+   * librement cumulable. Absent = aucun bonus de magie.
+   */
+  magicTestBonuses?: MagicTestSource[];
   /**
    * Caractéristiques bénéficiant d'un DÉ BONUS permanent (badge double-d20), avec la/les
    * capacité(s) source(s) — affiché à droite de la ligne « test de [CARAC] ».
@@ -109,6 +120,59 @@ const SURVIVAL_CON_DOMAINS = new Set<string>([
 
 /** Modificateur signé (« +3 », « +0 », « −2 »). */
 const signed = (n: number): string => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`);
+
+/** Clé React stable d'une source de magie (capacité, ou objet identifié par son nom). */
+const magicKey = (s: MagicTestSource): string => s.featureId ?? `item:${s.name}`;
+
+/**
+ * Libellé d'une source de bonus de magie dans un détail de calcul : puce de voie quand la
+ * source est une CAPACITÉ, simple libellé texte quand c'est un OBJET porté — même choix que les
+ * apports de caractéristiques (PER-272), un objet n'ayant aucune voie à afficher.
+ */
+function MagicSourceLabel({ source }: { source: MagicTestSource }) {
+  return (
+    <>
+      <Box component="span">Bonus de magie —</Box>
+      {source.featureId ? (
+        <CapabilityChip featureId={source.featureId} label={null} />
+      ) : (
+        <Box component="span">{source.name}</Box>
+      )}
+    </>
+  );
+}
+
+/**
+ * Lignes de détail d'un bonus de magie : la source RETENUE, puis les sources ÉCARTÉES en barré
+ * avec le rappel du non-cumul (p. 80 / p. 203). Même langage visuel que les contributions
+ * dominées d'un bonus de compétence (PER-73), pour que le joueur voie qu'un second objet
+ * enchanté est bien pris en compte mais dominé.
+ */
+function MagicRows({ kept, dominated }: { kept: MagicTestSource | null; dominated: MagicTestSource[] }) {
+  return (
+    <>
+      {kept && <BreakdownRow label={<MagicSourceLabel source={kept} />} value={signed(kept.value)} />}
+      {dominated.map((s) => (
+        <Box key={`magic-dom-${magicKey(s)}`} sx={{ mt: 0.25 }}>
+          <BreakdownRow strike label={`Bonus de magie — ${s.name}`} value={signed(s.value)} />
+          <Typography
+            variant="caption"
+            component="div"
+            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', fontStyle: 'italic', color: 'text.secondary' }}
+          >
+            {kept?.featureId ? (
+              <>
+                Ne se cumule pas avec <CapabilityChip featureId={kept.featureId} label={null} />
+              </>
+            ) : (
+              `Ne se cumule pas avec ${kept?.name ?? ''}`
+            )}
+          </Typography>
+        </Box>
+      ))}
+    </>
+  );
+}
 
 /**
  * Ligne de détail d'infobulle « libellé … valeur » : libellé à gauche (pouvant porter
@@ -206,7 +270,7 @@ function WarnPill({ children, outlined = false }: { children: ReactNode; outline
  * à 0. Au survol : provenance (capacité par catégorie de source, p. 203) et plafond +15.
  * Lecture seule (les interrupteurs des buffs vivent sur les cartes de capacité).
  */
-export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbilityTestBonus, bonusDice, universalBonus, testDice, armorPenalty, armorMaxAgi, persistKey = 'test-domains' }: TestDomainsPanelProps) {
+export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbilityTestBonus, magicTestBonuses, bonusDice, universalBonus, testDice, armorPenalty, armorMaxAgi, persistKey = 'test-domains' }: TestDomainsPanelProps) {
   const penalty = armorPenalty ?? 0;
   const [includeAbility, setIncludeAbility] = usePersistedBoolean('test-domains:include-ability', false);
   // Coché par défaut : on n'affiche d'emblée que les domaines effectivement bonifiés
@@ -215,10 +279,25 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
 
   const byDomain = new Map(bonuses.map((b) => [b.domain, b]));
 
+  const magicSources = magicTestBonuses ?? [];
+  // Domaines bonifiés par un OBJET magique visant ce domaine précis : leur bonus ne vient pas de
+  // `bonuses` (ce n'est pas un bonus de compétence de voie), il faut donc les rendre visibles
+  // explicitement quand « masquer les domaines sans bonus » est coché.
+  const magicDomains = new Set(
+    magicSources.flatMap((s) => (s.scope.kind === 'domain' ? [s.scope.domain] : [])),
+  );
+
   const lines = testDomains
     .map((d) => ({ d, bonus: byDomain.get(d.id) }))
-    // Un domaine reste visible s'il porte un bonus chiffré OU un dé bonus conditionnel actif.
-    .filter(({ d, bonus }) => !hideZero || (bonus?.total ?? 0) !== 0 || (testDice?.has(d.id) ?? false));
+    // Un domaine reste visible s'il porte un bonus chiffré (voie ou objet magique) OU un dé bonus
+    // conditionnel actif.
+    .filter(
+      ({ d, bonus }) =>
+        !hideZero ||
+        (bonus?.total ?? 0) !== 0 ||
+        magicDomains.has(d.id) ||
+        (testDice?.has(d.id) ?? false),
+    );
 
   // Buff actif uniforme sur TOUS les tests de carac (ex. Bénédiction : +1, +2 au rang 5).
   const buffSources = abilityTestBonus ?? [];
@@ -273,11 +352,15 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
           const agiCapBites = agiAdj?.capped ?? false;
           const agiPenalty = agiAdj?.penalty ?? 0;
           const abilityMod = agiAdj ? agiAdj.cappedAgi : rawAbilityMod;
-          // Bonus CHIFFRÉS propres à CETTE carac (ex. Tatouages, PER-125).
-          const perCaracSources = perAbilityTestBonus?.[ability] ?? [];
+          // Bonus CHIFFRÉS propres à CETTE carac (ex. Prescience, PER-137) — HORS bonus de magie
+          // (Tatouages), qui obéissent à un non-cumul et passent par `resolveTestBonus`.
+          const perCaracSources = freelyStackingAbilityTestBonuses(perAbilityTestBonus?.[ability]);
           const perCaracBonus = perCaracSources.reduce((sum, s) => sum + s.value, 0);
-          const caracTest = abilityMod + testBuff + perCaracBonus - agiPenalty;
-          const caracBuffed = testBuff !== 0 || perCaracBonus !== 0;
+          // Test de carac NU : seules les sources de magie de portée CARAC s'appliquent (un objet
+          // « +5 en Discrétion » ne bonifie pas un test d'AGI générique), et une seule compte.
+          const caracMagic = resolveTestBonus({ magic: magicSources, ability });
+          const caracTest = abilityMod + testBuff + perCaracBonus + caracMagic.abilityMagic - agiPenalty;
+          const caracBuffed = testBuff !== 0 || perCaracBonus !== 0 || caracMagic.abilityMagic !== 0;
           const dice = bonusDice?.[ability] ?? [];
 
           // Détail de la ligne « test de [CARAC] » : carac de base + chaque buff actif + bonus propres,
@@ -314,6 +397,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                   value={signed(s.value)}
                 />
               ))}
+              <MagicRows kept={caracMagic.keptMagic} dominated={caracMagic.dominatedMagic} />
               {agiPenalty > 0 && (
                 <BreakdownRow
                   label={
@@ -413,8 +497,16 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                 >
                 <Grid container spacing={1}>
                   {group.map(({ d, bonus }) => {
-                    const flat = bonus?.total ?? 0;
-                    const has = (bonus?.sources.length ?? 0) > 0;
+                    // Bonus de compétence de ce domaine + bonus de magie applicable à CE test
+                    // (couple carac × domaine), arbitré et plafonné par le moteur.
+                    const resolved = resolveTestBonus({
+                      competence: bonus,
+                      magic: magicSources,
+                      ability,
+                      domain: d.id,
+                    });
+                    const flat = resolved.flat;
+                    const has = (bonus?.sources.length ?? 0) > 0 || flat !== 0;
                     const die = testDice?.get(d.id);
                     // Carac EFFECTIVE incluse : AGI déjà plafonnée par l'armure (PER-78) comme la
                     // ligne d'en-tête, pas l'AGI brute.
@@ -426,17 +518,28 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                     // carac. Pour un domaine multi-carac, ce bloc est rendu une fois par carac (le bonus
                     // de compétence est identique ; seule la carac ajoutée diffère). Le malus d'armure
                     // (AGI seulement, PER-209) est retranché comme sur la ligne d'en-tête.
-                    const display = includeAbility ? flat + abilityValue + testBuff + perCaracBonus - agiPenalty : flat;
+                    // Le bonus de magie de portée CARAC (tatouage, objet visant la carac) n'entre
+                    // que lorsqu'on inclut la carac — comme le buff uniforme : il est déjà porté
+                    // par la ligne d'en-tête. Celui de portée DOMAINE est dans `flat`.
+                    const display = includeAbility
+                      ? flat + abilityValue + testBuff + perCaracBonus + resolved.abilityMagic - agiPenalty
+                      : flat;
                     const multiAbility = d.abilities.length > 1;
+                    // Sources de magie à détailler ici : celles de portée domaine toujours, celles
+                    // de portée carac seulement quand la carac est incluse (sinon on annoncerait un
+                    // terme qui n'est pas dans le chiffre affiché).
+                    const showMagic = includeAbility || resolved.keptMagic?.scope.kind === 'domain';
+                    const magicRows = showMagic ? resolved : null;
 
                     // Nombre de lignes CHIFFRÉES qui se cumulent (hors sources dominées, barrées) : sert à
                     // n'afficher une ligne « Total » que lorsqu'il y a au moins deux termes à sommer.
                     const contributingRows =
                       (includeAbility ? 1 + buffSources.length + perCaracSources.length + (agiPenalty > 0 ? 1 : 0) : 0) +
-                      (bonus?.sources.length ?? 0);
+                      (bonus?.sources.length ?? 0) +
+                      (magicRows?.keptMagic ? 1 : 0);
 
                     const breakdown =
-                      has || includeAbility || d.description || multiAbility || survivalConReminder ? (
+                      has || includeAbility || magicRows?.keptMagic || d.description || multiAbility || survivalConReminder ? (
                         <Box sx={{ minWidth: 180, py: 0.5 }}>
                           {d.description && (
                             <Typography
@@ -519,6 +622,9 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                           {/* Sources DOMINÉES (PER-73) : prises en compte mais battues dans leur catégorie
                               (max par catégorie, p. 203) → affichées BARRÉES + la capacité qui les domine
                               (puce de voie). Ex. une capacité empruntée égalée par une vraie voie de profil. */}
+                          {magicRows && (
+                            <MagicRows kept={magicRows.keptMagic} dominated={magicRows.dominatedMagic} />
+                          )}
                           {bonus?.dominated?.map((dom) => (
                             <Box key={`dom-${dom.source.featureId}`} sx={{ mt: 0.25 }}>
                               <BreakdownRow
@@ -542,9 +648,9 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                               <BreakdownRow strong label="Total" value={signed(display)} />
                             </>
                           )}
-                          {bonus?.capped && (
+                          {resolved.capped && (
                             <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', mt: 0.5 }}>
-                              Bonus de compétence plafonné à +15 (<SourceRef page={203} />).
+                              Bonus plafonné à +15, bonus de magie compris (<SourceRef page={203} />).
                             </Typography>
                           )}
                           {survivalConReminder && (
@@ -608,7 +714,7 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
                           {/* Badge de plafond custom (≠ Chip MUI) : même langage visuel que
                               DefenseBadge — pastille warning bordée, le tooltip de la ligne porte
                               déjà l'explication du plafond +15 (p. 203). */}
-                          {bonus?.capped && (
+                          {resolved.capped && (
                             <Box
                               component="span"
                               sx={(theme) => ({

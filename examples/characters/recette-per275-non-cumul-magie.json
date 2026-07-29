@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per275-non-cumul-magie",
+  "name": "Recette PER-275/134 — Non-cumul des bonus de magie",
+  "identity": {
+    "description": "ATTENDU (PER-134, note de bas de page p. 80) : le tatouage du barbare n’est pas un bonus de compétence mais un BONUS DE MAGIE, qui ne peut donc pas se cumuler à celui d’un objet magique — on retient le meilleur, jamais la somme. Personnage : Voie du pagne rangs 1 à 3, tatouage « Taureau » (+3 aux tests de FOR). À VÉRIFIER : (1) « Anneau de vigueur » (+2 FOR) ÉQUIPÉ → la ligne « test de FOR » ne gagne que +3 (le tatouage), PAS +5 ; au survol, la ligne « Bonus de magie — Anneau de vigueur » est BARRÉE avec « Ne se cumule pas avec Tatouages » ; (2) ÉQUIPE les « Gantelets du géant » (+5 FOR, rangés au départ) → le vainqueur bascule : le test de FOR gagne +5, et ce sont désormais le tatouage ET l’anneau qui apparaissent barrés ; (3) DÉSÉQUIPE les deux objets → le tatouage reprend seul ses +3 ; (4) « Bottes d’escalade » (+4 en Escalade) : ce bonus de magie vise un DOMAINE, il s’AJOUTE au bonus de compétence de la Voie du pagne — ESCALADE = 9 (dont 5 de compétence) ; (5) le tatouage ne fuit pas sur les autres caracs : les tests d’AGI, de CON… restent inchangés."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barbare",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "pagne-r1",
+    "pagne-r2",
+    "pagne-r3"
+  ],
+  "featureChoices": {
+    "pagne-r3": [
+      "bull"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "custom": true,
+      "name": "Anneau de vigueur",
+      "quantity": 1,
+      "type": "gear",
+      "details": "Bonus de magie DOMINÉ par le tatouage (+3) : il ne s’y ajoute pas.",
+      "worn": {
+        "slot": "accessory"
+      },
+      "testBonuses": {
+        "FOR": 2
+      }
+    },
+    {
+      "custom": true,
+      "name": "Gantelets du géant",
+      "quantity": 1,
+      "type": "gear",
+      "details": "À ÉQUIPER pendant la recette : plus fort que le tatouage, il le domine à son tour.",
+      "testBonuses": {
+        "FOR": 5
+      }
+    },
+    {
+      "custom": true,
+      "name": "Bottes d’escalade",
+      "quantity": 1,
+      "type": "gear",
+      "details": "Bonus de magie de portée DOMAINE : il s’ajoute au bonus de compétence de la Voie du pagne.",
+      "worn": {
+        "slot": "accessory"
+      },
+      "testBonuses": {
+        "climbing": 4
+      }
+    }
+  ],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-134 — le tatouage du barbare (p. 80) est un bonus de MAGIE : il ne se cumule pas avec celui d’un objet magique sur le même test, on retient le meilleur. Les gantelets rangés servent à basculer le vainqueur en cours de recette.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

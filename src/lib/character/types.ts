@@ -373,6 +373,44 @@ export const ITEM_DERIVED_STAT_IDS = DERIVED_STAT_IDS.filter(
  */
 export type ItemDerivedBonuses = Partial<Record<ItemDerivedStatId, number>>;
 
+/**
+ * Cible d'un bonus aux TESTS porté par un objet enchanté (PER-275) : soit une
+ * CARACTÉRISTIQUE (`AbilityId` — le bonus vaut alors pour TOUS ses tests, comme le tatouage
+ * du barbare p. 80), soit un DOMAINE de compétence (id de `testDomains`, ex. `stealth`).
+ *
+ * Les deux espaces d'identifiants sont disjoints par convention (caracs en TROIS LETTRES
+ * majuscules, domaines en slug anglais minuscule) : on peut donc les mêler dans une seule
+ * liste de saisie et les démêler à l'agrégation. Typé `string` comme les domaines le sont
+ * déjà partout dans le moteur (`TestBonusEffect.domains`, `TestDomainBonus.domain`) — la
+ * liste des domaines est OUVERTE et vivante (cf. `test-domains.ts`), elle ne peut pas être
+ * un type fermé. La liste des cibles acceptées est `ITEM_TEST_TARGET_IDS` (`equipment.ts`),
+ * qui sert aussi de liste blanche à l'agrégation.
+ */
+export type ItemTestTarget = string;
+
+/**
+ * Bonus/malus aux TESTS d'une instance d'objet enchanté (PER-275) : une entrée par cible,
+ * valeur signée. Ex. une cape d'ombre `{ stealth: 5 }`, un anneau de vigueur `{ FOR: 2 }`,
+ * un heaume maudit `{ perception: -2 }`.
+ *
+ * Troisième jumeau de `ItemAbilityBonuses` / `ItemDerivedBonuses` : propriété de l'INSTANCE
+ * pour les mêmes raisons, ne compte que si l'objet est PORTÉ, champ additif absent-safe (pas
+ * de bump de `schemaVersion`), et une cible ne peut apparaître qu'UNE fois par objet.
+ *
+ * MAIS la règle de CUMUL diffère, et c'est le point structurant du ticket : là où les apports
+ * de caracs et de stats dérivées s'additionnent librement, le bonus d'un objet magique à un
+ * test est un **bonus de magie** qui ne se cumule PAS avec un autre bonus de magie sur le
+ * même test — deux objets portés qui bonifient le même test ne se somment pas, on retient le
+ * meilleur (p. 203 : « les bonus de compétence ne s'additionnent que lorsqu'ils proviennent
+ * de sources différentes » ; p. 80, note des Tatouages : un bonus de magie « ne peut pas se
+ * cumuler à un bonus fourni par un objet magique »). En revanche il SE CUMULE avec les bonus
+ * de compétence des voies (p. 203 : « peut se cumuler avec n'importe quel bonus de
+ * compétence »), sous le plafond commun de +15.
+ *
+ * Voir `testBonusSourcesFromEquipment` (agrégation) et `resolveTestBonus` (arbitrage).
+ */
+export type ItemTestBonuses = Partial<Record<ItemTestTarget, number>>;
+
 export interface EquipmentOverrides {
   name?: string;
   description?: string;
@@ -423,6 +461,13 @@ export interface EquipmentRef {
    * optionnel absent-safe → pas de bump de `schemaVersion` (même logique que `magicDef`).
    */
   derivedBonuses?: ItemDerivedBonuses;
+  /**
+   * Bonus/malus aux TESTS de cette instance d'objet enchanté (PER-275), actifs seulement
+   * quand l'objet est PORTÉ. Voir `ItemTestBonuses` — attention, règle de cumul propre
+   * (bonus de magie non cumulable avec un autre bonus de magie). Champ additif optionnel
+   * absent-safe → pas de bump de `schemaVersion` (même logique que `magicDef`).
+   */
+  testBonuses?: ItemTestBonuses;
 }
 
 /**
@@ -474,6 +519,14 @@ export interface CustomItem {
    * saisie structurée EST prise en compte par le moteur (≠ note libre `details`).
    */
   derivedBonuses?: ItemDerivedBonuses;
+  /**
+   * Bonus/malus aux TESTS de cet objet libre enchanté (PER-275). Même sémantique que
+   * `EquipmentRef.testBonuses` : ne comptent que si l'objet est PORTÉ, et ne se cumulent pas
+   * avec un autre bonus de magie sur le même test (on retient le meilleur). C'est le cas
+   * d'usage le plus fréquent du ticket — une cape, un anneau ou des bottes enchantés sont
+   * rarement au catalogue.
+   */
+  testBonuses?: ItemTestBonuses;
 }
 
 export type EquipmentLine = EquipmentRef | CustomItem;

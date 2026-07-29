@@ -20,7 +20,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
-import { equipment as equipmentCatalog, equipmentById } from '@/data';
+import { equipment as equipmentCatalog, equipmentById, testDomainById } from '@/data';
 import {
   ABILITY_IDS,
   WEAPON_CATEGORIES,
@@ -34,6 +34,7 @@ import type {
   EquipmentLine,
   EquipmentRef,
   ItemDerivedStatId,
+  ItemTestTarget,
   ItemType,
 } from '@/lib/character/types';
 import { ITEM_DERIVED_STAT_IDS, isCustomItem } from '@/lib/character/types';
@@ -43,6 +44,7 @@ import {
   snapshotOverrides,
   type MechanicalCategory,
 } from '@/lib/character/items';
+import { ITEM_TEST_TARGET_IDS } from '@/lib/character/equipment';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { DERIVED_MOD_DISPLAY_ID, DERIVED_MOD_NAMES } from '@/lib/ui/derivedStats';
 import { AbilityIcon } from '@/components/AbilityIcon';
@@ -244,6 +246,9 @@ function BonusRows<Id extends string>({
   selectLabel,
   fullMessage,
   renderOption,
+  optionLabel,
+  groupOf,
+  searchable = false,
   rows,
   onChange,
 }: {
@@ -257,6 +262,22 @@ function BonusRows<Id extends string>({
   fullMessage: string;
   /** Rendu d'une option du sélecteur (icône + libellé). */
   renderOption: (id: Id) => ReactNode;
+  /**
+   * Libellé TEXTE d'une clé, pour la saisie au clavier du sélecteur cherchable. Requis avec
+   * `searchable` (le rendu riche ne se filtre pas), inutile sinon.
+   */
+  optionLabel?: (id: Id) => string;
+  /**
+   * Groupe d'appartenance d'une clé, rendu en intertitre dans le sélecteur (les clés doivent
+   * être fournies groupées dans `ids`). Absent = liste plate.
+   */
+  groupOf?: (id: Id) => string;
+  /**
+   * Sélecteur CHERCHABLE au clavier plutôt que simple menu déroulant. Réservé aux listes
+   * longues — les cibles de test (PER-275) mêlent les 7 caracs et plus de cent domaines de
+   * compétence, où faire défiler un menu n'est pas praticable.
+   */
+  searchable?: boolean;
   rows: BonusRow<Id>[];
   onChange: (rows: BonusRow<Id>[]) => void;
 }) {
@@ -264,6 +285,8 @@ function BonusRows<Id extends string>({
   const firstFree = ids.find((id) => !used.has(id));
   const setRow = (index: number, next: Partial<BonusRow<Id>>) =>
     onChange(rows.map((r, i) => (i === index ? { ...r, ...next } : r)));
+  /** Clés proposées à UNE ligne : les libres, plus la sienne (sinon le champ paraîtrait vide). */
+  const optionsFor = (key: Id): Id[] => ids.filter((id) => id === key || !used.has(id));
   return (
     <Box>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
@@ -277,26 +300,46 @@ function BonusRows<Id extends string>({
             spacing={1}
             sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}
           >
-            <TextField
-              select
-              size="small"
-              label={selectLabel}
-              value={row.key}
-              onChange={(e) => setRow(i, { key: e.target.value as Id })}
-              sx={{ flex: '1 1 190px', minWidth: 150 }}
-            >
-              {/* Clés proposées = celles qui ne sont pas déjà prises par une AUTRE ligne
-                  (la clé courante reste sélectionnable, sinon le champ paraîtrait vide). */}
-              {ids
-                .filter((id) => id === row.key || !used.has(id))
-                .map((id) => (
+            {searchable ? (
+              <Autocomplete
+                size="small"
+                options={optionsFor(row.key)}
+                value={row.key}
+                onChange={(_, id) => id && setRow(i, { key: id })}
+                disableClearable
+                groupBy={groupOf}
+                getOptionLabel={(id) => optionLabel?.(id) ?? id}
+                renderOption={({ key, ...props }, id) => (
+                  <Box
+                    component="li"
+                    key={key}
+                    {...props}
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+                  >
+                    {renderOption(id)}
+                  </Box>
+                )}
+                renderInput={(params) => <TextField {...params} label={selectLabel} />}
+                sx={{ flex: '1 1 240px', minWidth: 180 }}
+              />
+            ) : (
+              <TextField
+                select
+                size="small"
+                label={selectLabel}
+                value={row.key}
+                onChange={(e) => setRow(i, { key: e.target.value as Id })}
+                sx={{ flex: '1 1 190px', minWidth: 150 }}
+              >
+                {optionsFor(row.key).map((id) => (
                   <MenuItem key={id} value={id}>
                     <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
                       {renderOption(id)}
                     </Box>
                   </MenuItem>
                 ))}
-            </TextField>
+              </TextField>
+            )}
             {/* Score SIGNÉ : les boutons − / + rendent le malus atteignable sans clavier
                 (les claviers mobiles `type=number` n'exposent pas le signe moins). */}
             <SignedNumberField
@@ -350,6 +393,8 @@ interface FormState {
   abilityBonuses: BonusRow<AbilityId>[];
   /** Apports de statistiques dérivées en lignes (PER-273), tout type d'objet. */
   derivedBonuses: BonusRow<ItemDerivedStatId>[];
+  /** Apports aux tests en lignes (PER-275), tout type d'objet — carac ou domaine. */
+  testBonuses: BonusRow<ItemTestTarget>[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -364,6 +409,7 @@ const EMPTY_FORM: FormState = {
   magicDef: '',
   abilityBonuses: [],
   derivedBonuses: [],
+  testBonuses: [],
 };
 
 /** Pré-remplit le formulaire à partir d'un objet du livre (valeurs par défaut du catalogue). */
@@ -397,6 +443,7 @@ function formFromLine(line: EquipmentLine): FormState {
       magicDef: line.magicDef ? String(line.magicDef) : '',
       abilityBonuses: rowsFromBonuses(ABILITY_IDS, line.abilityBonuses),
       derivedBonuses: rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses),
+      testBonuses: rowsFromBonuses(ITEM_TEST_TARGET_IDS, line.testBonuses),
     };
   }
   const item = effectiveItem(line);
@@ -424,6 +471,7 @@ function formFromLine(line: EquipmentLine): FormState {
   base.magicDef = line.magicDef ? String(line.magicDef) : '';
   base.abilityBonuses = rowsFromBonuses(ABILITY_IDS, line.abilityBonuses);
   base.derivedBonuses = rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses);
+  base.testBonuses = rowsFromBonuses(ITEM_TEST_TARGET_IDS, line.testBonuses);
   return base;
 }
 
@@ -508,10 +556,13 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
     // Apports de caractéristiques (PER-272) : mêmes règles pour une variante mécanique et pour
     // un objet libre — l'apport est une propriété de l'INSTANCE, pas du catalogue.
     const abilityBonuses = bonusesFromRows(form.abilityBonuses);
-    // Apports de stats dérivées (PER-273) : même règle d'instance. Une ligne « Défense » est un
-    // bonus de DEF PUR, distinct de la DEF magique ci-dessus (qui, elle, réduit aussi le malus
-    // d'armure p. 188) — les deux coexistent et se cumulent.
+    // Apports de stats dérivées (PER-273) : même règle d'instance. La DÉFENSE en est exclue —
+    // `magicDef` ci-dessus reste le seul canal d'enchantement défensif, parce qu'il réduit aussi
+    // le malus d'armure (p. 188) et échappe au surcoût de mana (p. 178).
     const derivedBonuses = bonusesFromRows(form.derivedBonuses);
+    // Apports aux tests (PER-275) : même règle d'instance, mais cumul PARTICULIER — c'est un
+    // bonus de magie, non cumulable avec un autre bonus de magie sur le même test (p. 80).
+    const testBonuses = bonusesFromRows(form.testBonuses);
     if (mechanical && baseId) {
       const overrides = snapshotOverrides(type, {
         name: trimmedName,
@@ -535,6 +586,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         ...(magic > 0 ? { magicDef: magic } : {}),
         ...(abilityBonuses ? { abilityBonuses } : {}),
         ...(derivedBonuses ? { derivedBonuses } : {}),
+        ...(testBonuses ? { testBonuses } : {}),
       };
       onConfirm(line);
     } else {
@@ -548,6 +600,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         ...(magic > 0 ? { magicDef: magic } : {}),
         ...(abilityBonuses ? { abilityBonuses } : {}),
         ...(derivedBonuses ? { derivedBonuses } : {}),
+        ...(testBonuses ? { testBonuses } : {}),
       });
     }
   };
@@ -770,6 +823,44 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 )}
                 rows={form.derivedBonuses}
                 onChange={(rows) => setField('derivedBonuses', rows)}
+              />
+
+              {/* Bonus/malus aux TESTS (PER-275), par lignes : une cible = soit une caractéristique
+                  (tous ses tests), soit un domaine de compétence. Sélecteur cherchable, la liste
+                  des domaines étant longue. C'est un BONUS DE MAGIE : il se cumule aux bonus de
+                  compétence des voies (p. 203) mais pas à un autre bonus de magie sur le même
+                  test — deux objets sur la même cible ne s'additionnent pas, le meilleur gagne. */}
+              <BonusRows
+                ids={ITEM_TEST_TARGET_IDS}
+                title="Bonus aux tests (bonus de magie)"
+                selectLabel="Caractéristique ou domaine"
+                fullMessage="Toutes les cibles possibles sont déjà couvertes."
+                searchable
+                groupOf={(id) =>
+                  testDomainById.has(id) ? 'Domaines de compétence' : 'Caractéristiques (tous les tests)'
+                }
+                optionLabel={(id) => {
+                  const domain = testDomainById.get(id);
+                  return domain ? domain.label : `${id} — ${ABILITY_NAMES[id as AbilityId]}`;
+                }}
+                renderOption={(id) => {
+                  const domain = testDomainById.get(id);
+                  return domain ? (
+                    <>
+                      <Box component="span">{domain.label}</Box>
+                      <Typography variant="caption" color="text.secondary">
+                        {domain.abilities.join(' / ')}
+                      </Typography>
+                    </>
+                  ) : (
+                    <>
+                      <AbilityIcon ability={id as AbilityId} size={18} />
+                      {id} — {ABILITY_NAMES[id as AbilityId]}
+                    </>
+                  );
+                }}
+                rows={form.testBonuses}
+                onChange={(rows) => setField('testBonuses', rows)}
               />
 
               {/* Stat de bouclier : DEF seule. */}

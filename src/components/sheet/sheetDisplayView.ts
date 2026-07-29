@@ -31,6 +31,7 @@ import {
   activeFormAbilityBonusSources,
   armorPenaltyDivisor,
   lowHpTestDieSources,
+  magicTestBonusSources,
   permanentTestDieDomains,
   testBonusSources,
   universalTestBonus,
@@ -74,6 +75,14 @@ export interface SheetDisplayView {
   abilityTestBonus: ReturnType<typeof abilityTestBonusSources>;
   /** Bonus aux tests d'UNE caractéristique précise, par option retenue (Tatouages, PER-125). */
   perAbilityTestBonus: ReturnType<typeof abilityTestBonusByAbility>;
+  /**
+   * Sources de bonus de MAGIE aux tests (PER-275 / PER-134) : capacités marquées (Tatouages) et
+   * objets magiques PORTÉS. Elles NE se cumulent pas entre elles — leur arbitrage, et l'addition
+   * au bonus de compétence du domaine, appartiennent à `resolveTestBonus`. Recouvre donc en
+   * partie `perAbilityTestBonus` : n'additionner de celui-ci que
+   * `freelyStackingAbilityTestBonuses`, sous peine de compter un tatouage deux fois.
+   */
+  magicTestBonuses: ReturnType<typeof magicTestBonusSources>;
   /** Plancher de compétence universel (Éclectique, PER-102). */
   universalBonus: ReturnType<typeof universalTestBonus>;
   /** Malus d'armure appliqué aux tests d'AGI (p. 188, PER-209) — divisé si Armure sur mesure. */
@@ -146,6 +155,7 @@ export function buildSheetDisplayView(
     testDice,
     abilityTestBonus: abilityTestBonusSources(modFeatureIds, effectContext),
     perAbilityTestBonus: abilityTestBonusByAbility(modFeatureIds, effectContext),
+    magicTestBonuses: magicTestBonusSources(modFeatureIds, character.equipment, effectContext),
     universalBonus: universalTestBonus(modFeatureIds),
     // Malus d'armure (p. 188) : DEF mondaine de l'armure portée − bonus magique, plancher 0.
     // Armure sur mesure (chevalier, guerre-r1, PER-236) peut le diviser (ici de moitié).

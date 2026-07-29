@@ -41,18 +41,20 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { equipment as equipmentCatalog } from '@/data';
-import type { CharacterClass, EquipmentItem } from '@/data/schema';
+import { equipment as equipmentCatalog, testDomainById } from '@/data';
+import type { AbilityId, CharacterClass, EquipmentItem } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import type {
   EquipmentLine,
   ItemAbilityBonuses,
   ItemDerivedBonuses,
+  ItemTestBonuses,
   ItemType,
   WornState,
 } from '@/lib/character/types';
 import { ITEM_DERIVED_STAT_IDS, isCustomItem } from '@/lib/character/types';
 import { effectiveItem, groupEquipmentByType, itemType, reorderEquipment } from '@/lib/character/items';
+import { ITEM_TEST_TARGET_IDS } from '@/lib/character/equipment';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { isFirearmItemId } from '@/lib/character/firearms';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
@@ -68,6 +70,7 @@ import {
 import { equipmentLabel } from '@/components/wizard/helpers';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
+import { DieIcon } from '@/components/DieIcon';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { ItemDialog, ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
@@ -271,6 +274,43 @@ function DerivedBonusBadges({ bonuses }: { bonuses: ItemDerivedBonuses }) {
             tooltip={`${value > 0 ? 'Bonus' : 'Malus'} de ${DERIVED_MOD_NAMES[id]} (${sign}${Math.abs(
               value,
             )}) apporté par cet objet : compte tant qu’il est équipé et s’ajoute à la statistique, comme un bonus de voie.`}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * Badges des bonus/malus aux TESTS d'un objet enchanté (PER-275) : une pastille par cible, dans
+ * l'ordre canonique (les 7 caracs puis les domaines). Le libellé porte la cible — code de la
+ * carac (« FOR ») ou nom du domaine (« Discrétion ») — et l'info-bulle rappelle la règle de
+ * cumul propre à cette famille : c'est un bonus de MAGIE, il s'ajoute aux bonus de compétence
+ * des voies mais pas à un autre bonus de magie sur le même test.
+ */
+function TestBonusBadges({ bonuses }: { bonuses: ItemTestBonuses }) {
+  return (
+    <>
+      {ITEM_TEST_TARGET_IDS.filter((id) => bonuses[id]).map((id) => {
+        const value = bonuses[id]!;
+        const domain = testDomainById.get(id);
+        const ability = domain ? null : (id as AbilityId);
+        const sign = value > 0 ? '+' : '−';
+        return (
+          <ItemBonusBadge
+            key={id}
+            value={value}
+            label={domain ? domain.label : id}
+            icon={
+              ability ? (
+                <AbilityIcon ability={ability} size={13} color="currentColor" />
+              ) : (
+                <DieIcon die="d20" size={13} noTooltip />
+              )
+            }
+            tooltip={`${value > 0 ? 'Bonus' : 'Malus'} de ${sign}${Math.abs(value)} ${
+              domain ? `aux tests de ${domain.label}` : `à TOUS les tests de ${ABILITY_NAMES[ability!]}`
+            } apporté par cet objet : compte tant qu’il est équipé. C’est un bonus de magie — il se cumule aux bonus de compétence des voies, mais pas à un autre bonus de magie sur le même test (on retient le meilleur).`}
           />
         );
       })}
@@ -788,6 +828,9 @@ export function EquipmentList({
     // Bonus/malus de stats dérivées de l'objet enchanté (PER-273), badgés à côté du nom :
     // même condition de port que les apports de caracs.
     const derivedBonuses = line.derivedBonuses;
+    // Bonus/malus aux tests de l'objet enchanté (PER-275), badgés à côté du nom : même condition
+    // de port, mais règle de cumul propre (bonus de magie, non cumulable entre objets).
+    const testBonuses = line.testBonuses;
     // Objet équipable dans un emplacement DÉDIÉ (armure, bouclier, main) : ouvre aussi le
     // crayon d'édition « variante mécanique ».
     const equippable =
@@ -799,9 +842,9 @@ export function EquipmentList({
     //    instrument, sac à dos, carquois…) ;
     //  - tout objet portant un bonus de DEF MAGIQUE (anneau/cape enchantés, objet libre
     //    compris — PER-85), qui doit pouvoir être porté pour compter ;
-    //  - tout objet portant un apport de CARACTÉRISTIQUES (PER-272) ou de STATISTIQUES
-    //    DÉRIVÉES (PER-273), pour la même raison (des bottes de vivacité n'ont d'effet
-    //    qu'aux pieds, un anneau de protection qu'au doigt).
+    //  - tout objet portant un apport de CARACTÉRISTIQUES (PER-272), de STATISTIQUES
+    //    DÉRIVÉES (PER-273) ou aux TESTS (PER-275), pour la même raison (des bottes de
+    //    vivacité n'ont d'effet qu'aux pieds, un anneau de protection qu'au doigt).
     // Le reste du matériel (corde, ration…) et les placeholders de choix ne sont plus
     // « équipables » : fini le bouton « Équiper » inutile sur chaque ligne.
     const wearable =
@@ -812,7 +855,8 @@ export function EquipmentList({
           (item.category === 'gear' && !!item.equipSlot))) ||
       !!line.magicDef ||
       !!line.abilityBonuses ||
-      !!line.derivedBonuses;
+      !!line.derivedBonuses ||
+      !!line.testBonuses;
     // Arme à poudre INDISPONIBLE (PER-185, retour PER-93) : autorisation effective des armes
     // à feu à `false` (campagne « pas d'arme à feu » ou choix du joueur). La ligne est grisée
     // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
@@ -868,6 +912,7 @@ export function EquipmentList({
         {magicDef ? <MagicDefBadge value={magicDef} /> : null}
         {abilityBonuses ? <AbilityBonusBadges bonuses={abilityBonuses} /> : null}
         {derivedBonuses ? <DerivedBonusBadges bonuses={derivedBonuses} /> : null}
+        {testBonuses ? <TestBonusBadges bonuses={testBonuses} /> : null}
         {/* Bascule œil : épingle la description sous le titre (état d'affichage local). */}
         {description && (
           <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>

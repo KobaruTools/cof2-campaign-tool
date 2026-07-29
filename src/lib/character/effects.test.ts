@@ -139,7 +139,11 @@ describe('abilityTestBonusByAbility — bonus à une carac via option (PER-125)'
       ['pagne-r3'],
       ctx({ featureChoices: { 'pagne-r3': ['bull'] } }),
     );
-    expect(result.FOR).toEqual([{ featureId: 'pagne-r3', name: 'Tatouages', value: 3 }]);
+    // `magic: true` (PER-134) : le tatouage est un bonus de MAGIE, pas de compétence — il ne se
+    // cumule pas avec celui d'un objet magique sur le même test (cf. `resolveTestBonus`).
+    expect(result.FOR).toEqual([
+      { featureId: 'pagne-r3', name: 'Tatouages', value: 3, magic: true },
+    ]);
     expect(result.CON).toBeUndefined();
   });
 

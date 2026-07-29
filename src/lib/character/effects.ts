@@ -59,12 +59,13 @@ import {
 import {
   abilityBonusesFromEquipment,
   isHeavyArmorWorn,
+  testBonusSourcesFromEquipment,
   wornMeleeWeapon,
   wornRangedWeapon,
 } from './equipment';
 import { currentHp } from './gauges';
 import { rulesContext } from './rulesContext';
-import type { Character, FeatureChoiceSelection } from './types';
+import type { Character, EquipmentLine, FeatureChoiceSelection } from './types';
 
 /**
  * Contexte de résolution des effets : tout ce qui ne se déduit pas du seul
@@ -905,6 +906,14 @@ export interface AbilityTestBonusSource {
   /** Nom de la capacité (français), pour le détail affiché. */
   name: string;
   value: number;
+  /**
+   * Bonus de **MAGIE** (PER-134) et non de compétence : il ne se cumule pas avec le bonus de
+   * magie d'un objet magique sur le même test (on retient le meilleur — note des Tatouages,
+   * p. 80). Ces sources sont arbitrées par `resolveTestBonus` et NE DOIVENT PAS être
+   * additionnées librement : cf. `freelyStackingAbilityTestBonuses`. Absent = bonus ordinaire,
+   * cumulable.
+   */
+  magic?: boolean;
 }
 
 /**
@@ -941,6 +950,10 @@ export function abilityTestBonusSources(
  * `abilityTestBonusSources` (buff UNIFORME à TOUTES les caracs, ex. Bénédiction) : ici le bonus
  * vise UNE carac. Lit les options retenues (`ctx.featureChoices`, aligné par position) ; gère le
  * choix simple comme le répétable. Sans `ctx`/sans choix : rien.
+ *
+ * Les sources marquées `magic` (Tatouages) sont rendues telles quelles ici, mais elles obéissent
+ * à un non-cumul (PER-134) : ne les additionner qu'à travers `resolveTestBonus`, jamais
+ * directement — cf. `freelyStackingAbilityTestBonuses`.
  */
 export function abilityTestBonusByAbility(
   featureIds: string[],
@@ -961,8 +974,13 @@ export function abilityTestBonusByAbility(
         for (const optId of chosenIds) {
           const option = choice.options.find((o) => o.id === optId);
           if (!option?.abilityTestBonus || option.abilityTestBonus.value === 0) continue;
-          const { ability, value } = option.abilityTestBonus;
-          (out[ability] ??= []).push({ featureId: id, name: feature.name, value });
+          const { ability, value, magic } = option.abilityTestBonus;
+          (out[ability] ??= []).push({
+            featureId: id,
+            name: feature.name,
+            value,
+            ...(magic ? { magic: true } : {}),
+          });
         }
       });
     }
@@ -2238,6 +2256,194 @@ export function testBonusSources(featureIds: string[], ctx?: EffectContext): Tes
     });
   }
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Bonus de MAGIE aux tests (PER-275 objets enchantés + PER-134 non-cumul)
+// ---------------------------------------------------------------------------
+
+/**
+ * Portée d'un bonus de magie aux tests :
+ *  - `ability` : TOUS les tests d'une caractéristique (test de carac nu comme chacun des
+ *    domaines qu'elle gouverne) — ex. Tatouages, ou un anneau « +2 aux tests de FOR » ;
+ *  - `domain` : un domaine de compétence précis — ex. une cape « +5 en Discrétion ».
+ */
+export type MagicTestScope =
+  | { kind: 'ability'; ability: AbilityId }
+  | { kind: 'domain'; domain: string };
+
+/**
+ * Une source de **bonus de magie** à un test : une capacité marquée comme telle (Tatouages,
+ * p. 80) ou un objet magique PORTÉ (`ItemTestBonuses`, PER-275).
+ */
+export interface MagicTestSource {
+  /** Nom affiché (français) : nom de la capacité ou de l'objet. */
+  name: string;
+  /**
+   * Capacité source, pour la puce de voie du détail. ABSENT quand la source est un OBJET
+   * porté : le détail le rend alors en libellé texte, comme les apports de caracs (PER-272).
+   */
+  featureId?: string;
+  /** Apport signé (un objet maudit peut porter un malus). */
+  value: number;
+  scope: MagicTestScope;
+}
+
+/**
+ * Toutes les sources de bonus de MAGIE aux tests du personnage, capacités et objets PORTÉS
+ * confondus (PER-275 / PER-134) :
+ *  - capacités dont l'option retenue porte un `abilityTestBonus` marqué `magic` (Tatouages,
+ *    barbare `pagne-r3`, p. 80) → portée carac ;
+ *  - objets portés (`ItemTestBonuses`) → portée carac ou domaine selon la cible saisie.
+ *
+ * Aucun arbitrage ici : la collecte est brute, le non-cumul est appliqué par
+ * `resolveTestBonus`, qui a besoin de voir les sources écartées pour les afficher barrées.
+ * Sans `ctx`, les options retenues ne sont pas résolues (appels « catalogue seul »).
+ */
+export function magicTestBonusSources(
+  featureIds: string[],
+  equipment: EquipmentLine[] = [],
+  ctx?: EffectContext,
+): MagicTestSource[] {
+  const out: MagicTestSource[] = [];
+  // (a) Capacités : on repasse par l'agrégation existante des bonus aux tests d'UNE carac et on
+  // ne retient que celles marquées « bonus de magie » (les autres, ex. Prescience, restent des
+  // bonus ordinaires qui se cumulent librement).
+  const byAbility = abilityTestBonusByAbility(featureIds, ctx);
+  for (const [ability, sources] of Object.entries(byAbility) as [
+    AbilityId,
+    AbilityTestBonusSource[],
+  ][]) {
+    for (const s of sources) {
+      if (!s.magic) continue;
+      out.push({
+        name: s.name,
+        featureId: s.featureId,
+        value: s.value,
+        scope: { kind: 'ability', ability },
+      });
+    }
+  }
+  // (b) Objets PORTÉS : un objet magique est magique par nature, aucun marqueur à poser.
+  const items = testBonusSourcesFromEquipment(equipment);
+  for (const [ability, sources] of Object.entries(items.byAbility) as [
+    AbilityId,
+    { name: string; value: number }[],
+  ][]) {
+    for (const s of sources)
+      out.push({ name: s.name, value: s.value, scope: { kind: 'ability', ability } });
+  }
+  for (const [domain, sources] of Object.entries(items.byDomain) as [
+    string,
+    { name: string; value: number }[],
+  ][]) {
+    for (const s of sources)
+      out.push({ name: s.name, value: s.value, scope: { kind: 'domain', domain } });
+  }
+  return out;
+}
+
+/**
+ * Les bonus aux tests d'une caractéristique qui se cumulent LIBREMENT — c'est-à-dire tous sauf
+ * les bonus de magie, arbitrés à part par `resolveTestBonus`. Garde-fou d'appel : additionner
+ * les deux listes compterait un bonus de magie deux fois, et lui ferait perdre son non-cumul.
+ */
+export function freelyStackingAbilityTestBonuses(
+  sources: AbilityTestBonusSource[] = [],
+): AbilityTestBonusSource[] {
+  return sources.filter((s) => !s.magic);
+}
+
+/** Bonus total d'un test après cumul des bonus de compétence et arbitrage des bonus de magie. */
+export interface ResolvedTestBonus {
+  /**
+   * Bonus PLAT du test : bonus de compétence des voies (p. 203) + bonus de magie retenu s'il
+   * est de portée DOMAINE. C'est le chiffre affiché sur la ligne d'un domaine, carac exclue.
+   */
+  flat: number;
+  /**
+   * Bonus de magie retenu quand il est de portée CARAC (0 sinon). Il vaut pour le test de carac
+   * NU comme pour les domaines de cette carac : à ajouter au moment où l'on inclut la carac —
+   * d'où sa séparation de `flat`.
+   */
+  abilityMagic: number;
+  /** La source de magie RETENUE (la plus forte), pour la ligne de détail. `null` si aucune. */
+  keptMagic: MagicTestSource | null;
+  /** Sources de magie ÉCARTÉES car non cumulables, pour l'affichage barré. */
+  dominatedMagic: MagicTestSource[];
+  /** Le plafond de +15 a-t-il mordu sur le total (compétence + magie) ? */
+  capped: boolean;
+}
+
+/**
+ * Bonus total d'UN test — la seule fonction à consulter pour chiffrer un test, parce qu'elle
+ * seule connaît les deux règles de cumul qui s'y croisent :
+ *
+ *  1. les **bonus de compétence** des voies sont déjà cumulés par `testBonusSources` (max par
+ *     catégorie de source, maxima sommés, p. 203) et arrivent ici via `competence` ;
+ *  2. les **bonus de magie** (capacité marquée + objets magiques portés) NE SE CUMULENT PAS
+ *     entre eux : on retient le plus fort et on écarte les autres (p. 80, note des Tatouages :
+ *     un bonus de magie « ne peut pas se cumuler à un bonus fourni par un objet magique » ;
+ *     p. 203 : « les bonus de compétence ne s'additionnent que lorsqu'ils proviennent de
+ *     sources différentes » — deux objets magiques sont une même source). Deux objets portés
+ *     bonifiant le même test ne se somment donc pas.
+ *
+ * Les deux familles, elles, S'ADDITIONNENT (p. 203 : le bonus d'un objet magique « peut se
+ * cumuler avec n'importe quel bonus de compétence »), sous le plafond commun de +15 — que
+ * l'objet magique ne permet pas non plus de dépasser (même page).
+ *
+ * L'arbitrage se fait PAR TEST (couple carac × domaine) et pas par domaine : un domaine
+ * multi-carac (ex. Équitation CON/CHA) est testé sous l'une ou l'autre carac selon l'action, et
+ * un bonus de magie de portée carac ne vaut que pour la sienne. `domain` omis = test de carac
+ * NU (aucun bonus de compétence, seules les sources de portée carac s'appliquent).
+ *
+ * Conséquence assumée du « on retient le plus fort » : un MALUS de magie (objet maudit) est
+ * écarté dès qu'un bonus de magie plus élevé s'applique au même test — c'est le comportement
+ * de toutes les catégories de source du moteur, et il reste visible barré dans le détail.
+ */
+export function resolveTestBonus({
+  competence,
+  magic,
+  ability,
+  domain,
+}: {
+  /** Bonus de compétence du domaine (cf. `testBonusSources`), absent si le domaine n'en a aucun. */
+  competence?: TestDomainBonus;
+  /** Toutes les sources de magie du personnage (cf. `magicTestBonusSources`). */
+  magic: MagicTestSource[];
+  /** Caractéristique sous laquelle le test est lancé. */
+  ability: AbilityId;
+  /** Domaine testé, ou omis pour un test de carac nu. */
+  domain?: string;
+}): ResolvedTestBonus {
+  const applicable = magic.filter((s) =>
+    s.scope.kind === 'ability' ? s.scope.ability === ability : s.scope.domain === domain,
+  );
+  // Non-cumul : une seule source de magie compte, la plus forte (à égalité, la première
+  // rencontrée — les capacités sont collectées avant les objets, donc elles gardent la main).
+  let kept: MagicTestSource | null = null;
+  for (const s of applicable) if (!kept || s.value > kept.value) kept = s;
+  const dominatedMagic = applicable.filter((s) => s !== kept);
+
+  const competenceTotal = competence?.total ?? 0;
+  // `competence.total` est DÉJÀ plafonné : quand il l'était, le total plafonné reste +15 quoi
+  // qu'on ajoute, et sinon il vaut le total brut — recaper la somme donne le bon résultat dans
+  // les deux cas, sans avoir besoin d'exposer le total brut.
+  const rawTotal = competenceTotal + (kept?.value ?? 0);
+  const cappedTotal = Math.min(rawTotal, COMPETENCE_BONUS_CAP);
+  // Le plafond mord sur la somme des deux familles ; on l'impute au terme de portée carac en
+  // dernier, pour que le chiffre du domaine (`flat`) reste celui qu'on lit sur sa ligne.
+  const flat =
+    kept?.scope.kind === 'domain' ? cappedTotal : Math.min(competenceTotal, COMPETENCE_BONUS_CAP);
+  return {
+    flat,
+    abilityMagic: cappedTotal - flat,
+    keptMagic: kept,
+    dominatedMagic,
+    // Le plafond peut avoir mordu dès les seuls bonus de compétence (`competence.capped`) : on
+    // ne perd pas ce signalement en ajoutant la magie par-dessus.
+    capped: (competence?.capped ?? false) || rawTotal > COMPETENCE_BONUS_CAP,
+  };
 }
 
 // ---------------------------------------------------------------------------

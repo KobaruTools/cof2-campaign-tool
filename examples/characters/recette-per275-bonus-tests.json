@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per275-bonus-tests",
+  "name": "Recette PER-275 — Panoplie (bonus aux tests)",
+  "identity": {
+    "description": "ATTENDU (PER-275) : un objet PORTÉ peut bonifier un TEST, soit une caractéristique entière (« +2 aux tests de FOR »), soit un domaine de compétence (« +5 en Discrétion »). C’est un BONUS DE MAGIE : il s’ADDITIONNE aux bonus de compétence des voies (p. 203) mais PAS à un autre bonus de magie sur le même test — on retient le meilleur. Objets ÉQUIPÉS : « Cape d’ombre » (+5 Discrétion) ; « Bottes feutrées » (+2 Discrétion, DOMINÉES) ; « Anneau de vigueur » (+2 à tous les tests de FOR) ; « Heaume terne » (−2 aux tests de Sens) ; « Lame discrète » (variante d’épée courte, +3 en Dissimulation d’objet, en main). Objet RANGÉ témoin : « Manteau du guetteur » (+4 Vigilance) — il ne doit RIEN apporter dans le sac. À VÉRIFIER dans « Compétences & tests » : (1) DISCRÉTION = 11 = peuple 3 (halfelin) + profil 3 (Discrétion, assassin r1) + 5 (cape d’ombre) — les trois familles se cumulent ; (2) au survol de la Discrétion, la ligne « Bonus de magie — Bottes feutrées » est BARRÉE avec « Ne se cumule pas avec Cape d’ombre » ; (3) la ligne « test de FOR » de l’en-tête affiche d20 +2 (l’anneau), et le détail nomme l’objet en libellé texte (pas de puce de voie) ; (4) coche « Inclure la carac » : les domaines de FOR (Briser, Intimidation, Soulever) gagnent eux aussi le +2 de l’anneau ; (5) SENS = −2 (un malus s’applique quand il est le seul bonus de magie du test) ; (6) VIGILANCE = +0 : l’objet rangé n’apporte rien — ÉQUIPE-LE et la Vigilance passe à +4 ; (7) DISSIMULATION D’OBJET = 6 = profil 3 (la même capacité couvre discrétion, déguisement et dissimulation) + 3 de la « Lame discrète » : une variante d’objet du LIVRE porte le bonus aussi bien qu’un objet libre ; (8) DÉSÉQUIPE la cape d’ombre → la Discrétion retombe à 8 : ce sont les bottes feutrées, jusque-là dominées, qui prennent le relais ; (9) inventaire → pastilles « +5 Discrétion » / « +2 FOR » en teinte secondaire et « −2 Sens » en teinte warning ; (10) modale d’édition (crayon) → la section « Bonus aux tests (bonus de magie) » rouvre les lignes saisies, le sélecteur est CHERCHABLE et groupe « Caractéristiques » puis « Domaines de compétence » ; une cible déjà prise ne réapparaît pas dans les autres lignes."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "halfelin",
+  "classId": "voleur",
+  "level": 2,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 3,
+    "CON": 1,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 0,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "halfelin",
+  "featureIds": [
+    "halfelin-r1",
+    "assassin-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "custom": true,
+      "name": "Cape d’ombre",
+      "quantity": 1,
+      "type": "gear",
+      "details": "Le bonus de magie RETENU sur la Discrétion.",
+      "worn": {
+        "slot": "accessory"
+      },
+      "testBonuses": {
+        "stealth": 5
+      }
+    },
+    {
+      "custom": true,
+      "name": "Bottes feutrées",
+      "quantity": 1,
+      "type": "gear",
+      "details": "Second objet sur le MÊME test : dominé, il ne s’additionne pas.",
+      "worn": {
+        "slot": "accessory"
+      },
+      "testBonuses": {
+        "stealth": 2
+      }
+    },
+    {
+      "custom": true,
+      "name": "Anneau de vigueur",
+      "quantity": 1,
+      "type": "gear",
+      "details": "Cible une CARACTÉRISTIQUE : vaut pour tous les tests de FOR.",
+      "worn": {
+        "slot": "accessory"
+      },
+      "testBonuses": {
+        "FOR": 2
+      }
+    },
+    {
+      "custom": true,
+      "name": "Heaume terne",
+      "quantity": 1,
+      "type": "gear",
+      "details": "MALUS pur (objet maudit).",
+      "worn": {
+        "slot": "accessory"
+      },
+      "testBonuses": {
+        "senses": -2
+      }
+    },
+    {
+      "custom": true,
+      "name": "Manteau du guetteur",
+      "quantity": 1,
+      "type": "gear",
+      "details": "TÉMOIN : rangé dans le sac, il ne doit RIEN apporter.",
+      "testBonuses": {
+        "vigilance": 4
+      }
+    },
+    {
+      "itemId": "epee-courte",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      },
+      "overrides": {
+        "name": "Lame discrète",
+        "description": "Variante d’épée courte enchantée."
+      },
+      "testBonuses": {
+        "concealment": 3
+      }
+    }
+  ],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-275 — panoplie des bonus aux tests portés par des objets. La Discrétion prouve les deux règles de cumul à la fois : elle ADDITIONNE le bonus de peuple, le bonus de profil et l’objet magique, mais elle n’additionne PAS deux objets entre eux.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

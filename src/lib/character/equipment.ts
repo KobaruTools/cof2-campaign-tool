@@ -10,9 +10,16 @@
  * Cette logique commune vit ici pour rester unique (source de vérité de « quoi
  * équiper d'office »). L'UI d'équipement/déséquipement manuel relève de PER-77.
  */
-import { equipmentById } from '@/data';
+import { equipmentById, testDomains } from '@/data';
 import type { AbilityId, Weapon } from '@/data/schema';
-import type { EquipmentLine, EquipmentRef, ItemDerivedStatId, WornState } from './types';
+import { ABILITY_IDS } from '@/data/schema';
+import type {
+  EquipmentLine,
+  EquipmentRef,
+  ItemDerivedStatId,
+  ItemTestTarget,
+  WornState,
+} from './types';
 import { ITEM_DERIVED_STAT_IDS, isCustomItem } from './types';
 import { effectiveItem } from './items';
 
@@ -343,18 +350,23 @@ function lineDisplayName(line: EquipmentLine): string {
 /**
  * Apports de l'équipement PORTÉ lus dans un champ d'apports de la ligne d'inventaire
  * (`abilityBonuses` pour les caractéristiques, PER-272 ; `derivedBonuses` pour les stats
- * dérivées, PER-273), regroupés par clé avec l'objet source de chaque apport.
+ * dérivées, PER-273 ; `testBonuses` pour les tests, PER-275), regroupés par clé avec l'objet
+ * source de chaque apport.
  *
  * Périmètre commun, calqué sur celui de `magicDef` (`defenseFromEquipment`) :
  *  - seuls les objets marqués `worn` comptent — un objet rangé dans le sac n'apporte rien ;
  *  - N'IMPORTE QUEL emplacement porte l'apport (armure, arme en main, mais surtout
  *    `accessory` : anneau, cape, bottes…), objets LIBRES compris ;
- *  - tous les apports se CUMULENT (aucune notion d'exclusivité entre objets enchantés) ;
  *  - un apport de 0 est ignoré (n'apparaît pas dans le détail).
+ *
+ * La règle de CUMUL, elle, appartient au consommateur et pas à ce collecteur : les caracs et
+ * les stats dérivées se somment (`sumBonusSources`), les bonus aux tests NON (bonus de magie,
+ * on retient le meilleur — cf. `resolveTestBonus`). D'où un détail PAR SOURCE dans tous les
+ * cas, la réduction restant optionnelle.
  */
 function bonusSourcesFromEquipment<K extends string>(
   equipment: EquipmentLine[],
-  field: 'abilityBonuses' | 'derivedBonuses',
+  field: 'abilityBonuses' | 'derivedBonuses' | 'testBonuses',
   allowed?: readonly K[],
 ): Partial<Record<K, AbilityBonusItemSource[]>> {
   const out: Partial<Record<K, AbilityBonusItemSource[]>> = {};
@@ -442,6 +454,58 @@ export function derivedBonusesFromEquipment(
   equipment: EquipmentLine[] = [],
 ): Partial<Record<ItemDerivedStatId, number>> {
   return sumBonusSources(derivedBonusSourcesFromEquipment(equipment));
+}
+
+/** Apports aux tests des objets portés, démêlés par portée — cf. `testBonusSourcesFromEquipment`. */
+export interface ItemTestBonusSources {
+  /** Apports visant TOUS les tests d'une caractéristique, par caractéristique. */
+  byAbility: Partial<Record<AbilityId, AbilityBonusItemSource[]>>;
+  /** Apports visant un domaine de compétence précis, par domaine. */
+  byDomain: Partial<Record<string, AbilityBonusItemSource[]>>;
+}
+
+/**
+ * Cibles acceptées d'un bonus aux tests d'objet (PER-275), dans l'ordre canonique : les 7
+ * caractéristiques d'abord (« +2 à TOUS les tests de FOR »), puis tous les domaines de
+ * compétence du catalogue (« +5 en Discrétion »). Sert à la fois de liste au sélecteur de la
+ * modale d'objet et de LISTE BLANCHE à l'agrégation — une cible inconnue (fichier importé,
+ * domaine retiré du catalogue) est ignorée en silence, comme pour les stats dérivées.
+ */
+export const ITEM_TEST_TARGET_IDS: readonly ItemTestTarget[] = [
+  ...ABILITY_IDS,
+  ...testDomains.map((d) => d.id),
+];
+
+/**
+ * Apports aux TESTS de l'équipement PORTÉ (PER-275), démêlés par PORTÉE de la cible — les
+ * deux portées n'obéissent pas aux mêmes règles d'affichage ni au même arbitrage :
+ *  - `byAbility` : cible une caractéristique, donc TOUS ses tests (le test de carac nu comme
+ *    chacun des domaines qu'elle gouverne). Même forme que le tatouage du barbare (p. 80) ;
+ *  - `byDomain` : cible un domaine de compétence précis, donc lui seul.
+ *
+ * Aucune somme ici (contrairement aux caracs et aux stats dérivées) : ce sont des bonus de
+ * magie, arbitrés au MAX par `resolveTestBonus`, qui a besoin du détail par objet pour
+ * afficher les sources écartées. Périmètre : cf. `bonusSourcesFromEquipment`.
+ *
+ * Fonction pure, réutilisable telle quelle par l'écran de MJ.
+ */
+export function testBonusSourcesFromEquipment(
+  equipment: EquipmentLine[] = [],
+): ItemTestBonusSources {
+  const all = bonusSourcesFromEquipment<ItemTestTarget>(
+    equipment,
+    'testBonuses',
+    ITEM_TEST_TARGET_IDS,
+  );
+  const byAbility: Partial<Record<AbilityId, AbilityBonusItemSource[]>> = {};
+  const byDomain: Partial<Record<string, AbilityBonusItemSource[]>> = {};
+  for (const [target, sources] of Object.entries(all) as [string, AbilityBonusItemSource[]][]) {
+    // Les deux espaces d'ids sont disjoints (caracs en majuscules) : l'appartenance à
+    // `ABILITY_IDS` suffit à démêler la portée. Cf. `ItemTestTarget`.
+    if ((ABILITY_IDS as readonly string[]).includes(target)) byAbility[target as AbilityId] = sources;
+    else byDomain[target] = sources;
+  }
+  return { byAbility, byDomain };
 }
 
 /** Effet combiné de l'armure portée sur la valeur d'AGI d'un test (PER-78 + PER-209). */
