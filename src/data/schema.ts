@@ -2267,6 +2267,16 @@ export interface OptionFeatureChoice extends FeatureChoiceBase {
    * d'ids d'options (cf. `FeatureChoiceSelection`).
    */
   repeat?: ChoiceRepeat;
+  /**
+   * Rang de la VOIE HÔTE à partir duquel TOUTES les options sont acquises d'office (PER-74, Héros
+   * célèbre, prestige-heros-r6, p. 142 : « Choisissez entre héros du peuple et héros du royaume (…).
+   * À partir du rang 8, vous êtes à la fois le héros du peuple ET celui du royaume ! »). Quand le
+   * personnage atteint ce rang dans la voie de la capacité, l'UI affiche TOUTES les options comme
+   * retenues (quelle que soit la sélection stockée) et le choix n'est plus « à faire ». Le choix reste
+   * NARRATIF (aucun effet chiffré différencié) ; ce champ ne pilote qu'un affichage. Absent = choix
+   * borné à une seule option quel que soit le rang.
+   */
+  allOptionsAtPathRank?: number;
 }
 
 /**

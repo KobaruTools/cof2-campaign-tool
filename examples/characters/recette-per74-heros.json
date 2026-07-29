@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per74-heros",
+  "name": "Recette PER-74 — Héros (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du héros p. 142) : vérifier le RENDU de chaque rang prestige. Base = chevalier/meneur d'hommes, voie héroïque LÉGÈRE (points de chance, dés bonus sociaux, capacités verbatim). CHA élevé (4). R4 Destin héroïque → GAIN DE POINTS DE CHANCE échelonné : au rang de voie 8, la jauge de Points de Chance doit inclure +3 PC attribués à « Destin héroïque » (+1 au rang 4, +1 au rang 6, +1 au rang 8). De plus, un COMPTEUR « Dé bonus offert à un compagnon » 1×/combat doit apparaître SUR LA CARTE de la capacité (masqué du panneau « État du personnage », jauge à 1 point). Le « +1d4° » offert à un compagnon est rendu en DÉ {1d4°} ; il profite à un ALLIÉ → PAS de badge sur la fiche du personnage. R5 Homme/femme de la situation → VERBATIM (1×/aventure, demande au MJ ; pas de reset standard « aventure » → pas de compteur). R6 Héros célèbre → DÉ BONUS PERMANENT « à tous vos tests d'interaction sociale » : un badge DÉ BONUS (double-d20) doit apparaître sur chaque ligne de compétence sociale de « Compétences & tests » (Persuasion, Baratin, Séduction, Supercherie, Négociation, Commerce, Intimidation, Prêche, Harangue, Commandement, Étiquette). ⚠️ À VALIDER : la liste des domaines « interaction sociale » est un choix d'implémentation (le catalogue n'a pas de domaine unique) — dis-moi s'il faut en ajouter/retirer. Le MILIEU « héros du peuple / du royaume » est un CHOIX FIGÉ (orange) pris à l'obtention du rang, ici retenu = « Héros du peuple » ; il est purement narratif (aucun effet chiffré). Au rang 8, les DEUX milieux sont acquis (texte verbatim) — le choix reste affiché comme trace de la décision de rang 6. R7 Ténacité → VERBATIM (dé bonus SITUATIONNEL après un échec d'attaque, pas de badge par-attaque contextuel — cf. différé). R8 Meneur d'hommes (L) → COMPTEUR « Harangue du meneur » 1×/jour sur la carte (masqué du panneau d'état). Le dé bonus profite aux ALLIÉS (1×/round toute la scène) → PAS de badge sur la fiche. COULEUR PAR FAMILLE : le héros est une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude) : étoile d'en-tête, liseré métallique des cartes de rang + reflet vert, puces de capacité vertes. Le liseré tournant reste métallique neutre."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "meneur-d-hommes-r1",
+    "meneur-d-hommes-r2",
+    "meneur-d-hommes-r3",
+    "meneur-d-hommes-r4",
+    "meneur-d-hommes-r5",
+    "prestige-heros-r4",
+    "prestige-heros-r5",
+    "prestige-heros-r6",
+    "prestige-heros-r7",
+    "prestige-heros-r8"
+  ],
+  "featureChoices": {
+    "prestige-heros-r6": [
+      "people"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-74 — recette héros : luckPoints stepped r4 (+3 au rang 8), test-die social r6, compteurs r4/r8 ; r5/r7 verbatim.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

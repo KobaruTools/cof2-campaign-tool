@@ -27,7 +27,7 @@ import { featureById, pathById, testDomains, testDomainById } from '@/data';
 import { ABILITY_IDS } from '@/data/schema';
 import type { AbilityId, FeatureChoice, OptionFeatureChoice } from '@/data/schema';
 import { highestAbilities, lowestAbilities } from '@/lib/character/ancestry';
-import { effectiveAbilities, testDomainSourceFeatureIds } from '@/lib/character/effects';
+import { effectiveAbilities, pathRanksFromFeatures, testDomainSourceFeatureIds } from '@/lib/character/effects';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
@@ -59,6 +59,19 @@ import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocompl
  * nom. La forme longue (par défaut) garde le complément, pour la modale / la
  * vue liste.
  */
+/**
+ * Choix `option` dont TOUTES les options sont acquises d'office au rang de voie atteint
+ * (PER-74, Héros célèbre r6 : « À partir du rang 8, vous êtes à la fois le héros du peuple ET
+ * celui du royaume »). Vrai quand la capacité porte `allOptionsAtPathRank` et que le personnage
+ * a atteint ce rang dans la VOIE de la capacité. Purement narratif → ne pilote qu'un affichage.
+ */
+function allOptionsUnlocked(character: Character, featureId: string, choice: FeatureChoice): boolean {
+  if (choice.kind !== 'option' || choice.allOptionsAtPathRank == null) return false;
+  const pathId = featureById.get(featureId)?.pathId;
+  if (!pathId) return false;
+  return (pathRanksFromFeatures(character.featureIds)[pathId] ?? 0) >= choice.allOptionsAtPathRank;
+}
+
 export function choiceSelectionLabel(
   choice: FeatureChoice,
   selection: string | null,
@@ -332,32 +345,44 @@ function ChoiceControl({
   }
 
   if (choice.kind === 'option') {
+    // Toutes les options acquises d'office au rang de voie atteint (Héros célèbre r6 au rang 8) :
+    // le choix n'est plus dû (pas d'erreur), on rappelle que les deux milieux sont acquis. Le
+    // sélecteur reste éditable comme trace de la décision prise au rang d'obtention.
+    const bothUnlocked = allOptionsUnlocked(character, featureId, choice);
     return (
-      <TextField
-        select
-        size="small"
-        fullWidth
-        label={choice.prompt}
-        value={single ?? ''}
-        error={blocking && missing}
-        helperText={blocking && missing ? 'Choix obligatoire' : undefined}
-        onChange={(e) => onChange(index, e.target.value || null)}
-      >
-        <MenuItem value="">
-          <em>— Non choisi —</em>
-        </MenuItem>
-        {choice.options.map((opt) => {
-          // Option verrouillée par le niveau (PER-140, ex. montures volantes au niveau 9) :
-          // grisée tant que le personnage n'a pas le niveau requis.
-          const locked = opt.minLevel != null && character.level < opt.minLevel;
-          return (
-            <MenuItem key={opt.id} value={opt.id} disabled={locked}>
-              {opt.label}
-              {locked ? ` — niveau ${opt.minLevel} requis` : ''}
-            </MenuItem>
-          );
-        })}
-      </TextField>
+      <Box>
+        <TextField
+          select
+          size="small"
+          fullWidth
+          label={choice.prompt}
+          value={single ?? ''}
+          error={blocking && missing && !bothUnlocked}
+          helperText={blocking && missing && !bothUnlocked ? 'Choix obligatoire' : undefined}
+          onChange={(e) => onChange(index, e.target.value || null)}
+        >
+          <MenuItem value="">
+            <em>— Non choisi —</em>
+          </MenuItem>
+          {choice.options.map((opt) => {
+            // Option verrouillée par le niveau (PER-140, ex. montures volantes au niveau 9) :
+            // grisée tant que le personnage n'a pas le niveau requis.
+            const locked = opt.minLevel != null && character.level < opt.minLevel;
+            return (
+              <MenuItem key={opt.id} value={opt.id} disabled={locked}>
+                {opt.label}
+                {locked ? ` — niveau ${opt.minLevel} requis` : ''}
+              </MenuItem>
+            );
+          })}
+        </TextField>
+        {bothUnlocked && (
+          <AppAlert severity="info" sx={{ mt: 1, py: 0 }}>
+            Au rang {choice.allOptionsAtPathRank}, toutes les options sont acquises :{' '}
+            {choice.options.map((o) => o.label).join(' et ')}.
+          </AppAlert>
+        )}
+      </Box>
     );
   }
 
@@ -975,6 +1000,32 @@ export function FeatureChoiceField({
                   {choice.prompt} :
                 </Typography>
                 {chip}
+              </Stack>
+            );
+          }
+          // Option entièrement débloquée par le rang de voie (ex. Héros célèbre au rang 8) : on
+          // affiche TOUTES les options comme acquises, quelle que soit la sélection stockée.
+          if (choice.kind === 'option' && allOptionsUnlocked(character, featureId, choice)) {
+            const chips = choice.options.map((o) => (
+              <ChoiceValueBadge
+                key={o.id}
+                label={choiceSelectionLabel(choice, o.id, true) ?? o.label}
+                compact={compact}
+                onClick={onEditValue}
+              />
+            ));
+            if (compact)
+              return (
+                <Box key={i} sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {chips}
+                </Box>
+              );
+            return (
+              <Stack key={i} direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  {choice.prompt} :
+                </Typography>
+                {chips}
               </Stack>
             );
           }

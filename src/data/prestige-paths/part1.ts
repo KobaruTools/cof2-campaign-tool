@@ -1887,6 +1887,22 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage gagne 1 PC. Il gagne un PC supplémentaire au rang 6 et un dernier au rang 8. De plus, une fois par combat, vous pouvez donner un bonus de +1d4° à un compagnon en vue sur un test de votre choix.",
+    // Deux volets. (1) GAIN DE POINTS DE CHANCE échelonné sur le rang atteint dans la voie
+    // (+1 au rang 4, +1 au rang 6, +1 au rang 8 → 3 PC cumulés au sommet) → `stat-bonus luckPoints`
+    // à valeur `stepped` sur `path-rank` (patron Mouche du coche p.139 / familier « Inséparables »).
+    // (2) « une fois par combat, +1d4° à un compagnon » = compteur 1×/combat (`usageCounter`, masqué du
+    // panneau d'état car jauge à 1 point) ; le dé bonus est OFFERT à un ALLIÉ → pas de badge sur la
+    // fiche du personnage, seulement le compteur + le richText {1d4°}.
+    richText:
+      "Le personnage gagne 1 PC. Il gagne un PC supplémentaire au rang 6 et un dernier au rang 8. De plus, une fois par combat, vous pouvez donner un bonus de {1d4°} à un compagnon en vue sur un test de votre choix.",
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'luckPoints',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 4, value: 1 }, { min: 6, value: 2 }, { min: 8, value: 3 }] },
+      },
+    ],
+    usageCounter: { max: 1, resetOn: 'combat', hideFromStatusPanel: true, label: 'Dé bonus offert à un compagnon' },
     sourcePage: 142,
   },
   {
@@ -1909,6 +1925,49 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Votre réputation de héros vous précède et vous ouvre bien des portes. Vous obtenez un dé bonus à tous vos tests d'interaction sociale et on vous accueille partout à bras ouverts, même dans des cercles très fermés. Si vous avez besoin de quelque chose, les gens font tout leur possible pour vous le fournir. Choisissez entre « héros du peuple » et « héros du royaume » : vous gagnez ces avantages seulement dans le milieu correspondant (le peuple ou les dirigeants). À partir du rang 8, vous êtes à la fois le héros du peuple et celui du royaume !",
+    // « dé bonus à tous vos tests d'interaction sociale » → dé bonus PERMANENT (`test-die`) sur les
+    // domaines d'INTERACTION SOCIALE (influencer/traiter avec autrui par la parole). Le catalogue
+    // n'a pas de domaine « interaction sociale » unique (c'est un GROUPE) → liste explicite des
+    // domaines clairement sociaux, à VALIDER À LA RECETTE. Écartés : arts de la scène (art, musique,
+    // danse, mime, jonglerie), influence/dressage animal, déguisement (imposture visuelle), empathie
+    // (lecture passive).
+    // MILIEU (arbitrage proprio 2026-07-29) : « héros du peuple » / « héros du royaume » = CHOIX FIGÉ
+    // pris à l'obtention du rang 6 (`Feature.choices` de type `option`, rendu orange). Purement
+    // NARRATIF (le milieu où l'accueil chaleureux s'applique) — aucun effet chiffré différencié, le
+    // dé bonus social vaut dans les deux cas. « À partir du rang 8, vous êtes à la fois le héros du
+    // peuple et celui du royaume » = les DEUX milieux sont acquis (le choix ne borne plus rien) ;
+    // laissé au texte verbatim, le choix restant affiché comme trace de la décision de rang 6.
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Milieu où votre réputation de héros vous ouvre les portes (les deux au rang 8)',
+        options: [
+          { id: 'people', label: 'Héros du peuple' },
+          { id: 'kingdom', label: 'Héros du royaume' },
+        ],
+        // « À partir du rang 8, vous êtes à la fois le héros du peuple ET celui du royaume » : au rang
+        // de voie 8, les DEUX milieux sont acquis d'office (affichage), quel que soit le milieu retenu.
+        allOptionsAtPathRank: 8,
+      },
+    ],
+    effects: [
+      {
+        kind: 'test-die',
+        domains: [
+          'persuasion',
+          'fast-talk',
+          'seduction',
+          'deception',
+          'negotiation',
+          'commerce',
+          'intimidation',
+          'preaching',
+          'haranguing',
+          'command',
+          'etiquette',
+        ],
+      },
+    ],
     sourcePage: 142,
   },
   {
@@ -1931,6 +1990,10 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le personnage peut haranguer ses compagnons, les motiver et les conseiller pour attaquer un adversaire particulier. Tous ses alliés bénéficient d'un dé bonus une fois par round pour toute la scène à venir (un combat, un bal ou une réception, une scène de meurtre à étudier, etc.).",
+    // « Une fois par jour » → compteur 1×/jour (masqué du panneau d'état, jauge à 1 point). Le dé bonus
+    // profite aux ALLIÉS (une fois par round, toute la scène) → pas de badge sur la fiche du personnage ;
+    // seuls le compteur d'usage et le verbatim (action limitée) portent la mécanique.
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true, label: "Harangue du meneur" },
     sourcePage: 142,
   },
 
