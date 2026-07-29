@@ -396,6 +396,13 @@ for (const c of features) {
         if (target.effects?.[ref.index]?.kind !== 'conditional-stat-bonus')
           err(`[capacite ${c.id}] effect: active-form-ability-bonus ${ref.featureId}:${ref.index} n'est pas un marqueur de forme (conditional-stat-bonus)`);
       }
+    } else if (e.kind === 'test-die') {
+      // Dé bonus PERMANENT à un/des domaine(s) nommé(s) (PER-74, L'amour du risque r6). `domains`
+      // non vide, chaque id présent dans le catalogue.
+      if (!Array.isArray(e.domains) || e.domains.length === 0)
+        err(`[capacite ${c.id}] effect: test-die domains vide`);
+      for (const d of e.domains ?? [])
+        if (!testDomainById.has(d)) err(`[capacite ${c.id}] effect: domaine inconnu (test-die) : ${d}`);
     } else if (e.kind === 'test-bonus') {
       // Bonus de compétence à un/des domaine(s) nommé(s) (PER-89). `domains` non vide,
       // chaque id présent dans le catalogue ; `value` optionnelle (sinon déduite).
@@ -511,6 +518,9 @@ for (const c of features) {
       validateWeaponCondition(c.id, e.condition, 'attack-bonus');
     } else if (e.kind === 'ranged-attack-magical') {
       // PER-74 — effet purement descriptif (attaques à distance magiques) : aucune donnée à valider.
+    } else if (e.kind === 'low-hp-test-die') {
+      // PER-74 — dé bonus AUTO à tous les tests tant que PV ≤ niveau (casse-cou r4) : drapeau
+      // sans paramètre, auto-évalué depuis la jauge de PV. Rien à valider.
     } else if (e.kind === 'ranged-attack-elemental') {
       // PER-74 — élément ajouté aux attaques à distance : au moins un choix, tous des types de DM valides.
       const types = new Set<string>(RESISTIBLE_DAMAGE_TYPES);

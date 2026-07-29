@@ -502,6 +502,8 @@ export type FeatureEffect =
   | ActiveFormAbilityBonusEffect
   | AbilityBonusDieEffect
   | AbilityBonusDieFromChoiceEffect
+  | LowHpTestDieEffect
+  | TestDieEffect
   | TestBonusEffect
   | TestBonusFromChoiceEffect
   | ManaAbilityOverrideEffect
@@ -749,6 +751,17 @@ export interface ConditionalStatBonusEffect {
    */
   testDieDomains?: string[];
   /**
+   * Tant que cet effet est ACTIF, confère un DÉ BONUS à TOUS les tests (les 7 caractéristiques, donc
+   * chaque test de carac ET de compétence) — pas un bonus chiffré, un DÉ (« 2d20, garde le meilleur »).
+   * Piloté par le MÊME interrupteur que `bonuses` (qui peut être vide : effet purement « dé bonus
+   * conditionnel à tout »). Ex. L'amour du risque (casse-cou r6, p. 139) : « un dé bonus à tous ses
+   * tests » en lieu dangereux, via l'interrupteur « Lieu dangereux ». À DISTINGUER de `testDieDomains`
+   * (dés ciblant des domaines précis) et de `low-hp-test-die` (même dé « à tout » mais AUTO-déclenché
+   * par les PV, sans interrupteur). Agrégé par `activeAllTestsDieSources` quand l'interrupteur est
+   * actif, puis injecté sur les 7 caracs par la vue d'affichage. Absent = aucun.
+   */
+  allTestsDie?: boolean;
+  /**
    * Domaines de test (ids du catalogue) recevant un BONUS DE COMPÉTENCE CHIFFRÉ (« rang + 2 »,
    * valeur déduite de la catégorie de voie comme un `TestBonusEffect` sans `value`) tant que cet
    * effet est ACTIF (PER-117). Pour les bonus de compétence CONDITIONNELS d'une situation de jeu
@@ -883,6 +896,19 @@ export interface AbilityBonusDieEffect {
   kind: 'ability-bonus-die';
   /** Caractéristique dont les tests bénéficient du dé bonus (cf. `ABILITY_IDS`). */
   ability: AbilityId;
+}
+
+/**
+ * DÉ BONUS AUTO à TOUS les tests (attaque, caractéristique, compétence…) tant que les PV
+ * COURANTS du personnage sont ≤ à son NIVEAU (casse-cou r4, « Au pied du mur », p. 138). À la
+ * différence de `ability-bonus-die` (permanent, une carac), c'est un dé bonus UNIFORME sur les
+ * 7 caractéristiques, CONDITIONNÉ à l'état de PV — mais AUTO-évalué depuis la jauge de PV, SANS
+ * interrupteur manuel (contrairement à `conditional-stat-bonus`). Le seuil (PV ≤ niveau) est
+ * implicite : ce genre ne porte aucun paramètre. Rendu = badge double-d20 sur chaque carac (donc
+ * sur chaque test de carac et de compétence). Résolu par `lowHpTestDieSources` (effects.ts).
+ */
+export interface LowHpTestDieEffect {
+  kind: 'low-hp-test-die';
 }
 
 /**
@@ -1367,6 +1393,21 @@ export interface RangedAttackElementalEffect {
    * la règle) ; ce champ ne sert qu'au rendu compact de la puce.
    */
   bonusDie?: string;
+}
+
+/**
+ * DÉ BONUS PERMANENT aux tests d'un ou plusieurs DOMAINES nommés (ids du catalogue
+ * `test-domains.ts`) — « 2d20, garde le meilleur ». Symétrique de `test-bonus` (bonus CHIFFRÉ de
+ * compétence) et de `ability-bonus-die` (dé permanent d'une CARAC), mais ciblé DOMAINE, et TOUJOURS
+ * appliqué (aucun interrupteur ; ≠ `conditional-stat-bonus.testDieDomains`, conditionnel). Ex. L'amour
+ * du risque (casse-cou r6, p. 139) : « (permanent) sur les tests réalisés pour résister à la peur »
+ * → `{ kind: 'test-die', domains: ['fear-resistance'] }`. Rendu par un `BonusDieBadge` sur la LIGNE du
+ * domaine dans « Compétences & tests » (via `permanentTestDieDomains`, fusionné aux dés conditionnels).
+ */
+export interface TestDieEffect {
+  kind: 'test-die';
+  /** Domaines visés (ids du catalogue `test-domains.ts`). Intégrité vérifiée par `validate:data`. */
+  domains: string[];
 }
 
 export interface TestBonusEffect {

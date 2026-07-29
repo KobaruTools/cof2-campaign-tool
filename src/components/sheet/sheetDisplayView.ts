@@ -15,6 +15,7 @@
  * tour (PER-262) : ce module est l'unique source de ces dérivations pour les deux vues.
  */
 import { featureById } from '@/data';
+import { ABILITY_IDS } from '@/data/schema';
 import { armorEncumbrancePenalty } from '@/lib/character/equipment';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import {
@@ -25,9 +26,12 @@ import {
   abilityTestBonusByAbility,
   abilityTestBonusSources,
   activeAbilityOverrideSources,
+  activeAllTestsDieSources,
   activeConditionalTestDice,
   activeFormAbilityBonusSources,
   armorPenaltyDivisor,
+  lowHpTestDieSources,
+  permanentTestDieDomains,
   testBonusSources,
   universalTestBonus,
 } from '@/lib/character/effects';
@@ -82,6 +86,7 @@ export interface SheetDisplayView {
 export function buildSheetDisplayView(
   character: Character,
   derived: CharacterDerivedView,
+  maxHp?: number,
 ): SheetDisplayView {
   const { modFeatureIds, effectContext, attackBonusModSources } = derived;
 
@@ -91,16 +96,42 @@ export function buildSheetDisplayView(
     extraModSources[k] = [...(extraModSources[k] ?? []), ...(list ?? [])];
   }
 
+  // Dés bonus « à TOUS les tests » injectés sur les 7 caracs → badge double-d20 sur chaque carac
+  // (grille de caracs ET en-tête de la carac dans « Compétences & tests »), au SCOPE de la carac
+  // (pas répété par ligne de compétence). Deux sources : casse-cou r4 « Au pied du mur » (AUTO tant
+  // que PV ≤ niveau — nécessite `maxHp`, sauté si absent/profil incomplet) et casse-cou r6 « L'amour
+  // du risque » (interrupteur « Lieu dangereux »). Les deux se cumulent (chaque source garde sa capacité).
+  const allTestsDie = [
+    ...(maxHp === undefined ? [] : lowHpTestDieSources(character, maxHp)),
+    ...activeAllTestsDieSources(character),
+  ];
+  const bonusDieSourcesDetailed = abilityBonusDiceSources(modFeatureIds, character.featureChoices);
+  const bonusDieSources = abilityBonusDiceFromFeatures(modFeatureIds, character.featureChoices);
+  if (allTestsDie.length > 0) {
+    for (const ability of ABILITY_IDS) {
+      bonusDieSourcesDetailed[ability] = [...(bonusDieSourcesDetailed[ability] ?? []), ...allTestsDie];
+      bonusDieSources[ability] = [...(bonusDieSources[ability] ?? []), ...allTestsDie.map((s) => s.name)];
+    }
+  }
+
+  // Dés bonus PAR DOMAINE (rendus par LIGNE dans « Compétences & tests ») = dés CONDITIONNELS actifs
+  // (Travail d'équipe via interrupteur) FUSIONNÉS avec les dés PERMANENTS par domaine (genre `test-die`,
+  // ex. L'amour du risque r6 « (permanent) sur Résister à la peur »). Les permanents sont toujours là.
+  const testDice = activeConditionalTestDice(character);
+  for (const [domain, names] of permanentTestDieDomains(modFeatureIds)) {
+    testDice.set(domain, [...(testDice.get(domain) ?? []), ...names]);
+  }
+
   return {
     extraModSources,
     abilityMods: abilityModsFromFeatures(modFeatureIds, character.featureChoices),
     abilityModSources: abilityModSources(modFeatureIds, character.featureChoices),
     abilityOverrides: activeAbilityOverrideSources(character),
     abilityFormBonuses: activeFormAbilityBonusSources(character),
-    bonusDieSources: abilityBonusDiceFromFeatures(modFeatureIds, character.featureChoices),
-    bonusDieSourcesDetailed: abilityBonusDiceSources(modFeatureIds, character.featureChoices),
+    bonusDieSources,
+    bonusDieSourcesDetailed,
     testBonuses: testBonusSources(modFeatureIds, effectContext),
-    testDice: activeConditionalTestDice(character),
+    testDice,
     abilityTestBonus: abilityTestBonusSources(modFeatureIds, effectContext),
     perAbilityTestBonus: abilityTestBonusByAbility(modFeatureIds, effectContext),
     universalBonus: universalTestBonus(modFeatureIds),

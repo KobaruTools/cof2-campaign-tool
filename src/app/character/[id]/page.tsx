@@ -505,7 +505,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // permanents de caractéristiques, dés bonus, bonus par domaine de test, malus d'armure,
   // sources de l'infobulle « i »… La fiche ne les calcule plus : elle les lit depuis le module
   // partagé avec le panneau latéral de l'écran de MJ (PER-258), qui porte le détail des règles.
-  const display = buildSheetDisplayView(character, game.derived);
+  const display = buildSheetDisplayView(
+    character,
+    game.derived,
+    masterDerived ? (character.overrides.maxHp ?? masterDerived.maxHp) : undefined,
+  );
 
   return (
     // Toutes les icônes de profil de la fiche (en-tête, voies, montée de niveau,

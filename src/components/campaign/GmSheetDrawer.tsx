@@ -259,7 +259,11 @@ function GmSheetDrawerContent({
   } = game;
   // Dérivations d'AFFICHAGE (modificateurs de caracs, dés bonus, domaines de test, malus
   // d'armure, sources de l'infobulle « i ») — mêmes calculs que la fiche, module partagé.
-  const display = buildSheetDisplayView(character, game.derived);
+  const display = buildSheetDisplayView(
+    character,
+    game.derived,
+    masterDerived ? (character.overrides.maxHp ?? masterDerived.maxHp) : undefined,
+  );
 
   // « Utiliser » un objet : l'action de jeu consomme quand elle peut, et renvoie une
   // INTENTION pour les deux lignes du sac de départ qui exigent une saisie.

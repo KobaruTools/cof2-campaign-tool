@@ -57,6 +57,7 @@ import {
   shieldDisabledFeatureIds,
 } from './armorRestrictions';
 import { isHeavyArmorWorn, wornMeleeWeapon, wornRangedWeapon } from './equipment';
+import { currentHp } from './gauges';
 import { rulesContext } from './rulesContext';
 import type { Character, FeatureChoiceSelection } from './types';
 
@@ -855,6 +856,27 @@ export function activeConditionalTestDice(character: Character): Map<string, str
         out.set(d, arr);
       }
     });
+  }
+  return out;
+}
+
+/**
+ * Dés bonus PERMANENTS par domaine de test (genre `test-die`, ex. L'amour du risque r6 sur
+ * « Résister à la peur »). Map domaine → noms des capacités sources. TOUJOURS inclus (aucun
+ * interrupteur) ; à FUSIONNER avec `activeConditionalTestDice` pour l'affichage des lignes de
+ * « Compétences & tests » (même rendu `BonusDieBadge` par domaine).
+ */
+export function permanentTestDieDomains(featureIds: string[]): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const id of featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const effect of feature.effects) {
+      if (effect.kind !== 'test-die') continue;
+      for (const d of effect.domains) {
+        out.set(d, [...(out.get(d) ?? []), feature.name]);
+      }
+    }
   }
   return out;
 }
@@ -1680,6 +1702,46 @@ export function abilityBonusDiceFromFeatures(
     dice[ability] = detailed[ability]!.map((s) => s.name);
   }
   return dice;
+}
+
+/**
+ * Sources d'un DÉ BONUS AUTO à TOUS les tests (genre `low-hp-test-die`, casse-cou r4 « Au pied
+ * du mur », p. 138), conféré tant que les PV COURANTS sont ≤ au NIVEAU. Auto-évalué depuis la
+ * jauge de PV — AUCUN interrupteur. Renvoie la/les capacité(s) source(s) quand la condition est
+ * remplie, sinon une liste vide (PV au-dessus du seuil, ou capacité absente). Le rendu applique
+ * ce dé bonus à CHAQUE caractéristique (donc à tous les tests de carac et de compétence), via
+ * l'injection dans `bonusDieSources` de la vue d'affichage (`sheetDisplayView`).
+ */
+export function lowHpTestDieSources(character: Character, maxHp: number): BonusDieSource[] {
+  if (currentHp(maxHp, character.depletion) > character.level) return [];
+  const out: BonusDieSource[] = [];
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (feature?.effects?.some((e) => e.kind === 'low-hp-test-die')) {
+      out.push({ featureId: id, name: feature.name });
+    }
+  }
+  return out;
+}
+
+/**
+ * Sources d'un DÉ BONUS à TOUS les tests conféré par un effet `conditional-stat-bonus` ACTIF portant
+ * `allTestsDie` (casse-cou r6 « L'amour du risque », p. 139, via l'interrupteur « Lieu dangereux »).
+ * Interrupteur MANUEL (≠ `lowHpTestDieSources`, auto). Vide si aucun interrupteur concerné n'est actif.
+ * Injecté sur les 7 caracs par `sheetDisplayView` (badge double-d20 sur chaque carac et compétence).
+ */
+export function activeAllTestsDieSources(character: Character): BonusDieSource[] {
+  const out: BonusDieSource[] = [];
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    feature.effects.forEach((effect, i) => {
+      if (effect.kind !== 'conditional-stat-bonus' || !effect.allTestsDie) return;
+      if (!isEffectActive(character, id, i)) return;
+      out.push({ featureId: id, name: feature.name });
+    });
+  }
+  return out;
 }
 
 /**

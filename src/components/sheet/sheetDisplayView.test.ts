@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { featureById } from '@/data';
+import { ABILITY_IDS } from '@/data/schema';
 import { createBlankCharacter } from '@/lib/character/factory';
 import type { Character } from '@/lib/character/types';
 import {
@@ -75,6 +76,55 @@ describe('buildSheetDisplayView', () => {
         expect.arrayContaining(terms ?? []),
       );
     }
+  });
+
+  it('injecte le dé bonus « Au pied du mur » sur les 7 caracs quand PV courants ≤ niveau (casse-cou r4, PER-74)', () => {
+    const c = char({
+      level: 16,
+      featureIds: ['prestige-casse-cou-r4'],
+      depletion: { hp: { lethal: 30, temp: 0 } }, // maxHp 40 − 30 = 10 PV ≤ niveau 16
+    });
+    const view = buildSheetDisplayView(c, buildCharacterDerivedView(c), 40);
+    for (const ability of ABILITY_IDS) {
+      expect(view.bonusDieSources[ability]).toContain('Au pied du mur');
+      expect(view.bonusDieSourcesDetailed[ability]).toEqual(
+        expect.arrayContaining([{ featureId: 'prestige-casse-cou-r4', name: 'Au pied du mur' }]),
+      );
+    }
+  });
+
+  it('n’injecte rien quand PV courants > niveau, ni sans maxHp (profil incomplet)', () => {
+    const c = char({ level: 16, featureIds: ['prestige-casse-cou-r4'] }); // PV pleins
+    const derived = buildCharacterDerivedView(c);
+    // maxHp fourni mais PV pleins (40 > 16) → au-dessus du seuil, aucune injection.
+    const view = buildSheetDisplayView(c, derived, 40);
+    // Sans maxHp → aucune injection non plus (repli sûr).
+    const viewNoHp = buildSheetDisplayView(c, derived);
+    for (const ability of ABILITY_IDS) {
+      expect(view.bonusDieSources[ability] ?? []).not.toContain('Au pied du mur');
+      expect(viewNoHp.bonusDieSources[ability] ?? []).not.toContain('Au pied du mur');
+    }
+  });
+
+  it('injecte le dé bonus « L’amour du risque » sur les 7 caracs quand l’interrupteur « Lieu dangereux » est actif (casse-cou r6, PER-74)', () => {
+    const c = char({
+      level: 16,
+      featureIds: ['prestige-casse-cou-r6'],
+      effectToggles: { 'prestige-casse-cou-r6': [true] },
+    });
+    // maxHp non pertinent ici (r6 est un interrupteur, pas la condition de PV) : on l'omet.
+    const view = buildSheetDisplayView(c, buildCharacterDerivedView(c));
+    for (const ability of ABILITY_IDS) {
+      expect(view.bonusDieSources[ability]).toContain("L'amour du risque");
+    }
+    // Interrupteur éteint → aucune injection sur les caracs…
+    const off = char({ level: 16, featureIds: ['prestige-casse-cou-r6'] });
+    const viewOff = buildSheetDisplayView(off, buildCharacterDerivedView(off));
+    for (const ability of ABILITY_IDS) {
+      expect(viewOff.bonusDieSources[ability] ?? []).not.toContain("L'amour du risque");
+    }
+    // …mais le volet PERMANENT met le dé sur la ligne « Résister à la peur » même toggle éteint.
+    expect(viewOff.testDice.get('fear-resistance')).toContain("L'amour du risque");
   });
 
   it('ne signale des sorts que si une capacité connue en est un', () => {

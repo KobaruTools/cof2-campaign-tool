@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per74-casse-cou",
+  "name": "Recette PER-74 — Casse-cou (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du casse-cou p. 138-139) : vérifier le RENDU de chaque rang prestige. Base = barde/escrime, voie très SITUATIONNELLE (dés bonus liés à l'état de combat). PV VOLONTAIREMENT RÉDUITS À 10 (pour niveau 16) afin de déclencher R4. R4 Au pied du mur → dé bonus AUTO à TOUS les tests tant que PV courants ≤ niveau (ici 10 ≤ 16) : un badge DÉ BONUS (double-d20) doit apparaître sur les 7 CARACTÉRISTIQUES (grille de caracs) ET sur chaque en-tête de compétence (Compétences & tests). Remonte les PV au-dessus de 16 → le badge disparaît (pas d'interrupteur, c'est automatique). « son niveau » rendu en encadré VERT [#niveau] = « niveau (16) ». R5 Mouche du coche → +1 en DEF PERMANENT (qui passe à +2 au rang 7) : MÉCANISÉ — au rang de voie 8, la DEF doit afficher +2 attribués à « Mouche du coche » dans le détail de la Défense. Le +2 en DEF supplémentaire (sacrifier une action de mouvement) est un INTERRUPTEUR « Action de mouvement sacrifiée » dans « État du personnage » : l'activer fait passer la contribution de Mouche du coche à +4 (2 permanent + 2 conditionnel), le désactiver revient à +2. R6 L'amour du risque → dé bonus à TOUS les tests en LIEU DANGEREUX : INTERRUPTEUR « Lieu dangereux » dans « État du personnage ». Activé → badge DÉ BONUS (double-d20) au scope de chaque carac (grille de caracs + en-tête de carac dans Compétences & tests). De plus, le volet « (permanent) sur les tests réalisés pour résister à la peur » est MÉCANISÉ : un badge DÉ BONUS permanent doit apparaître sur la SEULE ligne « Résister à la peur » (VOL) de Compétences & tests, TOUJOURS (même interrupteur « Lieu dangereux » éteint). R7 Poussée d'adrénaline → « 1d4 PV » rendu en DÉ {1d4} ; « une fois par round » reste verbatim (non modélisé en compteur). R8 Attaque kamikaze (L) → le DM « 1d4° » rendu en DÉ ÉVOLUTIF {1d4°} (×3, un par taille de cible) ; les bonus d'Att/DEF par taille restent verbatim. « test opposé », « AGI », « renversé » auto-glosés. COULEUR PAR FAMILLE : le casse-cou est une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude) : étoile d'en-tête, liseré métallique des cartes de rang + reflet vert, puces de capacité vertes. Le liseré tournant reste métallique neutre."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "halfelin",
+  "classId": "barde",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 3,
+    "INT": 1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 3,
+    "INT": 1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "halfelin",
+  "featureIds": [
+    "escrime-r1",
+    "escrime-r2",
+    "escrime-r3",
+    "escrime-r4",
+    "escrime-r5",
+    "prestige-casse-cou-r4",
+    "prestige-casse-cou-r5",
+    "prestige-casse-cou-r6",
+    "prestige-casse-cou-r7",
+    "prestige-casse-cou-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {
+    "hp": {
+      "lethal": 90,
+      "temp": 0
+    }
+  },
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-74 — recette casse-cou : richText (r4 [#niveau], r7 {1d4}, r8 {1d4°}×3) + DEF r5 mécanisée (+1→+2 au rang 7) ; reste situationnel verbatim.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

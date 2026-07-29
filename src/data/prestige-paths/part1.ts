@@ -1347,6 +1347,13 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque le personnage possède un nombre de PV inférieur ou égal à son niveau, il gagne un dé bonus à tous ses tests (attaque, caractéristique, etc.).",
+    // Dé bonus à TOUS les tests, AUTO-déclenché tant que les PV COURANTS sont ≤ niveau (effet
+    // `low-hp-test-die`, sans interrupteur : lu sur la jauge de PV). Rendu = badge double-d20 sur
+    // les 7 caractéristiques (donc sur chaque test de carac et de compétence). Le seuil PV ≤ niveau
+    // est implicite au genre. « son niveau » balisé en encadré vert [#niveau].
+    richText:
+      "Lorsque le personnage possède un nombre de PV inférieur ou égal à son [#niveau], il gagne un dé bonus à tous ses tests (attaque, caractéristique, etc.).",
+    effects: [{ kind: 'low-hp-test-die' }],
     sourcePage: 138,
   },
   {
@@ -1358,6 +1365,22 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage est toujours en mouvement, il gagne +1 en DEF, puis +1 supplémentaire au rang 7. De plus, s'il sacrifie une action de mouvement, il gagne +2 en DEF supplémentaire jusqu'à son prochain tour.",
+    // Le +1 en DEF PERMANENT (qui passe à +2 au rang 7) est MÉCANISÉ (palier `stepped` sur le rang
+    // de la voie — même patron que Parade croisée p. 73). Le +2 en DEF supplémentaire (sacrifier une
+    // action de mouvement, jusqu'au prochain tour) est un INTERRUPTEUR manuel on/off (état de jeu,
+    // hors mode édition) — le joueur l'active le tour où il renonce à se déplacer.
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 5, value: 1 }, { min: 7, value: 2 }] },
+      },
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [{ stat: 'def', value: 2 }],
+        activation: { kind: 'condition', label: 'Action de mouvement sacrifiée', activeByDefault: false },
+      },
+    ],
     sourcePage: 139,
   },
   {
@@ -1369,6 +1392,20 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Rien de tel qu'une question de vie ou de mort pour vous motiver ! Lorsqu'il réalise une action dans un lieu dangereux (par exemple, au bord d'un précipice ou d'un lac de lave), le personnage gagne un dé bonus à tous ses tests (attaque, caractéristique, etc.). Ce bonus s'applique également aux tests réalisés pour résister à la peur (permanent).",
+    // Deux volets. (1) Dé bonus à TOUS les tests en LIEU DANGEREUX → INTERRUPTEUR manuel « Lieu
+    // dangereux » (`conditional-stat-bonus` + `allTestsDie`), injecté sur les 7 caracs → badge
+    // double-d20 au scope de chaque carac (grille + en-tête). (2) Le même dé, mais PERMANENT, sur les
+    // tests de résistance à la peur → `test-die` sur le domaine `fear-resistance` (toujours actif) →
+    // badge sur la seule ligne « Résister à la peur » de « Compétences & tests ».
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        allTestsDie: true,
+        activation: { kind: 'condition', label: 'Lieu dangereux', activeByDefault: false },
+      },
+      { kind: 'test-die', domains: ['fear-resistance'] },
+    ],
     sourcePage: 139,
   },
   {
@@ -1380,6 +1417,9 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par round, en dépensant 1d4 PV, le personnage gagne une action de mouvement supplémentaire à son tour.",
+    // « Une fois par round » ne se modélise pas en compteur de repos (granularité trop fine) → verbatim.
+    richText:
+      "Une fois par round, en dépensant {1d4} PV, le personnage gagne une action de mouvement supplémentaire à son tour.",
     sourcePage: 139,
   },
   {
@@ -1391,6 +1431,10 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage saute sur sa cible et l'agrippe pour la larder de coups au corps à corps. La cible doit être de taille supérieure à la sienne. Le personnage réalise un test opposé d'AGI contre la créature. En cas d'échec, le personnage se retrouve renversé. En cas de réussite, il est perché sur la créature ce qui lui offre les bonus suivants selon la taille de la cible :\nGrande : +2 Att et DEF, +1d4° DM\nÉnorme : +3 Att et DEF, +1d4° DM\nColossale : +4 Att et DEF, +1d4° DM\nPour se débarrasser de lui, la créature doit utiliser une action d'attaque et l'emporter lors d'un test opposé d'AGI.",
+    // DM en dé évolutif → {1d4°}. Les bonus d'Att/DEF par taille de cible restent verbatim (paliers
+    // situationnels, dépendants de la taille de l'adversaire).
+    richText:
+      "Le personnage saute sur sa cible et l'agrippe pour la larder de coups au corps à corps. La cible doit être de taille supérieure à la sienne. Le personnage réalise un test opposé d'AGI contre la créature. En cas d'échec, le personnage se retrouve renversé. En cas de réussite, il est perché sur la créature ce qui lui offre les bonus suivants selon la taille de la cible :\nGrande : +2 Att et DEF, +{1d4°} DM\nÉnorme : +3 Att et DEF, +{1d4°} DM\nColossale : +4 Att et DEF, +{1d4°} DM\nPour se débarrasser de lui, la créature doit utiliser une action d'attaque et l'emporter lors d'un test opposé d'AGI.",
     sourcePage: 139,
   },
 

@@ -6,6 +6,7 @@ import { createBlankCharacter } from './factory';
 import { effectiveFeatureIdsForMods } from './choices';
 import {
   abilityBonusDiceFromFeatures,
+  activeAllTestsDieSources,
   abilityModSources,
   borrowedPowerUsedKey,
   borrowedPowerIntegrityKey,
@@ -46,6 +47,8 @@ import {
   isEffectActive,
   isTemporaryActivationShortRestLocked,
   shortRestLockKey,
+  lowHpTestDieSources,
+  permanentTestDieDomains,
   manaCastingAbility,
   modsFromFeatures,
   optionStatBonusSources,
@@ -715,6 +718,98 @@ describe('dés bonus permanents aux tests (ability-bonus-die)', () => {
 
   it('aucune capacité concernée → vide', () => {
     expect(abilityBonusDiceFromFeatures(['air-r1'])).toEqual({});
+  });
+});
+
+describe('lowHpTestDieSources — dé bonus AUTO à tous les tests à PV bas (casse-cou r4, PER-74)', () => {
+  // maxHp fixé à 40, niveau 16 : le manque de PV (`lethal`) pilote les PV courants.
+  const daredevil = (lethal = 0): Character =>
+    ({
+      ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+      level: 16,
+      featureIds: ['prestige-casse-cou-r4'],
+      depletion: { hp: { lethal, temp: 0 } },
+    }) as Character;
+
+  it('PV courants ≤ niveau → la capacité source est renvoyée', () => {
+    // 40 − 30 = 10 PV ≤ niveau 16.
+    expect(lowHpTestDieSources(daredevil(30), 40)).toEqual([
+      { featureId: 'prestige-casse-cou-r4', name: 'Au pied du mur' },
+    ]);
+  });
+
+  it('exactement au seuil (PV courants = niveau) → actif', () => {
+    // 40 − 24 = 16 PV = niveau 16 (comparaison ≤).
+    expect(lowHpTestDieSources(daredevil(24), 40)).toHaveLength(1);
+  });
+
+  it('PV courants > niveau → vide', () => {
+    // 40 − 0 = 40 PV > niveau 16.
+    expect(lowHpTestDieSources(daredevil(0), 40)).toEqual([]);
+  });
+
+  it('sans la capacité → vide même à PV bas', () => {
+    const c = { ...daredevil(30), featureIds: ['escrime-r1'] } as Character;
+    expect(lowHpTestDieSources(c, 40)).toEqual([]);
+  });
+});
+
+describe('casse-cou L’amour du risque (r6) — dé bonus à tous les tests via interrupteur « Lieu dangereux » (PER-74)', () => {
+  const dd = (toggles: Record<string, boolean[]> = {}): Character =>
+    ({
+      ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+      level: 16,
+      featureIds: ['prestige-casse-cou-r6'],
+      effectToggles: toggles,
+    }) as Character;
+
+  it('interrupteur OFF → aucune source (pas de dé)', () => {
+    expect(activeAllTestsDieSources(dd())).toEqual([]);
+  });
+
+  it('interrupteur ON (index 0) → la capacité source est renvoyée', () => {
+    expect(activeAllTestsDieSources(dd({ 'prestige-casse-cou-r6': [true] }))).toEqual([
+      { featureId: 'prestige-casse-cou-r6', name: "L'amour du risque" },
+    ]);
+  });
+
+  it('volet PERMANENT → dé bonus sur le domaine « Résister à la peur » (sans interrupteur)', () => {
+    expect(permanentTestDieDomains(['prestige-casse-cou-r6'])).toEqual(
+      new Map([['fear-resistance', ["L'amour du risque"]]]),
+    );
+  });
+});
+
+describe('casse-cou Mouche du coche (r5) — +2 DEF conditionnel « action de mouvement sacrifiée » (PER-74)', () => {
+  // Rang de voie 7 (r5 + r7) → palier permanent +2 ; l'effet conditionnel est à l'index 1.
+  const dd = (toggles: Record<string, boolean[]> = {}): Character =>
+    ({
+      ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+      level: 16,
+      featureIds: ['prestige-casse-cou-r5', 'prestige-casse-cou-r7'],
+      effectToggles: toggles,
+    }) as Character;
+
+  const r5Def = (c: Character) =>
+    (featureModSources(c.featureIds, effectContext(c)).def ?? []).filter(
+      (s) => s.featureId === 'prestige-casse-cou-r5',
+    );
+
+  it('interrupteur OFF → seul le +2 permanent (palier rang 7), sans part conditionnelle', () => {
+    expect(r5Def(dd())).toEqual([
+      { featureId: 'prestige-casse-cou-r5', name: 'Mouche du coche', value: 2, conditional: false },
+    ]);
+  });
+
+  it('interrupteur ON (index 1) → +2 conditionnel s’ajoute (total 4)', () => {
+    const def = r5Def(dd({ 'prestige-casse-cou-r5': [false, true] }));
+    expect(def.reduce((n, s) => n + s.value, 0)).toBe(4);
+    expect(def).toContainEqual({
+      featureId: 'prestige-casse-cou-r5',
+      name: 'Mouche du coche',
+      value: 2,
+      conditional: true,
+    });
   });
 });
 
