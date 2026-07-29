@@ -59,6 +59,10 @@ const PAID_BESTIARY_SOURCE = {
   redeemCode: 'bestiaire-bbe',
 } as const;
 
+// Spécificateur NON littéral : le fichier étant gitignoré, un `import('…')` littéral
+// ferait échouer le typecheck partout où il est absent (CI, build Vercel).
+const PAID_MODULE = '../private/bestiary-paid';
+
 /**
  * Charge le contenu payant extrait (`private/bestiary-paid.ts`) de façon TOLÉRANTE :
  * le fichier est gitignoré, donc absent en CI ou sur une autre machine → on renvoie
@@ -66,8 +70,8 @@ const PAID_BESTIARY_SOURCE = {
  */
 async function loadPaidBestiary(): Promise<Creature[] | null> {
   try {
-    const mod = await import('../private/bestiary-paid');
-    return (mod as { paidBestiary?: Creature[] }).paidBestiary ?? null;
+    const mod = (await import(PAID_MODULE)) as { paidBestiary?: Creature[] };
+    return mod.paidBestiary ?? null;
   } catch {
     return null;
   }
