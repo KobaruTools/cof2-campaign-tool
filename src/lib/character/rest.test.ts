@@ -169,6 +169,11 @@ describe('repos — élixirs du forgesort (voie des élixirs, p. 98)', () => {
   it('le repos court ne touche PAS l’équipement (pas de champ equipment)', () => {
     expect(shortRest(withElixirs).equipment).toBeUndefined();
   });
+
+  it('le repos long SANS élixir n’émet PAS de champ equipment (PER-266 : patch état de jeu pur)', () => {
+    const noElixir = make({ equipment: [{ itemId: 'epee-longue', quantity: 1 }] });
+    expect(longRest(noElixir).equipment).toBeUndefined();
+  });
 });
 
 describe('repos — surcoût mana croissant (foi-r5, PER-162)', () => {

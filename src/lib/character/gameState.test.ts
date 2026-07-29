@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type Character } from './types';
 import {
   applyRemoteGameStatePatch,
+  broadcastableGameStateSlice,
+  containsGameStateKey,
   isBroadcastableGameStatePatch,
   isGameStatePatch,
   isHpOnlyMountsPatch,
@@ -106,6 +108,37 @@ describe('mergeMountHp', () => {
   it('ignore les ids inconnus du patch (aucun ajout/retrait par ce canal)', () => {
     const merged = mergeMountHp(current, [{ id: 'zzz', hp: { hp: { lethal: 9, temp: 0 } } }]);
     expect(merged).toEqual(current);
+  });
+});
+
+describe('containsGameStateKey', () => {
+  it('vrai dès qu’une clé ∈ allowlist (même patch mixte), faux pour construction pure', () => {
+    expect(containsGameStateKey({ depletion: {} })).toBe(true);
+    // repos long avec perte d'élixirs : depletion + equipment → mixte mais routé état de jeu
+    expect(containsGameStateKey({ depletion: {}, equipment: [] })).toBe(true);
+    expect(containsGameStateKey({ usageCounters: {}, equipment: [] })).toBe(true);
+    expect(containsGameStateKey({ name: 'X', identity: {} })).toBe(false);
+    expect(containsGameStateKey({})).toBe(false);
+  });
+});
+
+describe('broadcastableGameStateSlice', () => {
+  const c = makeCharacter({ mounts: [{ id: 'a', catalogId: 'cheval', hp: {} }] });
+
+  it('extrait la part état de jeu d’un patch mixte (repos long avec élixirs)', () => {
+    const patch = { depletion: { mana: 0 }, usageCounters: {}, equipment: [] } as never;
+    expect(broadcastableGameStateSlice(c, patch)).toEqual({ depletion: { mana: 0 }, usageCounters: {} });
+  });
+
+  it('inclut mounts seulement si hp-only', () => {
+    const hpOnly = { mounts: [{ id: 'a', catalogId: 'cheval', hp: { hp: { lethal: 2, temp: 0 } } }] };
+    expect(broadcastableGameStateSlice(c, hpOnly)?.mounts).toBeDefined();
+    const structurel = { mounts: [...c.mounts, { id: 'b', catalogId: 'mule', hp: {} }] };
+    expect(broadcastableGameStateSlice(c, structurel)).toBeNull(); // ajout → rien à diffuser
+  });
+
+  it('null pour un patch sans part diffusable (construction pure)', () => {
+    expect(broadcastableGameStateSlice(c, { equipment: [] } as never)).toBeNull();
   });
 });
 

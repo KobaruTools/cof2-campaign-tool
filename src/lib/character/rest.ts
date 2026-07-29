@@ -107,7 +107,13 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
     if (spentDr > 0) depletion.recoveryDice = spentDr - 1;
     else delete depletion.recoveryDice;
   }
-  return {
+  // Récupération complète = nouveau jour : les élixirs préparés non utilisés sont perdus (p. 98).
+  // On n'inclut `equipment` QUE si des doses ont réellement été retirées — sinon le patch resterait
+  // « mixte » (equipment ∉ état de jeu) et partirait, en session, sur le chemin verrou de version
+  // SANS diffusion (PER-266). Sans élixir, un repos long est ainsi un patch PUREMENT état de jeu,
+  // synchronisé en direct comme un repos court.
+  const prunedEquipment = removeElixirDoses(character.equipment);
+  const result: RestResult = {
     depletion: pruneDepletion(depletion),
     usageCounters: resetUsageCounters(
       character.usageCounters,
@@ -117,9 +123,9 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
     ),
     effectToggles: clearTemporaryEffectToggles(character),
     effectInputs: clearTemporaryEffectInputs(character),
-    // Récupération complète = nouveau jour : les élixirs préparés non utilisés sont perdus (p. 98).
-    equipment: removeElixirDoses(character.equipment),
   };
+  if (prunedEquipment.length !== character.equipment.length) result.equipment = prunedEquipment;
+  return result;
 }
 
 /**

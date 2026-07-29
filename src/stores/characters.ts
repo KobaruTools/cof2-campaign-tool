@@ -51,7 +51,9 @@ import {
 import type { Character } from '@/lib/character/types';
 import {
   applyRemoteGameStatePatch,
+  broadcastableGameStateSlice,
   isBroadcastableGameStatePatch,
+  isGameStatePatch,
   toWireGameStatePatch,
   type GameStatePatch,
 } from '@/lib/character/gameState';
@@ -309,25 +311,33 @@ export const useCharactersStore = create<CharactersState>()(
             next[i] = stamped;
             return { characters: next };
           });
-          // 2) Aiguillage. En session (pont branché), perso cloud-backed ET patch fidèlement
-          // persistable par merge_game_state → chemin sans verrou : diffuser l'état ABSOLU (le patch
-          // l'est déjà) aux pairs + persister, sans armer le flush (donc jamais de `conflictId`).
-          // Un patch `mounts` STRUCTUREL (ajout/retrait/barde) N'EST PAS diffusable (le merge ne
-          // fusionne que hp) → il retombe sur le verrou de version comme la construction.
+          // 2) Aiguillage. Hors session (pas de pont), perso local-only, ou Supabase absent →
+          // chemin inchangé (flush débouncé sous verrou ; no-op si local-only).
           const send = sessionSendFor(character.campaignId);
-          if (
-            isSupabaseConfigured() &&
-            send &&
-            stamped.id in get().cloudVersions &&
-            isBroadcastableGameStatePatch(character, patch as GameStatePatch)
-          ) {
-            const wire = toWireGameStatePatch(patch as GameStatePatch);
+          if (!(isSupabaseConfigured() && send && stamped.id in get().cloudVersions)) {
+            scheduleFlush(stamped.id);
+            return;
+          }
+          // En session : on diffuse la part DIFFUSABLE d'état de jeu (état absolu) pour la synchro
+          // live des pairs. `slice` exclut la construction et les montures structurelles.
+          const pgs = patch as GameStatePatch;
+          const slice = broadcastableGameStateSlice(character, pgs);
+          const pure = isGameStatePatch(patch) && isBroadcastableGameStatePatch(character, pgs);
+          if (pure && slice) {
+            // Patch PUREMENT état de jeu (fidèlement mergé) → chemin sans verrou : broadcast +
+            // merge_game_state, sans armer le flush (donc jamais de `conflictId` pour l'état de jeu).
+            const wire = toWireGameStatePatch(slice);
             send('game-state', { characterId: stamped.id, patch: wire });
             void mergeGameState(stamped.id, wire).catch((e) => set({ error: messageOf(e) }));
             return;
           }
-          // 3) Hors session (ou patch de construction routé ici) : chemin inchangé (flush débouncé
-          // sous verrou ; no-op si local-only).
+          // Patch MIXTE (ex. repos long avec élixirs, création d'élixir) ou montures structurelles :
+          // on diffuse la part état de jeu pour la synchro live (si présente), MAIS on persiste TOUT
+          // par le verrou de version (la construction ne peut pas passer par merge_game_state).
+          if (slice) {
+            const wire = toWireGameStatePatch(slice);
+            send('game-state', { characterId: stamped.id, patch: wire });
+          }
           scheduleFlush(stamped.id);
         },
 

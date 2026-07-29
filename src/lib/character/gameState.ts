@@ -51,6 +51,41 @@ export function isGameStatePatch(patch: Partial<Character>): boolean {
 }
 
 /**
+ * Le patch touche-t-il AU MOINS une clé d'état de jeu (allowlist) ? Discriminant de routage :
+ * `true` → passe par `applyGameState` (qui gère pur ET mixte : diffusion de la part état de jeu +
+ * persistance adéquate) ; `false` (construction pure : nom, identité, caractéristiques…) → `upsert`.
+ */
+export function containsGameStateKey(patch: Partial<Character>): boolean {
+  return Object.keys(patch).some((k) => GAME_STATE_KEY_SET.has(k));
+}
+
+/**
+ * Extrait du patch la part DIFFUSABLE d'état de jeu : les clés de l'allowlist fidèlement
+ * persistables par `merge_game_state` (remplacement top-level ; `mounts` seulement si hp-only, car
+ * le merge fin ne sait ni ajouter/retirer ni changer la construction). Renvoie `null` si rien n'est
+ * diffusable (ex. patch de construction pure, ou `mounts` structurel seul). Sert à diffuser la part
+ * état de jeu même d'un patch MIXTE (repos long avec élixirs, création d'élixir…), pour une synchro
+ * live, pendant que la construction est persistée par le verrou de version.
+ */
+export function broadcastableGameStateSlice(
+  character: Character,
+  patch: GameStatePatch,
+): GameStatePatch | null {
+  const slice: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    if (!GAME_STATE_KEY_SET.has(k)) continue;
+    if (k === 'mounts') {
+      if (Array.isArray(v) && isHpOnlyMountsPatch(character.mounts, v as OwnedMount[])) {
+        slice.mounts = v;
+      }
+      continue; // mounts structurel → non diffusable (persisté par le verrou)
+    }
+    slice[k] = v;
+  }
+  return Object.keys(slice).length > 0 ? (slice as GameStatePatch) : null;
+}
+
+/**
  * Le patch de montures ne change-t-il QUE des PV (`hp`) — donc synchronisable par le canal
  * d'état de jeu ? `merge_game_state` (et son miroir client `mergeMountHp`) ne fusionne QUE le
  * `hp` par id : un AJOUT/RETRAIT de monture ou un changement de CONSTRUCTION (barde, nom,

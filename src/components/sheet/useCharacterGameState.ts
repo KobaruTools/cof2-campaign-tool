@@ -21,7 +21,7 @@
  */
 import * as actions from '@/lib/character/sheetActions';
 import type { UseItemIntent } from '@/lib/character/sheetActions';
-import { isGameStatePatch } from '@/lib/character/gameState';
+import { containsGameStateKey } from '@/lib/character/gameState';
 import { capacityResourceGauges, type CapacityResourceGauge } from '@/lib/character/effects';
 import type { Character, Purse, WornState } from '@/lib/character/types';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
@@ -128,10 +128,12 @@ export function useCharacterGameState(
     if (readOnly) return;
     // Garde-fou du contrat de `sheetActions` : un correctif vide signifie « ne rien écrire ».
     if (Object.keys(patch).length === 0) return;
-    // Aiguillage PER-266 : un patch PUREMENT état de jeu (toutes clés ∈ allowlist) passe par
-    // `applyGameState` (chemin sans verrou EN SESSION, verrou sinon) ; tout le reste (construction,
-    // patch mixte comme `createElixir` = usageCounters + equipment) garde le verrou de version.
-    if (isGameStatePatch(patch)) applyGameState(target, patch);
+    // Aiguillage PER-266 : dès que le patch touche une clé d'état de jeu (même mixte, ex. repos long
+    // avec perte d'élixirs = depletion… + equipment, ou `createElixir` = usageCounters + equipment),
+    // il passe par `applyGameState` — qui, EN SESSION, diffuse la part état de jeu en direct et
+    // persiste le reste par le verrou ; hors session, retombe sur le flush verrouillé. Un patch de
+    // construction PURE (nom, identité, caractéristiques…) garde `upsert`.
+    if (containsGameStateKey(patch)) applyGameState(target, patch);
     else upsert({ ...target, ...patch });
   };
   /** Branche une action pure sur le store : `character` en 1er argument, patch persisté. */
