@@ -96,7 +96,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     addCreature,
     removeCreature,
     setCreatureVisibility,
-  } = useGmScreenCombat(cid);
+  } = useGmScreenCombat(cid, 'gm');
   const [addOpen, setAddOpen] = useState(false);
 
   if (!charactersHydrated || campaignsLoading) {

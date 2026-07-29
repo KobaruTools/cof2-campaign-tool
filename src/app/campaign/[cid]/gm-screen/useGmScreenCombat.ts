@@ -29,7 +29,12 @@ import type { DamageKind } from '@/components/sheet/HpGauge';
 import type { InitiativeRow } from '@/components/campaign/InitiativeTracker';
 import type { Character } from '@/lib/character/types';
 import type { Campaign } from '@/lib/campaign/types';
-import { useGmCombatState, type CreatureInstance, type AddCreatureOptions } from './useGmCombatState';
+import {
+  useGmCombatState,
+  type CombatRole,
+  type CreatureInstance,
+  type AddCreatureOptions,
+} from './useGmCombatState';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
@@ -74,7 +79,7 @@ export interface GmScreenCombat {
   setCreatureVisibility: (instanceId: string, visible: boolean) => void;
 }
 
-export function useGmScreenCombat(cid: string): GmScreenCombat {
+export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmScreenCombat {
   const {
     creatures,
     depletions,
@@ -84,7 +89,7 @@ export function useGmScreenCombat(cid: string): GmScreenCombat {
     setCreatureVisibility,
     setCreatureDepletion,
     setCurrentTurnKey,
-  } = useGmCombatState(cid);
+  } = useGmCombatState(cid, role);
 
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
   const characters = useCharactersStore((s) => s.characters);

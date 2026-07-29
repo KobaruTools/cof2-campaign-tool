@@ -1,148 +1,40 @@
 'use client';
 
 /**
- * État du « combat en cours » de l'écran de MJ, persisté dans un `localStorage`
- * DÉDIÉ (une entrée par campagne, clé `gm-combat:<cid>`). On ne persiste QUE ce qui
- * n'est pas déjà stocké ailleurs :
- *  - le roster des créatures ajoutées (`creatures` : instances { id stable + slug de
- *    la créature du bestiaire } + `nextInstanceId` monotone) ;
- *  - les PV des créatures (`depletions`, indexés par id d'instance) — les PV joueurs
- *    vivent sur la fiche (store des personnages / cloud), on n'y touche pas ;
- *  - la position dans l'ordre d'initiative (`currentTurnKey`).
+ * Façade React de l'« état de combat en cours » de l'écran de MJ, au-dessus du store
+ * GLOBAL `campaignCombat` (PER-267). L'état, historiquement `useState` local à ce hook et
+ * persisté dans `localStorage` (`gm-combat:<cid>`, synchro cross-fenêtre par l'événement
+ * `storage`), vit désormais dans la table partagée `campaign_combat` (portée campagne, MJ
+ * seul auteur), reflétée par le store et diffusée en direct sur le canal de session.
  *
- * Les personnages combattants (vivants + reliés à un joueur) ne sont PAS persistés
- * ici : ils sont re-dérivés du store des personnages à chaque affichage.
+ * Deux rôles :
+ *  - **`'gm'`** : l'écran de MJ complet, AUTEUR unique. `load({seed:true})` migre au besoin
+ *    le combat encore en `localStorage` vers la table ; les mutations passent par
+ *    `applyLocalCombat` (store + localStorage + upsert table + broadcast).
+ *  - **`'reader'`** : la fenêtre de projection (PER-248). `load({seed:false})` (aucune
+ *    écriture) ; elle ne mute jamais et reçoit les changements du MJ soit par le canal
+ *    (quand elle sera cliente de session, PER-268), soit — même navigateur, aujourd'hui —
+ *    par l'événement `storage` (relayé vers `applyRemoteCombat`).
  *
- * Depuis PER-247, le roster n'est plus limité au bandit codé en dur : on stocke des
- * instances de N'IMPORTE QUELLE créature du bestiaire (par son slug), dont l'Init./PV
- * sont lus depuis le blob (`fetchCreatureBlob`). Une **migration douce** convertit
- * l'ancien format (`banditIds` de nombres) en instances de la créature
- * `bandit-de-base`, pour ne pas casser les combats déjà enregistrés.
- *
- * Lecture APRÈS montage (évite la désync SSR/CSR), écriture DANS l'updater — même
- * approche que `usePersistentBoolean`.
+ * L'API publique (`GmCombatStateApi`) est inchangée : `useGmScreenCombat` et ses pages
+ * consommateurs n'ont pas à connaître le store.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+
+import { useCampaignCombatStore } from '@/stores/campaignCombat';
+import {
+  EMPTY_COMBAT_STATE,
+  storageKey,
+  type AddCreatureOptions,
+  type CreatureInstance,
+  type GmCombatState,
+} from '@/lib/session/combatState';
 import type { Depletion } from '@/lib/character/types';
-import type { CreatureSide } from '@/lib/ui/creature';
 
-/** Instance d'une créature dans le combat en cours. */
-export interface CreatureInstance {
-  /** Id d'instance stable, unique dans le combat (clé du tracker + des PV). */
-  id: string;
-  /** Slug de la créature du bestiaire (`Creature.id` / `CreatureListItem.id`). */
-  slug: string;
-  /**
-   * Visible par les joueurs sur la fenêtre projetée (PER-248). Absent ou `true` = visible ;
-   * `false` = masquée (le MJ la voit sur son écran, avec un œil fermé, mais elle n'apparaît
-   * PAS dans la projection). Permet de préparer un combat sans le révéler d'emblée.
-   */
-  visible?: boolean;
-  /**
-   * Camp de la créature (PER-249) : `'ally'` = alliée des joueurs, `'enemy'` = adversaire.
-   * **Absent = adversaire** (migration douce : les instances déjà enregistrées et les
-   * bandits legacy, dépourvus de ce champ, sont traités comme adverses partout).
-   */
-  side?: CreatureSide;
-}
+export type { AddCreatureOptions, CreatureInstance, GmCombatState };
 
-/** Options d'ajout d'une créature au combat (PER-247, PER-248, PER-249). */
-export interface AddCreatureOptions {
-  /** Visible par les joueurs sur la fenêtre projetée. Défaut `true`. */
-  visible?: boolean;
-  /** Camp de la créature. Défaut `'enemy'` (adversaire). */
-  side?: CreatureSide;
-}
-
-export interface GmCombatState {
-  /** Instances de créatures ajoutées au combat (ordre d'ajout). */
-  creatures: CreatureInstance[];
-  /** Prochain id d'instance à attribuer (monotone, robuste aux retraits). */
-  nextInstanceId: number;
-  /** Manque de PV par instance (indexé par id d'instance). */
-  depletions: Record<string, Depletion>;
-  /** Clé du combattant dont c'est le tour (`null` = combat pas encore démarré). */
-  currentTurnKey: string | null;
-}
-
-/**
- * Ancien format persisté (avant PER-247) : roster limité au bandit de base, indexé
- * par des ids numériques. Conservé pour la migration douce.
- */
-interface LegacyGmCombatState {
-  banditIds?: number[];
-  nextBanditId?: number;
-  banditDepletions?: Record<number, Depletion>;
-  currentTurnKey?: string | null;
-}
-
-/** Slug de la créature du bestiaire vers laquelle migrer les anciens bandits. */
-const LEGACY_BANDIT_SLUG = 'bandit-de-base';
-
-const EMPTY: GmCombatState = {
-  creatures: [],
-  nextInstanceId: 1,
-  depletions: {},
-  currentTurnKey: null,
-};
-
-const storageKey = (cid: string) => `gm-combat:${cid}`;
-
-/**
- * Reconstruit un `GmCombatState` depuis la valeur brute relue de `localStorage`.
- * Reconnaît le format courant (`creatures`) et migre l'ancien format bandit :
- * chaque `banditIds[n]` devient une instance `{ id: 'bandit-<n>', slug: bandit-de-base }`,
- * l'id d'instance conservant le préfixe `bandit-<n>` pour préserver le tour courant
- * (`currentTurnKey`) et l'état déplié des jauges (persistKey) des combats en cours.
- */
-function reviveState(raw: string): GmCombatState {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return EMPTY;
-  }
-  if (!parsed || typeof parsed !== 'object') return EMPTY;
-
-  // Format courant.
-  const current = parsed as Partial<GmCombatState>;
-  if (Array.isArray(current.creatures)) {
-    return {
-      creatures: current.creatures,
-      nextInstanceId:
-        typeof current.nextInstanceId === 'number'
-          ? current.nextInstanceId
-          : current.creatures.length + 1,
-      depletions: current.depletions ?? {},
-      currentTurnKey: current.currentTurnKey ?? null,
-    };
-  }
-
-  // Ancien format « bandits » → instances de la créature `bandit-de-base`.
-  const legacy = parsed as LegacyGmCombatState;
-  if (Array.isArray(legacy.banditIds)) {
-    const creatures = legacy.banditIds.map<CreatureInstance>((n) => ({
-      id: `bandit-${n}`,
-      slug: LEGACY_BANDIT_SLUG,
-    }));
-    const depletions: Record<string, Depletion> = {};
-    for (const n of legacy.banditIds) {
-      const dep = legacy.banditDepletions?.[n];
-      if (dep) depletions[`bandit-${n}`] = dep;
-    }
-    return {
-      creatures,
-      nextInstanceId:
-        typeof legacy.nextBanditId === 'number'
-          ? legacy.nextBanditId
-          : legacy.banditIds.length + 1,
-      depletions,
-      currentTurnKey: legacy.currentTurnKey ?? null,
-    };
-  }
-
-  return EMPTY;
-}
+/** Rôle du client dans l'UI de combat : MJ auteur, ou lecteur (projection). */
+export type CombatRole = 'gm' | 'reader';
 
 export interface GmCombatStateApi extends GmCombatState {
   /** Ajoute une instance de la créature `slug` (id = `c-<nextInstanceId>`) ; visible + adversaire par défaut. */
@@ -157,56 +49,41 @@ export interface GmCombatStateApi extends GmCombatState {
   setCurrentTurnKey: (key: string | null) => void;
 }
 
-export function useGmCombatState(cid: string): GmCombatStateApi {
-  const [state, setState] = useState<GmCombatState>(EMPTY);
-  // cid dont l'état a été hydraté depuis `localStorage` : garde l'écriture de ne pas
-  // écraser une campagne avec l'état d'une autre (ou avec EMPTY avant hydratation).
-  const hydratedCidRef = useRef<string | null>(null);
+export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCombatStateApi {
+  const state = useCampaignCombatStore((s) => s.byCampaign[cid] ?? EMPTY_COMBAT_STATE);
+  const load = useCampaignCombatStore((s) => s.load);
+  const applyLocalCombat = useCampaignCombatStore((s) => s.applyLocalCombat);
+  const applyRemoteCombat = useCampaignCombatStore((s) => s.applyRemoteCombat);
 
+  // Chargement au montage (table → localStorage → vide ; migration douce si rôle MJ) +
+  // synchro cross-fenêtre same-browser (projection PER-248) : l'événement `storage` se
+  // déclenche dans les AUTRES fenêtres de même origine à chaque écriture de la clé du
+  // combat. On relaie la valeur reçue vers `applyRemoteCombat` (remplacement, pas de
+  // réécriture). La fenêtre qui écrit ne reçoit pas son propre événement — elle a déjà
+  // l'état à jour dans le store.
   useEffect(() => {
-    hydratedCidRef.current = null;
+    void load(cid, { seed: role === 'gm' });
     if (typeof window === 'undefined') return;
     const key = storageKey(cid);
-    const raw = window.localStorage.getItem(key);
-    const next = raw ? reviveState(raw) : EMPTY;
-    // Synchronisation ponctuelle depuis localStorage après montage (pas une boucle).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setState(next);
-    hydratedCidRef.current = cid;
-
-    // Synchro cross-fenêtre (PER-248) : l'événement `storage` se déclenche dans les
-    // AUTRES fenêtres de même origine à chaque écriture de la clé du combat. On re-lit
-    // et re-hydrate donc l'état ici pour qu'une seconde fenêtre (« présentation » sur un
-    // second écran) reflète en direct les changements pilotés depuis la fenêtre du MJ.
-    // La fenêtre qui écrit ne reçoit pas son propre événement — mais elle a déjà l'état
-    // à jour en mémoire, donc rien à faire de ce côté (édition bidirectionnelle sûre,
-    // ce combat vivant à 100 % dans localStorage). `newValue` null = clé effacée → EMPTY.
     const onStorage = (e: StorageEvent) => {
       if (e.key !== key) return;
-      setState(e.newValue ? reviveState(e.newValue) : EMPTY);
+      let parsed: unknown = null;
+      if (e.newValue) {
+        try {
+          parsed = JSON.parse(e.newValue);
+        } catch {
+          parsed = null;
+        }
+      }
+      applyRemoteCombat(cid, parsed);
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, [cid]);
-
-  const update = useCallback(
-    (updater: (prev: GmCombatState) => GmCombatState) => {
-      setState((prev) => {
-        const next = updater(prev);
-        // On n'écrit qu'une fois l'état de CE cid hydraté (sinon on écraserait le
-        // localStorage avec EMPTY au premier rendu, avant lecture).
-        if (typeof window !== 'undefined' && hydratedCidRef.current === cid) {
-          window.localStorage.setItem(storageKey(cid), JSON.stringify(next));
-        }
-        return next;
-      });
-    },
-    [cid],
-  );
+  }, [cid, role, load, applyRemoteCombat]);
 
   const addCreature = useCallback(
     (slug: string, options?: AddCreatureOptions) =>
-      update((prev) => ({
+      applyLocalCombat(cid, (prev) => ({
         ...prev,
         creatures: [
           ...prev.creatures,
@@ -219,12 +96,12 @@ export function useGmCombatState(cid: string): GmCombatStateApi {
         ],
         nextInstanceId: prev.nextInstanceId + 1,
       })),
-    [update],
+    [applyLocalCombat, cid],
   );
 
   const removeCreature = useCallback(
     (instanceId: string) =>
-      update((prev) => {
+      applyLocalCombat(cid, (prev) => {
         const depletions = { ...prev.depletions };
         delete depletions[instanceId];
         return {
@@ -233,30 +110,30 @@ export function useGmCombatState(cid: string): GmCombatStateApi {
           depletions,
         };
       }),
-    [update],
+    [applyLocalCombat, cid],
   );
 
   const setCreatureVisibility = useCallback(
     (instanceId: string, visible: boolean) =>
-      update((prev) => ({
+      applyLocalCombat(cid, (prev) => ({
         ...prev,
         creatures: prev.creatures.map((c) => (c.id === instanceId ? { ...c, visible } : c)),
       })),
-    [update],
+    [applyLocalCombat, cid],
   );
 
   const setCreatureDepletion = useCallback(
     (instanceId: string, depletion: Depletion) =>
-      update((prev) => ({
+      applyLocalCombat(cid, (prev) => ({
         ...prev,
         depletions: { ...prev.depletions, [instanceId]: depletion },
       })),
-    [update],
+    [applyLocalCombat, cid],
   );
 
   const setCurrentTurnKey = useCallback(
-    (key: string | null) => update((prev) => ({ ...prev, currentTurnKey: key })),
-    [update],
+    (key: string | null) => applyLocalCombat(cid, (prev) => ({ ...prev, currentTurnKey: key })),
+    [applyLocalCombat, cid],
   );
 
   return {

@@ -9,3 +9,5 @@ export * from './types';
 export * from './repo';
 export * from './presence';
 export * from './participantsRepo';
+export * from './combatState';
+export * from './combatRepo';

@@ -31,6 +31,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useCharactersStore } from '@/stores/characters';
+import { COMBAT_STATE_EVENT, useCampaignCombatStore } from '@/stores/campaignCombat';
 import { registerSessionChannel } from './sessionBridge';
 import { joinSessionParticipant, leaveSessionParticipant } from './participantsRepo';
 import {
@@ -134,6 +135,18 @@ export function useSessionChannel(
             p.patch as Record<string, unknown>,
             p.replaceMounts === true,
           );
+      }
+    });
+
+    // Réception de l'état de COMBAT (roster de créatures, PV, tour, visibilité) diffusé par
+    // le MJ (auteur unique, PER-267). Application en LECTURE SEULE : `applyRemoteCombat`
+    // remplace l'état du store sans réécrire ni re-diffuser. `campaignId` est fixe pour ce
+    // canal ; le payload porte l'état absolu (snapshot).
+    channel.on('broadcast', { event: COMBAT_STATE_EVENT }, ({ payload }) => {
+      if (!active) return;
+      const p = payload as { state?: unknown };
+      if (p.state && typeof p.state === 'object') {
+        useCampaignCombatStore.getState().applyRemoteCombat(campaignId, p.state);
       }
     });
 

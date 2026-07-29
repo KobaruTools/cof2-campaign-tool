@@ -40,7 +40,7 @@ const noop = () => {};
 export default function GmTrackerWindowPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
   const { charactersHydrated, campaignsLoading, campaign, initiativeRows, currentTurnKey } =
-    useGmScreenCombat(cid);
+    useGmScreenCombat(cid, 'reader');
 
   // Réhydrate le store des personnages quand la fenêtre principale écrit leurs PV.
   useCharacterStoreSync();
