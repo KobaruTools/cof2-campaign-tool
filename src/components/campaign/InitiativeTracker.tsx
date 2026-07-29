@@ -611,6 +611,10 @@ function CombatantColumn({
           spacing={1}
           sx={{
             alignItems: 'center',
+            // Hauteur d'en-tête CONSTANTE : l'identité fait 2 lignes pour une créature (nom + NC)
+            // mais 3 pour un personnage (nom + joueur + profil). Sans plancher, la jauge de PV et
+            // les pastilles de stats démarreraient plus haut sur les créatures → colonnes désalignées.
+            minHeight: 52,
             borderRadius: 1,
             cursor: identityClickable ? 'pointer' : 'default',
             ...(identityClickable && {
