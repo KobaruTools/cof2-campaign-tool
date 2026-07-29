@@ -125,11 +125,15 @@ export function useSessionChannel(
     // `self` est faux par défaut → on ne reçoit pas nos propres broadcasts (aucune boucle).
     channel.on('broadcast', { event: 'game-state' }, ({ payload }) => {
       if (!active) return;
-      const p = payload as { characterId?: unknown; patch?: unknown };
+      const p = payload as { characterId?: unknown; patch?: unknown; replaceMounts?: unknown };
       if (typeof p.characterId === 'string' && p.patch && typeof p.patch === 'object') {
         useCharactersStore
           .getState()
-          .applyRemoteGameState(p.characterId, p.patch as Record<string, unknown>);
+          .applyRemoteGameState(
+            p.characterId,
+            p.patch as Record<string, unknown>,
+            p.replaceMounts === true,
+          );
       }
     });
 

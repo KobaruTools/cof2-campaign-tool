@@ -60,27 +60,16 @@ export function containsGameStateKey(patch: Partial<Character>): boolean {
 }
 
 /**
- * Extrait du patch la part DIFFUSABLE d'état de jeu : les clés de l'allowlist fidèlement
- * persistables par `merge_game_state` (remplacement top-level ; `mounts` seulement si hp-only, car
- * le merge fin ne sait ni ajouter/retirer ni changer la construction). Renvoie `null` si rien n'est
- * diffusable (ex. patch de construction pure, ou `mounts` structurel seul). Sert à diffuser la part
- * état de jeu même d'un patch MIXTE (repos long avec élixirs, création d'élixir…), pour une synchro
- * live, pendant que la construction est persistée par le verrou de version.
+ * Extrait du patch sa part ÉTAT DE JEU (les clés de l'allowlist présentes, `mounts` inclus tel
+ * quel), ou `null` si aucune. Sert à diffuser la part état de jeu, même d'un patch MIXTE (repos long
+ * avec élixirs, création d'élixir, ajout de monture + interrupteur…), pour une synchro live pendant
+ * que la construction est persistée par le verrou de version. La FORME du merge de `mounts` chez le
+ * pair (fusion fine vs remplacement) est décidée par le flag `replaceMounts` du message, pas ici.
  */
-export function broadcastableGameStateSlice(
-  character: Character,
-  patch: GameStatePatch,
-): GameStatePatch | null {
+export function gameStateSlice(patch: Partial<Character>): GameStatePatch | null {
   const slice: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(patch)) {
-    if (!GAME_STATE_KEY_SET.has(k)) continue;
-    if (k === 'mounts') {
-      if (Array.isArray(v) && isHpOnlyMountsPatch(character.mounts, v as OwnedMount[])) {
-        slice.mounts = v;
-      }
-      continue; // mounts structurel → non diffusable (persisté par le verrou)
-    }
-    slice[k] = v;
+    if (GAME_STATE_KEY_SET.has(k)) slice[k] = v;
   }
   return Object.keys(slice).length > 0 ? (slice as GameStatePatch) : null;
 }
@@ -101,20 +90,6 @@ export function isHpOnlyMountsPatch(current: OwnedMount[], patchMounts: OwnedMou
     if (pm.catalogId !== cm.catalogId || pm.name !== cm.name || pm.bardeId !== cm.bardeId) {
       return false; // changement de construction (barde/nom/catalogId)
     }
-  }
-  return true;
-}
-
-/**
- * Le patch (déjà « purement état de jeu » au sens `isGameStatePatch`) est-il fidèlement
- * persistable par `merge_game_state`, donc DIFFUSABLE sur le canal ? Toutes les clés de
- * l'allowlist sont des remplacements top-level fidèles SAUF `mounts`, fusionné finement par
- * `hp` : un patch `mounts` STRUCTUREL (ajout/retrait/barde) n'est PAS diffusable et doit
- * retomber sur le verrou de version (construction). Toutes les autres formes le sont.
- */
-export function isBroadcastableGameStatePatch(character: Character, patch: GameStatePatch): boolean {
-  if (patch.mounts !== undefined && !isHpOnlyMountsPatch(character.mounts, patch.mounts)) {
-    return false;
   }
   return true;
 }
@@ -152,20 +127,28 @@ export function mergeMountHp(current: OwnedMount[], patch: readonly unknown[]): 
 
 /**
  * Applique un patch d'état de jeu REÇU (représentation « fil ») à un personnage, EN MÉMOIRE.
- * Remplacement direct des clés top-level (elles portent l'état ABSOLU → dernier-arrivé-gagne),
- * SAUF `mounts` en fusion fine par id (ne pas écraser une construction de montures divergente
- * chez le pair). `mountedKey: null` (fil) → « à pied » (clé supprimée). Les clés hors allowlist
- * sont ignorées (défensif). Fonction PURE (aucun store, aucun réseau).
+ * Remplacement direct des clés top-level (elles portent l'état ABSOLU → dernier-arrivé-gagne).
+ * `mountedKey: null` (fil) → « à pied » (clé supprimée). Les clés hors allowlist sont ignorées.
+ *
+ * `mounts` a deux modes selon l'émetteur (flag `replaceMounts` du message) :
+ *  - **fusion fine par id** (défaut, changement de PV) : ne remplace que le `hp`, préserve la
+ *    construction et les montures que le pair aurait en plus (évite l'écrasement concurrent) ;
+ *  - **remplacement complet** (`replaceMounts`, changement STRUCTUREL : ajout/retrait/barde) : le
+ *    tableau reçu fait foi (LWW sur toute la liste) — car la fusion fine ne sait ni ajouter ni retirer.
+ *
+ * Fonction PURE (aucun store, aucun réseau).
  */
 export function applyRemoteGameStatePatch(
   character: Character,
   patch: Record<string, unknown>,
+  opts: { replaceMounts?: boolean } = {},
 ): Character {
   const next: Character = { ...character };
   for (const [k, v] of Object.entries(patch)) {
     if (!GAME_STATE_KEY_SET.has(k)) continue;
     if (k === 'mounts') {
-      next.mounts = mergeMountHp(character.mounts, Array.isArray(v) ? v : []);
+      const arr = (Array.isArray(v) ? v : []) as OwnedMount[];
+      next.mounts = opts.replaceMounts ? arr : mergeMountHp(character.mounts, arr);
     } else if (k === 'mountedKey') {
       if (v == null) delete next.mountedKey;
       else next.mountedKey = String(v);

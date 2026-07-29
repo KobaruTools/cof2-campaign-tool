@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type Character } from './types';
 import {
   applyRemoteGameStatePatch,
-  broadcastableGameStateSlice,
   containsGameStateKey,
-  isBroadcastableGameStatePatch,
+  gameStateSlice,
   isGameStatePatch,
   isHpOnlyMountsPatch,
   mergeMountHp,
@@ -122,27 +121,26 @@ describe('containsGameStateKey', () => {
   });
 });
 
-describe('broadcastableGameStateSlice', () => {
+describe('gameStateSlice', () => {
   const c = makeCharacter({ mounts: [{ id: 'a', catalogId: 'cheval', hp: {} }] });
 
   it('extrait la part état de jeu d’un patch mixte (repos long avec élixirs)', () => {
     const patch = { depletion: { mana: 0 }, usageCounters: {}, equipment: [] } as never;
-    expect(broadcastableGameStateSlice(c, patch)).toEqual({ depletion: { mana: 0 }, usageCounters: {} });
+    expect(gameStateSlice(patch)).toEqual({ depletion: { mana: 0 }, usageCounters: {} });
   });
 
-  it('inclut mounts seulement si hp-only', () => {
-    const hpOnly = { mounts: [{ id: 'a', catalogId: 'cheval', hp: { hp: { lethal: 2, temp: 0 } } }] };
-    expect(broadcastableGameStateSlice(c, hpOnly)?.mounts).toBeDefined();
+  it('inclut mounts tel quel, même structurel (le flag replaceMounts décide chez le pair)', () => {
     const structurel = { mounts: [...c.mounts, { id: 'b', catalogId: 'mule', hp: {} }] };
-    expect(broadcastableGameStateSlice(c, structurel)).toBeNull(); // ajout → rien à diffuser
+    expect(gameStateSlice(structurel)?.mounts).toHaveLength(2);
   });
 
-  it('null pour un patch sans part diffusable (construction pure)', () => {
-    expect(broadcastableGameStateSlice(c, { equipment: [] } as never)).toBeNull();
+  it('null pour un patch de construction pure', () => {
+    expect(gameStateSlice({ equipment: [] } as never)).toBeNull();
+    expect(gameStateSlice({ name: 'X' })).toBeNull();
   });
 });
 
-describe('isHpOnlyMountsPatch / isBroadcastableGameStatePatch', () => {
+describe('isHpOnlyMountsPatch', () => {
   const c = makeCharacter({
     mounts: [
       { id: 'a', catalogId: 'cheval', name: 'Bucéphale', bardeId: 'barde', hp: {} },
@@ -150,31 +148,21 @@ describe('isHpOnlyMountsPatch / isBroadcastableGameStatePatch', () => {
     ],
   });
 
-  it('hp-only (dégâts/soin sur une monture existante) est diffusable', () => {
-    const patch = { mounts: [{ ...c.mounts[0], hp: { hp: { lethal: 3, temp: 0 } } }, c.mounts[1]] };
-    expect(isHpOnlyMountsPatch(c.mounts, patch.mounts)).toBe(true);
-    expect(isBroadcastableGameStatePatch(c, patch)).toBe(true);
+  it('hp-only (dégâts/soin sur une monture existante) → fusion fine (true)', () => {
+    const mounts = [{ ...c.mounts[0], hp: { hp: { lethal: 3, temp: 0 } } }, c.mounts[1]];
+    expect(isHpOnlyMountsPatch(c.mounts, mounts)).toBe(true);
   });
 
-  it('ajout de monture N’EST PAS diffusable (construction → verrou)', () => {
-    const patch = { mounts: [...c.mounts, { id: 'z', catalogId: 'poney', hp: {} }] };
-    expect(isHpOnlyMountsPatch(c.mounts, patch.mounts)).toBe(false);
-    expect(isBroadcastableGameStatePatch(c, patch)).toBe(false);
+  it('ajout de monture → structurel (false → remplacement)', () => {
+    expect(isHpOnlyMountsPatch(c.mounts, [...c.mounts, { id: 'z', catalogId: 'poney', hp: {} }])).toBe(false);
   });
 
-  it('retrait de monture N’EST PAS diffusable', () => {
-    const patch = { mounts: [c.mounts[0]] };
-    expect(isBroadcastableGameStatePatch(c, patch)).toBe(false);
+  it('retrait de monture → structurel', () => {
+    expect(isHpOnlyMountsPatch(c.mounts, [c.mounts[0]])).toBe(false);
   });
 
-  it('changement de barde N’EST PAS diffusable', () => {
-    const patch = { mounts: [{ ...c.mounts[0], bardeId: 'autre-barde' }, c.mounts[1]] };
-    expect(isBroadcastableGameStatePatch(c, patch)).toBe(false);
-  });
-
-  it('un patch sans mounts est diffusable (les autres clés sont fidèles)', () => {
-    expect(isBroadcastableGameStatePatch(c, { depletion: { mana: 2 } })).toBe(true);
-    expect(isBroadcastableGameStatePatch(c, { mountedKey: 'a' })).toBe(true);
+  it('changement de barde → structurel', () => {
+    expect(isHpOnlyMountsPatch(c.mounts, [{ ...c.mounts[0], bardeId: 'autre-barde' }, c.mounts[1]])).toBe(false);
   });
 });
 
@@ -185,15 +173,32 @@ describe('applyRemoteGameStatePatch', () => {
     expect(next.depletion).toEqual({ hp: { lethal: 7, temp: 0 } });
   });
 
-  it('fusionne mounts finement par id (n’écrase pas une construction divergente)', () => {
+  it('fusionne mounts finement par id par défaut (n’écrase pas une construction divergente)', () => {
     const c = makeCharacter({
       mounts: [{ id: 'a', catalogId: 'cheval', name: 'Local', hp: {} }],
     });
-    // Le pair diffuse le tableau complet ; on ne prend que le hp de 'a', notre name reste 'Local'.
+    // Le pair diffuse le tableau complet ; sans replaceMounts, on ne prend que le hp de 'a'.
     const next = applyRemoteGameStatePatch(c, {
       mounts: [{ id: 'a', catalogId: 'cheval', name: 'Distant', hp: { hp: { lethal: 4, temp: 0 } } }],
     });
     expect(next.mounts[0]).toEqual({ id: 'a', catalogId: 'cheval', name: 'Local', hp: { hp: { lethal: 4, temp: 0 } } });
+  });
+
+  it('replaceMounts → remplace le tableau (ajout de monture propagé en direct)', () => {
+    const c = makeCharacter({ mounts: [{ id: 'a', catalogId: 'cheval', hp: {} }] });
+    // L'émetteur a ajouté 'b' ; avec replaceMounts, le pair adopte le tableau complet reçu.
+    const next = applyRemoteGameStatePatch(
+      c,
+      {
+        mounts: [
+          { id: 'a', catalogId: 'cheval', hp: {} },
+          { id: 'b', catalogId: 'mule', hp: {} },
+        ],
+      },
+      { replaceMounts: true },
+    );
+    expect(next.mounts).toHaveLength(2);
+    expect(next.mounts[1]).toMatchObject({ id: 'b', catalogId: 'mule' });
   });
 
   it('mountedKey null (fil) → démonte (clé supprimée)', () => {

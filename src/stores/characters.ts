@@ -51,11 +51,10 @@ import {
 import type { Character } from '@/lib/character/types';
 import {
   applyRemoteGameStatePatch,
-  broadcastableGameStateSlice,
-  isBroadcastableGameStatePatch,
+  gameStateSlice,
   isGameStatePatch,
+  isHpOnlyMountsPatch,
   toWireGameStatePatch,
-  type GameStatePatch,
 } from '@/lib/character/gameState';
 import { sessionSendFor } from '@/lib/session/sessionBridge';
 import { migrateCharacter } from '@/lib/engine';
@@ -111,10 +110,15 @@ interface CharactersState {
   applyGameState: (character: Character, patch: Partial<Character>) => void;
   /**
    * Applique un delta d'état de jeu REÇU d'un pair sur le canal de session (PER-266), à la vue
-   * en mémoire, SANS re-diffuser ni flusher (l'émetteur a déjà persisté via `merge_game_state`).
-   * No-op si le personnage n'est pas chargé ici. `mounts` est fusionné finement par id.
+   * en mémoire, SANS re-diffuser ni flusher (l'émetteur a déjà persisté). No-op si le personnage
+   * n'est pas chargé ici. `mounts` est fusionné finement par id, SAUF si `replaceMounts` (changement
+   * structurel : ajout/retrait/barde) où le tableau reçu remplace le tableau local.
    */
-  applyRemoteGameState: (characterId: string, patch: Record<string, unknown>) => void;
+  applyRemoteGameState: (
+    characterId: string,
+    patch: Record<string, unknown>,
+    replaceMounts?: boolean,
+  ) => void;
   /**
    * Commit d'un personnage neuf en fin de wizard : insertion cloud (si configuré)
    * puis ajout au cache. Sans Supabase, retombe sur un ajout local (staging). Lève
@@ -318,35 +322,45 @@ export const useCharactersStore = create<CharactersState>()(
             scheduleFlush(stamped.id);
             return;
           }
-          // En session : on diffuse la part DIFFUSABLE d'état de jeu (état absolu) pour la synchro
-          // live des pairs. `slice` exclut la construction et les montures structurelles.
-          const pgs = patch as GameStatePatch;
-          const slice = broadcastableGameStateSlice(character, pgs);
-          const pure = isGameStatePatch(patch) && isBroadcastableGameStatePatch(character, pgs);
-          if (pure && slice) {
-            // Patch PUREMENT état de jeu (fidèlement mergé) → chemin sans verrou : broadcast +
-            // merge_game_state, sans armer le flush (donc jamais de `conflictId` pour l'état de jeu).
-            const wire = toWireGameStatePatch(slice);
+          // En session : on diffuse la part état de jeu (état absolu) pour la synchro live des pairs.
+          const slice = gameStateSlice(patch);
+          if (!slice) {
+            scheduleFlush(stamped.id); // aucune clé d'état de jeu (ne devrait pas arriver ici)
+            return;
+          }
+          // Montures STRUCTURELLES (ajout/retrait/barde) : le pair doit REMPLACER son tableau (la
+          // fusion fine ne sait pas ajouter/retirer) ; changement de PV seul → fusion fine.
+          const mountsStructural =
+            slice.mounts !== undefined && !isHpOnlyMountsPatch(character.mounts, slice.mounts);
+          // « Pur » = toutes les clés ∈ allowlist ET montures fidèlement mergeables (hp-only ou aucune)
+          // → persistable par merge_game_state SANS toucher `version` (donc jamais de `conflictId`).
+          const pure = isGameStatePatch(patch) && !mountsStructural;
+          const wire = toWireGameStatePatch(slice);
+          if (pure) {
             send('game-state', { characterId: stamped.id, patch: wire });
             void mergeGameState(stamped.id, wire).catch((e) => set({ error: messageOf(e) }));
             return;
           }
-          // Patch MIXTE (ex. repos long avec élixirs, création d'élixir) ou montures structurelles :
-          // on diffuse la part état de jeu pour la synchro live (si présente), MAIS on persiste TOUT
-          // par le verrou de version (la construction ne peut pas passer par merge_game_state).
-          if (slice) {
-            const wire = toWireGameStatePatch(slice);
-            send('game-state', { characterId: stamped.id, patch: wire });
-          }
+          // Patch MIXTE (repos long avec élixirs, création d'élixir…) ou montures structurelles : on
+          // diffuse la part état de jeu pour la synchro live (montures en REMPLACEMENT si structurel),
+          // MAIS on persiste TOUT par le verrou de version (merge_game_state ne sait ni écrire la
+          // construction ni ajouter/retirer une monture).
+          send('game-state', {
+            characterId: stamped.id,
+            patch: wire,
+            replaceMounts: mountsStructural,
+          });
           scheduleFlush(stamped.id);
         },
 
-        applyRemoteGameState: (characterId, patch) => {
+        applyRemoteGameState: (characterId, patch, replaceMounts) => {
           set((state) => {
             const i = state.characters.findIndex((c) => c.id === characterId);
             if (i === -1) return {}; // perso non chargé ici : rien à mettre à jour
             const next = state.characters.slice();
-            next[i] = withTimestamp(applyRemoteGameStatePatch(state.characters[i], patch));
+            next[i] = withTimestamp(
+              applyRemoteGameStatePatch(state.characters[i], patch, { replaceMounts }),
+            );
             return { characters: next };
           });
         },
