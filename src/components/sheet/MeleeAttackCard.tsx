@@ -14,6 +14,7 @@ import type { Abilities } from '@/lib/engine';
 import type { UnarmedStrikeView } from '@/lib/character/unarmedStrike';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 import { AppTooltip } from '@/components/AppTooltip';
+import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { UnarmedStrikeBadges } from '@/components/sheet/UnarmedStrikeBadges';
@@ -23,6 +24,11 @@ import type { MeleeWeaponDamageView } from '@/components/sheet/characterDerivedV
 import type { SituationalDamageBonus } from '@/lib/character/weaponDamageBonus';
 
 type MeleeMode = 'weapon' | 'unarmed';
+
+/** Source d'un dé bonus aux attaques (nom de la capacité, pour l'info-bulle du badge). */
+export interface AttackBonusDie {
+  name: string;
+}
 
 /** Contenu d'un cadre (arme ou mains nues) : titre, valeur de touche, DM, badges. */
 function Face({
@@ -36,6 +42,7 @@ function Face({
   weaponCriticalRanges,
   unarmedCriticalRanges,
   situationalBonuses,
+  attackBonusDie,
 }: {
   mode: MeleeMode;
   touch: number | null;
@@ -47,6 +54,7 @@ function Face({
   weaponCriticalRanges: DefenseBadgeData[];
   unarmedCriticalRanges: DefenseBadgeData[];
   situationalBonuses: SituationalDamageBonus[];
+  attackBonusDie: AttackBonusDie[];
 }) {
   const title = mode === 'weapon' ? 'Attaque au contact (arme)' : 'Attaque au contact (mains)';
   const unarmedDice = `${unarmed.damage.count}${unarmed.damage.die}${unarmed.evolving ? '°' : ''}`;
@@ -87,6 +95,14 @@ function Face({
                   </AppTooltip>
                 )}
               </Typography>,
+            )}
+            {/* Dé bonus à toutes les attaques (flibustier r8 « Pas de quartier », PV bas) — badge double-d20. */}
+            {attackBonusDie.length > 0 && (
+              <BonusDieBadge
+                ability="attaque"
+                size={18}
+                tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
+              />
             )}
             {/* Petit séparateur : la valeur de touche et le calcul des DM sont deux choses distinctes. */}
             <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
@@ -170,6 +186,8 @@ export interface MeleeAttackCardProps {
   unarmedCriticalRanges: DefenseBadgeData[];
   /** PER-115 — bonus de DM SITUATIONNELS au contact (Attaque éclair, Chasseur émérite…), en badges. */
   situationalBonuses: SituationalDamageBonus[];
+  /** PER-74 — dé bonus à toutes les attaques (flibustier r8, PV bas), en badge double-d20. */
+  attackBonusDie?: AttackBonusDie[];
 }
 
 /**
@@ -201,6 +219,7 @@ export function MeleeAttackCard({
   weaponCriticalRanges,
   unarmedCriticalRanges,
   situationalBonuses,
+  attackBonusDie = [],
 }: MeleeAttackCardProps) {
   const [mode, setMode] = useState<MeleeMode>(meleeWeaponDamage ? 'weapon' : 'unarmed');
   const swap = () => setMode((m) => (m === 'weapon' ? 'unarmed' : 'weapon'));
@@ -215,6 +234,7 @@ export function MeleeAttackCard({
     weaponCriticalRanges,
     unarmedCriticalRanges,
     situationalBonuses,
+    attackBonusDie,
   };
 
   // Chaque cadre est en position ABSOLUE : il ne contribue PAS à la hauteur de la pile. C'est un

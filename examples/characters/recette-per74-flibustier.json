@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 21,
+  "id": "recette-per74-flibustier",
+  "name": "Recette PER-74 — Flibustier (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du flibustier p. 141-142) : vérifier le RENDU de chaque rang prestige. Base = voleur/spadassin (escrimeur), AGI 4 dominante, CON 3 (natation), pétoire en MAIN PRINCIPALE + épée courte (le « sabre ») en main secondaire ; armes à feu autorisées. R4 Pied marin → l'interrupteur « Sur un support mobile » est LIVRÉ ACTIVÉ (état de jeu, hors mode édition) : dans « Compétences & tests », la ligne AGI et toutes ses compétences gagnent +5 tant qu'il est actif ; l'éteindre retire le +5. « Il ajoute son rang » (rang atteint = 8) → Natation et Navigation portent un bonus permanent de +8. R5 Coup de crosse (G) → la PÉTOIRE en main s'affiche MAÎTRISÉE (le voleur ne maîtrise pas la poudre nativement — c'est la capacité qui l'octroie) : PAS de dé malus « arme non maîtrisée ». Les DM de la crosse « [1d4°+FOR] » sont rendus en encadré de formule dans le texte. GRISAGE : la capacité est JOUABLE ici (pétoire en main) ; déséquipe la pétoire → r5 se grise (notice « sans arme à poudre en main »), comme la Voie du bouclier sans bouclier — mais la MAÎTRISE des armes à poudre reste acquise. R6 À l'abordage → richText : « +1d4° aux DM » rendu en DÉ {1d4°} (le « dé bonus en attaque » situationnel reste en texte). R7 Sabre au poing (A) → verbatim ; GRISAGE à condition CUMULÉE : jouable ici (pétoire main principale + épée courte main secondaire) ; retire l'une des deux → r7 se grise (non jouable). R8 Pas de quartier (G) → richText : « +1d4° aux DM » en DÉ {1d4°}, « moins de [niveau] PV » avec le seuil de niveau en encadré vert. MÉCANISÉ : ce perso est BLESSÉ (PV courants = 12 < niveau 16) → un BADGE « dé bonus » (double d20) apparaît sur les cartes d'attaque au contact ET à distance (et magique) ; soigne-le au-dessus de 16 PV → le badge disparaît. COULEUR PAR FAMILLE : le flibustier est une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "voleur",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 4,
+    "CON": 3,
+    "PER": 2,
+    "CHA": 2,
+    "INT": 1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 4,
+    "CON": 3,
+    "PER": 2,
+    "CHA": 2,
+    "INT": 1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "humain-r1",
+    "spadassin-r1",
+    "spadassin-r2",
+    "spadassin-r3",
+    "spadassin-r4",
+    "spadassin-r5",
+    "prestige-flibustier-r4",
+    "prestige-flibustier-r5",
+    "prestige-flibustier-r6",
+    "prestige-flibustier-r7",
+    "prestige-flibustier-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {
+    "prestige-flibustier-r4": [
+      true
+    ]
+  },
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {
+    "hp": {
+      "lethal": 104,
+      "temp": 0
+    }
+  },
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "petoire",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "epee-courte",
+      "quantity": 1,
+      "worn": {
+        "slot": "offHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "overrides": {},
+  "notes": "PER-74 — recette flibustier : R4 +5 tests AGI (interrupteur « Sur un support mobile », livré actif) + rang à natation/navigation ; R5 pétoire MAÎTRISÉE (octroi de capacité) + DM [1d4°+FOR] ; R6/R8 {1d4°} ; R7 verbatim.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

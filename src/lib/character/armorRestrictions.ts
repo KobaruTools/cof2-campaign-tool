@@ -28,8 +28,10 @@ import type {
   Shield,
   ShieldAccess,
   UsageCounter,
+  WieldRequirement,
 } from '@/data/schema';
-import { wornRangedWeapon } from './equipment';
+import { wornMeleeWeapon, wornRangedWeapon } from './equipment';
+import { isFirearmItem } from './firearms';
 import type { RulesContext } from '@/lib/engine';
 import type { Character, EquipmentLine } from './types';
 import { isCustomItem } from './types';
@@ -569,6 +571,49 @@ export function rangedWeaponDisabledFeatureIds(character: Character, ctx: RulesC
  */
 export function rangedWeaponRequiredMessage(): string {
   return "Capacité inutilisable sans arc ni arbalète en main : équipez-en un pour en profiter (p. 137).";
+}
+
+/**
+ * PER-74 — la CONDITION D'ARME EN MAIN d'une capacité du flibustier (`Feature.wieldRequirement`) est-elle
+ * remplie par l'équipement porté ? `'firearm'` : au moins une arme à poudre en main ; `'firearm-and-melee'` :
+ * une arme à poudre EN MAIN (via `wornRangedWeapon`) ET une arme de contact en main (via `wornMeleeWeapon`)
+ * — les deux occupant des mains distinctes. S'appuie sur les mêmes helpers d'arme portée que le reste du
+ * module (main principale prioritaire, PER-76/77).
+ */
+export function wieldRequirementMet(equipment: EquipmentLine[] = [], req: WieldRequirement): boolean {
+  const firearmInHand = isFirearmItem(wornRangedWeapon(equipment));
+  if (req === 'firearm') return firearmInHand;
+  // 'firearm-and-melee' : arme à poudre + arme de contact, une par main.
+  return firearmInHand && wornMeleeWeapon(equipment) !== null;
+}
+
+/**
+ * PER-74 — message français prêt à afficher (notice / infobulle) pour une capacité du flibustier NON
+ * JOUABLE faute de la bonne arme en main. « (p. 141) » / « (p. 142) » en parenthèse AUTONOME → parsé
+ * par `PageRefText`/`SourceRef` côté UI.
+ */
+export function wieldRequirementMessage(req: WieldRequirement): string {
+  return req === 'firearm'
+    ? "Capacité inutilisable sans arme à poudre en main : équipez-en une pour frapper de la crosse (p. 141)."
+    : "Capacité inutilisable sans une arme à poudre dans une main ET une arme de contact dans l'autre (p. 142).";
+}
+
+/**
+ * PER-74 — capacités GRISÉES (visuellement NON JOUABLES) faute de l'arme en main requise par leur
+ * `wieldRequirement` (flibustier « Coup de crosse » / « Sabre au poing », p. 141-142) → Map id → message.
+ * DÉSACTIVATION PUREMENT VISUELLE (patron `armorRestrictedReasons` : le rang est désaturé + notice, mais la
+ * capacité reste acquise et interactive) — à DISTINGUER de `shieldDisabledFeatureIds` / `rangedWeaponDisabledFeatureIds`
+ * qui RETIRENT en plus les effets via `activeFeatureIdsForMods` : ici les capacités n'ont aucun effet à retirer,
+ * et l'acquis permanent (maîtrise des armes à poudre) doit rester valide (arbitrage proprio). Vide si tout est jouable.
+ */
+export function wieldDisabledReasons(character: Character): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const id of character.featureIds) {
+    const req = featureById.get(id)?.wieldRequirement;
+    if (!req) continue;
+    if (!wieldRequirementMet(character.equipment, req)) map.set(id, wieldRequirementMessage(req));
+  }
+  return map;
 }
 
 /** Écart de port d'armure/bouclier à signaler (avertissement non bloquant). */

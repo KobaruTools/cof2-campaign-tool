@@ -35,6 +35,7 @@ import {
   weaponFamiliesMatchChoice,
 } from '@/lib/character/choices';
 import type { Character } from '@/lib/character/types';
+import { currentHp } from '@/lib/character/gauges';
 
 /** Mode d'attaque considéré. */
 export type AttackMode = 'melee' | 'ranged';
@@ -179,6 +180,7 @@ export function weaponDamageBonuses(
   character: Character,
   mode: AttackMode,
   weapon: Weapon | null,
+  maxHp?: number,
 ): WeaponDamageBonusResult {
   const addedAbilities: PermanentAbilityBonus[] = [];
   const addedFlat: PermanentFlatBonus[] = [];
@@ -186,6 +188,9 @@ export function weaponDamageBonuses(
 
   const pathRanks = pathRanksFromFeatures(character.featureIds);
   const ctx = effectContext(character);
+  // PER-74 — gate « PV bas » (flibustier r8) : actif seulement si les PV courants sont STRICTEMENT sous
+  // le niveau. Sans `maxHp` fourni, on ne peut pas trancher → les bonus `requiresLowHp` sont inactifs.
+  const lowHpActive = maxHp !== undefined && currentHp(maxHp, character.depletion) < character.level;
 
   for (const featureId of activeFeatureIdsForMods(character)) {
     const feature = featureById.get(featureId);
@@ -202,6 +207,9 @@ export function weaponDamageBonuses(
         !isEffectActive(character, featureId, effect.requiresActiveEffectIndex)
       )
         return;
+      // Gate AUTO « PV bas » (flibustier r8, PER-74) : le bonus ne compte que si les PV courants sont
+      // strictement sous le niveau. Inactif si le `maxHp` n'a pas été fourni au module.
+      if (effect.requiresLowHp && !lowHpActive) return;
 
       const source: WeaponDamageBonusSource = {
         featureId,

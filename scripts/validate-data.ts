@@ -527,6 +527,9 @@ for (const c of features) {
     } else if (e.kind === 'low-hp-test-die') {
       // PER-74 — dé bonus AUTO à tous les tests tant que PV ≤ niveau (casse-cou r4) : drapeau
       // sans paramètre, auto-évalué depuis la jauge de PV. Rien à valider.
+    } else if (e.kind === 'low-hp-attack-die') {
+      // PER-74 — dé bonus AUTO à toutes les attaques tant que PV < niveau (flibustier r8) : drapeau
+      // sans paramètre, auto-évalué depuis la jauge de PV. Rien à valider.
     } else if (e.kind === 'ranged-attack-elemental') {
       // PER-74 — élément ajouté aux attaques à distance : au moins un choix, tous des types de DM valides.
       const types = new Set<string>(RESISTIBLE_DAMAGE_TYPES);

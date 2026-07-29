@@ -386,6 +386,7 @@ function GmSheetDrawerContent({
                 rangedAttackMagicalSourceId={rangedAttackMagicalSourceId}
                 rangedAttackElement={rangedAttackElement}
                 rangedReplacingFormAttack={rangedReplacingFormAttack}
+                attackBonusDie={display.attackBonusDieSources}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">

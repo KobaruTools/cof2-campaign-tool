@@ -6,6 +6,8 @@ import { createBlankCharacter } from './factory';
 import type { Character } from './types';
 import {
   ancestryWeaponMasteryIds,
+  extraMasteredWeaponIds,
+  grantedFirearmMasteryIds,
   isWeaponMastered,
   masteredClassIds,
   sacredWeaponMasteryIds,
@@ -250,5 +252,44 @@ describe('isWeaponMastered avec octroi de peuple (nain, PER-154)', () => {
     expect(isWeaponMastered(weapon('marteau'), magicienIds, ctx, true, extra)).toBe(true);
     // La masse reste non maîtrisée (hors haches/marteau).
     expect(isWeaponMastered(weapon('masse'), magicienIds, ctx, true, extra)).toBe(false);
+  });
+});
+
+describe('isWeaponMastered avec octroi de capacité — armes à poudre du flibustier (PER-74)', () => {
+  const guerrierIds = masteredClassIds(makeChar({ classId: 'guerrier' }), ctx);
+
+  const withFirearm = (over: Partial<Character> = {}): Character =>
+    makeChar({
+      classId: 'guerrier',
+      featureIds: ['prestige-flibustier-r5'],
+      equipment: [{ itemId: 'petoire', quantity: 1, worn: { slot: 'mainHand' } }],
+      ...over,
+    });
+
+  it('Coup de crosse + pétoire en main → maîtrise du mousquet, malgré un profil sans poudre', () => {
+    const flibustier = withFirearm();
+    const extra = extraMasteredWeaponIds(flibustier);
+    // Sans l'octroi : un guerrier ne maîtrise pas les armes à poudre.
+    expect(isWeaponMastered(weapon('mousquet'), guerrierIds, ctx, true)).toBe(false);
+    // Avec la capacité ET une arme à poudre en main : maîtrisée (court-circuite `cls.powderAllowed`).
+    expect(isWeaponMastered(weapon('mousquet'), guerrierIds, ctx, true, extra)).toBe(true);
+  });
+
+  it('GATÉ : sans arme à poudre en main, la capacité est inerte', () => {
+    // Capacité possédée mais aucune arme équipée → aucun octroi.
+    expect(grantedFirearmMasteryIds(makeChar({ classId: 'guerrier', featureIds: ['prestige-flibustier-r5'] })).size).toBe(0);
+    // Une épée courte en main (pas une arme à poudre) ne déclenche rien.
+    const sabre = withFirearm({ equipment: [{ itemId: 'epee-courte', quantity: 1, worn: { slot: 'mainHand' } }] });
+    expect(grantedFirearmMasteryIds(sabre).size).toBe(0);
+  });
+
+  it('sans la capacité, aucun octroi', () => {
+    const sansCapacite = makeChar({
+      classId: 'guerrier',
+      equipment: [{ itemId: 'petoire', quantity: 1, worn: { slot: 'mainHand' } }],
+    });
+    expect(grantedFirearmMasteryIds(sansCapacite).size).toBe(0);
+    // Avec pétoire en main, la capacité n'octroie QUE des armes à poudre, pas les armes de contact.
+    expect(grantedFirearmMasteryIds(withFirearm()).has('epee-longue')).toBe(false);
   });
 });

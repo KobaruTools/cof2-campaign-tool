@@ -503,6 +503,7 @@ export type FeatureEffect =
   | AbilityBonusDieEffect
   | AbilityBonusDieFromChoiceEffect
   | LowHpTestDieEffect
+  | LowHpAttackDieEffect
   | TestDieEffect
   | TestBonusEffect
   | TestBonusFromChoiceEffect
@@ -928,6 +929,19 @@ export interface AbilityBonusDieEffect {
  */
 export interface LowHpTestDieEffect {
   kind: 'low-hp-test-die';
+}
+
+/**
+ * DÉ BONUS AUTO à toutes les ATTAQUES (contact, distance, magie) tant que les PV COURANTS du
+ * personnage sont STRICTEMENT INFÉRIEURS à son NIVEAU (flibustier r8, « Pas de quartier », p. 142 :
+ * « Il obtient les mêmes bonus à toutes ses attaques lorsqu'il lui reste moins de [niveau] PV »).
+ * Analogue de `low-hp-test-die` (dé aux TESTS), mais ciblé sur les JETS D'ATTAQUE — donc rendu par un
+ * `BonusDieBadge` sur les CARTES d'attaque (et non sur la grille de caracs). Seuil STRICT (« moins de »,
+ * ≠ le `≤` de `low-hp-test-die`). AUTO-évalué depuis la jauge de PV, SANS interrupteur. Aucun paramètre.
+ * Résolu par `lowHpAttackDieSources` (effects.ts).
+ */
+export interface LowHpAttackDieEffect {
+  kind: 'low-hp-attack-die';
 }
 
 /**
@@ -1446,6 +1460,14 @@ export interface WeaponDamageBonusEffect {
   requiresActiveEffectIndex?: number;
   /** Bonus SITUATIONNEL (badge séparé) au lieu de permanent (agrégé au DM). Défaut `false`. */
   situational?: boolean;
+  /**
+   * PER-74 — le bonus n'est actif que tant que les PV COURANTS sont STRICTEMENT INFÉRIEURS au NIVEAU
+   * (flibustier r8 « Pas de quartier », p. 142 : « +1d4° aux DM … lorsqu'il lui reste moins de niveau PV »).
+   * Gate AUTO (aucun interrupteur), évalué depuis la jauge de PV — nécessite donc que `weaponDamageBonuses`
+   * reçoive le `maxHp`. Sans `maxHp` (contexte qui l'ignore), un bonus `requiresLowHp` est traité comme
+   * INACTIF (pas de faux positif). Se combine avec `condition` (mode/arme). Absent = aucune condition de PV.
+   */
+  requiresLowHp?: boolean;
 }
 
 /**
@@ -1842,6 +1864,18 @@ export interface FormAttack {
    */
   requiresActiveEffect: { featureId: string; index: number };
 }
+
+/**
+ * PER-74 — CONDITION D'ARME EN MAIN requise pour qu'une capacité d'ACTION soit JOUABLE (voie du
+ * flibustier, p. 141-142). PUREMENT VISUELLE, sur le patron de la Voie du bouclier sans bouclier
+ * (`requiresShield`, PER-142) : quand la condition n'est pas remplie, le rang est GRISÉ et une notice
+ * « non jouable » s'affiche, mais la capacité reste ACQUISE et ses éventuels ACQUIS PERMANENTS restent
+ * valides (ex. « Coup de crosse » octroie la maîtrise des armes à poudre, gérée à part). Valeurs :
+ *  - `'firearm'` : au moins une arme à poudre en main (« Coup de crosse » — on frappe avec la crosse) ;
+ *  - `'firearm-and-melee'` : une arme à poudre dans une main ET une arme de contact dans l'autre
+ *    (« Sabre au poing » — tir d'une main + attaque de contact de l'autre, condition cumulée).
+ */
+export type WieldRequirement = 'firearm' | 'firearm-and-melee';
 
 export interface CriticalRange {
   /** Portée concernée : attaques au contact (`melee`) ou à distance (`ranged`). */
@@ -2981,6 +3015,12 @@ export interface Feature {
    * « Attaque à distance » quand la forme interdit le tir. Absent = aucune attaque de forme.
    */
   formAttack?: FormAttack;
+  /**
+   * PER-74 — CONDITION D'ARME EN MAIN pour que cette capacité d'ACTION soit jouable (flibustier
+   * « Coup de crosse » / « Sabre au poing », p. 141-142). Purement VISUELLE (grisage + notice, patron
+   * Voie du bouclier) ; la capacité reste acquise. Absent = aucune condition d'arme. Cf. `WieldRequirement`.
+   */
+  wieldRequirement?: WieldRequirement;
   /**
    * Compteur d'usages limités (« utilisable N fois ») — déclare le maximum ; le
    * décompte courant est un état de jeu du personnage (`Character.usageCounters`).

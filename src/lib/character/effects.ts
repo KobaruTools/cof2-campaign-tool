@@ -1818,6 +1818,25 @@ export function lowHpTestDieSources(character: Character, maxHp: number): BonusD
 }
 
 /**
+ * Sources d'un DÉ BONUS AUTO à toutes les ATTAQUES (genre `low-hp-attack-die`, flibustier r8 « Pas de
+ * quartier », p. 142), conféré tant que les PV COURANTS sont STRICTEMENT INFÉRIEURS au NIVEAU (« moins
+ * de niveau PV »). Auto-évalué depuis la jauge de PV — AUCUN interrupteur. Renvoie la/les capacité(s)
+ * source(s) quand la condition est remplie, sinon une liste vide. Le rendu applique ce dé bonus aux
+ * CARTES d'attaque (contact/distance/magie), via l'injection dans la vue d'affichage (`sheetDisplayView`).
+ */
+export function lowHpAttackDieSources(character: Character, maxHp: number): BonusDieSource[] {
+  if (currentHp(maxHp, character.depletion) >= character.level) return [];
+  const out: BonusDieSource[] = [];
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    if (feature?.effects?.some((e) => e.kind === 'low-hp-attack-die')) {
+      out.push({ featureId: id, name: feature.name });
+    }
+  }
+  return out;
+}
+
+/**
  * Sources d'un DÉ BONUS à TOUS les tests conféré par un effet `conditional-stat-bonus` ACTIF portant
  * `allTestsDie` (casse-cou r6 « L'amour du risque », p. 139, via l'interrupteur « Lieu dangereux »).
  * Interrupteur MANUEL (≠ `lowHpTestDieSources`, auto). Vide si aucun interrupteur concerné n'est actif.

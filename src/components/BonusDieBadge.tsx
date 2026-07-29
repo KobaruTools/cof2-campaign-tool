@@ -22,6 +22,12 @@ export interface BonusDieBadgeProps {
    * d'info-bulle, pour ne pas empiler deux bulles MUI.
    */
   noTooltip?: boolean;
+  /**
+   * Libellé COMPLET de l'info-bulle (override). Absent → « Dé bonus aux tests de {ability} — {sources} ».
+   * Utilisé quand le dé ne porte pas sur les tests d'une carac mais sur autre chose (ex. « Dé bonus à
+   * toutes les attaques » du flibustier r8), où `ability` sert juste au repli d'`aria-label`.
+   */
+  tooltipTitle?: string;
   sx?: SxProps<Theme>;
 }
 
@@ -32,11 +38,12 @@ export interface BonusDieBadgeProps {
  * capacité(s) source(s). Posée à droite du chiffre de la carac (fiche + mini-fiches
  * de créatures).
  */
-export function BonusDieBadge({ ability, sources = [], size = 16, noTooltip, sx }: BonusDieBadgeProps) {
+export function BonusDieBadge({ ability, sources = [], size = 16, noTooltip, tooltipTitle, sx }: BonusDieBadgeProps) {
   const title =
-    sources.length > 0
+    tooltipTitle ??
+    (sources.length > 0
       ? `Dé bonus aux tests de ${ability} — ${sources.join(', ')}`
-      : `Dé bonus aux tests de ${ability}`;
+      : `Dé bonus aux tests de ${ability}`);
   const badge = (
     <Box
       component="span"

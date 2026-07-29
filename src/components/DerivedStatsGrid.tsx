@@ -20,11 +20,12 @@ import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DerivedStatBreakdownTooltip } from '@/components/DerivedStatBreakdownTooltip';
+import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DieIcon } from '@/components/DieIcon';
 import { SignedNumberField } from '@/components/SignedNumberField';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { FormAttackCard } from '@/components/sheet/FormAttackCard';
-import { MeleeAttackCard } from '@/components/sheet/MeleeAttackCard';
+import { MeleeAttackCard, type AttackBonusDie } from '@/components/sheet/MeleeAttackCard';
 import { RangedAttackCard } from '@/components/sheet/RangedAttackCard';
 import type { MeleeWeaponDamageView, WeaponDamageView } from '@/components/sheet/characterDerivedView';
 import type { SituationalDamageBonus } from '@/lib/character/weaponDamageBonus';
@@ -135,6 +136,12 @@ export interface DerivedStatsGridProps {
    * `null` (forme inactive, récap du wizard, écran de MJ) → carte à distance inchangée.
    */
   rangedReplacingFormAttack?: FormAttackView | null;
+  /**
+   * PER-74 — dé bonus à TOUTES les attaques (contact/distance/magie), auto tant que PV < niveau
+   * (flibustier r8 « Pas de quartier »). Affiche un badge double-d20 sur les cartes d'attaque. Vide
+   * ou absent = aucun.
+   */
+  attackBonusDie?: AttackBonusDie[];
 }
 
 interface StatLine {
@@ -173,6 +180,7 @@ export function DerivedStatsGrid({
   rangedAttackMagicalSourceId,
   rangedAttackElement,
   rangedReplacingFormAttack,
+  attackBonusDie = [],
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
 
@@ -254,6 +262,7 @@ export function DerivedStatsGrid({
                 weaponCriticalRanges={meleeCriticalRanges ?? []}
                 unarmedCriticalRanges={unarmedCriticalRanges ?? []}
                 situationalBonuses={meleeSituationalDamage ?? []}
+                attackBonusDie={attackBonusDie}
               />
             </Grid>
           );
@@ -303,6 +312,7 @@ export function DerivedStatsGrid({
                 situationalBonuses={rangedSituationalDamage ?? []}
                 magicalSourceId={rangedAttackMagicalSourceId}
                 elemental={rangedAttackElement}
+                attackBonusDie={attackBonusDie}
               />
             </Grid>
           );
@@ -417,6 +427,15 @@ export function DerivedStatsGrid({
                             <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
                               <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
                             </AppTooltip>
+                          )}
+                          {/* Dé bonus à toutes les attaques (flibustier r8, PV bas) — porté aussi par l'attaque MAGIQUE. */}
+                          {id === 'magicAttack' && attackBonusDie.length > 0 && (
+                            <BonusDieBadge
+                              ability="attaque magique"
+                              size={18}
+                              noTooltip
+                              tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
+                            />
                           )}
                         </Typography>
                       </DerivedStatBreakdownTooltip>

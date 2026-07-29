@@ -1762,6 +1762,28 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage gagne un bonus de +5 sur tous les tests d'AGI réalisés sur un bateau ou sur d'autres supports mobiles (ce qui comprend les chariots, les cordages, les ponts de corde). Il ajoute son rang à tous les tests relatifs à la natation et à la navigation.",
+    // Deux volets. (1) +5 à TOUS les tests d'AGI, mais SITUATIONNEL (« sur un support mobile ») →
+    // INTERRUPTEUR manuel « Sur un support mobile » (`conditional-stat-bonus` + `abilityTestBonusFor`
+    // ciblant l'AGI, patron Prescience/divination-r5) : le +5 s'injecte sur la ligne AGI et ses
+    // compétences dans « Compétences & tests » tant qu'il est actif. (2) « son rang » à natation et
+    // navigation → bonus PERMANENT scalant sur le rang atteint dans la voie (`test-bonus` scalant
+    // `path-rank`, +4 au rang 4 … +8 au rang 8). Les deux domaines existent au catalogue (natation =
+    // `swimming` p. 202, navigation = `navigation` p. 57).
+    richText:
+      "Le personnage gagne un bonus de +5 sur tous les tests d'AGI réalisés sur un bateau ou sur d'autres supports mobiles (ce qui comprend les chariots, les cordages, les ponts de corde). Il ajoute son [#rang] à tous les tests relatifs à la natation et à la navigation.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        abilityTestBonusFor: { ability: 'AGI', value: 5 },
+        activation: { kind: 'condition', label: 'Sur un support mobile', activeByDefault: false },
+      },
+      {
+        kind: 'test-bonus',
+        domains: ['swimming', 'navigation'],
+        value: { scale: 'path-rank', factor: 1 },
+      },
+    ],
     sourcePage: 141,
   },
   {
@@ -1773,6 +1795,20 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par round, le personnage peut, au moment de son choix, accomplir une attaque au contact gratuite avec la crosse d'une pétoire qu'il tient en main. Il subit un dé malus pour le test d'attaque et inflige [1d4°+FOR] DM. Si ce n'est pas déjà le cas, il acquiert la maîtrise des armes à poudre.",
+    // richText : DM de la crosse `[1d4°+FOR]`. La MAÎTRISE DES ARMES À POUDRE est mécanisée hors
+    // `effects` : la seule possession de cette capacité octroie la maîtrise de toutes les armes à
+    // poudre (`firearmMasteryFromFeatures` → `extraMasteredWeaponIds`, mastery.ts), comme l'octroi de
+    // peuple nain (`ancestryWeaponMasteryIds`). DIFFÉRÉS (signalés) : la carte d'attaque dédiée « Coup
+    // de crosse » (l'infrastructure `formAttack` est orientée forme/remplacement, mal adaptée à une
+    // attaque bonus gatée par l'arme en main) et le « dé malus » en attaque (aucun badge de dé sur les
+    // cartes d'attaque à ce jour) restent verbatim.
+    richText:
+      "Une fois par round, le personnage peut, au moment de son choix, accomplir une attaque au contact gratuite avec la crosse d'une pétoire qu'il tient en main. Il subit un dé malus pour le test d'attaque et inflige [1d4°+FOR] DM. Si ce n'est pas déjà le cas, il acquiert la maîtrise des armes à poudre.",
+    // GRISAGE VISUEL (arbitrage proprio 2026-07-29) : l'attaque exige une arme à poudre en main (« la
+    // crosse d'une pétoire qu'il tient en main ») → capacité NON JOUABLE sans, comme la Voie du bouclier
+    // sans bouclier. Purement visuel : l'octroi de maîtrise des armes à poudre (lui-même déjà gaté par
+    // une arme à poudre en main) reste valide indépendamment.
+    wieldRequirement: 'firearm',
     sourcePage: 141,
   },
   {
@@ -1784,6 +1820,11 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage sait s'élancer vers ses ennemis et mettre du cœur dans sa première attaque au contact lors d'un combat. Cette première attaque bénéficie d'un dé bonus en attaque et de +1d4° aux DM. Il obtient aussi cet effet à chaque fois qu'il peut se précipiter sur un adversaire depuis un contre-haut (balcon, lustre, table, etc.).",
+    // richText : « +1d4° aux DM » → dé {1d4°}. Le « dé bonus en attaque » (première attaque du combat /
+    // depuis un contre-haut) est SITUATIONNEL et n'a pas de badge sur la carte d'attaque (différé) →
+    // laissé en texte littéral.
+    richText:
+      "Le personnage sait s'élancer vers ses ennemis et mettre du cœur dans sa première attaque au contact lors d'un combat. Cette première attaque bénéficie d'un dé bonus en attaque et de {1d4°} aux DM. Il obtient aussi cet effet à chaque fois qu'il peut se précipiter sur un adversaire depuis un contre-haut (balcon, lustre, table, etc.).",
     sourcePage: 142,
   },
   {
@@ -1795,6 +1836,11 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['A'],
     text:
       "Au prix d'une action d'attaque, le personnage peut tirer avec une arme à poudre d'une main (même à bout portant sans malus) et porter une attaque de contact avec une seconde arme (tenue dans son autre main), sans pénalités.",
+    // GRISAGE VISUEL (arbitrage proprio 2026-07-29) : condition CUMULÉE très particulière — une arme à
+    // poudre dans une main ET une arme de contact dans l'autre → capacité NON JOUABLE sinon (patron Voie
+    // du bouclier). Verbatim par ailleurs (permission d'action « tirer + frapper sans pénalité », pas un
+    // bonus chiffré affichable).
+    wieldRequirement: 'firearm-and-melee',
     sourcePage: 142,
   },
   {
@@ -1806,6 +1852,28 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['G'],
     text:
       "Pour le flibustier, il s'agit de vaincre ou mourir. Sa férocité est légendaire : il peut tenter une action d'attaque gratuite contre toute créature à son contact qui tente de s'éloigner de lui. Pour cette attaque, il obtient un dé bonus en attaque et +1d4° aux DM. Il obtient les mêmes bonus à toutes ses attaques lorsqu'il lui reste moins de [niveau] PV.",
+    // richText : « +1d4° aux DM » → dé {1d4°} ; « moins de [niveau] PV » → seuil `[#niveau]`.
+    // MÉCANISÉ (PER-74, arbitrage proprio 2026-07-29) : « il obtient les mêmes bonus à toutes ses attaques
+    // lorsqu'il lui reste moins de niveau PV » → DEUX bonus AUTO tant que PV COURANTS < niveau (seuil STRICT
+    // « moins de », ≠ le ≤ du casse-cou r4) :
+    //  1. `low-hp-attack-die` = DÉ BONUS en ATTAQUE (touche) sur toutes les cartes d'attaque (badge
+    //     double-d20, résolu par `lowHpAttackDieSources`) ;
+    //  2. `weapon-damage-bonus` +{1d4°} SITUATIONNEL sans `attackMode` (donc contact ET distance), gaté
+    //     `requiresLowHp` → chip de bonus de DM conditionnel (dé dynamique), patron Rage du berserk.
+    // Le « dé bonus en attaque » de l'attaque d'OPPORTUNITÉ (créature qui s'éloigne) reste SITUATIONNEL
+    // à la table (pas de badge d'attaque contextuel dédié) ; le {1d4°} reste aussi affiché en richText.
+    richText:
+      "Pour le flibustier, il s'agit de vaincre ou mourir. Sa férocité est légendaire : il peut tenter une action d'attaque gratuite contre toute créature à son contact qui tente de s'éloigner de lui. Pour cette attaque, il obtient un dé bonus en attaque et {1d4°} aux DM. Il obtient les mêmes bonus à toutes ses attaques lorsqu'il lui reste moins de [#niveau] PV.",
+    effects: [
+      { kind: 'low-hp-attack-die' },
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 1, die: 'd4', evolving: true },
+        condition: { label: 'à moins de PV que le niveau' },
+        situational: true,
+        requiresLowHp: true,
+      },
+    ],
     sourcePage: 142,
   },
 

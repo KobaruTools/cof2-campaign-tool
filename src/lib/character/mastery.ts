@@ -21,6 +21,7 @@ import type { RulesContext } from '@/lib/engine';
 import { ownedRanks } from '@/lib/engine';
 import type { Character } from './types';
 import { isFirearmItem } from './firearms';
+import { wornRangedWeapon } from './equipment';
 
 /** Seuil de rangs pour maîtriser un AUTRE profil (« au moins deux rangs », p. 177). */
 export const MASTERY_RANK_THRESHOLD = 2;
@@ -135,12 +136,40 @@ export function ancestryWeaponMasteryIds(character: Character): ReadonlySet<stri
 }
 
 /**
+ * Ids d'armes maîtrisées PAR OCTROI D'UNE CAPACITÉ, indépendamment du profil (PER-74). Aujourd'hui : le
+ * flibustier « Coup de crosse » (prestige-flibustier-r5, p. 141) — « il acquiert la maîtrise des armes à
+ * poudre ». La seule possession de la capacité octroie la maîtrise de TOUTES les armes à poudre du
+ * catalogue (comme l'octroi de peuple nain), court-circuitant `cls.powderAllowed` (aucun profil du
+ * personnage n'a besoin d'autoriser la poudre). La LÉGALITÉ d'équiper une arme à poudre (règle de
+ * campagne × choix perso, `firearmsEffective`, PER-185) reste gérée à part par `checkCompliance` : le
+ * badge « maîtrisée » ne s'affiche que sur une arme à poudre effectivement en main. Ensemble vide sinon.
+ */
+export function grantedFirearmMasteryIds(character: Character): ReadonlySet<string> {
+  const ids = new Set<string>();
+  // GATÉ par une arme à poudre EN MAIN (« la crosse d'une pétoire qu'il tient en main », p. 141,
+  // arbitrage proprio 2026-07-29) : l'octroi ne vaut que lorsqu'une arme à poudre est effectivement
+  // équipée en main — sans elle, la capacité est inerte (comme la Voie du bouclier sans bouclier).
+  if (
+    character.featureIds.includes('prestige-flibustier-r5') &&
+    isFirearmItem(wornRangedWeapon(character.equipment))
+  ) {
+    for (const w of weapons) if (isFirearmItem(w)) ids.add(w.id);
+  }
+  return ids;
+}
+
+/**
  * Ensemble des maîtrises PAR EXCEPTION à une arme précise (union), à passer en `extraMasteredWeaponIds`
- * d'`isWeaponMastered` : arme sacrée du prêtre spécialiste (`sacredWeaponMasteryIds`, PER-96) ET octrois
- * de peuple (`ancestryWeaponMasteryIds`, PER-154). Court-circuite l'analyse des accès de profil.
+ * d'`isWeaponMastered` : arme sacrée du prêtre spécialiste (`sacredWeaponMasteryIds`, PER-96), octrois
+ * de peuple (`ancestryWeaponMasteryIds`, PER-154) ET octrois de capacité (`grantedFirearmMasteryIds`,
+ * PER-74 flibustier). Court-circuite l'analyse des accès de profil.
  */
 export function extraMasteredWeaponIds(character: Character): ReadonlySet<string> {
-  return new Set<string>([...sacredWeaponMasteryIds(character), ...ancestryWeaponMasteryIds(character)]);
+  return new Set<string>([
+    ...sacredWeaponMasteryIds(character),
+    ...ancestryWeaponMasteryIds(character),
+    ...grantedFirearmMasteryIds(character),
+  ]);
 }
 
 /** Un profil donné maîtrise-t-il cette arme ? Interprète ses accès (`WeaponAccess`). */

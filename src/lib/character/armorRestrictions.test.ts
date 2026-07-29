@@ -16,6 +16,8 @@ import {
   magicTalentSpellsBlockedByArmor,
   rangedWeaponDisabledFeatureIds,
   shieldDisabledFeatureIds,
+  wieldDisabledReasons,
+  wieldRequirementMet,
   wornRangedWeaponMatchesKinds,
 } from './armorRestrictions';
 import {
@@ -876,6 +878,48 @@ describe("PER-74 — Voie de l'archer arcanique : gatée par l'arc/l'arbalète e
     it("exclut les capacités de la voie sans arc, les réintègre avec un arc", () => {
       expect(activeFeatureIdsForMods(archer([]))).not.toContain('prestige-archer-arcanique-r4');
       expect(activeFeatureIdsForMods(archer([wornMain('arc-court')]))).toContain('prestige-archer-arcanique-r4');
+    });
+  });
+
+  describe('flibustier — grisage visuel par condition d\'arme en main (PER-74)', () => {
+    const wornMain = (itemId: string): EquipmentLine => ({ itemId, quantity: 1, worn: { slot: 'mainHand' } });
+    const wornOff = (itemId: string): EquipmentLine => ({ itemId, quantity: 1, worn: { slot: 'offHand' } });
+    const flibustier = (equipment: EquipmentLine[]) =>
+      makeChar({
+        classId: 'voleur',
+        featureIds: ['prestige-flibustier-r5', 'prestige-flibustier-r7'],
+        firearmsAllowed: true,
+        equipment,
+      });
+
+    it("Coup de crosse (r5) exige une arme à poudre en main", () => {
+      expect(wieldRequirementMet([wornMain('petoire')], 'firearm')).toBe(true);
+      expect(wieldRequirementMet([wornMain('epee-courte')], 'firearm')).toBe(false);
+      expect(wieldRequirementMet([], 'firearm')).toBe(false);
+    });
+
+    it("Sabre au poing (r7) exige poudre dans une main ET contact dans l'autre", () => {
+      expect(wieldRequirementMet([wornMain('petoire'), wornOff('epee-courte')], 'firearm-and-melee')).toBe(true);
+      // Pétoire seule → pas d'arme de contact.
+      expect(wieldRequirementMet([wornMain('petoire')], 'firearm-and-melee')).toBe(false);
+      // Deux armes de contact → pas d'arme à poudre.
+      expect(wieldRequirementMet([wornMain('epee-courte'), wornOff('dague')], 'firearm-and-melee')).toBe(false);
+    });
+
+    it("pétoire + épée courte → aucune des deux capacités n'est grisée", () => {
+      expect(wieldDisabledReasons(flibustier([wornMain('petoire'), wornOff('epee-courte')])).size).toBe(0);
+    });
+
+    it("pétoire seule → r7 grisé (condition cumulée), r5 jouable", () => {
+      const reasons = wieldDisabledReasons(flibustier([wornMain('petoire')]));
+      expect(reasons.has('prestige-flibustier-r5')).toBe(false);
+      expect(reasons.has('prestige-flibustier-r7')).toBe(true);
+    });
+
+    it("aucune arme à poudre → r5 ET r7 grisés", () => {
+      const reasons = wieldDisabledReasons(flibustier([wornMain('epee-courte')]));
+      expect(reasons.has('prestige-flibustier-r5')).toBe(true);
+      expect(reasons.has('prestige-flibustier-r7')).toBe(true);
     });
   });
 });

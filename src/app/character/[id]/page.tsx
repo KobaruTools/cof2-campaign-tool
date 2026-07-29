@@ -938,6 +938,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 rangedAttackMagicalSourceId={rangedAttackMagicalSourceId}
                 rangedAttackElement={rangedAttackElement}
                 rangedReplacingFormAttack={formAttackReplacingRanged}
+                attackBonusDie={display.attackBonusDieSources}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">

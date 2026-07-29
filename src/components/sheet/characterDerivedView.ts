@@ -12,7 +12,8 @@
  * (jauges, conformité, stats du maître) reste dans la fiche.
  */
 import { classById, families, featureById } from '@/data';
-import type { DerivedInput } from '@/lib/engine';
+import { deriveStats, type DerivedInput } from '@/lib/engine';
+import { currentHp } from '@/lib/character/gauges';
 import { isCustomItem, type Character, type EquipmentRef } from '@/lib/character/types';
 import {
   activeFeatureIdsForMods,
@@ -306,8 +307,9 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const rangedWeaponDamage = wornWeaponDamage(character, 'ranged');
   const meleeWorn = wornWeaponForMode(character, 'melee')?.item ?? null;
   const rangedWorn = wornWeaponForMode(character, 'ranged')?.item ?? null;
-  const meleeSituationalDamage = weaponDamageBonuses(character, 'melee', meleeWorn).situational;
-  const rangedSituationalDamage = weaponDamageBonuses(character, 'ranged', rangedWorn).situational;
+  // Les bonus de DM SITUATIONNELS sont calculés PLUS BAS (après `derivedInput`), car certains sont
+  // gatés par les PV (flibustier r8 « Pas de quartier ») et exigent le `maxHp` — qui vient de
+  // `deriveStats(derivedInput)`.
   // Caractère MAGIQUE de l'attaque à distance (Flèche magique, PER-74) — non nul seulement si la voie
   // de l'archer arcanique est active (arc/arbalète en main), d'où le badge « Magique » sur la carte.
   const rangedAttackMagical = rangedAttackMagicalSourceId(character);
@@ -418,6 +420,13 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         hpLevelGains: hpLevelGains(character, rulesContext),
       }
     : null;
+
+  // Bonus de DM situationnels (PER-115) — calculés ICI car certains dépendent du `maxHp` (gate « PV bas »
+  // du flibustier r8, PER-74). `maxHp` vient de `deriveStats(derivedInput)` (undefined si profil incomplet
+  // → les bonus `requiresLowHp` restent inactifs, comportement sûr).
+  const maxHp = derivedInput ? deriveStats(derivedInput).maxHp : undefined;
+  const meleeSituationalDamage = weaponDamageBonuses(character, 'melee', meleeWorn, maxHp).situational;
+  const rangedSituationalDamage = weaponDamageBonuses(character, 'ranged', rangedWorn, maxHp).situational;
 
   return {
     modFeatureIds,

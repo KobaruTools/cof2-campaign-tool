@@ -354,3 +354,36 @@ describe('weaponDamageBonuses — nain « Haches et marteaux » (+1 DM, familles
     expect(weaponDamageBonuses(c, 'melee', hache).addedFlat).toEqual([]);
   });
 });
+
+describe('weaponDamageBonuses — flibustier « Pas de quartier » (+1d4° situationnel à PV bas, PER-74)', () => {
+  // maxHp 40, niveau 16 : le manque de PV (`lethal`) pilote les PV courants ; le gate est STRICT (< niveau).
+  const flibustier = (lethal: number) =>
+    makeCharacter({
+      classId: 'voleur',
+      level: 16,
+      featureIds: ['prestige-flibustier-r8'],
+      depletion: { hp: { lethal, temp: 0 } },
+    });
+
+  it('PV courants < niveau → +1d4° situationnel, AU CONTACT ET À DISTANCE', () => {
+    // 40 − 30 = 10 PV < 16. maxHp fourni → gate actif.
+    const melee = weaponDamageBonuses(flibustier(30), 'melee', epeeLongue, 40);
+    const ranged = weaponDamageBonuses(flibustier(30), 'ranged', arcLong, 40);
+    expect(melee.situational).toHaveLength(1);
+    expect(melee.situational[0].featureId).toBe('prestige-flibustier-r8');
+    // Dé ÉVOLUTIF (p. 43) : la FACE est résolue au niveau 16, le count et le marqueur ° restent.
+    expect(melee.situational[0].dice).toMatchObject({ count: 1, evolving: true });
+    expect(ranged.situational).toHaveLength(1);
+  });
+
+  it('PV courants ≥ niveau → aucun bonus (seuil STRICT « moins de »)', () => {
+    // 40 − 24 = 16 PV = niveau 16 : le flibustier r8 exige STRICTEMENT moins.
+    expect(weaponDamageBonuses(flibustier(24), 'melee', epeeLongue, 40).situational).toEqual([]);
+    // Pleins PV → rien.
+    expect(weaponDamageBonuses(flibustier(0), 'melee', epeeLongue, 40).situational).toEqual([]);
+  });
+
+  it('sans maxHp fourni → bonus inactif (pas de faux positif)', () => {
+    expect(weaponDamageBonuses(flibustier(30), 'melee', epeeLongue).situational).toEqual([]);
+  });
+});

@@ -30,6 +30,7 @@ import {
   activeConditionalTestDice,
   activeFormAbilityBonusSources,
   armorPenaltyDivisor,
+  lowHpAttackDieSources,
   lowHpTestDieSources,
   magicTestBonusSources,
   permanentTestDieDomains,
@@ -65,6 +66,11 @@ export interface SheetDisplayView {
   abilityEquipmentBonuses: ReturnType<typeof abilityBonusSourcesFromEquipment>;
   /** Caractéristiques bénéficiant d'un dé bonus permanent (badge double-d20). */
   bonusDieSources: ReturnType<typeof abilityBonusDiceFromFeatures>;
+  /**
+   * Sources d'un DÉ BONUS à toutes les ATTAQUES (contact/distance/magie), affichées en badge sur les
+   * cartes d'attaque (flibustier r8 « Pas de quartier », auto tant que PV < niveau). Vide sinon.
+   */
+  attackBonusDieSources: ReturnType<typeof lowHpAttackDieSources>;
   /** Même information avec la capacité source, pour les pastilles du détail d'une carac. */
   bonusDieSourcesDetailed: ReturnType<typeof abilityBonusDiceSources>;
   /** Bonus de compétence par domaine de test (PER-89), règle de cumul p. 203. */
@@ -151,6 +157,8 @@ export function buildSheetDisplayView(
     abilityEquipmentBonuses: abilityBonusSourcesFromEquipment(character.equipment),
     bonusDieSources,
     bonusDieSourcesDetailed,
+    // Dé bonus aux ATTAQUES tant que PV < niveau (flibustier r8) — nécessite `maxHp`, sauté sinon.
+    attackBonusDieSources: maxHp === undefined ? [] : lowHpAttackDieSources(character, maxHp),
     testBonuses: testBonusSources(modFeatureIds, effectContext),
     testDice,
     abilityTestBonus: abilityTestBonusSources(modFeatureIds, effectContext),

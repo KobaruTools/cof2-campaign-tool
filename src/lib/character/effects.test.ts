@@ -49,6 +49,7 @@ import {
   isEffectActive,
   isTemporaryActivationShortRestLocked,
   shortRestLockKey,
+  lowHpAttackDieSources,
   lowHpTestDieSources,
   permanentTestDieDomains,
   manaCastingAbility,
@@ -759,6 +760,38 @@ describe('lowHpTestDieSources — dé bonus AUTO à tous les tests à PV bas (ca
   it('sans la capacité → vide même à PV bas', () => {
     const c = { ...daredevil(30), featureIds: ['escrime-r1'] } as Character;
     expect(lowHpTestDieSources(c, 40)).toEqual([]);
+  });
+});
+
+describe('lowHpAttackDieSources — dé bonus AUTO aux attaques à PV bas (flibustier r8, PER-74)', () => {
+  // maxHp fixé à 40, niveau 16 : le manque de PV (`lethal`) pilote les PV courants.
+  const flibustier = (lethal = 0): Character =>
+    ({
+      ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+      level: 16,
+      featureIds: ['prestige-flibustier-r8'],
+      depletion: { hp: { lethal, temp: 0 } },
+    }) as Character;
+
+  it('PV courants < niveau → la capacité source est renvoyée', () => {
+    // 40 − 25 = 15 PV < niveau 16.
+    expect(lowHpAttackDieSources(flibustier(25), 40)).toEqual([
+      { featureId: 'prestige-flibustier-r8', name: 'Pas de quartier' },
+    ]);
+  });
+
+  it('SEUIL STRICT : PV courants = niveau → vide (« moins de », pas ≤)', () => {
+    // 40 − 24 = 16 PV = niveau 16 : le flibustier r8 exige STRICTEMENT moins.
+    expect(lowHpAttackDieSources(flibustier(24), 40)).toEqual([]);
+  });
+
+  it('PV courants > niveau → vide', () => {
+    expect(lowHpAttackDieSources(flibustier(0), 40)).toEqual([]);
+  });
+
+  it('sans la capacité → vide même à PV bas', () => {
+    const c = { ...flibustier(25), featureIds: ['spadassin-r1'] } as Character;
+    expect(lowHpAttackDieSources(c, 40)).toEqual([]);
   });
 });
 
@@ -2346,5 +2379,38 @@ describe('effectiveAbilities — apport des objets PORTÉS (PER-272)', () => {
   it('un personnage sans objet enchanté garde exactement ses caractéristiques saisies', () => {
     expect(effectiveAbilities(hero()).AGI).toBe(1);
     expect(effectiveAbilities(hero([{ custom: true, name: 'Corde', quantity: 1 }])).AGI).toBe(1);
+  });
+});
+
+describe('Voie du flibustier — Pied marin r4 (PER-74)', () => {
+  it("le +5 aux tests d'AGI n'apparaît que quand l'interrupteur « Sur un support mobile » est actif", () => {
+    // Interrupteur éteint (défaut) → aucun bonus de carac.
+    expect(abilityTestBonusByAbility(['prestige-flibustier-r4'], ctx())).toEqual({});
+    // Interrupteur allumé → +5 sur l'AGI (effet index 0).
+    const active = abilityTestBonusByAbility(
+      ['prestige-flibustier-r4'],
+      ctx({ toggles: { 'prestige-flibustier-r4': [true] } }),
+    );
+    expect(active.AGI?.[0]?.value).toBe(5);
+    expect(active.AGI?.[0]?.name).toBe('Pied marin');
+  });
+
+  it('ajoute « son rang » (rang atteint dans la voie) aux tests de natation et de navigation', () => {
+    // Rang 4 seul → +4 ; voie complète (r4→r8) → +8.
+    const r4 = testBonusSources(['prestige-flibustier-r4'], ctx());
+    expect(r4.find((b) => b.domain === 'swimming')?.total).toBe(4);
+    expect(r4.find((b) => b.domain === 'navigation')?.total).toBe(4);
+    const full = testBonusSources(
+      [
+        'prestige-flibustier-r4',
+        'prestige-flibustier-r5',
+        'prestige-flibustier-r6',
+        'prestige-flibustier-r7',
+        'prestige-flibustier-r8',
+      ],
+      ctx(),
+    );
+    expect(full.find((b) => b.domain === 'swimming')?.total).toBe(8);
+    expect(full.find((b) => b.domain === 'navigation')?.total).toBe(8);
   });
 });

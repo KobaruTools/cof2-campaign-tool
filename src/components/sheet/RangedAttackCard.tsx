@@ -10,7 +10,9 @@ import Typography from '@mui/material/Typography';
 import type { Abilities } from '@/lib/engine';
 import type { SituationalDamageBonus } from '@/lib/character/weaponDamageBonus';
 import { AppTooltip } from '@/components/AppTooltip';
+import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
+import type { AttackBonusDie } from '@/components/sheet/MeleeAttackCard';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { WeaponDamageExpr, NoWeaponHint } from '@/components/sheet/WeaponDamageExpr';
 import { WeaponDamageBonusBadge } from '@/components/sheet/WeaponDamageBonusBadge';
@@ -43,6 +45,8 @@ export interface RangedAttackCardProps {
    * choisi « à la table », ou `null`. Affiche une puce d'élément (Feu/Froid/…) avec le dé de bonus.
    */
   elemental?: RangedAttackElementView | null;
+  /** PER-74 — dé bonus à toutes les attaques (flibustier r8, PV bas), en badge double-d20. */
+  attackBonusDie?: AttackBonusDie[];
 }
 
 /**
@@ -62,6 +66,7 @@ export function RangedAttackCard({
   situationalBonuses,
   magicalSourceId,
   elemental,
+  attackBonusDie = [],
 }: RangedAttackCardProps) {
   return (
     <Card
@@ -103,6 +108,14 @@ export function RangedAttackCard({
                     </AppTooltip>
                   )}
                 </Typography>,
+              )}
+              {/* Dé bonus à toutes les attaques (flibustier r8 « Pas de quartier », PV bas). */}
+              {attackBonusDie.length > 0 && (
+                <BonusDieBadge
+                  ability="attaque"
+                  size={18}
+                  tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
+                />
               )}
               {/* Petit séparateur : la valeur de touche et le calcul des DM sont deux choses distinctes. */}
               <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
