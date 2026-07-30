@@ -1268,13 +1268,30 @@ export const STATUS_EFFECT_LABELS: Record<StatusEffectId, string> = Object.fromE
 ) as Record<StatusEffectId, string>;
 
 /**
- * EFFETS SITUATIONNELS (PER-74, première entrée). MÊME schéma qu'un état préjudiciable
- * (`StatusEffectEntry` : libellé FR + effet verbatim + page source) mais catalogue DISTINCT et OUVERT :
- * ce ne sont PAS les 10 états fermés du glossaire p. 214-215 (`STATUS_EFFECTS`), ce sont des malus/effets
- * NOMMÉS conférés par des capacités (première : « Attaque invalidante », chasseur de prime r7, p. 140 —
- * malus cumulatif de -1 à tous les tests et aux DM infligés par la cible, jusqu'à -3). La liste s'étoffera
- * au fil des voies. Destinés à être APPLIQUÉS/SUIVIS dans le Combat Tracker (ticket dédié dans la milestone
- * Combat Tracker) : le catalogue est la source unique, la mécanique d'application viendra ensuite.
+ * EFFETS SITUATIONNELS (PER-74 première entrée, taxonomie figée par PER-288). MÊME schéma qu'un état
+ * préjudiciable (`StatusEffectEntry` : libellé FR + effet verbatim + page source) mais catalogue DISTINCT
+ * et OUVERT. Il complète — sans les remplacer — les DEUX autres familles conceptuelles d'effets négatifs
+ * du jeu ; bien situer un effet dans l'une des trois évite d'en dupliquer la mécanique :
+ *
+ *   (a) ÉTATS DU GLOSSAIRE — les 10 états fermés p. 214-215 (`STATUS_EFFECTS`). Vocabulaire UNIVERSEL,
+ *       chiffrage porté par `StatusModifiers`. Une capacité qui inflige l'un d'eux le route via le champ
+ *       `inflictableStates` (bascule « déjà infligé ce combat ») ; elle N'a PAS d'entrée ici.
+ *   (b) EFFETS SITUATIONNELS NOMMÉS — CE catalogue, et SON SEUL contenu légitime : les malus/effets à
+ *       mécanique PROPRE conférés par une capacité de voie, NON réductibles à un état de base.
+ *   (c) MODIFICATEURS DE CIRCONSTANCE — couvert, portée longue, visibilité, désarmement, poussée… (cf.
+ *       PER-40). Conditions de la scène, pas des états infligés : HORS de ce catalogue.
+ *
+ * CRITÈRE D'ADMISSION STRICT (PER-288) : un effet qui se réduit MÉCANIQUEMENT à un état de base — « Cécité »
+ * = Aveuglé ; « dé malus à tous les tests » = Affaibli — route vers l'état de base via `inflictableStates`
+ * et n'obtient PAS d'entrée situationnelle. N'entre ici QUE l'effet à mécanique propre (ex. « Attaque
+ * invalidante », chasseur de prime r7 p. 140 : malus PLAT cumulatif de -1 à tous les tests + aux DM
+ * infligés, jusqu'à -3 — aucun état de base ne fait un malus chiffré PLAT, Affaibli étant un *dé*).
+ *
+ * DoT = COMPORTEMENTAL (PER-288) : saignement / poison / asphyxie ne sont PAS chiffrés (on n'étend pas
+ * `StatusModifiers`). Verbatim seul, DM appliqués à l'oral par le MJ — comme toute clause comportementale.
+ *
+ * Destinés à être APPLIQUÉS/SUIVIS dans le Combat Tracker : le catalogue est la source unique, la
+ * mécanique d'application vit ailleurs. La liste s'étoffe au fil des voies (peuplement PER-289→291).
  */
 export const SITUATIONAL_EFFECT_IDS = ['invalidating-attack', 'silenced'] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];

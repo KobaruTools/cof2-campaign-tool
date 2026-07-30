@@ -5,6 +5,13 @@ import {
   SITUATIONAL_EFFECT_LABELS,
 } from './schema';
 import { featureById } from './index';
+import {
+  clampIntensity,
+  isStackingStatus,
+  resolveStatusModifiers,
+  statusMaxIntensity,
+  statusSheetImpact,
+} from '@/lib/character/statusEffects';
 
 // PER-74 — catalogue des effets situationnels (première entrée : Attaque invalidante, chasseur de prime r7).
 describe('SITUATIONAL_EFFECTS (catalogue)', () => {
@@ -48,6 +55,49 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
       for (const id of f.situationalEffectIds ?? []) {
         expect(known.has(id), `${f.id} → ${id}`).toBe(true);
       }
+    }
+  });
+});
+
+/**
+ * PER-288 — VERROU du contrat « malus plat SANS `stacking` » (intensité = 1). Les entrées « nuées » de
+ * PER-289 (criquets -3, insectes -2) porteront un `allTestsFlat` NÉGATIF sans champ `stacking` : elles
+ * doivent s'appliquer EXACTEMENT une fois (jamais mises à l'échelle, jamais ignorées). Le contrat repose
+ * sur deux garanties composées, verrouillées ici sur le catalogue existant :
+ *   1. une entrée SANS `stacking` a une intensité forcée à 1 (clamp) — même si un état appliqué demande
+ *      une intensité supérieure ;
+ *   2. à intensité 1, `allTestsFlat` vaut sa valeur de base (non multipliée), et `statusSheetImpact` la
+ *      reporte sur les trois tests d'attaque.
+ * Transitivement : une future entrée non cumulative à `allTestsFlat` s'applique une seule fois.
+ */
+describe('PER-288 — `allTestsFlat` s’applique sans `stacking` (intensité = 1)', () => {
+  it('une entrée NON cumulative force l’intensité à 1 (clamp), quelle que soit la demande', () => {
+    // `silenced` est non cumulatif (comme le seront les nuées de PER-289).
+    expect(isStackingStatus('silenced')).toBe(false);
+    expect(statusMaxIntensity('silenced')).toBe(1);
+    expect(clampIntensity('silenced', 3)).toBe(1);
+    expect(clampIntensity('silenced', 99)).toBe(1);
+  });
+
+  it('resolveStatusModifiers : à intensité 1, le malus plat vaut sa valeur de base (non multipliée)', () => {
+    // Une seule instance, intensité omise (défaut = 1) → -1 (le PALIER de base), pas de mise à l’échelle.
+    const r = resolveStatusModifiers([{ id: 'invalidating-attack' }]);
+    expect(r.allTestsFlat).toBe(-1);
+    expect(r.damageDealt).toBe(-1);
+    // Le malus plat n’est PAS un modificateur de stat dérivée : `derived` reste vide.
+    expect(r.derived).toEqual({});
+    expect(r.allTestsMalusDie).toBe(false);
+    expect(r.attackTestsMalusDie).toBe(false);
+  });
+
+  it('statusSheetImpact : à intensité 1, reporte -1 sur les trois tests d’attaque', () => {
+    const r = statusSheetImpact([{ id: 'invalidating-attack' }]);
+    expect(r.allTestsFlat).toBe(-1);
+    expect(r.damageDealt).toBe(-1);
+    const label = 'État : Attaque invalidante';
+    for (const key of ['meleeAttack', 'rangedAttack', 'magicAttack'] as const) {
+      expect(r.modSources[key], key).toEqual([{ label, value: -1 }]);
+      expect(r.mods[key], key).toBe(-1);
     }
   });
 });
