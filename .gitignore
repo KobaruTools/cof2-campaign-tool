@@ -37,6 +37,11 @@
 # Données EXTRAITES d'un contenu payant (ex. bestiaire → private/bestiary-paid.ts) :
 # ingérées en DB localement par le propriétaire, JAMAIS commitées (copyright BBE).
 /private/
+# Scripts et sorties JETABLES des sessions (audits, recettes, pages rendues). Rien
+# n'y est reviewable, et surtout ce dossier accumule des dérivés du contenu PAYANT
+# (sauvegardes de private/bestiary-paid.ts, pages du bestiaire rendues en PNG) : il
+# ne doit jamais pouvoir partir dans ce dépôt public, même par un `git add -A`.
+/scratchpad/
 
 # debug
 npm-debug.log*
