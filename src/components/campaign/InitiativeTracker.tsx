@@ -33,7 +33,6 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
 import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
 import Box from '@mui/material/Box';
@@ -46,7 +45,7 @@ import MenuItem from '@mui/material/MenuItem';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
+import { alpha, type Theme } from '@mui/material/styles';
 import { useDroppable } from '@dnd-kit/core';
 import type { SituationalEffectId } from '@/data/schema';
 import type { Depletion } from '@/lib/character/types';
@@ -425,13 +424,118 @@ function CombatStatsRow({ stats, resolved }: { stats: CombatStats; resolved: Res
   );
 }
 
-/** Petit bouton icône d'un badge d'état (± intensité, ✕ retrait). */
-function StatusMiniButton({
+/** Côté de la taille du carré-icône d'un état (projection PER-282 + écran de MJ PER-283). */
+const STATUS_ICON_SQUARE = 30;
+
+/**
+ * Style de base du carré-icône d'un état : carré rouge translucide aux bords arrondis, avec flou
+ * d'arrière-plan pour rester lisible quel que soit ce qu'il recouvre (illustration de fond, portrait
+ * voisin). Partagé À L'IDENTIQUE par la projection (lecture seule) et l'écran de MJ (interactif) — la
+ * seule différence entre les deux tient au curseur et aux commandes ajoutées, pas au visuel.
+ */
+function statusSquareSx(theme: Theme) {
+  return {
+    position: 'relative' as const,
+    flexShrink: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: STATUS_ICON_SQUARE,
+    height: STATUS_ICON_SQUARE,
+    borderRadius: 1.25,
+    color: theme.palette.error.light,
+    bgcolor: alpha(theme.palette.error.main, 0.28),
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
+    border: `1px solid ${alpha(theme.palette.error.main, 0.6)}`,
+    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
+  };
+}
+
+/** Pastille « N » en coin d'un carré-icône (intensité d'un état cumulatif). */
+function StatusIntensityPill({ value }: { value: number }) {
+  return (
+    <Box
+      component="span"
+      sx={(theme) => ({
+        position: 'absolute',
+        top: -5,
+        right: -5,
+        minWidth: 15,
+        height: 15,
+        px: 0.25,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: '999px',
+        fontSize: '0.6rem',
+        fontWeight: 800,
+        fontVariantNumeric: 'tabular-nums',
+        lineHeight: 1,
+        color: theme.palette.common.white,
+        bgcolor: theme.palette.error.main,
+        border: '1px solid rgba(0, 0, 0, 0.45)',
+      })}
+    >
+      {value}
+    </Box>
+  );
+}
+
+/**
+ * Contenu d'un carré-icône : icône game-icons de l'état (ou initiales du libellé en repli pour un effet
+ * situationnel sans icône dédiée), plus la pastille d'intensité quand l'état est cumulatif et empilé.
+ */
+function StatusIconInner({
+  id,
+  intensity,
+  stacked,
+}: {
+  id: AnyStatusEffectId;
+  intensity: number;
+  stacked: boolean;
+}) {
+  const iconId = statusIconId(id);
+  return (
+    <>
+      {iconId ? (
+        <StatusEffectIcon effect={iconId} size={20} />
+      ) : (
+        <Box component="span" sx={{ fontSize: '0.7rem', fontWeight: 800 }}>
+          {statusLabel(id).slice(0, 2).toUpperCase()}
+        </Box>
+      )}
+      {stacked && <StatusIntensityPill value={intensity} />}
+    </>
+  );
+}
+
+/**
+ * Icône d'un état en LECTURE SEULE pour la PROJECTION (PER-282) : le carré-icône partagé, effet
+ * verbatim en info-bulle, sans aucune commande (pas de ✕/±) ni nombre ajusté (réservés au MJ).
+ */
+function ProjectionStatusIcon({ applied }: { applied: AppliedStatus }) {
+  const { id } = applied;
+  const intensity = clampIntensity(id, applied.intensity ?? 1);
+  const stacked = isStackingStatus(id) && intensity > 1;
+  return (
+    <AppTooltip title={<StatusEffectTooltip id={id} />}>
+      <Box aria-label={statusLabel(id)} sx={(theme) => ({ ...statusSquareSx(theme), cursor: 'help' })}>
+        <StatusIconInner id={id} intensity={intensity} stacked={stacked} />
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/** Bouton ± d'ajustement d'intensité, en coin bas d'un carré-icône, révélé au survol (états cumulatifs). */
+function StatusAdjustButton({
+  side,
   label,
   disabled,
   onClick,
   children,
 }: {
+  side: 'left' | 'right';
   label: string;
   disabled?: boolean;
   onClick: () => void;
@@ -439,14 +543,32 @@ function StatusMiniButton({
 }) {
   return (
     <IconButton
+      className="status-adjust"
       size="small"
       disabled={disabled}
       aria-label={label}
+      // Stoppe la propagation pour ne PAS déclencher le retrait de l'état (clic sur le carré).
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
-      sx={{ p: 0.15, color: 'error.light', '&.Mui-disabled': { color: 'rgba(255, 255, 255, 0.25)' } }}
+      sx={(theme) => ({
+        position: 'absolute',
+        bottom: -7,
+        [side]: -7,
+        p: 0,
+        width: 16,
+        height: 16,
+        // Masqués au repos, révélés au survol du carré parent (cf. `InteractiveStatusIcon`).
+        opacity: 0,
+        pointerEvents: 'none',
+        transition: 'opacity 0.12s',
+        color: theme.palette.common.white,
+        bgcolor: theme.palette.error.main,
+        border: '1px solid rgba(0, 0, 0, 0.45)',
+        '&:hover': { bgcolor: theme.palette.error.dark },
+        '&.Mui-disabled': { bgcolor: alpha(theme.palette.error.main, 0.4), color: 'rgba(255, 255, 255, 0.5)' },
+      })}
     >
       {children}
     </IconButton>
@@ -454,11 +576,12 @@ function StatusMiniButton({
 }
 
 /**
- * Badge d'un état APPLIQUÉ sur une carte (PER-280) : icône + libellé, effet verbatim en tooltip, ✕ de
- * retrait, et — pour un état cumulatif — le compteur d'intensité « ×N » avec des boutons ± (bornés au
- * plafond du catalogue). Badge custom rouge (jamais un `Chip` MUI, cf. préférence UI).
+ * Carré-icône d'un état APPLIQUÉ sur l'écran de MJ (PER-283) : MÊME visuel que la projection (PER-282),
+ * mais INTERACTIF. Cliquer le carré retire l'état ; pour un état cumulatif, la pastille ×N reste et de
+ * petits boutons −/+ (ajustement d'intensité, bornés au plafond) apparaissent au survol. L'ajout d'un
+ * état passe toujours par le glisser-déposer ou le menu de l'en-tête. Effet verbatim en info-bulle.
  */
-function AppliedStatusBadge({
+function InteractiveStatusIcon({
   applied,
   onRemove,
   onAdjust,
@@ -468,133 +591,55 @@ function AppliedStatusBadge({
   onAdjust: (delta: number) => void;
 }) {
   const { id } = applied;
-  const iconId = statusIconId(id);
   const stacking = isStackingStatus(id);
   const intensity = clampIntensity(id, applied.intensity ?? 1);
   const max = statusMaxIntensity(id);
   return (
-    <Box
-      sx={(theme) => ({
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 0.25,
-        pl: 0.75,
-        pr: 0.15,
-        height: 24,
-        borderRadius: 1,
-        color: theme.palette.error.light,
-        bgcolor: alpha(theme.palette.error.main, 0.14),
-        border: `1px solid ${alpha(theme.palette.error.main, 0.45)}`,
-      })}
-    >
-      <AppTooltip title={<StatusEffectTooltip id={id} />}>
-        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, cursor: 'help', minWidth: 0 }}>
-          {iconId && <StatusEffectIcon effect={iconId} size={14} />}
-          <Box component="span" sx={{ fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {statusLabel(id)}
-          </Box>
-          {stacking && (
-            <Box
-              component="span"
-              sx={{ fontSize: '0.72rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}
-            >
-              {`×${intensity}`}
-            </Box>
-          )}
-        </Box>
-      </AppTooltip>
-      {stacking && (
-        <>
-          <StatusMiniButton
-            label={`Diminuer l'intensité — ${statusLabel(id)}`}
-            disabled={intensity <= 1}
-            onClick={() => onAdjust(-1)}
-          >
-            <RemoveIcon sx={{ fontSize: 13 }} />
-          </StatusMiniButton>
-          <StatusMiniButton
-            label={`Augmenter l'intensité — ${statusLabel(id)}`}
-            disabled={intensity >= max}
-            onClick={() => onAdjust(1)}
-          >
-            <AddIcon sx={{ fontSize: 13 }} />
-          </StatusMiniButton>
-        </>
-      )}
-      <StatusMiniButton label={`Retirer ${statusLabel(id)}`} onClick={onRemove}>
-        <CloseIcon sx={{ fontSize: 13 }} />
-      </StatusMiniButton>
-    </Box>
-  );
-}
-
-/**
- * Icône d'un état en LECTURE SEULE pour la PROJECTION (PER-282) : carré rouge aux bords arrondis
- * contenant SEULEMENT l'icône (plus grosse), effet verbatim en info-bulle. L'intensité d'un état
- * cumulatif est portée par une pastille « N » en coin. Repli sur les initiales du libellé pour un
- * effet situationnel sans icône dédiée. Aucun contrôle (pas de ✕/±) ni nombre ajusté (réservés au MJ).
- */
-function ProjectionStatusIcon({ applied }: { applied: AppliedStatus }) {
-  const { id } = applied;
-  const iconId = statusIconId(id);
-  const intensity = clampIntensity(id, applied.intensity ?? 1);
-  const stacked = isStackingStatus(id) && intensity > 1;
-  return (
     <AppTooltip title={<StatusEffectTooltip id={id} />}>
       <Box
-        aria-label={statusLabel(id)}
+        role="button"
+        tabIndex={0}
+        aria-label={`Retirer ${statusLabel(id)}`}
+        onClick={onRemove}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onRemove();
+          }
+        }}
         sx={(theme) => ({
-          position: 'relative',
-          flexShrink: 0,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 30,
-          height: 30,
-          borderRadius: 1.25,
-          cursor: 'help',
-          color: theme.palette.error.light,
-          // Fond translucide + flou d'arrière-plan : garde les icônes lisibles quel que soit ce
-          // qu'elles recouvrent (illustration de fond, portrait voisin).
-          bgcolor: alpha(theme.palette.error.main, 0.28),
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
-          border: `1px solid ${alpha(theme.palette.error.main, 0.6)}`,
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
+          ...statusSquareSx(theme),
+          cursor: 'pointer',
+          outline: 'none',
+          transition: 'border-color 0.15s, background-color 0.15s',
+          '&:hover, &:focus-visible': {
+            bgcolor: alpha(theme.palette.error.main, 0.42),
+            borderColor: theme.palette.error.light,
+          },
+          // Révèle les boutons ± d'intensité au survol / focus (états cumulatifs uniquement).
+          '&:hover .status-adjust, &:focus-visible .status-adjust': { opacity: 1, pointerEvents: 'auto' },
         })}
       >
-        {iconId ? (
-          <StatusEffectIcon effect={iconId} size={20} />
-        ) : (
-          <Box component="span" sx={{ fontSize: '0.7rem', fontWeight: 800 }}>
-            {statusLabel(id).slice(0, 2).toUpperCase()}
-          </Box>
-        )}
-        {stacked && (
-          <Box
-            component="span"
-            sx={(theme) => ({
-              position: 'absolute',
-              top: -5,
-              right: -5,
-              minWidth: 15,
-              height: 15,
-              px: 0.25,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '999px',
-              fontSize: '0.6rem',
-              fontWeight: 800,
-              fontVariantNumeric: 'tabular-nums',
-              lineHeight: 1,
-              color: theme.palette.common.white,
-              bgcolor: theme.palette.error.main,
-              border: '1px solid rgba(0, 0, 0, 0.45)',
-            })}
-          >
-            {intensity}
-          </Box>
+        <StatusIconInner id={id} intensity={intensity} stacked={stacking && intensity > 1} />
+        {stacking && (
+          <>
+            <StatusAdjustButton
+              side="left"
+              label={`Diminuer l'intensité — ${statusLabel(id)}`}
+              disabled={intensity <= 1}
+              onClick={() => onAdjust(-1)}
+            >
+              <RemoveIcon sx={{ fontSize: 12 }} />
+            </StatusAdjustButton>
+            <StatusAdjustButton
+              side="right"
+              label={`Augmenter l'intensité — ${statusLabel(id)}`}
+              disabled={intensity >= max}
+              onClick={() => onAdjust(1)}
+            >
+              <AddIcon sx={{ fontSize: 12 }} />
+            </StatusAdjustButton>
+          </>
         )}
       </Box>
     </AppTooltip>
@@ -817,11 +862,12 @@ function CombatantColumn({
         {status && row.combatStats && (
           <CombatStatsRow stats={row.combatStats} resolved={resolveStatusModifiers(status.applied)} />
         )}
-        {/* Badges des états appliqués : effet verbatim en tooltip, ✕ de retrait, ±N si cumulatif. */}
+        {/* États appliqués (écran de MJ) : MÊMES carrés-icônes que la projection (PER-283), mais
+            interactifs — clic = retrait, ±N au survol pour les cumulatifs. Effet verbatim en tooltip. */}
         {status && status.applied.length > 0 && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
             {status.applied.map((s) => (
-              <AppliedStatusBadge
+              <InteractiveStatusIcon
                 key={s.id}
                 applied={s}
                 onRemove={() => status.onRemove(s.id)}
@@ -889,10 +935,16 @@ function StatusDroppableColumn({
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
         slotProps={{ paper: { sx: { maxHeight: 420 } } }}
       >
-        {buildStatusGroups(controls.situationalIds).flatMap((group) => [
-          <ListSubheader key={group.title} sx={{ bgcolor: 'transparent', lineHeight: '2.2em' }}>
-            {group.title}
-          </ListSubheader>,
+        {buildStatusGroups(controls.situationalIds).flatMap((group, groupIndex) => [
+          // Le groupe des états préjudiciables (toujours en tête) n'a pas de sous-titre : il est
+          // universel et implicite. Seul le groupe « Effets situationnels » (conditionnel) en garde un.
+          ...(groupIndex === 0
+            ? []
+            : [
+                <ListSubheader key={group.title} sx={{ bgcolor: 'transparent', lineHeight: '2.2em' }}>
+                  {group.title}
+                </ListSubheader>,
+              ]),
           ...group.ids.map((id) => {
             const iconId = statusIconId(id);
             const on = appliedIds.has(id);

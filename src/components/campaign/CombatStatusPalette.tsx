@@ -179,21 +179,25 @@ export function CombatStatusPalette({
 }) {
   return (
     <Stack spacing={1.5}>
-      {buildStatusGroups(situationalIds).map((group) => (
+      {buildStatusGroups(situationalIds).map((group, groupIndex) => (
         <Box key={group.title}>
-          <Typography
-            variant="caption"
-            sx={{
-              display: 'block',
-              mb: 0.75,
-              fontWeight: 700,
-              color: 'text.secondary',
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-            }}
-          >
-            {group.title}
-          </Typography>
+          {/* Le groupe des états préjudiciables (toujours en tête) n'affiche PAS de titre : il est
+              universel et implicite. Seul le groupe « Effets situationnels » (conditionnel) en garde un. */}
+          {groupIndex > 0 && (
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                mb: 0.75,
+                fontWeight: 700,
+                color: 'text.secondary',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              {group.title}
+            </Typography>
+          )}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             {group.ids.map((id) => (
               <DraggableStatusChip key={id} id={id} />

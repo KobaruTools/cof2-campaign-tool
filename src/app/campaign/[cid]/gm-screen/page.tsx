@@ -349,12 +349,6 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           onDragCancel={() => setActiveStatus(null)}
         >
           <Box sx={{ mb: { xs: 3, sm: 4 } }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
-              Appliquer un état
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-              Glissez une puce sur un combattant, ou cliquez son en-tête pour cocher un état.
-            </Typography>
             <CombatStatusPalette situationalIds={situationalEffectIds} />
           </Box>
           <InitiativeTracker
