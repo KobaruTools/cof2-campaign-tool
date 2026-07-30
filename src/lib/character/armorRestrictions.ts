@@ -32,12 +32,14 @@ import type {
 } from '@/data/schema';
 import { wornMeleeWeapon, wornRangedWeapon } from './equipment';
 import { isFirearmItem } from './firearms';
+import { twoWeaponCombatStatus } from './twoWeaponCombat';
 import type { RulesContext } from '@/lib/engine';
 import type { Character, EquipmentLine } from './types';
 import { isCustomItem } from './types';
 import { masteredClassIds } from './mastery';
 import {
   borrowedFeatureChoices,
+  borrowedFeatureIds,
   featureChoiceDefs,
   featureGrantsDefBonus,
   getOptionSelections,
@@ -511,7 +513,10 @@ export function isShieldWorn(equipment: EquipmentLine[] = []): boolean {
 export function shieldDisabledFeatureIds(character: Character, ctx: RulesContext): Set<string> {
   if (isShieldWorn(character.equipment)) return new Set();
   const disabled = new Set<string>();
-  for (const id of character.featureIds) {
+  // Capacités acquises ET EMPRUNTÉES (PER-74, touche à tout : une capacité empruntée d'une voie
+  // `requiresShield` — ex. « Protéger un allié » — garde sa condition d'origine ; elle est barrée
+  // et sans effet tant qu'aucun bouclier n'est manié, exactement comme dans sa voie native).
+  for (const id of [...character.featureIds, ...borrowedFeatureIds(character)]) {
     const feature = featureById.get(id);
     if (!feature) continue;
     if (ctx.pathById.get(feature.pathId)?.requiresShield) disabled.add(id);
@@ -554,7 +559,9 @@ export function wornRangedWeaponMatchesKinds(
  */
 export function rangedWeaponDisabledFeatureIds(character: Character, ctx: RulesContext): Set<string> {
   const disabled = new Set<string>();
-  for (const id of character.featureIds) {
+  // Capacités acquises ET EMPRUNTÉES (PER-74, touche à tout) : un emprunt d'une voie
+  // `requiresRangedKinds` garde sa condition d'arme à distance en main.
+  for (const id of [...character.featureIds, ...borrowedFeatureIds(character)]) {
     const feature = featureById.get(id);
     if (!feature) continue;
     const kinds = ctx.pathById.get(feature.pathId)?.requiresRangedKinds;
@@ -571,6 +578,37 @@ export function rangedWeaponDisabledFeatureIds(character: Character, ctx: RulesC
  */
 export function rangedWeaponRequiredMessage(): string {
   return "Capacité inutilisable sans arc ni arbalète en main : équipez-en un pour en profiter (p. 137).";
+}
+
+/**
+ * PER-74 — ids des capacités DÉSACTIVÉES faute de manier UNE ARME DANS CHAQUE MAIN : capacités
+ * acquises ET EMPRUNTÉES d'une voie marquée `requiresDualWield` (Voie du combat à deux armes, p. 73)
+ * quand le personnage ne tient PAS deux armes (une par main), À L'EXCLUSION de celles listées dans
+ * `dualWieldExemptFeatureIds` (ex. « Combattant héroïque », boost passif). Miroir de
+ * `shieldDisabledFeatureIds` (PER-142) : ces ids sont exclus des capacités actives
+ * (`activeFeatureIdsForMods`) — leurs effets (le +1/+2 DEF de Parade croisée, etc.) ne comptent plus
+ * tant que deux armes ne sont pas maniées. Réversible : tenir une arme dans chaque main les réactive
+ * AUTOMATIQUEMENT. La détection réutilise `twoWeaponCombatStatus` (arme du catalogue par main, PER-116).
+ */
+export function dualWieldDisabledFeatureIds(character: Character, ctx: RulesContext): Set<string> {
+  if (twoWeaponCombatStatus(character).dualWielding) return new Set();
+  const disabled = new Set<string>();
+  for (const id of [...character.featureIds, ...borrowedFeatureIds(character)]) {
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    const path = ctx.pathById.get(feature.pathId);
+    if (path?.requiresDualWield && !path.dualWieldExemptFeatureIds?.includes(id)) disabled.add(id);
+  }
+  return disabled;
+}
+
+/**
+ * PER-74 — message français prêt à afficher (infobulle / notice) pour une capacité désactivée faute
+ * de manier une arme dans chaque main (Voie du combat à deux armes, p. 73). « (p. 73) » y est en
+ * parenthèse AUTONOME → parsé par `PageRefText`/`SourceRef` côté UI.
+ */
+export function dualWieldRequiredMessage(): string {
+  return "Capacité inutilisable sans une arme dans chaque main : équipez deux armes à une main pour en profiter (p. 73).";
 }
 
 /**

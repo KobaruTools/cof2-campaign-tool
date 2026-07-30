@@ -325,6 +325,24 @@ describe('eligibleFeaturesForChoice', () => {
     expect(eligible.map((f) => f.id)).toContain('air-r1'); // voie de l'air (magicien)
   });
 
+  it('familyScope littéral (touche à tout) : famille FIXE indépendante du personnage', () => {
+    // PER-74, voie du touche à tout : r5 « une voie de combattant » quel que soit le profil du perso.
+    const voleur = makeCharacter({
+      classId: 'voleur',
+      featureIds: ['prestige-touche-a-tout-r5'],
+    });
+    const choice = featureChoiceDefs('prestige-touche-a-tout-r5')[0] as PathFeatureChoice;
+    expect(choice.familyScope).toBe('fighters');
+    const eligible = eligibleFeaturesForChoice(voleur, 'prestige-touche-a-tout-r5', choice);
+    expect(eligible.length).toBeGreaterThan(0);
+    // Rang 1 ou 2 uniquement.
+    expect(eligible.every((f) => f.rank === 1 || f.rank === 2)).toBe(true);
+    // Uniquement des voies de la famille des COMBATTANTS (ex. voie de la rage = barbare).
+    expect(eligible.map((f) => f.id)).toContain('rage-r1');
+    // Aucune voie d'un autre profil (ex. voie de l'air = magicien).
+    expect(eligible.map((f) => f.id)).not.toContain('air-r1');
+  });
+
   it('familiarSpellProfile (familier r5) : sorts rang 1-2 du profil du familier retenu, sorts seulement', () => {
     const R5 = 'prestige-familier-fantastique-r5';
     const choice = featureChoiceDefs(R5)[0] as PathFeatureChoice;

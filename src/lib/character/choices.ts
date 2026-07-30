@@ -401,12 +401,16 @@ function featuresInChoiceDomain(
     if (choice.pathIds && !choice.pathIds.includes(path.id)) continue;
     if (choice.classIds && !path.classIds.some((c) => choice.classIds!.includes(c))) continue;
     if (familiarProfileClassId && !path.classIds.includes(familiarProfileClassId)) continue;
-    if (choice.familyScope === 'same-family') {
-      const family = classById.get(character.classId)?.familyId;
-      const sameFamilyClasses = new Set(
+    if (choice.familyScope) {
+      // `same-family` = famille du personnage ; sinon une `FamilyId` LITTÉRALE (touche à tout).
+      const family =
+        choice.familyScope === 'same-family'
+          ? classById.get(character.classId)?.familyId
+          : choice.familyScope;
+      const familyClasses = new Set(
         classes.filter((c) => c.familyId === family).map((c) => c.id),
       );
-      if (!path.classIds.some((c) => sameFamilyClasses.has(c))) continue;
+      if (!path.classIds.some((c) => familyClasses.has(c))) continue;
     }
     classPathIds.add(path.id);
   }

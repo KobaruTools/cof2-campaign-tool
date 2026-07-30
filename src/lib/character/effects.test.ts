@@ -341,13 +341,19 @@ describe('modsFromFeatures — effets conditionnels / temporaires (PER-67)', () 
   });
 
   it('résout la valeur scalante par paliers de rang de voie (Parade croisée)', () => {
-    const toggles = { 'combat-a-deux-armes-r2': [true] };
-    // Rang 2 dans la voie → palier { min: 1 } → +1 en DEF.
-    expect(modsFromFeatures(['combat-a-deux-armes-r2'], ctx({ toggles }))).toEqual({ def: 1 });
+    // PER-74 : le bonus de base est désormais INCONDITIONNEL (l'exigence « une arme dans chaque main »
+    // est gatée au niveau de la voie, `requiresDualWield`). Rang 2 → palier { min: 1 } → +1 en DEF.
+    expect(modsFromFeatures(['combat-a-deux-armes-r2'], ctx())).toEqual({ def: 1 });
     // Rang 5 atteint dans la voie → palier { min: 5 } → +2 en DEF.
     expect(
-      modsFromFeatures(['combat-a-deux-armes-r2', 'combat-a-deux-armes-r5'], ctx({ toggles })),
+      modsFromFeatures(['combat-a-deux-armes-r2', 'combat-a-deux-armes-r5'], ctx()),
     ).toEqual({ def: 2 });
+    // Interrupteur « bonus doublé » (2ᵉ effet, index 1) actif → base + doublement = +2 (rang 2), +4 (rang 5).
+    const doubled = { 'combat-a-deux-armes-r2': [false, true] };
+    expect(modsFromFeatures(['combat-a-deux-armes-r2'], ctx({ toggles: doubled }))).toEqual({ def: 2 });
+    expect(
+      modsFromFeatures(['combat-a-deux-armes-r2', 'combat-a-deux-armes-r5'], ctx({ toggles: doubled })),
+    ).toEqual({ def: 4 });
   });
 });
 
@@ -464,13 +470,12 @@ describe('pathRanksFromFeatures', () => {
 
 describe('interrupteurs des effets conditionnels', () => {
   it('liste les effets conditionnels avec leur index et libellé', () => {
-    // Parade croisée porte DEUX interrupteurs (PER-109) : le bonus de base et son doublement.
+    // PER-74 : Parade croisée ne porte plus qu'UN interrupteur (le doublement) — le bonus de base est
+    // devenu inconditionnel (gaté par la voie, `requiresDualWield`). Le doublement est le 2ᵉ effet (index 1).
     const entries = conditionalEffectsOf('combat-a-deux-armes-r2');
-    expect(entries).toHaveLength(2);
-    expect(entries[0].index).toBe(0);
-    expect(entries[0].effect.activation.label).toBe('une arme dans chaque main');
-    expect(entries[1].index).toBe(1);
-    expect(entries[1].effect.activation.label).toBe("bonus doublé (renonce à l'attaque secondaire)");
+    expect(entries).toHaveLength(1);
+    expect(entries[0].index).toBe(1);
+    expect(entries[0].effect.activation.label).toBe("bonus doublé (renonce à l'attaque secondaire)");
   });
 
   it('renvoie une liste vide pour une capacité sans effet conditionnel', () => {
@@ -482,11 +487,11 @@ describe('interrupteurs des effets conditionnels', () => {
   it('conditionalEffectBonuses résout les bonus courants (pour l’affichage)', () => {
     // Rage du berserk : -2 DEF, constant.
     expect(conditionalEffectBonuses(charWith({}), 'rage-r3', 0)).toEqual([{ stat: 'def', value: -2 }]);
-    // Parade croisée : +1 au rang 2 de la voie, +2 au rang 5 (selon featureIds).
+    // Parade croisée : le DOUBLEMENT (2ᵉ effet, index 1) vaut +1 au rang 2, +2 au rang 5.
     const rk2 = { featureIds: ['combat-a-deux-armes-r2'] } as Character;
     const rk5 = { featureIds: ['combat-a-deux-armes-r2', 'combat-a-deux-armes-r5'] } as Character;
-    expect(conditionalEffectBonuses(rk2, 'combat-a-deux-armes-r2', 0)).toEqual([{ stat: 'def', value: 1 }]);
-    expect(conditionalEffectBonuses(rk5, 'combat-a-deux-armes-r2', 0)).toEqual([{ stat: 'def', value: 2 }]);
+    expect(conditionalEffectBonuses(rk2, 'combat-a-deux-armes-r2', 1)).toEqual([{ stat: 'def', value: 1 }]);
+    expect(conditionalEffectBonuses(rk5, 'combat-a-deux-armes-r2', 1)).toEqual([{ stat: 'def', value: 2 }]);
     // Familier : un seul effet, DEUX bonus résolus (init + def).
     expect(conditionalEffectBonuses(charWith({}), 'magie-universelle-r2', 0)).toEqual([
       { stat: 'initiative', value: 2 },
@@ -963,20 +968,6 @@ describe('test-bonus CONDITIONNEL à valeur EXPLICITE (Vision des ombres, PER-74
 
   it('interrupteur inactif → aucun bonus', () => {
     expect(testBonusSources(['prestige-ombres-r4'], ctx()).length).toBe(0);
-  });
-});
-
-describe('cascade de désactivation intra-capacité (Parade croisée, PER-109)', () => {
-  const both = charWith({ 'combat-a-deux-armes-r2': [true, true] });
-
-  it('couper le 1ᵉʳ interrupteur coupe aussi le 2ᵉ (bonus doublé)', () => {
-    const next = setEffectToggle(both, 'combat-a-deux-armes-r2', 0, false);
-    expect(next['combat-a-deux-armes-r2']).toEqual([false, false]);
-  });
-
-  it('couper le 2ᵉ interrupteur laisse le 1ᵉʳ actif (sens unique)', () => {
-    const next = setEffectToggle(both, 'combat-a-deux-armes-r2', 1, false);
-    expect(next['combat-a-deux-armes-r2']).toEqual([true, false]);
   });
 });
 

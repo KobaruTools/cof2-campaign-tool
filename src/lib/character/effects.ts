@@ -54,6 +54,7 @@ import {
   DON_ETRANGE_ARMOR_USAGE_KEY,
   DON_ETRANGE_ID,
   isArmorWorn,
+  dualWieldDisabledFeatureIds,
   rangedWeaponDisabledFeatureIds,
   shieldDisabledFeatureIds,
 } from './armorRestrictions';
@@ -138,6 +139,9 @@ export function activeFeatureIdsForMods(character: Character): string[] {
   const disabled = armorDisabledFeatureIds(character, rulesContext);
   for (const id of shieldDisabledFeatureIds(character, rulesContext)) disabled.add(id);
   for (const id of rangedWeaponDisabledFeatureIds(character, rulesContext)) disabled.add(id);
+  // PER-74 — capacités de la Voie du combat à deux armes désactivées sans une arme dans chaque main
+  // (p. 73), Combattant héroïque excepté (`dualWieldExemptFeatureIds`).
+  for (const id of dualWieldDisabledFeatureIds(character, rulesContext)) disabled.add(id);
   return disabled.size ? ids.filter((id) => !disabled.has(id)) : ids;
 }
 

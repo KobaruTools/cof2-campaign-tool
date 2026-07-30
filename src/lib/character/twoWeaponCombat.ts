@@ -66,7 +66,7 @@ export function twoWeaponCombatStatus(character: Character): TwoWeaponCombatStat
   let mainHandWeaponId: string | null = null;
   let offHandWeaponId: string | null = null;
 
-  for (const line of character.equipment) {
+  for (const line of character.equipment ?? []) {
     if (isCustomItem(line) || !line.worn) continue;
     const item = equipmentById.get(line.itemId);
     if (item?.category !== 'weapon') continue;

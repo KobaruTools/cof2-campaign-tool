@@ -402,6 +402,22 @@ interface PathBase {
    * aucune exigence d'arme à distance.
    */
   requiresRangedKinds?: RangedWeaponKind[];
+  /**
+   * La voie EXIGE de manier UNE ARME DANS CHAQUE MAIN (combat à deux armes) pour que ses capacités
+   * fonctionnent (PER-74) — ex. Voie du combat à deux armes du rôdeur (p. 73 : « Les capacités de
+   * cette voie nécessitent toutes l'usage d'une arme dans chaque main, à l'exception de Combattant
+   * héroïque. »). Miroir de `requiresShield` : quand le personnage NE tient PAS deux armes (une par
+   * main), les capacités concernées sont DÉSACTIVÉES (grisées + effets non comptés, cf.
+   * `dualWieldDisabledFeatureIds`) ; tenir deux armes les réactive AUTOMATIQUEMENT. La détection
+   * s'appuie sur `twoWeaponCombatStatus`. Absent/false = aucune exigence.
+   */
+  requiresDualWield?: boolean;
+  /**
+   * Capacités de cette voie EXEMPTÉES de `requiresDualWield` (elles fonctionnent sans deux armes en
+   * main) — ex. « Combattant héroïque » (p. 73), un boost passif de caractéristique. Absent = aucune
+   * exemption (toutes les capacités de la voie sont soumises à l'exigence).
+   */
+  dualWieldExemptFeatureIds?: string[];
   sourcePage: SourcePage;
 }
 
@@ -1994,11 +2010,16 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
   /** Restreint à ces voies précises (ids de `Path`). */
   pathIds?: string[];
   /**
-   * Domaine RELATIF au personnage : `same-family` = voies des profils de la
-   * même famille que lui (ex. voie de l'expert, p. 129). Résolu par le moteur,
-   * qui connaît le personnage.
+   * Domaine restreint à une FAMILLE de profils :
+   *  - `'same-family'` = voies des profils de la même famille que le personnage
+   *    (RELATIF au personnage — ex. voie de l'expert, p. 129) ;
+   *  - une `FamilyId` LITTÉRALE (`'adventurers' | 'fighters' | 'mages' | 'mystics'`)
+   *    = voies d'une famille FIXE, indépendante du personnage (PER-74, voie du touche
+   *    à tout, p. 144 : r4 « une voie d'aventurier », r5 « de combattant », r6 « de
+   *    mystique », r7 « de mage »).
+   * Résolu par le moteur (`featuresInChoiceDomain`, choices.ts).
    */
-  familyScope?: 'same-family';
+  familyScope?: 'same-family' | FamilyId;
   /**
    * Domaine DYNAMIQUE dérivé du FAMILIER retenu (PER-74, Résistance r5, p. 133 : « le personnage
    * apprend un sort de rang 1 ou 2 de son choix d'un profil indiqué dans la description du familier »).

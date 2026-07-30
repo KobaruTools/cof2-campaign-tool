@@ -11,6 +11,7 @@ import {
   donEtrangeArmorUsageCounter,
   donEtrangeBorrowedFeatureId,
   featureArmorRestrictionViolations,
+  dualWieldDisabledFeatureIds,
   isArmorWorn,
   isShieldWorn,
   magicTalentSpellsBlockedByArmor,
@@ -44,6 +45,11 @@ function makeChar(over: Partial<Character>): Character {
 
 const wornArmor = (itemId: string): EquipmentLine => ({ itemId, quantity: 1, worn: { slot: 'armor' } });
 const wornShield = (itemId: string): EquipmentLine => ({ itemId, quantity: 1, worn: { slot: 'shield' } });
+const wornWeapon = (itemId: string, slot: 'mainHand' | 'offHand'): EquipmentLine => ({
+  itemId,
+  quantity: 1,
+  worn: { slot },
+});
 
 describe('armorRestrictionViolations — armure', () => {
   it('signale une armure plus lourde que le plafond du profil (guerrier / plaque)', () => {
@@ -739,6 +745,53 @@ describe('shieldDisabledFeatureIds / Voie du bouclier désactivée sans bouclier
   it('une voie sans exigence de bouclier n’est jamais désactivée (Voie du combat)', () => {
     const guerrier = makeChar({ classId: 'guerrier', featureIds: ['combat-r1'] });
     expect(shieldDisabledFeatureIds(guerrier, ctx).size).toBe(0);
+  });
+
+  it('PER-74 — Voie du combat à deux armes : gatée par « une arme dans chaque main » (r4 exempté)', () => {
+    const cada = [1, 2, 3, 4, 5].map((r) => `combat-a-deux-armes-r${r}`);
+    // Une seule arme en main → capacités désactivées, SAUF Combattant héroïque (r4).
+    const solo = makeChar({
+      classId: 'rodeur',
+      featureIds: cada,
+      equipment: [wornWeapon('epee-courte', 'mainHand')],
+    });
+    expect(dualWieldDisabledFeatureIds(solo, ctx)).toEqual(
+      new Set(['combat-a-deux-armes-r1', 'combat-a-deux-armes-r2', 'combat-a-deux-armes-r3', 'combat-a-deux-armes-r5']),
+    );
+    expect(activeFeatureIdsForMods(solo)).not.toContain('combat-a-deux-armes-r2');
+    expect(activeFeatureIdsForMods(solo)).toContain('combat-a-deux-armes-r4');
+    // Le +DEF de Parade croisée ne compte pas sans deux armes.
+    expect(modsFromFeatures(activeFeatureIdsForMods(solo), effectContext(solo)).def).toBeUndefined();
+
+    // Une arme dans chaque main → tout réactivé, +2 DEF de Parade croisée au rang 5 (inconditionnel).
+    const dual = makeChar({
+      classId: 'rodeur',
+      featureIds: cada,
+      equipment: [wornWeapon('epee-courte', 'mainHand'), wornWeapon('dague', 'offHand')],
+    });
+    expect(dualWieldDisabledFeatureIds(dual, ctx).size).toBe(0);
+    expect(modsFromFeatures(activeFeatureIdsForMods(dual), effectContext(dual))).toEqual({ def: 2 });
+  });
+
+  it('PER-74 — une capacité EMPRUNTÉE d’une voie `requiresShield` (touche à tout) hérite de la condition', () => {
+    // Voleur empruntant « Protéger un allié » (bouclier-r1) via r5 « Domaine de la guerre ».
+    const voleur = makeChar({
+      classId: 'voleur',
+      featureIds: ['prestige-touche-a-tout-r5'],
+      featureChoices: { 'prestige-touche-a-tout-r5': ['bouclier-r1'] },
+    });
+    // Sans bouclier : l’emprunt est barré ET exclu des mods (son bonus DEF ne compte pas).
+    expect(shieldDisabledFeatureIds(voleur, ctx).has('bouclier-r1')).toBe(true);
+    expect(activeFeatureIdsForMods(voleur)).not.toContain('bouclier-r1');
+    // Avec un bouclier : réactivé automatiquement.
+    const armed = makeChar({
+      classId: 'voleur',
+      featureIds: ['prestige-touche-a-tout-r5'],
+      featureChoices: { 'prestige-touche-a-tout-r5': ['bouclier-r1'] },
+      equipment: [wornShield('petit-bouclier')],
+    });
+    expect(shieldDisabledFeatureIds(armed, ctx).has('bouclier-r1')).toBe(false);
+    expect(activeFeatureIdsForMods(armed)).toContain('bouclier-r1');
   });
 });
 

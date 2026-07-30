@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-rodeur-combat-deux-armes",
+  "name": "Recette — Rôdeur, Voie du combat à deux armes",
+  "identity": {
+    "description": "ATTENDU (Voie du combat à deux armes, p. 73) : rôdeur niv. 10, dual-wield épée courte (main principale) + dague (main secondaire). GATING « une arme dans chaque main » (PER-74, comme la Voie du bouclier) : sans DEUX armes en main, r1/r2/r3/r5 sont GRISÉES + sans effet + notice « inutilisable sans une arme dans chaque main (p. 73) » ; Combattant héroïque (r4) est EXEMPTÉE. Ici épée courte + dague sont maniées → tout est actif. Retire la dague pour voir les capacités se griser. r1 Attaque à suivre → SUPPLANTÉE par r3 Droite - gauche (grisée). r2 Parade croisée → +1/+2 DEF AUTOMATIQUE tant qu'on tient deux armes (plus d'interrupteur « une arme dans chaque main ») : ici +2 au rang 5. Interrupteur « bonus doublé (renonce à l'attaque secondaire) » restant (hors mode édition, section État du personnage) → +4 au rang 5 si activé. r4 Combattant héroïque → choix AGI : +1 AGI (AGI 3→4) ET dé bonus aux tests d'AGI (2d20 garde le meilleur). Reste actif MÊME sans deux armes (exemptée). r5 Double peine → +1d4° d'enchaînement (situationnel, rendu {1d4°})."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "rodeur",
+  "level": 10,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-a-deux-armes-r1",
+    "combat-a-deux-armes-r2",
+    "combat-a-deux-armes-r3",
+    "combat-a-deux-armes-r4",
+    "combat-a-deux-armes-r5",
+    "survie-r1",
+    "survie-r2",
+    "survie-r3",
+    "survie-r4",
+    "survie-r5"
+  ],
+  "featureChoices": {
+    "combat-a-deux-armes-r4": [
+      "AGI"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-courte",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1,
+      "worn": {
+        "slot": "offHand"
+      }
+    },
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "Recette rôdeur — Voie du combat à deux armes r1-5, dual-wield épée courte + dague, choix r4 = AGI.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

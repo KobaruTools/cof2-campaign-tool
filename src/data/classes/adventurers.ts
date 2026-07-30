@@ -331,6 +331,11 @@ export const adventurerPaths: ClassPath[] = [
     ],
     note: "Les capacités de cette voie nécessitent toutes l'usage d'une arme dans chaque main (à l'exception de Combattant héroïque). Cette voie est une exception aux règles sur les profils hybrides, un personnage peut l'utiliser en portant toutes les armures autorisées pas son profil principal. Les capacités de cette voie fonctionnent avec des armes de contact, mais aussi avec des armes de lancer.",
     borrowedNote: "Cette capacité nécessite l'usage d'une arme dans chaque main (sauf Combattant héroïque). Elle fonctionne avec des armes de contact comme de lancer.",
+    // PER-74 — l'exigence « une arme dans chaque main » est GATÉE automatiquement (miroir de
+    // `requiresShield`) : sans deux armes en main, les capacités de la voie sont grisées et sans
+    // effet ; Combattant héroïque (r4, boost passif) en est exempté par le livre.
+    requiresDualWield: true,
+    dualWieldExemptFeatureIds: ['combat-a-deux-armes-r4'],
     sourcePage: 73,
   },
 
@@ -1861,29 +1866,27 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le rôdeur obtient un bonus de +1 en DEF lorsqu'il combat avec une arme dans chaque main. Ce bonus passe à +2 au rang 5 de la voie. Au début de son tour, s'il renonce à toute attaque de la main secondaire, il double ce bonus jusqu'à son prochain tour.",
-    // Part structurable (PER-67) : « +1 en DEF avec une arme dans chaque main, passe à +2 au
-    // rang 5 de la voie » → effet CONDITIONNEL (interrupteur : une arme dans chaque main) dont la
-    // valeur est SCALANTE par paliers de rang de voie.
-    // PER-109 : le doublement « s'il renonce à l'attaque secondaire » est un 2ᵉ interrupteur portant
-    // le MÊME bonus scalant — les deux actifs s'additionnent → bonus doublé (+2 au lieu de +1, +4 au
-    // rang 5). Dépendance À SENS UNIQUE (`deactivatesWithEffectIndex: 0`) : couper le 1ᵉʳ coupe le 2ᵉ.
+    // Part structurable (PER-67) : « +1 en DEF avec une arme dans chaque main, passe à +2 au rang 5
+    // de la voie » → bonus de DEF SCALANT par paliers de rang.
+    // PER-74 : la condition « une arme dans chaque main » est désormais GATÉE AUTOMATIQUEMENT au
+    // niveau de la voie (`requiresDualWield`) — comme la DEF du bouclier (bouclier-r3). Le bonus de
+    // base devient donc INCONDITIONNEL (`stat-bonus`) : il s'applique dès qu'on tient deux armes,
+    // sans interrupteur manuel (la capacité entière est grisée + sans effet sinon).
+    // PER-109 : le doublement « s'il renonce à l'attaque secondaire » reste un INTERRUPTEUR manuel
+    // (vrai choix tactique) portant le MÊME bonus scalant → additionné au base = bonus doublé (+2 au
+    // lieu de +1, +4 au rang 5). Il ne compte que quand la capacité est active (donc deux armes en main).
     effects: [
       {
-        kind: 'conditional-stat-bonus',
-        bonuses: [
-          {
-            stat: 'def',
-            value: {
-              scale: 'stepped',
-              by: 'path-rank',
-              steps: [
-                { min: 1, value: 1 },
-                { min: 5, value: 2 },
-              ],
-            },
-          },
-        ],
-        activation: { kind: 'condition', label: 'une arme dans chaque main', activeByDefault: false },
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: {
+          scale: 'stepped',
+          by: 'path-rank',
+          steps: [
+            { min: 1, value: 1 },
+            { min: 5, value: 2 },
+          ],
+        },
       },
       {
         kind: 'conditional-stat-bonus',
@@ -1901,9 +1904,6 @@ export const adventurerFeatures: Feature[] = [
           },
         ],
         activation: { kind: 'condition', label: "bonus doublé (renonce à l'attaque secondaire)", activeByDefault: false },
-        // Dépend du 1ᵉʳ interrupteur (index 0) : couper « une arme dans chaque main » coupe aussi
-        // le doublement — on ne double qu'un bonus qu'on a (PER-109, sens unique).
-        deactivatesWithEffectIndex: 0,
       },
     ],
     sourcePage: 73,

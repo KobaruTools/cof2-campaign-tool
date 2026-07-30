@@ -2145,6 +2145,18 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage choisit une capacité de rang 1 ou 2 issue d'une voie d'aventurier.",
+    // PER-74 : emprunt d'une capacité de rang 1-2 d'une voie d'AVENTURIER (famille fixe, pas la
+    // famille du personnage) — patron `feature-from-path` + `familyScope` littéral. La capacité
+    // empruntée devient jouable (carte dédiée, cf. voie de l'expert). Restrictions d'armure de la
+    // voie d'origine gérées par PER-143.
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 1 ou 2 (voie d’aventurier)',
+        allowedRanks: [1, 2],
+        familyScope: 'adventurers',
+      },
+    ],
     sourcePage: 144,
   },
   {
@@ -2156,6 +2168,15 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage choisit une capacité de rang 1 ou 2 issue d'une voie de combattant.",
+    // PER-74 : emprunt d'une capacité de rang 1-2 d'une voie de COMBATTANT (famille `fighters`).
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 1 ou 2 (voie de combattant)',
+        allowedRanks: [1, 2],
+        familyScope: 'fighters',
+      },
+    ],
     sourcePage: 144,
   },
   {
@@ -2167,6 +2188,17 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage choisit une capacité de rang 1 ou 2 issue d'une voie de mystique. S'il s'agit d'un sort, il peut le lancer même si sa caractéristique de magie est égale à +0.",
+    // PER-74 : emprunt d'une capacité de rang 1-2 d'une voie de MYSTIQUE (famille `mystics`).
+    // Clause « lancer même si carac de magie +0 » = VERBATIM : le moteur ne bloque JAMAIS le
+    // lancement de sort sur la valeur de la carac de magie (aucune primitive de gating à lever).
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 1 ou 2 (voie de mystique)',
+        allowedRanks: [1, 2],
+        familyScope: 'mystics',
+      },
+    ],
     sourcePage: 144,
   },
   {
@@ -2178,6 +2210,16 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage choisit une capacité de rang 1 ou 2 issue d'une voie de mage. S'il s'agit d'un sort, il peut le lancer même si sa caractéristique de magie est égale à +0.",
+    // PER-74 : emprunt d'une capacité de rang 1-2 d'une voie de MAGE (famille `mages`).
+    // Clause « lancer même si carac de magie +0 » = VERBATIM (cf. r6).
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Capacité de rang 1 ou 2 (voie de mage)',
+        allowedRanks: [1, 2],
+        familyScope: 'mages',
+      },
+    ],
     sourcePage: 144,
   },
   {
@@ -2189,6 +2231,18 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage augmente la valeur de ses deux plus faibles caractéristiques de +1. En cas d'égalité, il choisit.",
+    // PER-74 : +1 à CHACUNE des deux plus faibles caractéristiques → DEUX choix `ability`
+    // guidés (`lowestHint`, l'UI pré-signale les plus faibles et avertit en cas de dérogation)
+    // + DEUX effets `ability-bonus-from-choice` (value 1). L'égalité est tranchée par le joueur
+    // via les sélecteurs. Se répercute partout (PV/DEF/attaque/tests) via `effectiveAbilities`.
+    choices: [
+      { kind: 'ability', prompt: 'Première plus faible caractéristique', lowestHint: true },
+      { kind: 'ability', prompt: 'Deuxième plus faible caractéristique', lowestHint: true },
+    ],
+    effects: [
+      { kind: 'ability-bonus-from-choice', choiceIndex: 0, value: 1 },
+      { kind: 'ability-bonus-from-choice', choiceIndex: 1, value: 1 },
+    ],
     sourcePage: 144,
   },
 

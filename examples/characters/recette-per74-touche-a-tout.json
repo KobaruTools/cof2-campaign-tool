@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-touche-a-tout",
+  "name": "Recette PER-74 — Touche à tout (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du touche à tout p. 144) : voie MÉCANIQUE d'emprunts cross-famille + bonus de caracs. Base = voleur/assassin niv. 16 (aventurier). R4 Domaine de l'aventure → EMPRUNT d'une capacité de rang 1-2 d'une voie d'AVENTURIER : ici « Parade croisée » (combat à deux armes) → carte de capacité empruntée + son bonus de DEF visible sur la fiche. R5 Domaine de la guerre → EMPRUNT d'une voie de COMBATTANT : « Tour de force » (brute). R6 Domaine du mystique → EMPRUNT d'une voie de MYSTIQUE, ici un SORT : « Arme bénie » (guerre sainte) → carte de sort empruntée, LANÇABLE bien que le voleur ait +0 en magie (clause du livre = verbatim, le moteur ne bloque jamais le cast). R7 Domaine de la magie → EMPRUNT d'une voie de MAGE, un SORT : « Divination » → carte de sort empruntée (même clause +0). R8 Ultra polyvalent → +1 à CHACUNE des deux plus faibles caractéristiques. Ici INT -2 et CHA -1 → INT -1 et CHA 0 (répercuté partout : PV/DEF/attaque/tests). Deux sélecteurs pré-signalent les deux plus faibles (gras), sans avertissement de dérogation. COULEUR PAR FAMILLE : voie AVENTURIER → habillage prestige VERT (émeraude) : étoile d'en-tête, liseré métallique + reflet vert, puces de capacité vertes. Les cartes des capacités EMPRUNTÉES gardent la teinte de LEUR voie d'origine."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "voleur",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 4,
+    "CON": 3,
+    "PER": 3,
+    "CHA": -1,
+    "INT": -2,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 4,
+    "CON": 3,
+    "PER": 3,
+    "CHA": -1,
+    "INT": -2,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "assassin-r1",
+    "assassin-r2",
+    "assassin-r3",
+    "assassin-r4",
+    "assassin-r5",
+    "deplacement-r1",
+    "deplacement-r2",
+    "deplacement-r3",
+    "deplacement-r4",
+    "deplacement-r5",
+    "prestige-touche-a-tout-r4",
+    "prestige-touche-a-tout-r5",
+    "prestige-touche-a-tout-r6",
+    "prestige-touche-a-tout-r7",
+    "prestige-touche-a-tout-r8"
+  ],
+  "featureChoices": {
+    "prestige-touche-a-tout-r4": [
+      "combat-a-deux-armes-r2"
+    ],
+    "prestige-touche-a-tout-r5": [
+      "brute-r2"
+    ],
+    "prestige-touche-a-tout-r6": [
+      "guerre-sainte-r1"
+    ],
+    "prestige-touche-a-tout-r7": [
+      "divination-r1"
+    ],
+    "prestige-touche-a-tout-r8": [
+      "INT",
+      "CHA"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette touche à tout : r4-r7 emprunts cross-famille (feature-from-path + familyScope littéral), r6/r7 = sorts (clause +0 magie verbatim), r8 +1 aux deux plus faibles caracs.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
