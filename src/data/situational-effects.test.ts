@@ -49,6 +49,36 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
     expect(r4?.situationalEffectIds).toEqual(['silenced']);
   });
 
+  it("« Nuée de criquets » est cataloguée (vermines r5, p. 175) : -3 plat, sans stacking, référencée", () => {
+    const entry = SITUATIONAL_EFFECTS['locust-swarm'];
+    expect(entry.label).toBe('Nuée de criquets');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(175);
+    expect(entry.modifiers?.allTestsFlat).toBe(-3);
+    expect(entry.stacking).toBeUndefined();
+    const r5 = featureById.get('prestige-vermines-r5');
+    expect(r5?.situationalEffectIds).toEqual(['locust-swarm']);
+  });
+
+  it("« Nuée d'insectes » est cataloguée (druide animaux r3, p. 114) : -2 plat, sans stacking, référencée", () => {
+    const entry = SITUATIONAL_EFFECTS['insect-swarm'];
+    expect(entry.label).toBe("Nuée d'insectes");
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(114);
+    expect(entry.modifiers?.allTestsFlat).toBe(-2);
+    expect(entry.stacking).toBeUndefined();
+    const r3 = featureById.get('animaux-r3');
+    expect(r3?.situationalEffectIds).toEqual(['insect-swarm']);
+  });
+
+  it('les nuées (non cumulatives) portent un malus plat NÉGATIF sans stacking', () => {
+    for (const id of ['locust-swarm', 'insect-swarm'] as const) {
+      const entry = SITUATIONAL_EFFECTS[id];
+      expect(entry.modifiers?.allTestsFlat, id).toBeLessThan(0);
+      expect(entry.stacking, id).toBeUndefined();
+    }
+  });
+
   it('tout situationalEffectIds posé sur une capacité pointe une entrée connue du catalogue', () => {
     const known = new Set<string>(SITUATIONAL_EFFECT_IDS);
     for (const f of featureById.values()) {

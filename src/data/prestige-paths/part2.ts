@@ -2720,6 +2720,7 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "S'il réussit un test opposé d'attaque magique (portée 20 m), le personnage libère sur sa cible une nuée de criquets affamés qui la dévorent pendant [5 + CHA] rounds. La victime subit 2 DM par tour et un malus de -3 à toutes ses actions. Les DM de zone détruisent la nuée (minimum 1 DM).",
+    situationalEffectIds: ['locust-swarm'],
     sourcePage: 175,
   },
   {

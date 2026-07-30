@@ -1293,7 +1293,12 @@ export const STATUS_EFFECT_LABELS: Record<StatusEffectId, string> = Object.fromE
  * Destinés à être APPLIQUÉS/SUIVIS dans le Combat Tracker : le catalogue est la source unique, la
  * mécanique d'application vit ailleurs. La liste s'étoffe au fil des voies (peuplement PER-289→291).
  */
-export const SITUATIONAL_EFFECT_IDS = ['invalidating-attack', 'silenced'] as const;
+export const SITUATIONAL_EFFECT_IDS = [
+  'invalidating-attack',
+  'silenced',
+  'locust-swarm',
+  'insect-swarm',
+] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
 /** Catalogue des effets situationnels. Effet recopié VERBATIM de la capacité source. */
@@ -1316,6 +1321,26 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "La cible est rendue muette : elle ne peut plus parler ni appeler à l'aide. À la fin de son tour à chaque round, elle peut faire un test de CON pour retrouver l'usage de la parole. Un lanceur de sort muet subit un dé malus à ses tests d'attaque magique (ou peut choisir d'utiliser la magie discrète, règle de concentration).",
     sourcePage: 145,
+  },
+  // « Nuées de criquets » (vermines, r5, p. 175). NON cumulatif (nuée = intensité 1) : le malus PLAT de
+  // -3 à toutes les actions s'applique UNE seule fois. Le DoT (« 2 DM par tour ») reste comportemental
+  // (verbatim seul, appliqué à l'oral) — on ne chiffre pas les DM (cf. « DoT = comportemental », PER-288).
+  'locust-swarm': {
+    label: 'Nuée de criquets',
+    effect:
+      "S'il réussit un test opposé d'attaque magique (portée 20 m), le personnage libère sur sa cible une nuée de criquets affamés qui la dévorent pendant [5 + CHA] rounds. La victime subit 2 DM par tour et un malus de -3 à toutes ses actions. Les DM de zone détruisent la nuée (minimum 1 DM).",
+    sourcePage: 175,
+    modifiers: { allTestsFlat: -3 },
+  },
+  // « Nuée d'insectes » (druide, voie des animaux, r3, p. 114). NON cumulatif : le malus PLAT de -2 à tous
+  // les tests s'applique UNE seule fois. Le DoT (« 1 DM par round ») et l'aveuglement décrit restent
+  // comportementaux (verbatim seul) — non chiffrés (cf. « DoT = comportemental », PER-288).
+  'insect-swarm': {
+    label: "Nuée d'insectes",
+    effect:
+      "En réussissant un test d'attaque magique contre la DEF de sa cible (portée 20 m), le druide libère sur celle-ci une nuée d'insectes volants qui piquent, aveuglent et la suivent pendant [3 + PER] rounds. La victime subit 1 DM par round et un malus de -2 à tous les tests. Les DM de zone détruisent la nuée.",
+    sourcePage: 114,
+    modifiers: { allTestsFlat: -2 },
   },
 };
 
