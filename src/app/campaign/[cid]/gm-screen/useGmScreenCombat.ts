@@ -121,6 +121,11 @@ export interface GmScreenCombat {
   removeStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif d'un combattant (PER-280). */
   adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
+  /**
+   * Réinitialise le combat (PER-283) : vide tous les états, remet le tour courant à zéro et
+   * restaure les PV des créatures. Conserve le roster ; ne touche pas aux PV des joueurs.
+   */
+  resetCombat: () => void;
 }
 
 export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmScreenCombat {
@@ -137,6 +142,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     applyStatus,
     removeStatus,
     adjustStatus,
+    resetCombat,
   } = useGmCombatState(cid, role);
 
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
@@ -355,5 +361,6 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     applyStatus,
     removeStatus,
     adjustStatus,
+    resetCombat,
   };
 }

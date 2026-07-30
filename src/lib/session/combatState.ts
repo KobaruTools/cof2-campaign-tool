@@ -268,3 +268,15 @@ export function clearStatusesOf(state: GmCombatState, key: string): GmCombatStat
   delete statuses[key];
   return { ...state, statuses };
 }
+
+/**
+ * Réinitialise le combat en cours (PER-283, clôt la milestone PER-276). Vide TOUS les états
+ * de tous les combattants, remet le tour courant à `null` et restaure les PV des créatures
+ * (`depletions`). Conserve délibérément le roster de créatures (`creatures` / `nextInstanceId`)
+ * et NE TOUCHE PAS aux PV des personnages joueurs (portés par leur fiche, hors de ce blob) :
+ * une réinitialisation « peu surprenante » ne recompose pas la scène et n'écrit pas les fiches.
+ * Action destructive à confirmer côté UI ; MJ seul auteur (broadcast automatique).
+ */
+export function resetCombat(state: GmCombatState): GmCombatState {
+  return { ...state, statuses: {}, currentTurnKey: null, depletions: {} };
+}

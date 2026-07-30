@@ -6,6 +6,7 @@ import {
   applyStatusTo,
   clearStatusesOf,
   removeStatusFrom,
+  resetCombat,
   reviveState,
   reviveStateObject,
   storageKey,
@@ -209,6 +210,39 @@ describe('clearStatusesOf', () => {
   it('no-op si le combattant n’a aucun état', () => {
     const state: GmCombatState = { ...EMPTY_COMBAT_STATE, statuses: { 'c-1': [{ id: 'blinded' }] } };
     expect(clearStatusesOf(state, 'absent')).toBe(state);
+  });
+});
+
+describe('resetCombat', () => {
+  const inCombat: GmCombatState = {
+    creatures: [
+      { id: 'c-1', slug: 'gobelin', side: 'enemy' },
+      { id: 'c-2', slug: 'loup', side: 'ally' },
+    ],
+    nextInstanceId: 3,
+    depletions: { 'c-1': { hp: { lethal: 4, temp: 0 } } },
+    currentTurnKey: 'c-2',
+    statuses: { 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] },
+  };
+
+  it('vide les états, le tour courant et les PV des créatures', () => {
+    const reset = resetCombat(inCombat);
+    expect(reset.statuses).toEqual({});
+    expect(reset.currentTurnKey).toBeNull();
+    expect(reset.depletions).toEqual({});
+  });
+
+  it('conserve le roster de créatures (creatures + nextInstanceId)', () => {
+    const reset = resetCombat(inCombat);
+    expect(reset.creatures).toEqual(inCombat.creatures);
+    expect(reset.nextInstanceId).toBe(3);
+  });
+
+  it('ne mute pas l’état source (pur)', () => {
+    resetCombat(inCombat);
+    expect(inCombat.statuses).toEqual({ 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] });
+    expect(inCombat.currentTurnKey).toBe('c-2');
+    expect(inCombat.depletions).toEqual({ 'c-1': { hp: { lethal: 4, temp: 0 } } });
   });
 });
 

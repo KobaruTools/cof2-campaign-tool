@@ -29,6 +29,7 @@ import {
   removeStatusFrom,
   adjustStatusIntensity,
   clearStatusesOf,
+  resetCombat as resetCombatState,
   type AddCreatureOptions,
   type CreatureInstance,
   type GmCombatState,
@@ -61,6 +62,11 @@ export interface GmCombatStateApi extends GmCombatState {
   removeStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif posé sur un combattant. */
   adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
+  /**
+   * Réinitialise le combat (PER-283) : vide tous les états, remet le tour courant à `null` et
+   * restaure les PV des créatures. Conserve le roster et ne touche pas aux PV des joueurs.
+   */
+  resetCombat: () => void;
 }
 
 export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCombatStateApi {
@@ -152,6 +158,11 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const resetCombat = useCallback(
+    () => applyLocalCombat(cid, (prev) => resetCombatState(prev)),
+    [applyLocalCombat, cid],
+  );
+
   return {
     ...state,
     addCreature,
@@ -162,5 +173,6 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     applyStatus,
     removeStatus,
     adjustStatus,
+    resetCombat,
   };
 }

@@ -32,9 +32,15 @@ import {
 } from '@dnd-kit/core';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
@@ -114,8 +120,13 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     applyStatus,
     removeStatus,
     adjustStatus,
+    resetCombat,
   } = useGmScreenCombat(cid, 'gm');
   const [addOpen, setAddOpen] = useState(false);
+  // Réinitialisation du combat (PER-283) : action destructive → confirmation avant purge.
+  const [resetOpen, setResetOpen] = useState(false);
+  // Rien à réinitialiser tant qu'aucun combattant n'est en piste (bouton masqué).
+  const hasCombatants = claimed.length > 0 || labeledCreatures.length > 0;
 
   // Glisser-déposer des états (PER-279) : les puces de la palette (`useDraggable`, id préfixé) sont
   // déposées sur les colonnes du tracker (`useDroppable`, id = clé de combattant). Le capteur pointeur
@@ -224,6 +235,17 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
             Combat en cours
           </Typography>
+          {hasCombatants && (
+            <Button
+              variant="text"
+              size="small"
+              color="error"
+              startIcon={<RestartAltIcon />}
+              onClick={() => setResetOpen(true)}
+            >
+              Réinitialiser le combat
+            </Button>
+          )}
           <Button
             variant="outlined"
             size="small"
@@ -361,6 +383,39 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         onClose={() => setAddOpen(false)}
         onAdd={(slug, options) => addCreature(slug, options)}
       />
+
+      {/* Réinitialisation du combat (PER-283) : purge les états, remet le tour courant à zéro
+          et restaure les PV des créatures. Conserve le roster de créatures et ne touche PAS aux
+          PV des joueurs (portés par leur fiche). Confirmation obligatoire (action destructive). */}
+      <Dialog open={resetOpen} onClose={() => setResetOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Réinitialiser le combat ?</DialogTitle>
+        <DialogContent>
+          <DialogContentText component="div">
+            Cette action va&nbsp;:
+            <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
+              <li>retirer tous les états de tous les combattants&nbsp;;</li>
+              <li>remettre le tour courant à zéro&nbsp;;</li>
+              <li>restaurer les points de vie des créatures.</li>
+            </ul>
+            Les créatures restent en piste et les points de vie des personnages joueurs ne sont
+            pas modifiés. Cette action est <strong>irréversible</strong>.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetOpen(false)}>Annuler</Button>
+          <Button
+            color="error"
+            variant="contained"
+            startIcon={<RestartAltIcon />}
+            onClick={() => {
+              resetCombat();
+              setResetOpen(false);
+            }}
+          >
+            Réinitialiser
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Panneau latéral de fiche (PER-258), piloté par `?sheet=<id>`. La frontière
           Suspense est imposée par la lecture des paramètres d'URL (useSearchParams) et
