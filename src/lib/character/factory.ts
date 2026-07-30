@@ -61,6 +61,7 @@ export function createBlankCharacter(
     levelUpHistory: [],
     equipment: [],
     mounts: [],
+    poisonedWeapons: [],
     overrides: {},
     notes: '',
     createdAt: now,

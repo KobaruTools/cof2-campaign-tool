@@ -88,6 +88,7 @@ import {
 import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
+import { PoisonWeaponLoadoutField } from '@/components/sheet/PoisonWeaponLoadoutField';
 import { SourceRef, PageRefText } from '@/components/SourceRef';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
@@ -1136,6 +1137,8 @@ export interface FeaturesByPathProps {
    * de création). État de jeu, modifiable hors édition.
    */
   onSummonCompanionInstance?: (featureId: string) => void;
+  /** Applique un patch d'état de jeu « poison appliqué aux armes » (maître des poisons, PER-74). */
+  onPoisonUpdate?: (patch: Partial<Character>) => void;
   /**
    * Bonus de compétence par domaine (cf. `testBonusSources`) — utilisé pour signaler, sur une
    * capacité EMPRUNTÉE, que son bonus de test est DOMINÉ (ne se cumule pas), affiché barré + la
@@ -2159,6 +2162,7 @@ function PathBlock({
   onLiftShortRestLock,
   onCreateElixir,
   onSummonCompanionInstance,
+  onPoisonUpdate,
   disabledIds,
   disabledReasons,
   armorRestrictedReasons,
@@ -2209,6 +2213,8 @@ function PathBlock({
   onCreateElixir?: (counterKey: string, cost: number, max: number, elixirName: string) => void;
   /** Invoque un exemplaire d'un compagnon multi-instances (zombie, PER-235) — badge bleu « Invoquer ». */
   onSummonCompanionInstance?: (featureId: string) => void;
+  /** Applique un patch d'état de jeu « poison appliqué aux armes » (maître des poisons, PER-74). */
+  onPoisonUpdate?: (patch: Partial<Character>) => void;
   /**
    * Capacités désactivées par exclusion mutuelle (un interrupteur actif les grise) :
    * rendues semi-transparentes + grisées, interrupteur non-interactif, détail conservé.
@@ -3063,6 +3069,13 @@ function PathBlock({
                     />
                   </>
                 )}
+                {/* PER-74 : gestion de poison appliqué aux armes (maître des poisons, r5). */}
+                {openFeature.poisonWeaponLoadout && character && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <PoisonWeaponLoadoutField character={character} onUpdate={onPoisonUpdate} />
+                  </>
+                )}
                 {replacements?.get(openFeature.id)?.replacedFeature && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -3467,6 +3480,13 @@ function PathBlock({
                   <InflictableStatesField feature={feature} character={character} onSet={onSetUsageCounter} />
                 </>
               )}
+              {/* PER-74 : gestion de poison appliqué aux armes (maître des poisons, r5). */}
+              {feature.poisonWeaponLoadout && character && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  <PoisonWeaponLoadoutField character={character} onUpdate={onPoisonUpdate} />
+                </>
+              )}
               {feature.id === 'animaux-r5' && character && <AnimalFormsNote character={character} />}
               {(() => {
                 const profile = displayCreatureProfile(feature, character);
@@ -3724,6 +3744,7 @@ export function FeaturesByPath({
   onLiftShortRestLock,
   onCreateElixir,
   onSummonCompanionInstance,
+  onPoisonUpdate,
   concentration = false,
   testBonuses,
   verbatim = false,
@@ -3885,6 +3906,7 @@ export function FeaturesByPath({
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
               onSummonCompanionInstance={onSummonCompanionInstance}
+              onPoisonUpdate={onPoisonUpdate}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}
@@ -3923,6 +3945,7 @@ export function FeaturesByPath({
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
               onSummonCompanionInstance={onSummonCompanionInstance}
+              onPoisonUpdate={onPoisonUpdate}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}
@@ -3956,6 +3979,7 @@ export function FeaturesByPath({
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
               onSummonCompanionInstance={onSummonCompanionInstance}
+              onPoisonUpdate={onPoisonUpdate}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}

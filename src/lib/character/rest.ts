@@ -8,10 +8,20 @@
  * Chaque fonction renvoie un patch `{ depletion, usageCounters }` à appliquer au
  * personnage ; elle ne mute pas l'entrée. Module pur (aucune dépendance UI).
  */
-import type { Character, Depletion, EquipmentLine } from './types';
+import type { Character, Depletion, EquipmentLine, PoisonApplication } from './types';
 import { currentRecoveryDice, healHp, pruneDepletion, spendRecoveryDice } from './gauges';
 import { clearTemporaryEffectInputs, clearTemporaryEffectToggles, resetUsageCounters } from './effects';
 import { removeElixirDoses } from './elixirs';
+
+/**
+ * Ré-enduit les armes empoisonnées (« Avant chaque combat, ses armes sont enduites », p. 143, PER-74) :
+ * remet chaque charge à `spent: false`. Renvoie la nouvelle liste UNIQUEMENT si au moins une charge
+ * était dépensée (sinon `undefined` → le patch de repos ne se « mixe » pas inutilement, cf. PER-266).
+ */
+function reArmPoisons(poisonedWeapons: PoisonApplication[] = []): PoisonApplication[] | undefined {
+  if (!poisonedWeapons.some((p) => p.spent)) return undefined;
+  return poisonedWeapons.map((p) => (p.spent ? { ...p, spent: false } : p));
+}
 
 /** Patch d'état de jeu produit par un repos. */
 export interface RestResult {
@@ -34,6 +44,12 @@ export interface RestResult {
    * même sont perdus »). Absent pour repos court / reset → l'équipement n'est pas touché.
    */
   equipment?: EquipmentLine[];
+  /**
+   * Armes empoisonnées ré-enduites (PER-74) : présent UNIQUEMENT si au moins une charge était dépensée
+   * (« avant chaque combat, ses armes sont enduites », p. 143). Absent = aucune charge à ré-enduire →
+   * l'état des poisons n'est pas touché (le patch reste purement état de jeu, synchronisé en direct).
+   */
+  poisonedWeapons?: PoisonApplication[];
 }
 
 /**
@@ -67,7 +83,7 @@ export function shortRest(
     depletion = healHp(depletion, heal);
     depletion = spendRecoveryDice(depletion, 1, recovery.recoveryDiceMax);
   }
-  return {
+  const result: RestResult = {
     depletion: pruneDepletion(depletion),
     usageCounters: resetUsageCounters(
       character.usageCounters,
@@ -78,6 +94,9 @@ export function shortRest(
     effectToggles: clearTemporaryEffectToggles(character),
     effectInputs: clearTemporaryEffectInputs(character),
   };
+  const reArmed = reArmPoisons(character.poisonedWeapons);
+  if (reArmed) result.poisonedWeapons = reArmed;
+  return result;
 }
 
 /**
@@ -125,6 +144,8 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
     effectInputs: clearTemporaryEffectInputs(character),
   };
   if (prunedEquipment.length !== character.equipment.length) result.equipment = prunedEquipment;
+  const reArmed = reArmPoisons(character.poisonedWeapons);
+  if (reArmed) result.poisonedWeapons = reArmed;
   return result;
 }
 

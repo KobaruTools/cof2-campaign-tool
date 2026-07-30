@@ -873,6 +873,18 @@ for (const c of features) {
   }
 }
 
+// --- Gestion de poison appliqué aux armes (maître des poisons, p. 143, PER-74) -
+// `poisonWeaponLoadout` : maxWeapons entier > 0 ; `weakeningUnlockedBy`, si présent, référence une
+// capacité existante du catalogue.
+for (const c of features) {
+  const loadout = c.poisonWeaponLoadout;
+  if (!loadout) continue;
+  if (!Number.isInteger(loadout.maxWeapons) || loadout.maxWeapons <= 0)
+    err(`[capacite ${c.id}] poisonWeaponLoadout: maxWeapons doit être un entier > 0`);
+  if (loadout.weakeningUnlockedBy && !features.some((f) => f.id === loadout.weakeningUnlockedBy))
+    err(`[capacite ${c.id}] poisonWeaponLoadout: weakeningUnlockedBy inconnu : ${loadout.weakeningUnlockedBy}`);
+}
+
 // --- Substitutions de caractéristique des sorts reproduits (Artefact/Élixirs, PER-163) ----------
 // `reproducedAbilitySubstitutions` : une substitution `from → to` doit porter sur deux carac DISTINCTES
 // (une substitution vers elle-même n'a aucun sens) ; les carac sont déjà typées `AbilityId`.

@@ -24,16 +24,18 @@
  */
 import { featureById } from '@/data';
 import { COIN_POUCH_ITEM_NAME } from '@/data/progression';
-import type { StartingEquipmentChoiceOption } from '@/data/schema';
+import type { PoisonKind, StartingEquipmentChoiceOption } from '@/data/schema';
 import type {
   Character,
   CustomItem,
   Depletion,
   EquipmentLine,
   OwnedMount,
+  PoisonApplication,
   Purse,
   WornState,
 } from './types';
+import { isPoisonableWeaponLine, poisonLoadoutFeature } from './poison';
 import { isCustomItem } from './types';
 import {
   conditionalEffectsOf,
@@ -382,6 +384,74 @@ export function setEquipmentWorn(
 /** Bourse (PER-152) : argent possédé, état de jeu transitoire (non touché par un repos). */
 export function setPurse(purse: Purse): Partial<Character> {
   return { purse };
+}
+
+// ---------------------------------------------------------------------------
+// Poison appliqué aux armes (voie du maître des poisons, p. 143, PER-74)
+// ---------------------------------------------------------------------------
+
+/**
+ * Enduit de poison l'arme de l'inventaire à `index` (voie du maître des poisons, p. 143, PER-74). État
+ * de jeu (hors mode « Modifier »). Assigne un `instanceId` STABLE à la ligne si elle n'en a pas, puis
+ * ajoute une charge `{ instanceId, kind, spent: false }`. Sans effet (patch vide) si la ligne n'est pas
+ * une arme enduisable, si elle est DÉJÀ enduite, ou si le plafond `maxWeapons` est atteint. L'`equipment`
+ * n'est renvoyé que si un `instanceId` a réellement été assigné (sinon patch purement état de jeu).
+ */
+export function applyPoisonToWeapon(
+  character: Character,
+  index: number,
+  kind: PoisonKind,
+): Partial<Character> {
+  const loadout = poisonLoadoutFeature(character)?.loadout;
+  if (!loadout) return {};
+  const line = character.equipment[index];
+  if (!line || !isPoisonableWeaponLine(line)) return {};
+  if (line.instanceId && character.poisonedWeapons.some((p) => p.instanceId === line.instanceId)) {
+    return {}; // déjà enduite
+  }
+  if (character.poisonedWeapons.length >= loadout.maxWeapons) return {};
+
+  const instanceId = line.instanceId ?? newId();
+  const patch: Partial<Character> = {
+    poisonedWeapons: [...character.poisonedWeapons, { instanceId, kind, spent: false }],
+  };
+  if (!line.instanceId) {
+    patch.equipment = character.equipment.map((l, i) => (i === index ? { ...line, instanceId } : l));
+  }
+  return patch;
+}
+
+/** Change la nature du poison d'une arme enduite (r6 : rapide ⇄ affaiblissant, échangeable librement). */
+export function setPoisonKind(
+  character: Character,
+  instanceId: string,
+  kind: PoisonKind,
+): Partial<Character> {
+  return {
+    poisonedWeapons: character.poisonedWeapons.map((p) =>
+      p.instanceId === instanceId ? { ...p, kind } : p,
+    ),
+  };
+}
+
+/** Marque une charge de poison comme dépensée (première attaque portée) ou ré-enduite (`spent`). */
+export function setPoisonSpent(
+  character: Character,
+  instanceId: string,
+  spent: boolean,
+): Partial<Character> {
+  return {
+    poisonedWeapons: character.poisonedWeapons.map((p) =>
+      p.instanceId === instanceId ? { ...p, spent } : p,
+    ),
+  };
+}
+
+/** Retire le poison d'une arme (l'`instanceId` reste sur la ligne d'équipement — inoffensif). */
+export function removePoisonFromWeapon(character: Character, instanceId: string): Partial<Character> {
+  return {
+    poisonedWeapons: character.poisonedWeapons.filter((p) => p.instanceId !== instanceId),
+  };
 }
 
 // ---------------------------------------------------------------------------

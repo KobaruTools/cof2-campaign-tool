@@ -520,6 +520,7 @@ function GmSheetDrawerContent({
               onLiftShortRestLock={game.liftShortRestLock}
               onCreateElixir={game.createElixir}
               onSummonCompanionInstance={game.summonCompanionInstance}
+              onPoisonUpdate={game.update}
               masterDerived={masterDerived}
               testBonuses={display.testBonuses}
             />

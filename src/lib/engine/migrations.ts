@@ -464,6 +464,18 @@ function migrateV20toV21(data: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
+ * v21 → v22 : ajout de `poisonedWeapons` (armes enduites de poison — voie du maître des poisons,
+ * p. 143, PER-74). Purement additif : on initialise une liste vide (aucune arme enduite au
+ * chargement) si le champ est absent ou mal typé, en préservant un tableau déjà présent.
+ */
+function migrateV21toV22(data: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...data };
+  if (!Array.isArray(next.poisonedWeapons)) next.poisonedWeapons = [];
+  next.schemaVersion = 22;
+  return next;
+}
+
+/**
  * Registre des migrations, indexé par version de départ. Une entrée `N`
  * transforme un objet v`N` en v`N+1`.
  */
@@ -488,6 +500,7 @@ export const MIGRATIONS: Record<number, Migration> = {
   18: migrateV18toV19,
   19: migrateV19toV20,
   20: migrateV20toV21,
+  21: migrateV21toV22,
 };
 
 export class MigrationError extends Error {}

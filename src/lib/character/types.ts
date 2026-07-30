@@ -12,7 +12,14 @@
  *    sauf surcharges manuelles explicites (`overrides`).
  */
 import { DERIVED_STAT_IDS } from '@/data/schema';
-import type { AbilityId, DerivedStatId, FeatureChoice, WeaponCategory, WeaponDamage } from '@/data/schema';
+import type {
+  AbilityId,
+  DerivedStatId,
+  FeatureChoice,
+  PoisonKind,
+  WeaponCategory,
+  WeaponDamage,
+} from '@/data/schema';
 import type { AncestryChoice } from './ancestry';
 
 /**
@@ -72,8 +79,11 @@ import type { AncestryChoice } from './ancestry';
  *   inventaire — table « Prix des montures » p. 191 ; PER-216). Liste d'`OwnedMount`
  *   (id d'instance + entrée de catalogue + barde + PV). La migration ajoute `[]` (aucune
  *   monture au chargement).
+ * v22 : ajout de `poisonedWeapons` (armes enduites de poison — voie du maître des poisons, p. 143,
+ *   PER-74). Liste de `PoisonApplication` (instanceId d'arme + nature du poison + dépensé). La
+ *   migration ajoute `[]` (aucune arme enduite au chargement).
  */
-export const SCHEMA_VERSION = 21;
+export const SCHEMA_VERSION = 22;
 
 /**
  * Statut d'un personnage dans sa campagne (PER-179) : `active` (jouable),
@@ -147,6 +157,25 @@ export interface OwnedMount {
    * véhicules / bêtes de somme sans stats n'ont pas de barre de vie).
    */
   hp: Depletion;
+}
+
+/**
+ * ARME ENDUITE de poison (voie du maître des poisons, p. 143, PER-74). État de jeu transitoire, une
+ * entrée par arme enduite (cf. `Character.poisonedWeapons`). L'arme est référencée par son
+ * `EquipmentRef.instanceId` stable (assigné à l'enduisage) plutôt que par index (fragile). Une entrée
+ * dont l'`instanceId` ne correspond plus à aucune ligne d'équipement (arme vendue/supprimée) est
+ * considérée ORPHELINE et ignorée/nettoyée par le résolveur.
+ */
+export interface PoisonApplication {
+  /** `EquipmentRef.instanceId` de l'arme enduite. */
+  instanceId: string;
+  /** Nature du poison appliqué (`weakening` n'est possible qu'une fois le rang 6 acquis). */
+  kind: PoisonKind;
+  /**
+   * La charge est-elle DÉPENSÉE (première attaque réussie déjà portée ce combat) ? `false` = enduite,
+   * prête. Réinitialisée à `false` par un repos (« avant chaque combat, ses armes sont enduites »).
+   */
+  spent: boolean;
 }
 
 /**
@@ -426,6 +455,15 @@ export interface EquipmentOverrides {
 export interface EquipmentRef {
   itemId: string;
   quantity: number;
+  /**
+   * Identifiant d'INSTANCE stable de cette ligne d'équipement (PER-74). Les lignes d'équipement sont
+   * normalement repérées par leur index dans `Character.equipment`, fragile au réordonnancement/suppression ;
+   * quand un état de jeu doit pointer une arme PRÉCISE dans la durée (poison appliqué, cf.
+   * `Character.poisonedWeapons`), on lui assigne à la volée un `instanceId` stable (`ensureInstanceId`,
+   * `src/lib/character/poison.ts`). Champ additif optionnel absent-safe → pas de bump de `schemaVersion`
+   * (même logique que `magicDef`). Absent = jamais référencé par un état de jeu.
+   */
+  instanceId?: string;
   /** État de port (PER-76). Absent = rangé. Voir `WornState`. */
   worn?: WornState;
   /**
@@ -771,6 +809,15 @@ export interface Character {
    * additif (aucune migration). Voir `src/lib/character/mounts.ts`.
    */
   mountedKey?: string;
+
+  /**
+   * Armes ENDUITES de poison (voie du maître des poisons, p. 143, PER-74). État de jeu transitoire
+   * (modifiable hors mode « Modifier »). Chaque entrée référence une ligne d'équipement par son
+   * `EquipmentRef.instanceId` (assigné à l'enduisage), la nature du poison et si la charge est dépensée.
+   * Plafonné par `Feature.poisonWeaponLoadout.maxWeapons`. Les repos ré-enduisent (spent → false). `[]`
+   * = aucune arme enduite. Voir `PoisonApplication` et `src/lib/character/poison.ts`.
+   */
+  poisonedWeapons: PoisonApplication[];
 
   /** Surcharges manuelles de valeurs dérivées (réversibles). */
   overrides: Partial<Record<DerivedStatId, number>>;

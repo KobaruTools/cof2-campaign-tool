@@ -65,6 +65,7 @@ function validRaw(): Record<string, unknown> {
     levelUpHistory: [],
     equipment: [],
     mounts: [],
+    poisonedWeapons: [],
     overrides: {},
     notes: '',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -623,7 +624,24 @@ describe('migrateCharacter', () => {
     expect(c.mounts).toEqual([{ id: 'm1', catalogId: 'cheval-de-guerre', bardeId: 'barde-de-plaque', hp: {} }]);
   });
 
-  it('expose les migrations 1→2 … 20→21 dans le registre', () => {
+  it('v21→v22 ajoute poisonedWeapons vide s’il est absent', () => {
+    const v21 = validRaw() as Record<string, unknown>;
+    v21.schemaVersion = 21;
+    delete v21.poisonedWeapons;
+    const c = migrateCharacter(v21);
+    expect(c.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(c.poisonedWeapons).toEqual([]);
+  });
+
+  it('v21→v22 préserve une liste de poisonedWeapons déjà présente', () => {
+    const v21 = validRaw() as Record<string, unknown>;
+    v21.schemaVersion = 21;
+    v21.poisonedWeapons = [{ instanceId: 'w1', kind: 'quick', spent: false }];
+    const c = migrateCharacter(v21);
+    expect(c.poisonedWeapons).toEqual([{ instanceId: 'w1', kind: 'quick', spent: false }]);
+  });
+
+  it('expose les migrations 1→2 … 21→22 dans le registre', () => {
     expect(typeof MIGRATIONS[1]).toBe('function');
     expect(typeof MIGRATIONS[2]).toBe('function');
     expect(typeof MIGRATIONS[3]).toBe('function');
@@ -644,5 +662,6 @@ describe('migrateCharacter', () => {
     expect(typeof MIGRATIONS[18]).toBe('function');
     expect(typeof MIGRATIONS[19]).toBe('function');
     expect(typeof MIGRATIONS[20]).toBe('function');
+    expect(typeof MIGRATIONS[21]).toBe('function');
   });
 });

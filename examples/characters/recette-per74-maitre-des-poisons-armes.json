@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-maitre-des-poisons-armes",
+  "name": "Recette PER-74 — Maître des poisons (armes variées)",
+  "identity": {
+    "description": "ATTENDU (PER-74, gestion de poison, cas ARMES VARIÉES) : sous « Poison rapide » (r5), la section « Poisons appliqués (N/3) » doit gérer indifféremment les 3 types d'armes de ce perso. État pré-rempli : ÉPÉE À DEUX MAINS enduite de poison RAPIDE (non dépensée) ; ARC LONG (arme à distance) enduit de poison AFFAIBLISSANT (dépensé = bouton « Dépensé — ré-enduire ») ; DAGUE (contact, une main) LIBRE, proposée dans le menu « Enduire une arme ». Comme le rang 6 est acquis, chaque arme montre la bascule Rapide/Affaiblissant. Vérifier : enduire la dague, changer un type, dépenser/ré-enduire, retirer ; le menu disparaît une fois 3 armes enduites ; un repos ré-enduit les charges dépensées. Le port (épée 2 mains équipée) n'a AUCUNE incidence sur l'enduisage (on peut enduire une arme rangée). COULEUR PAR FAMILLE : voie AVENTURIER → habillage prestige VERT (émeraude)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "halfelin",
+  "classId": "voleur",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 3,
+    "CHA": 1,
+    "INT": 4,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 3,
+    "CHA": 1,
+    "INT": 4,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "halfelin",
+  "featureIds": [
+    "assassin-r1",
+    "assassin-r2",
+    "assassin-r3",
+    "assassin-r4",
+    "assassin-r5",
+    "prestige-maitre-des-poisons-r4",
+    "prestige-maitre-des-poisons-r5",
+    "prestige-maitre-des-poisons-r6",
+    "prestige-maitre-des-poisons-r7",
+    "prestige-maitre-des-poisons-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-a-deux-mains",
+      "quantity": 1,
+      "instanceId": "pw-2h",
+      "worn": {
+        "slot": "mainHand",
+        "grip": "twoHands"
+      }
+    },
+    {
+      "itemId": "arc-long",
+      "quantity": 1,
+      "instanceId": "pw-arc"
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [
+    {
+      "instanceId": "pw-2h",
+      "kind": "quick",
+      "spent": false
+    },
+    {
+      "instanceId": "pw-arc",
+      "kind": "weakening",
+      "spent": true
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-74 — recette maître des poisons (armes variées) : épée 2 mains (rapide), arc long (affaiblissant, dépensé), dague libre.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

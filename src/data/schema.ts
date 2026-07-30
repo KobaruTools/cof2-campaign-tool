@@ -2867,6 +2867,37 @@ export interface InflictableStates {
 }
 
 /**
+ * Nature du poison appliqué à une arme (voie du maître des poisons, p. 143, PER-74).
+ *  - `quick` : « poison rapide » (r5) — la première attaque réussie inflige des DM supplémentaires.
+ *  - `weakening` : « poison affaiblissant » (r6) — la première attaque réussie inflige l'état Affaibli.
+ * Codes neutres en anglais (les libellés français sont dans `POISON_KIND_LABELS`).
+ */
+export type PoisonKind = 'quick' | 'weakening';
+
+/** Libellés français des natures de poison (affichés au joueur). */
+export const POISON_KIND_LABELS: Record<PoisonKind, string> = {
+  quick: 'Poison rapide',
+  weakening: 'Poison affaiblissant',
+};
+
+/**
+ * GESTION DE POISON APPLIQUÉ AUX ARMES (voie du maître des poisons, p. 143, PER-74). Déclare qu'une
+ * capacité débloque la possibilité d'enduire un nombre limité d'armes de l'inventaire ; l'ÉTAT (quelles
+ * armes, quel poison, dépensé ou non) vit dans `Character.poisonedWeapons` (état de jeu transitoire, hors
+ * mode « Modifier »). Porté sur la capacité de RANG 5 (« Poison rapide ») ; le type `weakening` (r6) est
+ * débloqué par la possession de `weakeningUnlockedBy`. Absent = la capacité ne gère aucun poison d'arme.
+ */
+export interface PoisonWeaponLoadout {
+  /** Nombre maximal d'armes enduites simultanément (« trois au maximum », p. 143). */
+  maxWeapons: number;
+  /**
+   * Id de la capacité dont la POSSESSION débloque le poison `weakening` (« Poison affaiblissant » = r6).
+   * Tant qu'elle n'est pas acquise, seul le poison `quick` est disponible. Absent = `quick` seulement.
+   */
+  weakeningUnlockedBy?: string;
+}
+
+/**
  * SUBSTITUTION de caractéristique (PER-163) : remplacer `from` par `to` dans les formules d'un sort
  * REPRODUIT/EMPRUNTÉ, quand le lanceur effectif utilise une autre caractéristique de magie (forgesort →
  * INT). Voir `Feature.reproducedAbilitySubstitutions`. La substitution n'est effective que si `to` est
@@ -3053,6 +3084,13 @@ export interface Feature {
    * relève du Combat Tracker (ticket dédié). Absent = la capacité n'applique aucun effet situationnel.
    */
   situationalEffectIds?: SituationalEffectId[];
+  /**
+   * GESTION DE POISON APPLIQUÉ AUX ARMES (voie du maître des poisons, r5, p. 143, PER-74). Débloque, sous
+   * cette capacité, une section « Poisons appliqués » : enduire jusqu'à `maxWeapons` armes de l'inventaire,
+   * chacune d'un poison `quick` ou (si `weakeningUnlockedBy` acquis) `weakening`, dépensable à la première
+   * attaque. L'état vit dans `Character.poisonedWeapons`. Absent = la capacité ne gère aucun poison d'arme.
+   */
+  poisonWeaponLoadout?: PoisonWeaponLoadout;
   /**
    * REMPLACEMENT INCONDITIONNEL entre capacités d'une même voie : ids des capacités
    * que CETTE capacité, DÈS QU'ELLE EST ACQUISE, supplante définitivement (« la

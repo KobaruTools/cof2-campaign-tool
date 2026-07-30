@@ -1155,6 +1155,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Invoquer un zombie (badge bleu « Invoquer ») : crée une instance à PV propres, dans
               // la limite du profil — état de jeu, comme les interrupteurs/compteurs (PER-235).
               onSummonCompanionInstance={summonCompanionInstance}
+              // Poison appliqué aux armes (maître des poisons, PER-74) : état de jeu, patch appliqué via update.
+              onPoisonUpdate={update}
               // Stats du maître : Init./attaque des compagnons recopient ce total.
               masterDerived={masterDerived}
               // Bonus de compétence par domaine : sert à signaler, sur une capacité EMPRUNTÉE, que son

@@ -318,6 +318,7 @@ export function materializeDraft(draft: WizardDraft, ancestry: Ancestry, now: st
     levelUpHistory: [{ level: 1, chosenFeatureIds: featureIds }],
     equipment: draft.equipment,
     mounts: [],
+    poisonedWeapons: [],
     overrides: {},
     notes: '',
     createdAt: draft.createdAt,

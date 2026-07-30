@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-maitre-des-poisons",
+  "name": "Recette PER-74 — Maître des poisons (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du maître des poisons p. 143) : vérifier le RENDU de chaque rang prestige. Base = voleur/assassin, INT HAUTE (les difficultés de poison en dépendent). R4 Connaissance du poison → entièrement VERBATIM (test d'INT difficulté 10, application de poison sans jet). « test », « INT » auto-glosés. R5 Poison rapide → le DM du poison est rendu en DÉ {3d4°} (dé évolutif → sa face au niveau 16) ; la difficulté de résistance [10 + INT] en encadré de formule (= 10 + INT). Le bonus « première attaque réussie » reste VERBATIM (pas de badge de dé sur la carte d'attaque — situationnel). R6 Poison affaiblissant → doit afficher la section « État infligé ce combat » avec UN bouton-bascule « Affaibli » (infligeable 1×/combat, patron Botte secrète). Le mot « affaiblie » dans le texte doit être une pastille rouge d'état (info-bulle = effet verbatim p. 214). Difficulté 12 littérale. R7 Résistance au poison → entièrement VERBATIM (test de CON difficulté 10, demi-DM sur échec). R8 Poisons virulents → la quantité de doses journalières est rendue [=1 + INT] = « 5 » (INT 4), la difficulté de résistance [12 + INT] en encadré. « (voir page 238) » reste littéral. Le compteur de doses n'est PAS matérialisé (consommable narratif). GESTION DE POISON (PER-74, socle) : sous « Poison rapide » (r5), une section « Poisons appliqués (N/3) » doit lister les armes enduites. Ce perso a la DAGUE enduite de poison RAPIDE (non dépensée) et l'ÉPÉE COURTE enduite de poison AFFAIBLISSANT (dépensée = bouton « Dépensé — ré-enduire »). Comme il a le rang 6, chaque arme montre une bascule Rapide/Affaiblissant. On doit pouvoir enduire l'ARC LONG (3e arme dispo dans le menu « Enduire une arme »), dépenser/ré-enduire, changer le type, retirer. Un repos ré-enduit les charges dépensées. COULEUR PAR FAMILLE : le maître des poisons est une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude) : étoile d'en-tête, liseré métallique des cartes de rang + reflet vert, puces de capacité vertes. Le liseré tournant reste métallique neutre."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "halfelin",
+  "classId": "voleur",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 3,
+    "CHA": 1,
+    "INT": 4,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 3,
+    "CHA": 1,
+    "INT": 4,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "halfelin",
+  "featureIds": [
+    "assassin-r1",
+    "assassin-r2",
+    "assassin-r3",
+    "assassin-r4",
+    "assassin-r5",
+    "prestige-maitre-des-poisons-r4",
+    "prestige-maitre-des-poisons-r5",
+    "prestige-maitre-des-poisons-r6",
+    "prestige-maitre-des-poisons-r7",
+    "prestige-maitre-des-poisons-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "dague",
+      "quantity": 1,
+      "instanceId": "pw-dague",
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "epee-courte",
+      "quantity": 1,
+      "instanceId": "pw-epee",
+      "worn": {
+        "slot": "offHand"
+      }
+    },
+    {
+      "itemId": "arc-long",
+      "quantity": 1
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [
+    {
+      "instanceId": "pw-dague",
+      "kind": "quick",
+      "spent": false
+    },
+    {
+      "instanceId": "pw-epee",
+      "kind": "weakening",
+      "spent": true
+    }
+  ],
+  "overrides": {},
+  "notes": "PER-74 — recette maître des poisons : richText r5 ({3d4°} + [10 + INT]) et r8 ([=1 + INT] + [12 + INT]) ; r6 inflictableStates (Affaibli) ; gestion de poison appliqué aux armes (dague rapide, épée courte affaiblissant dépensée, arc long libre) ; r4/r7 verbatim.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

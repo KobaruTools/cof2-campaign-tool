@@ -2018,6 +2018,16 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage sait fabriquer du poison « rapide » en petite quantité. Avant chaque combat, ses armes (trois au maximum) sont enduites de ce poison. La première attaque réussie provoque 3d4° DM supplémentaires. Si la victime réussit un test de CON difficulté [10 + INT], elle ne subit que la moitié des DM.",
+    // Le dé de DM du poison ({3d4°}) et la difficulté de résistance ([10 + INT]) sont balisés.
+    richText:
+      "Le personnage sait fabriquer du poison « rapide » en petite quantité. Avant chaque combat, ses armes (trois au maximum) sont enduites de ce poison. La première attaque réussie provoque {3d4°} DM supplémentaires. Si la victime réussit un test de CON difficulté [10 + INT], elle ne subit que la moitié des DM.",
+    // GESTION DE POISON APPLIQUÉ AUX ARMES (PER-74) : section « Poisons appliqués » sous cette capacité,
+    // enduire jusqu'à 3 armes de l'inventaire (« trois au maximum »). Le poison « affaiblissant » (r6)
+    // est débloqué par la possession de la capacité de rang 6. L'état vit dans `Character.poisonedWeapons`.
+    poisonWeaponLoadout: {
+      maxWeapons: 3,
+      weakeningUnlockedBy: 'prestige-maitre-des-poisons-r6',
+    },
     sourcePage: 143,
   },
   {
@@ -2029,6 +2039,14 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le voleur peut remplacer le poison rapide par un poison affaiblissant, les effets ne sont appliqués que sur la première attaque réussie avec cette arme. Si la victime rate un test de CON difficulté 12, elle est affaiblie pour le reste du combat (voir états préjudiciables).",
+    // Le poison affaiblissant inflige l'état préjudiciable « Affaibli » (glossaire p. 214) → suivi via
+    // `inflictableStates` (bouton-bascule 1×/combat, patron Botte secrète spadassin-r5). Le nom d'état
+    // « affaiblie » est auto-glosé (StatusEffectChip) dans le texte, pas de richText nécessaire.
+    inflictableStates: {
+      stateIds: ['weakened'],
+      resetOn: 'combat',
+      label: 'État infligé ce combat',
+    },
     sourcePage: 143,
   },
   {
@@ -2051,6 +2069,12 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage sait fabriquer en petites quantités les poisons « lent » et « mortel » (voir page 238), il peut en utiliser [1 + INT] doses par jour (cumul des deux sortes de poisons). La difficulté de résistance à ces poisons est de [12 + INT].",
+    // Le nombre de doses journalières ([=1 + INT], quantité) et la difficulté de résistance ([12 + INT],
+    // total) sont balisés. Le compteur de doses reste VERBATIM : c'est un consommable narratif fabriqué
+    // à l'avance (pas une capacité activable en combat) et `UsageCounter` n'a pas de max scalant par
+    // caractéristique. « (voir page 238) » = renvoi de page conservé littéral (patron spadassin p. 213).
+    richText:
+      "Le personnage sait fabriquer en petites quantités les poisons « lent » et « mortel » (voir page 238), il peut en utiliser [=1 + INT] doses par jour (cumul des deux sortes de poisons). La difficulté de résistance à ces poisons est de [12 + INT].",
     sourcePage: 143,
   },
 
