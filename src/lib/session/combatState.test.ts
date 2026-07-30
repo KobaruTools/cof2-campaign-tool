@@ -7,6 +7,7 @@ import {
   clearStatusesOf,
   removeStatusFrom,
   resetCombat,
+  rollTieBreakSeed,
   setRoundNumber,
   reviveState,
   reviveStateObject,
@@ -38,6 +39,7 @@ describe('reviveStateObject', () => {
       currentTurnKey: 'c-2',
       roundNumber: 4,
       statuses: { 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] },
+      tieBreakSeed: 123456,
     };
     expect(reviveStateObject(state)).toEqual(state);
   });
@@ -233,6 +235,7 @@ describe('resetCombat', () => {
     currentTurnKey: 'c-2',
     roundNumber: 5,
     statuses: { 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] },
+    tieBreakSeed: 42,
   };
 
   it('vide les états, le tour courant, le compteur de manche et les PV des créatures', () => {
@@ -254,6 +257,20 @@ describe('resetCombat', () => {
     expect(inCombat.statuses).toEqual({ 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] });
     expect(inCombat.currentTurnKey).toBe('c-2');
     expect(inCombat.depletions).toEqual({ 'c-1': { hp: { lethal: 4, temp: 0 } } });
+  });
+
+  it('conserve la graine de départage (le retirage est explicite, cf. rollTieBreakSeed)', () => {
+    expect(resetCombat(inCombat).tieBreakSeed).toBe(42);
+  });
+});
+
+describe('rollTieBreakSeed', () => {
+  it('pose la nouvelle graine sans rien toucher d’autre', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, roundNumber: 3, tieBreakSeed: 7 };
+    const rolled = rollTieBreakSeed(state, 99);
+    expect(rolled.tieBreakSeed).toBe(99);
+    expect(rolled.roundNumber).toBe(3);
+    expect(state.tieBreakSeed).toBe(7);
   });
 });
 

@@ -72,6 +72,14 @@ export interface GmCombatState {
    * cumulatifs. **MJ seul auteur** ; vide par défaut (migration douce des combats antérieurs).
    */
   statuses: Record<string, AppliedStatus[]>;
+  /**
+   * Graine du DÉPARTAGE À ÉGALITÉ d'initiative (cf. `lib/session/initiativeOrder`) : quand deux
+   * personnages joueurs ont la même initiative ET la même AGI, l'ordre est tiré au sort à partir
+   * d'elle. Persistée avec le combat pour que le MJ et la projection classent à l'IDENTIQUE et que
+   * l'ordre ne bouge pas d'un rendu à l'autre ; retirée à neuf à chaque réinitialisation de combat.
+   * Migration douce des combats antérieurs (absente/invalide → 0, ordre alors simplement figé).
+   */
+  tieBreakSeed: number;
 }
 
 /**
@@ -96,6 +104,7 @@ export const EMPTY_COMBAT_STATE: GmCombatState = {
   currentTurnKey: null,
   roundNumber: 0,
   statuses: {},
+  tieBreakSeed: 0,
 };
 
 /** Clé `localStorage` dédiée au combat en cours d'une campagne. */
@@ -128,6 +137,7 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
           ? Math.trunc(current.roundNumber)
           : 0,
       statuses: reviveStatuses(current.statuses),
+      tieBreakSeed: reviveTieBreakSeed(current.tieBreakSeed),
     };
   }
 
@@ -153,10 +163,19 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
       roundNumber: 0,
       depletions,
       statuses: {},
+      tieBreakSeed: 0,
     };
   }
 
   return EMPTY_COMBAT_STATE;
+}
+
+/**
+ * Normalise la graine de départage relue : absente/invalide → 0 (migration douce des combats
+ * d'avant le départage à égalité — l'ordre est alors simplement figé, ce qui reste cohérent).
+ */
+function reviveTieBreakSeed(raw: unknown): number {
+  return typeof raw === 'number' && Number.isFinite(raw) ? Math.trunc(raw) : 0;
 }
 
 /**
@@ -293,6 +312,16 @@ export function clearStatusesOf(state: GmCombatState, key: string): GmCombatStat
  */
 export function resetCombat(state: GmCombatState): GmCombatState {
   return { ...state, statuses: {}, currentTurnKey: null, roundNumber: 0, depletions: {} };
+}
+
+/**
+ * Retire une NOUVELLE graine de départage à égalité d'initiative (cf. `initiativeOrder`). Appelée
+ * à la RÉINITIALISATION du combat (composée avec `resetCombat`) : nouveau combat, nouveau tirage
+ * entre joueurs à égalité parfaite. Le tirage lui-même est impur (`randomTieBreakSeed`) et reste
+ * chez l'appelant ; ce réducteur ne fait que le poser.
+ */
+export function rollTieBreakSeed(state: GmCombatState, tieBreakSeed: number): GmCombatState {
+  return { ...state, tieBreakSeed };
 }
 
 /**

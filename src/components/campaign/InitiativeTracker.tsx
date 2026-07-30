@@ -127,6 +127,11 @@ export interface InitiativeRow {
   playerName?: string | null;
   /** Valeur d'initiative (tri décroissant, affichée dans la pastille). */
   initiative: number;
+  /**
+   * Valeur d'AGI effective, utilisée UNIQUEMENT pour départager les égalités d'initiative
+   * (`sortByInitiative`) — jamais affichée. Absente = inconnue (bloc de créature sans caracs).
+   */
+  agility?: number;
   /** PV maximum. */
   maxHp: number;
   /**

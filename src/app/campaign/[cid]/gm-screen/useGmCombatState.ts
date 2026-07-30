@@ -30,11 +30,13 @@ import {
   adjustStatusIntensity,
   clearStatusesOf,
   resetCombat as resetCombatState,
+  rollTieBreakSeed,
   setRoundNumber as setRoundNumberState,
   type AddCreatureOptions,
   type CreatureInstance,
   type GmCombatState,
 } from '@/lib/session/combatState';
+import { randomTieBreakSeed } from '@/lib/session/initiativeOrder';
 import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
 import type { Depletion } from '@/lib/character/types';
 
@@ -167,8 +169,10 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  // Réinitialiser = nouveau combat : on en profite pour RETIRER une graine de départage à égalité
+  // d'initiative (l'ordre entre joueurs à égalité parfaite est retiré au sort, cf. `initiativeOrder`).
   const resetCombat = useCallback(
-    () => applyLocalCombat(cid, (prev) => resetCombatState(prev)),
+    () => applyLocalCombat(cid, (prev) => rollTieBreakSeed(resetCombatState(prev), randomTieBreakSeed())),
     [applyLocalCombat, cid],
   );
 

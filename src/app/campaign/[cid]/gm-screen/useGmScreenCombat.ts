@@ -40,6 +40,7 @@ import {
   type CreatureInstance,
   type AddCreatureOptions,
 } from './useGmCombatState';
+import { sortByInitiative } from '@/lib/session/initiativeOrder';
 import type { AnyStatusEffectId, AppliedStatus } from '@/lib/character/statusEffects';
 import { featureById } from '@/data';
 import { SITUATIONAL_EFFECT_IDS, type SituationalEffectId } from '@/data/schema';
@@ -139,6 +140,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     statuses,
     currentTurnKey,
     roundNumber,
+    tieBreakSeed,
     addCreature,
     removeCreature,
     setCreatureVisibility,
@@ -267,6 +269,9 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           profileColor: classColor(summary.classId),
           portraitSrc: `/classes/${summary.classId}${character.portraitVariant === 'alt' ? '-2' : ''}.webp`,
           initiative,
+          // AGI EFFECTIVE (celle qui alimente déjà les dérivées : peuple, capacités, équipement) —
+          // départage les égalités d'initiative. Profil incomplet (pas de dérivées) → inconnue.
+          agility: view.derivedInput?.abilities.AGI,
           maxHp,
           combatStats,
           // États appliqués (lecture seule) — sert la projection (PER-282) ; l'écran de MJ garde en
@@ -323,6 +328,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             profileColor: accent,
             accentColor: accent,
             initiative,
+            // AGI du bloc du bestiaire (absente pour les variantes qui renvoient à leur base).
+            agility: blob.abilities?.AGI,
             maxHp,
             combatStats,
             // États appliqués (lecture seule) — sert la projection (PER-282).
@@ -339,10 +346,12 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     [labeledCreatures, blobs, depletions, setCreatureDepletion, setCreatureVisibility, statuses],
   );
 
-  // Ordre d'initiative décroissant (tri stable : à égalité, l'ordre d'entrée est conservé).
+  // Ordre d'initiative décroissant, avec départage à ÉGALITÉ (couche pure `initiativeOrder`) :
+  // joueurs avant créatures, puis AGI la plus haute, puis tirage au sort reproductible (graine
+  // persistée avec le combat → MJ et projection classent à l'identique).
   const initiativeRows = useMemo(
-    () => [...characterRows, ...creatureRows].sort((a, b) => b.initiative - a.initiative),
-    [characterRows, creatureRows],
+    () => sortByInitiative([...characterRows, ...creatureRows], tieBreakSeed),
+    [characterRows, creatureRows, tieBreakSeed],
   );
 
   const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';
