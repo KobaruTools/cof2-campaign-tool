@@ -3645,11 +3645,17 @@ export interface Creature {
   /** Renvoi verbatim aux capacités de la base (« Voir ci-dessus ») quand la variante ne les réimprime pas. */
   sharedAbilitiesNote?: string;
   /**
-   * Chemin public de l'illustration détourée (die-cut, fond transparent) extraite du livre de base,
-   * ex. `/bestiary/loup.webp`. Affichée en FILIGRANE derrière le bloc de stats (semi-transparente,
-   * ancrée en haut à droite, rognée par le bloc — pur habillage). Renseignée seulement sur les
-   * créatures que le livre illustre ; une VARIANTE sans illustration propre retombe sur celle de sa
-   * base (`baseCreatureId`) côté rendu. Absente → aucun filigrane.
+   * Illustration détourée (die-cut, fond transparent), affichée en FILIGRANE derrière le bloc de
+   * stats (semi-transparente, ancrée en haut à droite, rognée par le bloc — pur habillage).
+   * Renseignée seulement sur les créatures que le livre illustre ; une VARIANTE sans illustration
+   * propre retombe sur celle de sa base (`baseCreatureId`) côté rendu. Absente → aucun filigrane.
+   *
+   * Deux formes, selon que la source est gratuite ou payante — le rendu les traite à l'identique
+   * (toutes deux valides dans `url(…)`) :
+   *   - contenu GRATUIT : chemin public, ex. `/bestiary/loup.webp` (asset servi sans auth) ;
+   *   - contenu PAYANT : **data URI** (`data:image/webp;base64,…`) embarquée dans le blob JSONB
+   *     par le script d'ingestion, pour que l'image hérite de la même barrière RLS que le texte
+   *     (PER-245). Une image payante ne doit JAMAIS être servie depuis `public/`.
    */
   illustration?: string;
   sourcePage: SourcePage;

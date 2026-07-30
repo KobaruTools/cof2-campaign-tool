@@ -703,7 +703,9 @@ export function BestiaryStatBlock({
           enveloppe. Léger débord en haut/à droite rogné par `overflow` (effet de style), et fondu
           vers la gauche pour ne pas gêner la lecture. Purement décoratif (`aria-hidden`). Les
           variantes héritent de l'illustration de leur base (cf. `withIllustrations` dans
-          `creatures.ts`). */}
+          `creatures.ts`). La source est indifféremment un chemin public (contenu gratuit) ou une
+          DATA URI embarquée dans le blob (contenu payant, PER-245) : l'URL est QUOTÉE pour que
+          les `;` et `,` d'une data URI ne cassent pas la valeur CSS. */}
       {creature.illustration && (
         <Box
           aria-hidden
@@ -717,7 +719,7 @@ export function BestiaryStatBlock({
             zIndex: -1,
             pointerEvents: 'none',
             opacity: 0.35,
-            backgroundImage: `url(${creature.illustration})`,
+            backgroundImage: `url("${creature.illustration}")`,
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'top right',
             backgroundSize: 'contain',

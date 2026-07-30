@@ -25,7 +25,7 @@
  * erreur. Sans le flag, cette source n'est pas touchée.
  */
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { extname, resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { creatures } from '../src/data/creatures';
 import { withInheritedDefense } from '../src/lib/bestiary/creatureDefense';
@@ -75,6 +75,65 @@ async function loadPaidBestiary(): Promise<Creature[] | null> {
   } catch {
     return null;
   }
+}
+
+// ── Illustrations du contenu PAYANT (PER-245) ────────────────────────────────
+// Elles ne peuvent pas vivre dans `public/` (assets statiques servis à tous, sans
+// auth) : on les embarque en DATA URI dans le blob JSONB de la créature, où elles
+// héritent exactement de la même barrière RLS que le texte. Aucun bucket, aucune
+// URL signée. Les fichiers sources sont gitignorés (`private/illustrations/`) et
+// produits par `private/tools/extract-illustrations.py`.
+const PAID_ILLUSTRATIONS_DIR = 'private/illustrations';
+
+const MIME_BY_EXTENSION: Record<string, string> = {
+  '.webp': 'image/webp',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+};
+
+/**
+ * Remplace le champ `illustration` d'une créature PAYANTE — un simple NOM DE FICHIER
+ * (`aberratus.webp`) — par la data URI du fichier `private/illustrations/` correspondant.
+ *
+ * Le contenu GRATUIT n'est pas concerné : ses illustrations sont des chemins publics
+ * (`/bestiary/loup.webp`, cf. `withIllustrations` dans `src/data/creatures.ts`) et sont
+ * laissées telles quelles — d'où la discrimination sur le `/` initial. Une data URI déjà
+ * formée est également laissée intacte (ré-ingestion d'une liste déjà encodée).
+ *
+ * Fichier introuvable → avertissement + champ RETIRÉ (fail-safe) : mieux vaut une créature
+ * sans filigrane qu'un `url(aberratus.webp)` résolu en 404 relative dans le navigateur.
+ */
+function withEmbeddedIllustrations(list: Creature[]): Creature[] {
+  let embedded = 0;
+  let bytes = 0;
+  const out = list.map((c) => {
+    const ref = c.illustration;
+    if (!ref || ref.startsWith('/') || ref.startsWith('data:')) return c;
+    try {
+      const file = readFileSync(resolve(process.cwd(), PAID_ILLUSTRATIONS_DIR, ref));
+      const mime = MIME_BY_EXTENSION[extname(ref).toLowerCase()];
+      if (!mime) throw new Error(`extension non gérée (${extname(ref)})`);
+      embedded += 1;
+      bytes += file.byteLength;
+      return { ...c, illustration: `data:${mime};base64,${file.toString('base64')}` };
+    } catch (e) {
+      console.warn(
+        `⚠ Illustration « ${ref} » (${c.id}) introuvable dans ${PAID_ILLUSTRATIONS_DIR} — ` +
+          `créature ingérée SANS filigrane. ${e instanceof Error ? e.message : ''}`,
+      );
+      const withoutIllustration = { ...c };
+      delete withoutIllustration.illustration;
+      return withoutIllustration;
+    }
+  });
+  if (embedded > 0) {
+    console.log(
+      `${embedded} illustration(s) embarquée(s) en data URI (${(bytes / 1024).toFixed(0)} Ko d’images, ` +
+        `≈ ${((bytes * 4) / 3 / 1024).toFixed(0)} Ko une fois en base64).`,
+    );
+  }
+  return out;
 }
 
 /**
@@ -290,7 +349,9 @@ async function main(): Promise<void> {
         'Flag --with-bestiary : private/bestiary-paid.ts introuvable ou vide — source « bestiaire » ignorée.',
       );
     } else {
-      await ingestSource(supabase, PAID_BESTIARY_SOURCE, paid);
+      // Les illustrations payantes sont embarquées en data URI DANS le blob (PER-245) :
+      // même barrière RLS que le texte, rien en asset public.
+      await ingestSource(supabase, PAID_BESTIARY_SOURCE, withEmbeddedIllustrations(paid));
       console.log(
         `Source payante « ${PAID_BESTIARY_SOURCE.slug} » ingérée (${paid.length} créatures).`,
       );
