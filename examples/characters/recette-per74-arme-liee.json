@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-arme-liee",
+  "name": "Recette PER-74 — Arme liée (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie de l'arme liée p. 147) — 2ᵉ voie de la catégorie COMBATTANT. ÉTAT MONTRÉ : la voie est peuplée en VERBATIM SEUL — rien n'entre encore dans les stats, c'est VOULU. Cette recette sert à ce que tu voies la voie sur pièce et que tu tranches rang par rang ce qu'on mécanise, comme pour les armes à deux mains. COULEUR PAR FAMILLE : voie COMBATTANT → habillage prestige ROUGE (étoile d'en-tête, liseré métallique des cartes de rang, puces de capacité). L'ARME LIÉE DE CE PERSONNAGE = l'ÉPÉE LONGUE équipée (famille « Épées », choisie en arme de prédilection au maître d'armes). Une dague de lancer dort dans le sac pour la clause « arme de lancer » du rang 4. R4 Fidèle → l'arme est considérée comme MAGIQUE + un DÉ BONUS en attaque UNE FOIS PAR COMBAT + rappel dans la main en action gratuite (test opposé de CHA contre la FOR si un autre la tient — CHA 2 ici). À TRANCHER : compteur « 1×/combat » pour le dé bonus ? badge « Magique » sur la carte d'attaque au contact (l'équivalent existe déjà pour les flèches de l'archer arcanique) ? R5 Alliée loyale → 1×/combat, remplacer un 1 au test d'attaque par 20. À TRANCHER : compteur « 1×/combat » ? R6 Arme dansante (M) → 1×/combat, l'arme se bat seule pendant [rang] rounds (rang 8 ici → 8 rounds) avec la valeur d'ATTAQUE MAGIQUE du PJ et les DM de base de l'arme. À TRANCHER : « [rang] rounds » mis en forme ? compteur ? faut-il une carte d'attaque dédiée (l'arme a sa propre touche et ses propres DM) ou le texte suffit-il ? R7 Aura élémentaire (A) → 1×/combat, pendant CON minutes (3 ici), +1d4° aux DM d'un élément FIGÉ une fois pour toutes (feu / acide / froid / électricité), NON cumulable avec un autre bonus magique élémentaire. À TRANCHER : choix PERMANENT de l'élément (puce orange, patron du sang-dragon) ? bonus de DM affiché ? R8 Milles lames (L) → 1×/jour, sacrifie 2d4° PV, zone de 10 m, 1d4° DM automatiques pendant 5 rounds. À TRANCHER : compteur journalier ? les dés mis en forme ? CONTRÔLE AU PASSAGE (livraison précédente) : sur la ligne de l'ÉPÉE LONGUE dans l'inventaire, la puce violette « 19-20 » doit être là (Science du critique, r2 du maître d'armes, armes de prédilection = Épées), avec la même puce sous la carte Attaque au contact. Déséquipe l'épée → les deux disparaissent."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 4,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 2,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 4,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 2,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "maitre-d-armes-r1",
+    "maitre-d-armes-r2",
+    "maitre-d-armes-r3",
+    "maitre-d-armes-r4",
+    "maitre-d-armes-r5",
+    "prestige-arme-liee-r4",
+    "prestige-arme-liee-r5",
+    "prestige-arme-liee-r6",
+    "prestige-arme-liee-r7",
+    "prestige-arme-liee-r8"
+  ],
+  "featureChoices": {
+    "maitre-d-armes-r1": [
+      "swords"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "petit-bouclier",
+      "quantity": 1,
+      "worn": {
+        "slot": "shield"
+      }
+    },
+    {
+      "itemId": "cotte-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "dague-de-lancer",
+      "quantity": 3
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette arme liée (2ᵉ voie COMBATTANT, p. 147), VERBATIM SEUL : aucun compteur, aucun choix d'élément, aucun bonus calculé. L'arme liée = l'épée longue équipée. Points à trancher notés dans la description. Contrôle de non-régression : puce de critique « 19-20 » sur la ligne de l'épée (Science du critique + armes de prédilection Épées).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
