@@ -21,8 +21,11 @@
  * PER-280 : sur l'écran de MJ, chaque colonne affiche EN PLUS des PV la DEF et les attaques
  * (contact/distance/magie), en valeurs AJUSTÉES par les états appliqués (valeur baissée en rouge,
  * indicateur de dé malus), et un BADGE par état posé — effet verbatim en tooltip, ✕ de retrait, et
- * compteur ±N pour les états cumulatifs. Ces éléments ne sont rendus qu'en mode MJ (jamais en
- * projection : les nombres ajustés restent secrets, cf. PER-282).
+ * compteur ±N pour les états cumulatifs. Les NOMBRES ajustés restent réservés au mode MJ.
+ *
+ * PER-282 : la PROJECTION affiche elle aussi les badges d'états des combattants visibles, mais en
+ * LECTURE SEULE (via `row.appliedStatuses` + `StatusChipVisual`, sans ✕/± ni nombres ajustés) — les
+ * DEF/attaque ajustées restent secrètes côté MJ, comme le NC et les PV.
  */
 import { useState, type ReactNode } from 'react';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -62,6 +65,7 @@ import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import {
   buildStatusGroups,
+  StatusChipVisual,
   StatusEffectTooltip,
   statusIconId,
   statusLabel,
@@ -132,6 +136,13 @@ export interface InitiativeRow {
    * l'écran de MJ (jamais en projection : les nombres restent secrets, cf. PER-282).
    */
   combatStats?: CombatStats;
+  /**
+   * États de combat appliqués à ce combattant (PER-282), en LECTURE SEULE. Alimenté pour TOUTES les
+   * lignes (MJ et projection). Sur l'écran de MJ, les badges interactifs (✕/±) passent par le
+   * câblage `statusControls` (`ColumnStatusRender`) ; ce champ sert la PROJECTION, qui affiche les
+   * mêmes états en badges lecture seule (sans les nombres ajustés, réservés au MJ).
+   */
+  appliedStatuses?: AppliedStatus[];
   /** Dépletion courante (manque létal + temporaire). */
   depletion: Depletion;
   onDamage: (amount: number, kind: DamageKind) => void;
@@ -518,6 +529,36 @@ function AppliedStatusBadge({
   );
 }
 
+/**
+ * Rangée de badges d'états en LECTURE SEULE pour la PROJECTION (PER-282) : mêmes puces que la palette
+ * MJ (`StatusChipVisual`, badge custom rouge + effet verbatim en info-bulle) et que le rappel de la
+ * fiche joueur (`ActiveStatusPanel`), avec l'intensité « ×N » pour les états cumulatifs. AUCUN
+ * contrôle (pas de ✕/±) ni nombre ajusté (DEF/attaque restent réservés au MJ).
+ */
+function ReadonlyStatusRow({ applied }: { applied: AppliedStatus[] }) {
+  return (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+      {applied.map((s) => {
+        const intensity = clampIntensity(s.id, s.intensity ?? 1);
+        const stacked = isStackingStatus(s.id) && intensity > 1;
+        return (
+          <Stack key={s.id} direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+            <StatusChipVisual id={s.id} />
+            {stacked && (
+              <Box
+                component="span"
+                sx={{ fontSize: '0.75rem', fontWeight: 800, color: 'error.light' }}
+              >
+                {`×${intensity}`}
+              </Box>
+            )}
+          </Stack>
+        );
+      })}
+    </Box>
+  );
+}
+
 /** Interactions d'états attachées à une colonne (mode écran de MJ uniquement). */
 interface ColumnStatusInteractive {
   /** Réf de la zone de drop (`@dnd-kit`). */
@@ -712,6 +753,11 @@ function CombatantColumn({
             ))}
           </Box>
         )}
+        {/* Projection (PER-282) : mêmes états en badges LECTURE SEULE (pas de ✕/±, pas de nombres
+            ajustés). Rendu seulement en projection ; le chemin MJ passe par `status` ci-dessus. */}
+        {projection && (row.appliedStatuses?.length ?? 0) > 0 && (
+          <ReadonlyStatusRow applied={row.appliedStatuses!} />
+        )}
       </Stack>
     </Box>
   );
@@ -805,7 +851,7 @@ export interface InitiativeTrackerProps {
    * inutilement — barres de PV (joueurs ET créatures), NC des créatures, en-tête et
    * bouton « Tour suivant ». Le tour courant reste mis en évidence (piloté depuis
    * l'écran de MJ, reflété ici via la synchro). Ne restent que portrait + initiative +
-   * identité, en compact.
+   * identité — et les badges d'états en lecture seule (PER-282) — en compact.
    */
   projection?: boolean;
   /**

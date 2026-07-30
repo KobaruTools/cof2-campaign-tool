@@ -257,6 +257,9 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           initiative,
           maxHp,
           combatStats,
+          // États appliqués (lecture seule) — sert la projection (PER-282) ; l'écran de MJ garde en
+          // plus le câblage interactif via `statusControls`.
+          appliedStatuses: statuses[character.id],
           depletion: character.depletion,
           onDamage: (amount: number, kind: DamageKind) =>
             upsert({ ...character, depletion: applyDamage(character.depletion, amount, kind, maxHp) }),
@@ -265,7 +268,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           persistKey: `gm-init:${character.id}`,
         };
       }),
-    [claimed, upsert, playerNameById],
+    [claimed, upsert, playerNameById, statuses],
   );
 
   // Lignes des créatures ajoutées (PV suivis en local). Init./PV lus du blob du bestiaire ;
@@ -310,6 +313,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             initiative,
             maxHp,
             combatStats,
+            // États appliqués (lecture seule) — sert la projection (PER-282).
+            appliedStatuses: statuses[inst.id],
             depletion,
             onDamage: (amount: number, kind: DamageKind) =>
               setCreatureDepletion(inst.id, applyDamage(depletion, amount, kind, maxHp)),
@@ -319,7 +324,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           },
         ];
       }),
-    [labeledCreatures, blobs, depletions, setCreatureDepletion, setCreatureVisibility],
+    [labeledCreatures, blobs, depletions, setCreatureDepletion, setCreatureVisibility, statuses],
   );
 
   // Ordre d'initiative décroissant (tri stable : à égalité, l'ordre d'entrée est conservé).
