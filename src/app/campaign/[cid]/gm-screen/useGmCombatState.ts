@@ -30,6 +30,7 @@ import {
   adjustStatusIntensity,
   clearStatusesOf,
   resetCombat as resetCombatState,
+  setRoundNumber as setRoundNumberState,
   type AddCreatureOptions,
   type CreatureInstance,
   type GmCombatState,
@@ -53,6 +54,8 @@ export interface GmCombatStateApi extends GmCombatState {
   setCreatureDepletion: (instanceId: string, depletion: Depletion) => void;
   /** Fixe le combattant dont c'est le tour. */
   setCurrentTurnKey: (key: string | null) => void;
+  /** Fixe le numéro de manche (« Tour N »), borné à ≥ 0 (incrément auto de fin de manche + réglage manuel). */
+  setRoundNumber: (roundNumber: number) => void;
   /**
    * Applique un état négatif sur un combattant (`combatantKey` = id de perso joueur OU id
    * d'instance de créature). Idempotent : ré-appliquer fixe l'intensité (bornée au plafond).
@@ -140,6 +143,12 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const setRoundNumber = useCallback(
+    (roundNumber: number) =>
+      applyLocalCombat(cid, (prev) => setRoundNumberState(prev, roundNumber)),
+    [applyLocalCombat, cid],
+  );
+
   const applyStatus = useCallback(
     (combatantKey: string, id: AnyStatusEffectId, intensity?: number) =>
       applyLocalCombat(cid, (prev) => applyStatusTo(prev, combatantKey, id, intensity)),
@@ -170,6 +179,7 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     setCreatureVisibility,
     setCreatureDepletion,
     setCurrentTurnKey,
+    setRoundNumber,
     applyStatus,
     removeStatus,
     adjustStatus,

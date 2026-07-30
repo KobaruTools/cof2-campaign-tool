@@ -101,6 +101,10 @@ export interface GmScreenCombat {
   currentTurnKey: string | null;
   /** Fixe le combattant dont c'est le tour. */
   setCurrentTurnKey: (key: string | null) => void;
+  /** Numéro de la manche en cours (« Tour N » ; `0` = combat non démarré/réinitialisé). */
+  roundNumber: number;
+  /** Fixe le numéro de manche, borné à ≥ 0 (incrément auto de fin de manche + réglage manuel). */
+  setRoundNumber: (roundNumber: number) => void;
   /** Ajoute une instance de la créature `slug` au combat (visibilité joueurs + camp initiaux). */
   addCreature: (slug: string, options?: AddCreatureOptions) => void;
   /** Retire l'instance `instanceId` du combat. */
@@ -134,11 +138,13 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     depletions,
     statuses,
     currentTurnKey,
+    roundNumber,
     addCreature,
     removeCreature,
     setCreatureVisibility,
     setCreatureDepletion,
     setCurrentTurnKey,
+    setRoundNumber,
     applyStatus,
     removeStatus,
     adjustStatus,
@@ -353,6 +359,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     initiativeRows,
     currentTurnKey,
     setCurrentTurnKey,
+    roundNumber,
+    setRoundNumber,
     addCreature,
     removeCreature,
     setCreatureVisibility,

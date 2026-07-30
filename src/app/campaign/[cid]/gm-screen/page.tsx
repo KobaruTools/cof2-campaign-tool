@@ -112,6 +112,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     initiativeRows,
     currentTurnKey,
     setCurrentTurnKey,
+    roundNumber,
+    setRoundNumber,
     addCreature,
     removeCreature,
     setCreatureVisibility,
@@ -355,6 +357,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             rows={initiativeRows}
             currentTurnKey={currentTurnKey}
             onCurrentTurnKeyChange={setCurrentTurnKey}
+            roundNumber={roundNumber}
+            onRoundNumberChange={setRoundNumber}
             headerAction={<OpenTrackerWindowButton cid={cid} />}
             statusControls={{
               statusesByKey: statuses,

@@ -7,6 +7,7 @@ import {
   clearStatusesOf,
   removeStatusFrom,
   resetCombat,
+  setRoundNumber,
   reviveState,
   reviveStateObject,
   storageKey,
@@ -35,6 +36,7 @@ describe('reviveStateObject', () => {
       nextInstanceId: 3,
       depletions: { 'c-1': { hp: { lethal: 2, temp: 0 } } },
       currentTurnKey: 'c-2',
+      roundNumber: 4,
       statuses: { 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] },
     };
     expect(reviveStateObject(state)).toEqual(state);
@@ -45,6 +47,13 @@ describe('reviveStateObject', () => {
     expect(revived.nextInstanceId).toBe(2);
     expect(revived.depletions).toEqual({});
     expect(revived.currentTurnKey).toBeNull();
+  });
+
+  it('défaute roundNumber à 0 pour un combat antérieur (absent ou invalide)', () => {
+    expect(reviveStateObject({ creatures: [{ id: 'c-1', slug: 'rat' }] }).roundNumber).toBe(0);
+    expect(reviveStateObject({ creatures: [], roundNumber: -3 }).roundNumber).toBe(0);
+    expect(reviveStateObject({ creatures: [], roundNumber: 2.7 }).roundNumber).toBe(2);
+    expect(reviveStateObject({ banditIds: [1] }).roundNumber).toBe(0);
   });
 
   it('migre l’ancien format « bandits » en instances bandit-de-base', () => {
@@ -222,13 +231,15 @@ describe('resetCombat', () => {
     nextInstanceId: 3,
     depletions: { 'c-1': { hp: { lethal: 4, temp: 0 } } },
     currentTurnKey: 'c-2',
+    roundNumber: 5,
     statuses: { 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] },
   };
 
-  it('vide les états, le tour courant et les PV des créatures', () => {
+  it('vide les états, le tour courant, le compteur de manche et les PV des créatures', () => {
     const reset = resetCombat(inCombat);
     expect(reset.statuses).toEqual({});
     expect(reset.currentTurnKey).toBeNull();
+    expect(reset.roundNumber).toBe(0);
     expect(reset.depletions).toEqual({});
   });
 
@@ -243,6 +254,29 @@ describe('resetCombat', () => {
     expect(inCombat.statuses).toEqual({ 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] });
     expect(inCombat.currentTurnKey).toBe('c-2');
     expect(inCombat.depletions).toEqual({ 'c-1': { hp: { lethal: 4, temp: 0 } } });
+  });
+});
+
+describe('setRoundNumber', () => {
+  it('fixe le compteur de manche', () => {
+    expect(setRoundNumber(EMPTY_COMBAT_STATE, 3).roundNumber).toBe(3);
+  });
+
+  it('borne à ≥ 0 et tronque les décimales', () => {
+    expect(setRoundNumber(EMPTY_COMBAT_STATE, -1).roundNumber).toBe(0);
+    expect(setRoundNumber(EMPTY_COMBAT_STATE, 2.9).roundNumber).toBe(2);
+  });
+
+  it('renvoie la même référence si la valeur est inchangée (no-op)', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, roundNumber: 4 };
+    expect(setRoundNumber(state, 4)).toBe(state);
+    expect(setRoundNumber(state, 4.2)).toBe(state);
+  });
+
+  it('ne mute pas l’état source (pur)', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, roundNumber: 1 };
+    setRoundNumber(state, 9);
+    expect(state.roundNumber).toBe(1);
   });
 });
 

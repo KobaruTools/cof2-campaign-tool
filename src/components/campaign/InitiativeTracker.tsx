@@ -35,6 +35,7 @@ import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import CheckIcon from '@mui/icons-material/Check';
 import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -904,6 +905,18 @@ export interface InitiativeTrackerProps {
   currentTurnKey: string | null;
   onCurrentTurnKeyChange: (key: string | null) => void;
   /**
+   * Compteur de MANCHE affiché à côté du titre (« Tour N »). `0` = combat non démarré/réinitialisé.
+   * Contrôlé/persisté par l'appelant, comme le tour courant. Optionnel : la projection ne l'affiche
+   * pas (en-tête masqué). Réservé au MJ (auteur unique).
+   */
+  roundNumber?: number;
+  /**
+   * Fixe le compteur de manche (valeur absolue, bornée à ≥ 0 par l'appelant). Appelé à l'incrément
+   * automatique de fin de manche (« Tour suivant » qui reboucle) et par les réglages manuels (±, ⟳0).
+   * Absent en projection.
+   */
+  onRoundNumberChange?: (roundNumber: number) => void;
+  /**
    * Mode PROJECTION (PER-248) : la fenêtre « présentation » destinée à être projetée
    * pour les joueurs. On y masque tout ce qui est réservé au MJ ou qui prend de la place
    * inutilement — barres de PV (joueurs ET créatures), NC des créatures, en-tête et
@@ -929,6 +942,8 @@ export function InitiativeTracker({
   rows,
   currentTurnKey,
   onCurrentTurnKeyChange,
+  roundNumber = 0,
+  onRoundNumberChange,
   projection = false,
   headerAction,
   statusControls,
@@ -939,6 +954,9 @@ export function InitiativeTracker({
     // Introuvable (−1, ex. bandit retiré) ou pas encore démarré → on démarre au premier.
     const next = idx < 0 ? 0 : (idx + 1) % rows.length;
     onCurrentTurnKeyChange(rows[next].key);
+    // Nouvelle manche : on reboucle sur le premier combattant (next === 0), que ce soit au
+    // démarrage (tour courant `null`) ou en fin de tour d'initiative → « Tour N » +1.
+    if (next === 0) onRoundNumberChange?.(roundNumber + 1);
   };
 
   // En PROJECTION, on retire les combattants masqués aux joueurs (créatures cachées) :
@@ -953,9 +971,59 @@ export function InitiativeTracker({
           MJ, donc rien de tout ça en mode projection. */}
       {!projection && (
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             {"Ordre d'initiative"}
           </Typography>
+          {/* Compteur de manche (« Tour N ») : +1 auto en fin de tour d'initiative, réglable et
+              remis à 0 à la main, remis à 0 aussi par la réinitialisation du combat (PER-283). */}
+          {onRoundNumberChange && (
+            <Stack
+              direction="row"
+              spacing={0.25}
+              sx={{
+                alignItems: 'center',
+                pl: 1,
+                pr: 0.25,
+                py: 0.25,
+                borderRadius: 1.5,
+                border: (t) => `1px solid ${alpha(t.palette.divider, 0.8)}`,
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+                {`Tour ${roundNumber}`}
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={() => onRoundNumberChange(roundNumber - 1)}
+                disabled={roundNumber <= 0}
+                aria-label="Manche précédente"
+                title="Manche précédente"
+              >
+                <RemoveIcon fontSize="inherit" />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={() => onRoundNumberChange(roundNumber + 1)}
+                aria-label="Manche suivante"
+                title="Manche suivante"
+              >
+                <AddIcon fontSize="inherit" />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={() => onRoundNumberChange(0)}
+                disabled={roundNumber === 0}
+                aria-label="Remettre le compteur de tour à zéro"
+                title="Remettre à 0"
+              >
+                <RestartAltIcon fontSize="inherit" />
+              </IconButton>
+            </Stack>
+          )}
+          <Box sx={{ flexGrow: 1 }} />
           {headerAction}
           <Button
             variant="contained"
