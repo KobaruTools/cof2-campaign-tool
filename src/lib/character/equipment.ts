@@ -104,6 +104,24 @@ export function wornWeaponIsTwoHanded(line: EquipmentLine): boolean {
 }
 
 /**
+ * PER-74 — le personnage TIENT-IL une arme de CONTACT à DEUX MAINS ? Condition automatique des
+ * capacités de la voie des armes à deux mains (p. 146 : « Tenir à distance » +1/+2 en DEF,
+ * « Critique destructeur »). Balaie TOUTES les lignes portées (main principale ou secondaire) et
+ * s'appuie sur `wornWeaponIsTwoHanded` → la PRISE compte (épée bâtarde tenue à deux mains ✓, à une
+ * main ✗). Restreint aux armes de CONTACT : arcs, arbalètes et mousquets sont eux aussi de catégorie
+ * `twoHands` mais ne sont pas des armes de mêlée — sans ce filtre, un archer gagnerait la DEF de
+ * « Tenir à distance ». Les objets personnalisés (hors catalogue) sont ignorés, faute de savoir
+ * s'ils frappent au contact. Sans-safe.
+ */
+export function isTwoHandedMeleeWeaponWielded(equipment: EquipmentLine[] = []): boolean {
+  return equipment.some((line) => {
+    if (!wornWeaponIsTwoHanded(line) || isCustomItem(line)) return false;
+    const item = effectiveItem(line);
+    return item?.category === 'weapon' && !!item.melee;
+  });
+}
+
+/**
  * Ligne de l'arme de CONTACT effectivement TENUE EN MAIN — résolveur CANONIQUE de
  * « l'arme au contact courante » : main principale prioritaire, sinon main secondaire
  * (combat à deux armes). `null` si aucune arme de contact n'est portée (le personnage

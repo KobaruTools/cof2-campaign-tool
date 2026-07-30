@@ -639,6 +639,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Contre les créatures de taille grande et supérieure, les DM des armes à deux mains augmentent d'une catégorie d12 et 2d6 passent à 2d8, 1d8 et 1d10 passent à 1d12 (uniquement pour les armes tenues à deux mains), 2d8 passent à 2d10.",
+    // PER-74 (arbitrage proprio) : on BALISE seulement les dés de la table de conversion — le DM de
+    // la carte d'attaque n'est PAS recalculé (la montée dépend de la TAILLE DE LA CIBLE, inconnue de
+    // la fiche : aucun interrupteur, aucun badge). La ponctuation du livre est conservée telle quelle.
+    richText:
+      "Contre les créatures de taille grande et supérieure, les DM des armes à deux mains augmentent d'une catégorie {d12} et {2d6} passent à {2d8}, {1d8} et {1d10} passent à {1d12} (uniquement pour les armes tenues à deux mains), {2d8} passent à {2d10}.",
     sourcePage: 146,
   },
   {
@@ -650,6 +655,16 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque le personnage tient une arme à deux mains, il gagne un bonus de +1 en DEF. Ce bonus passe à +2 au rang 8.",
+    // PER-74 : bonus de DEF CALCULÉ, conditionné à l'arme RÉELLEMENT tenue à deux mains (patron
+    // `armor-def-bonus`/`heavy-armor-def-bonus` : résolu depuis l'équipement, SANS interrupteur
+    // manuel). +1 dès le rang 6, +2 au rang 8 (palier `path-rank`). Déséquiper l'arme — ou repasser
+    // une arme polyvalente à une main — retire le bonus AUTOMATIQUEMENT.
+    effects: [
+      {
+        kind: 'two-handed-weapon-def-bonus',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 6, value: 1 }, { min: 8, value: 2 }] },
+      },
+    ],
     sourcePage: 146,
   },
   {
@@ -661,6 +676,15 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage abaisse son seuil de critique avec toutes les armes à deux mains de 1 point. De plus, lorsqu'il obtient un critique avec une arme à deux mains, le combattant obtient +2d4° aux DM en plus des effets du critique.",
+    richText:
+      "Le personnage abaisse son seuil de critique avec toutes les armes à deux mains de 1 point. De plus, lorsqu'il obtient un critique avec une arme à deux mains, le combattant obtient +{2d4°} aux DM en plus des effets du critique.",
+    // PER-74 : plage de critique MÉCANISÉE (patron rapière / Briseur d'os) — badge « Critique 19-20 »
+    // sous la carte Attaque au contact, cumulable avec la plage intrinsèque de l'arme portée
+    // (vivelame 19-20 → 18-20). Condition `twoHandedMelee` = arme de contact TENUE à deux mains
+    // (prise « Deux mains » d'une épée bâtarde comprise), évaluée automatiquement sur l'équipement.
+    // Les +2d4° de DM du critique restent VERBATIM (balisés) : ils ne s'appliquent qu'À un critique,
+    // pas au DM courant de l'arme.
+    criticalRange: { scope: 'melee', value: 1, weaponCondition: { kind: 'twoHandedMelee' } },
     sourcePage: 146,
   },
   {
@@ -672,6 +696,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque vous obtenez le résultat maximal sur un dé de DM d'une attaque au contact avec une arme à deux mains (par exemple 6 sur l'un des d6 de l'épée à deux mains), si la cible possède un NC inférieur ou égal à 5, elle est décapitée (ou même tranchée en deux) et morte. Si vous obtenez le résultat maximal sur les deux dés de DM (impossible donc si vous lancez un seul dé de DM !), le personnage décapite une cible d'un NC inférieur à son niveau. Une capacité qui lui permet d'obtenir automatiquement les DM maximaux (comme Frappe massive) ne permet pas de déclencher cet effet.",
+    // PER-74 : seule mise en forme = le « d6 » de l'exemple (épée à deux mains), balisé en dé. Le
+    // reste est verbatim : la mise à mort porte sur la CIBLE (NC), rien à calculer sur la fiche.
+    richText:
+      "Lorsque vous obtenez le résultat maximal sur un dé de DM d'une attaque au contact avec une arme à deux mains (par exemple 6 sur l'un des {d6} de l'épée à deux mains), si la cible possède un NC inférieur ou égal à 5, elle est décapitée (ou même tranchée en deux) et morte. Si vous obtenez le résultat maximal sur les deux dés de DM (impossible donc si vous lancez un seul dé de DM !), le personnage décapite une cible d'un NC inférieur à son niveau. Une capacité qui lui permet d'obtenir automatiquement les DM maximaux (comme Frappe massive) ne permet pas de déclencher cet effet.",
     sourcePage: 146,
   },
 

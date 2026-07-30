@@ -548,6 +548,8 @@ describe('effectContext', () => {
       armorWorn: false,
       // Armure lourde portée (PER-236) : aucune non plus.
       heavyArmorWorn: false,
+      // Arme de contact tenue à deux mains (PER-74, Tenir à distance) : aucune arme équipée ici.
+      twoHandedMeleeWielded: false,
     });
   });
 });
@@ -1427,6 +1429,95 @@ describe('criticalRangeSources — plage de critique élargie (PER-133/136)', ()
     // Total cumulé au contact = 2 + 1 + 1 = 4 (borné à 16-20 au formatage). Pas de double comptage.
     const total = src.filter((s) => s.scope === 'melee').reduce((acc, s) => acc + s.value, 0);
     expect(total).toBe(4);
+  });
+});
+
+/** Rangs 4-8 de la voie de prestige des armes à deux mains (p. 146). */
+const TWO_HANDED_RANKS = [4, 5, 6, 7, 8].map((r) => `prestige-armes-a-deux-mains-r${r}`);
+
+describe('voie des armes à deux mains — DEF et critique liés à la PRISE (PER-74, p. 146)', () => {
+  const twoHandedChar = (equipment: EquipmentLine[], featureIds = TWO_HANDED_RANKS): Character =>
+    ({
+      level: 16,
+      abilities: { AGI: 2, CON: 3, FOR: 4, PER: 1, CHA: 0, INT: 0, VOL: 1 } as Record<AbilityId, number>,
+      featureIds,
+      effectToggles: {},
+      featureChoices: {},
+      equipment,
+    }) as Character;
+  const defFrom = (c: Character): number => modsFromFeatures(c.featureIds, effectContext(c)).def ?? 0;
+  const meleeCrit = (c: Character): number =>
+    criticalRangeSources(c)
+      .filter((s) => s.scope === 'melee')
+      .reduce((acc, s) => acc + s.value, 0);
+
+  it('Tenir à distance (r6) : +2 en DEF au rang 8 avec une arme de contact tenue à deux mains', () => {
+    const c = twoHandedChar([{ itemId: 'epee-a-deux-mains', quantity: 1, worn: { slot: 'mainHand' } }]);
+    expect(defFrom(c)).toBe(2);
+    expect(featureModSources(c.featureIds, effectContext(c)).def).toContainEqual({
+      featureId: 'prestige-armes-a-deux-mains-r6',
+      name: 'Tenir à distance',
+      value: 2,
+      conditional: false,
+    });
+  });
+
+  it('Tenir à distance (r6) : +1 seulement quand la voie s’arrête au rang 6 (palier path-rank)', () => {
+    const c = twoHandedChar([{ itemId: 'epee-a-deux-mains', quantity: 1, worn: { slot: 'mainHand' } }], [
+      'prestige-armes-a-deux-mains-r4',
+      'prestige-armes-a-deux-mains-r5',
+      'prestige-armes-a-deux-mains-r6',
+    ]);
+    expect(defFrom(c)).toBe(1);
+  });
+
+  it('sans arme à deux mains en main (épée longue + bouclier) : aucun bonus de DEF, aucune plage de critique', () => {
+    const c = twoHandedChar([
+      { itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } },
+      { itemId: 'grand-bouclier', quantity: 1, worn: { slot: 'shield' } },
+    ]);
+    expect(defFrom(c)).toBe(0);
+    expect(meleeCrit(c)).toBe(0);
+  });
+
+  it('arme polyvalente : la PRISE décide — épée bâtarde à deux mains ✓, à une main ✗', () => {
+    const twoHands = twoHandedChar([
+      { itemId: 'epee-batarde', quantity: 1, worn: { slot: 'mainHand', grip: 'twoHands' } },
+    ]);
+    expect(defFrom(twoHands)).toBe(2);
+    expect(meleeCrit(twoHands)).toBe(1);
+    const oneHand = twoHandedChar([
+      { itemId: 'epee-batarde', quantity: 1, worn: { slot: 'mainHand', grip: 'oneHand' } },
+    ]);
+    expect(defFrom(oneHand)).toBe(0);
+    expect(meleeCrit(oneHand)).toBe(0);
+  });
+
+  it('arme À DISTANCE de catégorie twoHands (arc long) : ne compte pas — « Tenir à distance » est une arme de mêlée', () => {
+    const c = twoHandedChar([{ itemId: 'arc-long', quantity: 1, worn: { slot: 'mainHand' } }]);
+    expect(defFrom(c)).toBe(0);
+    expect(meleeCrit(c)).toBe(0);
+  });
+
+  it('Critique destructeur (r7) : +1 au contact, cumulé avec la plage intrinsèque de la vivelame (18-20)', () => {
+    const c = twoHandedChar([{ itemId: 'vivelame', quantity: 1, worn: { slot: 'mainHand' } }]);
+    const src = criticalRangeSources(c);
+    expect(src).toContainEqual({
+      featureId: 'prestige-armes-a-deux-mains-r7',
+      name: 'Critique destructeur',
+      scope: 'melee',
+      value: 1,
+    });
+    expect(src).toContainEqual({ name: 'Vivelame', scope: 'melee', value: 1 });
+    expect(meleeCrit(c)).toBe(2);
+  });
+
+  it('la voie sans son rang 7 n’élargit aucune plage de critique', () => {
+    const c = twoHandedChar(
+      [{ itemId: 'epee-a-deux-mains', quantity: 1, worn: { slot: 'mainHand' } }],
+      ['prestige-armes-a-deux-mains-r4', 'prestige-armes-a-deux-mains-r5', 'prestige-armes-a-deux-mains-r6'],
+    );
+    expect(meleeCrit(c)).toBe(0);
   });
 });
 

@@ -74,6 +74,8 @@ import { DieIcon } from '@/components/DieIcon';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { ItemDialog, ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
+import { WeaponCriticalRangeBadge } from '@/components/sheet/WeaponCriticalRangeBadge';
+import type { WeaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange';
 import { EquipmentCatalogAutocomplete } from '@/components/sheet/EquipmentCatalogAutocomplete';
 import { PageRefText } from '@/components/SourceRef';
 import { DamageValue } from '@/components/DamageValue';
@@ -585,6 +587,13 @@ export interface EquipmentListProps {
    * par l'appelant lié au personnage (`armorRestrictionByLine`).
    */
   resolveArmorRestriction?: (line: EquipmentLine) => ArmorRestrictionViolation | null;
+  /**
+   * Résolveur de PLAGE DE CRITIQUE (PER-74) : pour une ligne d'inventaire, rend la plage effective
+   * de l'arme TENUE EN MAIN (plage intrinsèque de l'arme + capacités actives cumulées), ou `null`.
+   * Pose sur la ligne la même puce violette « 19-20 » que les cartes d'attaque. Absent → aucune puce
+   * (wizard). Fourni par l'appelant lié au personnage (`weaponLineCriticalRange`).
+   */
+  resolveCriticalRange?: (line: EquipmentLine) => WeaponLineCriticalRange | null;
 }
 
 /**
@@ -702,6 +711,7 @@ export function EquipmentList({
   resolveWeaponAffinities,
   twoWeaponStatus,
   resolveArmorRestriction,
+  resolveCriticalRange,
 }: EquipmentListProps) {
   // Modale d'objet (PER-214) : `null` = fermée, `'new'` = création, un index = édition de
   // la ligne correspondante (bouton crayon, objet custom OU arme/armure/bouclier).
@@ -831,6 +841,9 @@ export function EquipmentList({
     // Bonus/malus aux tests de l'objet enchanté (PER-275), badgés à côté du nom : même condition
     // de port, mais règle de cumul propre (bonus de magie, non cumulable entre objets).
     const testBonuses = line.testBonuses;
+    // Plage de critique EFFECTIVE de l'arme tenue en main (PER-74) : `null` hors arme en main, ou
+    // quand rien n'élargit la plage. Résolue par l'appelant (dépend du personnage entier).
+    const criticalRange = resolveCriticalRange?.(line) ?? null;
     // Objet équipable dans un emplacement DÉDIÉ (armure, bouclier, main) : ouvre aussi le
     // crayon d'édition « variante mécanique ».
     const equippable =
@@ -913,6 +926,9 @@ export function EquipmentList({
         {abilityBonuses ? <AbilityBonusBadges bonuses={abilityBonuses} /> : null}
         {derivedBonuses ? <DerivedBonusBadges bonuses={derivedBonuses} /> : null}
         {testBonuses ? <TestBonusBadges bonuses={testBonuses} /> : null}
+        {/* Plage de critique effective de l'arme EN MAIN (PER-74) : puce violette « 19-20 »,
+            identique à celle des cartes d'attaque, cumulant l'arme et les capacités actives. */}
+        {criticalRange ? <WeaponCriticalRangeBadge info={criticalRange} /> : null}
         {/* Bascule œil : épingle la description sous le titre (état d'affichage local). */}
         {description && (
           <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>

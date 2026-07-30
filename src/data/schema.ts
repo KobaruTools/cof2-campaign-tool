@@ -530,6 +530,7 @@ export type FeatureEffect =
   | ArmorDefBonusEffect
   | ArmorPenaltyReductionEffect
   | HeavyArmorDefBonusEffect
+  | TwoHandedWeaponDefBonusEffect
   | WeaponDamageBonusEffect
   | AttackBonusEffect
   | RangedAttackMagicalEffect
@@ -1437,6 +1438,26 @@ export interface HeavyArmorDefBonusEffect {
 }
 
 /**
+ * PER-74 — Bonus de DEF conditionné au fait de TENIR une arme de CONTACT à DEUX MAINS, résolu
+ * AUTOMATIQUEMENT depuis l'équipement porté (comme `ArmorDefBonusEffect`/`HeavyArmorDefBonusEffect`,
+ * sans interrupteur manuel). Ex. « Tenir à distance » (voie des armes à deux mains, r6, p. 146) :
+ * « lorsque le personnage tient une arme à deux mains, il gagne un bonus de +1 en DEF. Ce bonus
+ * passe à +2 au rang 8 » → `{ scale: 'stepped', by: 'path-rank', steps: [{ min: 6, value: 1 },
+ * { min: 8, value: 2 }] }`.
+ *
+ * La condition suit la PRISE RÉELLE (`wornWeaponIsTwoHanded`, PER-76/219) : une arme polyvalente
+ * (épée bâtarde, lance) compte tant que la prise « Deux mains » est choisie, et cesse de compter à
+ * une main. Restreinte aux armes de CONTACT : arcs, arbalètes et mousquets relèvent aussi de la
+ * catégorie `twoHands`, mais « tenir à distance » décrit l'allonge d'une arme de mêlée (cf.
+ * `isTwoHandedMeleeWeaponWielded`). Nul (aucune contribution) sans arme à deux mains en main.
+ */
+export interface TwoHandedWeaponDefBonusEffect {
+  kind: 'two-handed-weapon-def-bonus';
+  /** Bonus de DEF appliqué UNIQUEMENT avec une arme de contact tenue à deux mains. */
+  value: EffectValue;
+}
+
+/**
  * Condition d'application d'un bonus de DM d'arme (PER-115), selon le mode d'attaque et l'arme
  * réellement en main. Le filtrage automatique porte sur `attackMode`, `rangedKinds` et
  * `weaponCategories` ; `label` ne sert qu'à afficher une condition situationnelle non modélisable.
@@ -1883,6 +1904,14 @@ export interface DamageReduction {
 export type WeaponCriticalCondition =
   | { kind: 'unarmed' }
   | { kind: 'weaponCategory'; category: WeaponCategory }
+  /**
+   * PER-74 — l'arme de CONTACT en main est TENUE À DEUX MAINS (« Critique destructeur », voie des
+   * armes à deux mains r7, p. 146 : « avec toutes les armes à deux mains »). Distinct de
+   * `weaponCategory: 'twoHands'` (égalité stricte de catégorie) : suit la PRISE réelle, donc une
+   * arme polyvalente (épée bâtarde, lance) compte quand la prise « Deux mains » est choisie
+   * (`wornWeaponIsTwoHanded`, PER-76/219) et cesse de compter à une main.
+   */
+  | { kind: 'twoHandedMelee' }
   | { kind: 'rangedKinds'; rangedKinds: RangedWeaponKind[] }
   | { kind: 'weaponFamiliesFromChoice'; choiceFeatureId: string };
 

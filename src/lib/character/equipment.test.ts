@@ -12,6 +12,7 @@ import {
   setWornAt,
   wornMeleeWeapon,
   wornMeleeWeaponLine,
+  isTwoHandedMeleeWeaponWielded,
   wornWeaponIsTwoHanded,
 } from './equipment';
 import type { EquipmentLine } from './types';
@@ -103,6 +104,53 @@ describe('wornWeaponIsTwoHanded', () => {
   it("suit la prise `twoHands` d'un objet personnalisé (pas de catalogue)", () => {
     expect(wornWeaponIsTwoHanded({ custom: true, name: 'Espadon exotique', quantity: 1, worn: { slot: 'mainHand', grip: 'twoHands' } })).toBe(true);
     expect(wornWeaponIsTwoHanded({ custom: true, name: 'Dague exotique', quantity: 1, worn: { slot: 'mainHand' } })).toBe(false);
+  });
+});
+
+describe('isTwoHandedMeleeWeaponWielded (PER-74)', () => {
+  it("est vrai avec une arme de CONTACT tenue à deux mains, main principale ou secondaire", () => {
+    expect(
+      isTwoHandedMeleeWeaponWielded([{ itemId: 'epee-a-deux-mains', quantity: 1, worn: { slot: 'mainHand' } }]),
+    ).toBe(true);
+    expect(
+      isTwoHandedMeleeWeaponWielded([
+        { itemId: 'cotte-de-mailles', quantity: 1, worn: { slot: 'armor' } },
+        { itemId: 'pique', quantity: 1, worn: { slot: 'offHand' } },
+      ]),
+    ).toBe(true);
+  });
+
+  it("suit la PRISE d'une arme polyvalente (épée bâtarde)", () => {
+    expect(
+      isTwoHandedMeleeWeaponWielded([
+        { itemId: 'epee-batarde', quantity: 1, worn: { slot: 'mainHand', grip: 'twoHands' } },
+      ]),
+    ).toBe(true);
+    expect(
+      isTwoHandedMeleeWeaponWielded([
+        { itemId: 'epee-batarde', quantity: 1, worn: { slot: 'mainHand', grip: 'oneHand' } },
+      ]),
+    ).toBe(false);
+  });
+
+  it("est faux pour une arme À DISTANCE de catégorie `twoHands` (arc, arbalète, mousquet)", () => {
+    for (const itemId of ['arc-long', 'arbalete-lourde', 'mousquet']) {
+      expect(isTwoHandedMeleeWeaponWielded([{ itemId, quantity: 1, worn: { slot: 'mainHand' } }])).toBe(false);
+    }
+  });
+
+  it("est faux sans arme portée, et pour une arme à deux mains RANGÉE (non portée)", () => {
+    expect(isTwoHandedMeleeWeaponWielded([])).toBe(false);
+    expect(isTwoHandedMeleeWeaponWielded()).toBe(false);
+    expect(isTwoHandedMeleeWeaponWielded([{ itemId: 'epee-a-deux-mains', quantity: 1 }])).toBe(false);
+  });
+
+  it("ignore les objets personnalisés (impossible de savoir s'ils frappent au contact)", () => {
+    expect(
+      isTwoHandedMeleeWeaponWielded([
+        { custom: true, name: 'Espadon exotique', quantity: 1, worn: { slot: 'mainHand', grip: 'twoHands' } },
+      ]),
+    ).toBe(false);
   });
 });
 

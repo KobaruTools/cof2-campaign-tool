@@ -63,6 +63,7 @@ import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine'
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
 import { CompanionsPanel } from '@/components/sheet/CompanionsPanel';
 import { EquipmentList } from '@/components/sheet/EquipmentList';
+import { weaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange';
 import {
   ConcentrationToggle,
   FeaturesByPath,
@@ -550,6 +551,8 @@ function GmSheetDrawerContent({
               resolveArmorRestriction={(line) =>
                 armorRestrictionByLine(character, rulesContext).get(line) ?? null
               }
+              // Plage de critique de l'arme en main (PER-74), comme sur la fiche du joueur.
+              resolveCriticalRange={(line) => weaponLineCriticalRange(character, line)}
             />
           </SheetSection>
         </Stack>

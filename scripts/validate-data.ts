@@ -472,6 +472,11 @@ for (const c of features) {
       // Bonus de DEF en armure lourde (PER-236) : valeur constante ou scalante.
       const valueError = effectValueError(e.value);
       if (valueError) err(`[capacite ${c.id}] effect: heavy-armor-def-bonus value ${valueError}`);
+    } else if (e.kind === 'two-handed-weapon-def-bonus') {
+      // Bonus de DEF avec une arme de contact tenue à deux mains (PER-74, Tenir à distance) :
+      // valeur constante ou scalante.
+      const valueError = effectValueError(e.value);
+      if (valueError) err(`[capacite ${c.id}] effect: two-handed-weapon-def-bonus value ${valueError}`);
     } else if (e.kind === 'weapon-damage-bonus') {
       // Bonus de DM d'arme (PER-115/PER-226) : exactement UN de `ability` / `dice` / `flat` ; condition
       // partagée ; dé et bonus plat valides le cas échéant.
@@ -760,6 +765,11 @@ for (const c of features) {
         err(`[capacite ${c.id}] criticalRange.weaponCondition choiceFeatureId inexistant : ${wc.choiceFeatureId}`);
       else if (!(choiceFeature.choices ?? []).some((ch) => ch.kind === 'option'))
         err(`[capacite ${c.id}] criticalRange.weaponCondition choiceFeatureId ${wc.choiceFeatureId} ne porte aucun choix 'option'`);
+    } else if (wc.kind === 'twoHandedMelee') {
+      // Plage conditionnée à une arme de contact TENUE à deux mains (PER-74, Critique destructeur) :
+      // aucun paramètre à valider, mais la portée doit être le contact.
+      if (cr.scope !== 'melee')
+        err(`[capacite ${c.id}] criticalRange.weaponCondition 'twoHandedMelee' exige scope 'melee'`);
     } else if (wc.kind !== 'unarmed') {
       err(`[capacite ${c.id}] criticalRange.weaponCondition genre inconnu : ${(wc as { kind: string }).kind}`);
     }

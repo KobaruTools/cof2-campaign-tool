@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-armes-a-deux-mains",
+  "name": "Recette PER-74 — Armes à deux mains (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie des armes à deux mains p. 146) — 1ʳᵉ voie de la catégorie COMBATTANT, mécanisée selon tes arbitrages. COULEUR PAR FAMILLE : voie COMBATTANT → tout l'habillage prestige doit être ROUGE (étoile d'en-tête, liseré métallique des cartes de rang + reflet rouge, puces de capacité rouges). R4 Frappe massive (L) → VERBATIM (rien à mécaniser, ton arbitrage). Seul attendu : « renversée » AUTO-GLOSÉE (survol → info-bulle de l'état Renversé, p. 214), et « DM »/« test »/« FOR » glosés comme d'habitude. R5 Gros monstre, grosse arme → texte PARSÉ : les 7 dés de la table de conversion (d12, 2d6 → 2d8 ; 1d8, 1d10 → 1d12 ; 2d8 → 2d10) doivent s'afficher en ICÔNES DE DÉ, pas en texte brut. Aucun recalcul du DM de la carte d'attaque (la montée dépend de la taille de la cible). R6 Tenir à distance → +2 en DEF CALCULÉ (le perso est au rang 8 de la voie ; +1 seulement au rang 6-7). Vérifie dans le DÉTAIL de la DEF (clic sur la valeur) la ligne « Tenir à distance +2 ». Le bonus suit l'arme RÉELLEMENT tenue à deux mains. R7 Critique destructeur → badge « Critique 19-20 » sur la carte ATTAQUE AU CONTACT (patron rapière), son info-bulle listant « Critique destructeur +1 ». Le +2d4° de DM du critique est balisé en dés dans le texte (il ne s'ajoute pas au DM courant : il ne vaut que sur un critique). R8 Décapitation → verbatim, avec le seul « d6 » de l'exemple mis en forme en icône de dé. MANIP DE RECETTE (le cœur de la vérification — tout doit réagir SANS interrupteur, juste en changeant l'équipement) : (1) épée à deux mains en main → DEF +2 + badge Critique 19-20 ; (2) déséquipe-la et mets l'ÉPÉE LONGUE + le GRAND BOUCLIER → le +2 DEF et le badge Critique DOIVENT disparaître ; (3) équipe l'ÉPÉE BÂTARDE et bascule sa prise « Deux mains » → le +2 DEF et le badge Critique REVIENNENT ; repasse-la à une main → ils repartent (c'est la PRISE qui compte, pas la catégorie de l'arme) ; (4) équipe la VIVELAME (crit intrinsèque 19-20) à deux mains → le badge doit passer à 18-20 avec DEUX sources dans l'info-bulle (Critique destructeur +1, Vivelame +1) ; (5) équipe l'ARC LONG (catégorie « à deux mains » mais arme à distance) → AUCUN bonus : « Tenir à distance » décrit une arme de mêlée, un archer n'y a pas droit."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 4,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 4,
+    "AGI": 2,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-r1",
+    "combat-r2",
+    "combat-r3",
+    "combat-r4",
+    "combat-r5",
+    "prestige-armes-a-deux-mains-r4",
+    "prestige-armes-a-deux-mains-r5",
+    "prestige-armes-a-deux-mains-r6",
+    "prestige-armes-a-deux-mains-r7",
+    "prestige-armes-a-deux-mains-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-a-deux-mains",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "cotte-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "pique",
+      "quantity": 1
+    },
+    {
+      "itemId": "epee-batarde",
+      "quantity": 1
+    },
+    {
+      "itemId": "epee-longue",
+      "quantity": 1
+    },
+    {
+      "itemId": "grand-bouclier",
+      "quantity": 1
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette armes à deux mains (1ʳᵉ voie COMBATTANT, p. 146). r6 = +2 DEF calculé (rang 8) tant qu'une arme de CONTACT est tenue à deux mains ; r7 = badge Critique 19-20 sur la carte d'attaque au contact (18-20 avec la vivelame) ; r5/r7/r8 = dés balisés dans le texte ; r4 verbatim. Inventaire prévu pour la manip : pique (1d10), vivelame (crit 19-20), épée bâtarde (prise « Deux mains » à basculer), épée longue + grand bouclier (voie sans arme à deux mains), arc long (arme à distance de catégorie twoHands → ne doit RIEN donner).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

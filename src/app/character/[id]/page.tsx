@@ -102,6 +102,7 @@ import {
 } from '@/components/sheet/FeaturesByPath';
 import type { FeaturesLayout } from '@/components/sheet/FeaturesByPath';
 import { EquipmentList } from '@/components/sheet/EquipmentList';
+import { weaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange';
 import { IdentityFields } from '@/components/sheet/IdentityFields';
 import { IdentityEditor } from '@/components/sheet/IdentityEditor';
 import { ComplianceWarnings } from '@/components/sheet/ComplianceWarnings';
@@ -1207,6 +1208,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               twoWeaponStatus={twoWeaponCombatStatus(character)}
               // Indicateur « armure trop lourde / bouclier interdit » (PER-80) par ligne équipée.
               resolveArmorRestriction={(line) => armorRestrictionByLine(character, rulesContext).get(line) ?? null}
+              // Plage de critique de l'arme en main (PER-74) : puce « 19-20 » sur la ligne, cumulant
+              // la plage intrinsèque de l'arme et les capacités actives (Critique destructeur…).
+              resolveCriticalRange={(line) => weaponLineCriticalRange(character, line)}
             />
           </SheetSection>
 

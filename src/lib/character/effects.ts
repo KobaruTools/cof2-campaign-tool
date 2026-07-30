@@ -61,6 +61,7 @@ import {
 import {
   abilityBonusesFromEquipment,
   isHeavyArmorWorn,
+  isTwoHandedMeleeWeaponWielded,
   testBonusSourcesFromEquipment,
   wornMeleeWeapon,
   wornRangedWeapon,
@@ -119,6 +120,13 @@ export interface EffectContext {
    * `guerre-r1`, PER-236). Absent → traité comme « pas d'armure lourde ».
    */
   heavyArmorWorn?: boolean;
+  /**
+   * Une arme de CONTACT est-elle TENUE À DEUX MAINS (cf. `isTwoHandedMeleeWeaponWielded`, prise
+   * réelle comprise) ? Sert aux effets `two-handed-weapon-def-bonus` résolus AUTOMATIQUEMENT
+   * (« Tenir à distance », voie des armes à deux mains r6, PER-74). Absent → traité comme « aucune
+   * arme à deux mains en main » (les appels « catalogue seul » n'ont pas d'équipement).
+   */
+  twoHandedMeleeWielded?: boolean;
 }
 
 /**
@@ -404,6 +412,7 @@ export function effectContext(character: Character): EffectContext {
     pathRankCounts: pathRankCountsFromFeatures(character.featureIds),
     armorWorn: isArmorWorn(character.equipment),
     heavyArmorWorn: isHeavyArmorWorn(character.equipment),
+    twoHandedMeleeWielded: isTwoHandedMeleeWeaponWielded(character.equipment),
   };
 }
 
@@ -615,6 +624,14 @@ function effectContributions(
   // automatiquement depuis `ctx.heavyArmorWorn`. Non résoluble sans contexte, et nul hors armure lourde.
   if (effect.kind === 'heavy-armor-def-bonus') {
     if (!ctx?.heavyArmorWorn) return [];
+    const v = resolveValue(effect.value, pathId, pathRanks, ctx);
+    return v === null ? [] : [{ stat: 'def', value: v }];
+  }
+  // Bonus de DEF conditionné à une arme de CONTACT tenue à DEUX MAINS (PER-74, « Tenir à distance »)
+  // — résolu automatiquement depuis `ctx.twoHandedMeleeWielded` (prise réelle comprise), sans
+  // interrupteur. Non résoluble sans contexte, et nul sans arme à deux mains en main.
+  if (effect.kind === 'two-handed-weapon-def-bonus') {
+    if (!ctx?.twoHandedMeleeWielded) return [];
     const v = resolveValue(effect.value, pathId, pathRanks, ctx);
     return v === null ? [] : [{ stat: 'def', value: v }];
   }
@@ -2719,6 +2736,10 @@ function weaponCriticalConditionMet(
       return false;
     case 'weaponCategory':
       return weapon?.weaponCategory === condition.category;
+    // PER-74 — « avec toutes les armes à deux mains » (Critique destructeur, p. 146) : on suit la
+    // PRISE réelle et non la seule catégorie, donc une épée bâtarde tenue à deux mains compte.
+    case 'twoHandedMelee':
+      return isTwoHandedMeleeWeaponWielded(character.equipment);
     case 'rangedKinds':
       return (
         !!weapon?.ranged && !!weapon.rangedKind && condition.rangedKinds.includes(weapon.rangedKind)
