@@ -176,6 +176,41 @@ describe('repos — élixirs du forgesort (voie des élixirs, p. 98)', () => {
   });
 });
 
+describe('repos — armes rechargées à plein (PER-284, p. 185/187)', () => {
+  const withEmptyGuns = () =>
+    make({
+      equipment: [
+        { itemId: 'petoire', quantity: 1, loaded: ['grapeshot'] },
+        { itemId: 'arbalete-lourde', quantity: 1, loaded: [] },
+        { itemId: 'epee-longue', quantity: 1 },
+      ],
+    });
+
+  it('le repos COURT remet toutes les armes à plein en munition NORMALE (loaded absent)', () => {
+    expect(shortRest(withEmptyGuns()).equipment).toEqual([
+      { itemId: 'petoire', quantity: 1 },
+      { itemId: 'arbalete-lourde', quantity: 1 },
+      { itemId: 'epee-longue', quantity: 1 },
+    ]);
+  });
+
+  it('le repos LONG aussi, en plus de la purge des élixirs', () => {
+    const mixed = make({
+      equipment: [
+        { itemId: 'mousquet', quantity: 1, loaded: [] },
+        { custom: true, name: 'Élixir — Fortifiant', quantity: 1 },
+      ],
+    });
+    expect(longRest(mixed).equipment).toEqual([{ itemId: 'mousquet', quantity: 1 }]);
+  });
+
+  it('aucune arme à recharger → aucun champ equipment (le patch reste état de jeu pur)', () => {
+    const full = make({ equipment: [{ itemId: 'petoire', quantity: 1 }] });
+    expect(shortRest(full).equipment).toBeUndefined();
+    expect(longRest(full).equipment).toBeUndefined();
+  });
+});
+
 describe('repos — surcoût mana croissant (foi-r5, PER-162)', () => {
   const withSurcharge = make({ featureIds: ['foi-r5'], usageCounters: { 'foi-r5': 3 } });
 

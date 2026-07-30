@@ -41,6 +41,7 @@ import { ITEM_DERIVED_STAT_IDS, isCustomItem } from '@/lib/character/types';
 import {
   ITEM_TYPE_ORDER,
   effectiveItem,
+  isThrownWeapon,
   snapshotOverrides,
   type MechanicalCategory,
 } from '@/lib/character/items';
@@ -564,6 +565,9 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
     // Apports aux tests (PER-275) : même règle d'instance, mais cumul PARTICULIER — c'est un
     // bonus de magie, non cumulable avec un autre bonus de magie sur le même test (p. 80).
     const testBonuses = bonusesFromRows(form.testBonuses);
+    // Une arme = une case (PER-284) : une variante d'arme repart toujours à 1, sauf arme de jet
+    // (que le livre compte par paquets). Garde-fou pour ne pas véhiculer un « ×N » hérité.
+    const weaponQuantity = (id: string) => (isThrownWeapon(equipmentById.get(id)) ? quantity : 1);
     if (mechanical && baseId) {
       const overrides = snapshotOverrides(type, {
         name: trimmedName,
@@ -581,7 +585,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
       });
       const line: EquipmentRef = {
         itemId: baseId,
-        quantity,
+        quantity: type === 'weapon' ? weaponQuantity(baseId) : quantity,
         ...(worn ? { worn } : {}),
         overrides,
         ...(magic > 0 ? { magicDef: magic } : {}),

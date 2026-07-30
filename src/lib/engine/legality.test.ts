@@ -505,6 +505,53 @@ describe('variante « Arbalétrier » : échange de voie explosifs ↔ maître d
   });
 });
 
+describe('checkCompliance : armes à poudre chargées d’avance (PER-284, p. 187)', () => {
+  const gunner = (equipment: Character['equipment']) =>
+    makeCharacter({ classId: 'arquebusier', ancestryId: 'humain', ancestryPathId: 'humain', equipment });
+
+  it('aucun avertissement au cas canonique du livre (deux pétoires et un mousquet)', () => {
+    const c = gunner([
+      { itemId: 'petoire', quantity: 1 },
+      { itemId: 'petoire', quantity: 1 },
+      { itemId: 'mousquet', quantity: 1 },
+    ]);
+    expect(checkCompliance(c, ctx).map((w) => w.code)).not.toContain('TOO_MANY_LOADED_FIREARMS');
+  });
+
+  it('avertit au-delà de trois armes à poudre chargées, sans bloquer (information)', () => {
+    const c = gunner([
+      { itemId: 'petoire', quantity: 1 },
+      { itemId: 'petoire', quantity: 1 },
+      { itemId: 'petoire', quantity: 1 },
+      { itemId: 'mousquet', quantity: 1 },
+    ]);
+    const warning = checkCompliance(c, ctx).find((w) => w.code === 'TOO_MANY_LOADED_FIREARMS');
+    expect(warning?.severity).toBe('info');
+    expect(warning?.message).toContain('4 armes à poudre chargées');
+    expect(warning?.message).toContain('p. 187');
+  });
+
+  it('les armes déchargées ne comptent pas', () => {
+    const c = gunner([
+      { itemId: 'petoire', quantity: 1 },
+      { itemId: 'petoire', quantity: 1, loaded: [] },
+      { itemId: 'mousquet', quantity: 1, loaded: [] },
+      { itemId: 'mousquet', quantity: 1, loaded: [] },
+    ]);
+    expect(checkCompliance(c, ctx).map((w) => w.code)).not.toContain('TOO_MANY_LOADED_FIREARMS');
+  });
+
+  it('les arbalètes ne comptent pas (l’encadré ne vise que la poudre)', () => {
+    const c = gunner([
+      { itemId: 'arbalete-lourde', quantity: 1 },
+      { itemId: 'arbalete-lourde', quantity: 1 },
+      { itemId: 'arbalete-legere', quantity: 1 },
+      { itemId: 'arbalete-de-poing', quantity: 1 },
+    ]);
+    expect(checkCompliance(c, ctx).map((w) => w.code)).not.toContain('TOO_MANY_LOADED_FIREARMS');
+  });
+});
+
 describe('checkCompliance : restrictions d’armure par profil (PER-80)', () => {
   it('avertit d’une armure trop lourde pour le profil (magicien / cuir simple porté)', () => {
     const c = makeCharacter({

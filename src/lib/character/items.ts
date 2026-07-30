@@ -39,6 +39,39 @@ export interface MechanicalItemFields {
 }
 
 /**
+ * L'objet est-il une ARME DE JET, c'est-à-dire une arme que le livre compte par paquets
+ * (« Lancer trois couteaux au titre d'un seul test d'attaque est possible », p. 187) ?
+ *
+ * Détection DATA-DRIVEN, sur les deux marqueurs que porte le catalogue : le sous-type à distance
+ * `rangedKind: 'thrown'` (couteaux de lancer, javelot, hachette, dague de lancer…) OU la famille
+ * d'arme `thrown` que porte une arme de CONTACT lançable (la dague, l'épieu — `ranged: true` sans
+ * sous-type propre). Jamais une liste d'ids en dur.
+ */
+export function isThrownWeapon(item: EquipmentItem | undefined): boolean {
+  if (item?.category !== 'weapon') return false;
+  return item.rangedKind === 'thrown' || item.weaponFamilies?.includes('thrown') === true;
+}
+
+/**
+ * La ligne d'inventaire peut-elle porter une QUANTITÉ (PER-284, décision propriétaire) ?
+ *
+ * **Une arme = une case d'inventaire.** Une arme n'a donc pas de quantité — deux pétoires sont
+ * deux cases, ce qui est la condition même du suivi « chargée / déchargée » (chaque arme a son
+ * compteur de coups prêts, et l'arquebusier bricole « deux armes de son choix », p. 62) et vaut
+ * aussi pour les armes de contact. SEULE exception : les **armes de jet**, que le livre compte
+ * bel et bien par paquets (5 dagues, 2 javelots dans l'équipement de départ).
+ *
+ * Tout le reste de l'inventaire garde sa quantité (rations, torches, potions, doses d'élixir,
+ * armures, boucliers, objets libres).
+ */
+export function lineAllowsQuantity(line: EquipmentLine): boolean {
+  if (isCustomItem(line)) return true;
+  const item = equipmentById.get(line.itemId);
+  if (item?.category !== 'weapon') return true;
+  return isThrownWeapon(item);
+}
+
+/**
  * Type d'une ligne d'inventaire (PER-211). Pour un objet personnalisé, son `type`
  * déclaré (défaut `misc`, « Divers »). Pour une référence catalogue, le type se déduit
  * de la catégorie : `weapon`/`armor`/`shield` directement, et `gear` → `consumable`

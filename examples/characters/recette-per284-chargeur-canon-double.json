@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per284-chargeur-canon-double",
+  "name": "Recette PER-284 — Chargeur, second canon et grenaille",
+  "identity": {
+    "description": "ATTENDU. (1) SÉLECTION DES ARMES : sous la carte du rang 2 de la voie de l'artilleur, la section « Armes dotées d'un chargeur (1/2) » liste les quatre armes rechargeables, la première COCHÉE ; décocher ramène sa capacité à 1 coup, cocher une deuxième arme lui donne 7 coups, et la troisième est refusée (plafond « jusqu'à deux armes », p. 62). Sous le rang 4, « Armes dotées d'un second canon » ne liste QUE les trois pétoires (une arbalète n'a pas de canon). (2) PASTILLES, dans l'ordre de tir : case 1 = JAUNE JAUNE BLANC BLANC puis trois creuses (4/7 — chargeur de 7 = 2 + INT 3 + 2 paliers, les voies de l'artilleur ET des explosifs étant au rang 3) ; case 2 = BLANC puis une creuse (1/2) ; case 3 = une creuse (0/1) ; le MOUSQUET cumule les deux bricolages → 8 pastilles blanches pleines (réserve du chargeur 7 + 1 coup du second canon) ; arbalète lourde = une creuse. (3) CANON DOUBLE, sur la pétoire PORTÉE (case 2) : avertissement jaune « Canon double : 1 coup sur 2 — DM non doublés », et la carte « Attaque à distance » affiche 1d10 ; cliquer « Recharger » la remplit (2/2) → l'avertissement disparaît, le dé passe à 2d10 avec l'explication en infobulle, et un seul « Tirer » consomme les DEUX coups. (4) POUDRE PUISSANTE (explosifs-r3) : la carte de tir porte un bonus plat de +1 aux DM (aucune voie d'arquebusier au rang 5 ici) ; l'infobulle du bonus en donne la source. (5) GESTES : « Tirer » n'est actif que sur la pétoire à canon double, seule arme EN MAIN — grisé sur les autres, dont l'infobulle renvoie à p. 187, tandis que « Recharger » y reste disponible. Sur l'arme en main, « Tirer » (rouge, isolé à gauche du séparateur) dépense la TÊTE de file — les deux premiers tirs de la case 1 sont donc des grenailles ; « Recharger » (bleu) ajoute une pastille blanche EN FIN de file, « Grenaille » (jaune) une jaune ; la moitié droite (⏩) de chacun fait le PLEIN de cette munition sans toucher aux munitions déjà en place. (6) REPOS : court ou long, les quatre armes repartent pleines, toutes pastilles blanches. Aucun avertissement de surcharge (2 armes à poudre chargées)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 9,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "artilleur-r1",
+    "artilleur-r2",
+    "artilleur-r3",
+    "artilleur-r4",
+    "explosifs-r1",
+    "explosifs-r2",
+    "explosifs-r3",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "petoire",
+      "quantity": 1,
+      "magazine": true,
+      "loaded": [
+        "grapeshot",
+        "grapeshot",
+        "normal",
+        "normal"
+      ]
+    },
+    {
+      "itemId": "petoire",
+      "quantity": 1,
+      "doubleBarrel": true,
+      "loaded": [
+        "normal"
+      ],
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "petoire",
+      "quantity": 1,
+      "loaded": []
+    },
+    {
+      "itemId": "mousquet",
+      "quantity": 1,
+      "magazine": true,
+      "doubleBarrel": true
+    },
+    {
+      "itemId": "arbalete-lourde",
+      "quantity": 1,
+      "loaded": []
+    },
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-284 — chargeur (capacité 7), second canon (capacité 2, DM doublés → 2d10 quand les deux coups sont chargés), pétoire nue (capacité 1), grenaille annoncée au chargement, Poudre puissante +1 DM. loadedFirearmCount attendu = 2. Le bouton « Grenaille » n’apparaît que parce que le perso a explosifs-r1.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -94,6 +94,13 @@ export interface WeaponDamage {
   die: DamageDie;
   /** Modificateur PLAT signé (armes magiques : « 1d8+2 »). Jamais une carac. Absent = 0. */
   modifier?: number;
+  /**
+   * Dé ÉVOLUTIF (« ° », p. 43 : le dé qui fait son maximum est relancé et cumulé). Absent = dé
+   * ordinaire. Aucune arme de la table p. 185 n'en a — c'est une arme OCTROYÉE par capacité qui
+   * l'introduit : la couleuvrine (`artilleur-r5`, p. 63, « [5d4° + INT] DM »). Rendu par
+   * `formatWeaponDamage` (« 5d4° ») puis par `<DamageValue>`, qui sait déjà dessiner le marqueur.
+   */
+  evolving?: boolean;
   /** DM temporaires / non létaux, affichés entre parenthèses « (…) » (gourdin, mains nues). */
   nonLethal?: boolean;
 }
@@ -2989,6 +2996,34 @@ export const POISON_KIND_LABELS: Record<PoisonKind, string> = {
  * mode « Modifier »). Porté sur la capacité de RANG 5 (« Poison rapide ») ; le type `weakening` (r6) est
  * débloqué par la possession de `weakeningUnlockedBy`. Absent = la capacité ne gère aucun poison d'arme.
  */
+/**
+ * MODIFICATION PHYSIQUE D'ARMES octroyée par une capacité (PER-284) — l'arquebusier « bricole » des
+ * armes précises de son inventaire, et c'est au JOUEUR de désigner lesquelles :
+ *  - Arme à répétition (`artilleur-r2`, p. 62) : « L'arquebusier modifie jusqu'à DEUX armes de son
+ *    choix pour les doter de chargeurs. » ;
+ *  - Canon double (`artilleur-r4`, p. 63) : « L'arquebusier peut bricoler ses armes à poudre (mais
+ *    pas une couleuvrine) pour les doter d'un second canon. » (aucun plafond annoncé).
+ *
+ * La spec décrit QUOI poser, sur QUELLES armes et COMBIEN au plus ; le champ correspondant est posé
+ * sur l'INSTANCE d'arme choisie (`EquipmentRef.magazine` / `doubleBarrel`), parce que la
+ * modification appartient à cette arme-là et lui survit au déséquipement. Rendu par
+ * `WeaponModificationField` sous la carte du rang, résolu par `weaponLoading.ts`.
+ */
+export interface WeaponModificationLoadout {
+  /** Champ d'instance posé sur la ligne d'équipement retenue. */
+  modification: 'magazine' | 'doubleBarrel';
+  /**
+   * Armes éligibles : `reloadable` = toute arme que le livre fait recharger (arbalètes ET armes à
+   * poudre — la variante « Arbalétrier » p. 62 doit pouvoir doter ses arbalètes d'un chargeur) ;
+   * `firearm` = armes à poudre seulement (Canon double parle de « ses armes à poudre »).
+   */
+  scope: 'reloadable' | 'firearm';
+  /** Nombre maximal d'armes modifiées (« jusqu'à deux », p. 62). Absent = aucun plafond annoncé. */
+  maxWeapons?: number;
+  /** Libellé de la section, affiché au joueur (ex. « Armes dotées d'un chargeur »). */
+  label: string;
+}
+
 export interface PoisonWeaponLoadout {
   /** Nombre maximal d'armes enduites simultanément (« trois au maximum », p. 143). */
   maxWeapons: number;
@@ -3194,6 +3229,25 @@ export interface Feature {
    */
   poisonWeaponLoadout?: PoisonWeaponLoadout;
   /**
+   * OBJET OCTROYÉ par cette capacité (PER-286) : la capacité Couleuvrine (`artilleur-r5`, p. 63)
+   * commence par « L'arquebusier OBTIENT une couleuvrine » — l'objet arrive donc dans l'inventaire
+   * à l'acquisition du rang, sans achat. `itemId` désigne l'objet du catalogue ; si les armes à
+   * poudre sont interdites dans l'univers, c'est son `equivalentCrossbowId` qui est octroyé à la
+   * place (« la couleuvrine par une baliste », p. 62) — la substitution est déjà en donnée.
+   *
+   * Voir `grantedEquipment.ts` : ajout automatique à la montée de niveau, et rappel dans
+   * l'inventaire si l'objet manque (fiche permissive : on n'impose rien, on propose).
+   */
+  grantsEquipment?: { itemId: string };
+  /**
+   * MODIFICATION PHYSIQUE D'ARMES octroyée par cette capacité (PER-284) : débloque, sous elle, une
+   * section où le joueur DÉSIGNE les armes de son inventaire à bricoler (chargeur de l'Arme à
+   * répétition, second canon du Canon double). L'état vit sur les lignes d'équipement retenues
+   * (`EquipmentRef.magazine` / `doubleBarrel`). Absent = la capacité ne modifie aucune arme.
+   * Voir `WeaponModificationLoadout`.
+   */
+  weaponModification?: WeaponModificationLoadout;
+  /**
    * REMPLACEMENT INCONDITIONNEL entre capacités d'une même voie : ids des capacités
    * que CETTE capacité, DÈS QU'ELLE EST ACQUISE, supplante définitivement (« la
    * panthère devient un animal fabuleux ou est remplacée par un félin plus grand » —
@@ -3327,6 +3381,48 @@ export type RangedWeaponKind = (typeof RANGED_WEAPON_KINDS)[number];
 export const DAMAGE_TYPES = ['bludgeoning', 'piercing', 'slashing'] as const;
 export type DamageType = (typeof DAMAGE_TYPES)[number];
 
+/**
+ * COÛT DE RECHARGEMENT d'une arme à distance (PER-284) — colonne « Notes complémentaires » de
+ * la table des armes d'attaque à distance, p. 185 : arbalète de poing (« Action de mouvement
+ * pour être rechargée »), arbalète légère (« Nécessite une action de mouvement pour être
+ * rechargée »), arbalète lourde / pétoire / mousquet (« nécessite une action limitée pour être
+ * rechargée »). Renseigné UNIQUEMENT sur les armes que le livre fait recharger — arbalètes et
+ * armes à poudre ; absent sur les arcs, frondes et armes de jet, qu'aucune règle ne fait
+ * recharger.
+ *
+ * Le livre déconseille explicitement de compter les MUNITIONS (p. 187 : « Nous vous conseillons
+ * de ne pas tenir compte des dépenses de munitions, c'est fastidieux et il est souhaitable de ne
+ * pas pénaliser les profils qui combattent à distance ») : il n'existe donc AUCUN stock de
+ * projectiles dans l'application. Ce que ce champ permet de suivre, c'est un COMPTEUR de coups
+ * prêts par ARME (`EquipmentRef.loaded`), donc l'état « chargée / déchargée », dont dépendent six
+ * capacités d'arquebusier (Arme à répétition, Tir de barrage, Canon double, Couleuvrine, Tir de
+ * grenaille, et le +5 en Initiative de Plus vite que son ombre, `pistolero-r1`, p. 65). Voir
+ * `src/lib/character/weaponLoading.ts`.
+ */
+export interface WeaponReload {
+  /**
+   * Action nécessaire pour remettre UN coup dans l'arme (p. 185) : `'M'` action de mouvement
+   * (arbalètes de poing et légère), `'L'` action limitée (arbalète lourde, pétoire, mousquet).
+   * Restriction aux deux seules lettres employées par la table, prises sur `ACTION_TYPES`.
+   */
+  action: Extract<ActionType, 'M' | 'L'>;
+  /**
+   * Nombre de ROUNDS d'action `action` nécessaires pour un coup, quand le rechargement dépasse
+   * un round. Absent = 1 (cas de toutes les armes de la table p. 185). Prévu pour la couleuvrine
+   * (`artilleur-r5`, p. 63 : « Il faut ensuite deux rounds (L) pour la recharger »), arme octroyée
+   * par capacité qui fait l'objet d'un ticket distinct (PER-286).
+   */
+  rounds?: number;
+  /**
+   * L'arme compte-t-elle dans la limite CONSEILLÉE d'armes à poudre chargées d'avance (p. 187 :
+   * « Un arquebusier pourra raisonnablement avoir trois armes chargées en même temps, généralement
+   * deux pétoires et un mousquet (plus éventuellement une couleuvrine qui ne compte pas dans ce
+   * calcul). Plus d'armes surchargent le personnage. ») ? Absent = oui. À renseigner `false`
+   * UNIQUEMENT sur la couleuvrine (PER-286), que le livre exclut nommément du décompte.
+   */
+  countsTowardLoadedLimit?: false;
+}
+
 export interface Weapon extends EquipmentBase {
   category: 'weapon';
   weaponCategory: WeaponCategory;
@@ -3372,6 +3468,29 @@ export interface Weapon extends EquipmentBase {
    * substitution du livre (PER-234), qui n'était jusqu'ici qu'une liste de noms en dur.
    */
   equivalentCrossbowId?: string;
+  /**
+   * Coût de RECHARGEMENT (PER-284, table p. 185). Présent = l'arme se suit « chargée /
+   * déchargée » (arbalètes et armes à poudre) ; absent = rien à suivre (arc, fronde, arme de
+   * jet). Voir `WeaponReload` et `src/lib/character/weaponLoading.ts`.
+   */
+  reload?: WeaponReload;
+  /**
+   * Caractéristique ajoutée aux DM DE CETTE ARME (PER-286). EXCEPTIONNEL : les armes à distance
+   * n'ajoutent aucune carac (p. 185, « Les DM des armes d'attaque à distance ne reçoivent pas de
+   * bonus de caractéristique ») — mais une arme OCTROYÉE par une capacité peut déroger, et c'est
+   * le cas de la couleuvrine : « la couleuvrine inflige [5d4° + INT] DM » (p. 63). Absent = règle
+   * générale. Rendu comme les caracs ajoutées par les capacités (puce de valeur sur la carte
+   * d'attaque, « + INT » dans l'inventaire).
+   */
+  damageAbility?: AbilityId;
+  /**
+   * Modifications d'arquebusier que cette arme N'ACCEPTE PAS (PER-286), par `modification` (cf.
+   * `WeaponModificationLoadout`). Absent = l'arme accepte tout ce que sa portée autorise.
+   * Renseigné sur la couleuvrine et sa contrepartie baliste, seules armes que le livre traite en
+   * pièce à part (cf. leurs commentaires dans `equipment.ts` : le refus du second canon est
+   * VERBATIM — « mais pas une couleuvrine », p. 63 —, celui du chargeur est une règle maison).
+   */
+  excludedWeaponModifications?: WeaponModificationLoadout['modification'][];
   /** Portée, notation du livre (ex. « 20 m », « 1d6 à 10 m » pour le lancer). */
   range?: string;
 }

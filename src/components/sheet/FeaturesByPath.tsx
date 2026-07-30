@@ -89,6 +89,7 @@ import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/cla
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PoisonWeaponLoadoutField } from '@/components/sheet/PoisonWeaponLoadoutField';
+import { WeaponModificationField } from '@/components/sheet/WeaponModificationField';
 import { SourceRef, PageRefText } from '@/components/SourceRef';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { DefenseBadge } from '@/components/sheet/DefenseBadge';
@@ -1139,6 +1140,8 @@ export interface FeaturesByPathProps {
   onSummonCompanionInstance?: (featureId: string) => void;
   /** Applique un patch d'état de jeu « poison appliqué aux armes » (maître des poisons, PER-74). */
   onPoisonUpdate?: (patch: Partial<Character>) => void;
+  /** Applique un patch « armes bricolées » (chargeur / second canon, PER-284). */
+  onWeaponModificationUpdate?: (patch: Partial<Character>) => void;
   /**
    * Bonus de compétence par domaine (cf. `testBonusSources`) — utilisé pour signaler, sur une
    * capacité EMPRUNTÉE, que son bonus de test est DOMINÉ (ne se cumule pas), affiché barré + la
@@ -2163,6 +2166,7 @@ function PathBlock({
   onCreateElixir,
   onSummonCompanionInstance,
   onPoisonUpdate,
+  onWeaponModificationUpdate,
   disabledIds,
   disabledReasons,
   armorRestrictedReasons,
@@ -2215,6 +2219,8 @@ function PathBlock({
   onSummonCompanionInstance?: (featureId: string) => void;
   /** Applique un patch d'état de jeu « poison appliqué aux armes » (maître des poisons, PER-74). */
   onPoisonUpdate?: (patch: Partial<Character>) => void;
+  /** Applique un patch « armes bricolées » (chargeur / second canon, PER-284). */
+  onWeaponModificationUpdate?: (patch: Partial<Character>) => void;
   /**
    * Capacités désactivées par exclusion mutuelle (un interrupteur actif les grise) :
    * rendues semi-transparentes + grisées, interrupteur non-interactif, détail conservé.
@@ -3076,6 +3082,17 @@ function PathBlock({
                     <PoisonWeaponLoadoutField character={character} onUpdate={onPoisonUpdate} />
                   </>
                 )}
+                {/* PER-284 : armes bricolées par la capacité (chargeur, second canon) — au choix du joueur. */}
+                {openFeature.weaponModification && character && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <WeaponModificationField
+                      spec={openFeature.weaponModification}
+                      character={character}
+                      onUpdate={onWeaponModificationUpdate}
+                    />
+                  </>
+                )}
                 {replacements?.get(openFeature.id)?.replacedFeature && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -3487,6 +3504,17 @@ function PathBlock({
                   <PoisonWeaponLoadoutField character={character} onUpdate={onPoisonUpdate} />
                 </>
               )}
+              {/* PER-284 : armes bricolées par la capacité (chargeur, second canon) — au choix du joueur. */}
+              {feature.weaponModification && character && (
+                <>
+                  <Divider sx={{ my: 1.5 }} />
+                  <WeaponModificationField
+                    spec={feature.weaponModification}
+                    character={character}
+                    onUpdate={onWeaponModificationUpdate}
+                  />
+                </>
+              )}
               {feature.id === 'animaux-r5' && character && <AnimalFormsNote character={character} />}
               {(() => {
                 const profile = displayCreatureProfile(feature, character);
@@ -3745,6 +3773,7 @@ export function FeaturesByPath({
   onCreateElixir,
   onSummonCompanionInstance,
   onPoisonUpdate,
+  onWeaponModificationUpdate,
   concentration = false,
   testBonuses,
   verbatim = false,
@@ -3907,6 +3936,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               onSummonCompanionInstance={onSummonCompanionInstance}
               onPoisonUpdate={onPoisonUpdate}
+              onWeaponModificationUpdate={onWeaponModificationUpdate}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}
@@ -3946,6 +3976,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               onSummonCompanionInstance={onSummonCompanionInstance}
               onPoisonUpdate={onPoisonUpdate}
+              onWeaponModificationUpdate={onWeaponModificationUpdate}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}
@@ -3980,6 +4011,7 @@ export function FeaturesByPath({
               onCreateElixir={onCreateElixir}
               onSummonCompanionInstance={onSummonCompanionInstance}
               onPoisonUpdate={onPoisonUpdate}
+              onWeaponModificationUpdate={onWeaponModificationUpdate}
               disabledIds={disabled}
               disabledReasons={disabledReasons}
               armorRestrictedReasons={armorRestrictedReasons}

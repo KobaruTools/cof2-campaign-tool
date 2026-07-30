@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COIN_POUCH_ITEM_NAME } from '@/data';
+import { COIN_POUCH_ITEM_NAME, featureById } from '@/data';
 import { createBlankCharacter } from './factory';
 import type { Character, EquipmentLine } from './types';
 import { elixirItemName } from './elixirs';
@@ -16,12 +16,15 @@ import {
   damageCompanion,
   damageMount,
   elixirDosesToLose,
+  fireWeaponShot,
   healCharacterHp,
   healCompanion,
   healMount,
   liftShortRestLock,
+  loadWeaponShot,
   openCoinPouch,
   ownedMountMaxHp,
+  refillWeaponShots,
   removeCompanionInstance,
   removeMount,
   resetCharacterHp,
@@ -42,6 +45,7 @@ import {
   setMountedTarget,
   setPurse,
   setUsageCounter,
+  setWeaponModification,
   spendCharacterLuck,
   spendCharacterMana,
   summonCompanionInstance,
@@ -469,6 +473,76 @@ describe('setEquipmentWorn', () => {
     // `setWornAt` remet l'état de port à `undefined` (clé présente, valeur absente — elle
     // disparaît à la sérialisation JSON du personnage).
     expect(setEquipmentWorn(c, 0, undefined).equipment?.[0].worn).toBeUndefined();
+  });
+});
+
+describe('gestes de chargement des armes (PER-284)', () => {
+  /** Arquebusier d'INT 3 avec la voie de l'artilleur au rang 3 → chargeur de 6 coups (p. 62). */
+  const gunner = (equipment: EquipmentLine[]): Character => {
+    const base = char({ featureIds: ['artilleur-r1', 'artilleur-r2', 'artilleur-r3'], equipment });
+    return { ...base, abilities: { ...base.abilities, INT: 3 } };
+  };
+
+  it('tirer retire un coup et n’écrit QUE l’équipement (clé d’état de jeu)', () => {
+    const patch = fireWeaponShot(gunner([{ itemId: 'petoire', quantity: 1 }]), 0);
+    expect(Object.keys(patch)).toEqual(['equipment']);
+    expect(patch.equipment?.[0]).toMatchObject({ itemId: 'petoire', loaded: [] });
+  });
+
+  it('tirer une arme vide ne renvoie RIEN (patch vide = aucune écriture)', () => {
+    expect(fireWeaponShot(gunner([{ itemId: 'petoire', quantity: 1, loaded: [] }]), 0)).toEqual({});
+  });
+
+  it('tirer sur une arme qui ne se recharge pas ne renvoie rien', () => {
+    expect(fireWeaponShot(gunner([{ itemId: 'arc-long', quantity: 1 }]), 0)).toEqual({});
+  });
+
+  it('recharger remet un coup ; le plein s’écrit par l’absence de `loaded`', () => {
+    const patch = loadWeaponShot(gunner([{ itemId: 'petoire', quantity: 1, loaded: [] }]), 0);
+    expect(patch.equipment?.[0]).toEqual({ itemId: 'petoire', quantity: 1 });
+  });
+
+  it('recharger une arme pleine ne renvoie rien', () => {
+    expect(loadWeaponShot(gunner([{ itemId: 'petoire', quantity: 1 }]), 0)).toEqual({});
+  });
+
+  it('recharger à la grenaille l’annonce sur l’arme (explosifs-r1, p. 63)', () => {
+    const patch = loadWeaponShot(
+      gunner([{ itemId: 'petoire', quantity: 1, magazine: true, loaded: [] }]),
+      0,
+      'grapeshot',
+    );
+    expect(patch.equipment?.[0]).toMatchObject({ loaded: ['grapeshot'] });
+  });
+
+  it('faire le plein remplit le chargeur d’un geste (capacité 2 + INT 3 + 1 palier = 6)', () => {
+    const patch = refillWeaponShots(
+      gunner([{ itemId: 'petoire', quantity: 1, magazine: true, loaded: ['normal'] }]),
+      0,
+    );
+    expect(patch.equipment?.[0]).toEqual({ itemId: 'petoire', quantity: 1, magazine: true });
+  });
+
+  it('faire le plein d’une arme pleine ne renvoie rien', () => {
+    expect(refillWeaponShots(gunner([{ itemId: 'petoire', quantity: 1 }]), 0)).toEqual({});
+  });
+
+  it('désigner une arme à doter d’un chargeur n’écrit QUE l’équipement (artilleur-r2, p. 62)', () => {
+    const spec = featureById.get('artilleur-r2')!.weaponModification!;
+    const c = gunner([{ itemId: 'petoire', quantity: 1 }]);
+    const patch = setWeaponModification(c, 0, spec, true);
+    expect(Object.keys(patch)).toEqual(['equipment']);
+    expect(patch.equipment?.[0]).toMatchObject({ itemId: 'petoire', magazine: true });
+  });
+
+  it('refuse au-delà du plafond du livre (deux armes) → patch vide', () => {
+    const spec = featureById.get('artilleur-r2')!.weaponModification!;
+    const c = gunner([
+      { itemId: 'petoire', quantity: 1, magazine: true },
+      { itemId: 'petoire', quantity: 1, magazine: true },
+      { itemId: 'mousquet', quantity: 1 },
+    ]);
+    expect(setWeaponModification(c, 2, spec, true)).toEqual({});
   });
 });
 

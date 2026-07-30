@@ -12,6 +12,7 @@ import type { Character, Depletion, EquipmentLine, PoisonApplication } from './t
 import { currentRecoveryDice, healHp, pruneDepletion, spendRecoveryDice } from './gauges';
 import { clearTemporaryEffectInputs, clearTemporaryEffectToggles, resetUsageCounters } from './effects';
 import { removeElixirDoses } from './elixirs';
+import { reloadAllToFull } from './weaponLoading';
 
 /**
  * Ré-enduit les armes empoisonnées (« Avant chaque combat, ses armes sont enduites », p. 143, PER-74) :
@@ -39,9 +40,11 @@ export interface RestResult {
    */
   effectInputs: Record<string, string>;
   /**
-   * Équipement mis à jour (PER-152) : présent UNIQUEMENT pour le repos long, qui purge les doses
-   * d'élixir du forgesort (voie des élixirs, p. 98 : « Les élixirs qui ne sont pas utilisés le jour
-   * même sont perdus »). Absent pour repos court / reset → l'équipement n'est pas touché.
+   * Équipement mis à jour : présent quand le repos a REELLEMENT touché une ligne — purge des doses
+   * d'élixir du forgesort au repos LONG (PER-152 ; voie des élixirs, p. 98 : « Les élixirs qui ne
+   * sont pas utilisés le jour même sont perdus »), et remise à plein des armes à recharger aux DEUX
+   * repos (PER-284, cf. `reloadAllToFull`). Absent = aucune ligne modifiée (ou reset) → l'équipement
+   * n'est pas touché, et le patch de repos reste purement état de jeu (PER-266).
    */
   equipment?: EquipmentLine[];
   /**
@@ -94,6 +97,11 @@ export function shortRest(
     effectToggles: clearTemporaryEffectToggles(character),
     effectInputs: clearTemporaryEffectInputs(character),
   };
+  // Armes rechargées à plein (PER-284) : une pause de quelques minutes suffit à recharger une
+  // arbalète ou une arme à poudre (p. 185 : le rechargement se compte en actions), et rien ne
+  // justifie de repartir déchargé. Inclus SEULEMENT si une arme était réellement à recharger.
+  const reloaded = reloadAllToFull(character.equipment);
+  if (reloaded !== character.equipment) result.equipment = reloaded;
   const reArmed = reArmPoisons(character.poisonedWeapons);
   if (reArmed) result.poisonedWeapons = reArmed;
   return result;
@@ -131,7 +139,10 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
   // « mixte » (equipment ∉ état de jeu) et partirait, en session, sur le chemin verrou de version
   // SANS diffusion (PER-266). Sans élixir, un repos long est ainsi un patch PUREMENT état de jeu,
   // synchronisé en direct comme un repos court.
+  // Les armes à recharger repartent à plein (PER-284), comme au repos court, en plus de la purge.
   const prunedEquipment = removeElixirDoses(character.equipment);
+  const dosesRemoved = prunedEquipment.length !== character.equipment.length;
+  const restoredEquipment = reloadAllToFull(prunedEquipment);
   const result: RestResult = {
     depletion: pruneDepletion(depletion),
     usageCounters: resetUsageCounters(
@@ -143,7 +154,7 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
     effectToggles: clearTemporaryEffectToggles(character),
     effectInputs: clearTemporaryEffectInputs(character),
   };
-  if (prunedEquipment.length !== character.equipment.length) result.equipment = prunedEquipment;
+  if (dosesRemoved || restoredEquipment !== prunedEquipment) result.equipment = restoredEquipment;
   const reArmed = reArmPoisons(character.poisonedWeapons);
   if (reArmed) result.poisonedWeapons = reArmed;
   return result;

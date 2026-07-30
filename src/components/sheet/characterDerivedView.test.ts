@@ -149,6 +149,79 @@ describe('buildCharacterDerivedView', () => {
     expect(view.rangedWeaponDamage?.abilities).toEqual(['PER']);
   });
 
+  it('PER-284 : canon double → dé de DM DOUBLÉ sur la carte de tir (1d10 → 2d10, p. 63)', () => {
+    const view = buildCharacterDerivedView(
+      makeCharacter({
+        classId: 'arquebusier',
+        featureIds: ['artilleur-r1', 'artilleur-r2', 'artilleur-r3', 'artilleur-r4'],
+        equipment: [
+          { itemId: 'petoire', quantity: 1, doubleBarrel: true, worn: { slot: 'mainHand' } },
+        ],
+      }),
+    );
+    expect(view.rangedWeaponDamage?.dice).toBe('2d10');
+    // Le doublement doit être EXPLIQUÉ (sinon 2d10 sort de nulle part).
+    expect(view.rangedWeaponDamage?.diceNote).toContain('DOUBLÉ');
+  });
+
+  it('PER-284 : avec un seul coup chargé, le dé revient à la normale (un seul canon, p. 63)', () => {
+    const view = buildCharacterDerivedView(
+      makeCharacter({
+        classId: 'arquebusier',
+        featureIds: ['artilleur-r1', 'artilleur-r2', 'artilleur-r3', 'artilleur-r4'],
+        equipment: [
+          {
+            itemId: 'petoire',
+            quantity: 1,
+            doubleBarrel: true,
+            loaded: ['normal'],
+            worn: { slot: 'mainHand' },
+          },
+        ],
+      }),
+    );
+    expect(view.rangedWeaponDamage?.dice).toBe('1d10');
+    expect(view.rangedWeaponDamage?.diceNote).toBeUndefined();
+  });
+
+  it('PER-284 : sans canon double, le dé du catalogue est intact', () => {
+    const view = buildCharacterDerivedView(
+      makeCharacter({
+        classId: 'arquebusier',
+        equipment: [{ itemId: 'petoire', quantity: 1, worn: { slot: 'mainHand' } }],
+      }),
+    );
+    expect(view.rangedWeaponDamage?.dice).toBe('1d10');
+  });
+
+  it('PER-284 : Poudre puissante → +1 aux DM des armes à poudre, +1 par voie d’arquebusier au rang 5', () => {
+    const gunner = (featureIds: string[]) =>
+      buildCharacterDerivedView(
+        makeCharacter({
+          classId: 'arquebusier',
+          level: 20,
+          featureIds,
+          equipment: [{ itemId: 'mousquet', quantity: 1, worn: { slot: 'mainHand' } }],
+        }),
+      );
+    // Socle : +1 dès l'acquisition, aucune voie au rang 5.
+    const base = gunner(['explosifs-r1', 'explosifs-r2', 'explosifs-r3']);
+    expect(base.rangedWeaponDamage?.flatBonuses.map((b) => b.value)).toEqual([1]);
+    // Une voie d'arquebusier au rang 5 → +2.
+    const oneMilestone = gunner(['explosifs-r1', 'explosifs-r2', 'explosifs-r3', 'artilleur-r5']);
+    expect(oneMilestone.rangedWeaponDamage?.flatBonuses.map((b) => b.value)).toEqual([2]);
+    // Le bonus ne vise QUE la poudre : une arbalète n'en profite pas (jumeau `maitre-des-arbaletes-r1`).
+    const crossbow = buildCharacterDerivedView(
+      makeCharacter({
+        classId: 'arquebusier',
+        level: 20,
+        featureIds: ['explosifs-r1', 'explosifs-r2', 'explosifs-r3'],
+        equipment: [{ itemId: 'arbalete-lourde', quantity: 1, worn: { slot: 'mainHand' } }],
+      }),
+    );
+    expect(crossbow.rangedWeaponDamage?.flatBonuses).toEqual([]);
+  });
+
   it('PER-115 : sans arme à distance portée, DM à distance null', () => {
     const view = buildCharacterDerivedView(makeCharacter());
     expect(view.rangedWeaponDamage).toBeNull();

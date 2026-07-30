@@ -39,6 +39,7 @@ import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/master
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { weaponAffinities } from '@/lib/character/weaponAffinity';
 import { PriestVocationIdentityLine } from '@/components/sheet/PriestVocationBadge';
+import { missingGrantedItems } from '@/lib/character/grantedEquipment';
 import { firearmsEffective } from '@/lib/character/firearms';
 import { useIsPlayerSession } from '@/lib/supabase/useIsPlayerSession';
 import { usePresenceHeartbeat } from '@/lib/player/usePresenceHeartbeat';
@@ -370,6 +371,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     resolveStartingChoice,
     setWorn,
     setPurse,
+    fireWeaponShot,
+    loadWeaponShot,
+    refillWeaponShots,
+    weaponLoading,
+    addGrantedEquipment,
     setHpDamage,
     setHpHeal,
     setHpReset,
@@ -1158,6 +1164,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               onSummonCompanionInstance={summonCompanionInstance}
               // Poison appliqué aux armes (maître des poisons, PER-74) : état de jeu, patch appliqué via update.
               onPoisonUpdate={update}
+              // PER-284 : armes bricolées (chargeur / second canon) désignées par le joueur.
+              onWeaponModificationUpdate={update}
               // Stats du maître : Init./attaque des compagnons recopient ce total.
               masterDerived={masterDerived}
               // Bonus de compétence par domaine : sert à signaler, sur une capacité EMPRUNTÉE, que son
@@ -1192,6 +1200,22 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               onChange={editingBlocks.equipment ? setEquipment : undefined}
               // « Utiliser » : consommer une unité est un état de jeu → disponible hors mode édition.
               onUse={handleUseItem}
+              // Chargement des armes (PER-284) : compteur de coups prêts sur les arbalètes et armes
+              // à poudre, et gestes tirer / recharger / plein — état de jeu, hors mode édition, et
+              // masqués en lecture seule (le compteur, lui, reste affiché).
+              weaponLoading={weaponLoading}
+              // PER-286 : rappel « objet octroyé par une capacité » (couleuvrine du rang 5), avec
+              // son bouton d'ajout — masqué en lecture seule.
+              grantedMissing={missingGrantedItems(character, firearmsAllowed)}
+              // PER-286 : dés évolutifs résolus au niveau + carac ajoutée par l'arme (couleuvrine).
+              level={character.level}
+              abilities={effectCtx.abilities}
+              onAddGranted={readOnly ? undefined : addGrantedEquipment}
+              onFireShot={readOnly ? undefined : fireWeaponShot}
+              onLoadShot={readOnly ? undefined : loadWeaponShot}
+              onRefillShots={readOnly ? undefined : refillWeaponShots}
+              // Tir de grenaille (explosifs-r1, p. 63) : le mélange s'annonce AU chargement.
+              canLoadGrapeshot={character.featureIds.includes('explosifs-r1')}
               // Équiper/déséquiper (PER-77) : état de jeu, hors mode édition ; masqué en lecture seule
               // (le porté reste montré par un badge). Voir `setWorn`.
               onWear={readOnly ? undefined : setWorn}

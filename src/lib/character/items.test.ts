@@ -3,10 +3,13 @@ import {
   ITEM_TYPE_ORDER,
   effectiveItem,
   groupEquipmentByType,
+  isThrownWeapon,
   itemType,
+  lineAllowsQuantity,
   reorderEquipment,
   snapshotOverrides,
 } from './items';
+import { equipmentById } from '@/data';
 import { isCustomItem } from './types';
 import type { EquipmentLine, EquipmentRef } from './types';
 
@@ -217,5 +220,45 @@ describe('reorderEquipment (PER-222 — réordonnancement manuel à plat)', () =
   it('indice hors bornes : renvoie une copie inchangée (garde-fou)', () => {
     expect(ids(reorderEquipment([a, b, c], -1, 1))).toEqual(['a', 'b', 'c']);
     expect(ids(reorderEquipment([a, b, c], 1, 5))).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('isThrownWeapon — armes que le livre compte par paquets (p. 187)', () => {
+  it('reconnaît les armes de jet par leur sous-type `thrown`', () => {
+    for (const id of ['couteaux-de-lancer', 'dague-de-lancer', 'hachette', 'javelot', 'lance-de-lancer']) {
+      expect(isThrownWeapon(equipmentById.get(id)), id).toBe(true);
+    }
+  });
+
+  it('reconnaît une arme de CONTACT lançable par sa famille `thrown` (dague, épieu)', () => {
+    expect(isThrownWeapon(equipmentById.get('dague'))).toBe(true);
+    expect(isThrownWeapon(equipmentById.get('epieu'))).toBe(true);
+  });
+
+  it('exclut les armes qui ne se lancent pas, et tout ce qui n’est pas une arme', () => {
+    for (const id of ['epee-longue', 'petoire', 'mousquet', 'arbalete-lourde', 'arc-long', 'cuir-renforce']) {
+      expect(isThrownWeapon(equipmentById.get(id)), id).toBe(false);
+    }
+    expect(isThrownWeapon(undefined)).toBe(false);
+  });
+});
+
+describe('lineAllowsQuantity — une arme = une case (PER-284)', () => {
+  it('aucune quantité sur une arme de contact ou une arme à recharger', () => {
+    for (const itemId of ['epee-longue', 'rapiere', 'petoire', 'mousquet', 'arbalete-lourde', 'arc-long']) {
+      expect(lineAllowsQuantity({ itemId, quantity: 1 }), itemId).toBe(false);
+    }
+  });
+
+  it('quantité conservée sur les armes de jet (5 dagues, 2 javelots de l’équipement de départ)', () => {
+    expect(lineAllowsQuantity({ itemId: 'dague', quantity: 5 })).toBe(true);
+    expect(lineAllowsQuantity({ itemId: 'javelot', quantity: 2 })).toBe(true);
+  });
+
+  it('quantité conservée sur tout le reste de l’inventaire', () => {
+    expect(lineAllowsQuantity({ itemId: 'torches', quantity: 3 })).toBe(true);
+    expect(lineAllowsQuantity({ itemId: 'cuir-renforce', quantity: 1 })).toBe(true);
+    expect(lineAllowsQuantity({ itemId: 'petit-bouclier', quantity: 1 })).toBe(true);
+    expect(lineAllowsQuantity({ custom: true, name: 'Fiole vide', quantity: 4 })).toBe(true);
   });
 });

@@ -135,6 +135,7 @@ export function RangedAttackCard({
                 {rangedWeaponDamage ? (
                   <WeaponDamageExpr
                     dice={rangedWeaponDamage.dice}
+                    diceNote={rangedWeaponDamage.diceNote}
                     abilities={rangedWeaponDamage.abilities}
                     flatBonuses={rangedWeaponDamage.flatBonuses}
                     charAbilities={abilities}

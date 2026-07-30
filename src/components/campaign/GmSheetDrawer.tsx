@@ -522,6 +522,8 @@ function GmSheetDrawerContent({
               onCreateElixir={game.createElixir}
               onSummonCompanionInstance={game.summonCompanionInstance}
               onPoisonUpdate={game.update}
+              // PER-284 : armes bricolées (chargeur / second canon) désignées par le joueur.
+              onWeaponModificationUpdate={game.update}
               masterDerived={masterDerived}
               testBonuses={display.testBonuses}
             />
@@ -542,6 +544,16 @@ function GmSheetDrawerContent({
               equipment={character.equipment}
               onUse={handleUseItem}
               onWear={game.setWorn}
+              // Chargement des armes (PER-284) : le MJ voit le compteur de coups prêts et peut
+              // tirer/recharger pour le joueur (même statut d'état de jeu que les PV et le porté).
+              weaponLoading={game.weaponLoading}
+              // PER-286 : dés évolutifs résolus au niveau + carac ajoutée par l'arme (couleuvrine).
+              level={character.level}
+              abilities={effectCtx.abilities}
+              onFireShot={game.fireWeaponShot}
+              onLoadShot={game.loadWeaponShot}
+              onRefillShots={game.refillWeaponShots}
+              canLoadGrapeshot={character.featureIds.includes('explosifs-r1')}
               characterClass={characterClass}
               masteredIds={masteredClassIds(character, rulesContext)}
               firearmsAllowed={firearmsAllowed}

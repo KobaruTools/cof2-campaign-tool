@@ -9,6 +9,7 @@ import type { Abilities } from '@/lib/engine';
 import type { PermanentFlatBonus } from '@/lib/character/weaponDamageBonus';
 import { DamageValue } from '@/components/DamageValue';
 import { AppTooltip } from '@/components/AppTooltip';
+import { PageRefText } from '@/components/SourceRef';
 import { AbilityValueChip, CapabilityChip } from '@/components/sheet/FeatureRichText';
 
 /**
@@ -78,20 +79,35 @@ function FlatDamageBonusChip({ sources }: { sources: PermanentFlatBonus[] }) {
  */
 export function WeaponDamageExpr({
   dice,
+  diceNote,
   abilities,
   flatBonuses = [],
   charAbilities,
 }: {
   dice: string;
+  /**
+   * Explication d'un dé MODIFIÉ par une capacité (Canon double doublant le dé, PER-284) : rendue en
+   * infobulle sur le dé, pour qu'un 1d10 devenu 2d10 ne soit jamais inexpliqué. Absent = dé nu.
+   */
+  diceNote?: string;
   abilities: AbilityId[];
   /** Bonus PLATS permanents (avec source) ajoutés aux DM (ex. Spécialisation, PER-226). Vide = rien. */
   flatBonuses?: PermanentFlatBonus[];
   charAbilities: Abilities;
 }) {
   const flatTotal = flatBonuses.reduce((sum, b) => sum + b.value, 0);
+  const diceValue = <DamageValue damage={dice} size={22} />;
   return (
     <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, flexWrap: 'wrap' }}>
-      <DamageValue damage={dice} size={22} />
+      {diceNote ? (
+        <AppTooltip title={<PageRefText>{diceNote}</PageRefText>}>
+          <Box component="span" sx={{ display: 'inline-flex', cursor: 'help' }}>
+            {diceValue}
+          </Box>
+        </AppTooltip>
+      ) : (
+        diceValue
+      )}
       {abilities.length > 0 && (
         <>
           <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>

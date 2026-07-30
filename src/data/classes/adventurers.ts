@@ -433,6 +433,15 @@ export const adventurerFeatures: Feature[] = [
     // À 0 voie au rang 3, le terme `paliers` est omis → affichage « 2 + INT ».
     richText:
       "L'arquebusier modifie jusqu'à deux armes de son choix pour les doter de chargeurs. La capacité du chargeur est égale à [=2 + INT + paliers] et elle augmente de 1 projectile supplémentaire chaque fois que le personnage atteint le rang 3 dans une voie d'arquebusier. Chaque chargeur doit être ensuite rechargé au rythme d'une action limitée (L) par projectile.",
+    // PER-284 : « jusqu'à DEUX armes de son choix » → c'est au joueur de désigner lesquelles, sous la
+    // carte du rang. Portée `reloadable` (et non `firearm`) : le livre dit « armes », sans restreindre
+    // à la poudre, et la variante « Arbalétrier » (p. 62) doit pouvoir doter ses arbalètes d'un chargeur.
+    weaponModification: {
+      modification: 'magazine',
+      scope: 'reloadable',
+      maxWeapons: 2,
+      label: 'Armes dotées d’un chargeur',
+    },
     sourcePage: 62,
   },
   {
@@ -458,6 +467,14 @@ export const adventurerFeatures: Feature[] = [
     // PER-71 : modifie le DM d'une ARME À POUDRE (dé de DM doublé, ×3 au critique au lieu de ×4)
     // → relève de l'affichage des DM d'arme augmentés par capacité (PER-115, milestone Armures).
     // Pas d'effet structuré ici ; texte verbatim conservé tel quel (aucune valeur à calculer).
+    // PER-284 : « ses armes à poudre (mais pas une couleuvrine) » → portée `firearm`, et AUCUN plafond
+    // n'est annoncé par le livre. L'exclusion de la couleuvrine viendra avec elle (PER-286) : elle
+    // n'existe pas encore au catalogue, il n'y a donc rien à exclure aujourd'hui.
+    weaponModification: {
+      modification: 'doubleBarrel',
+      scope: 'firearm',
+      label: 'Armes dotées d’un second canon',
+    },
     sourcePage: 63,
   },
   {
@@ -474,6 +491,10 @@ export const adventurerFeatures: Feature[] = [
     // ARME octroyée (DM/portée affichés via PER-115, milestone Armures), pas une créature ni une stat.
     richText:
       "L'arquebusier obtient une couleuvrine (un petit canon portatif). Sur un test d'attaque à distance réussi (dé bonus), la couleuvrine inflige [5d4° + INT] DM à une portée de 100 m. Il faut ensuite deux rounds (L) pour la recharger. C'est une arme encombrante et il est impossible de transporter plus d'une couleuvrine.",
+    // PER-286 : « L'arquebusier OBTIENT une couleuvrine » → l'objet entre dans l'inventaire à
+    // l'acquisition du rang. Poudre interdite dans l'univers → la baliste la remplace, via
+    // l'`equivalentCrossbowId` du catalogue (variante « Arbalétrier », p. 62).
+    grantsEquipment: { itemId: 'couleuvrine' },
     sourcePage: 63,
   },
 
@@ -662,10 +683,24 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "L'arquebusier sait préparer une poudre plus puissante, il ajoute +10 m à la portée et +1 aux DM des armes à poudre. Le bonus aux DM augmente de +1 à chaque fois que le personnage atteint le rang 5 dans une voie d'arquebusier. De plus, sa poudre est magique et elle permet à ses projectiles d'affecter les créatures immunisées aux armes non magiques.",
-    // PER-71 : « +1 aux DM des armes à poudre » (scalant +1 par rang 5 cross-voie) modifie le DM d'une
-    // ARME → relève de l'affichage des DM d'arme augmentés par capacité (PER-115, milestone Armures). Le
-    // +10 m de portée et le caractère « poudre magique » (touche les créatures immunisées aux armes non
-    // magiques) accompagnent ce traitement d'arme. Pas d'effet structuré ici ; texte verbatim conservé.
+    // PER-284 : « +1 aux DM des armes à poudre », qui « augmente de +1 à chaque fois que le personnage
+    // atteint le rang 5 dans une voie d'arquebusier » → JUMEAU EXACT du bonus de l'arbalétrier
+    // (`maitre-des-arbaletes-r1`), au type d'arme près : `weapon-damage-bonus` plat, appliqué si une
+    // arme à POUDRE est portée. Le plafond n'a pas à être écrit : le livre n'en annonce aucun ici, et
+    // le compte se borne de lui-même (socle 1 + 5 voies d'arquebusier au plus = +6, comme le « maximum
+    // de +6 » que le livre énonce pour le jumeau arbalétrier).
+    // RESTENT VERBATIM : le +10 m de portée (aucun modèle de portée) et la « poudre magique » qui permet
+    // d'affecter les créatures immunisées aux armes non magiques (aucun modèle de type de DM d'arme).
+    effects: [
+      {
+        kind: 'weapon-damage-bonus',
+        flat: {
+          scale: 'sum',
+          parts: [1, { scale: 'milestone-count', per: 1, rank: 5, classIds: ['arquebusier'] }],
+        },
+        condition: { rangedKinds: ['firearm'] },
+      },
+    ],
     sourcePage: 63,
   },
   {

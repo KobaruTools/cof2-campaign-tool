@@ -33,6 +33,8 @@ import { effectiveClassPathIds, firearmsInactivePathIds } from '@/lib/character/
 // Détection DATA-DRIVEN (PER-197) des armes « à poudre » : dérivée du sous-type d'arme
 // `rangedKind: 'firearm'` (PER-115), source unique partagée avec la maîtrise (PER-79).
 import { isFirearmItemId } from '@/lib/character/firearms';
+// Armes à poudre chargées d'avance (PER-284) : limite CONSEILLÉE par le livre (p. 187).
+import { ADVISED_LOADED_FIREARMS, loadedFirearmCount } from '@/lib/character/weaponLoading';
 // Plafond de port d'armure/bouclier par profil (PER-80) — module pur dédié. La restriction
 // FINE d'usage par capacité d'origine (PER-86) n'est PAS un avertissement de conformité :
 // elle est rendue visuellement (rang désaturé + infobulle) par `FeaturesByPath`, pas ici.
@@ -72,6 +74,7 @@ export type WarningCode =
   | 'FEATURE_POINTS_OVERSPENT'
   | 'FIREARMS_DISABLED_PATH'
   | 'FIREARMS_DISABLED_ITEM'
+  | 'TOO_MANY_LOADED_FIREARMS'
   | 'ARMOR_TOO_HEAVY'
   | 'SHIELD_NOT_ALLOWED'
   | 'UNKNOWN_FEATURE';
@@ -624,6 +627,19 @@ export function checkCompliance(
         severity: 'warning',
       });
     }
+  }
+
+  // Armes à poudre chargées d'avance (PER-284, p. 187, encadré « Charger des armes à poudre à
+  // l'avance »). Le livre ne l'INTERDIT pas, il conseille de poser une limite : simple information
+  // (`severity: 'info'`), avec le verbatim, sur un choix parfaitement légal. La couleuvrine est
+  // exclue du décompte par le livre lui-même (cf. `countsTowardLoadedLimit`).
+  const loadedFirearms = loadedFirearmCount(character);
+  if (loadedFirearms > ADVISED_LOADED_FIREARMS) {
+    warnings.push({
+      code: 'TOO_MANY_LOADED_FIREARMS',
+      severity: 'info',
+      message: `${loadedFirearms} armes à poudre chargées en même temps (p. 187) : « Un arquebusier pourra raisonnablement avoir trois armes chargées en même temps, généralement deux pétoires et un mousquet (plus éventuellement une couleuvrine qui ne compte pas dans ce calcul). Plus d'armes surchargent le personnage. »`,
+    });
   }
 
   // Plafond de port d'armure/bouclier par profil (PER-80). Compare l'armure et le

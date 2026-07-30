@@ -452,6 +452,7 @@ export const weapons: Weapon[] = [
     melee: false,
     ranged: true,
     rangedKind: 'crossbow',
+    reload: { action: 'M' },
     damage: { count: 1, die: 'd6' },
     range: '10 m',
     price: { amount: 8, unit: 'pa' },
@@ -466,6 +467,7 @@ export const weapons: Weapon[] = [
     melee: false,
     ranged: true,
     rangedKind: 'crossbow',
+    reload: { action: 'M' },
     damage: { count: 2, die: 'd4' },
     range: '30 m',
     price: { amount: 10, unit: 'pa' },
@@ -481,6 +483,7 @@ export const weapons: Weapon[] = [
     melee: false,
     ranged: true,
     rangedKind: 'crossbow',
+    reload: { action: 'L' },
     damage: { count: 2, die: 'd6' },
     range: '60 m',
     price: { amount: 15, unit: 'pa' },
@@ -635,6 +638,7 @@ export const weapons: Weapon[] = [
     rangedKind: 'firearm',
     // Poudre interdite dans l'univers → la pétoire est remplacée par une arbalète de poing (p. 62).
     equivalentCrossbowId: 'arbalete-de-poing',
+    reload: { action: 'L' },
     damage: { count: 1, die: 'd10' },
     range: '20 m',
     price: { amount: 50, unit: 'pa' },
@@ -652,12 +656,77 @@ export const weapons: Weapon[] = [
     rangedKind: 'firearm',
     // Poudre interdite dans l'univers → le mousquet est remplacé par une arbalète lourde (p. 62).
     equivalentCrossbowId: 'arbalete-lourde',
+    reload: { action: 'L' },
     damage: { count: 2, die: 'd6' },
     range: '50 m',
     price: { amount: 100, unit: 'pa' },
     properties:
       'Type de DM : perforants. Armes à poudre, soumises à l’autorisation du MJ (voir encadré), nécessite une action limitée pour être rechargée, arme tenue à deux mains. (Halfelins et gobelins peuvent utiliser des armes de plus petit calibre aux dés de DM réduits : pétoire 1d8 et mousquet 1d12.) Si les armes à poudre sont interdites dans l’univers de jeu, le mousquet est remplacé par une arbalète lourde (p. 62).',
     sourcePage: 185,
+  },
+
+  // -------------------------------------------------------------------------
+  // Armes OCTROYÉES PAR UNE CAPACITÉ (PER-286) — hors des tables d'équipement
+  // -------------------------------------------------------------------------
+  // La couleuvrine ne figure dans AUCUNE table du livre : c'est la capacité Couleuvrine
+  // (`artilleur-r5`, p. 63) qui l'octroie, d'où `price: null` (elle ne s'achète pas) et son
+  // arrivée automatique dans l'inventaire à l'acquisition du rang (cf. `Feature.grantsEquipment`).
+  {
+    id: 'couleuvrine',
+    name: 'Couleuvrine',
+    category: 'weapon',
+    // INTERPRÉTATION : le livre ne donne pas de catégorie d'arme pour la couleuvrine. « Un petit
+    // canon portatif », « une arme encombrante » (p. 63) → deux mains.
+    weaponCategory: 'twoHands',
+    melee: false,
+    ranged: true,
+    rangedKind: 'firearm',
+    // Poudre interdite dans l'univers → « la couleuvrine par une baliste » (encadré « Poudre ou pas
+    // poudre ? », p. 62), comme la pétoire par l'arbalète de poing.
+    equivalentCrossbowId: 'baliste',
+    // « Il faut ensuite deux rounds (L) pour la recharger » (p. 63) → 2 rounds d'action limitée.
+    // EXCLUE de la limite conseillée des trois armes à poudre chargées : « plus éventuellement une
+    // couleuvrine qui ne compte pas dans ce calcul » (p. 187).
+    reload: { action: 'L', rounds: 2, countsTowardLoadedLimit: false },
+    // « la couleuvrine inflige [5d4° + INT] DM » (p. 63) : dé ÉVOLUTIF (affiché résolu au niveau,
+    // p. 43) ET carac ajoutée, par DÉROGATION à la règle générale des armes à distance (p. 185).
+    damage: { count: 5, die: 'd4', evolving: true },
+    damageAbility: 'INT',
+    // Aucun bricolage d'arquebusier sur cette pièce. Second canon : VERBATIM, « L'arquebusier peut
+    // bricoler ses armes à poudre (MAIS PAS UNE COULEUVRINE) » (p. 63). Chargeur : RÈGLE MAISON
+    // (décision propriétaire) — le livre ne l'interdit nulle part, mais il écarte la couleuvrine de
+    // tous les autres avantages d'arme à poudre (canon double p. 63, dé malus au contact p. 65,
+    // décompte des trois armes chargées p. 187), et un chargeur « une action limitée par projectile »
+    // (p. 62) contredirait ses deux rounds de rechargement.
+    excludedWeaponModifications: ['doubleBarrel', 'magazine'],
+    range: '100 m',
+    price: null,
+    properties:
+      'Type de DM : perforants. Arme à poudre octroyée par la capacité Couleuvrine (voie de l’artilleur, rang 5). Sur un test d’attaque à distance réussi (dé bonus), elle inflige [5d4° + INT] DM à une portée de 100 m. Il faut ensuite deux rounds (L) pour la recharger. C’est une arme encombrante et il est impossible de transporter plus d’une couleuvrine. Elle ne compte pas dans la limite conseillée de trois armes à poudre chargées (p. 187). Si les armes à poudre sont interdites dans l’univers de jeu, la couleuvrine est remplacée par une baliste (p. 62).',
+    sourcePage: 63,
+  },
+  {
+    id: 'baliste',
+    name: 'Baliste',
+    category: 'weapon',
+    weaponCategory: 'twoHands',
+    melee: false,
+    ranged: true,
+    rangedKind: 'crossbow',
+    reload: { action: 'L', rounds: 2, countsTowardLoadedLimit: false },
+    // INTERPRÉTATION (à valider) : le livre nomme la baliste comme le REMPLACEMENT de la couleuvrine
+    // (encadré « Poudre ou pas poudre ? », p. 62) et la cite parmi les armes de siège (p. 62,
+    // Mécanismes), mais ne lui donne AUCUNE statistique. On reprend donc telles quelles celles de la
+    // couleuvrine, puisque c'est le même emplacement de construction (variante « Arbalétrier ») —
+    // y compris le « + INT », le dé évolutif et le refus des bricolages d'arquebusier.
+    damage: { count: 5, die: 'd4', evolving: true },
+    damageAbility: 'INT',
+    excludedWeaponModifications: ['doubleBarrel', 'magazine'],
+    range: '100 m',
+    price: null,
+    properties:
+      'Type de DM : perforants. Contrepartie sans poudre de la couleuvrine, pour la variante « Arbalétrier » : « vous pouvez remplacer […] la couleuvrine par une baliste » (p. 62). Le livre ne lui donne pas de statistiques propres — celles de la couleuvrine sont reprises : [5d4° + INT] DM à 100 m, deux rounds (L) pour recharger, arme encombrante. Elle ne compte pas dans la limite conseillée de trois armes chargées (p. 187).',
+    sourcePage: 62,
   },
 ];
 

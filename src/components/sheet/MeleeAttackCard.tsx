@@ -122,6 +122,7 @@ function Face({
                 meleeWeaponDamage ? (
                   <WeaponDamageExpr
                     dice={meleeWeaponDamage.dice}
+                    diceNote={meleeWeaponDamage.diceNote}
                     abilities={meleeWeaponDamage.abilities}
                     flatBonuses={meleeWeaponDamage.flatBonuses}
                     charAbilities={abilities}

@@ -24,12 +24,17 @@
  */
 import { featureById } from '@/data';
 import { COIN_POUCH_ITEM_NAME } from '@/data/progression';
-import type { PoisonKind, StartingEquipmentChoiceOption } from '@/data/schema';
+import type {
+  PoisonKind,
+  StartingEquipmentChoiceOption,
+  WeaponModificationLoadout,
+} from '@/data/schema';
 import type {
   Character,
   CustomItem,
   Depletion,
   EquipmentLine,
+  LoadedAmmunitionKind,
   OwnedMount,
   PoisonApplication,
   Purse,
@@ -60,6 +65,13 @@ import {
 } from './gauges';
 import { longRest, shortRest } from './rest';
 import { setWornAt } from './equipment';
+import {
+  fireShot,
+  loadShot,
+  loadingContext,
+  refillWeapon,
+  setWeaponModification as setWeaponMod,
+} from './weaponLoading';
 import { elixirItemName, isElixirItemName } from './elixirs';
 import {
   companionMountEnSelle,
@@ -384,6 +396,75 @@ export function setEquipmentWorn(
 /** Bourse (PER-152) : argent possédé, état de jeu transitoire (non touché par un repos). */
 export function setPurse(purse: Purse): Partial<Character> {
   return { purse };
+}
+
+// ---------------------------------------------------------------------------
+// Chargement des armes (arbalètes et armes à poudre, p. 185/187, PER-284)
+// ---------------------------------------------------------------------------
+
+/**
+ * Trois gestes de chargement, tous ÉTAT DE JEU (on tire, on recharge — cela arrive en pleine
+ * partie, hors mode « Modifier ») : ils ne touchent que `equipment`, clé d'état de jeu synchronisée
+ * en session (PER-266), donc le compteur suit en direct sur l'écran du MJ et la projection.
+ *
+ * Les réducteurs purs renvoient la MÊME référence quand il n'y a rien à faire (arme vide qu'on
+ * essaie de tirer, arme pleine qu'on essaie de recharger) : on rend alors un patch VIDE, qui vaut
+ * « aucune écriture » par contrat.
+ */
+export function fireWeaponShot(character: Character, index: number): Partial<Character> {
+  const equipment = fireShot(character.equipment, index, loadingContext(character));
+  return equipment === character.equipment ? {} : { equipment };
+}
+
+/** Recharge UN coup ; `kind` déclare la munition (grenaille annoncée au chargement, p. 63). */
+export function loadWeaponShot(
+  character: Character,
+  index: number,
+  kind?: LoadedAmmunitionKind,
+): Partial<Character> {
+  const equipment = loadShot(character.equipment, index, loadingContext(character), kind);
+  return equipment === character.equipment ? {} : { equipment };
+}
+
+/**
+ * Ajoute à l'inventaire un objet OCTROYÉ par une capacité et manquant (PER-286 — couleuvrine du
+ * rang 5 de l'artilleur, ou baliste sans poudre). Déclenché par le rappel de l'inventaire, pas
+ * automatiquement : la fiche est permissive, un objet retiré volontairement ne revient pas tout seul.
+ *
+ * Patch vide si l'objet est déjà possédé (une ligne du bon `itemId` suffit).
+ */
+export function addGrantedEquipment(character: Character, itemId: string): Partial<Character> {
+  const owned = character.equipment.some((line) => !isCustomItem(line) && line.itemId === itemId);
+  if (owned) return {};
+  return { equipment: [...character.equipment, { itemId, quantity: 1 }] };
+}
+
+/**
+ * POSE ou RETIRE une modification d'arme octroyée par une capacité (chargeur de l'Arme à répétition,
+ * second canon du Canon double, PER-284). C'est le JOUEUR qui désigne les armes bricolées : le livre
+ * dit « jusqu'à deux armes de son CHOIX » (p. 62), et `spec.maxWeapons` borne la sélection.
+ *
+ * Patch vide (« aucune écriture ») si la ligne est inéligible, déjà dans l'état voulu, ou si le
+ * plafond est atteint.
+ */
+export function setWeaponModification(
+  character: Character,
+  index: number,
+  spec: WeaponModificationLoadout,
+  on: boolean,
+): Partial<Character> {
+  const equipment = setWeaponMod(character.equipment, index, spec, on);
+  return equipment === character.equipment ? {} : { equipment };
+}
+
+/** Fait le PLEIN de l'arme (chargeur, second canon) — « une action limitée par projectile » (p. 62). */
+export function refillWeaponShots(
+  character: Character,
+  index: number,
+  kind?: LoadedAmmunitionKind,
+): Partial<Character> {
+  const { equipment } = refillWeapon(character.equipment, index, loadingContext(character), kind);
+  return equipment === character.equipment ? {} : { equipment };
 }
 
 // ---------------------------------------------------------------------------

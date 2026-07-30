@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per284-poudre-canonique",
+  "name": "Recette PER-284 — Trois armes chargées (cas du livre)",
+  "identity": {
+    "description": "ATTENDU : AUCUN avertissement « armes à poudre chargées ». Le cas canonique du livre (p. 187) — « deux pétoires et un mousquet » — soit TROIS cases d'inventaire distinctes (une arme = une case), toutes chargées : pile la limite conseillée. Une seule pastille BLANCHE (1/1) sur chacune des trois, pastille CREUSE (0/1) sur l'arbalète lourde, qui ne compte pas dans la limite (l'encadré ne vise que la poudre). Pas de moitié « plein » (icône ⏩) ici : toutes ces armes sont de capacité 1, donc les boutons de rechargement restent simples. « Tirer » (en rouge, à gauche du séparateur) n'est actif que sur la pétoire EN MAIN : sur les deux autres armes à poudre, rangées, il est GRISÉ (l'infobulle explique qu'il faut l'arme en main, p. 187) alors que « Recharger » reste disponible — c'est bien la tactique du livre, préparer ses armes à l'avance. Sur l'arme en main, « Tirer » vide la pastille ; « Recharger » la remplit."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "artilleur-r1",
+    "artilleur-r2",
+    "artilleur-r3",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "petoire",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "petoire",
+      "quantity": 1
+    },
+    {
+      "itemId": "mousquet",
+      "quantity": 1
+    },
+    {
+      "itemId": "arbalete-lourde",
+      "quantity": 1,
+      "loaded": []
+    },
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-284 — contrôle NÉGATIF de la limite des trois armes à poudre chargées (p. 187). loadedFirearmCount attendu = 3, aucun avertissement.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

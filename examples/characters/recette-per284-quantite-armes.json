@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per284-quantite-armes",
+  "name": "Recette PER-284 — Une arme = une case (quantités)",
+  "identity": {
+    "description": "ATTENDU, en mode « Modifier » : le champ « Qté » a DISPARU sur toutes les armes — épée longue, les deux pétoires, mousquet, arbalète lourde — parce qu'une arme occupe une case et une seule. Il RESTE sur les armes de JET, que le livre compte par paquets (5 dagues et 2 javelots, soit l'équipement de départ du voleur et du guerrier), et sur tout le reste de l'inventaire (rations ×2, potions ×2, torches). Hors édition, aucun « ×N » ne doit s'afficher sur une arme. Les trois armes à poudre sont chargées : pile la limite conseillée, donc aucun avertissement."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "artilleur-r1",
+    "artilleur-r2",
+    "artilleur-r3",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "petoire",
+      "quantity": 1
+    },
+    {
+      "itemId": "petoire",
+      "quantity": 1
+    },
+    {
+      "itemId": "mousquet",
+      "quantity": 1
+    },
+    {
+      "itemId": "arbalete-lourde",
+      "quantity": 1,
+      "loaded": []
+    },
+    {
+      "itemId": "dague",
+      "quantity": 5
+    },
+    {
+      "itemId": "javelot",
+      "quantity": 2
+    },
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "torches-x3",
+      "quantity": 1
+    },
+    {
+      "itemId": "ration-1-semaine",
+      "quantity": 2
+    },
+    {
+      "itemId": "potion-de-soins",
+      "quantity": 2
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-284 — vérifie le retrait de la quantité sur les armes (sauf armes de jet). Le champ « Qté » doit être absent des 5 lignes d’arme non lançables et présent sur dagues/javelots/armure/rations/potions/torches.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

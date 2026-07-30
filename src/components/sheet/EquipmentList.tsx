@@ -8,7 +8,11 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
+import GpsFixedOutlinedIcon from '@mui/icons-material/GpsFixedOutlined';
+import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
+import LooksTwoOutlinedIcon from '@mui/icons-material/LooksTwoOutlined';
 import NoMeetingRoomOutlinedIcon from '@mui/icons-material/NoMeetingRoomOutlined';
+import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import ViewStreamIcon from '@mui/icons-material/ViewStream';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -50,10 +54,20 @@ import type {
   ItemDerivedBonuses,
   ItemTestBonuses,
   ItemType,
+  LoadedAmmunitionKind,
   WornState,
 } from '@/lib/character/types';
+import type { LoadingContext, WeaponLoadingState } from '@/lib/character/weaponLoading';
+import type { GrantedItem } from '@/lib/character/grantedEquipment';
+import { weaponLoadingState } from '@/lib/character/weaponLoading';
 import { ITEM_DERIVED_STAT_IDS, isCustomItem } from '@/lib/character/types';
-import { effectiveItem, groupEquipmentByType, itemType, reorderEquipment } from '@/lib/character/items';
+import {
+  effectiveItem,
+  groupEquipmentByType,
+  itemType,
+  lineAllowsQuantity,
+  reorderEquipment,
+} from '@/lib/character/items';
 import { ITEM_TEST_TARGET_IDS } from '@/lib/character/equipment';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { isFirearmItemId } from '@/lib/character/firearms';
@@ -71,13 +85,16 @@ import { equipmentLabel } from '@/components/wizard/helpers';
 import { AbilityIcon } from '@/components/AbilityIcon';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { DieIcon } from '@/components/DieIcon';
+import type { Abilities } from '@/lib/engine';
+import { AbilityValueChip } from '@/components/sheet/FeatureRichText';
+import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { ItemDialog, ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
 import { WeaponCriticalRangeBadge } from '@/components/sheet/WeaponCriticalRangeBadge';
 import type { WeaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange';
 import { EquipmentCatalogAutocomplete } from '@/components/sheet/EquipmentCatalogAutocomplete';
-import { PageRefText } from '@/components/SourceRef';
+import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { DamageValue } from '@/components/DamageValue';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
@@ -106,15 +123,24 @@ const ELIXIR_FEATURE_BY_ITEM = elixirFeatureIdByItemName();
  * reçoivent la même mise en avant qu'ailleurs. La DEF affichée est la DEF MONDAINE
  * (catalogue) ; le bonus magique éventuel est rendu à part (`MagicDefBadge`).
  */
-function itemDetail(item: EquipmentItem): ReactNode {
+function itemDetail(item: EquipmentItem, level?: number, abilities?: Abilities): ReactNode {
   switch (item.category) {
     case 'weapon':
       return (
         <>
-          <GlossaryText>DM</GlossaryText> <DamageValue damage={formatWeaponDamage(item.damage)} />
+          <GlossaryText>DM</GlossaryText>{' '}
+          <DamageValue damage={formatWeaponDamage(item.damage, level)} />
           {item.twoHandedDamage && (
             <>
-              /<DamageValue damage={formatWeaponDamage(item.twoHandedDamage)} />
+              /<DamageValue damage={formatWeaponDamage(item.twoHandedDamage, level)} />
+            </>
+          )}
+          {/* Carac ajoutée par l'ARME (PER-286, couleuvrine « [5d4° + INT] », p. 63) : rendue comme
+              sur la carte d'attaque — puce de VALEUR courante, pas un simple libellé. */}
+          {item.damageAbility && abilities && (
+            <>
+              {' + '}
+              <AbilityValueChip ability={item.damageAbility} value={abilities[item.damageAbility]} />
             </>
           )}
           {item.range && ` · portée ${item.range}`}
@@ -364,6 +390,186 @@ function FirearmUnavailableBadge() {
   );
 }
 
+/**
+ * Munitions chargées d'une arme à recharger (PER-284) — arbalète ou arme à poudre : UNE PASTILLE PAR
+ * COUP, dans l'ordre de tir (la première part la prochaine), sur le patron des pastilles d'usages
+ * « une fois par jour » d'un rang. Pastille BLANCHE = munition normale, JAUNE = grenaille (Tir de
+ * grenaille, p. 63), CREUSE = emplacement vide à recharger. Le joueur est donc libre du mélange
+ * (« deux grenailles puis des balles normales ») et le voit d'un coup d'œil.
+ *
+ * Au-delà de 12 coups, on retombe sur le seul décompte (des pastilles innombrables ne renseignent
+ * plus). Bloc CUSTOM (convention projet : pas de `Chip` MUI), verbatim du livre en infobulle.
+ */
+function WeaponLoadingDots({ state }: { state: WeaponLoadingState }) {
+  const { loaded, capacity, empty, shots, nextShot, reloadAction, refillCost } = state;
+  const grapeshotCount = shots.filter((s) => s === 'grapeshot').length;
+  return (
+    <AppTooltip
+      title={
+        <PageRefText>
+          {[
+            `${loaded} coup${loaded > 1 ? 's' : ''} prêt${loaded > 1 ? 's' : ''} sur ${capacity}.`,
+            nextShot
+              ? `Prochain tir : ${nextShot === 'grapeshot' ? 'GRENAILLE' : 'munition normale'}.`
+              : 'Arme déchargée : elle doit être rechargée avant de tirer.',
+            state.shotsPerFire > 1
+              ? 'Canon double : un tir consomme 2 projectiles (p. 63).'
+              : null,
+            refillCost
+              ? `Faire le plein : ${refillCost.count} action${refillCost.count > 1 ? 's' : ''} ${
+                  reloadAction === 'M' ? 'de mouvement (M)' : 'limitée(s) (L)'
+                } (p. 185).`
+              : null,
+            grapeshotCount > 0
+              ? 'Grenaille : au tir (L), un seul test d’attaque contre toutes les cibles dans un cône de 10 m de long et 5 m de large ; celles dont il atteint la DEF subissent la moitié des DM habituels (p. 63).'
+              : null,
+            'Il n’est pas possible de recharger une arbalète ou une arme à poudre si vous avez un adversaire actif (par opposition à incapable d’agir) à votre contact (p. 187).',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        </PageRefText>
+      }
+    >
+      <Box
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          flexWrap: 'wrap',
+          cursor: 'help',
+        }}
+      >
+        <GpsFixedOutlinedIcon
+          sx={{ fontSize: 14, color: empty ? 'text.disabled' : 'text.secondary' }}
+        />
+        {capacity <= 12 &&
+          Array.from({ length: capacity }).map((_, i) => {
+            const shot = shots[i];
+            return (
+              <Box
+                key={i}
+                sx={(theme) => ({
+                  width: 9,
+                  height: 9,
+                  borderRadius: '50%',
+                  border: 1,
+                  borderColor:
+                    shot === 'grapeshot'
+                      ? theme.palette.warning.main
+                      : shot
+                        ? alpha(theme.palette.text.primary, 0.55)
+                        : alpha(theme.palette.text.disabled, 0.6),
+                  bgcolor:
+                    shot === 'grapeshot'
+                      ? theme.palette.warning.main
+                      : shot
+                        ? theme.palette.common.white
+                        : 'transparent',
+                })}
+              />
+            );
+          })}
+        <Typography
+          variant="caption"
+          sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'text.secondary' }}
+        >
+          {loaded}/{capacity}
+        </Typography>
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
+ * Chip « Canon double » (PER-284) : signale que CETTE arme a été bricolée d'un second canon
+ * (`artilleur-r4`, p. 63), à droite de ses munitions. Purement informative — l'infobulle rappelle
+ * comment l'effet fonctionne, verbatim, avec le renvoi au livre. Bloc CUSTOM (convention projet :
+ * pas de `Chip` MUI).
+ */
+function DoubleBarrelChip() {
+  return (
+    <AppTooltip
+      title={
+        <>
+          <PageRefText>
+            Second canon bricolé par l’arquebusier : le dé de DM de l’arme est DOUBLÉ (mais pas les
+            dés bonus ni les bonus), et le critique triple le dé au lieu de le quadrupler. Chaque
+            canon se recharge individuellement et un tir consomme 2 projectiles. La double détente
+            permet de ne décharger qu’un seul canon à la fois — aux dommages normaux, alors.
+          </PageRefText>{' '}
+          <SourceRef page={63} section="Canon double" term="Canon double" />
+        </>
+      }
+    >
+      <Box
+        component="span"
+        sx={(theme) => ({
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.25,
+          px: 0.75,
+          height: 22,
+          borderRadius: 1,
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          whiteSpace: 'nowrap',
+          cursor: 'help',
+          color: theme.palette.info.main,
+          bgcolor: alpha(theme.palette.info.main, 0.12),
+          border: `1px solid ${alpha(theme.palette.info.main, 0.45)}`,
+        })}
+      >
+        <LooksTwoOutlinedIcon sx={{ fontSize: 15 }} />
+        Canon double
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
+ * Avertissement « canon double sous-alimenté » (PER-284) : il ne reste qu'un coup alors que l'effet
+ * en consomme deux (p. 63). NON bloquant — le livre autorise « de décharger un seul canon à la
+ * fois » —, mais le dé de DM doublé, lui, ne s'applique pas : c'est ce que le badge annonce.
+ * Bloc CUSTOM (convention projet : pas de `Chip` MUI), verbatim en infobulle.
+ */
+function DoubleBarrelUnderfedBadge() {
+  return (
+    <Box sx={{ mt: 0.5 }}>
+      <AppTooltip
+        title={
+          <PageRefText>
+            Un canon double consomme 2 projectiles : avec un seul coup chargé, le dé de DM doublé ne
+            s’applique pas. Le tir reste possible — « il reste possible de décharger un seul canon à
+            la fois » —, mais aux dommages normaux de l’arme (p. 63).
+          </PageRefText>
+        }
+      >
+        <Box
+          component="span"
+          sx={(theme) => ({
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+            px: 0.75,
+            height: 22,
+            borderRadius: 1,
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            cursor: 'help',
+            color: theme.palette.warning.main,
+            bgcolor: alpha(theme.palette.warning.main, 0.12),
+            border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+          })}
+        >
+          <ReportProblemOutlinedIcon sx={{ fontSize: 14 }} />
+          Canon double : 1 coup sur 2 — DM non doublés
+        </Box>
+      </AppTooltip>
+    </Box>
+  );
+}
+
 /** Ligne « Bourse de 2d6 pa » du sac de départ (résolue par `CoinPouchDialog`). */
 function isCoinPouchLine(line: EquipmentLine): boolean {
   return isCustomItem(line) && line.name === COIN_POUCH_ITEM_NAME;
@@ -540,6 +746,43 @@ export interface EquipmentListProps {
    */
   onUse?: (index: number) => void;
   /**
+   * Contexte de chargement des armes (PER-284) : présent → badge « coups prêts » sur chaque arbalète
+   * et arme à poudre (cf. `WeaponLoadingBadge`). Absent → aucun suivi affiché (wizard).
+   */
+  weaponLoading?: LoadingContext;
+  /**
+   * Objets octroyés par une capacité mais ABSENTS de l'inventaire (PER-286, cf.
+   * `missingGrantedItems`) : rappelés en tête de liste avec un bouton d'ajout. Absent/vide = rien
+   * à signaler.
+   */
+  grantedMissing?: GrantedItem[];
+  /** Ajoute à l'inventaire un objet octroyé (bouton du rappel ci-dessus). Absent → pas de bouton. */
+  onAddGranted?: (itemId: string) => void;
+  /**
+   * Niveau du personnage (PER-286) : RÉSOUT les dés évolutifs des armes à l'affichage (« 5d4° » →
+   * « 5d8° » au niveau 9, table p. 43). Absent (catalogue hors personnage, wizard) → dé de base.
+   */
+  level?: number;
+  /**
+   * Caractéristiques effectives (PER-286) : rendent la puce de valeur de la carac ajoutée par une
+   * arme (« + INT » de la couleuvrine). Absentes → la carac n'est pas affichée en ligne.
+   */
+  abilities?: Abilities;
+  /**
+   * Tirer un coup (PER-284) : décrémente le compteur de l'arme `i`. ÉTAT DE JEU, donc disponible
+   * HORS mode édition — comme « Utiliser » et l'équipement porté. Absent → pas de bouton.
+   */
+  onFireShot?: (index: number) => void;
+  /** Recharger UN coup ; `kind` déclare la munition employée (grenaille, annoncée au chargement, p. 63). */
+  onLoadShot?: (index: number, kind?: LoadedAmmunitionKind) => void;
+  /** Faire le PLEIN de l'arme `i` (coût total annoncé par l'infobulle du badge). */
+  onRefillShots?: (index: number, kind?: LoadedAmmunitionKind) => void;
+  /**
+   * Le personnage sait-il charger de la GRENAILLE (Tir de grenaille, `explosifs-r1`, p. 63) ?
+   * Vrai → un bouton « Grenaille » double le rechargement. Absent/faux → munition normale seule.
+   */
+  canLoadGrapeshot?: boolean;
+  /**
    * Équiper / déséquiper une ligne (PER-77) : pose ou retire l'état de port
    * (`WornState`) de la ligne `i`. C'est un ÉTAT DE JEU (on change d'arme, on lève le
    * bouclier), donc disponible HORS mode édition — indépendant de `onChange`. Absent →
@@ -703,6 +946,15 @@ export function EquipmentList({
   equipment,
   onChange,
   onUse,
+  weaponLoading,
+  grantedMissing,
+  onAddGranted,
+  level,
+  abilities,
+  onFireShot,
+  onLoadShot,
+  onRefillShots,
+  canLoadGrapeshot = false,
   onWear,
   characterClass,
   masteredIds,
@@ -816,7 +1068,8 @@ export function EquipmentList({
     // reproduite via une puce (sort choisi pour un mineur/majeur, sinon capacité du forgesort).
     const elixirFeatureId = custom ? ELIXIR_FEATURE_BY_ITEM.get(line.name) : undefined;
     // Détail STRUCTURÉ (DM des armes, DEF des protections) : toujours affiché en ligne.
-    const structuredDetail = elixirFeatureId || custom || !item ? null : itemDetail(item);
+    const structuredDetail =
+      elixirFeatureId || custom || !item ? null : itemDetail(item, level, abilities);
     // Description LIBRE (notes du matériel du catalogue ou d'un objet custom) : masquée par
     // défaut, révélée au survol du titre (tooltip) et épinglable sous le titre via l'œil.
     const description = elixirFeatureId
@@ -875,6 +1128,13 @@ export function EquipmentList({
     // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
     // L'identité « arme à feu » se lit sur l'id de BASE (une variante n'y change rien).
     const firearmUnavailable = !custom && !firearmsAllowed && isFirearmItemId(line.itemId);
+    // État de chargement (PER-284) : `null` sur tout ce que le livre ne fait pas recharger
+    // (arcs, frondes, armes de jet, armes de contact, objets libres) → aucun badge, aucun geste.
+    const loadingState = weaponLoading ? weaponLoadingState(line, weaponLoading) : null;
+    // TIRER suppose l'arme EN MAIN — « Changer d'arme demande une action de mouvement (M) » (p. 187).
+    // RECHARGER, à l'inverse, reste disponible sur une arme rangée : c'est tout l'objet de la tactique
+    // « charger des armes à poudre à l'avance » (p. 187), où l'on prépare les armes qu'on ne tient pas.
+    const weaponInHand = line.worn?.slot === 'mainHand' || line.worn?.slot === 'offHand';
     // === Pièces de contenu PARTAGÉES entre la ligne (row) et la carte (card) ===
 
     // Titre : nom d'élixir (puce de capacité) OU icône de type + nom (+ détail structuré,
@@ -1013,6 +1273,18 @@ export function EquipmentList({
         {resolveWeaponAffinities && !custom && item?.category === 'weapon' && (
           <WeaponAffinityBadge affinities={resolveWeaponAffinities(line.itemId)} />
         )}
+        {/* Munitions chargées (PER-284) : arbalètes et armes à poudre uniquement, suivies des
+            modifications de l'arme (second canon) qui expliquent ce que les pastilles montrent. */}
+        {loadingState && (
+          <Box
+            sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', rowGap: 0.5 }}
+          >
+            <WeaponLoadingDots state={loadingState} />
+            {loadingState.doubleBarrel && <DoubleBarrelChip />}
+          </Box>
+        )}
+        {/* Canon double avec un seul coup chargé : effet inopérant (PER-284, p. 63). */}
+        {loadingState?.underfed && <DoubleBarrelUnderfedBadge />}
         {/* Avertissement (PER-185) : arme à poudre grisée quand la poudre est indisponible. */}
         {firearmUnavailable && <FirearmUnavailableBadge />}
       </>
@@ -1020,7 +1292,9 @@ export function EquipmentList({
 
     // Contrôle de quantité : champ éditable (édition) ou « ×N » (lecture, masqué si N=1). Le
     // bonus de DEF MAGIQUE (PER-85) se saisit dans la modale (crayon), plus en ligne (PER-214).
-    const quantityControl = onChange ? (
+    // ABSENT sur les armes (PER-284) : une arme = une case, sauf les armes de jet que le livre
+    // compte par paquets (cf. `lineAllowsQuantity`).
+    const quantityControl = !lineAllowsQuantity(line) ? null : onChange ? (
       <TextField
         type="number"
         size="small"
@@ -1051,6 +1325,131 @@ export function EquipmentList({
           Utiliser
         </Button>
       ) : null;
+    // Gestes de chargement (PER-284) — ÉTAT DE JEU, donc hors mode édition, comme « Utiliser ».
+    // DEUX GROUPES séparés par un trait vertical, parce que ce ne sont pas des actions de même
+    // nature : « Tirer » DÉPENSE (le prochain coup de la file) — d'où le ROUGE —, tandis que
+    // « Recharger » / « Grenaille » / « Plein » REMPLISSENT. « Grenaille » annonce le mélange au
+    // chargement, comme l'exige le livre (p. 63) ; « Plein » n'a de sens qu'au-delà d'un coup.
+    // Un rechargement = un BOUTON DOUBLE : le corps ajoute UN coup, la moitié droite (icône
+    // « ⏩ ») fait le PLEIN de la même munition. Les deux moitiés sont soudées — coins arrondis
+    // seulement à l'extérieur, bordures mitoyennes superposées (`ml: '-1px'`) — pour lire comme un
+    // seul contrôle à deux crans. La moitié « plein » n'a de sens qu'au-delà d'un coup : sur une
+    // arme d'un seul coup, recharger EST faire le plein, le bouton reste donc simple.
+    const reloadSplitButton = (
+      kind: LoadedAmmunitionKind,
+      label: string,
+      color: 'primary' | 'warning',
+    ) => {
+      if (!loadingState || !onLoadShot) return null;
+      const refill = loadingState.refillCost;
+      const split = !!onRefillShots && loadingState.capacity > 1;
+      return (
+        <Box sx={{ display: 'inline-flex', flexShrink: 0 }}>
+          {/* `span` intercalaire : un bouton désactivé n'émet aucun événement, l'infobulle
+              n'aurait rien à écouter (avertissement MUI). Le wrapper reste `inline-flex`
+              pour ne rien changer à la mise en page du bouton double. */}
+          <AppTooltip title={`Recharger un coup (${label.toLowerCase()})`}>
+            <span style={{ display: 'inline-flex' }}>
+              <Button
+                size="small"
+                variant="outlined"
+                color={color}
+                disabled={loadingState.full}
+                onClick={() => onLoadShot(i, kind)}
+                sx={split ? { borderTopRightRadius: 0, borderBottomRightRadius: 0 } : undefined}
+              >
+                {label}
+              </Button>
+            </span>
+          </AppTooltip>
+          {split && (
+            <AppTooltip
+              title={
+                refill
+                  ? `Faire le plein (${label.toLowerCase()}) — ${refill.count} action${
+                      refill.count > 1 ? 's' : ''
+                    } ${refill.action === 'M' ? 'de mouvement (M)' : 'limitée(s) (L)'}`
+                  : 'Arme déjà pleine'
+              }
+            >
+              <span style={{ display: 'inline-flex' }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color={color}
+                  disabled={loadingState.full}
+                  onClick={() => onRefillShots!(i, kind)}
+                  aria-label={`Faire le plein (${label.toLowerCase()})`}
+                  sx={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    // Bordures mitoyennes superposées ; au survol, la moitié active passe devant
+                    // pour que sa bordure ne paraisse pas rognée par la voisine.
+                    ml: '-1px',
+                    position: 'relative',
+                    '&:hover': { zIndex: 1 },
+                    minWidth: 0,
+                    px: 0.5,
+                  }}
+                >
+                  <KeyboardDoubleArrowRightIcon sx={{ fontSize: 18 }} />
+                </Button>
+              </span>
+            </AppTooltip>
+          )}
+        </Box>
+      );
+    };
+    const reloadButtons = loadingState ? (
+      <>
+        {reloadSplitButton('normal', 'Recharger', 'primary')}
+        {canLoadGrapeshot && loadingState.firearm && reloadSplitButton('grapeshot', 'Grenaille', 'warning')}
+      </>
+    ) : null;
+    const fireButton =
+      loadingState && onFireShot ? (
+        <AppTooltip
+          title={
+            !weaponInHand
+              ? 'Arme rangée : il faut l’avoir en main pour tirer — « Changer d’arme demande une action de mouvement (M) » (p. 187). Elle reste rechargeable, c’est même tout l’objet de la préparation à l’avance.'
+              : [
+                  loadingState.nextShot === 'grapeshot'
+                    ? 'Tirer la GRENAILLE en tête de file'
+                    : 'Tirer le prochain coup chargé',
+                  loadingState.shotsPerFire > 1
+                    ? loadingState.underfed
+                      ? '— dépense le dernier coup, sans le dé de DM doublé (p. 63)'
+                      : `— dépense ${loadingState.shotsPerFire} coups (canon double, p. 63)`
+                    : '(dépense un coup)',
+                ].join(' ')
+          }
+        >
+          {/* `span` intercalé : un bouton DÉSACTIVÉ ne reçoit aucun événement de survol, l'info-bulle
+              ne s'afficherait pas — or c'est justement là qu'elle explique le grisage. */}
+          <span style={{ display: 'inline-flex', flexShrink: 0 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              disabled={loadingState.empty || !weaponInHand}
+              onClick={() => onFireShot(i)}
+              sx={{ flexShrink: 0 }}
+            >
+              Tirer
+            </Button>
+          </span>
+        </AppTooltip>
+      ) : null;
+    const loadingButtons =
+      fireButton || reloadButtons ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+          {fireButton}
+          {fireButton && reloadButtons && (
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.25, my: 0.25 }} />
+          )}
+          {reloadButtons}
+        </Box>
+      ) : null;
     const deleteButton = onChange ? (
       <IconButton size="small" color="error" onClick={() => remove(i)}>
         <DeleteOutlineIcon fontSize="small" />
@@ -1062,7 +1461,13 @@ export function EquipmentList({
       // En-tête (poignée de tri éventuelle + titre), corps (description épinglée + badges),
       // pied (quantité + Choisir/Utiliser/Supprimer). Un espaceur pousse le pied en bas pour
       // que les cartes d'une même rangée s'alignent (`height: 100%` + grille en `stretch`).
-      const hasFooter = !!(quantityControl || choiceBadge || useButton || deleteButton);
+      const hasFooter = !!(
+        quantityControl ||
+        choiceBadge ||
+        loadingButtons ||
+        useButton ||
+        deleteButton
+      );
       return (
         <Box
           key={i}
@@ -1106,6 +1511,7 @@ export function EquipmentList({
                   }}
                 >
                   {choiceBadge}
+                  {loadingButtons}
                   {useButton}
                   {deleteButton}
                 </Box>
@@ -1140,6 +1546,7 @@ export function EquipmentList({
         </Box>
         {quantityControl}
         {choiceBadge}
+        {loadingButtons}
         {useButton}
         {deleteButton}
       </Stack>
@@ -1150,6 +1557,29 @@ export function EquipmentList({
     <Stack spacing={onChange ? 1.5 : 0}>
       {/* Conflits de port DURS (bouclier + arme à 2 mains, >1 armure/bouclier) — non bloquant (PER-77). */}
       <EquipConflictsAlert equipment={equipment} />
+      {/* PER-286 : une capacité octroie un objet absent de l'inventaire (couleuvrine du rang 5 de
+          l'artilleur acquis avant la règle, ou objet supprimé). On PROPOSE, on ne réimpose pas. */}
+      {grantedMissing && grantedMissing.length > 0 && onAddGranted && (
+        <AppAlert severity="info" title="Objet octroyé par une capacité">
+          <Stack sx={{ gap: 0.75, alignItems: 'flex-start' }}>
+            {grantedMissing.map((granted) => (
+              <Stack
+                key={granted.itemId}
+                direction="row"
+                sx={{ alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
+              >
+                <Typography variant="body2">
+                  <strong>{granted.name}</strong> — octroyée par une capacité acquise, absente de
+                  l’inventaire.
+                </Typography>
+                <Button size="small" variant="outlined" onClick={() => onAddGranted(granted.itemId)}>
+                  Ajouter
+                </Button>
+              </Stack>
+            ))}
+          </Stack>
+        </AppAlert>
+      )}
       {/* Bascules d'affichage, préférences UI globales persistées et ORTHOGONALES : liste /
           colonnes (PER-223) et regroupement par catégorie (PER-221). Affichées dès qu'il y a
           au moins un objet d'inventaire. */}

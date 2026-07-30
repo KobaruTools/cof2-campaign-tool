@@ -42,6 +42,7 @@ import { familyHpGains, hpLevelGains, level1FamilyHp, level1HybridFamilies } fro
 import { rulesContext } from '@/lib/character/rulesContext';
 import { effectiveItem } from '@/lib/character/items';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
+import { loadingContext, weaponLoadingState } from '@/lib/character/weaponLoading';
 import {
   weaponDamageBonuses,
   type AttackMode,
@@ -84,6 +85,12 @@ export interface WeaponDamageView {
   nonLethal: boolean;
   /** Nom de l'arme (libellé + tooltip). */
   name: string;
+  /**
+   * Explication d'un dé de DM MODIFIÉ par une capacité (PER-284) : le Canon double
+   * (`artilleur-r4`, p. 63) DOUBLE le dé de l'arme. Rendue en infobulle sur le dé — sans quoi
+   * l'affichage passerait de 1d10 à 2d10 sans raison visible. Absent = dé du catalogue tel quel.
+   */
+  diceNote?: string;
 }
 
 /** Ancien nom conservé pour la carte de contact (PER-141). */
@@ -117,13 +124,26 @@ function wornWeaponDamage(character: Character, mode: AttackMode): WeaponDamageV
   const worn = wornWeaponForMode(character, mode);
   if (!worn) return null;
   const { item, line } = worn;
-  const dmg =
+  const baseDamage =
     mode === 'melee' && line.worn?.grip === 'twoHands' && item.twoHandedDamage ? item.twoHandedDamage : item.damage;
-  // Parenthèses de non-létalité gérées par un badge dédié, pas par le formateur ici.
-  const dice = formatWeaponDamage({ ...dmg, nonLethal: false });
+  // CANON DOUBLE (artilleur-r4, p. 63, PER-284) : « Il double le dé de DM de l'arme (mais pas les dés
+  // bonus ni les bonus) » → on double le NOMBRE de dés (1d10 → 2d10), jamais le modificateur.
+  // Le doublement suppose de tirer les DEUX canons : avec un seul coup chargé (`underfed`), le livre
+  // n'autorise qu'un tir à un canon, « aux dommages normaux » → dé du catalogue. Une arme vide garde
+  // l'affichage doublé (elle EST un canon double ; les pastilles disent déjà qu'elle est déchargée).
+  const loading = weaponLoadingState(line, loadingContext(character));
+  const doubledDie = !!loading?.doubleBarrel && !loading.underfed;
+  const dmg = doubledDie ? { ...baseDamage, count: baseDamage.count * 2 } : baseDamage;
+  // Parenthèses de non-létalité gérées par un badge dédié, pas par le formateur ici. Le NIVEAU
+  // résout les dés évolutifs (« 5d4° » → « 5d8° » au niveau 9, table p. 43) — cf. PER-286.
+  const dice = formatWeaponDamage({ ...dmg, nonLethal: false }, character.level);
   // Carac de base : FOR au contact (p. 183), aucune à distance (p. 185). Les capacités ajoutent
   // leurs bonus PERMANENTS par-dessus (Archer émérite : +PER à l'arc).
   const baseAbilities: AbilityId[] = mode === 'melee' ? ['FOR'] : [];
+  // Carac ajoutée par l'ARME elle-même (PER-286) : dérogation à « aucune carac à distance » (p. 185),
+  // portée par la couleuvrine et sa baliste (« [5d4° + INT] », p. 63). S'ajoute avant les bonus de
+  // capacités, et se rend comme eux (puce de valeur sur la carte d'attaque).
+  if (item.damageAbility) baseAbilities.push(item.damageAbility);
   // Attaque en finesse (Vive attaque du duelliste r4, PER-74) : au contact, SI le mode « DM » est retenu
   // « à la table » avec une arme éligible en main, la carac de base des DM devient AGI AU LIEU de FOR
   // (substitution, pas cumul — verbatim p. 140). Les bonus permanents restent ajoutés par-dessus.
@@ -139,6 +159,14 @@ function wornWeaponDamage(character: Character, mode: AttackMode): WeaponDamageV
     flatBonuses: bonuses.addedFlat,
     nonLethal: !!dmg.nonLethal,
     name: item.name,
+    ...(doubledDie
+      ? {
+          diceNote: `Dé de DM DOUBLÉ par Canon double : ${formatWeaponDamage(
+            { ...baseDamage, nonLethal: false },
+            character.level,
+          )} → ${dice} (les dés bonus et les bonus, eux, ne sont pas doublés). Un tir consomme 2 projectiles ; avec un seul coup chargé, le dé revient à la normale (p. 63).`,
+        }
+      : {}),
   };
 }
 

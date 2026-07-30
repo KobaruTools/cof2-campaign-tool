@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per284-poudre-surchargee",
+  "name": "Recette PER-284 — Cinq armes chargées (surcharge)",
+  "identity": {
+    "description": "ATTENDU : avertissement INFO « 5 armes à poudre chargées en même temps (p. 187) » avec le verbatim du livre, dans le bloc des avertissements de la fiche. Rien n'est bloqué ni retiré (fiche permissive) : le livre conseille une limite de trois, il ne l'impose pas. Cinq cases d'arme à poudre, toutes chargées (une pastille blanche pleine chacune). CONTRÔLE : cliquer « Tirer » sur deux d'entre elles fait tomber le compte à 3 et l'avertissement doit DISPARAÎTRE ; recharger le fait revenir."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "arquebusier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 2,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "artilleur-r1",
+    "artilleur-r2",
+    "artilleur-r3",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "petoire",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "petoire",
+      "quantity": 1
+    },
+    {
+      "itemId": "petoire",
+      "quantity": 1
+    },
+    {
+      "itemId": "mousquet",
+      "quantity": 1
+    },
+    {
+      "itemId": "mousquet",
+      "quantity": 1
+    },
+    {
+      "itemId": "cuir-renforce-broigne",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-284 — seule surface VISIBLE du ticket (les gestes tirer/recharger arrivent en PER-285). loadedFirearmCount attendu = 5.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -23,7 +23,8 @@ import * as actions from '@/lib/character/sheetActions';
 import type { UseItemIntent } from '@/lib/character/sheetActions';
 import { containsGameStateKey } from '@/lib/character/gameState';
 import { capacityResourceGauges, type CapacityResourceGauge } from '@/lib/character/effects';
-import type { Character, Purse, WornState } from '@/lib/character/types';
+import type { Character, LoadedAmmunitionKind, Purse, WornState } from '@/lib/character/types';
+import { loadingContext, type LoadingContext } from '@/lib/character/weaponLoading';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
 import { deriveStats, type DerivedStats } from '@/lib/engine';
 import { useCharactersStore } from '@/stores/characters';
@@ -75,6 +76,18 @@ export interface CharacterGameState {
   resolveStartingChoice: (index: number, option: StartingEquipmentChoiceOption) => void;
   setWorn: (index: number, worn: WornState | undefined) => void;
   setPurse: (purse: Purse) => void;
+  /**
+   * Gestes de chargement d'une arme (PER-284) : tirer un coup, en recharger un (`kind` déclare la
+   * grenaille, annoncée au chargement, p. 63), ou faire le plein d'un chargeur / second canon.
+   * État de jeu → disponibles hors mode « Modifier », synchronisés en session comme le porté.
+   */
+  fireWeaponShot: (index: number) => void;
+  loadWeaponShot: (index: number, kind?: LoadedAmmunitionKind) => void;
+  refillWeaponShots: (index: number, kind?: LoadedAmmunitionKind) => void;
+  /** Contexte de chargement (capacité d'un chargeur pour CE personnage), pour l'affichage. */
+  weaponLoading: LoadingContext;
+  /** Ajoute un objet OCTROYÉ par une capacité et absent de l'inventaire (PER-286). */
+  addGrantedEquipment: (itemId: string) => void;
 
   // --- Jauges du personnage & repos --------------------------------------------------------
   setHpDamage: (amount: number, kind: 'lethal' | 'temp') => void;
@@ -188,6 +201,11 @@ export function useCharacterGameState(
     resolveStartingChoice: bind(actions.resolveStartingChoice),
     setWorn: bind(actions.setEquipmentWorn),
     setPurse: (purse) => update(actions.setPurse(purse)),
+    fireWeaponShot: bind(actions.fireWeaponShot),
+    loadWeaponShot: bind(actions.loadWeaponShot),
+    refillWeaponShots: bind(actions.refillWeaponShots),
+    weaponLoading: loadingContext(target),
+    addGrantedEquipment: bind(actions.addGrantedEquipment),
 
     setHpDamage: (amount, kind) => update(actions.damageCharacterHp(target, amount, kind, maxHp)),
     setHpHeal: bind(actions.healCharacterHp),

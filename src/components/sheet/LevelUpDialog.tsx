@@ -51,6 +51,7 @@ import {
   maxRetrainings,
   totalFeatureCost,
 } from '@/lib/character/levelUp';
+import { withGrantedEquipment } from '@/lib/character/grantedEquipment';
 import {
   pruneEffectInputs,
   pruneEffectToggles,
@@ -949,6 +950,10 @@ export function LevelUpDialog({
     // choix, interrupteurs, saisies libres et compteurs d'usages.
     onConfirm({
       ...withVocation,
+      // PER-286 : une capacité qui OCTROIE un objet le fait entrer dans l'inventaire avec le rang
+      // (Couleuvrine, p. 63 : « L'arquebusier obtient une couleuvrine »), en respectant la
+      // substitution sans poudre (baliste, p. 62). Aucun ajout si l'objet y est déjà.
+      equipment: withGrantedEquipment(withVocation, firearmsAllowed),
       featureChoices: pruneFeatureChoices(
         { ...withVocation.featureChoices, ...pickedChoices },
         withVocation.featureIds,

@@ -440,6 +440,14 @@ export type ItemTestTarget = string;
  */
 export type ItemTestBonuses = Partial<Record<ItemTestTarget, number>>;
 
+/**
+ * Nature d'UN coup chargé dans une arme (PER-284) : munition normale, ou mélange de poudre et de
+ * grenaille du Tir de grenaille (`explosifs-r1`, p. 63). Chaque coup porte la sienne — l'arquebusier
+ * « doit l'annoncer au moment où il charge », donc un chargeur peut parfaitement contenir deux
+ * grenailles suivies de trois balles normales. Type fermé, extensible à d'autres mélanges.
+ */
+export type LoadedAmmunitionKind = 'normal' | 'grapeshot';
+
 export interface EquipmentOverrides {
   name?: string;
   description?: string;
@@ -506,6 +514,58 @@ export interface EquipmentRef {
    * absent-safe → pas de bump de `schemaVersion` (même logique que `magicDef`).
    */
   testBonuses?: ItemTestBonuses;
+  /**
+   * MUNITIONS CHARGÉES dans CETTE arme (PER-284), **dans l'ordre de tir** — `loaded[0]` est le
+   * prochain coup qui partira, et recharger ajoute en fin de file. Concerne les armes que le livre
+   * fait recharger (arbalètes et armes à poudre, `Weapon.reload`).
+   *
+   * **ABSENT = arme pleine de munitions normales** : c'est l'état normal, celui dans lequel un
+   * personnage part à l'aventure, donc celui qui ne coûte aucune donnée. Un tableau VIDE (`[]`) est
+   * une arme déchargée — distinct de l'absence.
+   *
+   * La nature est portée par CHAQUE coup, et non par l'arme, parce que le Tir de grenaille
+   * (`explosifs-r1`, p. 63) se déclare au chargement — « il doit l'annoncer au moment où il charge » :
+   * un chargeur peut donc contenir `['grapeshot', 'grapeshot', 'normal', 'normal']`, le joueur étant
+   * libre du mélange et de son ordre.
+   *
+   * La liste appartient à l'ARME, pas au type d'arme : **une arme occupe une ligne d'inventaire** et
+   * `quantity` n'entre dans AUCUN calcul de chargement. C'est ce qui permet de suivre les
+   * modifications individuelles de l'arquebusier — le livre parle de « deux armes de son choix »
+   * (p. 62) : deux pétoires dont une seule à chargeur sont deux lignes distinctes.
+   *
+   * Sa longueur est bornée par la capacité de l'arme : 1, 2 avec un second canon, ou la capacité du
+   * chargeur (`weaponCapacity`). Aucun stock de munitions n'existe par ailleurs (p. 187 : « Nous vous
+   * conseillons de ne pas tenir compte des dépenses de munitions ») : recharger ne consomme rien.
+   * Champ additif optionnel absent-safe → pas de bump de `schemaVersion` (même logique que
+   * `magicDef`). Voir `weaponLoading.ts`.
+   */
+  loaded?: LoadedAmmunitionKind[];
+  /**
+   * L'arme a été dotée d'un CHARGEUR par l'arquebusier (Arme à répétition, `artilleur-r2`,
+   * p. 62 : « L'arquebusier modifie jusqu'à deux armes de son choix pour les doter de chargeurs.
+   * La capacité du chargeur est égale à [2 + INT] et elle augmente de 1 projectile supplémentaire
+   * chaque fois que le personnage atteint le rang 3 dans une voie d'arquebusier. »). Absent = arme
+   * standard (un seul coup). Propriété de l'INSTANCE : c'est CETTE arme que le personnage a
+   * bricolée, et la modification lui survit au déséquipement (même logique que `magicDef`) — le
+   * livre parle bien de « deux armes de son choix », pas des pétoires en général — d'où le
+   * compteur par ARME (cf. `loaded`).
+   *
+   * Le plafond de deux armes à chargeur n'est PAS contrôlé (fiche permissive). Champ additif
+   * optionnel absent-safe → pas de bump de `schemaVersion`.
+   */
+  magazine?: true;
+  /**
+   * L'arme a été dotée d'un SECOND CANON par l'arquebusier (Canon double, `artilleur-r4`, p. 63 :
+   * « L'arquebusier peut bricoler ses armes à poudre (mais pas une couleuvrine) pour les doter
+   * d'un second canon. […] Il doit recharger chaque canon individuellement (un canon double
+   * consomme 2 projectiles). »). Absent = un seul canon. Porte la capacité de l'exemplaire à 2 :
+   * « il reste possible de décharger un seul canon à la fois ».
+   *
+   * Propriété de l'INSTANCE, comme `magazine`. Le doublement du dé de DM et le critique ×3 sont
+   * des données d'affichage de la capacité, hors de ce champ. Champ additif optionnel absent-safe
+   * → pas de bump de `schemaVersion`.
+   */
+  doubleBarrel?: true;
 }
 
 /**
