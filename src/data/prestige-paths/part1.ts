@@ -48,6 +48,32 @@ const MINUSCULE_FAMILIAR: Omit<CreatureProfile, 'name'> = {
 };
 
 /**
+ * L'ÊTRE FÉÉRIQUE (p. 143-144) — compagnon octroyé par la voie du pacte féérique au rang 6
+ * (« Compagnon féérique »). Stat-block COMMUN aux trois espèces (fée / farfadet / grig) : seul le
+ * mode de déplacement diffère (porté par le `note` de chaque option). Les « * » du livre (AGI, CON)
+ * = dés bonus innés (`bonusDieAbilities`). Attaque au contact (dague) ou à distance (arc) = attaque
+ * magique du PJ (`fromMaster: 'magicAttack'`) ; DM 1d4° (DM de poison). Le livre ne donne pas de taille
+ * (header « ÊTRE FÉÉRIQUE » sans ligne de taille) → `size` omis. `companionType: 'familiar'`.
+ */
+const FAIRY_BEING: Omit<CreatureProfile, 'name'> = {
+  companionType: 'familiar',
+  abilities: { AGI: 4, CON: 1, FOR: -4, PER: 2, CHA: 2, INT: 0, VOL: 2 },
+  bonusDieAbilities: ['AGI', 'CON'],
+  defense: '[12 + rang]',
+  hitPoints: '[=niveau × 2]',
+  initiative: '14',
+  attack: { label: 'Dague ou arc', fromMaster: 'magicAttack', damage: '[1d4°]' },
+  specialAbilities: [
+    { name: 'Poison', text: 'Les DM infligés sont des DM de poison.' },
+    { name: 'Invisibilité', text: "Peut se rendre invisible au prix d'une action limitée." },
+    {
+      name: 'Régénération',
+      text: "Réduit à 0 PV, il disparaît dans le monde féérique et revient guéri au bout de 24 h.",
+    },
+  ],
+};
+
+/**
  * Les 12 familiers fantastiques (p. 133-136) comme options de choix de la capacité de rang 3,
  * sur le patron de la Monture fantastique (`cavalier-r5`). `id` = id de l'entité
  * `FantasticFamiliar` correspondante (jointure pour les pouvoirs R4/R5/R7). Profils dérivés du
@@ -530,7 +556,10 @@ export const prestigePaths1: PrestigePath[] = [
       'prestige-pacte-feerique-r7',
       'prestige-pacte-feerique-r8',
     ],
-    note: "Vous avez toujours eu une affinité avec la nature, la forêt et les animaux. Vous avez passé un pacte avec les êtres de la forêt et juré de les protéger.\n\nÊTRE FÉÉRIQUE — TAILLE [non précisée]\n| AGI +4* | CON* +1 | FOR -4 | PER +2 | CHA +2 | INT +0 | VOL +2 |\nDéfense [12 + rang] · Points de vigueur [Niveau × 2] · Initiative 14\nAttaque au contact [dague] ou à distance [arc] = [attaque magique du PJ] · DM 1d4° (ce sont des DM de poison). Un être féérique peut se rendre invisible au prix d'une action limitée. Fée : vol 15 m par action de mouvement. Farfadet : téléportation de 15 m en action de mouvement. Grig (un être au corps de cricket) : bonds de 15 m en action de mouvement.",
+    // PER-74 : le stat-block « ÊTRE FÉÉRIQUE » jadis entassé ici est désormais rendu comme VRAI compagnon
+    // par le rang 6 (« Compagnon féérique », `FAIRY_BEING`) → le `note` de la voie garde la seule intro RP
+    // verbatim (p. 143), sans dupliquer les stats.
+    note: "Vous avez toujours eu une affinité avec la nature, la forêt et les animaux. Vous avez passé un pacte avec les êtres de la forêt et juré de les protéger.",
     sourcePage: 143,
   },
   {
@@ -2099,6 +2128,12 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage apprend des fées la possibilité de laisser son image dans le royaume caché. Il se rend invisible pendant [1d6+CHA] minutes. Une fois qu'il est invisible, personne ne peut plus détecter sa présence ou lui porter d'attaque. Si le personnage attaque ou utilise une capacité limitée, il redevient visible. Le personnage doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité.",
+    // PER-74 : durée `[1d6 + CHA]` minutes (patron « pendant [Xd + carac] » des sorts de mage) ; « doit
+    // terminer une récupération rapide avant de réutiliser » = 1×/repos court (`usageCounter`, masqué du
+    // panneau d'états — c'est une recharge, pas un effet à suivre en continu).
+    richText:
+      "Le personnage apprend des fées la possibilité de laisser son image dans le royaume caché. Il se rend invisible pendant [1d6 + CHA] minutes. Une fois qu'il est invisible, personne ne peut plus détecter sa présence ou lui porter d'attaque. Si le personnage attaque ou utilise une capacité limitée, il redevient visible. Le personnage doit terminer une récupération rapide avant de pouvoir à nouveau utiliser cette capacité.",
+    usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
     sourcePage: 143,
   },
   {
@@ -2110,6 +2145,41 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage a adopté (ou l'inverse ?) une fée, un farfadet ou un grig. Ce compagnon est affectueux, mais souvent blagueur et parfois irritant ! Il ne suit pas les ordres du PJ, mais il agit dans ce qu'il estime être l'intérêt du PJ et peut accepter différentes missions (messager, éclaireur, espion, etc.). Si le compagnon féérique est réduit à 0 PV, il disparaît dans le monde féérique et revient guéri au bout de 24 h.",
+    // PER-74 : VRAI compagnon (section « Compagnons » + barre de PV). Stat-block commun `FAIRY_BEING`
+    // (p. 143-144) ; le choix d'espèce est PERMANENT (orange) et ne change que le déplacement — profil
+    // porté par l'OPTION retenue (`effectiveCreatureProfile`) → aucun compagnon tant que le choix n'est
+    // pas fait. « Ne suit pas les ordres du PJ » = point de RP (le verbatim l'explicite), pas une mécanique.
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Espèce du compagnon féérique',
+        options: [
+          {
+            id: 'fee',
+            label: 'Fée',
+            creatureProfile: { ...FAIRY_BEING, name: 'Fée', note: 'Vole 15 m par action de mouvement.' },
+          },
+          {
+            id: 'farfadet',
+            label: 'Farfadet',
+            creatureProfile: {
+              ...FAIRY_BEING,
+              name: 'Farfadet',
+              note: 'Se téléporte de 15 m en action de mouvement.',
+            },
+          },
+          {
+            id: 'grig',
+            label: 'Grig',
+            creatureProfile: {
+              ...FAIRY_BEING,
+              name: 'Grig',
+              note: 'Un être au corps de cricket : bondit de 15 m en action de mouvement.',
+            },
+          },
+        ],
+      },
+    ],
     sourcePage: 143,
   },
   {
@@ -2132,6 +2202,11 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, en milieu naturel, le personnage franchit un portail étrange (un cercle de champignons, l'entrée d'une grotte, entre les racines d'un arbre, etc.) et disparaît dans le monde féérique. Le portail disparaît à sa suite. Il en ressort 3d6 h plus tard au même endroit ou dans un rayon de 20 km avec ses PV à leur maximum.",
+    // PER-74 : « Une fois par jour » = 1×/jour (`usageCounter`, masqué du panneau d'états). Seul le dé de
+    // durée `{3d6}` (heures d'absence) est balisé ; le reste (portail, 20 km, PV au max) reste narratif.
+    richText:
+      "Une fois par jour, en milieu naturel, le personnage franchit un portail étrange (un cercle de champignons, l'entrée d'une grotte, entre les racines d'un arbre, etc.) et disparaît dans le monde féérique. Le portail disparaît à sa suite. Il en ressort {3d6} h plus tard au même endroit ou dans un rayon de 20 km avec ses PV à leur maximum.",
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
     sourcePage: 144,
   },
 

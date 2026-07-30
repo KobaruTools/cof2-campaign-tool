@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-pacte-feerique",
+  "name": "Recette PER-74 — Pacte féérique (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du pacte féérique p. 143-144, AVENTURIER → habillage prestige VERT). Base = rôdeur niv. 16 CHA-centré. R4 Amitié avec les animaux (L) : VERBATIM (100% orienté cible, rien sur la fiche). R5 Invisibilité (L) : durée « [1d6 + CHA] minutes » en encadré de formule (dé + CHA), et compteur 1×/récupération rapide (repos court). R6 Compagnon féérique : VRAI compagnon (section « Compagnons » + barre de PV). Choix orange fée/farfadet/grig (ici Fée) → mini-fiche « Fée » : AGI +4* / CON +1* (dés bonus innés), FOR -4, PER/CHA/VOL +2, INT 0 ; DEF [12 + rang] = 18 au rang 8 ; Init 14 ; PV [Niveau × 2] = 32 ; attaque = attaque magique du PJ, DM 1d4° (poison) ; invisibilité + régénération 24h. R7 Pas brumeux (M) : VERBATIM (téléport 20 m, sacrifie 1 PV, 1×/round — coût narratif, pas de compteur journalier). R8 Pays des songes (L) : compteur 1×/jour ; durée d'absence « {3d6} h » (dé). Vérifier : la Fée apparaît dans « Compagnons » avec sa barre de PV ; r5/r8 portent un compteur d'usage ; r4/r7 restent en texte."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "demi-elfe",
+  "classId": "rodeur",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 3,
+    "CHA": 4,
+    "INT": 0,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 3,
+    "CHA": 4,
+    "INT": 0,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "demi-elfe",
+  "featureIds": [
+    "survie-r1",
+    "survie-r2",
+    "survie-r3",
+    "survie-r4",
+    "survie-r5",
+    "traqueur-r1",
+    "traqueur-r2",
+    "traqueur-r3",
+    "traqueur-r4",
+    "traqueur-r5",
+    "prestige-pacte-feerique-r4",
+    "prestige-pacte-feerique-r5",
+    "prestige-pacte-feerique-r6",
+    "prestige-pacte-feerique-r7",
+    "prestige-pacte-feerique-r8"
+  ],
+  "featureChoices": {
+    "prestige-pacte-feerique-r6": [
+      "fee"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette pacte féérique : R6 = vrai compagnon (FAIRY_BEING, choix fée/farfadet/grig) ; R5 richText [1d6 + CHA] + compteur 1/repos court ; R8 compteur 1/jour + {3d6} h ; R4/R7 verbatim.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
