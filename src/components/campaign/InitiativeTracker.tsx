@@ -274,107 +274,52 @@ function StatGlyph({ path, size = 14 }: { path: string; size?: number }) {
   );
 }
 
-/** Infobulle « base → ajusté » d'une pastille de stat de combat (PER-280). */
-function StatValueTooltip({
-  label,
-  base,
-  adjusted,
-  signed,
-  malusDie,
-  damageMalus,
-}: {
-  label: string;
-  base: number;
-  adjusted: number;
-  signed?: boolean;
-  malusDie?: boolean;
-  damageMalus?: number;
-}) {
-  const fmt = signed ? formatSigned : (n: number) => String(n);
-  const changed = adjusted !== base;
-  return (
-    <Box sx={{ maxWidth: 240 }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
-        {label}
-      </Typography>
-      {changed ? (
-        <Typography variant="caption" sx={{ display: 'block' }}>
-          {`Base ${fmt(base)} → `}
-          <Box component="span" sx={{ color: 'error.light', fontWeight: 700 }}>
-            {fmt(adjusted)}
-          </Box>
-          {' (états)'}
-        </Typography>
-      ) : (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-          Aucun ajustement d&apos;état.
-        </Typography>
-      )}
-      {malusDie && (
-        <Typography variant="caption" sx={{ display: 'block', color: 'error.light' }}>
-          Dé malus (2d20, garde le pire).
-        </Typography>
-      )}
-      {damageMalus != null && damageMalus < 0 && (
-        <Typography variant="caption" sx={{ display: 'block', color: 'error.light' }}>
-          {`${damageMalus} aux DM infligés.`}
-        </Typography>
-      )}
-    </Box>
-  );
-}
-
 /** Pastille compacte d'une stat de combat (glyphe + valeur ; rouge si un état l'a baissée). */
 function StatPill({
   glyph,
   value,
   lowered,
   malusDie,
-  tooltip,
 }: {
   glyph: string;
   value: string;
   lowered: boolean;
   malusDie?: boolean;
-  tooltip: ReactNode;
 }) {
   return (
-    <AppTooltip title={tooltip}>
+    <Box
+      sx={{
+        // `flex: 1 1 0` : les pastilles se répartissent la largeur de la carte à parts égales
+        // (DEF + attaques occupent toute la rangée), avec repli si ça déborde.
+        display: 'flex',
+        flex: '1 1 0',
+        minWidth: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 0.4,
+        height: 22,
+        px: 0.6,
+        borderRadius: 1,
+        lineHeight: 1,
+        bgcolor: 'rgba(255, 255, 255, 0.05)',
+        border: '1px solid rgba(255, 255, 255, 0.10)',
+        color: 'text.secondary',
+      }}
+    >
+      <StatGlyph path={glyph} />
       <Box
+        component="span"
         sx={{
-          // `flex: 1 1 0` : les pastilles se répartissent la largeur de la carte à parts égales
-          // (DEF + attaques occupent toute la rangée), avec repli si ça déborde.
-          display: 'flex',
-          flex: '1 1 0',
-          minWidth: 0,
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 0.4,
-          height: 22,
-          px: 0.6,
-          borderRadius: 1,
-          cursor: 'help',
-          lineHeight: 1,
-          bgcolor: 'rgba(255, 255, 255, 0.05)',
-          border: '1px solid rgba(255, 255, 255, 0.10)',
-          color: 'text.secondary',
+          fontSize: '0.8rem',
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: lowered ? 'error.light' : 'text.primary',
         }}
       >
-        <StatGlyph path={glyph} />
-        <Box
-          component="span"
-          sx={{
-            fontSize: '0.8rem',
-            fontWeight: 700,
-            fontVariantNumeric: 'tabular-nums',
-            color: lowered ? 'error.light' : 'text.primary',
-          }}
-        >
-          {value}
-        </Box>
-        {malusDie && <MalusDieBadge size={12} noTooltip />}
+        {value}
       </Box>
-    </AppTooltip>
+      {malusDie && <MalusDieBadge size={12} noTooltip />}
+    </Box>
   );
 }
 
@@ -390,12 +335,7 @@ function CombatStatsRow({ stats, resolved }: { stats: CombatStats; resolved: Res
   const attackMalusDie = resolved.allTestsMalusDie || resolved.attackTestsMalusDie;
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6, alignItems: 'center' }}>
-      <StatPill
-        glyph={DERIVED_STAT_ICON_PATHS.defense}
-        value={String(defAdjusted)}
-        lowered={defDelta < 0}
-        tooltip={<StatValueTooltip label="Défense" base={stats.def} adjusted={defAdjusted} />}
-      />
+      <StatPill glyph={DERIVED_STAT_ICON_PATHS.defense} value={String(defAdjusted)} lowered={defDelta < 0} />
       {stats.attacks.map((atk) => {
         // Delta d'attaque = modificateur dérivé du type + malus plat « à tous les tests » (cumulatif).
         const delta = (resolved.derived[ATTACK_KIND_DERIVED[atk.kind]] ?? 0) + resolved.allTestsFlat;
@@ -407,16 +347,6 @@ function CombatStatsRow({ stats, resolved }: { stats: CombatStats; resolved: Res
             value={formatSigned(adjusted)}
             lowered={delta < 0}
             malusDie={attackMalusDie}
-            tooltip={
-              <StatValueTooltip
-                label={atk.label}
-                base={atk.base}
-                adjusted={adjusted}
-                signed
-                malusDie={attackMalusDie}
-                damageMalus={resolved.damageDealt}
-              />
-            }
           />
         );
       })}

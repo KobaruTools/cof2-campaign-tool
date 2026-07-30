@@ -122,6 +122,10 @@ export function StatusChipVisual({
         whiteSpace: 'nowrap',
         color: theme.palette.error.light,
         bgcolor: alpha(theme.palette.error.main, 0.14),
+        // Flou d'arrière-plan (comme les carrés-icônes du tracker/projection) : garde la puce lisible
+        // par-dessus l'illustration de fond de l'écran de MJ.
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
         border: `1px solid ${alpha(theme.palette.error.main, 0.45)}`,
         // Ombre portée sur la surcouche de glisser pour la détacher du fond.
         boxShadow: dragging ? '0 4px 12px rgba(0, 0, 0, 0.5)' : 'none',
