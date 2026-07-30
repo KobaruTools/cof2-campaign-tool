@@ -255,27 +255,33 @@ export function PlayersSection({
                 </Box>
                 <Stack direction="row" sx={{ alignItems: 'center', flexShrink: 0 }}>
                   {busyId === player.id ? <CircularProgress size={18} sx={{ mr: 1 }} /> : null}
+                  {/* `span` intercalaire : un bouton désactivé n'émet aucun événement, l'infobulle
+                      n'aurait rien à écouter (avertissement MUI). */}
                   <AppTooltip title="Renommer">
-                    <IconButton
-                      size="small"
-                      disabled={busyId === player.id}
-                      onClick={() => {
-                        setRenameTarget(player);
-                        setRenameValue(player.name);
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
+                    <span style={{ display: 'inline-flex' }}>
+                      <IconButton
+                        size="small"
+                        disabled={busyId === player.id}
+                        onClick={() => {
+                          setRenameTarget(player);
+                          setRenameValue(player.name);
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </span>
                   </AppTooltip>
                   <AppTooltip title="Supprimer">
-                    <IconButton
-                      size="small"
-                      color="error"
-                      disabled={busyId === player.id}
-                      onClick={() => setToDelete(player)}
-                    >
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
+                    <span style={{ display: 'inline-flex' }}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        disabled={busyId === player.id}
+                        onClick={() => setToDelete(player)}
+                      >
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    </span>
                   </AppTooltip>
                 </Stack>
               </Stack>
@@ -296,14 +302,16 @@ export function PlayersSection({
                           </IconButton>
                         </AppTooltip>
                         <AppTooltip title="Régénérer (coupe l'ancien lien et les sessions)">
-                          <IconButton
-                            size="small"
-                            edge="end"
-                            disabled={busyId === player.id}
-                            onClick={() => setToRegenerate(player)}
-                          >
-                            <AutorenewIcon fontSize="small" />
-                          </IconButton>
+                          <span style={{ display: 'inline-flex' }}>
+                            <IconButton
+                              size="small"
+                              edge="end"
+                              disabled={busyId === player.id}
+                              onClick={() => setToRegenerate(player)}
+                            >
+                              <AutorenewIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </AppTooltip>
                       </InputAdornment>
                     ),
