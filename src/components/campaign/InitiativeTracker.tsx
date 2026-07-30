@@ -554,8 +554,13 @@ function ProjectionStatusIcon({ applied }: { applied: AppliedStatus }) {
           borderRadius: 1.25,
           cursor: 'help',
           color: theme.palette.error.light,
-          bgcolor: alpha(theme.palette.error.main, 0.2),
-          border: `1px solid ${alpha(theme.palette.error.main, 0.5)}`,
+          // Fond translucide + flou d'arrière-plan : garde les icônes lisibles quel que soit ce
+          // qu'elles recouvrent (illustration de fond, portrait voisin).
+          bgcolor: alpha(theme.palette.error.main, 0.28),
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          border: `1px solid ${alpha(theme.palette.error.main, 0.6)}`,
+          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
         })}
       >
         {iconId ? (
@@ -606,9 +611,12 @@ function ProjectionStatusStrip({ applied }: { applied: AppliedStatus[] }) {
     <Box
       sx={{
         position: 'absolute',
+        // Ancrée au bord BAS du bloc et débordant vers le bas (`top: 100%`) : les icônes passent
+        // SOUS l'identité, jamais par-dessus le texte, et sans réserver de place (le bloc garde sa
+        // taille). Débordement horizontal borné à la largeur du bloc (repli en 2e ligne si besoin).
+        top: 'calc(100% - 6px)',
         left: 10,
         right: 10,
-        bottom: 8,
         display: 'flex',
         flexWrap: 'wrap',
         gap: 0.5,
@@ -985,8 +993,12 @@ export function InitiativeTracker({
           ici, classés par initiative.
         </Typography>
       ) : (
-        // Colonnes côte à côte ; défilement horizontal si la largeur est dépassée.
-        <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 1, alignItems: 'stretch' }}>
+        // Colonnes côte à côte ; défilement horizontal si la largeur est dépassée. En projection,
+        // marge basse plus grande pour accueillir la bande d'états qui déborde SOUS chaque bloc
+        // (PER-282) : réservée au conteneur (uniforme), elle ne déforme aucun bloc individuellement.
+        // Nécessaire aussi car `overflowX: auto` force `overflow-y` à `auto` → sans cette marge, le
+        // débordement des icônes serait rogné.
+        <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: projection ? 5.5 : 1, alignItems: 'stretch' }}>
           {displayedRows.map((row) => {
             const isActive = row.key === currentTurnKey;
             return interactive ? (
