@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-tueur-a-gages",
+  "name": "Recette PER-74 — Tueur à gages (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du tueur à gages p. 145) : vérifier le RENDU de chaque rang prestige. Base = voleur/assassin (connaît l'Attaque sournoise). Voie NARRATIVE, 100% orientée CIBLE : elle n'ajoute RIEN aux stats de la fiche (aucun bonus, aucun interrupteur, aucune ligne « Compétences & tests » ne bouge). R4 Faire taire (M) → richText : « 1d4° DM » rendu en DÉ {1d4°} ; « difficulté 10 + rang » rendu en ENCADRÉ VERT [10 + rang]. « DM », « test », « CON », « dé malus », « magie discrète/concentration » = auto-glosés. L'état « Muet » (rendre la cible muette) n'est PAS un des 10 états du glossaire → catalogué en EFFET SITUATIONNEL (pour le futur combat tracker MJ) : INVISIBLE sur la fiche joueur (ni info-bulle ni bouton pour l'instant). R5 Brise genou (M) → richText {1d4°} + [10 + rang]. « invalide » = état Invalide du glossaire (p. 214) → AUTO-GLOSÉ (survolez le mot → info-bulle de l'état). PAS de bouton « déjà infligé » (choix : capacité répétable, on laisse l'auto-glose). « NC » = jargon souligné. R6 Ne me tourne pas le dos (G) → richText : « +1d4° aux DM » rendu en DÉ +{1d4°}. « Attaque sournoise » auto-glosée (info-bulle voleur). La note de bas de page (retraite prudente) est INTÉGRÉE en 2e paragraphe, marqueurs ** retirés. R7 Égorger (A) → VERBATIM pur : mise à mort d'une cible humanoïde surprise de NC < 4 (porte sur la cible, rien sur la fiche). « attaque sournoise » auto-glosée. R8 Un simple regard (G) → VERBATIM pur : dissuasion par test opposé d'attaque magique ; le « dé bonus » à l'intimidation/persuasion après un simple regard réussi reste SITUATIONNEL (verbatim, pas de badge permanent, comme le dé bonus post-échec du héros r7). COULEUR PAR FAMILLE : le tueur à gages est une voie AVENTURIER → tout l'habillage prestige doit être VERT (émeraude) : étoile d'en-tête, liseré métallique des cartes de rang + reflet vert, puces de capacité vertes."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "voleur",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 3,
+    "CHA": 1,
+    "INT": 1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 3,
+    "CHA": 1,
+    "INT": 1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "assassin-r1",
+    "assassin-r2",
+    "assassin-r3",
+    "assassin-r4",
+    "assassin-r5",
+    "prestige-tueur-a-gages-r4",
+    "prestige-tueur-a-gages-r5",
+    "prestige-tueur-a-gages-r6",
+    "prestige-tueur-a-gages-r7",
+    "prestige-tueur-a-gages-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette tueur à gages : voie narrative orientée CIBLE. R4/R5/R6 richText {1d4°}+[10 + rang] ; R4 état Muet catalogué en effet situationnel (invisible fiche) ; R5 « invalide » auto-glosé ; R7/R8 verbatim.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

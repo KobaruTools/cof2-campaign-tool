@@ -2192,7 +2192,7 @@ export const prestigeFeatures1: Feature[] = [
     sourcePage: 144,
   },
 
-  // ===== Voie du tueur à gages (p. 144) =====
+  // ===== Voie du tueur à gages (p. 145) =====
   {
     id: 'prestige-tueur-a-gages-r4',
     name: 'Faire taire',
@@ -2202,6 +2202,11 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['M'],
     text:
       "En réussissant un test d'attaque au contact, le personnage porte une frappe sèche au larynx d'un adversaire humanoïde : il lui inflige 1d4° DM et la cible est rendue muette. À la fin de son tour à chaque round suivant, elle peut faire un test de CON difficulté [10 + rang] pour retrouver l'usage de la parole (et pouvoir appeler à l'aide, par exemple). Un lanceur de sort muet subit un dé malus à ses tests d'attaque magique (ou il peut choisir d'utiliser la magie discrète, règle de concentration).",
+    richText:
+      "En réussissant un test d'attaque au contact, le personnage porte une frappe sèche au larynx d'un adversaire humanoïde : il lui inflige {1d4°} DM et la cible est rendue muette. À la fin de son tour à chaque round suivant, elle peut faire un test de CON difficulté [10 + rang] pour retrouver l'usage de la parole (et pouvoir appeler à l'aide, par exemple). Un lanceur de sort muet subit un dé malus à ses tests d'attaque magique (ou il peut choisir d'utiliser la magie discrète, règle de concentration).",
+    // « Muet » n'est pas un des 10 états du glossaire → catalogué comme effet situationnel (data pour
+    // le combat tracker, PER-274), pas comme état infligeable de fiche.
+    situationalEffectIds: ['silenced'],
     sourcePage: 145,
   },
   {
@@ -2213,6 +2218,9 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['M'],
     text:
       "En réussissant un test d'attaque au contact, le personnage porte un coup puissant dans le genou d'une créature humanoïde. Il inflige 1d4° DM et la cible est invalide pour le reste du combat. Si la cible est d'un NC supérieur ou égal au rang atteint dans la voie, elle peut faire un test de CON difficulté [10 + rang] chaque round à la fin de son tour pour se débarrasser de cet effet (elle y est ensuite immunisée pour le reste du combat).",
+    // « invalide » (= état Invalide du glossaire, p. 214) s'auto-glose dans le texte.
+    richText:
+      "En réussissant un test d'attaque au contact, le personnage porte un coup puissant dans le genou d'une créature humanoïde. Il inflige {1d4°} DM et la cible est invalide pour le reste du combat. Si la cible est d'un NC supérieur ou égal au rang atteint dans la voie, elle peut faire un test de CON difficulté [10 + rang] chaque round à la fin de son tour pour se débarrasser de cet effet (elle y est ensuite immunisée pour le reste du combat).",
     sourcePage: 145,
   },
   {
@@ -2224,6 +2232,8 @@ export const prestigeFeatures1: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par round, si une créature quitte le contact du personnage**, le personnage peut lui porter une Attaque sournoise. S'il ne dispose pas de cette capacité, il ajoute tout de même +1d4° aux DM s'il réussit cette attaque.\n** Une cible peut battre en retraite prudemment, en utilisant une action limitée pour ne se déplacer que de l'équivalent d'une action de mouvement. Ce type de manœuvre n'est généralement utilisé que par ceux qui ont été témoins du destin de celui qui tourne le dos au PJ.",
+    richText:
+      "Une fois par round, si une créature quitte le contact du personnage, le personnage peut lui porter une Attaque sournoise. S'il ne dispose pas de cette capacité, il ajoute tout de même +{1d4°} aux DM s'il réussit cette attaque.\nUne cible peut battre en retraite prudemment, en utilisant une action limitée pour ne se déplacer que de l'équivalent d'une action de mouvement. Ce type de manœuvre n'est généralement utilisé que par ceux qui ont été témoins du destin de celui qui tourne le dos au PJ.",
     sourcePage: 145,
   },
   {

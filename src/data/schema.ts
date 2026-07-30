@@ -1260,7 +1260,7 @@ export const STATUS_EFFECT_LABELS: Record<StatusEffectId, string> = Object.fromE
  * au fil des voies. Destinés à être APPLIQUÉS/SUIVIS dans le Combat Tracker (ticket dédié dans la milestone
  * Combat Tracker) : le catalogue est la source unique, la mécanique d'application viendra ensuite.
  */
-export const SITUATIONAL_EFFECT_IDS = ['invalidating-attack'] as const;
+export const SITUATIONAL_EFFECT_IDS = ['invalidating-attack', 'silenced'] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
 /** Catalogue des effets situationnels. Effet recopié VERBATIM de la capacité source. */
@@ -1273,6 +1273,16 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     // CUMULATIF : -1 PAR PALIER (le résolveur multiplie par l'intensité), plafonné à 3 paliers (-3).
     modifiers: { allTestsFlat: -1, damageDealt: -1 },
     stacking: { max: 3 },
+  },
+  // « Faire taire » (tueur à gages, r4, p. 145). Effet PUREMENT comportemental (la cible ne peut plus
+  // parler) : rien à chiffrer sur les stats du porteur de l'état. Le « dé malus » ne frappe QUE les
+  // lanceurs de sorts muets (sur l'attaque magique) et reste dans le verbatim (aucun champ de
+  // `StatusModifiers` ne cible l'attaque magique seule, et l'effet est conditionnel au type de cible).
+  silenced: {
+    label: 'Muet',
+    effect:
+      "La cible est rendue muette : elle ne peut plus parler ni appeler à l'aide. À la fin de son tour à chaque round, elle peut faire un test de CON pour retrouver l'usage de la parole. Un lanceur de sort muet subit un dé malus à ses tests d'attaque magique (ou peut choisir d'utiliser la magie discrète, règle de concentration).",
+    sourcePage: 145,
   },
 };
 

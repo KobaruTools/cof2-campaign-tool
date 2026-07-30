@@ -34,6 +34,14 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
     expect(r7?.situationalEffectIds).toEqual(['invalidating-attack']);
   });
 
+  it("« Muet » est catalogué (tueur à gages r4, p. 145) et référencé par la capacité", () => {
+    expect(SITUATIONAL_EFFECT_IDS).toContain('silenced');
+    expect(SITUATIONAL_EFFECTS['silenced'].label).toBe('Muet');
+    expect(SITUATIONAL_EFFECTS['silenced'].sourcePage).toBe(145);
+    const r4 = featureById.get('prestige-tueur-a-gages-r4');
+    expect(r4?.situationalEffectIds).toEqual(['silenced']);
+  });
+
   it('tout situationalEffectIds posé sur une capacité pointe une entrée connue du catalogue', () => {
     const known = new Set<string>(SITUATIONAL_EFFECT_IDS);
     for (const f of featureById.values()) {
