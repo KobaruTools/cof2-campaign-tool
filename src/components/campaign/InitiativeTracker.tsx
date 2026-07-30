@@ -664,9 +664,9 @@ function CombatantColumn({
 }) {
   const identityClickable = !!interactive;
   const isOver = interactive?.isOver ?? false;
-  // États affichés en projection (lecture seule) : bande d'icônes ancrée en bas à gauche. On réserve
-  // une marge basse pour l'accueillir sans qu'elle recouvre l'identité ; les colonnes sans état
-  // s'étirent à la même hauteur (conteneur `alignItems: stretch`), donc l'alignement est préservé.
+  // États affichés en projection (lecture seule) : bande d'icônes en overlay absolu ancré en bas à
+  // gauche. AUCUNE place réservée (pas de padding) → le bloc garde EXACTEMENT la même taille qu'il
+  // porte des états ou non, donc tous les blocs restent alignés quel que soit leur nombre d'états.
   const projectionStatuses = projection ? row.appliedStatuses ?? [] : [];
   const hasProjectionStatuses = projectionStatuses.length > 0;
   return (
@@ -679,10 +679,8 @@ function CombatantColumn({
         width: 260,
         flexShrink: 0,
         p: 1.25,
-        // Ancre la bande d'états absolue de la projection (PER-282) ; marge basse réservée
-        // seulement quand il y a des états à poser.
+        // Ancre la bande d'états absolue de la projection (PER-282) — overlay, sans réserver de place.
         position: 'relative',
-        ...(hasProjectionStatuses && { pb: 6 }),
         borderRadius: 2,
         // Bloc quasi opaque (90 %) : lisible même par-dessus l'illustration de
         // fond de l'écran de MJ et sur la projection.
