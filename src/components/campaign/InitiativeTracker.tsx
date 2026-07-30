@@ -182,24 +182,35 @@ export interface CombatStatusControls {
   onAdjust: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
 }
 
-/** Pastille circulaire d'initiative (nombre en gros, en tête de colonne). */
+/** Côté du portrait (px) : le bandeau d'initiative collé dessous fait la MÊME largeur. */
+const PORTRAIT_SIZE = 44;
+
+/**
+ * Bandeau d'initiative : rectangle aux coins BAS arrondis, collé sous le portrait (le haut reste
+ * droit pour souder les deux blocs). Remplace l'ancienne pastille ronde posée À CÔTÉ du portrait :
+ * on récupère ainsi ~48 px de large par colonne, donc plus de combattants tiennent dans la fenêtre
+ * projetée sans défilement horizontal.
+ */
 function InitiativeBadge({ value }: { value: number }) {
   return (
     <Box
       sx={(t) => ({
-        flexShrink: 0,
-        width: 40,
-        height: 40,
-        borderRadius: '50%',
-        display: 'inline-flex',
+        width: PORTRAIT_SIZE,
+        height: 18,
+        borderBottomLeftRadius: 6,
+        borderBottomRightRadius: 6,
+        display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontWeight: 800,
-        fontSize: '1.05rem',
+        fontSize: '0.8rem',
+        lineHeight: 1,
         fontVariantNumeric: 'tabular-nums',
         color: t.palette.warning.light,
         bgcolor: alpha(t.palette.warning.main, 0.14),
+        // Bordure sans le haut : le trait du portrait fait déjà la séparation.
         border: `1px solid ${alpha(t.palette.warning.main, 0.4)}`,
+        borderTop: 'none',
       })}
     >
       {value}
@@ -207,7 +218,10 @@ function InitiativeBadge({ value }: { value: number }) {
   );
 }
 
-/** Portrait d'un combattant : image du personnage, ou avatar rouge pour un bandit. */
+/**
+ * Portrait d'un combattant : image du personnage, ou avatar rouge pour un bandit.
+ * Coins BAS droits — le bandeau d'initiative se colle juste en dessous.
+ */
 function CombatantPortrait({ src, name }: { src?: string; name: string }) {
   if (src) {
     return (
@@ -217,12 +231,13 @@ function CombatantPortrait({ src, name }: { src?: string; name: string }) {
         alt=""
         aria-hidden
         sx={{
-          width: 44,
-          height: 44,
-          borderRadius: 1.5,
+          width: PORTRAIT_SIZE,
+          height: PORTRAIT_SIZE,
+          borderTopLeftRadius: 6,
+          borderTopRightRadius: 6,
           objectFit: 'cover',
           objectPosition: 'top',
-          flexShrink: 0,
+          display: 'block',
           border: '1px solid rgba(255, 255, 255, 0.12)',
           bgcolor: 'rgba(255, 255, 255, 0.04)',
         }}
@@ -233,10 +248,10 @@ function CombatantPortrait({ src, name }: { src?: string; name: string }) {
     <Box
       aria-label={name}
       sx={{
-        width: 44,
-        height: 44,
-        borderRadius: 1.5,
-        flexShrink: 0,
+        width: PORTRAIT_SIZE,
+        height: PORTRAIT_SIZE,
+        borderTopLeftRadius: 6,
+        borderTopRightRadius: 6,
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -246,6 +261,59 @@ function CombatantPortrait({ src, name }: { src?: string; name: string }) {
       }}
     >
       <PersonOutlineIcon />
+    </Box>
+  );
+}
+
+/**
+ * Sépare un nom numéroté en base + numéro (« Gobelin 2 » → `['Gobelin', '2']`). Les créatures sont
+ * étiquetées `«<nom> <n>»` par instance (cf. `labeledCreatures` de l'écran de MJ) ; les personnages
+ * n'ont pas de suffixe et repartent donc entiers dans la base.
+ */
+function splitNumberedName(name: string): [base: string, number: string | null] {
+  const m = /^(.*\S)\s+(\d+)$/.exec(name);
+  return m ? [m[1], m[2]] : [name, null];
+}
+
+/**
+ * Nom d'un combattant sur UNE ligne, tronqué en « … » si la colonne est trop étroite — la largeur du
+ * bloc reste ainsi identique quel que soit le nom. Le NUMÉRO d'instance (« Gobelin 2 ») est rendu à
+ * part et ne rétrécit JAMAIS : c'est la seule chose qui distingue deux créatures identiques, elle ne
+ * doit pas disparaître dans les points de suspension. Nom complet en infobulle native.
+ */
+function CombatantName({ name }: { name: string }) {
+  const [base, number] = splitNumberedName(name);
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, minWidth: 0 }} title={name}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2, minWidth: 0 }} noWrap>
+        {base}
+      </Typography>
+      {number && (
+        <Typography
+          variant="subtitle2"
+          sx={{ fontWeight: 700, lineHeight: 1.2, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}
+        >
+          {number}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+/** Portrait + bandeau d'initiative soudés en UN bloc vertical (largeur `PORTRAIT_SIZE`). */
+function CombatantIdentityBlock({
+  src,
+  name,
+  initiative,
+}: {
+  src?: string;
+  name: string;
+  initiative: number;
+}) {
+  return (
+    <Box sx={{ flexShrink: 0, width: PORTRAIT_SIZE }}>
+      <CombatantPortrait src={src} name={name} />
+      <InitiativeBadge value={initiative} />
     </Box>
   );
 }
@@ -657,10 +725,12 @@ function CombatantColumn({
     <Box
       ref={interactive?.dropRef}
       sx={(t) => ({
-        // Un peu plus large que la disposition d'origine (220) : depuis que
-        // l'identité passe à DROITE de l'initiative (au lieu de dessous), la
-        // rangée a besoin de largeur pour le nom / joueur / profil.
-        width: 260,
+        // Écran de MJ : 260 px, le plancher pour garder DEF + les 3 attaques sur UNE rangée de
+        // pastilles sous la jauge de PV. PROJECTION : le bandeau d'initiative est passé SOUS le
+        // portrait (au lieu d'une pastille ronde à côté) et il ne reste que portrait + identité →
+        // 176 px suffisent, ce qui fait tenir bien plus de blocs sans défilement horizontal. Les
+        // noms trop longs sont tronqués (« … ») pour que la largeur ne varie JAMAIS d'un bloc à l'autre.
+        width: projection ? 176 : 260,
         flexShrink: 0,
         p: 1.25,
         // Ancre la bande d'états absolue de la projection (PER-282) — overlay, sans réserver de place.
@@ -704,11 +774,16 @@ function CombatantColumn({
           direction="row"
           spacing={1}
           sx={{
-            alignItems: 'center',
+            // Identité collée EN HAUT : une créature a moins de lignes qu'un personnage (nom + NC,
+            // et le seul nom en projection) ; centrée, son nom tombait plus bas que celui des
+            // personnages voisins. Ancré en haut, tous les noms s'alignent sur la même ligne.
+            alignItems: 'flex-start',
             // Hauteur d'en-tête CONSTANTE : l'identité fait 2 lignes pour une créature (nom + NC)
             // mais 3 pour un personnage (nom + joueur + profil). Sans plancher, la jauge de PV et
             // les pastilles de stats démarreraient plus haut sur les créatures → colonnes désalignées.
-            minHeight: 52,
+            // Le bloc portrait + bandeau d'initiative (62 px) tient déjà ce rôle, le plancher reste
+            // en filet de sécurité si le portrait venait à rétrécir.
+            minHeight: 62,
             borderRadius: 1,
             cursor: identityClickable ? 'pointer' : 'default',
             ...(identityClickable && {
@@ -719,12 +794,9 @@ function CombatantColumn({
           role={identityClickable ? 'button' : undefined}
           aria-label={identityClickable ? `Appliquer un état à ${row.name}` : undefined}
         >
-          <CombatantPortrait src={row.portraitSrc} name={row.name} />
-          <InitiativeBadge value={row.initiative} />
+          <CombatantIdentityBlock src={row.portraitSrc} name={row.name} initiative={row.initiative} />
           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
-              {row.name}
-            </Typography>
+            <CombatantName name={row.name} />
             {row.playerName && (
               <Typography
                 variant="caption"
