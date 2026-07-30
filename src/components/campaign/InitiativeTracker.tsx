@@ -65,7 +65,6 @@ import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import {
   buildStatusGroups,
-  StatusChipVisual,
   StatusEffectTooltip,
   statusIconId,
   statusLabel,
@@ -530,31 +529,94 @@ function AppliedStatusBadge({
 }
 
 /**
- * Rangée de badges d'états en LECTURE SEULE pour la PROJECTION (PER-282) : mêmes puces que la palette
- * MJ (`StatusChipVisual`, badge custom rouge + effet verbatim en info-bulle) et que le rappel de la
- * fiche joueur (`ActiveStatusPanel`), avec l'intensité « ×N » pour les états cumulatifs. AUCUN
- * contrôle (pas de ✕/±) ni nombre ajusté (DEF/attaque restent réservés au MJ).
+ * Icône d'un état en LECTURE SEULE pour la PROJECTION (PER-282) : carré rouge aux bords arrondis
+ * contenant SEULEMENT l'icône (plus grosse), effet verbatim en info-bulle. L'intensité d'un état
+ * cumulatif est portée par une pastille « N » en coin. Repli sur les initiales du libellé pour un
+ * effet situationnel sans icône dédiée. Aucun contrôle (pas de ✕/±) ni nombre ajusté (réservés au MJ).
  */
-function ReadonlyStatusRow({ applied }: { applied: AppliedStatus[] }) {
+function ProjectionStatusIcon({ applied }: { applied: AppliedStatus }) {
+  const { id } = applied;
+  const iconId = statusIconId(id);
+  const intensity = clampIntensity(id, applied.intensity ?? 1);
+  const stacked = isStackingStatus(id) && intensity > 1;
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-      {applied.map((s) => {
-        const intensity = clampIntensity(s.id, s.intensity ?? 1);
-        const stacked = isStackingStatus(s.id) && intensity > 1;
-        return (
-          <Stack key={s.id} direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            <StatusChipVisual id={s.id} />
-            {stacked && (
-              <Box
-                component="span"
-                sx={{ fontSize: '0.75rem', fontWeight: 800, color: 'error.light' }}
-              >
-                {`×${intensity}`}
-              </Box>
-            )}
-          </Stack>
-        );
-      })}
+    <AppTooltip title={<StatusEffectTooltip id={id} />}>
+      <Box
+        aria-label={statusLabel(id)}
+        sx={(theme) => ({
+          position: 'relative',
+          flexShrink: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 30,
+          height: 30,
+          borderRadius: 1.25,
+          cursor: 'help',
+          color: theme.palette.error.light,
+          bgcolor: alpha(theme.palette.error.main, 0.2),
+          border: `1px solid ${alpha(theme.palette.error.main, 0.5)}`,
+        })}
+      >
+        {iconId ? (
+          <StatusEffectIcon effect={iconId} size={20} />
+        ) : (
+          <Box component="span" sx={{ fontSize: '0.7rem', fontWeight: 800 }}>
+            {statusLabel(id).slice(0, 2).toUpperCase()}
+          </Box>
+        )}
+        {stacked && (
+          <Box
+            component="span"
+            sx={(theme) => ({
+              position: 'absolute',
+              top: -5,
+              right: -5,
+              minWidth: 15,
+              height: 15,
+              px: 0.25,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '999px',
+              fontSize: '0.6rem',
+              fontWeight: 800,
+              fontVariantNumeric: 'tabular-nums',
+              lineHeight: 1,
+              color: theme.palette.common.white,
+              bgcolor: theme.palette.error.main,
+              border: '1px solid rgba(0, 0, 0, 0.45)',
+            })}
+          >
+            {intensity}
+          </Box>
+        )}
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
+ * Bande de badges d'états en projection (PER-282), en `position: absolute` ancrée en bas à gauche du
+ * bloc du combattant : les icônes s'enchaînent sur une ligne SANS déformer le bloc (repli en 2e ligne
+ * seulement en débordement, cas rare). L'appelant réserve un peu de marge basse pour l'accueillir.
+ */
+function ProjectionStatusStrip({ applied }: { applied: AppliedStatus[] }) {
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        left: 10,
+        right: 10,
+        bottom: 8,
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 0.5,
+      }}
+    >
+      {applied.map((s) => (
+        <ProjectionStatusIcon key={s.id} applied={s} />
+      ))}
     </Box>
   );
 }
@@ -602,6 +664,11 @@ function CombatantColumn({
 }) {
   const identityClickable = !!interactive;
   const isOver = interactive?.isOver ?? false;
+  // États affichés en projection (lecture seule) : bande d'icônes ancrée en bas à gauche. On réserve
+  // une marge basse pour l'accueillir sans qu'elle recouvre l'identité ; les colonnes sans état
+  // s'étirent à la même hauteur (conteneur `alignItems: stretch`), donc l'alignement est préservé.
+  const projectionStatuses = projection ? row.appliedStatuses ?? [] : [];
+  const hasProjectionStatuses = projectionStatuses.length > 0;
   return (
     <Box
       ref={interactive?.dropRef}
@@ -612,6 +679,10 @@ function CombatantColumn({
         width: 260,
         flexShrink: 0,
         p: 1.25,
+        // Ancre la bande d'états absolue de la projection (PER-282) ; marge basse réservée
+        // seulement quand il y a des états à poser.
+        position: 'relative',
+        ...(hasProjectionStatuses && { pb: 6 }),
         borderRadius: 2,
         // Bloc quasi opaque (90 %) : lisible même par-dessus l'illustration de
         // fond de l'écran de MJ et sur la projection.
@@ -753,12 +824,11 @@ function CombatantColumn({
             ))}
           </Box>
         )}
-        {/* Projection (PER-282) : mêmes états en badges LECTURE SEULE (pas de ✕/±, pas de nombres
-            ajustés). Rendu seulement en projection ; le chemin MJ passe par `status` ci-dessus. */}
-        {projection && (row.appliedStatuses?.length ?? 0) > 0 && (
-          <ReadonlyStatusRow applied={row.appliedStatuses!} />
-        )}
       </Stack>
+      {/* Projection (PER-282) : bande d'icônes d'états en LECTURE SEULE (pas de ✕/±, pas de nombres
+          ajustés), en position absolue ancrée en bas à gauche → n'altère pas la mise en page du bloc.
+          Le chemin MJ passe par `status` (badges interactifs en flux normal) ci-dessus. */}
+      {hasProjectionStatuses && <ProjectionStatusStrip applied={projectionStatuses} />}
     </Box>
   );
 }
