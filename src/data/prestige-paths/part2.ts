@@ -1342,6 +1342,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le lanceur de sort paralyse autant de créatures qu'il le peut (cf. ci-après) dans un rayon de 10 m autour de lui pendant [1d4° + INT] rounds. Il doit maintenir sa concentration par une action de mouvement pendant toute la durée du sort. Il peut affecter autant de créatures qu'il souhaite tant que la somme de leurs NC ne dépasse pas son niveau. Les créatures de NC 4 ou plus peuvent se libérer du sort en réussissant un test de CON difficulté 15, une tentative par round (G).",
+    // PER-290 : inflige l'état Paralysé mais sort RÉPÉTABLE (concentration, multi-cibles, aucun cap
+    // « 1×/combat par état ») → PAS de `inflictableStates` (réservé au toggle 1×/combat, patron
+    // spadassin-r5). Le nom d'état dans le verbatim est déjà auto-glosé (StatusEffectChip, PER-208).
     sourcePage: 154,
   },
   {
@@ -2017,6 +2020,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage doit emporter un test opposé d'attaque magique contre une cible à une portée de 20 m. En cas de succès la cible est aveuglée (-5 en Init., Att et DEF, -10 en attaque à distance). La durée du sort est de 1d6 rounds si la cible est d'un NC inférieur au niveau personnage, sinon elle est d'un round seulement.",
+    // PER-290 : inflige l'état Aveuglé mais sort RÉPÉTABLE (aucun cap « 1×/combat par état ») → PAS de
+    // `inflictableStates` (réservé au toggle 1×/combat, patron spadassin-r5). Le nom d'état dans le
+    // verbatim est déjà auto-glosé (StatusEffectChip, PER-208).
     sourcePage: 165,
   },
   {
@@ -2424,6 +2430,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage réalise une attaque à mains nues ou avec une arme contondante. En plus des DM habituels, si le NC de la victime est inférieur au rang atteint dans la voie, elle doit réussir un test de CON difficulté [10 + VOL] ou être étourdie pour un round.",
+    // PER-290 : inflige l'état Étourdi mais attaque RÉPÉTABLE (aucun cap « 1×/combat par état ») → PAS de
+    // `inflictableStates` (réservé au toggle 1×/combat, patron spadassin-r5). Le nom d'état dans le
+    // verbatim est déjà auto-glosé (StatusEffectChip, PER-208).
     sourcePage: 171,
   },
   {

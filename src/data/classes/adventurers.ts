@@ -1481,9 +1481,15 @@ export const adventurerFeatures: Feature[] = [
     // bonus en attaque, l'état préjudiciable et « 1 round » restent en prose. Pas d'effet permanent.
     richText:
       "Vous obtenez un dé bonus en attaque à distance et vous ajoutez {1d4°} aux DM. Au lieu du dé bonus et de +{1d4°} aux DM, vous pouvez infliger un état préjudiciable de votre choix parmi aveuglé, affaibli, ralenti ou immobilisé pendant 1 round à une cible d'un NC inférieur au vôtre. Vous ne pouvez infliger chaque état préjudiciable qu'une seule fois par combat.",
-    // « chaque état préjudiciable une seule fois par combat » → 4 états (aveuglé, affaibli, ralenti,
-    // immobilisé), soit 4 utilisations par combat ; réinitialisé au repos court (PER-73/151).
-    usageCounter: { max: 4, resetOn: 'combat', hideFromStatusPanel: true, label: 'États infligés' },
+    // « chaque état préjudiciable [aveuglé/affaibli/ralenti/immobilisé] qu'une seule fois par combat »
+    // (p. 71) → même patron que Botte secrète (spadassin-r5) : un marqueur PAR état plutôt qu'un
+    // compteur 0→4 opaque, routé via `inflictableStates` (bascule « déjà infligé ce combat », un bouton
+    // par état) au lieu d'un `usageCounter` global (PER-290). Réinitialisé par récupération rapide / repos.
+    inflictableStates: {
+      stateIds: ['blinded', 'weakened', 'slowed', 'immobilized'],
+      resetOn: 'combat',
+      label: 'États infligés ce combat',
+    },
     sourcePage: 71,
   },
 
