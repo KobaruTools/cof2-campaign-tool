@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-chevalier-dragon",
+  "name": "Recette PER-74 — Chevalier dragon (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du chevalier dragon p. 147-148) — 3ᵉ voie de la catégorie COMBATTANT. ÉTAT MONTRÉ : la voie est en VERBATIM SEUL, SAUF le rang 5 qui portait déjà une RD feu mécanisée. Rien d'autre n'entre dans les stats, c'est VOULU : cette recette sert à ce que tu voies la voie sur pièce et que tu tranches rang par rang ce qu'on mécanise. COULEUR PAR FAMILLE : voie COMBATTANT → habillage prestige ROUGE (étoile d’en-tête, liseré métallique des cartes de rang, puces de capacité). PRÉREQUIS DE LA VOIE (nouveauté de cette livraison) : le livre exige « Monture fantastique (rang 5 de la voie du cavalier) et choisi un DRAKE au niveau 9 ». Le drake ne figurait PAS dans les montures proposées (cheval de guerre lourd, ours, félin géant, pégase, griffon, hippogriffe) — la voie était donc littéralement inaccessible. Une option « Drake (monture volante) » a été ajoutée, disponible à partir du niveau 9 comme les autres volantes. Ce personnage l'a choisie : va voir la section COMPAGNONS, le drake doit y être avec DEF 20, 90 PV (10 + 16 × 5), initiative recopiée de la tienne et « Morsure et griffes » sur ton attaque magique. ⚠️ À ARBITRER : le livre ne chiffre QUE le drake ADULTE (p. 148, rang 7) — les caractéristiques du drake JUVÉNILE sont extrapolées (gabarit des montures volantes, CON et FOR à +4 au lieu de +6 puisque c'est précisément ce que le rang 7 « augmente »). R4 Ordre du chevalier dragon → VERBATIM. Ce qui n’est pas mécanisé : (a) le « +5 pour tous les tests de persuasion et d’intimidation » — les deux domaines existent au catalogue (Persuasion/CHA, Intimidation/FOR), mais le bonus est CONDITIONNEL (« lorsqu’il porte les insignes de son ordre ou chevauche son drake »), donc à trancher : bonus permanent, ou interrupteur à activer ? ; (b) la « réduction des DM contre le feu de 10 » du DRAKE — une RD sur une CRÉATURE n’existe pas encore dans le moteur (les RD ne se posent que sur le personnage). R5 Résistance au feu → DÉJÀ MÉCANISÉ (seule exception de cette recette) : la RD feu apparaît dans tes réductions de dégâts, à 10 et non 5, parce que ce personnage a atteint le rang 7 de la voie (« Cette réduction passe à 10 une fois atteint le rang 7 »). Descends la voie au rang 6 pour la voir retomber à 5. R6 Épée de feu (M) → VERBATIM. Ce qui n’est pas mécanisé : « [5 + CHA] rounds » n’est pas rendu en valeur (devrait afficher 8 avec ton CHA de 3) et le « +1d4° DM de feu » n’est pas balisé en dé. À trancher : simple mise en forme du texte, ou vraie aura de feu sur l’arme équipée avec interrupteur (on a déjà la primitive « aura élémentaire » de la voie de l’arme liée) ? Noter que le livre ne donne AUCUNE fréquence à ce rang — pas de « une fois par combat » — donc a priori pas de compteur. R7 Monture puissante → VERBATIM, et c’est le plus visible : le stat-block du DRAKE ADULTE est recopié EN TEXTE BRUT dans la carte (comme l’était le loup du lycanthrope avant qu’on le traite). La section Compagnons montre donc encore le drake JUVÉNILE (DEF 20, 2d4°+5) alors que ce personnage a le rang 7. À trancher : faire monter le drake en puissance dans la mini-fiche (DEF 22, PV 10 + niveau × 6, DM 2d4°+6, CON/FOR +6 avec dé bonus en CON) — la primitive existe déjà (amélioration de créature cross-voie, celle des runes → golem). R8 Souffle enflammé (A) → VERBATIM. Ce qui n’est pas mécanisé : pas de compteur « une fois par combat », et « 8d4° DM de feu » n’est pas balisé en dé. Le souffle est une attaque de zone DU DRAKE (cône 10 × 10 m, moitié des DM si test d’AGI difficulté 12 réussi) : à trancher, capacité spéciale sur la mini-fiche du drake, ou attaque supplémentaire ? AUCUNE JAUGE : la voie ne doit ajouter aucune barre dans le bloc « État du personnage » (règle posée à la voie de l’arme liée). Ici elle n’a de toute façon aucun compteur — c’est justement l’un des points à trancher (r8)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "chevalier",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 4,
+    "AGI": 1,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 4,
+    "AGI": 1,
+    "CON": 3,
+    "PER": 1,
+    "CHA": 3,
+    "INT": 0,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "cavalier-r1",
+    "cavalier-r2",
+    "cavalier-r3",
+    "cavalier-r4",
+    "cavalier-r5",
+    "prestige-chevalier-dragon-r4",
+    "prestige-chevalier-dragon-r5",
+    "prestige-chevalier-dragon-r6",
+    "prestige-chevalier-dragon-r7",
+    "prestige-chevalier-dragon-r8"
+  ],
+  "featureChoices": {
+    "cavalier-r5": [
+      "drake"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "grand-bouclier",
+      "quantity": 1,
+      "worn": {
+        "slot": "shield"
+      }
+    },
+    {
+      "itemId": "cotte-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "lance-de-cavalerie",
+      "quantity": 1
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette chevalier dragon (3ᵉ voie COMBATTANT, p. 147-148) en VERBATIM SEUL, sauf la RD feu du rang 5 déjà mécanisée. Ajout indispensable : l’option « Drake » à Monture fantastique (cavalier-r5), sans laquelle le prérequis de la voie était infaisable. À trancher rang par rang : +5 persuasion/intimidation conditionnel (r4), RD feu 10 du drake (r4), mise en forme + aura de l’Épée de feu (r6), montée en puissance du drake dans la mini-fiche (r7), compteur + dés + souffle de zone (r8).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

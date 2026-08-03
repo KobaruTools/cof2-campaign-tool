@@ -1092,6 +1092,34 @@ export const fighterFeatures: Feature[] = [
               note: 'En vol : 20 m par action de mouvement. Caractéristiques extrapolées (absent du bestiaire du livre de base).',
             },
           },
+          {
+            // PER-74 : le DRAKE est le PRÉREQUIS de la voie de prestige du chevalier dragon
+            // (p. 147 : « il faut avoir acquis la capacité Monture fantastique […] et choisi un
+            // drake au niveau 9 (une sorte de lézard volant, cousin mineur du dragon) »). Il entre
+            // donc dans le « etc. » des montures volantes de la p. 84, au même titre que le pégase.
+            // Le livre ne chiffre QUE le drake ARRIVÉ À MATURITÉ (p. 148, rang 7 du chevalier
+            // dragon : AGI +0, CON +6*, FOR +6, PER +1, INT -2, CHA +0, VOL +2 ; DEF 22 ;
+            // PV [10 + niveau × 6] ; DM 2d4°+6). Le drake JEUNE — celui qu'on obtient ici au
+            // niveau 9 — n'est chiffré nulle part : caractéristiques EXTRAPOLÉES sur le gabarit
+            // commun des montures volantes (DEF 20, PV [=10 + niveau × 5], DM 2d4°+5), en retirant
+            // 2 à la CON et à la FOR du drake adulte puisque c'est précisément ce que le rang 7
+            // « augmente » (« augmente ses capacités offensives »). Le dé bonus en CON (le « * »
+            // du bloc p. 148) n'apparaît lui aussi qu'à maturité. TODO(extraction) : à revoir si
+            // une source officielle donne le drake juvénile.
+            id: 'drake',
+            label: 'Drake (monture volante)',
+            minLevel: 9,
+            creatureProfile: {
+              name: 'Drake',
+              companionType: 'mount',
+              abilities: { AGI: 0, CON: 4, FOR: 4, PER: 1, CHA: 0, INT: -2, VOL: 2 },
+              defense: '20',
+              hitPoints: '[=10 + niveau × 5]',
+              initiative: { fromMaster: 'initiative' },
+              attack: { label: 'Morsure et griffes', fromMaster: 'magicAttack', damage: '[2d4° + 5]' },
+              note: 'Sorte de lézard volant, cousin mineur du dragon (p. 147). En vol : 20 m par action de mouvement. Caractéristiques du drake juvénile extrapolées (le livre ne chiffre que le drake adulte, p. 148). Prérequis de la voie de prestige du chevalier dragon.',
+            },
+          },
         ],
       },
     ],
