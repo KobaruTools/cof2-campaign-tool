@@ -30,6 +30,7 @@ import {
   adjustStatusIntensity,
   clearStatusesOf,
   resetCombat as resetCombatState,
+  restartRounds as restartRoundsState,
   rollTieBreakSeed,
   setRoundNumber as setRoundNumberState,
   type AddCreatureOptions,
@@ -56,7 +57,7 @@ export interface GmCombatStateApi extends GmCombatState {
   setCreatureDepletion: (instanceId: string, depletion: Depletion) => void;
   /** Fixe le combattant dont c'est le tour. */
   setCurrentTurnKey: (key: string | null) => void;
-  /** Fixe le numéro de manche (« Tour N »), borné à ≥ 0 (incrément auto de fin de manche + réglage manuel). */
+  /** Fixe le numéro de manche (« Tour N »), borné à ≥ 1 (incrément auto de fin de manche + réglage manuel). */
   setRoundNumber: (roundNumber: number) => void;
   /**
    * Applique un état négatif sur un combattant (`combatantKey` = id de perso joueur OU id
@@ -68,10 +69,17 @@ export interface GmCombatStateApi extends GmCombatState {
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif posé sur un combattant. */
   adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
   /**
-   * Réinitialise le combat (PER-283) : vide tous les états, remet le tour courant à `null` et
-   * restaure les PV des créatures. Conserve le roster et ne touche pas aux PV des joueurs.
+   * Réinitialise le combat (PER-283) : vide tous les états, remet le tour courant à `null`,
+   * recommence à la manche 1 et restaure les PV des créatures. Conserve le roster et ne touche
+   * pas aux PV des joueurs.
    */
   resetCombat: () => void;
+  /**
+   * Recommence le décompte des manches (bouton ⟳) : compteur → 1 et tour courant repositionné sur
+   * `firstTurnKey` (premier de l'ordre d'initiative, fourni par l'appelant) ou `null`. Ne touche NI
+   * aux états NI aux PV — ce n'est pas une réinitialisation du combat.
+   */
+  restartRounds: (firstTurnKey?: string | null) => void;
 }
 
 export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCombatStateApi {
@@ -176,6 +184,12 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const restartRounds = useCallback(
+    (firstTurnKey: string | null = null) =>
+      applyLocalCombat(cid, (prev) => restartRoundsState(prev, firstTurnKey)),
+    [applyLocalCombat, cid],
+  );
+
   return {
     ...state,
     addCreature,
@@ -188,5 +202,6 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     removeStatus,
     adjustStatus,
     resetCombat,
+    restartRounds,
   };
 }

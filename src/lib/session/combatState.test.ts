@@ -7,6 +7,7 @@ import {
   clearStatusesOf,
   removeStatusFrom,
   resetCombat,
+  restartRounds,
   rollTieBreakSeed,
   setRoundNumber,
   reviveState,
@@ -51,11 +52,12 @@ describe('reviveStateObject', () => {
     expect(revived.currentTurnKey).toBeNull();
   });
 
-  it('défaute roundNumber à 0 pour un combat antérieur (absent ou invalide)', () => {
-    expect(reviveStateObject({ creatures: [{ id: 'c-1', slug: 'rat' }] }).roundNumber).toBe(0);
-    expect(reviveStateObject({ creatures: [], roundNumber: -3 }).roundNumber).toBe(0);
+  it('défaute roundNumber à 1 pour un combat antérieur (absent, invalide ou 0)', () => {
+    expect(reviveStateObject({ creatures: [{ id: 'c-1', slug: 'rat' }] }).roundNumber).toBe(1);
+    expect(reviveStateObject({ creatures: [], roundNumber: 0 }).roundNumber).toBe(1);
+    expect(reviveStateObject({ creatures: [], roundNumber: -3 }).roundNumber).toBe(1);
     expect(reviveStateObject({ creatures: [], roundNumber: 2.7 }).roundNumber).toBe(2);
-    expect(reviveStateObject({ banditIds: [1] }).roundNumber).toBe(0);
+    expect(reviveStateObject({ banditIds: [1] }).roundNumber).toBe(1);
   });
 
   it('migre l’ancien format « bandits » en instances bandit-de-base', () => {
@@ -238,11 +240,11 @@ describe('resetCombat', () => {
     tieBreakSeed: 42,
   };
 
-  it('vide les états, le tour courant, le compteur de manche et les PV des créatures', () => {
+  it('vide les états, restaure les PV des créatures, recommence à la manche 1 et met le tour courant à null', () => {
     const reset = resetCombat(inCombat);
     expect(reset.statuses).toEqual({});
     expect(reset.currentTurnKey).toBeNull();
-    expect(reset.roundNumber).toBe(0);
+    expect(reset.roundNumber).toBe(1);
     expect(reset.depletions).toEqual({});
   });
 
@@ -264,6 +266,40 @@ describe('resetCombat', () => {
   });
 });
 
+describe('restartRounds', () => {
+  const inCombat: GmCombatState = {
+    creatures: [{ id: 'c-1', slug: 'gobelin', side: 'enemy' }],
+    nextInstanceId: 2,
+    depletions: { 'c-1': { hp: { lethal: 4, temp: 0 } } },
+    currentTurnKey: 'c-1',
+    roundNumber: 5,
+    statuses: { 'c-1': [{ id: 'blinded' }] },
+    tieBreakSeed: 0,
+  };
+
+  it('recommence à la manche 1 et repositionne le tour courant sur le premier fourni', () => {
+    const restarted = restartRounds(inCombat, 'char-7');
+    expect(restarted.roundNumber).toBe(1);
+    expect(restarted.currentTurnKey).toBe('char-7');
+  });
+
+  it('met le tour courant à null quand aucun premier n’est fourni (roster vide)', () => {
+    expect(restartRounds(inCombat).currentTurnKey).toBeNull();
+  });
+
+  it('ne touche NI aux états NI aux PV (contrairement à resetCombat)', () => {
+    const restarted = restartRounds(inCombat, 'c-1');
+    expect(restarted.statuses).toEqual(inCombat.statuses);
+    expect(restarted.depletions).toEqual(inCombat.depletions);
+  });
+
+  it('ne mute pas l’état source (pur)', () => {
+    restartRounds(inCombat, 'char-7');
+    expect(inCombat.roundNumber).toBe(5);
+    expect(inCombat.currentTurnKey).toBe('c-1');
+  });
+});
+
 describe('rollTieBreakSeed', () => {
   it('pose la nouvelle graine sans rien toucher d’autre', () => {
     const state: GmCombatState = { ...EMPTY_COMBAT_STATE, roundNumber: 3, tieBreakSeed: 7 };
@@ -279,8 +315,9 @@ describe('setRoundNumber', () => {
     expect(setRoundNumber(EMPTY_COMBAT_STATE, 3).roundNumber).toBe(3);
   });
 
-  it('borne à ≥ 0 et tronque les décimales', () => {
-    expect(setRoundNumber(EMPTY_COMBAT_STATE, -1).roundNumber).toBe(0);
+  it('borne à ≥ 1 et tronque les décimales', () => {
+    expect(setRoundNumber(EMPTY_COMBAT_STATE, 0).roundNumber).toBe(1);
+    expect(setRoundNumber(EMPTY_COMBAT_STATE, -1).roundNumber).toBe(1);
     expect(setRoundNumber(EMPTY_COMBAT_STATE, 2.9).roundNumber).toBe(2);
   });
 

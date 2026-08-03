@@ -982,17 +982,23 @@ export interface InitiativeTrackerProps {
   currentTurnKey: string | null;
   onCurrentTurnKeyChange: (key: string | null) => void;
   /**
-   * Compteur de MANCHE affiché à côté du titre (« Tour N »). `0` = combat non démarré/réinitialisé.
-   * Contrôlé/persisté par l'appelant, comme le tour courant. Optionnel : la projection ne l'affiche
-   * pas (en-tête masqué). Réservé au MJ (auteur unique).
+   * Compteur de MANCHE affiché à côté du titre (« Tour N »). Toujours ≥ 1 (un « Tour 0 » n'existe
+   * pas). Contrôlé/persisté par l'appelant, comme le tour courant. Optionnel : la projection ne
+   * l'affiche pas (en-tête masqué). Réservé au MJ (auteur unique).
    */
   roundNumber?: number;
   /**
-   * Fixe le compteur de manche (valeur absolue, bornée à ≥ 0 par l'appelant). Appelé à l'incrément
-   * automatique de fin de manche (« Tour suivant » qui reboucle) et par les réglages manuels (±, ⟳0).
+   * Fixe le compteur de manche (valeur absolue, bornée à ≥ 1 par l'appelant). Appelé à l'incrément
+   * automatique de fin de manche (« Tour suivant » qui reboucle) et par les réglages manuels (±).
    * Absent en projection.
    */
   onRoundNumberChange?: (roundNumber: number) => void;
+  /**
+   * Recommence le décompte des manches (bouton ⟳ de l'en-tête) : remet le compteur à 1 ET
+   * repositionne le tour courant sur le premier de l'ordre d'initiative (`rows[0]`). Ne touche NI
+   * aux états NI aux PV. Fallback sur `onRoundNumberChange(1)` si absent. Absent en projection.
+   */
+  onRestartRounds?: () => void;
   /**
    * Mode PROJECTION (PER-248) : la fenêtre « présentation » destinée à être projetée
    * pour les joueurs. On y masque tout ce qui est réservé au MJ ou qui prend de la place
@@ -1019,21 +1025,26 @@ export function InitiativeTracker({
   rows,
   currentTurnKey,
   onCurrentTurnKeyChange,
-  roundNumber = 0,
+  roundNumber = 1,
   onRoundNumberChange,
+  onRestartRounds,
   projection = false,
   headerAction,
   statusControls,
 }: InitiativeTrackerProps) {
+  // Premier de l'ordre d'initiative (les `rows` sont déjà triées par l'appelant) : cible du
+  // repositionnement du bouton ⟳ « recommencer le décompte ». `null` si le roster est vide.
+  const firstTurnKey = rows[0]?.key ?? null;
   const advanceTurn = () => {
     if (rows.length === 0) return;
     const idx = rows.findIndex((r) => r.key === currentTurnKey);
     // Introuvable (−1, ex. bandit retiré) ou pas encore démarré → on démarre au premier.
     const next = idx < 0 ? 0 : (idx + 1) % rows.length;
     onCurrentTurnKeyChange(rows[next].key);
-    // Nouvelle manche : on reboucle sur le premier combattant (next === 0), que ce soit au
-    // démarrage (tour courant `null`) ou en fin de tour d'initiative → « Tour N » +1.
-    if (next === 0) onRoundNumberChange?.(roundNumber + 1);
+    // Fin de tour d'initiative : on reboucle sur le premier combattant (next === 0) alors qu'on
+    // était DÉJÀ dans la liste (idx ≥ 0) → nouvelle manche, « Tour N » +1. Le démarrage depuis un
+    // tour courant absent (idx < 0) N'incrémente PAS : le combat est déjà à la manche 1.
+    if (next === 0 && idx >= 0) onRoundNumberChange?.(roundNumber + 1);
   };
 
   // En PROJECTION, on retire les combattants masqués aux joueurs (créatures cachées) :
@@ -1051,8 +1062,9 @@ export function InitiativeTracker({
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             {"Ordre d'initiative"}
           </Typography>
-          {/* Compteur de manche (« Tour N ») : +1 auto en fin de tour d'initiative, réglable et
-              remis à 0 à la main, remis à 0 aussi par la réinitialisation du combat (PER-283). */}
+          {/* Compteur de manche (« Tour N », toujours ≥ 1) : +1 auto en fin de tour d'initiative,
+              ajustable (±) et « recommencé » par le bouton ⟳ (→ Tour 1 + tour courant au premier de
+              l'initiative). La réinitialisation du combat (PER-283) le ramène aussi à 1. */}
           {onRoundNumberChange && (
             <Stack
               direction="row"
@@ -1075,7 +1087,7 @@ export function InitiativeTracker({
               <IconButton
                 size="small"
                 onClick={() => onRoundNumberChange(roundNumber - 1)}
-                disabled={roundNumber <= 0}
+                disabled={roundNumber <= 1}
                 aria-label="Manche précédente"
                 title="Manche précédente"
               >
@@ -1091,10 +1103,10 @@ export function InitiativeTracker({
               </IconButton>
               <IconButton
                 size="small"
-                onClick={() => onRoundNumberChange(0)}
-                disabled={roundNumber === 0}
-                aria-label="Remettre le compteur de tour à zéro"
-                title="Remettre à 0"
+                onClick={() => (onRestartRounds ? onRestartRounds() : onRoundNumberChange(1))}
+                disabled={roundNumber === 1 && currentTurnKey === firstTurnKey}
+                aria-label="Recommencer le décompte des manches (Tour 1, premier combattant)"
+                title="Recommencer (Tour 1, premier combattant)"
               >
                 <RestartAltIcon fontSize="inherit" />
               </IconButton>

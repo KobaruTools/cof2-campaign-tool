@@ -18,7 +18,7 @@
  * en lecture seule : ces callbacks existent mais ne sont jamais déclenchés (contrôles
  * masqués), ce qui évite toute écriture concurrente sur les fiches (verrou optimiste).
  */
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
 import { deriveStats } from '@/lib/engine';
 import { applyDamage, healHp, resetHp } from '@/lib/character/gauges';
@@ -102,9 +102,9 @@ export interface GmScreenCombat {
   currentTurnKey: string | null;
   /** Fixe le combattant dont c'est le tour. */
   setCurrentTurnKey: (key: string | null) => void;
-  /** Numéro de la manche en cours (« Tour N » ; `0` = combat non démarré/réinitialisé). */
+  /** Numéro de la manche en cours (« Tour N », toujours ≥ 1 : un « Tour 0 » n'existe pas). */
   roundNumber: number;
-  /** Fixe le numéro de manche, borné à ≥ 0 (incrément auto de fin de manche + réglage manuel). */
+  /** Fixe le numéro de manche, borné à ≥ 1 (incrément auto de fin de manche + réglage manuel). */
   setRoundNumber: (roundNumber: number) => void;
   /** Ajoute une instance de la créature `slug` au combat (visibilité joueurs + camp initiaux). */
   addCreature: (slug: string, options?: AddCreatureOptions) => void;
@@ -127,10 +127,16 @@ export interface GmScreenCombat {
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif d'un combattant (PER-280). */
   adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
   /**
-   * Réinitialise le combat (PER-283) : vide tous les états, remet le tour courant à zéro et
-   * restaure les PV des créatures. Conserve le roster ; ne touche pas aux PV des joueurs.
+   * Réinitialise le combat (PER-283) : vide tous les états, remet le tour courant à « aucun »,
+   * recommence à la manche 1 et restaure les PV des créatures. Conserve le roster ; ne touche pas
+   * aux PV des joueurs.
    */
   resetCombat: () => void;
+  /**
+   * Recommence le décompte des manches (bouton ⟳ de l'en-tête) : compteur → 1 et tour courant
+   * repositionné sur le PREMIER de l'ordre d'initiative. Ne touche NI aux états NI aux PV.
+   */
+  restartRounds: () => void;
 }
 
 export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmScreenCombat {
@@ -151,6 +157,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     removeStatus,
     adjustStatus,
     resetCombat,
+    restartRounds: restartRoundsBase,
   } = useGmCombatState(cid, role);
 
   const charactersHydrated = useCharactersStore((s) => s.hasHydrated);
@@ -354,6 +361,14 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     [characterRows, creatureRows, tieBreakSeed],
   );
 
+  // Bouton ⟳ « recommencer le décompte » : le tour courant est repositionné sur le PREMIER de
+  // l'ordre d'initiative (l'ordre vit ici, pas dans la couche pure `restartRounds`). Roster vide
+  // → `null`. Ne touche NI aux états NI aux PV (contrairement à `resetCombat`).
+  const restartRounds = useCallback(
+    () => restartRoundsBase(initiativeRows[0]?.key ?? null),
+    [restartRoundsBase, initiativeRows],
+  );
+
   const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';
 
   return {
@@ -379,5 +394,6 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     removeStatus,
     adjustStatus,
     resetCombat,
+    restartRounds,
   };
 }

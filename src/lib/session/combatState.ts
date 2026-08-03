@@ -58,10 +58,10 @@ export interface GmCombatState {
   /** Clé du combattant dont c'est le tour (`null` = combat pas encore démarré). */
   currentTurnKey: string | null;
   /**
-   * Numéro de la manche en cours (« Tour N » de l'écran de MJ). `0` = combat pas encore démarré
-   * ou réinitialisé. S'incrémente d'1 à chaque manche complète (quand « Tour suivant » reboucle
-   * sur le premier combattant) ; ajustable/remis à 0 à la main. MJ seul auteur ; migration douce
-   * des combats antérieurs (absent → 0).
+   * Numéro de la manche en cours (« Tour N » de l'écran de MJ). Toujours ≥ 1 : un « Tour 0 »
+   * n'existe pas (un combat commence à la manche 1). S'incrémente d'1 à chaque manche complète
+   * (quand « Tour suivant » reboucle sur le premier combattant) ; ajustable/remis à 1 à la main.
+   * MJ seul auteur ; migration douce des combats antérieurs (absent/invalide/0 → 1).
    */
   roundNumber: number;
   /**
@@ -102,7 +102,7 @@ export const EMPTY_COMBAT_STATE: GmCombatState = {
   nextInstanceId: 1,
   depletions: {},
   currentTurnKey: null,
-  roundNumber: 0,
+  roundNumber: 1,
   statuses: {},
   tieBreakSeed: 0,
 };
@@ -132,10 +132,7 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
           : current.creatures.length + 1,
       depletions: current.depletions ?? {},
       currentTurnKey: current.currentTurnKey ?? null,
-      roundNumber:
-        typeof current.roundNumber === 'number' && current.roundNumber > 0
-          ? Math.trunc(current.roundNumber)
-          : 0,
+      roundNumber: reviveRoundNumber(current.roundNumber),
       statuses: reviveStatuses(current.statuses),
       tieBreakSeed: reviveTieBreakSeed(current.tieBreakSeed),
     };
@@ -160,7 +157,7 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
           ? legacy.nextBanditId
           : legacy.banditIds.length + 1,
       currentTurnKey: legacy.currentTurnKey ?? null,
-      roundNumber: 0,
+      roundNumber: 1,
       depletions,
       statuses: {},
       tieBreakSeed: 0,
@@ -168,6 +165,17 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
   }
 
   return EMPTY_COMBAT_STATE;
+}
+
+/**
+ * Normalise le compteur de manche relu : toujours ≥ 1 (un « Tour 0 » n'existe pas). Absent,
+ * invalide, ≤ 0 ou décimal < 1 → 1 ; sinon partie entière. Migration douce des combats d'avant
+ * (roundNumber absent ou stocké à 0).
+ */
+function reviveRoundNumber(raw: unknown): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return 1;
+  const trunc = Math.trunc(raw);
+  return trunc >= 1 ? trunc : 1;
 }
 
 /**
@@ -303,34 +311,49 @@ export function clearStatusesOf(state: GmCombatState, key: string): GmCombatStat
 
 /**
  * Réinitialise le combat en cours (PER-283, clôt la milestone PER-276). Vide TOUS les états
- * de tous les combattants, remet le tour courant à `null`, le compteur de manche à `0` et
- * restaure les PV des créatures (`depletions`). Conserve délibérément le roster de créatures
- * (`creatures` / `nextInstanceId`) et NE TOUCHE PAS aux PV des personnages joueurs (portés par
- * leur fiche, hors de ce blob) : une réinitialisation « peu surprenante » ne recompose pas la
- * scène et n'écrit pas les fiches. Action destructive à confirmer côté UI ; MJ seul auteur
+ * de tous les combattants, remet le tour courant à `null`, RECOMMENCE à la manche 1 (un « Tour 0 »
+ * n'existe pas) et restaure les PV des créatures (`depletions`). Conserve délibérément le roster de
+ * créatures (`creatures` / `nextInstanceId`) et NE TOUCHE PAS aux PV des personnages joueurs
+ * (portés par leur fiche, hors de ce blob) : une réinitialisation « peu surprenante » ne recompose
+ * pas la scène et n'écrit pas les fiches. Action destructive à confirmer côté UI ; MJ seul auteur
  * (broadcast automatique).
  */
 export function resetCombat(state: GmCombatState): GmCombatState {
-  return { ...state, statuses: {}, currentTurnKey: null, roundNumber: 0, depletions: {} };
+  return { ...state, statuses: {}, currentTurnKey: null, roundNumber: 1, depletions: {} };
 }
 
 /**
  * Retire une NOUVELLE graine de départage à égalité d'initiative (cf. `initiativeOrder`). Appelée
  * à la RÉINITIALISATION du combat (composée avec `resetCombat`) : nouveau combat, nouveau tirage
  * entre joueurs à égalité parfaite. Le tirage lui-même est impur (`randomTieBreakSeed`) et reste
- * chez l'appelant ; ce réducteur ne fait que le poser.
+ * chez l'appelant ; ce réducteur ne fait que le poser. Pas appelée par `restartRounds` : recommencer
+ * le compteur de manches ne rejoue pas l'initiative.
  */
 export function rollTieBreakSeed(state: GmCombatState, tieBreakSeed: number): GmCombatState {
   return { ...state, tieBreakSeed };
 }
 
 /**
- * Fixe le numéro de manche (« Tour N »), borné à ≥ 0. Sert l'incrément automatique en fin de
- * manche (« Tour suivant » qui reboucle) comme l'ajustement/la remise à 0 à la main. MJ seul
- * auteur (broadcast automatique).
+ * Recommence le décompte des manches (« Tour N » → 1) et repositionne le tour courant sur
+ * `firstTurnKey` — le premier de l'ordre d'initiative, fourni par l'appelant (l'ordre vit dans la
+ * couche UI) — ou `null` si le roster est vide. NE TOUCHE NI aux états NI aux PV : contrairement à
+ * `resetCombat`, ce n'est PAS une réinitialisation du combat mais un simple « recommencer le tour »
+ * du compteur d'initiative (bouton ⟳ de l'en-tête). MJ seul auteur (broadcast automatique).
+ */
+export function restartRounds(
+  state: GmCombatState,
+  firstTurnKey: string | null = null,
+): GmCombatState {
+  return { ...state, roundNumber: 1, currentTurnKey: firstTurnKey };
+}
+
+/**
+ * Fixe le numéro de manche (« Tour N »), borné à ≥ 1 (un « Tour 0 » n'existe pas). Sert l'incrément
+ * automatique en fin de manche (« Tour suivant » qui reboucle) comme l'ajustement/la remise à 1 à
+ * la main. MJ seul auteur (broadcast automatique).
  */
 export function setRoundNumber(state: GmCombatState, roundNumber: number): GmCombatState {
-  const next = Math.max(0, Math.trunc(roundNumber));
+  const next = Math.max(1, Math.trunc(roundNumber));
   if (next === state.roundNumber) return state;
   return { ...state, roundNumber: next };
 }

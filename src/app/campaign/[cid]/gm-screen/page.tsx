@@ -123,6 +123,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     removeStatus,
     adjustStatus,
     resetCombat,
+    restartRounds,
   } = useGmScreenCombat(cid, 'gm');
   const [addOpen, setAddOpen] = useState(false);
   // Réinitialisation du combat (PER-283) : action destructive → confirmation avant purge.
@@ -359,6 +360,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             onCurrentTurnKeyChange={setCurrentTurnKey}
             roundNumber={roundNumber}
             onRoundNumberChange={setRoundNumber}
+            onRestartRounds={restartRounds}
             headerAction={<OpenTrackerWindowButton cid={cid} />}
             statusControls={{
               statusesByKey: statuses,
