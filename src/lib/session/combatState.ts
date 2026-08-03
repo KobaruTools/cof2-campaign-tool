@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Modèle PUR de l'« état de combat en cours » de l'écran de MJ (PER-267, milestone
  * PER-259) — types + reconstruction défensive, SANS React ni accès réseau. Extrait de
  * l'ancien hook `useGmCombatState` pour être partagé entre :
@@ -27,6 +27,14 @@ export interface CreatureInstance {
   /** Slug de la créature du bestiaire (`Creature.id` / `CreatureListItem.id`). */
   slug: string;
   /**
+   * Nom PERSONNALISÉ donné par le MJ à l'ajout (PER-295) : « Grishnak le borgne » pour un
+   * bandit de base, « Garde du corps » pour une escouade. Remplace le nom du bloc du bestiaire
+   * dans l'étiquette (cf. `labelCreatureInstances`). **Absent = nom du bestiaire** (cas courant).
+   * Porté par l'INSTANCE (et non par slug) : deux escouades du même bandit peuvent être nommées
+   * différemment. Diffusé aux joueurs avec le roster, donc lisible même sans accès au bloc.
+   */
+  name?: string;
+  /**
    * Visible par les joueurs sur la fenêtre projetée (PER-248). Absent ou `true` = visible ;
    * `false` = masquée (le MJ la voit sur son écran, avec un œil fermé, mais elle n'apparaît
    * PAS dans la projection). Permet de préparer un combat sans le révéler d'emblée.
@@ -40,13 +48,29 @@ export interface CreatureInstance {
   side?: CreatureSide;
 }
 
-/** Options d'ajout d'une créature au combat (PER-247, PER-248, PER-249). */
+/** Options d'ajout d'une créature au combat (PER-247, PER-248, PER-249, PER-295). */
 export interface AddCreatureOptions {
   /** Visible par les joueurs sur la fenêtre projetée. Défaut `true`. */
   visible?: boolean;
   /** Camp de la créature. Défaut `'enemy'` (adversaire). */
   side?: CreatureSide;
+  /**
+   * Nom personnalisé appliqué à CHAQUE instance ajoutée (PER-295). Vide / espaces seuls =
+   * aucun (l'étiquette retombe sur le nom du bestiaire).
+   */
+  name?: string;
+  /**
+   * Nombre d'instances à ajouter d'un coup (« 5 fois le même bandit de base », PER-295).
+   * Défaut 1, borné à [1, `CREATURE_ADD_COUNT_MAX`].
+   */
+  count?: number;
 }
+
+/** Nombre maximal d'instances ajoutables en une fois (garde-fou de saisie, PER-295). */
+export const CREATURE_ADD_COUNT_MAX = 20;
+
+/** Longueur maximale d'un nom personnalisé de créature (garde-fou de saisie, PER-295). */
+export const CREATURE_NAME_MAX_LENGTH = 60;
 
 export interface GmCombatState {
   /** Instances de créatures ajoutées au combat (ordre d'ajout). */
@@ -227,6 +251,89 @@ export function reviveState(raw: string): GmCombatState {
     return EMPTY_COMBAT_STATE;
   }
   return reviveStateObject(parsed);
+}
+
+/* ------------------------------------------------------------------------- *
+ * ROSTER DE CRÉATURES (PER-247, PER-295) — purs, testés.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Normalise un nom personnalisé de créature (PER-295) : espaces de bord retirés, tronqué au
+ * plafond de saisie, `undefined` si vide. Un nom vide n'est JAMAIS persisté — son absence
+ * signifie « prendre le nom du bestiaire ».
+ */
+export function normalizeCreatureName(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  return trimmed ? trimmed.slice(0, CREATURE_NAME_MAX_LENGTH) : undefined;
+}
+
+/**
+ * Borne le nombre d'instances à ajouter à [1, `CREATURE_ADD_COUNT_MAX`] (PER-295). Absent,
+ * invalide ou < 1 → 1 (ajouter « zéro créature » n'a pas de sens) ; décimales tronquées.
+ */
+export function clampAddCount(raw: unknown): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return 1;
+  return Math.min(CREATURE_ADD_COUNT_MAX, Math.max(1, Math.trunc(raw)));
+}
+
+/**
+ * Ajoute `count` instances de la créature `slug` au combat (PER-247, PER-295), toutes avec la
+ * même visibilité joueurs, le même camp et le même nom personnalisé éventuel. Les ids d'instance
+ * restent MONOTONES (`c-<nextInstanceId>`, robustes aux retraits) : un ajout de 5 consomme 5 ids.
+ */
+export function addCreatures(
+  state: GmCombatState,
+  slug: string,
+  options: AddCreatureOptions = {},
+): GmCombatState {
+  const count = clampAddCount(options.count ?? 1);
+  const name = normalizeCreatureName(options.name);
+  const added = Array.from({ length: count }, (_, i): CreatureInstance => ({
+    id: `c-${state.nextInstanceId + i}`,
+    slug,
+    visible: options.visible ?? true,
+    side: options.side ?? 'enemy',
+    ...(name ? { name } : {}),
+  }));
+  return {
+    ...state,
+    creatures: [...state.creatures, ...added],
+    nextInstanceId: state.nextInstanceId + count,
+  };
+}
+
+/**
+ * Étiquette d'affichage de chaque instance du roster (id d'instance → étiquette), consommée par
+ * les cartes de l'écran de MJ, le tracker et la projection.
+ *
+ * Le nom affiché est le nom PERSONNALISÉ de l'instance (PER-295) s'il y en a un, sinon celui du
+ * bestiaire (`nameBySlug`), sinon le slug en dernier recours. Le **numéro n'est ajouté que si
+ * plusieurs instances partagent ce nom** (« Gobelin 1 / 2 / 3 »), dans l'ordre d'ajout : une
+ * créature unique s'affiche donc « Gobelin » et un PNJ nommé « Grishnak le borgne » garde son nom
+ * nu. Deux noms distincts se numérotent indépendamment (« Garde du corps 1 / 2 » à côté de
+ * « Bandit de base 1 / 2 »), y compris quand ils viennent du même slug.
+ */
+export function labelCreatureInstances(
+  creatures: readonly CreatureInstance[],
+  nameBySlug: ReadonlyMap<string, string>,
+): Map<string, string> {
+  const displayName = (inst: CreatureInstance) =>
+    normalizeCreatureName(inst.name) ?? nameBySlug.get(inst.slug) ?? inst.slug;
+  const totals = new Map<string, number>();
+  for (const inst of creatures) {
+    const name = displayName(inst);
+    totals.set(name, (totals.get(name) ?? 0) + 1);
+  }
+  const seen = new Map<string, number>();
+  const labels = new Map<string, string>();
+  for (const inst of creatures) {
+    const name = displayName(inst);
+    const n = (seen.get(name) ?? 0) + 1;
+    seen.set(name, n);
+    labels.set(inst.id, (totals.get(name) ?? 1) > 1 ? `${name} ${n}` : name);
+  }
+  return labels;
 }
 
 /* ------------------------------------------------------------------------- *

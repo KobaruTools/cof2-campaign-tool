@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * Façade React de l'« état de combat en cours » de l'écran de MJ, au-dessus du store
@@ -25,6 +25,7 @@ import { useCallback, useEffect } from 'react';
 import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import {
   EMPTY_COMBAT_STATE,
+  addCreatures,
   applyStatusTo,
   removeStatusFrom,
   adjustStatusIntensity,
@@ -47,7 +48,10 @@ export type { AddCreatureOptions, CreatureInstance, GmCombatState };
 export type CombatRole = 'gm' | 'reader';
 
 export interface GmCombatStateApi extends GmCombatState {
-  /** Ajoute une instance de la créature `slug` (id = `c-<nextInstanceId>`) ; visible + adversaire par défaut. */
+  /**
+   * Ajoute `options.count` instances (défaut 1) de la créature `slug` (ids `c-<nextInstanceId>`…) ;
+   * visible + adversaire + nom du bestiaire par défaut (cf. `AddCreatureOptions`).
+   */
   addCreature: (slug: string, options?: AddCreatureOptions) => void;
   /** Retire l'instance `instanceId` (et son manque de PV). */
   removeCreature: (instanceId: string) => void;
@@ -98,19 +102,7 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
 
   const addCreature = useCallback(
     (slug: string, options?: AddCreatureOptions) =>
-      applyLocalCombat(cid, (prev) => ({
-        ...prev,
-        creatures: [
-          ...prev.creatures,
-          {
-            id: `c-${prev.nextInstanceId}`,
-            slug,
-            visible: options?.visible ?? true,
-            side: options?.side ?? 'enemy',
-          },
-        ],
-        nextInstanceId: prev.nextInstanceId + 1,
-      })),
+      applyLocalCombat(cid, (prev) => addCreatures(prev, slug, options)),
     [applyLocalCombat, cid],
   );
 

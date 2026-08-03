@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * Logique du « combat en cours » de l'écran de MJ, PARTAGÉE (PER-248) entre la page
@@ -40,6 +40,7 @@ import {
   type CreatureInstance,
   type AddCreatureOptions,
 } from './useGmCombatState';
+import { labelCreatureInstances } from '@/lib/session/combatState';
 import { sortByInitiative } from '@/lib/session/initiativeOrder';
 import {
   resolveStatusModifiers,
@@ -80,7 +81,10 @@ function creatureAttackKind(attack: CreatureAttack): CombatAttackKind {
   return 'melee';
 }
 
-/** Instance de créature enrichie de son étiquette numérotée (« Gobelin 1 / 2 »). */
+/**
+ * Instance de créature enrichie de son étiquette d'affichage : nom personnalisé (PER-295) ou nom
+ * du bestiaire, numéroté uniquement en cas d'homonymes (« Gobelin 1 / 2 »).
+ */
 export type LabeledCreature = CreatureInstance & { label: string };
 
 export interface GmScreenCombat {
@@ -94,7 +98,7 @@ export interface GmScreenCombat {
   claimed: Character[];
   /** Nom du joueur par id (pour l'étiquette « (Joueur) »). */
   playerNameById: Map<string, string>;
-  /** Créatures du combat, numérotées par créature dans l'ordre d'ajout (tous camps confondus). */
+  /** Créatures du combat, étiquetées dans l'ordre d'ajout (tous camps confondus). */
   labeledCreatures: LabeledCreature[];
   /** Créatures ALLIÉES du combat (sous-ensemble de `labeledCreatures`), dans l'ordre d'ajout. */
   allies: LabeledCreature[];
@@ -110,7 +114,10 @@ export interface GmScreenCombat {
   roundNumber: number;
   /** Fixe le numéro de manche, borné à ≥ 1 (incrément auto de fin de manche + réglage manuel). */
   setRoundNumber: (roundNumber: number) => void;
-  /** Ajoute une instance de la créature `slug` au combat (visibilité joueurs + camp initiaux). */
+  /**
+   * Ajoute une ou plusieurs instances de la créature `slug` au combat (visibilité joueurs, camp,
+   * nom personnalisé et nombre d'exemplaires initiaux — cf. `AddCreatureOptions`).
+   */
   addCreature: (slug: string, options?: AddCreatureOptions) => void;
   /** Retire l'instance `instanceId` du combat. */
   removeCreature: (instanceId: string) => void;
@@ -203,15 +210,11 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     [bestiaryList],
   );
 
-  // Instances numérotées PAR CRÉATURE (« Gobelin 1 / 2 »), dans l'ordre d'ajout.
+  // Étiquettes d'affichage (couche pure) : nom personnalisé de l'instance (PER-295) ou nom du
+  // bestiaire, numéroté dans l'ordre d'ajout SEULEMENT en cas d'homonymes (« Gobelin 1 / 2 »).
   const labeledCreatures = useMemo<LabeledCreature[]>(() => {
-    const counts = new Map<string, number>();
-    return creatures.map((inst) => {
-      const n = (counts.get(inst.slug) ?? 0) + 1;
-      counts.set(inst.slug, n);
-      const name = creatureNameBySlug.get(inst.slug) ?? inst.slug;
-      return { ...inst, label: `${name} ${n}` };
-    });
+    const labels = labelCreatureInstances(creatures, creatureNameBySlug);
+    return creatures.map((inst) => ({ ...inst, label: labels.get(inst.id) ?? inst.slug }));
   }, [creatures, creatureNameBySlug]);
 
   // Séparation par camp (PER-249) : alliés d'un côté, adversaires de l'autre. Le camp

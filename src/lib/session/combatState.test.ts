@@ -1,10 +1,16 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 
 import {
+  CREATURE_ADD_COUNT_MAX,
+  CREATURE_NAME_MAX_LENGTH,
   EMPTY_COMBAT_STATE,
+  addCreatures,
   adjustStatusIntensity,
   applyStatusTo,
+  clampAddCount,
   clearStatusesOf,
+  labelCreatureInstances,
+  normalizeCreatureName,
   removeStatusFrom,
   resetCombat,
   restartRounds,
@@ -343,5 +349,145 @@ describe('reviveState (chaîne JSON)', () => {
 
   it('renvoie l’état vide pour une chaîne invalide', () => {
     expect(reviveState('{not json')).toBe(EMPTY_COMBAT_STATE);
+  });
+});
+
+describe('normalizeCreatureName (PER-295)', () => {
+  it('retire les espaces de bord', () => {
+    expect(normalizeCreatureName('  Grishnak le borgne  ')).toBe('Grishnak le borgne');
+  });
+
+  it('renvoie undefined pour un nom absent, vide ou d’espaces seuls', () => {
+    expect(normalizeCreatureName(undefined)).toBeUndefined();
+    expect(normalizeCreatureName('')).toBeUndefined();
+    expect(normalizeCreatureName('   ')).toBeUndefined();
+    expect(normalizeCreatureName(42)).toBeUndefined();
+  });
+
+  it('tronque au plafond de saisie', () => {
+    const long = 'a'.repeat(CREATURE_NAME_MAX_LENGTH + 10);
+    expect(normalizeCreatureName(long)).toHaveLength(CREATURE_NAME_MAX_LENGTH);
+  });
+});
+
+describe('clampAddCount (PER-295)', () => {
+  it('défaute à 1 pour une valeur absente, invalide ou < 1', () => {
+    expect(clampAddCount(undefined)).toBe(1);
+    expect(clampAddCount(NaN)).toBe(1);
+    expect(clampAddCount('5')).toBe(1);
+    expect(clampAddCount(0)).toBe(1);
+    expect(clampAddCount(-3)).toBe(1);
+  });
+
+  it('tronque les décimales et plafonne au maximum', () => {
+    expect(clampAddCount(4.9)).toBe(4);
+    expect(clampAddCount(CREATURE_ADD_COUNT_MAX + 5)).toBe(CREATURE_ADD_COUNT_MAX);
+  });
+});
+
+describe('addCreatures (PER-247, PER-295)', () => {
+  it('ajoute une instance visible + adversaire par défaut, sans nom personnalisé', () => {
+    const next = addCreatures(EMPTY_COMBAT_STATE, 'gobelin');
+    expect(next.creatures).toEqual([
+      { id: 'c-1', slug: 'gobelin', visible: true, side: 'enemy' },
+    ]);
+    expect(next.nextInstanceId).toBe(2);
+  });
+
+  it('ajoute N instances d’un coup avec des ids monotones', () => {
+    const next = addCreatures(EMPTY_COMBAT_STATE, 'bandit-de-base', { count: 5 });
+    expect(next.creatures.map((c) => c.id)).toEqual(['c-1', 'c-2', 'c-3', 'c-4', 'c-5']);
+    expect(next.nextInstanceId).toBe(6);
+  });
+
+  it('applique le nom personnalisé, la visibilité et le camp à chaque instance', () => {
+    const next = addCreatures(EMPTY_COMBAT_STATE, 'bandit-de-base', {
+      count: 2,
+      name: '  Garde du corps  ',
+      visible: false,
+      side: 'ally',
+    });
+    expect(next.creatures).toEqual([
+      { id: 'c-1', slug: 'bandit-de-base', visible: false, side: 'ally', name: 'Garde du corps' },
+      { id: 'c-2', slug: 'bandit-de-base', visible: false, side: 'ally', name: 'Garde du corps' },
+    ]);
+  });
+
+  it('n’écrit PAS de nom vide (absence = nom du bestiaire)', () => {
+    const next = addCreatures(EMPTY_COMBAT_STATE, 'orc', { name: '   ' });
+    expect(next.creatures[0]).not.toHaveProperty('name');
+  });
+
+  it('poursuit la numérotation des ids et ne mute pas l’état source (pur)', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, nextInstanceId: 7 };
+    const next = addCreatures(state, 'orc', { count: 2 });
+    expect(next.creatures.map((c) => c.id)).toEqual(['c-7', 'c-8']);
+    expect(next.nextInstanceId).toBe(9);
+    expect(state.creatures).toEqual([]);
+    expect(state.nextInstanceId).toBe(7);
+  });
+});
+
+describe('labelCreatureInstances (PER-295)', () => {
+  const names = new Map([
+    ['gobelin', 'Gobelin'],
+    ['bandit-de-base', 'Bandit de base'],
+  ]);
+
+  it('n’ajoute PAS de numéro à une créature unique', () => {
+    const labels = labelCreatureInstances([{ id: 'c-1', slug: 'gobelin' }], names);
+    expect(labels.get('c-1')).toBe('Gobelin');
+  });
+
+  it('numérote les homonymes dans l’ordre d’ajout', () => {
+    const labels = labelCreatureInstances(
+      [
+        { id: 'c-1', slug: 'gobelin' },
+        { id: 'c-2', slug: 'gobelin' },
+        { id: 'c-3', slug: 'gobelin' },
+      ],
+      names,
+    );
+    expect([...labels.values()]).toEqual(['Gobelin 1', 'Gobelin 2', 'Gobelin 3']);
+  });
+
+  it('préfère le nom personnalisé au nom du bestiaire, sans numéro s’il est unique', () => {
+    const labels = labelCreatureInstances(
+      [
+        { id: 'c-1', slug: 'bandit-de-base', name: 'Grishnak le borgne' },
+        { id: 'c-2', slug: 'bandit-de-base' },
+      ],
+      names,
+    );
+    expect(labels.get('c-1')).toBe('Grishnak le borgne');
+    expect(labels.get('c-2')).toBe('Bandit de base');
+  });
+
+  it('numérote indépendamment deux noms distincts issus du même slug', () => {
+    const labels = labelCreatureInstances(
+      [
+        { id: 'c-1', slug: 'bandit-de-base', name: 'Garde du corps' },
+        { id: 'c-2', slug: 'bandit-de-base' },
+        { id: 'c-3', slug: 'bandit-de-base', name: 'Garde du corps' },
+        { id: 'c-4', slug: 'bandit-de-base' },
+      ],
+      names,
+    );
+    expect([...labels.values()]).toEqual([
+      'Garde du corps 1',
+      'Bandit de base 1',
+      'Garde du corps 2',
+      'Bandit de base 2',
+    ]);
+  });
+
+  it('retombe sur le slug quand le nom du bestiaire est inconnu', () => {
+    const labels = labelCreatureInstances([{ id: 'c-1', slug: 'creature-payante' }], names);
+    expect(labels.get('c-1')).toBe('creature-payante');
+  });
+
+  it('ignore un nom personnalisé vide (repli sur le bestiaire)', () => {
+    const labels = labelCreatureInstances([{ id: 'c-1', slug: 'gobelin', name: '  ' }], names);
+    expect(labels.get('c-1')).toBe('Gobelin');
   });
 });
