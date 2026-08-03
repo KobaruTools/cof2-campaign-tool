@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import AddIcon from '@mui/icons-material/Add';
 import DownloadIcon from '@mui/icons-material/Download';
+import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import Box from '@mui/material/Box';
@@ -141,10 +142,15 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
   // null = modale fermée. `claimBusy` couvre l'écriture cloud le temps du clic.
   const [claimTarget, setClaimTarget] = useState<CharacterSummary | null>(null);
   const [claimBusy, setClaimBusy] = useState(false);
+  // Un premier chargement (cloud) a-t-il abouti ? Fige le squelette au démarrage seul —
+  // voir la note sur `loading` plus bas (anti-boucle PER-293). Posé en callback de promesse
+  // (jamais synchronement dans l'effet) pour ne pas cascader les rendus.
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-  // Charge (et fusionne) le roster de la campagne via la RLS joueur.
+  // Charge (et fusionne) le roster de la campagne via la RLS joueur. `finally` marque le
+  // premier chargement abouti (succès comme échec) → le squelette ne réapparaît plus ensuite.
   useEffect(() => {
-    void loadCharacters();
+    void loadCharacters().finally(() => setHasLoadedOnce(true));
     void loadPlayers(campaignId);
   }, [loadCharacters, loadPlayers, campaignId]);
 
@@ -245,12 +251,20 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
     },
   ];
 
-  // On attend l'hydratation localStorage ET la fin du fetch cloud avant d'afficher
-  // les listes : comme on filtre sur `cloudVersions` (peuplé seulement une fois
-  // `load()` terminé), rendre trop tôt masquerait des fiches valides ou laisserait
-  // voir un fantôme du staging. `error`/`unconfigured` (rares ici) sortent du
-  // spinner pour ne pas bloquer indéfiniment.
-  const loading = !hasHydrated || status === 'idle' || status === 'loading';
+  // On attend l'hydratation localStorage ET la fin du PREMIER fetch cloud avant d'afficher
+  // les listes : comme on filtre sur `cloudVersions` (peuplé seulement une fois `load()`
+  // terminé), rendre trop tôt masquerait des fiches valides ou laisserait voir un fantôme
+  // du staging.
+  //
+  // MAIS uniquement au PREMIER chargement (PER-293) : sinon le canal de session appelle
+  // `load({ force: true })` à chaque abonnement → `status` repasse à `'loading'` → on
+  // réaffichait le squelette (qui ne contient PAS `PlayerSessionBar`) → la barre se démontait
+  // → le canal se fermait → au rechargement il se réabonnait → nouveau `load({ force })` →
+  // BOUCLE infinie (« Reconnexion » clignotante). `hasLoadedOnce` (posé à la fin du premier
+  // `load`, cf. l'effet ci-dessus) fige le squelette au démarrage seul ; les rechargements de
+  // fond ne l'affichent plus. Même esprit que l'accueil (`characters.length === 0`) et la
+  // fiche (`&& !character`), qui montent aussi le canal sans boucler.
+  const loading = !hasHydrated || (!hasLoadedOnce && (status === 'idle' || status === 'loading'));
 
   if (loading) {
     // Préfigure la section principale « Mes fiches » (la seule toujours présente) :
@@ -280,6 +294,20 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
           playerId={playerId}
           playerName={playerNameById.get(playerId) ?? 'Joueur'}
         />
+        {/* Accès à l'écran distant d'ordre d'initiative (PER-293) : lecture seule, mis à jour
+            en direct pendant une session. Toujours proposé (l'écran indique lui-même s'il y a
+            une session en cours), pour que le joueur retrouve le lien même hors combat. */}
+        <Box sx={{ mt: 1.5 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<FormatListNumberedIcon />}
+            component={Link}
+            href="/play/initiative"
+          >
+            Voir l&apos;ordre d&apos;initiative
+          </Button>
+        </Box>
       </Box>
       <Paper elevation={0} sx={sectionSx}>
         <Stack
