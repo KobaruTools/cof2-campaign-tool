@@ -542,6 +542,8 @@ export type FeatureEffect =
   | AttackBonusEffect
   | RangedAttackMagicalEffect
   | RangedAttackElementalEffect
+  | BoundWeaponAttackDieEffect
+  | WeaponAuraElementalEffect
   | FinesseAttackEffect;
 
 /**
@@ -1465,6 +1467,38 @@ export interface TwoHandedWeaponDefBonusEffect {
 }
 
 /**
+ * PER-74 — DÉ BONUS en attaque octroyé par l'ARME LIÉE (voie de l'arme liée, r4 « Fidèle »,
+ * p. 147 : « l'arme […] octroie au PJ un dé bonus en attaque »). Affiché sur la carte d'attaque
+ * du MODE de l'arme liée (au contact pour une arme de contact, à distance pour une arme à
+ * distance), et SEULEMENT si les trois conditions sont réunies :
+ *  - une arme liée est choisie (`boundWeaponLine`) ;
+ *  - elle est effectivement TENUE EN MAIN ;
+ *  - la charge de la capacité porteuse n'est pas dépensée (`usageCounter` au maximum).
+ * Le dé disparaît donc dès que le joueur décrémente le compteur, et revient à la recharge.
+ * Aucun paramètre : la capacité porteuse fournit son propre compteur.
+ */
+export interface BoundWeaponAttackDieEffect {
+  kind: 'bound-weapon-attack-die';
+}
+
+/**
+ * PER-74 — AURA ÉLÉMENTAIRE imprégnée dans une arme (voie de l'arme liée, r7, p. 147). L'élément
+ * est choisi À LA TABLE, pas à la construction : il est stocké dans `Character.effectInputs` et
+ * s'échange librement hors mode édition, comme l'élément résisté d'une RD à `scopeChoice` ou
+ * l'élément des flèches (`ranged-attack-elemental`). À DISTINGUER du choix PERMANENT du
+ * sang-dragon (couleur figée à la construction).
+ *
+ * Le livre fige l'élément « une fois pour toutes » dans la fiction (« l'élément choisi reste
+ * toujours le même »), mais l'arbitrage propriétaire est de le laisser échangeable : le lien peut
+ * être refait avec une autre arme, et le suivi table par table prime.
+ */
+export interface WeaponAuraElementalEffect {
+  kind: 'weapon-aura-elemental';
+  /** Éléments proposés (un seul retenu à la fois dans `effectInputs`). */
+  choices: ResistibleDamageType[];
+}
+
+/**
  * Condition d'application d'un bonus de DM d'arme (PER-115), selon le mode d'attaque et l'arme
  * réellement en main. Le filtrage automatique porte sur `attackMode`, `rangedKinds` et
  * `weaponCategories` ; `label` ne sert qu'à afficher une condition situationnelle non modélisable.
@@ -2028,6 +2062,7 @@ export type FeatureChoice =
   | KnownFeatureChoice
   | TestDomainFeatureChoice
   | OptionFeatureChoice
+  | OwnedWeaponFeatureChoice
   | CustomSkillFeatureChoice
   | FreeTextFeatureChoice;
 export type FeatureChoiceKind = FeatureChoice['kind'];
@@ -2407,6 +2442,25 @@ export interface CustomSkillFeatureChoice extends FeatureChoiceBase {
   namePrompt: string;
   /** Nombre de domaines de test distincts à choisir (ex. 2 pour `humain-r1`). */
   domainCount: number;
+}
+
+/**
+ * PER-74 — Choix d'une ARME PARMI CELLES QUE LE PERSONNAGE POSSÈDE (voie de l'arme liée, p. 147 :
+ * « Le personnage choisit une arme et se lie avec l'objet par un rituel informel »). Le domaine
+ * n'est pas un catalogue figé mais l'INVENTAIRE du personnage, résolu à l'affichage
+ * (`ownedWeaponsForChoice`) : seules les lignes d'arme (catalogue ou variante) sont proposées.
+ *
+ * VALEUR PERSISTÉE : l'`instanceId` de la ligne quand elle en a un, sinon son `itemId` (ou
+ * `custom:<nom>` pour un objet libre) — cf. `boundWeaponSelectionValue`. Le résolveur
+ * (`boundWeaponLine`) fait correspondre d'abord l'`instanceId`, puis, à défaut, la PREMIÈRE ligne
+ * de même `itemId` : deux exemplaires identiques de la même arme ne sont donc pas distingués, ce
+ * qui est sans conséquence de jeu (ils ont les mêmes stats).
+ *
+ * Le lien est un choix de CONSTRUCTION (puce orange, modifiable en mode édition), conformément au
+ * livre : « une fois par niveau, le personnage peut créer un lien avec une nouvelle arme ».
+ */
+export interface OwnedWeaponFeatureChoice extends FeatureChoiceBase {
+  kind: 'owned-weapon';
 }
 
 /**

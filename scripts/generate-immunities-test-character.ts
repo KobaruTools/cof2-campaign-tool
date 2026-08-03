@@ -119,7 +119,8 @@ for (const fid of ancestryFeatureIds) {
       choice.kind === 'custom-skill' ||
       choice.kind === 'free-text' ||
       choice.kind === 'known-feature' ||
-      choice.kind === 'test-domain'
+      choice.kind === 'test-domain' ||
+      choice.kind === 'owned-weapon'
     )
       return null;
     return choice.options[0]?.id ?? null;

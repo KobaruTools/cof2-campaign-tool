@@ -472,6 +472,22 @@ for (const c of features) {
       // Bonus de DEF en armure lourde (PER-236) : valeur constante ou scalante.
       const valueError = effectValueError(e.value);
       if (valueError) err(`[capacite ${c.id}] effect: heavy-armor-def-bonus value ${valueError}`);
+    } else if (e.kind === 'bound-weapon-attack-die') {
+      // Dé bonus de l'arme liée (PER-74, r4 Fidèle) : sans paramètre, mais la capacité DOIT porter
+      // le compteur qui le conditionne, et la voie le choix d'arme liée qui le cible.
+      if (!c.usageCounter)
+        err(`[capacite ${c.id}] effect: bound-weapon-attack-die exige un usageCounter sur la capacité`);
+      const hostsChoice = features.some(
+        (f) => f.pathId === c.pathId && (f.choices ?? []).some((ch) => ch.kind === 'owned-weapon'),
+      );
+      if (!hostsChoice)
+        err(`[capacite ${c.id}] effect: bound-weapon-attack-die exige un choix 'owned-weapon' dans la voie`);
+    } else if (e.kind === 'weapon-aura-elemental') {
+      // Aura élémentaire (PER-74, r7) : au moins un élément, tous du vocabulaire des DM résistibles.
+      if (!e.choices.length) err(`[capacite ${c.id}] effect: weapon-aura-elemental sans élément`);
+      for (const el of e.choices)
+        if (!new Set<string>(RESISTIBLE_DAMAGE_TYPES).has(el))
+          err(`[capacite ${c.id}] effect: weapon-aura-elemental élément inconnu : ${el}`);
     } else if (e.kind === 'two-handed-weapon-def-bonus') {
       // Bonus de DEF avec une arme de contact tenue à deux mains (PER-74, Tenir à distance) :
       // valeur constante ou scalante.

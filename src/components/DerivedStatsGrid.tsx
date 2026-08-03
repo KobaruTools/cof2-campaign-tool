@@ -144,6 +144,11 @@ export interface DerivedStatsGridProps {
    */
   attackBonusDie?: AttackBonusDie[];
   /**
+   * PER-74 — dé bonus de l'ARME LIÉE (r4 « Fidèle »), restreint au MODE de l'arme liée en main :
+   * il s'ajoute au dé bonus général (`attackBonusDie`) sur la SEULE carte concernée.
+   */
+  boundWeaponAttackDie?: { name: string; scope: 'melee' | 'ranged' } | null;
+  /**
    * PER-281 — libellés des états de combat imposant un DÉ MALUS aux tests d'attaque (Affaibli à tous
    * les tests, Immobilisé aux seules attaques). Affiche un badge « double-d20 barré » rouge sur les
    * trois cartes d'attaque. Vide ou absent = aucun (hors session, ou aucun état de ce type).
@@ -188,9 +193,19 @@ export function DerivedStatsGrid({
   rangedAttackElement,
   rangedReplacingFormAttack,
   attackBonusDie = [],
+  boundWeaponAttackDie = null,
   attackMalusDie = [],
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
+
+  /**
+   * Dés bonus à afficher sur la carte d'attaque d'un MODE : les dés généraux (valables sur toutes
+   * les attaques, ex. flibustier r8 à PV bas) + celui de l'ARME LIÉE s'il concerne ce mode (PER-74).
+   */
+  const attackDiceFor = (scope: 'melee' | 'ranged'): AttackBonusDie[] =>
+    boundWeaponAttackDie?.scope === scope
+      ? [...attackBonusDie, { name: boundWeaponAttackDie.name }]
+      : attackBonusDie;
 
   const statLines: StatLine[] = [
     { id: 'maxHp', computed: stats.maxHp },
@@ -270,7 +285,7 @@ export function DerivedStatsGrid({
                 weaponCriticalRanges={meleeCriticalRanges ?? []}
                 unarmedCriticalRanges={unarmedCriticalRanges ?? []}
                 situationalBonuses={meleeSituationalDamage ?? []}
-                attackBonusDie={attackBonusDie}
+                attackBonusDie={attackDiceFor('melee')}
                 attackMalusDie={attackMalusDie}
               />
             </Grid>
@@ -322,7 +337,7 @@ export function DerivedStatsGrid({
                 situationalBonuses={rangedSituationalDamage ?? []}
                 magicalSourceId={rangedAttackMagicalSourceId}
                 elemental={rangedAttackElement}
-                attackBonusDie={attackBonusDie}
+                attackBonusDie={attackDiceFor('ranged')}
                 attackMalusDie={attackMalusDie}
               />
             </Grid>

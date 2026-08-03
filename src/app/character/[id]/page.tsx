@@ -104,6 +104,7 @@ import {
 import type { FeaturesLayout } from '@/components/sheet/FeaturesByPath';
 import { EquipmentList } from '@/components/sheet/EquipmentList';
 import { weaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange';
+import { boundWeaponPathFor } from '@/lib/character/boundWeapon';
 import { IdentityFields } from '@/components/sheet/IdentityFields';
 import { IdentityEditor } from '@/components/sheet/IdentityEditor';
 import { ComplianceWarnings } from '@/components/sheet/ComplianceWarnings';
@@ -992,6 +993,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 rangedAttackElement={rangedAttackElement}
                 rangedReplacingFormAttack={formAttackReplacingRanged}
                 attackBonusDie={display.attackBonusDieSources}
+                boundWeaponAttackDie={display.boundWeaponAttackDie}
                 attackMalusDie={attackMalusDie}
               />
             ) : (
@@ -1235,6 +1237,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Plage de critique de l'arme en main (PER-74) : puce « 19-20 » sur la ligne, cumulant
               // la plage intrinsèque de l'arme et les capacités actives (Critique destructeur…).
               resolveCriticalRange={(line) => weaponLineCriticalRange(character, line)}
+              // Puce « Arme liée » (PER-74) sur la seule arme que la voie de l'arme liée concerne.
+              resolveBoundWeapon={(line) => boundWeaponPathFor(character, line)}
             />
           </SheetSection>
 

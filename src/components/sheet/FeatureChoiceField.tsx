@@ -23,7 +23,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { featureById, pathById, testDomains, testDomainById } from '@/data';
+import { equipmentById, featureById, pathById, testDomains, testDomainById } from '@/data';
 import { ABILITY_IDS } from '@/data/schema';
 import type { AbilityId, FeatureChoice, OptionFeatureChoice } from '@/data/schema';
 import { highestAbilities, lowestAbilities } from '@/lib/character/ancestry';
@@ -50,6 +50,7 @@ import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
+import { ownedWeaponsForChoice } from '@/lib/character/boundWeapon';
 
 /**
  * Libellé lisible d'une sélection retenue, selon la nature du choix.
@@ -99,6 +100,13 @@ export function choiceSelectionLabel(
     case 'test-domain':
       // Sélection = id d'un domaine de test (compétence) ; on affiche son libellé français.
       return testDomainById.get(selection)?.label ?? selection;
+    case 'owned-weapon': {
+      // Sélection = `itemId` d'une arme possédée, ou `custom:<nom>` pour un objet libre (PER-74,
+      // arme liée). On affiche le nom du catalogue, à défaut la valeur brute.
+      if (selection.startsWith('custom:')) return selection.slice('custom:'.length);
+      const item = equipmentById.get(selection);
+      return item?.category === 'weapon' ? item.name : selection;
+    }
     case 'custom-skill':
       // La sélection normalisée d'un `custom-skill` est son NOM (1er élément) ; l'affichage
       // détaillé (nom + domaines) est traité par un rendu dédié en mode `display`.
@@ -591,6 +599,40 @@ function ChoiceControl({
             : 'La modification s’applique à la table (non calculée sur la fiche).'
         }
       />
+    );
+  }
+
+  // owned-weapon : l'ARME LIÉE (PER-74, voie de l'arme liée p. 147). Le domaine n'est pas un
+  // catalogue mais l'INVENTAIRE du personnage — d'où un simple Select des armes possédées. Une
+  // puce signale ensuite l'arme retenue sur sa ligne d'inventaire.
+  if (choice.kind === 'owned-weapon') {
+    const owned = ownedWeaponsForChoice(character);
+    return (
+      <TextField
+        select
+        size="small"
+        fullWidth
+        label={choice.prompt}
+        value={owned.some((o) => o.value === single) ? single : ''}
+        onChange={(e) => onChange(index, e.target.value || null)}
+        error={blocking && missing}
+        helperText={
+          owned.length === 0
+            ? 'Aucune arme dans l’équipement : ajoutez-en une pour pouvoir vous y lier.'
+            : blocking && missing
+              ? 'Choix obligatoire'
+              : 'Seule cette arme bénéficie des capacités de la voie.'
+        }
+      >
+        <MenuItem value="">
+          <em>Aucune</em>
+        </MenuItem>
+        {owned.map((o) => (
+          <MenuItem key={o.value} value={o.value}>
+            {o.label}
+          </MenuItem>
+        ))}
+      </TextField>
     );
   }
 

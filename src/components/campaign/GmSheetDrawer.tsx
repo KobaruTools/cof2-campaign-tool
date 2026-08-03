@@ -64,6 +64,7 @@ import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
 import { CompanionsPanel } from '@/components/sheet/CompanionsPanel';
 import { EquipmentList } from '@/components/sheet/EquipmentList';
 import { weaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange';
+import { boundWeaponPathFor } from '@/lib/character/boundWeapon';
 import {
   ConcentrationToggle,
   FeaturesByPath,
@@ -388,6 +389,7 @@ function GmSheetDrawerContent({
                 rangedAttackElement={rangedAttackElement}
                 rangedReplacingFormAttack={rangedReplacingFormAttack}
                 attackBonusDie={display.attackBonusDieSources}
+                boundWeaponAttackDie={display.boundWeaponAttackDie}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">
@@ -565,6 +567,8 @@ function GmSheetDrawerContent({
               }
               // Plage de critique de l'arme en main (PER-74), comme sur la fiche du joueur.
               resolveCriticalRange={(line) => weaponLineCriticalRange(character, line)}
+              // Puce « Arme liée » (PER-74), comme sur la fiche du joueur.
+              resolveBoundWeapon={(line) => boundWeaponPathFor(character, line)}
             />
           </SheetSection>
         </Stack>

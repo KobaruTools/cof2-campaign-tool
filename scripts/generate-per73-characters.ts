@@ -309,8 +309,9 @@ for (const cfg of CONFIGS) {
         choice.kind === 'custom-skill' ||
         choice.kind === 'free-text' ||
         choice.kind === 'known-feature' ||
-        choice.kind === 'test-domain'
-      )
+        choice.kind === 'test-domain' ||
+      choice.kind === 'owned-weapon'
+    )
         return null;
       // option : première option (les choix de peuple ici ne sont pas répétables).
       return choice.options[0]?.id ?? null;

@@ -46,7 +46,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { equipment as equipmentCatalog, testDomainById } from '@/data';
-import type { AbilityId, CharacterClass, EquipmentItem } from '@/data/schema';
+import type { AbilityId, CharacterClass, EquipmentItem, PrestigeCategory } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import type {
   EquipmentLine,
@@ -92,6 +92,7 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { ItemDialog, ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
 import { WeaponCriticalRangeBadge } from '@/components/sheet/WeaponCriticalRangeBadge';
+import { BoundWeaponBadge } from '@/components/sheet/BoundWeaponBadge';
 import type { WeaponLineCriticalRange } from '@/components/sheet/weaponCriticalRange';
 import { EquipmentCatalogAutocomplete } from '@/components/sheet/EquipmentCatalogAutocomplete';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
@@ -837,6 +838,12 @@ export interface EquipmentListProps {
    * (wizard). Fourni par l'appelant lié au personnage (`weaponLineCriticalRange`).
    */
   resolveCriticalRange?: (line: EquipmentLine) => WeaponLineCriticalRange | null;
+  /**
+   * Résolveur d'ARME LIÉE (PER-74, voie de l'arme liée) : pour une ligne d'inventaire, rend la voie
+   * de prestige qui s'y est liée (nom + catégorie, pour la couleur de la puce), ou `null`. Pose la
+   * puce « Arme liée » sur la seule arme concernée. Absent → aucune puce (wizard).
+   */
+  resolveBoundWeapon?: (line: EquipmentLine) => { pathName: string; category: PrestigeCategory | undefined } | null;
 }
 
 /**
@@ -964,6 +971,7 @@ export function EquipmentList({
   twoWeaponStatus,
   resolveArmorRestriction,
   resolveCriticalRange,
+  resolveBoundWeapon,
 }: EquipmentListProps) {
   // Modale d'objet (PER-214) : `null` = fermée, `'new'` = création, un index = édition de
   // la ligne correspondante (bouton crayon, objet custom OU arme/armure/bouclier).
@@ -1097,6 +1105,8 @@ export function EquipmentList({
     // Plage de critique EFFECTIVE de l'arme tenue en main (PER-74) : `null` hors arme en main, ou
     // quand rien n'élargit la plage. Résolue par l'appelant (dépend du personnage entier).
     const criticalRange = resolveCriticalRange?.(line) ?? null;
+    // Arme liée de la voie de prestige (PER-74) : `null` sur toutes les autres lignes.
+    const boundWeapon = resolveBoundWeapon?.(line) ?? null;
     // Objet équipable dans un emplacement DÉDIÉ (armure, bouclier, main) : ouvre aussi le
     // crayon d'édition « variante mécanique ».
     const equippable =
@@ -1189,6 +1199,10 @@ export function EquipmentList({
         {/* Plage de critique effective de l'arme EN MAIN (PER-74) : puce violette « 19-20 »,
             identique à celle des cartes d'attaque, cumulant l'arme et les capacités actives. */}
         {criticalRange ? <WeaponCriticalRangeBadge info={criticalRange} /> : null}
+        {/* Puce « Arme liée » (PER-74) : l'arme unique que la voie de l'arme liée concerne. */}
+        {boundWeapon ? (
+          <BoundWeaponBadge category={boundWeapon.category} pathName={boundWeapon.pathName} />
+        ) : null}
         {/* Bascule œil : épingle la description sous le titre (état d'affichage local). */}
         {description && (
           <AppTooltip title={descPinned ? 'Masquer la description' : 'Afficher la description'}>

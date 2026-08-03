@@ -37,6 +37,7 @@ import {
   testBonusSources,
   universalTestBonus,
 } from '@/lib/character/effects';
+import { boundWeaponAttackDie as boundWeaponAttackDieSource } from '@/lib/character/boundWeapon';
 import { orphanSourceTerms } from '@/lib/character/orphanPoints';
 import type { Character } from '@/lib/character/types';
 import type { StatusSheetImpact } from '@/lib/character/statusEffects';
@@ -72,6 +73,11 @@ export interface SheetDisplayView {
    * cartes d'attaque (flibustier r8 « Pas de quartier », auto tant que PV < niveau). Vide sinon.
    */
   attackBonusDieSources: ReturnType<typeof lowHpAttackDieSources>;
+  /**
+   * Dé bonus en attaque conféré par l'ARME LIÉE (PER-74, r4 « Fidèle ») — restreint au MODE de
+   * l'arme liée réellement en main, et seulement tant que sa charge n'est pas dépensée. `null` sinon.
+   */
+  boundWeaponAttackDie: ReturnType<typeof boundWeaponAttackDieSource>;
   /** Même information avec la capacité source, pour les pastilles du détail d'une carac. */
   bonusDieSourcesDetailed: ReturnType<typeof abilityBonusDiceSources>;
   /** Bonus de compétence par domaine de test (PER-89), règle de cumul p. 203. */
@@ -170,6 +176,8 @@ export function buildSheetDisplayView(
     bonusDieSourcesDetailed,
     // Dé bonus aux ATTAQUES tant que PV < niveau (flibustier r8) — nécessite `maxHp`, sauté sinon.
     attackBonusDieSources: maxHp === undefined ? [] : lowHpAttackDieSources(character, maxHp),
+    // Dé bonus de l'arme liée (PER-74) : dépend de l'arme en main et du compteur, pas des PV.
+    boundWeaponAttackDie: boundWeaponAttackDieSource(character),
     testBonuses: testBonusSources(modFeatureIds, effectContext),
     testDice,
     abilityTestBonus: abilityTestBonusSources(modFeatureIds, effectContext),

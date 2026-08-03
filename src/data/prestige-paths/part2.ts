@@ -38,6 +38,12 @@ export const prestigePaths2: PrestigePath[] = [
     category: 'fighter',
     prerequisites:
       "Le personnage choisit une arme et se lie avec l'objet par un rituel informel qui dure 2d6 jours. Une fois par niveau, le personnage peut créer un lien avec une nouvelle arme, mais le lien qui le liait à la précédente disparaît.",
+    // PER-74 : présentation de la voie (p. 147) en info-bulle « i » de l'en-tête, verbatim. Le
+    // second paragraphe redit le rituel porté par `prerequisites` — c'est voulu : l'info-bulle doit
+    // se lire d'un bloc, sans renvoyer ailleurs.
+    note:
+      "Certains héros tissent un lien particulier avec leur arme favorite. Cette compagne de tous les jours devient leur alliée la plus fidèle et un lien magique les unit progressivement.\n\n" +
+      "Le personnage choisit une arme et se lie avec l'objet par un rituel informel qui dure 2d6 jours. Une fois par niveau, le personnage peut créer un lien avec une nouvelle arme, mais le lien qui le liait à la précédente disparaît.",
     featureIds: [
       'prestige-arme-liee-r4',
       'prestige-arme-liee-r5',
@@ -713,6 +719,21 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "L'arme est considérée comme magique et octroie au PJ un dé bonus en attaque une fois par combat. Si l'arme est en vue et à moins de 10 m (ou sa portée dans le cas d'une arme de lancer), il peut la faire revenir dans sa main en action gratuite. Si l'arme est saisie par une autre créature, il doit emporter un test opposé de CHA contre la FOR de son adversaire pour la faire revenir dans sa main. Si elle n'est pas en vue, il sait toujours dans quelle direction elle se trouve.",
+    // PER-74 — LE LIEN LUI-MÊME : le premier rang porte le choix de l'arme favorite parmi celles
+    // que le personnage possède (`owned-weapon`). C'est CETTE arme, et elle seule, que toute la
+    // voie concerne ; une puce la signale sur sa ligne d'inventaire.
+    choices: [
+      {
+        kind: 'owned-weapon',
+        prompt: 'Arme liée (choisie dans votre équipement)',
+      },
+    ],
+    // Dé bonus en attaque : affiché sur la carte d'attaque du mode de l'arme liée (contact ou
+    // distance) tant que la charge n'est pas dépensée ET que l'arme est en main.
+    effects: [{ kind: 'bound-weapon-attack-die' }],
+    // ÉCART ASSUMÉ AU LIVRE (arbitrage propriétaire) : le livre écrit « une fois par combat », le
+    // compteur retenu est JOURNALIER.
+    usageCounter: { max: 1, resetOn: 'day', label: 'Dé bonus de l’arme liée' },
     sourcePage: 147,
   },
   {
@@ -724,6 +745,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par combat, lorsqu'il obtient 1 au test d'attaque avec son arme, le joueur peut le remplacer par la valeur 20.",
+    // PER-74 : rien à calculer (c'est un jet de dé re-lu à la table) — seul le compteur se suit.
+    usageCounter: { max: 1, resetOn: 'combat', label: 'Relance du 1 (arme liée)' },
     sourcePage: 147,
   },
   {
@@ -735,6 +758,32 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['M'],
     text:
       "Une fois par combat, le personnage peut demander à son arme de combattre pour lui. Elle attaque pendant [rang] rounds en utilisant la valeur d'attaque magique du PJ et en infligeant ses DM de base (plus un éventuel bonus de magie si l'arme est enchantée). S'il sombre dans l'inconscience, l'arme continue à veiller sur lui et à attaquer tous les ennemis qui approchent de son corps, tant que la durée totale de la capacité n'est pas atteinte. Ensuite elle devient inerte et tombe au sol.",
+    // PER-74 : « [rang] rounds » = quantité brute (le rang atteint dans la voie), pas un modificateur.
+    richText:
+      "Une fois par combat, le personnage peut demander à son arme de combattre pour lui. Elle attaque pendant [=rang] rounds en utilisant la valeur d'attaque magique du PJ et en infligeant ses DM de base (plus un éventuel bonus de magie si l'arme est enchantée). S'il sombre dans l'inconscience, l'arme continue à veiller sur lui et à attaquer tous les ennemis qui approchent de son corps, tant que la durée totale de la capacité n'est pas atteinte. Ensuite elle devient inerte et tombe au sol.",
+    // INTERRUPTEUR qui DÉPENSE la charge (patron Rage/Furie, PER-130 : `consumeOnActivate` par
+    // défaut sur un compteur). Activation `temporary` → l'arme dansante n'apparaît dans la section
+    // « Compagnons » que tant que l'interrupteur est ON (`companionPresent`).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Arme dansante active', activeByDefault: false },
+      },
+    ],
+    usageCounter: { max: 1, resetOn: 'combat', label: 'Arme dansante' },
+    // Mini-fiche VOLONTAIREMENT MINIMALE : le livre ne donne à l'arme dansante ni caractéristiques,
+    // ni DEF, ni PV — seulement de quoi frapper. On ne renseigne donc que l'attaque (recopiée de
+    // l'attaque magique du maître) ; l'absence de `defense`/`hitPoints`/`abilities` supprime la
+    // grille de caractéristiques et la barre de vie de la carte (patron de l'écuyer, noblesse-r2).
+    creatureProfile: {
+      name: 'Arme dansante',
+      type: 'Arme animée',
+      companionType: 'summon',
+      attack: { label: 'Arme dansante', fromMaster: 'magicAttack' },
+      note:
+        "DM de base de l'arme liée (plus son bonus de magie éventuel). Combat seule pendant un nombre de rounds égal au rang atteint dans la voie, et continue de veiller sur son porteur inconscient jusqu'à la fin de la durée.",
+    },
     sourcePage: 147,
   },
   {
@@ -746,6 +795,15 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Une fois par combat, le personnage imprègne son arme d'une aura élémentaire pendant CON minutes. Cette aura lui offre un bonus de +1d4° aux DM qui prennent la forme de feu, d'acide, de froid ou d'électricité. L'élément choisi reste toujours le même. Ce bonus aux DM ne peut pas se cumuler à un autre bonus magique élémentaire (arc de feu, sort élémentaire, etc.).",
+    // PER-74 : « CON minutes » = QUANTITÉ brute (`[=CON]`, rendu en valeur, pas en modificateur) ;
+    // « +1d4° » = dé ÉVOLUTIF balisé.
+    richText:
+      "Une fois par combat, le personnage imprègne son arme d'une aura élémentaire pendant [=CON] minutes. Cette aura lui offre un bonus de +{1d4°} aux DM qui prennent la forme de feu, d'acide, de froid ou d'électricité. L'élément choisi reste toujours le même. Ce bonus aux DM ne peut pas se cumuler à un autre bonus magique élémentaire (arc de feu, sort élémentaire, etc.).",
+    // Élément choisi À LA TABLE (`effectInputs`), échangeable — arbitrage propriétaire, à la
+    // DIFFÉRENCE du choix permanent de la couleur du sang-dragon. Mêmes boutons que l'élément
+    // résisté d'une RD ou l'élément des flèches de l'archer arcanique.
+    effects: [{ kind: 'weapon-aura-elemental', choices: ['fire', 'acid', 'cold', 'lightning'] }],
+    usageCounter: { max: 1, resetOn: 'combat', label: 'Aura élémentaire' },
     sourcePage: 147,
   },
   {
@@ -757,6 +815,19 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le personnage fait couler son propre sang sur son arme : il sacrifie 2d4° PV et invoque les sœurs spirituelles de son arme. Pendant 5 rounds, tous les adversaires du personnage dans un rayon de 10 m autour de lui sont frappés par une arme translucide semblable à la sienne et subissent automatiquement 1d4° DM.",
+    // PER-74 : les deux dés ÉVOLUTIFS balisés (PV sacrifiés, puis DM infligés en zone).
+    richText:
+      "Une fois par jour, le personnage fait couler son propre sang sur son arme : il sacrifie {2d4°} PV et invoque les sœurs spirituelles de son arme. Pendant 5 rounds, tous les adversaires du personnage dans un rayon de 10 m autour de lui sont frappés par une arme translucide semblable à la sienne et subissent automatiquement {1d4°} DM.",
+    // Interrupteur qui DÉPENSE la charge journalière (même patron que l'arme dansante) : le marqueur
+    // suit les 5 rounds pendant lesquels les lames sœurs frappent.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Milles lames actives', activeByDefault: false },
+      },
+    ],
+    usageCounter: { max: 1, resetOn: 'day', label: 'Milles lames' },
     sourcePage: 147,
   },
 
