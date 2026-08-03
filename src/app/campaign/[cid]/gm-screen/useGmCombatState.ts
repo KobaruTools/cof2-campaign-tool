@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * Façade React de l'« état de combat en cours » de l'écran de MJ, au-dessus du store
@@ -35,6 +35,7 @@ import {
   rollTieBreakSeed,
   setRoundNumber as setRoundNumberState,
   type AddCreatureOptions,
+  type CreatureDisplayInfo,
   type CreatureInstance,
   type GmCombatState,
 } from '@/lib/session/combatState';
@@ -42,7 +43,7 @@ import { randomTieBreakSeed } from '@/lib/session/initiativeOrder';
 import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
 import type { Depletion } from '@/lib/character/types';
 
-export type { AddCreatureOptions, CreatureInstance, GmCombatState };
+export type { AddCreatureOptions, CreatureDisplayInfo, CreatureInstance, GmCombatState };
 
 /** Rôle du client dans l'UI de combat : MJ auteur, ou lecteur (projection). */
 export type CombatRole = 'gm' | 'reader';
@@ -72,6 +73,12 @@ export interface GmCombatStateApi extends GmCombatState {
   removeStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif posé sur un combattant. */
   adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
+  /**
+   * Fusionne l'affichage minimal des créatures diffusé aux joueurs (PER-293), indexé par slug.
+   * À n'appeler que côté MJ (auteur unique) : chaque appel persiste + diffuse l'état. Les
+   * appelants ne l'invoquent que lorsque le contenu a réellement changé (garde `creatureInfoEquals`).
+   */
+  setCreatureInfo: (info: Record<string, CreatureDisplayInfo>) => void;
   /**
    * Réinitialise le combat (PER-283) : vide tous les états, remet le tour courant à `null`,
    * recommence à la manche 1 et restaure les PV des créatures. Conserve le roster et ne touche
@@ -169,6 +176,15 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const setCreatureInfo = useCallback(
+    (info: Record<string, CreatureDisplayInfo>) =>
+      applyLocalCombat(cid, (prev) => ({
+        ...prev,
+        creatureInfo: { ...prev.creatureInfo, ...info },
+      })),
+    [applyLocalCombat, cid],
+  );
+
   // Réinitialiser = nouveau combat : on en profite pour RETIRER une graine de départage à égalité
   // d'initiative (l'ordre entre joueurs à égalité parfaite est retiré au sort, cf. `initiativeOrder`).
   const resetCombat = useCallback(
@@ -193,6 +209,7 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     applyStatus,
     removeStatus,
     adjustStatus,
+    setCreatureInfo,
     resetCombat,
     restartRounds,
   };

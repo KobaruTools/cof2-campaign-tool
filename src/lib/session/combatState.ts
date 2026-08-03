@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Modèle PUR de l'« état de combat en cours » de l'écran de MJ (PER-267, milestone
  * PER-259) — types + reconstruction défensive, SANS React ni accès réseau. Extrait de
  * l'ancien hook `useGmCombatState` pour être partagé entre :
@@ -46,6 +46,24 @@ export interface CreatureInstance {
    * bandits legacy, dépourvus de ce champ, sont traités comme adverses partout).
    */
   side?: CreatureSide;
+}
+
+/**
+ * Affichage MINIMAL d'une créature diffusé par le MJ pour l'écran distant des joueurs (PER-293).
+ * Le MJ possède le bestiaire ; il pousse ici, par slug, le strict nécessaire à l'ordre
+ * d'initiative — nom, initiative, et AGI (départage des égalités) — pour qu'une créature de
+ * supplément PAYANT (dont le bloc n'est pas lisible par une session joueur anonyme, entitlement
+ * fail-safe migration 0007) apparaisse tout de même chez le joueur. **Volontairement sans
+ * illustration** : une illustration payante est une data-URI lourde (PER-245), hors de question
+ * de la faire transiter/persister dans l'état de combat (le joueur retombe sur l'icône générique).
+ */
+export interface CreatureDisplayInfo {
+  /** Nom de la créature (affiché, numéroté par instance côté UI). */
+  name: string;
+  /** Initiative de base du bloc (les deltas d'états sont appliqués côté UI). */
+  initiative: number;
+  /** AGI effective du bloc — sert UNIQUEMENT à départager les égalités d'initiative. */
+  agility?: number;
 }
 
 /** Options d'ajout d'une créature au combat (PER-247, PER-248, PER-249, PER-295). */
@@ -104,6 +122,14 @@ export interface GmCombatState {
    * Migration douce des combats antérieurs (absente/invalide → 0, ordre alors simplement figé).
    */
   tieBreakSeed: number;
+  /**
+   * Affichage minimal des créatures diffusé par le MJ pour l'écran distant des joueurs (PER-293),
+   * indexé par SLUG de créature (partagé par toutes les instances d'un même slug). Peuplé par le
+   * MJ à mesure que les blocs du bestiaire se chargent ; consommé en REPLI par le joueur quand il
+   * n'a pas accès au bloc (créature payante). Vide par défaut (migration douce ; sans lui, seules
+   * les créatures du bestiaire de base s'affichaient côté joueur).
+   */
+  creatureInfo: Record<string, CreatureDisplayInfo>;
 }
 
 /**
@@ -129,6 +155,7 @@ export const EMPTY_COMBAT_STATE: GmCombatState = {
   roundNumber: 1,
   statuses: {},
   tieBreakSeed: 0,
+  creatureInfo: {},
 };
 
 /** Clé `localStorage` dédiée au combat en cours d'une campagne. */
@@ -159,6 +186,7 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
       roundNumber: reviveRoundNumber(current.roundNumber),
       statuses: reviveStatuses(current.statuses),
       tieBreakSeed: reviveTieBreakSeed(current.tieBreakSeed),
+      creatureInfo: reviveCreatureInfo(current.creatureInfo),
     };
   }
 
@@ -185,6 +213,7 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
       depletions,
       statuses: {},
       tieBreakSeed: 0,
+      creatureInfo: {},
     };
   }
 
@@ -208,6 +237,61 @@ function reviveRoundNumber(raw: unknown): number {
  */
 function reviveTieBreakSeed(raw: unknown): number {
   return typeof raw === 'number' && Number.isFinite(raw) ? Math.trunc(raw) : 0;
+}
+
+/**
+ * Reconstruit défensivement la carte d'affichage des créatures (`state.creatureInfo`, PER-293) :
+ * tolère l'absence (défaut `{}`, migration douce) et écarte les entrées mal formées (nom non
+ * chaîne, initiative non finie). L'AGI est optionnelle. Tronque les nombres (valeurs entières).
+ */
+function reviveCreatureInfo(raw: unknown): Record<string, CreatureDisplayInfo> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, CreatureDisplayInfo> = {};
+  for (const [slug, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!value || typeof value !== 'object') continue;
+    const name = (value as { name?: unknown }).name;
+    const initiative = (value as { initiative?: unknown }).initiative;
+    if (typeof name !== 'string' || typeof initiative !== 'number' || !Number.isFinite(initiative)) {
+      continue;
+    }
+    const agility = (value as { agility?: unknown }).agility;
+    out[slug] =
+      typeof agility === 'number' && Number.isFinite(agility)
+        ? { name, initiative: Math.trunc(initiative), agility: Math.trunc(agility) }
+        : { name, initiative: Math.trunc(initiative) };
+  }
+  return out;
+}
+
+/**
+ * Égalité de contenu de deux cartes d'affichage de créatures (PER-293). Sert de garde au MJ pour
+ * n'ÉCRIRE (donc persister + diffuser) que lorsque l'affichage a réellement changé — évitant une
+ * boucle de broadcast à chaque chargement de bloc. Compare clés puis champs (name/initiative/AGI).
+ */
+export function creatureInfoEquals(
+  a: Record<string, CreatureDisplayInfo>,
+  b: Record<string, CreatureDisplayInfo>,
+): boolean {
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  for (const slug of ka) {
+    const x = a[slug];
+    const y = b[slug];
+    // `Object.is` (et non `!==`) pour les nombres : robuste au `NaN` (`Object.is(NaN, NaN) === true`).
+    // Un `NaN` traité comme « toujours différent » ferait boucler à l'infini le garde d'écriture
+    // qui appelle cette fonction (réécriture à chaque rendu). Défense en profondeur : la source
+    // (`useGmScreenCombat`) et `reviveCreatureInfo` écartent déjà les non-finis.
+    if (
+      !y ||
+      x.name !== y.name ||
+      !Object.is(x.initiative, y.initiative) ||
+      !Object.is(x.agility, y.agility)
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**

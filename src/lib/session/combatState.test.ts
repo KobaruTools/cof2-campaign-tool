@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   CREATURE_ADD_COUNT_MAX,
@@ -9,6 +9,7 @@ import {
   applyStatusTo,
   clampAddCount,
   clearStatusesOf,
+  creatureInfoEquals,
   labelCreatureInstances,
   normalizeCreatureName,
   removeStatusFrom,
@@ -47,6 +48,7 @@ describe('reviveStateObject', () => {
       roundNumber: 4,
       statuses: { 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] },
       tieBreakSeed: 123456,
+      creatureInfo: { gobelin: { name: 'Gobelin', initiative: 12, agility: 2 } },
     };
     expect(reviveStateObject(state)).toEqual(state);
   });
@@ -244,6 +246,7 @@ describe('resetCombat', () => {
     roundNumber: 5,
     statuses: { 'c-1': [{ id: 'blinded' }], 'char-9': [{ id: 'invalidating-attack', intensity: 2 }] },
     tieBreakSeed: 42,
+    creatureInfo: {},
   };
 
   it('vide les états, restaure les PV des créatures, recommence à la manche 1 et met le tour courant à null', () => {
@@ -281,6 +284,7 @@ describe('restartRounds', () => {
     roundNumber: 5,
     statuses: { 'c-1': [{ id: 'blinded' }] },
     tieBreakSeed: 0,
+    creatureInfo: {},
   };
 
   it('recommence à la manche 1 et repositionne le tour courant sur le premier fourni', () => {
@@ -337,6 +341,56 @@ describe('setRoundNumber', () => {
     const state: GmCombatState = { ...EMPTY_COMBAT_STATE, roundNumber: 1 };
     setRoundNumber(state, 9);
     expect(state.roundNumber).toBe(1);
+  });
+});
+
+describe('creatureInfoEquals (PER-293)', () => {
+  it('vrai pour deux cartes de même contenu (nom/init/AGI), ordre des clés indifférent', () => {
+    const a = { gobelin: { name: 'Gobelin', initiative: 12, agility: 2 }, orc: { name: 'Orc', initiative: 8 } };
+    const b = { orc: { name: 'Orc', initiative: 8 }, gobelin: { name: 'Gobelin', initiative: 12, agility: 2 } };
+    expect(creatureInfoEquals(a, b)).toBe(true);
+  });
+
+  it('vrai pour deux cartes vides', () => {
+    expect(creatureInfoEquals({}, {})).toBe(true);
+  });
+
+  it('faux si un slug est ajouté, un champ change, ou l’AGI diffère', () => {
+    const base = { gobelin: { name: 'Gobelin', initiative: 12, agility: 2 } };
+    expect(creatureInfoEquals(base, {})).toBe(false);
+    expect(creatureInfoEquals(base, { gobelin: { name: 'Gobelin', initiative: 13, agility: 2 } })).toBe(false);
+    expect(creatureInfoEquals(base, { gobelin: { name: 'Gobelin', initiative: 12 } })).toBe(false);
+    expect(creatureInfoEquals(base, { gobelin: { name: 'Gobelin', initiative: 12, agility: 3 } })).toBe(false);
+  });
+
+  it('robuste au NaN : deux NaN sont ÉGAUX (sinon le garde d’écriture boucle à l’infini)', () => {
+    // Régression : `NaN !== NaN` ferait renvoyer « différent » à chaque appel → `setCreatureInfo`
+    // à chaque rendu → boucle + rafale de broadcast pendant une session. `Object.is` fixe ça.
+    const a = { x: { name: 'X', initiative: NaN, agility: NaN } };
+    const b = { x: { name: 'X', initiative: NaN, agility: NaN } };
+    expect(creatureInfoEquals(a, b)).toBe(true);
+  });
+});
+
+describe('reviveCreatureInfo (via reviveStateObject, PER-293)', () => {
+  it('défaut à {} quand absent (migration douce)', () => {
+    expect(reviveStateObject({ creatures: [] }).creatureInfo).toEqual({});
+  });
+
+  it('écarte les entrées mal formées (nom non chaîne, initiative non finie) et tronque les nombres', () => {
+    const revived = reviveStateObject({
+      creatures: [],
+      creatureInfo: {
+        ok: { name: 'Orc', initiative: 8.9, agility: 1.2 },
+        badName: { name: 42, initiative: 5 },
+        badInit: { name: 'X', initiative: 'nope' },
+        noAgi: { name: 'Loup', initiative: 10 },
+      },
+    });
+    expect(revived.creatureInfo).toEqual({
+      ok: { name: 'Orc', initiative: 8, agility: 1 },
+      noAgi: { name: 'Loup', initiative: 10 },
+    });
   });
 });
 

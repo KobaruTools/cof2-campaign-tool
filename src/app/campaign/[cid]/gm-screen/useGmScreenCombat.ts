@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * Logique du « combat en cours » de l'écran de MJ, PARTAGÉE (PER-248) entre la page
@@ -40,7 +40,11 @@ import {
   type CreatureInstance,
   type AddCreatureOptions,
 } from './useGmCombatState';
-import { labelCreatureInstances } from '@/lib/session/combatState';
+import {
+  creatureInfoEquals,
+  labelCreatureInstances,
+  type CreatureDisplayInfo,
+} from '@/lib/session/combatState';
 import { sortByInitiative } from '@/lib/session/initiativeOrder';
 import {
   resolveStatusModifiers,
@@ -158,6 +162,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     currentTurnKey,
     roundNumber,
     tieBreakSeed,
+    creatureInfo,
     addCreature,
     removeCreature,
     setCreatureVisibility,
@@ -167,6 +172,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     applyStatus,
     removeStatus,
     adjustStatus,
+    setCreatureInfo,
     resetCombat,
     restartRounds: restartRoundsBase,
   } = useGmCombatState(cid, role);
@@ -204,11 +210,47 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     [players],
   );
 
-  // Nom de chaque créature (liste légère) pour l'étiquette, avant même le blob.
-  const creatureNameBySlug = useMemo(
-    () => new Map((bestiaryList ?? []).map((c) => [c.id, c.name])),
-    [bestiaryList],
-  );
+  // Nom de chaque créature (liste légère) pour l'étiquette, avant même le blob. Repli sur
+  // l'affichage diffusé par le MJ (`creatureInfo`, PER-293) pour les slugs absents de la liste
+  // — cas d'une créature de supplément PAYANT côté joueur (liste bestiaire limitée au gratuit).
+  const creatureNameBySlug = useMemo(() => {
+    const map = new Map((bestiaryList ?? []).map((c) => [c.id, c.name]));
+    for (const [slug, info] of Object.entries(creatureInfo)) {
+      if (!map.has(slug)) map.set(slug, info.name);
+    }
+    return map;
+  }, [bestiaryList, creatureInfo]);
+
+  // Diffusion de l'affichage des créatures pour l'écran distant des joueurs (PER-293) — MJ
+  // SEULEMENT (auteur unique, entitlé au bestiaire). À mesure que les blocs se chargent, on
+  // pousse par slug le minimum affichable (nom/init/AGI, PAS l'illustration) dans l'état de
+  // combat : il est alors persisté + diffusé, et un joueur privé du bloc (créature payante) peut
+  // afficher la ligne. Garde `creatureInfoEquals` : on n'écrit (donc persiste/diffuse) que si le
+  // contenu a réellement changé, pour ne pas boucler à chaque rendu. Le rôle lecteur (projection
+  // MJ, écran joueur) n'écrit jamais : il consomme ce que le MJ a diffusé.
+  useEffect(() => {
+    if (role !== 'gm') return;
+    const next: Record<string, CreatureDisplayInfo> = {};
+    for (const inst of creatures) {
+      const blob = blobs[inst.slug];
+      const name = creatureNameBySlug.get(inst.slug);
+      if (!blob || !name) continue;
+      // Assainissement STRICT : on n'écrit QUE des nombres finis (miroir de `reviveCreatureInfo`).
+      // Sans ça, un `NaN` (initiative/AGI absente ou mal parsée d'un bloc) rendrait `creatureInfoEquals`
+      // perpétuellement « différent » (NaN ≠ NaN) → réécriture à chaque rendu → boucle + rafale de
+      // broadcast pendant une session.
+      const initiative =
+        typeof blob.initiative === 'number' && Number.isFinite(blob.initiative) ? blob.initiative : 0;
+      const agi = blob.abilities?.AGI;
+      next[inst.slug] =
+        typeof agi === 'number' && Number.isFinite(agi)
+          ? { name, initiative, agility: agi }
+          : { name, initiative };
+    }
+    // Fusion avec l'existant (on n'efface jamais un slug déjà diffusé) puis comparaison de contenu.
+    const merged = { ...creatureInfo, ...next };
+    if (!creatureInfoEquals(creatureInfo, merged)) setCreatureInfo(next);
+  }, [role, creatures, blobs, creatureNameBySlug, creatureInfo, setCreatureInfo]);
 
   // Étiquettes d'affichage (couche pure) : nom personnalisé de l'instance (PER-295) ou nom du
   // bestiaire, numéroté dans l'ordre d'ajout SEULEMENT en cas d'homonymes (« Gobelin 1 / 2 »).
@@ -312,9 +354,44 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
   // tant que le blob n'est pas chargé, l'instance n'a pas encore de ligne d'initiative.
   const creatureRows = useMemo<InitiativeRow[]>(
     () =>
-      labeledCreatures.flatMap((inst) => {
+      labeledCreatures.flatMap((inst): InitiativeRow[] => {
         const blob = blobs[inst.slug];
-        if (!blob) return [];
+        if (!blob) {
+          // Pas de bloc : repli sur l'affichage diffusé par le MJ (PER-293) — cas d'une créature
+          // de supplément PAYANT côté joueur. Ligne MINIMALE : nom + initiative (+ AGI de départage),
+          // sans PV / DEF / attaques / illustration (masqués en projection de toute façon). Sans même
+          // cet affichage diffusé (bloc pas encore chargé chez le MJ), la ligne est simplement omise.
+          const info = creatureInfo[inst.slug];
+          if (!info) return [];
+          const appliedStatuses = statuses[inst.id] ?? [];
+          const initiativeDelta = resolveStatusModifiers(appliedStatuses).derived.initiative ?? 0;
+          const isVisible = inst.visible !== false;
+          const isAlly = inst.side === 'ally';
+          const accent = isAlly ? ALLY_ACCENT : CREATURE_ACCENT;
+          return [
+            {
+              key: inst.id,
+              name: inst.label,
+              isCreature: true,
+              hidden: !isVisible,
+              onToggleVisible: () => setCreatureVisibility(inst.id, !isVisible),
+              profileLabel: isAlly ? SIDE_LABELS.ally : 'PNJ',
+              profileColor: accent,
+              accentColor: accent,
+              initiative: info.initiative + initiativeDelta,
+              initiativeDelta,
+              agility: info.agility,
+              maxHp: 0,
+              appliedStatuses: statuses[inst.id],
+              depletion: {},
+              // Lecture seule (projection / écran joueur) : ces callbacks ne sont jamais déclenchés.
+              onDamage: () => {},
+              onHeal: () => {},
+              onReset: () => {},
+              persistKey: `gm-init:${inst.id}`,
+            },
+          ];
+        }
         const maxHp = blob.hitPoints ?? 0;
         const baseInitiative = blob.initiative ?? 0;
         // Delta d'initiative des états posés (ex. Aveuglé -5) : initiative EFFECTIVE (tri + affichage).
@@ -368,7 +445,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           },
         ];
       }),
-    [labeledCreatures, blobs, depletions, setCreatureDepletion, setCreatureVisibility, statuses],
+    [labeledCreatures, blobs, creatureInfo, depletions, setCreatureDepletion, setCreatureVisibility, statuses],
   );
 
   // Ordre d'initiative décroissant, avec départage à ÉGALITÉ (couche pure `initiativeOrder`) :
