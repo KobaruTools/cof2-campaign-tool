@@ -733,7 +733,7 @@ export const prestigeFeatures2: Feature[] = [
     effects: [{ kind: 'bound-weapon-attack-die' }],
     // ÉCART ASSUMÉ AU LIVRE (arbitrage propriétaire) : le livre écrit « une fois par combat », le
     // compteur retenu est JOURNALIER.
-    usageCounter: { max: 1, resetOn: 'day', label: 'Dé bonus de l’arme liée' },
+    usageCounter: { max: 1, resetOn: 'day', label: 'Dé bonus de l’arme liée', hideFromStatusPanel: true },
     sourcePage: 147,
   },
   {
@@ -746,7 +746,7 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Une fois par combat, lorsqu'il obtient 1 au test d'attaque avec son arme, le joueur peut le remplacer par la valeur 20.",
     // PER-74 : rien à calculer (c'est un jet de dé re-lu à la table) — seul le compteur se suit.
-    usageCounter: { max: 1, resetOn: 'combat', label: 'Relance du 1 (arme liée)' },
+    usageCounter: { max: 1, resetOn: 'combat', label: 'Relance du 1 (arme liée)', hideFromStatusPanel: true },
     sourcePage: 147,
   },
   {
@@ -771,7 +771,7 @@ export const prestigeFeatures2: Feature[] = [
         activation: { kind: 'temporary', label: 'Arme dansante active', activeByDefault: false },
       },
     ],
-    usageCounter: { max: 1, resetOn: 'combat', label: 'Arme dansante' },
+    usageCounter: { max: 1, resetOn: 'combat', label: 'Arme dansante', hideFromStatusPanel: true },
     // Mini-fiche VOLONTAIREMENT MINIMALE : le livre ne donne à l'arme dansante ni caractéristiques,
     // ni DEF, ni PV — seulement de quoi frapper. On ne renseigne donc que l'attaque (recopiée de
     // l'attaque magique du maître) ; l'absence de `defense`/`hitPoints`/`abilities` supprime la
@@ -803,7 +803,7 @@ export const prestigeFeatures2: Feature[] = [
     // DIFFÉRENCE du choix permanent de la couleur du sang-dragon. Mêmes boutons que l'élément
     // résisté d'une RD ou l'élément des flèches de l'archer arcanique.
     effects: [{ kind: 'weapon-aura-elemental', choices: ['fire', 'acid', 'cold', 'lightning'] }],
-    usageCounter: { max: 1, resetOn: 'combat', label: 'Aura élémentaire' },
+    usageCounter: { max: 1, resetOn: 'combat', label: 'Aura élémentaire', hideFromStatusPanel: true },
     sourcePage: 147,
   },
   {
@@ -827,7 +827,7 @@ export const prestigeFeatures2: Feature[] = [
         activation: { kind: 'temporary', label: 'Milles lames actives', activeByDefault: false },
       },
     ],
-    usageCounter: { max: 1, resetOn: 'day', label: 'Milles lames' },
+    usageCounter: { max: 1, resetOn: 'day', label: 'Milles lames', hideFromStatusPanel: true },
     sourcePage: 147,
   },
 
