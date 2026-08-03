@@ -125,8 +125,18 @@ export interface InitiativeRow {
   portraitSrc?: string;
   /** Nom du joueur qui incarne le personnage (affiché entre parenthèses sous le nom). */
   playerName?: string | null;
-  /** Valeur d'initiative (tri décroissant, affichée dans la pastille). */
+  /**
+   * Valeur d'initiative EFFECTIVE (base + états), triée en décroissant et affichée dans la pastille.
+   * Un état comme Aveuglé (-5 en Init.) baisse cette valeur → la pastille passe en rouge et le
+   * combattant se reclasse automatiquement dans l'ordre (le tri porte sur cette même valeur).
+   */
   initiative: number;
+  /**
+   * Delta d'initiative apporté par les états posés (0 = aucun). < 0 → pastille rouge (baisse, ex.
+   * Aveuglé) ; > 0 → pastille verte (rare). Alimenté pour l'écran de MJ ET la projection : la
+   * modification est visible sur les deux. Absent = pas d'état chiffré sur l'initiative.
+   */
+  initiativeDelta?: number;
   /**
    * Valeur d'AGI effective, utilisée UNIQUEMENT pour départager les égalités d'initiative
    * (`sortByInitiative`) — jamais affichée. Absente = inconnue (bloc de créature sans caracs).
@@ -196,27 +206,41 @@ const PORTRAIT_SIZE = 44;
  * on récupère ainsi ~48 px de large par colonne, donc plus de combattants tiennent dans la fenêtre
  * projetée sans défilement horizontal.
  */
-function InitiativeBadge({ value }: { value: number }) {
+function InitiativeBadge({ value, delta = 0 }: { value: number; delta?: number }) {
+  // Teinte selon l'impact des états sur l'initiative : rouge si baissée (Aveuglé…), verte si
+  // remontée, ambre par défaut. Même code couleur que les pastilles de stats de combat (rouge =
+  // valeur diminuée par un état), pour que la modification saute aux yeux sur le MJ ET la projection.
+  const tone: 'lowered' | 'raised' | 'neutral' = delta < 0 ? 'lowered' : delta > 0 ? 'raised' : 'neutral';
   return (
     <Box
-      sx={(t) => ({
-        width: PORTRAIT_SIZE,
-        height: 18,
-        borderBottomLeftRadius: 6,
-        borderBottomRightRadius: 6,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 800,
-        fontSize: '0.8rem',
-        lineHeight: 1,
-        fontVariantNumeric: 'tabular-nums',
-        color: t.palette.warning.light,
-        bgcolor: alpha(t.palette.warning.main, 0.14),
-        // Bordure sans le haut : le trait du portrait fait déjà la séparation.
-        border: `1px solid ${alpha(t.palette.warning.main, 0.4)}`,
-        borderTop: 'none',
-      })}
+      // Info-bulle native : rappelle que l'initiative est modifiée par un état (« 12 → 7 »).
+      title={
+        delta !== 0
+          ? `Initiative modifiée par un état : ${value - delta} → ${value} (${formatSigned(delta)})`
+          : undefined
+      }
+      sx={(t) => {
+        const palette =
+          tone === 'lowered' ? t.palette.error : tone === 'raised' ? t.palette.success : t.palette.warning;
+        return {
+          width: PORTRAIT_SIZE,
+          height: 18,
+          borderBottomLeftRadius: 6,
+          borderBottomRightRadius: 6,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 800,
+          fontSize: '0.8rem',
+          lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+          color: palette.light,
+          bgcolor: alpha(palette.main, 0.14),
+          // Bordure sans le haut : le trait du portrait fait déjà la séparation.
+          border: `1px solid ${alpha(palette.main, 0.4)}`,
+          borderTop: 'none',
+        };
+      }}
     >
       {value}
     </Box>
@@ -310,15 +334,17 @@ function CombatantIdentityBlock({
   src,
   name,
   initiative,
+  initiativeDelta,
 }: {
   src?: string;
   name: string;
   initiative: number;
+  initiativeDelta?: number;
 }) {
   return (
     <Box sx={{ flexShrink: 0, width: PORTRAIT_SIZE }}>
       <CombatantPortrait src={src} name={name} />
-      <InitiativeBadge value={initiative} />
+      <InitiativeBadge value={initiative} delta={initiativeDelta} />
     </Box>
   );
 }
@@ -799,7 +825,12 @@ function CombatantColumn({
           role={identityClickable ? 'button' : undefined}
           aria-label={identityClickable ? `Appliquer un état à ${row.name}` : undefined}
         >
-          <CombatantIdentityBlock src={row.portraitSrc} name={row.name} initiative={row.initiative} />
+          <CombatantIdentityBlock
+            src={row.portraitSrc}
+            name={row.name}
+            initiative={row.initiative}
+            initiativeDelta={row.initiativeDelta}
+          />
           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
             <CombatantName name={row.name} />
             {row.playerName && (

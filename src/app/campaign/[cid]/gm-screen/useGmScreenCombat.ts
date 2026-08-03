@@ -41,7 +41,11 @@ import {
   type AddCreatureOptions,
 } from './useGmCombatState';
 import { sortByInitiative } from '@/lib/session/initiativeOrder';
-import type { AnyStatusEffectId, AppliedStatus } from '@/lib/character/statusEffects';
+import {
+  resolveStatusModifiers,
+  type AnyStatusEffectId,
+  type AppliedStatus,
+} from '@/lib/character/statusEffects';
 import { featureById } from '@/data';
 import { SITUATIONAL_EFFECT_IDS, type SituationalEffectId } from '@/data/schema';
 import { useCharactersStore } from '@/stores/characters';
@@ -253,7 +257,12 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
         const derived = view.derivedInput ? deriveStats(view.derivedInput) : null;
         const summary = summarize(character);
         const maxHp = character.overrides.maxHp ?? derived?.maxHp ?? 0;
-        const initiative = character.overrides.initiative ?? derived?.initiative ?? 0;
+        const baseInitiative = character.overrides.initiative ?? derived?.initiative ?? 0;
+        // Delta d'initiative des états posés (ex. Aveuglé -5) : baisse (ou remonte) l'initiative
+        // EFFECTIVE, celle qui sert au tri de l'ordre ET à l'affichage (colorée quand modifiée).
+        const appliedStatuses = statuses[character.id] ?? [];
+        const initiativeDelta = resolveStatusModifiers(appliedStatuses).derived.initiative ?? 0;
+        const initiative = baseInitiative + initiativeDelta;
         // DEF + attaques de BASE (PER-280) : dérivées, surcharge manuelle prioritaire (comme la fiche).
         // L'ajustement par les états est calculé à l'affichage (tracker), pas ici.
         const combatStats: CombatStats | undefined = derived
@@ -276,6 +285,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           profileColor: classColor(summary.classId),
           portraitSrc: `/classes/${summary.classId}${character.portraitVariant === 'alt' ? '-2' : ''}.webp`,
           initiative,
+          initiativeDelta,
           // AGI EFFECTIVE (celle qui alimente déjà les dérivées : peuple, capacités, équipement) —
           // départage les égalités d'initiative. Profil incomplet (pas de dérivées) → inconnue.
           agility: view.derivedInput?.abilities.AGI,
@@ -303,7 +313,11 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
         const blob = blobs[inst.slug];
         if (!blob) return [];
         const maxHp = blob.hitPoints ?? 0;
-        const initiative = blob.initiative ?? 0;
+        const baseInitiative = blob.initiative ?? 0;
+        // Delta d'initiative des états posés (ex. Aveuglé -5) : initiative EFFECTIVE (tri + affichage).
+        const appliedStatuses = statuses[inst.id] ?? [];
+        const initiativeDelta = resolveStatusModifiers(appliedStatuses).derived.initiative ?? 0;
+        const initiative = baseInitiative + initiativeDelta;
         const depletion = depletions[inst.id] ?? {};
         // DEF (nombre du bloc) + attaques (bonus verbatim « +7 » parsé) — PER-280. Une attaque sans
         // bonus chiffré (ex. souffle) est omise des pastilles ajustables.
@@ -335,6 +349,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             profileColor: accent,
             accentColor: accent,
             initiative,
+            initiativeDelta,
             // AGI du bloc du bestiaire (absente pour les variantes qui renvoient à leur base).
             agility: blob.abilities?.AGI,
             maxHp,
