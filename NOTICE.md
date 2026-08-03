@@ -53,7 +53,7 @@ conservée dans `ANCESTRY_ICON_SOURCES` (même fichier) et dans
 | Humain | `delapouite/person.svg` | Delapouite |
 | Nain | `delapouite/dwarf-face.svg` | Delapouite |
 | Voie du mage | `lorc/pointy-hat.svg` | Lorc |
-| Voie de prestige | `delapouite/round-star.svg` | Delapouite |
+| Voie de prestige | `lorc/laurels.svg` | Lorc |
 
 ## Icônes des statistiques dérivées
 
@@ -301,7 +301,7 @@ dans `STATUS_EFFECT_ICON_SOURCES` (même fichier) et dans
 | Ralenti | `lorc/snail.svg` | Lorc |
 | Immobilisé | `lorc/manacles.svg` | Lorc |
 | Sommeil magique | `lorc/sleepy.svg` | Lorc |
-| Paralysé | `lorc/nailed-foot.svg` | Lorc |
+| Paralysé | `lorc/power-lightning.svg` | Lorc |
 | Renversé | `sbed/falling.svg` | Sbed |
 | Surpris | `lorc/surprised.svg` | Lorc |
 | Aveuglé | `delapouite/blindfold.svg` | Delapouite |
