@@ -8,6 +8,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Dialog from '@mui/material/Dialog';
+import Divider from '@mui/material/Divider';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -33,6 +34,7 @@ import {
 import type {
   EquipmentLine,
   EquipmentRef,
+  ItemCharges,
   ItemDerivedStatId,
   ItemTestTarget,
   ItemType,
@@ -381,6 +383,22 @@ function BonusRows<Id extends string>({
 }
 
 /** État de formulaire mutualisé (les champs sans rapport avec le type sont ignorés). */
+/**
+ * Séparateur de section du formulaire d'objet : un trait horizontal, titré quand la section n'a
+ * pas déjà son propre intitulé. Purement visuel — il découpe une modale qui enchaînait jusqu'à une
+ * dizaine de champs sans rupture (identité, caractéristiques du livre, enchantement, charges).
+ */
+function SectionDivider({ label }: { label?: string }) {
+  if (!label) return <Divider />;
+  return (
+    <Divider textAlign="left">
+      <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: '0.08em' }}>
+        {label}
+      </Typography>
+    </Divider>
+  );
+}
+
 interface FormState {
   name: string;
   description: string;
@@ -397,6 +415,11 @@ interface FormState {
   derivedBonuses: BonusRow<ItemDerivedStatId>[];
   /** Apports aux tests en lignes (PER-275), tout type d'objet — carac ou domaine. */
   testBonuses: BonusRow<ItemTestTarget>[];
+  /** Nombre de charges de l'objet plein (PER-294) ; vide ou 0 = objet SANS charges. */
+  chargesMax: string;
+  /** L'objet se remet à plein au repos court / au repos long (réglages CUMULABLES). */
+  chargesOnShortRest: boolean;
+  chargesOnLongRest: boolean;
 }
 
 const EMPTY_FORM: FormState = {
@@ -412,7 +435,23 @@ const EMPTY_FORM: FormState = {
   abilityBonuses: [],
   derivedBonuses: [],
   testBonuses: [],
+  chargesMax: '',
+  chargesOnShortRest: false,
+  chargesOnLongRest: false,
 };
+
+/** Pré-remplit les trois champs de charges (PER-294) depuis la ligne éditée. */
+function chargeFieldsFromLine(line: EquipmentLine): Pick<
+  FormState,
+  'chargesMax' | 'chargesOnShortRest' | 'chargesOnLongRest'
+> {
+  const charges = line.charges;
+  return {
+    chargesMax: charges?.max ? String(charges.max) : '',
+    chargesOnShortRest: charges?.onShortRest === true,
+    chargesOnLongRest: charges?.onLongRest === true,
+  };
+}
 
 /** Pré-remplit le formulaire à partir d'un objet du livre (valeurs par défaut du catalogue). */
 function formFromBase(base: EquipmentItem): FormState {
@@ -446,6 +485,7 @@ function formFromLine(line: EquipmentLine): FormState {
       abilityBonuses: rowsFromBonuses(ABILITY_IDS, line.abilityBonuses),
       derivedBonuses: rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses),
       testBonuses: rowsFromBonuses(ITEM_TEST_TARGET_IDS, line.testBonuses),
+      ...chargeFieldsFromLine(line),
     };
   }
   const item = effectiveItem(line);
@@ -474,6 +514,7 @@ function formFromLine(line: EquipmentLine): FormState {
   base.abilityBonuses = rowsFromBonuses(ABILITY_IDS, line.abilityBonuses);
   base.derivedBonuses = rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses);
   base.testBonuses = rowsFromBonuses(ITEM_TEST_TARGET_IDS, line.testBonuses);
+  Object.assign(base, chargeFieldsFromLine(line));
   return base;
 }
 
@@ -565,6 +606,35 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
     // Apports aux tests (PER-275) : même règle d'instance, mais cumul PARTICULIER — c'est un
     // bonus de magie, non cumulable avec un autre bonus de magie sur le même test (p. 80).
     const testBonuses = bonusesFromRows(form.testBonuses);
+    // Charges (PER-294) : propriété d'instance comme ci-dessus. Un maximum vide, nul ou négatif
+    // signifie « objet sans charges » — le champ n'est alors pas écrit du tout, et l'état de charge
+    // éventuellement présent disparaît avec lui (retirer les charges d'un objet le rend ordinaire).
+    const chargesMax = Math.max(0, Math.floor(Number(form.chargesMax) || 0));
+    const charges: ItemCharges | undefined =
+      chargesMax > 0
+        ? {
+            max: chargesMax,
+            ...(form.chargesOnShortRest ? { onShortRest: true as const } : {}),
+            ...(form.chargesOnLongRest ? { onLongRest: true as const } : {}),
+          }
+        : undefined;
+    // ÉTAT DE JEU et modifications d'INSTANCE que cette modale ne saisit PAS : ils doivent survivre
+    // à une modification de l'objet. Sans ce report, enregistrer une baguette à moitié vide la
+    // rendrait pleine, et rouvrir une pétoire bricolée lui retirerait son chargeur, son second canon
+    // et ses munitions (défaut préexistant du chargement d'arme, corrigé ici au passage).
+    // Les charges dépensées sont bornées au nouveau maximum, et abandonnées si les charges le sont.
+    const previous = initial && !isCustomItem(initial) ? initial : undefined;
+    const carriedRefState = {
+      ...(previous?.instanceId ? { instanceId: previous.instanceId } : {}),
+      ...(previous?.loaded !== undefined ? { loaded: previous.loaded } : {}),
+      ...(previous?.magazine ? { magazine: previous.magazine } : {}),
+      ...(previous?.doubleBarrel ? { doubleBarrel: previous.doubleBarrel } : {}),
+    };
+    const spent = Math.min(Math.max(0, Math.floor(initial?.chargesSpent ?? 0)), chargesMax);
+    const carriedCharges = {
+      ...(charges ? { charges } : {}),
+      ...(charges && spent > 0 ? { chargesSpent: spent } : {}),
+    };
     // Une arme = une case (PER-284) : une variante d'arme repart toujours à 1, sauf arme de jet
     // (que le livre compte par paquets). Garde-fou pour ne pas véhiculer un « ×N » hérité.
     const weaponQuantity = (id: string) => (isThrownWeapon(equipmentById.get(id)) ? quantity : 1);
@@ -587,11 +657,13 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         itemId: baseId,
         quantity: type === 'weapon' ? weaponQuantity(baseId) : quantity,
         ...(worn ? { worn } : {}),
+        ...carriedRefState,
         overrides,
         ...(magic > 0 ? { magicDef: magic } : {}),
         ...(abilityBonuses ? { abilityBonuses } : {}),
         ...(derivedBonuses ? { derivedBonuses } : {}),
         ...(testBonuses ? { testBonuses } : {}),
+        ...carriedCharges,
       };
       onConfirm(line);
     } else {
@@ -606,6 +678,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         ...(abilityBonuses ? { abilityBonuses } : {}),
         ...(derivedBonuses ? { derivedBonuses } : {}),
         ...(testBonuses ? { testBonuses } : {}),
+        ...carriedCharges,
       });
     }
   };
@@ -694,6 +767,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
               mécanique est sélectionnée. */}
           {type !== null && (!mechanical || baseId !== null) && (
             <>
+              <SectionDivider label="Identité" />
               <TextField
                 autoFocus
                 size="small"
@@ -713,6 +787,11 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 minRows={2}
                 fullWidth
               />
+
+              {/* Stats reprises du livre (arme / armure / bouclier), pré-remplies depuis la base
+                  et surchargeables : c'est ce qui fait de la ligne une VARIANTE. Aucune pour un
+                  objet libre, d'où le séparateur conditionné à la famille mécanique. */}
+              {mechanical && <SectionDivider label="Caractéristiques" />}
 
               {/* Stats d'arme. */}
               {type === 'weapon' && (
@@ -778,6 +857,25 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 </Stack>
               )}
 
+              {/* Stat de bouclier : DEF seule. Rangée AVEC les autres caractéristiques du livre —
+                  elle était jusqu'ici tout en bas du formulaire, séparée des stats d'arme et
+                  d'armure par les quatre blocs d'enchantement, ce qui n'avait aucune raison d'être. */}
+              {type === 'shield' && (
+                <TextField
+                  type="number"
+                  size="small"
+                  label="DEF"
+                  value={form.def}
+                  onChange={(e) => setField('def', e.target.value)}
+                  sx={{ width: 140 }}
+                />
+              )}
+
+              {/* Enchantement : tout ce qui relève de l'EXEMPLAIRE possédé et non du livre — DEF
+                  magique, apports de caracs / de stats dérivées / aux tests. Chacun a son propre
+                  intitulé, d'où des séparateurs sans titre entre eux. */}
+              <SectionDivider label="Enchantement" />
+
               {/* Bonus de DEF MAGIQUE (PER-85 généralisé) : disponible sur TOUT type d'objet
                   (armure, mais aussi bottes/cape/anneau enchantés). Se cumule dans la DEF
                   totale quand l'objet est porté, hors surcoût de mana des sorts en armure. */}
@@ -791,6 +889,8 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 onChange={(e) => setField('magicDef', e.target.value)}
                 sx={{ maxWidth: 320 }}
               />
+
+              <SectionDivider />
 
               {/* Bonus/malus de CARACTÉRISTIQUES (PER-272), par lignes : même famille que la DEF
                   magique (propriété de l'instance enchantée, pas du catalogue), donc disponible
@@ -809,6 +909,8 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 rows={form.abilityBonuses}
                 onChange={(rows) => setField('abilityBonuses', rows)}
               />
+
+              <SectionDivider />
 
               {/* Bonus/malus de STATISTIQUES DÉRIVÉES (PER-273), par lignes : même mécanique que
                   ci-dessus, appliquée directement à la stat (PV, initiative, chance…) au lieu de
@@ -829,6 +931,8 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 rows={form.derivedBonuses}
                 onChange={(rows) => setField('derivedBonuses', rows)}
               />
+
+              <SectionDivider />
 
               {/* Bonus/malus aux TESTS (PER-275), par lignes : une cible = soit une caractéristique
                   (tous ses tests), soit un domaine de compétence. Sélecteur cherchable, la liste
@@ -873,17 +977,58 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 onChange={(rows) => setField('testBonuses', rows)}
               />
 
-              {/* Stat de bouclier : DEF seule. */}
-              {type === 'shield' && (
+              <SectionDivider label="Charges" />
+
+              {/* CHARGES (PER-294) : baguette, sceptre, talisman… Même famille que les bonus
+                  ci-dessus — propriété de l'exemplaire possédé, disponible sur TOUT type d'objet.
+                  Les deux cases de rechargement sont indépendantes et cumulables ; aucune cochée =
+                  rechargement à la main uniquement. Elles n'apparaissent qu'une fois un nombre de
+                  charges saisi, pour ne pas encombrer le formulaire de la quasi-totalité des objets
+                  qui n'en ont pas. RÈGLE MAISON : aucun objet à charges dans le livre de base. */}
+              <Box>
                 <TextField
                   type="number"
                   size="small"
-                  label="DEF"
-                  value={form.def}
-                  onChange={(e) => setField('def', e.target.value)}
-                  sx={{ width: 140 }}
+                  label="Nombre de charges"
+                  placeholder="0"
+                  helperText="vide = objet sans charges (utilisations illimitées)"
+                  value={form.chargesMax}
+                  onChange={(e) => setField('chargesMax', e.target.value)}
+                  sx={{ maxWidth: 320 }}
                 />
-              )}
+                {(Number(form.chargesMax) || 0) > 0 && (
+                  <Stack sx={{ mt: 0.5 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={form.chargesOnShortRest}
+                          onChange={(e) => setField('chargesOnShortRest', e.target.checked)}
+                        />
+                      }
+                      label="Se recharge à plein au repos court"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={form.chargesOnLongRest}
+                          onChange={(e) => setField('chargesOnLongRest', e.target.checked)}
+                        />
+                      }
+                      label="Se recharge à plein au repos long"
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      {form.chargesOnShortRest
+                        ? 'Un repos long recharge aussi ce qui se recharge au repos court.'
+                        : form.chargesOnLongRest
+                          ? 'Le repos court ne rechargera pas cet objet.'
+                          : 'Aucune case cochée : l’objet ne se recharge qu’avec le bouton « Recharger ».'}
+                    </Typography>
+                  </Stack>
+                )}
+              </Box>
+
             </>
           )}
         </Stack>

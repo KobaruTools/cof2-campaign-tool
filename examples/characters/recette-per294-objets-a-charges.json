@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per294-objets-a-charges",
+  "name": "Recette PER-294 — Objets à charges",
+  "identity": {
+    "description": "ATTENDU : chaque objet à charges affiche une pastille par charge (au-delà de 12, le décompte seul) plus « restantes/maximum », et deux boutons hors mode « Modifier » : « Utiliser » (rouge, dépense) et « Recharger » (bouton double, la moitié « ⏩ » fait le plein). Un objet épuisé n’est JAMAIS retiré de l’inventaire. Les repos ne rechargent que ce qui est réglé pour eux."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 1,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 3,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "custom": true,
+      "name": "Baguette de foudre",
+      "quantity": 1,
+      "type": "gear",
+      "details": "ATTENDU : 5 pastilles pleines, « 5/5 ». « Utiliser » 3 fois → « 2/5 ». Un repos COURT ne la recharge pas ; un repos LONG la remet à 5/5.",
+      "charges": {
+        "max": 5,
+        "onLongRest": true
+      }
+    },
+    {
+      "custom": true,
+      "name": "Talisman du souffle court",
+      "quantity": 1,
+      "type": "gear",
+      "details": "ATTENDU : « 1/3 » (2 pastilles creuses à droite). Un repos COURT le remet à 3/3, un repos LONG aussi.",
+      "charges": {
+        "max": 3,
+        "onShortRest": true
+      },
+      "chargesSpent": 2
+    },
+    {
+      "custom": true,
+      "name": "Sceptre du gardien avare",
+      "quantity": 1,
+      "type": "gear",
+      "details": "ATTENDU : « 0/4 », épuisé → bouton « Utiliser » GRISÉ (infobulle « Objet épuisé »). AUCUN repos ne le recharge : seul « Recharger » (ou sa moitié « plein ») le remplit.",
+      "charges": {
+        "max": 4
+      },
+      "chargesSpent": 4
+    },
+    {
+      "custom": true,
+      "name": "Fiole de lumière captive",
+      "quantity": 1,
+      "type": "gear",
+      "details": "ATTENDU : UNE seule pastille, « 1/1 », et le bouton « Recharger » SANS moitié « plein » (à une charge, recharger EST faire le plein).",
+      "charges": {
+        "max": 1,
+        "onLongRest": true
+      }
+    },
+    {
+      "custom": true,
+      "name": "Grimoire des mille runes",
+      "quantity": 1,
+      "type": "gear",
+      "details": "ATTENDU : AUCUNE pastille (au-delà de 12 charges), seulement « 11/15 ». Les deux cases de repos sont cochées.",
+      "charges": {
+        "max": 15,
+        "onShortRest": true,
+        "onLongRest": true
+      },
+      "chargesSpent": 4
+    },
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      },
+      "overrides": {
+        "name": "Épée longue des trois éclats",
+        "description": "Trois éclats de foudre par jour."
+      },
+      "magicDef": 1,
+      "charges": {
+        "max": 3,
+        "onLongRest": true
+      },
+      "chargesSpent": 1
+    },
+    {
+      "itemId": "potion-de-soins",
+      "quantity": 1,
+      "overrides": {
+        "name": "Flacon inépuisable de soins"
+      },
+      "charges": {
+        "max": 2,
+        "onLongRest": true
+      }
+    },
+    {
+      "custom": true,
+      "name": "Baguette éteinte (témoin sans charges)",
+      "quantity": 1,
+      "type": "gear",
+      "details": "ATTENDU : AUCUNE pastille, AUCUN bouton « Utiliser »/« Recharger » — objet ordinaire."
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-294 — Objets à charges. À vérifier dans l’app : (1) les compteurs et pastilles de chaque ligne ; (2) « Utiliser » grisé sur le sceptre épuisé, avec infobulle ; (3) la fiole à 1 charge n’a PAS de moitié « plein » ; (4) le grimoire (15 charges) n’affiche aucune pastille ; (5) un repos COURT ne recharge que le talisman et le grimoire ; (6) un repos LONG recharge tout SAUF le sceptre (manuel) ; (7) le « Flacon inépuisable de soins » dépense une charge au lieu de disparaître, et n’affiche PAS deux boutons « Utiliser » ; (8) modifier un objet (crayon) ne remet pas ses charges à plein ; (9) la baguette témoin n’a ni pastille ni bouton.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

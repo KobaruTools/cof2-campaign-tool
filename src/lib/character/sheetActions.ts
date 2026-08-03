@@ -66,6 +66,12 @@ import {
 import { longRest, shortRest } from './rest';
 import { setWornAt } from './equipment';
 import {
+  hasItemCharges,
+  refillItemCharges as refillCharges,
+  restoreItemCharge as restoreCharge,
+  spendItemCharge as spendCharge,
+} from './itemCharges';
+import {
   fireShot,
   loadShot,
   loadingContext,
@@ -343,6 +349,10 @@ export function useEquipmentItem(character: Character, index: number): UseItemIn
   // Choix d'équipement de départ à résoudre (PER-220) : ouvre la modale de choix.
   if (startingChoiceOptionsFor(line)) return { kind: 'starting-choice', index };
   if (isCustomItem(line) && line.name === COIN_POUCH_ITEM_NAME) return { kind: 'coin-pouch', index };
+  // Objet à CHARGES (PER-294) : « Utiliser » dépense une CHARGE et ne retire jamais la ligne — un
+  // objet rechargeable ne disparaît pas quand on l'épuise. Prime sur la consommation, pour qu'une
+  // fiole typée « consommable » mais dotée de charges se comporte comme la baguette qu'elle est.
+  if (hasItemCharges(line)) return { kind: 'consume', patch: spendItemChargeAction(character, index) };
   return { kind: 'consume', patch: { equipment: consumeEquipmentLine(character, index) } };
 }
 
@@ -464,6 +474,36 @@ export function refillWeaponShots(
   kind?: LoadedAmmunitionKind,
 ): Partial<Character> {
   const { equipment } = refillWeapon(character.equipment, index, loadingContext(character), kind);
+  return equipment === character.equipment ? {} : { equipment };
+}
+
+// ---------------------------------------------------------------------------
+// Objets à charges (baguettes, sceptres, talismans — PER-294)
+// ---------------------------------------------------------------------------
+
+/**
+ * Trois gestes de charge, tous ÉTAT DE JEU comme ceux du chargement des armes : ils ne touchent que
+ * `equipment`, clé d'état de jeu synchronisée en session (PER-266), donc le compteur de charges suit
+ * en direct sur l'écran du MJ et la projection. Même contrat de no-op : un réducteur qui rend la
+ * MÊME référence donne un patch VIDE, qui vaut « aucune écriture ».
+ *
+ * À la différence d'un consommable (`useEquipmentItem`), épuiser un objet à charges ne le retire
+ * JAMAIS de l'inventaire : il attend d'être rechargé.
+ */
+export function spendItemChargeAction(character: Character, index: number): Partial<Character> {
+  const equipment = spendCharge(character.equipment, index);
+  return equipment === character.equipment ? {} : { equipment };
+}
+
+/** Rend UNE charge à l'objet (geste manuel, toujours disponible quel que soit le réglage de repos). */
+export function restoreItemChargeAction(character: Character, index: number): Partial<Character> {
+  const equipment = restoreCharge(character.equipment, index);
+  return equipment === character.equipment ? {} : { equipment };
+}
+
+/** Fait le PLEIN des charges de l'objet d'un seul geste. */
+export function refillItemChargesAction(character: Character, index: number): Partial<Character> {
+  const equipment = refillCharges(character.equipment, index);
   return equipment === character.equipment ? {} : { equipment };
 }
 

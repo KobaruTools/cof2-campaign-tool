@@ -211,6 +211,53 @@ describe('repos — armes rechargées à plein (PER-284, p. 185/187)', () => {
   });
 });
 
+describe('repos — objets à charges (PER-294)', () => {
+  /** Baguette épuisée, réglée selon la politique donnée. */
+  const wand = (name: string, charges: Record<string, unknown>) =>
+    ({ custom: true, name, quantity: 1, charges, chargesSpent: 3 }) as never;
+
+  const withWands = () =>
+    make({
+      equipment: [
+        wand('Manuelle', { max: 3 }),
+        wand('Repos court', { max: 3, onShortRest: true }),
+        wand('Repos long', { max: 3, onLongRest: true }),
+      ],
+    });
+
+  it('le repos COURT ne recharge que les objets réglés « au repos court »', () => {
+    const equipment = shortRest(withWands()).equipment!;
+    expect(equipment[0]).toHaveProperty('chargesSpent', 3); // manuelle : intacte
+    expect(equipment[1]).not.toHaveProperty('chargesSpent'); // pleine
+    expect(equipment[2]).toHaveProperty('chargesSpent', 3); // attend la nuit
+  });
+
+  it('le repos LONG recharge « au repos long » ET « au repos court », pas le manuel', () => {
+    const equipment = longRest(withWands()).equipment!;
+    expect(equipment[0]).toHaveProperty('chargesSpent', 3);
+    expect(equipment[1]).not.toHaveProperty('chargesSpent');
+    expect(equipment[2]).not.toHaveProperty('chargesSpent');
+  });
+
+  it('aucun objet à recharger → aucun champ equipment (le patch reste état de jeu pur)', () => {
+    const manualOnly = make({ equipment: [wand('Manuelle', { max: 3 })] });
+    expect(shortRest(manualOnly).equipment).toBeUndefined();
+    expect(longRest(manualOnly).equipment).toBeUndefined();
+  });
+
+  it('cohabite avec le rechargement des armes dans le MÊME patch', () => {
+    const both = make({
+      equipment: [
+        { itemId: 'petoire', quantity: 1, loaded: [] },
+        wand('Repos court', { max: 3, onShortRest: true }),
+      ],
+    });
+    const equipment = shortRest(both).equipment!;
+    expect(equipment[0]).not.toHaveProperty('loaded');
+    expect(equipment[1]).not.toHaveProperty('chargesSpent');
+  });
+});
+
 describe('repos — surcoût mana croissant (foi-r5, PER-162)', () => {
   const withSurcharge = make({ featureIds: ['foi-r5'], usageCounters: { 'foi-r5': 3 } });
 

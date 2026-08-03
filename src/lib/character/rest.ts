@@ -13,6 +13,7 @@ import { currentRecoveryDice, healHp, pruneDepletion, spendRecoveryDice } from '
 import { clearTemporaryEffectInputs, clearTemporaryEffectToggles, resetUsageCounters } from './effects';
 import { removeElixirDoses } from './elixirs';
 import { reloadAllToFull } from './weaponLoading';
+import { rechargeItemsOnRest } from './itemCharges';
 
 /**
  * Ré-enduit les armes empoisonnées (« Avant chaque combat, ses armes sont enduites », p. 143, PER-74) :
@@ -43,7 +44,8 @@ export interface RestResult {
    * Équipement mis à jour : présent quand le repos a REELLEMENT touché une ligne — purge des doses
    * d'élixir du forgesort au repos LONG (PER-152 ; voie des élixirs, p. 98 : « Les élixirs qui ne
    * sont pas utilisés le jour même sont perdus »), et remise à plein des armes à recharger aux DEUX
-   * repos (PER-284, cf. `reloadAllToFull`). Absent = aucune ligne modifiée (ou reset) → l'équipement
+   * repos (PER-284, cf. `reloadAllToFull`), et remise à plein des objets à charges selon LEUR réglage
+   * (PER-294, cf. `rechargeItemsOnRest`). Absent = aucune ligne modifiée (ou reset) → l'équipement
    * n'est pas touché, et le patch de repos reste purement état de jeu (PER-266).
    */
   equipment?: EquipmentLine[];
@@ -101,7 +103,10 @@ export function shortRest(
   // arbalète ou une arme à poudre (p. 185 : le rechargement se compte en actions), et rien ne
   // justifie de repartir déchargé. Inclus SEULEMENT si une arme était réellement à recharger.
   const reloaded = reloadAllToFull(character.equipment);
-  if (reloaded !== character.equipment) result.equipment = reloaded;
+  // Objets à charges réglés « au repos court » (PER-294) : eux seuls repartent à plein ici — un
+  // objet sans réglage ne se recharge qu'à la main, et un objet « au repos long » attend la nuit.
+  const recharged = rechargeItemsOnRest(reloaded, 'short');
+  if (recharged !== character.equipment) result.equipment = recharged;
   const reArmed = reArmPoisons(character.poisonedWeapons);
   if (reArmed) result.poisonedWeapons = reArmed;
   return result;
@@ -143,6 +148,9 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
   const prunedEquipment = removeElixirDoses(character.equipment);
   const dosesRemoved = prunedEquipment.length !== character.equipment.length;
   const restoredEquipment = reloadAllToFull(prunedEquipment);
+  // Objets à charges (PER-294) : un repos long recharge ceux réglés « au repos long » ET ceux réglés
+  // « au repos court » (une nuit fait au moins ce qu'une pause de trente minutes fait).
+  const rechargedEquipment = rechargeItemsOnRest(restoredEquipment, 'long');
   const result: RestResult = {
     depletion: pruneDepletion(depletion),
     usageCounters: resetUsageCounters(
@@ -154,7 +162,7 @@ export function longRest(character: Character, heal?: { dieFaces: number }): Res
     effectToggles: clearTemporaryEffectToggles(character),
     effectInputs: clearTemporaryEffectInputs(character),
   };
-  if (dosesRemoved || restoredEquipment !== prunedEquipment) result.equipment = restoredEquipment;
+  if (dosesRemoved || rechargedEquipment !== prunedEquipment) result.equipment = rechargedEquipment;
   const reArmed = reArmPoisons(character.poisonedWeapons);
   if (reArmed) result.poisonedWeapons = reArmed;
   return result;

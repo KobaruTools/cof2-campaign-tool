@@ -375,6 +375,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     fireWeaponShot,
     loadWeaponShot,
     refillWeaponShots,
+    spendItemCharge,
+    restoreItemCharge,
+    refillItemCharges,
     weaponLoading,
     addGrantedEquipment,
     setHpDamage,
@@ -1218,6 +1221,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               onRefillShots={readOnly ? undefined : refillWeaponShots}
               // Tir de grenaille (explosifs-r1, p. 63) : le mélange s'annonce AU chargement.
               canLoadGrapeshot={character.featureIds.includes('explosifs-r1')}
+              // Objets à charges (PER-294) : dépenser / rendre / faire le plein — même nature que
+              // les gestes de chargement, donc masqués en lecture seule (les pastilles restent).
+              onSpendCharge={readOnly ? undefined : spendItemCharge}
+              onRestoreCharge={readOnly ? undefined : restoreItemCharge}
+              onRefillCharges={readOnly ? undefined : refillItemCharges}
               // Équiper/déséquiper (PER-77) : état de jeu, hors mode édition ; masqué en lecture seule
               // (le porté reste montré par un badge). Voir `setWorn`.
               onWear={readOnly ? undefined : setWorn}

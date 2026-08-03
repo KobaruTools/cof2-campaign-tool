@@ -448,6 +448,36 @@ export type ItemTestBonuses = Partial<Record<ItemTestTarget, number>>;
  */
 export type LoadedAmmunitionKind = 'normal' | 'grapeshot';
 
+/**
+ * DÉFINITION des charges d'un objet (PER-294) : combien d'utilisations il contient à plein, et
+ * comment il se remplit tout seul. C'est la généralisation LIBRE du chargement des armes
+ * (`weaponLoading.ts`) à n'importe quel objet — baguette, sceptre, talisman, potion à doses.
+ *
+ * Deux différences volontaires avec les munitions : les charges sont toutes IDENTIQUES (rien à
+ * annoncer au chargement, cf. `LoadedAmmunitionKind`), et la capacité est SAISIE par le joueur
+ * au lieu d'être dérivée du catalogue et des capacités (`weaponCapacity`) — l'application ne
+ * connaît aucun objet magique, ces objets sont toujours inventés à la table.
+ *
+ * RÈGLE MAISON ASSUMÉE : le livre de base ne décrit aucun objet à charges (il n'a pas de
+ * catalogue d'objets magiques). Ce champ ne modélise donc AUCUNE règle CO2 — c'est un support de
+ * saisie pour ce que le meneur de jeu invente, sans `sourcePage`.
+ */
+export interface ItemCharges {
+  /**
+   * Nombre de charges de l'objet PLEIN (entier ≥ 1). Une valeur absente, nulle ou aberrante fait
+   * de l'objet un objet SANS charges (cf. `itemChargeState`, qui normalise à la lecture).
+   */
+  max: number;
+  /** L'objet se remet à plein au repos COURT. Absent = non. */
+  onShortRest?: true;
+  /**
+   * L'objet se remet à plein au repos LONG. Absent = non. Cumulable avec `onShortRest` : les deux
+   * réglages sont indépendants, et un objet marqué « repos court » repart de toute façon à plein
+   * au repos long (une nuit fait au moins ce qu'une pause de trente minutes fait).
+   */
+  onLongRest?: true;
+}
+
 export interface EquipmentOverrides {
   name?: string;
   description?: string;
@@ -514,6 +544,26 @@ export interface EquipmentRef {
    * absent-safe → pas de bump de `schemaVersion` (même logique que `magicDef`).
    */
   testBonuses?: ItemTestBonuses;
+  /**
+   * DÉFINITION des charges de cette instance d'objet (PER-294) : nombre maximum d'utilisations et
+   * politique de rechargement automatique. Absent = objet sans charges (le cas de la quasi-totalité
+   * de l'inventaire). Propriété de l'INSTANCE comme `magicDef` et les bonus : le catalogue du livre
+   * ne contient aucun objet à charges, c'est l'exemplaire possédé qui est enchanté.
+   *
+   * Se saisit en mode « Modifier » (`ItemDialog`), contrairement à `chargesSpent` qui est de l'état
+   * de jeu. Champ additif optionnel absent-safe → pas de bump de `schemaVersion`.
+   */
+  charges?: ItemCharges;
+  /**
+   * Charges DÉPENSÉES sur cette instance (PER-294) — **ABSENT = objet PLEIN**, comme `loaded` pour
+   * les armes : un objet au repos ne traîne aucune donnée de charge. ÉTAT DE JEU (le joueur dépense
+   * une charge en pleine partie, hors mode « Modifier »), borné à `charges.max` à la lecture, ce qui
+   * rend inoffensive une baisse du maximum sur un objet à moitié vide.
+   *
+   * Sans `charges`, ce champ est ignoré. Champ additif optionnel absent-safe → pas de bump de
+   * `schemaVersion`. Voir `itemCharges.ts`.
+   */
+  chargesSpent?: number;
   /**
    * MUNITIONS CHARGÉES dans CETTE arme (PER-284), **dans l'ordre de tir** — `loaded[0]` est le
    * prochain coup qui partira, et recharger ajoute en fin de file. Concerne les armes que le livre
@@ -625,6 +675,17 @@ export interface CustomItem {
    * rarement au catalogue.
    */
   testBonuses?: ItemTestBonuses;
+  /**
+   * DÉFINITION des charges de cet objet libre (PER-294). Même sémantique que
+   * `EquipmentRef.charges` — c'est même le cas d'usage PRINCIPAL du ticket : une baguette ou un
+   * talisman à charges n'a aucune contrepartie au catalogue, il s'invente de toutes pièces.
+   */
+  charges?: ItemCharges;
+  /**
+   * Charges DÉPENSÉES sur cet objet libre (PER-294). Même sémantique que
+   * `EquipmentRef.chargesSpent` : **absent = plein**, état de jeu, borné à la lecture.
+   */
+  chargesSpent?: number;
 }
 
 export type EquipmentLine = EquipmentRef | CustomItem;

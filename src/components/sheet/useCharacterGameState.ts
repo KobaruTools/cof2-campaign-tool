@@ -86,6 +86,14 @@ export interface CharacterGameState {
   refillWeaponShots: (index: number, kind?: LoadedAmmunitionKind) => void;
   /** Contexte de chargement (capacité d'un chargeur pour CE personnage), pour l'affichage. */
   weaponLoading: LoadingContext;
+  /**
+   * Gestes de charge d'un objet (PER-294) : dépenser une charge, en rendre une, faire le plein.
+   * Même nature que les gestes de chargement d'arme — état de jeu, donc hors mode « Modifier » et
+   * synchronisés en session. Un objet à charges épuisé n'est JAMAIS retiré de l'inventaire.
+   */
+  spendItemCharge: (index: number) => void;
+  restoreItemCharge: (index: number) => void;
+  refillItemCharges: (index: number) => void;
   /** Ajoute un objet OCTROYÉ par une capacité et absent de l'inventaire (PER-286). */
   addGrantedEquipment: (itemId: string) => void;
 
@@ -205,6 +213,9 @@ export function useCharacterGameState(
     loadWeaponShot: bind(actions.loadWeaponShot),
     refillWeaponShots: bind(actions.refillWeaponShots),
     weaponLoading: loadingContext(target),
+    spendItemCharge: bind(actions.spendItemChargeAction),
+    restoreItemCharge: bind(actions.restoreItemChargeAction),
+    refillItemCharges: bind(actions.refillItemChargesAction),
     addGrantedEquipment: bind(actions.addGrantedEquipment),
 
     setHpDamage: (amount, kind) => update(actions.damageCharacterHp(target, amount, kind, maxHp)),

@@ -556,6 +556,11 @@ function GmSheetDrawerContent({
               onLoadShot={game.loadWeaponShot}
               onRefillShots={game.refillWeaponShots}
               canLoadGrapeshot={character.featureIds.includes('explosifs-r1')}
+              // Objets à charges (PER-294) : le MJ dépense / rend / fait le plein pour le joueur,
+              // même statut d'état de jeu que le chargement des armes ci-dessus.
+              onSpendCharge={game.spendItemCharge}
+              onRestoreCharge={game.restoreItemCharge}
+              onRefillCharges={game.refillItemCharges}
               characterClass={characterClass}
               masteredIds={masteredClassIds(character, rulesContext)}
               firearmsAllowed={firearmsAllowed}

@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import AltRouteIcon from '@mui/icons-material/AltRoute';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
@@ -60,6 +61,7 @@ import type {
 import type { LoadingContext, WeaponLoadingState } from '@/lib/character/weaponLoading';
 import type { GrantedItem } from '@/lib/character/grantedEquipment';
 import { weaponLoadingState } from '@/lib/character/weaponLoading';
+import { MAX_CHARGE_DOTS, itemChargeState, type ItemChargeState } from '@/lib/character/itemCharges';
 import { ITEM_DERIVED_STAT_IDS, isCustomItem } from '@/lib/character/types';
 import {
   effectiveItem,
@@ -482,6 +484,82 @@ function WeaponLoadingDots({ state }: { state: WeaponLoadingState }) {
 }
 
 /**
+ * Charges d'un objet (PER-294) — baguette, sceptre, talisman : UNE PASTILLE PAR CHARGE, sur le
+ * patron exact des munitions d'une arme (`WeaponLoadingDots`) et des usages « une fois par jour »
+ * d'un rang. Pastille PLEINE = charge disponible, CREUSE = charge dépensée, suivies du décompte
+ * « N/M ». Au-delà de `MAX_CHARGE_DOTS`, le décompte seul.
+ *
+ * Une seule couleur, contrairement aux munitions : toutes les charges sont identiques, il n'y a
+ * aucune « nature » à distinguer (pas d'équivalent de la grenaille). L'infobulle rappelle la
+ * politique de rechargement de CET objet — c'est la seule information non lisible sur les pastilles.
+ * Bloc CUSTOM (convention projet : pas de `Chip` MUI).
+ */
+function ItemChargeDots({ state }: { state: ItemChargeState }) {
+  const { max, remaining, empty, onShortRest, onLongRest } = state;
+  const recharge = onShortRest
+    ? onLongRest
+      ? 'Se recharge à plein au repos court comme au repos long.'
+      : 'Se recharge à plein au repos court (et donc au repos long).'
+    : onLongRest
+      ? 'Se recharge à plein au repos long.'
+      : 'Ne se recharge qu’à la main : aucun repos ne le remplit.';
+  return (
+    <AppTooltip
+      title={
+        <>
+          {`${remaining} charge${remaining > 1 ? 's' : ''} disponible${
+            remaining > 1 ? 's' : ''
+          } sur ${max}. `}
+          {empty ? 'Objet épuisé : il doit être rechargé avant d’être utilisé. ' : ''}
+          {recharge}
+        </>
+      }
+    >
+      <Box
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          flexWrap: 'wrap',
+          cursor: 'help',
+        }}
+      >
+        <AutoAwesomeOutlinedIcon
+          sx={{ fontSize: 14, color: empty ? 'text.disabled' : 'secondary.main' }}
+        />
+        {max <= MAX_CHARGE_DOTS &&
+          Array.from({ length: max }).map((_, i) => {
+            // Les charges disponibles sont en TÊTE : les pastilles se vident par la droite, comme
+            // les usages d'un rang — on lit « il m'en reste deux » sans compter les creuses.
+            const available = i < remaining;
+            return (
+              <Box
+                key={i}
+                sx={(theme) => ({
+                  width: 9,
+                  height: 9,
+                  borderRadius: '50%',
+                  border: 1,
+                  borderColor: available
+                    ? theme.palette.secondary.main
+                    : alpha(theme.palette.text.disabled, 0.6),
+                  bgcolor: available ? theme.palette.secondary.main : 'transparent',
+                })}
+              />
+            );
+          })}
+        <Typography
+          variant="caption"
+          sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'text.secondary' }}
+        >
+          {remaining}/{max}
+        </Typography>
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
  * Chip « Canon double » (PER-284) : signale que CETTE arme a été bricolée d'un second canon
  * (`artilleur-r4`, p. 63), à droite de ses munitions. Purement informative — l'infobulle rappelle
  * comment l'effet fonctionne, verbatim, avec le renvoi au livre. Bloc CUSTOM (convention projet :
@@ -784,6 +862,15 @@ export interface EquipmentListProps {
    */
   canLoadGrapeshot?: boolean;
   /**
+   * Dépenser une charge de l'objet `i` (PER-294) : ÉTAT DE JEU, donc disponible HORS mode édition,
+   * comme les gestes de chargement d'arme. Absent → pas de bouton « Utiliser » de charge (wizard).
+   */
+  onSpendCharge?: (index: number) => void;
+  /** Rendre UNE charge à l'objet `i` (geste manuel, toujours disponible). */
+  onRestoreCharge?: (index: number) => void;
+  /** Faire le PLEIN des charges de l'objet `i` (moitié droite du bouton « Recharger »). */
+  onRefillCharges?: (index: number) => void;
+  /**
    * Équiper / déséquiper une ligne (PER-77) : pose ou retire l'état de port
    * (`WornState`) de la ligne `i`. C'est un ÉTAT DE JEU (on change d'arme, on lève le
    * bouclier), donc disponible HORS mode édition — indépendant de `onChange`. Absent →
@@ -962,6 +1049,9 @@ export function EquipmentList({
   onLoadShot,
   onRefillShots,
   canLoadGrapeshot = false,
+  onSpendCharge,
+  onRestoreCharge,
+  onRefillCharges,
   onWear,
   characterClass,
   masteredIds,
@@ -1141,6 +1231,10 @@ export function EquipmentList({
     // État de chargement (PER-284) : `null` sur tout ce que le livre ne fait pas recharger
     // (arcs, frondes, armes de jet, armes de contact, objets libres) → aucun badge, aucun geste.
     const loadingState = weaponLoading ? weaponLoadingState(line, weaponLoading) : null;
+    // Charges de l'objet (PER-294) : `null` sur tout objet sans charges, c'est-à-dire la
+    // quasi-totalité de l'inventaire → aucune pastille, aucun geste. Indépendant du port : une
+    // baguette rangée dans un sac se déclenche très bien (≠ « Tirer », qui exige l'arme en main).
+    const chargeState = itemChargeState(line);
     // TIRER suppose l'arme EN MAIN — « Changer d'arme demande une action de mouvement (M) » (p. 187).
     // RECHARGER, à l'inverse, reste disponible sur une arme rangée : c'est tout l'objet de la tactique
     // « charger des armes à poudre à l'avance » (p. 187), où l'on prépare les armes qu'on ne tient pas.
@@ -1297,6 +1391,12 @@ export function EquipmentList({
             {loadingState.doubleBarrel && <DoubleBarrelChip />}
           </Box>
         )}
+        {/* Charges de l'objet (PER-294) : baguettes, sceptres, talismans — une pastille par charge. */}
+        {chargeState && (
+          <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center' }}>
+            <ItemChargeDots state={chargeState} />
+          </Box>
+        )}
         {/* Canon double avec un seul coup chargé : effet inopérant (PER-284, p. 63). */}
         {loadingState?.underfed && <DoubleBarrelUnderfedBadge />}
         {/* Avertissement (PER-185) : arme à poudre grisée quand la poudre est indisponible. */}
@@ -1333,8 +1433,11 @@ export function EquipmentList({
       onUse && (isStartingChoiceLine(line) || isCoinPouchLine(line)) ? <ChoiceBadge /> : null;
     // « Utiliser » (état de jeu, dispo hors édition) : route (via `onUse`) vers un choix de
     // départ (PER-220), la Bourse de départ, ou un consommable (décrément/suppression).
+    // ÉCARTÉ sur un objet à CHARGES (PER-294) : c'est le « Utiliser » du bloc de charges qui prend
+    // la main — sinon une fiole typée « consommable » dotée de charges afficherait deux boutons
+    // identiques (`useEquipmentItem` route déjà les deux vers la dépense d'une charge).
     const useButton =
-      onUse && (isConsumable(line) || isStartingChoiceLine(line)) ? (
+      onUse && !chargeState && (isConsumable(line) || isStartingChoiceLine(line)) ? (
         <Button size="small" variant="outlined" onClick={() => onUse(i)} sx={{ flexShrink: 0 }}>
           Utiliser
         </Button>
@@ -1464,6 +1567,95 @@ export function EquipmentList({
           {reloadButtons}
         </Box>
       ) : null;
+    // Gestes de charge (PER-294) — ÉTAT DE JEU, hors mode édition, calqués sur les gestes de
+    // chargement d'arme ci-dessus, dont ils reprennent la grammaire : « Utiliser » DÉPENSE (d'où le
+    // ROUGE), isolé à gauche d'un trait vertical, puis « Recharger » REMPLIT en bouton DOUBLE dont
+    // la moitié droite (« ⏩ ») fait le plein. La moitié « plein » n'a de sens qu'au-delà d'une
+    // charge : sur un objet à charge unique, recharger EST faire le plein.
+    //
+    // Le rechargement manuel reste proposé même sur un objet réglé « au repos » — le réglage est un
+    // confort, pas une interdiction (le meneur de jeu peut toujours rendre une charge en cours de
+    // partie). Aucune condition de port, contrairement à « Tirer » : une baguette rangée s'utilise.
+    const chargeButtons = (() => {
+      if (!chargeState) return null;
+      const splitRefill = !!onRefillCharges && chargeState.max > 1;
+      const spend = onSpendCharge ? (
+        <AppTooltip
+          title={
+            chargeState.empty
+              ? 'Objet épuisé : plus aucune charge à dépenser.'
+              : 'Dépenser une charge (l’objet reste dans l’inventaire, même épuisé)'
+          }
+        >
+          {/* `span` intercalé : un bouton DÉSACTIVÉ ne reçoit aucun événement de survol, l'infobulle
+              ne s'afficherait pas — or c'est justement là qu'elle explique le grisage. */}
+          <span style={{ display: 'inline-flex', flexShrink: 0 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              disabled={chargeState.empty}
+              onClick={() => onSpendCharge(i)}
+              sx={{ flexShrink: 0 }}
+            >
+              Utiliser
+            </Button>
+          </span>
+        </AppTooltip>
+      ) : null;
+      const restore = onRestoreCharge ? (
+        <Box sx={{ display: 'inline-flex', flexShrink: 0 }}>
+          <AppTooltip title="Rendre une charge">
+            <span style={{ display: 'inline-flex' }}>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={chargeState.full}
+                onClick={() => onRestoreCharge(i)}
+                sx={splitRefill ? { borderTopRightRadius: 0, borderBottomRightRadius: 0 } : undefined}
+              >
+                Recharger
+              </Button>
+            </span>
+          </AppTooltip>
+          {splitRefill && (
+            <AppTooltip title={chargeState.full ? 'Objet déjà plein' : 'Faire le plein des charges'}>
+              <span style={{ display: 'inline-flex' }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={chargeState.full}
+                  onClick={() => onRefillCharges!(i)}
+                  aria-label="Faire le plein des charges"
+                  sx={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    // Bordures mitoyennes superposées ; au survol, la moitié active passe devant.
+                    ml: '-1px',
+                    position: 'relative',
+                    '&:hover': { zIndex: 1 },
+                    minWidth: 0,
+                    px: 0.5,
+                  }}
+                >
+                  <KeyboardDoubleArrowRightIcon sx={{ fontSize: 18 }} />
+                </Button>
+              </span>
+            </AppTooltip>
+          )}
+        </Box>
+      ) : null;
+      if (!spend && !restore) return null;
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+          {spend}
+          {spend && restore && (
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.25, my: 0.25 }} />
+          )}
+          {restore}
+        </Box>
+      );
+    })();
     const deleteButton = onChange ? (
       <IconButton size="small" color="error" onClick={() => remove(i)}>
         <DeleteOutlineIcon fontSize="small" />
@@ -1479,6 +1671,7 @@ export function EquipmentList({
         quantityControl ||
         choiceBadge ||
         loadingButtons ||
+        chargeButtons ||
         useButton ||
         deleteButton
       );
@@ -1526,6 +1719,7 @@ export function EquipmentList({
                 >
                   {choiceBadge}
                   {loadingButtons}
+                  {chargeButtons}
                   {useButton}
                   {deleteButton}
                 </Box>
@@ -1561,6 +1755,7 @@ export function EquipmentList({
         {quantityControl}
         {choiceBadge}
         {loadingButtons}
+        {chargeButtons}
         {useButton}
         {deleteButton}
       </Stack>

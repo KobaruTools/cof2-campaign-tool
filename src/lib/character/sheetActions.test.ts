@@ -24,6 +24,7 @@ import {
   loadWeaponShot,
   openCoinPouch,
   ownedMountMaxHp,
+  refillItemChargesAction,
   refillWeaponShots,
   removeCompanionInstance,
   removeMount,
@@ -31,6 +32,7 @@ import {
   resetCharacterLuck,
   resetCharacterMana,
   resetCompanionHp,
+  restoreItemChargeAction,
   resetMountHp,
   resolveStartingChoice,
   restoreCharacterLuck,
@@ -48,6 +50,7 @@ import {
   setWeaponModification,
   spendCharacterLuck,
   spendCharacterMana,
+  spendItemChargeAction,
   summonCompanionInstance,
   toggleEffect,
   updateMount,
@@ -410,6 +413,60 @@ describe('useEquipmentItem — intention d’un clic « Utiliser »', () => {
 
   it('ligne inexistante → aucune action', () => {
     expect(useEquipmentItem(char(), 3)).toEqual({ kind: 'none' });
+  });
+
+  // PER-294 : un objet à charges ne se consomme pas, il se DÉPENSE — la ligne survit à l'épuisement.
+  it('un objet à CHARGES dépense une charge au lieu de consommer la ligne', () => {
+    const c = char({
+      equipment: [{ itemId: 'potion-de-soins', quantity: 2, charges: { max: 3 } }],
+    });
+    expect(useEquipmentItem(c, 0)).toEqual({
+      kind: 'consume',
+      patch: {
+        equipment: [{ itemId: 'potion-de-soins', quantity: 2, charges: { max: 3 }, chargesSpent: 1 }],
+      },
+    });
+  });
+
+  it('un objet à charges ÉPUISÉ ne produit aucune écriture (et n’est pas retiré)', () => {
+    const c = char({
+      equipment: [{ itemId: 'potion-de-soins', quantity: 1, charges: { max: 2 }, chargesSpent: 2 }],
+    });
+    expect(useEquipmentItem(c, 0)).toEqual({ kind: 'consume', patch: {} });
+  });
+});
+
+describe('gestes de charge d’un objet (PER-294)', () => {
+  const wandChar = (chargesSpent?: number) =>
+    char({
+      equipment: [
+        {
+          custom: true,
+          name: 'Baguette de foudre',
+          quantity: 1,
+          charges: { max: 4 },
+          ...(chargesSpent !== undefined ? { chargesSpent } : {}),
+        },
+      ],
+    });
+
+  it('« Utiliser » dépense une charge', () => {
+    expect(spendItemChargeAction(wandChar(), 0).equipment?.[0]).toHaveProperty('chargesSpent', 1);
+  });
+
+  it('« Recharger » en rend une, « Plein » les rend toutes', () => {
+    expect(restoreItemChargeAction(wandChar(3), 0).equipment?.[0]).toHaveProperty('chargesSpent', 2);
+    expect(refillItemChargesAction(wandChar(3), 0).equipment?.[0]).not.toHaveProperty('chargesSpent');
+  });
+
+  it('patch VIDE quand il n’y a rien à faire (contrat « aucune écriture »)', () => {
+    expect(spendItemChargeAction(wandChar(4), 0)).toEqual({});
+    expect(restoreItemChargeAction(wandChar(), 0)).toEqual({});
+    expect(refillItemChargesAction(wandChar(), 0)).toEqual({});
+    // Objet sans charges, et index hors bornes.
+    const plain = char({ equipment: [{ itemId: 'epee-longue', quantity: 1 }] });
+    expect(spendItemChargeAction(plain, 0)).toEqual({});
+    expect(spendItemChargeAction(wandChar(), 9)).toEqual({});
   });
 });
 
