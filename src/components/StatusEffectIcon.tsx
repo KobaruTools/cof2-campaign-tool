@@ -1,15 +1,15 @@
 import Box from '@mui/material/Box';
 import type { SxProps, Theme } from '@mui/material/styles';
-import type { ImmunityId, StatusEffectId } from '@/data/schema';
-import { STATUS_EFFECT_ICON_PATHS } from '@/lib/ui/statusEffectIcons';
+import { STATUS_EFFECT_ICON_PATHS, type StatusIconKey } from '@/lib/ui/statusEffectIcons';
 
 export interface StatusEffectIconProps {
   /**
-   * État de combat — soit une IMMUNITÉ d'état (`ImmunityId`, puces de la carte Défense), soit un
-   * ÉTAT PRÉJUDICIABLE du glossaire (`StatusEffectId`, palette du Combat Tracker, PER-279). Clé dans
-   * `STATUS_EFFECT_ICON_PATHS` (indexé par l'union des deux). Rien n'est rendu si l'id n'a pas d'icône.
+   * État de combat — une IMMUNITÉ d'état (`ImmunityId`, puces de la carte Défense), un ÉTAT
+   * PRÉJUDICIABLE du glossaire (`StatusEffectId`, palette du Combat Tracker, PER-279) ou un ÉTAT
+   * D'ENVIRONNEMENT (`EnvironmentalEffectId`, même palette). Clé dans `STATUS_EFFECT_ICON_PATHS`
+   * (indexé par l'union des trois). Rien n'est rendu si l'id n'a pas d'icône.
    */
-  effect: ImmunityId | StatusEffectId;
+  effect: StatusIconKey;
   /** Taille en pixels (carré). Défaut 16. */
   size?: number;
   /** Couleur CSS de l'icône. Défaut `'currentColor'` (hérite de la couleur du texte). */

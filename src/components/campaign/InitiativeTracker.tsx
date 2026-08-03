@@ -63,12 +63,14 @@ import { AppTooltip } from '@/components/AppTooltip';
 import { HpGauge, type DamageKind } from '@/components/sheet/HpGauge';
 import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
+import { StatusEffectTooltip } from '@/components/campaign/CombatStatusPalette';
 import {
   buildStatusGroups,
-  StatusEffectTooltip,
   statusIconId,
   statusLabel,
-} from '@/components/campaign/CombatStatusPalette';
+  statusTone,
+  type StatusTone,
+} from '@/lib/ui/statusPalette';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 
 /**
@@ -458,12 +460,13 @@ function CombatStatsRow({ stats, resolved }: { stats: CombatStats; resolved: Res
 const STATUS_ICON_SQUARE = 30;
 
 /**
- * Style de base du carré-icône d'un état : carré rouge translucide aux bords arrondis, avec flou
+ * Style de base du carré-icône d'un état : carré translucide aux bords arrondis, avec flou
  * d'arrière-plan pour rester lisible quel que soit ce qu'il recouvre (illustration de fond, portrait
- * voisin). Partagé À L'IDENTIQUE par la projection (lecture seule) et l'écran de MJ (interactif) — la
- * seule différence entre les deux tient au curseur et aux commandes ajoutées, pas au visuel.
+ * voisin). La `tone` porte la famille de l'état (rouge = subi, bleu = environnement, cf. `statusTone`).
+ * Partagé À L'IDENTIQUE par la projection (lecture seule) et l'écran de MJ (interactif) — la seule
+ * différence entre les deux tient au curseur et aux commandes ajoutées, pas au visuel.
  */
-function statusSquareSx(theme: Theme) {
+function statusSquareSx(theme: Theme, tone: StatusTone) {
   return {
     position: 'relative' as const,
     flexShrink: 0,
@@ -473,17 +476,17 @@ function statusSquareSx(theme: Theme) {
     width: STATUS_ICON_SQUARE,
     height: STATUS_ICON_SQUARE,
     borderRadius: 1.25,
-    color: theme.palette.error.light,
-    bgcolor: alpha(theme.palette.error.main, 0.28),
+    color: theme.palette[tone].light,
+    bgcolor: alpha(theme.palette[tone].main, 0.28),
     backdropFilter: 'blur(6px)',
     WebkitBackdropFilter: 'blur(6px)',
-    border: `1px solid ${alpha(theme.palette.error.main, 0.6)}`,
+    border: `1px solid ${alpha(theme.palette[tone].main, 0.6)}`,
     boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
   };
 }
 
 /** Pastille « N » en coin d'un carré-icône (intensité d'un état cumulatif). */
-function StatusIntensityPill({ value }: { value: number }) {
+function StatusIntensityPill({ value, tone }: { value: number; tone: StatusTone }) {
   return (
     <Box
       component="span"
@@ -503,7 +506,7 @@ function StatusIntensityPill({ value }: { value: number }) {
         fontVariantNumeric: 'tabular-nums',
         lineHeight: 1,
         color: theme.palette.common.white,
-        bgcolor: theme.palette.error.main,
+        bgcolor: theme.palette[tone].main,
         border: '1px solid rgba(0, 0, 0, 0.45)',
       })}
     >
@@ -535,7 +538,7 @@ function StatusIconInner({
           {statusLabel(id).slice(0, 2).toUpperCase()}
         </Box>
       )}
-      {stacked && <StatusIntensityPill value={intensity} />}
+      {stacked && <StatusIntensityPill value={intensity} tone={statusTone(id)} />}
     </>
   );
 }
@@ -550,7 +553,10 @@ function ProjectionStatusIcon({ applied }: { applied: AppliedStatus }) {
   const stacked = isStackingStatus(id) && intensity > 1;
   return (
     <AppTooltip title={<StatusEffectTooltip id={id} />}>
-      <Box aria-label={statusLabel(id)} sx={(theme) => ({ ...statusSquareSx(theme), cursor: 'help' })}>
+      <Box
+        aria-label={statusLabel(id)}
+        sx={(theme) => ({ ...statusSquareSx(theme, statusTone(id)), cursor: 'help' })}
+      >
         <StatusIconInner id={id} intensity={intensity} stacked={stacked} />
       </Box>
     </AppTooltip>
@@ -561,12 +567,14 @@ function ProjectionStatusIcon({ applied }: { applied: AppliedStatus }) {
 function StatusAdjustButton({
   side,
   label,
+  tone,
   disabled,
   onClick,
   children,
 }: {
   side: 'left' | 'right';
   label: string;
+  tone: StatusTone;
   disabled?: boolean;
   onClick: () => void;
   children: ReactNode;
@@ -594,10 +602,10 @@ function StatusAdjustButton({
         pointerEvents: 'none',
         transition: 'opacity 0.12s',
         color: theme.palette.common.white,
-        bgcolor: theme.palette.error.main,
+        bgcolor: theme.palette[tone].main,
         border: '1px solid rgba(0, 0, 0, 0.45)',
-        '&:hover': { bgcolor: theme.palette.error.dark },
-        '&.Mui-disabled': { bgcolor: alpha(theme.palette.error.main, 0.4), color: 'rgba(255, 255, 255, 0.5)' },
+        '&:hover': { bgcolor: theme.palette[tone].dark },
+        '&.Mui-disabled': { bgcolor: alpha(theme.palette[tone].main, 0.4), color: 'rgba(255, 255, 255, 0.5)' },
       })}
     >
       {children}
@@ -624,6 +632,7 @@ function InteractiveStatusIcon({
   const stacking = isStackingStatus(id);
   const intensity = clampIntensity(id, applied.intensity ?? 1);
   const max = statusMaxIntensity(id);
+  const tone = statusTone(id);
   return (
     <AppTooltip title={<StatusEffectTooltip id={id} />}>
       <Box
@@ -638,13 +647,13 @@ function InteractiveStatusIcon({
           }
         }}
         sx={(theme) => ({
-          ...statusSquareSx(theme),
+          ...statusSquareSx(theme, tone),
           cursor: 'pointer',
           outline: 'none',
           transition: 'border-color 0.15s, background-color 0.15s',
           '&:hover, &:focus-visible': {
-            bgcolor: alpha(theme.palette.error.main, 0.42),
-            borderColor: theme.palette.error.light,
+            bgcolor: alpha(theme.palette[tone].main, 0.42),
+            borderColor: theme.palette[tone].light,
           },
           // Révèle les boutons ± d'intensité au survol / focus (états cumulatifs uniquement).
           '&:hover .status-adjust, &:focus-visible .status-adjust': { opacity: 1, pointerEvents: 'auto' },
@@ -656,6 +665,7 @@ function InteractiveStatusIcon({
             <StatusAdjustButton
               side="left"
               label={`Diminuer l'intensité — ${statusLabel(id)}`}
+              tone={tone}
               disabled={intensity <= 1}
               onClick={() => onAdjust(-1)}
             >
@@ -664,6 +674,7 @@ function InteractiveStatusIcon({
             <StatusAdjustButton
               side="right"
               label={`Augmenter l'intensité — ${statusLabel(id)}`}
+              tone={tone}
               disabled={intensity >= max}
               onClick={() => onAdjust(1)}
             >
@@ -987,12 +998,14 @@ function StatusDroppableColumn({
           ...group.ids.map((id) => {
             const iconId = statusIconId(id);
             const on = appliedIds.has(id);
+            // Même code couleur que les puces/carrés : l'icône du menu porte la teinte de la famille.
+            const toneColor = `${statusTone(id)}.light`;
             return (
               <MenuItem key={id} selected={on} onClick={() => toggle(id)} dense>
                 <ListItemIcon sx={{ minWidth: 30 }}>
                   {on && <CheckIcon fontSize="small" color="primary" />}
                 </ListItemIcon>
-                {iconId && <StatusEffectIcon effect={iconId} size={16} sx={{ mr: 1 }} />}
+                {iconId && <StatusEffectIcon effect={iconId} size={16} sx={{ mr: 1, color: toneColor }} />}
                 <Typography variant="body2">{statusLabel(id)}</Typography>
               </MenuItem>
             );

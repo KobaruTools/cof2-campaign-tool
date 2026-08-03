@@ -11,16 +11,22 @@
 
 import type { DerivedMods } from '@/lib/engine/derived';
 import {
+  ENVIRONMENTAL_EFFECTS,
   SITUATIONAL_EFFECTS,
   STATUS_EFFECTS,
   type DerivedStatId,
+  type EnvironmentalEffectId,
   type SituationalEffectId,
   type StatusEffectEntry,
   type StatusEffectId,
 } from '@/data/schema';
 
-/** Identifiant d'état, indifféremment du glossaire (`StatusEffectId`) ou situationnel. */
-export type AnyStatusEffectId = StatusEffectId | SituationalEffectId;
+/**
+ * Identifiant d'état, indifféremment du glossaire (`StatusEffectId`), situationnel
+ * (`SituationalEffectId`) ou d'environnement (`EnvironmentalEffectId`). Les trois espaces d'ids sont
+ * disjoints : un id suffit à retrouver son catalogue (cf. `statusEntry`).
+ */
+export type AnyStatusEffectId = StatusEffectId | SituationalEffectId | EnvironmentalEffectId;
 
 /**
  * Un état APPLIQUÉ à un combattant : son id + (pour les états cumulatifs) son intensité courante.
@@ -68,13 +74,14 @@ const DERIVED_KEYS: DerivedStatId[] = [
 const ATTACK_KEYS: DerivedStatId[] = ['meleeAttack', 'rangedAttack', 'magicAttack'];
 
 /**
- * Retourne l'entrée de catalogue d'un id d'état, qu'il soit du glossaire ou situationnel
- * (les deux espaces d'ids sont disjoints). `undefined` si l'id est inconnu (défensif).
+ * Retourne l'entrée de catalogue d'un id d'état, qu'il soit du glossaire, situationnel ou
+ * d'environnement (les trois espaces d'ids sont disjoints). `undefined` si l'id est inconnu (défensif).
  */
 export function statusEntry(id: AnyStatusEffectId): StatusEffectEntry | undefined {
   return (
     (STATUS_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
-    (SITUATIONAL_EFFECTS as Record<string, StatusEffectEntry>)[id]
+    (SITUATIONAL_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
+    (ENVIRONMENTAL_EFFECTS as Record<string, StatusEffectEntry>)[id]
   );
 }
 

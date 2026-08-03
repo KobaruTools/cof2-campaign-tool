@@ -1289,7 +1289,9 @@ export const STATUS_EFFECT_LABELS: Record<StatusEffectId, string> = Object.fromE
  *   (b) EFFETS SITUATIONNELS NOMMÉS — CE catalogue, et SON SEUL contenu légitime : les malus/effets à
  *       mécanique PROPRE conférés par une capacité de voie, NON réductibles à un état de base.
  *   (c) MODIFICATEURS DE CIRCONSTANCE — couvert, portée longue, visibilité, désarmement, poussée… (cf.
- *       PER-40). Conditions de la scène, pas des états infligés : HORS de ce catalogue.
+ *       PER-40). Conditions de la scène, pas des états infligés : HORS de ce catalogue. Ceux d'entre eux
+ *       qui se SUIVENT par combattant sur la durée d'une scène (ex. « Combat aquatique », p. 215) ont
+ *       leur propre catalogue, `ENVIRONMENTAL_EFFECTS`.
  *
  * CRITÈRE D'ADMISSION STRICT (PER-288) : un effet qui se réduit MÉCANIQUEMENT à un état de base — « Cécité »
  * = Aveuglé ; « dé malus à tous les tests » = Affaibli — route vers l'état de base via `inflictableStates`
@@ -1358,6 +1360,42 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
 export const SITUATIONAL_EFFECT_LABELS: Record<SituationalEffectId, string> = Object.fromEntries(
   SITUATIONAL_EFFECT_IDS.map((id) => [id, SITUATIONAL_EFFECTS[id].label]),
 ) as Record<SituationalEffectId, string>;
+
+/**
+ * ÉTATS D'ENVIRONNEMENT — troisième catalogue, MÊME schéma qu'un état préjudiciable
+ * (`StatusEffectEntry`) mais famille (c) de la taxonomie PER-288 : ce ne sont NI des états infligés par
+ * une capacité, NI des effets nommés de voie, mais des CONDITIONS DE LA SCÈNE que le MJ pose sur un
+ * combattant tant qu'elle dure (« Autres conditions particulières », p. 215).
+ *
+ * Ce catalogue n'accueille QUE les conditions qui se SUIVENT par combattant sur la durée (on les
+ * applique/retire comme un état, elles modifient des chiffres). Les modificateurs ponctuels résolus au
+ * coup par coup (couvert, portée longue, désarmement, poussée…) restent HORS catalogue : ils ne se
+ * « portent » pas. Universel comme le glossaire (aucun déblocage par capacité), donc TOUJOURS proposé
+ * dans la palette du Combat Tracker — mais distingué visuellement (teinte bleue, cf. `statusTone`)
+ * pour ne pas se confondre avec un état subi.
+ */
+export const ENVIRONMENTAL_EFFECT_IDS = ['aquatic-combat'] as const;
+export type EnvironmentalEffectId = (typeof ENVIRONMENTAL_EFFECT_IDS)[number];
+
+/** Catalogue des états d'environnement. Effet recopié VERBATIM du livre de base. */
+export const ENVIRONMENTAL_EFFECTS: Record<EnvironmentalEffectId, StatusEffectEntry> = {
+  // « Combat en milieu aquatique » (p. 215). Chiffré : « dé malus en attaque » → `attackTestsMalusDie`
+  // (même mécanique qu'Immobilisé), « -5 en DEF » → `derived.def`. La division du déplacement par deux
+  // reste COMPORTEMENTALE (verbatim seul, comme toute clause de déplacement). Ne s'applique qu'aux
+  // créatures NON adaptées au combat aquatique (les PJ) : c'est le MJ qui choisit à qui il le pose.
+  'aquatic-combat': {
+    label: 'Combat aquatique',
+    effect:
+      "Lorsqu'elles combattent complètement immergées, les créatures qui ne sont pas adaptées au combat aquatique (comme les PJ) divisent leurs déplacements par deux et subissent un dé malus en attaque et -5 en DEF.",
+    sourcePage: 215,
+    modifiers: { derived: { def: -5 }, attackTestsMalusDie: true },
+  },
+};
+
+/** Libellés français des états d'environnement (affichés au joueur). Dérivé de `ENVIRONMENTAL_EFFECTS`. */
+export const ENVIRONMENTAL_EFFECT_LABELS: Record<EnvironmentalEffectId, string> = Object.fromEntries(
+  ENVIRONMENTAL_EFFECT_IDS.map((id) => [id, ENVIRONMENTAL_EFFECTS[id].label]),
+) as Record<EnvironmentalEffectId, string>;
 
 /**
  * IMMUNITÉ permanente à un ou plusieurs états/effets (PER-103). Ex. Liberté d'action

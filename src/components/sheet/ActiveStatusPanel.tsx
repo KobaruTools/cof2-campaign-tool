@@ -15,6 +15,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
+import { statusTone } from '@/lib/ui/statusPalette';
 import { isStackingStatus, type AppliedStatus } from '@/lib/character/statusEffects';
 
 export interface ActiveStatusPanelProps {
@@ -53,7 +54,7 @@ export function ActiveStatusPanel({ statuses }: ActiveStatusPanelProps) {
               {stacked && (
                 <Typography
                   variant="caption"
-                  sx={{ fontWeight: 700, color: 'error.light' }}
+                  sx={{ fontWeight: 700, color: `${statusTone(s.id)}.light` }}
                 >
                   ×{intensity}
                 </Typography>

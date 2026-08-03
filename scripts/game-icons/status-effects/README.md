@@ -1,17 +1,21 @@
-# Générateur des icônes d'immunités d'état
+# Générateur des icônes d'états de combat
 
 Télécharge les SVG de [game-icons.net](https://game-icons.net) (licence CC BY 3.0),
 les nettoie (fond retiré, couleur neutralisée en `currentColor`) et régénère
 `src/lib/ui/statusEffectIcons.ts`.
 
-Même chaîne que `scripts/game-icons/damage-types`, mais pour les **immunités
-d'état** (`ImmunityId` : peur, charme/possession, ralenti, immobilisé, sommeil
-magique). L'affichage passe par le composant `<StatusEffectIcon>`, utilisé dans
-les puces d'immunité de la carte Défense à la place du bouclier générique.
+Même chaîne que `scripts/game-icons/damage-types`, mais pour les **états de
+combat**, trois espaces d'ids qui partagent le même jeu d'icônes : les
+**immunités d'état** (`ImmunityId` : peur, charme/possession, ralenti,
+immobilisé, sommeil magique), les **états préjudiciables** du glossaire
+(`StatusEffectId`) et les **états d'environnement** (`EnvironmentalEffectId` :
+combat aquatique). L'affichage passe par le composant `<StatusEffectIcon>`,
+utilisé dans les puces d'immunité de la carte Défense (à la place du bouclier
+générique) et dans la palette d'états du Combat Tracker.
 
 ## Correspondance
 
-`map.tsv` associe chaque `ImmunityId` (cf. `src/data/schema.ts`) à son fichier
+`map.tsv` associe chaque id (cf. `src/data/schema.ts`) à son fichier
 source (`<auteur>/<icone>.svg`) dans le dépôt
 [game-icons/icons](https://github.com/game-icons/icons).
 

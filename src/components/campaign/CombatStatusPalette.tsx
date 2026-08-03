@@ -3,76 +3,39 @@
 /**
  * Palette d'états de combat de l'écran de MJ (PER-279, tranche 3 de la milestone PER-276).
  *
- * Deux groupes de PUCES à glisser vers les cartes du tracker : les **états préjudiciables** du
- * glossaire (`STATUS_EFFECT_IDS`, catalogue fermé p. 214-215) et les **effets situationnels**
- * (`SITUATIONAL_EFFECT_IDS`, catalogue ouvert, ex. « Attaque invalidante »). Chaque puce est un
+ * Trois groupes de PUCES à glisser vers les cartes du tracker : les **états préjudiciables** du
+ * glossaire (`STATUS_EFFECT_IDS`, catalogue fermé p. 214-215), les **effets situationnels**
+ * (`SITUATIONAL_EFFECT_IDS`, catalogue ouvert, ex. « Attaque invalidante ») et les **états
+ * d'environnement** (`ENVIRONMENTAL_EFFECT_IDS`, ex. « Combat aquatique », p. 215). Chaque puce est un
  * BADGE custom (jamais un `Chip` MUI, cf. préférence UI) : icône game-icons quand elle existe +
- * libellé FR, avec l'effet VERBATIM du catalogue en infobulle (renvoi de page cliquable).
+ * libellé FR, avec l'effet VERBATIM du catalogue en infobulle (renvoi de page cliquable). La TEINTE
+ * distingue les familles (rouge = état subi, bleu = condition d'environnement, cf. `statusTone`).
  *
  * Le drop applique l'état via les mutations de la tranche 2 (`applyStatus`) — le câblage
  * `@dnd-kit` (DndContext, capteurs, `onDragEnd`) vit dans la page MJ, qui enveloppe cette palette
  * ET le tracker. Repli au clic (tactile/accessibilité) : le menu à cocher des cartes réutilise
- * les mêmes helpers (`STATUS_GROUPS`, `statusLabel`, `statusIconId`).
+ * les mêmes helpers PURS (`buildStatusGroups`, `statusLabel`, `statusIconId`, `statusTone`), qui
+ * vivent dans `@/lib/ui/statusPalette` — ce fichier ne porte que le rendu.
  */
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useDraggable } from '@dnd-kit/core';
-import {
-  SITUATIONAL_EFFECT_LABELS,
-  STATUS_EFFECT_IDS,
-  STATUS_EFFECT_LABELS,
-  type SituationalEffectId,
-  type StatusEffectId,
-} from '@/data/schema';
+import type { SituationalEffectId } from '@/data/schema';
 import { statusEntry, type AnyStatusEffectId } from '@/lib/character/statusEffects';
+import {
+  buildStatusGroups,
+  statusIconId,
+  statusLabel,
+  statusTone,
+} from '@/lib/ui/statusPalette';
 import { AppTooltip } from '@/components/AppTooltip';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { SourceRef } from '@/components/SourceRef';
 
 /** Préfixe des ids `@dnd-kit` des puces de la palette (distinct des clés de combattant droppables). */
 export const STATUS_DRAG_PREFIX = 'status:';
-
-/** Un groupe de la palette (titre + ids d'états). */
-export interface StatusGroup {
-  title: string;
-  ids: readonly AnyStatusEffectId[];
-}
-
-/**
- * Construit les groupes affichés. Les états préjudiciables du glossaire sont TOUJOURS proposés
- * (liste fermée universelle) ; les effets situationnels ne sont proposés que si au moins une
- * capacité débloquée de la table les confère — `situationalIds` en est le sous-ensemble filtré
- * par l'appelant (via `character.featureIds` → `situationalEffectIds`). Groupe situationnel omis
- * quand aucun effet n'est débloqué (rien à poser).
- */
-export function buildStatusGroups(situationalIds: readonly SituationalEffectId[]): StatusGroup[] {
-  const groups: StatusGroup[] = [{ title: 'États préjudiciables', ids: STATUS_EFFECT_IDS }];
-  if (situationalIds.length > 0) groups.push({ title: 'Effets situationnels', ids: situationalIds });
-  return groups;
-}
-
-/** Ensemble des ids d'états du glossaire (pour narrower l'id vers une icône). */
-const STATUS_EFFECT_ID_SET: ReadonlySet<string> = new Set(STATUS_EFFECT_IDS);
-
-/** Libellé français d'un état, qu'il soit du glossaire ou situationnel (espaces d'ids disjoints). */
-export function statusLabel(id: AnyStatusEffectId): string {
-  return (
-    (STATUS_EFFECT_LABELS as Record<string, string>)[id] ??
-    (SITUATIONAL_EFFECT_LABELS as Record<string, string>)[id] ??
-    id
-  );
-}
-
-/**
- * Id d'icône (game-icons) d'un état, ou `null` si aucune icône ne lui correspond. Seuls les états
- * du glossaire (`StatusEffectId`) ont une icône dédiée ; les effets situationnels n'en ont pas (le
- * libellé porte alors seul l'identification).
- */
-export function statusIconId(id: AnyStatusEffectId): StatusEffectId | null {
-  return STATUS_EFFECT_ID_SET.has(id) ? (id as StatusEffectId) : null;
-}
 
 /** Infobulle « breakdown » d'un état : nom + effet verbatim + renvoi de page cliquable. */
 export function StatusEffectTooltip({ id }: { id: AnyStatusEffectId }) {
@@ -107,6 +70,7 @@ export function StatusChipVisual({
   dragging?: boolean;
 }) {
   const iconId = statusIconId(id);
+  const tone = statusTone(id);
   const chip = (
     <Box
       sx={(theme) => ({
@@ -120,13 +84,13 @@ export function StatusChipVisual({
         fontSize: '0.78rem',
         fontWeight: 600,
         whiteSpace: 'nowrap',
-        color: theme.palette.error.light,
-        bgcolor: alpha(theme.palette.error.main, 0.14),
+        color: theme.palette[tone].light,
+        bgcolor: alpha(theme.palette[tone].main, 0.14),
         // Flou d'arrière-plan (comme les carrés-icônes du tracker/projection) : garde la puce lisible
         // par-dessus l'illustration de fond de l'écran de MJ.
         backdropFilter: 'blur(6px)',
         WebkitBackdropFilter: 'blur(6px)',
-        border: `1px solid ${alpha(theme.palette.error.main, 0.45)}`,
+        border: `1px solid ${alpha(theme.palette[tone].main, 0.45)}`,
         // Ombre portée sur la surcouche de glisser pour la détacher du fond.
         boxShadow: dragging ? '0 4px 12px rgba(0, 0, 0, 0.5)' : 'none',
         userSelect: 'none',
@@ -161,7 +125,7 @@ function DraggableStatusChip({ id }: { id: AnyStatusEffectId }) {
         // Neutralise le contour de focus par défaut du `role=button` d'@dnd-kit (on garde le nôtre).
         outline: 'none',
         '&:focus-visible > *': (theme) => ({
-          boxShadow: `0 0 0 2px ${theme.palette.error.main}`,
+          boxShadow: `0 0 0 2px ${theme.palette[statusTone(id)].main}`,
         }),
       }}
     >
@@ -186,7 +150,8 @@ export function CombatStatusPalette({
       {buildStatusGroups(situationalIds).map((group, groupIndex) => (
         <Box key={group.title}>
           {/* Le groupe des états préjudiciables (toujours en tête) n'affiche PAS de titre : il est
-              universel et implicite. Seul le groupe « Effets situationnels » (conditionnel) en garde un. */}
+              universel et implicite. Les groupes suivants (« Effets situationnels », « Environnement »)
+              en gardent un — ils forment chacun leur propre ligne de puces. */}
           {groupIndex > 0 && (
             <Typography
               variant="caption"

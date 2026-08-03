@@ -280,9 +280,10 @@ dans `DAMAGE_TYPE_ICON_SOURCES` (même fichier) et dans
 ## Icônes des états de combat
 
 Les icônes des états de combat — immunités d'état (peur, charme/possession, ralenti,
-immobilisé, sommeil magique, paralysé, renversé, surpris) et états préjudiciables du
+immobilisé, sommeil magique, paralysé, renversé, surpris), états préjudiciables du
 glossaire (aveuglé, affaibli, essoufflé, étourdi, invalide…, palette du Combat Tracker,
-PER-279) — proviennent également de [game-icons.net](https://game-icons.net), sous licence
+PER-279) et états d'environnement (combat aquatique, p. 215) — proviennent également de
+[game-icons.net](https://game-icons.net), sous licence
 [Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 
 Auteurs : **Lorc**, **Sbed** et **Delapouite** (https://game-icons.net).
@@ -308,3 +309,4 @@ dans `STATUS_EFFECT_ICON_SOURCES` (même fichier) et dans
 | Essoufflé | `delapouite/lungs.svg` | Delapouite |
 | Étourdi | `lorc/star-swirl.svg` | Lorc |
 | Invalide | `lorc/broken-bone.svg` | Lorc |
+| Combat aquatique | `lorc/big-wave.svg` | Lorc |
