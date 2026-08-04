@@ -354,6 +354,10 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           // départage les égalités d'initiative. Profil incomplet (pas de dérivées) → inconnue.
           agility: view.derivedInput?.abilities.AGI,
           maxHp,
+          // Réserve de mana (surcharge manuelle prioritaire, comme la fiche) : alimente le bandeau
+          // de jauges PV + mana de la fenêtre projetée. `null` = aucun sort connu → pas
+          // de piste de mana ; profil incomplet (pas de dérivées) → pas de mana non plus.
+          manaMax: derived ? character.overrides.manaPoints ?? derived.manaPoints : null,
           combatStats,
           // États appliqués (lecture seule) — sert la projection (PER-282) ; l'écran de MJ garde en
           // plus le câblage interactif via `statusControls`.

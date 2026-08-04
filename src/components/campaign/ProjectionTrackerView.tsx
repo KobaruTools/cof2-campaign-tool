@@ -8,7 +8,7 @@
  *  - le lien de projection partageable cross-machine (`/project`, PER-271).
  *
  * Vue DÉPOUILLÉE, destinée à être affichée pour les joueurs : portrait + initiative +
- * identité, plus un bandeau fin de jauges PV + mana sur les PERSONNAGES (PER-296), en mode
+ * identité, plus un bandeau fin de jauges PV + mana sur les PERSONNAGES, en mode
  * `projection` (qui masque la jauge de PV interactive, les PV et le NC des créatures,
  * l'en-tête et le bouton « Tour suivant », et les créatures camouflées `visible:false`).
  * Pas de fond décoratif, pas de titre visible, pas de footer (le pied de page global se

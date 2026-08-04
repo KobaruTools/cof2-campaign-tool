@@ -29,8 +29,12 @@ import { GaugeBar, type GaugeSegment } from './GaugeBar';
 
 /** Hauteur d'une piste du bandeau, en pixels. */
 export const COMPACT_GAUGE_HEIGHT = 5;
-/** Filet sombre entre deux pistes (le fond de la carte se voit à travers). */
-const COMPACT_GAUGE_ROW_GAP = 1;
+/**
+ * Filet sombre entre deux pistes (le fond de la carte se voit à travers). Exporté pour que
+ * l'appelant qui n'affiche qu'une PARTIE des pistes (ex. PV + mana sur le tracker projeté)
+ * puisse calculer lui-même la hauteur à réserver.
+ */
+export const COMPACT_GAUGE_ROW_GAP = 1;
 /**
  * Hauteur TOTALE réservée par le bandeau (3 pistes + les 2 filets), à réserver en haut
  * de la carte porteuse pour que le contenu ne passe jamais dessous — quel que soit le

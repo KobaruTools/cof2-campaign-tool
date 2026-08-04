@@ -25,7 +25,12 @@
  *
  * PER-282 : la PROJECTION affiche elle aussi les badges d'états des combattants visibles, mais en
  * LECTURE SEULE (via `row.appliedStatuses` + `StatusChipVisual`, sans ✕/± ni nombres ajustés) — les
- * DEF/attaque ajustées restent secrètes côté MJ, comme le NC et les PV.
+ * DEF/attaque ajustées restent secrètes côté MJ, comme le NC et les PV des créatures.
+ *
+ * La PROJECTION porte en plus, sur les blocs de PERSONNAGES seulement, un bandeau de
+ * jauges condensées PV + mana plaqué en haut du bloc (`CompactGauges`, même modèle que les cartes de
+ * joueurs de l'écran de MJ) — la table voit ainsi la vie de tout le monde sur l'écran public. Les PV
+ * des CRÉATURES restent masqués.
  */
 import { useState, type ReactNode } from 'react';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -61,6 +66,11 @@ import {
 } from '@/lib/character/statusEffects';
 import { AppTooltip } from '@/components/AppTooltip';
 import { HpGauge, type DamageKind } from '@/components/sheet/HpGauge';
+import {
+  CompactGauges,
+  COMPACT_GAUGE_HEIGHT,
+  COMPACT_GAUGE_ROW_GAP,
+} from '@/components/sheet/CompactGauges';
 import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { StatusEffectTooltip } from '@/components/campaign/CombatStatusPalette';
@@ -146,6 +156,12 @@ export interface InitiativeRow {
   agility?: number;
   /** PV maximum. */
   maxHp: number;
+  /**
+   * Réserve de mana maximale du PERSONNAGE, pour le bandeau de jauges condensées de la
+   * fenêtre projetée. `null` = personnage sans sort (pas de piste de mana) ; absent = ligne sans
+   * mana du tout (créatures, ou personnage au profil incomplet).
+   */
+  manaMax?: number | null;
   /**
    * Statistiques de combat (DEF + attaques) affichées sur la carte de l'écran de MJ (PER-280), en
    * valeurs de BASE. Absent = non calculable (blob de créature non chargé). Rendu UNIQUEMENT sur
@@ -715,6 +731,48 @@ function ProjectionStatusStrip({ applied }: { applied: AppliedStatus[] }) {
   );
 }
 
+/**
+ * Hauteur réservée en haut d'un bloc de la fenêtre PROJETÉE pour le bandeau de jauges condensées :
+ * 2 pistes (PV + mana) et le filet qui les sépare. Réservée sur TOUS les blocs (créatures comprises,
+ * qui n'en portent pas) pour que les portraits restent alignés d'un bloc à l'autre.
+ */
+const PROJECTION_GAUGES_HEIGHT = 2 * COMPACT_GAUGE_HEIGHT + COMPACT_GAUGE_ROW_GAP;
+
+/**
+ * Bandeau de jauges PV + mana d'un PERSONNAGE en fenêtre projetée, plaqué contre le bord
+ * SUPÉRIEUR du bloc et HORS DU FLUX — même modèle que les cartes de joueurs de l'écran de MJ
+ * (`CompactGauges` : barres très fines, sans chiffre ni contrôle, le coup d'œil seul). Les joueurs
+ * voient ainsi la vie de TOUTE la table sur l'écran public ; les PV des CRÉATURES restent secrets
+ * (aucun bandeau sur leurs blocs), comme leur NC. La piste de chance est volontairement omise : ce
+ * n'est pas une information de combat.
+ */
+function ProjectionGaugesStrip({
+  depletion,
+  maxHp,
+  manaMax,
+}: {
+  depletion: Depletion;
+  maxHp: number;
+  manaMax: number | null;
+}) {
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        borderTopLeftRadius: 'inherit',
+        borderTopRightRadius: 'inherit',
+      }}
+    >
+      <CompactGauges depletion={depletion} maxHp={maxHp} manaMax={manaMax} luckMax={0} />
+    </Box>
+  );
+}
+
 /** Interactions d'états attachées à une colonne (mode écran de MJ uniquement). */
 interface ColumnStatusInteractive {
   /** Réf de la zone de drop (`@dnd-kit`). */
@@ -763,6 +821,9 @@ function CombatantColumn({
   // porte des états ou non, donc tous les blocs restent alignés quel que soit leur nombre d'états.
   const projectionStatuses = projection ? row.appliedStatuses ?? [] : [];
   const hasProjectionStatuses = projectionStatuses.length > 0;
+  // Bandeau de jauges de la projection : PERSONNAGES uniquement (les PV des créatures
+  // restent réservés au MJ) et seulement si les PV max sont connus (profil complet).
+  const showProjectionGauges = projection && !row.isCreature && row.maxHp > 0;
   return (
     <Box
       ref={interactive?.dropRef}
@@ -775,6 +836,10 @@ function CombatantColumn({
         width: projection ? 176 : 260,
         flexShrink: 0,
         p: 1.25,
+        // Projection : réserve FIXE en haut pour le bandeau de jauges PV/mana (hors du flux), sur
+        // TOUS les blocs — un bloc de créature n'en porte pas, mais garde la même réserve, donc les
+        // portraits ne se décalent jamais d'un bloc à l'autre (même parti pris que les cartes MJ).
+        ...(projection && { pt: `${PROJECTION_GAUGES_HEIGHT + 6}px` }),
         // Ancre la bande d'états absolue de la projection (PER-282) — overlay, sans réserver de place.
         position: 'relative',
         borderRadius: 2,
@@ -807,6 +872,11 @@ function CombatantColumn({
         transition: 'border-color 0.15s, box-shadow 0.15s',
       })}
     >
+      {/* Projection : bandeau de jauges PV + mana plaqué contre le bord supérieur, hors
+          du flux (la réserve `pt` du bloc lui garde la place) et écrêté par l'arrondi du bloc. */}
+      {showProjectionGauges && (
+        <ProjectionGaugesStrip depletion={row.depletion} maxHp={row.maxHp} manaMax={row.manaMax ?? null} />
+      )}
       <Stack spacing={1}>
         {/* Identité sur UNE rangée : portrait + initiative, puis nom / joueur /
             profil À DROITE (au lieu d'une rangée dédiée en dessous) — gagne de
@@ -894,8 +964,9 @@ function CombatantColumn({
           )}
         </Stack>
         {/* Barre de vie interactive (même composant que la fiche), boutons dessous.
-            Masquée en projection : les PV (joueurs ET créatures) ne sont pas montrés
-            aux joueurs, et ça libère de la hauteur. */}
+            Masquée en projection, où elle prendrait trop de hauteur : les personnages y ont à la
+            place le bandeau de jauges condensées PV + mana, et les PV des créatures
+            restent réservés au MJ. */}
         {!projection && (
           <HpGauge
             depletion={row.depletion}
@@ -1046,10 +1117,11 @@ export interface InitiativeTrackerProps {
   /**
    * Mode PROJECTION (PER-248) : la fenêtre « présentation » destinée à être projetée
    * pour les joueurs. On y masque tout ce qui est réservé au MJ ou qui prend de la place
-   * inutilement — barres de PV (joueurs ET créatures), NC des créatures, en-tête et
-   * bouton « Tour suivant ». Le tour courant reste mis en évidence (piloté depuis
-   * l'écran de MJ, reflété ici via la synchro). Ne restent que portrait + initiative +
-   * identité — et les badges d'états en lecture seule (PER-282) — en compact.
+   * inutilement — jauge de PV interactive, NC et PV des créatures, en-tête et bouton
+   * « Tour suivant ». Le tour courant reste mis en évidence (piloté depuis l'écran de MJ,
+   * reflété ici via la synchro). Ne restent que le bandeau de jauges PV + mana des
+   * personnages, portrait + initiative + identité, et les badges d'états en
+   * lecture seule (PER-282) — en compact.
    */
   projection?: boolean;
   /**
