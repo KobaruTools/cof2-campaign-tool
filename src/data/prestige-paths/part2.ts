@@ -1160,6 +1160,31 @@ export const prestigeFeatures2: Feature[] = [
       "L'arme du personnage brille d'une lumière magique équivalente à une torche pour le reste du combat. Elle occasionne +1d4° DM supplémentaire aux morts-vivants, aux créatures démoniaques ou aux animaux corrompus par le mal. Alternativement, si cette voie est choisie par un barbare qui déteste la magie, la lame ne brille pas et les DM supplémentaires sont juste le fruit de sa hargne.",
     richText:
       "L'arme du personnage brille d'une lumière magique équivalente à une torche pour le reste du combat. Elle occasionne +{1d4°} DM supplémentaire aux morts-vivants, aux créatures démoniaques ou aux animaux corrompus par le mal. Alternativement, si cette voie est choisie par un barbare qui déteste la magie, la lame ne brille pas et les DM supplémentaires sont juste le fruit de sa hargne.",
+    // L'illumination est un ÉTAT de durée (« pour le reste du combat ») déclenché par une action de
+    // mouvement → interrupteur temporaire, sur le patron de la Rage du berserk et de l'épée enflammée
+    // du chevalier dragon (r6, p. 148) : tant qu'il est actif, la carte ATTAQUE AU CONTACT porte une
+    // puce de +1d4° DM. Le supplément reste SITUATIONNEL (la condition porte sur la nature de la CIBLE,
+    // que la fiche ne connaît pas). Aucun compteur : le livre ne donne aucune fréquence à ce rang.
+    // La clause alternative du barbare (la lame ne brille pas, les DM sont « le fruit de sa hargne »)
+    // est purement descriptive — même mécanique, seule l'illumination disparaît.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        // Marqueur d'état pur : l'illumination ne touche aucune stat dérivée, elle ajoute des DM.
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'épée de lumière', activeByDefault: false },
+      },
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 1, die: 'd4', evolving: true },
+        condition: {
+          attackMode: 'melee',
+          label: 'épée de lumière (morts-vivants, créatures démoniaques, animaux corrompus)',
+        },
+        requiresActiveEffectIndex: 0,
+        situational: true,
+      },
+    ],
     sourcePage: 149,
   },
   {
@@ -1193,6 +1218,21 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par combat, le personnage résiste totalement à un sort ou un effet magique de son choix. De plus, il est immunisé aux effets de corruption : drain, affaiblissement, pourriture, empoisonnement ou maladie provoqués par les morts-vivants, les démons ou les animaux maléfiques ou corrompus.",
+    // « Une fois par combat » → un usage rechargé à la RÉCUPÉRATION RAPIDE (arbitrage propriétaire,
+    // identique au r8 du combattant des tunnels). `hideFromStatusPanel` : règle d'office des voies de
+    // prestige — l'usage se suit sur la carte de la capacité, jamais en jauge dans « État du personnage ».
+    usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
+    // Immunités de corruption : seuls l'EMPOISONNEMENT et la MALADIE ont un type de dégâts au
+    // catalogue (`RESISTIBLE_DAMAGE_TYPES`). Le drain, l'affaiblissement et la pourriture n'en ont
+    // aucun et restent en verbatim (arbitrage propriétaire — ne pas inventer trois types pour une
+    // seule capacité). La restriction à la SOURCE (« provoqués par les morts-vivants… ») n'est pas
+    // exprimable par une portée typée : elle passe par `note`, affichée en source du badge pour
+    // qu'on ne croie pas à une immunité générale au poison.
+    damageReduction: {
+      kind: 'immunity',
+      scopes: ['poison', 'disease'],
+      note: 'Seulement si provoqués par les morts-vivants, les démons ou les animaux maléfiques ou corrompus.',
+    },
     sourcePage: 149,
   },
 
