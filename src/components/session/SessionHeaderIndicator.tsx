@@ -10,8 +10,16 @@
  * `useActiveSession` (avec battement — un humain consulte sa fiche) et le canal Realtime :
  * un seul point de montage par page, pas de double poll ni de double canal. N'affiche
  * RIEN hors session active.
+ *
+ * Suite PER-271 : le point porte désormais son libellé (`showLabel`), et le détail au
+ * survol offre un accès direct à l'ordre d'initiative — routé selon le rôle du spectateur
+ * (joueur → `/play/initiative`, MJ → sa fenêtre de présentation), car `/play/initiative`
+ * renverrait un MJ sans claim joueur vers l'accueil.
  */
+import Link from 'next/link';
+import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
 import { AppTooltip } from '@/components/AppTooltip';
@@ -41,13 +49,37 @@ export function SessionHeaderIndicator({ campaignId, identity }: SessionHeaderIn
   const state = sessionConnectionState(status, online);
   const selfKey = identity ? presenceKeyFor(identity.kind, identity.playerId) : undefined;
 
-  // Détail au survol : état de connexion en clair + liste des connectés (si synchronisée).
+  // Cible de l'écran d'initiative selon le rôle : un joueur va sur la route distante
+  // scopée par sa session ; le MJ sur sa fenêtre de présentation (cid connu). Sans identité
+  // résolue on n'affiche pas le lien (on ignore la bonne cible).
+  const trackerHref =
+    identity?.kind === 'player'
+      ? '/play/initiative'
+      : identity?.kind === 'gm' && campaignId
+        ? `/campaign/${campaignId}/gm-screen/tracker`
+        : null;
+
+  // Détail au survol : état de connexion en clair + liste des connectés (si synchronisée)
+  // + accès direct à l'ordre d'initiative. Le tooltip MUI est interactif par défaut : le
+  // lien y est cliquable.
   const detail = (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, py: 0.25 }}>
       <Typography variant="body2" sx={{ fontWeight: 600 }}>
         {sessionConnectionLabel(state)}
       </Typography>
       <SessionPresence present={present} selfKey={selfKey} />
+      {trackerHref && (
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<FormatListNumberedIcon />}
+          component={Link}
+          href={trackerHref}
+          sx={{ alignSelf: 'flex-start', mt: 0.25 }}
+        >
+          Voir l&apos;ordre d&apos;initiative
+        </Button>
+      )}
     </Box>
   );
 
@@ -55,7 +87,7 @@ export function SessionHeaderIndicator({ campaignId, identity }: SessionHeaderIn
     <AppTooltip title={detail}>
       {/* Box porteur de ref/handlers pour le Tooltip (le badge est un composant simple). */}
       <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
-        <SessionConnectionBadge state={state} />
+        <SessionConnectionBadge state={state} showLabel />
       </Box>
     </AppTooltip>
   );

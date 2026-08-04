@@ -44,6 +44,7 @@ import { CharacterListSkeleton } from '@/components/character-list/CharacterList
 import { CharacterStatusMarker } from '@/components/character-list/CharacterStatusMarker';
 import { ClassIcon } from '@/components/ClassIcon';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
+import { OpenPlayTrackerWindowButton } from '@/components/campaign/OpenPlayTrackerWindowButton';
 import { PlayerSessionBar } from '@/components/session/PlayerSessionBar';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { summarize } from '@/lib/character/summary';
@@ -296,8 +297,10 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
         />
         {/* Accès à l'écran distant d'ordre d'initiative (PER-293) : lecture seule, mis à jour
             en direct pendant une session. Toujours proposé (l'écran indique lui-même s'il y a
-            une session en cours), pour que le joueur retrouve le lien même hors combat. */}
-        <Box sx={{ mt: 1.5 }}>
+            une session en cours), pour que le joueur retrouve le lien même hors combat.
+            Deux gestes (suite PER-271) : navigation in-app (marche partout, y compris mobile)
+            et « Nouvelle fenêtre » (popup panoramique pour un second écran, masquée < md). */}
+        <Stack direction="row" sx={{ mt: 1.5, gap: 1, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             size="small"
@@ -307,7 +310,8 @@ export function PlayClient({ playerId, campaignId }: PlayClientProps) {
           >
             Voir l&apos;ordre d&apos;initiative
           </Button>
-        </Box>
+          <OpenPlayTrackerWindowButton />
+        </Stack>
       </Box>
       <Paper elevation={0} sx={sectionSx}>
         <Stack
