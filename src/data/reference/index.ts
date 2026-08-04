@@ -5,7 +5,11 @@
  * `maneuvers.ts`, `attack-modifiers.ts`, `special-actions.ts`, `tactical-options.ts`, plus les ÉTATS
  * préjudiciables ADAPTÉS de `STATUS_EFFECTS` via `statusEffectToReference()` (source unique — cf.
  * `schema.ts`, on ne les re-stocke pas ici). PER-41 (résolution) est livré : `tests.ts`, `damage.ts`,
- * `magic.ts`. PER-42 (`environment.ts`, `gear.ts`, `encumbrance.ts`) viendra s'agréger de la même façon.
+ * `magic.ts`. PER-42 (environnement) est livré : `environment.ts` (poisons, pièges, structures, saut/chute/
+ * feu/chaleur/froid), `encumbrance.ts` (déplacement / montures / marche forcée) et `travel.ts` (dangers du
+ * voyage : dangerosité, test de progression, hiver) s'agrègent ici de la même façon. Pas de fichier `gear.ts` :
+ * la Partie III n'a pas de bloc de règles « matériel d'aventure » distinct (les stats de matériel relèvent du
+ * chapitre Équipement).
  */
 
 export * from './schema';
@@ -20,6 +24,9 @@ import { TACTICAL_OPTIONS } from './tactical-options';
 import { TESTS } from './tests';
 import { DAMAGE } from './damage';
 import { MAGIC } from './magic';
+import { ENVIRONMENT } from './environment';
+import { ENCUMBRANCE } from './encumbrance';
+import { TRAVEL } from './travel';
 
 export { MANEUVERS } from './maneuvers';
 export { ATTACK_MODIFIERS } from './attack-modifiers';
@@ -28,6 +35,9 @@ export { TACTICAL_OPTIONS } from './tactical-options';
 export { TESTS } from './tests';
 export { DAMAGE } from './damage';
 export { MAGIC } from './magic';
+export { ENVIRONMENT } from './environment';
+export { ENCUMBRANCE } from './encumbrance';
+export { TRAVEL } from './travel';
 
 /**
  * Mots-clés de recherche (français) par état préjudiciable — l'adaptation ne connaît que l'id et le
@@ -55,7 +65,10 @@ export const COMBAT_STATES: ReferenceTextEntry[] = STATUS_EFFECT_IDS.map((id) =>
   statusEffectToReference(id, { tags: STATE_TAGS[id] }),
 );
 
-/** Toutes les entrées d'aide-mémoire connues à ce jour (combat — PER-40 ; résolution — PER-41). */
+/**
+ * Toutes les entrées d'aide-mémoire connues à ce jour (combat — PER-40 ; résolution — PER-41 ;
+ * environnement / encombrement — PER-42).
+ */
 export const REFERENCE_ENTRIES: ReferenceEntry[] = [
   ...COMBAT_STATES,
   ...MANEUVERS,
@@ -65,4 +78,7 @@ export const REFERENCE_ENTRIES: ReferenceEntry[] = [
   ...TESTS,
   ...DAMAGE,
   ...MAGIC,
+  ...ENVIRONMENT,
+  ...ENCUMBRANCE,
+  ...TRAVEL,
 ];
