@@ -601,3 +601,29 @@ describe('PER-74 — le drake du chevalier dragon (p. 147-148)', () => {
     );
   });
 });
+
+describe('replacesCreatureFromPaths — améliorer, jamais ajouter (PER-74)', () => {
+  it('sans aucun rang de la voie ciblée : AUCUN compagnon surgi du rang remplaçant', () => {
+    // Données incomplètes (voie de prestige prise sans Monture fantastique) : le rang 7 améliore une
+    // monture, il n'en crée pas. Mieux vaut aucune carte qu'un drake apparu à côté de rien.
+    const c = char({
+      classId: 'chevalier',
+      level: 16,
+      featureIds: ['prestige-chevalier-dragon-r7', 'prestige-chevalier-dragon-r8'],
+    });
+    expect(listCompanions(c)).toEqual([]);
+    // La mini-fiche reste consultable sur la carte du rang lui-même.
+    expect(displayCreatureProfile(featureById.get('prestige-chevalier-dragon-r7')!, c)?.name).toBe('Drake');
+  });
+
+  it('Monture fantastique acquise SANS monture choisie : le drake améliore la Fidèle monture (r1), sans doublon', () => {
+    const c = char({
+      classId: 'chevalier',
+      level: 16,
+      featureIds: ['cavalier-r1', 'cavalier-r2', 'cavalier-r5', 'prestige-chevalier-dragon-r7'],
+    });
+    const companions = listCompanions(c);
+    expect(companions).toHaveLength(1);
+    expect(companions[0].profile.defense).toBe('22');
+  });
+});

@@ -388,3 +388,36 @@ describe('weaponDamageBonuses — flibustier « Pas de quartier » (+1d4° situa
     expect(weaponDamageBonuses(flibustier(30), 'melee', epeeLongue).situational).toEqual([]);
   });
 });
+
+describe('weaponDamageBonuses — Épée de feu du chevalier dragon (+1d4° de feu, PER-74)', () => {
+  // L'embrasement (« pour [5 + CHA] rounds », p. 148) est l'interrupteur temporaire index 0 du rang ;
+  // le dé de DM au contact le suit (`requiresActiveEffectIndex: 0`), sur le patron de la rage berserk.
+  const knight = (lit: boolean) =>
+    makeCharacter({
+      classId: 'chevalier',
+      featureIds: ['cavalier-r5', 'prestige-chevalier-dragon-r6'],
+      effectToggles: lit ? { 'prestige-chevalier-dragon-r6': [true] } : {},
+    });
+
+  it('épée non enflammée (défaut) → aucun bonus', () => {
+    expect(weaponDamageBonuses(knight(false), 'melee', epeeLongue).situational).toEqual([]);
+  });
+
+  it('épée enflammée → +1d4° situationnel au contact, libellé « feu »', () => {
+    const r = weaponDamageBonuses(knight(true), 'melee', epeeLongue);
+    expect(r.situational).toHaveLength(1);
+    expect(r.situational[0]).toMatchObject({
+      dice: { count: 1, die: 'd4', evolving: true },
+      featureId: 'prestige-chevalier-dragon-r6',
+    });
+    expect(r.situational[0].conditionLabel).toMatch(/feu/);
+  });
+
+  it('épée enflammée mais mode distance → aucun bonus (contact seulement)', () => {
+    expect(weaponDamageBonuses(knight(true), 'ranged', arcLong).situational).toEqual([]);
+  });
+
+  it('épée enflammée mais mains nues → aucun bonus (suit l’arme de contact maniée)', () => {
+    expect(weaponDamageBonuses(knight(true), 'melee', null).situational).toEqual([]);
+  });
+});

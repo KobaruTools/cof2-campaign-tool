@@ -906,12 +906,29 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['M'],
     text:
       "Le cavalier peut enflammer son épée pour [5 + CHA] rounds. Elle inflige dès lors +1d4° DM de feu.",
-    // PER-74 — mise en forme SEULE (arbitrage propriétaire) : la durée devient une quantité calculée
-    // (puce bleue), le supplément de DM un dé évolutif. Le livre ne donne AUCUNE fréquence à ce rang
-    // (ni « une fois par combat », ni par jour) : pas de compteur d'usage, donc, et pas d'interrupteur
-    // — l'embrasement se joue à la table.
+    // PER-74 — durée en quantité calculée (puce bleue) et supplément de DM en dé évolutif.
     richText:
       "Le cavalier peut enflammer son épée pour [=5 + CHA] rounds. Elle inflige dès lors +{1d4°} DM de feu.",
+    // L'embrasement est un ÉTAT de durée (« pour [5 + CHA] rounds ») → interrupteur temporaire, sur le
+    // patron de la Rage du berserk : tant qu'il est actif, la carte ATTAQUE AU CONTACT porte une puce
+    // de +1d4° DM de FEU (dé situationnel gaté par l'interrupteur, `requiresActiveEffectIndex`), qui
+    // suit l'arme de contact réellement maniée. Aucun compteur d'usage : le livre ne donne AUCUNE
+    // fréquence à ce rang (ni par combat, ni par jour).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        // Marqueur d'état pur : l'embrasement ne touche aucune stat dérivée, il ajoute des DM.
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'épée enflammée', activeByDefault: false },
+      },
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 1, die: 'd4', evolving: true },
+        condition: { attackMode: 'melee', label: 'épée enflammée (DM de feu)' },
+        requiresActiveEffectIndex: 0,
+        situational: true,
+      },
+    ],
     sourcePage: 148,
   },
   {

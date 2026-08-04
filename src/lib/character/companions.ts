@@ -433,14 +433,16 @@ export function listCompanions(character: Character): CompanionEntry[] {
   for (const [pathId, entry] of [...byPath]) {
     const targets = entry.profile.replacesCreatureFromPaths;
     if (!targets?.length) continue;
-    let replaced = false;
     for (const target of targets) {
       const victim = byPath.get(target);
       if (!victim || target === pathId) continue;
       byPath.set(target, { feature: victim.feature, profile: entry.profile });
-      replaced = true;
     }
-    if (replaced) byPath.delete(pathId);
+    // Le rang remplaçant ne produit JAMAIS de compagnon à lui : c'est une AMÉLIORATION de la créature
+    // existante, pas un ajout. On retire donc son entrée même quand aucune voie cible n'a de compagnon
+    // à améliorer (données incomplètes — ex. Monture fantastique acquise sans monture choisie) : mieux
+    // vaut aucune carte qu'une seconde créature surgie de nulle part à côté de la monture du joueur.
+    byPath.delete(pathId);
   }
   // Développe chaque voie retenue en entrées d'affichage : une seule pour un compagnon classique,
   // N pour un compagnon multi-instances (une par instance vivante de `companionInstances`).
