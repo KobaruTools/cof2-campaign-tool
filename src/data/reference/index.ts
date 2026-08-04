@@ -1,53 +1,59 @@
 /**
  * AIDE-MÉMOIRE — point d'entrée du domaine de référence (PER-39).
  *
- * Ré-exporte le schéma et accueillera les catalogues d'extraction (PER-40 `maneuvers.ts`,
- * `attack-modifiers.ts`… ; PER-41 `tests.ts`, `damage.ts`, `magic.ts` ; PER-42 `environment.ts`,
- * `gear.ts`, `encumbrance.ts`). Les ÉTATS ne sont PAS un catalogue de ce domaine : ils sont adaptés
- * de `STATUS_EFFECTS` via `statusEffectToReference()` (source unique — cf. `schema.ts`).
- *
- * Ci-dessous : DEUX exemples FACTICES, uniquement pour valider le typage. Aucune donnée réelle tant
- * que l'extraction (validée contre le PDF) n'a pas eu lieu — ils seront supprimés par PER-40/41/42.
+ * Ré-exporte le schéma et agrège les catalogues d'extraction. PER-40 (combat) est livré :
+ * `maneuvers.ts`, `attack-modifiers.ts`, `special-actions.ts`, `tactical-options.ts`, plus les ÉTATS
+ * préjudiciables ADAPTÉS de `STATUS_EFFECTS` via `statusEffectToReference()` (source unique — cf.
+ * `schema.ts`, on ne les re-stocke pas ici). PER-41 (`tests.ts`, `damage.ts`, `magic.ts`) et PER-42
+ * (`environment.ts`, `gear.ts`, `encumbrance.ts`) viendront s'agréger de la même façon.
  */
 
 export * from './schema';
 
-import type { ReferenceEntry } from './schema';
+import { STATUS_EFFECT_IDS } from '@/data/schema';
+import type { ReferenceEntry, ReferenceTextEntry } from './schema';
+import { statusEffectToReference } from './schema';
+import { MANEUVERS } from './maneuvers';
+import { ATTACK_MODIFIERS } from './attack-modifiers';
+import { SPECIAL_ACTIONS } from './special-actions';
+import { TACTICAL_OPTIONS } from './tactical-options';
+
+export { MANEUVERS } from './maneuvers';
+export { ATTACK_MODIFIERS } from './attack-modifiers';
+export { SPECIAL_ACTIONS } from './special-actions';
+export { TACTICAL_OPTIONS } from './tactical-options';
 
 /**
- * EXEMPLES FACTICES — à SUPPRIMER lors de l'extraction. Ils valident les deux formes du schéma
- * (`text` avec `test`, et `table`). Contenu volontairement non-verbatim : ne pas s'y fier comme règle.
+ * Mots-clés de recherche (français) par état préjudiciable — l'adaptation ne connaît que l'id et le
+ * verbatim, on enrichit donc les `tags` pour la recherche interne (le titre FR est déjà indexé).
  */
-export const REFERENCE_EXAMPLES: ReferenceEntry[] = [
-  {
-    kind: 'text',
-    id: 'example-maneuver',
-    title: 'Manœuvre (exemple)',
-    section: 'combat',
-    subsection: 'maneuvers',
-    icon: undefined,
-    tags: ['exemple'],
-    sourcePage: 0, // TODO(extraction): remplacé par la vraie page (PER-40).
-    shortEffect: 'Effet court d’une ligne pour le badge.',
-    body: 'Verbatim complet de la manœuvre, tel qu’il sera recopié du livre lors de l’extraction.',
-    test: 'Test opposé d’attaque (mod. CHA)',
-  },
-  {
-    kind: 'table',
-    id: 'example-table',
-    title: 'Table (exemple)',
-    section: 'resolution',
-    subsection: 'tests',
-    tags: ['exemple'],
-    sourcePage: 0, // TODO(extraction): remplacé par la vraie page (PER-41).
-    columns: [
-      { key: 'level', label: 'Niveau' },
-      { key: 'value', label: 'Difficulté' },
-    ],
-    rows: [
-      { level: 'Très facile', value: '5' },
-      { level: 'Facile', value: '10' },
-    ],
-    note: 'Renvoi ou précision verbatim sous le tableau.',
-  },
+const STATE_TAGS: Record<(typeof STATUS_EFFECT_IDS)[number], string[]> = {
+  blinded: ['aveuglé', 'cécité', 'attaque à distance'],
+  weakened: ['affaibli', 'dé malus', 'tests'],
+  winded: ['essoufflé', 'déplacement', 'fatigue'],
+  dazed: ['étourdi', 'aucune action', 'DEF'],
+  immobilized: ['immobilisé', 'déplacement', 'dé malus'],
+  crippled: ['invalide', 'déplacement'],
+  paralyzed: ['paralysé', 'critique', 'touché automatiquement'],
+  slowed: ['ralenti', 'une action', 'round'],
+  prone: ['renversé', 'se relever', 'DEF'],
+  surprised: ['surpris', 'embuscade', 'premier round'],
+};
+
+/**
+ * États préjudiciables (glossaire p. 214-215) ADAPTÉS en entrées d'aide-mémoire. Aucune donnée d'état
+ * n'est recopiée : `statusEffectToReference()` projette `STATUS_EFFECTS` (verbatim + page portés par la
+ * source unique). L'UI (fiche / tiroir MJ / page PER-46) pourra enrichir icône et `shortEffect` plus tard.
+ */
+export const COMBAT_STATES: ReferenceTextEntry[] = STATUS_EFFECT_IDS.map((id) =>
+  statusEffectToReference(id, { tags: STATE_TAGS[id] }),
+);
+
+/** Toutes les entrées d'aide-mémoire connues à ce jour (combat — PER-40). */
+export const REFERENCE_ENTRIES: ReferenceEntry[] = [
+  ...COMBAT_STATES,
+  ...MANEUVERS,
+  ...ATTACK_MODIFIERS,
+  ...SPECIAL_ACTIONS,
+  ...TACTICAL_OPTIONS,
 ];
