@@ -983,6 +983,34 @@ for (const c of features) {
   }
 }
 
+// --- Armes à deux mains maniables à une main (Poigne de fer, p. 149, PER-74) ---
+// `twoHandedInOneHand.weaponFamilies` : liste non vide, sans doublon, chaque famille reconnue, et au
+// moins une arme de CONTACT à deux mains du catalogue concernée (sinon la capacité ne ferait rien).
+for (const c of features) {
+  const grip = c.twoHandedInOneHand;
+  if (!grip) continue;
+  if (!Array.isArray(grip.weaponFamilies) || grip.weaponFamilies.length === 0)
+    err(`[capacite ${c.id}] twoHandedInOneHand: weaponFamilies vide`);
+  const seen = new Set<string>();
+  for (const fam of grip.weaponFamilies ?? []) {
+    if (!validWeaponFamilies.has(fam))
+      err(`[capacite ${c.id}] twoHandedInOneHand: famille inconnue : ${fam}`);
+    if (seen.has(fam)) err(`[capacite ${c.id}] twoHandedInOneHand: famille en double : ${fam}`);
+    seen.add(fam);
+    const covered = equipment.some(
+      (item) =>
+        item.category === 'weapon' &&
+        item.melee &&
+        item.weaponCategory === 'twoHands' &&
+        (item.weaponFamilies ?? []).includes(fam),
+    );
+    if (!covered)
+      err(
+        `[capacite ${c.id}] twoHandedInOneHand: aucune arme de contact à deux mains dans la famille ${fam}`,
+      );
+  }
+}
+
 // --- Effets situationnels (catalogue SITUATIONAL_EFFECTS, PER-74) --------------
 // `situationalEffectIds` : liste non vide, sans doublon, chaque id reconnu (SITUATIONAL_EFFECT_IDS).
 const validSituational = new Set<string>(SITUATIONAL_EFFECT_IDS);

@@ -64,7 +64,7 @@ import {
   spendMana,
 } from './gauges';
 import { longRest, shortRest } from './rest';
-import { setWornAt } from './equipment';
+import { oneHandableWeaponFamilies, setWornAt } from './equipment';
 import {
   hasItemCharges,
   refillItemCharges as refillCharges,
@@ -400,7 +400,16 @@ export function setEquipmentWorn(
   index: number,
   worn: WornState | undefined,
 ): Partial<Character> {
-  return { equipment: setWornAt(character.equipment, index, worn) };
+  // PER-74 : les familles d'armes maniables à une main (Poigne de fer du colosse) évitent de renvoyer
+  // le bouclier au sac quand l'arme à deux mains est posée à UNE main.
+  return {
+    equipment: setWornAt(
+      character.equipment,
+      index,
+      worn,
+      oneHandableWeaponFamilies(character.featureIds),
+    ),
+  };
 }
 
 /** Bourse (PER-152) : argent possédé, état de jeu transitoire (non touché par un repos). */

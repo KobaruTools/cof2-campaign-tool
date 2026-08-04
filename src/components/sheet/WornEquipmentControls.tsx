@@ -12,9 +12,13 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { equipmentById } from '@/data';
-import type { Weapon } from '@/data/schema';
+import type { Weapon, WeaponFamily } from '@/data/schema';
 import type { ArmorRestrictionViolation } from '@/lib/character/armorRestrictions';
-import { equipConflicts } from '@/lib/character/equipment';
+import {
+  equipConflicts,
+  wornWeaponGripIsChoosable,
+  wornWeaponIsTwoHanded,
+} from '@/lib/character/equipment';
 import { itemType } from '@/lib/character/items';
 import { isWeaponMastered } from '@/lib/character/mastery';
 import type { TwoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
@@ -118,6 +122,10 @@ export function WornBadge({ worn }: { worn: WornState }) {
  *    intrinsèquement à deux mains) + choix de la prise (1 / 2 mains) pour une arme
  *    « à une ou deux mains ». Un nouveau clic sur l'état actif déséquipe.
  *
+ * `oneHandableFamilies` (PER-74, Poigne de fer du colosse) : familles d'armes à deux mains que CE
+ * personnage sait tenir à une main — une épée ou une hache à deux mains y expose alors les mêmes
+ * boutons qu'une arme « à une ou deux mains ». Vide (défaut) = comportement du livre.
+ *
  * Les objets personnalisés (hors catalogue) et le matériel (`gear`) n'ont pas de
  * statistiques mondaines connues du moteur, mais peuvent être équipés comme ACCESSOIRE
  * (bottes, cape, anneau…) : un simple bouton « Équiper » (slot `accessory`, non
@@ -126,9 +134,11 @@ export function WornBadge({ worn }: { worn: WornState }) {
 export function WornControls({
   line,
   onWear,
+  oneHandableFamilies = [],
 }: {
   line: EquipmentLine;
   onWear: (worn: WornState | undefined) => void;
+  oneHandableFamilies?: readonly WeaponFamily[];
 }) {
   const custom = isCustomItem(line);
   const item = custom ? null : equipmentById.get(line.itemId);
@@ -154,18 +164,23 @@ export function WornControls({
   }
 
   if (item && item.category === 'weapon') {
-    const intrinsicTwoHands = item.weaponCategory === 'twoHands';
-    const canChooseGrip = item.weaponCategory === 'oneOrTwoHands';
+    // Prise au choix : arme « à une ou deux mains » du livre, ou arme à deux mains rendue maniable à
+    // une main par une capacité (Poigne de fer du colosse, PER-74). Une arme à deux mains n'est
+    // « intrinsèquement » à deux mains que lorsqu'aucune prise n'est offerte.
+    const canChooseGrip = wornWeaponGripIsChoosable(line, oneHandableFamilies);
+    const intrinsicTwoHands = item.weaponCategory === 'twoHands' && !canChooseGrip;
 
     // Position combinée de l'arme (PER-219) : « main principale » et « deux mains » sont
     // désormais deux boutons frères (pour une arme « à une ou deux mains »), au lieu d'un
     // choix de prise séparé. Une arme intrinsèquement à deux mains n'expose QUE « Deux mains ».
+    // La position affichée suit le MOTEUR (`wornWeaponIsTwoHanded`) et non la seule catégorie : une
+    // arme à deux mains sans prise notée compte à deux mains, y compris pour un colosse (PER-74).
     const position: WeaponPosition | null = !line.worn
       ? null
       : line.worn.slot === 'offHand'
         ? 'offHand'
         : line.worn.slot === 'mainHand'
-          ? intrinsicTwoHands || line.worn.grip === 'twoHands'
+          ? wornWeaponIsTwoHanded(line, oneHandableFamilies)
             ? 'twoHands'
             : 'mainHand'
           : null;
@@ -176,10 +191,14 @@ export function WornControls({
       canChooseGrip ? { slot: 'mainHand', grip: 'oneHand' } : { slot: 'mainHand' };
     const twoHandsWorn = (): WornState =>
       canChooseGrip ? { slot: 'mainHand', grip: 'twoHands' } : { slot: 'mainHand' };
+    // Main secondaire : la prise `oneHand` est notée EXPLICITEMENT dès qu'elle est au choix — pour une
+    // arme à deux mains maniable à une main (PER-74), l'absence de prise vaudrait « à deux mains ».
+    const offHandWorn = (): WornState =>
+      canChooseGrip ? { slot: 'offHand', grip: 'oneHand' } : { slot: 'offHand' };
 
     const setPosition = (next: WeaponPosition | null) => {
       if (next === 'mainHand') onWear(mainHandWorn());
-      else if (next === 'offHand') onWear({ slot: 'offHand' });
+      else if (next === 'offHand') onWear(offHandWorn());
       else if (next === 'twoHands') onWear(twoHandsWorn());
       else onWear(undefined);
     };
@@ -273,8 +292,15 @@ export function WornControls({
  * portés. Le combat à deux armes reste légal et n'apparaît pas ici. `null` si aucun
  * conflit. Partagée par la fiche, l'étape équipement du wizard et le récapitulatif.
  */
-export function EquipConflictsAlert({ equipment }: { equipment: EquipmentLine[] }) {
-  const conflicts = equipConflicts(equipment);
+export function EquipConflictsAlert({
+  equipment,
+  oneHandableFamilies = [],
+}: {
+  equipment: EquipmentLine[];
+  /** PER-74 — familles d'armes à deux mains maniables à une main (Poigne de fer) : lèvent le conflit. */
+  oneHandableFamilies?: readonly WeaponFamily[];
+}) {
+  const conflicts = equipConflicts(equipment, oneHandableFamilies);
   if (conflicts.length === 0) return null;
   return (
     <AppAlert severity="warning" title="Chargement incohérent">

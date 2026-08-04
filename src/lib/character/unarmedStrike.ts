@@ -3,13 +3,14 @@
  * personnage pour la carte « Attaque au contact » (bascule arme ⇄ mains nues).
  *
  * Le cas commun est figé par le livre : `1d3 + FOR` contondants, DM temporaires /
- * non létaux (arme `mains-nues`, p. 183 ; DM temporaires p. 219). Deux profils
- * modifient leur mains nues et sont agrégés ici comme un bloc d'arme :
+ * non létaux (arme `mains-nues`, p. 183 ; DM temporaires p. 219). Trois sources
+ * modifient les mains nues et sont agrégées ici comme un bloc d'arme :
  * - MOINE (voies de moine, p. 119-121) : DM létaux au choix (trait de profil),
  *   Poings de fer (dé qui monte par rang, FOR→AGI aux DM), Mains d'énergie
  *   (attaques magiques, FOR→VOL aux DM), Griffes du tigre (1 au dé → max, choix du
  *   type de DM), Morsure du serpent (plage de critique +1 au contact) ;
- * - ARQUEBUSIER — Pilier de bar (p. 64) : `1d4°` non létal, sans caractéristique.
+ * - ARQUEBUSIER — Pilier de bar (p. 64) : `1d4°` non létal, sans caractéristique ;
+ * - COLOSSE — Stature de géant (voie de prestige, p. 149) : `1d6` fixe au lieu de `1d3`.
  *
  * On AFFICHE (dé, carac, létalité, plage de critique) : aucun jet n'est résolu.
  * La TOUCHE n'est pas recalculée ici (identique à l'attaque au contact, base + FOR,
@@ -122,6 +123,18 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
   // Trait de profil du moine (p. 119) : DM létaux AU CHOIX à mains nues — le moine maîtrise sa force
   // et décide toujours si le coup est létal ou non (jamais forcé).
   if (isMonk) lethality = 'choice';
+
+  // COLOSSE — Stature de géant (voie de prestige du colosse, r4, p. 149, PER-74) : « il inflige 1d6 DM
+  // à mains nues ». Simple surcharge du dé de la table des armes (1d3 → 1d6) : la FOR reste ajoutée aux
+  // DM, et la létalité reste celle du livre (non létal p. 219 — le colosse n'a pas le contrôle du moine).
+  // Le dé est FIXE (aucun « ° »), il ne monte pas avec le niveau. Placé AVANT Poings de fer : un colosse
+  // qui serait aussi moine garde le dé du moine, toujours supérieur ou égal (1d6 dès le rang 1, p. 121).
+  if (has('prestige-colosse-r4')) {
+    damage = { count: 1, die: 'd6' };
+    evolving = false;
+    damageAbilities = addAbility(damageAbilities, 'FOR');
+    sources = addSource(sources, 'prestige-colosse-r4');
+  }
 
   // Poings de fer (p. 121) : dé qui monte avec le rang de la voie du poing ; FOR→AGI possible (best-of,
   // choix de table validé sur `poing-r1`). La létalité reste AU CHOIX (« il peut, s'il le souhaite… »).

@@ -1250,6 +1250,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le colosse est considéré comme faisant une taille de plus que sa taille réelle (grande au lieu de moyenne, par exemple) pour déterminer s'il peut être affecté par les capacités spéciales des créatures et des adversaires (fauchage, agripper, etc.). De plus il inflige 1d6 DM à mains nues.",
+    richText:
+      "Le colosse est considéré comme faisant une taille de plus que sa taille réelle (grande au lieu de moyenne, par exemple) pour déterminer s'il peut être affecté par les capacités spéciales des créatures et des adversaires (fauchage, agripper, etc.). De plus il inflige {1d6} DM à mains nues.",
     sourcePage: 149,
   },
   {
@@ -1261,6 +1263,21 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le colosse gagne immédiatement 5 PV supplémentaires, auxquels il ajoute sa CON.",
+    // « ajoute sa CON » → balisage en MODIFICATEUR `[CON]` (patron `chasseur-r1` du rôdeur, « ajoute
+    // sa [PER] aux DM ») : la prose garde le déterminant « sa », qu'une quantité `[=CON]` casserait
+    // (« il ajoute sa 3 »). Le « 5 » est un littéral, rien à baliser.
+    richText:
+      "Le colosse gagne immédiatement 5 PV supplémentaires, auxquels il ajoute sa [CON].",
+    // Gain de PV PERMANENT et inconditionnel = 5 + CON → `stat-bonus maxHp` SOMME d'un littéral et
+    // d'une valeur scalante (patron `brute-r1` « ajoute sa FOR à son maximum de PV », p. 79). Le
+    // « immédiatement » du livre ne change rien au calcul : les PV suivent la CON courante.
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'maxHp',
+        value: { scale: 'sum', parts: [5, { scale: 'ability', ability: 'CON' }] },
+      },
+    ],
     sourcePage: 149,
   },
   {
@@ -1271,6 +1288,11 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: false,
     actionTypes: [],
     text: "Le colosse augmente sa valeur de FOR de +1.",
+    // « augmente sa valeur de FOR de +1 » → effet `ability-bonus` (cf. `docs/extraction/rich-text-format.md`) :
+    // s'ajoute au TOTAL de la caractéristique par-dessus la valeur saisie et apparaît dans le détail de
+    // la carac, donc se répercute d'office sur l'attaque au contact, les DM, les tests de FOR et le
+    // plafond de port d'armure. Aucun balisage : le « +1 » est un littéral.
+    effects: [{ kind: 'ability-bonus', ability: 'FOR', value: 1 }],
     sourcePage: 149,
   },
   {
@@ -1282,6 +1304,18 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le colosse peut utiliser une arme à deux mains à une seule main (épée ou hache à deux mains). À deux mains, il peut utiliser une arme prévue pour une créature de taille grande qui inflige 2d8 DM au lieu de 2d6.",
+    // (a) « une arme à deux mains à une seule main (épée ou hache à deux mains) » → MÉCANISÉ : sous ce
+    // rang, une épée ou une hache à deux mains devient une arme « à une ou deux mains » (boutons de
+    // prise « Une main / Deux mains »), et tenue à une main elle laisse la seconde libre pour un
+    // bouclier — plus d'avertissement « les deux mains sont déjà prises ». Les familles sont
+    // explicites parce que le livre énumère : le bâton, la pique, le fléau ou la faux restent à deux
+    // mains. Le bonus de DEF de la voie des armes à deux mains (p. 146) suit la prise RÉELLE, donc il
+    // s'éteint quand le colosse passe à une main : c'est le comportement RAW attendu.
+    // (b) « une arme prévue pour une créature de taille grande … 2d8 DM au lieu de 2d6 » → géré par
+    // les VARIANTES D'OBJET (PER-211, arbitrage propriétaire) : le joueur duplique son arme dans la
+    // modale d'objet et lui pose 2d8 en DM (ex. « Épée à deux mains (taille grande) »). Aucune entrée
+    // de catalogue à inventer : le livre ne chiffre que le dé, et l'arme reste celle du personnage.
+    twoHandedInOneHand: { weaponFamilies: ['swords', 'axes'] },
     sourcePage: 149,
   },
   {
@@ -1293,6 +1327,21 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le colosse rassemble toute sa puissance pour porter une attaque absolument dévastatrice en dépensant toute la rage accumulée jusque-là. L'attaque obtient un bonus de +5 pour toucher et un bonus aux DM de +1d4°/round de combat contre cette créature. Si la cible a un NC inférieur au niveau du colosse, elle est immédiatement affaiblie pour 1 round pour chaque round de combat. Pour le bonus au dégât comme pour l'état affaibli, on comptabilise tous les rounds précédents durant lesquels le personnage a attaqué la créature au moins une fois (maximum 5 rounds).",
+    richText:
+      "Une fois par combat, le colosse rassemble toute sa puissance pour porter une attaque absolument dévastatrice en dépensant toute la rage accumulée jusque-là. L'attaque obtient un bonus de +5 pour toucher et un bonus aux DM de +{1d4°}/round de combat contre cette créature. Si la cible a un NC inférieur au niveau du colosse, elle est immédiatement affaiblie pour 1 round pour chaque round de combat. Pour le bonus au dégât comme pour l'état affaibli, on comptabilise tous les rounds précédents durant lesquels le personnage a attaqué la créature au moins une fois (maximum 5 rounds).",
+    // « Une fois par combat » → un usage rechargé à la RÉCUPÉRATION RAPIDE (arbitrage propriétaire,
+    // constant sur les r8 de prestige) ; `hideFromStatusPanel` = règle d'office des voies de prestige
+    // (l'usage se suit sur la carte de la capacité, jamais en jauge dans « État du personnage »).
+    usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
+    // « elle est immédiatement affaiblie » → l'état AFFAIBLI du glossaire (`weakened`), posé sur la cible
+    // depuis le tracker de combat (patron `archer-r5`, PER-290). Un seul marqueur : la capacité elle-même
+    // est limitée à un usage par combat.
+    inflictableStates: { stateIds: ['weakened'], resetOn: 'combat' },
+    // NON MÉCANISÉS, en verbatim (arbitrage propriétaire) : le « +5 pour toucher » et le « +1d4°/round »
+    // portent sur UNE attaque et non sur le score d'attaque du personnage (un `attack-bonus` s'ajouterait
+    // en permanence à la carte au contact) ; et la cadence « par round de combat, maximum 5 rounds »
+    // n'a aucune primitive — `usageCounter.resetOn` ne connaît pas le round. Le seuil « NC inférieur au
+    // niveau du colosse » se lit à la table (la fiche ignore le NC de la cible).
     sourcePage: 150,
   },
 

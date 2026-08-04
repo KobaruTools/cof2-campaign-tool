@@ -23,7 +23,7 @@
  * modèle structuré de dégâts (PER-217), encore en cours de migration.
  */
 import { equipmentById } from '@/data';
-import { wornWeaponIsTwoHanded } from './equipment';
+import { oneHandableWeaponFamilies, wornWeaponIsTwoHanded } from './equipment';
 import { getSelection } from './choices';
 import { isCustomItem } from './types';
 import type { Character } from './types';
@@ -65,6 +65,9 @@ const NO_TWO_WEAPON_COMBAT: TwoWeaponCombatStatus = {
 export function twoWeaponCombatStatus(character: Character): TwoWeaponCombatStatus {
   let mainHandWeaponId: string | null = null;
   let offHandWeaponId: string | null = null;
+  // PER-74 — un colosse (Poigne de fer) tenant son épée à deux mains d'UNE main garde l'autre libre :
+  // le combat à deux armes lui redevient accessible.
+  const oneHandable = oneHandableWeaponFamilies(character.featureIds);
 
   for (const line of character.equipment ?? []) {
     if (isCustomItem(line) || !line.worn) continue;
@@ -74,7 +77,7 @@ export function twoWeaponCombatStatus(character: Character): TwoWeaponCombatStat
       // Une arme tenue à deux mains occupe les deux mains : pas de combat à deux armes
       // (une seconde arme en main serait de toute façon un conflit de mains, cf.
       // `equipConflicts`).
-      if (wornWeaponIsTwoHanded(line)) return NO_TWO_WEAPON_COMBAT;
+      if (wornWeaponIsTwoHanded(line, oneHandable)) return NO_TWO_WEAPON_COMBAT;
       mainHandWeaponId = line.itemId;
     } else if (line.worn.slot === 'offHand') {
       offHandWeaponId = line.itemId;

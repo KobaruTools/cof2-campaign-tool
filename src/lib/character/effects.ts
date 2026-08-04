@@ -64,6 +64,7 @@ import {
   abilityBonusesFromEquipment,
   isHeavyArmorWorn,
   isTwoHandedMeleeWeaponWielded,
+  oneHandableWeaponFamilies,
   testBonusSourcesFromEquipment,
   wornMeleeWeapon,
   wornMeleeWeaponLine,
@@ -487,7 +488,11 @@ export function effectContext(character: Character): EffectContext {
     pathRankCounts: pathRankCountsFromFeatures(character.featureIds),
     armorWorn: isArmorWorn(character.equipment),
     heavyArmorWorn: isHeavyArmorWorn(character.equipment),
-    twoHandedMeleeWielded: isTwoHandedMeleeWeaponWielded(character.equipment),
+    // PER-74 : la prise à une main d'un colosse (Poigne de fer) éteint la condition « à deux mains ».
+    twoHandedMeleeWielded: isTwoHandedMeleeWeaponWielded(
+      character.equipment,
+      oneHandableWeaponFamilies(character.featureIds),
+    ),
     ridingOptionIds: ridingMountOptionIds(character),
   };
 }
@@ -2873,7 +2878,10 @@ function weaponCriticalConditionMet(
     // PER-74 — « avec toutes les armes à deux mains » (Critique destructeur, p. 146) : on suit la
     // PRISE réelle et non la seule catégorie, donc une épée bâtarde tenue à deux mains compte.
     case 'twoHandedMelee':
-      return isTwoHandedMeleeWeaponWielded(character.equipment);
+      return isTwoHandedMeleeWeaponWielded(
+        character.equipment,
+        oneHandableWeaponFamilies(character.featureIds),
+      );
     case 'rangedKinds':
       return (
         !!weapon?.ranged && !!weapon.rangedKind && condition.rangedKinds.includes(weapon.rangedKind)

@@ -3468,6 +3468,21 @@ export interface Feature {
    */
   grantsEquipment?: { itemId: string };
   /**
+   * ARMES À DEUX MAINS MANIABLES À UNE SEULE MAIN (PER-74) — Poigne de fer (voie du colosse, r7,
+   * p. 149) : « Le colosse peut utiliser une arme à deux mains à une seule main (épée ou hache à
+   * deux mains). » Sous cette capacité, une arme de CONTACT intrinsèquement à deux mains des
+   * `weaponFamilies` déclarées se comporte comme une arme « à une ou deux mains » : le joueur
+   * choisit sa prise (`WornState.grip`) et, tenue à une main, elle libère la seconde main (bouclier
+   * ou seconde arme) au lieu de déclencher le conflit « les deux mains sont déjà prises ».
+   *
+   * Les FAMILLES sont explicites parce que le livre énumère (« épée ou hache ») : le catalogue
+   * compte bien d'autres armes à deux mains (bâton, pique, fléau, faux…) que la capacité ne couvre
+   * pas. Voir `oneHandableWeaponFamilies` (`equipment.ts`), qui agrège ce champ sur les capacités
+   * acquises et se propage au comptage des mains, aux conflits de port et au combat à deux armes.
+   * Absent = la capacité ne change aucune prise.
+   */
+  twoHandedInOneHand?: { weaponFamilies: WeaponFamily[] };
+  /**
    * MODIFICATION PHYSIQUE D'ARMES octroyée par cette capacité (PER-284) : débloque, sous elle, une
    * section où le joueur DÉSIGNE les armes de son inventaire à bricoler (chargeur de l'Arme à
    * répétition, second canon du Canon double). L'état vit sur les lignes d'équipement retenues

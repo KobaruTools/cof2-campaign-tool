@@ -47,7 +47,13 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { equipment as equipmentCatalog, testDomainById } from '@/data';
-import type { AbilityId, CharacterClass, EquipmentItem, PrestigeCategory } from '@/data/schema';
+import type {
+  AbilityId,
+  CharacterClass,
+  EquipmentItem,
+  PrestigeCategory,
+  WeaponFamily,
+} from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import type {
   EquipmentLine,
@@ -911,6 +917,13 @@ export interface EquipmentListProps {
    */
   twoWeaponStatus?: TwoWeaponCombatStatus;
   /**
+   * PER-74 — familles d'armes à DEUX MAINS que le personnage sait manier à UNE MAIN (Poigne de fer du
+   * colosse, r7, p. 149 ; résolu par `oneHandableWeaponFamilies`). Ouvre les boutons de prise sur ces
+   * armes et lève le conflit « les deux mains sont déjà prises » quand elles sont tenues à une main.
+   * Absent → comportement du livre (une arme à deux mains occupe les deux mains).
+   */
+  oneHandableFamilies?: readonly WeaponFamily[];
+  /**
    * Résolveur d'écart de port armure/bouclier (PER-80) : pour une ligne d'inventaire, rend la
    * violation de plafond de port qui la concerne (armure trop lourde, bouclier interdit), ou
    * `null`. Pose sur la ligne fautive un badge « warning » (pendant du badge « Non maîtrisée »
@@ -1059,6 +1072,7 @@ export function EquipmentList({
   extraMasteredWeaponIds,
   resolveWeaponAffinities,
   twoWeaponStatus,
+  oneHandableFamilies,
   resolveArmorRestriction,
   resolveCriticalRange,
   resolveBoundWeapon,
@@ -1353,7 +1367,11 @@ export function EquipmentList({
             hors mode édition), sinon un simple badge « équipé » en lecture. */}
         {wearable && onWear && (
           <Box sx={{ mt: 0.5 }}>
-            <WornControls line={line} onWear={(w) => onWear(i, w)} />
+            <WornControls
+              line={line}
+              onWear={(w) => onWear(i, w)}
+              oneHandableFamilies={oneHandableFamilies}
+            />
           </Box>
         )}
         {wearable && !onWear && line.worn && (
@@ -1765,7 +1783,7 @@ export function EquipmentList({
   return (
     <Stack spacing={onChange ? 1.5 : 0}>
       {/* Conflits de port DURS (bouclier + arme à 2 mains, >1 armure/bouclier) — non bloquant (PER-77). */}
-      <EquipConflictsAlert equipment={equipment} />
+      <EquipConflictsAlert equipment={equipment} oneHandableFamilies={oneHandableFamilies} />
       {/* PER-286 : une capacité octroie un objet absent de l'inventaire (couleuvrine du rang 5 de
           l'artilleur acquis avant la règle, ou objet supprimé). On PROPOSE, on ne réimpose pas. */}
       {grantedMissing && grantedMissing.length > 0 && onAddGranted && (

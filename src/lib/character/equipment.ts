@@ -10,8 +10,8 @@
  * Cette logique commune vit ici pour rester unique (source de vérité de « quoi
  * équiper d'office »). L'UI d'équipement/déséquipement manuel relève de PER-77.
  */
-import { equipmentById, testDomains } from '@/data';
-import type { AbilityId, Weapon } from '@/data/schema';
+import { equipmentById, featureById, testDomains } from '@/data';
+import type { AbilityId, Weapon, WeaponFamily } from '@/data/schema';
 import { ABILITY_IDS } from '@/data/schema';
 import type {
   EquipmentLine,
@@ -86,21 +86,77 @@ export function autoEquipStartingGear(lines: EquipmentLine[]): EquipmentLine[] {
 }
 
 /**
+ * PER-74 — FAMILLES d'armes à deux mains que les capacités ACQUISES rendent maniables à UNE SEULE
+ * MAIN (Poigne de fer du colosse, r7, p. 149 : « épée ou hache à deux mains »). Agrège le champ
+ * `Feature.twoHandedInOneHand` des capacités possédées ; liste vide = aucune dérogation, le cas de
+ * la quasi-totalité des personnages.
+ *
+ * Prend des `featureIds` et non un `Character` pour rester en amont d'`effects.ts` (qui importe ce
+ * module) : aucune capacité de ce genre n'est gatée par l'armure, la liste brute suffit.
+ */
+export function oneHandableWeaponFamilies(featureIds: readonly string[] = []): WeaponFamily[] {
+  const families: WeaponFamily[] = [];
+  for (const id of featureIds) {
+    for (const family of featureById.get(id)?.twoHandedInOneHand?.weaponFamilies ?? []) {
+      if (!families.includes(family)) families.push(family);
+    }
+  }
+  return families;
+}
+
+/**
  * Une arme PORTÉE occupe-t-elle les deux mains ? Vrai si elle est intrinsèquement à
  * deux mains (`weaponCategory: 'twoHands'`) ou si le joueur a choisi la prise à deux
  * mains d'une arme `oneOrTwoHands` (`worn.grip === 'twoHands'`). Faux pour les armes
  * à une main / légères et pour toute arme rangée. Les objets personnalisés (hors
  * catalogue) suivent leur seule prise déclarée, faute de catégorie connue.
+ *
+ * `oneHandableFamilies` (PER-74) liste les familles d'armes de CONTACT à deux mains que le
+ * personnage sait tenir à une main (Poigne de fer du colosse) : une arme de ces familles se comporte
+ * alors comme une arme « à une ou deux mains ». Le défaut reste les DEUX mains — seule une prise
+ * explicitement notée `oneHand` la libère, pour que les personnages existants (aucun `grip` sur une
+ * arme intrinsèquement à deux mains) gardent leur chargement.
  */
-export function wornWeaponIsTwoHanded(line: EquipmentLine): boolean {
+export function wornWeaponIsTwoHanded(
+  line: EquipmentLine,
+  oneHandableFamilies: readonly WeaponFamily[] = [],
+): boolean {
   if (!line.worn) return false;
   if (isCustomItem(line)) return line.worn.grip === 'twoHands';
   // Catégorie d'arme EFFECTIVE (surcharge de variante prise en compte, PER-211).
   const item = effectiveItem(line);
   if (item?.category !== 'weapon') return false;
-  if (item.weaponCategory === 'twoHands') return true;
+  if (item.weaponCategory === 'twoHands') {
+    return isOneHandable(item, oneHandableFamilies) ? line.worn.grip !== 'oneHand' : true;
+  }
   if (item.weaponCategory === 'oneOrTwoHands') return line.worn.grip === 'twoHands';
   return false;
+}
+
+/**
+ * PER-74 — cette arme à deux mains est-elle de celles que le personnage sait manier à une main
+ * (famille couverte par Poigne de fer) ? Restreint aux armes de CONTACT : un arc ou un mousquet
+ * n'entre dans aucune famille couverte, mais le filtre le dit explicitement.
+ */
+function isOneHandable(item: Weapon, oneHandableFamilies: readonly WeaponFamily[]): boolean {
+  if (oneHandableFamilies.length === 0 || !item.melee) return false;
+  return (item.weaponFamilies ?? []).some((family) => oneHandableFamilies.includes(family));
+}
+
+/**
+ * PER-74 — le joueur PEUT-IL choisir la prise de cette ligne d'arme ? Vrai pour une arme « à une ou
+ * deux mains » du livre, et pour une arme à deux mains couverte par Poigne de fer. Sert aux boutons
+ * de position/prise de l'inventaire (`WornControls`), pour n'ouvrir le choix que quand il existe.
+ */
+export function wornWeaponGripIsChoosable(
+  line: EquipmentLine,
+  oneHandableFamilies: readonly WeaponFamily[] = [],
+): boolean {
+  if (isCustomItem(line)) return false;
+  const item = effectiveItem(line);
+  if (item?.category !== 'weapon') return false;
+  if (item.weaponCategory === 'oneOrTwoHands') return true;
+  return item.weaponCategory === 'twoHands' && isOneHandable(item, oneHandableFamilies);
 }
 
 /**
@@ -113,9 +169,12 @@ export function wornWeaponIsTwoHanded(line: EquipmentLine): boolean {
  * « Tenir à distance ». Les objets personnalisés (hors catalogue) sont ignorés, faute de savoir
  * s'ils frappent au contact. Sans-safe.
  */
-export function isTwoHandedMeleeWeaponWielded(equipment: EquipmentLine[] = []): boolean {
+export function isTwoHandedMeleeWeaponWielded(
+  equipment: EquipmentLine[] = [],
+  oneHandableFamilies: readonly WeaponFamily[] = [],
+): boolean {
   return equipment.some((line) => {
-    if (!wornWeaponIsTwoHanded(line) || isCustomItem(line)) return false;
+    if (!wornWeaponIsTwoHanded(line, oneHandableFamilies) || isCustomItem(line)) return false;
     const item = effectiveItem(line);
     return item?.category === 'weapon' && !!item.melee;
   });
@@ -196,7 +255,7 @@ export function wornRangedWeapon(equipment: EquipmentLine[]): Weapon | null {
  *  - arme en main : 2 si tenue à deux mains (voir `wornWeaponIsTwoHanded`), sinon 1 ;
  *  - accessoire : 0 (bottes/cape/anneau…, n'occupe aucune main).
  */
-function handsUsedByLine(line: EquipmentLine): number {
+function handsUsedByLine(line: EquipmentLine, oneHandableFamilies: readonly WeaponFamily[]): number {
   const worn = line.worn;
   if (!worn) return 0;
   switch (worn.slot) {
@@ -205,7 +264,7 @@ function handsUsedByLine(line: EquipmentLine): number {
     case 'shield':
       return 1;
     case 'mainHand':
-      return wornWeaponIsTwoHanded(line) ? 2 : 1;
+      return wornWeaponIsTwoHanded(line, oneHandableFamilies) ? 2 : 1;
     case 'offHand':
       return 1;
     case 'accessory':
@@ -240,8 +299,14 @@ export interface EquipConflict {
  * Détecte les conflits de port DURS d'une liste d'équipement (PER-77). Ne considère
  * que les objets marqués `worn` (le sac n'entre jamais en conflit). Ne PRÉVIENT rien
  * (la fiche reste permissive) : renvoie la liste des incohérences à signaler.
+ *
+ * `oneHandableFamilies` (PER-74, Poigne de fer) : une épée / hache à deux mains tenue à une main par
+ * un colosse n'occupe qu'UNE main → bouclier et seconde arme cessent d'être un conflit.
  */
-export function equipConflicts(equipment: EquipmentLine[]): EquipConflict[] {
+export function equipConflicts(
+  equipment: EquipmentLine[],
+  oneHandableFamilies: readonly WeaponFamily[] = [],
+): EquipConflict[] {
   const conflicts: EquipConflict[] = [];
   let armorCount = 0;
   let shieldCount = 0;
@@ -252,7 +317,7 @@ export function equipConflicts(equipment: EquipmentLine[]): EquipConflict[] {
     if (!line.worn) continue;
     if (line.worn.slot === 'armor') armorCount += 1;
     else if (line.worn.slot === 'shield') shieldCount += 1;
-    handsUsed += handsUsedByLine(line);
+    handsUsed += handsUsedByLine(line, oneHandableFamilies);
     if (!isCustomItem(line)) {
       if (line.itemId === 'carquois-de-20-fleches') quiverWorn = true;
       else if (line.itemId === 'sac-a-dos') backpackWorn = true;
@@ -572,11 +637,16 @@ export function agiTestArmorAdjustment(
  * C'est le seul conflit de mains RÉSOLU activement ici ; les autres incohérences
  * (plusieurs armures/boucliers, ou un bouclier posé APRÈS coup sur une arme à deux
  * mains) restent SIGNALÉES par `equipConflicts` sur la fiche permissive.
+ *
+ * `oneHandableFamilies` (PER-74, Poigne de fer) : une épée / hache à deux mains posée avec la prise
+ * `oneHand` par un colosse n'occupe qu'une main → elle ne renvoie NI le bouclier NI la seconde arme
+ * au sac.
  */
 export function setWornAt(
   equipment: EquipmentLine[],
   index: number,
   worn: WornState | undefined,
+  oneHandableFamilies: readonly WeaponFamily[] = [],
 ): EquipmentLine[] {
   const exclusiveHand =
     worn && (worn.slot === 'mainHand' || worn.slot === 'offHand') ? worn.slot : null;
@@ -586,7 +656,7 @@ export function setWornAt(
   const freesOtherHand =
     worn?.slot === 'mainHand' &&
     target !== undefined &&
-    wornWeaponIsTwoHanded({ ...target, worn });
+    wornWeaponIsTwoHanded({ ...target, worn }, oneHandableFamilies);
   return equipment.map((line, i) => {
     if (i === index) return { ...line, worn };
     if (exclusiveHand && line.worn?.slot === exclusiveHand) return { ...line, worn: undefined };

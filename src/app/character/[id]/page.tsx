@@ -35,6 +35,7 @@ import type { CharacterStatus, DerivedStatId, EquipmentLine, Identity } from '@/
 import { isCustomItem } from '@/lib/character/types';
 import { modifierDeltas } from '@/lib/character/ancestry';
 import { armorRestrictionByLine } from '@/lib/character/armorRestrictions';
+import { oneHandableWeaponFamilies } from '@/lib/character/equipment';
 import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/mastery';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { weaponAffinities } from '@/lib/character/weaponAffinity';
@@ -1245,6 +1246,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               resolveWeaponAffinities={(itemId) => weaponAffinities(character, itemId)}
               // Indicateur « combat à deux armes → dé malus » (PER-116) par arme en main.
               twoWeaponStatus={twoWeaponCombatStatus(character)}
+              // Poigne de fer du colosse (PER-74) : familles d'armes à deux mains maniables à une main
+              // → boutons de prise sur ces armes, et bouclier compatible sans avertissement.
+              oneHandableFamilies={oneHandableWeaponFamilies(character.featureIds)}
               // Indicateur « armure trop lourde / bouclier interdit » (PER-80) par ligne équipée.
               resolveArmorRestriction={(line) => armorRestrictionByLine(character, rulesContext).get(line) ?? null}
               // Plage de critique de l'arme en main (PER-74) : puce « 19-20 » sur la ligne, cumulant
