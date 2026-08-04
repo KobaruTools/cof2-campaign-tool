@@ -1005,6 +1005,21 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le combattant devient capable de voir dans le noir à une distance de 10 m (ou il augmente la portée de celle-ci de 10 m). De plus, il obtient +5 à tous les tests de survie et d'orientation en milieu souterrain.",
+    // PER-74 — « en milieu souterrain » est une SITUATION de jeu que rien dans la fiche ne peut
+    // deviner (ni l'équipement, ni un état suivi) → interrupteur manuel, patron du rang 4 du
+    // chevalier dragon : `bonuses` vide (aucune stat dérivée touchée, le bonus est aux COMPÉTENCES) +
+    // `testBonusDomains`/`testBonusValue` (PER-117). La vision dans le noir reste verbatim : c'est une
+    // portée en mètres, pas un test — et le livre prévoit lui-même le cas du peuple qui l'a déjà.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        testBonusDomains: ['survival', 'orientation'],
+        // +5 explicite : le fallback de catégorie prestige donnerait « 2 + min(rang, 5) » = 6.
+        testBonusValue: 5,
+        activation: { kind: 'condition', label: 'en milieu souterrain' },
+      },
+    ],
     sourcePage: 148,
   },
   {
@@ -1016,6 +1031,21 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque l'espace est réduit, le combattant des tunnels ne subit plus de dé malus en attaque avec une arme plus longue qu'une dague. Il peut utiliser une arme à deux mains avec un dé malus. De plus, puisqu'il peut rarement esquiver, le combattant améliore ses techniques de parade, il gagne +1 en DEF et ce bonus passe à +2 au rang 7, tant qu'il tient une arme en main. Ce bonus s'applique même en dehors d'un combat en milieu confiné.",
+    // PER-74 — bonus de DEF PERMANENT (arbitrage propriétaire) : le livre insiste lui-même, « ce bonus
+    // s'applique même en dehors d'un combat en milieu confiné ». Palier +1 → +2 au rang 7, donc valeur
+    // scalante par rang de voie (patron de la RD du chevalier dragon).
+    // ÉCART RAW ASSUMÉ : la clause « tant qu'il tient une arme en main » n'est PAS mécanisée — un gate
+    // « une arme quelconque en main » n'existe pas (on n'a que armure / armure lourde / arme à deux
+    // mains) et un combattant des tunnels tient une arme par définition. Le reste du rang (dé malus en
+    // espace réduit, arme à deux mains) se gère À LA TABLE : la notion d'« espace réduit » n'existe pas
+    // dans l'application.
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 5, value: 1 }, { min: 7, value: 2 }] },
+      },
+    ],
     sourcePage: 148,
   },
   {
@@ -1027,6 +1057,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par round, le personnage inflige automatiquement 1d4° DM à chaque adversaire à son contact dont le NC est inférieur ou égal à la moitié de son propre niveau (il doit pouvoir agir et avoir une arme en main).",
+    // PER-74 — mise en forme SEULE : le dé évolutif est balisé. Aucun compteur (« une fois par round »
+    // est une cadence de tour, pas une réserve d'usages — et l'application n'a pas de réinitialisation
+    // par round) ; le seuil « NC ≤ la moitié de son niveau » reste verbatim (il porte sur la CIBLE).
+    richText:
+      "Une fois par round, le personnage inflige automatiquement {1d4°} DM à chaque adversaire à son contact dont le NC est inférieur ou égal à la moitié de son propre niveau (il doit pouvoir agir et avoir une arme en main).",
     sourcePage: 148,
   },
   {
@@ -1038,6 +1073,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le combattant des tunnels inflige +1d4° DM aux créatures de tailles Petite ou inférieures (striges, kobolds, etc.). Ce bonus s'applique aussi aux DM qu'il inflige aux nuées.",
+    // PER-74 — mise en forme SEULE (arbitrage propriétaire) : dé évolutif balisé, pas de puce sur la
+    // carte d'attaque. La condition porte sur la TAILLE DE LA CIBLE, que la fiche ne connaît pas.
+    richText:
+      "Le combattant des tunnels inflige +{1d4°} DM aux créatures de tailles Petite ou inférieures (striges, kobolds, etc.). Ce bonus s'applique aussi aux DM qu'il inflige aux nuées.",
     sourcePage: 148,
   },
   {
@@ -1049,6 +1088,14 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Une fois par combat, dans une cavité de moins de 6 m de hauteur, le combattant des tunnels peut frapper le sol ou un mur pour faire s'écrouler la voûte sur ses adversaires. Tous les adversaires dans une zone de 10 × 10 m face à lui subissent 4d4° DM à cause des rochers qui tombent du plafond. La zone affectée devient un terrain difficile et les créatures réduites à 0 PV sont ensevelies sous l'éboulis.",
+    // PER-74 — dé évolutif balisé ; la cavité, la zone, le terrain difficile et l'ensevelissement
+    // restent verbatim (narratif de table).
+    richText:
+      "Une fois par combat, dans une cavité de moins de 6 m de hauteur, le combattant des tunnels peut frapper le sol ou un mur pour faire s'écrouler la voûte sur ses adversaires. Tous les adversaires dans une zone de 10 × 10 m face à lui subissent {4d4°} DM à cause des rochers qui tombent du plafond. La zone affectée devient un terrain difficile et les créatures réduites à 0 PV sont ensevelies sous l'éboulis.",
+    // « Une fois par combat » → compteur d'un usage rechargé à la RÉCUPÉRATION RAPIDE (choix du
+    // propriétaire). `hideFromStatusPanel` : règle d'office des voies de prestige — l'usage se suit sur
+    // la carte de la capacité, jamais en jauge dans « État du personnage ».
+    usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
     sourcePage: 148,
   },
 
