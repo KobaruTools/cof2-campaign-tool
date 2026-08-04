@@ -75,6 +75,10 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'fighter',
     prerequisites: '',
+    // PER-74 : présentation de la voie (p. 148) en info-bulle « i » de l'en-tête, verbatim. La voie
+    // n'a AUCUN prérequis dans le livre (contrairement au chevalier dragon).
+    note:
+      "Le combattant des tunnels est le spécialiste de la survie dans l'outre-monde, le monde souterrain, mais c'est aussi et surtout un combattant redoutable parfaitement formé à éliminer les dangereuses hordes goblinoïdes qui pullulent sous terre.",
     featureIds: [
       'prestige-combattant-des-tunnels-r4',
       'prestige-combattant-des-tunnels-r5',
