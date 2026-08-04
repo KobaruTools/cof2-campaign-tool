@@ -4,8 +4,8 @@
  * Ré-exporte le schéma et agrège les catalogues d'extraction. PER-40 (combat) est livré :
  * `maneuvers.ts`, `attack-modifiers.ts`, `special-actions.ts`, `tactical-options.ts`, plus les ÉTATS
  * préjudiciables ADAPTÉS de `STATUS_EFFECTS` via `statusEffectToReference()` (source unique — cf.
- * `schema.ts`, on ne les re-stocke pas ici). PER-41 (`tests.ts`, `damage.ts`, `magic.ts`) et PER-42
- * (`environment.ts`, `gear.ts`, `encumbrance.ts`) viendront s'agréger de la même façon.
+ * `schema.ts`, on ne les re-stocke pas ici). PER-41 (résolution) est livré : `tests.ts`, `damage.ts`,
+ * `magic.ts`. PER-42 (`environment.ts`, `gear.ts`, `encumbrance.ts`) viendra s'agréger de la même façon.
  */
 
 export * from './schema';
@@ -17,11 +17,17 @@ import { MANEUVERS } from './maneuvers';
 import { ATTACK_MODIFIERS } from './attack-modifiers';
 import { SPECIAL_ACTIONS } from './special-actions';
 import { TACTICAL_OPTIONS } from './tactical-options';
+import { TESTS } from './tests';
+import { DAMAGE } from './damage';
+import { MAGIC } from './magic';
 
 export { MANEUVERS } from './maneuvers';
 export { ATTACK_MODIFIERS } from './attack-modifiers';
 export { SPECIAL_ACTIONS } from './special-actions';
 export { TACTICAL_OPTIONS } from './tactical-options';
+export { TESTS } from './tests';
+export { DAMAGE } from './damage';
+export { MAGIC } from './magic';
 
 /**
  * Mots-clés de recherche (français) par état préjudiciable — l'adaptation ne connaît que l'id et le
@@ -49,11 +55,14 @@ export const COMBAT_STATES: ReferenceTextEntry[] = STATUS_EFFECT_IDS.map((id) =>
   statusEffectToReference(id, { tags: STATE_TAGS[id] }),
 );
 
-/** Toutes les entrées d'aide-mémoire connues à ce jour (combat — PER-40). */
+/** Toutes les entrées d'aide-mémoire connues à ce jour (combat — PER-40 ; résolution — PER-41). */
 export const REFERENCE_ENTRIES: ReferenceEntry[] = [
   ...COMBAT_STATES,
   ...MANEUVERS,
   ...ATTACK_MODIFIERS,
   ...SPECIAL_ACTIONS,
   ...TACTICAL_OPTIONS,
+  ...TESTS,
+  ...DAMAGE,
+  ...MAGIC,
 ];
