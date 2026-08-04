@@ -165,6 +165,12 @@ export function AppHeader({
           label="Bestiaire"
           condensed={condensed}
         />
+        <HeaderNavButton
+          href="/reference"
+          icon={<SectionIcon name="notes" size={20} />}
+          label="Aide-mémoire"
+          condensed={condensed}
+        />
 
         {/* Espace flexible qui pousse le cluster droit tout à droite. */}
         <Box sx={{ flexGrow: 1 }} />
