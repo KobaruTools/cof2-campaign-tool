@@ -1738,8 +1738,33 @@ export interface FinesseAttackEffect {
   ability: AbilityId;
   /** Caractéristique remplacée (FOR au contact). */
   replaces: AbilityId;
-  /** Ids d'armes de contact éligibles (main principale, ou vivelame tenue à deux mains). */
+  /**
+   * Ids d'armes de contact éligibles TENUES À UNE MAIN (« lorsqu'il emploie une arme légère à une
+   * main », p. 66/77 ; « sur les attaques de sa main principale », p. 140). Une arme de cette liste
+   * empoignée à DEUX mains (`worn.grip === 'twoHands'`) ne compte PAS.
+   */
   weaponIds: string[];
+  /**
+   * Ids d'armes éligibles alors qu'elles sont tenues À DEUX MAINS — dérogation portée par l'arme
+   * elle-même, pas par la capacité : la vivelame (p. 183) admet la substitution AGI→FOR « s'il
+   * maîtrise les armes de contact à deux mains », d'où la condition de MAÎTRISE vérifiée par le
+   * résolveur. Absent = aucune arme à deux mains n'ouvre droit à la finesse.
+   */
+  twoHandedWeaponIds?: string[];
+  /**
+   * Modes OFFERTS par la capacité. Absent = les deux (arbitrage « touche OU DM » du duelliste).
+   * Précision (barde, p. 66) et Attaque en finesse (voleur, p. 77) ne substituent QU'À LA TOUCHE
+   * (« mais pas aux DM ») → `['attack']`.
+   */
+  modes?: FinesseAttackMode[];
+  /**
+   * Substitution appliquée D'OFFICE, sans réglage « à la table », dès qu'une arme éligible est en
+   * main ET que la substitution est AVANTAGEUSE (carac de substitution > carac remplacée). Réservé
+   * aux capacités SANS arbitrage (un seul mode offert) : « le barde PEUT remplacer sa FOR par son
+   * AGI » n'a alors aucune contrepartie — le joueur retiendrait toujours la meilleure carac, donc
+   * la fiche la calcule pour lui (≠ duelliste r4, où choisir la touche interdit les DM).
+   */
+  automatic?: boolean;
 }
 
 /**

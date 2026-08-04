@@ -22,7 +22,7 @@ import {
   criticalRangeSources,
   defenseAbility,
   effectContext,
-  finesseAttackChoice,
+  finesseAttackForMode,
   type FinesseAttackView,
   manaCastingAbility,
   modsFromFeatures,
@@ -148,8 +148,8 @@ function wornWeaponDamage(character: Character, mode: AttackMode): WeaponDamageV
   // « à la table » avec une arme éligible en main, la carac de base des DM devient AGI AU LIEU de FOR
   // (substitution, pas cumul — verbatim p. 140). Les bonus permanents restent ajoutés par-dessus.
   if (mode === 'melee') {
-    const finesse = finesseAttackChoice(character);
-    if (finesse?.mode === 'damage') baseAbilities[0] = finesse.ability;
+    const finesse = finesseAttackForMode(character, 'damage');
+    if (finesse) baseAbilities[0] = finesse.ability;
   }
   const bonuses = weaponDamageBonuses(character, mode, item);
   const added = bonuses.addedAbilities.map((b) => b.ability);
@@ -377,14 +377,16 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
       value: s.value,
       featureId: s.featureId,
     }));
-  // Attaque en finesse (Vive attaque du duelliste r4, PER-74) : si le mode « attaque » est retenu « à la
-  // table » avec une arme éligible en main, la touche au contact se calcule sur l'AGI AU LIEU de la FOR
-  // (SUBSTITUTION de carac, pas cumul — même patron que la DEF sur la CON de Peau de pierre). Le breakdown
-  // affiche alors « Agilité (AGI) » à la place de « Force (FOR) ». Le mode « DM » n'y touche pas (il
+  // Attaque en finesse portant sur la TOUCHE (PER-74) : avec une arme éligible en main, la touche au
+  // contact se calcule sur l'AGI AU LIEU de la FOR (SUBSTITUTION de carac, pas cumul — même patron que la
+  // DEF sur la CON de Peau de pierre). Le breakdown affiche alors « Agilité (AGI) » à la place de
+  // « Force (FOR) ». Source : soit le mode « attaque » retenu à la table (Vive attaque du duelliste r4),
+  // soit une substitution AUTOMATIQUE (Précision du barde p. 66, Attaque en finesse du voleur p. 77 :
+  // touche seulement, donc appliquée dès qu'elle est avantageuse). Le mode « DM » n'y touche pas (il
   // modifie la carac de base des DM de l'arme via `wornWeaponDamage`).
-  const finesse: FinesseAttackView | null = finesseAttackChoice(character);
-  const meleeAttackAbility: AbilityId = finesse?.mode === 'attack' ? finesse.ability : 'FOR';
-  const meleeAttackAbilitySourceId = finesse?.mode === 'attack' ? finesse.featureId : undefined;
+  const finesse: FinesseAttackView | null = finesseAttackForMode(character, 'attack');
+  const meleeAttackAbility: AbilityId = finesse ? finesse.ability : 'FOR';
+  const meleeAttackAbilitySourceId = finesse?.featureId;
   // Plage de critique au contact ACTIVE à mains nues (Morsure du serpent) : construite depuis
   // la vue mains nues (indépendante de l'interrupteur manuel de la vue « arme »).
   const unarmedCriticalRanges: DefenseBadgeData[] =

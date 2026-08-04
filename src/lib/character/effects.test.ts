@@ -24,6 +24,7 @@ import {
   conditionalEffectBonuses,
   criticalRangeSources,
   finesseAttackChoice,
+  finesseAttackForMode,
   rangedAttackElement,
   rangedAttackMagicalSourceId,
   familiarPowerUsedKey,
@@ -2401,6 +2402,98 @@ describe('finesseAttackChoice — attaque en finesse (Vive attaque du duelliste 
   it("renvoie null pour un personnage sans la capacité, rapière en main", () => {
     const sansCapacite = { ...base(), featureIds: [], equipment: [rapiere], effectInputs: { [R4]: 'damage' } } as Character;
     expect(finesseAttackChoice(sansCapacite)).toBeNull();
+  });
+});
+
+describe('finesseAttackForMode — substitution AUTOMATIQUE (Précision du barde p. 66, Attaque en finesse du voleur p. 77)', () => {
+  const base = () => createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' });
+  const rapiere: EquipmentLine = { itemId: 'rapiere', quantity: 1, worn: { slot: 'mainHand' } };
+  const masse: EquipmentLine = { itemId: 'masse', quantity: 1, worn: { slot: 'mainHand' } };
+  /** Barde avec Précision (escrime-r1), caracs et équipement paramétrables. */
+  const barde = (agi: number, forc: number, equipment: EquipmentLine[] = [rapiere]): Character =>
+    ({
+      ...base(),
+      classId: 'barde',
+      level: 5,
+      featureIds: ['escrime-r1'],
+      abilities: { ...base().abilities, AGI: agi, FOR: forc },
+      equipment,
+    }) as Character;
+
+  it("applique l'AGI à la TOUCHE sans réglage à la table quand elle dépasse la FOR", () => {
+    expect(finesseAttackForMode(barde(4, 1), 'attack')).toMatchObject({
+      featureId: 'escrime-r1',
+      mode: 'attack',
+      ability: 'AGI',
+      replaces: 'FOR',
+      automatic: true,
+    });
+  });
+
+  it("ne touche JAMAIS aux DM (« mais pas aux DM », p. 66)", () => {
+    expect(finesseAttackForMode(barde(4, 1), 'damage')).toBeNull();
+  });
+
+  it("ne s'applique pas si la substitution n'est pas avantageuse (AGI ≤ FOR)", () => {
+    expect(finesseAttackForMode(barde(2, 2), 'attack')).toBeNull();
+    expect(finesseAttackForMode(barde(1, 4), 'attack')).toBeNull();
+  });
+
+  it('reste gatée par une arme légère en main (masse ou mains nues → rien)', () => {
+    expect(finesseAttackForMode(barde(4, 1, [masse]), 'attack')).toBeNull();
+    expect(finesseAttackForMode(barde(4, 1, []), 'attack')).toBeNull();
+  });
+
+  it("exige l'arme EN MAIN, pas seulement dans l'inventaire (« lorsqu'il emploie », p. 66)", () => {
+    const rangee: EquipmentLine = { itemId: 'rapiere', quantity: 1 };
+    expect(finesseAttackForMode(barde(4, 1, [rangee]), 'attack')).toBeNull();
+  });
+
+  it("exige une prise à UNE main : la même arme empoignée à deux mains ne compte pas", () => {
+    const deuxMains: EquipmentLine = {
+      itemId: 'rapiere',
+      quantity: 1,
+      worn: { slot: 'mainHand', grip: 'twoHands' },
+    };
+    expect(finesseAttackForMode(barde(4, 1, [deuxMains]), 'attack')).toBeNull();
+  });
+
+  it("vivelame (arme à deux mains) : admise seulement si le personnage la MAÎTRISE (p. 183)", () => {
+    const vivelame: EquipmentLine = { itemId: 'vivelame', quantity: 1, worn: { slot: 'mainHand' } };
+    // Barde : ne maîtrise pas les armes de contact à deux mains → pas de substitution.
+    expect(finesseAttackForMode(barde(4, 1, [vivelame]), 'attack')).toBeNull();
+    // Guerrier (armes à deux mains maîtrisées) empruntant la voie de l'escrime → substitution admise.
+    const guerrier = {
+      ...barde(4, 1, [vivelame]),
+      classId: 'guerrier',
+    } as Character;
+    expect(finesseAttackForMode(guerrier, 'attack')?.ability).toBe('AGI');
+  });
+
+  it("tient compte des caracs EFFECTIVES : un objet qui monte l'AGI déclenche la substitution", () => {
+    const bottesAgi: EquipmentLine = {
+      custom: true,
+      name: 'Bottes de vivacité',
+      quantity: 1,
+      worn: { slot: 'accessory' },
+      abilityBonuses: { AGI: 2 },
+    };
+    expect(finesseAttackForMode(barde(2, 3, [rapiere, bottesAgi]), 'attack')?.ability).toBe('AGI');
+  });
+
+  it('coexiste avec Vive attaque du duelliste : touche automatique ET DM choisis à la table (p. 140)', () => {
+    const R4 = 'prestige-duelliste-r4';
+    const voleurDuelliste = {
+      ...barde(4, 1),
+      level: 16,
+      featureIds: ['spadassin-r1', R4],
+      effectInputs: { [R4]: 'damage' },
+    } as Character;
+    expect(finesseAttackForMode(voleurDuelliste, 'attack')).toMatchObject({
+      featureId: 'spadassin-r1',
+      automatic: true,
+    });
+    expect(finesseAttackForMode(voleurDuelliste, 'damage')).toMatchObject({ featureId: R4, automatic: false });
   });
 });
 

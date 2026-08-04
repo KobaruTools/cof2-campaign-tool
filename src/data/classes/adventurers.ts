@@ -1018,6 +1018,24 @@ export const adventurerFeatures: Feature[] = [
     actionTypes: [],
     text:
       "Le barde peut remplacer sa FOR par son AGI pour ses tests d'attaque au contact (mais pas aux DM) lorsqu'il emploie une arme légère à une main (les armes légères sont la dague, l'épée courte et la rapière).",
+    // SUBSTITUTION MÉCANISÉE : effet `finesse-attack` limité à la TOUCHE (`modes: ['attack']`,
+    // « mais pas aux DM ») et AUTOMATIQUE — la capacité n'offre aucun arbitrage, donc la fiche
+    // applique l'AGI dès qu'elle dépasse la FOR avec une arme éligible en main (≠ Vive attaque du
+    // duelliste r4, où « touche OU DM » se règle à la table). Armes À UNE MAIN : l'énumération du
+    // livre (dague, épée courte, rapière) + le stylet, « considéré comme une arme légère » (p. 183).
+    // La vivelame est la seule arme à DEUX mains admise, et seulement si le personnage la maîtrise
+    // (dérogation de son propre texte, p. 183) — d'où `twoHandedWeaponIds`.
+    effects: [
+      {
+        kind: 'finesse-attack',
+        ability: 'AGI',
+        replaces: 'FOR',
+        weaponIds: ['dague', 'epee-courte', 'rapiere', 'stylet'],
+        twoHandedWeaponIds: ['vivelame'],
+        modes: ['attack'],
+        automatic: true,
+      },
+    ],
     sourcePage: 66,
   },
   {
@@ -2380,13 +2398,24 @@ export const adventurerFeatures: Feature[] = [
     // Rendu enrichi (PER-71) : « son rang + 2 » → [rang + 2] (intimidation). AGI/FOR sont
     // auto-détectés (puces de carac). Effets : +AGI permanent en Initiative (`stat-bonus`
     // scalant sur l'AGI, comme Grâce féline du barde) et bonus de compétence à
-    // l'intimidation (PER-89). La substitution FOR→AGI au test d'attaque au contact est
-    // une mécanique de combat situationnelle (arme légère) → laissée verbatim.
+    // l'intimidation (PER-89).
     richText:
       "Le voleur ajoute son AGI à son Init. et peut remplacer sa FOR par son AGI pour ses tests d'attaque au contact (mais pas aux DM) lorsqu'il utilise une arme légère à une main (dague, épée courte ou rapière). Enfin, il obtient un bonus égal à son [rang + 2] aux tests d'intimidation.",
     effects: [
       { kind: 'stat-bonus', stat: 'initiative', value: { scale: 'ability', ability: 'AGI' } },
       { kind: 'test-bonus', domains: ['intimidation'] },
+      // Même substitution que Précision du barde (p. 66), mot pour mot : TOUCHE seulement
+      // (`modes: ['attack']`) et AUTOMATIQUE dès qu'elle est avantageuse — cf. le commentaire
+      // d'`escrime-r1` pour la liste d'armes.
+      {
+        kind: 'finesse-attack',
+        ability: 'AGI',
+        replaces: 'FOR',
+        weaponIds: ['dague', 'epee-courte', 'rapiere', 'stylet'],
+        twoHandedWeaponIds: ['vivelame'],
+        modes: ['attack'],
+        automatic: true,
+      },
     ],
     sourcePage: 77,
   },

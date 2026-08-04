@@ -41,7 +41,7 @@ import { alpha, type Theme } from '@mui/material/styles';
 import { useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
 import type { AbilityId, AbilitySubstitution, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
-import { STATUS_EFFECT_LABELS } from '@/data/schema';
+import { FINESSE_ATTACK_MODES, STATUS_EFFECT_LABELS } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
@@ -1496,6 +1496,11 @@ function FinesseAttackSelector({
 }) {
   const effect = finesseAttackEffect(feature);
   if (!effect) return null;
+  // Substitution AUTOMATIQUE (Précision du barde, Attaque en finesse du voleur) : aucun arbitrage à
+  // rendre — la fiche l'applique d'elle-même et la carte « Attaque au contact » en porte déjà la
+  // trace (carac AGI + puce de la capacité dans le détail). Pas de sélecteur.
+  if (effect.automatic) return null;
+  const modes = effect.modes ?? FINESSE_ATTACK_MODES;
   const value = character.effectInputs?.[feature.id] ?? '';
   const labelFor = (mode: string) =>
     mode === 'attack'
@@ -1506,14 +1511,14 @@ function FinesseAttackSelector({
   if (!onSetInput) {
     return value ? (
       <Typography variant="caption" component="div" sx={{ mt: 1, fontWeight: 600 }}>
-        Vive attaque : {labelFor(value)}
+        {feature.name} : {labelFor(value)}
       </Typography>
     ) : null;
   }
   return (
     <Box sx={{ mt: 1 }} onClick={(e) => e.stopPropagation()}>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
-        Vive attaque : {effect.ability} au lieu de {effect.replaces} (à choisir à la table)
+        {feature.name} : {effect.ability} au lieu de {effect.replaces} (à choisir à la table)
       </Typography>
       <ToggleButtonGroup
         exclusive
@@ -1525,12 +1530,11 @@ function FinesseAttackSelector({
         <ToggleButton value="" sx={{ textTransform: 'none' }}>
           Aucun
         </ToggleButton>
-        <ToggleButton value="attack" sx={{ textTransform: 'none' }}>
-          {labelFor('attack')}
-        </ToggleButton>
-        <ToggleButton value="damage" sx={{ textTransform: 'none' }}>
-          {labelFor('damage')}
-        </ToggleButton>
+        {modes.map((mode) => (
+          <ToggleButton key={mode} value={mode} sx={{ textTransform: 'none' }}>
+            {labelFor(mode)}
+          </ToggleButton>
+        ))}
       </ToggleButtonGroup>
     </Box>
   );

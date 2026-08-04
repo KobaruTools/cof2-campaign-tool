@@ -4,6 +4,7 @@ import type { Family } from '@/data/schema';
 import { deriveStats, type Abilities, type DerivedInput } from '@/lib/engine';
 import { DERIVED_STAT_IDS, type DerivedStatId } from './derivedStats';
 import { derivedStatBreakdown } from './derivedStatBreakdown';
+import { splitPageRefs } from './pageRefs';
 
 const family = (id: string): Family => {
   const f = families.find((x) => x.id === id);
@@ -198,6 +199,9 @@ describe('derivedStatBreakdown ↔ deriveStats', () => {
     expect(abilityTerm?.featureId).toBe('prestige-duelliste-r4');
     expect(bd.terms.find((t) => t.label.includes('(FOR)'))).toBeUndefined();
     expect(bd.note).toContain('Vive attaque');
+    // La page doit être en « (p. N) » NU pour que `PageRefText` la rende en puce de source
+    // (une parenthèse « (Vive attaque, p. 140) » resterait du texte brut).
+    expect(splitPageRefs(bd.note!).some((s) => s.kind === 'page' && s.page === '140')).toBe(true);
   });
 
   it('Touche au contact : FOR par défaut (aucune substitution, pas de puce)', () => {

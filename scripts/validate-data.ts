@@ -49,6 +49,7 @@ import {
   CREATURE_SIZES,
   DERIVED_STAT_IDS,
   EXTRA_WEAPON_FAMILIES,
+  FINESSE_ATTACK_MODES,
   IMMUNITY_IDS,
   MASTER_AT_ARMS_CATEGORIES,
   RANGED_WEAPON_KINDS,
@@ -566,9 +567,38 @@ for (const c of features) {
         if (!item) err(`[capacite ${c.id}] effect: finesse-attack arme inconnue : ${wid}`);
         else if (item.category !== 'weapon')
           err(`[capacite ${c.id}] effect: finesse-attack id non-arme : ${wid}`);
+        // `weaponIds` = armes employées À UNE MAIN : une arme à deux mains n'y a pas sa place
+        // (elle relève de `twoHandedWeaponIds`, dérogation gatée par la maîtrise).
+        else if (item.weaponCategory === 'twoHands')
+          err(`[capacite ${c.id}] effect: finesse-attack arme à deux mains dans weaponIds : ${wid}`);
+        else if (!item.melee)
+          err(`[capacite ${c.id}] effect: finesse-attack arme non de contact : ${wid}`);
+      }
+      for (const wid of e.twoHandedWeaponIds ?? []) {
+        const item = equipmentById.get(wid);
+        if (!item) err(`[capacite ${c.id}] effect: finesse-attack arme inconnue : ${wid}`);
+        else if (item.category !== 'weapon' || !item.melee)
+          err(`[capacite ${c.id}] effect: finesse-attack twoHandedWeaponIds hors arme de contact : ${wid}`);
+        else if (item.weaponCategory !== 'twoHands')
+          err(`[capacite ${c.id}] effect: finesse-attack twoHandedWeaponIds arme non à deux mains : ${wid}`);
+        if (e.weaponIds.includes(wid))
+          err(`[capacite ${c.id}] effect: finesse-attack arme listée deux fois : ${wid}`);
       }
       if (e.ability === e.replaces)
         err(`[capacite ${c.id}] effect: finesse-attack ability === replaces (${e.ability})`);
+      // Modes offerts : non vide, sans doublon, valeurs connues. Absent = les deux (duelliste).
+      if (e.modes) {
+        if (!e.modes.length) err(`[capacite ${c.id}] effect: finesse-attack modes vide`);
+        if (new Set(e.modes).size !== e.modes.length)
+          err(`[capacite ${c.id}] effect: finesse-attack modes en doublon`);
+        for (const m of e.modes)
+          if (!(FINESSE_ATTACK_MODES as readonly string[]).includes(m))
+            err(`[capacite ${c.id}] effect: finesse-attack mode inconnu : ${m}`);
+      }
+      // Substitution AUTOMATIQUE : réservée aux capacités SANS arbitrage (un seul mode offert),
+      // sinon le joueur perdrait le choix « touche OU DM » que le livre lui laisse (p. 140).
+      if (e.automatic && (e.modes?.length ?? FINESSE_ATTACK_MODES.length) !== 1)
+        err(`[capacite ${c.id}] effect: finesse-attack automatic exige un mode unique`);
     } else {
       err(`[capacite ${c.id}] effect: genre inconnu : ${(e as { kind: string }).kind}`);
     }

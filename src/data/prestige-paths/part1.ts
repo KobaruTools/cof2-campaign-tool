@@ -1703,7 +1703,11 @@ export const prestigeFeatures1: Feature[] = [
         kind: 'finesse-attack',
         ability: 'AGI',
         replaces: 'FOR',
-        weaponIds: ['dague', 'epee-courte', 'epee-longue', 'rapiere', 'vivelame'],
+        weaponIds: ['dague', 'epee-courte', 'epee-longue', 'rapiere'],
+        // « sur les attaques de sa main principale (ou encore sur une vivelame tenue à deux mains) » :
+        // la prise à deux mains n'est admise QUE pour la vivelame, et seulement si elle est maîtrisée
+        // (p. 183). Une épée longue empoignée à deux mains sort donc du périmètre.
+        twoHandedWeaponIds: ['vivelame'],
       },
     ],
     sourcePage: 140,

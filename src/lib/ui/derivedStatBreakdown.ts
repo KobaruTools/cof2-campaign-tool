@@ -7,7 +7,7 @@
  */
 import type { DerivedInput, DerivedMods, HpLevelGain } from '@/lib/engine';
 import { MAX_ATTACK_LEVEL } from '@/lib/engine';
-import { families } from '@/data';
+import { families, featureById } from '@/data';
 import type { FamilyId } from '@/data/schema';
 import { ABILITY_NAMES } from './ability';
 import type { DerivedStatId } from './derivedStats';
@@ -300,8 +300,17 @@ export function derivedStatBreakdown(
         },
         ...capacities('meleeAttack'),
       ];
+      // La capacité source est nommée dans la note (Vive attaque du duelliste, Précision du barde,
+      // Attaque en finesse du voleur…) avec sa page, plutôt qu'en dur : plusieurs capacités
+      // substituent l'AGI à la FOR à la touche. La page est écrite en « (p. N) » NU — seule cette
+      // forme est reconnue par `splitPageRefs`/`PageRefText` et rendue en puce `SourceRef` ; la
+      // coller dans la parenthèse du nom (« (Précision, p. 66) ») la laisserait en texte brut.
+      const meleeSource = input.meleeAttackAbilitySourceId
+        ? featureById.get(input.meleeAttackAbilitySourceId)
+        : undefined;
+      const meleeSourceLabel = meleeSource ? ` — ${meleeSource.name} (p. ${meleeSource.sourcePage})` : '';
       const note = substitutedMelee
-        ? `Touche au contact calculée sur l'${ABILITY_NAMES[meleeAbility]} (${meleeAbility}) au lieu de la Force (Vive attaque, p. 140).`
+        ? `Touche au contact calculée sur l'${ABILITY_NAMES[meleeAbility]} (${meleeAbility}) au lieu de la Force${meleeSourceLabel}.`
         : undefined;
       return { terms, total: sum(terms), note, page: 32 };
     }

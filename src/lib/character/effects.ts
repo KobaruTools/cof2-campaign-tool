@@ -32,6 +32,7 @@ import type {
   FantasticFamiliar,
   Feature,
   FeatureEffect,
+  FinesseAttackEffect,
   FinesseAttackMode,
   ImmunityId,
   ResistibleDamageType,
@@ -41,7 +42,7 @@ import type {
   Weapon,
   WeaponCriticalCondition,
 } from '@/data/schema';
-import { ABILITY_IDS, IMMUNITY_LABELS, RESISTIBLE_DAMAGE_TYPES } from '@/data/schema';
+import { ABILITY_IDS, FINESSE_ATTACK_MODES, IMMUNITY_LABELS, RESISTIBLE_DAMAGE_TYPES } from '@/data/schema';
 import { scalingDie, type DerivedMods } from '@/lib/engine';
 import {
   borrowedHostPathByFeatureId,
@@ -64,8 +65,10 @@ import {
   isTwoHandedMeleeWeaponWielded,
   testBonusSourcesFromEquipment,
   wornMeleeWeapon,
+  wornMeleeWeaponLine,
   wornRangedWeapon,
 } from './equipment';
+import { extraMasteredWeaponIds, isWeaponMastered, masteredClassIds } from './mastery';
 import { currentHp } from './gauges';
 import { rulesContext } from './rulesContext';
 import type { Character, EquipmentLine, FeatureChoiceSelection } from './types';
@@ -226,6 +229,10 @@ export function rangedAttackElement(character: Character): RangedAttackElementVi
  * `weaponIds`), (b) la capacité est ACTIVE, et (c) un mode valide est enregistré ; sinon `null` (finesse
  * inactive). L'arme retenue est l'arme de contact CANONIQUE (main principale prioritaire), cohérente avec
  * la carte « Attaque au contact » qui en affiche les DM.
+ *
+ * Cas AUTOMATIQUE (`effect.automatic`, ex. Précision du barde p. 66 / Attaque en finesse du voleur
+ * p. 77) : la capacité n'offre qu'un seul mode (la touche, « mais pas aux DM ») donc aucun arbitrage —
+ * la substitution s'applique d'office dès qu'elle est AVANTAGEUSE (AGI > FOR), sans réglage à la table.
  */
 export interface FinesseAttackView {
   /** Capacité source (Vive attaque r4). */
@@ -236,21 +243,80 @@ export interface FinesseAttackView {
   ability: AbilityId;
   /** Caractéristique remplacée (FOR). */
   replaces: AbilityId;
+  /** Substitution appliquée d'office (pas de choix « à la table ») ? */
+  automatic: boolean;
 }
 
-export function finesseAttackChoice(character: Character): FinesseAttackView | null {
+/**
+ * L'arme de contact TENUE EN MAIN ouvre-t-elle droit à la finesse de `effect` ? Le livre gate la
+ * substitution sur l'ARME EMPLOYÉE, pas sur la simple possession : « lorsqu'il emploie une arme
+ * légère à une main » (p. 66/77). Trois conditions, toutes lues sur l'équipement PORTÉ :
+ *  1. une arme de contact est bien EN MAIN (`wornMeleeWeaponLine` : main principale, sinon secondaire
+ *     — les lignes rangées de l'inventaire ne comptent pas) ;
+ *  2. son id est dans la liste éligible de la capacité (énumération du livre : dague, épée courte,
+ *     rapière… ; le stylet est « considéré comme une arme légère », p. 183) ;
+ *  3. elle est employée À UNE MAIN — donc ni une arme à deux mains, ni une arme empoignée à deux
+ *     mains (« Deux mains », `worn.grip`). SEULE dérogation : les armes de `twoHandedWeaponIds`
+ *     (vivelame), et uniquement si le personnage MAÎTRISE l'arme (« s'il maîtrise les armes de
+ *     contact à deux mains », p. 183).
+ */
+function finesseWeaponEligible(character: Character, effect: FinesseAttackEffect): boolean {
+  const line = wornMeleeWeaponLine(character.equipment);
   const weapon = wornMeleeWeapon(character.equipment);
-  if (!weapon) return null;
+  if (!line || !weapon) return false;
+  const usedInTwoHands = weapon.weaponCategory === 'twoHands' || line.worn?.grip === 'twoHands';
+  if (!usedInTwoHands) return effect.weaponIds.includes(weapon.id);
+  if (!effect.twoHandedWeaponIds?.includes(weapon.id)) return false;
+  return isWeaponMastered(
+    weapon,
+    masteredClassIds(character, rulesContext),
+    rulesContext,
+    character.firearmsAllowed,
+    extraMasteredWeaponIds(character),
+  );
+}
+
+/**
+ * Toutes les attaques en finesse ACTIVES, dans l'ordre des capacités. Plusieurs peuvent coexister :
+ * le livre l'autorise explicitement (p. 140, « sauf s'il dispose d'une autre capacité qui le lui
+ * permet, par exemple attaque en finesse ») — un voleur-duelliste substitue l'AGI à la touche via
+ * Attaque en finesse ET aux DM via Vive attaque. Chaque consommateur prend donc le mode qui le
+ * concerne (`finesseAttackForMode`) plutôt qu'une substitution unique.
+ */
+export function finesseAttackChoices(character: Character): FinesseAttackView[] {
+  const out: FinesseAttackView[] = [];
+  let abilities: Record<AbilityId, number> | null = null;
   for (const id of activeFeatureIdsForMods(character)) {
     const feature = featureById.get(id);
     const effect = feature?.effects?.find((e) => e.kind === 'finesse-attack');
     if (effect?.kind !== 'finesse-attack' || !feature) continue;
-    if (!effect.weaponIds.includes(weapon.id)) continue;
+    if (!finesseWeaponEligible(character, effect)) continue;
+    const modes: readonly FinesseAttackMode[] = effect.modes ?? FINESSE_ATTACK_MODES;
+    const common = { featureId: id, ability: effect.ability, replaces: effect.replaces };
+    if (effect.automatic) {
+      // Substitution d'office : seulement si elle est avantageuse (« peut remplacer » → le joueur ne
+      // troquerait pas une bonne carac contre une moins bonne). Caracs EFFECTIVES (objets + capacités).
+      abilities ??= effectiveAbilities(character);
+      if (abilities[effect.ability] <= abilities[effect.replaces]) continue;
+      out.push({ ...common, mode: modes[0], automatic: true });
+      continue;
+    }
     const chosen = character.effectInputs?.[id];
     if (chosen !== 'attack' && chosen !== 'damage') continue;
-    return { featureId: id, mode: chosen, ability: effect.ability, replaces: effect.replaces };
+    if (!modes.includes(chosen)) continue;
+    out.push({ ...common, mode: chosen, automatic: false });
   }
-  return null;
+  return out;
+}
+
+/** Attaque en finesse active portant sur `mode` (touche ou DM), ou `null`. */
+export function finesseAttackForMode(character: Character, mode: FinesseAttackMode): FinesseAttackView | null {
+  return finesseAttackChoices(character).find((f) => f.mode === mode) ?? null;
+}
+
+/** Première attaque en finesse active, tous modes confondus (compat historique / recettes). */
+export function finesseAttackChoice(character: Character): FinesseAttackView | null {
+  return finesseAttackChoices(character)[0] ?? null;
 }
 
 /**
