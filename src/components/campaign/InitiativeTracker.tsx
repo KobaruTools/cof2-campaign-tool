@@ -44,7 +44,7 @@
  * paraissent JAMAIS en projection — un tel badge révélerait aux joueurs que la créature est à 1 PV,
  * alors que ses PV leur sont masqués.
  */
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
@@ -78,6 +78,7 @@ import {
   type ResolvedStatusModifiers,
 } from '@/lib/character/statusEffects';
 import { currentHp } from '@/lib/character/gauges';
+import { centeredScrollLeft } from '@/lib/ui/centerScroll';
 import { crossOutBackgroundImage } from '@/lib/ui/crossOut';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SkullIcon } from '@/components/SkullIcon';
@@ -839,6 +840,64 @@ function DefeatedOverlay({ name }: { name: string }) {
   );
 }
 
+/**
+ * Attribut posé sur la carte du combattant dont c'est le TOUR (PER-297) : c'est par lui que le
+ * conteneur défilant retrouve la carte à recentrer, sans avoir à faire remonter une réf depuis
+ * chaque colonne (celle du drop `@dnd-kit` occupe déjà `ref` sur l'écran de MJ).
+ */
+const ACTIVE_COMBATANT_ATTR = 'data-active-combatant';
+
+/**
+ * Recentrage AUTOMATIQUE de la bande d'initiative sur le combattant actif (PER-297) : au-delà de
+ * 4 ou 5 cartes, l'actif sort du champ visible et le MJ devait aller le chercher à la main à chaque
+ * « Tour suivant ». Renvoie la réf à poser sur le conteneur défilant.
+ *
+ * Le déclencheur est le CHANGEMENT de tour courant (`currentTurnKey`), d'où qu'il vienne : bouton
+ * « Tour suivant », synchro de session en temps réel, ou seconde fenêtre du tracker. La signature
+ * des lignes en est un second, indispensable au rechargement en plein combat : le tour courant est
+ * connu dès le montage alors que les combattants n'arrivent qu'ensuite (chargement de la campagne),
+ * donc sans lui le premier recentrage n'aurait aucune carte à viser.
+ *
+ * Vaut aussi en PROJECTION, où c'est le plus utile : personne ne peut y faire défiler la bande.
+ */
+function useCenterActiveCombatant(currentTurnKey: string | null, rowsSignature: string) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Le premier recentrage se fait SANS animation (cf. plus bas) : un défilement animé au
+  // chargement d'une page déjà en plein combat n'aurait aucun sens.
+  const hasCenteredOnce = useRef(false);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    // Bande vide (pas encore chargée, ou aucun combattant) : rien à recentrer.
+    if (!container || rowsSignature === '') return;
+    const active = container.querySelector<HTMLElement>(`[${ACTIVE_COMBATANT_ATTR}="true"]`);
+    // Combat pas démarré, ou tour courant portant sur un combattant retiré depuis.
+    if (!active) return;
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    const target = centeredScrollLeft({
+      scrollLeft: container.scrollLeft,
+      viewportWidth: container.clientWidth,
+      contentWidth: container.scrollWidth,
+      // Bord gauche de la carte relatif au bord visible du conteneur : les cartes ne sont pas
+      // positionnées par rapport à lui (`offsetLeft` viserait un autre ancêtre), on passe donc
+      // par les rectangles.
+      itemLeft: activeRect.left - containerRect.left,
+      itemWidth: activeRect.width,
+    });
+    // `null` = bande qui ne déborde pas, ou carte déjà centrée : aucune animation à vide.
+    if (target === null) return;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const instant = !hasCenteredOnce.current || reducedMotion;
+    hasCenteredOnce.current = true;
+    // `scrollTo` sur le SEUL conteneur (et non `scrollIntoView`) : le défilement vertical de la
+    // page — l'écran de MJ est long — ne bouge jamais.
+    container.scrollTo({ left: target, behavior: instant ? 'auto' : 'smooth' });
+  }, [currentTurnKey, rowsSignature]);
+
+  return scrollRef;
+}
+
 /** Interactions d'états attachées à une colonne (mode écran de MJ uniquement). */
 interface ColumnStatusInteractive {
   /** Réf de la zone de drop (`@dnd-kit`). */
@@ -907,6 +966,10 @@ function CombatantColumn({
   return (
     <Box
       ref={interactive?.dropRef}
+      // Repère du combattant ACTIF pour le recentrage automatique de la bande (PER-297) : la réf
+      // `@dnd-kit` occupant déjà `ref` sur l'écran de MJ, on marque la carte d'un attribut que le
+      // conteneur va chercher (`querySelector`) plutôt que d'entrelacer deux réfs.
+      {...(isActive && { [ACTIVE_COMBATANT_ATTR]: 'true' })}
       sx={(t) => ({
         // Écran de MJ : 260 px, le plancher pour garder DEF + les 3 attaques sur UNE rangée de
         // pastilles sous la jauge de PV. PROJECTION : le bandeau d'initiative est passé SOUS le
@@ -1261,6 +1324,10 @@ export function InitiativeTracker({
   const displayedRows = projection ? rows.filter((r) => !r.hidden) : rows;
   // Les états ne sont interactifs que hors projection (auteur = MJ uniquement).
   const interactive = !projection && statusControls;
+  // Recentrage automatique sur le combattant actif (PER-297). La signature reflète l'ORDRE des
+  // cartes affichées : un ajout, un retrait ou un reclassement par les états (PER-292) déplace la
+  // carte active, il faut donc recentrer là aussi — pas seulement quand le tour change.
+  const scrollRef = useCenterActiveCombatant(currentTurnKey, displayedRows.map((r) => r.key).join('|'));
 
   return (
     <Stack spacing={2}>
@@ -1346,7 +1413,10 @@ export function InitiativeTracker({
         // (PER-282) : réservée au conteneur (uniforme), elle ne déforme aucun bloc individuellement.
         // Nécessaire aussi car `overflowX: auto` force `overflow-y` à `auto` → sans cette marge, le
         // débordement des icônes serait rogné.
-        <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: projection ? 5.5 : 1, alignItems: 'stretch' }}>
+        <Box
+          ref={scrollRef}
+          sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: projection ? 5.5 : 1, alignItems: 'stretch' }}
+        >
           {displayedRows.map((row) => {
             const isActive = row.key === currentTurnKey;
             return interactive ? (
