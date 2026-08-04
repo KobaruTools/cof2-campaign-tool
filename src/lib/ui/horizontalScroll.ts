@@ -1,7 +1,11 @@
 /**
  * Arithmétique du DÉFILEMENT HORIZONTAL d'une bande (PER-298) : de quel côté il reste du
- * contenu hors champ (estompes + chevrons), où aller au clic d'un chevron, et faut-il
- * détourner la molette verticale.
+ * contenu hors champ (estompes + chevrons) et où aller au clic d'un chevron.
+ *
+ * Le détournement de la MOLETTE verticale, prévu par le ticket, a été implémenté puis RETIRÉ
+ * à la demande du propriétaire (2026-08-04) : faire défiler une bande horizontalement pendant
+ * qu'on fait défiler la page verticalement est désagréable, même en rendant la main en butée.
+ * Ne pas le réintroduire.
  *
  * Extrait ici, pur et testable, sur le même modèle que `centerScroll.ts` (PER-297) : le
  * composant ne fait que LIRE les mesures du DOM (`scrollLeft`/`clientWidth`/`scrollWidth`)
@@ -60,51 +64,4 @@ export function stepScrollLeft(
   const maxScrollLeft = Math.max(contentWidth - viewportWidth, 0);
   const target = Math.round(Math.min(Math.max(scrollLeft + direction * step, 0), maxScrollLeft));
   return target === Math.round(scrollLeft) ? null : target;
-}
-
-/**
- * Hauteur d'une « ligne » de molette en px, pour les souris qui comptent en lignes
- * (`deltaMode: 1`) plutôt qu'en pixels. Valeur usuelle des navigateurs.
- */
-export const WHEEL_LINE_HEIGHT = 16;
-
-export interface WheelScrollInput extends ScrollMetrics {
-  /** `WheelEvent.deltaX` (pavé tactile, souris à molette latérale). */
-  deltaX: number;
-  /** `WheelEvent.deltaY` (molette verticale). */
-  deltaY: number;
-  /** `WheelEvent.deltaMode` : 0 = pixels, 1 = lignes, 2 = pages. */
-  deltaMode: number;
-}
-
-/** Convertit une unité de `deltaMode` en pixels. */
-function wheelUnitPixels(deltaMode: number, viewportWidth: number): number {
-  if (deltaMode === 1) return WHEEL_LINE_HEIGHT;
-  if (deltaMode === 2) return viewportWidth;
-  return 1;
-}
-
-/**
- * Décalage horizontal (px) à appliquer à la bande pour un coup de molette VERTICALE
- * au-dessus d'elle, ou `null` quand il ne faut PAS détourner l'événement.
- *
- * On laisse passer dans deux cas :
- *  - le geste est DÉJÀ horizontal (`|deltaX| ≥ |deltaY|`) : le navigateur fait alors
- *    lui-même défiler la bande, inutile de s'en mêler ;
- *  - la bande est en BUTÉE dans le sens demandé : détourner là ferait « coller » le
- *    pointeur sur la bande et empêcherait la page de défiler verticalement — pire que le
- *    problème d'origine.
- */
-export function wheelScrollDelta({
-  deltaX,
-  deltaY,
-  deltaMode,
-  ...metrics
-}: WheelScrollInput): number | null {
-  if (Math.abs(deltaX) >= Math.abs(deltaY)) return null;
-  const pixels = deltaY * wheelUnitPixels(deltaMode, metrics.viewportWidth);
-  if (pixels === 0) return null;
-  const edges = scrollEdges(metrics);
-  if (pixels < 0 ? !edges.left : !edges.right) return null;
-  return pixels;
 }

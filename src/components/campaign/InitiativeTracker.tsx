@@ -37,12 +37,12 @@
  * puisque ses PV ne leur sont pas montrés. Réservé aux créatures : un personnage à 0 PV est à terre /
  * mourant (p. 220), pas mort.
  *
- * CONFORT DE DÉFILEMENT (PER-298) : la bande se fait défiler à la MOLETTE verticale quand le
- * pointeur la survole (sans « coller » le pointeur : en butée, l'événement repart à la page), et
- * signale ce qui reste hors champ par des ESTOMPES en dégradé sur ses bords — valables aussi en
- * projection, où elles disent à la table qu'il y a d'autres combattants. Deux CHEVRONS d'une carte
- * par clic et une barre de défilement épaissie complètent l'écran de MJ (l'écran projeté n'a pas
- * de souris : pas de chevrons).
+ * CONFORT DE DÉFILEMENT (PER-298) : la bande signale ce qui reste hors champ par des ESTOMPES en
+ * dégradé sur ses bords — valables aussi en projection, où elles disent à la table qu'il y a
+ * d'autres combattants. Deux CHEVRONS d'une carte par clic et une barre de défilement épaissie
+ * complètent l'écran de MJ (l'écran projeté n'a pas de souris : pas de chevrons). Détourner la
+ * molette VERTICALE vers un défilement horizontal a été essayé puis RETIRÉ (propriétaire,
+ * 2026-08-04) : ne pas le réintroduire.
  *
  * ÉTATS DÉDUITS : les états d'une ligne (`row.appliedStatuses`) peuvent venir du MJ ou de la
  * SITUATION du combattant (affaibli à 1 PV, p. 220). Les seconds sont rendus en JAUNE et en lecture
@@ -91,7 +91,6 @@ import { centeredScrollLeft } from '@/lib/ui/centerScroll';
 import {
   scrollEdges,
   stepScrollLeft,
-  wheelScrollDelta,
   type ScrollDirection,
   type ScrollEdges,
   type ScrollMetrics,
@@ -979,18 +978,17 @@ function cardStep(container: HTMLElement): number {
 }
 
 /**
- * Confort de défilement de la bande d'initiative (PER-298), monté sur le conteneur défilant :
- *  - la MOLETTE verticale survolant la bande la fait défiler horizontalement (voir
- *    `wheelScrollDelta` pour la règle de non-détournement en butée) ;
- *  - il suit les CÔTÉS où il reste du contenu hors champ, ce qui pilote les estompes et les
- *    chevrons.
+ * Confort de défilement de la bande d'initiative (PER-298), monté sur le conteneur défilant : suit
+ * les CÔTÉS où il reste du contenu hors champ, ce qui pilote les estompes et les chevrons.
  *
  * Recalcul à chaque défilement, au redimensionnement du conteneur (`ResizeObserver`) et à tout
  * changement du roster (`rowsSignature` — une carte ajoutée/retirée change `scrollWidth` sans
  * toucher à la taille du conteneur, l'observateur seul ne le verrait pas).
  *
- * Le `wheel` est posé À LA MAIN en écouteur NON passif : un `onWheel` React est attaché en passif
- * sur certains navigateurs, ce qui interdit `preventDefault`.
+ * Le détournement de la molette verticale vers un défilement horizontal, prévu par le ticket, a
+ * été implémenté puis RETIRÉ à la demande du propriétaire (2026-08-04) : insupportable à l'usage,
+ * même en rendant la main à la page une fois la bande en butée. Ne pas le réintroduire — la bande
+ * se parcourt aux chevrons, à la barre de défilement, ou à Maj + molette (natif).
  */
 function useBandScroll(scrollRef: RefObject<HTMLDivElement | null>, rowsSignature: string) {
   const [edges, setEdges] = useState<ScrollEdges>({ left: false, right: false });
@@ -1006,22 +1004,12 @@ function useBandScroll(scrollRef: RefObject<HTMLDivElement | null>, rowsSignatur
       setEdges((prev) => (prev.left === next.left && prev.right === next.right ? prev : next));
     };
 
-    const onWheel = (e: WheelEvent) => {
-      const delta = wheelScrollDelta({ ...scrollMetrics(container), deltaX: e.deltaX, deltaY: e.deltaY, deltaMode: e.deltaMode });
-      // `null` = geste déjà horizontal ou bande en butée : on laisse l'événement à la page.
-      if (delta === null) return;
-      e.preventDefault();
-      container.scrollLeft += delta;
-    };
-
     measure();
     container.addEventListener('scroll', measure, { passive: true });
-    container.addEventListener('wheel', onWheel, { passive: false });
     const observer = new ResizeObserver(measure);
     observer.observe(container);
     return () => {
       container.removeEventListener('scroll', measure);
-      container.removeEventListener('wheel', onWheel);
       observer.disconnect();
     };
   }, [scrollRef, rowsSignature]);

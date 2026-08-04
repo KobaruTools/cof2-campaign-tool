@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scrollEdges, stepScrollLeft, wheelScrollDelta } from './horizontalScroll';
+import { scrollEdges, stepScrollLeft } from './horizontalScroll';
 
 /**
  * Cas de référence, identique à `centerScroll.test.ts` : 6 cartes de 260 px séparées de 16 px
@@ -61,53 +61,5 @@ describe('stepScrollLeft', () => {
 
   it('renvoie null quand le contenu ne déborde pas', () => {
     expect(stepScrollLeft({ scrollLeft: 0, viewportWidth: 1000, contentWidth: 800 }, 1, STEP)).toBeNull();
-  });
-});
-
-describe('wheelScrollDelta', () => {
-  /** Molette verticale ordinaire (pixels), bande au départ. */
-  const wheel = (deltaY: number, scrollLeft = 0, deltaX = 0, deltaMode = 0) =>
-    wheelScrollDelta({ ...BAND, scrollLeft, deltaX, deltaY, deltaMode });
-
-  it('convertit la molette verticale en défilement horizontal', () => {
-    expect(wheel(120)).toBe(120);
-    expect(wheel(-120, 300)).toBe(-120);
-  });
-
-  it('laisse passer l’événement en butée à droite (la page reprend la main)', () => {
-    expect(wheel(120, 640)).toBeNull();
-  });
-
-  it('laisse passer l’événement en butée à gauche', () => {
-    expect(wheel(-120, 0)).toBeNull();
-  });
-
-  it('laisse passer un geste déjà horizontal (le navigateur s’en charge)', () => {
-    expect(wheel(10, 0, 80)).toBeNull();
-  });
-
-  it('laisse passer un événement sans déplacement', () => {
-    expect(wheel(0)).toBeNull();
-  });
-
-  it('convertit les lignes en pixels (souris à molette crantée)', () => {
-    expect(wheel(3, 0, 0, 1)).toBe(48);
-  });
-
-  it('convertit les pages en largeurs visibles', () => {
-    expect(wheel(1, 0, 0, 2)).toBe(1000);
-  });
-
-  it('laisse passer quand le contenu ne déborde pas', () => {
-    expect(
-      wheelScrollDelta({
-        scrollLeft: 0,
-        viewportWidth: 1000,
-        contentWidth: 800,
-        deltaX: 0,
-        deltaY: 120,
-        deltaMode: 0,
-      }),
-    ).toBeNull();
   });
 });
