@@ -312,3 +312,22 @@ dans `STATUS_EFFECT_ICON_SOURCES` (même fichier) et dans
 | Étourdi | `lorc/star-swirl.svg` | Lorc |
 | Invalide | `lorc/broken-bone.svg` | Lorc |
 | Combat aquatique | `lorc/big-wave.svg` | Lorc |
+
+## Icônes des badges défensifs
+
+L'icône qui marque une protection **situationnelle** dans la carte « Défense » — une
+immunité qui ne joue que contre un type d'agresseur nommé (voie du combat du mal,
+rang 8, p. 149 : « … provoqués par les morts-vivants, les démons ou les animaux
+maléfiques ou corrompus ») — provient de [game-icons.net](https://game-icons.net),
+sous licence [Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteur : **Lorc** (https://game-icons.net).
+
+Le SVG a été nettoyé (fond retiré, couleur neutralisée) et intégré dans
+`src/lib/ui/defenseBadgeIcons.ts` (table `DEFENSE_BADGE_ICON_PATHS`, sources dans
+`DEFENSE_BADGE_ICON_SOURCES` et `scripts/game-icons/defense-badges/map.tsv`). Le rendu
+est inline, dans `src/components/sheet/DefenseBadge.tsx`.
+
+| Badge | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Immunité situationnelle (tête de démon) | `lorc/daemon-skull.svg` | Lorc |

@@ -51,21 +51,27 @@ function asList(dr: Creature['damageReduction']): DamageReduction[] {
  */
 function immunityBadges(dr: DamageReduction): DefenseBadgeData[] {
   const scopes = dr.scopes ?? [];
+  // Protection SITUATIONNELLE (PER-74) : conditionnée à la NATURE DE L'AGRESSEUR, pas au type de
+  // dégât → variante ambre à tête de démon, condition en tête d'info-bulle (cf. `DefenseBadge`).
+  const variant = dr.againstAggressors ? ('situational-immunity' as const) : ('immunity' as const);
+  const suffix = dr.againstAggressors ? ' (situationnelle)' : '';
   if (scopes.length === 0)
     return [
       {
         key: 'imm-all',
-        variant: 'immunity',
+        variant,
         text: 'tous DM',
-        title: formatDamageReduction({ kind: 'immunity' }).short,
+        title: formatDamageReduction({ kind: 'immunity' }).short + suffix,
+        note: dr.againstAggressors,
         sources: withNote(formatDamageReduction({ kind: 'immunity' }).long, dr),
       },
     ];
   return scopes.map((scope) => ({
     key: `imm-${scope}`,
-    variant: 'immunity' as const,
+    variant,
     scope,
-    title: damageImmunityTitle(scope),
+    title: damageImmunityTitle(scope) + suffix,
+    note: dr.againstAggressors,
     sources: withNote(damageImmunityTitle(scope), dr),
   }));
 }

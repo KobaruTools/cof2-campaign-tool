@@ -13,6 +13,7 @@ import {
   testBonusSources,
 } from '@/lib/character/effects';
 import { weaponDamageBonuses } from '@/lib/character/weaponDamageBonus';
+import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
 import { parseRichText } from '@/lib/ui/featureRichText';
 import type { Character } from '@/lib/character/types';
 
@@ -114,15 +115,43 @@ describe('PER-74 — voie du combat du mal (p. 149, recette end-to-end)', () => 
     expect(capacityResourceGauges(character).some((g) => g.key.startsWith(PATH_ID))).toBe(false);
   });
 
-  it("r8 Résister à la corruption : immunité empoisonnement/maladie restreinte à sa source", () => {
+  it("r8 Résister à la corruption : immunité empoisonnement/maladie conditionnée à l'agresseur", () => {
     const source = damageReductionSources(character).find((s) => s.featureId === R8);
     expect(source?.reduction.kind).toBe('immunity');
     expect(source?.reduction.scopes).toEqual(['poison', 'disease']);
-    // La restriction à la SOURCE n'est pas exprimable par une portée typée : elle passe par `note`,
-    // pour qu'un badge ne laisse pas croire à une immunité générale au poison.
-    expect(source?.reduction.note).toMatch(/Seulement si provoqués par les morts-vivants/);
+    // La protection est SITUATIONNELLE : c'est la NATURE DE L'AGRESSEUR qui la déclenche, ce qu'aucune
+    // portée typée ne sait dire (une portée décrit le type de dégât, jamais sa source).
+    expect(source?.reduction.againstAggressors).toMatch(/morts-vivants, les démons ou les animaux/);
     // Drain / affaiblissement / pourriture n'ont aucun type au catalogue → verbatim, aucune immunité d'état.
     expect(aggregateImmunities(character.featureIds)).toEqual([]);
+  });
+
+  it("r8 Résister à la corruption : badge SITUATIONNEL dans le cadre Défense, jamais une immunité verte", () => {
+    const badges = buildCharacterDerivedView(character).defenseBadges;
+    const situational = badges.filter((b) => b.variant === 'situational-immunity');
+    // Une entrée par type couvert, comme pour n'importe quelle immunité typée.
+    expect(situational.map((b) => b.scope).sort()).toEqual(['disease', 'poison']);
+    for (const badge of situational) {
+      expect(badge.title).toMatch(/\(situationnelle\)$/);
+      // La condition d'agresseur est portée par l'info-bulle du badge.
+      expect(badge.note).toMatch(/morts-vivants, les démons ou les animaux/);
+      expect(badge.sources.map((s) => s.featureId)).toEqual([R8]);
+    }
+    // Aucun badge d'immunité PERMANENTE (verte) : le personnage ne craint pas moins le poison en général.
+    expect(badges.some((b) => b.variant === 'immunity')).toBe(false);
+  });
+
+  it("une immunité situationnelle ne se fond pas dans une immunité permanente de même portée", () => {
+    // Contrôle du regroupement (`stackedDamageReductions`) : on ajoute au personnage une capacité qui
+    // immunise VRAIMENT au poison et à la maladie (moine, « Invulnérable » `energie-vitale-r3`, dont
+    // l'immunité s'ouvre au rang 5 de sa voie) — les deux protections doivent rester DEUX badges
+    // distincts, l'un vert et l'autre ambre, jamais fusionnés sur la portée `poison`.
+    const withPermanent: Character = {
+      ...character,
+      featureIds: [...character.featureIds, 'energie-vitale-r3', 'energie-vitale-r5'],
+    };
+    const poison = buildCharacterDerivedView(withPermanent).defenseBadges.filter((b) => b.scope === 'poison');
+    expect(poison.map((b) => b.variant).sort()).toEqual(['immunity', 'situational-immunity']);
   });
 
   it('la voie ne touche ni la DEF ni les compétences', () => {

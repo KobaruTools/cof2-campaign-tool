@@ -1225,13 +1225,17 @@ export const prestigeFeatures2: Feature[] = [
     // Immunités de corruption : seuls l'EMPOISONNEMENT et la MALADIE ont un type de dégâts au
     // catalogue (`RESISTIBLE_DAMAGE_TYPES`). Le drain, l'affaiblissement et la pourriture n'en ont
     // aucun et restent en verbatim (arbitrage propriétaire — ne pas inventer trois types pour une
-    // seule capacité). La restriction à la SOURCE (« provoqués par les morts-vivants… ») n'est pas
-    // exprimable par une portée typée : elle passe par `note`, affichée en source du badge pour
-    // qu'on ne croie pas à une immunité générale au poison.
+    // seule capacité).
+    // La protection est SITUATIONNELLE, pas permanente : le livre la conditionne à la NATURE DE
+    // L'AGRESSEUR (« provoqués par les morts-vivants, les démons ou les animaux maléfiques ou
+    // corrompus »), ce qu'aucune portée ne sait dire — une portée décrit le type de dégât, jamais sa
+    // source. D'où `againstAggressors` (arbitrage propriétaire) : badge ambre à tête de démon dans le
+    // cadre Défense, condition en info-bulle, au lieu du bouclier vert d'une immunité générale.
     damageReduction: {
       kind: 'immunity',
       scopes: ['poison', 'disease'],
-      note: 'Seulement si provoqués par les morts-vivants, les démons ou les animaux maléfiques ou corrompus.',
+      againstAggressors:
+        'Seulement provoqués par les morts-vivants, les démons ou les animaux maléfiques ou corrompus.',
     },
     sourcePage: 149,
   },

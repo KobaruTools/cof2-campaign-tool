@@ -12,9 +12,15 @@ import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
 import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
+import { DEFENSE_BADGE_ICON_PATHS } from '@/lib/ui/defenseBadgeIcons';
 
 /** Variante d'un badge de stat dérivée (couleur + icône de tête). */
-export type DefenseBadgeVariant = 'immunity' | 'reduction' | 'critical' | 'ranged-malus';
+export type DefenseBadgeVariant =
+  | 'immunity'
+  | 'situational-immunity'
+  | 'reduction'
+  | 'critical'
+  | 'ranged-malus';
 
 /**
  * Donnée d'un BADGE de carte de statistique dérivée (PER-137) : IMMUNITÉ (vert, bouclier),
@@ -38,6 +44,12 @@ export interface DefenseBadgeData {
   /** Titre du tooltip : libellé court de l'effet (ex. « RD 5 », « Immunité au feu », « Critique 18-20 »). */
   title: string;
   /**
+   * PRÉCISION affichée sous le titre du tooltip, avant les sources (PER-74) : la condition ou
+   * l'exception que l'icône et le titre ne suffisent pas à porter — typiquement le type d'AGRESSEUR
+   * d'une immunité situationnelle (« Seulement si provoqués par les morts-vivants… »). Absent = rien.
+   */
+  note?: string;
+  /**
    * Capacité(s) qui accordent l'effet, en BREAKDOWN (comme les stats dérivées) : nom + contribution
    * éventuelle (ex. RD cumulée « Fils du roc : 3 », « Peau d'acier : 3 ») + `featureId` d'origine,
    * affiché en puce de voie (`CapabilityChip` : voie en couleur + icône + rang) pour situer chaque
@@ -47,8 +59,12 @@ export interface DefenseBadgeData {
 }
 
 /** Couleur de palette MUI par variante. */
-const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary'> = {
+const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary' | 'warning'> = {
   immunity: 'success',
+  // Immunité SITUATIONNELLE (PER-74) : AMBRE et non vert. Le vert de l'immunité permanente dirait
+  // « tu ne crains rien » ; ici la protection ne joue que contre un type d'agresseur nommé, et la
+  // teinte d'avertissement invite à lire l'info-bulle plutôt qu'à compter dessus par défaut.
+  'situational-immunity': 'warning',
   reduction: 'info',
   critical: 'secondary',
   // Dé malus imposé aux tirs adverses (Cape d'ombre) : c'est un AVANTAGE pour le joueur (plus dur à
@@ -68,6 +84,7 @@ export function DefenseBadge({
   statusEffect,
   text,
   title,
+  note,
   sources,
   fullWidth = true,
   compact = false,
@@ -86,6 +103,14 @@ export function DefenseBadge({
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
         {title}
       </Typography>
+      {/* Condition / exception de la protection (PER-74) : le type d'agresseur d'une immunité
+          situationnelle, en tête d'info-bulle — c'est l'information qui empêche de prendre le badge
+          pour une protection générale, elle passe donc AVANT les sources. */}
+      {note && (
+        <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontStyle: 'italic' }}>
+          {note}
+        </Typography>
+      )}
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
         {sources.length > 1 ? 'Sources' : 'Source'}
       </Typography>
@@ -139,6 +164,17 @@ export function DefenseBadge({
         {statusEffect && <StatusEffectIcon effect={statusEffect} size={iconSize} />}
         {/* Bouclier générique conservé pour les immunités SANS icône dédiée (ex. « tous DM »). */}
         {variant === 'immunity' && !scope && !statusEffect && <ShieldIcon sx={{ fontSize: iconSize }} />}
+        {/* Immunité SITUATIONNELLE (PER-74) : tête de démon EN TÊTE du badge, devant l'icône du type
+            de dégât — c'est la nature de l'agresseur qui conditionne tout, elle doit se voir d'abord. */}
+        {variant === 'situational-immunity' && (
+          <Box
+            component="svg"
+            viewBox="0 0 512 512"
+            aria-hidden
+            sx={{ width: iconSize, height: iconSize, fill: 'currentColor', flexShrink: 0 }}
+            dangerouslySetInnerHTML={{ __html: DEFENSE_BADGE_ICON_PATHS['situational-immunity'] }}
+          />
+        )}
         {variant === 'critical' && <GpsFixedIcon sx={{ fontSize: iconSize }} />}
         {/* Dé malus aux tirs adverses (Cape d'ombre) : ARC (attaque à distance, en BLEU comme la chip)
             + dé malus (double d20 dont un barré, en ROUGE via MalusDieBadge). Pas de texte. */}

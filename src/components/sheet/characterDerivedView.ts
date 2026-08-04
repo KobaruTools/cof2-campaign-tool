@@ -254,12 +254,20 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   for (const r of stackedDamageReductions(character)) {
     const scopes = r.scope ? [r.scope] : undefined;
     if (r.kind === 'immunity') {
+      // Protection SITUATIONNELLE (PER-74) : elle ne joue que contre un type d'agresseur nommé
+      // (« … provoqués par les morts-vivants, les démons ou les animaux corrompus »). Badge ambre à
+      // tête de démon, et la condition en tête d'info-bulle — le bouclier vert de l'immunité
+      // permanente laisserait croire à une protection générale.
+      const situational = r.againstAggressors !== undefined;
       damageImmunityBadges.push({
-        key: `imm-${r.scope ?? 'all'}`,
-        variant: 'immunity',
+        key: `imm-${r.scope ?? 'all'}${situational ? `-vs-${r.againstAggressors}` : ''}`,
+        variant: situational ? 'situational-immunity' : 'immunity',
         scope: r.scope,
         text: r.scope ? undefined : 'tous DM',
-        title: formatDamageReduction({ kind: 'immunity', scopes }).short,
+        title: situational
+          ? `${formatDamageReduction({ kind: 'immunity', scopes }).short} (situationnelle)`
+          : formatDamageReduction({ kind: 'immunity', scopes }).short,
+        note: r.againstAggressors,
         sources: r.sources.map((s) => ({ name: s.name, featureId: s.featureId })),
       });
     } else {

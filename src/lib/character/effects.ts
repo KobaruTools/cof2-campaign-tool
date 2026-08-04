@@ -2757,6 +2757,13 @@ export interface StackedDamageReduction {
    * d'autres sources de réduction comme la peau d'acier ») ; diviseur (`divide`) ; absent (`immunity`).
    */
   total?: number;
+  /**
+   * Protection SITUATIONNELLE : verbatim court du type d'AGRESSEUR contre lequel elle joue
+   * (cf. `DamageReduction.againstAggressors`, PER-74). Présent = le badge de la carte Défense passe
+   * en variante situationnelle. Une entrée situationnelle ne se REGROUPE jamais avec une protection
+   * permanente de même portée, ni avec une autre condition d'agresseur.
+   */
+  againstAggressors?: string;
   /** Capacités qui contribuent (id + nom + valeur individuelle) pour le breakdown et la voie d'origine. */
   sources: { featureId: string; name: string; value?: number }[];
 }
@@ -2778,29 +2785,49 @@ export function stackedDamageReductions(character: Character): StackedDamageRedu
       kind: s.reduction.kind,
       scope,
       value: typeof s.reduction.value === 'number' ? s.reduction.value : undefined,
+      againstAggressors: s.reduction.againstAggressors,
     }));
   });
   const groups = new Map<string, typeof entries>();
   for (const e of entries) {
-    const key = e.kind === 'flat' ? `flat|${e.scope ?? ''}` : `${e.kind}|${e.scope ?? ''}|${e.value ?? ''}`;
+    // La condition d'AGRESSEUR (PER-74) entre dans la clé de regroupement : une immunité au poison
+    // qui ne joue que contre les morts-vivants ne se fond PAS dans une immunité au poison permanente
+    // (elles ne protègent pas de la même chose), et deux conditions distinctes restent distinctes.
+    const suffix = e.againstAggressors ? `|vs:${e.againstAggressors}` : '';
+    const key =
+      e.kind === 'flat'
+        ? `flat|${e.scope ?? ''}${suffix}`
+        : `${e.kind}|${e.scope ?? ''}|${e.value ?? ''}${suffix}`;
     const arr = groups.get(key);
     if (arr) arr.push(e);
     else groups.set(key, [e]);
   }
   const out: StackedDamageReduction[] = [];
   for (const list of groups.values()) {
-    const { kind, scope } = list[0];
+    const { kind, scope, againstAggressors } = list[0];
     if (kind === 'flat') {
       out.push({
         kind,
         scope,
+        againstAggressors,
         total: list.reduce((acc, e) => acc + (e.value ?? 0), 0),
         sources: list.map((e) => ({ featureId: e.featureId, name: e.name, value: e.value })),
       });
     } else if (kind === 'divide') {
-      out.push({ kind, scope, total: list[0].value, sources: list.map((e) => ({ featureId: e.featureId, name: e.name })) });
+      out.push({
+        kind,
+        scope,
+        againstAggressors,
+        total: list[0].value,
+        sources: list.map((e) => ({ featureId: e.featureId, name: e.name })),
+      });
     } else {
-      out.push({ kind, scope, sources: list.map((e) => ({ featureId: e.featureId, name: e.name })) });
+      out.push({
+        kind,
+        scope,
+        againstAggressors,
+        sources: list.map((e) => ({ featureId: e.featureId, name: e.name })),
+      });
     }
   }
   return out;

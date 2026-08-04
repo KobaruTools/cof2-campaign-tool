@@ -1984,6 +1984,21 @@ export interface DamageReduction {
    */
   note?: string;
   /**
+   * La protection ne joue QUE contre un type d'AGRESSEUR nommé (PER-74) — voie du combat du mal,
+   * rang 8 (p. 149) : « immunisé aux effets de corruption : … empoisonnement ou maladie **provoqués
+   * par les morts-vivants, les démons ou les animaux maléfiques ou corrompus** ». C'est la NATURE DE
+   * L'ADVERSAIRE qui déclenche la protection, ce qu'aucune portée (`scopes`) ne sait exprimer : une
+   * portée décrit le TYPE DE DÉGÂT, jamais sa SOURCE. Une immunité au poison d'un serpent ordinaire
+   * n'a rien à voir avec celle-ci.
+   *
+   * Le texte (verbatim court, français) bascule le badge du cadre Défense en variante
+   * SITUATIONNELLE (tête de démon, teinte d'avertissement) au lieu du bouclier vert de l'immunité
+   * permanente, qui laisserait croire à une protection générale ; il est repris dans l'info-bulle.
+   * Empêche aussi le regroupement avec une protection PERMANENTE de même portée
+   * (cf. `stackedDamageReductions`) : les deux ne décrivent pas la même chose.
+   */
+  againstAggressors?: string;
+  /**
    * Cette entrée REMPLACE la « RD N » imprimée avec les points de vigueur d'une CRÉATURE, même si
    * sa valeur DIFFÈRE (PER-261). Sert aux incohérences du livre : l'ange (Bestiaire p. 13) imprime
    * « RD 11 » dans sa ligne de stats et « RD 10 » dans sa capacité « Réduction des DM » — c'est une
