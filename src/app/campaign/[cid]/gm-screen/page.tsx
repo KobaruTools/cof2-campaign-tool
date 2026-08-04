@@ -58,8 +58,9 @@ import { CombatStatusPalette, StatusChipVisual } from '@/components/campaign/Com
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
 import { HomeBackground } from '@/components/HomeBackground';
 import { SIDE_ACCENT } from '@/lib/ui/creature';
+import { customCreatureBlob } from '@/lib/session/customCreature';
 import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
-import { useGmScreenCombat } from './useGmScreenCombat';
+import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
 
 /**
  * Gabarit de colonnes commun aux trois grilles (joueurs / alliés / adversaires) : 3
@@ -75,6 +76,16 @@ const GRID_SX = {
   gap: 2,
   alignItems: 'start',
 } as const;
+
+/**
+ * Bloc de stats à passer à la carte d'une créature : `undefined` pour une créature du bestiaire
+ * (la carte le charge elle-même par slug), bloc SYNTHÉTIQUE pour une créature créée à la main.
+ * Le titre du bloc reprend le nom nu de l'instance — la numérotation des homonymes vit dans le
+ * badge de la carte, comme pour une créature de livre.
+ */
+function creatureCardBlob(inst: LabeledCreature) {
+  return inst.custom ? customCreatureBlob(inst.custom, inst.name) : undefined;
+}
 
 /** Titre d'une section de la grille de combat (joueurs / alliés / adversaires). */
 function SectionHeading({ label, color }: { label: string; color?: string }) {
@@ -115,6 +126,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     roundNumber,
     setRoundNumber,
     addCreature,
+    addCustomCreature,
     removeCreature,
     setCreatureVisibility,
     statuses,
@@ -307,6 +319,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                     <GmScreenCreatureCard
                       key={inst.id}
                       slug={inst.slug}
+                      blob={creatureCardBlob(inst)}
                       label={inst.label}
                       side="ally"
                       visible={inst.visible !== false}
@@ -325,6 +338,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                     <GmScreenCreatureCard
                       key={inst.id}
                       slug={inst.slug}
+                      blob={creatureCardBlob(inst)}
                       label={inst.label}
                       side="enemy"
                       visible={inst.visible !== false}
@@ -377,11 +391,13 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         </DndContext>
       </Box>
 
-      {/* Modale d'ajout d'une créature du bestiaire au combat (sélecteur + aperçu). */}
+      {/* Modale d'ajout d'une créature au combat : du bestiaire (sélecteur + aperçu) ou
+          créée à la main (bloc minimal saisi par le MJ). */}
       <AddCreatureDialog
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onAdd={(slug, options) => addCreature(slug, options)}
+        onAddCustom={(custom, options) => addCustomCreature(custom, options)}
       />
 
       {/* Réinitialisation du combat (PER-283) : purge les états, remet le tour courant à zéro

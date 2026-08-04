@@ -26,6 +26,7 @@ import { useCampaignCombatStore } from '@/stores/campaignCombat';
 import {
   EMPTY_COMBAT_STATE,
   addCreatures,
+  addCustomCreatures,
   applyStatusTo,
   removeStatusFrom,
   adjustStatusIntensity,
@@ -40,6 +41,7 @@ import {
   type GmCombatState,
 } from '@/lib/session/combatState';
 import { randomTieBreakSeed } from '@/lib/session/initiativeOrder';
+import type { CustomCreature } from '@/lib/session/customCreature';
 import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
 import type { Depletion } from '@/lib/character/types';
 
@@ -54,6 +56,12 @@ export interface GmCombatStateApi extends GmCombatState {
    * visible + adversaire + nom du bestiaire par défaut (cf. `AddCreatureOptions`).
    */
   addCreature: (slug: string, options?: AddCreatureOptions) => void;
+  /**
+   * Ajoute `options.count` instances (défaut 1) d'une créature CRÉÉE À LA MAIN : le bloc saisi
+   * est copié sur chaque instance (autoportante, rien à charger côté joueurs). No-op si le socle
+   * initiative/PV/défense est incomplet.
+   */
+  addCustomCreature: (custom: CustomCreature, options?: AddCreatureOptions) => void;
   /** Retire l'instance `instanceId` (et son manque de PV). */
   removeCreature: (instanceId: string) => void;
   /** Bascule la visibilité joueurs de l'instance `instanceId` (fenêtre projetée). */
@@ -110,6 +118,12 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
   const addCreature = useCallback(
     (slug: string, options?: AddCreatureOptions) =>
       applyLocalCombat(cid, (prev) => addCreatures(prev, slug, options)),
+    [applyLocalCombat, cid],
+  );
+
+  const addCustomCreature = useCallback(
+    (custom: CustomCreature, options?: AddCreatureOptions) =>
+      applyLocalCombat(cid, (prev) => addCustomCreatures(prev, custom, options)),
     [applyLocalCombat, cid],
   );
 
@@ -201,6 +215,7 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
   return {
     ...state,
     addCreature,
+    addCustomCreature,
     removeCreature,
     setCreatureVisibility,
     setCreatureDepletion,

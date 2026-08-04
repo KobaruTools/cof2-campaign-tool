@@ -41,6 +41,12 @@ import {
   type AddCreatureOptions,
 } from './useGmCombatState';
 import {
+  customCreatureBlob,
+  CUSTOM_CREATURE_FALLBACK_NAME,
+  CUSTOM_CREATURE_SLUG,
+  type CustomCreature,
+} from '@/lib/session/customCreature';
+import {
   creatureInfoEquals,
   labelCreatureInstances,
   type CreatureDisplayInfo,
@@ -123,6 +129,11 @@ export interface GmScreenCombat {
    * nom personnalisé et nombre d'exemplaires initiaux — cf. `AddCreatureOptions`).
    */
   addCreature: (slug: string, options?: AddCreatureOptions) => void;
+  /**
+   * Ajoute une ou plusieurs instances d'une créature CRÉÉE À LA MAIN (hors bestiaire) : son bloc
+   * de stats est copié sur chaque instance et voyage avec l'état de combat.
+   */
+  addCustomCreature: (custom: CustomCreature, options?: AddCreatureOptions) => void;
   /** Retire l'instance `instanceId` du combat. */
   removeCreature: (instanceId: string) => void;
   /** Bascule la visibilité joueurs d'une instance de créature (fenêtre projetée). */
@@ -164,6 +175,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     tieBreakSeed,
     creatureInfo,
     addCreature,
+    addCustomCreature,
     removeCreature,
     setCreatureVisibility,
     setCreatureDepletion,
@@ -200,9 +212,10 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     void loadBestiaryList();
   }, [loadCharacters, loadCampaigns, loadPlayers, loadBestiaryList, cid]);
 
-  // Charge le blob de chaque créature du roster (Init./PV lus du bloc) ; idempotent.
+  // Charge le blob de chaque créature du roster (Init./PV lus du bloc) ; idempotent. Une
+  // créature créée à la main n'a rien à charger : son bloc voyage avec l'instance.
   useEffect(() => {
-    for (const inst of creatures) void loadBlob(inst.slug);
+    for (const inst of creatures) if (!inst.custom) void loadBlob(inst.slug);
   }, [creatures, loadBlob]);
 
   const playerNameById = useMemo(
@@ -218,6 +231,9 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     for (const [slug, info] of Object.entries(creatureInfo)) {
       if (!map.has(slug)) map.set(slug, info.name);
     }
+    // Filet pour les créatures créées à la main : elles portent leur nom sur l'instance, mais
+    // une instance non nommée retomberait sinon sur le slug technique.
+    map.set(CUSTOM_CREATURE_SLUG, CUSTOM_CREATURE_FALLBACK_NAME);
     return map;
   }, [bestiaryList, creatureInfo]);
 
@@ -232,6 +248,9 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     if (role !== 'gm') return;
     const next: Record<string, CreatureDisplayInfo> = {};
     for (const inst of creatures) {
+      // Créature créée à la main : rien à diffuser par slug (toutes les instances manuelles
+      // partagent le même slug technique), son bloc part déjà avec l'instance elle-même.
+      if (inst.custom) continue;
       const blob = blobs[inst.slug];
       const name = creatureNameBySlug.get(inst.slug);
       if (!blob || !name) continue;
@@ -351,11 +370,13 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
   );
 
   // Lignes des créatures ajoutées (PV suivis en local). Init./PV lus du blob du bestiaire ;
-  // tant que le blob n'est pas chargé, l'instance n'a pas encore de ligne d'initiative.
+  // tant que le blob n'est pas chargé, l'instance n'a pas encore de ligne d'initiative. Une
+  // créature créée à la main projette son bloc SAISI en blob synthétique : elle est donc traitée
+  // à l'identique en dessous (jauge de PV, DEF/attaques ajustées par les états, tri d'ordre).
   const creatureRows = useMemo<InitiativeRow[]>(
     () =>
       labeledCreatures.flatMap((inst): InitiativeRow[] => {
-        const blob = blobs[inst.slug];
+        const blob = inst.custom ? customCreatureBlob(inst.custom, inst.name) : blobs[inst.slug];
         if (!blob) {
           // Pas de bloc : repli sur l'affichage diffusé par le MJ (PER-293) — cas d'une créature
           // de supplément PAYANT côté joueur. Ligne MINIMALE : nom + initiative (+ AGI de départage),
@@ -430,8 +451,9 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             accentColor: accent,
             initiative,
             initiativeDelta,
-            // AGI du bloc du bestiaire (absente pour les variantes qui renvoient à leur base).
-            agility: blob.abilities?.AGI,
+            // AGI du bloc du bestiaire (absente pour les variantes qui renvoient à leur base) ;
+            // pour une créature manuelle, l'AGI facultative saisie par le MJ.
+            agility: inst.custom ? inst.custom.agility : blob.abilities?.AGI,
             maxHp,
             combatStats,
             // États appliqués (lecture seule) — sert la projection (PER-282).
@@ -481,6 +503,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     roundNumber,
     setRoundNumber,
     addCreature,
+    addCustomCreature,
     removeCreature,
     setCreatureVisibility,
     statuses,

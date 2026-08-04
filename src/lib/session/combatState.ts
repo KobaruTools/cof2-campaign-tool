@@ -19,13 +19,28 @@ import {
   type AnyStatusEffectId,
   type AppliedStatus,
 } from '@/lib/character/statusEffects';
+import {
+  CUSTOM_CREATURE_SLUG,
+  normalizeCustomCreature,
+  type CustomCreature,
+} from './customCreature';
 
 /** Instance d'une créature dans le combat en cours. */
 export interface CreatureInstance {
   /** Id d'instance stable, unique dans le combat (clé du tracker + des PV). */
   id: string;
-  /** Slug de la créature du bestiaire (`Creature.id` / `CreatureListItem.id`). */
+  /**
+   * Slug de la créature du bestiaire (`Creature.id` / `CreatureListItem.id`), ou
+   * `CUSTOM_CREATURE_SLUG` pour une créature créée à la main (`custom` renseigné).
+   */
   slug: string;
+  /**
+   * Bloc de stats SAISI À LA MAIN par le MJ (créature hors bestiaire) : sa présence signifie
+   * qu'il n'y a **aucun blob à charger** — le bloc voyage avec l'instance, donc la projection
+   * et l'écran joueur l'affichent sans accès au bestiaire. Absent (cas courant) = créature du
+   * bestiaire, résolue par `slug`.
+   */
+  custom?: CustomCreature;
   /**
    * Nom PERSONNALISÉ donné par le MJ à l'ajout (PER-295) : « Grishnak le borgne » pour un
    * bandit de base, « Garde du corps » pour une escouade. Remplace le nom du bloc du bestiaire
@@ -175,12 +190,13 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
   // Format courant.
   const current = parsed as Partial<GmCombatState>;
   if (Array.isArray(current.creatures)) {
+    const creatures = reviveCreatures(current.creatures);
     return {
-      creatures: current.creatures,
+      creatures,
       nextInstanceId:
         typeof current.nextInstanceId === 'number'
           ? current.nextInstanceId
-          : current.creatures.length + 1,
+          : creatures.length + 1,
       depletions: current.depletions ?? {},
       currentTurnKey: current.currentTurnKey ?? null,
       roundNumber: reviveRoundNumber(current.roundNumber),
@@ -218,6 +234,29 @@ export function reviveStateObject(parsed: unknown): GmCombatState {
   }
 
   return EMPTY_COMBAT_STATE;
+}
+
+/**
+ * Reconstruit défensivement le roster relu (état persisté ou payload de broadcast) : écarte
+ * les entrées mal formées (id/slug non chaînes) et normalise le bloc SAISI À LA MAIN des
+ * créatures manuelles. Une instance manuelle dont le bloc est irrécupérable (socle
+ * initiative/PV/défense incomplet) est retirée : elle ne pourrait ni être classée ni être
+ * jouée, et n'a aucun blob de bestiaire sur lequel retomber.
+ */
+function reviveCreatures(raw: readonly unknown[]): CreatureInstance[] {
+  const out: CreatureInstance[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const inst = item as CreatureInstance;
+    if (typeof inst.id !== 'string' || typeof inst.slug !== 'string') continue;
+    if (inst.custom === undefined) {
+      out.push(inst);
+      continue;
+    }
+    const custom = normalizeCustomCreature(inst.custom);
+    if (custom) out.push({ ...inst, custom });
+  }
+  return out;
 }
 
 /**
@@ -362,9 +401,26 @@ export function clampAddCount(raw: unknown): number {
 }
 
 /**
+ * Ajoute `count` instances construites par `make` (à qui l'on passe un id d'instance frais).
+ * Les ids restent MONOTONES (`c-<nextInstanceId>`, robustes aux retraits) : un ajout de 5
+ * consomme 5 ids. Socle commun aux créatures de bestiaire et aux créatures manuelles.
+ */
+function appendInstances(
+  state: GmCombatState,
+  count: number,
+  make: (id: string) => CreatureInstance,
+): GmCombatState {
+  const added = Array.from({ length: count }, (_, i) => make(`c-${state.nextInstanceId + i}`));
+  return {
+    ...state,
+    creatures: [...state.creatures, ...added],
+    nextInstanceId: state.nextInstanceId + count,
+  };
+}
+
+/**
  * Ajoute `count` instances de la créature `slug` au combat (PER-247, PER-295), toutes avec la
- * même visibilité joueurs, le même camp et le même nom personnalisé éventuel. Les ids d'instance
- * restent MONOTONES (`c-<nextInstanceId>`, robustes aux retraits) : un ajout de 5 consomme 5 ids.
+ * même visibilité joueurs, le même camp et le même nom personnalisé éventuel.
  */
 export function addCreatures(
   state: GmCombatState,
@@ -373,18 +429,41 @@ export function addCreatures(
 ): GmCombatState {
   const count = clampAddCount(options.count ?? 1);
   const name = normalizeCreatureName(options.name);
-  const added = Array.from({ length: count }, (_, i): CreatureInstance => ({
-    id: `c-${state.nextInstanceId + i}`,
+  return appendInstances(state, count, (id) => ({
+    id,
     slug,
     visible: options.visible ?? true,
     side: options.side ?? 'enemy',
     ...(name ? { name } : {}),
   }));
-  return {
-    ...state,
-    creatures: [...state.creatures, ...added],
-    nextInstanceId: state.nextInstanceId + count,
-  };
+}
+
+/**
+ * Ajoute `count` instances d'une créature CRÉÉE À LA MAIN (hors bestiaire) : le bloc de stats
+ * saisi est normalisé puis COPIÉ sur chaque instance, qui devient ainsi autoportante (rien à
+ * charger côté projection / écran joueur). Mêmes options que `addCreatures` — `name` porte le
+ * nom de la créature.
+ *
+ * No-op si le socle obligatoire (initiative, PV, défense) est incomplet : c'est la même garde
+ * que côté saisie, appliquée ici pour que l'état ne puisse jamais contenir d'instance injouable.
+ */
+export function addCustomCreatures(
+  state: GmCombatState,
+  custom: CustomCreature,
+  options: AddCreatureOptions = {},
+): GmCombatState {
+  const normalized = normalizeCustomCreature(custom);
+  if (!normalized) return state;
+  const count = clampAddCount(options.count ?? 1);
+  const name = normalizeCreatureName(options.name);
+  return appendInstances(state, count, (id) => ({
+    id,
+    slug: CUSTOM_CREATURE_SLUG,
+    visible: options.visible ?? true,
+    side: options.side ?? 'enemy',
+    ...(name ? { name } : {}),
+    custom: normalized,
+  }));
 }
 
 /**

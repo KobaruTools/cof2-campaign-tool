@@ -18,6 +18,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
+import { BestiaryStatBlock } from '@/components/bestiary/BestiaryStatBlock';
 import { CreatureBlobView } from '@/components/bestiary/CreatureBlobView';
 import type { Creature } from '@/data/schema';
 import { SIDE_ACCENT, SIDE_LABELS, type CreatureSide } from '@/lib/ui/creature';
@@ -40,6 +41,12 @@ export function isWideCreatureCard(blob?: Creature, baseBlob?: Creature): boolea
 export interface GmScreenCreatureCardProps {
   /** Slug de la créature du bestiaire à afficher (`Creature.id`). */
   slug: string;
+  /**
+   * Bloc de stats FOURNI par l'appelant — cas d'une créature CRÉÉE À LA MAIN par le MJ, dont le
+   * bloc synthétique (`customCreatureBlob`) ne vient pas du bestiaire. Renseigné, il court-circuite
+   * le chargement par slug ; absent (cas courant), le bloc est chargé depuis le bestiaire.
+   */
+  blob?: Creature;
   /** Libellé du badge (ex. « Gobelin 2 ») pour distinguer plusieurs instances. */
   label: string;
   /** Camp de la créature (PER-249) : teinte la carte (rouge adversaire / vert allié). */
@@ -55,12 +62,14 @@ export interface GmScreenCreatureCardProps {
   onRemove: () => void;
 }
 
-export function GmScreenCreatureCard({ slug, label, side, visible, onToggleVisible, onRemove }: GmScreenCreatureCardProps) {
+export function GmScreenCreatureCard({ slug, blob: providedBlob, label, side, visible, onToggleVisible, onRemove }: GmScreenCreatureCardProps) {
   const accent = SIDE_ACCENT[side];
   // Créature « lourde » (≥ 2 voies ou ≥ 4 capacités) → carte sur 2 colonnes. On lit le
-  // blob (et sa base pour les capacités héritées) dans le store, alimenté par le rendu.
-  const blob = useBestiaryStore((s) => s.blobs[slug]);
-  const baseId = blob?.sharedAbilitiesNote ? blob.baseCreatureId : undefined;
+  // blob (et sa base pour les capacités héritées) dans le store, alimenté par le rendu ;
+  // un bloc fourni (créature manuelle) prime et n'a ni base ni héritage.
+  const storeBlob = useBestiaryStore((s) => s.blobs[slug]);
+  const blob = providedBlob ?? storeBlob;
+  const baseId = !providedBlob && blob?.sharedAbilitiesNote ? blob.baseCreatureId : undefined;
   const baseBlob = useBestiaryStore((s) => (baseId ? s.blobs[baseId] : undefined));
   const wide = isWideCreatureCard(blob, baseBlob);
   return (
@@ -131,7 +140,18 @@ export function GmScreenCreatureCard({ slug, label, side, visible, onToggleVisib
           </AppTooltip>
         </Stack>
         {/* Carte large (2 colonnes) → sections voies/capacités elles aussi sur 2 colonnes. */}
-        <CreatureBlobView slug={slug} hideNotes dense collapsibleAbilities wideColumns={wide} />
+        {providedBlob ? (
+          // Créature créée à la main : le bloc est déjà là (rien à charger). On garde la
+          // description saisie par le MJ, qui tient lieu de notes de scène.
+          <BestiaryStatBlock
+            creature={providedBlob}
+            dense
+            collapsibleAbilities
+            wideColumns={wide}
+          />
+        ) : (
+          <CreatureBlobView slug={slug} hideNotes dense collapsibleAbilities wideColumns={wide} />
+        )}
       </Stack>
     </Paper>
   );

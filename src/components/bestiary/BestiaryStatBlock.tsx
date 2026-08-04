@@ -740,11 +740,15 @@ export function BestiaryStatBlock({
             Le livre du renvoi est résolu depuis le slug de la source de la créature (mapping réel
             source → livre) : une créature du Bestiaire ouvre son PDF payant gaté, sinon le livre
             de base par défaut (slug absent, ou source sans livre adossé). */}
-        <SourceRef
-          page={creature.sourcePage}
-          term={creature.name}
-          book={bookIdForSourceSlug(sourceSlug)}
-        />
+        {/* Créature CRÉÉE À LA MAIN par le MJ : `sourcePage` vaut 0 (sentinelle « aucune page de
+            livre », cf. `customCreatureBlob`) — pas de renvoi à afficher. */}
+        {creature.sourcePage > 0 && (
+          <SourceRef
+            page={creature.sourcePage}
+            term={creature.name}
+            book={bookIdForSourceSlug(sourceSlug)}
+          />
+        )}
         {/* Espace flexible : pousse la bascule à l'extrême droite. */}
         <Box sx={{ flexGrow: 1 }} />
         {/* Bascule « Texte d'origine » : proposée seulement s'il y a des capacités à enrichir. */}
