@@ -70,6 +70,7 @@ import {
 } from './equipment';
 import { extraMasteredWeaponIds, isWeaponMastered, masteredClassIds } from './mastery';
 import { currentHp } from './gauges';
+import { ridingMountOptionIds } from './mounts';
 import { rulesContext } from './rulesContext';
 import type { Character, EquipmentLine, FeatureChoiceSelection } from './types';
 
@@ -130,6 +131,13 @@ export interface EffectContext {
    * arme à deux mains en main » (les appels « catalogue seul » n'ont pas d'équipement).
    */
   twoHandedMeleeWielded?: boolean;
+  /**
+   * Ids des OPTIONS dont provient la monture actuellement CHEVAUCHÉE (cf. `ridingMountOptionIds`).
+   * Sert les interrupteurs qu'une monture NOMMÉE force à l'état actif (chevalier dragon r4 : « ou
+   * chevauche son drake », cf. `EffectActivation.autoActiveWhenRidingOptionIds`). Absent → traité
+   * comme « à pied » (les appels « catalogue seul » n'ont pas d'état de jeu).
+   */
+  ridingOptionIds?: string[];
 }
 
 /**
@@ -479,6 +487,7 @@ export function effectContext(character: Character): EffectContext {
     armorWorn: isArmorWorn(character.equipment),
     heavyArmorWorn: isHeavyArmorWorn(character.equipment),
     twoHandedMeleeWielded: isTwoHandedMeleeWeaponWielded(character.equipment),
+    ridingOptionIds: ridingMountOptionIds(character),
   };
 }
 
@@ -651,8 +660,26 @@ function isConditionalActive(
   index: number,
   ctx?: EffectContext,
 ): boolean {
+  if (ridingForcesActivation(effect, ctx?.ridingOptionIds)) return true;
   const toggled = ctx?.toggles[featureId]?.[index];
   return toggled ?? effect.activation.activeByDefault ?? false;
+}
+
+/**
+ * PER-74 — l'interrupteur est-il FORCÉ ACTIF par la monture chevauchée ? Second déclencheur DÉDUIT de
+ * l'état de jeu (chevalier dragon r4 : « … ou chevauche son drake »), en OU avec l'interrupteur manuel :
+ * la monture qualifiante suffit à rendre l'effet actif, sans jamais écrire dans `effectToggles`, si bien
+ * que l'état libre du joueur (porter les insignes) garde sa valeur quand il descend de sa monture.
+ * Facteur commun aux DEUX portes d'activation — `isConditionalActive` (agrégations à `EffectContext`)
+ * et `isEffectActive` (interrogations directes depuis un `Character`).
+ */
+function ridingForcesActivation(
+  effect: ConditionalStatBonusEffect,
+  ridingOptionIds: string[] | undefined,
+): boolean {
+  const required = effect.activation.autoActiveWhenRidingOptionIds;
+  if (!required?.length || !ridingOptionIds?.length) return false;
+  return ridingOptionIds.some((id) => required.includes(id));
 }
 
 /**
@@ -1143,6 +1170,8 @@ export function isEffectActive(character: Character, featureId: string, index: n
   const effects = featureById.get(featureId)?.effects;
   const effect = effects?.[index];
   if (!effect || effect.kind !== 'conditional-stat-bonus') return false;
+  // PER-74 — second déclencheur déduit de l'état de jeu (« … ou chevauche son drake »).
+  if (ridingForcesActivation(effect, ridingMountOptionIds(character))) return true;
   const toggled = character.effectToggles[featureId]?.[index];
   return toggled ?? effect.activation.activeByDefault ?? false;
 }

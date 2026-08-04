@@ -551,6 +551,8 @@ describe('effectContext', () => {
       heavyArmorWorn: false,
       // Arme de contact tenue à deux mains (PER-74, Tenir à distance) : aucune arme équipée ici.
       twoHandedMeleeWielded: false,
+      // Options de la monture chevauchée (PER-74, chevalier dragon r4) : à pied ici.
+      ridingOptionIds: [],
     });
   });
 });
@@ -2587,5 +2589,82 @@ describe('Voie du flibustier — Pied marin r4 (PER-74)', () => {
     );
     expect(full.find((b) => b.domain === 'swimming')?.total).toBe(8);
     expect(full.find((b) => b.domain === 'navigation')?.total).toBe(8);
+  });
+});
+
+describe('PER-74 — voie du chevalier dragon (p. 147-148)', () => {
+  /** Chevalier dragon niveau 16 : voie du cavalier (drake) + voie de prestige r4-r8. */
+  const knight = (over: Partial<Character> = {}): Character =>
+    ({
+      level: 16,
+      abilities: { AGI: 1, CON: 3, FOR: 4, PER: 1, CHA: 3, INT: 0, VOL: 2 } as Record<AbilityId, number>,
+      classId: 'chevalier',
+      featureIds: [
+        'cavalier-r1',
+        'cavalier-r2',
+        'cavalier-r3',
+        'cavalier-r4',
+        'cavalier-r5',
+        'prestige-chevalier-dragon-r4',
+        'prestige-chevalier-dragon-r5',
+        'prestige-chevalier-dragon-r6',
+        'prestige-chevalier-dragon-r7',
+        'prestige-chevalier-dragon-r8',
+      ],
+      featureChoices: { 'cavalier-r5': ['drake'] },
+      effectToggles: {},
+      equipment: [],
+      ...over,
+    }) as Character;
+
+  /** Total du bonus au domaine demandé, tel que la fiche l'afficherait. */
+  const bonusOn = (c: Character, domain: string) =>
+    testBonusSources(c.featureIds, effectContext(c)).find((b) => b.domain === domain)?.total;
+
+  it('r4 — insignes NON portés et à pied : aucun +5 (le bonus est conditionnel)', () => {
+    const c = knight();
+    expect(isEffectActive(c, 'prestige-chevalier-dragon-r4', 0)).toBe(false);
+    expect(bonusOn(c, 'persuasion')).toBeUndefined();
+    expect(bonusOn(c, 'intimidation')).toBeUndefined();
+  });
+
+  it('r4 — interrupteur des insignes allumé : +5 en persuasion ET en intimidation', () => {
+    const c = knight({ effectToggles: { 'prestige-chevalier-dragon-r4': [true] } });
+    expect(isEffectActive(c, 'prestige-chevalier-dragon-r4', 0)).toBe(true);
+    expect(bonusOn(c, 'persuasion')).toBe(5);
+    expect(bonusOn(c, 'intimidation')).toBe(5);
+  });
+
+  it('r4 — chevaucher le drake suffit, interrupteur éteint (second déclencheur du livre)', () => {
+    const c = knight({ mountedKey: 'cavalier-r5' });
+    expect(isEffectActive(c, 'prestige-chevalier-dragon-r4', 0)).toBe(true);
+    expect(bonusOn(c, 'persuasion')).toBe(5);
+    expect(bonusOn(c, 'intimidation')).toBe(5);
+  });
+
+  it('r4 — chevaucher un CHEVAL de guerre ne déclenche rien (seul le drake qualifie)', () => {
+    const c = knight({ featureChoices: { 'cavalier-r5': ['war-horse'] }, mountedKey: 'cavalier-r5' });
+    expect(isEffectActive(c, 'prestige-chevalier-dragon-r4', 0)).toBe(false);
+    expect(bonusOn(c, 'persuasion')).toBeUndefined();
+  });
+
+  it('r4 — le forçage par la monture n’ÉCRIT pas l’interrupteur (les insignes restent libres)', () => {
+    const c = knight({ mountedKey: 'cavalier-r5' });
+    // L'interrupteur propre du joueur n'a pas été touché : descendre de la monture rend simplement
+    // son état d'origine, sans avoir écrasé un choix délibéré.
+    expect(c.effectToggles['prestige-chevalier-dragon-r4']).toBeUndefined();
+    expect(isEffectActive({ ...c, mountedKey: undefined }, 'prestige-chevalier-dragon-r4', 0)).toBe(false);
+  });
+
+  it('r5 — RD feu de 5, portée à 10 dès le rang 7 atteint', () => {
+    const full = damageReductionSources(knight()).find((s) => s.featureId === 'prestige-chevalier-dragon-r5');
+    expect(full?.reduction).toMatchObject({ kind: 'flat', value: 10, scopes: ['fire'] });
+    const short = knight({
+      featureIds: ['cavalier-r5', 'prestige-chevalier-dragon-r4', 'prestige-chevalier-dragon-r5', 'prestige-chevalier-dragon-r6'],
+    });
+    expect(damageReductionSources(short).find((s) => s.featureId === 'prestige-chevalier-dragon-r5')?.reduction).toMatchObject({
+      value: 5,
+      scopes: ['fire'],
+    });
   });
 });

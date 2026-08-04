@@ -716,6 +716,21 @@ export interface EffectActivation {
    * interrupteur ? Défaut `false` (un effet conditionnel est inactif par défaut).
    */
   activeByDefault?: boolean;
+  /**
+   * L'interrupteur est FORCÉ ACTIF tant que la monture CHEVAUCHÉE (`Character.mountedKey`) provient
+   * d'une de ces OPTIONS de choix (PER-74, chevalier dragon r4, p. 147 : « Lorsqu'il porte les
+   * insignes de son ordre **ou chevauche son drake**… »). Le livre énonce deux déclencheurs pour un
+   * seul effet : l'un est un état libre que le joueur bascule (les insignes), l'autre se DÉDUIT de
+   * l'état de jeu (la monture en selle). On modélise donc un OU à la LECTURE : `isEffectActive`
+   * renvoie `true` dès que la monture qualifiante est chevauchée, SANS jamais écrire dans
+   * `effectToggles` — l'interrupteur propre du joueur garde sa valeur, si bien que descendre de la
+   * monture n'éteint pas des insignes délibérément portés.
+   *
+   * Les ids listés sont ceux d'`FeatureChoiceOption` (ex. `'drake'` pour Monture fantastique) : une
+   * monture quelconque ne déclenche donc RIEN, seule celle que le livre nomme compte. Absent =
+   * aucun forçage (interrupteur purement manuel). Résolu par `ridingQualifyingMount`.
+   */
+  autoActiveWhenRidingOptionIds?: string[];
 }
 
 /**
@@ -2315,6 +2330,23 @@ export interface CreatureUpgrade {
    * d'un compagnon se résout sinon contre le maître). Rendue en chip d'attaque distinct.
    */
   extraAttack?: { label: string; damageDice: string; damageAbility?: AbilityId; ranged?: boolean };
+  /**
+   * RÉDUCTION DE DÉGÂTS accordée à la CRÉATURE (PER-74, chevalier dragon r4, p. 147 : « son drake
+   * obtient une réduction des DM contre le feu de 10 »). Jusqu'ici les RD ne se posaient que sur le
+   * PERSONNAGE (`Feature.damageReduction`) ; ce canal les porte sur une créature liée, cross-voie
+   * comprise (`targetPaths`). Rendue en PUCE dans le cadre « Défense » de la mini-fiche, avec la même
+   * `DefenseBadge` que les RD du personnage et celles du bestiaire. Cumulée si plusieurs
+   * améliorations en apportent. Absent = aucune RD ajoutée.
+   */
+  damageReduction?: DamageReduction | DamageReduction[];
+  /**
+   * CAPACITÉS SPÉCIALES ajoutées à la créature (PER-74, chevalier dragon r8, p. 148 : le Souffle
+   * enflammé du drake). Même modèle que `CreatureProfile.specialAbilities` (nom + verbatim +
+   * `richText` résolu contre le maître) : une capacité de rang du MAÎTRE peut ainsi enrichir la
+   * mini-fiche de SA créature, ce qui est la place naturelle d'une attaque de zone que la créature
+   * exécute elle-même. AJOUTÉES à celles du profil de base (jamais substituées). Absent = aucune.
+   */
+  specialAbilities?: CreatureSpecialAbility[];
   /** Note libre ajoutée à la fiche de la créature (ex. Vol, « doué de parole »). */
   note?: string;
 }
@@ -2614,6 +2646,21 @@ export interface CreatureProfile {
    */
   transformation?: boolean;
   /**
+   * Ce profil REMPLACE le compagnon déjà octroyé par ces VOIES (PER-74, chevalier dragon r7, p. 148 :
+   * « Le drake atteint sa pleine maturité » — le stat-block adulte se substitue à celui du drake
+   * juvénile obtenu par Monture fantastique, voie `cavalier`). À DISTINGUER de `CreatureUpgrade`, qui
+   * ajoute des DELTAS chiffrés : ici le livre réécrit le bloc entier, on remplace donc le profil au
+   * lieu d'empiler des bonus qui divergeraient du tableau imprimé.
+   *
+   * Le compagnon remplacé garde son IDENTITÉ : `listCompanions` conserve la capacité PORTEUSE
+   * d'origine (donc la clé de PV et l'état « en selle », qui survivent au franchissement du rang) et
+   * n'échange que le profil ; le rang remplaçant, lui, n'ajoute AUCUN compagnon distinct — sans quoi
+   * la même créature apparaîtrait deux fois dans la section « Compagnons ». Les améliorations
+   * (`CreatureUpgrade`) continuent de s'appliquer par-dessus, résolues contre la voie porteuse.
+   * Absent = ce profil est un compagnon à part entière.
+   */
+  replacesCreatureFromPaths?: string[];
+  /**
    * Taille de la créature (PER-175) — même échelle que le bestiaire (`CreatureSize`, p. 260).
    * Rendue en pastille « tag » (info-bulle « Taille ») à droite du nom, comme le bestiaire.
    * Absente = pas de pastille. Ex. familiers fantastiques : `minuscule` (stat-block générique
@@ -2639,6 +2686,14 @@ export interface CreatureProfile {
    * reste réservé au pur descriptif sans règle (déplacement, « doué de parole »).
    */
   specialAbilities?: CreatureSpecialAbility[];
+  /**
+   * RÉDUCTIONS DE DÉGÂTS de la créature (PER-74), rendues en PUCES dans le cadre « Défense » de la
+   * mini-fiche — même `DefenseBadge` que les RD du personnage et celles du bestiaire. Soit propres au
+   * profil, soit accordées par une capacité du maître via `CreatureUpgrade.damageReduction` (chevalier
+   * dragon r4, p. 147 : « son drake obtient une réduction des DM contre le feu de 10 »), auquel cas
+   * `applyCreatureUpgrades` les fusionne ici. Absent = aucune RD.
+   */
+  damageReduction?: DamageReduction | DamageReduction[];
   /**
    * TEXTE D'ORIGINE verbatim de la créature + sa page source (PER-175), affiché en bas de la
    * mini-fiche (comme la description du bestiaire) pour que chaque stat/capacité DÉRIVÉE reste

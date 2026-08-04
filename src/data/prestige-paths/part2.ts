@@ -841,6 +841,35 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le cavalier rejoint l'ordre des chevaliers dragons avec le grade d'apprenti. Lorsqu'il porte les insignes de son ordre ou chevauche son drake, il gagne un bonus de +5 pour tous les tests de persuasion et d'intimidation. De plus, son drake obtient une réduction des DM contre le feu de 10.",
+    // PER-74 — le livre énonce DEUX déclencheurs pour un seul et même bonus : « porte les insignes de
+    // son ordre » (un état libre, que rien dans la fiche ne peut deviner) OU « chevauche son drake »
+    // (un état de jeu déjà suivi). D'où un interrupteur unique, que la monture force à l'état actif
+    // sans l'écrire (`autoActiveWhenRidingOptionIds`, cf. `ridingForcesActivation`) : monter le drake
+    // allume le bonus, en descendre n'éteint pas des insignes délibérément portés. Seul le DRAKE
+    // qualifie — un cheval de guerre ne fait pas de son cavalier un chevalier dragon.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        // Marqueur d'état pur : aucune stat dérivée touchée, le bonus est aux COMPÉTENCES.
+        bonuses: [],
+        testBonusDomains: ['persuasion', 'intimidation'],
+        // +5 explicite : le fallback de catégorie prestige donnerait « 2 + min(rang, 5) » = 7.
+        testBonusValue: 5,
+        activation: {
+          kind: 'condition',
+          label: "insignes de l'ordre portés, ou en selle du drake",
+          autoActiveWhenRidingOptionIds: ['drake'],
+        },
+      },
+    ],
+    // « son drake obtient une réduction des DM contre le feu de 10 » : RD portée par la CRÉATURE, pas
+    // par le personnage. Ciblage CROSS-VOIE explicite — le drake est octroyé par Monture fantastique
+    // (voie `cavalier`) ; on cible AUSSI la voie de prestige pour que la mini-fiche du rang 7 (le drake
+    // adulte, qui remplace le juvénile) affiche la même puce que la section « Compagnons ».
+    creatureUpgrade: {
+      targetPaths: ['cavalier', 'prestige-chevalier-dragon'],
+      damageReduction: { kind: 'flat', value: 10, scopes: ['fire'] },
+    },
     sourcePage: 147,
   },
   {
@@ -852,6 +881,14 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le cavalier est désormais un membre à part entière de l'ordre des chevaliers Dragon. Il a appris à résister aux flammes les plus féroces et il retranche 5 à tous les DM de feu subis (RD [feu] 5). Cette réduction passe à 10 une fois atteint le rang 7.",
+    // PER-74 — mise en forme : les crochets de « (RD [feu] 5) » sont une convention TYPOGRAPHIQUE du
+    // livre pour nommer le type de dégât, mais le moteur de balisage y voyait une expression invalide
+    // et les affichait tels quels. On les retire donc du texte rendu (le `text` verbatim, lui, reste la
+    // source) : « RD » est alors reconnu par le glossaire et souligné, et la RD elle-même est déjà
+    // rendue en PUCE — valeur EFFECTIVE comprise, 10 à partir du rang 7 — dans le cadre « Défense »
+    // de la fiche, alimenté par le `damageReduction` ci-dessous.
+    richText:
+      "Le cavalier est désormais un membre à part entière de l'ordre des chevaliers Dragon. Il a appris à résister aux flammes les plus féroces et il retranche 5 à tous les DM de feu subis (RD feu 5). Cette réduction passe à 10 une fois atteint le rang 7.",
     // PER-137 : RD permanente sur le feu, scalante par rang de voie (−5, puis −10 au rang 7).
     damageReduction: {
       kind: 'flat',
@@ -869,6 +906,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['M'],
     text:
       "Le cavalier peut enflammer son épée pour [5 + CHA] rounds. Elle inflige dès lors +1d4° DM de feu.",
+    // PER-74 — mise en forme SEULE (arbitrage propriétaire) : la durée devient une quantité calculée
+    // (puce bleue), le supplément de DM un dé évolutif. Le livre ne donne AUCUNE fréquence à ce rang
+    // (ni « une fois par combat », ni par jour) : pas de compteur d'usage, donc, et pas d'interrupteur
+    // — l'embrasement se joue à la table.
+    richText:
+      "Le cavalier peut enflammer son épée pour [=5 + CHA] rounds. Elle inflige dès lors +{1d4°} DM de feu.",
     sourcePage: 148,
   },
   {
@@ -880,6 +923,25 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le drake atteint sa pleine maturité et augmente ses capacités offensives.\n\nDRAKE\nAGI +0 | CON +6* | FOR +6 | PER +1 | INT -2 | CHA +0 | VOL +2\nDéfense 22 · Points de vigueur [10 + niveau × 6] · Initiative [Init. du personnage]\nAttaque [attaque magique] · DM 2d4°+6",
+    // PER-74 — le bloc de stats recopié SORT du texte affiché (il reste dans `text`, source) et devient
+    // une vraie mini-fiche de créature, comme le loup du lycanthrope (p. 131). Le livre réécrit le bloc
+    // ENTIER : ce profil REMPLACE donc celui du drake juvénile de Monture fantastique (voie `cavalier`)
+    // au lieu d'empiler des deltas, et la section « Compagnons » montre le drake adulte dès ce rang —
+    // en conservant sa clé de PV et son état « en selle » (cf. `replacesCreatureFromPaths`).
+    richText: 'Le drake atteint sa pleine maturité et augmente ses capacités offensives.',
+    creatureProfile: {
+      name: 'Drake',
+      companionType: 'mount',
+      replacesCreatureFromPaths: ['cavalier'],
+      abilities: { AGI: 0, CON: 6, FOR: 6, PER: 1, CHA: 0, INT: -2, VOL: 2 },
+      // Le « * » du bloc p. 148, sur la seule CON.
+      bonusDieAbilities: ['CON'],
+      defense: '22',
+      hitPoints: '[=10 + niveau × 6]',
+      initiative: { fromMaster: 'initiative' },
+      attack: { label: 'Morsure et griffes', fromMaster: 'magicAttack', damage: '[2d4° + 6]' },
+      note: 'Sorte de lézard volant, cousin mineur du dragon (p. 147). En vol : 20 m par action de mouvement.',
+    },
     sourcePage: 148,
   },
   {
@@ -891,6 +953,24 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le drake est désormais capable de cracher du feu au prix d'une action d'attaque une fois par combat. Toutes les cibles situées dans un cône de 10 m de long sur 10 m de large, subissent 8d4° DM de feu, ou la moitié seulement si elles réussissent un test d'AGI difficulté 12.",
+    // PER-74 — dé évolutif balisé, et surtout : le souffle est une attaque que le DRAKE exécute
+    // lui-même. Il rejoint donc les capacités spéciales de sa mini-fiche (section « Compagnons »),
+    // là où le joueur le cherchera en combat, plutôt que de rester une ligne de texte sur la carte du
+    // rang. Même ciblage cross-voie que la RD du rang 4.
+    richText:
+      "Le drake est désormais capable de cracher du feu au prix d'une action d'attaque une fois par combat. Toutes les cibles situées dans un cône de 10 m de long sur 10 m de large, subissent {8d4°} DM de feu, ou la moitié seulement si elles réussissent un test d'AGI difficulté 12.",
+    creatureUpgrade: {
+      targetPaths: ['cavalier', 'prestige-chevalier-dragon'],
+      specialAbilities: [
+        {
+          name: 'Souffle enflammé (A)',
+          text:
+            "Le drake est désormais capable de cracher du feu au prix d'une action d'attaque une fois par combat. Toutes les cibles situées dans un cône de 10 m de long sur 10 m de large, subissent 8d4° DM de feu, ou la moitié seulement si elles réussissent un test d'AGI difficulté 12.",
+          richText:
+            "Une fois par combat, au prix d'une action d'attaque : toutes les cibles dans un cône de 10 m de long sur 10 m de large subissent {8d4°} DM de feu, ou la moitié seulement si elles réussissent un test d'AGI difficulté 12.",
+        },
+      ],
+    },
     sourcePage: 148,
   },
 

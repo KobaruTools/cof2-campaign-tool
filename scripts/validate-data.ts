@@ -57,6 +57,7 @@ import {
   SITUATIONAL_EFFECT_IDS,
   STATUS_EFFECT_IDS,
   WEAPON_CATEGORIES,
+  type CreatureUpgrade,
   type WeaponDamageCondition,
 } from '../src/data/schema';
 
@@ -204,6 +205,18 @@ const validRangedKinds = new Set<string>(RANGED_WEAPON_KINDS);
 const validWeaponCategories = new Set<string>(WEAPON_CATEGORIES);
 const validWeaponFamilies = new Set<string>([...MASTER_AT_ARMS_CATEGORIES, ...EXTRA_WEAPON_FAMILIES]);
 const validDamageDies = new Set<string>(['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20']);
+const validDamageScopes = new Set<string>(RESISTIBLE_DAMAGE_TYPES);
+/**
+ * Tous les ids d'OPTIONS de choix du catalogue (PER-74) — pour vérifier qu'un interrupteur forcé par
+ * une monture nommée (`autoActiveWhenRidingOptionIds`, chevalier dragon r4 : « ou chevauche son
+ * drake ») désigne une option qui EXISTE : une coquille (« drakes ») rendrait le bonus inatteignable
+ * en silence, l'interrupteur restant simplement manuel.
+ */
+const allChoiceOptionIds = new Set<string>(
+  features.flatMap((f) =>
+    (f.choices ?? []).flatMap((ch) => (ch.kind === 'option' ? ch.options.map((o) => o.id) : [])),
+  ),
+);
 
 /**
  * Valide une `WeaponDamageCondition` (partagée par `weapon-damage-bonus` PER-115 et `attack-bonus`
@@ -348,6 +361,14 @@ for (const c of features) {
       if (!a || !validActivationKinds.has(a.kind))
         err(`[capacite ${c.id}] effect: activation.kind invalide (${c.id})`);
       if (!a?.label) err(`[capacite ${c.id}] effect: activation.label manquant (${c.id})`);
+      // Interrupteur FORCÉ par une monture nommée (PER-74) : les options citées doivent exister, et
+      // seul un effet de CONDITION peut l'être (une durée ne se déduit pas de l'état de jeu).
+      for (const optId of a?.autoActiveWhenRidingOptionIds ?? []) {
+        if (!allChoiceOptionIds.has(optId))
+          err(`[capacite ${c.id}] effect: autoActiveWhenRidingOptionIds option inexistante : ${optId}`);
+        if (a?.kind !== 'condition')
+          err(`[capacite ${c.id}] effect: autoActiveWhenRidingOptionIds exige activation.kind 'condition'`);
+      }
       // Exclusion mutuelle : les cibles désactivées doivent exister et ne pas être soi.
       for (const target of e.disablesFeatures ?? []) {
         if (!featureById.has(target))
@@ -648,6 +669,56 @@ for (const c of features) {
   }
 }
 
+// --- Remplacement de créature & améliorations portées à une créature (PER-74) -
+// `replacesCreatureFromPaths` (chevalier dragon r7 : le drake adulte supplante le juvénile) doit
+// désigner des VOIES existantes, autres que la sienne. Les RD/capacités spéciales octroyées à une
+// créature par `CreatureUpgrade` suivent les mêmes règles de forme que celles du personnage.
+for (const c of features) {
+  for (const target of c.creatureProfile?.replacesCreatureFromPaths ?? []) {
+    if (!pathById.has(target))
+      err(`[capacite ${c.id}] creatureProfile: replacesCreatureFromPaths voie inexistante : ${target}`);
+    if (target === c.pathId)
+      err(`[capacite ${c.id}] creatureProfile: replacesCreatureFromPaths cible sa propre voie (${target})`);
+  }
+  const upgrades: { where: string; upgrade: CreatureUpgrade }[] = [];
+  if (c.creatureUpgrade) upgrades.push({ where: 'creatureUpgrade', upgrade: c.creatureUpgrade });
+  for (const choice of c.choices ?? []) {
+    if (choice.kind !== 'option') continue;
+    for (const opt of choice.options)
+      if (opt.creatureUpgrade) upgrades.push({ where: `option ${opt.id}`, upgrade: opt.creatureUpgrade });
+  }
+  for (const { where, upgrade } of upgrades) {
+    for (const target of upgrade.targetPaths ?? [])
+      if (!pathById.has(target)) err(`[capacite ${c.id}] ${where}: targetPaths voie inexistante : ${target}`);
+    const list = upgrade.damageReduction
+      ? Array.isArray(upgrade.damageReduction)
+        ? upgrade.damageReduction
+        : [upgrade.damageReduction]
+      : [];
+    // RD portée à une CRÉATURE : forme simple (mode + valeur + types). Les raffinements réservés au
+    // personnage — scope choisi à la table, plafond d'absorption, gating par interrupteur — n'ont pas
+    // cours ici : la protection d'un compagnon est une donnée d'affichage permanente.
+    for (const dr of list) {
+      if (dr.kind !== 'flat' && dr.kind !== 'divide' && dr.kind !== 'immunity')
+        err(`[capacite ${c.id}] ${where}: damageReduction.kind inconnu : ${dr.kind}`);
+      if (dr.kind === 'immunity') {
+        if (dr.value !== undefined) err(`[capacite ${c.id}] ${where}: damageReduction 'immunity' ne porte pas de value`);
+      } else if (dr.value === undefined) {
+        err(`[capacite ${c.id}] ${where}: damageReduction '${dr.kind}' exige une value`);
+      } else {
+        const ve = effectValueError(dr.value);
+        if (ve) err(`[capacite ${c.id}] ${where}: damageReduction value: ${ve}`);
+      }
+      for (const s of dr.scopes ?? [])
+        if (!validDamageScopes.has(s)) err(`[capacite ${c.id}] ${where}: damageReduction scope inconnu : ${s}`);
+    }
+    for (const ab of upgrade.specialAbilities ?? []) {
+      if (!ab.name) err(`[capacite ${c.id}] ${where}: specialAbilities entrée sans nom`);
+      if (!ab.text) err(`[capacite ${c.id}] ${where}: specialAbilities « ${ab.name} » sans texte verbatim`);
+    }
+  }
+}
+
 // --- Catalogue des domaines de compétence (PER-89) ---------------------------
 // Ids uniques ; au moins une caractéristique gouvernante, toutes valides.
 checkUnique('domaines', testDomains.map((d) => d.id));
@@ -721,7 +792,6 @@ for (const c of features) {
 // --- Réduction de dégâts (préparation « stats avancées ») --------------------
 // Donnée posée mais pas encore lue par le moteur : on vérifie la forme (mode,
 // value selon le mode, types de dégâts connus, plafond résoluble).
-const validDamageScopes = new Set<string>(RESISTIBLE_DAMAGE_TYPES);
 let featuresWithDamageReduction = 0;
 for (const c of features) {
   if (!c.damageReduction) continue;

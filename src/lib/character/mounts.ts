@@ -159,6 +159,34 @@ export function isMountMounted(character: Character, owned: OwnedMount): boolean
 }
 
 /**
+ * Ids des OPTIONS de choix dont provient la monture actuellement CHEVAUCHÉE (PER-74) — `[]` à pied.
+ * Sert les capacités dont le livre nomme une monture PRÉCISE : chevalier dragon r4, p. 147, « lorsqu'il
+ * […] chevauche son drake » — monter un cheval de guerre ne déclenche rien, seul le drake compte. Voir
+ * `EffectActivation.autoActiveWhenRidingOptionIds`, alimente `EffectContext.ridingOptionIds`.
+ *
+ * `mountedKey` désigne la monture en selle : pour un compagnon de VOIE, c'est l'id de la capacité
+ * porteuse (ex. `cavalier-r5`, cf. `CompanionEntry.key`) — on remonte donc aux options retenues via
+ * `featureChoices`. Pour une monture POSSÉDÉE (catalogue, PER-216) la clé est un id d'instance : aucune
+ * option de voie derrière, donc `[]` — ce qui est correct, une monture achetée à l'écurie n'est pas le
+ * drake de l'ordre.
+ */
+export function ridingMountOptionIds(character: Character): string[] {
+  const key = character.mountedKey;
+  if (!key) return [];
+  // Clé composite d'un compagnon multi-instances (`<featureId>#<instanceId>`) : seul le featureId
+  // porte les choix. Aucune monture du livre n'est multi-instances, mais la clé reste générique.
+  const hash = key.indexOf('#');
+  const featureId = hash < 0 ? key : key.slice(0, hash);
+  if (!character.featureIds.includes(featureId)) return [];
+  const out: string[] = [];
+  for (const sel of character.featureChoices[featureId] ?? []) {
+    if (Array.isArray(sel)) out.push(...sel.filter((id): id is string => typeof id === 'string'));
+    else if (typeof sel === 'string' && sel) out.push(sel);
+  }
+  return out;
+}
+
+/**
  * Malus d'Initiative subi par le CAVALIER du fait de la barde, à retrancher de l'Initiative calculée
  * de la fiche : bonus de DEF de la barde de la monture actuellement CHEVAUCHÉE (le malus au cheval,
  * lui, est permanent tant que la barde est portée — appliqué au bloc via `resolveMountCreature`).

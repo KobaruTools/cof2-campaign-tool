@@ -127,6 +127,23 @@ function printedRdBadge(rd: string): DefenseBadgeData {
 }
 
 /**
+ * Badges d'une liste de RÉDUCTIONS DE DÉGÂTS : immunités de type d'abord, puis réductions plates et
+ * divisions — l'ordre de la carte Défense d'une fiche. Extrait de `creatureDefenseBadges` (PER-74)
+ * pour servir aussi les COMPAGNONS, dont le profil (`CreatureProfile.damageReduction`) porte les mêmes
+ * entrées mais ni immunités d'état ni RD imprimée avec les PV — deux notions propres au bestiaire.
+ * Cas d'usage : la RD feu 10 que le chevalier dragon accorde à son drake (p. 147).
+ */
+export function damageReductionBadges(dr: DamageReduction | DamageReduction[] | undefined): DefenseBadgeData[] {
+  const entries = asList(dr);
+  const immunities = entries.filter((e) => e.kind === 'immunity').flatMap(immunityBadges);
+  const reductions = entries
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => e.kind !== 'immunity')
+    .map(({ e, i }) => reductionBadge(e, i));
+  return [...immunities, ...reductions];
+}
+
+/**
  * Badges du cadre Défense d'une créature : immunités d'état, immunités de type de dégât, puis
  * réductions — RD imprimée avec les PV d'abord (la protection « de base »), puis celles décrites
  * par les capacités. Liste vide si la créature n'a aucun trait défensif.

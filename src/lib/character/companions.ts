@@ -12,7 +12,15 @@
  * jeu au même titre que la barre de vie du personnage.
  */
 import { featureById, pathById, progression } from '@/data';
-import type { AbilityId, CompanionType, CreatureProfile, CreatureUpgrade, Feature } from '@/data/schema';
+import type {
+  AbilityId,
+  CompanionType,
+  CreatureProfile,
+  CreatureSpecialAbility,
+  CreatureUpgrade,
+  DamageReduction,
+  Feature,
+} from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
 import { getSelection } from './choices';
 import {
@@ -171,6 +179,10 @@ export function applyCreatureUpgrades(
   const dmgDice: string[] = [];
   const notes: string[] = [];
   const extraAttackSpecs: NonNullable<CreatureUpgrade['extraAttack']>[] = [];
+  // PER-74 — RD et capacités spéciales accordées à la créature par une capacité du MAÎTRE (chevalier
+  // dragon : RD feu 10 du drake au r4, Souffle enflammé au r8). Cumulées / ajoutées, jamais substituées.
+  const reductions: DamageReduction[] = [];
+  const specials: CreatureSpecialAbility[] = [];
   for (const u of upgrades) {
     if (u.abilities) {
       for (const [k, v] of Object.entries(u.abilities) as [AbilityId, number][]) {
@@ -183,6 +195,8 @@ export function applyCreatureUpgrades(
     if (u.meleeDamageDice) dmgDice.push(u.meleeDamageDice);
     if (u.note) notes.push(u.note);
     if (u.extraAttack) extraAttackSpecs.push(u.extraAttack);
+    if (u.damageReduction) reductions.push(...(Array.isArray(u.damageReduction) ? u.damageReduction : [u.damageReduction]));
+    if (u.specialAbilities) specials.push(...u.specialAbilities);
   }
   const next: CreatureProfile = { ...base };
   if (base.abilities && Object.keys(abilityDelta).length > 0) {
@@ -204,6 +218,11 @@ export function applyCreatureUpgrades(
       ...extraAttackSpecs.map((ea) => ({ label: ea.label, ranged: ea.ranged, damage: bakeExtraAttackDamage(ea, eff) })),
     ];
   }
+  if (reductions.length > 0) {
+    const own = base.damageReduction;
+    next.damageReduction = [...(own ? (Array.isArray(own) ? own : [own]) : []), ...reductions];
+  }
+  if (specials.length > 0) next.specialAbilities = [...(base.specialAbilities ?? []), ...specials];
   if (notes.length > 0) next.note = [base.note, ...notes].filter(Boolean).join(' ');
   // PER-256 : mémorise les sources du bonus de DEF (capacité + montant) pour ventiler la valeur en
   // info-bulle. Rattaché au profil AFFICHÉ (`next`), consommé par `creatureDefenseBreakdown`. On ne le
@@ -403,6 +422,25 @@ export function listCompanions(character: Character): CompanionEntry[] {
     const prev = byPath.get(feature.pathId);
     if (prev && prev.feature.rank >= feature.rank) continue;
     byPath.set(feature.pathId, { feature, profile });
+  }
+  // PER-74 — REMPLACEMENT cross-voie d'un compagnon (chevalier dragon r7 : le drake « atteint sa
+  // pleine maturité », son bloc adulte se substitue à celui du drake juvénile de Monture fantastique).
+  // On échange le PROFIL en conservant la capacité PORTEUSE d'origine — donc la clé de PV et l'état
+  // « en selle » survivent au franchissement du rang — puis on retire l'entrée du rang remplaçant,
+  // sans quoi la même créature figurerait deux fois dans la section « Compagnons ». Le remplacement
+  // n'a lieu que si la voie ciblée octroie effectivement un compagnon (sinon le rang reste tel quel,
+  // et son profil s'affiche comme un compagnon ordinaire).
+  for (const [pathId, entry] of [...byPath]) {
+    const targets = entry.profile.replacesCreatureFromPaths;
+    if (!targets?.length) continue;
+    let replaced = false;
+    for (const target of targets) {
+      const victim = byPath.get(target);
+      if (!victim || target === pathId) continue;
+      byPath.set(target, { feature: victim.feature, profile: entry.profile });
+      replaced = true;
+    }
+    if (replaced) byPath.delete(pathId);
   }
   // Développe chaque voie retenue en entrées d'affichage : une seule pour un compagnon classique,
   // N pour un compagnon multi-instances (une par instance vivante de `companionInstances`).

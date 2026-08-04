@@ -30,6 +30,8 @@ import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { MetaPill } from '@/components/MetaPill';
 import { creatureDefenseBreakdown } from '@/lib/character/companions';
 import type { StatBreakdown } from '@/lib/character/statBreakdown';
+import { damageReductionBadges } from '@/components/bestiary/creatureDefenseBadges';
+import { DefenseBadge } from './DefenseBadge';
 import { CapabilityChip, RichInline } from './FeatureRichText';
 
 /**
@@ -208,6 +210,25 @@ function signedContribution(n: number): string {
 }
 
 /**
+ * PUCES DE RÉDUCTION DE DÉGÂTS de la créature (PER-74), accolées au chiffre de DÉFENSE — une
+ * protection se lit dans le cadre défensif. Mêmes badges que la carte Défense d'une fiche et que le
+ * bloc de bestiaire (`damageReductionBadges`), donc même lecture partout. Cas d'usage : la RD feu 10
+ * que le chevalier dragon accorde à son drake (p. 147), portée par `CreatureUpgrade.damageReduction`.
+ * `null` si la créature n'a aucune RD.
+ */
+function CreatureDefenseBadges({ profile }: { profile: CreatureProfile }) {
+  const badges = damageReductionBadges(profile.damageReduction);
+  if (badges.length === 0) return null;
+  return (
+    <>
+      {badges.map(({ key, ...badge }) => (
+        <DefenseBadge key={key} {...badge} compact fullWidth={false} />
+      ))}
+    </>
+  );
+}
+
+/**
  * Valeur de DÉFENSE d'une créature AVEC ventilation par source (PER-256) : le total dans un encadré
  * (même style que l'encadré de formule de la fiche), dont l'info-bulle liste les contributions —
  * termes de la valeur de base en texte (« Base », « Rang »), bonus propagés du maître en PUCE DE VOIE
@@ -370,6 +391,7 @@ export function CreatureStatsLine({
             ) : (
               creatureDefenseNode(profile, abilities, level, rank)
             )}
+            <CreatureDefenseBadges profile={profile} />
           </CreatureStatChip>
         )}
         {showHitPoints && profile.hitPoints && (
@@ -521,22 +543,26 @@ export function CreatureDerivedStats({
     statBlocks.push({
       key: 'def',
       statId: 'defense',
-      content:
-        defAlt && defenseAltActive ? (
-          <AppTooltip
-            title={`${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`}
-          >
-            <Box component="span" sx={{ cursor: 'help' }}>
-              {isMasterRef(defAlt.value)
-                ? masterDerived
-                  ? masterValue(masterDerived, defAlt.value.fromMaster)
-                  : 'DEF du maître'
-                : rich(defAlt.value)}
-            </Box>
-          </AppTooltip>
-        ) : (
-          creatureDefenseNode(profile, abilities, level, rank)
-        ),
+      content: (
+        <>
+          {defAlt && defenseAltActive ? (
+            <AppTooltip
+              title={`${defAlt.conditionLabel} (${defAlt.sourceLabel}) : DEF égale à celle du chevalier. Hors selle : DEF de base.`}
+            >
+              <Box component="span" sx={{ cursor: 'help' }}>
+                {isMasterRef(defAlt.value)
+                  ? masterDerived
+                    ? masterValue(masterDerived, defAlt.value.fromMaster)
+                    : 'DEF du maître'
+                  : rich(defAlt.value)}
+              </Box>
+            </AppTooltip>
+          ) : (
+            creatureDefenseNode(profile, abilities, level, rank)
+          )}
+          <CreatureDefenseBadges profile={profile} />
+        </>
+      ),
     });
   }
   if (showHitPoints && profile.hitPoints) statBlocks.push({ key: 'hp', statId: 'maxHp', content: rich(profile.hitPoints) });

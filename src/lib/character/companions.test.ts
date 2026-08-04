@@ -505,3 +505,99 @@ describe('pruneCompanionInstances', () => {
     expect(pruneCompanionInstances({ 'outre-tombe-r3': [] }, c)).toEqual({});
   });
 });
+
+describe('PER-74 — le drake du chevalier dragon (p. 147-148)', () => {
+  /**
+   * Chevalier avec la voie du cavalier COMPLÈTE (le prérequis du livre : Monture fantastique au rang 5,
+   * réglée sur le drake) + les rangs de prestige demandés. La voie entière compte : c'est Cavalier
+   * émérite (r2) qui porte l'état « en selle », sans lequel aucune monture ne peut être déclarée montée.
+   */
+  const knight = (prestigeRanks: number[] = [], over: Partial<Character> = {}) =>
+    char({
+      classId: 'chevalier',
+      level: 16,
+      featureIds: [
+        'cavalier-r1',
+        'cavalier-r2',
+        'cavalier-r3',
+        'cavalier-r4',
+        'cavalier-r5',
+        ...prestigeRanks.map((r) => `prestige-chevalier-dragon-r${r}`),
+      ],
+      featureChoices: { 'cavalier-r5': ['drake'] },
+      ...over,
+    });
+
+  it('Monture fantastique propose le drake, monture volante à partir du niveau 9', () => {
+    const choice = featureById.get('cavalier-r5')!.choices![0];
+    const drake = choice.kind === 'option' ? choice.options.find((o) => o.id === 'drake') : undefined;
+    expect(drake?.minLevel).toBe(9);
+    expect(drake?.creatureProfile?.companionType).toBe('mount');
+    // Drake JUVÉNILE : gabarit des montures volantes (le livre ne chiffre que l'adulte, p. 148).
+    expect(drake?.creatureProfile?.defense).toBe('20');
+    expect(drake?.creatureProfile?.abilities).toMatchObject({ CON: 4, FOR: 4 });
+  });
+
+  it('sans le rang 7 : le drake JUVÉNILE figure dans les compagnons', () => {
+    const companions = listCompanions(knight());
+    expect(companions).toHaveLength(1);
+    expect(companions[0].profile.name).toBe('Drake');
+    expect(companions[0].profile.defense).toBe('20');
+    expect(companions[0].profile.attack?.damage).toBe('[2d4° + 5]');
+    expect(resolveCreatureMaxHp(companions[0].profile, resolveCreatureAbilities(companions[0].profile)!, 16, 5)).toBe(90);
+  });
+
+  it('r7 — le drake ADULTE REMPLACE le juvénile, sans créer un second compagnon', () => {
+    const companions = listCompanions(knight([4, 5, 6, 7]));
+    expect(companions).toHaveLength(1);
+    const drake = companions[0];
+    expect(drake.profile.defense).toBe('22');
+    expect(drake.profile.attack?.damage).toBe('[2d4° + 6]');
+    expect(drake.profile.abilities).toMatchObject({ CON: 6, FOR: 6 });
+    expect(drake.profile.bonusDieAbilities).toEqual(['CON']);
+    // PV : le bloc adulte passe à « 10 + niveau × 6 ».
+    expect(resolveCreatureMaxHp(drake.profile, resolveCreatureAbilities(drake.profile)!, 16, 7)).toBe(106);
+  });
+
+  it('r7 — le compagnon garde son IDENTITÉ : clé de PV et état « en selle » survivent', () => {
+    const c = knight([4, 5, 6, 7], { mountedKey: 'cavalier-r5' });
+    const drake = listCompanions(c)[0];
+    // La capacité porteuse reste Monture fantastique → la clé de PV ne bouge pas au passage du rang.
+    expect(drake.key).toBe('cavalier-r5');
+    expect(drake.feature.id).toBe('cavalier-r5');
+    expect(companionMountEnSelle(c, drake)).toBe(true);
+  });
+
+  it('r4 — la RD feu 10 est portée par le drake, juvénile comme adulte', () => {
+    for (const ranks of [[4], [4, 5, 6, 7]]) {
+      const drake = listCompanions(knight(ranks))[0];
+      const list = Array.isArray(drake.profile.damageReduction)
+        ? drake.profile.damageReduction
+        : [drake.profile.damageReduction];
+      expect(list).toHaveLength(1);
+      expect(list[0]).toMatchObject({ kind: 'flat', value: 10, scopes: ['fire'] });
+    }
+  });
+
+  it('r4 — sans ce rang, le drake n’a aucune RD', () => {
+    expect(listCompanions(knight())[0].profile.damageReduction).toBeUndefined();
+  });
+
+  it('r8 — le Souffle enflammé rejoint les capacités spéciales du drake', () => {
+    const drake = listCompanions(knight([4, 5, 6, 7, 8]))[0];
+    const names = (drake.profile.specialAbilities ?? []).map((a) => a.name);
+    expect(names).toContain('Souffle enflammé (A)');
+    expect(listCompanions(knight([4, 5, 6, 7]))[0].profile.specialAbilities).toBeUndefined();
+  });
+
+  it('r7 — la carte du rang affiche le MÊME drake que la section Compagnons (RD et souffle compris)', () => {
+    const c = knight([4, 5, 6, 7, 8]);
+    const inline = displayCreatureProfile(featureById.get('prestige-chevalier-dragon-r7')!, c)!;
+    const companion = listCompanions(c)[0].profile;
+    expect(inline.defense).toBe(companion.defense);
+    expect(inline.damageReduction).toEqual(companion.damageReduction);
+    expect((inline.specialAbilities ?? []).map((a) => a.name)).toEqual(
+      (companion.specialAbilities ?? []).map((a) => a.name),
+    );
+  });
+});

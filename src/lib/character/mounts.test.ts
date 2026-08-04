@@ -7,6 +7,7 @@ import {
   mountDisplayName,
   mountMaxHp,
   mountedInitiativePenalty,
+  ridingMountOptionIds,
   resolveBarde,
   resolveMountCreature,
 } from './mounts';
@@ -137,5 +138,41 @@ describe('mounts — listOwnedMounts', () => {
     expect(list[1].displayName).toBe('Chariot');
     expect(list[1].creature).toBeUndefined();
     expect(list[1].maxHp).toBeNull();
+  });
+});
+
+describe('ridingMountOptionIds — monture NOMMÉE par une capacité (PER-74)', () => {
+  /** Chevalier avec Monture fantastique réglée sur une espèce donnée. */
+  const knight = (option: string, over: Partial<Character> = {}): Character => ({
+    ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+    classId: 'chevalier',
+    level: 16,
+    featureIds: ['cavalier-r5'],
+    featureChoices: { 'cavalier-r5': [option] },
+    ...over,
+  });
+
+  it('à pied → aucune option (le bonus « en selle du drake » ne peut pas se déclencher)', () => {
+    expect(ridingMountOptionIds(knight('drake'))).toEqual([]);
+  });
+
+  it('en selle du drake → l’option `drake` est remontée', () => {
+    expect(ridingMountOptionIds(knight('drake', { mountedKey: 'cavalier-r5' }))).toEqual(['drake']);
+  });
+
+  it('en selle d’un cheval de guerre → `war-horse`, donc pas de correspondance avec `drake`', () => {
+    const ids = ridingMountOptionIds(knight('war-horse', { mountedKey: 'cavalier-r5' }));
+    expect(ids).toEqual(['war-horse']);
+    expect(ids).not.toContain('drake');
+  });
+
+  it('monture POSSÉDÉE chevauchée (id d’instance) → aucune option de voie derrière', () => {
+    const c = knight('drake', { mountedKey: 'm1', mounts: [warHorse()] });
+    expect(ridingMountOptionIds(c)).toEqual([]);
+  });
+
+  it('capacité NON acquise → rien, même si un choix traîne (perso rétrogradé)', () => {
+    const c = knight('drake', { mountedKey: 'cavalier-r5', featureIds: [] });
+    expect(ridingMountOptionIds(c)).toEqual([]);
   });
 });
