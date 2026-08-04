@@ -126,6 +126,13 @@ export interface HpGaugeProps {
    * d'initiative de l'écran de MJ, PER-236) où la barre a besoin de toute la largeur.
    */
   controlsBelow?: boolean;
+  /**
+   * Formulaire détaillé (montant + létal/temp + Dégâts / Soin) DÉPLIÉ à la première ouverture.
+   * Sert aux jauges appelées à la demande, où le formulaire EST la raison de l'appel : le popover
+   * de dégâts des cartes compactes du tracker (PER-300) serait inutile replié. Le choix de
+   * l'utilisateur (chevron) continue de primer et reste persisté sous `persistKey`.
+   */
+  defaultExpanded?: boolean;
 }
 
 /**
@@ -138,12 +145,12 @@ export interface HpGaugeProps {
  * Le maximum est piloté ailleurs. Sert à la fois au personnage (`PlayerStatusPanel`) et à
  * chaque compagnon (`CompanionCard`), pour un comportement de suivi de PV identique.
  */
-export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKey, iconLabel = 'Points de vie', controlsBelow = false }: HpGaugeProps) {
+export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKey, iconLabel = 'Points de vie', controlsBelow = false, defaultExpanded = false }: HpGaugeProps) {
   const theme = useTheme();
   const hpColor = theme.palette.success.main;
   const [amount, setAmount] = useState('1');
   const [kind, setKind] = useState<DamageKind>('lethal');
-  const [expanded, toggleExpanded] = usePersistentBoolean(`gauge-expanded:${persistKey}`, false);
+  const [expanded, toggleExpanded] = usePersistentBoolean(`gauge-expanded:${persistKey}`, defaultExpanded);
 
   const current = currentHp(maxHp, depletion);
   const lethal = Math.max(0, depletion.hp?.lethal ?? 0);

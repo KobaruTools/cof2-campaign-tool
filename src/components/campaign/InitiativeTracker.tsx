@@ -52,6 +52,15 @@
  * D'INITIATIVE d'une carte donne le tour à ce combattant SANS toucher au compteur de manche (c'est
  * une correction de position) : l'en-tête de la carte reste, lui, dévolu au menu des états.
  *
+ * DENSITÉ DES CARTES (PER-300) : une bascule « Détaillé / Compact » dans l'en-tête ramène les cartes
+ * de l'écran de MJ de 260 à 176 px — la largeur de la projection — et fait passer ~5 combattants
+ * visibles à ~8. Ce qui reste en compact : identité, bandeau d'initiative, badges d'états EN ENTIER
+ * (raison d'être du tracker), DEF, et les PV en barre fine dont le clic ouvre le popover de dégâts /
+ * soin (`CompactHpControl` : le geste le plus fréquent après « tour suivant » ne doit pas coûter un
+ * changement de mode). Ce qui se replie : les attaques, en info-bulle. Le DÉTAILLÉ reste le défaut ;
+ * le réglage est une préférence d'affichage LOCALE (`localStorage`), jamais poussée dans l'état de
+ * combat partagé — la projection l'ignore et son rendu est inchangé.
+ *
  * ÉTATS DÉDUITS : les états d'une ligne (`row.appliedStatuses`) peuvent venir du MJ ou de la
  * SITUATION du combattant (affaibli à 1 PV, p. 220). Les seconds sont rendus en JAUNE et en lecture
  * seule, et RÉSERVÉS À L'ÉCRAN DE MJ : ils comptent dans les stats ajustées de sa carte (dé malus à
@@ -71,6 +80,8 @@ import CheckIcon from '@mui/icons-material/Check';
 import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import DensityMediumIcon from '@mui/icons-material/DensityMedium';
+import DensitySmallIcon from '@mui/icons-material/DensitySmall';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -79,7 +90,10 @@ import ListSubheader from '@mui/material/ListSubheader';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
+import Popover from '@mui/material/Popover';
 import Stack from '@mui/material/Stack';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha, type Theme } from '@mui/material/styles';
 import { useDroppable } from '@dnd-kit/core';
@@ -95,8 +109,9 @@ import {
   type EffectiveStatus,
   type ResolvedStatusModifiers,
 } from '@/lib/character/statusEffects';
-import { currentHp } from '@/lib/character/gauges';
+import { currentHp, hpHealthState, type HealthState } from '@/lib/character/gauges';
 import { centeredScrollLeft } from '@/lib/ui/centerScroll';
+import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import {
   scrollEdges,
   stepScrollLeft,
@@ -262,6 +277,21 @@ export interface CombatStatusControls {
 
 /** Côté du portrait (px) : le bandeau d'initiative collé dessous fait la MÊME largeur. */
 const PORTRAIT_SIZE = 44;
+
+/**
+ * Largeur (px) d'une carte en mode DÉTAILLÉ — l'affichage par défaut de l'écran de MJ. C'est un
+ * plancher imposé par le contenu : il faut faire tenir la DEF et les trois valeurs d'attaque sur une
+ * seule rangée de pastilles sous la jauge de PV complète.
+ */
+const COLUMN_WIDTH_DETAILED = 260;
+
+/**
+ * Largeur (px) d'une carte en mode COMPACT (PER-300) et en PROJECTION : la même, éprouvée de longue
+ * date sur l'écran projeté, où le bloc se limite au portrait, au bandeau d'initiative et à
+ * l'identité. Sur l'écran de MJ, elle fait passer le nombre de combattants visibles de ~5 à ~8 — le
+ * vrai remède au défilement, dont PER-297 et PER-298 n'ont rendu que le symptôme supportable.
+ */
+const COLUMN_WIDTH_COMPACT = 176;
 
 /**
  * Bandeau d'initiative : rectangle aux coins BAS arrondis, collé sous le portrait (le haut reste
@@ -588,6 +618,202 @@ function CombatStatsRow({ stats, resolved }: { stats: CombatStats; resolved: Res
         );
       })}
     </Box>
+  );
+}
+
+/**
+ * Rangée DEF + attaques d'une carte COMPACTE (PER-300). Sur 176 px, les quatre pastilles du mode
+ * détaillé ne tiennent pas sur une ligne : on garde donc VISIBLE la seule DEF — la valeur la plus
+ * consultée en combat, celle qu'on compare à chaque jet d'attaque — et les attaques se replient
+ * derrière une pastille unique qui les détaille en info-bulle. Les valeurs restent ajustées par les
+ * états exactement comme en détaillé, et le DÉ MALUS reste porté par la pastille repliée : sa
+ * présence est une information de jeu, elle ne doit pas se perdre dans le repli.
+ */
+function CompactCombatStatsRow({
+  stats,
+  resolved,
+}: {
+  stats: CombatStats;
+  resolved: ResolvedStatusModifiers;
+}) {
+  const defDelta = resolved.derived.def ?? 0;
+  const attackMalusDie = resolved.allTestsMalusDie || resolved.attackTestsMalusDie;
+  // Attaques ajustées, calculées une fois pour l'info-bulle : même arithmétique que `CombatStatsRow`
+  // (delta du type d'attaque + malus plat « à tous les tests »).
+  const attacks = stats.attacks.map((atk) => {
+    const delta = (resolved.derived[ATTACK_KIND_DERIVED[atk.kind]] ?? 0) + resolved.allTestsFlat;
+    return { ...atk, adjusted: atk.base + delta, lowered: delta < 0 };
+  });
+  // Une seule attaque baissée suffit à teinter la pastille repliée en rouge : sans ça, le repli
+  // masquerait le fait qu'un état a mordu sur les attaques.
+  const anyLowered = attacks.some((a) => a.lowered);
+  return (
+    <Box sx={{ display: 'flex', gap: 0.6, alignItems: 'center' }}>
+      <StatPill
+        glyph={DERIVED_STAT_ICON_PATHS.defense}
+        value={String(stats.def + defDelta)}
+        lowered={defDelta < 0}
+      />
+      {attacks.length > 0 && (
+        <AppTooltip
+          title={
+            <Box>
+              {attacks.map((a) => (
+                <Box key={a.key} sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
+                  <span>{a.label}</span>
+                  <Box
+                    component="span"
+                    sx={{ fontWeight: 700, color: a.lowered ? 'error.light' : 'inherit' }}
+                  >
+                    {formatSigned(a.adjusted)}
+                  </Box>
+                </Box>
+              ))}
+              {attackMalusDie && (
+                <Box sx={{ mt: 0.5, opacity: 0.8 }}>Dé malus aux tests d&apos;attaque</Box>
+              )}
+            </Box>
+          }
+        >
+          {/* `flexGrow: 0` : contrairement aux pastilles du mode détaillé (qui se répartissent la
+              largeur), celle-ci reste au strict minimum — la DEF prend tout le reste. */}
+          <Box sx={{ display: 'flex', flexGrow: 0, cursor: 'help' }}>
+            <StatPill
+              glyph={DERIVED_STAT_ICON_PATHS.meleeAttack}
+              value="…"
+              lowered={anyLowered}
+              malusDie={attackMalusDie}
+            />
+          </Box>
+        </AppTooltip>
+      )}
+    </Box>
+  );
+}
+
+/**
+ * Libellé des états de santé préjudiciables (p. 219-220) pour la carte COMPACTE : sur 176 px, le
+ * badge textuel de `HpGauge` ne tient pas, donc l'état se lit à la COULEUR du chiffre de PV et se
+ * nomme dans l'info-bulle. Le verbatim de règle reste accessible : le popover de dégâts rend la
+ * `HpGauge` complète, badge compris.
+ */
+const COMPACT_HEALTH_LABEL: Record<Exclude<HealthState, 'normal'>, string> = {
+  weakened: 'Affaibli',
+  down: 'À terre / mourant',
+  stunned: 'Assommé',
+};
+
+/** Teinte du chiffre de PV d'une carte compacte selon l'état de santé (cf. `HealthStateBadge`). */
+const COMPACT_HEALTH_COLOR: Record<HealthState, string> = {
+  normal: 'text.primary',
+  weakened: 'warning.light',
+  down: 'error.light',
+  stunned: 'secondary.light',
+};
+
+/**
+ * PV d'une carte COMPACTE (PER-300) : jauge fine (`CompactGauges`, même barre que les cartes de
+ * joueurs et la projection) + le chiffre `courant / max`, sur UNE ligne cliquable qui ouvre le
+ * popover de dégâts / soin.
+ *
+ * Pourquoi un popover et pas une révélation au survol : infliger des dégâts est le geste le plus
+ * fréquent après « tour suivant », et il demande un MONTANT (« le gobelin prend 7 ») — des boutons
+ * ±1 révélés au survol ne remplacent pas le formulaire. Le popover rend donc la `HpGauge` COMPLÈTE,
+ * formulaire déplié : rien n'est perdu par rapport au mode détaillé, et aucune logique n'est
+ * dupliquée. Il ne peut pas s'agir d'un dépliage de la carte au clic : ses deux zones cliquables
+ * sont déjà prises (en-tête = menu des états, bandeau d'initiative = donner le tour).
+ *
+ * Seuls les PV sont montrés (`manaMax: null`) : une seconde piste sur les seuls personnages
+ * rouvrirait le désalignement créatures / personnages que le plancher d'en-tête existe pour éviter.
+ * Le mana de la table se lit sur les cartes de joueurs de l'écran de MJ.
+ */
+function CompactHpControl({ row }: { row: InitiativeRow }) {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const current = currentHp(row.maxHp, row.depletion);
+  const state = hpHealthState(row.maxHp, row.depletion);
+  const healthNote = state === 'normal' ? null : COMPACT_HEALTH_LABEL[state];
+  return (
+    <>
+      <AppTooltip
+        title={
+          <>
+            {`PV ${current} / ${row.maxHp} — cliquer pour infliger des dégâts ou soigner`}
+            {healthNote && (
+              <Box component="span" sx={{ display: 'block', mt: 0.5, fontWeight: 700 }}>
+                {healthNote}
+              </Box>
+            )}
+          </>
+        }
+      >
+        <Box
+          role="button"
+          tabIndex={0}
+          aria-label={`Points de vie de ${row.name} : ${current} sur ${row.maxHp} — infliger des dégâts ou soigner`}
+          onClick={(e) => setAnchorEl(e.currentTarget)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setAnchorEl(e.currentTarget as HTMLElement);
+            }
+          }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
+            px: 0.5,
+            py: 0.5,
+            borderRadius: 1,
+            cursor: 'pointer',
+            outline: 'none',
+            transition: 'background-color 0.15s',
+            '&:hover, &:focus-visible': { bgcolor: 'rgba(255, 255, 255, 0.08)' },
+          }}
+        >
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <CompactGauges depletion={row.depletion} maxHp={row.maxHp} manaMax={null} luckMax={0} />
+          </Box>
+          <Box
+            component="span"
+            sx={{
+              flexShrink: 0,
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+              color: COMPACT_HEALTH_COLOR[state],
+            }}
+          >
+            {current}
+            <Box component="span" sx={{ opacity: 0.6, fontWeight: 500 }}>{`/${row.maxHp}`}</Box>
+          </Box>
+        </Box>
+      </AppTooltip>
+      <Popover
+        anchorEl={anchorEl}
+        open={!!anchorEl}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+      >
+        {/* Largeur confortable, indépendante des 176 px de la carte : le popover flotte au-dessus
+            de la bande, c'est justement ce qui permet de garder la carte étroite. */}
+        <Box sx={{ p: 1.5, width: 320 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }} noWrap>
+            {row.name}
+          </Typography>
+          <HpGauge
+            depletion={row.depletion}
+            maxHp={row.maxHp}
+            onDamage={row.onDamage}
+            onHeal={row.onHeal}
+            onReset={row.onReset}
+            persistKey={`${row.persistKey}:compact`}
+            defaultExpanded
+          />
+        </Box>
+      </Popover>
+    </>
   );
 }
 
@@ -1148,9 +1374,18 @@ function BandFade({ side, visible }: { side: 'left' | 'right'; visible: boolean 
 }
 
 /**
+ * Marqueur « il reste du contenu de ce côté » posé sur un chevron de défilement. Il existe pour que
+ * la règle de SURVOL du conteneur ne réveille que les chevrons utiles : `'&:hover .band-chevron'`
+ * est plus spécifique que l'`opacity: 0` du chevron lui-même et l'écrasait, si bien qu'entrer la
+ * souris sur la bande rallumait aussi le chevron en butée (inerte au clic, mais visible).
+ */
+const CHEVRON_REACHABLE_ATTR = 'data-reachable';
+
+/**
  * Chevron de défilement d'un bord de la bande (PER-298) : un clic avance d'une carte. ÉCRAN DE MJ
  * uniquement — l'écran projeté n'a pas de souris. Discret au repos, plus franc au survol de la
- * bande (classe révélée par le conteneur), et effacé dès qu'il n'y a plus rien de ce côté.
+ * bande (classe révélée par le conteneur), et TOTALEMENT effacé dès qu'il n'y a plus rien de ce
+ * côté : en butée à droite, seul le chevron gauche subsiste, et inversement.
  */
 function BandChevron({
   side,
@@ -1168,6 +1403,7 @@ function BandChevron({
       onClick={onClick}
       // Retiré du parcours clavier et du survol quand il n'y a rien à atteindre : le bouton reste
       // en place (aucun saut de mise en page) mais devient totalement inerte.
+      {...{ [CHEVRON_REACHABLE_ATTR]: visible ? 'true' : 'false' }}
       tabIndex={visible ? 0 : -1}
       aria-hidden={!visible}
       aria-label={side === 'left' ? 'Combattants précédents' : 'Combattants suivants'}
@@ -1193,6 +1429,48 @@ function BandChevron({
     >
       {side === 'left' ? <ChevronLeftIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
     </IconButton>
+  );
+}
+
+/**
+ * Clé `localStorage` de la densité des cartes (PER-300). Préférence d'affichage LOCALE à la machine
+ * du MJ : elle n'entre PAS dans l'état de combat partagé (rien à synchroniser en session, rien à
+ * pousser vers la projection — ce n'est pas une donnée de partie).
+ */
+const COMPACT_STORAGE_KEY = 'initiative-tracker-compact';
+
+/**
+ * Bascule « Détaillé / Compact » de la bande d'initiative (PER-300), calquée sur `InventoryViewToggle`
+ * de l'inventaire (`ToggleButtonGroup` à deux boutons, libellé en info-bulle). Le DÉTAILLÉ reste le
+ * défaut : le compact est un mode de confort pour les combats fournis, pas un remplacement.
+ */
+function TrackerDensityToggle({
+  compact,
+  onChange,
+}: {
+  compact: boolean;
+  onChange: (compact: boolean) => void;
+}) {
+  return (
+    <ToggleButtonGroup
+      value={compact ? 'compact' : 'detailed'}
+      exclusive
+      size="small"
+      onChange={(_, next) => {
+        if (next) onChange(next === 'compact');
+      }}
+    >
+      <ToggleButton value="detailed" aria-label="Cartes détaillées">
+        <AppTooltip title="Cartes détaillées — jauge de PV complète, DEF et attaques dépliées">
+          <DensityMediumIcon fontSize="small" />
+        </AppTooltip>
+      </ToggleButton>
+      <ToggleButton value="compact" aria-label="Cartes compactes">
+        <AppTooltip title="Cartes compactes — plus de combattants d'un coup d'œil">
+          <DensitySmallIcon fontSize="small" />
+        </AppTooltip>
+      </ToggleButton>
+    </ToggleButtonGroup>
   );
 }
 
@@ -1307,6 +1585,7 @@ function CombatantColumn({
   row,
   isActive,
   projection,
+  compact = false,
   interactive,
   status,
   onGiveTurn,
@@ -1314,6 +1593,13 @@ function CombatantColumn({
   row: InitiativeRow;
   isActive: boolean;
   projection: boolean;
+  /**
+   * Mode COMPACT de l'écran de MJ (PER-300) : carte ramenée à la largeur de la projection, jauge de
+   * PV réduite à une barre fine cliquable (popover de dégâts) et attaques repliées en info-bulle.
+   * Sans effet en projection, qui est déjà dans sa forme la plus dense — c'est justement le modèle
+   * dont ce mode s'inspire.
+   */
+  compact?: boolean;
   interactive?: ColumnStatusInteractive;
   status?: ColumnStatusRender;
   /**
@@ -1352,12 +1638,11 @@ function CombatantColumn({
       // conteneur va chercher (`querySelector`) plutôt que d'entrelacer deux réfs.
       {...(isActive && { [ACTIVE_COMBATANT_ATTR]: 'true' })}
       sx={(t) => ({
-        // Écran de MJ : 260 px, le plancher pour garder DEF + les 3 attaques sur UNE rangée de
-        // pastilles sous la jauge de PV. PROJECTION : le bandeau d'initiative est passé SOUS le
-        // portrait (au lieu d'une pastille ronde à côté) et il ne reste que portrait + identité →
-        // 176 px suffisent, ce qui fait tenir bien plus de blocs sans défilement horizontal. Les
-        // noms trop longs sont tronqués (« … ») pour que la largeur ne varie JAMAIS d'un bloc à l'autre.
-        width: projection ? 176 : 260,
+        // Trois cas, deux largeurs (cf. `COLUMN_WIDTH_*`) : la PROJECTION et le mode COMPACT de
+        // l'écran de MJ (PER-300) partagent les 176 px, le mode DÉTAILLÉ garde son plancher de
+        // 260 px. Les noms trop longs sont tronqués (« … ») pour que la largeur ne varie JAMAIS
+        // d'un bloc à l'autre.
+        width: projection || compact ? COLUMN_WIDTH_COMPACT : COLUMN_WIDTH_DETAILED,
         flexShrink: 0,
         p: 1.25,
         // Projection : réserve FIXE en haut pour le bandeau de jauges PV/mana (hors du flux), sur
@@ -1457,8 +1742,10 @@ function CombatantColumn({
             )}
           </Box>
           {/* Repère visuel « appliquer un état » (écran de MJ) : indique que l'en-tête ouvre le
-              menu. Le drop d'une puce fait la même chose sans passer par le menu. */}
-          {identityClickable && (
+              menu. Le drop d'une puce fait la même chose sans passer par le menu. Sacrifié en
+              COMPACT, où ces 20 px valent mieux au nom du combattant : l'en-tête reste cliquable
+              (curseur + teinte au survol) et le glisser-déposer depuis la palette est intact. */}
+          {identityClickable && !compact && (
             <AppTooltip title="Appliquer un état">
               <BoltOutlinedIcon fontSize="small" sx={{ flexShrink: 0, color: 'text.secondary' }} />
             </AppTooltip>
@@ -1491,23 +1778,38 @@ function CombatantColumn({
         {/* Barre de vie interactive (même composant que la fiche), boutons dessous.
             Masquée en projection, où elle prendrait trop de hauteur : les personnages y ont à la
             place le bandeau de jauges condensées PV + mana, et les PV des créatures
-            restent réservés au MJ. */}
-        {!projection && (
-          <HpGauge
-            depletion={row.depletion}
-            maxHp={row.maxHp}
-            onDamage={row.onDamage}
-            onHeal={row.onHeal}
-            onReset={row.onReset}
-            persistKey={row.persistKey}
-            controlsBelow
-          />
-        )}
+            restent réservés au MJ.
+            En COMPACT (PER-300), elle cède la place à la barre fine + popover de dégâts. */}
+        {!projection &&
+          (compact ? (
+            <CompactHpControl row={row} />
+          ) : (
+            <HpGauge
+              depletion={row.depletion}
+              maxHp={row.maxHp}
+              onDamage={row.onDamage}
+              onHeal={row.onHeal}
+              onReset={row.onReset}
+              persistKey={row.persistKey}
+              controlsBelow
+            />
+          ))}
         {/* DEF + attaques ajustées (PER-280) : rendues UNIQUEMENT en mode MJ (`status` fourni),
-            jamais en projection. Base = `row.combatStats`, ajustement résolu depuis les états posés. */}
-        {status && row.combatStats && (
-          <CombatStatsRow stats={row.combatStats} resolved={resolveStatusModifiers(status.applied)} />
-        )}
+            jamais en projection. Base = `row.combatStats`, ajustement résolu depuis les états posés.
+            En COMPACT, seule la DEF reste visible, les attaques passent en info-bulle (PER-300). */}
+        {status &&
+          row.combatStats &&
+          (compact ? (
+            <CompactCombatStatsRow
+              stats={row.combatStats}
+              resolved={resolveStatusModifiers(status.applied)}
+            />
+          ) : (
+            <CombatStatsRow
+              stats={row.combatStats}
+              resolved={resolveStatusModifiers(status.applied)}
+            />
+          ))}
         {/* États appliqués (écran de MJ) : MÊMES carrés-icônes que la projection (PER-283), mais
             interactifs — clic = retrait, ±N au survol pour les cumulatifs. Effet verbatim en tooltip.
             Un état DÉDUIT (jaune, ex. affaibli à 1 PV) est rendu en lecture seule : le MJ ne l'a pas
@@ -1549,11 +1851,14 @@ function CombatantColumn({
 function StatusDroppableColumn({
   row,
   isActive,
+  compact,
   controls,
   onGiveTurn,
 }: {
   row: InitiativeRow;
   isActive: boolean;
+  /** Mode compact (PER-300), simplement relayé à la colonne. */
+  compact: boolean;
   controls: CombatStatusControls;
   /** Donne le tour à ce combattant (PER-299), simplement relayé à la colonne. */
   onGiveTurn: () => void;
@@ -1578,6 +1883,7 @@ function StatusDroppableColumn({
         row={row}
         isActive={isActive}
         projection={false}
+        compact={compact}
         onGiveTurn={onGiveTurn}
         interactive={{
           dropRef: setNodeRef,
@@ -1727,6 +2033,10 @@ export function InitiativeTracker({
   const rootRef = useRef<HTMLDivElement | null>(null);
   // Raccourcis clavier N/P + flèches : ÉCRAN DE MJ uniquement (jamais en projection, PER-299).
   useTurnShortcuts(!projection, rootRef, step);
+  // Densité des cartes (PER-300), préférence LOCALE persistée. La projection l'ignore : elle est
+  // déjà à la largeur compacte et son rendu ne doit dépendre d'aucun réglage de l'écran de MJ.
+  const [compactPref, setCompactPref] = usePersistedBoolean(COMPACT_STORAGE_KEY, false);
+  const compact = !projection && compactPref;
 
   return (
     <Stack spacing={2} ref={rootRef}>
@@ -1787,6 +2097,10 @@ export function InitiativeTracker({
               </IconButton>
             </Stack>
           )}
+          {/* Densité des cartes (PER-300) : rangée avec le titre et le compteur de manche — c'est un
+              réglage d'AFFICHAGE, pas une action de jeu, il n'a rien à faire dans le groupe
+              « Tour précédent / Tour suivant » à droite. */}
+          <TrackerDensityToggle compact={compactPref} onChange={setCompactPref} />
           <Box sx={{ flexGrow: 1 }} />
           {headerAction}
           {/* « Tour précédent » (PER-299) : rattrape le clic de trop, sans avoir à refaire tout le
@@ -1834,8 +2148,10 @@ export function InitiativeTracker({
         <Box
           sx={{
             position: 'relative',
-            // Chevrons discrets au repos, francs dès que la souris entre sur la bande.
-            '&:hover .band-chevron': { opacity: 1 },
+            // Chevrons discrets au repos, francs dès que la souris entre sur la bande — mais SEULS
+            // ceux qui mènent quelque part (`data-reachable`) : sans ce filtre, cette règle (plus
+            // spécifique) rallumait aussi le chevron en butée, qui n'a rien à montrer.
+            [`&:hover .band-chevron[${CHEVRON_REACHABLE_ATTR}="true"]`]: { opacity: 1 },
           }}
         >
           <Box
@@ -1861,6 +2177,7 @@ export function InitiativeTracker({
                   key={row.key}
                   row={row}
                   isActive={isActive}
+                  compact={compact}
                   controls={statusControls}
                   onGiveTurn={() => onCurrentTurnKeyChange(row.key)}
                 />
@@ -1870,6 +2187,7 @@ export function InitiativeTracker({
                   row={row}
                   isActive={isActive}
                   projection={projection}
+                  compact={compact}
                   onGiveTurn={onGiveTurn}
                 />
               );
