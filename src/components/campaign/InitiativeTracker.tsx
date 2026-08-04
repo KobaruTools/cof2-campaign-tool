@@ -37,6 +37,13 @@
  * puisque ses PV ne leur sont pas montrés. Réservé aux créatures : un personnage à 0 PV est à terre /
  * mourant (p. 220), pas mort.
  *
+ * CONFORT DE DÉFILEMENT (PER-298) : la bande se fait défiler à la MOLETTE verticale quand le
+ * pointeur la survole (sans « coller » le pointeur : en butée, l'événement repart à la page), et
+ * signale ce qui reste hors champ par des ESTOMPES en dégradé sur ses bords — valables aussi en
+ * projection, où elles disent à la table qu'il y a d'autres combattants. Deux CHEVRONS d'une carte
+ * par clic et une barre de défilement épaissie complètent l'écran de MJ (l'écran projeté n'a pas
+ * de souris : pas de chevrons).
+ *
  * ÉTATS DÉDUITS : les états d'une ligne (`row.appliedStatuses`) peuvent venir du MJ ou de la
  * SITUATION du combattant (affaibli à 1 PV, p. 220). Les seconds sont rendus en JAUNE et en lecture
  * seule, et RÉSERVÉS À L'ÉCRAN DE MJ : ils comptent dans les stats ajustées de sa carte (dé malus à
@@ -44,7 +51,9 @@
  * paraissent JAMAIS en projection — un tel badge révélerait aux joueurs que la créature est à 1 PV,
  * alors que ses PV leur sont masqués.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
@@ -79,6 +88,14 @@ import {
 } from '@/lib/character/statusEffects';
 import { currentHp } from '@/lib/character/gauges';
 import { centeredScrollLeft } from '@/lib/ui/centerScroll';
+import {
+  scrollEdges,
+  stepScrollLeft,
+  wheelScrollDelta,
+  type ScrollDirection,
+  type ScrollEdges,
+  type ScrollMetrics,
+} from '@/lib/ui/horizontalScroll';
 import { crossOutBackgroundImage } from '@/lib/ui/crossOut';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SkullIcon } from '@/components/SkullIcon';
@@ -898,6 +915,215 @@ function useCenterActiveCombatant(currentTurnKey: string | null, rowsSignature: 
   return scrollRef;
 }
 
+/**
+ * Épaisseur (px) de la barre de défilement de la bande (PER-298) : la barre système par défaut est
+ * si fine qu'elle passait inaperçue — première cause du « je ne savais pas que ça défilait ».
+ */
+const SCROLLBAR_SIZE = 14;
+
+/**
+ * Habillage de la barre de défilement horizontale de la bande : franchement visible (curseur clair
+ * en pilule sur piste sombre) au lieu du filet effacé du système, première cause du « je ne savais
+ * pas que ça défilait ».
+ *
+ * Les deux familles de propriétés sont EXCLUSIVES sur Chromium : dès que `scrollbar-color` /
+ * `scrollbar-width` sont posés, il ignore les pseudo-éléments `::-webkit-scrollbar` et rend sa
+ * barre système (seulement recolorée). On réserve donc les propriétés standard à Firefox, via un
+ * `@supports` qui teste la prise en charge du pseudo-élément — vrai sur Chromium/Safari (qui
+ * prennent alors le chemin webkit), faux sur Firefox.
+ *
+ * N'affecte PAS la marge basse du conteneur (`pb`), qui réserve la place de la bande d'icônes
+ * d'états débordant sous les cartes en projection : la barre se pose sur le bord bas de la boîte,
+ * sous ce rembourrage.
+ */
+const SCROLLBAR_SX = {
+  '@supports not selector(::-webkit-scrollbar)': {
+    scrollbarWidth: 'auto',
+    scrollbarColor: 'rgba(255, 255, 255, 0.34) rgba(255, 255, 255, 0.06)',
+  },
+  '&::-webkit-scrollbar': { height: SCROLLBAR_SIZE },
+  '&::-webkit-scrollbar-track': {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: SCROLLBAR_SIZE / 2,
+  },
+  '&::-webkit-scrollbar-thumb': {
+    backgroundColor: 'rgba(255, 255, 255, 0.34)',
+    borderRadius: SCROLLBAR_SIZE / 2,
+    border: '3px solid transparent',
+    backgroundClip: 'content-box',
+    '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.55)' },
+  },
+};
+
+/** Lit sur le DOM les trois mesures dont dépend toute l'arithmétique de défilement. */
+function scrollMetrics(container: HTMLElement): ScrollMetrics {
+  return {
+    scrollLeft: container.scrollLeft,
+    viewportWidth: container.clientWidth,
+    contentWidth: container.scrollWidth,
+  };
+}
+
+/**
+ * Pas d'un chevron : largeur d'une carte + gouttière. MESURÉ sur la bande (écart entre les bords
+ * gauches de deux cartes voisines) plutôt que déduit des constantes de largeur — il suivra donc
+ * tout seul un éventuel mode compact. Replis : une seule carte → sa largeur ; bande vide → la
+ * largeur visible.
+ */
+function cardStep(container: HTMLElement): number {
+  const [first, second] = container.children as unknown as (HTMLElement | undefined)[];
+  if (!first) return container.clientWidth;
+  // `offsetLeft` se rapporte au même ancêtre positionné pour les deux cartes : leur écart est
+  // exactement « largeur + gouttière », quel que soit le défilement en cours.
+  return second ? second.offsetLeft - first.offsetLeft : first.offsetWidth;
+}
+
+/**
+ * Confort de défilement de la bande d'initiative (PER-298), monté sur le conteneur défilant :
+ *  - la MOLETTE verticale survolant la bande la fait défiler horizontalement (voir
+ *    `wheelScrollDelta` pour la règle de non-détournement en butée) ;
+ *  - il suit les CÔTÉS où il reste du contenu hors champ, ce qui pilote les estompes et les
+ *    chevrons.
+ *
+ * Recalcul à chaque défilement, au redimensionnement du conteneur (`ResizeObserver`) et à tout
+ * changement du roster (`rowsSignature` — une carte ajoutée/retirée change `scrollWidth` sans
+ * toucher à la taille du conteneur, l'observateur seul ne le verrait pas).
+ *
+ * Le `wheel` est posé À LA MAIN en écouteur NON passif : un `onWheel` React est attaché en passif
+ * sur certains navigateurs, ce qui interdit `preventDefault`.
+ */
+function useBandScroll(scrollRef: RefObject<HTMLDivElement | null>, rowsSignature: string) {
+  const [edges, setEdges] = useState<ScrollEdges>({ left: false, right: false });
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      const next = scrollEdges(scrollMetrics(container));
+      // Comparaison avant mise à jour : un défilement émet des dizaines d'événements, dont
+      // quasiment aucun ne change les côtés — inutile de re-rendre la bande à chacun.
+      setEdges((prev) => (prev.left === next.left && prev.right === next.right ? prev : next));
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      const delta = wheelScrollDelta({ ...scrollMetrics(container), deltaX: e.deltaX, deltaY: e.deltaY, deltaMode: e.deltaMode });
+      // `null` = geste déjà horizontal ou bande en butée : on laisse l'événement à la page.
+      if (delta === null) return;
+      e.preventDefault();
+      container.scrollLeft += delta;
+    };
+
+    measure();
+    container.addEventListener('scroll', measure, { passive: true });
+    container.addEventListener('wheel', onWheel, { passive: false });
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => {
+      container.removeEventListener('scroll', measure);
+      container.removeEventListener('wheel', onWheel);
+      observer.disconnect();
+    };
+  }, [scrollRef, rowsSignature]);
+
+  /** Avance la bande d'une carte dans le sens demandé (défilement animé). */
+  const scrollByStep = useCallback(
+    (direction: ScrollDirection) => {
+      const container = scrollRef.current;
+      if (!container) return;
+      const target = stepScrollLeft(scrollMetrics(container), direction, cardStep(container));
+      if (target === null) return;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      container.scrollTo({ left: target, behavior: reducedMotion ? 'auto' : 'smooth' });
+    },
+    [scrollRef],
+  );
+
+  return { edges, scrollByStep };
+}
+
+/**
+ * Estompe en dégradé sur un bord de la bande (PER-298) : dit « il y a d'autres combattants de ce
+ * côté » même quand la coupure tombe pile entre deux cartes, cas où rien ne le laissait deviner.
+ * Vaut AUSSI en projection, où personne ne peut faire défiler : c'est là une information pour la
+ * table, pas une invitation à cliquer — d'où le `pointer-events: none` et l'absence de chevron.
+ *
+ * S'arrête au-dessus de la barre de défilement pour ne pas la délaver.
+ */
+function BandFade({ side, visible }: { side: 'left' | 'right'; visible: boolean }) {
+  return (
+    <Box
+      aria-hidden
+      sx={(t) => ({
+        position: 'absolute',
+        top: 0,
+        bottom: SCROLLBAR_SIZE,
+        [side]: 0,
+        width: 48,
+        pointerEvents: 'none',
+        zIndex: 1,
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 0.2s',
+        backgroundImage: `linear-gradient(to ${side === 'left' ? 'right' : 'left'}, ${
+          t.palette.background.default
+        } 0%, ${alpha(t.palette.background.default, 0.72)} 45%, ${alpha(
+          t.palette.background.default,
+          0,
+        )} 100%)`,
+      })}
+    />
+  );
+}
+
+/**
+ * Chevron de défilement d'un bord de la bande (PER-298) : un clic avance d'une carte. ÉCRAN DE MJ
+ * uniquement — l'écran projeté n'a pas de souris. Discret au repos, plus franc au survol de la
+ * bande (classe révélée par le conteneur), et effacé dès qu'il n'y a plus rien de ce côté.
+ */
+function BandChevron({
+  side,
+  visible,
+  onClick,
+}: {
+  side: 'left' | 'right';
+  visible: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <IconButton
+      className="band-chevron"
+      size="small"
+      onClick={onClick}
+      // Retiré du parcours clavier et du survol quand il n'y a rien à atteindre : le bouton reste
+      // en place (aucun saut de mise en page) mais devient totalement inerte.
+      tabIndex={visible ? 0 : -1}
+      aria-hidden={!visible}
+      aria-label={side === 'left' ? 'Combattants précédents' : 'Combattants suivants'}
+      title={side === 'left' ? 'Combattants précédents' : 'Combattants suivants'}
+      sx={{
+        position: 'absolute',
+        [side]: 2,
+        // Centré sur la hauteur des CARTES : la barre de défilement occupe le bas du conteneur.
+        top: `calc(50% - ${SCROLLBAR_SIZE / 2}px)`,
+        transform: 'translateY(-50%)',
+        zIndex: 2,
+        color: 'common.white',
+        bgcolor: 'rgba(20, 20, 23, 0.75)',
+        border: '1px solid rgba(255, 255, 255, 0.18)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
+        opacity: visible ? 0.4 : 0,
+        pointerEvents: visible ? 'auto' : 'none',
+        transition: 'opacity 0.2s, background-color 0.15s',
+        '&:hover': { bgcolor: 'rgba(35, 35, 40, 0.95)' },
+      }}
+    >
+      {side === 'left' ? <ChevronLeftIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
+    </IconButton>
+  );
+}
+
 /** Interactions d'états attachées à une colonne (mode écran de MJ uniquement). */
 interface ColumnStatusInteractive {
   /** Réf de la zone de drop (`@dnd-kit`). */
@@ -1324,10 +1550,14 @@ export function InitiativeTracker({
   const displayedRows = projection ? rows.filter((r) => !r.hidden) : rows;
   // Les états ne sont interactifs que hors projection (auteur = MJ uniquement).
   const interactive = !projection && statusControls;
-  // Recentrage automatique sur le combattant actif (PER-297). La signature reflète l'ORDRE des
-  // cartes affichées : un ajout, un retrait ou un reclassement par les états (PER-292) déplace la
-  // carte active, il faut donc recentrer là aussi — pas seulement quand le tour change.
-  const scrollRef = useCenterActiveCombatant(currentTurnKey, displayedRows.map((r) => r.key).join('|'));
+  // Signature de l'ORDRE des cartes affichées : un ajout, un retrait ou un reclassement par les
+  // états (PER-292) déplace la carte active — il faut donc recentrer là aussi, pas seulement quand
+  // le tour change — et change la largeur du contenu, donc les côtés encore atteignables (PER-298).
+  const rowsSignature = displayedRows.map((r) => r.key).join('|');
+  // Recentrage automatique sur le combattant actif (PER-297).
+  const scrollRef = useCenterActiveCombatant(currentTurnKey, rowsSignature);
+  // Molette horizontale + suivi des bords atteignables (PER-298), sur le même conteneur.
+  const { edges, scrollByStep } = useBandScroll(scrollRef, rowsSignature);
 
   return (
     <Stack spacing={2}>
@@ -1413,18 +1643,45 @@ export function InitiativeTracker({
         // (PER-282) : réservée au conteneur (uniforme), elle ne déforme aucun bloc individuellement.
         // Nécessaire aussi car `overflowX: auto` force `overflow-y` à `auto` → sans cette marge, le
         // débordement des icônes serait rogné.
+        // Enveloppe positionnée : elle ancre les estompes et les chevrons de PER-298, posés PAR-DESSUS
+        // la bande (et non dedans, où ils défileraient avec les cartes).
         <Box
-          ref={scrollRef}
-          sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: projection ? 5.5 : 1, alignItems: 'stretch' }}
+          sx={{
+            position: 'relative',
+            // Chevrons discrets au repos, francs dès que la souris entre sur la bande.
+            '&:hover .band-chevron': { opacity: 1 },
+          }}
         >
-          {displayedRows.map((row) => {
-            const isActive = row.key === currentTurnKey;
-            return interactive ? (
-              <StatusDroppableColumn key={row.key} row={row} isActive={isActive} controls={statusControls} />
-            ) : (
-              <CombatantColumn key={row.key} row={row} isActive={isActive} projection={projection} />
-            );
-          })}
+          <Box
+            ref={scrollRef}
+            sx={{
+              display: 'flex',
+              gap: 2,
+              overflowX: 'auto',
+              pb: projection ? 5.5 : 1,
+              alignItems: 'stretch',
+              ...SCROLLBAR_SX,
+            }}
+          >
+            {displayedRows.map((row) => {
+              const isActive = row.key === currentTurnKey;
+              return interactive ? (
+                <StatusDroppableColumn key={row.key} row={row} isActive={isActive} controls={statusControls} />
+              ) : (
+                <CombatantColumn key={row.key} row={row} isActive={isActive} projection={projection} />
+              );
+            })}
+          </Box>
+          {/* Estompes des deux bords : sur l'écran de MJ ET en projection. */}
+          <BandFade side="left" visible={edges.left} />
+          <BandFade side="right" visible={edges.right} />
+          {/* Chevrons : écran de MJ uniquement (pas de souris devant l'écran projeté). */}
+          {!projection && (
+            <>
+              <BandChevron side="left" visible={edges.left} onClick={() => scrollByStep(-1)} />
+              <BandChevron side="right" visible={edges.right} onClick={() => scrollByStep(1)} />
+            </>
+          )}
         </Box>
       )}
     </Stack>
