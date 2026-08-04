@@ -1551,10 +1551,15 @@ describe('damageReductionSources — réduction de dégâts (PER-137)', () => {
     expect(at10[0].reduction).toMatchObject({ kind: 'flat', value: 3 });
   });
 
-  it('Résistance au feu (prestige-chevalier-dragon-r5) : RD feu scalante par rang de voie — 5, puis 10 au rang 7', () => {
-    const r5 = damageReductionSources(char(['prestige-chevalier-dragon-r5']));
+  it('Résistance au feu (prestige-chevalier-dragon-r5) : RD scalante par rang de voie — 5, puis 10 au rang 7', () => {
+    // PER-74 : la portée vient de la COULEUR du drake (`cavalier-r5`, choix 1) — rouge ici, soit la
+    // voie telle qu'imprimée. Sans couleur retenue, la RD n'existerait pas (cf. tests dédiés plus bas).
+    const red = { featureChoices: { 'cavalier-r5': ['drake', 'fire'] } };
+    const r5 = damageReductionSources(char(['prestige-chevalier-dragon-r5'], red));
     expect(r5[0].reduction).toMatchObject({ kind: 'flat', value: 5, scopes: ['fire'] });
-    const r7 = damageReductionSources(char(['prestige-chevalier-dragon-r5', 'prestige-chevalier-dragon-r7']));
+    const r7 = damageReductionSources(
+      char(['prestige-chevalier-dragon-r5', 'prestige-chevalier-dragon-r7'], red),
+    );
     expect(r7[0].reduction).toMatchObject({ kind: 'flat', value: 10, scopes: ['fire'] });
   });
 
@@ -2611,7 +2616,9 @@ describe('PER-74 — voie du chevalier dragon (p. 147-148)', () => {
         'prestige-chevalier-dragon-r7',
         'prestige-chevalier-dragon-r8',
       ],
-      featureChoices: { 'cavalier-r5': ['drake'] },
+      // PER-74 : la couleur du drake (2ᵉ slot du choix de Monture fantastique) est ce qui active la
+      // mécanique élémentaire de la voie. Rouge = la voie telle qu'imprimée dans le livre.
+      featureChoices: { 'cavalier-r5': ['drake', 'fire'] },
       effectToggles: {},
       equipment: [],
       ...over,
@@ -2643,7 +2650,7 @@ describe('PER-74 — voie du chevalier dragon (p. 147-148)', () => {
   });
 
   it('r4 — chevaucher un CHEVAL de guerre ne déclenche rien (seul le drake qualifie)', () => {
-    const c = knight({ featureChoices: { 'cavalier-r5': ['war-horse'] }, mountedKey: 'cavalier-r5' });
+    const c = knight({ featureChoices: { 'cavalier-r5': ['war-horse', 'fire'] }, mountedKey: 'cavalier-r5' });
     expect(isEffectActive(c, 'prestige-chevalier-dragon-r4', 0)).toBe(false);
     expect(bonusOn(c, 'persuasion')).toBeUndefined();
   });
@@ -2667,4 +2674,34 @@ describe('PER-74 — voie du chevalier dragon (p. 147-148)', () => {
       scopes: ['fire'],
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Déclinaison par COULEUR (p. 147 : « conçue à partir des symboles liés au dragon rouge, mais
+  // elle peut évidemment être déclinée pour d'autres couleurs »). La couleur vit sur le DRAKE
+  // (`cavalier-r5`, choix 1) et pilote la voie de prestige entière.
+  // ---------------------------------------------------------------------------
+
+  it('r5 — un drake BLEU donne une RD contre la FOUDRE, pas contre le feu', () => {
+    const c = knight({ featureChoices: { 'cavalier-r5': ['drake', 'lightning'] } });
+    const rd = damageReductionSources(c).find((s) => s.featureId === 'prestige-chevalier-dragon-r5');
+    expect(rd?.reduction).toMatchObject({ kind: 'flat', value: 10, scopes: ['lightning'] });
+  });
+
+  it('r5 — le NOM de la source suit la couleur (la puce de Défense ne dit plus « au feu »)', () => {
+    const named = (c: Character) =>
+      damageReductionSources(c).find((s) => s.featureId === 'prestige-chevalier-dragon-r5')?.name;
+    expect(named(knight())).toBe('Résistance au feu');
+    expect(named(knight({ featureChoices: { 'cavalier-r5': ['drake', 'lightning'] } }))).toBe(
+      'Résistance à la foudre',
+    );
+    expect(named(knight({ featureChoices: { 'cavalier-r5': ['drake', 'acid'] } }))).toBe(
+      "Résistance à l'acide",
+    );
+  });
+
+  it('r5 — AUCUNE couleur retenue : la RD n’existe pas (mécanique inerte, pas de repli sur le feu)', () => {
+    const c = knight({ featureChoices: { 'cavalier-r5': ['drake'] } });
+    expect(damageReductionSources(c).find((s) => s.featureId === 'prestige-chevalier-dragon-r5')).toBeUndefined();
+  });
+
 });

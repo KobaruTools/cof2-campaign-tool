@@ -29,6 +29,7 @@ import type { AbilityId, FeatureChoice, OptionFeatureChoice } from '@/data/schem
 import { highestAbilities, lowestAbilities } from '@/lib/character/ancestry';
 import { effectiveAbilities, pathRanksFromFeatures, testDomainSourceFeatureIds } from '@/lib/character/effects';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { PageRefText } from '@/components/SourceRef';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
 import {
   allowedAbilitiesForChoice,
@@ -384,6 +385,13 @@ function ChoiceControl({
             );
           })}
         </TextField>
+        {/* Précision sur la PORTÉE du choix (`FeatureChoiceBase.note`) : ce qu'il engage au-delà de
+            son libellé — ex. la couleur du drake, qui décline toute la voie du chevalier dragon. */}
+        {choice.note && (
+          <AppAlert severity="info" sx={{ mt: 1, py: 0 }}>
+            <PageRefText>{choice.note}</PageRefText>
+          </AppAlert>
+        )}
         {bothUnlocked && (
           <AppAlert severity="info" sx={{ mt: 1, py: 0 }}>
             Au rang {choice.allOptionsAtPathRank}, toutes les options sont acquises :{' '}
@@ -507,7 +515,7 @@ function ChoiceControl({
         />
         {choice.note && (
           <AppAlert severity="info" sx={{ mt: 1, py: 0 }}>
-            {choice.note}
+            <PageRefText>{choice.note}</PageRefText>
           </AppAlert>
         )}
       </Box>

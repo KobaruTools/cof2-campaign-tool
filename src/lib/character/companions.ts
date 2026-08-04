@@ -31,6 +31,7 @@ import {
   pathRanksFromFeatures,
   resolveValue,
 } from './effects';
+import { declineText, resolveFeatureElement } from './dragonElement';
 import { enSelleLink } from './mounts';
 import { pruneDepletion } from './gauges';
 import { parseRichText, resolveExpr } from '@/lib/ui/featureRichText';
@@ -48,18 +49,26 @@ export function effectiveCreatureProfile(
   feature: Feature,
   character: Character | undefined,
 ): CreatureProfile | undefined {
-  if (character) {
-    const defs = feature.choices ?? [];
-    for (let i = 0; i < defs.length; i += 1) {
-      const def = defs[i];
-      if (def.kind !== 'option') continue;
-      const raw = getSelection(character, feature.id, i);
-      const id = Array.isArray(raw) ? raw[0] : raw;
-      const opt = id ? def.options.find((o) => o.id === id) : undefined;
-      if (opt?.creatureProfile) return opt.creatureProfile;
+  const found = (() => {
+    if (character) {
+      const defs = feature.choices ?? [];
+      for (let i = 0; i < defs.length; i += 1) {
+        const def = defs[i];
+        if (def.kind !== 'option') continue;
+        const raw = getSelection(character, feature.id, i);
+        const id = Array.isArray(raw) ? raw[0] : raw;
+        const opt = id ? def.options.find((o) => o.id === id) : undefined;
+        if (opt?.creatureProfile) return opt.creatureProfile;
+      }
     }
-  }
-  return feature.creatureProfile;
+    return feature.creatureProfile;
+  })();
+  // PER-74 — ÉPITHÈTE DE COULEUR du drake (« Drake bleu ») : le nom du profil porte `%colorSuffix%`,
+  // résolu ici, seul point qui voie à la fois le profil retenu et le personnage. Token à repli VIDE →
+  // « Drake » tout court tant que la couleur n'est pas choisie (cf. `declineText`). Un profil sans
+  // token (toutes les autres montures) traverse inchangé, référence d'origine comprise.
+  if (!found || !character || !feature.elementFromChoice || !found.name.includes('%')) return found;
+  return { ...found, name: declineText(found.name, resolveFeatureElement(character, feature)) };
 }
 
 /**
@@ -94,6 +103,47 @@ interface CreatureDefenseSources {
 const defenseSourcesByProfile = new WeakMap<CreatureProfile, CreatureDefenseSources>();
 
 /**
+ * DÉCLINE une amélioration de créature selon l'ÉLÉMENT DRACONIQUE de la capacité source (PER-74) :
+ *  - une RD marquée `scopeFromElement` reçoit la portée de l'élément retenu, ou DISPARAÎT si aucune
+ *    couleur n'est choisie (mécanique inerte, pas de repli sur le feu) ;
+ *  - les capacités spéciales voient leurs tokens résolus dans `name`/`richText` (le `text` reste le
+ *    verbatim imprimé du livre, comme partout ailleurs).
+ * Amélioration sans élément ni token → renvoyée TELLE QUELLE (même référence).
+ */
+function declineUpgradeForElement(
+  character: Character,
+  sourceFeatureId: string,
+  upgrade: CreatureUpgrade,
+): CreatureUpgrade {
+  const feature = featureById.get(sourceFeatureId);
+  if (!feature?.elementFromChoice) return upgrade;
+  const element = resolveFeatureElement(character, feature);
+  const next: CreatureUpgrade = { ...upgrade };
+  if (upgrade.damageReduction) {
+    const list = Array.isArray(upgrade.damageReduction) ? upgrade.damageReduction : [upgrade.damageReduction];
+    const resolved = list.flatMap((dr) => {
+      if (!dr.scopeFromElement) return [dr];
+      if (!element) return [];
+      // `scopeFromElement` est CONSOMMÉ ici : le profil de créature ne porte plus qu'une portée figée
+      // (le champ y serait de toute façon inerte, cf. `CreatureProfile.damageReduction`).
+      const resolvedDr: DamageReduction = { ...dr, scopes: [element.id] };
+      delete resolvedDr.scopeFromElement;
+      return [resolvedDr];
+    });
+    if (resolved.length === 0) delete next.damageReduction;
+    else next.damageReduction = resolved.length === 1 ? resolved[0] : resolved;
+  }
+  if (upgrade.specialAbilities) {
+    next.specialAbilities = upgrade.specialAbilities.map((sa) => ({
+      ...sa,
+      name: declineText(sa.name, element),
+      ...(sa.richText ? { richText: declineText(sa.richText, element) } : {}),
+    }));
+  }
+  return next;
+}
+
+/**
  * Améliorations propagées à la créature de la voie `creaturePathId` (PER-94). Balaye TOUTES les
  * capacités acquises — améliorations portées directement par une capacité (`Feature.creatureUpgrade`,
  * ex. Runes de défense → golem, cross-voie) ET par les options retenues d'un choix `option`
@@ -109,7 +159,11 @@ function gatherCreatureUpgrades(character: Character, creaturePathId: string): R
     const targets = upgrade.targetPaths ?? [sourcePathId];
     if (!targets.includes(creaturePathId)) return;
     const def = upgrade.def == null ? undefined : resolveValue(upgrade.def, sourcePathId, pathRanks, ctx) ?? undefined;
-    out.push({ ...upgrade, def, sourceFeatureId, sourceName });
+    // PER-74 — DÉCLINAISON PAR ÉLÉMENT de l'amélioration, résolue ICI : c'est le seul point où une
+    // donnée destinée à une créature voit encore le PERSONNAGE (et donc son choix de couleur). En aval,
+    // `applyCreatureUpgrades` et le rendu du bloc de stats sont purement numériques/textuels.
+    const declined = declineUpgradeForElement(character, sourceFeatureId, upgrade);
+    out.push({ ...declined, def, sourceFeatureId, sourceName });
   };
   for (const id of character.featureIds) {
     const feature = featureById.get(id);

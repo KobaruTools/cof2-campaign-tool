@@ -10,6 +10,7 @@
  * un nom de capacité sur les pages 78-90).
  */
 
+import { dragonColorOptions } from '../dragon-elements';
 import type { CharacterClass, ClassPath, Feature } from '../schema';
 
 // ---------------------------------------------------------------------------
@@ -1003,6 +1004,10 @@ export const fighterFeatures: Feature[] = [
       'Le chevalier obtient une monture puissante (cheval de guerre lourd, ours, félin géant, etc.). La valeur exacte des caractéristiques peut varier selon la créature. Lorsqu’il est en selle, le chevalier peut faire attaquer sa monture une fois par round en action gratuite. À partir du niveau 9, le chevalier peut obtenir une monture volante (pégase, griffon, hippogriffe, etc.) si le MJ l’autorise (il devra vérifier qu’une monture volante n’entre pas en contradiction avec les aventures prévues). Dans ce cas, en vol, la monture couvre une distance de 20 m par action de mouvement, mais ses PV sont seulement égaux à [=10 + niveau × 5].',
     text:
       'Le chevalier obtient une monture puissante (cheval de guerre lourd, ours, félin géant, etc.). Init. [Init. du chevalier], DEF 20, PV [10 + niveau du chevalier × 6], Ruade ou morsure [attaque magique], DM 2d4°+5. La valeur exacte des caractéristiques peut varier selon la créature. Lorsqu’il est en selle, le chevalier peut faire attaquer sa monture une fois par round en action gratuite. À partir du niveau 9, le chevalier peut obtenir une monture volante (pégase, griffon, hippogriffe, etc.) si le MJ l’autorise (il devra vérifier qu’une monture volante n’entre pas en contradiction avec les aventures prévues). Dans ce cas, en vol, la monture couvre une distance de 20 m par action de mouvement, mais ses PV sont seulement égaux à [10 + niveau × 5].',
+    // PER-74 — renvoi AUTORÉFÉRENT : la couleur du drake est choisie sur cette capacité même (choix 1),
+    // ce qui suffit à décliner le NOM du profil (« Drake bleu »). La voie de prestige du chevalier dragon
+    // pointe le MÊME choix pour décliner ses propres rangs.
+    elementFromChoice: { choiceFeatureId: 'cavalier-r5', choiceIndex: 1 },
     choices: [
       {
         kind: 'option',
@@ -1110,7 +1115,8 @@ export const fighterFeatures: Feature[] = [
             label: 'Drake (monture volante)',
             minLevel: 9,
             creatureProfile: {
-              name: 'Drake',
+              // `%colorSuffix%` → « Drake bleu » une fois la couleur choisie, « Drake » avant (PER-74).
+              name: 'Drake%colorSuffix%',
               companionType: 'mount',
               abilities: { AGI: 0, CON: 4, FOR: 4, PER: 1, CHA: 0, INT: -2, VOL: 2 },
               defense: '20',
@@ -1121,6 +1127,24 @@ export const fighterFeatures: Feature[] = [
             },
           },
         ],
+      },
+      {
+        // PER-74 — COULEUR du drake. Le livre écrit la voie de prestige du chevalier dragon « à partir
+        // des symboles liés au dragon rouge, mais elle peut évidemment être déclinée pour d'autres
+        // couleurs » (p. 147) : la couleur est donc une donnée de construction, et sa place naturelle
+        // est ICI, sur le drake lui-même — c'est le drake qui est rouge ou bleu, pas la voie. La voie de
+        // prestige vient ensuite s'y indexer (`Feature.elementFromChoice`), ce qui décline d'un coup la
+        // RD du drake (r4), la résistance du cavalier (r5), l'épée élémentaire (r6) et le souffle (r8).
+        //
+        // Le drake n'étant qu'une monture parmi sept, le choix reste MASQUÉ tant qu'il n'est pas retenu
+        // (`visibleIfOption`, comme le gagne-pain libre d'`humain-r1`). Correspondance couleur → énergie
+        // MUTUALISÉE avec Ascendance draconique (`DRAGON_ELEMENTS`, cf. `dragon-elements.ts`) : une
+        // seule table de vérité pour les deux voies draconiques.
+        kind: 'option',
+        prompt: 'Couleur du drake',
+        note: "La voie de prestige du chevalier dragon (p. 147) est écrite pour le dragon rouge, mais le livre autorise explicitement de la décliner : la couleur retenue ici fixe le type d'énergie de la voie (résistance, épée élémentaire, souffle du drake).",
+        visibleIfOption: { choiceIndex: 0, optionId: 'drake' },
+        options: dragonColorOptions(),
       },
     ],
     sourcePage: 84,

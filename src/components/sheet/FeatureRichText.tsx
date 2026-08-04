@@ -28,6 +28,7 @@ import { ANCESTRY_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColor
 import { dieAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
 import { splitNotes } from '@/lib/ui/featureNotes';
 import { splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
+import { useDeclined } from '@/components/sheet/FeatureDeclension';
 import { splitPageRefs } from '@/lib/ui/pageRefs';
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
@@ -262,7 +263,10 @@ export function CapabilityChip({
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
   const ancestryId = path?.type === 'ancestry' ? path.ancestryIds[0] : undefined;
   const isMage = path?.type === 'mage';
-  const text = label ?? feature?.name ?? featureId;
+  // Nom décliné par élément draconique (PER-74) quand la puce affiche le nom de la capacité citée
+  // (`label` absent) — une référence croisée doit lire « Épée de foudre » comme la carte du rang.
+  const ownName = useDeclined(feature ?? {}, feature?.name ?? featureId);
+  const text = label ?? ownName;
   if (!feature || (!classId && !ancestryId && !isMage)) return <>{text}</>;
   const color = classId ? classColor(classId) : isMage ? MAGE_PATH_COLOR : ANCESTRY_COLOR;
   return (
@@ -1101,6 +1105,10 @@ export function FeatureText({
   // (carac, DEF, jargon), ni séparation des « Note : ». Destiné à la relecture « comme dans
   // le livre » ; les sauts de ligne du source sont conservés (`pre-line`).
   const verbatim = useContext(FeatureVerbatimContext);
+  // Déclinaison par élément draconique (PER-74) : seul le `richText` porte des tokens — le `text` reste
+  // le verbatim imprimé du livre, c'est-à-dire précisément ce que sert la bascule « Texte d'origine ».
+  // Appelé AVANT le retour anticipé ci-dessous : c'est un hook, il doit l'être inconditionnellement.
+  const richText = useDeclined(feature, feature.richText ?? '');
   if (verbatim) {
     return (
       <Typography
@@ -1130,7 +1138,7 @@ export function FeatureText({
     ) : (
       <RichTextRun value={value} />
     );
-  const source = enriched ? feature.richText! : feature.text;
+  const source = enriched ? richText : feature.text;
 
   // Une NOTE est rendue en BLOC (`NoteSpan` = div) : c'est ce qui lui donne son
   // propre interligne. En inline, la hauteur de ligne reste imposée par le « strut »

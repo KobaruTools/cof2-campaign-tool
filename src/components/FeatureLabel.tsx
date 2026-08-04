@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import { AppTooltip } from '@/components/AppTooltip';
 import type { ActionType, Feature } from '@/data/schema';
 import { canConcentrate } from '@/lib/engine';
+import { useDeclinedFeatureName } from '@/components/sheet/FeatureDeclension';
 
 /** Libellés français des types d'action notés après le nom des capacités (p. 227). */
 export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
@@ -50,6 +51,7 @@ export function FeatureLabel({
   promoteToAttack = false,
   pathRank,
 }: FeatureLabelProps) {
+  const declinedName = useDeclinedFeatureName(feature);
   const concentrated = concentration && canConcentrate(feature);
   // Types d'action conditionnels au rang atteint dans la voie (PER-72) : affichés en plus
   // des `actionTypes` quand le rang est connu et atteint (ex. Parer un coup → (G) au rang 5).
@@ -63,7 +65,9 @@ export function FeatureLabel({
     : feature.actionTypes;
   return (
     <Box component="span">
-      {feature.name}
+      {/* Nom décliné par élément draconique le cas échéant (PER-74) — source UNIQUE du nom affiché,
+          donc le seul endroit à traiter pour la modale de détail, le wizard et la montée de niveau. */}
+      {declinedName}
       {feature.isSpell && (
         <AppTooltip title="Sort">
           <Box component="span" sx={{ fontWeight: 700, color: 'info.main', cursor: 'default' }}>

@@ -21,7 +21,8 @@ import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import { AppTooltip } from '@/components/AppTooltip';
 import type { ConditionalStatBonusEffect } from '@/data/schema';
-import { testDomainById } from '@/data';
+import { featureById, testDomainById } from '@/data';
+import { declineForFeature } from '@/lib/character/dragonElement';
 import type { Character } from '@/lib/character/types';
 import {
   conditionalEffectsOf,
@@ -66,7 +67,13 @@ function effectLabel(
     parts.push(`dé bonus : ${labels}`);
   }
   const joined = parts.join(', ');
-  return joined ? `${joined} — ${effect.activation.label}` : effect.activation.label;
+  // PER-74 — déclinaison du déclencheur selon l'élément draconique (« épée %swordAdj% » → « épée
+  // électrifiée »), pour que l'interrupteur du panneau d'états dise la même chose que la carte du rang.
+  const feature = featureById.get(featureId);
+  const trigger = feature
+    ? declineForFeature(character, feature, effect.activation.label)
+    : effect.activation.label;
+  return joined ? `${joined} — ${trigger}` : trigger;
 }
 
 export interface FeatureEffectTogglesProps {

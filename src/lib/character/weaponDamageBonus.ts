@@ -34,6 +34,7 @@ import {
   splitRepeatableSelections,
   weaponFamiliesMatchChoice,
 } from '@/lib/character/choices';
+import { declineForFeature } from '@/lib/character/dragonElement';
 import type { Character } from '@/lib/character/types';
 import { currentHp } from '@/lib/character/gauges';
 
@@ -147,9 +148,15 @@ function resolveConditionLabel(
   featureId: string,
   condition: WeaponDamageBonusEffect['condition'],
 ): string | undefined {
-  const base = condition.label;
+  // DÉCLINAISON PAR ÉLÉMENT (PER-74) d'abord : « épée %swordAdj% (DM %of%) » → « épée électrifiée
+  // (DM de foudre) ». Indépendante de `appendChoiceLabels` (les deux peuvent coexister sur un libellé).
+  const feature = featureById.get(featureId);
+  const base =
+    feature && condition.label
+      ? declineForFeature(character, feature, condition.label)
+      : condition.label;
   if (condition.appendChoiceLabels === undefined) return base;
-  const choice = featureById.get(featureId)?.choices?.[condition.appendChoiceLabels];
+  const choice = feature?.choices?.[condition.appendChoiceLabels];
   if (choice?.kind !== 'option') return base;
   const labelById = new Map(choice.options.map((o) => [o.id, o.label]));
   const chosen = getOptionSelections(character, featureId, condition.appendChoiceLabels)

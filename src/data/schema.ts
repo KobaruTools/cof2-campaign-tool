@@ -1954,6 +1954,18 @@ export interface DamageReduction {
    */
   scopeFromChoice?: number;
   /**
+   * SCOPE dérivé de l'ÉLÉMENT DRACONIQUE de la capacité (PER-74) : la portée est le type d'énergie
+   * résolu par `Feature.elementFromChoice` — un choix porté par une AUTRE capacité. Pendant
+   * CROSS-CAPACITÉ de `scopeFromChoice` (qui, lui, ne lit que la capacité elle-même) : la voie du
+   * chevalier dragon tire sa couleur de Monture fantastique (voie du cavalier), pas d'un choix propre.
+   * La RD n'est comptée que si la couleur est effectivement choisie. Exclusif avec `scopes`,
+   * `scopeChoice` et `scopeFromChoice`.
+   *
+   * Fonctionne aussi sur une RD de `CreatureUpgrade` (RD du drake au rang 4), résolue par
+   * `applyCreatureUpgrades` — le seul endroit où une RID de créature voit le personnage.
+   */
+  scopeFromElement?: boolean;
+  /**
    * Gating CROSS-CAPACITÉ (PER-74) : cette entrée de RD n'est ACTIVE que si l'interrupteur
    * (`conditional-stat-bonus`) d'une AUTRE capacité est actif. Ex. lycanthrope « Résistance
    * surnaturelle » (r7) : la RD −5 (armes non argentées) ne s'applique que « sous forme hybride » —
@@ -2155,6 +2167,13 @@ interface FeatureChoiceBase {
    * choisie. Résolu par `isChoiceActionable`. Absent = toujours proposé.
    */
   visibleIfOption?: { choiceIndex: number; optionId: string | string[] };
+  /**
+   * Précision affichée SOUS le champ (encadré d'information) : ce que le choix engage au-delà de sa
+   * seule invite. Sert quand la portée d'un choix dépasse la capacité qui le porte — ex. la couleur du
+   * drake (PER-74), choisie sur Monture fantastique mais qui pilote toute la voie de prestige du
+   * chevalier dragon, ce que rien dans son libellé ne laisserait deviner. Absent = aucune précision.
+   */
+  note?: string;
 }
 
 /** Choix d'une caractéristique parmi un domaine autorisé. */
@@ -2569,8 +2588,8 @@ export interface FreeTextFeatureChoice extends FeatureChoiceBase {
   kind: 'free-text';
   /** Exemple/placeholder dans le champ (ex. « rat, chat, corbeau… »). */
   placeholder?: string;
-  /** Avertissement affiché sous le champ (ex. décision RP à convenir avec le MJ). */
-  note?: string;
+  // `note` (précision sous le champ, ex. décision RP à convenir avec le MJ) est portée par
+  // `FeatureChoiceBase` : tous les types de choix y ont droit.
 }
 
 // ---------------------------------------------------------------------------
@@ -3292,6 +3311,28 @@ export interface Feature {
    * POSITION sur ce tableau. Absent = la capacité n'impose aucun choix.
    */
   choices?: FeatureChoice[];
+  /**
+   * ÉLÉMENT DRACONIQUE de la capacité, dérivé d'un choix `option` porté par une AUTRE capacité
+   * (PER-74). Rend la capacité DÉCLINABLE : son `name`, son `richText`, les libellés de ses effets et
+   * les textes de ses capacités spéciales de créature peuvent porter des TOKENS de déclinaison
+   * (`%noun%`, `%of%`, `%toThe%`, `%theNoun%`, `%breathAdj%`, `%breathPhrase%`, `%swordAdj%`,
+   * `%swordVerbPhrase%`, `%color%`, cf. `DragonElement`), et une RD peut tirer sa portée de l'élément
+   * (`DamageReduction.scopeFromElement`).
+   *
+   * Sert la voie du chevalier dragon (p. 147), que le livre écrit « à partir des symboles liés au
+   * dragon rouge, mais elle peut évidemment être déclinée pour d'autres couleurs » : la couleur est
+   * choisie une fois pour toutes SUR LE DRAKE, au rang 5 de la voie du cavalier (Monture fantastique)
+   * — d'où la lecture cross-capacité, sur le patron de `weaponFamiliesFromChoice.choiceFeatureId`.
+   *
+   * Les ids d'options du choix visé DOIVENT être des ids de `DragonElement` (= des
+   * `ResistibleDamageType`). Absent = capacité non déclinable (cas général).
+   *
+   * MÉCANIQUE vs AFFICHAGE : sans couleur retenue, la mécanique reste INERTE (aucune RD, aucun bonus
+   * de DM — décision propriétaire du 2026-08-04 : pas de repli implicite sur le feu), tandis que
+   * l'AFFICHAGE retombe sur le texte IMPRIMÉ (le rouge), pour ne jamais montrer un token brut.
+   * Cf. `resolveFeatureElement` / `declineText` (`src/lib/character/dragonElement.ts`).
+   */
+  elementFromChoice?: { choiceFeatureId: string; choiceIndex: number };
   /**
    * Coût de base en points de mana pour LANCER ce sort — DÉROGATION explicite au
    * coût standard (PER-65). La règle générale (p. 228) est : « Lancer un sort

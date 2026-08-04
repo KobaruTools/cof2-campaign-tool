@@ -524,7 +524,8 @@ describe('PER-74 — le drake du chevalier dragon (p. 147-148)', () => {
         'cavalier-r5',
         ...prestigeRanks.map((r) => `prestige-chevalier-dragon-r${r}`),
       ],
-      featureChoices: { 'cavalier-r5': ['drake'] },
+      // 2ᵉ slot = COULEUR du drake (PER-74). Rouge = la voie telle qu'imprimée dans le livre.
+      featureChoices: { 'cavalier-r5': ['drake', 'fire'] },
       ...over,
     });
 
@@ -541,7 +542,7 @@ describe('PER-74 — le drake du chevalier dragon (p. 147-148)', () => {
   it('sans le rang 7 : le drake JUVÉNILE figure dans les compagnons', () => {
     const companions = listCompanions(knight());
     expect(companions).toHaveLength(1);
-    expect(companions[0].profile.name).toBe('Drake');
+    expect(companions[0].profile.name).toBe('Drake rouge');
     expect(companions[0].profile.defense).toBe('20');
     expect(companions[0].profile.attack?.damage).toBe('[2d4° + 5]');
     expect(resolveCreatureMaxHp(companions[0].profile, resolveCreatureAbilities(companions[0].profile)!, 16, 5)).toBe(90);
@@ -588,6 +589,39 @@ describe('PER-74 — le drake du chevalier dragon (p. 147-148)', () => {
     const names = (drake.profile.specialAbilities ?? []).map((a) => a.name);
     expect(names).toContain('Souffle enflammé (A)');
     expect(listCompanions(knight([4, 5, 6, 7]))[0].profile.specialAbilities).toBeUndefined();
+  });
+
+  // ---------------------------------------------------------------------------
+  // Déclinaison par COULEUR du drake (p. 147). Le livre écrit la voie pour le rouge et autorise
+  // explicitement les autres couleurs : le nom du compagnon, sa RD et son souffle suivent.
+  // ---------------------------------------------------------------------------
+
+  const blue = (ranks: number[] = []) =>
+    knight(ranks, { featureChoices: { 'cavalier-r5': ['drake', 'lightning'] } });
+
+  it('drake BLEU — nom, RD et souffle passent tous à la foudre', () => {
+    const drake = listCompanions(blue([4, 5, 6, 7, 8]))[0].profile;
+    expect(drake.name).toBe('Drake bleu');
+    const list = Array.isArray(drake.damageReduction) ? drake.damageReduction : [drake.damageReduction];
+    expect(list[0]).toMatchObject({ kind: 'flat', value: 10, scopes: ['lightning'] });
+    expect((drake.specialAbilities ?? []).map((a) => a.name)).toContain('Souffle électrique (A)');
+  });
+
+  it('drake BLEU — l’épithète survit au remplacement du profil par le drake ADULTE (r7)', () => {
+    // Le rang 7 SUBSTITUE un profil entier : sans déclinaison, l'adulte redeviendrait « Drake ».
+    expect(listCompanions(blue())[0].profile.name).toBe('Drake bleu');
+    expect(listCompanions(blue([4, 5, 6, 7]))[0].profile.name).toBe('Drake bleu');
+  });
+
+  it('couleur NON choisie — « Drake » tout court, et AUCUNE RD malgré le rang 4', () => {
+    // Le livre ne nomme aucune couleur de drake : retomber sur « rouge » affirmerait un choix non fait
+    // (token à repli vide). Et la RD, elle, est une MÉCANIQUE : elle reste inerte sans couleur.
+    const c = knight([4, 5, 6, 7, 8], { featureChoices: { 'cavalier-r5': ['drake'] } });
+    const drake = listCompanions(c)[0].profile;
+    expect(drake.name).toBe('Drake');
+    expect(drake.damageReduction).toBeUndefined();
+    // Le souffle, lui, existe bel et bien : il est accordé sans condition, seul son NOM se décline.
+    expect((drake.specialAbilities ?? []).map((a) => a.name)).toContain('Souffle enflammé (A)');
   });
 
   it('r7 — la carte du rang affiche le MÊME drake que la section Compagnons (RD et souffle compris)', () => {

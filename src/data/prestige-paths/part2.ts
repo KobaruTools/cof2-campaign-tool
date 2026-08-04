@@ -59,7 +59,7 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'fighter',
     prerequisites:
-      "Pour choisir cette voie, il faut avoir acquis la capacité Monture fantastique (rang 5 de la voie du cavalier) et choisi un drake au niveau 9 (une sorte de lézard volant, cousin mineur du dragon). De fait, à moins d'une autorisation très spécifique du MJ, cette voie ne sera ouverte qu'à haut niveau (9 à 13).",
+      "Pour choisir cette voie, il faut avoir acquis la capacité Monture fantastique (rang 5 de la voie du cavalier) et choisi un drake au niveau 9 (une sorte de lézard volant, cousin mineur du dragon). De fait, à moins d'une autorisation très spécifique du MJ, cette voie ne sera ouverte qu'à haut niveau (9 à 13). La voie est conçue à partir des symboles liés au dragon rouge, mais elle peut évidemment être déclinée pour d'autres couleurs : c'est la couleur retenue pour le drake (Monture fantastique) qui fixe le type d'énergie de la voie.",
     featureIds: [
       'prestige-chevalier-dragon-r4',
       'prestige-chevalier-dragon-r5',
@@ -94,6 +94,10 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'fighter',
     prerequisites: '',
+    // PER-74 : présentation de la voie (p. 149) en info-bulle « i » de l'en-tête, verbatim. La voie
+    // n'a AUCUN prérequis dans le livre (contrairement au colosse, qui exige +3 en Force).
+    note:
+      "Cette voie est destinée au pourfendeur de créatures maléfiques, chasseur de sorcière et autre inquisiteur. Elle peut aussi convenir à un barbare qui aurait une haine viscérale de la corruption.",
     featureIds: [
       'prestige-combat-du-mal-r4',
       'prestige-combat-du-mal-r5',
@@ -845,6 +849,15 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le cavalier rejoint l'ordre des chevaliers dragons avec le grade d'apprenti. Lorsqu'il porte les insignes de son ordre ou chevauche son drake, il gagne un bonus de +5 pour tous les tests de persuasion et d'intimidation. De plus, son drake obtient une réduction des DM contre le feu de 10.",
+    // PER-74 — DÉCLINAISON PAR COULEUR. Le livre l'autorise explicitement (p. 147 : « La voie présentée
+    // ci-dessous a été conçue à partir des symboles liés au dragon rouge, mais elle peut évidemment être
+    // déclinée pour d'autres couleurs »). L'élément vient de la COULEUR DU DRAKE, choisie une fois sur
+    // Monture fantastique (`cavalier-r5`, choix 1) : le `text` reste le verbatim imprimé (rouge/feu), le
+    // `richText` et les libellés portent des tokens (`%theNoun%`, `%of%`…), et la RD tire sa portée de
+    // l'élément (`scopeFromElement`). Sans couleur retenue : mécanique INERTE, affichage sur le rouge.
+    elementFromChoice: { choiceFeatureId: 'cavalier-r5', choiceIndex: 1 },
+    richText:
+      "Le cavalier rejoint l'ordre des chevaliers dragons avec le grade d'apprenti. Lorsqu'il porte les insignes de son ordre ou chevauche son drake, il gagne un bonus de +5 pour tous les tests de persuasion et d'intimidation. De plus, son drake obtient une réduction des DM contre %theNoun% de 10.",
     // PER-74 — le livre énonce DEUX déclencheurs pour un seul et même bonus : « porte les insignes de
     // son ordre » (un état libre, que rien dans la fiche ne peut deviner) OU « chevauche son drake »
     // (un état de jeu déjà suivi). D'où un interrupteur unique, que la monture force à l'état actif
@@ -870,21 +883,27 @@ export const prestigeFeatures2: Feature[] = [
     // par le personnage. Ciblage CROSS-VOIE explicite — le drake est octroyé par Monture fantastique
     // (voie `cavalier`) ; on cible AUSSI la voie de prestige pour que la mini-fiche du rang 7 (le drake
     // adulte, qui remplace le juvénile) affiche la même puce que la section « Compagnons ».
+    // Portée = l'élément du drake (`scopeFromElement`) : un drake bleu résiste à la foudre, pas au feu.
     creatureUpgrade: {
       targetPaths: ['cavalier', 'prestige-chevalier-dragon'],
-      damageReduction: { kind: 'flat', value: 10, scopes: ['fire'] },
+      damageReduction: { kind: 'flat', value: 10, scopeFromElement: true },
     },
     sourcePage: 147,
   },
   {
     id: 'prestige-chevalier-dragon-r5',
-    name: 'Résistance au feu',
+    name: 'Résistance %toThe%',
     pathId: 'prestige-chevalier-dragon',
     rank: 5,
     isSpell: false,
     actionTypes: [],
     text:
       "Le cavalier est désormais un membre à part entière de l'ordre des chevaliers Dragon. Il a appris à résister aux flammes les plus féroces et il retranche 5 à tous les DM de feu subis (RD [feu] 5). Cette réduction passe à 10 une fois atteint le rang 7.",
+    // PER-74 — DÉCLINAISON : le NOM lui-même est tokenisé (« Résistance au feu » → « Résistance à la
+    // foudre »), sinon la fiche afficherait un titre « au feu » au-dessus d'une puce « RD foudre 5 ».
+    // « résister aux flammes les plus féroces » est une image propre au rouge : elle devient une
+    // formule neutre dans le richText, le verbatim imprimé restant dans `text`.
+    elementFromChoice: { choiceFeatureId: 'cavalier-r5', choiceIndex: 1 },
     // PER-74 — mise en forme : les crochets de « (RD [feu] 5) » sont une convention TYPOGRAPHIQUE du
     // livre pour nommer le type de dégât, mais le moteur de balisage y voyait une expression invalide
     // et les affichait tels quels. On les retire donc du texte rendu (le `text` verbatim, lui, reste la
@@ -892,18 +911,19 @@ export const prestigeFeatures2: Feature[] = [
     // rendue en PUCE — valeur EFFECTIVE comprise, 10 à partir du rang 7 — dans le cadre « Défense »
     // de la fiche, alimenté par le `damageReduction` ci-dessous.
     richText:
-      "Le cavalier est désormais un membre à part entière de l'ordre des chevaliers Dragon. Il a appris à résister aux flammes les plus féroces et il retranche 5 à tous les DM de feu subis (RD feu 5). Cette réduction passe à 10 une fois atteint le rang 7.",
-    // PER-137 : RD permanente sur le feu, scalante par rang de voie (−5, puis −10 au rang 7).
+      "Le cavalier est désormais un membre à part entière de l'ordre des chevaliers Dragon. Il a appris à résister aux assauts %of% les plus féroces et il retranche 5 à tous les DM %of% subis (RD %noun% 5). Cette réduction passe à 10 une fois atteint le rang 7.",
+    // PER-137 : RD permanente, scalante par rang de voie (−5, puis −10 au rang 7). PER-74 : portée
+    // dérivée de la couleur du drake, pas figée sur le feu.
     damageReduction: {
       kind: 'flat',
       value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 5, value: 5 }, { min: 7, value: 10 }] },
-      scopes: ['fire'],
+      scopeFromElement: true,
     },
     sourcePage: 148,
   },
   {
     id: 'prestige-chevalier-dragon-r6',
-    name: 'Épée de feu',
+    name: 'Épée %of%',
     pathId: 'prestige-chevalier-dragon',
     rank: 6,
     isSpell: false,
@@ -911,24 +931,29 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Le cavalier peut enflammer son épée pour [5 + CHA] rounds. Elle inflige dès lors +1d4° DM de feu.",
     // PER-74 — durée en quantité calculée (puce bleue) et supplément de DM en dé évolutif.
+    // DÉCLINAISON : « enflammer » n'a pas d'équivalent morphologique dans les autres éléments (on
+    // n'« acidifie » pas une épée), d'où un GROUPE VERBAL entier en token (`%swordVerbPhrase%`) plutôt
+    // qu'un verbe à conjuguer — cf. `DragonElement`.
+    elementFromChoice: { choiceFeatureId: 'cavalier-r5', choiceIndex: 1 },
     richText:
-      "Le cavalier peut enflammer son épée pour [=5 + CHA] rounds. Elle inflige dès lors +{1d4°} DM de feu.",
+      "Le cavalier peut %swordVerbPhrase% pour [=5 + CHA] rounds. Elle inflige dès lors +{1d4°} DM %of%.",
     // L'embrasement est un ÉTAT de durée (« pour [5 + CHA] rounds ») → interrupteur temporaire, sur le
     // patron de la Rage du berserk : tant qu'il est actif, la carte ATTAQUE AU CONTACT porte une puce
-    // de +1d4° DM de FEU (dé situationnel gaté par l'interrupteur, `requiresActiveEffectIndex`), qui
-    // suit l'arme de contact réellement maniée. Aucun compteur d'usage : le livre ne donne AUCUNE
-    // fréquence à ce rang (ni par combat, ni par jour).
+    // de +1d4° DM de l'ÉLÉMENT (dé situationnel gaté par l'interrupteur, `requiresActiveEffectIndex`),
+    // qui suit l'arme de contact réellement maniée. Aucun compteur d'usage : le livre ne donne AUCUNE
+    // fréquence à ce rang (ni par combat, ni par jour). Les deux libellés sont déclinés à l'affichage
+    // (interrupteur du panneau d'états, puce de DM de la carte d'attaque).
     effects: [
       {
         kind: 'conditional-stat-bonus',
         // Marqueur d'état pur : l'embrasement ne touche aucune stat dérivée, il ajoute des DM.
         bonuses: [],
-        activation: { kind: 'temporary', label: 'épée enflammée', activeByDefault: false },
+        activation: { kind: 'temporary', label: 'épée %swordAdj%', activeByDefault: false },
       },
       {
         kind: 'weapon-damage-bonus',
         dice: { count: 1, die: 'd4', evolving: true },
-        condition: { attackMode: 'melee', label: 'épée enflammée (DM de feu)' },
+        condition: { attackMode: 'melee', label: 'épée %swordAdj% (DM %of%)' },
         requiresActiveEffectIndex: 0,
         situational: true,
       },
@@ -950,8 +975,12 @@ export const prestigeFeatures2: Feature[] = [
     // au lieu d'empiler des deltas, et la section « Compagnons » montre le drake adulte dès ce rang —
     // en conservant sa clé de PV et son état « en selle » (cf. `replacesCreatureFromPaths`).
     richText: 'Le drake atteint sa pleine maturité et augmente ses capacités offensives.',
+    // PER-74 — ce rang ne porte aucune mention élémentaire (rien à décliner dans son texte), mais le
+    // profil qu'il SUBSTITUE au drake juvénile doit garder l'épithète de couleur : sans `elementFromChoice`,
+    // le drake adulte redeviendrait « Drake » alors que le juvénile s'affichait « Drake bleu ».
+    elementFromChoice: { choiceFeatureId: 'cavalier-r5', choiceIndex: 1 },
     creatureProfile: {
-      name: 'Drake',
+      name: 'Drake%colorSuffix%',
       companionType: 'mount',
       replacesCreatureFromPaths: ['cavalier'],
       abilities: { AGI: 0, CON: 6, FOR: 6, PER: 1, CHA: 0, INT: -2, VOL: 2 },
@@ -967,7 +996,7 @@ export const prestigeFeatures2: Feature[] = [
   },
   {
     id: 'prestige-chevalier-dragon-r8',
-    name: 'Souffle enflammé',
+    name: 'Souffle %breathAdj%',
     pathId: 'prestige-chevalier-dragon',
     rank: 8,
     isSpell: false,
@@ -978,17 +1007,21 @@ export const prestigeFeatures2: Feature[] = [
     // lui-même. Il rejoint donc les capacités spéciales de sa mini-fiche (section « Compagnons »),
     // là où le joueur le cherchera en combat, plutôt que de rester une ligne de texte sur la carte du
     // rang. Même ciblage cross-voie que la RD du rang 4.
+    // DÉCLINAISON : « cracher du feu » devient un groupe verbal en token (`%breathPhrase%`) — un drake
+    // blanc ne « crache » pas du froid, il souffle un jet de glace. La capacité spéciale recopiée sur
+    // la mini-fiche du drake est déclinée elle aussi (nom + richText).
+    elementFromChoice: { choiceFeatureId: 'cavalier-r5', choiceIndex: 1 },
     richText:
-      "Le drake est désormais capable de cracher du feu au prix d'une action d'attaque une fois par combat. Toutes les cibles situées dans un cône de 10 m de long sur 10 m de large, subissent {8d4°} DM de feu, ou la moitié seulement si elles réussissent un test d'AGI difficulté 12.",
+      "Le drake est désormais capable de %breathPhrase% au prix d'une action d'attaque une fois par combat. Toutes les cibles situées dans un cône de 10 m de long sur 10 m de large, subissent {8d4°} DM %of%, ou la moitié seulement si elles réussissent un test d'AGI difficulté 12.",
     creatureUpgrade: {
       targetPaths: ['cavalier', 'prestige-chevalier-dragon'],
       specialAbilities: [
         {
-          name: 'Souffle enflammé (A)',
+          name: 'Souffle %breathAdj% (A)',
           text:
             "Le drake est désormais capable de cracher du feu au prix d'une action d'attaque une fois par combat. Toutes les cibles situées dans un cône de 10 m de long sur 10 m de large, subissent 8d4° DM de feu, ou la moitié seulement si elles réussissent un test d'AGI difficulté 12.",
           richText:
-            "Une fois par combat, au prix d'une action d'attaque : toutes les cibles dans un cône de 10 m de long sur 10 m de large subissent {8d4°} DM de feu, ou la moitié seulement si elles réussissent un test d'AGI difficulté 12.",
+            "Une fois par combat, au prix d'une action d'attaque : toutes les cibles dans un cône de 10 m de long sur 10 m de large subissent {8d4°} DM %of%, ou la moitié seulement si elles réussissent un test d'AGI difficulté 12.",
         },
       ],
     },
@@ -1099,7 +1132,7 @@ export const prestigeFeatures2: Feature[] = [
     sourcePage: 148,
   },
 
-  // ----- Voie du combat du mal (p. 148) -----
+  // ----- Voie du combat du mal (p. 149) -----
   {
     id: 'prestige-combat-du-mal-r4',
     name: 'Juste courroux',
@@ -1109,6 +1142,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['G'],
     text:
       "Chaque fois que le personnage est victime d'une Attaque sournoise (voie de l'assassin, profil de voleur) ou d'une Attaque mortelle (capacité de créature), il peut riposter par une attaque au contact en action gratuite.",
+    // « Attaque sournoise » est balisée en RÉFÉRENCE de capacité (`assassin-r2`) → puce aux couleurs
+    // du voleur. « Attaque mortelle » est une capacité de CRÉATURE (bestiaire) : aucune capacité de
+    // voie ne porte ce nom, elle reste donc en texte littéral.
+    richText:
+      "Chaque fois que le personnage est victime d'une [&assassin-r2] (voie de l'assassin, profil de voleur) ou d'une Attaque mortelle (capacité de créature), il peut riposter par une attaque au contact en action gratuite.",
     sourcePage: 149,
   },
   {
@@ -1120,6 +1158,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['M'],
     text:
       "L'arme du personnage brille d'une lumière magique équivalente à une torche pour le reste du combat. Elle occasionne +1d4° DM supplémentaire aux morts-vivants, aux créatures démoniaques ou aux animaux corrompus par le mal. Alternativement, si cette voie est choisie par un barbare qui déteste la magie, la lame ne brille pas et les DM supplémentaires sont juste le fruit de sa hargne.",
+    richText:
+      "L'arme du personnage brille d'une lumière magique équivalente à une torche pour le reste du combat. Elle occasionne +{1d4°} DM supplémentaire aux morts-vivants, aux créatures démoniaques ou aux animaux corrompus par le mal. Alternativement, si cette voie est choisie par un barbare qui déteste la magie, la lame ne brille pas et les DM supplémentaires sont juste le fruit de sa hargne.",
     sourcePage: 149,
   },
   {

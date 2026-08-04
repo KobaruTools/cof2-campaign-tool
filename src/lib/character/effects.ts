@@ -50,6 +50,7 @@ import {
   getOptionSelections,
   weaponFamiliesMatchChoice,
 } from './choices';
+import { declineForFeature, resolveFeatureElement } from './dragonElement';
 import {
   armorDisabledFeatureIds,
   DON_ETRANGE_ARMOR_USAGE_KEY,
@@ -2723,13 +2724,24 @@ export function damageReductionSources(character: Character): DamageReductionSou
         const chosen = getOptionSelections(character, id, dr.scopeFromChoice)[0];
         if (!chosen || !(RESISTIBLE_DAMAGE_TYPES as readonly string[]).includes(chosen)) continue;
         scopes = [chosen as ResistibleDamageType];
+      } else if (dr.scopeFromElement) {
+        // SCOPE dérivé de l'ÉLÉMENT DRACONIQUE de la capacité (PER-74) — un choix porté par une AUTRE
+        // capacité (la couleur du drake, sur Monture fantastique). Pendant cross-capacité de
+        // `scopeFromChoice`. Sans couleur retenue, la RD n'existe PAS (pas de repli sur le feu :
+        // décision propriétaire, une voie non déclinée n'accorde rien tant que la couleur manque).
+        const element = resolveFeatureElement(character, feature);
+        if (!element) continue;
+        scopes = [element.id];
       }
       // Résolution de la valeur scalante (ex. Fils du roc 2 → 3 au niveau 10 ; Résistance au feu 5 → 10
       // au rang 7) pour l'affichage. Une constante est rendue telle quelle ; le plafond d'absorption
       // éventuel reste verbatim (non affiché dans la puce).
       const value =
         dr.value === undefined ? undefined : (resolveValue(dr.value, rankPathId, pathRanks, ctx) ?? dr.value);
-      out.push({ featureId: id, name: feature.name, reduction: { ...dr, value, scopes } });
+      // Nom DÉCLINÉ (PER-74) : la puce de RD du cadre « Défense » doit lire « Résistance à la foudre »
+      // sous un drake bleu, pas le titre imprimé « Résistance au feu » au-dessus d'une portée `lightning`.
+      const name = declineForFeature(character, feature, feature.name);
+      out.push({ featureId: id, name, reduction: { ...dr, value, scopes } });
     }
   }
   return out;

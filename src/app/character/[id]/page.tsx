@@ -79,6 +79,7 @@ import { HeaderIllustrations } from '@/components/HeaderIllustrations';
 import { HomeBackground } from '@/components/HomeBackground';
 import { CharacterSheetSkeleton } from '@/components/sheet/CharacterSheetSkeleton';
 import { FirearmsAllowedProvider } from '@/components/ClassIcon';
+import { FeatureDeclensionContext } from '@/components/sheet/FeatureDeclension';
 import { TombstoneIcon } from '@/components/TombstoneIcon';
 import { CampaignBadge } from '@/components/home/CampaignBadge';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
@@ -586,6 +587,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     // références d'emprunt…) suivent le réglage « armes à feu » du personnage :
     // l'arquebusier privé de poudre affiche une arbalète (« Arbalétrier », p. 62).
     <FirearmsAllowedProvider value={firearmsAllowed}>
+      {/* Déclinaison des capacités par élément draconique (PER-74) : fourni au niveau de la PAGE, et
+          non de la seule section des voies, pour couvrir aussi la modale de montée de niveau et
+          l'historique — c'est précisément là qu'on choisit « Résistance %toThe% » au rang 5. */}
+      <FeatureDeclensionContext.Provider value={character}>
       {/* Titre de l'onglet = nom du personnage. Rendu déclaratif (React 19 le
           hisse dans le <head>) plutôt que document.title dans un effet : sinon
           la métadonnée en streaming de Next réécrase le titre après hydratation
@@ -1417,6 +1422,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </Button>
         </DialogActions>
       </Dialog>
+      </FeatureDeclensionContext.Provider>
     </FirearmsAllowedProvider>
   );
 }

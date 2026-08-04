@@ -392,10 +392,13 @@ describe('weaponDamageBonuses — flibustier « Pas de quartier » (+1d4° situa
 describe('weaponDamageBonuses — Épée de feu du chevalier dragon (+1d4° de feu, PER-74)', () => {
   // L'embrasement (« pour [5 + CHA] rounds », p. 148) est l'interrupteur temporaire index 0 du rang ;
   // le dé de DM au contact le suit (`requiresActiveEffectIndex: 0`), sur le patron de la rage berserk.
-  const knight = (lit: boolean) =>
+  // `color` = couleur du drake, retenue au 2ᵉ slot du choix de Monture fantastique (PER-74). Rouge par
+  // défaut = la voie telle qu'imprimée dans le livre.
+  const knight = (lit: boolean, color = 'fire') =>
     makeCharacter({
       classId: 'chevalier',
       featureIds: ['cavalier-r5', 'prestige-chevalier-dragon-r6'],
+      featureChoices: { 'cavalier-r5': ['drake', color] },
       effectToggles: lit ? { 'prestige-chevalier-dragon-r6': [true] } : {},
     });
 
@@ -419,5 +422,31 @@ describe('weaponDamageBonuses — Épée de feu du chevalier dragon (+1d4° de f
 
   it('épée enflammée mais mains nues → aucun bonus (suit l’arme de contact maniée)', () => {
     expect(weaponDamageBonuses(knight(true), 'melee', null).situational).toEqual([]);
+  });
+
+  // Déclinaison par couleur du drake (p. 147) : le dé ne change pas, seul le libellé nomme l'élément.
+  it('drake BLEU → même +1d4°, libellé « épée électrifiée (DM de foudre) »', () => {
+    const r = weaponDamageBonuses(knight(true, 'lightning'), 'melee', epeeLongue);
+    expect(r.situational[0]).toMatchObject({ dice: { count: 1, die: 'd4', evolving: true } });
+    expect(r.situational[0].conditionLabel).toBe('épée électrifiée (DM de foudre)');
+  });
+
+  it('drake VERT → « épée acide (DM d’acide) » (élision correcte du complément)', () => {
+    const r = weaponDamageBonuses(knight(true, 'acid'), 'melee', epeeLongue);
+    expect(r.situational[0].conditionLabel).toBe("épée acide (DM d'acide)");
+  });
+
+  it('couleur NON choisie → le bonus existe quand même, libellé sur le texte imprimé (rouge)', () => {
+    // L'épée de feu ne dépend d'aucune RD : c'est un dé de DM, que le livre accorde inconditionnellement.
+    // Seul le LIBELLÉ a besoin d'un élément, et il retombe alors sur la couleur imprimée.
+    const c = makeCharacter({
+      classId: 'chevalier',
+      featureIds: ['cavalier-r5', 'prestige-chevalier-dragon-r6'],
+      featureChoices: { 'cavalier-r5': ['drake'] },
+      effectToggles: { 'prestige-chevalier-dragon-r6': [true] },
+    });
+    expect(weaponDamageBonuses(c, 'melee', epeeLongue).situational[0].conditionLabel).toBe(
+      'épée enflammée (DM de feu)',
+    );
   });
 });

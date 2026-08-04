@@ -99,6 +99,11 @@ import { SpellManaBadge } from '@/components/SpellManaBadge';
 import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { FeatureText, CapabilityChip, FeatureVerbatimContext } from '@/components/sheet/FeatureRichText';
+import {
+  DeclinedFeatureName,
+  FeatureDeclensionContext,
+  useFeatureNameDecliner,
+} from '@/components/sheet/FeatureDeclension';
 import { CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
 import { FeatureChoiceField, ChoiceValueBadge } from '@/components/sheet/FeatureChoiceField';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
@@ -550,7 +555,7 @@ function BorrowedFeatureBlock({
           textuels de `FeatureLabel` feraient doublon avec les hexagones). */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-          {feature.name}
+          <DeclinedFeatureName feature={feature} />
         </Typography>
         {/* Hexagones : * (sort), A/L/G/M (types d'action). Les types conditionnels au rang
             (`actionTypesFromRank`) se résolvent sur la VOIE A (rang hôte, p. 41). */}
@@ -683,7 +688,8 @@ function ReferencedFeatureAccordion({
             sx={{ fontSize: 20, transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none' }}
           />
         </IconButton>
-        <CapabilityChip featureId={feature.id} label={feature.name} />
+        {/* `label` nul → la puce affiche le nom de la capacité, décliné le cas échéant (PER-74). */}
+        <CapabilityChip featureId={feature.id} label={null} />
         {creation && (
           // Bouton de production nommant la dose d'après CE sort ; poussé à droite du chip. Le
           // décompte de la réserve reste rappelé par la barre de l'en-tête de voie (showRemaining off).
@@ -2285,6 +2291,9 @@ function PathBlock({
         .filter((d) => d.source.featureId === featureId)
         .map((d) => ({ domain: b.domain, value: d.source.value, dominatedBy: d.dominatedBy })),
     );
+  // Nom DÉCLINÉ par élément draconique (PER-74). Récupéré ici, une seule fois : les titres de cartes
+  // sont rendus dans un `.map` sur les capacités, où un hook par capacité serait illégal.
+  const declinedName = useFeatureNameDecliner();
   // Scalings CROSS-VOIE sur le nombre de dés : on passe le COMPTE de voies du profil
   // au rang seuil comme « rang » à la formule, ce qui pilote ses paliers `|C@R` (le
   // terme `rang` n'est pas utilisé dans ces richText). Cf. `countClassPathsAtRank`.
@@ -2739,7 +2748,7 @@ function PathBlock({
               )}
               {/* Emprunt (PER-120) : la carte de devant porte le VRAI nom de la capacité empruntée
                   (« Vivacité »), écrit normalement ; le nom de l'hôte est dans la case décalée derrière. */}
-              {borrowed ? borrowed.name : feature.name}
+              {borrowed ? declinedName(borrowed) : declinedName(feature)}
             </Typography>
             {/* Badge WIP (PER-72) : capacité dont une partie de l'effet dépend d'un ticket extérieur
                 non terminé (ex. pagne-r2 → PER-131). Suivi de relecture, pas une règle. */}
@@ -2776,8 +2785,8 @@ function PathBlock({
                     variant="reduction"
                     scope={el as ResistibleDamageType}
                     text={label}
-                    title={`${feature.name} : ${label}`}
-                    sources={[{ name: feature.name }]}
+                    title={`${declinedName(feature)} : ${label}`}
+                    sources={[{ name: declinedName(feature) }]}
                     fullWidth={false}
                   />
                 </Box>
@@ -2947,7 +2956,7 @@ function PathBlock({
                     wordBreak: 'break-word',
                   }}
                 >
-                  {feature.name}
+                  {declinedName(feature)}
                 </Typography>
                 {/* Carac retenue : badge de choix standard (bleu primaire), code court « CON »
                     pour gagner de la place ; nom complet (« Constitution ») en infobulle. */}
@@ -3892,6 +3901,9 @@ export function FeaturesByPath({
   const totalColumnCount = PROFILE_COLUMN_COUNT + prestigeColSpan;
 
   return (
+    // Déclinaison des capacités par élément draconique (PER-74) : le personnage est fourni une fois
+    // ici, les points d'affichage (noms, `richText`, libellés d'interrupteurs) déclinent via les hooks.
+    <FeatureDeclensionContext.Provider value={character ?? null}>
     <FeatureVerbatimContext.Provider value={verbatim}>
     <Stack spacing={2.5}>
       {displayGroups.length === 0 ? (
@@ -4115,5 +4127,6 @@ export function FeaturesByPath({
       </Dialog>
     </Stack>
     </FeatureVerbatimContext.Provider>
+    </FeatureDeclensionContext.Provider>
   );
 }
