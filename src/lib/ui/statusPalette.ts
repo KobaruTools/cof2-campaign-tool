@@ -17,7 +17,7 @@ import {
   type SituationalEffectId,
   type StatusEffectId,
 } from '@/data/schema';
-import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
+import type { AnyStatusEffectId, StatusOrigin } from '@/lib/character/statusEffects';
 
 /** Un groupe de la palette (titre + ids d'états). */
 export interface StatusGroup {
@@ -62,12 +62,22 @@ export function statusLabel(id: AnyStatusEffectId): string {
  * TEINTE d'un état : la clé de palette MUI qui porte son rendu partout (puce de palette, carré-icône
  * du tracker et de la projection, rappel sur la fiche). `'error'` (rouge) par défaut — un état SUBI ;
  * `'info'` (bleu) pour un état d'ENVIRONNEMENT, qui n'est pas infligé mais imposé par la scène et se
- * pose indistinctement sur les alliés comme sur les adversaires.
+ * pose indistinctement sur les alliés comme sur les adversaires ; `'warning'` (jaune) pour un état
+ * DÉDUIT automatiquement de l'état du combattant (cf. `originStatusTone`).
  */
-export type StatusTone = 'error' | 'info';
+export type StatusTone = 'error' | 'info' | 'warning';
 
 export function statusTone(id: AnyStatusEffectId): StatusTone {
   return ENVIRONMENTAL_EFFECT_ID_SET.has(id) ? 'info' : 'error';
+}
+
+/**
+ * Teinte d'un état EFFECTIF, provenance comprise : un état DÉDUIT (des PV, p. 220) passe en JAUNE,
+ * pour se distinguer d'un coup d'œil des états posés à la main par le MJ (rouges) — il n'est ni
+ * posé ni retirable, il suit la situation. Un état posé garde la teinte de son id.
+ */
+export function originStatusTone(id: AnyStatusEffectId, origin: StatusOrigin): StatusTone {
+  return origin === 'auto' ? 'warning' : statusTone(id);
 }
 
 /**

@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { SITUATIONAL_EFFECT_IDS, STATUS_EFFECTS, STATUS_EFFECT_IDS } from '@/data/schema';
 import {
   clampIntensity,
+  effectiveStatuses,
+  hpAutoStatuses,
   isStackingStatus,
   resolveStatusModifiers,
   statusEntry,
   statusMaxIntensity,
+  HP_WEAKENED_REASON,
 } from './statusEffects';
 
 describe('catalogues — cohérence des modificateurs (PER-277)', () => {
@@ -137,5 +140,63 @@ describe('resolveStatusModifiers', () => {
   it('n’expose pas les stats dérivées dont le total est nul', () => {
     const r = resolveStatusModifiers([{ id: 'winded' }]);
     expect(r.derived).toEqual({});
+  });
+});
+
+// États DÉDUITS des PV (p. 220) : « Un personnage ou une créature à 1 PV subit l'état préjudiciable
+// affaibli. L'état affaibli disparaît dès que les PV repassent au-dessus de 1. »
+describe('hpAutoStatuses', () => {
+  it('déduit affaibli à exactement 1 PV', () => {
+    expect(hpAutoStatuses(10, { hp: { lethal: 9, temp: 0 } })).toEqual([
+      { id: 'weakened', origin: 'auto', autoReason: HP_WEAKENED_REASON },
+    ]);
+    // Manque mixte (létal + temporaire) qui laisse 1 PV : même conclusion.
+    expect(hpAutoStatuses(10, { hp: { lethal: 4, temp: 5 } })).toHaveLength(1);
+  });
+
+  it('rien au-dessus de 1 PV (l’état s’efface dès que les PV remontent)', () => {
+    expect(hpAutoStatuses(10, {})).toEqual([]);
+    expect(hpAutoStatuses(10, { hp: { lethal: 8, temp: 0 } })).toEqual([]);
+  });
+
+  it('rien à 0 PV : « à terre » et « assommé » ne sont pas des états du glossaire', () => {
+    expect(hpAutoStatuses(10, { hp: { lethal: 10, temp: 0 } })).toEqual([]);
+    expect(hpAutoStatuses(10, { hp: { lethal: 0, temp: 10 } })).toEqual([]);
+  });
+
+  it('rien quand les PV max sont inconnus (bloc de créature non chargé)', () => {
+    expect(hpAutoStatuses(0, {})).toEqual([]);
+    expect(hpAutoStatuses(0, { hp: { lethal: 5, temp: 0 } })).toEqual([]);
+  });
+});
+
+describe('effectiveStatuses', () => {
+  it('marque la provenance de chaque état', () => {
+    const merged = effectiveStatuses([{ id: 'blinded' }], hpAutoStatuses(10, { hp: { lethal: 9, temp: 0 } }));
+    expect(merged).toEqual([
+      { id: 'blinded', origin: 'manual' },
+      { id: 'weakened', origin: 'auto', autoReason: HP_WEAKENED_REASON },
+    ]);
+  });
+
+  it('l’état POSÉ l’emporte sur le même état déduit (aucun doublon d’id)', () => {
+    const merged = effectiveStatuses(
+      [{ id: 'weakened' }],
+      hpAutoStatuses(10, { hp: { lethal: 9, temp: 0 } }),
+    );
+    expect(merged).toEqual([{ id: 'weakened', origin: 'manual' }]);
+  });
+
+  it('conserve l’intensité des états cumulatifs posés', () => {
+    expect(effectiveStatuses([{ id: 'invalidating-attack', intensity: 2 }], [])).toEqual([
+      { id: 'invalidating-attack', intensity: 2, origin: 'manual' },
+    ]);
+  });
+
+  // Le sac de modificateurs se calcule sur la liste EFFECTIVE : un état déduit compte donc dans les
+  // stats ajustées du tracker (ici, le dé malus à tous les tests de l'état affaibli).
+  it('un état déduit compte dans les modificateurs résolus', () => {
+    const merged = effectiveStatuses([], hpAutoStatuses(10, { hp: { lethal: 9, temp: 0 } }));
+    expect(resolveStatusModifiers(merged).allTestsMalusDie).toBe(true);
   });
 });

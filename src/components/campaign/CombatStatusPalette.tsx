@@ -23,7 +23,11 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useDraggable } from '@dnd-kit/core';
 import type { SituationalEffectId } from '@/data/schema';
-import { statusEntry, type AnyStatusEffectId } from '@/lib/character/statusEffects';
+import {
+  statusEntry,
+  type AnyStatusEffectId,
+  type AutoStatusReason,
+} from '@/lib/character/statusEffects';
 import {
   buildStatusGroups,
   statusIconId,
@@ -37,8 +41,18 @@ import { SourceRef } from '@/components/SourceRef';
 /** Préfixe des ids `@dnd-kit` des puces de la palette (distinct des clés de combattant droppables). */
 export const STATUS_DRAG_PREFIX = 'status:';
 
-/** Infobulle « breakdown » d'un état : nom + effet verbatim + renvoi de page cliquable. */
-export function StatusEffectTooltip({ id }: { id: AnyStatusEffectId }) {
+/**
+ * Infobulle « breakdown » d'un état : nom + effet verbatim + renvoi de page cliquable. `autoReason`
+ * (état DÉDUIT, ex. affaibli à 1 PV) ajoute la règle qui le provoque, avec sa propre page source :
+ * le MJ voit alors POURQUOI cet état est là — et qu'il n'est pas de son fait, donc non retirable.
+ */
+export function StatusEffectTooltip({
+  id,
+  autoReason,
+}: {
+  id: AnyStatusEffectId;
+  autoReason?: AutoStatusReason;
+}) {
   const entry = statusEntry(id);
   return (
     <Box sx={{ maxWidth: 260 }}>
@@ -51,6 +65,14 @@ export function StatusEffectTooltip({ id }: { id: AnyStatusEffectId }) {
         </Typography>
       )}
       {entry?.sourcePage != null && <SourceRef page={entry.sourcePage} term={statusLabel(id)} />}
+      {autoReason && (
+        <Box sx={{ mt: 0.75 }}>
+          <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', color: 'warning.light' }}>
+            État automatique — « {autoReason.text} »
+          </Typography>
+          <SourceRef page={autoReason.sourcePage} />
+        </Box>
+      )}
     </Box>
   );
 }

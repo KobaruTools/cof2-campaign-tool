@@ -31,6 +31,18 @@
  * jauges condensées PV + mana plaqué en haut du bloc (`CompactGauges`, même modèle que les cartes de
  * joueurs de l'écran de MJ) — la table voit ainsi la vie de tout le monde sur l'écran public. Les PV
  * des CRÉATURES restent masqués.
+ *
+ * CRÉATURE VAINCUE (0 PV) : en PROJECTION, son bloc est barré d'une croix rouge, désaturé de moitié
+ * et surmonté d'une tête de mort (`DefeatedOverlay`) — c'est ce qui annonce sa mort aux joueurs,
+ * puisque ses PV ne leur sont pas montrés. Réservé aux créatures : un personnage à 0 PV est à terre /
+ * mourant (p. 220), pas mort.
+ *
+ * ÉTATS DÉDUITS : les états d'une ligne (`row.appliedStatuses`) peuvent venir du MJ ou de la
+ * SITUATION du combattant (affaibli à 1 PV, p. 220). Les seconds sont rendus en JAUNE et en lecture
+ * seule, et RÉSERVÉS À L'ÉCRAN DE MJ : ils comptent dans les stats ajustées de sa carte (dé malus à
+ * tous les tests) mais ne sont pas retirables (ils s'effacent dès que les PV remontent) et ne
+ * paraissent JAMAIS en projection — un tel badge révélerait aux joueurs que la créature est à 1 PV,
+ * alors que ses PV leur sont masqués.
  */
 import { useState, type ReactNode } from 'react';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -62,9 +74,13 @@ import {
   statusMaxIntensity,
   type AnyStatusEffectId,
   type AppliedStatus,
+  type EffectiveStatus,
   type ResolvedStatusModifiers,
 } from '@/lib/character/statusEffects';
+import { currentHp } from '@/lib/character/gauges';
+import { crossOutBackgroundImage } from '@/lib/ui/crossOut';
 import { AppTooltip } from '@/components/AppTooltip';
+import { SkullIcon } from '@/components/SkullIcon';
 import { HpGauge, type DamageKind } from '@/components/sheet/HpGauge';
 import {
   CompactGauges,
@@ -76,6 +92,7 @@ import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { StatusEffectTooltip } from '@/components/campaign/CombatStatusPalette';
 import {
   buildStatusGroups,
+  originStatusTone,
   statusIconId,
   statusLabel,
   statusTone,
@@ -169,12 +186,13 @@ export interface InitiativeRow {
    */
   combatStats?: CombatStats;
   /**
-   * États de combat appliqués à ce combattant (PER-282), en LECTURE SEULE. Alimenté pour TOUTES les
-   * lignes (MJ et projection). Sur l'écran de MJ, les badges interactifs (✕/±) passent par le
-   * câblage `statusControls` (`ColumnStatusRender`) ; ce champ sert la PROJECTION, qui affiche les
-   * mêmes états en badges lecture seule (sans les nombres ajustés, réservés au MJ).
+   * États de combat EFFECTIFS de ce combattant : ceux que le MJ a posés (`origin: 'manual'`) PLUS
+   * ceux déduits de sa situation (`origin: 'auto'`, ex. affaibli à 1 PV, p. 220). Alimenté pour
+   * TOUTES les lignes (MJ et projection), à charge pour le rendu de trier : l'écran de MJ montre les
+   * deux (les commandes ✕/± n'étant ouvertes que sur les états POSÉS — un état déduit n'est pas
+   * retirable à la main, il suit les PV), la projection ne montre que les états POSÉS.
    */
-  appliedStatuses?: AppliedStatus[];
+  appliedStatuses?: EffectiveStatus[];
   /** Dépletion courante (manque létal + temporaire). */
   depletion: Depletion;
   onDamage: (amount: number, kind: DamageKind) => void;
@@ -560,18 +578,21 @@ function StatusIconInner({
 }
 
 /**
- * Icône d'un état en LECTURE SEULE pour la PROJECTION (PER-282) : le carré-icône partagé, effet
- * verbatim en info-bulle, sans aucune commande (pas de ✕/±) ni nombre ajusté (réservés au MJ).
+ * Icône d'un état en LECTURE SEULE : le carré-icône partagé, effet verbatim en info-bulle, sans
+ * aucune commande (pas de ✕/±) ni nombre ajusté. Deux emplois :
+ *  - les états posés affichés en PROJECTION (PER-282), qui n'est jamais auteur ;
+ *  - les états DÉDUITS (`origin: 'auto'`) sur l'écran de MJ — jaunes, et non retirables puisqu'ils
+ *    ne sont pas de son fait : ils s'effacent d'eux-mêmes quand la condition cesse (PV remontés).
  */
-function ProjectionStatusIcon({ applied }: { applied: AppliedStatus }) {
-  const { id } = applied;
+function ReadonlyStatusIcon({ applied }: { applied: EffectiveStatus }) {
+  const { id, origin, autoReason } = applied;
   const intensity = clampIntensity(id, applied.intensity ?? 1);
   const stacked = isStackingStatus(id) && intensity > 1;
   return (
-    <AppTooltip title={<StatusEffectTooltip id={id} />}>
+    <AppTooltip title={<StatusEffectTooltip id={id} autoReason={autoReason} />}>
       <Box
         aria-label={statusLabel(id)}
-        sx={(theme) => ({ ...statusSquareSx(theme, statusTone(id)), cursor: 'help' })}
+        sx={(theme) => ({ ...statusSquareSx(theme, originStatusTone(id, origin)), cursor: 'help' })}
       >
         <StatusIconInner id={id} intensity={intensity} stacked={stacked} />
       </Box>
@@ -706,9 +727,10 @@ function InteractiveStatusIcon({
 /**
  * Bande de badges d'états en projection (PER-282), en `position: absolute` ancrée en bas à gauche du
  * bloc du combattant : les icônes s'enchaînent sur une ligne SANS déformer le bloc (repli en 2e ligne
- * seulement en débordement, cas rare). L'appelant réserve un peu de marge basse pour l'accueillir.
+ * seulement en débordement, cas rare). L'appelant réserve un peu de marge basse pour l'accueillir, et
+ * lui passe les seuls états POSÉS (les états déduits des PV restent réservés au MJ).
  */
-function ProjectionStatusStrip({ applied }: { applied: AppliedStatus[] }) {
+function ProjectionStatusStrip({ applied }: { applied: EffectiveStatus[] }) {
   return (
     <Box
       sx={{
@@ -725,7 +747,7 @@ function ProjectionStatusStrip({ applied }: { applied: AppliedStatus[] }) {
       }}
     >
       {applied.map((s) => (
-        <ProjectionStatusIcon key={s.id} applied={s} />
+        <ReadonlyStatusIcon key={s.id} applied={s} />
       ))}
     </Box>
   );
@@ -773,6 +795,50 @@ function ProjectionGaugesStrip({
   );
 }
 
+/**
+ * Surimpression « créature VAINCUE » (0 PV) de la fenêtre projetée : le bloc est DÉSATURÉ de 50 %,
+ * BARRÉ d'une croix rouge et surmonté d'une tête de mort. C'est la seule annonce de la mort d'une
+ * créature aux joueurs, à qui ses PV restent masqués. Même vocabulaire visuel que les blocs
+ * « barrés » de la fiche (cf. `crossOut`), en rouge franc.
+ *
+ * La désaturation passe par `backdrop-filter` sur CETTE couche, et non par un `filter` posé sur la
+ * carte : un filtre s'applique à tous les descendants (pseudo-éléments compris), il aurait donc
+ * délavé la croix et la tête de mort avec le reste. Ici, tout ce qui est peint DESSOUS est désaturé,
+ * et le rouge de la surimpression reste franc.
+ */
+function DefeatedOverlay({ name }: { name: string }) {
+  return (
+    <Box
+      role="img"
+      aria-label={`${name} — vaincu`}
+      sx={(t) => ({
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        borderRadius: 'inherit',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backdropFilter: 'grayscale(0.5)',
+        WebkitBackdropFilter: 'grayscale(0.5)',
+        backgroundImage: crossOutBackgroundImage({
+          color: alpha(t.palette.error.main, 0.8),
+          thickness: 3,
+        }),
+      })}
+    >
+      <SkullIcon
+        sx={{
+          fontSize: 46,
+          color: 'error.main',
+          // Ombre portée : détache la tête de mort du portrait qu'elle recouvre.
+          filter: 'drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7))',
+        }}
+      />
+    </Box>
+  );
+}
+
 /** Interactions d'états attachées à une colonne (mode écran de MJ uniquement). */
 interface ColumnStatusInteractive {
   /** Réf de la zone de drop (`@dnd-kit`). */
@@ -789,9 +855,12 @@ interface ColumnStatusInteractive {
  * mode MJ, indépendamment du survol d'une puce.
  */
 interface ColumnStatusRender {
-  /** États actuellement appliqués sur ce combattant. */
-  applied: AppliedStatus[];
-  /** Retire l'état `id` de ce combattant. */
+  /**
+   * États EFFECTIFS de ce combattant : posés par le MJ (badges interactifs) + déduits de sa
+   * situation (badges jaunes en lecture seule). Les deux comptent dans les stats ajustées.
+   */
+  applied: EffectiveStatus[];
+  /** Retire l'état `id` de ce combattant (états POSÉS uniquement). */
   onRemove: (id: AnyStatusEffectId) => void;
   /** Ajuste de `delta` (±) l'intensité de l'état cumulatif `id`. */
   onAdjust: (id: AnyStatusEffectId, delta: number) => void;
@@ -819,11 +888,22 @@ function CombatantColumn({
   // États affichés en projection (lecture seule) : bande d'icônes en overlay absolu ancré en bas à
   // gauche. AUCUNE place réservée (pas de padding) → le bloc garde EXACTEMENT la même taille qu'il
   // porte des états ou non, donc tous les blocs restent alignés quel que soit leur nombre d'états.
-  const projectionStatuses = projection ? row.appliedStatuses ?? [] : [];
+  // Projection : SEULS les états POSÉS par le MJ sont montrés. Un état DÉDUIT est calculé depuis les
+  // PV (affaibli à 1 PV) : l'afficher révélerait aux joueurs que la créature est à 1 PV, alors que la
+  // projection masque justement ses PV. Il reste réservé à l'écran de MJ.
+  const projectionStatuses = projection
+    ? (row.appliedStatuses ?? []).filter((s) => s.origin !== 'auto')
+    : [];
   const hasProjectionStatuses = projectionStatuses.length > 0;
   // Bandeau de jauges de la projection : PERSONNAGES uniquement (les PV des créatures
   // restent réservés au MJ) et seulement si les PV max sont connus (profil complet).
   const showProjectionGauges = projection && !row.isCreature && row.maxHp > 0;
+  // Créature VAINCUE (0 PV) : carte barrée + tête de mort sur l'écran PUBLIC, où ses PV sont
+  // masqués. Réservé aux CRÉATURES — un personnage à 0 PV est à terre / mourant (p. 220), pas mort,
+  // et sa chute se lit déjà sur son bandeau de jauges. `maxHp > 0` : des PV max inconnus (bloc de
+  // créature pas chargé) donneraient 0 PV courants par défaut, on ne conclut donc rien.
+  const defeated =
+    projection && row.isCreature && row.maxHp > 0 && currentHp(row.maxHp, row.depletion) === 0;
   return (
     <Box
       ref={interactive?.dropRef}
@@ -984,17 +1064,23 @@ function CombatantColumn({
           <CombatStatsRow stats={row.combatStats} resolved={resolveStatusModifiers(status.applied)} />
         )}
         {/* États appliqués (écran de MJ) : MÊMES carrés-icônes que la projection (PER-283), mais
-            interactifs — clic = retrait, ±N au survol pour les cumulatifs. Effet verbatim en tooltip. */}
+            interactifs — clic = retrait, ±N au survol pour les cumulatifs. Effet verbatim en tooltip.
+            Un état DÉDUIT (jaune, ex. affaibli à 1 PV) est rendu en lecture seule : le MJ ne l'a pas
+            posé, il ne peut pas le retirer — c'est la situation du combattant qui le porte. */}
         {status && status.applied.length > 0 && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-            {status.applied.map((s) => (
-              <InteractiveStatusIcon
-                key={s.id}
-                applied={s}
-                onRemove={() => status.onRemove(s.id)}
-                onAdjust={(delta) => status.onAdjust(s.id, delta)}
-              />
-            ))}
+            {status.applied.map((s) =>
+              s.origin === 'auto' ? (
+                <ReadonlyStatusIcon key={s.id} applied={s} />
+              ) : (
+                <InteractiveStatusIcon
+                  key={s.id}
+                  applied={s}
+                  onRemove={() => status.onRemove(s.id)}
+                  onAdjust={(delta) => status.onAdjust(s.id, delta)}
+                />
+              ),
+            )}
           </Box>
         )}
       </Stack>
@@ -1002,6 +1088,10 @@ function CombatantColumn({
           ajustés), en position absolue ancrée en bas à gauche → n'altère pas la mise en page du bloc.
           Le chemin MJ passe par `status` (badges interactifs en flux normal) ci-dessus. */}
       {hasProjectionStatuses && <ProjectionStatusStrip applied={projectionStatuses} />}
+      {/* Créature vaincue : surimpression barrée + tête de mort, en DERNIER pour peindre par-dessus
+          tout le contenu du bloc (bornée à `inset: 0`, elle laisse la bande d'états qui déborde
+          en dessous intacte). */}
+      {defeated && <DefeatedOverlay name={row.name} />}
     </Box>
   );
 }
@@ -1022,11 +1112,14 @@ function StatusDroppableColumn({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: row.key });
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const applied = controls.statusesByKey[row.key] ?? [];
-  const appliedIds = new Set(applied.map((s) => s.id));
+  // Les COCHES du menu suivent les seuls états POSÉS (ce que le MJ a effectivement appliqué) : un
+  // état déduit des PV n'est pas de son fait, le décocher n'aurait rien à retirer.
+  const manualIds = new Set((controls.statusesByKey[row.key] ?? []).map((s) => s.id));
+  // Les BADGES, eux, montrent les états EFFECTIFS de la ligne (posés + déduits), comme la projection.
+  const applied = row.appliedStatuses ?? [];
 
   const toggle = (id: AnyStatusEffectId) => {
-    if (appliedIds.has(id)) controls.onRemove(row.key, id);
+    if (manualIds.has(id)) controls.onRemove(row.key, id);
     else controls.onApply(row.key, id);
     // Le menu reste ouvert : le MJ peut cocher/décocher plusieurs états d'affilée.
   };
@@ -1068,7 +1161,7 @@ function StatusDroppableColumn({
               ]),
           ...group.ids.map((id) => {
             const iconId = statusIconId(id);
-            const on = appliedIds.has(id);
+            const on = manualIds.has(id);
             // Même code couleur que les puces/carrés : l'icône du menu porte la teinte de la famille.
             const toneColor = `${statusTone(id)}.light`;
             return (

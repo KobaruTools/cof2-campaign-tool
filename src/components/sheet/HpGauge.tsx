@@ -16,6 +16,7 @@ import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
 import type { Depletion } from '@/lib/character/types';
 import { currentHp, hpHealthState, type HealthState } from '@/lib/character/gauges';
+import { HP_WEAKENED_REASON, HP_WEAKENED_RULE } from '@/lib/character/statusEffects';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
@@ -39,10 +40,9 @@ const HEALTH_STATE_META: Record<
   weakened: {
     label: 'Affaibli',
     palette: 'warning',
-    rule:
-      'Un personnage ou une créature à 1 PV subit l’état préjudiciable affaibli. ' +
-      'L’état affaibli disparaît dès que les PV repassent au-dessus de 1.',
-    sourcePage: 220,
+    // Verbatim partagé avec le badge automatique du Combat Tracker (même règle, même page).
+    rule: HP_WEAKENED_RULE,
+    sourcePage: HP_WEAKENED_REASON.sourcePage,
   },
   down: {
     label: 'À terre / mourant',

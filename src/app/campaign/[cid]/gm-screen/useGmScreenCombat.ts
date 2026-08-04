@@ -53,6 +53,8 @@ import {
 } from '@/lib/session/combatState';
 import { sortByInitiative } from '@/lib/session/initiativeOrder';
 import {
+  effectiveStatuses,
+  hpAutoStatuses,
   resolveStatusModifiers,
   type AnyStatusEffectId,
   type AppliedStatus,
@@ -322,9 +324,14 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
         const summary = summarize(character);
         const maxHp = character.overrides.maxHp ?? derived?.maxHp ?? 0;
         const baseInitiative = character.overrides.initiative ?? derived?.initiative ?? 0;
-        // Delta d'initiative des états posés (ex. Aveuglé -5) : baisse (ou remonte) l'initiative
+        // États EFFECTIFS : ceux que le MJ a posés + ceux DÉDUITS des PV (affaibli à 1 PV, p. 220).
+        // Ils alimentent indifféremment les badges du tracker et l'ajustement des stats affichées.
+        const appliedStatuses = effectiveStatuses(
+          statuses[character.id] ?? [],
+          hpAutoStatuses(maxHp, character.depletion),
+        );
+        // Delta d'initiative des états (ex. Aveuglé -5) : baisse (ou remonte) l'initiative
         // EFFECTIVE, celle qui sert au tri de l'ordre ET à l'affichage (colorée quand modifiée).
-        const appliedStatuses = statuses[character.id] ?? [];
         const initiativeDelta = resolveStatusModifiers(appliedStatuses).derived.initiative ?? 0;
         const initiative = baseInitiative + initiativeDelta;
         // DEF + attaques de BASE (PER-280) : dérivées, surcharge manuelle prioritaire (comme la fiche).
@@ -359,9 +366,9 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           // de piste de mana ; profil incomplet (pas de dérivées) → pas de mana non plus.
           manaMax: derived ? character.overrides.manaPoints ?? derived.manaPoints : null,
           combatStats,
-          // États appliqués (lecture seule) — sert la projection (PER-282) ; l'écran de MJ garde en
-          // plus le câblage interactif via `statusControls`.
-          appliedStatuses: statuses[character.id],
+          // États EFFECTIFS (posés + déduits) — servent les badges de la projection (PER-282) comme
+          // ceux de l'écran de MJ, dont les seuls états POSÉS restent interactifs (`statusControls`).
+          appliedStatuses,
           depletion: character.depletion,
           onDamage: (amount: number, kind: DamageKind) =>
             upsert({ ...character, depletion: applyDamage(character.depletion, amount, kind, maxHp) }),
@@ -388,7 +395,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           // cet affichage diffusé (bloc pas encore chargé chez le MJ), la ligne est simplement omise.
           const info = creatureInfo[inst.slug];
           if (!info) return [];
-          const appliedStatuses = statuses[inst.id] ?? [];
+          // Aucun état DÉDUIT possible ici : sans bloc, les PV de la créature sont inconnus.
+          const appliedStatuses = effectiveStatuses(statuses[inst.id] ?? [], []);
           const initiativeDelta = resolveStatusModifiers(appliedStatuses).derived.initiative ?? 0;
           const isVisible = inst.visible !== false;
           const isAlly = inst.side === 'ally';
@@ -407,7 +415,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
               initiativeDelta,
               agility: info.agility,
               maxHp: 0,
-              appliedStatuses: statuses[inst.id],
+              appliedStatuses,
               depletion: {},
               // Lecture seule (projection / écran joueur) : ces callbacks ne sont jamais déclenchés.
               onDamage: () => {},
@@ -419,11 +427,16 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
         }
         const maxHp = blob.hitPoints ?? 0;
         const baseInitiative = blob.initiative ?? 0;
-        // Delta d'initiative des états posés (ex. Aveuglé -5) : initiative EFFECTIVE (tri + affichage).
-        const appliedStatuses = statuses[inst.id] ?? [];
+        const depletion = depletions[inst.id] ?? {};
+        // États EFFECTIFS : posés par le MJ + DÉDUITS des PV de la créature (affaibli à 1 PV, p. 220
+        // — la règle vaut « pour un personnage ou une créature »).
+        const appliedStatuses = effectiveStatuses(
+          statuses[inst.id] ?? [],
+          hpAutoStatuses(maxHp, depletion),
+        );
+        // Delta d'initiative des états (ex. Aveuglé -5) : initiative EFFECTIVE (tri + affichage).
         const initiativeDelta = resolveStatusModifiers(appliedStatuses).derived.initiative ?? 0;
         const initiative = baseInitiative + initiativeDelta;
-        const depletion = depletions[inst.id] ?? {};
         // DEF (nombre du bloc) + attaques (bonus verbatim « +7 » parsé) — PER-280. Une attaque sans
         // bonus chiffré (ex. souffle) est omise des pastilles ajustables.
         const combatStats: CombatStats = {
@@ -460,8 +473,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             agility: inst.custom ? inst.custom.agility : blob.abilities?.AGI,
             maxHp,
             combatStats,
-            // États appliqués (lecture seule) — sert la projection (PER-282).
-            appliedStatuses: statuses[inst.id],
+            // États EFFECTIFS (posés + déduits) — servent les badges des deux écrans (PER-282).
+            appliedStatuses,
             depletion,
             onDamage: (amount: number, kind: DamageKind) =>
               setCreatureDepletion(inst.id, applyDamage(depletion, amount, kind, maxHp)),

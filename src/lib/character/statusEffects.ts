@@ -20,6 +20,8 @@ import {
   type StatusEffectEntry,
   type StatusEffectId,
 } from '@/data/schema';
+import { hpHealthState } from './gauges';
+import type { Depletion } from './types';
 
 /**
  * Identifiant d'état, indifféremment du glossaire (`StatusEffectId`), situationnel
@@ -37,6 +39,77 @@ export interface AppliedStatus {
   id: AnyStatusEffectId;
   /** Intensité pour un état cumulatif (≥ 1, plafonnée par le catalogue). Absent = 1. */
   intensity?: number;
+}
+
+/**
+ * PROVENANCE d'un état porté par un combattant :
+ *  - `manual` : posé par le MJ (glisser-déposer / menu à cocher), et retirable par lui ;
+ *  - `auto` : DÉDUIT de l'état du combattant (ses PV), donc ni posé ni retirable à la main — il
+ *    apparaît et disparaît tout seul avec la condition qui le provoque.
+ */
+export type StatusOrigin = 'manual' | 'auto';
+
+/**
+ * Règle qui JUSTIFIE un état déduit : son verbatim du livre + la page source, pour l'info-bulle du
+ * badge automatique (convention projet : jamais de règle affichée sans son renvoi de page).
+ */
+export interface AutoStatusReason {
+  text: string;
+  sourcePage: number | string;
+}
+
+/**
+ * Un état EFFECTIF sur un combattant : l'état appliqué + sa provenance. C'est cette forme que l'UI
+ * consomme (badge retirable ou non, teinte), là où `AppliedStatus` reste la forme STOCKÉE (celle que
+ * le MJ a posée). Un état déduit porte en plus la règle qui le justifie.
+ */
+export interface EffectiveStatus extends AppliedStatus {
+  origin: StatusOrigin;
+  /** Renseigné pour `origin: 'auto'` uniquement. */
+  autoReason?: AutoStatusReason;
+}
+
+/**
+ * Verbatim de la règle qui déduit l'état AFFAIBLI des PV courants (p. 220). Source unique : elle
+ * alimente à la fois le badge d'état de santé de la jauge de PV (`HealthStateBadge`) et le badge
+ * automatique du Combat Tracker.
+ */
+export const HP_WEAKENED_RULE =
+  'Un personnage ou une créature à 1 PV subit l’état préjudiciable affaibli. ' +
+  'L’état affaibli disparaît dès que les PV repassent au-dessus de 1.';
+
+/** Règle + page de l'état affaibli déduit des PV, telle qu'affichée en info-bulle. */
+export const HP_WEAKENED_REASON: AutoStatusReason = { text: HP_WEAKENED_RULE, sourcePage: 220 };
+
+/**
+ * États DÉDUITS des PV courants d'un combattant (p. 220) : exactement 1 PV ⇒ affaibli, et l'état
+ * s'efface dès que les PV repassent au-dessus de 1. À 0 PV, rien ici : « à terre / mourant » et
+ * « assommé » ne sont pas des états du glossaire (ils se lisent sur la jauge, cf. `hpHealthState`).
+ *
+ * `maxHp` ≤ 0 = PV INCONNUS (bloc de créature non chargé, personnage au profil incomplet) : on ne
+ * déduit rien, plutôt que de conclure « 0 PV » d'une absence d'information.
+ */
+export function hpAutoStatuses(maxHp: number, depletion: Depletion): EffectiveStatus[] {
+  if (maxHp <= 0) return [];
+  return hpHealthState(maxHp, depletion) === 'weakened'
+    ? [{ id: 'weakened', origin: 'auto', autoReason: HP_WEAKENED_REASON }]
+    : [];
+}
+
+/**
+ * Fusionne les états POSÉS par le MJ et les états DÉDUITS en une liste sans doublon d'id : le posé
+ * l'emporte (le MJ garde la main, et son badge reste retirable) — un état déjà posé qui devient
+ * aussi déductible n'apparaît donc qu'UNE fois. Fonction PURE ; l'ordre est stable (posés d'abord).
+ */
+export function effectiveStatuses(
+  manual: readonly AppliedStatus[],
+  auto: readonly EffectiveStatus[],
+): EffectiveStatus[] {
+  const manualIds = new Set(manual.map((s) => s.id));
+  return [
+    ...manual.map((s): EffectiveStatus => ({ ...s, origin: 'manual' })),
+    ...auto.filter((s) => !manualIds.has(s.id)),
+  ];
 }
 
 /**

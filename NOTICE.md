@@ -144,22 +144,24 @@ composant `src/components/PurseIcon.tsx`.
 | --- | --- | --- |
 | Bourse | `lorc/swap-bag.svg` | Lorc |
 
-## Icône de statut « mort »
+## Icônes de statut « mort »
 
-L'icône « pierre tombale » marquant un personnage mort (statut, PER-183) provient
-de [game-icons.net](https://game-icons.net), sous licence
+L'icône « pierre tombale » marquant un personnage mort (statut, PER-183) et la
+« tête de mort » posée sur la carte d'une créature vaincue (0 PV) dans le tracker
+projeté proviennent de [game-icons.net](https://game-icons.net), sous licence
 [Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 
 Auteur : **Lorc** (https://game-icons.net).
 
-Le SVG a été nettoyé (fond retiré, couleur neutralisée) et embarqué en dur dans le
-composant `src/components/TombstoneIcon.tsx` (rendu via `SvgIcon`, sans requête
-réseau). Les autres marqueurs de statut (« Vivant », « Retraité ») sont des icônes
-Material UI, non issues de game-icons.net.
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et embarqués en dur dans
+les composants `src/components/TombstoneIcon.tsx` et `src/components/SkullIcon.tsx`
+(rendus via `SvgIcon`, sans requête réseau). Les autres marqueurs de statut
+(« Vivant », « Retraité ») sont des icônes Material UI, non issues de game-icons.net.
 
 | Élément | Fichier game-icons.net | Auteur |
 | --- | --- | --- |
 | Mort (pierre tombale) | `lorc/tombstone.svg` | Lorc |
+| Créature vaincue (tête de mort) | `lorc/skull-crossed-bones.svg` | Lorc |
 
 ## Icône « Campagnes » (quête)
 

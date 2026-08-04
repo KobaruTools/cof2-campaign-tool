@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { ENVIRONMENTAL_EFFECT_IDS, STATUS_EFFECT_IDS } from '@/data/schema';
-import { buildStatusGroups, statusIconId, statusLabel, statusTone } from './statusPalette';
+import {
+  buildStatusGroups,
+  originStatusTone,
+  statusIconId,
+  statusLabel,
+  statusTone,
+} from './statusPalette';
 
 // Helpers PURS de la palette d'états du Combat Tracker (groupes, libellés, icônes, teintes).
 describe('buildStatusGroups', () => {
@@ -44,5 +50,14 @@ describe('statusLabel / statusIconId / statusTone', () => {
     expect(statusTone('aquatic-combat')).toBe('info');
     for (const id of STATUS_EFFECT_IDS) expect(statusTone(id), id).toBe('error');
     expect(statusTone('invalidating-attack')).toBe('error');
+  });
+
+  // Un état DÉDUIT (des PV, p. 220) passe en jaune, quelle que soit sa famille : il ne vient pas du
+  // MJ et n'est pas retirable, il faut le distinguer d'un état posé.
+  it('teinte : jaune (warning) pour un état déduit automatiquement', () => {
+    expect(originStatusTone('weakened', 'auto')).toBe('warning');
+    expect(originStatusTone('aquatic-combat', 'auto')).toBe('warning');
+    expect(originStatusTone('weakened', 'manual')).toBe('error');
+    expect(originStatusTone('aquatic-combat', 'manual')).toBe('info');
   });
 });
