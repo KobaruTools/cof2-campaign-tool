@@ -61,6 +61,22 @@
  * le réglage est une préférence d'affichage LOCALE (`localStorage`), jamais poussée dans l'état de
  * combat partagé — la projection l'ignore et son rendu est inchangé.
  *
+ * BARRE PERMANENTE (PER-301) : en mode compact, la bande se COLLE au bas de l'écran de MJ
+ * (`position: sticky`, fond dépoli) — le combattant actif et « Tour suivant » restent donc à portée
+ * quand on descend consulter une carte, ce qui obligeait jusqu'ici à remonter toute la page. Le
+ * collage est réservé au COMPACT (le détaillé, deux fois plus haut, mangerait la moitié de l'écran)
+ * et désactivé sous `md` (sur un téléphone, il ne resterait rien à lire). C'est le BAS et non le
+ * haut : la bande est en fin de flux, après les trois grilles de cartes — un `sticky top` ne
+ * collerait qu'une fois qu'on a défilé jusqu'à elle, il aurait fallu remonter le bloc avant les
+ * grilles et réordonner l'écran.
+ *
+ * La PALETTE d'états (`statusPalette`) déménage à cette occasion DANS le tracker, entre l'en-tête et
+ * la bande, derrière un bouton « États » qui la replie : elle vivait au-dessus dans le flux de la
+ * page, d'où elle sortait de l'écran dès qu'on défilait — le glisser-déposer devenait alors
+ * impossible, la SOURCE du geste étant hors champ. Elle est ouverte par défaut en détaillé (le rendu
+ * d'avant, la palette y est un meuble permanent) et fermée par défaut en compact (la barre collante
+ * doit rester basse) ; les deux choix se persistent séparément.
+ *
  * ÉTATS DÉDUITS : les états d'une ligne (`row.appliedStatuses`) peuvent venir du MJ ou de la
  * SITUATION du combattant (affaibli à 1 PV, p. 220). Les seconds sont rendus en JAUNE et en lecture
  * seule, et RÉSERVÉS À L'ÉCRAN DE MJ : ils comptent dans les stats ajustées de sa carte (dé malus à
@@ -71,6 +87,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -84,6 +102,7 @@ import DensityMediumIcon from '@mui/icons-material/DensityMedium';
 import DensitySmallIcon from '@mui/icons-material/DensitySmall';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListSubheader from '@mui/material/ListSubheader';
@@ -1466,13 +1485,97 @@ function TrackerDensityToggle({
         </AppTooltip>
       </ToggleButton>
       <ToggleButton value="compact" aria-label="Cartes compactes">
-        <AppTooltip title="Cartes compactes — plus de combattants d'un coup d'œil">
+        <AppTooltip title="Cartes compactes — plus de combattants d'un coup d'œil, et bande collée en bas de l'écran">
           <DensitySmallIcon fontSize="small" />
         </AppTooltip>
       </ToggleButton>
     </ToggleButtonGroup>
   );
 }
+
+/**
+ * Clés `localStorage` de l'ouverture de la palette d'états dans le tracker (PER-301) : DEUX clés, une
+ * par densité, parce que la palette n'y joue pas le même rôle. En DÉTAILLÉ — bande dans le flux de la
+ * page — elle reste le meuble permanent qu'elle était avant PER-301, donc OUVERTE par défaut : le
+ * rendu de l'écran de MJ est inchangé pour qui ne touche pas au mode compact. En COMPACT — bande
+ * COLLÉE en bas de l'écran — elle devient un tiroir qu'on ouvre le temps de poser un état, donc
+ * FERMÉE par défaut : une barre permanente doit rester basse, c'est toute sa raison d'être.
+ */
+const PALETTE_STORAGE_KEY_DETAILED = 'initiative-tracker-palette-detailed';
+const PALETTE_STORAGE_KEY_COMPACT = 'initiative-tracker-palette-compact';
+
+/**
+ * Bascule d'ouverture de la palette d'états (PER-301), rangée avec le titre et la densité : c'est une
+ * commande d'AFFICHAGE, elle n'a rien à faire dans le groupe « Tour précédent / Tour suivant ». Le
+ * chevron indique le sens du dépliage — la palette apparaît SOUS le bouton, au-dessus de la bande.
+ */
+function StatusPaletteToggle({
+  open,
+  onChange,
+}: {
+  open: boolean;
+  onChange: (open: boolean) => void;
+}) {
+  return (
+    <Button
+      variant="outlined"
+      size="small"
+      onClick={() => onChange(!open)}
+      aria-expanded={open}
+      endIcon={open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+      title={
+        open
+          ? "Masquer la palette d'états"
+          : "Afficher la palette d'états à glisser sur les combattants"
+      }
+    >
+      États
+    </Button>
+  );
+}
+
+/**
+ * Empilement de la barre collante (PER-301). Choisi POUR PASSER SOUS la surcouche de glisser de
+ * `@dnd-kit` (`DragOverlay`, 999 par défaut) : la puce d'état qu'on traîne doit passer PAR-DESSUS la
+ * barre, puisque c'est justement dessus qu'on la dépose. Passe donc aussi sous la barre de navigation
+ * d'app (`AppBar`, 1100), le panneau latéral de fiche (`Drawer`, 1200), les modales, menus et
+ * popovers (1300) — et au-dessus des cartes des grilles, qui n'ont aucun `z-index`.
+ */
+const STICKY_Z_INDEX = 900;
+
+/**
+ * Habillage de la bande COLLÉE en bas de l'écran de MJ (PER-301) : verre dépoli opaque pour rester
+ * lisible par-dessus les cartes qui défilent dessous et l'illustration de fond, filet de séparation
+ * et ombre portée vers le haut pour la détacher du contenu.
+ *
+ * Le collage est coupé sous `md` : sur un téléphone (grilles en 1 colonne), une barre permanente de
+ * ~260 px ne laisserait presque rien à lire — la bande y reste dans le flux, comme avant.
+ *
+ * Le débord horizontal (`mx` négatif compensé par `px`) fait filer la barre d'un bord à l'autre de la
+ * fenêtre en reprenant à son compte le rembourrage de la page : sans lui, deux gouttières de fond nu
+ * la couperaient de chaque côté.
+ *
+ * En TOUT BAS de page, la barre remonte à sa place naturelle et le pied de site apparaît sous elle :
+ * `sticky` borne l'élément à son bloc conteneur, qui s'arrête avant le pied de page. C'est voulu — on
+ * voit qu'on a atteint la fin, et rien n'est jamais masqué (les dernières cartes d'adversaires
+ * redeviennent lisibles à cet instant précis). Un `position: fixed` collerait la barre coûte que
+ * coûte, mais recouvrirait le pied de page en permanence et exigerait de réserver sa hauteur — pour
+ * un gain nul.
+ */
+const STICKY_BAR_SX = {
+  position: { xs: 'static', md: 'sticky' },
+  bottom: 0,
+  zIndex: STICKY_Z_INDEX,
+  mx: { xs: -2, sm: -4 },
+  px: { xs: 2, sm: 4 },
+  pt: 1.5,
+  pb: 0.5,
+  bgcolor: 'rgba(16, 16, 19, 0.88)',
+  backdropFilter: 'blur(14px)',
+  WebkitBackdropFilter: 'blur(14px)',
+  borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+  boxShadow: '0 -8px 24px rgba(0, 0, 0, 0.5)',
+} as const;
 
 /**
  * Éléments qui CONSOMMENT les touches des raccourcis de tour (PER-299) : champs de saisie (« n »
@@ -1983,6 +2086,20 @@ export interface InitiativeTrackerProps {
    * projection (lecture seule, jamais auteur).
    */
   statusControls?: CombatStatusControls;
+  /**
+   * Palette d'états à glisser (`CombatStatusPalette`), fournie par l'écran de MJ et rendue ICI, entre
+   * l'en-tête et la bande, derrière un bouton « États » qui la replie (PER-301). Elle vivait
+   * au-dessus du tracker dans le flux de la page : dès que la bande s'est mise à coller, la palette
+   * sortait de l'écran au premier défilement et le glisser-déposer devenait impossible faute de
+   * SOURCE visible. Ignorée en projection (jamais auteur d'un état).
+   */
+  statusPalette?: ReactNode;
+  /**
+   * Autorise le COLLAGE de la bande en bas de l'écran (PER-301) — écran de MJ uniquement. Effectif
+   * seulement en mode COMPACT et à partir de `md` : c'est le tracker qui en décide, l'appelant ne fait
+   * que déclarer que sa page s'y prête (elle défile et la bande en occupe la fin).
+   */
+  stickyBottom?: boolean;
 }
 
 export function InitiativeTracker({
@@ -1995,6 +2112,8 @@ export function InitiativeTracker({
   projection = false,
   headerAction,
   statusControls,
+  statusPalette,
+  stickyBottom = false,
 }: InitiativeTrackerProps) {
   // Premier de l'ordre d'initiative (les `rows` sont déjà triées par l'appelant) : cible du
   // repositionnement du bouton ⟳ « recommencer le décompte ». `null` si le roster est vide.
@@ -2037,9 +2156,29 @@ export function InitiativeTracker({
   // déjà à la largeur compacte et son rendu ne doit dépendre d'aucun réglage de l'écran de MJ.
   const [compactPref, setCompactPref] = usePersistedBoolean(COMPACT_STORAGE_KEY, false);
   const compact = !projection && compactPref;
+  // Ouverture de la palette d'états (PER-301), persistée SÉPARÉMENT par densité : ouverte par défaut
+  // en détaillé (le rendu d'avant), fermée par défaut dans la barre collante du compact. Les deux
+  // hooks sont appelés inconditionnellement (règle des hooks) ; seul le couple utile est retenu.
+  const [paletteOpenDetailed, setPaletteOpenDetailed] = usePersistedBoolean(
+    PALETTE_STORAGE_KEY_DETAILED,
+    true,
+  );
+  const [paletteOpenCompact, setPaletteOpenCompact] = usePersistedBoolean(
+    PALETTE_STORAGE_KEY_COMPACT,
+    false,
+  );
+  const paletteOpen = compact ? paletteOpenCompact : paletteOpenDetailed;
+  const setPaletteOpen = compact ? setPaletteOpenCompact : setPaletteOpenDetailed;
+  // La palette n'a de sens que là où les états sont modifiables (écran de MJ) : la projection n'est
+  // jamais auteur, et les autres consommateurs du tracker ne la fournissent pas.
+  const hasPalette = !projection && !!statusPalette;
+  // Barre collée en bas : réservée au COMPACT (le détaillé, deux fois plus haut, mangerait la moitié
+  // de l'écran) et à l'écran de MJ (la projection n'a pas de page à défiler). Le repli mobile est
+  // porté par le point d'arrêt de `STICKY_BAR_SX`.
+  const sticky = stickyBottom && compact && !projection;
 
   return (
-    <Stack spacing={2} ref={rootRef}>
+    <Stack spacing={2} ref={rootRef} sx={sticky ? STICKY_BAR_SX : undefined}>
       {/* En-tête (titre + actions + « Tour suivant ») : tout se pilote depuis l'écran de
           MJ, donc rien de tout ça en mode projection. */}
       {!projection && (
@@ -2101,6 +2240,9 @@ export function InitiativeTracker({
               réglage d'AFFICHAGE, pas une action de jeu, il n'a rien à faire dans le groupe
               « Tour précédent / Tour suivant » à droite. */}
           <TrackerDensityToggle compact={compactPref} onChange={setCompactPref} />
+          {/* Palette d'états repliable (PER-301) : même rangée que la densité, c'est un réglage
+              d'affichage. Le bouton n'apparaît que si l'appelant fournit une palette (écran de MJ). */}
+          {hasPalette && <StatusPaletteToggle open={paletteOpen} onChange={setPaletteOpen} />}
           <Box sx={{ flexGrow: 1 }} />
           {headerAction}
           {/* « Tour précédent » (PER-299) : rattrape le clic de trop, sans avoir à refaire tout le
@@ -2132,79 +2274,94 @@ export function InitiativeTracker({
         </Stack>
       )}
 
-      {displayedRows.length === 0 ? (
-        <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
-          Aucun combattant : les personnages reliés à un joueur et les bandits ajoutés apparaîtront
-          ici, classés par initiative.
-        </Typography>
-      ) : (
-        // Colonnes côte à côte ; défilement horizontal si la largeur est dépassée. En projection,
-        // marge basse plus grande pour accueillir la bande d'états qui déborde SOUS chaque bloc
-        // (PER-282) : réservée au conteneur (uniforme), elle ne déforme aucun bloc individuellement.
-        // Nécessaire aussi car `overflowX: auto` force `overflow-y` à `auto` → sans cette marge, le
-        // débordement des icônes serait rogné.
-        // Enveloppe positionnée : elle ancre les estompes et les chevrons de PER-298, posés PAR-DESSUS
-        // la bande (et non dedans, où ils défileraient avec les cartes).
-        <Box
-          sx={{
-            position: 'relative',
-            // Chevrons discrets au repos, francs dès que la souris entre sur la bande — mais SEULS
-            // ceux qui mènent quelque part (`data-reachable`) : sans ce filtre, cette règle (plus
-            // spécifique) rallumait aussi le chevron en butée, qui n'a rien à montrer.
-            [`&:hover .band-chevron[${CHEVRON_REACHABLE_ATTR}="true"]`]: { opacity: 1 },
-          }}
-        >
+      {/* Palette d'états + bande réunies sous UN enfant du `Stack` : l'espacement du `Stack` sauterait
+          une rangée pour le `Collapse` replié (haut de 0, mais espacé quand même), et cet espace mort
+          se verrait dans une barre permanente. La marge est donc portée par le contenu DÉPLIÉ. */}
+      <Box>
+        {/* Palette d'états (PER-301) : DANS le tracker, donc dans la barre collante, donc toujours à
+            portée de glisser quelle que soit la position de défilement de la page. La surcouche de
+            glisser étant portée hors de cet arbre DOM (portail), l'`overflow: hidden` du `Collapse`
+            ne rogne jamais la puce en cours de déplacement. */}
+        {hasPalette && (
+          <Collapse in={paletteOpen} unmountOnExit>
+            <Box sx={{ pb: 2 }}>{statusPalette}</Box>
+          </Collapse>
+        )}
+
+        {displayedRows.length === 0 ? (
+          <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
+            Aucun combattant : les personnages reliés à un joueur et les bandits ajoutés apparaîtront
+            ici, classés par initiative.
+          </Typography>
+        ) : (
+          // Colonnes côte à côte ; défilement horizontal si la largeur est dépassée. En projection,
+          // marge basse plus grande pour accueillir la bande d'états qui déborde SOUS chaque bloc
+          // (PER-282) : réservée au conteneur (uniforme), elle ne déforme aucun bloc individuellement.
+          // Nécessaire aussi car `overflowX: auto` force `overflow-y` à `auto` → sans cette marge, le
+          // débordement des icônes serait rogné.
+          // Enveloppe positionnée : elle ancre les estompes et les chevrons de PER-298, posés PAR-DESSUS
+          // la bande (et non dedans, où ils défileraient avec les cartes).
           <Box
-            ref={scrollRef}
             sx={{
-              display: 'flex',
-              gap: 2,
-              overflowX: 'auto',
-              pb: projection ? 5.5 : 1,
-              alignItems: 'stretch',
-              ...SCROLLBAR_SX,
+              position: 'relative',
+              // Chevrons discrets au repos, francs dès que la souris entre sur la bande — mais SEULS
+              // ceux qui mènent quelque part (`data-reachable`) : sans ce filtre, cette règle (plus
+              // spécifique) rallumait aussi le chevron en butée, qui n'a rien à montrer.
+              [`&:hover .band-chevron[${CHEVRON_REACHABLE_ATTR}="true"]`]: { opacity: 1 },
             }}
           >
-            {displayedRows.map((row) => {
-              const isActive = row.key === currentTurnKey;
-              // Donner le tour à un combattant en cliquant SON bandeau d'initiative (PER-299) : une
-              // correction de position, donc le compteur de manche n'est PAS touché — contrairement
-              // à « Tour suivant », qui progresse dans l'ordre. Écran de MJ seul (la projection ne
-              // pilote rien).
-              const onGiveTurn = projection ? undefined : () => onCurrentTurnKeyChange(row.key);
-              return interactive ? (
-                <StatusDroppableColumn
-                  key={row.key}
-                  row={row}
-                  isActive={isActive}
-                  compact={compact}
-                  controls={statusControls}
-                  onGiveTurn={() => onCurrentTurnKeyChange(row.key)}
-                />
-              ) : (
-                <CombatantColumn
-                  key={row.key}
-                  row={row}
-                  isActive={isActive}
-                  projection={projection}
-                  compact={compact}
-                  onGiveTurn={onGiveTurn}
-                />
-              );
-            })}
+            <Box
+              ref={scrollRef}
+              sx={{
+                display: 'flex',
+                gap: 2,
+                overflowX: 'auto',
+                pb: projection ? 5.5 : 1,
+                alignItems: 'stretch',
+                ...SCROLLBAR_SX,
+              }}
+            >
+              {displayedRows.map((row) => {
+                const isActive = row.key === currentTurnKey;
+                // Donner le tour à un combattant en cliquant SON bandeau d'initiative (PER-299) : une
+                // correction de position, donc le compteur de manche n'est PAS touché — contrairement
+                // à « Tour suivant », qui progresse dans l'ordre. Écran de MJ seul (la projection ne
+                // pilote rien).
+                const onGiveTurn = projection ? undefined : () => onCurrentTurnKeyChange(row.key);
+                return interactive ? (
+                  <StatusDroppableColumn
+                    key={row.key}
+                    row={row}
+                    isActive={isActive}
+                    compact={compact}
+                    controls={statusControls}
+                    onGiveTurn={() => onCurrentTurnKeyChange(row.key)}
+                  />
+                ) : (
+                  <CombatantColumn
+                    key={row.key}
+                    row={row}
+                    isActive={isActive}
+                    projection={projection}
+                    compact={compact}
+                    onGiveTurn={onGiveTurn}
+                  />
+                );
+              })}
+            </Box>
+            {/* Estompes des deux bords : sur l'écran de MJ ET en projection. */}
+            <BandFade side="left" visible={edges.left} />
+            <BandFade side="right" visible={edges.right} />
+            {/* Chevrons : écran de MJ uniquement (pas de souris devant l'écran projeté). */}
+            {!projection && (
+              <>
+                <BandChevron side="left" visible={edges.left} onClick={() => scrollByStep(-1)} />
+                <BandChevron side="right" visible={edges.right} onClick={() => scrollByStep(1)} />
+              </>
+            )}
           </Box>
-          {/* Estompes des deux bords : sur l'écran de MJ ET en projection. */}
-          <BandFade side="left" visible={edges.left} />
-          <BandFade side="right" visible={edges.right} />
-          {/* Chevrons : écran de MJ uniquement (pas de souris devant l'écran projeté). */}
-          {!projection && (
-            <>
-              <BandChevron side="left" visible={edges.left} onClick={() => scrollByStep(-1)} />
-              <BandChevron side="right" visible={edges.right} onClick={() => scrollByStep(1)} />
-            </>
-          )}
-        </Box>
-      )}
+        )}
+      </Box>
     </Stack>
   );
 }

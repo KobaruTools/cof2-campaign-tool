@@ -358,17 +358,25 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         <Divider sx={{ my: { xs: 3, sm: 4 } }} />
         {/* États de combat (PER-279) : la palette de puces glissables ET le tracker (dont les colonnes
             sont zones de drop) partagent un même `DndContext`. `pointerWithin` cible la colonne SOUS le
-            pointeur (plus juste que la superposition de rectangles pour des zones larges côte à côte). */}
+            pointeur (plus juste que la superposition de rectangles pour des zones larges côte à côte).
+            Depuis PER-301 la palette est RENDUE PAR le tracker (`statusPalette`), pour vivre dans la
+            barre collée en bas d'écran : posée ici dans le flux, elle sortait de l'écran au premier
+            défilement et le glisser-déposer perdait sa source. */}
         <DndContext
           sensors={sensors}
           collisionDetection={pointerWithin}
+          // Auto-défilement de la PAGE pendant le glisser : COUPÉ (PER-301). Il est incompatible avec
+          // une bande COLLANTE — `@dnd-kit` corrige la position des zones de drop du défilement écoulé,
+          // en supposant qu'elles défilent avec la page ; les cartes d'une barre collée, elles, ne
+          // bougent pas d'un pixel. La cible dérivait donc de tout le défilement déclenché en
+          // approchant du bas de l'écran (~200 px mesurés) et le dépôt tombait à côté. Rien n'est perdu
+          // à le couper : la barre est visible en permanence, il n'y a plus rien à faire venir à
+          // l'écran, et la bande se parcourt à l'horizontale (chevrons, barre de défilement).
+          autoScroll={{ enabled: false }}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
           onDragCancel={() => setActiveStatus(null)}
         >
-          <Box sx={{ mb: { xs: 3, sm: 4 } }}>
-            <CombatStatusPalette situationalIds={situationalEffectIds} />
-          </Box>
           <InitiativeTracker
             rows={initiativeRows}
             currentTurnKey={currentTurnKey}
@@ -389,6 +397,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               onRemove: removeStatus,
               onAdjust: adjustStatus,
             }}
+            statusPalette={<CombatStatusPalette situationalIds={situationalEffectIds} />}
+            stickyBottom
           />
           {/* Surcouche : la puce « réelle » suit le curseur pendant le glissement (l'originale s'estompe). */}
           <DragOverlay>
