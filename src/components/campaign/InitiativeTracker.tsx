@@ -44,6 +44,14 @@
  * molette VERTICALE vers un défilement horizontal a été essayé puis RETIRÉ (propriétaire,
  * 2026-08-04) : ne pas le réintroduire.
  *
+ * PILOTAGE DU TOUR (PER-299) : trois entrées, toutes réservées à l'écran de MJ. « Tour suivant » et
+ * « Tour précédent » avancent/reculent d'un cran dans l'ordre d'initiative, avec incrément ou
+ * décrément de manche au bouclage (`stepTurn`, borné à « Tour 1 »). Les RACCOURCIS `N`/→ et `P`/←
+ * font la même chose sans quitter les dés des yeux — inertes en projection, dans un champ de saisie,
+ * ou sous une modale / un menu / le panneau latéral de fiche. Enfin, cliquer le BANDEAU
+ * D'INITIATIVE d'une carte donne le tour à ce combattant SANS toucher au compteur de manche (c'est
+ * une correction de position) : l'en-tête de la carte reste, lui, dévolu au menu des états.
+ *
  * ÉTATS DÉDUITS : les états d'une ligne (`row.appliedStatuses`) peuvent venir du MJ ou de la
  * SITUATION du combattant (affaibli à 1 PV, p. 220). Les seconds sont rendus en JAUNE et en lecture
  * seule, et RÉSERVÉS À L'ÉCRAN DE MJ : ils comptent dans les stats ajustées de sa carte (dé malus à
@@ -55,6 +63,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObjec
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
+import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
@@ -95,6 +104,7 @@ import {
   type ScrollEdges,
   type ScrollMetrics,
 } from '@/lib/ui/horizontalScroll';
+import { stepTurn, turnDirectionFromKey, type TurnDirection } from '@/lib/ui/turnOrder';
 import { crossOutBackgroundImage } from '@/lib/ui/crossOut';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SkullIcon } from '@/components/SkullIcon';
@@ -258,20 +268,58 @@ const PORTRAIT_SIZE = 44;
  * droit pour souder les deux blocs). Remplace l'ancienne pastille ronde posée À CÔTÉ du portrait :
  * on récupère ainsi ~48 px de large par colonne, donc plus de combattants tiennent dans la fenêtre
  * projetée sans défilement horizontal.
+ *
+ * DONNER LE TOUR (PER-299) : sur l'écran de MJ, ce bandeau — jusqu'ici purement décoratif — devient
+ * la zone cliquable qui donne le tour au combattant. Le geste ne pouvait PAS porter sur l'en-tête de
+ * la carte (portrait + nom), déjà réservé au menu des états (PER-279) : c'est le geste le plus
+ * utilisé de l'écran, il n'est pas question de le lui disputer. Le clic est donc arrêté ici
+ * (`stopPropagation`) pour ne pas remonter à l'en-tête et ouvrir le menu par-dessus.
  */
-function InitiativeBadge({ value, delta = 0 }: { value: number; delta?: number }) {
+function InitiativeBadge({
+  value,
+  delta = 0,
+  combatantName,
+  onGiveTurn,
+}: {
+  value: number;
+  delta?: number;
+  /** Nom du combattant, pour l'info-bulle et l'étiquette d'accessibilité de l'action. */
+  combatantName: string;
+  /** Donne le tour à ce combattant. Absent (projection) ⇒ bandeau décoratif, comme avant. */
+  onGiveTurn?: () => void;
+}) {
   // Teinte selon l'impact des états sur l'initiative : rouge si baissée (Aveuglé…), verte si
   // remontée, ambre par défaut. Même code couleur que les pastilles de stats de combat (rouge =
   // valeur diminuée par un état), pour que la modification saute aux yeux sur le MJ ET la projection.
   const tone: 'lowered' | 'raised' | 'neutral' = delta < 0 ? 'lowered' : delta > 0 ? 'raised' : 'neutral';
-  return (
+  // Explication du delta d'état sur l'initiative (« 12 → 7 »), réutilisée par les deux info-bulles.
+  const deltaNote =
+    delta !== 0
+      ? `Initiative modifiée par un état : ${value - delta} → ${value} (${formatSigned(delta)})`
+      : null;
+  const badge = (
     <Box
-      // Info-bulle native : rappelle que l'initiative est modifiée par un état (« 12 → 7 »).
-      title={
-        delta !== 0
-          ? `Initiative modifiée par un état : ${value - delta} → ${value} (${formatSigned(delta)})`
-          : undefined
-      }
+      // Info-bulle NATIVE quand le bandeau est décoratif (projection) : rien à annoncer d'autre que
+      // le delta. Le chemin cliquable passe par une vraie info-bulle (voir plus bas).
+      title={onGiveTurn ? undefined : deltaNote ?? undefined}
+      {...(onGiveTurn && {
+        role: 'button',
+        tabIndex: 0,
+        'aria-label': `Donner le tour à ${combatantName}`,
+        // Arrête le clic AVANT l'en-tête cliquable qui englobe ce bandeau : sans ça, donner le tour
+        // ouvrirait aussi le menu des états par-dessus la carte.
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          onGiveTurn();
+        },
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            onGiveTurn();
+          }
+        },
+      })}
       sx={(t) => {
         const palette =
           tone === 'lowered' ? t.palette.error : tone === 'raised' ? t.palette.success : t.palette.warning;
@@ -292,11 +340,39 @@ function InitiativeBadge({ value, delta = 0 }: { value: number; delta?: number }
           // Bordure sans le haut : le trait du portrait fait déjà la séparation.
           border: `1px solid ${alpha(palette.main, 0.4)}`,
           borderTop: 'none',
+          // Écran de MJ : le bandeau s'annonce cliquable (curseur + teinte au survol/focus). Aucune
+          // dimension ne change — la mise en page des cartes reste identique au pixel.
+          ...(onGiveTurn && {
+            cursor: 'pointer',
+            outline: 'none',
+            transition: 'background-color 0.15s, border-color 0.15s',
+            '&:hover, &:focus-visible': {
+              bgcolor: alpha(palette.main, 0.34),
+              borderColor: palette.light,
+            },
+          }),
         };
       }}
     >
       {value}
     </Box>
+  );
+  if (!onGiveTurn) return badge;
+  return (
+    <AppTooltip
+      title={
+        <>
+          {`Donner le tour à ${combatantName}`}
+          {deltaNote && (
+            <Box component="span" sx={{ display: 'block', mt: 0.5, opacity: 0.8 }}>
+              {deltaNote}
+            </Box>
+          )}
+        </>
+      }
+    >
+      {badge}
+    </AppTooltip>
   );
 }
 
@@ -388,16 +464,24 @@ function CombatantIdentityBlock({
   name,
   initiative,
   initiativeDelta,
+  onGiveTurn,
 }: {
   src?: string;
   name: string;
   initiative: number;
   initiativeDelta?: number;
+  /** Donne le tour à ce combattant (écran de MJ) : porté par le seul bandeau d'initiative. */
+  onGiveTurn?: () => void;
 }) {
   return (
     <Box sx={{ flexShrink: 0, width: PORTRAIT_SIZE }}>
       <CombatantPortrait src={src} name={name} />
-      <InitiativeBadge value={initiative} delta={initiativeDelta} />
+      <InitiativeBadge
+        value={initiative}
+        delta={initiativeDelta}
+        combatantName={name}
+        onGiveTurn={onGiveTurn}
+      />
     </Box>
   );
 }
@@ -1112,6 +1196,82 @@ function BandChevron({
   );
 }
 
+/**
+ * Éléments qui CONSOMMENT les touches des raccourcis de tour (PER-299) : champs de saisie (« n »
+ * dans le nom d'une créature ne doit pas faire avancer le combat) et commandes pilotées aux flèches
+ * (liste déroulante, curseur…). Testé avec `closest` : le focus peut être sur un descendant.
+ */
+const SHORTCUT_BLOCKING_SELECTOR = [
+  'input',
+  'textarea',
+  'select',
+  '[contenteditable=""]',
+  '[contenteditable="true"]',
+  '[role="textbox"]',
+  '[role="combobox"]',
+  '[role="listbox"]',
+  '[role="slider"]',
+].join(', ');
+
+/**
+ * Le tracker est-il recouvert par une couche modale ? Modales, menus et panneau latéral de fiche
+ * (`GmSheetDrawer`, ouvert par `?sheet=`) passent tous par le `Modal` de MUI, qui pose
+ * `aria-hidden="true"` sur le reste de l'application le temps de son ouverture. On interroge donc ce
+ * marqueur STANDARD — « ce sous-arbre n'est plus la couche active » — plutôt que les classes
+ * internes de MUI : le jour où le panneau change de composant, la garde tient toujours.
+ */
+function isCoveredByOverlay(element: HTMLElement | null): boolean {
+  return !!element?.closest('[aria-hidden="true"]');
+}
+
+/**
+ * Raccourcis clavier de pilotage du tour (PER-299) : `N` / flèche droite = tour suivant, `P` /
+ * flèche gauche = tour précédent. Le MJ a les mains prises (dés, notes, PDF de règles) et devait
+ * jusqu'ici ramener la souris sur « Tour suivant » à chaque combattant.
+ *
+ * Écoute sur `window` — le raccourci doit marcher sans rien avoir cliqué au préalable — mais
+ * strictement bordée :
+ *  - ÉCRAN DE MJ seul (`enabled`) : jamais en projection, qui ne pilote rien ;
+ *  - jamais quand la frappe est destinée à un champ ou à une commande aux flèches
+ *    (`SHORTCUT_BLOCKING_SELECTOR`) ;
+ *  - jamais quand une modale, un menu ou le panneau latéral de fiche est ouvert
+ *    (`isCoveredByOverlay`, à partir de la racine du tracker) ;
+ *  - jamais en combinaison avec Ctrl/⌘/Alt (`Ctrl + N` ouvre une fenêtre) ;
+ *  - jamais en RÉPÉTITION : une touche maintenue traverserait tout l'ordre d'initiative en une
+ *    seconde, et le compteur de manche avec.
+ *
+ * La barre d'espace n'est volontairement pas un raccourci (cf. `turnDirectionFromKey`).
+ */
+function useTurnShortcuts(
+  enabled: boolean,
+  rootRef: RefObject<HTMLDivElement | null>,
+  step: (direction: TurnDirection) => void,
+) {
+  // L'action change à chaque rendu (elle capture le tour courant) : on publie sa dernière version
+  // dans une réf pour ne PAS remonter/démonter l'écouteur à chaque changement d'état du combat.
+  const stepRef = useRef(step);
+  useEffect(() => {
+    stepRef.current = step;
+  });
+
+  useEffect(() => {
+    if (!enabled) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const direction = turnDirectionFromKey(e.key);
+      if (direction === null) return;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (target?.closest(SHORTCUT_BLOCKING_SELECTOR)) return;
+      if (isCoveredByOverlay(rootRef.current)) return;
+      // Les flèches feraient défiler la page : le raccourci prend la main.
+      e.preventDefault();
+      stepRef.current(direction);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [enabled, rootRef]);
+}
+
 /** Interactions d'états attachées à une colonne (mode écran de MJ uniquement). */
 interface ColumnStatusInteractive {
   /** Réf de la zone de drop (`@dnd-kit`). */
@@ -1149,12 +1309,19 @@ function CombatantColumn({
   projection,
   interactive,
   status,
+  onGiveTurn,
 }: {
   row: InitiativeRow;
   isActive: boolean;
   projection: boolean;
   interactive?: ColumnStatusInteractive;
   status?: ColumnStatusRender;
+  /**
+   * Donne le tour à ce combattant (PER-299) — écran de MJ uniquement, la projection ne pilote
+   * jamais le combat. Porté par le SEUL bandeau d'initiative, pour ne pas disputer l'en-tête au
+   * menu des états.
+   */
+  onGiveTurn?: () => void;
 }) {
   const identityClickable = !!interactive;
   const isOver = interactive?.isOver ?? false;
@@ -1268,6 +1435,7 @@ function CombatantColumn({
             name={row.name}
             initiative={row.initiative}
             initiativeDelta={row.initiativeDelta}
+            onGiveTurn={onGiveTurn}
           />
           <Box sx={{ minWidth: 0, flexGrow: 1 }}>
             <CombatantName name={row.name} />
@@ -1382,10 +1550,13 @@ function StatusDroppableColumn({
   row,
   isActive,
   controls,
+  onGiveTurn,
 }: {
   row: InitiativeRow;
   isActive: boolean;
   controls: CombatStatusControls;
+  /** Donne le tour à ce combattant (PER-299), simplement relayé à la colonne. */
+  onGiveTurn: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: row.key });
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -1407,6 +1578,7 @@ function StatusDroppableColumn({
         row={row}
         isActive={isActive}
         projection={false}
+        onGiveTurn={onGiveTurn}
         interactive={{
           dropRef: setNodeRef,
           isOver,
@@ -1521,16 +1693,20 @@ export function InitiativeTracker({
   // Premier de l'ordre d'initiative (les `rows` sont déjà triées par l'appelant) : cible du
   // repositionnement du bouton ⟳ « recommencer le décompte ». `null` si le roster est vide.
   const firstTurnKey = rows[0]?.key ?? null;
-  const advanceTurn = () => {
-    if (rows.length === 0) return;
-    const idx = rows.findIndex((r) => r.key === currentTurnKey);
-    // Introuvable (−1, ex. bandit retiré) ou pas encore démarré → on démarre au premier.
-    const next = idx < 0 ? 0 : (idx + 1) % rows.length;
-    onCurrentTurnKeyChange(rows[next].key);
-    // Fin de tour d'initiative : on reboucle sur le premier combattant (next === 0) alors qu'on
-    // était DÉJÀ dans la liste (idx ≥ 0) → nouvelle manche, « Tour N » +1. Le démarrage depuis un
-    // tour courant absent (idx < 0) N'incrémente PAS : le combat est déjà à la manche 1.
-    if (next === 0 && idx >= 0) onRoundNumberChange?.(roundNumber + 1);
+  /**
+   * Avance (+1) ou recule (−1) d'un cran dans l'ordre d'initiative (PER-299). Toute l'arithmétique
+   * — bouclage aux deux bouts, incrément/décrément de manche, cas limites — vit dans `stepTurn` ;
+   * ici on ne fait qu'appliquer. Le compteur de manche n'est notifié QUE s'il change, pour ne pas
+   * réécrire l'état du combat (et le diffuser en session) à chaque pas d'un tour de table.
+   */
+  const step = (direction: TurnDirection) => {
+    const next = stepTurn(
+      { keys: rows.map((r) => r.key), currentKey: currentTurnKey, roundNumber },
+      direction,
+    );
+    if (!next) return;
+    onCurrentTurnKeyChange(next.key);
+    if (next.roundNumber !== roundNumber) onRoundNumberChange?.(next.roundNumber);
   };
 
   // En PROJECTION, on retire les combattants masqués aux joueurs (créatures cachées) :
@@ -1546,9 +1722,14 @@ export function InitiativeTracker({
   const scrollRef = useCenterActiveCombatant(currentTurnKey, rowsSignature);
   // Molette horizontale + suivi des bords atteignables (PER-298), sur le même conteneur.
   const { edges, scrollByStep } = useBandScroll(scrollRef, rowsSignature);
+  // Racine du tracker : sert de point d'ancrage pour savoir si une couche modale le recouvre
+  // (panneau latéral de fiche, modale d'ajout, menu d'états) — cf. `useTurnShortcuts`.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  // Raccourcis clavier N/P + flèches : ÉCRAN DE MJ uniquement (jamais en projection, PER-299).
+  useTurnShortcuts(!projection, rootRef, step);
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} ref={rootRef}>
       {/* En-tête (titre + actions + « Tour suivant ») : tout se pilote depuis l'écran de
           MJ, donc rien de tout ça en mode projection. */}
       {!projection && (
@@ -1608,12 +1789,29 @@ export function InitiativeTracker({
           )}
           <Box sx={{ flexGrow: 1 }} />
           {headerAction}
+          {/* « Tour précédent » (PER-299) : rattrape le clic de trop, sans avoir à refaire tout le
+              tour de table (ce qui incrémentait la manche au passage). Discret — c'est une
+              correction, pas le geste courant — d'où le bouton en retrait à gauche de l'action
+              principale. Les raccourcis sont rappelés dans les deux info-bulles, en `title` natif
+              comme les boutons de manche voisins : une info-bulle MUI ne s'affiche pas sur un
+              bouton désactivé (roster vide) et le fait savoir en console. */}
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<SkipPreviousIcon />}
+            onClick={() => step(-1)}
+            disabled={rows.length === 0}
+            title="Tour précédent (P ou ←)"
+          >
+            Tour précédent
+          </Button>
           <Button
             variant="contained"
             size="small"
             startIcon={<SkipNextIcon />}
-            onClick={advanceTurn}
+            onClick={() => step(1)}
             disabled={rows.length === 0}
+            title="Tour suivant (N ou →)"
           >
             Tour suivant
           </Button>
@@ -1653,10 +1851,27 @@ export function InitiativeTracker({
           >
             {displayedRows.map((row) => {
               const isActive = row.key === currentTurnKey;
+              // Donner le tour à un combattant en cliquant SON bandeau d'initiative (PER-299) : une
+              // correction de position, donc le compteur de manche n'est PAS touché — contrairement
+              // à « Tour suivant », qui progresse dans l'ordre. Écran de MJ seul (la projection ne
+              // pilote rien).
+              const onGiveTurn = projection ? undefined : () => onCurrentTurnKeyChange(row.key);
               return interactive ? (
-                <StatusDroppableColumn key={row.key} row={row} isActive={isActive} controls={statusControls} />
+                <StatusDroppableColumn
+                  key={row.key}
+                  row={row}
+                  isActive={isActive}
+                  controls={statusControls}
+                  onGiveTurn={() => onCurrentTurnKeyChange(row.key)}
+                />
               ) : (
-                <CombatantColumn key={row.key} row={row} isActive={isActive} projection={projection} />
+                <CombatantColumn
+                  key={row.key}
+                  row={row}
+                  isActive={isActive}
+                  projection={projection}
+                  onGiveTurn={onGiveTurn}
+                />
               );
             })}
           </Box>
