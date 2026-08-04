@@ -247,8 +247,14 @@ export function useSessionChannel(
   // Ré-annonce la présence quand le nom d'affichage change (le roster peut se charger
   // APRÈS l'abonnement) — sans rouvrir le canal. Gaté sur `joined` pour ne `track()`
   // qu'après l'abonnement, et couvre aussi la première annonce.
+  //
+  // La PROJECTION (`kind: 'projection'`) ne s'annonce PAS : elle est de toute façon exclue
+  // de la présence affichée (`presenceListFromState`), et depuis le durcissement de
+  // l'écriture du canal (PER-271, migration 0016 : `is_campaign_actor`) une session de
+  // projection n'a PAS le droit d'écrire la présence — un `track()` serait rejeté par la
+  // RLS. On évite donc une requête vouée à l'échec (défense en profondeur : lecture seule).
   useEffect(() => {
-    if (status !== 'joined' || kind === null) return;
+    if (status !== 'joined' || kind === null || kind === 'projection') return;
     const channel = channelRef.current;
     if (!channel) return;
     void channel

@@ -349,6 +349,58 @@ export type Database = {
           },
         ]
       }
+      projection_auth_sessions: {
+        Row: {
+          auth_user_id: string
+          campaign_id: string
+          created_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          campaign_id: string
+          created_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          campaign_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projection_auth_sessions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projection_links: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          secret: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          secret?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          secret?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projection_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       redeem_allowlist: {
         Row: {
           granted_at: string

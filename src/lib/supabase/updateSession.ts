@@ -13,9 +13,13 @@ import type { Database } from './types';
  * - `/about` : page d'information publique (« À propos »), liée depuis le pied de
  *   page présent sur toutes les routes, y compris déconnecté ;
  * - `/privacy` : politique de vie privée (RGPD), également liée depuis le pied de
- *   page — un document légal doit rester consultable sans compte.
+ *   page — un document légal doit rester consultable sans compte ;
+ * - `/project` : lien de projection (PER-271). Le redeem `/project/[secret]` doit être
+ *   atteignable SANS session (une TV n'a pas de compte) ; la vue `/project` fait sa
+ *   propre garde sur le claim `projection` (et une session de projection y est confinée,
+ *   plus bas). Aucune donnée sensible n'y est servie sans le claim (RLS + garde de page).
  */
-const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join', '/about', '/privacy'] as const;
+const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join', '/about', '/privacy', '/project'] as const;
 
 /**
  * Routes ouvertes à une session **joueur** (utilisateur anonyme du lien magique,
@@ -117,6 +121,21 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     // Retour post-connexion vers la page visée (chemin interne, pas d'open redirect).
     const target = pathname + request.nextUrl.search;
     return redirectTo('/login', target !== '/' ? `?next=${encodeURIComponent(target)}` : '');
+  }
+
+  // Session de PROJECTION (PER-271) : observateur lecture seule (claim `projection`, SANS
+  // `player_id`). Confiné à sa vue `/project` (préfixe public) et aux pages publiques ; il
+  // n'a rien à faire ailleurs (ni espace joueur, ni UI propriétaire, ni visualiseur PDF —
+  // d'où ce court-circuit AVANT le bloc `/rules`|`/pdf`). Placé avant le confinement de rôle
+  // classique car la projection n'a pas de `player_id` (elle serait sinon prise pour un MJ).
+  const isProjection = Boolean(
+    (user.app_metadata as { projection?: boolean } | undefined)?.projection,
+  );
+  if (isProjection) {
+    if (!isPublicPath(pathname)) {
+      return redirectTo('/project');
+    }
+    return response;
   }
 
   // Visualiseur PDF (PER-240) : la route de la page (`/rules/{book}/{page}`, PER-60) ET

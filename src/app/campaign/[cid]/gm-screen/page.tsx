@@ -56,6 +56,7 @@ import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
 import { CombatStatusPalette, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
+import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkControl';
 import { HomeBackground } from '@/components/HomeBackground';
 import { SIDE_ACCENT } from '@/lib/ui/creature';
 import { customCreatureBlob } from '@/lib/session/customCreature';
@@ -375,7 +376,12 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             roundNumber={roundNumber}
             onRoundNumberChange={setRoundNumber}
             onRestartRounds={restartRounds}
-            headerAction={<OpenTrackerWindowButton cid={cid} />}
+            headerAction={
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                <OpenTrackerWindowButton cid={cid} />
+                <ProjectionLinkControl campaignId={cid} />
+              </Stack>
+            }
             statusControls={{
               statusesByKey: statuses,
               situationalIds: situationalEffectIds,

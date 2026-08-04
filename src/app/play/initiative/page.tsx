@@ -1,22 +1,20 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import Box from '@mui/material/Box';
-import Container from '@mui/material/Container';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
-import { HomeBackground } from '@/components/HomeBackground';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { PlayerInitiativeClient } from './PlayerInitiativeClient';
+import { ProjectionTrackerView } from '@/components/campaign/ProjectionTrackerView';
 
 /**
  * Écran DISTANT de l'ordre d'initiative pour les JOUEURS (PER-293) — Server Component scopé
  * par la **session joueur** (utilisateur anonyme portant `app_metadata.player_id`/
  * `campaign_id`). Sous `/play/*`, donc autorisé aux joueurs par le proxy (`updateSession`)
- * sans élargir le gating. Le MJ partage le lien `<origine>/play/initiative` à sa table.
+ * sans élargir le gating.
  *
- * Ce shell lit les claims puis délègue au client (canal Realtime + vue de projection en
- * lecture seule). La campagne vient du claim de la session ; aucun `where` de tenancy côté
- * code (la RLS joueur — migrations 0002/0012 — filtre déjà tout).
+ * Rendu STRICTEMENT identique à la fenêtre projetée owner et au lien de projection
+ * `/project` (PER-271) : les trois routes rendent le même composant partagé
+ * `ProjectionTrackerView`. La seule différence est la provenance du `cid` — ici le claim de
+ * la session joueur. C'est cette route que reçoit un joueur déjà connecté qui ouvre le lien
+ * de projection (redeem NON destructif) : il voit le beau tracker SANS perdre l'accès à sa
+ * fiche.
  */
 export const metadata: Metadata = {
   title: "Ordre d'initiative — Éditeur de personnage CO2",
@@ -36,17 +34,5 @@ export default async function PlayInitiativePage() {
     redirect('/');
   }
 
-  return (
-    <Box sx={{ position: 'relative', minHeight: '100%' }}>
-      <HomeBackground />
-      <Container maxWidth="lg" sx={{ py: { xs: 3, sm: 5 } }}>
-        <Stack spacing={0.5} sx={{ mb: 2 }}>
-          <Typography variant="overline" color="text.secondary">
-            Espace joueur
-          </Typography>
-        </Stack>
-        <PlayerInitiativeClient cid={campaignId} />
-      </Container>
-    </Box>
-  );
+  return <ProjectionTrackerView cid={campaignId} />;
 }

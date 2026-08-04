@@ -33,15 +33,22 @@ const YEAR = new Date().getFullYear();
  * Oubliées, mis en accès libre et gratuit par Black Book Éditions.
  */
 /**
- * Route de la fenêtre « présentation » du tracker d'initiative (second écran, PER-248),
- * volontairement DÉPOUILLÉE (pas de footer, ni titre, ni fond) : le pied de page global
- * s'y masque. Format : `/campaign/<cid>/gm-screen/tracker`.
+ * Routes de PROJECTION du tracker d'initiative, volontairement DÉPOUILLÉES (pas de footer,
+ * ni titre, ni fond) : le pied de page global s'y masque.
+ *  - `/campaign/<cid>/gm-screen/tracker` : fenêtre projetée owner (second écran, PER-248) ;
+ *  - `/project` : lien de projection partageable cross-machine (PER-271), même rendu ;
+ *  - `/play/initiative` : vue joueur de l'ordre d'initiative (PER-293), aligné sur le même
+ *    rendu dépouillé (PER-271) — un joueur y atterrit depuis le lien de projection.
  */
-const TRACKER_WINDOW_ROUTE = /^\/campaign\/[^/]+\/gm-screen\/tracker\/?$/;
+const PROJECTION_ROUTES = [
+  /^\/campaign\/[^/]+\/gm-screen\/tracker\/?$/,
+  /^\/project\/?$/,
+  /^\/play\/initiative\/?$/,
+];
 
 export function AppFooter() {
   const pathname = usePathname();
-  if (pathname && TRACKER_WINDOW_ROUTE.test(pathname)) return null;
+  if (pathname && PROJECTION_ROUTES.some((route) => route.test(pathname))) return null;
 
   return (
     <Box
