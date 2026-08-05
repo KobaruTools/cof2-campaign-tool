@@ -55,6 +55,7 @@ import { unarmedStrike, type UnarmedStrikeView } from '@/lib/character/unarmedSt
 import { rangedReplacingFormAttack, type FormAttackView } from '@/lib/character/formAttack';
 import type { AbilityId, Weapon } from '@/data/schema';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
+import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
@@ -97,18 +98,26 @@ export interface WeaponDamageView {
 export type MeleeWeaponDamageView = WeaponDamageView;
 
 /**
- * Arme tenue en main pour un `mode` d'attaque donné (main principale prioritaire, sinon
- * secondaire pour le combat à deux armes). `null` si aucune arme de ce mode n'est portée. Les
- * objets libres (`CustomItem`) n'ont pas de DM structuré et sont ignorés.
+ * Arme tenue en main pour un `mode` d'attaque donné. Sans `slot`, comportement historique : main
+ * principale prioritaire, sinon secondaire. Avec `slot`, l'arme de CETTE main exactement (PER-116 :
+ * le combat à deux armes attaque avec les DEUX, il faut donc pouvoir viser chaque main). `null` si
+ * aucune arme de ce mode n'y est portée. Les objets libres (`CustomItem`) n'ont pas de DM structuré
+ * et sont ignorés.
  */
-function wornWeaponForMode(character: Character, mode: AttackMode): { item: Weapon; line: EquipmentRef } | null {
+function wornWeaponForMode(
+  character: Character,
+  mode: AttackMode,
+  slot?: 'mainHand' | 'offHand',
+): { item: Weapon; line: EquipmentRef } | null {
   const refs = character.equipment.filter((line): line is EquipmentRef => {
     if (isCustomItem(line)) return false;
     const item = effectiveItem(line);
     if (item?.category !== 'weapon') return false;
     return mode === 'melee' ? item.melee : item.ranged;
   });
-  const line = refs.find((l) => l.worn?.slot === 'mainHand') ?? refs.find((l) => l.worn?.slot === 'offHand');
+  const line = slot
+    ? refs.find((l) => l.worn?.slot === slot)
+    : (refs.find((l) => l.worn?.slot === 'mainHand') ?? refs.find((l) => l.worn?.slot === 'offHand'));
   if (!line) return null;
   const item = effectiveItem(line);
   if (!item || item.category !== 'weapon') return null;
@@ -120,8 +129,12 @@ function wornWeaponForMode(character: Character, mode: AttackMode): { item: Weap
  * ajoutées (base + bonus permanents des capacités, PER-115). `null` si aucune arme de ce mode
  * n'est portée. Prise à deux mains : DM à deux mains si l'arme en propose (contact, p. 184).
  */
-function wornWeaponDamage(character: Character, mode: AttackMode): WeaponDamageView | null {
-  const worn = wornWeaponForMode(character, mode);
+function wornWeaponDamage(
+  character: Character,
+  mode: AttackMode,
+  slot?: 'mainHand' | 'offHand',
+): WeaponDamageView | null {
+  const worn = wornWeaponForMode(character, mode, slot);
   if (!worn) return null;
   const { item, line } = worn;
   const baseDamage =
@@ -147,7 +160,10 @@ function wornWeaponDamage(character: Character, mode: AttackMode): WeaponDamageV
   // Attaque en finesse (Vive attaque du duelliste r4, PER-74) : au contact, SI le mode « DM » est retenu
   // « à la table » avec une arme éligible en main, la carac de base des DM devient AGI AU LIEU de FOR
   // (substitution, pas cumul — verbatim p. 140). Les bonus permanents restent ajoutés par-dessus.
-  if (mode === 'melee') {
+  // Réservée à la MAIN PRINCIPALE (PER-116) : « Dans le cas d'une arme à une main, il ne peut
+  // bénéficier de ce bonus que sur sa main principale » (danseur de guerre r4, p. 150 ; même clause
+  // chez le duelliste p. 140). La ligne de la main secondaire garde donc sa FOR.
+  if (mode === 'melee' && line.worn?.slot !== 'offHand') {
     const finesse = finesseAttackForMode(character, 'damage');
     if (finesse) baseAbilities[0] = finesse.ability;
   }
@@ -187,6 +203,35 @@ export interface CharacterDerivedView {
   unarmed: UnarmedStrikeView;
   /** PER-141 — DM de l'arme de CONTACT équipée (vue « arme » de la bascule). `null` = aucune arme de contact portée. */
   meleeWeaponDamage: WeaponDamageView | null;
+  /**
+   * PER-116 — DM de l'arme de contact de la MAIN SECONDAIRE, `null` hors combat à deux armes. Quand
+   * il est renseigné, la carte « Attaque au contact » affiche DEUX lignes touche | DM (une par main),
+   * chacune préfixée du nom de son arme. La finesse (AGI↔FOR) n'y est jamais appliquée : elle est
+   * réservée à la main principale (p. 140/150).
+   */
+  offHandMeleeWeaponDamage: WeaponDamageView | null;
+  /**
+   * PER-116 — plage de critique de l'arme de la MAIN SECONDAIRE (vide hors combat à deux armes, ou
+   * si l'arme n'élargit rien). À n'afficher que si elle DIFFÈRE de celle de la main principale : une
+   * rapière 19-20 et une dague 20 ne peuvent pas partager un badge unique.
+   */
+  offHandCriticalRanges: DefenseBadgeData[];
+  /**
+   * PER-116 — CORRECTION à appliquer à la valeur de touche pour la ligne de la MAIN SECONDAIRE
+   * (0 = même touche que la main principale, cas courant). Le livre n'impose aucune pénalité chiffrée
+   * au combat à deux armes — seulement un dé malus. La SEULE cause d'écart est l'attaque en finesse
+   * portant sur la TOUCHE (`finesse-attack` mode « attaque ») : réservée à la main principale
+   * (p. 140/150), la main secondaire garde sa caractéristique d'origine, d'où un écart de
+   * `FOR − AGI`. Toujours 0 hors combat à deux armes.
+   */
+  offHandTouchDelta: number;
+  /**
+   * PER-116 — le combat à deux armes impose-t-il un dé MALUS aux attaques (p. 215) ? Faux hors combat
+   * à deux armes ET quand l'exemption « Combattant héroïque » joue (même arme dans les deux mains,
+   * option FOR, p. 73). Rendu en badge sur CHACUNE des deux lignes de la carte : le livre pénalise
+   * « chacune des deux attaques ».
+   */
+  twoWeaponPenaltyDie: boolean;
   /** PER-141 — plage de critique au contact À MAINS NUES (Morsure du serpent), pour la vue mains nues de la bascule. */
   unarmedCriticalRanges: DefenseBadgeData[];
   /** PER-115 — DM de l'arme à DISTANCE équipée (carte Attaque à distance). `null` = aucune arme à distance portée. */
@@ -335,10 +380,47 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const meleeCriticalRanges = critBadgeForScope('melee');
   const rangedCriticalRanges = critBadgeForScope('ranged');
 
+  // PER-116 — COMBAT À DEUX ARMES : quand une arme est tenue dans CHAQUE main, la carte d'attaque au
+  // contact affiche une ligne par main. La main secondaire a ses propres DM (arme différente) et sa
+  // propre plage de critique, qu'il faut recalculer en imposant SON arme au résolveur.
+  const twoWeaponCombat = twoWeaponCombatStatus(character);
+  const offHandMelee = twoWeaponCombat.dualWielding ? wornWeaponForMode(character, 'melee', 'offHand') : null;
+  const offHandCriticalRanges: DefenseBadgeData[] = (() => {
+    if (!offHandMelee) return [];
+    const combined = combineCriticalRanges(
+      criticalRangeSources(character, { meleeWeapon: offHandMelee.item }),
+      'melee',
+    );
+    if (!combined) return [];
+    const f = formatCriticalRange('melee', combined.total);
+    return [
+      {
+        key: 'crit-melee-offhand',
+        variant: 'critical',
+        text: f.short,
+        title: `Critique ${f.short} — ${offHandMelee.item.name} (main secondaire)`,
+        sources: combined.sources.map((s) => ({ name: s.name, value: `+${s.value}`, featureId: s.featureId })),
+      },
+    ];
+  })();
+
   // Attaque à mains nues (PER-141) + DM de l'arme de contact équipée, pour la bascule
   // de la carte « Attaque au contact ».
   const unarmed = unarmedStrike(character);
   const meleeWeaponDamage = wornWeaponDamage(character, 'melee');
+  // PER-116 — DM de la main SECONDAIRE (`null` hors combat à deux armes) : recalculés pour SON arme,
+  // donc avec ses propres dés, ses bonus permanents applicables et sa FOR (la finesse est réservée à
+  // la main principale).
+  const offHandMeleeWeaponDamage = offHandMelee ? wornWeaponDamage(character, 'melee', 'offHand') : null;
+  // PER-116 — écart de TOUCHE de la main secondaire. La touche de la fiche est calculée avec la carac
+  // substituée par la finesse (`derivedInput.meleeAttackAbility`) ; comme la substitution ne vaut que
+  // pour la main principale, la ligne secondaire doit revenir à la carac d'origine — d'où un écart
+  // (FOR − AGI), négatif quand la substitution est avantageuse. 0 dès que la finesse ne porte pas sur
+  // la touche, ou hors combat à deux armes.
+  const touchFinesse = offHandMelee ? finesseAttackForMode(character, 'attack') : null;
+  const offHandTouchDelta = touchFinesse
+    ? (effectCtx.abilities[touchFinesse.replaces] ?? 0) - (effectCtx.abilities[touchFinesse.ability] ?? 0)
+    : 0;
   // DM de l'arme à distance équipée + bonus situationnels des deux modes (PER-115).
   const rangedWeaponDamage = wornWeaponDamage(character, 'ranged');
   const meleeWorn = wornWeaponForMode(character, 'melee')?.item ?? null;
@@ -475,6 +557,10 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     rangedCriticalRanges,
     unarmed,
     meleeWeaponDamage,
+    offHandMeleeWeaponDamage,
+    offHandCriticalRanges,
+    offHandTouchDelta,
+    twoWeaponPenaltyDie: twoWeaponCombat.penaltyDie,
     unarmedCriticalRanges,
     rangedWeaponDamage,
     meleeSituationalDamage,

@@ -109,6 +109,18 @@ export interface DerivedStatsGridProps {
   unarmedStrike?: UnarmedStrikeView;
   /** PER-141 — DM de l'arme de contact équipée, pour la vue « arme » de la bascule. Null = aucune arme portée. */
   meleeWeaponDamage?: MeleeWeaponDamageView | null;
+  /**
+   * PER-116 — DM de l'arme de la MAIN SECONDAIRE. Non nul → la carte « Attaque au contact » affiche
+   * DEUX lignes touche | DM (une par main). Absent / `null` (une seule arme, récap du wizard, écran
+   * de MJ) → affichage à une ligne, inchangé.
+   */
+  offHandMeleeWeaponDamage?: MeleeWeaponDamageView | null;
+  /** PER-116 — plage de critique de l'arme de la MAIN SECONDAIRE, affichée seulement si elle diffère. */
+  offHandCriticalRanges?: DefenseBadgeData[];
+  /** PER-116 — écart de touche de la main secondaire (non nul si la finesse substitue la touche). */
+  offHandTouchDelta?: number;
+  /** PER-116 — dé malus imposé par le combat à deux armes (p. 215), sur chacune des deux lignes. */
+  twoWeaponPenaltyDie?: boolean;
   /** PER-141 — plage de critique au contact À MAINS NUES (Morsure du serpent), pour la vue mains nues. */
   unarmedCriticalRanges?: DefenseBadgeData[];
   /**
@@ -185,6 +197,10 @@ export function DerivedStatsGrid({
   rangedCriticalRanges,
   unarmedStrike,
   meleeWeaponDamage,
+  offHandMeleeWeaponDamage,
+  offHandCriticalRanges,
+  offHandTouchDelta = 0,
+  twoWeaponPenaltyDie = false,
   unarmedCriticalRanges,
   rangedWeaponDamage,
   meleeSituationalDamage,
@@ -282,7 +298,11 @@ export function DerivedStatsGrid({
                 abilities={input.abilities}
                 unarmed={unarmedStrike}
                 meleeWeaponDamage={meleeWeaponDamage ?? null}
+                offHandMeleeWeaponDamage={offHandMeleeWeaponDamage ?? null}
                 weaponCriticalRanges={meleeCriticalRanges ?? []}
+                offHandCriticalRanges={offHandCriticalRanges ?? []}
+                offHandTouchDelta={offHandTouchDelta}
+                twoWeaponPenaltyDie={twoWeaponPenaltyDie}
                 unarmedCriticalRanges={unarmedCriticalRanges ?? []}
                 situationalBonuses={meleeSituationalDamage ?? []}
                 attackBonusDie={attackDiceFor('melee')}

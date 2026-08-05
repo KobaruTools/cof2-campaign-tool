@@ -2902,7 +2902,19 @@ function weaponCriticalConditionMet(
  * son interrupteur reste actif. La valeur scalante éventuelle (Tir précis : 1 puis 2 au rang 5) est
  * résolue ici. Donnée informative, non lue par le moteur (aucun jet simulé).
  */
-export function criticalRangeSources(character: Character): CriticalRangeSource[] {
+export function criticalRangeSources(
+  character: Character,
+  options?: {
+    /**
+     * PER-116 — arme de CONTACT à évaluer, en remplacement de l'arme canonique (main principale
+     * prioritaire). Sert à calculer la plage de critique de la MAIN SECONDAIRE quand le personnage
+     * combat à deux armes : la carte d'attaque au contact affiche une ligne par main, chacune avec
+     * SA plage (une rapière 19-20 en main principale et une dague 20 en main secondaire ne peuvent
+     * pas partager un badge unique). Absent = arme canonique, comportement historique.
+     */
+    meleeWeapon?: Weapon | null;
+  },
+): CriticalRangeSource[] {
   const pathRanks = pathRanksFromFeatures(character.featureIds);
   const ctx = effectContext(character);
   const out: CriticalRangeSource[] = [];
@@ -2910,7 +2922,8 @@ export function criticalRangeSources(character: Character): CriticalRangeSource[
   // servent à évaluer les conditions d'arme (PER-136/236) ET les plages intrinsèques d'arme (PER-225).
   // L'arme évaluée dépend de la PORTÉE de la plage : au contact → arme de contact, à distance → arme
   // à distance (arbalète de l'arquebusier, arc de l'elfe).
-  const meleeWeapon = wornMeleeWeapon(character.equipment ?? []);
+  const meleeWeapon =
+    options?.meleeWeapon !== undefined ? options.meleeWeapon : wornMeleeWeapon(character.equipment ?? []);
   const rangedWeapon = wornRangedWeapon(character.equipment ?? []);
   // Capacités acquises ET empruntées : une capacité empruntée fonctionne comme une capacité normale,
   // sa plage de critique comprise (PER-73). Son rang se résout sur la VOIE A (cf. `borrowedHostPaths`).

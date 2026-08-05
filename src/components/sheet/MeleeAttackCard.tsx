@@ -31,7 +31,24 @@ export interface AttackBonusDie {
   name: string;
 }
 
-/** Contenu d'un cadre (arme ou mains nues) : titre, valeur de touche, DM, badges. */
+/** Une main qui attaque : sa valeur de touche, ses DM, et le nom de son arme (mode deux armes). */
+interface AttackRow {
+  key: string;
+  /** Nom de l'arme, affiché SEULEMENT en combat à deux armes (sinon la carte reste telle quelle). */
+  weaponName: string | null;
+  /** Libellé de la main, pour l'info-bulle du nom d'arme (« main principale » / « main secondaire »). */
+  handLabel: string | null;
+  /** DM de cette main. `null` = aucune arme (le mode « arme » affiche alors son invite). */
+  damage: MeleeWeaponDamageView | null;
+  /** La touche porte-t-elle le détail du calcul au survol ? Seule la 1ʳᵉ ligne l'ouvre. */
+  wrap: boolean;
+  /** Écart de touche par rapport à la valeur de la fiche (0 sauf main secondaire privée de finesse). */
+  touchDelta: number;
+  /** Explication de l'écart de touche, en info-bulle. `null` si aucun écart. */
+  touchNote: string | null;
+}
+
+/** Contenu d'un cadre (arme ou mains nues) : titre, valeur(s) de touche, DM, badges. */
 function Face({
   mode,
   touch,
@@ -40,11 +57,15 @@ function Face({
   abilities,
   unarmed,
   meleeWeaponDamage,
+  offHandMeleeWeaponDamage,
   weaponCriticalRanges,
+  offHandCriticalRanges,
+  offHandTouchDelta,
   unarmedCriticalRanges,
   situationalBonuses,
   attackBonusDie,
   attackMalusDie,
+  twoWeaponPenaltyDie,
 }: {
   mode: MeleeMode;
   touch: number | null;
@@ -53,94 +74,202 @@ function Face({
   abilities: Abilities;
   unarmed: UnarmedStrikeView;
   meleeWeaponDamage: MeleeWeaponDamageView | null;
+  offHandMeleeWeaponDamage: MeleeWeaponDamageView | null;
   weaponCriticalRanges: DefenseBadgeData[];
+  offHandCriticalRanges: DefenseBadgeData[];
+  offHandTouchDelta: number;
   unarmedCriticalRanges: DefenseBadgeData[];
   situationalBonuses: SituationalDamageBonus[];
   attackBonusDie: AttackBonusDie[];
   attackMalusDie: string[];
+  twoWeaponPenaltyDie: boolean;
 }) {
   const title = mode === 'weapon' ? 'Attaque au contact (arme)' : 'Attaque au contact (mains)';
   const unarmedDice = `${unarmed.damage.count}${unarmed.damage.die}${unarmed.evolving ? '°' : ''}`;
-  const criticalRanges = mode === 'weapon' ? weaponCriticalRanges : unarmedCriticalRanges;
   // Chips d'indication supplémentaires (létalité, magie, 1=max, type) — mode mains nues uniquement
   // (il y a toujours au moins la létalité). Le séparateur ne s'affiche que si ces chips existent.
   const hasExtraChips = mode === 'unarmed';
+
+  // PER-116 — COMBAT À DEUX ARMES : une ligne touche | DM PAR MAIN, chacune préfixée du nom de son
+  // arme. La seconde ligne n'existe que si une arme est réellement tenue en main secondaire → un
+  // personnage à une seule arme (ou à mains nues) garde EXACTEMENT l'affichage d'avant.
+  const dualWielding = mode === 'weapon' && offHandMeleeWeaponDamage !== null;
+  const rows: AttackRow[] = dualWielding
+    ? [
+        {
+          key: 'mainHand',
+          weaponName: meleeWeaponDamage?.name ?? null,
+          handLabel: 'main principale',
+          damage: meleeWeaponDamage,
+          wrap: true,
+          touchDelta: 0,
+          touchNote: null,
+        },
+        {
+          key: 'offHand',
+          weaponName: offHandMeleeWeaponDamage.name ?? null,
+          handLabel: 'main secondaire',
+          damage: offHandMeleeWeaponDamage,
+          wrap: false,
+          touchDelta: offHandTouchDelta,
+          touchNote:
+            offHandTouchDelta !== 0
+              ? "Attaque en finesse réservée à la main principale : cette main garde sa caractéristique d'origine."
+              : null,
+        },
+      ]
+    : [
+        {
+          key: 'single',
+          weaponName: null,
+          handLabel: null,
+          damage: meleeWeaponDamage,
+          wrap: true,
+          touchDelta: 0,
+          touchNote: null,
+        },
+      ];
+
+  // Plages de critique : celle de l'arme principale, plus celle de la main secondaire UNIQUEMENT si
+  // elle diffère (une rapière 19-20 et une dague 20 ne peuvent pas partager un badge unique ; deux
+  // armes de même plage n'en méritent qu'un).
+  const mainCriticalText = weaponCriticalRanges.map((b) => b.text).join('|');
+  const offHandDiffers =
+    dualWielding && offHandCriticalRanges.length > 0 && offHandCriticalRanges.map((b) => b.text).join('|') !== mainCriticalText;
+  const criticalRanges =
+    mode === 'weapon'
+      ? [...weaponCriticalRanges, ...(offHandDiffers ? offHandCriticalRanges : [])]
+      : unarmedCriticalRanges;
+
+  /** Valeur de touche d'une ligne + ses badges de dé (bonus, malus d'état, malus deux armes). */
+  const touchCell = (row: AttackRow) => {
+    const shown = touch === null ? null : touch + row.touchDelta;
+    const value = (
+      <Typography
+        variant="h5"
+        sx={{
+          fontWeight: 600,
+          color: forced ? 'warning.main' : undefined,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          cursor: 'help',
+        }}
+      >
+        {shown === null ? '—' : shown}
+        {forced && (
+          <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
+            <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
+          </AppTooltip>
+        )}
+      </Typography>
+    );
+    return (
+      <>
+        {/* La touche porte le détail du calcul au survol (curseur « ? »), via `wrapTouch`. En combat à
+            deux armes, seule la 1ʳᵉ ligne l'ouvre : la valeur est la MÊME sur les deux mains (le livre
+            n'impose aucune pénalité chiffrée, seulement un dé malus) — SAUF si l'attaque en finesse
+            substitue la caractéristique de TOUCHE, réservée à la main principale, d'où `touchDelta`. */}
+        {row.touchNote ? <AppTooltip title={row.touchNote}>{value}</AppTooltip> : row.wrap ? wrapTouch(value) : value}
+        {/* Dé bonus à toutes les attaques (flibustier r8 « Pas de quartier », PV bas) — badge double-d20. */}
+        {attackBonusDie.length > 0 && (
+          <BonusDieBadge
+            ability="attaque"
+            size={18}
+            tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
+          />
+        )}
+        {/* Dé MALUS aux tests d'attaque (état de combat : Affaibli/Immobilisé, PER-281). */}
+        {attackMalusDie.length > 0 && (
+          <MalusDieBadge label={`aux attaques (${attackMalusDie.join(', ')})`} size={18} />
+        )}
+        {/* PER-116 — dé MALUS du combat à deux armes (p. 215), sur CHACUNE des deux lignes : « chacune
+            des deux attaques subit un dé malus ». Muet si « Combattant héroïque » exempte (p. 73). */}
+        {dualWielding && twoWeaponPenaltyDie && (
+          <MalusDieBadge label="aux attaques (combat à deux armes)" size={18} />
+        )}
+      </>
+    );
+  };
+
+  /** Bloc « DM <expression> » d'une ligne. */
+  const damageCell = (row: AttackRow) => (
+    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+      <Typography variant="caption" color="text.secondary">
+        DM
+      </Typography>
+      {mode === 'weapon' ? (
+        row.damage ? (
+          <WeaponDamageExpr
+            dice={row.damage.dice}
+            diceNote={row.damage.diceNote}
+            abilities={row.damage.abilities}
+            flatBonuses={row.damage.flatBonuses}
+            charAbilities={abilities}
+          />
+        ) : (
+          <NoWeaponHint />
+        )
+      ) : (
+        <WeaponDamageExpr dice={unarmedDice} abilities={unarmed.damageAbilities} charAbilities={abilities} />
+      )}
+    </Box>
+  );
 
   return (
     <CardContent
       sx={{ py: 1, height: '100%', display: 'flex', flexDirection: 'column', '&:last-child': { pb: 1 } }}
     >
-      {/* En-tête : icône + titre + valeur de touche ET DM sur la même ligne (gagne une ligne). */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
-        <DerivedStatIcon statId="meleeAttack" title size={40} />
-        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
-            {title}
-          </Typography>
+      {/* Ligne d'arme : nom (si deux armes) + touche + séparateur vertical + DM, TOUJOURS sur UNE
+          seule ligne — comme l'affichage historique à une arme, jamais de retour à la ligne après
+          la touche. */}
+      {(() => {
+        const weaponLine = (row: AttackRow) => (
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            {/* La touche porte le détail du calcul au survol (curseur « ? »), via `wrapTouch`. */}
-            {wrapTouch(
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 600,
-                  color: forced ? 'warning.main' : undefined,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  cursor: 'help',
-                }}
-              >
-                {touch === null ? '—' : touch}
-                {forced && (
-                  <AppTooltip title="Valeur forcée (calcul automatique remplacé)">
-                    <PushPinOutlinedIcon sx={{ fontSize: 16 }} color="warning" />
-                  </AppTooltip>
-                )}
-              </Typography>,
+            {row.weaponName && (
+              <AppTooltip title={row.handLabel ?? ''}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ minWidth: 0, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'help' }}
+                >
+                  {row.weaponName}
+                </Typography>
+              </AppTooltip>
             )}
-            {/* Dé bonus à toutes les attaques (flibustier r8 « Pas de quartier », PV bas) — badge double-d20. */}
-            {attackBonusDie.length > 0 && (
-              <BonusDieBadge
-                ability="attaque"
-                size={18}
-                tooltipTitle={`Dé bonus à cette attaque — ${attackBonusDie.map((s) => s.name).join(', ')}`}
-              />
-            )}
-            {/* Dé MALUS aux tests d'attaque (état de combat : Affaibli/Immobilisé, PER-281). */}
-            {attackMalusDie.length > 0 && (
-              <MalusDieBadge label={`aux attaques (${attackMalusDie.join(', ')})`} size={18} />
-            )}
-            {/* Petit séparateur : la valeur de touche et le calcul des DM sont deux choses distinctes. */}
+            {touchCell(row)}
             <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
-            {/* DM accolés au chiffre d'attaque : dé + caractéristique(s) résolue(s) dynamiquement. */}
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-              <Typography variant="caption" color="text.secondary">
-                DM
-              </Typography>
-              {mode === 'weapon' ? (
-                meleeWeaponDamage ? (
-                  <WeaponDamageExpr
-                    dice={meleeWeaponDamage.dice}
-                    diceNote={meleeWeaponDamage.diceNote}
-                    abilities={meleeWeaponDamage.abilities}
-                    flatBonuses={meleeWeaponDamage.flatBonuses}
-                    charAbilities={abilities}
-                  />
-                ) : (
-                  <NoWeaponHint />
-                )
-              ) : (
-                <WeaponDamageExpr
-                  dice={unarmedDice}
-                  abilities={unarmed.damageAbilities}
-                  charAbilities={abilities}
-                />
-              )}
-            </Box>
+            {damageCell(row)}
           </Box>
-        </Box>
-      </Box>
+        );
+        return (
+          <>
+            {/* En-tête : icône ANCRÉE EN HAUT + titre SEUL. Hors combat à deux armes, la ligne unique
+                reste juste en dessous, à côté de l'icône (affichage historique inchangé). */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, width: '100%' }}>
+              <DerivedStatIcon statId="meleeAttack" title size={40} />
+              <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
+                  {title}
+                </Typography>
+                {!dualWielding && weaponLine(rows[0])}
+              </Box>
+            </Box>
+            {/* PER-116 — COMBAT À DEUX ARMES : les DEUX lignes (une par main, chacune sur une seule
+                ligne touche | DM) descendent SOUS l'icône, à pleine largeur — l'icône ne fait que
+                40px de haut, ce qui laisse la place à gauche en dessous. */}
+            {dualWielding && (
+              <Box sx={{ mt: 0.75 }}>
+                {rows.map((row, idx) => (
+                  <Box key={row.key} sx={{ mt: idx > 0 ? 0.5 : 0 }}>
+                    {weaponLine(row)}
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </>
+        );
+      })()}
 
       {/* Plage de critique. */}
       {criticalRanges.length > 0 && (
@@ -188,8 +317,21 @@ export interface MeleeAttackCardProps {
   unarmed: UnarmedStrikeView;
   /** DM de l'arme de contact équipée (mode « arme »). `null` = aucune arme portée. */
   meleeWeaponDamage: MeleeWeaponDamageView | null;
+  /**
+   * PER-116 — DM de l'arme de la MAIN SECONDAIRE. Non nul = combat à deux armes → la carte affiche
+   * DEUX lignes touche | DM, chacune préfixée du nom de son arme. `null` = affichage historique.
+   */
+  offHandMeleeWeaponDamage?: MeleeWeaponDamageView | null;
   /** Badges de plage de critique de l'ARME (mode « arme »). */
   weaponCriticalRanges: DefenseBadgeData[];
+  /** PER-116 — plage de critique de l'arme de la MAIN SECONDAIRE, affichée seulement si elle diffère. */
+  offHandCriticalRanges?: DefenseBadgeData[];
+  /**
+   * PER-116 — écart de touche de la ligne de la MAIN SECONDAIRE (0 = même touche). Non nul seulement
+   * quand l'attaque en finesse substitue la caractéristique de TOUCHE : réservée à la main principale
+   * (p. 140/150), la main secondaire garde la sienne.
+   */
+  offHandTouchDelta?: number;
   /** Badges de plage de critique À MAINS NUES (mode mains nues). */
   unarmedCriticalRanges: DefenseBadgeData[];
   /** PER-115 — bonus de DM SITUATIONNELS au contact (Attaque éclair, Chasseur émérite…), en badges. */
@@ -198,6 +340,11 @@ export interface MeleeAttackCardProps {
   attackBonusDie?: AttackBonusDie[];
   /** PER-281 — libellés des états imposant un dé MALUS aux tests d'attaque (Affaibli/Immobilisé). */
   attackMalusDie?: string[];
+  /**
+   * PER-116 — le combat à deux armes impose-t-il un dé malus (p. 215) ? Rendu sur CHACUNE des deux
+   * lignes. Faux quand « Combattant héroïque » exempte (même arme dans les deux mains, p. 73).
+   */
+  twoWeaponPenaltyDie?: boolean;
 }
 
 /**
@@ -226,11 +373,15 @@ export function MeleeAttackCard({
   abilities,
   unarmed,
   meleeWeaponDamage,
+  offHandMeleeWeaponDamage = null,
   weaponCriticalRanges,
+  offHandCriticalRanges = [],
+  offHandTouchDelta = 0,
   unarmedCriticalRanges,
   situationalBonuses,
   attackBonusDie = [],
   attackMalusDie = [],
+  twoWeaponPenaltyDie = false,
 }: MeleeAttackCardProps) {
   const [mode, setMode] = useState<MeleeMode>(meleeWeaponDamage ? 'weapon' : 'unarmed');
   const swap = () => setMode((m) => (m === 'weapon' ? 'unarmed' : 'weapon'));
@@ -242,11 +393,15 @@ export function MeleeAttackCard({
     abilities,
     unarmed,
     meleeWeaponDamage,
+    offHandMeleeWeaponDamage,
     weaponCriticalRanges,
+    offHandCriticalRanges,
+    offHandTouchDelta,
     unarmedCriticalRanges,
     situationalBonuses,
     attackBonusDie,
     attackMalusDie,
+    twoWeaponPenaltyDie,
   };
 
   // Chaque cadre est en position ABSOLUE : il ne contribue PAS à la hauteur de la pile. C'est un
