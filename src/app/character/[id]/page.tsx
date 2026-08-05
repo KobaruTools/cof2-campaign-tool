@@ -1032,7 +1032,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             ]}
             activeTab={statsView}
             onTabChange={(v) => setStatsView(v as 'derived' | 'tests')}
-            action={
+            // Crayon d'édition en `pinnedAction` (≠ `action`), par cohérence avec toute section à
+            // onglets (cf. « Voies & capacités ») : reste sur la ligne des onglets quelle que soit
+            // la taille d'écran, plutôt que de basculer avec un éventuel futur bouton d'`action`.
+            pinnedAction={
               statsView === 'tests' || readOnly ? null : (
                 <BlockEditButton
                   editing={editingBlocks.derived}
@@ -1199,27 +1202,30 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             ]}
             activeTab={voiesView}
             onTabChange={(v) => setVoiesView(v as 'features' | 'maneuvers')}
+            // Le crayon d'édition est ÉPINGLÉ (`pinnedAction`, jamais concerné par le retour à la
+            // ligne des toggles ci-dessous en très petit écran, cf. `SheetSection`) : il doit rester
+            // atteignable au même endroit quelle que soit la taille d'écran.
+            pinnedAction={
+              voiesView === 'features' && !readOnly ? (
+                <BlockEditButton
+                  editing={editingBlocks.features}
+                  onToggle={() => toggleBlock('features')}
+                  label="voies & capacités"
+                />
+              ) : null
+            }
             action={
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                {voiesView === 'maneuvers' ? (
-                  <SourceRef page="217-218" term="Les manœuvres" />
-                ) : (
-                  <>
-                    {display.hasSpells && (
-                      <ConcentrationToggle value={concentration} onChange={setConcentration} />
-                    )}
-                    <VerbatimToggle value={featuresVerbatim} onChange={setFeaturesVerbatim} />
-                    <FeaturesLayoutToggle value={voiesLayout} onChange={changeVoiesLayout} />
-                    {!readOnly && (
-                      <BlockEditButton
-                        editing={editingBlocks.features}
-                        onToggle={() => toggleBlock('features')}
-                        label="voies & capacités"
-                      />
-                    )}
-                  </>
-                )}
-              </Stack>
+              voiesView === 'maneuvers' ? (
+                <SourceRef page="217-218" term="Les manœuvres" />
+              ) : (
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  {display.hasSpells && (
+                    <ConcentrationToggle value={concentration} onChange={setConcentration} />
+                  )}
+                  <VerbatimToggle value={featuresVerbatim} onChange={setFeaturesVerbatim} />
+                  <FeaturesLayoutToggle value={voiesLayout} onChange={changeVoiesLayout} />
+                </Stack>
+              )
             }
           >
             {voiesView === 'maneuvers' ? (

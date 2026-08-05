@@ -38,9 +38,20 @@ export interface SheetSectionProps {
   /**
    * Élément optionnel aligné à droite du titre (bouton, badge…). Peut être une fonction
    * recevant l'état replié courant, pour masquer l'action quand la section est repliée
-   * (utile pour des toggles qui n'ont pas de sens sans le contenu visible).
+   * (utile pour des toggles qui n'ont pas de sens sans le contenu visible). Avec `tabs` : en
+   * très petit écran, CET élément peut basculer seul sur sa propre ligne sous le bandeau
+   * (cf. `flexWrap` du bandeau) — `pinnedAction` reste lui TOUJOURS sur la ligne des onglets.
    */
   action?: ReactNode | ((collapsed: boolean) => ReactNode);
+  /**
+   * Élément optionnel ÉPINGLÉ à la ligne des onglets (n'a d'effet qu'avec `tabs`), qui ne bascule
+   * JAMAIS à la ligne du dessous en petit écran — contrairement à `action`. Pensé pour le crayon
+   * d'édition du bloc : contrairement aux bascules d'affichage (`action`), il doit rester atteignable
+   * au même endroit quelle que soit la taille d'écran. Rendu entre les onglets et `action`, mais
+   * visuellement replacé APRÈS `action` à partir de `sm` (cf. `order` de son wrapper) pour garder le
+   * même repère qu'avant l'introduction de ce découpage (crayon = dernier bouton, tout à droite).
+   */
+  pinnedAction?: ReactNode;
   /** Styles supplémentaires fusionnés sur le cadre Paper. */
   sx?: SxProps<Theme>;
   /** Si vrai, le titre devient cliquable (chevron) pour replier/déplier le contenu. */
@@ -91,6 +102,7 @@ export function SheetSection({
   id,
   icon,
   action,
+  pinnedAction,
   sx,
   collapsible = false,
   defaultCollapsed = false,
@@ -196,13 +208,16 @@ export function SheetSection({
           sx={(theme) => ({
             display: 'flex',
             alignItems: 'flex-end',
-            justifyContent: 'space-between',
             gap: 1,
             // En très petit écran, l'action (jusqu'à 4 boutons sur « Voies & capacités ») ne
             // tient plus à côté des onglets sur une seule ligne et finit par les chevaucher :
             // on autorise le retour à la ligne (l'action bascule alors seule sur sa ligne, cf.
             // son wrapper ci-dessous qui la centre) ; à partir de `sm` il y a assez de place et
-            // le comportement à ligne unique d'origine est conservé.
+            // le comportement à ligne unique d'origine est conservé. `pinnedAction`, lui, reste
+            // TOUJOURS sur la ligne des onglets (ordre DOM juste après eux, jamais concerné par
+            // le wrap) — plus de `justifyContent: space-between` (qui écarterait `pinnedAction`
+            // de `action` par un espacement égal entre les 3 enfants) : c'est le `mr: auto` posé
+            // sur les onglets ci-dessous qui pousse `pinnedAction`/`action` groupés à droite.
             flexWrap: { xs: 'wrap', sm: 'nowrap' },
             mt: { xs: -2, sm: -3 },
             mx: { xs: -2, sm: -3 },
@@ -211,7 +226,12 @@ export function SheetSection({
             borderBottom: `1px solid ${theme.palette.divider}`,
           })}
         >
-          <Stack direction="row" spacing={0.5} role="tablist" sx={{ alignItems: 'flex-end', minWidth: 0 }}>
+          <Stack
+            direction="row"
+            spacing={0.5}
+            role="tablist"
+            sx={{ alignItems: 'flex-end', minWidth: 0, mr: 'auto' }}
+          >
             {tabs.map((tab, i) => {
               const active = tab.value === activeTab;
               return (
@@ -253,11 +273,13 @@ export function SheetSection({
                       fontWeight: active ? 700 : 600,
                       color: 'inherit',
                       display: tab.shortLabel ? { xs: 'none', md: 'block' } : undefined,
-                      // Réduction ciblée du SEUL palier `sm` : `xs`/`md`+ gardent la taille
-                      // responsive posée par `responsiveFontSizes` (cf. `theme.ts`), qu'on ne
-                      // rejoue pas ici pour ne pas la désynchroniser (piège vécu : un `fontSize`
-                      // explicite à `xs` écrasait la valeur déjà réduite du thème par la taille
-                      // de base, donc l'agrandissait au lieu de la laisser telle quelle).
+                      // Réduction ciblée des paliers `xs`/`sm` : `md`+ garde la taille responsive
+                      // posée par `responsiveFontSizes` (cf. `theme.ts`), qu'on ne rejoue pas ici
+                      // pour ne pas la désynchroniser (piège vécu : un `fontSize` explicite à `xs`
+                      // écrasait la valeur déjà réduite du thème par la taille de base, donc
+                      // l'agrandissait au lieu de la laisser telle quelle). `1rem` = 1.125rem
+                      // théorique du thème à `xs` moins 2px, sur demande propriétaire.
+                      [theme.breakpoints.only('xs')]: { fontSize: '1rem' },
                       [theme.breakpoints.only('sm')]: { fontSize: '1.05rem' },
                     })}
                   >
@@ -272,6 +294,7 @@ export function SheetSection({
                         fontWeight: active ? 700 : 600,
                         color: 'inherit',
                         display: { xs: 'block', md: 'none' },
+                        [theme.breakpoints.only('xs')]: { fontSize: '1rem' },
                         [theme.breakpoints.only('sm')]: { fontSize: '1.05rem' },
                       })}
                     >
@@ -282,6 +305,20 @@ export function SheetSection({
               );
             })}
           </Stack>
+          {pinnedAction && (
+            // Reste TOUJOURS sur la ligne des onglets (jamais de `width: 100%`/wrap ici). En DOM
+            // juste après les onglets pour qu'un retour à la ligne éventuel de `action` (item
+            // suivant) le laisse sur la ligne 1 avec eux ; `order` le replace visuellement APRÈS
+            // `action` à partir de `sm` (une seule ligne, assez de place) pour garder le même
+            // repère qu'avant ce découpage (crayon = dernier bouton, tout à droite).
+            <Stack
+              direction="row"
+              onClick={(e) => e.stopPropagation()}
+              sx={{ alignItems: 'center', alignSelf: 'center', order: { xs: 0, sm: 1 } }}
+            >
+              {pinnedAction}
+            </Stack>
+          )}
           {resolvedAction && (
             // `alignSelf: center` : l'action reste centrée verticalement dans le bandeau, malgré le
             // `alignItems: flex-end` du parent (qui, lui, fait reposer les onglets sur le liseré bas).
@@ -293,6 +330,7 @@ export function SheetSection({
               sx={{
                 alignItems: 'center',
                 alignSelf: 'center',
+                order: { xs: 0, sm: 0 },
                 width: { xs: '100%', sm: 'auto' },
                 justifyContent: { xs: 'center', sm: 'flex-start' },
               }}
@@ -324,7 +362,10 @@ export function SheetSection({
               variant="h6"
               component="h2"
               noWrap
-              sx={(theme) => ({ [theme.breakpoints.only('sm')]: { fontSize: '1.05rem' } })}
+              sx={(theme) => ({
+                [theme.breakpoints.only('xs')]: { fontSize: '1rem' },
+                [theme.breakpoints.only('sm')]: { fontSize: '1.05rem' },
+              })}
             >
               {title}
             </Typography>
