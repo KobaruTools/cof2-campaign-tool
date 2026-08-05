@@ -1027,8 +1027,8 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             title="Statistiques dérivées"
             icon="derived"
             tabs={[
-              { value: 'derived', label: 'Statistiques dérivées', icon: 'derived' },
-              { value: 'tests', label: 'Compétences & tests', icon: 'tests' },
+              { value: 'derived', label: 'Statistiques dérivées', shortLabel: 'Statistiques', icon: 'derived' },
+              { value: 'tests', label: 'Compétences & tests', shortLabel: 'Tests', icon: 'tests' },
             ]}
             activeTab={statsView}
             onTabChange={(v) => setStatsView(v as 'derived' | 'tests')}
@@ -1194,7 +1194,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             title="Voies & capacités"
             icon="paths"
             tabs={[
-              { value: 'features', label: 'Voies & capacités', icon: 'paths' },
+              { value: 'features', label: 'Voies & capacités', shortLabel: 'Voies', icon: 'paths' },
               { value: 'maneuvers', label: 'Manœuvres', icon: 'maneuvers' },
             ]}
             activeTab={voiesView}

@@ -19,6 +19,11 @@ export interface SectionTab {
   value: string;
   /** Libellé affiché (au gabarit du titre de section). */
   label: ReactNode;
+  /**
+   * Libellé abrégé affiché uniquement en mobile (xs), le bandeau d'onglets manquant de place pour
+   * les libellés complets sur petit écran. Sans valeur, `label` s'affiche à toutes les tailles.
+   */
+  shortLabel?: ReactNode;
   /** Icône propre à l'onglet (game-icons, `<SectionIcon>`), au même rôle que l'icône de titre. */
   icon?: SectionIconName;
 }
@@ -193,6 +198,12 @@ export function SheetSection({
             alignItems: 'flex-end',
             justifyContent: 'space-between',
             gap: 1,
+            // En très petit écran, l'action (jusqu'à 4 boutons sur « Voies & capacités ») ne
+            // tient plus à côté des onglets sur une seule ligne et finit par les chevaucher :
+            // on autorise le retour à la ligne (l'action bascule alors seule sur sa ligne, cf.
+            // son wrapper ci-dessous qui la centre) ; à partir de `sm` il y a assez de place et
+            // le comportement à ligne unique d'origine est conservé.
+            flexWrap: { xs: 'wrap', sm: 'nowrap' },
             mt: { xs: -2, sm: -3 },
             mx: { xs: -2, sm: -3 },
             mb: { xs: 2, sm: 3 },
@@ -238,10 +249,35 @@ export function SheetSection({
                     variant="h6"
                     component={i === 0 ? 'h2' : 'span'}
                     noWrap
-                    sx={{ fontWeight: active ? 700 : 600, color: 'inherit' }}
+                    sx={(theme) => ({
+                      fontWeight: active ? 700 : 600,
+                      color: 'inherit',
+                      display: tab.shortLabel ? { xs: 'none', md: 'block' } : undefined,
+                      // Réduction ciblée du SEUL palier `sm` : `xs`/`md`+ gardent la taille
+                      // responsive posée par `responsiveFontSizes` (cf. `theme.ts`), qu'on ne
+                      // rejoue pas ici pour ne pas la désynchroniser (piège vécu : un `fontSize`
+                      // explicite à `xs` écrasait la valeur déjà réduite du thème par la taille
+                      // de base, donc l'agrandissait au lieu de la laisser telle quelle).
+                      [theme.breakpoints.only('sm')]: { fontSize: '1.05rem' },
+                    })}
                   >
                     {tab.label}
                   </Typography>
+                  {tab.shortLabel && (
+                    <Typography
+                      variant="h6"
+                      component={i === 0 ? 'h2' : 'span'}
+                      noWrap
+                      sx={(theme) => ({
+                        fontWeight: active ? 700 : 600,
+                        color: 'inherit',
+                        display: { xs: 'block', md: 'none' },
+                        [theme.breakpoints.only('sm')]: { fontSize: '1.05rem' },
+                      })}
+                    >
+                      {tab.shortLabel}
+                    </Typography>
+                  )}
                 </ButtonBase>
               );
             })}
@@ -249,7 +285,18 @@ export function SheetSection({
           {resolvedAction && (
             // `alignSelf: center` : l'action reste centrée verticalement dans le bandeau, malgré le
             // `alignItems: flex-end` du parent (qui, lui, fait reposer les onglets sur le liseré bas).
-            <Stack direction="row" onClick={(e) => e.stopPropagation()} sx={{ alignItems: 'center', alignSelf: 'center' }}>
+            // En xs (cf. `flexWrap` ci-dessus), elle passe seule sur sa propre ligne : `width: 100%`
+            // la force sur cette ligne dédiée et `justifyContent: center` centre ses boutons dessus.
+            <Stack
+              direction="row"
+              onClick={(e) => e.stopPropagation()}
+              sx={{
+                alignItems: 'center',
+                alignSelf: 'center',
+                width: { xs: '100%', sm: 'auto' },
+                justifyContent: { xs: 'center', sm: 'flex-start' },
+              }}
+            >
               {resolvedAction}
             </Stack>
           )}
@@ -273,7 +320,12 @@ export function SheetSection({
         >
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
             {icon && <SectionIcon name={icon} size={22} sx={{ color: 'text.secondary' }} />}
-            <Typography variant="h6" component="h2" noWrap>
+            <Typography
+              variant="h6"
+              component="h2"
+              noWrap
+              sx={(theme) => ({ [theme.breakpoints.only('sm')]: { fontSize: '1.05rem' } })}
+            >
               {title}
             </Typography>
           </Stack>
