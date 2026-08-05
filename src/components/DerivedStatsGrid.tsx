@@ -121,6 +121,12 @@ export interface DerivedStatsGridProps {
   offHandTouchDelta?: number;
   /** PER-116 — dé malus imposé par le combat à deux armes (p. 215), sur chacune des deux lignes. */
   twoWeaponPenaltyDie?: boolean;
+  /**
+   * PER-116 — clic sur l'icône d'une arme (combat à deux armes) : fait défiler la fiche jusqu'à SA
+   * ligne d'inventaire (et déplie la section Inventaire si repliée). Absent = icônes non cliquables
+   * (récap du wizard, écran de MJ).
+   */
+  onScrollToWeapon?: (slot: 'mainHand' | 'offHand') => void;
   /** PER-141 — plage de critique au contact À MAINS NUES (Morsure du serpent), pour la vue mains nues. */
   unarmedCriticalRanges?: DefenseBadgeData[];
   /**
@@ -201,6 +207,7 @@ export function DerivedStatsGrid({
   offHandCriticalRanges,
   offHandTouchDelta = 0,
   twoWeaponPenaltyDie = false,
+  onScrollToWeapon,
   unarmedCriticalRanges,
   rangedWeaponDamage,
   meleeSituationalDamage,
@@ -303,6 +310,7 @@ export function DerivedStatsGrid({
                 offHandCriticalRanges={offHandCriticalRanges ?? []}
                 offHandTouchDelta={offHandTouchDelta}
                 twoWeaponPenaltyDie={twoWeaponPenaltyDie}
+                onScrollToWeapon={onScrollToWeapon}
                 unarmedCriticalRanges={unarmedCriticalRanges ?? []}
                 situationalBonuses={meleeSituationalDamage ?? []}
                 attackBonusDie={attackDiceFor('melee')}

@@ -58,6 +58,7 @@ import {
   isArmorWorn,
   dualWieldDisabledFeatureIds,
   rangedWeaponDisabledFeatureIds,
+  pathArmorDisabledFeatureIds,
   shieldDisabledFeatureIds,
 } from './armorRestrictions';
 import {
@@ -163,6 +164,10 @@ export function activeFeatureIdsForMods(character: Character): string[] {
   // PER-74 — capacités de la Voie du combat à deux armes désactivées sans une arme dans chaque main
   // (p. 73), Combattant héroïque excepté (`dualWieldExemptFeatureIds`).
   for (const id of dualWieldDisabledFeatureIds(character, rulesContext)) disabled.add(id);
+  // PER-74 — capacités d'une voie qui fixe SON PROPRE plafond d'armure (Voie du danseur de guerre,
+  // p. 150), désactivées tant qu'une armure plus encombrante est portée. Complète PER-83, qui n'agit
+  // que sur les voies de PROFIL (une voie de prestige n'a pas de profil d'origine).
+  for (const id of pathArmorDisabledFeatureIds(character, rulesContext)) disabled.add(id);
   return disabled.size ? ids.filter((id) => !disabled.has(id)) : ids;
 }
 
@@ -277,6 +282,10 @@ function finesseWeaponEligible(character: Character, effect: FinesseAttackEffect
   const usedInTwoHands = weapon.weaponCategory === 'twoHands' || line.worn?.grip === 'twoHands';
   if (!usedInTwoHands) return effect.weaponIds.includes(weapon.id);
   if (!effect.twoHandedWeaponIds?.includes(weapon.id)) return false;
+  // Arme maniable à une OU deux mains (lance, danseur de guerre r4, p. 150) : aucune dérogation à
+  // accorder — le personnage pourrait l'employer à une main. La condition de maîtrise ne vise que les
+  // armes qui ne s'emploient QUE à deux mains (vivelame, p. 183).
+  if (weapon.weaponCategory === 'oneOrTwoHands') return true;
   return isWeaponMastered(
     weapon,
     masteredClassIds(character, rulesContext),

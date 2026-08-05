@@ -82,3 +82,13 @@ export const REFERENCE_ENTRIES: ReferenceEntry[] = [
   ...ENCUMBRANCE,
   ...TRAVEL,
 ];
+
+/**
+ * Index par `id`, sur le patron `featureById`/`equipmentById` (`@/data/index.ts`) : sert aux surfaces
+ * qui n'ont pas besoin de la navigation section → sous-section (ex. un badge ponctuel sur la fiche qui
+ * réutilise le VERBATIM d'une entrée précise, comme « Combat à deux armes » sur la carte d'attaque au
+ * contact, PER-116) — une seule source de vérité, jamais de texte dupliqué à la main.
+ */
+export const referenceById: Map<string, ReferenceEntry> = new Map(
+  REFERENCE_ENTRIES.map((e) => [e.id, e]),
+);

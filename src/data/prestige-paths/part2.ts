@@ -131,6 +131,15 @@ export const prestigePaths2: PrestigePath[] = [
     category: 'fighter',
     prerequisites:
       "Pour pouvoir utiliser les capacités de cette voie, le personnage ne doit pas porter d'armure plus encombrante qu'une chemise de mailles.",
+    // PER-74 : présentation de la voie (p. 150) en info-bulle « i » de l'en-tête, verbatim. Le
+    // prérequis, lui, n'est pas une condition d'ACCÈS à la voie mais une condition d'USAGE de ses
+    // capacités (« pour pouvoir utiliser les capacités de cette voie »).
+    note: "Populaire chez certaines tribus d'elfes sauvages ou de nomades du désert, ce style de combat inhabituel est constitué de pas de danse et d'acrobaties. Le combattant masque ses mouvements, ce qui le rend difficile à cerner et surprenant.",
+    // PER-74 — plafond d'armure porté par LA VOIE (« pas d'armure plus encombrante qu'une chemise de
+    // mailles », DEF mondaine 4) : au-delà, les 5 capacités sont désactivées et leurs effets retirés
+    // (cf. `pathArmorDisabledFeatureIds`), comme la Voie du bouclier sans bouclier. Premier cas d'un
+    // plafond porté par une VOIE et non par un PROFIL (PER-80/83/86).
+    maxArmorId: 'chemise-de-mailles',
     featureIds: [
       'prestige-danseur-de-guerre-r4',
       'prestige-danseur-de-guerre-r5',
@@ -1347,7 +1356,7 @@ export const prestigeFeatures2: Feature[] = [
     sourcePage: 150,
   },
 
-  // ----- Voie du danseur de guerre (p. 149) -----
+  // ----- Voie du danseur de guerre (p. 150) -----
   {
     id: 'prestige-danseur-de-guerre-r4',
     name: 'Vent des lames',
@@ -1357,6 +1366,30 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage peut utiliser son AGI au choix en attaque au contact ou aux DM (mais pas les deux, sauf capacité l'y autorisant) au lieu de sa FOR lorsqu'il utilise une dague, une épée (courte, longue, sabre ou vivelame) ou une lance. Dans le cas d'une arme à une main, il ne peut bénéficier de ce bonus que sur sa main principale.",
+    // ATTAQUE EN FINESSE MÉCANISÉE (PER-74) : même primitive `finesse-attack` que « Vive attaque » du
+    // duelliste (r4, p. 140) — substitution FOR→AGI gatée par une arme éligible en main. Le choix
+    // « attaque OU DM » est un ÉTAT DE JEU ÉCHANGEABLE (`effectInputs`, hors mode édition), jamais les
+    // deux à la fois : `automatic` est donc EXCLU (deux modes offerts = vrai arbitrage, contrairement
+    // à la Précision du barde ou à l'Attaque en finesse du voleur, qui n'offrent que la touche).
+    //
+    // « sabre » N'EXISTE PAS au catalogue : la table d'armes du livre (p. 183) ne le contient pas — il
+    // n'est cité que dans cette énumération. Aucune entrée n'est inventée (on ne devine pas une règle
+    // de CO2) ; le rang le mentionne dans son `text` verbatim, et un sabre joué à la table se traite
+    // comme une variante d'objet (PER-211) de l'épée longue.
+    //
+    // Prises À DEUX MAINS : le livre ne restreint la main principale QUE « dans le cas d'une arme à
+    // une main » — une arme employée à deux mains reste donc couverte. D'où `twoHandedWeaponIds` = la
+    // vivelame (dérogation portée par l'arme, p. 183, sous condition de maîtrise) ET la lance, qui est
+    // `oneOrTwoHands` et perdrait sinon la substitution dès qu'elle est empoignée à deux mains.
+    effects: [
+      {
+        kind: 'finesse-attack',
+        ability: 'AGI',
+        replaces: 'FOR',
+        weaponIds: ['dague', 'epee-courte', 'epee-longue', 'lance'],
+        twoHandedWeaponIds: ['vivelame', 'lance'],
+      },
+    ],
     sourcePage: 150,
   },
   {
@@ -1368,6 +1401,18 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Les pas de danse rendent le personnage insaisissable. Il gagne +1 en DEF et ce bonus passe à +2 au rang 8. De plus, le personnage gagne un bonus de +5 aux tests de danse et d'acrobaties.",
+    // PER-74 — bonus de DEF PERMANENT à palier (+1 au rang 5, +2 au rang 8) : patron EXACT du rang 5
+    // du combattant des tunnels. Le +5 aux tests porte sur DEUX domaines du catalogue (`dance` p. 68,
+    // `acrobatics` p. 202) et sa valeur est posée EXPLICITEMENT : sans elle, le repli des voies de
+    // prestige appliquerait « 2 + min(rang, 5) », soit une autre valeur que celle du livre.
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 5, value: 1 }, { min: 8, value: 2 }] },
+      },
+      { kind: 'test-bonus', domains: ['dance', 'acrobatics'], value: 5 },
+    ],
     sourcePage: 150,
   },
   {
@@ -1390,6 +1435,23 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le personnage réalise un pas de danse et entre en transe pour le reste du combat. Pendant la Danse des lames, il peut réaliser une attaque gratuite supplémentaire à son tour chaque round bien qu'elle subisse un dé malus. Le personnage peut mettre fin à la transe au moment où il le veut, mais il ne peut recommencer avant le prochain combat. Toutefois, s'il reçoit les DM d'une attaque critique, la transe est stoppée net.",
+    // PER-74 — la transe est un ÉTAT DE DURÉE (« pour le reste du combat »), que le personnage peut
+    // arrêter lui-même et qu'un critique reçu stoppe net → interrupteur temporaire, patron de l'épée
+    // de lumière (combat du mal r5) et de la Rage du berserk. « Il ne peut recommencer avant le
+    // prochain combat » = une seule entrée en transe par combat → compteur 1×/récupération rapide
+    // (masqué du tableau de bord : ce n'est pas une réserve tactique).
+    // VERBATIM (aucune primitive) : l'attaque gratuite supplémentaire et son dé malus (la fiche ne
+    // modélise pas d'attaque additionnelle), et l'arrêt par critique reçu (la fiche ne suit pas les
+    // DM reçus) — les deux se jouent à la table, l'interrupteur servant de rappel visuel.
+    usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        // Marqueur d'état pur : la transe ne modifie aucune stat dérivée.
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'danse des lames', activeByDefault: false },
+      },
+    ],
     sourcePage: 150,
   },
   {
@@ -1401,6 +1463,30 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Pour chaque round où le PJ attaque une cible différente de celle du round précédent, il obtient un dé bonus en attaque et un bonus de +1d4° aux DM sur sa première attaque.",
+    richText:
+      "Pour chaque round où le PJ attaque une cible différente de celle du round précédent, il obtient un dé bonus en attaque et un bonus de +{1d4°} aux DM sur sa première attaque.",
+    // PER-74 — le supplément de DM est porté par un interrupteur « volte-face » que le joueur lève sur
+    // les rounds où il change de cible : la fiche ne connaît NI le round NI la cible d'une attaque.
+    // Puce SITUATIONNELLE sur la carte d'attaque au contact, patron de l'épée de lumière.
+    // VERBATIM : le dé bonus en attaque (`attack-bonus` n'accepte pas `requiresActiveEffectIndex` —
+    // il s'appliquerait en permanence) et la restriction « sur sa première attaque ».
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'volte-face', activeByDefault: false },
+      },
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 1, die: 'd4', evolving: true },
+        condition: {
+          attackMode: 'melee',
+          label: 'volte-face (cible différente du round précédent, première attaque)',
+        },
+        requiresActiveEffectIndex: 0,
+        situational: true,
+      },
+    ],
     sourcePage: 150,
   },
 

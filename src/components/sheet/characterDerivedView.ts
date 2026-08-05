@@ -56,6 +56,7 @@ import { rangedReplacingFormAttack, type FormAttackView } from '@/lib/character/
 import type { AbilityId, Weapon } from '@/data/schema';
 import { combineCriticalRanges, formatCriticalRange } from '@/lib/ui/criticalRange';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
+import { weaponIconKindForWeapon, type WeaponIconKind } from '@/lib/ui/weaponKind';
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
@@ -92,10 +93,38 @@ export interface WeaponDamageView {
    * l'affichage passerait de 1d10 à 2d10 sans raison visible. Absent = dé du catalogue tel quel.
    */
   diceNote?: string;
+  /**
+   * PER-116 — sous-type d'icône de l'arme (épée, hache, arc…), pour REMPLACER le nom verbatim
+   * affiché sur la carte d'attaque en combat à deux armes (une main = une icône, au survol le nom
+   * complet). Cf. `weaponKind.ts` / `weaponKindIcons.ts` (icônes choisies pour l'inventaire).
+   */
+  weaponKind: WeaponIconKind;
+  /**
+   * PER-116 — informations FIGÉES de l'arme (indépendantes du personnage), pour l'info-bulle de son
+   * icône : catégorie de prise, plage de critique INTRINSÈQUE (PER-225, ex. rapière 19-20), portée
+   * (armes de jet), règles particulières verbatim. À DISTINGUER des badges déjà affichés sous la
+   * carte (plage de critique EFFECTIVE, cumulée avec les capacités actives) : ici, ce sont les
+   * propriétés propres à l'arme, comme dans sa fiche de catalogue.
+   */
+  weaponInfo: {
+    category: string;
+    criticalRange?: string;
+    range?: string;
+    properties?: string;
+    sourcePage: number;
+  };
 }
 
 /** Ancien nom conservé pour la carte de contact (PER-141). */
 export type MeleeWeaponDamageView = WeaponDamageView;
+
+/** PER-116 — libellés FR des catégories de prise d'arme (p. 184), pour l'info-bulle de l'icône. */
+const WEAPON_CATEGORY_LABELS_FR: Record<Weapon['weaponCategory'], string> = {
+  light: 'légère',
+  oneHand: 'à une main',
+  oneOrTwoHands: 'à une ou deux mains',
+  twoHands: 'à deux mains',
+};
 
 /**
  * Arme tenue en main pour un `mode` d'attaque donné. Sans `slot`, comportement historique : main
@@ -169,12 +198,29 @@ function wornWeaponDamage(
   }
   const bonuses = weaponDamageBonuses(character, mode, item);
   const added = bonuses.addedAbilities.map((b) => b.ability);
+  // PER-116 — infos FIGÉES de l'arme (indépendantes du personnage), pour l'info-bulle de l'icône qui
+  // remplace son nom verbatim sur la carte. Plage de critique INTRINSÈQUE (PER-225) uniquement — la
+  // plage EFFECTIVE (cumulée avec les capacités actives) est déjà affichée en badge sous la carte.
+  const weaponInfo = {
+    category: WEAPON_CATEGORY_LABELS_FR[item.weaponCategory],
+    // Sur une arme, la valeur est un LITTÉRAL fixe (pas de rang → pas de valeur scalante, cf.
+    // `criticalRangeSources`) : le garde `typeof === 'number'` élimine la forme scalante du type
+    // générique `EffectValue`, partagé avec les capacités.
+    ...(item.criticalRange && typeof item.criticalRange.value === 'number'
+      ? { criticalRange: formatCriticalRange(item.criticalRange.scope, item.criticalRange.value).short }
+      : {}),
+    ...(item.range ? { range: item.range } : {}),
+    ...(item.properties ? { properties: item.properties } : {}),
+    sourcePage: item.sourcePage,
+  };
   return {
     dice,
     abilities: [...baseAbilities, ...added],
     flatBonuses: bonuses.addedFlat,
     nonLethal: !!dmg.nonLethal,
     name: item.name,
+    weaponKind: weaponIconKindForWeapon(item),
+    weaponInfo,
     ...(doubledDie
       ? {
           diceNote: `Dé de DM DOUBLÉ par Canon double : ${formatWeaponDamage(

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-danseur-de-guerre",
+  "name": "Recette PER-74 — Danseur de guerre (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du danseur de guerre p. 150) — 7ᵉ voie de la catégorie COMBATTANT. COULEUR PAR FAMILLE : voie COMBATTANT → habillage prestige ROUGE (étoile d’en-tête, liseré métallique des cartes de rang, puces de capacité). L’intro de présentation de la voie a été ajoutée en info-bulle « i » de l’en-tête (verbatim p. 150) — elle manquait en base. Le prérequis affiché n’est pas une condition d’ACCÈS mais d’USAGE (« pour pouvoir utiliser les capacités de cette voie »), et il est désormais MÉCANISÉ (voir plus bas). R4 Vent des lames → ATTAQUE EN FINESSE MÉCANISÉE (même primitive que la Vive attaque du duelliste). Avec l’épée longue en MAIN PRINCIPALE, un sélecteur « à la table » (hors mode édition) propose « AGI en attaque » / « AGI aux DM » / « Aucun » — jamais les deux à la fois, conformément au texte. CETTE recette est livrée sur « AGI aux DM » : sur la carte « Attaque au contact », les DM de l’épée affichent « + AGI (4) » AU LIEU de « + FOR (1) ». Bascule sur « AGI en attaque » → c’est la TOUCHE qui passe sur l’AGI (+3 par rapport à la FOR) et les DM redeviennent FOR. CONTRÔLES NÉGATIFS à l’inventaire : équipe la HACHE ou l’ÉPÉE BÂTARDE en main principale → le sélecteur de finesse doit DISPARAÎTRE (aucune des deux n’est dans l’énumération du livre). Équipe la LANCE (à une main comme à deux mains) ou la VIVELAME (à deux mains) → la finesse doit revenir. ATTENTION « SABRE » : le livre cite un sabre dans cette énumération, mais sa table d’armes (p. 183) n’en contient AUCUN — rien n’a été inventé au catalogue. Un sabre joué à ta table se traite comme une variante d’objet de l’épée longue. R5 Pirouettes → +1 en DEF au rang 5, +2 au rang 8 : ce personnage a les 5 rangs, donc +2 (visible dans la ventilation de la DÉFENSE). ET +5 aux tests de DANSE et d’ACROBATIES, visible dans « Compétences & tests ». R6 Attaque en mouvement (G) → déplacement de 10 m avant ou après une attaque en action limitée : purement tactique, verbatim (l’application ne modélise pas le déplacement). R7 Danse des lames (L) → un INTERRUPTEUR « danse des lames » (éteint par défaut) marque la transe, qui dure « le reste du combat » ; et un COMPTEUR d’un usage rechargé à la RÉCUPÉRATION RAPIDE traduit « il ne peut recommencer avant le prochain combat ». L’attaque gratuite supplémentaire et son dé malus restent en verbatim (la fiche ne modélise pas d’attaque additionnelle), tout comme l’arrêt net par un critique reçu — l’interrupteur sert de rappel visuel, à éteindre à la main. R8 Volte-face → un INTERRUPTEUR « volte-face » à lever sur les rounds où tu changes de cible : allumé, une puce « +1d4° — volte-face (cible différente du round précédent, première attaque) » apparaît sur l’attaque au contact, DM SITUATIONNEL. Le DÉ BONUS en attaque reste en verbatim (la fiche ne connaît ni le round ni la cible, et un bonus d’attaque ne peut pas être conditionné à un interrupteur). NOUVEAU — PLAFOND D’ARMURE DE LA VOIE : la chemise de mailles portée est EXACTEMENT au plafond, tout fonctionne. Enfile la COTTE DE MAILLES de l’inventaire → les 5 rangs de la voie doivent se GRISER avec une notice, et leurs effets DISPARAÎTRE : le +2 en DEF et le +5 en danse/acrobaties s’en vont, le sélecteur de finesse aussi. Retire-la : tout revient. Le guerrier a pourtant le DROIT de porter la cotte (son plafond de profil est la cotte de mailles) — aucun avertissement d’armure trop lourde ne doit apparaître : c’est bien la VOIE qui restreint, pas le profil. CONTRÔLE DE NON-RÉGRESSION : « Vivacité » (voie du combat, +Init) doit rester active en cotte de mailles — seule la voie de prestige est gatée. NOUVEAU — COMBAT À DEUX ARMES SUR LA CARTE D’ATTAQUE (PER-116, p. 215) : ce personnage tient une ÉPÉE LONGUE en main principale et une DAGUE en main secondaire. La carte « Attaque au contact » affiche donc DEUX lignes touche | DM, chacune précédée du nom de son arme (survole le nom : il dit de quelle main il s’agit). Sur CHAQUE ligne, un badge de DÉ MALUS rouge rappelle que « chacune des deux attaques subit un dé malus ». C’est là que se lit enfin la clause du r4 : la ligne de l’épée longue affiche « + AGI (4) », celle de la dague « + FOR (1) » — la finesse ne vaut que pour la main principale. Bascule le sélecteur du r4 sur « AGI en attaque » : les deux TOUCHES divergent alors (la main secondaire est 3 points en dessous, info-bulle à l’appui) et les DM des deux lignes reviennent en FOR. Déséquipe la dague → la carte redevient à UNE ligne, sans nom d’arme ni dé malus : rien ne change pour un personnage à une seule arme. Le dé malus disparaît aussi si tu tiens la MÊME arme des deux mains avec « Combattant héroïque » option Force (exemption p. 73). À SAVOIR : le tiroir de fiche de l’écran de MJ garde l’affichage à une ligne pour l’instant (fichier en cours de modification par une autre session) — aucune régression, juste le nouveau volet en moins de ce côté."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "elfe-sylvain",
+  "classId": "guerrier",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 1,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 2,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 1,
+    "AGI": 4,
+    "CON": 2,
+    "PER": 2,
+    "CHA": 2,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "elfe-sylvain",
+  "featureIds": [
+    "combat-r1",
+    "combat-r2",
+    "combat-r3",
+    "combat-r4",
+    "combat-r5",
+    "prestige-danseur-de-guerre-r4",
+    "prestige-danseur-de-guerre-r5",
+    "prestige-danseur-de-guerre-r6",
+    "prestige-danseur-de-guerre-r7",
+    "prestige-danseur-de-guerre-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {
+    "prestige-danseur-de-guerre-r4": "damage"
+  },
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    },
+    {
+      "itemId": "chemise-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "cotte-de-mailles",
+      "quantity": 1
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1,
+      "worn": {
+        "slot": "offHand"
+      }
+    },
+    {
+      "itemId": "hache",
+      "quantity": 1
+    },
+    {
+      "itemId": "epee-batarde",
+      "quantity": 1
+    },
+    {
+      "itemId": "lance",
+      "quantity": 1
+    },
+    {
+      "itemId": "vivelame",
+      "quantity": 1
+    },
+    {
+      "itemId": "corde-15-m",
+      "quantity": 1
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette danseur de guerre : R4 finesse (épée longue, effectInputs=damage → DM en AGI ; hache/épée bâtarde = contrôles négatifs ; lance et vivelame éligibles) ; R5 +2 DEF (rang 8) + 5 en danse/acrobaties ; R6 verbatim ; R7 interrupteur + compteur 1×/récupération rapide ; R8 interrupteur + puce {1d4°} situationnelle ; PLAFOND D’ARMURE DE VOIE : équiper la cotte de mailles grise les 5 rangs et retire leurs effets.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

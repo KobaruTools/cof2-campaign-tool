@@ -225,6 +225,16 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     if (sessionActive && characterCampaignId) void loadCombat(characterCampaignId);
   }, [sessionActive, characterCampaignId, loadCombat]);
+  // PER-116 — « aller à l'arme » : clic sur l'icône d'arme de la carte d'attaque au contact → déplie
+  // la section Inventaire (si repliée) puis fait défiler jusqu'à la ligne exacte (main principale ou
+  // secondaire). `equipmentJumpNonce` PILOTE `SheetSection.expandSignal` : toute incrémentation
+  // redéclenche la séquence, `equipmentJumpSlot` (lu au moment du dépliage effectif) dit QUELLE ligne.
+  const [equipmentJumpSlot, setEquipmentJumpSlot] = useState<'mainHand' | 'offHand' | null>(null);
+  const [equipmentJumpNonce, setEquipmentJumpNonce] = useState(0);
+  const scrollToEquipmentWeapon = (slot: 'mainHand' | 'offHand') => {
+    setEquipmentJumpSlot(slot);
+    setEquipmentJumpNonce((n) => n + 1);
+  };
   // Édition par bloc : chaque bloc a son propre scope, activable via son crayon.
   const [editingBlocks, setEditingBlocks] = useState<Record<EditBlock, boolean>>(NO_EDIT);
   const allEditing = EDIT_BLOCKS.every((k) => editingBlocks[k]);
@@ -373,6 +383,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       meleeWeaponDamage,
       offHandMeleeWeaponDamage,
       offHandCriticalRanges,
+      offHandTouchDelta,
       twoWeaponPenaltyDie,
       unarmedCriticalRanges,
       rangedWeaponDamage,
@@ -1050,7 +1061,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 meleeWeaponDamage={meleeWeaponDamage}
                 offHandMeleeWeaponDamage={offHandMeleeWeaponDamage}
                 offHandCriticalRanges={offHandCriticalRanges}
+                offHandTouchDelta={offHandTouchDelta}
                 twoWeaponPenaltyDie={twoWeaponPenaltyDie}
+                onScrollToWeapon={scrollToEquipmentWeapon}
                 unarmedCriticalRanges={unarmedCriticalRanges}
                 rangedWeaponDamage={rangedWeaponDamage}
                 meleeSituationalDamage={meleeSituationalDamage}
@@ -1252,6 +1265,19 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             collapsible
             defaultCollapsed
             persistKey="equipment"
+            // PER-116 — dépliage forcé depuis l'icône d'arme de la carte d'attaque (ci-dessous).
+            expandSignal={equipmentJumpNonce}
+            onExpanded={() => {
+              if (!equipmentJumpSlot) return;
+              // Le contenu est garanti visible (animation de dépliage terminée, ou déjà ouvert) mais
+              // pas forcément encore PEINT dans ce frame → un `requestAnimationFrame` avant de mesurer
+              // sa position, sinon `scrollIntoView` peut viser une position pas tout à fait à jour.
+              requestAnimationFrame(() => {
+                document
+                  .getElementById(`equipment-line-${equipmentJumpSlot}`)
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              });
+            }}
             // « Ajouter une monture » (PER-296) a migré ici, à gauche du crayon d'édition, et ne se
             // révèle qu'au SURVOL du bloc inventaire (ou au focus clavier, ou d'emblée sur tactile).
             sx={{

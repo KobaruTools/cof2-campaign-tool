@@ -87,6 +87,15 @@ for (const v of paths) {
     if (!c) err(`[voie ${v.id}] capaciteId inexistante : ${cid}`);
     else if (c.pathId !== v.id) err(`[voie ${v.id}] capacité ${cid} pointe vers voieId=${c.pathId}`);
   }
+  // PER-74 — plafond d'armure porté par la VOIE (danseur de guerre, p. 150) : l'id doit désigner une
+  // ARMURE du catalogue, sans quoi le plafond retomberait silencieusement à « aucune armure » et
+  // désactiverait toutes les capacités de la voie dès qu'une armure est portée.
+  if (v.maxArmorId !== undefined) {
+    const armor = equipmentById.get(v.maxArmorId);
+    if (!armor) err(`[voie ${v.id}] maxArmorId inexistant : ${v.maxArmorId}`);
+    else if (armor.category !== 'armor')
+      err(`[voie ${v.id}] maxArmorId n'est pas une armure : ${v.maxArmorId}`);
+  }
 }
 for (const c of features) {
   const v = pathById.get(c.pathId);
@@ -600,9 +609,12 @@ for (const c of features) {
         if (!item) err(`[capacite ${c.id}] effect: finesse-attack arme inconnue : ${wid}`);
         else if (item.category !== 'weapon' || !item.melee)
           err(`[capacite ${c.id}] effect: finesse-attack twoHandedWeaponIds hors arme de contact : ${wid}`);
-        else if (item.weaponCategory !== 'twoHands')
+        else if (item.weaponCategory !== 'twoHands' && item.weaponCategory !== 'oneOrTwoHands')
           err(`[capacite ${c.id}] effect: finesse-attack twoHandedWeaponIds arme non à deux mains : ${wid}`);
-        if (e.weaponIds.includes(wid))
+        // Doublon INTERDIT pour une arme purement à deux mains (elle n'a rien à faire dans
+        // `weaponIds`), TOLÉRÉ pour une arme `oneOrTwoHands` (lance, danseur de guerre r4, p. 150) :
+        // elle est éligible dans LES DEUX prises, donc légitimement listée des deux côtés.
+        else if (e.weaponIds.includes(wid) && item.weaponCategory !== 'oneOrTwoHands')
           err(`[capacite ${c.id}] effect: finesse-attack arme listée deux fois : ${wid}`);
       }
       if (e.ability === e.replaces)

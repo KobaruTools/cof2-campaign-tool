@@ -612,6 +612,61 @@ export function dualWieldRequiredMessage(): string {
 }
 
 /**
+ * PER-74 — ids des capacités DÉSACTIVÉES parce que l'armure portée dépasse le plafond propre à LEUR
+ * VOIE (`Path.maxArmorId`) : toutes les capacités acquises ET EMPRUNTÉES d'une voie qui fixe une
+ * armure maximale (Voie du danseur de guerre, p. 150 : « Pour pouvoir utiliser les capacités de cette
+ * voie, le personnage ne doit pas porter d'armure plus encombrante qu'une chemise de mailles. »)
+ * quand la DEF MONDAINE de l'armure portée dépasse celle du plafond. Miroir de
+ * `shieldDisabledFeatureIds` (PER-142) : ces ids sont exclus des capacités actives
+ * (`activeFeatureIdsForMods`) — le +1/+2 en DEF et le +5 aux tests des Pirouettes ne comptent plus
+ * tant que l'armure est trop lourde. Réversible : alléger ou retirer l'armure les réactive
+ * AUTOMATIQUEMENT.
+ *
+ * À DISTINGUER de `featureArmorRestrictionViolations`/`armorDisabledFeatureIds` (PER-83/86), qui
+ * appliquent le plafond du PROFIL D'ORIGINE d'une capacité : une voie de prestige n'a pas de profil
+ * d'origine (`path.type !== 'class'`), donc ces modules ne la voient pas. Le bonus magique de
+ * l'armure est ignoré (`wornArmorWorldlyDef`), la restriction portant sur le TYPE d'armure.
+ */
+export function pathArmorDisabledFeatureIds(character: Character, ctx: RulesContext): Set<string> {
+  const disabled = new Set<string>();
+  const wornDef = wornArmorWorldlyDef(character.equipment ?? []);
+  if (wornDef === 0) return disabled; // aucune armure (mondaine) portée → rien à désactiver
+  for (const id of [...character.featureIds, ...borrowedFeatureIds(character)]) {
+    const feature = featureById.get(id);
+    if (!feature) continue;
+    const maxArmorId = ctx.pathById.get(feature.pathId)?.maxArmorId;
+    if (maxArmorId === undefined) continue;
+    if (wornDef > armorCeilingOf(maxArmorId).def) disabled.add(id);
+  }
+  return disabled;
+}
+
+/**
+ * PER-74 — message français prêt à afficher (infobulle / notice) pour une capacité désactivée par une
+ * armure plus lourde que le plafond de SA VOIE (`Path.maxArmorId`). La page de la voie est passée par
+ * l'appelant et rendue en parenthèse AUTONOME → parsée par `PageRefText`/`SourceRef` côté UI.
+ */
+export function pathArmorRequiredMessage(maxArmorName: string, sourcePage: number): string {
+  return `Capacité inutilisable avec l'armure portée : cette voie n'admet pas plus encombrant qu'une ${maxArmorName.toLocaleLowerCase('fr')} — allégez votre armure pour en profiter (p. ${sourcePage}).`;
+}
+
+/**
+ * PER-74 — raisons de désactivation par plafond d'armure de VOIE (`Path.maxArmorId`) → Map id de
+ * capacité → message prêt à afficher. Pendant « rendu » de `pathArmorDisabledFeatureIds`, sur le
+ * patron de `wieldDisabledReasons` : la fiche grise le rang et affiche la notice. Vide si aucune
+ * capacité n'est concernée.
+ */
+export function pathArmorDisabledReasons(character: Character, ctx: RulesContext): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const id of pathArmorDisabledFeatureIds(character, ctx)) {
+    const path = ctx.pathById.get(featureById.get(id)!.pathId)!;
+    const armorName = equipmentById.get(path.maxArmorId!)?.name ?? '';
+    map.set(id, pathArmorRequiredMessage(armorName, path.sourcePage));
+  }
+  return map;
+}
+
+/**
  * PER-74 — la CONDITION D'ARME EN MAIN d'une capacité du flibustier (`Feature.wieldRequirement`) est-elle
  * remplie par l'équipement porté ? `'firearm'` : au moins une arme à poudre en main ; `'firearm-and-melee'` :
  * une arme à poudre EN MAIN (via `wornRangedWeapon`) ET une arme de contact en main (via `wornMeleeWeapon`)

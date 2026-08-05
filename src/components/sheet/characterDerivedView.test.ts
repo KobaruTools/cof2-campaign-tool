@@ -120,6 +120,8 @@ describe('buildCharacterDerivedView', () => {
       flatBonuses: [],
       nonLethal: false,
       name: 'Épée longue',
+      weaponKind: 'sword',
+      weaponInfo: { category: 'à une main', properties: 'Type de DM : tranchants.', sourcePage: 183 },
     });
   });
 
@@ -135,6 +137,14 @@ describe('buildCharacterDerivedView', () => {
       flatBonuses: [],
       nonLethal: false,
       name: 'Arc long',
+      weaponKind: 'bow',
+      weaponInfo: {
+        category: 'à deux mains',
+        range: '50 m',
+        properties:
+          'Type de DM : perforants. Arme tenue à deux mains, nécessite d’avoir une valeur minimale de +1 en FOR.',
+        sourcePage: 185,
+      },
     });
   });
 

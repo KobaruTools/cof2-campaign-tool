@@ -13,6 +13,8 @@
  * livre de base.
  */
 
+import type { ItemIconId } from './item-icons';
+
 /** Numéro de page du livre de base d'où provient l'entité. */
 export type SourcePage = number;
 
@@ -425,6 +427,21 @@ interface PathBase {
    * exemption (toutes les capacités de la voie sont soumises à l'exigence).
    */
   dualWieldExemptFeatureIds?: string[];
+  /**
+   * La voie impose une ARMURE MAXIMALE pour que ses capacités fonctionnent (PER-74) — ex. Voie du
+   * danseur de guerre (p. 150 : « Pour pouvoir utiliser les capacités de cette voie, le personnage
+   * ne doit pas porter d'armure plus encombrante qu'une chemise de mailles. »). Id d'armure du
+   * catalogue fixant le plafond (comparé en DEF MONDAINE, bonus magique exclu — la restriction porte
+   * sur le TYPE d'armure, comme les plafonds de PROFIL, p. 178/188).
+   *
+   * Miroir de `requiresShield` : au-delà du plafond, toutes les capacités acquises de la voie sont
+   * DÉSACTIVÉES (grisées + effets non comptés, cf. `pathArmorDisabledFeatureIds`) ; retirer/alléger
+   * l'armure les réactive AUTOMATIQUEMENT, sans interrupteur manuel. À DISTINGUER des plafonds
+   * portés par le PROFIL d'origine d'une capacité (PER-80/83/86, `maxArmorId` de `CharacterClass`) :
+   * ici la contrainte est portée par LA VOIE, indépendamment du profil du personnage. Absent =
+   * aucune contrainte d'armure propre à la voie.
+   */
+  maxArmorId?: string;
   sourcePage: SourcePage;
 }
 
@@ -1764,6 +1781,11 @@ export interface FinesseAttackEffect {
    * elle-même, pas par la capacité : la vivelame (p. 183) admet la substitution AGI→FOR « s'il
    * maîtrise les armes de contact à deux mains », d'où la condition de MAÎTRISE vérifiée par le
    * résolveur. Absent = aucune arme à deux mains n'ouvre droit à la finesse.
+   *
+   * Une arme `oneOrTwoHands` (lance, danseur de guerre r4, p. 150) peut figurer ICI **et** dans
+   * `weaponIds` : elle est éligible dans les deux prises. Aucune maîtrise n'est alors exigée — la
+   * dérogation de la p. 183 vise les armes qui ne s'emploient QUE à deux mains, pas celles que le
+   * personnage peut de toute façon manier à une main.
    */
   twoHandedWeaponIds?: string[];
   /**
@@ -3567,6 +3589,17 @@ interface EquipmentBase {
   price: Price;
   /** Règles particulières (verbatim), ex. armes en italique p. 184+. */
   properties?: string;
+  /**
+   * SOUS-CATÉGORIE D'ICÔNE de cet objet — purement visuel (aucune règle CO2), mais porté par
+   * la DONNÉE parce que c'est une propriété de l'objet du livre et non de son affichage : une
+   * corde et un grappin sont tous deux de l'« équipement », et rien dans leurs règles ne
+   * permet de les distinguer à l'œil.
+   *
+   * Absent = repli en cascade (cf. `itemIconId`) : sous-type d'arme DÉRIVÉ des règles pour une
+   * arme (`weaponIconKind` — d'où l'inutilité d'annoter les armes une à une), sinon icône du
+   * type d'objet. Une arme peut néanmoins déclarer ce champ pour surcharger sa dérivation.
+   */
+  icon?: ItemIconId;
   sourcePage: SourcePage;
 }
 

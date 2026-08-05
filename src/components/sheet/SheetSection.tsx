@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
@@ -47,6 +47,17 @@ export interface SheetSectionProps {
    */
   persistKey?: string;
   /**
+   * PER-116 — signal de DÉPLIAGE FORCÉ depuis l'extérieur (« aller à l'arme » de la carte
+   * d'attaque → section Inventaire). Toute valeur DIFFÉRENTE de la précédente déplie la section si
+   * elle était repliée (`onExpanded` est alors appelé une fois l'animation terminée) ; si elle
+   * était déjà dépliée, `onExpanded` est appelé aussitôt (rien à animer). N'a d'effet que si
+   * `collapsible`. Un simple compteur incrémenté par l'appelant convient (une valeur identique
+   * répétée ne redéclenche rien).
+   */
+  expandSignal?: number;
+  /** PER-116 — appelé une fois le contenu de la section GARANTI visible après `expandSignal`. */
+  onExpanded?: () => void;
+  /**
    * Onglets COLLÉS EN HAUT du bloc (bandeau pleine largeur, onglets répartis également, intégrés aux
    * border-radius du cadre). Générique : à toute section qui veut faire alterner son contenu entre
    * plusieurs vues (ex. « Mes capacités » / « Manœuvres »). Le bandeau ne s'affiche que si au moins un
@@ -76,6 +87,8 @@ export function SheetSection({
   collapsible = false,
   defaultCollapsed = false,
   persistKey,
+  expandSignal,
+  onExpanded,
   tabs,
   activeTab,
   onTabChange,
@@ -85,6 +98,27 @@ export function SheetSection({
   const isCollapsed = collapsible && collapsed;
   const resolvedAction = typeof action === 'function' ? action(isCollapsed) : action;
   const hasTabs = tabs != null && tabs.length > 0;
+
+  // PER-116 — dépliage forcé (`expandSignal`) : un ref (et non un state) pour ne réagir QU'AU
+  // CHANGEMENT du signal, jamais à une variation de `collapsed` par ailleurs (un simple clic de
+  // l'utilisateur ne doit pas rejouer `onExpanded`). `pendingExpand` mémorise qu'ON a demandé ce
+  // dépliage précis, pour que le callback de fin d'animation du `Collapse` (déclenché aussi par un
+  // dépliage manuel) ne notifie QUE la demande programmatique.
+  const prevExpandSignal = useRef(expandSignal);
+  const pendingExpand = useRef(false);
+  useEffect(() => {
+    if (expandSignal === undefined || expandSignal === prevExpandSignal.current) return;
+    prevExpandSignal.current = expandSignal;
+    if (collapsed) {
+      pendingExpand.current = true;
+      setCollapsed(false);
+      if (persistKey && typeof window !== 'undefined') {
+        window.localStorage.setItem(storageKey(persistKey), 'false');
+      }
+    } else {
+      onExpanded?.();
+    }
+  }, [expandSignal, collapsed, persistKey, onExpanded]);
 
   // Persistance optionnelle : on relit le choix sauvegardé APRÈS le montage (et non à
   // l'initialisation) pour ne pas désynchroniser le rendu serveur/client. Écrase `defaultCollapsed`.
@@ -254,7 +288,14 @@ export function SheetSection({
       {collapsible ? (
         // L'espacement titre→contenu (`pt: 2`) est à l'intérieur du Collapse : il se replie
         // avec le contenu (animation fluide), plus de saut de marge instantané.
-        <Collapse in={!collapsed}>
+        <Collapse
+          in={!collapsed}
+          onEntered={() => {
+            if (!pendingExpand.current) return;
+            pendingExpand.current = false;
+            onExpanded?.();
+          }}
+        >
           <Box sx={{ pt: 2 }}>{children}</Box>
         </Collapse>
       ) : (

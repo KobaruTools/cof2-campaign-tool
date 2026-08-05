@@ -21,7 +21,16 @@ import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseB
 import { UnarmedStrikeBadges } from '@/components/sheet/UnarmedStrikeBadges';
 import { WeaponDamageExpr, NoWeaponHint } from '@/components/sheet/WeaponDamageExpr';
 import { WeaponDamageBonusBadge } from '@/components/sheet/WeaponDamageBonusBadge';
+import ButtonBase from '@mui/material/ButtonBase';
+import { ItemTypeIcon } from '@/components/ItemTypeIcon';
+import { PageRefText, SourceRef } from '@/components/SourceRef';
+import { GlossaryText } from '@/components/sheet/FeatureRichText';
+import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
+import { AttackQualifierBadge } from '@/components/sheet/AttackQualifierBadge';
+import { referenceById } from '@/data/reference';
+import { WEAPON_KIND_ICON_PATHS } from '@/lib/ui/weaponKindIcons';
 import type { MeleeWeaponDamageView } from '@/components/sheet/characterDerivedView';
+import type { WeaponIconKind } from '@/lib/ui/weaponKind';
 import type { SituationalDamageBonus } from '@/lib/character/weaponDamageBonus';
 
 type MeleeMode = 'weapon' | 'unarmed';
@@ -46,6 +55,126 @@ interface AttackRow {
   touchDelta: number;
   /** Explication de l'écart de touche, en info-bulle. `null` si aucun écart. */
   touchNote: string | null;
+  /** PER-116 — main portant cette ligne, pour « aller à l'arme » dans l'inventaire. `null` hors combat à deux armes. */
+  slot: 'mainHand' | 'offHand' | null;
+  /** PER-116 — sous-type d'icône de l'arme (remplace son nom verbatim). `null` hors combat à deux armes. */
+  weaponKind: WeaponIconKind | null;
+}
+
+/**
+ * Icône « mains nues » cerclée, MÊME gabarit que `<DerivedStatIcon>` (cercle + bordure + SVG à 58%) :
+ * remplace l'épée de l'en-tête « Attaque au contact » quand la bascule est sur les mains nues. Réutilise
+ * le poing ganté du sous-type d'arme `unarmed` (`weaponKindIcons.ts`) — même famille d'icônes
+ * (game-icons.net) que l'épée qu'elle remplace, pour un rendu cohérent.
+ */
+function UnarmedAttackIcon({ size = 40 }: { size?: number }) {
+  return (
+    <Box
+      role="img"
+      aria-label="Attaque à mains nues"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        border: '2px solid',
+        borderColor: 'currentColor',
+        color: 'currentColor',
+      }}
+    >
+      <Box
+        component="svg"
+        viewBox="0 0 512 512"
+        sx={{ width: '58%', height: '58%', fill: 'currentColor' }}
+        dangerouslySetInnerHTML={{ __html: WEAPON_KIND_ICON_PATHS.unarmed }}
+      />
+    </Box>
+  );
+}
+
+/** PER-116 — contenu de l'info-bulle de l'icône d'une arme (propriétés FIGÉES, indépendantes du personnage). */
+function WeaponIconTooltip({
+  name,
+  handLabel,
+  info,
+}: {
+  name: string;
+  handLabel: string | null;
+  info: MeleeWeaponDamageView['weaponInfo'];
+}) {
+  return (
+    <Box sx={{ maxWidth: 260 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+        {name}
+        {handLabel && (
+          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+            ({handLabel})
+          </Typography>
+        )}
+      </Typography>
+      <Typography variant="caption" sx={{ display: 'block' }}>
+        Arme {info.category}
+        {info.criticalRange && ` · Critique ${info.criticalRange}`}
+        {info.range && ` · Portée ${info.range}`}
+      </Typography>
+      {info.properties && (
+        <Typography variant="caption" sx={{ display: 'block', mt: 0.25 }}>
+          <GlossaryText>{info.properties}</GlossaryText>
+        </Typography>
+      )}
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+        <PageRefText>{`(p. ${info.sourcePage})`}</PageRefText>
+      </Typography>
+    </Box>
+  );
+}
+
+/**
+ * PER-116 — badge « Combat à deux armes » (teinte `info`, comme les autres qualificatifs d'attaque) :
+ * rappelle qu'attaquer avec une arme dans chaque main est une ACTION LIMITÉE, avec ses restrictions
+ * (dé malus, main faible ≤ 1d6 DM), dans l'espace resté libre entre le titre de la carte et les deux
+ * lignes d'attaque. Verbatim SOURCÉ SUR L'AIDE-MÉMOIRE (`combat-a-deux-armes`, PER-39/40) — une seule
+ * saisie du texte, jamais dupliquée. `penaltyDie` false → l'exemption Combattant héroïque (p. 73) est
+ * mentionnée en plus, car elle change RÉELLEMENT la mécanique pour CE personnage.
+ */
+function TwoWeaponCombatBadge({ penaltyDie }: { penaltyDie: boolean }) {
+  const entry = referenceById.get('combat-a-deux-armes');
+  // Garde-fou pur (jamais atteint en usage normal) : l'entrée d'aide-mémoire pourrait être renommée
+  // sans que ce fichier, distant, s'en aperçoive — mieux vaut un badge absent qu'une erreur de rendu.
+  if (!entry || entry.kind !== 'text') return null;
+  return (
+    <AttackQualifierBadge
+      color="info"
+      icon={<ActionMarkerHex marker="L" size={18} />}
+      label="Combat à deux armes"
+      tooltip={
+        <Box sx={{ minWidth: 220, maxWidth: 280 }}>
+          <Typography
+            variant="body2"
+            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.75, fontWeight: 600 }}
+          >
+            <ActionMarkerHex marker="L" size={18} />
+            Action limitée
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 0.75 }}>
+            <GlossaryText>{entry.body}</GlossaryText>
+          </Typography>
+          {!penaltyDie && (
+            <Typography variant="body2" sx={{ mb: 0.75 }}>
+              <GlossaryText>
+                Combattant héroïque (option FOR) : attaquer avec la même arme dans la main secondaire
+                ne subit pas de dé malus.
+              </GlossaryText>
+            </Typography>
+          )}
+          <SourceRef page={entry.sourcePage} />
+        </Box>
+      }
+    />
+  );
 }
 
 /** Contenu d'un cadre (arme ou mains nues) : titre, valeur(s) de touche, DM, badges. */
@@ -66,6 +195,7 @@ function Face({
   attackBonusDie,
   attackMalusDie,
   twoWeaponPenaltyDie,
+  onScrollToWeapon,
 }: {
   mode: MeleeMode;
   touch: number | null;
@@ -83,6 +213,7 @@ function Face({
   attackBonusDie: AttackBonusDie[];
   attackMalusDie: string[];
   twoWeaponPenaltyDie: boolean;
+  onScrollToWeapon?: (slot: 'mainHand' | 'offHand') => void;
 }) {
   const title = mode === 'weapon' ? 'Attaque au contact (arme)' : 'Attaque au contact (mains)';
   const unarmedDice = `${unarmed.damage.count}${unarmed.damage.die}${unarmed.evolving ? '°' : ''}`;
@@ -104,6 +235,8 @@ function Face({
           wrap: true,
           touchDelta: 0,
           touchNote: null,
+          slot: 'mainHand',
+          weaponKind: meleeWeaponDamage?.weaponKind ?? null,
         },
         {
           key: 'offHand',
@@ -116,6 +249,8 @@ function Face({
             offHandTouchDelta !== 0
               ? "Attaque en finesse réservée à la main principale : cette main garde sa caractéristique d'origine."
               : null,
+          slot: 'offHand',
+          weaponKind: offHandMeleeWeaponDamage.weaponKind,
         },
       ]
     : [
@@ -127,6 +262,8 @@ function Face({
           wrap: true,
           touchDelta: 0,
           touchNote: null,
+          slot: null,
+          weaponKind: null,
         },
       ];
 
@@ -226,15 +363,29 @@ function Face({
       {(() => {
         const weaponLine = (row: AttackRow) => (
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            {row.weaponName && (
-              <AppTooltip title={row.handLabel ?? ''}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ minWidth: 0, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'help' }}
-                >
-                  {row.weaponName}
-                </Typography>
+            {/* PER-116 — icône du sous-type d'arme À LA PLACE du nom verbatim (illisible en combat à
+                deux armes) : survol → infos figées de l'arme ; clic → défile jusqu'à sa ligne
+                d'inventaire (déplie la section si repliée). Sans `onScrollToWeapon` (récap du
+                wizard, écran de MJ), l'icône reste affichée mais non cliquable. */}
+            {row.weaponName && row.weaponKind && row.damage && (
+              <AppTooltip
+                title={
+                  <WeaponIconTooltip name={row.weaponName} handLabel={row.handLabel} info={row.damage.weaponInfo} />
+                }
+              >
+                {onScrollToWeapon && row.slot ? (
+                  <ButtonBase
+                    onClick={() => onScrollToWeapon(row.slot!)}
+                    aria-label={`Aller à ${row.weaponName} dans l'inventaire`}
+                    sx={{ borderRadius: '50%', p: 0.25, color: 'text.secondary' }}
+                  >
+                    <ItemTypeIcon type="weapon" weaponKind={row.weaponKind} size={20} />
+                  </ButtonBase>
+                ) : (
+                  <Box sx={{ display: 'inline-flex', color: 'text.secondary', cursor: 'help' }}>
+                    <ItemTypeIcon type="weapon" weaponKind={row.weaponKind} size={20} />
+                  </Box>
+                )}
               </AppTooltip>
             )}
             {touchCell(row)}
@@ -247,11 +398,22 @@ function Face({
             {/* En-tête : icône ANCRÉE EN HAUT + titre SEUL. Hors combat à deux armes, la ligne unique
                 reste juste en dessous, à côté de l'icône (affichage historique inchangé). */}
             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, width: '100%' }}>
-              <DerivedStatIcon statId="meleeAttack" title size={40} />
+              {mode === 'weapon' ? (
+                <DerivedStatIcon statId="meleeAttack" title size={40} />
+              ) : (
+                <UnarmedAttackIcon />
+              )}
               <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
                   {title}
                 </Typography>
+                {/* PER-116 — badge dans l'espace resté libre entre le titre et les deux lignes d'arme
+                    (l'icône ne descend que sur 40px). */}
+                {dualWielding && (
+                  <Box sx={{ mt: 0.5 }}>
+                    <TwoWeaponCombatBadge penaltyDie={twoWeaponPenaltyDie} />
+                  </Box>
+                )}
                 {!dualWielding && weaponLine(rows[0])}
               </Box>
             </Box>
@@ -345,6 +507,12 @@ export interface MeleeAttackCardProps {
    * lignes. Faux quand « Combattant héroïque » exempte (même arme dans les deux mains, p. 73).
    */
   twoWeaponPenaltyDie?: boolean;
+  /**
+   * PER-116 — clic sur l'icône d'une arme (combat à deux armes) : fait défiler la fiche jusqu'à SA
+   * ligne d'inventaire (et déplie la section Inventaire si repliée). Absent = icônes non cliquables
+   * (récap du wizard, écran de MJ).
+   */
+  onScrollToWeapon?: (slot: 'mainHand' | 'offHand') => void;
 }
 
 /**
@@ -382,6 +550,7 @@ export function MeleeAttackCard({
   attackBonusDie = [],
   attackMalusDie = [],
   twoWeaponPenaltyDie = false,
+  onScrollToWeapon,
 }: MeleeAttackCardProps) {
   const [mode, setMode] = useState<MeleeMode>(meleeWeaponDamage ? 'weapon' : 'unarmed');
   const swap = () => setMode((m) => (m === 'weapon' ? 'unarmed' : 'weapon'));
@@ -402,6 +571,7 @@ export function MeleeAttackCard({
     attackBonusDie,
     attackMalusDie,
     twoWeaponPenaltyDie,
+    onScrollToWeapon,
   };
 
   // Chaque cadre est en position ABSOLUE : il ne contribue PAS à la hauteur de la pile. C'est un
@@ -435,8 +605,9 @@ export function MeleeAttackCard({
         overflow: 'visible',
       }}
     >
-      {/* Bouton d'échange, en haut à gauche : icône de l'état COURANT (épée = arme / main = mains nues),
-          remplacée par des flèches circulaires qui tournent au survol. */}
+      {/* Bouton d'échange, en haut à gauche : icône de la DESTINATION (épée = passer en arme / main =
+          passer aux mains nues) — le gros cercle montre déjà l'état courant —, remplacée par des
+          flèches circulaires qui tournent au survol. */}
       <AppTooltip title={mode === 'weapon' ? 'Voir l’attaque à mains nues' : 'Voir l’attaque avec l’arme'}>
         <IconButton
           size="small"
@@ -467,7 +638,9 @@ export function MeleeAttackCard({
                 transition: 'opacity 180ms ease',
               }}
             >
-              {mode === 'weapon' ? <SwordGlyph /> : <FrontHandIcon sx={{ fontSize: 20 }} />}
+              {/* Icône de la DESTINATION (pas l'état courant, déjà montré par le gros cercle) : cohérent
+                  avec le tooltip, qui annonce déjà « voir X » — cliquer montre ce qu'on va VOIR. */}
+              {mode === 'weapon' ? <FrontHandIcon sx={{ fontSize: 20 }} /> : <SwordGlyph />}
             </Box>
             <AutorenewIcon
               className="mn-swap"
