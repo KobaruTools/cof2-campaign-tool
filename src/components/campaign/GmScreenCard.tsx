@@ -35,8 +35,11 @@ import { CharacterPreviewCard } from '@/components/CharacterPreviewCard';
 import { CompactDerivedStats } from '@/components/sheet/CompactDerivedStats';
 import { CompactGauges, COMPACT_GAUGES_STRIP_HEIGHT } from '@/components/sheet/CompactGauges';
 import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
+import { ArmorPenaltyReminder } from '@/components/campaign/ArmorPenaltyReminder';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
 import { deriveStats } from '@/lib/engine';
+import { armorEncumbrancePenalty, wornArmorItemLabel } from '@/lib/character/equipment';
+import { armorPenaltyDivisor } from '@/lib/character/effects';
 import { profileAccentGradient } from '@/lib/ui/classColors';
 import type { Character } from '@/lib/character/types';
 
@@ -60,6 +63,11 @@ export function GmScreenCard({ character, playerName, href, panelHref }: GmScree
   const gaugeMaxHp = stats ? character.overrides.maxHp ?? stats.maxHp : null;
   const gaugeManaMax = stats ? character.overrides.manaPoints ?? stats.manaPoints : null;
   const gaugeLuckMax = stats ? character.overrides.luckPoints ?? stats.luckPoints : 0;
+  // Malus d'armure (PER-210), calculé avec la MÊME fonction que la fiche : `armorEncumbrancePenalty`
+  // + diviseur d'Armure sur mesure (`modFeatureIds` déjà résolu par la vue partagée). Le MJ garde ce
+  // rappel d'application sous les yeux sans ouvrir la fiche ; 0 = aucune armure gênante → pas de rappel.
+  const armorPenalty = armorEncumbrancePenalty(character.equipment, armorPenaltyDivisor(view.modFeatureIds));
+  const armorLabel = wornArmorItemLabel(character.equipment);
   return (
     <Paper
       sx={{
@@ -148,6 +156,13 @@ export function GmScreenCard({ character, playerName, href, panelHref }: GmScree
               meleeCriticalRanges={view.meleeCriticalRanges}
               rangedCriticalRanges={view.rangedCriticalRanges}
             />
+          </Box>
+        )}
+        {/* Rappel MJ du malus d'armure (PER-210) : bloc interactif (infobulle) réactivé, comme les
+            statistiques dérivées, pour que le survol donne le verbatim + la source sans ouvrir la fiche. */}
+        {armorPenalty > 0 && (
+          <Box sx={{ pointerEvents: 'auto' }}>
+            <ArmorPenaltyReminder penalty={armorPenalty} armorLabel={armorLabel} />
           </Box>
         )}
       </Stack>

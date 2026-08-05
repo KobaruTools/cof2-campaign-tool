@@ -385,6 +385,23 @@ export function armorEncumbrancePenalty(equipment: EquipmentLine[], divisor = 1)
 }
 
 /**
+ * Nom de l'armure PORTÉE retenue par `armorEncumbrancePenalty` (la première du catalogue,
+ * au plus une, p. 188), pour l'AFFICHAGE d'un rappel (« Cotte de mailles ») — l'Écran MJ
+ * (PER-210) accole le nom de l'armure au malus. Même sélection exacte que le calcul du malus,
+ * pour ne jamais nommer une armure autre que celle qui impose le malus. `null` = aucune armure
+ * portée (ou objet personnalisé, stats inconnues → ignoré comme dans le calcul).
+ */
+export function wornArmorItemLabel(equipment: EquipmentLine[]): string | null {
+  for (const line of equipment) {
+    if (isCustomItem(line) || line.worn?.slot !== 'armor') continue;
+    const item = effectiveItem(line);
+    if (item?.category !== 'armor') continue;
+    return item.name;
+  }
+  return null;
+}
+
+/**
  * Ids (catalogue `armors`) des armures LOURDES au sens des capacités (« plaque ou plaque
  * complète », p. 84) : `armure-de-plaques` (DEF +6) et `plaque-complete` (DEF +7). Notion
  * de RÈGLE (« armure lourde »), distincte du plafond de PORT (PER-80) et du malus (PER-209).
