@@ -118,6 +118,18 @@ describe('répartition des blocs de l’aide-mémoire en colonnes (PER-311)', ()
       subsectionWeight(group('long', [textEntry('x', 10)])),
     );
   });
+
+  /**
+   * Le poids doit estimer la hauteur REPLIÉE (2ᵉ passe PER-311) : une entrée au verbatim énorme mais
+   * à l'effet court d'une ligne n'occupe qu'une ligne au repos. Compter `body` remplissait une
+   * colonne de vide en face des sous-sections bavardes.
+   */
+  it('se règle sur l’effet court affiché, pas sur le verbatim replié', () => {
+    const bavarde = group('bavarde', [
+      { ...textEntry('x', 1), body: 'y'.repeat(4000) } as ReferenceEntry,
+    ]);
+    expect(subsectionWeight(bavarde)).toBe(subsectionWeight(group('sobre', [textEntry('x', 1)])));
+  });
 });
 
 describe('découpe du verbatim en paragraphes (PER-311)', () => {

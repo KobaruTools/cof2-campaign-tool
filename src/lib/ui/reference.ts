@@ -120,9 +120,14 @@ export function splitVerbatimParagraphs(body: string): string[] {
  * peut pas mesurer la hauteur réelle avant le rendu, et une mesure DOM rendrait la répartition
  * dépendante du navigateur (donc intestable et instable au redimensionnement).
  *
- * Une entrée de texte coûte son titre plus une ligne par tranche de `CHARS_PER_LINE` caractères
- * affichés (verbatim + mécanique de résolution) ; une ligne de tableau coûte une ligne, plus
- * l'en-tête. `PANEL_OVERHEAD` couvre le bandeau de titre et les marges du panneau lui-même.
+ * On estime la hauteur AU REPOS, c'est-à-dire REPLIÉE : depuis la 2ᵉ passe de PER-311, une entrée de
+ * texte qui a du volume n'affiche que son `shortEffect` d'une ligne, son verbatim restant sous le
+ * chevron. Compter `body` ici gonflerait le poids des sous-sections bavardes (Dégâts, Magie) et
+ * laisserait une colonne à moitié vide en face — c'est le `shortEffect` affiché qui fait la hauteur.
+ * Une entrée non repliable a de toute façon `body` égal à `shortEffect`.
+ *
+ * Une ligne de tableau coûte une ligne, plus l'en-tête — un tableau reste toujours entièrement
+ * visible. `PANEL_OVERHEAD` couvre le bandeau de titre et les marges du panneau lui-même.
  */
 const CHARS_PER_LINE = 64;
 const PANEL_OVERHEAD = 3;
@@ -131,8 +136,7 @@ export function subsectionWeight(group: ReferenceSubsectionGroup): number {
   let weight = PANEL_OVERHEAD;
   for (const entry of group.entries) {
     if (entry.kind === 'text') {
-      const chars = entry.body.length + (entry.test?.length ?? 0);
-      weight += 1 + Math.ceil(chars / CHARS_PER_LINE);
+      weight += 1 + Math.ceil((entry.title.length + entry.shortEffect.length) / CHARS_PER_LINE);
     } else {
       weight += 2 + entry.rows.length + (entry.note ? 1 : 0);
     }

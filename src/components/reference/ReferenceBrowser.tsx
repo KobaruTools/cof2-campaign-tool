@@ -16,10 +16,13 @@
  *     règles (`referenceStyle.ts`, teintes reprises des palettes existantes — pas de système parallèle) ;
  *   • ces panneaux répartis sur DEUX COLONNES à partir de `lg` (`splitReferenceColumns`, pur et testé),
  *     une seule en dessous ;
- *   • TOUT EST DÉPLIÉ : plus aucun accordéon (décision proprio 2026-08-05). Une entrée de texte est
- *     une AMORCE en gras coloré suivie de son verbatim — le point d'entrée visuel du PDF — et non plus
- *     une carte à chevron. On n'affiche donc que `body` (le verbatim), jamais `shortEffect` en plus :
- *     l'aperçu compact n'a de sens que là où le verbatim est caché (badge de fiche, résumé replié).
+ *   • une entrée de texte est une AMORCE en gras coloré (le point d'entrée visuel du PDF), REPLIABLE
+ *     dès qu'elle a du volume à cacher : repliée elle tient sur une ligne (`shortEffect`), dépliée
+ *     elle montre le verbatim (`body`). Ce qui est déjà compact ne se replie PAS — les entrées dont
+ *     le verbatim n'ajoute rien à l'effet court (les 10 états préjudiciables) et TOUS les tableaux,
+ *     denses par nature. Cf. `TextEntryRow` pour le critère exact.
+ *   • recherche et onglets sont COLLÉS sous l'en-tête global : on change d'onglet ou de recherche
+ *     sans remonter, même au bas d'une page longue.
  *   • PARCOURS (recherche vide) : l'onglet (`?s=`) choisit la section rendue, sous-section par
  *     sous-section ; le sommaire saute d'un bloc à l'autre ;
  *   • RECHERCHE (recherche non vide) : liste À PLAT des entrées correspondantes, toutes sections
@@ -48,9 +51,11 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import ClearIcon from '@mui/icons-material/Clear';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import Box from '@mui/material/Box';
+import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -270,31 +275,80 @@ export function ReferenceBrowser() {
   }, [activeSection, searching, columnCount]);
 
   /**
-   * Bouton flottant « Haut de page » — LE MÊME que sur la fiche de personnage
-   * (`<ScrollToTopButton/>`), révélé par le même genre de sentinelle : ici la barre de recherche,
-   * qui coiffe la page, tient le rôle de la ligne d'identité de la fiche. Le `rootMargin` négatif
-   * (≈ hauteur des deux étages de la barre collée depuis PER-239) déclenche pile quand elle
-   * disparaît derrière le sous-header, et non seulement quand elle sort du viewport.
+   * HAUTEUR VIVE de la barre collée (recherche + onglets). Le sommaire, les ancres et la sentinelle
+   * en dépendent, et elle n'est PAS constante : la ligne « N entrées correspondantes » n'apparaît
+   * qu'en recherche, et les onglets peuvent passer sur deux lignes en étroit. Mesurée plutôt que
+   * devinée — une valeur en dur ferait atterrir les ancres partagées à côté dès qu'elle change.
    */
-  const searchBarRef = useRef<HTMLDivElement>(null);
-  const [scrolledPastHeader, setScrolledPastHeader] = useState(false);
+  const stickyRef = useRef<HTMLDivElement>(null);
+  const [stickyHeight, setStickyHeight] = useState(0);
   useEffect(() => {
-    const el = searchBarRef.current;
+    const el = stickyRef.current;
     if (el == null) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setScrolledPastHeader(!entry.isIntersecting),
-      { rootMargin: '-104px 0px 0px 0px', threshold: 0 },
-    );
+    const observer = new ResizeObserver(() => setStickyHeight(el.offsetHeight));
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
+  /**
+   * Hauteur de l'en-tête global collé (`AppHeader`, `position: sticky` en haut) : barre d'outils
+   * (`minHeight` 44/48) + fil d'Ariane (30/34), filet compris. `AppHeader` n'en exporte pas de
+   * constante et appartient à un autre périmètre — on la redit ici, au plus près de son usage.
+   */
+  const smUp = useMediaQuery((t: Theme) => t.breakpoints.up('sm'));
+  const appHeaderHeight = smUp ? 83 : 75;
+  /** Sous quoi tout doit se glisser : en-tête global + barre collée de la page. */
+  const stuckHeight = appHeaderHeight + stickyHeight;
+
+  /**
+   * Bouton flottant « Haut de page » — LE MÊME que sur la fiche de personnage
+   * (`<ScrollToTopButton/>`), révélé par une sentinelle plate placée JUSTE SOUS la barre collée.
+   * Ce ne peut plus être la barre de recherche elle-même : collée, elle ne quitte jamais le viewport,
+   * donc elle resterait éternellement « visible » et le bouton n'apparaîtrait jamais.
+   */
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [scrolledPastHeader, setScrolledPastHeader] = useState(false);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (el == null) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setScrolledPastHeader(!entry.isIntersecting),
+      { rootMargin: `-${stuckHeight}px 0px 0px 0px`, threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [stuckHeight]);
+
   return (
    <ReferenceVerbatimContext.Provider value={verbatim}>
     <Stack spacing={2}>
+      {/* BARRE COLLÉE (PER-311, 2ᵉ passe) : recherche + onglets restent accessibles pendant tout le
+          défilement — sur une page longue, devoir remonter pour changer d'onglet est le geste qui
+          casse la consultation en pleine partie. Elle se cale SOUS l'en-tête global, lui aussi collé.
+
+          Fond opaque et `zIndex` : le contenu doit passer DERRIÈRE, pas transparaître entre les deux
+          panneaux. Les marges négatives élargissent ce fond jusqu'aux bords du conteneur, sinon on
+          verrait le contenu défiler dans les gouttières de part et d'autre. */}
+      <Box
+        ref={stickyRef}
+        sx={{
+          position: 'sticky',
+          top: `${appHeaderHeight}px`,
+          zIndex: 3,
+          mx: { xs: -2, sm: -3 },
+          px: { xs: 2, sm: 3 },
+          pt: 1,
+          pb: 1.5,
+          bgcolor: 'rgba(8, 8, 10, 0.86)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        }}
+      >
+      <Stack spacing={1.5}>
       {/* Barre de recherche plein texte (titre + mots-clés + verbatim + cellules de table),
           avec à droite la bascule « Texte d'origine ». */}
-      <Box ref={searchBarRef} sx={{ ...panelSx, p: 1.5 }}>
+      <Box sx={{ ...panelSx, p: 1.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <TextField
             fullWidth
@@ -367,6 +421,12 @@ export function ReferenceBrowser() {
           })}
         </Tabs>
       </Box>
+      </Stack>
+      </Box>
+
+      {/* Sentinelle plate du bouton « Haut de page » : elle, contrairement à la barre collée,
+          disparaît bel et bien sous l'en-tête quand on défile. */}
+      <Box ref={sentinelRef} sx={{ height: 0, mt: '0 !important' }} aria-hidden />
 
       <Box
         sx={{
@@ -387,8 +447,9 @@ export function ReferenceBrowser() {
               ...panelSx,
               p: 1,
               position: { md: 'sticky' },
-              top: { md: 96 },
-              maxHeight: { md: 'calc(100vh - 120px)' },
+              // Sous la barre collée (recherche + onglets), pas seulement sous l'en-tête global.
+              top: { md: `${stuckHeight + 16}px` },
+              maxHeight: { md: `calc(100vh - ${stuckHeight + 32}px)` },
               overflowY: 'auto',
             }}
           >
@@ -465,7 +526,12 @@ export function ReferenceBrowser() {
                       {group.label}
                     </Typography>
                   )}
-                  <SubsectionColumns subsections={group.subsections} columnCount={columnCount} />
+                  <SubsectionColumns
+                    subsections={group.subsections}
+                    columnCount={columnCount}
+                    expandEntries={searching}
+                    scrollMarginTop={stuckHeight + 12}
+                  />
                 </Box>
               ))}
             </Stack>
@@ -493,9 +559,13 @@ export function ReferenceBrowser() {
 function SubsectionColumns({
   subsections,
   columnCount,
+  expandEntries,
+  scrollMarginTop,
 }: {
   subsections: ReferenceSubsectionGroup[];
   columnCount: number;
+  expandEntries: boolean;
+  scrollMarginTop: number;
 }) {
   const columns = splitReferenceColumns(subsections, columnCount);
   return (
@@ -510,7 +580,12 @@ function SubsectionColumns({
       {columns.map((column, i) => (
         <Stack key={i} spacing={2} sx={{ minWidth: 0 }}>
           {column.map((sub) => (
-            <SubsectionPanel key={sub.subsection} group={sub} />
+            <SubsectionPanel
+              key={sub.subsection}
+              group={sub}
+              expandEntries={expandEntries}
+              scrollMarginTop={scrollMarginTop}
+            />
           ))}
         </Stack>
       ))}
@@ -527,14 +602,24 @@ function SubsectionColumns({
  * bandeau, et dégradé d'extinction sur toute sa hauteur (cf. `referenceStyle.ts`). Ses entrées sont
  * séparées par un simple filet, sans carte imbriquée : c'est ce qui fait la densité du PDF.
  */
-function SubsectionPanel({ group }: { group: ReferenceSubsectionGroup }) {
+function SubsectionPanel({
+  group,
+  expandEntries,
+  scrollMarginTop,
+}: {
+  group: ReferenceSubsectionGroup;
+  expandEntries: boolean;
+  scrollMarginTop: number;
+}) {
   const accent = subsectionAccentText(group.subsection);
   return (
     <Box
       id={subsectionAnchorId(group.subsection)}
       sx={{
         ...panelSx,
-        scrollMarginTop: '112px',
+        // Dégage l'en-tête global ET la barre collée : sans ça, sauter à une ancre partagée
+        // amènerait le bandeau du panneau juste DERRIÈRE les onglets.
+        scrollMarginTop: `${scrollMarginTop}px`,
         overflow: 'hidden',
         backgroundImage: subsectionPanelGradient(group.subsection),
       }}
@@ -561,7 +646,14 @@ function SubsectionPanel({ group }: { group: ReferenceSubsectionGroup }) {
       >
         {group.entries.map((entry) =>
           entry.kind === 'text' ? (
-            <TextEntryRow key={entry.id} entry={entry} accent={accent} />
+            // Clé indexée sur le MODE : bascule parcours ⇄ recherche = on réapplique l'état déplié
+            // par défaut. Elle ne dépend PAS du texte cherché, donc pas de remontage à chaque frappe.
+            <TextEntryRow
+              key={`${entry.id}:${expandEntries}`}
+              entry={entry}
+              accent={accent}
+              defaultExpanded={expandEntries}
+            />
           ) : (
             <TableEntryRow key={entry.id} entry={entry} accent={accent} />
           ),
@@ -572,17 +664,22 @@ function SubsectionPanel({ group }: { group: ReferenceSubsectionGroup }) {
 }
 
 /**
- * Entrée de texte en AMORCE : « **Sprinter (L) :** courir en ligne droite… », le point d'entrée
- * visuel du PDF de référence. Plus d'accordéon (décision proprio) — donc plus de résumé à afficher :
- * on rend directement `body`, le VERBATIM du livre, et pas `shortEffect` en plus (ce serait la même
- * règle écrite deux fois de suite). Le renvoi de page suit le texte, en fin d'amorce.
+ * Le VERBATIM d'une entrée, en paragraphes : l'amorce colorée coiffe le premier, le renvoi de page
+ * ferme le dernier. Une règle d'une seule phrase (les 10 états) retombe sur un unique paragraphe.
+ * `lead` porte le titre en gras coloré — omis quand le titre est déjà affiché par l'en-tête repliable.
  */
-function TextEntryRow({ entry, accent }: { entry: ReferenceTextEntry; accent: string }) {
-  // Verbatim découpé en paragraphes : l'amorce colorée coiffe le premier, le renvoi de page ferme
-  // le dernier. Une règle d'une seule phrase (les 10 états) retombe sur un unique paragraphe.
+function VerbatimParagraphs({
+  entry,
+  accent,
+  lead,
+}: {
+  entry: ReferenceTextEntry;
+  accent: string;
+  lead: boolean;
+}) {
   const paragraphs = splitVerbatimParagraphs(entry.body);
   return (
-    <Box sx={{ py: 1 }}>
+    <>
       {paragraphs.map((paragraph, i) => (
         <Typography
           key={i}
@@ -590,7 +687,7 @@ function TextEntryRow({ entry, accent }: { entry: ReferenceTextEntry; accent: st
           component="div"
           sx={{ color: 'text.primary', whiteSpace: 'pre-line', mt: i === 0 ? 0 : 0.75 }}
         >
-          {i === 0 && (
+          {i === 0 && lead && (
             <Box component="span" sx={{ fontWeight: 700, color: accent }}>
               {entry.title}&nbsp;:{' '}
             </Box>
@@ -602,6 +699,97 @@ function TextEntryRow({ entry, accent }: { entry: ReferenceTextEntry; accent: st
         </Typography>
       ))}
       {entry.test && <TestBullet accent={accent}>{entry.test}</TestBullet>}
+    </>
+  );
+}
+
+/**
+ * Entrée de texte, REPLIABLE quand elle a de quoi (PER-311, 2ᵉ passe — retour proprio : « le PDF
+ * était ultra condensé, et c'était bien pratique »).
+ *
+ * Ce qui est repliable, et ce qui ne l'est pas, suit la CONSIGNE du proprio : on ne replie que ce
+ * qui a réellement du volume à cacher. Le critère tombe tout seul du modèle de données — `shortEffect`
+ * est par contrat « l'effet en UNE ligne » et `body` le verbatim complet :
+ *   • `body` n'apporte rien de plus que `shortEffect` et pas de `test` → RIEN à replier, l'entrée
+ *     reste à plat (c'est le cas des 10 états préjudiciables, « bien en l'état » d'après le proprio) ;
+ *   • sinon → en-tête d'une ligne (titre + `shortEffect`) et verbatim replié dessous.
+ * Les entrées `table` ne passent jamais par ici : un tableau est déjà dense, il reste toujours visible.
+ *
+ * Replié par défaut en parcours (c'est tout l'intérêt), déplié en recherche — on vient de demander
+ * cette règle, la cacher derrière un chevron serait absurde.
+ *
+ * Pas d'`Accordion` MUI : ses gabarits (48 px de hauteur minimale, gouttières) ruineraient justement
+ * la densité recherchée. En-tête cliquable maison + `Collapse`, à la façon des autres blocs de l'app.
+ */
+function TextEntryRow({
+  entry,
+  accent,
+  defaultExpanded,
+}: {
+  entry: ReferenceTextEntry;
+  accent: string;
+  defaultExpanded: boolean;
+}) {
+  const preview = entry.shortEffect.trim();
+  const collapsible = entry.body.trim() !== preview || Boolean(entry.test);
+  const [open, setOpen] = useState(defaultExpanded);
+
+  if (!collapsible) {
+    return (
+      <Box sx={{ py: 0.75 }}>
+        <VerbatimParagraphs entry={entry} accent={accent} lead />
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ py: 0.25 }}>
+      <Box
+        component="button"
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        sx={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 0.5,
+          width: '100%',
+          px: 0,
+          py: 0.5,
+          border: 0,
+          bgcolor: 'transparent',
+          color: 'inherit',
+          font: 'inherit',
+          textAlign: 'left',
+          cursor: 'pointer',
+          borderRadius: 1,
+          '&:hover': { bgcolor: alpha(accent, 0.08) },
+        }}
+      >
+        <ExpandMoreIcon
+          sx={{
+            fontSize: 18,
+            mt: '1px',
+            flexShrink: 0,
+            color: accent,
+            transition: 'transform 150ms',
+            transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+          }}
+        />
+        <Typography variant="body2" component="div" sx={{ color: 'text.secondary', minWidth: 0 }}>
+          <Box component="span" sx={{ fontWeight: 700, color: accent }}>
+            {entry.title}
+            {open ? '' : ' : '}
+          </Box>
+          {/* Aperçu d'une ligne uniquement quand c'est replié : déplié, le verbatim le répéterait. */}
+          {!open && <RuleText>{preview}</RuleText>}
+        </Typography>
+      </Box>
+      <Collapse in={open} unmountOnExit>
+        <Box sx={{ pl: 2.75, pb: 0.75 }}>
+          <VerbatimParagraphs entry={entry} accent={accent} lead={false} />
+        </Box>
+      </Collapse>
     </Box>
   );
 }
