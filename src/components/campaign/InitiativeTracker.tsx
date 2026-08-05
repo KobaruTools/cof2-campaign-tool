@@ -39,9 +39,9 @@
  * (croix JAUNE + tourbillon d'étourdissement). Réservé aux créatures : un personnage à 0 PV est à
  * terre / mourant (p. 220), pas mort.
  *
- * ÉTATS DÉDUITS EN PROJECTION : « affaibli » (1 PV, p. 220) est montré à la table pour les créatures
- * du camp ALLIÉ seulement. Le masquage protège le secret des PV d'un ADVERSAIRE ; pour un allié, la
- * même information est utile aux joueurs.
+ * ÉTATS DÉDUITS EN PROJECTION : « affaibli » (1 PV, p. 220) est montré à la table pour tout le CAMP
+ * DES JOUEURS — personnages ET créatures alliées. Le masquage protège le seul secret des PV d'un
+ * ADVERSAIRE ; du côté des joueurs, la barre de vie est déjà projetée et l'information est utile.
  *
  * RELÉGATION EN FIN DE BANDE (PER-302), écran de MJ uniquement : un combat qui s'étire ne doit pas
  * obliger le MJ à défiler à travers les cadavres pour atteindre les vivants. Les cartes hors du
@@ -1780,11 +1780,11 @@ function CombatantColumn({
   // gauche. AUCUNE place réservée (pas de padding) → le bloc garde EXACTEMENT la même taille qu'il
   // porte des états ou non, donc tous les blocs restent alignés quel que soit leur nombre d'états.
   // Projection : les états POSÉS par le MJ sont toujours montrés ; un état DÉDUIT (`origin: 'auto'`,
-  // aujourd'hui le seul étant « affaibli » à 1 PV, p. 220) ne l'est que si la créature est du camp
-  // ALLIÉ. Le motif du masquage est le secret des PV d'un ADVERSAIRE — montrer « affaibli » dirait à
-  // la table qu'il est pile à 1 PV. Un allié n'a rien à cacher aux joueurs, et savoir que le PNJ qui
-  // les accompagne ne tient plus qu'à un point leur est directement utile.
-  const revealAutoStatuses = row.side === 'ally';
+  // aujourd'hui le seul étant « affaibli » à 1 PV, p. 220) l'est pour tout le CAMP DES JOUEURS —
+  // personnages ET créatures alliées. Le motif du masquage est le secret des PV d'un ADVERSAIRE :
+  // montrer « affaibli » dirait à la table qu'il est pile à 1 PV. Le camp des joueurs, lui, n'a rien à
+  // se cacher (sa barre de vie est déjà projetée) et savoir qui ne tient plus qu'à un point compte.
+  const revealAutoStatuses = !row.isCreature || row.side === 'ally';
   const projectionStatuses = projection
     ? (row.appliedStatuses ?? []).filter((s) => revealAutoStatuses || s.origin !== 'auto')
     : [];
