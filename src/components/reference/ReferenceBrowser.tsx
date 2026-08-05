@@ -6,12 +6,19 @@
  * poisons / encombrement…). Aucune mutation, aucun état de jeu, AUCUNE dépendance au modèle
  * `Character` ni au moteur : on ne consomme que les DONNÉES de règles.
  *
- * Disposition : barre de recherche plein texte en haut ; en dessous, table des matières (sections →
- * sous-sections) à gauche, contenu à droite. Deux modes :
- *   • PARCOURS (recherche vide) : la sous-section choisie dans le sommaire pilote le contenu d'UNE
- *     section (choisie via `?s=`), rendu sous-section par sous-section ;
+ * Disposition : barre de recherche plein texte en haut ; en dessous, un ONGLET par section (Combat /
+ * Résolution / Environnement), et sous les onglets la table des matières — limitée aux sous-sections
+ * de l'onglet courant — à gauche, le contenu à droite. Deux modes :
+ *   • PARCOURS (recherche vide) : l'onglet (`?s=`) choisit la section rendue, sous-section par
+ *     sous-section ; le sommaire saute d'un bloc à l'autre ;
  *   • RECHERCHE (recherche non vide) : liste À PLAT des entrées correspondantes, toutes sections
  *     confondues, groupées par section/sous-section — pour retrouver n'importe quelle règle vite.
+ *     Aucun onglet n'est alors sélectionné : les onglets restent la porte de sortie vers le parcours.
+ *
+ * URL PARTAGEABLE (deux niveaux) : `?s=<section>` désigne l'onglet, et l'ANCRE `#<sous-section>`
+ * désigne le bloc — `/reference?s=combat#maneuvers` ouvre l'onglet Combat sur les manœuvres. Onglets
+ * et sommaire sont de VRAIES ancres (`component={NextLink}`), composées par les seuls
+ * `referenceSectionHref` / `referenceSubsectionHref` / `subsectionAnchorId`.
  *
  * Rendu à la densité « page dédiée » du schéma : entrées `text` en accordéon (aperçu `shortEffect`
  * replié, `body` VERBATIM déplié, `test` en puce distincte) ; entrées `table` en tableau traversable.
@@ -25,7 +32,7 @@
  * une page de référence générique.
  */
 
-import { createContext, useContext, useMemo, useRef } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -39,6 +46,8 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -60,9 +69,13 @@ import {
   SECTION_ORDER,
   groupReferenceEntries,
   isReferenceSection,
+  referenceSectionHref,
+  referenceSubsectionHref,
+  subsectionAnchorId,
   type ReferenceSectionGroup,
 } from '@/lib/ui/reference';
 import { usePersistedState } from '@/lib/ui/usePersistedState';
+import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { SourceRef } from '@/components/SourceRef';
 import { GlossaryText } from '@/components/sheet/FeatureRichText';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -196,20 +209,61 @@ export function ReferenceBrowser() {
     [groups],
   );
 
-  // Ancres des blocs de sous-section, pour le saut depuis le sommaire (parcours uniquement).
-  const subRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const activeGroup = allGroups.find((g) => g.section === activeSection);
+
+  /**
+   * Saut vers un bloc de sous-section (parcours uniquement) : les liens du sommaire portent déjà
+   * l'ancre dans leur `href` — c'est ce qui rend l'URL partageable — mais ils désactivent le saut
+   * brutal du navigateur (`scroll={false}`) pour glisser en douceur jusqu'au bloc.
+   */
   const jumpToSubsection = (subsection: string) => {
-    subRefs.current.get(subsection)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document
+      .getElementById(subsectionAnchorId(subsection))
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const activeGroup = allGroups.find((g) => g.section === activeSection);
+  /**
+   * Ancre demandée par l'URL au chargement (`/reference?s=combat#maneuvers`) ou après un changement
+   * d'onglet : on amène le bloc à l'écran une fois le contenu rendu. Sans ancre (clic sur un onglet),
+   * on remonte en haut — les liens désactivent le défilement de Next (`scroll={false}`), sinon on
+   * arriverait au milieu de la nouvelle section. Un clic dans le sommaire ne repasse PAS ici (ni
+   * `activeSection` ni `searching` ne changent) : pas de double défilement. Une ancre qui ne
+   * correspond à aucun bloc de l'onglet courant est simplement ignorée.
+   */
+  useEffect(() => {
+    if (searching) return;
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    const target = id ? document.getElementById(id) : null;
+    if (target) target.scrollIntoView({ block: 'start' });
+    else if (!id) window.scrollTo({ top: 0 });
+  }, [activeSection, searching]);
+
+  /**
+   * Bouton flottant « Haut de page » — LE MÊME que sur la fiche de personnage
+   * (`<ScrollToTopButton/>`), révélé par le même genre de sentinelle : ici la barre de recherche,
+   * qui coiffe la page, tient le rôle de la ligne d'identité de la fiche. Le `rootMargin` négatif
+   * (≈ hauteur des deux étages de la barre collée depuis PER-239) déclenche pile quand elle
+   * disparaît derrière le sous-header, et non seulement quand elle sort du viewport.
+   */
+  const searchBarRef = useRef<HTMLDivElement>(null);
+  const [scrolledPastHeader, setScrolledPastHeader] = useState(false);
+  useEffect(() => {
+    const el = searchBarRef.current;
+    if (el == null) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setScrolledPastHeader(!entry.isIntersecting),
+      { rootMargin: '-104px 0px 0px 0px', threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
    <ReferenceVerbatimContext.Provider value={verbatim}>
     <Stack spacing={2}>
       {/* Barre de recherche plein texte (titre + mots-clés + verbatim + cellules de table),
           avec à droite la bascule « Texte d'origine ». */}
-      <Box sx={{ ...panelSx, p: 1.5 }}>
+      <Box ref={searchBarRef} sx={{ ...panelSx, p: 1.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <TextField
             fullWidth
@@ -250,6 +304,39 @@ export function ReferenceBrowser() {
         )}
       </Box>
 
+      {/* Onglets de section : la navigation de premier niveau. Chaque onglet est une VRAIE ancre
+          (`?s=…`, donc Ctrl/⌘+Clic et partage possibles) qui efface la recherche pour repasser en
+          parcours. En recherche, aucun onglet n'est sélectionné (`value={false}`) : les résultats
+          couvrent toutes les sections, un onglet allumé mentirait. */}
+      <Box sx={{ ...panelSx, px: { xs: 0.5, sm: 1 } }}>
+        <Tabs
+          value={searching ? false : activeSection}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          // Onglets-liens : MUI recommande `role="navigation"` quand les onglets sont des ancres.
+          role="navigation"
+          aria-label="Sections de l’aide-mémoire"
+        >
+          {SECTION_ORDER.map((section) => {
+            const group = allGroups.find((g) => g.section === section);
+            if (!group) return null;
+            return (
+              <Tab
+                key={section}
+                value={section}
+                label={group.label}
+                component={NextLink}
+                href={referenceSectionHref(section)}
+                scroll={false}
+                onClick={() => setQuery('')}
+                sx={{ textTransform: 'none', fontWeight: 700, minHeight: 48 }}
+              />
+            );
+          })}
+        </Tabs>
+      </Box>
+
       <Box
         sx={{
           display: 'grid',
@@ -258,12 +345,13 @@ export function ReferenceBrowser() {
           alignItems: 'start',
         }}
       >
-        {/* Sommaire : sections (vraies ancres `?s=`) ; la section active déploie ses sous-sections
-            (sauts internes). Masqué en recherche (le contenu passe à plat). */}
-        {!searching && (
+        {/* Sommaire de l'ONGLET COURANT : ses sous-sections, et rien d'autre (les autres sections
+            sont à un onglet de là). Chaque entrée est une vraie ancre `?s=…#…` — partageable — dont
+            le clic glisse jusqu'au bloc. Masqué en recherche (le contenu passe à plat). */}
+        {!searching && activeGroup && (
           <Box
             component="nav"
-            aria-label="Sommaire de l’aide-mémoire"
+            aria-label={`Sommaire — ${activeGroup.label}`}
             sx={{
               ...panelSx,
               p: 1,
@@ -273,68 +361,43 @@ export function ReferenceBrowser() {
               overflowY: 'auto',
             }}
           >
-            <Stack spacing={0.5}>
-              {SECTION_ORDER.map((section) => {
-                const group = allGroups.find((g) => g.section === section);
-                if (!group) return null;
-                const active = section === activeSection;
-                return (
-                  <Box key={section}>
-                    {/* Vraie ancre de navigation (mémoire : nav via Link/href). Sélectionner une
-                        section efface la recherche pour repasser en mode parcours. */}
-                    <Box
-                      component={NextLink}
-                      href={`/reference?s=${section}`}
-                      scroll={false}
-                      onClick={() => setQuery('')}
-                      sx={{
-                        display: 'block',
-                        px: 1.25,
-                        py: 0.75,
-                        borderRadius: 1,
-                        textDecoration: 'none',
-                        fontWeight: 700,
-                        color: active ? 'primary.light' : 'text.primary',
-                        bgcolor: active ? (t) => alpha(t.palette.primary.main, 0.14) : 'transparent',
-                        '&:hover': {
-                          bgcolor: (t) => alpha(t.palette.primary.main, active ? 0.14 : 0.08),
-                        },
-                      }}
-                    >
-                      {group.label}
-                    </Box>
-                    {active && (
-                      <Stack sx={{ mt: 0.25, mb: 0.5 }}>
-                        {group.subsections.map((sub) => (
-                          <Box
-                            key={sub.subsection}
-                            component="button"
-                            type="button"
-                            onClick={() => jumpToSubsection(sub.subsection)}
-                            sx={{
-                              textAlign: 'left',
-                              border: 0,
-                              background: 'none',
-                              cursor: 'pointer',
-                              color: 'text.secondary',
-                              font: 'inherit',
-                              fontSize: '0.85rem',
-                              px: 1.25,
-                              py: 0.4,
-                              ml: 1,
-                              borderLeft: '2px solid',
-                              borderLeftColor: 'rgba(255, 255, 255, 0.12)',
-                              '&:hover': { color: 'text.primary', borderLeftColor: 'primary.main' },
-                            }}
-                          >
-                            {sub.label}
-                          </Box>
-                        ))}
-                      </Stack>
-                    )}
-                  </Box>
-                );
-              })}
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                px: 1.25,
+                py: 0.5,
+                fontWeight: 700,
+                letterSpacing: 0.5,
+                textTransform: 'uppercase',
+                color: 'text.secondary',
+              }}
+            >
+              Sur cette page
+            </Typography>
+            <Stack>
+              {activeGroup.subsections.map((sub) => (
+                <Box
+                  key={sub.subsection}
+                  component={NextLink}
+                  href={referenceSubsectionHref(activeSection, sub.subsection)}
+                  scroll={false}
+                  onClick={() => jumpToSubsection(sub.subsection)}
+                  sx={{
+                    textAlign: 'left',
+                    textDecoration: 'none',
+                    color: 'text.secondary',
+                    fontSize: '0.9rem',
+                    px: 1.25,
+                    py: 0.5,
+                    borderLeft: '2px solid',
+                    borderLeftColor: 'rgba(255, 255, 255, 0.12)',
+                    '&:hover': { color: 'text.primary', borderLeftColor: 'primary.main' },
+                  }}
+                >
+                  {sub.label}
+                </Box>
+              ))}
             </Stack>
           </Box>
         )}
@@ -353,7 +416,7 @@ export function ReferenceBrowser() {
               {(searching ? groups : activeGroup ? [activeGroup] : []).map((group) => (
                 <Box key={group.section}>
                   {/* En mode recherche seulement : un intertitre de section coiffe ses sous-sections
-                      (en parcours, la section est déjà annoncée par le fil d'Ariane + le sommaire). */}
+                      (en parcours, la section est déjà annoncée par l'onglet actif + le sommaire). */}
                   {searching && (
                     <Typography
                       variant="h6"
@@ -364,11 +427,11 @@ export function ReferenceBrowser() {
                   )}
                   <Stack spacing={searching ? 2 : 3}>
                     {group.subsections.map((sub) => (
+                      // `id` = l'ancre partageable du bloc (`#maneuvers`) : cible des liens du
+                      // sommaire et du saut au chargement. `scrollMarginTop` dégage l'en-tête collé.
                       <Box
                         key={sub.subsection}
-                        ref={(el: HTMLDivElement | null) => {
-                          subRefs.current.set(sub.subsection, el);
-                        }}
+                        id={subsectionAnchorId(sub.subsection)}
                         sx={{ scrollMarginTop: '112px' }}
                       >
                         <Typography
@@ -405,6 +468,10 @@ export function ReferenceBrowser() {
           )}
         </Box>
       </Box>
+
+      {/* Bouton flottant « Haut de page », révélé dès que la barre de recherche passe sous la barre
+          d'application. Ancré bas-droite, SOUS la pile de toasts (cf. z-index du composant). */}
+      <ScrollToTopButton visible={scrolledPastHeader} />
     </Stack>
    </ReferenceVerbatimContext.Provider>
   );

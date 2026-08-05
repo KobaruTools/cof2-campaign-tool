@@ -98,3 +98,27 @@ export function groupReferenceEntries(entries: ReferenceEntry[]): ReferenceSecti
 export function isReferenceSection(v: unknown): v is ReferenceSection {
   return v === 'combat' || v === 'resolution' || v === 'environment';
 }
+
+/**
+ * ANCRES PARTAGEABLES de l'aide-mémoire. La page est découpée en ONGLETS de section (`?s=combat`) ;
+ * à l'intérieur d'un onglet, chaque bloc de sous-section porte une ancre DOM (`#maneuvers`), de sorte
+ * qu'une URL désigne un point précis du référentiel : `/reference?s=combat#maneuvers`.
+ *
+ * Le slug de sous-section suffit comme `id` : les slugs livrés sont uniques toutes sections
+ * confondues (garanti par `reference.test.ts`). Ces trois fonctions sont le chokepoint unique — l'`id`
+ * posé sur le bloc ET la cible des liens du sommaire en sortent — donc si une extraction future
+ * réutilisait un slug dans deux sections, seul `subsectionAnchorId` changerait.
+ */
+export function subsectionAnchorId(subsection: string): string {
+  return subsection;
+}
+
+/** Chemin de l'onglet d'une section (URL partageable, sans ancre). */
+export function referenceSectionHref(section: ReferenceSection): string {
+  return `/reference?s=${section}`;
+}
+
+/** Chemin d'un bloc de sous-section : onglet de section + ancre du bloc. */
+export function referenceSubsectionHref(section: ReferenceSection, subsection: string): string {
+  return `${referenceSectionHref(section)}#${subsectionAnchorId(subsection)}`;
+}
