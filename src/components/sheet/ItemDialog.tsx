@@ -18,6 +18,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
@@ -28,6 +29,7 @@ import {
   type AbilityId,
   type DamageDie,
   type EquipmentItem,
+  type ResistibleDamageType,
   type WeaponCategory,
   type WeaponDamage,
 } from '@/data/schema';
@@ -38,8 +40,20 @@ import type {
   ItemDerivedStatId,
   ItemTestTarget,
   ItemType,
+  MagicProperty,
+  MagicPropertyKind,
 } from '@/lib/character/types';
 import { ITEM_DERIVED_STAT_IDS, isCustomItem } from '@/lib/character/types';
+import {
+  MAGIC_DEFENSE_PROPERTY_KINDS,
+  MAGIC_PROPERTY_RULES,
+  MAGIC_WEAPON_PROPERTY_KINDS,
+  magicItemValue,
+  magicLevel,
+  normalizeMagicProperty,
+  propertyMagicLevel,
+} from '@/lib/character/magicItem';
+import { DAMAGE_TYPE_LABEL } from '@/lib/ui/damageTypeLabels';
 import {
   ITEM_TYPE_ORDER,
   effectiveItem,
@@ -385,6 +399,214 @@ function BonusRows<Id extends string>({
   );
 }
 
+/** Substances (éléments) proposées pour Élément / Résistance (p. 251/253). */
+const MAGIC_SUBSTANCES: ResistibleDamageType[] = ['fire', 'cold', 'lightning', 'acid', 'poison'];
+
+/** Exemples de catégories de Fléau (p. 251, LISTE OUVERTE) — suggestions, saisie libre. */
+const BANE_CATEGORY_SUGGESTIONS = [
+  'morts-vivants',
+  'dragons',
+  'géants',
+  'goblinoïdes',
+  'démons',
+  'animaux',
+  'lycanthropes',
+  'élémentaires',
+  'lanceurs de sorts',
+];
+
+/**
+ * Éditeur des PROPRIÉTÉS SPÉCIALES d'un objet magique (PER-306), par lignes. `kinds` restreint
+ * les propriétés proposées à une famille (armes p. 251-252 ou défense p. 253-254). Chaque ligne
+ * affiche des champs contextuels selon la propriété (catégorie de Fléau, substance, points de
+ * Résistance, bonus de Parade, niveau de Défense), une case « Doublée » (p. 251/254), et un rappel
+ * du niveau de magie apporté avec le texte de règle verbatim en infobulle. Contrairement aux
+ * `BonusRows`, une même propriété peut se répéter (deux éléments, deux Fléaux…).
+ */
+function MagicPropertyRows({
+  kinds,
+  title,
+  addLabel,
+  rows,
+  onChange,
+}: {
+  kinds: readonly MagicPropertyKind[];
+  title: string;
+  addLabel: string;
+  rows: MagicProperty[];
+  onChange: (rows: MagicProperty[]) => void;
+}) {
+  const setRow = (index: number, next: Partial<MagicProperty>) =>
+    onChange(rows.map((r, i) => (i === index ? { ...r, ...next } : r)));
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+        {title}
+      </Typography>
+      <Stack spacing={1}>
+        {rows.map((row, i) => {
+          const rule = MAGIC_PROPERTY_RULES[row.kind];
+          const level = propertyMagicLevel(row);
+          return (
+            <Stack
+              // Les propriétés ne sont ni réordonnables ni dédupliquées : la clé d'index suffit,
+              // chaque ligne étant entièrement pilotée par `rows`.
+              key={i}
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}
+            >
+              <TextField
+                select
+                size="small"
+                label="Propriété"
+                value={row.kind}
+                onChange={(e) => setRow(i, { kind: e.target.value as MagicPropertyKind })}
+                sx={{ flex: '1 1 180px', minWidth: 150 }}
+              >
+                {kinds.map((k) => (
+                  <MenuItem key={k} value={k}>
+                    {MAGIC_PROPERTY_RULES[k].name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {/* Fléau : catégorie de créatures (liste ouverte, saisie libre + suggestions). */}
+              {row.kind === 'bane' && (
+                <Autocomplete
+                  freeSolo
+                  size="small"
+                  options={BANE_CATEGORY_SUGGESTIONS}
+                  value={row.creatureCategory ?? ''}
+                  onInputChange={(_, v) => setRow(i, { creatureCategory: v })}
+                  sx={{ flex: '1 1 200px', minWidth: 160 }}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Catégorie de créatures" placeholder="ex. démons" />
+                  )}
+                />
+              )}
+
+              {/* Élément / Résistance : substance concernée. */}
+              {(row.kind === 'elemental' || row.kind === 'resistance') && (
+                <TextField
+                  select
+                  size="small"
+                  label="Substance"
+                  value={row.substance ?? ''}
+                  onChange={(e) =>
+                    setRow(i, {
+                      substance: (e.target.value || undefined) as ResistibleDamageType | undefined,
+                    })
+                  }
+                  sx={{ flex: '1 1 130px', minWidth: 120 }}
+                >
+                  {MAGIC_SUBSTANCES.map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {DAMAGE_TYPE_LABEL[s] ?? s}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+
+              {/* Résistance : X points retranchés. */}
+              {row.kind === 'resistance' && (
+                <TextField
+                  type="number"
+                  size="small"
+                  label="Points (X)"
+                  value={row.amount != null ? String(row.amount) : ''}
+                  onChange={(e) =>
+                    setRow(i, {
+                      amount:
+                        e.target.value === ''
+                          ? undefined
+                          : Math.max(0, Math.floor(Number(e.target.value) || 0)),
+                    })
+                  }
+                  sx={{ width: 110 }}
+                  slotProps={{ htmlInput: { min: 0 } }}
+                />
+              )}
+
+              {/* Parade : bonus de DEF offert (= son niveau de magie). */}
+              {row.kind === 'parry' && (
+                <TextField
+                  type="number"
+                  size="small"
+                  label="Bonus de DEF"
+                  value={row.defBonus != null ? String(row.defBonus) : ''}
+                  onChange={(e) =>
+                    setRow(i, {
+                      defBonus:
+                        e.target.value === ''
+                          ? undefined
+                          : Math.max(0, Math.floor(Number(e.target.value) || 0)),
+                    })
+                  }
+                  sx={{ width: 120 }}
+                  slotProps={{ htmlInput: { min: 0 } }}
+                />
+              )}
+
+              {/* Défense : simple (RD 2, +1) ou supérieure (RD 4, +2). */}
+              {row.kind === 'defense' && (
+                <TextField
+                  select
+                  size="small"
+                  label="Niveau"
+                  value={row.tier === 2 ? 2 : 1}
+                  onChange={(e) => setRow(i, { tier: Number(e.target.value) === 2 ? 2 : 1 })}
+                  sx={{ flex: '1 1 190px', minWidth: 160 }}
+                >
+                  <MenuItem value={1}>Défense (RD 2)</MenuItem>
+                  <MenuItem value={2}>Défense supérieure (RD 4)</MenuItem>
+                </TextField>
+              )}
+
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={row.doubled === true}
+                    onChange={(e) => setRow(i, { doubled: e.target.checked ? true : undefined })}
+                  />
+                }
+                label="Doublée"
+              />
+
+              {/* Rappel du niveau de magie apporté + texte de règle verbatim en infobulle. */}
+              <Tooltip title={rule.verbatim} disableInteractive>
+                <Box
+                  component="span"
+                  sx={{ fontSize: '0.75rem', color: 'text.secondary', cursor: 'help', whiteSpace: 'nowrap' }}
+                >
+                  niv.&nbsp;+{level} (p.&nbsp;{rule.sourcePage})
+                </Box>
+              </Tooltip>
+
+              <IconButton
+                size="small"
+                aria-label="Retirer cette propriété"
+                onClick={() => onChange(rows.filter((_, j) => j !== i))}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          );
+        })}
+      </Stack>
+      <Button
+        size="small"
+        startIcon={<AddIcon />}
+        onClick={() => onChange([...rows, { kind: kinds[0] }])}
+        sx={{ textTransform: 'none', mt: rows.length ? 1 : 0 }}
+      >
+        {addLabel}
+      </Button>
+    </Box>
+  );
+}
+
 /** État de formulaire mutualisé (les champs sans rapport avec le type sont ignorés). */
 /**
  * Séparateur de section du formulaire d'objet : un trait horizontal, titré quand la section n'a
@@ -418,6 +640,10 @@ interface FormState {
   def: string;
   maxAgi: string; // vide = pas de plafond (null)
   magicDef: string; // bonus de DEF magique, tout type d'objet (PER-85 généralisé)
+  /** Bonus magique +N d'une ARME (PER-306) : +N attaque/DM, câblé en PER-307. Vide/0 = aucun. */
+  magicBonus: string;
+  /** Propriétés spéciales d'objet magique (PER-306) : Affûtée, Fléau, Élément, Défense… */
+  magicProperties: MagicProperty[];
   /** Apports de caractéristiques en lignes (PER-272), tout type d'objet. */
   abilityBonuses: BonusRow<AbilityId>[];
   /** Apports de statistiques dérivées en lignes (PER-273), tout type d'objet. */
@@ -442,6 +668,8 @@ const EMPTY_FORM: FormState = {
   def: '',
   maxAgi: '',
   magicDef: '',
+  magicBonus: '',
+  magicProperties: [],
   abilityBonuses: [],
   derivedBonuses: [],
   testBonuses: [],
@@ -493,6 +721,8 @@ function formFromLine(line: EquipmentLine): FormState {
       description: line.details ?? '',
       icon: line.icon ?? null,
       magicDef: line.magicDef ? String(line.magicDef) : '',
+      magicBonus: line.magicBonus ? String(line.magicBonus) : '',
+      magicProperties: line.magicProperties ? line.magicProperties.map((p) => ({ ...p })) : [],
       abilityBonuses: rowsFromBonuses(ABILITY_IDS, line.abilityBonuses),
       derivedBonuses: rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses),
       testBonuses: rowsFromBonuses(ITEM_TEST_TARGET_IDS, line.testBonuses),
@@ -522,6 +752,8 @@ function formFromLine(line: EquipmentLine): FormState {
   // catalogue) ; celle d'une variante de matériel passe déjà par `effectiveItem`.
   base.description = line.overrides?.description ?? (item?.category === 'gear' ? item.description ?? '' : '');
   base.magicDef = line.magicDef ? String(line.magicDef) : '';
+  base.magicBonus = line.magicBonus ? String(line.magicBonus) : '';
+  base.magicProperties = line.magicProperties ? line.magicProperties.map((p) => ({ ...p })) : [];
   base.abilityBonuses = rowsFromBonuses(ABILITY_IDS, line.abilityBonuses);
   base.derivedBonuses = rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses);
   base.testBonuses = rowsFromBonuses(ITEM_TEST_TARGET_IDS, line.testBonuses);
@@ -607,6 +839,14 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
     // Bonus de DEF magique (PER-85 généralisé) : saisissable sur N'IMPORTE QUEL type
     // d'objet (armure de corps, mais aussi accessoire enchanté — bottes, cape…).
     const magic = Math.max(0, Number(form.magicDef) || 0);
+    // Bonus magique +N d'ARME (PER-306, p. 251) : +N en attaque et aux DM (câblé en PER-307).
+    // Réservé aux armes — un objet défensif porte son +N par `magicDef` ci-dessus. Écrit
+    // seulement s'il est positif et que le type est une arme.
+    const magicBonus = type === 'weapon' ? Math.max(0, Number(form.magicBonus) || 0) : 0;
+    // Propriétés spéciales (PER-306, p. 251-254) : normalisées (paramètres orphelins retirés).
+    // Le champ n'est écrit que s'il reste au moins une propriété.
+    const normalizedProps = form.magicProperties.map(normalizeMagicProperty);
+    const magicProperties = normalizedProps.length > 0 ? normalizedProps : undefined;
     // Apports de caractéristiques (PER-272) : mêmes règles pour une variante mécanique et pour
     // un objet libre — l'apport est une propriété de l'INSTANCE, pas du catalogue.
     const abilityBonuses = bonusesFromRows(form.abilityBonuses);
@@ -676,6 +916,8 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         ...carriedRefState,
         overrides,
         ...(magic > 0 ? { magicDef: magic } : {}),
+        ...(magicBonus > 0 ? { magicBonus } : {}),
+        ...(magicProperties ? { magicProperties } : {}),
         ...(abilityBonuses ? { abilityBonuses } : {}),
         ...(derivedBonuses ? { derivedBonuses } : {}),
         ...(testBonuses ? { testBonuses } : {}),
@@ -693,6 +935,8 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         ...(form.icon && form.icon !== type ? { icon: form.icon } : {}),
         details: form.description.trim() || undefined,
         ...(magic > 0 ? { magicDef: magic } : {}),
+        ...(magicBonus > 0 ? { magicBonus } : {}),
+        ...(magicProperties ? { magicProperties } : {}),
         ...(abilityBonuses ? { abilityBonuses } : {}),
         ...(derivedBonuses ? { derivedBonuses } : {}),
         ...(testBonuses ? { testBonuses } : {}),
@@ -904,9 +1148,24 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                   intitulé, d'où des séparateurs sans titre entre eux. */}
               <SectionDivider label="Enchantement" />
 
+              {/* Bonus magique +N d'ARME (PER-306, p. 251) : « un bonus en attaque et aux
+                  dommages ». Réservé aux armes — pour un objet défensif, c'est la DEF magique
+                  ci-dessous qui porte le +N. Les effets sont câblés au ticket suivant (PER-307). */}
+              {type === 'weapon' && (
+                <SignedNumberField
+                  size="small"
+                  label="Bonus magique (+N)"
+                  value={Math.max(0, Math.floor(Number(form.magicBonus) || 0))}
+                  onChange={(v) => setField('magicBonus', v > 0 ? String(v) : '')}
+                  containerSx={{ maxWidth: 200 }}
+                />
+              )}
+
               {/* Bonus de DEF MAGIQUE (PER-85 généralisé) : disponible sur TOUT type d'objet
                   (armure, mais aussi bottes/cape/anneau enchantés). Se cumule dans la DEF
-                  totale quand l'objet est porté, hors surcoût de mana des sorts en armure. */}
+                  totale quand l'objet est porté, hors surcoût de mana des sorts en armure. Pour
+                  un objet magique de défense, c'est aussi ce +N qui compte dans le niveau de
+                  magie (p. 253). */}
               <TextField
                 type="number"
                 size="small"
@@ -917,6 +1176,39 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 onChange={(e) => setField('magicDef', e.target.value)}
                 sx={{ maxWidth: 320 }}
               />
+
+              {/* Propriétés spéciales (PER-306, p. 251-254) : famille ARME pour une arme,
+                  famille DÉFENSE pour tout le reste (armure, bouclier, mais aussi accessoires
+                  enchantés — cape de protection, anneau…). Effets câblés en PER-307. */}
+              <MagicPropertyRows
+                kinds={type === 'weapon' ? MAGIC_WEAPON_PROPERTY_KINDS : MAGIC_DEFENSE_PROPERTY_KINDS}
+                title="Propriétés magiques spéciales"
+                addLabel="Ajouter une propriété"
+                rows={form.magicProperties}
+                onChange={(rows) => setField('magicProperties', rows)}
+              />
+
+              {/* Récapitulatif EN DIRECT du niveau de magie et de la valeur estimée (p. 244 :
+                  valeur = niveau² × 200 po). N'apparaît qu'une fois l'objet réellement enchanté. */}
+              {(() => {
+                const level = magicLevel({
+                  magicBonus: type === 'weapon' ? Number(form.magicBonus) || 0 : 0,
+                  magicDef: Number(form.magicDef) || 0,
+                  magicProperties: form.magicProperties,
+                });
+                if (level <= 0 && form.magicProperties.length === 0) return null;
+                return (
+                  <Typography variant="body2" color="text.secondary">
+                    Niveau de magie&nbsp;: <strong>{level}</strong>
+                    {level > 0 && (
+                      <>
+                        {' '}
+                        — valeur estimée ≈ {magicItemValue(level).toLocaleString('fr-FR')} po
+                      </>
+                    )}
+                  </Typography>
+                );
+              })()}
 
               <SectionDivider />
 

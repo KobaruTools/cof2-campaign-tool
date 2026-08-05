@@ -18,6 +18,7 @@ import type {
   DerivedStatId,
   FeatureChoice,
   PoisonKind,
+  ResistibleDamageType,
   WeaponCategory,
   WeaponDamage,
 } from '@/data/schema';
@@ -479,6 +480,76 @@ export interface ItemCharges {
   onLongRest?: true;
 }
 
+/**
+ * PROPRIÉTÉS SPÉCIALES d'un objet magique (PER-306), telles que le livre les nomme
+ * (chapitre « Objets magiques », p. 251-254). On distingue les propriétés d'ARME
+ * (p. 251-252) des propriétés DÉFENSIVES (p. 253-254) — un même objet ne porte en
+ * pratique que l'une ou l'autre famille, mais le modèle les réunit dans une seule
+ * liste `magicProperties` pour rester simple.
+ *
+ * Chaque propriété contribue au NIVEAU DE MAGIE de l'objet (voir `magicItem.ts`), et
+ * « on peut doubler une propriété » (p. 251) : `doubled` double alors son effet ET son
+ * niveau de magie (p. 251/254). Ce ticket (306) ne pose que le socle de données et le
+ * calcul du niveau/valeur ; les EFFETS mécaniques (attaque, DM, RD, résistances…) sont
+ * câblés au ticket suivant (PER-307).
+ */
+export type MagicWeaponPropertyKind =
+  /** Affûtée (p. 251) — crit +1 point et +1d4° DM aux critiques. Niveau de magie +1. */
+  | 'sharp'
+  /** Fléau des [catégorie] (p. 251) — +1d4° DM contre une catégorie de créature. Niveau +1. */
+  | 'bane'
+  /** [Élément/substance] (p. 251) — +1d4° DM d'un élément/substance. Niveau +2. */
+  | 'elemental'
+  /** Parade (p. 251) — l'arme offre un bonus de DEF. Niveau de magie = ce bonus. */
+  | 'parry';
+
+export type MagicDefensePropertyKind =
+  /** Action libre (p. 253) — insensible à ralenti/immobilisé/paralysé magique. Niveau +1. */
+  | 'free-action'
+  /** Défense (RD 2, +1) / Défense supérieure (RD 4, +2) (p. 253) — voir `tier`. */
+  | 'defense'
+  /** Mobile (p. 253) — malus d'armure réduit de 4. Niveau +1. */
+  | 'mobile'
+  /** Natation (p. 253) — +5 aux tests de natation (armure flottante). Niveau +1. */
+  | 'swimming'
+  /** Ombre (p. 253) — +5 aux tests de discrétion (AGI). Niveau +1. */
+  | 'shadow'
+  /** Protection (p. 253) — divise par 2 les DM des critiques et attaques sournoises. Niveau +1. */
+  | 'protection'
+  /** Résistance à la magie (p. 253) — +5 en DEF ou aux tests pour résister à la magie. Niveau +1. */
+  | 'magic-resistance'
+  /** Résistance [substance] X (p. 253) — retranche `amount` aux DM de `substance`. Niveau +1. */
+  | 'resistance';
+
+export type MagicPropertyKind = MagicWeaponPropertyKind | MagicDefensePropertyKind;
+
+/**
+ * Une propriété spéciale portée par un objet magique (PER-306). Les paramètres ne
+ * concernent que certains `kind` ; les autres restent absents.
+ */
+export interface MagicProperty {
+  kind: MagicPropertyKind;
+  /**
+   * Fléau : catégorie de créatures ciblée (p. 251, LISTE OUVERTE — « les animaux, les
+   * démons, les goblinoïdes, les lanceurs de sorts, les morts-vivants… etc. »). Texte
+   * affiché tel quel (français), jamais une clé fermée.
+   */
+  creatureCategory?: string;
+  /**
+   * Élément / Résistance : substance concernée. Réutilise `ResistibleDamageType` (feu,
+   * froid, foudre, acide, poison…), le canal de RD typée déjà présent (PER-137/138).
+   */
+  substance?: ResistibleDamageType;
+  /** Résistance [substance] : nombre de points retranchés aux DM (le « X », p. 253). */
+  amount?: number;
+  /** Défense : 1 = Défense (RD 2, niveau +1) · 2 = Défense supérieure (RD 4, niveau +2) (p. 253). */
+  tier?: 1 | 2;
+  /** Parade : bonus de DEF offert par l'arme, qui EST son niveau de magie (p. 251). */
+  defBonus?: number;
+  /** Propriété DOUBLÉE (p. 251/254) : effet ET niveau de magie doublés. Absent = simple. */
+  doubled?: true;
+}
+
 export interface EquipmentOverrides {
   name?: string;
   description?: string;
@@ -534,6 +605,24 @@ export interface EquipmentRef {
    * optionnel absent-safe → pas de bump de `schemaVersion` (cf. précédent `rolledHp`).
    */
   magicDef?: number;
+  /**
+   * BONUS MAGIQUE +N d'une ARME enchantée (PER-306, p. 251) — « un bonus en attaque et
+   * aux dommages ». Ne concerne que les armes : pour un objet DÉFENSIF, le +N de défense
+   * passe par `magicDef` (canal existant), pas par ce champ. Alimente le NIVEAU DE MAGIE
+   * (voir `magicItem.ts`). Les effets mécaniques (attaque + DM) sont câblés au ticket
+   * suivant (PER-307). Absent / 0 = arme non magique. Champ additif optionnel absent-safe
+   * → pas de bump de `schemaVersion` (même logique que `magicDef`).
+   */
+  magicBonus?: number;
+  /**
+   * PROPRIÉTÉS SPÉCIALES de cet objet magique (PER-306, p. 251-254) : Affûtée, Fléau des
+   * [créatures], Élément/substance, Parade (armes) ; Action libre, Défense, Mobile,
+   * Natation, Ombre, Protection, Résistance à la magie, Résistance [substance] (défense).
+   * Contribuent au niveau de magie (voir `magicItem.ts`). Effets câblés en PER-307. Absent
+   * / vide = aucune propriété. Champ additif optionnel absent-safe → pas de bump de
+   * `schemaVersion` (même logique que `magicDef`).
+   */
+  magicProperties?: MagicProperty[];
   /**
    * Bonus/malus de CARACTÉRISTIQUES de cette instance d'objet enchanté (PER-272), actifs
    * seulement quand l'objet est PORTÉ. Voir `ItemAbilityBonuses`. Champ additif optionnel
@@ -668,6 +757,20 @@ export interface CustomItem {
    * additif optionnel absent-safe → pas de bump de `schemaVersion`.
    */
   magicDef?: number;
+  /**
+   * BONUS MAGIQUE +N d'un objet libre faisant office d'ARME (PER-306, p. 251). Même
+   * sémantique que `EquipmentRef.magicBonus` : +N en attaque et aux DM (câblé en PER-307),
+   * réservé aux armes — le +N défensif passe par `magicDef`. Alimente le niveau de magie
+   * (voir `magicItem.ts`). Champ additif optionnel absent-safe → pas de bump de `schemaVersion`.
+   */
+  magicBonus?: number;
+  /**
+   * PROPRIÉTÉS SPÉCIALES de cet objet libre magique (PER-306, p. 251-254). Même sémantique
+   * que `EquipmentRef.magicProperties` — c'est un cas d'usage fréquent (cape, anneau,
+   * bracelet enchantés absents du catalogue). Contribuent au niveau de magie ; effets en
+   * PER-307. Champ additif optionnel absent-safe → pas de bump de `schemaVersion`.
+   */
+  magicProperties?: MagicProperty[];
   /**
    * Bonus/malus de CARACTÉRISTIQUES de cet objet libre enchanté (PER-272). Même sémantique
    * que `EquipmentRef.abilityBonuses` : ne comptent que si l'objet est PORTÉ et se cumulent
