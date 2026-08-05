@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { flayerMeleeAttackNotes, flayerRetaliationBadge } from './flayerPath';
+import { parseRichText } from '@/lib/ui/featureRichText';
 
 const R4 = 'prestige-ecorcheur-r4';
 const R5 = 'prestige-ecorcheur-r5';
@@ -31,6 +32,23 @@ describe('flayerMeleeAttackNotes', () => {
     expect(notes[0]).toMatchObject({ featureId: R8, icon: 'merciless' });
     expect(notes[0].weaponOnly).toBeUndefined();
     expect(notes[0].reminder).toContain('{1d4°}');
+  });
+
+  it("chaque rappel se parse SANS balise retombée en littéral (rendu par RichInline, pas GlossaryText)", () => {
+    // Régression : GlossaryText ne traite pas les tokens de dé — {1d4°} y restait affiché tel quel.
+    // FeatureEffectBadge doit passer par RichInline (segments 'die'), d'où ce verrou sur le SOURCE.
+    for (const notes of [flayerMeleeAttackNotes([R4]), flayerMeleeAttackNotes([R6]), flayerMeleeAttackNotes([R8])]) {
+      for (const note of notes) {
+        const segs = parseRichText(note.reminder);
+        const leaked = segs
+          .filter((s): s is { kind: 'text'; value: string } => s.kind === 'text')
+          .some((s) => /[{[]/.test(s.value));
+        expect(leaked, note.featureId).toBe(false);
+      }
+    }
+    // R8 contient RÉELLEMENT un dé (le cas qui a régressé) : vérifie qu'il est bien reconnu comme tel.
+    const r8Segs = parseRichText(flayerMeleeAttackNotes([R8])[0].reminder);
+    expect(r8Segs.some((s) => s.kind === 'die')).toBe(true);
   });
 
   it('R5 ne produit AUCUNE note (verbatim seul, DM sur la Défense pas sur l’attaque)', () => {

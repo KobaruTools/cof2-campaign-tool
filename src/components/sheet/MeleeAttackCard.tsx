@@ -198,6 +198,7 @@ function Face({
   twoWeaponPenaltyDie,
   onScrollToWeapon,
   meleeAttackNotes,
+  level,
 }: {
   mode: MeleeMode;
   touch: number | null;
@@ -217,6 +218,8 @@ function Face({
   twoWeaponPenaltyDie: boolean;
   onScrollToWeapon?: (slot: 'mainHand' | 'offHand') => void;
   meleeAttackNotes: FeatureEffectNote[];
+  /** Niveau du personnage : requis pour résoudre les dés ÉVOLUTIFS des notes d'effet (PER-74). */
+  level: number;
 }) {
   const title = mode === 'weapon' ? 'Attaque au contact (arme)' : 'Attaque au contact (mains)';
   const unarmedDice = `${unarmed.damage.count}${unarmed.damage.die}${unarmed.evolving ? '°' : ''}`;
@@ -476,7 +479,7 @@ function Face({
         return (
           <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
             {attackNotes.map((n) => (
-              <FeatureEffectBadge key={n.featureId} note={n} />
+              <FeatureEffectBadge key={n.featureId} note={n} abilities={abilities} level={level} />
             ))}
           </Box>
         );
@@ -537,6 +540,8 @@ export interface MeleeAttackCardProps {
    * impitoyable), en badge sous la carte. Vide ou absent = aucune.
    */
   meleeAttackNotes?: FeatureEffectNote[];
+  /** Niveau du personnage : requis pour résoudre les dés ÉVOLUTIFS des notes d'effet (PER-74). */
+  level: number;
 }
 
 /**
@@ -576,6 +581,7 @@ export function MeleeAttackCard({
   twoWeaponPenaltyDie = false,
   onScrollToWeapon,
   meleeAttackNotes = [],
+  level,
 }: MeleeAttackCardProps) {
   const [mode, setMode] = useState<MeleeMode>(meleeWeaponDamage ? 'weapon' : 'unarmed');
   const swap = () => setMode((m) => (m === 'weapon' ? 'unarmed' : 'weapon'));
@@ -598,6 +604,7 @@ export function MeleeAttackCard({
     twoWeaponPenaltyDie,
     onScrollToWeapon,
     meleeAttackNotes,
+    level,
   };
 
   // Chaque cadre est en position ABSOLUE : il ne contribue PAS à la hauteur de la pile. C'est un

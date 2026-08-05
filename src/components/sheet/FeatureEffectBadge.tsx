@@ -6,8 +6,9 @@ import PersonalInjuryIcon from '@mui/icons-material/PersonalInjury';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import type { Abilities } from '@/lib/engine';
 import { AttackQualifierBadge, type AttackBadgeColor } from '@/components/sheet/AttackQualifierBadge';
-import { CapabilityChip, GlossaryText } from '@/components/sheet/FeatureRichText';
+import { CapabilityChip, RichInline } from '@/components/sheet/FeatureRichText';
 
 /** Clé d'icône d'un effet de capacité (résolue ici, pour garder la couche de données SANS JSX). */
 export type FeatureEffectIcon = 'bleeding' | 'grievous-wounds' | 'merciless';
@@ -34,12 +35,21 @@ export interface FeatureEffectNote {
   weaponOnly?: boolean;
 }
 
-/** Badge custom (≠ Chip MUI) d'un effet de capacité, au gabarit `AttackQualifierBadge`. */
+/**
+ * Badge custom (≠ Chip MUI) d'un effet de capacité, au gabarit `AttackQualifierBadge`. Le rappel
+ * passe par `RichInline` (et non `GlossaryText`, qui ignore les tokens `{1d4°}` — un dé y resterait
+ * affiché en littéral) : seul moteur qui résout dés/formules contre le personnage. `rank` n'a aucune
+ * incidence sur les rappels actuels (aucun terme `[#rang]`) : une constante suffit.
+ */
 export function FeatureEffectBadge({
   note,
+  abilities,
+  level,
   color = 'error',
 }: {
   note: FeatureEffectNote;
+  abilities: Abilities;
+  level: number;
   color?: AttackBadgeColor;
 }) {
   return (
@@ -50,7 +60,7 @@ export function FeatureEffectBadge({
       tooltip={
         <Box sx={{ minWidth: 180, maxWidth: 260 }}>
           <Typography variant="body2" sx={{ mb: 0.75 }}>
-            <GlossaryText>{note.reminder}</GlossaryText>
+            <RichInline text={note.reminder} abilities={abilities} level={level} rank={0} />
           </Typography>
           <CapabilityChip featureId={note.featureId} label={null} />
         </Box>

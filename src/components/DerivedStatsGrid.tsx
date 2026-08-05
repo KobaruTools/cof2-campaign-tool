@@ -323,6 +323,7 @@ export function DerivedStatsGrid({
                 attackBonusDie={attackDiceFor('melee')}
                 attackMalusDie={attackMalusDie}
                 meleeAttackNotes={meleeAttackNotes ?? []}
+                level={input.level}
               />
             </Grid>
           );
