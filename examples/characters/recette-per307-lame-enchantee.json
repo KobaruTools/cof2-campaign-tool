@@ -3,7 +3,7 @@
   "id": "recette-per307-lame-enchantee",
   "name": "Recette PER-307 — Lame enchantée",
   "identity": {
-    "description": "ATTENDU (câblage PER-307). Épée longue +2 « ardente, fléau des démons, affûtée, de parade » en main : touche au contact +2 ; DM +2 (bonus plat) ; riders situationnels +1d4° feu, +1d4° contre les démons, +1d4° aux attaques critiques ; plage de critique élargie de 1 ; +2 en DEF (Parade, via magicDef). Badges du bonus et des propriétés sur la ligne d’inventaire (verbatim en infobulle)."
+    "description": "ATTENDU (câblage PER-307). Épée longue +2 « ardente, fléau des démons, affûtée, de parade » en main PRINCIPALE, dague MONDAINE en main secondaire (combat à deux armes) : touche au contact +2 ; DM +2 ; riders +1d4° feu / contre les démons / aux critiques ET plage de critique élargie AFFICHÉS SOUS LA LIGNE DE L’ÉPÉE (pas de la dague) ; +2 en DEF (Parade). Badges du bonus et des propriétés sur la ligne d’inventaire."
   },
   "campaignId": null,
   "playerId": null,
@@ -74,12 +74,19 @@
           "defBonus": 2
         }
       ]
+    },
+    {
+      "itemId": "dague",
+      "quantity": 1,
+      "worn": {
+        "slot": "offHand"
+      }
     }
   ],
   "mounts": [],
   "poisonedWeapons": [],
   "overrides": {},
-  "notes": "PER-307 — recette : +N arme (attaque+DM), Fléau, Élément, Affûtée, Parade.",
+  "notes": "PER-307 — recette : +N arme (attaque+DM), Fléau, Élément, Affûtée, Parade ; attribution par main (deux armes).",
   "createdAt": "2026-01-01T00:00:00.000Z",
   "updatedAt": "2026-01-01T00:00:00.000Z"
 }

@@ -193,6 +193,7 @@ function Face({
   offHandTouchDelta,
   unarmedCriticalRanges,
   situationalBonuses,
+  offHandSituationalBonuses,
   attackBonusDie,
   attackMalusDie,
   twoWeaponPenaltyDie,
@@ -213,6 +214,7 @@ function Face({
   offHandTouchDelta: number;
   unarmedCriticalRanges: DefenseBadgeData[];
   situationalBonuses: SituationalDamageBonus[];
+  offHandSituationalBonuses: SituationalDamageBonus[];
   attackBonusDie: AttackBonusDie[];
   attackMalusDie: string[];
   twoWeaponPenaltyDie: boolean;
@@ -399,6 +401,24 @@ function Face({
             {damageCell(row)}
           </Box>
         );
+        // PER-116/307 — en combat à deux armes, les badges LIÉS À L'ARME (plage de critique, riders de DM
+        // situationnels : Affûtée, Fléau, Élément…) sont rendus SOUS la ligne de LEUR main — jamais dans un
+        // pied commun qui, visuellement, les collerait sous l'autre arme. Chaque main lit SES sources.
+        const rowExtras = (row: AttackRow) => {
+          const crit = row.slot === 'offHand' ? offHandCriticalRanges : weaponCriticalRanges;
+          const sit = row.slot === 'offHand' ? offHandSituationalBonuses : situationalBonuses;
+          if (crit.length === 0 && sit.length === 0) return null;
+          return (
+            <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {crit.map(({ key, ...rest }) => (
+                <DefenseBadge key={key} {...rest} fullWidth={false} />
+              ))}
+              {sit.map((b, i) => (
+                <WeaponDamageBonusBadge key={`${b.featureId}-${i}`} bonus={b} />
+              ))}
+            </Box>
+          );
+        };
         return (
           <>
             {/* En-tête : icône ANCRÉE EN HAUT + titre SEUL. Hors combat à deux armes, la ligne unique
@@ -431,6 +451,7 @@ function Face({
                 {rows.map((row, idx) => (
                   <Box key={row.key} sx={{ mt: idx > 0 ? 0.5 : 0 }}>
                     {weaponLine(row)}
+                    {rowExtras(row)}
                   </Box>
                 ))}
               </Box>
@@ -439,8 +460,9 @@ function Face({
         );
       })()}
 
-      {/* Plage de critique. */}
-      {criticalRanges.length > 0 && (
+      {/* Plage de critique — pied COMMUN hors combat à deux armes (une seule arme, ou mains nues). En
+          combat à deux armes, la plage est rendue PAR MAIN via `rowExtras` (attribution correcte). */}
+      {!dualWielding && criticalRanges.length > 0 && (
         <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
           {criticalRanges.map(({ key, ...rest }) => (
             <DefenseBadge key={key} {...rest} fullWidth={false} />
@@ -460,11 +482,13 @@ function Face({
 
       {/* Bonus de DM SITUATIONNELS au contact (Attaque éclair +AGI, Chasseur émérite +1d4°…) — PER-115.
           Communs aux deux modes (contact armé / mains nues) : une attaque au contact rapide, un ennemi
-          désigné… s'appliquent quelle que soit l'arme. */}
-      {situationalBonuses.length > 0 && (
+          désigné… s'appliquent quelle que soit l'arme. Pied COMMUN hors combat à deux armes ; en combat à
+          deux armes ils sont rendus PAR MAIN via `rowExtras`. Clé indicée : un objet magique porte
+          plusieurs riders de même source (`featureId` partagé, PER-307). */}
+      {!dualWielding && situationalBonuses.length > 0 && (
         <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-          {situationalBonuses.map((b) => (
-            <WeaponDamageBonusBadge key={b.featureId} bonus={b} />
+          {situationalBonuses.map((b, i) => (
+            <WeaponDamageBonusBadge key={`${b.featureId}-${i}`} bonus={b} />
           ))}
         </Box>
       )}
@@ -520,6 +544,9 @@ export interface MeleeAttackCardProps {
   unarmedCriticalRanges: DefenseBadgeData[];
   /** PER-115 — bonus de DM SITUATIONNELS au contact (Attaque éclair, Chasseur émérite…), en badges. */
   situationalBonuses: SituationalDamageBonus[];
+  /** PER-116/307 — bonus de DM situationnels de la MAIN SECONDAIRE (combat à deux armes) : affichés SOUS
+   *  sa ligne, jamais confondus avec ceux de la main principale (arme différente). Défaut `[]`. */
+  offHandSituationalBonuses?: SituationalDamageBonus[];
   /** PER-74 — dé bonus à toutes les attaques (flibustier r8, PV bas), en badge double-d20. */
   attackBonusDie?: AttackBonusDie[];
   /** PER-281 — libellés des états imposant un dé MALUS aux tests d'attaque (Affaibli/Immobilisé). */
@@ -576,6 +603,7 @@ export function MeleeAttackCard({
   offHandTouchDelta = 0,
   unarmedCriticalRanges,
   situationalBonuses,
+  offHandSituationalBonuses = [],
   attackBonusDie = [],
   attackMalusDie = [],
   twoWeaponPenaltyDie = false,
@@ -599,6 +627,7 @@ export function MeleeAttackCard({
     offHandTouchDelta,
     unarmedCriticalRanges,
     situationalBonuses,
+    offHandSituationalBonuses,
     attackBonusDie,
     attackMalusDie,
     twoWeaponPenaltyDie,

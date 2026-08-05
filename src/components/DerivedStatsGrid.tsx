@@ -137,6 +137,8 @@ export interface DerivedStatsGridProps {
   rangedWeaponDamage?: WeaponDamageView | null;
   /** PER-115 — bonus de DM situationnels au contact, en badges sous la carte « Attaque au contact ». */
   meleeSituationalDamage?: SituationalDamageBonus[];
+  /** PER-116/307 — bonus de DM situationnels de la MAIN SECONDAIRE (combat à deux armes). */
+  offHandMeleeSituationalDamage?: SituationalDamageBonus[];
   /** PER-115 — bonus de DM situationnels à distance, en badges sous la carte « Attaque à distance ». */
   rangedSituationalDamage?: SituationalDamageBonus[];
   /**
@@ -210,6 +212,7 @@ export function DerivedStatsGrid({
   unarmedStrike,
   meleeWeaponDamage,
   offHandMeleeWeaponDamage,
+  offHandMeleeSituationalDamage,
   offHandCriticalRanges,
   offHandTouchDelta = 0,
   twoWeaponPenaltyDie = false,
@@ -320,6 +323,7 @@ export function DerivedStatsGrid({
                 onScrollToWeapon={onScrollToWeapon}
                 unarmedCriticalRanges={unarmedCriticalRanges ?? []}
                 situationalBonuses={meleeSituationalDamage ?? []}
+                offHandSituationalBonuses={offHandMeleeSituationalDamage ?? []}
                 attackBonusDie={attackDiceFor('melee')}
                 attackMalusDie={attackMalusDie}
                 meleeAttackNotes={meleeAttackNotes ?? []}
