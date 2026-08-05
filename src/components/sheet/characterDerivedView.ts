@@ -50,6 +50,12 @@ import {
   type SituationalDamageBonus,
 } from '@/lib/character/weaponDamageBonus';
 import { weaponAttackBonuses } from '@/lib/character/attackBonus';
+import {
+  magicWeaponCriticalRanges,
+  magicWeaponFlatDamage,
+  magicWeaponSituationalDamage,
+  weaponMagicBonus,
+} from '@/lib/character/magicItemEffects';
 import type { ModSources } from '@/lib/ui/derivedStatBreakdown';
 import { unarmedStrike, type UnarmedStrikeView } from '@/lib/character/unarmedStrike';
 import { rangedReplacingFormAttack, type FormAttackView } from '@/lib/character/formAttack';
@@ -60,6 +66,8 @@ import { weaponIconKindForWeapon, type WeaponIconKind } from '@/lib/ui/weaponKin
 import { formatDamageReduction } from '@/lib/ui/damageReduction';
 import { defenseFromEquipment } from '@/components/wizard/helpers';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
+import type { FeatureEffectNote } from '@/components/sheet/FeatureEffectBadge';
+import { flayerMeleeAttackNotes, flayerRetaliationBadge } from '@/lib/character/flayerPath';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
@@ -198,6 +206,11 @@ function wornWeaponDamage(
   }
   const bonuses = weaponDamageBonuses(character, mode, item);
   const added = bonuses.addedAbilities.map((b) => b.ability);
+  // +N magique de l'arme (p. 251, PER-307) : bonus PLAT permanent aux DM, ajouté aux bonus des
+  // capacités. Le +N n'est PAS baké dans `damage.modifier` du catalogue — il vit sur la ligne
+  // (`magicBonus`), d'où l'absence de double comptage.
+  const magicFlat = magicWeaponFlatDamage(line, item.name);
+  const flatBonuses: PermanentFlatBonus[] = magicFlat ? [...bonuses.addedFlat, magicFlat] : bonuses.addedFlat;
   // PER-116 — infos FIGÉES de l'arme (indépendantes du personnage), pour l'info-bulle de l'icône qui
   // remplace son nom verbatim sur la carte. Plage de critique INTRINSÈQUE (PER-225) uniquement — la
   // plage EFFECTIVE (cumulée avec les capacités actives) est déjà affichée en badge sous la carte.
@@ -216,7 +229,7 @@ function wornWeaponDamage(
   return {
     dice,
     abilities: [...baseAbilities, ...added],
-    flatBonuses: bonuses.addedFlat,
+    flatBonuses,
     nonLethal: !!dmg.nonLethal,
     name: item.name,
     weaponKind: weaponIconKindForWeapon(item),
@@ -284,6 +297,12 @@ export interface CharacterDerivedView {
   rangedWeaponDamage: WeaponDamageView | null;
   /** PER-115 — bonus de DM SITUATIONNELS au contact (Attaque éclair, Chasseur émérite…), en badges. */
   meleeSituationalDamage: SituationalDamageBonus[];
+  /**
+   * PER-74 — notes d'effet de capacité (DoT, pénalité de guérison…) subis par un TIERS, affichées en
+   * badge sous la carte « Attaque au contact » (voie de l'écorcheur : saignement, blessures
+   * affreuses, impitoyable). Purement informatif, jamais un modificateur chiffré. Vide = aucune.
+   */
+  meleeAttackNotes: FeatureEffectNote[];
   /** PER-115 — bonus de DM SITUATIONNELS à distance (Chasseur émérite…), en badges. */
   rangedSituationalDamage: SituationalDamageBonus[];
   /**
@@ -363,12 +382,19 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
       });
     } else {
       const v = r.total ?? 0;
+      // RD CONDITIONNÉE au TYPE d'attaque reçue (Protection : ÷2 sur les critiques/sournoises, p. 253,
+      // PER-307) : la condition entre dans le titre et la note pour que la puce ne se lise pas comme une
+      // réduction générale, et dans la clé pour ne pas fusionner avec une RD permanente de même valeur.
+      const condition = r.againstAggressors;
       reductionBadges.push({
-        key: `rd-${r.kind}-${r.scope ?? 'all'}-${v}`,
+        key: `rd-${r.kind}-${r.scope ?? 'all'}-${v}${condition ? `-vs-${condition}` : ''}`,
         variant: 'reduction',
         scope: r.scope,
         text: r.kind === 'divide' ? `/${v}` : `${v}`,
-        title: formatDamageReduction({ kind: r.kind, value: v, scopes }).short,
+        title: condition
+          ? `${formatDamageReduction({ kind: r.kind, value: v, scopes }).short} (${condition})`
+          : formatDamageReduction({ kind: r.kind, value: v, scopes }).short,
+        note: condition,
         // Breakdown : on n'affiche la valeur par source que si plusieurs sources cumulent.
         sources: r.sources.map((s) => ({
           name: s.name,
@@ -380,7 +406,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   }
   // Immunités d'ÉTAT (peur, charme, ralenti, immobilisé) — PER-103, fusionnées comme puces vertes dans
   // la carte Défense. Icône d'état dédiée ; le nom complet reste dans le tooltip via `title`.
-  const statusImmunityBadges: DefenseBadgeData[] = aggregateImmunities(modFeatureIds).map((imm) => ({
+  const statusImmunityBadges: DefenseBadgeData[] = aggregateImmunities(modFeatureIds, character.equipment).map((imm) => ({
     key: `imm-${imm.id}`,
     variant: 'immunity',
     statusEffect: imm.id,
@@ -397,18 +423,42 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     title: 'Attaques à distance qui vous ciblent : dé malus (2d20, l’adversaire garde le pire)',
     sources: [{ name: s.name, featureId: s.featureId }],
   }));
-  // Ordre voulu : immunités d'abord, réductions, puis effets défensifs situationnels (dé malus).
+  // PER-74 — Armure à pointes (écorcheur r5, p. 150) : un ADVERSAIRE qui attaque au contact avec des
+  // armes naturelles (mains nues, griffes, crocs) et touche Défense ≥ 10 subit des DM en retour. Ce
+  // n'est PAS une réduction/immunité (le personnage n'encaisse rien) mais un rappel visuel — badge
+  // ROUGE dédié (`retaliation`), au même gabarit que les autres puces de Défense.
+  const retaliation = flayerRetaliationBadge(modFeatureIds);
+  const retaliationBadges: DefenseBadgeData[] = retaliation
+    ? [
+        {
+          key: 'retaliation-flayer-r5',
+          variant: 'retaliation',
+          text: retaliation.die,
+          title: 'Armure à pointes — riposte',
+          note: "Contre une attaque au contact à mains nues/griffes/crocs touchant Défense 10+, l'attaquant subit ces DM.",
+          sources: [{ name: 'Armure à pointes', featureId: 'prestige-ecorcheur-r5' }],
+        },
+      ]
+    : [];
+  // Ordre voulu : immunités d'abord, réductions, puis effets défensifs situationnels (dé malus, riposte).
   const defenseBadges: DefenseBadgeData[] = [
     ...statusImmunityBadges,
     ...damageImmunityBadges,
     ...reductionBadges,
     ...rangedMalusBadges,
+    ...retaliationBadges,
   ];
 
   // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — badges custom (variante 'critical')
   // sous les cartes Attaque au contact / à distance selon leur portée (PER-133). Les élargissements
-  // d'une même portée se CUMULENT (PER-73) : on agrège en UN seul badge par portée.
-  const critRanges = criticalRangeSources(character);
+  // d'une même portée se CUMULENT (PER-73) : on agrège en UN seul badge par portée. Les propriétés
+  // Affûtée des armes magiques en main (+1 de plage, p. 251, PER-307) sont ajoutées comme des sources
+  // ordinaires — même cumul par portée que les capacités et la plage intrinsèque de l'arme.
+  const critRanges = [
+    ...criticalRangeSources(character),
+    ...magicWeaponCriticalRanges(wornWeaponForMode(character, 'melee')?.line ?? null, 'melee'),
+    ...magicWeaponCriticalRanges(wornWeaponForMode(character, 'ranged')?.line ?? null, 'ranged'),
+  ];
   const critBadgeForScope = (scope: 'melee' | 'ranged'): DefenseBadgeData[] => {
     const combined = combineCriticalRanges(critRanges, scope);
     if (!combined) return [];
@@ -434,7 +484,10 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   const offHandCriticalRanges: DefenseBadgeData[] = (() => {
     if (!offHandMelee) return [];
     const combined = combineCriticalRanges(
-      criticalRangeSources(character, { meleeWeapon: offHandMelee.item }),
+      [
+        ...criticalRangeSources(character, { meleeWeapon: offHandMelee.item }),
+        ...magicWeaponCriticalRanges(offHandMelee.line, 'melee'),
+      ],
       'melee',
     );
     if (!combined) return [];
@@ -469,8 +522,17 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     : 0;
   // DM de l'arme à distance équipée + bonus situationnels des deux modes (PER-115).
   const rangedWeaponDamage = wornWeaponDamage(character, 'ranged');
-  const meleeWorn = wornWeaponForMode(character, 'melee')?.item ?? null;
-  const rangedWorn = wornWeaponForMode(character, 'ranged')?.item ?? null;
+  const meleeWornResolved = wornWeaponForMode(character, 'melee');
+  const rangedWornResolved = wornWeaponForMode(character, 'ranged');
+  const meleeWorn = meleeWornResolved?.item ?? null;
+  const rangedWorn = rangedWornResolved?.item ?? null;
+  // Ligne de l'arme en main (porte l'enchantement) — pour le +N magique et les propriétés (PER-307).
+  const meleeWornLine = meleeWornResolved?.line ?? null;
+  const rangedWornLine = rangedWornResolved?.line ?? null;
+  // +N magique de l'arme à la TOUCHE (p. 251) : fondu dans les mods d'attaque du mode de l'arme, comme
+  // les bonus conditionnés à l'arme des capacités. L'arme à distance n'affecte que la touche à distance.
+  const meleeMagicAttack = weaponMagicBonus(meleeWornLine);
+  const rangedMagicAttack = weaponMagicBonus(rangedWornLine);
   // Les bonus de DM SITUATIONNELS sont calculés PLUS BAS (après `derivedInput`), car certains sont
   // gatés par les PV (flibustier r8 « Pas de quartier ») et exigent le `maxHp` — qui vient de
   // `deriveStats(derivedInput)`.
@@ -501,18 +563,17 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     }));
   }
   const attackBonusModSources: ModSources = {};
-  if (meleeAttackBonus.sources.length)
-    attackBonusModSources.meleeAttack = meleeAttackBonus.sources.map((s) => ({
-      label: s.name,
-      value: s.value,
-      featureId: s.featureId,
-    }));
-  if (rangedAttackBonus.sources.length)
-    attackBonusModSources.rangedAttack = rangedAttackBonus.sources.map((s) => ({
-      label: s.name,
-      value: s.value,
-      featureId: s.featureId,
-    }));
+  // Détail de la touche : bonus conditionnés à l'arme (capacités) PUIS le +N magique de l'arme (PER-307).
+  const meleeAttackSources = [
+    ...meleeAttackBonus.sources.map((s) => ({ label: s.name, value: s.value, featureId: s.featureId })),
+    ...(meleeMagicAttack ? [{ label: `${meleeWorn?.name ?? 'Arme'} (bonus magique)`, value: meleeMagicAttack }] : []),
+  ];
+  const rangedAttackSources = [
+    ...rangedAttackBonus.sources.map((s) => ({ label: s.name, value: s.value, featureId: s.featureId })),
+    ...(rangedMagicAttack ? [{ label: `${rangedWorn?.name ?? 'Arme'} (bonus magique)`, value: rangedMagicAttack }] : []),
+  ];
+  if (meleeAttackSources.length) attackBonusModSources.meleeAttack = meleeAttackSources;
+  if (rangedAttackSources.length) attackBonusModSources.rangedAttack = rangedAttackSources;
   // Attaque en finesse portant sur la TOUCHE (PER-74) : avec une arme éligible en main, la touche au
   // contact se calcule sur l'AGI AU LIEU de la FOR (SUBSTITUTION de carac, pas cumul — même patron que la
   // DEF sur la CON de Peau de pierre). Le breakdown affiche alors « Agilité (AGI) » à la place de
@@ -570,8 +631,8 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         // PORTÉS (PER-273) ET les bonus à la touche conditionnés à l'arme portée (maître d'armes,
         // PER-226) — tous fondus dans le score, détaillés dans l'infobulle.
         mods: mergeMods(modsFromFeatures(modFeatureIds, effectCtx), orphanMods(character), itemDerivedBonuses, {
-          meleeAttack: meleeAttackBonus.total,
-          rangedAttack: rangedAttackBonus.total,
+          meleeAttack: meleeAttackBonus.total + meleeMagicAttack,
+          rangedAttack: rangedAttackBonus.total + rangedMagicAttack,
           // Malus d'Initiative au CAVALIER d'une monture bardée « en selle » (PER-216) : négatif,
           // fondu dans le score d'Initiative comme les autres modificateurs de capacités.
           initiative: -mountedInitiativePenalty(character),
@@ -591,8 +652,17 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // du flibustier r8, PER-74). `maxHp` vient de `deriveStats(derivedInput)` (undefined si profil incomplet
   // → les bonus `requiresLowHp` restent inactifs, comportement sûr).
   const maxHp = derivedInput ? deriveStats(derivedInput).maxHp : undefined;
-  const meleeSituationalDamage = weaponDamageBonuses(character, 'melee', meleeWorn, maxHp).situational;
-  const rangedSituationalDamage = weaponDamageBonuses(character, 'ranged', rangedWorn, maxHp).situational;
+  // Aux riders des capacités s'ajoutent ceux des propriétés de l'arme magique en main (Fléau, Élément,
+  // Affûtée « aux critiques » ; +1d4°, p. 251, PER-307), résolus au niveau du personnage.
+  const meleeSituationalDamage = [
+    ...weaponDamageBonuses(character, 'melee', meleeWorn, maxHp).situational,
+    ...magicWeaponSituationalDamage(meleeWornLine, meleeWorn?.name ?? '', character.level),
+  ];
+  const rangedSituationalDamage = [
+    ...weaponDamageBonuses(character, 'ranged', rangedWorn, maxHp).situational,
+    ...magicWeaponSituationalDamage(rangedWornLine, rangedWorn?.name ?? '', character.level),
+  ];
+  const meleeAttackNotes = flayerMeleeAttackNotes(modFeatureIds);
 
   return {
     modFeatureIds,
@@ -611,6 +681,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     rangedWeaponDamage,
     meleeSituationalDamage,
     rangedSituationalDamage,
+    meleeAttackNotes,
     rangedAttackMagicalSourceId: rangedAttackMagical,
     rangedAttackElement: rangedAttackEl,
     rangedReplacingFormAttack: formAttackReplacingRanged,

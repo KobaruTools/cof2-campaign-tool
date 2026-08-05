@@ -18,6 +18,7 @@ import { migrateCharacter } from '@/lib/engine/migrations';
 import { featureById, pathById } from '@/data';
 import { activeFeatureIdsForMods, effectContext, testBonusSources } from './effects';
 import { SITUATIONAL_EFFECTS } from '@/data/schema';
+import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
 import type { Character } from './types';
 
 const PATH_ID = 'prestige-ecorcheur';
@@ -91,16 +92,64 @@ describe('PER-74 — r7 Hémorragie interne : DoT catalogué déclenché par un 
   });
 });
 
-describe('PER-74 — r5/r6/r8 : DM ou pénalité subis par un tiers, aucun effet chiffré (patron « Riposte »)', () => {
-  it('aucun des trois rangs ne porte de effects ni de situationalEffectIds', () => {
-    for (const id of [R5, R6, R8]) {
+describe('PER-74 — r6 Blessures affreuses : DoT catalogué (pénalité de guérison, sans DM)', () => {
+  it("catalogué en effet situationnel 'grievous-wounds' (aucun modifier chiffré)", () => {
+    expect(featureById.get(R6)?.situationalEffectIds).toEqual(['grievous-wounds']);
+    const entry = SITUATIONAL_EFFECTS['grievous-wounds'];
+    expect(entry.label).toBe('Blessures affreuses');
+    expect(entry.sourcePage).toBe(151);
+    expect(entry.modifiers).toBeUndefined();
+    expect(entry.effect).toContain('divisés par 2');
+  });
+});
+
+describe('PER-74 — r5/r8 : DM subis par un tiers, aucun effet chiffré (patron « Riposte »)', () => {
+  it('aucun des deux rangs ne porte de effects, R6 seul porte un situationalEffectIds', () => {
+    for (const id of [R5, R8]) {
       const f = featureById.get(id);
       expect(f?.effects ?? [], id).toHaveLength(0);
       expect(f?.situationalEffectIds ?? [], id).toHaveLength(0);
     }
+    expect(featureById.get(R6)?.effects ?? []).toHaveLength(0);
   });
 
   it('r8 : le dé de dégât sur attaque ratée reste verbatim (aucun weapon-damage-bonus)', () => {
     expect((featureById.get(R8)?.effects ?? []).some((e) => e.kind === 'weapon-damage-bonus')).toBe(false);
+  });
+});
+
+describe('PER-74 — badges UI (attaque au contact + carte Défense)', () => {
+  it('meleeAttackNotes : R4 (arme seulement), R6 et R8 (les deux modes)', () => {
+    const view = buildCharacterDerivedView(recette());
+    expect(view.meleeAttackNotes.map((n) => n.featureId)).toEqual([R4, R6, R8]);
+    expect(view.meleeAttackNotes.find((n) => n.featureId === R4)?.weaponOnly).toBe(true);
+    expect(view.meleeAttackNotes.find((n) => n.featureId === R6)?.weaponOnly).toBeUndefined();
+    expect(view.meleeAttackNotes.find((n) => n.featureId === R8)?.weaponOnly).toBeUndefined();
+  });
+
+  it('carte Défense : badge de riposte R5, dé évolutif une fois le rang 7 atteint', () => {
+    const view = buildCharacterDerivedView(recette());
+    const badge = view.defenseBadges.find((b) => b.key === 'retaliation-flayer-r5');
+    expect(badge).toBeDefined();
+    expect(badge?.variant).toBe('retaliation');
+    expect(badge?.text).toBe('1d4°');
+
+    const withoutR7: Character = {
+      ...recette(),
+      featureIds: recette().featureIds.filter((id) => id !== R7),
+    };
+    const badgeNoR7 = buildCharacterDerivedView(withoutR7).defenseBadges.find(
+      (b) => b.key === 'retaliation-flayer-r5',
+    );
+    expect(badgeNoR7?.text).toBe('1d4');
+  });
+
+  it('sans R5, aucun badge de riposte sur la carte Défense', () => {
+    const withoutR5: Character = {
+      ...recette(),
+      featureIds: recette().featureIds.filter((id) => id !== R5),
+    };
+    const view = buildCharacterDerivedView(withoutR5);
+    expect(view.defenseBadges.some((b) => b.key === 'retaliation-flayer-r5')).toBe(false);
   });
 });

@@ -1531,8 +1531,11 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: false,
     actionTypes: [],
     // Verbatim seul : affecte la guérison DE LA CIBLE, pas une stat du porteur — rien à mécaniser.
+    // Catalogué en effet situationnel (`grievous-wounds`) : pénalité de guérison nommée et durable,
+    // utile au MJ à suivre à l'écran de MJ (comme le saignement r4 / l'hémorragie interne r7).
     text:
       "Les blessures infligées par les attaques au contact du personnage sont très longues à guérir. Les effets de soins ou de régénération sont divisés par 2 lorsqu'il s'agit de guérir ces DM.",
+    situationalEffectIds: ['grievous-wounds'],
     sourcePage: 151,
   },
   {

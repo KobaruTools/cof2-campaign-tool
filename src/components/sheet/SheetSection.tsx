@@ -26,6 +26,8 @@ export interface SectionTab {
 export interface SheetSectionProps {
   /** Titre de la section (h2). */
   title: string;
+  /** Ancre DOM optionnelle (`id` du `Paper`), pour un défilement programmatique externe. */
+  id?: string;
   /** Icône optionnelle affichée à gauche du titre (game-icons.net, cf. `<SectionIcon>`). */
   icon?: SectionIconName;
   /**
@@ -81,6 +83,7 @@ const storageKey = (key: string) => `sheet-section-collapsed:${key}`;
  */
 export function SheetSection({
   title,
+  id,
   icon,
   action,
   sx,
@@ -143,6 +146,7 @@ export function SheetSection({
 
   return (
     <Paper
+      id={id}
       variant="outlined"
       // Replié : un clic n'importe où dans le bloc le rouvre (meilleure UX). Déplié : seul le
       // bouton en bas peut le replier (pas de clic sur le corps, qui contient du contenu interactif).

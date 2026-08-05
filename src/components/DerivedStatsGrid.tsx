@@ -27,6 +27,7 @@ import { SignedNumberField } from '@/components/SignedNumberField';
 import { DefenseBadge, type DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import { FormAttackCard } from '@/components/sheet/FormAttackCard';
 import { MeleeAttackCard, type AttackBonusDie } from '@/components/sheet/MeleeAttackCard';
+import type { FeatureEffectNote } from '@/components/sheet/FeatureEffectBadge';
 import { RangedAttackCard } from '@/components/sheet/RangedAttackCard';
 import type { MeleeWeaponDamageView, WeaponDamageView } from '@/components/sheet/characterDerivedView';
 import type { SituationalDamageBonus } from '@/lib/character/weaponDamageBonus';
@@ -172,6 +173,11 @@ export interface DerivedStatsGridProps {
    * trois cartes d'attaque. Vide ou absent = aucun (hors session, ou aucun état de ce type).
    */
   attackMalusDie?: string[];
+  /**
+   * PER-74 — notes d'effet de capacité (voie de l'écorcheur : saignement, blessures affreuses,
+   * impitoyable), en badge sous la carte « Attaque au contact ». Vide ou absent = aucune.
+   */
+  meleeAttackNotes?: FeatureEffectNote[];
 }
 
 interface StatLine {
@@ -218,6 +224,7 @@ export function DerivedStatsGrid({
   attackBonusDie = [],
   boundWeaponAttackDie = null,
   attackMalusDie = [],
+  meleeAttackNotes,
 }: DerivedStatsGridProps) {
   const stats = deriveStats(input);
 
@@ -315,6 +322,7 @@ export function DerivedStatsGrid({
                 situationalBonuses={meleeSituationalDamage ?? []}
                 attackBonusDie={attackDiceFor('melee')}
                 attackMalusDie={attackMalusDie}
+                meleeAttackNotes={meleeAttackNotes ?? []}
               />
             </Grid>
           );

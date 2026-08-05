@@ -99,6 +99,16 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
     expect(r7?.situationalEffectIds).toEqual(['internal-hemorrhage']);
   });
 
+  it("« Blessures affreuses » est cataloguée (écorcheur r6, p. 151) : pénalité de guérison, référencée", () => {
+    const entry = SITUATIONAL_EFFECTS['grievous-wounds'];
+    expect(entry.label).toBe('Blessures affreuses');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(151);
+    expect(entry.modifiers).toBeUndefined();
+    const r6 = featureById.get('prestige-ecorcheur-r6');
+    expect(r6?.situationalEffectIds).toEqual(['grievous-wounds']);
+  });
+
   it('tout situationalEffectIds posé sur une capacité pointe une entrée connue du catalogue', () => {
     const known = new Set<string>(SITUATIONAL_EFFECT_IDS);
     for (const f of featureById.values()) {

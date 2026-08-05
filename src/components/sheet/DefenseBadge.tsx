@@ -20,7 +20,8 @@ export type DefenseBadgeVariant =
   | 'situational-immunity'
   | 'reduction'
   | 'critical'
-  | 'ranged-malus';
+  | 'ranged-malus'
+  | 'retaliation';
 
 /**
  * Donnée d'un BADGE de carte de statistique dérivée (PER-137) : IMMUNITÉ (vert, bouclier),
@@ -59,7 +60,7 @@ export interface DefenseBadgeData {
 }
 
 /** Couleur de palette MUI par variante. */
-const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary' | 'warning'> = {
+const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary' | 'warning' | 'error'> = {
   immunity: 'success',
   // Immunité SITUATIONNELLE (PER-74) : AMBRE et non vert. Le vert de l'immunité permanente dirait
   // « tu ne crains rien » ; ici la protection ne joue que contre un type d'agresseur nommé, et la
@@ -70,6 +71,9 @@ const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary' | 'w
   // Dé malus imposé aux tirs adverses (Cape d'ombre) : c'est un AVANTAGE pour le joueur (plus dur à
   // toucher) → chip BLEUE (comme les réductions). Seuls les DÉS malus, à l'intérieur, restent rouges.
   'ranged-malus': 'info',
+  // Riposte contre un ADVERSAIRE (Armure à pointes, PER-74) : ROUGE — c'est un DM subi par l'attaquant,
+  // teinte cohérente avec les autres rappels de dégâts (dé malus interne, MalusDieBadge).
+  retaliation: 'error',
 };
 
 /**
@@ -164,6 +168,8 @@ export function DefenseBadge({
         {statusEffect && <StatusEffectIcon effect={statusEffect} size={iconSize} />}
         {/* Bouclier générique conservé pour les immunités SANS icône dédiée (ex. « tous DM »). */}
         {variant === 'immunity' && !scope && !statusEffect && <ShieldIcon sx={{ fontSize: iconSize }} />}
+        {/* Riposte (Armure à pointes) : même bouclier générique, teinté ROUGE par la variante. */}
+        {variant === 'retaliation' && <ShieldIcon sx={{ fontSize: iconSize }} />}
         {/* Immunité SITUATIONNELLE (PER-74) : tête de démon EN TÊTE du badge, devant l'icône du type
             de dégât — c'est la nature de l'agresseur qui conditionne tout, elle doit se voir d'abord. */}
         {variant === 'situational-immunity' && (

@@ -24,12 +24,23 @@ import { ClassIcon } from '@/components/ClassIcon';
 import { AncestryIcon } from '@/components/AncestryIcon';
 import { DieIcon } from '@/components/DieIcon';
 import { ABILITY_COLORS, ABILITY_NAMES } from '@/lib/ui/ability';
-import { ANCESTRY_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
+import {
+  ANCESTRY_COLOR,
+  MAGE_PATH_COLOR,
+  PRESTIGE_PATH_COLOR,
+  classColor,
+  prestigeCategoryColor,
+} from '@/lib/ui/classColors';
+import { PRESTIGE_GRADIENT_STOPS } from '@/lib/ui/prestigeStyle';
+import { useCapabilityScroll } from '@/components/sheet/capabilityScroll';
 import { dieAtRank, parseRichText, resolveExpr, type ResolvedExpr } from '@/lib/ui/featureRichText';
 import { splitNotes } from '@/lib/ui/featureNotes';
-import { splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
-import { useDeclined } from '@/components/sheet/FeatureDeclension';
+import { splitActionMarkers, splitGameTerms, splitGlossary } from '@/lib/ui/glossary';
+import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
 import { splitPageRefs } from '@/lib/ui/pageRefs';
+import { bestiaryCreatureHref, splitCreatureLinks } from '@/lib/ui/creatureLinks';
+import { useDeclined } from '@/components/sheet/FeatureDeclension';
+import NextLink from 'next/link';
 
 const signed = (v: number) => (v >= 0 ? `+${v}` : `${v}`);
 
@@ -99,9 +110,7 @@ function AbilityChipBox({
         fontSize: '0.95em',
         letterSpacing: 0.3,
         lineHeight: 1.4,
-        // Pas de curseur « help » sans info-bulle propre : la puce laisse alors le curseur du
-        // conteneur (pointeur d'une option de liste, ou help du parent qui porte l'info-bulle).
-        cursor: noTooltip ? undefined : 'help',
+        cursor: 'help',
         color,
         bgcolor: alpha(color, 0.12),
         border: 1,
@@ -129,6 +138,12 @@ export function AbilityValueChip({ ability, value }: { ability: AbilityId; value
 }
 
 /**
+ * Terme de formule qui est une CARACTÉRISTIQUE, rendu « SYMBOLE (valeur) » (ex. « INT (4) ») dans la
+ * puce teintée + tiretée de cette carac. Contrairement à `AbilityValueChip` (valeur seule, DM d'arme),
+ * on GARDE le code de la carac : dans une phrase (« réduit de INT (4) mètres »), retirer le mot casse
+ * le sens. `symbol` = code affiché (carac retenue pour un « meilleure de »), toujours un `AbilityId`.
+ */
+/**
  * Puce du CODE d'une caractéristique SEUL (« FOR »), à la norme d'affichage des caracs (teinte
  * propre + bord tireté, cf. `AbilityChipBox`). Sert HORS texte de règle, là où il faut rendre une
  * caractéristique repérable d'un coup d'œil dans une liste — les caracs gouvernantes d'un domaine
@@ -154,12 +169,6 @@ export function AbilityCodeChip({
   );
 }
 
-/**
- * Terme de formule qui est une CARACTÉRISTIQUE, rendu « SYMBOLE (valeur) » (ex. « INT (4) ») dans la
- * puce teintée + tiretée de cette carac. Contrairement à `AbilityValueChip` (valeur seule, DM d'arme),
- * on GARDE le code de la carac : dans une phrase (« réduit de INT (4) mètres »), retirer le mot casse
- * le sens. `symbol` = code affiché (carac retenue pour un « meilleure de »), toujours un `AbilityId`.
- */
 function AbilityFormulaChip({
   symbol,
   value,
@@ -258,21 +267,121 @@ export function CapabilityChip({
   // Couleur + icône selon le TYPE de voie : profil (`class`) → teinte du profil + icône de profil ;
   // peuple (`ancestry`) → teinte de peuple + icône de peuple (PER-73) ; voie du mage (`mage`) →
   // indigo arcane dédié + icône de chapeau de mage (clé `mage` dans le jeu d'icônes de peuple, la
-  // voie du mage occupant l'emplacement peuple). Les voies de PRESTIGE n'ont toujours pas d'identité
-  // dédiée → repli silencieux sur le texte brut.
+  // voie du mage occupant l'emplacement peuple). Voie de PRESTIGE (`prestige`) → style
+  // « précieux » dédié (bordure dégradé tournante + étoile), traité séparément ci-dessous (PER-74).
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
   const ancestryId = path?.type === 'ancestry' ? path.ancestryIds[0] : undefined;
   const isMage = path?.type === 'mage';
+  const isPrestige = path?.type === 'prestige';
   // Nom décliné par élément draconique (PER-74) quand la puce affiche le nom de la capacité citée
   // (`label` absent) — une référence croisée doit lire « Épée de foudre » comme la carte du rang.
   const ownName = useDeclined(feature ?? {}, feature?.name ?? featureId);
   const text = label ?? ownName;
-  if (!feature || (!classId && !ancestryId && !isMage)) return <>{text}</>;
+  // Clic → ramène la vue sur « Voies & capacités » (bascule l'onglet, défile jusqu'à la section).
+  // `null` hors fiche navigable (récap du wizard, écran de MJ) : la puce reste alors une simple
+  // info-bulle, comme avant.
+  const scrollToCapability = useCapabilityScroll();
+  if (!feature || (!classId && !ancestryId && !isMage && !isPrestige)) return <>{text}</>;
+
+  // Voie de PRESTIGE (PER-74) : style « précieux » DÉDIÉ — au lieu d'une teinte pleine, une bordure en
+  // dégradé blanc/gris clair qui tourne LENTEMENT (couche conique en rotation, masquée au centre par la
+  // pastille sombre). Icône = étoile de prestige. Donne aux breakdowns (carac/dérivées/tests…) une
+  // identité cohérente pour la 7ᵉ voie, là où les autres voies ont leur couleur de profil/peuple.
+  if (isPrestige) {
+    // Teinte de la famille de prestige (PER-74) : le liseré métallique tournant reste NEUTRE (signature
+    // « précieuse » commune), mais la pastille (fond + texte + étoile) prend la couleur de la famille.
+    const prestigeTint = path?.type === 'prestige' ? prestigeCategoryColor(path.category) : PRESTIGE_PATH_COLOR;
+    return (
+      <AppTooltip title={path ? `${path.name}, rang ${feature.rank}` : feature.name}>
+        <Box
+          component="span"
+          onClick={
+            scrollToCapability
+              ? (e) => {
+                  e.stopPropagation();
+                  scrollToCapability();
+                }
+              : undefined
+          }
+          sx={[
+            {
+              position: 'relative',
+              display: 'inline-flex',
+              verticalAlign: 'baseline',
+              alignItems: 'center',
+              // Rayons ext./int. explicites en px : l'écart (6 − 5 = 1) donne un liseré UNIFORME de 1px
+              // partout, coins compris (retour proprio ; l'écart de rayon précédent le rendait inégal).
+              borderRadius: '6px',
+              overflow: 'hidden',
+              p: '1px', // épaisseur du liseré tournant (uniforme)
+              mx: 0.2,
+              isolation: 'isolate',
+              cursor: scrollToCapability ? 'pointer' : 'help',
+              // Couche conique en rotation lente : le liseré « métal ». Carré (220 % de la largeur) pour
+              // couvrir les coins à toute rotation ; le centre est masqué par la pastille sombre au-dessus.
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: '220%',
+                aspectRatio: '1',
+                transform: 'translate(-50%, -50%)',
+                background: `conic-gradient(from 0deg, ${PRESTIGE_GRADIENT_STOPS})`,
+                animation: 'prestigeChipSpin 12s linear infinite',
+                zIndex: 0,
+              },
+              '@keyframes prestigeChipSpin': {
+                to: { transform: 'translate(-50%, -50%) rotate(360deg)' },
+              },
+              // Accessibilité : on fige le liseré si l'utilisateur réduit les animations.
+              '@media (prefers-reduced-motion: reduce)': { '&::before': { animation: 'none' } },
+            },
+            ...(Array.isArray(sx) ? sx : [sx]),
+          ]}
+        >
+          <Box
+            component="span"
+            sx={{
+              position: 'relative',
+              zIndex: 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.35,
+              px: 0.6,
+              borderRadius: '5px', // = rayon extérieur (6px) − liseré (1px) → anneau régulier
+              fontWeight: 700,
+              fontSize: '0.95em',
+              lineHeight: 1.4,
+              // Teinte de famille claire sur teinte très sombre — même logique de contraste que les
+              // autres puces de voie (or pour les génériques, vert/rouge/bleu/violet par famille).
+              color: lighten(prestigeTint, 0.6),
+              bgcolor: darken(prestigeTint, 0.78),
+              textShadow: '0 1px 1.5px rgba(0, 0, 0, 0.45)',
+              '& svg': { filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4))' },
+            }}
+          >
+            <AncestryIcon ancestryId="prestige" size={14} color="currentColor" />
+            {text}
+          </Box>
+        </Box>
+      </AppTooltip>
+    );
+  }
+
   const color = classId ? classColor(classId) : isMage ? MAGE_PATH_COLOR : ANCESTRY_COLOR;
   return (
     <AppTooltip title={path ? `${path.name}, rang ${feature.rank}` : feature.name}>
       <Box
         component="span"
+        onClick={
+          scrollToCapability
+            ? (e) => {
+                e.stopPropagation();
+                scrollToCapability();
+              }
+            : undefined
+        }
         sx={[
           {
             display: 'inline-flex',
@@ -285,7 +394,7 @@ export function CapabilityChip({
             fontWeight: 700,
             fontSize: '0.95em',
             lineHeight: 1.4,
-            cursor: 'help',
+            cursor: scrollToCapability ? 'pointer' : 'help',
             // Texte + icône : couleur de voie ÉCLAIRCIE vers le blanc (l'icône suit via `currentColor`).
             color: lighten(color, 0.6),
             // Fond : couleur de voie ASSOMBRIE vers le noir (contraste avec le texte éclairci).
@@ -351,7 +460,8 @@ function StatusEffectChip({ label, stateId }: { label: string; stateId: StatusEf
       <Box component="span" sx={{ display: 'block', mb: 0.5 }}>
         <RichTextRun value={info.effect} />
       </Box>
-      <SourceRef page={info.sourcePage} />
+      {/* Le nom de l'état sert de terme à cibler/surligner dans le visualiseur (PER-59/61). */}
+      <SourceRef page={info.sourcePage} term={info.label} />
     </Box>
   );
   return (
@@ -453,12 +563,33 @@ function GameAction({ label }: { label: string }) {
  * Les sauts de ligne sont préservés par le conteneur `pre-line`. Utilisé pour les
  * segments texte du rendu enrichi ET pour le `text` verbatim de repli.
  */
+/**
+ * Rendu final d'un TEXTE LITTÉRAL : convertit les marqueurs d'action parenthésés cités en prose
+ * (« (A) », « (L) », « (*) »… p. 227) en hexagones inline (`ActionMarkerHex`), au même style que les
+ * marqueurs de capacité (PER-74). Le reste (déjà dépouillé des renvois de page, locutions et
+ * acronymes en amont) reste du texte brut. Chokepoint unique — s'applique partout où la prose de
+ * règle est rendue (descriptions, `text` verbatim de repli, info-bulles).
+ */
+function ActionMarkersText({ value }: { value: string }) {
+  return (
+    <>
+      {splitActionMarkers(value).map((p, i) =>
+        p.kind === 'text' ? (
+          <Fragment key={i}>{p.value}</Fragment>
+        ) : (
+          <ActionMarkerHex key={i} marker={p.marker} />
+        ),
+      )}
+    </>
+  );
+}
+
 function GlossaryRun({ value }: { value: string }) {
   return (
     <>
       {splitGlossary(value).map((piece, i) =>
         piece.kind === 'text' ? (
-          <Fragment key={i}>{piece.value}</Fragment>
+          <ActionMarkersText key={i} value={piece.value} />
         ) : piece.entry.category === 'ability' ? (
           // `piece.term` est le code de la carac tel que capté en prose (majuscules, borné par
           // `\b`) : il EST l'`AbilityId`, on l'utilise pour choisir la teinte (PER-224).
@@ -520,14 +651,35 @@ function GameTermsRun({ value }: { value: string }) {
 }
 
 /**
- * Rend un TEXTE LITTÉRAL de règle. Isole d'abord les RÉFÉRENCES DE PAGE (« (p. 188) »,
- * « (voir page 78) »…) — remplacées INTÉGRALEMENT par la puce de source (`SourceRef`,
- * renvoi au livre, notion globale `splitPageRefs`) — puis passe le reste au rendu des
- * locutions de jeu et du glossaire (`GameTermsRun`). Chokepoint UNIQUE : toute prose de
- * règle rendue enrichie (descriptions de capacités, détail d'objet, info-bulles d'états)
- * convertit ainsi ses renvois de page en puce, plutôt que de laisser un « (voir page N) » brut.
+ * Lien inline vers la fiche d'une AUTRE créature du bestiaire (token `[[creature:…]]`,
+ * cf. `splitCreatureLinks`). Vraie ancre `next/link` pilotant la sélection via `?c=`
+ * (refresh/partage OK) ; `scroll={false}` pour ne pas remonter la page (on reste en vue
+ * maître-détail). Style discret aligné sur la teinte primaire.
  */
-function RichTextRun({ value }: { value: string }) {
+function CreatureLink({ slug, label }: { slug: string; label: string }) {
+  return (
+    <Box
+      component={NextLink}
+      href={bestiaryCreatureHref(slug)}
+      scroll={false}
+      sx={{
+        color: 'primary.light',
+        textDecorationColor: (t) => alpha(t.palette.primary.light, 0.5),
+        fontWeight: 600,
+        '&:hover': { textDecorationColor: (t) => t.palette.primary.light },
+      }}
+    >
+      {label}
+    </Box>
+  );
+}
+
+/**
+ * Isole les RÉFÉRENCES DE PAGE (« (p. 188) », « (voir page 78) »…) — remplacées
+ * INTÉGRALEMENT par la puce de source (`SourceRef`, `splitPageRefs`) — puis passe le
+ * reste au rendu des locutions de jeu et du glossaire (`GameTermsRun`).
+ */
+function PageRefsRun({ value }: { value: string }) {
   return (
     <>
       {splitPageRefs(value).map((seg, i) =>
@@ -535,6 +687,26 @@ function RichTextRun({ value }: { value: string }) {
           <SourceRef key={i} page={seg.page} sx={{ mx: 0.25 }} />
         ) : (
           <GameTermsRun key={i} value={seg.value} />
+        ),
+      )}
+    </>
+  );
+}
+
+/**
+ * Rend un TEXTE LITTÉRAL de règle. Chokepoint UNIQUE : toute prose de règle rendue
+ * enrichie (descriptions de capacités, détail d'objet, info-bulles d'états) y passe.
+ * Extrait d'abord les LIENS CROISÉS de créature (`[[creature:…]]` → `CreatureLink`),
+ * puis délègue chaque segment texte au rendu des renvois de page + jargon (`PageRefsRun`).
+ */
+function RichTextRun({ value }: { value: string }) {
+  return (
+    <>
+      {splitCreatureLinks(value).map((seg, i) =>
+        seg.kind === 'link' ? (
+          <CreatureLink key={i} slug={seg.slug} label={seg.label} />
+        ) : (
+          <PageRefsRun key={i} value={seg.value} />
         ),
       )}
     </>

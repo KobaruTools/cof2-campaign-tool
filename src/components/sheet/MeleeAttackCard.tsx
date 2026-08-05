@@ -27,6 +27,7 @@ import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { GlossaryText } from '@/components/sheet/FeatureRichText';
 import { ActionMarkerHex } from '@/components/FeatureMarkerHex';
 import { AttackQualifierBadge } from '@/components/sheet/AttackQualifierBadge';
+import { FeatureEffectBadge, type FeatureEffectNote } from '@/components/sheet/FeatureEffectBadge';
 import { referenceById } from '@/data/reference';
 import { WEAPON_KIND_ICON_PATHS } from '@/lib/ui/weaponKindIcons';
 import type { MeleeWeaponDamageView } from '@/components/sheet/characterDerivedView';
@@ -196,6 +197,7 @@ function Face({
   attackMalusDie,
   twoWeaponPenaltyDie,
   onScrollToWeapon,
+  meleeAttackNotes,
 }: {
   mode: MeleeMode;
   touch: number | null;
@@ -214,6 +216,7 @@ function Face({
   attackMalusDie: string[];
   twoWeaponPenaltyDie: boolean;
   onScrollToWeapon?: (slot: 'mainHand' | 'offHand') => void;
+  meleeAttackNotes: FeatureEffectNote[];
 }) {
   const title = mode === 'weapon' ? 'Attaque au contact (arme)' : 'Attaque au contact (mains)';
   const unarmedDice = `${unarmed.damage.count}${unarmed.damage.die}${unarmed.evolving ? '°' : ''}`;
@@ -462,6 +465,22 @@ function Face({
           ))}
         </Box>
       )}
+
+      {/* PER-74 — notes d'effet de la voie de l'écorcheur (saignement, blessures affreuses,
+          impitoyable) : DM/malus subis par l'ADVERSAIRE, jamais chiffrés sur cette fiche (patron
+          « Riposte »). Le saignement (`weaponOnly`) ne s'affiche qu'en mode ARME ; les deux autres
+          valent pour les deux modes (arme et mains nues). */}
+      {(() => {
+        const attackNotes = meleeAttackNotes.filter((n) => mode === 'weapon' || !n.weaponOnly);
+        if (attackNotes.length === 0) return null;
+        return (
+          <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {attackNotes.map((n) => (
+              <FeatureEffectBadge key={n.featureId} note={n} />
+            ))}
+          </Box>
+        );
+      })()}
     </CardContent>
   );
 }
@@ -513,6 +532,11 @@ export interface MeleeAttackCardProps {
    * (récap du wizard, écran de MJ).
    */
   onScrollToWeapon?: (slot: 'mainHand' | 'offHand') => void;
+  /**
+   * PER-74 — notes d'effet de capacité (voie de l'écorcheur : saignement, blessures affreuses,
+   * impitoyable), en badge sous la carte. Vide ou absent = aucune.
+   */
+  meleeAttackNotes?: FeatureEffectNote[];
 }
 
 /**
@@ -551,6 +575,7 @@ export function MeleeAttackCard({
   attackMalusDie = [],
   twoWeaponPenaltyDie = false,
   onScrollToWeapon,
+  meleeAttackNotes = [],
 }: MeleeAttackCardProps) {
   const [mode, setMode] = useState<MeleeMode>(meleeWeaponDamage ? 'weapon' : 'unarmed');
   const swap = () => setMode((m) => (m === 'weapon' ? 'unarmed' : 'weapon'));
@@ -572,6 +597,7 @@ export function MeleeAttackCard({
     attackMalusDie,
     twoWeaponPenaltyDie,
     onScrollToWeapon,
+    meleeAttackNotes,
   };
 
   // Chaque cadre est en position ABSOLUE : il ne contribue PAS à la hauteur de la pile. C'est un

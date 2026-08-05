@@ -1344,6 +1344,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'insect-swarm',
   'bleeding',
   'internal-hemorrhage',
+  'grievous-wounds',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1403,6 +1404,15 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     label: 'Hémorragie interne',
     effect:
       "À la suite d'un critique, la victime subit 1d4° DM supplémentaires à chaque round suivant, pendant 3 rounds.",
+    sourcePage: 151,
+  },
+  // « Blessures affreuses » (écorcheur r6, p. 151). Pas un DoT (aucun DM en soi) : une pénalité de
+  // GUÉRISON durable sur les blessures que ce personnage a infligées. Aucun modifier chiffré (le
+  // moteur ne calcule pas les soins reçus par un tiers) — verbatim seul, rappel pour le MJ.
+  'grievous-wounds': {
+    label: 'Blessures affreuses',
+    effect:
+      "Les effets de soins ou de régénération appliqués aux DM infligés par les attaques au contact de ce personnage sont divisés par 2.",
     sourcePage: 151,
   },
 };
