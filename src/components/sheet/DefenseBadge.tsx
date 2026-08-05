@@ -71,9 +71,12 @@ const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary' | 'w
   // Dé malus imposé aux tirs adverses (Cape d'ombre) : c'est un AVANTAGE pour le joueur (plus dur à
   // toucher) → chip BLEUE (comme les réductions). Seuls les DÉS malus, à l'intérieur, restent rouges.
   'ranged-malus': 'info',
-  // Riposte contre un ADVERSAIRE (Armure à pointes, PER-74) : ROUGE — c'est un DM subi par l'attaquant,
-  // teinte cohérente avec les autres rappels de dégâts (dé malus interne, MalusDieBadge).
-  retaliation: 'error',
+  // Riposte contre un ADVERSAIRE (Armure à pointes, PER-74) : PERMANENTE et sans effet chiffré sur
+  // la fiche du porteur → bleue, même famille que « ranged-malus » (rappel de règle / avantage
+  // défensif, pas une stat qui change). Le ROUGE reste réservé au dé malus interne (`MalusDieBadge`,
+  // en dur) — retour propriétaire (2026-08-05) : un badge autonome rouge n'existait pas avant sur
+  // cette carte, ne pas en introduire un pour un effet qui ne touche jamais les stats du porteur.
+  retaliation: 'info',
 };
 
 /**

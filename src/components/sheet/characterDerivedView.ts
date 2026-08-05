@@ -297,6 +297,9 @@ export interface CharacterDerivedView {
   rangedWeaponDamage: WeaponDamageView | null;
   /** PER-115 — bonus de DM SITUATIONNELS au contact (Attaque éclair, Chasseur émérite…), en badges. */
   meleeSituationalDamage: SituationalDamageBonus[];
+  /** PER-116/307 — bonus de DM situationnels de la MAIN SECONDAIRE (combat à deux armes), pour SA
+   *  arme. Affichés sous sa ligne d'attaque. `[]` hors combat à deux armes. */
+  offHandMeleeSituationalDamage: SituationalDamageBonus[];
   /**
    * PER-74 — notes d'effet de capacité (DoT, pénalité de guérison…) subis par un TIERS, affichées en
    * badge sous la carte « Attaque au contact » (voie de l'écorcheur : saignement, blessures
@@ -426,7 +429,8 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // PER-74 — Armure à pointes (écorcheur r5, p. 150) : un ADVERSAIRE qui attaque au contact avec des
   // armes naturelles (mains nues, griffes, crocs) et touche Défense ≥ 10 subit des DM en retour. Ce
   // n'est PAS une réduction/immunité (le personnage n'encaisse rien) mais un rappel visuel — badge
-  // ROUGE dédié (`retaliation`), au même gabarit que les autres puces de Défense.
+  // BLEU dédié (`retaliation`), au même gabarit que les autres puces de Défense (retour propriétaire
+  // 2026-08-05 : bleu, pas rouge — aucun effet chiffré sur la fiche du porteur).
   const retaliation = flayerRetaliationBadge(modFeatureIds);
   const retaliationBadges: DefenseBadgeData[] = retaliation
     ? [
@@ -662,6 +666,15 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     ...weaponDamageBonuses(character, 'ranged', rangedWorn, maxHp).situational,
     ...magicWeaponSituationalDamage(rangedWornLine, rangedWorn?.name ?? '', character.level),
   ];
+  // PER-116/307 — bonus situationnels de la MAIN SECONDAIRE (combat à deux armes) : calculés pour SON
+  // arme (donc filtrés par SA condition + ses propriétés magiques), pour être affichés SOUS sa ligne et
+  // non confondus avec ceux de l'arme principale. Vide hors combat à deux armes.
+  const offHandMeleeSituationalDamage = offHandMelee
+    ? [
+        ...weaponDamageBonuses(character, 'melee', offHandMelee.item, maxHp).situational,
+        ...magicWeaponSituationalDamage(offHandMelee.line, offHandMelee.item.name, character.level),
+      ]
+    : [];
   const meleeAttackNotes = flayerMeleeAttackNotes(modFeatureIds);
 
   return {
@@ -680,6 +693,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     unarmedCriticalRanges,
     rangedWeaponDamage,
     meleeSituationalDamage,
+    offHandMeleeSituationalDamage,
     rangedSituationalDamage,
     meleeAttackNotes,
     rangedAttackMagicalSourceId: rangedAttackMagical,

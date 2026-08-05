@@ -33,6 +33,15 @@ export interface FeatureEffectNote {
   reminder: string;
   /** N'affiché qu'en mode ARME (mode mains nues exclu). Absent/`false` = les deux modes. */
   weaponOnly?: boolean;
+  /**
+   * Teinte du badge, au même logiciel de couleurs que le reste de la fiche (retour propriétaire) :
+   * `'info'` (bleu) pour un effet PERMANENT — même famille que « Combat à deux armes »/« Cape
+   * d'ombre », un rappel de règle qui ne modifie AUCUNE stat du porteur ; `'warning'` (ambre) pour un
+   * effet SITUATIONNEL (conditionné à un déclencheur précis, ex. Impitoyable ne joue que sur un
+   * raté), même logique que l'immunité situationnelle de `DefenseBadge`. Le ROUGE reste réservé au dé
+   * malus interne (`MalusDieBadge`, en dur) — jamais une teinte de badge autonome sur cette carte.
+   */
+  color: AttackBadgeColor;
 }
 
 /**
@@ -45,16 +54,14 @@ export function FeatureEffectBadge({
   note,
   abilities,
   level,
-  color = 'error',
 }: {
   note: FeatureEffectNote;
   abilities: Abilities;
   level: number;
-  color?: AttackBadgeColor;
 }) {
   return (
     <AttackQualifierBadge
-      color={color}
+      color={note.color}
       icon={ICONS[note.icon]}
       label={note.label}
       tooltip={

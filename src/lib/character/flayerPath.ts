@@ -26,6 +26,9 @@ export function flayerMeleeAttackNotes(featureIds: string[]): FeatureEffectNote[
       icon: 'bleeding',
       label: 'Saignement',
       weaponOnly: true,
+      // PERMANENT (aucun déclencheur particulier au-delà d'une attaque réussie) → bleu, comme
+      // « Combat à deux armes »/« Cape d'ombre » (retour propriétaire).
+      color: 'info',
       reminder:
         "Une attaque réussie provoque un saignement : 1 DM par round (2 dès le rang 8), jusqu'à des soins ou un test d'AGI difficulté 10. Ne se cumule pas.",
     });
@@ -35,6 +38,8 @@ export function flayerMeleeAttackNotes(featureIds: string[]): FeatureEffectNote[
       featureId: R6,
       icon: 'grievous-wounds',
       label: 'Blessures affreuses',
+      // PERMANENT → bleu (même logique que R4).
+      color: 'info',
       reminder:
         'Les soins et la régénération guérissent deux fois moins vite les DM infligés en contact par ce personnage.',
     });
@@ -44,6 +49,9 @@ export function flayerMeleeAttackNotes(featureIds: string[]): FeatureEffectNote[
       featureId: R8,
       icon: 'merciless',
       label: 'Impitoyable',
+      // SITUATIONNEL (ne joue que sur une attaque RATÉE) → ambre, comme l'immunité situationnelle
+      // de `DefenseBadge` (retour propriétaire : le jaune signale un déclencheur précis).
+      color: 'warning',
       reminder: "Une attaque ratée inflige quand même {1d4°} DM à la cible.",
     });
   }

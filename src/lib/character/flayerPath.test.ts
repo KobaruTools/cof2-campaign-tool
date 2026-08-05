@@ -13,23 +13,23 @@ describe('flayerMeleeAttackNotes', () => {
     expect(flayerMeleeAttackNotes(['autre-chose'])).toEqual([]);
   });
 
-  it('R4 seul → une note weaponOnly', () => {
+  it('R4 seul → une note weaponOnly, bleue (effet PERMANENT)', () => {
     const notes = flayerMeleeAttackNotes([R4]);
     expect(notes).toHaveLength(1);
-    expect(notes[0]).toMatchObject({ featureId: R4, icon: 'bleeding', weaponOnly: true });
+    expect(notes[0]).toMatchObject({ featureId: R4, icon: 'bleeding', weaponOnly: true, color: 'info' });
   });
 
-  it('R6 seul → une note SANS weaponOnly (les deux modes)', () => {
+  it('R6 seul → une note SANS weaponOnly (les deux modes), bleue (effet PERMANENT)', () => {
     const notes = flayerMeleeAttackNotes([R6]);
     expect(notes).toHaveLength(1);
-    expect(notes[0]).toMatchObject({ featureId: R6, icon: 'grievous-wounds' });
+    expect(notes[0]).toMatchObject({ featureId: R6, icon: 'grievous-wounds', color: 'info' });
     expect(notes[0].weaponOnly).toBeUndefined();
   });
 
-  it('R8 seul → une note SANS weaponOnly, verbatim balisé (dé évolutif)', () => {
+  it('R8 seul → une note SANS weaponOnly, verbatim balisé (dé évolutif), AMBRE (effet SITUATIONNEL)', () => {
     const notes = flayerMeleeAttackNotes([R8]);
     expect(notes).toHaveLength(1);
-    expect(notes[0]).toMatchObject({ featureId: R8, icon: 'merciless' });
+    expect(notes[0]).toMatchObject({ featureId: R8, icon: 'merciless', color: 'warning' });
     expect(notes[0].weaponOnly).toBeUndefined();
     expect(notes[0].reminder).toContain('{1d4°}');
   });

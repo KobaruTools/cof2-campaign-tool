@@ -127,6 +127,13 @@ describe('PER-74 — badges UI (attaque au contact + carte Défense)', () => {
     expect(view.meleeAttackNotes.find((n) => n.featureId === R8)?.weaponOnly).toBeUndefined();
   });
 
+  it('meleeAttackNotes : R4/R6 bleus (PERMANENTS), R8 ambre (SITUATIONNEL — retour propriétaire 2026-08-05)', () => {
+    const view = buildCharacterDerivedView(recette());
+    expect(view.meleeAttackNotes.find((n) => n.featureId === R4)?.color).toBe('info');
+    expect(view.meleeAttackNotes.find((n) => n.featureId === R6)?.color).toBe('info');
+    expect(view.meleeAttackNotes.find((n) => n.featureId === R8)?.color).toBe('warning');
+  });
+
   it('carte Défense : badge de riposte R5, dé évolutif une fois le rang 7 atteint', () => {
     const view = buildCharacterDerivedView(recette());
     const badge = view.defenseBadges.find((b) => b.key === 'retaliation-flayer-r5');
