@@ -49,6 +49,7 @@ function makeCampaign(firearmsAllowed: boolean): Campaign {
     name: 'Campagne',
     description: null,
     rules: { firearmsAllowed, hitDieOnLevelUp: false },
+    rumors: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
   };

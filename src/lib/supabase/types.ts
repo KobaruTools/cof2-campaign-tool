@@ -73,6 +73,7 @@ export type Database = {
           name: string
           owner_id: string
           rules: Json
+          rumors: Json
           updated_at: string
         }
         Insert: {
@@ -82,6 +83,7 @@ export type Database = {
           name: string
           owner_id: string
           rules?: Json
+          rumors?: Json
           updated_at?: string
         }
         Update: {
@@ -91,6 +93,7 @@ export type Database = {
           name?: string
           owner_id?: string
           rules?: Json
+          rumors?: Json
           updated_at?: string
         }
         Relationships: []

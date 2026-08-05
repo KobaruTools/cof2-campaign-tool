@@ -44,6 +44,28 @@ export interface CampaignRules {
 }
 
 /**
+ * Rumeur de taverne (PER-199) — accroche libre pré-écrite par le MJ, piochée au
+ * hasard en jeu (typiquement à l'entrée d'une taverne). Rattachement PROPRE à la
+ * campagne : persistée dans la colonne `rumors` (jsonb, tableau) de `public.campaigns`,
+ * donc soumise à la même RLS propriétaire — les joueurs n'y accèdent jamais.
+ *
+ * Structure volontairement minimale (décision de cadrage PER-199) : texte libre +
+ * drapeau « déjà servie ». Les métadonnées (lieu, thème, vraie/fausse) et une brique
+ * de tirage factorisée avec PER-200 (butin) sont différées.
+ */
+export interface TavernRumor {
+  /** Clé stable (UUID) — sert d'ancre de tirage et de `key` React. Slug persisté. */
+  id: string;
+  /** Texte libre de la rumeur (contenu FR, saisi par le MJ). */
+  text: string;
+  /**
+   * La rumeur a-t-elle déjà été tirée dans le cycle courant ? Persistant : le
+   * tirage évite les non-servies jusqu'à ce que le MJ « réinitialise » la réserve.
+   */
+  served: boolean;
+}
+
+/**
  * Campagne : ses notes de MJ et ses règles de table. Regroupe des personnages via
  * la clé étrangère `Character.campaignId`. `id` = UUID généré par la base.
  */
@@ -53,6 +75,11 @@ export interface Campaign {
   /** Notes libres du MJ sur la campagne (colonne nullable). */
   description: string | null;
   rules: CampaignRules;
+  /**
+   * Réserve de rumeurs de taverne du MJ (PER-199). Vide par défaut (`[]`), jamais
+   * `null` (colonne `not null default '[]'`). Lecture défensive via `parseRumors`.
+   */
+  rumors: TavernRumor[];
   /** Horodatages ISO recopiés de la base (tri, affichage). */
   createdAt: string;
   updatedAt: string;

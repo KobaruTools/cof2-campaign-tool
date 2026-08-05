@@ -11,7 +11,12 @@
  */
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import type { Database, Json } from '@/lib/supabase/types';
-import { DEFAULT_CAMPAIGN_RULES, type Campaign, type CampaignRules } from './types';
+import {
+  DEFAULT_CAMPAIGN_RULES,
+  type Campaign,
+  type CampaignRules,
+  type TavernRumor,
+} from './types';
 
 type CampaignRow = Database['public']['Tables']['campaigns']['Row'];
 
@@ -34,6 +39,26 @@ export function parseRules(raw: Json): CampaignRules {
   };
 }
 
+/**
+ * Parse défensif de la colonne `rumors` (jsonb) vers `TavernRumor[]` (PER-199). La
+ * valeur stockée est un blob opaque côté base : on n'accepte QUE les éléments bien
+ * formés (`id`/`text` chaînes, `served` booléen), on ignore les autres, et on ne
+ * lève jamais. Une valeur non-tableau (ancien format, `null`) → réserve vide.
+ */
+export function parseRumors(raw: Json): TavernRumor[] {
+  if (!Array.isArray(raw)) return [];
+  const out: TavernRumor[] = [];
+  for (const item of raw) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const { id, text, served } = item as Record<string, unknown>;
+      if (typeof id === 'string' && typeof text === 'string') {
+        out.push({ id, text, served: served === true });
+      }
+    }
+  }
+  return out;
+}
+
 /** Mappe une ligne SQL `campaigns` vers l'entité `Campaign` de l'application. */
 export function rowToCampaign(row: CampaignRow): Campaign {
   return {
@@ -41,6 +66,7 @@ export function rowToCampaign(row: CampaignRow): Campaign {
     name: row.name,
     description: row.description,
     rules: parseRules(row.rules),
+    rumors: parseRumors(row.rumors),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -92,20 +118,27 @@ export async function insertCampaign(input: {
 }
 
 /**
- * Met à jour le nom, les notes et/ou les règles de table d'une campagne (RLS
- * propriétaire). Écriture **simple** (pas de verrou optimiste) : la table
- * `campaigns` n'a pas de colonne `version` et l'édition est mono-propriétaire (le
- * MJ, seul, sur sa page de réglages) — pas de scénario de concurrence à arbitrer.
- * Les `rules` sont sérialisées telles quelles vers la colonne jsonb ; leur
- * relecture reste défensive (`parseRules`).
+ * Met à jour le nom, les notes, les règles de table et/ou la réserve de rumeurs
+ * (PER-199) d'une campagne (RLS propriétaire). Écriture **simple** (pas de verrou
+ * optimiste) : la table `campaigns` n'a pas de colonne `version` et l'édition est
+ * mono-propriétaire (le MJ, seul) — pas de scénario de concurrence à arbitrer. Les
+ * `rules`/`rumors` sont sérialisées telles quelles vers leur colonne jsonb ; leur
+ * relecture reste défensive (`parseRules`/`parseRumors`).
  */
 export async function updateCampaign(
   id: string,
-  patch: { name?: string; description?: string | null; rules?: CampaignRules },
+  patch: {
+    name?: string;
+    description?: string | null;
+    rules?: CampaignRules;
+    rumors?: TavernRumor[];
+  },
 ): Promise<Campaign> {
   const supabase = createBrowserSupabaseClient();
-  const { rules, ...rest } = patch;
-  const row = rules ? { ...rest, rules: rules as unknown as Json } : rest;
+  const { rules, rumors, ...rest } = patch;
+  const row: Database['public']['Tables']['campaigns']['Update'] = { ...rest };
+  if (rules) row.rules = rules as unknown as Json;
+  if (rumors) row.rumors = rumors as unknown as Json;
   const { data, error } = await supabase
     .from('campaigns')
     .update(row)

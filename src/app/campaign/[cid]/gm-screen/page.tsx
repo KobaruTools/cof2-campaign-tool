@@ -33,6 +33,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import LocalBarIcon from '@mui/icons-material/LocalBar';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -59,6 +60,8 @@ import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
 import { CombatStatusPalette, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
 import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkControl';
+import { GmToolsDrawerHost, TOOLS_PARAM } from '@/components/campaign/GmToolsDrawerHost';
+import { DEFAULT_GM_TOOL } from '@/components/campaign/GmToolsDrawer';
 import { HomeBackground } from '@/components/HomeBackground';
 import { SIDE_ACCENT } from '@/lib/ui/creature';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
@@ -334,6 +337,21 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         {/* Cycle de vie de la session synchronisée (PER-264) : démarrer/terminer + état
             « session en cours ». C'est le gate du temps réel (PER-265+ s'y accrocheront). */}
         <GmSessionControl campaignId={cid} />
+        {/* Outils du MJ (PER-199) : ouvre le tiroir latéral à onglets (rumeurs de taverne,
+            et d'autres outils à venir). Vraie ancre (`?tools=`) → Ctrl/⌘+Clic ouvre dans un
+            nouvel onglet, le bouton Retour ferme le tiroir. */}
+        <Box sx={{ mb: 2 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<LocalBarIcon />}
+            component={Link}
+            href={`/campaign/${cid}/gm-screen?${TOOLS_PARAM}=${DEFAULT_GM_TOOL}`}
+            scroll={false}
+          >
+            Rumeurs de taverne
+          </Button>
+        </Box>
         {/* Combat tracker (PER-236, PER-247) : barre d'ajout de créatures, laissée sur toutes les campagnes. */}
         <Stack
           direction="row"
@@ -568,6 +586,12 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           campaign={campaign}
           playerNameById={playerNameById}
         />
+      </Suspense>
+
+      {/* Tiroir « Outils du MJ » (PER-199), piloté par `?tools=`. Frontière `Suspense`
+          imposée par la lecture des paramètres d'URL, comme le tiroir de fiche. */}
+      <Suspense>
+        <GmToolsDrawerHost campaign={campaign} />
       </Suspense>
     </>
   );

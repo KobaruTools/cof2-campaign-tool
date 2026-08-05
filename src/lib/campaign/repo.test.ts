@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Database, Json } from '@/lib/supabase/types';
-import { parseRules, rowToCampaign } from './repo';
+import { parseRules, parseRumors, rowToCampaign } from './repo';
 import type { CampaignRules } from './types';
 
 type CampaignRow = Database['public']['Tables']['campaigns']['Row'];
@@ -12,6 +12,7 @@ const row = (over: Partial<CampaignRow> = {}): CampaignRow => ({
   name: 'La Tour Écarlate',
   description: null,
   rules: { firearmsAllowed: true },
+  rumors: [],
   created_at: '2026-07-01T10:00:00Z',
   updated_at: '2026-07-02T11:00:00Z',
   ...over,
@@ -59,6 +60,7 @@ describe('rowToCampaign', () => {
       name: 'La Tour Écarlate',
       description: null,
       rules: { firearmsAllowed: true, hitDieOnLevelUp: false },
+      rumors: [],
       createdAt: '2026-07-01T10:00:00Z',
       updatedAt: '2026-07-02T11:00:00Z',
     });
@@ -68,6 +70,35 @@ describe('rowToCampaign', () => {
     const c = rowToCampaign(row({ description: 'Notes du MJ', rules: {} }));
     expect(c.description).toBe('Notes du MJ');
     expect(c.rules).toEqual({ firearmsAllowed: true, hitDieOnLevelUp: false });
+  });
+});
+
+describe('parseRumors', () => {
+  it('lit les rumeurs bien formées', () => {
+    const raw = [
+      { id: 'r1', text: 'Le maire cache un secret', served: false },
+      { id: 'r2', text: 'Une comète annonce un malheur', served: true },
+    ];
+    expect(parseRumors(raw as unknown as Json)).toEqual(raw);
+  });
+
+  it('retombe sur une réserve vide pour une valeur non-tableau (null, ancien format)', () => {
+    expect(parseRumors(null)).toEqual([]);
+    expect(parseRumors({ served: true } as unknown as Json)).toEqual([]);
+  });
+
+  it('ignore les éléments mal formés et normalise served', () => {
+    const raw = [
+      { id: 'ok', text: 'valide' }, // served absent → false
+      { id: 42, text: 'id non-chaîne' }, // rejeté
+      { text: 'sans id' }, // rejeté
+      'chaîne nue', // rejeté
+      { id: 'ok2', text: 'servi', served: 'yes' }, // served non-booléen → false
+    ];
+    expect(parseRumors(raw as unknown as Json)).toEqual([
+      { id: 'ok', text: 'valide', served: false },
+      { id: 'ok2', text: 'servi', served: false },
+    ]);
   });
 });
 
