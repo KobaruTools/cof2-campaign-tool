@@ -27,10 +27,10 @@
  * LECTURE SEULE (via `row.appliedStatuses` + `StatusChipVisual`, sans ✕/± ni nombres ajustés) — les
  * DEF/attaque ajustées restent secrètes côté MJ, comme le NC et les PV des créatures.
  *
- * La PROJECTION porte en plus, sur les blocs de PERSONNAGES seulement, un bandeau de
- * jauges condensées PV + mana plaqué en haut du bloc (`CompactGauges`, même modèle que les cartes de
- * joueurs de l'écran de MJ) — la table voit ainsi la vie de tout le monde sur l'écran public. Les PV
- * des CRÉATURES restent masqués.
+ * La PROJECTION porte en plus, sur les blocs du CAMP DES JOUEURS (personnages et créatures ALLIÉES),
+ * un bandeau de jauges condensées PV + mana plaqué en haut du bloc (`CompactGauges`, même modèle que
+ * les cartes de joueurs de l'écran de MJ) — la table voit ainsi la vie de tous les siens sur l'écran
+ * public, PNJ compagnons compris. Les PV des créatures ADVERSES restent masqués, comme leur NC.
  *
  * CRÉATURE À 0 PV : en PROJECTION, son bloc est désaturé de moitié, barré et surmonté d'un
  * pictogramme (`IncapacitatedOverlay`) — c'est ce qui annonce son sort aux joueurs, puisque ses PV ne
@@ -1130,18 +1130,18 @@ function ProjectionStatusStrip({ applied }: { applied: EffectiveStatus[] }) {
 
 /**
  * Hauteur réservée en haut d'un bloc de la fenêtre PROJETÉE pour le bandeau de jauges condensées :
- * 2 pistes (PV + mana) et le filet qui les sépare. Réservée sur TOUS les blocs (créatures comprises,
- * qui n'en portent pas) pour que les portraits restent alignés d'un bloc à l'autre.
+ * 2 pistes (PV + mana) et le filet qui les sépare. Réservée sur TOUS les blocs (y compris ceux des
+ * créatures adverses, qui n'en portent pas) pour que les portraits restent alignés d'un bloc à l'autre.
  */
 const PROJECTION_GAUGES_HEIGHT = 2 * COMPACT_GAUGE_HEIGHT + COMPACT_GAUGE_ROW_GAP;
 
 /**
- * Bandeau de jauges PV + mana d'un PERSONNAGE en fenêtre projetée, plaqué contre le bord
- * SUPÉRIEUR du bloc et HORS DU FLUX — même modèle que les cartes de joueurs de l'écran de MJ
- * (`CompactGauges` : barres très fines, sans chiffre ni contrôle, le coup d'œil seul). Les joueurs
- * voient ainsi la vie de TOUTE la table sur l'écran public ; les PV des CRÉATURES restent secrets
- * (aucun bandeau sur leurs blocs), comme leur NC. La piste de chance est volontairement omise : ce
- * n'est pas une information de combat.
+ * Bandeau de jauges PV + mana d'un PERSONNAGE ou d'une créature ALLIÉE en fenêtre projetée, plaqué
+ * contre le bord SUPÉRIEUR du bloc et HORS DU FLUX — même modèle que les cartes de joueurs de l'écran
+ * de MJ (`CompactGauges` : barres très fines, sans chiffre ni contrôle, le coup d'œil seul). Les
+ * joueurs voient ainsi la vie de tout leur CAMP sur l'écran public, PNJ compagnons compris ; les PV
+ * des créatures ADVERSES restent secrets (aucun bandeau sur leurs blocs), comme leur NC. La piste de
+ * chance est volontairement omise : ce n'est pas une information de combat.
  */
 function ProjectionGaugesStrip({
   depletion,
@@ -1789,9 +1789,10 @@ function CombatantColumn({
     ? (row.appliedStatuses ?? []).filter((s) => revealAutoStatuses || s.origin !== 'auto')
     : [];
   const hasProjectionStatuses = projectionStatuses.length > 0;
-  // Bandeau de jauges de la projection : PERSONNAGES uniquement (les PV des créatures
-  // restent réservés au MJ) et seulement si les PV max sont connus (profil complet).
-  const showProjectionGauges = projection && !row.isCreature && row.maxHp > 0;
+  // Bandeau de jauges de la projection : le CAMP DES JOUEURS — personnages, et créatures ALLIÉES
+  // (PNJ compagnons, familiers, montures). Les PV des créatures ADVERSES restent réservés au MJ, comme
+  // leur NC. Nécessite des PV max connus (profil complet, ou bloc de bestiaire chargé).
+  const showProjectionGauges = projection && (!row.isCreature || row.side === 'ally') && row.maxHp > 0;
   // Créature à 0 PV (cf. `isDefeatedCreature` : jamais un personnage, à terre / mourant p. 220, pas
   // mort). En PROJECTION, sa carte est barrée et surmontée d'un pictogramme, seule annonce faite à la
   // table puisque ses PV lui sont masqués — TUÉE (létal) ou ASSOMMÉE (temporaires seuls), cf.
