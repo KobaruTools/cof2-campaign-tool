@@ -24,6 +24,7 @@ import type { ItemType } from '@/lib/character/types';
 import { ITEM_TYPE_ORDER, itemType } from '@/lib/character/items';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
+import { itemTypeColor } from '@/lib/ui/itemTypeColors';
 import { ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
 
 /** Rang d'affichage de chaque type (ordre canonique partagé `ITEM_TYPE_ORDER`). */
@@ -122,9 +123,11 @@ export function EquipmentCatalogAutocomplete({
                 backgroundColor: alpha(theme.palette.background.paper, 0.92),
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
-                borderLeft: `3px solid ${theme.palette.divider}`,
+                // Même palette de catégories que les sections de l'inventaire, pour qu'un type
+                // se reconnaisse à sa teinte des deux côtés (sélecteur d'ajout et fiche).
+                borderLeft: `3px solid ${itemTypeColor(type)}`,
                 borderBottom: `1px solid ${theme.palette.divider}`,
-                color: theme.palette.text.secondary,
+                color: itemTypeColor(type),
                 fontWeight: 700,
                 fontSize: '0.75rem',
               })}

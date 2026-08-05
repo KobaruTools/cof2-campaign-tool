@@ -98,6 +98,12 @@ import { AbilityValueChip } from '@/components/sheet/FeatureRichText';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
+import { weaponIconKind } from '@/lib/ui/weaponKind';
+import {
+  itemTypeColor,
+  itemTypeHeaderBorder,
+  itemTypeSectionGradient,
+} from '@/lib/ui/itemTypeColors';
 import { ItemDialog, ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
 import { WeaponCriticalRangeBadge } from '@/components/sheet/WeaponCriticalRangeBadge';
 import { BoundWeaponBadge } from '@/components/sheet/BoundWeaponBadge';
@@ -799,15 +805,15 @@ function CardGrid({ children }: { children: ReactNode }) {
 function GroupHeader({ type, count }: { type: ItemType; count: number }) {
   return (
     <Box
-      sx={(theme) => ({
+      sx={{
         display: 'flex',
         alignItems: 'center',
         gap: 0.75,
         pt: 0.5,
         pb: 0.25,
-        color: theme.palette.text.secondary,
-        borderBottom: `2px solid ${theme.palette.divider}`,
-      })}
+        color: itemTypeColor(type),
+        borderBottom: itemTypeHeaderBorder(type),
+      }}
     >
       <ItemTypeIcon type={type} size={18} />
       <Typography variant="overline" sx={{ fontWeight: 700, lineHeight: 1.6 }}>
@@ -1173,6 +1179,9 @@ export function EquipmentList({
     const custom = isCustomItem(line);
     // Type d'objet (PER-213) : sert à l'icône affichée à gauche du nom.
     const lineType = itemType(line);
+    // Sous-type d'arme : affine cette icône (hache, arc, arbalète…) plutôt que l'épée
+    // générique du type `weapon`. `null` sur tout ce qui n'est pas une arme du catalogue.
+    const lineWeaponKind = weaponIconKind(line);
     // Résolveur de variante (PER-211) : l'objet effectif porte les surcharges
     // d'instance (nom via `equipmentLabel`, DM/DEF/plafond AGI via `itemDetail`).
     const item = custom ? null : effectiveItem(line);
@@ -1265,7 +1274,11 @@ export function EquipmentList({
         component="span"
         sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
       >
-        <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
+        <ItemTypeIcon
+          type={lineType}
+          weaponKind={lineWeaponKind}
+          sx={{ color: 'text.secondary' }}
+        />
         Élixir —
         <CapabilityChip featureId={elixirFeatureId} label={null} />
       </Typography>
@@ -1281,7 +1294,11 @@ export function EquipmentList({
         }}
       >
         {/* Icône du type d'objet (PER-213), teinte neutre, à gauche du nom. */}
-        <ItemTypeIcon type={lineType} sx={{ color: 'text.secondary' }} />
+        <ItemTypeIcon
+          type={lineType}
+          weaponKind={lineWeaponKind}
+          sx={{ color: 'text.secondary' }}
+        />
         {/* Titre de l'objet. S'il porte une description libre, il devient survolable
             (tooltip) — la description reste masquée par défaut. */}
         {description ? (
@@ -1823,7 +1840,18 @@ export function EquipmentList({
         // catégories serait ambigu), quel que soit le layout.
         <Stack spacing={1.5}>
           {groupEquipmentByType(equipment).map((group) => (
-            <Box key={group.type}>
+            // Section teintée à la couleur de sa catégorie : dégradé partant de l'en-tête vers la
+            // transparence (cf. `itemTypeSectionGradient`), pour que l'œil sépare les catégories
+            // sans avoir à lire les libellés.
+            <Box
+              key={group.type}
+              sx={{
+                px: 1,
+                pb: 0.5,
+                borderRadius: 1,
+                backgroundImage: itemTypeSectionGradient(group.type),
+              }}
+            >
               <GroupHeader type={group.type} count={group.entries.length} />
               {cards ? (
                 <Box sx={{ mt: 1 }}>

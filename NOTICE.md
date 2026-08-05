@@ -217,6 +217,43 @@ L'affichage passe par le composant commun `src/components/ItemTypeIcon.tsx`.
 | Trésor | `lorc/cut-diamond.svg` | Lorc |
 | Divers | `delapouite/cardboard-box.svg` | Delapouite |
 
+## Icônes des sous-types d'arme
+
+Les icônes affinant le type « arme » par SOUS-TYPE (épée, dague, hache, arc, arbalète…)
+proviennent également de [game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteurs : **Lorc**, **Delapouite** et **Skoll** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/weaponKindIcons.ts`. La correspondance sous-type → fichier source est conservée
+dans `WEAPON_KIND_ICON_SOURCES` (même fichier) et dans
+`scripts/game-icons/weapon-kinds/map.tsv`. La résolution arme → sous-type vit dans
+`src/lib/ui/weaponKind.ts`, l'affichage passe par `src/components/ItemTypeIcon.tsx`.
+
+| Sous-type d'arme | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Épée | `lorc/pointy-sword.svg` | Lorc |
+| Dague | `lorc/plain-dagger.svg` | Lorc |
+| Hache | `lorc/battle-axe.svg` | Lorc |
+| Marteau | `delapouite/warhammer.svg` | Delapouite |
+| Masse | `lorc/spiked-mace.svg` | Lorc |
+| Fléau | `delapouite/flail.svg` | Delapouite |
+| Arme d'hast | `lorc/barbed-spear.svg` | Lorc |
+| Trident | `lorc/trident.svg` | Lorc |
+| Faux | `lorc/scythe.svg` | Lorc |
+| Pioche | `lorc/mining.svg` | Lorc |
+| Bâton | `delapouite/bo.svg` | Delapouite |
+| Mains nues | `lorc/mailed-fist.svg` | Lorc |
+| Arc | `delapouite/bow-arrow.svg` | Delapouite |
+| Arbalète | `skoll/ballista.svg` | Skoll |
+| Fronde | `delapouite/sling.svg` | Delapouite |
+| Arme à poudre | `lorc/blunderbuss.svg` | Lorc |
+| Canon | `lorc/cannon.svg` | Lorc |
+| Arme de jet | `delapouite/spear-feather.svg` | Delapouite |
+| Poêle | `delapouite/cooking-pot.svg` | Delapouite |
+| Rouleau à pâtisserie | `delapouite/dough-roller.svg` | Delapouite |
+
 ## Icônes des titres de section
 
 Les icônes ornant les titres de section de la fiche de personnage (Caractéristiques,

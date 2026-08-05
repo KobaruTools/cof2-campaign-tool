@@ -1,0 +1,318 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-inventaire-couleurs",
+  "name": "Recette — Inventaire haut en couleur",
+  "identity": {
+    "description": "ATTENDU (lisibilité de l’inventaire) :\n1. Basculer l’inventaire sur « Organiser par catégorie ».\n2. Les 7 sections doivent porter chacune sa TEINTE : arme = rouge grenat, armure =\n   bleu acier, bouclier = turquoise, consommable = violet, équipement = vert olive,\n   trésor = or, divers = gris ardoise. Icône + libellé + filet dans la teinte, et fond\n   en dégradé partant de l’en-tête vers la transparence, PROPORTIONNEL à la hauteur\n   de la section (la section « Armes », très longue, s’éteint donc plus lentement que\n   « Boucliers », qui n’a que 2 lignes).\n3. Chaque arme doit porter l’icône de SON sous-type (20 sous-types distincts ici) :\n   épée, dague, hache, marteau, masse, fléau, arme d’hast, trident, faux, pioche,\n   bâton, mains nues, arc, arbalète, fronde, arme à poudre, canon, arme de jet, poêle,\n   rouleau à pâtisserie. Deux armes d’une même famille partagent la même icône\n   (épée longue / rapière / épée à deux mains ; hache / hachette ; masse / gourdin).\n4. « Sabre ébréché de mon oncle » est un objet LIBRE de type arme : il retombe sur\n   l’icône générique d’épée (aucune donnée d’arme à lire).\n5. Le sélecteur d’ajout (« Ajouter un objet ») reprend les mêmes teintes sur ses\n   en-têtes de groupe.\nLe port (armure de cuir, petit bouclier, épée longue en main) n’est là que pour que la\nfiche soit réaliste — il ne joue aucun rôle dans la recette."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 3,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-r1",
+    "soldat-r1",
+    "humain-r1"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand"
+      }
+    },
+    {
+      "itemId": "rapiere",
+      "quantity": 1
+    },
+    {
+      "itemId": "epee-a-deux-mains",
+      "quantity": 1
+    },
+    {
+      "itemId": "dague",
+      "quantity": 5
+    },
+    {
+      "itemId": "stylet",
+      "quantity": 1
+    },
+    {
+      "itemId": "hache",
+      "quantity": 1
+    },
+    {
+      "itemId": "hachette",
+      "quantity": 2
+    },
+    {
+      "itemId": "marteau",
+      "quantity": 1
+    },
+    {
+      "itemId": "masse",
+      "quantity": 1
+    },
+    {
+      "itemId": "gourdin",
+      "quantity": 1
+    },
+    {
+      "itemId": "fleau",
+      "quantity": 1
+    },
+    {
+      "itemId": "pique",
+      "quantity": 1
+    },
+    {
+      "itemId": "epieu",
+      "quantity": 1
+    },
+    {
+      "itemId": "trident",
+      "quantity": 1
+    },
+    {
+      "itemId": "faux",
+      "quantity": 1
+    },
+    {
+      "itemId": "pioche",
+      "quantity": 1
+    },
+    {
+      "itemId": "baton-ferre",
+      "quantity": 1
+    },
+    {
+      "itemId": "mains-nues",
+      "quantity": 1
+    },
+    {
+      "itemId": "arc-long",
+      "quantity": 1
+    },
+    {
+      "itemId": "arbalete-legere",
+      "quantity": 1
+    },
+    {
+      "itemId": "arbalete-de-poing",
+      "quantity": 1
+    },
+    {
+      "itemId": "fronde",
+      "quantity": 1
+    },
+    {
+      "itemId": "mousquet",
+      "quantity": 1
+    },
+    {
+      "itemId": "petoire",
+      "quantity": 1
+    },
+    {
+      "itemId": "couleuvrine",
+      "quantity": 1
+    },
+    {
+      "itemId": "baliste",
+      "quantity": 1
+    },
+    {
+      "itemId": "javelot",
+      "quantity": 2
+    },
+    {
+      "itemId": "poele",
+      "quantity": 1
+    },
+    {
+      "itemId": "rouleau-a-patisserie",
+      "quantity": 1
+    },
+    {
+      "custom": true,
+      "name": "Sabre ébréché de mon oncle",
+      "type": "weapon",
+      "quantity": 1,
+      "details": "DM 1d6, souvenir de famille"
+    },
+    {
+      "itemId": "cuir-simple",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "chemise-de-mailles",
+      "quantity": 1
+    },
+    {
+      "itemId": "armure-de-plaques",
+      "quantity": 1
+    },
+    {
+      "itemId": "petit-bouclier",
+      "quantity": 1,
+      "worn": {
+        "slot": "shield"
+      }
+    },
+    {
+      "itemId": "grand-bouclier",
+      "quantity": 1
+    },
+    {
+      "itemId": "potion-de-soins",
+      "quantity": 3
+    },
+    {
+      "custom": true,
+      "name": "Fiole d’eau bénite",
+      "type": "consumable",
+      "quantity": 1,
+      "details": "Jet : 1d6 DM aux morts-vivants"
+    },
+    {
+      "custom": true,
+      "name": "Poudre de sommeil",
+      "type": "consumable",
+      "quantity": 1
+    },
+    {
+      "itemId": "corde-15-m",
+      "quantity": 1
+    },
+    {
+      "itemId": "grappin",
+      "quantity": 1
+    },
+    {
+      "itemId": "torches-x3",
+      "quantity": 2
+    },
+    {
+      "itemId": "lanterne-a-huile",
+      "quantity": 1
+    },
+    {
+      "itemId": "huile-pour-lanterne",
+      "quantity": 2
+    },
+    {
+      "itemId": "outils-de-crochetage",
+      "quantity": 1
+    },
+    {
+      "itemId": "carquois-de-20-fleches",
+      "quantity": 2
+    },
+    {
+      "itemId": "ration-1-semaine",
+      "quantity": 1
+    },
+    {
+      "itemId": "sac-a-dos",
+      "quantity": 1
+    },
+    {
+      "itemId": "briquet-a-silex",
+      "quantity": 1
+    },
+    {
+      "itemId": "materiel-decriture",
+      "quantity": 1
+    },
+    {
+      "itemId": "grimoire-de-sorts",
+      "quantity": 1
+    },
+    {
+      "itemId": "instrument-de-musique",
+      "quantity": 1
+    },
+    {
+      "custom": true,
+      "name": "Diamant brut",
+      "type": "treasure",
+      "quantity": 1,
+      "details": "150 po chez un lapidaire"
+    },
+    {
+      "custom": true,
+      "name": "Coupe en électrum",
+      "type": "treasure",
+      "quantity": 1,
+      "details": "Armoiries inconnues"
+    },
+    {
+      "custom": true,
+      "name": "Bourse de perles noires",
+      "type": "treasure",
+      "quantity": 1
+    },
+    {
+      "custom": true,
+      "name": "Carte au trésor déchirée",
+      "type": "misc",
+      "quantity": 1,
+      "details": "Moitié gauche seulement"
+    },
+    {
+      "custom": true,
+      "name": "Clé rouillée sans serrure connue",
+      "type": "misc",
+      "quantity": 1
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "Recette de LISIBILITÉ de l’inventaire (couleurs de catégorie + icônes de sous-type d’arme). Perso jetable : à supprimer après la recette.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
