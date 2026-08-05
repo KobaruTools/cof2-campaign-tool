@@ -24,7 +24,10 @@ export default function ReferencePage() {
       <HomeBackground />
       <AppHeader breadcrumbs={[{ label: 'Aide-mémoire' }]} />
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* `xl` (et non `lg` comme les autres pages) : depuis PER-311 le contenu d'un onglet se lit sur
+          DEUX COLONNES à côté du sommaire — en `lg` chaque colonne tomberait sous les 450 px, où une
+          table de manœuvres à trois colonnes ne tient plus. */}
+      <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* Suspense requis : `ReferenceBrowser` lit la section de parcours dans l'URL (`?s=`) via
             useSearchParams — une frontière évite de déporter tout l'arbre en rendu client au
             prérendu (Next 16), comme pour le bestiaire. */}

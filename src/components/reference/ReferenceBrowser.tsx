@@ -9,6 +9,17 @@
  * Disposition : barre de recherche plein texte en haut ; en dessous, un ONGLET par section (Combat /
  * Résolution / Environnement), et sous les onglets la table des matières — limitée aux sous-sections
  * de l'onglet courant — à gauche, le contenu à droite. Deux modes :
+ *
+ * MISE EN PAGE « ÉCRAN DE MJ » (PER-311) — le contenu d'un onglet se lit comme l'écran de MJ de
+ * référence (`public/pdf/gm-screen.pdf`), et non plus comme une pile de cartes interminable :
+ *   • un PANNEAU par sous-section (= une ancre de PER-310), à bandeau de titre TEINTÉ par famille de
+ *     règles (`referenceStyle.ts`, teintes reprises des palettes existantes — pas de système parallèle) ;
+ *   • ces panneaux répartis sur DEUX COLONNES à partir de `lg` (`splitReferenceColumns`, pur et testé),
+ *     une seule en dessous ;
+ *   • TOUT EST DÉPLIÉ : plus aucun accordéon (décision proprio 2026-08-05). Une entrée de texte est
+ *     une AMORCE en gras coloré suivie de son verbatim — le point d'entrée visuel du PDF — et non plus
+ *     une carte à chevron. On n'affiche donc que `body` (le verbatim), jamais `shortEffect` en plus :
+ *     l'aperçu compact n'a de sens que là où le verbatim est caché (badge de fiche, résumé replié).
  *   • PARCOURS (recherche vide) : l'onglet (`?s=`) choisit la section rendue, sous-section par
  *     sous-section ; le sommaire saute d'un bloc à l'autre ;
  *   • RECHERCHE (recherche non vide) : liste À PLAT des entrées correspondantes, toutes sections
@@ -20,8 +31,9 @@
  * et sommaire sont de VRAIES ancres (`component={NextLink}`), composées par les seuls
  * `referenceSectionHref` / `referenceSubsectionHref` / `subsectionAnchorId`.
  *
- * Rendu à la densité « page dédiée » du schéma : entrées `text` en accordéon (aperçu `shortEffect`
- * replié, `body` VERBATIM déplié, `test` en puce distincte) ; entrées `table` en tableau traversable.
+ * Rendu à la densité « page dédiée » du schéma : entrées `text` en amorce colorée + `body` VERBATIM
+ * (+ `test` en puce distincte) ; entrées `table` en tableau compact à en-tête teinté et lignes
+ * alternées, traversable horizontalement sur petit écran.
  *
  * MISE EN FORME du VERBATIM : le texte affiché passe par `<GlossaryText/>` (le rendu enrichi PARTAGÉ
  * avec les fiches de personnage), qui balise D'OFFICE les notions de règle — caractéristiques
@@ -36,13 +48,10 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import ClearIcon from '@mui/icons-material/Clear';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import SearchIcon from '@mui/icons-material/Search';
-import Accordion from '@mui/material/Accordion';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import AccordionSummary from '@mui/material/AccordionSummary';
 import Box from '@mui/material/Box';
+import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Stack from '@mui/material/Stack';
@@ -57,7 +66,8 @@ import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { alpha, type Theme } from '@mui/material/styles';
 import {
   REFERENCE_ENTRIES,
   type ReferenceEntry,
@@ -71,9 +81,18 @@ import {
   isReferenceSection,
   referenceSectionHref,
   referenceSubsectionHref,
+  splitReferenceColumns,
+  splitVerbatimParagraphs,
   subsectionAnchorId,
   type ReferenceSectionGroup,
+  type ReferenceSubsectionGroup,
 } from '@/lib/ui/reference';
+import {
+  subsectionAccentText,
+  subsectionColor,
+  subsectionHeaderBorder,
+  subsectionPanelGradient,
+} from '@/lib/ui/referenceStyle';
 import { usePersistedState } from '@/lib/ui/usePersistedState';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { SourceRef } from '@/components/SourceRef';
@@ -181,6 +200,15 @@ export function ReferenceBrowser() {
   const sParam = searchParams.get('s');
   const activeSection: ReferenceSection = isReferenceSection(sParam) ? sParam : 'combat';
 
+  /**
+   * Nombre de COLONNES de panneaux (PER-311) : deux à partir de `lg`, une seule en dessous. Décidé
+   * ICI plutôt que dans `SubsectionColumns` parce que le saut vers une ancre en dépend — la page
+   * étant prérendue, la seconde colonne n'apparaît qu'APRÈS l'hydratation, et un saut calculé sur la
+   * disposition à une colonne raterait sa cible de plusieurs centaines de pixels une fois le contenu
+   * reflué. Le passer en dépendance de l'effet de saut suffit à le refaire au bon moment.
+   */
+  const columnCount = useMediaQuery((t: Theme) => t.breakpoints.up('lg')) ? 2 : 1;
+
   const searching = query.trim() !== '';
 
   // Table des matières complète (toutes sections), figée : sert de sommaire à gauche.
@@ -229,6 +257,9 @@ export function ReferenceBrowser() {
    * arriverait au milieu de la nouvelle section. Un clic dans le sommaire ne repasse PAS ici (ni
    * `activeSection` ni `searching` ne changent) : pas de double défilement. Une ancre qui ne
    * correspond à aucun bloc de l'onglet courant est simplement ignorée.
+   *
+   * `columnCount` est en dépendance (PER-311) : le passage à deux colonnes juste après l'hydratation
+   * déplace les blocs, donc il faut REVISER le saut — sinon on atterrit à côté de l'ancre partagée.
    */
   useEffect(() => {
     if (searching) return;
@@ -236,7 +267,7 @@ export function ReferenceBrowser() {
     const target = id ? document.getElementById(id) : null;
     if (target) target.scrollIntoView({ block: 'start' });
     else if (!id) window.scrollTo({ top: 0 });
-  }, [activeSection, searching]);
+  }, [activeSection, searching, columnCount]);
 
   /**
    * Bouton flottant « Haut de page » — LE MÊME que sur la fiche de personnage
@@ -376,28 +407,37 @@ export function ReferenceBrowser() {
               Sur cette page
             </Typography>
             <Stack>
-              {activeGroup.subsections.map((sub) => (
-                <Box
-                  key={sub.subsection}
-                  component={NextLink}
-                  href={referenceSubsectionHref(activeSection, sub.subsection)}
-                  scroll={false}
-                  onClick={() => jumpToSubsection(sub.subsection)}
-                  sx={{
-                    textAlign: 'left',
-                    textDecoration: 'none',
-                    color: 'text.secondary',
-                    fontSize: '0.9rem',
-                    px: 1.25,
-                    py: 0.5,
-                    borderLeft: '2px solid',
-                    borderLeftColor: 'rgba(255, 255, 255, 0.12)',
-                    '&:hover': { color: 'text.primary', borderLeftColor: 'primary.main' },
-                  }}
-                >
-                  {sub.label}
-                </Box>
-              ))}
+              {/* Chaque entrée porte le FILET DE COULEUR de son panneau : le sommaire devient la
+                  légende du codage couleur, et l'œil fait le lien entre les deux surfaces. */}
+              {activeGroup.subsections.map((sub) => {
+                const tint = subsectionColor(sub.subsection);
+                return (
+                  <Box
+                    key={sub.subsection}
+                    component={NextLink}
+                    href={referenceSubsectionHref(activeSection, sub.subsection)}
+                    scroll={false}
+                    onClick={() => jumpToSubsection(sub.subsection)}
+                    sx={{
+                      textAlign: 'left',
+                      textDecoration: 'none',
+                      color: 'text.secondary',
+                      fontSize: '0.9rem',
+                      px: 1.25,
+                      py: 0.5,
+                      borderLeft: '3px solid',
+                      borderLeftColor: alpha(tint, 0.65),
+                      '&:hover': {
+                        color: 'text.primary',
+                        borderLeftColor: tint,
+                        bgcolor: alpha(tint, 0.12),
+                      },
+                    }}
+                  >
+                    {sub.label}
+                  </Box>
+                );
+              })}
             </Stack>
           </Box>
         )}
@@ -425,43 +465,7 @@ export function ReferenceBrowser() {
                       {group.label}
                     </Typography>
                   )}
-                  <Stack spacing={searching ? 2 : 3}>
-                    {group.subsections.map((sub) => (
-                      // `id` = l'ancre partageable du bloc (`#maneuvers`) : cible des liens du
-                      // sommaire et du saut au chargement. `scrollMarginTop` dégage l'en-tête collé.
-                      <Box
-                        key={sub.subsection}
-                        id={subsectionAnchorId(sub.subsection)}
-                        sx={{ scrollMarginTop: '112px' }}
-                      >
-                        <Typography
-                          variant="overline"
-                          sx={{
-                            display: 'block',
-                            mb: 1,
-                            fontWeight: 700,
-                            letterSpacing: 0.5,
-                            color: 'text.secondary',
-                          }}
-                        >
-                          {sub.label}
-                        </Typography>
-                        <Stack spacing={1.5}>
-                          {sub.entries.map((entry) =>
-                            entry.kind === 'text' ? (
-                              <TextEntryCard
-                                key={entry.id}
-                                entry={entry}
-                                defaultExpanded={searching}
-                              />
-                            ) : (
-                              <TableEntryCard key={entry.id} entry={entry} />
-                            ),
-                          )}
-                        </Stack>
-                      </Box>
-                    ))}
-                  </Stack>
+                  <SubsectionColumns subsections={group.subsections} columnCount={columnCount} />
                 </Box>
               ))}
             </Stack>
@@ -477,92 +481,150 @@ export function ReferenceBrowser() {
   );
 }
 
-/** En-tête d'une carte texte : titre + renvoi de page à droite, aperçu (`shortEffect`) en dessous. */
-function TextEntryHeader({ entry }: { entry: ReferenceTextEntry }) {
+/**
+ * Les panneaux de sous-section d'un onglet, répartis en COLONNES (PER-311) — sur mobile
+ * (`columnCount` = 1) la page redevient la pile verticale attendue.
+ *
+ * La répartition est calculée en JS (`splitReferenceColumns`, pur et testé) plutôt que déléguée à un
+ * `column-count` CSS : le navigateur y couperait un panneau en deux entre deux colonnes, et le
+ * découpage changerait à chaque rééquilibrage. On ne rend donc QU'UNE disposition à la fois — rendre
+ * les deux et en masquer une dupliquerait les `id` d'ancre de PER-310, qui ne cibleraient plus rien.
+ */
+function SubsectionColumns({
+  subsections,
+  columnCount,
+}: {
+  subsections: ReferenceSubsectionGroup[];
+  columnCount: number;
+}) {
+  const columns = splitReferenceColumns(subsections, columnCount);
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 1, pr: 1, width: '100%' }}>
-      <Typography sx={{ fontWeight: 700 }}>{entry.title}</Typography>
-      <Box sx={{ flexGrow: 1 }} />
-      <SourceRef page={entry.sourcePage} term={entry.title} />
-      <Typography variant="body2" color="text.secondary" component="div" sx={{ flexBasis: '100%', mt: 0.25 }}>
-        <RuleText>{entry.shortEffect}</RuleText>
-      </Typography>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`,
+        gap: 2,
+        alignItems: 'start',
+      }}
+    >
+      {columns.map((column, i) => (
+        <Stack key={i} spacing={2} sx={{ minWidth: 0 }}>
+          {column.map((sub) => (
+            <SubsectionPanel key={sub.subsection} group={sub} />
+          ))}
+        </Stack>
+      ))}
     </Box>
   );
 }
 
 /**
- * Entrée « encadré de texte » : résumé = titre + aperçu (`shortEffect`) + renvoi de page ; détail =
- * verbatim complet (s'il apporte plus que l'aperçu) et, s'il y en a, la mécanique de résolution
- * (`test`) en puce distincte. Repliée par défaut en parcours (scan rapide), dépliée en recherche.
+ * PANNEAU d'une sous-section : le bloc de base de la mise en page « écran de MJ ». Un panneau =
+ * une sous-section = une ancre partageable (`#maneuvers`, PER-310) — d'où l'`id` porté ici, et le
+ * `scrollMarginTop` qui dégage l'en-tête collé quand on y saute.
  *
- * Certaines entrées (les 10 états préjudiciables, adaptés du glossaire) ont un `body` identique à
- * leur `shortEffect` et pas de `test` : il n'y a alors RIEN de plus à déplier → on rend une carte
- * statique (ni chevron, ni interaction) plutôt qu'un accordéon qui dupliquerait la même ligne.
+ * Il porte le codage couleur de sa famille de règles : bandeau de titre teinté, filet sous le
+ * bandeau, et dégradé d'extinction sur toute sa hauteur (cf. `referenceStyle.ts`). Ses entrées sont
+ * séparées par un simple filet, sans carte imbriquée : c'est ce qui fait la densité du PDF.
  */
-function TextEntryCard({
-  entry,
-  defaultExpanded,
-}: {
-  entry: ReferenceTextEntry;
-  defaultExpanded: boolean;
-}) {
-  const bodyAddsInfo = entry.body.trim() !== entry.shortEffect.trim();
-  const hasDetail = bodyAddsInfo || Boolean(entry.test);
-
-  if (!hasDetail) {
-    return (
-      <Box sx={{ ...panelSx, px: 2, py: 1.5 }}>
-        <TextEntryHeader entry={entry} />
-      </Box>
-    );
-  }
-
+function SubsectionPanel({ group }: { group: ReferenceSubsectionGroup }) {
+  const accent = subsectionAccentText(group.subsection);
   return (
-    <Accordion
-      // Remonte quand on bascule parcours ⇄ recherche pour réappliquer l'état déplié par défaut,
-      // sans remonter à chaque frappe (la clé ne dépend QUE du mode, pas du texte cherché).
-      key={`${entry.id}:${defaultExpanded}`}
-      defaultExpanded={defaultExpanded}
-      disableGutters
-      elevation={0}
+    <Box
+      id={subsectionAnchorId(group.subsection)}
       sx={{
         ...panelSx,
-        '&:before': { display: 'none' },
+        scrollMarginTop: '112px',
         overflow: 'hidden',
+        backgroundImage: subsectionPanelGradient(group.subsection),
       }}
     >
-      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <TextEntryHeader entry={entry} />
-      </AccordionSummary>
-      <AccordionDetails sx={{ pt: 0 }}>
-        {/* Verbatim complet, uniquement s'il apporte plus que l'aperçu déjà lu dans le résumé. */}
-        {bodyAddsInfo && (
-          <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line', color: 'text.primary' }}>
-            <RuleText>{entry.body}</RuleText>
-          </Typography>
+      <Box sx={{ px: 2, py: 0.75, borderBottom: subsectionHeaderBorder(group.subsection) }}>
+        <Typography
+          variant="overline"
+          component="h2"
+          sx={{
+            display: 'block',
+            m: 0,
+            fontWeight: 800,
+            letterSpacing: 0.6,
+            lineHeight: 1.9,
+            color: accent,
+          }}
+        >
+          {group.label}
+        </Typography>
+      </Box>
+      <Stack
+        sx={{ px: 2, py: 0.5 }}
+        divider={<Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.07)' }} />}
+      >
+        {group.entries.map((entry) =>
+          entry.kind === 'text' ? (
+            <TextEntryRow key={entry.id} entry={entry} accent={accent} />
+          ) : (
+            <TableEntryRow key={entry.id} entry={entry} accent={accent} />
+          ),
         )}
-        {entry.test && <TestBullet>{entry.test}</TestBullet>}
-      </AccordionDetails>
-    </Accordion>
+      </Stack>
+    </Box>
   );
 }
 
-/** Puce « mécanique de résolution » distincte, sous le verbatim d'une manœuvre / d'un test. */
-function TestBullet({ children }: { children: string }) {
+/**
+ * Entrée de texte en AMORCE : « **Sprinter (L) :** courir en ligne droite… », le point d'entrée
+ * visuel du PDF de référence. Plus d'accordéon (décision proprio) — donc plus de résumé à afficher :
+ * on rend directement `body`, le VERBATIM du livre, et pas `shortEffect` en plus (ce serait la même
+ * règle écrite deux fois de suite). Le renvoi de page suit le texte, en fin d'amorce.
+ */
+function TextEntryRow({ entry, accent }: { entry: ReferenceTextEntry; accent: string }) {
+  // Verbatim découpé en paragraphes : l'amorce colorée coiffe le premier, le renvoi de page ferme
+  // le dernier. Une règle d'une seule phrase (les 10 états) retombe sur un unique paragraphe.
+  const paragraphs = splitVerbatimParagraphs(entry.body);
+  return (
+    <Box sx={{ py: 1 }}>
+      {paragraphs.map((paragraph, i) => (
+        <Typography
+          key={i}
+          variant="body2"
+          component="div"
+          sx={{ color: 'text.primary', whiteSpace: 'pre-line', mt: i === 0 ? 0 : 0.75 }}
+        >
+          {i === 0 && (
+            <Box component="span" sx={{ fontWeight: 700, color: accent }}>
+              {entry.title}&nbsp;:{' '}
+            </Box>
+          )}
+          <RuleText>{paragraph}</RuleText>
+          {i === paragraphs.length - 1 && (
+            <SourceRef page={entry.sourcePage} term={entry.title} sx={{ ml: 0.75 }} />
+          )}
+        </Typography>
+      ))}
+      {entry.test && <TestBullet accent={accent}>{entry.test}</TestBullet>}
+    </Box>
+  );
+}
+
+/**
+ * Puce « mécanique de résolution » distincte, sous le verbatim d'une manœuvre / d'un test. Prend la
+ * teinte de son panneau plutôt que le bleu primaire : dans une page où la couleur porte désormais le
+ * classement par famille, un bleu isolé se lirait comme une famille de plus.
+ */
+function TestBullet({ children, accent }: { children: string; accent: string }) {
   return (
     <Box
       sx={{
-        mt: 1.5,
+        mt: 1,
         px: 1.25,
-        py: 0.75,
+        py: 0.5,
         borderRadius: 1,
         borderLeft: '3px solid',
-        borderLeftColor: 'primary.main',
-        bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+        borderLeftColor: alpha(accent, 0.7),
+        bgcolor: alpha(accent, 0.08),
       }}
     >
-      <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.light', display: 'block' }}>
+      <Typography variant="caption" sx={{ fontWeight: 700, color: accent, display: 'block' }}>
         Résolution
       </Typography>
       <Typography variant="body2" component="div" sx={{ color: 'text.primary' }}>
@@ -572,22 +634,40 @@ function TestBullet({ children }: { children: string }) {
   );
 }
 
-/** Entrée « tableau structuré » : titre + renvoi de page, table traversable sur petit écran, note. */
-function TableEntryCard({ entry }: { entry: ReferenceTableEntry }) {
+/**
+ * Entrée « tableau structuré » DANS son panneau : titre + renvoi de page, puis une table compacte à
+ * en-tête teinté et lignes alternées (le patron du PDF, préféré au texte courant dès que la règle est
+ * chiffrée). Reste traversable horizontalement : en colonne étroite ou sur mobile, une table à cinq
+ * colonnes défile plutôt que de faire déborder la page.
+ */
+function TableEntryRow({ entry, accent }: { entry: ReferenceTableEntry; accent: string }) {
   return (
-    <Box sx={{ ...panelSx, p: 2, overflow: 'hidden' }}>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 1, mb: 1.5 }}>
-        <Typography sx={{ fontWeight: 700 }}>{entry.title}</Typography>
+    <Box sx={{ py: 1 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 1, mb: 0.75 }}>
+        <Typography variant="body2" sx={{ fontWeight: 700, color: accent }}>
+          {entry.title}
+        </Typography>
         <Box sx={{ flexGrow: 1 }} />
         <SourceRef page={entry.sourcePage} term={entry.title} />
       </Box>
-      {/* Conteneur défilable horizontalement : la table reste lisible sur mobile sans déborder la page. */}
       <TableContainer sx={{ overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: entry.columns.length > 2 ? 480 : 320 }}>
+        <Table
+          size="small"
+          sx={{
+            minWidth: entry.columns.length > 2 ? 420 : 260,
+            // Table de tableur : filets internes supprimés, lignes serrées, alternance discrète —
+            // c'est le contraste des rangées qui guide l'œil, pas une grille.
+            '& td, & th': { border: 0, py: 0.35, px: 1, lineHeight: 1.45 },
+            '& tbody tr:nth-of-type(odd)': { bgcolor: 'rgba(255, 255, 255, 0.04)' },
+          }}
+        >
           <TableHead>
-            <TableRow>
+            <TableRow sx={{ bgcolor: alpha(accent, 0.18) }}>
               {entry.columns.map((col) => (
-                <TableCell key={col.key} sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+                <TableCell
+                  key={col.key}
+                  sx={{ fontWeight: 700, whiteSpace: 'nowrap', color: 'text.primary' }}
+                >
                   {col.label}
                 </TableCell>
               ))}
@@ -607,7 +687,7 @@ function TableEntryCard({ entry }: { entry: ReferenceTableEntry }) {
         </Table>
       </TableContainer>
       {entry.note && (
-        <Typography variant="caption" color="text.secondary" component="div" sx={{ display: 'block', mt: 1 }}>
+        <Typography variant="caption" color="text.secondary" component="div" sx={{ display: 'block', mt: 0.75 }}>
           <RuleText>{entry.note}</RuleText>
         </Typography>
       )}

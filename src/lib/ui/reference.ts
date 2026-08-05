@@ -94,6 +94,86 @@ export function groupReferenceEntries(entries: ReferenceEntry[]): ReferenceSecti
   return result;
 }
 
+/**
+ * Découpe un VERBATIM en paragraphes, sur les lignes vides (PER-311).
+ *
+ * Rendu tel quel en `white-space: pre-line`, un verbatim de plusieurs paragraphes fait payer une
+ * ligne pleine à chaque saut de ligne double — sur l'onglet Résolution, où les règles sont longues,
+ * ces blancs représentaient à eux seuls des milliers de pixels de défilement. En rendant chaque
+ * paragraphe comme un bloc, l'espacement redevient une décision de mise en page (une demi-ligne)
+ * au lieu d'un accident de la donnée.
+ *
+ * La DONNÉE n'est pas réécrite : aucun mot n'est touché, seuls les blancs de SÉPARATION entre
+ * paragraphes disparaissent (les sauts de ligne SIMPLES restent dans le paragraphe, rendus par
+ * `pre-line`). Garanti par `reference.test.ts`.
+ */
+export function splitVerbatimParagraphs(body: string): string[] {
+  return body
+    .split(/\n[ \t]*\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p !== '');
+}
+
+/**
+ * POIDS VISUEL estimé d'un bloc de sous-section, en « lignes » — sert uniquement à répartir les
+ * panneaux entre les colonnes (PER-311), jamais à décider d'un rendu. Purement heuristique : on ne
+ * peut pas mesurer la hauteur réelle avant le rendu, et une mesure DOM rendrait la répartition
+ * dépendante du navigateur (donc intestable et instable au redimensionnement).
+ *
+ * Une entrée de texte coûte son titre plus une ligne par tranche de `CHARS_PER_LINE` caractères
+ * affichés (verbatim + mécanique de résolution) ; une ligne de tableau coûte une ligne, plus
+ * l'en-tête. `PANEL_OVERHEAD` couvre le bandeau de titre et les marges du panneau lui-même.
+ */
+const CHARS_PER_LINE = 64;
+const PANEL_OVERHEAD = 3;
+
+export function subsectionWeight(group: ReferenceSubsectionGroup): number {
+  let weight = PANEL_OVERHEAD;
+  for (const entry of group.entries) {
+    if (entry.kind === 'text') {
+      const chars = entry.body.length + (entry.test?.length ?? 0);
+      weight += 1 + Math.ceil(chars / CHARS_PER_LINE);
+    } else {
+      weight += 2 + entry.rows.length + (entry.note ? 1 : 0);
+    }
+  }
+  return weight;
+}
+
+/**
+ * Répartit les blocs de sous-section d'un onglet en `columnCount` COLONNES de hauteur comparable
+ * (PER-311 : l'aide-mémoire se lit comme l'écran de MJ, en colonnes denses, plutôt qu'en une pile
+ * unique interminable).
+ *
+ * Glouton DANS L'ORDRE : chaque bloc part dans la colonne la plus courte à cet instant, en
+ * conservant l'ordre du livre. On ne trie PAS par poids décroissant (l'équilibrage serait meilleur
+ * mais l'ordre de lecture — et donc la correspondance avec le sommaire — volerait en éclats). À
+ * égalité, la colonne la plus à gauche gagne, ce qui donne la lecture attendue de gauche à droite.
+ *
+ * Préféré à un `column-count` CSS : la répartition reste la même à chaque rendu (pas de
+ * réequilibrage du navigateur), un panneau n'est jamais coupé en deux, et chaque colonne est un
+ * vrai conteneur — donc le verre dépoli et les ancres de PER-310 continuent de fonctionner.
+ *
+ * `columnCount <= 1` renvoie une colonne unique (cas mobile), sans réordonner.
+ */
+export function splitReferenceColumns(
+  subsections: ReferenceSubsectionGroup[],
+  columnCount: number,
+): ReferenceSubsectionGroup[][] {
+  if (columnCount <= 1) return [subsections];
+  const columns: ReferenceSubsectionGroup[][] = Array.from({ length: columnCount }, () => []);
+  const weights = new Array<number>(columnCount).fill(0);
+  for (const group of subsections) {
+    let target = 0;
+    for (let i = 1; i < columnCount; i += 1) {
+      if (weights[i] < weights[target]) target = i;
+    }
+    columns[target].push(group);
+    weights[target] += subsectionWeight(group);
+  }
+  return columns;
+}
+
 /** Prédicat de sûreté : la valeur est-elle une section connue ? (validation de `?s=` dans l'URL). */
 export function isReferenceSection(v: unknown): v is ReferenceSection {
   return v === 'combat' || v === 'resolution' || v === 'environment';
