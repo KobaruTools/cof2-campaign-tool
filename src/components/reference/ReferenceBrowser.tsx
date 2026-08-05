@@ -98,14 +98,20 @@ import {
   subsectionHeaderBorder,
   subsectionPanelGradient,
 } from '@/lib/ui/referenceStyle';
+import { normalizeSearchText } from '@/lib/ui/searchText';
 import { usePersistedState } from '@/lib/ui/usePersistedState';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { SourceRef } from '@/components/SourceRef';
 import { GlossaryText } from '@/components/sheet/FeatureRichText';
 import { AppTooltip } from '@/components/AppTooltip';
 
-/** Normalise pour une recherche insensible aux accents et à la casse (cf. accueil / bestiaire). */
-const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+/**
+ * Normalise pour une recherche indulgente : ni accents, ni ligatures, ni casse. Délégué au module
+ * partagé `searchText.ts` — la version locale ne défaisait pas `œ`, si bien que taper « manoeuvre »
+ * ne trouvait pas « Manœuvres ». (Les autres recherches de l'app — accueil, bestiaire, résumé de
+ * fiche, visualiseur PDF — portent encore leur copie NFD et gagneraient à adopter ce module.)
+ */
+const norm = normalizeSearchText;
 
 /**
  * Texte indexé d'une entrée pour la recherche : titre + mots-clés + effet court + verbatim, et pour
@@ -185,6 +191,19 @@ const panelSx = {
   bgcolor: 'rgba(0, 0, 0, 0.35)',
   backdropFilter: 'blur(6px)',
   WebkitBackdropFilter: 'blur(6px)',
+} as const;
+
+/**
+ * Variante OPAQUE du verre dépoli, pour les deux étages de la barre collée. Le conteneur collé n'a
+ * lui-même ni fond ni marge (demande proprio : « pas de background color, ni de padding ») — ce sont
+ * donc ces deux panneaux qui doivent masquer le contenu qui défile dessous. À 35 % d'opacité (le
+ * `panelSx` ordinaire) le texte transparaissait au travers.
+ */
+const stickyPanelSx = {
+  ...panelSx,
+  bgcolor: 'rgba(10, 10, 12, 0.94)',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
 } as const;
 
 export function ReferenceBrowser() {
@@ -326,29 +345,24 @@ export function ReferenceBrowser() {
           défilement — sur une page longue, devoir remonter pour changer d'onglet est le geste qui
           casse la consultation en pleine partie. Elle se cale SOUS l'en-tête global, lui aussi collé.
 
-          Fond opaque et `zIndex` : le contenu doit passer DERRIÈRE, pas transparaître entre les deux
-          panneaux. Les marges négatives élargissent ce fond jusqu'aux bords du conteneur, sinon on
-          verrait le contenu défiler dans les gouttières de part et d'autre. */}
+          Le conteneur est NU (ni fond, ni marge, ni bordure — demande proprio) : il ne fait que
+          coller et empiler. Ce sont les deux étages qui portent le fond, opaque, et ils sont SOUDÉS
+          l'un à l'autre — rayons et filets mitoyens supprimés — pour ne former qu'un seul bloc. */}
       <Box
         ref={stickyRef}
-        sx={{
-          position: 'sticky',
-          top: `${appHeaderHeight}px`,
-          zIndex: 3,
-          mx: { xs: -2, sm: -3 },
-          px: { xs: 2, sm: 3 },
-          pt: 1,
-          pb: 1.5,
-          bgcolor: 'rgba(8, 8, 10, 0.86)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        }}
+        sx={{ position: 'sticky', top: `${appHeaderHeight}px`, zIndex: 3 }}
       >
-      <Stack spacing={1.5}>
       {/* Barre de recherche plein texte (titre + mots-clés + verbatim + cellules de table),
           avec à droite la bascule « Texte d'origine ». */}
-      <Box sx={{ ...panelSx, p: 1.5 }}>
+      <Box
+        sx={{
+          ...stickyPanelSx,
+          p: 1,
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
+          borderBottom: 0,
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <TextField
             fullWidth
@@ -393,7 +407,14 @@ export function ReferenceBrowser() {
           (`?s=…`, donc Ctrl/⌘+Clic et partage possibles) qui efface la recherche pour repasser en
           parcours. En recherche, aucun onglet n'est sélectionné (`value={false}`) : les résultats
           couvrent toutes les sections, un onglet allumé mentirait. */}
-      <Box sx={{ ...panelSx, px: { xs: 0.5, sm: 1 } }}>
+      <Box
+        sx={{
+          ...stickyPanelSx,
+          px: { xs: 0.5, sm: 1 },
+          borderTopLeftRadius: 0,
+          borderTopRightRadius: 0,
+        }}
+      >
         <Tabs
           value={searching ? false : activeSection}
           variant="scrollable"
@@ -415,13 +436,14 @@ export function ReferenceBrowser() {
                 href={referenceSectionHref(section)}
                 scroll={false}
                 onClick={() => setQuery('')}
-                sx={{ textTransform: 'none', fontWeight: 700, minHeight: 48 }}
+                // Condensé : 40 px au lieu des 48 par défaut de MUI — la barre étant collée en
+                // permanence, chaque pixel qu'elle prend est retiré au contenu.
+                sx={{ textTransform: 'none', fontWeight: 700, minHeight: 40 }}
               />
             );
           })}
         </Tabs>
       </Box>
-      </Stack>
       </Box>
 
       {/* Sentinelle plate du bouton « Haut de page » : elle, contrairement à la barre collée,
