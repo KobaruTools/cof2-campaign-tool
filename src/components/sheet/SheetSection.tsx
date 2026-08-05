@@ -13,6 +13,16 @@ import { alpha, type SxProps, type Theme } from '@mui/material/styles';
 import { SectionIcon } from '@/components/SectionIcon';
 import type { SectionIconName } from '@/lib/ui/sectionIcons';
 
+/** Un onglet du bandeau d'entête d'une section (cf. `SheetSectionProps.tabs`). */
+export interface SectionTab {
+  /** Valeur stable identifiant l'onglet (comparée à `activeTab`). */
+  value: string;
+  /** Libellé affiché (au gabarit du titre de section). */
+  label: ReactNode;
+  /** Icône propre à l'onglet (game-icons, `<SectionIcon>`), au même rôle que l'icône de titre. */
+  icon?: SectionIconName;
+}
+
 export interface SheetSectionProps {
   /** Titre de la section (h2). */
   title: string;
@@ -36,6 +46,18 @@ export interface SheetSectionProps {
    * `defaultCollapsed`.
    */
   persistKey?: string;
+  /**
+   * Onglets COLLÉS EN HAUT du bloc (bandeau pleine largeur, onglets répartis également, intégrés aux
+   * border-radius du cadre). Générique : à toute section qui veut faire alterner son contenu entre
+   * plusieurs vues (ex. « Mes capacités » / « Manœuvres »). Le bandeau ne s'affiche que si au moins un
+   * onglet est fourni ; c'est l'appelant qui pilote la vue active (`activeTab`) et rend le contenu
+   * correspondant dans `children`. Sans `tabs`, la section se comporte comme avant (aucun bandeau).
+   */
+  tabs?: SectionTab[];
+  /** Valeur de l'onglet actif (n'a d'effet qu'avec `tabs`). */
+  activeTab?: string;
+  /** Notifie le changement d'onglet (n'a d'effet qu'avec `tabs`). */
+  onTabChange?: (value: string) => void;
   children: ReactNode;
 }
 
@@ -54,17 +76,24 @@ export function SheetSection({
   collapsible = false,
   defaultCollapsed = false,
   persistKey,
+  tabs,
+  activeTab,
+  onTabChange,
   children,
 }: SheetSectionProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const isCollapsed = collapsible && collapsed;
   const resolvedAction = typeof action === 'function' ? action(isCollapsed) : action;
+  const hasTabs = tabs != null && tabs.length > 0;
 
   // Persistance optionnelle : on relit le choix sauvegardé APRÈS le montage (et non à
   // l'initialisation) pour ne pas désynchroniser le rendu serveur/client. Écrase `defaultCollapsed`.
   useEffect(() => {
     if (!collapsible || !persistKey || typeof window === 'undefined') return;
     const saved = window.localStorage.getItem(storageKey(persistKey));
+    // Synchronisation d'un système externe (localStorage) vers l'état React, volontairement APRÈS le
+    // montage (cf. commentaire ci-dessus) : le `setState` dans l'effet est ici l'usage recommandé.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved === 'true' || saved === 'false') setCollapsed(saved === 'true');
   }, [collapsible, persistKey]);
 
@@ -114,39 +143,114 @@ export function SheetSection({
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
     >
-      <Stack
-        className="section-header"
-        direction="row"
-        spacing={1}
-        // Comportement caché mais cohérent : cliquer le titre replie la section quand elle est
-        // dépliée. (Repliée, c'est le Paper entier qui la rouvre — cf. son onClick — donc rien ici.)
-        onClick={collapsible && !isCollapsed ? toggle : undefined}
-        sx={{
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: collapsible && !isCollapsed ? 'pointer' : undefined,
-          userSelect: collapsible ? 'none' : undefined,
-          // Pas de marge conditionnelle ici : l'espace titre→contenu vit DANS le Collapse
-          // (cf. `pt` ci-dessous) pour s'animer avec le contenu au lieu de sauter au clic.
-        }}
-      >
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
-          {icon && <SectionIcon name={icon} size={22} sx={{ color: 'text.secondary' }} />}
-          <Typography variant="h6" component="h2" noWrap>
-            {title}
-          </Typography>
-        </Stack>
-        {resolvedAction && (
-          // Fondu d'entrée : l'action (crayon d'édition…) apparaît en opacity 0→100% à l'ouverture
-          // de la section. `appear` rejoue à chaque remontage (l'action est démontée quand repliée).
-          // stopPropagation : un clic sur l'action ne doit pas replier/rouvrir la section.
-          <Fade in appear>
-            <Stack direction="row" onClick={(e) => e.stopPropagation()}>
+      {hasTabs ? (
+        // ONGLETS EN ENTÊTE (affordance « dossier ») : ils REMPLACENT le titre. Le bandeau est collé
+        // au bord haut du bloc (on casse le padding du Paper) et son liseré bas court sur toute la
+        // largeur ; chaque onglet porte SON icône + SON libellé (gabarit de titre h6), ancrés à gauche.
+        // L'onglet actif chevauche le liseré (`mb: -1px`) et se rattache ainsi au corps (accent primary
+        // en tête + fond léger) ; l'inactif reste en retrait. L'action (toggles/crayon/source) à droite.
+        <Box
+          sx={(theme) => ({
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            gap: 1,
+            mt: { xs: -2, sm: -3 },
+            mx: { xs: -2, sm: -3 },
+            mb: { xs: 2, sm: 3 },
+            px: { xs: 2, sm: 3 },
+            borderBottom: `1px solid ${theme.palette.divider}`,
+          })}
+        >
+          <Stack direction="row" spacing={0.5} role="tablist" sx={{ alignItems: 'flex-end', minWidth: 0 }}>
+            {tabs.map((tab, i) => {
+              const active = tab.value === activeTab;
+              return (
+                <ButtonBase
+                  key={tab.value}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTabChange?.(tab.value);
+                  }}
+                  sx={(theme) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.75,
+                    px: 1.5,
+                    py: 1,
+                    mb: '-1px',
+                    // Seul repère de l'onglet actif : un soulignement bleu (primary) en bas, aligné sur
+                    // le liseré du bandeau (grâce à `mb: -1px`). Pas de fond ni de bordures latérales.
+                    borderBottom: `2px solid ${active ? theme.palette.primary.main : 'transparent'}`,
+                    color: active ? theme.palette.text.primary : theme.palette.text.secondary,
+                    transition: theme.transitions.create(['color', 'background-color', 'border-color']),
+                    // Le seul fond est celui du survol.
+                    '&:hover': {
+                      color: theme.palette.text.primary,
+                      bgcolor: alpha(theme.palette.text.primary, 0.05),
+                    },
+                  })}
+                >
+                  {tab.icon && (
+                    <SectionIcon name={tab.icon} size={20} sx={{ color: 'inherit', flexShrink: 0 }} />
+                  )}
+                  <Typography
+                    variant="h6"
+                    component={i === 0 ? 'h2' : 'span'}
+                    noWrap
+                    sx={{ fontWeight: active ? 700 : 600, color: 'inherit' }}
+                  >
+                    {tab.label}
+                  </Typography>
+                </ButtonBase>
+              );
+            })}
+          </Stack>
+          {resolvedAction && (
+            // `alignSelf: center` : l'action reste centrée verticalement dans le bandeau, malgré le
+            // `alignItems: flex-end` du parent (qui, lui, fait reposer les onglets sur le liseré bas).
+            <Stack direction="row" onClick={(e) => e.stopPropagation()} sx={{ alignItems: 'center', alignSelf: 'center' }}>
               {resolvedAction}
             </Stack>
-          </Fade>
-        )}
-      </Stack>
+          )}
+        </Box>
+      ) : (
+        <Stack
+          className="section-header"
+          direction="row"
+          spacing={1}
+          // Comportement caché mais cohérent : cliquer le titre replie la section quand elle est
+          // dépliée. (Repliée, c'est le Paper entier qui la rouvre — cf. son onClick — donc rien ici.)
+          onClick={collapsible && !isCollapsed ? toggle : undefined}
+          sx={{
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: collapsible && !isCollapsed ? 'pointer' : undefined,
+            userSelect: collapsible ? 'none' : undefined,
+            // Pas de marge conditionnelle ici : l'espace titre→contenu vit DANS le Collapse
+            // (cf. `pt` ci-dessous) pour s'animer avec le contenu au lieu de sauter au clic.
+          }}
+        >
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
+            {icon && <SectionIcon name={icon} size={22} sx={{ color: 'text.secondary' }} />}
+            <Typography variant="h6" component="h2" noWrap>
+              {title}
+            </Typography>
+          </Stack>
+          {resolvedAction && (
+            // Fondu d'entrée : l'action (crayon d'édition…) apparaît en opacity 0→100% à l'ouverture
+            // de la section. `appear` rejoue à chaque remontage (l'action est démontée quand repliée).
+            // stopPropagation : un clic sur l'action ne doit pas replier/rouvrir la section.
+            <Fade in appear>
+              <Stack direction="row" onClick={(e) => e.stopPropagation()}>
+                {resolvedAction}
+              </Stack>
+            </Fade>
+          )}
+        </Stack>
+      )}
       {collapsible ? (
         // L'espacement titre→contenu (`pt: 2`) est à l'intérieur du Collapse : il se replie
         // avec le contenu (animation fluide), plus de saut de marge instantané.

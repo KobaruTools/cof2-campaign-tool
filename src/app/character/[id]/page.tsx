@@ -216,6 +216,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   const combatStatuses = useCampaignCombatStore((s) =>
     characterCampaignId ? s.byCampaign[characterCampaignId]?.statuses[id] : undefined,
   );
+  // Manche courante du combat : les compteurs de tours des états (PER-305) s'en déduisent. 1 par
+  // défaut (aucun combat chargé) — sans état posé, le panneau ne s'affiche de toute façon pas.
+  const combatRoundNumber = useCampaignCombatStore((s) =>
+    characterCampaignId ? (s.byCampaign[characterCampaignId]?.roundNumber ?? 1) : 1,
+  );
   useEffect(() => {
     if (sessionActive && characterCampaignId) void loadCombat(characterCampaignId);
   }, [sessionActive, characterCampaignId, loadCombat]);
@@ -273,6 +278,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // Concentration accrue (p. 228) : état de jeu transitoire (non persisté), comme
   // l'affichage des voies. Quand actif, les sorts en (A) montrent leur coût réduit.
   const [concentration, setConcentration] = useState(false);
+  // Vue de la section « Voies & capacités » (PER-296, proposition 2) : soit les capacités
+  // du personnage (défaut), soit l'aide-mémoire des manœuvres de combat (lecture seule).
+  // Préférence d'affichage transitoire (non persistée), comme la disposition des voies.
+  const [voiesView, setVoiesView] = useState<'features' | 'maneuvers'>('features');
   const { showToast } = useToast();
   // Index de la ligne « Bourse de 2d6 pa » dont l'ouverture est en cours (modale) ; null = fermée.
   const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
@@ -351,6 +360,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       rangedCriticalRanges,
       unarmed,
       meleeWeaponDamage,
+      offHandMeleeWeaponDamage,
+      offHandCriticalRanges,
+      twoWeaponPenaltyDie,
       unarmedCriticalRanges,
       rangedWeaponDamage,
       meleeSituationalDamage,
@@ -940,7 +952,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           {/* États de combat appliqués par le MJ en session (PER-281) : rappel visuel en lecture
               seule (badges + effet verbatim). Le malus chiffré est, lui, déjà répercuté sur les
               stats/attaques ci-dessous. Ne rend rien hors session ou sans état posé. */}
-          <ActiveStatusPanel statuses={appliedStatuses} />
+          <ActiveStatusPanel statuses={appliedStatuses} roundNumber={combatRoundNumber} />
 
           <SheetSection
             title="Caractéristiques"
@@ -996,6 +1008,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 rangedCriticalRanges={rangedCriticalRanges}
                 unarmedStrike={unarmed}
                 meleeWeaponDamage={meleeWeaponDamage}
+                offHandMeleeWeaponDamage={offHandMeleeWeaponDamage}
+                offHandCriticalRanges={offHandCriticalRanges}
+                twoWeaponPenaltyDie={twoWeaponPenaltyDie}
                 unarmedCriticalRanges={unarmedCriticalRanges}
                 rangedWeaponDamage={rangedWeaponDamage}
                 meleeSituationalDamage={meleeSituationalDamage}
@@ -1114,43 +1129,46 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               );
             })()}
 
-          {/* Aide-mémoire des manœuvres de combat (PER-296), placé entre « Compagnons » et « Voies &
-              capacités » : rappel joueur, en lecture seule, des 8 manœuvres (p. 217-218) — quelle
-              manœuvre, quel test/modificateur, quel effet. Repliée par défaut (aide-mémoire ponctuel,
-              pas une donnée du personnage) ; le choix survit au rechargement. Aucune résolution ni
-              application d'état (les dés se lancent à la table). Le renvoi de source (p. 217-218) est
-              dans l'en-tête, coin haut-droit. */}
-          <SheetSection
-            title="Manœuvres de combat"
-            icon="maneuvers"
-            collapsible
-            defaultCollapsed
-            persistKey="maneuvers"
-            action={<SourceRef page="217-218" term="Les manœuvres" />}
-          >
-            <ManeuversPanel abilities={effectCtx.abilities} level={character.level} />
-          </SheetSection>
-
+          {/* Section « Voies & capacités » avec un sélecteur de vue (PER-296, proposition 2) :
+              « Mes capacités » (défaut) OU l'aide-mémoire des « Manœuvres » de combat (lecture seule,
+              p. 217-218). Les contrôles propres aux capacités (concentration, texte d'origine,
+              disposition, crayon) ne s'affichent que sur la vue « Mes capacités » ; le renvoi de source
+              des manœuvres prend leur place sur la vue « Manœuvres ». */}
           <SheetSection
             title="Voies & capacités"
             icon="paths"
+            tabs={[
+              { value: 'features', label: 'Voies & capacités', icon: 'paths' },
+              { value: 'maneuvers', label: 'Manœuvres', icon: 'maneuvers' },
+            ]}
+            activeTab={voiesView}
+            onTabChange={(v) => setVoiesView(v as 'features' | 'maneuvers')}
             action={
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                {display.hasSpells && (
-                  <ConcentrationToggle value={concentration} onChange={setConcentration} />
-                )}
-                <VerbatimToggle value={featuresVerbatim} onChange={setFeaturesVerbatim} />
-                <FeaturesLayoutToggle value={voiesLayout} onChange={changeVoiesLayout} />
-                {!readOnly && (
-                  <BlockEditButton
-                    editing={editingBlocks.features}
-                    onToggle={() => toggleBlock('features')}
-                    label="voies & capacités"
-                  />
+                {voiesView === 'maneuvers' ? (
+                  <SourceRef page="217-218" term="Les manœuvres" />
+                ) : (
+                  <>
+                    {display.hasSpells && (
+                      <ConcentrationToggle value={concentration} onChange={setConcentration} />
+                    )}
+                    <VerbatimToggle value={featuresVerbatim} onChange={setFeaturesVerbatim} />
+                    <FeaturesLayoutToggle value={voiesLayout} onChange={changeVoiesLayout} />
+                    {!readOnly && (
+                      <BlockEditButton
+                        editing={editingBlocks.features}
+                        onToggle={() => toggleBlock('features')}
+                        label="voies & capacités"
+                      />
+                    )}
+                  </>
                 )}
               </Stack>
             }
           >
+            {voiesView === 'maneuvers' ? (
+              <ManeuversPanel abilities={effectCtx.abilities} level={character.level} />
+            ) : (
             <FeaturesByPath
               featureIds={character.featureIds}
               classId={character.classId}
@@ -1198,6 +1216,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // bonus de test est DOMINÉ (ne se cumule pas) — barré + capacité qui le domine (PER-73).
               testBonuses={display.testBonuses}
             />
+            )}
           </SheetSection>
 
           <SheetSection
