@@ -422,6 +422,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
               isCreature: true,
               hidden: !isVisible,
               onToggleVisible: () => setCreatureVisibility(inst.id, !isVisible),
+              // Camp : décide aussi de ce que la projection révèle (états déduits des PV).
+              side: inst.side,
               profileLabel: isAlly ? SIDE_LABELS.ally : 'PNJ',
               profileColor: accent,
               accentColor: accent,
@@ -473,6 +475,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
             // Masquée aux joueurs (absente de la projection) si visibilité désactivée.
             hidden: !isVisible,
             onToggleVisible: () => setCreatureVisibility(inst.id, !isVisible),
+            // Camp : décide aussi de ce que la projection révèle (états déduits des PV).
+            side: inst.side,
             // Illustration détourée de la créature (si le livre l'illustre) à la place de
             // l'avatar générique ; une variante sans illustration propre hérite de celle de
             // sa base côté données. Absente → repli sur l'icône « person » du tracker.

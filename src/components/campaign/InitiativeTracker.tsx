@@ -32,10 +32,16 @@
  * joueurs de l'écran de MJ) — la table voit ainsi la vie de tout le monde sur l'écran public. Les PV
  * des CRÉATURES restent masqués.
  *
- * CRÉATURE VAINCUE (0 PV) : en PROJECTION, son bloc est barré d'une croix rouge, désaturé de moitié
- * et surmonté d'une tête de mort (`DefeatedOverlay`) — c'est ce qui annonce sa mort aux joueurs,
- * puisque ses PV ne leur sont pas montrés. Réservé aux créatures : un personnage à 0 PV est à terre /
- * mourant (p. 220), pas mort.
+ * CRÉATURE À 0 PV : en PROJECTION, son bloc est désaturé de moitié, barré et surmonté d'un
+ * pictogramme (`IncapacitatedOverlay`) — c'est ce qui annonce son sort aux joueurs, puisque ses PV ne
+ * leur sont pas montrés. Deux issues distinguées (p. 219-220) : TUÉE par des dégâts létaux (croix
+ * ROUGE + tête de mort) ou ASSOMMÉE par des dégâts temporaires seuls, donc inconsciente et pas morte
+ * (croix JAUNE + tourbillon d'étourdissement). Réservé aux créatures : un personnage à 0 PV est à
+ * terre / mourant (p. 220), pas mort.
+ *
+ * ÉTATS DÉDUITS EN PROJECTION : « affaibli » (1 PV, p. 220) est montré à la table pour les créatures
+ * du camp ALLIÉ seulement. Le masquage protège le secret des PV d'un ADVERSAIRE ; pour un allié, la
+ * même information est utile aux joueurs.
  *
  * RELÉGATION EN FIN DE BANDE (PER-302), écran de MJ uniquement : un combat qui s'étire ne doit pas
  * obliger le MJ à défiler à travers les cadavres pour atteindre les vivants. Les cartes hors du
@@ -153,6 +159,7 @@ import {
 } from '@/lib/ui/horizontalScroll';
 import { stepTurn, turnDirectionFromKey, type TurnDirection } from '@/lib/ui/turnOrder';
 import { isDefeatedCreature, relegateSidelined } from '@/lib/session/initiativeOrder';
+import type { CreatureSide } from '@/lib/ui/creature';
 import { crossOutBackgroundImage } from '@/lib/ui/crossOut';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CollapsibleLabelButton } from '@/components/CollapsibleLabelButton';
@@ -276,6 +283,13 @@ export interface InitiativeRow {
   onReset: () => void;
   /** Clé `localStorage` de l'état déplié de la jauge (unique par ligne). */
   persistKey: string;
+  /**
+   * Camp de la créature (PER-249). Absent pour les personnages joueurs. Au-delà de l'accent de
+   * couleur (`accentColor`), il décide de ce que la PROJECTION révèle : les états DÉDUITS des PV
+   * (« affaibli » à 1 PV) sont montrés à la table pour un ALLIÉ, masqués pour un adversaire dont les
+   * PV doivent rester secrets.
+   */
+  side?: CreatureSide;
   /**
    * Combattant masqué aux joueurs (PER-248) : il s'affiche sur l'écran de MJ (œil fermé)
    * mais est EXCLU de la fenêtre projetée. Seules les créatures peuvent l'être.
@@ -1157,21 +1171,27 @@ function ProjectionGaugesStrip({
 }
 
 /**
- * Surimpression « créature VAINCUE » (0 PV) de la fenêtre projetée : le bloc est DÉSATURÉ de 50 %,
- * BARRÉ d'une croix rouge et surmonté d'une tête de mort. C'est la seule annonce de la mort d'une
- * créature aux joueurs, à qui ses PV restent masqués. Même vocabulaire visuel que les blocs
- * « barrés » de la fiche (cf. `crossOut`), en rouge franc.
+ * Surimpression « créature HORS DE COMBAT » (0 PV) de la fenêtre projetée : le bloc est DÉSATURÉ de
+ * 50 %, BARRÉ et surmonté d'un pictogramme. C'est la seule annonce de l'issue du combat aux joueurs,
+ * à qui les PV des créatures restent masqués. Même vocabulaire visuel que les blocs « barrés » de la
+ * fiche (cf. `crossOut`), en couleur franche.
+ *
+ * DEUX issues, que le livre distingue et que la table doit distinguer aussi (p. 219-220) : des
+ * dégâts LÉTAUX tuent (croix ROUGE + tête de mort), des dégâts TEMPORAIRES seuls ASSOMMENT — la
+ * créature est inconsciente, pas morte (croix JAUNE + tourbillon d'étourdissement). Sans cette
+ * distinction, la table lisait toute créature assommée comme morte.
  *
  * La désaturation passe par `backdrop-filter` sur CETTE couche, et non par un `filter` posé sur la
  * carte : un filtre s'applique à tous les descendants (pseudo-éléments compris), il aurait donc
- * délavé la croix et la tête de mort avec le reste. Ici, tout ce qui est peint DESSOUS est désaturé,
- * et le rouge de la surimpression reste franc.
+ * délavé la croix et le pictogramme avec le reste. Ici, tout ce qui est peint DESSOUS est désaturé,
+ * et la couleur de la surimpression reste franche.
  */
-function DefeatedOverlay({ name }: { name: string }) {
+function IncapacitatedOverlay({ name, state }: { name: string; state: 'down' | 'stunned' }) {
+  const stunned = state === 'stunned';
   return (
     <Box
       role="img"
-      aria-label={`${name} — vaincu`}
+      aria-label={`${name} — ${stunned ? 'assommé' : 'vaincu'}`}
       sx={(t) => ({
         position: 'absolute',
         inset: 0,
@@ -1182,20 +1202,33 @@ function DefeatedOverlay({ name }: { name: string }) {
         justifyContent: 'center',
         backdropFilter: 'grayscale(0.5)',
         WebkitBackdropFilter: 'grayscale(0.5)',
+        // La couleur est portée par la couche : le pictogramme d'état l'hérite (`fill: currentColor`).
+        color: stunned ? t.palette.warning.main : t.palette.error.main,
         backgroundImage: crossOutBackgroundImage({
-          color: alpha(t.palette.error.main, 0.8),
+          color: alpha(stunned ? t.palette.warning.main : t.palette.error.main, 0.8),
           thickness: 3,
         }),
       })}
     >
-      <SkullIcon
-        sx={{
-          fontSize: 46,
-          color: 'error.main',
-          // Ombre portée : détache la tête de mort du portrait qu'elle recouvre.
-          filter: 'drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7))',
-        }}
-      />
+      {stunned ? (
+        // Le tourbillon de l'état « Étourdi » (p. 214) : le pictogramme d'inconscience le plus
+        // lisible de la palette, et déjà connu de la table par les badges d'états.
+        <StatusEffectIcon
+          effect="dazed"
+          size={46}
+          // Ombre portée : détache le pictogramme du portrait qu'il recouvre.
+          sx={{ filter: 'drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7))' }}
+        />
+      ) : (
+        <SkullIcon
+          sx={{
+            fontSize: 46,
+            color: 'error.main',
+            // Ombre portée : détache la tête de mort du portrait qu'elle recouvre.
+            filter: 'drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7))',
+          }}
+        />
+      )}
     </Box>
   );
 }
@@ -1746,21 +1779,25 @@ function CombatantColumn({
   // États affichés en projection (lecture seule) : bande d'icônes en overlay absolu ancré en bas à
   // gauche. AUCUNE place réservée (pas de padding) → le bloc garde EXACTEMENT la même taille qu'il
   // porte des états ou non, donc tous les blocs restent alignés quel que soit leur nombre d'états.
-  // Projection : SEULS les états POSÉS par le MJ sont montrés. Un état DÉDUIT est calculé depuis les
-  // PV (affaibli à 1 PV) : l'afficher révélerait aux joueurs que la créature est à 1 PV, alors que la
-  // projection masque justement ses PV. Il reste réservé à l'écran de MJ.
+  // Projection : les états POSÉS par le MJ sont toujours montrés ; un état DÉDUIT (`origin: 'auto'`,
+  // aujourd'hui le seul étant « affaibli » à 1 PV, p. 220) ne l'est que si la créature est du camp
+  // ALLIÉ. Le motif du masquage est le secret des PV d'un ADVERSAIRE — montrer « affaibli » dirait à
+  // la table qu'il est pile à 1 PV. Un allié n'a rien à cacher aux joueurs, et savoir que le PNJ qui
+  // les accompagne ne tient plus qu'à un point leur est directement utile.
+  const revealAutoStatuses = row.side === 'ally';
   const projectionStatuses = projection
-    ? (row.appliedStatuses ?? []).filter((s) => s.origin !== 'auto')
+    ? (row.appliedStatuses ?? []).filter((s) => revealAutoStatuses || s.origin !== 'auto')
     : [];
   const hasProjectionStatuses = projectionStatuses.length > 0;
   // Bandeau de jauges de la projection : PERSONNAGES uniquement (les PV des créatures
   // restent réservés au MJ) et seulement si les PV max sont connus (profil complet).
   const showProjectionGauges = projection && !row.isCreature && row.maxHp > 0;
-  // Créature VAINCUE (0 PV, cf. `isDefeatedCreature` : jamais un personnage, à terre / mourant
-  // p. 220, pas mort). En PROJECTION, sa carte est barrée et surmontée d'une tête de mort — c'est ce
-  // qui annonce sa mort à la table, où ses PV sont masqués.
+  // Créature à 0 PV (cf. `isDefeatedCreature` : jamais un personnage, à terre / mourant p. 220, pas
+  // mort). En PROJECTION, sa carte est barrée et surmontée d'un pictogramme, seule annonce faite à la
+  // table puisque ses PV lui sont masqués — TUÉE (létal) ou ASSOMMÉE (temporaires seuls), cf.
+  // `IncapacitatedOverlay`.
   const defeatedCreature = isDefeatedCreature(row);
-  const defeated = projection && defeatedCreature;
+  const incapacity = projection && defeatedCreature ? hpHealthState(row.maxHp, row.depletion) : null;
   return (
     <Box
       ref={interactive?.dropRef}
@@ -1971,7 +2008,9 @@ function CombatantColumn({
       {/* Créature vaincue : surimpression barrée + tête de mort, en DERNIER pour peindre par-dessus
           tout le contenu du bloc (bornée à `inset: 0`, elle laisse la bande d'états qui déborde
           en dessous intacte). */}
-      {defeated && <DefeatedOverlay name={row.name} />}
+      {(incapacity === 'down' || incapacity === 'stunned') && (
+        <IncapacitatedOverlay name={row.name} state={incapacity} />
+      )}
     </Box>
   );
 }
