@@ -34,6 +34,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
+import { CollapsibleLabelButton } from '@/components/CollapsibleLabelButton';
 import { useToast } from '@/components/toast/ToastProvider';
 import { regenerateProjectionLink, revokeProjectionLink } from '@/lib/projection/actions';
 import { createProjectionLink, fetchProjectionLink } from '@/lib/projection/repo';
@@ -131,14 +132,15 @@ export function ProjectionLinkControl({ campaignId }: { campaignId: string }) {
 
   return (
     <>
-      <Button
+      {/* Libellé replié sur la seule icône sous `xl` : à deux boutons à libellé long, l'en-tête du
+          tracker passait à la ligne (cf. `CollapsibleLabelButton`). */}
+      <CollapsibleLabelButton
         variant="outlined"
         size="small"
-        startIcon={<ConnectedTvIcon />}
+        icon={<ConnectedTvIcon />}
+        label="Lien de projection"
         onClick={() => setOpen(true)}
-      >
-        Lien de projection
-      </Button>
+      />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Lien de projection</DialogTitle>

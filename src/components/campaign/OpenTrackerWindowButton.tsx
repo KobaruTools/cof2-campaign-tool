@@ -16,7 +16,7 @@
  * déjà ouverte plutôt que d'en empiler une nouvelle.
  */
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import Button from '@mui/material/Button';
+import { CollapsibleLabelButton } from '@/components/CollapsibleLabelButton';
 
 export function OpenTrackerWindowButton({ cid }: { cid: string }) {
   const open = () => {
@@ -36,14 +36,16 @@ export function OpenTrackerWindowButton({ cid }: { cid: string }) {
     );
   };
   return (
-    <Button
+    <CollapsibleLabelButton
       variant="outlined"
       size="small"
-      startIcon={<OpenInNewIcon />}
+      icon={<OpenInNewIcon />}
+      label="Ouvrir dans une nouvelle fenêtre"
       onClick={open}
+      // Le libellé est long : sous `xl`, il faisait passer l'en-tête du tracker à la ligne. Il se
+      // replie donc sur la seule icône (cf. `CollapsibleLabelButton`). Le `display` reste le repli
+      // mobile d'origine : masqué en dessous de `md`.
       sx={{ display: { xs: 'none', md: 'inline-flex' } }}
-    >
-      Ouvrir dans une nouvelle fenêtre
-    </Button>
+    />
   );
 }

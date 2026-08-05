@@ -143,6 +143,7 @@ import {
 import { stepTurn, turnDirectionFromKey, type TurnDirection } from '@/lib/ui/turnOrder';
 import { crossOutBackgroundImage } from '@/lib/ui/crossOut';
 import { AppTooltip } from '@/components/AppTooltip';
+import { CollapsibleLabelButton } from '@/components/CollapsibleLabelButton';
 import { SkullIcon } from '@/components/SkullIcon';
 import { HpGauge, type DamageKind } from '@/components/sheet/HpGauge';
 import {
@@ -2267,16 +2268,17 @@ export function InitiativeTracker({
               principale. Les raccourcis sont rappelés dans les deux info-bulles, en `title` natif
               comme les boutons de manche voisins : une info-bulle MUI ne s'affiche pas sur un
               bouton désactivé (roster vide) et le fait savoir en console. */}
-          <Button
+          {/* Libellé replié sur la seule icône sous `xl` (PER-301) : c'est un bouton SECONDAIRE, il
+              cède son libellé avant « Tour suivant » quand la place manque. */}
+          <CollapsibleLabelButton
             variant="outlined"
             size="small"
-            startIcon={<SkipPreviousIcon />}
+            icon={<SkipPreviousIcon />}
+            label="Tour précédent"
             onClick={() => step(-1)}
             disabled={rows.length === 0}
             title="Tour précédent (P ou ←)"
-          >
-            Tour précédent
-          </Button>
+          />
           <Button
             variant="contained"
             size="small"
