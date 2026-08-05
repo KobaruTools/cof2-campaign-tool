@@ -41,6 +41,7 @@ function makeCharacter(over: Partial<Character> = {}): Character {
     purse: { platinum: 0, gold: 0, silver: 0, copper: 0 },
     levelUpHistory: [],
     equipment: [],
+    poisonedWeapons: [],
     overrides: {},
     notes: '',
     createdAt: '2026-01-01T00:00:00.000Z',
