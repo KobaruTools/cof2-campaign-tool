@@ -3,7 +3,8 @@
 /**
  * Palette d'états de combat de l'écran de MJ (PER-279, tranche 3 de la milestone PER-276).
  *
- * Trois groupes de PUCES à glisser vers les cartes du tracker : les **états préjudiciables** du
+ * Trois LIGNES de PUCES à glisser vers les cartes du tracker (collées, sans sous-titre — la teinte
+ * suffit à distinguer les familles) : les **états préjudiciables** du
  * glossaire (`STATUS_EFFECT_IDS`, catalogue fermé p. 214-215), les **effets situationnels**
  * (`SITUATIONAL_EFFECT_IDS`, catalogue ouvert, ex. « Attaque invalidante ») et les **états
  * d'environnement** (`ENVIRONMENTAL_EFFECT_IDS`, ex. « Combat aquatique », p. 215). Chaque puce est un
@@ -183,32 +184,17 @@ export function CombatStatusPalette({
   situationalIds: readonly SituationalEffectId[];
 }) {
   return (
-    <Stack spacing={1.5}>
-      {buildStatusGroups(situationalIds).map((group, groupIndex) => (
-        <Box key={group.title}>
-          {/* Le groupe des états préjudiciables (toujours en tête) n'affiche PAS de titre : il est
-              universel et implicite. Les groupes suivants (« Effets situationnels », « Environnement »)
-              en gardent un — ils forment chacun leur propre ligne de puces. */}
-          {groupIndex > 0 && (
-            <Typography
-              variant="caption"
-              sx={{
-                display: 'block',
-                mb: 0.75,
-                fontWeight: 700,
-                color: 'text.secondary',
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-            >
-              {group.title}
-            </Typography>
-          )}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {group.ids.map((id) => (
-              <DraggableStatusChip key={id} id={id} />
-            ))}
-          </Box>
+    // Aucun sous-titre de groupe, et les lignes COLLÉES (même gouttière verticale qu'entre deux puces
+    // d'une même ligne) : la TEINTE porte déjà la famille (rouge = état subi, bleu = environnement),
+    // les libellés « Effets situationnels » / « Environnement » ne faisaient que voler de la hauteur à
+    // une palette logée dans le tracker, juste au-dessus de la bande d'initiative. Chaque groupe garde
+    // en revanche sa propre ligne : c'est ce qui rend les familles lisibles sans les nommer.
+    <Stack spacing={1}>
+      {buildStatusGroups(situationalIds).map((group) => (
+        <Box key={group.title} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {group.ids.map((id) => (
+            <DraggableStatusChip key={id} id={id} />
+          ))}
         </Box>
       ))}
     </Stack>
