@@ -1909,7 +1909,12 @@ export function EquipmentList({
           colonnes (PER-223) et regroupement par catégorie (PER-221). Affichées dès qu'il y a
           au moins un objet d'inventaire. */}
       {equipment.length > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+        // `mb` explicite plutôt que de compter sur le `spacing` du Stack parent (nul en lecture
+        // seule, cf. ci-dessus) : l'espace vers les catégories/lignes ci-dessous doit rester visible
+        // dans TOUS les cas, au même gabarit qu'au-dessus de ces boutons (`Divider` `my: 1.5` du bloc
+        // appelant). En édition le `spacing` du Stack fournit déjà ce même espace (`onChange` vrai) :
+        // pas de `mb` ici, sous peine de le CUMULER avec le `gap` du Stack et doubler l'écart.
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mb: onChange ? 0 : 1.5 }}>
           <InventoryViewToggle cards={cards} onChange={setCards} />
           <InventoryLayoutToggle grouped={grouped} onChange={setGrouped} />
         </Box>
