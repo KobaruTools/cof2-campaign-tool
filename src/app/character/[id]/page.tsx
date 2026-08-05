@@ -85,6 +85,7 @@ import { TombstoneIcon } from '@/components/TombstoneIcon';
 import { CampaignBadge } from '@/components/home/CampaignBadge';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
 import { classColor } from '@/lib/ui/classColors';
+import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { SheetSection } from '@/components/sheet/SheetSection';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { AppAlert } from '@/components/AppAlert';
@@ -282,6 +283,16 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // du personnage (défaut), soit l'aide-mémoire des manœuvres de combat (lecture seule).
   // Préférence d'affichage transitoire (non persistée), comme la disposition des voies.
   const [voiesView, setVoiesView] = useState<'features' | 'maneuvers'>('features');
+  // Vue de la section « Statistiques dérivées », même idiome que « Voies & capacités »
+  // ci-dessus : les stats dérivées (défaut) ou « Compétences & tests » (lecture seule).
+  // Préférence d'affichage transitoire (non persistée) ; les toggles de la vue « tests »
+  // (eux) restent persistés, comme avant l'introduction des onglets (cf. `TestDomainsPanel`).
+  const [statsView, setStatsView] = useState<'derived' | 'tests'>('derived');
+  const [testsIncludeAbility, setTestsIncludeAbility] = usePersistedBoolean(
+    'test-domains:include-ability',
+    false,
+  );
+  const [testsHideZero, setTestsHideZero] = usePersistedBoolean('test-domains:hide-zero', true);
   const { showToast } = useToast();
   // Index de la ligne « Bourse de 2d6 pa » dont l'ouverture est en cours (modale) ; null = fermée.
   const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
@@ -982,11 +993,23 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             />
           </SheetSection>
 
+          {/* Section « Statistiques dérivées » avec un sélecteur de vue, même idiome que « Voies &
+              capacités » (PER-296) : les stats dérivées (défaut) ou l'encadré « Compétences & tests »
+              (lecture seule), qui vivait juste en dessous en tant que section à part. Le crayon
+              d'édition ne s'affiche que sur la vue « Statistiques dérivées » ; les toggles d'affichage
+              des domaines de la vue « tests » sont portés par le CONTENU (pas assez de place dans
+              l'en-tête à côté du bandeau d'onglets), cf. `TestDomainsPanel`. */}
           <SheetSection
             title="Statistiques dérivées"
             icon="derived"
-            action={(collapsed) =>
-              collapsed || readOnly ? null : (
+            tabs={[
+              { value: 'derived', label: 'Statistiques dérivées', icon: 'derived' },
+              { value: 'tests', label: 'Compétences & tests', icon: 'tests' },
+            ]}
+            activeTab={statsView}
+            onTabChange={(v) => setStatsView(v as 'derived' | 'tests')}
+            action={
+              statsView === 'tests' || readOnly ? null : (
                 <BlockEditButton
                   editing={editingBlocks.derived}
                   onToggle={() => toggleBlock('derived')}
@@ -995,7 +1018,24 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               )
             }
           >
-            {adjustedDerivedInput ? (
+            {statsView === 'tests' ? (
+              <TestDomainsPanel
+                bonuses={display.testBonuses}
+                abilities={effectCtx.abilities}
+                abilityTestBonus={display.abilityTestBonus}
+                perAbilityTestBonus={display.perAbilityTestBonus}
+                magicTestBonuses={display.magicTestBonuses}
+                bonusDice={display.bonusDieSources}
+                universalBonus={display.universalBonus}
+                testDice={display.testDice}
+                armorPenalty={display.armorPenalty}
+                armorMaxAgi={display.armorMaxAgi}
+                includeAbility={testsIncludeAbility}
+                onIncludeAbilityChange={setTestsIncludeAbility}
+                hideZero={testsHideZero}
+                onHideZeroChange={setTestsHideZero}
+              />
+            ) : adjustedDerivedInput ? (
               <DerivedStatsGrid
                 input={adjustedDerivedInput}
                 featureIds={modFeatureIds}
@@ -1028,19 +1068,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               </Typography>
             )}
           </SheetSection>
-
-          <TestDomainsPanel
-            bonuses={display.testBonuses}
-            abilities={effectCtx.abilities}
-            abilityTestBonus={display.abilityTestBonus}
-            perAbilityTestBonus={display.perAbilityTestBonus}
-            magicTestBonuses={display.magicTestBonuses}
-            bonusDice={display.bonusDieSources}
-            universalBonus={display.universalBonus}
-            testDice={display.testDice}
-            armorPenalty={display.armorPenalty}
-            armorMaxAgi={display.armorMaxAgi}
-          />
 
           {masterDerived && (
             <SheetSection title="État du personnage" icon="status">

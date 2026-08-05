@@ -54,6 +54,7 @@ import { startingChoiceOptionsFor } from '@/lib/character/startingChoices';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { weaponAffinities } from '@/lib/character/weaponAffinity';
 import { classColor, profileAccentGradient } from '@/lib/ui/classColors';
+import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { FirearmsAllowedProvider } from '@/components/ClassIcon';
@@ -232,6 +233,13 @@ function GmSheetDrawerContent({
   // Autorisation EFFECTIVE des armes à feu (règle campagne ∧ choix perso, PER-185) : sans
   // ce fournisseur, les icônes de profil de l'arquebusier seraient fausses (arbalétrier).
   const firearmsAllowed = firearmsEffective(character, campaign);
+  // Toggles d'affichage de « Compétences & tests » (`TestDomainsPanel`) : mêmes clés que la
+  // fiche complète, donc la préférence est PARTAGÉE entre les deux vues (mêmes onglets).
+  const [testsIncludeAbility, setTestsIncludeAbility] = usePersistedBoolean(
+    'test-domains:include-ability',
+    false,
+  );
+  const [testsHideZero, setTestsHideZero] = usePersistedBoolean('test-domains:hide-zero', true);
 
   const {
     derived: {
@@ -398,19 +406,26 @@ function GmSheetDrawerContent({
             )}
           </SheetSection>
 
-          <TestDomainsPanel
-            persistKey={`${PERSIST_PREFIX}test-domains`}
-            bonuses={display.testBonuses}
-            abilities={effectCtx.abilities}
-            abilityTestBonus={display.abilityTestBonus}
-            perAbilityTestBonus={display.perAbilityTestBonus}
-            magicTestBonuses={display.magicTestBonuses}
-            bonusDice={display.bonusDieSources}
-            universalBonus={display.universalBonus}
-            testDice={display.testDice}
-            armorPenalty={display.armorPenalty}
-            armorMaxAgi={display.armorMaxAgi}
-          />
+          {/* Toggles portés par le CONTENU (pas par l'en-tête) : même composant que la fiche,
+              cf. `TestDomainsPanel`. */}
+          <SheetSection title="Compétences & tests" icon="tests">
+            <TestDomainsPanel
+              bonuses={display.testBonuses}
+              abilities={effectCtx.abilities}
+              abilityTestBonus={display.abilityTestBonus}
+              perAbilityTestBonus={display.perAbilityTestBonus}
+              magicTestBonuses={display.magicTestBonuses}
+              bonusDice={display.bonusDieSources}
+              universalBonus={display.universalBonus}
+              testDice={display.testDice}
+              armorPenalty={display.armorPenalty}
+              armorMaxAgi={display.armorMaxAgi}
+              includeAbility={testsIncludeAbility}
+              onIncludeAbilityChange={setTestsIncludeAbility}
+              hideZero={testsHideZero}
+              onHideZeroChange={setTestsHideZero}
+            />
+          </SheetSection>
 
           {masterDerived && (
             <SheetSection title="État du personnage" icon="status">

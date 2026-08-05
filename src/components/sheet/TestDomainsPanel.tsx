@@ -24,7 +24,6 @@ import {
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { abilityTestGradient, abilityTestPanelBg, ABILITY_TEST_GRADIENT } from '@/lib/ui/abilityColors';
 import { agiTestArmorAdjustment } from '@/lib/character/equipment';
-import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
@@ -33,7 +32,6 @@ import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { BonusDieBadge } from '@/components/BonusDieBadge';
 import { DieIcon } from '@/components/DieIcon';
-import { SheetSection } from '@/components/sheet/SheetSection';
 
 export interface TestDomainsPanelProps {
   /** Bonus de compétence par domaine (cf. `testBonusSources`) — seuls les domaines avec
@@ -96,11 +94,56 @@ export interface TestDomainsPanelProps {
    */
   armorMaxAgi?: number | null;
   /**
-   * Clé de mémorisation du repli du bloc (`SheetSection`). Défaut `'test-domains'` = la
-   * fiche. Le panneau latéral de l'écran de MJ (PER-258) en passe une qui lui est propre,
-   * pour que replier le bloc là-bas ne replie pas celui de la vraie fiche.
+   * Panneau de CONTENU pur (pas de titre, pas de cadre `SheetSection`, pas de repli) : c'est
+   * l'appelant qui l'héberge dans sa propre `SheetSection` (fiche : onglet « Compétences &
+   * tests » de la section « Statistiques dérivées » ; écran de MJ : section dédiée standard).
+   * Les deux bascules d'affichage (cf. `TestDomainsToggles`) restent contrôlées par l'appelant
+   * (préférence persistée, mêmes clés partagées entre fiche et écran de MJ) mais sont rendues
+   * par LE PANNEAU LUI-MÊME, en haut à droite du contenu : sur la fiche, le bandeau d'onglets
+   * de la `SheetSection` hôte ne laisse pas assez de place en en-tête pour les accueillir.
    */
-  persistKey?: string;
+  includeAbility: boolean;
+  onIncludeAbilityChange: (value: boolean) => void;
+  hideZero: boolean;
+  onHideZeroChange: (value: boolean) => void;
+}
+
+export interface TestDomainsTogglesProps {
+  includeAbility: boolean;
+  onIncludeAbilityChange: (value: boolean) => void;
+  hideZero: boolean;
+  onHideZeroChange: (value: boolean) => void;
+}
+
+/** Bascules d'affichage de `TestDomainsPanel`, rendues par le panneau en haut de son contenu. */
+export function TestDomainsToggles({
+  includeAbility,
+  onIncludeAbilityChange,
+  hideZero,
+  onHideZeroChange,
+}: TestDomainsTogglesProps) {
+  return (
+    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+      <FormControlLabel
+        control={
+          <Switch
+            size="small"
+            checked={includeAbility}
+            onChange={(e) => onIncludeAbilityChange(e.target.checked)}
+          />
+        }
+        label={<Typography variant="caption">Inclure la carac</Typography>}
+        sx={{ mr: 0 }}
+      />
+      <FormControlLabel
+        control={
+          <Switch size="small" checked={hideZero} onChange={(e) => onHideZeroChange(e.target.checked)} />
+        }
+        label={<Typography variant="caption">Masquer les domaines sans bonus</Typography>}
+        sx={{ mr: 0 }}
+      />
+    </Stack>
+  );
 }
 
 /**
@@ -261,21 +304,34 @@ function WarnPill({ children, outlined = false }: { children: ReactNode; outline
 }
 
 /**
- * Encadré « Compétences & tests » : les 7 caractéristiques, chacune avec sa ligne
+ * Contenu « Compétences & tests » : les 7 caractéristiques, chacune avec sa ligne
  * **« test de [CARAC] »** (icône d20 + modificateur de la carac, buff temporaire inclus —
  * ex. Bénédiction), et **regroupant ses domaines** avec leur **bonus de compétence plat**
  * (PER-89). Un domaine multi-carac est rangé sous sa carac la plus élevée chez le personnage
- * (égalité → première carac déclarée au catalogue, stable). Deux options de vue (en haut à
- * droite) : inclure la meilleure carac dans le chiffre des domaines, et masquer les domaines
- * à 0. Au survol : provenance (capacité par catégorie de source, p. 203) et plafond +15.
- * Lecture seule (les interrupteurs des buffs vivent sur les cartes de capacité).
+ * (égalité → première carac déclarée au catalogue, stable). Deux options de vue, pilotées
+ * par l'appelant (`includeAbility`/`hideZero`, cf. `TestDomainsToggles`) : inclure la
+ * meilleure carac dans le chiffre des domaines, et masquer les domaines à 0. Au survol :
+ * provenance (capacité par catégorie de source, p. 203) et plafond +15. Lecture seule (les
+ * interrupteurs des buffs vivent sur les cartes de capacité). Bloc de contenu pur — pas de
+ * titre ni de cadre : l'appelant l'héberge dans sa propre `SheetSection`.
  */
-export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbilityTestBonus, magicTestBonuses, bonusDice, universalBonus, testDice, armorPenalty, armorMaxAgi, persistKey = 'test-domains' }: TestDomainsPanelProps) {
+export function TestDomainsPanel({
+  bonuses,
+  abilities,
+  abilityTestBonus,
+  perAbilityTestBonus,
+  magicTestBonuses,
+  bonusDice,
+  universalBonus,
+  testDice,
+  armorPenalty,
+  armorMaxAgi,
+  includeAbility,
+  onIncludeAbilityChange,
+  hideZero,
+  onHideZeroChange,
+}: TestDomainsPanelProps) {
   const penalty = armorPenalty ?? 0;
-  const [includeAbility, setIncludeAbility] = usePersistedBoolean('test-domains:include-ability', false);
-  // Coché par défaut : on n'affiche d'emblée que les domaines effectivement bonifiés
-  // (les centaines de domaines à 0 sont masqués tant que l'utilisateur ne les demande pas).
-  const [hideZero, setHideZero] = usePersistedBoolean('test-domains:hide-zero', true);
 
   const byDomain = new Map(bonuses.map((b) => [b.domain, b]));
 
@@ -303,37 +359,26 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
   const buffSources = abilityTestBonus ?? [];
   const testBuff = buffSources.reduce((sum, s) => sum + s.value, 0);
 
-  const toggles = (
-    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-      <FormControlLabel
-        control={
-          <Switch size="small" checked={includeAbility} onChange={(e) => setIncludeAbility(e.target.checked)} />
-        }
-        label={<Typography variant="caption">Inclure la carac</Typography>}
-        sx={{ mr: 0 }}
-      />
-      <FormControlLabel
-        control={<Switch size="small" checked={hideZero} onChange={(e) => setHideZero(e.target.checked)} />}
-        label={<Typography variant="caption">Masquer les domaines sans bonus</Typography>}
-        sx={{ mr: 0 }}
-      />
-    </Stack>
-  );
-
   return (
-    <SheetSection
-      title="Compétences & tests"
-      icon="tests"
-      collapsible
-      defaultCollapsed
-      persistKey={persistKey}
-      // Les toggles n'ont aucun sens quand le bloc est replié : on ne les affiche que déplié.
-      action={(collapsed) => (collapsed ? null : toggles)}
-    >
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-        Test de carac (d20 + carac) par caractéristique, et bonus de compétence des domaines
-        (cumul par domaine, plafond +15 — <SourceRef page={203} />).
-      </Typography>
+    <>
+      {/* Bascules en haut à DROITE du bloc, sur la même ligne que le rappel de règle : l'en-tête
+          de la `SheetSection` hôte n'a plus la place (bandeau d'onglets), cf. son action vide. */}
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', mb: 1.5 }}
+      >
+        <Typography variant="caption" color="text.secondary" sx={{ flex: '1 1 240px', minWidth: 0 }}>
+          Test de carac (d20 + carac) par caractéristique, et bonus de compétence des domaines
+          (cumul par domaine, plafond +15 — <SourceRef page={203} />).
+        </Typography>
+        <TestDomainsToggles
+          includeAbility={includeAbility}
+          onIncludeAbilityChange={onIncludeAbilityChange}
+          hideZero={hideZero}
+          onHideZeroChange={onHideZeroChange}
+        />
+      </Stack>
       <Stack spacing={2.5}>
         {ABILITY_IDS.map((ability) => {
           // Un domaine multi-carac (ex. Équitation CON/CHA, Survie en forêt AGI/PER) apparaît
@@ -800,6 +845,6 @@ export function TestDomainsPanel({ bonuses, abilities, abilityTestBonus, perAbil
           </Box>
         </AppTooltip>
       )}
-    </SheetSection>
+    </>
   );
 }
