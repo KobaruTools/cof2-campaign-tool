@@ -1342,6 +1342,8 @@ export const SITUATIONAL_EFFECT_IDS = [
   'silenced',
   'locust-swarm',
   'insect-swarm',
+  'bleeding',
+  'internal-hemorrhage',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1385,6 +1387,23 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
       "En réussissant un test d'attaque magique contre la DEF de sa cible (portée 20 m), le druide libère sur celle-ci une nuée d'insectes volants qui piquent, aveuglent et la suivent pendant [3 + PER] rounds. La victime subit 1 DM par round et un malus de -2 à tous les tests. Les DM de zone détruisent la nuée.",
     sourcePage: 114,
     modifiers: { allTestsFlat: -2 },
+  },
+  // « Armes dentelées » (écorcheur r4, p. 150). DoT PUR (aucun malus de test) : rien à chiffrer
+  // (cf. « DoT = comportemental », PER-288). L'escalade 1→2 DM au rang 8 de la voie hôte et la
+  // condition d'arrêt (soins ou action limitée + test d'AGI 10) restent dans le verbatim.
+  bleeding: {
+    label: 'Saignement',
+    effect:
+      "La victime subit 1 DM par round pour le reste du combat (2 DM à partir du rang 8 de la voie de l'écorcheur). Pour stopper l'hémorragie, elle doit recevoir des soins, ou prendre une action limitée et réussir un test d'AGI difficulté 10. Ne se cumule pas.",
+    sourcePage: 150,
+  },
+  // « Hémorragie interne » (écorcheur r7, p. 151). DoT déclenché par un critique, durée fixe de 3
+  // rounds ; PUR (aucun malus de test) : rien à chiffrer (cf. « DoT = comportemental », PER-288).
+  'internal-hemorrhage': {
+    label: 'Hémorragie interne',
+    effect:
+      "À la suite d'un critique, la victime subit 1d4° DM supplémentaires à chaque round suivant, pendant 3 rounds.",
+    sourcePage: 151,
   },
 };
 

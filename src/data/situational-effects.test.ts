@@ -79,6 +79,26 @@ describe('SITUATIONAL_EFFECTS (catalogue)', () => {
     }
   });
 
+  it("« Saignement » est catalogué (écorcheur r4, p. 150) : DoT pur, référencé", () => {
+    const entry = SITUATIONAL_EFFECTS['bleeding'];
+    expect(entry.label).toBe('Saignement');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(150);
+    expect(entry.modifiers).toBeUndefined();
+    const r4 = featureById.get('prestige-ecorcheur-r4');
+    expect(r4?.situationalEffectIds).toEqual(['bleeding']);
+  });
+
+  it("« Hémorragie interne » est cataloguée (écorcheur r7, p. 151) : DoT pur, référencée", () => {
+    const entry = SITUATIONAL_EFFECTS['internal-hemorrhage'];
+    expect(entry.label).toBe('Hémorragie interne');
+    expect(entry.effect.trim().length).toBeGreaterThan(0);
+    expect(entry.sourcePage).toBe(151);
+    expect(entry.modifiers).toBeUndefined();
+    const r7 = featureById.get('prestige-ecorcheur-r7');
+    expect(r7?.situationalEffectIds).toEqual(['internal-hemorrhage']);
+  });
+
   it('tout situationalEffectIds posé sur une capacité pointe une entrée connue du catalogue', () => {
     const known = new Set<string>(SITUATIONAL_EFFECT_IDS);
     for (const f of featureById.values()) {

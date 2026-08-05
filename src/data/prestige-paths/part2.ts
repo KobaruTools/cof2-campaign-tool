@@ -1500,6 +1500,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Les armes et les lames du personnage sont dentelées, elles possèdent des formes torturées destinées à provoquer des blessures sanglantes. Le personnage obtient un bonus de +5 à tous ses tests d'intimidation. De plus, lors d'une attaque réussie, il provoque un effet de saignement qui inflige 1 DM par round à la victime pour le reste du combat. Pour stopper cette hémorragie, la victime doit recevoir des soins ou prendre une action limitée et réussir un test d'AGI difficulté 10. Cet effet de saignement passe à 2 DM au rang 8 de la voie. Il ne se cumule pas.",
+    // Le +5 intimidation est CONSTANT (aucun interrupteur, contrairement aux +5 conditionnels du
+    // rôdeur/de l'espion) → `test-bonus` direct, pas `conditional-stat-bonus`. Le saignement est un
+    // DoT à mécanique propre (escalade 1→2 DM, condition d'arrêt) → catalogué `bleeding` (PER-288),
+    // référencé en PLUS du verbatim (jamais chiffré, cf. schema.ts).
+    effects: [{ kind: 'test-bonus', domains: ['intimidation'], value: 5 }],
+    situationalEffectIds: ['bleeding'],
     sourcePage: 150,
   },
   {
@@ -1511,6 +1517,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "L'armure et le bouclier du guerrier sont décorés de piques et de lames afin de blesser les créatures qui l'attaquent. À chaque fois qu'une créature attaque au contact le personnage avec des armes naturelles (mains nues, griffes crocs) et qu'elle touche au moins une Défense de 10, elle subit 1d4 DM. Ces DM passent à 1d4° au rang 7.",
+    // Verbatim + richText seuls : les DM sont subis par l'ADVERSAIRE (patron « Riposte », maître
+    // d'armes r5) — aucune stat du porteur n'est modifiée, hors périmètre du moteur.
+    richText:
+      "L'armure et le bouclier du guerrier sont décorés de piques et de lames afin de blesser les créatures qui l'attaquent. À chaque fois qu'une créature attaque au contact le personnage avec des armes naturelles (mains nues, griffes crocs) et qu'elle touche au moins une Défense de 10, elle subit {1d4} DM. Ces DM passent à {1d4°} au rang 7.",
     sourcePage: 150,
   },
   {
@@ -1520,6 +1530,7 @@ export const prestigeFeatures2: Feature[] = [
     rank: 6,
     isSpell: false,
     actionTypes: [],
+    // Verbatim seul : affecte la guérison DE LA CIBLE, pas une stat du porteur — rien à mécaniser.
     text:
       "Les blessures infligées par les attaques au contact du personnage sont très longues à guérir. Les effets de soins ou de régénération sont divisés par 2 lorsqu'il s'agit de guérir ces DM.",
     sourcePage: 151,
@@ -1533,6 +1544,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque le personnage inflige un critique, la victime subit 1d4° DM supplémentaires à chaque round suivant pendant 3 rounds.",
+    // DoT déclenché par un critique, durée fixe → catalogué `internal-hemorrhage` (PER-288), comme
+    // le saignement r4. Jamais chiffré (le moteur ne suit pas les DM infligés à un adversaire).
+    richText:
+      "Lorsque le personnage inflige un critique, la victime subit {1d4°} DM supplémentaires à chaque round suivant pendant 3 rounds.",
+    situationalEffectIds: ['internal-hemorrhage'],
     sourcePage: 151,
   },
   {
@@ -1544,6 +1560,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque l'écorcheur rate une attaque, il inflige tout de même 1d4° DM à sa cible (de même nature que les DM habituels de son attaque).",
+    // Verbatim + richText seuls : DM sur une attaque RATÉE, aucune primitive existante ne couvre
+    // cette condition (weapon-damage-bonus ne s'applique qu'aux attaques RÉUSSIES).
+    richText:
+      "Lorsque l'écorcheur rate une attaque, il inflige tout de même {1d4°} DM à sa cible (de même nature que les DM habituels de son attaque).",
     sourcePage: 151,
   },
 
