@@ -194,16 +194,19 @@ const panelSx = {
 } as const;
 
 /**
- * Variante OPAQUE du verre dépoli, pour les deux étages de la barre collée. Le conteneur collé n'a
- * lui-même ni fond ni marge (demande proprio : « pas de background color, ni de padding ») — ce sont
- * donc ces deux panneaux qui doivent masquer le contenu qui défile dessous. À 35 % d'opacité (le
- * `panelSx` ordinaire) le texte transparaissait au travers.
+ * Verre dépoli des deux étages de la barre collée. Le conteneur collé n'a lui-même ni fond ni marge
+ * (demande proprio) — ce sont donc ces deux panneaux qui doivent masquer le contenu qui défile
+ * dessous, là où le `panelSx` ordinaire à 35 % le laissait transparaître.
+ *
+ * Noir à 50 % (demande proprio : un noir plein « ça ne va pas ») : c'est le FLOU qui fait le travail
+ * de lisibilité, pas l'opacité. D'où un rayon plus large qu'ailleurs — à moitié transparent, un flou
+ * de 6 px laisserait deviner le texte qui passe derrière.
  */
 const stickyPanelSx = {
   ...panelSx,
-  bgcolor: 'rgba(10, 10, 12, 0.94)',
-  backdropFilter: 'blur(10px)',
-  WebkitBackdropFilter: 'blur(10px)',
+  bgcolor: 'rgba(0, 0, 0, 0.5)',
+  backdropFilter: 'blur(16px)',
+  WebkitBackdropFilter: 'blur(16px)',
 } as const;
 
 export function ReferenceBrowser() {
