@@ -86,7 +86,9 @@ import { CampaignBadge } from '@/components/home/CampaignBadge';
 import { PlayerBadge } from '@/components/home/PlayerBadge';
 import { classColor } from '@/lib/ui/classColors';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { SheetInitiativeBar } from '@/components/sheet/SheetInitiativeBar';
 import { SheetSection } from '@/components/sheet/SheetSection';
+import { CapabilityScrollProvider } from '@/components/sheet/capabilityScroll';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
@@ -293,6 +295,14 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // du personnage (défaut), soit l'aide-mémoire des manœuvres de combat (lecture seule).
   // Préférence d'affichage transitoire (non persistée), comme la disposition des voies.
   const [voiesView, setVoiesView] = useState<'features' | 'maneuvers'>('features');
+  // Clic sur une PUCE DE CAPACITÉ (`CapabilityChip`, n'importe où sur la fiche) : ramène la vue sur
+  // « Voies & capacités » — bascule l'onglet loin de « Manœuvres » s'il y était, puis défile jusqu'à
+  // la section (ancrée par `id`, cf. `CapabilityScrollProvider`). Section toujours montée (jamais
+  // repliable) : nul besoin du mécanisme `expandSignal` de l'inventaire, un simple scrollIntoView suffit.
+  const scrollToCapability = useCallback(() => {
+    setVoiesView('features');
+    document.getElementById('voies-capacites-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
   // Vue de la section « Statistiques dérivées », même idiome que « Voies & capacités »
   // ci-dessus : les stats dérivées (défaut) ou « Compétences & tests » (lecture seule).
   // Préférence d'affichage transitoire (non persistée) ; les toggles de la vue « tests »
@@ -389,6 +399,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       rangedWeaponDamage,
       meleeSituationalDamage,
       rangedSituationalDamage,
+      meleeAttackNotes,
       rangedAttackMagicalSourceId,
       rangedAttackElement,
       rangedReplacingFormAttack: formAttackReplacingRanged,
@@ -628,6 +639,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           non de la seule section des voies, pour couvrir aussi la modale de montée de niveau et
           l'historique — c'est précisément là qu'on choisit « Résistance %toThe% » au rang 5. */}
       <FeatureDeclensionContext.Provider value={character}>
+      <CapabilityScrollProvider onScroll={scrollToCapability}>
       {/* Titre de l'onglet = nom du personnage. Rendu déclaratif (React 19 le
           hisse dans le <head>) plutôt que document.title dans un effet : sinon
           la métadonnée en streaming de Next réécrase le titre après hydratation
@@ -1074,6 +1086,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 attackBonusDie={display.attackBonusDieSources}
                 boundWeaponAttackDie={display.boundWeaponAttackDie}
                 attackMalusDie={attackMalusDie}
+                meleeAttackNotes={meleeAttackNotes}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">
@@ -1175,6 +1188,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               disposition, crayon) ne s'affichent que sur la vue « Mes capacités » ; le renvoi de source
               des manœuvres prend leur place sur la vue « Manœuvres ». */}
           <SheetSection
+            id="voies-capacites-section"
             title="Voies & capacités"
             icon="paths"
             tabs={[
@@ -1463,6 +1477,18 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </SheetSection>
         </Stack>
       </Container>
+
+      {/* Ordre d'initiative de la campagne (version « publique »/projetée), collé juste au-dessus
+          du pied de page — repliable en un simple bandeau. PLEINE LARGEUR, donc volontairement HORS
+          du `Container` de la fiche (comme la bande équivalente de l'écran de MJ, PER-301). Masqué
+          hors campagne ou combat vide. */}
+      {character.campaignId && (
+        <SheetInitiativeBar
+          campaignId={character.campaignId}
+          scrollTopButtonVisible={scrolledPastHeader}
+        />
+      )}
+
       <HomeBackground variant="footer" />
 
       {/* Bouton flottant « Haut de page », révélé par le même trigger que le sous-titre
@@ -1535,6 +1561,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
           </Button>
         </DialogActions>
       </Dialog>
+      </CapabilityScrollProvider>
       </FeatureDeclensionContext.Provider>
     </FirearmsAllowedProvider>
   );

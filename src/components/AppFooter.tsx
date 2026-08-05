@@ -46,15 +46,24 @@ const PROJECTION_ROUTES = [
   /^\/play\/initiative\/?$/,
 ];
 
+/**
+ * Routes dont le pied de page doit venir COLLER contre la bande d'initiative sticky-bottom
+ * qu'elles affichent en fin de page (fiche de personnage, écran de MJ) : sans cette exception,
+ * la marge `mt` normale du footer laisse un espace visible entre les deux, alors que la bande
+ * est justement pensée pour venir se poser juste au-dessus du pied de page.
+ */
+const FLUSH_FOOTER_ROUTES = [/^\/character\/[^/]+\/?$/, /^\/campaign\/[^/]+\/gm-screen\/?$/];
+
 export function AppFooter() {
   const pathname = usePathname();
   if (pathname && PROJECTION_ROUTES.some((route) => route.test(pathname))) return null;
+  const flush = !!pathname && FLUSH_FOOTER_ROUTES.some((route) => route.test(pathname));
 
   return (
     <Box
       component="footer"
       sx={{
-        mt: 6,
+        mt: flush ? 0 : 6,
         // Voile semi-transparent (bien plus bas que l'en-tête à 0.85) pour laisser
         // voir l'illustration de fond ; le flou d'arrière-plan la reprend comme le
         // verre de l'en-tête. Un léger dégradé vertical densifie le bas pour garder
@@ -98,6 +107,16 @@ export function AppFooter() {
             Chroniques Oubliées est une marque de Black Book Éditions. Tous droits réservés.
             Outil non officiel réalisé par des fans, sans lien avec l’éditeur, pour un usage
             privé à la table de jeu.
+          </Typography>
+
+          {/* Crédit des ILLUSTRATIONS, distinct de celui des règles : le DRS est en
+              accès libre, les images non — elles appartiennent à l'éditeur et à leurs
+              auteurs, et ne sont reprises ici qu'à titre illustratif. */}
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+            Les illustrations affichées sur ce site (couverture, peuples, profils, créatures)
+            sont la propriété de Black Book Éditions et de leurs auteurs. Elles ne nous
+            appartiennent pas et sont reprises à titre illustratif, sans intention
+            d’appropriation ni usage commercial.
           </Typography>
 
           {/* Crédit + copyright + liens vers les pages d'information et légale. */}
