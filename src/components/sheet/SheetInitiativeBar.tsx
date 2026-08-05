@@ -22,6 +22,12 @@
  * Masquée quand le roster de combat est vide : la bande serait sinon posée sur CHAQUE fiche
  * même hors combat, ce qui n'a de sens que sur l'écran de MJ (qui pilote activement le combat)
  * et non sur la fiche d'un joueur qui ne fait que la consulter entre deux combats.
+ *
+ * CONDENSÉ REPLIÉ : une puce de couleur par combattant (cf. `CondensedOrderDots`) s'ajoute au
+ * bandeau replié dès que le combat a COMMENCÉ (`currentTurnKey !== null`), pour lire d'un coup
+ * d'œil qui joue sans dérouler la bande. `currentTurnKey` ne vaut `null` qu'avant le tout premier
+ * tour — le bouton ⟳ « recommencer le décompte » de l'écran de MJ le remet à `null` plutôt que de
+ * resélectionner le premier combattant, précisément pour que ce signal reste fiable.
  */
 import { useEffect, useRef, useState } from 'react';
 import KeyboardDoubleArrowDownIcon from '@mui/icons-material/KeyboardDoubleArrowDown';
@@ -30,7 +36,7 @@ import Box from '@mui/material/Box';
 import Collapse from '@mui/material/Collapse';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
+import { InitiativeTracker, type InitiativeRow } from '@/components/campaign/InitiativeTracker';
 import { useGmScreenCombat } from '@/app/campaign/[cid]/gm-screen/useGmScreenCombat';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 
@@ -113,6 +119,42 @@ function useUnstuckFromViewportBottom(ref: { current: HTMLElement | null }, acti
   return unstuck;
 }
 
+/** Côté (px) d'une puce, normale puis mise en évidence pour le combattant actif. */
+const DOT_SIZE = 9;
+const ACTIVE_DOT_SIZE = 13;
+
+/**
+ * Représentation ULTRA CONDENSÉE de l'ordre d'initiative pour le bandeau replié : une puce de
+ * couleur par combattant (même teinte que sa carte dans la bande dépliée), dans l'ordre
+ * d'initiative, la puce du combattant ACTIF cerclée de blanc et légèrement agrandie — le repère
+ * minimal (« qui joue, et qui vient après ») sans dérouler la moindre carte. Nom complet en
+ * info-bulle native sur chaque puce.
+ */
+function CondensedOrderDots({ rows, currentTurnKey }: { rows: InitiativeRow[]; currentTurnKey: string | null }) {
+  return (
+    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', overflow: 'hidden', minWidth: 0 }}>
+      {rows.map((row) => {
+        const isActive = row.key === currentTurnKey;
+        const size = isActive ? ACTIVE_DOT_SIZE : DOT_SIZE;
+        return (
+          <Box
+            key={row.key}
+            title={row.name}
+            sx={{
+              width: size,
+              height: size,
+              flexShrink: 0,
+              borderRadius: '50%',
+              bgcolor: row.accentColor ?? row.profileColor,
+              ...(isActive && { boxShadow: '0 0 0 2px rgba(255, 255, 255, 0.9)' }),
+            }}
+          />
+        );
+      })}
+    </Stack>
+  );
+}
+
 export function SheetInitiativeBar({
   campaignId,
   scrollTopButtonVisible = false,
@@ -139,6 +181,11 @@ export function SheetInitiativeBar({
 
   const toggleLabel = collapsed ? "Déplier l'ordre d'initiative" : "Replier l'ordre d'initiative";
   const avoidScrollTopButton = scrollTopButtonVisible && !unstuck;
+  // Condensé affiché UNIQUEMENT repli + combat COMMENCÉ (`currentTurnKey !== null`, cf. la
+  // sémantique du bouton ⟳ de l'écran de MJ) : avant le premier tour, l'ordre n'a encore rien de
+  // « courant » à mettre en évidence, la liste nue serait plus confuse qu'utile.
+  const showCondensedOrder = collapsed && currentTurnKey !== null;
+  const visibleRows = showCondensedOrder ? initiativeRows.filter((r) => !r.hidden) : [];
 
   return (
     <Box ref={barRef} sx={STICKY_SX}>
@@ -170,9 +217,12 @@ export function SheetInitiativeBar({
           '&:focus-visible': { bgcolor: 'rgba(255, 255, 255, 0.06)' },
         }}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-          Ordre d&apos;initiative
-        </Typography>
+        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0, overflow: 'hidden' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, flexShrink: 0 }}>
+            Ordre d&apos;initiative
+          </Typography>
+          {showCondensedOrder && <CondensedOrderDots rows={visibleRows} currentTurnKey={currentTurnKey} />}
+        </Stack>
         <Box
           sx={{
             display: 'inline-flex',

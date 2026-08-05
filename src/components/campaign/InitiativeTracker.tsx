@@ -2403,10 +2403,6 @@ export function InitiativeTracker({
   const displayedRows = projection
     ? rows.filter((r) => !r.hidden)
     : relegateSidelined(rows, currentTurnKey);
-  // Premier de la bande AFFICHÉE (les `rows` arrivent déjà triées par l'appelant, la relégation ne
-  // fait que regrouper) : cible du repositionnement du bouton ⟳ « recommencer le décompte ».
-  // `null` si le roster est vide.
-  const firstTurnKey = displayedRows[0]?.key ?? null;
   /**
    * Avance (+1) ou recule (−1) d'un cran dans l'ordre d'initiative (PER-299). Toute l'arithmétique
    * — bouclage aux deux bouts, incrément/décrément de manche, saut des créatures vaincues, cas
@@ -2523,9 +2519,12 @@ export function InitiativeTracker({
               <IconButton
                 size="small"
                 onClick={() => (onRestartRounds ? onRestartRounds() : onRoundNumberChange(1))}
-                disabled={roundNumber === 1 && currentTurnKey === firstTurnKey}
-                aria-label="Recommencer le décompte des manches (Tour 1, premier combattant)"
-                title="Recommencer (Tour 1, premier combattant)"
+                // Rien à recommencer si on est déjà à la manche 1 SANS combat en cours (cf.
+                // `onRestartRounds`, qui remet `currentTurnKey` à `null` plutôt que de resélectionner
+                // le premier combattant — précisément l'état que ce bouton vise à restaurer).
+                disabled={roundNumber === 1 && currentTurnKey === null}
+                aria-label="Recommencer le décompte des manches (Tour 1, combat non commencé)"
+                title="Recommencer (Tour 1, combat non commencé)"
               >
                 <RestartAltIcon fontSize="inherit" />
               </IconButton>
@@ -2557,15 +2556,19 @@ export function InitiativeTracker({
             disabled={rows.length === 0}
             title="Tour précédent (P ou ←)"
           />
+          {/* Tant que `currentTurnKey` vaut `null` (aucun combattant n'a encore eu la main), ce
+              bouton amorce le combat plutôt que de faire progresser un tour déjà en cours — c'est
+              le même geste (`step(1)`), seul son libellé change pour ne pas laisser croire qu'un
+              combat est déjà lancé. */}
           <Button
             variant="contained"
             size="small"
             startIcon={<SkipNextIcon />}
             onClick={() => step(1)}
             disabled={rows.length === 0}
-            title="Tour suivant (N ou →)"
+            title={currentTurnKey === null ? 'Commencer le combat (N ou →)' : 'Tour suivant (N ou →)'}
           >
-            Tour suivant
+            {currentTurnKey === null ? 'Commencer le combat' : 'Tour suivant'}
           </Button>
         </Stack>
       )}

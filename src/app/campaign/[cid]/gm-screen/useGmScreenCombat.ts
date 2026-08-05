@@ -182,7 +182,10 @@ export interface GmScreenCombat {
   resetCombat: () => void;
   /**
    * Recommence le décompte des manches (bouton ⟳ de l'en-tête) : compteur → 1 et tour courant
-   * repositionné sur le PREMIER de l'ordre d'initiative. Ne touche NI aux états NI aux PV.
+   * remis à « aucun » (`null`) — PAS repositionné sur le premier de l'ordre d'initiative, pour que
+   * `currentTurnKey === null` reste le signal fiable « combat non commencé » (bouton « Commencer
+   * le combat » de `InitiativeTracker`, condensé de la bande d'initiative de la fiche). Ne touche
+   * NI aux états NI aux PV.
    */
   restartRounds: () => void;
 }
@@ -523,13 +526,13 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     [characterRows, creatureRows, tieBreakSeed],
   );
 
-  // Bouton ⟳ « recommencer le décompte » : le tour courant est repositionné sur le PREMIER de
-  // l'ordre d'initiative (l'ordre vit ici, pas dans la couche pure `restartRounds`). Roster vide
-  // → `null`. Ne touche NI aux états NI aux PV (contrairement à `resetCombat`).
-  const restartRounds = useCallback(
-    () => restartRoundsBase(initiativeRows[0]?.key ?? null),
-    [restartRoundsBase, initiativeRows],
-  );
+  // Bouton ⟳ « recommencer le décompte » : le tour courant est remis à « aucun » (`null`), PAS
+  // repositionné sur le premier de l'ordre d'initiative — sélectionner un combattant d'office
+  // laisserait croire qu'un combat est en cours alors qu'on vient justement de le remettre à zéro.
+  // `currentTurnKey === null` reste ainsi le signal fiable « combat non commencé » (bouton
+  // « Commencer le combat », condensé de la bande d'initiative de la fiche). Ne touche NI aux
+  // états NI aux PV (contrairement à `resetCombat`).
+  const restartRounds = useCallback(() => restartRoundsBase(null), [restartRoundsBase]);
 
   const campaignsLoading = campaignsStatus === 'idle' || campaignsStatus === 'loading';
 
