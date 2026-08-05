@@ -20,6 +20,17 @@
  * partagent le nom, la visibilité et le camp choisis ; ils sont numérotés à l'affichage tant
  * qu'ils sont homonymes.
  *
+ * **Mode ÉDITION** (`editing` renseigné) : la même modale sert à retoucher une instance déjà au
+ * combat, depuis le crayon de sa carte. Le formulaire est pré-rempli et l'**identité est figée**
+ * — ni la source ni la créature du bestiaire ne changent (changer de créature, c'est en ajouter
+ * une autre), et le nombre d'exemplaires disparaît (on édite UNE instance). Restent modifiables
+ * le nom, le camp, la visibilité, et le bloc de stats d'une créature créée à la main.
+ *
+ * L'état du formulaire est initialisé DEPUIS LES PROPS au montage, d'où le découpage
+ * coque/corps : `Dialog` démonte ses enfants à la fermeture (`Modal`, `keepMounted` à `false`),
+ * donc chaque ouverture remonte le corps avec un état frais. C'est ce qui permet de pré-remplir
+ * sans `setState` dans un effet (cf. `set-state-in-effect`).
+ *
  * Lecture via le store `bestiary` (liste légère, cache PER-244) : aucune source codée
  * en dur, le contenu entitlé remontera tout seul le jour de PER-242.
  */
@@ -98,6 +109,14 @@ function parseIntegerField(raw: string): number | undefined {
   return Number.isFinite(value) ? Math.trunc(value) : undefined;
 }
 
+/**
+ * Valeur initiale d'un champ numérique tenu en texte : le nombre rendu tel quel, ou la chaîne
+ * vide s'il n'y en a pas (champ facultatif non renseigné). Miroir de `parseIntegerField`.
+ */
+function numberField(value: number | undefined): string {
+  return value === undefined ? '' : String(value);
+}
+
 /** Intitulé d'une section du formulaire de saisie manuelle. */
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -105,6 +124,33 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
       {children}
     </Typography>
   );
+}
+
+/**
+ * Instance déjà au combat que la modale vient MODIFIER (mode édition). Sa présence bascule la
+ * modale de « ajouter » à « enregistrer ».
+ */
+export interface EditingCreature {
+  /** Id de l'instance à modifier. */
+  id: string;
+  /** Slug de la créature du bestiaire (aperçu en lecture seule ; figé en édition). */
+  slug: string;
+  /** Bloc de stats saisi à la main, si c'en est une — sa présence rend le formulaire manuel. */
+  custom?: CustomCreature;
+  /** Nom personnalisé actuel (absent = nom du bestiaire). */
+  name?: string;
+  /** Camp actuel. */
+  side: CreatureSide;
+  /** Visibilité joueurs actuelle. */
+  visible: boolean;
+}
+
+/** Champs que la modale renvoie en mode édition (l'identité de l'instance ne bouge pas). */
+export interface EditCreaturePatch {
+  name?: string;
+  side: CreatureSide;
+  visible: boolean;
+  custom?: CustomCreature;
 }
 
 export interface AddCreatureDialogProps {
@@ -126,41 +172,88 @@ export interface AddCreatureDialogProps {
     custom: CustomCreature,
     options: { visible: boolean; side: CreatureSide; name?: string; count: number },
   ) => void;
+  /**
+   * Instance à MODIFIER. Renseignée, la modale s'ouvre en édition (formulaire pré-rempli,
+   * identité figée) ; absente / `null`, c'est la modale d'ajout habituelle.
+   */
+  editing?: EditingCreature | null;
+  /** Enregistre les modifications de l'instance en cours d'édition. */
+  onSave: (instanceId: string, patch: EditCreaturePatch) => void;
+  /**
+   * Appelé quand la modale a FINI de se fermer (fondu terminé). C'est là que l'appelant lâche
+   * l'instance éditée : la lâcher dès `onClose` ferait basculer la modale en mode « ajout »
+   * sous les yeux de l'utilisateur pendant la fermeture.
+   */
+  onExited?: () => void;
 }
 
-export function AddCreatureDialog({ open, onClose, onAdd, onAddCustom }: AddCreatureDialogProps) {
+/**
+ * Coque de la modale. Tout l'état de saisie vit dans le CORPS, que `Dialog` démonte à la
+ * fermeture : chaque ouverture repart donc d'un formulaire initialisé depuis les props
+ * (vierge à l'ajout, pré-rempli à l'édition).
+ */
+export function AddCreatureDialog(props: AddCreatureDialogProps) {
+  return (
+    <Dialog
+      open={props.open}
+      onClose={props.onClose}
+      fullWidth
+      maxWidth="md"
+      slotProps={{ transition: { onExited: props.onExited } }}
+    >
+      <CreatureDialogBody {...props} />
+    </Dialog>
+  );
+}
+
+function CreatureDialogBody({ onClose, onAdd, onAddCustom, editing, onSave }: AddCreatureDialogProps) {
   const list = useBestiaryStore((s) => s.list);
   const status = useBestiaryStore((s) => s.status);
   const loadList = useBestiaryStore((s) => s.loadList);
-  // Source de la créature — le bestiaire par défaut (cas le plus courant).
-  const [source, setSource] = useState<CreatureSource>('bestiary');
-  const [selected, setSelected] = useState<string | null>(null);
+  // Mode édition : l'identité (source + créature) est figée, seul le contenu se retouche.
+  const editingCustom = editing?.custom;
+  // Source de la créature — le bestiaire par défaut (cas le plus courant) ; en édition, celle
+  // de l'instance (une créature manuelle porte son bloc, une créature de livre n'en a pas).
+  const [source, setSource] = useState<CreatureSource>(
+    editing ? (editingCustom ? 'custom' : 'bestiary') : 'bestiary',
+  );
+  const [selected, setSelected] = useState<string | null>(editing && !editingCustom ? editing.slug : null);
   // Visibilité joueurs (fenêtre projetée) de la créature à ajouter — ON par défaut.
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(editing?.visible ?? true);
   // Camp de la créature à ajouter (PER-249) — ADVERSAIRE par défaut (cas le plus courant).
-  const [side, setSide] = useState<CreatureSide>('enemy');
+  const [side, setSide] = useState<CreatureSide>(editing?.side ?? 'enemy');
   // Nom personnalisé (PER-295) — vide = nom du bestiaire ; OBLIGATOIRE en saisie manuelle.
-  const [name, setName] = useState('');
+  const [name, setName] = useState(editing?.name ?? '');
   // Nombre d'exemplaires (PER-295), saisi en TEXTE : un champ numérique doit pouvoir être
   // temporairement vide pendant la frappe. Normalisé (borné) à la validation seulement.
   const [count, setCount] = useState('1');
   // Bloc saisi à la main — tous les champs en texte (cf. `parseIntegerField`).
-  const [initiative, setInitiative] = useState('');
-  const [hitPoints, setHitPoints] = useState('');
-  const [defense, setDefense] = useState('');
-  const [agility, setAgility] = useState('');
-  const [nc, setNc] = useState('');
-  const [description, setDescription] = useState('');
-  const [attacks, setAttacks] = useState<AttackDraft[]>([]);
-  const [abilities, setAbilities] = useState<AbilityDraft[]>([]);
+  const [initiative, setInitiative] = useState(numberField(editingCustom?.initiative));
+  const [hitPoints, setHitPoints] = useState(numberField(editingCustom?.hitPoints));
+  const [defense, setDefense] = useState(numberField(editingCustom?.defense));
+  const [agility, setAgility] = useState(numberField(editingCustom?.agility));
+  const [nc, setNc] = useState(editingCustom?.nc ?? '');
+  const [description, setDescription] = useState(editingCustom?.description ?? '');
+  const [attacks, setAttacks] = useState<AttackDraft[]>(() =>
+    (editingCustom?.attacks ?? []).map((a) => ({
+      name: a.name,
+      bonus: a.bonus ?? '',
+      damage: a.damage ?? '',
+      range: a.range ?? '',
+    })),
+  );
+  const [abilities, setAbilities] = useState<AbilityDraft[]>(() =>
+    (editingCustom?.specialAbilities ?? []).map((a) => ({ name: a.name, text: a.text })),
+  );
 
   const custom = source === 'custom';
+  const isEditing = Boolean(editing);
 
-  // Charge la liste à l'ouverture (idempotent côté store) — inutile en saisie manuelle, mais
+  // Charge la liste au montage (idempotent côté store) — inutile en saisie manuelle, mais
   // la bascule de source ne coûte alors rien.
   useEffect(() => {
-    if (open) void loadList();
-  }, [open, loadList]);
+    void loadList();
+  }, [loadList]);
 
   // Nom du bestiaire de la créature choisie : sert d'invite au champ « nom personnalisé »
   // (le MJ voit ce qui s'affichera s'il laisse le champ vide).
@@ -197,36 +290,32 @@ export function AddCreatureDialog({ open, onClose, onAdd, onAddCustom }: AddCrea
   );
 
   const trimmedName = name.trim();
-  const canAdd = custom ? Boolean(customDraft) && Boolean(trimmedName) : Boolean(selected);
+  const canSubmit = custom ? Boolean(customDraft) && Boolean(trimmedName) : Boolean(selected);
 
-  // Ferme la modale en repartant d'un formulaire vierge (remise à zéro à la fermeture plutôt
-  // que dans un effet à l'ouverture, cf. `set-state-in-effect`).
-  const handleClose = () => {
-    setSource('bestiary');
-    setSelected(null);
-    setVisible(true);
-    setSide('enemy');
-    setName('');
-    setCount('1');
-    setInitiative('');
-    setHitPoints('');
-    setDefense('');
-    setAgility('');
-    setNc('');
-    setDescription('');
-    setAttacks([]);
-    setAbilities([]);
-    onClose();
-  };
+  // Aucune remise à zéro à faire : le corps de la modale est démonté à la fermeture, la
+  // prochaine ouverture repart d'un état neuf initialisé depuis les props.
+  const handleClose = () => onClose();
 
-  const handleAdd = () => {
-    const options = { visible, side, name: trimmedName || undefined, count: parsedCount };
-    if (custom) {
-      if (!customDraft || !trimmedName) return;
-      onAddCustom(customDraft, options);
+  const handleConfirm = () => {
+    if (editing) {
+      if (!canSubmit) return;
+      onSave(editing.id, {
+        name: trimmedName,
+        side,
+        visible,
+        // Le bloc n'est renvoyé que pour une créature manuelle ; la couche pure l'ignorerait
+        // de toute façon sur une créature du bestiaire.
+        ...(custom && customDraft ? { custom: customDraft } : {}),
+      });
     } else {
-      if (!selected) return;
-      onAdd(selected, options);
+      const options = { visible, side, name: trimmedName || undefined, count: parsedCount };
+      if (custom) {
+        if (!customDraft || !trimmedName) return;
+        onAddCustom(customDraft, options);
+      } else {
+        if (!selected) return;
+        onAdd(selected, options);
+      }
     }
     handleClose();
   };
@@ -234,12 +323,14 @@ export function AddCreatureDialog({ open, onClose, onAdd, onAddCustom }: AddCrea
   const loading = !list || status === 'idle' || status === 'loading';
 
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
-      <DialogTitle>Ajouter une créature</DialogTitle>
+    <>
+      <DialogTitle>{isEditing ? 'Modifier la créature' : 'Ajouter une créature'}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
           {/* Source (bestiaire / saisie manuelle) et camp (PER-249), côte à côte : deux
-              segmentés de même facture, repliés l'un sous l'autre en modale étroite. */}
+              segmentés de même facture, repliés l'un sous l'autre en modale étroite.
+              En édition, la source est FIGÉE (l'identité de l'instance ne change pas) : le
+              segmenté reste affiché, pour dire ce qu'on édite, mais devient inerte. */}
           <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', rowGap: 2 }}>
             <Stack spacing={0.75}>
               <FieldLabel>Créature</FieldLabel>
@@ -247,6 +338,7 @@ export function AddCreatureDialog({ open, onClose, onAdd, onAddCustom }: AddCrea
                 value={source}
                 exclusive
                 size="small"
+                disabled={isEditing}
                 onChange={(_e, next: CreatureSource | null) => {
                   // `null` = reclic sur le bouton actif : on garde la source courante.
                   if (next) setSource(next);
@@ -305,8 +397,11 @@ export function AddCreatureDialog({ open, onClose, onAdd, onAddCustom }: AddCrea
             </Stack>
           </Stack>
 
-          {/* Sélecteur du bestiaire — masqué en saisie manuelle. */}
+          {/* Sélecteur du bestiaire — masqué en saisie manuelle, et en édition (changer de
+              créature n'est pas une modification : c'est en ajouter une autre). Le bloc de la
+              créature reste affiché plus bas, en aperçu. */}
           {!custom &&
+            !isEditing &&
             (status === 'error' ? (
               <AppAlert
                 severity="error"
@@ -348,16 +443,20 @@ export function AddCreatureDialog({ open, onClose, onAdd, onAddCustom }: AddCrea
               sx={{ flex: '1 1 240px', minWidth: 180 }}
               slotProps={{ htmlInput: { maxLength: CREATURE_NAME_MAX_LENGTH } }}
             />
-            <TextField
-              type="number"
-              size="small"
-              label="Nombre"
-              value={count}
-              onChange={(e) => setCount(e.target.value)}
-              helperText={`1 à ${CREATURE_ADD_COUNT_MAX}`}
-              sx={{ flex: '0 1 120px', minWidth: 100 }}
-              slotProps={{ htmlInput: { min: 1, max: CREATURE_ADD_COUNT_MAX, step: 1 } }}
-            />
+            {/* Nombre d'exemplaires : à l'ajout seulement — on édite UNE instance à la fois
+                (pour en obtenir une de plus, il y a le bouton « dupliquer » de la carte). */}
+            {!isEditing && (
+              <TextField
+                type="number"
+                size="small"
+                label="Nombre"
+                value={count}
+                onChange={(e) => setCount(e.target.value)}
+                helperText={`1 à ${CREATURE_ADD_COUNT_MAX}`}
+                sx={{ flex: '0 1 120px', minWidth: 100 }}
+                slotProps={{ htmlInput: { min: 1, max: CREATURE_ADD_COUNT_MAX, step: 1 } }}
+              />
+            )}
           </Stack>
 
           {custom ? (
@@ -621,10 +720,10 @@ export function AddCreatureDialog({ open, onClose, onAdd, onAddCustom }: AddCrea
         <AppTooltip
           title={
             visible
-              ? parsedCount > 1
+              ? parsedCount > 1 && !isEditing
                 ? 'Les créatures seront visibles dans la fenêtre projetée aux joueurs'
                 : 'La créature sera visible dans la fenêtre projetée aux joueurs'
-              : parsedCount > 1
+              : parsedCount > 1 && !isEditing
                 ? 'Les créatures seront masquées aux joueurs (préparées à l’avance)'
                 : 'La créature sera masquée aux joueurs (préparée à l’avance)'
           }
@@ -646,11 +745,15 @@ export function AddCreatureDialog({ open, onClose, onAdd, onAddCustom }: AddCrea
         </AppTooltip>
         <Stack direction="row" spacing={1}>
           <Button onClick={handleClose}>Annuler</Button>
-          <Button variant="contained" onClick={handleAdd} disabled={!canAdd}>
-            {parsedCount > 1 ? `Ajouter ${parsedCount} créatures au combat` : 'Ajouter au combat'}
+          <Button variant="contained" onClick={handleConfirm} disabled={!canSubmit}>
+            {isEditing
+              ? 'Enregistrer'
+              : parsedCount > 1
+                ? `Ajouter ${parsedCount} créatures au combat`
+                : 'Ajouter au combat'}
           </Button>
         </Stack>
       </DialogActions>
-    </Dialog>
+    </>
   );
 }

@@ -192,6 +192,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     setRoundNumber,
     addCreature,
     addCustomCreature,
+    duplicateCreature,
+    updateCreature,
     removeCreature,
     setCreatureVisibility,
     statuses,
@@ -202,7 +204,32 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     resetCombat,
     restartRounds,
   } = useGmScreenCombat(cid, 'gm');
-  const [addOpen, setAddOpen] = useState(false);
+  // Modale de créature, partagée entre l'ajout et l'édition : `creatureDialogOpen` pilote son
+  // ouverture, `editingId` dit LAQUELLE on modifie (`null` = ajout d'une nouvelle créature).
+  const [creatureDialogOpen, setCreatureDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // Instance en cours d'édition, projetée dans la forme attendue par la modale. Le camp absent
+  // vaut adversaire et la visibilité absente vaut « visible » — mêmes valeurs par défaut que
+  // partout ailleurs sur le roster (migration douce des instances antérieures).
+  const editingInstance = editingId ? labeledCreatures.find((inst) => inst.id === editingId) : undefined;
+  const editingCreature = editingInstance
+    ? {
+        id: editingInstance.id,
+        slug: editingInstance.slug,
+        custom: editingInstance.custom,
+        name: editingInstance.name,
+        side: editingInstance.side ?? ('enemy' as const),
+        visible: editingInstance.visible !== false,
+      }
+    : null;
+  const openAddCreature = () => {
+    setEditingId(null);
+    setCreatureDialogOpen(true);
+  };
+  const openEditCreature = (instanceId: string) => {
+    setEditingId(instanceId);
+    setCreatureDialogOpen(true);
+  };
   // Réinitialisation du combat (PER-283) : action destructive → confirmation avant purge.
   const [resetOpen, setResetOpen] = useState(false);
   // Rien à réinitialiser tant qu'aucun combattant n'est en piste (bouton masqué).
@@ -330,7 +357,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             variant="outlined"
             size="small"
             startIcon={<AddIcon />}
-            onClick={() => setAddOpen(true)}
+            onClick={openAddCreature}
           >
             Ajouter une créature
           </Button>
@@ -394,6 +421,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                     side="ally"
                     visible={inst.visible !== false}
                     onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
+                    onDuplicate={() => duplicateCreature(inst.id)}
+                    onEdit={() => openEditCreature(inst.id)}
                     onRemove={() => removeCreature(inst.id)}
                   />
                 ))}
@@ -415,6 +444,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                     side="enemy"
                     visible={inst.visible !== false}
                     onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
+                    onDuplicate={() => duplicateCreature(inst.id)}
+                    onEdit={() => openEditCreature(inst.id)}
                     onRemove={() => removeCreature(inst.id)}
                   />
                 ))}
@@ -480,10 +511,15 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       {/* Modale d'ajout d'une créature au combat : du bestiaire (sélecteur + aperçu) ou
           créée à la main (bloc minimal saisi par le MJ). */}
       <AddCreatureDialog
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
+        open={creatureDialogOpen}
+        onClose={() => setCreatureDialogOpen(false)}
+        // L'instance éditée n'est lâchée qu'une fois le fondu de fermeture terminé : la lâcher
+        // dès `onClose` rebasculerait la modale en mode « ajout » sous les yeux du MJ.
+        onExited={() => setEditingId(null)}
         onAdd={(slug, options) => addCreature(slug, options)}
         onAddCustom={(custom, options) => addCustomCreature(custom, options)}
+        editing={editingCreature}
+        onSave={(instanceId, patch) => updateCreature(instanceId, patch)}
       />
 
       {/* Réinitialisation du combat (PER-283) : purge les états, remet le tour courant à zéro

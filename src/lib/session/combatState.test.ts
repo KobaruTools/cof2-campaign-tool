@@ -5,11 +5,13 @@ import {
   CREATURE_NAME_MAX_LENGTH,
   EMPTY_COMBAT_STATE,
   addCreatures,
+  addCustomCreatures,
   adjustStatusIntensity,
   applyStatusTo,
   clampAddCount,
   clearStatusesOf,
   creatureInfoEquals,
+  duplicateCreature,
   labelCreatureInstances,
   normalizeCreatureName,
   removeStatusFrom,
@@ -20,6 +22,7 @@ import {
   reviveState,
   reviveStateObject,
   storageKey,
+  updateCreature,
   type GmCombatState,
 } from './combatState';
 
@@ -479,6 +482,137 @@ describe('addCreatures (PER-247, PER-295)', () => {
     expect(next.nextInstanceId).toBe(9);
     expect(state.creatures).toEqual([]);
     expect(state.nextInstanceId).toBe(7);
+  });
+});
+
+describe('duplicateCreature', () => {
+  const custom = { initiative: 3, hitPoints: 12, defense: 13 };
+
+  it('insère la copie JUSTE APRÈS l’originale, avec un id frais', () => {
+    const state = addCreatures(addCreatures(EMPTY_COMBAT_STATE, 'gobelin'), 'orc');
+    const next = duplicateCreature(state, 'c-1');
+    expect(next.creatures.map((c) => c.id)).toEqual(['c-1', 'c-3', 'c-2']);
+    expect(next.creatures.map((c) => c.slug)).toEqual(['gobelin', 'gobelin', 'orc']);
+    expect(next.nextInstanceId).toBe(4);
+  });
+
+  it('recopie nom personnalisé, camp, visibilité et bloc manuel', () => {
+    const state = addCustomCreatures(EMPTY_COMBAT_STATE, custom, {
+      name: 'Grishnak le borgne',
+      side: 'ally',
+      visible: false,
+    });
+    const next = duplicateCreature(state, 'c-1');
+    expect(next.creatures[1]).toEqual({
+      id: 'c-2',
+      slug: 'custom',
+      visible: false,
+      side: 'ally',
+      name: 'Grishnak le borgne',
+      custom,
+    });
+  });
+
+  it('n’hérite NI du manque de PV NI des états posés (le double entre intact)', () => {
+    const added = addCreatures(EMPTY_COMBAT_STATE, 'gobelin');
+    const state: GmCombatState = {
+      ...applyStatusTo(added, 'c-1', 'blinded'),
+      depletions: { 'c-1': { hp: { lethal: 5, temp: 0 } } },
+    };
+    const next = duplicateCreature(state, 'c-1');
+    expect(next.depletions['c-2']).toBeUndefined();
+    expect(next.statuses['c-2']).toBeUndefined();
+    // L'originale, elle, garde ses PV entamés et ses états.
+    expect(next.depletions['c-1']).toEqual({ hp: { lethal: 5, temp: 0 } });
+    expect(next.statuses['c-1']).toHaveLength(1);
+  });
+
+  it('ne fait rien sur une instance introuvable et ne mute pas l’état source (pur)', () => {
+    const state = addCreatures(EMPTY_COMBAT_STATE, 'gobelin');
+    expect(duplicateCreature(state, 'c-404')).toBe(state);
+    expect(state.creatures).toHaveLength(1);
+    expect(state.nextInstanceId).toBe(2);
+  });
+});
+
+describe('updateCreature', () => {
+  const custom = { initiative: 3, hitPoints: 12, defense: 13 };
+
+  it('change le nom, le camp et la visibilité', () => {
+    const state = addCreatures(EMPTY_COMBAT_STATE, 'gobelin');
+    const next = updateCreature(state, 'c-1', {
+      name: '  Chef gobelin  ',
+      side: 'ally',
+      visible: false,
+    });
+    expect(next.creatures[0]).toEqual({
+      id: 'c-1',
+      slug: 'gobelin',
+      visible: false,
+      side: 'ally',
+      name: 'Chef gobelin',
+    });
+  });
+
+  it('un nom vidé RETIRE le nom personnalisé (retour au nom du bestiaire)', () => {
+    const state = addCreatures(EMPTY_COMBAT_STATE, 'gobelin', { name: 'Chef gobelin' });
+    const next = updateCreature(state, 'c-1', { name: '   ' });
+    expect(next.creatures[0]).not.toHaveProperty('name');
+  });
+
+  it('une clé absente laisse la valeur en place', () => {
+    const state = addCreatures(EMPTY_COMBAT_STATE, 'gobelin', {
+      name: 'Chef gobelin',
+      side: 'ally',
+      visible: false,
+    });
+    const next = updateCreature(state, 'c-1', { visible: true });
+    expect(next.creatures[0]).toEqual({
+      id: 'c-1',
+      slug: 'gobelin',
+      visible: true,
+      side: 'ally',
+      name: 'Chef gobelin',
+    });
+  });
+
+  it('remplace le bloc d’une créature créée à la main', () => {
+    const state = addCustomCreatures(EMPTY_COMBAT_STATE, custom, { name: 'PNJ' });
+    const next = updateCreature(state, 'c-1', {
+      custom: { initiative: 8, hitPoints: 30, defense: 16 },
+    });
+    expect(next.creatures[0].custom).toEqual({ initiative: 8, hitPoints: 30, defense: 16 });
+  });
+
+  it('IGNORE un bloc manuel sur une créature du bestiaire (bloc = contenu de livre)', () => {
+    const state = addCreatures(EMPTY_COMBAT_STATE, 'gobelin');
+    const next = updateCreature(state, 'c-1', { custom });
+    expect(next.creatures[0]).not.toHaveProperty('custom');
+  });
+
+  it('IGNORE un bloc manuel au socle incomplet (l’ancien reste en place)', () => {
+    const state = addCustomCreatures(EMPTY_COMBAT_STATE, custom, { name: 'PNJ' });
+    const next = updateCreature(state, 'c-1', {
+      custom: { initiative: 8, hitPoints: 30 } as never,
+    });
+    expect(next.creatures[0].custom).toEqual(custom);
+  });
+
+  it('conserve PV entamés et états posés (on modifie en place)', () => {
+    const added = addCreatures(EMPTY_COMBAT_STATE, 'gobelin');
+    const state: GmCombatState = {
+      ...applyStatusTo(added, 'c-1', 'blinded'),
+      depletions: { 'c-1': { hp: { lethal: 5, temp: 0 } } },
+    };
+    const next = updateCreature(state, 'c-1', { name: 'Chef gobelin' });
+    expect(next.depletions['c-1']).toEqual({ hp: { lethal: 5, temp: 0 } });
+    expect(next.statuses['c-1']).toHaveLength(1);
+  });
+
+  it('ne fait rien sur une instance introuvable et ne mute pas l’état source (pur)', () => {
+    const state = addCreatures(EMPTY_COMBAT_STATE, 'gobelin', { name: 'Chef gobelin' });
+    expect(updateCreature(state, 'c-404', { name: 'Autre' })).toBe(state);
+    expect(state.creatures[0].name).toBe('Chef gobelin');
   });
 });
 

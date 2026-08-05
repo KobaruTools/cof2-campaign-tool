@@ -39,6 +39,7 @@ import {
   type CombatRole,
   type CreatureInstance,
   type AddCreatureOptions,
+  type UpdateCreaturePatch,
 } from './useGmCombatState';
 import {
   customCreatureBlob,
@@ -136,6 +137,17 @@ export interface GmScreenCombat {
    * de stats est copié sur chaque instance et voyage avec l'état de combat.
    */
   addCustomCreature: (custom: CustomCreature, options?: AddCreatureOptions) => void;
+  /**
+   * Duplique une instance du combat : copie conforme (même créature, nom, camp, visibilité)
+   * insérée juste après elle. Le double entre INTACT — il n'hérite ni des PV entamés ni des
+   * états de l'originale.
+   */
+  duplicateCreature: (instanceId: string) => void;
+  /**
+   * Modifie une instance déjà au combat (nom, camp, visibilité ; bloc de stats pour une créature
+   * créée à la main). PV entamés et états posés sont conservés.
+   */
+  updateCreature: (instanceId: string, patch: UpdateCreaturePatch) => void;
   /** Retire l'instance `instanceId` du combat. */
   removeCreature: (instanceId: string) => void;
   /** Bascule la visibilité joueurs d'une instance de créature (fenêtre projetée). */
@@ -178,6 +190,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     creatureInfo,
     addCreature,
     addCustomCreature,
+    duplicateCreature,
+    updateCreature,
     removeCreature,
     setCreatureVisibility,
     setCreatureDepletion,
@@ -521,6 +535,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     setRoundNumber,
     addCreature,
     addCustomCreature,
+    duplicateCreature,
+    updateCreature,
     removeCreature,
     setCreatureVisibility,
     statuses,

@@ -467,6 +467,83 @@ export function addCustomCreatures(
 }
 
 /**
+ * Duplique l'instance `instanceId` : une COPIE conforme (même créature, même nom personnalisé,
+ * même camp, même visibilité, même bloc manuel le cas échéant) insérée JUSTE APRÈS l'originale,
+ * pour qu'elle atterrisse à côté d'elle dans la grille et se numérote dans la foulée
+ * (« Gobelin 1 / 2 »). L'id est frais et monotone comme tout ajout.
+ *
+ * Ce qui n'est **pas** copié : le manque de PV et les états posés. Un double est un nouveau
+ * combattant, pas un clone d'un blessé — il entre en jeu intact.
+ *
+ * No-op si l'instance est introuvable.
+ */
+export function duplicateCreature(state: GmCombatState, instanceId: string): GmCombatState {
+  const index = state.creatures.findIndex((c) => c.id === instanceId);
+  if (index === -1) return state;
+  const copy: CreatureInstance = { ...state.creatures[index], id: `c-${state.nextInstanceId}` };
+  const creatures = [...state.creatures];
+  creatures.splice(index + 1, 0, copy);
+  return { ...state, creatures, nextInstanceId: state.nextInstanceId + 1 };
+}
+
+/**
+ * Champs d'une instance de créature modifiables APRÈS son ajout au combat. Une clé absente
+ * laisse la valeur en place ; c'est l'appartenance de la clé qui compte, pas sa valeur (d'où
+ * les tests `in`) — sans quoi on ne saurait pas distinguer « ne touche pas au nom » de
+ * « efface le nom ».
+ */
+export interface UpdateCreaturePatch {
+  /** Nom personnalisé. Vide / espaces seuls = RETIRER le nom (retour au nom du bestiaire). */
+  name?: string;
+  /** Camp — permet de faire passer une créature d'un bord à l'autre en cours de partie. */
+  side?: CreatureSide;
+  /** Visibilité joueurs (fenêtre projetée). */
+  visible?: boolean;
+  /**
+   * Bloc de stats saisi à la main. **Ignoré pour une créature du bestiaire** : son bloc est du
+   * contenu de livre, résolu par slug ; on ne le remplace pas par une saisie. Ignoré aussi si le
+   * socle obligatoire (initiative, PV, défense) n'est pas complet — l'ancien bloc reste alors en
+   * place plutôt que de rendre l'instance injouable.
+   */
+  custom?: CustomCreature;
+}
+
+/**
+ * Applique `patch` à l'instance `instanceId` (identité INCHANGÉE : ni le slug ni la nature
+ * bestiaire/manuelle ne bougent — changer de créature, c'est en ajouter une autre). Les PV et
+ * les états posés survivent : on modifie un combattant en place, on ne le remplace pas.
+ *
+ * No-op si l'instance est introuvable.
+ */
+export function updateCreature(
+  state: GmCombatState,
+  instanceId: string,
+  patch: UpdateCreaturePatch,
+): GmCombatState {
+  if (!state.creatures.some((c) => c.id === instanceId)) return state;
+  return {
+    ...state,
+    creatures: state.creatures.map((inst) => {
+      if (inst.id !== instanceId) return inst;
+      const next: CreatureInstance = { ...inst };
+      if ('name' in patch) {
+        const name = normalizeCreatureName(patch.name);
+        if (name) next.name = name;
+        else delete next.name;
+      }
+      if ('side' in patch && patch.side) next.side = patch.side;
+      if ('visible' in patch && patch.visible !== undefined) next.visible = patch.visible;
+      // Bloc manuel : réservé aux créatures qui en ont déjà un, et seulement s'il reste jouable.
+      if ('custom' in patch && inst.custom) {
+        const normalized = normalizeCustomCreature(patch.custom);
+        if (normalized) next.custom = normalized;
+      }
+      return next;
+    }),
+  };
+}
+
+/**
  * Étiquette d'affichage de chaque instance du roster (id d'instance → étiquette), consommée par
  * les cartes de l'écran de MJ, le tracker et la projection.
  *

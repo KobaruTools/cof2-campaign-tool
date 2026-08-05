@@ -28,6 +28,8 @@ import {
   addCreatures,
   addCustomCreatures,
   applyStatusTo,
+  duplicateCreature as duplicateCreatureState,
+  updateCreature as updateCreatureState,
   removeStatusFrom,
   adjustStatusIntensity,
   clearStatusesOf,
@@ -39,13 +41,20 @@ import {
   type CreatureDisplayInfo,
   type CreatureInstance,
   type GmCombatState,
+  type UpdateCreaturePatch,
 } from '@/lib/session/combatState';
 import { randomTieBreakSeed } from '@/lib/session/initiativeOrder';
 import type { CustomCreature } from '@/lib/session/customCreature';
 import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
 import type { Depletion } from '@/lib/character/types';
 
-export type { AddCreatureOptions, CreatureDisplayInfo, CreatureInstance, GmCombatState };
+export type {
+  AddCreatureOptions,
+  CreatureDisplayInfo,
+  CreatureInstance,
+  GmCombatState,
+  UpdateCreaturePatch,
+};
 
 /** Rôle du client dans l'UI de combat : MJ auteur, ou lecteur (projection). */
 export type CombatRole = 'gm' | 'reader';
@@ -62,6 +71,16 @@ export interface GmCombatStateApi extends GmCombatState {
    * initiative/PV/défense est incomplet.
    */
   addCustomCreature: (custom: CustomCreature, options?: AddCreatureOptions) => void;
+  /**
+   * Duplique l'instance `instanceId` : copie conforme insérée juste après elle, avec un id frais.
+   * Le double entre en jeu INTACT (ni PV entamés ni états hérités de l'originale).
+   */
+  duplicateCreature: (instanceId: string) => void;
+  /**
+   * Modifie une instance déjà au combat (nom, camp, visibilité, et bloc de stats pour une
+   * créature créée à la main). L'identité ne bouge pas ; PV et états posés sont conservés.
+   */
+  updateCreature: (instanceId: string, patch: UpdateCreaturePatch) => void;
   /** Retire l'instance `instanceId` (et son manque de PV). */
   removeCreature: (instanceId: string) => void;
   /** Bascule la visibilité joueurs de l'instance `instanceId` (fenêtre projetée). */
@@ -124,6 +143,18 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
   const addCustomCreature = useCallback(
     (custom: CustomCreature, options?: AddCreatureOptions) =>
       applyLocalCombat(cid, (prev) => addCustomCreatures(prev, custom, options)),
+    [applyLocalCombat, cid],
+  );
+
+  const duplicateCreature = useCallback(
+    (instanceId: string) =>
+      applyLocalCombat(cid, (prev) => duplicateCreatureState(prev, instanceId)),
+    [applyLocalCombat, cid],
+  );
+
+  const updateCreature = useCallback(
+    (instanceId: string, patch: UpdateCreaturePatch) =>
+      applyLocalCombat(cid, (prev) => updateCreatureState(prev, instanceId, patch)),
     [applyLocalCombat, cid],
   );
 
@@ -216,6 +247,8 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     ...state,
     addCreature,
     addCustomCreature,
+    duplicateCreature,
+    updateCreature,
     removeCreature,
     setCreatureVisibility,
     setCreatureDepletion,

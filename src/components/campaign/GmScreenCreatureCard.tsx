@@ -9,7 +9,9 @@
  * APPARAÎT DANS LE BESTIAIRE (`BestiaryStatBlock` via `CreatureBlobView`, blob chargé à
  * la demande).
  */
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import Box from '@mui/material/Box';
@@ -58,11 +60,18 @@ export interface GmScreenCreatureCardProps {
   visible: boolean;
   /** Bascule la visibilité joueurs de cette créature. */
   onToggleVisible: () => void;
+  /**
+   * Duplique cette instance : un exemplaire de plus, à l'identique, sans repasser par la modale
+   * d'ajout — le geste courant quand un combat enfle en cours de scène.
+   */
+  onDuplicate: () => void;
+  /** Ouvre la modale d'édition de cette instance (nom, camp, visibilité, bloc manuel). */
+  onEdit: () => void;
   /** Retire cette instance du combat tracker. */
   onRemove: () => void;
 }
 
-export function GmScreenCreatureCard({ slug, blob: providedBlob, label, side, visible, onToggleVisible, onRemove }: GmScreenCreatureCardProps) {
+export function GmScreenCreatureCard({ slug, blob: providedBlob, label, side, visible, onToggleVisible, onDuplicate, onEdit, onRemove }: GmScreenCreatureCardProps) {
   const accent = SIDE_ACCENT[side];
   // Créature « lourde » (≥ 2 voies ou ≥ 4 capacités) → carte sur 2 colonnes. On lit le
   // blob (et sa base pour les capacités héritées) dans le store, alimenté par le rendu ;
@@ -131,6 +140,18 @@ export function GmScreenCreatureCard({ slug, blob: providedBlob, label, side, vi
               ) : (
                 <VisibilityOffOutlinedIcon fontSize="small" />
               )}
+            </IconButton>
+          </AppTooltip>
+          {/* Éditer / dupliquer, entre l'œil et la corbeille : les deux gestes d'entretien du
+              roster en cours de scène (retoucher un PNJ, gonfler un groupe d'un exemplaire). */}
+          <AppTooltip title="Modifier cette créature">
+            <IconButton size="small" onClick={onEdit} aria-label={`Modifier ${label}`}>
+              <EditOutlinedIcon fontSize="small" />
+            </IconButton>
+          </AppTooltip>
+          <AppTooltip title="Dupliquer — un exemplaire de plus, à l’identique">
+            <IconButton size="small" onClick={onDuplicate} aria-label={`Dupliquer ${label}`}>
+              <ContentCopyOutlinedIcon fontSize="small" />
             </IconButton>
           </AppTooltip>
           <AppTooltip title="Retirer du combat">
