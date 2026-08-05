@@ -62,8 +62,10 @@ import type {
   ItemTestBonuses,
   ItemType,
   LoadedAmmunitionKind,
+  MagicProperty,
   WornState,
 } from '@/lib/character/types';
+import { MAGIC_PROPERTY_RULES, magicPropertyLabel } from '@/lib/character/magicItem';
 import type { LoadingContext, WeaponLoadingState } from '@/lib/character/weaponLoading';
 import type { GrantedItem } from '@/lib/character/grantedEquipment';
 import { weaponLoadingState } from '@/lib/character/weaponLoading';
@@ -208,6 +210,86 @@ function MagicDefBadge({ value }: { value: number }) {
         +{value} magique
       </Box>
     </AppTooltip>
+  );
+}
+
+/**
+ * Badge du bonus magique +N d'une ARME (PER-307) : « +N magique », en teinte SECONDAIRE comme la
+ * DEF magique. Le +N joue en attaque ET aux dommages (p. 251) ; l'info-bulle le rappelle. Distinct
+ * de la DEF magique (`MagicDefBadge`), qui vise les objets défensifs.
+ */
+function MagicWeaponBonusBadge({ value }: { value: number }) {
+  return (
+    <AppTooltip
+      title={
+        <PageRefText>{`Bonus magique de l’arme : +${value} en attaque et aux dommages (p. 251).`}</PageRefText>
+      }
+    >
+      <Box
+        component="span"
+        sx={(theme) => ({
+          display: 'inline-block',
+          verticalAlign: 'baseline',
+          ml: 0.75,
+          px: 0.6,
+          borderRadius: 0.75,
+          fontWeight: 700,
+          fontSize: '0.72rem',
+          lineHeight: 1.4,
+          whiteSpace: 'nowrap',
+          cursor: 'help',
+          color: theme.palette.secondary.main,
+          bgcolor: alpha(theme.palette.secondary.main, 0.12),
+          border: `1px solid ${alpha(theme.palette.secondary.main, 0.45)}`,
+        })}
+      >
+        +{value} magique
+      </Box>
+    </AppTooltip>
+  );
+}
+
+/**
+ * Badges des PROPRIÉTÉS d'un objet magique (PER-307) : une pastille par propriété (Affûtée, Fléau des
+ * démons, Feu, Défense supérieure, Résistance feu 10, Parade +2…), teinte secondaire comme les autres
+ * enchantements. Le texte de règle VERBATIM (avec sa page source) est rappelé en info-bulle. Badges
+ * custom (≠ Chip MUI, cf. conventions).
+ */
+function MagicPropertyBadges({ properties }: { properties: MagicProperty[] }) {
+  return (
+    <>
+      {properties.map((prop, i) => {
+        const rule = MAGIC_PROPERTY_RULES[prop.kind];
+        return (
+          <AppTooltip
+            key={`${prop.kind}-${i}`}
+            title={<PageRefText>{`${rule.verbatim} (p. ${rule.sourcePage})`}</PageRefText>}
+            maxWidth={360}
+          >
+            <Box
+              component="span"
+              sx={(theme) => ({
+                display: 'inline-block',
+                verticalAlign: 'baseline',
+                ml: 0.75,
+                px: 0.6,
+                borderRadius: 0.75,
+                fontWeight: 700,
+                fontSize: '0.72rem',
+                lineHeight: 1.4,
+                whiteSpace: 'nowrap',
+                cursor: 'help',
+                color: theme.palette.secondary.main,
+                bgcolor: alpha(theme.palette.secondary.main, 0.12),
+                border: `1px solid ${alpha(theme.palette.secondary.main, 0.45)}`,
+              })}
+            >
+              {magicPropertyLabel(prop)}
+            </Box>
+          </AppTooltip>
+        );
+      })}
+    </>
   );
 }
 
@@ -1214,6 +1296,10 @@ export function EquipmentList({
     // Bonus/malus aux tests de l'objet enchanté (PER-275), badgés à côté du nom : même condition
     // de port, mais règle de cumul propre (bonus de magie, non cumulable entre objets).
     const testBonuses = line.testBonuses;
+    // Bonus magique +N d'une ARME (PER-307) : +N en attaque et aux DM, badgé à côté du nom.
+    const magicBonus = line.magicBonus;
+    // Propriétés d'un objet magique (PER-307) : Affûtée, Fléau, Élément, Parade, Défense, Résistance…
+    const magicProperties = line.magicProperties;
     // Plage de critique EFFECTIVE de l'arme tenue en main (PER-74) : `null` hors arme en main, ou
     // quand rien n'élargit la plage. Résolue par l'appelant (dépend du personnage entier).
     const criticalRange = resolveCriticalRange?.(line) ?? null;
@@ -1244,7 +1330,9 @@ export function EquipmentList({
       !!line.magicDef ||
       !!line.abilityBonuses ||
       !!line.derivedBonuses ||
-      !!line.testBonuses;
+      !!line.testBonuses ||
+      !!line.magicBonus ||
+      !!line.magicProperties?.length;
     // Arme à poudre INDISPONIBLE (PER-185, retour PER-93) : autorisation effective des armes
     // à feu à `false` (campagne « pas d'arme à feu » ou choix du joueur). La ligne est grisée
     // et avertie, mais conservée — le MJ garde la liberté de la garder pour le style.
@@ -1309,6 +1397,8 @@ export function EquipmentList({
           </Typography>
         )}
         {magicDef ? <MagicDefBadge value={magicDef} /> : null}
+        {magicBonus ? <MagicWeaponBonusBadge value={magicBonus} /> : null}
+        {magicProperties?.length ? <MagicPropertyBadges properties={magicProperties} /> : null}
         {abilityBonuses ? <AbilityBonusBadges bonuses={abilityBonuses} /> : null}
         {derivedBonuses ? <DerivedBonusBadges bonuses={derivedBonuses} /> : null}
         {testBonuses ? <TestBonusBadges bonuses={testBonuses} /> : null}

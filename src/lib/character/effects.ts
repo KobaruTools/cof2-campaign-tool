@@ -65,12 +65,14 @@ import {
   abilityBonusesFromEquipment,
   isHeavyArmorWorn,
   isTwoHandedMeleeWeaponWielded,
+  lineDisplayName,
   oneHandableWeaponFamilies,
   testBonusSourcesFromEquipment,
   wornMeleeWeapon,
   wornMeleeWeaponLine,
   wornRangedWeapon,
 } from './equipment';
+import { magicDamageReductions, magicImmunities } from './magicItemEffects';
 import { extraMasteredWeaponIds, isWeaponMastered, masteredClassIds } from './mastery';
 import { currentHp } from './gauges';
 import { ridingMountOptionIds } from './mounts';
@@ -2635,47 +2637,62 @@ export function resolveTestBonus({
 // Immunités (PER-103)
 // ---------------------------------------------------------------------------
 
-/** Une immunité agrégée pour le personnage, avec ses capacités sources. */
+/** Une immunité agrégée pour le personnage, avec ses sources. */
 export interface ImmunitySource {
   id: ImmunityId;
   /** Libellé français (cf. `IMMUNITY_LABELS`). */
   label: string;
-  /** Capacités qui l'accordent (id + nom), pour le détail au survol et la voie d'origine. */
-  sources: { featureId: string; name: string }[];
+  /** Sources qui l'accordent (nom ; `featureId` pour la voie d'origine d'une capacité, ABSENT pour
+   *  un OBJET magique — Action libre, PER-307), pour le détail au survol. */
+  sources: { featureId?: string; name: string }[];
 }
 
 /**
- * Immunités accordées par les capacités acquises (effet `immunity`), dédupliquées par
- * id et accompagnées de leurs capacités sources. Ordre stable suivant `IMMUNITY_LABELS`.
+ * Immunités accordées par les capacités acquises (effet `immunity`) ET par les OBJETS magiques PORTÉS
+ * (propriété Action libre → ralenti/immobilisé/paralysé, p. 253, PER-307), dédupliquées par id et
+ * accompagnées de leurs sources. Ordre stable suivant `IMMUNITY_LABELS`. Sans `equipment` (appels
+ * « catalogue seul »), seules les capacités comptent.
  */
-export function aggregateImmunities(featureIds: string[]): ImmunitySource[] {
-  // Map immId → (featureId → nom) : dédup par capacité source (l'id, pas le nom).
-  const byId = new Map<ImmunityId, Map<string, string>>();
+export function aggregateImmunities(
+  featureIds: string[],
+  equipment: EquipmentLine[] = [],
+): ImmunitySource[] {
+  // Map immId → (clé de dédup → source). Clé = featureId d'une capacité, ou nom d'objet préfixé
+  // pour un objet magique (aucun featureId), afin de ne pas fondre deux sources distinctes.
+  const byId = new Map<ImmunityId, Map<string, { featureId?: string; name: string }>>();
+  const add = (imm: ImmunityId, key: string, source: { featureId?: string; name: string }) => {
+    const map = byId.get(imm) ?? new Map<string, { featureId?: string; name: string }>();
+    map.set(key, source);
+    byId.set(imm, map);
+  };
   for (const id of featureIds) {
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
     for (const e of feature.effects) {
       if (e.kind !== 'immunity') continue;
-      for (const imm of e.immunities) {
-        const map = byId.get(imm) ?? new Map<string, string>();
-        map.set(feature.id, feature.name);
-        byId.set(imm, map);
-      }
+      for (const imm of e.immunities) add(imm, feature.id, { featureId: feature.id, name: feature.name });
     }
+  }
+  for (const line of equipment) {
+    if (!line.worn) continue;
+    const name = lineDisplayName(line);
+    for (const imm of magicImmunities(line)) add(imm, `item:${name}`, { name });
   }
   return (Object.keys(IMMUNITY_LABELS) as ImmunityId[])
     .filter((immId) => byId.has(immId))
     .map((immId) => ({
       id: immId,
       label: IMMUNITY_LABELS[immId],
-      sources: [...byId.get(immId)!].map(([featureId, name]) => ({ featureId, name })),
+      sources: [...byId.get(immId)!.values()],
     }));
 }
 
 /** Une réduction de dégâts ACTIVE octroyée par une capacité, avec sa capacité source (PER-126). */
 export interface DamageReductionSource {
-  featureId: string;
-  /** Nom de la capacité (français). */
+  /** Capacité source ; ABSENT quand la RD est portée par un OBJET magique (PER-307) — le détail
+   *  la rend alors en libellé texte, comme les apports de caracs/tests des objets (PER-272/275). */
+  featureId?: string;
+  /** Nom de la capacité OU de l'objet source (français). */
   name: string;
   reduction: DamageReduction;
 }
@@ -2758,6 +2775,15 @@ export function damageReductionSources(character: Character): DamageReductionSou
       out.push({ featureId: id, name, reduction: { ...dr, value, scopes } });
     }
   }
+  // RD portées par les OBJETS magiques PORTÉS (Défense/Défense sup → RD plate ; Résistance [substance] X
+  // → RD typée ; Protection → ÷2 sur les critiques/sournoises ; p. 253, PER-307). Émises dans la MÊME
+  // forme que les capacités pour être cumulées par `stackedDamageReductions` (une Défense RD 2 s'additionne
+  // à une Peau d'acier). Sans `featureId` : l'objet n'appartient à aucune voie.
+  for (const line of character.equipment ?? []) {
+    if (!line.worn) continue;
+    const name = lineDisplayName(line);
+    for (const reduction of magicDamageReductions(line)) out.push({ name, reduction });
+  }
   return out;
 }
 
@@ -2778,8 +2804,9 @@ export interface StackedDamageReduction {
    * permanente de même portée, ni avec une autre condition d'agresseur.
    */
   againstAggressors?: string;
-  /** Capacités qui contribuent (id + nom + valeur individuelle) pour le breakdown et la voie d'origine. */
-  sources: { featureId: string; name: string; value?: number }[];
+  /** Sources qui contribuent (nom + valeur individuelle ; `featureId` pour la voie d'origine d'une
+   *  capacité, ABSENT pour un objet magique) — pour le breakdown de la carte Défense. */
+  sources: { featureId?: string; name: string; value?: number }[];
 }
 
 /**

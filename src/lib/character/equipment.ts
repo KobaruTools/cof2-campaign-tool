@@ -22,6 +22,7 @@ import type {
 } from './types';
 import { ITEM_DERIVED_STAT_IDS, isCustomItem } from './types';
 import { effectiveItem } from './items';
+import { magicMobilePenaltyReduction, magicPropertyTestBonuses } from './magicItemEffects';
 
 /**
  * Auto-équipe, sur une copie de la liste, la **meilleure armure**, le **meilleur
@@ -375,7 +376,9 @@ export function armorEncumbrancePenalty(equipment: EquipmentLine[], divisor = 1)
     if (isCustomItem(line) || line.worn?.slot !== 'armor') continue;
     const item = effectiveItem(line);
     if (item?.category !== 'armor') continue;
-    const penalty = Math.max(0, item.def - (line.magicDef ?? 0));
+    // Le magicDef de l'armure (p. 188) ET la propriété Mobile (« malus d'armure réduit de 4 », p. 253,
+    // PER-307) allègent le malus, plancher 0.
+    const penalty = Math.max(0, item.def - (line.magicDef ?? 0) - magicMobilePenaltyReduction(line));
     // Diviseur (PER-236, Armure sur mesure `guerre-r1`, p. 84) : le chevalier « n'ajoute que la
     // moitié de sa DEF » aux tests que l'armure pénalise → malus divisé, arrondi à l'inférieur
     // (favorable au joueur, arrondi CO2 par défaut). Diviseur 1 (défaut) = malus inchangé.
@@ -442,7 +445,7 @@ export interface AbilityBonusItemSource {
  * apport de carac est en pratique une variante nommée explicitement par le joueur — son
  * `overrides.name`, capté par `effectiveItem`, prime de toute façon sur tout reskin.
  */
-function lineDisplayName(line: EquipmentLine): string {
+export function lineDisplayName(line: EquipmentLine): string {
   if (isCustomItem(line)) return line.name;
   return effectiveItem(line)?.name ?? line.itemId;
 }
@@ -604,6 +607,16 @@ export function testBonusSourcesFromEquipment(
     // `ABILITY_IDS` suffit à démêler la portée. Cf. `ItemTestTarget`.
     if ((ABILITY_IDS as readonly string[]).includes(target)) byAbility[target as AbilityId] = sources;
     else byDomain[target] = sources;
+  }
+  // Propriétés d'objets magiques portés qui bonifient un domaine de test (Ombre → Discrétion,
+  // Natation → Natation ; +5, p. 253, PER-307). Même canal `byDomain` que les `testBonuses` saisis :
+  // arbitrées au MAX (non-cumul des bonus de magie) par `resolveTestBonus`.
+  for (const line of equipment) {
+    if (!line.worn) continue;
+    const name = lineDisplayName(line);
+    for (const { domain, value } of magicPropertyTestBonuses(line)) {
+      (byDomain[domain] ??= []).push({ name, value });
+    }
   }
   return { byAbility, byDomain };
 }

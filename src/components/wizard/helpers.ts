@@ -9,6 +9,7 @@ import type { EquipmentLine } from '@/lib/character/types';
 import type { DefenseEquipment } from '@/lib/engine';
 import { isCustomItem } from '@/lib/character/types';
 import { autoEquipStartingGear } from '@/lib/character/equipment';
+import { magicPropertyDefBonus } from '@/lib/character/magicItemEffects';
 import { effectiveItem } from '@/lib/character/items';
 import { reskinnedItemName } from '@/lib/character/classDisplay';
 
@@ -92,8 +93,11 @@ export function defenseFromEquipment(equipment: EquipmentLine[]): DefenseEquipme
   let shieldCounted = false;
   for (const line of equipment) {
     if (!line.worn) continue;
-    // Bonus de DEF MAGIQUE : porté par tout objet équipé (custom compris) et cumulable.
-    magicDefBonus += line.magicDef ?? 0;
+    // Bonus de DEF MAGIQUE : porté par tout objet équipé (custom compris) et cumulable. S'y ajoutent
+    // les propriétés qui offrent de la DEF (Parade d'une arme, Résistance à la magie ; p. 251/253,
+    // PER-307) — même canal `magicDef` (choix propriétaire), donc hors surcoût de mana et sans
+    // toucher au malus d'armure (celui-ci lit le magicDef de la LIGNE d'armure).
+    magicDefBonus += (line.magicDef ?? 0) + magicPropertyDefBonus(line);
     // La DEF MONDAINE et le plafond d'AGI ne proviennent que du catalogue (une armure de
     // corps + un bouclier au plus) ; un objet libre n'a pas de stats mondaines connues.
     if (isCustomItem(line)) continue;

@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per307-harnois-enchante",
+  "name": "Recette PER-307 — Harnois enchanté",
+  "identity": {
+    "description": "ATTENDU (câblage PER-307). Cotte de mailles « de défense supérieure, résistance feu 10, protection, action libre, mobile, ombre, natation ». Carte Défense : RD 4 (tous DM), RD 10 feu, ÷2 (critiques/sournoises), immunités Ralenti/Immobilisé/Paralysé. Tests : +5 Discrétion, +5 Natation. Malus d’armure réduit de 4 (Mobile)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": 0,
+    "INT": -1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "cotte-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      },
+      "magicProperties": [
+        {
+          "kind": "defense",
+          "tier": 2
+        },
+        {
+          "kind": "resistance",
+          "substance": "fire",
+          "amount": 10
+        },
+        {
+          "kind": "protection"
+        },
+        {
+          "kind": "free-action"
+        },
+        {
+          "kind": "mobile"
+        },
+        {
+          "kind": "shadow"
+        },
+        {
+          "kind": "swimming"
+        }
+      ]
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-307 — recette : Défense/RD, Résistance typée, Protection, Action libre, Mobile, Ombre/Natation.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
