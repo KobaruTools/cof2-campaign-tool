@@ -237,6 +237,7 @@ L'affichage passe par le composant commun `src/components/SectionIcon.tsx`.
 | Compétences & tests | `delapouite/rolling-dices.svg` | Delapouite |
 | État du personnage | `delapouite/heart-beats.svg` | Delapouite |
 | Compagnons | `lorc/wolf-head.svg` | Lorc |
+| Manœuvres de combat | `lorc/crossed-swords.svg` | Lorc |
 | Voies & capacités | `lorc/tree-branch.svg` | Lorc |
 | Inventaire | `delapouite/backpack.svg` | Delapouite |
 | Identité | `delapouite/id-card.svg` | Delapouite |

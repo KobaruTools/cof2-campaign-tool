@@ -89,6 +89,8 @@ import { SheetSection } from '@/components/sheet/SheetSection';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
+import { ManeuversPanel } from '@/components/sheet/ManeuversPanel';
+import { SourceRef } from '@/components/SourceRef';
 import { CompanionsPanel } from '@/components/sheet/CompanionsPanel';
 import { AddMountButton, OwnedMountsPanel } from '@/components/sheet/OwnedMountsPanel';
 import { PurseField } from '@/components/sheet/PurseField';
@@ -1065,15 +1067,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             (() => {
               const companions = listCompanions(character);
               const ownedMounts = listOwnedMounts(character.mounts);
-              // La section apparaît dès qu'il y a un compagnon OU une monture ; le bouton « Ajouter
-              // une monture » reste dispo même sans monture, pour pouvoir en acquérir (hors lecture seule).
-              if (companions.length === 0 && ownedMounts.length === 0 && readOnly) return null;
+              // Section MASQUÉE tant qu'aucun compagnon ni monture n'est acquis (plus de section vide
+              // juste pour héberger un bouton) : l'ajout de monture a migré dans l'en-tête de l'inventaire.
+              if (companions.length === 0 && ownedMounts.length === 0) return null;
               return (
-                <SheetSection
-                  title="Compagnons"
-                  icon="companions"
-                  action={readOnly ? undefined : <AddMountButton onAdd={addMount} />}
-                >
+                <SheetSection title="Compagnons" icon="companions">
                   <Stack spacing={1.5}>
                     {companions.length > 0 && (
                       <CompanionsPanel
@@ -1115,6 +1113,23 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 </SheetSection>
               );
             })()}
+
+          {/* Aide-mémoire des manœuvres de combat (PER-296), placé entre « Compagnons » et « Voies &
+              capacités » : rappel joueur, en lecture seule, des 8 manœuvres (p. 217-218) — quelle
+              manœuvre, quel test/modificateur, quel effet. Repliée par défaut (aide-mémoire ponctuel,
+              pas une donnée du personnage) ; le choix survit au rechargement. Aucune résolution ni
+              application d'état (les dés se lancent à la table). Le renvoi de source (p. 217-218) est
+              dans l'en-tête, coin haut-droit. */}
+          <SheetSection
+            title="Manœuvres de combat"
+            icon="maneuvers"
+            collapsible
+            defaultCollapsed
+            persistKey="maneuvers"
+            action={<SourceRef page="217-218" term="Les manœuvres" />}
+          >
+            <ManeuversPanel abilities={effectCtx.abilities} level={character.level} />
+          </SheetSection>
 
           <SheetSection
             title="Voies & capacités"
@@ -1191,13 +1206,35 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
             collapsible
             defaultCollapsed
             persistKey="equipment"
+            // « Ajouter une monture » (PER-296) a migré ici, à gauche du crayon d'édition, et ne se
+            // révèle qu'au SURVOL du bloc inventaire (ou au focus clavier, ou d'emblée sur tactile).
+            sx={{
+              '&:hover .add-mount-on-hover, &:focus-within .add-mount-on-hover': {
+                opacity: 1,
+                pointerEvents: 'auto',
+              },
+            }}
             action={(collapsed) =>
               collapsed || readOnly ? null : (
-                <BlockEditButton
-                  editing={editingBlocks.equipment}
-                  onToggle={() => toggleBlock('equipment')}
-                  label="inventaire"
-                />
+                <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                  <Box
+                    className="add-mount-on-hover"
+                    sx={{
+                      opacity: 0,
+                      pointerEvents: 'none',
+                      transition: 'opacity 0.15s ease',
+                      // Sans survol possible (écran tactile), le bouton reste visible en permanence.
+                      '@media (hover: none)': { opacity: 1, pointerEvents: 'auto' },
+                    }}
+                  >
+                    <AddMountButton onAdd={addMount} />
+                  </Box>
+                  <BlockEditButton
+                    editing={editingBlocks.equipment}
+                    onToggle={() => toggleBlock('equipment')}
+                    label="inventaire"
+                  />
+                </Stack>
               )
             }
           >

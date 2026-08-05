@@ -69,6 +69,10 @@ Attention, ces tests sont soumis à la règle des rendements décroissants si la
     sourcePage: 217,
     shortEffect: 'La cible recule de [FOR + 3] m ; si acculée, elle perd autant en DEF pour 1 round.',
     body: `La cible recule de [FOR de l’attaquant + 3] mètres et l’attaquant occupe le terrain libéré. Si la cible est acculée (mur, précipice, adversaire), elle perd autant en DEF pour 1 round. Cette action peut être précédée d’un déplacement de 10 m en direction de la cible.`,
+    // Variantes balisées (fiche) : la distance de recul est CALCULÉE sur la FOR du personnage
+    // (chip bleu, quantité `[=…]`). `body`/`shortEffect` ci-dessus restent le verbatim de /reference.
+    richShortEffect: 'La cible recule de [=FOR + 3] m ; si acculée, elle perd autant en DEF pour 1 round.',
+    richBody: `La cible recule de [=FOR + 3] mètres et l’attaquant occupe le terrain libéré. Si la cible est acculée (mur, précipice, adversaire), elle perd autant en DEF pour 1 round. Cette action peut être précédée d’un déplacement de 10 m en direction de la cible.`,
     test: 'Test opposé d’attaque au contact (L), sans modificateur (modificateur de taille *)',
   },
   {

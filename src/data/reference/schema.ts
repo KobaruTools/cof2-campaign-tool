@@ -96,6 +96,17 @@ export interface ReferenceTextEntry extends ReferenceEntryBase {
    * en puce distincte, ex. « Test opposé d'attaque (mod. CHA) ». Absent = pas de test dédié.
    */
   test?: string;
+  /**
+   * Variantes BALISÉES optionnelles de `shortEffect` / `body`, dans le mini-langage de `Feature.richText`
+   * (tokens `[FOR + 3]`, `[=CHA]`, `{1d6}`…, cf. `@/lib/ui/featureRichText`). Miroir de la dualité
+   * `text` / `richText` des capacités : une surface qui DISPOSE d'un contexte de personnage (la FICHE)
+   * rend ces variantes via `<RichInline>` — les formules/quantités sont alors CALCULÉES sur les stats
+   * du personnage (ex. Repousser « recule de [=FOR + 3] mètres » → « recule de 5 mètres »). Les surfaces
+   * SANS personnage (la page `/reference`, le tiroir MJ) continuent d'afficher le VERBATIM `shortEffect` /
+   * `body` tel quel — d'où le caractère optionnel : la donnée de règle canonique reste `body`.
+   */
+  richShortEffect?: string;
+  richBody?: string;
 }
 
 /** Une colonne d'un tableau structuré : sa clé stable (anglais) et son en-tête affiché (français). */
