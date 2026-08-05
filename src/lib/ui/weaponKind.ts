@@ -1,38 +1,22 @@
 import { equipmentById } from '@/data';
+import type { WeaponKindIconId } from '@/data/item-icons';
 import type { Weapon } from '@/data/schema';
 import type { EquipmentLine } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
 
 /**
- * SOUS-TYPE D'ARME pour l'affichage (PER-306) — préoccupation PUREMENT UI (aucune règle CO2) :
- * toutes les armes partageaient l'unique icône du type `weapon` (une épée), ce qui rendait
- * l'inventaire illisible. Ce n'est donc NI une taxonomie de règles (`WeaponFamily`, qui sert aux
- * prédilections et aux maîtrises) NI un sous-type d'attaque à distance (`RangedWeaponKind`) : c'est
- * la granularité à laquelle une arme se reconnaît d'un coup d'œil, dérivée des deux précédentes.
+ * SOUS-TYPE D'ARME pour l'affichage — vocabulaire défini avec la donnée
+ * (`WEAPON_KIND_ICON_IDS`, cf. `src/data/item-icons.ts`) puisqu'un objet du catalogue peut le
+ * référencer et qu'il se persiste dans un personnage sauvegardé.
+ *
+ * Ce n'est NI une taxonomie de règles (`WeaponFamily`, qui sert aux prédilections et aux
+ * maîtrises) NI un sous-type d'attaque à distance (`RangedWeaponKind`) : c'est la granularité à
+ * laquelle une arme se reconnaît d'un coup d'œil, DÉRIVÉE des deux précédentes — d'où le fait
+ * qu'aucune arme n'ait à déclarer son icône (cf. `weaponIconKindForWeapon`).
  *
  * Une icône par sous-type, cf. `WEAPON_KIND_ICON_PATHS` (`weaponKindIcons.ts`).
  */
-export type WeaponIconKind =
-  | 'sword'
-  | 'dagger'
-  | 'axe'
-  | 'hammer'
-  | 'mace'
-  | 'flail'
-  | 'polearm'
-  | 'trident'
-  | 'scythe'
-  | 'pick'
-  | 'staff'
-  | 'unarmed'
-  | 'bow'
-  | 'crossbow'
-  | 'sling'
-  | 'firearm'
-  | 'cannon'
-  | 'thrown'
-  | 'pan'
-  | 'rolling-pin';
+export type WeaponIconKind = WeaponKindIconId;
 
 /**
  * Armes que ni `weaponFamilies` ni `rangedKind` ne distinguent assez finement pour l'œil, et

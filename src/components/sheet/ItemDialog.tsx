@@ -54,6 +54,9 @@ import { AbilityIcon } from '@/components/AbilityIcon';
 import { AbilityCodeChip } from '@/components/sheet/FeatureRichText';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
+import { ItemIconPicker } from '@/components/sheet/ItemIconPicker';
+import { defaultItemIconId } from '@/lib/ui/itemIcon';
+import type { ItemIconId } from '@/data/item-icons';
 import { DieIcon } from '@/components/DieIcon';
 import { SignedNumberField } from '@/components/SignedNumberField';
 
@@ -402,6 +405,12 @@ function SectionDivider({ label }: { label?: string }) {
 interface FormState {
   name: string;
   description: string;
+  /**
+   * Icône CHOISIE pour cet objet ; `null` = aucun choix, l'objet garde l'icône que la cascade
+   * lui donne (sous-catégorie du livre, sous-type d'arme dérivé, ou icône du type). Cf.
+   * `itemIconId` / `defaultItemIconId`.
+   */
+  icon: ItemIconId | null;
   damage: DamageDraft;
   twoHandedDamage: DamageDraft;
   range: string;
@@ -425,6 +434,7 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   name: '',
   description: '',
+  icon: null,
   damage: { ...EMPTY_DAMAGE },
   twoHandedDamage: { ...EMPTY_DAMAGE },
   range: '',
@@ -481,6 +491,7 @@ function formFromLine(line: EquipmentLine): FormState {
       ...EMPTY_FORM,
       name: line.name,
       description: line.details ?? '',
+      icon: line.icon ?? null,
       magicDef: line.magicDef ? String(line.magicDef) : '',
       abilityBonuses: rowsFromBonuses(ABILITY_IDS, line.abilityBonuses),
       derivedBonuses: rowsFromBonuses(ITEM_DERIVED_STAT_IDS, line.derivedBonuses),
@@ -489,7 +500,7 @@ function formFromLine(line: EquipmentLine): FormState {
     };
   }
   const item = effectiveItem(line);
-  const base = { ...EMPTY_FORM, name: item?.name ?? line.itemId };
+  const base = { ...EMPTY_FORM, name: item?.name ?? line.itemId, icon: line.icon ?? null };
   if (item) {
     switch (item.category) {
       case 'weapon':
@@ -657,6 +668,11 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         itemId: baseId,
         quantity: type === 'weapon' ? weaponQuantity(baseId) : quantity,
         ...(worn ? { worn } : {}),
+        // Icône choisie : écrite SEULEMENT si elle diffère du défaut, pour qu'une ligne laissée
+        // au réglage d'origine continue de suivre la donnée du livre si celle-ci évolue.
+        ...(form.icon && form.icon !== defaultItemIconId({ itemId: baseId, quantity: 1 })
+          ? { icon: form.icon }
+          : {}),
         ...carriedRefState,
         overrides,
         ...(magic > 0 ? { magicDef: magic } : {}),
@@ -673,6 +689,8 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         quantity,
         ...(worn ? { worn } : {}),
         type,
+        // Idem : une icône égale à celle du type reste implicite (pas de champ écrit).
+        ...(form.icon && form.icon !== type ? { icon: form.icon } : {}),
         details: form.description.trim() || undefined,
         ...(magic > 0 ? { magicDef: magic } : {}),
         ...(abilityBonuses ? { abilityBonuses } : {}),
@@ -786,6 +804,16 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 multiline
                 minRows={2}
                 fullWidth
+              />
+              {/* Icône de l'objet : pré-réglée sur celle que l'inventaire lui donnerait
+                  (sous-catégorie du livre pour une variante, icône du type pour un objet
+                  libre), et librement changeable. */}
+              <ItemIconPicker
+                value={form.icon}
+                defaultIcon={
+                  mechanical && baseId ? defaultItemIconId({ itemId: baseId, quantity: 1 }) : type
+                }
+                onChange={(icon) => setField('icon', icon)}
               />
 
               {/* Stats reprises du livre (arme / armure / bouclier), pré-remplies depuis la base

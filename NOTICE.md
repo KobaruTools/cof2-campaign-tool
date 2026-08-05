@@ -254,6 +254,71 @@ dans `WEAPON_KIND_ICON_SOURCES` (même fichier) et dans
 | Poêle | `delapouite/cooking-pot.svg` | Delapouite |
 | Rouleau à pâtisserie | `delapouite/dough-roller.svg` | Delapouite |
 
+## Icônes des sous-catégories d'objet
+
+Les icônes des SOUS-CATÉGORIES d'objet — celles qui distinguent une corde d'un grappin, une
+chemise de mailles d'une cotte de mailles, et le jeu d'icônes « libres » (parchemin, gemmes,
+anneau, cape…) proposé au joueur pour un objet personnalisé — proviennent également de
+[game-icons.net](https://game-icons.net), sous licence
+[Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+Auteurs : **Lorc**, **Delapouite** et **Willdabeast** (https://game-icons.net).
+
+Les SVG ont été nettoyés (fond retiré, couleur neutralisée) et intégrés dans
+`src/lib/ui/itemIcons.ts`. La correspondance sous-catégorie → fichier source est conservée dans
+`ITEM_SUBCATEGORY_ICON_SOURCES` (même fichier) et dans `scripts/game-icons/item-icons/map.tsv`.
+Le vocabulaire d'ids vit dans `src/data/item-icons.ts` (la donnée d'équipement le référence via
+`EquipmentItem.icon`), la résolution dans `src/lib/ui/itemIcon.ts`, et l'affichage passe par le
+composant commun `src/components/ItemIcon.tsx`.
+
+| Sous-catégorie | Fichier game-icons.net | Auteur |
+| --- | --- | --- |
+| Vêtements (`clothes`) | `delapouite/clothes.svg` | Delapouite |
+| Tissus matelassés, fourrures (`padded-armor`) | `delapouite/fur-shirt.svg` | Delapouite |
+| Cuir (`leather-armor`) | `lorc/leather-vest.svg` | Lorc |
+| Cuir renforcé, broigne (`studded-armor`) | `delapouite/leather-armor.svg` | Delapouite |
+| Chemise de mailles (`mail-shirt`) | `lorc/mail-shirt.svg` | Lorc |
+| Cotte de mailles (`heavy-mail`) | `lorc/scale-mail.svg` | Lorc |
+| Plaques (`plate-armor`) | `lorc/breastplate.svg` | Lorc |
+| Plaque complète (`full-plate`) | `lorc/layered-armor.svg` | Lorc |
+| Petit bouclier (`small-shield`) | `willdabeast/round-shield.svg` | Willdabeast |
+| Grand bouclier (`large-shield`) | `lorc/bordered-shield.svg` | Lorc |
+| Corde (`rope`) | `delapouite/rope-coil.svg` | Delapouite |
+| Grappin (`grapple`) | `lorc/grapple.svg` | Lorc |
+| Briquet, allume-feu (`tinderbox`) | `delapouite/flint-spark.svg` | Delapouite |
+| Carquois, munitions (`quiver`) | `delapouite/quiver.svg` | Delapouite |
+| Couverture (`blanket`) | `delapouite/blanket.svg` | Delapouite |
+| Lanterne (`lantern`) | `lorc/lantern.svg` | Lorc |
+| Huile, amphore (`lamp-oil`) | `delapouite/amphora.svg` | Delapouite |
+| Torche (`torch`) | `delapouite/torch.svg` | Delapouite |
+| Matériel d'écriture (`writing-kit`) | `lorc/quill-ink.svg` | Lorc |
+| Outils de crochetage (`lockpicks`) | `delapouite/lockpicks.svg` | Delapouite |
+| Potion (`potion`) | `delapouite/health-potion.svg` | Delapouite |
+| Vivres, ration (`ration`) | `lorc/meat.svg` | Lorc |
+| Gamelle, popote (`mess-kit`) | `delapouite/meal.svg` | Delapouite |
+| Outre, gourde (`waterskin`) | `delapouite/jug.svg` | Delapouite |
+| Sac à dos (`backpack`) | `delapouite/backpack.svg` | Delapouite |
+| Grimoire (`spellbook`) | `lorc/book-aura.svg` | Lorc |
+| Instrument de musique (`instrument`) | `delapouite/harp.svg` | Delapouite |
+| Métal précieux (`precious-metal`) | `delapouite/gold-stack.svg` | Delapouite |
+| Chope, récipient (`mug`) | `lorc/beer-stein.svg` | Lorc |
+| Créature aquatique (`octopus`) | `lorc/octopus.svg` | Lorc |
+| Parchemin (`scroll`) | `lorc/tied-scroll.svg` | Lorc |
+| Gemmes (`gems`) | `lorc/gems.svg` | Lorc |
+| Pièces (`coins`) | `delapouite/coins.svg` | Delapouite |
+| Clé (`key`) | `lorc/key.svg` | Lorc |
+| Coffre (`chest`) | `lorc/locked-chest.svg` | Lorc |
+| Bourse (`pouch`) | `lorc/swap-bag.svg` | Lorc |
+| Baguette (`wand`) | `lorc/crystal-wand.svg` | Lorc |
+| Tente (`tent`) | `delapouite/camping-tent.svg` | Delapouite |
+| Anneau (`ring`) | `delapouite/diamond-ring.svg` | Delapouite |
+| Amulette (`amulet`) | `lorc/gem-pendant.svg` | Lorc |
+| Cape (`cloak`) | `delapouite/cape-armor.svg` | Delapouite |
+| Bottes (`boots`) | `lorc/leather-boot.svg` | Lorc |
+| Herbes (`herbs`) | `delapouite/herbs-bundle.svg` | Delapouite |
+| Bandages (`bandage`) | `lorc/bandage-roll.svg` | Lorc |
+| Symbole sacré (`holy-symbol`) | `lorc/holy-symbol.svg` | Lorc |
+
 ## Icônes des titres de section
 
 Les icônes ornant les titres de section de la fiche de personnage (Caractéristiques,

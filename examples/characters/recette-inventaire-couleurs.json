@@ -3,7 +3,7 @@
   "id": "recette-inventaire-couleurs",
   "name": "Recette — Inventaire haut en couleur",
   "identity": {
-    "description": "ATTENDU (lisibilité de l’inventaire) :\n1. Basculer l’inventaire sur « Organiser par catégorie ».\n2. Les 7 sections doivent porter chacune sa TEINTE : arme = rouge grenat, armure =\n   bleu acier, bouclier = turquoise, consommable = violet, équipement = vert olive,\n   trésor = or, divers = gris ardoise. Icône + libellé + filet dans la teinte, et fond\n   en dégradé partant de l’en-tête vers la transparence, PROPORTIONNEL à la hauteur\n   de la section (la section « Armes », très longue, s’éteint donc plus lentement que\n   « Boucliers », qui n’a que 2 lignes).\n3. Chaque arme doit porter l’icône de SON sous-type (20 sous-types distincts ici) :\n   épée, dague, hache, marteau, masse, fléau, arme d’hast, trident, faux, pioche,\n   bâton, mains nues, arc, arbalète, fronde, arme à poudre, canon, arme de jet, poêle,\n   rouleau à pâtisserie. Deux armes d’une même famille partagent la même icône\n   (épée longue / rapière / épée à deux mains ; hache / hachette ; masse / gourdin).\n4. « Sabre ébréché de mon oncle » est un objet LIBRE de type arme : il retombe sur\n   l’icône générique d’épée (aucune donnée d’arme à lire).\n5. Le sélecteur d’ajout (« Ajouter un objet ») reprend les mêmes teintes sur ses\n   en-têtes de groupe.\nLe port (armure de cuir, petit bouclier, épée longue en main) n’est là que pour que la\nfiche soit réaliste — il ne joue aucun rôle dans la recette."
+    "description": "ATTENDU (lisibilité de l’inventaire) :\n1. Basculer l’inventaire sur « Organiser par catégorie ».\n2. Les 7 sections portent chacune leur TEINTE : arme = rouge grenat, armure = bleu acier,\n   bouclier = turquoise, consommable = violet, équipement = vert olive, trésor = or,\n   divers = gris ardoise. Fond en dégradé partant de l’en-tête vers la transparence,\n   PROPORTIONNEL à la hauteur de la section.\n3. ARMES : chacune porte l’icône de son sous-type (20 distincts). Deux armes d’une même\n   famille partagent la même icône (épée longue / rapière / épée à deux mains).\n4. ÉQUIPEMENT : chaque objet du livre porte l’icône de sa SOUS-CATÉGORIE — corde, grappin,\n   torche, lanterne, huile, crochetage, carquois, ration, outre, gamelle, couverture, sac,\n   briquet, écritoire, grimoire, instrument doivent TOUS être différents. Idem pour les\n   armures (cuir / chemise de mailles / cotte de mailles / plaques) et les boucliers.\n5. CHOIX EXPLICITE : « Éclat de Marek » est une variante de dague à qui on a choisi\n   l’icône « Baguette » — elle l’emporte sur le sous-type d’arme dérivé. De même les objets\n   libres portent l’icône choisie (parchemin, clé, coffre, anneau, gemmes, chope, bourse,\n   lingot, tente, symbole sacré, potion, herbes, bandages).\n6. CONTRÔLES sans choix : « Sabre ébréché de mon oncle » (arme libre) et « Babiole sans nom »\n   (divers) retombent sur l’icône de leur CATÉGORIE.\n7. Modifier n’importe quel objet → le champ « Icône » de la modale montre l’icône courante,\n   et le bouton ouvre la grille groupée (Armes, Protections, Consommables, Matériel, Livres,\n   Trésors, Catégories générales). « Par défaut » efface le choix.\n8. Le sélecteur « Ajouter un objet » montre l’icône de chaque objet du livre dans sa liste,\n   et ses en-têtes de groupe reprennent les teintes de catégorie."
   },
   "campaignId": null,
   "playerId": null,
@@ -181,6 +181,15 @@
       "details": "DM 1d6, souvenir de famille"
     },
     {
+      "itemId": "dague",
+      "quantity": 1,
+      "icon": "wand",
+      "overrides": {
+        "name": "Éclat de Marek",
+        "description": "Dague de cristal taillé."
+      }
+    },
+    {
       "itemId": "cuir-simple",
       "quantity": 1,
       "worn": {
@@ -189,6 +198,10 @@
     },
     {
       "itemId": "chemise-de-mailles",
+      "quantity": 1
+    },
+    {
+      "itemId": "cotte-de-mailles",
       "quantity": 1
     },
     {
@@ -215,13 +228,22 @@
       "name": "Fiole d’eau bénite",
       "type": "consumable",
       "quantity": 1,
+      "icon": "potion",
       "details": "Jet : 1d6 DM aux morts-vivants"
     },
     {
       "custom": true,
       "name": "Poudre de sommeil",
       "type": "consumable",
-      "quantity": 1
+      "quantity": 1,
+      "icon": "herbs"
+    },
+    {
+      "custom": true,
+      "name": "Bandes de lin propres",
+      "type": "consumable",
+      "quantity": 1,
+      "icon": "bandage"
     },
     {
       "itemId": "corde-15-m",
@@ -256,6 +278,18 @@
       "quantity": 1
     },
     {
+      "itemId": "outre",
+      "quantity": 1
+    },
+    {
+      "itemId": "gamelle",
+      "quantity": 1
+    },
+    {
+      "itemId": "couverture",
+      "quantity": 1
+    },
+    {
       "itemId": "sac-a-dos",
       "quantity": 1
     },
@@ -277,9 +311,24 @@
     },
     {
       "custom": true,
+      "name": "Tente de voyage",
+      "type": "gear",
+      "quantity": 1,
+      "icon": "tent"
+    },
+    {
+      "custom": true,
+      "name": "Chaîne d’argent au symbole du dieu",
+      "type": "gear",
+      "quantity": 1,
+      "icon": "holy-symbol"
+    },
+    {
+      "custom": true,
       "name": "Diamant brut",
       "type": "treasure",
       "quantity": 1,
+      "icon": "gems",
       "details": "150 po chez un lapidaire"
     },
     {
@@ -287,32 +336,64 @@
       "name": "Coupe en électrum",
       "type": "treasure",
       "quantity": 1,
+      "icon": "mug",
       "details": "Armoiries inconnues"
     },
     {
       "custom": true,
       "name": "Bourse de perles noires",
       "type": "treasure",
-      "quantity": 1
+      "quantity": 1,
+      "icon": "pouch"
+    },
+    {
+      "custom": true,
+      "name": "Lingot de durium volé",
+      "type": "treasure",
+      "quantity": 1,
+      "icon": "precious-metal"
     },
     {
       "custom": true,
       "name": "Carte au trésor déchirée",
       "type": "misc",
       "quantity": 1,
+      "icon": "scroll",
       "details": "Moitié gauche seulement"
     },
     {
       "custom": true,
       "name": "Clé rouillée sans serrure connue",
       "type": "misc",
-      "quantity": 1
+      "quantity": 1,
+      "icon": "key"
+    },
+    {
+      "custom": true,
+      "name": "Coffret scellé par la guilde",
+      "type": "misc",
+      "quantity": 1,
+      "icon": "chest"
+    },
+    {
+      "custom": true,
+      "name": "Anneau terni trouvé dans un tombeau",
+      "type": "misc",
+      "quantity": 1,
+      "icon": "ring"
+    },
+    {
+      "custom": true,
+      "name": "Babiole sans nom",
+      "type": "misc",
+      "quantity": 1,
+      "details": "Contrôle : aucune icône choisie → icône de la catégorie"
     }
   ],
   "mounts": [],
   "poisonedWeapons": [],
   "overrides": {},
-  "notes": "Recette de LISIBILITÉ de l’inventaire (couleurs de catégorie + icônes de sous-type d’arme). Perso jetable : à supprimer après la recette.",
+  "notes": "Recette de LISIBILITÉ de l’inventaire (couleurs de catégorie, icônes de sous-type d’arme, sous-catégories du catalogue, choix explicite d’icône). Perso jetable : à supprimer après la recette.",
   "createdAt": "2026-01-01T00:00:00.000Z",
   "updatedAt": "2026-01-01T00:00:00.000Z"
 }

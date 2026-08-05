@@ -72,7 +72,6 @@ import { ITEM_DERIVED_STAT_IDS, isCustomItem } from '@/lib/character/types';
 import {
   effectiveItem,
   groupEquipmentByType,
-  itemType,
   lineAllowsQuantity,
   reorderEquipment,
 } from '@/lib/character/items';
@@ -98,7 +97,8 @@ import { AbilityValueChip } from '@/components/sheet/FeatureRichText';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
-import { weaponIconKind } from '@/lib/ui/weaponKind';
+import { ItemIcon } from '@/components/ItemIcon';
+import { itemIconId } from '@/lib/ui/itemIcon';
 import {
   itemTypeColor,
   itemTypeHeaderBorder,
@@ -1177,11 +1177,10 @@ export function EquipmentList({
   ) => {
     const asCard = opts?.variant === 'card';
     const custom = isCustomItem(line);
-    // Type d'objet (PER-213) : sert à l'icône affichée à gauche du nom.
-    const lineType = itemType(line);
-    // Sous-type d'arme : affine cette icône (hache, arc, arbalète…) plutôt que l'épée
-    // générique du type `weapon`. `null` sur tout ce qui n'est pas une arme du catalogue.
-    const lineWeaponKind = weaponIconKind(line);
+    // Icône affichée à gauche du nom, la plus précise disponible : choix explicite du joueur,
+    // sinon sous-catégorie du catalogue (corde, grappin…), sinon sous-type d'arme dérivé,
+    // sinon icône du type. Cf. `itemIconId`.
+    const lineIcon = itemIconId(line);
     // Résolveur de variante (PER-211) : l'objet effectif porte les surcharges
     // d'instance (nom via `equipmentLabel`, DM/DEF/plafond AGI via `itemDetail`).
     const item = custom ? null : effectiveItem(line);
@@ -1274,11 +1273,7 @@ export function EquipmentList({
         component="span"
         sx={{ fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
       >
-        <ItemTypeIcon
-          type={lineType}
-          weaponKind={lineWeaponKind}
-          sx={{ color: 'text.secondary' }}
-        />
+        <ItemIcon id={lineIcon} sx={{ color: 'text.secondary' }} />
         Élixir —
         <CapabilityChip featureId={elixirFeatureId} label={null} />
       </Typography>
@@ -1294,11 +1289,7 @@ export function EquipmentList({
         }}
       >
         {/* Icône du type d'objet (PER-213), teinte neutre, à gauche du nom. */}
-        <ItemTypeIcon
-          type={lineType}
-          weaponKind={lineWeaponKind}
-          sx={{ color: 'text.secondary' }}
-        />
+        <ItemIcon id={lineIcon} sx={{ color: 'text.secondary' }} />
         {/* Titre de l'objet. S'il porte une description libre, il devient survolable
             (tooltip) — la description reste masquée par défaut. */}
         {description ? (

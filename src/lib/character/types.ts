@@ -12,6 +12,7 @@
  *    sauf surcharges manuelles explicites (`overrides`).
  */
 import { DERIVED_STAT_IDS } from '@/data/schema';
+import type { ItemIconId } from '@/data/item-icons';
 import type {
   AbilityId,
   DerivedStatId,
@@ -505,6 +506,14 @@ export interface EquipmentRef {
   /** État de port (PER-76). Absent = rangé. Voir `WornState`. */
   worn?: WornState;
   /**
+   * ICÔNE CHOISIE par le joueur pour cette ligne, qui l'emporte sur celle de l'objet du livre
+   * (utile sur une **variante** : « Épée de Marek » à qui on veut une dague, un anneau enchanté
+   * décliné d'un objet du catalogue…). Purement visuel, aucune règle. Absent = cascade par
+   * défaut, cf. `itemIconId`. Champ additif optionnel absent-safe → pas de bump de
+   * `schemaVersion` (même logique que `magicDef`).
+   */
+  icon?: ItemIconId;
+  /**
    * Surcharges d'instance qui font de cette ligne une **variante** de l'objet du livre
    * `itemId` (PER-211) : nom, description et n'importe quelle stat écrasable (DM, DEF,
    * plafond AGI, portée, catégorie d'arme). Absent = objet du catalogue standard. Voir
@@ -635,6 +644,13 @@ export interface CustomItem {
    * schéma). Voir `ItemType` et `itemType`.
    */
   type?: ItemType;
+  /**
+   * ICÔNE CHOISIE par le joueur pour cet objet libre. Un objet libre n'a pas de sous-catégorie
+   * de catalogue à hériter : sans choix, il porte l'icône de son `type` (cf. `itemIconId`), ce
+   * qui rend le choix d'autant plus utile (une cape, un anneau, un parchemin…). Purement
+   * visuel. Champ additif optionnel absent-safe → pas de bump de `schemaVersion`.
+   */
+  icon?: ItemIconId;
   /** Notes libres (DM, DEF, propriétés…). */
   details?: string;
   /**

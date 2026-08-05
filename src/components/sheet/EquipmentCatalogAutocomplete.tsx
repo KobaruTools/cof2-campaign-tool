@@ -24,6 +24,8 @@ import type { ItemType } from '@/lib/character/types';
 import { ITEM_TYPE_ORDER, itemType } from '@/lib/character/items';
 import { formatWeaponDamage } from '@/lib/character/weaponDamage';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
+import { ItemIcon } from '@/components/ItemIcon';
+import { itemIconId } from '@/lib/ui/itemIcon';
 import { itemTypeColor } from '@/lib/ui/itemTypeColors';
 import { ITEM_TYPE_LABELS } from '@/components/sheet/ItemDialog';
 
@@ -154,6 +156,12 @@ export function EquipmentCatalogAutocomplete({
             {...optionProps}
             sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
           >
+            {/* Icône de l'objet (sous-catégorie du catalogue, ou sous-type d'arme dérivé) :
+                on retrouve dans le sélecteur l'icône exacte qui apparaîtra dans l'inventaire. */}
+            <ItemIcon
+              id={itemIconId({ itemId: item.id, quantity: 1 })}
+              sx={{ color: 'text.secondary' }}
+            />
             <Typography variant="body2" sx={{ whiteSpace: 'normal', flex: '1 1 auto' }}>
               {item.name as ReactNode}
               {hint ? (

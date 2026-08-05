@@ -746,6 +746,7 @@ export const armors: Armor[] = [
   {
     id: 'sans-armure',
     name: 'Sans armure (vêtements)',
+    icon: 'clothes',
     category: 'armor',
     def: 0,
     maxAgi: null,
@@ -757,6 +758,7 @@ export const armors: Armor[] = [
   {
     id: 'tissus-matelasses-fourrures',
     name: 'Tissus matelassés, fourrures',
+    icon: 'padded-armor',
     category: 'armor',
     def: 1,
     maxAgi: 7,
@@ -766,6 +768,7 @@ export const armors: Armor[] = [
   {
     id: 'cuir-simple',
     name: 'Cuir simple',
+    icon: 'leather-armor',
     category: 'armor',
     def: 2,
     maxAgi: 6,
@@ -775,6 +778,7 @@ export const armors: Armor[] = [
   {
     id: 'cuir-renforce-broigne',
     name: 'Cuir renforcé, broigne',
+    icon: 'studded-armor',
     category: 'armor',
     def: 3,
     maxAgi: 5,
@@ -784,6 +788,7 @@ export const armors: Armor[] = [
   {
     id: 'chemise-de-mailles',
     name: 'Chemise de mailles',
+    icon: 'mail-shirt',
     category: 'armor',
     def: 4,
     maxAgi: 4,
@@ -793,6 +798,7 @@ export const armors: Armor[] = [
   {
     id: 'cotte-de-mailles',
     name: 'Cotte de mailles',
+    icon: 'heavy-mail',
     category: 'armor',
     def: 5,
     maxAgi: 3,
@@ -802,6 +808,7 @@ export const armors: Armor[] = [
   {
     id: 'armure-de-plaques',
     name: 'Armure de plaques',
+    icon: 'plate-armor',
     category: 'armor',
     def: 6,
     maxAgi: 2,
@@ -811,6 +818,7 @@ export const armors: Armor[] = [
   {
     id: 'plaque-complete',
     name: 'Plaque complète',
+    icon: 'full-plate',
     category: 'armor',
     def: 7,
     maxAgi: 1,
@@ -829,6 +837,7 @@ export const shields: Shield[] = [
   {
     id: 'petit-bouclier',
     name: 'Petit bouclier',
+    icon: 'small-shield',
     category: 'shield',
     def: 1,
     price: { amount: 2, unit: 'pa' },
@@ -837,6 +846,7 @@ export const shields: Shield[] = [
   {
     id: 'grand-bouclier',
     name: 'Grand bouclier',
+    icon: 'large-shield',
     category: 'shield',
     def: 2,
     price: { amount: 4, unit: 'pa' },
@@ -854,6 +864,7 @@ export const gear: Gear[] = [
   {
     id: 'briquet-a-silex',
     name: 'Briquet à silex',
+    icon: 'tinderbox',
     category: 'gear',
     price: { amount: 1, unit: 'pa' },
     sourcePage: 190,
@@ -861,6 +872,7 @@ export const gear: Gear[] = [
   {
     id: 'carquois-de-20-fleches',
     name: 'Carquois de 20 flèches',
+    icon: 'quiver',
     category: 'gear',
     price: { amount: 3, unit: 'pa' },
     // Porté sur soi (dans le dos) sans occuper de main. Un carquois ET un sac à dos
@@ -871,6 +883,7 @@ export const gear: Gear[] = [
   {
     id: 'corde-15-m',
     name: 'Corde 15 m',
+    icon: 'rope',
     category: 'gear',
     price: { amount: 2, unit: 'pa' },
     sourcePage: 190,
@@ -878,6 +891,7 @@ export const gear: Gear[] = [
   {
     id: 'couverture',
     name: 'Couverture',
+    icon: 'blanket',
     category: 'gear',
     price: { amount: 1, unit: 'pa' },
     sourcePage: 190,
@@ -885,6 +899,7 @@ export const gear: Gear[] = [
   {
     id: 'grappin',
     name: 'Grappin',
+    icon: 'grapple',
     category: 'gear',
     price: { amount: 2, unit: 'pa' },
     sourcePage: 190,
@@ -892,6 +907,7 @@ export const gear: Gear[] = [
   {
     id: 'lanterne-a-huile',
     name: 'Lanterne à huile',
+    icon: 'lantern',
     category: 'gear',
     price: { amount: 3, unit: 'pa' },
     description:
@@ -901,6 +917,7 @@ export const gear: Gear[] = [
   {
     id: 'materiel-decriture',
     name: 'Matériel d’écriture',
+    icon: 'writing-kit',
     category: 'gear',
     price: { amount: 5, unit: 'pa' },
     sourcePage: 190,
@@ -908,6 +925,7 @@ export const gear: Gear[] = [
   {
     id: 'huile-pour-lanterne',
     name: 'Huile pour lanterne',
+    icon: 'lamp-oil',
     category: 'gear',
     price: { amount: 1, unit: 'pa' },
     sourcePage: 190,
@@ -915,6 +933,7 @@ export const gear: Gear[] = [
   {
     id: 'torches-x3',
     name: 'Torches (x3)',
+    icon: 'torch',
     category: 'gear',
     price: { amount: 5, unit: 'pa' },
     description:
@@ -924,6 +943,7 @@ export const gear: Gear[] = [
   {
     id: 'outils-de-crochetage',
     name: 'Outils de crochetage',
+    icon: 'lockpicks',
     category: 'gear',
     price: { amount: 5, unit: 'pa' },
     description: 'Sans ces outils, une pénalité de -10 est infligée aux tests d’AGI (Crocheter).',
@@ -932,6 +952,7 @@ export const gear: Gear[] = [
   {
     id: 'potion-de-soins',
     name: 'Potion de Soins (1d4° PV)',
+    icon: 'potion',
     category: 'gear',
     consumable: true,
     price: { amount: 10, unit: 'pa' },
@@ -942,6 +963,7 @@ export const gear: Gear[] = [
   {
     id: 'ration-1-semaine',
     name: 'Ration (1 semaine)',
+    icon: 'ration',
     category: 'gear',
     price: { amount: 4, unit: 'pa' },
     sourcePage: 190,
@@ -949,6 +971,7 @@ export const gear: Gear[] = [
   {
     id: 'sac-a-dos',
     name: 'Sac à dos',
+    icon: 'backpack',
     category: 'gear',
     price: { amount: 1, unit: 'pa' },
     // Porté sur le dos, n'occupe aucune main (accessoire).
@@ -971,6 +994,7 @@ export const gear: Gear[] = [
   {
     id: 'durium',
     name: 'Durium',
+    icon: 'precious-metal',
     category: 'gear',
     price: { amount: 40, unit: 'pa' },
     description:
@@ -980,6 +1004,7 @@ export const gear: Gear[] = [
   {
     id: 'chope-en-hybberium',
     name: 'Chope en hybberium',
+    icon: 'mug',
     category: 'gear',
     price: { amount: 100, unit: 'pa' },
     description:
@@ -989,6 +1014,7 @@ export const gear: Gear[] = [
   {
     id: 'pnoulpe',
     name: 'Pnoulpe',
+    icon: 'octopus',
     category: 'gear',
     price: { amount: 300, unit: 'pa' },
     description:
@@ -1006,6 +1032,7 @@ export const gear: Gear[] = [
   {
     id: 'grimoire-de-sorts',
     name: 'Grimoire de sorts',
+    icon: 'spellbook',
     category: 'gear',
     price: null,
     // Outil du magicien, tenu en main pour lancer ses sorts (comme une arme légère).
@@ -1017,6 +1044,7 @@ export const gear: Gear[] = [
   {
     id: 'instrument-de-musique',
     name: 'Instrument de musique',
+    icon: 'instrument',
     category: 'gear',
     price: null,
     // Outil de la voie du musicien, tenu en main pour jouer (comme une arme légère).
@@ -1028,6 +1056,7 @@ export const gear: Gear[] = [
   {
     id: 'torche',
     name: 'Torche',
+    icon: 'torch',
     category: 'gear',
     price: null,
     // Tenue en main (principale ou secondaire) pour éclairer, comme une arme légère.
@@ -1039,6 +1068,7 @@ export const gear: Gear[] = [
   {
     id: 'outre',
     name: 'Outre',
+    icon: 'waterskin',
     category: 'gear',
     price: null,
     description:
@@ -1048,6 +1078,7 @@ export const gear: Gear[] = [
   {
     id: 'gamelle',
     name: 'Gamelle',
+    icon: 'mess-kit',
     category: 'gear',
     price: null,
     description:
