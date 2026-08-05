@@ -39,6 +39,20 @@ export interface AppliedStatus {
   id: AnyStatusEffectId;
   /** Intensité pour un état cumulatif (≥ 1, plafonnée par le catalogue). Absent = 1. */
   intensity?: number;
+  /**
+   * COMPTEUR DE TOURS (PER-305) : numéro de la DERNIÈRE manche couverte par l'état
+   * (`GmCombatState.roundNumber`, borne INCLUSIVE), et non un décompte. « Étourdi pendant 3 tours »
+   * posé à la manche 5 s'écrit donc `untilRound: 7`.
+   *
+   * Absent = aucun compteur, l'état dure jusqu'à ce que le MJ le retire (cas par défaut). Stocker la
+   * manche de fin plutôt que les tours restants rend le décompte PUREMENT DÉRIVÉ
+   * (`statusRemainingRounds`) : rien à décrémenter quand la manche avance, et reculer d'une manche
+   * ou corriger « Tour N » à la main remet les compteurs juste tout seuls.
+   *
+   * À l'expiration, l'état N'EST PAS retiré automatiquement : le badge se signale expiré et le MJ
+   * garde la main. Le compteur ne pèse sur AUCUN calcul (seule `intensity` chiffre).
+   */
+  untilRound?: number;
 }
 
 /**
@@ -181,6 +195,53 @@ export function clampIntensity(id: AnyStatusEffectId, requested: number): number
 /** Intensité effective d'un état appliqué (clampée ; 1 pour un binaire). */
 function effectiveIntensity(applied: AppliedStatus): number {
   return clampIntensity(applied.id, applied.intensity ?? 1);
+}
+
+/* ------------------------------------------------------------------------- *
+ * COMPTEUR DE TOURS (PER-305) — arithmétique PURE de `AppliedStatus.untilRound`.
+ * Aucun état de combat, aucun store : manche courante + état appliqué → tours restants.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Durée maximale posable sur un état, en tours (garde-fou de saisie : un compteur à trois chiffres
+ * ne rend plus service et ne tient pas dans la pastille du badge).
+ */
+export const STATUS_DURATION_MAX = 99;
+
+/** Borne une durée demandée à [1, `STATUS_DURATION_MAX`] tours. 0 / invalide → 1. */
+export function clampStatusRounds(requested: number): number {
+  if (!Number.isFinite(requested)) return 1;
+  return Math.max(1, Math.min(STATUS_DURATION_MAX, Math.trunc(requested)));
+}
+
+/**
+ * Tours RESTANTS d'un état à la manche `roundNumber`, jamais négatif : `undefined` s'il ne porte pas
+ * de compteur (durée indéterminée, cas par défaut), 0 s'il est EXPIRÉ mais toujours posé. Un état
+ * couvrant la manche courante compte donc 1 tour restant (« ça se termine à la fin de ce tour-ci »).
+ *
+ * Fonction PURE et défensive : un `untilRound` non fini (blob relu de travers) vaut « pas de compteur ».
+ */
+export function statusRemainingRounds(
+  applied: AppliedStatus,
+  roundNumber: number,
+): number | undefined {
+  const until = applied.untilRound;
+  if (typeof until !== 'number' || !Number.isFinite(until)) return undefined;
+  return Math.max(0, Math.trunc(until) - Math.trunc(roundNumber) + 1);
+}
+
+/** Vrai si l'état porte un compteur ARRIVÉ À TERME (0 tour restant) sans avoir été retiré. */
+export function isStatusExpired(applied: AppliedStatus, roundNumber: number): boolean {
+  return statusRemainingRounds(applied, roundNumber) === 0;
+}
+
+/**
+ * Manche de fin à stocker pour qu'il reste `remaining` tours à partir de la manche `roundNumber`
+ * (réciproque de `statusRemainingRounds`). `remaining` est supposé ≥ 1 — les appelants retirent le
+ * compteur sous 1 plutôt que de poser une durée nulle.
+ */
+export function untilRoundFor(roundNumber: number, remaining: number): number {
+  return Math.trunc(roundNumber) + clampStatusRounds(remaining) - 1;
 }
 
 /**

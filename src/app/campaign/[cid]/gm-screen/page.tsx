@@ -201,6 +201,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     applyStatus,
     removeStatus,
     adjustStatus,
+    adjustStatusDuration,
     resetCombat,
     restartRounds,
   } = useGmScreenCombat(cid, 'gm');
@@ -497,6 +498,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               onApply: applyStatus,
               onRemove: removeStatus,
               onAdjust: adjustStatus,
+              onAdjustDuration: adjustStatusDuration,
             }}
             statusPalette={<CombatStatusPalette situationalIds={situationalEffectIds} />}
             stickyBottom

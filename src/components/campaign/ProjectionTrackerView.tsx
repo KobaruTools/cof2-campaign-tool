@@ -43,7 +43,7 @@ const PROJECTION_IDENTITY: SessionIdentity = {
 };
 
 export function ProjectionTrackerView({ cid }: { cid: string }) {
-  const { charactersHydrated, campaignsLoading, campaign, initiativeRows, currentTurnKey } =
+  const { charactersHydrated, campaignsLoading, campaign, initiativeRows, currentTurnKey, roundNumber } =
     useGmScreenCombat(cid, 'reader');
 
   // Client de session : rejoint le canal Realtime pour recevoir en direct le combat et les PV
@@ -72,6 +72,9 @@ export function ProjectionTrackerView({ cid }: { cid: string }) {
             rows={initiativeRows}
             currentTurnKey={currentTurnKey}
             onCurrentTurnKeyChange={noop}
+            // La manche courante n'est pas AFFICHÉE ici (en-tête masqué en projection) mais elle est
+            // nécessaire : les compteurs de tours des badges d'états s'en déduisent (PER-305).
+            roundNumber={roundNumber}
             projection
           />
         )}

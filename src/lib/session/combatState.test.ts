@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { STATUS_DURATION_MAX } from '@/lib/character/statusEffects';
 import {
   CREATURE_ADD_COUNT_MAX,
   CREATURE_NAME_MAX_LENGTH,
   EMPTY_COMBAT_STATE,
   addCreatures,
   addCustomCreatures,
+  adjustStatusDuration,
   adjustStatusIntensity,
   applyStatusTo,
   clampAddCount,
@@ -127,6 +129,26 @@ describe('reviveStateObject', () => {
     });
     expect(revived.statuses['char-1']).toEqual([{ id: 'blinded' }, { id: 'invalidating-attack', intensity: 2 }]);
   });
+
+  it('relit le compteur de tours, décimales tronquées et valeurs non finies écartées (PER-305)', () => {
+    const revived = reviveStateObject({
+      creatures: [],
+      statuses: {
+        'char-1': [
+          { id: 'dazed', untilRound: 7.9 },
+          { id: 'blinded', untilRound: 'trois' }, // non-nombre → pas de compteur
+          { id: 'slowed', untilRound: Number.NaN }, // non fini → pas de compteur
+          { id: 'prone', untilRound: 2 }, // manche déjà dépassée : expiré, mais CONSERVÉ
+        ],
+      },
+    });
+    expect(revived.statuses['char-1']).toEqual([
+      { id: 'dazed', untilRound: 7 },
+      { id: 'blinded' },
+      { id: 'slowed' },
+      { id: 'prone', untilRound: 2 },
+    ]);
+  });
 });
 
 describe('applyStatusTo', () => {
@@ -163,6 +185,17 @@ describe('applyStatusTo', () => {
     expect(next.statuses['c-1']).toEqual([
       { id: 'blinded' },
       { id: 'invalidating-attack', intensity: 2 },
+    ]);
+  });
+
+  it('conserve le compteur de tours d’un état déjà posé (PER-305)', () => {
+    const timed: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      roundNumber: 5,
+      statuses: { 'c-1': [{ id: 'invalidating-attack', intensity: 1, untilRound: 7 }] },
+    };
+    expect(applyStatusTo(timed, 'c-1', 'invalidating-attack', 3).statuses['c-1']).toEqual([
+      { id: 'invalidating-attack', intensity: 3, untilRound: 7 },
     ]);
   });
 
@@ -219,6 +252,96 @@ describe('adjustStatusIntensity', () => {
   it('no-op si l’état n’est pas posé', () => {
     expect(adjustStatusIntensity(withStacking, 'c-1', 'blinded', 1)).toBe(withStacking);
     expect(adjustStatusIntensity(withStacking, 'absent', 'invalidating-attack', 1)).toBe(withStacking);
+  });
+
+  it('conserve le compteur de tours (PER-305)', () => {
+    const timed: GmCombatState = {
+      ...withStacking,
+      statuses: { 'c-1': [{ id: 'invalidating-attack', intensity: 2, untilRound: 9 }] },
+    };
+    expect(adjustStatusIntensity(timed, 'c-1', 'invalidating-attack', -1).statuses['c-1']).toEqual([
+      { id: 'invalidating-attack', untilRound: 9 },
+    ]);
+  });
+});
+
+describe('adjustStatusDuration (PER-305)', () => {
+  /** Combat à la manche 5 avec un Étourdi posé sans compteur de tours. */
+  const round5: GmCombatState = {
+    ...EMPTY_COMBAT_STATE,
+    roundNumber: 5,
+    statuses: { 'c-1': [{ id: 'dazed' }] },
+  };
+
+  it('amorce le compteur à 1 tour (la manche courante) quand il n’y en a pas', () => {
+    expect(adjustStatusDuration(round5, 'c-1', 'dazed', 1).statuses['c-1']).toEqual([
+      { id: 'dazed', untilRound: 5 },
+    ]);
+  });
+
+  it('allonge la durée d’un tour, en manche de FIN absolue', () => {
+    const twice = adjustStatusDuration(adjustStatusDuration(round5, 'c-1', 'dazed', 1), 'c-1', 'dazed', 1);
+    // 2 tours restants à la manche 5 → couvre les manches 5 et 6.
+    expect(twice.statuses['c-1']).toEqual([{ id: 'dazed', untilRound: 6 }]);
+  });
+
+  it('raccourcit la durée d’un tour', () => {
+    const state: GmCombatState = { ...round5, statuses: { 'c-1': [{ id: 'dazed', untilRound: 7 }] } };
+    expect(adjustStatusDuration(state, 'c-1', 'dazed', -1).statuses['c-1']).toEqual([
+      { id: 'dazed', untilRound: 6 },
+    ]);
+  });
+
+  it('descendre sous 1 RETIRE le compteur sans retirer l’état', () => {
+    const state: GmCombatState = { ...round5, statuses: { 'c-1': [{ id: 'dazed', untilRound: 5 }] } };
+    expect(adjustStatusDuration(state, 'c-1', 'dazed', -1).statuses['c-1']).toEqual([{ id: 'dazed' }]);
+  });
+
+  it('relance d’un tour un compteur EXPIRÉ (il repart de 0)', () => {
+    const expired: GmCombatState = { ...round5, statuses: { 'c-1': [{ id: 'dazed', untilRound: 2 }] } };
+    expect(adjustStatusDuration(expired, 'c-1', 'dazed', 1).statuses['c-1']).toEqual([
+      { id: 'dazed', untilRound: 5 },
+    ]);
+  });
+
+  it('borne la durée au garde-fou de saisie', () => {
+    const long: GmCombatState = { ...round5, statuses: { 'c-1': [{ id: 'dazed', untilRound: 103 }] } };
+    // 99 tours restants au maximum, comptés depuis la manche courante.
+    expect(adjustStatusDuration(long, 'c-1', 'dazed', 1).statuses['c-1']).toEqual([
+      { id: 'dazed', untilRound: 5 + STATUS_DURATION_MAX - 1 },
+    ]);
+  });
+
+  it('conserve l’intensité d’un état cumulatif', () => {
+    const stacking: GmCombatState = {
+      ...round5,
+      statuses: { 'c-1': [{ id: 'invalidating-attack', intensity: 2 }] },
+    };
+    expect(adjustStatusDuration(stacking, 'c-1', 'invalidating-attack', 2).statuses['c-1']).toEqual([
+      { id: 'invalidating-attack', intensity: 2, untilRound: 6 },
+    ]);
+  });
+
+  it('no-op si l’état n’est pas posé, ou si le compteur ne bouge pas', () => {
+    expect(adjustStatusDuration(round5, 'c-1', 'blinded', 1)).toBe(round5);
+    expect(adjustStatusDuration(round5, 'absent', 'dazed', 1)).toBe(round5);
+    // Sans compteur, retirer un tour ne change rien (pas d’écriture, donc pas de diffusion).
+    expect(adjustStatusDuration(round5, 'c-1', 'dazed', -1)).toBe(round5);
+  });
+
+  it('laisse les autres combattants et les autres états intacts', () => {
+    const state: GmCombatState = {
+      ...round5,
+      statuses: { 'c-1': [{ id: 'dazed' }, { id: 'blinded' }], 'c-2': [{ id: 'slowed' }] },
+    };
+    const next = adjustStatusDuration(state, 'c-1', 'dazed', 1);
+    expect(next.statuses['c-1']).toEqual([{ id: 'dazed', untilRound: 5 }, { id: 'blinded' }]);
+    expect(next.statuses['c-2']).toEqual([{ id: 'slowed' }]);
+  });
+
+  it('ne mute pas l’état source (pur)', () => {
+    adjustStatusDuration(round5, 'c-1', 'dazed', 1);
+    expect(round5.statuses['c-1']).toEqual([{ id: 'dazed' }]);
   });
 });
 
@@ -300,10 +423,25 @@ describe('restartRounds', () => {
     expect(restartRounds(inCombat).currentTurnKey).toBeNull();
   });
 
-  it('ne touche NI aux états NI aux PV (contrairement à resetCombat)', () => {
+  it('ne retire NI états NI PV (contrairement à resetCombat)', () => {
     const restarted = restartRounds(inCombat, 'c-1');
     expect(restarted.statuses).toEqual(inCombat.statuses);
     expect(restarted.depletions).toEqual(inCombat.depletions);
+  });
+
+  it('recale les compteurs de tours sur la manche 1, à tours restants constants (PER-305)', () => {
+    // À la manche 5, `untilRound: 6` = 2 tours restants → doit rester 2 tours après le recalage.
+    const state: GmCombatState = { ...inCombat, statuses: { 'c-1': [{ id: 'dazed', untilRound: 6 }] } };
+    expect(restartRounds(state, 'c-1').statuses['c-1']).toEqual([{ id: 'dazed', untilRound: 2 }]);
+  });
+
+  it('retire les compteurs déjà expirés, sans retirer l’état (PER-305)', () => {
+    const state: GmCombatState = { ...inCombat, statuses: { 'c-1': [{ id: 'dazed', untilRound: 3 }] } };
+    expect(restartRounds(state, 'c-1').statuses['c-1']).toEqual([{ id: 'dazed' }]);
+  });
+
+  it('laisse la carte des états par référence quand aucun compteur n’est en jeu', () => {
+    expect(restartRounds(inCombat, 'c-1').statuses).toBe(inCombat.statuses);
   });
 
   it('ne mute pas l’état source (pur)', () => {

@@ -45,13 +45,18 @@ export const STATUS_DRAG_PREFIX = 'status:';
  * Infobulle « breakdown » d'un état : nom + effet verbatim + renvoi de page cliquable. `autoReason`
  * (état DÉDUIT, ex. affaibli à 1 PV) ajoute la règle qui le provoque, avec sa propre page source :
  * le MJ voit alors POURQUOI cet état est là — et qu'il n'est pas de son fait, donc non retirable.
+ * `remainingRounds` (PER-305) écrit en clair ce que la pastille du badge abrège (« 3t ») ; c'est un
+ * pense-bête de MJ, pas une règle du livre — donc sans renvoi de page.
  */
 export function StatusEffectTooltip({
   id,
   autoReason,
+  remainingRounds,
 }: {
   id: AnyStatusEffectId;
   autoReason?: AutoStatusReason;
+  /** Tours restants du compteur de durée. Absent = aucun compteur posé (durée indéterminée). */
+  remainingRounds?: number;
 }) {
   const entry = statusEntry(id);
   return (
@@ -65,6 +70,16 @@ export function StatusEffectTooltip({
         </Typography>
       )}
       {entry?.sourcePage != null && <SourceRef page={entry.sourcePage} term={statusLabel(id)} />}
+      {remainingRounds !== undefined && (
+        <Typography
+          variant="caption"
+          sx={{ display: 'block', mt: 0.75, fontWeight: 700, color: remainingRounds === 0 ? 'warning.light' : 'text.primary' }}
+        >
+          {remainingRounds === 0
+            ? 'Durée écoulée — à retirer'
+            : `Encore ${remainingRounds} tour${remainingRounds > 1 ? 's' : ''}`}
+        </Typography>
+      )}
       {autoReason && (
         <Box sx={{ mt: 0.75 }}>
           <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', color: 'warning.light' }}>

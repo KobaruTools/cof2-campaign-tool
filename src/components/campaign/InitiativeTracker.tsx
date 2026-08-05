@@ -142,6 +142,8 @@ import {
   isStackingStatus,
   resolveStatusModifiers,
   statusMaxIntensity,
+  statusRemainingRounds,
+  STATUS_DURATION_MAX,
   type AnyStatusEffectId,
   type AppliedStatus,
   type EffectiveStatus,
@@ -321,6 +323,11 @@ export interface CombatStatusControls {
   onRemove: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif d'un combattant (PER-280). */
   onAdjust: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
+  /**
+   * Ajuste de `delta` (±) le COMPTEUR DE TOURS d'un état posé (PER-305). Sans compteur, `+1` l'amorce
+   * à 1 tour ; descendre sous 1 le retire (durée redevenue indéterminée) sans retirer l'état.
+   */
+  onAdjustDuration: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
 }
 
 /** Côté du portrait (px) : le bandeau d'initiative collé dessous fait la MÊME largeur. */
@@ -869,6 +876,13 @@ function CompactHpControl({ row }: { row: InitiativeRow }) {
 const STATUS_ICON_SQUARE = 30;
 
 /**
+ * Gouttière entre deux badges d'états de l'écran de MJ, en unités d'espacement MUI (1.25 = 10 px).
+ * Élargie en PER-305 (elle valait 6 px) : les boutons ±, passés sur les CÔTÉS du carré, en débordent
+ * de la moitié de leur largeur et venaient recouvrir le bord du badge voisin.
+ */
+const STATUS_BADGE_GAP = 1.25;
+
+/**
  * Style de base du carré-icône d'un état : carré translucide aux bords arrondis, avec flou
  * d'arrière-plan pour rester lisible quel que soit ce qu'il recouvre (illustration de fond, portrait
  * voisin). La `tone` porte la famille de l'état (rouge = subi, bleu = environnement, cf. `statusTone`).
@@ -894,48 +908,87 @@ function statusSquareSx(theme: Theme, tone: StatusTone) {
   };
 }
 
-/** Pastille « N » en coin d'un carré-icône (intensité d'un état cumulatif). */
-function StatusIntensityPill({ value, tone }: { value: number; tone: StatusTone }) {
+/**
+ * Pastille chiffrée d'un carré-icône, centrée sur un de ses bords : l'INTENSITÉ d'un état cumulatif
+ * en haut (« ×N »), le COMPTEUR DE TOURS en bas (« Nt », PER-305).
+ *
+ * CENTRÉES et non en coin (l'intensité l'était jusqu'en PER-305) : les boutons ± bordent maintenant le
+ * carré sur les CÔTÉS, à mi-hauteur ou empilés, et recouvraient une pastille de coin — or c'est
+ * précisément en cliquant ± qu'on a besoin de lire la valeur qu'on règle. Les deux axes se répartissent
+ * donc : les nombres sur les bords haut/bas, les commandes sur les côtés.
+ *
+ * `variant` porte la lecture : `intensity` en plein dans la teinte de l'état, `duration` en pastille
+ * sombre cerclée de cette teinte, `expired` en ambre — un compteur à 0 n'a PAS retiré l'état (le MJ
+ * garde la main), il signale juste que sa durée est passée.
+ */
+function StatusCountPill({
+  edge,
+  variant,
+  tone,
+  label,
+  children,
+}: {
+  edge: 'top' | 'bottom';
+  variant: 'intensity' | 'duration' | 'expired';
+  tone: StatusTone;
+  /** Étiquette d'accessibilité ; absente pour l'intensité, déjà lisible dans le libellé du badge. */
+  label?: string;
+  children: ReactNode;
+}) {
   return (
     <Box
       component="span"
+      aria-label={label}
       sx={(theme) => ({
         position: 'absolute',
-        top: -5,
-        right: -5,
-        minWidth: 15,
-        height: 15,
+        [edge]: -6,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        minWidth: 16,
+        height: 14,
         px: 0.25,
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: '999px',
-        fontSize: '0.6rem',
+        fontSize: '0.575rem',
         fontWeight: 800,
         fontVariantNumeric: 'tabular-nums',
         lineHeight: 1,
+        whiteSpace: 'nowrap',
         color: theme.palette.common.white,
-        bgcolor: theme.palette[tone].main,
-        border: '1px solid rgba(0, 0, 0, 0.45)',
+        bgcolor:
+          variant === 'duration'
+            ? alpha(theme.palette.common.black, 0.82)
+            : variant === 'expired'
+              ? theme.palette.warning.main
+              : theme.palette[tone].main,
+        border: `1px solid ${
+          variant === 'duration' ? alpha(theme.palette[tone].main, 0.85) : 'rgba(0, 0, 0, 0.45)'
+        }`,
       })}
     >
-      {value}
+      {children}
     </Box>
   );
 }
 
 /**
  * Contenu d'un carré-icône : icône game-icons de l'état (ou initiales du libellé en repli pour un effet
- * situationnel sans icône dédiée), plus la pastille d'intensité quand l'état est cumulatif et empilé.
+ * situationnel sans icône dédiée), plus la pastille d'intensité quand l'état est cumulatif et empilé et
+ * celle du compteur de tours quand une durée est posée (PER-305).
  */
 function StatusIconInner({
   id,
   intensity,
   stacked,
+  remaining,
 }: {
   id: AnyStatusEffectId;
   intensity: number;
   stacked: boolean;
+  /** Tours restants du compteur de durée. `undefined` = aucun compteur (durée indéterminée). */
+  remaining?: number;
 }) {
   const iconId = statusIconId(id);
   return (
@@ -947,9 +1000,39 @@ function StatusIconInner({
           {statusLabel(id).slice(0, 2).toUpperCase()}
         </Box>
       )}
-      {stacked && <StatusIntensityPill value={intensity} tone={statusTone(id)} />}
+      {stacked && (
+        <StatusCountPill edge="top" variant="intensity" tone={statusTone(id)}>
+          ×{intensity}
+        </StatusCountPill>
+      )}
+      {remaining !== undefined && (
+        <StatusCountPill
+          edge="bottom"
+          variant={remaining === 0 ? 'expired' : 'duration'}
+          tone={statusTone(id)}
+          label={
+            remaining === 0
+              ? 'durée écoulée'
+              : `${remaining} tour${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''}`
+          }
+        >
+          {remaining}t
+        </StatusCountPill>
+      )}
     </>
   );
+}
+
+/**
+ * Liseré TIRETÉ du carré-icône d'un état dont le compteur de tours est échu (PER-305) : l'état est
+ * toujours posé (aucun retrait automatique), mais sa durée est passée — le MJ doit le retirer ou le
+ * prolonger. Signal volontairement discret : un état échu reste actif tant qu'il est là.
+ */
+function expiredSquareSx(theme: Theme) {
+  return {
+    borderStyle: 'dashed' as const,
+    borderColor: theme.palette.warning.light,
+  };
 }
 
 /**
@@ -959,25 +1042,64 @@ function StatusIconInner({
  *  - les états DÉDUITS (`origin: 'auto'`) sur l'écran de MJ — jaunes, et non retirables puisqu'ils
  *    ne sont pas de son fait : ils s'effacent d'eux-mêmes quand la condition cesse (PV remontés).
  */
-function ReadonlyStatusIcon({ applied }: { applied: EffectiveStatus }) {
+function ReadonlyStatusIcon({
+  applied,
+  roundNumber,
+}: {
+  applied: EffectiveStatus;
+  /**
+   * Manche courante, pour dériver les tours restants du compteur de durée (PER-305). Un état DÉDUIT
+   * (`origin: 'auto'`) n'en porte jamais : il suit les PV, pas la durée.
+   */
+  roundNumber: number;
+}) {
   const { id, origin, autoReason } = applied;
   const intensity = clampIntensity(id, applied.intensity ?? 1);
   const stacked = isStackingStatus(id) && intensity > 1;
+  const remaining = statusRemainingRounds(applied, roundNumber);
   return (
-    <AppTooltip title={<StatusEffectTooltip id={id} autoReason={autoReason} />}>
+    <AppTooltip
+      title={<StatusEffectTooltip id={id} autoReason={autoReason} remainingRounds={remaining} />}
+      disableInteractive
+    >
       <Box
         aria-label={statusLabel(id)}
-        sx={(theme) => ({ ...statusSquareSx(theme, originStatusTone(id, origin)), cursor: 'help' })}
+        sx={(theme) => ({
+          ...statusSquareSx(theme, originStatusTone(id, origin)),
+          cursor: 'help',
+          ...(remaining === 0 ? expiredSquareSx(theme) : {}),
+        })}
       >
-        <StatusIconInner id={id} intensity={intensity} stacked={stacked} />
+        <StatusIconInner id={id} intensity={intensity} stacked={stacked} remaining={remaining} />
       </Box>
     </AppTooltip>
   );
 }
 
-/** Bouton ± d'ajustement d'intensité, en coin bas d'un carré-icône, révélé au survol (états cumulatifs). */
+/**
+ * Emplacement vertical d'une paire de boutons ± le long d'un carré-icône : `center` quand une seule
+ * paire est en jeu (le cas courant : la durée), `upper`/`lower` quand il en faut deux (état cumulatif
+ * → intensité en haut, durée en bas).
+ */
+type StatusAdjustSlot = 'center' | 'upper' | 'lower';
+
+/** Côté (px) d'un bouton ± selon son emplacement : deux paires empilées tiennent en 14 px chacune. */
+const ADJUST_BUTTON_SIZE: Record<StatusAdjustSlot, number> = { center: 16, upper: 14, lower: 14 };
+
+/**
+ * Bouton ± bordant un carré-icône SUR LE CÔTÉ, révélé au survol (PER-305 — il était auparavant en coin
+ * BAS, pour l'intensité seule).
+ *
+ * POURQUOI LES CÔTÉS : le survol du carré ouvre l'info-bulle de l'effet, qui occupe l'axe VERTICAL —
+ * en dessous par défaut, au-dessus quand la place manque, ce qui est le cas courant depuis que la bande
+ * d'initiative est collée en bas de l'écran (PER-301). Aucune position haute ou basse n'est donc sûre,
+ * alors que MUI ne fait jamais basculer une bulle sur les côtés. Les bulles de badge sont en plus
+ * passées en `disableInteractive` : une bulle ouverte prend sinon `pointer-events: auto` et INTERCEPTE
+ * réellement le clic destiné au bouton.
+ */
 function StatusAdjustButton({
   side,
+  slot,
   label,
   tone,
   disabled,
@@ -985,12 +1107,14 @@ function StatusAdjustButton({
   children,
 }: {
   side: 'left' | 'right';
+  slot: StatusAdjustSlot;
   label: string;
   tone: StatusTone;
   disabled?: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
+  const size = ADJUST_BUTTON_SIZE[slot];
   return (
     <IconButton
       className="status-adjust"
@@ -1004,11 +1128,17 @@ function StatusAdjustButton({
       }}
       sx={(theme) => ({
         position: 'absolute',
-        bottom: -7,
-        [side]: -7,
+        // Débordement latéral de la moitié du bouton : la gouttière entre badges est élargie en
+        // conséquence (cf. `STATUS_BADGE_GAP`) pour qu'il ne recouvre pas le carré voisin.
+        [side]: -(size / 2 + 1),
+        ...(slot === 'center'
+          ? { top: '50%', transform: 'translateY(-50%)' }
+          : slot === 'upper'
+            ? { top: 1 }
+            : { bottom: 1 }),
         p: 0,
-        width: 16,
-        height: 16,
+        width: size,
+        height: size,
         // Masqués au repos, révélés au survol du carré parent (cf. `InteractiveStatusIcon`).
         opacity: 0,
         pointerEvents: 'none',
@@ -1027,26 +1157,43 @@ function StatusAdjustButton({
 
 /**
  * Carré-icône d'un état APPLIQUÉ sur l'écran de MJ (PER-283) : MÊME visuel que la projection (PER-282),
- * mais INTERACTIF. Cliquer le carré retire l'état ; pour un état cumulatif, la pastille ×N reste et de
- * petits boutons −/+ (ajustement d'intensité, bornés au plafond) apparaissent au survol. L'ajout d'un
- * état passe toujours par le glisser-déposer ou le menu de l'en-tête. Effet verbatim en info-bulle.
+ * mais INTERACTIF. Cliquer le carré retire l'état ; des boutons −/+ bordant le carré apparaissent au
+ * survol. L'ajout d'un état passe toujours par le glisser-déposer ou le menu de l'en-tête. Effet
+ * verbatim en info-bulle.
+ *
+ * DEUX RÉGLAGES au survol, chacun sa paire de boutons (PER-305) :
+ *  - la DURÉE en tours, sur tout état posé — sans compteur, seul un `+` s'affiche (il l'amorce à 1
+ *    tour) ; descendre sous 1 retire le compteur, pas l'état ;
+ *  - l'INTENSITÉ, états cumulatifs seulement (bornée au plafond du catalogue).
+ *
+ * Une seule paire tient sur les côtés au centre : la durée l'occupe (cas courant). Quand l'intensité
+ * s'y ajoute, les deux paires s'empilent — intensité en haut (alignée sur sa pastille ×N), durée en bas
+ * (alignée sur la sienne).
  */
 function InteractiveStatusIcon({
   applied,
+  roundNumber,
   onRemove,
   onAdjust,
+  onAdjustDuration,
 }: {
   applied: AppliedStatus;
+  /** Manche courante, dont se dérivent les tours restants du compteur (PER-305). */
+  roundNumber: number;
   onRemove: () => void;
   onAdjust: (delta: number) => void;
+  onAdjustDuration: (delta: number) => void;
 }) {
   const { id } = applied;
   const stacking = isStackingStatus(id);
   const intensity = clampIntensity(id, applied.intensity ?? 1);
   const max = statusMaxIntensity(id);
   const tone = statusTone(id);
+  const remaining = statusRemainingRounds(applied, roundNumber);
+  // Deux paires à empiler dès que l'intensité entre en jeu ; sinon la durée prend le centre.
+  const durationSlot: StatusAdjustSlot = stacking ? 'lower' : 'center';
   return (
-    <AppTooltip title={<StatusEffectTooltip id={id} />}>
+    <AppTooltip title={<StatusEffectTooltip id={id} remainingRounds={remaining} />} disableInteractive>
       <Box
         role="button"
         tabIndex={0}
@@ -1063,19 +1210,55 @@ function InteractiveStatusIcon({
           cursor: 'pointer',
           outline: 'none',
           transition: 'border-color 0.15s, background-color 0.15s',
+          ...(remaining === 0 ? expiredSquareSx(theme) : {}),
           '&:hover, &:focus-visible': {
             bgcolor: alpha(theme.palette[tone].main, 0.42),
             borderColor: theme.palette[tone].light,
+            // Les boutons débordent sur les côtés : le badge survolé passe DEVANT ses voisins, sinon
+            // le − de l'un se retrouve peint sous le carré d'à côté.
+            zIndex: 2,
           },
-          // Révèle les boutons ± d'intensité au survol / focus (états cumulatifs uniquement).
+          // Révèle les boutons ± (durée, et intensité pour un état cumulatif) au survol / focus.
           '&:hover .status-adjust, &:focus-visible .status-adjust': { opacity: 1, pointerEvents: 'auto' },
         })}
       >
-        <StatusIconInner id={id} intensity={intensity} stacked={stacking && intensity > 1} />
+        <StatusIconInner
+          id={id}
+          intensity={intensity}
+          stacked={stacking && intensity > 1}
+          remaining={remaining}
+        />
+        {/* DURÉE : le − n'existe que s'il y a un compteur à raccourcir (ou à retirer, à 1 tour). */}
+        {remaining !== undefined && (
+          <StatusAdjustButton
+            side="left"
+            slot={durationSlot}
+            label={`Raccourcir la durée d'un tour — ${statusLabel(id)}`}
+            tone={tone}
+            onClick={() => onAdjustDuration(-1)}
+          >
+            <RemoveIcon sx={{ fontSize: 12 }} />
+          </StatusAdjustButton>
+        )}
+        <StatusAdjustButton
+          side="right"
+          slot={durationSlot}
+          label={
+            remaining === undefined
+              ? `Poser un compteur de tours — ${statusLabel(id)}`
+              : `Prolonger la durée d'un tour — ${statusLabel(id)}`
+          }
+          tone={tone}
+          disabled={remaining !== undefined && remaining >= STATUS_DURATION_MAX}
+          onClick={() => onAdjustDuration(1)}
+        >
+          <AddIcon sx={{ fontSize: 12 }} />
+        </StatusAdjustButton>
         {stacking && (
           <>
             <StatusAdjustButton
               side="left"
+              slot="upper"
               label={`Diminuer l'intensité — ${statusLabel(id)}`}
               tone={tone}
               disabled={intensity <= 1}
@@ -1085,6 +1268,7 @@ function InteractiveStatusIcon({
             </StatusAdjustButton>
             <StatusAdjustButton
               side="right"
+              slot="upper"
               label={`Augmenter l'intensité — ${statusLabel(id)}`}
               tone={tone}
               disabled={intensity >= max}
@@ -1105,7 +1289,14 @@ function InteractiveStatusIcon({
  * seulement en débordement, cas rare). L'appelant réserve un peu de marge basse pour l'accueillir, et
  * lui passe les seuls états POSÉS (les états déduits des PV restent réservés au MJ).
  */
-function ProjectionStatusStrip({ applied }: { applied: EffectiveStatus[] }) {
+function ProjectionStatusStrip({
+  applied,
+  roundNumber,
+}: {
+  applied: EffectiveStatus[];
+  /** Manche courante : les compteurs de tours (PER-305) se voient aussi à la table, en lecture seule. */
+  roundNumber: number;
+}) {
   return (
     <Box
       sx={{
@@ -1122,7 +1313,7 @@ function ProjectionStatusStrip({ applied }: { applied: EffectiveStatus[] }) {
       }}
     >
       {applied.map((s) => (
-        <ReadonlyStatusIcon key={s.id} applied={s} />
+        <ReadonlyStatusIcon key={s.id} applied={s} roundNumber={roundNumber} />
       ))}
     </Box>
   );
@@ -1740,6 +1931,8 @@ interface ColumnStatusRender {
   onRemove: (id: AnyStatusEffectId) => void;
   /** Ajuste de `delta` (±) l'intensité de l'état cumulatif `id`. */
   onAdjust: (id: AnyStatusEffectId, delta: number) => void;
+  /** Ajuste de `delta` (±) le compteur de tours de l'état `id` (PER-305). */
+  onAdjustDuration: (id: AnyStatusEffectId, delta: number) => void;
 }
 
 /**
@@ -1753,11 +1946,18 @@ function CombatantColumn({
   compact = false,
   interactive,
   status,
+  roundNumber,
   onGiveTurn,
 }: {
   row: InitiativeRow;
   isActive: boolean;
   projection: boolean;
+  /**
+   * Manche courante du combat, dont les badges d'états dérivent leurs tours restants (PER-305).
+   * Partagée par l'écran de MJ et la projection : les deux écrans affichent forcément le même
+   * décompte, puisqu'il se déduit d'une valeur diffusée.
+   */
+  roundNumber: number;
   /**
    * Mode COMPACT de l'écran de MJ (PER-300) : carte ramenée à la largeur de la projection, jauge de
    * PV réduite à une barre fine cliquable (popover de dégâts) et attaques repliées en info-bulle.
@@ -1986,16 +2186,18 @@ function CombatantColumn({
             Un état DÉDUIT (jaune, ex. affaibli à 1 PV) est rendu en lecture seule : le MJ ne l'a pas
             posé, il ne peut pas le retirer — c'est la situation du combattant qui le porte. */}
         {status && status.applied.length > 0 && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: STATUS_BADGE_GAP }}>
             {status.applied.map((s) =>
               s.origin === 'auto' ? (
-                <ReadonlyStatusIcon key={s.id} applied={s} />
+                <ReadonlyStatusIcon key={s.id} applied={s} roundNumber={roundNumber} />
               ) : (
                 <InteractiveStatusIcon
                   key={s.id}
                   applied={s}
+                  roundNumber={roundNumber}
                   onRemove={() => status.onRemove(s.id)}
                   onAdjust={(delta) => status.onAdjust(s.id, delta)}
+                  onAdjustDuration={(delta) => status.onAdjustDuration(s.id, delta)}
                 />
               ),
             )}
@@ -2005,7 +2207,9 @@ function CombatantColumn({
       {/* Projection (PER-282) : bande d'icônes d'états en LECTURE SEULE (pas de ✕/±, pas de nombres
           ajustés), en position absolue ancrée en bas à gauche → n'altère pas la mise en page du bloc.
           Le chemin MJ passe par `status` (badges interactifs en flux normal) ci-dessus. */}
-      {hasProjectionStatuses && <ProjectionStatusStrip applied={projectionStatuses} />}
+      {hasProjectionStatuses && (
+        <ProjectionStatusStrip applied={projectionStatuses} roundNumber={roundNumber} />
+      )}
       {/* Créature vaincue : surimpression barrée + tête de mort, en DERNIER pour peindre par-dessus
           tout le contenu du bloc (bornée à `inset: 0`, elle laisse la bande d'états qui déborde
           en dessous intacte). */}
@@ -2026,6 +2230,7 @@ function StatusDroppableColumn({
   isActive,
   compact,
   controls,
+  roundNumber,
   onGiveTurn,
 }: {
   row: InitiativeRow;
@@ -2033,6 +2238,8 @@ function StatusDroppableColumn({
   /** Mode compact (PER-300), simplement relayé à la colonne. */
   compact: boolean;
   controls: CombatStatusControls;
+  /** Manche courante (PER-305), simplement relayée à la colonne. */
+  roundNumber: number;
   /** Donne le tour à ce combattant (PER-299), simplement relayé à la colonne. */
   onGiveTurn: () => void;
 }) {
@@ -2063,10 +2270,12 @@ function StatusDroppableColumn({
           isOver,
           onOpenMenu: (e) => setAnchorEl(e.currentTarget),
         }}
+        roundNumber={roundNumber}
         status={{
           applied,
           onRemove: (id) => controls.onRemove(row.key, id),
           onAdjust: (id, delta) => controls.onAdjust(row.key, id, delta),
+          onAdjustDuration: (id, delta) => controls.onAdjustDuration(row.key, id, delta),
         }}
       />
       <Menu
@@ -2119,8 +2328,9 @@ export interface InitiativeTrackerProps {
   onCurrentTurnKeyChange: (key: string | null) => void;
   /**
    * Compteur de MANCHE affiché à côté du titre (« Tour N »). Toujours ≥ 1 (un « Tour 0 » n'existe
-   * pas). Contrôlé/persisté par l'appelant, comme le tour courant. Optionnel : la projection ne
-   * l'affiche pas (en-tête masqué). Réservé au MJ (auteur unique).
+   * pas). Contrôlé/persisté par l'appelant, comme le tour courant. Son RÉGLAGE est réservé au MJ
+   * (auteur unique), mais la PROJECTION doit le recevoir elle aussi : les compteurs de tours des
+   * badges d'états s'en déduisent (PER-305), et sans lui la table verrait des durées fausses.
    */
   roundNumber?: number;
   /**
@@ -2421,6 +2631,7 @@ export function InitiativeTracker({
                     isActive={isActive}
                     compact={compact}
                     controls={statusControls}
+                    roundNumber={roundNumber}
                     onGiveTurn={() => onCurrentTurnKeyChange(row.key)}
                   />
                 ) : (
@@ -2430,6 +2641,7 @@ export function InitiativeTracker({
                     isActive={isActive}
                     projection={projection}
                     compact={compact}
+                    roundNumber={roundNumber}
                     onGiveTurn={onGiveTurn}
                   />
                 );

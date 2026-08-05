@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { SITUATIONAL_EFFECT_IDS, STATUS_EFFECTS, STATUS_EFFECT_IDS } from '@/data/schema';
 import {
   clampIntensity,
+  clampStatusRounds,
   effectiveStatuses,
   hpAutoStatuses,
   isStackingStatus,
+  isStatusExpired,
   resolveStatusModifiers,
   statusEntry,
   statusMaxIntensity,
+  statusRemainingRounds,
+  untilRoundFor,
   HP_WEAKENED_REASON,
+  STATUS_DURATION_MAX,
 } from './statusEffects';
 
 describe('catalogues — cohérence des modificateurs (PER-277)', () => {
@@ -78,6 +83,61 @@ describe('clampIntensity', () => {
   });
 });
 
+describe('compteur de tours (PER-305)', () => {
+  it('sans compteur, aucun tour restant à afficher (durée indéterminée)', () => {
+    expect(statusRemainingRounds({ id: 'dazed' }, 5)).toBeUndefined();
+    expect(isStatusExpired({ id: 'dazed' }, 5)).toBe(false);
+  });
+
+  it('compte la manche courante comme un tour restant, et décroît avec les manches', () => {
+    // « Étourdi pendant 3 tours » posé à la manche 5 = manches 5, 6, 7 couvertes.
+    const applied = { id: 'dazed' as const, untilRound: 7 };
+    expect(statusRemainingRounds(applied, 5)).toBe(3);
+    expect(statusRemainingRounds(applied, 6)).toBe(2);
+    expect(statusRemainingRounds(applied, 7)).toBe(1);
+    expect(statusRemainingRounds(applied, 8)).toBe(0);
+  });
+
+  it('reculer d’une manche remet le compteur juste (rien n’est décrémenté en dur)', () => {
+    const applied = { id: 'dazed' as const, untilRound: 7 };
+    expect(statusRemainingRounds(applied, 7)).toBe(1);
+    expect(statusRemainingRounds(applied, 6)).toBe(2); // « Tour précédent » (PER-299)
+  });
+
+  it('un compteur dépassé reste à 0 (jamais négatif) et se signale expiré', () => {
+    const applied = { id: 'dazed' as const, untilRound: 3 };
+    expect(statusRemainingRounds(applied, 12)).toBe(0);
+    expect(isStatusExpired(applied, 12)).toBe(true);
+    expect(isStatusExpired(applied, 3)).toBe(false);
+  });
+
+  it('ignore un untilRound non fini (blob relu de travers)', () => {
+    expect(statusRemainingRounds({ id: 'dazed', untilRound: Number.NaN }, 5)).toBeUndefined();
+  });
+
+  it('borne une durée à [1, plafond]', () => {
+    expect(clampStatusRounds(0)).toBe(1);
+    expect(clampStatusRounds(-4)).toBe(1);
+    expect(clampStatusRounds(2.9)).toBe(2);
+    expect(clampStatusRounds(999)).toBe(STATUS_DURATION_MAX);
+    expect(clampStatusRounds(Number.NaN)).toBe(1);
+  });
+
+  it('untilRoundFor est la réciproque des tours restants', () => {
+    expect(untilRoundFor(5, 3)).toBe(7);
+    expect(untilRoundFor(5, 1)).toBe(5);
+    for (const [round, remaining] of [
+      [1, 1],
+      [4, 2],
+      [12, 9],
+    ] as const) {
+      expect(statusRemainingRounds({ id: 'dazed', untilRound: untilRoundFor(round, remaining) }, round)).toBe(
+        remaining,
+      );
+    }
+  });
+});
+
 describe('resolveStatusModifiers', () => {
   it('sans état = tout à zéro', () => {
     expect(resolveStatusModifiers([])).toEqual({
@@ -140,6 +200,14 @@ describe('resolveStatusModifiers', () => {
   it('n’expose pas les stats dérivées dont le total est nul', () => {
     const r = resolveStatusModifiers([{ id: 'winded' }]);
     expect(r.derived).toEqual({});
+  });
+
+  it('le compteur de tours ne pèse sur aucun chiffre (PER-305)', () => {
+    // Un état expiré depuis longtemps chiffre EXACTEMENT comme un état sans compteur : le décompte
+    // est un pense-bête de MJ, le retrait reste à sa main.
+    expect(resolveStatusModifiers([{ id: 'dazed', untilRound: 1 }])).toEqual(
+      resolveStatusModifiers([{ id: 'dazed' }]),
+    );
   });
 });
 

@@ -16,14 +16,24 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
 import { statusTone } from '@/lib/ui/statusPalette';
-import { isStackingStatus, type AppliedStatus } from '@/lib/character/statusEffects';
+import {
+  isStackingStatus,
+  statusRemainingRounds,
+  type AppliedStatus,
+} from '@/lib/character/statusEffects';
 
 export interface ActiveStatusPanelProps {
   /** États appliqués au personnage (déjà résolus depuis le store de combat de la session). */
   statuses: AppliedStatus[];
+  /**
+   * Manche courante du combat en cours (« Tour N » de l'écran de MJ), dont se déduisent les tours
+   * restants des états à durée (PER-305). Le joueur voit ainsi combien de temps il subit encore
+   * l'état, exactement comme le MJ — mais sans pouvoir y toucher.
+   */
+  roundNumber: number;
 }
 
-export function ActiveStatusPanel({ statuses }: ActiveStatusPanelProps) {
+export function ActiveStatusPanel({ statuses, roundNumber }: ActiveStatusPanelProps) {
   // Rien à afficher hors session ou sans état posé (l'appelant ne passe la liste qu'en session).
   if (statuses.length === 0) return null;
 
@@ -48,6 +58,7 @@ export function ActiveStatusPanel({ statuses }: ActiveStatusPanelProps) {
         {statuses.map((s) => {
           const intensity = s.intensity ?? 1;
           const stacked = isStackingStatus(s.id) && intensity > 1;
+          const remaining = statusRemainingRounds(s, roundNumber);
           return (
             <Stack key={s.id} direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               <StatusChipVisual id={s.id} />
@@ -57,6 +68,16 @@ export function ActiveStatusPanel({ statuses }: ActiveStatusPanelProps) {
                   sx={{ fontWeight: 700, color: `${statusTone(s.id)}.light` }}
                 >
                   ×{intensity}
+                </Typography>
+              )}
+              {/* Compteur de tours posé par le MJ (PER-305) : à 0, la durée est écoulée mais l'état
+                  reste actif tant que le MJ ne l'a pas retiré — on le dit, sans le faire disparaître. */}
+              {remaining !== undefined && (
+                <Typography
+                  variant="caption"
+                  sx={{ fontWeight: 700, color: remaining === 0 ? 'warning.light' : 'text.secondary' }}
+                >
+                  {remaining === 0 ? 'durée écoulée' : `${remaining} tour${remaining > 1 ? 's' : ''}`}
                 </Typography>
               )}
             </Stack>

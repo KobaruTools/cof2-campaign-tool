@@ -32,6 +32,7 @@ import {
   updateCreature as updateCreatureState,
   removeStatusFrom,
   adjustStatusIntensity,
+  adjustStatusDuration as adjustStatusDurationState,
   clearStatusesOf,
   resetCombat as resetCombatState,
   restartRounds as restartRoundsState,
@@ -100,6 +101,12 @@ export interface GmCombatStateApi extends GmCombatState {
   removeStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif posé sur un combattant. */
   adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
+  /**
+   * Ajuste de `delta` (±) le COMPTEUR DE TOURS d'un état posé (PER-305). Sans compteur, `+1`
+   * l'amorce à 1 tour ; descendre sous 1 retire le compteur (durée redevenue indéterminée) sans
+   * retirer l'état. La manche de référence est celle de l'état de combat, pas un argument.
+   */
+  adjustStatusDuration: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
   /**
    * Fusionne l'affichage minimal des créatures diffusé aux joueurs (PER-293), indexé par slug.
    * À n'appeler que côté MJ (auteur unique) : chaque appel persiste + diffuse l'état. Les
@@ -221,6 +228,12 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const adjustStatusDuration = useCallback(
+    (combatantKey: string, id: AnyStatusEffectId, delta: number) =>
+      applyLocalCombat(cid, (prev) => adjustStatusDurationState(prev, combatantKey, id, delta)),
+    [applyLocalCombat, cid],
+  );
+
   const setCreatureInfo = useCallback(
     (info: Record<string, CreatureDisplayInfo>) =>
       applyLocalCombat(cid, (prev) => ({
@@ -257,6 +270,7 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     applyStatus,
     removeStatus,
     adjustStatus,
+    adjustStatusDuration,
     setCreatureInfo,
     resetCombat,
     restartRounds,

@@ -16,6 +16,8 @@ import type { Depletion } from '@/lib/character/types';
 import type { CreatureSide } from '@/lib/ui/creature';
 import {
   clampIntensity,
+  statusRemainingRounds,
+  untilRoundFor,
   type AnyStatusEffectId,
   type AppliedStatus,
 } from '@/lib/character/statusEffects';
@@ -337,8 +339,12 @@ export function creatureInfoEquals(
  * Reconstruit défensivement la carte des états appliqués (`state.statuses`) : tolère
  * l'absence (défaut `{}`, migration douce des combats d'avant PER-278) et écarte les entrées
  * mal formées. Purement STRUCTUREL — l'intensité n'est PAS re-clampée ici (le résolveur et les
- * mutations s'en chargent) ; on normalise juste la forme (`{ id }` / `{ id, intensity }`) et on
- * omet les intensités ≤ 1 (convention « absent = 1 »). Les combattants sans état sont écartés.
+ * mutations s'en chargent) ; on normalise juste la forme (`{ id }` / `{ id, intensity }` /
+ * `{ id, untilRound }`), on omet les intensités ≤ 1 (convention « absent = 1 ») et les compteurs de
+ * tours non finis. Les combattants sans état sont écartés.
+ *
+ * Un `untilRound` PASSÉ (manche déjà dépassée) est conservé tel quel : c'est un état expiré que le MJ
+ * n'a pas encore retiré, et son badge doit continuer à le signaler (PER-305 : pas de retrait auto).
  */
 function reviveStatuses(raw: unknown): Record<string, AppliedStatus[]> {
   if (!raw || typeof raw !== 'object') return {};
@@ -351,11 +357,16 @@ function reviveStatuses(raw: unknown): Record<string, AppliedStatus[]> {
       const id = (item as { id?: unknown }).id;
       if (typeof id !== 'string') continue;
       const intensity = (item as { intensity?: unknown }).intensity;
-      applied.push(
-        typeof intensity === 'number' && Number.isFinite(intensity) && intensity > 1
-          ? { id: id as AnyStatusEffectId, intensity: Math.trunc(intensity) }
-          : { id: id as AnyStatusEffectId },
-      );
+      const untilRound = (item as { untilRound?: unknown }).untilRound;
+      applied.push({
+        id: id as AnyStatusEffectId,
+        ...(typeof intensity === 'number' && Number.isFinite(intensity) && intensity > 1
+          ? { intensity: Math.trunc(intensity) }
+          : {}),
+        ...(typeof untilRound === 'number' && Number.isFinite(untilRound)
+          ? { untilRound: Math.trunc(untilRound) }
+          : {}),
+      });
     }
     if (applied.length > 0) out[key] = applied;
   }
@@ -583,16 +594,28 @@ export function labelCreatureInstances(
  * `combat-state`). Aucun accès store/réseau ici : entrée → nouvel état.
  * ------------------------------------------------------------------------- */
 
-/** Entrée canonique : on omet `intensity` quand elle vaut 1 (convention « absent = 1 »). */
-function makeApplied(id: AnyStatusEffectId, intensity: number): AppliedStatus {
-  return intensity > 1 ? { id, intensity } : { id };
+/**
+ * Entrée canonique : on omet `intensity` quand elle vaut 1 (convention « absent = 1 ») et
+ * `untilRound` quand l'état ne porte pas de compteur de tours (PER-305).
+ */
+function makeApplied(
+  id: AnyStatusEffectId,
+  intensity: number,
+  untilRound?: number,
+): AppliedStatus {
+  return {
+    id,
+    ...(intensity > 1 ? { intensity } : {}),
+    ...(untilRound !== undefined ? { untilRound } : {}),
+  };
 }
 
 /**
  * Applique un état sur un combattant (clé = id de perso joueur OU id d'instance de créature).
  * Idempotent par (combattant, état) : ajoute l'état s'il est absent, sinon fixe son intensité.
  * L'intensité est bornée à [1, plafond du catalogue] via `clampIntensity` (toujours 1 pour un
- * état binaire). Défaut `intensity = 1`.
+ * état binaire). Défaut `intensity = 1`. Un compteur de tours déjà posé SURVIT (PER-305) : reposer un
+ * état déjà présent en ajuste l'intensité, ça ne remet pas sa durée à l'indéterminé.
  */
 export function applyStatusTo(
   state: GmCombatState,
@@ -603,7 +626,7 @@ export function applyStatusTo(
   const clamped = clampIntensity(id, intensity);
   const current = state.statuses[key] ?? [];
   const next = current.some((s) => s.id === id)
-    ? current.map((s) => (s.id === id ? makeApplied(id, clamped) : s))
+    ? current.map((s) => (s.id === id ? makeApplied(id, clamped, s.untilRound) : s))
     : [...current, makeApplied(id, clamped)];
   return { ...state, statuses: { ...state.statuses, [key]: next } };
 }
@@ -641,8 +664,73 @@ export function adjustStatusIntensity(
   const entry = current?.find((s) => s.id === id);
   if (!current || !entry) return state;
   const clamped = clampIntensity(id, (entry.intensity ?? 1) + delta);
-  const next = current.map((s) => (s.id === id ? makeApplied(id, clamped) : s));
+  const next = current.map((s) => (s.id === id ? makeApplied(id, clamped, s.untilRound) : s));
   return { ...state, statuses: { ...state.statuses, [key]: next } };
+}
+
+/**
+ * Ajuste de `delta` (±) le COMPTEUR DE TOURS d'un état déjà posé sur un combattant (PER-305), en
+ * partant des tours restants à la manche courante de l'état de combat. Écrit une manche de FIN
+ * (`untilRound`), jamais un décompte — le nombre affiché se dérive ensuite tout seul.
+ *
+ * - Sans compteur, `+1` l'AMORCE à 1 tour (l'état couvre alors la seule manche courante) ;
+ * - un compteur EXPIRÉ (0 tour restant) repart de 0, donc `+1` le relance d'un tour ;
+ * - descendre sous 1 RETIRE le compteur (l'état redevient « jusqu'à ce que le MJ le retire ») et
+ *   **ne retire pas l'état** — le retrait passe par `removeStatusFrom`, comme pour l'intensité ;
+ * - la durée est bornée par `clampStatusRounds` (garde-fou de saisie).
+ *
+ * No-op si l'état n'est pas posé, ou si le compteur ne bouge pas (évite une écriture + une diffusion
+ * Realtime pour rien). Le compteur ne pèse sur aucun calcul : c'est un pense-bête de MJ.
+ */
+export function adjustStatusDuration(
+  state: GmCombatState,
+  key: string,
+  id: AnyStatusEffectId,
+  delta: number,
+): GmCombatState {
+  const current = state.statuses[key];
+  const entry = current?.find((s) => s.id === id);
+  if (!current || !entry) return state;
+  const remaining = (statusRemainingRounds(entry, state.roundNumber) ?? 0) + Math.trunc(delta);
+  const untilRound = remaining < 1 ? undefined : untilRoundFor(state.roundNumber, remaining);
+  if (untilRound === entry.untilRound) return state;
+  const next = current.map((s) =>
+    s.id === id ? makeApplied(id, clampIntensity(id, s.intensity ?? 1), untilRound) : s,
+  );
+  return { ...state, statuses: { ...state.statuses, [key]: next } };
+}
+
+/**
+ * Recale les compteurs de tours (PER-305) d'une manche de référence sur une autre, à tours RESTANTS
+ * constants : un état auquel il restait 2 tours à la manche 7 en a toujours 2 à la manche 1. Sert
+ * `restartRounds`, qui ramène le compteur de manches à 1 sans rien changer à la situation des
+ * combattants — sans ce recalage, un `untilRound` absolu se retrouverait loin dans le futur et
+ * afficherait une durée fantaisiste.
+ *
+ * Les compteurs déjà EXPIRÉS sont retirés : un « 0 tour » qu'on traîne dans une nouvelle séquence de
+ * manches n'est plus un pense-bête, juste un reste. L'état lui-même, lui, reste posé. Retourne la
+ * carte d'origine (même référence) quand aucun compteur n'est en jeu, cas courant.
+ */
+function rebaseStatusDurations(
+  statuses: Record<string, AppliedStatus[]>,
+  fromRound: number,
+  toRound: number,
+): Record<string, AppliedStatus[]> {
+  let changed = false;
+  const out: Record<string, AppliedStatus[]> = {};
+  for (const [key, applied] of Object.entries(statuses)) {
+    out[key] = applied.map((s) => {
+      const remaining = statusRemainingRounds(s, fromRound);
+      if (remaining === undefined) return s;
+      changed = true;
+      return makeApplied(
+        s.id,
+        s.intensity ?? 1,
+        remaining < 1 ? undefined : untilRoundFor(toRound, remaining),
+      );
+    });
+  }
+  return changed ? out : statuses;
 }
 
 /**
@@ -683,15 +771,24 @@ export function rollTieBreakSeed(state: GmCombatState, tieBreakSeed: number): Gm
 /**
  * Recommence le décompte des manches (« Tour N » → 1) et repositionne le tour courant sur
  * `firstTurnKey` — le premier de l'ordre d'initiative, fourni par l'appelant (l'ordre vit dans la
- * couche UI) — ou `null` si le roster est vide. NE TOUCHE NI aux états NI aux PV : contrairement à
+ * couche UI) — ou `null` si le roster est vide. NE RETIRE NI états NI PV : contrairement à
  * `resetCombat`, ce n'est PAS une réinitialisation du combat mais un simple « recommencer le tour »
  * du compteur d'initiative (bouton ⟳ de l'en-tête). MJ seul auteur (broadcast automatique).
+ *
+ * Seule retouche aux états : les COMPTEURS DE TOURS (PER-305) sont recalés sur la manche 1 à tours
+ * restants constants (`rebaseStatusDurations`) — ce sont des manches absolues, elles n'auraient plus
+ * aucun sens sur le nouveau décompte.
  */
 export function restartRounds(
   state: GmCombatState,
   firstTurnKey: string | null = null,
 ): GmCombatState {
-  return { ...state, roundNumber: 1, currentTurnKey: firstTurnKey };
+  return {
+    ...state,
+    roundNumber: 1,
+    currentTurnKey: firstTurnKey,
+    statuses: rebaseStatusDurations(state.statuses, state.roundNumber, 1),
+  };
 }
 
 /**
