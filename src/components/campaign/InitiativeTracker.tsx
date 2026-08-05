@@ -57,17 +57,19 @@
  * visibles à ~8. Ce qui reste en compact : identité, bandeau d'initiative, badges d'états EN ENTIER
  * (raison d'être du tracker), DEF, et les PV en barre fine dont le clic ouvre le popover de dégâts /
  * soin (`CompactHpControl` : le geste le plus fréquent après « tour suivant » ne doit pas coûter un
- * changement de mode). Ce qui se replie : les attaques, en info-bulle. Le DÉTAILLÉ reste le défaut ;
- * le réglage est une préférence d'affichage LOCALE (`localStorage`), jamais poussée dans l'état de
- * combat partagé — la projection l'ignore et son rendu est inchangé.
+ * changement de mode). Ce qui se replie : les attaques, en info-bulle. Le réglage est une préférence
+ * d'affichage LOCALE (`localStorage`), jamais poussée dans l'état de combat partagé — la projection
+ * l'ignore et son rendu est inchangé. Le DÉTAILLÉ en était le défaut ; PER-301 l'inverse (voir plus
+ * bas), le compact portant désormais la barre permanente.
  *
- * BARRE PERMANENTE (PER-301) : en mode compact, la bande se COLLE au bas de l'écran de MJ
- * (`position: sticky`, fond dépoli) — le combattant actif et « Tour suivant » restent donc à portée
- * quand on descend consulter une carte, ce qui obligeait jusqu'ici à remonter toute la page. Le
- * collage est réservé au COMPACT (le détaillé, deux fois plus haut, mangerait la moitié de l'écran)
- * et désactivé sous `md` (sur un téléphone, il ne resterait rien à lire). C'est le BAS et non le
- * haut : la bande est en fin de flux, après les trois grilles de cartes — un `sticky top` ne
- * collerait qu'une fois qu'on a défilé jusqu'à elle, il aurait fallu remonter le bloc avant les
+ * BARRE PERMANENTE (PER-301) : la bande se COLLE au bas de l'écran de MJ (`position: sticky`, fond
+ * dépoli) — le combattant actif et « Tour suivant » restent donc à portée quand on descend consulter
+ * une carte, ce qui obligeait jusqu'ici à remonter toute la page. Le collage est réservé au COMPACT
+ * (le détaillé, deux fois plus haut, mangerait la moitié de l'écran) et désactivé sous `md` (sur un
+ * téléphone, il ne resterait rien à lire) ; le compact devient DU MÊME COUP le défaut de l'écran de
+ * MJ, sans quoi la barre permanente resterait invisible derrière une bascule à trouver. C'est le BAS
+ * et non le haut : la bande est en fin de flux, après les trois grilles de cartes — un `sticky top`
+ * ne collerait qu'une fois qu'on a défilé jusqu'à elle, il aurait fallu remonter le bloc avant les
  * grilles et réordonner l'écran.
  *
  * La PALETTE d'états (`statusPalette`) déménage à cette occasion DANS le tracker, entre l'en-tête et
@@ -1455,13 +1457,27 @@ function BandChevron({
  * Clé `localStorage` de la densité des cartes (PER-300). Préférence d'affichage LOCALE à la machine
  * du MJ : elle n'entre PAS dans l'état de combat partagé (rien à synchroniser en session, rien à
  * pousser vers la projection — ce n'est pas une donnée de partie).
+ *
+ * Clé RENOMMÉE par PER-301 (`…-compact` → `…-density-compact`) : le réglage ne gouverne plus la seule
+ * densité des cartes mais aussi le COLLAGE de la bande, et son défaut s'est inversé. Sans ce
+ * renommage, un « Détaillé » enregistré du temps de PER-300 aurait continué de gagner et la barre
+ * permanente n'aurait jamais paru.
  */
-const COMPACT_STORAGE_KEY = 'initiative-tracker-compact';
+const COMPACT_STORAGE_KEY = 'initiative-tracker-density-compact';
+
+/**
+ * Densité par défaut de l'écran de MJ : COMPACT (PER-301), là où PER-300 laissait le détaillé. C'est le
+ * compact qui porte la barre collée en bas de l'écran — la garder derrière une bascule à trouver
+ * rendait invisible la seule chose que le ticket apportait. Le détaillé reste à un clic, et la
+ * PROJECTION ignore ce réglage de bout en bout.
+ */
+const COMPACT_BY_DEFAULT = true;
 
 /**
  * Bascule « Détaillé / Compact » de la bande d'initiative (PER-300), calquée sur `InventoryViewToggle`
- * de l'inventaire (`ToggleButtonGroup` à deux boutons, libellé en info-bulle). Le DÉTAILLÉ reste le
- * défaut : le compact est un mode de confort pour les combats fournis, pas un remplacement.
+ * de l'inventaire (`ToggleButtonGroup` à deux boutons, libellé en info-bulle). Depuis PER-301 le
+ * COMPACT est le défaut : c'est lui qui colle la bande en bas de l'écran. Le détaillé devient le mode
+ * de confort de lecture (jauge de PV complète, attaques dépliées) pour les combats peu fournis.
  */
 function TrackerDensityToggle({
   compact,
@@ -2154,7 +2170,7 @@ export function InitiativeTracker({
   useTurnShortcuts(!projection, rootRef, step);
   // Densité des cartes (PER-300), préférence LOCALE persistée. La projection l'ignore : elle est
   // déjà à la largeur compacte et son rendu ne doit dépendre d'aucun réglage de l'écran de MJ.
-  const [compactPref, setCompactPref] = usePersistedBoolean(COMPACT_STORAGE_KEY, false);
+  const [compactPref, setCompactPref] = usePersistedBoolean(COMPACT_STORAGE_KEY, COMPACT_BY_DEFAULT);
   const compact = !projection && compactPref;
   // Ouverture de la palette d'états (PER-301), persistée SÉPARÉMENT par densité : ouverte par défaut
   // en détaillé (le rendu d'avant), fermée par défaut dans la barre collante du compact. Les deux
