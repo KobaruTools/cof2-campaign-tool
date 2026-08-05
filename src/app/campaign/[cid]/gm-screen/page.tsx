@@ -33,7 +33,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import LocalBarIcon from '@mui/icons-material/LocalBar';
+import HandymanIcon from '@mui/icons-material/Handyman';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -337,19 +337,19 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         {/* Cycle de vie de la session synchronisée (PER-264) : démarrer/terminer + état
             « session en cours ». C'est le gate du temps réel (PER-265+ s'y accrocheront). */}
         <GmSessionControl campaignId={cid} />
-        {/* Outils du MJ (PER-199) : ouvre le tiroir latéral à onglets (rumeurs de taverne,
-            et d'autres outils à venir). Vraie ancre (`?tools=`) → Ctrl/⌘+Clic ouvre dans un
+        {/* Outils du MJ (PER-199, PER-200) : ouvre le tiroir latéral à onglets (rumeurs de
+            taverne, butin, et d'autres outils à venir). Vraie ancre (`?tools=`) → Ctrl/⌘+Clic ouvre dans un
             nouvel onglet, le bouton Retour ferme le tiroir. */}
         <Box sx={{ mb: 2 }}>
           <Button
             variant="outlined"
             size="small"
-            startIcon={<LocalBarIcon />}
+            startIcon={<HandymanIcon />}
             component={Link}
             href={`/campaign/${cid}/gm-screen?${TOOLS_PARAM}=${DEFAULT_GM_TOOL}`}
             scroll={false}
           >
-            Rumeurs de taverne
+            Outils du MJ
           </Button>
         </Box>
         {/* Combat tracker (PER-236, PER-247) : barre d'ajout de créatures, laissée sur toutes les campagnes. */}

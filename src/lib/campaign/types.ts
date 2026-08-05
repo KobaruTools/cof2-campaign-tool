@@ -13,6 +13,7 @@
  * dans le cloud (PER-192/193), ils restent en localStorage et référencent l'UUID
  * cloud de la campagne : la vue campagne les filtre par cette FK.
  */
+import type { EquipmentLine } from '../character/types';
 
 /**
  * Règles de table d'une campagne. Objet **typé** — un champ par règle, pas de
@@ -66,6 +67,39 @@ export interface TavernRumor {
 }
 
 /**
+ * Objet de butin (PER-200) — récompense pré-écrite par le MJ pour sa campagne,
+ * piochée au hasard en jeu (trésor de coffre, récompense, butin sur un adversaire).
+ * Même mécanique « réserve + tirage sans répétition » que les rumeurs de taverne,
+ * même rattachement PROPRE à la campagne : persisté dans la colonne `loot` (jsonb,
+ * tableau) de `public.campaigns`, sous la même RLS propriétaire — les joueurs n'y
+ * accèdent jamais.
+ *
+ * L'objet lui-même est une `EquipmentLine` produite par la MÊME modale de création
+ * d'objet que les fiches (`ItemDialog`, PER-214) : variante mécanique d'un objet du
+ * livre (arme/armure/bouclier + surcharges) OU objet libre typé (`CustomItem`). On
+ * réutilise le système existant tel quel — pas de saisie ad hoc — si bien qu'attribuer
+ * le butin revient à pousser cette ligne DANS l'inventaire d'un personnage, sans
+ * conversion ni perte (DEF magique, charges, apports de stats… tout est déjà porté).
+ *
+ * `id`/`served` enrobent la ligne pour le tirage (module pur `loot.ts`, implémentation
+ * SŒUR de `rumors.ts`, volontairement dupliquée plutôt que factorisée trop tôt).
+ */
+export interface LootItem {
+  /** Clé stable (UUID) — ancre de tirage et `key` React. Slug persisté. */
+  id: string;
+  /**
+   * L'objet, dans la forme d'inventaire du personnage (`EquipmentRef` variante OU
+   * `CustomItem`), produit par `ItemDialog`. Poussé tel quel à l'attribution.
+   */
+  line: EquipmentLine;
+  /**
+   * L'objet a-t-il déjà été tiré dans le cycle courant ? Persistant : le tirage évite
+   * les non-servis jusqu'à ce que le MJ « réinitialise » la réserve.
+   */
+  served: boolean;
+}
+
+/**
  * Campagne : ses notes de MJ et ses règles de table. Regroupe des personnages via
  * la clé étrangère `Character.campaignId`. `id` = UUID généré par la base.
  */
@@ -80,6 +114,11 @@ export interface Campaign {
    * `null` (colonne `not null default '[]'`). Lecture défensive via `parseRumors`.
    */
   rumors: TavernRumor[];
+  /**
+   * Réserve d'objets de butin du MJ (PER-200). Vide par défaut (`[]`), jamais `null`
+   * (colonne `not null default '[]'`). Lecture défensive via `parseLoot`.
+   */
+  loot: LootItem[];
   /** Horodatages ISO recopiés de la base (tri, affichage). */
   createdAt: string;
   updatedAt: string;

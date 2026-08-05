@@ -14,6 +14,7 @@
  * tiroir, un lien direct l'ouvre sur le bon onglet.
  */
 import CloseIcon from '@mui/icons-material/Close';
+import DiamondIcon from '@mui/icons-material/Diamond';
 import LocalBarIcon from '@mui/icons-material/LocalBar';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
@@ -25,14 +26,16 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import type { Campaign } from '@/lib/campaign/types';
+import { LootTreasurePanel } from './LootTreasurePanel';
 import { TavernRumorsPanel } from './TavernRumorsPanel';
 
 /** Identifiants d'onglet du tiroir — servent aussi de valeur au paramètre d'URL `?tools=`. */
-export type GmToolId = 'rumors';
+export type GmToolId = 'rumors' | 'loot';
 
 /** Onglets déclarés, dans l'ordre d'affichage. Étendre ici pour ajouter un outil. */
 const TOOLS: { id: GmToolId; label: string; icon: React.ReactElement }[] = [
   { id: 'rumors', label: 'Rumeurs de taverne', icon: <LocalBarIcon fontSize="small" /> },
+  { id: 'loot', label: 'Butin', icon: <DiamondIcon fontSize="small" /> },
 ];
 
 /** L'onglet par défaut (premier déclaré) — cible du bouton d'ouverture. */
@@ -126,6 +129,7 @@ export function GmToolsDrawer({
 
       <Box sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
         {activeTab === 'rumors' && <TavernRumorsPanel campaign={campaign} />}
+        {activeTab === 'loot' && <LootTreasurePanel campaign={campaign} />}
       </Box>
     </Drawer>
   );

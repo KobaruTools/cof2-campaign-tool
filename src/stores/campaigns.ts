@@ -24,6 +24,7 @@ import {
   updateCampaign,
   type Campaign,
   type CampaignRules,
+  type LootItem,
   type TavernRumor,
 } from '@/lib/campaign';
 import { useCharactersStore } from './characters';
@@ -50,7 +51,7 @@ interface CampaignsState {
    * dès la création ; sinon la base retombe sur le défaut (armes à feu OK).
    */
   create: (name: string, description?: string | null, rules?: CampaignRules) => Promise<Campaign>;
-  /** Met à jour nom/notes/règles de table/rumeurs d'une campagne. Lève en cas d'échec. */
+  /** Met à jour nom/notes/règles de table/rumeurs/butin d'une campagne. Lève en cas d'échec. */
   update: (
     id: string,
     patch: {
@@ -58,6 +59,7 @@ interface CampaignsState {
       description?: string | null;
       rules?: CampaignRules;
       rumors?: TavernRumor[];
+      loot?: LootItem[];
     },
   ) => Promise<void>;
   /**
@@ -118,11 +120,13 @@ export const useCampaignsStore = create<CampaignsState>()((set, get) => ({
       description?: string | null;
       rules?: CampaignRules;
       rumors?: TavernRumor[];
+      loot?: LootItem[];
     } = {};
     if (patch.name !== undefined) normalized.name = patch.name.trim() || 'Nouvelle campagne';
     if (patch.description !== undefined) normalized.description = patch.description?.trim() || null;
     if (patch.rules !== undefined) normalized.rules = patch.rules;
     if (patch.rumors !== undefined) normalized.rumors = patch.rumors;
+    if (patch.loot !== undefined) normalized.loot = patch.loot;
     const updated = await updateCampaign(id, normalized);
     set((state) => ({ campaigns: state.campaigns.map((c) => (c.id === id ? updated : c)) }));
   },

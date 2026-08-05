@@ -9,12 +9,14 @@
  * expose un état d'erreur à l'UI). Le mapping ligne → `Campaign` est isolé dans
  * `rowToCampaign` (fonction pure, testée).
  */
+import type { EquipmentLine } from '@/lib/character/types';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import type { Database, Json } from '@/lib/supabase/types';
 import {
   DEFAULT_CAMPAIGN_RULES,
   type Campaign,
   type CampaignRules,
+  type LootItem,
   type TavernRumor,
 } from './types';
 
@@ -59,6 +61,40 @@ export function parseRumors(raw: Json): TavernRumor[] {
   return out;
 }
 
+/**
+ * Une valeur brute est-elle une `EquipmentLine` PLAUSIBLE ? Même niveau de confiance
+ * que l'équipement des personnages (formes produites par `ItemDialog`, validées côté
+ * client, blob opaque en base) : on vérifie le DISCRIMINANT — objet libre (`custom:true`
+ * + `name` chaîne) OU référence catalogue (`itemId` chaîne) — sans revalider chaque
+ * champ optionnel. La ligne est conservée telle quelle (poussée intacte à l'inventaire).
+ */
+function isPlausibleEquipmentLine(v: unknown): v is EquipmentLine {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  const o = v as Record<string, unknown>;
+  if (o.custom === true) return typeof o.name === 'string';
+  return typeof o.itemId === 'string';
+}
+
+/**
+ * Parse défensif de la colonne `loot` (jsonb) vers `LootItem[]` (PER-200). Même esprit
+ * que `parseRumors` : on n'accepte QUE les éléments bien formés (`id` chaîne + `line`
+ * plausible), on ignore les autres, on ne lève jamais. Une valeur non-tableau (ancien
+ * format, `null`) → réserve vide.
+ */
+export function parseLoot(raw: Json): LootItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: LootItem[] = [];
+  for (const item of raw) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const { id, line, served } = item as Record<string, unknown>;
+      if (typeof id === 'string' && isPlausibleEquipmentLine(line)) {
+        out.push({ id, line, served: served === true });
+      }
+    }
+  }
+  return out;
+}
+
 /** Mappe une ligne SQL `campaigns` vers l'entité `Campaign` de l'application. */
 export function rowToCampaign(row: CampaignRow): Campaign {
   return {
@@ -67,6 +103,7 @@ export function rowToCampaign(row: CampaignRow): Campaign {
     description: row.description,
     rules: parseRules(row.rules),
     rumors: parseRumors(row.rumors),
+    loot: parseLoot(row.loot),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -118,12 +155,13 @@ export async function insertCampaign(input: {
 }
 
 /**
- * Met à jour le nom, les notes, les règles de table et/ou la réserve de rumeurs
- * (PER-199) d'une campagne (RLS propriétaire). Écriture **simple** (pas de verrou
- * optimiste) : la table `campaigns` n'a pas de colonne `version` et l'édition est
- * mono-propriétaire (le MJ, seul) — pas de scénario de concurrence à arbitrer. Les
- * `rules`/`rumors` sont sérialisées telles quelles vers leur colonne jsonb ; leur
- * relecture reste défensive (`parseRules`/`parseRumors`).
+ * Met à jour le nom, les notes, les règles de table, la réserve de rumeurs (PER-199)
+ * et/ou la réserve de butin (PER-200) d'une campagne (RLS propriétaire). Écriture
+ * **simple** (pas de verrou optimiste) : la table `campaigns` n'a pas de colonne
+ * `version` et l'édition est mono-propriétaire (le MJ, seul) — pas de scénario de
+ * concurrence à arbitrer. Les `rules`/`rumors`/`loot` sont sérialisées telles quelles
+ * vers leur colonne jsonb ; leur relecture reste défensive (`parseRules`/`parseRumors`/
+ * `parseLoot`).
  */
 export async function updateCampaign(
   id: string,
@@ -132,13 +170,15 @@ export async function updateCampaign(
     description?: string | null;
     rules?: CampaignRules;
     rumors?: TavernRumor[];
+    loot?: LootItem[];
   },
 ): Promise<Campaign> {
   const supabase = createBrowserSupabaseClient();
-  const { rules, rumors, ...rest } = patch;
+  const { rules, rumors, loot, ...rest } = patch;
   const row: Database['public']['Tables']['campaigns']['Update'] = { ...rest };
   if (rules) row.rules = rules as unknown as Json;
   if (rumors) row.rumors = rumors as unknown as Json;
+  if (loot) row.loot = loot as unknown as Json;
   const { data, error } = await supabase
     .from('campaigns')
     .update(row)

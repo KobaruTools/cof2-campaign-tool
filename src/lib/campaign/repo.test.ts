@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Database, Json } from '@/lib/supabase/types';
-import { parseRules, parseRumors, rowToCampaign } from './repo';
+import { parseLoot, parseRules, parseRumors, rowToCampaign } from './repo';
 import type { CampaignRules } from './types';
 
 type CampaignRow = Database['public']['Tables']['campaigns']['Row'];
@@ -13,6 +13,7 @@ const row = (over: Partial<CampaignRow> = {}): CampaignRow => ({
   description: null,
   rules: { firearmsAllowed: true },
   rumors: [],
+  loot: [],
   created_at: '2026-07-01T10:00:00Z',
   updated_at: '2026-07-02T11:00:00Z',
   ...over,
@@ -61,6 +62,7 @@ describe('rowToCampaign', () => {
       description: null,
       rules: { firearmsAllowed: true, hitDieOnLevelUp: false },
       rumors: [],
+      loot: [],
       createdAt: '2026-07-01T10:00:00Z',
       updatedAt: '2026-07-02T11:00:00Z',
     });
@@ -98,6 +100,37 @@ describe('parseRumors', () => {
     expect(parseRumors(raw as unknown as Json)).toEqual([
       { id: 'ok', text: 'valide', served: false },
       { id: 'ok2', text: 'servi', served: false },
+    ]);
+  });
+});
+
+describe('parseLoot', () => {
+  it('lit les objets bien formés (objet libre ET variante catalogue)', () => {
+    const raw = [
+      { id: 'l1', line: { custom: true, name: 'Anneau de brume', quantity: 1, details: 'Invisibilité 1×/jour' }, served: false },
+      { id: 'l2', line: { itemId: 'epee-longue', quantity: 1 }, served: true },
+    ];
+    expect(parseLoot(raw as unknown as Json)).toEqual(raw);
+  });
+
+  it('retombe sur une réserve vide pour une valeur non-tableau (null, ancien format)', () => {
+    expect(parseLoot(null)).toEqual([]);
+    expect(parseLoot({ id: 'x' } as unknown as Json)).toEqual([]);
+  });
+
+  it('ignore les éléments mal formés et normalise served', () => {
+    const raw = [
+      { id: 'ok', line: { custom: true, name: 'valide', quantity: 1 } }, // served absent → false
+      { id: 42, line: { custom: true, name: 'id non-chaîne', quantity: 1 } }, // id non-chaîne → rejeté
+      { id: 'no-line' }, // line absente → rejeté
+      { id: 'bad-line', line: { quantity: 1 } }, // line sans discriminant → rejeté
+      { id: 'custom-no-name', line: { custom: true, quantity: 1 } }, // objet libre sans nom → rejeté
+      'chaîne nue', // rejeté
+      { id: 'ok2', line: { itemId: 'dague', quantity: 1 }, served: 'yes' }, // served non-booléen → false
+    ];
+    expect(parseLoot(raw as unknown as Json)).toEqual([
+      { id: 'ok', line: { custom: true, name: 'valide', quantity: 1 }, served: false },
+      { id: 'ok2', line: { itemId: 'dague', quantity: 1 }, served: false },
     ]);
   });
 });

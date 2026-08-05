@@ -70,6 +70,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          loot: Json
           name: string
           owner_id: string
           rules: Json
@@ -80,6 +81,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          loot?: Json
           name: string
           owner_id: string
           rules?: Json
@@ -90,6 +92,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          loot?: Json
           name?: string
           owner_id?: string
           rules?: Json
