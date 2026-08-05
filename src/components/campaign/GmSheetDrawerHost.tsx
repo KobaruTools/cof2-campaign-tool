@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Character } from '@/lib/character/types';
 import type { Campaign } from '@/lib/campaign/types';
+import type { Player } from '@/lib/player/types';
 import { useCharactersStore } from '@/stores/characters';
 import { GmSheetDrawer } from './GmSheetDrawer';
 
@@ -27,14 +28,14 @@ export interface GmSheetDrawerHostProps {
   characters: Character[];
   /** Campagne courante — autorisation effective des armes à feu dans le panneau. */
   campaign: Campaign | undefined;
-  /** Nom du joueur par id, pour le badge de l'en-tête du panneau. */
-  playerNameById: Map<string, string>;
+  /** Joueur par id, pour le badge enrichi de l'en-tête du panneau. */
+  playerById: Map<string, Player>;
 }
 
 export function GmSheetDrawerHost({
   characters,
   campaign,
-  playerNameById,
+  playerById,
 }: GmSheetDrawerHostProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -80,7 +81,7 @@ export function GmSheetDrawerHost({
     <GmSheetDrawer
       character={shown}
       campaign={campaign}
-      playerName={shown?.playerId ? playerNameById.get(shown.playerId) ?? null : null}
+      player={shown?.playerId ? playerById.get(shown.playerId) ?? null : null}
       open={sheetId !== null && !invalid}
       onClose={closeSheet}
     />

@@ -53,7 +53,6 @@ import { AppHeader } from '@/components/AppHeader';
 import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
 import { GmScreenCard } from '@/components/campaign/GmScreenCard';
 import { GmSheetDrawerHost } from '@/components/campaign/GmSheetDrawerHost';
-import { GmSessionControl } from '@/components/campaign/GmSessionControl';
 import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard';
 import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
@@ -63,6 +62,7 @@ import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkContr
 import { GmToolsDrawerHost, TOOLS_PARAM } from '@/components/campaign/GmToolsDrawerHost';
 import { DEFAULT_GM_TOOL } from '@/components/campaign/GmToolsDrawer';
 import { HomeBackground } from '@/components/HomeBackground';
+import { GmSessionHeaderIndicator } from '@/components/session/GmSessionHeaderIndicator';
 import { SIDE_ACCENT } from '@/lib/ui/creature';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { customCreatureBlob } from '@/lib/session/customCreature';
@@ -184,7 +184,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     campaignsLoading,
     campaign,
     claimed,
-    playerNameById,
+    playerById,
     labeledCreatures,
     allies,
     enemies,
@@ -328,15 +328,16 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           { label: campaign.name, href: `/campaign/${cid}` },
           { label: 'Écran de MJ' },
         ]}
+        // Cycle de vie de la session synchronisée (PER-264), compacté dans l'en-tête
+        // (comme le voyant de la fiche, PER-269) : démarrer/terminer + état « session
+        // en cours ». C'est le gate du temps réel (PER-265+ s'y accrochent).
+        sessionIndicator={<GmSessionHeaderIndicator campaignId={cid} />}
       />
 
       {/* Volontairement HORS du `Container` habituel du site : l'écran de MJ occupe
           toute la largeur pour afficher un maximum de cartes de front. Padding
           symétrique (gauche/droite = haut/bas) pour laisser respirer les bords. */}
       <Box sx={{ p: { xs: 2, sm: 4 } }}>
-        {/* Cycle de vie de la session synchronisée (PER-264) : démarrer/terminer + état
-            « session en cours ». C'est le gate du temps réel (PER-265+ s'y accrocheront). */}
-        <GmSessionControl campaignId={cid} />
         {/* Outils du MJ (PER-199, PER-200) : ouvre le tiroir latéral à onglets (rumeurs de
             taverne, butin, et d'autres outils à venir). Vraie ancre (`?tools=`) → Ctrl/⌘+Clic ouvre dans un
             nouvel onglet, le bouton Retour ferme le tiroir. */}
@@ -415,9 +416,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                   <GmScreenCard
                     key={character.id}
                     character={character}
-                    playerName={
-                      character.playerId ? playerNameById.get(character.playerId) ?? null : null
-                    }
+                    player={character.playerId ? playerById.get(character.playerId) ?? null : null}
                     href={`/character/${character.id}`}
                     panelHref={`/campaign/${cid}/gm-screen?sheet=${character.id}`}
                   />
@@ -584,7 +583,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         <GmSheetDrawerHost
           characters={claimed}
           campaign={campaign}
-          playerNameById={playerNameById}
+          playerById={playerById}
         />
       </Suspense>
 

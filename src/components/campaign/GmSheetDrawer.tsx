@@ -43,6 +43,7 @@ import { ancestryById, classById } from '@/data';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
 import { isCustomItem, type Character } from '@/lib/character/types';
 import type { Campaign } from '@/lib/campaign/types';
+import type { Player } from '@/lib/player/types';
 import { armorRestrictionByLine } from '@/lib/character/armorRestrictions';
 import { companionMountEnSelle, listCompanions } from '@/lib/character/companions';
 import { firearmsEffective } from '@/lib/character/firearms';
@@ -58,7 +59,7 @@ import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { FirearmsAllowedProvider } from '@/components/ClassIcon';
-import { PlayerBadge } from '@/components/home/PlayerBadge';
+import { PlayerBadgeTooltip } from '@/components/campaign/PlayerBadgeTooltip';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine';
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
@@ -93,8 +94,8 @@ export interface GmSheetDrawerProps {
   character: Character | undefined;
   /** Campagne courante — sert l'autorisation EFFECTIVE des armes à feu (PER-185). */
   campaign: Campaign | undefined;
-  /** Nom du joueur qui incarne le personnage (badge de l'en-tête), ou `null`. */
-  playerName: string | null;
+  /** Joueur qui incarne le personnage (badge enrichi de l'en-tête), ou `null`. */
+  player: Player | null;
   /** Le panneau est-il ouvert ? */
   open: boolean;
   /** Fermeture demandée (croix, Échap, clic dans le voile). */
@@ -104,7 +105,7 @@ export interface GmSheetDrawerProps {
 export function GmSheetDrawer({
   character,
   campaign,
-  playerName,
+  player,
   open,
   onClose,
 }: GmSheetDrawerProps) {
@@ -146,7 +147,7 @@ export function GmSheetDrawer({
         <GmSheetDrawerContent
           character={character}
           campaign={campaign}
-          playerName={playerName}
+          player={player}
           game={game}
           onClose={onClose}
           layout={layout}
@@ -191,7 +192,7 @@ function GmSheetDrawerSkeleton({ onClose }: { onClose: () => void }) {
 interface GmSheetDrawerContentProps {
   character: Character;
   campaign: Campaign | undefined;
-  playerName: string | null;
+  player: Player | null;
   game: NonNullable<ReturnType<typeof useCharacterGameState>>;
   onClose: () => void;
   layout: FeaturesLayout;
@@ -214,7 +215,7 @@ interface GmSheetDrawerContentProps {
 function GmSheetDrawerContent({
   character,
   campaign,
-  playerName,
+  player,
   game,
   onClose,
   layout,
@@ -316,7 +317,7 @@ function GmSheetDrawerContent({
       >
         <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <PlayerBadge name={playerName} />
+            <PlayerBadgeTooltip player={player} />
             <Typography
               variant="h6"
               component="h2"

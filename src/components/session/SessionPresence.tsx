@@ -10,17 +10,27 @@
  * une puce d'accent (or pour le MJ, neutre pour un joueur) et son nom. Le client
  * courant (`selfKey`) est discrètement marqué « (vous) ». La fenêtre projetée n'est
  * jamais dans cette liste (exclue en amont).
+ *
+ * `playerById` (MJ SEULEMENT) : quand fourni, le nom de chaque joueur présent devient
+ * survolable via `PlayerInfoTooltip` (dernière connexion + copie du lien magique),
+ * même infobulle que `PlayerBadgeTooltip`. Absent = noms en texte brut (vue joueur de
+ * `/play` et fiche consultée par un joueur) — un joueur ne doit jamais voir le lien
+ * magique d'un autre.
  */
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
+import { PlayerInfoTooltip } from '@/components/campaign/PlayerInfoTooltip';
 import type { SessionPresenceEntry } from '@/lib/session/presence';
+import type { Player } from '@/lib/player/types';
 
 export interface SessionPresenceProps {
   /** Présents dérivés du canal (MJ + joueurs ; projection déjà exclue). */
   present: SessionPresenceEntry[];
   /** Clé de présence de CE client, pour marquer « (vous) ». */
   selfKey?: string;
+  /** Joueur par id (réservé au MJ) — active l'infobulle enrichie sur chaque nom. */
+  playerById?: Map<string, Player>;
 }
 
 /** Accent de la puce selon le rôle : or discret pour le MJ, neutre pour un joueur. */
@@ -28,7 +38,7 @@ function dotColor(kind: SessionPresenceEntry['kind']): string {
   return kind === 'gm' ? 'rgb(214, 179, 106)' : 'rgb(129, 199, 132)';
 }
 
-export function SessionPresence({ present, selfKey }: SessionPresenceProps) {
+export function SessionPresence({ present, selfKey, playerById }: SessionPresenceProps) {
   // Tant que la présence n'est pas synchronisée (aucun présent), on n'affiche rien :
   // discret, et évite un « personne connecté » trompeur au tout premier instant.
   if (present.length === 0) return null;
@@ -43,6 +53,14 @@ export function SessionPresence({ present, selfKey }: SessionPresenceProps) {
       </Typography>
       {present.map((p) => {
         const isSelf = selfKey !== undefined && p.key === selfKey;
+        const player = p.kind === 'player' && p.playerId ? playerById?.get(p.playerId) : undefined;
+        const nameNode = player ? (
+          <PlayerInfoTooltip player={player}>
+            <Box component="span">{p.name}</Box>
+          </PlayerInfoTooltip>
+        ) : (
+          p.name
+        );
         return (
           <Box
             key={p.key}
@@ -72,7 +90,7 @@ export function SessionPresence({ present, selfKey }: SessionPresenceProps) {
                 bgcolor: dotColor(p.kind),
               }}
             />
-            {p.kind === 'gm' ? 'MJ' : p.name}
+            {p.kind === 'gm' ? 'MJ' : nameNode}
             {isSelf && (
               <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
                 (vous)

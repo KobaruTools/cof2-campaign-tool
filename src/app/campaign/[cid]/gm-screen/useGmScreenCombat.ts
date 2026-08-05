@@ -33,6 +33,7 @@ import type {
 } from '@/components/campaign/InitiativeTracker';
 import type { Character } from '@/lib/character/types';
 import type { Campaign } from '@/lib/campaign/types';
+import type { Player } from '@/lib/player/types';
 import type { CreatureAttack } from '@/data/schema';
 import {
   useGmCombatState,
@@ -111,6 +112,8 @@ export interface GmScreenCombat {
   claimed: Character[];
   /** Nom du joueur par id (pour l'étiquette « (Joueur) »). */
   playerNameById: Map<string, string>;
+  /** Joueur (entité complète : présence, lien magique) par id, pour le badge enrichi du MJ. */
+  playerById: Map<string, Player>;
   /** Créatures du combat, étiquetées dans l'ordre d'ajout (tous camps confondus). */
   labeledCreatures: LabeledCreature[];
   /** Créatures ALLIÉES du combat (sous-ensemble de `labeledCreatures`), dans l'ordre d'ajout. */
@@ -244,6 +247,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     () => new Map(players.map((p) => [p.id, p.name])),
     [players],
   );
+  const playerById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
 
   // Nom de chaque créature (liste légère) pour l'étiquette, avant même le blob. Repli sur
   // l'affichage diffusé par le MJ (`creatureInfo`, PER-293) pour les slugs absents de la liste
@@ -535,6 +539,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     campaign,
     claimed,
     playerNameById,
+    playerById,
     labeledCreatures,
     allies,
     enemies,

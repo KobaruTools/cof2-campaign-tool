@@ -36,24 +36,25 @@ import { CompactDerivedStats } from '@/components/sheet/CompactDerivedStats';
 import { CompactGauges, COMPACT_GAUGES_STRIP_HEIGHT } from '@/components/sheet/CompactGauges';
 import { buildCharacterDerivedView } from '@/components/sheet/characterDerivedView';
 import { ArmorPenaltyReminder } from '@/components/campaign/ArmorPenaltyReminder';
-import { PlayerBadge } from '@/components/home/PlayerBadge';
+import { PlayerBadgeTooltip } from '@/components/campaign/PlayerBadgeTooltip';
 import { deriveStats } from '@/lib/engine';
 import { armorEncumbrancePenalty, wornArmorItemLabel } from '@/lib/character/equipment';
 import { armorPenaltyDivisor } from '@/lib/character/effects';
 import { profileAccentGradient } from '@/lib/ui/classColors';
 import type { Character } from '@/lib/character/types';
+import type { Player } from '@/lib/player/types';
 
 export interface GmScreenCardProps {
   character: Character;
-  /** Nom du joueur qui incarne le personnage (badge), ou `null` si aucun. */
-  playerName: string | null;
+  /** Joueur qui incarne le personnage (badge, survol = présence + lien magique), ou `null`. */
+  player: Player | null;
   /** Destination de la fiche complète (bouton dédié, rendu en vraie ancre). */
   href: string;
   /** Destination du panneau latéral de fiche — ancre couvrant toute la carte (PER-258). */
   panelHref: string;
 }
 
-export function GmScreenCard({ character, playerName, href, panelHref }: GmScreenCardProps) {
+export function GmScreenCard({ character, player, href, panelHref }: GmScreenCardProps) {
   // Vue dérivée partagée avec la fiche (mêmes stats + puces). `null` si profil
   // incomplet : on n'affiche alors que l'aperçu.
   const view = buildCharacterDerivedView(character);
@@ -131,7 +132,7 @@ export function GmScreenCard({ character, playerName, href, panelHref }: GmScree
         {/* Ligne du joueur : badge à gauche, petit bouton d'ouverture poussé à droite. */}
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', pointerEvents: 'auto' }}>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <PlayerBadge name={playerName} />
+            <PlayerBadgeTooltip player={player} />
           </Box>
           <AppTooltip title="Ouvrir la fiche complète">
             <IconButton

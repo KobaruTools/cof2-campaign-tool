@@ -68,9 +68,11 @@ interface AppHeaderProps {
   /**
    * Voyant de session temps réel (PER-269), inséré dans le cluster droit de l'étage 1
    * ENTRE le livre des règles et le menu compte. Réservé aux pages où l'on sait résoudre
-   * la campagne + l'identité de présence du spectateur (fiche de personnage) ; il s'auto-
-   * efface hors session active. Absent ailleurs (le voyant vit alors dans la barre inline
-   * de la page, ex. `/play`).
+   * la campagne + l'identité de présence du spectateur (fiche de personnage) ou piloter
+   * le cycle de vie de la session (écran de MJ) ; sur la fiche il s'auto-efface hors
+   * session active, sur l'écran de MJ il expose un bouton « Démarrer la session » à la
+   * place. Absent ailleurs (le voyant vit alors dans la barre inline de la page, ex.
+   * `/play`).
    */
   sessionIndicator?: ReactNode;
 }
