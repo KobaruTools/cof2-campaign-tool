@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   compareInitiative,
+  isDefeatedCreature,
   randomTieBreakSeed,
+  relegateSidelined,
+  sidelineRank,
   sortByInitiative,
   type InitiativeCombatant,
+  type SidelinableCombatant,
 } from './initiativeOrder';
 
 /** Fabrique un combattant de test (joueur par défaut). */
@@ -18,7 +22,7 @@ function creature(key: string, initiative: number, agility?: number): Initiative
 }
 
 /** Clés dans l'ordre de jeu, pour des attentes lisibles. */
-const keys = (rows: InitiativeCombatant[]) => rows.map((r) => r.key);
+const keys = (rows: readonly { key: string }[]) => rows.map((r) => r.key);
 
 describe('sortByInitiative', () => {
   it('classe par initiative décroissante', () => {
@@ -86,6 +90,99 @@ describe('compareInitiative', () => {
 
   it('renvoie 0 entre deux créatures à égalité parfaite (ordre d’entrée conservé)', () => {
     expect(compareInitiative(creature('c-1', 10, 2), creature('c-2', 10, 2), 7)).toBe(0);
+  });
+});
+
+/** Fabrique une ligne reléguable : en scène par défaut, PV pleins. */
+function row(
+  key: string,
+  options: { isCreature?: boolean; hidden?: boolean; maxHp?: number; hp?: number } = {},
+): SidelinableCombatant {
+  const { isCreature = true, hidden = false, maxHp = 12, hp = maxHp } = options;
+  return { key, isCreature, hidden, maxHp, depletion: { hp: { lethal: maxHp - hp, temp: 0 } } };
+}
+
+describe('isDefeatedCreature', () => {
+  it('reconnaît une créature à 0 PV', () => {
+    expect(isDefeatedCreature(row('gobelin', { hp: 0 }))).toBe(true);
+  });
+
+  it('ne dit rien d’une créature encore debout, même à 1 PV', () => {
+    expect(isDefeatedCreature(row('gobelin', { hp: 1 }))).toBe(false);
+  });
+
+  it('NE tient JAMAIS un personnage joueur à 0 PV pour vaincu (à terre / mourant, p. 220)', () => {
+    expect(isDefeatedCreature(row('kael', { isCreature: false, hp: 0 }))).toBe(false);
+  });
+
+  it('ne conclut rien d’un bloc de créature dont les PV max sont inconnus', () => {
+    // Bloc du bestiaire pas encore chargé : `maxHp` à 0 donnerait 0 PV courants par défaut.
+    expect(isDefeatedCreature(row('inconnue', { maxHp: 0 }))).toBe(false);
+  });
+});
+
+describe('sidelineRank', () => {
+  it('classe en scène, puis masquée, puis vaincue', () => {
+    expect(sidelineRank(row('en-scene'))).toBe(0);
+    expect(sidelineRank(row('renfort', { hidden: true }))).toBe(1);
+    expect(sidelineRank(row('cadavre', { hp: 0 }))).toBe(2);
+  });
+
+  it('tient une créature à la fois masquée et vaincue pour vaincue', () => {
+    expect(sidelineRank(row('cadavre-cache', { hidden: true, hp: 0 }))).toBe(2);
+  });
+});
+
+describe('relegateSidelined', () => {
+  it('repousse les vaincues en fin de bande', () => {
+    const rows = [row('ilya', { isCreature: false }), row('gob-1'), row('gob-2', { hp: 0 }), row('ourse')];
+    expect(keys(relegateSidelined(rows))).toEqual(['ilya', 'gob-1', 'ourse', 'gob-2']);
+  });
+
+  it('groupe les masquées entre les combattants en scène et les vaincues', () => {
+    const rows = [
+      row('gob-mort', { hp: 0 }),
+      row('renfort', { hidden: true }),
+      row('ilya', { isCreature: false }),
+      row('gob-vivant'),
+    ];
+    expect(keys(relegateSidelined(rows))).toEqual(['ilya', 'gob-vivant', 'renfort', 'gob-mort']);
+  });
+
+  it('conserve l’ordre d’initiative À L’INTÉRIEUR de chaque groupe', () => {
+    // L'entrée arrive déjà classée par `sortByInitiative` : le tri stable ne doit pas la brasser.
+    const rows = [row('a'), row('b-mort', { hp: 0 }), row('c'), row('d-mort', { hp: 0 }), row('e')];
+    expect(keys(relegateSidelined(rows))).toEqual(['a', 'c', 'e', 'b-mort', 'd-mort']);
+  });
+
+  it('ÉPARGNE la créature vaincue dont c’est le tour', () => {
+    // Le MJ qui met à 0 PV la créature en train de jouer ne doit pas la voir filer sous son curseur.
+    const rows = [row('ilya', { isCreature: false }), row('gob-1', { hp: 0 }), row('ourse')];
+    expect(keys(relegateSidelined(rows, 'gob-1'))).toEqual(['ilya', 'gob-1', 'ourse']);
+  });
+
+  it('n’épargne PAS une créature MASQUÉE dont c’est le tour (sinon le tour de table boucle)', () => {
+    // Cas de recette PER-302 : épargner le renfort masqué le faisait REMONTER à sa place
+    // d'initiative, et le tour — qui suit la bande affichée — n'atteignait plus jamais la fin de
+    // bande, donc plus jamais la manche suivante.
+    // L'entrée est dans l'ordre d'initiative NU : le renfort (init. 15) précède le gobelin (14).
+    const rows = [
+      row('ilya', { isCreature: false }),
+      row('renfort', { hidden: true }),
+      row('gob-1'),
+    ];
+    expect(keys(relegateSidelined(rows, 'renfort'))).toEqual(['ilya', 'gob-1', 'renfort']);
+  });
+
+  it('ne mute pas l’entrée', () => {
+    const rows = [row('mort', { hp: 0 }), row('vivant')];
+    relegateSidelined(rows);
+    expect(keys(rows)).toEqual(['mort', 'vivant']);
+  });
+
+  it('laisse intacte une bande sans vaincu ni masqué', () => {
+    const rows = [row('a'), row('b'), row('c')];
+    expect(keys(relegateSidelined(rows))).toEqual(['a', 'b', 'c']);
   });
 });
 

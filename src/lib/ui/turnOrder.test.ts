@@ -108,6 +108,79 @@ describe('stepTurn', () => {
   });
 });
 
+describe('stepTurn — créatures vaincues sautées (PER-302)', () => {
+  it('saute une créature vaincue en avant', () => {
+    expect(
+      stepTurn({ keys: KEYS, currentKey: 'alix', roundNumber: 2, skipKeys: ['gobelin-1'] }, 1),
+    ).toEqual({ key: 'gobelin-2', roundNumber: 2 });
+  });
+
+  it('saute plusieurs vaincues d’affilée', () => {
+    expect(
+      stepTurn(
+        { keys: KEYS, currentKey: 'alix', roundNumber: 2, skipKeys: ['gobelin-1', 'gobelin-2'] },
+        1,
+      ),
+    ).toEqual({ key: 'ourse', roundNumber: 2 });
+  });
+
+  it('saute aussi en arrière (symétrie)', () => {
+    expect(
+      stepTurn({ keys: KEYS, currentKey: 'ourse', roundNumber: 2, skipKeys: ['gobelin-2'] }, -1),
+    ).toEqual({ key: 'gobelin-1', roundNumber: 2 });
+  });
+
+  it('n’incrémente la manche qu’UNE fois en franchissant la fin de bande peuplée de vaincues', () => {
+    // Cas exact de la relégation (PER-302) : les vaincues sont massées en fin de bande, donc « Tour
+    // suivant » depuis le dernier vivant les traverse toutes avant de boucler sur le premier.
+    expect(
+      stepTurn(
+        { keys: KEYS, currentKey: 'gobelin-1', roundNumber: 2, skipKeys: ['gobelin-2', 'ourse'] },
+        1,
+      ),
+    ).toEqual({ key: 'alix', roundNumber: 3 });
+  });
+
+  it('décrémente la manche une seule fois en reculant à travers les vaincues', () => {
+    expect(
+      stepTurn(
+        { keys: KEYS, currentKey: 'alix', roundNumber: 3, skipKeys: ['gobelin-2', 'ourse'] },
+        -1,
+      ),
+    ).toEqual({ key: 'gobelin-1', roundNumber: 2 });
+  });
+
+  it('part du tour courant même quand CE combattant est sauté', () => {
+    // La créature qui vient de tomber garde la main jusqu'au pas suivant : on doit pouvoir la quitter.
+    expect(
+      stepTurn({ keys: KEYS, currentKey: 'gobelin-1', roundNumber: 2, skipKeys: ['gobelin-1'] }, 1),
+    ).toEqual({ key: 'gobelin-2', roundNumber: 2 });
+  });
+
+  it('démarre sur le premier combattant NON sauté quand le combat n’a pas commencé', () => {
+    expect(
+      stepTurn({ keys: KEYS, currentKey: null, roundNumber: 1, skipKeys: ['alix', 'gobelin-1'] }, 1),
+    ).toEqual({ key: 'gobelin-2', roundNumber: 1 });
+    expect(
+      stepTurn({ keys: KEYS, currentKey: null, roundNumber: 1, skipKeys: ['ourse'] }, -1),
+    ).toEqual({ key: 'gobelin-2', roundNumber: 1 });
+  });
+
+  it('ignore le saut quand TOUT le monde est sauté (dernière créature abattue)', () => {
+    // Sans ce garde-fou, le tour n'aurait nulle part où se poser : on retombe sur le pas simple.
+    expect(stepTurn({ keys: KEYS, currentKey: 'ourse', roundNumber: 2, skipKeys: KEYS }, 1)).toEqual({
+      key: 'alix',
+      roundNumber: 3,
+    });
+  });
+
+  it('ignore une clé sautée qui ne fait pas partie de l’ordre', () => {
+    expect(
+      stepTurn({ keys: KEYS, currentKey: 'alix', roundNumber: 2, skipKeys: ['gobelin-9'] }, 1),
+    ).toEqual({ key: 'gobelin-1', roundNumber: 2 });
+  });
+});
+
 describe('turnDirectionFromKey', () => {
   it('reconnaît les touches de progression', () => {
     expect(turnDirectionFromKey('n')).toBe(1);

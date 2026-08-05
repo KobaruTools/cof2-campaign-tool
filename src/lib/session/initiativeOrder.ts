@@ -13,7 +13,14 @@
  *     RÉINITIALISATION du combat (= nouveau combat, nouveau tirage). Ce départage ne concerne que
  *     les joueurs : entre deux créatures, l'ordre d'ajout au combat est conservé (tri stable) —
  *     départager deux gobelins identiques n'apporte rien.
+ *
+ * Par-dessus ce classement, l'ÉCRAN DE MJ relègue en fin de bande les combattants qui ne sont plus
+ * dans le chemin (`relegateSidelined`, PER-302) : c'est une commodité d'affichage, pas une règle
+ * d'initiative — la projection continue de rendre l'ordre nu.
  */
+
+import { currentHp } from '@/lib/character/gauges';
+import type { Depletion } from '@/lib/character/types';
 
 /**
  * Combattant classable : le strict minimum dont l'ordre a besoin. Les lignes du tracker
@@ -87,6 +94,76 @@ export function sortByInitiative<T extends InitiativeCombatant>(
   seed = 0,
 ): T[] {
   return [...rows].sort((a, b) => compareInitiative(a, b, seed));
+}
+
+/**
+ * Combattant dont on sait s'il encombre encore la bande. Comme `InitiativeCombatant`, c'est un
+ * sous-ensemble de la ligne du tracker (`InitiativeRow`), qui se relègue donc telle quelle.
+ */
+export interface SidelinableCombatant {
+  /** Clé stable du combattant. */
+  key: string;
+  /** Créature (PNJ) plutôt que personnage joueur. */
+  isCreature: boolean;
+  /** Masquée aux joueurs (œil fermé) : présente sur l'écran de MJ, absente de la projection. */
+  hidden?: boolean;
+  /** PV max ; `0` = inconnus (bloc de créature pas encore chargé). */
+  maxHp: number;
+  /** Jauges entamées, d'où se lisent les PV courants. */
+  depletion: Depletion;
+}
+
+/**
+ * Créature VAINCUE : une créature à 0 PV est morte, son tour n'existe plus. La règle est
+ * ASYMÉTRIQUE et c'est voulu — un personnage joueur à 0 PV est à terre / mourant (p. 220), pas
+ * mort : il garde sa place dans l'ordre et son tour. `maxHp > 0` : des PV max inconnus donneraient
+ * 0 PV courants par défaut, on ne conclut donc rien d'un bloc pas encore chargé.
+ */
+export function isDefeatedCreature(combatant: SidelinableCombatant): boolean {
+  return (
+    combatant.isCreature && combatant.maxHp > 0 && currentHp(combatant.maxHp, combatant.depletion) === 0
+  );
+}
+
+/** Groupe de relégation : plus le rang est haut, plus la carte est repoussée en fin de bande. */
+export type SidelineRank = 0 | 1 | 2;
+
+/**
+ * Rang de relégation d'un combattant : `0` en scène, `1` masqué aux joueurs (renfort pas encore
+ * entré en scène), `2` vaincu. Une créature à la fois masquée et vaincue est d'abord vaincue —
+ * elle ne reviendra pas en scène.
+ */
+export function sidelineRank(combatant: SidelinableCombatant): SidelineRank {
+  if (isDefeatedCreature(combatant)) return 2;
+  if (combatant.hidden) return 1;
+  return 0;
+}
+
+/**
+ * Relègue en fin de bande les combattants hors du chemin (PER-302), l'entrée étant DÉJÀ classée par
+ * `sortByInitiative` : le tri ne porte que sur le rang de groupe et, `Array#sort` étant stable,
+ * l'initiative reste la clé de tri À L'INTÉRIEUR de chaque groupe. Copie ; l'entrée n'est pas mutée.
+ *
+ * `activeKey` (le combattant dont c'est le tour) est épargné, mais SEULEMENT s'il vient d'être
+ * VAINCU : le MJ qui met à 0 PV la créature en train de jouer ne doit pas la voir filer au bout de la
+ * bande sous son curseur. Elle rejoindra le groupe des vaincues au tour suivant, quand elle n'aura
+ * plus la main. L'exemption ne vaut donc que pour ce changement de groupe SOUS le curseur.
+ *
+ * Elle ne s'étend surtout PAS aux MASQUÉES : une créature masquée l'est de longue date, sa carte est
+ * déjà en fin de bande, et l'épargner la ferait REMONTER à sa place d'initiative le temps de son tour.
+ * Le pas suivant repartant de cette position (le tour suit la bande affichée), le tour de table
+ * bouclait sans fin sur les derniers combattants sans jamais franchir la fin de bande — donc sans
+ * jamais incrémenter la manche. Constaté en recette (PER-302) avec un renfort masqué à l'initiative 15.
+ */
+export function relegateSidelined<T extends SidelinableCombatant>(
+  rows: readonly T[],
+  activeKey?: string | null,
+): T[] {
+  const rank = (row: T) => {
+    const groupRank = sidelineRank(row);
+    return groupRank === 2 && row.key === activeKey ? 0 : groupRank;
+  };
+  return [...rows].sort((a, b) => rank(a) - rank(b));
 }
 
 /**

@@ -37,6 +37,17 @@
  * puisque ses PV ne leur sont pas montrés. Réservé aux créatures : un personnage à 0 PV est à terre /
  * mourant (p. 220), pas mort.
  *
+ * RELÉGATION EN FIN DE BANDE (PER-302), écran de MJ uniquement : un combat qui s'étire ne doit pas
+ * obliger le MJ à défiler à travers les cadavres pour atteindre les vivants. Les cartes hors du
+ * chemin sont donc regroupées à la fin — d'abord les créatures MASQUÉES aux joueurs (renforts pas
+ * encore entrés en scène), puis les créatures VAINCUES — et estompées d'autant. L'initiative reste la
+ * clé de tri à l'intérieur de chaque groupe (`relegateSidelined`), rien n'est jamais supprimé ni
+ * replié derrière un bouton, et le combattant ACTIF est toujours épargné : mettre à 0 PV la créature
+ * en train de jouer ne la fait pas filer sous le curseur. « Tour suivant » saute les créatures
+ * vaincues (leur tour n'existe plus) mais JAMAIS un personnage à 0 PV (p. 220) ; on peut toujours
+ * redonner la main à une créature vaincue en cliquant son bandeau d'initiative. La PROJECTION est
+ * inchangée : elle rend l'ordre nu, pour que la croix reste l'annonce de la mort.
+ *
  * CONFORT DE DÉFILEMENT (PER-298) : la bande signale ce qui reste hors champ par des ESTOMPES en
  * dégradé sur ses bords — valables aussi en projection, où elles disent à la table qu'il y a
  * d'autres combattants. Deux CHEVRONS d'une carte par clic et une barre de défilement épaissie
@@ -141,6 +152,7 @@ import {
   type ScrollMetrics,
 } from '@/lib/ui/horizontalScroll';
 import { stepTurn, turnDirectionFromKey, type TurnDirection } from '@/lib/ui/turnOrder';
+import { isDefeatedCreature, relegateSidelined } from '@/lib/session/initiativeOrder';
 import { crossOutBackgroundImage } from '@/lib/ui/crossOut';
 import { AppTooltip } from '@/components/AppTooltip';
 import { CollapsibleLabelButton } from '@/components/CollapsibleLabelButton';
@@ -1744,12 +1756,11 @@ function CombatantColumn({
   // Bandeau de jauges de la projection : PERSONNAGES uniquement (les PV des créatures
   // restent réservés au MJ) et seulement si les PV max sont connus (profil complet).
   const showProjectionGauges = projection && !row.isCreature && row.maxHp > 0;
-  // Créature VAINCUE (0 PV) : carte barrée + tête de mort sur l'écran PUBLIC, où ses PV sont
-  // masqués. Réservé aux CRÉATURES — un personnage à 0 PV est à terre / mourant (p. 220), pas mort,
-  // et sa chute se lit déjà sur son bandeau de jauges. `maxHp > 0` : des PV max inconnus (bloc de
-  // créature pas chargé) donneraient 0 PV courants par défaut, on ne conclut donc rien.
-  const defeated =
-    projection && row.isCreature && row.maxHp > 0 && currentHp(row.maxHp, row.depletion) === 0;
+  // Créature VAINCUE (0 PV, cf. `isDefeatedCreature` : jamais un personnage, à terre / mourant
+  // p. 220, pas mort). En PROJECTION, sa carte est barrée et surmontée d'une tête de mort — c'est ce
+  // qui annonce sa mort à la table, où ses PV sont masqués.
+  const defeatedCreature = isDefeatedCreature(row);
+  const defeated = projection && defeatedCreature;
   return (
     <Box
       ref={interactive?.dropRef}
@@ -1775,11 +1786,13 @@ function CombatantColumn({
         // Bloc quasi opaque (90 %) : lisible même par-dessus l'illustration de
         // fond de l'écran de MJ et sur la projection.
         bgcolor: 'rgba(20, 20, 23, 0.9)',
-        // Créature masquée aux joueurs : légèrement estompée sur l'écran de MJ
-        // (80 % d'opacité) pour la distinguer d'un coup d'œil — elle est de toute
-        // façon absente de la projection (filtrée plus haut). Les personnages ne
-        // sont jamais masqués (`hidden` toujours faux).
-        opacity: row.hidden ? 0.8 : 1,
+        // Cartes RELÉGUÉES de l'écran de MJ (PER-302), estompées d'autant qu'elles sont loin du
+        // chemin : créature vaincue 55 %, créature masquée aux joueurs 80 % — la relégation les
+        // pousse en fin de bande, l'estompe dit d'un coup d'œil où finissent les vivants. Le
+        // combattant ACTIF garde sa pleine opacité quel que soit son groupe : c'est lui qui joue, sa
+        // carte doit rester la plus lisible de la bande. Rien de tout ça en projection : les masquées y sont
+        // filtrées et les vaincues portent déjà leur croix. Les personnages ne sont jamais masqués.
+        opacity: projection || isActive ? 1 : defeatedCreature ? 0.55 : row.hidden ? 0.8 : 1,
         // Bordure toujours de 2px (seule la COULEUR change) pour éviter tout saut de mise en page.
         // Priorité : survol d'une puce d'état (bleu) > tour actif (blanc) > camp (PER-249 : rouge
         // adversaire / vert allié) > neutre (personnages joueurs). On modifie la couleur de la
@@ -2132,18 +2145,36 @@ export function InitiativeTracker({
   statusPalette,
   stickyBottom = false,
 }: InitiativeTrackerProps) {
-  // Premier de l'ordre d'initiative (les `rows` sont déjà triées par l'appelant) : cible du
-  // repositionnement du bouton ⟳ « recommencer le décompte ». `null` si le roster est vide.
-  const firstTurnKey = rows[0]?.key ?? null;
+  // En PROJECTION, on retire les combattants masqués aux joueurs (créatures cachées) : ils restent
+  // visibles côté MJ mais absents de l'écran projeté, et l'ordre y est rendu NU — la relégation
+  // déplacerait la carte d'une créature à l'instant même où sa croix annonce sa mort à la table.
+  // Sur l'ÉCRAN DE MJ, à l'inverse, les combattants hors du chemin sont repoussés en fin de bande
+  // (PER-302 : masqués puis vaincus), le combattant actif étant toujours épargné.
+  const displayedRows = projection
+    ? rows.filter((r) => !r.hidden)
+    : relegateSidelined(rows, currentTurnKey);
+  // Premier de la bande AFFICHÉE (les `rows` arrivent déjà triées par l'appelant, la relégation ne
+  // fait que regrouper) : cible du repositionnement du bouton ⟳ « recommencer le décompte ».
+  // `null` si le roster est vide.
+  const firstTurnKey = displayedRows[0]?.key ?? null;
   /**
    * Avance (+1) ou recule (−1) d'un cran dans l'ordre d'initiative (PER-299). Toute l'arithmétique
-   * — bouclage aux deux bouts, incrément/décrément de manche, cas limites — vit dans `stepTurn` ;
-   * ici on ne fait qu'appliquer. Le compteur de manche n'est notifié QUE s'il change, pour ne pas
-   * réécrire l'état du combat (et le diffuser en session) à chaque pas d'un tour de table.
+   * — bouclage aux deux bouts, incrément/décrément de manche, saut des créatures vaincues, cas
+   * limites — vit dans `stepTurn` ; ici on ne fait qu'appliquer. Le compteur de manche n'est notifié
+   * QUE s'il change, pour ne pas réécrire l'état du combat (et le diffuser en session) à chaque pas
+   * d'un tour de table.
    */
   const step = (direction: TurnDirection) => {
     const next = stepTurn(
-      { keys: rows.map((r) => r.key), currentKey: currentTurnKey, roundNumber },
+      {
+        // L'ordre parcouru est celui AFFICHÉ : le tour suit la bande que le MJ a sous les yeux.
+        keys: displayedRows.map((r) => r.key),
+        currentKey: currentTurnKey,
+        roundNumber,
+        // Les créatures vaincues n'ont plus de tour ; `isDefeatedCreature` laisse délibérément
+        // passer les personnages à 0 PV (à terre / mourant, p. 220 — leur tour existe toujours).
+        skipKeys: displayedRows.filter(isDefeatedCreature).map((r) => r.key),
+      },
       direction,
     );
     if (!next) return;
@@ -2151,9 +2182,6 @@ export function InitiativeTracker({
     if (next.roundNumber !== roundNumber) onRoundNumberChange?.(next.roundNumber);
   };
 
-  // En PROJECTION, on retire les combattants masqués aux joueurs (créatures cachées) :
-  // ils restent visibles côté MJ mais absents de l'écran projeté. Ailleurs, tout s'affiche.
-  const displayedRows = projection ? rows.filter((r) => !r.hidden) : rows;
   // Les états ne sont interactifs que hors projection (auteur = MJ uniquement).
   const interactive = !projection && statusControls;
   // Signature de l'ORDRE des cartes affichées : un ajout, un retrait ou un reclassement par les
