@@ -32,9 +32,11 @@ import {
 } from '@dnd-kit/core';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
 import Container from '@mui/material/Container';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -59,6 +61,7 @@ import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindow
 import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkControl';
 import { HomeBackground } from '@/components/HomeBackground';
 import { SIDE_ACCENT } from '@/lib/ui/creature';
+import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { customCreatureBlob } from '@/lib/session/customCreature';
 import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
 import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
@@ -88,20 +91,81 @@ function creatureCardBlob(inst: LabeledCreature) {
   return inst.custom ? customCreatureBlob(inst.custom, inst.name) : undefined;
 }
 
-/** Titre d'une section de la grille de combat (joueurs / alliés / adversaires). */
-function SectionHeading({ label, color }: { label: string; color?: string }) {
+/**
+ * Section repliable de la grille de combat (joueurs / alliés / adversaires). L'état
+ * ouvert/fermé est persisté en local — c'est une préférence d'affichage du MJ, la même
+ * quelle que soit la campagne, d'où une clé `localStorage` sans `cid`.
+ *
+ * Même affordance que les sections repliables des réglages de campagne : en-tête
+ * cliquable à la souris comme au clavier, chevron rotatif. Le compteur reste visible
+ * une fois replié, pour savoir ce qui est masqué sans avoir à rouvrir.
+ */
+function CollapsibleSection({
+  label,
+  color,
+  storageKey,
+  count,
+  children,
+}: {
+  label: string;
+  color?: string;
+  storageKey: string;
+  count: number;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = usePersistedBoolean(storageKey, true);
+  const accent = color ?? 'text.secondary';
   return (
-    <Typography
-      variant="subtitle2"
-      sx={{
-        fontWeight: 700,
-        color: color ?? 'text.secondary',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-      }}
-    >
-      {label}
-    </Typography>
+    <Box>
+      <Box
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen(!open);
+          }
+        }}
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          cursor: 'pointer',
+          userSelect: 'none',
+          color: accent,
+          borderRadius: 1,
+          '&:focus-visible': { outline: '2px solid currentColor', outlineOffset: 2 },
+        }}
+      >
+        <ExpandMoreIcon
+          fontSize="small"
+          sx={{
+            transition: 'transform 0.2s',
+            transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+          }}
+        />
+        <Typography
+          variant="subtitle2"
+          component="span"
+          sx={{
+            fontWeight: 700,
+            color: 'inherit',
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}
+        >
+          {label}
+        </Typography>
+        <Typography variant="subtitle2" component="span" sx={{ color: 'text.secondary' }}>
+          ({count})
+        </Typography>
+      </Box>
+      <Collapse in={open} unmountOnExit>
+        <Box sx={{ ...GRID_SX, mt: 1.5 }}>{children}</Box>
+      </Collapse>
+    </Box>
   );
 }
 
@@ -292,63 +356,69 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           </Paper>
         ) : (
           // Trois grilles distinctes (PER-249) : joueurs, puis alliés (si présents), puis
-          // adversaires (si présents). Chacune reprend le même gabarit de colonnes.
+          // adversaires (si présents). Chacune reprend le même gabarit de colonnes et se
+          // replie indépendamment, l'état étant retenu d'une session à l'autre.
           <Stack spacing={{ xs: 3, sm: 4 }}>
             {claimed.length > 0 && (
-              <Box>
-                <SectionHeading label="Joueurs" />
-                <Box sx={{ ...GRID_SX, mt: 1.5 }}>
-                  {claimed.map((character) => (
-                    <GmScreenCard
-                      key={character.id}
-                      character={character}
-                      playerName={
-                        character.playerId ? playerNameById.get(character.playerId) ?? null : null
-                      }
-                      href={`/character/${character.id}`}
-                      panelHref={`/campaign/${cid}/gm-screen?sheet=${character.id}`}
-                    />
-                  ))}
-                </Box>
-              </Box>
+              <CollapsibleSection
+                label="Joueurs"
+                storageKey="gm-screen-players-open"
+                count={claimed.length}
+              >
+                {claimed.map((character) => (
+                  <GmScreenCard
+                    key={character.id}
+                    character={character}
+                    playerName={
+                      character.playerId ? playerNameById.get(character.playerId) ?? null : null
+                    }
+                    href={`/character/${character.id}`}
+                    panelHref={`/campaign/${cid}/gm-screen?sheet=${character.id}`}
+                  />
+                ))}
+              </CollapsibleSection>
             )}
             {allies.length > 0 && (
-              <Box>
-                <SectionHeading label="Alliés" color={SIDE_ACCENT.ally} />
-                <Box sx={{ ...GRID_SX, mt: 1.5 }}>
-                  {allies.map((inst) => (
-                    <GmScreenCreatureCard
-                      key={inst.id}
-                      slug={inst.slug}
-                      blob={creatureCardBlob(inst)}
-                      label={inst.label}
-                      side="ally"
-                      visible={inst.visible !== false}
-                      onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
-                      onRemove={() => removeCreature(inst.id)}
-                    />
-                  ))}
-                </Box>
-              </Box>
+              <CollapsibleSection
+                label="Alliés"
+                color={SIDE_ACCENT.ally}
+                storageKey="gm-screen-allies-open"
+                count={allies.length}
+              >
+                {allies.map((inst) => (
+                  <GmScreenCreatureCard
+                    key={inst.id}
+                    slug={inst.slug}
+                    blob={creatureCardBlob(inst)}
+                    label={inst.label}
+                    side="ally"
+                    visible={inst.visible !== false}
+                    onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
+                    onRemove={() => removeCreature(inst.id)}
+                  />
+                ))}
+              </CollapsibleSection>
             )}
             {enemies.length > 0 && (
-              <Box>
-                <SectionHeading label="Adversaires" color={SIDE_ACCENT.enemy} />
-                <Box sx={{ ...GRID_SX, mt: 1.5 }}>
-                  {enemies.map((inst) => (
-                    <GmScreenCreatureCard
-                      key={inst.id}
-                      slug={inst.slug}
-                      blob={creatureCardBlob(inst)}
-                      label={inst.label}
-                      side="enemy"
-                      visible={inst.visible !== false}
-                      onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
-                      onRemove={() => removeCreature(inst.id)}
-                    />
-                  ))}
-                </Box>
-              </Box>
+              <CollapsibleSection
+                label="Adversaires"
+                color={SIDE_ACCENT.enemy}
+                storageKey="gm-screen-enemies-open"
+                count={enemies.length}
+              >
+                {enemies.map((inst) => (
+                  <GmScreenCreatureCard
+                    key={inst.id}
+                    slug={inst.slug}
+                    blob={creatureCardBlob(inst)}
+                    label={inst.label}
+                    side="enemy"
+                    visible={inst.visible !== false}
+                    onToggleVisible={() => setCreatureVisibility(inst.id, inst.visible === false)}
+                    onRemove={() => removeCreature(inst.id)}
+                  />
+                ))}
+              </CollapsibleSection>
             )}
           </Stack>
         )}
