@@ -1333,15 +1333,17 @@ export const prestigeFeatures2: Feature[] = [
     // constant sur les r8 de prestige) ; `hideFromStatusPanel` = règle d'office des voies de prestige
     // (l'usage se suit sur la carte de la capacité, jamais en jauge dans « État du personnage »).
     usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
-    // « elle est immédiatement affaiblie » → l'état AFFAIBLI du glossaire (`weakened`), posé sur la cible
-    // depuis le tracker de combat (patron `archer-r5`, PER-290). Un seul marqueur : la capacité elle-même
-    // est limitée à un usage par combat.
-    inflictableStates: { stateIds: ['weakened'], resetOn: 'combat' },
-    // NON MÉCANISÉS, en verbatim (arbitrage propriétaire) : le « +5 pour toucher » et le « +1d4°/round »
-    // portent sur UNE attaque et non sur le score d'attaque du personnage (un `attack-bonus` s'ajouterait
-    // en permanence à la carte au contact) ; et la cadence « par round de combat, maximum 5 rounds »
-    // n'a aucune primitive — `usageCounter.resetOn` ne connaît pas le round. Le seuil « NC inférieur au
-    // niveau du colosse » se lit à la table (la fiche ignore le NC de la cible).
+    // NON MÉCANISÉ, en verbatim (arbitrage propriétaire) : tout le reste de l'attaque. Le « +5 pour
+    // toucher » et le « +1d4°/round » portent sur UNE attaque et non sur le score d'attaque du
+    // personnage (un `attack-bonus` s'ajouterait en permanence à la carte au contact) ; la cadence
+    // « par round de combat, maximum 5 rounds » n'a aucune primitive (`usageCounter.resetOn` ne
+    // connaît pas le round) ; le seuil « NC inférieur au niveau du colosse » se lit à la table (la
+    // fiche ignore le NC de la cible).
+    // PAS d'`inflictableStates: ['weakened']` non plus (arbitrage propriétaire) : le marqueur « déjà
+    // infligé ce combat » n'apporte rien ici — la capacité est DÉJÀ limitée à un usage par combat par
+    // son compteur, donc l'état ne peut de toute façon être infligé qu'une fois. Le bouton ferait
+    // doublon. À distinguer d'`archer-r5` (PER-290), qui a bien besoin d'un marqueur PAR ÉTAT parce
+    // qu'il en propose quatre, chacun infligeable une fois par combat.
     sourcePage: 150,
   },
 

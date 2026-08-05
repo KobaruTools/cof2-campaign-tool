@@ -217,11 +217,13 @@ describe('PER-74 — voie du colosse (p. 149-150, recette end-to-end)', () => {
     expect(gauges.some((g) => g.key.startsWith('rage'))).toBe(true);
   });
 
-  it("r8 : l'état Affaibli est infligeable ; le +5 et la cadence par round restent en verbatim", () => {
-    expect(featureById.get(R8)?.inflictableStates).toEqual({ stateIds: ['weakened'], resetOn: 'combat' });
+  it('r8 : tout le reste de l’attaque reste en verbatim, sans marqueur d’état', () => {
     // Un `attack-bonus` s'ajouterait EN PERMANENCE à la carte d'attaque : le +5 ne porte que sur UNE
     // attaque. Et aucune primitive n'exprime une cadence « par round de combat (maximum 5) ».
     expect(featureById.get(R8)?.effects ?? []).toEqual([]);
+    // Aucun marqueur « Affaibli déjà infligé » : le compteur limite DÉJÀ la capacité à un usage par
+    // combat, donc l'état ne peut être infligé qu'une fois — le bouton ferait doublon.
+    expect(featureById.get(R8)?.inflictableStates).toBeUndefined();
   });
 
   it('la voie ne touche ni la DEF, ni les compétences, ni les protections', () => {
