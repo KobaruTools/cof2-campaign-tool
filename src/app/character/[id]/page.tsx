@@ -398,6 +398,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       unarmedCriticalRanges,
       rangedWeaponDamage,
       meleeSituationalDamage,
+      offHandMeleeSituationalDamage,
       rangedSituationalDamage,
       meleeAttackNotes,
       rangedAttackMagicalSourceId,
@@ -1079,6 +1080,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 unarmedCriticalRanges={unarmedCriticalRanges}
                 rangedWeaponDamage={rangedWeaponDamage}
                 meleeSituationalDamage={meleeSituationalDamage}
+                offHandMeleeSituationalDamage={offHandMeleeSituationalDamage}
                 rangedSituationalDamage={rangedSituationalDamage}
                 rangedAttackMagicalSourceId={rangedAttackMagicalSourceId}
                 rangedAttackElement={rangedAttackElement}
@@ -1485,6 +1487,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       {character.campaignId && (
         <SheetInitiativeBar
           campaignId={character.campaignId}
+          characterId={character.id}
           scrollTopButtonVisible={scrolledPastHeader}
         />
       )}

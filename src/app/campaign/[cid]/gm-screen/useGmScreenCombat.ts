@@ -381,6 +381,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
           playerName: character.playerId ? playerNameById.get(character.playerId) ?? null : null,
           profileLabel: summary.characterClass,
           profileColor: classColor(summary.classId),
+          classId: summary.classId,
           portraitSrc: `/classes/${summary.classId}${character.portraitVariant === 'alt' ? '-2' : ''}.webp`,
           initiative,
           initiativeDelta,

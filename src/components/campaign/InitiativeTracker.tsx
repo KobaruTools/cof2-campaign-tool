@@ -230,6 +230,11 @@ export interface InitiativeRow {
   /** Couleur d'accent du profil (teinte du texte de profil). */
   profileColor: string;
   /**
+   * Id du profil (ex. `'guerrier'`) — pour l'icône de classe (`ClassIcon`) du condensé replié de
+   * la fiche. Absent pour les créatures, qui n'ont pas de profil.
+   */
+  classId?: string;
+  /**
    * Couleur d'accent de la COLONNE (PER-249) : teinte la bordure du bloc selon le camp de
    * la créature (rouge = adversaire, vert = allié). Absente pour les personnages joueurs
    * (bordure neutre). N'a pas d'effet sur le combattant actif, dont la bordure reste blanche.

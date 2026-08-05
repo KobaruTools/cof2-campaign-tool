@@ -29,13 +29,17 @@
  * tour — le bouton ⟳ « recommencer le décompte » de l'écran de MJ le remet à `null` plutôt que de
  * resélectionner le premier combattant, précisément pour que ce signal reste fiable.
  */
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import KeyboardDoubleArrowDownIcon from '@mui/icons-material/KeyboardDoubleArrowDown';
 import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import Box from '@mui/material/Box';
 import Collapse from '@mui/material/Collapse';
+import Fade from '@mui/material/Fade';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
+import { ClassIcon } from '@/components/ClassIcon';
 import { InitiativeTracker, type InitiativeRow } from '@/components/campaign/InitiativeTracker';
 import { useGmScreenCombat } from '@/app/campaign/[cid]/gm-screen/useGmScreenCombat';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
@@ -120,46 +124,155 @@ function useUnstuckFromViewportBottom(ref: { current: HTMLElement | null }, acti
 }
 
 /** Côté (px) d'une puce, normale puis mise en évidence pour le combattant actif. */
-const DOT_SIZE = 9;
-const ACTIVE_DOT_SIZE = 13;
+const DOT_SIZE = 20;
+const ACTIVE_DOT_SIZE = 28;
 
 /**
- * Représentation ULTRA CONDENSÉE de l'ordre d'initiative pour le bandeau replié : une puce de
- * couleur par combattant (même teinte que sa carte dans la bande dépliée), dans l'ordre
- * d'initiative, la puce du combattant ACTIF cerclée de blanc et légèrement agrandie — le repère
- * minimal (« qui joue, et qui vient après ») sans dérouler la moindre carte. Nom complet en
- * info-bulle native sur chaque puce.
+ * Couleur neutre de repli (créatures, ET personnage sans profil résolu) : contour BLANC quel que
+ * soit le camp (allié ou adverse) — les créatures n'ont pas de couleur de « profil » à reprendre,
+ * contrairement aux personnages joueurs (cf. `ringColorFor`).
  */
-function CondensedOrderDots({ rows, currentTurnKey }: { rows: InitiativeRow[]; currentTurnKey: string | null }) {
+const NEUTRAL_RING = 'rgba(255, 255, 255, 0.92)';
+
+/**
+ * Couleur du contour d'une puce : celle du PROFIL pour un personnage joueur (`row.profileColor`,
+ * la même teinte que sa carte dans la bande dépliée), BLANCHE pour une créature — alliée ou
+ * adverse, cf. demande explicite : les créatures n'ont pas de profil à représenter par une couleur.
+ */
+function ringColorFor(row: InitiativeRow): string {
+  return row.isCreature ? NEUTRAL_RING : row.profileColor;
+}
+
+/**
+ * Anneau en `border` plutôt qu'en `box-shadow` (une première version) : à cette taille, le halo
+ * d'un `box-shadow` rognait sur les coins de l'anneau côté rendu (cercle un peu « carré ») — la
+ * bordure, elle, suit exactement le `border-radius` de la puce.
+ */
+function ringSx(color: string, isActive: boolean) {
+  return { border: `1.5px solid ${alpha(color, isActive ? 0.95 : 0.55)}` };
+}
+
+/**
+ * Pulsation du combattant actif quand c'est SON PERSONNAGE (`isMine`) — même idiome que
+ * `pulseSx` de `SessionConnectionBadge` (anneau qui s'étend puis s'efface, désactivé si
+ * `prefers-reduced-motion`), portée plus loin (halo plus large, opacité de départ plus haute) :
+ * le joueur doit repérer d'un coup d'œil que c'est SON tour, pas seulement qu'un tour est en
+ * cours — le halo blanc reste blanc quel que soit le profil (demande explicite), pour trancher
+ * sur n'importe quelle couleur de contour. PAS de « pop » d'échelle (retiré : le grandissement de
+ * la puce active est un changement d'état simple, cf. `SIZE_TRANSITION`, pas une pulsation).
+ */
+const PULSE_SX = {
+  animation: 'sheetInitiativePulse 1.3s ease-out infinite',
+  '@keyframes sheetInitiativePulse': {
+    '0%': { boxShadow: '0 0 0 0 rgba(255, 255, 255, 0.85)' },
+    '70%': { boxShadow: '0 0 0 11px rgba(255, 255, 255, 0)' },
+    '100%': { boxShadow: '0 0 0 0 rgba(255, 255, 255, 0)' },
+  },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+} as const;
+
+/**
+ * Transition simple (pas une animation en boucle) sur le changement de taille/contour quand un
+ * combattant devient actif ou cesse de l'être : la valeur cible reste un changement D'ÉTAT franc
+ * (20 → 28 px), seule la TRANSITION vers cette valeur est adoucie.
+ */
+const SIZE_TRANSITION = 'transform 0.2s ease, border-color 0.2s ease';
+
+/** Facteur d'agrandissement du combattant ACTIF, dérivé des deux tailles ci-dessus. */
+const ACTIVE_SCALE = ACTIVE_DOT_SIZE / DOT_SIZE;
+
+/**
+ * Représentation ULTRA CONDENSÉE de l'ordre d'initiative pour le bandeau replié : l'ICÔNE DE
+ * PROFIL de chaque combattant (`ClassIcon`, la même glyphe que le reste de la fiche — pas son
+ * portrait illustré, pas une puce de couleur abstraite), dans l'ordre d'initiative. Le combattant
+ * ACTIF est agrandi et son contour renforcé ; si c'est en plus SON PROPRE personnage
+ * (`characterId`), l'anneau PULSE (toujours blanc) pour que le joueur remarque que c'est SON tour
+ * sans avoir à dérouler la bande. Sans profil (créature, ou bloc non chargé), repli sur un avatar
+ * générique. Nom complet en info-bulle native.
+ *
+ * AGRANDISSEMENT SANS DÉCALAGE EN X : chaque puce vit dans un conteneur RÉSERVANT toujours la
+ * taille MAX (`ACTIVE_DOT_SIZE`, `flexShrink: 0`) — la largeur de la bande ne bouge donc jamais
+ * quand un combattant devient actif/cesse de l'être. La puce elle-même reste à taille FIXE
+ * (`DOT_SIZE`) et se grossit par `transform: scale(...)` en `position: absolute`, centrée sur son
+ * conteneur : `transform` est peint PAR-DESSUS la mise en page sans jamais la modifier, donc ni la
+ * puce elle-même ni ses voisines ne se décalent horizontalement pendant la transition.
+ */
+const CondensedOrderDots = forwardRef<
+  HTMLDivElement,
+  {
+    rows: InitiativeRow[];
+    currentTurnKey: string | null;
+    /** Personnage propriétaire de CETTE fiche : distingue « c'est un tour » de « c'est MON tour ». */
+    characterId: string;
+  }
+  // `ref` + le reste des props (dont `style`) sont injectés par `Fade` — un composant custom placé
+  // sous une transition MUI doit les relayer pour que le fondu s'applique réellement.
+>(function CondensedOrderDots({ rows, currentTurnKey, characterId, ...other }, ref) {
   return (
-    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', overflow: 'hidden', minWidth: 0 }}>
+    <Stack
+      ref={ref}
+      direction="row"
+      spacing={0.75}
+      sx={{ alignItems: 'center', overflow: 'hidden', minWidth: 0 }}
+      {...other}
+    >
       {rows.map((row) => {
         const isActive = row.key === currentTurnKey;
-        const size = isActive ? ACTIVE_DOT_SIZE : DOT_SIZE;
+        const isMine = row.key === characterId;
+        const commonSx = {
+          position: 'absolute' as const,
+          top: '50%',
+          left: '50%',
+          width: DOT_SIZE,
+          height: DOT_SIZE,
+          borderRadius: '50%',
+          boxSizing: 'border-box' as const,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: SIZE_TRANSITION,
+          transform: `translate(-50%, -50%) scale(${isActive ? ACTIVE_SCALE : 1})`,
+          ...ringSx(ringColorFor(row), isActive),
+          ...(isActive && isMine ? PULSE_SX : {}),
+        };
         return (
+          // Conteneur à taille FIXE (le max des deux états) : c'est LUI qui occupe une place dans
+          // la bande, jamais la puce mise à l'échelle — la ligne ne respire donc jamais en largeur.
           <Box
             key={row.key}
-            title={row.name}
-            sx={{
-              width: size,
-              height: size,
-              flexShrink: 0,
-              borderRadius: '50%',
-              bgcolor: row.accentColor ?? row.profileColor,
-              ...(isActive && { boxShadow: '0 0 0 2px rgba(255, 255, 255, 0.9)' }),
-            }}
-          />
+            sx={{ position: 'relative', width: ACTIVE_DOT_SIZE, height: ACTIVE_DOT_SIZE, flexShrink: 0 }}
+          >
+            {row.classId ? (
+              <Box title={row.name} sx={{ ...commonSx, bgcolor: alpha(row.profileColor, 0.16) }}>
+                <ClassIcon classId={row.classId} size={Math.round(DOT_SIZE * 0.62)} />
+              </Box>
+            ) : (
+              <Box
+                title={row.name}
+                sx={{
+                  ...commonSx,
+                  bgcolor: row.accentColor ?? row.profileColor,
+                  color: 'rgba(255, 255, 255, 0.9)',
+                }}
+              >
+                <PersonOutlineIcon sx={{ fontSize: DOT_SIZE * 0.62 }} />
+              </Box>
+            )}
+          </Box>
         );
       })}
     </Stack>
   );
-}
+});
 
 export function SheetInitiativeBar({
   campaignId,
+  characterId,
   scrollTopButtonVisible = false,
 }: {
   campaignId: string;
+  /** Personnage propriétaire de cette fiche — distingue, dans le condensé replié, « c'est un tour » de « c'est MON tour » (pulsation). */
+  characterId: string;
   /**
    * `ScrollToTopButton` est révélé par le même déclenchement de défilement que le sous-titre de
    * l'en-tête de la fiche (`scrolledPastHeader`) et partage le coin bas-droit du viewport avec ce
@@ -185,7 +298,9 @@ export function SheetInitiativeBar({
   // sémantique du bouton ⟳ de l'écran de MJ) : avant le premier tour, l'ordre n'a encore rien de
   // « courant » à mettre en évidence, la liste nue serait plus confuse qu'utile.
   const showCondensedOrder = collapsed && currentTurnKey !== null;
-  const visibleRows = showCondensedOrder ? initiativeRows.filter((r) => !r.hidden) : [];
+  // Calculée INCONDITIONNELLEMENT (pas seulement quand affichée) : le fondu de sortie a besoin des
+  // dernières puces connues pendant sa transition, pas d'une liste déjà vidée.
+  const visibleRows = initiativeRows.filter((r) => !r.hidden);
 
   return (
     <Box ref={barRef} sx={STICKY_SX}>
@@ -221,7 +336,9 @@ export function SheetInitiativeBar({
           <Typography variant="subtitle2" sx={{ fontWeight: 700, flexShrink: 0 }}>
             Ordre d&apos;initiative
           </Typography>
-          {showCondensedOrder && <CondensedOrderDots rows={visibleRows} currentTurnKey={currentTurnKey} />}
+          <Fade in={showCondensedOrder} unmountOnExit timeout={200}>
+            <CondensedOrderDots rows={visibleRows} currentTurnKey={currentTurnKey} characterId={characterId} />
+          </Fade>
         </Stack>
         <Box
           sx={{
