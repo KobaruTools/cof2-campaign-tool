@@ -41,30 +41,30 @@ function BrandIcon(props: SvgIconProps) {
  * n'a pas de libellé propre). Présent sur TOUTES les pages : remplace l'ancienne flèche
  * de retour comme point d'ancrage vers l'accueil.
  *
- * `condensed` (au défilement) : rétrécit l'icône, en transition douce, pour dégager de
- * la place (surtout sur mobile).
+ * Taille FIXE, calée sur la min-height compacte de la Toolbar (cf. `AppHeader` — l'en-tête
+ * ne change plus de hauteur au défilement, seule la taille du texte des boutons de nav
+ * varie désormais).
  *
- * Le bouton est **carré** (largeur = hauteur, calées sur la hauteur exacte de la Toolbar
- * selon `condensed`) et **collé au bord gauche** (marge gauche négative annulant la
- * gouttière de la Toolbar) : sa **bordure droite** sert de séparateur vertical avec la
- * nav qui suit, sur toute la hauteur dynamique de l'en-tête.
+ * Le bouton est **carré** (largeur = hauteur) et **collé au bord gauche** (marge gauche
+ * négative annulant la gouttière de la Toolbar) : sa **bordure droite** sert de
+ * séparateur vertical avec la nav qui suit, sur toute la hauteur de l'en-tête.
  *
  * Contrairement aux autres boutons de l'en-tête, le logo N'a PAS de voile blanc au survol :
  * il est remplacé par (1) un léger **fond** en dégradé de gris qui apparaît en fondu, (2)
  * une **brillance** bleu/violet discrète qui balaie le fond une fois, et (3) un léger
  * **zoom** du SVG.
  */
-export function AppHeaderBrand({ condensed = false }: { condensed?: boolean }) {
-  const iconSize = condensed ? 22 : 28;
+export function AppHeaderBrand() {
+  const iconSize = 22;
   // Le balayage de brillance est lancé au `mouseEnter` et joue jusqu'au bout, même si la
   // souris quitte le bouton avant la fin (pas d'arrêt brutal). Il se réarme tout seul à la
   // fin (`onAnimationEnd`) pour pouvoir rejouer au survol suivant. `false` = pas
   // d'animation au montage (aucun flash).
   const [shining, setShining] = useState(false);
-  // Taille carrée calée sur la min-height exacte de la Toolbar (cf. AppHeader), pour que
+  // Taille carrée calée sur la min-height (fixe) de la Toolbar (cf. AppHeader), pour que
   // le carré remplisse toute la hauteur de l'étage 1 et que sa bordure droite serve de
-  // séparateur pleine hauteur. Suit la condensation au défilement.
-  const size = condensed ? { xs: 44, sm: 48 } : { xs: 56, sm: 64 };
+  // séparateur pleine hauteur.
+  const size = { xs: 44, sm: 48 };
   return (
     <IconButton
       color="inherit"
@@ -72,7 +72,7 @@ export function AppHeaderBrand({ condensed = false }: { condensed?: boolean }) {
       href="/"
       aria-label="Accueil"
       onMouseEnter={() => setShining(true)}
-      sx={(theme) => ({
+      sx={{
         position: 'relative',
         overflow: 'hidden',
         // Carré plein hauteur, collé au bord gauche (marge négative = gouttière Toolbar).
@@ -82,9 +82,6 @@ export function AppHeaderBrand({ condensed = false }: { condensed?: boolean }) {
         mr: { xs: 1, sm: 1.5 },
         borderRadius: 0,
         borderRight: '1px solid rgba(255, 255, 255, 0.18)',
-        transition: theme.transitions.create(['width', 'height'], {
-          duration: theme.transitions.duration.short,
-        }),
         // Pas de voile blanc au survol/focus (remplacé par le fond dégradé + brillance).
         '&:hover, &.Mui-focusVisible': { backgroundColor: 'transparent' },
         // Fondu du fond dégradé de gris au survol (opacité < 1 : reste léger).
@@ -102,7 +99,7 @@ export function AppHeaderBrand({ condensed = false }: { condensed?: boolean }) {
         // on promeut le calque sur le GPU (`translateZ` + `will-change` +
         // `backfaceVisibility`) pour un rendu net et sans scintillement.
         '&:hover .brand-logo': { transform: 'translateZ(0) scale(1.12)' },
-      })}
+      }}
     >
       {/* Fond dégradé de gris révélé au survol, VERTICAL (bas → haut) : gris clair en bas
           → quasiment la couleur du fond de l'en-tête (rgb 20,20,23) en haut, pour un delta
@@ -151,7 +148,7 @@ export function AppHeaderBrand({ condensed = false }: { condensed?: boolean }) {
           transformOrigin: 'center',
           willChange: 'transform',
           backfaceVisibility: 'hidden',
-          transition: theme.transitions.create(['width', 'height', 'transform'], {
+          transition: theme.transitions.create('transform', {
             duration: theme.transitions.duration.short,
           }),
         })}

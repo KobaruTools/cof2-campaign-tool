@@ -31,27 +31,16 @@ import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import { HeaderNavButton } from '@/components/HeaderNavButton';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { listUnlockedSources } from '@/lib/bestiary';
-import {
-  BOOKS,
-  DEFAULT_BOOK_ID,
-  bookIdForSourceSlug,
-  rulesHref,
-  type BookMeta,
-} from '@/lib/ui/books';
-
-const IS_CONFIGURED = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-);
+import { useUnlockedBooks } from '@/lib/ui/useUnlockedBooks';
+import { BOOKS, DEFAULT_BOOK_ID, rulesHref, type BookMeta } from '@/lib/ui/books';
 
 /** Délai avant fermeture au survol : laisse le temps de traverser le vide chevron → menu. */
 const HOVER_CLOSE_DELAY_MS = 120;
 
-export function RulesBookSplitButton({ condensed }: { condensed: boolean }) {
+export function RulesBookSplitButton() {
   // Livres payants débloqués ET réellement servis (hors livre de base) ; vide par défaut
   // (aucun chevron) jusqu'à ce que le fetch d'entitlements aboutisse pour une session proprio.
-  const [unlockedBooks, setUnlockedBooks] = useState<BookMeta[]>([]);
+  const unlockedBooks = useUnlockedBooks();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   // Le menu a-t-il été ouvert par une action explicite (clic/clavier) plutôt que par
   // survol ? Détermine l'autofocus : au clavier on focalise le premier item (navigation
@@ -72,46 +61,6 @@ export function RulesBookSplitButton({ condensed }: { condensed: boolean }) {
     update();
     mq.addEventListener('change', update);
     return () => mq.removeEventListener('change', update);
-  }, []);
-
-  // Charge les livres payants débloqués par le compte (best-effort, gaté proprio).
-  useEffect(() => {
-    if (!IS_CONFIGURED) return;
-    let cancelled = false;
-    const supabase = createBrowserSupabaseClient();
-    // `getSession()` lit la session en cache local (aucun réseau). Pas de session →
-    // visiteur non connecté : on n'interroge JAMAIS les entitlements. Session joueur
-    // (anonyme scopé) → pas de contenu payant à lui proposer.
-    void supabase.auth.getSession().then(({ data: { session } }) => {
-      const user = session?.user;
-      if (cancelled || !user) return;
-      const isPlayer = Boolean(
-        (user.app_metadata as { player_id?: string } | undefined)?.player_id,
-      );
-      if (isPlayer) return;
-      void listUnlockedSources()
-        .then((sources) => {
-          if (cancelled) return;
-          // Croise chaque source débloquée avec le registre des livres, en ne gardant
-          // que les livres RÉELLEMENT servis (`available !== false`) et distincts du
-          // livre de base (ajouté à part en tête du menu). Dédoublonne par id de livre.
-          const byId = new Map<string, BookMeta>();
-          for (const source of sources) {
-            const bookId = bookIdForSourceSlug(source.slug);
-            if (!bookId || bookId === DEFAULT_BOOK_ID) continue;
-            const book = BOOKS[bookId];
-            if (book.available === false) continue;
-            byId.set(book.id, book);
-          }
-          setUnlockedBooks([...byId.values()]);
-        })
-        .catch(() => {
-          /* silencieux : pas de chevron en cas d'erreur, le corps reste fonctionnel */
-        });
-    });
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const cancelClose = () => {
@@ -135,7 +84,6 @@ export function RulesBookSplitButton({ condensed }: { condensed: boolean }) {
       href={rulesHref(DEFAULT_BOOK_ID, 1)}
       icon={<BaseIcon sx={{ fontSize: 20 }} />}
       label="Livre des règles"
-      condensed={condensed}
     />
   );
 
@@ -169,7 +117,7 @@ export function RulesBookSplitButton({ condensed }: { condensed: boolean }) {
         sx={{
           minWidth: 0,
           px: 0.25,
-          py: condensed ? 0.25 : 0.5,
+          py: 0.5,
           ml: -0.5,
         }}
       >

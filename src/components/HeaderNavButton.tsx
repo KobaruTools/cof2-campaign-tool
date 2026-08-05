@@ -5,14 +5,16 @@ import Link from 'next/link';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import { type Theme } from '@mui/material/styles';
+import { HEADER_ICON_ONLY_BREAKPOINT } from '@/lib/ui/headerBreakpoints';
 
 /**
  * Style partagé des boutons de navigation globaux de l'en-tête (Bestiaire, Campagnes,
- * Livre des règles…). Le libellé est masqué sous `sm` (icône seule, pour ne pas manger
- * la place du fil d'Ariane sur écran étroit), affiché dès `sm` (PER-228). Au défilement
- * (`condensed`), le libellé se replie AUSSI sur grand écran et le bouton se resserre — le
- * tout en transition douce (max-width + opacité animées, jamais `display: none` qui ne
- * s'anime pas).
+ * Livre des règles…). Le libellé est masqué sous `HEADER_ICON_ONLY_BREAKPOINT` (icône
+ * seule EN PERMANENCE — sous le seuil burger, ce bouton n'est de toute façon plus monté,
+ * remplacé par `AppHeaderNavDrawer`). Dès ce seuil franchi, le libellé reste TOUJOURS
+ * affiché, à taille et padding FIXES : le défilement ne fait plus rien à l'en-tête
+ * (hauteur, texte, padding — tout redimensionnement au scroll a été essayé et jugé
+ * bizarre visuellement, cf. `AppHeader`).
  *
  * Extrait de `AppHeader` (PER-254) pour être réutilisé par le corps du split-button
  * « Livre des règles » (`RulesBookSplitButton`), qui doit être visuellement identique
@@ -23,7 +25,6 @@ export function HeaderNavButton({
   onClick,
   icon,
   label,
-  condensed,
 }: {
   /** Cible de navigation (bouton-lien interne). Fournir `href` OU `onClick`. */
   href?: string;
@@ -31,20 +32,15 @@ export function HeaderNavButton({
   onClick?: () => void;
   icon: ReactNode;
   label: string;
-  condensed: boolean;
 }) {
   const buttonSx = (theme: Theme) => ({
     minWidth: 0,
-    px: condensed ? 0.75 : { xs: 1, sm: 2 },
-    py: condensed ? 0.25 : 0.5,
+    px: 1.5,
+    py: 0.625,
     flexShrink: 0,
-    // On inclut `background-color` : sinon cette transition sur mesure écraserait la
-    // transition par défaut de MUI et le voile blanc de survol apparaîtrait d'un coup.
-    transition: theme.transitions.create(['padding', 'background-color'], {
-      duration: theme.transitions.duration.short,
-    }),
     '& .MuiButton-startIcon': {
-      mr: { xs: 0, sm: condensed ? 0 : 0.5 },
+      mr: 0,
+      [theme.breakpoints.up(HEADER_ICON_ONLY_BREAKPOINT)]: { mr: 0.625 },
       transition: theme.transitions.create('margin', {
         duration: theme.transitions.duration.short,
       }),
@@ -57,8 +53,9 @@ export function HeaderNavButton({
         display: 'inline-block',
         overflow: 'hidden',
         whiteSpace: 'nowrap',
-        maxWidth: { xs: 0, sm: condensed ? 0 : '18ch' },
-        opacity: { xs: 0, sm: condensed ? 0 : 1 },
+        maxWidth: 0,
+        opacity: 0,
+        [theme.breakpoints.up(HEADER_ICON_ONLY_BREAKPOINT)]: { maxWidth: '18ch', opacity: 1 },
         transition: theme.transitions.create(['max-width', 'opacity'], {
           duration: theme.transitions.duration.short,
         }),
