@@ -6,10 +6,10 @@
  *
  * Trois régimes cohabitent, et la distinction compte en maintenance :
  *
- *  - « En pleine partie » utilise le **vrai** composant de l'application, `HpGauge`,
- *    branché sur un état local. C'est possible parce qu'il est découpé proprement
- *    (`depletion` + `maxHp` + callbacks, aucun `Character` requis) : ce que le visiteur
- *    manipule ici est exactement ce qu'il manipulera sur sa fiche.
+ *  - « En pleine partie » utilise les **vrais** composants de l'application, `HpGauge` et
+ *    la `GaugeRow` de mana, branchés sur un état local. C'est possible parce qu'ils sont
+ *    découpés proprement (dépletion + max + callbacks, aucun `Character` requis) : ce que le
+ *    visiteur manipule ici est exactement ce qu'il manipulera sur sa fiche.
  *  - « Création guidée » montre une **capture** de l'assistant, régénérée par
  *    `scripts/generate-home-shots.ts` — donc jamais périmée en silence.
  *  - « Montée de niveau » et « Écran de meneur » sont des **maquettes** propres à cette
@@ -29,14 +29,25 @@ import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
+import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { GmScreenIcon } from '@/components/GmScreenIcon';
 import { SectionIcon } from '@/components/SectionIcon';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
+import { GaugeRow } from '@/components/sheet/GaugeRow';
 import { HpGauge } from '@/components/sheet/HpGauge';
 import { STATUS_EFFECTS, type StatusEffectId } from '@/data/schema';
-import type { HpDepletion } from '@/lib/character/types';
+import {
+  applyDamage,
+  currentMana,
+  healHp,
+  resetHp,
+  resetMana,
+  restoreMana,
+  spendMana,
+} from '@/lib/character/gauges';
+import type { Depletion } from '@/lib/character/types';
 import type { SectionIconName } from '@/lib/ui/sectionIcons';
 
 /**
@@ -190,42 +201,57 @@ const LevelUpGridDemo = dynamic(
   { ssr: false, loading: () => <Box sx={{ height: DEMO_SLOT_HEIGHT }} /> },
 );
 
-// ─── Démo 3 : en pleine partie (VRAI composant) ──────────────────────────────
+// ─── Démo 3 : en pleine partie (VRAIS composants) ─────────────────────────────
 
 /** PV maximum du personnage fictif de la démo. */
 const DEMO_MAX_HP = 24;
+/** Réserve de mana du même personnage (un lanceur de sorts de bas niveau). */
+const DEMO_MAX_MANA = 12;
 
 /**
- * Le **vrai** `HpGauge` de la fiche, branché sur un état local. Les dégâts, les soins
- * et la remise à plein passent par les mêmes chemins qu'en jeu ; seule la persistance
- * est remplacée par un `useState`.
+ * Les **vraies** jauges de la fiche — `HpGauge` (PV létaux / temporaires) et la `GaugeRow`
+ * de mana — branchées sur une dépletion locale que font évoluer les **vrais** réducteurs
+ * de `lib/character/gauges`. Seule la persistance est remplacée par un `useState`.
+ *
+ * Les deux bandes sont volontairement réduites au même gabarit (`hideDetails` +
+ * `controlsBelow`) : barre pleine largeur, boutons ±1 / remise à plein sur leur propre ligne,
+ * pas de formulaire détaillé. La carte n'a pas la place de le déplier, et un chevron qui ne
+ * promet rien de tenable vaut moins que pas de chevron. Sur la fiche, les deux jauges gardent
+ * leur formulaire (montant + Dégâts/Soin, montant + Dépenser/Récupérer).
  */
 function InPlayDemo() {
-  const [hp, setHp] = useState<HpDepletion>({ lethal: 7, temp: 3 });
+  const theme = useTheme();
+  const [depletion, setDepletion] = useState<Depletion>({ hp: { lethal: 7, temp: 3 }, mana: 5 });
 
   return (
-    <HpGauge
-      depletion={{ hp }}
-      maxHp={DEMO_MAX_HP}
-      persistKey="home-demo"
-      controlsBelow
-      onDamage={(amount, kind) =>
-        setHp((d) => ({
-          lethal: kind === 'lethal' ? d.lethal + amount : d.lethal,
-          temp: kind === 'temp' ? d.temp + amount : d.temp,
-        }))
-      }
-      onHeal={(amount) =>
-        setHp((d) => {
-          // Les PV létaux se soignent d'abord, le reliquat retombe sur les temporaires
-          // — même ordre que sur la fiche.
-          const lethal = Math.max(0, d.lethal - amount);
-          const rest = amount - (d.lethal - lethal);
-          return { lethal, temp: Math.max(0, d.temp - rest) };
-        })
-      }
-      onReset={() => setHp({ lethal: 0, temp: 0 })}
-    />
+    <Stack spacing={1.25}>
+      <HpGauge
+        depletion={depletion}
+        maxHp={DEMO_MAX_HP}
+        persistKey="home-demo"
+        controlsBelow
+        hideDetails
+        onDamage={(amount, kind) => setDepletion((d) => applyDamage(d, amount, kind, DEMO_MAX_HP))}
+        onHeal={(amount) => setDepletion((d) => healHp(d, amount))}
+        onReset={() => setDepletion(resetHp)}
+      />
+      <GaugeRow
+        label="Points de mana"
+        icon={<DerivedStatIcon statId="manaPoints" size={28} color="#fff" />}
+        fillColor="info.main"
+        capColor={theme.palette.info.main}
+        persistKey="gauge-expanded:home-demo-mana"
+        controlsBelow
+        hideDetails
+        current={currentMana(DEMO_MAX_MANA, depletion)}
+        max={DEMO_MAX_MANA}
+        spendLabel="Dépenser"
+        restoreLabel="Récupérer"
+        onSpend={(amount) => setDepletion((d) => spendMana(d, amount, DEMO_MAX_MANA))}
+        onRestore={(amount) => setDepletion((d) => restoreMana(d, amount, DEMO_MAX_MANA))}
+        onReset={() => setDepletion(resetMana)}
+      />
+    </Stack>
   );
 }
 
@@ -417,8 +443,8 @@ export function FeatureShowcase() {
         accent={accents.play}
         demo={<InPlayDemo />}
       >
-        Jauges de points de vie, de mana et de rage, états, bourse et repos. Cette barre
-        est celle de la fiche — essayez-la.
+        Jauges de points de vie, de mana et de rage, états, bourse et repos. Ces barres sont
+        celles de la fiche — essayez-les.
       </FeatureCard>
 
       <FeatureCard

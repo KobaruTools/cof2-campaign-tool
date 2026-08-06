@@ -12,6 +12,13 @@ export interface GaugeIconCapProps {
   label: string;
   /** Hauteur (= hauteur de la barre) en pixels. Défaut 24. */
   height?: number;
+  /**
+   * Coins gauches arrondis ? Défaut `false` : c'est le cap d'expansion, à l'extrême gauche,
+   * qui les porte d'ordinaire. Passer `true` quand ce cap ouvre la bande (jauge affichée sans
+   * son formulaire détaillé, donc sans chevron), faute de quoi la bande démarrerait à l'angle
+   * droit alors qu'elle se termine arrondie.
+   */
+  roundedLeft?: boolean;
   /** Icône (dessinée en blanc par l'appelant pour contraster sur le fond coloré). */
   children: ReactNode;
 }
@@ -23,11 +30,11 @@ export interface GaugeIconCapProps {
  * par le cap d'expansion à l'extrême gauche et par la barre à droite) pour former une
  * zone colorée continue. L'info-bulle porte le libellé de la jauge.
  */
-export function GaugeIconCap({ color, label, height = 24, children }: GaugeIconCapProps) {
+export function GaugeIconCap({ color, label, height = 24, roundedLeft = false, children }: GaugeIconCapProps) {
   return (
     <AppTooltip title={label}>
       <Box
-        sx={{
+        sx={(theme) => ({
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -36,7 +43,11 @@ export function GaugeIconCap({ color, label, height = 24, children }: GaugeIconC
           px: 0.5,
           color: '#fff',
           bgcolor: darken(color, 0.35),
-        }}
+          ...(roundedLeft && {
+            borderTopLeftRadius: theme.shape.borderRadius,
+            borderBottomLeftRadius: theme.shape.borderRadius,
+          }),
+        })}
       >
         {children}
       </Box>

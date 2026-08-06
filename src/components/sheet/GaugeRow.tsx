@@ -47,6 +47,19 @@ export interface GaugeRowProps {
   onRestore: (amount: number) => void;
   /** Remet la jauge à plein. */
   onReset: () => void;
+  /**
+   * Place les boutons rapides (±1 / remise à plein) sur une ligne DÉDIÉE sous la barre, plutôt
+   * qu'à sa droite (défaut). Pendant de la propriété homonyme de `HpGauge`, pour les dispositions
+   * étroites où la barre a besoin de toute la largeur — sans quoi les chiffres `courant / max`
+   * débordent de la barre.
+   */
+  controlsBelow?: boolean;
+  /**
+   * Retire les options détaillées ET leur chevron : ne restent que la barre et les boutons
+   * rapides. Pendant de la propriété homonyme de `HpGauge`, pour les emplacements trop
+   * étroits pour le formulaire (démo de la vitrine).
+   */
+  hideDetails?: boolean;
 }
 
 /**
@@ -72,6 +85,8 @@ export function GaugeRow({
   onSpend,
   onRestore,
   onReset,
+  controlsBelow = false,
+  hideDetails = false,
 }: GaugeRowProps) {
   const [amount, setAmount] = useState('1');
   const [expanded, toggleExpanded] = usePersistentBoolean(persistKey, false);
@@ -83,15 +98,43 @@ export function GaugeRow({
     { key: 'current', value: current, color: fillColor, label: `${label} : ${current}` },
   ];
 
+  // Boutons rapides (±1 / remise à plein) : rendus soit à droite de la barre (défaut), soit
+  // sur une ligne dédiée en dessous (`controlsBelow`, dispositions étroites).
+  const quickControls = (
+    <>
+      <AppTooltip title={`${spendLabel} 1`}>
+        <span>
+          <IconButton size="small" aria-label={`${spendLabel} 1`} disabled={empty} onClick={() => onSpend(1)}>
+            <RemoveIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </AppTooltip>
+      <AppTooltip title={`${restoreLabel} 1`}>
+        <span>
+          <IconButton size="small" aria-label={`${restoreLabel} 1`} disabled={full} onClick={() => onRestore(1)}>
+            <AddIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </AppTooltip>
+      <AppTooltip title="Remettre à plein">
+        <span>
+          <IconButton size="small" aria-label="Remettre à plein" disabled={full} onClick={onReset}>
+            <RestartAltIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </AppTooltip>
+    </>
+  );
+
   return (
     <Stack spacing={1.25}>
       {/* Cap d'expansion + icône (libellé en tooltip) + barre (chiffres intégrés) +
-          ajustement fin (±1, reset) accolés à sa droite. */}
+          ajustement fin (±1, reset) accolés à sa droite (ou en dessous). */}
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
         <Stack direction="row" spacing={0} sx={{ alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
-          <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} color={capColor} />
+          {!hideDetails && <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} color={capColor} />}
           {icon && (
-            <GaugeIconCap color={capColor} label={label}>
+            <GaugeIconCap color={capColor} label={label} roundedLeft={hideDetails}>
               {icon}
             </GaugeIconCap>
           )}
@@ -128,29 +171,17 @@ export function GaugeRow({
             />
           </Box>
         </Stack>
-        <AppTooltip title={`${spendLabel} 1`}>
-          <span>
-            <IconButton size="small" aria-label={`${spendLabel} 1`} disabled={empty} onClick={() => onSpend(1)}>
-              <RemoveIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </AppTooltip>
-        <AppTooltip title={`${restoreLabel} 1`}>
-          <span>
-            <IconButton size="small" aria-label={`${restoreLabel} 1`} disabled={full} onClick={() => onRestore(1)}>
-              <AddIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </AppTooltip>
-        <AppTooltip title="Remettre à plein">
-          <span>
-            <IconButton size="small" aria-label="Remettre à plein" disabled={full} onClick={onReset}>
-              <RestartAltIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </AppTooltip>
+        {!controlsBelow && quickControls}
       </Stack>
 
+      {/* Boutons rapides sur leur propre ligne (disposition étroite) — alignés à droite. */}
+      {controlsBelow && (
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
+          {quickControls}
+        </Stack>
+      )}
+
+      {!hideDetails && (
       <Collapse in={expanded} unmountOnExit>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
           <TextField
@@ -179,6 +210,7 @@ export function GaugeRow({
           </Button>
         </Stack>
       </Collapse>
+      )}
     </Stack>
   );
 }

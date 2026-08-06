@@ -133,6 +133,12 @@ export interface HpGaugeProps {
    * l'utilisateur (chevron) continue de primer et reste persisté sous `persistKey`.
    */
   defaultExpanded?: boolean;
+  /**
+   * Retire le formulaire détaillé ET son chevron : ne restent que la barre et les boutons
+   * rapides. Sert aux emplacements trop étroits pour le formulaire (démo de la vitrine), où
+   * un chevron ne promettrait qu'un dépliage qui ne tient pas dans le bloc.
+   */
+  hideDetails?: boolean;
 }
 
 /**
@@ -145,7 +151,7 @@ export interface HpGaugeProps {
  * Le maximum est piloté ailleurs. Sert à la fois au personnage (`PlayerStatusPanel`) et à
  * chaque compagnon (`CompanionCard`), pour un comportement de suivi de PV identique.
  */
-export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKey, iconLabel = 'Points de vie', controlsBelow = false, defaultExpanded = false }: HpGaugeProps) {
+export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKey, iconLabel = 'Points de vie', controlsBelow = false, defaultExpanded = false, hideDetails = false }: HpGaugeProps) {
   const theme = useTheme();
   const hpColor = theme.palette.success.main;
   const [amount, setAmount] = useState('1');
@@ -209,8 +215,8 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
           badge d'état) + ajustement fin (±1, reset) accolés à sa droite (ou en dessous). */}
       <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
         <Stack direction="row" spacing={0} sx={{ alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
-          <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} color={hpColor} />
-          <GaugeIconCap color={hpColor} label={iconLabel}>
+          {!hideDetails && <GaugeExpandToggle expanded={expanded} onToggle={toggleExpanded} color={hpColor} />}
+          <GaugeIconCap color={hpColor} label={iconLabel} roundedLeft={hideDetails}>
             <DerivedStatIcon statId="maxHp" size={28} color="#fff" />
           </GaugeIconCap>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -234,6 +240,7 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
       )}
 
       {/* Contrôles détaillés : montant + nature (létal/temp) + Dégâts / Soin. Repliés par défaut. */}
+      {!hideDetails && (
       <Collapse in={expanded} unmountOnExit>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
           <TextField
@@ -262,6 +269,7 @@ export function HpGauge({ depletion, maxHp, onDamage, onHeal, onReset, persistKe
           </Button>
         </Stack>
       </Collapse>
+      )}
     </Stack>
   );
 }
