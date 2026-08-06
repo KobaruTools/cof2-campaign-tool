@@ -9,6 +9,7 @@ import {
   splitReferenceColumns,
   splitVerbatimParagraphs,
   subsectionAnchorId,
+  subsectionPageRange,
   subsectionWeight,
   type ReferenceSubsectionGroup,
 } from './reference';
@@ -131,6 +132,69 @@ describe('répartition des blocs de l’aide-mémoire en colonnes (PER-311)', ()
       { ...textEntry('x', 1), body: 'y'.repeat(4000) } as ReferenceEntry,
     ]);
     expect(subsectionWeight(bavarde)).toBe(subsectionWeight(group('sobre', [textEntry('x', 1)])));
+  });
+});
+
+describe('renvoi de page du bandeau de sous-section', () => {
+  /** Entrée de texte jouet dont on ne maîtrise que la page source. */
+  function pageEntry(id: string, sourcePage: number): ReferenceEntry {
+    return {
+      kind: 'text',
+      id,
+      title: id,
+      section: 'combat',
+      subsection: 'states',
+      tags: [],
+      sourcePage,
+      shortEffect: id,
+      body: id,
+    };
+  }
+
+  it('rend un NOMBRE quand tout le bloc tient sur une seule page', () => {
+    expect(subsectionPageRange(group('a', [pageEntry('x', 214), pageEntry('y', 214)]))).toBe(214);
+  });
+
+  it('rend la PLAGE « min-max » quand le bloc s’étale sur plusieurs pages', () => {
+    expect(subsectionPageRange(group('a', [pageEntry('x', 215), pageEntry('y', 217)]))).toBe(
+      '215-217',
+    );
+  });
+
+  it('prend le min et le max, pas la première et la dernière entrée', () => {
+    const entries = [pageEntry('x', 216), pageEntry('y', 213), pageEntry('z', 215)];
+    expect(subsectionPageRange(group('a', entries))).toBe('213-216');
+  });
+
+  it('ne renvoie rien pour un bloc vide', () => {
+    expect(subsectionPageRange(group('a', []))).toBeUndefined();
+  });
+
+  /**
+   * GARDE-FOU sur les VRAIES données : le bandeau de chaque bloc livré doit pouvoir citer sa source
+   * (convention projet — jamais de règle affichée sans son renvoi), et les bornes annoncées doivent
+   * être des pages réellement présentes dans le bloc, pas une plage inventée.
+   */
+  it('donne à chaque bloc livré une plage bornée par ses propres pages', () => {
+    for (const section of groupReferenceEntries(REFERENCE_ENTRIES)) {
+      for (const sub of section.subsections) {
+        const range = subsectionPageRange(sub);
+        expect(range, `${sub.label} sans renvoi de page`).toBeDefined();
+        const pages = sub.entries.map((e) => e.sourcePage);
+        // Une page unique se rend en NOMBRE (pas de tiret) : la borne haute vaut alors la basse.
+        const [min, max] = String(range).split('-').map(Number);
+        expect(min).toBe(Math.min(...pages));
+        expect(max ?? min).toBe(Math.max(...pages));
+      }
+    }
+  });
+
+  it('couvre les domaines cités en exemple par le livre', () => {
+    const combat = groupReferenceEntries(REFERENCE_ENTRIES).find((g) => g.section === 'combat');
+    const byId = new Map(combat?.subsections.map((s) => [s.subsection, s]));
+    // Options tactiques p. 215-217 et états préjudiciables p. 214-215 (en-têtes des fichiers source).
+    expect(subsectionPageRange(byId.get('tactical-options')!)).toBe('215-217');
+    expect(subsectionPageRange(byId.get('states')!)).toBe('214-215');
   });
 });
 

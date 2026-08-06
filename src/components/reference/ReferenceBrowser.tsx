@@ -280,6 +280,21 @@ export function ReferenceBrowser({ variant = 'page', stickyTop = 0 }: ReferenceB
   // Table des matières complète (toutes sections), figée : sert de sommaire à gauche.
   const allGroups = useMemo(() => groupReferenceEntries(REFERENCE_ENTRIES), []);
 
+  /**
+   * Plage de pages de chaque bloc, calculée sur le catalogue COMPLET. En recherche, un panneau ne
+   * porte que les entrées qui correspondent : dériver la plage de celles-là ferait rétrécir le renvoi
+   * d'un domaine selon ce qu'on tape, alors que le bandeau nomme (et ouvre) le domaine tout entier.
+   */
+  const pageRanges = useMemo(
+    () =>
+      new Map(
+        allGroups.flatMap((g) =>
+          g.subsections.map((s) => [s.subsection, subsectionPageRange(s)] as const),
+        ),
+      ),
+    [allGroups],
+  );
+
   // Index de recherche normalisé, calculé une fois pour toutes.
   const searchIndex = useMemo(
     () => new Map(REFERENCE_ENTRIES.map((e) => [e.id, norm(searchableText(e))])),
@@ -650,6 +665,7 @@ export function ReferenceBrowser({ variant = 'page', stickyTop = 0 }: ReferenceB
                     columnCount={columnCount}
                     expandEntries={searching}
                     scrollMarginTop={stuckHeight + 12}
+                    pageRanges={pageRanges}
                     goTo={
                       searching
                         ? (subsection) =>
@@ -706,12 +722,15 @@ function SubsectionColumns({
   columnCount,
   expandEntries,
   scrollMarginTop,
+  pageRanges,
   goTo,
 }: {
   subsections: ReferenceSubsectionGroup[];
   columnCount: number;
   expandEntries: boolean;
   scrollMarginTop: number;
+  /** Plage de pages CANONIQUE de chaque bloc (calculée sur le catalogue complet, cf. `pageRanges`). */
+  pageRanges: Map<string, number | string | undefined>;
   /**
    * Fabrique le comportement du bandeau (recherche uniquement) — absent en parcours. `href` présent
    * → vraie ancre (pleine page) ; `href` absent → bouton (variante intégrée).
@@ -736,6 +755,7 @@ function SubsectionColumns({
               group={sub}
               expandEntries={expandEntries}
               scrollMarginTop={scrollMarginTop}
+              pageRange={pageRanges.get(sub.subsection)}
               goTo={goTo?.(sub.subsection)}
             />
           ))}
@@ -758,11 +778,14 @@ function SubsectionPanel({
   group,
   expandEntries,
   scrollMarginTop,
+  pageRange,
   goTo,
 }: {
   group: ReferenceSubsectionGroup;
   expandEntries: boolean;
   scrollMarginTop: number;
+  /** Plage de pages du domaine, affichée à droite du bandeau (cf. `subsectionPageRange`). */
+  pageRange?: number | string;
   /**
    * Renseigné en RECHERCHE seulement : rend le bandeau cliquable vers le bloc dans son onglet. `href`
    * présent → vraie ancre (pleine page) ; `href` absent → bouton (variante intégrée dans un tiroir).
@@ -782,50 +805,69 @@ function SubsectionPanel({
         backgroundImage: subsectionPanelGradient(group.subsection),
       }}
     >
-      {/* Bandeau de titre. En RECHERCHE il devient une vraie ancre : cliquer « Encombrement » quitte
-          les résultats (la recherche est effacée), ouvre l'onglet qui contient le bloc et descend
-          jusqu'à lui — le geste naturel quand on a trouvé le bon domaine et qu'on veut le lire en
-          entier. En parcours on y est déjà : simple titre. */}
+      {/* Bandeau de titre : le nom du domaine à gauche, son RENVOI DE PAGE à droite (la plage
+          couverte par le bloc, dérivée de ses entrées — cf. `subsectionPageRange`). Le renvoi est
+          posé ICI, à côté du titre et non dedans : le titre est parfois une ancre (en recherche) et
+          le badge de source est lui-même actionnable — imbriqués, ils se disputeraient le clic.
+          Au repos les entrées sont repliées, donc leur propre renvoi est caché : sans celui-ci, un
+          domaine entier ne disait plus d'où il venait.
+
+          En RECHERCHE, le titre devient une vraie ancre : cliquer « Encombrement » quitte les
+          résultats (la recherche est effacée), ouvre l'onglet qui contient le bloc et descend jusqu'à
+          lui — le geste naturel quand on a trouvé le bon domaine et qu'on veut le lire en entier. En
+          parcours on y est déjà : simple titre. */}
       <Box
-        {...(goTo
-          ? goTo.href
-            ? { component: NextLink, href: goTo.href, scroll: false, onClick: goTo.onClick }
-            : { component: 'button' as const, type: 'button', onClick: goTo.onClick }
-          : {})}
         sx={{
-          display: 'block',
-          px: 2,
-          py: 0.75,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          pr: 2,
           borderBottom: subsectionHeaderBorder(group.subsection),
-          textDecoration: 'none',
-          ...(goTo && {
-            cursor: 'pointer',
-            '&:hover': { bgcolor: alpha(accent, 0.12) },
-          }),
-          // Réinitialisation quand le bandeau est un <button> (variante intégrée, `href` absent).
-          ...(goTo && !goTo.href && {
-            width: '100%',
-            textAlign: 'left',
-            border: 0,
-            bgcolor: 'transparent',
-            font: 'inherit',
-          }),
         }}
       >
-        <Typography
-          variant="overline"
-          component="h2"
+        <Box
+          {...(goTo
+            ? goTo.href
+              ? { component: NextLink, href: goTo.href, scroll: false, onClick: goTo.onClick }
+              : { component: 'button' as const, type: 'button', onClick: goTo.onClick }
+            : {})}
           sx={{
-            display: 'block',
-            m: 0,
-            fontWeight: 800,
-            letterSpacing: 0.6,
-            lineHeight: 1.9,
-            color: accent,
+            flexGrow: 1,
+            minWidth: 0,
+            px: 2,
+            py: 0.75,
+            textDecoration: 'none',
+            ...(goTo && {
+              cursor: 'pointer',
+              '&:hover': { bgcolor: alpha(accent, 0.12) },
+            }),
+            // Réinitialisation quand le bandeau est un <button> (variante intégrée, `href` absent).
+            ...(goTo && !goTo.href && {
+              textAlign: 'left',
+              border: 0,
+              bgcolor: 'transparent',
+              font: 'inherit',
+            }),
           }}
         >
-          {group.label}
-        </Typography>
+          <Typography
+            variant="overline"
+            component="h2"
+            sx={{
+              display: 'block',
+              m: 0,
+              fontWeight: 800,
+              letterSpacing: 0.6,
+              lineHeight: 1.9,
+              color: accent,
+            }}
+          >
+            {group.label}
+          </Typography>
+        </Box>
+        {pageRange != null && (
+          <SourceRef page={pageRange} term={group.label} sx={{ flexShrink: 0 }} />
+        )}
       </Box>
       <Stack
         sx={{ px: 2, py: 0.5 }}

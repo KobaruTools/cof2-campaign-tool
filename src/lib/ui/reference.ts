@@ -179,6 +179,35 @@ export function splitReferenceColumns(
 }
 
 /**
+ * PLAGE DE PAGES couverte par un bloc de sous-section, au format attendu par `<SourceRef/>` : un
+ * nombre quand tout le bloc tient sur une page, la chaîne « 214-215 » quand il s'étale.
+ *
+ * DÉRIVÉE des entrées plutôt que saisie à côté d'elles : la page d'une règle est déjà portée par son
+ * `sourcePage` (convention projet), et redéclarer la plage du bloc en dur créerait une deuxième
+ * source de vérité qui dériverait au premier ajout d'entrée. Les entrées d'un bloc suivant l'ordre du
+ * livre, leur min et leur max sont bien les bornes du domaine.
+ *
+ * Sert le renvoi porté par le BANDEAU du panneau : au repos, les entrées repliées cachent leur propre
+ * renvoi, si bien qu'un domaine entier (« Options tactiques », « États préjudiciables ») ne disait
+ * plus d'où il venait tant qu'on n'avait pas déplié quelque chose.
+ *
+ * À nourrir du bloc COMPLET, jamais d'un bloc filtré par la recherche : le bandeau nomme le domaine
+ * et renvoie vers lui en entier, sa plage ne doit donc pas rétrécir au gré de ce qui est cherché.
+ *
+ * Un groupe vide (cas théorique — `groupReferenceEntries` omet les blocs sans entrée) ne renvoie rien.
+ */
+export function subsectionPageRange(group: ReferenceSubsectionGroup): number | string | undefined {
+  if (group.entries.length === 0) return undefined;
+  let min = group.entries[0].sourcePage;
+  let max = min;
+  for (const entry of group.entries) {
+    if (entry.sourcePage < min) min = entry.sourcePage;
+    if (entry.sourcePage > max) max = entry.sourcePage;
+  }
+  return min === max ? min : `${min}-${max}`;
+}
+
+/**
  * Libellés de RATTACHEMENT d'une entrée : le nom de sa section et celui de sa sous-section, tels
  * qu'affichés (« Environnement », « Encombrement »).
  *
