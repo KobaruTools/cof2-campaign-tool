@@ -612,15 +612,19 @@ export function dualWieldRequiredMessage(): string {
 }
 
 /**
- * PER-74 — ids des capacités DÉSACTIVÉES parce que l'armure portée dépasse le plafond propre à LEUR
- * VOIE (`Path.maxArmorId`) : toutes les capacités acquises ET EMPRUNTÉES d'une voie qui fixe une
- * armure maximale (Voie du danseur de guerre, p. 150 : « Pour pouvoir utiliser les capacités de cette
- * voie, le personnage ne doit pas porter d'armure plus encombrante qu'une chemise de mailles. »)
- * quand la DEF MONDAINE de l'armure portée dépasse celle du plafond. Miroir de
- * `shieldDisabledFeatureIds` (PER-142) : ces ids sont exclus des capacités actives
- * (`activeFeatureIdsForMods`) — le +1/+2 en DEF et le +5 aux tests des Pirouettes ne comptent plus
- * tant que l'armure est trop lourde. Réversible : alléger ou retirer l'armure les réactive
- * AUTOMATIQUEMENT.
+ * PER-74 — ids des capacités DÉSACTIVÉES parce que l'armure portée dépasse un plafond propre, quand
+ * la DEF MONDAINE de l'armure portée dépasse celle du plafond. Deux granularités, LA CAPACITÉ étant
+ * prioritaire (plus spécifique) :
+ *  - `Feature.maxArmorId` : plafond d'UN SEUL RANG (Métamorphose, voie de l'ours p. 152 : « ne doit
+ *    pas porter d'armure plus lourde que le cuir renforcé pour utiliser CETTE capacité » — les autres
+ *    rangs de la même voie restent utilisables) ;
+ *  - `Path.maxArmorId` : plafond de TOUTE LA VOIE (Voie du danseur de guerre, p. 150 : « Pour pouvoir
+ *    utiliser les capacités de cette voie, le personnage ne doit pas porter d'armure plus encombrante
+ *    qu'une chemise de mailles. »).
+ * Couvre aussi les capacités EMPRUNTÉES. Miroir de `shieldDisabledFeatureIds` (PER-142) : ces ids
+ * sont exclus des capacités actives (`activeFeatureIdsForMods`) — le +1/+2 en DEF et le +5 aux tests
+ * des Pirouettes ne comptent plus tant que l'armure est trop lourde. Réversible : alléger ou retirer
+ * l'armure les réactive AUTOMATIQUEMENT.
  *
  * À DISTINGUER de `featureArmorRestrictionViolations`/`armorDisabledFeatureIds` (PER-83/86), qui
  * appliquent le plafond du PROFIL D'ORIGINE d'une capacité : une voie de prestige n'a pas de profil
@@ -634,7 +638,7 @@ export function pathArmorDisabledFeatureIds(character: Character, ctx: RulesCont
   for (const id of [...character.featureIds, ...borrowedFeatureIds(character)]) {
     const feature = featureById.get(id);
     if (!feature) continue;
-    const maxArmorId = ctx.pathById.get(feature.pathId)?.maxArmorId;
+    const maxArmorId = feature.maxArmorId ?? ctx.pathById.get(feature.pathId)?.maxArmorId;
     if (maxArmorId === undefined) continue;
     if (wornDef > armorCeilingOf(maxArmorId).def) disabled.add(id);
   }
@@ -643,25 +647,37 @@ export function pathArmorDisabledFeatureIds(character: Character, ctx: RulesCont
 
 /**
  * PER-74 — message français prêt à afficher (infobulle / notice) pour une capacité désactivée par une
- * armure plus lourde que le plafond de SA VOIE (`Path.maxArmorId`). La page de la voie est passée par
- * l'appelant et rendue en parenthèse AUTONOME → parsée par `PageRefText`/`SourceRef` côté UI.
+ * armure plus lourde que son plafond (celui du RANG ou celui de LA VOIE, cf. `pathArmorDisabledFeatureIds`).
+ * `scope` distingue le libellé (« cette capacité » / « cette voie »). La page est passée par l'appelant
+ * et rendue en parenthèse AUTONOME → parsée par `PageRefText`/`SourceRef` côté UI.
  */
-export function pathArmorRequiredMessage(maxArmorName: string, sourcePage: number): string {
-  return `Capacité inutilisable avec l'armure portée : cette voie n'admet pas plus encombrant qu'une ${maxArmorName.toLocaleLowerCase('fr')} — allégez votre armure pour en profiter (p. ${sourcePage}).`;
+export function pathArmorRequiredMessage(
+  maxArmorName: string,
+  sourcePage: number,
+  scope: 'feature' | 'path' = 'path',
+): string {
+  const subject = scope === 'feature' ? 'cette capacité' : 'cette voie';
+  return `Capacité inutilisable avec l'armure portée : ${subject} n'admet pas plus encombrant qu'une ${maxArmorName.toLocaleLowerCase('fr')} — allégez votre armure pour en profiter (p. ${sourcePage}).`;
 }
 
 /**
- * PER-74 — raisons de désactivation par plafond d'armure de VOIE (`Path.maxArmorId`) → Map id de
- * capacité → message prêt à afficher. Pendant « rendu » de `pathArmorDisabledFeatureIds`, sur le
- * patron de `wieldDisabledReasons` : la fiche grise le rang et affiche la notice. Vide si aucune
- * capacité n'est concernée.
+ * PER-74 — raisons de désactivation par plafond d'armure (`Feature.maxArmorId` ou `Path.maxArmorId`,
+ * la capacité étant prioritaire) → Map id de capacité → message prêt à afficher. Pendant « rendu » de
+ * `pathArmorDisabledFeatureIds`, sur le patron de `wieldDisabledReasons` : la fiche grise le rang et
+ * affiche la notice. Vide si aucune capacité n'est concernée.
  */
 export function pathArmorDisabledReasons(character: Character, ctx: RulesContext): Map<string, string> {
   const map = new Map<string, string>();
   for (const id of pathArmorDisabledFeatureIds(character, ctx)) {
-    const path = ctx.pathById.get(featureById.get(id)!.pathId)!;
+    const feature = featureById.get(id)!;
+    if (feature.maxArmorId !== undefined) {
+      const armorName = equipmentById.get(feature.maxArmorId)?.name ?? '';
+      map.set(id, pathArmorRequiredMessage(armorName, feature.sourcePage, 'feature'));
+      continue;
+    }
+    const path = ctx.pathById.get(feature.pathId)!;
     const armorName = equipmentById.get(path.maxArmorId!)?.name ?? '';
-    map.set(id, pathArmorRequiredMessage(armorName, path.sourcePage));
+    map.set(id, pathArmorRequiredMessage(armorName, path.sourcePage, 'path'));
   }
   return map;
 }

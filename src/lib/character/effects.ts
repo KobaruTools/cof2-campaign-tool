@@ -166,10 +166,14 @@ export function activeFeatureIdsForMods(character: Character): string[] {
   // PER-74 — capacités de la Voie du combat à deux armes désactivées sans une arme dans chaque main
   // (p. 73), Combattant héroïque excepté (`dualWieldExemptFeatureIds`).
   for (const id of dualWieldDisabledFeatureIds(character, rulesContext)) disabled.add(id);
-  // PER-74 — capacités d'une voie qui fixe SON PROPRE plafond d'armure (Voie du danseur de guerre,
-  // p. 150), désactivées tant qu'une armure plus encombrante est portée. Complète PER-83, qui n'agit
-  // que sur les voies de PROFIL (une voie de prestige n'a pas de profil d'origine).
+  // PER-74 — capacités d'une voie (ou d'UN RANG, `Feature.maxArmorId`) qui fixe son propre plafond
+  // d'armure (Voie du danseur de guerre p. 150 ; Métamorphose de l'ours p. 152), désactivées tant
+  // qu'une armure plus encombrante est portée. Complète PER-83, qui n'agit que sur les voies de
+  // PROFIL (une voie de prestige n'a pas de profil d'origine).
   for (const id of pathArmorDisabledFeatureIds(character, rulesContext)) disabled.add(id);
+  // PER-74 — capacités de voie de PROFIL désactivées par une transformation ACTIVE qui prive de leur
+  // usage (Métamorphose de l'ours, p. 152 : « ne peut plus utiliser ses capacités de profil »).
+  for (const id of profileFeaturesDisabledByTransformation(character).keys()) disabled.add(id);
   return disabled.size ? ids.filter((id) => !disabled.has(id)) : ids;
 }
 
@@ -412,7 +416,12 @@ export function activeAbilityOverrideSources(
   character: Character,
 ): Partial<Record<AbilityId, AbilityOverrideSource>> {
   const out: Partial<Record<AbilityId, AbilityOverrideSource>> = {};
+  // PER-74 : une transformation à plafond d'armure propre (`Feature.maxArmorId`, Métamorphose de
+  // l'ours p. 152) n'impose plus ses surcharges tant que l'armure portée dépasse ce plafond — même
+  // interrupteur allumé, la forme ne « prend » pas (patron des autres restrictions d'armure, PER-83/86).
+  const armorDisabled = pathArmorDisabledFeatureIds(character, rulesContext);
   for (const id of character.featureIds) {
+    if (armorDisabled.has(id)) continue;
     const feature = featureById.get(id);
     if (!feature?.effects) continue;
     feature.effects.forEach((e, index) => {
@@ -1324,7 +1333,7 @@ export function setEffectToggle(
 export interface DisabledFeatureReason {
   byFeatureId: string;
   byFeatureName: string;
-  kind: 'excluded' | 'replaced';
+  kind: 'excluded' | 'replaced' | 'transformed';
 }
 
 /**
@@ -1352,6 +1361,10 @@ export function disabledFeatureReasons(character: Character): Map<string, Disabl
       }
     });
   }
+  // 1bis) Transformation active qui prive des capacités de PROFIL (PER-74, Métamorphose de l'ours).
+  for (const [targetId, source] of profileFeaturesDisabledByTransformation(character)) {
+    if (!reasons.has(targetId)) reasons.set(targetId, { ...source, kind: 'transformed' });
+  }
   // 2) Remplacements inconditionnels (priment sur l'exclusion) : la cible doit être acquise.
   const owned = new Set(character.featureIds);
   for (const id of character.featureIds) {
@@ -1363,6 +1376,40 @@ export function disabledFeatureReasons(character: Character): Map<string, Disabl
     }
   }
   return reasons;
+}
+
+/**
+ * PER-74 — ids des capacités de voie de PROFIL (`Path.type === 'class'`) désactivées par une
+ * transformation ACTIVE dont l'effet porte `disablesProfileFeatures` (Métamorphose, voie de l'ours
+ * p. 152 : « ne peut plus utiliser ses capacités de profil »). À DISTINGUER de `disablesFeatures`
+ * (liste explicite) : ici la cible est TOUTE voie de type 'class' possédée, découverte dynamiquement
+ * — les voies d'ascendance et de prestige ne sont jamais visées. Retourne l'id/nom de la capacité
+ * SOURCE (la transformation) par cible, pour le message d'UI. Vide si aucune transformation active
+ * ne porte ce drapeau.
+ */
+export function profileFeaturesDisabledByTransformation(
+  character: Character,
+): Map<string, { byFeatureId: string; byFeatureName: string }> {
+  const disabled = new Map<string, { byFeatureId: string; byFeatureName: string }>();
+  let active = false;
+  const sources: { byFeatureId: string; byFeatureName: string }[] = [];
+  for (const id of character.featureIds) {
+    const feature = featureById.get(id);
+    feature?.effects?.forEach((effect, index) => {
+      if (effect.kind !== 'conditional-stat-bonus' || !effect.disablesProfileFeatures) return;
+      if (!isEffectActive(character, id, index)) return;
+      active = true;
+      sources.push({ byFeatureId: id, byFeatureName: feature?.name ?? id });
+    });
+  }
+  if (!active) return disabled;
+  for (const targetId of character.featureIds) {
+    const targetFeature = featureById.get(targetId);
+    if (!targetFeature) continue;
+    if (pathById.get(targetFeature.pathId)?.type !== 'class') continue;
+    disabled.set(targetId, sources[0]);
+  }
+  return disabled;
 }
 
 /**

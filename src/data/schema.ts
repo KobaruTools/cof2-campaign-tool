@@ -887,6 +887,18 @@ export interface ConditionalStatBonusEffect {
    * `bonuses` (stats dérivées) et de `abilityTestBonus` (jets seuls). Absent = pas de surcharge.
    */
   abilityOverrides?: Partial<Record<AbilityId, number>>;
+  /**
+   * Quand CET interrupteur est ACTIF, désactive TOUTES les capacités ACQUISES d'une voie de PROFIL
+   * (`Path.type === 'class'`) du personnage — patron d'une TRANSFORMATION qui prive de l'accès aux
+   * capacités de classe (PER-74, Métamorphose de la voie de l'ours, p. 152 : « ne peut plus utiliser
+   * ses capacités de profil »). À DISTINGUER de `disablesFeatures` (liste EXPLICITE et fixe) : ici la
+   * cible est TOUTE voie de type 'class' possédée, quel que soit le profil du personnage — le moteur
+   * la découvre dynamiquement, sans lister d'id. Les voies d'ASCENDANCE et de PRESTIGE restent
+   * utilisables (le verbatim ne les mentionne pas). Résolu par `profileFeaturesDisabledByTransformation`
+   * (effects.ts), qui grise ces capacités ET les exclut des mods actifs. Absent = aucune capacité de
+   * profil désactivée.
+   */
+  disablesProfileFeatures?: boolean;
 }
 
 /**
@@ -1345,6 +1357,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'bleeding',
   'internal-hemorrhage',
   'grievous-wounds',
+  'frightened',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1413,6 +1426,15 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     label: 'Blessures affreuses',
     effect:
       "Les effets de soins ou de régénération appliqués aux DM infligés par les attaques au contact de ce personnage sont divisés par 2.",
+    sourcePage: 151,
+  },
+  // « Grondement » (voie de l'ours, r4, p. 151). Effet PUREMENT comportemental (la cible s'enfuit en
+  // courant) : aucun état de base ne représente une fuite forcée (ni Ralenti, ni Immobilisé — c'est
+  // l'inverse). Le test de VOL et la durée restent dans le verbatim/richText de la capacité source.
+  frightened: {
+    label: 'Effrayé',
+    effect:
+      "La cible échoue à un test de VOL contre un grondement terrifiant et s'enfuit en courant pendant 1d4 rounds.",
     sourcePage: 151,
   },
 };
@@ -3478,6 +3500,16 @@ export interface Feature {
    * Voie du bouclier) ; la capacité reste acquise. Absent = aucune condition d'arme. Cf. `WieldRequirement`.
    */
   wieldRequirement?: WieldRequirement;
+  /**
+   * PER-74 — plafond d'armure propre à CETTE capacité (Métamorphose, voie de l'ours p. 152 : « ne
+   * doit pas porter d'armure plus lourde que le cuir renforcé pour utiliser cette capacité »). Même
+   * mécanisme que `Path.maxArmorId` (Voie du danseur de guerre) mais à la granularité d'UN RANG —
+   * les autres rangs de la même voie de prestige (R4/R5/R7/R8 de l'ours) restent utilisables quelle
+   * que soit l'armure portée. Résolu par `pathArmorDisabledFeatureIds`/`pathArmorDisabledReasons`
+   * (armorRestrictions.ts), qui vérifient D'ABORD ce plafond, sinon retombent sur celui de la voie.
+   * Absent = aucun plafond propre à cette capacité.
+   */
+  maxArmorId?: string;
   /**
    * Compteur d'usages limités (« utilisable N fois ») — déclare le maximum ; le
    * décompte courant est un état de jeu du personnage (`Character.usageCounters`).

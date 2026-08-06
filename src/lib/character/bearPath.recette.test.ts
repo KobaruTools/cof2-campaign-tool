@@ -1,30 +1,39 @@
 /**
  * PER-74 — voie de l'ours (p. 151-152, 10ᵉ voie COMBATTANT), recette end-to-end.
  *
- * r4 Caractère d'ours : +5 intimidation permanent (`test-bonus`) + compteur 1×/combat sur le grondement
- * (fuite forcée laissée verbatim, aucun `inflictableStates` — un seul état, le compteur suffit déjà).
- * r5 Hibernation : verbatim seul. r6 Métamorphose : `creatureProfile.transformation` (patron Loup du
- * lycanthrope / Drake du chevalier dragon) + `abilityOverrides` SET sur AGI/CON/FOR/PER/CHA ; INT
- * inchangée ; VOL+2 en écart RAW assumé (delta non exprimable par `abilityOverrides`, qui n'admet
- * qu'une surcharge ABSOLUE) mais correctement affiché sur la mini-fiche (`abilitiesFromMaster`, qui
- * gère nativement les deltas). r7 Étreinte de l'ours : verbatim + richText balisé, compteur 1×/combat.
- * r8 Métamorphose supérieure : REMPLACE la cadence/durée de r6 via `usageCounter.conditionalFrequency`
- * (patron Cape d'ombre/Manteau d'ombre) — pas une 2ᵉ forme distincte (arbitrage propriétaire).
+ * r4 Caractère d'ours : +5 intimidation permanent (`test-bonus`) + compteur 1×/combat sur le grondement ;
+ * la fuite forcée est cataloguée en effet SITUATIONNEL `frightened` (retour propriétaire : suivable à
+ * l'écran de MJ). r5 Hibernation : verbatim seul. r6 Métamorphose : `creatureProfile.transformation`
+ * (patron Loup du lycanthrope / Drake du chevalier dragon) + `abilityOverrides` SET sur AGI/CON/FOR/PER/
+ * CHA ; INT inchangée ; VOL+2 en écart RAW assumé (delta non exprimable par `abilityOverrides`, qui
+ * n'admet qu'une surcharge ABSOLUE) mais correctement affiché sur la mini-fiche (`abilitiesFromMaster`,
+ * qui gère nativement les deltas). Retour propriétaire mécanisé : (a) plafond d'armure PROPRE À CETTE
+ * CAPACITÉ (`Feature.maxArmorId`, mirroir de `Path.maxArmorId` mais à la granularité du rang — R4/R5/R7/
+ * R8 restent utilisables en armure lourde) ; (b) « ne peut plus utiliser ses capacités de profil » —
+ * `disablesProfileFeatures` désactive dynamiquement toute voie de type 'class' possédée tant que la
+ * forme est active (grisage ET exclusion réelle des mods actifs). r7 Étreinte de l'ours : verbatim +
+ * richText balisé, compteur 1×/combat. r8 Métamorphose supérieure : REMPLACE la cadence/durée de r6 via
+ * `usageCounter.conditionalFrequency` (patron Cape d'ombre/Manteau d'ombre) — pas une 2ᵉ forme distincte.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { featureById, pathById } from '@/data';
+import { SITUATIONAL_EFFECTS } from '@/data/schema';
 import { migrateCharacter } from '@/lib/engine/migrations';
 import {
   activeAbilityOverrideSources,
   activeFeatureIdsForMods,
   capacityResourceGauges,
+  disabledFeatureReasons,
   effectContext,
   effectiveAbilities,
   effectiveUsageResetOn,
+  profileFeaturesDisabledByTransformation,
   testBonusSources,
 } from '@/lib/character/effects';
+import { pathArmorDisabledFeatureIds, pathArmorDisabledReasons } from '@/lib/character/armorRestrictions';
+import { rulesContext } from '@/lib/character/rulesContext';
 import { displayCreatureProfile, listCompanions } from '@/lib/character/companions';
 import { resolveCreatureAbilities } from '@/lib/ui/creature';
 import { parseRichText } from '@/lib/ui/featureRichText';
@@ -68,6 +77,11 @@ describe('PER-74 — voie de l’ours (p. 151-152, recette end-to-end)', () => {
     const dice = parseRichText(featureById.get(R4)!.richText!).filter((s) => s.kind === 'die');
     expect(dice).toHaveLength(1);
     expect(dice[0]).toMatchObject({ token: { count: 1, die: 'd4', evolving: false } });
+  });
+
+  it("r4 : la fuite forcée est cataloguée en effet situationnel 'frightened' (retour propriétaire)", () => {
+    expect(featureById.get(R4)?.situationalEffectIds).toEqual(['frightened']);
+    expect(SITUATIONAL_EFFECTS.frightened).toMatchObject({ label: 'Effrayé', sourcePage: 151 });
   });
 
   it('r5 Hibernation : verbatim seul, rien à chiffrer', () => {
@@ -114,6 +128,49 @@ describe('PER-74 — voie de l’ours (p. 151-152, recette end-to-end)', () => {
   it('r6 : transformation → EXCLUE de la section Compagnons (le personnage PREND la forme)', () => {
     expect(listCompanions(bearOn)).toHaveLength(0);
     expect(listCompanions(character)).toHaveLength(0);
+  });
+
+  it("r6 : plafond d'armure PROPRE à cette capacité (cuir renforcé max), pas à toute la voie", () => {
+    expect(featureById.get(R6)?.maxArmorId).toBe('cuir-renforce-broigne');
+    const plateWorn: Character = {
+      ...character,
+      equipment: [...character.equipment, { itemId: 'armure-de-plaques', quantity: 1, worn: { slot: 'armor' } }],
+    };
+    const disabled = pathArmorDisabledFeatureIds(plateWorn, rulesContext);
+    expect(disabled.has(R6)).toBe(true);
+    expect(disabled.has(R4)).toBe(false);
+    expect(disabled.has(R7)).toBe(false);
+    expect(pathArmorDisabledReasons(plateWorn, rulesContext).get(R6)).toContain('cette capacité');
+  });
+
+  it("r6 : armure de plaques + interrupteur allumé → la forme ne s'applique PAS (surcharge inerte)", () => {
+    const plateBearOn: Character = {
+      ...character,
+      equipment: [...character.equipment, { itemId: 'armure-de-plaques', quantity: 1, worn: { slot: 'armor' } }],
+      effectToggles: { [R6]: [true] },
+    };
+    expect(activeAbilityOverrideSources(plateBearOn)).toEqual({});
+    expect(effectiveAbilities(plateBearOn).FOR).toBe(character.abilities.FOR);
+  });
+
+  it("r6 : « ne peut plus utiliser ses capacités de profil » → toute la voie du combat (profil) désactivée", () => {
+    expect(profileFeaturesDisabledByTransformation(character).size).toBe(0);
+    const disabled = profileFeaturesDisabledByTransformation(bearOn);
+    for (const id of ['combat-r1', 'combat-r2', 'combat-r3', 'combat-r4', 'combat-r5']) {
+      expect(disabled.has(id)).toBe(true);
+    }
+    // La voie de PRESTIGE (l'ours elle-même) n'est jamais visée : ce n'est pas une voie de profil.
+    expect(disabled.has(R4)).toBe(false);
+    expect(disabled.has(R6)).toBe(false);
+    expect(disabled.has(R7)).toBe(false);
+  });
+
+  it('r6 : grisage UI ET exclusion réelle des mods actifs (pas seulement visuel)', () => {
+    const reasons = disabledFeatureReasons(bearOn);
+    expect(reasons.get('combat-r1')).toMatchObject({ byFeatureId: R6, kind: 'transformed' });
+    expect(activeFeatureIdsForMods(bearOn)).not.toContain('combat-r1');
+    // Contrôle : forme éteinte → la voie du combat reste pleinement active.
+    expect(activeFeatureIdsForMods(character)).toContain('combat-r1');
   });
 
   it('r6/r8 : R8 REMPLACE la cadence de R6 (conditionalFrequency), pas un 2ᵉ usage distinct', () => {

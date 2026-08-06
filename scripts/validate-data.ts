@@ -101,6 +101,13 @@ for (const c of features) {
   const v = pathById.get(c.pathId);
   if (!v) err(`[capacite ${c.id}] voieId inexistante : ${c.pathId}`);
   else if (!v.featureIds.includes(c.id)) err(`[capacite ${c.id}] absente des capaciteIds de ${v.id}`);
+  // PER-74 — plafond d'armure propre à CETTE capacité (Métamorphose, voie de l'ours p. 152), même
+  // contrainte que le plafond de VOIE ci-dessus mais à la granularité du rang.
+  if (c.maxArmorId !== undefined) {
+    const armor = equipmentById.get(c.maxArmorId);
+    if (!armor) err(`[capacite ${c.id}] maxArmorId inexistant : ${c.maxArmorId}`);
+    else if (armor.category !== 'armor') err(`[capacite ${c.id}] maxArmorId n'est pas une armure : ${c.maxArmorId}`);
+  }
 }
 
 // --- Rangs -------------------------------------------------------------------

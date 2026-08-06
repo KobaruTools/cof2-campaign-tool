@@ -1657,12 +1657,14 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Le personnage gagne un bonus de +5 à tous les tests d'intimidation. Une fois par combat, il peut pousser un terrible grondement en action gratuite. Tous les adversaires à son contact de NC inférieur à son niveau doivent réussir un test de VOL difficulté [6 + rang] ou s'enfuir en courant pendant 1d4 rounds.",
     // PER-74 : +5 intimidation = bonus PERMANENT (`test-bonus`, patron écorcheur r4). Le grondement
-    // (1×/combat) gagne un `usageCounter` ; la fuite forcée reste verbatim SANS `inflictableStates`
-    // (un seul état déclenché par ce compteur → le compteur suffit, règle retenue au colosse r8).
+    // (1×/combat) gagne un `usageCounter`. Fuite forcée cataloguée en effet SITUATIONNEL `frightened`
+    // (retour propriétaire : suivable à l'écran de MJ) — comportemental, aucun état de base du glossaire
+    // CO2 ne représente une fuite forcée (ni Ralenti ni Immobilisé, qui sont l'inverse).
     richText:
       "Le personnage gagne un bonus de +5 à tous les tests d'intimidation. Une fois par combat, il peut pousser un terrible grondement en action gratuite. Tous les adversaires à son contact de NC inférieur à son niveau doivent réussir un test de VOL difficulté [6 + rang] ou s'enfuir en courant pendant {1d4} rounds.",
     effects: [{ kind: 'test-bonus', domains: ['intimidation'], value: 5 }],
     usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
+    situationalEffectIds: ['frightened'],
     sourcePage: 151,
   },
   {
@@ -1694,16 +1696,23 @@ export const prestigeFeatures2: Feature[] = [
     // affiché sur la mini-fiche (`abilitiesFromMaster`, qui gère nativement les deltas), mais PAS
     // répercuté sur le reste de la fiche (tests de VOL hors mini-fiche) : `abilityOverrides` n'admet
     // qu'une SURCHARGE ABSOLUE, aucune primitive de delta gated par interrupteur (même limite que le
-    // +2 FOR de Forme puissante, lycanthrope r8). Restriction d'armure (cuir renforcé max) laissée
-    // verbatim (aucune primitive de gate n'existe pour bloquer l'activation d'un interrupteur).
+    // +2 FOR de Forme puissante, lycanthrope r8).
+    // MÉCANISÉ (retour propriétaire) : (a) restriction d'armure propre à CETTE capacité — nouveau
+    // `Feature.maxArmorId` (mirroir de `Path.maxArmorId`, mais à la granularité du rang : R4/R5/R7/R8
+    // restent utilisables en armure lourde) ; (b) « ne peut plus utiliser ses capacités de profil » —
+    // nouveau `disablesProfileFeatures` sur l'interrupteur : désactive DYNAMIQUEMENT toutes les
+    // capacités acquises d'une voie de type 'class' tant que la forme est active (grisage + exclues
+    // des mods actifs, cf. `profileFeaturesDisabledByTransformation`).
     richText:
       "Une fois par jour, le personnage peut prendre la forme d'un ours pendant [1d6 + CON] minutes. Le personnage ne doit pas porter d'armure plus lourde que le cuir renforcé pour utiliser cette capacité.\n\nLe personnage conserve sa propre INT, mais il a tendance à réagir comme l'animal qu'il est devenu et ne peut plus utiliser ses capacités de profil. Si le personnage est réduit à 0 PV sous cette forme, il reprend forme humaine au début de son prochain tour par une action de mouvement et retrouve les PV qu'il avait avant la transformation.",
+    maxArmorId: 'cuir-renforce-broigne',
     effects: [
       {
         kind: 'conditional-stat-bonus',
         bonuses: [],
         activation: { kind: 'temporary', label: "Sous forme d'ours", activeByDefault: false },
         abilityOverrides: { AGI: 1, CON: 6, FOR: 6, PER: 2, CHA: -2 },
+        disablesProfileFeatures: true,
       },
     ],
     // PER-74 : compteur 1×/jour ; passe à 1×/récupération rapide dès Métamorphose supérieure acquise
