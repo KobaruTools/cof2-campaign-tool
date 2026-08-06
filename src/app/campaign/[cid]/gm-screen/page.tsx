@@ -35,7 +35,6 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HandymanIcon from '@mui/icons-material/Handyman';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
-import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -66,7 +65,6 @@ import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkContr
 import { GmToolsDrawerHost, TOOLS_PARAM } from '@/components/campaign/GmToolsDrawerHost';
 import { DEFAULT_GM_TOOL } from '@/components/campaign/GmToolsDrawer';
 import { GmReferenceDrawerHost, REFERENCE_PARAM } from '@/components/campaign/GmReferenceDrawerHost';
-import { GmBestiaryDrawerHost, BESTIARY_PARAM } from '@/components/campaign/GmBestiaryDrawerHost';
 import { HomeBackground } from '@/components/HomeBackground';
 import { GmSessionHeaderIndicator } from '@/components/session/GmSessionHeaderIndicator';
 import { SIDE_ACCENT, type CreatureSide } from '@/lib/ui/creature';
@@ -484,20 +482,6 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               `Stack`/`spacing` applique déjà entre ses enfants (même spécificité CSS, la règle
               de `Stack` gagne). */}
           <Box sx={{ flexGrow: 1 }} />
-          {/* Bestiaire : ouvre le tiroir latéral intégrant le navigateur du bestiaire (`/bestiary`)
-              sans quitter l'écran de MJ. Vraie ancre (`?bestiary=1`) → Ctrl/⌘+Clic ouvre dans un
-              nouvel onglet, le bouton Retour ferme le tiroir. Même patron que le tiroir « Aide-mémoire ». */}
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<PetsOutlinedIcon />}
-            component={Link}
-            href={`/campaign/${cid}/gm-screen?${BESTIARY_PARAM}=1`}
-            scroll={false}
-            sx={(theme) => glassButtonSx(theme, 'info')}
-          >
-            Bestiaire
-          </Button>
           {/* Aide-mémoire : ouvre le tiroir latéral intégrant le référentiel de règles (`/reference`)
               sans quitter l'écran de MJ. Vraie ancre (`?reference=1`) → Ctrl/⌘+Clic ouvre dans un
               nouvel onglet, le bouton Retour ferme le tiroir. */}
@@ -764,12 +748,6 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
       <Suspense>
         <GmReferenceDrawerHost />
-      </Suspense>
-
-      {/* Tiroir « Bestiaire », piloté par `?bestiary=1`. Même contrainte de frontière `Suspense`
-          (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
-      <Suspense>
-        <GmBestiaryDrawerHost />
       </Suspense>
     </>
   );
