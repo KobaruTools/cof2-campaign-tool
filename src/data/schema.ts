@@ -1375,6 +1375,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'grievous-wounds',
   'frightened',
   'polymorphed',
+  'unconscious',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1463,6 +1464,16 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     label: 'Métamorphosé',
     effect:
       "Transformé en un animal de taille petite ou inférieure (1-2 PV). Retour à la forme initiale si réduit à 0 PV (test de CON difficulté 10, échec = mort) ou à l'expiration de la durée (dépend du NC de la cible, de permanent à 1 round).",
+    sourcePage: 155,
+  },
+  // « Arc-en-ciel » (voie du chaos, r4, p. 155, et son AoE « Explosion multicolore » r7). Aucun des 10
+  // états du glossaire ne représente l'inconscience (distincte d'« assommé », déduit des PV via
+  // `hpHealthState` — cf. statusEffects.ts) → mécanique PROPRE, admissible (PER-288). Les deux autres
+  // paliers de la même capacité (aveuglé/affaibli) restent SANS tag : ce sont des états de base déjà
+  // auto-glosés dans le verbatim, et la capacité est répétable (pas de cap « 1×/combat », PER-290).
+  unconscious: {
+    label: 'Inconscient',
+    effect: "Rendue inconsciente par le rayon (ou l'explosion) arc-en-ciel, pour la durée indiquée par le sort.",
     sourcePage: 155,
   },
 };

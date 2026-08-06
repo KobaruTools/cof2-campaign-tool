@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-chaos",
+  "name": "Recette PER-74 — Voie du chaos",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du chaos p. 155-156). R4 Arc-en-ciel et R7 Explosion multicolore (même effet en zone) portent un tag data-only `situationalEffectIds: ['unconscious']` pour le futur Combat Tracker sur le palier NC≤1 (aucun état du glossaire ne représente l'inconscience) ; les paliers aveuglé/affaibli restent SANS tag (états de base déjà auto-glosés dans le verbatim, sort répétable sans cap 1×/combat). R5 Mur arc-en-ciel, R6 Pont arc-en-ciel et R8 Sphère multicolore : aucun effet chiffré (effets de terrain/instantanés, pas un état suivi par combattant dans la durée), mais richText balisé — dés ({2d4°}/{3d4°}/{1d4°}), difficultés [10 + INT] et durées en terme nommé [#INT] (« d'INT minutes/heures » garde le mot)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "prestige-chaos-r4",
+    "prestige-chaos-r5",
+    "prestige-chaos-r6",
+    "prestige-chaos-r7",
+    "prestige-chaos-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "baton",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

@@ -2128,6 +2128,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Un rayon de lumière arc-en-ciel jaillit de la main du personnage et sur un test opposé d'attaque magique réussi, il percute une cible à une portée de 10 m. Les effets du sort dépendent du niveau de la cible (ou NC pour une créature).\n- NC 1 ou moins : inconscient 1d6 rounds.\n- NC 2 ou 3 : aveuglé 1d6 rounds.\n- NC 4 et plus : affaibli 1d6 rounds.\nAucune créature d'un niveau supérieur ou égal au magicien ne peut être affectée par le sort.",
+    // PER-290 : palier « inconscient » (NC≤1) tagué en tag data-only pour le futur Combat Tracker
+    // (nouvel id `unconscious`, aucun état du glossaire ne représentant l'inconscience). Les paliers
+    // aveuglé/affaibli restent SANS tag : états de base déjà auto-glosés dans le verbatim, et sort
+    // RÉPÉTABLE (aucun cap « 1×/combat par état » → pas d'`inflictableStates`, patron spadassin-r5).
+    situationalEffectIds: ['unconscious'],
     sourcePage: 155,
   },
   {
@@ -2139,6 +2144,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le sort crée un mur opaque de couleurs chatoyantes et changeantes. Le personnage invoque au choix un mur rectiligne qui mesure jusqu'à 5 m de haut et 3 m de long par rang ou un mur circulaire d'un diamètre maximal égal au rang, dans les deux cas pour une durée d'INT minutes. Si une créature d'un NC inférieur au niveau du personnage tente de traverser le mur, elle est violemment repoussée de 2d4° mètres en arrière et elle subit autant de DM. Une créature de niveau supérieur ou égal doit réussir un test d'INT difficulté [10 + INT du personnage] pour le franchir ou subir le même effet que les autres en cas d'échec. Le magicien peut passer à travers le mur comme s'il n'existait pas. Le mur stoppe toutes les attaques magiques et les projectiles lancés à travers disparaissent simplement (une arme magique réapparaît à la fin du sort à l'endroit où elle a disparu).",
+    // Durée en terme nommé ([#INT], le déterminant « d' » réclame le mot) ; dé de recul balisé
+    // ({2d4°}) ; difficulté de résistance [10 + INT] (suffixe « du personnage » implicite, retiré).
+    richText:
+      "Le sort crée un mur opaque de couleurs chatoyantes et changeantes. Le personnage invoque au choix un mur rectiligne qui mesure jusqu'à 5 m de haut et 3 m de long par rang ou un mur circulaire d'un diamètre maximal égal au rang, dans les deux cas pour une durée d'[#INT] minutes. Si une créature d'un NC inférieur au niveau du personnage tente de traverser le mur, elle est violemment repoussée de {2d4°} mètres en arrière et elle subit autant de DM. Une créature de niveau supérieur ou égal doit réussir un test d'INT difficulté [10 + INT] pour le franchir ou subir le même effet que les autres en cas d'échec. Le magicien peut passer à travers le mur comme s'il n'existait pas. Le mur stoppe toutes les attaques magiques et les projectiles lancés à travers disparaissent simplement (une arme magique réapparaît à la fin du sort à l'endroit où elle a disparu).",
     sourcePage: 155,
   },
   {
@@ -2150,6 +2159,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage crée un pont arc-en-ciel pendant INT heures entre deux points situés en vue (la distance peut mesurer plusieurs kilomètres). Les alliés du magicien peuvent l'emprunter comme un pont normal, mais la distance séparant les deux arches est parcourue instantanément. Les autres créatures doivent faire un test d'INT difficulté [10 + INT du mage]. En cas d'échec, déterminez l'effet aléatoirement en lançant 1d6.\n1-2 : La créature est projetée en l'air et subit 3d4° DM de chute.\n3-4 : la créature est projetée dans le temps et réapparaît 1d4° min plus tard.\n5-6 : la créature est projetée dans l'espace et elle réapparaît à 1d4° km dans une direction aléatoire.",
+    // Durée en terme nommé ([#INT], même raisonnement que R5) ; difficulté [10 + INT] (suffixe « du
+    // mage » implicite, retiré) ; les TROIS dés des sous-effets (chute/temps/espace) balisés. Le 1d6
+    // de sélection de la table (1-2/3-4/5-6) reste en texte littéral : c'est un discriminant, pas un
+    // dé de DM/durée.
+    richText:
+      "Le personnage crée un pont arc-en-ciel pendant [#INT] heures entre deux points situés en vue (la distance peut mesurer plusieurs kilomètres). Les alliés du magicien peuvent l'emprunter comme un pont normal, mais la distance séparant les deux arches est parcourue instantanément. Les autres créatures doivent faire un test d'INT difficulté [10 + INT]. En cas d'échec, déterminez l'effet aléatoirement en lançant 1d6.\n1-2 : La créature est projetée en l'air et subit {3d4°} DM de chute.\n3-4 : la créature est projetée dans le temps et réapparaît {1d4°} min plus tard.\n5-6 : la créature est projetée dans l'espace et elle réapparaît à {1d4°} km dans une direction aléatoire.",
     sourcePage: 155,
   },
   {
@@ -2161,6 +2176,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "L'explosion produit les mêmes effets que l'arc-en-ciel dans une zone de 10 m de diamètre à une portée de 30 m.",
+    // « Mêmes effets que l'arc-en-ciel » (r4) : même tag data-only, même raisonnement (aveuglé/affaibli
+    // sans tag, cf. r4).
+    situationalEffectIds: ['unconscious'],
     sourcePage: 155,
   },
   {
@@ -2172,6 +2190,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le magicien invoque une sphère immobile de lumières chatoyantes de 5 m de diamètre autour de lui, pour une durée d'INT heures. Aucun sort ne peut traverser la sphère (dans un sens comme dans l'autre) et les créatures subissent un effet qui dépend de leur NC.\n- NC inférieur à la moitié du niveau du personnage : téléportation à une distance de 2d4° × 100 km dans une direction aléatoire.\n- NC inférieur au niveau du personnage : téléportation à une distance de 2d4° km.\n- NC supérieur ou égal au niveau du personnage : comme le précédent, mais la créature peut résister et réussir à entrer dans la sphère en réussissant un test d'INT difficulté [10 + INT du personnage].\nLe lieu où la créature est téléportée doit être sans danger direct (ni dans un endroit solide ni dans les flammes, etc.). Le magicien peut entrer et sortir à volonté de la sphère ainsi que toute personne qu'il autorise à passer.",
+    // Durée en terme nommé ([#INT]) ; les DEUX dés de distance de téléportation balisés ({2d4°},
+    // le « × 100 km »/« km » qui suit reste littéral — un dé ne se multiplie pas dans une formule) ;
+    // difficulté [10 + INT] (suffixe « du personnage » implicite, retiré).
+    richText:
+      "Le magicien invoque une sphère immobile de lumières chatoyantes de 5 m de diamètre autour de lui, pour une durée d'[#INT] heures. Aucun sort ne peut traverser la sphère (dans un sens comme dans l'autre) et les créatures subissent un effet qui dépend de leur NC.\n- NC inférieur à la moitié du niveau du personnage : téléportation à une distance de {2d4°} × 100 km dans une direction aléatoire.\n- NC inférieur au niveau du personnage : téléportation à une distance de {2d4°} km.\n- NC supérieur ou égal au niveau du personnage : comme le précédent, mais la créature peut résister et réussir à entrer dans la sphère en réussissant un test d'INT difficulté [10 + INT].\nLe lieu où la créature est téléportée doit être sans danger direct (ni dans un endroit solide ni dans les flammes, etc.). Le magicien peut entrer et sortir à volonté de la sphère ainsi que toute personne qu'il autorise à passer.",
     sourcePage: 156,
   },
 
