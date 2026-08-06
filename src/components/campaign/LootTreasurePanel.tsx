@@ -19,6 +19,7 @@
  * `TavernRumorsPanel` (même ossature d'onglet).
  */
 import { useMemo, useState } from 'react';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import CasinoIcon from '@mui/icons-material/Casino';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditIcon from '@mui/icons-material/Edit';
@@ -36,6 +37,7 @@ import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
+import { MagicItemGeneratorDialog } from '@/components/campaign/MagicItemGeneratorDialog';
 import { ItemDialog } from '@/components/sheet/ItemDialog';
 import { useToast } from '@/components/toast/ToastProvider';
 import type { Campaign, LootItem } from '@/lib/campaign';
@@ -89,6 +91,8 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
   const [drawn, setDrawn] = useState<LootItem | null>(null);
   // Modale d'objet (`ItemDialog`) : `null` = fermée, `'new'` = création, un index = édition.
   const [dialog, setDialog] = useState<'new' | number | null>(null);
+  // Modale du générateur d'objets magiques « selon le livre » (PER-308).
+  const [generatorOpen, setGeneratorOpen] = useState(false);
   // Verrou pendant l'écriture réseau (évite les tirages concurrents).
   const [busy, setBusy] = useState(false);
   // Ancre du menu « Ajouter à l'inventaire » (liste des persos de la campagne).
@@ -156,6 +160,18 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
     if (!drawn) return;
     upsert({ ...character, equipment: [...character.equipment, drawn.line] });
     showToast(`« ${lineName(drawn.line)} » ajouté à l'inventaire de ${character.name}.`, 'success');
+  };
+
+  /** Met un objet GÉNÉRÉ « selon le livre » (PER-308) dans la réserve de butin. */
+  const handleReserveGenerated = async (line: EquipmentLine) => {
+    const ok = await persist([...loot, { id: newLootId(), line, served: false }]);
+    if (ok) showToast(`« ${lineName(line)} » ajouté à la réserve.`, 'success');
+  };
+
+  /** Donne un objet GÉNÉRÉ directement à l'inventaire d'un personnage (PER-308). */
+  const handleGiveGenerated = (character: Character, line: EquipmentLine) => {
+    upsert({ ...character, equipment: [...character.equipment, line] });
+    showToast(`« ${lineName(line)} » ajouté à l'inventaire de ${character.name}.`, 'success');
   };
 
   return (
@@ -262,7 +278,7 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
       <Divider />
 
       {/* Réserve : liste + ajout via la modale d'objet des fiches. */}
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
         <Typography
           variant="subtitle2"
           sx={{
@@ -275,6 +291,16 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
         >
           Réserve
         </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          color="secondary"
+          startIcon={<AutoFixHighIcon />}
+          onClick={() => setGeneratorOpen(true)}
+          disabled={busy}
+        >
+          Générer selon le livre
+        </Button>
         <Button
           variant="outlined"
           size="small"
@@ -340,6 +366,15 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
           onConfirm={handleDialogConfirm}
         />
       )}
+
+      {/* Générateur d'objets magiques « selon le livre » (PER-308). */}
+      <MagicItemGeneratorDialog
+        open={generatorOpen}
+        onClose={() => setGeneratorOpen(false)}
+        campaignCharacters={campaignCharacters}
+        onReserve={handleReserveGenerated}
+        onGiveToPlayer={handleGiveGenerated}
+      />
     </Stack>
   );
 }
