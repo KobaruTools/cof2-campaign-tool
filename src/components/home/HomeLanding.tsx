@@ -329,7 +329,7 @@ export function HomeLanding({ role }: { role: SessionRole }) {
             <SectionHeading
               overline="En images"
               title="À quoi ça ressemble"
-              lead="Des captures de l’outil tel qu’il tourne, pas des maquettes."
+              lead="Des captures de l’outil en train de tourner."
             />
             <Box sx={{ mt: 2.5 }}>
               <AppShowcase />

@@ -71,6 +71,13 @@ const TABS: ShowcaseTab[] = [
     caption:
       'Recherche, filtres par nature, taille et niveau de challenge, et le bloc de statistiques complet de chaque créature.',
   },
+  {
+    slug: 'reference',
+    label: 'Aide-mémoire',
+    href: '/reference',
+    caption:
+      'Les états préjudiciables et les manœuvres de combat, rangés par onglet et lisibles d’un coup d’œil, avec le texte exact du livre à portée de clic.',
+  },
 ];
 
 export function AppShowcase() {

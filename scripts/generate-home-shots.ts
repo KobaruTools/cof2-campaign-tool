@@ -136,6 +136,16 @@ const SHOTS: Shot[] = [
     readySelector: 'h1',
     settleMs: 900,
   },
+  {
+    slug: 'reference',
+    // Sans `?s=`, l'aide-mémoire ouvre l'onglet « Combat » : les états préjudiciables et les
+    // manœuvres, c'est-à-dire ce qu'on vient y chercher en pleine partie.
+    path: () => '/reference',
+    // La barre d'onglets ne monte qu'une fois le référentiel groupé : sa présence signe une page
+    // rendue, là où un simple conteneur existerait déjà vide.
+    readySelector: '[aria-label="Sections de l’aide-mémoire"]',
+    settleMs: 900,
+  },
   // L'ASSISTANT DE CRÉATION n'est pas ici : ses sept captures (une par étape) exigent un
   // brouillon injecté et un cadrage propre à chaque panneau — cf. `home-shots-wizard.ts`,
   // et `captureWizardFrames` plus bas.
