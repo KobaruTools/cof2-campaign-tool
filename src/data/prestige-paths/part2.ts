@@ -226,6 +226,9 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'fighter',
     prerequisites: '',
+    // PER-74 : présentation de la voie (p. 153) en info-bulle « i » de l'en-tête, verbatim. La voie
+    // n'a AUCUN prérequis dans le livre.
+    note: "Célèbres parmi les nains, les tueurs de géants sont une caste à part, des têtes brûlées qui se sont spécialisées dans les combats contre cet ennemi ancestral dans les montagnes. Avec le temps, cette pratique extrême a été adoptée par d'autres peuples.",
     featureIds: [
       'prestige-tueur-de-geants-r4',
       'prestige-tueur-de-geants-r5',
@@ -1876,6 +1879,22 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Que ce soit pour approcher ou pour éviter les grandes créatures, le tueur de géants sait se faire tout petit. Il obtient un bonus de +5 à tous les tests de discrétion destinés à échapper à la perception des créatures de taille grande et supérieure.",
+    // Bonus de test CONDITIONNÉ à une situation que le moteur ne détecte pas (taille de l'adversaire) →
+    // interrupteur manuel, patron Vision des ombres (`prestige-ombres-r4`, p. 139). Le +5 est FIXE
+    // (`testBonusValue`), le fallback de catégorie prestige (2 + min(rang, 5)) vaudrait 7.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        testBonusDomains: ['stealth'],
+        testBonusValue: 5,
+        activation: {
+          kind: 'condition',
+          label: 'Contre une créature de taille grande ou supérieure',
+          activeByDefault: false,
+        },
+      },
+    ],
     sourcePage: 153,
   },
   {
@@ -1887,6 +1906,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage sait se placer de façon à atteindre les parties molles ou vitales en passant sous les grandes créatures. Il ignore la RD des créatures lorsqu'elle est basée sur leur taille.",
+    // Bypass de la RD d'un ADVERSAIRE : aucun mécanisme existant (`DamageReduction` ne modélise que la
+    // RD DU PERSONNAGE). Verbatim seul.
     sourcePage: 153,
   },
   {
@@ -1898,6 +1919,27 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage est passé maître dans l'art de réduire la distance pour gêner les créatures avec une grande allonge. Il obtient +1 en DEF contre les créatures de taille grande, +2 contre les créatures énormes et +3 contre les créatures colossales.",
+    // 3 bonus DEF conditionnés à la taille de l'ADVERSAIRE (aucun sélecteur à 3 états dans le moteur,
+    // seulement des interrupteurs booléens) → 3 interrupteurs manuels indépendants, un par palier
+    // (patron Vision des ombres ×3). Rien n'empêche d'en activer plusieurs à la fois : au joueur de
+    // n'allumer que celui qui correspond à l'adversaire du moment.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [{ stat: 'def', value: 1 }],
+        activation: { kind: 'condition', label: 'Contre une créature de taille grande', activeByDefault: false },
+      },
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [{ stat: 'def', value: 2 }],
+        activation: { kind: 'condition', label: 'Contre une créature de taille énorme', activeByDefault: false },
+      },
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [{ stat: 'def', value: 3 }],
+        activation: { kind: 'condition', label: 'Contre une créature de taille colossale', activeByDefault: false },
+      },
+    ],
     sourcePage: 153,
   },
   {
@@ -1909,6 +1951,14 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le tueur de géants réalise une attaque aux jambes contre une créature de taille grande ou supérieure. En cas de réussite, il inflige ½ DM, mais la créature est ralentie au prochain round et invalide pour tout le reste du combat. En cas de réussite avec une marge d'au moins 10 points, la cible est de plus renversée ! Une cible ne peut subir ces effets plus d'une fois par combat (ralenti et invalide).",
+    // PER-290 : mélange un état de base (ralenti/renversé, glosé auto par StatusEffectChip) et un
+    // effet situationnel séparé (invalide = `invalidating-attack`, catalogue distinct). Limite RAW
+    // « 1×/combat PAR CIBLE » ≠ granularité d'`inflictableStates` (interrupteur GLOBAL par combat,
+    // patron Botte secrète spadassin-r5) → aucun mécanisme actuel ne suit un marqueur par cible.
+    // Verbatim seul + tag data-only du catalogue (aucun effet actif en jeu, sert le futur Combat
+    // Tracker). Ni dé ni formule dans le texte → pas de richText (cf. Attaque déterminée du chevalier,
+    // « ½ DM », qui n'en a pas non plus).
+    situationalEffectIds: ['invalidating-attack'],
     sourcePage: 153,
   },
   {
@@ -1920,6 +1970,31 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage est habitué à combattre les géants et les énormes créatures. Il obtient +1d6 DM contre les créatures de taille grande, +1d4° DM contre les créatures de taille énorme et +2d4° DM contre celles de taille colossale. Si votre PJ n'est pas un nain, c'est sans doute parce qu'il est capable de sauter sur sa victime pour atteindre des points vitaux. S'il s'agit d'un nain, c'est plutôt parce que sa victime a posé genoux à terre !",
+    // Rendu enrichi (dés) : {1d6}/{1d4°}/{2d4°}.
+    richText:
+      "Le personnage est habitué à combattre les géants et les énormes créatures. Il obtient +{1d6} DM contre les créatures de taille grande, +{1d4°} DM contre les créatures de taille énorme et +{2d4°} DM contre celles de taille colossale. Si votre PJ n'est pas un nain, c'est sans doute parce qu'il est capable de sauter sur sa victime pour atteindre des points vitaux. S'il s'agit d'un nain, c'est plutôt parce que sa victime a posé genoux à terre !",
+    // 3 dés bonus DM SITUATIONNELS (taille de l'adversaire, non modélisable en `condition` auto) —
+    // patron Chasseur émérite (`traqueur-r3`, +1d4° contre les animaux) ×3, un badge par palier.
+    effects: [
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 1, die: 'd6' },
+        condition: { label: 'contre une créature de taille grande' },
+        situational: true,
+      },
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 1, die: 'd4', evolving: true },
+        condition: { label: 'contre une créature de taille énorme' },
+        situational: true,
+      },
+      {
+        kind: 'weapon-damage-bonus',
+        dice: { count: 2, die: 'd4', evolving: true },
+        condition: { label: 'contre une créature de taille colossale' },
+        situational: true,
+      },
+    ],
     sourcePage: 153,
   },
 

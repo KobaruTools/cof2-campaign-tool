@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-tueur-de-geants",
+  "name": "Recette PER-74 — Tueur de géants (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du tueur de géants p. 153) — 12ᵉ et dernière voie COMBATTANT. R4 Profil bas et R6 Réduire la distance sont des interrupteurs MANUELS (Character.effectToggles) à basculer selon la taille de l'adversaire : R4 = +5 discrétion (aucun activé par défaut) ; R6 = 3 interrupteurs indépendants (+1/+2/+3 DEF, grande/énorme/colossale). R8 Tueur de géants : 3 badges DM situationnels sous la carte d'attaque (+1d6/+1d4°/+2d4°). R5 Ventre mou et R7 Pieds d'argile restent verbatim seuls (aucun mécanisme de bypass de RD adverse ni de suivi par cible dans le moteur)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-r1",
+    "combat-r2",
+    "combat-r3",
+    "combat-r4",
+    "combat-r5",
+    "prestige-tueur-de-geants-r4",
+    "prestige-tueur-de-geants-r5",
+    "prestige-tueur-de-geants-r6",
+    "prestige-tueur-de-geants-r7",
+    "prestige-tueur-de-geants-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    },
+    {
+      "itemId": "chemise-de-mailles",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette de la voie du tueur de géants (12ᵉ et dernière voie COMBATTANT, p. 153). R4/R6 interrupteurs manuels (taille adverse) ; R8 badges DM situationnels ; R5/R7 verbatim.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
