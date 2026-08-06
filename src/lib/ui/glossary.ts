@@ -128,10 +128,10 @@ export type GameTermCategory = 'action' | 'attack' | 'rule' | 'status';
  * ne désignent pas l'état → on refuse la reconnaissance selon le texte adjacent.
  */
 export interface GameTermGuard {
-  /** Refuser si le texte QUI PRÉCÈDE se termine par cette chaîne (casse insensible). */
-  notPrecededBy?: string;
-  /** Refuser si le texte QUI SUIT commence par cette chaîne (casse insensible). */
-  notFollowedBy?: string;
+  /** Refuser si le texte QUI PRÉCÈDE se termine par l'une de ces chaînes (casse insensible). */
+  notPrecededBy?: string | string[];
+  /** Refuser si le texte QUI SUIT commence par l'une de ces chaînes (casse insensible). */
+  notFollowedBy?: string | string[];
 }
 
 export interface GameTermEntry {
@@ -167,11 +167,14 @@ const STATUS_EFFECT_FORMS: Record<StatusEffectId, string[]> = {
 /**
  * Garde-fous de contexte par état (PER-208). Seul « ralenti » en a besoin dans le contenu réel :
  * l'idiome « au ralenti » (ralenti = « au ralenti », en slow-motion) et « ralenti par les terrains
- * difficiles » (déplacement, pas l'état). Les vrais emplois (« est ralenti », « état ralenti »,
- * « ralenti au prochain round ») restent reconnus.
+ * difficiles » (déplacement, pas l'état). S'y ajoute « Progression ralentie » de l'aide-mémoire
+ * « Dangers du voyage » (p. 235, cf. `travel.ts`) : c'est l'issue du test de progression (une seule
+ * période de déplacement pour la journée), pas l'état préjudiciable — verbatim, sans pastille
+ * (retour propriétaire). Les vrais emplois (« est ralenti », « état ralenti », « ralenti au prochain
+ * round ») restent reconnus.
  */
 const STATUS_EFFECT_GUARDS: Partial<Record<StatusEffectId, GameTermGuard>> = {
-  slowed: { notPrecededBy: 'au ', notFollowedBy: ' par ' },
+  slowed: { notPrecededBy: ['au ', 'progression '], notFollowedBy: ' par ' },
 };
 
 /** Entrées d'états générées depuis le catalogue (une par forme fléchie) — fusionnées à `GAME_TERMS`. */
@@ -272,8 +275,10 @@ export function splitGameTerms(text: string): GameTermPiece[] {
     if (entry.guard) {
       const before = text.slice(0, m.index).toLowerCase();
       const after = text.slice(GAME_TERMS_RE.lastIndex).toLowerCase();
-      if (entry.guard.notPrecededBy && before.endsWith(entry.guard.notPrecededBy.toLowerCase())) continue;
-      if (entry.guard.notFollowedBy && after.startsWith(entry.guard.notFollowedBy.toLowerCase())) continue;
+      const asList = (v: string | string[] | undefined) =>
+        v === undefined ? [] : Array.isArray(v) ? v : [v];
+      if (asList(entry.guard.notPrecededBy).some((s) => before.endsWith(s.toLowerCase()))) continue;
+      if (asList(entry.guard.notFollowedBy).some((s) => after.startsWith(s.toLowerCase()))) continue;
     }
     pushText(text.slice(last, m.index));
     pieces.push({ kind: 'game', term: raw, entry });

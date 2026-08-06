@@ -243,5 +243,12 @@ describe('splitGameTerms — états préjudiciables (PER-208)', () => {
     it('ignore « ralenti par … » (déplacement, pas l’état)', () => {
       expect(states('il n’est plus ralenti par les terrains difficiles')).toEqual([]);
     });
+
+    it('ignore « Progression ralentie » (issue du test de progression, p. 235)', () => {
+      expect(
+        states('Progression ralentie : les PJ n’obtiennent qu’une seule période de déplacement.'),
+      ).toEqual([]);
+      expect(states('Progression ralentie et événement majeur')).toEqual([]);
+    });
   });
 });
