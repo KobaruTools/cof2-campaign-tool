@@ -570,13 +570,56 @@ export function borrowedFeatureIds(character: Character): string[] {
 }
 
 /**
+ * Ids des capacités OCTROYÉES par un grant FIXE (`Feature.grantedFeature`) d'une capacité acquise —
+ * ex. le cambion « Enfant des ténèbres » octroie le sort Ténèbres (PER-323). À la différence de
+ * l'emprunt par CHOIX (`feature-from-path`), la cible est IMPOSÉE. On EXCLUT une capacité déjà
+ * possédée nativement (pas de doublon : le livre prévoit alors un autre bénéfice). Ces capacités sont
+ * réellement acquises → leurs `effects` (et le +1 PM d'un sort octroyé) comptent, comme les emprunts.
+ */
+export function grantedFeatureIds(character: Character): string[] {
+  const owned = new Set(character.featureIds);
+  const out: string[] = [];
+  for (const hostId of character.featureIds) {
+    const granted = featureById.get(hostId)?.grantedFeature;
+    if (!granted) continue;
+    if (owned.has(granted.featureId)) continue; // déjà possédée nativement → pas d'octroi
+    if (!featureById.has(granted.featureId)) continue;
+    out.push(granted.featureId);
+  }
+  return [...new Set(out)];
+}
+
+/**
+ * Ids de capacités OCTROYÉES dont le « bonus de compétence associé » est SUPPRIMÉ
+ * (`grantedFeature.suppressTestBonus`, PER-323) : leurs effets `test-bonus` ne doivent PAS compter ni
+ * s'afficher. Ne concerne que les octrois EFFECTIFS (capacité pas déjà possédée nativement).
+ */
+export function suppressedTestBonusFeatureIds(character: Character): Set<string> {
+  const owned = new Set(character.featureIds);
+  const out = new Set<string>();
+  for (const hostId of character.featureIds) {
+    const granted = featureById.get(hostId)?.grantedFeature;
+    if (!granted?.suppressTestBonus) continue;
+    if (owned.has(granted.featureId)) continue;
+    out.add(granted.featureId);
+  }
+  return out;
+}
+
+/**
  * Ids effectifs pour l'agrégation des effets : capacités acquises + capacités
- * empruntées par choix, dédoublonnés. À passer à `modsFromFeatures` /
- * `featureModSources` pour que les bonus plats d'une capacité empruntée
- * s'appliquent.
+ * empruntées par choix + capacités OCTROYÉES par grant fixe, dédoublonnés. À passer à
+ * `modsFromFeatures` / `featureModSources` pour que les bonus plats d'une capacité
+ * empruntée ou octroyée s'appliquent.
  */
 export function effectiveFeatureIdsForMods(character: Character): string[] {
-  return [...new Set([...character.featureIds, ...borrowedFeatureIds(character)])];
+  return [
+    ...new Set([
+      ...character.featureIds,
+      ...borrowedFeatureIds(character),
+      ...grantedFeatureIds(character),
+    ]),
+  ];
 }
 
 /**
@@ -600,6 +643,14 @@ export function borrowedHostPathByFeatureId(character: Character): Map<string, s
         map.set(sel, host.pathId);
       }
     });
+  }
+  // Grants FIXES (PER-323) : la capacité octroyée « devient une capacité de la voie hôte », comme un
+  // emprunt. Même résolution du terme `rang` contre la voie hôte. Exclut les octrois déjà possédés.
+  for (const hostId of character.featureIds) {
+    const host = featureById.get(hostId);
+    const granted = host?.grantedFeature;
+    if (!granted || owned.has(granted.featureId) || !featureById.has(granted.featureId)) continue;
+    map.set(granted.featureId, host.pathId);
   }
   return map;
 }

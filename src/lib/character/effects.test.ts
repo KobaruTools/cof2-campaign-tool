@@ -545,6 +545,8 @@ describe('effectContext', () => {
       pathRankCounts: {},
       // Mapping emprunt → voie A (PER-73) : vide ici (aucune capacité empruntée).
       borrowedHostPaths: new Map(),
+      // Cibles d'octroi dont le bonus de compétence est supprimé (PER-323) : aucune ici.
+      suppressedTestBonusFeatureIds: new Set(),
       // Armure réellement portée (PER-132) : aucune ici (personnage minimal sans équipement).
       armorWorn: false,
       // Armure lourde portée (PER-236) : aucune non plus.

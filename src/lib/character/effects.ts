@@ -48,8 +48,10 @@ import {
   borrowedHostPathByFeatureId,
   effectiveFeatureIdsForMods,
   getOptionSelections,
+  suppressedTestBonusFeatureIds,
   weaponFamiliesMatchChoice,
 } from './choices';
+import { crystalAbilityBonuses } from './crystals';
 import { declineForFeature, resolveFeatureElement } from './dragonElement';
 import {
   armorDisabledFeatureIds,
@@ -110,6 +112,13 @@ export interface EffectContext {
    * voie d'origine, que le personnage ne possède pas. Absent → chaque capacité utilise sa propre voie.
    */
   borrowedHostPaths?: Map<string, string>;
+  /**
+   * Ids de capacités OCTROYÉES (`grantedFeature`, PER-323) dont le « bonus de compétence associé » est
+   * SUPPRIMÉ : leurs effets `test-bonus` sont IGNORÉS par `rawTestContributions` (le cambion obtient le
+   * sort Ténèbres mais pas l'érudition occulte). Absent → aucune suppression (cf.
+   * `suppressedTestBonusFeatureIds`).
+   */
+  suppressedTestBonusFeatureIds?: Set<string>;
   /**
    * Nombre de rangs ACQUIS dans chaque voie (pathId → compte) — pour les valeurs scalantes
    * `scale: 'path-rank-count'` (« RD de 1 par rang de la voie »). Distinct de `pathRanks` (NUMÉRO
@@ -394,6 +403,12 @@ export function effectiveAbilities(character: Character): Record<AbilityId, numb
   for (const [ability, value] of Object.entries(itemBonuses) as [AbilityId, number][]) {
     out[ability] = (out[ability] ?? 0) + value;
   }
+  // CRISTAUX ACTIFS (PER-74, voie des cristaux, p. 156) : bonus en delta, tant qu'activés
+  // (`Character.activeCrystalIds`) — même couche que les objets portés/bonus de forme.
+  const crystalBonuses = crystalAbilityBonuses(character);
+  for (const [ability, value] of Object.entries(crystalBonuses) as [AbilityId, number][]) {
+    out[ability] = (out[ability] ?? 0) + value;
+  }
   return out;
 }
 
@@ -512,6 +527,7 @@ export function effectContext(character: Character): EffectContext {
     toggles: character.effectToggles,
     featureChoices: character.featureChoices,
     borrowedHostPaths: borrowedHostPathByFeatureId(character),
+    suppressedTestBonusFeatureIds: suppressedTestBonusFeatureIds(character),
     pathRankCounts: pathRankCountsFromFeatures(character.featureIds),
     armorWorn: isArmorWorn(character.equipment),
     heavyArmorWorn: isHeavyArmorWorn(character.equipment),
@@ -2210,9 +2226,12 @@ function rawTestContributions(featureIds: string[], ctx?: EffectContext): RawTes
     const pathRank = pathRanks[rankPathId] ?? feature.rank;
     const fallback = defaultCompetenceValue(category, pathRank);
 
-    // (a) effets `test-bonus` statiques (barbare, chevalier, mages…).
+    // (a) effets `test-bonus` statiques (barbare, chevalier, mages…). Sauf « bonus de compétence
+    // associé » SUPPRIMÉ d'une capacité octroyée (`grantedFeature.suppressTestBonus`, PER-323) : le
+    // cambion obtient le sort Ténèbres mais pas son érudition occulte.
+    const testBonusSuppressed = ctx?.suppressedTestBonusFeatureIds?.has(id) ?? false;
     for (const effect of feature.effects ?? []) {
-      if (effect.kind !== 'test-bonus') continue;
+      if (effect.kind !== 'test-bonus' || testBonusSuppressed) continue;
       const value =
         effect.value === undefined
           ? fallback

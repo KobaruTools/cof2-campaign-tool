@@ -3460,6 +3460,31 @@ export interface Feature {
    * (bouclier-r2) : (M) par défaut, et (G) à partir du rang 5 de la voie.
    */
   actionTypesFromRank?: { rank: number; actionTypes: ActionType[] };
+  /**
+   * Octroi FIXE d'une capacité d'une AUTRE voie (PER-323, cambion « Enfant des ténèbres »). À la
+   * différence de l'emprunt par CHOIX (`feature-from-path`, où le joueur pioche une capacité éligible),
+   * la capacité octroyée est IMPOSÉE. Elle entre dans le pool effectif du personnage (ses `effects`
+   * comptent ; un SORT octroyé donne +1 PM comme tout sort connu et se lance sans surcoût d'armure) et
+   * se rend comme une capacité EMPRUNTÉE sous la voie hôte. Si le personnage possède DÉJÀ nativement
+   * cette capacité, l'octroi n'a PAS lieu (aucun doublon) ; le livre prévoit alors un autre bénéfice
+   * (ex. lancement en action gratuite), décrit par `freeActionIfOwned`.
+   */
+  grantedFeature?: {
+    /** Id de la capacité octroyée (ex. `sombre-magie-r1` = Ténèbres). */
+    featureId: string;
+    /**
+     * Écarte le « bonus de compétence associé » de la capacité octroyée : ses effets `test-bonus` ne
+     * comptent pas dans le moteur ni ne s'affichent (le cambion obtient le sort mais PAS l'érudition
+     * occulte qui accompagne la capacité native — p. 10).
+     */
+    suppressTestBonus?: boolean;
+    /**
+     * Si le personnage possède DÉJÀ nativement `featureId` : au lieu de l'octroi (supprimé pour éviter
+     * le doublon), l'action de lancement de la capacité NATIVE est remplacée par ces types (ex. `['G']`
+     * = gratuite). Donnée consommée au rendu de la carte native (câblage du rendu différé).
+     */
+    freeActionIfOwned?: ActionType[];
+  };
   /** Texte de règles complet, verbatim. Reste la SOURCE, jamais perdu. */
   text: string;
   /**
