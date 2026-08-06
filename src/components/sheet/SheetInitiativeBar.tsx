@@ -356,8 +356,7 @@ export function SheetInitiativeBar({
         </Box>
       </Stack>
       {/* Pas de padding en bas (sous `Collapse`) : la bande colle directement contre le pied de
-          page, dont la marge `mt` s'annule sur cette route (voir `FLUSH_FOOTER_ROUTES` dans
-          `AppFooter`). */}
+          page, qui ne porte aucune marge haute (cf. `AppFooter`). */}
       <Collapse in={!collapsed} unmountOnExit>
         <InitiativeTracker
           rows={initiativeRows}

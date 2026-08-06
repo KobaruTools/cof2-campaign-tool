@@ -27,6 +27,11 @@ export interface MouseParallaxOptions {
   trackScroll?: boolean;
   /** Facteur d'interpolation exponentielle vers la cible [0, 1]. Défaut : 0.06. */
   smoothing?: number;
+  /**
+   * Passer outre le réglage manuel `animateBackground` (cf. [[preferences]]).
+   * `prefers-reduced-motion` reste respecté quoi qu'il arrive. Défaut : faux.
+   */
+  ignorePreference?: boolean;
   /** Dépendances : la boucle est recréée quand l'une d'elles change. */
   deps?: React.DependencyList;
 }
@@ -43,6 +48,13 @@ export interface MouseParallaxOptions {
  * est appelé une dernière fois à (0, 0) pour remettre les éléments à leur position de
  * base (utile si l'utilisateur bascule le réglage en cours de mouvement).
  *
+ * `ignorePreference` lève la SECONDE condition seulement (arbitrage proprio) : le
+ * réglage manuel vise le fond présent sur toutes les pages, celui qu'on finit par
+ * trouver lassant à force d'y revenir. Il ne doit pas éteindre un décor qu'on ne
+ * croise qu'à l'arrivée sur le site (cf. [[HeroScene]]). `prefers-reduced-motion`,
+ * lui, n'est jamais outrepassé : c'est une demande d'accessibilité de l'OS, pas un
+ * réglage de confort.
+ *
  * `render` est référencé via une ref : l'appelant peut passer une fonction inline
  * sans la mémoïser ; la boucle n'est réinitialisée que par `deps`.
  */
@@ -53,6 +65,7 @@ export function useMouseParallax(
     mouseY = MOUSE_PARALLAX_Y,
     trackScroll = false,
     smoothing = 0.06,
+    ignorePreference = false,
     deps = [],
   }: MouseParallaxOptions = {},
 ) {
@@ -64,14 +77,16 @@ export function useMouseParallax(
   });
 
   // Réglage manuel par appareil (localStorage) : désactive le suivi souris du fond.
+  // `ignorePreference` le court-circuite (cf. l'en-tête).
   const animateBackground = usePreferencesStore((s) => s.animateBackground);
+  const allowed = ignorePreference || animateBackground;
 
   useEffect(() => {
     // Aucun mouvement si l'OS demande de réduire les animations OU si le réglage
     // manuel est désactivé : on remet les éléments à leur position de base (0, 0)
     // — indispensable quand l'utilisateur bascule le réglage alors qu'un décalage
-    // souris est déjà appliqué (l'effet se rejoue via `deps`/`animateBackground`).
-    if (!animateBackground || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // souris est déjà appliqué (l'effet se rejoue via `deps`/`allowed`).
+    if (!allowed || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       renderRef.current({ x: 0, y: 0, scrollY: 0 });
       return;
     }
@@ -111,8 +126,8 @@ export function useMouseParallax(
       if (trackScroll) window.removeEventListener('scroll', onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-    // `animateBackground` en dépendance : basculer le réglage remonte (ou démonte)
-    // la boucle immédiatement, sans rechargement.
+    // `allowed` en dépendance : basculer le réglage remonte (ou démonte) la boucle
+    // immédiatement, sans rechargement.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, animateBackground]);
+  }, [...deps, allowed]);
 }

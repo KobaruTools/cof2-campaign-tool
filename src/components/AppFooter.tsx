@@ -46,24 +46,20 @@ const PROJECTION_ROUTES = [
   /^\/play\/initiative\/?$/,
 ];
 
-/**
- * Routes dont le pied de page doit venir COLLER contre la bande d'initiative sticky-bottom
- * qu'elles affichent en fin de page (fiche de personnage, écran de MJ) : sans cette exception,
- * la marge `mt` normale du footer laisse un espace visible entre les deux, alors que la bande
- * est justement pensée pour venir se poser juste au-dessus du pied de page.
- */
-const FLUSH_FOOTER_ROUTES = [/^\/character\/[^/]+\/?$/, /^\/campaign\/[^/]+\/gm-screen\/?$/];
-
 export function AppFooter() {
   const pathname = usePathname();
   if (pathname && PROJECTION_ROUTES.some((route) => route.test(pathname))) return null;
-  const flush = !!pathname && FLUSH_FOOTER_ROUTES.some((route) => route.test(pathname));
 
   return (
     <Box
       component="footer"
       sx={{
-        mt: flush ? 0 : 6,
+        // AUCUNE marge haute (arbitrage proprio) : le pied de page vient au contact du
+        // contenu, sur toutes les routes. Il en portait une (`mt: 6`), assortie d'une
+        // liste d'exceptions pour les pages à bande d'initiative collée en bas, où elle
+        // creusait un vide entre la bande et le verre. Le vide se voyait en réalité
+        // partout — la marge décalait l'ensemble sans rien séparer que le regard ne
+        // sépare déjà : la bordure et le voile suffisent à détacher le pied de page.
         // Voile semi-transparent (bien plus bas que l'en-tête à 0.85) pour laisser
         // voir l'illustration de fond ; le flou d'arrière-plan la reprend comme le
         // verre de l'en-tête. Un léger dégradé vertical densifie le bas pour garder

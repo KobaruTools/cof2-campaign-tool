@@ -11,6 +11,10 @@
  * [[useMouseParallax]]). Il s'empile PAR-DESSUS `prefers-reduced-motion` : si l'OS
  * demande déjà de réduire les animations, l'effet est coupé quoi qu'il arrive ; ce
  * réglage n'est qu'un override manuel supplémentaire.
+ *
+ * UNE exception : le décor du héros de l'accueil (cf. [[HeroScene]]) bouge même quand
+ * ce réglage est décoché. Il vise le fond qu'on croise sur toutes les pages, pas une
+ * scène qu'on ne voit qu'à l'arrivée sur le site.
  */
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';

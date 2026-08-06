@@ -86,6 +86,19 @@ const MOUSE_X = 12;
 const MOUSE_Y = 6;
 
 /**
+ * Exception au réglage « Animer le fond à la souris » (arbitrage proprio) : le décor et
+ * les figures du héros bougent MÊME quand il est décoché. Ce réglage a été mis là pour le
+ * fond présent sur toutes les pages, celui qu'on finit par trouver lassant à force d'y
+ * revenir ; l'accueil, lui, ne se visite qu'à l'arrivée — l'y couper ne soulage personne
+ * et prive la page de la seule chose qui la fait vivre.
+ *
+ * Ne vaut QUE pour ce composant. Le fond de page (`HomeBackground`) et les illustrations
+ * d'en-tête (`HeaderIllustrations`) restent gouvernés par le réglage, y compris sur
+ * l'accueil. `prefers-reduced-motion` continue de tout couper (cf. [[useMouseParallax]]).
+ */
+const PARALLAX_ALWAYS_ON = true;
+
+/**
  * Profondeur du DÉCOR : très faible, c'est ce qui le situe au loin. Le décalage entre
  * cette valeur et celle des figures EST l'effet de relief.
  */
@@ -147,7 +160,7 @@ export function HeroBackdrop() {
       if (!el) return;
       el.style.transform = `translate3d(${(x * SCENE_DEPTH).toFixed(2)}px, ${(y * SCENE_DEPTH).toFixed(2)}px, 0)`;
     },
-    { mouseX: MOUSE_X, mouseY: MOUSE_Y },
+    { mouseX: MOUSE_X, mouseY: MOUSE_Y, ignorePreference: PARALLAX_ALWAYS_ON },
   );
 
   return (
@@ -202,7 +215,7 @@ export function HeroScene() {
         child.style.transform = `translate3d(${(x * depth).toFixed(2)}px, ${(y * depth).toFixed(2)}px, 0)`;
       }
     },
-    { mouseX: MOUSE_X, mouseY: MOUSE_Y },
+    { mouseX: MOUSE_X, mouseY: MOUSE_Y, ignorePreference: PARALLAX_ALWAYS_ON },
   );
 
   return (
