@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import GlobalStyles from '@mui/material/GlobalStyles';
 import { ThemeProvider } from '@mui/material/styles';
 import { CharacterSyncNotifier } from '@/components/CharacterSyncNotifier';
+import { PaidContentBoot } from '@/components/PaidContentBoot';
 import { ToastProvider } from '@/components/toast/ToastProvider';
 import theme from '@/theme';
 
@@ -29,6 +30,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <ToastProvider>{children}</ToastProvider>
         {/* Bandeau global de conflit de synchro + filet de flush avant fermeture (PER-192). */}
         <CharacterSyncNotifier />
+        {/* Chargement gaté du contenu payant « Le Compagnon » (PER-321) : sans effet
+            pour un visiteur/joueur non entitlé, fusion des registres pour un propriétaire entitlé. */}
+        <PaidContentBoot />
         {/* Le visualiseur PDF n'est plus monté ici : il est porté par le slot parallèle `@viewer`
             (route `/rules/...`, PER-60), overlay quand l'URL est interceptée. */}
       </ThemeProvider>

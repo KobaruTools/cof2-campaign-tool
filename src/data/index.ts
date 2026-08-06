@@ -41,7 +41,7 @@ import { families } from './families';
 import { valueSets } from './value-sets';
 import { progression, COIN_POUCH_ITEM_NAME } from './progression';
 import { idealsFlaws } from './ideals-flaws';
-import { ancestries } from './ancestries';
+import { ancestries as ancestriesBase } from './ancestries';
 import { ancestryPaths, magePath, ancestryFeatures } from './ancestry-paths';
 import { adventurerClasses, adventurerPaths, adventurerFeatures } from './classes/adventurers';
 import { fighterClasses, fighterPaths, fighterFeatures } from './classes/fighters';
@@ -61,12 +61,21 @@ import {
   type FeatureNatureTag,
   type ConditionalKind,
 } from './feature-classification';
+import {
+  mergeEntries,
+  bumpContentVersion,
+  type ContentBundle,
+  type MergeReport,
+} from './contentRegistry';
 
 // --- Règles transverses ------------------------------------------------------
 export { families, valueSets, progression, COIN_POUCH_ITEM_NAME, idealsFlaws };
 
 // --- Peuples -----------------------------------------------------------------
-export { ancestries };
+// Copie POSSÉDÉE par ce module (et non ré-export direct de `./ancestries`) : c'est
+// dans ce tableau que le contenu payant est fusionné en place (voir
+// `registerContentBundle`), sans muter le fichier de données de base.
+export const ancestries: Ancestry[] = [...ancestriesBase];
 
 // --- Profils (concaténés, ordre des familles) --------------------------------
 export const classes: CharacterClass[] = [
@@ -142,6 +151,43 @@ export const equipmentById = new Map<string, EquipmentItem>(equipment.map((e) =>
 export const featureClassificationById = new Map<string, FeatureClassification>(
   FEATURE_CLASSIFICATIONS.map((c) => [c.id, c]),
 );
+
+// --- Augmentation à l'exécution (contenu payant gaté, PER-321) ---------------
+/**
+ * Fusionne un lot de contenu (peuples, profils, voies, capacités, équipement) dans
+ * les registres de base EN PLACE : les tableaux et `Map` exportés ci-dessus gardent
+ * leurs références, si bien que tout consommateur synchrone (`.get(id)`, itération)
+ * voit immédiatement les nouvelles entrées sans changer d'une ligne.
+ *
+ * Politique **additive, base gagne** (voir `mergeEntries`) : le contenu payant ne
+ * peut qu'AJOUTER des entrées, jamais écraser une règle du livre de base. Idempotente
+ * — la rejouer (ex. cache + réseau) n'ajoute rien. La version de contenu n'est bumpée
+ * que si au moins une entrée a réellement été ajoutée (les abonnés ne se re-rendent
+ * pas pour rien).
+ *
+ * SÉCURITÉ LÉGALE : cette fonction est data-agnostique ; elle ne connaît aucun
+ * contenu payant. Le lot lui est fourni par le chargeur gaté (auth + entitlement),
+ * jamais embarqué dans le bundle.
+ */
+export function registerContentBundle(bundle: ContentBundle): MergeReport {
+  const reports = [
+    mergeEntries({ list: ancestries, byId: ancestryById }, bundle.ancestries),
+    mergeEntries({ list: classes, byId: classById }, bundle.classes),
+    mergeEntries({ list: paths, byId: pathById }, bundle.paths),
+    mergeEntries({ list: features, byId: featureById }, bundle.features),
+    mergeEntries({ list: equipment, byId: equipmentById }, bundle.equipment),
+  ];
+  const added = reports.reduce((sum, r) => sum + r.added, 0);
+  const skipped = reports.flatMap((r) => r.skipped);
+  if (added > 0) bumpContentVersion();
+  return { added, skipped };
+}
+
+export {
+  getContentVersion,
+  subscribeContent,
+} from './contentRegistry';
+export type { ContentBundle };
 
 export type { Family, ProgressionRules, ValueSet, IdealFlaw, Weapon, Armor, Shield, Gear, TestDomain, PriestGod, FantasticFamiliar };
 export type { Creature, CreatureAttack, CreatureSpecialAbility, CreatureCategory, CreatureSize, CreatureNature };

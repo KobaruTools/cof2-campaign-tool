@@ -18,12 +18,17 @@
  */
 
 const DB_NAME = 'cof2-bestiary';
-const DB_VERSION = 1;
+// v2 (PER-321) : ajoute l'object store `content` pour le cache des lots de contenu
+// payant de construction de personnage. Ajout purement additif — les stores v1
+// (`sources`, `blobs`) sont préservés par la mise à niveau.
+const DB_VERSION = 2;
 
 /** Object store de la liste légère groupée par source (clé = `sources.id`). */
 export const SOURCES_STORE = 'sources';
 /** Object store des blobs de détail déjà vus (clé = slug de la créature). */
 export const BLOBS_STORE = 'blobs';
+/** Object store des lots de contenu payant en cache (clé = slug de la source, PER-321). */
+export const CONTENT_STORE = 'content';
 
 /** IndexedDB est-il utilisable dans cet environnement (navigateur) ? */
 export function isIndexedDbAvailable(): boolean {
@@ -55,6 +60,9 @@ function openDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains(BLOBS_STORE)) {
           db.createObjectStore(BLOBS_STORE, { keyPath: 'slug' });
+        }
+        if (!db.objectStoreNames.contains(CONTENT_STORE)) {
+          db.createObjectStore(CONTENT_STORE, { keyPath: 'slug' });
         }
       };
       request.onsuccess = () => resolve(request.result);
