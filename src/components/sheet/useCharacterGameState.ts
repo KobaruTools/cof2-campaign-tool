@@ -23,6 +23,7 @@ import * as actions from '@/lib/character/sheetActions';
 import type { UseItemIntent } from '@/lib/character/sheetActions';
 import { containsGameStateKey } from '@/lib/character/gameState';
 import { capacityResourceGauges, type CapacityResourceGauge } from '@/lib/character/effects';
+import { withSupersededBuffTogglesOff } from '@/lib/character/groupBuffs';
 import type { Character, LoadedAmmunitionKind, Purse, WornState } from '@/lib/character/types';
 import { loadingContext, type LoadingContext } from '@/lib/character/weaponLoading';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
@@ -39,6 +40,13 @@ export interface CharacterGameState {
   update: (patch: Partial<Character>) => void;
   /** Vue dérivée partagée avec l'écran de MJ (entrée moteur + badges) — cf. `buildCharacterDerivedView`. */
   derived: CharacterDerivedView;
+  /**
+   * Personnage tel que les CALCULS le voient (PER-314) : identique à celui passé au hook, sauf en
+   * séance où les interrupteurs supplantés par un buff de groupe posé par le MJ sont éteints. À
+   * utiliser pour toute dérivation d'affichage supplémentaire (`buildSheetDisplayView`), JAMAIS pour
+   * écrire — les écritures visent le personnage réel, dont les interrupteurs gardent leur valeur.
+   */
+  derivedCharacter: Character;
   /**
    * Stats dérivées finales du MAÎTRE (modificateurs inclus), avec surcharges manuelles pour les
    * stats recopiées par les profils de créature (Init., attaque magique). `undefined` si le profil
@@ -133,10 +141,16 @@ export interface CharacterGameState {
 /**
  * Câble l'état de jeu du personnage `character` sur le store. `readOnly` neutralise toute
  * écriture. Renvoie `null` tant que le personnage n'est pas chargé.
+ *
+ * `sessionStatusIds` = les états que le MJ a posés sur ce personnage pendant une session ACTIVE
+ * (l'appelant tient déjà cette liste, cf. `appliedStatuses` de la fiche ; le hook ne lit pas la
+ * session lui-même pour ne pas doubler le poll de `useActiveSession`). Ils SUPPLANTENT les
+ * interrupteurs de fiche des buffs de groupe correspondants (PER-314), sans quoi le porteur
+ * compterait son propre bonus deux fois.
  */
 export function useCharacterGameState(
   character: Character | undefined,
-  options: { readOnly?: boolean } = {},
+  options: { readOnly?: boolean; sessionStatusIds?: readonly string[] } = {},
 ): CharacterGameState | null {
   const upsert = useCharactersStore((s) => s.upsert);
   const applyGameState = useCharactersStore((s) => s.applyGameState);
@@ -163,7 +177,12 @@ export function useCharacterGameState(
     (...args: A) =>
       update(action(target, ...args));
 
-  const derived = buildCharacterDerivedView(target);
+  // Le CALCUL part du personnage vu par la séance (PER-314) : un buff de groupe posé par le MJ
+  // éteint l'interrupteur de fiche qui porte le même bonus, pour ne le compter qu'une fois. Copie
+  // locale et jamais persistée — `target` reste la cible de toutes les écritures ci-dessous, si bien
+  // que l'interrupteur du joueur reprend la main dès la fin de la séance.
+  const derivedTarget = withSupersededBuffTogglesOff(target, options.sessionStatusIds ?? []);
+  const derived = buildCharacterDerivedView(derivedTarget);
   // Stats finales du maître : surcharges manuelles pour les stats recopiées par les profils de
   // créature (Init., attaque magique), comme les mini-fiches de compagnons les attendent.
   const masterDerived = derived.derivedInput
@@ -184,6 +203,7 @@ export function useCharacterGameState(
   return {
     update,
     derived,
+    derivedCharacter: derivedTarget,
     masterDerived,
     maxHp,
     manaMax,

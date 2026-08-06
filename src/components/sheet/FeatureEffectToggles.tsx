@@ -31,6 +31,7 @@ import {
   isEffectActive,
   isTemporaryActivationShortRestLocked,
 } from '@/lib/character/effects';
+import { isBuffToggleSuperseded } from '@/lib/character/groupBuffs';
 // Libellés courts des stats dérivées (« +1 DEF ») — source unique partagée avec les badges
 // d'apport d'objet (PER-273).
 import { DERIVED_MOD_SHORT_NAMES as STAT_SHORT } from '@/lib/ui/derivedStats';
@@ -89,6 +90,13 @@ export interface FeatureEffectTogglesProps {
    * `onToggle` (le détail de la capacité reste, lui, consultable).
    */
   disabled?: boolean;
+  /**
+   * États posés par le MJ sur ce personnage pendant une session ACTIVE (PER-314). Un buff de groupe
+   * qui s'y trouve SUPPLANTE l'interrupteur de fiche du porteur : grisé, annoté « appliqué par la
+   * séance », et déjà exclu du calcul en amont (`withSupersededBuffTogglesOff`). Vide hors séance,
+   * où l'interrupteur reprend la main — c'est alors le seul canal du bonus.
+   */
+  sessionStatusIds?: readonly string[];
 }
 
 /**
@@ -101,6 +109,7 @@ export function FeatureEffectToggles({
   compact = false,
   onToggle,
   disabled = false,
+  sessionStatusIds = [],
 }: FeatureEffectTogglesProps) {
   const entries = conditionalEffectsOf(featureId);
   if (entries.length === 0) return null;
@@ -119,17 +128,34 @@ export function FeatureEffectToggles({
     !isEffectActive(character, featureId, index) &&
     isTemporaryActivationShortRestLocked(character, featureId, index);
 
+  // Buff de groupe posé par la séance (PER-314) : la séance GAGNE sur l'interrupteur du porteur, qui
+  // ne compte plus dans le calcul. On le grise ici — l'éteindre ou le rallumer ne changerait rien
+  // tant que le MJ maintient l'état, et le laisser cliquable ferait croire à un effet.
+  const supersededBySession = (index: number): boolean =>
+    isBuffToggleSuperseded(character.featureIds, sessionStatusIds, featureId, index);
+  /** Libellé complet, suffixé de la raison du grisage quand la séance a pris le relais. */
+  const label = (index: number, effect: ConditionalStatBonusEffect): string => {
+    const base = effectLabel(character, featureId, index, effect);
+    return supersededBySession(index) ? `${base} — appliqué par la séance` : base;
+  };
+
   if (compact) {
     // Vue colonne : interrupteur seul. `stopPropagation` pour ne pas ouvrir la
     // modale de détail de la carte en basculant l'état.
     return (
       <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
         {entries.map(({ index, effect }) => (
-          <AppTooltip key={index} title={effectLabel(character, featureId, index, effect)}>
+          <AppTooltip key={index} title={label(index, effect)}>
             <Switch
               size="small"
               checked={isEffectActive(character, featureId, index)}
-              disabled={!onToggle || disabled || prereqUnmet(effect) || reactivationLocked(index)}
+              disabled={
+                !onToggle ||
+                disabled ||
+                prereqUnmet(effect) ||
+                reactivationLocked(index) ||
+                supersededBySession(index)
+              }
               onChange={(e) => onToggle?.(featureId, index, e.target.checked)}
             />
           </AppTooltip>
@@ -150,11 +176,17 @@ export function FeatureEffectToggles({
             <Switch
               size="small"
               checked={isEffectActive(character, featureId, index)}
-              disabled={!onToggle || disabled || prereqUnmet(effect) || reactivationLocked(index)}
+              disabled={
+                !onToggle ||
+                disabled ||
+                prereqUnmet(effect) ||
+                reactivationLocked(index) ||
+                supersededBySession(index)
+              }
               onChange={(e) => onToggle?.(featureId, index, e.target.checked)}
             />
           }
-          label={<Typography variant="body2">{effectLabel(character, featureId, index, effect)}</Typography>}
+          label={<Typography variant="body2">{label(index, effect)}</Typography>}
         />
       ))}
     </Stack>

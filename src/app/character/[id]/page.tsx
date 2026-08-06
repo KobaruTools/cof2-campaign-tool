@@ -175,11 +175,31 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // affordances d'édition (Modifier, crayons, montée de niveau, recréation) sont
   // masquées plus bas.
   const readOnly = character != null && isPlayer && character.playerId !== sessionPlayerId;
+  // Campagne de rattachement : garde-fou de tout ce qui relève de la session (présence, états de
+  // combat, roster). Déclarée AVANT l'état de jeu, dont le calcul dépend désormais des états posés.
+  const characterCampaignId = character?.campaignId ?? null;
+  // États de combat sur la fiche (PER-281) : le joueur voit ET subit, EN DIRECT pendant une session
+  // active, les états que le MJ lui applique ; hors session, rien (états propres au combat).
+  //  - `useActiveSession` (observateur, SANS battement — le battement/canal sont portés par le
+  //    `SessionHeaderIndicator` de l'en-tête, un seul par page) sert de garde-fou « session active ».
+  //  - Le store `campaignCombat` est alimenté en direct par le canal (broadcast `combat-state`) ; on
+  //    le CHARGE aussi depuis la table autoritative à l'entrée en session, pour voir les états déjà
+  //    posés avant qu'on rejoigne (le canal ne rediffuse qu'à la prochaine mutation du MJ).
+  const { isActive: sessionActive } = useActiveSession(characterCampaignId);
+  const combatStatuses = useCampaignCombatStore((s) =>
+    characterCampaignId ? s.byCampaign[characterCampaignId]?.statuses[id] : undefined,
+  );
+  // Hors session, la liste reste vide → aucune répercussion (les états sont propres au combat).
+  const appliedStatuses = sessionActive ? (combatStatuses ?? []) : [];
+  // Ids seuls, pour les consommateurs qui n'ont besoin que de SAVOIR ce qui est posé : la neutralisation
+  // de l'interrupteur de fiche d'un buff de groupe posé en séance (PER-314), au calcul comme à l'écran.
+  const sessionStatusIds = appliedStatuses.map((s) => s.id);
+
   // État de JEU du personnage (PER-257) : vue dérivée, maxima et actions de jeu (interrupteurs,
   // compteurs, PV, repos, compagnons, montures, inventaire) branchés sur le store par un hook
   // mince, adossé aux fonctions PURES de `lib/character/sheetActions`. `null` tant que le
   // personnage n'est pas chargé — d'où l'appel ici, avant les retours anticipés ci-dessous.
-  const game = useCharacterGameState(character, { readOnly });
+  const game = useCharacterGameState(character, { readOnly, sessionStatusIds });
 
   // Charge le personnage depuis le cloud (RLS `owner_id`, PER-192) en cas d'accès
   // direct à l'URL, et les campagnes pour résoudre le libellé d'attribution.
@@ -189,7 +209,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   }, [loadCharacters, loadCampaigns]);
   // Charge le roster de la campagne du personnage (quand il en a une), pour le
   // sélecteur/affichage du joueur. Se recharge si la campagne change.
-  const characterCampaignId = character?.campaignId ?? null;
   useEffect(() => {
     if (characterCampaignId) void loadPlayers(characterCampaignId);
   }, [characterCampaignId, loadPlayers]);
@@ -209,18 +228,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     }
     return { kind: 'gm', playerId: null, name: 'MJ' };
   }, [characterCampaignId, isPlayer, sessionPlayerId, playersCampaignId, players]);
-  // États de combat sur la fiche (PER-281) : le joueur voit ET subit, EN DIRECT pendant une session
-  // active, les états que le MJ lui applique ; hors session, rien (états propres au combat).
-  //  - `useActiveSession` (observateur, SANS battement — le battement/canal sont portés par le
-  //    `SessionHeaderIndicator` de l'en-tête, un seul par page) sert de garde-fou « session active ».
-  //  - Le store `campaignCombat` est alimenté en direct par le canal (broadcast `combat-state`) ; on
-  //    le CHARGE aussi depuis la table autoritative à l'entrée en session, pour voir les états déjà
-  //    posés avant qu'on rejoigne (le canal ne rediffuse qu'à la prochaine mutation du MJ).
-  const { isActive: sessionActive } = useActiveSession(characterCampaignId);
   const loadCombat = useCampaignCombatStore((s) => s.load);
-  const combatStatuses = useCampaignCombatStore((s) =>
-    characterCampaignId ? s.byCampaign[characterCampaignId]?.statuses[id] : undefined,
-  );
   // Manche courante du combat : les compteurs de tours des états (PER-305) s'en déduisent. 1 par
   // défaut (aucun combat chargé) — sans état posé, le panneau ne s'affiche de toute façon pas.
   const combatRoundNumber = useCampaignCombatStore((s) =>
@@ -407,6 +415,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       rangedAttackElement,
       rangedReplacingFormAttack: formAttackReplacingRanged,
     },
+    derivedCharacter,
     masterDerived,
     manaMax,
     luckMax,
@@ -606,14 +615,13 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // permanents de caractéristiques, dés bonus, bonus par domaine de test, malus d'armure,
   // sources de l'infobulle « i »… La fiche ne les calcule plus : elle les lit depuis le module
   // partagé avec le panneau latéral de l'écran de MJ (PER-258), qui porte le détail des règles.
-  // États de combat appliqués à CE personnage, uniquement en session active (PER-281). Hors
-  // session, la liste reste vide → aucune répercussion (les états sont propres au combat).
-  const appliedStatuses = sessionActive ? (combatStatuses ?? []) : [];
   // Impact CHIFFRÉ résolu (pur) : deltas DEF/Init./attaques à fondre dans le calcul, ventilation
   // pour le détail « i », et drapeaux de dé malus / malus plats. `null` si aucun état actif.
   const statusImpact = appliedStatuses.length > 0 ? statusSheetImpact(appliedStatuses) : null;
   const display = buildSheetDisplayView(
-    character,
+    // Personnage vu par le CALCUL (PER-314) : mêmes interrupteurs neutralisés que ceux dont
+    // `game.derived` découle, pour que la fiche ne montre pas un bonus que le moteur ne compte plus.
+    derivedCharacter,
     game.derived,
     masterDerived ? (character.overrides.maxHp ?? masterDerived.maxHp) : undefined,
     statusImpact ?? undefined,
@@ -1293,6 +1301,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Les interrupteurs d'effets conditionnels sont des ÉTATS DE JEU
               // transitoires : activables à tout moment, y compris hors édition.
               onToggleEffect={setEffectToggleValue}
+              // Buff de groupe posé en séance (PER-314) : grise l'interrupteur du porteur, dont le
+              // bonus arrive désormais par l'état du MJ — sans quoi il compterait deux fois.
+              sessionStatusIds={sessionStatusIds}
               // Saisie libre corrélée (animal de Forme animale) : état de jeu, comme
               // les interrupteurs, donc modifiable hors édition.
               onSetEffectInput={setEffectInputValue}

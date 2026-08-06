@@ -1,18 +1,22 @@
 /**
  * BUFFS DE GROUPE (PER-104) — part PURE : qui, à la table, peut poser quel buff, et à quel palier.
  *
- * Le catalogue (`BENEFICIAL_EFFECTS`) dit ce qu'un buff FAIT ; ce module dit qui le PORTE. Deux
- * usages, tous deux côté écran de MJ :
+ * Le catalogue (`BENEFICIAL_EFFECTS`) dit ce qu'un buff FAIT ; ce module dit qui le PORTE. Trois
+ * usages — deux côté écran de MJ, un côté fiche :
  *  - GATER la 4e ligne de la palette (`unlockedGroupBuffIds`) : une table sans barde ni prêtre n'a
  *    rien à poser, exactement comme pour les effets situationnels (PER-279) ;
  *  - PRÉ-REMPLIR le palier de la fenêtre de pose (`groupBuffIntensityFor`) : « +1, +2 au rang 5 » se
- *    lit sur le RANG ATTEINT dans la voie porteuse, le MJ gardant la main sur la valeur retenue.
+ *    lit sur le RANG ATTEINT dans la voie porteuse, le MJ gardant la main sur la valeur retenue ;
+ *  - DÉPARTAGER les deux canaux du même bonus chez le porteur (`supersededBuffToggles`, PER-314) :
+ *    le barde a AUSSI un interrupteur de fiche pour son propre Chant des héros, qui compterait une
+ *    seconde fois si le MJ pose le buff en séance.
  *
  * Aucune UI, aucun store — capacités acquises en entrée, données en sortie.
  */
 import { BENEFICIAL_EFFECT_IDS, type BeneficialEffectId } from '@/data/schema';
 import { featureById } from '@/data/index';
-import { pathRanksFromFeatures } from './effects';
+import { isEffectActive, pathRanksFromFeatures } from './effects';
+import type { Character } from './types';
 
 /**
  * Rang de voie à partir duquel les deux buffs du livre passent de +1 à +2 (« Le bonus passe à +2 au
@@ -88,4 +92,83 @@ export function groupBuffIntensityFor(
   buffId: BeneficialEffectId,
 ): number {
   return groupBuffsOf(featureIds).find((c) => c.buffId === buffId)?.intensity ?? 1;
+}
+
+/** PER-314 — un interrupteur de fiche SUPPLANTÉ par le même buff posé en séance. */
+export interface SupersededBuffToggle {
+  /** Capacité porteuse (`musicien-r1`, `priere-r1`…). */
+  featureId: string;
+  /** Index de l'effet TEMPORAIRE dans `Feature.effects`. */
+  index: number;
+  /** Buff posé en séance qui le supplante. */
+  buffId: BeneficialEffectId;
+}
+
+/**
+ * PER-314 — interrupteurs de fiche supplantés par la SÉANCE. Le porteur d'un buff de groupe a DEUX
+ * canaux pour le même bonus : son interrupteur de fiche (« Chant des héros actif (CHA min) ») et
+ * l'état que le MJ pose sur tout le camp (PER-104). Actifs ensemble, ils comptent deux fois — le
+ * barde passerait à +2 au lieu de +1. La séance GAGNE : on neutralise l'interrupteur, on ne le
+ * supprime pas (hors séance il reste le seul canal, cf. fiche en solo ou table sans écran de MJ).
+ *
+ * `sessionStatusIds` = les états que le MJ a appliqués à CE personnage (ids d'`AppliedStatus`, buffs
+ * comme malus) ; l'intersection avec les buffs que ses capacités confèrent fait le tri. Tous les
+ * effets TEMPORAIRES de la capacité porteuse sont visés : ce sont eux qui décrivent le sort actif
+ * (les `condition` décrivent une situation, jamais une durée — cf. `clearTemporaryEffectToggles`).
+ */
+export function supersededBuffToggles(
+  featureIds: readonly string[],
+  sessionStatusIds: readonly string[],
+): SupersededBuffToggle[] {
+  if (sessionStatusIds.length === 0) return [];
+  const posed = new Set<string>(sessionStatusIds);
+  const superseded: SupersededBuffToggle[] = [];
+  for (const carrier of groupBuffsOf(featureIds)) {
+    if (!posed.has(carrier.buffId)) continue;
+    featureById.get(carrier.featureId)?.effects?.forEach((effect, index) => {
+      if (effect.kind !== 'conditional-stat-bonus' || effect.activation.kind !== 'temporary') return;
+      superseded.push({ featureId: carrier.featureId, index, buffId: carrier.buffId });
+    });
+  }
+  return superseded;
+}
+
+/**
+ * Le i-ème effet de `featureId` est-il supplanté par un buff posé en séance ? Prédicat de l'UI :
+ * l'interrupteur est alors grisé et porte la note « appliqué par la séance ».
+ */
+export function isBuffToggleSuperseded(
+  featureIds: readonly string[],
+  sessionStatusIds: readonly string[],
+  featureId: string,
+  index: number,
+): boolean {
+  return supersededBuffToggles(featureIds, sessionStatusIds).some(
+    (t) => t.featureId === featureId && t.index === index,
+  );
+}
+
+/**
+ * Personnage tel que les CALCULS doivent le voir en séance : interrupteurs supplantés éteints, pour
+ * que le bonus ne soit compté qu'une fois (par l'état, canal autoritatif du MJ). Fonction pure, et
+ * surtout **jamais persistée** — l'interrupteur du joueur garde sa valeur en base et reprend la main
+ * dès la fin de la séance. Renvoie la MÊME référence quand rien n'est supplanté (aucun re-calcul en
+ * aval hors séance, et aucune copie inutile).
+ */
+export function withSupersededBuffTogglesOff(
+  character: Character,
+  sessionStatusIds: readonly string[],
+): Character {
+  const superseded = supersededBuffToggles(character.featureIds, sessionStatusIds).filter((t) =>
+    isEffectActive(character, t.featureId, t.index),
+  );
+  if (superseded.length === 0) return character;
+  const effectToggles: Record<string, boolean[]> = { ...character.effectToggles };
+  for (const { featureId, index } of superseded) {
+    const arr = [...(effectToggles[featureId] ?? [])];
+    while (arr.length <= index) arr.push(false);
+    arr[index] = false;
+    effectToggles[featureId] = arr;
+  }
+  return { ...character, effectToggles };
 }

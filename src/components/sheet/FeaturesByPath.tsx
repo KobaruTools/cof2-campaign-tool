@@ -1112,6 +1112,11 @@ export interface FeaturesByPathProps {
    */
   onToggleEffect?: (featureId: string, index: number, active: boolean) => void;
   /**
+   * États posés par le MJ en session ACTIVE (PER-314) : un buff de groupe qui s'y trouve grise
+   * l'interrupteur de fiche du porteur (« appliqué par la séance »), déjà exclu du calcul en amont.
+   */
+  sessionStatusIds?: readonly string[];
+  /**
    * Saisie libre d'état de jeu corrélée à une capacité (PER-70 — ex. l'animal pris
    * par « Forme animale »). État transitoire, modifiable même hors édition. Absent
    * → la saisie est affichée en lecture seule (ou masquée si vide).
@@ -2170,6 +2175,7 @@ function PathBlock({
   onChoiceChange,
   onEnableFeatureEditing,
   onToggleEffect,
+  sessionStatusIds,
   onSetEffectInput,
   onSetUsageCounter,
   onLiftShortRestLock,
@@ -2217,6 +2223,8 @@ function PathBlock({
   onEnableFeatureEditing?: () => void;
   /** Bascule d'un interrupteur d'effet conditionnel (fiche permissive, PER-67). */
   onToggleEffect?: (featureId: string, index: number, active: boolean) => void;
+  /** États posés par le MJ en séance : grisent l'interrupteur du buff correspondant (PER-314). */
+  sessionStatusIds?: readonly string[];
   /** Saisie libre corrélée à une capacité (animal de Forme animale, PER-70). */
   onSetEffectInput?: (featureId: string, value: string) => void;
   /** Décompte d'une capacité à usages limités (Les sept vies du chat, PER-70). */
@@ -2501,6 +2509,7 @@ function PathBlock({
         compact={opts.compact}
         onToggle={onToggleEffect}
         disabled={isDisabled(feature)}
+        sessionStatusIds={sessionStatusIds}
       />
     );
   };
@@ -3780,6 +3789,7 @@ export function FeaturesByPath({
   onChoiceChange,
   onEnableFeatureEditing,
   onToggleEffect,
+  sessionStatusIds,
   onSetEffectInput,
   onSetUsageCounter,
   onLiftShortRestLock,
@@ -3946,6 +3956,7 @@ export function FeaturesByPath({
               onChoiceChange={onChoiceChange}
               onEnableFeatureEditing={onEnableFeatureEditing}
               onToggleEffect={onToggleEffect}
+              sessionStatusIds={sessionStatusIds}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
               onLiftShortRestLock={onLiftShortRestLock}
@@ -3986,6 +3997,7 @@ export function FeaturesByPath({
               onChoiceChange={onChoiceChange}
               onEnableFeatureEditing={onEnableFeatureEditing}
               onToggleEffect={onToggleEffect}
+              sessionStatusIds={sessionStatusIds}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
               onLiftShortRestLock={onLiftShortRestLock}
@@ -4021,6 +4033,7 @@ export function FeaturesByPath({
               onChoiceChange={onChoiceChange}
               onEnableFeatureEditing={onEnableFeatureEditing}
               onToggleEffect={onToggleEffect}
+              sessionStatusIds={sessionStatusIds}
               onSetEffectInput={onSetEffectInput}
               onSetUsageCounter={onSetUsageCounter}
               onLiftShortRestLock={onLiftShortRestLock}

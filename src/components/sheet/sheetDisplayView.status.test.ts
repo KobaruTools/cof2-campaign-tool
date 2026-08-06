@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createBlankCharacter } from '@/lib/character/factory';
 import type { Character } from '@/lib/character/types';
 import { statusSheetImpact } from '@/lib/character/statusEffects';
+import { withSupersededBuffTogglesOff } from '@/lib/character/groupBuffs';
 import { buildCharacterDerivedView } from './characterDerivedView';
 import { buildSheetDisplayView } from './sheetDisplayView';
 
@@ -80,5 +81,43 @@ describe('buildSheetDisplayView — répercussion des états de combat', () => {
     expect(view.statusTestBonus).toEqual([
       { id: 'insect-swarm', label: "État : Nuée d'insectes", value: -2 },
     ]);
+  });
+});
+
+/**
+ * PER-314 — le PORTEUR du buff a deux canaux pour le même bonus : son interrupteur de fiche et
+ * l'état que le MJ pose sur tout le camp. Actifs ensemble, ils comptaient deux fois (+2 au lieu
+ * de +1). La séance gagne : `withSupersededBuffTogglesOff` éteint l'interrupteur dans le CALCUL,
+ * jamais en base — hors séance, il reste le seul canal du bonus.
+ */
+describe('buff de groupe posé en séance — pas de double compte chez le porteur', () => {
+  /** Barde ayant Chant des héros (`musicien-r1`), interrupteur de fiche ALLUMÉ (effet d'index 1). */
+  const bard = () => char({ featureIds: ['musicien-r1'], effectToggles: { 'musicien-r1': [false, true] } });
+
+  it('hors séance, l’interrupteur du barde compte seul : le bonus vient de la fiche', () => {
+    const c = bard();
+    const view = buildSheetDisplayView(c, buildCharacterDerivedView(c));
+    expect(view.abilityTestBonus).toEqual(
+      expect.arrayContaining([expect.objectContaining({ value: 1 })]),
+    );
+    expect(view.statusTestBonus).toEqual([]);
+  });
+
+  it('en séance, le bonus ne vient plus que de l’état : compté UNE fois, pas deux', () => {
+    const seen = withSupersededBuffTogglesOff(bard(), ['heroes-song']);
+    const impact = statusSheetImpact([{ id: 'heroes-song' }]);
+    const view = buildSheetDisplayView(seen, buildCharacterDerivedView(seen), undefined, impact);
+    // Canal FICHE éteint (l'interrupteur est supplanté)…
+    expect(view.abilityTestBonus).toEqual([]);
+    // …et canal SÉANCE seul porteur du +1.
+    expect(view.statusTestBonus).toEqual([{ id: 'heroes-song', label: 'Chant des héros', value: 1 }]);
+  });
+
+  it('un état SUBI ne supplante aucun interrupteur : le bonus de fiche reste compté', () => {
+    const seen = withSupersededBuffTogglesOff(bard(), ['blinded']);
+    const view = buildSheetDisplayView(seen, buildCharacterDerivedView(seen));
+    expect(view.abilityTestBonus).toEqual(
+      expect.arrayContaining([expect.objectContaining({ value: 1 })]),
+    );
   });
 });

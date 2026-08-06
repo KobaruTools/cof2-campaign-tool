@@ -2,8 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   groupBuffIntensityFor,
   groupBuffsOf,
+  isBuffToggleSuperseded,
+  supersededBuffToggles,
   unlockedGroupBuffIds,
+  withSupersededBuffTogglesOff,
 } from './groupBuffs';
+import { isEffectActive } from './effects';
+import type { Character } from './types';
 
 // Voie du musicien (barde, p. 67) : `musicien-r1` = Chant des héros, `musicien-r5` = rang 5 atteint.
 const BARD_R1 = ['musicien-r1'];
@@ -69,5 +74,105 @@ describe('groupBuffIntensityFor (pré-remplissage du palier)', () => {
   it('retombe sur 1 quand le combattant ne porte pas ce buff (créature alliée, autre profil)', () => {
     expect(groupBuffIntensityFor(BARD_R5, 'blessing')).toBe(1);
     expect(groupBuffIntensityFor([], 'heroes-song')).toBe(1);
+  });
+});
+
+// PER-314 — l'interrupteur de fiche du PORTEUR face au même buff posé en séance par le MJ.
+// Chez les deux porteuses, l'effet TEMPORAIRE est à l'index 1 (l'index 0 est le bonus de compétence
+// permanent : musique pour le barde, théologie/cosmologie pour le prêtre).
+const BUFF_TOGGLE_INDEX = 1;
+
+const mkChar = (featureIds: string[], effectToggles: Record<string, boolean[]> = {}): Character =>
+  ({ level: 5, featureIds, effectToggles, featureChoices: {}, usageCounters: {} }) as unknown as Character;
+
+describe('supersededBuffToggles (PER-314)', () => {
+  it('le Chant des héros posé en séance supplante l’interrupteur du barde', () => {
+    expect(supersededBuffToggles(BARD_R1, ['heroes-song'])).toEqual([
+      { featureId: 'musicien-r1', index: BUFF_TOGGLE_INDEX, buffId: 'heroes-song' },
+    ]);
+  });
+
+  it('la Bénédiction posée en séance supplante l’interrupteur du prêtre', () => {
+    expect(supersededBuffToggles(PRIEST_R1, ['blessing'])).toEqual([
+      { featureId: 'priere-r1', index: BUFF_TOGGLE_INDEX, buffId: 'blessing' },
+    ]);
+  });
+
+  it('hors séance (aucun état posé), rien n’est supplanté — l’interrupteur reprend la main', () => {
+    expect(supersededBuffToggles(BARD_R1, [])).toEqual([]);
+  });
+
+  it('un AUTRE buff posé ne supplante pas l’interrupteur du barde', () => {
+    expect(supersededBuffToggles(BARD_R1, ['blessing'])).toEqual([]);
+  });
+
+  it('les états SUBIS posés en même temps n’y changent rien (tri par intersection)', () => {
+    expect(supersededBuffToggles(BARD_R1, ['weakened', 'heroes-song']).map((t) => t.buffId)).toEqual([
+      'heroes-song',
+    ]);
+  });
+
+  it('un personnage qui ne porte pas le buff n’a aucun interrupteur à neutraliser', () => {
+    // Le buff est bien posé sur lui (tout le camp en bénéficie), mais il n'a pas de canal propre.
+    expect(supersededBuffToggles(['guerrier-r1'], ['heroes-song'])).toEqual([]);
+  });
+
+  it('un barde-prêtre buffé deux fois voit ses DEUX interrupteurs supplantés', () => {
+    expect(
+      supersededBuffToggles([...BARD_R1, ...PRIEST_R1], ['heroes-song', 'blessing']).map(
+        (t) => t.featureId,
+      ),
+    ).toEqual(['musicien-r1', 'priere-r1']);
+  });
+});
+
+describe('isBuffToggleSuperseded (grisage de l’interrupteur)', () => {
+  it('vise l’effet TEMPORAIRE, pas le bonus de compétence permanent du même rang', () => {
+    expect(isBuffToggleSuperseded(BARD_R1, ['heroes-song'], 'musicien-r1', BUFF_TOGGLE_INDEX)).toBe(true);
+    expect(isBuffToggleSuperseded(BARD_R1, ['heroes-song'], 'musicien-r1', 0)).toBe(false);
+  });
+
+  it('ne grise rien sur une autre capacité, ni hors séance', () => {
+    expect(isBuffToggleSuperseded(BARD_R5, ['heroes-song'], 'musicien-r3', 0)).toBe(false);
+    expect(isBuffToggleSuperseded(BARD_R1, [], 'musicien-r1', BUFF_TOGGLE_INDEX)).toBe(false);
+  });
+});
+
+describe('withSupersededBuffTogglesOff (le calcul ne compte le bonus qu’une fois)', () => {
+  it('éteint l’interrupteur du barde quand le MJ pose le Chant des héros', () => {
+    const bard = mkChar(BARD_R1, { 'musicien-r1': [false, true] });
+    expect(isEffectActive(bard, 'musicien-r1', BUFF_TOGGLE_INDEX)).toBe(true);
+    const seen = withSupersededBuffTogglesOff(bard, ['heroes-song']);
+    expect(isEffectActive(seen, 'musicien-r1', BUFF_TOGGLE_INDEX)).toBe(false);
+  });
+
+  it('ne PERSISTE rien : le personnage d’origine garde son interrupteur allumé', () => {
+    const toggles = { 'musicien-r1': [false, true] };
+    const bard = mkChar(BARD_R1, toggles);
+    withSupersededBuffTogglesOff(bard, ['heroes-song']);
+    expect(bard.effectToggles).toEqual({ 'musicien-r1': [false, true] });
+    expect(toggles['musicien-r1']).toEqual([false, true]);
+  });
+
+  it('rend la MÊME référence hors séance (aucun re-calcul en aval)', () => {
+    const bard = mkChar(BARD_R1, { 'musicien-r1': [false, true] });
+    expect(withSupersededBuffTogglesOff(bard, [])).toBe(bard);
+  });
+
+  it('rend la MÊME référence quand l’interrupteur était déjà éteint', () => {
+    // Cas courant : le MJ pose le buff, le barde n'avait rien allumé — rien à neutraliser.
+    const bard = mkChar(BARD_R1, {});
+    expect(withSupersededBuffTogglesOff(bard, ['heroes-song'])).toBe(bard);
+  });
+
+  it('laisse intacts les interrupteurs qui ne sont PAS des buffs de groupe', () => {
+    // Sanctuaire (priere-r2) est un état temporaire, mais propre au prêtre : la séance ne le porte pas.
+    const priest = mkChar(['priere-r1', 'priere-r2'], {
+      'priere-r1': [false, true],
+      'priere-r2': [true],
+    });
+    const seen = withSupersededBuffTogglesOff(priest, ['blessing']);
+    expect(isEffectActive(seen, 'priere-r1', BUFF_TOGGLE_INDEX)).toBe(false);
+    expect(isEffectActive(seen, 'priere-r2', 0)).toBe(true);
   });
 });
