@@ -61,6 +61,21 @@ export interface AppliedStatus {
    * garde la main. Le compteur ne pèse sur AUCUN calcul (seule `intensity` chiffre).
    */
   untilRound?: number;
+  /**
+   * QUI a lancé cet effet — le nom du JOUEUR (« Mirielle »), et rien d'autre : jamais son personnage,
+   * jamais « Personnage (Joueur) ». La capacité source est déjà nommée par ailleurs, et à la table on
+   * désigne le joueur. Renseigné à la pose d'un BUFF DE GROUPE par un personnage réclamé ; absent
+   * partout ailleurs — état subi (le MJ le pose au nom du monde), créature porteuse, personnage sans
+   * joueur : mieux vaut aucune mention de source qu'une mention trompeuse.
+   *
+   * ATTENTION, valeur FIGÉE à la pose : changer le format ici ne réécrit pas les buffs déjà posés en
+   * séance, qui gardent le texte enregistré jusqu'à ce qu'ils soient levés puis reposés.
+   *
+   * Un libellé et non une clé de combattant : le joueur qui lit sa fiche n'a dans son magasin ni les
+   * autres personnages de la table ni les instances de créatures du MJ — il ne pourrait donc résoudre
+   * aucun id. Le texte est donc figé à la pose, côté écran de MJ, seul endroit qui sait tout.
+   */
+  castBy?: string;
 }
 
 /**
@@ -348,7 +363,7 @@ export interface StatusSheetImpact {
    * comptées nulle part ailleurs : `mods` ne porte que les stats DÉRIVÉES, dont les caracs ne sont pas).
    * Vide = aucun état ne modifie les tests de carac.
    */
-  abilityTestSources: { id: AnyStatusEffectId; label: string; value: number }[];
+  abilityTestSources: { id: AnyStatusEffectId; label: string; value: number; castBy?: string }[];
   /**
    * Modificateur plat cumulé à tous les tests, SIGNÉ (PER-104) : négatif pour un malus (Attaque
    * invalidante), positif pour un buff de groupe (Chant des héros, Bénédiction).
@@ -363,7 +378,7 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
   const modSources: Partial<Record<DerivedStatId, { label: string; value: number }[]>> = {};
   const allTestsMalusDie: string[] = [];
   const attackTestsMalusDie: string[] = [];
-  const abilityTestSources: { id: AnyStatusEffectId; label: string; value: number }[] = [];
+  const abilityTestSources: StatusSheetImpact['abilityTestSources'] = [];
   let allTestsFlat = 0;
   let damageDealt = 0;
 
@@ -398,7 +413,15 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
       // dérivées, ET les tests de CARACTÉRISTIQUE, qui n'en sont pas : ces derniers ont leur propre
       // canal d'affichage (`display.abilityTestBonus`), d'où une ventilation séparée.
       for (const key of ATTACK_KEYS) pushSource(key, label, flat);
-      if (flat !== 0) abilityTestSources.push({ id: entry.id, label, value: flat });
+      // `castBy` suit l'état jusqu'au détail « i » du joueur : « [Chant des héros] (Source Mirielle)
+      // +1 ». Sans lui, la ligne ne disait pas d'où venait le bonus (PER-104).
+      if (flat !== 0)
+        abilityTestSources.push({
+          id: entry.id,
+          label,
+          value: flat,
+          ...(entry.castBy ? { castBy: entry.castBy } : {}),
+        });
     }
     if (mods.damageDealt !== undefined) damageDealt += mods.damageDealt * intensity;
   }

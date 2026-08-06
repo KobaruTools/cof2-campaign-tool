@@ -358,6 +358,7 @@ function reviveStatuses(raw: unknown): Record<string, AppliedStatus[]> {
       if (typeof id !== 'string') continue;
       const intensity = (item as { intensity?: unknown }).intensity;
       const untilRound = (item as { untilRound?: unknown }).untilRound;
+      const castBy = (item as { castBy?: unknown }).castBy;
       applied.push({
         id: id as AnyStatusEffectId,
         ...(typeof intensity === 'number' && Number.isFinite(intensity) && intensity > 1
@@ -366,6 +367,9 @@ function reviveStatuses(raw: unknown): Record<string, AppliedStatus[]> {
         ...(typeof untilRound === 'number' && Number.isFinite(untilRound)
           ? { untilRound: Math.trunc(untilRound) }
           : {}),
+        // Auteur de la pose (buffs de groupe) : libellé déjà résolu, on ne garde qu'une chaîne
+        // non vide (les combats d'avant n'en ont pas — migration douce).
+        ...(typeof castBy === 'string' && castBy.trim() !== '' ? { castBy } : {}),
       });
     }
     if (applied.length > 0) out[key] = applied;
@@ -602,11 +606,13 @@ function makeApplied(
   id: AnyStatusEffectId,
   intensity: number,
   untilRound?: number,
+  castBy?: string,
 ): AppliedStatus {
   return {
     id,
     ...(intensity > 1 ? { intensity } : {}),
     ...(untilRound !== undefined ? { untilRound } : {}),
+    ...(castBy ? { castBy } : {}),
   };
 }
 
@@ -626,7 +632,7 @@ export function applyStatusTo(
   const clamped = clampIntensity(id, intensity);
   const current = state.statuses[key] ?? [];
   const next = current.some((s) => s.id === id)
-    ? current.map((s) => (s.id === id ? makeApplied(id, clamped, s.untilRound) : s))
+    ? current.map((s) => (s.id === id ? makeApplied(id, clamped, s.untilRound, s.castBy) : s))
     : [...current, makeApplied(id, clamped)];
   return { ...state, statuses: { ...state.statuses, [key]: next } };
 }
@@ -642,6 +648,12 @@ export interface ApplyStatusToKeysOptions {
    * précisant une durée est un geste délibéré, contrairement à une simple repose (cf. `applyStatusTo`).
    */
   rounds?: number;
+  /**
+   * AUTEUR de la pose, prêt à afficher : le nom du JOUEUR qui lance le sort (« Mirielle »), jamais
+   * celui de son personnage — la fiche du buffé le reprend tel quel dans le détail de ses bonus de
+   * test. Absent = aucune mention de source (état subi, créature porteuse, personnage sans joueur).
+   */
+  castBy?: string;
 }
 
 /**
@@ -674,9 +686,14 @@ export function applyStatusToKeys(
     const existing = current.find((s) => s.id === id);
     // Sans durée explicite, un compteur déjà posé survit (même règle qu'`applyStatusTo`).
     const untilRound = posedUntil ?? existing?.untilRound;
-    const entry = makeApplied(id, clamped, untilRound);
+    // Reposer sans porteur identifié ne fait pas oublier qui avait lancé le sort.
+    const entry = makeApplied(id, clamped, untilRound, options.castBy ?? existing?.castBy);
     if (existing) {
-      if (existing.intensity === entry.intensity && existing.untilRound === entry.untilRound) {
+      if (
+        existing.intensity === entry.intensity &&
+        existing.untilRound === entry.untilRound &&
+        existing.castBy === entry.castBy
+      ) {
         continue;
       }
       statuses[key] = current.map((s) => (s.id === id ? entry : s));
@@ -707,6 +724,32 @@ export function removeStatusFromKeys(
     if (next.length === 0) delete statuses[key];
     else statuses[key] = next;
     changed = true;
+  }
+  return changed ? { ...state, statuses } : state;
+}
+
+/**
+ * Retire PLUSIEURS états de TOUS les combattants d'un coup : la levée d'une FAMILLE entière, en UNE
+ * écriture (donc un seul upsert et une seule diffusion Realtime). C'est ce que fait la croix des
+ * buffs de groupe de la palette — un Chant des héros posé sur six cartes se lève d'un clic, sans
+ * repasser par la fenêtre de pose.
+ *
+ * Contrairement à `removeStatusFromKeys`, l'appelant n'a pas à connaître les combattants concernés :
+ * un buff a pu être posé sur les deux camps, et le porteur avoir quitté la piste depuis. Les clés
+ * vidées sont nettoyées ; même référence si rien n'est retiré.
+ */
+export function removeStatusesFromAll(
+  state: GmCombatState,
+  ids: readonly AnyStatusEffectId[],
+): GmCombatState {
+  if (ids.length === 0) return state;
+  const removed = new Set<string>(ids);
+  const statuses: Record<string, AppliedStatus[]> = {};
+  let changed = false;
+  for (const [key, current] of Object.entries(state.statuses)) {
+    const next = current.filter((s) => !removed.has(s.id));
+    if (next.length !== current.length) changed = true;
+    if (next.length > 0) statuses[key] = next;
   }
   return changed ? { ...state, statuses } : state;
 }
@@ -744,7 +787,9 @@ export function adjustStatusIntensity(
   const entry = current?.find((s) => s.id === id);
   if (!current || !entry) return state;
   const clamped = clampIntensity(id, (entry.intensity ?? 1) + delta);
-  const next = current.map((s) => (s.id === id ? makeApplied(id, clamped, s.untilRound) : s));
+  const next = current.map((s) =>
+    s.id === id ? makeApplied(id, clamped, s.untilRound, s.castBy) : s,
+  );
   return { ...state, statuses: { ...state.statuses, [key]: next } };
 }
 
@@ -775,7 +820,7 @@ export function adjustStatusDuration(
   const untilRound = remaining < 1 ? undefined : untilRoundFor(state.roundNumber, remaining);
   if (untilRound === entry.untilRound) return state;
   const next = current.map((s) =>
-    s.id === id ? makeApplied(id, clampIntensity(id, s.intensity ?? 1), untilRound) : s,
+    s.id === id ? makeApplied(id, clampIntensity(id, s.intensity ?? 1), untilRound, s.castBy) : s,
   );
   return { ...state, statuses: { ...state.statuses, [key]: next } };
 }
@@ -807,6 +852,7 @@ function rebaseStatusDurations(
         s.id,
         s.intensity ?? 1,
         remaining < 1 ? undefined : untilRoundFor(toRound, remaining),
+        s.castBy,
       );
     });
   }

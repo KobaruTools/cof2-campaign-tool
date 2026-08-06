@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  groupBuffFeatureId,
   groupBuffIntensityFor,
   groupBuffsOf,
   isBuffToggleSuperseded,
@@ -74,6 +75,21 @@ describe('groupBuffIntensityFor (pré-remplissage du palier)', () => {
   it('retombe sur 1 quand le combattant ne porte pas ce buff (créature alliée, autre profil)', () => {
     expect(groupBuffIntensityFor(BARD_R5, 'blessing')).toBe(1);
     expect(groupBuffIntensityFor([], 'heroes-song')).toBe(1);
+  });
+});
+
+// La fiche du BUFFÉ doit nommer la capacité source avec sa puce de capacité, alors qu'elle ne figure
+// pas parmi ses propres capacités — d'où une table inverse indépendante de tout personnage.
+describe('groupBuffFeatureId (capacité source, vue depuis la fiche du buffé)', () => {
+  it('remonte du buff à la capacité qui le confère', () => {
+    expect(groupBuffFeatureId('heroes-song')).toBe('musicien-r1');
+    expect(groupBuffFeatureId('blessing')).toBe('priere-r1');
+  });
+
+  it('rend undefined pour ce qu’aucune capacité ne confère (état subi, environnement, id inconnu)', () => {
+    expect(groupBuffFeatureId('blinded')).toBeUndefined();
+    expect(groupBuffFeatureId('aquatic-combat')).toBeUndefined();
+    expect(groupBuffFeatureId('nawak')).toBeUndefined();
   });
 });
 

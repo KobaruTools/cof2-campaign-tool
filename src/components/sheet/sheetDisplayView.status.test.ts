@@ -73,6 +73,27 @@ describe('buildSheetDisplayView — répercussion des états de combat', () => {
     ]);
   });
 
+  // L'AUTEUR de la pose voyage jusqu'au détail « i » du joueur : « qui m'a mis ça ? » se répond
+  // depuis la fiche, sans demander au MJ.
+  it('la ventilation porte l’auteur du buff quand la pose l’a enregistré', () => {
+    const c = char();
+    const derived = buildCharacterDerivedView(c);
+    const impact = statusSheetImpact([{ id: 'heroes-song', castBy: 'Mirielle' }]);
+    expect(buildSheetDisplayView(c, derived, undefined, impact).statusTestBonus).toEqual([
+      { id: 'heroes-song', label: 'Chant des héros', value: 1, castBy: 'Mirielle' },
+    ]);
+  });
+
+  it('un état SUBI n’a pas d’auteur nommé (le MJ le pose au nom du monde)', () => {
+    const c = char();
+    const derived = buildCharacterDerivedView(c);
+    const impact = statusSheetImpact([{ id: 'insect-swarm' }]);
+    expect(impact.abilityTestSources[0].castBy).toBeUndefined();
+    expect(buildSheetDisplayView(c, derived, undefined, impact).statusTestBonus[0]).not.toHaveProperty(
+      'castBy',
+    );
+  });
+
   it('un malus plat alimente aussi le canal des tests de caractéristique', () => {
     const c = char();
     const derived = buildCharacterDerivedView(c);

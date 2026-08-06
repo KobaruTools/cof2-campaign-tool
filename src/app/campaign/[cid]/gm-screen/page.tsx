@@ -233,10 +233,12 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     statuses,
     situationalEffectIds,
     groupBuffIds,
+    posedGroupBuffIds,
     applyStatus,
     removeStatus,
     applyStatusToMany,
     removeStatusFromMany,
+    removeStatusesEverywhere,
     adjustStatus,
     adjustStatusDuration,
     resetCombat,
@@ -354,6 +356,18 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         groupBuffPose.buffId,
       )
     : 1;
+  // AUTEUR de la pose, figé en clair au moment d'appliquer : la fiche du buffé ne pourrait pas résoudre
+  // une clé de combattant (elle ne connaît ni les autres personnages de la table ni les joueurs).
+  //
+  // C'est le nom du JOUEUR, et RIEN D'AUTRE : ni son personnage, ni « Personnage (Joueur) ». La
+  // capacité est déjà nommée par sa puce juste à côté, et à la table on dit « c'est Mirielle qui
+  // chante ». Aucun repli sur le nom du personnage ni sur celui d'une créature porteuse : sans joueur
+  // identifié, on préfère AUCUNE mention de source à une mention trompeuse.
+  const groupBuffCastBy = useMemo(() => {
+    if (!groupBuffPose) return undefined;
+    const carrier = claimed.find((c) => c.id === groupBuffPose.carrierKey);
+    return carrier?.playerId ? playerById.get(carrier.playerId)?.name : undefined;
+  }, [groupBuffPose, claimed, playerById]);
   // Membres du camp qui portent DÉJÀ ce buff → active la levée collective (« Lever sur tout le camp »).
   const groupBuffPosedKeys = groupBuffPose
     ? groupBuffCandidates
@@ -652,6 +666,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               <CombatStatusPalette
                 situationalIds={situationalEffectIds}
                 groupBuffIds={groupBuffIds}
+                posedGroupBuffIds={posedGroupBuffIds}
+                onClearGroupBuffs={() => removeStatusesEverywhere(posedGroupBuffIds)}
               />
             }
             stickyBottom
@@ -670,9 +686,13 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
         onClose={() => setGroupBuffPose(null)}
         buffId={groupBuffPose?.buffId ?? null}
         candidates={groupBuffCandidates}
-        defaultIntensity={groupBuffIntensity}
+        intensity={groupBuffIntensity}
         onApply={(keys, options) =>
-          groupBuffPose && applyStatusToMany(keys, groupBuffPose.buffId, options)
+          groupBuffPose &&
+          applyStatusToMany(keys, groupBuffPose.buffId, {
+            ...options,
+            ...(groupBuffCastBy ? { castBy: groupBuffCastBy } : {}),
+          })
         }
         posedKeys={groupBuffPosedKeys}
         onRemoveAll={(keys) => groupBuffPose && removeStatusFromMany(keys, groupBuffPose.buffId)}

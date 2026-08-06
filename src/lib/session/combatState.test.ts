@@ -20,6 +20,7 @@ import {
   normalizeCreatureName,
   removeStatusFrom,
   removeStatusFromKeys,
+  removeStatusesFromAll,
   resetCombat,
   restartRounds,
   rollTieBreakSeed,
@@ -337,6 +338,89 @@ describe('removeStatusFromKeys (retrait de groupe)', () => {
   it('no-op (même référence) si aucun des combattants ne porte l’état', () => {
     expect(removeStatusFromKeys(posed, ['c-3', 'absent'], 'heroes-song')).toBe(posed);
     expect(removeStatusFromKeys(posed, [], 'heroes-song')).toBe(posed);
+  });
+});
+
+// L'auteur de la pose (`castBy`) est un LIBELLÉ figé à l'application : la fiche du joueur ne pourrait
+// pas résoudre une clé de combattant. Il doit donc survivre à tout ce qui réécrit l'entrée.
+describe('castBy — auteur de la pose d’un buff de groupe', () => {
+  const base: GmCombatState = { ...EMPTY_COMBAT_STATE, roundNumber: 3 };
+
+  it('est enregistré à la pose de groupe, sur chaque combattant visé', () => {
+    const next = applyStatusToKeys(base, ['char-1', 'char-2'], 'heroes-song', {
+      intensity: 2,
+      castBy: 'Mirielle',
+    });
+    expect(next.statuses['char-1']).toEqual([
+      { id: 'heroes-song', intensity: 2, castBy: 'Mirielle' },
+    ]);
+    expect(next.statuses['char-2'][0].castBy).toBe('Mirielle');
+  });
+
+  it('survit à un ajustement d’intensité et de durée', () => {
+    const posed = applyStatusToKeys(base, ['char-1'], 'heroes-song', { castBy: 'Aldric' });
+    expect(adjustStatusIntensity(posed, 'char-1', 'heroes-song', 1).statuses['char-1'][0].castBy).toBe(
+      'Aldric',
+    );
+    expect(adjustStatusDuration(posed, 'char-1', 'heroes-song', 2).statuses['char-1'][0].castBy).toBe(
+      'Aldric',
+    );
+  });
+
+  it('survit au recalage des manches (⟳ de l’en-tête)', () => {
+    const posed = applyStatusToKeys(base, ['char-1'], 'heroes-song', {
+      rounds: 3,
+      castBy: 'Aldric',
+    });
+    expect(restartRounds(posed).statuses['char-1'][0].castBy).toBe('Aldric');
+  });
+
+  it('n’est pas oublié quand le buff est reposé sans porteur identifié', () => {
+    const posed = applyStatusToKeys(base, ['char-1'], 'heroes-song', { castBy: 'Aldric' });
+    expect(applyStatusTo(posed, 'char-1', 'heroes-song', 2).statuses['char-1'][0].castBy).toBe(
+      'Aldric',
+    );
+  });
+
+  it('traverse la sérialisation du blob de combat', () => {
+    const posed = applyStatusToKeys(base, ['char-1'], 'heroes-song', { castBy: 'Mirielle' });
+    const revived = reviveStateObject(JSON.parse(JSON.stringify(posed)));
+    expect(revived.statuses['char-1'][0].castBy).toBe('Mirielle');
+  });
+});
+
+describe('removeStatusesFromAll (levée d’une famille entière)', () => {
+  const posed: GmCombatState = {
+    ...EMPTY_COMBAT_STATE,
+    statuses: {
+      'char-1': [{ id: 'prone' }, { id: 'heroes-song' }],
+      'char-2': [{ id: 'heroes-song' }, { id: 'blessing' }],
+      'c-3': [{ id: 'blinded' }],
+      'c-4': [{ id: 'blessing' }],
+    },
+  };
+
+  it('retire tous les états listés, sur tout le monde, sans que l’appelant liste les cartes', () => {
+    const next = removeStatusesFromAll(posed, ['heroes-song', 'blessing']);
+    expect(next.statuses).toEqual({ 'char-1': [{ id: 'prone' }], 'c-3': [{ id: 'blinded' }] });
+  });
+
+  it('laisse intacts les états d’une autre famille (les états subis restent posés)', () => {
+    const next = removeStatusesFromAll(posed, ['heroes-song']);
+    expect(next.statuses['char-1']).toEqual([{ id: 'prone' }]);
+    expect(next.statuses['char-2']).toEqual([{ id: 'blessing' }]);
+    expect(next.statuses['c-3']).toEqual([{ id: 'blinded' }]);
+  });
+
+  it('no-op (même référence) quand rien de ce qui est listé n’est posé', () => {
+    expect(removeStatusesFromAll(posed, ['weakened'])).toBe(posed);
+    expect(removeStatusesFromAll(posed, [])).toBe(posed);
+    expect(removeStatusesFromAll(EMPTY_COMBAT_STATE, ['heroes-song'])).toBe(EMPTY_COMBAT_STATE);
+  });
+
+  it('ne mute pas l’état source (pur)', () => {
+    removeStatusesFromAll(posed, ['heroes-song', 'blessing']);
+    expect(posed.statuses['char-2']).toEqual([{ id: 'heroes-song' }, { id: 'blessing' }]);
   });
 });
 

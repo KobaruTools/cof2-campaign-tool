@@ -24,6 +24,7 @@ import {
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import { abilityTestGradient, abilityTestPanelBg, ABILITY_TEST_GRADIENT } from '@/lib/ui/abilityColors';
 import { agiTestArmorAdjustment } from '@/lib/character/equipment';
+import { groupBuffFeatureId } from '@/lib/character/groupBuffs';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
 import { CapabilityChip } from '@/components/sheet/FeatureRichText';
@@ -56,7 +57,7 @@ export interface TestDomainsPanelProps {
    * tenus à part parce qu'ils ne renvoient à AUCUNE capacité de la fiche : leur ligne de détail
    * porte le nom de l'état, là où un buff de capacité affiche sa pastille. Vide hors session.
    */
-  statusTestBonus?: { id: string; label: string; value: number }[];
+  statusTestBonus?: { id: string; label: string; value: number; castBy?: string }[];
   /**
    * Bonus CHIFFRÉS à UNE caractéristique précise (ex. Tatouages, PER-125), regroupés par carac.
    * Ajoutés à la ligne « test de [CARAC] » de la carac visée (et, quand « inclure la carac » est
@@ -312,6 +313,39 @@ function WarnPill({ children, outlined = false }: { children: ReactNode; outline
 }
 
 /**
+ * Libellé d'une ligne de détail venue d'un ÉTAT DE COMBAT (PER-104) : « [Chant des héros] source :
+ * Mirielle ». Un joueur qui voit « +1 » sur tous ses tests doit pouvoir remonter à la source sans
+ * demander au MJ — d'où deux informations, et deux seulement :
+ *
+ *  - un BUFF DE GROUPE s'affiche avec la PUCE DE CAPACITÉ de la capacité qui le confère (couleur et
+ *    icône de la voie du lanceur), comme n'importe quelle autre source de bonus de la fiche — même si
+ *    le lecteur ne possède pas cette capacité. Un état SUBI, que nulle capacité ne confère, garde son
+ *    libellé texte (« État : Aveuglé ») ;
+ *  - le nom du JOUEUR qui l'a lancé, en petit et en gris atténué : une mention discrète, pas un second
+ *    titre. Jamais le nom du personnage — la puce dit déjà de quelle capacité il s'agit, et à la table
+ *    on désigne le joueur. Absent pour un état subi, que le MJ pose au nom du monde.
+ */
+function StatusBreakdownLabel({ id, label, castBy }: { id: string; label: string; castBy?: string }) {
+  const featureId = groupBuffFeatureId(id);
+  return (
+    <>
+      {featureId ? (
+        <CapabilityChip featureId={featureId} label={null} />
+      ) : (
+        <Box component="span">{label}</Box>
+      )}
+      {castBy && (
+        // `text.disabled` et non `text.secondary` : en thème sombre ce dernier est du blanc à 70 %,
+        // qui se lit comme du texte plein à côté de la puce. La mention doit s'effacer.
+        <Box component="span" sx={{ fontSize: '0.7rem', color: 'text.disabled' }}>
+          source&nbsp;: {castBy}
+        </Box>
+      )}
+    </>
+  );
+}
+
+/**
  * Contenu « Compétences & tests » : les 7 caractéristiques, chacune avec sa ligne
  * **« test de [CARAC] »** (icône d20 + modificateur de la carac, buff temporaire inclus —
  * ex. Bénédiction), et **regroupant ses domaines** avec leur **bonus de compétence plat**
@@ -449,9 +483,14 @@ export function TestDomainsPanel({
                   value={signed(s.value)}
                 />
               ))}
-              {/* États de combat posés par le MJ (PER-104) : libellé nu, aucune capacité à pointer. */}
+              {/* États de combat posés par le MJ (PER-104) : aucune capacité de la fiche à pointer,
+                  mais l'auteur de la pose quand il est connu (buff de groupe). */}
               {statusSources.map((s) => (
-                <BreakdownRow key={s.id} label={s.label} value={signed(s.value)} />
+                <BreakdownRow
+                  key={s.id}
+                  label={<StatusBreakdownLabel id={s.id} label={s.label} castBy={s.castBy} />}
+                  value={signed(s.value)}
+                />
               ))}
               {perCaracSources.map((s) => (
                 <BreakdownRow
@@ -653,7 +692,13 @@ export function TestDomainsPanel({
                             ))}
                           {includeAbility &&
                             statusSources.map((s) => (
-                              <BreakdownRow key={s.id} label={s.label} value={signed(s.value)} />
+                              <BreakdownRow
+                                key={s.id}
+                                label={
+                                  <StatusBreakdownLabel id={s.id} label={s.label} castBy={s.castBy} />
+                                }
+                                value={signed(s.value)}
+                              />
                             ))}
                           {includeAbility &&
                             perCaracSources.map((s) => (

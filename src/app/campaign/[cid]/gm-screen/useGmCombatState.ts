@@ -33,6 +33,7 @@ import {
   updateCreature as updateCreatureState,
   removeStatusFrom,
   removeStatusFromKeys,
+  removeStatusesFromAll,
   adjustStatusIntensity,
   adjustStatusDuration as adjustStatusDurationState,
   clearStatusesOf,
@@ -114,6 +115,11 @@ export interface GmCombatStateApi extends GmCombatState {
   ) => void;
   /** Retire un MÊME état de PLUSIEURS combattants d'un coup (pendant d'`applyStatusToMany`). */
   removeStatusFromMany: (combatantKeys: readonly string[], id: AnyStatusEffectId) => void;
+  /**
+   * Lève PLUSIEURS états sur TOUS les combattants d'un coup, sans lister les cartes : la levée d'une
+   * famille entière (la croix des buffs de groupe de la palette). Une seule écriture.
+   */
+  removeStatusesEverywhere: (ids: readonly AnyStatusEffectId[]) => void;
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif posé sur un combattant. */
   adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
   /**
@@ -249,6 +255,12 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const removeStatusesEverywhere = useCallback(
+    (ids: readonly AnyStatusEffectId[]) =>
+      applyLocalCombat(cid, (prev) => removeStatusesFromAll(prev, ids)),
+    [applyLocalCombat, cid],
+  );
+
   const adjustStatus = useCallback(
     (combatantKey: string, id: AnyStatusEffectId, delta: number) =>
       applyLocalCombat(cid, (prev) => adjustStatusIntensity(prev, combatantKey, id, delta)),
@@ -298,6 +310,7 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     removeStatus,
     applyStatusToMany,
     removeStatusFromMany,
+    removeStatusesEverywhere,
     adjustStatus,
     adjustStatusDuration,
     setCreatureInfo,

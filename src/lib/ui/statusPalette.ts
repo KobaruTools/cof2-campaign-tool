@@ -27,7 +27,16 @@ import type { AnyStatusEffectId, StatusOrigin } from '@/lib/character/statusEffe
 export interface StatusGroup {
   title: string;
   ids: readonly AnyStatusEffectId[];
+  /**
+   * FAMILLE du groupe, en clair : ce que le rendu doit tester quand il traite une famille à part
+   * (la croix de levée collective sur les buffs de groupe). Comparer le `title` français marcherait,
+   * mais casserait au premier libellé retouché.
+   */
+  family: StatusFamily;
 }
+
+/** Les quatre familles de la palette (cf. taxonomie PER-288, étendue par PER-104). */
+export type StatusFamily = 'harmful' | 'situational' | 'environment' | 'group-buff';
 
 /**
  * Construit les groupes affichés. Les états préjudiciables du glossaire et les états d'environnement
@@ -42,10 +51,14 @@ export function buildStatusGroups(
   situationalIds: readonly SituationalEffectId[],
   groupBuffIds: readonly BeneficialEffectId[] = [],
 ): StatusGroup[] {
-  const groups: StatusGroup[] = [{ title: 'États préjudiciables', ids: STATUS_EFFECT_IDS }];
-  if (situationalIds.length > 0) groups.push({ title: 'Effets situationnels', ids: situationalIds });
-  groups.push({ title: 'Environnement', ids: ENVIRONMENTAL_EFFECT_IDS });
-  if (groupBuffIds.length > 0) groups.push({ title: 'Buffs de groupe', ids: groupBuffIds });
+  const groups: StatusGroup[] = [
+    { title: 'États préjudiciables', ids: STATUS_EFFECT_IDS, family: 'harmful' },
+  ];
+  if (situationalIds.length > 0)
+    groups.push({ title: 'Effets situationnels', ids: situationalIds, family: 'situational' });
+  groups.push({ title: 'Environnement', ids: ENVIRONMENTAL_EFFECT_IDS, family: 'environment' });
+  if (groupBuffIds.length > 0)
+    groups.push({ title: 'Buffs de groupe', ids: groupBuffIds, family: 'group-buff' });
   return groups;
 }
 

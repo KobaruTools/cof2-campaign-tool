@@ -65,6 +65,7 @@ import {
 import { unlockedGroupBuffIds } from '@/lib/character/groupBuffs';
 import { featureById } from '@/data';
 import {
+  BENEFICIAL_EFFECT_IDS,
   SITUATIONAL_EFFECT_IDS,
   type BeneficialEffectId,
   type SituationalEffectId,
@@ -175,6 +176,13 @@ export interface GmScreenCombat {
    * catalogue. Vide = aucun barde ni prêtre à la table, la palette masque la ligne.
    */
   groupBuffIds: BeneficialEffectId[];
+  /**
+   * Buffs de groupe actuellement POSÉS sur au moins un combattant, dans l'ordre du catalogue. C'est
+   * ce que la croix de la palette propose de lever : vide = rien à lever, la croix disparaît. Se
+   * déduit des états posés, donc indépendamment du gating de `groupBuffIds` (le porteur a pu quitter
+   * la table) et des deux camps confondus.
+   */
+  posedGroupBuffIds: BeneficialEffectId[];
   /** Applique un état sur un combattant (intensité 1 ; PER-279). */
   applyStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Retire un état d'un combattant (PER-279). */
@@ -190,6 +198,11 @@ export interface GmScreenCombat {
   ) => void;
   /** Retire un MÊME état de PLUSIEURS combattants en une écriture (pendant d'`applyStatusToMany`). */
   removeStatusFromMany: (combatantKeys: readonly string[], id: AnyStatusEffectId) => void;
+  /**
+   * Lève les états listés sur TOUS les combattants en une écriture, sans que l'appelant sache qui les
+   * porte : la croix des buffs de groupe de la palette. Un buff posé sur six cartes se lève d'un clic.
+   */
+  removeStatusesEverywhere: (ids: readonly AnyStatusEffectId[]) => void;
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif d'un combattant (PER-280). */
   adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
   /**
@@ -235,6 +248,7 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     removeStatus,
     applyStatusToMany,
     removeStatusFromMany,
+    removeStatusesEverywhere,
     adjustStatus,
     adjustStatusDuration,
     setCreatureInfo,
@@ -368,6 +382,15 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
   // Buffs de groupe débloqués par la table (PER-104) : même gating que les effets situationnels, du
   // côté bénéfique. Une table sans barde ni prêtre n'a aucune puce verte à se voir proposer.
   const groupBuffIds = useMemo(() => unlockedGroupBuffIds(claimed), [claimed]);
+
+  // Buffs de groupe RÉELLEMENT POSÉS sur au moins un combattant : ce que la croix de la palette a à
+  // lever. Dérivé des états posés et NON du gating — un buff reste levable si son porteur a quitté
+  // la table entre-temps, et il a pu être posé sur les deux camps (un MJ peut bénir une escouade).
+  const posedGroupBuffIds = useMemo(() => {
+    const posed = new Set<string>();
+    for (const applied of Object.values(statuses)) for (const s of applied) posed.add(s.id);
+    return BENEFICIAL_EFFECT_IDS.filter((id) => posed.has(id));
+  }, [statuses]);
 
   // Lignes des personnages réclamés : Initiative + PV max = stats dérivées (surcharge
   // manuelle prioritaire, comme la fiche) ; la barre de vie édite le VRAI personnage via
@@ -590,10 +613,12 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     statuses,
     situationalEffectIds,
     groupBuffIds,
+    posedGroupBuffIds,
     applyStatus,
     removeStatus,
     applyStatusToMany,
     removeStatusFromMany,
+    removeStatusesEverywhere,
     adjustStatus,
     adjustStatusDuration,
     resetCombat,

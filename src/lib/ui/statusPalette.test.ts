@@ -51,6 +51,17 @@ describe('buildStatusGroups', () => {
     expect(buildStatusGroups([]).map((g) => g.title)).not.toContain('Buffs de groupe');
     expect(buildStatusGroups([], []).map((g) => g.title)).not.toContain('Buffs de groupe');
   });
+
+  // La FAMILLE est ce que le rendu teste (croix de levée collective sur la seule ligne bénéfique) :
+  // elle doit rester stable même si un libellé français est retouché.
+  it('étiquette chaque groupe par sa famille', () => {
+    expect(buildStatusGroups(['invalidating-attack'], ['heroes-song']).map((g) => g.family)).toEqual([
+      'harmful',
+      'situational',
+      'environment',
+      'group-buff',
+    ]);
+  });
 });
 
 describe('statusLabel / statusIconId / statusTone', () => {

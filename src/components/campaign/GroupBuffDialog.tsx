@@ -5,9 +5,9 @@
  *
  * Un buff de groupe (Chant des héros p. 67, Bénédiction p. 124) vise « ses alliés et lui » : le
  * déposer sur une carte du tracker n'affecte donc pas cette seule carte, mais ouvre CETTE fenêtre de
- * pose. Le MJ y voit les combattants du camp du porteur — **tous cochés par défaut** — et décoche
- * celui qui est hors de portée de voix, ajuste le palier (pré-rempli depuis le rang du porteur) et,
- * s'il le veut, pose une durée en tours.
+ * pose. Le MJ y voit les combattants du camp du porteur — **tous cochés par défaut** — décoche celui
+ * qui est hors de portée de voix et, s'il le veut, pose une durée en tours. Le PALIER (+1, +2 au rang
+ * 5) n'est pas demandé : il se déduit du rang du porteur, seule chose dont dépend la règle.
  *
  * Un seul « Appliquer » ⇒ **un seul état** en sortie (`applyStatusToKeys`), donc un seul upsert
  * `campaign_combat` et une seule diffusion Realtime : poser N fois de suite en produirait N.
@@ -26,8 +26,6 @@ import DialogTitle from '@mui/material/DialogTitle';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { SourceRef } from '@/components/SourceRef';
 import { statusEntry, STATUS_DURATION_MAX } from '@/lib/character/statusEffects';
@@ -54,8 +52,12 @@ export interface GroupBuffDialogProps {
   buffId: BeneficialEffectId | null;
   /** Combattants du camp du porteur, dans l'ordre d'affichage du tracker. */
   candidates: readonly GroupBuffCandidate[];
-  /** Palier pré-rempli, lu sur le rang du porteur (1, ou 2 dès le rang 5 de sa voie). */
-  defaultIntensity: number;
+  /**
+   * Palier du buff, DÉDUIT du rang du porteur dans sa voie (1, ou 2 dès le rang 5) et non demandé au
+   * MJ : la règle ne lui laisse aucun arbitrage, et le rang est déjà connu de la fiche du porteur.
+   * Une créature porteuse, ou un personnage qui ne porte pas la capacité, retombe sur 1.
+   */
+  intensity: number;
   /**
    * Pose effective : UN appel, UNE écriture. `rounds` absent = aucun compteur (le buff dure jusqu'à
    * ce que le MJ le retire — « CHA minutes » n'est pas convertible en manches).
@@ -90,7 +92,7 @@ function GroupBuffForm({
   onClose,
   buffId,
   candidates,
-  defaultIntensity,
+  intensity,
   onApply,
   posedKeys,
   onRemoveAll,
@@ -100,7 +102,6 @@ function GroupBuffForm({
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(candidates.map((c) => c.key)),
   );
-  const [intensity, setIntensity] = useState(defaultIntensity);
   // Durée en TOURS, saisie libre et VIDE par défaut (durée indéterminée). Chaîne et non nombre :
   // « vide » et « 0 » sont deux réponses différentes, un `number | null` les confondrait à la saisie.
   const [rounds, setRounds] = useState('');
@@ -181,22 +182,12 @@ function GroupBuffForm({
             )}
           </Box>
 
+          {/* Le palier n'est PAS une question : il se lit sur le rang du lanceur dans sa voie, et la
+              règle ne laisse aucun arbitrage au MJ. On l'annonce, on ne le demande pas. */}
           <Box>
-            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-              Bonus
-            </Typography>
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              color="success"
-              value={intensity}
-              onChange={(_, v: number | null) => v !== null && setIntensity(v)}
-            >
-              <ToggleButton value={1}>+1</ToggleButton>
-              <ToggleButton value={2}>+2</ToggleButton>
-            </ToggleButtonGroup>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              Pré-rempli d’après le rang du lanceur (+2 à partir du rang 5 de sa voie).
+            <Typography variant="subtitle2">Bonus&nbsp;: +{intensity}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              D’après le rang du lanceur dans sa voie (+2 à partir du rang 5).
             </Typography>
           </Box>
 

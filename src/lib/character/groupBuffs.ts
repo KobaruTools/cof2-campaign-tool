@@ -9,7 +9,8 @@
  *    lit sur le RANG ATTEINT dans la voie porteuse, le MJ gardant la main sur la valeur retenue ;
  *  - DÉPARTAGER les deux canaux du même bonus chez le porteur (`supersededBuffToggles`, PER-314) :
  *    le barde a AUSSI un interrupteur de fiche pour son propre Chant des héros, qui compterait une
- *    seconde fois si le MJ pose le buff en séance.
+ *    seconde fois si le MJ pose le buff en séance ;
+ *  - NOMMER la capacité source sur la fiche du BUFFÉ (`groupBuffFeatureId`), qui ne la possède pas.
  *
  * Aucune UI, aucun store — capacités acquises en entrée, données en sortie.
  */
@@ -92,6 +93,34 @@ export function groupBuffIntensityFor(
   buffId: BeneficialEffectId,
 ): number {
   return groupBuffsOf(featureIds).find((c) => c.buffId === buffId)?.intensity ?? 1;
+}
+
+/**
+ * Cache de la table inverse « buff → capacité porteuse ». Reconstruit dès que le registre de capacités
+ * change de taille : le contenu PAYANT est fusionné dans `featureById` après le premier rendu, un cache
+ * figé y perdrait les capacités ajoutées.
+ */
+let carrierFeatureByBuff: { size: number; map: Map<string, string> } | null = null;
+
+/**
+ * Capacité qui CONFÈRE `buffId`, indépendamment de tout personnage (`'heroes-song'` → `'musicien-r1'`).
+ *
+ * Sert la fiche du BUFFÉ : le détail de ses tests doit nommer la capacité source avec sa puce de
+ * capacité (couleur et icône de la voie), alors qu'il ne possède pas cette capacité — c'est le barde
+ * qui l'a. `groupBuffsOf` ne peut pas répondre à ça : il part des capacités acquises d'un personnage.
+ *
+ * `undefined` pour tout ce qui n'est pas un buff de groupe (état subi, effet d'environnement) : aucune
+ * capacité ne les confère, ils restent affichés en texte.
+ */
+export function groupBuffFeatureId(buffId: string): string | undefined {
+  if (carrierFeatureByBuff?.size !== featureById.size) {
+    const map = new Map<string, string>();
+    for (const [featureId, feature] of featureById) {
+      for (const id of feature.groupBuffIds ?? []) if (!map.has(id)) map.set(id, featureId);
+    }
+    carrierFeatureByBuff = { size: featureById.size, map };
+  }
+  return carrierFeatureByBuff.map.get(buffId);
 }
 
 /** PER-314 — un interrupteur de fiche SUPPLANTÉ par le même buff posé en séance. */
