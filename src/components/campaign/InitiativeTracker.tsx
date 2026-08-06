@@ -135,7 +135,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha, type Theme } from '@mui/material/styles';
 import { useDroppable } from '@dnd-kit/core';
-import type { SituationalEffectId } from '@/data/schema';
+import type { BeneficialEffectId, SituationalEffectId } from '@/data/schema';
 import type { Depletion } from '@/lib/character/types';
 import {
   clampIntensity,
@@ -322,10 +322,22 @@ export interface CombatStatusControls {
    * Le groupe « Effets situationnels » du menu n'apparaît que s'il est non vide.
    */
   situationalIds: readonly SituationalEffectId[];
+  /**
+   * Buffs de GROUPE débloqués par la table (PER-104). Le groupe « Buffs de groupe » du menu (et la
+   * 4e ligne de la palette) n'apparaît que s'il est non vide. Absent = aucun.
+   */
+  groupBuffIds?: readonly BeneficialEffectId[];
   /** Applique un état sur un combattant (intensité 1). */
   onApply: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Retire un état d'un combattant. */
   onRemove: (combatantKey: string, id: AnyStatusEffectId) => void;
+  /**
+   * Demande la POSE D'UN BUFF DE GROUPE (PER-104) depuis le combattant `combatantKey`, tenu pour le
+   * porteur du sort : c'est l'écran de MJ qui ouvre alors sa fenêtre de pose (choix des combattants du
+   * camp, palier, durée). Le tracker ne pose donc JAMAIS un buff de groupe lui-même — sans ce
+   * callback, la ligne verte disparaît du menu comme de la palette.
+   */
+  onOpenGroupBuff?: (combatantKey: string, id: BeneficialEffectId) => void;
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif d'un combattant (PER-280). */
   onAdjust: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
   /**
@@ -890,7 +902,8 @@ const STATUS_BADGE_GAP = 1.25;
 /**
  * Style de base du carré-icône d'un état : carré translucide aux bords arrondis, avec flou
  * d'arrière-plan pour rester lisible quel que soit ce qu'il recouvre (illustration de fond, portrait
- * voisin). La `tone` porte la famille de l'état (rouge = subi, bleu = environnement, cf. `statusTone`).
+ * voisin). La `tone` porte la famille de l'état (rouge = subi, bleu = environnement, vert = buff de
+ * groupe, jaune = déduit — cf. `statusTone` / `originStatusTone`).
  * Partagé À L'IDENTIQUE par la projection (lecture seule) et l'écran de MJ (interactif) — la seule
  * différence entre les deux tient au curseur et aux commandes ajoutées, pas au visuel.
  */
@@ -2256,7 +2269,20 @@ function StatusDroppableColumn({
   // Les BADGES, eux, montrent les états EFFECTIFS de la ligne (posés + déduits), comme la projection.
   const applied = row.appliedStatuses ?? [];
 
+  // Buffs de groupe débloqués — proposés dans le menu SEULEMENT si l'écran de MJ sait ouvrir la
+  // fenêtre de pose : sans elle, cocher la case poserait le buff sur ce seul combattant, à rebours
+  // de la règle (« ses alliés et lui »).
+  const groupBuffIds = controls.onOpenGroupBuff ? (controls.groupBuffIds ?? []) : [];
+  const groupBuffIdSet = new Set<string>(groupBuffIds);
+
   const toggle = (id: AnyStatusEffectId) => {
+    // Un buff de groupe DÉJÀ posé se décoche comme les autres (ce combattant seulement — le retrait
+    // de tout le camp passe par la puce de la palette) ; sa POSE, elle, ouvre la fenêtre de choix.
+    if (!manualIds.has(id) && groupBuffIdSet.has(id)) {
+      setAnchorEl(null);
+      controls.onOpenGroupBuff?.(row.key, id as BeneficialEffectId);
+      return;
+    }
     if (manualIds.has(id)) controls.onRemove(row.key, id);
     else controls.onApply(row.key, id);
     // Le menu reste ouvert : le MJ peut cocher/décocher plusieurs états d'affilée.
@@ -2291,7 +2317,7 @@ function StatusDroppableColumn({
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
         slotProps={{ paper: { sx: { maxHeight: 420 } } }}
       >
-        {buildStatusGroups(controls.situationalIds).flatMap((group, groupIndex) => [
+        {buildStatusGroups(controls.situationalIds, groupBuffIds).flatMap((group, groupIndex) => [
           // Le groupe des états préjudiciables (toujours en tête) n'a pas de sous-titre : il est
           // universel et implicite. Seul le groupe « Effets situationnels » (conditionnel) en garde un.
           ...(groupIndex === 0

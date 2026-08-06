@@ -86,6 +86,13 @@ export interface SheetDisplayView {
   testDice: ReturnType<typeof activeConditionalTestDice>;
   /** Buffs ACTIFS à tous les tests de caractéristique (Bénédiction, via interrupteur). */
   abilityTestBonus: ReturnType<typeof abilityTestBonusSources>;
+  /**
+   * Modificateurs à tous les tests de caractéristique venus des ÉTATS DE COMBAT posés en session
+   * (PER-104) : malus d'un effet situationnel comme bonus d'un buff de groupe. Tenus à part des
+   * buffs de capacité (`abilityTestBonus`) parce qu'ils ne renvoient à aucune capacité de la fiche —
+   * leur ligne de détail porte le nom de l'état, pas une pastille de capacité. Vide hors session.
+   */
+  statusTestBonus: StatusSheetImpact['abilityTestSources'];
   /** Bonus aux tests d'UNE caractéristique précise, par option retenue (Tatouages, PER-125). */
   perAbilityTestBonus: ReturnType<typeof abilityTestBonusByAbility>;
   /**
@@ -181,6 +188,10 @@ export function buildSheetDisplayView(
     testBonuses: testBonusSources(modFeatureIds, effectContext),
     testDice,
     abilityTestBonus: abilityTestBonusSources(modFeatureIds, effectContext),
+    // Ventilation « tests de caractéristique » des états posés (PER-104). Contrairement aux deltas de
+    // stats DÉRIVÉES, elle n'est fondue nulle part ailleurs : les caracs ne sont pas des stats
+    // dérivées, `TestDomainsPanel` est le seul à sommer ce canal.
+    statusTestBonus: statusImpact?.abilityTestSources ?? [],
     perAbilityTestBonus: abilityTestBonusByAbility(modFeatureIds, effectContext),
     magicTestBonuses: magicTestBonusSources(modFeatureIds, character.equipment, effectContext),
     universalBonus: universalTestBonus(modFeatureIds),

@@ -414,6 +414,7 @@ function GmSheetDrawerContent({
               bonuses={display.testBonuses}
               abilities={effectCtx.abilities}
               abilityTestBonus={display.abilityTestBonus}
+              statusTestBonus={display.statusTestBonus}
               perAbilityTestBonus={display.perAbilityTestBonus}
               magicTestBonuses={display.magicTestBonuses}
               bonusDice={display.bonusDieSources}

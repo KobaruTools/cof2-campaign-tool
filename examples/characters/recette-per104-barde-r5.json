@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per104-barde-r5",
+  "name": "Recette PER-104 — Barde rang 5 (Chant des héros +2)",
+  "identity": {
+    "description": "ATTENDU : même capacité, mais rang 5 ATTEINT dans la voie du musicien → la fenêtre de pose pré-remplit le palier à +2 (« Le bonus passe à +2 au rang 5 », p. 67)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barde",
+  "level": 7,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 2,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 2,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "musicien-r1",
+    "musicien-r2",
+    "musicien-r3",
+    "musicien-r4",
+    "musicien-r5",
+    "seduction-r1",
+    "seduction-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-104 — Buff de groupe, palier +2 (contrôle de contraste avec le barde rang 1).\n\nÀ VÉRIFIER : déposer « Chant des héros » sur CE barde pré-remplit +2 ; le déposer sur le barde rang 1 pré-remplit +1. Le MJ peut basculer à la main dans les deux sens.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

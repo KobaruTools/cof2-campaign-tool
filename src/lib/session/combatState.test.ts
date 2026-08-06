@@ -10,6 +10,7 @@ import {
   adjustStatusDuration,
   adjustStatusIntensity,
   applyStatusTo,
+  applyStatusToKeys,
   clampAddCount,
   clearAllStatuses,
   clearStatusesOf,
@@ -18,6 +19,7 @@ import {
   labelCreatureInstances,
   normalizeCreatureName,
   removeStatusFrom,
+  removeStatusFromKeys,
   resetCombat,
   restartRounds,
   rollTieBreakSeed,
@@ -226,6 +228,115 @@ describe('removeStatusFrom', () => {
   it('no-op si l’état n’est pas posé', () => {
     expect(removeStatusFrom(withStatuses, 'c-1', 'slowed')).toBe(withStatuses);
     expect(removeStatusFrom(withStatuses, 'absent', 'blinded')).toBe(withStatuses);
+  });
+});
+
+// POSE DE GROUPE (PER-104) : « ses alliés et lui » se pose en UNE fois — un seul nouvel état, donc
+// une seule écriture et une seule diffusion Realtime (poser N fois de suite en déclencherait N).
+describe('applyStatusToKeys (buff de groupe)', () => {
+  const base: GmCombatState = { ...EMPTY_COMBAT_STATE, roundNumber: 3 };
+
+  it('pose l’état sur tous les combattants listés, en un seul état', () => {
+    const next = applyStatusToKeys(base, ['char-1', 'char-2', 'c-3'], 'heroes-song');
+    expect(next.statuses).toEqual({
+      'char-1': [{ id: 'heroes-song' }],
+      'char-2': [{ id: 'heroes-song' }],
+      'c-3': [{ id: 'heroes-song' }],
+    });
+  });
+
+  it('applique le palier (intensité) à tout le camp, plafonné par le catalogue', () => {
+    const next = applyStatusToKeys(base, ['char-1', 'char-2'], 'heroes-song', { intensity: 2 });
+    expect(next.statuses['char-1']).toEqual([{ id: 'heroes-song', intensity: 2 }]);
+    expect(next.statuses['char-2']).toEqual([{ id: 'heroes-song', intensity: 2 }]);
+    // Plafond de « Chant des héros » : 2 paliers (+1 / +2 au rang 5).
+    expect(
+      applyStatusToKeys(base, ['char-1'], 'heroes-song', { intensity: 9 }).statuses['char-1'],
+    ).toEqual([{ id: 'heroes-song', intensity: 2 }]);
+  });
+
+  it('sans durée, aucun compteur : le buff dure jusqu’à ce que le MJ le retire', () => {
+    const next = applyStatusToKeys(base, ['char-1'], 'blessing');
+    expect(next.statuses['char-1'][0].untilRound).toBeUndefined();
+  });
+
+  it('avec une durée en tours, écrit la manche de FIN (bornes incluses)', () => {
+    // 4 tours à partir de la manche 3 → dernière manche couverte : 6.
+    const next = applyStatusToKeys(base, ['char-1', 'char-2'], 'blessing', { rounds: 4 });
+    expect(next.statuses['char-1']).toEqual([{ id: 'blessing', untilRound: 6 }]);
+    expect(next.statuses['char-2']).toEqual([{ id: 'blessing', untilRound: 6 }]);
+  });
+
+  it('borne la durée au garde-fou de saisie', () => {
+    const next = applyStatusToKeys(base, ['char-1'], 'blessing', { rounds: 999 });
+    expect(next.statuses['char-1'][0].untilRound).toBe(3 + STATUS_DURATION_MAX - 1);
+  });
+
+  it('conserve les autres états déjà posés sur les mêmes combattants', () => {
+    const hurt: GmCombatState = { ...base, statuses: { 'char-1': [{ id: 'prone' }] } };
+    expect(applyStatusToKeys(hurt, ['char-1'], 'heroes-song').statuses['char-1']).toEqual([
+      { id: 'prone' },
+      { id: 'heroes-song' },
+    ]);
+  });
+
+  it('reposer le buff ajuste le palier sans dupliquer, et conserve un compteur déjà posé', () => {
+    const once = applyStatusToKeys(base, ['char-1'], 'heroes-song', { rounds: 2 });
+    const twice = applyStatusToKeys(once, ['char-1'], 'heroes-song', { intensity: 2 });
+    expect(twice.statuses['char-1']).toEqual([
+      { id: 'heroes-song', intensity: 2, untilRound: 4 },
+    ]);
+  });
+
+  it('une durée fournie à la repose REMPLACE le compteur en place (geste délibéré du MJ)', () => {
+    const once = applyStatusToKeys(base, ['char-1'], 'heroes-song', { rounds: 2 });
+    const twice = applyStatusToKeys(once, ['char-1'], 'heroes-song', { rounds: 5 });
+    expect(twice.statuses['char-1']).toEqual([{ id: 'heroes-song', untilRound: 7 }]);
+  });
+
+  it('no-op (même référence) sur une liste vide de combattants', () => {
+    expect(applyStatusToKeys(base, [], 'heroes-song')).toBe(base);
+  });
+
+  it('no-op quand la pose ne change rien (évite une écriture + une diffusion pour rien)', () => {
+    const once = applyStatusToKeys(base, ['char-1', 'char-2'], 'heroes-song');
+    expect(applyStatusToKeys(once, ['char-1', 'char-2'], 'heroes-song')).toBe(once);
+  });
+
+  it('ignore les doublons de clés (le même combattant coché deux fois)', () => {
+    const next = applyStatusToKeys(base, ['char-1', 'char-1'], 'heroes-song');
+    expect(next.statuses['char-1']).toEqual([{ id: 'heroes-song' }]);
+  });
+
+  it('ne mute pas l’état source (pur)', () => {
+    applyStatusToKeys(base, ['char-1'], 'heroes-song');
+    expect(base.statuses).toEqual({});
+  });
+});
+
+describe('removeStatusFromKeys (retrait de groupe)', () => {
+  const posed: GmCombatState = {
+    ...EMPTY_COMBAT_STATE,
+    statuses: {
+      'char-1': [{ id: 'prone' }, { id: 'heroes-song' }],
+      'char-2': [{ id: 'heroes-song' }],
+      'c-3': [{ id: 'blinded' }],
+    },
+  };
+
+  it('retire l’état de tous les combattants listés, en une fois', () => {
+    const next = removeStatusFromKeys(posed, ['char-1', 'char-2', 'c-3'], 'heroes-song');
+    expect(next.statuses).toEqual({ 'char-1': [{ id: 'prone' }], 'c-3': [{ id: 'blinded' }] });
+  });
+
+  it('ne touche pas aux combattants non listés', () => {
+    const next = removeStatusFromKeys(posed, ['char-1'], 'heroes-song');
+    expect(next.statuses['char-2']).toEqual([{ id: 'heroes-song' }]);
+  });
+
+  it('no-op (même référence) si aucun des combattants ne porte l’état', () => {
+    expect(removeStatusFromKeys(posed, ['c-3', 'absent'], 'heroes-song')).toBe(posed);
+    expect(removeStatusFromKeys(posed, [], 'heroes-song')).toBe(posed);
   });
 });
 

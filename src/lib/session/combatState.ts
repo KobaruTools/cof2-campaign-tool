@@ -631,6 +631,86 @@ export function applyStatusTo(
   return { ...state, statuses: { ...state.statuses, [key]: next } };
 }
 
+/** Options de la pose de GROUPE (PER-104), toutes deux arbitrées par le MJ dans le popover de pose. */
+export interface ApplyStatusToKeysOptions {
+  /** Palier de l'effet (pré-rempli depuis le rang du porteur). Défaut 1 ; borné par le catalogue. */
+  intensity?: number;
+  /**
+   * DURÉE en tours à partir de la manche courante (bornes incluses). Absent = aucun compteur, le
+   * buff dure jusqu'à ce que le MJ le retire — cas par défaut, « CHA minutes » n'étant pas
+   * convertible en manches. Fournie, elle REMPLACE un compteur déjà en place : reposer le buff en
+   * précisant une durée est un geste délibéré, contrairement à une simple repose (cf. `applyStatusTo`).
+   */
+  rounds?: number;
+}
+
+/**
+ * Applique un MÊME état à PLUSIEURS combattants d'un coup (PER-104) — c'est la pose des buffs de
+ * groupe (« ses alliés et lui » : Chant des héros p. 67, Bénédiction p. 124), où le MJ coche les
+ * combattants à portée puis valide UNE fois.
+ *
+ * Atomique par construction : un seul nouvel état en sortie, donc un seul upsert `campaign_combat`
+ * et une seule diffusion Realtime côté store — là où N appels à `applyStatusTo` en produiraient N.
+ *
+ * Par combattant, la sémantique est celle d'`applyStatusTo` (idempotent, intensité bornée par le
+ * catalogue, autres états conservés), à ceci près que `rounds` pose/remplace le compteur de tours.
+ * Retourne la MÊME référence si rien ne change (liste vide, ou état déjà posé à l'identique partout).
+ */
+export function applyStatusToKeys(
+  state: GmCombatState,
+  keys: readonly string[],
+  id: AnyStatusEffectId,
+  options: ApplyStatusToKeysOptions = {},
+): GmCombatState {
+  const clamped = clampIntensity(id, options.intensity ?? 1);
+  const posedUntil =
+    options.rounds === undefined ? undefined : untilRoundFor(state.roundNumber, options.rounds);
+
+  const statuses = { ...state.statuses };
+  let changed = false;
+  // `Set` : le même combattant coché deux fois ne doit pas dupliquer son entrée.
+  for (const key of new Set(keys)) {
+    const current = statuses[key] ?? [];
+    const existing = current.find((s) => s.id === id);
+    // Sans durée explicite, un compteur déjà posé survit (même règle qu'`applyStatusTo`).
+    const untilRound = posedUntil ?? existing?.untilRound;
+    const entry = makeApplied(id, clamped, untilRound);
+    if (existing) {
+      if (existing.intensity === entry.intensity && existing.untilRound === entry.untilRound) {
+        continue;
+      }
+      statuses[key] = current.map((s) => (s.id === id ? entry : s));
+    } else {
+      statuses[key] = [...current, entry];
+    }
+    changed = true;
+  }
+  return changed ? { ...state, statuses } : state;
+}
+
+/**
+ * Retire un MÊME état de PLUSIEURS combattants d'un coup (PER-104) : le pendant d'`applyStatusToKeys`,
+ * pour lever un buff sur tout le camp en une écriture. Les combattants qui ne le portent pas sont
+ * ignorés, et les clés vidées sont nettoyées. Même référence si rien n'est retiré.
+ */
+export function removeStatusFromKeys(
+  state: GmCombatState,
+  keys: readonly string[],
+  id: AnyStatusEffectId,
+): GmCombatState {
+  const statuses = { ...state.statuses };
+  let changed = false;
+  for (const key of new Set(keys)) {
+    const current = statuses[key];
+    if (!current || !current.some((s) => s.id === id)) continue;
+    const next = current.filter((s) => s.id !== id);
+    if (next.length === 0) delete statuses[key];
+    else statuses[key] = next;
+    changed = true;
+  }
+  return changed ? { ...state, statuses } : state;
+}
+
 /**
  * Retire un état d'un combattant. No-op si l'état n'est pas posé. Nettoie la clé du combattant
  * quand il ne lui reste aucun état (carte `statuses` sans entrée vide).

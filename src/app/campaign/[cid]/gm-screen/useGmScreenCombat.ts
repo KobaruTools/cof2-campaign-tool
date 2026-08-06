@@ -51,6 +51,7 @@ import {
 import {
   creatureInfoEquals,
   labelCreatureInstances,
+  type ApplyStatusToKeysOptions,
   type CreatureDisplayInfo,
 } from '@/lib/session/combatState';
 import { sortByInitiative } from '@/lib/session/initiativeOrder';
@@ -61,8 +62,13 @@ import {
   type AnyStatusEffectId,
   type AppliedStatus,
 } from '@/lib/character/statusEffects';
+import { unlockedGroupBuffIds } from '@/lib/character/groupBuffs';
 import { featureById } from '@/data';
-import { SITUATIONAL_EFFECT_IDS, type SituationalEffectId } from '@/data/schema';
+import {
+  SITUATIONAL_EFFECT_IDS,
+  type BeneficialEffectId,
+  type SituationalEffectId,
+} from '@/data/schema';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { usePlayersStore } from '@/stores/players';
@@ -163,10 +169,27 @@ export interface GmScreenCombat {
    * du catalogue. Vide = aucun ; la palette masque alors le groupe « Effets situationnels ».
    */
   situationalEffectIds: SituationalEffectId[];
+  /**
+   * Buffs de GROUPE débloqués par la table (PER-104), pendant de `situationalEffectIds` : ceux qu'au
+   * moins un personnage réclamé confère (`character.featureIds` → `groupBuffIds`). Dans l'ordre du
+   * catalogue. Vide = aucun barde ni prêtre à la table, la palette masque la ligne.
+   */
+  groupBuffIds: BeneficialEffectId[];
   /** Applique un état sur un combattant (intensité 1 ; PER-279). */
   applyStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
   /** Retire un état d'un combattant (PER-279). */
   removeStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
+  /**
+   * Pose un MÊME état sur PLUSIEURS combattants en UNE écriture (PER-104) : c'est ainsi qu'un buff
+   * de groupe est appliqué à tout le camp — une seule diffusion Realtime au lieu d'une par cible.
+   */
+  applyStatusToMany: (
+    combatantKeys: readonly string[],
+    id: AnyStatusEffectId,
+    options?: ApplyStatusToKeysOptions,
+  ) => void;
+  /** Retire un MÊME état de PLUSIEURS combattants en une écriture (pendant d'`applyStatusToMany`). */
+  removeStatusFromMany: (combatantKeys: readonly string[], id: AnyStatusEffectId) => void;
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif d'un combattant (PER-280). */
   adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
   /**
@@ -210,6 +233,8 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     setRoundNumber,
     applyStatus,
     removeStatus,
+    applyStatusToMany,
+    removeStatusFromMany,
     adjustStatus,
     adjustStatusDuration,
     setCreatureInfo,
@@ -339,6 +364,10 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     }
     return SITUATIONAL_EFFECT_IDS.filter((id) => unlocked.has(id));
   }, [claimed]);
+
+  // Buffs de groupe débloqués par la table (PER-104) : même gating que les effets situationnels, du
+  // côté bénéfique. Une table sans barde ni prêtre n'a aucune puce verte à se voir proposer.
+  const groupBuffIds = useMemo(() => unlockedGroupBuffIds(claimed), [claimed]);
 
   // Lignes des personnages réclamés : Initiative + PV max = stats dérivées (surcharge
   // manuelle prioritaire, comme la fiche) ; la barre de vie édite le VRAI personnage via
@@ -560,8 +589,11 @@ export function useGmScreenCombat(cid: string, role: CombatRole = 'reader'): GmS
     setCreatureVisibility,
     statuses,
     situationalEffectIds,
+    groupBuffIds,
     applyStatus,
     removeStatus,
+    applyStatusToMany,
+    removeStatusFromMany,
     adjustStatus,
     adjustStatusDuration,
     resetCombat,

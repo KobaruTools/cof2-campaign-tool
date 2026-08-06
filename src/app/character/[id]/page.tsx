@@ -1052,6 +1052,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 bonuses={display.testBonuses}
                 abilities={effectCtx.abilities}
                 abilityTestBonus={display.abilityTestBonus}
+                statusTestBonus={display.statusTestBonus}
                 perAbilityTestBonus={display.perAbilityTestBonus}
                 magicTestBonuses={display.magicTestBonuses}
                 bonusDice={display.bonusDieSources}

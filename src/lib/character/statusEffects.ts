@@ -11,9 +11,12 @@
 
 import type { DerivedMods } from '@/lib/engine/derived';
 import {
+  BENEFICIAL_EFFECT_IDS,
+  BENEFICIAL_EFFECTS,
   ENVIRONMENTAL_EFFECTS,
   SITUATIONAL_EFFECTS,
   STATUS_EFFECTS,
+  type BeneficialEffectId,
   type DerivedStatId,
   type EnvironmentalEffectId,
   type SituationalEffectId,
@@ -25,10 +28,15 @@ import type { Depletion } from './types';
 
 /**
  * Identifiant d'état, indifféremment du glossaire (`StatusEffectId`), situationnel
- * (`SituationalEffectId`) ou d'environnement (`EnvironmentalEffectId`). Les trois espaces d'ids sont
- * disjoints : un id suffit à retrouver son catalogue (cf. `statusEntry`).
+ * (`SituationalEffectId`), d'environnement (`EnvironmentalEffectId`) ou bénéfique
+ * (`BeneficialEffectId`, buffs de groupe PER-104). Les quatre espaces d'ids sont disjoints : un id
+ * suffit à retrouver son catalogue (cf. `statusEntry`).
  */
-export type AnyStatusEffectId = StatusEffectId | SituationalEffectId | EnvironmentalEffectId;
+export type AnyStatusEffectId =
+  | StatusEffectId
+  | SituationalEffectId
+  | EnvironmentalEffectId
+  | BeneficialEffectId;
 
 /**
  * Un état APPLIQUÉ à un combattant : son id + (pour les états cumulatifs) son intensité courante.
@@ -138,7 +146,11 @@ export interface ResolvedStatusModifiers {
   allTestsMalusDie: boolean;
   /** Au moins un état impose un dé malus aux tests d'ATTAQUE (Immobilisé). */
   attackTestsMalusDie: boolean;
-  /** Malus plat cumulé à tous les tests (Attaque invalidante). ≤ 0. */
+  /**
+   * Modificateur plat cumulé à tous les tests, SIGNÉ (PER-104) : négatif pour un malus (Attaque
+   * invalidante), positif pour un buff de groupe (Chant des héros, Bénédiction). Les deux se
+   * compensent naturellement — c'est la même mécanique, au signe près.
+   */
   allTestsFlat: number;
   /** Malus plat cumulé aux DM infligés (Attaque invalidante). ≤ 0. */
   damageDealt: number;
@@ -161,15 +173,33 @@ const DERIVED_KEYS: DerivedStatId[] = [
 const ATTACK_KEYS: DerivedStatId[] = ['meleeAttack', 'rangedAttack', 'magicAttack'];
 
 /**
- * Retourne l'entrée de catalogue d'un id d'état, qu'il soit du glossaire, situationnel ou
- * d'environnement (les trois espaces d'ids sont disjoints). `undefined` si l'id est inconnu (défensif).
+ * Retourne l'entrée de catalogue d'un id d'état, qu'il soit du glossaire, situationnel,
+ * d'environnement ou bénéfique (les quatre espaces d'ids sont disjoints). `undefined` si l'id est
+ * inconnu (défensif).
  */
 export function statusEntry(id: AnyStatusEffectId): StatusEffectEntry | undefined {
   return (
     (STATUS_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
     (SITUATIONAL_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
-    (ENVIRONMENTAL_EFFECTS as Record<string, StatusEffectEntry>)[id]
+    (ENVIRONMENTAL_EFFECTS as Record<string, StatusEffectEntry>)[id] ??
+    (BENEFICIAL_EFFECTS as Record<string, StatusEffectEntry>)[id]
   );
+}
+
+/**
+ * Vrai si l'état est un BUFF DE GROUPE (PER-104) : sa règle vise « ses alliés et lui », donc sa pose
+ * s'adresse à plusieurs combattants d'un coup (`applyStatusToKeys`) au lieu d'un seul.
+ */
+export function isGroupScopedStatus(id: AnyStatusEffectId): boolean {
+  return statusEntry(id)?.scope === 'group';
+}
+
+/** Ensemble des ids du catalogue BÉNÉFIQUE — pour distinguer un buff d'un état subi (PER-104). */
+const BENEFICIAL_ID_SET: ReadonlySet<string> = new Set(BENEFICIAL_EFFECT_IDS);
+
+/** Vrai si l'id appartient au catalogue BÉNÉFIQUE (`BENEFICIAL_EFFECTS`), et non à un état subi. */
+export function isBeneficialStatus(id: AnyStatusEffectId): boolean {
+  return BENEFICIAL_ID_SET.has(id);
 }
 
 /** Vrai si l'état est CUMULATIF (compteur d'intensité) ; faux s'il est binaire. */
@@ -288,7 +318,9 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
  * IMPACT sur la FICHE du joueur (PER-281) — même catalogue que `resolveStatusModifiers`, mais
  * façonné pour l'injection dans la fiche et son détail « i ». Contrairement à la sortie « écran de
  * MJ » (agrégat plat), ici on conserve l'ATTRIBUTION par état pour le breakdown, et on reporte le
- * malus plat « à tous les tests » sur les trois attaques (leurs jets SONT des tests d'attaque).
+ * modificateur plat « à tous les tests » sur ses DEUX destinations : les trois attaques (leurs jets
+ * SONT des tests d'attaque) ET les tests de CARACTÉRISTIQUE (`abilityTestSources`, PER-104 — la
+ * seconde manquait, un « -1 à tous les tests » ne frappait que les attaques).
  * Fonction PURE : n'observe que son entrée. Les états purement comportementaux (sans `modifiers`)
  * restent dans `statuses` (badge + verbatim) sans rien ajouter aux chiffres.
  */
@@ -309,7 +341,18 @@ export interface StatusSheetImpact {
   allTestsMalusDie: string[];
   /** Libellés des états imposant un dé malus aux seuls tests d'ATTAQUE (Immobilisé). Vide = aucun. */
   attackTestsMalusDie: string[];
-  /** Malus plat cumulé à tous les tests (Attaque invalidante). ≤ 0. */
+  /**
+   * Ventilation du modificateur plat « à tous les tests » vers les tests de CARACTÉRISTIQUE (PER-104),
+   * une ligne par état — même forme que les termes de `modSources`, pour le détail « i » de
+   * `TestDomainsPanel`. À FONDRE dans `display.abilityTestBonus` par l'appelant (les valeurs ne sont
+   * comptées nulle part ailleurs : `mods` ne porte que les stats DÉRIVÉES, dont les caracs ne sont pas).
+   * Vide = aucun état ne modifie les tests de carac.
+   */
+  abilityTestSources: { id: AnyStatusEffectId; label: string; value: number }[];
+  /**
+   * Modificateur plat cumulé à tous les tests, SIGNÉ (PER-104) : négatif pour un malus (Attaque
+   * invalidante), positif pour un buff de groupe (Chant des héros, Bénédiction).
+   */
   allTestsFlat: number;
   /** Malus plat cumulé aux DM infligés (Attaque invalidante). ≤ 0. */
   damageDealt: number;
@@ -320,6 +363,7 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
   const modSources: Partial<Record<DerivedStatId, { label: string; value: number }[]>> = {};
   const allTestsMalusDie: string[] = [];
   const attackTestsMalusDie: string[] = [];
+  const abilityTestSources: { id: AnyStatusEffectId; label: string; value: number }[] = [];
   let allTestsFlat = 0;
   let damageDealt = 0;
 
@@ -335,7 +379,9 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
     const mods = cat.modifiers;
     if (!mods) continue; // état purement comportemental : badge + verbatim seulement
     const intensity = effectiveIntensity(entry);
-    const label = `État : ${cat.label}`;
+    // Un buff de groupe n'est pas un « État » subi : il se ventile sous son propre nom (« Chant des
+    // héros +1 »), là où un état préjudiciable garde le préfixe qui le désigne comme tel.
+    const label = isBeneficialStatus(entry.id) ? cat.label : `État : ${cat.label}`;
 
     if (mods.derived) {
       for (const key of DERIVED_KEYS) {
@@ -348,8 +394,11 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
     if (mods.allTestsFlat !== undefined) {
       const flat = mods.allTestsFlat * intensity;
       allTestsFlat += flat;
-      // Un malus « à tous les tests » vaut aussi pour les jets d'ATTAQUE (contact/distance/magie).
+      // « À tous les tests » = les jets d'ATTAQUE (contact/distance/magie), qui sont des stats
+      // dérivées, ET les tests de CARACTÉRISTIQUE, qui n'en sont pas : ces derniers ont leur propre
+      // canal d'affichage (`display.abilityTestBonus`), d'où une ventilation séparée.
       for (const key of ATTACK_KEYS) pushSource(key, label, flat);
+      if (flat !== 0) abilityTestSources.push({ id: entry.id, label, value: flat });
     }
     if (mods.damageDealt !== undefined) damageDealt += mods.damageDealt * intensity;
   }
@@ -361,5 +410,14 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
     if (total !== 0) mods[key] = total;
   }
 
-  return { statuses, mods, modSources, allTestsMalusDie, attackTestsMalusDie, allTestsFlat, damageDealt };
+  return {
+    statuses,
+    mods,
+    modSources,
+    allTestsMalusDie,
+    attackTestsMalusDie,
+    abilityTestSources,
+    allTestsFlat,
+    damageDealt,
+  };
 }

@@ -50,6 +50,14 @@ export interface TestDomainsPanelProps {
    */
   abilityTestBonus?: AbilityTestBonusSource[];
   /**
+   * Modificateurs à TOUS les tests de caractéristique venus des ÉTATS DE COMBAT posés par le MJ en
+   * session (PER-104) : malus d'un effet situationnel (« -1 à tous les tests ») comme bonus d'un
+   * buff de groupe (« Chant des héros +1 »). Se cumulent avec `abilityTestBonus` — dont ils sont
+   * tenus à part parce qu'ils ne renvoient à AUCUNE capacité de la fiche : leur ligne de détail
+   * porte le nom de l'état, là où un buff de capacité affiche sa pastille. Vide hors session.
+   */
+  statusTestBonus?: { id: string; label: string; value: number }[];
+  /**
    * Bonus CHIFFRÉS à UNE caractéristique précise (ex. Tatouages, PER-125), regroupés par carac.
    * Ajoutés à la ligne « test de [CARAC] » de la carac visée (et, quand « inclure la carac » est
    * coché, à ses domaines). Distinct de `abilityTestBonus` (buff uniforme à toutes les caracs).
@@ -319,6 +327,7 @@ export function TestDomainsPanel({
   bonuses,
   abilities,
   abilityTestBonus,
+  statusTestBonus,
   perAbilityTestBonus,
   magicTestBonuses,
   bonusDice,
@@ -357,7 +366,12 @@ export function TestDomainsPanel({
 
   // Buff actif uniforme sur TOUS les tests de carac (ex. Bénédiction : +1, +2 au rang 5).
   const buffSources = abilityTestBonus ?? [];
-  const testBuff = buffSources.reduce((sum, s) => sum + s.value, 0);
+  // Même axe, autre provenance (PER-104) : les états posés par le MJ en session. Ils s'additionnent
+  // aux buffs de capacité — un buff de groupe +1 annule un « -1 à tous les tests » subi.
+  const statusSources = statusTestBonus ?? [];
+  const testBuff =
+    buffSources.reduce((sum, s) => sum + s.value, 0) +
+    statusSources.reduce((sum, s) => sum + s.value, 0);
 
   return (
     <>
@@ -434,6 +448,10 @@ export function TestDomainsPanel({
                   label={<CapabilityChip featureId={s.featureId} label={null} />}
                   value={signed(s.value)}
                 />
+              ))}
+              {/* États de combat posés par le MJ (PER-104) : libellé nu, aucune capacité à pointer. */}
+              {statusSources.map((s) => (
+                <BreakdownRow key={s.id} label={s.label} value={signed(s.value)} />
               ))}
               {perCaracSources.map((s) => (
                 <BreakdownRow
@@ -579,7 +597,13 @@ export function TestDomainsPanel({
                     // Nombre de lignes CHIFFRÉES qui se cumulent (hors sources dominées, barrées) : sert à
                     // n'afficher une ligne « Total » que lorsqu'il y a au moins deux termes à sommer.
                     const contributingRows =
-                      (includeAbility ? 1 + buffSources.length + perCaracSources.length + (agiPenalty > 0 ? 1 : 0) : 0) +
+                      (includeAbility
+                        ? 1 +
+                          buffSources.length +
+                          statusSources.length +
+                          perCaracSources.length +
+                          (agiPenalty > 0 ? 1 : 0)
+                        : 0) +
                       (bonus?.sources.length ?? 0) +
                       (magicRows?.keptMagic ? 1 : 0);
 
@@ -626,6 +650,10 @@ export function TestDomainsPanel({
                                 label={<CapabilityChip featureId={s.featureId} label={null} />}
                                 value={signed(s.value)}
                               />
+                            ))}
+                          {includeAbility &&
+                            statusSources.map((s) => (
+                              <BreakdownRow key={s.id} label={s.label} value={signed(s.value)} />
                             ))}
                           {includeAbility &&
                             perCaracSources.map((s) => (

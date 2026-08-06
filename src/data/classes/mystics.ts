@@ -1268,6 +1268,8 @@ export const mysticFeatures: Feature[] = [
         activation: { kind: 'temporary', label: 'pendant la Bénédiction (CHA min)', activeByDefault: false },
       },
     ],
+    // Part « alliés » du sort (PER-104) : posable sur tout le camp depuis la palette de l'écran de MJ.
+    groupBuffIds: ['blessing'],
     sourcePage: 124,
   },
   {

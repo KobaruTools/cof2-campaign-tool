@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per104-allie-voleur",
+  "name": "Recette PER-104 — Alliée voleuse (ne porte aucun buff)",
+  "identity": {
+    "description": "ATTENDU : second bénéficiaire, pour vérifier qu'UNE seule validation touche bien TOUT le camp (une écriture, une diffusion) et pas seulement la carte survolée."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "voleur",
+  "level": 2,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 4,
+    "CON": 1,
+    "FOR": 1,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 1,
+    "VOL": 0
+  },
+  "baseAbilities": {
+    "AGI": 4,
+    "CON": 1,
+    "FOR": 1,
+    "PER": 2,
+    "CHA": 1,
+    "INT": 1,
+    "VOL": 0
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "roublard-r1",
+    "roublard-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-104 — Second bénéficiaire.\n\nÀ VÉRIFIER : après un unique « Appliquer », les deux alliés ET les lanceurs portent le badge en même temps. Le retrait depuis le badge d'UNE carte ne doit toucher que cette carte ; « Lever sur tout le camp » (fenêtre de pose) les retire tous.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

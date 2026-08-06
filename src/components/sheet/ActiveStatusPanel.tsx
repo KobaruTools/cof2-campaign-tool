@@ -6,9 +6,13 @@
  * voit et subit. N'apparaît QUE quand une session est active et qu'au moins un état est posé — les
  * effets chiffrés (DEF/Init./attaques) sont, eux, déjà repliés dans les stats dérivées de la fiche.
  *
- * Réutilise la puce d'état de l'écran de MJ (`StatusChipVisual`, badge custom rouge + effet VERBATIM
+ * Réutilise la puce d'état de l'écran de MJ (`StatusChipVisual`, badge custom teinté + effet VERBATIM
  * en info-bulle avec renvoi de page) pour un langage visuel identique des deux côtés de la table. Les
  * états cumulatifs affichent leur intensité (« ×N »).
+ *
+ * Depuis PER-104, le panneau peut aussi porter des BUFFS DE GROUPE (Chant des héros, Bénédiction) :
+ * le cadre suit alors le contenu — vert tant qu'il n'y a que du bénéfique, rouge dès qu'un état subi
+ * s'y trouve (le plus urgent gagne).
  */
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -17,6 +21,7 @@ import { alpha } from '@mui/material/styles';
 import { StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
 import { statusTone } from '@/lib/ui/statusPalette';
 import {
+  isBeneficialStatus,
   isStackingStatus,
   statusRemainingRounds,
   type AppliedStatus,
@@ -37,22 +42,27 @@ export function ActiveStatusPanel({ statuses, roundNumber }: ActiveStatusPanelPr
   // Rien à afficher hors session ou sans état posé (l'appelant ne passe la liste qu'en session).
   if (statuses.length === 0) return null;
 
+  // Cadre et titre suivent le contenu : que du bénéfique (PER-104) ⇒ vert et « Effets en cours » ;
+  // dès qu'un état SUBI s'y trouve, on repasse au rouge — c'est lui qui doit sauter aux yeux.
+  const onlyBeneficial = statuses.every((s) => isBeneficialStatus(s.id));
+  const panelTone = onlyBeneficial ? 'success' : 'error';
+
   return (
     <Box
       sx={(theme) => ({
         px: 1.5,
         py: 1.25,
         borderRadius: 1,
-        border: `1px solid ${alpha(theme.palette.error.main, 0.35)}`,
-        bgcolor: alpha(theme.palette.error.main, 0.06),
+        border: `1px solid ${alpha(theme.palette[panelTone].main, 0.35)}`,
+        bgcolor: alpha(theme.palette[panelTone].main, 0.06),
       })}
     >
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.25 }}>
-        États de combat en cours
+        {onlyBeneficial ? 'Effets en cours' : 'États de combat en cours'}
       </Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        Appliqués par le MJ pendant la session — lecture seule. Le malus chiffré est déjà répercuté
-        sur vos stats et vos attaques.
+        Appliqués par le MJ pendant la session — lecture seule. L’effet chiffré est déjà répercuté
+        sur vos stats, vos attaques et vos tests de caractéristique.
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {statuses.map((s) => {

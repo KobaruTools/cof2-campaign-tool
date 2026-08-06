@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per104-barde-r1",
+  "name": "Recette PER-104 — Barde rang 1 (Chant des héros +1)",
+  "identity": {
+    "description": "ATTENDU : porteur de « Chant des héros » (musicien-r1, p. 67) au rang 1 de la voie → la puce VERTE « Chant des héros » apparaît dans la palette de l'écran de MJ, et la fenêtre de pose pré-remplit le palier à +1."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "barde",
+  "level": 2,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "AGI": 2,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "AGI": 2,
+    "CON": 1,
+    "FOR": 0,
+    "PER": 1,
+    "CHA": 4,
+    "INT": 1,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "musicien-r1",
+    "musicien-r2"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-104 — Buff de groupe, palier +1.\n\nÀ VÉRIFIER sur l'écran de MJ : la 4e ligne de la palette (verte) propose « Chant des héros » ; déposée sur la carte de ce barde, elle ouvre la fenêtre de pose avec TOUS les combattants du camp cochés et le bonus sur +1. Après « Appliquer », chaque fiche du camp doit montrer le badge vert, +1 sur les trois attaques et +1 sur chaque test de caractéristique (détail « i » : ligne « Chant des héros +1 »).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

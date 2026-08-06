@@ -28,9 +28,11 @@ import {
   addCreatures,
   addCustomCreatures,
   applyStatusTo,
+  applyStatusToKeys,
   duplicateCreature as duplicateCreatureState,
   updateCreature as updateCreatureState,
   removeStatusFrom,
+  removeStatusFromKeys,
   adjustStatusIntensity,
   adjustStatusDuration as adjustStatusDurationState,
   clearStatusesOf,
@@ -39,6 +41,7 @@ import {
   rollTieBreakSeed,
   setRoundNumber as setRoundNumberState,
   type AddCreatureOptions,
+  type ApplyStatusToKeysOptions,
   type CreatureDisplayInfo,
   type CreatureInstance,
   type GmCombatState,
@@ -99,6 +102,18 @@ export interface GmCombatStateApi extends GmCombatState {
   applyStatus: (combatantKey: string, id: AnyStatusEffectId, intensity?: number) => void;
   /** Retire un état négatif d'un combattant. */
   removeStatus: (combatantKey: string, id: AnyStatusEffectId) => void;
+  /**
+   * Applique un MÊME état à PLUSIEURS combattants d'un coup (PER-104, buffs de groupe) : une seule
+   * écriture, donc un seul upsert et une seule diffusion Realtime. `rounds` pose la durée en tours à
+   * partir de la manche courante (absent = pas de compteur, le MJ retire quand il veut).
+   */
+  applyStatusToMany: (
+    combatantKeys: readonly string[],
+    id: AnyStatusEffectId,
+    options?: ApplyStatusToKeysOptions,
+  ) => void;
+  /** Retire un MÊME état de PLUSIEURS combattants d'un coup (pendant d'`applyStatusToMany`). */
+  removeStatusFromMany: (combatantKeys: readonly string[], id: AnyStatusEffectId) => void;
   /** Ajuste de `delta` (±) l'intensité d'un état cumulatif posé sur un combattant. */
   adjustStatus: (combatantKey: string, id: AnyStatusEffectId, delta: number) => void;
   /**
@@ -222,6 +237,18 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     [applyLocalCombat, cid],
   );
 
+  const applyStatusToMany = useCallback(
+    (combatantKeys: readonly string[], id: AnyStatusEffectId, options?: ApplyStatusToKeysOptions) =>
+      applyLocalCombat(cid, (prev) => applyStatusToKeys(prev, combatantKeys, id, options)),
+    [applyLocalCombat, cid],
+  );
+
+  const removeStatusFromMany = useCallback(
+    (combatantKeys: readonly string[], id: AnyStatusEffectId) =>
+      applyLocalCombat(cid, (prev) => removeStatusFromKeys(prev, combatantKeys, id)),
+    [applyLocalCombat, cid],
+  );
+
   const adjustStatus = useCallback(
     (combatantKey: string, id: AnyStatusEffectId, delta: number) =>
       applyLocalCombat(cid, (prev) => adjustStatusIntensity(prev, combatantKey, id, delta)),
@@ -269,6 +296,8 @@ export function useGmCombatState(cid: string, role: CombatRole = 'reader'): GmCo
     setRoundNumber,
     applyStatus,
     removeStatus,
+    applyStatusToMany,
+    removeStatusFromMany,
     adjustStatus,
     adjustStatusDuration,
     setCreatureInfo,

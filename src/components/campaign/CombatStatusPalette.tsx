@@ -3,14 +3,16 @@
 /**
  * Palette d'états de combat de l'écran de MJ (PER-279, tranche 3 de la milestone PER-276).
  *
- * Trois LIGNES de PUCES à glisser vers les cartes du tracker (collées, sans sous-titre — la teinte
+ * Quatre LIGNES de PUCES à glisser vers les cartes du tracker (collées, sans sous-titre — la teinte
  * suffit à distinguer les familles) : les **états préjudiciables** du
  * glossaire (`STATUS_EFFECT_IDS`, catalogue fermé p. 214-215), les **effets situationnels**
- * (`SITUATIONAL_EFFECT_IDS`, catalogue ouvert, ex. « Attaque invalidante ») et les **états
- * d'environnement** (`ENVIRONMENTAL_EFFECT_IDS`, ex. « Combat aquatique », p. 215). Chaque puce est un
+ * (`SITUATIONAL_EFFECT_IDS`, catalogue ouvert, ex. « Attaque invalidante »), les **états
+ * d'environnement** (`ENVIRONMENTAL_EFFECT_IDS`, ex. « Combat aquatique », p. 215) et les **buffs de
+ * groupe** (`BENEFICIAL_EFFECT_IDS`, PER-104 : Chant des héros, Bénédiction). Chaque puce est un
  * BADGE custom (jamais un `Chip` MUI, cf. préférence UI) : icône game-icons quand elle existe +
  * libellé FR, avec l'effet VERBATIM du catalogue en infobulle (renvoi de page cliquable). La TEINTE
- * distingue les familles (rouge = état subi, bleu = condition d'environnement, cf. `statusTone`).
+ * distingue les familles (rouge = état subi, bleu = condition d'environnement, vert = buff de groupe,
+ * cf. `statusTone`).
  *
  * Le drop applique l'état via les mutations de la tranche 2 (`applyStatus`) — le câblage
  * `@dnd-kit` (DndContext, capteurs, `onDragEnd`) vit dans la page MJ, qui enveloppe cette palette
@@ -23,7 +25,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { useDraggable } from '@dnd-kit/core';
-import type { SituationalEffectId } from '@/data/schema';
+import type { BeneficialEffectId, SituationalEffectId } from '@/data/schema';
 import {
   statusEntry,
   type AnyStatusEffectId,
@@ -175,13 +177,16 @@ function DraggableStatusChip({ id }: { id: AnyStatusEffectId }) {
 /**
  * Palette complète : les groupes de puces glissables. Purement présentative — elle suppose un
  * `DndContext` ancêtre (fourni par la page MJ), qui relie le glisser d'une puce au drop sur une
- * carte de combattant. `situationalIds` = effets situationnels débloqués par la table (le groupe
- * disparaît s'il est vide).
+ * carte de combattant. `situationalIds` et `groupBuffIds` = effets débloqués par les capacités de la
+ * table (le groupe correspondant disparaît s'il est vide).
  */
 export function CombatStatusPalette({
   situationalIds,
+  groupBuffIds = [],
 }: {
   situationalIds: readonly SituationalEffectId[];
+  /** Buffs de groupe débloqués par la table (PER-104). Vide/absent = ligne verte masquée. */
+  groupBuffIds?: readonly BeneficialEffectId[];
 }) {
   return (
     // Aucun sous-titre de groupe, et les lignes COLLÉES (même gouttière verticale qu'entre deux puces
@@ -190,7 +195,7 @@ export function CombatStatusPalette({
     // une palette logée dans le tracker, juste au-dessus de la bande d'initiative. Chaque groupe garde
     // en revanche sa propre ligne : c'est ce qui rend les familles lisibles sans les nommer.
     <Stack spacing={1}>
-      {buildStatusGroups(situationalIds).map((group) => (
+      {buildStatusGroups(situationalIds, groupBuffIds).map((group) => (
         <Box key={group.title} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {group.ids.map((id) => (
             <DraggableStatusChip key={id} id={id} />

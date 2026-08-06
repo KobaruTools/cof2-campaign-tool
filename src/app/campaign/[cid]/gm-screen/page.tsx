@@ -17,7 +17,7 @@
  * Vocation à grandir (jets rapides, PV/mana en direct, notes de session…), d'où
  * une page dédiée plutôt qu'une modale.
  */
-import { Suspense, use, useMemo, useState } from 'react';
+import { Suspense, use, useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   DndContext,
@@ -35,6 +35,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HandymanIcon from '@mui/icons-material/Handyman';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -65,13 +66,20 @@ import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkContr
 import { GmToolsDrawerHost, TOOLS_PARAM } from '@/components/campaign/GmToolsDrawerHost';
 import { DEFAULT_GM_TOOL } from '@/components/campaign/GmToolsDrawer';
 import { GmReferenceDrawerHost, REFERENCE_PARAM } from '@/components/campaign/GmReferenceDrawerHost';
+import { GmBestiaryDrawerHost, BESTIARY_PARAM } from '@/components/campaign/GmBestiaryDrawerHost';
 import { HomeBackground } from '@/components/HomeBackground';
 import { GmSessionHeaderIndicator } from '@/components/session/GmSessionHeaderIndicator';
-import { SIDE_ACCENT } from '@/lib/ui/creature';
+import { SIDE_ACCENT, type CreatureSide } from '@/lib/ui/creature';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { customCreatureBlob } from '@/lib/session/customCreature';
 import { useActiveSession } from '@/lib/session/useActiveSession';
-import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
+import {
+  isGroupScopedStatus,
+  type AnyStatusEffectId,
+} from '@/lib/character/statusEffects';
+import { groupBuffIntensityFor } from '@/lib/character/groupBuffs';
+import { GroupBuffDialog, type GroupBuffCandidate } from '@/components/campaign/GroupBuffDialog';
+import type { BeneficialEffectId } from '@/data/schema';
 import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
 
 /**
@@ -226,8 +234,11 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     setCreatureVisibility,
     statuses,
     situationalEffectIds,
+    groupBuffIds,
     applyStatus,
     removeStatus,
+    applyStatusToMany,
+    removeStatusFromMany,
     adjustStatus,
     adjustStatusDuration,
     resetCombat,
@@ -280,6 +291,16 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
   // Rien à réinitialiser tant qu'aucun combattant n'est en piste (bouton masqué).
   const hasCombatants = claimed.length > 0 || labeledCreatures.length > 0;
 
+  // FENÊTRE DE POSE d'un buff de groupe (PER-104) : `carrierKey` est le combattant sur lequel la puce
+  // a été déposée (ou dont le menu a été ouvert) — il donne le CAMP à proposer et le PALIER par défaut.
+  const [groupBuffPose, setGroupBuffPose] = useState<{
+    buffId: BeneficialEffectId;
+    carrierKey: string;
+  } | null>(null);
+  const openGroupBuff = useCallback((carrierKey: string, buffId: BeneficialEffectId) => {
+    setGroupBuffPose({ buffId, carrierKey });
+  }, []);
+
   // Glisser-déposer des états (PER-279) : les puces de la palette (`useDraggable`, id préfixé) sont
   // déposées sur les colonnes du tracker (`useDroppable`, id = clé de combattant). Le capteur pointeur
   // couvre souris + tactile (l'écran de MJ peut être sur tablette) ; une distance d'activation évite de
@@ -297,8 +318,50 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     setActiveStatus(null);
     const statusId = event.active.data.current?.statusId as AnyStatusEffectId | undefined;
     const combatantKey = event.over?.id;
-    if (statusId && typeof combatantKey === 'string') applyStatus(combatantKey, statusId);
+    if (!statusId || typeof combatantKey !== 'string') return;
+    // Un BUFF DE GROUPE (PER-104) ne se pose pas sur la seule carte visée : sa règle vise « ses alliés
+    // et lui ». Le dépôt désigne le PORTEUR (camp + palier pré-rempli) et ouvre la fenêtre de pose.
+    if (isGroupScopedStatus(statusId)) openGroupBuff(combatantKey, statusId as BeneficialEffectId);
+    else applyStatus(combatantKey, statusId);
   };
+
+  // Camp du porteur : un personnage réclamé est toujours du côté des joueurs ; une créature suit son
+  // propre camp (absent = adversaire, migration douce). Un MJ peut ainsi bénir une escouade adverse.
+  const carrierSide: CreatureSide = groupBuffPose
+    ? (labeledCreatures.find((inst) => inst.id === groupBuffPose.carrierKey)?.side ?? 'ally') ===
+      'enemy'
+      ? 'enemy'
+      : 'ally'
+    : 'ally';
+  // Combattants proposés : le camp du porteur, dans l'ordre du tracker (personnages réclamés puis
+  // créatures du camp). Côté adverse, il n'y a que des créatures.
+  const groupBuffCandidates = useMemo<GroupBuffCandidate[]>(() => {
+    if (!groupBuffPose) return [];
+    const mark = (key: string, label: string): GroupBuffCandidate => ({
+      key,
+      label,
+      ...(key === groupBuffPose.carrierKey ? { carrier: true } : {}),
+    });
+    const creatures = carrierSide === 'ally' ? allies : enemies;
+    return [
+      ...(carrierSide === 'ally' ? claimed.map((c) => mark(c.id, c.name)) : []),
+      ...creatures.map((inst) => mark(inst.id, inst.label)),
+    ];
+  }, [groupBuffPose, carrierSide, claimed, allies, enemies]);
+  // Palier pré-rempli : lu sur le RANG du porteur dans sa voie (+2 dès le rang 5). Une créature
+  // alliée ou un personnage qui ne porte pas la capacité retombe sur +1, ajustable à la main.
+  const groupBuffIntensity = groupBuffPose
+    ? groupBuffIntensityFor(
+        claimed.find((c) => c.id === groupBuffPose.carrierKey)?.featureIds ?? [],
+        groupBuffPose.buffId,
+      )
+    : 1;
+  // Membres du camp qui portent DÉJÀ ce buff → active la levée collective (« Lever sur tout le camp »).
+  const groupBuffPosedKeys = groupBuffPose
+    ? groupBuffCandidates
+        .map((c) => c.key)
+        .filter((key) => (statuses[key] ?? []).some((s) => s.id === groupBuffPose.buffId))
+    : [];
 
   if (!charactersHydrated || campaignsLoading) {
     // Nom de campagne pas encore résolu (donc pas d'en-tête) : on préfigure la
@@ -421,6 +484,20 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               `Stack`/`spacing` applique déjà entre ses enfants (même spécificité CSS, la règle
               de `Stack` gagne). */}
           <Box sx={{ flexGrow: 1 }} />
+          {/* Bestiaire : ouvre le tiroir latéral intégrant le navigateur du bestiaire (`/bestiary`)
+              sans quitter l'écran de MJ. Vraie ancre (`?bestiary=1`) → Ctrl/⌘+Clic ouvre dans un
+              nouvel onglet, le bouton Retour ferme le tiroir. Même patron que le tiroir « Aide-mémoire ». */}
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<PetsOutlinedIcon />}
+            component={Link}
+            href={`/campaign/${cid}/gm-screen?${BESTIARY_PARAM}=1`}
+            scroll={false}
+            sx={(theme) => glassButtonSx(theme, 'info')}
+          >
+            Bestiaire
+          </Button>
           {/* Aide-mémoire : ouvre le tiroir latéral intégrant le référentiel de règles (`/reference`)
               sans quitter l'écran de MJ. Vraie ancre (`?reference=1`) → Ctrl/⌘+Clic ouvre dans un
               nouvel onglet, le bouton Retour ferme le tiroir. */}
@@ -580,12 +657,19 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             statusControls={{
               statusesByKey: statuses,
               situationalIds: situationalEffectIds,
+              groupBuffIds,
               onApply: applyStatus,
               onRemove: removeStatus,
+              onOpenGroupBuff: openGroupBuff,
               onAdjust: adjustStatus,
               onAdjustDuration: adjustStatusDuration,
             }}
-            statusPalette={<CombatStatusPalette situationalIds={situationalEffectIds} />}
+            statusPalette={
+              <CombatStatusPalette
+                situationalIds={situationalEffectIds}
+                groupBuffIds={groupBuffIds}
+              />
+            }
             stickyBottom
           />
           {/* Surcouche : la puce « réelle » suit le curseur pendant le glissement (l'originale s'estompe). */}
@@ -594,6 +678,21 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           </DragOverlay>
         </DndContext>
       </Box>
+
+      {/* Pose d'un buff de groupe (PER-104) : le camp du porteur, tous cochés par défaut, palier
+          pré-rempli et durée libre. Un seul « Appliquer » ⇒ une seule écriture + une seule diffusion. */}
+      <GroupBuffDialog
+        open={groupBuffPose !== null}
+        onClose={() => setGroupBuffPose(null)}
+        buffId={groupBuffPose?.buffId ?? null}
+        candidates={groupBuffCandidates}
+        defaultIntensity={groupBuffIntensity}
+        onApply={(keys, options) =>
+          groupBuffPose && applyStatusToMany(keys, groupBuffPose.buffId, options)
+        }
+        posedKeys={groupBuffPosedKeys}
+        onRemoveAll={(keys) => groupBuffPose && removeStatusFromMany(keys, groupBuffPose.buffId)}
+      />
 
       {/* Modale d'ajout d'une créature au combat : du bestiaire (sélecteur + aperçu) ou
           créée à la main (bloc minimal saisi par le MJ). */}
@@ -665,6 +764,12 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
       <Suspense>
         <GmReferenceDrawerHost />
+      </Suspense>
+
+      {/* Tiroir « Bestiaire », piloté par `?bestiary=1`. Même contrainte de frontière `Suspense`
+          (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
+      <Suspense>
+        <GmBestiaryDrawerHost />
       </Suspense>
     </>
   );

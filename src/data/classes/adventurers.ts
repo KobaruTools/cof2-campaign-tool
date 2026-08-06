@@ -1129,6 +1129,8 @@ export const adventurerFeatures: Feature[] = [
         activation: { kind: 'temporary', label: 'Chant des héros actif (CHA min)', activeByDefault: false },
       },
     ],
+    // Part « alliés » du sort (PER-104) : posable sur tout le camp depuis la palette de l'écran de MJ.
+    groupBuffIds: ['heroes-song'],
     sourcePage: 67,
   },
   {

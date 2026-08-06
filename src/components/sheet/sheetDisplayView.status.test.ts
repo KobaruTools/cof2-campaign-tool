@@ -48,4 +48,37 @@ describe('buildSheetDisplayView — répercussion des états de combat', () => {
       expect.arrayContaining([{ label: 'État : Attaque invalidante', value: -2 }]),
     );
   });
+
+  // PER-104 — le canal « tests de caractéristique » : ni une stat dérivée, ni un `mods`, il vit à
+  // part (`statusTestBonus`) et n'est sommé que par `TestDomainsPanel`.
+  it('expose la ventilation « tests de caractéristique », vide hors session', () => {
+    const c = char();
+    const derived = buildCharacterDerivedView(c);
+    expect(buildSheetDisplayView(c, derived).statusTestBonus).toEqual([]);
+  });
+
+  it('un buff de groupe se voit sur les attaques ET sur les tests de caractéristique', () => {
+    const c = char();
+    const derived = buildCharacterDerivedView(c);
+    const impact = statusSheetImpact([{ id: 'heroes-song' }]);
+    const view = buildSheetDisplayView(c, derived, undefined, impact);
+    // Sur les attaques : ventilé sous son propre nom (ce n'est pas un « État : » subi).
+    expect(view.extraModSources.meleeAttack).toEqual(
+      expect.arrayContaining([{ label: 'Chant des héros', value: 1 }]),
+    );
+    // Sur les tests de carac : canal dédié.
+    expect(view.statusTestBonus).toEqual([
+      { id: 'heroes-song', label: 'Chant des héros', value: 1 },
+    ]);
+  });
+
+  it('un malus plat alimente aussi le canal des tests de caractéristique', () => {
+    const c = char();
+    const derived = buildCharacterDerivedView(c);
+    const impact = statusSheetImpact([{ id: 'insect-swarm' }]);
+    const view = buildSheetDisplayView(c, derived, undefined, impact);
+    expect(view.statusTestBonus).toEqual([
+      { id: 'insect-swarm', label: "État : Nuée d'insectes", value: -2 },
+    ]);
+  });
 });
