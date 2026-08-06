@@ -44,6 +44,7 @@ import type { AbilityId, AbilitySubstitution, CreatureProfile, Feature, Path, Re
 import { FINESSE_ATTACK_MODES, STATUS_EFFECT_LABELS } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
+import { useContentVersion } from '@/lib/content/useContentVersion';
 import {
   featureChoiceDefs,
   getSelection,
@@ -3801,6 +3802,12 @@ export function FeaturesByPath({
   testBonuses,
   verbatim = false,
 }: FeaturesByPathProps) {
+  // Réactivité au contenu payant (PER-321) : les capacités/voies gatées sont fusionnées dans
+  // les registres `@/data` APRÈS le montage (fetch entitlé asynchrone) et RE-fusionnées si un
+  // Fast Refresh dev réinitialise ces registres. S'abonner à la version de contenu force un
+  // nouveau rendu à chaque (re-)fusion, sinon la fiche resterait figée sur « Aucune capacité
+  // acquise. » tant qu'un rendu naturel n'a pas lieu.
+  useContentVersion();
   // Confirmation du bouton « Réinitialiser d'après les montées de niveau » (édition libre).
   const [resetOpen, setResetOpen] = useState(false);
   // Prêtre spécialiste : la capacité divine occupe le slot d'une voie de prêtre
