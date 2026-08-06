@@ -49,6 +49,7 @@ import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { alpha, type Theme } from '@mui/material/styles';
 import { AppHeader } from '@/components/AppHeader';
 import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
 import { GmScreenCard } from '@/components/campaign/GmScreenCard';
@@ -73,6 +74,26 @@ import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
  * Gabarit de colonnes commun aux trois grilles (joueurs / alliés / adversaires) : 3
  * colonnes sur grand écran, palier tablette à 2, repli mobile à 1.
  */
+/**
+ * Style « verre teinté » des boutons d'action de l'écran de MJ (Outils du MJ, Ajouter une
+ * créature, Réinitialiser le combat) : fond translucide + flou d'arrière-plan, teinté par
+ * la tonalité MUI (`info` = bleu, `error` = rouge). Remplace le simple `outlined`/`text`,
+ * trop peu lisible sur le fond illustré de la page (`HomeBackground`).
+ */
+function glassButtonSx(theme: Theme, tone: 'info' | 'error') {
+  return {
+    color: theme.palette[tone].light,
+    bgcolor: alpha(theme.palette[tone].main, 0.18),
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    border: `1px solid ${alpha(theme.palette[tone].main, 0.5)}`,
+    '&:hover': {
+      bgcolor: alpha(theme.palette[tone].main, 0.28),
+      borderColor: theme.palette[tone].light,
+    },
+  } as const;
+}
+
 const GRID_SX = {
   display: 'grid',
   gridTemplateColumns: {
@@ -336,12 +357,45 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
 
       {/* Volontairement HORS du `Container` habituel du site : l'écran de MJ occupe
           toute la largeur pour afficher un maximum de cartes de front. Padding
-          symétrique (gauche/droite = haut/bas) pour laisser respirer les bords. */}
-      <Box sx={{ p: { xs: 2, sm: 4 } }}>
-        {/* Outils du MJ (PER-199, PER-200) : ouvre le tiroir latéral à onglets (rumeurs de
-            taverne, butin, et d'autres outils à venir). Vraie ancre (`?tools=`) → Ctrl/⌘+Clic ouvre dans un
-            nouvel onglet, le bouton Retour ferme le tiroir. */}
-        <Box sx={{ mb: 2 }}>
+          symétrique (gauche/droite = haut/bas) pour laisser respirer les bords — SAUF en bas
+          (`pb: 0`), où la bande d'initiative sticky-bottom vient coller directement contre le
+          pied de page (voir `FLUSH_FOOTER_ROUTES` dans `AppFooter`, qui annule sa marge sur
+          cette route en retour). */}
+      <Box sx={{ p: { xs: 2, sm: 4 }, pb: 0 }}>
+        {/* Barre d'actions (PER-236, PER-247), laissée sur toutes les campagnes : ajout de
+            créature, réinitialisation du combat et accès aux Outils du MJ, toutes sur une
+            même ligne. Style verre teinté : bleu pour les actions principales, rouge pour
+            l'action destructive, plus lisible sur le fond illustré que le simple
+            `outlined`/`text` d'origine. */}
+        <Stack direction="row" spacing={1} sx={{ mb: 2, width: '100%', flexWrap: 'wrap', rowGap: 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={openAddCreature}
+            sx={(theme) => glassButtonSx(theme, 'info')}
+          >
+            Ajouter une créature
+          </Button>
+          {hasCombatants && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<RestartAltIcon />}
+              onClick={() => setResetOpen(true)}
+              sx={(theme) => glassButtonSx(theme, 'error')}
+            >
+              Réinitialiser le combat
+            </Button>
+          )}
+          {/* Espaceur : consomme toute la largeur restante pour pousser « Outils du MJ » à
+              l'extrême droite. Un simple `ml: 'auto'` sur le bouton perd face à la marge que
+              `Stack`/`spacing` applique déjà entre ses enfants (même spécificité CSS, la règle
+              de `Stack` gagne). */}
+          <Box sx={{ flexGrow: 1 }} />
+          {/* Outils du MJ (PER-199, PER-200) : ouvre le tiroir latéral à onglets (rumeurs de
+              taverne, butin, et d'autres outils à venir). Vraie ancre (`?tools=`) → Ctrl/⌘+Clic
+              ouvre dans un nouvel onglet, le bouton Retour ferme le tiroir. */}
           <Button
             variant="outlined"
             size="small"
@@ -349,37 +403,9 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             component={Link}
             href={`/campaign/${cid}/gm-screen?${TOOLS_PARAM}=${DEFAULT_GM_TOOL}`}
             scroll={false}
+            sx={(theme) => glassButtonSx(theme, 'info')}
           >
             Outils du MJ
-          </Button>
-        </Box>
-        {/* Combat tracker (PER-236, PER-247) : barre d'ajout de créatures, laissée sur toutes les campagnes. */}
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ mb: 2, alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}
-        >
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
-            Combat en cours
-          </Typography>
-          {hasCombatants && (
-            <Button
-              variant="text"
-              size="small"
-              color="error"
-              startIcon={<RestartAltIcon />}
-              onClick={() => setResetOpen(true)}
-            >
-              Réinitialiser le combat
-            </Button>
-          )}
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={openAddCreature}
-          >
-            Ajouter une créature
           </Button>
         </Stack>
         {claimed.length === 0 && labeledCreatures.length === 0 ? (
