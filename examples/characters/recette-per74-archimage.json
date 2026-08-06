@@ -3,7 +3,7 @@
   "id": "recette-per74-archimage",
   "name": "Recette PER-74 — Archimage",
   "identity": {
-    "description": "ATTENDU (PER-74, voie de l'archimage p. 154) — 1ʳᵉ voie de la catégorie MAGE. R4 Sceptre défensif → CHIFFRÉ : DEF +3 (rang 8) automatique tant que le bâton est en main (`staff-def-bonus`), le bonus aux tests opposés de résistance à la magie reste verbatim. R5/R7 Bâton magique → CHIFFRÉ : sort de rang 1 (Projectile de mana) et sort de rang 2 (Choc) GRANTED, castables SANS dépense de mana (`archmageFreeSpellDiscount`). R6 Paralysie et R7 Barrière magique → richText balisé ; R7 porte aussi un usageCounter 1×/jour. R8 Métamorphose d'autrui → verbatim seul (limite « par cible » sans équivalent moteur)."
+    "description": "ATTENDU (PER-74, voie de l'archimage p. 154) — 1ʳᵉ voie de la catégorie MAGE. R4 Sceptre défensif → CHIFFRÉ : DEF +3 (rang 8) automatique tant que le bâton est en main (`staff-def-bonus`), le bonus aux tests opposés de résistance à la magie reste verbatim. R5 Bâton magique → CHIFFRÉ : DEUX choix sur la même capacité (sort de rang 1 = Projectile de mana, sort de rang 2 = Choc), rendus en DEUX cartes d'emprunt empilées, chacune castable en action de MOUVEMENT et SANS dépense de mana (`archmageStaffSpellGranted`) — le rang 2 seulement à partir du rang 7. R6 Paralysie et R7 Barrière magique → richText balisé ; R7 porte aussi un usageCounter 1×/jour, AUCUN choix. R8 Métamorphose d'autrui → verbatim seul (limite « par cible » sans équivalent moteur)."
   },
   "campaignId": null,
   "playerId": null,
@@ -43,9 +43,7 @@
   ],
   "featureChoices": {
     "prestige-archimage-r5": [
-      "magie-des-arcanes-r1"
-    ],
-    "prestige-archimage-r7": [
+      "magie-des-arcanes-r1",
       "magie-des-arcanes-r2"
     ]
   },

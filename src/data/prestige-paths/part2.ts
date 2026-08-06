@@ -2031,16 +2031,26 @@ export const prestigeFeatures2: Feature[] = [
       "Le personnage choisit un sort de rang 1 de la famille des mages. Il est lié à son bâton et il peut l'utiliser au prix d'une action de mouvement sans dépense de mana. À partir du rang 7, il peut ajouter un sort de rang 2 qui ne coûte pas non plus de point de mana.",
     // PER-74 : sort GRANTED (pas déjà connu) → `feature-from-path` (comme l'Apprentissage de sort du
     // familier, per74-familier-state.md), `familyScope:'mages'` (FamilyId LITTÉRAL, PER-74 touche à
-    // tout). Coût en mana annulé via `archmageFreeSpellDiscount` (archmagePath.ts), réutilisation du
-    // `discount` de SpellManaBadge (miroir Rituel de combat guerrier-mage r5, mais réduction TOTALE
-    // au lieu de -1 PM fixe). Le second sort de rang 2 du rang 7 est un choix DISTINCT porté par
-    // `prestige-archimage-r7` (cf. commentaire sur ce rang) — pas un second slot ici.
+    // tout). DEUX choix empilés sur CETTE capacité (retour proprio sur la recette visuelle : les 2
+    // sorts se rendent en cartes d'emprunt EMPILÉES sous « Bâton magique », pas dispersés sur R7) —
+    // `archmageStaffSpellGranted` (archmagePath.ts) décide, PAR CHOIX, si le sort désigné est castable
+    // en action de MOUVEMENT et sans mana : le 1er slot (rang 1) l'est dès ce rang 5, le 2e (rang 2)
+    // seulement à partir du rang 7 réellement atteint (« il peut AJOUTER... »). Rendu (carte + action
+    // de mouvement + sans mana) câblé dans `FeaturesByPath.tsx` (`BorrowedFeatureBlock.actionTypesOverride`
+    // + `noMana`, `borrowedFeaturesOf` désormais PLURIEL).
     choices: [
       {
         kind: 'feature-from-path',
         prompt: 'Sort de rang 1 (famille des mages) lié au bâton',
         familyScope: 'mages',
         allowedRanks: [1],
+      },
+      {
+        kind: 'feature-from-path',
+        prompt: 'Sort de rang 2 (famille des mages) ajouté au bâton, à partir du rang 7',
+        note: 'Actif seulement une fois le rang 7 atteint.',
+        familyScope: 'mages',
+        allowedRanks: [2],
       },
     ],
     sourcePage: 154,
@@ -2075,18 +2085,6 @@ export const prestigeFeatures2: Feature[] = [
     // PER-74 : « une fois par jour » distinct du coût en mana → `usageCounter` (précédent : plusieurs
     // sorts, ex. magie-universelle-r5/outre-tombe-r5/soins-r4, portent déjà ce champ).
     usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
-    // PER-74 : second choix « sort de rang 2 » de Bâton magique (r5) porté ICI (cf. commentaire sur
-    // r5) — le rang 7 étant un PRÉREQUIS naturel du personnage pour que ce choix existe, aucun
-    // gating de rang dédié n'est nécessaire (`borrowedFeatureIds` ne connaît que la capacité hôte).
-    choices: [
-      {
-        kind: 'feature-from-path',
-        prompt: 'Sort de rang 2 (famille des mages) ajouté au bâton magique',
-        note: "Second sort accordé par « Bâton magique » (rang 5, p. 154), débloqué au rang 7.",
-        familyScope: 'mages',
-        allowedRanks: [2],
-      },
-    ],
     sourcePage: 154,
   },
   {

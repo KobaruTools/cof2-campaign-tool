@@ -4,11 +4,11 @@
  * R4 Sceptre défensif : DEF chiffrée (patron EXACT « Tenir à distance », armes-à-deux-mains r6,
  * p. 146) — résolue AUTOMATIQUEMENT depuis le bâton réellement en main (`staff-def-bonus` +
  * `ctx.staffWielded`), sans interrupteur. Le bonus aux tests opposés de résistance à la magie reste
- * VERBATIM (hors périmètre moteur, comme l'elfe p. 50 et le halfelin p. 56). R5/R7 Bâton magique :
- * sort de rang 1 (R5) puis rang 2 (R7) GRANTED via `feature-from-path` (`familyScope:'mages'`),
- * castables SANS dépense de mana (`archmageFreeSpellDiscount`, réutilisation du `discount` de
- * SpellManaBadge). Le 2ᵉ sort est porté par le choix de R7 (pas un 2ᵉ slot sur R5) : le personnage
- * ne peut matériellement pas le désigner avant d'avoir atteint le rang 7. R6 Paralysie / R7 Barrière
+ * VERBATIM (hors périmètre moteur, comme l'elfe p. 50 et le halfelin p. 56). R5 Bâton magique porte
+ * DEUX choix `feature-from-path` (`familyScope:'mages'`) sur LA MÊME capacité — deux cartes
+ * d'emprunt EMPILÉES (retour recette proprio), chacune castable en action de MOUVEMENT et sans
+ * dépense de mana (`archmageStaffSpellGranted`) : le 1er slot (rang 1) dès le rang 5, le 2e (rang 2,
+ * « il peut AJOUTER ») seulement à partir du rang 7 réellement atteint. R6 Paralysie / R7 Barrière
  * magique : richText balisé seul (R6) ou + usageCounter 1×/jour (R7, patron magie-universelle-r5).
  * R8 Métamorphose d'autrui : verbatim seul (limite « 1×/combat PAR CIBLE » sans équivalent moteur,
  * même écart que Pieds d'argile, tueur de géants r7).
@@ -19,7 +19,7 @@ import { describe, expect, it } from 'vitest';
 import { featureById, pathById } from '@/data';
 import { migrateCharacter } from '@/lib/engine/migrations';
 import { activeFeatureIdsForMods, effectContext, modsFromFeatures } from '@/lib/character/effects';
-import { archmageFreeSpellDiscount } from '@/lib/character/archmagePath';
+import { archmageStaffSpellGranted } from '@/lib/character/archmagePath';
 import { checkCompliance } from '@/lib/engine/legality';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { parseRichText } from '@/lib/ui/featureRichText';
@@ -86,20 +86,34 @@ describe("PER-74 — voie de l'archimage (p. 154, recette end-to-end)", () => {
     expect(featureById.get(R4)?.text).toContain('tests opposés de magie');
   });
 
-  it('r5/r7 Bâton magique : sorts de rang 1 et 2 accordés SANS dépense de mana', () => {
+  it('r5 Bâton magique : DEUX choix feature-from-path (familyScope mages) sur la même capacité', () => {
+    const r5 = featureById.get(R5)!;
+    expect(r5.choices).toHaveLength(2);
+    expect(r5.choices?.[0]).toMatchObject({ kind: 'feature-from-path', familyScope: 'mages', allowedRanks: [1] });
+    expect(r5.choices?.[1]).toMatchObject({ kind: 'feature-from-path', familyScope: 'mages', allowedRanks: [2] });
+  });
+
+  it('r5 : sort de rang 1 (1er choix) accordé SANS dépense de mana dès le rang 5', () => {
     const rank1 = featureById.get(RANK1_SPELL)!;
-    const rank2 = featureById.get(RANK2_SPELL)!;
-    expect(archmageFreeSpellDiscount(character, rank1)).toBe(1);
-    expect(archmageFreeSpellDiscount(character, rank2)).toBe(2);
+    expect(archmageStaffSpellGranted(character, rank1)).toBe(true);
 
     // Un AUTRE sort (non désigné) ne bénéficie de rien.
-    expect(archmageFreeSpellDiscount(character, featureById.get('magie-des-arcanes-r3')!)).toBe(0);
+    expect(archmageStaffSpellGranted(character, featureById.get('magie-des-arcanes-r3')!)).toBe(false);
+  });
 
-    // Sans r7, le sort de rang 2 (même si son choix restait renseigné) n'est plus gratuit.
-    const sansR7: Character = { ...character, featureIds: character.featureIds.filter((id) => id !== R7) };
-    expect(archmageFreeSpellDiscount(sansR7, rank2)).toBe(0);
+  it('r5 : sort de rang 2 (2e choix) accordé SEULEMENT si le rang 7 est réellement atteint', () => {
+    const rank2 = featureById.get(RANK2_SPELL)!;
+    expect(archmageStaffSpellGranted(character, rank2)).toBe(true);
 
-    // Les deux sorts sont bien ACQUIS (empruntés), pas seulement désignés.
+    // Progression réaliste (rang 6 max, R7/R8 pas encore acquis — l'un ne va jamais sans l'autre) :
+    // c'est le RANG du personnage, pas la seule absence de R7, qui pilote le gating.
+    const rangSixSeulement: Character = { ...character, featureIds: [R4, R5, R6] };
+    expect(archmageStaffSpellGranted(rangSixSeulement, rank2)).toBe(false);
+    // Le 1er sort, lui, reste accordé indépendamment du rang 7.
+    expect(archmageStaffSpellGranted(rangSixSeulement, featureById.get(RANK1_SPELL)!)).toBe(true);
+  });
+
+  it('r5 : les deux sorts désignés sont bien ACQUIS (empruntés), pas seulement choisis', () => {
     const active = activeFeatureIdsForMods(character);
     expect(active).toContain(RANK1_SPELL);
     expect(active).toContain(RANK2_SPELL);
@@ -112,11 +126,12 @@ describe("PER-74 — voie de l'archimage (p. 154, recette end-to-end)", () => {
     assertNoLeakedTokens(r6.richText!);
   });
 
-  it('r7 Barrière magique : richText balisé + usageCounter 1×/jour', () => {
+  it('r7 Barrière magique : richText balisé + usageCounter 1×/jour, AUCUN choix (le 2e sort est sur r5)', () => {
     const r7 = featureById.get(R7)!;
     expect(r7.richText).toContain('[5d4° + INT]');
     assertNoLeakedTokens(r7.richText!);
     expect(r7.usageCounter).toEqual({ max: 1, resetOn: 'day', hideFromStatusPanel: true });
+    expect(r7.choices).toBeUndefined();
   });
 
   it("r8 Métamorphose d'autrui : verbatim seul (limite « par cible » sans équivalent moteur)", () => {
