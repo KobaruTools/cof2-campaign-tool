@@ -43,6 +43,11 @@ import {
   gmScreenPath,
   openGmScreen,
 } from './home-shots-gm-screen';
+import {
+  WIZARD_FRAMES,
+  WIZARD_SHOT_VIEWPORT,
+  captureWizardFrame,
+} from './home-shots-wizard';
 
 // Charge `.env.local` comme le ferait Next : la capture de l'écran de MJ a besoin des
 // variables publiques Supabase (session de démonstration).
@@ -131,21 +136,9 @@ const SHOTS: Shot[] = [
     readySelector: 'h1',
     settleMs: 900,
   },
-  {
-    // Assistant de création, destiné à l'encart étroit de la carte « Création guidée ».
-    // On cadre sur la frise d'étapes et le haut du premier panneau : c'est la FORME qui
-    // dit « pas à pas », et elle survit à la réduction — là où une page entière ne
-    // laisserait qu'une bouillie grise.
-    slug: 'wizard',
-    path: () => '/create',
-    readySelector: 'h1',
-    settleMs: 1200,
-    // Cadrage calé sur le RATIO de l'encart de la carte (~1.2) : sinon le recadrage CSS
-    // rogne les côtés et l'on perd la moitié de la frise d'étapes. Couvre la frise ET le
-    // panneau de choix des peuples, ce qui donne à voir un vrai écran d'assistant.
-    clip: { x: 294, y: 100, width: 560, height: 460 },
-    scale: 2,
-  },
+  // L'ASSISTANT DE CRÉATION n'est pas ici : ses sept captures (une par étape) exigent un
+  // brouillon injecté et un cadrage propre à chaque panneau — cf. `home-shots-wizard.ts`,
+  // et `captureWizardFrames` plus bas.
 ];
 
 /** Charge la recette et la prépare pour l'injection (nom d'affichage lisible). */
@@ -171,7 +164,11 @@ async function hideDevOverlay(page: Page): Promise<void> {
  */
 async function capture(page: Page, slug: string, clip?: Shot['clip']): Promise<number> {
   await hideDevOverlay(page);
-  const png = await page.screenshot({ type: 'png', clip });
+  return writeWebp(await page.screenshot({ type: 'png', clip }), slug);
+}
+
+/** Convertit un PNG en WebP et l'écrit. Retourne sa taille en kilo-octets. */
+async function writeWebp(png: Buffer, slug: string): Promise<number> {
   const webp = await sharp(png).webp({ quality: WEBP_QUALITY }).toBuffer();
   writeFileSync(join(OUT_DIR, `${slug}.webp`), webp);
   return Math.round(webp.byteLength / 1024);
@@ -224,9 +221,32 @@ async function main() {
     process.stdout.write(`  ✓ public/home/${shot.slug}.webp (${kb} ko)\n`);
   }
 
+  await captureWizardFrames(browser);
   await captureGmScreen(browser);
 
   await browser.close();
+}
+
+/**
+ * Les sept étapes de l'assistant de création, une capture chacune. À part des autres pour
+ * deux raisons : elles ont besoin d'un brouillon INJECTÉ (sinon on photographie un
+ * formulaire vide) et d'une fenêtre ÉTROITE (360 px), le cadrage de bureau étant illisible
+ * une fois réduit à la largeur d'une carte. Toute la mécanique est dans
+ * `scripts/home-shots-wizard.ts` ; ici on ne fait que dérouler les sept vues.
+ */
+async function captureWizardFrames(browser: Awaited<ReturnType<typeof chromium.launch>>) {
+  const frames = WIZARD_FRAMES.filter((frame) => wanted(frame.slug));
+  if (frames.length === 0) return;
+
+  const context = await browser.newContext({ viewport: WIZARD_SHOT_VIEWPORT, deviceScaleFactor: 2 });
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const frame of frames) {
+    process.stdout.write(`→ ${frame.slug} : ${BASE_URL}/create (étape ${frame.step + 1})\n`);
+    const kb = await writeWebp(await captureWizardFrame(page, BASE_URL, frame), frame.slug);
+    process.stdout.write(`  ✓ public/home/${frame.slug}.webp (${kb} ko)\n`);
+  }
+  await context.close();
 }
 
 /**

@@ -10,8 +10,10 @@
  *    la `GaugeRow` de mana, branchés sur un état local. C'est possible parce qu'ils sont
  *    découpés proprement (dépletion + max + callbacks, aucun `Character` requis) : ce que le
  *    visiteur manipule ici est exactement ce qu'il manipulera sur sa fiche.
- *  - « Création guidée » montre une **capture** de l'assistant, régénérée par
- *    `scripts/generate-home-shots.ts` — donc jamais périmée en silence.
+ *  - « Création guidée » est MIXTE : la frise des sept étapes est du vrai DOM (libellés
+ *    nets, cliquables), et chaque panneau est une **capture** de l'assistant régénérée par
+ *    `scripts/home-shots-wizard.ts` — donc jamais périmée en silence. Détail du régime et
+ *    de l'avance automatique dans `GuidedCreationDemo`.
  *  - « Montée de niveau » et « Écran de meneur » sont des **maquettes** propres à cette
  *    page, mais alimentées par les VRAIES données (voies, couleurs de profil, catalogue
  *    des états). Rebrancher le vrai tracker d'initiative entraînerait l'état de campagne,
@@ -23,7 +25,6 @@
  */
 import { useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import HotelIcon from '@mui/icons-material/Hotel';
 import TimerIcon from '@mui/icons-material/Timer';
 import Box from '@mui/material/Box';
@@ -37,6 +38,7 @@ import { DerivedStatIcon } from '@/components/DerivedStatIcon';
 import { GmScreenIcon } from '@/components/GmScreenIcon';
 import { SectionIcon } from '@/components/SectionIcon';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
+import { GuidedCreationDemo } from '@/components/home/GuidedCreationDemo';
 import { GaugeRow } from '@/components/sheet/GaugeRow';
 import { HpGauge } from '@/components/sheet/HpGauge';
 import { RecoveryDicePips } from '@/components/sheet/RecoveryDicePips';
@@ -147,49 +149,6 @@ function FeatureCard({
         </Box>
       </Stack>
     </Paper>
-  );
-}
-
-// ─── Démo 1 : création guidée ────────────────────────────────────────────────
-
-/**
- * Capture cadrée de l'assistant de création (frise d'étapes + premier panneau), produite
- * par `scripts/generate-home-shots.ts`. L'encart de carte est étroit : c'est un cadrage
- * SERRÉ, pas une page entière réduite — à 250 px de large, une page complète ne montre
- * plus rien. Le clic mène à l'assistant réel.
- */
-function GuidedCreationDemo() {
-  return (
-    <Stack spacing={1}>
-      <Box
-        sx={{
-          height: DEMO_SLOT_HEIGHT - 42,
-          borderRadius: 2,
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          overflow: 'hidden',
-        }}
-      >
-        <Box
-          component="img"
-          src="/home/wizard.webp"
-          alt="Aperçu de l’assistant de création : la frise des sept étapes."
-          loading="lazy"
-          decoding="async"
-          sx={{
-            display: 'block',
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'left top',
-          }}
-        />
-      </Box>
-      <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
-        <Button size="small" variant="text" component={Link} href="/create">
-          Créer un personnage
-        </Button>
-      </Stack>
-    </Stack>
   );
 }
 
@@ -552,10 +511,10 @@ export function FeatureShowcase() {
         icon={sectionIcon('identity')}
         title="Création guidée"
         accent={accents.creation}
-        demo={<GuidedCreationDemo />}
+        demo={<GuidedCreationDemo accent={accents.creation} />}
       >
-        Un assistant qui applique les règles pas à pas : peuple, profil, caractéristiques,
-        voies et équipement de départ.
+        Un assistant qui applique les règles pas à pas, du peuple au récapitulatif. Voici
+        les sept étapes.
       </FeatureCard>
 
       <FeatureCard
