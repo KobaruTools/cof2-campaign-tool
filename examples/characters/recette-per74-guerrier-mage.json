@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-guerrier-mage",
+  "name": "Recette PER-74 — Guerrier-mage (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie du guerrier-mage p. 151) — 9ᵉ voie de la catégorie COMBATTANT, HYBRIDE (magicien + chevalier). R4 Magie en armure → CHIFFRÉ : armure de plaques (DEF 6) maîtrisée (2 rangs de Preux, chevalier) et seuil de la voie au rang 8 (8 − 2 = 6) → le Projectile de mana se lance SANS surcoût de mana (goutte PM sans halo ambré). R5 Rituel de combat → CHIFFRÉ : le Projectile de mana désigné coûte -1 PM (1 → 0 PM sur la fiche). R6 Déflexion arcanique et R8 Frappe des arcanes → badges de rappel AMBRE (réactions ponctuelles payées en PM, à la discrétion du joueur) sur les cartes Défense / Attaque au contact — aucune stat calculée (le joueur gère lui-même sa dépense de PM). R7 Magie de combat → VERBATIM seul (choix ponctuel à l'incantation, aucune primitive pour « échanger un effet contre un autre »)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "magie-des-arcanes-r1",
+    "preux-r1",
+    "preux-r2",
+    "prestige-guerrier-mage-r4",
+    "prestige-guerrier-mage-r5",
+    "prestige-guerrier-mage-r6",
+    "prestige-guerrier-mage-r7",
+    "prestige-guerrier-mage-r8"
+  ],
+  "featureChoices": {
+    "prestige-guerrier-mage-r5": [
+      "magie-des-arcanes-r1"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "armure-de-plaques",
+      "quantity": 1,
+      "worn": {
+        "slot": "armor"
+      }
+    },
+    {
+      "itemId": "baton-ferre",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette guerrier-mage : R4 dispense de surcoût (chiffré) + R5 -1 PM sur le Projectile de mana (chiffré) ; R6/R8 badges de rappel ambre (réactions payées en PM) ; R7 verbatim seul.",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

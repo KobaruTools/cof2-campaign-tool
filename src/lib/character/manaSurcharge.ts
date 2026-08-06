@@ -37,6 +37,7 @@ import {
   magicTalentBorrowedFeatureIds,
   donEtrangeBorrowedFeatureId,
 } from './armorRestrictions';
+import { warmageArmorWaiverThreshold } from './warmagePath';
 
 /**
  * Profil d'origine (id de `CharacterClass`) d'un sort, d'après SA voie
@@ -143,7 +144,12 @@ export function spellArmorManaSurcharge(
   const wornArmorDef = wornArmorWorldlyDef(character.equipment);
   // Prêtre (allocation illimitée) : jamais de surcoût. Sinon = DEF portée au-delà
   // de l'armure autorisée au profil, plancher 0.
-  const surcharge = allowanceDef === null ? 0 : Math.max(0, wornArmorDef - allowanceDef);
+  let surcharge = allowanceDef === null ? 0 : Math.max(0, wornArmorDef - allowanceDef);
+  // PER-74 — Magie en armure (guerrier-mage r4, p. 151) : dispense TOTALE du surcoût pour un sort
+  // de magie profane si la DEF mondaine portée est ≤ rang atteint dans la voie − 2 (cuir au rang 4,
+  // plaque au rang 8). Sans effet sur le prêtre (déjà `surcharge` nul via `allowanceDef: null`).
+  const waiverThreshold = warmageArmorWaiverThreshold(character);
+  if (surcharge > 0 && waiverThreshold !== null && wornArmorDef <= waiverThreshold) surcharge = 0;
   // Maîtrise de l'armure portée = armure ≤ plafond de port des profils maîtrisés.
   const armorMastered = wornArmorDef <= wornArmorAllowedDef(character, ctx);
 

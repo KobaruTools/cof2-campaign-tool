@@ -68,6 +68,7 @@ import { defenseFromEquipment } from '@/components/wizard/helpers';
 import type { DefenseBadgeData } from '@/components/sheet/DefenseBadge';
 import type { FeatureEffectNote } from '@/components/sheet/FeatureEffectBadge';
 import { flayerMeleeAttackNotes, flayerRetaliationBadge } from '@/lib/character/flayerPath';
+import { warmageHasDeflection, warmageMeleeAttackNotes } from '@/lib/character/warmagePath';
 
 const familyById = new Map(families.map((f) => [f.id, f]));
 
@@ -444,6 +445,20 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         },
       ]
     : [];
+  // PER-74 — Déflexion arcanique (guerrier-mage r6, p. 151) : badge de rappel AMBRE (réaction
+  // ponctuelle payée en PM, à la discrétion du joueur) — aucune valeur numérique fixe (le combattant
+  // choisit +2 DEF pour 1 PM par attaque, +5 pour 3 PM à partir du rang 9).
+  const deflectionBadges: DefenseBadgeData[] = warmageHasDeflection(modFeatureIds)
+    ? [
+        {
+          key: 'arcane-deflection-warmage-r6',
+          variant: 'arcane-deflection',
+          title: 'Déflexion arcanique',
+          note: 'Réaction annoncée après le jet adverse : 1 PM → +2 DEF contre cette attaque (+5 pour 3 PM à partir du rang 9), plusieurs fois par round.',
+          sources: [{ name: 'Déflexion arcanique', featureId: 'prestige-guerrier-mage-r6' }],
+        },
+      ]
+    : [];
   // Ordre voulu : immunités d'abord, réductions, puis effets défensifs situationnels (dé malus, riposte).
   const defenseBadges: DefenseBadgeData[] = [
     ...statusImmunityBadges,
@@ -451,6 +466,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
     ...reductionBadges,
     ...rangedMalusBadges,
     ...retaliationBadges,
+    ...deflectionBadges,
   ];
 
   // Plages de critique élargies ACTIVES (ex. Briseur d'os 19-20) — badges custom (variante 'critical')
@@ -675,7 +691,7 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         ...magicWeaponSituationalDamage(offHandMelee.line, offHandMelee.item.name, character.level),
       ]
     : [];
-  const meleeAttackNotes = flayerMeleeAttackNotes(modFeatureIds);
+  const meleeAttackNotes = [...flayerMeleeAttackNotes(modFeatureIds), ...warmageMeleeAttackNotes(modFeatureIds)];
 
   return {
     modFeatureIds,

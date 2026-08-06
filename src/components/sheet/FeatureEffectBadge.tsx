@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import OpacityIcon from '@mui/icons-material/Opacity';
 import PersonalInjuryIcon from '@mui/icons-material/PersonalInjury';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
@@ -11,12 +12,13 @@ import { AttackQualifierBadge, type AttackBadgeColor } from '@/components/sheet/
 import { CapabilityChip, RichInline } from '@/components/sheet/FeatureRichText';
 
 /** Clé d'icône d'un effet de capacité (résolue ici, pour garder la couche de données SANS JSX). */
-export type FeatureEffectIcon = 'bleeding' | 'grievous-wounds' | 'merciless';
+export type FeatureEffectIcon = 'bleeding' | 'grievous-wounds' | 'merciless' | 'arcane-strike';
 
 const ICONS: Record<FeatureEffectIcon, ReactNode> = {
   bleeding: <OpacityIcon sx={{ fontSize: 18 }} />,
   'grievous-wounds': <PersonalInjuryIcon sx={{ fontSize: 18 }} />,
   merciless: <WhatshotIcon sx={{ fontSize: 18 }} />,
+  'arcane-strike': <AutoAwesomeIcon sx={{ fontSize: 18 }} />,
 };
 
 /**

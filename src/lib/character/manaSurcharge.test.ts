@@ -239,3 +239,51 @@ describe('spellArmorManaSurcharge — Don étrange affranchit du surcoût (PER-1
     expect(spellArmorManaSurcharge(ensorceleur, ctx, feat('air-r1'))?.surcharge).toBeGreaterThan(0);
   });
 });
+
+describe('spellArmorManaSurcharge — Magie en armure affranchit du surcoût (PER-74, guerrier-mage r4, p. 151)', () => {
+  // Hybride magicien (allocation 0) + chevalier (maîtrise l'armure de plaques, DEF 6, via ≥2 rangs
+  // de Preux, p. 177) : au rang 4 de la voie, le seuil de dispense (rang − 2) vaut 2 (cuir simple).
+  const warmage = (rankIds: string[], over: Partial<Character> = {}): Character =>
+    makeChar({
+      classId: 'magicien',
+      featureIds: ['magie-des-arcanes-r1', 'preux-r1', 'preux-r2', ...rankIds],
+      ...over,
+    });
+
+  it('rang 4 seul, cuir simple (DEF 2 ≤ seuil 2) → surcoût DISPENSÉ (0)', () => {
+    const c = warmage(['prestige-guerrier-mage-r4'], { equipment: [wornArmor('cuir-simple')] });
+    const res = spellArmorManaSurcharge(c, ctx, feat('magie-des-arcanes-r1'));
+    expect(res?.surcharge).toBe(0);
+    expect(res?.blockedByMastery).toBe(false);
+  });
+
+  it('rang 4 seul, cotte de mailles (DEF 5 > seuil 2) → dispense NON acquise, surcoût plein (5)', () => {
+    const c = warmage(['prestige-guerrier-mage-r4'], { equipment: [wornArmor('cotte-de-mailles')] });
+    const res = spellArmorManaSurcharge(c, ctx, feat('magie-des-arcanes-r1'));
+    expect(res?.surcharge).toBe(5);
+  });
+
+  it('rangs 4-8 (rang 8), armure de plaques (DEF 6 = seuil 6) → surcoût DISPENSÉ (0)', () => {
+    const c = warmage(
+      ['prestige-guerrier-mage-r4', 'prestige-guerrier-mage-r5', 'prestige-guerrier-mage-r6', 'prestige-guerrier-mage-r7', 'prestige-guerrier-mage-r8'],
+      { equipment: [wornArmor('armure-de-plaques')] },
+    );
+    const res = spellArmorManaSurcharge(c, ctx, feat('magie-des-arcanes-r1'));
+    expect(res?.surcharge).toBe(0);
+  });
+
+  it('sans la voie du guerrier-mage : le MÊME hybride garde son surcoût plein (contrôle)', () => {
+    const c = warmage([], { equipment: [wornArmor('cuir-simple')] });
+    const res = spellArmorManaSurcharge(c, ctx, feat('magie-des-arcanes-r1'));
+    expect(res?.surcharge).toBe(2);
+  });
+
+  it('prêtre (allocation illimitée, jamais de surcoût) : R4 sans effet, cas déjà couvert', () => {
+    const c = makeChar({
+      classId: 'pretre',
+      featureIds: ['prestige-guerrier-mage-r4', 'prestige-guerrier-mage-r5'],
+      equipment: [wornArmor('cotte-de-mailles')],
+    });
+    expect(spellArmorManaSurcharge(c, ctx, feat('foi-r2'))?.surcharge).toBe(0);
+  });
+});

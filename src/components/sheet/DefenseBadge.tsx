@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import ShieldIcon from '@mui/icons-material/Shield';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { alpha } from '@mui/material/styles';
 import type { ImmunityId, ResistibleDamageType } from '@/data/schema';
 import { AppTooltip } from '@/components/AppTooltip';
@@ -21,7 +22,8 @@ export type DefenseBadgeVariant =
   | 'reduction'
   | 'critical'
   | 'ranged-malus'
-  | 'retaliation';
+  | 'retaliation'
+  | 'arcane-deflection';
 
 /**
  * Donnée d'un BADGE de carte de statistique dérivée (PER-137) : IMMUNITÉ (vert, bouclier),
@@ -77,6 +79,10 @@ const PALETTE: Record<DefenseBadgeVariant, 'success' | 'info' | 'secondary' | 'w
   // en dur) — retour propriétaire (2026-08-05) : un badge autonome rouge n'existait pas avant sur
   // cette carte, ne pas en introduire un pour un effet qui ne touche jamais les stats du porteur.
   retaliation: 'info',
+  // Déflexion arcanique (guerrier-mage r6, PER-74) : réaction ponctuelle payée en PM, à la
+  // discrétion du joueur — AMBRE (situationnel), comme l'immunité situationnelle ci-dessus. Ne
+  // modifie aucune stat calculée (le joueur gère lui-même sa dépense de PM).
+  'arcane-deflection': 'warning',
 };
 
 /**
@@ -185,6 +191,7 @@ export function DefenseBadge({
           />
         )}
         {variant === 'critical' && <GpsFixedIcon sx={{ fontSize: iconSize }} />}
+        {variant === 'arcane-deflection' && <AutoAwesomeIcon sx={{ fontSize: iconSize }} />}
         {/* Dé malus aux tirs adverses (Cape d'ombre) : ARC (attaque à distance, en BLEU comme la chip)
             + dé malus (double d20 dont un barré, en ROUGE via MalusDieBadge). Pas de texte. */}
         {variant === 'ranged-malus' && (

@@ -1591,6 +1591,16 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Parmi les sorts infligeant des DM que connaît le personnage, il en choisit un qui lui coûte désormais 1 PM de moins à lancer.",
+    // PER-74 — réduction chiffrée sur la pastille PM du sort désigné (`combatRitualDiscount`,
+    // warmagePath.ts), où qu'elle s'affiche sur la fiche. Domaine large (`spellsOnly`, pas de filtre
+    // « à DM ») : comme la Capacité fabuleuse du spécialiste, le joueur choisit en connaissance de cause.
+    choices: [
+      {
+        kind: 'known-feature',
+        prompt: 'Sort à DM connu, dont le coût baisse de 1 PM',
+        spellsOnly: true,
+      },
+    ],
     sourcePage: 151,
   },
   {
@@ -1624,6 +1634,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['G'],
     text:
       "Le personnage insuffle sa puissance magique dans une attaque au contact : il dépense 1 PM pour obtenir un dé bonus et +1d4° aux DM sur cette attaque.",
+    richText:
+      "Le personnage insuffle sa puissance magique dans une attaque au contact : il dépense 1 PM pour obtenir un dé bonus et +{1d4°} DM sur cette attaque.",
     sourcePage: 151,
   },
 
