@@ -93,6 +93,7 @@ import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { RestProposalDialog } from '@/components/session/RestProposalDialog';
+import { RestRequestControl } from '@/components/session/RestRequestControl';
 import { ManeuversPanel } from '@/components/sheet/ManeuversPanel';
 import { SourceRef } from '@/components/SourceRef';
 import { CompanionsPanel } from '@/components/sheet/CompanionsPanel';
@@ -1128,6 +1129,22 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 onShortRest={doShortRest}
                 onLongRest={doLongRest}
                 elixirDosesToLose={elixirDosesToLose}
+                // Demander une pause à la table (PER-313) : posé sur la rangée des repos, là où le
+                // joueur a déjà « Repos court » et « Repos long ». Ne s'affiche qu'en session, et
+                // s'efface dès qu'une proposition est ouverte (`RestProposalDialog` prend le relais).
+                restSlot={
+                  isPlayer && !readOnly && characterCampaignId ? (
+                    <RestRequestControl
+                      campaignId={characterCampaignId}
+                      characterId={character.id}
+                      // Ce nom devient celui du proposant chez toute la table (« Aria propose… ») :
+                      // un personnage encore anonyme se présente donc comme « Un joueur », pas
+                      // comme le « Sans nom » affiché ailleurs sur la fiche.
+                      characterName={character.name || 'Un joueur'}
+                      sessionActive={sessionActive}
+                    />
+                  ) : undefined
+                }
               />
               {/* Repos de groupe (PER-312) : quand le MJ propose une récupération à toute la
                   table, l'annonce s'ouvre ici — sur la fiche, là où le joueur applique son repos.

@@ -15,11 +15,13 @@
  * les autres non. D'où le `status` porté par la proposition : `'open'` (on récolte les intentions)
  * puis `'applied'` (top de départ, irréversible).
  *
- * Le proposant (le MJ ; un joueur en PER-313) est **auteur unique** de l'objet `RestProposal` : il le
- * crée, y intègre les réponses reçues et le rediffuse en instantané absolu (LWW), sur le modèle de
- * l'état de combat (`combatState.ts` / `stores/campaignCombat.ts`). Rien n'est persisté en base : une
- * proposition vit le temps d'une pause de table, et ce qu'elle produit de durable (les repos réellement
- * appliqués) est déjà persisté par la fiche de chaque joueur.
+ * Le MJ est **auteur unique** de l'objet `RestProposal` : il le crée, y intègre les réponses reçues
+ * et le rediffuse en instantané absolu (LWW), sur le modèle de l'état de combat (`combatState.ts` /
+ * `stores/campaignCombat.ts`). Cela reste vrai quand la pause vient d'un JOUEUR (PER-313) : celui-ci
+ * n'émet qu'une `RestRequest`, que le MJ adopte (`adoptRestRequest`) ou refuse — voir la seconde
+ * moitié de ce module. Rien n'est persisté en base : une proposition vit le temps d'une pause de
+ * table, et ce qu'elle produit de durable (les repos réellement appliqués) est déjà persisté par la
+ * fiche de chaque joueur.
  *
  * Module pur (aucune dépendance UI, aucun accès réseau) — hormis `newRestProposalId`, isolé et signalé.
  */
@@ -56,12 +58,57 @@ export interface RestParticipant {
   playerName?: string;
 }
 
+/**
+ * Un personnage CANDIDAT au relevé, côté MJ : un participant, plus le joueur de roster qui l'incarne.
+ * `playerId` ne voyage pas dans la proposition — il ne sert qu'à trier les connectés
+ * (`connectedRestParticipants`) avant de convoquer la table.
+ */
+export interface RestCandidate extends RestParticipant {
+  /** Joueur de roster qui incarne ce personnage ; absent = personnage non réclamé. */
+  playerId?: string;
+}
+
+/**
+ * Ne convoque au relevé que les personnages dont le joueur est **connecté** à la session (PER-313).
+ *
+ * Pourquoi ce filtre (demande du propriétaire) : à la table, tout le monde n'a pas l'app ouverte —
+ * un joueur peut très bien tenir une fiche papier. Le convoquer le laisserait éternellement dans la
+ * colonne « n'a pas répondu », polluant un relevé que le MJ doit lire d'un coup d'œil. Le MJ pouvait
+ * déjà valider sans lui, mais il n'a aucune raison d'être appelé.
+ *
+ * Sur un client de joueur, « connecté » vaut exactement « fiche ouverte » (c'est la fiche qui tient
+ * le canal) : on n'exclut donc jamais quelqu'un qui aurait pu répondre.
+ *
+ * Le filtre est appliqué **à l'ouverture** de la proposition, et une seule fois : la table convoquée
+ * est ensuite figée dans `participants`. Un joueur qui se déconnecte après coup reste au relevé (il
+ * a pu répondre avant de partir) et n'y bloque rien. À l'inverse, celui qui se connecte APRÈS
+ * l'ouverture reçoit bien l'annonce et peut récupérer comme les autres — simplement, n'ayant pas été
+ * convoqué, sa réponse n'apparaît pas au relevé du MJ (`restProposalTally` s'en tient à la table
+ * convoquée). Une pause dure trente minutes de fiction, pas la soirée : on n'en fait pas un cas.
+ */
+export function connectedRestParticipants(
+  candidates: readonly RestCandidate[],
+  presentPlayerIds: Iterable<string>,
+): RestParticipant[] {
+  const present = new Set(presentPlayerIds);
+  const participants: RestParticipant[] = [];
+  for (const candidate of candidates) {
+    if (candidate.playerId === undefined || !present.has(candidate.playerId)) continue;
+    participants.push({
+      characterId: candidate.characterId,
+      name: candidate.name,
+      ...(candidate.playerName ? { playerName: candidate.playerName } : {}),
+    });
+  }
+  return participants;
+}
+
 /** Proposition de repos en cours, telle que diffusée sur le canal de session. */
 export interface RestProposal {
   /** Identifiant de la proposition — distingue deux propositions successives (cf. `newRestProposalId`). */
   id: string;
   kind: RestKind;
-  /** Nom affiché du proposant (« MJ », ou le nom d'un joueur en PER-313). */
+  /** Nom affiché du proposant (« Le MJ », ou le nom d'un personnage dont le MJ a adopté la demande). */
   proposedBy: string;
   /** Horodatage ISO de la proposition (fourni par l'appelant). */
   createdAt: string;
@@ -254,5 +301,115 @@ export function reviveRestProposal(raw: unknown): RestProposal | null {
     status: o.status === 'applied' ? 'applied' : 'open',
     participants,
     responses,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La DEMANDE d'un joueur (PER-313)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Demande de pause émise par un JOUEUR. Ce n'est pas une proposition : elle ne convoque personne,
+ * n'ouvre aucun relevé et n'engage rien. Elle monte au MJ, qui l'**adopte** — il ouvre alors une
+ * vraie `RestProposal` au nom du demandeur (`adoptRestRequest`) — ou la refuse.
+ *
+ * Pourquoi ce détour plutôt que de laisser le joueur diffuser sa propre proposition (arbitrage du
+ * propriétaire, PER-313) :
+ *  - le MJ reste **auteur unique** du relevé, donc tout le protocole de PER-312 sert tel quel : rien
+ *    à généraliser dans les gardes `kind === 'gm'`, aucun veto à inventer (« refuser » = « ne pas
+ *    adopter »), et le point de reprise pour un joueur arrivé en cours reste chez le MJ ;
+ *  - raison décisive : **le client d'un joueur ne connaît pas la table**. Sa fiche ne charge que son
+ *    propre personnage (RLS `owner_id`), il ne peut donc pas remplir `participants`. Le MJ, lui, l'a
+ *    sous la main sur son écran.
+ *
+ * Contrepartie assumée : rien ne se passe si le MJ est absent — mais une session sans MJ n'existe pas.
+ */
+export interface RestRequest {
+  /** Identifiant de la demande — c'est à lui que se rapportent l'adoption et le refus. */
+  id: string;
+  kind: RestKind;
+  /** Nom affiché du demandeur (le personnage : « Aria »), repris tel quel en `proposedBy`. */
+  byName: string;
+  /** Personnage au nom duquel la demande est faite : une seule demande en attente par personnage. */
+  characterId: string;
+  /** Horodatage ISO de la demande (fourni par l'appelant — module pur). */
+  at: string;
+}
+
+/** Identifiant d'une nouvelle demande — même fabrique opaque que les propositions, donc **impure**. */
+export const newRestRequestId = newRestProposalId;
+
+/** Phrase d'annonce d'une demande, côté MJ (« Aria demande une récupération rapide »). */
+export function restRequestHeadline(request: RestRequest): string {
+  return `${request.byName} demande ${REST_KIND_WITH_ARTICLE[request.kind]}`;
+}
+
+/**
+ * Adoption : le MJ transforme la demande d'un joueur en proposition à toute la table. Le demandeur
+ * donne son nom (`proposedBy`) — la table doit savoir d'où vient la pause —, le MJ donne la table
+ * attendue et garde la main sur le top de validation. Le demandeur figure dans `participants` comme
+ * les autres : il répond aussi pour lui-même (exigence du ticket).
+ */
+export function adoptRestRequest(
+  request: RestRequest,
+  proposalId: string,
+  createdAt: string,
+  participants: readonly RestParticipant[],
+): RestProposal {
+  return createRestProposal(proposalId, request.kind, request.byName, createdAt, participants);
+}
+
+/**
+ * Range une demande dans la file d'attente du MJ. Un joueur n'a qu'une demande en attente à la fois :
+ * s'il se ravise (autre nature de repos), la nouvelle remplace l'ancienne **sur place** — se raviser
+ * ne fait pas resquiller dans l'ordre d'arrivée. Renvoie la MÊME référence quand la demande reçue est
+ * déjà exactement celle qu'on a (ré-émission, doublon réseau) : ni rendu ni traitement inutiles.
+ */
+export function upsertRestRequest(
+  queue: readonly RestRequest[],
+  request: RestRequest,
+): RestRequest[] {
+  const at = queue.findIndex((r) => r.characterId === request.characterId);
+  if (at === -1) return [...queue, request];
+  const previous = queue[at];
+  if (
+    previous.id === request.id &&
+    previous.kind === request.kind &&
+    previous.byName === request.byName
+  ) {
+    return queue as RestRequest[];
+  }
+  const next = [...queue];
+  next[at] = request;
+  return next;
+}
+
+/**
+ * Retire une demande traitée (adoptée ou refusée). Renvoie la MÊME référence si elle n'y est plus —
+ * deux clics sur « Refuser » ne doivent pas rediffuser un second refus.
+ */
+export function removeRestRequest(queue: readonly RestRequest[], requestId: string): RestRequest[] {
+  if (!queue.some((r) => r.id === requestId)) return queue as RestRequest[];
+  return queue.filter((r) => r.id !== requestId);
+}
+
+/**
+ * Valide une demande reçue du canal (donnée non fiable), sur le modèle de `reviveRestProposal`.
+ * Renvoie `null` dès qu'un champ structurant manque : mieux vaut ignorer une demande illisible que
+ * d'afficher au MJ une ligne vide qu'il ne saurait pas attribuer.
+ */
+export function reviveRestRequest(raw: unknown): RestRequest | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.id !== 'string' || o.id === '') return null;
+  if (!isRestKind(o.kind)) return null;
+  if (typeof o.byName !== 'string' || o.byName === '') return null;
+  if (typeof o.characterId !== 'string' || o.characterId === '') return null;
+  return {
+    id: o.id,
+    kind: o.kind,
+    byName: o.byName,
+    characterId: o.characterId,
+    at: typeof o.at === 'string' ? o.at : '',
   };
 }

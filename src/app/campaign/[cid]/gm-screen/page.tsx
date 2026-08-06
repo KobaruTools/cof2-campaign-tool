@@ -263,13 +263,15 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
   // hors session. Observateur SANS battement — le battement de l'écran de MJ est porté par le
   // `GmSessionHeaderIndicator` de l'en-tête (un seul par page), comme sur la fiche.
   const { isActive: sessionActive } = useActiveSession(cid);
-  // La table attendue au relevé des réponses : les personnages réclamés, avec le nom de leur joueur.
+  // Les personnages réclamés, avec le joueur qui les incarne (nom pour le relevé, id pour savoir
+  // qui est connecté : seuls les joueurs présents sur le canal sont convoqués, cf. PER-313).
   const restTableCharacters = useMemo(
     () =>
       claimed.map((c) => ({
         id: c.id,
         name: c.name,
         playerName: c.playerId ? playerById.get(c.playerId)?.name : undefined,
+        playerId: c.playerId ?? undefined,
       })),
     [claimed, playerById],
   );

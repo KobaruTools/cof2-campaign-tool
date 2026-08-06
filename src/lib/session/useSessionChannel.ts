@@ -34,9 +34,12 @@ import { useCharactersStore } from '@/stores/characters';
 import { COMBAT_STATE_EVENT, useCampaignCombatStore } from '@/stores/campaignCombat';
 import {
   REST_PROPOSAL_EVENT,
+  REST_REQUEST_DECLINED_EVENT,
+  REST_REQUEST_EVENT,
   REST_RESPONSE_EVENT,
   useRestProposalStore,
 } from '@/stores/restProposal';
+import { EMPTY_PRESENCE, useSessionPresenceStore } from '@/stores/sessionPresence';
 import { registerSessionChannel } from './sessionBridge';
 import { joinSessionParticipant, leaveSessionParticipant } from './participantsRepo';
 import { resolveActiveSession } from './repo';
@@ -135,7 +138,10 @@ export function useSessionChannel(
   const enabled =
     Boolean(campaignId) && Boolean(sessionId) && kind !== null && isSupabaseConfigured();
 
-  const [present, setPresent] = useState<SessionPresenceEntry[]>([]);
+  // La présence vit dans un store (PER-313) et non plus dans l'état local : d'autres sous-arbres
+  // que le voyant de l'en-tête en ont besoin — l'écran de MJ ne convoque au repos de groupe que les
+  // joueurs connectés. Ce hook en reste l'unique AUTEUR ; ailleurs on ne fait que lire.
+  const present = useSessionPresenceStore((s) => s.byCampaign[campaignId ?? ''] ?? EMPTY_PRESENCE);
   const [status, setStatus] = useState<SessionChannelStatus>('idle');
   const channelRef = useRef<RealtimeChannel | null>(null);
 
@@ -161,7 +167,9 @@ export function useSessionChannel(
 
     channel.on('presence', { event: 'sync' }, () => {
       if (!active) return;
-      setPresent(presenceListFromState(channel.presenceState() as RawPresenceState));
+      useSessionPresenceStore
+        .getState()
+        .setPresence(campaignId, presenceListFromState(channel.presenceState() as RawPresenceState));
       // Proposition de repos de groupe (PER-312) : elle ne vit qu'en mémoire chez le MJ, donc rien
       // ne l'attend en base pour un joueur qui rejoint en cours de proposition. Le MJ la rediffuse
       // à chaque mouvement de présence — no-op sans proposition ouverte, charge utile minuscule.
@@ -208,6 +216,20 @@ export function useSessionChannel(
     channel.on('broadcast', { event: REST_RESPONSE_EVENT }, ({ payload }) => {
       if (!active || kind !== 'gm') return;
       useRestProposalStore.getState().mergeRemoteResponse(campaignId, payload);
+    });
+
+    // Demande de pause venue d'un JOUEUR (PER-313), et son arbitrage. La DEMANDE monte au MJ, qui
+    // seul la voit : il l'adopte — une vraie proposition s'ouvre alors au nom du demandeur et
+    // redescend par `REST_PROPOSAL_EVENT` — ou il la refuse. Le REFUS redescend à toute la table
+    // faute de message adressé, mais seul le demandeur s'y reconnaît (le store trie par identifiant),
+    // et rien ne s'ouvre chez les autres.
+    channel.on('broadcast', { event: REST_REQUEST_EVENT }, ({ payload }) => {
+      if (!active || kind !== 'gm') return;
+      useRestProposalStore.getState().mergeRemoteRequest(campaignId, payload);
+    });
+    channel.on('broadcast', { event: REST_REQUEST_DECLINED_EVENT }, ({ payload }) => {
+      if (!active) return;
+      useRestProposalStore.getState().applyRemoteDecline(campaignId, payload);
     });
 
     // `setAuth()` (sans argument → token courant) avant l'abonnement : supabase-js le
@@ -259,6 +281,9 @@ export function useSessionChannel(
     return () => {
       active = false;
       channelRef.current = null;
+      // Canal fermé : plus personne n'est connecté ici. Sans cet oubli, l'écran de MJ convoquerait
+      // au repos de groupe une table figée sur la dernière présence connue.
+      useSessionPresenceStore.getState().clearPresence(campaignId);
       // Débranche l'émission (PER-266) : plus aucune écriture d'état de jeu ne sera diffusée
       // pour cette campagne tant qu'un canal n'est pas rouvert (le store retombe sur le verrou).
       if (unregisterBridge !== null) unregisterBridge();
@@ -288,5 +313,5 @@ export function useSessionChannel(
   }, [status, kind, playerId, name]);
 
   // Masque l'état interne quand le hook est inerte (hors session / non résolu).
-  return enabled ? { present, status } : { present: [], status: 'idle' };
+  return enabled ? { present, status } : { present: EMPTY_PRESENCE, status: 'idle' };
 }

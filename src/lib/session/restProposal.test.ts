@@ -1,18 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  adoptRestRequest,
   applyRestProposal,
+  connectedRestParticipants,
   createRestProposal,
   isRestKind,
   mergeRestProposals,
   newRestProposalId,
   recordRestResponse,
+  removeRestRequest,
   restProposalAnsweredCount,
   restProposalHeadline,
   restProposalTally,
+  restRequestHeadline,
   reviveRestProposal,
+  reviveRestRequest,
+  upsertRestRequest,
+  type RestCandidate,
   type RestParticipant,
   type RestProposal,
+  type RestRequest,
 } from './restProposal';
 
 /** Table de référence des tests. */
@@ -34,6 +42,43 @@ function proposal(responses: RestProposal['responses'] = {}): RestProposal {
     responses,
   };
 }
+
+/** Les mêmes personnages, vus du MJ : avec le joueur qui les incarne. */
+const CANDIDATES: RestCandidate[] = [
+  { characterId: 'c1', name: 'Brann', playerName: 'Joueur 1', playerId: 'p1' },
+  { characterId: 'c2', name: 'Sylvane', playerId: 'p2' },
+  { characterId: 'c3', name: 'Kaelis', playerId: 'p3' },
+];
+
+describe('connectedRestParticipants', () => {
+  it('ne convoque que les personnages dont le joueur est connecté', () => {
+    const participants = connectedRestParticipants(CANDIDATES, ['p1', 'p3']);
+    expect(participants.map((p) => p.characterId)).toEqual(['c1', 'c3']);
+  });
+
+  it('conserve le nom du joueur et n’emporte PAS son id dans la proposition', () => {
+    const [brann] = connectedRestParticipants(CANDIDATES, ['p1']);
+    expect(brann).toEqual({ characterId: 'c1', name: 'Brann', playerName: 'Joueur 1' });
+  });
+
+  it('écarte un personnage sans joueur (non réclamé)', () => {
+    const orphan: RestCandidate[] = [{ characterId: 'c9', name: 'PNJ' }];
+    expect(connectedRestParticipants(orphan, ['p1'])).toEqual([]);
+  });
+
+  it('ne convoque personne quand plus rien n’est connecté', () => {
+    expect(connectedRestParticipants(CANDIDATES, [])).toEqual([]);
+  });
+
+  it('ignore un joueur connecté qui n’incarne aucun personnage (le MJ, un observateur)', () => {
+    expect(connectedRestParticipants(CANDIDATES, ['p1', 'inconnu'])).toHaveLength(1);
+  });
+
+  it('conserve l’ordre de la table, pas celui de la présence', () => {
+    const participants = connectedRestParticipants(CANDIDATES, ['p3', 'p1', 'p2']);
+    expect(participants.map((p) => p.characterId)).toEqual(['c1', 'c2', 'c3']);
+  });
+});
 
 describe('createRestProposal', () => {
   it('ouvre une proposition sans réponse et sans rien appliquer', () => {
@@ -267,5 +312,102 @@ describe('reviveRestProposal', () => {
     delete bare.responses;
     delete bare.participants;
     expect(reviveRestProposal(bare)).toMatchObject({ responses: {}, participants: [] });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La demande d'un joueur (PER-313)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Demande de référence des tests : Brann demande une récupération rapide. */
+function request(overrides: Partial<RestRequest> = {}): RestRequest {
+  return {
+    id: 'd1',
+    kind: 'short',
+    byName: 'Brann',
+    characterId: 'c1',
+    at: '2026-08-06T10:00:00.000Z',
+    ...overrides,
+  };
+}
+
+describe('restRequestHeadline', () => {
+  it('nomme le demandeur et accorde l’article du repos', () => {
+    expect(restRequestHeadline(request())).toBe('Brann demande une récupération rapide');
+    expect(restRequestHeadline(request({ kind: 'long' }))).toBe('Brann demande un repos long');
+  });
+});
+
+describe('adoptRestRequest', () => {
+  it('ouvre une vraie proposition AU NOM du demandeur, avec la table du MJ', () => {
+    const adopted = adoptRestRequest(request({ kind: 'long' }), 'p9', 'T1', TABLE);
+    expect(adopted).toEqual({
+      id: 'p9',
+      kind: 'long',
+      proposedBy: 'Brann',
+      createdAt: 'T1',
+      status: 'open',
+      participants: TABLE,
+      responses: {},
+    });
+  });
+
+  it('convoque le demandeur comme les autres : il répond aussi pour lui-même', () => {
+    const adopted = adoptRestRequest(request(), 'p9', 'T1', TABLE);
+    expect(adopted.participants.map((p) => p.characterId)).toContain('c1');
+  });
+});
+
+describe('upsertRestRequest', () => {
+  it('empile les demandes dans l’ordre d’arrivée', () => {
+    const queue = upsertRestRequest([request()], request({ id: 'd2', characterId: 'c2', byName: 'Sylvane' }));
+    expect(queue.map((r) => r.id)).toEqual(['d1', 'd2']);
+  });
+
+  it('remplace SUR PLACE la demande d’un joueur qui se ravise (pas de resquille)', () => {
+    const queue = upsertRestRequest(
+      [request(), request({ id: 'd2', characterId: 'c2', byName: 'Sylvane' })],
+      request({ id: 'd3', kind: 'long' }),
+    );
+    expect(queue.map((r) => r.id)).toEqual(['d3', 'd2']);
+    expect(queue[0].kind).toBe('long');
+  });
+
+  it('renvoie la MÊME référence quand la demande est déjà exactement celle-là', () => {
+    const queue = [request()];
+    expect(upsertRestRequest(queue, request())).toBe(queue);
+  });
+});
+
+describe('removeRestRequest', () => {
+  it('retire la demande traitée', () => {
+    const queue = [request(), request({ id: 'd2', characterId: 'c2' })];
+    expect(removeRestRequest(queue, 'd1').map((r) => r.id)).toEqual(['d2']);
+  });
+
+  it('renvoie la MÊME référence quand la demande n’y est pas (ni rendu ni diffusion inutiles)', () => {
+    const queue = [request()];
+    expect(removeRestRequest(queue, 'inconnue')).toBe(queue);
+  });
+});
+
+describe('reviveRestRequest', () => {
+  it('accepte une demande complète', () => {
+    expect(reviveRestRequest({ ...request() })).toEqual(request());
+  });
+
+  it('refuse une demande dont un champ structurant manque ou ment', () => {
+    expect(reviveRestRequest(null)).toBeNull();
+    expect(reviveRestRequest('sieste')).toBeNull();
+    expect(reviveRestRequest({ ...request(), id: '' })).toBeNull();
+    expect(reviveRestRequest({ ...request(), kind: 'sieste' })).toBeNull();
+    expect(reviveRestRequest({ ...request(), byName: 42 })).toBeNull();
+    expect(reviveRestRequest({ ...request(), characterId: '' })).toBeNull();
+  });
+
+  it('tolère un horodatage absent (le MJ n’en fait rien d’autre qu’afficher l’ordre)', () => {
+    const bare: Record<string, unknown> = { ...request() };
+    delete bare.at;
+    expect(reviveRestRequest(bare)).toMatchObject({ id: 'd1', at: '' });
   });
 });

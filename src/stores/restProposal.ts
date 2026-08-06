@@ -9,11 +9,17 @@
  * réponses, jamais les récupérations déjà appliquées.
  *
  * Deux chemins, selon le rôle du client :
- *  - **Proposant (MJ, auteur unique)** : `propose` / `applyProposal` / `closeProposal` posent l'état
- *    et diffusent l'instantané absolu ; `mergeRemoteResponse` intègre la réponse d'un joueur et
+ *  - **MJ (auteur unique)** : `propose` / `applyProposal` / `closeProposal` posent l'état et
+ *    diffusent l'instantané absolu ; `mergeRemoteResponse` intègre la réponse d'un joueur et
  *    **rediffuse** (c'est ainsi que toute la table converge, y compris un joueur arrivé en cours).
  *  - **Joueur** : `applyRemoteProposal` ← reçu du canal ; `respond` pose sa réponse localement
- *    (affichage immédiat) et l'envoie au proposant. Il ne diffuse jamais d'instantané.
+ *    (affichage immédiat) et l'envoie au MJ. Il ne diffuse jamais d'instantané.
+ *
+ * PER-313 ajoute un troisième échange, en amont : un joueur peut DEMANDER une pause (`requestRest`).
+ * Sa demande monte au MJ (`mergeRemoteRequest`, file d'attente par campagne), qui l'adopte
+ * (`adoptRequest` → une vraie proposition au nom du demandeur) ou la refuse (`declineRequest` →
+ * notification au seul demandeur, `applyRemoteDecline`). Le MJ reste ainsi auteur unique du relevé et
+ * garde le dernier mot sur la scène sans qu'aucun veto n'ait à exister — voir `restProposal.ts`.
  *
  * Ce store ne SAIT PAS appliquer une récupération : `applyProposal` ne fait que passer la proposition
  * en `'applied'` et diffuser ce top. Chaque fiche, en le recevant, applique le repos qu'elle avait
@@ -27,23 +33,40 @@ import { create } from 'zustand';
 
 import { sessionSendFor } from '@/lib/session/sessionBridge';
 import {
+  adoptRestRequest,
   applyRestProposal,
   createRestProposal,
   mergeRestProposals,
   newRestProposalId,
+  newRestRequestId,
   recordRestResponse,
+  removeRestRequest,
   reviveRestProposal,
+  reviveRestRequest,
+  upsertRestRequest,
   type RestKind,
   type RestOutcome,
   type RestParticipant,
   type RestProposal,
+  type RestRequest,
 } from '@/lib/session/restProposal';
 
 /** Événement de broadcast portant la proposition absolue (instantané, LWW ; `null` = clôturée). */
 export const REST_PROPOSAL_EVENT = 'rest-proposal';
 
-/** Événement de broadcast portant la réponse d'UN joueur, adressée au proposant. */
+/** Événement de broadcast portant la réponse d'UN joueur, adressée au MJ. */
 export const REST_RESPONSE_EVENT = 'rest-response';
+
+/** Événement de broadcast portant la demande de pause d'UN joueur, adressée au MJ (PER-313). */
+export const REST_REQUEST_EVENT = 'rest-request';
+
+/**
+ * Événement de broadcast portant le refus d'une demande (PER-313). Diffusé à toute la table faute de
+ * message adressé sur le canal, mais **un seul client s'y reconnaît** : celui dont la demande porte
+ * cet identifiant (cf. `applyRemoteDecline`). Un refus reste donc une affaire entre le MJ et le
+ * demandeur — les autres joueurs n'ont jamais rien vu s'ouvrir.
+ */
+export const REST_REQUEST_DECLINED_EVENT = 'rest-request-declined';
 
 /** Charge utile d'une réponse de joueur telle qu'elle circule sur le canal. */
 interface RestResponseMessage {
@@ -53,11 +76,32 @@ interface RestResponseMessage {
   at?: unknown;
 }
 
+/** Demande émise par CE client (joueur) et son sort, telle qu'affichée sur sa fiche (PER-313). */
+export interface OwnRestRequest {
+  request: RestRequest;
+  /** `'sent'` : partie, le MJ ne s'est pas prononcé. `'declined'` : le MJ a dit non. */
+  status: 'sent' | 'declined';
+}
+
 interface RestProposalStoreState {
   /** Proposition en cours par campagne (`null` / absente = aucune). */
   byCampaign: Record<string, RestProposal | null>;
+  /**
+   * Demandes de joueurs en attente d'arbitrage, **chez le MJ** (PER-313), dans l'ordre d'arrivée.
+   * Une seule demande en attente par personnage. Vide chez un joueur : il ne voit pas les demandes
+   * de ses camarades, seulement la proposition que le MJ finit par ouvrir.
+   */
+  requestsByCampaign: Record<string, RestRequest[]>;
+  /**
+   * Demande émise par CE client (PER-313), `null` = aucune. Le canal est en `self: false` : le
+   * demandeur ne reçoit pas son propre message, il pose donc son état lui-même — comme `respond`.
+   */
+  myRequestByCampaign: Record<string, OwnRestRequest | null>;
 
-  /** Ouvre une proposition et la diffuse (proposant). Remplace une proposition déjà ouverte. */
+  /**
+   * Ouvre une proposition et la diffuse (MJ). Remplace une proposition déjà ouverte, et vide la file
+   * des demandes en attente : la pause qui s'ouvre leur répond à toutes.
+   */
   propose: (
     cid: string,
     kind: RestKind,
@@ -94,14 +138,47 @@ interface RestProposalStoreState {
    */
   mergeRemoteResponse: (cid: string, payload: unknown) => void;
   /**
-   * Rediffuse la proposition en cours (proposant) : appelée quand quelqu'un rejoint le canal ou à
+   * Rediffuse la proposition en cours (MJ) : appelée quand quelqu'un rejoint le canal ou à
    * la reconnexion. No-op sans proposition ouverte — un canal silencieux reste silencieux.
    */
   resyncProposal: (cid: string) => void;
+
+  // ── PER-313 : la demande d'un joueur, adoptée ou refusée par le MJ ────────────────────────
+
+  /**
+   * Demande de pause de CE client (joueur) : posée localement puis envoyée au MJ, qui l'adoptera ou
+   * la refusera. N'ouvre RIEN — le joueur n'est pas auteur de proposition. Ignorée quand une pause
+   * est déjà sur la table : elle est déjà exaucée.
+   */
+  requestRest: (cid: string, kind: RestKind, byName: string, characterId: string) => void;
+  /** Range l'accusé de réception ou le refus affiché au demandeur (joueur). */
+  dismissMyRequest: (cid: string) => void;
+  /**
+   * Réception d'une demande de joueur, CHEZ LE MJ : rangée dans sa file d'attente. Ne diffuse rien —
+   * les autres joueurs n'ont pas à savoir qui a demandé quoi tant que le MJ n'a pas tranché.
+   */
+  mergeRemoteRequest: (cid: string, payload: unknown) => void;
+  /**
+   * Adoption (MJ) : la demande devient une vraie proposition, ouverte AU NOM du demandeur et
+   * diffusée à toute la table. Le MJ garde le top de validation, comme pour ses propres propositions.
+   */
+  adoptRequest: (cid: string, requestId: string, participants: readonly RestParticipant[]) => void;
+  /**
+   * Refus (MJ) : la demande quitte la file et le seul demandeur en est notifié. Rien ne s'ouvre chez
+   * les autres joueurs — la scène appartient au MJ (« pas de repos en pleine embuscade »).
+   */
+  declineRequest: (cid: string, requestId: string) => void;
+  /**
+   * Réception d'un refus, chez le JOUEUR : ne s'applique qu'à sa propre demande (le canal parle à
+   * tout le monde, l'identifiant fait le tri).
+   */
+  applyRemoteDecline: (cid: string, payload: unknown) => void;
 }
 
 export const useRestProposalStore = create<RestProposalStoreState>()((set, get) => ({
   byCampaign: {},
+  requestsByCampaign: {},
+  myRequestByCampaign: {},
 
   propose: (cid, kind, proposedBy, participants) => {
     const proposal = createRestProposal(
@@ -111,7 +188,11 @@ export const useRestProposalStore = create<RestProposalStoreState>()((set, get) 
       new Date().toISOString(),
       participants,
     );
-    set((s) => ({ byCampaign: { ...s.byCampaign, [cid]: proposal } }));
+    set((s) => ({
+      byCampaign: { ...s.byCampaign, [cid]: proposal },
+      // La pause qui s'ouvre répond à toutes les demandes en attente (PER-313).
+      requestsByCampaign: { ...s.requestsByCampaign, [cid]: [] },
+    }));
     const send = sessionSendFor(cid);
     if (send) send(REST_PROPOSAL_EVENT, { proposal });
   },
@@ -161,7 +242,13 @@ export const useRestProposalStore = create<RestProposalStoreState>()((set, get) 
     // Instantané illisible : on garde la vue locale plutôt que d'ouvrir une fenêtre vide.
     if (!revived) return;
     const merged = mergeRestProposals(get().byCampaign[cid] ?? null, revived);
-    set((s) => ({ byCampaign: { ...s.byCampaign, [cid]: merged } }));
+    set((s) => ({
+      byCampaign: { ...s.byCampaign, [cid]: merged },
+      // Une pause est sur la table : la demande que ce client avait éventuellement en attente est
+      // exaucée (le MJ l'a adoptée) ou dépassée (il a ouvert la sienne). Dans les deux cas elle se
+      // range, et la fenêtre de proposition prend le relais (PER-313).
+      myRequestByCampaign: { ...s.myRequestByCampaign, [cid]: null },
+    }));
   },
 
   mergeRemoteResponse: (cid, payload) => {
@@ -184,5 +271,74 @@ export const useRestProposalStore = create<RestProposalStoreState>()((set, get) 
     if (!proposal) return;
     const send = sessionSendFor(cid);
     if (send) send(REST_PROPOSAL_EVENT, { proposal });
+  },
+
+  // ── PER-313 : la demande d'un joueur, adoptée ou refusée par le MJ ────────────────────────
+
+  requestRest: (cid, kind, byName, characterId) => {
+    // Une pause est déjà sur la table : la demande n'aurait rien à demander.
+    if (get().byCampaign[cid]) return;
+    const request: RestRequest = {
+      id: newRestRequestId(),
+      kind,
+      byName,
+      characterId,
+      at: new Date().toISOString(),
+    };
+    set((s) => ({
+      myRequestByCampaign: { ...s.myRequestByCampaign, [cid]: { request, status: 'sent' } },
+    }));
+    const send = sessionSendFor(cid);
+    if (send) send(REST_REQUEST_EVENT, { request });
+  },
+
+  dismissMyRequest: (cid) => {
+    if (!get().myRequestByCampaign[cid]) return;
+    set((s) => ({ myRequestByCampaign: { ...s.myRequestByCampaign, [cid]: null } }));
+  },
+
+  mergeRemoteRequest: (cid, payload) => {
+    const request = reviveRestRequest((payload as { request?: unknown } | null)?.request);
+    if (!request) return;
+    const queue = get().requestsByCampaign[cid] ?? [];
+    const next = upsertRestRequest(queue, request);
+    if (next === queue) return; // demande déjà connue : ni rendu ni traitement
+    set((s) => ({ requestsByCampaign: { ...s.requestsByCampaign, [cid]: next } }));
+  },
+
+  adoptRequest: (cid, requestId, participants) => {
+    const request = (get().requestsByCampaign[cid] ?? []).find((r) => r.id === requestId);
+    if (!request) return; // demande déjà traitée (double clic, refus concurrent)
+    const proposal = adoptRestRequest(
+      request,
+      newRestProposalId(),
+      new Date().toISOString(),
+      participants,
+    );
+    set((s) => ({
+      byCampaign: { ...s.byCampaign, [cid]: proposal },
+      requestsByCampaign: { ...s.requestsByCampaign, [cid]: [] },
+    }));
+    const send = sessionSendFor(cid);
+    if (send) send(REST_PROPOSAL_EVENT, { proposal });
+  },
+
+  declineRequest: (cid, requestId) => {
+    const queue = get().requestsByCampaign[cid] ?? [];
+    const next = removeRestRequest(queue, requestId);
+    if (next === queue) return; // déjà traitée : pas de second refus
+    set((s) => ({ requestsByCampaign: { ...s.requestsByCampaign, [cid]: next } }));
+    const send = sessionSendFor(cid);
+    if (send) send(REST_REQUEST_DECLINED_EVENT, { requestId });
+  },
+
+  applyRemoteDecline: (cid, payload) => {
+    const mine = get().myRequestByCampaign[cid];
+    if (!mine || mine.status === 'declined') return;
+    const requestId = (payload as { requestId?: unknown } | null)?.requestId;
+    if (requestId !== mine.request.id) return; // refus adressé à un camarade
+    set((s) => ({
+      myRequestByCampaign: { ...s.myRequestByCampaign, [cid]: { ...mine, status: 'declined' } },
+    }));
   },
 }));

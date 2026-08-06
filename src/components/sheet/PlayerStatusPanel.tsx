@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import HotelIcon from '@mui/icons-material/Hotel';
 import TimerIcon from '@mui/icons-material/Timer';
 import Box from '@mui/material/Box';
@@ -163,6 +163,12 @@ export interface PlayerStatusPanelProps {
   onLongRest: (heal: boolean) => void;
   /** Doses d'élixir (forgesort) qui seront perdues par un repos long (avertissement, p. 98). */
   elixirDosesToLose?: number;
+  /**
+   * Emplacement libre sur la rangée des repos, à droite des deux boutons (PER-313) : la fiche y
+   * pose « Proposer une pause » quand le personnage est joué en session. Laissé en `ReactNode`
+   * plutôt qu'en propriétés dédiées — ce bloc n'a pas à connaître le canal de session.
+   */
+  restSlot?: ReactNode;
 }
 
 /**
@@ -199,6 +205,7 @@ export function PlayerStatusPanel({
   onShortRest,
   onLongRest,
   elixirDosesToLose = 0,
+  restSlot,
 }: PlayerStatusPanelProps) {
   const theme = useTheme();
   const [shortRestOpen, setShortRestOpen] = useState(false);
@@ -305,6 +312,9 @@ export function PlayerStatusPanel({
             Repos long
           </Button>
         </AppTooltip>
+        {/* Repos de GROUPE (PER-313) : demander une pause à toute la table. Rendu par la fiche,
+            qui seule connaît la session — le bloc reste ignorant du canal. */}
+        {restSlot}
         {recoveryDiceMax > 0 && (
           <>
             <Box sx={{ flexGrow: 1 }} />

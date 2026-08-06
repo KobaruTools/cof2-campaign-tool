@@ -10,8 +10,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { registerSessionChannel } from '@/lib/session/sessionBridge';
-import type { RestParticipant, RestProposal } from '@/lib/session/restProposal';
-import { REST_PROPOSAL_EVENT, REST_RESPONSE_EVENT, useRestProposalStore } from './restProposal';
+import type { RestParticipant, RestProposal, RestRequest } from '@/lib/session/restProposal';
+import {
+  REST_PROPOSAL_EVENT,
+  REST_REQUEST_DECLINED_EVENT,
+  REST_REQUEST_EVENT,
+  REST_RESPONSE_EVENT,
+  useRestProposalStore,
+} from './restProposal';
 
 const CID = 'campagne-1';
 
@@ -51,9 +57,31 @@ function incoming(overrides: Partial<RestProposal> = {}): RestProposal {
   };
 }
 
+/** File d'attente des demandes de joueurs, telle que la voit le MJ (PER-313). */
+function queue(): RestRequest[] {
+  return useRestProposalStore.getState().requestsByCampaign[CID] ?? [];
+}
+
+/** Demande émise par CE client, et son sort (PER-313). */
+function myRequest() {
+  return useRestProposalStore.getState().myRequestByCampaign[CID] ?? null;
+}
+
+/** Demande telle qu'un MJ la reçoit d'un joueur. */
+function incomingRequest(overrides: Partial<RestRequest> = {}): RestRequest {
+  return {
+    id: 'd1',
+    kind: 'short',
+    byName: 'Brann',
+    characterId: 'perso-1',
+    at: 'T0',
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   sent = [];
-  useRestProposalStore.setState({ byCampaign: {} });
+  useRestProposalStore.setState({ byCampaign: {}, requestsByCampaign: {}, myRequestByCampaign: {} });
   unregister?.();
   unregister = registerSessionChannel(CID, (event, payload) => sent.push({ event, payload }));
 });
@@ -316,6 +344,189 @@ describe('resyncProposal (proposant)', () => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// La demande d'un joueur, adoptée ou refusée par le MJ (PER-313)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('requestRest (joueur)', () => {
+  it('pose la demande localement et l’envoie au MJ', () => {
+    useRestProposalStore.getState().requestRest(CID, 'long', 'Brann', 'perso-1');
+    expect(myRequest()).toMatchObject({
+      status: 'sent',
+      request: { kind: 'long', byName: 'Brann', characterId: 'perso-1' },
+    });
+    expect(sent).toHaveLength(1);
+    expect(sent[0].event).toBe(REST_REQUEST_EVENT);
+    expect((sent[0].payload as { request: RestRequest }).request).toEqual(myRequest()?.request);
+  });
+
+  it('ne diffuse JAMAIS d’instantané : le joueur n’ouvre pas de proposition', () => {
+    useRestProposalStore.getState().requestRest(CID, 'short', 'Brann', 'perso-1');
+    expect(sent.some((s) => s.event === REST_PROPOSAL_EVENT)).toBe(false);
+  });
+
+  it('se tait quand une pause est déjà sur la table', () => {
+    const store = useRestProposalStore.getState();
+    store.applyRemoteProposal(CID, { proposal: incoming() });
+    sent = [];
+    store.requestRest(CID, 'short', 'Brann', 'perso-1');
+    expect(myRequest()).toBeNull();
+    expect(sent).toEqual([]);
+  });
+
+  it('remplace sa propre demande quand le joueur se ravise', () => {
+    const store = useRestProposalStore.getState();
+    store.requestRest(CID, 'short', 'Brann', 'perso-1');
+    const first = myRequest()?.request.id;
+    store.requestRest(CID, 'long', 'Brann', 'perso-1');
+    expect(myRequest()?.request.kind).toBe('long');
+    expect(myRequest()?.request.id).not.toBe(first);
+  });
+});
+
+describe('mergeRemoteRequest (MJ)', () => {
+  it('empile la demande reçue dans sa file, sans rien diffuser', () => {
+    useRestProposalStore.getState().mergeRemoteRequest(CID, { request: incomingRequest() });
+    expect(queue()).toEqual([incomingRequest()]);
+    expect(sent).toEqual([]);
+  });
+
+  it('remplace la demande d’un joueur qui se ravise, sans la faire resquiller', () => {
+    const store = useRestProposalStore.getState();
+    store.mergeRemoteRequest(CID, { request: incomingRequest() });
+    store.mergeRemoteRequest(CID, {
+      request: incomingRequest({ id: 'd2', characterId: 'perso-2', byName: 'Sylvane' }),
+    });
+    store.mergeRemoteRequest(CID, { request: incomingRequest({ id: 'd3', kind: 'long' }) });
+    expect(queue().map((r) => r.id)).toEqual(['d3', 'd2']);
+  });
+
+  it('ignore une demande inexploitable', () => {
+    const store = useRestProposalStore.getState();
+    store.mergeRemoteRequest(CID, { request: { id: 'd1', kind: 'sieste' } });
+    store.mergeRemoteRequest(CID, null);
+    expect(queue()).toEqual([]);
+  });
+});
+
+describe('adoptRequest (MJ)', () => {
+  beforeEach(() => {
+    const store = useRestProposalStore.getState();
+    store.mergeRemoteRequest(CID, { request: incomingRequest() });
+    store.mergeRemoteRequest(CID, {
+      request: incomingRequest({ id: 'd2', characterId: 'perso-2', byName: 'Sylvane', kind: 'long' }),
+    });
+    sent = [];
+  });
+
+  it('ouvre une vraie proposition AU NOM du demandeur et la diffuse à la table', () => {
+    useRestProposalStore.getState().adoptRequest(CID, 'd1', TABLE);
+    expect(current()).toMatchObject({
+      kind: 'short',
+      proposedBy: 'Brann',
+      status: 'open',
+      participants: TABLE,
+      responses: {},
+    });
+    expect(lastProposalSent()).toEqual(current());
+  });
+
+  it('vide la file : la pause qui s’ouvre répond à toutes les demandes en attente', () => {
+    useRestProposalStore.getState().adoptRequest(CID, 'd1', TABLE);
+    expect(queue()).toEqual([]);
+  });
+
+  it('ne diffuse rien sur une demande déjà traitée', () => {
+    const store = useRestProposalStore.getState();
+    store.adoptRequest(CID, 'd1', TABLE);
+    sent = [];
+    store.adoptRequest(CID, 'd1', TABLE);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe('declineRequest (MJ)', () => {
+  beforeEach(() => {
+    useRestProposalStore.getState().mergeRemoteRequest(CID, { request: incomingRequest() });
+    sent = [];
+  });
+
+  it('retire la demande et notifie le demandeur', () => {
+    useRestProposalStore.getState().declineRequest(CID, 'd1');
+    expect(queue()).toEqual([]);
+    expect(sent).toEqual([{ event: REST_REQUEST_DECLINED_EVENT, payload: { requestId: 'd1' } }]);
+  });
+
+  it('n’ouvre aucune proposition : refuser, c’est ne pas adopter', () => {
+    useRestProposalStore.getState().declineRequest(CID, 'd1');
+    expect(current()).toBeNull();
+    expect(sent.some((s) => s.event === REST_PROPOSAL_EVENT)).toBe(false);
+  });
+
+  it('ne notifie pas deux fois la même demande', () => {
+    const store = useRestProposalStore.getState();
+    store.declineRequest(CID, 'd1');
+    sent = [];
+    store.declineRequest(CID, 'd1');
+    expect(sent).toEqual([]);
+  });
+});
+
+describe('applyRemoteDecline (joueur)', () => {
+  beforeEach(() => {
+    useRestProposalStore.getState().requestRest(CID, 'short', 'Brann', 'perso-1');
+    sent = [];
+  });
+
+  it('marque SA demande refusée, sans rien renvoyer', () => {
+    const id = myRequest()?.request.id;
+    useRestProposalStore.getState().applyRemoteDecline(CID, { requestId: id });
+    expect(myRequest()?.status).toBe('declined');
+    expect(sent).toEqual([]);
+  });
+
+  it('ignore le refus adressé à un camarade (le canal parle à tout le monde)', () => {
+    useRestProposalStore.getState().applyRemoteDecline(CID, { requestId: 'demande-du-voisin' });
+    expect(myRequest()?.status).toBe('sent');
+  });
+
+  it('ne s’applique pas sans demande en cours (le MJ n’a pas de demande à lui)', () => {
+    const store = useRestProposalStore.getState();
+    store.dismissMyRequest(CID);
+    store.applyRemoteDecline(CID, { requestId: 'd1' });
+    expect(myRequest()).toBeNull();
+  });
+});
+
+describe('dismissMyRequest (joueur)', () => {
+  it('range l’accusé de réception ou le refus', () => {
+    const store = useRestProposalStore.getState();
+    store.requestRest(CID, 'short', 'Brann', 'perso-1');
+    store.dismissMyRequest(CID);
+    expect(myRequest()).toBeNull();
+  });
+});
+
+describe('adoption vue du DEMANDEUR', () => {
+  it('range sa demande dès que la proposition adoptée lui revient', () => {
+    const store = useRestProposalStore.getState();
+    store.requestRest(CID, 'short', 'Brann', 'perso-1');
+    store.applyRemoteProposal(CID, { proposal: incoming({ proposedBy: 'Brann' }) });
+    expect(myRequest()).toBeNull();
+    // Et il est convoqué au relevé comme les autres : il répond aussi pour lui-même.
+    expect(current()?.participants.map((p) => p.characterId)).toContain('perso-1');
+  });
+});
+
+describe('propose (MJ) face aux demandes en attente', () => {
+  it('vide la file : sa propre pause répond aux demandes des joueurs', () => {
+    const store = useRestProposalStore.getState();
+    store.mergeRemoteRequest(CID, { request: incomingRequest() });
+    store.propose(CID, 'long', 'Le MJ', TABLE);
+    expect(queue()).toEqual([]);
+  });
+});
+
 describe('hors session (aucun canal branché)', () => {
   it('pose l’état localement sans planter faute d’émetteur', () => {
     unregister();
@@ -325,6 +536,9 @@ describe('hors session (aucun canal branché)', () => {
     store.applyProposal(CID);
     store.resyncProposal(CID);
     store.closeProposal(CID);
+    store.requestRest(CID, 'short', 'Brann', 'perso-1');
+    store.mergeRemoteRequest(CID, { request: incomingRequest() });
+    store.declineRequest(CID, 'd1');
     expect(sent).toEqual([]); // rien n’a pu partir : le canal était fermé
     expect(current()).toBeNull();
   });
