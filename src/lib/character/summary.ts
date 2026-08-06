@@ -7,6 +7,7 @@ import type { Campaign } from '@/lib/campaign/types';
 import type { Character, CharacterStatus } from './types';
 import { characterClassName } from './classDisplay';
 import { firearmsEffective } from './firearms';
+import { normalizeSearchText } from '@/lib/ui/searchText';
 
 export interface CharacterSummary {
   id: string;
@@ -80,12 +81,15 @@ export function formatDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? '—' : dateFmt.format(d);
 }
 
-/** Slug de nom de fichier pour l'export JSON. */
+/**
+ * Slug de nom de fichier pour l'export JSON.
+ *
+ * Le repli passe par [[normalizeSearchText]] : au-delà des accents, il rabat les ligatures que
+ * Unicode ne décompose pas, de sorte qu'elles rendent leurs lettres (« Cœur » → `coeur`) au lieu
+ * d'être avalées par le filtre `[^a-z0-9]+` (« Cœur » donnait `c-ur`).
+ */
 export function fileSlug(name: string): string {
-  const base = name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
+  const base = normalizeSearchText(name)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
   return base || 'personnage';

@@ -6,14 +6,14 @@
  * texte déjà extrait. La recherche est insensible à la CASSE **et** aux ACCENTS — à la table on
  * tape « chute », « epee » ou « surprise » sans se soucier des diacritiques ni des majuscules.
  *
- * Le repli des accents décompose (NFD) puis retire les diacritiques combinants ; comme cette
- * opération change la longueur de la chaîne (é → e), on conserve une CARTE index-normalisé →
- * index-d'origine pour reconstituer des extraits et des offsets de surlignage fidèles au texte
- * affiché (accents conservés).
+ * Le repli lui-même est délégué à [[normalizeSearchText]], commun à toutes les recherches de l'app
+ * (accents, casse, et les ligatures `œ`/`æ` que Unicode ne décompose pas). Comme il change la
+ * longueur de la chaîne (é → e, œ → oe), on conserve une CARTE index-normalisé → index-d'origine
+ * pour reconstituer des extraits et des offsets de surlignage fidèles au texte affiché (graphie
+ * d'origine conservée).
  */
 
-/** Plage Unicode des diacritiques combinants (retirés lors du repli des accents). */
-const COMBINING_MARKS = /[̀-ͯ]/g;
+import { normalizeSearchText } from '@/lib/ui/searchText';
 
 /** Texte d'une page indexée (concaténation ordonnée des items de la couche texte pdf.js). */
 export interface IndexedPage {
@@ -41,19 +41,29 @@ const SNIPPET_RADIUS = 40;
 /** Longueur minimale d'une requête (en dessous, trop de bruit — on ne cherche pas). */
 export const MIN_QUERY_LENGTH = 2;
 
-/** Replie un caractère : minuscule + suppression des diacritiques (é → e, à → a…). */
+/** Cache du repli caractère par caractère (cf. `foldChar`). */
+const FOLDED_CHARS = new Map<string, string>();
+
+/**
+ * Replie un caractère : minuscule, sans accent ni ligature (é → e, œ → oe…). Peut donc rendre
+ * PLUSIEURS caractères, ou aucun (diacritique combinant isolé) — `normalizeWithMap` en tient compte.
+ *
+ * MÉMOÏSÉ : l'indexation appelle cette fonction caractère par caractère sur un livre entier
+ * (~358 pages) alors que `normalizeSearchText` enchaîne plusieurs regex et une normalisation
+ * Unicode. Un livre n'emploie qu'une poignée de caractères distincts : après les premières pages le
+ * cache répond à tout.
+ */
 function foldChar(ch: string): string {
-  return ch.toLowerCase().normalize('NFD').replace(COMBINING_MARKS, '');
+  const cached = FOLDED_CHARS.get(ch);
+  if (cached !== undefined) return cached;
+  const folded = normalizeSearchText(ch);
+  FOLDED_CHARS.set(ch, folded);
+  return folded;
 }
 
-/** Normalise une requête pour comparaison : repli d'accents/casse + espaces effondrés. */
+/** Normalise une requête pour comparaison : repli accents/casse/ligatures + espaces effondrés. */
 export function normalizeQuery(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(COMBINING_MARKS, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return normalizeSearchText(input).replace(/\s+/g, ' ').trim();
 }
 
 /**

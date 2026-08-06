@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Campaign } from '@/lib/campaign/types';
 import { SCHEMA_VERSION, type Character } from './types';
-import { summarize, summarizeInCampaign } from './summary';
+import { fileSlug, summarize, summarizeInCampaign } from './summary';
 
 function makeCharacter(over: Partial<Character> = {}): Character {
   return {
@@ -79,5 +79,23 @@ describe('summarize (nom effectif selon la campagne, PER-185)', () => {
     const s = summarizeInCampaign(makeCharacter({ firearmsAllowed: false }), null);
     expect(s.characterClass).toBe('Arbalétrier');
     expect(s.firearmsAllowed).toBe(false);
+  });
+});
+
+describe('fileSlug (nom de fichier d’export)', () => {
+  it('replie accents et casse, et relie les mots par des tirets', () => {
+    expect(fileSlug('Élise la Rusée')).toBe('elise-la-rusee');
+    expect(fileSlug("Gaël d'Aquitaine")).toBe('gael-d-aquitaine');
+  });
+
+  /** Sans repli explicite, `œ` était avalé par le filtre `[^a-z0-9]+` et « Cœur » donnait `c-ur`. */
+  it('rend les lettres des ligatures œ et æ au lieu de les perdre', () => {
+    expect(fileSlug('Cœur de Lion')).toBe('coeur-de-lion');
+    expect(fileSlug('Læna')).toBe('laena');
+  });
+
+  it('retombe sur un nom par défaut si rien ne subsiste', () => {
+    expect(fileSlug('')).toBe('personnage');
+    expect(fileSlug('!!! ???')).toBe('personnage');
   });
 });

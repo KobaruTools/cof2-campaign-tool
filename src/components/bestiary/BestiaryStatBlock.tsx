@@ -43,6 +43,7 @@ import { FeatureMarkerHexes } from '@/components/FeatureMarkerHex';
 import { MetaPill } from '@/components/MetaPill';
 import { PageRefText, SourceRef } from '@/components/SourceRef';
 import { bookIdForSourceSlug } from '@/lib/ui/books';
+import { normalizeSearchText } from '@/lib/ui/searchText';
 import { CreaturePathBlock } from './CreaturePathBlock';
 import { creatureDefenseBadges, splitHitPointsNote } from './creatureDefenseBadges';
 import { lookupRiderKeyword } from '@/lib/bestiary/riderKeywords';
@@ -88,14 +89,13 @@ const activeBlockSx = (theme: Theme) => ({
   boxShadow: '0 2px 10px rgba(255, 255, 255, 0.1)',
 });
 
-/** Clé de rapprochement d'un nom de capacité (insensible à la casse/aux accents/aux espaces). */
+/**
+ * Clé de rapprochement d'un nom de capacité : le repli commun (casse, accents, ligatures `œ`/`æ`)
+ * PLUS l'effondrement des espaces, propre à cet appariement — un rider d'attaque et la capacité
+ * qu'il cite peuvent différer d'une espace ou d'un retour à la ligne.
+ */
 function normalizeAbilityKey(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return normalizeSearchText(s).replace(/\s+/g, ' ').trim();
 }
 
 /**
