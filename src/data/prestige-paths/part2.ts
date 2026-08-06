@@ -204,6 +204,13 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'fighter',
     prerequisites: '',
+    // PER-74 : présentation de la voie (p. 152) en info-bulle « i » de l'en-tête, verbatim. La voie
+    // n'a AUCUN prérequis dans le livre.
+    note: 'Cette voie permet de devenir un expert du bouclier. Un guerrier ayant complété la voie du bouclier ou un chevalier celle de la guerre pourront trouver là une spécialisation toujours plus pointue dans le domaine défensif.',
+    // Chaque rang porte explicitement sur « son bouclier » (parade, attaque, DEF, déviation, lancer) :
+    // gating identique à la voie du bouclier du guerrier (`requiresShield`, PER-142) — sans bouclier
+    // manié, toute la voie est désactivée (cf. `shieldDisabledFeatureIds`).
+    requiresShield: true,
     featureIds: [
       'prestige-porteur-de-bouclier-r4',
       'prestige-porteur-de-bouclier-r5',
@@ -1782,6 +1789,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par combat, le personnage peut parer une attaque au contact ou à distance qui le touche avec son bouclier (action gratuite). Il ne subit aucun DM sauf s'il s'agit d'un critique (il ne peut pas le parer).",
+    // PER-74 : parade au 1×/COMBAT → `usageCounter` posé (patron Étreinte de l'ours) ; la parade
+    // elle-même (annule les DM d'UNE attaque précise, sauf critique) reste verbatim — pas de suivi
+    // d'attaque individuelle dans le moteur, jouée à la table.
+    usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
     sourcePage: 152,
   },
   {
@@ -1793,6 +1804,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['G'],
     text:
       "Une fois par round, le personnage peut faire une attaque gratuite au bouclier. Il subit un dé malus en attaque et il inflige [1d4°+FOR] DM.",
+    // PER-74 : attaque gratuite 1×/ROUND — patron Riposte du maître d'armes (maitre-d-armes-r5, p. 89) :
+    // aucun suivi par round dans l'app (pas de compteur, pas de carte d'attaque dérivée) → verbatim
+    // seul, dé et carac déjà balisés dans le texte.
     sourcePage: 152,
   },
   {
@@ -1804,6 +1818,17 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Lorsque le personnage réussit son attaque au bouclier, il peut choisir de faire reculer sa cible de 2 m. Si la cible est d'une taille supérieure à la sienne, il doit emporter un test opposé de FOR. De plus, le personnage augmente de +1 la DEF apportée par son bouclier. Ce bonus passe à +2 au rang 8 de la voie.",
+    // PER-74 : la poussée + test opposé de FOR est un effet PAR ATTAQUE (patron Riposte/R5 ci-dessus) →
+    // verbatim seul. Le bonus de DEF est en revanche PERMANENT et scalant par rang de la voie (patron
+    // bouclier-r3, PER-142) : `stat-bonus def` stepped {6:+1, 8:+2}. Gating shield via `requiresShield`
+    // de la voie (posé au niveau du Path).
+    effects: [
+      {
+        kind: 'stat-bonus',
+        stat: 'def',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 6, value: 1 }, { min: 8, value: 2 }] },
+      },
+    ],
     sourcePage: 152,
   },
   {
@@ -1829,6 +1854,8 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le personnage peut lancer son bouclier à une portée de 20 m par une action d'attaque s'il réussit un test d'attaque à distance, il inflige les DM d'une Attaque au bouclier et la cible doit faire un test de FOR difficulté [10 + FOR du personnage] ou être renversée. Tant que le bouclier est à moins de 20 m du personnage, il peut le faire revenir à son bras (et l'équiper) par une action de mouvement (M).",
+    // PER-74 : action d'attaque multi-étapes (test à distance → DM → test de FOR opposé → renversement)
+    // sans limite d'usage déclarée → verbatim seul, comme R5/R6 ci-dessus. Dé et carac déjà balisés.
     sourcePage: 153,
   },
 
