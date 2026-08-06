@@ -90,6 +90,7 @@ import {
   splitReferenceColumns,
   splitVerbatimParagraphs,
   subsectionAnchorId,
+  subsectionPageRange,
   type ReferenceSectionGroup,
   type ReferenceSubsectionGroup,
 } from '@/lib/ui/reference';
@@ -212,7 +213,26 @@ const stickyPanelSx = {
   WebkitBackdropFilter: 'blur(16px)',
 } as const;
 
-export function ReferenceBrowser() {
+export interface ReferenceBrowserProps {
+  /**
+   * `'page'` (défaut) : la variante pleine page de `/reference` — navigation par URL PARTAGEABLE
+   * (`?s=` + ancres `#`), barre collée sous l'en-tête global, et jusqu'à DEUX colonnes.
+   * `'drawer'` : la variante intégrée dans un tiroir (écran de MJ) — navigation LOCALE (les onglets
+   * et le sommaire deviennent des boutons, sans jamais toucher à l'URL de la campagne), UNE seule
+   * colonne, barre collée sous l'en-tête du tiroir, et PAS de bouton flottant « Haut de page » (le
+   * tiroir a son propre conteneur de défilement, où un bouton ancré au viewport n'aurait pas de sens).
+   */
+  variant?: 'page' | 'drawer';
+  /**
+   * Variante `'drawer'` seulement : hauteur en pixels de l'en-tête collé du tiroir, SOUS lequel la
+   * barre recherche + onglets vient se coller (et qui sert aussi de marge de défilement aux ancres).
+   */
+  stickyTop?: number;
+}
+
+export function ReferenceBrowser({ variant = 'page', stickyTop = 0 }: ReferenceBrowserProps = {}) {
+  // Variante intégrée : bascule la navigation d'URL → état local et le collage sous l'en-tête du tiroir.
+  const embedded = variant === 'drawer';
   // Recherche persistée (comme le bestiaire) : le filtre survit au rechargement. La section de
   // parcours, elle, vit dans l'URL (`?s=`) pour être partageable et navigable par de vraies ancres.
   const [query, setQuery] = usePersistedState<string>(
@@ -228,7 +248,19 @@ export function ReferenceBrowser() {
   );
   const searchParams = useSearchParams();
   const sParam = searchParams.get('s');
-  const activeSection: ReferenceSection = isReferenceSection(sParam) ? sParam : 'combat';
+  // Onglet actif : en pleine page il vit dans l'URL (`?s=`, partageable) ; dans un tiroir il vit en
+  // état LOCAL PERSISTÉ — un tiroir de l'écran de MJ ne doit pas réécrire l'URL de la campagne à chaque
+  // onglet, mais le MJ doit retrouver sa dernière section en rouvrant le tiroir (même après rechargement).
+  const [localSection, setLocalSection] = usePersistedState<ReferenceSection>(
+    'reference:section',
+    'combat',
+    (raw) => (typeof raw === 'string' && isReferenceSection(raw) ? raw : undefined),
+  );
+  const activeSection: ReferenceSection = embedded
+    ? localSection
+    : isReferenceSection(sParam)
+      ? sParam
+      : 'combat';
 
   /**
    * Nombre de COLONNES de panneaux (PER-311) : deux à partir de `lg`, une seule en dessous. Décidé
@@ -237,7 +269,11 @@ export function ReferenceBrowser() {
    * disposition à une colonne raterait sa cible de plusieurs centaines de pixels une fois le contenu
    * reflué. Le passer en dépendance de l'effet de saut suffit à le refaire au bon moment.
    */
-  const columnCount = useMediaQuery((t: Theme) => t.breakpoints.up('lg')) ? 2 : 1;
+  const wideViewport = useMediaQuery((t: Theme) => t.breakpoints.up('lg'));
+  // Deux colonnes sur viewport large, en pleine page COMME en tiroir : le tiroir d'aide-mémoire est
+  // volontairement assez large (cf. `GmReferenceDrawer`) pour en loger deux dès que le viewport le
+  // permet — au-delà de `lg`, il fait au moins 1200 px, de quoi tenir sommaire + deux colonnes.
+  const columnCount = wideViewport ? 2 : 1;
 
   const searching = query.trim() !== '';
 
@@ -292,8 +328,11 @@ export function ReferenceBrowser() {
    */
   const smUp = useMediaQuery((t: Theme) => t.breakpoints.up('sm'));
   const appHeaderHeight = smUp ? 83 : 75;
-  /** Sous quoi tout doit se glisser : en-tête global + barre collée de la page. */
-  const stuckHeight = appHeaderHeight + stickyHeight;
+  // Ce sous quoi la barre recherche+onglets vient se coller : l'en-tête GLOBAL en pleine page,
+  // l'en-tête du TIROIR (`stickyTop`) en variante intégrée.
+  const baseTop = embedded ? stickyTop : appHeaderHeight;
+  /** Sous quoi tout doit se glisser : en-tête (global ou tiroir) + barre collée de la page. */
+  const stuckHeight = baseTop + stickyHeight;
 
   /**
    * Saut vers un bloc de sous-section (parcours uniquement) : les liens du sommaire portent déjà
@@ -318,6 +357,9 @@ export function ReferenceBrowser() {
    * déplace les blocs, donc il faut REVISER le saut — sinon on atterrit à côté de l'ancre partagée.
    */
   useEffect(() => {
+    // Variante intégrée : pas d'ancre d'URL ni de défilement du viewport — le saut vers un bloc se
+    // fait à la main (`jumpToSubsection`) dans le conteneur du tiroir.
+    if (embedded) return;
     if (searching) return;
     const id = decodeURIComponent(window.location.hash.slice(1));
     if (!id) {
@@ -342,7 +384,7 @@ export function ReferenceBrowser() {
       cancelAnimationFrame(first);
       cancelAnimationFrame(second);
     };
-  }, [activeSection, searching, columnCount, stuckHeight]);
+  }, [embedded, activeSection, searching, columnCount, stuckHeight]);
 
   /**
    * Bouton flottant « Haut de page » — LE MÊME que sur la fiche de personnage
@@ -353,6 +395,8 @@ export function ReferenceBrowser() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [scrolledPastHeader, setScrolledPastHeader] = useState(false);
   useEffect(() => {
+    // Pas de bouton flottant en variante intégrée : il serait ancré au viewport, pas au tiroir.
+    if (embedded) return;
     const el = sentinelRef.current;
     if (el == null) return;
     const observer = new IntersectionObserver(
@@ -361,7 +405,7 @@ export function ReferenceBrowser() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [stuckHeight]);
+  }, [embedded, stuckHeight]);
 
   return (
    <ReferenceVerbatimContext.Provider value={verbatim}>
@@ -375,7 +419,7 @@ export function ReferenceBrowser() {
           l'un à l'autre — rayons et filets mitoyens supprimés — pour ne former qu'un seul bloc. */}
       <Box
         ref={stickyRef}
-        sx={{ position: 'sticky', top: `${appHeaderHeight}px`, zIndex: 3 }}
+        sx={{ position: 'sticky', top: `${baseTop}px`, zIndex: 3 }}
       >
       {/* Barre de recherche plein texte (titre + mots-clés + verbatim + cellules de table),
           avec à droite la bascule « Texte d'origine ». */}
@@ -446,7 +490,8 @@ export function ReferenceBrowser() {
           scrollButtons="auto"
           allowScrollButtonsMobile
           // Onglets-liens : MUI recommande `role="navigation"` quand les onglets sont des ancres.
-          role="navigation"
+          // En variante intégrée ce sont de simples boutons — pas de rôle de navigation.
+          role={embedded ? undefined : 'navigation'}
           aria-label="Sections de l’aide-mémoire"
         >
           {SECTION_ORDER.map((section) => {
@@ -457,10 +502,21 @@ export function ReferenceBrowser() {
                 key={section}
                 value={section}
                 label={group.label}
-                component={NextLink}
-                href={referenceSectionHref(section)}
-                scroll={false}
-                onClick={() => setQuery('')}
+                // Pleine page : vraie ancre `?s=…` (Ctrl/⌘+Clic, partage). Tiroir : bouton qui bascule
+                // la section LOCALE sans écrire l'URL. Dans les deux cas, changer d'onglet vide la recherche.
+                {...(embedded
+                  ? {
+                      onClick: () => {
+                        setQuery('');
+                        setLocalSection(section);
+                      },
+                    }
+                  : {
+                      component: NextLink,
+                      href: referenceSectionHref(section),
+                      scroll: false,
+                      onClick: () => setQuery(''),
+                    })}
                 // Condensé : 40 px au lieu des 48 par défaut de MUI — la barre étant collée en
                 // permanence, chaque pixel qu'elle prend est retiré au contenu.
                 sx={{ textTransform: 'none', fontWeight: 700, minHeight: 40 }}
@@ -472,8 +528,9 @@ export function ReferenceBrowser() {
       </Box>
 
       {/* Sentinelle plate du bouton « Haut de page » : elle, contrairement à la barre collée,
-          disparaît bel et bien sous l'en-tête quand on défile. */}
-      <Box ref={sentinelRef} sx={{ height: 0, mt: '0 !important' }} aria-hidden />
+          disparaît bel et bien sous l'en-tête quand on défile. Omise en variante intégrée (pas de
+          bouton flottant dans un tiroir). */}
+      {!embedded && <Box ref={sentinelRef} sx={{ height: 0, mt: '0 !important' }} aria-hidden />}
 
       <Box
         sx={{
@@ -522,10 +579,16 @@ export function ReferenceBrowser() {
                 return (
                   <Box
                     key={sub.subsection}
-                    component={NextLink}
-                    href={referenceSubsectionHref(activeSection, sub.subsection)}
-                    scroll={false}
-                    onClick={() => jumpToSubsection(sub.subsection)}
+                    // Pleine page : ancre `?s=…#…` partageable. Tiroir : bouton qui descend jusqu'au
+                    // bloc dans le conteneur du tiroir, sans URL.
+                    {...(embedded
+                      ? { component: 'button' as const, type: 'button', onClick: () => jumpToSubsection(sub.subsection) }
+                      : {
+                          component: NextLink,
+                          href: referenceSubsectionHref(activeSection, sub.subsection),
+                          scroll: false,
+                          onClick: () => jumpToSubsection(sub.subsection),
+                        })}
                     sx={{
                       textAlign: 'left',
                       textDecoration: 'none',
@@ -540,6 +603,15 @@ export function ReferenceBrowser() {
                         borderLeftColor: tint,
                         bgcolor: alpha(tint, 0.12),
                       },
+                      // Réinitialisation quand le sommaire est un <button> (variante intégrée).
+                      ...(embedded && {
+                        display: 'block',
+                        width: '100%',
+                        border: 0,
+                        bgcolor: 'transparent',
+                        font: 'inherit',
+                        cursor: 'pointer',
+                      }),
                     }}
                   >
                     {sub.label}
@@ -580,13 +652,27 @@ export function ReferenceBrowser() {
                     scrollMarginTop={stuckHeight + 12}
                     goTo={
                       searching
-                        ? (subsection) => ({
-                            href: referenceSubsectionHref(group.section, subsection),
-                            // Effacer la recherche fait repasser en PARCOURS : l'effet d'ancre se
-                            // rejoue alors (`searching` change) et descend jusqu'au bloc, cette fois
-                            // dans son onglet et à sa position définitive.
-                            onClick: () => setQuery(''),
-                          })
+                        ? (subsection) =>
+                            embedded
+                              ? {
+                                  // Tiroir : on bascule la section locale, on efface la recherche, puis
+                                  // on descend jusqu'au bloc une fois le parcours rendu (l'effet d'ancre
+                                  // par URL n'existe pas ici).
+                                  onClick: () => {
+                                    setLocalSection(group.section);
+                                    setQuery('');
+                                    requestAnimationFrame(() =>
+                                      requestAnimationFrame(() => jumpToSubsection(subsection)),
+                                    );
+                                  },
+                                }
+                              : {
+                                  href: referenceSubsectionHref(group.section, subsection),
+                                  // Effacer la recherche fait repasser en PARCOURS : l'effet d'ancre se
+                                  // rejoue alors (`searching` change) et descend jusqu'au bloc, cette fois
+                                  // dans son onglet et à sa position définitive.
+                                  onClick: () => setQuery(''),
+                                }
                         : undefined
                     }
                   />
@@ -598,8 +684,9 @@ export function ReferenceBrowser() {
       </Box>
 
       {/* Bouton flottant « Haut de page », révélé dès que la barre de recherche passe sous la barre
-          d'application. Ancré bas-droite, SOUS la pile de toasts (cf. z-index du composant). */}
-      <ScrollToTopButton visible={scrolledPastHeader} />
+          d'application. Ancré bas-droite, SOUS la pile de toasts (cf. z-index du composant). Omis en
+          variante intégrée : ancré au viewport, il flotterait par-dessus toute la page, pas le tiroir. */}
+      {!embedded && <ScrollToTopButton visible={scrolledPastHeader} />}
     </Stack>
    </ReferenceVerbatimContext.Provider>
   );
@@ -625,8 +712,11 @@ function SubsectionColumns({
   columnCount: number;
   expandEntries: boolean;
   scrollMarginTop: number;
-  /** Fabrique le lien du bandeau (recherche uniquement) — absent en parcours. */
-  goTo?: (subsection: string) => { href: string; onClick: () => void };
+  /**
+   * Fabrique le comportement du bandeau (recherche uniquement) — absent en parcours. `href` présent
+   * → vraie ancre (pleine page) ; `href` absent → bouton (variante intégrée).
+   */
+  goTo?: (subsection: string) => { href?: string; onClick: () => void };
 }) {
   const columns = splitReferenceColumns(subsections, columnCount);
   return (
@@ -673,8 +763,11 @@ function SubsectionPanel({
   group: ReferenceSubsectionGroup;
   expandEntries: boolean;
   scrollMarginTop: number;
-  /** Renseigné en RECHERCHE seulement : rend le bandeau cliquable vers le bloc dans son onglet. */
-  goTo?: { href: string; onClick: () => void };
+  /**
+   * Renseigné en RECHERCHE seulement : rend le bandeau cliquable vers le bloc dans son onglet. `href`
+   * présent → vraie ancre (pleine page) ; `href` absent → bouton (variante intégrée dans un tiroir).
+   */
+  goTo?: { href?: string; onClick: () => void };
 }) {
   const accent = subsectionAccentText(group.subsection);
   return (
@@ -695,12 +788,9 @@ function SubsectionPanel({
           entier. En parcours on y est déjà : simple titre. */}
       <Box
         {...(goTo
-          ? {
-              component: NextLink,
-              href: goTo.href,
-              scroll: false,
-              onClick: goTo.onClick,
-            }
+          ? goTo.href
+            ? { component: NextLink, href: goTo.href, scroll: false, onClick: goTo.onClick }
+            : { component: 'button' as const, type: 'button', onClick: goTo.onClick }
           : {})}
         sx={{
           display: 'block',
@@ -711,6 +801,14 @@ function SubsectionPanel({
           ...(goTo && {
             cursor: 'pointer',
             '&:hover': { bgcolor: alpha(accent, 0.12) },
+          }),
+          // Réinitialisation quand le bandeau est un <button> (variante intégrée, `href` absent).
+          ...(goTo && !goTo.href && {
+            width: '100%',
+            textAlign: 'left',
+            border: 0,
+            bgcolor: 'transparent',
+            font: 'inherit',
           }),
         }}
       >
