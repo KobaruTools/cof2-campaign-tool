@@ -1578,8 +1578,12 @@ export const prestigeFeatures2: Feature[] = [
     rank: 4,
     isSpell: false,
     actionTypes: [],
+    // « (voir Profils hybrides, page 176) » → « (voir page 176) » : la mention du chapitre est retirée
+    // pour que la référence de page reste une parenthèse AUTONOME, seule forme reconnue par
+    // `splitPageRefs`/`PageRefText` (rendue en puce `SourceRef`) — patron déjà appliqué ailleurs
+    // (« voir page 238 », p. 213/238).
     text:
-      "Le personnage peut lancer des sorts de magie profane en armure. Le bonus de DEF total des protections portées doit être inférieur ou égal au rang - 2. Par exemple, au rang 4, le personnage peut lancer des sorts en armure de cuir, et au rang 8, il peut porter une armure de plaque. Lorsqu'il respecte cette limitation, il est dispensé du surcoût de mana pour lancer un sort en armure (voir Profils hybrides, page 176). Les bonus magiques des armures ne comptent pas dans le calcul de cette limitation. Cette capacité ne permet pas d'apprendre à utiliser des armures.",
+      "Le personnage peut lancer des sorts de magie profane en armure. Le bonus de DEF total des protections portées doit être inférieur ou égal au rang - 2. Par exemple, au rang 4, le personnage peut lancer des sorts en armure de cuir, et au rang 8, il peut porter une armure de plaque. Lorsqu'il respecte cette limitation, il est dispensé du surcoût de mana pour lancer un sort en armure (voir page 176). Les bonus magiques des armures ne comptent pas dans le calcul de cette limitation. Cette capacité ne permet pas d'apprendre à utiliser des armures.",
     sourcePage: 151,
   },
   {
