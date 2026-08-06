@@ -551,6 +551,8 @@ describe('effectContext', () => {
       heavyArmorWorn: false,
       // Arme de contact tenue à deux mains (PER-74, Tenir à distance) : aucune arme équipée ici.
       twoHandedMeleeWielded: false,
+      // Bâton tenu en main (PER-74, Sceptre défensif) : aucune arme équipée ici.
+      staffWielded: false,
       // Options de la monture chevauchée (PER-74, chevalier dragon r4) : à pied ici.
       ridingOptionIds: [],
     });

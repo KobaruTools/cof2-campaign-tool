@@ -216,6 +216,17 @@ export function wornMeleeWeapon(equipment: EquipmentLine[]): Weapon | null {
 }
 
 /**
+ * PER-74 — le personnage TIENT-IL un bâton (ou bâton ferré, même famille de maîtrise, p. 184) en
+ * main ? Condition automatique de Sceptre défensif (voie de l'archimage, r4, p. 154). S'appuie sur
+ * `wornMeleeWeapon` (main principale prioritaire, PER-76/77) : un reskin (« Bâton noueux » du
+ * druide) garde l'id de catalogue `baton-ferre` et compte donc aussi.
+ */
+export function isStaffWielded(equipment: EquipmentLine[] = []): boolean {
+  const id = wornMeleeWeapon(equipment)?.id;
+  return id === 'baton' || id === 'baton-ferre';
+}
+
+/**
  * Ligne de l'arme À DISTANCE effectivement TENUE EN MAIN — pendant à distance de
  * `wornMeleeWeaponLine` : main principale prioritaire, sinon main secondaire. `null` si
  * aucune arme à distance n'est portée. Les objets libres (`CustomItem`) sont ignorés. Sert

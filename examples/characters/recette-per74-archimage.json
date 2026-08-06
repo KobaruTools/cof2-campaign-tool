@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-archimage",
+  "name": "Recette PER-74 — Archimage",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie de l'archimage p. 154) — 1ʳᵉ voie de la catégorie MAGE. R4 Sceptre défensif → CHIFFRÉ : DEF +3 (rang 8) automatique tant que le bâton est en main (`staff-def-bonus`), le bonus aux tests opposés de résistance à la magie reste verbatim. R5/R7 Bâton magique → CHIFFRÉ : sort de rang 1 (Projectile de mana) et sort de rang 2 (Choc) GRANTED, castables SANS dépense de mana (`archmageFreeSpellDiscount`). R6 Paralysie et R7 Barrière magique → richText balisé ; R7 porte aussi un usageCounter 1×/jour. R8 Métamorphose d'autrui → verbatim seul (limite « par cible » sans équivalent moteur)."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "prestige-archimage-r4",
+    "prestige-archimage-r5",
+    "prestige-archimage-r6",
+    "prestige-archimage-r7",
+    "prestige-archimage-r8"
+  ],
+  "featureChoices": {
+    "prestige-archimage-r5": [
+      "magie-des-arcanes-r1"
+    ],
+    "prestige-archimage-r7": [
+      "magie-des-arcanes-r2"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "baton",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

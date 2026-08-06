@@ -531,6 +531,11 @@ for (const c of features) {
       // valeur constante ou scalante.
       const valueError = effectValueError(e.value);
       if (valueError) err(`[capacite ${c.id}] effect: two-handed-weapon-def-bonus value ${valueError}`);
+    } else if (e.kind === 'staff-def-bonus') {
+      // Bonus de DEF avec un bâton en main (PER-74, Sceptre défensif, archimage r4) : valeur
+      // constante ou scalante.
+      const valueError = effectValueError(e.value);
+      if (valueError) err(`[capacite ${c.id}] effect: staff-def-bonus value ${valueError}`);
     } else if (e.kind === 'weapon-damage-bonus') {
       // Bonus de DM d'arme (PER-115/PER-226) : exactement UN de `ability` / `dice` / `flat` ; condition
       // partagée ; dé et bonus plat valides le cas échéant.

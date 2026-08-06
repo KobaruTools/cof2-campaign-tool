@@ -555,6 +555,7 @@ export type FeatureEffect =
   | ArmorPenaltyReductionEffect
   | HeavyArmorDefBonusEffect
   | TwoHandedWeaponDefBonusEffect
+  | StaffDefBonusEffect
   | WeaponDamageBonusEffect
   | AttackBonusEffect
   | RangedAttackMagicalEffect
@@ -1204,8 +1205,13 @@ export interface StatusModifiers {
    */
   attackTestsMalusDie?: boolean;
   /**
-   * Malus CHIFFRÉ PLAT (pas un dé) à TOUS les tests, PAR PALIER d'intensité — Attaque invalidante (p. 140,
-   * « -1 à tous les tests … jusqu'à -3 »). Combiné à `stacking: { max: 3 }`, donne −1/−2/−3. Absent = 0.
+   * Modificateur CHIFFRÉ PLAT (pas un dé) à TOUS les tests, PAR PALIER d'intensité. SIGNÉ : négatif pour
+   * un préjudice — Attaque invalidante (p. 140, « -1 à tous les tests … jusqu'à -3 »), combiné à
+   * `stacking: { max: 3 }`, donne −1/−2/−3 —, POSITIF pour un buff (PER-104) — Chant des héros (p. 67)
+   * et Bénédiction (p. 124), `+1` combiné à `stacking: { max: 2 }`, donnent +1/+2. Absent = 0.
+   *
+   * « Tous les tests » couvre à la fois les tests de CARACTÉRISTIQUE et les trois jets d'ATTAQUE
+   * (leurs jets SONT des tests) : les deux ventilations sont faites par `statusSheetImpact`.
    */
   allTestsFlat?: number;
   /**
@@ -1238,6 +1244,16 @@ export interface StatusEffectEntry {
    * Attaque invalidante ×1→×3) ; les valeurs numériques de `modifiers` sont alors PAR PALIER.
    */
   stacking?: { max: number };
+  /**
+   * PORTÉE de l'effet (PER-104). ABSENT = INDIVIDUEL : l'effet se pose sur UN combattant à la fois
+   * (tous les états préjudiciables, situationnels et d'environnement). `'group'` = effet qui, par sa
+   * règle même, vise « ses alliés et lui » (Chant des héros p. 67, Bénédiction p. 124) : la pose
+   * ouvre alors le choix des combattants du camp plutôt que de frapper la seule carte survolée.
+   *
+   * Ce champ décrit la RÈGLE, pas le stockage : côté état de combat, un buff de groupe reste une
+   * entrée `AppliedStatus` par combattant — c'est la POSE qui est collective (`applyStatusToKeys`).
+   */
+  scope?: 'group';
 }
 
 /**
@@ -1481,6 +1497,63 @@ export const ENVIRONMENTAL_EFFECT_LABELS: Record<EnvironmentalEffectId, string> 
 ) as Record<EnvironmentalEffectId, string>;
 
 /**
+ * BUFFS DE GROUPE (PER-104) — QUATRIÈME catalogue, MÊME schéma qu'un état (`StatusEffectEntry`), mais
+ * la première famille BÉNÉFIQUE : les trois autres (glossaire p. 214-215, effets situationnels de voie,
+ * conditions d'environnement) ne portent que des préjudices. D'où un catalogue à part plutôt qu'une
+ * entrée de plus chez les situationnels, dont le critère d'admission (PER-288) vise les malus subis.
+ *
+ * N'entre ici QUE l'effet dont la RÈGLE vise « ses alliés et lui » (`scope: 'group'`) : un bonus qui ne
+ * profite qu'à son porteur reste un `conditional-stat-bonus` à interrupteur sur la fiche, il n'a rien à
+ * faire dans un catalogue d'états posés en séance. Les deux premières entrées sont les deux faces du
+ * même gabarit — Chant des héros (barde, `musicien-r1`, p. 67) et Bénédiction (prêtre, `priere-r1`,
+ * p. 124) — dont les verbatims NE sont PAS fusionnés : le barde dit « à tous leurs tests », le prêtre
+ * « à tous leurs tests de caractéristique et d'attaque ». Deux textes du livre, deux entrées.
+ *
+ * DURÉE : « CHA minutes » n'est PAS converti en manches (aucune règle du livre ne le fait) — le buff se
+ * pose sans compteur et c'est le MJ qui, s'il le veut, lui donne une durée en tours (`untilRound`,
+ * PER-305). En pratique un repos de groupe (PER-312) y met fin en purgeant les états du tracker.
+ *
+ * PALIER : les deux capacités passent de +1 à +2 au rang 5 de leur voie. Modélisé comme tout état
+ * cumulatif — `allTestsFlat: +1` PAR PALIER et `stacking: { max: 2 }` — l'intensité 2 valant « rang 5 ».
+ * La palette pré-remplit le palier depuis le rang du porteur ; le MJ garde la main.
+ */
+export const BENEFICIAL_EFFECT_IDS = ['heroes-song', 'blessing'] as const;
+export type BeneficialEffectId = (typeof BENEFICIAL_EFFECT_IDS)[number];
+
+/** Catalogue des buffs de groupe. Effet recopié VERBATIM de la capacité source. */
+export const BENEFICIAL_EFFECTS: Record<BeneficialEffectId, StatusEffectEntry> = {
+  // « Chant des héros » (barde, musicien-r1, p. 67). Le verbatim s'arrête au palier de rang 5 : la
+  // dernière phrase de la capacité (« son rang + 2 aux tests pour jouer d'un instrument ») est un
+  // bonus de compétence PERMANENT du seul barde, sans rapport avec le buff posé sur le groupe.
+  'heroes-song': {
+    label: 'Chant des héros',
+    effect:
+      "Le barde peut chanter et inspirer ses compagnons, tous ses alliés à portée de voix et lui obtiennent un bonus de +1 à tous leurs tests pendant un nombre de minutes égal à sa valeur de CHA. Pendant toute la durée du sort, il fredonne (action gratuite qui ne l'empêche pas de lancer d'autres sorts de barde). Le bonus passe à +2 au rang 5.",
+    sourcePage: 67,
+    modifiers: { allTestsFlat: 1 },
+    stacking: { max: 2 },
+    scope: 'group',
+  },
+  // « Bénédiction » (prêtre, priere-r1, p. 124). Même gabarit chiffré que le Chant des héros, texte
+  // DISTINCT (« tests de caractéristique et d'attaque » là où le barde dit « tous leurs tests »). Le
+  // bonus permanent de théologie/cosmologie de la fin de la capacité est hors du buff, donc hors verbatim.
+  blessing: {
+    label: 'Bénédiction',
+    effect:
+      "Le prêtre entonne un chant pour encourager ses compagnons en vue. Ses alliés et lui bénéficient d'un bonus de +1 à tous leurs tests de caractéristique et d'attaque pendant CHA minutes. Ce bonus passe à +2 au rang 5.",
+    sourcePage: 124,
+    modifiers: { allTestsFlat: 1 },
+    stacking: { max: 2 },
+    scope: 'group',
+  },
+};
+
+/** Libellés français des buffs de groupe (affichés au joueur). Dérivé de `BENEFICIAL_EFFECTS`. */
+export const BENEFICIAL_EFFECT_LABELS: Record<BeneficialEffectId, string> = Object.fromEntries(
+  BENEFICIAL_EFFECT_IDS.map((id) => [id, BENEFICIAL_EFFECTS[id].label]),
+) as Record<BeneficialEffectId, string>;
+
+/**
  * IMMUNITÉ permanente à un ou plusieurs états/effets (PER-103). Ex. Liberté d'action
  * (barde, saltimbanque-r4) : immunisé à la peur, aux sorts d'asservissement mental
  * (charme/possession), aux états ralenti et immobilisé. Agrégé sur le porteur et rendu
@@ -1584,6 +1657,23 @@ export interface HeavyArmorDefBonusEffect {
 export interface TwoHandedWeaponDefBonusEffect {
   kind: 'two-handed-weapon-def-bonus';
   /** Bonus de DEF appliqué UNIQUEMENT avec une arme de contact tenue à deux mains. */
+  value: EffectValue;
+}
+
+/**
+ * PER-74 — Bonus de DEF conditionné au fait de TENIR un bâton (ou bâton ferré, même famille de
+ * maîtrise, p. 184) en main, résolu AUTOMATIQUEMENT depuis l'équipement porté — même patron que
+ * `TwoHandedWeaponDefBonusEffect` (« Tenir à distance »), sans interrupteur manuel. Sceptre défensif
+ * (voie de l'archimage, r4, p. 154) : « lorsqu'il tient son bâton en main, le personnage gagne un
+ * bonus de +1 en DEF (...) Ce bonus passe à +2 au rang 6 et +3 au rang 8 » → `{ scale: 'stepped',
+ * by: 'path-rank', steps: [{ min: 4, value: 1 }, { min: 6, value: 2 }, { min: 8, value: 3 }] }`.
+ * Le second volet du texte (bonus aux tests opposés de magie pour résister aux sorts) reste
+ * VERBATIM : hors périmètre moteur, comme le bonus équivalent de l'elfe (p. 50) et du halfelin
+ * (p. 56). Nul (aucune contribution) sans bâton en main (cf. `isStaffWielded`, equipment.ts).
+ */
+export interface StaffDefBonusEffect {
+  kind: 'staff-def-bonus';
+  /** Bonus de DEF appliqué UNIQUEMENT avec un bâton/bâton ferré en main. */
   value: EffectValue;
 }
 
@@ -3532,6 +3622,17 @@ export interface Feature {
    * relève du Combat Tracker (ticket dédié). Absent = la capacité n'applique aucun effet situationnel.
    */
   situationalEffectIds?: SituationalEffectId[];
+  /**
+   * BUFFS DE GROUPE (catalogue `BENEFICIAL_EFFECTS`) que cette capacité confère à « ses alliés et lui »
+   * (PER-104) — symétrique de `situationalEffectIds`, du côté bénéfique. Déclarer l'id ici est ce qui
+   * DÉBLOQUE la puce correspondante dans la palette de l'écran de MJ : elle n'apparaît que si un
+   * personnage réclamé de la table possède la capacité (un groupe sans barde ni prêtre n'a rien à
+   * poser). Absent = la capacité ne confère aucun buff de groupe.
+   *
+   * La part « porteur » du même buff reste modélisée sur la fiche par un `conditional-stat-bonus` à
+   * interrupteur : les deux voies coexistent, l'arbitrage du double compte relève de PER-314.
+   */
+  groupBuffIds?: BeneficialEffectId[];
   /**
    * GESTION DE POISON APPLIQUÉ AUX ARMES (voie du maître des poisons, r5, p. 143, PER-74). Débloque, sous
    * cette capacité, une section « Poisons appliqués » : enduire jusqu'à `maxWeapons` armes de l'inventaire,

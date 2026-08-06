@@ -2008,6 +2008,16 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le bâton du mage est un outil de défense complet, il lui sert aussi bien à parer efficacement en mêlée qu'à se protéger des sorts adverses. Lorsqu'il tient son bâton en main, le personnage gagne un bonus de +1 en DEF et à tous les tests opposés de magie effectués pour résister à des sorts. Ce bonus passe à +2 au rang 6 et +3 au rang 8.",
+    // PER-74 : DEF chiffrée (patron EXACT « Tenir à distance », armes-à-deux-mains r6, p. 146) —
+    // résolue AUTOMATIQUEMENT depuis l'équipement porté (`ctx.staffWielded`), sans interrupteur. Le
+    // bonus aux tests opposés de magie pour résister aux sorts reste VERBATIM : hors périmètre
+    // moteur, comme l'écart déjà assumé pour l'elfe (p. 50) et le halfelin (p. 56).
+    effects: [
+      {
+        kind: 'staff-def-bonus',
+        value: { scale: 'stepped', by: 'path-rank', steps: [{ min: 4, value: 1 }, { min: 6, value: 2 }, { min: 8, value: 3 }] },
+      },
+    ],
     sourcePage: 154,
   },
   {
@@ -2019,6 +2029,20 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage choisit un sort de rang 1 de la famille des mages. Il est lié à son bâton et il peut l'utiliser au prix d'une action de mouvement sans dépense de mana. À partir du rang 7, il peut ajouter un sort de rang 2 qui ne coûte pas non plus de point de mana.",
+    // PER-74 : sort GRANTED (pas déjà connu) → `feature-from-path` (comme l'Apprentissage de sort du
+    // familier, per74-familier-state.md), `familyScope:'mages'` (FamilyId LITTÉRAL, PER-74 touche à
+    // tout). Coût en mana annulé via `archmageFreeSpellDiscount` (archmagePath.ts), réutilisation du
+    // `discount` de SpellManaBadge (miroir Rituel de combat guerrier-mage r5, mais réduction TOTALE
+    // au lieu de -1 PM fixe). Le second sort de rang 2 du rang 7 est un choix DISTINCT porté par
+    // `prestige-archimage-r7` (cf. commentaire sur ce rang) — pas un second slot ici.
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Sort de rang 1 (famille des mages) lié au bâton',
+        familyScope: 'mages',
+        allowedRanks: [1],
+      },
+    ],
     sourcePage: 154,
   },
   {
@@ -2029,6 +2053,8 @@ export const prestigeFeatures2: Feature[] = [
     isSpell: true,
     actionTypes: ['L'],
     text:
+      "Le lanceur de sort paralyse autant de créatures qu'il le peut (cf. ci-après) dans un rayon de 10 m autour de lui pendant [1d4° + INT] rounds. Il doit maintenir sa concentration par une action de mouvement pendant toute la durée du sort. Il peut affecter autant de créatures qu'il souhaite tant que la somme de leurs NC ne dépasse pas son niveau. Les créatures de NC 4 ou plus peuvent se libérer du sort en réussissant un test de CON difficulté 15, une tentative par round (G).",
+    richText:
       "Le lanceur de sort paralyse autant de créatures qu'il le peut (cf. ci-après) dans un rayon de 10 m autour de lui pendant [1d4° + INT] rounds. Il doit maintenir sa concentration par une action de mouvement pendant toute la durée du sort. Il peut affecter autant de créatures qu'il souhaite tant que la somme de leurs NC ne dépasse pas son niveau. Les créatures de NC 4 ou plus peuvent se libérer du sort en réussissant un test de CON difficulté 15, une tentative par round (G).",
     // PER-290 : inflige l'état Paralysé mais sort RÉPÉTABLE (concentration, multi-cibles, aucun cap
     // « 1×/combat par état ») → PAS de `inflictableStates` (réservé au toggle 1×/combat, patron
@@ -2044,6 +2070,23 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le lanceur de sort trace une ligne imaginaire de son bâton, qui constitue une frontière invisible que nul ne saurait franchir sans son autorisation. Toute créature qui tente de passer ressent une forte contrainte à rebrousser chemin ; si elle tente de forcer le passage, elle doit réaliser un test opposé d'attaque magique contre le personnage. En cas d'échec, elle subit [5d4° + INT] DM et ne peut faire de nouvelle tentative avant une heure. En cas de succès, elle parvient à franchir la limite et ne subit que la moitié des DM. La frontière mesure un maximum de 20 m de long (sans limite de hauteur) et sa durée est de 24 h.",
+    richText:
+      "Une fois par jour, le lanceur de sort trace une ligne imaginaire de son bâton, qui constitue une frontière invisible que nul ne saurait franchir sans son autorisation. Toute créature qui tente de passer ressent une forte contrainte à rebrousser chemin ; si elle tente de forcer le passage, elle doit réaliser un test opposé d'attaque magique contre le personnage. En cas d'échec, elle subit [5d4° + INT] DM et ne peut faire de nouvelle tentative avant une heure. En cas de succès, elle parvient à franchir la limite et ne subit que la moitié des DM. La frontière mesure un maximum de 20 m de long (sans limite de hauteur) et sa durée est de 24 h.",
+    // PER-74 : « une fois par jour » distinct du coût en mana → `usageCounter` (précédent : plusieurs
+    // sorts, ex. magie-universelle-r5/outre-tombe-r5/soins-r4, portent déjà ce champ).
+    usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    // PER-74 : second choix « sort de rang 2 » de Bâton magique (r5) porté ICI (cf. commentaire sur
+    // r5) — le rang 7 étant un PRÉREQUIS naturel du personnage pour que ce choix existe, aucun
+    // gating de rang dédié n'est nécessaire (`borrowedFeatureIds` ne connaît que la capacité hôte).
+    choices: [
+      {
+        kind: 'feature-from-path',
+        prompt: 'Sort de rang 2 (famille des mages) ajouté au bâton magique',
+        note: "Second sort accordé par « Bâton magique » (rang 5, p. 154), débloqué au rang 7.",
+        familyScope: 'mages',
+        allowedRanks: [2],
+      },
+    ],
     sourcePage: 154,
   },
   {

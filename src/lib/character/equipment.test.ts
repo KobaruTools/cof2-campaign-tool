@@ -9,6 +9,7 @@ import {
   derivedBonusesFromEquipment,
   equipConflicts,
   isHeavyArmorWorn,
+  isStaffWielded,
   setWornAt,
   wornMeleeWeapon,
   wornMeleeWeaponLine,
@@ -151,6 +152,27 @@ describe('isTwoHandedMeleeWeaponWielded (PER-74)', () => {
         { custom: true, name: 'Espadon exotique', quantity: 1, worn: { slot: 'mainHand', grip: 'twoHands' } },
       ]),
     ).toBe(false);
+  });
+});
+
+describe('isStaffWielded (PER-74, Sceptre défensif — archimage r4, p. 154)', () => {
+  it('est vrai avec un bâton en main principale ou secondaire', () => {
+    expect(isStaffWielded([{ itemId: 'baton', quantity: 1, worn: { slot: 'mainHand' } }])).toBe(true);
+    expect(isStaffWielded([{ itemId: 'baton-ferre', quantity: 1, worn: { slot: 'offHand' } }])).toBe(true);
+  });
+
+  it('un reskin (« Bâton noueux » du druide) garde son id de catalogue et compte aussi', () => {
+    expect(
+      isStaffWielded([
+        { itemId: 'baton-ferre', quantity: 1, worn: { slot: 'mainHand' }, overrides: { name: 'Bâton noueux' } },
+      ]),
+    ).toBe(true);
+  });
+
+  it('est faux pour une autre arme, et sans bâton porté (ou rangé)', () => {
+    expect(isStaffWielded([{ itemId: 'epee-longue', quantity: 1, worn: { slot: 'mainHand' } }])).toBe(false);
+    expect(isStaffWielded([])).toBe(false);
+    expect(isStaffWielded([{ itemId: 'baton', quantity: 1 }])).toBe(false);
   });
 });
 

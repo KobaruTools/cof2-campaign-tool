@@ -64,6 +64,7 @@ import {
 import {
   abilityBonusesFromEquipment,
   isHeavyArmorWorn,
+  isStaffWielded,
   isTwoHandedMeleeWeaponWielded,
   lineDisplayName,
   oneHandableWeaponFamilies,
@@ -136,6 +137,12 @@ export interface EffectContext {
    * arme à deux mains en main » (les appels « catalogue seul » n'ont pas d'équipement).
    */
   twoHandedMeleeWielded?: boolean;
+  /**
+   * Un bâton (ou bâton ferré, même famille de maîtrise) est-il TENU EN MAIN (cf. `isStaffWielded`) ?
+   * Sert à l'effet `staff-def-bonus` résolu AUTOMATIQUEMENT (Sceptre défensif, voie de l'archimage
+   * r4, PER-74). Absent → traité comme « aucun bâton en main ».
+   */
+  staffWielded?: boolean;
   /**
    * Ids des OPTIONS dont provient la monture actuellement CHEVAUCHÉE (cf. `ridingMountOptionIds`).
    * Sert les interrupteurs qu'une monture NOMMÉE force à l'état actif (chevalier dragon r4 : « ou
@@ -513,6 +520,7 @@ export function effectContext(character: Character): EffectContext {
       character.equipment,
       oneHandableWeaponFamilies(character.featureIds),
     ),
+    staffWielded: isStaffWielded(character.equipment),
     ridingOptionIds: ridingMountOptionIds(character),
   };
 }
@@ -751,6 +759,14 @@ function effectContributions(
   // interrupteur. Non résoluble sans contexte, et nul sans arme à deux mains en main.
   if (effect.kind === 'two-handed-weapon-def-bonus') {
     if (!ctx?.twoHandedMeleeWielded) return [];
+    const v = resolveValue(effect.value, pathId, pathRanks, ctx);
+    return v === null ? [] : [{ stat: 'def', value: v }];
+  }
+  // Bonus de DEF conditionné à un BÂTON tenu en main (PER-74, Sceptre défensif, archimage r4) —
+  // résolu automatiquement depuis `ctx.staffWielded`, sans interrupteur. Non résoluble sans
+  // contexte, et nul sans bâton en main.
+  if (effect.kind === 'staff-def-bonus') {
+    if (!ctx?.staffWielded) return [];
     const v = resolveValue(effect.value, pathId, pathRanks, ctx);
     return v === null ? [] : [{ stat: 'def', value: v }];
   }
