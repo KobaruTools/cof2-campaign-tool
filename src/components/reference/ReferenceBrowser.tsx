@@ -84,6 +84,7 @@ import {
   SECTION_ORDER,
   groupReferenceEntries,
   isReferenceSection,
+  referenceGroupLabels,
   referenceSectionHref,
   referenceSubsectionHref,
   splitReferenceColumns,
@@ -119,7 +120,9 @@ const norm = normalizeSearchText;
  * normalisé à la volée pour la comparaison.
  */
 function searchableText(entry: ReferenceEntry): string {
-  const parts: string[] = [entry.title, ...entry.tags];
+  // Libellés de section / sous-section EN PREMIER : ce sont les noms affichés (onglet, sommaire,
+  // bandeau), et les chercher doit ramener le groupe entier — cf. `referenceGroupLabels`.
+  const parts: string[] = [referenceGroupLabels(entry), entry.title, ...entry.tags];
   if (entry.kind === 'text') {
     parts.push(entry.shortEffect, entry.body);
     if (entry.test) parts.push(entry.test);
@@ -267,36 +270,6 @@ export function ReferenceBrowser() {
   const activeGroup = allGroups.find((g) => g.section === activeSection);
 
   /**
-   * Saut vers un bloc de sous-section (parcours uniquement) : les liens du sommaire portent déjà
-   * l'ancre dans leur `href` — c'est ce qui rend l'URL partageable — mais ils désactivent le saut
-   * brutal du navigateur (`scroll={false}`) pour glisser en douceur jusqu'au bloc.
-   */
-  const jumpToSubsection = (subsection: string) => {
-    document
-      .getElementById(subsectionAnchorId(subsection))
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  /**
-   * Ancre demandée par l'URL au chargement (`/reference?s=combat#maneuvers`) ou après un changement
-   * d'onglet : on amène le bloc à l'écran une fois le contenu rendu. Sans ancre (clic sur un onglet),
-   * on remonte en haut — les liens désactivent le défilement de Next (`scroll={false}`), sinon on
-   * arriverait au milieu de la nouvelle section. Un clic dans le sommaire ne repasse PAS ici (ni
-   * `activeSection` ni `searching` ne changent) : pas de double défilement. Une ancre qui ne
-   * correspond à aucun bloc de l'onglet courant est simplement ignorée.
-   *
-   * `columnCount` est en dépendance (PER-311) : le passage à deux colonnes juste après l'hydratation
-   * déplace les blocs, donc il faut REVISER le saut — sinon on atterrit à côté de l'ancre partagée.
-   */
-  useEffect(() => {
-    if (searching) return;
-    const id = decodeURIComponent(window.location.hash.slice(1));
-    const target = id ? document.getElementById(id) : null;
-    if (target) target.scrollIntoView({ block: 'start' });
-    else if (!id) window.scrollTo({ top: 0 });
-  }, [activeSection, searching, columnCount]);
-
-  /**
    * HAUTEUR VIVE de la barre collée (recherche + onglets). Le sommaire, les ancres et la sentinelle
    * en dépendent, et elle n'est PAS constante : la ligne « N entrées correspondantes » n'apparaît
    * qu'en recherche, et les onglets peuvent passer sur deux lignes en étroit. Mesurée plutôt que
@@ -321,6 +294,55 @@ export function ReferenceBrowser() {
   const appHeaderHeight = smUp ? 83 : 75;
   /** Sous quoi tout doit se glisser : en-tête global + barre collée de la page. */
   const stuckHeight = appHeaderHeight + stickyHeight;
+
+  /**
+   * Saut vers un bloc de sous-section (parcours uniquement) : les liens du sommaire portent déjà
+   * l'ancre dans leur `href` — c'est ce qui rend l'URL partageable — mais ils désactivent le saut
+   * brutal du navigateur (`scroll={false}`) pour glisser en douceur jusqu'au bloc.
+   */
+  const jumpToSubsection = (subsection: string) => {
+    document
+      .getElementById(subsectionAnchorId(subsection))
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  /**
+   * Ancre demandée par l'URL au chargement (`/reference?s=combat#maneuvers`) ou après un changement
+   * d'onglet : on amène le bloc à l'écran une fois le contenu rendu. Sans ancre (clic sur un onglet),
+   * on remonte en haut — les liens désactivent le défilement de Next (`scroll={false}`), sinon on
+   * arriverait au milieu de la nouvelle section. Un clic dans le sommaire ne repasse PAS ici (ni
+   * `activeSection` ni `searching` ne changent) : pas de double défilement. Une ancre qui ne
+   * correspond à aucun bloc de l'onglet courant est simplement ignorée.
+   *
+   * `columnCount` est en dépendance (PER-311) : le passage à deux colonnes juste après l'hydratation
+   * déplace les blocs, donc il faut REVISER le saut — sinon on atterrit à côté de l'ancre partagée.
+   */
+  useEffect(() => {
+    if (searching) return;
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id) {
+      window.scrollTo({ top: 0 });
+      return;
+    }
+    /**
+     * Saut DIFFÉRÉ de deux trames. En quittant la recherche pour un bloc précis (clic sur un bandeau
+     * de résultat), tout bouge d'un coup : les résultats à plat cèdent la place à la disposition en
+     * colonnes, et la barre collée rétrécit en perdant sa ligne « N entrées correspondantes ». Sauter
+     * tout de suite visait donc une position périmée — le bloc atterrissait une centaine de pixels
+     * trop haut, derrière les onglets. Les deux trames laissent la mise en page ET la hauteur
+     * re-mesurée de la barre (donc `scrollMarginTop`) se poser avant qu'on ne vise.
+     */
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ block: 'start' });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [activeSection, searching, columnCount, stuckHeight]);
 
   /**
    * Bouton flottant « Haut de page » — LE MÊME que sur la fiche de personnage
@@ -556,6 +578,17 @@ export function ReferenceBrowser() {
                     columnCount={columnCount}
                     expandEntries={searching}
                     scrollMarginTop={stuckHeight + 12}
+                    goTo={
+                      searching
+                        ? (subsection) => ({
+                            href: referenceSubsectionHref(group.section, subsection),
+                            // Effacer la recherche fait repasser en PARCOURS : l'effet d'ancre se
+                            // rejoue alors (`searching` change) et descend jusqu'au bloc, cette fois
+                            // dans son onglet et à sa position définitive.
+                            onClick: () => setQuery(''),
+                          })
+                        : undefined
+                    }
                   />
                 </Box>
               ))}
@@ -586,11 +619,14 @@ function SubsectionColumns({
   columnCount,
   expandEntries,
   scrollMarginTop,
+  goTo,
 }: {
   subsections: ReferenceSubsectionGroup[];
   columnCount: number;
   expandEntries: boolean;
   scrollMarginTop: number;
+  /** Fabrique le lien du bandeau (recherche uniquement) — absent en parcours. */
+  goTo?: (subsection: string) => { href: string; onClick: () => void };
 }) {
   const columns = splitReferenceColumns(subsections, columnCount);
   return (
@@ -610,6 +646,7 @@ function SubsectionColumns({
               group={sub}
               expandEntries={expandEntries}
               scrollMarginTop={scrollMarginTop}
+              goTo={goTo?.(sub.subsection)}
             />
           ))}
         </Stack>
@@ -631,10 +668,13 @@ function SubsectionPanel({
   group,
   expandEntries,
   scrollMarginTop,
+  goTo,
 }: {
   group: ReferenceSubsectionGroup;
   expandEntries: boolean;
   scrollMarginTop: number;
+  /** Renseigné en RECHERCHE seulement : rend le bandeau cliquable vers le bloc dans son onglet. */
+  goTo?: { href: string; onClick: () => void };
 }) {
   const accent = subsectionAccentText(group.subsection);
   return (
@@ -649,7 +689,31 @@ function SubsectionPanel({
         backgroundImage: subsectionPanelGradient(group.subsection),
       }}
     >
-      <Box sx={{ px: 2, py: 0.75, borderBottom: subsectionHeaderBorder(group.subsection) }}>
+      {/* Bandeau de titre. En RECHERCHE il devient une vraie ancre : cliquer « Encombrement » quitte
+          les résultats (la recherche est effacée), ouvre l'onglet qui contient le bloc et descend
+          jusqu'à lui — le geste naturel quand on a trouvé le bon domaine et qu'on veut le lire en
+          entier. En parcours on y est déjà : simple titre. */}
+      <Box
+        {...(goTo
+          ? {
+              component: NextLink,
+              href: goTo.href,
+              scroll: false,
+              onClick: goTo.onClick,
+            }
+          : {})}
+        sx={{
+          display: 'block',
+          px: 2,
+          py: 0.75,
+          borderBottom: subsectionHeaderBorder(group.subsection),
+          textDecoration: 'none',
+          ...(goTo && {
+            cursor: 'pointer',
+            '&:hover': { bgcolor: alpha(accent, 0.12) },
+          }),
+        }}
+      >
         <Typography
           variant="overline"
           component="h2"

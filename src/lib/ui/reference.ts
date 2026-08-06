@@ -178,6 +178,21 @@ export function splitReferenceColumns(
   return columns;
 }
 
+/**
+ * Libellés de RATTACHEMENT d'une entrée : le nom de sa section et celui de sa sous-section, tels
+ * qu'affichés (« Environnement », « Encombrement »).
+ *
+ * Ajoutés à l'index de recherche pour qu'un domaine se cherche par son NOM : taper « encombr » doit
+ * ramener TOUTE la sous-section Encombrement, pas seulement l'entrée dont le verbatim contient par
+ * hasard ce mot. Ces libellés sont ce que le joueur a sous les yeux (onglets, sommaire, bandeaux de
+ * panneau) — ne pas pouvoir les chercher était le défaut le plus déroutant de la recherche.
+ *
+ * Le rattachement porte donc sur CHAQUE entrée du groupe, ce qui fait ressortir le groupe entier.
+ */
+export function referenceGroupLabels(entry: ReferenceEntry): string {
+  return `${SECTION_LABELS[entry.section]} ${subsectionLabel(entry.subsection)}`;
+}
+
 /** Prédicat de sûreté : la valeur est-elle une section connue ? (validation de `?s=` dans l'URL). */
 export function isReferenceSection(v: unknown): v is ReferenceSection {
   return v === 'combat' || v === 'resolution' || v === 'environment';

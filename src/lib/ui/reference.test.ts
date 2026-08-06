@@ -3,6 +3,7 @@ import { REFERENCE_ENTRIES, type ReferenceEntry } from '@/data/reference';
 import {
   SECTION_ORDER,
   groupReferenceEntries,
+  referenceGroupLabels,
   referenceSectionHref,
   referenceSubsectionHref,
   splitReferenceColumns,
@@ -12,6 +13,7 @@ import {
   type ReferenceSubsectionGroup,
 } from './reference';
 import { REFERENCE_SUBSECTION_COLORS, subsectionColor } from './referenceStyle';
+import { normalizeSearchText } from './searchText';
 
 describe('ancres partageables de l’aide-mémoire', () => {
   it('compose l’URL d’un onglet de section', () => {
@@ -129,6 +131,41 @@ describe('répartition des blocs de l’aide-mémoire en colonnes (PER-311)', ()
       { ...textEntry('x', 1), body: 'y'.repeat(4000) } as ReferenceEntry,
     ]);
     expect(subsectionWeight(bavarde)).toBe(subsectionWeight(group('sobre', [textEntry('x', 1)])));
+  });
+});
+
+describe('recherche par NOM de section / sous-section (PER-311)', () => {
+  /** Reproduit l'indexation de `ReferenceBrowser` pour la part qui nous intéresse ici. */
+  const haystack = (entry: ReferenceEntry) =>
+    normalizeSearchText(`${referenceGroupLabels(entry)} ${entry.title}`);
+
+  it('rattache chaque entrée au libellé de sa section ET de sa sous-section', () => {
+    const entry = REFERENCE_ENTRIES.find((e) => e.subsection === 'maneuvers')!;
+    expect(referenceGroupLabels(entry)).toBe('Combat Manœuvres');
+  });
+
+  /**
+   * LE cas signalé : « encombr » ne ramenait qu'une entrée — celle dont le verbatim contenait le mot
+   * par hasard — au lieu de toute la sous-section Encombrement, dont c'est pourtant le NOM affiché.
+   */
+  it('ramène TOUTE la sous-section quand on tape son nom', () => {
+    const attendu = REFERENCE_ENTRIES.filter((e) => e.subsection === 'encumbrance');
+    const trouve = REFERENCE_ENTRIES.filter((e) => haystack(e).includes('encombr'));
+    expect(attendu.length).toBeGreaterThan(1);
+    for (const e of attendu) expect(trouve, `manquante : ${e.id}`).toContain(e);
+  });
+
+  it('ramène toute une SECTION quand on tape son nom', () => {
+    const attendu = REFERENCE_ENTRIES.filter((e) => e.section === 'environment');
+    const trouve = REFERENCE_ENTRIES.filter((e) => haystack(e).includes('environnement'));
+    for (const e of attendu) expect(trouve, `manquante : ${e.id}`).toContain(e);
+  });
+
+  it('reste tolérant aux accents et ligatures sur ces libellés', () => {
+    // « Manœuvres » comme libellé de sous-section, tapé sans la ligature.
+    const trouve = REFERENCE_ENTRIES.filter((e) => haystack(e).includes('manoeuvre'));
+    const attendu = REFERENCE_ENTRIES.filter((e) => e.subsection === 'maneuvers');
+    for (const e of attendu) expect(trouve, `manquante : ${e.id}`).toContain(e);
   });
 });
 
