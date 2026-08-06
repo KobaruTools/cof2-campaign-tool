@@ -23,6 +23,7 @@ import { archmageStaffSpellGranted } from '@/lib/character/archmagePath';
 import { checkCompliance } from '@/lib/engine/legality';
 import { rulesContext } from '@/lib/character/rulesContext';
 import { parseRichText } from '@/lib/ui/featureRichText';
+import { splitGameTerms } from '@/lib/ui/glossary';
 import type { Character } from '@/lib/character/types';
 
 function assertNoLeakedTokens(richText: string) {
@@ -119,24 +120,41 @@ describe("PER-74 — voie de l'archimage (p. 154, recette end-to-end)", () => {
     expect(active).toContain(RANK2_SPELL);
   });
 
-  it('r6 Paralysie : richText balisé seul (PAS de inflictableStates, sort répétable — PER-290)', () => {
+  it('r6 Paralysie : richText balisé + puce « Paralysé » auto-détectée (PAS de inflictableStates, sort répétable — PER-290)', () => {
     const r6 = featureById.get(R6)!;
     expect(r6.effects).toBeUndefined();
     expect(r6.richText).toContain('[1d4° + INT]');
+    expect(r6.richText).toContain('(Paralysé)');
     assertNoLeakedTokens(r6.richText!);
+    // Le verbe seul (« paralyse ») n'est PAS une forme reconnue par l'auto-glossaire ; le
+    // substantif ajouté entre parenthèses, lui, doit l'être (patron StatusEffectChip, PER-208).
+    const terms = splitGameTerms(r6.richText!);
+    const statusTerm = terms.find((t) => t.kind === 'game' && t.entry.category === 'status');
+    expect(statusTerm).toBeDefined();
+    // Le `text` verbatim, lui, reste inchangé (aucune précision hors du livre).
+    expect(r6.text).not.toContain('(Paralysé)');
   });
 
-  it('r7 Barrière magique : richText balisé + usageCounter 1×/jour, AUCUN choix (le 2e sort est sur r5)', () => {
+  it('r7 Barrière magique : richText balisé + usageCounter 1×/jour + interrupteur de suivi (durée 24h)', () => {
     const r7 = featureById.get(R7)!;
     expect(r7.richText).toContain('[5d4° + INT]');
     assertNoLeakedTokens(r7.richText!);
     expect(r7.usageCounter).toEqual({ max: 1, resetOn: 'day', hideFromStatusPanel: true });
     expect(r7.choices).toBeUndefined();
+    // Marqueur d'état on/off SANS bonus chiffré (patron Invocation d'un démon, sorcier demon-r5).
+    expect(r7.effects).toEqual([
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Barrière magique active', activeByDefault: false },
+      },
+    ]);
   });
 
-  it("r8 Métamorphose d'autrui : verbatim seul (limite « par cible » sans équivalent moteur)", () => {
+  it("r8 Métamorphose d'autrui : verbatim + tag data-only (polymorphed), aucun effet actif", () => {
     const r8 = featureById.get(R8)!;
     expect(r8.effects).toBeUndefined();
     expect(r8.text).toContain("plus d'une fois par combat");
+    expect(r8.situationalEffectIds).toEqual(['polymorphed']);
   });
 });

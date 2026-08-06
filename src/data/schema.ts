@@ -1374,6 +1374,7 @@ export const SITUATIONAL_EFFECT_IDS = [
   'internal-hemorrhage',
   'grievous-wounds',
   'frightened',
+  'polymorphed',
 ] as const;
 export type SituationalEffectId = (typeof SITUATIONAL_EFFECT_IDS)[number];
 
@@ -1452,6 +1453,17 @@ export const SITUATIONAL_EFFECTS: Record<SituationalEffectId, StatusEffectEntry>
     effect:
       "La cible échoue à un test de VOL contre un grondement terrifiant et s'enfuit en courant pendant 1d4 rounds.",
     sourcePage: 151,
+  },
+  // « Métamorphose d'autrui » (archimage r8, p. 155). Aucun des 10 états du glossaire ne représente
+  // une transformation physique en animal (durée variable par NC, PV réduits, retour à la forme
+  // initiale à 0 PV) → mécanique PROPRE, admissible (PER-288). PUREMENT comportemental (aucun
+  // `modifiers` : les stats du personnage TRANSFORMÉ sont celles décrites dans le texte du sort, pas
+  // un modificateur générique appliqué au porteur).
+  polymorphed: {
+    label: 'Métamorphosé',
+    effect:
+      "Transformé en un animal de taille petite ou inférieure (1-2 PV). Retour à la forme initiale si réduit à 0 PV (test de CON difficulté 10, échec = mort) ou à l'expiration de la durée (dépend du NC de la cible, de permanent à 1 round).",
+    sourcePage: 155,
   },
 };
 

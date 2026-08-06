@@ -2064,11 +2064,15 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Le lanceur de sort paralyse autant de créatures qu'il le peut (cf. ci-après) dans un rayon de 10 m autour de lui pendant [1d4° + INT] rounds. Il doit maintenir sa concentration par une action de mouvement pendant toute la durée du sort. Il peut affecter autant de créatures qu'il souhaite tant que la somme de leurs NC ne dépasse pas son niveau. Les créatures de NC 4 ou plus peuvent se libérer du sort en réussissant un test de CON difficulté 15, une tentative par round (G).",
+    // Retour proprio : « Paralysie » sans jamais mentionner l'état AU SUBSTANTIF (le verbe
+    // « paralyse » n'est pas une forme reconnue par l'auto-glossaire, cf. `paralyzed` dans
+    // glossary.ts) → puce rouge ajoutée en RICHTEXT SEUL, entre parenthèses, juste après le verbe
+    // (le `text` verbatim reste inchangé — cette précision n'est pas dans le livre).
     richText:
-      "Le lanceur de sort paralyse autant de créatures qu'il le peut (cf. ci-après) dans un rayon de 10 m autour de lui pendant [1d4° + INT] rounds. Il doit maintenir sa concentration par une action de mouvement pendant toute la durée du sort. Il peut affecter autant de créatures qu'il souhaite tant que la somme de leurs NC ne dépasse pas son niveau. Les créatures de NC 4 ou plus peuvent se libérer du sort en réussissant un test de CON difficulté 15, une tentative par round (G).",
+      "Le lanceur de sort paralyse (Paralysé) autant de créatures qu'il le peut (cf. ci-après) dans un rayon de 10 m autour de lui pendant [1d4° + INT] rounds. Il doit maintenir sa concentration par une action de mouvement pendant toute la durée du sort. Il peut affecter autant de créatures qu'il souhaite tant que la somme de leurs NC ne dépasse pas son niveau. Les créatures de NC 4 ou plus peuvent se libérer du sort en réussissant un test de CON difficulté 15, une tentative par round (G).",
     // PER-290 : inflige l'état Paralysé mais sort RÉPÉTABLE (concentration, multi-cibles, aucun cap
     // « 1×/combat par état ») → PAS de `inflictableStates` (réservé au toggle 1×/combat, patron
-    // spadassin-r5). Le nom d'état dans le verbatim est déjà auto-glosé (StatusEffectChip, PER-208).
+    // spadassin-r5).
     sourcePage: 154,
   },
   {
@@ -2085,6 +2089,17 @@ export const prestigeFeatures2: Feature[] = [
     // PER-74 : « une fois par jour » distinct du coût en mana → `usageCounter` (précédent : plusieurs
     // sorts, ex. magie-universelle-r5/outre-tombe-r5/soins-r4, portent déjà ce champ).
     usageCounter: { max: 1, resetOn: 'day', hideFromStatusPanel: true },
+    // Retour proprio : interrupteur de suivi (la barrière dure 24h, indépendamment du compteur
+    // journalier de LANCEMENT ci-dessus) — AUCUN bonus chiffré (le sort n'affecte pas les stats du
+    // lanceur), patron EXACT « marqueur d'état on/off » (Invocation d'un démon, sorcier demon-r5,
+    // `bonuses: []` + `activation.kind:'temporary'`, précédent déjà admis par validate-data.ts).
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Barrière magique active', activeByDefault: false },
+      },
+    ],
     sourcePage: 154,
   },
   {
@@ -2096,6 +2111,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Le lanceur de sort doit réussir un test opposé d'attaque magique contre une cible à une portée de 20 m. Il la transforme en un animal de taille petite ou inférieure de son choix (grenouille et mouton sont les favoris des magiciens). La créature possède 1 PV (grenouille) ou 2 PV (mouton), et si elle est réduite à 0 PV, elle retrouve sa forme initiale et doit faire un test de CON difficulté 10. En cas d'échec, elle meurt. La durée du sort dépend du NC de la cible :\n- NC 0 à 1 : permanent\n- NC 2 : 24 h\n- NC 3 : 1d6 h\n- NC 4 : 1d6 minutes\n- NC 5+ : 1d6 rounds\n- NC égal ou supérieur au mage : 1 round\nUne créature ne peut pas être la cible de ce sort (réussi ou raté) plus d'une fois par combat.",
+    // Retour proprio : tag data-only pour le futur Combat Tracker (nouvel id `polymorphed`, aucun
+    // état du glossaire ne représentant une transformation physique — PER-288). Aucun effet actif
+    // en jeu aujourd'hui, comme `invalidating-attack` (tueur de géants r7).
+    situationalEffectIds: ['polymorphed'],
     sourcePage: 155,
   },
 
