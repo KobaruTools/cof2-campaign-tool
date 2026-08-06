@@ -1806,7 +1806,10 @@ export const prestigeFeatures2: Feature[] = [
       "Une fois par round, le personnage peut faire une attaque gratuite au bouclier. Il subit un dé malus en attaque et il inflige [1d4°+FOR] DM.",
     // PER-74 : attaque gratuite 1×/ROUND — patron Riposte du maître d'armes (maitre-d-armes-r5, p. 89) :
     // aucun suivi par round dans l'app (pas de compteur, pas de carte d'attaque dérivée) → verbatim
-    // seul, dé et carac déjà balisés dans le texte.
+    // seul pour la mécanique, mais le DM [1d4°+FOR] est une formule parsable (dé + carac) → richText
+    // posé pour le rendu enrichi (dé en icône, calcul encadré).
+    richText:
+      "Une fois par round, le personnage peut faire une attaque gratuite au bouclier. Il subit un dé malus en attaque et il inflige [1d4° + FOR] DM.",
     sourcePage: 152,
   },
   {
@@ -1855,7 +1858,11 @@ export const prestigeFeatures2: Feature[] = [
     text:
       "Le personnage peut lancer son bouclier à une portée de 20 m par une action d'attaque s'il réussit un test d'attaque à distance, il inflige les DM d'une Attaque au bouclier et la cible doit faire un test de FOR difficulté [10 + FOR du personnage] ou être renversée. Tant que le bouclier est à moins de 20 m du personnage, il peut le faire revenir à son bras (et l'équiper) par une action de mouvement (M).",
     // PER-74 : action d'attaque multi-étapes (test à distance → DM → test de FOR opposé → renversement)
-    // sans limite d'usage déclarée → verbatim seul, comme R5/R6 ci-dessus. Dé et carac déjà balisés.
+    // sans limite d'usage déclarée → verbatim seul pour la mécanique. La difficulté [10 + FOR du
+    // personnage] n'est pas parsable telle quelle (« du personnage » n'est pas un atome reconnu) →
+    // richText la réécrit [10 + FOR] (même valeur, FOR du porteur implicite) pour le calcul encadré.
+    richText:
+      "Le personnage peut lancer son bouclier à une portée de 20 m par une action d'attaque s'il réussit un test d'attaque à distance, il inflige les DM d'une Attaque au bouclier et la cible doit faire un test de FOR difficulté [10 + FOR] ou être renversée. Tant que le bouclier est à moins de 20 m du personnage, il peut le faire revenir à son bras (et l'équiper) par une action de mouvement (M).",
     sourcePage: 153,
   },
 

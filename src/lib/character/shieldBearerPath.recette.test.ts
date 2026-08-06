@@ -20,7 +20,15 @@ import { activeFeatureIdsForMods, effectContext, modsFromFeatures } from '@/lib/
 import { isShieldWorn, shieldDisabledFeatureIds } from '@/lib/character/armorRestrictions';
 import { checkCompliance } from '@/lib/engine/legality';
 import { rulesContext } from '@/lib/character/rulesContext';
+import { parseRichText } from '@/lib/ui/featureRichText';
 import type { Character } from '@/lib/character/types';
+
+function assertNoLeakedTokens(richText: string) {
+  const leaked = parseRichText(richText)
+    .filter((s): s is { kind: 'text'; value: string } => s.kind === 'text')
+    .some((s) => /[{[]/.test(s.value));
+  expect(leaked).toBe(false);
+}
 
 const PATH_ID = 'prestige-porteur-de-bouclier';
 const R4 = `${PATH_ID}-r4`;
@@ -68,10 +76,20 @@ describe('PER-74 — voie du porteur de bouclier (p. 152-153, recette end-to-end
     expect(featureById.get(R4)?.effects).toBeUndefined();
   });
 
-  it("r5 Attaque au bouclier : verbatim seul (patron Riposte, aucun suivi par round)", () => {
+  it("r5 Attaque au bouclier : verbatim seul (patron Riposte, aucun suivi par round), DM balisé", () => {
     expect(featureById.get(R5)?.effects).toBeUndefined();
     expect(featureById.get(R5)?.usageCounter).toBeUndefined();
     expect(featureById.get(R5)?.text).toContain('[1d4°+FOR] DM');
+    const richText = featureById.get(R5)!.richText!;
+    expect(richText).toContain('[1d4° + FOR] DM');
+    assertNoLeakedTokens(richText);
+    const expr = parseRichText(richText).find((s) => s.kind === 'expr');
+    expect(expr).toMatchObject({
+      terms: [
+        { kind: 'die', sign: 1, token: { count: 1, die: 'd4', evolving: true } },
+        { kind: 'ability', sign: 1, ability: 'FOR' },
+      ],
+    });
   });
 
   it('r6 Bousculade : DEF +1 dès le rang 6, +2 au rang 8 (avec bouclier)', () => {
@@ -93,9 +111,21 @@ describe('PER-74 — voie du porteur de bouclier (p. 152-153, recette end-to-end
     expect(featureById.get(R7)?.text).toContain("sauf s'il est surpris");
   });
 
-  it('r8 Lancer de bouclier : verbatim seul (action multi-étapes, aucune limite déclarée)', () => {
+  it('r8 Lancer de bouclier : verbatim seul (action multi-étapes, aucune limite déclarée), difficulté balisée', () => {
     expect(featureById.get(R8)?.effects).toBeUndefined();
     expect(featureById.get(R8)?.usageCounter).toBeUndefined();
+    // Le text VERBATIM garde le libellé du livre (« du personnage », non parsable tel quel).
     expect(featureById.get(R8)?.text).toContain('[10 + FOR du personnage]');
+    // Le richText reformule en formule parsable (même valeur, FOR du porteur implicite).
+    const richText = featureById.get(R8)!.richText!;
+    expect(richText).toContain('[10 + FOR]');
+    assertNoLeakedTokens(richText);
+    const expr = parseRichText(richText).find((s) => s.kind === 'expr');
+    expect(expr).toMatchObject({
+      terms: [
+        { kind: 'number', sign: 1, value: 10 },
+        { kind: 'ability', sign: 1, ability: 'FOR' },
+      ],
+    });
   });
 });
