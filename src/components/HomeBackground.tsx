@@ -12,7 +12,7 @@ import { MOUSE_PARALLAX_X, MOUSE_PARALLAX_Y, useMouseParallax } from '@/lib/ui/u
  * l'illustration profite des marges disponibles sans gêner la lecture.
  *
  * Deux variantes :
- * - `'full'` (défaut) : backdrop plein écran fixe (accueil, wizard).
+ * - `'full'` (défaut) : backdrop plein écran fixe, deux moitiés encadrant le contenu.
  * - `'footer'` : ancré EN BAS d'un parent `position: relative` (miroir du haut de la
  *   fiche de personnage). L'image est calée en bas et un fondu VERTICAL masque la
  *   coupure de son bord supérieur. Le fond de l'app transparaît (pas de bgcolor).
@@ -89,9 +89,8 @@ const FOOTER_TOP_FADE = 32; // %
 const BG = 'rgb(18, 18, 18)';
 const BG0 = 'rgba(18, 18, 18, 0)';
 
-// Fallback mobile (< md, variante `full`) : les deux moitiés sont masquées, on
-// affiche à la place l'image ENTIÈRE (celle qui a été « coupée » en deux) en fond
-// plein cadre, à opacité réduite pour ne pas gêner la lecture du contenu.
+// Illustration ENTIÈRE (celle qui a été « coupée » en deux moitiés) : fallback mobile
+// de la variante `full`, où les deux moitiés sont masquées.
 const MOBILE_IMAGE = '/cover-full.webp';
 const MOBILE_OPACITY = 0.18;
 
