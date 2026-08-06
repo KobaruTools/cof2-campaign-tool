@@ -186,6 +186,9 @@ export const prestigePaths2: PrestigePath[] = [
     type: 'prestige',
     category: 'fighter',
     prerequisites: '',
+    // PER-74 : présentation de la voie (p. 151) en info-bulle « i » de l'en-tête, verbatim. La voie
+    // n'a AUCUN prérequis dans le livre.
+    note: 'Les guerriers-ours adoptent la philosophie, les techniques de combat et parfois même la forme de leur animal totémique.',
     featureIds: [
       'prestige-ours-r4',
       'prestige-ours-r5',
@@ -1653,6 +1656,13 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage gagne un bonus de +5 à tous les tests d'intimidation. Une fois par combat, il peut pousser un terrible grondement en action gratuite. Tous les adversaires à son contact de NC inférieur à son niveau doivent réussir un test de VOL difficulté [6 + rang] ou s'enfuir en courant pendant 1d4 rounds.",
+    // PER-74 : +5 intimidation = bonus PERMANENT (`test-bonus`, patron écorcheur r4). Le grondement
+    // (1×/combat) gagne un `usageCounter` ; la fuite forcée reste verbatim SANS `inflictableStates`
+    // (un seul état déclenché par ce compteur → le compteur suffit, règle retenue au colosse r8).
+    richText:
+      "Le personnage gagne un bonus de +5 à tous les tests d'intimidation. Une fois par combat, il peut pousser un terrible grondement en action gratuite. Tous les adversaires à son contact de NC inférieur à son niveau doivent réussir un test de VOL difficulté [6 + rang] ou s'enfuir en courant pendant {1d4} rounds.",
+    effects: [{ kind: 'test-bonus', domains: ['intimidation'], value: 5 }],
+    usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
     sourcePage: 151,
   },
   {
@@ -1675,6 +1685,48 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par jour, le personnage peut prendre la forme d'un ours pendant [1d6+CON] minutes. Le personnage ne doit pas porter d'armure plus lourde que le cuir renforcé pour utiliser cette capacité.\n\nOURS BRUN — TAILLE GRANDE\nAGI +1 | CON +6* | FOR +6 | PER +2 | CHA -2 | INT [INT du personnage] | VOL [VOL du personnage + 2]\nDéfense [12 + rang] · Points de vigueur [rang × 5] · Initiative 11\nAttaque Morsure et griffes attaque magique du personnage · DM 2d4+6\nLe personnage conserve sa propre INT, mais il a tendance à réagir comme l'animal qu'il est devenu et ne peut plus utiliser ses capacités de profil. Si le personnage est réduit à 0 PV sous cette forme, il reprend forme humaine au début de son prochain tour par une action de mouvement et retrouve les PV qu'il avait avant la transformation.",
+    // PER-74 — le bloc de stats recopié SORT du texte affiché (creatureProfile ci-dessous, patron du
+    // loup du lycanthrope p. 131 / drake du chevalier dragon p. 148) ; le `text` verbatim le CONSERVE
+    // comme source. `transformation: true` → le personnage PREND cette forme (pas un compagnon).
+    // AGI/CON/FOR/PER/CHA = valeurs ABSOLUES imprimées (patron loup/drake) → `abilityOverrides` SET sur
+    // TOUTE la fiche. INT reste celle du personnage (delta 0, RAW : « conserve sa propre INT »).
+    // ÉCART RAW ASSUMÉ : VOL = VOL du personnage + 2 est un DELTA (pas une valeur absolue) — correctement
+    // affiché sur la mini-fiche (`abilitiesFromMaster`, qui gère nativement les deltas), mais PAS
+    // répercuté sur le reste de la fiche (tests de VOL hors mini-fiche) : `abilityOverrides` n'admet
+    // qu'une SURCHARGE ABSOLUE, aucune primitive de delta gated par interrupteur (même limite que le
+    // +2 FOR de Forme puissante, lycanthrope r8). Restriction d'armure (cuir renforcé max) laissée
+    // verbatim (aucune primitive de gate n'existe pour bloquer l'activation d'un interrupteur).
+    richText:
+      "Une fois par jour, le personnage peut prendre la forme d'un ours pendant [1d6 + CON] minutes. Le personnage ne doit pas porter d'armure plus lourde que le cuir renforcé pour utiliser cette capacité.\n\nLe personnage conserve sa propre INT, mais il a tendance à réagir comme l'animal qu'il est devenu et ne peut plus utiliser ses capacités de profil. Si le personnage est réduit à 0 PV sous cette forme, il reprend forme humaine au début de son prochain tour par une action de mouvement et retrouve les PV qu'il avait avant la transformation.",
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: "Sous forme d'ours", activeByDefault: false },
+        abilityOverrides: { AGI: 1, CON: 6, FOR: 6, PER: 2, CHA: -2 },
+      },
+    ],
+    // PER-74 : compteur 1×/jour ; passe à 1×/récupération rapide dès Métamorphose supérieure acquise
+    // (r8, `conditionalFrequency` — patron Cape d'ombre/Manteau d'ombre, p. 139) au lieu d'empiler un
+    // second usage distinct (arbitrage propriétaire : R8 REMPLACE R6, pas une 2ᵉ forme).
+    usageCounter: {
+      max: 1,
+      resetOn: 'day',
+      hideFromStatusPanel: true,
+      conditionalFrequency: { featureId: 'prestige-ours-r8', resetOn: 'short-rest' },
+    },
+    creatureProfile: {
+      name: 'Ours',
+      transformation: true,
+      abilities: { AGI: 1, CON: 6, FOR: 6, PER: 2, CHA: -2 },
+      // Le « * » du bloc p. 152, sur la seule CON (convention des blocs de stats de créature).
+      bonusDieAbilities: ['CON'],
+      abilitiesFromMaster: { INT: 0, VOL: 2 },
+      defense: '[12 + rang]',
+      hitPoints: '[=rang × 5]',
+      initiative: '11',
+      attack: { label: 'Morsure et griffes', fromMaster: 'magicAttack', damage: '[2d4 + 6]' },
+    },
     sourcePage: 152,
   },
   {
@@ -1686,6 +1738,12 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le personnage peut se saisir d'un adversaire dont la FOR est inférieure à la sienne et l'écraser entre ses bras puissants. Sur un test d'attaque au contact réussi, le personnage inflige [2d4°+FOR] DM à sa cible et elle est immobilisée entre ses bras. À son tour, la victime peut tenter de se libérer avec un test de FOR en opposition ; en cas d'échec, elle ne peut faire aucune action. À chacun des tours suivants, tant que l'étreinte est maintenue, le personnage inflige à nouveau des DM sans avoir à réaliser son test d'attaque. Cette capacité peut être utilisée sous forme d'ours.",
+    // PER-74 : dé de DM balisé ; l'opposition de FOR et les DM répétés sans nouveau test d'attaque ne
+    // sont pas modélisables (aucun suivi d'immobilisation, patron Riposte du maître d'armes) → verbatim
+    // seul pour la mécanique, mais compteur 1×/combat posé (info utile même si le reste reste manuel).
+    richText:
+      "Une fois par combat, le personnage peut se saisir d'un adversaire dont la FOR est inférieure à la sienne et l'écraser entre ses bras puissants. Sur un test d'attaque au contact réussi, le personnage inflige [2d4° + FOR] DM à sa cible et elle est immobilisée entre ses bras. À son tour, la victime peut tenter de se libérer avec un test de FOR en opposition ; en cas d'échec, elle ne peut faire aucune action. À chacun des tours suivants, tant que l'étreinte est maintenue, le personnage inflige à nouveau des DM sans avoir à réaliser son test d'attaque. Cette capacité peut être utilisée sous forme d'ours.",
+    usageCounter: { max: 1, resetOn: 'short-rest', hideFromStatusPanel: true },
     sourcePage: 152,
   },
   {
@@ -1697,6 +1755,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Les plus puissants guerriers-ours peuvent prendre la forme d'un ours une fois par combat (nécessite de terminer une récupération rapide). Ces métamorphoses durent chaque fois jusqu'à [1d6+CON] heures.",
+    // PER-74 : redécrit la fréquence/durée de la MÊME transformation (r6) — pas une 2ᵉ forme distincte
+    // (arbitrage propriétaire). La cadence est reprise par `usageCounter.conditionalFrequency` du r6 ;
+    // ce rang ne porte donc aucun effet propre, juste le texte à jour + le dé balisé.
+    richText:
+      "Les plus puissants guerriers-ours peuvent prendre la forme d'un ours une fois par combat (nécessite de terminer une récupération rapide). Ces métamorphoses durent chaque fois jusqu'à [1d6 + CON] heures.",
     sourcePage: 152,
   },
 

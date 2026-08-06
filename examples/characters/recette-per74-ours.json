@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-ours",
+  "name": "Recette PER-74 — Ours (voie de prestige, rangs 4-8)",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie de l’ours p. 151-152) — 10ᵉ voie de la catégorie COMBATTANT. AGI 3, CON 2, FOR 3, PER 0, CHA -1, INT 2, VOL 1 DE BASE — sous forme d’ours (interrupteur r6 à allumer) : AGI/CON/FOR/PER/CHA sont IMPOSÉES à 1/6/6/2/-2 (surcharge ABSOLUE, pas un delta), INT reste 2 (le personnage « conserve sa propre INT »). VOL reste 1 sur le reste de la fiche (écart RAW assumé : le +2 de VOL est un delta, pas une valeur absolue, aucune primitive ne l’exprime via un override gated) MAIS la mini-fiche de la carte affiche bien VOL 3 (1+2, via `abilitiesFromMaster`, qui gère nativement les deltas). r4 : +5 aux tests d’intimidation en PERMANENCE + compteur 1×/combat sur le grondement (fuite forcée laissée à l’oral). r6 : compteur 1×/jour, qui passe à 1×/récupération rapide dès r8 acquis (même transformation, pas une 2ᵉ forme). r7 : compteur 1×/combat, DM en verbatim balisé."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "guerrier",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 3,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 2,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 3,
+    "AGI": 3,
+    "CON": 2,
+    "PER": 0,
+    "CHA": -1,
+    "INT": 2,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "combat-r1",
+    "combat-r2",
+    "combat-r3",
+    "combat-r4",
+    "combat-r5",
+    "prestige-ours-r4",
+    "prestige-ours-r5",
+    "prestige-ours-r6",
+    "prestige-ours-r7",
+    "prestige-ours-r8"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [
+    {
+      "itemId": "epee-longue",
+      "quantity": 1,
+      "worn": {
+        "slot": "mainHand",
+        "grip": "oneHand"
+      }
+    },
+    {
+      "itemId": "petit-bouclier",
+      "quantity": 1,
+      "worn": {
+        "slot": "shield"
+      }
+    },
+    {
+      "itemId": "corde-15-m",
+      "quantity": 1
+    }
+  ],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette de la voie de l’ours (10ᵉ voie COMBATTANT, p. 151-152) MÉCANISÉE : r4 test-bonus intimidation +5 + compteur grondement 1×/combat ; r6 transformation (abilityOverrides AGI/CON/FOR/PER/CHA, INT inchangée, VOL+2 en écart RAW assumé) + compteur 1×/jour → 1×/récupération rapide dès r8 (conditionalFrequency) ; r7 compteur 1×/combat + DM balisé. r5/r8 verbatim (r8 ne fait que redécrire la cadence/durée de la même forme). Guerrier niveau 16, voie du combat (seule voie de guerrier sans bonus de DEF permanent).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
