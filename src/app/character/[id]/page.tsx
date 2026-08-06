@@ -1417,7 +1417,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 onIdentity={setIdentity}
               />
             ) : (
-              <IdentityFields identity={character.identity} featureIds={character.featureIds} />
+              <IdentityFields
+                identity={character.identity}
+                ancestryId={character.ancestryId}
+                featureIds={character.featureIds}
+              />
             )}
           </SheetSection>
 
