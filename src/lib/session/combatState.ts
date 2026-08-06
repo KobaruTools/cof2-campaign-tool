@@ -745,6 +745,18 @@ export function clearStatusesOf(state: GmCombatState, key: string): GmCombatStat
 }
 
 /**
+ * Retire les états de TOUS les combattants, sans rien toucher d'autre (PER-312) : c'est ce que le
+ * MJ peut demander en clôturant un repos de groupe — le groupe a soufflé trente minutes ou dormi
+ * une nuit, les états de durée du tracker n'ont plus lieu d'être. Contrairement à `resetCombat`,
+ * le tour courant, la manche et les PV des créatures sont CONSERVÉS : une pause n'efface pas la
+ * scène, elle en efface les états. No-op (même référence) si plus aucun état n'est posé.
+ */
+export function clearAllStatuses(state: GmCombatState): GmCombatState {
+  if (Object.keys(state.statuses).length === 0) return state;
+  return { ...state, statuses: {} };
+}
+
+/**
  * Réinitialise le combat en cours (PER-283, clôt la milestone PER-276). Vide TOUS les états
  * de tous les combattants, remet le tour courant à `null`, RECOMMENCE à la manche 1 (un « Tour 0 »
  * n'existe pas) et restaure les PV des créatures (`depletions`). Conserve délibérément le roster de

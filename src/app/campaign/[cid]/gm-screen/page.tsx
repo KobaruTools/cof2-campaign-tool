@@ -17,7 +17,7 @@
  * Vocation à grandir (jets rapides, PV/mana en direct, notes de session…), d'où
  * une page dédiée plutôt qu'une modale.
  */
-import { Suspense, use, useState } from 'react';
+import { Suspense, use, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   DndContext,
@@ -59,6 +59,7 @@ import { GmScreenCreatureCard } from '@/components/campaign/GmScreenCreatureCard
 import { AddCreatureDialog } from '@/components/campaign/AddCreatureDialog';
 import { InitiativeTracker } from '@/components/campaign/InitiativeTracker';
 import { CombatStatusPalette, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
+import { GroupRestControl } from '@/components/campaign/GroupRestControl';
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
 import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkControl';
 import { GmToolsDrawerHost, TOOLS_PARAM } from '@/components/campaign/GmToolsDrawerHost';
@@ -69,6 +70,7 @@ import { GmSessionHeaderIndicator } from '@/components/session/GmSessionHeaderIn
 import { SIDE_ACCENT } from '@/lib/ui/creature';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { customCreatureBlob } from '@/lib/session/customCreature';
+import { useActiveSession } from '@/lib/session/useActiveSession';
 import type { AnyStatusEffectId } from '@/lib/character/statusEffects';
 import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
 
@@ -257,6 +259,20 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     setEditingId(instanceId);
     setCreatureDialogOpen(true);
   };
+  // Repos de groupe (PER-312) : la proposition part sur le canal de session, donc rien à proposer
+  // hors session. Observateur SANS battement — le battement de l'écran de MJ est porté par le
+  // `GmSessionHeaderIndicator` de l'en-tête (un seul par page), comme sur la fiche.
+  const { isActive: sessionActive } = useActiveSession(cid);
+  // La table attendue au relevé des réponses : les personnages réclamés, avec le nom de leur joueur.
+  const restTableCharacters = useMemo(
+    () =>
+      claimed.map((c) => ({
+        id: c.id,
+        name: c.name,
+        playerName: c.playerId ? playerById.get(c.playerId)?.name : undefined,
+      })),
+    [claimed, playerById],
+  );
   // Réinitialisation du combat (PER-283) : action destructive → confirmation avant purge.
   const [resetOpen, setResetOpen] = useState(false);
   // Rien à réinitialiser tant qu'aucun combattant n'est en piste (bouton masqué).
@@ -390,6 +406,14 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               Réinitialiser le combat
             </Button>
           )}
+          {/* Repos de groupe (PER-312) : propose une récupération à toute la table sur le canal
+              de session, et tient le relevé des réponses. Inerte hors session. */}
+          <GroupRestControl
+            campaignId={cid}
+            tableCharacters={restTableCharacters}
+            sessionActive={sessionActive}
+            buttonSx={(theme) => glassButtonSx(theme, 'info')}
+          />
           {/* Espaceur : consomme toute la largeur restante pour pousser « Outils du MJ » à
               l'extrême droite. Un simple `ml: 'auto'` sur le bouton perd face à la marge que
               `Stack`/`spacing` applique déjà entre ses enfants (même spécificité CSS, la règle

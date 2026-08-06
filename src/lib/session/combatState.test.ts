@@ -11,6 +11,7 @@ import {
   adjustStatusIntensity,
   applyStatusTo,
   clampAddCount,
+  clearAllStatuses,
   clearStatusesOf,
   creatureInfoEquals,
   duplicateCreature,
@@ -357,6 +358,28 @@ describe('clearStatusesOf', () => {
   it('no-op si le combattant n’a aucun état', () => {
     const state: GmCombatState = { ...EMPTY_COMBAT_STATE, statuses: { 'c-1': [{ id: 'blinded' }] } };
     expect(clearStatusesOf(state, 'absent')).toBe(state);
+  });
+});
+
+describe('clearAllStatuses', () => {
+  it('retire les états de tous les combattants sans toucher au reste de la scène', () => {
+    const state: GmCombatState = {
+      ...EMPTY_COMBAT_STATE,
+      currentTurnKey: 'c-1',
+      roundNumber: 4,
+      depletions: { 'c-1': { hp: { lethal: 3, temp: 0 } } },
+      statuses: { 'c-1': [{ id: 'blinded' }], 'c-2': [{ id: 'slowed', intensity: 2 }] },
+    };
+    const cleared = clearAllStatuses(state);
+    expect(cleared.statuses).toEqual({});
+    expect(cleared.currentTurnKey).toBe('c-1');
+    expect(cleared.roundNumber).toBe(4);
+    expect(cleared.depletions).toEqual({ 'c-1': { hp: { lethal: 3, temp: 0 } } });
+  });
+
+  it('no-op si plus aucun état n’est posé', () => {
+    const state: GmCombatState = { ...EMPTY_COMBAT_STATE, roundNumber: 2 };
+    expect(clearAllStatuses(state)).toBe(state);
   });
 });
 

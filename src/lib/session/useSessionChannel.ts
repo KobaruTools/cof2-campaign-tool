@@ -32,6 +32,11 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { useCharactersStore } from '@/stores/characters';
 import { COMBAT_STATE_EVENT, useCampaignCombatStore } from '@/stores/campaignCombat';
+import {
+  REST_PROPOSAL_EVENT,
+  REST_RESPONSE_EVENT,
+  useRestProposalStore,
+} from '@/stores/restProposal';
 import { registerSessionChannel } from './sessionBridge';
 import { joinSessionParticipant, leaveSessionParticipant } from './participantsRepo';
 import { resolveActiveSession } from './repo';
@@ -77,8 +82,12 @@ async function reconcileOnReconnect(
   const characters = useCharactersStore.getState();
   await characters.resyncGameState(campaignId);
   await characters.load({ force: true });
-  // Le MJ est l'auteur unique du combat : sa vue locale fait foi, il la re-diffuse.
-  if (kind === 'gm') useCampaignCombatStore.getState().resyncCombat(campaignId);
+  // Le MJ est l'auteur unique du combat : sa vue locale fait foi, il la re-diffuse. Idem pour une
+  // proposition de repos de groupe en cours (PER-312), qui ne vit qu'en mémoire chez lui.
+  if (kind === 'gm') {
+    useCampaignCombatStore.getState().resyncCombat(campaignId);
+    useRestProposalStore.getState().resyncProposal(campaignId);
+  }
 }
 
 /** Identité annoncée par ce client sur le canal. `null` tant que non résolue. */
@@ -151,9 +160,12 @@ export function useSessionChannel(
     let didInitialLoad = false;
 
     channel.on('presence', { event: 'sync' }, () => {
-      if (active) {
-        setPresent(presenceListFromState(channel.presenceState() as RawPresenceState));
-      }
+      if (!active) return;
+      setPresent(presenceListFromState(channel.presenceState() as RawPresenceState));
+      // Proposition de repos de groupe (PER-312) : elle ne vit qu'en mémoire chez le MJ, donc rien
+      // ne l'attend en base pour un joueur qui rejoint en cours de proposition. Le MJ la rediffuse
+      // à chaque mouvement de présence — no-op sans proposition ouverte, charge utile minuscule.
+      if (kind === 'gm') useRestProposalStore.getState().resyncProposal(campaignId);
     });
 
     // Réception des deltas d'état de jeu des pairs (PER-266) : application immédiate à la vue
@@ -183,6 +195,19 @@ export function useSessionChannel(
       if (p.state && typeof p.state === 'object') {
         useCampaignCombatStore.getState().applyRemoteCombat(campaignId, p.state);
       }
+    });
+
+    // Repos de groupe (PER-312), deux sens. L'INSTANTANÉ de la proposition descend du proposant
+    // vers toute la table (`null` = clôturée) ; la RÉPONSE d'un joueur remonte au proposant, qui
+    // seul tient le relevé et rediffuse l'instantané faisant foi. Un joueur ignore donc la réponse
+    // d'un autre joueur : il n'en verra que le reflet dans l'instantané suivant.
+    channel.on('broadcast', { event: REST_PROPOSAL_EVENT }, ({ payload }) => {
+      if (!active) return;
+      useRestProposalStore.getState().applyRemoteProposal(campaignId, payload);
+    });
+    channel.on('broadcast', { event: REST_RESPONSE_EVENT }, ({ payload }) => {
+      if (!active || kind !== 'gm') return;
+      useRestProposalStore.getState().mergeRemoteResponse(campaignId, payload);
     });
 
     // `setAuth()` (sans argument → token courant) avant l'abonnement : supabase-js le

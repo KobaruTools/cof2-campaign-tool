@@ -51,7 +51,7 @@ import {
   pruneUsageCounters,
 } from '@/lib/character/effects';
 import { pruneFeatureChoices, setFeatureChoice } from '@/lib/character/choices';
-import { pruneDepletion } from '@/lib/character/gauges';
+import { currentRecoveryDice, pruneDepletion } from '@/lib/character/gauges';
 import {
   companionMountEnSelle,
   listCompanions,
@@ -92,6 +92,7 @@ import { CapabilityScrollProvider } from '@/components/sheet/capabilityScroll';
 import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { AppAlert } from '@/components/AppAlert';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
+import { RestProposalDialog } from '@/components/session/RestProposalDialog';
 import { ManeuversPanel } from '@/components/sheet/ManeuversPanel';
 import { SourceRef } from '@/components/SourceRef';
 import { CompanionsPanel } from '@/components/sheet/CompanionsPanel';
@@ -1128,6 +1129,24 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 onLongRest={doLongRest}
                 elixirDosesToLose={elixirDosesToLose}
               />
+              {/* Repos de groupe (PER-312) : quand le MJ propose une récupération à toute la
+                  table, l'annonce s'ouvre ici — sur la fiche, là où le joueur applique son repos.
+                  Réservée au joueur qui incarne CE personnage : le MJ pilote la proposition depuis
+                  son écran, et un joueur qui consulte la fiche d'un camarade n'a rien à décider. */}
+              {isPlayer && !readOnly && characterCampaignId && (
+                <RestProposalDialog
+                  campaignId={characterCampaignId}
+                  characterId={character.id}
+                  recoveryDie={recoveryDie}
+                  recoveryDiceMax={recoveryDiceMax}
+                  recoveryDiceCurrent={currentRecoveryDice(recoveryDiceMax, character.depletion)}
+                  level={character.level}
+                  lethalDamage={character.depletion.hp?.lethal ?? 0}
+                  elixirDosesToLose={elixirDosesToLose}
+                  onShortRest={doShortRest}
+                  onLongRest={doLongRest}
+                />
+              )}
             </SheetSection>
           )}
 
