@@ -6,7 +6,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   generateMagicItem,
+  originAllowedForCategory,
   recommendedMagicLevel,
+  rollOrigin,
   type GenerateRequest,
   type RollDie,
 } from './magicItemGenerator';
@@ -217,5 +219,92 @@ describe('génération d’objets de pouvoir (p. 255)', () => {
     const g = generateMagicItem(req({ characterLevel: 5, frame: 'classic', category: 'power' }), seq(8, 1));
     expect(g.magicLevel).toBe(1);
     expect(g.value).toBe(200);
+  });
+});
+
+describe('origine narrative (PER-309, table p. 247)', () => {
+  it('rollOrigin lit les trois colonnes sur trois d10 indépendants', () => {
+    // 8 → Les profondeurs / Époque du Roi-Sorcier / Dragons.
+    const origin = rollOrigin(seq(8, 8, 8));
+    expect(origin.provenance).toBe('Les profondeurs');
+    expect(origin.epoch).toBe('Époque du Roi-Sorcier');
+    expect(origin.people).toBe('Dragons');
+    expect(origin.text).toContain('Les profondeurs');
+    expect(origin.text).toContain('Dragons');
+    expect(origin.text).toContain('p. 247');
+    expect(origin.rolls.map((r) => r.label)).toEqual(['Provenance', 'Époque', 'Peuple']);
+  });
+
+  it('les consommables ne sont pas adaptés (p. 247, NB) ; baguette autorisée', () => {
+    expect(originAllowedForCategory('potion')).toBe(false);
+    expect(originAllowedForCategory('scroll')).toBe(false);
+    expect(originAllowedForCategory('wand')).toBe(true);
+    expect(originAllowedForCategory('weapon')).toBe(true);
+    expect(originAllowedForCategory('defense')).toBe(true);
+    expect(originAllowedForCategory('power')).toBe(true);
+  });
+
+  it('arme du catalogue : la légende va dans overrides.description', () => {
+    // épée longue (niveau 14 classique) sans propriété, puis origine 4/5/8.
+    const g = generateMagicItem(
+      req({ characterLevel: 14, category: 'weapon', withOrigin: true }),
+      seq(1 /* contact */, 8 /* épée longue */, 6 /* pas de propriété */, 4, 5, 8),
+    );
+    expect(isCustomItem(g.line)).toBe(false);
+    const ref = g.line as EquipmentRef;
+    expect(ref.itemId).toBe('epee-longue');
+    expect(ref.magicBonus).toBe(4); // origine n'altère aucune stat de règle
+    expect(ref.overrides?.description).toContain('Grand Nord');
+    expect(ref.overrides?.description).toContain('Apogée d’Anathazerïn');
+    expect(ref.overrides?.description).toContain('Dragons');
+    expect(g.origin).toBeDefined();
+    expect(g.origin?.provenance).toBe('Grand Nord');
+    // Les trois d10 d'origine sont journalisés APRÈS les jets de l'objet.
+    expect(g.rolls.slice(-3).map((r) => r.label)).toEqual(['Provenance', 'Époque', 'Peuple']);
+  });
+
+  it('objet libre : la légende va dans details', () => {
+    // « Autre arme » (d20 = 20) → objet libre ; origine 2/2/2 → Nains.
+    const g = generateMagicItem(
+      req({ characterLevel: 14, category: 'weapon', withOrigin: true }),
+      seq(1 /* contact */, 20 /* autre arme */, 6 /* pas de propriété */, 2, 2, 2),
+    );
+    expect(isCustomItem(g.line)).toBe(true);
+    if (isCustomItem(g.line)) expect(g.line.details).toContain('Nains');
+    expect(g.origin?.people).toBe('Nains');
+  });
+
+  it('baguette : origine autorisée, légende ajoutée aux details existants', () => {
+    // baguette (voie 16, rang 6, charges 20+15) puis origine 1/1/1 → Locale/Post Monastir/Humains.
+    const g = generateMagicItem(
+      req({ category: 'wand', minor: false, withOrigin: true }),
+      seq(16, 6, 20, 15, 1, 1, 1),
+    );
+    expect(isCustomItem(g.line)).toBe(true);
+    if (isCustomItem(g.line)) {
+      expect(g.line.details).toContain('charges'); // le détail d'origine baguette est conservé
+      expect(g.line.details).toContain('Humains'); // et la légende d'origine ajoutée
+    }
+    expect(g.origin?.provenance).toBe('Locale');
+  });
+
+  it('potion : origine ignorée même si demandée (non adaptée, p. 247)', () => {
+    const g = generateMagicItem(req({ category: 'potion', withOrigin: true }), seq(1, 6));
+    expect(g.origin).toBeUndefined();
+    if (isCustomItem(g.line)) expect(g.line.details ?? '').not.toContain('Origine');
+  });
+
+  it('parchemin : origine ignorée même si demandée', () => {
+    const g = generateMagicItem(req({ category: 'scroll', minor: true, withOrigin: true }), seq(16, 1));
+    expect(g.origin).toBeUndefined();
+    if (isCustomItem(g.line)) expect(g.line.details ?? '').not.toContain('Origine');
+  });
+
+  it('sans withOrigin : aucune origine, aucun jet supplémentaire', () => {
+    const g = generateMagicItem(
+      req({ characterLevel: 14, category: 'weapon' }),
+      seq(1, 8, 6), // strictement les jets de l'arme, la file est épuisée après
+    );
+    expect(g.origin).toBeUndefined();
   });
 });

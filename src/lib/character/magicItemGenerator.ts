@@ -54,6 +54,13 @@ export interface GenerateRequest {
    * Pilote aussi le rang des parchemins/baguettes (table « mineur / moyen », p. 250).
    */
   minor?: boolean;
+  /**
+   * AJOUTER UNE ORIGINE narrative (PER-309, table p. 247) : trois d10 (provenance / époque /
+   * peuple) dont la légende est ajoutée à la description de l'objet. PUREMENT narratif, aucune
+   * règle. Ignoré pour les consommables (potions/parchemins), non adaptés selon le livre —
+   * voir `originAllowedForCategory`.
+   */
+  withOrigin?: boolean;
 }
 
 /** Un jet de dé journalisé, pour afficher la provenance de l'objet dans l'UI. */
@@ -89,6 +96,12 @@ export interface GeneratedMagicItem {
   summary: string;
   /** Journal des jets, pour l'affichage « selon le livre » dans l'UI. */
   rolls: GeneratedRoll[];
+  /**
+   * Origine narrative (PER-309, p. 247) si `withOrigin` était demandé ET la catégorie s'y prête
+   * (absente pour les consommables potions/parchemins). Aucune incidence sur les règles ; sa
+   * légende est aussi ajoutée à la description de `line`.
+   */
+  origin?: MagicItemOrigin;
 }
 
 // ───────────────────────── Table de puissance (p. 244) ─────────────────────────
@@ -338,6 +351,120 @@ const POWER_PROFILES: readonly [number, string][] = [
   [19, 'Rôdeur'],
   [20, 'Voleur'],
 ];
+
+// ───────────────────────── Origine narrative (p. 247) ─────────────────────────
+
+/** Page de la table « Origine d'un objet magique ». */
+export const MAGIC_ORIGIN_SOURCE_PAGE = 247;
+
+/** « Provenance » (d10, p. 247) — d'où l'objet provient. */
+export const MAGIC_ORIGIN_PROVENANCES: readonly string[] = [
+  'Locale',
+  'La nation où l’objet est découvert',
+  'Une nation voisine de la nation où l’objet vient d’être trouvé',
+  'Grand Nord',
+  'Sud profond',
+  'Ouest lointain',
+  'Est lointain',
+  'Les profondeurs',
+  'Un autre continent',
+  'Un autre plan',
+];
+
+/** « Époque » (d10, p. 247) — de quand l'objet date. */
+export const MAGIC_ORIGIN_EPOCHS: readonly string[] = [
+  'Post Monastir',
+  'Âges sombres (-700 à -1)',
+  'Empire d’Osgild',
+  'Chute d’Anathazerïn',
+  'Apogée d’Anathazerïn',
+  'Apogée des Premiers-nés',
+  'Corruption post Roi-Sorcier',
+  'Époque du Roi-Sorcier',
+  'Chute des pierres du ciel',
+  'Premier âge',
+];
+
+/** « Peuple » (d10, p. 247) — par quel peuple l'objet a été forgé. */
+export const MAGIC_ORIGIN_PEOPLES: readonly string[] = [
+  'Humains',
+  'Nains',
+  'Elfes',
+  'Gnomes',
+  'Elfes des ténèbres',
+  'Orcs ou gobelins',
+  'Ange, démon, divinité',
+  'Dragons',
+  'Seigneur élémentaire',
+  'Autre créature ancienne',
+];
+
+/** Origine narrative tirée (aucune règle, p. 247) — les trois colonnes + la légende assemblée. */
+export interface MagicItemOrigin {
+  /** Colonne « Provenance ». */
+  provenance: string;
+  /** Colonne « Époque ». */
+  epoch: string;
+  /** Colonne « Peuple ». */
+  people: string;
+  /** Légende assemblée, ajoutée à la description de l'objet et affichée à l'aperçu. */
+  text: string;
+  /** Les trois jets de d10, pour la provenance « selon le livre » dans l'UI. */
+  rolls: GeneratedRoll[];
+}
+
+/**
+ * La table d'origine (p. 247, NB) n'est PAS adaptée aux consommables (« potions et
+ * parchemins ») → origine masquée pour `'potion'` et `'scroll'`. Les baguettes, bien qu'à
+ * charges, restent des objets durables → origine AUTORISÉE (décision proprio 2026-08-06).
+ */
+export function originAllowedForCategory(category: MagicItemCategory): boolean {
+  return category !== 'potion' && category !== 'scroll';
+}
+
+/**
+ * TIRE une origine narrative (p. 247) : trois d10 INDÉPENDANTS (provenance / époque / peuple).
+ * Purement narratif — aucune incidence sur les règles de l'objet.
+ */
+export function rollOrigin(roll: RollDie): MagicItemOrigin {
+  const pRoll = roll(10);
+  const eRoll = roll(10);
+  const plRoll = roll(10);
+  const provenance = MAGIC_ORIGIN_PROVENANCES[clamp(pRoll, 1, 10) - 1];
+  const epoch = MAGIC_ORIGIN_EPOCHS[clamp(eRoll, 1, 10) - 1];
+  const people = MAGIC_ORIGIN_PEOPLES[clamp(plRoll, 1, 10) - 1];
+  const rolls: GeneratedRoll[] = [
+    { label: 'Provenance', die: 'd10', result: pRoll, outcome: provenance },
+    { label: 'Époque', die: 'd10', result: eRoll, outcome: epoch },
+    { label: 'Peuple', die: 'd10', result: plRoll, outcome: people },
+  ];
+  const text = `Origine (p. ${MAGIC_ORIGIN_SOURCE_PAGE}) — Provenance : ${provenance}. Époque : ${epoch}. Peuple : ${people}.`;
+  return { provenance, epoch, people, text, rolls };
+}
+
+/** Ajoute la légende d'origine à la description de la ligne (objet libre → `details`, catalogue → `overrides.description`). */
+function withOriginDescription(line: EquipmentLine, text: string): EquipmentLine {
+  if ('custom' in line) {
+    const details = line.details ? `${line.details} ${text}` : text;
+    return { ...line, details };
+  }
+  // Objet du catalogue (EquipmentRef) : sa description d'instance vit dans `overrides.description`.
+  const description = line.overrides?.description ? `${line.overrides.description} ${text}` : text;
+  return { ...line, overrides: { ...line.overrides, description } };
+}
+
+/**
+ * Ajoute une origine à un objet généré : légende dans la description, provenance dans le journal
+ * des jets, et champ `origin` renseigné. Ne touche à AUCUNE stat de règle.
+ */
+function applyOrigin(item: GeneratedMagicItem, origin: MagicItemOrigin): GeneratedMagicItem {
+  return {
+    ...item,
+    line: withOriginDescription(item.line, origin.text),
+    origin,
+    rolls: [...item.rolls, ...origin.rolls],
+  };
+}
 
 // ───────────────────────── Construction des lignes ─────────────────────────
 
@@ -643,11 +770,8 @@ function generatePower(req: GenerateRequest, roll: RollDie): GeneratedMagicItem 
   return { line, category: 'power', magicLevel: magicLvl, value, sourcePage: 255, summary: line.name, rolls };
 }
 
-/**
- * GÉNÈRE un objet magique de la catégorie demandée en déroulant les tables du livre.
- * `roll` est l'aléa injecté (un « dN » renvoyant `[1, sides]`).
- */
-export function generateMagicItem(req: GenerateRequest, roll: RollDie): GeneratedMagicItem {
+/** Déroule la table de la catégorie demandée (sans l'habillage d'origine, ajouté ensuite). */
+function generateBaseItem(req: GenerateRequest, roll: RollDie): GeneratedMagicItem {
   switch (req.category) {
     case 'weapon':
       return generateWeapon(req, roll);
@@ -662,6 +786,21 @@ export function generateMagicItem(req: GenerateRequest, roll: RollDie): Generate
     case 'power':
       return generatePower(req, roll);
   }
+}
+
+/**
+ * GÉNÈRE un objet magique de la catégorie demandée en déroulant les tables du livre.
+ * `roll` est l'aléa injecté (un « dN » renvoyant `[1, sides]`). Si `req.withOrigin` est vrai et
+ * que la catégorie s'y prête (non consommable, p. 247), une origine narrative est tirée après
+ * l'objet et sa légende ajoutée à la description — l'ordre des jets d'origine (trois d10) vient
+ * donc APRÈS ceux de l'objet.
+ */
+export function generateMagicItem(req: GenerateRequest, roll: RollDie): GeneratedMagicItem {
+  const item = generateBaseItem(req, roll);
+  if (req.withOrigin && originAllowedForCategory(req.category)) {
+    return applyOrigin(item, rollOrigin(roll));
+  }
+  return item;
 }
 
 /** Aléa réel pour l'UI : `roll(n)` = un dN honnête basé sur `Math.random`. */

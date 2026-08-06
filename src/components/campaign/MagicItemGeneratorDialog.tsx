@@ -41,6 +41,7 @@ import {
   GAME_FRAME_LABEL,
   generateMagicItem,
   MAGIC_ITEM_CATEGORY_LABEL,
+  originAllowedForCategory,
   randomRoll,
   recommendedMagicLevel,
   type GameFrame,
@@ -143,6 +144,13 @@ function GeneratedPreview({ item }: { item: GeneratedMagicItem }) {
         (p. {item.sourcePage})
       </Typography>
 
+      {/* Origine narrative (PER-309, p. 247) : légende ajoutée à la description de l'objet. */}
+      {item.origin && (
+        <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic', color: 'secondary.light' }}>
+          {item.origin.text}
+        </Typography>
+      )}
+
       {/* Provenance : la suite des jets de dés, « selon le livre ». */}
       <Box sx={{ mt: 1 }}>
         {item.rolls.map((r, i) => (
@@ -172,13 +180,21 @@ export function MagicItemGeneratorDialog({
   const [level, setLevel] = useState(3);
   const [frame, setFrame] = useState<GameFrame>('classic');
   const [minor, setMinor] = useState(false);
+  const [withOrigin, setWithOrigin] = useState(false);
   const [item, setItem] = useState<GeneratedMagicItem | null>(null);
   const [giveAnchor, setGiveAnchor] = useState<HTMLElement | null>(null);
 
   const recommended = recommendedMagicLevel(level, frame, minor);
+  // La table d'origine (p. 247) n'est pas adaptée aux consommables (potions/parchemins).
+  const originAllowed = originAllowedForCategory(category);
 
   const roll = () => {
-    setItem(generateMagicItem({ characterLevel: level, frame, category, minor }, randomRoll));
+    setItem(
+      generateMagicItem(
+        { characterLevel: level, frame, category, minor, withOrigin: withOrigin && originAllowed },
+        randomRoll,
+      ),
+    );
   };
 
   const handleReserve = () => {
@@ -249,6 +265,24 @@ export function MagicItemGeneratorDialog({
             control={<Switch checked={minor} onChange={(e) => setMinor(e.target.checked)} />}
             label="Objet mineur (colonne du niveau ÷ 2, p. 244)"
           />
+
+          <Box>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={withOrigin && originAllowed}
+                  disabled={!originAllowed}
+                  onChange={(e) => setWithOrigin(e.target.checked)}
+                />
+              }
+              label="Ajouter une origine (provenance, époque, peuple — p. 247)"
+            />
+            {!originAllowed && (
+              <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', ml: 4.5, mt: -0.5 }}>
+                Table non adaptée aux consommables (potions et parchemins), selon le livre.
+              </Typography>
+            )}
+          </Box>
 
           <Typography variant="caption" sx={{ color: 'text.disabled' }}>
             Niveau de magie recommandé au niveau {level} ({GAME_FRAME_LABEL[frame].toLowerCase()}
