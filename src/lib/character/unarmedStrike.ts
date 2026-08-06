@@ -27,6 +27,23 @@ export interface UnarmedStrikeSource {
   name: string;
 }
 
+/**
+ * DM bonus SITUATIONNEL ajouté aux attaques à mains nues par une capacité (PER-322,
+ * ex. âme forgée « Choc électrique » : +1d4° d'électricité une fois par round). Générique
+ * et data-driven : toute capacité portant un effet `weapon-damage-bonus` dont la condition
+ * cible la famille d'arme `unarmed` est agrégée ici. Le module « arme portée »
+ * (`weaponDamageBonuses`) les ignore justement (la condition de famille n'est jamais
+ * satisfaite sans arme en main) — c'est donc ici qu'ils s'affichent.
+ */
+export interface UnarmedBonusDamage {
+  featureId: string;
+  name: string;
+  /** Expression courte du bonus, ex. « +1d4° », « +2 » ou « +FOR ». */
+  amount: string;
+  /** Condition situationnelle en toutes lettres (ex. « électricité, une fois par round »). */
+  label?: string;
+}
+
 export interface UnarmedStrikeView {
   /** Dé(s) de DM de base, résolu(s) au rang courant. `nonLethal` reflète la létalité. */
   damage: WeaponDamage;
@@ -51,8 +68,22 @@ export interface UnarmedStrikeView {
   damageTypeChoice: boolean;
   /** Élargissement de la plage de critique au contact, actif à mains nues (Morsure du serpent). */
   criticalRangeBonus: number;
+  /** DM bonus situationnels à mains nues, octroyés par des capacités (voir `UnarmedBonusDamage`). */
+  bonusDamage: UnarmedBonusDamage[];
   /** Capacités modifiant le combat à mains nues (pour le rendu verbatim + source). */
   sources: UnarmedStrikeSource[];
+}
+
+/** Expression courte d'un bonus de DM d'arme (dé, caractéristique ou plat) pour un badge. */
+function formatBonusAmount(effect: {
+  dice?: { count: number; die: string; evolving?: boolean };
+  ability?: string;
+  flat?: unknown;
+}): string {
+  if (effect.dice) return `+${effect.dice.count}${effect.dice.die}${effect.dice.evolving ? '°' : ''}`;
+  if (effect.ability) return `+${effect.ability}`;
+  if (typeof effect.flat === 'number') return effect.flat >= 0 ? `+${effect.flat}` : `${effect.flat}`;
+  return '';
 }
 
 /** DM de base de la table des armes (p. 183) : `1d3` contondant. */
@@ -174,6 +205,22 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
     sources = addSource(sources, id);
   }
 
+  // DM bonus situationnels à mains nues (PER-322) : tout effet `weapon-damage-bonus` dont la
+  // condition cible la famille d'arme `unarmed`. Générique — la capacité les déclare en données,
+  // ce module ne code aucun id en dur (contenu payant compris).
+  const bonusDamage: UnarmedBonusDamage[] = [];
+  for (const id of acquired) {
+    const feature = featureById.get(id);
+    if (!feature?.effects) continue;
+    for (const effect of feature.effects) {
+      if (effect.kind !== 'weapon-damage-bonus') continue;
+      if (!effect.condition.weaponFamilies?.includes('unarmed')) continue;
+      const amount = formatBonusAmount(effect);
+      if (!amount) continue;
+      bonusDamage.push({ featureId: id, name: feature.name, amount, label: effect.condition.label });
+    }
+  }
+
   damage = { ...damage, nonLethal: lethality === 'non-lethal' };
 
   return {
@@ -185,6 +232,7 @@ export function unarmedStrike(character: Character): UnarmedStrikeView {
     minRollBecomesMax,
     damageTypeChoice,
     criticalRangeBonus,
+    bonusDamage,
     sources,
   };
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { registerContentBundle } from '@/data';
 import { SCHEMA_VERSION, type Character } from '@/lib/character/types';
 import { formatUnarmedDamage, unarmedStrike } from './unarmedStrike';
 
@@ -53,6 +54,7 @@ describe('unarmedStrike — cas commun (n\'importe quel personnage)', () => {
     expect(v.minRollBecomesMax).toBe(false);
     expect(v.damageTypeChoice).toBe(false);
     expect(v.criticalRangeBonus).toBe(0);
+    expect(v.bonusDamage).toEqual([]);
     expect(v.sources).toEqual([]);
   });
 
@@ -113,6 +115,62 @@ describe('unarmedStrike — moine', () => {
   it('Morsure du serpent : plage de critique au contact +1 à mains nues (p. 119)', () => {
     const v = unarmedStrike(makeCharacter({ classId: 'moine', featureIds: ['maitrise-r3'] }));
     expect(v.criticalRangeBonus).toBe(1);
+  });
+});
+
+describe('unarmedStrike — DM bonus situationnel (générique, data-driven, PER-322)', () => {
+  // Capacité SYNTHÉTIQUE (aucun contenu payant) : prouve que le hook lit n'importe quel
+  // effet `weapon-damage-bonus` dont la condition cible la famille d'arme « unarmed »,
+  // sans coder d'id en dur. C'est ce mécanisme que l'âme forgée « Choc électrique » emprunte.
+  registerContentBundle({
+    paths: [
+      {
+        id: 'test-unarmed-rider',
+        name: 'Voie de test',
+        type: 'ancestry',
+        ancestryIds: ['test-unarmed-rider'],
+        featureIds: ['test-unarmed-rider-r1'],
+        sourcePage: 0,
+      },
+    ],
+    features: [
+      {
+        id: 'test-unarmed-rider-r1',
+        name: 'Choc de test',
+        pathId: 'test-unarmed-rider',
+        rank: 1,
+        isSpell: false,
+        actionTypes: [],
+        text: 'Bonus de test à mains nues.',
+        sourcePage: 0,
+        effects: [
+          {
+            kind: 'weapon-damage-bonus',
+            dice: { count: 1, die: 'd4', evolving: true },
+            condition: { weaponFamilies: ['unarmed'], label: 'foudre, une fois par round' },
+            situational: true,
+          },
+        ],
+      },
+    ],
+  });
+
+  it('un effet weapon-damage-bonus ciblant la famille « unarmed » remonte en bonusDamage', () => {
+    const v = unarmedStrike(
+      makeCharacter({ featureIds: ['test-unarmed-rider-r1'], ancestryPathId: 'test-unarmed-rider' }),
+    );
+    expect(v.bonusDamage).toEqual([
+      {
+        featureId: 'test-unarmed-rider-r1',
+        name: 'Choc de test',
+        amount: '+1d4°',
+        label: 'foudre, une fois par round',
+      },
+    ]);
+  });
+
+  it('sans la capacité : aucun DM bonus', () => {
+    expect(unarmedStrike(makeCharacter()).bonusDamage).toEqual([]);
   });
 });
 

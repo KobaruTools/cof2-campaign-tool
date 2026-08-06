@@ -4,6 +4,7 @@ import CasinoIcon from '@mui/icons-material/Casino';
 import SportsMartialArtsIcon from '@mui/icons-material/SportsMartialArts';
 import TuneIcon from '@mui/icons-material/Tune';
 import Box from '@mui/material/Box';
+import { DamageValue } from '@/components/DamageValue';
 import {
   AttackQualifierBadge as QualifierBadge,
   attackBadgeTooltip as badgeTooltip,
@@ -80,6 +81,24 @@ export function UnarmedStrikeBadges({ view }: { view: UnarmedStrikeView }) {
           )}
         />
       )}
+      {/* DM bonus situationnels (ambre). Le dé est rendu en ICÔNE via <DamageValue> (comme la
+          flèche élémentaire), pas en texte brut : « +1d4° » devient une vraie icône de dé. */}
+      {view.bonusDamage.map((b) => (
+        <QualifierBadge
+          key={b.featureId}
+          color="warning"
+          icon={
+            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
+              <DamageValue damage={b.amount} size={16} sx={{ color: 'text.primary' }} />
+            </Box>
+          }
+          label="DM"
+          tooltip={badgeTooltip(
+            b.label ? `DM bonus à mains nues : ${b.label}.` : 'DM bonus à mains nues.',
+            b.featureId,
+          )}
+        />
+      ))}
     </Box>
   );
 }

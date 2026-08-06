@@ -11,6 +11,7 @@
     "home:shots": "tsx scripts/generate-home-shots.ts",
     "ingest": "tsx scripts/ingest-bestiary.ts",
     "upload-book": "tsx scripts/upload-paid-book.ts",
+    "upload-companion": "tsx scripts/upload-companion-content.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

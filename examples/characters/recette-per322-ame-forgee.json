@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per322-ame-forgee",
+  "name": "Recette PER-322 — Âme forgée (Le Compagnon)",
+  "identity": {
+    "description": "ATTENDU (compte ENTITLÉ au Compagnon) : peuple « Âme forgée » + « Voie de l’âme forgée » (rangs 1-5) visibles et calculés. Rang 1 Métallique → DEF +1 + RD 5 (feu, froid) ; rang 5 Machine de guerre → +1 CON et +1 FOR. Compte NON entitlé / joueur /play anonyme : le peuple est ABSENT (registres non fusionnés), la fiche reste calculée sur ses stats."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "ame-forgee",
+  "classId": "barbare",
+  "level": 5,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 1,
+    "CHA": -1,
+    "INT": 0,
+    "VOL": 1
+  },
+  "baseAbilities": {
+    "FOR": 2,
+    "AGI": 1,
+    "CON": 2,
+    "PER": 1,
+    "CHA": -1,
+    "INT": 0,
+    "VOL": 1
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "ame-forgee",
+  "featureIds": [
+    "ame-forgee-r1",
+    "ame-forgee-r2",
+    "ame-forgee-r3",
+    "ame-forgee-r4",
+    "ame-forgee-r5"
+  ],
+  "featureChoices": {},
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-322 — âme forgée. Fiche de recette du contenu payant « Le Compagnon » (source companion). Vérifie l’affichage des 5 capacités de voie (badges, verbatim, action (M)/(L), compteurs 1/jour et 1/combat).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

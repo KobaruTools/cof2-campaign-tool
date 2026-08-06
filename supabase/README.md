@@ -235,6 +235,54 @@ version a bougé.
   blobs (ne jeter que les créatures réellement modifiées) ne portera ses fruits que
   si l'ingestion n'écrit un jour que les lignes changées.
 
+### Contenu payant de construction de personnage : « Le Compagnon » (PER-321/316)
+
+Le contenu payant qui alimente la **construction de personnage** (peuples, profils,
+voies, capacités du *Compagnon du joueur*) ne passe PAS par les tables `creatures` :
+il est consommé SYNCHRONIQUEMENT par le moteur (wizard, montée de niveau) via les
+registres de `@/data`. Le socle PER-321 rend ces registres **augmentables à
+l'exécution** ; le contenu vit dans un **unique JSON gaté** déposé dans le bucket
+privé `paid-books` au chemin `companion/content.json` — **même bucket, même RLS par
+entitlement (migration 0011)** que les PDF payants. Aucune migration nouvelle n'est
+donc requise.
+
+Chaîne côté client (PER-321) : `<PaidContentBoot/>` → `loadPaidContent()` télécharge
+le JSON via la session (RLS Storage), le met en cache IndexedDB (store `content`) et
+le **fusionne en place** dans les registres. Un non-entitlé / joueur `/play` anonyme
+ne déclenche aucun fetch → les entités du Compagnon sont simplement ABSENTES
+(`ancestryById.get('ame-forgee')` → `undefined`), sans placeholder ni fuite.
+
+Le contenu réel (verbatim BBE) est authoré dans `private/companion-content.ts`
+(**gitignoré**, copyright) : un `export const companionContent: ContentBundle`. Le
+script d'upload l'importe de façon tolérante (absent → ignoré sans erreur), exactement
+comme `private/bestiary-paid.ts`.
+
+Provisionnement (en plus du gating PER-242/243 et de la migration 0011) :
+
+1. **Autoriser le compte** au déblocage : insérer sa ligne dans `redeem_allowlist`
+   (SQL Supabase, `service_role`) si ce n'est pas déjà fait pour le bestiaire :
+   ```sql
+   insert into public.redeem_allowlist (user_id, note)
+   values ('<AUTH_USER_UUID>', 'propriétaire') on conflict do nothing;
+   ```
+2. **Monter la source + téléverser le JSON** : `SUPABASE_SECRET_KEY` +
+   `NEXT_PUBLIC_SUPABASE_URL` en `.env.local`, `private/companion-content.ts` présent,
+   puis
+   ```sh
+   npm run upload-companion
+   ```
+   Upserte la source `companion` (`is_paid = true`, `redeem_code = 'companion-bbe'`),
+   bumpe `content_version` (invalide le cache client) et pousse
+   `companion/content.json`. Idempotent.
+3. **Débloquer** : dans `/account` → « Débloquer du contenu » → saisir `companion-bbe`
+   (rotable ensuite : `update public.sources set redeem_code = '…' where slug =
+   'companion'`, sans toucher les entitlements déjà posés).
+4. **Recette** : compte débloqué → au wizard/édition, les peuples du Compagnon
+   apparaissent et leurs capacités s'affichent (badges, verbatim, refs de page).
+   Compte SANS entitlement ou joueur `/play` anonyme → peuples ABSENTS, une fiche qui
+   les utilise reste calculée et affichée. Retrait d'accès → au rechargement suivant,
+   le cache IndexedDB purge la source (dé-fusion en mémoire seulement au rechargement).
+
 ## Authentification CLI PAR DOSSIER (pas globale)
 
 `supabase login` stocke un token **global** à la machine : sur un poste qui gère
