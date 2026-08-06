@@ -284,9 +284,9 @@ export const fighterPaths: ClassPath[] = [
     name: 'Voie du combat',
     classIds: ['guerrier'],
     featureIds: ['combat-r1', 'combat-r2', 'combat-r3', 'combat-r4', 'combat-r5'],
-    // Exemple en italique placé à la fin de la voie, p. 88 (référencé par
-    // « voir exemple » dans Attaque puissante, rang 3).
-    note: 'Exemple : un guerrier peut choisir de se déplacer puis d’utiliser attaque puissante sur une action d’attaque (A). Il subit alors un dé malus en attaque et inflige +2d4° DM. Il peut choisir de faire une double attaque en puissance (seulement s’il connaît aussi la capacité double attaque), ce qui lui demande une action limitée. Il fait alors deux attaques avec un dé malus et -2 en attaque, et chaque attaque réussie inflige +2d4° DM. Enfin, il peut utiliser une action limitée pour faire une seule attaque puissante ; il subit un dé malus et si l’attaque est réussie, il inflige +3d4° DM.',
+    // PAS de `note` : rien n'est écrit sous « VOIE DU COMBAT » avant le rang 1 (p. 88, contrairement
+    // à la voie du bouclier ou la voie de la rage, qui portent une vraie phrase/encadré d'intro). L'« Exemple »
+    // en italique de la p. 88 appartient au rang 3 (Attaque puissante) — cf. son sourceRef dans `combat-r3`.
     sourcePage: 88,
   },
   {
@@ -1673,10 +1673,13 @@ export const fighterFeatures: Feature[] = [
       'Le guerrier peut choisir de s’imposer un dé malus sur une attaque au contact et il ajoute +2d4° aux DM. Cette capacité peut être utilisée avec Double attaque, Attaque circulaire ou Attaque parfaite (voir exemple). Transformez cette capacité en action limitée (L) pour obtenir +3d4° aux DM au lieu de +2d4°.',
     // Rendu enrichi (PER-72) : dés de DM {2d4°}/{3d4°}. Les capacités citées sont des RÉFÉRENCES :
     // Double attaque (combat-r4), Attaque circulaire (combat-r5) et Attaque parfaite (maitre-d-armes-r4)
-    // → balisées [&id] (puces aux couleurs du guerrier). « (voir exemple) » renvoie à la note de la voie
-    // (affichée). Le +2d4°/+3d4° aux DM d'arme n'est pas encore câblé au bloc Attaque au contact (PER-115).
+    // → balisées [&id] (puces aux couleurs du guerrier). L'encadré « Exemple » (verbatim en italique, p. 88)
+    // qu'annonce « voir exemple » n'est PAS reproduit ici (il appartient au rang, pas à la voie) : on y
+    // renvoie plutôt par un sourceRef imbriqué juste avant la parenthèse fermante — `(p. 88)` isolé pour
+    // que `splitPageRefs` le reconnaisse, les parenthèses extérieures restant du texte littéral autour.
+    // Le +2d4°/+3d4° aux DM d'arme n'est pas encore câblé au bloc Attaque au contact (PER-115).
     richText:
-      'Le guerrier peut choisir de s’imposer un dé malus sur une attaque au contact et il ajoute +{2d4°} aux DM. Cette capacité peut être utilisée avec [&combat-r4], [&combat-r5] ou [&maitre-d-armes-r4] (voir exemple). Transformez cette capacité en action limitée (L) pour obtenir +{3d4°} aux DM au lieu de +{2d4°}.',
+      'Le guerrier peut choisir de s’imposer un dé malus sur une attaque au contact et il ajoute +{2d4°} aux DM. Cette capacité peut être utilisée avec [&combat-r4], [&combat-r5] ou [&maitre-d-armes-r4] (voir exemple (p. 88)). Transformez cette capacité en action limitée (L) pour obtenir +{3d4°} aux DM au lieu de +{2d4°}.',
     sourcePage: 88,
   },
   {
