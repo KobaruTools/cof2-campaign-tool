@@ -24,6 +24,8 @@
 import { useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import HotelIcon from '@mui/icons-material/Hotel';
+import TimerIcon from '@mui/icons-material/Timer';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
@@ -37,15 +39,20 @@ import { SectionIcon } from '@/components/SectionIcon';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
 import { GaugeRow } from '@/components/sheet/GaugeRow';
 import { HpGauge } from '@/components/sheet/HpGauge';
-import { STATUS_EFFECTS, type StatusEffectId } from '@/data/schema';
+import { RecoveryDicePips } from '@/components/sheet/RecoveryDicePips';
+import { STATUS_EFFECTS, type Die, type StatusEffectId } from '@/data/schema';
 import {
   applyDamage,
   currentMana,
+  currentRecoveryDice,
   healHp,
   resetHp,
   resetMana,
   restoreMana,
+  restoreRecoveryDice,
+  setRecoveryDiceMissing,
   spendMana,
+  spendRecoveryDice,
 } from '@/lib/character/gauges';
 import type { Depletion } from '@/lib/character/types';
 import type { SectionIconName } from '@/lib/ui/sectionIcons';
@@ -207,21 +214,84 @@ const LevelUpGridDemo = dynamic(
 const DEMO_MAX_HP = 24;
 /** Réserve de mana du même personnage (un lanceur de sorts de bas niveau). */
 const DEMO_MAX_MANA = 12;
+/** Sa réserve de dés de récupération, et le dé associé à son profil. */
+const DEMO_RECOVERY_DICE_MAX = 3;
+const DEMO_RECOVERY_DIE: Die = 'd6';
+/** Faces du dé ci-dessus, dérivées de son code (même lecture que `sheetActions`). */
+const DEMO_RECOVERY_DIE_FACES = Number.parseInt(DEMO_RECOVERY_DIE.slice(1), 10);
+/** Son niveau : il entre dans le soin d'un repos (½ niveau, p. 221-222). */
+const DEMO_LEVEL = 3;
+
+/**
+ * Régénère les dégâts TEMPORAIRES en conservant les létaux : tout repos commence par là
+ * (les DM temporaires se récupèrent à 1/min, p. 220). Reproduit le `clearTemp` privé de
+ * `lib/character/rest` — la démo ne peut pas appeler `shortRest`/`longRest`, qui exigent un
+ * `Character` complet et entraîneraient tout le moteur (effets, élixirs, armes, charges)
+ * dans le bundle de la page d'accueil.
+ */
+function demoClearTemp(depletion: Depletion): Depletion {
+  if (!depletion.hp) return depletion;
+  return { ...depletion, hp: { lethal: Math.max(0, depletion.hp.lethal), temp: 0 } };
+}
 
 /**
  * Les **vraies** jauges de la fiche — `HpGauge` (PV létaux / temporaires) et la `GaugeRow`
- * de mana — branchées sur une dépletion locale que font évoluer les **vrais** réducteurs
- * de `lib/character/gauges`. Seule la persistance est remplacée par un `useState`.
+ * de mana — plus la **vraie** matrice de dés de récupération, branchées sur une dépletion
+ * locale que font évoluer les **vrais** réducteurs de `lib/character/gauges`. Seule la
+ * persistance est remplacée par un `useState`.
  *
  * Les deux bandes sont volontairement réduites au même gabarit (`hideDetails` +
  * `controlsBelow`) : barre pleine largeur, boutons ±1 / remise à plein sur leur propre ligne,
  * pas de formulaire détaillé. La carte n'a pas la place de le déplier, et un chevron qui ne
  * promet rien de tenable vaut moins que pas de chevron. Sur la fiche, les deux jauges gardent
  * leur formulaire (montant + Dégâts/Soin, montant + Dépenser/Récupérer).
+ *
+ * Les deux repos appliquent les règles du livre (p. 221-222), à une entorse près, assumée :
+ * le dé de récupération est lancé **par le programme**. Sur la fiche, il est SAISI par le
+ * joueur — les dés se lancent en vrai à la table (décision de conception du projet) — mais
+ * une vitrine ne peut pas demander à un visiteur de lancer un dé physique. Les effets qui
+ * n'ont pas de sens ici (capacités « par combat » ou « par jour », élixirs, rechargement des
+ * armes : la démo n'a ni capacité, ni compteur, ni équipement) sont simplement absents.
  */
 function InPlayDemo() {
   const theme = useTheme();
   const [depletion, setDepletion] = useState<Depletion>({ hp: { lethal: 7, temp: 3 }, mana: 5 });
+  const recoveryDice = currentRecoveryDice(DEMO_RECOVERY_DICE_MAX, depletion);
+  const halfLevel = Math.floor(DEMO_LEVEL / 2);
+
+  /**
+   * Repos court (p. 221) : dégâts temporaires régénérés, et un dé de récupération dépensé
+   * pour soigner `dé + ½ niveau` PV. Sans DR disponible, aucun soin — le repos se réduit alors
+   * aux dégâts temporaires, et c'est justement l'attrition du système qu'il faut donner à voir :
+   * le bouton reste donc actif, il ne rend simplement plus de PV.
+   */
+  const shortRest = () => {
+    const roll = 1 + Math.floor(Math.random() * DEMO_RECOVERY_DIE_FACES);
+    setDepletion((d) => {
+      const rested = demoClearTemp(d);
+      if (currentRecoveryDice(DEMO_RECOVERY_DICE_MAX, d) <= 0) return rested;
+      return spendRecoveryDice(healHp(rested, roll + halfLevel), 1, DEMO_RECOVERY_DICE_MAX);
+    });
+  };
+
+  /**
+   * Repos long (p. 221-222, 229) : mana entièrement restauré, dégâts temporaires régénérés
+   * et **+1 dé de récupération** — le système d'attrition ne rend ni tous les PV ni tous les DR.
+   *
+   * Réserve déjà pleine : le DR gagné ne peut pas s'y ajouter, il est donc immédiatement dépensé
+   * pour soigner, et « le nombre de PV récupérés est automatiquement égal à la valeur maximale du
+   * dé » (p. 222) — c'est le MÊME dé, donc la réserve reste inchangée. Le livre laisse ce choix au
+   * joueur à chaque repos long ; la démo le fait à sa place, dans le seul cas où l'autre option ne
+   * donnerait rien.
+   */
+  const longRest = () => {
+    setDepletion((d) => {
+      const rested = resetMana(demoClearTemp(d));
+      return currentRecoveryDice(DEMO_RECOVERY_DICE_MAX, d) >= DEMO_RECOVERY_DICE_MAX
+        ? healHp(rested, DEMO_RECOVERY_DIE_FACES + halfLevel)
+        : restoreRecoveryDice(rested, 1, DEMO_RECOVERY_DICE_MAX);
+    });
+  };
 
   return (
     <Stack spacing={1.25}>
@@ -251,6 +321,50 @@ function InPlayDemo() {
         onRestore={(amount) => setDepletion((d) => restoreMana(d, amount, DEMO_MAX_MANA))}
         onReset={() => setDepletion(resetMana)}
       />
+
+      {/* Les deux repos sur UNE ligne (chacun la moitié de la largeur : côte à côte, ils
+          n'entrent pas à leur largeur naturelle dans une carte de 250 px), la réserve de dés
+          de récupération sur la ligne suivante, alignée à droite comme les boutons des jauges. */}
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+        <AppTooltip
+          title="Récupération rapide (30 min) : régénère les dégâts temporaires et consomme un dé de récupération pour se soigner de [dé + ½ niveau] PV."
+          page={221}
+        >
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<TimerIcon />}
+            onClick={shortRest}
+            sx={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap' }}
+          >
+            Repos court
+          </Button>
+        </AppTooltip>
+        <AppTooltip
+          title="Récupération complète (8 h, 1/jour) : mana plein, dégâts temporaires régénérés, et +1 dé de récupération — ou, réserve déjà pleine, ce dé est dépensé sur-le-champ pour soigner sa valeur maximale."
+          page="221-222, 229"
+        >
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<HotelIcon />}
+            onClick={longRest}
+            sx={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap' }}
+          >
+            Repos long
+          </Button>
+        </AppTooltip>
+      </Stack>
+      <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
+        <RecoveryDicePips
+          max={DEMO_RECOVERY_DICE_MAX}
+          current={recoveryDice}
+          die={DEMO_RECOVERY_DIE}
+          onSet={(value) =>
+            setDepletion((d) => setRecoveryDiceMissing(d, DEMO_RECOVERY_DICE_MAX - value, DEMO_RECOVERY_DICE_MAX))
+          }
+        />
+      </Stack>
     </Stack>
   );
 }
