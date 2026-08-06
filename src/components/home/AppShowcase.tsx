@@ -32,6 +32,11 @@ interface ShowcaseTab {
   href: string;
   /** Légende sous le cadre : ce que le visiteur doit remarquer sur l'image. */
   caption: string;
+  /**
+   * Format de l'image, quand l'écran est capturé dans un cadre plus haut que les autres
+   * (cf. `GM_SHOT_VIEWPORT` du script). Défaut : `SHOT_ASPECT`.
+   */
+  aspect?: string;
 }
 
 const TABS: ShowcaseTab[] = [
@@ -41,6 +46,16 @@ const TABS: ShowcaseTab[] = [
     href: '/characters',
     caption:
       'Caractéristiques, statistiques dérivées et attaques calculées en continu — un rôdeur de niveau 20, voies complètes.',
+  },
+  {
+    slug: 'gm-screen',
+    label: 'Écran de MJ',
+    // La page est réservée au propriétaire d'une campagne : le clic mène à la liste des
+    // campagnes, qui invite à se connecter plutôt que de mener à une porte fermée.
+    href: '/campaigns',
+    caption:
+      'Une manche de combat en cours : la table du MJ, les créatures du bestiaire, les états posés sur chacun, et l’ordre d’initiative en cartes compactes le long de l’écran.',
+    aspect: '1440 / 1390',
   },
   {
     slug: 'rules',
@@ -65,6 +80,7 @@ export function AppShowcase() {
   const [missing, setMissing] = useState<ReadonlySet<string>>(new Set());
   const active = TABS[index];
   const isMissing = missing.has(active.slug);
+  const aspect = active.aspect ?? SHOT_ASPECT;
 
   return (
     <Stack spacing={1.5}>
@@ -123,7 +139,7 @@ export function AppShowcase() {
           <Stack
             spacing={0.5}
             sx={{
-              aspectRatio: SHOT_ASPECT,
+              aspectRatio: aspect,
               placeContent: 'center',
               textAlign: 'center',
               p: 3,
@@ -156,7 +172,7 @@ export function AppShowcase() {
               onError={() =>
                 setMissing((prev) => new Set(prev).add(active.slug))
               }
-              sx={{ display: 'block', width: '100%', height: 'auto', aspectRatio: SHOT_ASPECT }}
+              sx={{ display: 'block', width: '100%', height: 'auto', aspectRatio: aspect }}
             />
           </Box>
         )}

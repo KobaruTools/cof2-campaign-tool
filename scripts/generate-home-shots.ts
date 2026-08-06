@@ -10,12 +10,21 @@
  *
  * Prérequis : un serveur de développement DÉJÀ LANCÉ (`npm run dev`). Le script ne le
  * démarre pas et ne l'arrête pas — il se contente de visiter les pages. L'URL de base
- * est réglable par `HOME_SHOTS_BASE_URL` (défaut `http://localhost:3000`).
+ * est réglable par `HOME_SHOTS_BASE_URL` (défaut `http://localhost:3000`), et
+ * `HOME_SHOTS_ONLY` limite la reprise à certaines captures
+ * (`HOME_SHOTS_ONLY=gm-screen,sheet`).
  *
  * La fiche de personnage est capturée SANS COMPTE : le personnage d'exemple est injecté
  * dans le `localStorage` du navigateur de test (même clé que le store `characters`),
  * ce qui suffit puisque l'application est locale d'abord. Aucune session, aucun accès à
  * la base — donc rien de privé ne peut fuir dans une capture.
+ *
+ * Seul l'**écran de MJ** fait exception : il vit derrière l'authentification et lit ses
+ * données dans le cloud. Il a donc sa propre mécanique — session de démonstration et
+ * campagne fictive — dans `scripts/home-shots-gm-screen.ts`. Là encore, aucune donnée
+ * réelle : la campagne, les joueurs et le combat sont inventés, et la base n'est lue que
+ * pour les blocs du bestiaire (source libre). Sans variables d'environnement Supabase,
+ * cette capture est simplement sautée.
  *
  * `sharp` sert à convertir en WebP (Playwright n'écrit que du PNG ou du JPEG). Il est
  * fourni par Next.js pour l'optimisation d'images ; s'il venait à disparaître, le script
@@ -25,11 +34,36 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { loadEnvConfig } from '@next/env';
 import { chromium, type Page } from 'playwright';
 import sharp from 'sharp';
+import {
+  GM_SHOT_SLUG,
+  GM_SHOT_VIEWPORT,
+  gmScreenPath,
+  openGmScreen,
+} from './home-shots-gm-screen';
+
+// Charge `.env.local` comme le ferait Next : la capture de l'écran de MJ a besoin des
+// variables publiques Supabase (session de démonstration).
+loadEnvConfig(process.cwd(), true, { info: () => {}, error: console.error });
 
 const BASE_URL = process.env.HOME_SHOTS_BASE_URL ?? 'http://localhost:3000';
 const OUT_DIR = join(process.cwd(), 'public', 'home');
+
+/**
+ * Captures à refaire, par leur nom de fichier, séparés par des virgules
+ * (`HOME_SHOTS_ONLY=gm-screen`). Vide = toutes. Sert à reprendre UNE capture sans
+ * repasser par les autres — et à tirer deux captures de serveurs différents quand il
+ * le faut.
+ */
+const ONLY = (process.env.HOME_SHOTS_ONLY ?? '')
+  .split(',')
+  .map((slug) => slug.trim())
+  .filter(Boolean);
+
+/** Cette capture est-elle demandée ? */
+const wanted = (slug: string) => ONLY.length === 0 || ONLY.includes(slug);
 
 /** Cadrage des captures. Assez large pour montrer une mise en page de bureau. */
 const VIEWPORT = { width: 1440, height: 900 };
@@ -122,13 +156,24 @@ function readFixture(): { id: string; character: Record<string, unknown> } {
 }
 
 /**
+ * Masque l'incrustation des outils de développement de Next (le bouton « N » du coin
+ * bas-gauche). Elle n'existe QUE sur un serveur de développement — donc jamais pour un
+ * visiteur — mais se retrouvait sur les captures, où elle passe pour un élément de
+ * l'application.
+ */
+async function hideDevOverlay(page: Page): Promise<void> {
+  await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+}
+
+/**
  * Capture `page` en PNG, convertit en WebP et écrit le fichier. Retourne sa taille en
  * kilo-octets, pour que la sortie console rende compte du poids ajouté au dépôt.
  */
-async function capture(page: Page, shot: Shot): Promise<number> {
-  const png = await page.screenshot({ type: 'png', clip: shot.clip });
+async function capture(page: Page, slug: string, clip?: Shot['clip']): Promise<number> {
+  await hideDevOverlay(page);
+  const png = await page.screenshot({ type: 'png', clip });
   const webp = await sharp(png).webp({ quality: WEBP_QUALITY }).toBuffer();
-  writeFileSync(join(OUT_DIR, `${shot.slug}.webp`), webp);
+  writeFileSync(join(OUT_DIR, `${slug}.webp`), webp);
   return Math.round(webp.byteLength / 1024);
 }
 
@@ -166,6 +211,7 @@ async function main() {
   };
 
   for (const shot of SHOTS) {
+    if (!wanted(shot.slug)) continue;
     const url = `${BASE_URL}${shot.path(id)}`;
     process.stdout.write(`→ ${shot.slug} : ${url}\n`);
     const page = await pageFor(shot.scale ?? 1);
@@ -174,11 +220,50 @@ async function main() {
       await page.waitForSelector(shot.readySelector, { timeout: 30_000 });
     }
     if (shot.settleMs) await page.waitForTimeout(shot.settleMs);
-    const kb = await capture(page, shot);
+    const kb = await capture(page, shot.slug, shot.clip);
     process.stdout.write(`  ✓ public/home/${shot.slug}.webp (${kb} ko)\n`);
   }
 
+  await captureGmScreen(browser);
+
   await browser.close();
+}
+
+/**
+ * Capture de l'écran de MJ. À part des autres : seul écran derrière l'authentification
+ * et alimenté par le cloud, il exige une session et une campagne de démonstration — cf.
+ * `scripts/home-shots-gm-screen.ts`, qui porte toute cette mécanique.
+ *
+ * Sans variables d'environnement Supabase, la capture est SAUTÉE avec un message clair
+ * (l'ancienne image reste en place) : le reste de la vitrine se régénère quand même.
+ */
+async function captureGmScreen(browser: Awaited<ReturnType<typeof chromium.launch>>) {
+  if (!wanted(GM_SHOT_SLUG)) return;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!supabaseUrl || !publishableKey) {
+    process.stdout.write(
+      `→ ${GM_SHOT_SLUG} : sauté (NEXT_PUBLIC_SUPABASE_URL / ` +
+        'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY absentes de l’environnement)\n',
+    );
+    return;
+  }
+
+  process.stdout.write(`→ ${GM_SHOT_SLUG} : ${BASE_URL}${gmScreenPath()}\n`);
+  const page = await openGmScreen(browser, {
+    baseUrl: BASE_URL,
+    supabaseUrl,
+    publishableKey,
+    viewport: GM_SHOT_VIEWPORT,
+  });
+  // La bande d'initiative est montée (sa bascule de densité en est la preuve la plus
+  // stable), puis on attend un NOM DE CRÉATURE : les blocs du bestiaire arrivent après
+  // le premier rendu, et sans eux la bande n'aurait que les personnages.
+  await page.waitForSelector('[aria-label="Cartes compactes"]', { timeout: 30_000 });
+  await page.waitForSelector('text=Momie', { timeout: 30_000 });
+  await page.waitForTimeout(2500);
+  const kb = await capture(page, GM_SHOT_SLUG);
+  process.stdout.write(`  ✓ public/home/${GM_SHOT_SLUG}.webp (${kb} ko)\n`);
 }
 
 main().catch((error) => {
