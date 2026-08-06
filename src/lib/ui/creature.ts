@@ -16,6 +16,7 @@ export const CREATURE_CATEGORY_LABELS: Record<CreatureCategory, string> = {
   humanoides: "Humanoïdes",
   animaux: "Animaux",
   "creatures-fantastiques": "Créatures fantastiques",
+  pnj: "PNJ",
 };
 
 /** Libellés des tailles (table p. 260). */

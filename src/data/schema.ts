@@ -3973,8 +3973,14 @@ export interface ProgressionRules {
  * Source : CBHS_06_Chroniques_Oubliees_2_web_v2.pdf, p. 259-303.
  */
 
-/** Section du livre dont la créature provient (« Profils de créatures : … »). */
-export const CREATURE_CATEGORIES = ['humanoides', 'animaux', 'creatures-fantastiques'] as const;
+/**
+ * Section du livre dont la créature provient (« Profils de créatures : … »). Les trois
+ * premières sont les sections du livre de base ; `pnj` désigne l'annexe II « Personnages
+ * non joueurs » du supplément payant « Le Bestiaire » (p. 216-245) — des blocs de stats
+ * mécaniquement identiques aux créatures, mais regroupés à part dans le navigateur (PER-250).
+ * Placée en DERNIER : l'ordre du tableau pilote l'ordre d'affichage des sections.
+ */
+export const CREATURE_CATEGORIES = ['humanoides', 'animaux', 'creatures-fantastiques', 'pnj'] as const;
 export type CreatureCategory = (typeof CREATURE_CATEGORIES)[number];
 
 /** Catégorie de taille (table p. 260). */
