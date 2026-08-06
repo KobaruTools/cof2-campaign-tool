@@ -372,16 +372,33 @@ function InPlayDemo() {
 // ─── Démo 4 : écran de meneur ────────────────────────────────────────────────
 
 /**
- * Combattants de la maquette d'initiative. Le camp fixe la teinte de la bordure, et
- * chacun porte des **états préjudiciables réels** (ids de `STATUS_EFFECT_IDS`) : c'est ce
- * qui donne à voir la vraie complexité d'un tour de jeu, où l'initiative n'est qu'une
- * ligne parmi les informations à suivre.
+ * Combattants de la maquette d'initiative, dans l'ordre décroissant d'initiative. Le camp
+ * fixe la teinte de la bordure, et chacun porte des **états préjudiciables réels** (ids de
+ * `STATUS_EFFECT_IDS`) : c'est ce qui donne à voir la vraie complexité d'un tour de jeu, où
+ * l'initiative n'est qu'une ligne parmi les informations à suivre.
+ *
+ * Trois partis pris, tous tirés du livre :
+ *
+ *  - les deux gobelins agissent à la **même** initiative. C'est ainsi qu'un groupe de
+ *    créatures identiques se joue — l'attaque groupée « ne peut être utilisée que si toutes
+ *    les créatures concernées possèdent le même profil et agissent à la même initiative
+ *    (par exemple, un groupe de gobelins) » (p. 217) ;
+ *  - les adversaires sont de vraies créatures du livre : gobelin, bandit et chef bandit
+ *    (p. 263), ce dernier placé juste avant sa troupe puisqu'il donne « +1 en Init., en
+ *    attaque et aux DM à tous les bandits à portée de vue » ;
+ *  - « Lhagva » est le personnage des exemples du livre, comme dans l'aide-mémoire.
+ *
+ * La maquette n'énonce toujours aucun barème : ces valeurs d'initiative sont des jets de
+ * table, pas des données de règle.
  */
 const COMBATANTS = [
   { name: 'Ysoria', init: 18, side: 'ally', statuses: ['slowed'] },
   { name: 'Gobelin 1', init: 14, side: 'enemy', statuses: ['blinded', 'weakened'] },
+  { name: 'Gobelin 2', init: 14, side: 'enemy', statuses: ['immobilized'] },
+  { name: 'Chef bandit', init: 12, side: 'enemy', statuses: [] },
   { name: 'Brutus', init: 11, side: 'ally', statuses: ['prone', 'winded'] },
-  { name: 'Gobelin 2', init: 7, side: 'enemy', statuses: ['immobilized'] },
+  { name: 'Lhagva', init: 9, side: 'ally', statuses: ['dazed'] },
+  { name: 'Bandit', init: 6, side: 'enemy', statuses: ['surprised'] },
 ] as const satisfies readonly {
   name: string;
   init: number;
