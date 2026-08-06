@@ -27,9 +27,13 @@ import {
   type LootItem,
   type TavernRumor,
 } from '@/lib/campaign';
+import { hasSupabaseSession } from '@/lib/supabase/session';
 import { useCharactersStore } from './characters';
 
-/** Cycle de vie du chargement cloud. `unconfigured` = env Supabase absente. */
+/**
+ * Cycle de vie du chargement cloud. `unconfigured` = aucun cloud à lire pour ce
+ * visiteur : variables d'env Supabase absentes, ou aucune session ouverte.
+ */
 export type CampaignsStatus = 'idle' | 'loading' | 'ready' | 'error' | 'unconfigured';
 
 interface CampaignsState {
@@ -89,6 +93,13 @@ export const useCampaignsStore = create<CampaignsState>()((set, get) => ({
 
   load: async (opts) => {
     if (!isSupabaseConfigured()) {
+      set({ status: 'unconfigured', campaigns: [], error: null });
+      return;
+    }
+    // Visiteur SANS session : `/characters` (ouvert à tous) charge les campagnes pour
+    // résoudre le badge de chaque ligne. Sans compte il n'y a aucune campagne à lire —
+    // on évite l'aller-retour, et les badges retombent sur « Non attribué ».
+    if (!(await hasSupabaseSession())) {
       set({ status: 'unconfigured', campaigns: [], error: null });
       return;
     }

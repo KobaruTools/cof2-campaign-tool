@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { AppHeader } from '@/components/AppHeader';
 import { HomeBackground } from '@/components/HomeBackground';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { PlayClient } from './PlayClient';
@@ -50,13 +51,24 @@ export default async function PlayPage() {
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
       <HomeBackground />
+      {/* Barre de navigation globale, jusqu'ici absente de l'espace joueur : le joueur
+          invité n'avait ni logo, ni accès au bestiaire / à l'aide-mémoire / au livre des
+          règles, ni menu de session — alors que ces routes lui sont ouvertes.
+          Fil d'Ariane à un seul maillon (le nom de la campagne, rendu en `<h1>`) : le
+          joueur n'a pas de liste de campagnes au-dessus de lui. Même patron que la vue
+          MJ `/campaign/[cid]`, d'où la disparition du titre dupliqué dans le corps.
+          `sessionRole` est passé en dur : les claims viennent d'être validés ci-dessus,
+          la session EST joueur — la nav est donc juste dès le premier rendu, sans
+          attendre la résolution côté client. */}
+      <AppHeader
+        breadcrumbs={[{ label: campaign?.name ?? 'Ma campagne' }]}
+        sessionRole="player"
+      />
+
       <Container maxWidth="md" sx={{ py: { xs: 4, sm: 6 } }}>
         <Stack spacing={1} sx={{ mb: 3 }}>
           <Typography variant="overline" color="text.secondary">
             Espace joueur
-          </Typography>
-          <Typography variant="h4" component="h1">
-            {campaign?.name ?? 'Ma campagne'}
           </Typography>
           {campaign?.description ? (
             <Typography variant="body2" color="text.secondary">

@@ -73,6 +73,28 @@ export default function AboutPage() {
             </Typography>
           </Section>
 
+          {/* Crédit des illustrations — section à part entière : contrairement aux
+              règles (DRS en accès libre), les images ne sont couvertes par aucune
+              licence ouverte. Le dire explicitement, et pas seulement en incise. */}
+          <Section title="À qui appartiennent les illustrations ?">
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+              <strong>Aucune illustration de ce site ne nous appartient.</strong> L’image de
+              couverture, les portraits de peuples et de profils, les illustrations de
+              créatures et toutes les images des ouvrages sont la propriété de{' '}
+              <ExternalLink href="https://black-book-editions.fr">
+                Black Book Éditions
+              </ExternalLink>{' '}
+              et des artistes qui les ont réalisées.
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Elles sont reprises ici à titre purement illustratif, pour un outil gratuit,
+              non commercial et destiné à un usage privé à la table de jeu — sans intention
+              d’appropriation. Contrairement aux règles, elles ne sont couvertes par aucune
+              licence ouverte : le DRS partage le <em>système</em>, pas les images. À la
+              demande d’un ayant droit, elles seraient retirées sans délai.
+            </Typography>
+          </Section>
+
           {/* Source des règles */}
           <Section title="D'où viennent les règles ?">
             <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>

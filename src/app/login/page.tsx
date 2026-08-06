@@ -22,6 +22,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { HomeBackground } from '@/components/HomeBackground';
 import { ProviderIcon } from '@/components/icons/ProviderIcons';
+import { roleOfUser } from '@/lib/auth/sessionRole';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { OAUTH_PROVIDERS, type OAuthProviderId } from '@/lib/auth/providers';
 import {
@@ -36,14 +37,35 @@ const IS_CONFIGURED = Boolean(
 
 type Busy = { kind: 'idle' } | { kind: 'oauth'; provider: OAuthProviderId } | { kind: 'magic' };
 
+/**
+ * Ferme une éventuelle session **joueur** avant d'entamer une connexion.
+ *
+ * Un joueur invité par son MJ est un utilisateur ANONYME Supabase portant le claim
+ * `player_id`. Démarrer une connexion sans le déconnecter d'abord lierait la nouvelle
+ * identité à cet utilisateur anonyme : il deviendrait permanent tout en CONSERVANT son
+ * claim, et resterait donc confiné à l'espace joueur — un compte inutilisable. Son lien
+ * d'invitation reste valable, il peut le rouvrir à tout moment.
+ */
+async function closePlayerSessionIfAny(
+  supabase: ReturnType<typeof createBrowserSupabaseClient>,
+): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (roleOfUser(session?.user) === 'player') {
+    await supabase.auth.signOut();
+  }
+}
+
 export default function LoginPage() {
   const [lastMethod, setLastMethod] = useState<LastAuthMethod | null>(null);
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState<Busy>({ kind: 'idle' });
   const [error, setError] = useState<string | null>(null);
   const [magicSent, setMagicSent] = useState(false);
-  // Destination post-connexion transmise par le gating du proxy (PER-189).
-  const [nextPath, setNextPath] = useState('/');
+  // Destination post-connexion transmise par le gating du proxy (PER-189). Défaut
+  // `/characters` (ses personnages) et non la vitrine `/`, désormais publique.
+  const [nextPath, setNextPath] = useState('/characters');
 
   // Indice « dernière méthode » + erreur éventuelle renvoyée par le callback +
   // destination `next`, lus côté client uniquement (évite un besoin de Suspense
@@ -79,6 +101,7 @@ export default function LoginPage() {
     setBusy({ kind: 'oauth', provider });
     try {
       const supabase = createBrowserSupabaseClient();
+      await closePlayerSessionIfAny(supabase);
       rememberLastAuthMethod(provider);
       const meta = OAUTH_PROVIDERS.find((p) => p.id === provider);
       const { error: err } = await supabase.auth.signInWithOAuth({
@@ -103,6 +126,7 @@ export default function LoginPage() {
     setBusy({ kind: 'magic' });
     try {
       const supabase = createBrowserSupabaseClient();
+      await closePlayerSessionIfAny(supabase);
       const { error: err } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: { emailRedirectTo: callbackUrl },

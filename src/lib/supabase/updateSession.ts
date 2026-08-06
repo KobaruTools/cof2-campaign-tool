@@ -1,70 +1,24 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { decideRouteAccess } from '@/lib/auth/routeAccess';
+import { roleOfUser } from '@/lib/auth/sessionRole';
 import type { Database } from './types';
 
 /**
- * Préfixes de routes **publiques** : accessibles sans session propriétaire, donc
- * exclues du gating (PER-189). Tout le reste (`/`, `/create`, `/character/[id]`,
- * `/campaigns`, `/campaign/[cid]`) exige une session Supabase.
- * - `/login` : écran de connexion (PER-188) ;
- * - `/auth` : callback PKCE + déconnexion (`/auth/callback`, `/auth/signout`) ;
- * - `/join` : landing du lien magique joueur (PER-189, échange délégué à PER-191) ;
- * - `/about` : page d'information publique (« À propos »), liée depuis le pied de
- *   page présent sur toutes les routes, y compris déconnecté ;
- * - `/privacy` : politique de vie privée (RGPD), également liée depuis le pied de
- *   page — un document légal doit rester consultable sans compte ;
- * - `/project` : lien de projection (PER-271). Le redeem `/project/[secret]` doit être
- *   atteignable SANS session (une TV n'a pas de compte) ; la vue `/project` fait sa
- *   propre garde sur le claim `projection` (et une session de projection y est confinée,
- *   plus bas). Aucune donnée sensible n'y est servie sans le claim (RLS + garde de page).
- */
-const PUBLIC_PATH_PREFIXES = ['/login', '/auth', '/join', '/about', '/privacy', '/project'] as const;
-
-/**
- * Routes ouvertes à une session **joueur** (utilisateur anonyme du lien magique,
- * PER-191) : son espace `/play`, l'édition de sa fiche `/character/*` et la
- * création d'une fiche `/create` (PER-196 — attribuée à lui dans sa campagne, le
- * scope réel étant porté par la RLS/trigger). Tout le reste (UI propriétaire) lui
- * est interdit → renvoyé vers `/play`.
- */
-const PLAYER_PATH_PREFIXES = ['/play', '/character', '/create'] as const;
-
-/**
- * Routes **partagées** par les deux rôles : le MJ n'en est PAS exclu (contrairement
- * à `/play`, exclusif au joueur). `/character/*` (fiche) et `/create` (wizard) sont
- * empruntées par le MJ comme par le joueur.
- */
-const SHARED_PATH_PREFIXES = ['/character', '/create'] as const;
-
-function matchesPrefix(pathname: string, prefixes: readonly string[]): boolean {
-  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-}
-
-function isPublicPath(pathname: string): boolean {
-  return matchesPrefix(pathname, PUBLIC_PATH_PREFIXES);
-}
-
-function isPlayerPath(pathname: string): boolean {
-  return matchesPrefix(pathname, PLAYER_PATH_PREFIXES);
-}
-
-/**
  * Rafraîchit la session Supabase à chaque requête (PER-188) **et** gate les
- * routes propriétaire (PER-189), appelé depuis `src/proxy.ts` (ex-middleware,
- * renommé « proxy » en Next 16). Réécrit les cookies de session sur la réponse
- * pour que Server Components et Route Handlers lisent une session à jour.
+ * routes (PER-189), appelé depuis `src/proxy.ts` (ex-middleware, renommé
+ * « proxy » en Next 16). Réécrit les cookies de session sur la réponse pour que
+ * Server Components et Route Handlers lisent une session à jour.
  *
  * **Garde-fou** : tant que Supabase n'est pas provisionné (variables d'env
  * absentes), on ne fait RIEN — l'application locale (100 % localStorage)
  * continue de fonctionner sans dépendre du cloud, et sans gating (sinon toute
  * l'app deviendrait inaccessible faute de moyen de se connecter).
  *
- * Gating = contrôle **optimiste** (lecture de session côté cookie), conforme à
- * la doc Next 16 (`app/guides/authentication`) : un visiteur non authentifié qui
- * vise une route propriétaire est redirigé vers `/login` (avec `next` pour
- * revenir à la page visée après connexion). La sécurité porteuse reste la RLS
- * Supabase côté données.
+ * Le **périmètre** de chaque rôle ne vit pas ici : il est décrit et testé dans
+ * `@/lib/auth/routeAccess` (module pur). Cette fonction se borne à résoudre la
+ * session, en dériver le rôle (`roleOfUser`) et appliquer la décision.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -99,69 +53,23 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-
-  // Construit une redirection en reportant les cookies de session éventuellement
-  // rafraîchis (sinon la session « clignote » à la requête suivante).
-  const redirectTo = (to: string, search = ''): NextResponse => {
-    const url = request.nextUrl.clone();
-    url.pathname = to;
-    url.search = search;
-    const redirectResponse = NextResponse.redirect(url);
-    for (const cookie of response.cookies.getAll()) {
-      redirectResponse.cookies.set(cookie);
-    }
-    return redirectResponse;
-  };
-
-  // Gating : visiteur non authentifié sur une route propriétaire → connexion.
-  if (!user) {
-    if (isPublicPath(pathname)) {
-      return response;
-    }
-    // Retour post-connexion vers la page visée (chemin interne, pas d'open redirect).
-    const target = pathname + request.nextUrl.search;
-    return redirectTo('/login', target !== '/' ? `?next=${encodeURIComponent(target)}` : '');
-  }
-
-  // Session de PROJECTION (PER-271) : observateur lecture seule (claim `projection`, SANS
-  // `player_id`). Confiné à sa vue `/project` (préfixe public) et aux pages publiques ; il
-  // n'a rien à faire ailleurs (ni espace joueur, ni UI propriétaire, ni visualiseur PDF —
-  // d'où ce court-circuit AVANT le bloc `/rules`|`/pdf`). Placé avant le confinement de rôle
-  // classique car la projection n'a pas de `player_id` (elle serait sinon prise pour un MJ).
-  const isProjection = Boolean(
-    (user.app_metadata as { projection?: boolean } | undefined)?.projection,
-  );
-  if (isProjection) {
-    if (!isPublicPath(pathname)) {
-      return redirectTo('/project');
-    }
+  const decision = decideRouteAccess(pathname, roleOfUser(user));
+  if (decision.allow) {
     return response;
   }
 
-  // Visualiseur PDF (PER-240) : la route de la page (`/rules/{book}/{page}`, PER-60) ET
-  // le fichier PDF servi (`/pdf/*.pdf`, `public/pdf/`) sont gardés derrière l'authentification
-  // (respect du copyright — aucun accès anonyme, cf. le `if (!user)` ci-dessus) mais ouverts à
-  // TOUS les rôles. On court-circuite donc le confinement de rôle ci-dessous : sans ça, une
-  // session JOUEUR serait renvoyée vers `/play` et pdf.js recevrait une redirection au lieu du
-  // PDF, alors que les renvois de page (`SourceRef`) sont partout, y compris sur les fiches du joueur.
-  if (pathname.startsWith('/rules/') || pathname.startsWith('/pdf/')) {
-    return response;
-  }
+  // Redirection en reportant les cookies de session éventuellement rafraîchis
+  // (sinon la session « clignote » à la requête suivante).
+  const target = pathname + request.nextUrl.search;
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.pathname = decision.redirectTo;
+  // Retour post-connexion vers la page visée (chemin interne, pas d'open redirect).
+  redirectUrl.search =
+    decision.withNext && target !== '/' ? `?next=${encodeURIComponent(target)}` : '';
 
-  // Confinement des rôles (PER-191). Une session JOUEUR (claim `player_id`) est
-  // cantonnée à son espace ; une session MJ n'a rien à faire dans `/play`.
-  const isPlayer = Boolean(
-    (user.app_metadata as { player_id?: string } | undefined)?.player_id,
-  );
-  if (isPlayer) {
-    if (!isPublicPath(pathname) && !isPlayerPath(pathname)) {
-      return redirectTo('/play');
-    }
-  } else if (isPlayerPath(pathname) && !matchesPrefix(pathname, SHARED_PATH_PREFIXES)) {
-    // MJ visant l'espace joueur `/play` (exclusif au joueur) → ramené à son
-    // accueil. Les routes partagées (`/character/*`, `/create`) restent ouvertes.
-    return redirectTo('/');
+  const redirectResponse = NextResponse.redirect(redirectUrl);
+  for (const cookie of response.cookies.getAll()) {
+    redirectResponse.cookies.set(cookie);
   }
-
-  return response;
+  return redirectResponse;
 }

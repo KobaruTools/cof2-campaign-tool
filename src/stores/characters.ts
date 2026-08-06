@@ -48,6 +48,7 @@ import {
   mergeGameState,
   updateCharacterRow,
 } from '@/lib/character/repo';
+import { hasSupabaseSession } from '@/lib/supabase/session';
 import type { Character } from '@/lib/character/types';
 import {
   applyRemoteGameStatePatch,
@@ -62,7 +63,11 @@ import { migrateCharacter } from '@/lib/engine';
 /** Délai d'inactivité avant flush cloud d'un personnage modifié (ms). */
 const FLUSH_DELAY_MS = 900;
 
-/** Cycle de vie du chargement cloud. `unconfigured` = env Supabase absente. */
+/**
+ * Cycle de vie du chargement cloud. `unconfigured` = aucun cloud à lire pour ce
+ * visiteur : variables d'env Supabase absentes, ou aucune session ouverte (l'atelier
+ * de personnage est ouvert sans compte, cf. la garde dans `load`).
+ */
 export type CharactersStatus = 'idle' | 'loading' | 'ready' | 'error' | 'unconfigured';
 
 interface CharactersState {
@@ -282,6 +287,16 @@ export const useCharactersStore = create<CharactersState>()(
 
         load: async (opts) => {
           if (!isSupabaseConfigured()) {
+            set({ status: 'unconfigured' });
+            return;
+          }
+          // Visiteur SANS session : l'atelier de personnage est ouvert à tous (l'app est
+          // locale d'abord), donc `load()` peut être appelé sans compte. On n'interroge
+          // alors PAS la base : la RLS répondrait « aucune ligne », ce qui est
+          // indiscernable d'un cloud légitimement vidé et déclencherait la purge des
+          // fantômes (PER-205) sur son cache local. `unconfigured` = « aucun cloud pour
+          // ce visiteur » : ni marqueur « non synchronisé », ni action de téléversement.
+          if (!(await hasSupabaseSession())) {
             set({ status: 'unconfigured' });
             return;
           }
