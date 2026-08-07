@@ -22,6 +22,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
 import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
@@ -37,14 +38,13 @@ import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
-import { alpha, type Theme } from '@mui/material/styles';
+import { alpha, lighten, type Theme } from '@mui/material/styles';
 import { useState, type ReactNode } from 'react';
 import { features as featureCatalog, featureById, pathById, classById, priestGodById, testDomainById } from '@/data';
-import type { AbilityId, AbilitySubstitution, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
+import type { AbilityId, AbilitySubstitution, ActionType, CreatureProfile, Feature, Path, ResistibleDamageType, UsageCounter } from '@/data/schema';
 import { FINESSE_ATTACK_MODES, STATUS_EFFECT_LABELS } from '@/data/schema';
 import type { Abilities, DerivedStats } from '@/lib/engine';
 import type { Character, FeatureChoiceSelection } from '@/lib/character/types';
-import { useContentVersion } from '@/lib/content/useContentVersion';
 import {
   featureChoiceDefs,
   getSelection,
@@ -52,6 +52,13 @@ import {
   hasIncompleteCustomSkill,
 } from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
+import {
+  activeCrystalIds,
+  crystalOverCapWarning,
+  knownCrystals,
+  maxActiveCrystals,
+} from '@/lib/character/crystals';
+import { crystalLabel, type Crystal } from '@/data/crystals';
 import {
   creatureDefenseAltActive,
   displayCreatureProfile,
@@ -65,6 +72,12 @@ import {
   creatureBonusDiceForPath,
   disabledFeatureReasons,
   escalatingManaSurcharge,
+  fabulousCapacityTarget,
+  resolveFamiliarGrantedPower,
+  familiarLearnedSpellId,
+  familiarLearnedSpellUsageMax,
+  familiarPowerUsedKey,
+  FAMILIAR_LEARNED_SPELL_HOST,
   shortRestLockKey,
   usageCounterMaximum,
   isUsageCounterHidden,
@@ -75,6 +88,9 @@ import {
 import { featureIdsFromHistory } from '@/lib/character/levelUp';
 import { spellArmorManaSurcharge } from '@/lib/character/manaSurcharge';
 import { rulesContext } from '@/lib/character/rulesContext';
+import { combatRitualDiscount } from '@/lib/character/warmagePath';
+import { archmageStaffSpellGranted } from '@/lib/character/archmagePath';
+import { useContentVersion } from '@/lib/content/useContentVersion';
 // Restriction FINE d'usage d'armure par capacité d'origine (PER-86) : rendu VISUEL (rang
 // désaturé + infobulle/notice), pas un avertissement de conformité.
 import {
@@ -83,10 +99,23 @@ import {
   magicTalentSpellsBlockedByArmor,
   magicTalentArmorBlockMessage,
   borrowedArmorUsageCounters as computeBorrowedArmorUsageCounters,
+  pathArmorDisabledReasons,
   shieldDisabledFeatureIds,
   shieldRequiredMessage,
+  rangedWeaponDisabledFeatureIds,
+  rangedWeaponRequiredMessage,
+  dualWieldDisabledFeatureIds,
+  dualWieldRequiredMessage,
+  wieldDisabledReasons,
 } from '@/lib/character/armorRestrictions';
-import { ANCESTRY_MARKER_COLOR, MAGE_PATH_COLOR, classColor } from '@/lib/ui/classColors';
+import {
+  ANCESTRY_MARKER_COLOR,
+  MAGE_PATH_COLOR,
+  PRESTIGE_PATH_COLOR,
+  classColor,
+  prestigeCategoryColor,
+} from '@/lib/ui/classColors';
+import { prestigeStaticBorderSx } from '@/lib/ui/prestigeStyle';
 import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PoisonWeaponLoadoutField } from '@/components/sheet/PoisonWeaponLoadoutField';
@@ -106,10 +135,12 @@ import {
   useFeatureNameDecliner,
 } from '@/components/sheet/FeatureDeclension';
 import { CreatureStatBlock } from '@/components/sheet/CreatureStatBlock';
-import { FeatureChoiceField, ChoiceValueBadge } from '@/components/sheet/FeatureChoiceField';
+import { FamiliarGrantedPowerNote, FamiliarPowerCompactCard } from '@/components/sheet/FamiliarGrantedPowerNote';
+import { FeatureChoiceField, ChoiceValueBadge, ChoiceTodoBadge } from '@/components/sheet/FeatureChoiceField';
 import { FeaturePathAutocomplete } from '@/components/sheet/FeaturePathAutocomplete';
 import { FeatureEffectToggles } from '@/components/sheet/FeatureEffectToggles';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
+import { crossOutAfterSx } from '@/lib/ui/crossOut';
 
 /**
  * Couleur du badge « WIP » (PER-72) : jaune franc, VOLONTAIREMENT distinct de l'orange « warning »
@@ -121,30 +152,13 @@ const WIP_CHIP_SX = { color: '#ffeb3b', borderColor: '#ffeb3b' } as const;
 /**
  * Deux barres diagonales en croix « capacité désactivée par l'armure » (PER-86) : légères,
  * ~1px d'épaisseur, semi-transparentes, dérivées de la couleur de texte courante (donc adaptées
- * au thème clair/sombre) via `color-mix`. Dessinées en `::after` (pointer-events:none, sous les
- * badges positionnés) sur le bloc restreint — le conteneur doit être `position: relative`.
+ * au thème clair/sombre). Dessinées en `::after` (pointer-events:none, sous les badges positionnés)
+ * sur le bloc restreint — le conteneur doit être `position: relative`.
  *
- * Les bords du trait sont FEUTRÉS : une rampe de ~0.75px `transparent → couleur` de chaque côté
- * (au lieu d'un arrêt net à la même position) laisse le navigateur anti-aliaser la diagonale.
- * Sans ça, l'arrête franche du gradient « marche » pixel par pixel et crénelle fortement, surtout
- * sur une barre large et basse (diagonale très inclinée). Cf. `CROSS_STOPS`.
+ * La recette du dégradé (et son feutrage anti-crénelage) vit dans `@/lib/ui/crossOut`, partagée avec
+ * les autres « blocs barrés » de l'app (carte de créature vaincue du tracker projeté).
  */
-const CROSS_COLOR = 'color-mix(in srgb, currentColor 45%, transparent)';
-const CROSS_STOPS =
-  `transparent calc(50% - 1.25px), ${CROSS_COLOR} calc(50% - 0.5px), ` +
-  `${CROSS_COLOR} calc(50% + 0.5px), transparent calc(50% + 1.25px)`;
-const ARMOR_RESTRICTED_BARS_SX = {
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    inset: 0,
-    pointerEvents: 'none',
-    borderRadius: 'inherit',
-    backgroundImage:
-      `linear-gradient(to top right, ${CROSS_STOPS}), ` +
-      `linear-gradient(to bottom right, ${CROSS_STOPS})`,
-  },
-} as const;
+const ARMOR_RESTRICTED_BARS_SX = crossOutAfterSx();
 
 /**
  * Ordre d'affichage des voies par type, de gauche à droite sur la fiche :
@@ -405,18 +419,38 @@ function ReplacedSlotBlock({
  * choix n'est pas (encore) fait. Première (et unique) entrée `feature-from-path` de la capacité.
  */
 function borrowedFeatureOf(character: Character | undefined, feature: Feature): Feature | undefined {
-  if (!character) return undefined;
+  return borrowedFeaturesOf(character, feature)[0];
+}
+
+/**
+ * TOUTES les capacités EMPRUNTÉES par les choix `feature-from-path` résolus d'une capacité (PER-74,
+ * Bâton magique de l'archimage r5 : DEUX choix sur la MÊME capacité, chacun donnant sa propre carte
+ * d'emprunt, empilées dans l'ordre des choix). Généralise `borrowedFeatureOf` (qui ne renvoyait que
+ * la PREMIÈRE, hypothèse valable pour toutes les autres capacités empruntantes du jeu, qui n'en ont
+ * qu'une).
+ */
+function borrowedFeaturesOf(character: Character | undefined, feature: Feature): Feature[] {
+  if (!character) return [];
+  const out: Feature[] = [];
+  // Grant FIXE (PER-323, cambion « Enfant des ténèbres ») : capacité octroyée rendue comme un emprunt,
+  // SAUF si le personnage la possède déjà nativement (pas de doublon — la carte native passe en (G)).
+  const granted = feature.grantedFeature;
+  if (granted && !character.featureIds.includes(granted.featureId)) {
+    const g = featureById.get(granted.featureId);
+    if (g) out.push(g);
+  }
   const defs = feature.choices;
-  if (!defs) return undefined;
   const sels = character.featureChoices?.[feature.id];
-  if (!sels) return undefined;
-  for (let i = 0; i < defs.length; i++) {
-    if (defs[i].kind === 'feature-from-path') {
+  if (defs && sels) {
+    for (let i = 0; i < defs.length; i++) {
+      if (defs[i].kind !== 'feature-from-path') continue;
       const sel = sels[i];
-      if (typeof sel === 'string') return featureById.get(sel);
+      if (typeof sel !== 'string') continue;
+      const f = featureById.get(sel);
+      if (f) out.push(f);
     }
   }
-  return undefined;
+  return out;
 }
 
 /**
@@ -456,8 +490,17 @@ function BorrowedFeatureBlock({
   footer,
   armorRestricted = false,
   armorRestrictedMessage = null,
+  noMana = false,
+  noManaNote,
+  actionTypesOverride,
+  suppressTextMarker,
 }: {
   feature: Feature;
+  /**
+   * Sous-chaîne verbatim (PER-323) : quand présente, la QUEUE du texte à partir de cette sous-chaîne est
+   * rendue BARRÉE (bonus de compétence d'un sort octroyé + supprimé, ex. Ténèbres du cambion). Absent = rien.
+   */
+  suppressTextMarker?: string;
   abilities?: Abilities;
   level?: number;
   /**
@@ -493,6 +536,26 @@ function BorrowedFeatureBlock({
   armorRestricted?: boolean;
   /** Message français sourcé (p. 177) de l'interdiction d'armure, affiché en notice. `null` = aucun. */
   armorRestrictedMessage?: string | null;
+  /**
+   * PER-74 — le sort emprunté est APPRIS via le rang 5 de la voie du familier : utilisé SANS coût en
+   * mana (arbitrage proprio), plafonné par un compteur quotidien affiché à part. Masque la goutte de PM
+   * et la notice « coût en PM au rang habituel ». Défaut `false` (emprunt ordinaire = mana natif).
+   */
+  noMana?: boolean;
+  /**
+   * Texte de la notice affichée quand `noMana` est vrai (remplace la mention par défaut, écrite pour
+   * le sort appris du familier). PER-74, Bâton magique (archimage r5) : notice dédiée au bâton.
+   * Absent avec `noMana` vrai → repli sur la notice du familier (comportement historique inchangé).
+   */
+  noManaNote?: ReactNode;
+  /**
+   * PER-74 — type(s) d'action affiché(s) à la place de `feature.actionTypes` natifs (Bâton magique,
+   * archimage r5 : le sort emprunté se lance normalement en (A), mais via le bâton c'est une action
+   * de MOUVEMENT — `['M']`). Ne modifie que l'AFFICHAGE des hexagones de cette carte ; la capacité
+   * empruntée garde ses propres `actionTypes` partout ailleurs (sa voie d'origine, une autre carte).
+   * Absent = types natifs inchangés.
+   */
+  actionTypesOverride?: ActionType[];
 }) {
   const path = pathById.get(feature.pathId);
   const classId = path?.type === 'class' ? path.classIds[0] : undefined;
@@ -561,24 +624,56 @@ function BorrowedFeatureBlock({
         {/* Hexagones : * (sort), A/L/G/M (types d'action). Les types conditionnels au rang
             (`actionTypesFromRank`) se résolvent sur la VOIE A (rang hôte, p. 41). */}
         <FeatureMarkerHexes
-          feature={feature}
+          feature={actionTypesOverride ? { ...feature, actionTypes: actionTypesOverride } : feature}
           color={color}
           concentration={concentration}
           pathRank={hostPathRank ?? feature.rank}
         />
         {/* Goutte de coût en PM : « toujours calculé à partir du rang HABITUEL du sort » (p. 41) —
             c.-à-d. le rang d'origine du sort emprunté, pas le rang atteint dans la voie A. Ne rend
-            rien pour une capacité empruntée qui n'est pas un sort. */}
-        <SpellManaBadge feature={feature} concentration={concentration} color={color} size={26} tooltipEnterDelay={1000} />
+            rien pour une capacité empruntée qui n'est pas un sort. Masquée pour un sort APPRIS au rang 5
+            du familier (`noMana`, PER-74) : conféré sans coût en mana. */}
+        {!noMana && (
+          <SpellManaBadge feature={feature} concentration={concentration} color={color} size={26} tooltipEnterDelay={1000} />
+        )}
       </Stack>
       <Box sx={{ mt: 0.25 }}>
         {/* `rang` résolu sur la VOIE A (rang hôte), pas sur le rang d'origine de la capacité empruntée. */}
-        <FeatureText feature={feature} abilities={abilities} level={level} pathRank={hostPathRank ?? feature.rank} />
+        {suppressTextMarker && feature.text.includes(suppressTextMarker) ? (
+          (() => {
+            // Octroi avec bonus de compétence SUPPRIMÉ (PER-323) : on coupe le texte au marqueur, on rend
+            // la TÊTE enrichie (durée, etc.) et la QUEUE (la phrase du bonus) barrée + estompée.
+            const cut = (s: string): [string, string] => {
+              const i = s.indexOf(suppressTextMarker);
+              return i < 0 ? [s, ''] : [s.slice(0, i).trimEnd(), s.slice(i)];
+            };
+            const [headText, tailText] = cut(feature.text);
+            const headFeature: Feature = {
+              ...feature,
+              text: headText,
+              richText: feature.richText ? cut(feature.richText)[0] : undefined,
+            };
+            return (
+              <>
+                <FeatureText feature={headFeature} abilities={abilities} level={level} pathRank={hostPathRank ?? feature.rank} />
+                <Typography
+                  variant="body2"
+                  component="div"
+                  sx={{ mt: 0.5, color: 'text.disabled', textDecoration: 'line-through' }}
+                >
+                  {tailText}
+                </Typography>
+              </>
+            );
+          })()
+        ) : (
+          <FeatureText feature={feature} abilities={abilities} level={level} pathRank={hostPathRank ?? feature.rank} />
+        )}
       </Box>
       {/* Rappel des règles propres à un SORT emprunté (encadré « Appel à une autre capacité », p. 41) :
           coût en PM au rang habituel du sort, caractéristique de magie du profil d'origine (déjà reflétée
           par les formules ci-dessus, qui citent la carac d'origine), et +1 PM gagné au réservoir. */}
-      {feature.isSpell && (
+      {feature.isSpell && !noMana && (
         <Typography
           variant="caption"
           component="div"
@@ -586,6 +681,22 @@ function BorrowedFeatureBlock({
         >
           Sort emprunté : coût en PM égal au rang habituel du sort ; lancé avec la caractéristique de
           magie de son profil d’origine ; il rapporte +1 PM au réservoir (<SourceRef page={41} />).
+        </Typography>
+      )}
+      {/* PER-74 : sort APPRIS au rang 5 du familier — conféré sans coût en mana, plafonné par le
+          compteur quotidien affiché sous ce bloc. */}
+      {feature.isSpell && noMana && (
+        <Typography
+          variant="caption"
+          component="div"
+          sx={{ mt: 0.75, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
+        >
+          {noManaNote ?? (
+            <>
+              Sort appris du familier : utilisé sans coût en mana, dans la limite du compteur quotidien
+              ci-dessous (<SourceRef page={133} />).
+            </>
+          )}
         </Typography>
       )}
       {/* Bonus de test DOMINÉ (ne se cumule pas, p. 203) : barré + la capacité qui le domine, pour
@@ -1129,6 +1240,8 @@ export interface FeaturesByPathProps {
    * lecture seule.
    */
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
+  /** (Dés)active un cristal APPRIS (voie des cristaux, PER-74, p. 156). État de jeu, hors édition. */
+  onToggleCrystalActive?: (crystalId: string, active: boolean) => void;
   /**
    * Lève le verrou « repos court requis » d'une capacité (PER-160/161) SANS forcer un vrai repos :
    * applique l'effet d'un repos court À CETTE SEULE capacité (lève le verrou `oncePerShortRest` et
@@ -1196,6 +1309,20 @@ function ManualPin({ inline = false }: { inline?: boolean }) {
         }}
       />
     </AppTooltip>
+  );
+}
+
+/**
+ * Renvoi cliquable vers la page du livre où figure ce rang de voie (PER-246), rendu discret et
+ * aligné à GAUCHE sous la description. `Feature.sourcePage` est toujours renseigné (schéma), donc
+ * pas de garde. Ouvre le visualiseur PDF à la page citée via `SourceRef` (livre de base par défaut).
+ */
+function FeatureSourcePage({ feature }: { feature: Feature }) {
+  return (
+    <Box sx={{ mt: 1 }}>
+      {/* Le nom de la capacité sert de terme à cibler/surligner dans le visualiseur (PER-59/61). */}
+      <SourceRef page={feature.sourcePage} term={feature.name} />
+    </Box>
   );
 }
 
@@ -1431,10 +1558,46 @@ function damageReductionScopeChoice(feature: Feature): ResistibleDamageType[] | 
 }
 
 /**
- * Sélecteur d'ÉLÉMENT RÉSISTÉ pour une RD à scope choisi (ex. Maîtrise des éléments, PER-137). État
- * de jeu « à la table » (stocké dans `Character.effectInputs[featureId]`, éditable HORS mode édition,
- * comme les interrupteurs). Le sélecteur tient lieu d'activation : « Aucun » = inactif (pas de RD),
- * un élément = sort actif sur cet élément (échangeable). En lecture seule, affiche l'élément retenu.
+ * Configuration du sélecteur d'ÉLÉMENT « à la table » d'une capacité (PER-137/PER-74) : les mêmes
+ * ToggleButtons servent deux effets stockés dans `effectInputs` — l'élément RÉSISTÉ d'une RD à
+ * `scopeChoice` (Maîtrise des éléments) et l'élément AJOUTÉ aux flèches (`ranged-attack-elemental`,
+ * Flèche élémentaire de l'archer arcanique). Renvoie les options + les libellés adaptés, ou null.
+ */
+function elementalSelectorConfig(
+  feature: Feature,
+): { options: ResistibleDamageType[]; editLabel: string; readLabel: string } | null {
+  const resisted = damageReductionScopeChoice(feature);
+  if (resisted) {
+    return { options: resisted, editLabel: 'Élément résisté (à choisir à la table)', readLabel: 'Élément résisté' };
+  }
+  const elemental = feature.effects?.find((e) => e.kind === 'ranged-attack-elemental');
+  if (elemental?.kind === 'ranged-attack-elemental') {
+    return {
+      options: elemental.choices,
+      editLabel: 'Élément des flèches (à choisir à la table)',
+      readLabel: 'Élément des flèches',
+    };
+  }
+  // PER-74 — aura élémentaire imprégnée dans l'ARME LIÉE (voie de l'arme liée r7, p. 147). Même
+  // sélecteur « à la table » : le livre fige l'élément dans la fiction, l'arbitrage propriétaire le
+  // laisse échangeable (à la DIFFÉRENCE de la couleur permanente du sang-dragon).
+  const aura = feature.effects?.find((e) => e.kind === 'weapon-aura-elemental');
+  if (aura?.kind === 'weapon-aura-elemental') {
+    return {
+      options: aura.choices,
+      editLabel: 'Élément de l’aura (à choisir à la table)',
+      readLabel: 'Élément de l’aura',
+    };
+  }
+  return null;
+}
+
+/**
+ * Sélecteur d'ÉLÉMENT « à la table » (RD résistée — Maîtrise des éléments, PER-137 — OU élément
+ * ajouté aux flèches — Flèche élémentaire, PER-74). État de jeu (stocké dans
+ * `Character.effectInputs[featureId]`, éditable HORS mode édition, comme les interrupteurs). Le
+ * sélecteur tient lieu d'activation : « Aucun » = inactif, un élément = actif (échangeable). En
+ * lecture seule, affiche l'élément retenu.
  */
 function ElementResistanceSelector({
   feature,
@@ -1445,20 +1608,21 @@ function ElementResistanceSelector({
   character: Character;
   onSetInput?: (featureId: string, value: string) => void;
 }) {
-  const options = damageReductionScopeChoice(feature);
-  if (!options) return null;
+  const config = elementalSelectorConfig(feature);
+  if (!config) return null;
+  const { options, editLabel, readLabel } = config;
   const value = character.effectInputs?.[feature.id] ?? '';
   if (!onSetInput) {
     return value ? (
       <Typography variant="caption" component="div" sx={{ mt: 1, fontWeight: 600 }}>
-        Élément résisté : {ELEMENT_CHOICE_LABEL[value as ResistibleDamageType] ?? value}
+        {readLabel} : {ELEMENT_CHOICE_LABEL[value as ResistibleDamageType] ?? value}
       </Typography>
     ) : null;
   }
   return (
     <Box sx={{ mt: 1 }} onClick={(e) => e.stopPropagation()}>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 600 }}>
-        Élément résisté (à choisir à la table)
+        {editLabel}
       </Typography>
       <ToggleButtonGroup
         exclusive
@@ -1477,6 +1641,131 @@ function ElementResistanceSelector({
           </ToggleButton>
         ))}
       </ToggleButtonGroup>
+    </Box>
+  );
+}
+
+/**
+ * Panneau d'ACTIVATION des cristaux (voie des cristaux, PER-74, p. 156), rendu une seule fois
+ * dans l'en-tête de la voie (comme la réserve partagée d'élixirs) — pas par rang, puisque
+ * l'activation porte sur TOUS les cristaux APPRIS (choix figés des rangs 4-8), quel que soit le
+ * rang qui les a enseignés. Cristaux appris mais NON activés : boutons visibles mais éteints
+ * (aucun effet ne compte tant qu'ils ne sont pas activés, cf. `activeKnownCrystals`). Dépassement
+ * de la limite (rang atteint) : avertissement non bloquant (fiche permissive), jamais de blocage.
+ */
+function CrystalActivationPanel({
+  character,
+  onToggle,
+}: {
+  character: Character;
+  onToggle?: (crystalId: string, active: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const known = knownCrystals(character);
+  if (known.length === 0) return null;
+  const active = new Set(activeCrystalIds(character));
+  const max = maxActiveCrystals(character);
+  const warning = crystalOverCapWarning(character);
+  return (
+    <Box sx={{ mt: 1 }} onClick={(e) => e.stopPropagation()}>
+      {active.size > 0 ? (
+        <ChoiceValueBadge label={`Cristaux (${active.size}/${max})`} onClick={() => setOpen(true)} />
+      ) : (
+        <ChoiceTodoBadge label="Cristaux" onClick={() => setOpen(true)} />
+      )}
+      <Dialog open={open} onClose={() => setOpen(false)} onClick={(e) => e.stopPropagation()} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Cristaux actifs ({active.size}/{max})
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
+            {known.map((crystal) => (
+              <CrystalCard
+                key={crystal.id}
+                crystal={crystal}
+                checked={active.has(crystal.id)}
+                disabled={!onToggle}
+                onToggle={() => onToggle?.(crystal.id, !active.has(crystal.id))}
+              />
+            ))}
+          </Box>
+          {warning && (
+            <AppAlert severity="warning" sx={{ mt: 1 }}>
+              {warning}
+            </AppAlert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
+
+/**
+ * Carte d'un cristal, dans la modale d'activation. Reprend le style des cartes de voie/rang
+ * à cocher du wizard de création (`PathCard` de `wizard/steps.tsx`) : bordure colorée + fond
+ * teinté quand cochée, sinon contour neutre — plutôt que d'en importer une copie couplée aux
+ * profils/capacités, on réplique ici le même habillage pour un contenu propre au cristal
+ * (couleur/forme + bonus, `effectText` du catalogue).
+ */
+function CrystalCard({
+  crystal,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  crystal: Crystal;
+  checked: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+}) {
+  const color = prestigeCategoryColor('mage');
+  return (
+    <Box
+      onClick={() => {
+        if (!disabled) onToggle();
+      }}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        border: 2,
+        borderColor: checked ? color : 'divider',
+        borderRadius: 1,
+        bgcolor: checked ? alpha(color, 0.06) : 'transparent',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'border-color .15s, background-color .15s',
+        '&:hover': disabled
+          ? undefined
+          : {
+              borderColor: checked ? color : alpha(color, 0.5),
+              bgcolor: checked ? alpha(color, 0.1) : alpha(color, 0.03),
+            },
+      }}
+    >
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', p: 0.5 }}>
+        <Checkbox
+          checked={checked}
+          disabled={disabled}
+          size="small"
+          onClick={(e) => e.stopPropagation()}
+          onChange={onToggle}
+          sx={{ p: 0.5, color, '&.Mui-checked': { color } }}
+        />
+        <Typography
+          variant="subtitle2"
+          sx={{ fontWeight: 700, color: checked ? color : 'text.primary', lineHeight: 1.2 }}
+        >
+          {crystalLabel(crystal)}
+        </Typography>
+      </Stack>
+      <Box sx={{ px: 1, pb: 1 }}>
+        <Typography variant="caption" color="text.secondary">
+          {crystal.effectText}
+        </Typography>
+      </Box>
     </Box>
   );
 }
@@ -2169,7 +2458,6 @@ function PathBlock({
   masterDerived,
   compact = false,
   gridColumn,
-  separated = false,
   retainedFeature,
   retainedPathName,
   character,
@@ -2181,6 +2469,7 @@ function PathBlock({
   onSetUsageCounter,
   onLiftShortRestLock,
   onCreateElixir,
+  onToggleCrystalActive,
   onSummonCompanionInstance,
   onPoisonUpdate,
   onWeaponModificationUpdate,
@@ -2190,6 +2479,7 @@ function PathBlock({
   borrowedArmorUsageCounters,
   replacements,
   concentration = false,
+  fabulousTarget,
   testBonuses,
 }: {
   group: FeatureGroup;
@@ -2206,12 +2496,6 @@ function PathBlock({
   compact?: boolean;
   /** Vue colonne : index de colonne (1-based) dans la grille subgrid. */
   gridColumn?: number;
-  /**
-   * Vue colonne : la voie occupe la colonne DÉDIÉE de prestige (7ᵉ), à part des 6 voies
-   * ordinaires. Rendue avec un séparateur (bordure gauche + retrait) pour matérialiser
-   * qu'elle est réservée et distincte des voies de peuple/profil.
-   */
-  separated?: boolean;
   /** Voie du mage : capacité de peuple de rang 1 conservée, fusionnée au rang 1. */
   retainedFeature?: Feature;
   /** Nom de la voie de peuple dont la capacité de rang 1 est conservée. */
@@ -2230,6 +2514,8 @@ function PathBlock({
   onSetEffectInput?: (featureId: string, value: string) => void;
   /** Décompte d'une capacité à usages limités (Les sept vies du chat, PER-70). */
   onSetUsageCounter?: (counterKey: string, value: number, max: number) => void;
+  /** (Dés)active un cristal APPRIS (voie des cristaux, PER-74, p. 156). État de jeu, hors édition. */
+  onToggleCrystalActive?: (crystalId: string, active: boolean) => void;
   /** Lève le verrou « repos court requis » d'une capacité sans forcer un repos (PER-160/161). */
   onLiftShortRestLock?: (featureId: string) => void;
   /** Produit un élixir : consomme la réserve + matérialise la dose dans l'équipement (forgesort). */
@@ -2271,10 +2557,30 @@ function PathBlock({
   replacements?: Map<string, SlotReplacement>;
   /** Concentration accrue active (p. 228) : coût réduit + (A)→(L) pour les sorts éligibles. */
   concentration?: boolean;
+  /**
+   * PER-74 — cible de la Capacité fabuleuse (spécialiste r5) résolue au top-level (`fabulousCapacityTarget`).
+   * Quand la capacité rendue est cette cible : `promote` → son marqueur (L) devient (A) ; `concentrate`
+   * → le sort (A) affiche le coût réduit de concentration (−2 PM) EN PERMANENCE, sans passer en (L).
+   */
+  fabulousTarget?: { featureId: string; mode: 'promote' | 'concentrate' } | null;
   /** Bonus de compétence par domaine — pour signaler une capacité empruntée dont le bonus est dominé (PER-73). */
   testBonuses?: TestDomainBonus[];
 }) {
   const { path, features } = group;
+  // PER-74 — props de marqueurs/mana à injecter pour la capacité cible de la Capacité fabuleuse (r5).
+  // `promote` : le (L) devient (A) (halo). `concentrate` : le sort (A) garde son marqueur mais son coût
+  // est réduit de 2 PM EN PERMANENCE (concentration forcée sur la goutte, JAMAIS sur les marqueurs —
+  // sinon le sort passerait en (L), ce que r5 interdit précisément). Cumulable avec l'état global.
+  const fabulousFor = (feature: Feature) => {
+    const hit = fabulousTarget?.featureId === feature.id ? fabulousTarget : null;
+    return {
+      promoteToAttack: hit?.mode === 'promote',
+      // Marqueurs : concentration globale seulement (jamais forcée par r5 — le sort r5 reste en (A)).
+      markerConcentration: concentration,
+      // Goutte de PM : concentration globale OU concentration permanente conférée par r5.
+      manaConcentration: concentration || hit?.mode === 'concentrate',
+    };
+  };
   // Rang ATTEINT dans la voie = plus haut rang acquis parmi ses capacités. Sert à
   // résoudre le terme « rang » des textes enrichis (« son rang » = rang de la voie
   // courante, dynamique), partagé par toutes les capacités du bloc.
@@ -2351,13 +2657,34 @@ function PathBlock({
       : null;
   // Voie du mage (`type: 'mage'`) : identité dédiée (indigo arcane + icône de chapeau), PER-73.
   const isMagePath = path?.type === 'mage';
+  const isPrestigePath = path?.type === 'prestige';
   const color = ownerClassId ? classColor(ownerClassId) : isMagePath ? MAGE_PATH_COLOR : null;
-  // Voie de peuple : pas de teinte de profil, mais une icône neutre pour rappeler
-  // que c'est une voie au même titre que les autres. La voie du mage réutilise le jeu d'icônes de
-  // peuple (clé `mage`, elle occupe l'emplacement peuple) ; les voies de PRESTIGE n'ont toujours pas
-  // d'icône → AncestryIcon ne rend rien pour leurs id.
+  // Teinte de la FAMILLE de prestige (PER-74) : vert/rouge/bleu/violet par famille. `undefined` pour
+  // les GÉNÉRIQUES → on retombe sur l'habillage OR historique exactement tuné par le proprio (liseré
+  // `#fff2c2→#968f74`, reflet `#f5e7a0`, étoile neutre), qu'on ne modifie pas.
+  const prestigeTint =
+    path?.type === 'prestige' && path.category !== 'generic'
+      ? prestigeCategoryColor(path.category)
+      : undefined;
+  // PER-74 — habillage « précieux » des cartes de rang de prestige : anneau en dégradé STATIQUE
+  // (sans animation — trop lourde par carte en vue liste) + fond ASSOMBRI (reste lisible sous le texte
+  // clair du thème sombre) avec un très léger reflet TEINTÉ de la famille. `null` pour les autres voies.
+  const prestigeCardSx = isPrestigePath
+    ? {
+        ...prestigeStaticBorderSx(1, 'inherit', prestigeTint),
+        border: 0,
+        // Fond en dégradé SUIVANT l'angle de la bordure (45°) : reflet PEU opaque en BAS À GAUCHE, vers
+        // un gris clair TRÈS peu opaque en HAUT À DROITE (retour proprio). Faible opacité → le fond
+        // sombre de la fiche transparaît, la carte reste lisible. Teinté de la famille, or par défaut.
+        background: `linear-gradient(45deg, ${alpha(prestigeTint ? lighten(prestigeTint, 0.55) : '#f5e7a0', 0.2)} 0%, ${alpha('#d0d0d0', 0.08)} 85%)`,
+      }
+    : null;
+  // Voie de peuple : pas de teinte de profil, mais une icône neutre pour rappeler que c'est une voie
+  // au même titre que les autres. La voie du mage réutilise le jeu d'icônes de peuple (clé `mage`,
+  // elle occupe l'emplacement peuple) ; la voie de PRESTIGE, faute d'icône de peuple/profil, reçoit
+  // une étoile générique neutre (clé `prestige` du même jeu d'icônes, PER-74).
   const ancestryId = path?.type === 'ancestry' ? path.id : null;
-  const iconAncestryId = ancestryId ?? (isMagePath ? 'mage' : null);
+  const iconAncestryId = ancestryId ?? (isMagePath ? 'mage' : isPrestigePath ? 'prestige' : null);
   // Couleur des hexagones de marqueur d'action (A/L/G/M) : profil pour une voie de profil ; GRIS
   // FONCÉ neutre pour une voie de PEUPLE (sans quoi le bleu mana par défaut évoquerait un profil de
   // mage) ; indigo arcane pour la voie du mage ; bleu mana par défaut conservé pour le prestige
@@ -2443,9 +2770,13 @@ function PathBlock({
   const disabledMessage = (feature: Feature): string | null => {
     const reason = disabledReasons?.get(feature.id);
     if (!reason) return null;
-    return reason.kind === 'replaced'
-      ? `Remplacée par ${reason.byFeatureName} : cette capacité n'est plus disponible.`
-      : `Désactivée tant que ${reason.byFeatureName} est active (ne se cumulent pas).`;
+    if (reason.kind === 'replaced') return `Remplacée par ${reason.byFeatureName} : cette capacité n'est plus disponible.`;
+    // PER-74 — transformation active (Métamorphose de l'ours) : ce n'est pas une exclusion mutuelle
+    // entre DEUX capacités, mais la perte d'accès aux capacités de profil pendant la forme.
+    if (reason.kind === 'transformed') {
+      return `Désactivée tant que ${reason.byFeatureName} est active : le personnage ne peut plus utiliser ses capacités de profil.`;
+    }
+    return `Désactivée tant que ${reason.byFeatureName} est active (ne se cumulent pas).`;
   };
 
   /** Bandeau d'explication du grisage, en tête du détail (modale / bloc dépliable). */
@@ -2470,6 +2801,25 @@ function PathBlock({
    */
   const synthArmorUsageCounter = (feature: Feature): UsageCounter | undefined =>
     borrowedArmorUsageCounters?.get(feature.id);
+
+  /**
+   * PER-74 — compteur d'usage SYNTHÉTIQUE du SORT APPRIS au rang 5 de la voie du familier (« il peut
+   * utiliser ce sort 2×/jour si rang 1, 1×/jour si rang 2 », p. 133). Porté par la capacité hôte (R5),
+   * clé dédiée `familiarPowerUsedKey(R5)`, rechargé au repos long. `undefined` si ce n'est pas le R5 ou
+   * si aucun sort n'a encore été appris (max indéterminé). Le sort s'utilise SANS coût en mana (décision
+   * proprio 2026-07-25) : le compteur EST la contrainte.
+   */
+  const synthLearnedSpellCounter = (feature: Feature): UsageCounter | undefined => {
+    if (feature.id !== FAMILIAR_LEARNED_SPELL_HOST || !character) return undefined;
+    const max = familiarLearnedSpellUsageMax(character);
+    if (max === undefined) return undefined;
+    return {
+      max,
+      sharedKey: familiarPowerUsedKey(FAMILIAR_LEARNED_SPELL_HOST),
+      resetOn: 'day',
+      label: 'Usages restants (par jour)',
+    };
+  };
 
   /** Message « inutilisable avec l'armure portée » de la capacité (`null` si non gênée). */
   const armorRestrictedMessage = (feature: Feature): string | null =>
@@ -2515,6 +2865,27 @@ function PathBlock({
     );
   };
 
+  // Infobulle de voie (généralisée à TOUTES les voies) : icône « i » discrète, systématique dès
+  // qu'on connaît la voie — plus seulement celles portant un `note` (encadré/condition/exemple
+  // verbatim du livre, ex. voie du bouclier « doit manier un bouclier »). Le corps affiche ce
+  // `note` quand la voie en porte un ; le pied renvoie TOUJOURS, lui, vers la page de règles de
+  // la voie (`sourcePage`, champ obligatoire de `PathBase`) pour l'atteindre directement. `ml`
+  // ajuste l'espacement selon le placement (à côté du titre en vue liste, sous le compteur en
+  // vue colonne — PER-74).
+  const noteInfo = (ml = 0) =>
+    path ? (
+      <AppTooltip
+        title={
+          <Box sx={{ maxWidth: 320 }}>
+            {path.note && <Box sx={{ whiteSpace: 'pre-line', mb: 0.75 }}>{path.note}</Box>}
+            <SourceRef page={path.sourcePage} />
+          </Box>
+        }
+      >
+        <InfoOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help', flexShrink: 0, ml }} />
+      </AppTooltip>
+    ) : null;
+
   const header = (
     <Box
       sx={{
@@ -2537,27 +2908,19 @@ function PathBlock({
           minWidth: 0,
           lineHeight: 1.2,
           wordBreak: 'break-word',
+          // Vue colonne : titre de voie réduit de 2px (body2 0.875rem → 0.75rem) pour tenir la
+          // largeur maintenant que la colonne de prestige occupe une 7e colonne (PER-74).
+          ...(compact && { fontSize: '0.75rem' }),
         }}
       >
         {path?.name ?? group.pathId}
       </Typography>
-      {/* Note de voie (PER-72) : encadré/condition/exemple verbatim du livre (ex. voie du bouclier
-          « doit manier un bouclier », exemple d'Attaque puissante cité par « voir exemple », encadré
-          RAGE ET AUTRES CAPACITÉS). Rendue en infobulle sur une icône « i » discrète, plutôt qu'en
-          bloc permanent — couvre AUTOMATIQUEMENT toute voie portant un `note`. */}
-      {path?.note && (
-        <AppTooltip
-          title={
-            <Box sx={{ whiteSpace: 'pre-line', maxWidth: 320 }}>{path.note}</Box>
-          }
-        >
-          <InfoOutlinedIcon
-            sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help', flexShrink: 0, ml: 0.25 }}
-          />
-        </AppTooltip>
-      )}
+      {/* Vue liste : le « i » d'infobulle reste à côté du titre (place suffisante). En vue colonne il
+          descend sous le compteur (voir le Stack ci-dessous) pour dégager le titre condensé (PER-74). */}
+      {!compact && noteInfo(0.25)}
       {compact ? (
-        // Vue colonne : icône de profil au-dessus du compteur de rangs.
+        // Vue colonne : icône de profil, compteur de rangs, puis le « i » d'infobulle EN DESSOUS —
+        // ça libère le titre (très condensé sur 7 colonnes). Uniforme pour toutes les voies connues.
         <Stack spacing={0.25} sx={{ ml: 'auto', flexShrink: 0, alignItems: 'flex-end' }}>
           {ownerClassId ? (
             <ClassIcon classId={ownerClassId} size={18} />
@@ -2566,7 +2929,7 @@ function PathBlock({
               <AncestryIcon
                 ancestryId={iconAncestryId}
                 size={18}
-                sx={{ color: isMagePath ? MAGE_PATH_COLOR : 'text.secondary' }}
+                sx={{ color: isMagePath ? MAGE_PATH_COLOR : (prestigeTint ?? 'text.secondary') }}
               />
             )
           )}
@@ -2575,6 +2938,7 @@ function PathBlock({
               {features.length}/{total}
             </Typography>
           )}
+          {noteInfo()}
         </Stack>
       ) : (
         // Vue liste : icône de profil (ou de peuple) juste à droite du titre.
@@ -2585,7 +2949,7 @@ function PathBlock({
             <AncestryIcon
               ancestryId={iconAncestryId}
               size={18}
-              sx={{ ml: 0.5, color: isMagePath ? MAGE_PATH_COLOR : 'text.secondary' }}
+              sx={{ ml: 0.5, color: isMagePath ? MAGE_PATH_COLOR : (prestigeTint ?? 'text.secondary') }}
             />
           )
         )
@@ -2602,6 +2966,11 @@ function PathBlock({
           }
         />
       )}
+      {/* PER-74 : activation des cristaux appris (voie des cristaux, p. 156) — état de jeu, une
+          seule fois par voie (pas par rang), cf. `CrystalActivationPanel`. */}
+      {path?.id === 'prestige-cristaux' && character && (
+        <CrystalActivationPanel character={character} onToggle={onToggleCrystalActive} />
+      )}
     </Box>
   );
 
@@ -2617,11 +2986,6 @@ function PathBlock({
           gridRow: `1 / span ${PATH_RANK_COUNT + 1}`,
           display: 'grid',
           gridTemplateRows: 'subgrid',
-          // Colonne de prestige réservée (7ᵉ) : trait de séparation à gauche + retrait, pour
-          // la détacher visuellement des 6 voies ordinaires (peuple/mage + profils).
-          ...(separated
-            ? { borderLeft: 1, borderColor: 'divider', pl: 1, ml: 0.5 }
-            : {}),
         }}
       >
         {header}
@@ -2632,9 +2996,48 @@ function PathBlock({
           // teinte la carte à la couleur de sa voie source, façon slot divin — mais SANS remplacer
           // (l'hôte n'est ni grisé ni désactivé). Exclu si la carte est déjà un slot divin (repl).
           const borrowed = !repl ? borrowedFeatureOf(character, feature) : undefined;
+          // PER-74 : Bâton magique (archimage r5) porte DEUX choix `feature-from-path` — une fois le
+          // PREMIER résolu, la puce « Choisir » de l'hôte disparaissait (condition historique
+          // `!borrowed`), rendant le 2e choix injoignable hors modale (PIÈGE VÉCU en recette). On ne
+          // change ce comportement QUE pour les hôtes à PLUSIEURS emprunts (`> 1`) — inchangé pour
+          // le cas standard à un seul emprunt (ex. Formation d'élite, noblesse-r5, qui mélange un
+          // emprunt ET un choix `ability` distinct : masquer trop tôt cacherait CE 2e choix, sans
+          // rapport avec les emprunts).
+          const borrowSlotCount = (feature.choices ?? []).filter((c) => c.kind === 'feature-from-path').length;
+          const hasMultipleBorrowSlots = !repl && borrowSlotCount > 1;
+          // PER-74 — Bâton magique (archimage r5) : une fois les DEUX emprunts résolus, les cartes de
+          // sorts empilées (ci-dessous) disent déjà tout — la puce « Choisir » (résolue, donc réduite à
+          // un simple badge bleu redondant) n'a plus rien à apporter à cet endroit et fait double emploi
+          // (retour recette proprio). On ne la masque QUE quand PLUS RIEN n'est actionnable ; tant qu'un
+          // slot reste à choisir, elle reste affichée pour que ce 2e choix reste joignable (cf. ci-dessus).
+          const allBorrowSlotsResolved =
+            hasMultipleBorrowSlots && (!repl ? borrowedFeaturesOf(character, feature).length : 0) >= borrowSlotCount;
           const borrowedPath = borrowed ? pathById.get(borrowed.pathId) : undefined;
           const borrowedClassId = borrowedPath?.type === 'class' ? borrowedPath.classIds[0] : undefined;
           const borrowedColor = borrowedClassId ? classColor(borrowedClassId) : undefined;
+          // PER-74 — Bâton magique (archimage r5) : le 2e choix `feature-from-path` de l'hôte, s'il est
+          // résolu, s'empile EN DESSOUS de la carte de devant ci-dessus (`cardInner`) — MÊME design,
+          // juste une 2e carte, au lieu d'être invisible en vue colonne (retour recette proprio).
+          const borrowedExtra = !repl ? borrowedFeaturesOf(character, feature).slice(1) : [];
+          // PER-74 — sort conféré par le bâton magique : lancé en (M) sans coût en mana, comme dans le
+          // détail (`BorrowedFeatureBlock`). N'affecte que l'AFFICHAGE de cette carte de devant.
+          const staffGrantedPrimary = !!character && !!borrowed && archmageStaffSpellGranted(character, borrowed);
+          // PER-74 : rang de la voie du familier fantastique (R4/R7) portant un pouvoir affichable en
+          // carte — soit une capacité de profil CONFÉRÉE (`featureId`), soit un pouvoir PROPRE au familier
+          // (`original`, ex. Toile/Poison de l'araignée) → carte « stackée » façon capacité empruntée
+          // (le pouvoir en devant, le rang « Pouvoir mineur/supérieur » derrière). Clic → modale (openFeature).
+          const familiarPower = character ? resolveFamiliarGrantedPower(feature.id, character.featureChoices) : null;
+          if (!repl && !borrowed && character && (familiarPower?.featureId || familiarPower?.original)) {
+            return (
+              <FamiliarPowerCompactCard
+                key={feature.id}
+                host={feature}
+                character={character}
+                concentration={concentration}
+                onOpen={() => setOpenFeature(feature)}
+              />
+            );
+          }
           // PER-153 : la restriction d'armure porte sur la capacité EMPRUNTÉE (ex. « Peau de fer »),
           // pas sur l'hôte « Touche-à-tout » — qui n'est jamais gêné et dont les autres effets restent
           // actifs. Le style « désaturé + barré » ne frappe donc que la carte de devant (`cardInner`),
@@ -2655,7 +3058,9 @@ function PathBlock({
               // pour que la zone cliquable soit aussi grande que possible. Ignoré en grille (carte
               // directe), où la carte s'étire déjà sur la hauteur de ligne du subgrid.
               flexGrow: 1,
-              px: 1,
+              // Padding horizontal resserré (6px au lieu de 8px) pour gagner de la largeur de contenu
+              // par colonne en vue colonne (option 4, PER-74).
+              px: 0.75,
               // Le haut est dégagé pour laisser voir les hexagones, qui chevauchent
               // la bordure supérieure (coins : marqueurs en haut gauche, goutte de
               // mana en haut droite, suppression et épingle en bas).
@@ -2715,32 +3120,49 @@ function PathBlock({
               // reste actif. Sur une carte d'emprunt, c'est la capacité EMPRUNTÉE qui est jugée (pas l'hôte).
               ...(armorRestrictedSx(armorRestrictedFeature) ?? {}),
               ...(isArmorRestricted(armorRestrictedFeature) ? ARMOR_RESTRICTED_BARS_SX : {}),
+              // PER-74 — carte de rang de prestige : anneau dégradé + fond sombre (override en dernier).
+              // Pas sur une carte d'emprunt/slot divin (elles gardent la teinte de leur voie source).
+              ...(!repl && !borrowed ? (prestigeCardSx ?? {}) : {}),
             }}
           >
             {/* Marqueurs hexagonaux centrés sur la ligne du haut du bloc. Sur une carte d'emprunt
                 ils décrivent la capacité EMPRUNTÉE (l'hôte, ex. Talent pour la magie, n'a
                 ni astérisque ni type d'action) — teintés de la couleur de la voie source. */}
             <FeatureMarkerHexes
-              feature={borrowed ?? feature}
+              feature={
+                staffGrantedPrimary && borrowed
+                  ? { ...borrowed, actionTypes: ['M'] as ActionType[] }
+                  : (borrowed ?? feature)
+              }
               color={borrowed ? (borrowedColor ?? markerColor) : markerColor}
               concentration={concentration}
+              // PER-74 — Capacité fabuleuse : la cible (L) native (jamais un emprunt) affiche (A).
+              promoteToAttack={!borrowed && fabulousFor(feature).promoteToAttack}
               pathRank={pathRank}
               sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
             />
-            {/* Goutte de coût en PM : celle du sort EMPRUNTÉ le cas échéant (coût = son rang habituel, p. 41). */}
-            <SpellManaBadge
-              feature={borrowed ?? feature}
-              concentration={concentration}
-              surcharge={character ? escalatingManaSurcharge(character, borrowed ?? feature) : 0}
-              armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, borrowed ?? feature) : null}
-              color={(borrowed ? borrowedColor : color) ?? undefined}
-              tooltipEnterDelay={1000}
-              sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
-            />
+            {/* Goutte de coût en PM : celle du sort EMPRUNTÉ le cas échéant (coût = son rang habituel, p. 41).
+                Masquée pour un sort CONFÉRÉ sans coût en mana (sort appris du familier r5, sort du bâton
+                magique de l'archimage r5, PER-74) — même condition que le détail (`BorrowedFeatureBlock`). */}
+            {!(borrowed && (feature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGrantedPrimary)) && (
+              <SpellManaBadge
+                feature={borrowed ?? feature}
+                // PER-74 — Capacité fabuleuse : sort (A) cible → concentration permanente (−2 PM) sur la goutte.
+                concentration={borrowed ? concentration : fabulousFor(feature).manaConcentration}
+                surcharge={character ? escalatingManaSurcharge(character, borrowed ?? feature) : 0}
+                armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, borrowed ?? feature) : null}
+                discount={character ? combatRitualDiscount(character, borrowed ?? feature) : 0}
+                color={(borrowed ? borrowedColor : color) ?? undefined}
+                tooltipEnterDelay={1000}
+                sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
+              />
+            )}
             {manualFeatureIds?.has(feature.id) && <ManualPin />}
             <Typography
               variant="body2"
-              sx={{ fontWeight: 600, width: '100%', textAlign: 'left', wordBreak: 'break-word' }}
+              // Vue colonne : nom de capacité réduit de 1px (0.875rem → 0.8125rem) pour la lisibilité
+              // sur 7 colonnes (PER-74). Reste 1px au-dessus du titre de voie (0.75rem).
+              sx={{ fontWeight: 600, fontSize: '0.8125rem', width: '100%', textAlign: 'left', wordBreak: 'break-word' }}
             >
               {repl && (
                 <AppTooltip
@@ -2830,8 +3252,12 @@ function PathBlock({
                 (« Choisir » orange qui pulse tant que rien n'est retenu, sinon la valeur)
                 est elle-même CLIQUABLE et ouvre la modale d'édition (PER-68) — plus de
                 crayon accolé qui déformait la carte. Masqué pour un emprunt (PER-120) :
-                la carte de la capacité empruntée affiche déjà le choix retenu. */}
-            {hasChoices(feature) && !borrowed && (
+                la carte de la capacité empruntée affiche déjà le choix retenu. Pour un hôte à
+                PLUSIEURS emprunts (PER-74, Bâton magique), affiché tant qu'un slot reste à
+                choisir (2e « Choisir » joignable), puis masqué une fois TOUT résolu — les
+                cartes de sorts empilées ci-dessous le disent déjà, la puce bleue ferait
+                doublon (retour recette proprio). */}
+            {hasChoices(feature) && (!borrowed || (hasMultipleBorrowSlots && !allBorrowSlotsResolved)) && (
               <Box
                 sx={{
                   mt: 'auto',
@@ -2936,9 +3362,77 @@ function PathBlock({
                   zIndex: 0,
                 }}
               />
-              {/* Carte de devant (capacité empruntée), au-dessus du cadre. */}
-              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+              {/* Carte(s) de devant (capacité(s) empruntée(s)), au-dessus du cadre. PER-74 : Bâton
+                  magique (archimage r5) porte DEUX choix sur le MÊME hôte → la 2e capacité empruntée
+                  s'empile EN DESSOUS de la première (`cardInner`), dans le MÊME style de carte —
+                  n'affecte que ce cas ; ailleurs `borrowedExtra` est vide et rien ne change. */}
+              <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flexGrow: 1, gap: 0.5 }}>
                 {cardInner}
+                {borrowedExtra.map((item, i) => {
+                  const itemPath = pathById.get(item.pathId);
+                  const itemClassId = itemPath?.type === 'class' ? itemPath.classIds[0] : undefined;
+                  const itemColor = itemClassId ? classColor(itemClassId) : undefined;
+                  const itemStaffGranted = !!character && archmageStaffSpellGranted(character, item);
+                  const itemNoMana = feature.id === FAMILIAR_LEARNED_SPELL_HOST || itemStaffGranted;
+                  return (
+                    <Box
+                      key={`${i}-${item.id}`}
+                      sx={{
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        pt: 1.75,
+                        pb: 0.75,
+                        px: 0.75,
+                        border: 1,
+                        borderColor: itemColor ?? 'divider',
+                        borderRadius: 1,
+                        backgroundColor: 'background.paper',
+                        backgroundImage: itemColor
+                          ? `linear-gradient(${alpha(itemColor, 0.06)}, ${alpha(itemColor, 0.06)})`
+                          : undefined,
+                        ...(isArmorRestricted(item)
+                          ? { filter: 'grayscale(0.75)', opacity: 0.72, ...ARMOR_RESTRICTED_BARS_SX }
+                          : {}),
+                      }}
+                    >
+                      <FeatureMarkerHexes
+                        feature={itemStaffGranted ? { ...item, actionTypes: ['M'] as ActionType[] } : item}
+                        color={itemColor}
+                        concentration={concentration}
+                        pathRank={pathRank}
+                        sx={{ position: 'absolute', top: 0, left: 6, transform: 'translateY(-50%)', zIndex: 1 }}
+                      />
+                      {!itemNoMana && (
+                        <SpellManaBadge
+                          feature={item}
+                          concentration={concentration}
+                          surcharge={character ? escalatingManaSurcharge(character, item) : 0}
+                          armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, item) : null}
+                          discount={character ? combatRitualDiscount(character, item) : 0}
+                          color={itemColor ?? undefined}
+                          tooltipEnterDelay={1000}
+                          sx={{ position: 'absolute', top: -8, right: -8, zIndex: 1 }}
+                        />
+                      )}
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 600, fontSize: '0.8125rem', width: '100%', textAlign: 'left', wordBreak: 'break-word' }}
+                      >
+                        {declinedName(item)}
+                      </Typography>
+                      {hasChoices(item) && (
+                        <Box sx={{ mt: 0.5, width: '100%', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          {renderChoiceDisplay(item, {
+                            compact: true,
+                            onEdit: canEditChoices ? () => requestChoiceEdit(item) : undefined,
+                          })}
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })}
               </Box>
               {/* Bande de l'hôte EN FLUX, alignée bas-droite sur le cadre décalé : son nom (et la
                   carac retenue éventuelle) restent toujours entièrement visibles. */}
@@ -3022,7 +3516,12 @@ function PathBlock({
                     sx={{ fontWeight: 600 }}
                   />
                   <Box component="span" sx={{ fontWeight: 600 }}>
-                    <FeatureLabel feature={openFeature} concentration={concentration} pathRank={pathRank} />
+                    <FeatureLabel
+                      feature={openFeature}
+                      concentration={concentration}
+                      promoteToAttack={fabulousFor(openFeature).promoteToAttack}
+                      pathRank={pathRank}
+                    />
                   </Box>
                   {openFeature.wip && (
                     <AppTooltip title={openFeature.wip}>
@@ -3062,6 +3561,7 @@ function PathBlock({
                   </>
                 )}
                 <FeatureText feature={openFeature} abilities={abilities} level={level} pathRank={effectiveRank(openFeature)} milestoneBonus={milestoneBonusFor(openFeature)} />
+                <FeatureSourcePage feature={openFeature} />
                 {openFeature.referencedFeatures && openFeature.referencedFeatures.length > 0 && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -3129,6 +3629,16 @@ function PathBlock({
                 {openFeature.id === 'animaux-r5' && character && (
                   <AnimalFormsNote character={character} />
                 )}
+                {/* PER-74 : pouvoir conféré par le familier CHOISI (rangs 4/5/7 ; null sinon / sans familier). */}
+                {openFeature.pathId === 'prestige-familier-fantastique' && character && (
+                  <FamiliarGrantedPowerNote
+                    feature={openFeature}
+                    character={character}
+                    abilities={abilities}
+                    level={level}
+                    onSetUsageCounter={onSetUsageCounter}
+                  />
+                )}
                 {(() => {
                   const profile = displayCreatureProfile(openFeature, character);
                   return profile && abilities && level != null ? (
@@ -3185,50 +3695,72 @@ function PathBlock({
                   </>
                 )}
                 {(() => {
-                  // PER-120 : capacité empruntée (Combattant aguerri) rendue SOUS le texte/choix,
-                  // sans remplacer la carte (l'effet de base de l'hôte reste appliqué).
-                  const borrowed = borrowedFeatureOf(character, openFeature);
-                  return borrowed ? (
-                    <Box sx={{ mt: 1.5 }}>
-                      <BorrowedFeatureBlock
-                        feature={borrowed}
-                        abilities={abilities}
-                        level={level}
-                        hostPathRank={pathRank}
-                        concentration={concentration}
-                        dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
-                        armorRestricted={isArmorRestricted(borrowed)}
-                        armorRestrictedMessage={armorRestrictedMessage(borrowed)}
-                        footer={
-                          hasChoices(borrowed) ? (
-                            <>
-                              <Divider sx={{ my: 1 }} />
-                              {renderChoiceDisplay(borrowed, {
-                                onEdit: canEditChoices
-                                  ? () => {
-                                      setOpenFeature(null);
-                                      requestChoiceEdit(borrowed);
-                                    }
-                                  : undefined,
-                              })}
-                              {onChoiceChange && (
-                                <Button
-                                  size="small"
-                                  startIcon={<EditIcon fontSize="small" />}
-                                  sx={{ mt: 1 }}
-                                  onClick={() => {
-                                    setOpenFeature(null);
-                                    setChoiceEditFeature(borrowed);
-                                  }}
-                                >
-                                  Modifier le choix
-                                </Button>
-                              )}
-                            </>
-                          ) : null
-                        }
-                      />
-                    </Box>
+                  // PER-120 : capacité(s) EMPRUNTÉE(s) (Combattant aguerri) rendue(s) SOUS le
+                  // texte/choix, sans remplacer la carte (l'effet de base de l'hôte reste appliqué).
+                  // PER-74 : Bâton magique (archimage r5) porte DEUX choix → deux cartes EMPILÉES.
+                  const borrowedList = borrowedFeaturesOf(character, openFeature);
+                  return borrowedList.length ? (
+                    <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                      {borrowedList.map((borrowed, i) => {
+                        const staffGranted = !!character && archmageStaffSpellGranted(character, borrowed);
+                        return (
+                          <BorrowedFeatureBlock
+                            key={`${i}-${borrowed.id}`}
+                            feature={borrowed}
+                            abilities={abilities}
+                            level={level}
+                            hostPathRank={pathRank}
+                            concentration={concentration}
+                            dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
+                            armorRestricted={isArmorRestricted(borrowed)}
+                            armorRestrictedMessage={armorRestrictedMessage(borrowed)}
+                            noMana={openFeature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted}
+                            noManaNote={
+                              staffGranted ? (
+                                <>
+                                  Sort lié au bâton magique : lancé au prix d’une action de mouvement, sans
+                                  coût en mana (<SourceRef page={154} />).
+                                </>
+                              ) : undefined
+                            }
+                            actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}
+                            suppressTextMarker={
+                              openFeature.grantedFeature?.suppressTestBonus && openFeature.grantedFeature.featureId === borrowed.id
+                                ? openFeature.grantedFeature.suppressTextMarker
+                                : undefined
+                            }
+                            footer={
+                              hasChoices(borrowed) ? (
+                                <>
+                                  <Divider sx={{ my: 1 }} />
+                                  {renderChoiceDisplay(borrowed, {
+                                    onEdit: canEditChoices
+                                      ? () => {
+                                          setOpenFeature(null);
+                                          requestChoiceEdit(borrowed);
+                                        }
+                                      : undefined,
+                                  })}
+                                  {onChoiceChange && (
+                                    <Button
+                                      size="small"
+                                      startIcon={<EditIcon fontSize="small" />}
+                                      sx={{ mt: 1 }}
+                                      onClick={() => {
+                                        setOpenFeature(null);
+                                        setChoiceEditFeature(borrowed);
+                                      }}
+                                    >
+                                      Modifier le choix
+                                    </Button>
+                                  )}
+                                </>
+                              ) : null
+                            }
+                          />
+                        );
+                      })}
+                    </Stack>
                   ) : null;
                 })()}
                 {/* PER-146 : compteur « 1 usage/jour en armure » du sort emprunté du gnome
@@ -3249,6 +3781,22 @@ function PathBlock({
                     </>
                   ) : null;
                 })()}
+                {/* PER-74 : compteur QUOTIDIEN du sort appris au rang 5 du familier (2×/1× selon le rang
+                    du sort), sous le bloc de l'emprunt — sans coût en mana. */}
+                {(() => {
+                  const learned = synthLearnedSpellCounter(openFeature);
+                  return learned && character ? (
+                    <>
+                      <Divider sx={{ my: 1.5 }} />
+                      <UsageCounterField
+                        feature={openFeature}
+                        character={character}
+                        onSet={onSetUsageCounter}
+                        counterOverride={learned}
+                      />
+                    </>
+                  ) : null;
+                })()}
                 {hasEffectToggles(openFeature) && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
@@ -3258,7 +3806,7 @@ function PathBlock({
                     )}
                   </>
                 )}
-                {damageReductionScopeChoice(openFeature) && character && (
+                {elementalSelectorConfig(openFeature) && character && (
                   <>
                     <Divider sx={{ my: 1.5 }} />
                     <ElementResistanceSelector
@@ -3391,6 +3939,9 @@ function PathBlock({
               ...(disabledSx(feature) ?? {}),
               // Inutilisable avec l'armure portée (PER-86) : désaturée, dépliable (notice dans le détail).
               ...(armorRestrictedSx(feature) ?? {}),
+              // PER-74 — carte de rang de prestige : anneau dégradé (remplace le ::before masqué de MUI)
+              // + fond sombre. En dernier pour primer sur bordure/fond de base. Pas pour un slot divin.
+              ...(!repl ? (prestigeCardSx ?? {}) : {}),
             }}
           >
             <AccordionSummary
@@ -3444,14 +3995,20 @@ function PathBlock({
                       </Box>
                     </AppTooltip>
                   )}
-                  <FeatureLabel feature={feature} concentration={concentration} pathRank={pathRank} />
+                  <FeatureLabel
+                    feature={feature}
+                    concentration={concentration}
+                    promoteToAttack={fabulousFor(feature).promoteToAttack}
+                    pathRank={pathRank}
+                  />
                 </Typography>
               </Stack>
               <SpellManaBadge
                 feature={feature}
-                concentration={concentration}
+                concentration={fabulousFor(feature).manaConcentration}
                 surcharge={character ? escalatingManaSurcharge(character, feature) : 0}
                 armorSurcharge={character ? spellArmorManaSurcharge(character, rulesContext, feature) : null}
+                discount={character ? combatRitualDiscount(character, feature) : 0}
                 color={color ?? undefined}
                 tooltipEnterDelay={1000}
                 sx={{ alignSelf: 'center', mr: 1 }}
@@ -3488,6 +4045,7 @@ function PathBlock({
                 </>
               )}
               <FeatureText feature={feature} abilities={abilities} level={level} pathRank={effectiveRank(feature)} milestoneBonus={milestoneBonusFor(feature)} />
+              <FeatureSourcePage feature={feature} />
               {feature.referencedFeatures && feature.referencedFeatures.length > 0 && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
@@ -3539,6 +4097,16 @@ function PathBlock({
                 </>
               )}
               {feature.id === 'animaux-r5' && character && <AnimalFormsNote character={character} />}
+              {/* PER-74 : pouvoir conféré par le familier CHOISI (rangs 4/5/7 ; null sinon / sans familier). */}
+              {feature.pathId === 'prestige-familier-fantastique' && character && (
+                <FamiliarGrantedPowerNote
+                  feature={feature}
+                  character={character}
+                  abilities={abilities}
+                  level={level}
+                  onSetUsageCounter={onSetUsageCounter}
+                />
+              )}
               {(() => {
                 const profile = displayCreatureProfile(feature, character);
                 return profile && abilities && level != null ? (
@@ -3577,32 +4145,54 @@ function PathBlock({
                 </>
               )}
               {(() => {
-                // PER-120 : capacité empruntée (Combattant aguerri) rendue SOUS le texte/choix,
-                // sans remplacer la carte (l'effet de base de l'hôte reste appliqué).
-                const borrowed = borrowedFeatureOf(character, feature);
-                return borrowed ? (
-                  <Box sx={{ mt: 1.5 }}>
-                    <BorrowedFeatureBlock
-                      feature={borrowed}
-                      abilities={abilities}
-                      level={level}
-                      hostPathRank={pathRank}
-                      concentration={concentration}
-                      dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
-                      armorRestricted={isArmorRestricted(borrowed)}
-                      armorRestrictedMessage={armorRestrictedMessage(borrowed)}
-                      footer={
-                        hasChoices(borrowed) ? (
-                          <>
-                            <Divider sx={{ my: 1 }} />
-                            {onChoiceChange
-                              ? renderChoiceEditor(borrowed)
-                              : renderChoiceDisplay(borrowed, { onEdit: onEnableFeatureEditing })}
-                          </>
-                        ) : null
-                      }
-                    />
-                  </Box>
+                // PER-120 : capacité(s) EMPRUNTÉE(s) (Combattant aguerri) rendue(s) SOUS le
+                // texte/choix, sans remplacer la carte (l'effet de base de l'hôte reste appliqué).
+                // PER-74 : Bâton magique (archimage r5) porte DEUX choix → deux cartes EMPILÉES.
+                const borrowedList = borrowedFeaturesOf(character, feature);
+                return borrowedList.length ? (
+                  <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                    {borrowedList.map((borrowed, i) => {
+                      const staffGranted = !!character && archmageStaffSpellGranted(character, borrowed);
+                      return (
+                        <BorrowedFeatureBlock
+                          key={`${i}-${borrowed.id}`}
+                          feature={borrowed}
+                          abilities={abilities}
+                          level={level}
+                          hostPathRank={pathRank}
+                          concentration={concentration}
+                          dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
+                          armorRestricted={isArmorRestricted(borrowed)}
+                          armorRestrictedMessage={armorRestrictedMessage(borrowed)}
+                          noMana={feature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted}
+                          noManaNote={
+                            staffGranted ? (
+                              <>
+                                Sort lié au bâton magique : lancé au prix d’une action de mouvement, sans
+                                coût en mana (<SourceRef page={154} />).
+                              </>
+                            ) : undefined
+                          }
+                          actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}
+                          suppressTextMarker={
+                            feature.grantedFeature?.suppressTestBonus && feature.grantedFeature.featureId === borrowed.id
+                              ? feature.grantedFeature.suppressTextMarker
+                              : undefined
+                          }
+                          footer={
+                            hasChoices(borrowed) ? (
+                              <>
+                                <Divider sx={{ my: 1 }} />
+                                {onChoiceChange
+                                  ? renderChoiceEditor(borrowed)
+                                  : renderChoiceDisplay(borrowed, { onEdit: onEnableFeatureEditing })}
+                              </>
+                            ) : null
+                          }
+                        />
+                      );
+                    })}
+                  </Stack>
                 ) : null;
               })()}
               {/* PER-146 : compteur « 1 usage/jour en armure » du sort emprunté du gnome (« Don étrange »),
@@ -3622,6 +4212,22 @@ function PathBlock({
                   </>
                 ) : null;
               })()}
+              {/* PER-74 : compteur QUOTIDIEN du sort appris au rang 5 du familier (2×/1× selon le rang du
+                  sort), en vue liste sous le bloc de l'emprunt — sans coût en mana. */}
+              {(() => {
+                const learned = synthLearnedSpellCounter(feature);
+                return learned && character ? (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <UsageCounterField
+                      feature={feature}
+                      character={character}
+                      onSet={onSetUsageCounter}
+                      counterOverride={learned}
+                    />
+                  </>
+                ) : null;
+              })()}
               {hasEffectToggles(feature) && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
@@ -3631,7 +4237,7 @@ function PathBlock({
                   )}
                 </>
               )}
-              {damageReductionScopeChoice(feature) && character && (
+              {elementalSelectorConfig(feature) && character && (
                 <>
                   <Divider sx={{ my: 1.5 }} />
                   <ElementResistanceSelector feature={feature} character={character} onSetInput={onSetEffectInput} />
@@ -3745,8 +4351,8 @@ function GhostColumn({ gridColumn }: { gridColumn: number }) {
 /**
  * Colonne de PRESTIGE réservée mais VIDE (aucune voie de prestige choisie). Contrairement
  * à `GhostColumn`, elle porte un en-tête libellé « Voie de prestige » pour signaler que cet
- * emplacement est réservé à l'unique voie de prestige, à part des 6 voies ordinaires. Rendue
- * avec le même trait de séparation à gauche que le `PathBlock` de prestige (`separated`).
+ * emplacement est réservé à l'unique voie de prestige, à part des 6 voies ordinaires (rendue
+ * estompée, `opacity: 0.6`).
  */
 function PrestigeGhostColumn({ gridColumn }: { gridColumn: number }) {
   return (
@@ -3756,10 +4362,6 @@ function PrestigeGhostColumn({ gridColumn }: { gridColumn: number }) {
         gridRow: `1 / span ${PATH_RANK_COUNT + 1}`,
         display: 'grid',
         gridTemplateRows: 'subgrid',
-        borderLeft: 1,
-        borderColor: 'divider',
-        pl: 1,
-        ml: 0.5,
         opacity: 0.6,
       }}
     >
@@ -3795,6 +4397,7 @@ export function FeaturesByPath({
   onSetUsageCounter,
   onLiftShortRestLock,
   onCreateElixir,
+  onToggleCrystalActive,
   onSummonCompanionInstance,
   onPoisonUpdate,
   onWeaponModificationUpdate,
@@ -3858,6 +4461,24 @@ export function FeaturesByPath({
         ...[...shieldDisabledFeatureIds(character, rulesContext)].map(
           (id) => [id, shieldRequiredMessage()] as const,
         ),
+        // PER-74 — capacités de la Voie de l'archer arcanique désactivées faute d'arc/arbalète en
+        // main (p. 137). Même rendu (désaturé + notice) que la Voie du bouclier ci-dessus.
+        ...[...rangedWeaponDisabledFeatureIds(character, rulesContext)].map(
+          (id) => [id, rangedWeaponRequiredMessage()] as const,
+        ),
+        // PER-74 — capacités de la Voie du combat à deux armes désactivées sans une arme dans chaque
+        // main (p. 73), Combattant héroïque excepté. Même rendu (désaturé + notice) que la Voie du bouclier.
+        ...[...dualWieldDisabledFeatureIds(character, rulesContext)].map(
+          (id) => [id, dualWieldRequiredMessage()] as const,
+        ),
+        // PER-74 — capacités d'une voie qui fixe SON PROPRE plafond d'armure (Voie du danseur de
+        // guerre, p. 150), désactivées tant qu'une armure plus encombrante est portée. Même rendu
+        // (désaturé + notice) que la Voie du bouclier ; le message porte l'armure plafond et la page.
+        ...pathArmorDisabledReasons(character, rulesContext),
+        // PER-74 — capacités du flibustier (Coup de crosse / Sabre au poing) non jouables faute de la
+        // bonne arme en main (p. 141-142). Grisage VISUEL uniquement (la maîtrise des armes à poudre reste
+        // valide) → même canal que la Voie du bouclier, jamais dans `activeFeatureIdsForMods`.
+        ...wieldDisabledReasons(character),
         // PER-144 — sort emprunté de rang 2 via « Talent pour la magie » (elfe haut) non lançable
         // tant qu'une armure est portée (p. 50). Même rendu (désaturé + barré + notice) que PER-153,
         // sur retour propriétaire : ce n'est pas une désactivation d'effet mais l'elfe ne peut lancer
@@ -3874,6 +4495,11 @@ export function FeaturesByPath({
   const borrowedArmorUsageCounters = character
     ? computeBorrowedArmorUsageCounters(character)
     : undefined;
+
+  // PER-74 — Capacité fabuleuse (spécialiste r5) : capacité (L) sublimée en (A), ou sort (A) qui
+  // bénéficie de la concentration (−2 PM permanent) sans passer en (L). Résolu une fois ici, appliqué
+  // par PathBlock au rendu de la capacité cible DANS SA VOIE (marqueurs + coût de mana).
+  const fabulousTarget = character ? fabulousCapacityTarget(character) : null;
 
   const owned = new Set(featureIds);
   // `FeaturePathAutocomplete` regroupe/trie lui-même par voie (en-têtes colorés par profil) :
@@ -3940,7 +4566,9 @@ export function FeaturesByPath({
             // Lignes partagées par toutes les colonnes (subgrid) : en-tête + rangs.
             // L'en-tête prend la hauteur du titre le plus haut, les rangs s'alignent.
             gridTemplateRows: `auto repeat(${PATH_RANK_COUNT}, minmax(56px, auto))`,
-            gap: 1,
+            // ≥ md : gap resserré (4px au lieu de 8px) pour rendre ~24px de largeur à la rangée de
+            // 7 colonnes (option 4, PER-74). En < md (défilement H) on garde 8px, plus aéré.
+            gap: { xs: 1, md: 0.5 },
             overflowX: { xs: 'auto', md: 'visible' },
             pb: { xs: 1, md: 0 },
           }}
@@ -3968,6 +4596,7 @@ export function FeaturesByPath({
               onSetUsageCounter={onSetUsageCounter}
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
+              onToggleCrystalActive={onToggleCrystalActive}
               onSummonCompanionInstance={onSummonCompanionInstance}
               onPoisonUpdate={onPoisonUpdate}
               onWeaponModificationUpdate={onWeaponModificationUpdate}
@@ -3977,6 +4606,7 @@ export function FeaturesByPath({
               borrowedArmorUsageCounters={borrowedArmorUsageCounters}
               replacements={replacements}
               concentration={concentration}
+              fabulousTarget={fabulousTarget}
               testBonuses={testBonuses}
             />
           ))}
@@ -3984,7 +4614,7 @@ export function FeaturesByPath({
             <GhostColumn key={`ghost-col-${c}`} gridColumn={c} />
           ))}
           {/* Colonne de prestige RÉSERVÉE mais vide : aucune voie de prestige choisie. Toujours
-              affichée (emplacement réservé), avec son libellé et son trait de séparation. */}
+              affichée (emplacement réservé), avec son libellé « Voie de prestige » estompé. */}
           {prestige.length === 0 && <PrestigeGhostColumn gridColumn={PRESTIGE_COLUMN} />}
           {prestige.map((group, i) => (
             <PathBlock
@@ -3998,8 +4628,6 @@ export function FeaturesByPath({
               masterDerived={masterDerived}
               compact
               gridColumn={PRESTIGE_COLUMN + i}
-              // Trait de séparation sur la 1re colonne de prestige : la détache des 6 voies ordinaires.
-              separated={i === 0}
               character={character}
               onChoiceChange={onChoiceChange}
               onEnableFeatureEditing={onEnableFeatureEditing}
@@ -4009,6 +4637,7 @@ export function FeaturesByPath({
               onSetUsageCounter={onSetUsageCounter}
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
+              onToggleCrystalActive={onToggleCrystalActive}
               onSummonCompanionInstance={onSummonCompanionInstance}
               onPoisonUpdate={onPoisonUpdate}
               onWeaponModificationUpdate={onWeaponModificationUpdate}
@@ -4018,6 +4647,7 @@ export function FeaturesByPath({
               borrowedArmorUsageCounters={borrowedArmorUsageCounters}
               replacements={replacements}
               concentration={concentration}
+              fabulousTarget={fabulousTarget}
               testBonuses={testBonuses}
             />
           ))}
@@ -4045,6 +4675,7 @@ export function FeaturesByPath({
               onSetUsageCounter={onSetUsageCounter}
               onLiftShortRestLock={onLiftShortRestLock}
               onCreateElixir={onCreateElixir}
+              onToggleCrystalActive={onToggleCrystalActive}
               onSummonCompanionInstance={onSummonCompanionInstance}
               onPoisonUpdate={onPoisonUpdate}
               onWeaponModificationUpdate={onWeaponModificationUpdate}
@@ -4054,6 +4685,7 @@ export function FeaturesByPath({
               borrowedArmorUsageCounters={borrowedArmorUsageCounters}
               replacements={replacements}
               concentration={concentration}
+              fabulousTarget={fabulousTarget}
               testBonuses={testBonuses}
             />
           ))}

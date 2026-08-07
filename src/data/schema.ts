@@ -3479,6 +3479,13 @@ export interface Feature {
      */
     suppressTestBonus?: boolean;
     /**
+     * Sous-chaîne (verbatim) du texte de la capacité octroyée à partir de laquelle la phrase décrivant
+     * le « bonus de compétence associé » commence : sur la carte EMPRUNTÉE (et seulement là), cette
+     * queue de texte est rendue BARRÉE (le sort natif reste intact). N'a de sens qu'avec
+     * `suppressTestBonus`. Ex. Ténèbres : `'En plus de ce sort'`.
+     */
+    suppressTextMarker?: string;
+    /**
      * Si le personnage possède DÉJÀ nativement `featureId` : au lieu de l'octroi (supprimé pour éviter
      * le doublon), l'action de lancement de la capacité NATIVE est remplacée par ces types (ex. `['G']`
      * = gratuite). Donnée consommée au rendu de la carte native (câblage du rendu différé).
