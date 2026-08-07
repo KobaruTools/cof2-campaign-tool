@@ -431,11 +431,22 @@ function borrowedFeatureOf(character: Character | undefined, feature: Feature): 
 function nativeFreeActionOverride(character: Character | undefined, feature: Feature): ActionType[] | undefined {
   if (!character || !character.featureIds.includes(feature.id)) return undefined;
   for (const hostId of character.featureIds) {
-    const granted = featureById.get(hostId)?.grantedFeature;
-    if (granted?.featureId === feature.id && granted.freeActionIfOwned?.length) return granted.freeActionIfOwned;
+    for (const grant of featureById.get(hostId)?.grantedFeatures ?? []) {
+      if (grant.featureId === feature.id && grant.freeActionIfOwned?.length) return grant.freeActionIfOwned;
+    }
   }
   return undefined;
 }
+
+/** Octroi fixe (`grantedFeatures`, PER-323) de la capacité hôte `host` ayant produit la carte octroyée `borrowedId`. */
+function grantForBorrowed(host: Feature, borrowedId: string) {
+  return host.grantedFeatures?.find((g) => g.featureId === borrowedId);
+}
+
+/** Notice « sans coût en mana » d'un sort octroyé `noMana` (cambion « La belle et la bête », PER-323). */
+const CAMBION_NO_MANA_NOTE = (
+  <>Sort octroyé : utilisé sans dépenser de mana et sans limitation d’armure (<SourceRef page={10} />).</>
+);
 
 /**
  * TOUTES les capacités EMPRUNTÉES par les choix `feature-from-path` résolus d'une capacité (PER-74,
@@ -447,11 +458,14 @@ function nativeFreeActionOverride(character: Character | undefined, feature: Fea
 function borrowedFeaturesOf(character: Character | undefined, feature: Feature): Feature[] {
   if (!character) return [];
   const out: Feature[] = [];
-  // Grant FIXE (PER-323, cambion « Enfant des ténèbres ») : capacité octroyée rendue comme un emprunt,
-  // SAUF si le personnage la possède déjà nativement (pas de doublon — la carte native passe en (G)).
-  const granted = feature.grantedFeature;
-  if (granted && !character.featureIds.includes(granted.featureId)) {
-    const g = featureById.get(granted.featureId);
+  // Grants FIXES (PER-323, cambion « Enfant des ténèbres », « La belle et la bête ») : chaque capacité
+  // octroyée est rendue comme un emprunt, SAUF si le personnage la possède déjà nativement (pas de
+  // doublon — la carte native passe en (G)) ou si son palier `minLevel` (Aspect du démon, niv. 10)
+  // n'est pas atteint.
+  for (const grant of feature.grantedFeatures ?? []) {
+    if (grant.minLevel != null && character.level < grant.minLevel) continue;
+    if (character.featureIds.includes(grant.featureId)) continue;
+    const g = featureById.get(grant.featureId);
     if (g) out.push(g);
   }
   const defs = feature.choices;
@@ -3729,6 +3743,7 @@ function PathBlock({
                     <Stack spacing={1.5} sx={{ mt: 1.5 }}>
                       {borrowedList.map((borrowed, i) => {
                         const staffGranted = !!character && archmageStaffSpellGranted(character, borrowed);
+                        const grant = grantForBorrowed(openFeature, borrowed.id);
                         return (
                           <BorrowedFeatureBlock
                             key={`${i}-${borrowed.id}`}
@@ -3740,20 +3755,20 @@ function PathBlock({
                             dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                             armorRestricted={isArmorRestricted(borrowed)}
                             armorRestrictedMessage={armorRestrictedMessage(borrowed)}
-                            noMana={openFeature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted}
+                            noMana={openFeature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana}
                             noManaNote={
                               staffGranted ? (
                                 <>
                                   Sort lié au bâton magique : lancé au prix d’une action de mouvement, sans
                                   coût en mana (<SourceRef page={154} />).
                                 </>
+                              ) : grant?.noMana ? (
+                                CAMBION_NO_MANA_NOTE
                               ) : undefined
                             }
                             actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}
                             suppressTextMarker={
-                              openFeature.grantedFeature?.suppressTestBonus && openFeature.grantedFeature.featureId === borrowed.id
-                                ? openFeature.grantedFeature.suppressTextMarker
-                                : undefined
+                              grant?.suppressTestBonus ? grant.suppressTextMarker : undefined
                             }
                             footer={
                               hasChoices(borrowed) ? (
@@ -4179,6 +4194,7 @@ function PathBlock({
                   <Stack spacing={1.5} sx={{ mt: 1.5 }}>
                     {borrowedList.map((borrowed, i) => {
                       const staffGranted = !!character && archmageStaffSpellGranted(character, borrowed);
+                      const grant = grantForBorrowed(feature, borrowed.id);
                       return (
                         <BorrowedFeatureBlock
                           key={`${i}-${borrowed.id}`}
@@ -4190,20 +4206,20 @@ function PathBlock({
                           dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                           armorRestricted={isArmorRestricted(borrowed)}
                           armorRestrictedMessage={armorRestrictedMessage(borrowed)}
-                          noMana={feature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted}
+                          noMana={feature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana}
                           noManaNote={
                             staffGranted ? (
                               <>
                                 Sort lié au bâton magique : lancé au prix d’une action de mouvement, sans
                                 coût en mana (<SourceRef page={154} />).
                               </>
+                            ) : grant?.noMana ? (
+                              CAMBION_NO_MANA_NOTE
                             ) : undefined
                           }
                           actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}
                           suppressTextMarker={
-                            feature.grantedFeature?.suppressTestBonus && feature.grantedFeature.featureId === borrowed.id
-                              ? feature.grantedFeature.suppressTextMarker
-                              : undefined
+                            grant?.suppressTestBonus ? grant.suppressTextMarker : undefined
                           }
                           footer={
                             hasChoices(borrowed) ? (

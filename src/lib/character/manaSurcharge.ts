@@ -38,6 +38,7 @@ import {
   donEtrangeBorrowedFeatureId,
 } from './armorRestrictions';
 import { warmageArmorWaiverThreshold } from './warmagePath';
+import { grantedArmorExemptFeatureIds } from './choices';
 
 /**
  * Profil d'origine (id de `CharacterClass`) d'un sort, d'après SA voie
@@ -122,6 +123,11 @@ export function spellArmorManaSurcharge(
   // l'ensorceleur (0) rendrait le sort injouable sur un profil en armure lourde (ex. cotte de mailles :
   // +5 PM pour un réservoir d'environ 1 PM), à rebours de l'intention d'un don de peuple.
   if (donEtrangeBorrowedFeatureId(character) === feature.id) return null;
+  // PER-323 — un sort OCTROYÉ (cambion « Enfant des ténèbres », « La belle et la bête ») se lance
+  // « sans limitation d'armure » : ni surcoût, ni maîtrise requise. L'exemption vaut sur la carte
+  // octroyée ET sur la version native si le personnage possède aussi la voie d'origine (ex. voie du
+  // démon) tant qu'il détient la capacité qui octroie ce sort (`grantedArmorExemptFeatureIds`).
+  if (grantedArmorExemptFeatureIds(character).has(feature.id)) return null;
   const path = pathById.get(feature.pathId);
   if (!path) return null;
 

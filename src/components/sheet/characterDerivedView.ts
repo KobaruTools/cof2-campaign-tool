@@ -32,7 +32,9 @@ import {
   stackedDamageReductions,
   type EffectContext,
 } from '@/lib/character/effects';
+import { grantedNoManaFeatureIds } from '@/lib/character/choices';
 import { mergeMods, orphanMods } from '@/lib/character/orphanPoints';
+import { crystalStatBonuses } from '@/lib/character/crystals';
 import {
   derivedBonusSourcesFromEquipment,
   derivedBonusesFromEquipment,
@@ -356,6 +358,9 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // le port d'armure (PER-83) : base de l'agrégation des bonus plats et du détail des
   // stats dérivées (PER-66). Une capacité gênée par l'armure ne compte plus nulle part.
   const modFeatureIds = activeFeatureIdsForMods(character);
+  // Sorts octroyés `noMana` (cambion « La belle et la bête », PER-323) : exclus du compte des sorts
+  // connus (pas de +1 PM), même s'ils sont aussi possédés par la voie d'origine (ex. voie du démon).
+  const noManaFeatureIds = grantedNoManaFeatureIds(character);
   // Contexte d'effets (PER-67) : résout les valeurs scalantes et n'inclut que les
   // effets conditionnels dont l'interrupteur est actif.
   const effectCtx = effectContext(character);
@@ -644,19 +649,29 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
         meleeAttackAbility,
         meleeAttackAbilitySourceId,
         // Sorts connus = acquis ET EMPRUNTÉS (encadré « Appel à une autre capacité », p. 60). PER-73.
-        spellCount: modFeatureIds.filter((fid) => featureById.get(fid)?.isSpell).length,
+        // Un sort octroyé `noMana` (cambion « La belle et la bête », PER-323) NE donne PAS le +1 PM.
+        spellCount: modFeatureIds.filter(
+          (fid) => featureById.get(fid)?.isSpell && !noManaFeatureIds.has(fid),
+        ).length,
         manaAbility: manaCast.ability,
         // Bonus des capacités acquises (PER-63) + empruntées par choix (PER-66), fusionnés avec les
         // points de capacité orphelins convertis (p. 40), les apports de stats dérivées des OBJETS
         // PORTÉS (PER-273) ET les bonus à la touche conditionnés à l'arme portée (maître d'armes,
         // PER-226) — tous fondus dans le score, détaillés dans l'infobulle.
-        mods: mergeMods(modsFromFeatures(modFeatureIds, effectCtx), orphanMods(character), itemDerivedBonuses, {
-          meleeAttack: meleeAttackBonus.total + meleeMagicAttack,
-          rangedAttack: rangedAttackBonus.total + rangedMagicAttack,
-          // Malus d'Initiative au CAVALIER d'une monture bardée « en selle » (PER-216) : négatif,
-          // fondu dans le score d'Initiative comme les autres modificateurs de capacités.
-          initiative: -mountedInitiativePenalty(character),
-        }),
+        mods: mergeMods(
+          modsFromFeatures(modFeatureIds, effectCtx),
+          orphanMods(character),
+          itemDerivedBonuses,
+          // Cristaux ACTIFS de la voie des cristaux (PER-74, p. 156) : Init./DEF/attaque, tant qu'activés.
+          crystalStatBonuses(character),
+          {
+            meleeAttack: meleeAttackBonus.total + meleeMagicAttack,
+            rangedAttack: rangedAttackBonus.total + rangedMagicAttack,
+            // Malus d'Initiative au CAVALIER d'une monture bardée « en selle » (PER-216) : négatif,
+            // fondu dans le score d'Initiative comme les autres modificateurs de capacités.
+            initiative: -mountedInitiativePenalty(character),
+          },
+        ),
         // PV des niveaux mixtes d'un profil hybride (p. 177) ; identique au mono-famille sinon.
         hpFamilyGains: familyHpGains(character, rulesContext),
         // PV de base d'un profil hybride créé au niveau 1 (somme des deux familles, p. 180).

@@ -3,7 +3,9 @@ import { registerContentBundle } from '@/data';
 import { SCHEMA_VERSION, type Character } from '@/lib/character/types';
 import {
   effectiveFeatureIdsForMods,
+  grantedArmorExemptFeatureIds,
   grantedFeatureIds,
+  grantedNoManaFeatureIds,
   suppressedTestBonusFeatureIds,
 } from './choices';
 import { effectContext, testBonusSources } from './effects';
@@ -25,7 +27,7 @@ registerContentBundle({
       name: 'Voie octroyeuse de test',
       type: 'ancestry',
       ancestryIds: ['test-granter-path'],
-      featureIds: ['test-granter-suppress', 'test-granter-plain'],
+      featureIds: ['test-granter-suppress', 'test-granter-plain', 'test-granter-multi'],
       sourcePage: 0,
     },
   ],
@@ -43,6 +45,17 @@ registerContentBundle({
       effects: [{ kind: 'test-bonus', domains: ['occult-lore'] }],
     },
     {
+      // 2e sort octroyé, réservé à un palier de niveau (comme Aspect du démon au niv. 10).
+      id: 'test-granted-spell-2',
+      name: 'Sort octroyé de test (palier)',
+      pathId: 'test-granted-path',
+      rank: 1,
+      isSpell: true,
+      actionTypes: ['A'],
+      text: 'Sort octroyé de test au niveau 10.',
+      sourcePage: 0,
+    },
+    {
       // Octroi AVEC suppression du bonus de compétence.
       id: 'test-granter-suppress',
       name: 'Octroyeur (suppression)',
@@ -52,7 +65,7 @@ registerContentBundle({
       actionTypes: [],
       text: 'Octroie le sort de test sans son bonus de compétence.',
       sourcePage: 0,
-      grantedFeature: { featureId: 'test-granted-spell', suppressTestBonus: true, freeActionIfOwned: ['G'] },
+      grantedFeatures: [{ featureId: 'test-granted-spell', suppressTestBonus: true, freeActionIfOwned: ['G'] }],
     },
     {
       // Octroi SANS suppression : le bonus de compétence du sort octroyé compte normalement.
@@ -64,7 +77,22 @@ registerContentBundle({
       actionTypes: [],
       text: 'Octroie le sort de test avec son bonus de compétence.',
       sourcePage: 0,
-      grantedFeature: { featureId: 'test-granted-spell' },
+      grantedFeatures: [{ featureId: 'test-granted-spell' }],
+    },
+    {
+      // DEUX octrois `noMana` : un immédiat, un au palier niv. 10 (comme cambion « La belle et la bête »).
+      id: 'test-granter-multi',
+      name: 'Octroyeur (multi, noMana, palier)',
+      pathId: 'test-granter-path',
+      rank: 1,
+      isSpell: false,
+      actionTypes: [],
+      text: 'Octroie deux sorts sans mana, le second au niveau 10.',
+      sourcePage: 0,
+      grantedFeatures: [
+        { featureId: 'test-granted-spell', noMana: true },
+        { featureId: 'test-granted-spell-2', noMana: true, minLevel: 10 },
+      ],
     },
   ],
 });
@@ -140,6 +168,34 @@ describe('grantedFeature — octroi fixe d\'une capacité (PER-323)', () => {
   it('déjà possédée nativement : rien à supprimer (le bonus natif reste)', () => {
     const c = makeCharacter({ featureIds: ['test-granter-suppress', 'test-granted-spell'] });
     expect([...suppressedTestBonusFeatureIds(c)]).toEqual([]);
+  });
+});
+
+describe('grantedFeatures — paliers minLevel + sorts noMana (PER-323 « La belle et la bête »)', () => {
+  it('sous le palier : seul le 1er octroi a lieu ; au palier : les deux', () => {
+    const low = makeCharacter({ featureIds: ['test-granter-multi'], level: 9 });
+    expect(grantedFeatureIds(low)).toEqual(['test-granted-spell']);
+    const high = makeCharacter({ featureIds: ['test-granter-multi'], level: 10 });
+    expect(grantedFeatureIds(high).sort()).toEqual(['test-granted-spell', 'test-granted-spell-2']);
+  });
+
+  it('noMana : les sorts octroyés figurent dans l\'ensemble sans mana (palier respecté)', () => {
+    const low = makeCharacter({ featureIds: ['test-granter-multi'], level: 9 });
+    expect([...grantedNoManaFeatureIds(low)]).toEqual(['test-granted-spell']);
+    const high = makeCharacter({ featureIds: ['test-granter-multi'], level: 10 });
+    expect([...grantedNoManaFeatureIds(high)].sort()).toEqual(['test-granted-spell', 'test-granted-spell-2']);
+  });
+
+  it('noMana s\'applique MÊME si la cible est possédée nativement (retire le +1 PM de la voie d\'origine)', () => {
+    const c = makeCharacter({ featureIds: ['test-granter-multi', 'test-granted-spell'], level: 9 });
+    expect(grantedNoManaFeatureIds(c).has('test-granted-spell')).toBe(true);
+  });
+
+  it('exemption d\'armure : couvre les cibles octroyées, palier respecté', () => {
+    const low = makeCharacter({ featureIds: ['test-granter-multi'], level: 9 });
+    expect([...grantedArmorExemptFeatureIds(low)]).toEqual(['test-granted-spell']);
+    const high = makeCharacter({ featureIds: ['test-granter-multi'], level: 10 });
+    expect([...grantedArmorExemptFeatureIds(high)].sort()).toEqual(['test-granted-spell', 'test-granted-spell-2']);
   });
 });
 

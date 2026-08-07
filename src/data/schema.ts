@@ -3461,17 +3461,30 @@ export interface Feature {
    */
   actionTypesFromRank?: { rank: number; actionTypes: ActionType[] };
   /**
-   * Octroi FIXE d'une capacité d'une AUTRE voie (PER-323, cambion « Enfant des ténèbres »). À la
-   * différence de l'emprunt par CHOIX (`feature-from-path`, où le joueur pioche une capacité éligible),
-   * la capacité octroyée est IMPOSÉE. Elle entre dans le pool effectif du personnage (ses `effects`
-   * comptent ; un SORT octroyé donne +1 PM comme tout sort connu et se lance sans surcoût d'armure) et
-   * se rend comme une capacité EMPRUNTÉE sous la voie hôte. Si le personnage possède DÉJÀ nativement
-   * cette capacité, l'octroi n'a PAS lieu (aucun doublon) ; le livre prévoit alors un autre bénéfice
-   * (ex. lancement en action gratuite), décrit par `freeActionIfOwned`.
+   * Octrois FIXES de capacités d'une AUTRE voie (PER-323 : cambion « Enfant des ténèbres » octroie
+   * Ténèbres ; « La belle et la bête » octroie Beauté de la succube, puis Aspect du démon au niv. 10).
+   * À la différence de l'emprunt par CHOIX (`feature-from-path`, où le joueur pioche une capacité
+   * éligible), la capacité octroyée est IMPOSÉE. Chaque octroi entre dans le pool effectif du
+   * personnage (ses `effects` comptent) et se rend comme une capacité EMPRUNTÉE sous la voie hôte, sans
+   * surcoût d'armure (la cible est affranchie de la pénalité d'incantation en armure — sur la carte
+   * octroyée ET sur la version native si le personnage la possède aussi par sa voie d'origine). Si le
+   * personnage possède DÉJÀ nativement une cible, l'octroi n'a PAS lieu (aucun doublon) ; le livre
+   * prévoit alors un autre bénéfice (ex. lancement en action gratuite), décrit par `freeActionIfOwned`.
    */
-  grantedFeature?: {
-    /** Id de la capacité octroyée (ex. `sombre-magie-r1` = Ténèbres). */
+  grantedFeatures?: {
+    /** Id de la capacité octroyée (ex. `sombre-magie-r1` = Ténèbres, `demon-r2` = Beauté de la succube). */
     featureId: string;
+    /**
+     * Niveau de personnage minimal pour que l'octroi ait lieu (ex. `10` pour Aspect du démon, obtenu
+     * « à partir du niveau 10 »). Absent = octroi dès l'acquisition de la capacité hôte.
+     */
+    minLevel?: number;
+    /**
+     * Le SORT octroyé NE donne PAS le +1 PM habituel d'un sort connu (« sans dépenser de mana… il n'en
+     * obtient pas non plus lorsqu'il acquiert cette capacité », p. 10). Retire aussi ce +1 PM si le
+     * personnage possède la même capacité par sa voie d'origine (ex. voie du démon).
+     */
+    noMana?: boolean;
     /**
      * Écarte le « bonus de compétence associé » de la capacité octroyée : ses effets `test-bonus` ne
      * comptent pas dans le moteur ni ne s'affichent (le cambion obtient le sort mais PAS l'érudition
@@ -3488,10 +3501,10 @@ export interface Feature {
     /**
      * Si le personnage possède DÉJÀ nativement `featureId` : au lieu de l'octroi (supprimé pour éviter
      * le doublon), l'action de lancement de la capacité NATIVE est remplacée par ces types (ex. `['G']`
-     * = gratuite). Donnée consommée au rendu de la carte native (câblage du rendu différé).
+     * = gratuite). Donnée consommée au rendu de la carte native.
      */
     freeActionIfOwned?: ActionType[];
-  };
+  }[];
   /** Texte de règles complet, verbatim. Reste la SOURCE, jamais perdu. */
   text: string;
   /**

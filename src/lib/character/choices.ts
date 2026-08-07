@@ -569,40 +569,83 @@ export function borrowedFeatureIds(character: Character): string[] {
   return borrowed;
 }
 
+/** Un octroi fixe (`Feature.grantedFeatures[i]`) rattaché à la capacité hôte qui le porte. */
+type ResolvedGrant = { hostId: string; grant: NonNullable<Feature['grantedFeatures']>[number] };
+
 /**
- * Ids des capacités OCTROYÉES par un grant FIXE (`Feature.grantedFeature`) d'une capacité acquise —
- * ex. le cambion « Enfant des ténèbres » octroie le sort Ténèbres (PER-323). À la différence de
- * l'emprunt par CHOIX (`feature-from-path`), la cible est IMPOSÉE. On EXCLUT une capacité déjà
- * possédée nativement (pas de doublon : le livre prévoit alors un autre bénéfice). Ces capacités sont
- * réellement acquises → leurs `effects` (et le +1 PM d'un sort octroyé) comptent, comme les emprunts.
+ * Octrois fixes ACTIFS d'un personnage : chaque entrée de `grantedFeatures` des capacités acquises,
+ * dont la cible existe et dont le palier `minLevel` (ex. Aspect du démon au niv. 10) est atteint.
+ * N'applique PAS encore le dédoublonnage « déjà possédée nativement » (à la charge de l'appelant selon
+ * qu'il veut l'octroi effectif — sans la cible native — ou l'ensemble complet, mana/armure inclus).
+ */
+function resolvedGrants(character: Character): ResolvedGrant[] {
+  const out: ResolvedGrant[] = [];
+  for (const hostId of character.featureIds) {
+    const grants = featureById.get(hostId)?.grantedFeatures;
+    if (!grants) continue;
+    for (const grant of grants) {
+      if (grant.minLevel != null && character.level < grant.minLevel) continue;
+      if (!featureById.has(grant.featureId)) continue;
+      out.push({ hostId, grant });
+    }
+  }
+  return out;
+}
+
+/**
+ * Ids des capacités OCTROYÉES par un grant FIXE (`Feature.grantedFeatures`) d'une capacité acquise —
+ * ex. le cambion « Enfant des ténèbres » octroie le sort Ténèbres, « La belle et la bête » octroie
+ * Beauté de la succube puis Aspect du démon (PER-323). À la différence de l'emprunt par CHOIX
+ * (`feature-from-path`), la cible est IMPOSÉE. On EXCLUT une capacité déjà possédée nativement (pas de
+ * doublon : le livre prévoit alors un autre bénéfice). Ces capacités sont réellement acquises → leurs
+ * `effects` comptent, comme les emprunts (mais le +1 PM d'un sort `noMana` est retiré, cf. `manaPoints`).
  */
 export function grantedFeatureIds(character: Character): string[] {
   const owned = new Set(character.featureIds);
   const out: string[] = [];
-  for (const hostId of character.featureIds) {
-    const granted = featureById.get(hostId)?.grantedFeature;
-    if (!granted) continue;
-    if (owned.has(granted.featureId)) continue; // déjà possédée nativement → pas d'octroi
-    if (!featureById.has(granted.featureId)) continue;
-    out.push(granted.featureId);
+  for (const { grant } of resolvedGrants(character)) {
+    if (owned.has(grant.featureId)) continue; // déjà possédée nativement → pas d'octroi
+    out.push(grant.featureId);
   }
   return [...new Set(out)];
 }
 
 /**
  * Ids de capacités OCTROYÉES dont le « bonus de compétence associé » est SUPPRIMÉ
- * (`grantedFeature.suppressTestBonus`, PER-323) : leurs effets `test-bonus` ne doivent PAS compter ni
- * s'afficher. Ne concerne que les octrois EFFECTIFS (capacité pas déjà possédée nativement).
+ * (`grantedFeatures[i].suppressTestBonus`, PER-323) : leurs effets `test-bonus` ne doivent PAS compter
+ * ni s'afficher. Ne concerne que les octrois EFFECTIFS (capacité pas déjà possédée nativement).
  */
 export function suppressedTestBonusFeatureIds(character: Character): Set<string> {
   const owned = new Set(character.featureIds);
   const out = new Set<string>();
-  for (const hostId of character.featureIds) {
-    const granted = featureById.get(hostId)?.grantedFeature;
-    if (!granted?.suppressTestBonus) continue;
-    if (owned.has(granted.featureId)) continue;
-    out.add(granted.featureId);
+  for (const { grant } of resolvedGrants(character)) {
+    if (!grant.suppressTestBonus || owned.has(grant.featureId)) continue;
+    out.add(grant.featureId);
   }
+  return out;
+}
+
+/**
+ * Ids de SORTS octroyés `noMana` (PER-323, cambion « La belle et la bête ») : ils NE donnent PAS le
+ * +1 PM d'un sort connu. Inclut la cible MÊME possédée nativement (le +1 PM est retiré aussi quand la
+ * capacité vient de la voie d'origine, ex. voie du démon — décision proprio). Consommé par `spellCount`.
+ */
+export function grantedNoManaFeatureIds(character: Character): Set<string> {
+  const out = new Set<string>();
+  for (const { grant } of resolvedGrants(character)) {
+    if (grant.noMana) out.add(grant.featureId);
+  }
+  return out;
+}
+
+/**
+ * Ids de sorts octroyés affranchis du surcoût de mana d'incantation en ARMURE (PER-323) : la cible se
+ * lance « sans limitation d'armure », que ce soit sur la carte octroyée OU sur sa version native (si le
+ * personnage possède aussi la voie d'origine, ex. voie du démon). Consommé par `spellArmorManaSurcharge`.
+ */
+export function grantedArmorExemptFeatureIds(character: Character): Set<string> {
+  const out = new Set<string>();
+  for (const { grant } of resolvedGrants(character)) out.add(grant.featureId);
   return out;
 }
 
@@ -646,11 +689,10 @@ export function borrowedHostPathByFeatureId(character: Character): Map<string, s
   }
   // Grants FIXES (PER-323) : la capacité octroyée « devient une capacité de la voie hôte », comme un
   // emprunt. Même résolution du terme `rang` contre la voie hôte. Exclut les octrois déjà possédés.
-  for (const hostId of character.featureIds) {
+  for (const { hostId, grant } of resolvedGrants(character)) {
+    if (owned.has(grant.featureId)) continue;
     const host = featureById.get(hostId);
-    const granted = host?.grantedFeature;
-    if (!granted || owned.has(granted.featureId) || !featureById.has(granted.featureId)) continue;
-    map.set(granted.featureId, host.pathId);
+    if (host) map.set(grant.featureId, host.pathId);
   }
   return map;
 }
