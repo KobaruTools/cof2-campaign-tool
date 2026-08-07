@@ -423,6 +423,21 @@ function borrowedFeatureOf(character: Character | undefined, feature: Feature): 
 }
 
 /**
+ * Remplacement des types d'action de la carte NATIVE d'une capacité quand un grant fixe
+ * (`grantedFeature.freeActionIfOwned`, PER-323) s'applique : si le personnage possède DÉJÀ cette
+ * capacité nativement et qu'une autre capacité acquise l'octroierait (cambion « Enfant des ténèbres »),
+ * il n'y a pas d'octroi (doublon) mais le sort natif se lance en action gratuite (G). `undefined` sinon.
+ */
+function nativeFreeActionOverride(character: Character | undefined, feature: Feature): ActionType[] | undefined {
+  if (!character || !character.featureIds.includes(feature.id)) return undefined;
+  for (const hostId of character.featureIds) {
+    const granted = featureById.get(hostId)?.grantedFeature;
+    if (granted?.featureId === feature.id && granted.freeActionIfOwned?.length) return granted.freeActionIfOwned;
+  }
+  return undefined;
+}
+
+/**
  * TOUTES les capacités EMPRUNTÉES par les choix `feature-from-path` résolus d'une capacité (PER-74,
  * Bâton magique de l'archimage r5 : DEUX choix sur la MÊME capacité, chacun donnant sa propre carte
  * d'emprunt, empilées dans l'ordre des choix). Généralise `borrowedFeatureOf` (qui ne renvoyait que
@@ -3132,7 +3147,11 @@ function PathBlock({
               feature={
                 staffGrantedPrimary && borrowed
                   ? { ...borrowed, actionTypes: ['M'] as ActionType[] }
-                  : (borrowed ?? feature)
+                  : ((): Feature => {
+                      const base = borrowed ?? feature;
+                      const ov = nativeFreeActionOverride(character, base);
+                      return ov ? { ...base, actionTypes: ov } : base;
+                    })()
               }
               color={borrowed ? (borrowedColor ?? markerColor) : markerColor}
               concentration={concentration}
@@ -3398,7 +3417,14 @@ function PathBlock({
                       }}
                     >
                       <FeatureMarkerHexes
-                        feature={itemStaffGranted ? { ...item, actionTypes: ['M'] as ActionType[] } : item}
+                        feature={
+                          itemStaffGranted
+                            ? { ...item, actionTypes: ['M'] as ActionType[] }
+                            : ((): Feature => {
+                                const ov = nativeFreeActionOverride(character, item);
+                                return ov ? { ...item, actionTypes: ov } : item;
+                              })()
+                        }
                         color={itemColor}
                         concentration={concentration}
                         pathRank={pathRank}
