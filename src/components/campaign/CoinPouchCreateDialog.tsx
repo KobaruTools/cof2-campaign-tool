@@ -8,6 +8,7 @@
  * reconnue à l'usage par son nom (« Bourse de NdM {pp|po|pa|pc} », cf. `parseCoinPouchName`).
  */
 import { useState } from 'react';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -17,11 +18,13 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import type { Die } from '@/data/schema';
+import { DieIcon } from '@/components/DieIcon';
 import { CURRENCY_ABBREV, CURRENCY_LABEL, coinPouchItemName, diceRange, type CoinCurrency } from '@/lib/character/coinPouch';
 
 const CURRENCIES: CoinCurrency[] = ['platinum', 'gold', 'silver', 'copper'];
-/** Notations de dés les plus courantes du livre (démarrage p. 31, trésors p. 245…). */
-const DICE_PRESETS = ['1d4', '1d6', '2d6', '3d6', '2d8'];
+/** Dés proposés à la saisie — mêmes valeurs que `WeaponDamageFields` (`ItemDialog`). */
+const DICE: Die[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
 
 export interface CoinPouchCreateDialogProps {
   open: boolean;
@@ -32,15 +35,18 @@ export interface CoinPouchCreateDialogProps {
 
 export function CoinPouchCreateDialog({ open, onClose, onConfirm }: CoinPouchCreateDialogProps) {
   const [currency, setCurrency] = useState<CoinCurrency>('gold');
-  const [dice, setDice] = useState('2d6');
+  const [diceCount, setDiceCount] = useState('2');
+  const [die, setDie] = useState<Die>('d6');
   const [count, setCount] = useState(1);
 
+  const dice = `${diceCount}${die}`;
   const range = diceRange(dice);
   const valid = range !== null && count >= 1;
 
   const close = () => {
     setCurrency('gold');
-    setDice('2d6');
+    setDiceCount('2');
+    setDie('d6');
     setCount(1);
     onClose();
   };
@@ -73,33 +79,34 @@ export function CoinPouchCreateDialog({ open, onClose, onConfirm }: CoinPouchCre
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            select
-            size="small"
-            label="Dés"
-            value={DICE_PRESETS.includes(dice) ? dice : 'custom'}
-            onChange={(e) => setDice(e.target.value === 'custom' ? '' : e.target.value)}
-            fullWidth
-          >
-            {DICE_PRESETS.map((d) => (
-              <MenuItem key={d} value={d}>
-                {d}
-              </MenuItem>
-            ))}
-            <MenuItem value="custom">Personnalisé…</MenuItem>
-          </TextField>
-          {!DICE_PRESETS.includes(dice) && (
+          <Stack direction="row" spacing={1}>
             <TextField
+              type="number"
               size="small"
-              label="Notation personnalisée"
-              placeholder="ex. 4d6"
-              value={dice}
-              onChange={(e) => setDice(e.target.value)}
-              error={dice.trim() !== '' && range === null}
-              helperText={dice.trim() !== '' && range === null ? 'Notation attendue : NdM (ex. 4d6).' : undefined}
-              fullWidth
+              label="Nombre de dés"
+              value={diceCount}
+              onChange={(e) => setDiceCount(e.target.value)}
+              slotProps={{ htmlInput: { min: 1 } }}
+              sx={{ flex: '1 1 50%' }}
             />
-          )}
+            <TextField
+              select
+              size="small"
+              label="Dé"
+              value={die}
+              onChange={(e) => setDie(e.target.value as Die)}
+              sx={{ flex: '1 1 50%' }}
+            >
+              {DICE.map((d) => (
+                <MenuItem key={d} value={d}>
+                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                    <DieIcon die={d} size={18} noTooltip />
+                    {d}
+                  </Box>
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
           <TextField
             type="number"
             size="small"
