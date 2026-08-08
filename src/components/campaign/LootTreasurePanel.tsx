@@ -35,6 +35,7 @@ import Inventory2Icon from '@mui/icons-material/Inventory2';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import SavingsIcon from '@mui/icons-material/Savings';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
@@ -54,6 +55,7 @@ import { MagicItemGeneratorDialog } from '@/components/campaign/MagicItemGenerat
 import { ItemDialog } from '@/components/sheet/ItemDialog';
 import { useToast } from '@/components/toast/ToastProvider';
 import type { Campaign, LootItem } from '@/lib/campaign';
+import { moveItemFromLootToInventory } from '@/lib/campaign/gmInventory';
 import {
   addLootItems,
   drawLoot,
@@ -121,6 +123,7 @@ function LootRow({
   onRemove,
   onAssign,
   onDuplicate,
+  onTransferToInventory,
   busy,
 }: {
   item: LootItem;
@@ -129,6 +132,9 @@ function LootRow({
   onRemove: () => void;
   onAssign: (character: Character) => void;
   onDuplicate: () => void;
+  /** Relocalise vers l'inventaire permanent (mobile — pas de glisser-déposer possible, les
+   * deux réserves n'étant jamais visibles en même temps sous `md`, cf. `GmToolsDrawer`). */
+  onTransferToInventory: () => void;
   busy: boolean;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
@@ -220,6 +226,19 @@ function LootRow({
             </MenuItem>
           ))}
         </Menu>
+        {/* Mobile seulement : sous `md`, un seul des deux panneaux est visible à la fois
+            (`GmToolsDrawer.mobileView`), donc le glisser-déposer entre réserves y est
+            impossible — ce bouton en est l'équivalent au clic. */}
+        <AppTooltip title="Envoyer vers l'inventaire du MJ">
+          <IconButton
+            size="small"
+            onClick={onTransferToInventory}
+            disabled={busy}
+            sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+          >
+            <SwapHorizIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
         <AppTooltip title="Dupliquer">
           <IconButton size="small" onClick={onDuplicate} disabled={busy}>
             <ContentCopyIcon fontSize="small" />
@@ -379,6 +398,26 @@ export function LootTreasurePanel({
 
   const handleDuplicateItem = (itemId: string) => {
     persist(duplicateLootItem(loot, itemId, newLootId()));
+  };
+
+  /**
+   * Relocalise un objet vers l'inventaire permanent (bouton mobile — équivalent au clic du
+   * glisser-déposer, cf. `LootRow.onTransferToInventory`). Atterrit en « Sans catégorie » :
+   * le MJ peut ensuite le glisser vers une catégorie, ce glisser LOCAL (au sein du même
+   * panneau, une fois affiché) restant possible même sous `md`.
+   */
+  const handleTransferToInventory = async (itemId: string) => {
+    const result = moveItemFromLootToInventory(loot, campaign.gmInventory, itemId, null);
+    if (!result) return;
+    setBusy(true);
+    try {
+      await update(campaign.id, { loot: result.loot, gmInventory: result.inventory });
+      showToast('Objet envoyé vers l’inventaire du MJ.', 'success');
+    } catch (e) {
+      showToast(`Enregistrement impossible : ${errorMessage(e)}`, 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   /** Crée `count` bourses IDENTIQUES nommées `name`, ajoutées à la réserve non-servies. */
@@ -589,6 +628,7 @@ export function LootTreasurePanel({
               onRemove={() => handleRemove(l.id)}
               onAssign={(c) => handleAssignItem(l, c)}
               onDuplicate={() => handleDuplicateItem(l.id)}
+              onTransferToInventory={() => handleTransferToInventory(l.id)}
               busy={busy}
             />
           ))}

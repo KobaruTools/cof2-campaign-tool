@@ -30,6 +30,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import SavingsIcon from '@mui/icons-material/Savings';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
@@ -65,6 +66,7 @@ import {
   addItems,
   duplicateItem,
   ensureCategory,
+  moveItemFromInventoryToLoot,
   removeCategory,
   removeItem,
   renameCategory,
@@ -138,6 +140,7 @@ function InventoryItemRow({
   onRemove,
   onAssign,
   onDuplicate,
+  onTransferToRandom,
   busy,
 }: {
   item: GmInventoryItem;
@@ -146,6 +149,9 @@ function InventoryItemRow({
   onRemove: () => void;
   onAssign: (character: Character) => void;
   onDuplicate: () => void;
+  /** Relocalise vers la réserve aléatoire (mobile — pas de glisser-déposer possible, les
+   * deux réserves n'étant jamais visibles en même temps sous `md`, cf. `GmToolsDrawer`). */
+  onTransferToRandom: () => void;
   busy: boolean;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
@@ -223,6 +229,19 @@ function InventoryItemRow({
             </MenuItem>
           ))}
         </Menu>
+        {/* Mobile seulement : sous `md`, un seul des deux panneaux est visible à la fois
+            (`GmToolsDrawer.mobileView`), donc le glisser-déposer entre réserves y est
+            impossible — ce bouton en est l'équivalent au clic. */}
+        <AppTooltip title="Envoyer vers la réserve aléatoire">
+          <IconButton
+            size="small"
+            onClick={onTransferToRandom}
+            disabled={busy}
+            sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+          >
+            <SwapHorizIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
         <AppTooltip title="Dupliquer">
           <IconButton size="small" onClick={onDuplicate} disabled={busy}>
             <ContentCopyIcon fontSize="small" />
@@ -257,6 +276,7 @@ function CategoryGroup({
   onRemoveItem,
   onAssignItem,
   onDuplicateItem,
+  onTransferItem,
   busy,
   layout,
   pending,
@@ -273,6 +293,7 @@ function CategoryGroup({
   onRemoveItem: (itemId: string) => void;
   onAssignItem: (itemId: string, character: Character) => void;
   onDuplicateItem: (itemId: string) => void;
+  onTransferItem: (itemId: string) => void;
   busy: boolean;
   /** Affichage des CARTES de cette catégorie — la catégorie elle-même reste toujours en ligne. */
   layout: 'list' | 'columns';
@@ -459,6 +480,7 @@ function CategoryGroup({
               onRemove={() => onRemoveItem(item.id)}
               onAssign={(c) => onAssignItem(item.id, c)}
               onDuplicate={() => onDuplicateItem(item.id)}
+              onTransferToRandom={() => onTransferItem(item.id)}
               busy={busy}
             />
           ))}
@@ -600,6 +622,24 @@ export function GmInventoryPanel({ campaign, pendingCategoryId, onBackToTools }:
 
   const handleDuplicateItem = (itemId: string) => {
     persist(duplicateItem(inv, itemId, newId()));
+  };
+
+  /**
+   * Relocalise un objet vers la réserve aléatoire (bouton mobile — équivalent au clic du
+   * glisser-déposer, cf. `InventoryItemRow.onTransferToRandom`).
+   */
+  const handleTransferToRandom = async (itemId: string) => {
+    const result = moveItemFromInventoryToLoot(inv, campaign.loot, itemId);
+    if (!result) return;
+    setBusy(true);
+    try {
+      await update(campaign.id, { gmInventory: result.inventory, loot: result.loot });
+      showToast('Objet envoyé vers la réserve aléatoire.', 'success');
+    } catch (e) {
+      showToast(`Enregistrement impossible : ${errorMessage(e)}`, 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   /** Objet généré « selon le livre » (PER-308) : atterrit en « Sans catégorie », faute de
@@ -830,6 +870,7 @@ export function GmInventoryPanel({ campaign, pendingCategoryId, onBackToTools }:
                 if (item) handleAssign(item, character);
               }}
               onDuplicateItem={handleDuplicateItem}
+              onTransferItem={handleTransferToRandom}
               busy={busy}
               layout={layout}
               pending={pendingCategoryId === cat.id}
@@ -852,6 +893,7 @@ export function GmInventoryPanel({ campaign, pendingCategoryId, onBackToTools }:
                 if (item) handleAssign(item, character);
               }}
               onDuplicateItem={handleDuplicateItem}
+              onTransferItem={handleTransferToRandom}
               busy={busy}
               layout={layout}
               pending={pendingCategoryId === null}
