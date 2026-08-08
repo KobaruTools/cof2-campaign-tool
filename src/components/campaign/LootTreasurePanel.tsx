@@ -17,32 +17,47 @@
  * propriétaire) : chaque mutation passe par `useCampaignsStore().update`. La logique
  * de tirage/épuisement vit dans le module PUR `@/lib/campaign/loot`. Frère de
  * `TavernRumorsPanel` (même ossature d'onglet).
+ *
+ * Glisser-déposer (extension PER-200, inventaire permanent) : chaque ligne est
+ * draggable et la liste entière est une zone de dépôt (`RANDOM_POOL_DROP_ID`) —
+ * elle accepte un objet venant de l'inventaire permanent (`GmInventoryPanel`, extension
+ * du tiroir « Outils du MJ »). Le `DndContext` qui orchestre ce glisser-déposer vit
+ * dans `GmToolsDrawerHost`, PAS ici : ce panneau ne fait que poser les hooks `@dnd-kit`.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import CasinoIcon from '@mui/icons-material/Casino';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import EditIcon from '@mui/icons-material/Edit';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import SavingsIcon from '@mui/icons-material/Savings';
+import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
+import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
+import { CoinPouchCreateDialog } from '@/components/campaign/CoinPouchCreateDialog';
 import { MagicItemGeneratorDialog } from '@/components/campaign/MagicItemGeneratorDialog';
 import { ItemDialog } from '@/components/sheet/ItemDialog';
 import { useToast } from '@/components/toast/ToastProvider';
 import type { Campaign, LootItem } from '@/lib/campaign';
 import {
+  addLootItems,
   drawLoot,
+  duplicateLootItem,
   isExhausted,
   isReserveEmpty,
   remainingCount,
@@ -54,9 +69,26 @@ import { isCustomItem } from '@/lib/character/types';
 import { useCampaignsStore } from '@/stores/campaigns';
 import { useCharactersStore } from '@/stores/characters';
 
+/** Message d'erreur lisible — gère aussi les erreurs Supabase (objet `{message}`, pas `Error`). */
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string') {
+    return (e as { message: string }).message;
+  }
+  return String(e);
+}
+
 /** Génère un identifiant stable pour un nouvel objet (clé de tirage + `key` React). */
 function newLootId(): string {
   return crypto.randomUUID();
+}
+
+/** Identifiant `@dnd-kit` de la zone de dépôt de la réserve aléatoire (glisser-déposer PER-200). */
+export const RANDOM_POOL_DROP_ID = 'gm-loot:random';
+
+/** Identifiant `@dnd-kit` d'une ligne draggable de la réserve aléatoire. */
+export function randomItemDragId(itemId: string): string {
+  return `gm-loot-item:random:${itemId}`;
 }
 
 /** Nom affiché d'une ligne (surcharges de variante incluses, comme sur la fiche). */
@@ -74,7 +106,194 @@ function LineIcon({ line }: { line: EquipmentLine }) {
   return <ItemTypeIcon type={itemType(line)} size={18} sx={{ color: 'text.secondary' }} />;
 }
 
-export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
+/**
+ * Une CARTE de la réserve aléatoire : icône, nom, attribution directe (extension
+ * PER-200 — auparavant réservée au seul objet TIRÉ), édition, suppression. Draggable
+ * EN ENTIER (via sa POIGNÉE — cf. `InventoryItemRow`, même motif : le point de saisie
+ * doit rester fixe pour que le fantôme suive le curseur sans décalage) vers
+ * l'inventaire permanent — même style de carte bordurée que celui-ci et le fantôme
+ * `DragGhost`, pour que les deux réserves se lisent comme un seul système.
+ */
+function LootRow({
+  item,
+  campaignCharacters,
+  onEdit,
+  onRemove,
+  onAssign,
+  onDuplicate,
+  busy,
+}: {
+  item: LootItem;
+  campaignCharacters: Character[];
+  onEdit: () => void;
+  onRemove: () => void;
+  onAssign: (character: Character) => void;
+  onDuplicate: () => void;
+  busy: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
+    id: randomItemDragId(item.id),
+    data: { pool: 'random', itemId: item.id },
+  });
+  const [assignAnchor, setAssignAnchor] = useState<HTMLElement | null>(null);
+  const details = lineDetails(item.line);
+
+  return (
+    <Box
+      ref={setNodeRef}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0.5,
+        p: 1,
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 1,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <IconButton
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          size="small"
+          aria-label="Glisser pour déplacer"
+          sx={{
+            flexShrink: 0,
+            p: 0.25,
+            color: 'text.secondary',
+            cursor: 'grab',
+            touchAction: 'none',
+            '&:active': { cursor: 'grabbing' },
+          }}
+        >
+          <DragIndicatorIcon fontSize="small" />
+        </IconButton>
+        <LineIcon line={item.line} />
+        <Typography
+          sx={{
+            flexGrow: 1,
+            minWidth: 0,
+            fontWeight: 500,
+            color: item.served ? 'text.disabled' : 'text.primary',
+            textDecoration: item.served ? 'line-through' : 'none',
+          }}
+          noWrap
+        >
+          {lineName(item.line)}
+        </Typography>
+        {item.served && (
+          <Typography variant="caption" sx={{ color: 'text.disabled', flexShrink: 0 }}>
+            servi
+          </Typography>
+        )}
+      </Box>
+      {details && (
+        <Typography variant="caption" sx={{ color: 'text.secondary' }} noWrap>
+          {details}
+        </Typography>
+      )}
+      <Divider sx={{ mt: 0.25 }} />
+      <Stack direction="row" spacing={0.25} sx={{ justifyContent: 'flex-end' }}>
+        <Tooltip title={campaignCharacters.length === 0 ? 'Aucun personnage rattaché à cette campagne' : 'Attribuer à…'}>
+          <span>
+            <IconButton
+              size="small"
+              onClick={(e) => setAssignAnchor(e.currentTarget)}
+              disabled={campaignCharacters.length === 0}
+            >
+              <Inventory2Icon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Menu anchorEl={assignAnchor} open={Boolean(assignAnchor)} onClose={() => setAssignAnchor(null)}>
+          {campaignCharacters.map((c) => (
+            <MenuItem
+              key={c.id}
+              onClick={() => {
+                setAssignAnchor(null);
+                onAssign(c);
+              }}
+            >
+              {c.name}
+            </MenuItem>
+          ))}
+        </Menu>
+        <AppTooltip title="Dupliquer">
+          <IconButton size="small" onClick={onDuplicate} disabled={busy}>
+            <ContentCopyIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
+        <AppTooltip title="Modifier">
+          <IconButton size="small" onClick={onEdit} disabled={busy}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
+        <AppTooltip title="Supprimer">
+          <IconButton size="small" color="error" onClick={onRemove} disabled={busy}>
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
+      </Stack>
+    </Box>
+  );
+}
+
+/**
+ * Zone de dépôt de la réserve aléatoire entière (glisser-déposer PER-200). Pendant un glisser
+ * (n'importe où dans les 2 réserves, `useDndContext().active`), un cadre fantôme PREND TOUTE LA
+ * HAUTEUR disponible de l'onglet — retour propriétaire : cette réserve occupe une colonne entière
+ * du tiroir, contrairement aux catégories compactes de l'inventaire permanent (`CategoryGroup`),
+ * donc rien ne justifie de limiter sa taille à une simple ligne.
+ */
+function RandomPoolDropZone({
+  pending,
+  children,
+}: {
+  /** Un objet vient d'être déposé ICI et attend la confirmation serveur (cf. `pendingTarget`). */
+  pending: boolean;
+  children: ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: RANDOM_POOL_DROP_ID });
+  const { active } = useDndContext();
+  const dragging = Boolean(active);
+  return (
+    <Box
+      ref={setNodeRef}
+      sx={(theme) => ({
+        borderRadius: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        transition: 'border-color 0.15s, background-color 0.15s',
+        ...(dragging
+          ? {
+              minHeight: 'calc(100vh - 320px)',
+              p: 1,
+              border: '2px dashed',
+              borderColor: isOver ? 'warning.main' : alpha(theme.palette.text.secondary, 0.3),
+              bgcolor: isOver ? alpha(theme.palette.warning.main, 0.1) : 'transparent',
+            }
+          : { outline: isOver ? '2px dashed' : 'none', outlineColor: 'warning.main', outlineOffset: 2 }),
+      })}
+    >
+      {/* Objet tout juste déposé ICI, en attente de la confirmation serveur (`update` n'est PAS
+          optimiste — cf. `campaigns.ts`). */}
+      {pending && !dragging && <Skeleton variant="rounded" height={64} sx={{ borderRadius: 1 }} />}
+      {children}
+    </Box>
+  );
+}
+
+export function LootTreasurePanel({
+  campaign,
+  pending = false,
+}: {
+  campaign: Campaign;
+  /** Un dépôt vise CETTE réserve et attend la confirmation serveur — cf. `pendingTarget`. */
+  pending?: boolean;
+}) {
   const update = useCampaignsStore((s) => s.update);
   const upsert = useCharactersStore((s) => s.upsert);
   const characters = useCharactersStore((s) => s.characters);
@@ -93,6 +312,9 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
   const [dialog, setDialog] = useState<'new' | number | null>(null);
   // Modale du générateur d'objets magiques « selon le livre » (PER-308).
   const [generatorOpen, setGeneratorOpen] = useState(false);
+  // Création de bourse(s) de pièces (PER-200) — la réserve aléatoire n'a pas de catégories,
+  // la bourse rejoint simplement la liste comme n'importe quel autre objet.
+  const [coinPouchOpen, setCoinPouchOpen] = useState(false);
   // Verrou pendant l'écriture réseau (évite les tirages concurrents).
   const [busy, setBusy] = useState(false);
   // Ancre du menu « Ajouter à l'inventaire » (liste des persos de la campagne).
@@ -110,10 +332,7 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
       await update(campaign.id, { loot: next });
       return true;
     } catch (e) {
-      showToast(
-        `Enregistrement impossible : ${e instanceof Error ? e.message : String(e)}`,
-        'error',
-      );
+      showToast(`Enregistrement impossible : ${errorMessage(e)}`, 'error');
       return false;
     } finally {
       setBusy(false);
@@ -139,15 +358,41 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
     if (ok) showToast('Objet supprimé.', 'success');
   };
 
-  /** Valide la modale : ajoute un nouvel objet OU remplace la ligne éditée, puis persiste. */
-  const handleDialogConfirm = async (line: EquipmentLine) => {
+  /** Valide la modale : ajoute un (ou plusieurs, `bulkCreate`) nouvel objet OU remplace la ligne éditée. */
+  const handleDialogConfirm = async (line: EquipmentLine, count?: number) => {
     const target = dialog;
     setDialog(null);
     if (target === 'new') {
-      await persist([...loot, { id: newLootId(), line, served: false }]);
+      // `count` (bulkCreate) : N CARTES distinctes portant la même ligne, jamais une seule
+      // ligne à quantité N (cf. `ItemDialog`).
+      const n = Math.max(1, count ?? 1);
+      await persist(
+        addLootItems(
+          loot,
+          Array.from({ length: n }, () => ({ id: newLootId(), line })),
+        ),
+      );
     } else if (typeof target === 'number') {
       await persist(loot.map((l, i) => (i === target ? { ...l, line } : l)));
     }
+  };
+
+  const handleDuplicateItem = (itemId: string) => {
+    persist(duplicateLootItem(loot, itemId, newLootId()));
+  };
+
+  /** Crée `count` bourses IDENTIQUES nommées `name`, ajoutées à la réserve non-servies. */
+  const handleCreateCoinPouches = async (name: string, count: number) => {
+    const ok = await persist(
+      addLootItems(
+        loot,
+        Array.from({ length: count }, () => ({
+          id: newLootId(),
+          line: { custom: true as const, name, quantity: 1 },
+        })),
+      ),
+    );
+    if (ok) showToast(count > 1 ? `${count} bourses créées.` : 'Bourse créée.', 'success');
   };
 
   /**
@@ -160,6 +405,16 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
     if (!drawn) return;
     upsert({ ...character, equipment: [...character.equipment, drawn.line] });
     showToast(`« ${lineName(drawn.line)} » ajouté à l'inventaire de ${character.name}.`, 'success');
+  };
+
+  /**
+   * Attribue N'IMPORTE QUEL objet de la réserve (extension PER-200 — pas seulement le
+   * TIRÉ) à l'inventaire d'un personnage. N'affecte pas `served` : purement une action
+   * d'attribution manuelle en plus du tirage.
+   */
+  const handleAssignItem = (item: LootItem, character: Character) => {
+    upsert({ ...character, equipment: [...character.equipment, item.line] });
+    showToast(`« ${lineName(item.line)} » ajouté à l'inventaire de ${character.name}.`, 'success');
   };
 
   /** Met un objet GÉNÉRÉ « selon le livre » (PER-308) dans la réserve de butin. */
@@ -178,24 +433,22 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
     <Stack spacing={2}>
       {/* Bloc de tirage : bouton principal + compteur + réinitialisation à épuisement. */}
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-        <Button
-          variant="contained"
-          color="warning"
-          startIcon={<CasinoIcon />}
-          onClick={handleDraw}
-          disabled={busy || remaining === 0}
-        >
-          Piocher un objet
-        </Button>
-        {exhausted && (
-          <Button
-            variant="outlined"
-            startIcon={<RestartAltIcon />}
-            onClick={handleReset}
-            disabled={busy}
+        <AppTooltip title="Piocher un objet">
+          <IconButton
+            color="warning"
+            onClick={handleDraw}
+            disabled={busy || remaining === 0}
+            sx={{ border: 1, borderColor: 'warning.main' }}
           >
-            Réinitialiser la réserve
-          </Button>
+            <CasinoIcon />
+          </IconButton>
+        </AppTooltip>
+        {exhausted && (
+          <AppTooltip title="Réinitialiser la réserve">
+            <IconButton onClick={handleReset} disabled={busy} sx={{ border: 1, borderColor: 'divider' }}>
+              <RestartAltIcon />
+            </IconButton>
+          </AppTooltip>
         )}
         <Box sx={{ flexGrow: 1 }} />
         {total > 0 && (
@@ -235,19 +488,20 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
           <Box sx={{ mt: 1.5 }}>
             <Tooltip
               title={
-                campaignCharacters.length === 0 ? 'Aucun personnage rattaché à cette campagne' : ''
+                campaignCharacters.length === 0
+                  ? 'Aucun personnage rattaché à cette campagne'
+                  : 'Ajouter à l’inventaire de…'
               }
             >
               <span>
-                <Button
+                <IconButton
                   size="small"
-                  variant="outlined"
-                  startIcon={<Inventory2Icon />}
                   onClick={(e) => setAddAnchor(e.currentTarget)}
                   disabled={campaignCharacters.length === 0}
+                  sx={{ border: 1, borderColor: 'divider' }}
                 >
-                  Ajouter à l’inventaire de…
-                </Button>
+                  <Inventory2Icon fontSize="small" />
+                </IconButton>
               </span>
             </Tooltip>
             <Menu anchorEl={addAnchor} open={Boolean(addAnchor)} onClose={() => setAddAnchor(null)}>
@@ -291,69 +545,55 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
         >
           Réserve
         </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          color="secondary"
-          startIcon={<AutoFixHighIcon />}
-          onClick={() => setGeneratorOpen(true)}
-          disabled={busy}
-        >
-          Générer selon le livre
-        </Button>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<PlaylistAddIcon />}
-          onClick={() => setDialog('new')}
-          disabled={busy}
-        >
-          Ajouter un objet
-        </Button>
+        <AppTooltip title="Générer selon le livre">
+          <IconButton
+            size="small"
+            color="secondary"
+            onClick={() => setGeneratorOpen(true)}
+            disabled={busy}
+            sx={{ border: 1, borderColor: 'divider' }}
+          >
+            <AutoFixHighIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
+        <AppTooltip title="Ajouter un objet">
+          <IconButton
+            size="small"
+            onClick={() => setDialog('new')}
+            disabled={busy}
+            sx={{ border: 1, borderColor: 'divider' }}
+          >
+            <PlaylistAddIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
+        <AppTooltip title="Bourse de pièces">
+          <IconButton
+            size="small"
+            onClick={() => setCoinPouchOpen(true)}
+            disabled={busy}
+            sx={{ border: 1, borderColor: 'divider' }}
+          >
+            <SavingsIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
       </Stack>
 
-      <Stack spacing={1}>
-        {loot.map((l, i) => (
-          <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <LineIcon line={l.line} />
-            <Typography
-              sx={{
-                flexGrow: 1,
-                minWidth: 0,
-                fontWeight: 500,
-                color: l.served ? 'text.disabled' : 'text.primary',
-                textDecoration: l.served ? 'line-through' : 'none',
-              }}
-            >
-              {lineName(l.line)}
-            </Typography>
-            {l.served && (
-              <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                servi
-              </Typography>
-            )}
-            <Tooltip title="Modifier">
-              <span>
-                <IconButton size="small" onClick={() => setDialog(i)} disabled={busy}>
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Supprimer">
-              <span>
-                <IconButton
-                  size="small"
-                  color="error"
-                  onClick={() => handleRemove(l.id)}
-                  disabled={busy}
-                >
-                  <DeleteOutlineIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Box>
-        ))}
-      </Stack>
+      <RandomPoolDropZone pending={pending}>
+        <Stack spacing={1}>
+          {loot.map((l, i) => (
+            <LootRow
+              key={l.id}
+              item={l}
+              campaignCharacters={campaignCharacters}
+              onEdit={() => setDialog(i)}
+              onRemove={() => handleRemove(l.id)}
+              onAssign={(c) => handleAssignItem(l, c)}
+              onDuplicate={() => handleDuplicateItem(l.id)}
+              busy={busy}
+            />
+          ))}
+        </Stack>
+      </RandomPoolDropZone>
 
       {/* Modale de création / édition d'objet (PER-214), réutilisée telle quelle. `key`
           remonte la modale à chaque ouverture pour repartir des valeurs initiales. */}
@@ -364,6 +604,7 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
           onClose={() => setDialog(null)}
           initial={typeof dialog === 'number' ? loot[dialog]?.line : undefined}
           onConfirm={handleDialogConfirm}
+          bulkCreate
         />
       )}
 
@@ -374,6 +615,13 @@ export function LootTreasurePanel({ campaign }: { campaign: Campaign }) {
         campaignCharacters={campaignCharacters}
         onReserve={handleReserveGenerated}
         onGiveToPlayer={handleGiveGenerated}
+      />
+
+      {/* Création de bourse(s) de pièces (PER-200). */}
+      <CoinPouchCreateDialog
+        open={coinPouchOpen}
+        onClose={() => setCoinPouchOpen(false)}
+        onConfirm={handleCreateCoinPouches}
       />
     </Stack>
   );
