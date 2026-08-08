@@ -229,20 +229,26 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
   const appHeaderHeight = smUp ? APP_HEADER_HEIGHT_SM_UP : APP_HEADER_HEIGHT_XS;
   // Fond + ombre de la barre d'actions collée : révélés seulement une fois RÉELLEMENT collée
   // (nouvel ajustement), pas dès le chargement de la page où elle est encore à sa place normale
-  // dans le flux — même sentinelle + `IntersectionObserver` que le sous-titre révélé de l'en-tête
-  // de fiche (`scrolledPastHeader`, cf. `character/[id]/page.tsx`) : une sentinelle plate posée
-  // juste avant la barre sort du viewport (sous l'en-tête global) exactement quand la barre se colle.
-  const stickyActionsSentinelRef = useRef<HTMLDivElement>(null);
+  // dans le flux. Mesure DIRECTE de la position rendue (`getBoundingClientRect`), comme
+  // `useUnstuckFromViewportBottom` de `SheetInitiativeBar` pour la bande collée en BAS — plus fiable
+  // ici qu'une sentinelle + `IntersectionObserver` (rootMargin négatif) : `position: sticky` colle
+  // l'élément à EXACTEMENT `top: appHeaderHeight`, donc comparer son `rect.top` mesuré à cette même
+  // valeur dit directement s'il est encore à sa place naturelle ou déjà épinglé.
+  const stickyActionsRef = useRef<HTMLDivElement>(null);
   const [actionsStuck, setActionsStuck] = useState(false);
   useEffect(() => {
-    const el = stickyActionsSentinelRef.current;
-    if (el == null) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setActionsStuck(!entry.isIntersecting),
-      { rootMargin: `-${appHeaderHeight}px 0px 0px 0px`, threshold: 0 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
+    const measure = () => {
+      const el = stickyActionsRef.current;
+      if (!el) return;
+      setActionsStuck(el.getBoundingClientRect().top <= appHeaderHeight + 0.5);
+    };
+    measure();
+    window.addEventListener('scroll', measure, { passive: true });
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('scroll', measure);
+      window.removeEventListener('resize', measure);
+    };
   }, [appHeaderHeight]);
 
   // Dernier onglet du tiroir « Outils du MJ » affiché — persisté (survit au rechargement)
@@ -545,8 +551,8 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             douce) : tant qu'elle est encore à sa place normale en haut de page, elle reste NUE —
             un fond dépoli à cet instant aurait plaqué un bandeau incongru sur le fond illustré,
             avant même que la barre n'ait de raison de se distinguer du contenu. */}
-        <Box ref={stickyActionsSentinelRef} sx={{ height: 0 }} />
         <Box
+          ref={stickyActionsRef}
           sx={{
             position: 'sticky',
             top: appHeaderHeight,
