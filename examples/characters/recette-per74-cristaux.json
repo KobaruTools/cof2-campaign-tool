@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-cristaux",
+  "name": "Recette PER-74 — Voie des cristaux",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie des cristaux p. 156) — mécanisme à DEUX couches : cristaux APPRIS (choix figés `featureChoices` sur r4-r8, 1/1/2/2/3 = 9 cristaux appris) vs cristaux ACTIFS (`activeCrystalIds`, état de jeu dynamique, plafonné à 5 au rang 8 atteint). Les 5 cristaux ACTIFS de ce fixture couvrent : bonus d'habileté (CHA +1 « violet »), bonus de stat dérivée (Init. +5 « bleu nuit », DEF +2 « rose laiteux »), et le bonus triple « vert pâle » (+1 attaque de contact/distance/magique). Les 4 cristaux appris mais NON activés (bleu incandescent, bleu pâle, rouge sang, rouge et bleu) ne doivent RIEN apporter aux totaux — seule l'activation compte."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "prestige-cristaux-r4",
+    "prestige-cristaux-r5",
+    "prestige-cristaux-r6",
+    "prestige-cristaux-r7",
+    "prestige-cristaux-r8"
+  ],
+  "featureChoices": {
+    "prestige-cristaux-r4": [
+      "cristal-bleu-nuit"
+    ],
+    "prestige-cristaux-r5": [
+      "cristal-rose-laiteux"
+    ],
+    "prestige-cristaux-r6": [
+      "cristal-bleu-incandescent",
+      "cristal-bleu-pale"
+    ],
+    "prestige-cristaux-r7": [
+      "cristal-violet",
+      "cristal-rouge-sang"
+    ],
+    "prestige-cristaux-r8": [
+      "cristal-rouge-et-bleu",
+      "cristal-rose-vif",
+      "cristal-vert-pale"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette voie des cristaux (appris vs actif).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "activeCrystalIds": [
+    "cristal-bleu-nuit",
+    "cristal-rose-laiteux",
+    "cristal-violet",
+    "cristal-vert-pale",
+    "cristal-rose-vif"
+  ]
+}

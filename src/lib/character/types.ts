@@ -1051,6 +1051,17 @@ export interface Character {
   mountedKey?: string;
 
   /**
+   * Cristaux ACTIVÉS (voie des cristaux, prestige mage, p. 156, PER-74). État de jeu DYNAMIQUE
+   * (modifiable hors mode « Modifier », comme `mountedKey`), distinct des cristaux APPRIS
+   * (`Character.featureChoices` sur `prestige-cristaux-r4..r8`, permanents) : un cristal appris
+   * ne produit son effet que tant qu'il figure ici. La limite du nombre simultané (1 à 5 selon le
+   * rang atteint dans la voie) n'est PAS appliquée en dur (fiche permissive) — un dépassement
+   * (édition manuelle) déclenche un avertissement non bloquant. `[]`/absent = aucun cristal actif.
+   * Voir `src/lib/character/crystals.ts`.
+   */
+  activeCrystalIds?: string[];
+
+  /**
    * Armes ENDUITES de poison (voie du maître des poisons, p. 143, PER-74). État de jeu transitoire
    * (modifiable hors mode « Modifier »). Chaque entrée référence une ligne d'équipement par son
    * `EquipmentRef.instanceId` (assigné à l'enduisage), la nature du poison et si la charge est dépensée.

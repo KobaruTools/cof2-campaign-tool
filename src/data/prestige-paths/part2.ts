@@ -9,7 +9,14 @@
  * Rangs réels des capacités : 4 à 8 (voies de prestige). Textes verbatim.
  * Astérisque après le nom → estSort:true ; (A)/(L)/(G)/(M) → typesAction.
  */
-import type { PrestigePath, Feature } from '../schema';
+import type { PrestigePath, Feature, FeatureChoiceOption } from '../schema';
+import { CRYSTALS, crystalLabel } from '../crystals';
+
+/** Options du choix « cristal appris » (voie des cristaux, p. 156), partagées par les rangs 4-8. */
+const CRYSTAL_CHOICE_OPTIONS: FeatureChoiceOption[] = CRYSTALS.map((c) => ({
+  id: c.id,
+  label: crystalLabel(c),
+}));
 
 export const prestigePaths2: PrestigePath[] = [
   // ===================================================================
@@ -2208,6 +2215,7 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage apprend à créer le cristal de son choix. Il peut le porter où le confier à la personne de son choix. Il ne peut activer qu'un seul cristal à la fois.",
+    choices: [{ kind: 'option', prompt: 'Cristal appris', options: CRYSTAL_CHOICE_OPTIONS }],
     sourcePage: 156,
   },
   {
@@ -2219,6 +2227,7 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage apprend à créer un cristal de son choix. Il peut activer les effets de 2 cristaux simultanément, mais pas plusieurs fois le même sur une personne.",
+    choices: [{ kind: 'option', prompt: 'Cristal appris', options: CRYSTAL_CHOICE_OPTIONS }],
     sourcePage: 156,
   },
   {
@@ -2230,6 +2239,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage apprend à créer deux nouveaux cristaux de son choix. Il peut activer les effets de 3 cristaux simultanément, mais pas plusieurs fois le même sur une personne.",
+    choices: [
+      { kind: 'option', prompt: 'Premier nouveau cristal appris', options: CRYSTAL_CHOICE_OPTIONS },
+      { kind: 'option', prompt: 'Second nouveau cristal appris', options: CRYSTAL_CHOICE_OPTIONS },
+    ],
     sourcePage: 156,
   },
   {
@@ -2241,6 +2254,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage apprend à créer deux nouveaux cristaux de son choix. Il peut activer les effets de 4 cristaux simultanément, mais pas plusieurs fois le même sur une personne.",
+    choices: [
+      { kind: 'option', prompt: 'Premier nouveau cristal appris', options: CRYSTAL_CHOICE_OPTIONS },
+      { kind: 'option', prompt: 'Second nouveau cristal appris', options: CRYSTAL_CHOICE_OPTIONS },
+    ],
     sourcePage: 156,
   },
   {
@@ -2252,6 +2269,11 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage apprend à créer trois nouveaux cristaux de son choix. Il peut activer les effets de 5 cristaux simultanément, mais pas plusieurs fois le même sur une personne.",
+    choices: [
+      { kind: 'option', prompt: 'Premier nouveau cristal appris', options: CRYSTAL_CHOICE_OPTIONS },
+      { kind: 'option', prompt: 'Second nouveau cristal appris', options: CRYSTAL_CHOICE_OPTIONS },
+      { kind: 'option', prompt: 'Troisième nouveau cristal appris', options: CRYSTAL_CHOICE_OPTIONS },
+    ],
     sourcePage: 156,
   },
 
