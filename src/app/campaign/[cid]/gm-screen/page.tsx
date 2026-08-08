@@ -17,7 +17,7 @@
  * Vocation à grandir (jets rapides, PV/mana en direct, notes de session…), d'où
  * une page dédiée plutôt qu'une modale.
  */
-import { Suspense, use, useCallback, useMemo, useState } from 'react';
+import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   DndContext,
@@ -51,6 +51,7 @@ import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { alpha, type Theme } from '@mui/material/styles';
 import { AppHeader } from '@/components/AppHeader';
 import { CharacterPreviewCardSkeleton } from '@/components/CharacterPreviewCardSkeleton';
@@ -106,6 +107,22 @@ function glassButtonSx(theme: Theme, tone: 'info' | 'error') {
     },
   } as const;
 }
+
+/**
+ * Hauteur de l'en-tête global (`AppHeader`, lui-même `position: sticky`) sous laquelle cale la barre
+ * d'actions collée ci-dessous — même constante que celle redite par `ReferenceBrowser` pour empiler sa
+ * propre barre collée sous ce même en-tête (pas de source commune, cf. son commentaire : la valeur est
+ * stable mais appartient à un autre périmètre).
+ */
+const APP_HEADER_HEIGHT_SM_UP = 83;
+const APP_HEADER_HEIGHT_XS = 75;
+
+/**
+ * Empilement de la barre d'actions collée : sous l'en-tête global (`AppBar`, 1100) et le panneau
+ * latéral de fiche (`Drawer`, 1200), au-dessus du contenu de la page — même palier que la bande
+ * d'initiative collée (`STICKY_Z_INDEX` d'`InitiativeTracker`/`SheetInitiativeBar`).
+ */
+const STICKY_ACTIONS_Z_INDEX = 900;
 
 const GRID_SX = {
   display: 'grid',
@@ -208,6 +225,25 @@ function CollapsibleSection({
 
 export default function GmScreenPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
+  const smUp = useMediaQuery((t: Theme) => t.breakpoints.up('sm'));
+  const appHeaderHeight = smUp ? APP_HEADER_HEIGHT_SM_UP : APP_HEADER_HEIGHT_XS;
+  // Fond + ombre de la barre d'actions collée : révélés seulement une fois RÉELLEMENT collée
+  // (nouvel ajustement), pas dès le chargement de la page où elle est encore à sa place normale
+  // dans le flux — même sentinelle + `IntersectionObserver` que le sous-titre révélé de l'en-tête
+  // de fiche (`scrolledPastHeader`, cf. `character/[id]/page.tsx`) : une sentinelle plate posée
+  // juste avant la barre sort du viewport (sous l'en-tête global) exactement quand la barre se colle.
+  const stickyActionsSentinelRef = useRef<HTMLDivElement>(null);
+  const [actionsStuck, setActionsStuck] = useState(false);
+  useEffect(() => {
+    const el = stickyActionsSentinelRef.current;
+    if (el == null) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setActionsStuck(!entry.isIntersecting),
+      { rootMargin: `-${appHeaderHeight}px 0px 0px 0px`, threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [appHeaderHeight]);
 
   // Dernier onglet du tiroir « Outils du MJ » affiché — persisté (survit au rechargement)
   // ET remonté en direct par `GmToolsDrawerHost` à chaque changement d'onglet (survit aussi
@@ -497,8 +533,39 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             créature, réinitialisation du combat et accès aux Outils du MJ, toutes sur une
             même ligne. Style verre teinté : bleu pour les actions principales, rouge pour
             l'action destructive, plus lisible sur le fond illustré que le simple
-            `outlined`/`text` d'origine. */}
-        <Stack direction="row" spacing={1} sx={{ mb: 2, width: '100%', flexWrap: 'wrap', rowGap: 1 }}>
+            `outlined`/`text` d'origine.
+
+            COLLÉE sous l'en-tête global pendant tout le défilement (nouvelle demande) : sur un
+            écran de MJ chargé (trois grilles + bande d'initiative), ces actions restaient sinon
+            hors champ dès qu'on descendait consulter une carte. Négative-margin + padding
+            identiques annulent le padding du conteneur parent pour que le fond de la barre
+            morde jusqu'aux bords du viewport, comme la bande d'initiative collée en bas.
+
+            Fond/flou/bordure/ombre n'apparaissent qu'une fois COLLÉE (`actionsStuck`, transition
+            douce) : tant qu'elle est encore à sa place normale en haut de page, elle reste NUE —
+            un fond dépoli à cet instant aurait plaqué un bandeau incongru sur le fond illustré,
+            avant même que la barre n'ait de raison de se distinguer du contenu. */}
+        <Box ref={stickyActionsSentinelRef} sx={{ height: 0 }} />
+        <Box
+          sx={{
+            position: 'sticky',
+            top: appHeaderHeight,
+            zIndex: STICKY_ACTIONS_Z_INDEX,
+            mx: { xs: -2, sm: -4 },
+            px: { xs: 2, sm: 4 },
+            py: 1,
+            mb: 2,
+            transition: 'background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+            bgcolor: actionsStuck ? 'rgba(16, 16, 19, 0.88)' : 'transparent',
+            backdropFilter: actionsStuck ? 'blur(14px)' : 'none',
+            WebkitBackdropFilter: actionsStuck ? 'blur(14px)' : 'none',
+            borderBottom: actionsStuck
+              ? '1px solid rgba(255, 255, 255, 0.12)'
+              : '1px solid transparent',
+            boxShadow: actionsStuck ? '0 8px 24px rgba(0, 0, 0, 0.5)' : 'none',
+          }}
+        >
+        <Stack direction="row" spacing={1} sx={{ width: '100%', flexWrap: 'wrap', rowGap: 1 }}>
           <Button
             variant="outlined"
             size="small"
@@ -575,6 +642,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             Outils du MJ
           </Button>
         </Stack>
+        </Box>
         {claimed.length === 0 && labeledCreatures.length === 0 ? (
           <Paper
             variant="outlined"

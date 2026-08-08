@@ -29,18 +29,15 @@
  * tour — le bouton ⟳ « recommencer le décompte » de l'écran de MJ le remet à `null` plutôt que de
  * resélectionner le premier combattant, précisément pour que ce signal reste fiable.
  */
-import { forwardRef, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import KeyboardDoubleArrowDownIcon from '@mui/icons-material/KeyboardDoubleArrowDown';
 import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import Box from '@mui/material/Box';
 import Collapse from '@mui/material/Collapse';
 import Fade from '@mui/material/Fade';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { alpha } from '@mui/material/styles';
-import { ClassIcon } from '@/components/ClassIcon';
-import { InitiativeTracker, type InitiativeRow } from '@/components/campaign/InitiativeTracker';
+import { CondensedOrderDots, InitiativeTracker } from '@/components/campaign/InitiativeTracker';
 import { useGmScreenCombat } from '@/app/campaign/[cid]/gm-screen/useGmScreenCombat';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 
@@ -123,147 +120,9 @@ function useUnstuckFromViewportBottom(ref: { current: HTMLElement | null }, acti
   return unstuck;
 }
 
-/** Côté (px) d'une puce, normale puis mise en évidence pour le combattant actif. */
-const DOT_SIZE = 20;
-const ACTIVE_DOT_SIZE = 28;
-
-/**
- * Couleur neutre de repli (créatures, ET personnage sans profil résolu) : contour BLANC quel que
- * soit le camp (allié ou adverse) — les créatures n'ont pas de couleur de « profil » à reprendre,
- * contrairement aux personnages joueurs (cf. `ringColorFor`).
- */
-const NEUTRAL_RING = 'rgba(255, 255, 255, 0.92)';
-
-/**
- * Couleur du contour d'une puce : celle du PROFIL pour un personnage joueur (`row.profileColor`,
- * la même teinte que sa carte dans la bande dépliée), BLANCHE pour une créature — alliée ou
- * adverse, cf. demande explicite : les créatures n'ont pas de profil à représenter par une couleur.
- */
-function ringColorFor(row: InitiativeRow): string {
-  return row.isCreature ? NEUTRAL_RING : row.profileColor;
-}
-
-/**
- * Anneau en `border` plutôt qu'en `box-shadow` (une première version) : à cette taille, le halo
- * d'un `box-shadow` rognait sur les coins de l'anneau côté rendu (cercle un peu « carré ») — la
- * bordure, elle, suit exactement le `border-radius` de la puce.
- */
-function ringSx(color: string, isActive: boolean) {
-  return { border: `1.5px solid ${alpha(color, isActive ? 0.95 : 0.55)}` };
-}
-
-/**
- * Pulsation du combattant actif quand c'est SON PERSONNAGE (`isMine`) — même idiome que
- * `pulseSx` de `SessionConnectionBadge` (anneau qui s'étend puis s'efface, désactivé si
- * `prefers-reduced-motion`), portée plus loin (halo plus large, opacité de départ plus haute) :
- * le joueur doit repérer d'un coup d'œil que c'est SON tour, pas seulement qu'un tour est en
- * cours — le halo blanc reste blanc quel que soit le profil (demande explicite), pour trancher
- * sur n'importe quelle couleur de contour. PAS de « pop » d'échelle (retiré : le grandissement de
- * la puce active est un changement d'état simple, cf. `SIZE_TRANSITION`, pas une pulsation).
- */
-const PULSE_SX = {
-  animation: 'sheetInitiativePulse 1.3s ease-out infinite',
-  '@keyframes sheetInitiativePulse': {
-    '0%': { boxShadow: '0 0 0 0 rgba(255, 255, 255, 0.85)' },
-    '70%': { boxShadow: '0 0 0 11px rgba(255, 255, 255, 0)' },
-    '100%': { boxShadow: '0 0 0 0 rgba(255, 255, 255, 0)' },
-  },
-  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-} as const;
-
-/**
- * Transition simple (pas une animation en boucle) sur le changement de taille/contour quand un
- * combattant devient actif ou cesse de l'être : la valeur cible reste un changement D'ÉTAT franc
- * (20 → 28 px), seule la TRANSITION vers cette valeur est adoucie.
- */
-const SIZE_TRANSITION = 'transform 0.2s ease, border-color 0.2s ease';
-
-/** Facteur d'agrandissement du combattant ACTIF, dérivé des deux tailles ci-dessus. */
-const ACTIVE_SCALE = ACTIVE_DOT_SIZE / DOT_SIZE;
-
-/**
- * Représentation ULTRA CONDENSÉE de l'ordre d'initiative pour le bandeau replié : l'ICÔNE DE
- * PROFIL de chaque combattant (`ClassIcon`, la même glyphe que le reste de la fiche — pas son
- * portrait illustré, pas une puce de couleur abstraite), dans l'ordre d'initiative. Le combattant
- * ACTIF est agrandi et son contour renforcé ; si c'est en plus SON PROPRE personnage
- * (`characterId`), l'anneau PULSE (toujours blanc) pour que le joueur remarque que c'est SON tour
- * sans avoir à dérouler la bande. Sans profil (créature, ou bloc non chargé), repli sur un avatar
- * générique. Nom complet en info-bulle native.
- *
- * AGRANDISSEMENT SANS DÉCALAGE EN X : chaque puce vit dans un conteneur RÉSERVANT toujours la
- * taille MAX (`ACTIVE_DOT_SIZE`, `flexShrink: 0`) — la largeur de la bande ne bouge donc jamais
- * quand un combattant devient actif/cesse de l'être. La puce elle-même reste à taille FIXE
- * (`DOT_SIZE`) et se grossit par `transform: scale(...)` en `position: absolute`, centrée sur son
- * conteneur : `transform` est peint PAR-DESSUS la mise en page sans jamais la modifier, donc ni la
- * puce elle-même ni ses voisines ne se décalent horizontalement pendant la transition.
- */
-const CondensedOrderDots = forwardRef<
-  HTMLDivElement,
-  {
-    rows: InitiativeRow[];
-    currentTurnKey: string | null;
-    /** Personnage propriétaire de CETTE fiche : distingue « c'est un tour » de « c'est MON tour ». */
-    characterId: string;
-  }
-  // `ref` + le reste des props (dont `style`) sont injectés par `Fade` — un composant custom placé
-  // sous une transition MUI doit les relayer pour que le fondu s'applique réellement.
->(function CondensedOrderDots({ rows, currentTurnKey, characterId, ...other }, ref) {
-  return (
-    <Stack
-      ref={ref}
-      direction="row"
-      spacing={0.75}
-      sx={{ alignItems: 'center', overflow: 'hidden', minWidth: 0 }}
-      {...other}
-    >
-      {rows.map((row) => {
-        const isActive = row.key === currentTurnKey;
-        const isMine = row.key === characterId;
-        const commonSx = {
-          position: 'absolute' as const,
-          top: '50%',
-          left: '50%',
-          width: DOT_SIZE,
-          height: DOT_SIZE,
-          borderRadius: '50%',
-          boxSizing: 'border-box' as const,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: SIZE_TRANSITION,
-          transform: `translate(-50%, -50%) scale(${isActive ? ACTIVE_SCALE : 1})`,
-          ...ringSx(ringColorFor(row), isActive),
-          ...(isActive && isMine ? PULSE_SX : {}),
-        };
-        return (
-          // Conteneur à taille FIXE (le max des deux états) : c'est LUI qui occupe une place dans
-          // la bande, jamais la puce mise à l'échelle — la ligne ne respire donc jamais en largeur.
-          <Box
-            key={row.key}
-            sx={{ position: 'relative', width: ACTIVE_DOT_SIZE, height: ACTIVE_DOT_SIZE, flexShrink: 0 }}
-          >
-            {row.classId ? (
-              <Box title={row.name} sx={{ ...commonSx, bgcolor: alpha(row.profileColor, 0.16) }}>
-                <ClassIcon classId={row.classId} size={Math.round(DOT_SIZE * 0.62)} />
-              </Box>
-            ) : (
-              <Box
-                title={row.name}
-                sx={{
-                  ...commonSx,
-                  bgcolor: row.accentColor ?? row.profileColor,
-                  color: 'rgba(255, 255, 255, 0.9)',
-                }}
-              >
-                <PersonOutlineIcon sx={{ fontSize: DOT_SIZE * 0.62 }} />
-              </Box>
-            )}
-          </Box>
-        );
-      })}
-    </Stack>
-  );
-});
+// `CondensedOrderDots` (puces de profil ultra condensées, avec pulsation « c'est MON tour ») vit
+// désormais dans `InitiativeTracker.tsx`, PARTAGÉE avec le repli de l'écran de MJ (nouvelle
+// demande) — importée plus haut, ne pas la redéfinir ici.
 
 export function SheetInitiativeBar({
   campaignId,

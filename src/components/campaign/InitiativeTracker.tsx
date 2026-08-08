@@ -103,11 +103,13 @@
  * paraissent JAMAIS en projection — un tel badge révélerait aux joueurs que la créature est à 1 PV,
  * alors que ses PV leur sont masqués.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { forwardRef, useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import KeyboardDoubleArrowDownIcon from '@mui/icons-material/KeyboardDoubleArrowDown';
+import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -122,6 +124,7 @@ import DensitySmallIcon from '@mui/icons-material/DensitySmall';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
+import Fade from '@mui/material/Fade';
 import IconButton from '@mui/material/IconButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListSubheader from '@mui/material/ListSubheader';
@@ -135,6 +138,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { alpha, type Theme } from '@mui/material/styles';
 import { useDroppable } from '@dnd-kit/core';
+import { ClassIcon } from '@/components/ClassIcon';
 import type { BeneficialEffectId, SituationalEffectId } from '@/data/schema';
 import type { Depletion } from '@/lib/character/types';
 import {
@@ -1732,6 +1736,165 @@ const COMPACT_STORAGE_KEY = 'initiative-tracker-density-compact';
 const COMPACT_BY_DEFAULT = true;
 
 /**
+ * Clé `localStorage` du repli ULTRA CONDENSÉ de l'écran de MJ (nouvelle demande) : reprend
+ * EXACTEMENT le système du repli de `SheetInitiativeBar` (bandeau titre + `CondensedOrderDots`,
+ * corps entièrement masqué) — une option de VISIBILITÉ en plus de la densité (PER-300/301), pour
+ * rendre au MJ toute la hauteur d'écran qu'occupent l'en-tête et les cartes quand il n'a besoin que
+ * de savoir qui joue. Jamais actif en PROJECTION (forcé plus bas, indépendamment de cette
+ * préférence) : la fenêtre projetée n'a pas cette bascule et ne doit pas hériter d'un repli fait
+ * côté MJ, la même clé étant lue par les deux (aucun `cid` : préférence LOCALE à la machine du MJ).
+ */
+const GM_COLLAPSED_STORAGE_KEY = 'gm-screen-initiative-collapsed';
+
+/** Côté (px) d'une puce du condensé replié, normale puis mise en évidence pour le combattant actif. */
+const CONDENSED_DOT_SIZE = 20;
+const CONDENSED_ACTIVE_DOT_SIZE = 28;
+
+/**
+ * Couleur neutre de repli (créatures, ET personnage sans profil résolu) : contour BLANC quel que
+ * soit le camp (allié ou adverse) — les créatures n'ont pas de couleur de « profil » à reprendre,
+ * contrairement aux personnages joueurs (cf. `condensedRingColorFor`).
+ */
+const CONDENSED_NEUTRAL_RING = 'rgba(255, 255, 255, 0.92)';
+
+/**
+ * Couleur du contour d'une puce : celle du PROFIL pour un personnage joueur (`row.profileColor`,
+ * la même teinte que sa carte dans la bande dépliée), BLANCHE pour une créature — alliée ou
+ * adverse, cf. demande explicite : les créatures n'ont pas de profil à représenter par une couleur.
+ */
+function condensedRingColorFor(row: InitiativeRow): string {
+  return row.isCreature ? CONDENSED_NEUTRAL_RING : row.profileColor;
+}
+
+/**
+ * Anneau en `border` plutôt qu'en `box-shadow` (une première version) : à cette taille, le halo
+ * d'un `box-shadow` rognait sur les coins de l'anneau côté rendu (cercle un peu « carré ») — la
+ * bordure, elle, suit exactement le `border-radius` de la puce.
+ */
+function condensedRingSx(color: string, isActive: boolean) {
+  return { border: `1.5px solid ${alpha(color, isActive ? 0.95 : 0.55)}` };
+}
+
+/**
+ * Pulsation du combattant actif quand c'est SON PERSONNAGE (`isMine`, cf. `CondensedOrderDots`) —
+ * même idiome que `pulseSx` de `SessionConnectionBadge` (anneau qui s'étend puis s'efface,
+ * désactivé si `prefers-reduced-motion`), portée plus loin (halo plus large, opacité de départ plus
+ * haute) : le joueur doit repérer d'un coup d'œil que c'est SON tour, pas seulement qu'un tour est en
+ * cours — le halo blanc reste blanc quel que soit le profil, pour trancher sur n'importe quelle
+ * couleur de contour.
+ */
+const CONDENSED_PULSE_SX = {
+  animation: 'initiativeCondensedPulse 1.3s ease-out infinite',
+  '@keyframes initiativeCondensedPulse': {
+    '0%': { boxShadow: '0 0 0 0 rgba(255, 255, 255, 0.85)' },
+    '70%': { boxShadow: '0 0 0 11px rgba(255, 255, 255, 0)' },
+    '100%': { boxShadow: '0 0 0 0 rgba(255, 255, 255, 0)' },
+  },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+} as const;
+
+/**
+ * Transition simple (pas une animation en boucle) sur le changement de taille/contour quand un
+ * combattant devient actif ou cesse de l'être : la valeur cible reste un changement D'ÉTAT franc
+ * (20 → 28 px), seule la TRANSITION vers cette valeur est adoucie.
+ */
+const CONDENSED_SIZE_TRANSITION = 'transform 0.2s ease, border-color 0.2s ease';
+
+/** Facteur d'agrandissement du combattant ACTIF, dérivé des deux tailles ci-dessus. */
+const CONDENSED_ACTIVE_SCALE = CONDENSED_ACTIVE_DOT_SIZE / CONDENSED_DOT_SIZE;
+
+/**
+ * Représentation ULTRA CONDENSÉE de l'ordre d'initiative, PARTAGÉE entre la bande d'initiative de la
+ * fiche (`SheetInitiativeBar`, replière) et le tracker de l'écran de MJ (repli, nouvelle demande) :
+ * l'ICÔNE DE PROFIL de chaque combattant (`ClassIcon`, la même glyphe que le reste de la fiche — pas
+ * son portrait illustré, pas une puce de couleur abstraite), dans l'ordre d'initiative. Le combattant
+ * ACTIF est agrandi et son contour renforcé ; si c'est en plus SON PROPRE personnage
+ * (`characterId`, absent côté écran de MJ — personne n'y est « le sien »), l'anneau PULSE (toujours
+ * blanc) pour que le joueur remarque que c'est SON tour sans avoir à dérouler la bande. Sans profil
+ * (créature, ou bloc non chargé), repli sur un avatar générique. Nom complet en info-bulle native.
+ *
+ * AGRANDISSEMENT SANS DÉCALAGE EN X : chaque puce vit dans un conteneur RÉSERVANT toujours la
+ * taille MAX (`CONDENSED_ACTIVE_DOT_SIZE`, `flexShrink: 0`) — la largeur de la bande ne bouge donc
+ * jamais quand un combattant devient actif/cesse de l'être. La puce elle-même reste à taille FIXE
+ * (`CONDENSED_DOT_SIZE`) et se grossit par `transform: scale(...)` en `position: absolute`, centrée
+ * sur son conteneur : `transform` est peint PAR-DESSUS la mise en page sans jamais la modifier, donc
+ * ni la puce elle-même ni ses voisines ne se décalent horizontalement pendant la transition.
+ */
+export const CondensedOrderDots = forwardRef<
+  HTMLDivElement,
+  {
+    rows: InitiativeRow[];
+    currentTurnKey: string | null;
+    /** Personnage propriétaire de la fiche affichant ce condensé : distingue « c'est un tour » de
+     * « c'est MON tour ». Absent sur l'écran de MJ, qui n'a pas de personnage à distinguer ainsi. */
+    characterId?: string;
+  }
+  // `ref` + le reste des props (dont `style`) sont injectés par `Fade` — un composant custom placé
+  // sous une transition MUI doit les relayer pour que le fondu s'applique réellement.
+>(function CondensedOrderDots({ rows, currentTurnKey, characterId, ...other }, ref) {
+  return (
+    <Stack
+      ref={ref}
+      direction="row"
+      spacing={0.75}
+      sx={{ alignItems: 'center', overflow: 'hidden', minWidth: 0 }}
+      {...other}
+    >
+      {rows.map((row) => {
+        const isActive = row.key === currentTurnKey;
+        const isMine = row.key === characterId;
+        const commonSx = {
+          position: 'absolute' as const,
+          top: '50%',
+          left: '50%',
+          width: CONDENSED_DOT_SIZE,
+          height: CONDENSED_DOT_SIZE,
+          borderRadius: '50%',
+          boxSizing: 'border-box' as const,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: CONDENSED_SIZE_TRANSITION,
+          transform: `translate(-50%, -50%) scale(${isActive ? CONDENSED_ACTIVE_SCALE : 1})`,
+          ...condensedRingSx(condensedRingColorFor(row), isActive),
+          ...(isActive && isMine ? CONDENSED_PULSE_SX : {}),
+        };
+        return (
+          // Conteneur à taille FIXE (le max des deux états) : c'est LUI qui occupe une place dans
+          // la bande, jamais la puce mise à l'échelle — la ligne ne respire donc jamais en largeur.
+          <Box
+            key={row.key}
+            sx={{
+              position: 'relative',
+              width: CONDENSED_ACTIVE_DOT_SIZE,
+              height: CONDENSED_ACTIVE_DOT_SIZE,
+              flexShrink: 0,
+            }}
+          >
+            {row.classId ? (
+              <Box title={row.name} sx={{ ...commonSx, bgcolor: alpha(row.profileColor, 0.16) }}>
+                <ClassIcon classId={row.classId} size={Math.round(CONDENSED_DOT_SIZE * 0.62)} />
+              </Box>
+            ) : (
+              <Box
+                title={row.name}
+                sx={{
+                  ...commonSx,
+                  bgcolor: row.accentColor ?? row.profileColor,
+                  color: 'rgba(255, 255, 255, 0.9)',
+                }}
+              >
+                <PersonOutlineIcon sx={{ fontSize: CONDENSED_DOT_SIZE * 0.62 }} />
+              </Box>
+            )}
+          </Box>
+        );
+      })}
+    </Stack>
+  );
+});
+
+/**
  * Bascule « Détaillé / Compact » de la bande d'initiative (PER-300), calquée sur `InventoryViewToggle`
  * de l'inventaire (`ToggleButtonGroup` à deux boutons, libellé en info-bulle). Depuis PER-301 le
  * COMPACT est le défaut : c'est lui qui colle la bande en bas de l'écran. Le détaillé devient le mode
@@ -2501,6 +2664,16 @@ export function InitiativeTracker({
   // de l'écran) et à l'écran de MJ (la projection n'a pas de page à défiler). Le repli mobile est
   // porté par le point d'arrêt de `STICKY_BAR_SX`.
   const sticky = stickyBottom && compact && !projection;
+  // Repli ULTRA CONDENSÉ (nouvelle demande), même système que `SheetInitiativeBar` : préférence
+  // LOCALE lue inconditionnellement (règle des hooks) mais forcée à `false` en PROJECTION — sans ce
+  // `!projection`, la fenêtre projetée hériterait du repli fait côté écran de MJ (même clé
+  // `localStorage`, cf. `GM_COLLAPSED_STORAGE_KEY`) et disparaîtrait sous les yeux des joueurs.
+  const [collapsedPref, setCollapsedPref] = usePersistedBoolean(GM_COLLAPSED_STORAGE_KEY, false);
+  const collapsed = !projection && collapsedPref;
+  const collapseLabel = collapsed ? "Déplier l'ordre d'initiative" : "Réduire l'ordre d'initiative";
+  // Condensé affiché UNIQUEMENT repli + combat COMMENCÉ (`currentTurnKey !== null`), comme sur la
+  // fiche : avant le premier tour, l'ordre n'a encore rien de « courant » à mettre en évidence.
+  const showCondensedOrder = collapsed && currentTurnKey !== null;
 
   return (
     <Stack spacing={2} ref={rootRef} sx={sticky ? STICKY_BAR_SX : undefined}>
@@ -2511,10 +2684,16 @@ export function InitiativeTracker({
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             {"Ordre d'initiative"}
           </Typography>
+          {/* Condensé replié (nouvelle demande) : mêmes puces que le bandeau replié de la fiche
+              (`CondensedOrderDots`), pour lire d'un coup d'œil qui joue sans rien redéplier. */}
+          <Fade in={showCondensedOrder} unmountOnExit timeout={200}>
+            <CondensedOrderDots rows={displayedRows} currentTurnKey={currentTurnKey} />
+          </Fade>
           {/* Compteur de manche (« Tour N », toujours ≥ 1) : +1 auto en fin de tour d'initiative,
               ajustable (±) et « recommencé » par le bouton ⟳ (→ Tour 1 + tour courant au premier de
-              l'initiative). La réinitialisation du combat (PER-283) le ramène aussi à 1. */}
-          {onRoundNumberChange && (
+              l'initiative). La réinitialisation du combat (PER-283) le ramène aussi à 1. Masqué en
+              repli, comme le reste des réglages/actions : seul le titre + le condensé restent. */}
+          {!collapsed && onRoundNumberChange && (
             <Stack
               direction="row"
               spacing={0.25}
@@ -2566,50 +2745,74 @@ export function InitiativeTracker({
           )}
           {/* Densité des cartes (PER-300) : rangée avec le titre et le compteur de manche — c'est un
               réglage d'AFFICHAGE, pas une action de jeu, il n'a rien à faire dans le groupe
-              « Tour précédent / Tour suivant » à droite. */}
-          <TrackerDensityToggle compact={compactPref} onChange={setCompactPref} />
+              « Tour précédent / Tour suivant » à droite. Masquée en repli (cf. condensé plus haut). */}
+          {!collapsed && <TrackerDensityToggle compact={compactPref} onChange={setCompactPref} />}
           {/* Palette d'états repliable (PER-301) : même rangée que la densité, c'est un réglage
               d'affichage. Le bouton n'apparaît que si l'appelant fournit une palette (écran de MJ). */}
-          {hasPalette && <StatusPaletteToggle open={paletteOpen} onChange={setPaletteOpen} />}
+          {!collapsed && hasPalette && <StatusPaletteToggle open={paletteOpen} onChange={setPaletteOpen} />}
           <Box sx={{ flexGrow: 1 }} />
-          {headerAction}
-          {/* « Tour précédent » (PER-299) : rattrape le clic de trop, sans avoir à refaire tout le
-              tour de table (ce qui incrémentait la manche au passage). Discret — c'est une
-              correction, pas le geste courant — d'où le bouton en retrait à gauche de l'action
-              principale. Les raccourcis sont rappelés dans les deux info-bulles, en `title` natif
-              comme les boutons de manche voisins : une info-bulle MUI ne s'affiche pas sur un
-              bouton désactivé (roster vide) et le fait savoir en console. */}
-          {/* Libellé replié sur la seule icône sous `xl` (PER-301) : c'est un bouton SECONDAIRE, il
-              cède son libellé avant « Tour suivant » quand la place manque. */}
-          <CollapsibleLabelButton
-            variant="outlined"
+          {!collapsed && headerAction}
+          {!collapsed && (
+            <>
+              {/* « Tour précédent » (PER-299) : rattrape le clic de trop, sans avoir à refaire tout
+                  le tour de table (ce qui incrémentait la manche au passage). Discret — c'est une
+                  correction, pas le geste courant — d'où le bouton en retrait à gauche de l'action
+                  principale. Les raccourcis sont rappelés dans les deux info-bulles, en `title`
+                  natif comme les boutons de manche voisins : une info-bulle MUI ne s'affiche pas
+                  sur un bouton désactivé (roster vide) et le fait savoir en console. */}
+              {/* Libellé replié sur la seule icône sous `xl` (PER-301) : c'est un bouton
+                  SECONDAIRE, il cède son libellé avant « Tour suivant » quand la place manque. */}
+              <CollapsibleLabelButton
+                variant="outlined"
+                size="small"
+                icon={<SkipPreviousIcon />}
+                label="Tour précédent"
+                onClick={() => step(-1)}
+                disabled={rows.length === 0}
+                title="Tour précédent (P ou ←)"
+              />
+              {/* Tant que `currentTurnKey` vaut `null` (aucun combattant n'a encore eu la main), ce
+                  bouton amorce le combat plutôt que de faire progresser un tour déjà en cours —
+                  c'est le même geste (`step(1)`), seul son libellé change pour ne pas laisser
+                  croire qu'un combat est déjà lancé. */}
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<SkipNextIcon />}
+                onClick={() => step(1)}
+                disabled={rows.length === 0}
+                title={
+                  currentTurnKey === null ? 'Commencer le combat (N ou →)' : 'Tour suivant (N ou →)'
+                }
+              >
+                {currentTurnKey === null ? 'Commencer le combat' : 'Tour suivant'}
+              </Button>
+            </>
+          )}
+          {/* Repli ultra condensé (nouvelle demande) : bouton dédié plutôt que tout l'en-tête
+              cliquable (contrairement à `SheetInitiativeBar`) — cet en-tête porte déjà de vrais
+              contrôles interactifs (compteur de manche, bascules, tour), les rendre cliquables en
+              bloc aurait déclenché le repli au moindre clic sur l'un d'eux. */}
+          <IconButton
             size="small"
-            icon={<SkipPreviousIcon />}
-            label="Tour précédent"
-            onClick={() => step(-1)}
-            disabled={rows.length === 0}
-            title="Tour précédent (P ou ←)"
-          />
-          {/* Tant que `currentTurnKey` vaut `null` (aucun combattant n'a encore eu la main), ce
-              bouton amorce le combat plutôt que de faire progresser un tour déjà en cours — c'est
-              le même geste (`step(1)`), seul son libellé change pour ne pas laisser croire qu'un
-              combat est déjà lancé. */}
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<SkipNextIcon />}
-            onClick={() => step(1)}
-            disabled={rows.length === 0}
-            title={currentTurnKey === null ? 'Commencer le combat (N ou →)' : 'Tour suivant (N ou →)'}
+            onClick={() => setCollapsedPref(!collapsed)}
+            aria-expanded={!collapsed}
+            aria-label={collapseLabel}
+            title={collapseLabel}
           >
-            {currentTurnKey === null ? 'Commencer le combat' : 'Tour suivant'}
-          </Button>
+            {collapsed ? (
+              <KeyboardDoubleArrowUpIcon fontSize="small" />
+            ) : (
+              <KeyboardDoubleArrowDownIcon fontSize="small" />
+            )}
+          </IconButton>
         </Stack>
       )}
 
       {/* Palette d'états + bande réunies sous UN enfant du `Stack` : l'espacement du `Stack` sauterait
           une rangée pour le `Collapse` replié (haut de 0, mais espacé quand même), et cet espace mort
           se verrait dans une barre permanente. La marge est donc portée par le contenu DÉPLIÉ. */}
+      <Collapse in={!collapsed} unmountOnExit>
       <Box>
         {/* Palette d'états (PER-301) : DANS le tracker, donc dans la barre collante, donc toujours à
             portée de glisser quelle que soit la position de défilement de la page. La surcouche de
@@ -2697,6 +2900,7 @@ export function InitiativeTracker({
           </Box>
         )}
       </Box>
+      </Collapse>
     </Stack>
   );
 }
