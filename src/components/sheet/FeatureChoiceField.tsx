@@ -777,9 +777,12 @@ export function ChoiceValueBadge({
 export function ChoiceTodoBadge({
   compact = false,
   onClick,
+  label = 'Choisir',
 }: {
   compact?: boolean;
   onClick?: () => void;
+  /** Libellé du badge (défaut « Choisir » — cas d'usage hors choix de rang, ex. activation de cristaux). */
+  label?: string;
 }) {
   const interactive = !!onClick;
   return (
@@ -833,7 +836,7 @@ export function ChoiceTodoBadge({
           }),
         })}
       >
-        Choisir
+        {label}
       </Box>
     </AppTooltip>
   );
