@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 22,
+  "id": "recette-per74-elementaliste",
+  "name": "Recette PER-74 — Voie de l'élémentaliste",
+  "identity": {
+    "description": "ATTENDU (PER-74, voie de l'élémentaliste p. 157) — r4 Élément de prédilection : choix PERMANENT 'fire' (feu). r5 Résistance élémentaire : RD ÷2 SCOPÉE au feu (résolue cross-capacité depuis le choix de r4, comme Ascendance draconique). r6 Invocation d'élémentaire : mini-fiche structurée (Coup/DM sur l'attaque magique du magicien, 4 branches Feu/Eau/Air/Terre verbatim). r7 Élément puissant et le bonus d'attaque magique de r4 restent verbatim (pas de primitive de bonus de SORT scopée par type de dégâts). r8 Métamorphose élémentaire : RD 5 déjà mécanisée (PER-137, commit antérieur), inchangée ici."
+  },
+  "campaignId": null,
+  "playerId": null,
+  "status": "active",
+  "ancestryId": "humain",
+  "classId": "magicien",
+  "level": 16,
+  "priestVocation": null,
+  "portraitVariant": "default",
+  "firearmsAllowed": true,
+  "abilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "baseAbilities": {
+    "FOR": 0,
+    "AGI": 0,
+    "CON": 1,
+    "PER": 1,
+    "CHA": 0,
+    "INT": 4,
+    "VOL": 2
+  },
+  "ancestryChoices": [],
+  "ancestryPathId": "humain",
+  "featureIds": [
+    "prestige-elementaliste-r4",
+    "prestige-elementaliste-r5",
+    "prestige-elementaliste-r6",
+    "prestige-elementaliste-r7",
+    "prestige-elementaliste-r8"
+  ],
+  "featureChoices": {
+    "prestige-elementaliste-r4": [
+      "fire"
+    ]
+  },
+  "effectToggles": {},
+  "effectInputs": {},
+  "usageCounters": {},
+  "depletion": {},
+  "companionDepletion": {},
+  "companionInstances": {},
+  "purse": {
+    "platinum": 0,
+    "gold": 0,
+    "silver": 0,
+    "copper": 0
+  },
+  "levelUpHistory": [],
+  "equipment": [],
+  "mounts": [],
+  "poisonedWeapons": [],
+  "overrides": {},
+  "notes": "PER-74 — recette voie de l'élémentaliste (élément de prédilection : feu).",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

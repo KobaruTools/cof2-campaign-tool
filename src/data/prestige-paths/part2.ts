@@ -2287,6 +2287,23 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage choisit un élément parmi feu, froid, électricité et acide. Lorsqu'il utilise un sort de cet élément, il obtient un bonus de +2 en attaque magique et il augmente de +2 la difficulté de tous les tests destinés à résister au sort.",
+    // Choix PERMANENT (comme Ascendance draconique, sang-dragon-r4) : fixe le SCOPE de la RD de
+    // Résistance élémentaire (r5, cross-capacité via `elementFromChoice`) et du DM d'Élément
+    // puissant (r7). Le bonus d'attaque magique +2 / malus de résistance +2 ne sont PAS
+    // modélisables (aucune primitive de bonus d'attaque de SORT scopée par type de dégâts —
+    // `AttackBonusEffect` ne couvre que les armes) : verbatim.
+    choices: [
+      {
+        kind: 'option',
+        prompt: 'Élément de prédilection',
+        options: [
+          { id: 'fire', label: 'Feu' },
+          { id: 'cold', label: 'Froid' },
+          { id: 'lightning', label: 'Électricité' },
+          { id: 'acid', label: 'Acide' },
+        ],
+      },
+    ],
     sourcePage: 157,
   },
   {
@@ -2298,6 +2315,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage ne subit que la moitié des DM provenant de son élément de prédilection. Il peut transformer un sort élémentaire pour le remplacer par son élément de prédilection en action gratuite.",
+    // Échange de sort en action gratuite : narratif, pas de sorts individuellement modélisés
+    // dans le moteur — verbatim.
+    elementFromChoice: { choiceFeatureId: 'prestige-elementaliste-r4', choiceIndex: 0 },
+    damageReduction: { kind: 'divide', value: 2, scopeFromElement: true },
     sourcePage: 157,
   },
   {
@@ -2309,6 +2330,36 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['L'],
     text:
       "Une fois par combat, le magicien invoque un élémentaire de l'élément de son choix, il lui obéit pendant INT minutes puis disparaît. Il agit au tour du magicien.\n\nÉLÉMENTAIRE — CRÉATURE NON VIVANTE DE TAILLE GRANDE\nAGI +2 | CON +6* | FOR +6* | PER +0 | CHA -2 | INT -2 | VOL +4\nDéfense 19 · Points de vigueur [niv. du magicien × 5] · Initiative 10\nCoup [attaque magique du magicien] · DM 2d4°+6\nFeu : +1d4° DM, immunisé au feu. Eau : dé bonus en attaque, immunisé à l'acide. Air : vol 30 m, immunisé à la foudre. Terre : +5 DEF, immunisé au froid.",
+    // Mini-fiche structurée (même patron que l'invocation d'un démon, demon-r5, p. 108) : Coup/DM
+    // renvoient à l'attaque magique du MAÎTRE, Initiative FIXE à 10 (le livre ne la dérive pas du
+    // magicien ici, contrairement à d'autres invocations). Les 4 branches élémentaires (choisies à
+    // l'invocation, PAS le même choix que l'Élément de prédilection permanent du rang 4) sont
+    // portées en `specialAbilities`, verbatim.
+    effects: [
+      {
+        kind: 'conditional-stat-bonus',
+        bonuses: [],
+        activation: { kind: 'temporary', label: 'Élémentaire invoqué', activeByDefault: false },
+      },
+    ],
+    creatureProfile: {
+      name: 'Élémentaire',
+      companionType: 'summon',
+      type: 'Créature non vivante',
+      size: 'grande',
+      abilities: { AGI: 2, CON: 6, FOR: 6, PER: 0, CHA: -2, INT: -2, VOL: 4 },
+      bonusDieAbilities: ['CON', 'FOR'],
+      defense: '19',
+      hitPoints: '[=niveau × 5]',
+      initiative: '10',
+      attack: { label: 'Coup', fromMaster: 'magicAttack', damage: '2d4°+6' },
+      specialAbilities: [
+        { name: 'Feu', text: 'Immunisé au feu ; +1d4° DM.' },
+        { name: 'Eau', text: "Immunisé à l'acide ; dé bonus en attaque." },
+        { name: 'Air', text: 'Immunisé à la foudre ; vol 30 m.' },
+        { name: 'Terre', text: 'Immunisé au froid ; +5 DEF.' },
+      ],
+    },
     sourcePage: 157,
   },
   {
@@ -2320,6 +2371,9 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: [],
     text:
       "Le personnage ajoute +1d4° aux DM de tous les sorts qui infligent des dommages de son élément de prédilection. Les sorts qui infligent des DM sur la durée augmentent seulement leurs DM initiaux (flèche enflammée, etc.).",
+    // Bonus de DM scopé « tout sort de l'élément choisi » (rang 4) : pas de primitive de bonus de
+    // DM de SORT dans le moteur (les sorts ne sont pas des lignes d'arme suivies individuellement,
+    // contrairement à `WeaponDamageBonusEffect`) — verbatim.
     sourcePage: 157,
   },
   {
@@ -2550,6 +2604,10 @@ export const prestigeFeatures2: Feature[] = [
     actionTypes: ['A'],
     text:
       "Tous vos alliés dans un rayon de 20 m autour de vous bénéficient d'un bonus de +1 en DEF et aux DM pendant INT minutes. À partir du niveau 16, ce bonus passe à +2.",
+    // PER-359 : buff de groupe posable par le MJ (`warlord-aura`). Aucun effet sur la fiche du mage
+    // de guerre lui-même — la règle ne vise QUE ses alliés (« Tous vos alliés… »), pas son porteur.
+    // Le palier suit le NIVEAU du personnage (+2 au niveau 16) et non le rang de la voie.
+    groupBuffIds: ['warlord-aura'],
     sourcePage: 161,
   },
   {
