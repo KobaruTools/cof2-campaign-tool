@@ -29,8 +29,10 @@ import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import CasinoIcon from '@mui/icons-material/Casino';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import EditIcon from '@mui/icons-material/Edit';
+import GroupsIcon from '@mui/icons-material/Groups';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -38,6 +40,12 @@ import SavingsIcon from '@mui/icons-material/Savings';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
@@ -51,6 +59,7 @@ import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ItemTypeIcon } from '@/components/ItemTypeIcon';
 import { CoinPouchCreateDialog } from '@/components/campaign/CoinPouchCreateDialog';
+import { CombatLootBatchDialog } from '@/components/campaign/CombatLootBatchDialog';
 import { MagicItemGeneratorDialog } from '@/components/campaign/MagicItemGeneratorDialog';
 import { ItemDialog } from '@/components/sheet/ItemDialog';
 import { useToast } from '@/components/toast/ToastProvider';
@@ -331,11 +340,15 @@ export function LootTreasurePanel({
   const [dialog, setDialog] = useState<'new' | number | null>(null);
   // Modale du générateur d'objets magiques « selon le livre » (PER-308).
   const [generatorOpen, setGeneratorOpen] = useState(false);
+  // Modale du butin de combat en lot (extension PER-200/308).
+  const [combatLootOpen, setCombatLootOpen] = useState(false);
   // Création de bourse(s) de pièces (PER-200) — la réserve aléatoire n'a pas de catégories,
   // la bourse rejoint simplement la liste comme n'importe quel autre objet.
   const [coinPouchOpen, setCoinPouchOpen] = useState(false);
   // Verrou pendant l'écriture réseau (évite les tirages concurrents).
   const [busy, setBusy] = useState(false);
+  // Confirmation avant de vider TOUTE la réserve (action irréversible).
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   // Ancre du menu « Ajouter à l'inventaire » (liste des persos de la campagne).
   const [addAnchor, setAddAnchor] = useState<HTMLElement | null>(null);
 
@@ -369,6 +382,14 @@ export function LootTreasurePanel({
     setDrawn(null);
     const ok = await persist(resetLoot(loot));
     if (ok) showToast('Réserve de butin réinitialisée.', 'success');
+  };
+
+  /** Vide la réserve entière (action irréversible, confirmée en amont). */
+  const handleClearAll = async () => {
+    setClearConfirmOpen(false);
+    setDrawn(null);
+    const ok = await persist([]);
+    if (ok) showToast('Réserve de butin vidée.', 'success');
   };
 
   const handleRemove = async (id: string) => {
@@ -456,6 +477,17 @@ export function LootTreasurePanel({
     showToast(`« ${lineName(item.line)} » ajouté à l'inventaire de ${character.name}.`, 'success');
   };
 
+  /** Ajoute tout un lot de butin de combat (extension PER-200/308) à la réserve aléatoire. */
+  const handleAddCombatLootBatch = async (lines: EquipmentLine[]) => {
+    const ok = await persist(
+      addLootItems(
+        loot,
+        lines.map((line) => ({ id: newLootId(), line })),
+      ),
+    );
+    if (ok) showToast(`${lines.length} récompense${lines.length > 1 ? 's' : ''} ajoutée${lines.length > 1 ? 's' : ''} à la réserve.`, 'success');
+  };
+
   /** Met `count` exemplaires d'un objet GÉNÉRÉ « selon le livre » (PER-308) dans la réserve de butin. */
   const handleReserveGeneratedToRandom = async (line: EquipmentLine, count: number) => {
     const ok = await persist(
@@ -531,6 +563,18 @@ export function LootTreasurePanel({
             / {total} piochable{total > 1 ? 's' : ''}
           </Typography>
         )}
+        <AppTooltip title="Retirer tous les objets de la réserve">
+          <span>
+            <IconButton
+              color="error"
+              onClick={() => setClearConfirmOpen(true)}
+              disabled={busy || total === 0}
+              sx={{ border: 1, borderColor: 'error.main' }}
+            >
+              <DeleteSweepIcon />
+            </IconButton>
+          </span>
+        </AppTooltip>
       </Stack>
 
       {/* Objet tiré, mis en avant, avec attribution à un personnage. */}
@@ -625,6 +669,17 @@ export function LootTreasurePanel({
             <AutoFixHighIcon fontSize="small" />
           </IconButton>
         </AppTooltip>
+        <AppTooltip title="Butin de combat (un lot pour toute l’équipe)">
+          <IconButton
+            size="small"
+            color="secondary"
+            onClick={() => setCombatLootOpen(true)}
+            disabled={busy}
+            sx={{ border: 1, borderColor: 'divider' }}
+          >
+            <GroupsIcon fontSize="small" />
+          </IconButton>
+        </AppTooltip>
         <AppTooltip title="Ajouter un objet">
           <IconButton
             size="small"
@@ -695,6 +750,31 @@ export function LootTreasurePanel({
         onClose={() => setCoinPouchOpen(false)}
         onConfirm={handleCreateCoinPouches}
       />
+
+      {/* Butin de combat en lot (extension PER-200/308). */}
+      <CombatLootBatchDialog
+        open={combatLootOpen}
+        onClose={() => setCombatLootOpen(false)}
+        campaignCharacters={campaignCharacters}
+        onAddToRandomReserve={handleAddCombatLootBatch}
+      />
+
+      {/* Confirmation avant de vider toute la réserve — action irréversible. */}
+      <Dialog open={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Retirer tous les objets de la réserve ?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Cette action est irréversible. Les {total} objet{total > 1 ? 's' : ''} de la réserve
+            (piochables et déjà servis) seront définitivement retirés.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClearConfirmOpen(false)}>Annuler</Button>
+          <Button color="error" variant="contained" onClick={handleClearAll}>
+            Retirer tout
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }
