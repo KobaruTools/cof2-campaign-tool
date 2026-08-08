@@ -43,6 +43,7 @@ import {
   statusLabel,
   statusTone,
   type StatusGroup,
+  type StatusTone,
 } from '@/lib/ui/statusPalette';
 import { AppTooltip } from '@/components/AppTooltip';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
@@ -55,6 +56,40 @@ export const STATUS_DRAG_PREFIX = 'status:';
 const CHIP_HEIGHT = 26;
 /** Rayon des coins d'une puce, en pixels : l'équivalent de `borderRadius: 1` du thème. */
 const CHIP_RADIUS = 4;
+
+/**
+ * Délai (ms) avant apparition de l'info-bulle d'une puce de la palette, au survol — même mécanique et
+ * même valeur que la micro-fiche de `CharacterList` (`AppTooltip.enterDelay`). Le fond « chargement »
+ * de la puce (`StatusHoverLoadingFill`) anime sur cette même durée pour rendre l'attente visible
+ * (ramené ici depuis les carrés-icônes du tracker en PER-361 : le MJ regarde les puces de la palette
+ * pour choisir un état à poser, pas les badges déjà posés sur les cartes de combattants).
+ */
+const STATUS_TOOLTIP_ENTER_DELAY = 1000;
+
+/**
+ * Fond « chargement » d'une puce de la palette : transparent au repos, se remplit de GAUCHE À DROITE
+ * pendant `STATUS_TOOLTIP_ENTER_DELAY` au survol pour rendre visible l'attente avant que l'info-bulle
+ * de l'effet (verbatim + source) ne surgisse — sans ce repère, le délai pouvait passer pour une bulle
+ * qui ne s'ouvre pas. Posé en tout premier enfant de la puce (sous l'icône et le libellé, qui peignent
+ * par-dessus dans l'ordre du DOM) ; la règle `:hover` qui le déclenche vit sur la puce elle-même.
+ */
+function StatusHoverLoadingFill({ tone }: { tone: StatusTone }) {
+  return (
+    <Box
+      className="status-loading-fill"
+      aria-hidden
+      sx={(theme) => ({
+        position: 'absolute',
+        inset: 0,
+        width: 0,
+        borderRadius: 'inherit',
+        bgcolor: alpha(theme.palette[tone].main, 0.35),
+        transition: 'width 150ms ease-out',
+        pointerEvents: 'none',
+      })}
+    />
+  );
+}
 
 /**
  * Infobulle « breakdown » d'un état : nom + effet verbatim + renvoi de page cliquable. `autoReason`
@@ -132,12 +167,14 @@ export function StatusChipVisual({
   const chip = (
     <Box
       sx={(theme) => ({
+        position: 'relative',
         display: 'inline-flex',
         alignItems: 'center',
         gap: 0.5,
         px: 1,
         height: CHIP_HEIGHT,
         borderRadius: squareRight ? `${CHIP_RADIUS}px 0 0 ${CHIP_RADIUS}px` : 1,
+        overflow: 'hidden',
         lineHeight: 1,
         fontSize: '0.78rem',
         fontWeight: 600,
@@ -152,14 +189,27 @@ export function StatusChipVisual({
         // Ombre portée sur la surcouche de glisser pour la détacher du fond.
         boxShadow: dragging ? '0 4px 12px rgba(0, 0, 0, 0.5)' : 'none',
         userSelect: 'none',
+        // Le remplissage (`StatusHoverLoadingFill`) revient à zéro vite au départ du survol, mais ne
+        // monte à 100 % que sur `STATUS_TOOLTIP_ENTER_DELAY` — la même durée que l'info-bulle qu'il
+        // annonce.
+        '&:hover .status-loading-fill': {
+          width: '100%',
+          transitionDuration: `${STATUS_TOOLTIP_ENTER_DELAY}ms`,
+          transitionTimingFunction: 'linear',
+        },
       })}
     >
+      {withTooltip && <StatusHoverLoadingFill tone={tone} />}
       {iconId && <StatusEffectIcon effect={iconId} size={15} />}
       <Box component="span">{statusLabel(id)}</Box>
     </Box>
   );
   if (!withTooltip) return chip;
-  return <AppTooltip title={<StatusEffectTooltip id={id} />}>{chip}</AppTooltip>;
+  return (
+    <AppTooltip title={<StatusEffectTooltip id={id} />} enterDelay={STATUS_TOOLTIP_ENTER_DELAY}>
+      {chip}
+    </AppTooltip>
+  );
 }
 
 /** Une puce glissable de la palette (source `@dnd-kit`). */
