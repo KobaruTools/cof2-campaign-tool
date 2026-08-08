@@ -237,10 +237,16 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
   const stickyActionsRef = useRef<HTMLDivElement>(null);
   const [actionsStuck, setActionsStuck] = useState(false);
   useEffect(() => {
+    // Hystérésis (8px) : le seuil d'ENTRÉE dans le collé (`rect.top <= appHeaderHeight`) et celui de
+    // SORTIE (`rect.top > appHeaderHeight + 8`) sont décalés, pas le même — sans cet écart, un
+    // scroll qui oscille pile sur la frontière (molette imprécise, rebond tactile) fait clignoter
+    // le fond au lieu de trancher une fois pour toutes.
+    const HYSTERESIS_PX = 8;
     const measure = () => {
       const el = stickyActionsRef.current;
       if (!el) return;
-      setActionsStuck(el.getBoundingClientRect().top <= appHeaderHeight + 0.5);
+      const top = el.getBoundingClientRect().top;
+      setActionsStuck((prev) => (prev ? top <= appHeaderHeight + HYSTERESIS_PX : top <= appHeaderHeight));
     };
     measure();
     window.addEventListener('scroll', measure, { passive: true });
@@ -547,31 +553,49 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             identiques annulent le padding du conteneur parent pour que le fond de la barre
             morde jusqu'aux bords du viewport, comme la bande d'initiative collée en bas.
 
-            Fond/flou/bordure/ombre n'apparaissent qu'une fois COLLÉE (`actionsStuck`, transition
-            douce) : tant qu'elle est encore à sa place normale en haut de page, elle reste NUE —
-            un fond dépoli à cet instant aurait plaqué un bandeau incongru sur le fond illustré,
-            avant même que la barre n'ait de raison de se distinguer du contenu. */}
+            Fond/flou/bordure/ombre n'apparaissent qu'une fois COLLÉE (`actionsStuck`) — tant
+            qu'elle est encore à sa place normale en haut de page, elle reste NUE. Portés par un
+            CALQUE séparé (`position: absolute`, sous le contenu) dont on transitionne la seule
+            OPACITÉ plutôt que `background-color`/`backdrop-filter`/`box-shadow` directement : ces
+            propriétés s'animent mal ou pas du tout selon les navigateurs (le flou en particulier
+            saute plutôt que de s'estomper), l'opacité, elle, fond toujours en douceur. */}
         <Box
           ref={stickyActionsRef}
           sx={{
             position: 'sticky',
             top: appHeaderHeight,
             zIndex: STICKY_ACTIONS_Z_INDEX,
+            // Marge négative HAUTE en plus de l'horizontale : annule aussi le `pt` du conteneur
+            // parent, pour que la barre soit COLLÉE à l'en-tête dès sa position normale (avant même
+            // tout défilement) — sans cet écart initial, le passage en collé la faisait « sauter »
+            // de sa place aérée vers l'en-tête, un mouvement plus étrange qu'un simple repli.
             mx: { xs: -2, sm: -4 },
+            mt: { xs: -2, sm: -4 },
             px: { xs: 2, sm: 4 },
             py: 1,
             mb: 2,
-            transition: 'background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
-            bgcolor: actionsStuck ? 'rgba(16, 16, 19, 0.88)' : 'transparent',
-            backdropFilter: actionsStuck ? 'blur(14px)' : 'none',
-            WebkitBackdropFilter: actionsStuck ? 'blur(14px)' : 'none',
-            borderBottom: actionsStuck
-              ? '1px solid rgba(255, 255, 255, 0.12)'
-              : '1px solid transparent',
-            boxShadow: actionsStuck ? '0 8px 24px rgba(0, 0, 0, 0.5)' : 'none',
           }}
         >
-        <Stack direction="row" spacing={1} sx={{ width: '100%', flexWrap: 'wrap', rowGap: 1 }}>
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 0,
+              opacity: actionsStuck ? 1 : 0,
+              transition: 'opacity 0.12s ease',
+              bgcolor: 'rgba(16, 16, 19, 0.88)',
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+            }}
+          />
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ position: 'relative', zIndex: 1, width: '100%', flexWrap: 'wrap', rowGap: 1 }}
+        >
           <Button
             variant="outlined"
             size="small"
