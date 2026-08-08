@@ -2852,7 +2852,7 @@ export function InitiativeTracker({
                 display: 'flex',
                 gap: 2,
                 overflowX: 'auto',
-                pb: projection ? 5.5 : 1,
+                pb: projection ? 5.5 : compact ? 0 : 1,
                 alignItems: 'stretch',
                 ...SCROLLBAR_SX,
               }}

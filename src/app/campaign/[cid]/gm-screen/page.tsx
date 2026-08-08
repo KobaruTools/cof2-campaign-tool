@@ -540,7 +540,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           (`pb: 0`), où la bande d'initiative sticky-bottom vient coller directement contre le
           pied de page (voir `FLUSH_FOOTER_ROUTES` dans `AppFooter`, qui annule sa marge sur
           cette route en retour). */}
-      <Box sx={{ p: { xs: 2, sm: 4 }, pb: 0 }}>
+      <Box sx={{ px: { xs: 2, sm: 4 }, pt: { xs: 2, sm: 4 }, pb: 0 }}>
         {/* Barre d'actions (PER-236, PER-247), laissée sur toutes les campagnes : ajout de
             créature, réinitialisation du combat et accès aux Outils du MJ, toutes sur une
             même ligne. Style verre teinté : bleu pour les actions principales, rouge pour
