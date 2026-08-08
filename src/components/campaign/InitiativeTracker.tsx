@@ -893,6 +893,13 @@ function CompactHpControl({ row }: { row: InitiativeRow }) {
 const STATUS_ICON_SQUARE = 30;
 
 /**
+ * Délai (ms) avant apparition de l'info-bulle d'un badge d'état, au survol — même mécanique et même
+ * valeur que la micro-fiche de `CharacterList` (`AppTooltip.enterDelay`). Le fond « chargement » du
+ * carré (`StatusHoverLoadingFill`) anime sur cette même durée pour rendre l'attente visible.
+ */
+const STATUS_TOOLTIP_ENTER_DELAY = 1000;
+
+/**
  * Gouttière entre deux badges d'états de l'écran de MJ, en unités d'espacement MUI (1.25 = 10 px).
  * Élargie en PER-305 (elle valait 6 px) : les boutons ±, passés sur les CÔTÉS du carré, en débordent
  * de la moitié de leur largeur et venaient recouvrir le bord du badge voisin.
@@ -923,7 +930,40 @@ function statusSquareSx(theme: Theme, tone: StatusTone) {
     WebkitBackdropFilter: 'blur(6px)',
     border: `1px solid ${alpha(theme.palette[tone].main, 0.6)}`,
     boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
+    // Le remplissage (`StatusHoverLoadingFill`) revient à zéro vite au départ du survol, mais ne monte
+    // à 100 % que sur `STATUS_TOOLTIP_ENTER_DELAY` — la même durée que l'info-bulle qu'il annonce.
+    '&:hover .status-loading-fill': {
+      width: '100%',
+      transitionDuration: `${STATUS_TOOLTIP_ENTER_DELAY}ms`,
+      transitionTimingFunction: 'linear',
+    },
   };
+}
+
+/**
+ * Fond « chargement » d'un carré-icône d'état : transparent au repos, se remplit de GAUCHE À DROITE
+ * pendant `STATUS_TOOLTIP_ENTER_DELAY` au survol pour rendre visible l'attente avant que l'info-bulle
+ * de l'effet (verbatim + source) ne surgisse — sans ce repère, le délai (repris de `CharacterList`)
+ * pouvait passer pour une bulle qui ne s'ouvre pas. Posé en tout premier enfant du carré (sous l'icône
+ * et les pastilles, qui peignent par-dessus dans l'ordre du DOM) ; la règle `:hover` qui le déclenche
+ * vit dans `statusSquareSx`, sur le carré parent.
+ */
+function StatusHoverLoadingFill({ tone }: { tone: StatusTone }) {
+  return (
+    <Box
+      className="status-loading-fill"
+      aria-hidden
+      sx={(theme) => ({
+        position: 'absolute',
+        inset: 0,
+        width: 0,
+        borderRadius: 'inherit',
+        bgcolor: alpha(theme.palette[tone].main, 0.35),
+        transition: 'width 150ms ease-out',
+        pointerEvents: 'none',
+      })}
+    />
+  );
 }
 
 /**
@@ -1078,6 +1118,7 @@ function ReadonlyStatusIcon({
   return (
     <AppTooltip
       title={<StatusEffectTooltip id={id} autoReason={autoReason} remainingRounds={remaining} />}
+      enterDelay={STATUS_TOOLTIP_ENTER_DELAY}
       disableInteractive
     >
       <Box
@@ -1088,6 +1129,7 @@ function ReadonlyStatusIcon({
           ...(remaining === 0 ? expiredSquareSx(theme) : {}),
         })}
       >
+        <StatusHoverLoadingFill tone={originStatusTone(id, origin)} />
         <StatusIconInner id={id} intensity={intensity} stacked={stacked} remaining={remaining} />
       </Box>
     </AppTooltip>
@@ -1211,7 +1253,11 @@ function InteractiveStatusIcon({
   // Deux paires à empiler dès que l'intensité entre en jeu ; sinon la durée prend le centre.
   const durationSlot: StatusAdjustSlot = stacking ? 'lower' : 'center';
   return (
-    <AppTooltip title={<StatusEffectTooltip id={id} remainingRounds={remaining} />} disableInteractive>
+    <AppTooltip
+      title={<StatusEffectTooltip id={id} remainingRounds={remaining} />}
+      enterDelay={STATUS_TOOLTIP_ENTER_DELAY}
+      disableInteractive
+    >
       <Box
         role="button"
         tabIndex={0}
@@ -1240,6 +1286,7 @@ function InteractiveStatusIcon({
           '&:hover .status-adjust, &:focus-visible .status-adjust': { opacity: 1, pointerEvents: 'auto' },
         })}
       >
+        <StatusHoverLoadingFill tone={tone} />
         <StatusIconInner
           id={id}
           intensity={intensity}

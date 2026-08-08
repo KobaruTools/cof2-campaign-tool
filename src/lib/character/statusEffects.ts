@@ -167,8 +167,18 @@ export interface ResolvedStatusModifiers {
    * compensent naturellement — c'est la même mécanique, au signe près.
    */
   allTestsFlat: number;
-  /** Malus plat cumulé aux DM infligés (Attaque invalidante). ≤ 0. */
+  /**
+   * Modificateur plat cumulé aux DM infligés, SIGNÉ : négatif pour un malus (Attaque invalidante),
+   * positif pour un buff (Aura du chef de guerre p. 161, PER-359).
+   */
   damageDealt: number;
+  /**
+   * Modificateurs plats cumulés PAR DOMAINE de test (PER-359), keyés par id de `test-domains.ts` :
+   * Sans peur (`fear-resistance`), Argument de taille (négociation/persuasion/intimidation). Vient
+   * EN PLUS d'`allTestsFlat`, qui frappe tous les tests sans distinction — les deux s'additionnent
+   * sur un domaine visé par les deux canaux. Vide si aucun état ne vise de domaine.
+   */
+  testDomains: Record<string, number>;
 }
 
 /** Toutes les stats dérivées susceptibles d'être modifiées — pour balayer proprement `derived`. */
@@ -207,6 +217,33 @@ export function statusEntry(id: AnyStatusEffectId): StatusEffectEntry | undefine
  */
 export function isGroupScopedStatus(id: AnyStatusEffectId): boolean {
   return statusEntry(id)?.scope === 'group';
+}
+
+/**
+ * Vrai si l'état ne vise qu'UN allié DÉSIGNÉ (PER-359 : Protéger un allié p. 87). Comme un buff de
+ * groupe, sa pose passe par la fenêtre de choix — mais le choix y est EXCLUSIF, et rien n'est coché
+ * d'avance : le livre dit « un allié », pas « ses alliés ».
+ */
+export function isSingleAllyScopedStatus(id: AnyStatusEffectId): boolean {
+  return statusEntry(id)?.scope === 'single-ally';
+}
+
+/**
+ * Vrai si la pose de cet état passe par la FENÊTRE DE CHOIX des combattants du camp, quelle que
+ * soit la portée exacte (tout le camp ou un seul allié) — par opposition aux états qui frappent la
+ * seule carte survolée. C'est le prédicat que l'écran de MJ interroge pour ouvrir la fenêtre.
+ */
+export function isCampScopedStatus(id: AnyStatusEffectId): boolean {
+  const scope = statusEntry(id)?.scope;
+  return scope === 'group' || scope === 'single-ally';
+}
+
+/**
+ * Vrai si le LANCEUR est EXCLU du bénéfice de cet état (PER-359) : « tous vos alliés » et « un
+ * allié » l'écartent, « ses alliés et lui » l'inclut. Pilote le pré-cochage de la fenêtre de pose.
+ */
+export function statusExcludesCarrier(id: AnyStatusEffectId): boolean {
+  return statusEntry(id)?.excludesCarrier === true;
 }
 
 /** Ensemble des ids du catalogue BÉNÉFIQUE — pour distinguer un buff d'un état subi (PER-104). */
@@ -301,6 +338,7 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
   let attackTestsMalusDie = false;
   let allTestsFlat = 0;
   let damageDealt = 0;
+  const testDomains: Record<string, number> = {};
 
   for (const entry of applied) {
     const mods = statusEntry(entry.id)?.modifiers;
@@ -317,6 +355,11 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
     if (mods.attackTestsMalusDie) attackTestsMalusDie = true;
     if (mods.allTestsFlat !== undefined) allTestsFlat += mods.allTestsFlat * intensity;
     if (mods.damageDealt !== undefined) damageDealt += mods.damageDealt * intensity;
+    if (mods.testDomains) {
+      const value = mods.testDomains.value * intensity;
+      for (const domain of mods.testDomains.domains)
+        testDomains[domain] = (testDomains[domain] ?? 0) + value;
+    }
   }
 
   // On n'expose que les stats dérivées effectivement modifiées (on écarte les totaux nuls).
@@ -326,7 +369,7 @@ export function resolveStatusModifiers(applied: AppliedStatus[]): ResolvedStatus
     if (total !== undefined && total !== 0) derived[key] = total;
   }
 
-  return { derived, allTestsMalusDie, attackTestsMalusDie, allTestsFlat, damageDealt };
+  return { derived, allTestsMalusDie, attackTestsMalusDie, allTestsFlat, damageDealt, testDomains };
 }
 
 /**
@@ -369,8 +412,24 @@ export interface StatusSheetImpact {
    * invalidante), positif pour un buff de groupe (Chant des héros, Bénédiction).
    */
   allTestsFlat: number;
-  /** Malus plat cumulé aux DM infligés (Attaque invalidante). ≤ 0. */
+  /**
+   * Modificateur plat cumulé aux DM infligés, SIGNÉ : négatif pour un malus (Attaque invalidante),
+   * positif pour un buff (Aura du chef de guerre, PER-359).
+   */
   damageDealt: number;
+  /**
+   * Ventilation des bonus/malus PAR DOMAINE de test (PER-359), keyée par id de `test-domains.ts` —
+   * une ligne par état, même forme que `abilityTestSources` pour que le détail « i » de
+   * `TestDomainsPanel` les rende à l'identique (nom du buff, valeur, et qui l'a lancé).
+   *
+   * Ces valeurs ne sont comptées NULLE PART ailleurs : ni `mods` (qui ne porte que des stats
+   * dérivées) ni `abilityTestSources` (qui ne porte que le canal « tous les tests ») ne les
+   * connaissent. C'est à l'appelant de les fondre dans le bonus du domaine concerné.
+   */
+  testDomainSources: Record<
+    string,
+    { id: AnyStatusEffectId; label: string; value: number; castBy?: string }[]
+  >;
 }
 
 export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
@@ -379,6 +438,7 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
   const allTestsMalusDie: string[] = [];
   const attackTestsMalusDie: string[] = [];
   const abilityTestSources: StatusSheetImpact['abilityTestSources'] = [];
+  const testDomainSources: StatusSheetImpact['testDomainSources'] = {};
   let allTestsFlat = 0;
   let damageDealt = 0;
 
@@ -424,6 +484,19 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
         });
     }
     if (mods.damageDealt !== undefined) damageDealt += mods.damageDealt * intensity;
+    // Bonus limité à des DOMAINES (Sans peur, Argument de taille) : aucune stat dérivée à toucher,
+    // seulement la ventilation par domaine que `TestDomainsPanel` saura rendre.
+    if (mods.testDomains) {
+      const value = mods.testDomains.value * intensity;
+      if (value !== 0)
+        for (const domain of mods.testDomains.domains)
+          (testDomainSources[domain] ??= []).push({
+            id: entry.id,
+            label,
+            value,
+            ...(entry.castBy ? { castBy: entry.castBy } : {}),
+          });
+    }
   }
 
   // Totaux par stat (somme des sources) → modificateurs injectables dans le calcul dérivé.
@@ -442,5 +515,6 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
     abilityTestSources,
     allTestsFlat,
     damageDealt,
+    testDomainSources,
   };
 }

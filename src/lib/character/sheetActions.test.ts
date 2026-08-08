@@ -408,7 +408,21 @@ describe('useEquipmentItem — intention d’un clic « Utiliser »', () => {
 
   it('la « Bourse de 2d6 pa » demande la modale de saisie des pa (p. 31)', () => {
     const c = char({ equipment: [{ custom: true, name: COIN_POUCH_ITEM_NAME, quantity: 1 }] });
-    expect(useEquipmentItem(c, 0)).toEqual({ kind: 'coin-pouch', index: 0 });
+    expect(useEquipmentItem(c, 0)).toEqual({
+      kind: 'coin-pouch',
+      index: 0,
+      info: { currency: 'silver', abbrev: 'pa', label: 'pièces d’argent (pa)', dice: '2d6' },
+    });
+  });
+
+  // Généralisation PER-200 (Outils du MJ) : n'importe quelle bourse « Bourse de NdM {monnaie} ».
+  it('une bourse d’or créée depuis les Outils du MJ demande aussi la modale de saisie', () => {
+    const c = char({ equipment: [{ custom: true, name: 'Bourse de 3d6 po', quantity: 1 }] });
+    expect(useEquipmentItem(c, 0)).toEqual({
+      kind: 'coin-pouch',
+      index: 0,
+      info: { currency: 'gold', abbrev: 'po', label: 'pièces d’or (po)', dice: '3d6' },
+    });
   });
 
   it('ligne inexistante → aucune action', () => {
@@ -479,6 +493,16 @@ describe('openCoinPouch', () => {
     const patch = openCoinPouch(c, 0, 7);
     expect(patch.equipment).toEqual([]);
     expect(patch.purse).toEqual({ gold: 1, silver: 11, copper: 0, platinum: 0 });
+  });
+
+  it('une bourse d’or crédite l’or, pas l’argent (généralisation PER-200)', () => {
+    const c = char({
+      equipment: [{ custom: true, name: 'Bourse de 3d6 po', quantity: 1 }],
+      purse: { gold: 1, silver: 4, copper: 0, platinum: 0 },
+    });
+    const patch = openCoinPouch(c, 0, 9);
+    expect(patch.equipment).toEqual([]);
+    expect(patch.purse).toEqual({ gold: 10, silver: 4, copper: 0, platinum: 0 });
   });
 });
 

@@ -100,6 +100,43 @@ export interface LootItem {
 }
 
 /**
+ * Catégorie de l'inventaire permanent du MJ — regroupement libre, renommable et
+ * repliable, purement organisationnel (aucune règle de jeu attachée).
+ */
+export interface GmInventoryCategory {
+  /** Clé stable (UUID). */
+  id: string;
+  /** Nom affiché, librement édité par le MJ. */
+  name: string;
+  /** La catégorie est-elle repliée dans le tiroir ? Persistant, propre au MJ. */
+  collapsed: boolean;
+}
+
+/**
+ * Objet de l'inventaire PERMANENT du MJ — à PART de la réserve piochée au hasard
+ * (`LootItem`/`loot`) : préparé pour être distribué À LA MAIN (pas de tirage), classé
+ * dans une catégorie (`categoryId`) ou non (`null`).
+ */
+export interface GmInventoryItem {
+  /** Clé stable (UUID) — ancre de glisser-déposer et `key` React. */
+  id: string;
+  /** Même forme que `LootItem.line`, produite par `ItemDialog`. */
+  line: EquipmentLine;
+  /** Catégorie d'appartenance, ou `null` = « Sans catégorie ». */
+  categoryId: string | null;
+}
+
+/**
+ * Inventaire permanent du MJ (extension PER-200) — réserve SŒUR de `loot` mais
+ * distincte : un objet n'appartient qu'à UNE des deux réserves à la fois (le
+ * glisser-déposer entre les deux RELOCALISE l'objet, ne le duplique jamais).
+ */
+export interface GmInventory {
+  categories: GmInventoryCategory[];
+  items: GmInventoryItem[];
+}
+
+/**
  * Campagne : ses notes de MJ et ses règles de table. Regroupe des personnages via
  * la clé étrangère `Character.campaignId`. `id` = UUID généré par la base.
  */
@@ -119,6 +156,13 @@ export interface Campaign {
    * (colonne `not null default '[]'`). Lecture défensive via `parseLoot`.
    */
   loot: LootItem[];
+  /**
+   * Inventaire PERMANENT du MJ — à part de `loot` (extension PER-200) : objets
+   * distribués à la main, classés en catégories. Vide par défaut, jamais `null`
+   * (colonne `not null default '{"categories":[],"items":[]}'`). Lecture défensive
+   * via `parseGmInventory`.
+   */
+  gmInventory: GmInventory;
   /** Horodatages ISO recopiés de la base (tri, affichage). */
   createdAt: string;
   updatedAt: string;

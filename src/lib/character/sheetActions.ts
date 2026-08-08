@@ -23,7 +23,7 @@
  * Aucune règle n'est réécrite ici : c'est un déplacement de code à comportement identique.
  */
 import { featureById } from '@/data';
-import { COIN_POUCH_ITEM_NAME } from '@/data/progression';
+import { parseCoinPouchName, type CoinPouchInfo } from './coinPouch';
 import type {
   PoisonKind,
   StartingEquipmentChoiceOption,
@@ -332,13 +332,15 @@ export function consumeEquipmentLine(character: Character, index: number): Equip
  * qu'un patch : la décision est pure et testable, l'ouverture de la modale reste à l'UI.
  *
  *  - `starting-choice` : choix d'équipement de départ à résoudre (PER-220) ;
- *  - `coin-pouch` : « Bourse de 2d6 pa » (p. 31) — les pa tirés s'ajoutent à la fortune (PER-152) ;
+ *  - `coin-pouch` : bourse de pièces (p. 31, généralisée PER-200 — « Bourse de NdM
+ *    {pp|po|pa|pc} », cf. `parseCoinPouchName`) : le montant tiré s'ajoute à la monnaie
+ *    concernée (PER-152) ;
  *  - `consume` : consommation directe, avec son patch prêt à appliquer ;
  *  - `none` : ligne inexistante, rien à faire.
  */
 export type UseItemIntent =
   | { kind: 'starting-choice'; index: number }
-  | { kind: 'coin-pouch'; index: number }
+  | { kind: 'coin-pouch'; index: number; info: CoinPouchInfo }
   | { kind: 'consume'; patch: Partial<Character> }
   | { kind: 'none' };
 
@@ -348,7 +350,8 @@ export function useEquipmentItem(character: Character, index: number): UseItemIn
   if (!line) return { kind: 'none' };
   // Choix d'équipement de départ à résoudre (PER-220) : ouvre la modale de choix.
   if (startingChoiceOptionsFor(line)) return { kind: 'starting-choice', index };
-  if (isCustomItem(line) && line.name === COIN_POUCH_ITEM_NAME) return { kind: 'coin-pouch', index };
+  const pouchInfo = isCustomItem(line) ? parseCoinPouchName(line.name) : null;
+  if (pouchInfo) return { kind: 'coin-pouch', index, info: pouchInfo };
   // Objet à CHARGES (PER-294) : « Utiliser » dépense une CHARGE et ne retire jamais la ligne — un
   // objet rechargeable ne disparaît pas quand on l'épuise. Prime sur la consommation, pour qu'une
   // fiole typée « consommable » mais dotée de charges se comporte comme la baguette qu'elle est.
@@ -357,17 +360,21 @@ export function useEquipmentItem(character: Character, index: number): UseItemIn
 }
 
 /**
- * Validation de la modale de bourse (p. 31) : ajoute `silver` pa à la fortune et consomme la dose,
- * en UNE écriture.
+ * Validation de la modale de bourse (p. 31, généralisée PER-200) : ajoute `amount` à la
+ * monnaie de la bourse (déterminée par son NOM, cf. `parseCoinPouchName`) et consomme la
+ * dose, en UNE écriture. Retombe sur l'argent (comportement d'origine) si le nom n'est,
+ * contre toute attente, plus reconnu au moment de la validation.
  */
 export function openCoinPouch(
   character: Character,
   index: number,
-  silver: number,
+  amount: number,
 ): Partial<Character> {
+  const line = character.equipment[index];
+  const currency = (isCustomItem(line) ? parseCoinPouchName(line.name)?.currency : null) ?? 'silver';
   return {
     equipment: consumeEquipmentLine(character, index),
-    purse: { ...character.purse, silver: character.purse.silver + silver },
+    purse: { ...character.purse, [currency]: character.purse[currency] + amount },
   };
 }
 

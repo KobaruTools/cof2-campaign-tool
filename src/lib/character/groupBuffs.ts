@@ -14,18 +14,31 @@
  *
  * Aucune UI, aucun store — capacités acquises en entrée, données en sortie.
  */
-import { BENEFICIAL_EFFECT_IDS, type BeneficialEffectId } from '@/data/schema';
+import {
+  BENEFICIAL_EFFECT_IDS,
+  BENEFICIAL_EFFECTS,
+  type AbilityId,
+  type BeneficialEffectId,
+} from '@/data/schema';
 import { featureById } from '@/data/index';
+import { clampIntensity } from './statusEffects';
 import { isEffectActive, pathRanksFromFeatures } from './effects';
 import type { Character } from './types';
 
 /**
- * Rang de voie à partir duquel les deux buffs du livre passent de +1 à +2 (« Le bonus passe à +2 au
- * rang 5 » — Chant des héros p. 67, Bénédiction p. 124). Le palier vit dans le TEXTE des capacités,
- * pas dans une règle générale : si un jour un buff escaladait autrement, il faudrait le déclarer en
- * donnée plutôt que d'élargir ce seuil.
+ * Ce qu'il faut savoir du LANCEUR pour en déduire le palier d'un buff (PER-359). Les deux premiers
+ * buffs du livre ne demandaient que ses capacités (le rang de la voie porteuse suffisait) ; les
+ * suivants lisent son NIVEAU (Aura du chef de guerre, +2 au niveau 16) ou une CARACTÉRISTIQUE (Sans
+ * peur = CHA, Argument de taille = FOR). Les deux derniers champs sont optionnels : un porteur qui
+ * ne les fournit pas (créature du tracker, personnage non réclamé) retombe sur le palier 1.
+ *
+ * `abilities` = les valeurs RÉSOLUES de la fiche (modificateurs de peuple compris) ; un bonus de
+ * carac conféré par une capacité n'y figure pas — le pré-remplissage vaut ce que vaut cette source.
  */
-export const GROUP_BUFF_RANK_5 = 5;
+export interface GroupBuffCasterContext {
+  abilities?: Partial<Record<AbilityId, number>>;
+  level?: number;
+}
 
 /** Un buff de groupe CONFÉRÉ par les capacités d'un combattant, avec le palier qu'il atteint. */
 export interface GroupBuffCarrier {
@@ -40,11 +53,49 @@ export interface GroupBuffCarrier {
 }
 
 /**
- * Buffs de groupe conférés par les capacités acquises `featureIds`, dans l'ordre du catalogue. Le
- * palier se lit sur le rang ATTEINT dans la voie de la capacité porteuse : un barde qui a pris les
- * rangs 1 et 3 du musicien reste à +1, celui qui a le rang 5 passe à +2.
+ * Palier d'un buff pour un lanceur donné, D'APRÈS CE QUE LE CATALOGUE DÉCLARE (`intensityFrom`) —
+ * jamais d'après une règle générale : chaque capacité dit d'où sort son chiffre (PER-359).
+ *  - `path-rank` : 2 dès le rang déclaré de la voie PORTEUSE, 1 sinon (gabarit p. 67 / p. 124) ;
+ *  - `character-level` : 2 dès le niveau déclaré, 1 sinon (Aura du chef de guerre, niveau 16) ;
+ *  - `ability` : le palier EST la caractéristique du lanceur (Sans peur = CHA, Argument = FOR).
+ *
+ * Le résultat est toujours borné par le `stacking` du catalogue (`clampIntensity`), donc ≥ 1 : un
+ * lanceur dont la caractéristique serait nulle ou négative retombe sur 1 plutôt que sur un buff
+ * inversé — cas dégénéré qu'aucune capacité du livre ne rencontre en pratique.
  */
-export function groupBuffsOf(featureIds: readonly string[]): GroupBuffCarrier[] {
+function intensityOf(
+  buffId: BeneficialEffectId,
+  pathRank: number,
+  caster: GroupBuffCasterContext,
+): number {
+  const from = BENEFICIAL_EFFECTS[buffId]?.intensityFrom;
+  if (!from) return 1;
+  const raw =
+    from.kind === 'path-rank'
+      ? pathRank >= from.rank
+        ? 2
+        : 1
+      : from.kind === 'character-level'
+        ? (caster.level ?? 0) >= from.level
+          ? 2
+          : 1
+        : (caster.abilities?.[from.ability] ?? 1);
+  return clampIntensity(buffId, raw);
+}
+
+/**
+ * Buffs de groupe conférés par les capacités acquises `featureIds`, dans l'ordre du catalogue. Le
+ * `pathRank` reste le rang ATTEINT dans la voie de la capacité porteuse ; le PALIER, lui, se déduit
+ * de ce que le catalogue déclare (rang, niveau ou caractéristique du lanceur — cf. `intensityOf`).
+ *
+ * `caster` est optionnel : les appelants qui ne veulent que la LISTE des buffs conférés (gating de
+ * la palette, arbitrage du double compte) n'ont pas à le fournir — leur palier vaudra 1 et ne sera
+ * pas lu.
+ */
+export function groupBuffsOf(
+  featureIds: readonly string[],
+  caster: GroupBuffCasterContext = {},
+): GroupBuffCarrier[] {
   const pathRanks = pathRanksFromFeatures([...featureIds]);
   const carriers = new Map<BeneficialEffectId, GroupBuffCarrier>();
   for (const featureId of featureIds) {
@@ -59,7 +110,7 @@ export function groupBuffsOf(featureIds: readonly string[]): GroupBuffCarrier[] 
         buffId,
         featureId,
         pathRank,
-        intensity: pathRank >= GROUP_BUFF_RANK_5 ? 2 : 1,
+        intensity: intensityOf(buffId, pathRank, caster),
       });
     }
   }
@@ -84,15 +135,19 @@ export function unlockedGroupBuffIds(
 }
 
 /**
- * Palier à PRÉ-REMPLIR pour `buffId` d'après les capacités du porteur présumé (le combattant sur
- * lequel la puce a été déposée). Retombe sur 1 quand il ne porte pas ce buff — une créature alliée
- * ou un personnage d'un autre profil : le MJ ajuste alors à la main.
+ * Palier à PRÉ-REMPLIR pour `buffId` d'après le porteur présumé (le combattant sur lequel la puce a
+ * été déposée). Retombe sur 1 quand il ne porte pas ce buff — une créature alliée ou un personnage
+ * d'un autre profil.
+ *
+ * `caster` porte le niveau et les caractéristiques du lanceur, que certains buffs lisent (PER-359) :
+ * l'omettre ne casse rien, mais ramène ces buffs-là à 1.
  */
 export function groupBuffIntensityFor(
   featureIds: readonly string[],
   buffId: BeneficialEffectId,
+  caster: GroupBuffCasterContext = {},
 ): number {
-  return groupBuffsOf(featureIds).find((c) => c.buffId === buffId)?.intensity ?? 1;
+  return groupBuffsOf(featureIds, caster).find((c) => c.buffId === buffId)?.intensity ?? 1;
 }
 
 /**

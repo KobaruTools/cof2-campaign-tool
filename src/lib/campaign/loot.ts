@@ -75,3 +75,23 @@ export function drawLoot(loot: LootItem[], pick: PickIndex): LootDraw | null {
 export function resetLoot(loot: LootItem[]): LootItem[] {
   return loot.map((l) => (l.served ? { ...l, served: false } : l));
 }
+
+/**
+ * Ajoute PLUSIEURS objets d'un coup, non servis (création en lot, PER-200) — jamais une
+ * seule ligne à quantité N : ce sont des CARTES DISTINCTES (`id` fourni par l'appelant),
+ * chacune attribuable/dupliquable indépendamment.
+ */
+export function addLootItems(loot: LootItem[], items: { id: string; line: LootItem['line'] }[]): LootItem[] {
+  return [...loot, ...items.map((it) => ({ ...it, served: false }))];
+}
+
+/**
+ * Duplique un objet existant (bouton « Dupliquer », PER-200) : même ligne, TOUJOURS non
+ * servi (une copie fraîche part disponible même si l'original a déjà été servi), nouvel
+ * `id` (fourni par l'appelant). No-op si l'id source est inconnu.
+ */
+export function duplicateLootItem(loot: LootItem[], itemId: string, newId: string): LootItem[] {
+  const found = loot.find((l) => l.id === itemId);
+  if (!found) return loot;
+  return [...loot, { id: newId, line: found.line, served: false }];
+}

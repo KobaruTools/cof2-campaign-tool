@@ -35,6 +35,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HandymanIcon from '@mui/icons-material/Handyman';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import PetsOutlinedIcon from '@mui/icons-material/PetsOutlined';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -65,6 +66,7 @@ import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkContr
 import { GmToolsDrawerHost, TOOLS_PARAM } from '@/components/campaign/GmToolsDrawerHost';
 import { DEFAULT_GM_TOOL } from '@/components/campaign/GmToolsDrawer';
 import { GmReferenceDrawerHost, REFERENCE_PARAM } from '@/components/campaign/GmReferenceDrawerHost';
+import { GmBestiaryDrawerHost, BESTIARY_PARAM } from '@/components/campaign/GmBestiaryDrawerHost';
 import { HomeBackground } from '@/components/HomeBackground';
 import { GmSessionHeaderIndicator } from '@/components/session/GmSessionHeaderIndicator';
 import { SIDE_ACCENT, type CreatureSide } from '@/lib/ui/creature';
@@ -72,7 +74,7 @@ import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { customCreatureBlob } from '@/lib/session/customCreature';
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import {
-  isGroupScopedStatus,
+  isCampScopedStatus,
   type AnyStatusEffectId,
 } from '@/lib/character/statusEffects';
 import { groupBuffIntensityFor } from '@/lib/character/groupBuffs';
@@ -319,9 +321,10 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     const statusId = event.active.data.current?.statusId as AnyStatusEffectId | undefined;
     const combatantKey = event.over?.id;
     if (!statusId || typeof combatantKey !== 'string') return;
-    // Un BUFF DE GROUPE (PER-104) ne se pose pas sur la seule carte visée : sa règle vise « ses alliés
-    // et lui ». Le dépôt désigne le PORTEUR (camp + palier pré-rempli) et ouvre la fenêtre de pose.
-    if (isGroupScopedStatus(statusId)) openGroupBuff(combatantKey, statusId as BeneficialEffectId);
+    // Un buff visant le CAMP (PER-104, élargi PER-359) ne se pose pas sur la seule carte visée : sa
+    // règle vise « ses alliés et lui », ou « un allié » qui n'est pas forcément celui-là. Le dépôt
+    // désigne le PORTEUR (camp + palier pré-rempli) et ouvre la fenêtre de pose, qui tranche.
+    if (isCampScopedStatus(statusId)) openGroupBuff(combatantKey, statusId as BeneficialEffectId);
     else applyStatus(combatantKey, statusId);
   };
 
@@ -348,14 +351,18 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       ...creatures.map((inst) => mark(inst.id, inst.label)),
     ];
   }, [groupBuffPose, carrierSide, claimed, allies, enemies]);
-  // Palier pré-rempli : lu sur le RANG du porteur dans sa voie (+2 dès le rang 5). Une créature
-  // alliée ou un personnage qui ne porte pas la capacité retombe sur +1, ajustable à la main.
-  const groupBuffIntensity = groupBuffPose
-    ? groupBuffIntensityFor(
-        claimed.find((c) => c.id === groupBuffPose.carrierKey)?.featureIds ?? [],
-        groupBuffPose.buffId,
-      )
-    : 1;
+  // Palier pré-rempli : lu là où le CATALOGUE dit de le lire (PER-359) — rang du porteur dans sa
+  // voie, niveau du personnage, ou l'une de ses caractéristiques. D'où le passage du porteur entier
+  // et non de ses seules capacités. Une créature alliée ou un personnage qui ne porte pas la
+  // capacité retombe sur +1.
+  const groupBuffIntensity = (() => {
+    if (!groupBuffPose) return 1;
+    const carrier = claimed.find((c) => c.id === groupBuffPose.carrierKey);
+    return groupBuffIntensityFor(carrier?.featureIds ?? [], groupBuffPose.buffId, {
+      ...(carrier?.abilities ? { abilities: carrier.abilities } : {}),
+      ...(carrier?.level !== undefined ? { level: carrier.level } : {}),
+    });
+  })();
   // AUTEUR de la pose, figé en clair au moment d'appliquer : la fiche du buffé ne pourrait pas résoudre
   // une clé de combattant (elle ne connaît ni les autres personnages de la table ni les joueurs).
   //
@@ -496,6 +503,20 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
               `Stack`/`spacing` applique déjà entre ses enfants (même spécificité CSS, la règle
               de `Stack` gagne). */}
           <Box sx={{ flexGrow: 1 }} />
+          {/* Bestiaire : ouvre le tiroir latéral intégrant le navigateur du bestiaire (`/bestiary`)
+              sans quitter l'écran de MJ. Vraie ancre (`?bestiary=1`) → Ctrl/⌘+Clic ouvre dans un
+              nouvel onglet, le bouton Retour ferme le tiroir. Même patron que le tiroir « Aide-mémoire ». */}
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<PetsOutlinedIcon />}
+            component={Link}
+            href={`/campaign/${cid}/gm-screen?${BESTIARY_PARAM}=1`}
+            scroll={false}
+            sx={(theme) => glassButtonSx(theme, 'info')}
+          >
+            Bestiaire
+          </Button>
           {/* Aide-mémoire : ouvre le tiroir latéral intégrant le référentiel de règles (`/reference`)
               sans quitter l'écran de MJ. Vraie ancre (`?reference=1`) → Ctrl/⌘+Clic ouvre dans un
               nouvel onglet, le bouton Retour ferme le tiroir. */}
@@ -768,6 +789,12 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
           (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
       <Suspense>
         <GmReferenceDrawerHost />
+      </Suspense>
+
+      {/* Tiroir « Bestiaire », piloté par `?bestiary=1`. Même contrainte de frontière `Suspense`
+          (lecture des paramètres d'URL) que les autres tiroirs de l'écran de MJ. */}
+      <Suspense>
+        <GmBestiaryDrawerHost />
       </Suspense>
     </>
   );

@@ -81,9 +81,9 @@ import { ITEM_TEST_TARGET_IDS } from '@/lib/character/equipment';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
 import { isFirearmItemId } from '@/lib/character/firearms';
 import { elixirFeatureIdByItemName } from '@/lib/character/elixirs';
+import { parseCoinPouchName } from '@/lib/character/coinPouch';
 import { isConsumable } from '@/lib/character/consumables';
 import { isStartingChoiceLine } from '@/lib/character/startingChoices';
-import { COIN_POUCH_ITEM_NAME } from '@/data/progression';
 import { ABILITY_NAMES } from '@/lib/ui/ability';
 import {
   DERIVED_MOD_DISPLAY_ID,
@@ -743,9 +743,12 @@ function DoubleBarrelUnderfedBadge() {
   );
 }
 
-/** Ligne « Bourse de 2d6 pa » du sac de départ (résolue par `CoinPouchDialog`). */
+/**
+ * Ligne « Bourse de NdM {monnaie} » (résolue par `CoinPouchDialog`) — bourse de départ
+ * (p. 31) OU bourse générique créée depuis les Outils du MJ (extension PER-200).
+ */
 function isCoinPouchLine(line: EquipmentLine): boolean {
-  return isCustomItem(line) && line.name === COIN_POUCH_ITEM_NAME;
+  return isCustomItem(line) && parseCoinPouchName(line.name) !== null;
 }
 
 /**
@@ -1794,6 +1797,9 @@ export function EquipmentList({
       return (
         <Box
           key={i}
+          // PER-116 — ancre DOM pour « aller à l'arme » depuis la carte d'attaque au contact (icône
+          // cliquable en combat à deux armes) : une seule ligne peut occuper `mainHand`/`offHand`.
+          id={weaponInHand ? `equipment-line-${line.worn!.slot}` : undefined}
           sx={{
             height: '100%',
             display: 'flex',
@@ -1850,6 +1856,8 @@ export function EquipmentList({
     return (
       <Stack
         key={i}
+        // PER-116 — même ancre DOM que la carte (mode colonnes), pour la vue liste par défaut.
+        id={weaponInHand ? `equipment-line-${line.worn!.slot}` : undefined}
         direction="row"
         spacing={1}
         sx={{

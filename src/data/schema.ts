@@ -1215,10 +1215,28 @@ export interface StatusModifiers {
    */
   allTestsFlat?: number;
   /**
-   * Malus CHIFFRÉ PLAT aux DM INFLIGÉS par le combattant, PAR PALIER d'intensité — Attaque invalidante
-   * (p. 140, « … et aux DM infligés par la cible »). Absent = 0.
+   * Modificateur CHIFFRÉ PLAT aux DM INFLIGÉS par le combattant, PAR PALIER d'intensité. SIGNÉ :
+   * négatif pour un préjudice — Attaque invalidante (p. 140, « … et aux DM infligés par la cible ») —,
+   * positif pour un buff (PER-359) — Aura du chef de guerre (p. 161, « +1 en DEF et aux DM »). Absent = 0.
+   *
+   * Ne porte QUE des DM plats : un bonus de DM en DÉ (« +1d4° DM » de Charge fantastique p. 86 ou
+   * d'Arme de lumière p. 123) n'est PAS exprimable ici et reste, à ce jour, du verbatim.
    */
   damageDealt?: number;
+  /**
+   * Bonus/malus CHIFFRÉ PLAT limité à certains DOMAINES de test (PER-359), PAR PALIER d'intensité —
+   * là où `allTestsFlat` frappe TOUS les tests sans distinction. Deux capacités du livre en ont besoin,
+   * toutes deux au bénéfice des alliés :
+   *  - Sans peur (chevalier, `meneur-d-hommes-r1`, p. 85) : « un bonus égal à son CHA aux tests de tous
+   *    ses alliés » contre les effets de peur → domaine `fear-resistance` ;
+   *  - Argument de taille (barbare, `brute-r1`, p. 79) : la FOR du barbare s'ajoute aux tests « de
+   *    négociation, de persuasion ou d'intimidation » de ses alliés au contact.
+   *
+   * `domains` = ids du catalogue `src/data/test-domains.ts` (intégrité vérifiée par `validate:data`),
+   * même convention que `TestBonusEffect.domains`. Plusieurs domaines reçoivent la MÊME valeur, le
+   * livre les groupant par énumération. Absent = l'état ne vise aucun domaine en particulier.
+   */
+  testDomains?: { domains: string[]; value: number };
 }
 
 /**
@@ -1245,15 +1263,56 @@ export interface StatusEffectEntry {
    */
   stacking?: { max: number };
   /**
-   * PORTÉE de l'effet (PER-104). ABSENT = INDIVIDUEL : l'effet se pose sur UN combattant à la fois
-   * (tous les états préjudiciables, situationnels et d'environnement). `'group'` = effet qui, par sa
-   * règle même, vise « ses alliés et lui » (Chant des héros p. 67, Bénédiction p. 124) : la pose
-   * ouvre alors le choix des combattants du camp plutôt que de frapper la seule carte survolée.
+   * PORTÉE de l'effet (PER-104, élargie par PER-359). ABSENT = INDIVIDUEL : l'effet se pose sur UN
+   * combattant, celui de la carte survolée (tous les états préjudiciables, situationnels et
+   * d'environnement). Deux valeurs ouvrent au contraire la fenêtre de pose sur le CAMP du porteur :
+   *  - `'group'` : la règle vise « ses alliés et lui » (Chant des héros p. 67, Bénédiction p. 124,
+   *    Aura du chef de guerre p. 161) → cases à cocher, tout le camp coché par défaut ;
+   *  - `'single-ally'` : la règle ne vise qu'UN allié désigné (Protéger un allié p. 87) → choix
+   *    EXCLUSIF d'un seul combattant, et rien n'est coché d'avance.
    *
-   * Ce champ décrit la RÈGLE, pas le stockage : côté état de combat, un buff de groupe reste une
-   * entrée `AppliedStatus` par combattant — c'est la POSE qui est collective (`applyStatusToKeys`).
+   * La distinction est bien une affaire de RÈGLE et non de commodité : cocher tout le camp pour un
+   * « un allié à son contact » ferait dire au livre ce qu'il ne dit pas.
+   *
+   * Ce champ décrit la RÈGLE, pas le stockage : côté état de combat, un buff reste une entrée
+   * `AppliedStatus` par combattant — c'est la POSE qui est collective (`applyStatusToKeys`).
    */
-  scope?: 'group';
+  scope?: 'group' | 'single-ally';
+  /**
+   * Le LANCEUR est-il EXCLU du bénéfice (PER-359) ? Le livre distingue nettement deux formulations,
+   * et l'application doit les distinguer aussi :
+   *  - « ses alliés ET LUI » (Chant des héros p. 67, Bénédiction p. 124) → le porteur en profite,
+   *    drapeau ABSENT ;
+   *  - « TOUS VOS ALLIÉS » (Aura du chef de guerre p. 161), « ses alliés » (Sans peur p. 85, Argument
+   *    de taille p. 79), « un allié » (Protéger un allié p. 87) → le porteur est hors du bénéfice,
+   *    drapeau à `true`.
+   *
+   * Conséquence concrète : la fenêtre de pose ne coche PAS le lanceur d'avance, et la cible unique ne
+   * le propose pas du tout. L'enjeu n'est pas cosmétique — le barbare d'Argument de taille possède
+   * DÉJÀ le bonus par ses propres `effects` : le lui poser en plus le compterait DEUX FOIS, exactement
+   * le travers que PER-314 a corrigé pour les buffs à interrupteur.
+   */
+  excludesCarrier?: boolean;
+  /**
+   * D'OÙ SORT LE PALIER du buff (PER-359) — c'est-à-dire l'intensité que la fenêtre de pose
+   * pré-remplit, les valeurs de `modifiers` étant exprimées PAR PALIER. Le MJ n'arbitre pas : la
+   * règle donne toujours le chiffre, encore faut-il dire où le lire. Trois provenances, une par
+   * gabarit rencontré dans le livre :
+   *  - `path-rank` : +1, puis 2 paliers à partir du rang `rank` de la voie PORTEUSE — gabarit des
+   *    deux premiers buffs (« Le bonus passe à +2 au rang 5 », p. 67 et p. 124) ;
+   *  - `character-level` : idem mais sur le NIVEAU du personnage — Aura du chef de guerre (p. 161,
+   *    « À partir du niveau 16, ce bonus passe à +2 »), dont l'escalade ne suit pas le rang de voie ;
+   *  - `ability` : le palier EST la valeur d'une caractéristique du LANCEUR — Sans peur (p. 85,
+   *    « un bonus égal à son CHA ») et Argument de taille (p. 79, « ajoute sa FOR »). `modifiers`
+   *    vaut alors 1 par palier, et `stacking.max` doit couvrir le maximum de la carac (`ABILITY_MAX`).
+   *
+   * ABSENT = état non escaladant (palier 1), cas de tous les états subis et de Protéger un allié
+   * (« +2 de DEF », valeur fixe portée directement par `modifiers`).
+   */
+  intensityFrom?:
+    | { kind: 'path-rank'; rank: number }
+    | { kind: 'character-level'; level: number }
+    | { kind: 'ability'; ability: AbilityId };
 }
 
 /**
@@ -1536,11 +1595,27 @@ export const ENVIRONMENTAL_EFFECT_LABELS: Record<EnvironmentalEffectId, string> 
  * pose sans compteur et c'est le MJ qui, s'il le veut, lui donne une durée en tours (`untilRound`,
  * PER-305). En pratique un repos de groupe (PER-312) y met fin en purgeant les états du tracker.
  *
- * PALIER : les deux capacités passent de +1 à +2 au rang 5 de leur voie. Modélisé comme tout état
- * cumulatif — `allTestsFlat: +1` PAR PALIER et `stacking: { max: 2 }` — l'intensité 2 valant « rang 5 ».
- * La palette pré-remplit le palier depuis le rang du porteur ; le MJ garde la main.
+ * PALIER : modélisé comme tout état cumulatif — la valeur de `modifiers` vaut PAR PALIER et
+ * `stacking.max` borne l'intensité. Où lire le palier n'est PAS une règle générale : chaque entrée le
+ * DÉCLARE par `intensityFrom` (rang de la voie porteuse, niveau du personnage, ou caractéristique du
+ * lanceur). La palette le pré-remplit de là ; le MJ garde la main.
+ *
+ * RECENSEMENT (PER-359) : les 665 capacités ont été balayées à la recherche de tout ce qui touche
+ * autrui (« allié », « le groupe », « ses compagnons », « à portée de voix »…), soit 52 capacités
+ * classées. Sont entrées ici les seules dont le chiffre tient dans les canaux du moteur. Restent
+ * DEHORS, faute de canal, toutes celles qui donnent un DÉ BONUS (Charge fantastique p. 86, Exemplaire
+ * p. 86, Meneur d'hommes p. 142, Arme de lumière p. 123) ou un bonus de DM en DÉ : `StatusModifiers`
+ * ne connaît que des dés MALUS et des DM plats. Restent également dehors, par nature, les soins, les
+ * déplacements, les compagnons, et tout ce qui vise un ADVERSAIRE (canal `situationalEffectIds`).
  */
-export const BENEFICIAL_EFFECT_IDS = ['heroes-song', 'blessing'] as const;
+export const BENEFICIAL_EFFECT_IDS = [
+  'heroes-song',
+  'blessing',
+  'warlord-aura',
+  'fearless-rally',
+  'towering-argument',
+  'shield-ally',
+] as const;
 export type BeneficialEffectId = (typeof BENEFICIAL_EFFECT_IDS)[number];
 
 /** Catalogue des buffs de groupe. Effet recopié VERBATIM de la capacité source. */
@@ -1556,6 +1631,7 @@ export const BENEFICIAL_EFFECTS: Record<BeneficialEffectId, StatusEffectEntry> =
     modifiers: { allTestsFlat: 1 },
     stacking: { max: 2 },
     scope: 'group',
+    intensityFrom: { kind: 'path-rank', rank: 5 },
   },
   // « Bénédiction » (prêtre, priere-r1, p. 124). Même gabarit chiffré que le Chant des héros, texte
   // DISTINCT (« tests de caractéristique et d'attaque » là où le barde dit « tous leurs tests »). Le
@@ -1568,6 +1644,77 @@ export const BENEFICIAL_EFFECTS: Record<BeneficialEffectId, StatusEffectEntry> =
     modifiers: { allTestsFlat: 1 },
     stacking: { max: 2 },
     scope: 'group',
+    intensityFrom: { kind: 'path-rank', rank: 5 },
+  },
+  // « Aura du chef de guerre » (mage de guerre, prestige-mage-de-guerre-r6, p. 161). Le buff le plus
+  // proche du gabarit des deux premiers, à ceci près que son palier suit le NIVEAU du personnage et
+  // non le rang de la voie. Deux canaux chiffrés distincts : +1 en DEF (stat dérivée) et +1 aux DM
+  // infligés — première valeur POSITIVE de `damageDealt`, jusqu'ici réservé aux malus.
+  'warlord-aura': {
+    label: 'Aura du chef de guerre',
+    effect:
+      "Tous vos alliés dans un rayon de 20 m autour de vous bénéficient d'un bonus de +1 en DEF et aux DM pendant INT minutes. À partir du niveau 16, ce bonus passe à +2.",
+    sourcePage: 161,
+    modifiers: { derived: { def: 1 }, damageDealt: 1 },
+    stacking: { max: 2 },
+    scope: 'group',
+    intensityFrom: { kind: 'character-level', level: 16 },
+    excludesCarrier: true,
+  },
+  // « Sans peur » (chevalier, meneur-d-hommes-r1, p. 85). Le verbatim GARDE l'immunité du chevalier,
+  // sans quoi « ce type d'effet » ne renverrait à rien — mais seule la clause des alliés est chiffrée
+  // ici (l'immunité du porteur est déjà un `immunity` sur sa propre fiche). La seconde phrase de la
+  // capacité (rang + 2 en tactique et commandement) est un bonus PERMANENT du seul chevalier : hors buff.
+  // Le bonus n'étant ni plat ni universel — « son CHA », et seulement contre la peur — il exige les
+  // deux nouveautés de PER-359 : `testDomains` et un palier lu sur une CARACTÉRISTIQUE du lanceur.
+  'fearless-rally': {
+    label: 'Sans peur',
+    effect:
+      "Le chevalier est immunisé aux effets de peur et il offre un bonus égal à son CHA aux tests de tous ses alliés contre ce type d’effet.",
+    sourcePage: 85,
+    modifiers: { testDomains: { domains: ['fear-resistance'], value: 1 } },
+    // Plafond = maximum d'une caractéristique (p. 27) : le palier EST le CHA du chevalier.
+    stacking: { max: ABILITY_MAX },
+    scope: 'group',
+    intensityFrom: { kind: 'ability', ability: 'CHA' },
+    excludesCarrier: true,
+  },
+  // « Argument de taille » (barbare, brute-r1, p. 79). Capacité MIXTE dont seule la part PORTEUR était
+  // modélisée (+FOR aux PV et aux tests sociaux du barbare) : « et à ceux de ses alliés au contact »
+  // n'entrait nulle part. C'est cette part-là, et elle seule, que porte cette entrée — le verbatim est
+  // conservé entier, la phrase ne se laissant pas couper sans perdre son sujet.
+  // Buff PERMANENT et non un sort : il vaut tant que les alliés sont AU CONTACT du barbare. Le MJ le
+  // pose donc sur les combattants concernés et le lève quand le groupe se disperse.
+  'towering-argument': {
+    label: 'Argument de taille',
+    effect:
+      "Le barbare ajoute sa FOR à son maximum de PV ainsi qu’à ses tests de CHA et à ceux de ses alliés au contact pour les tests de négociation, de persuasion ou d’intimidation.",
+    sourcePage: 79,
+    modifiers: {
+      testDomains: { domains: ['negotiation', 'persuasion', 'intimidation'], value: 1 },
+    },
+    stacking: { max: ABILITY_MAX },
+    scope: 'group',
+    intensityFrom: { kind: 'ability', ability: 'FOR' },
+    excludesCarrier: true,
+  },
+  // « Protéger un allié » (guerrier, bouclier-r1, p. 87). PREMIER buff à CIBLE UNIQUE : le livre dit
+  // « à UN allié à son contact », pas « à ses alliés ». La dernière phrase de la capacité (rang + 2
+  // pour éviter d'être surpris) est un bonus permanent du seul guerrier : hors verbatim.
+  //
+  // ÉCART ASSUMÉ : la règle borne le bonus à « une attaque par round », alors qu'un état posé vaut
+  // tant qu'il est là. Aucun canal ne sait exprimer « la prochaine attaque subie » ; le verbatim le
+  // dit, et c'est au MJ de lever l'état. Le noter plutôt que de laisser croire à une DEF durablement
+  // relevée.
+  'shield-ally': {
+    label: 'Protéger un allié',
+    effect:
+      "S’il n’est pas surpris, le guerrier peut accorder un bonus de DEF de +2 à un allié à son contact contre une attaque par round. Il doit annoncer son intention avant de connaître le résultat de l’attaque.",
+    sourcePage: 87,
+    // Valeur FIXE (+2) : ni escalade ni palier, donc aucun `stacking` ni `intensityFrom`.
+    modifiers: { derived: { def: 2 } },
+    scope: 'single-ally',
+    excludesCarrier: true,
   },
 };
 

@@ -23,3 +23,12 @@
 
 L'outil Read ne voit pas poppler (PATH figé) : rendre les pages en PNG puis lire les images.
 `pdftoppm -png -r 200 -f <début> -l <fin> "CBHS_06_Chroniques_Oubliees_2_web_v2.pdf" ".pdf-pages\p"` → `.pdf-pages/p-NNN.png` (dossier gitignoré). Le numéro de page PDF = numéro imprimé dans le livre.
+
+## graphify (graphe de connaissance du code)
+
+Un graphe du code vit dans `graphify-out/` (~3600 nœuds, AST pur, périmètre fixé par `.graphifyignore` : `src/`, `scripts/`, `supabase/` seulement).
+
+- **Reconnaissance** — avant de plonger dans un sous-système inconnu ou d'évaluer un impact : `graphify query "<question>"`, `graphify explain "<symbole()>"`, `graphify affected "<fichier|symbole>"` (ce que casse un changement, chaînes indirectes incluses), `graphify god-nodes`. Les nœuds sont des identifiants de code : **interroger en anglais**.
+- **Exécution** — grep et Read restent la référence, et le graphe n'en dispense jamais : chaînes de caractères (libellés français, verbatim des règles, tokens `[INT]`, `(p. N)`, slugs d'`id`), tout ce qui est hors périmètre (`examples/`, `public/`, les PDF, les `.md`), et le code modifié dans la session. En cas de divergence, **le fichier a raison**.
+- **Fraîcheur** — le hook git `post-commit` reconstruit le graphe tout seul (AST, gratuit, détaché). Ne PAS lancer `graphify update .` après chaque édition : c'est une reconstruction complète (~14 s) qui fait en plus dériver les noms de communautés. En cas de doute, comparer `Built from commit:` dans `GRAPH_REPORT.md` à `git rev-parse HEAD`.
+- `graphify label .` (backend `claude-cli`, aucune clé API) pour renommer les communautés quand elles ont dérivé vers des noms de fichiers.

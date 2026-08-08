@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ABILITY_MAX,
   BENEFICIAL_EFFECT_IDS,
   BENEFICIAL_EFFECTS,
   BENEFICIAL_EFFECT_LABELS,
@@ -46,8 +47,11 @@ describe('BENEFICIAL_EFFECTS (catalogue)', () => {
     for (const id of BENEFICIAL_EFFECT_IDS) expect(others.has(id), id).toBe(false);
   });
 
-  it('tout buff de groupe porte bien `scope: group`', () => {
-    for (const id of BENEFICIAL_EFFECT_IDS) expect(BENEFICIAL_EFFECTS[id].scope, id).toBe('group');
+  // Tout buff bénéfique se pose depuis la FENÊTRE de choix du camp, jamais sur la seule carte
+  // survolée — mais depuis PER-359 la portée exacte se décline : tout le camp ou un seul allié.
+  it('tout buff bénéfique porte une portée de camp (`group` ou `single-ally`)', () => {
+    for (const id of BENEFICIAL_EFFECT_IDS)
+      expect(['group', 'single-ally'], id).toContain(BENEFICIAL_EFFECTS[id].scope);
   });
 
   it('« Chant des héros » (p. 67) : +1 à tous les tests, palier +2 au rang 5', () => {
@@ -159,5 +163,65 @@ describe('statusSheetImpact — buff de groupe sur la fiche', () => {
 
   it('un état sans malus plat ne produit aucune ventilation de test de carac', () => {
     expect(statusSheetImpact([{ id: 'prone' }]).abilityTestSources).toEqual([]);
+  });
+});
+
+/* --------------------------------------------------------------------------- *
+ * PER-359 — les quatre buffs issus du recensement. Chacun doit dire d'où sort son chiffre,
+ * qui il vise, et si son lanceur en profite.
+ * --------------------------------------------------------------------------- */
+
+describe('PER-359 — buffs recensés', () => {
+  it('« Aura du chef de guerre » (p. 161) : +1 DEF et +1 DM, palier au niveau 16', () => {
+    const entry = BENEFICIAL_EFFECTS['warlord-aura'];
+    expect(entry.label).toBe('Aura du chef de guerre');
+    expect(entry.sourcePage).toBe(161);
+    expect(entry.effect).toContain("d'un bonus de +1 en DEF et aux DM pendant INT minutes");
+    expect(entry.effect).toContain('À partir du niveau 16, ce bonus passe à +2.');
+    expect(entry.modifiers).toEqual({ derived: { def: 1 }, damageDealt: 1 });
+    expect(entry.intensityFrom).toEqual({ kind: 'character-level', level: 16 });
+    // « Tous VOS alliés » : le mage de guerre lui-même n'en profite pas.
+    expect(entry.excludesCarrier).toBe(true);
+  });
+
+  it('« Sans peur » (p. 85) : bonus limité au domaine « résister à la peur », palier = CHA', () => {
+    const entry = BENEFICIAL_EFFECTS['fearless-rally'];
+    expect(entry.sourcePage).toBe(85);
+    expect(entry.effect).toContain('un bonus égal à son CHA aux tests de tous ses alliés');
+    expect(entry.modifiers?.testDomains).toEqual({ domains: ['fear-resistance'], value: 1 });
+    // Le bonus ne frappe PAS tous les tests : c'est tout l'intérêt du canal par domaine.
+    expect(entry.modifiers?.allTestsFlat).toBeUndefined();
+    expect(entry.intensityFrom).toEqual({ kind: 'ability', ability: 'CHA' });
+  });
+
+  it('« Argument de taille » (p. 79) : les trois domaines sociaux du livre, palier = FOR', () => {
+    const entry = BENEFICIAL_EFFECTS['towering-argument'];
+    expect(entry.sourcePage).toBe(79);
+    expect(entry.effect).toContain('à ceux de ses alliés au contact');
+    expect(entry.modifiers?.testDomains).toEqual({
+      domains: ['negotiation', 'persuasion', 'intimidation'],
+      value: 1,
+    });
+    expect(entry.intensityFrom).toEqual({ kind: 'ability', ability: 'FOR' });
+    // Le barbare a DÉJÀ ce bonus par ses propres effets : le lui poser le compterait deux fois.
+    expect(entry.excludesCarrier).toBe(true);
+  });
+
+  it('« Protéger un allié » (p. 87) : +2 DEF sur UN allié, sans palier', () => {
+    const entry = BENEFICIAL_EFFECTS['shield-ally'];
+    expect(entry.sourcePage).toBe(87);
+    expect(entry.scope).toBe('single-ally');
+    expect(entry.modifiers).toEqual({ derived: { def: 2 } });
+    // Valeur fixe : ni cumul ni escalade, donc rien à pré-remplir.
+    expect(entry.stacking).toBeUndefined();
+    expect(entry.intensityFrom).toBeUndefined();
+  });
+
+  it('un palier lu sur une carac laisse la place au maximum de cette carac', () => {
+    for (const id of ['fearless-rally', 'towering-argument'] as const) {
+      const entry = BENEFICIAL_EFFECTS[id];
+      expect(entry.intensityFrom?.kind, id).toBe('ability');
+      expect(entry.stacking?.max, id).toBe(ABILITY_MAX);
+    }
   });
 });

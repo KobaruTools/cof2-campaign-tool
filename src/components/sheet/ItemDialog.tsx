@@ -766,8 +766,20 @@ export interface ItemDialogProps {
   onClose: () => void;
   /** Ligne éditée (mode ÉDITION) ou absente (mode CRÉATION). Remonter via `key`. */
   initial?: EquipmentLine;
-  /** Valide : produit la ligne résultante (création → à ajouter ; édition → remplace). */
-  onConfirm: (line: EquipmentLine) => void;
+  /**
+   * Valide : produit la ligne résultante (création → à ajouter ; édition → remplace). En
+   * création avec `bulkCreate`, `count` porte le nombre d'EXEMPLAIRES demandés (≥ 1) — à
+   * l'appelant de créer `count` entrées distinctes portant chacune cette même ligne (jamais
+   * une seule ligne à `quantity: count` : ce sont des cartes séparées, attribuables/
+   * dupliquables indépendamment). `count` est toujours `undefined` en édition.
+   */
+  onConfirm: (line: EquipmentLine, count?: number) => void;
+  /**
+   * Affiche un champ « Nombre d'exemplaires » en CRÉATION (Outils du MJ, PER-200) : préparer
+   * plusieurs bourses ou objets identiques d'un coup plutôt que de rouvrir la modale N fois.
+   * Absent/faux → comportement historique de la fiche (une seule ligne, jamais de champ).
+   */
+  bulkCreate?: boolean;
 }
 
 /**
@@ -780,7 +792,7 @@ export interface ItemDialogProps {
  * nom + description. En édition, le type/la base sont fixés (on customise CET objet) ;
  * on peut re-typer un objet cosmétique (icône + « Utiliser » du consommable).
  */
-export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProps) {
+export function ItemDialog({ open, onClose, initial, onConfirm, bulkCreate = false }: ItemDialogProps) {
   // Plein écran sur mobile (PER-231) : formulaire de saisie d'objet, plus confortable
   // en plein cadre qu'en petite boîte centrée sur téléphone.
   const fullScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
@@ -797,6 +809,8 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
   const [type, setType] = useState<ItemType | null>(initialType);
   const [baseId, setBaseId] = useState<string | null>(initialBaseId);
   const [form, setForm] = useState<FormState>(initial ? formFromLine(initial) : EMPTY_FORM);
+  // Nombre d'exemplaires demandés (`bulkCreate`, création uniquement) — jamais lu en édition.
+  const [count, setCount] = useState(1);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -889,6 +903,9 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
     // Une arme = une case (PER-284) : une variante d'arme repart toujours à 1, sauf arme de jet
     // (que le livre compte par paquets). Garde-fou pour ne pas véhiculer un « ×N » hérité.
     const weaponQuantity = (id: string) => (isThrownWeapon(equipmentById.get(id)) ? quantity : 1);
+    // `count` ne porte JAMAIS de sens en édition (une seule ligne existe déjà) — bornage ≥ 1
+    // défensif même si le champ n'est affiché qu'en création (`bulkCreate && !editing`).
+    const bulkCount = bulkCreate && !editing ? Math.max(1, Math.floor(count) || 1) : undefined;
     if (mechanical && baseId) {
       const overrides = snapshotOverrides(type, {
         name: trimmedName,
@@ -923,7 +940,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         ...(testBonuses ? { testBonuses } : {}),
         ...carriedCharges,
       };
-      onConfirm(line);
+      onConfirm(line, bulkCount);
     } else {
       onConfirm({
         custom: true,
@@ -941,7 +958,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
         ...(derivedBonuses ? { derivedBonuses } : {}),
         ...(testBonuses ? { testBonuses } : {}),
         ...carriedCharges,
-      });
+      }, bulkCount);
     }
   };
 
@@ -1049,6 +1066,21 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
                 minRows={2}
                 fullWidth
               />
+              {/* Nombre d'exemplaires (`bulkCreate`, Outils du MJ, extension PER-200) : crée
+                  `count` CARTES DISTINCTES portant chacune cette ligne — jamais une seule ligne
+                  à quantité N, pour rester attribuables/dupliquables indépendamment. */}
+              {bulkCreate && !editing && (
+                <TextField
+                  type="number"
+                  size="small"
+                  label="Nombre d’exemplaires"
+                  value={count}
+                  onChange={(e) => setCount(Math.max(1, Math.floor(Number(e.target.value)) || 1))}
+                  slotProps={{ htmlInput: { min: 1, max: 50 } }}
+                  helperText="Crée cette carte plusieurs fois d’un coup (ex. 5 bourses identiques)."
+                  sx={{ maxWidth: 260 }}
+                />
+              )}
               {/* Icône de l'objet : pré-réglée sur celle que l'inventaire lui donnerait
                   (sous-catégorie du livre pour une variante, icône du type pour un objet
                   libre), et librement changeable. */}
@@ -1356,7 +1388,7 @@ export function ItemDialog({ open, onClose, initial, onConfirm }: ItemDialogProp
       <DialogActions>
         <Button onClick={onClose}>Annuler</Button>
         <Button variant="contained" disabled={!valid} onClick={confirm}>
-          {editing ? 'Enregistrer' : 'Ajouter'}
+          {editing ? 'Enregistrer' : bulkCreate && count > 1 ? `Ajouter ${count} exemplaires` : 'Ajouter'}
         </Button>
       </DialogActions>
     </Dialog>

@@ -9,28 +9,36 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { diceRange, type CoinPouchInfo } from '@/lib/character/coinPouch';
+
+/** Bourse d'origine (p. 31), pour le cas défensif où `info` serait absent au rendu. */
+const DEFAULT_INFO: CoinPouchInfo = { currency: 'silver', abbrev: 'pa', label: 'pièces d’argent (pa)', dice: '2d6' };
 
 export interface CoinPouchDialogProps {
   open: boolean;
+  /** Bourse ouverte — détermine la monnaie et la notation de dés annoncées (généralisation PER-200). */
+  info: CoinPouchInfo | null;
   onClose: () => void;
   /**
-   * Valide l'ouverture de la bourse : ajoute `silver` pièces d'argent à la fortune et
-   * consomme une dose de l'objet. Le montant (2d6) est SAISI par le joueur — les dés se
-   * lancent à la vraie table (aucune simulation, cf. règle projet).
+   * Valide l'ouverture de la bourse : ajoute le montant à la monnaie de la bourse et
+   * consomme une dose de l'objet. Le montant est SAISI par le joueur — les dés se lancent
+   * à la vraie table (aucune simulation, cf. règle projet).
    */
-  onConfirm: (silver: number) => void;
+  onConfirm: (amount: number) => void;
 }
 
 /**
- * Modale « Bourse de 2d6 pa » (p. 31) : à l'usage de l'objet, le joueur lance 2d6 à la
- * table et saisit le total de pièces d'argent (pa) obtenu ; le montant s'ajoute alors
- * automatiquement à la fortune, et la bourse est consommée.
+ * Modale « Bourse de NdM {pièces} » (p. 31, généralisée PER-200) : à l'usage de l'objet, le
+ * joueur lance les dés annoncés par le nom de la bourse à la table et saisit le total
+ * obtenu ; le montant s'ajoute alors automatiquement à la monnaie concernée, et la bourse
+ * est consommée.
  */
-export function CoinPouchDialog({ open, onClose, onConfirm }: CoinPouchDialogProps) {
+export function CoinPouchDialog({ open, info, onClose, onConfirm }: CoinPouchDialogProps) {
+  const { dice, label } = info ?? DEFAULT_INFO;
+  const range = diceRange(dice);
   const [text, setText] = useState('');
   const parsed = Math.max(0, Math.round(Number.parseInt(text, 10) || 0));
-  // 2d6 → total attendu entre 2 et 12 ; borne indicative (on n'empêche pas une autre valeur).
-  const inRange = parsed >= 2 && parsed <= 12;
+  const inRange = range ? parsed >= range.min && parsed <= range.max : true;
   const valid = parsed > 0;
 
   const close = () => {
@@ -49,24 +57,26 @@ export function CoinPouchDialog({ open, onClose, onConfirm }: CoinPouchDialogPro
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>
           <Typography variant="body2" color="text.secondary">
-            Lancez <strong>2d6</strong> à la table et saisissez le total de pièces d’argent (pa)
-            obtenu. Le montant sera ajouté à votre fortune et la bourse consommée.
+            Lancez <strong>{dice}</strong> à la table et saisissez le total de {label} obtenu. Le
+            montant sera ajouté à votre fortune et la bourse consommée.
           </Typography>
           <TextField
             autoFocus
             type="number"
             size="small"
-            label="Pièces d’argent (pa) obtenues"
+            label={`${label.charAt(0).toUpperCase()}${label.slice(1)} obtenues`}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') confirm();
             }}
-            slotProps={{ htmlInput: { min: 2, max: 12 } }}
+            slotProps={range ? { htmlInput: { min: range.min, max: range.max } } : undefined}
             helperText={
-              valid && !inRange
-                ? 'Attendu entre 2 et 12 (2d6) — valeur conservée telle quelle.'
-                : 'Total des 2d6 (2 à 12).'
+              range
+                ? valid && !inRange
+                  ? `Attendu entre ${range.min} et ${range.max} (${dice}) — valeur conservée telle quelle.`
+                  : `Total des ${dice} (${range.min} à ${range.max}).`
+                : `Total des ${dice}.`
             }
             fullWidth
           />
@@ -75,7 +85,7 @@ export function CoinPouchDialog({ open, onClose, onConfirm }: CoinPouchDialogPro
       <DialogActions>
         <Button onClick={close}>Annuler</Button>
         <Button variant="contained" disabled={!valid} onClick={confirm}>
-          Ajouter {valid ? `${parsed} pa` : 'les pa'}
+          Ajouter {valid ? `${parsed} ${info?.abbrev ?? DEFAULT_INFO.abbrev}` : 'les pièces'}
         </Button>
       </DialogActions>
     </Dialog>

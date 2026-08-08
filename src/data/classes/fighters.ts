@@ -345,8 +345,10 @@ export const fighterFeatures: Feature[] = [
     // PER-67 : « ajoute sa FOR à son maximum de PV » → bonus permanent SCALANT (valeur = FOR).
     // PER-123 : « ajoute sa FOR à ses tests de … négociation, persuasion ou intimidation » →
     // bonus de compétence DU PORTEUR, valeur = FOR (valeur scalante `ability`), sur les domaines
-    // négociation / persuasion / intimidation. La part « et à ceux de ses alliés » n'est PAS
-    // comptabilisée (bonus aux alliés hors périmètre) → reste verbatim.
+    // négociation / persuasion / intimidation. PER-359 : la part « et à ceux de ses alliés au
+    // contact », jusque-là laissée au seul verbatim, est désormais posable par le MJ (buff
+    // `towering-argument`, mêmes domaines, palier = FOR du barbare) — elle ne compte donc PAS dans
+    // les `effects` ci-dessous, qui ne décrivent que la fiche du barbare.
     effects: [
       { kind: 'stat-bonus', stat: 'maxHp', value: { scale: 'ability', ability: 'FOR' } },
       {
@@ -355,6 +357,7 @@ export const fighterFeatures: Feature[] = [
         value: { scale: 'ability', ability: 'FOR' },
       },
     ],
+    groupBuffIds: ['towering-argument'],
     sourcePage: 79,
   },
   {
@@ -1324,14 +1327,17 @@ export const fighterFeatures: Feature[] = [
       'Le chevalier est immunisé aux effets de peur et il offre un bonus égal à son CHA aux tests de tous ses alliés contre ce type d’effet. De plus, le chevalier ajoute son rang + 2 aux tests de stratégie et de tactique militaire ou pour commander une troupe.',
     // PER-103 : immunité permanente à la PEUR (`fear`). PER-89 : bonus de compétence INCONDITIONNEL
     // aux domaines tactique militaire (`military-tactics`, INT) et commandement (`command`, CHA) —
-    // « son rang + 2 » → [rang + 2]. Le bonus de CHA aux tests des ALLIÉS contre la peur est hors
-    // périmètre (bonus aux alliés) → verbatim (CHA auto-glossé).
+    // « son rang + 2 » → [rang + 2]. PER-359 : le bonus de CHA aux tests des ALLIÉS contre la peur,
+    // longtemps laissé au seul verbatim, est désormais posable par le MJ (buff `fearless-rally`,
+    // domaine `fear-resistance`, palier = CHA du chevalier) — il ne compte donc PAS dans les
+    // `effects` du chevalier, qui décrivent sa seule fiche.
     richText:
       'Le chevalier est immunisé aux effets de peur et il offre un bonus égal à son CHA aux tests de tous ses alliés contre ce type d’effet. De plus, le chevalier ajoute son [rang + 2] aux tests de stratégie et de tactique militaire ou pour commander une troupe.',
     effects: [
       { kind: 'immunity', immunities: ['fear'] },
       { kind: 'test-bonus', domains: ['military-tactics', 'command'] },
     ],
+    groupBuffIds: ['fearless-rally'],
     sourcePage: 85,
   },
   {
@@ -1552,10 +1558,13 @@ export const fighterFeatures: Feature[] = [
       'S’il n’est pas surpris, le guerrier peut accorder un bonus de DEF de +2 à un allié à son contact contre une attaque par round. Il doit annoncer son intention avant de connaître le résultat de l’attaque. De plus, vous ajoutez votre rang + 2 à tous les tests destinés à éviter d’être surpris.',
     // Rendu enrichi (PER-72) : « votre rang + 2 » → [rang + 2]. PER-89 : bonus de compétence
     // INCONDITIONNEL au domaine vigilance (`vigilance`, PER, « éviter d'être surpris » — déjà au
-    // catalogue). Le +2 en DEF accordé à un ALLIÉ est hors périmètre (bonus aux alliés) → verbatim.
+    // catalogue). PER-359 : le +2 en DEF accordé à UN allié, jusque-là laissé au seul verbatim, est
+    // désormais posable par le MJ (buff `shield-ally`, premier à CIBLE UNIQUE) — il ne compte donc
+    // PAS dans les `effects` ci-dessous, qui ne décrivent que la fiche du guerrier.
     richText:
       'S’il n’est pas surpris, le guerrier peut accorder un bonus de DEF de +2 à un allié à son contact contre une attaque par round. Il doit annoncer son intention avant de connaître le résultat de l’attaque. De plus, vous ajoutez votre [rang + 2] à tous les tests destinés à éviter d’être surpris.',
     effects: [{ kind: 'test-bonus', domains: ['vigilance'] }],
+    groupBuffIds: ['shield-ally'],
     sourcePage: 87,
   },
   {

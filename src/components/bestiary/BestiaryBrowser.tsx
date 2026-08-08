@@ -15,7 +15,7 @@
  *      la seule créature sélectionnée à la demande. `BestiaryStatBlock` est inchangé.
  * Aucune écriture : on lit le store, on n'altère ni donnée ni moteur.
  */
-import { useEffect, useMemo, useRef, type Ref } from "react";
+import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import NextLink from "next/link";
 import { useSearchParams } from "next/navigation";
 import CategoryIcon from "@mui/icons-material/Category";
@@ -125,13 +125,28 @@ const SORT_MODES: { value: SortMode; label: string; icon: React.ReactElement }[]
 const isSortMode = (v: unknown): v is SortMode =>
   v === "category" || v === "alpha" || v === "nc";
 
+export interface BestiaryBrowserProps {
+  /**
+   * `'page'` (défaut) : la variante pleine page de `/bestiary` — sélection pilotée par l'URL
+   * PARTAGEABLE (`?c=<slug>`), lignes de la liste en vraies ancres.
+   * `'drawer'` : la variante intégrée dans un tiroir (écran de MJ) — sélection LOCALE (jamais
+   * d'écriture sur l'URL de la campagne), lignes en simples boutons.
+   */
+  variant?: "page" | "drawer";
+  /**
+   * Variante `'drawer'` seulement : hauteur en pixels de l'en-tête collé du tiroir, sous lequel
+   * la sidebar (tri + liste) se cale au lieu de se caler sous l'en-tête global de la page.
+   */
+  stickyTop?: number;
+}
+
 /**
  * Étage 1 : charge la liste légère du bestiaire (store cache mémoire) et arbitre les
  * états de chargement/erreur/vide avant de monter la vue de filtrage. La vue n'est
  * rendue qu'une fois une liste NON VIDE disponible (elle suppose des bornes de NC
  * calculables) ; l'orchestration async reste ici, la vue reste synchrone.
  */
-export function BestiaryBrowser() {
+export function BestiaryBrowser({ variant = "page", stickyTop = 0 }: BestiaryBrowserProps = {}) {
   const list = useBestiaryStore((s) => s.list);
   const status = useBestiaryStore((s) => s.status);
   const loadList = useBestiaryStore((s) => s.loadList);
@@ -175,7 +190,7 @@ export function BestiaryBrowser() {
     );
   }
 
-  return <BestiaryBrowserView list={list} />;
+  return <BestiaryBrowserView list={list} variant={variant} stickyTop={stickyTop} />;
 }
 
 /** Squelette de chargement de l'étage 1 (mime la disposition maître-détail). */
@@ -280,7 +295,18 @@ function UnavailableCreatureNotice() {
 }
 
 /** Étage 1 bis : tout le filtrage/tri, sur la liste LÉGÈRE déjà chargée (non vide). */
-function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
+function BestiaryBrowserView({
+  list,
+  variant = "page",
+  stickyTop = 0,
+}: {
+  list: CreatureListItem[];
+  variant?: "page" | "drawer";
+  stickyTop?: number;
+}) {
+  // Variante intégrée (tiroir) : sélection LOCALE et sidebar calée sous l'en-tête du tiroir,
+  // au lieu de l'en-tête global de la page — cf. `ReferenceBrowser`, même patron.
+  const embedded = variant === "drawer";
   // Sources payantes débloquées : une créature dont le `sourceId` y figure vient d'un
   // supplément premium → marquée d'une tête de loup à côté de son NC (liste + détail).
   const paidSourceIds = useBestiaryStore((s) => s.paidSourceIds);
@@ -409,15 +435,18 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
     "category",
     (raw) => (isSortMode(raw) ? raw : undefined),
   );
-  // Sélection pilotée par l'URL (`?c=<slug>`) : un refresh ou un lien partagé retombe sur
-  // la bonne fiche. Lue via useSearchParams (réactif aux clics de ligne / de lien croisé,
-  // qui sont de VRAIES ancres) ; la page monte cette vue sous une frontière Suspense.
+  // Sélection : en pleine page elle est pilotée par l'URL (`?c=<slug>`) — un refresh ou un lien
+  // partagé retombe sur la bonne fiche, lue via useSearchParams (réactif aux clics de ligne / de
+  // lien croisé, qui sont de VRAIES ancres). En variante intégrée (tiroir) elle vit en état LOCAL :
+  // le tiroir ne doit jamais réécrire l'URL de la campagne à chaque créature consultée.
   const searchParams = useSearchParams();
-  const urlSlug = searchParams.get("c") ?? "";
+  const [localSlug, setLocalSlug] = useState("");
+  const urlSlug = embedded ? localSlug : searchParams.get("c") ?? "";
   // La créature ciblée est-elle dans la liste ACCESSIBLE (gratuit + payant débloqué) ? Sinon
   // (slug d'un payant non débloqué — masqué par la RLS — ou slug inexistant) → panneau d'info.
+  // N'a de sens qu'en pleine page : en tiroir la sélection ne vient jamais d'un lien profond.
   const urlCreature = urlSlug ? list.find((c) => c.id === urlSlug) : undefined;
-  const urlUnavailable = urlSlug !== "" && !urlCreature;
+  const urlUnavailable = !embedded && urlSlug !== "" && !urlCreature;
 
   // Filtre source EFFECTIF : le choix persisté n'est retenu que si le groupe est
   // affiché ET que la source existe toujours (entitlement conservé) ; sinon `"all"`.
@@ -510,6 +539,16 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
   // filtrée hors de la liste, un lien profond doit la montrer — sinon la première visible
   // (défaut à l'arrivée sur /bestiary sans `?c=`). Sert aussi au surlignage de sa ligne.
   const detailId = urlCreature ? urlCreature.id : (visibleIds[0] ?? "");
+
+  // Navigation d'une ligne de liste : vraie ancre `?c=…` en pleine page (Ctrl/⌘+Clic, partage) ;
+  // en tiroir, un simple bouton qui bascule la sélection locale sans toucher à l'URL.
+  const rowNav = (id: string): { href?: string; onClick?: () => void } =>
+    embedded ? { onClick: () => setLocalSlug(id) } : { href: bestiaryCreatureHref(id) };
+
+  // Sous quoi la sidebar (tri + liste) se cale : l'en-tête global en pleine page, l'en-tête du
+  // TIROIR (`stickyTop`) en variante intégrée.
+  const sidebarStickyTop = embedded ? stickyTop + 8 : 84;
+  const listMaxHeight = embedded ? `calc(100vh - ${stickyTop + 180}px)` : "calc(100vh - 260px)";
 
   // Amène la ligne sélectionnée dans la vue de la sidebar quand la sélection change (clic de
   // lien croisé, refresh sur `?c=`, lien partagé) — on scrolle UNIQUEMENT le conteneur de la
@@ -722,7 +761,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
         {/* Colonne de gauche : en-tête (tri) rattaché à la sidebar + liste défilable. */}
         <Stack
           spacing={1}
-          sx={{ position: { md: "sticky" }, top: { md: 84 }, minWidth: 0 }}
+          sx={{ position: { md: "sticky" }, top: { md: sidebarStickyTop }, minWidth: 0 }}
         >
           {/* En-tête de la sidebar : choix du tri, en icônes condensées (tooltip au survol). */}
           <Box
@@ -777,7 +816,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
               WebkitBackdropFilter: "blur(6px)",
               // Sous md la liste peut être longue : on la borne et on la rend défilable
               // pour garder le détail atteignable ; en md+ elle colle au défilement.
-              maxHeight: { xs: 360, md: "calc(100vh - 260px)" },
+              maxHeight: { xs: 360, md: listMaxHeight },
               overflowY: "auto",
             }}
           >
@@ -793,7 +832,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
                   creature={c}
                   selected={detailId === c.id}
                   paid={isPaidCreature(c)}
-                  href={bestiaryCreatureHref(c.id)}
+                  {...rowNav(c.id)}
                   innerRef={detailId === c.id ? selectedRowRef : undefined}
                 />
               ))
@@ -832,7 +871,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
                       creature={family.base}
                       selected={detailId === family.base.id}
                       paid={isPaidCreature(family.base)}
-                      href={bestiaryCreatureHref(family.base.id)}
+                      {...rowNav(family.base.id)}
                       innerRef={detailId === family.base.id ? selectedRowRef : undefined}
                     />,
                   );
@@ -844,7 +883,7 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
                         variant
                         selected={detailId === v.id}
                         paid={isPaidCreature(v)}
-                        href={bestiaryCreatureHref(v.id)}
+                        {...rowNav(v.id)}
                         innerRef={detailId === v.id ? selectedRowRef : undefined}
                       />,
                     );
@@ -882,8 +921,10 @@ function BestiaryBrowserView({ list }: { list: CreatureListItem[] }) {
 
 /**
  * Ligne de la liste : nom + NC, indentée pour une variante, surlignée si sélectionnée.
- * VRAIE ANCRE (`next/link`) vers `?c=<slug>` — la sélection vit dans l'URL (refresh /
- * partage OK) ; `scroll={false}` pour ne pas remonter la page (on reste en maître-détail).
+ * En pleine page, VRAIE ANCRE (`next/link`) vers `?c=<slug>` — la sélection vit dans l'URL
+ * (refresh / partage OK) ; `scroll={false}` pour ne pas remonter la page (on reste en
+ * maître-détail). En variante intégrée (tiroir), simple bouton qui bascule la sélection locale
+ * (`href` absent, `onClick` renseigné) — cf. `rowNav` dans `BestiaryBrowserView`.
  */
 function CreatureRow({
   creature,
@@ -891,6 +932,7 @@ function CreatureRow({
   selected,
   paid = false,
   href,
+  onClick,
   innerRef,
 }: {
   creature: CreatureListItem;
@@ -898,20 +940,22 @@ function CreatureRow({
   selected: boolean;
   /** Créature d'un supplément payant → tête de loup à gauche du NC. */
   paid?: boolean;
-  href: string;
-  /** Ref vers l'ancre, posé sur la SEULE ligne sélectionnée → défilement de la sidebar. */
-  innerRef?: Ref<HTMLAnchorElement>;
+  href?: string;
+  onClick?: () => void;
+  /** Ref vers la ligne, posée sur la SEULE ligne sélectionnée → défilement de la sidebar. */
+  innerRef?: Ref<HTMLAnchorElement | HTMLButtonElement>;
 }) {
   const nc = creatureNcLabel(creature);
   return (
     <Box
       ref={innerRef}
-      component={NextLink}
-      href={href}
-      scroll={false}
+      {...(href
+        ? { component: NextLink, href, scroll: false }
+        : { component: "button" as const, type: "button" as const, onClick })}
       sx={{
         display: "flex",
         alignItems: "center",
+        width: "100%",
         gap: 1,
         cursor: "pointer",
         userSelect: "none",
@@ -928,6 +972,19 @@ function CreatureRow({
         "&:hover": {
           bgcolor: (t) => alpha(t.palette.primary.main, selected ? 0.16 : 0.08),
         },
+        // Réinitialisation quand la ligne est un <button> (variante intégrée, `href` absent).
+        // Seuls les TROIS AUTRES côtés sont mis à plat : `borderLeft`/`borderLeftColor` restent
+        // les nôtres (l'accent de sélection), qu'un `border: 0` shorthand écraserait aussi.
+        ...(!href && {
+          borderTop: 0,
+          borderRight: 0,
+          borderBottom: 0,
+          outline: "none",
+          appearance: "none",
+          WebkitAppearance: "none",
+          font: "inherit",
+          textAlign: "left" as const,
+        }),
       }}
     >
       <Typography

@@ -93,6 +93,12 @@ export interface SheetDisplayView {
    * leur ligne de détail porte le nom de l'état, pas une pastille de capacité. Vide hors session.
    */
   statusTestBonus: StatusSheetImpact['abilityTestSources'];
+  /**
+   * Même provenance, portée plus étroite (PER-359) : modificateurs d'états limités à CERTAINS
+   * DOMAINES de test (Sans peur → résistance à la peur ; Argument de taille → négociation,
+   * persuasion, intimidation), keyés par id de domaine. Vide hors session.
+   */
+  statusDomainBonus: StatusSheetImpact['testDomainSources'];
   /** Bonus aux tests d'UNE caractéristique précise, par option retenue (Tatouages, PER-125). */
   perAbilityTestBonus: ReturnType<typeof abilityTestBonusByAbility>;
   /**
@@ -192,6 +198,7 @@ export function buildSheetDisplayView(
     // stats DÉRIVÉES, elle n'est fondue nulle part ailleurs : les caracs ne sont pas des stats
     // dérivées, `TestDomainsPanel` est le seul à sommer ce canal.
     statusTestBonus: statusImpact?.abilityTestSources ?? [],
+    statusDomainBonus: statusImpact?.testDomainSources ?? {},
     perAbilityTestBonus: abilityTestBonusByAbility(modFeatureIds, effectContext),
     magicTestBonuses: magicTestBonusSources(modFeatureIds, character.equipment, effectContext),
     universalBonus: universalTestBonus(modFeatureIds),

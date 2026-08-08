@@ -16,6 +16,7 @@ import {
   DEFAULT_CAMPAIGN_RULES,
   type Campaign,
   type CampaignRules,
+  type GmInventory,
   type LootItem,
   type TavernRumor,
 } from './types';
@@ -95,6 +96,42 @@ export function parseLoot(raw: Json): LootItem[] {
   return out;
 }
 
+/**
+ * Parse défensif de la colonne `gm_inventory` (jsonb) vers `GmInventory` — inventaire
+ * PERMANENT du MJ, à part de `loot` (extension PER-200). Même esprit que `parseLoot` :
+ * on n'accepte QUE les éléments bien formés, on ignore les autres, on ne lève jamais.
+ * Une valeur non-objet (ancien format, `null`) → inventaire vide. Un item dont
+ * `categoryId` ne pointe vers AUCUNE catégorie retombe sur `null` (garde-fou
+ * catégorie supprimée par ailleurs / donnée corrompue).
+ */
+export function parseGmInventory(raw: Json): GmInventory {
+  const obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const rawCategories = Array.isArray(obj.categories) ? obj.categories : [];
+  const categories = rawCategories.flatMap((c) => {
+    if (!c || typeof c !== 'object' || Array.isArray(c)) return [];
+    const { id, name, collapsed } = c as Record<string, unknown>;
+    if (typeof id !== 'string' || typeof name !== 'string') return [];
+    return [{ id, name, collapsed: collapsed === true }];
+  });
+  const categoryIds = new Set(categories.map((c) => c.id));
+
+  const rawItems = Array.isArray(obj.items) ? obj.items : [];
+  const items = rawItems.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const { id, line, categoryId } = item as Record<string, unknown>;
+    if (typeof id !== 'string' || !isPlausibleEquipmentLine(line)) return [];
+    return [
+      {
+        id,
+        line,
+        categoryId: typeof categoryId === 'string' && categoryIds.has(categoryId) ? categoryId : null,
+      },
+    ];
+  });
+
+  return { categories, items };
+}
+
 /** Mappe une ligne SQL `campaigns` vers l'entité `Campaign` de l'application. */
 export function rowToCampaign(row: CampaignRow): Campaign {
   return {
@@ -104,6 +141,7 @@ export function rowToCampaign(row: CampaignRow): Campaign {
     rules: parseRules(row.rules),
     rumors: parseRumors(row.rumors),
     loot: parseLoot(row.loot),
+    gmInventory: parseGmInventory(row.gm_inventory),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -159,9 +197,9 @@ export async function insertCampaign(input: {
  * et/ou la réserve de butin (PER-200) d'une campagne (RLS propriétaire). Écriture
  * **simple** (pas de verrou optimiste) : la table `campaigns` n'a pas de colonne
  * `version` et l'édition est mono-propriétaire (le MJ, seul) — pas de scénario de
- * concurrence à arbitrer. Les `rules`/`rumors`/`loot` sont sérialisées telles quelles
- * vers leur colonne jsonb ; leur relecture reste défensive (`parseRules`/`parseRumors`/
- * `parseLoot`).
+ * concurrence à arbitrer. Les `rules`/`rumors`/`loot`/`gmInventory` sont sérialisées
+ * telles quelles vers leur colonne jsonb ; leur relecture reste défensive
+ * (`parseRules`/`parseRumors`/`parseLoot`/`parseGmInventory`).
  */
 export async function updateCampaign(
   id: string,
@@ -171,14 +209,16 @@ export async function updateCampaign(
     rules?: CampaignRules;
     rumors?: TavernRumor[];
     loot?: LootItem[];
+    gmInventory?: GmInventory;
   },
 ): Promise<Campaign> {
   const supabase = createBrowserSupabaseClient();
-  const { rules, rumors, loot, ...rest } = patch;
+  const { rules, rumors, loot, gmInventory, ...rest } = patch;
   const row: Database['public']['Tables']['campaigns']['Update'] = { ...rest };
   if (rules) row.rules = rules as unknown as Json;
   if (rumors) row.rumors = rumors as unknown as Json;
   if (loot) row.loot = loot as unknown as Json;
+  if (gmInventory) row.gm_inventory = gmInventory as unknown as Json;
   const { data, error } = await supabase
     .from('campaigns')
     .update(row)

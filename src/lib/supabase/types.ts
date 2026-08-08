@@ -69,6 +69,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          gm_inventory: Json
           id: string
           loot: Json
           name: string
@@ -80,6 +81,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          gm_inventory?: Json
           id?: string
           loot?: Json
           name: string
@@ -91,6 +93,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          gm_inventory?: Json
           id?: string
           loot?: Json
           name?: string

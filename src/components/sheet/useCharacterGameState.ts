@@ -24,6 +24,7 @@ import type { UseItemIntent } from '@/lib/character/sheetActions';
 import { containsGameStateKey } from '@/lib/character/gameState';
 import { capacityResourceGauges, type CapacityResourceGauge } from '@/lib/character/effects';
 import { withSupersededBuffTogglesOff } from '@/lib/character/groupBuffs';
+import { toggleCrystalActive } from '@/lib/character/crystals';
 import type { Character, LoadedAmmunitionKind, Purse, WornState } from '@/lib/character/types';
 import { loadingContext, type LoadingContext } from '@/lib/character/weaponLoading';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
@@ -73,6 +74,8 @@ export interface CharacterGameState {
   setUsageCounterValue: (counterKey: string, value: number, max: number) => void;
   liftShortRestLock: (featureId: string) => void;
   createElixir: (counterKey: string, cost: number, max: number, elixirName: string) => void;
+  /** (Dés)active un cristal APPRIS (voie des cristaux, PER-74, p. 156) — état de jeu, hors mode édition. */
+  setActiveCrystal: (crystalId: string, active: boolean) => void;
 
   // --- Objets & équipement porté -----------------------------------------------------------
   /**
@@ -217,6 +220,7 @@ export function useCharacterGameState(
     setEffectInputValue: bind(actions.setEffectInput),
     setUsageCounterValue: bind(actions.setUsageCounter),
     liftShortRestLock: bind(actions.liftShortRestLock),
+    setActiveCrystal: bind(toggleCrystalActive),
     createElixir: (counterKey, cost, max, elixirName) =>
       update(actions.createElixir(target, { counterKey, cost, max, elixirName })),
 

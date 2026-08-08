@@ -11,13 +11,19 @@
  * (capacité en vue colonnes, bourse, choix de départ) se placent au-dessus sans
  * bricolage : z-index modale 1300 > volet 1200.
  *
- * Périmètre d'écriture (verrouillé au design) :
+ * Périmètre d'écriture :
  *  - **états de jeu OUI** : interrupteurs, compteurs, élixirs, équiper/déséquiper, PV /
  *    mana / chance / dés de récupération, repos, compagnons, montures. C'est la même
  *    liberté que le tracker d'initiative, qui écrit déjà les PV des personnages.
- *  - **mode « Modifier » NON** : aucun crayon, aucune caractéristique, surcharge, capacité
- *    ni objet modifiable. Pour corriger une construction, le MJ ouvre la fiche complète.
- * Concrètement : aucun `BlockEditButton`, et tous les `onChange` d'édition sont omis.
+ *  - **mode « Modifier » de l'INVENTAIRE oui** : un `BlockEditButton` sur ce seul bloc, pour
+ *    que le MJ distribue butin, objets magiques et variantes sans quitter le combat — c'est
+ *    le geste de table le plus fréquent, et naviguer sur la fiche du joueur pour ajouter une
+ *    potion coûtait le contexte de l'écran de MJ (assouplissement du design d'origine, qui
+ *    verrouillait TOUS les blocs).
+ *  - **mode « Modifier » des autres blocs NON** : aucune caractéristique, surcharge ni
+ *    capacité modifiable. Corriger une CONSTRUCTION reste l'affaire de la fiche complète.
+ * Concrètement : un seul `BlockEditButton`, et les `onChange` d'édition hors inventaire
+ * restent omis.
  *
  * Les blocs sont ceux de la fiche, DANS SON ORDRE, montés depuis les mêmes composants et
  * alimentés par les mêmes calculs (`useCharacterGameState` pour l'état de jeu,
@@ -41,7 +47,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { alpha, type Theme } from '@mui/material/styles';
 import { ancestryById, classById } from '@/data';
 import type { StartingEquipmentChoiceOption } from '@/data/schema';
-import { isCustomItem, type Character } from '@/lib/character/types';
+import { isCustomItem, type Character, type EquipmentLine } from '@/lib/character/types';
 import type { Campaign } from '@/lib/campaign/types';
 import type { Player } from '@/lib/player/types';
 import { armorRestrictionByLine } from '@/lib/character/armorRestrictions';
@@ -51,6 +57,7 @@ import { extraMasteredWeaponIds, masteredClassIds } from '@/lib/character/master
 import { manualFeatureIds } from '@/lib/character/levelUp';
 import { isMountMounted, listOwnedMounts } from '@/lib/character/mounts';
 import { rulesContext } from '@/lib/character/rulesContext';
+import { parseCoinPouchName } from '@/lib/character/coinPouch';
 import { startingChoiceOptionsFor } from '@/lib/character/startingChoices';
 import { twoWeaponCombatStatus } from '@/lib/character/twoWeaponCombat';
 import { weaponAffinities } from '@/lib/character/weaponAffinity';
@@ -61,6 +68,7 @@ import { DerivedStatsGrid } from '@/components/DerivedStatsGrid';
 import { FirearmsAllowedProvider } from '@/components/ClassIcon';
 import { PlayerBadgeTooltip } from '@/components/campaign/PlayerBadgeTooltip';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
+import { BlockEditButton } from '@/components/sheet/BlockEditButton';
 import { CharacterIdentityLine } from '@/components/sheet/CharacterIdentityLine';
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
 import { CompanionsPanel } from '@/components/sheet/CompanionsPanel';
@@ -255,6 +263,7 @@ function GmSheetDrawerContent({
       unarmedCriticalRanges,
       rangedWeaponDamage,
       meleeSituationalDamage,
+      offHandMeleeSituationalDamage,
       rangedSituationalDamage,
       rangedAttackMagicalSourceId,
       rangedAttackElement,
@@ -296,6 +305,12 @@ function GmSheetDrawerContent({
 
   const companions = listCompanions(character);
   const ownedMounts = listOwnedMounts(character.mounts);
+
+  // Édition de l'inventaire : état LOCAL au corps du panneau, donc remis à zéro à chaque
+  // fermeture (le `Drawer` temporaire démonte ses enfants). Rouvrir une fiche repart toujours
+  // en consultation — on n'hérite jamais d'un crayon laissé ouvert sur un autre personnage.
+  const [editingEquipment, setEditingEquipment] = useState(false);
+  const setEquipment = (equipment: EquipmentLine[]) => game.update({ equipment });
 
   return (
     <FirearmsAllowedProvider value={firearmsAllowed}>
@@ -393,6 +408,7 @@ function GmSheetDrawerContent({
                 unarmedCriticalRanges={unarmedCriticalRanges}
                 rangedWeaponDamage={rangedWeaponDamage}
                 meleeSituationalDamage={meleeSituationalDamage}
+                offHandMeleeSituationalDamage={offHandMeleeSituationalDamage}
                 rangedSituationalDamage={rangedSituationalDamage}
                 rangedAttackMagicalSourceId={rangedAttackMagicalSourceId}
                 rangedAttackElement={rangedAttackElement}
@@ -415,6 +431,7 @@ function GmSheetDrawerContent({
               abilities={effectCtx.abilities}
               abilityTestBonus={display.abilityTestBonus}
               statusTestBonus={display.statusTestBonus}
+              statusDomainBonus={display.statusDomainBonus}
               perAbilityTestBonus={display.perAbilityTestBonus}
               magicTestBonuses={display.magicTestBonuses}
               bonusDice={display.bonusDieSources}
@@ -554,13 +571,29 @@ function GmSheetDrawerContent({
             collapsible
             defaultCollapsed
             persistKey={`${PERSIST_PREFIX}equipment`}
+            action={(collapsed) =>
+              collapsed ? null : (
+                <BlockEditButton
+                  editing={editingEquipment}
+                  onToggle={() => setEditingEquipment((v) => !v)}
+                  label="inventaire"
+                />
+              )
+            }
           >
             {/* Bourse : montants éditables hors mode « Modifier » (état de jeu) ; les flèches
-                de conversion entre unités ne s'affichent qu'en édition, absente ici. */}
-            <PurseField purse={character.purse} onChange={game.setPurse} editing={false} />
+                de conversion entre unités ne s'affichent qu'en édition du bloc. */}
+            <PurseField
+              purse={character.purse}
+              onChange={game.setPurse}
+              editing={editingEquipment}
+            />
             <Divider sx={{ my: 1.5 }} />
             <EquipmentList
               equipment={character.equipment}
+              // SEUL `onChange` d'édition ouvert dans le panneau (ajout, variante, quantité,
+              // suppression, réordonnancement) : distribuer du butin sans quitter l'écran de MJ.
+              onChange={editingEquipment ? setEquipment : undefined}
               onUse={handleUseItem}
               onWear={game.setWorn}
               // Chargement des armes (PER-284) : le MJ voit le compteur de coups prêts et peut
@@ -598,6 +631,10 @@ function GmSheetDrawerContent({
 
       <CoinPouchDialog
         open={coinPouchIndex !== null}
+        info={(() => {
+          const line = coinPouchIndex !== null ? character.equipment[coinPouchIndex] : undefined;
+          return line && isCustomItem(line) ? parseCoinPouchName(line.name) : null;
+        })()}
         onClose={() => onCoinPouchIndexChange(null)}
         onConfirm={confirmCoinPouch}
       />

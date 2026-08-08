@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { LootItem } from './types';
 import {
+  addLootItems,
   drawLoot,
+  duplicateLootItem,
   isExhausted,
   isReserveEmpty,
   remainingCount,
@@ -120,5 +122,33 @@ describe('resetLoot', () => {
     const list = [loot('a', true)];
     resetLoot(list);
     expect(list[0].served).toBe(true);
+  });
+});
+
+describe('addLootItems', () => {
+  it('ajoute plusieurs objets d’un coup, tous non-servis', () => {
+    const list = addLootItems([loot('a', true)], [
+      { id: 'b', line: { custom: true, name: 'Objet b', quantity: 1 } },
+      { id: 'c', line: { custom: true, name: 'Objet c', quantity: 1 } },
+    ]);
+    expect(list).toEqual([loot('a', true), loot('b'), loot('c')]);
+  });
+
+  it('ne mute pas l’entrée', () => {
+    const list = [loot('a')];
+    addLootItems(list, [{ id: 'b', line: { custom: true, name: 'Objet b', quantity: 1 } }]);
+    expect(list).toHaveLength(1);
+  });
+});
+
+describe('duplicateLootItem', () => {
+  it('crée une copie sous un nouvel id, toujours non-servie', () => {
+    const list = duplicateLootItem([loot('a', true)], 'a', 'a-copy');
+    expect(list).toEqual([loot('a', true), { ...loot('a', false), id: 'a-copy' }]);
+  });
+
+  it('no-op si l’id source est inconnu', () => {
+    const list = [loot('a')];
+    expect(duplicateLootItem(list, 'inconnu', 'new')).toBe(list);
   });
 });

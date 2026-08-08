@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Database, Json } from '@/lib/supabase/types';
-import { parseLoot, parseRules, parseRumors, rowToCampaign } from './repo';
+import { parseGmInventory, parseLoot, parseRules, parseRumors, rowToCampaign } from './repo';
 import type { CampaignRules } from './types';
 
 type CampaignRow = Database['public']['Tables']['campaigns']['Row'];
@@ -14,6 +14,7 @@ const row = (over: Partial<CampaignRow> = {}): CampaignRow => ({
   rules: { firearmsAllowed: true },
   rumors: [],
   loot: [],
+  gm_inventory: { categories: [], items: [] },
   created_at: '2026-07-01T10:00:00Z',
   updated_at: '2026-07-02T11:00:00Z',
   ...over,
@@ -63,6 +64,7 @@ describe('rowToCampaign', () => {
       rules: { firearmsAllowed: true, hitDieOnLevelUp: false },
       rumors: [],
       loot: [],
+      gmInventory: { categories: [], items: [] },
       createdAt: '2026-07-01T10:00:00Z',
       updatedAt: '2026-07-02T11:00:00Z',
     });
@@ -132,6 +134,58 @@ describe('parseLoot', () => {
       { id: 'ok', line: { custom: true, name: 'valide', quantity: 1 }, served: false },
       { id: 'ok2', line: { itemId: 'dague', quantity: 1 }, served: false },
     ]);
+  });
+});
+
+describe('parseGmInventory', () => {
+  it('lit un inventaire bien formé (catégories + items catégorisés et non)', () => {
+    const raw = {
+      categories: [
+        { id: 'cat1', name: 'Potions', collapsed: false },
+        { id: 'cat2', name: 'Reliques', collapsed: true },
+      ],
+      items: [
+        { id: 'i1', line: { custom: true, name: 'Élixir', quantity: 1 }, categoryId: 'cat1' },
+        { id: 'i2', line: { itemId: 'epee-longue', quantity: 1 }, categoryId: null },
+      ],
+    };
+    expect(parseGmInventory(raw as unknown as Json)).toEqual(raw);
+  });
+
+  it('retombe sur un inventaire vide pour une valeur non-objet (null, ancien format)', () => {
+    expect(parseGmInventory(null)).toEqual({ categories: [], items: [] });
+    expect(parseGmInventory([1, 2] as unknown as Json)).toEqual({ categories: [], items: [] });
+  });
+
+  it('ignore les catégories/items mal formés', () => {
+    const raw = {
+      categories: [
+        { id: 'cat1', name: 'Potions', collapsed: false },
+        { id: 42, name: 'id non-chaîne' }, // rejetée
+        { name: 'sans id' }, // rejetée
+      ],
+      items: [
+        { id: 'ok', line: { custom: true, name: 'valide', quantity: 1 }, categoryId: 'cat1' },
+        { id: 42, line: { custom: true, name: 'id non-chaîne', quantity: 1 } }, // rejeté
+        { id: 'no-line' }, // rejeté
+        { id: 'bad-line', line: { quantity: 1 } }, // rejeté (sans discriminant)
+      ],
+    };
+    expect(parseGmInventory(raw as unknown as Json)).toEqual({
+      categories: [{ id: 'cat1', name: 'Potions', collapsed: false }],
+      items: [{ id: 'ok', line: { custom: true, name: 'valide', quantity: 1 }, categoryId: 'cat1' }],
+    });
+  });
+
+  it('ramène categoryId à null si la catégorie référencée n’existe pas', () => {
+    const raw = {
+      categories: [],
+      items: [{ id: 'orphan', line: { itemId: 'dague', quantity: 1 }, categoryId: 'cat-disparue' }],
+    };
+    expect(parseGmInventory(raw as unknown as Json)).toEqual({
+      categories: [],
+      items: [{ id: 'orphan', line: { itemId: 'dague', quantity: 1 }, categoryId: null }],
+    });
   });
 });
 

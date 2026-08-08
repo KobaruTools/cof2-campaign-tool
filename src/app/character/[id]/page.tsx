@@ -101,6 +101,7 @@ import { AddMountButton, OwnedMountsPanel } from '@/components/sheet/OwnedMounts
 import { PurseField } from '@/components/sheet/PurseField';
 import { CoinPouchDialog } from '@/components/sheet/CoinPouchDialog';
 import { StartingChoiceDialog } from '@/components/sheet/StartingChoiceDialog';
+import { parseCoinPouchName } from '@/lib/character/coinPouch';
 import { startingChoiceOptionsFor } from '@/lib/character/startingChoices';
 import { AbilitiesGrid } from '@/components/sheet/AbilitiesGrid';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
@@ -428,6 +429,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
     setUsageCounterValue,
     liftShortRestLock,
     createElixir,
+    setActiveCrystal,
     applyItemUse,
     openCoinPouch,
     resolveStartingChoice,
@@ -1061,6 +1063,7 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
                 abilities={effectCtx.abilities}
                 abilityTestBonus={display.abilityTestBonus}
                 statusTestBonus={display.statusTestBonus}
+                statusDomainBonus={display.statusDomainBonus}
                 perAbilityTestBonus={display.perAbilityTestBonus}
                 magicTestBonuses={display.magicTestBonuses}
                 bonusDice={display.bonusDieSources}
@@ -1307,6 +1310,9 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
               // Saisie libre corrélée (animal de Forme animale) : état de jeu, comme
               // les interrupteurs, donc modifiable hors édition.
               onSetEffectInput={setEffectInputValue}
+              // Activation d'un cristal appris (voie des cristaux, PER-74) : état de jeu, comme les
+              // interrupteurs, donc modifiable hors édition.
+              onToggleCrystalActive={setActiveCrystal}
               // Compteur d'usages limités (Les sept vies du chat) : état de jeu.
               onSetUsageCounter={setUsageCounterValue}
               // Débloquer sans repos (cadenas) : lève le verrou « repos court requis » d'une capacité.
@@ -1571,6 +1577,10 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
       <CoinPouchDialog
         open={coinPouchIndex !== null}
+        info={(() => {
+          const line = coinPouchIndex !== null ? character.equipment[coinPouchIndex] : undefined;
+          return line && isCustomItem(line) ? parseCoinPouchName(line.name) : null;
+        })()}
         onClose={() => setCoinPouchIndex(null)}
         onConfirm={confirmCoinPouch}
       />

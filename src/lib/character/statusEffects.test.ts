@@ -11,6 +11,7 @@ import {
   statusEntry,
   statusMaxIntensity,
   statusRemainingRounds,
+  statusSheetImpact,
   untilRoundFor,
   HP_WEAKENED_REASON,
   STATUS_DURATION_MAX,
@@ -146,6 +147,7 @@ describe('resolveStatusModifiers', () => {
       attackTestsMalusDie: false,
       allTestsFlat: 0,
       damageDealt: 0,
+      testDomains: {},
     });
   });
 
@@ -266,5 +268,81 @@ describe('effectiveStatuses', () => {
   it('un état déduit compte dans les modificateurs résolus', () => {
     const merged = effectiveStatuses([], hpAutoStatuses(10, { hp: { lethal: 9, temp: 0 } }));
     expect(resolveStatusModifiers(merged).allTestsMalusDie).toBe(true);
+  });
+});
+
+/* --------------------------------------------------------------------------- *
+ * PER-359 — bonus limités à des DOMAINES de test, et DM infligés en POSITIF.
+ * --------------------------------------------------------------------------- */
+
+describe('PER-359 — bonus par domaine', () => {
+  it('Sans peur ne bonifie QUE le domaine visé, jamais tous les tests', () => {
+    const r = resolveStatusModifiers([{ id: 'fearless-rally', intensity: 3 }]);
+    expect(r.testDomains).toEqual({ 'fear-resistance': 3 });
+    // Le canal « tous les tests » reste intact : c'est toute la différence avec le Chant des héros.
+    expect(r.allTestsFlat).toBe(0);
+    expect(r.derived).toEqual({});
+  });
+
+  it('les trois domaines d’Argument de taille reçoivent la même valeur', () => {
+    const r = resolveStatusModifiers([{ id: 'towering-argument', intensity: 2 }]);
+    expect(r.testDomains).toEqual({ negotiation: 2, persuasion: 2, intimidation: 2 });
+  });
+
+  it('deux états visant le même domaine s’y additionnent', () => {
+    const r = resolveStatusModifiers([
+      { id: 'fearless-rally', intensity: 2 },
+      { id: 'fearless-rally', intensity: 1 },
+    ]);
+    expect(r.testDomains['fear-resistance']).toBe(3);
+  });
+
+  it('l’Aura du chef de guerre porte un bonus de DM POSITIF, et +1 en DEF', () => {
+    const r = resolveStatusModifiers([{ id: 'warlord-aura' }]);
+    expect(r.damageDealt).toBe(1);
+    expect(r.derived).toEqual({ def: 1 });
+    // Au niveau 16 le palier double les deux canaux d'un coup.
+    const r16 = resolveStatusModifiers([{ id: 'warlord-aura', intensity: 2 }]);
+    expect(r16.damageDealt).toBe(2);
+    expect(r16.derived).toEqual({ def: 2 });
+  });
+
+  it('un bonus de DM positif se compense avec le malus d’une attaque invalidante', () => {
+    const r = resolveStatusModifiers([{ id: 'warlord-aura' }, { id: 'invalidating-attack' }]);
+    expect(r.damageDealt).toBe(0);
+  });
+
+  it('Protéger un allié : +2 en DEF, valeur fixe non cumulable', () => {
+    expect(resolveStatusModifiers([{ id: 'shield-ally' }]).derived).toEqual({ def: 2 });
+    // Sans `stacking`, une intensité relue de travers reste ramenée à 1 palier.
+    expect(resolveStatusModifiers([{ id: 'shield-ally', intensity: 5 }]).derived).toEqual({ def: 2 });
+  });
+});
+
+describe('PER-359 — ventilation par domaine sur la fiche', () => {
+  it('chaque domaine visé porte sa ligne de détail, avec qui l’a lancé', () => {
+    const r = statusSheetImpact([
+      { id: 'fearless-rally', intensity: 3, castBy: 'Mirielle' },
+    ]);
+    expect(r.testDomainSources).toEqual({
+      'fear-resistance': [
+        { id: 'fearless-rally', label: 'Sans peur', value: 3, castBy: 'Mirielle' },
+      ],
+    });
+    // Un buff garde son propre nom : pas de préfixe « État : », réservé aux effets subis.
+    expect(r.abilityTestSources).toEqual([]);
+    expect(r.allTestsFlat).toBe(0);
+  });
+
+  it('sans lanceur identifié, la ligne existe sans mention de source', () => {
+    const r = statusSheetImpact([{ id: 'towering-argument', intensity: 2 }]);
+    expect(r.testDomainSources.negotiation).toEqual([
+      { id: 'towering-argument', label: 'Argument de taille', value: 2 },
+    ]);
+    expect(r.testDomainSources.negotiation[0]).not.toHaveProperty('castBy');
+  });
+
+  it('l’état sans bonus de domaine ne crée aucune entrée', () => {
+    expect(statusSheetImpact([{ id: 'heroes-song' }]).testDomainSources).toEqual({});
   });
 });

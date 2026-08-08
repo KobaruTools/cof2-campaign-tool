@@ -59,6 +59,15 @@ export interface TestDomainsPanelProps {
    */
   statusTestBonus?: { id: string; label: string; value: number; castBy?: string }[];
   /**
+   * Modificateurs venus des ÉTATS DE COMBAT mais limités à CERTAINS DOMAINES (PER-359), keyés par id
+   * de domaine : Sans peur (« un bonus égal à son CHA … contre ce type d'effet » → résistance à la
+   * peur, p. 85), Argument de taille (négociation / persuasion / intimidation, p. 79). Même forme que
+   * `statusTestBonus`, dont ils diffèrent par la PORTÉE : ceux-ci ne touchent que les domaines cités,
+   * et s'appliquent que « inclure la carac » soit coché ou non — c'est un bonus de test de DOMAINE,
+   * pas un bonus de test de caractéristique. Vide hors session.
+   */
+  statusDomainBonus?: Record<string, { id: string; label: string; value: number; castBy?: string }[]>;
+  /**
    * Bonus CHIFFRÉS à UNE caractéristique précise (ex. Tatouages, PER-125), regroupés par carac.
    * Ajoutés à la ligne « test de [CARAC] » de la carac visée (et, quand « inclure la carac » est
    * coché, à ses domaines). Distinct de `abilityTestBonus` (buff uniforme à toutes les caracs).
@@ -362,6 +371,7 @@ export function TestDomainsPanel({
   abilities,
   abilityTestBonus,
   statusTestBonus,
+  statusDomainBonus,
   perAbilityTestBonus,
   magicTestBonuses,
   bonusDice,
@@ -386,15 +396,25 @@ export function TestDomainsPanel({
     magicSources.flatMap((s) => (s.scope.kind === 'domain' ? [s.scope.domain] : [])),
   );
 
+  // Domaines bonifiés par un ÉTAT posé en séance (PER-359 : Sans peur, Argument de taille). Comme
+  // pour les objets magiques, leur bonus ne vient pas de `bonuses` : sans ça, « masquer les domaines
+  // sans bonus » escamoterait le buff au moment précis où le joueur le cherche.
+  const statusDomains = new Set(
+    Object.entries(statusDomainBonus ?? {})
+      .filter(([, sources]) => sources.some((s) => s.value !== 0))
+      .map(([domain]) => domain),
+  );
+
   const lines = testDomains
     .map((d) => ({ d, bonus: byDomain.get(d.id) }))
-    // Un domaine reste visible s'il porte un bonus chiffré (voie ou objet magique) OU un dé bonus
-    // conditionnel actif.
+    // Un domaine reste visible s'il porte un bonus chiffré (voie, objet magique ou état posé) OU un
+    // dé bonus conditionnel actif.
     .filter(
       ({ d, bonus }) =>
         !hideZero ||
         (bonus?.total ?? 0) !== 0 ||
         magicDomains.has(d.id) ||
+        statusDomains.has(d.id) ||
         (testDice?.has(d.id) ?? false),
     );
 
@@ -608,7 +628,14 @@ export function TestDomainsPanel({
                       domain: d.id,
                     });
                     const flat = resolved.flat;
-                    const has = (bonus?.sources.length ?? 0) > 0 || flat !== 0;
+                    // Bonus d'ÉTAT visant CE domaine (PER-359). Il s'ajoute librement au bonus de
+                    // compétence — ce n'est pas une source concurrente au sens de la p. 203, mais un
+                    // effet posé en séance, exactement comme le « +1 à tous les tests » d'un Chant
+                    // des héros. Indépendant d'« inclure la carac » : il porte sur le DOMAINE.
+                    const statusDomainSources = statusDomainBonus?.[d.id] ?? [];
+                    const statusDomainTotal = statusDomainSources.reduce((s, x) => s + x.value, 0);
+                    const has =
+                      (bonus?.sources.length ?? 0) > 0 || flat !== 0 || statusDomainTotal !== 0;
                     const die = testDice?.get(d.id);
                     // Carac EFFECTIVE incluse : AGI déjà plafonnée par l'armure (PER-78) comme la
                     // ligne d'en-tête, pas l'AGI brute.
@@ -623,9 +650,10 @@ export function TestDomainsPanel({
                     // Le bonus de magie de portée CARAC (tatouage, objet visant la carac) n'entre
                     // que lorsqu'on inclut la carac — comme le buff uniforme : il est déjà porté
                     // par la ligne d'en-tête. Celui de portée DOMAINE est dans `flat`.
-                    const display = includeAbility
-                      ? flat + abilityValue + testBuff + perCaracBonus + resolved.abilityMagic - agiPenalty
-                      : flat;
+                    const display =
+                      (includeAbility
+                        ? flat + abilityValue + testBuff + perCaracBonus + resolved.abilityMagic - agiPenalty
+                        : flat) + statusDomainTotal;
                     const multiAbility = d.abilities.length > 1;
                     // Sources de magie à détailler ici : celles de portée domaine toujours, celles
                     // de portée carac seulement quand la carac est incluse (sinon on annoncerait un
@@ -644,7 +672,8 @@ export function TestDomainsPanel({
                           (agiPenalty > 0 ? 1 : 0)
                         : 0) +
                       (bonus?.sources.length ?? 0) +
-                      (magicRows?.keptMagic ? 1 : 0);
+                      (magicRows?.keptMagic ? 1 : 0) +
+                      statusDomainSources.length;
 
                     const breakdown =
                       has || includeAbility || magicRows?.keptMagic || d.description || multiAbility || survivalConReminder ? (
@@ -708,6 +737,17 @@ export function TestDomainsPanel({
                                 value={signed(s.value)}
                               />
                             ))}
+                          {/* États posés en séance visant CE domaine (PER-359) : hors condition
+                              `includeAbility`, puisqu'ils bonifient le test de domaine lui-même. */}
+                          {statusDomainSources.map((s) => (
+                            <BreakdownRow
+                              key={s.id}
+                              label={
+                                <StatusBreakdownLabel id={s.id} label={s.label} castBy={s.castBy} />
+                              }
+                              value={signed(s.value)}
+                            />
+                          ))}
                           {includeAbility && agiPenalty > 0 && (
                             <BreakdownRow
                               label={

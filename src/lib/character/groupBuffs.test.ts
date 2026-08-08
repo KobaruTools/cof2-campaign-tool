@@ -192,3 +192,65 @@ describe('withSupersededBuffTogglesOff (le calcul ne compte le bonus qu’une fo
     expect(isEffectActive(seen, 'priere-r2', 0)).toBe(true);
   });
 });
+
+/* --------------------------------------------------------------------------- *
+ * PER-359 — les capacités recensées comme posant un effet CHIFFRÉ sur autrui.
+ * Un bloc par capacité ajoutée au catalogue : ce qu'elle débloque, et d'où sort son palier.
+ * --------------------------------------------------------------------------- */
+
+describe('PER-359 — capacités qui posent un effet sur les autres', () => {
+  it('Sans peur (chevalier, p. 85) : le palier EST le CHA du chevalier', () => {
+    expect(groupBuffsOf(['meneur-d-hommes-r1'], { abilities: { CHA: 3 } })).toEqual([
+      { buffId: 'fearless-rally', featureId: 'meneur-d-hommes-r1', pathRank: 1, intensity: 3 },
+    ]);
+    // Sans contexte de lanceur, le palier retombe à 1 plutôt que d'inventer une valeur.
+    expect(groupBuffIntensityFor(['meneur-d-hommes-r1'], 'fearless-rally')).toBe(1);
+  });
+
+  it('Argument de taille (barbare, p. 79) : le palier EST la FOR du barbare', () => {
+    expect(groupBuffIntensityFor(['brute-r1'], 'towering-argument', { abilities: { FOR: 4 } })).toBe(
+      4,
+    );
+  });
+
+  it('un palier lu sur une carac reste borné par le plafond du catalogue', () => {
+    // ABILITY_MAX = 5 : une valeur aberrante est ramenée dans les bornes, jamais propagée telle quelle.
+    expect(
+      groupBuffIntensityFor(['brute-r1'], 'towering-argument', { abilities: { FOR: 99 } }),
+    ).toBe(5);
+    // Et un lanceur à carac nulle ou négative retombe sur 1, pas sur un buff inversé.
+    expect(groupBuffIntensityFor(['brute-r1'], 'towering-argument', { abilities: { FOR: -2 } })).toBe(
+      1,
+    );
+  });
+
+  it('Aura du chef de guerre (p. 161) : le palier suit le NIVEAU, pas le rang de la voie', () => {
+    const carrier = ['prestige-mage-de-guerre-r6'];
+    expect(groupBuffIntensityFor(carrier, 'warlord-aura', { level: 15 })).toBe(1);
+    expect(groupBuffIntensityFor(carrier, 'warlord-aura', { level: 16 })).toBe(2);
+    // Le rang 6 de la voie ne suffit PAS : c'est bien le niveau que la règle regarde.
+    expect(groupBuffIntensityFor(carrier, 'warlord-aura', {})).toBe(1);
+  });
+
+  it('Protéger un allié (guerrier, p. 87) : valeur fixe, donc aucun palier', () => {
+    expect(groupBuffIntensityFor(['bouclier-r1'], 'shield-ally', { abilities: { FOR: 5 } })).toBe(1);
+  });
+
+  it('chaque buff ajouté est débloqué par sa seule capacité porteuse', () => {
+    expect(unlockedGroupBuffIds([{ featureIds: ['meneur-d-hommes-r1'] }])).toEqual([
+      'fearless-rally',
+    ]);
+    expect(unlockedGroupBuffIds([{ featureIds: ['brute-r1'] }])).toEqual(['towering-argument']);
+    expect(unlockedGroupBuffIds([{ featureIds: ['bouclier-r1'] }])).toEqual(['shield-ally']);
+    expect(unlockedGroupBuffIds([{ featureIds: ['prestige-mage-de-guerre-r6'] }])).toEqual([
+      'warlord-aura',
+    ]);
+  });
+
+  it('la fiche du buffé retrouve la capacité source, qu’elle ne possède pas', () => {
+    expect(groupBuffFeatureId('fearless-rally')).toBe('meneur-d-hommes-r1');
+    expect(groupBuffFeatureId('towering-argument')).toBe('brute-r1');
+    expect(groupBuffFeatureId('shield-ally')).toBe('bouclier-r1');
+    expect(groupBuffFeatureId('warlord-aura')).toBe('prestige-mage-de-guerre-r6');
+  });
+});

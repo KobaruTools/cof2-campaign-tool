@@ -6,8 +6,18 @@
  * Un buff de groupe (Chant des héros p. 67, Bénédiction p. 124) vise « ses alliés et lui » : le
  * déposer sur une carte du tracker n'affecte donc pas cette seule carte, mais ouvre CETTE fenêtre de
  * pose. Le MJ y voit les combattants du camp du porteur — **tous cochés par défaut** — décoche celui
- * qui est hors de portée de voix et, s'il le veut, pose une durée en tours. Le PALIER (+1, +2 au rang
- * 5) n'est pas demandé : il se déduit du rang du porteur, seule chose dont dépend la règle.
+ * qui est hors de portée de voix et, s'il le veut, pose une durée en tours. Le PALIER n'est pas
+ * demandé : il se déduit de ce que le catalogue déclare (rang du porteur, niveau, ou l'une de ses
+ * caractéristiques), seule chose dont dépend la règle.
+ *
+ * DEUX PORTÉES (PER-359). Le livre ne dit pas toujours « ses alliés » :
+ *  - `group` : cases à cocher, tout le camp coché d'avance — « tous ses alliés à portée de voix » ;
+ *  - `single-ally` : choix EXCLUSIF d'un seul combattant, rien de coché d'avance — « un allié à son
+ *    contact » (Protéger un allié p. 87). Cocher tout le camp y ferait dire au livre autre chose.
+ *
+ * Et le LANCEUR n'est pas toujours bénéficiaire : « ses alliés ET LUI » l'inclut, « tous vos alliés »
+ * l'exclut (`excludesCarrier`). Un porteur exclu n'est pas coché d'avance en mode groupe, et n'est
+ * pas proposé du tout en cible unique — le lui poser compterait deux fois un bonus qu'il a déjà.
  *
  * Un seul « Appliquer » ⇒ **un seul état** en sortie (`applyStatusToKeys`), donc un seul upsert
  * `campaign_combat` et une seule diffusion Realtime : poser N fois de suite en produirait N.
@@ -24,11 +34,17 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Radio from '@mui/material/Radio';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { SourceRef } from '@/components/SourceRef';
-import { statusEntry, STATUS_DURATION_MAX } from '@/lib/character/statusEffects';
+import {
+  statusEntry,
+  statusExcludesCarrier,
+  isSingleAllyScopedStatus,
+  STATUS_DURATION_MAX,
+} from '@/lib/character/statusEffects';
 import { statusLabel } from '@/lib/ui/statusPalette';
 import type { BeneficialEffectId } from '@/data/schema';
 
@@ -97,10 +113,20 @@ function GroupBuffForm({
   posedKeys,
   onRemoveAll,
 }: Omit<GroupBuffDialogProps, 'open' | 'buffId'> & { buffId: BeneficialEffectId }) {
-  // Tous cochés par défaut : à la table, le cas courant est que tout le camp est à portée de voix —
-  // on décoche l'exception, on ne coche pas la règle.
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(candidates.map((c) => c.key)),
+  const singleAlly = isSingleAllyScopedStatus(buffId);
+  const excludesCarrier = statusExcludesCarrier(buffId);
+  // En CIBLE UNIQUE, le lanceur n'est pas même proposé : la règle vise « un allié », jamais lui.
+  const offered = singleAlly && excludesCarrier ? candidates.filter((c) => !c.carrier) : candidates;
+
+  // Mode GROUPE : tous cochés par défaut — à la table, le cas courant est que tout le camp est à
+  // portée de voix, on décoche l'exception plutôt que de cocher la règle. Le LANCEUR échappe à ce
+  // pré-cochage quand la règle l'exclut du bénéfice (« tous vos alliés »), sans quoi on lui poserait
+  // un bonus qu'il n'a pas — ou, pire, qu'il a déjà par ailleurs.
+  // Mode CIBLE UNIQUE : rien de coché, c'est un choix que le MJ doit faire.
+  const [selected, setSelected] = useState<Set<string>>(() =>
+    singleAlly
+      ? new Set<string>()
+      : new Set(offered.filter((c) => !(excludesCarrier && c.carrier)).map((c) => c.key)),
   );
   // Durée en TOURS, saisie libre et VIDE par défaut (durée indéterminée). Chaîne et non nombre :
   // « vide » et « 0 » sont deux réponses différentes, un `number | null` les confondrait à la saisie.
@@ -108,11 +134,23 @@ function GroupBuffForm({
 
   const entry = statusEntry(buffId);
   const label = statusLabel(buffId);
+  // D'où sort le palier affiché — repris de `intensityFrom`, pour ne jamais annoncer « rang 5 » à un
+  // buff qui escalade au niveau 16 ou vaut la caractéristique du lanceur. Absent = valeur fixe.
+  const from = entry?.intensityFrom;
+  const intensityCaption = !from
+    ? null
+    : from.kind === 'path-rank'
+      ? `D’après le rang du lanceur dans sa voie (+2 à partir du rang ${from.rank}).`
+      : from.kind === 'character-level'
+        ? `D’après le niveau du lanceur (+2 à partir du niveau ${from.level}).`
+        : `D’après le ${from.ability} du lanceur.`;
   const parsedRounds = Number.parseInt(rounds, 10);
   const validRounds = Number.isFinite(parsedRounds) && parsedRounds >= 1 ? parsedRounds : undefined;
 
+  // En cible unique, choisir remplace la sélection au lieu de s'y ajouter.
   const toggle = (key: string) =>
     setSelected((prev) => {
+      if (singleAlly) return new Set(prev.has(key) ? [] : [key]);
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -123,7 +161,7 @@ function GroupBuffForm({
     if (selected.size === 0) return;
     // L'ordre du tracker plutôt que l'ordre de cochage : l'état produit reste comparable d'une pose
     // à l'autre (utile aux diffs et aux tests).
-    const keys = candidates.filter((c) => selected.has(c.key)).map((c) => c.key);
+    const keys = offered.filter((c) => selected.has(c.key)).map((c) => c.key);
     onApply(keys, { intensity, ...(validRounds !== undefined ? { rounds: validRounds } : {}) });
     onClose();
   };
@@ -145,51 +183,61 @@ function GroupBuffForm({
 
           <Box>
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-              Qui en profite&nbsp;?
+              {singleAlly ? 'Quel allié en profite ?' : 'Qui en profite ?'}
             </Typography>
-            {candidates.length === 0 ? (
+            {offered.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 Aucun combattant dans ce camp.
               </Typography>
             ) : (
               <Stack>
-                {candidates.map((c) => (
-                  <FormControlLabel
-                    key={c.key}
-                    control={
-                      <Checkbox
-                        size="small"
-                        color="success"
-                        checked={selected.has(c.key)}
-                        onChange={() => toggle(c.key)}
-                      />
-                    }
-                    label={
-                      <Typography variant="body2">
-                        {c.label}
-                        {c.carrier && (
-                          <Typography component="span" variant="caption" color="text.secondary">
-                            {' '}
-                            — lance le sort
-                          </Typography>
-                        )}
-                      </Typography>
-                    }
-                    sx={{ mr: 0, '& .MuiFormControlLabel-label': { lineHeight: 1.3 } }}
-                  />
-                ))}
+                {offered.map((c) => {
+                  // Case à cocher pour un effet de camp, bouton radio pour une cible unique : la
+                  // forme du contrôle dit à elle seule combien d'alliés la règle autorise.
+                  const Control = singleAlly ? Radio : Checkbox;
+                  return (
+                    <FormControlLabel
+                      key={c.key}
+                      control={
+                        <Control
+                          size="small"
+                          color="success"
+                          checked={selected.has(c.key)}
+                          onChange={() => toggle(c.key)}
+                        />
+                      }
+                      label={
+                        <Typography variant="body2">
+                          {c.label}
+                          {c.carrier && (
+                            <Typography component="span" variant="caption" color="text.secondary">
+                              {' '}
+                              — lance le sort
+                              {excludesCarrier && ' (n’en profite pas)'}
+                            </Typography>
+                          )}
+                        </Typography>
+                      }
+                      sx={{ mr: 0, '& .MuiFormControlLabel-label': { lineHeight: 1.3 } }}
+                    />
+                  );
+                })}
               </Stack>
             )}
           </Box>
 
-          {/* Le palier n'est PAS une question : il se lit sur le rang du lanceur dans sa voie, et la
-              règle ne laisse aucun arbitrage au MJ. On l'annonce, on ne le demande pas. */}
-          <Box>
-            <Typography variant="subtitle2">Bonus&nbsp;: +{intensity}</Typography>
-            <Typography variant="caption" color="text.secondary">
-              D’après le rang du lanceur dans sa voie (+2 à partir du rang 5).
-            </Typography>
-          </Box>
+          {/* Le palier n'est PAS une question : la règle ne laisse aucun arbitrage au MJ. On
+              l'annonce, on ne le demande pas — et on dit D'OÙ il sort, ce qui varie d'une capacité à
+              l'autre (PER-359). Un buff à valeur fixe (Protéger un allié, +2) n'a pas de palier du
+              tout : sa ligne serait un mensonge, on la masque. */}
+          {intensityCaption && (
+            <Box>
+              <Typography variant="subtitle2">Bonus&nbsp;: +{intensity}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {intensityCaption}
+              </Typography>
+            </Box>
+          )}
 
           <TextField
             label="Durée (tours)"

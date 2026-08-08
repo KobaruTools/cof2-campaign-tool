@@ -26,6 +26,10 @@ describe('isConsumable', () => {
     expect(isConsumable({ custom: true, name: COIN_POUCH_ITEM_NAME, quantity: 1 })).toBe(true);
   });
 
+  it('marque aussi une bourse générique créée depuis les Outils du MJ comme consommable (PER-200)', () => {
+    expect(isConsumable({ custom: true, name: 'Bourse de 3d6 po', quantity: 1 })).toBe(true);
+  });
+
   it('marque un objet personnalisé typé « consommable » (PER-214)', () => {
     expect(isConsumable({ custom: true, name: 'Fiole d’acide', quantity: 3, type: 'consumable' })).toBe(
       true,
