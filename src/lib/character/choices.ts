@@ -386,6 +386,16 @@ function featuresInChoiceDomain(
   const allowedRanks = new Set(choice.allowedRanks);
   const owned = new Set(character.featureIds);
 
+  // Liste BLANCHE explicite (PER-324, demi-elfe « Nomade ») : le domaine se réduit EXACTEMENT aux ids
+  // désignés (hors capacités déjà possédées), en IGNORANT rangs/voies/famille — un choix binaire entre
+  // deux capacités nommées de voies et de rangs différents qu'aucune contrainte par rang ne cible.
+  if (choice.featureIds) {
+    return choice.featureIds
+      .map((id) => featureById.get(id))
+      .filter((f): f is Feature => !!f && f.id !== hostFeatureId && !owned.has(f.id))
+      .sort((a, b) => a.pathId.localeCompare(b.pathId) || a.rank - b.rank);
+  }
+
   // Scope DYNAMIQUE « profil de magie du familier » (PER-74, Résistance r5) : le profil admissible
   // dépend du familier retenu au rang 3. Sans familier choisi → domaine vide (rien à apprendre encore).
   let familiarProfileClassId: string | undefined;
@@ -426,6 +436,8 @@ function featuresInChoiceDomain(
         classPathIds.has(f.pathId) &&
         // Scope familier (r5) : « un SORT » → on ne retient que les sorts.
         !(choice.familiarSpellProfile && !f.isSpell) &&
+        // Sang féerique (PER-324) : « un sort d'ensorceleur ou de druide » → sorts seuls.
+        !(choice.spellsOnly && !f.isSpell) &&
         // Talent pour la magie : pas de capacité qui octroie un bonus de DEF (p. 50).
         !(choice.excludeDefBonus && featureGrantsDefBonus(f.id)),
     )
@@ -567,6 +579,28 @@ export function borrowedFeatureIds(character: Character): string[] {
     });
   }
   return borrowed;
+}
+
+/**
+ * Ids de SORTS empruntés via un choix `feature-from-path` marqué `noManaCost` (PER-324, demi-elfe « Sang
+ * féerique ») : ils NE donnent PAS le +1 PM d'un sort connu, symétriquement à `grantedNoManaFeatureIds`
+ * (octrois fixes). La capacité reste connue (comptée dans `borrowedFeatureIds`, effets appliqués), seul
+ * son apport au réservoir est retiré. Consommé par `spellCount` (union avec les octrois `noMana`).
+ */
+export function borrowedNoManaFeatureIds(character: Character): Set<string> {
+  const owned = new Set(character.featureIds);
+  const out = new Set<string>();
+  for (const [hostId, selections] of Object.entries(character.featureChoices ?? {})) {
+    if (!owned.has(hostId)) continue;
+    const defs = featureChoiceDefs(hostId);
+    selections.forEach((sel, i) => {
+      const def = defs[i];
+      if (def?.kind === 'feature-from-path' && def.noManaCost && typeof sel === 'string') {
+        out.add(sel);
+      }
+    });
+  }
+  return out;
 }
 
 /** Un octroi fixe (`Feature.grantedFeatures[i]`) rattaché à la capacité hôte qui le porte. */

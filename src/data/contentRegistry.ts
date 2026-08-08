@@ -36,6 +36,23 @@ export interface ContentBundle {
   paths?: Path[];
   features?: Feature[];
   equipment?: EquipmentItem[];
+  /**
+   * Liens additifs voie↔peuple (PER-324) : rattache des voies de peuple (souvent PAYANTES) à un peuple
+   * EXISTANT — base ou déjà fusionné. Contrairement à `mergeEntries` (base gagne, qui IGNORERAIT une
+   * ré-définition de peuple), ces liens n'AJOUTENT que des ids à `Ancestry.ancestryPathIds`, sans jamais
+   * en retirer : la « Voie du demi-elfe » du Compagnon vient s'ajouter aux voies humain/elfe du livre de
+   * base sans réécrire le peuple. Nécessaire car un peuple gratuit ne peut pas lister en dur une voie
+   * payante (le sélecteur afficherait l'id brut aux comptes non entitlés). Résolu par `mergeAncestryPathLinks`.
+   */
+  ancestryPathLinks?: AncestryPathLink[];
+}
+
+/** Rattachement additif d'une ou plusieurs voies de peuple à un peuple existant (cf. `ancestryPathLinks`). */
+export interface AncestryPathLink {
+  /** Id du peuple de base (ou déjà fusionné) à augmenter, ex. `'demi-elfe'`. */
+  ancestryId: string;
+  /** Ids de voies de peuple à AJOUTER à `ancestryPathIds` (celles absentes seulement). */
+  pathIds: string[];
 }
 
 /**
@@ -79,6 +96,30 @@ export function mergeEntries<T extends { id: string }>(
     added += 1;
   }
   return { added, skipped };
+}
+
+/**
+ * Applique les `ancestryPathLinks` EN PLACE (PER-324). Pour chaque lien, on ajoute à
+ * `ancestry.ancestryPathIds` les ids ABSENTS (jamais de doublon, jamais de retrait) — un peuple
+ * introuvable est ignoré. Idempotente (rejouer n'ajoute rien). Renvoie le nombre d'ids réellement
+ * ajoutés (0 → pas de bump de version). Pure hors la mutation du peuple ciblé.
+ */
+export function mergeAncestryPathLinks(
+  ancestryById: Map<string, Ancestry>,
+  links: AncestryPathLink[] | undefined,
+): number {
+  let added = 0;
+  if (!links) return added;
+  for (const link of links) {
+    const ancestry = ancestryById.get(link.ancestryId);
+    if (!ancestry) continue;
+    for (const pathId of link.pathIds) {
+      if (ancestry.ancestryPathIds.includes(pathId)) continue;
+      ancestry.ancestryPathIds.push(pathId);
+      added += 1;
+    }
+  }
+  return added;
 }
 
 // Ré-exporte les types d'entité pour que les appelants n'aient pas à connaître le

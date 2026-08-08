@@ -50,6 +50,7 @@ import {
   getSelection,
   hasActionableChoice,
   hasIncompleteCustomSkill,
+  borrowedNoManaFeatureIds,
 } from '@/lib/character/choices';
 import { animalFormCategories } from '@/lib/character/animalForms';
 import {
@@ -446,6 +447,15 @@ function grantForBorrowed(host: Feature, borrowedId: string) {
 /** Notice « sans coût en mana » d'un sort octroyé `noMana` (cambion « La belle et la bête », PER-323). */
 const CAMBION_NO_MANA_NOTE = (
   <>Sort octroyé : utilisé sans dépenser de mana et sans limitation d’armure (<SourceRef page={10} />).</>
+);
+
+/**
+ * Notice « sans coût en mana » d'un sort EMPRUNTÉ par un choix `feature-from-path` marqué `noManaCost`
+ * (demi-elfe « Sang féerique », PER-324) : le sort est connu mais ne rapporte pas de PM ; les
+ * incantations gratuites (3/2/1 par jour selon le rang) et l'exemption d'armure restent au verbatim.
+ */
+const DEMI_ELFE_NO_MANA_NOTE = (
+  <>Sang féerique : sort connu sans PM gagné ; incantations gratuites et lancer en armure selon le texte de la capacité.</>
 );
 
 /**
@@ -3739,11 +3749,14 @@ function PathBlock({
                   // texte/choix, sans remplacer la carte (l'effet de base de l'hôte reste appliqué).
                   // PER-74 : Bâton magique (archimage r5) porte DEUX choix → deux cartes EMPILÉES.
                   const borrowedList = borrowedFeaturesOf(character, openFeature);
+                  // Sorts empruntés `noManaCost` (demi-elfe « Sang féerique », PER-324) : connus sans +1 PM.
+                  const noManaBorrowed = character ? borrowedNoManaFeatureIds(character) : new Set<string>();
                   return borrowedList.length ? (
                     <Stack spacing={1.5} sx={{ mt: 1.5 }}>
                       {borrowedList.map((borrowed, i) => {
                         const staffGranted = !!character && archmageStaffSpellGranted(character, borrowed);
                         const grant = grantForBorrowed(openFeature, borrowed.id);
+                        const borrowedNoMana = noManaBorrowed.has(borrowed.id);
                         return (
                           <BorrowedFeatureBlock
                             key={`${i}-${borrowed.id}`}
@@ -3755,7 +3768,7 @@ function PathBlock({
                             dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                             armorRestricted={isArmorRestricted(borrowed)}
                             armorRestrictedMessage={armorRestrictedMessage(borrowed)}
-                            noMana={openFeature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana}
+                            noMana={openFeature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana || borrowedNoMana}
                             noManaNote={
                               staffGranted ? (
                                 <>
@@ -3764,6 +3777,8 @@ function PathBlock({
                                 </>
                               ) : grant?.noMana ? (
                                 CAMBION_NO_MANA_NOTE
+                              ) : borrowedNoMana ? (
+                                DEMI_ELFE_NO_MANA_NOTE
                               ) : undefined
                             }
                             actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}

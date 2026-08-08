@@ -22,7 +22,7 @@ const BUNDLE_KEYS = ['ancestries', 'classes', 'paths', 'features', 'equipment'] 
  * un lot partiellement corrompu ne doit pas casser le boot d'un utilisateur entitlé).
  */
 export function parseContentBundle(raw: unknown): ContentBundle {
-  const accumulator: Record<string, { id: string }[]> = {};
+  const accumulator: Record<string, unknown[]> = {};
   if (!raw || typeof raw !== 'object') return {};
   const obj = raw as Record<string, unknown>;
   for (const key of BUNDLE_KEYS) {
@@ -33,6 +33,23 @@ export function parseContentBundle(raw: unknown): ContentBundle {
         !!entry && typeof entry === 'object' && typeof (entry as { id?: unknown }).id === 'string',
     );
     if (entries.length > 0) accumulator[key] = entries;
+  }
+  // Liens voie↔peuple (PER-324) : forme DIFFÉRENTE des entités (`{ ancestryId, pathIds[] }`, pas d'`id`)
+  // → validation dédiée. On ne garde que les liens dont `ancestryId` est une string et `pathIds` un
+  // tableau de strings non vide. Sans ce traitement, la clé serait silencieusement écartée et la voie
+  // payante ne serait jamais rattachée au peuple de base côté client entitlé.
+  const links = obj.ancestryPathLinks;
+  if (Array.isArray(links)) {
+    const valid = links.filter(
+      (l): l is { ancestryId: string; pathIds: string[] } =>
+        !!l &&
+        typeof l === 'object' &&
+        typeof (l as { ancestryId?: unknown }).ancestryId === 'string' &&
+        Array.isArray((l as { pathIds?: unknown }).pathIds) &&
+        (l as { pathIds: unknown[] }).pathIds.every((p) => typeof p === 'string') &&
+        (l as { pathIds: unknown[] }).pathIds.length > 0,
+    );
+    if (valid.length > 0) accumulator.ancestryPathLinks = valid;
   }
   // Les entités ont été validées sur leur `id` ; le reste de leur forme est garanti
   // par notre pipeline de production du JSON (le moteur les consomme comme le contenu

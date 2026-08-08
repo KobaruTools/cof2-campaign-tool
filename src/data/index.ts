@@ -63,6 +63,7 @@ import {
 } from './feature-classification';
 import {
   mergeEntries,
+  mergeAncestryPathLinks,
   bumpContentVersion,
   type ContentBundle,
   type MergeReport,
@@ -177,7 +178,11 @@ export function registerContentBundle(bundle: ContentBundle): MergeReport {
     mergeEntries({ list: features, byId: featureById }, bundle.features),
     mergeEntries({ list: equipment, byId: equipmentById }, bundle.equipment),
   ];
-  const added = reports.reduce((sum, r) => sum + r.added, 0);
+  // Liens voie↔peuple (PER-324) : rattachement ADDITIF d'une voie payante à un peuple existant
+  // (`ancestryById` porte les mêmes instances que la base — la mutation est vue par tous les
+  // consommateurs). Compté dans le total pour qu'un lot qui n'apporterait QUE des liens bump quand même.
+  const linksAdded = mergeAncestryPathLinks(ancestryById, bundle.ancestryPathLinks);
+  const added = reports.reduce((sum, r) => sum + r.added, 0) + linksAdded;
   const skipped = reports.flatMap((r) => r.skipped);
   if (added > 0) bumpContentVersion();
   return { added, skipped };

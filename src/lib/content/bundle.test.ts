@@ -36,6 +36,33 @@ describe('parseContentBundle — normalisation défensive', () => {
     const bundle = parseContentBundle({ paths: [{ name: 'sans id' }] });
     expect(bundle.paths).toBeUndefined();
   });
+
+  // PER-324 : `ancestryPathLinks` a une forme SANS `id` — il doit survivre au parse gaté.
+  it('préserve les ancestryPathLinks valides (rattachement voie↔peuple)', () => {
+    const bundle = parseContentBundle({
+      ancestryPathLinks: [{ ancestryId: 'demi-elfe', pathIds: ['demi-elfe'] }],
+    });
+    expect(bundle.ancestryPathLinks).toEqual([{ ancestryId: 'demi-elfe', pathIds: ['demi-elfe'] }]);
+  });
+
+  it('filtre les ancestryPathLinks malformés (ancestryId/pathIds invalides)', () => {
+    const bundle = parseContentBundle({
+      ancestryPathLinks: [
+        { ancestryId: 'ok', pathIds: ['a'] },
+        { ancestryId: 42, pathIds: ['b'] }, // ancestryId non string
+        { ancestryId: 'x', pathIds: 'nope' }, // pathIds pas un tableau
+        { ancestryId: 'y', pathIds: [] }, // pathIds vide
+        { ancestryId: 'z', pathIds: ['w', 3] }, // pathId non string
+        null,
+      ],
+    });
+    expect(bundle.ancestryPathLinks).toEqual([{ ancestryId: 'ok', pathIds: ['a'] }]);
+  });
+
+  it('écarte ancestryPathLinks si aucun lien valide', () => {
+    const bundle = parseContentBundle({ ancestryPathLinks: [{ ancestryId: 42 }] });
+    expect(bundle.ancestryPathLinks).toBeUndefined();
+  });
 });
 
 describe('planContentReconciliation — cache ↔ entitlements', () => {

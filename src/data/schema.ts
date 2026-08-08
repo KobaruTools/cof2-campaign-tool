@@ -2461,6 +2461,29 @@ export interface PathFeatureChoice extends FeatureChoiceBase {
    * la voie B). Résolu par `featureArmorRestrictionViolations` (armorRestrictions.ts).
    */
   borrowArmorMax?: string;
+  /**
+   * Liste BLANCHE explicite d'ids de capacités empruntables (PER-324, demi-elfe « Nomade » : « Survie
+   * (rôdeur) OU Éclectique (barde) »). Quand présent, le domaine du choix se RÉDUIT exactement à ces
+   * ids (privés des capacités déjà possédées et des emprunteuses, règle des poupées russes), en
+   * IGNORANT `allowedRanks`/`classIds`/`pathIds`/`familyScope` : sert un choix binaire entre deux
+   * capacités NOMMÉES de voies et de rangs différents, qu'aucune contrainte par rang/voie ne cible.
+   * Absent = domaine dérivé des contraintes habituelles. Résolu par `featuresInChoiceDomain`.
+   */
+  featureIds?: string[];
+  /**
+   * Restreint le domaine aux SORTS (`Feature.isSpell`) — PER-324, demi-elfe « Sang féerique » : « un
+   * sort d'ensorceleur ou de druide ». Distinct de `familiarSpellProfile` (qui dérive AUSSI les voies
+   * du familier). Absent = pas de filtre sort/non-sort. Résolu par `featuresInChoiceDomain`.
+   */
+  spellsOnly?: boolean;
+  /**
+   * Le SORT emprunté par ce choix ne rapporte PAS le +1 PM d'un sort connu (PER-324, demi-elfe « Sang
+   * féerique » : « il ne reçoit pas de PM pour ce sort »). Symétrique du `noMana` des octrois FIXES
+   * (`grantedFeatures`, PER-323) mais porté par un choix `feature-from-path`. La capacité reste connue
+   * (ses effets comptent, elle s'affiche), seul son apport au réservoir de PM est retiré. Consommé par
+   * `borrowedNoManaFeatureIds` (choices.ts) → agrégé au set noMana de `spellCount`. Absent = +1 PM normal.
+   */
+  noManaCost?: boolean;
 }
 
 /**

@@ -314,6 +314,48 @@ describe('eligibleFeaturesForChoice', () => {
     expect(eligible).toContain('envouteur-r1'); // Injonction
   });
 
+  // PER-324, demi-elfe « Nomade » : liste blanche explicite de deux capacités nommées.
+  it('featureIds : réduit le domaine EXACTEMENT aux ids désignés (Survie / Éclectique)', () => {
+    const c = makeCharacter();
+    const choice: PathFeatureChoice = {
+      kind: 'feature-from-path',
+      prompt: 'test',
+      allowedRanks: [1, 2], // ignoré quand featureIds est présent
+      featureIds: ['survie-r1', 'vagabond-r2'],
+    };
+    const eligible = eligibleFeaturesForChoice(c, 'demi-orc-r2', choice).map((f) => f.id);
+    expect(eligible.sort()).toEqual(['survie-r1', 'vagabond-r2']);
+  });
+
+  it('featureIds : écarte une capacité déjà possédée', () => {
+    const c = makeCharacter({ featureIds: ['demi-orc-r1', 'demi-orc-r2', 'survie-r1'] });
+    const choice: PathFeatureChoice = {
+      kind: 'feature-from-path',
+      prompt: 'test',
+      allowedRanks: [1, 2],
+      featureIds: ['survie-r1', 'vagabond-r2'],
+    };
+    const eligible = eligibleFeaturesForChoice(c, 'demi-orc-r2', choice).map((f) => f.id);
+    expect(eligible).toEqual(['vagabond-r2']);
+  });
+
+  // PER-324, demi-elfe « Sang féerique » : « un sort d'ensorceleur ou de druide ».
+  it('spellsOnly : ne retient que les sorts du domaine', () => {
+    const c = makeCharacter();
+    const base: PathFeatureChoice = {
+      kind: 'feature-from-path',
+      prompt: 'test',
+      allowedRanks: [1, 2, 3],
+      classIds: ['ensorceleur', 'druide'],
+    };
+    const withSpells = eligibleFeaturesForChoice(c, 'demi-orc-r2', { ...base, spellsOnly: true });
+    expect(withSpells.length).toBeGreaterThan(0);
+    expect(withSpells.every((f) => f.isSpell)).toBe(true);
+    // Sans le filtre, le domaine contient aussi des non-sorts → strictement plus large.
+    const without = eligibleFeaturesForChoice(c, 'demi-orc-r2', base);
+    expect(without.length).toBeGreaterThan(withSpells.length);
+  });
+
   it('familyScope same-family : voies des profils de la famille du personnage', () => {
     // prestige-expert-r4 : rang 1 d'un profil de la même famille.
     const mage = makeCharacter({ classId: 'magicien', featureIds: ['prestige-expert-r4'] });

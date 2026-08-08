@@ -53,4 +53,38 @@ describe('registerContentBundle — augmentation en place des registres', () => 
     expect(report.added).toBe(0);
     expect(getContentVersion()).toBe(versionBefore);
   });
+
+  // PER-324 — `ancestryPathLinks` : rattachement ADDITIF d'une voie payante à un peuple existant.
+  it('rattache une voie à un peuple existant sans le redéfinir (ancestryPathLinks)', () => {
+    const demiElfe = ancestryById.get('demi-elfe');
+    expect(demiElfe).toBeDefined();
+    const before = [...demiElfe!.ancestryPathIds];
+    expect(before).not.toContain('demi-elfe'); // Voie payante absente au départ.
+    const versionBefore = getContentVersion();
+
+    const report = registerContentBundle({
+      ancestryPathLinks: [{ ancestryId: 'demi-elfe', pathIds: ['demi-elfe'] }],
+    });
+
+    expect(report.added).toBe(1);
+    expect(demiElfe!.ancestryPathIds).toContain('demi-elfe'); // Ajoutée…
+    expect(demiElfe!.ancestryPathIds.slice(0, before.length)).toEqual(before); // …sans retirer les voies de base.
+    expect(getContentVersion()).toBe(versionBefore + 1);
+
+    // Idempotente : rejouer le même lien n'ajoute rien et ne bump pas.
+    const again = registerContentBundle({
+      ancestryPathLinks: [{ ancestryId: 'demi-elfe', pathIds: ['demi-elfe'] }],
+    });
+    expect(again.added).toBe(0);
+    expect(getContentVersion()).toBe(versionBefore + 1);
+  });
+
+  it('ignore un lien vers un peuple inexistant', () => {
+    const versionBefore = getContentVersion();
+    const report = registerContentBundle({
+      ancestryPathLinks: [{ ancestryId: 'peuple-fantome', pathIds: ['x'] }],
+    });
+    expect(report.added).toBe(0);
+    expect(getContentVersion()).toBe(versionBefore);
+  });
 });

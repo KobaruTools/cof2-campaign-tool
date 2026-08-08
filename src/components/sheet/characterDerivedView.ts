@@ -32,7 +32,7 @@ import {
   stackedDamageReductions,
   type EffectContext,
 } from '@/lib/character/effects';
-import { grantedNoManaFeatureIds } from '@/lib/character/choices';
+import { grantedNoManaFeatureIds, borrowedNoManaFeatureIds } from '@/lib/character/choices';
 import { mergeMods, orphanMods } from '@/lib/character/orphanPoints';
 import { crystalStatBonuses } from '@/lib/character/crystals';
 import {
@@ -358,9 +358,13 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
   // le port d'armure (PER-83) : base de l'agrégation des bonus plats et du détail des
   // stats dérivées (PER-66). Une capacité gênée par l'armure ne compte plus nulle part.
   const modFeatureIds = activeFeatureIdsForMods(character);
-  // Sorts octroyés `noMana` (cambion « La belle et la bête », PER-323) : exclus du compte des sorts
-  // connus (pas de +1 PM), même s'ils sont aussi possédés par la voie d'origine (ex. voie du démon).
-  const noManaFeatureIds = grantedNoManaFeatureIds(character);
+  // Sorts sans +1 PM : octrois fixes `noMana` (cambion « La belle et la bête », PER-323) ∪ sorts
+  // empruntés par un choix `feature-from-path` marqué `noManaCost` (demi-elfe « Sang féerique », PER-324).
+  // Exclus du compte des sorts connus, même si aussi possédés par la voie d'origine (ex. voie du démon).
+  const noManaFeatureIds = new Set([
+    ...grantedNoManaFeatureIds(character),
+    ...borrowedNoManaFeatureIds(character),
+  ]);
   // Contexte d'effets (PER-67) : résout les valeurs scalantes et n'inclut que les
   // effets conditionnels dont l'interrupteur est actif.
   const effectCtx = effectContext(character);
