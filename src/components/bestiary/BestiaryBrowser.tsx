@@ -548,7 +548,39 @@ function BestiaryBrowserView({
   // Sous quoi la sidebar (tri + liste) se cale : l'en-tête global en pleine page, l'en-tête du
   // TIROIR (`stickyTop`) en variante intégrée.
   const sidebarStickyTop = embedded ? stickyTop + 8 : 84;
-  const listMaxHeight = embedded ? `calc(100vh - ${stickyTop + 180}px)` : "calc(100vh - 260px)";
+
+  // Hauteur RÉELLE (mesurée, jamais devinée — cf. `ReferenceBrowser`/`stuckHeight`) de tout ce qui
+  // se trouve AU-DESSUS de la liste dans le tiroir : la barre recherche+filtres, dont la hauteur
+  // varie (le groupe « livre source », le retour à la ligne des filtres selon la largeur). Une
+  // valeur en dur y calait mal dès que ces filtres changent de hauteur — la liste ET le détail
+  // débordaient alors du tiroir, qui devait défiler en entier au lieu de rester à 100 % de la VH.
+  const filterBarRef = useRef<HTMLDivElement>(null);
+  const [filterBarHeight, setFilterBarHeight] = useState(0);
+  useEffect(() => {
+    const el = filterBarRef.current;
+    if (!embedded || el == null) return;
+    const observer = new ResizeObserver(() => setFilterBarHeight(el.offsetHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [embedded]);
+
+  const trierHeaderRef = useRef<HTMLDivElement>(null);
+  const [trierHeaderHeight, setTrierHeaderHeight] = useState(0);
+  useEffect(() => {
+    const el = trierHeaderRef.current;
+    if (!embedded || el == null) return;
+    const observer = new ResizeObserver(() => setTrierHeaderHeight(el.offsetHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [embedded]);
+
+  // `stickyTop` (en-tête du tiroir) + son padding-top (16px) + la barre de filtres mesurée + le
+  // gap du Stack racine (16px) + l'en-tête « Trier » mesuré + le gap de la sidebar (8px) + le
+  // padding-bottom du tiroir (24px) : tout ce qui doit tenir en plus de la liste/du détail dans
+  // les 100 % de la VH du tiroir. En pleine page, une estimation suffit (la page défile normalement).
+  const listMaxHeight = embedded
+    ? `calc(100vh - ${stickyTop + 16 + filterBarHeight + 16 + trierHeaderHeight + 8 + 24}px)`
+    : "calc(100vh - 260px)";
 
   // Amène la ligne sélectionnée dans la vue de la sidebar quand la sélection change (clic de
   // lien croisé, refresh sur `?c=`, lien partagé) — on scrolle UNIQUEMENT le conteneur de la
@@ -569,6 +601,7 @@ function BestiaryBrowserView({
     <Stack spacing={2}>
       {/* Barre de recherche + filtres. */}
       <Box
+        ref={filterBarRef}
         sx={{
           p: 1.5,
           borderRadius: 2,
@@ -765,6 +798,7 @@ function BestiaryBrowserView({
         >
           {/* En-tête de la sidebar : choix du tri, en icônes condensées (tooltip au survol). */}
           <Box
+            ref={trierHeaderRef}
             sx={{
               display: "flex",
               alignItems: "center",
@@ -896,8 +930,19 @@ function BestiaryBrowserView({
         </Stack>
 
         {/* Détail : soit le panneau « contenu payant » (lien profond vers une créature non
-            accessible), soit le bloc de stats de la créature sélectionnée (blob à la demande). */}
-        <Box sx={{ minWidth: 0 }}>
+            accessible), soit le bloc de stats de la créature sélectionnée (blob à la demande).
+            En tiroir, plafonné à la même hauteur que la liste + défilement propre : un bloc de
+            stats long ne doit jamais grandir le tiroir au-delà de 100 % de la VH (sinon c'est le
+            TIROIR ENTIER qui défile, liste comprise, alors que seule la fiche déborde). */}
+        <Box
+          sx={{
+            minWidth: 0,
+            ...(embedded && {
+              maxHeight: { md: listMaxHeight },
+              overflowY: { md: "auto" },
+            }),
+          }}
+        >
           {urlUnavailable ? (
             <UnavailableCreatureNotice />
           ) : (
