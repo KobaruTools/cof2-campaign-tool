@@ -64,20 +64,21 @@ import { GroupRestControl } from '@/components/campaign/GroupRestControl';
 import { OpenTrackerWindowButton } from '@/components/campaign/OpenTrackerWindowButton';
 import { ProjectionLinkControl } from '@/components/campaign/ProjectionLinkControl';
 import { GmToolsDrawerHost, TOOLS_PARAM } from '@/components/campaign/GmToolsDrawerHost';
-import { DEFAULT_GM_TOOL } from '@/components/campaign/GmToolsDrawer';
+import { DEFAULT_GM_TOOL, isGmToolId, type GmToolId } from '@/components/campaign/GmToolsDrawer';
 import { GmReferenceDrawerHost, REFERENCE_PARAM } from '@/components/campaign/GmReferenceDrawerHost';
 import { GmBestiaryDrawerHost, BESTIARY_PARAM } from '@/components/campaign/GmBestiaryDrawerHost';
 import { HomeBackground } from '@/components/HomeBackground';
 import { GmSessionHeaderIndicator } from '@/components/session/GmSessionHeaderIndicator';
 import { SIDE_ACCENT, type CreatureSide } from '@/lib/ui/creature';
 import { usePersistedBoolean } from '@/lib/ui/usePersistedBoolean';
+import { usePersistedState } from '@/lib/ui/usePersistedState';
 import { customCreatureBlob } from '@/lib/session/customCreature';
 import { useActiveSession } from '@/lib/session/useActiveSession';
 import {
   isCampScopedStatus,
   type AnyStatusEffectId,
 } from '@/lib/character/statusEffects';
-import { groupBuffIntensityFor } from '@/lib/character/groupBuffs';
+import { groupBuffFeatureId, groupBuffIntensityFor } from '@/lib/character/groupBuffs';
 import { GroupBuffDialog, type GroupBuffCandidate } from '@/components/campaign/GroupBuffDialog';
 import type { BeneficialEffectId } from '@/data/schema';
 import { useGmScreenCombat, type LabeledCreature } from './useGmScreenCombat';
@@ -208,6 +209,16 @@ function CollapsibleSection({
 export default function GmScreenPage({ params }: { params: Promise<{ cid: string }> }) {
   const { cid } = use(params);
 
+  // Dernier onglet du tiroir « Outils du MJ » affiché — persisté (survit au rechargement)
+  // ET remonté en direct par `GmToolsDrawerHost` à chaque changement d'onglet (survit aussi
+  // à une simple fermeture/réouverture SANS rechargement, cf. `onActiveTabChange`). Sans ce
+  // second point, ce bouton visait toujours `DEFAULT_GM_TOOL` après une fermeture.
+  const [lastToolTab, setLastToolTab] = usePersistedState<GmToolId>(
+    `gm-tools-last-tab:${cid}`,
+    DEFAULT_GM_TOOL,
+    (raw) => (isGmToolId(raw as string) ? (raw as GmToolId) : undefined),
+  );
+
   // Combat en cours — logique partagée avec la fenêtre « présentation » (PER-248) :
   // état persisté par campagne (roster de créatures + PV + tour courant) et dérivation
   // des lignes du tracker. Le bouton « + Ajouter une créature » est laissé sur TOUTES
@@ -293,15 +304,32 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
   // Rien à réinitialiser tant qu'aucun combattant n'est en piste (bouton masqué).
   const hasCombatants = claimed.length > 0 || labeledCreatures.length > 0;
 
-  // FENÊTRE DE POSE d'un buff de groupe (PER-104) : `carrierKey` est le combattant sur lequel la puce
-  // a été déposée (ou dont le menu a été ouvert) — il donne le CAMP à proposer et le PALIER par défaut.
+  // FENÊTRE DE POSE d'un buff de groupe (PER-104) : `carrierKey` est le PORTEUR de la capacité qui
+  // confère ce buff — pas forcément le combattant sur lequel la puce a été déposée (PER-361). Un
+  // buff conféré par une capacité personnelle (Argument de taille du barbare, Chant des héros du
+  // barde) a un lanceur FIXE, quelle que soit la carte visée par le dépôt : celui qui possède la
+  // capacité. Il donne le CAMP à proposer et le PALIER par défaut.
   const [groupBuffPose, setGroupBuffPose] = useState<{
     buffId: BeneficialEffectId;
     carrierKey: string;
   } | null>(null);
-  const openGroupBuff = useCallback((carrierKey: string, buffId: BeneficialEffectId) => {
-    setGroupBuffPose({ buffId, carrierKey });
-  }, []);
+  // Résout le VRAI porteur parmi les personnages réclamés (seuls porteurs possibles, cf. `groupBuffIntensity`
+  // ci-dessous) : celui dont les capacités confèrent `buffId`. Repli sur la carte visée par le dépôt si
+  // personne ne le porte (ne devrait pas arriver — la palette ne propose ce buff que si un porteur existe).
+  const resolveGroupBuffCarrierKey = useCallback(
+    (droppedKey: string, buffId: BeneficialEffectId): string => {
+      const featureId = groupBuffFeatureId(buffId);
+      const holder = featureId ? claimed.find((c) => c.featureIds.includes(featureId)) : undefined;
+      return holder?.id ?? droppedKey;
+    },
+    [claimed],
+  );
+  const openGroupBuff = useCallback(
+    (droppedKey: string, buffId: BeneficialEffectId) => {
+      setGroupBuffPose({ buffId, carrierKey: resolveGroupBuffCarrierKey(droppedKey, buffId) });
+    },
+    [resolveGroupBuffCarrierKey],
+  );
 
   // Glisser-déposer des états (PER-279) : les puces de la palette (`useDraggable`, id préfixé) sont
   // déposées sur les colonnes du tracker (`useDroppable`, id = clé de combattant). Le capteur pointeur
@@ -322,8 +350,9 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
     const combatantKey = event.over?.id;
     if (!statusId || typeof combatantKey !== 'string') return;
     // Un buff visant le CAMP (PER-104, élargi PER-359) ne se pose pas sur la seule carte visée : sa
-    // règle vise « ses alliés et lui », ou « un allié » qui n'est pas forcément celui-là. Le dépôt
-    // désigne le PORTEUR (camp + palier pré-rempli) et ouvre la fenêtre de pose, qui tranche.
+    // règle vise « ses alliés et lui », ou « un allié » qui n'est pas forcément celui-là. Le PORTEUR
+    // (camp + palier pré-rempli) est le personnage dont la capacité confère ce buff (PER-361) — pas
+    // forcément la carte visée par le dépôt, que `openGroupBuff` n'utilise qu'en repli.
     if (isCampScopedStatus(statusId)) openGroupBuff(combatantKey, statusId as BeneficialEffectId);
     else applyStatus(combatantKey, statusId);
   };
@@ -539,7 +568,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
             size="small"
             startIcon={<HandymanIcon />}
             component={Link}
-            href={`/campaign/${cid}/gm-screen?${TOOLS_PARAM}=${DEFAULT_GM_TOOL}`}
+            href={`/campaign/${cid}/gm-screen?${TOOLS_PARAM}=${lastToolTab}`}
             scroll={false}
             sx={(theme) => glassButtonSx(theme, 'info')}
           >
@@ -782,7 +811,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
       {/* Tiroir « Outils du MJ » (PER-199), piloté par `?tools=`. Frontière `Suspense`
           imposée par la lecture des paramètres d'URL, comme le tiroir de fiche. */}
       <Suspense>
-        <GmToolsDrawerHost campaign={campaign} />
+        <GmToolsDrawerHost campaign={campaign} onActiveTabChange={setLastToolTab} />
       </Suspense>
 
       {/* Tiroir « Aide-mémoire », piloté par `?reference=1`. Même contrainte de frontière `Suspense`

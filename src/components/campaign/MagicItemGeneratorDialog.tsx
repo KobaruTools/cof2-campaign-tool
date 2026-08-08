@@ -39,7 +39,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
-import { PageRefText } from '@/components/SourceRef';
+import { PageRefText, SourceRef } from '@/components/SourceRef';
 import type { GmInventoryCategory } from '@/lib/campaign';
 import { MAGIC_PROPERTY_RULES, magicPropertyLabel } from '@/lib/character/magicItem';
 import {
@@ -146,13 +146,13 @@ function GeneratedPreview({ item }: { item: GeneratedMagicItem }) {
         {item.magicLevel > 0
           ? `Niveau de magie ${item.magicLevel} · valeur ${item.value.toLocaleString('fr-FR')} po`
           : 'Consommable — niveau de magie 0'}{' '}
-        (p. {item.sourcePage})
+        <SourceRef page={item.sourcePage} />
       </Typography>
 
       {/* Origine narrative (PER-309, p. 247) : légende ajoutée à la description de l'objet. */}
       {item.origin && (
         <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic', color: 'secondary.light' }}>
-          {item.origin.text}
+          <PageRefText>{item.origin.text}</PageRefText>
         </Typography>
       )}
 

@@ -95,7 +95,20 @@ function DragGhost({ line }: { line: EquipmentLine }) {
   );
 }
 
-export function GmToolsDrawerHost({ campaign }: { campaign: Campaign }) {
+export function GmToolsDrawerHost({
+  campaign,
+  onActiveTabChange,
+}: {
+  campaign: Campaign;
+  /**
+   * Dernier onglet valide affiché (retour propriétaire, PER-199/200) : remonté au parent
+   * pour qu'il persiste ce choix (`usePersistedState`, `gm-screen/page.tsx`) et cible le
+   * bon onglet la prochaine fois que le MJ clique sur « Outils du MJ » — sans ce callback,
+   * ce bouton visait toujours `DEFAULT_GM_TOOL`, même juste après avoir fermé le tiroir sur
+   * un autre onglet (repro : ouvrir Butin, fermer, rouvrir → retombait sur Rumeurs).
+   */
+  onActiveTabChange?: (tab: GmToolId) => void;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -124,7 +137,8 @@ export function GmToolsDrawerHost({ campaign }: { campaign: Campaign }) {
     // Synchronisation ponctuelle (pas une boucle) : on ne mémorise que des onglets valides.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (valid) setLastTab(raw);
-  }, [valid, raw]);
+    if (valid) onActiveTabChange?.(raw);
+  }, [valid, raw, onActiveTabChange]);
   const activeTab = valid ? raw : lastTab;
 
   // Glisser-déposer entre les deux réserves d'objets de l'onglet Butin (extension PER-200).
