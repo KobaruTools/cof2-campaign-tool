@@ -62,7 +62,6 @@ import { MagicItemGeneratorDialog } from '@/components/campaign/MagicItemGenerat
 import type { Campaign, GmInventory, GmInventoryItem } from '@/lib/campaign';
 import {
   addCategory,
-  addItem,
   addItems,
   duplicateItem,
   ensureCategory,
@@ -73,6 +72,7 @@ import {
   toggleCategoryCollapsed,
   updateItemLine,
 } from '@/lib/campaign/gmInventory';
+import { addLootItems } from '@/lib/campaign/loot';
 import { effectiveItem, itemType } from '@/lib/character/items';
 import type { Character, EquipmentLine } from '@/lib/character/types';
 import { isCustomItem } from '@/lib/character/types';
@@ -642,15 +642,44 @@ export function GmInventoryPanel({ campaign, pendingCategoryId, onBackToTools }:
     }
   };
 
-  /** Objet généré « selon le livre » (PER-308) : atterrit en « Sans catégorie », faute de
-   * catégorie évidente pour un tirage aléatoire. */
-  const handleReserveGenerated = async (line: EquipmentLine) => {
-    const ok = await persist(addItem(inv, { id: newId(), line, categoryId: null }));
-    if (ok) showToast(`« ${lineName(line)} » ajouté à l'inventaire.`, 'success');
+  /** Met `count` exemplaires d'un objet généré « selon le livre » (PER-308) dans une catégorie
+   * de l'inventaire du MJ (`null` = « Sans catégorie »). */
+  const handleReserveGeneratedToCategory = async (line: EquipmentLine, categoryId: string | null, count: number) => {
+    const ok = await persist(
+      addItems(
+        inv,
+        Array.from({ length: count }, () => ({ id: newId(), line, categoryId })),
+      ),
+    );
+    if (ok) showToast(count > 1 ? `${count} exemplaires ajoutés à l'inventaire.` : `« ${lineName(line)} » ajouté à l'inventaire.`, 'success');
   };
-  const handleGiveGenerated = (character: Character, line: EquipmentLine) => {
-    upsert({ ...character, equipment: [...character.equipment, line] });
-    showToast(`« ${lineName(line)} » ajouté à l'inventaire de ${character.name}.`, 'success');
+
+  /** Met `count` exemplaires d'un objet généré dans la réserve aléatoire de l'onglet Butin. */
+  const handleReserveGeneratedToRandom = async (line: EquipmentLine, count: number) => {
+    setBusy(true);
+    try {
+      const next = addLootItems(
+        campaign.loot,
+        Array.from({ length: count }, () => ({ id: newId(), line })),
+      );
+      await update(campaign.id, { loot: next });
+      showToast(count > 1 ? `${count} exemplaires ajoutés à la réserve.` : `« ${lineName(line)} » ajouté à la réserve.`, 'success');
+    } catch (e) {
+      showToast(`Enregistrement impossible : ${errorMessage(e)}`, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Donne `count` exemplaires d'un objet généré directement à l'inventaire d'un personnage (PER-308). */
+  const handleGiveGenerated = (character: Character, line: EquipmentLine, count: number) => {
+    upsert({ ...character, equipment: [...character.equipment, ...Array.from({ length: count }, () => line)] });
+    showToast(
+      count > 1
+        ? `${count} exemplaires ajoutés à l'inventaire de ${character.name}.`
+        : `« ${lineName(line)} » ajouté à l'inventaire de ${character.name}.`,
+      'success',
+    );
   };
 
   /** Crée `count` bourses IDENTIQUES nommées `name`, dans la catégorie « Divers » (créée si absente). */
@@ -918,7 +947,9 @@ export function GmInventoryPanel({ campaign, pendingCategoryId, onBackToTools }:
         open={generatorOpen}
         onClose={() => setGeneratorOpen(false)}
         campaignCharacters={campaignCharacters}
-        onReserve={handleReserveGenerated}
+        gmInventoryCategories={inv.categories}
+        onReserveToRandom={handleReserveGeneratedToRandom}
+        onReserveToCategory={handleReserveGeneratedToCategory}
         onGiveToPlayer={handleGiveGenerated}
       />
 

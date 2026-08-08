@@ -55,7 +55,7 @@ import { MagicItemGeneratorDialog } from '@/components/campaign/MagicItemGenerat
 import { ItemDialog } from '@/components/sheet/ItemDialog';
 import { useToast } from '@/components/toast/ToastProvider';
 import type { Campaign, LootItem } from '@/lib/campaign';
-import { moveItemFromLootToInventory } from '@/lib/campaign/gmInventory';
+import { addItems as addInventoryItems, moveItemFromLootToInventory } from '@/lib/campaign/gmInventory';
 import {
   addLootItems,
   drawLoot,
@@ -456,16 +456,46 @@ export function LootTreasurePanel({
     showToast(`« ${lineName(item.line)} » ajouté à l'inventaire de ${character.name}.`, 'success');
   };
 
-  /** Met un objet GÉNÉRÉ « selon le livre » (PER-308) dans la réserve de butin. */
-  const handleReserveGenerated = async (line: EquipmentLine) => {
-    const ok = await persist([...loot, { id: newLootId(), line, served: false }]);
-    if (ok) showToast(`« ${lineName(line)} » ajouté à la réserve.`, 'success');
+  /** Met `count` exemplaires d'un objet GÉNÉRÉ « selon le livre » (PER-308) dans la réserve de butin. */
+  const handleReserveGeneratedToRandom = async (line: EquipmentLine, count: number) => {
+    const ok = await persist(
+      addLootItems(
+        loot,
+        Array.from({ length: count }, () => ({ id: newLootId(), line })),
+      ),
+    );
+    if (ok) showToast(count > 1 ? `${count} exemplaires ajoutés à la réserve.` : `« ${lineName(line)} » ajouté à la réserve.`, 'success');
   };
 
-  /** Donne un objet GÉNÉRÉ directement à l'inventaire d'un personnage (PER-308). */
-  const handleGiveGenerated = (character: Character, line: EquipmentLine) => {
-    upsert({ ...character, equipment: [...character.equipment, line] });
-    showToast(`« ${lineName(line)} » ajouté à l'inventaire de ${character.name}.`, 'success');
+  /** Met `count` exemplaires d'un objet GÉNÉRÉ dans une catégorie de l'inventaire du MJ. */
+  const handleReserveGeneratedToCategory = async (line: EquipmentLine, categoryId: string | null, count: number) => {
+    setBusy(true);
+    try {
+      const next = addInventoryItems(
+        campaign.gmInventory,
+        Array.from({ length: count }, () => ({ id: newLootId(), line, categoryId })),
+      );
+      await update(campaign.id, { gmInventory: next });
+      showToast(
+        count > 1 ? `${count} exemplaires ajoutés à l'inventaire du MJ.` : `« ${lineName(line)} » ajouté à l'inventaire du MJ.`,
+        'success',
+      );
+    } catch (e) {
+      showToast(`Enregistrement impossible : ${errorMessage(e)}`, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Donne `count` exemplaires d'un objet GÉNÉRÉ directement à l'inventaire d'un personnage (PER-308). */
+  const handleGiveGenerated = (character: Character, line: EquipmentLine, count: number) => {
+    upsert({ ...character, equipment: [...character.equipment, ...Array.from({ length: count }, () => line)] });
+    showToast(
+      count > 1
+        ? `${count} exemplaires ajoutés à l'inventaire de ${character.name}.`
+        : `« ${lineName(line)} » ajouté à l'inventaire de ${character.name}.`,
+      'success',
+    );
   };
 
   return (
@@ -653,7 +683,9 @@ export function LootTreasurePanel({
         open={generatorOpen}
         onClose={() => setGeneratorOpen(false)}
         campaignCharacters={campaignCharacters}
-        onReserve={handleReserveGenerated}
+        gmInventoryCategories={campaign.gmInventory.categories}
+        onReserveToRandom={handleReserveGeneratedToRandom}
+        onReserveToCategory={handleReserveGeneratedToCategory}
         onGiveToPlayer={handleGiveGenerated}
       />
 

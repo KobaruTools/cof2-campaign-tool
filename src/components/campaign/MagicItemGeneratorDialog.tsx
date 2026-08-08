@@ -12,19 +12,23 @@
  * L'objet généré est une VRAIE `EquipmentLine` enchantée (réutilise `magicBonus`/`magicDef`/
  * `magicProperties`, câblés en PER-306/307), pas une description libre. Badges CUSTOM (≠ Chip),
  * verbatim de règle en info-bulle (conventions projet).
+ *
+ * « Mettre en réserve » (retour propriétaire) accepte AUSSI une catégorie de l'inventaire
+ * permanent du MJ, pas seulement la réserve aléatoire — menu au clic, comme « Attribuer à… ».
+ * Un nombre d'exemplaires (défaut 1) permet de créer plusieurs cartes IDENTIQUES d'un coup,
+ * quelle que soit la destination (même motif que `ItemDialog.bulkCreate`/`CoinPouchCreateDialog`).
  */
 import { useState } from 'react';
 import CasinoIcon from '@mui/icons-material/Casino';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
-import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
-import ReplayIcon from '@mui/icons-material/Replay';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
@@ -36,6 +40,7 @@ import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { AppTooltip } from '@/components/AppTooltip';
 import { PageRefText } from '@/components/SourceRef';
+import type { GmInventoryCategory } from '@/lib/campaign';
 import { MAGIC_PROPERTY_RULES, magicPropertyLabel } from '@/lib/character/magicItem';
 import {
   GAME_FRAME_LABEL,
@@ -167,14 +172,19 @@ export function MagicItemGeneratorDialog({
   open,
   onClose,
   campaignCharacters,
-  onReserve,
+  gmInventoryCategories,
+  onReserveToRandom,
+  onReserveToCategory,
   onGiveToPlayer,
 }: {
   open: boolean;
   onClose: () => void;
   campaignCharacters: Character[];
-  onReserve: (line: EquipmentLine) => void;
-  onGiveToPlayer: (character: Character, line: EquipmentLine) => void;
+  /** Catégories de l'inventaire du MJ — cibles possibles de « Mettre en réserve », en plus de la réserve aléatoire. */
+  gmInventoryCategories: GmInventoryCategory[];
+  onReserveToRandom: (line: EquipmentLine, count: number) => void;
+  onReserveToCategory: (line: EquipmentLine, categoryId: string | null, count: number) => void;
+  onGiveToPlayer: (character: Character, line: EquipmentLine, count: number) => void;
 }) {
   const [category, setCategory] = useState<MagicItemCategory>('weapon');
   const [level, setLevel] = useState(3);
@@ -182,6 +192,8 @@ export function MagicItemGeneratorDialog({
   const [minor, setMinor] = useState(false);
   const [withOrigin, setWithOrigin] = useState(false);
   const [item, setItem] = useState<GeneratedMagicItem | null>(null);
+  const [count, setCount] = useState(1);
+  const [reserveAnchor, setReserveAnchor] = useState<HTMLElement | null>(null);
   const [giveAnchor, setGiveAnchor] = useState<HTMLElement | null>(null);
 
   const recommended = recommendedMagicLevel(level, frame, minor);
@@ -195,18 +207,27 @@ export function MagicItemGeneratorDialog({
         randomRoll,
       ),
     );
+    setCount(1);
   };
 
-  const handleReserve = () => {
+  const handleReserveToRandom = () => {
+    setReserveAnchor(null);
     if (!item) return;
-    onReserve(item.line);
+    onReserveToRandom(item.line, count);
+    setItem(null);
+  };
+
+  const handleReserveToCategory = (categoryId: string | null) => {
+    setReserveAnchor(null);
+    if (!item) return;
+    onReserveToCategory(item.line, categoryId, count);
     setItem(null);
   };
 
   const handleGive = (character: Character) => {
     setGiveAnchor(null);
     if (!item) return;
-    onGiveToPlayer(character, item.line);
+    onGiveToPlayer(character, item.line, count);
     setItem(null);
   };
 
@@ -216,8 +237,10 @@ export function MagicItemGeneratorDialog({
       <DialogContent dividers>
         <Stack spacing={2}>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Le livre ne propose pas de table unique de trésor (p. 245) : il déroule une table par
-            catégorie. Choisissez la catégorie, le niveau du personnage et le cadre de jeu.
+            <PageRefText>
+              Le livre ne propose pas de table unique de trésor (p. 245) : il déroule une table
+              par catégorie. Choisissez la catégorie, le niveau du personnage et le cadre de jeu.
+            </PageRefText>
           </Typography>
 
           <TextField
@@ -263,7 +286,7 @@ export function MagicItemGeneratorDialog({
 
           <FormControlLabel
             control={<Switch checked={minor} onChange={(e) => setMinor(e.target.checked)} />}
-            label="Objet mineur (colonne du niveau ÷ 2, p. 244)"
+            label={<PageRefText>Objet mineur (colonne du niveau ÷ 2, p. 244)</PageRefText>}
           />
 
           <Box>
@@ -275,7 +298,7 @@ export function MagicItemGeneratorDialog({
                   onChange={(e) => setWithOrigin(e.target.checked)}
                 />
               }
-              label="Ajouter une origine (provenance, époque, peuple — p. 247)"
+              label={<PageRefText>Ajouter une origine (provenance, époque, peuple — p. 247)</PageRefText>}
             />
             {!originAllowed && (
               <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', ml: 4.5, mt: -0.5 }}>
@@ -287,7 +310,7 @@ export function MagicItemGeneratorDialog({
           <Typography variant="caption" sx={{ color: 'text.disabled' }}>
             Niveau de magie recommandé au niveau {level} ({GAME_FRAME_LABEL[frame].toLowerCase()}
             {minor ? ', mineur' : ''}) :{' '}
-            {recommended > 0 ? recommended : 'consommable / aucun (p. 244)'}
+            {recommended > 0 ? recommended : <PageRefText>consommable / aucun (p. 244)</PageRefText>}
           </Typography>
 
           <Button variant="contained" color="secondary" startIcon={<CasinoIcon />} onClick={roll}>
@@ -295,42 +318,65 @@ export function MagicItemGeneratorDialog({
           </Button>
 
           {item && <GeneratedPreview item={item} />}
+
+          {item && (
+            <TextField
+              type="number"
+              size="small"
+              label="Nombre d'exemplaires"
+              value={count}
+              onChange={(e) => setCount(Math.max(1, Math.floor(Number(e.target.value)) || 1))}
+              slotProps={{ htmlInput: { min: 1, max: 50 } }}
+              helperText="Crée plusieurs cartes identiques d'un coup, quelle que soit la destination."
+              sx={{ width: 260 }}
+            />
+          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
         <Button onClick={onClose}>Fermer</Button>
         <Box sx={{ flexGrow: 1 }} />
         {item && (
-          <>
-            <Button startIcon={<ReplayIcon />} onClick={roll}>
-              Relancer
-            </Button>
-            <Button variant="outlined" startIcon={<PlaylistAddIcon />} onClick={handleReserve}>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<PlaylistAddIcon />}
+              onClick={(e) => setReserveAnchor(e.currentTarget)}
+            >
               Mettre en réserve
             </Button>
+            <Menu anchorEl={reserveAnchor} open={Boolean(reserveAnchor)} onClose={() => setReserveAnchor(null)}>
+              <MenuItem onClick={handleReserveToRandom}>Réserve aléatoire (Butin)</MenuItem>
+              <Divider />
+              <MenuItem onClick={() => handleReserveToCategory(null)}>Sans catégorie (Inventaire du MJ)</MenuItem>
+              {gmInventoryCategories.map((cat) => (
+                <MenuItem key={cat.id} onClick={() => handleReserveToCategory(cat.id)}>
+                  {cat.name} (Inventaire du MJ)
+                </MenuItem>
+              ))}
+            </Menu>
             <AppTooltip
-              title={campaignCharacters.length === 0 ? 'Aucun personnage rattaché à cette campagne' : ''}
+              title={campaignCharacters.length === 0 ? 'Aucun personnage rattaché à cette campagne' : 'Attribuer à…'}
             >
               <span>
                 <Button
                   variant="outlined"
-                  startIcon={<PersonAddAlt1Icon />}
+                  startIcon={<Inventory2Icon />}
                   onClick={(e) => setGiveAnchor(e.currentTarget)}
                   disabled={campaignCharacters.length === 0}
                 >
-                  Donner à un joueur
+                  Attribuer à…
                 </Button>
               </span>
             </AppTooltip>
             <Menu anchorEl={giveAnchor} open={Boolean(giveAnchor)} onClose={() => setGiveAnchor(null)}>
               {campaignCharacters.map((c) => (
                 <MenuItem key={c.id} onClick={() => handleGive(c)}>
-                  <Inventory2Icon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
                   {c.name}
                 </MenuItem>
               ))}
             </Menu>
-          </>
+          </Stack>
         )}
       </DialogActions>
     </Dialog>
