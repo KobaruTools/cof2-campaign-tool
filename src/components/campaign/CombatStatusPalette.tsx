@@ -14,9 +14,9 @@
  * distingue les familles (rouge = état subi, bleu = condition d'environnement, vert = buff de groupe,
  * cf. `statusTone`).
  *
- * La ligne verte porte en plus, collée à sa droite, une CROIX de levée collective (`onClearGroupBuffs`)
- * qui retire d'un clic tous les buffs de groupe posés, sur tous les combattants : la pose s'adresse à
- * un camp entier, la levée doit pouvoir en faire autant.
+ * Sur la ligne verte, chaque buff RÉELLEMENT POSÉ porte en plus, collée à sa droite, une CROIX de
+ * levée (`onClearGroupBuff`) qui le retire d'un clic de tous les combattants : la pose s'adresse à un
+ * camp entier, la levée doit pouvoir en faire autant — mais buff par buff.
  *
  * Le drop applique l'état via les mutations de la tranche 2 (`applyStatus`) — le câblage
  * `@dnd-kit` (DndContext, capteurs, `onDragEnd`) vit dans la page MJ, qui enveloppe cette palette
@@ -250,28 +250,24 @@ function DraggableStatusChip({
 }
 
 /**
- * Croix de LEVÉE COLLECTIVE des buffs de groupe, collée à la droite de la ligne verte. Un clic lève
- * tous les buffs posés (`ids`) sur TOUS les combattants — pas seulement sur un camp : le MJ peut
- * avoir béni une escouade adverse, et rien ne justifie de laisser traîner la moitié d'une levée.
+ * Croix de LEVÉE d'un buff, soudée à la droite de SA puce. Elle ne lève que l'effet auquel elle est
+ * accolée — une croix unique en bout de ligne se lisait comme appartenant à la dernière puce (celle
+ * qui la précède), et emportait pourtant tous les buffs posés : deux mensonges d'un coup.
+ *
+ * Partagée avec la fiche du joueur (`ActiveStatusPanel`), d'où le libellé confié à l'appelant : le MJ
+ * lève sur tous les combattants, le joueur seulement sur lui-même.
  *
  * Pas de confirmation : reposer un buff coûte un glisser (la fenêtre garde palier et camp
  * pré-remplis), alors qu'une modale à chaque fin de combat coûte un clic à chaque fois. L'infobulle
  * nomme ce qui va être levé, pour que le geste ne soit jamais une surprise.
  */
-function ClearGroupBuffsButton({
-  ids,
-  onClear,
-}: {
-  ids: readonly BeneficialEffectId[];
-  onClear: () => void;
-}) {
-  const labels = ids.map((id) => statusLabel(id)).join(' et ');
+export function ClearStatusButton({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <AppTooltip title={`Lever ${labels} sur tous les combattants`}>
+    <AppTooltip title={label}>
       <IconButton
         size="small"
         color="success"
-        aria-label={`Lever ${labels} sur tous les combattants`}
+        aria-label={label}
         onClick={onClear}
         sx={(theme) => ({
           // Soudée à la dernière puce : même hauteur, coins GAUCHES carrés, et un `-1px` de marge qui
@@ -295,29 +291,33 @@ function ClearGroupBuffsButton({
 }
 
 /**
- * UNE ligne de la palette : ses puces glissables et, sur la ligne bénéfique, la croix de levée
- * collective. `clear` fourni, la DERNIÈRE puce et la croix sont rendues dans un conteneur sans
- * gouttière : elles ne forment plus qu'un bloc (coins carrés à la jonction, bordures superposées).
+ * UNE ligne de la palette : ses puces glissables et, sur la ligne bénéfique, la croix de levée de
+ * CHAQUE buff effectivement posé. Puce et croix sont rendues dans un conteneur sans gouttière : elles
+ * ne forment plus qu'un bloc (coins carrés à la jonction, bordures superposées).
  */
 function PaletteRow({
   group,
   clear,
 }: {
   group: StatusGroup;
-  clear?: { ids: readonly BeneficialEffectId[]; onClear: () => void };
+  /** Buffs posés levables, et le geste de levée — par id : une croix ne lève QUE son propre effet. */
+  clear?: { ids: readonly BeneficialEffectId[]; onClear: (id: BeneficialEffectId) => void };
 }) {
-  const head = clear ? group.ids.slice(0, -1) : group.ids;
-  const last = group.ids[group.ids.length - 1];
+  const clearable = new Set<string>(clear?.ids ?? []);
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-      {head.map((id) => (
-        <DraggableStatusChip key={id} id={id} />
-      ))}
-      {clear && last !== undefined && (
-        <Box sx={{ display: 'flex' }}>
-          <DraggableStatusChip key={last} id={last} squareRight />
-          <ClearGroupBuffsButton ids={clear.ids} onClear={clear.onClear} />
-        </Box>
+      {group.ids.map((id) =>
+        clear && clearable.has(id) ? (
+          <Box key={id} sx={{ display: 'flex' }}>
+            <DraggableStatusChip id={id} squareRight />
+            <ClearStatusButton
+              label={`Lever ${statusLabel(id)} sur tous les combattants`}
+              onClear={() => clear.onClear(id as BeneficialEffectId)}
+            />
+          </Box>
+        ) : (
+          <DraggableStatusChip key={id} id={id} />
+        ),
       )}
     </Box>
   );
@@ -333,21 +333,21 @@ export function CombatStatusPalette({
   situationalIds,
   groupBuffIds = [],
   posedGroupBuffIds = [],
-  onClearGroupBuffs,
+  onClearGroupBuff,
 }: {
   situationalIds: readonly SituationalEffectId[];
   /** Buffs de groupe débloqués par la table (PER-104). Vide/absent = ligne verte masquée. */
   groupBuffIds?: readonly BeneficialEffectId[];
   /**
-   * Buffs de groupe actuellement POSÉS sur au moins un combattant : ce que la croix de levée
-   * collective a à retirer. Vide = rien à lever, la croix ne s'affiche pas.
+   * Buffs de groupe actuellement POSÉS sur au moins un combattant : chacun reçoit sa croix de levée,
+   * sur SA puce. Vide = rien à lever, aucune croix.
    */
   posedGroupBuffIds?: readonly BeneficialEffectId[];
   /**
-   * Lève TOUS les buffs de groupe posés, sur tous les combattants, en une écriture. Absent = pas de
-   * croix (palette en lecture, ou écran qui ne sait pas écrire l'état de combat).
+   * Lève CE buff (et lui seul) sur tous les combattants, en une écriture. Absent = pas de croix
+   * (palette en lecture, ou écran qui ne sait pas écrire l'état de combat).
    */
-  onClearGroupBuffs?: () => void;
+  onClearGroupBuff?: (id: BeneficialEffectId) => void;
 }) {
   return (
     // Aucun sous-titre de groupe, et les lignes COLLÉES (même gouttière verticale qu'entre deux puces
@@ -362,10 +362,11 @@ export function CombatStatusPalette({
           group={group}
           // Levée collective sur la seule ligne bénéfique : un buff de groupe est posé sur tout un
           // camp, le lever carte par carte est une corvée — et repasser par la fenêtre de pose
-          // suppose de se souvenir de quelle carte portait le sort.
+          // suppose de se souvenir de quelle carte portait le sort. Une croix PAR buff posé : deux
+          // effets peuvent courir en même temps, lever l'un ne doit pas emporter l'autre.
           clear={
-            group.family === 'group-buff' && onClearGroupBuffs && posedGroupBuffIds.length > 0
-              ? { ids: posedGroupBuffIds, onClear: onClearGroupBuffs }
+            group.family === 'group-buff' && onClearGroupBuff && posedGroupBuffIds.length > 0
+              ? { ids: posedGroupBuffIds, onClear: onClearGroupBuff }
               : undefined
           }
         />

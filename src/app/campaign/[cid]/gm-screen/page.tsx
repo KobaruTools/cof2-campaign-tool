@@ -825,7 +825,7 @@ export default function GmScreenPage({ params }: { params: Promise<{ cid: string
                 situationalIds={situationalEffectIds}
                 groupBuffIds={groupBuffIds}
                 posedGroupBuffIds={posedGroupBuffIds}
-                onClearGroupBuffs={() => removeStatusesEverywhere(posedGroupBuffIds)}
+                onClearGroupBuff={(id) => removeStatusesEverywhere([id])}
               />
             }
             stickyBottom
