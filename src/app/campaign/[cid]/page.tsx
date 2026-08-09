@@ -57,6 +57,7 @@ import { AttachCharacterDialog } from '@/components/home/AttachCharacterDialog';
 import { ImportCharacterDialog } from '@/components/home/ImportCharacterDialog';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { summarizeInCampaign } from '@/lib/character/summary';
+import { useContentVersion } from '@/lib/content/useContentVersion';
 import { downloadCharacterExport } from '@/lib/character/transferExport';
 import { useCharactersStore } from '@/stores/characters';
 import { useCampaignsStore } from '@/stores/campaigns';
@@ -80,6 +81,9 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
   const loadPlayers = usePlayersStore((s) => s.load);
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
+  // Force le recalcul de `rows` quand le contenu payant (peuples/classes du
+  // Compagnon) arrive APRÈS le premier rendu (PER-321, cf. characters/page.tsx).
+  const contentVersion = useContentVersion();
 
   // Charge les campagnes possédées au montage : la campagne courante est résolue
   // depuis ce cache cloud (RLS `owner_id`), le CRUD vivant sur `/campaigns`.
@@ -154,7 +158,8 @@ export default function CampaignPage({ params }: { params: Promise<{ cid: string
             return dir * a.updatedAt.localeCompare(b.updatedAt);
         }
       });
-  }, [characters, cid, campaign, sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- contentVersion déclenche le recalcul, jamais lu directement
+  }, [characters, cid, campaign, sort, contentVersion]);
 
   // Split actifs / archivés (PER-183) : « Archivés » est un terme d'UI désignant
   // l'union mort ∪ retiré (pas une valeur de statut). Le changement de statut se

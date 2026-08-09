@@ -65,6 +65,7 @@ import { UploadCharacterDialog } from '@/components/home/UploadCharacterDialog';
 import type { Character } from '@/lib/character/types';
 import type { CharacterSummary } from '@/lib/character/summary';
 import { summarizeInCampaign } from '@/lib/character/summary';
+import { useContentVersion } from '@/lib/content/useContentVersion';
 import { downloadCharacterExport } from '@/lib/character/transferExport';
 import { useAppSession } from '@/lib/supabase/useAppSession';
 import { useCharactersStore } from '@/stores/characters';
@@ -92,6 +93,10 @@ export default function CharactersPage() {
   const loadCampaigns = useCampaignsStore((s) => s.load);
   const draft = useWizardStore((s) => s.draft);
   const clearDraft = useWizardStore((s) => s.clear);
+  // Force le recalcul des lignes quand le contenu payant (peuples/classes du
+  // Compagnon) arrive APRÈS le premier rendu — sinon `allRows` reste figé sur
+  // le tiret de secours (PER-321, cf. usage identique dans character/[id]/page.tsx).
+  const contentVersion = useContentVersion();
 
   // Charge les personnages cloud (RLS `owner_id`) puis fusionne au staging local
   // (PER-192), et les campagnes cloud pour résoudre le nom du badge de chaque perso.
@@ -168,7 +173,8 @@ export default function CharactersPage() {
       characters.map((c) =>
         summarizeInCampaign(c, c.campaignId ? campaignById.get(c.campaignId) : null),
       ),
-    [characters, campaignById],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- contentVersion déclenche le recalcul, jamais lu directement
+    [characters, campaignById, contentVersion],
   );
 
   // Filtre (recherche) puis tri. Le regroupement par campagne se fait ensuite.
