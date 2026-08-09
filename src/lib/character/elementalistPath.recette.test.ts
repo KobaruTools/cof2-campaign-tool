@@ -12,9 +12,12 @@
  * gathered par `applyCreatureUpgrades` sur la voie (même pathId que r6, ciblage par défaut). Le
  * bonus d'attaque magique +2 / malus de résistance +2 restent verbatim (pas de primitive de bonus
  * d'attaque de SORT scopée par type de dégâts). R5 : RD ÷2 scopée cross-capacité, inchangée. R6 :
- * mini-fiche structurée, titre + nom de créature DÉCLINÉS (`%of%`) sur l'élément de rang 4, DM en
- * dice-parse (`[2d4° + 6]`), immunité + bonus de branche portés par l'option de rang 4 — plus de
- * tableau verbatim dans le rendu (richText prose seule). R7 : dé parsé (`+{1d4°}`) + élément rappelé
+ * mini-fiche structurée, titre + nom de créature DÉCLINÉS sur la nature PRIMORDIALE de l'élément de
+ * rang 4 (`%primordialOf%`, DISTINCTE du vocabulaire énergie de `%of%` — froid→terre, électricité→
+ * air, acide→eau, feu→feu), DM en dice-parse (`[2d4° + 6]`), immunité + bonus de branche portés par
+ * l'option de rang 4 — plus de tableau verbatim dans le rendu (richText prose seule), le texte des
+ * 4 branches reste rappelé en note (`creatureProfile.verbatimSource`, encadré dédié). R7 : dé parsé
+ * (`+{1d4°}`) + élément rappelé
  * (`%noun%`), toujours verbatim pour le bonus lui-même. R8 : durée parsée (`[=5 + INT]`), immunité à
  * l'élément de rang 4 désormais mécanisée (2e entrée de RD, cross-capacité comme r5) — la
  * réduction aux seules capacités de la branche retenue et la mécanisation des bonus propres à
@@ -101,24 +104,27 @@ describe("PER-74 — voie de l'élémentaliste (p. 157, recette end-to-end)", ()
     expect(damageReductionSources(sansChoix).find((d) => d.featureId === R5)).toBeUndefined();
   });
 
-  it("r6 Invocation d'élémentaire : titre + nom de créature déclinés sur l'élément de rang 4", () => {
+  it("r6 Invocation d'élémentaire : titre + nom de créature déclinés sur la nature PRIMORDIALE de l'élément de rang 4", () => {
     const r6 = featureById.get(R6)!;
-    expect(r6.name).toBe("Invocation d'élémentaire %of%");
+    expect(r6.name).toBe("Invocation d'élémentaire %primordialOf%");
     expect(r6.elementFromChoice).toEqual({ choiceFeatureId: R4, choiceIndex: 0 });
+    // feu (fixture) → primordial « feu » lui-même ; froid → « terre » (PAS « froid »).
     expect(declineForFeature(character, r6, r6.name)).toBe("Invocation d'élémentaire de feu");
-    // richText = prose seule (durée [=INT] minutes), plus de tableau de stats verbatim dans le rendu —
-    // mais le texte des 4 branches reste rappelé en note (demande propriétaire, même mécanisé ailleurs).
+    const froid: Character = { ...character, featureChoices: { [R4]: ['cold'] } };
+    expect(declineForFeature(froid, r6, r6.name)).toBe("Invocation d'élémentaire de terre");
+    const air: Character = { ...character, featureChoices: { [R4]: ['lightning'] } };
+    expect(declineForFeature(air, r6, r6.name)).toBe("Invocation d'élémentaire d'air");
+    const eau: Character = { ...character, featureChoices: { [R4]: ['acid'] } };
+    expect(declineForFeature(eau, r6, r6.name)).toBe("Invocation d'élémentaire d'eau");
+    // richText = prose seule (durée [=INT] minutes), plus de tableau de stats verbatim dans le rendu.
     expect(r6.richText).not.toContain('CRÉATURE NON VIVANTE');
     expect(r6.richText).toContain('[=INT]');
-    expect(r6.richText).toContain('Note — texte des branches élémentaires');
-    expect(r6.richText).toContain('Feu : +{1d4°} DM, immunisé au feu.');
-    expect(r6.richText).toContain('Terre : +5 DEF, immunisé au froid.');
   });
 
-  it("r6 : mini-fiche de base — DM en dice-parse, PLUS de tableau des 4 branches figé", () => {
+  it("r6 : mini-fiche de base — DM en dice-parse, PLUS de tableau des 4 branches figé, texte des branches en note (verbatimSource)", () => {
     const r6 = featureById.get(R6)!;
     expect(r6.creatureProfile).toMatchObject({
-      name: 'Élémentaire %of%',
+      name: 'Élémentaire %primordialOf%',
       companionType: 'summon',
       size: 'grande',
       defense: '[19]',
@@ -127,6 +133,15 @@ describe("PER-74 — voie de l'élémentaliste (p. 157, recette end-to-end)", ()
       attack: { fromMaster: 'magicAttack', damage: '[2d4° + 6]' },
     });
     expect(r6.creatureProfile?.specialAbilities).toBeUndefined();
+    // Le texte des 4 branches reste visible en NOTE (encadré `verbatimSource`, demande propriétaire),
+    // même si une seule s'applique et que les bonus sont déjà mécanisés via l'option du rang 4.
+    expect(r6.creatureProfile?.verbatimSource?.sourcePage).toBe(157);
+    const branchesText = r6.creatureProfile!.verbatimSource!.text;
+    expect(branchesText.split('\n')).toHaveLength(4);
+    expect(branchesText).toContain('• Feu : +1d4° DM, immunisé au feu.');
+    expect(branchesText).toContain("• Eau : dé bonus en attaque, immunisé à l'acide.");
+    expect(branchesText).toContain('• Air : vol 30 m, immunisé à la foudre.');
+    expect(branchesText).toContain('• Terre : +5 DEF, immunisé au froid.');
     expect(r6.effects).toEqual([
       {
         kind: 'conditional-stat-bonus',

@@ -2350,22 +2350,25 @@ export const prestigeFeatures2: Feature[] = [
   },
   {
     id: 'prestige-elementaliste-r6',
-    name: "Invocation d'élémentaire %of%",
+    name: "Invocation d'élémentaire %primordialOf%",
     pathId: 'prestige-elementaliste',
     rank: 6,
     isSpell: true,
     actionTypes: ['L'],
     text:
       "Une fois par combat, le magicien invoque un élémentaire de l'élément de son choix, il lui obéit pendant INT minutes puis disparaît. Il agit au tour du magicien.\n\nÉLÉMENTAIRE — CRÉATURE NON VIVANTE DE TAILLE GRANDE\nAGI +2 | CON +6* | FOR +6* | PER +0 | CHA -2 | INT -2 | VOL +4\nDéfense 19 · Points de vigueur [niv. du magicien × 5] · Initiative 10\nCoup [attaque magique du magicien] · DM 2d4°+6\nFeu : +1d4° DM, immunisé au feu. Eau : dé bonus en attaque, immunisé à l'acide. Air : vol 30 m, immunisé à la foudre. Terre : +5 DEF, immunisé au froid.",
-    // Rendu enrichi (2026-08-08, retour propriétaire) : prose SEULE (durée [=INT] minutes), le
+    // Rendu enrichi (2026-08-08/09, retours propriétaire) : prose SEULE (durée [=INT] minutes), le
     // tableau de stats verbatim est retiré de l'affichage — porté par `creatureProfile` (mini-fiche
     // `CreatureStatBlock`), comme Invocation d'un démon (demon-r5, p. 108). Titre ET prose déclinés
-    // sur l'élément de prédilection (rang 4, `elementFromChoice`) via le token `%of%` (« Invocation
-    // d'élémentaire de feu »). Le `text` verbatim ci-dessus reste inchangé (livre imprimé). Le texte
-    // des 4 branches (mécanisées via l'option du rang 4, cf. plus bas) reste rappelé en note dans le
-    // richText, à la demande du propriétaire, même déjà mécanisé — pour garder l'info visible.
+    // sur l'élément de prédilection (rang 4, `elementFromChoice`) via `%primordialOf%` (« Invocation
+    // d'élémentaire de terre » pour l'élément « froid » — nature PRIMORDIALE, DISTINCTE de l'énergie
+    // de r4/r5/r7 : `dragon-elements.ts` porte désormais les deux vocabulaires). Le `text` verbatim
+    // ci-dessus reste inchangé (livre imprimé). Le texte des 4 branches (mécanisées via l'option du
+    // rang 4, cf. plus bas) reste rappelé en NOTE — `creatureProfile.verbatimSource`, même encadré
+    // que la description des familiers fantastiques — à la demande du propriétaire, pour garder
+    // l'info visible même si déjà mécanisée.
     richText:
-      "Une fois par combat, le magicien invoque un élémentaire %of%, il lui obéit pendant [=INT] minutes puis disparaît. Il agit au tour du magicien.\n\nNote — texte des branches élémentaires (mécanisées ci-dessus via l'option retenue au rang 4 ; une seule s'applique) : Feu : +{1d4°} DM, immunisé au feu. Eau : dé bonus en attaque, immunisé à l'acide. Air : vol 30 m, immunisé à la foudre. Terre : +5 DEF, immunisé au froid.",
+      "Une fois par combat, le magicien invoque un élémentaire %primordialOf%, il lui obéit pendant [=INT] minutes puis disparaît. Il agit au tour du magicien.",
     // L'élémentaire reprend TOUJOURS l'élément de prédilection du rang 4 (arbitrage propriétaire,
     // cf. commentaire sur r4) : la RD d'immunité + le bonus de branche (DM/dé bonus/DEF/vol) sont
     // portés par l'OPTION retenue au rang 4 (`FeatureChoiceOption.creatureUpgrade`), gathered
@@ -2380,7 +2383,7 @@ export const prestigeFeatures2: Feature[] = [
       },
     ],
     creatureProfile: {
-      name: 'Élémentaire %of%',
+      name: 'Élémentaire %primordialOf%',
       companionType: 'summon',
       type: 'Créature non vivante',
       size: 'grande',
@@ -2390,6 +2393,14 @@ export const prestigeFeatures2: Feature[] = [
       hitPoints: '[=niveau × 5]',
       initiative: '10',
       attack: { label: 'Coup', fromMaster: 'magicAttack', damage: '[2d4° + 6]' },
+      verbatimSource: {
+        text:
+          '• Feu : +1d4° DM, immunisé au feu.\n' +
+          "• Eau : dé bonus en attaque, immunisé à l'acide.\n" +
+          '• Air : vol 30 m, immunisé à la foudre.\n' +
+          '• Terre : +5 DEF, immunisé au froid.',
+        sourcePage: 157,
+      },
     },
     sourcePage: 157,
   },

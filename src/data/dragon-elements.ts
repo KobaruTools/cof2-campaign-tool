@@ -42,6 +42,17 @@ export interface DragonElement {
   swordAdj: string;
   /** Groupe verbal d'activation de l'épée : « enflammer son épée », « enduire son épée d'acide ». */
   swordVerbPhrase: string;
+  /**
+   * NATURE PRIMORDIALE correspondante (PER-74, voie de l'élémentaliste, p. 157) : le livre y écrit
+   * DEUX vocabulaires distincts pour les mêmes 4 énergies — l'« élément de prédilection » (feu/
+   * froid/électricité/acide, ce que porte `noun`/`of` ci-dessus) et les 4 éléments PRIMORDIAUX de
+   * l'élémentaire invoqué/de la forme élémentaire (Feu/Eau/Air/Terre). Mapping déduit des immunités
+   * du tableau r6 et confirmé par le propriétaire (2026-08-09) : feu→Feu, froid→Terre,
+   * électricité→Air, acide→Eau. Nom NU capitalisé (« Terre »).
+   */
+  primordialNoun: string;
+  /** Complément de matière PRIMORDIAL : « de terre », « d'air » — « invoque un élémentaire %primordialOf%. » */
+  primordialOf: string;
 }
 
 /**
@@ -60,6 +71,8 @@ export const DRAGON_ELEMENTS: readonly DragonElement[] = [
     breathPhrase: 'cracher du feu',
     swordAdj: 'enflammée',
     swordVerbPhrase: 'enflammer son épée',
+    primordialNoun: 'Feu',
+    primordialOf: 'de feu',
   },
   {
     id: 'cold',
@@ -72,6 +85,8 @@ export const DRAGON_ELEMENTS: readonly DragonElement[] = [
     breathPhrase: 'souffler un jet de froid',
     swordAdj: 'glacée',
     swordVerbPhrase: 'givrer son épée',
+    primordialNoun: 'Terre',
+    primordialOf: 'de terre',
   },
   {
     id: 'lightning',
@@ -84,6 +99,8 @@ export const DRAGON_ELEMENTS: readonly DragonElement[] = [
     breathPhrase: 'cracher un arc de foudre',
     swordAdj: 'électrifiée',
     swordVerbPhrase: 'électrifier son épée',
+    primordialNoun: 'Air',
+    primordialOf: "d'air",
   },
   {
     id: 'acid',
@@ -96,6 +113,8 @@ export const DRAGON_ELEMENTS: readonly DragonElement[] = [
     breathPhrase: "cracher de l'acide",
     swordAdj: 'acide',
     swordVerbPhrase: "enduire son épée d'acide",
+    primordialNoun: 'Eau',
+    primordialOf: "d'eau",
   },
   {
     id: 'poison',
@@ -108,6 +127,10 @@ export const DRAGON_ELEMENTS: readonly DragonElement[] = [
     breathPhrase: 'cracher un nuage de poison',
     swordAdj: 'empoisonnée',
     swordVerbPhrase: 'empoisonner son épée',
+    // Pas de nature primordiale (le poison n'est pas l'un des 4 éléments d'air/terre/feu/eau, p. 157) —
+    // valeur de repli auto-référentielle, INUTILISÉE en pratique (l'élémentaliste n'offre pas le poison).
+    primordialNoun: 'Poison',
+    primordialOf: 'de poison',
   },
 ] as const;
 

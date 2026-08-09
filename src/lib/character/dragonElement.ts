@@ -48,6 +48,8 @@ const TOKEN_FIELDS: Record<string, keyof DragonElement> = {
   '%breathPhrase%': 'breathPhrase',
   '%swordAdj%': 'swordAdj',
   '%swordVerbPhrase%': 'swordVerbPhrase',
+  '%primordialNoun%': 'primordialNoun',
+  '%primordialOf%': 'primordialOf',
 };
 
 /**
