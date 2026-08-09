@@ -518,3 +518,104 @@ export function statusSheetImpact(applied: AppliedStatus[]): StatusSheetImpact {
     testDomainSources,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Le DELTA AGRÉGÉ affiché au joueur (PER-358)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Libellés français des stats dérivées, pour le delta agrégé du panneau d'états. */
+const DERIVED_LABEL: Record<DerivedStatId, string> = {
+  maxHp: 'PV max',
+  def: 'Défense',
+  initiative: 'Initiative',
+  luckPoints: 'Points de chance',
+  manaPoints: 'Points de mana',
+  recoveryDiceCount: 'Dés de récupération',
+  meleeAttack: 'Attaque au contact',
+  rangedAttack: 'Attaque à distance',
+  magicAttack: 'Attaque magique',
+};
+
+/** Une ligne du delta agrégé : ce qui change, et de combien. */
+export interface StatusImpactSummaryLine {
+  /** Libellé affiché (« Défense », « Attaques », « Tests de caractéristique », « Discrétion »). */
+  label: string;
+  /** Delta SIGNÉ : négatif pour un malus, positif pour un buff. Jamais 0 (la ligne serait muette). */
+  value: number;
+}
+
+/** Un dé malus imposé par un état, et sa portée. */
+export interface StatusImpactSummaryDie {
+  /** Libellé de l'état qui l'impose (« Affaibli », « Immobilisé »). */
+  label: string;
+  /** `'all'` : tous les tests. `'attack'` : les seuls tests d'attaque. */
+  scope: 'all' | 'attack';
+}
+
+/** Ce que les états posés changent, en un coup d'œil (PER-358). */
+export interface StatusImpactSummary {
+  lines: StatusImpactSummaryLine[];
+  dice: StatusImpactSummaryDie[];
+}
+
+/**
+ * DELTA AGRÉGÉ des états posés (PER-358) : « Défense −5, Attaques +1, Discrétion +3 », de quoi
+ * vérifier d'un coup d'œil ce qu'un effet change SANS ouvrir le détail « i » de trois blocs.
+ *
+ * Ne recalcule RIEN : tout est lu dans `StatusSheetImpact`, seule source du chiffre — le panneau ne
+ * peut donc pas diverger de la ventilation par source qu'affichent les stats dérivées et les tests.
+ *
+ * Les CANAUX restent distincts, comme dans le détail « i » : le modificateur « à tous les tests »
+ * d'un même état compte une fois pour les trois ATTAQUES (qui sont des stats dérivées, déjà fondu
+ * dans `mods`) et une fois pour les TESTS DE CARACTÉRISTIQUE (qui n'en sont pas). Voir un buff sur
+ * deux lignes n'est donc pas un double compte : ce sont deux jets différents.
+ *
+ * `domainLabel` traduit un id de domaine de test en français (`testDomainById` côté appelant) : le
+ * catalogue des domaines n'a pas sa place dans ce module purement mécanique.
+ */
+export function statusImpactSummary(
+  impact: StatusSheetImpact,
+  domainLabel: (domainId: string) => string,
+): StatusImpactSummary {
+  const lines: StatusImpactSummaryLine[] = [];
+  const push = (label: string, value: number) => {
+    if (value !== 0) lines.push({ label, value });
+  };
+
+  // Stats dérivées HORS attaques, dans l'ordre du catalogue (affichage stable d'une pose à l'autre).
+  for (const key of DERIVED_KEYS) {
+    if (ATTACK_KEYS.includes(key)) continue;
+    push(DERIVED_LABEL[key], impact.mods[key] ?? 0);
+  }
+  // Les trois attaques se replient sur UNE ligne quand elles bougent du même montant — c'est le cas
+  // courant (un malus « à tous les tests » les touche toutes), et trois lignes identiques n'apprennent
+  // rien. Dès qu'elles divergent, on les détaille.
+  const attackValues = ATTACK_KEYS.map((key) => impact.mods[key] ?? 0);
+  if (attackValues.every((v) => v === attackValues[0])) push('Attaques', attackValues[0]);
+  else ATTACK_KEYS.forEach((key, i) => push(DERIVED_LABEL[key], attackValues[i]));
+
+  // Tests de caractéristique : canal séparé des attaques (les caracs ne sont pas des stats dérivées).
+  push(
+    'Tests de caractéristique',
+    impact.abilityTestSources.reduce((sum, s) => sum + s.value, 0),
+  );
+  // Bonus limités à certains DOMAINES (Sans peur, Argument de taille), dans l'ordre du catalogue de
+  // l'impact — un domaine peut recevoir plusieurs états, on additionne.
+  for (const [domainId, sources] of Object.entries(impact.testDomainSources)) {
+    push(
+      domainLabel(domainId),
+      sources.reduce((sum, s) => sum + s.value, 0),
+    );
+  }
+  push('DM infligés', impact.damageDealt);
+
+  return {
+    lines,
+    dice: [
+      ...impact.allTestsMalusDie.map((label): StatusImpactSummaryDie => ({ label, scope: 'all' })),
+      ...impact.attackTestsMalusDie.map(
+        (label): StatusImpactSummaryDie => ({ label, scope: 'attack' }),
+      ),
+    ],
+  };
+}

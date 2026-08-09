@@ -11,6 +11,7 @@ import {
   statusEntry,
   statusMaxIntensity,
   statusRemainingRounds,
+  statusImpactSummary,
   statusSheetImpact,
   untilRoundFor,
   HP_WEAKENED_REASON,
@@ -344,5 +345,52 @@ describe('PER-359 — ventilation par domaine sur la fiche', () => {
 
   it('l’état sans bonus de domaine ne crée aucune entrée', () => {
     expect(statusSheetImpact([{ id: 'heroes-song' }]).testDomainSources).toEqual({});
+  });
+});
+
+describe('PER-358 — delta agrégé affiché au joueur', () => {
+  /** Libellé de domaine bouchonné : le catalogue des domaines n'appartient pas à ce module. */
+  const domainLabel = (id: string) => `#${id}`;
+
+  it('replie les trois attaques sur UNE ligne quand elles bougent du même montant', () => {
+    const summary = statusImpactSummary(statusSheetImpact([{ id: 'heroes-song' }]), domainLabel);
+    expect(summary.lines).toContainEqual({ label: 'Attaques', value: 1 });
+    expect(summary.lines.map((l) => l.label)).not.toContain('Attaque à distance');
+    // Le même buff compte AUSSI sur les tests de caractéristique : deux jets différents, deux lignes.
+    expect(summary.lines).toContainEqual({ label: 'Tests de caractéristique', value: 1 });
+  });
+
+  it('détaille les attaques dès qu’elles divergent (Aveuglé : -5 partout, -10 à distance)', () => {
+    const summary = statusImpactSummary(statusSheetImpact([{ id: 'blinded' }]), domainLabel);
+    expect(summary.lines).toEqual([
+      { label: 'Défense', value: -5 },
+      { label: 'Initiative', value: -5 },
+      { label: 'Attaque au contact', value: -5 },
+      { label: 'Attaque à distance', value: -10 },
+      { label: 'Attaque magique', value: -5 },
+    ]);
+  });
+
+  it('ne chiffre pas un dé malus : il a sa propre puce, avec sa portée', () => {
+    const summary = statusImpactSummary(
+      statusSheetImpact([{ id: 'weakened' }, { id: 'immobilized' }]),
+      domainLabel,
+    );
+    expect(summary.dice).toContainEqual({ label: 'Affaibli', scope: 'all' });
+    expect(summary.dice.some((d) => d.scope === 'attack')).toBe(true);
+  });
+
+  it('un bonus limité à des domaines sort sous le nom du domaine', () => {
+    const summary = statusImpactSummary(
+      statusSheetImpact([{ id: 'fearless-rally', intensity: 3 }]),
+      domainLabel,
+    );
+    expect(summary.lines).toEqual([{ label: '#fear-resistance', value: 3 }]);
+  });
+
+  it('un état purement comportemental ne produit aucune ligne', () => {
+    const summary = statusImpactSummary(statusSheetImpact([]), domainLabel);
+    expect(summary.lines).toEqual([]);
+    expect(summary.dice).toEqual([]);
   });
 });

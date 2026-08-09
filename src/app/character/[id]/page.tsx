@@ -1002,10 +1002,17 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           <ComplianceWarnings warnings={warnings} />
 
-          {/* États de combat appliqués par le MJ en session (PER-281) : rappel visuel en lecture
-              seule (badges + effet verbatim). Le malus chiffré est, lui, déjà répercuté sur les
-              stats/attaques ci-dessous. Ne rend rien hors session ou sans état posé. */}
-          <ActiveStatusPanel statuses={appliedStatuses} roundNumber={combatRoundNumber} />
+          {/* REPLI du panneau d'états (PER-358). Sa place est dans « État du personnage », au-dessus
+              de la barre de vie — mais cette section n'existe que si les stats dérivées sont
+              calculables. Un profil incomplet n'en a pas : ses états s'afficheraient nulle part, d'où
+              ce montage de secours ici, à la place historique (PER-281). Les deux sont exclusifs. */}
+          {!masterDerived && (
+            <ActiveStatusPanel
+              statuses={appliedStatuses}
+              impact={statusImpact}
+              roundNumber={combatRoundNumber}
+            />
+          )}
 
           <SheetSection
             title="Caractéristiques"
@@ -1122,6 +1129,19 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
 
           {masterDerived && (
             <SheetSection title="État du personnage" icon="status">
+              {/* États de combat appliqués par le MJ en session (PER-281), AU-DESSUS de la barre de
+                  vie (PER-358) : badges + effet verbatim + delta agrégé, en lecture seule. Le chiffre
+                  est déjà répercuté sur les stats/attaques plus haut — on le rappelle ici pour que le
+                  joueur n'ait pas à recouper trois blocs. Rien hors session ni sans état posé. */}
+              {appliedStatuses.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <ActiveStatusPanel
+                    statuses={appliedStatuses}
+                    impact={statusImpact}
+                    roundNumber={combatRoundNumber}
+                  />
+                </Box>
+              )}
               <PlayerStatusPanel
                 depletion={character.depletion}
                 // Max EFFECTIF : surcharge manuelle de « Statistiques dérivées » si présente,
