@@ -211,7 +211,6 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // l'état de combat, et les camarades n'en savent rien.
   const waivedBuffIds = useBuffOptOutStore((s) => s.idsByCharacter[id] ?? NO_WAIVED_BUFFS);
   const waiveBuff = useBuffOptOutStore((s) => s.waiveBuff);
-  const restoreBuff = useBuffOptOutStore((s) => s.restoreBuff);
   const syncWaivedBuffs = useBuffOptOutStore((s) => s.syncPosed);
   // Le renoncement ne survit pas à la levée de l'effet : si le MJ relance le Chant des héros, c'est
   // une nouvelle incantation, elle s'applique à tout le monde. Clé de chaîne plutôt que le tableau
@@ -685,15 +684,12 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
   // au-dessus de la barre de vie. Cette section n'existe que si les stats dérivées sont calculables,
   // d'où ce bloc nommé, monté à la place historique pour un profil incomplet — les deux montages
   // sont exclusifs. Le joueur peut écarter un BUFF de sa seule fiche (croix), jamais un état subi.
-  const canWaiveBuffs = isPlayer && !readOnly;
   const sessionStatusBlock =
-    appliedStatuses.length === 0 && waivedBuffIds.length === 0 ? null : (
+    appliedStatuses.length === 0 ? null : (
       <ActiveStatusPanel
         statuses={appliedStatuses}
         roundNumber={combatRoundNumber}
-        onWaiveBuff={canWaiveBuffs ? (buffId) => waiveBuff(id, buffId) : undefined}
-        waivedBuffIds={canWaiveBuffs ? waivedBuffIds : undefined}
-        onRestoreBuff={canWaiveBuffs ? (buffId) => restoreBuff(id, buffId) : undefined}
+        onWaiveBuff={isPlayer && !readOnly ? (buffId) => waiveBuff(id, buffId) : undefined}
       />
     );
 

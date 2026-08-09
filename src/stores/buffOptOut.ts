@@ -22,10 +22,11 @@ interface BuffOptOutState {
   /** Buffs écartés, par personnage. Absent/vide = le personnage subit tout ce que le MJ pose. */
   idsByCharacter: Record<string, BeneficialEffectId[]>;
 
-  /** Le joueur écarte ce buff de SA fiche (effet chiffré compris). Idempotent. */
+  /**
+   * Le joueur écarte ce buff de SA fiche (effet chiffré compris). Idempotent, et SANS RETOUR : se
+   * raviser passe par le MJ, qui repose l'effet — comme pour tout le reste de l'état de combat.
+   */
   waiveBuff: (characterId: string, id: BeneficialEffectId) => void;
-  /** Il se ravise : le buff reprend effet, tant que le MJ le laisse posé. */
-  restoreBuff: (characterId: string, id: BeneficialEffectId) => void;
   /**
    * Aligne les renoncements sur ce qui est RÉELLEMENT posé : un buff levé par le MJ n'a plus à
    * traîner ici. Même référence si rien ne change (appelée à chaque diffusion d'état de combat).
@@ -40,14 +41,6 @@ export const useBuffOptOutStore = create<BuffOptOutState>()((set, get) => ({
     const current = get().idsByCharacter[characterId] ?? [];
     if (current.includes(id)) return;
     set((s) => ({ idsByCharacter: { ...s.idsByCharacter, [characterId]: [...current, id] } }));
-  },
-
-  restoreBuff: (characterId, id) => {
-    const current = get().idsByCharacter[characterId] ?? [];
-    if (!current.includes(id)) return;
-    set((s) => ({
-      idsByCharacter: { ...s.idsByCharacter, [characterId]: current.filter((x) => x !== id) },
-    }));
   },
 
   syncPosed: (characterId, posedIds) => {

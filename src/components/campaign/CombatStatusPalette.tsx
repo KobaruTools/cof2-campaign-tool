@@ -102,18 +102,34 @@ export function StatusEffectTooltip({
   id,
   autoReason,
   remainingRounds,
+  castBy,
 }: {
   id: AnyStatusEffectId;
   autoReason?: AutoStatusReason;
   /** Tours restants du compteur de durée. Absent = aucun compteur posé (durée indéterminée). */
   remainingRounds?: number;
+  /**
+   * Nom du JOUEUR qui a lancé cet effet, figé à la pose (`AppliedStatus.castBy`). Jamais le nom de
+   * son personnage : à la table on dit « c'est Mirielle qui chante ». Absent pour un état SUBI, que
+   * le MJ pose au nom du monde.
+   */
+  castBy?: string;
 }) {
   const entry = statusEntry(id);
   return (
     <Box sx={{ maxWidth: 260 }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: castBy ? 0 : 0.5 }}>
         {statusLabel(id)}
       </Typography>
+      {castBy && (
+        // Mention discrète, sous le titre : qui l'a lancé, pas un second titre.
+        <Typography
+          variant="caption"
+          sx={{ display: 'block', mb: 0.5, fontStyle: 'italic', color: 'text.disabled' }}
+        >
+          Lancé par {castBy}
+        </Typography>
+      )}
       {entry?.effect && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
           {entry.effect}
@@ -152,10 +168,13 @@ export function StatusChipVisual({
   withTooltip = true,
   dragging = false,
   squareRight = false,
+  castBy,
 }: {
   id: AnyStatusEffectId;
   withTooltip?: boolean;
   dragging?: boolean;
+  /** Auteur de la pose, repris en info-bulle (cf. `StatusEffectTooltip`). */
+  castBy?: string;
   /**
    * Coins DROITS carrés : la puce est soudée à ce qui la suit (la croix de levée collective). Elle
    * cesse d'être un badge isolé pour devenir la première moitié d'un bloc.
@@ -206,7 +225,10 @@ export function StatusChipVisual({
   );
   if (!withTooltip) return chip;
   return (
-    <AppTooltip title={<StatusEffectTooltip id={id} />} enterDelay={STATUS_TOOLTIP_ENTER_DELAY}>
+    <AppTooltip
+      title={<StatusEffectTooltip id={id} castBy={castBy} />}
+      enterDelay={STATUS_TOOLTIP_ENTER_DELAY}
+    >
       {chip}
     </AppTooltip>
   );

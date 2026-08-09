@@ -25,12 +25,11 @@ describe('écarter un buff de sa fiche', () => {
     expect(waived(ALLY)).toEqual([]);
   });
 
-  it('n’écarte que le buff visé, pas les autres', () => {
+  it('écarte chaque buff séparément — l’un n’emporte pas l’autre', () => {
     const store = useBuffOptOutStore.getState();
     store.waiveBuff(ME, 'heroes-song');
     store.waiveBuff(ME, 'blessing');
-    store.restoreBuff(ME, 'heroes-song');
-    expect(waived(ME)).toEqual(['blessing']);
+    expect(waived(ME)).toEqual(['heroes-song', 'blessing']);
   });
 
   it('deux clics ne rangent pas deux fois le même buff', () => {

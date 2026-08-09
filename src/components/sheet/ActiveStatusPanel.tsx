@@ -17,10 +17,10 @@
  *
  * Un buff de groupe (et lui seul) porte une CROIX : le joueur l'écarte de sa propre fiche, librement,
  * sans en référer au MJ (`onWaiveBuff`). Il ne peut pas en faire autant d'un état SUBI — se déclarer
- * non aveuglé n'est pas un choix de joueur.
+ * non aveuglé n'est pas un choix de joueur. Le geste est SANS RETOUR côté fiche : le joueur qui se
+ * ravise demande au MJ de reposer l'effet, comme pour tout le reste de l'état de combat.
  */
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { ClearStatusButton, StatusChipVisual } from '@/components/campaign/CombatStatusPalette';
@@ -40,10 +40,6 @@ export interface ActiveStatusPanelProps {
    * vue par le MJ ou par un tiers, où le renoncement ne serait le choix de personne.
    */
   onWaiveBuff?: (id: BeneficialEffectId) => void;
-  /** Buffs écartés, à proposer de reprendre — un renoncement ne doit pas être un cul-de-sac. */
-  waivedBuffIds?: readonly BeneficialEffectId[];
-  /** Le joueur se ravise : ce buff reprend effet. Requis dès que `waivedBuffIds` n'est pas vide. */
-  onRestoreBuff?: (id: BeneficialEffectId) => void;
   /**
    * Manche courante du combat en cours (« Tour N » de l'écran de MJ), dont se déduisent les tours
    * restants des états à durée (PER-305). Le joueur voit ainsi combien de temps il subit encore
@@ -52,20 +48,12 @@ export interface ActiveStatusPanelProps {
   roundNumber: number;
 }
 
-export function ActiveStatusPanel({
-  statuses,
-  onWaiveBuff,
-  waivedBuffIds = [],
-  onRestoreBuff,
-  roundNumber,
-}: ActiveStatusPanelProps) {
-  // Rien à afficher hors session, sans état posé et sans buff écarté à reprendre (l'appelant ne
-  // passe la liste qu'en session).
-  if (statuses.length === 0 && waivedBuffIds.length === 0) return null;
+export function ActiveStatusPanel({ statuses, onWaiveBuff, roundNumber }: ActiveStatusPanelProps) {
+  // Rien à afficher hors session ni sans état posé (l'appelant ne passe la liste qu'en session).
+  if (statuses.length === 0) return null;
 
   return (
-    <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {statuses.map((s) => {
           const remaining = statusRemainingRounds(s, roundNumber);
           // Croix de renoncement : sur les seuls buffs, et seulement sur SA fiche. Soudée à la puce
@@ -75,14 +63,14 @@ export function ActiveStatusPanel({
             <Stack key={s.id} direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               {waivable ? (
                 <Box sx={{ display: 'flex' }}>
-                  <StatusChipVisual id={s.id} squareRight />
+                  <StatusChipVisual id={s.id} squareRight castBy={s.castBy} />
                   <ClearStatusButton
                     label={`Écarter ${statusLabel(s.id)} de ta fiche (pour toi seul)`}
                     onClear={() => onWaiveBuff(s.id as BeneficialEffectId)}
                   />
                 </Box>
               ) : (
-                <StatusChipVisual id={s.id} />
+                <StatusChipVisual id={s.id} castBy={s.castBy} />
               )}
               {/* Compteur de tours posé par le MJ (PER-305) : à 0, la durée est écoulée mais l'état
                   reste actif tant que le MJ ne l'a pas retiré — on le dit, sans le faire disparaître. */}
@@ -97,25 +85,6 @@ export function ActiveStatusPanel({
             </Stack>
           );
         })}
-      </Box>
-
-      {/* Buffs ÉCARTÉS (PER-358) : le renoncement doit pouvoir se défaire — sans ce rappel, un clic
-          malheureux ne se rattrape qu’en attendant que le MJ relève puis repose l’effet. */}
-      {waivedBuffIds.length > 0 && onRestoreBuff && (
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-          {waivedBuffIds.map((id) => (
-            <Button
-              key={id}
-              size="small"
-              variant="outlined"
-              color="success"
-              onClick={() => onRestoreBuff(id)}
-            >
-              Reprendre {statusLabel(id)}
-            </Button>
-          ))}
-        </Stack>
-      )}
-    </Stack>
+    </Box>
   );
 }
