@@ -221,10 +221,9 @@ export function DefenseBadge({
         {statusEffect && <StatusEffectIcon effect={statusEffect} size={iconSize} />}
         {/* Bouclier générique conservé pour les immunités SANS icône dédiée (ex. « tous DM »). */}
         {variant === 'immunity' && !scope && !statusEffect && <ShieldIcon sx={{ fontSize: iconSize }} />}
-        {/* Riposte (Armure à pointes / forme Feu) : même bouclier générique, teinté par la variante. */}
-        {(variant === 'retaliation' || variant === 'elemental-retaliation') && (
-          <ShieldIcon sx={{ fontSize: iconSize }} />
-        )}
+        {/* Riposte (Armure à pointes / forme Feu) : AUCUNE icône de tête (retour propriétaire
+            2026-08-09). Le bouclier y était redondant — la puce vit sous la carte « Défense », qui
+            porte déjà le sien : qu'il s'agisse d'un effet subi en se faisant attaquer va de soi. */}
         {/* Immunité SITUATIONNELLE (PER-74) : tête de démon EN TÊTE du badge, devant l'icône du type
             de dégât — c'est la nature de l'agresseur qui conditionne tout, elle doit se voir d'abord. */}
         {variant === 'situational-immunity' && (
