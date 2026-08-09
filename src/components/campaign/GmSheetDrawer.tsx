@@ -82,10 +82,12 @@ import {
   VerbatimToggle,
   type FeaturesLayout,
 } from '@/components/sheet/FeaturesByPath';
+import { ManeuversPanel } from '@/components/sheet/ManeuversPanel';
 import { AddMountButton, OwnedMountsPanel } from '@/components/sheet/OwnedMountsPanel';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { PurseField } from '@/components/sheet/PurseField';
 import { SheetSection } from '@/components/sheet/SheetSection';
+import { SourceRef } from '@/components/SourceRef';
 import { StartingChoiceDialog } from '@/components/sheet/StartingChoiceDialog';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
 import { buildSheetDisplayView } from '@/components/sheet/sheetDisplayView';
@@ -132,6 +134,12 @@ export function GmSheetDrawer({
   const layout = layoutChoice ?? (isNarrowViewport ? 'rows' : 'columns');
   const [verbatim, setVerbatim] = useState(false);
   const [concentration, setConcentration] = useState(false);
+  // Vues à onglets (PER-296) : mêmes idiomes que la fiche complète, cf. `sheetDisplayView`
+  // et son commentaire d'en-tête — état transitoire (non persisté), hoisté ici comme
+  // `layoutChoice`/`verbatim`/`concentration` pour survivre à un remontage du contenu
+  // (personnage passant d'indéfini à chargé pendant que le panneau reste ouvert).
+  const [statsView, setStatsView] = useState<'derived' | 'tests'>('derived');
+  const [voiesView, setVoiesView] = useState<'features' | 'maneuvers'>('features');
 
   return (
     <Drawer
@@ -164,6 +172,10 @@ export function GmSheetDrawer({
           onVerbatimChange={setVerbatim}
           concentration={concentration}
           onConcentrationChange={setConcentration}
+          statsView={statsView}
+          onStatsViewChange={setStatsView}
+          voiesView={voiesView}
+          onVoiesViewChange={setVoiesView}
           coinPouchIndex={coinPouchIndex}
           onCoinPouchIndexChange={setCoinPouchIndex}
           choiceIndex={choiceIndex}
@@ -209,6 +221,10 @@ interface GmSheetDrawerContentProps {
   onVerbatimChange: (value: boolean) => void;
   concentration: boolean;
   onConcentrationChange: (value: boolean) => void;
+  statsView: 'derived' | 'tests';
+  onStatsViewChange: (view: 'derived' | 'tests') => void;
+  voiesView: 'features' | 'maneuvers';
+  onVoiesViewChange: (view: 'features' | 'maneuvers') => void;
   coinPouchIndex: number | null;
   onCoinPouchIndexChange: (index: number | null) => void;
   choiceIndex: number | null;
@@ -232,6 +248,10 @@ function GmSheetDrawerContent({
   onVerbatimChange,
   concentration,
   onConcentrationChange,
+  statsView,
+  onStatsViewChange,
+  voiesView,
+  onVoiesViewChange,
   coinPouchIndex,
   onCoinPouchIndexChange,
   choiceIndex,
@@ -392,8 +412,39 @@ function GmSheetDrawerContent({
             />
           </SheetSection>
 
-          <SheetSection title="Statistiques dérivées" icon="derived">
-            {derivedInput ? (
+          {/* Onglets « Statistiques dérivées » / « Compétences & tests » (PER-296), même idiome
+              que la fiche complète (cf. `sheetDisplayView` et son commentaire d'en-tête) : pas de
+              crayon d'édition ici, ce bloc n'est pas modifiable depuis le panneau MJ. */}
+          <SheetSection
+            title="Statistiques dérivées"
+            icon="derived"
+            tabs={[
+              { value: 'derived', label: 'Statistiques dérivées', shortLabel: 'Statistiques', icon: 'derived' },
+              { value: 'tests', label: 'Compétences & tests', shortLabel: 'Tests', icon: 'tests' },
+            ]}
+            activeTab={statsView}
+            onTabChange={(v) => onStatsViewChange(v as 'derived' | 'tests')}
+          >
+            {statsView === 'tests' ? (
+              <TestDomainsPanel
+                bonuses={display.testBonuses}
+                abilities={effectCtx.abilities}
+                abilityTestBonus={display.abilityTestBonus}
+                statusTestBonus={display.statusTestBonus}
+                statusDomainBonus={display.statusDomainBonus}
+                perAbilityTestBonus={display.perAbilityTestBonus}
+                magicTestBonuses={display.magicTestBonuses}
+                bonusDice={display.bonusDieSources}
+                universalBonus={display.universalBonus}
+                testDice={display.testDice}
+                armorPenalty={display.armorPenalty}
+                armorMaxAgi={display.armorMaxAgi}
+                includeAbility={testsIncludeAbility}
+                onIncludeAbilityChange={setTestsIncludeAbility}
+                hideZero={testsHideZero}
+                onHideZeroChange={setTestsHideZero}
+              />
+            ) : derivedInput ? (
               <DerivedStatsGrid
                 input={derivedInput}
                 featureIds={modFeatureIds}
@@ -421,29 +472,6 @@ function GmSheetDrawerContent({
                 Profil incomplet : statistiques dérivées indisponibles.
               </Typography>
             )}
-          </SheetSection>
-
-          {/* Toggles portés par le CONTENU (pas par l'en-tête) : même composant que la fiche,
-              cf. `TestDomainsPanel`. */}
-          <SheetSection title="Compétences & tests" icon="tests">
-            <TestDomainsPanel
-              bonuses={display.testBonuses}
-              abilities={effectCtx.abilities}
-              abilityTestBonus={display.abilityTestBonus}
-              statusTestBonus={display.statusTestBonus}
-              statusDomainBonus={display.statusDomainBonus}
-              perAbilityTestBonus={display.perAbilityTestBonus}
-              magicTestBonuses={display.magicTestBonuses}
-              bonusDice={display.bonusDieSources}
-              universalBonus={display.universalBonus}
-              testDice={display.testDice}
-              armorPenalty={display.armorPenalty}
-              armorMaxAgi={display.armorMaxAgi}
-              includeAbility={testsIncludeAbility}
-              onIncludeAbilityChange={setTestsIncludeAbility}
-              hideZero={testsHideZero}
-              onHideZeroChange={setTestsHideZero}
-            />
           </SheetSection>
 
           {masterDerived && (
@@ -525,16 +553,29 @@ function GmSheetDrawerContent({
           <SheetSection
             title="Voies & capacités"
             icon="paths"
+            tabs={[
+              { value: 'features', label: 'Voies & capacités', shortLabel: 'Voies', icon: 'paths' },
+              { value: 'maneuvers', label: 'Manœuvres', icon: 'maneuvers' },
+            ]}
+            activeTab={voiesView}
+            onTabChange={(v) => onVoiesViewChange(v as 'features' | 'maneuvers')}
             action={
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                {display.hasSpells && (
-                  <ConcentrationToggle value={concentration} onChange={onConcentrationChange} />
-                )}
-                <VerbatimToggle value={verbatim} onChange={onVerbatimChange} />
-                <FeaturesLayoutToggle value={layout} onChange={onLayoutChange} />
-              </Stack>
+              voiesView === 'maneuvers' ? (
+                <SourceRef page="217-218" term="Les manœuvres" />
+              ) : (
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  {display.hasSpells && (
+                    <ConcentrationToggle value={concentration} onChange={onConcentrationChange} />
+                  )}
+                  <VerbatimToggle value={verbatim} onChange={onVerbatimChange} />
+                  <FeaturesLayoutToggle value={layout} onChange={onLayoutChange} />
+                </Stack>
+              )
             }
           >
+            {voiesView === 'maneuvers' ? (
+              <ManeuversPanel abilities={effectCtx.abilities} level={character.level} />
+            ) : (
             <FeaturesByPath
               featureIds={character.featureIds}
               classId={character.classId}
@@ -563,6 +604,7 @@ function GmSheetDrawerContent({
               masterDerived={masterDerived}
               testBonuses={display.testBonuses}
             />
+            )}
           </SheetSection>
 
           <SheetSection
