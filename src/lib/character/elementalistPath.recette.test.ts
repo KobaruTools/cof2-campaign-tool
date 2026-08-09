@@ -106,9 +106,13 @@ describe("PER-74 — voie de l'élémentaliste (p. 157, recette end-to-end)", ()
     expect(r6.name).toBe("Invocation d'élémentaire %of%");
     expect(r6.elementFromChoice).toEqual({ choiceFeatureId: R4, choiceIndex: 0 });
     expect(declineForFeature(character, r6, r6.name)).toBe("Invocation d'élémentaire de feu");
-    // richText = prose seule (durée [=INT] minutes), plus de tableau de stats verbatim dans le rendu.
+    // richText = prose seule (durée [=INT] minutes), plus de tableau de stats verbatim dans le rendu —
+    // mais le texte des 4 branches reste rappelé en note (demande propriétaire, même mécanisé ailleurs).
     expect(r6.richText).not.toContain('CRÉATURE NON VIVANTE');
     expect(r6.richText).toContain('[=INT]');
+    expect(r6.richText).toContain('Note — texte des branches élémentaires');
+    expect(r6.richText).toContain('Feu : +{1d4°} DM, immunisé au feu.');
+    expect(r6.richText).toContain('Terre : +5 DEF, immunisé au froid.');
   });
 
   it("r6 : mini-fiche de base — DM en dice-parse, PLUS de tableau des 4 branches figé", () => {

@@ -2361,9 +2361,11 @@ export const prestigeFeatures2: Feature[] = [
     // tableau de stats verbatim est retiré de l'affichage — porté par `creatureProfile` (mini-fiche
     // `CreatureStatBlock`), comme Invocation d'un démon (demon-r5, p. 108). Titre ET prose déclinés
     // sur l'élément de prédilection (rang 4, `elementFromChoice`) via le token `%of%` (« Invocation
-    // d'élémentaire de feu »). Le `text` verbatim ci-dessus reste inchangé (livre imprimé).
+    // d'élémentaire de feu »). Le `text` verbatim ci-dessus reste inchangé (livre imprimé). Le texte
+    // des 4 branches (mécanisées via l'option du rang 4, cf. plus bas) reste rappelé en note dans le
+    // richText, à la demande du propriétaire, même déjà mécanisé — pour garder l'info visible.
     richText:
-      "Une fois par combat, le magicien invoque un élémentaire %of%, il lui obéit pendant [=INT] minutes puis disparaît. Il agit au tour du magicien.",
+      "Une fois par combat, le magicien invoque un élémentaire %of%, il lui obéit pendant [=INT] minutes puis disparaît. Il agit au tour du magicien.\n\nNote — texte des branches élémentaires (mécanisées ci-dessus via l'option retenue au rang 4 ; une seule s'applique) : Feu : +{1d4°} DM, immunisé au feu. Eau : dé bonus en attaque, immunisé à l'acide. Air : vol 30 m, immunisé à la foudre. Terre : +5 DEF, immunisé au froid.",
     // L'élémentaire reprend TOUJOURS l'élément de prédilection du rang 4 (arbitrage propriétaire,
     // cf. commentaire sur r4) : la RD d'immunité + le bonus de branche (DM/dé bonus/DEF/vol) sont
     // portés par l'OPTION retenue au rang 4 (`FeatureChoiceOption.creatureUpgrade`), gathered
