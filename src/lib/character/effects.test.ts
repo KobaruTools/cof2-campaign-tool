@@ -31,6 +31,11 @@ import {
   familiarLearnedSpellId,
   familiarLearnedSpellUsageMax,
   FAMILIAR_LEARNED_SPELL_HOST,
+  isSpellcaster,
+  demiElfeFeyBloodSpellId,
+  demiElfeFeyBloodUsageMax,
+  DEMI_ELFE_FEY_BLOOD_HOST,
+  DEMI_ELFE_FEY_BLOOD_USAGE_KEY,
   resolveFamiliarGrantedPower,
   damageReductionSources,
   stackedDamageReductions,
@@ -2265,6 +2270,48 @@ describe('Voie du familier fantastique — rangs R5/R6/R7 (PER-74)', () => {
     // Élagage : clé valide tant que R5 est acquis, retirée sinon.
     expect(key in pruneUsageCounters({ [key]: 1 }, [R5])).toBe(true);
     expect(key in pruneUsageCounters({ [key]: 1 }, [R3])).toBe(false);
+  });
+});
+
+describe('Demi-elfe « Sang féerique » : lanceur + incantations gratuites (PER-324)', () => {
+  const HOST = DEMI_ELFE_FEY_BLOOD_HOST; // 'demi-elfe-r4'
+  const withFeatures = (featureIds: string[], featureChoices: Record<string, string[]> = {}): Character => ({
+    ...createBlankCharacter({ now: '2026-01-01T00:00:00.000Z' }),
+    featureIds,
+    featureChoices,
+  });
+
+  it('isSpellcaster : faux sans sort connu, vrai dès qu’un vrai sort est possédé', () => {
+    expect(isSpellcaster(withFeatures([]))).toBe(false);
+    expect(isSpellcaster(withFeatures(['rage-r3']))).toBe(false); // capacité non-sort
+    expect(isSpellcaster(withFeatures(['invocation-r1']))).toBe(true);
+  });
+
+  it('incantations gratuites : 3× rang 1 / 2× rang 2 / 1× rang 3 selon le sort choisi (p. 10)', () => {
+    // Rang 4 non acquis → aucun sort résolu même si un choix traîne.
+    const noR4 = withFeatures([], { [HOST]: ['invocation-r1'] });
+    expect(demiElfeFeyBloodSpellId(noR4)).toBeUndefined();
+    expect(demiElfeFeyBloodUsageMax(noR4)).toBeUndefined();
+    // Rang 4 acquis mais aucun sort choisi → pas de compteur.
+    expect(demiElfeFeyBloodUsageMax(withFeatures([HOST]))).toBeUndefined();
+    // Sort de rang 1 → 3 incantations/jour.
+    const r1 = withFeatures([HOST], { [HOST]: ['invocation-r1'] });
+    expect(demiElfeFeyBloodSpellId(r1)).toBe('invocation-r1');
+    expect(demiElfeFeyBloodUsageMax(r1)).toBe(3);
+    // Rang 2 → 2/jour ; rang 3 → 1/jour.
+    expect(demiElfeFeyBloodUsageMax(withFeatures([HOST], { [HOST]: ['air-r2'] }))).toBe(2);
+    expect(demiElfeFeyBloodUsageMax(withFeatures([HOST], { [HOST]: ['air-r3'] }))).toBe(1);
+  });
+
+  it('le compteur d’incantations se recharge au repos long, pas au repos court ; élagué avec le rang 4', () => {
+    const key = DEMI_ELFE_FEY_BLOOD_USAGE_KEY;
+    // Repos long ('day') → clé retirée (compteur plein).
+    expect(resetUsageCounters({ [key]: 0 }, [HOST], new Set(['day'] as const))).toEqual({});
+    // Repos court seul → inchangé.
+    expect(resetUsageCounters({ [key]: 0 }, [HOST], new Set(['short-rest'] as const))).toEqual({ [key]: 0 });
+    // Élagage : clé valide tant que le rang 4 est acquis, retirée sinon.
+    expect(key in pruneUsageCounters({ [key]: 1 }, [HOST])).toBe(true);
+    expect(key in pruneUsageCounters({ [key]: 1 }, ['demi-elfe-r3'])).toBe(false);
   });
 });
 

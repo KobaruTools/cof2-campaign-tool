@@ -80,6 +80,10 @@ import {
   familiarLearnedSpellUsageMax,
   familiarPowerUsedKey,
   FAMILIAR_LEARNED_SPELL_HOST,
+  isSpellcaster,
+  demiElfeFeyBloodUsageMax,
+  DEMI_ELFE_FEY_BLOOD_HOST,
+  DEMI_ELFE_FEY_BLOOD_USAGE_KEY,
   shortRestLockKey,
   usageCounterMaximum,
   isUsageCounterHidden,
@@ -451,13 +455,28 @@ const CAMBION_NO_MANA_NOTE = (
 );
 
 /**
- * Notice « sans coût en mana » d'un sort EMPRUNTÉ par un choix `feature-from-path` marqué `noManaCost`
- * (demi-elfe « Sang féerique », PER-324) : le sort est connu mais ne rapporte pas de PM ; les
- * incantations gratuites (3/2/1 par jour selon le rang) et l'exemption d'armure restent au verbatim.
+ * Notice de « Sang féerique » (demi-elfe r4, sort emprunté `noManaCost`, PER-324, p. 10). Le sort est
+ * connu mais ne rapporte JAMAIS de PM au réservoir. Le mode d'incantation dépend du personnage :
+ * - NON-lanceur : aucun coût en PM ; il n'a que les incantations gratuites, plafonnées par le compteur
+ *   quotidien ci-dessous (3× rang 1 / 2× rang 2 / 1× rang 3).
+ * - lanceur : mêmes incantations gratuites, et il peut EN PLUS lancer le sort en dépensant des PM
+ *   (coût = rang du sort) s'il respecte la limitation d'armure.
  */
-const DEMI_ELFE_NO_MANA_NOTE = (
-  <>Sang féerique : sort connu sans PM gagné ; incantations gratuites et lancer en armure selon le texte de la capacité.</>
-);
+function demiElfeFeyBloodNote(spellcaster: boolean): ReactNode {
+  return spellcaster ? (
+    <>
+      Sang féerique : ce sort ne rapporte pas de PM au réservoir. Tu peux le lancer gratuitement dans la
+      limite du compteur quotidien ci-dessous et, en tant que lanceur de sorts, EN PLUS en dépensant des
+      PM (coût égal au rang du sort) si tu respectes la limitation d’armure (<SourceRef page={10} />).
+    </>
+  ) : (
+    <>
+      Sang féerique : tu n’es pas lanceur de sorts, ce sort n’a aucun coût en PM. Tu le lances par des
+      incantations gratuites, dans la limite du compteur quotidien ci-dessous, et en armure sans pénalité
+      (<SourceRef page={10} />).
+    </>
+  );
+}
 
 /**
  * TOUTES les capacités EMPRUNTÉES par les choix `feature-from-path` résolus d'une capacité (PER-74,
@@ -2867,6 +2886,25 @@ function PathBlock({
     };
   };
 
+  /**
+   * PER-324 — compteur d'usage SYNTHÉTIQUE des INCANTATIONS GRATUITES du sort de « Sang féerique »
+   * (demi-elfe r4, « 3×/jour si rang 1, 2× si rang 2, 1× si rang 3 », p. 10). Porté par la capacité
+   * hôte (r4), clé dédiée `DEMI_ELFE_FEY_BLOOD_USAGE_KEY`, rechargé au repos long. `undefined` si ce
+   * n'est pas le r4 ou si aucun sort n'a encore été choisi. Ce compteur vaut pour TOUS (lanceur ou
+   * non) : c'est la limite des lancers gratuits. Un lanceur peut EN PLUS dépenser des PM (hors compteur).
+   */
+  const synthFeyBloodCounter = (feature: Feature): UsageCounter | undefined => {
+    if (feature.id !== DEMI_ELFE_FEY_BLOOD_HOST || !character) return undefined;
+    const max = demiElfeFeyBloodUsageMax(character);
+    if (max === undefined) return undefined;
+    return {
+      max,
+      sharedKey: DEMI_ELFE_FEY_BLOOD_USAGE_KEY,
+      resetOn: 'day',
+      label: 'Incantations gratuites (par jour)',
+    };
+  };
+
   /** Message « inutilisable avec l'armure portée » de la capacité (`null` si non gênée). */
   const armorRestrictedMessage = (feature: Feature): string | null =>
     armorRestrictedReasons?.get(feature.id) ?? null;
@@ -3194,7 +3232,14 @@ function PathBlock({
             {/* Goutte de coût en PM : celle du sort EMPRUNTÉ le cas échéant (coût = son rang habituel, p. 41).
                 Masquée pour un sort CONFÉRÉ sans coût en mana (sort appris du familier r5, sort du bâton
                 magique de l'archimage r5, PER-74) — même condition que le détail (`BorrowedFeatureBlock`). */}
-            {!(borrowed && (feature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGrantedPrimary)) && (
+            {!(
+              borrowed &&
+              (feature.id === FAMILIAR_LEARNED_SPELL_HOST ||
+                staffGrantedPrimary ||
+                // PER-324 : « Sang féerique » — pas de goutte de PM sur la carte compacte (incantations
+                // gratuites plafonnées par le compteur ; un lanceur dépense des PM, détaillé dans la modale).
+                feature.id === DEMI_ELFE_FEY_BLOOD_HOST)
+            ) && (
               <SpellManaBadge
                 feature={borrowed ?? feature}
                 // PER-74 — Capacité fabuleuse : sort (A) cible → concentration permanente (−2 PM) sur la goutte.
@@ -3299,6 +3344,16 @@ function PathBlock({
                 feature={borrowed}
                 character={character}
                 counterOverride={synthArmorUsageCounter(feature)}
+              />
+            )}
+            {/* PER-324 : incantations gratuites de « Sang féerique » (3/2/1 par jour selon le rang du
+                sort), en pastilles compactes sur la carte de l'emprunt en mode COLONNE — édition dans la
+                modale. Vaut pour lanceur comme non-lanceur (limite des lancers gratuits). */}
+            {borrowed && character && synthFeyBloodCounter(feature) && (
+              <CompactUsageIndicator
+                feature={borrowed}
+                character={character}
+                counterOverride={synthFeyBloodCounter(feature)}
               />
             )}
             {feature.inflictableStates && character && (
@@ -3791,7 +3846,7 @@ function PathBlock({
                               ) : grant?.noMana ? (
                                 CAMBION_NO_MANA_NOTE
                               ) : borrowedNoMana ? (
-                                DEMI_ELFE_NO_MANA_NOTE
+                                demiElfeFeyBloodNote(!!character && isSpellcaster(character))
                               ) : undefined
                             }
                             actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}
@@ -3867,6 +3922,23 @@ function PathBlock({
                         character={character}
                         onSet={onSetUsageCounter}
                         counterOverride={learned}
+                      />
+                    </>
+                  ) : null;
+                })()}
+                {/* PER-324 : incantations gratuites de « Sang féerique » (3/2/1 par jour selon le rang du
+                    sort), éditables ici (±1). Rendues contre la capacité EMPRUNTÉE (nom + clé dédiée). */}
+                {(() => {
+                  const synth = synthFeyBloodCounter(openFeature);
+                  const borrowed = character ? borrowedFeatureOf(character, openFeature) : undefined;
+                  return synth && borrowed && character ? (
+                    <>
+                      <Divider sx={{ my: 1.5 }} />
+                      <UsageCounterField
+                        feature={borrowed}
+                        character={character}
+                        onSet={onSetUsageCounter}
+                        counterOverride={synth}
                       />
                     </>
                   ) : null;
@@ -4223,11 +4295,13 @@ function PathBlock({
                 // texte/choix, sans remplacer la carte (l'effet de base de l'hôte reste appliqué).
                 // PER-74 : Bâton magique (archimage r5) porte DEUX choix → deux cartes EMPILÉES.
                 const borrowedList = borrowedFeaturesOf(character, feature);
+                const noManaBorrowed = character ? borrowedNoManaFeatureIds(character) : new Set<string>();
                 return borrowedList.length ? (
                   <Stack spacing={1.5} sx={{ mt: 1.5 }}>
                     {borrowedList.map((borrowed, i) => {
                       const staffGranted = !!character && archmageStaffSpellGranted(character, borrowed);
                       const grant = grantForBorrowed(feature, borrowed.id);
+                      const borrowedNoMana = noManaBorrowed.has(borrowed.id);
                       return (
                         <BorrowedFeatureBlock
                           key={`${i}-${borrowed.id}`}
@@ -4239,7 +4313,7 @@ function PathBlock({
                           dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                           armorRestricted={isArmorRestricted(borrowed)}
                           armorRestrictedMessage={armorRestrictedMessage(borrowed)}
-                          noMana={feature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana}
+                          noMana={feature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana || borrowedNoMana}
                           noManaNote={
                             staffGranted ? (
                               <>
@@ -4248,6 +4322,8 @@ function PathBlock({
                               </>
                             ) : grant?.noMana ? (
                               CAMBION_NO_MANA_NOTE
+                            ) : borrowedNoMana ? (
+                              demiElfeFeyBloodNote(!!character && isSpellcaster(character))
                             ) : undefined
                           }
                           actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}
@@ -4306,6 +4382,23 @@ function PathBlock({
                       character={character}
                       onSet={onSetUsageCounter}
                       counterOverride={learned}
+                    />
+                  </>
+                ) : null;
+              })()}
+              {/* PER-324 : incantations gratuites de « Sang féerique » (3/2/1 par jour selon le rang du
+                  sort), en vue liste sous le bloc de l'emprunt — contre la capacité empruntée. */}
+              {(() => {
+                const synth = synthFeyBloodCounter(feature);
+                const borrowed = character ? borrowedFeatureOf(character, feature) : undefined;
+                return synth && borrowed && character ? (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <UsageCounterField
+                      feature={borrowed}
+                      character={character}
+                      onSet={onSetUsageCounter}
+                      counterOverride={synth}
                     />
                   </>
                 ) : null;

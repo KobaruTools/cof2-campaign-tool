@@ -47,8 +47,11 @@ import { scalingDie, type DerivedMods } from '@/lib/engine';
 import {
   borrowedFeatureIds,
   borrowedHostPathByFeatureId,
+  borrowedNoManaFeatureIds,
   effectiveFeatureIdsForMods,
   getOptionSelections,
+  grantedFeatureIds,
+  grantedNoManaFeatureIds,
   suppressedTestBonusFeatureIds,
   weaponFamiliesMatchChoice,
 } from './choices';
@@ -1000,6 +1003,27 @@ export function manaCastingAbility(
 }
 
 /**
+ * Le personnage est-il LANCEUR DE SORTS (a-t-il une réserve de PM) ? Vrai dès qu'il possède au moins
+ * un sort connu qui alimente le réservoir — même critère que `spellCount` (`manaPoints` renvoie null
+ * quand il vaut 0). Les sorts SANS +1 PM (octrois fixes `noMana` du cambion, ou sort emprunté
+ * `noManaCost` de « Sang féerique ») sont exclus : un non-lanceur qui prend « Sang féerique » ne devient
+ * PAS lanceur pour autant. Sert à trancher, pour ce sort, entre le mode « incantations gratuites
+ * uniquement » (non-lanceur) et le mode « peut aussi dépenser des PM » (lanceur), p. 10.
+ */
+export function isSpellcaster(character: Character): boolean {
+  const noMana = new Set<string>([
+    ...grantedNoManaFeatureIds(character),
+    ...borrowedNoManaFeatureIds(character),
+  ]);
+  const ids = [
+    ...character.featureIds,
+    ...borrowedFeatureIds(character),
+    ...grantedFeatureIds(character),
+  ];
+  return ids.some((id) => !noMana.has(id) && featureById.get(id)?.isSpell === true);
+}
+
+/**
  * Échange de caractéristique pour les PV octroyé par une OPTION retenue (champ
  * `hpFromAbility`). La règle (ex. Grosse tête, golem-r1, p. 100) remplace la
  * contribution de CON d'UN niveau par celle d'une autre caractéristique. Comme la
@@ -1698,6 +1722,41 @@ export function familiarLearnedSpellUsageMax(character: Character): number | und
 }
 
 /**
+ * PER-324 — Hôte du SORT emprunté par « Sang féerique » (demi-elfe, rang 4, p. 10). Le sort est choisi
+ * par un `feature-from-path` scoppé à l'ascendance elfe (ensorceleur / druide) : capacité EMPRUNTÉE
+ * ordinaire, mais utilisée via des INCANTATIONS GRATUITES quotidiennes (3× si le sort est de rang 1,
+ * 2× si rang 2, 1× si rang 3). Un lanceur de sorts peut EN PLUS le lancer en dépensant des PM.
+ */
+export const DEMI_ELFE_FEY_BLOOD_HOST = 'demi-elfe-r4';
+
+/** Clé d'état du compteur d'incantations gratuites de « Sang féerique » (PER-324). Convention « absence = plein ». */
+export const DEMI_ELFE_FEY_BLOOD_USAGE_KEY = 'demi-elfe-r4::fey-blood-spell';
+
+/**
+ * Id du sort emprunté par « Sang féerique » (sélection `feature-from-path` de `DEMI_ELFE_FEY_BLOOD_HOST`).
+ * `undefined` si le rang 4 n'est pas acquis ou si aucun sort n'a encore été choisi.
+ */
+export function demiElfeFeyBloodSpellId(character: Character): string | undefined {
+  if (!character.featureIds.includes(DEMI_ELFE_FEY_BLOOD_HOST)) return undefined;
+  const sel = character.featureChoices?.[DEMI_ELFE_FEY_BLOOD_HOST]?.[0];
+  return typeof sel === 'string' ? sel : undefined;
+}
+
+/**
+ * Nombre d'INCANTATIONS GRATUITES quotidiennes du sort de « Sang féerique » (PER-324) : 3 si le sort
+ * choisi est de rang 1, 2 s'il est de rang 2, 1 s'il est de rang 3 (p. 10). Ces incantations valent
+ * pour TOUS (lanceur ou non — « il peut le lancer 3/2/1 fois par jour ») ; un lanceur peut EN PLUS
+ * dépenser des PM. `undefined` si le rang 4 n'est pas acquis ou si aucun sort n'a encore été choisi.
+ */
+export function demiElfeFeyBloodUsageMax(character: Character): number | undefined {
+  const spellId = demiElfeFeyBloodSpellId(character);
+  if (!spellId) return undefined;
+  const rank = featureById.get(spellId)?.rank;
+  if (rank === undefined) return undefined;
+  return rank <= 1 ? 3 : rank === 2 ? 2 : 1;
+}
+
+/**
  * PER-161 — la RÉACTIVATION de l'interrupteur du i-ème effet TEMPORAIRE d'une capacité est-elle
  * verrouillée jusqu'au prochain repos court ? Vrai quand l'effet est un `conditional-stat-bonus`
  * temporaire dont le compteur porteur a `oncePerShortRest` ET dont le verrou de repos court est posé
@@ -1772,6 +1831,9 @@ export function pruneUsageCounters(
     // PER-74 : compteur d'usage QUOTIDIEN du sort appris au rang 5 — clé fonction du seul id hôte (R5),
     // valide tant que le rang 5 est acquis (le sort choisi peut changer sans invalider la clé).
     if (id === FAMILIAR_LEARNED_SPELL_HOST) validKeys.add(familiarPowerUsedKey(id));
+    // PER-324 : compteur d'incantations gratuites de « Sang féerique » — clé dédiée, valide tant que
+    // le rang 4 est acquis (le sort choisi peut changer sans invalider la clé).
+    if (id === DEMI_ELFE_FEY_BLOOD_HOST) validKeys.add(DEMI_ELFE_FEY_BLOOD_USAGE_KEY);
   }
   // PER-162 : le surcoût croissant stocke ses lancements sous l'id de la capacité — déjà couvert par
   // `owned`, donc rien à ajouter ici (mentionné pour mémoire ; la clé survit à l'élagage).
@@ -1933,6 +1995,9 @@ export function resetUsageCounters(
     // PER-74 : sort APPRIS au rang 5 — compteur QUOTIDIEN (2×/1× selon le rang du sort), rechargé au
     // repos long (`'day'`). La fréquence est toujours journalière (indépendante du sort choisi).
     if (id === FAMILIAR_LEARNED_SPELL_HOST && triggers.has('day')) toReset.add(familiarPowerUsedKey(id));
+    // PER-324 : incantations gratuites de « Sang féerique » (demi-elfe r4) — compteur QUOTIDIEN
+    // (3/2/1 selon le rang du sort), rechargé au repos long (`'day'`).
+    if (id === DEMI_ELFE_FEY_BLOOD_HOST && triggers.has('day')) toReset.add(DEMI_ELFE_FEY_BLOOD_USAGE_KEY);
   }
   const next: Record<string, number> = {};
   for (const [key, value] of Object.entries(usageCounters)) {
