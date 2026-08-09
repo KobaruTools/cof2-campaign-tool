@@ -16,6 +16,7 @@ import { classColor } from '@/lib/ui/classColors';
 import { AppTooltip } from '@/components/AppTooltip';
 import { ClassIcon } from '@/components/ClassIcon';
 import { DerivedStatIcon } from '@/components/DerivedStatIcon';
+import { DieIcon } from '@/components/DieIcon';
 import { GaugeRow } from './GaugeRow';
 import { HpGauge, type DamageKind } from './HpGauge';
 import { LongRestDialog } from './LongRestDialog';
@@ -269,6 +270,25 @@ export function PlayerStatusPanel({
               die={recoveryDie}
               onSet={onSetRecoveryDiceCurrent}
             />
+            {/* Bonus de soin par DR ACTIF (Survie « en milieu naturel », native ou empruntée, PER-324) :
+                affiché « + <dé> » juste à droite du dé de récupération pour signaler visuellement que
+                chaque DR dépensé au repos soigne en plus. Chaque bonus a sa puce ; vide = rien. */}
+            {recoveryHealBonuses.map((b) => (
+              <AppTooltip
+                key={b.featureId}
+                title={`${b.name}${b.conditionLabel ? ` (${b.conditionLabel})` : ''} : +${b.count > 1 ? b.count : ''}${b.die}${b.evolving ? '°' : ''} PV par dé de récupération dépensé au repos`}
+                page={b.sourcePage}
+              >
+                <Box
+                  component="span"
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, color: 'success.main', fontWeight: 700 }}
+                >
+                  +{b.count > 1 ? b.count : ''}
+                  <DieIcon die={b.die} size={20} />
+                  {b.evolving ? '°' : ''}
+                </Box>
+              </AppTooltip>
+            ))}
           </>
         )}
       </Stack>
