@@ -538,7 +538,14 @@ export function DerivedStatsGrid({
                           sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 0.5 }}
                         >
                           {items.map(({ key, ...rest }) => (
-                            <DefenseBadge key={key} {...rest} />
+                            // `abilities`/`level` : de quoi RÉSOUDRE un dé de badge (riposte) par le
+                            // parser plutôt que de l'écrire en littéral (cf. `DefenseBadge.dice`).
+                            <DefenseBadge
+                              key={key}
+                              {...rest}
+                              abilities={input.abilities}
+                              level={input.level}
+                            />
                           ))}
                         </Box>
                       );

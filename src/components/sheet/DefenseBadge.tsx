@@ -7,10 +7,11 @@ import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { alpha } from '@mui/material/styles';
 import type { ImmunityId, ResistibleDamageType } from '@/data/schema';
+import type { Abilities } from '@/lib/engine';
 import { AppTooltip } from '@/components/AppTooltip';
 import { DamageTypeIcon } from '@/components/DamageTypeIcon';
 import { StatusEffectIcon } from '@/components/StatusEffectIcon';
-import { CapabilityChip } from '@/components/sheet/FeatureRichText';
+import { CapabilityChip, RichInline } from '@/components/sheet/FeatureRichText';
 import { MalusDieBadge } from '@/components/MalusDieBadge';
 import { DERIVED_STAT_ICON_PATHS } from '@/lib/ui/derivedStatIcons';
 import { DEFENSE_BADGE_ICON_PATHS } from '@/lib/ui/defenseBadgeIcons';
@@ -45,6 +46,19 @@ export interface DefenseBadgeData {
   statusEffect?: ImmunityId;
   /** Texte court accolé : valeur de RD (« /2 », « 5 »), plage de critique (« 19-20 »), état (« Peur »). */
   text?: string;
+  /**
+   * DÉ affiché à la place de `text`, en notation richText (`'{1d4°}'`) — rendu par le parser
+   * (`RichInline`) et non en littéral : un dé ÉVOLUTIF doit se résoudre au niveau du personnage
+   * (p. 43), et porter son marqueur « ° » cliquable comme partout ailleurs sur la fiche. Écrire
+   * « 1d4° » en toutes lettres afficherait la face de BASE, c'est-à-dire une valeur fausse dès le
+   * niveau 3. Ignoré si l'hôte ne fournit pas `abilities`/`level` (repli sur `text`).
+   */
+  dice?: string;
+  /**
+   * Décalage de cran du dé évolutif porté par le personnage (`scalingDieTierBonus`, PER-324),
+   * transmis au rendu de `dice`. Absent = 0 (aucun décalage).
+   */
+  diceTierBonus?: number;
   /** Titre du tooltip : libellé court de l'effet (ex. « RD 5 », « Immunité au feu », « Critique 18-20 »). */
   title: string;
   /**
@@ -101,12 +115,23 @@ export function DefenseBadge({
   scope,
   statusEffect,
   text,
+  dice,
+  diceTierBonus = 0,
   title,
   note,
   sources,
   fullWidth = true,
   compact = false,
-}: Omit<DefenseBadgeData, 'key'> & { fullWidth?: boolean; compact?: boolean }) {
+  abilities,
+  level,
+}: Omit<DefenseBadgeData, 'key'> & {
+  fullWidth?: boolean;
+  compact?: boolean;
+  /** Caractéristiques du porteur — requises pour rendre `dice` par le parser. Absentes = repli `text`. */
+  abilities?: Abilities;
+  /** Niveau du porteur — requis pour résoudre un dé ÉVOLUTIF de `dice`. Absent = repli `text`. */
+  level?: number;
+}) {
   const paletteKey = PALETTE[variant];
   // Métriques réduites de la variante COMPACTE (écran de MJ) : puce plus petite pour tenir à
   // droite du chiffre sans l'écraser. Sinon, métriques standard de la fiche.
@@ -114,6 +139,20 @@ export function DefenseBadge({
   // En compact, une plage de critique (« 19-20 ») est réduite à sa seule borne basse (« 19 ») :
   // le « -20 » est toujours implicite (le critique va jusqu'à 20). Le tooltip garde la plage complète.
   const displayText = compact && variant === 'critical' && text ? text.split('-')[0] : text;
+  // Dé du badge (riposte) : PARSÉ, jamais littéral. `rank={0}` — aucun de ces dés n'est indexé sur
+  // un rang de voie (les paliers `|1d4°@R` ne concernent que les textes de capacités).
+  const renderedDice =
+    dice && abilities && level !== undefined ? (
+      <Box component="span">
+        <RichInline
+          text={dice}
+          abilities={abilities}
+          level={level}
+          rank={0}
+          scalingTierBonus={diceTierBonus}
+        />
+      </Box>
+    ) : null;
   // Tooltip en « breakdown » au style des statistiques dérivées : titre de l'effet, puis la/les
   // capacité(s) source(s) en sous-détail gris (nom + contribution si cumul). PER-137.
   const tooltip = (
@@ -215,7 +254,9 @@ export function DefenseBadge({
         )}
         {scope && <DamageTypeIcon type={scope} size={iconSize} />}
         {!scope && variant === 'reduction' && <Box component="span">RD</Box>}
-        {displayText && <Box component="span">{displayText}</Box>}
+        {/* Dé rendu par le parser (face résolue au niveau + marqueur « ° ») quand l'hôte fournit de
+            quoi le résoudre ; sinon on retombe sur le texte court. */}
+        {renderedDice ?? (displayText && <Box component="span">{displayText}</Box>)}
       </Box>
     </AppTooltip>
   );

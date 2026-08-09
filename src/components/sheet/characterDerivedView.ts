@@ -464,6 +464,10 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
           key: 'retaliation-flayer-r5',
           variant: 'retaliation',
           text: retaliation.die,
+          // Dé PARSÉ (résolu au niveau si évolutif) là où l'hôte sait le rendre ; `text` reste le
+          // repli littéral des hôtes compacts (écran de MJ) qui n'ont pas le porteur sous la main.
+          dice: `{${retaliation.die}}`,
+          diceTierBonus: scalingDieTierBonus(character),
           title: 'Armure à pointes — riposte',
           note: "Contre une attaque au contact à mains nues/griffes/crocs touchant Défense 10+, l'attaquant subit ces DM.",
           sources: [{ name: 'Armure à pointes', featureId: 'prestige-ecorcheur-r5' }],
@@ -481,6 +485,8 @@ export function buildCharacterDerivedView(character: Character): CharacterDerive
           variant: 'elemental-retaliation' as const,
           scope: 'fire' as const,
           text: elementalRetaliation.die,
+          dice: `{${elementalRetaliation.die}}`,
+          diceTierBonus: scalingDieTierBonus(character),
           title: 'Métamorphose élémentaire (Feu) — riposte',
           note: "Sous la forme Feu, une créature qui l'attaque avec des armes naturelles subit ces DM à chaque attaque réussie.",
           sources: [{ name: 'Métamorphose élémentaire', featureId: 'prestige-elementaliste-r8' }],
