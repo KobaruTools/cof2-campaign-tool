@@ -44,6 +44,9 @@ import {
   BUFF_REQUEST_EVENT,
   useBuffRequestStore,
 } from '@/stores/buffRequest';
+import { BUFF_WAIVER_EVENT } from '@/stores/buffOptOut';
+import { reviveBuffWaiver } from './buffWaiver';
+import { removeStatusFrom } from './combatState';
 import { EMPTY_PRESENCE, useSessionPresenceStore } from '@/stores/sessionPresence';
 import { registerSessionChannel } from './sessionBridge';
 import { joinSessionParticipant, leaveSessionParticipant } from './participantsRepo';
@@ -248,6 +251,19 @@ export function useSessionChannel(
     channel.on('broadcast', { event: BUFF_REQUEST_DECLINED_EVENT }, ({ payload }) => {
       if (!active) return;
       useBuffRequestStore.getState().applyRemoteDecline(campaignId, payload);
+    });
+
+    // RENONCEMENT d'un joueur à un buff (PER-358) : ce n'est pas une demande, il n'y a rien à
+    // arbitrer — mais lui ne peut pas écrire l'état de combat, donc le client du MJ retire l'état
+    // pour ce SEUL combattant. Le retrait redescend ensuite à toute la table par
+    // `COMBAT_STATE_EVENT`, ce qui met à jour la bande d'initiative partout, fiche comprise.
+    channel.on('broadcast', { event: BUFF_WAIVER_EVENT }, ({ payload }) => {
+      if (!active || kind !== 'gm') return;
+      const waiver = reviveBuffWaiver(payload);
+      if (!waiver) return;
+      useCampaignCombatStore
+        .getState()
+        .applyLocalCombat(campaignId, (prev) => removeStatusFrom(prev, waiver.characterId, waiver.buffId));
     });
 
     // `setAuth()` (sans argument → token courant) avant l'abonnement : supabase-js le

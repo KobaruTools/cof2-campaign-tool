@@ -689,7 +689,11 @@ export default function CharacterSheetPage({ params }: { params: Promise<{ id: s
       <ActiveStatusPanel
         statuses={appliedStatuses}
         roundNumber={combatRoundNumber}
-        onWaiveBuff={isPlayer && !readOnly ? (buffId) => waiveBuff(id, buffId) : undefined}
+        // Le renoncement part AUSSI au MJ, seul habilité à retirer l'état de la bande d'initiative
+        // (RLS `campaign_combat`) : sans quoi la puce y resterait, ici comme sur son écran.
+        onWaiveBuff={
+          isPlayer && !readOnly ? (buffId) => waiveBuff(characterCampaignId, id, buffId) : undefined
+        }
       />
     );
 
