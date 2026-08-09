@@ -77,6 +77,17 @@ describe('listCompanions', () => {
     expect(listCompanions(char({ featureIds: [] }))).toHaveLength(0);
   });
 
+  it('capacité EMPRUNTÉE (PER-73, elfe-sylvain-r2 → compagnon-animal-r1) reste un compagnon visible', () => {
+    const c = char({
+      classId: 'druide',
+      featureIds: ['elfe-sylvain-r1', 'elfe-sylvain-r2'],
+      featureChoices: { 'elfe-sylvain-r2': ['compagnon-animal-r1'] },
+    });
+    const companions = listCompanions(c);
+    expect(companions.map((e) => e.profile.name)).toEqual(['Loup']);
+    expect(companions[0].key).toBe('compagnon-animal-r1');
+  });
+
   it('loup → Mâle alpha : le remplacement supplante le loup de base', () => {
     const loup = listCompanions(char({ classId: 'rodeur', featureIds: ['compagnon-animal-r1'] }));
     expect(loup.map((e) => e.profile.name)).toEqual(['Loup']);

@@ -23,7 +23,7 @@ import type {
   FeatureChoiceOption,
 } from '@/data/schema';
 import type { Abilities } from '@/lib/engine';
-import { getSelection } from './choices';
+import { borrowedFeatureIds, getSelection } from './choices';
 import {
   creatureBonusDiceForPath,
   disabledFeatureIds,
@@ -467,9 +467,13 @@ export interface CompanionEntry {
  */
 export function listCompanions(character: Character): CompanionEntry[] {
   const disabled = disabledFeatureIds(character);
+  // Ids porteurs de compagnon : les rangs ACQUIS + les capacités EMPRUNTÉES (PER-73, ex. Enfant de la
+  // forêt qui emprunte « Le loup », compagnon-animal-r1) — sans quoi un compagnon emprunté n'apparaît
+  // jamais dans la section, comme `effects.ts`/`armorRestrictions.ts` le font déjà pour leurs canaux.
+  const allIds = [...new Set([...character.featureIds, ...borrowedFeatureIds(character)])];
   // Rang ATTEINT par voie (le plus haut rang acquis), pour résoudre le terme `rang`.
   const maxRankByPath = new Map<string, number>();
-  for (const id of character.featureIds) {
+  for (const id of allIds) {
     const f = featureById.get(id);
     if (!f) continue;
     maxRankByPath.set(f.pathId, Math.max(maxRankByPath.get(f.pathId) ?? 0, f.rank));
@@ -477,7 +481,7 @@ export function listCompanions(character: Character): CompanionEntry[] {
   // Un compagnon par voie : on garde le rang porteur de profil le plus élevé, dans
   // l'ordre d'acquisition (Map = ordre de première insertion par voie).
   const byPath = new Map<string, { feature: Feature; profile: CreatureProfile }>();
-  for (const id of character.featureIds) {
+  for (const id of allIds) {
     if (disabled.has(id)) continue;
     const feature = featureById.get(id);
     if (!feature) continue;
