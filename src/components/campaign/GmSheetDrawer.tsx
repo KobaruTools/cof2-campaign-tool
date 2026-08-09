@@ -31,7 +31,7 @@
  * Absents volontairement : identité, notes, historique des niveaux, conformité, montée de
  * niveau — accessibles via « Fiche complète ».
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import CloseIcon from '@mui/icons-material/Close';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -84,6 +84,7 @@ import {
 } from '@/components/sheet/FeaturesByPath';
 import { ManeuversPanel } from '@/components/sheet/ManeuversPanel';
 import { AddMountButton, OwnedMountsPanel } from '@/components/sheet/OwnedMountsPanel';
+import { ActiveStatusPanel } from '@/components/sheet/ActiveStatusPanel';
 import { PlayerStatusPanel } from '@/components/sheet/PlayerStatusPanel';
 import { PurseField } from '@/components/sheet/PurseField';
 import { SheetSection } from '@/components/sheet/SheetSection';
@@ -92,12 +93,21 @@ import { StartingChoiceDialog } from '@/components/sheet/StartingChoiceDialog';
 import { TestDomainsPanel } from '@/components/sheet/TestDomainsPanel';
 import { buildSheetDisplayView } from '@/components/sheet/sheetDisplayView';
 import { useCharacterGameState } from '@/components/sheet/useCharacterGameState';
+import { statusSheetImpact, type AppliedStatus } from '@/lib/character/statusEffects';
+import { mergeMods } from '@/lib/character/orphanPoints';
+import { useCampaignCombatStore } from '@/stores/campaignCombat';
 
 /**
  * Clés de mémorisation du repli PROPRES au panneau : replier une section ici ne doit pas
  * replier la même section sur la vraie fiche (préférences indépendantes).
  */
 const PERSIST_PREFIX = 'gm-sheet:';
+
+/**
+ * Liste d'états vide partagée : un sélecteur zustand doit renvoyer une référence STABLE quand il n'y
+ * a rien (l'égalité par défaut est `Object.is` — un `[]` neuf à chaque rendu rendrait en boucle).
+ */
+const EMPTY_STATUSES: AppliedStatus[] = [];
 
 export interface GmSheetDrawerProps {
   /** Personnage consulté, ou `undefined` s'il n'est pas encore chargé (→ squelette). */
@@ -119,9 +129,26 @@ export function GmSheetDrawer({
   open,
   onClose,
 }: GmSheetDrawerProps) {
+  // États de combat posés sur CE personnage (PER-358) : le tiroir ne les recevait pas, il ne
+  // montrait donc ni badge ni buff là où la vraie fiche du joueur les affiche — recetter depuis ici
+  // donnait un faux négatif. Ils sont lus dans le store de combat, alimenté en direct par le canal
+  // (le MJ en est l'auteur) ; pas de garde « session active » comme sur la fiche du joueur : ce
+  // tiroir EST la vue du MJ, qui voit son tracker qu'une session soit ouverte ou non.
+  const combatStatuses = useCampaignCombatStore((s) =>
+    campaign && character ? s.byCampaign[campaign.id]?.statuses[character.id] : undefined,
+  );
+  const appliedStatuses = combatStatuses ?? EMPTY_STATUSES;
+  // Ids seuls, pour la neutralisation de l'interrupteur de fiche d'un buff posé en séance (PER-314).
+  // Mémoïsé : `useCharacterGameState` le prend en entrée de calcul, un tableau neuf à chaque rendu
+  // le relancerait pour rien.
+  const sessionStatusIds = useMemo(() => appliedStatuses.map((s) => s.id), [appliedStatuses]);
+  // Manche courante : les compteurs de tours des états (PER-305) s'en déduisent. 1 par défaut.
+  const roundNumber = useCampaignCombatStore((s) =>
+    campaign ? (s.byCampaign[campaign.id]?.roundNumber ?? 1) : 1,
+  );
   // État de JEU (PER-257) : le panneau consomme le hook de la fiche tel quel. `null` tant
   // que le personnage n'est pas chargé — d'où l'appel inconditionnel, avant tout branchement.
-  const game = useCharacterGameState(character);
+  const game = useCharacterGameState(character, { sessionStatusIds });
   // Modales ouvertes DEPUIS le panneau : « Utiliser » un objet renvoie une intention, c'est
   // l'appelant qui ouvre la bonne modale (même câblage que la fiche).
   const [coinPouchIndex, setCoinPouchIndex] = useState<number | null>(null);
@@ -165,6 +192,8 @@ export function GmSheetDrawer({
           campaign={campaign}
           player={player}
           game={game}
+          appliedStatuses={appliedStatuses}
+          roundNumber={roundNumber}
           onClose={onClose}
           layout={layout}
           onLayoutChange={setLayoutChoice}
@@ -214,6 +243,10 @@ interface GmSheetDrawerContentProps {
   campaign: Campaign | undefined;
   player: Player | null;
   game: NonNullable<ReturnType<typeof useCharacterGameState>>;
+  /** États de combat posés sur ce personnage (PER-358) — vides si le tracker n'en porte aucun. */
+  appliedStatuses: AppliedStatus[];
+  /** Manche courante du combat, dont se déduisent les tours restants des états (PER-305). */
+  roundNumber: number;
   onClose: () => void;
   layout: FeaturesLayout;
   onLayoutChange: (layout: FeaturesLayout) => void;
@@ -241,6 +274,8 @@ function GmSheetDrawerContent({
   campaign,
   player,
   game,
+  appliedStatuses,
+  roundNumber,
   onClose,
   layout,
   onLayoutChange,
@@ -297,13 +332,29 @@ function GmSheetDrawerContent({
     capacityGauges,
     elixirDosesToLose,
   } = game;
+  // Part CHIFFRÉE des états posés (PER-358) : mêmes calculs que la fiche du joueur, pour que le
+  // tiroir n'affiche pas d'autres chiffres que les siens. `null` sans état.
+  const statusImpact = appliedStatuses.length > 0 ? statusSheetImpact(appliedStatuses) : null;
   // Dérivations d'AFFICHAGE (modificateurs de caracs, dés bonus, domaines de test, malus
   // d'armure, sources de l'infobulle « i ») — mêmes calculs que la fiche, module partagé.
   const display = buildSheetDisplayView(
     character,
     game.derived,
     masterDerived ? (character.overrides.maxHp ?? masterDerived.maxHp) : undefined,
+    statusImpact ?? undefined,
   );
+  // Entrée moteur AJUSTÉE par les états : deltas fondus dans `mods` pour que DEF/Init./attaques
+  // reflètent le malus, le détail « i » les attribuant à « État : … ». Les jauges restent sur
+  // `masterDerived` NON ajusté — un état de combat ne change pas les maxima.
+  const adjustedDerivedInput = derivedInput
+    ? statusImpact
+      ? { ...derivedInput, mods: mergeMods(derivedInput.mods ?? {}, statusImpact.mods) }
+      : derivedInput
+    : null;
+  // Dé malus aux tests d'attaque, tous états confondus → badge sur les trois cartes d'attaque.
+  const attackMalusDie = statusImpact
+    ? [...statusImpact.allTestsMalusDie, ...statusImpact.attackTestsMalusDie]
+    : [];
 
   // « Utiliser » un objet : l'action de jeu consomme quand elle peut, et renvoie une
   // INTENTION pour les deux lignes du sac de départ qui exigent une saisie.
@@ -397,6 +448,16 @@ function GmSheetDrawerContent({
 
       <Box sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
         <Stack spacing={3}>
+          {/* REPLI (PER-358), comme sur la fiche : sans stats dérivées, il n'y a pas de section
+              « État du personnage » — les états s'afficheraient nulle part. */}
+          {!masterDerived && appliedStatuses.length > 0 && (
+            <ActiveStatusPanel
+              statuses={appliedStatuses}
+              impact={statusImpact}
+              roundNumber={roundNumber}
+            />
+          )}
+
           <SheetSection title="Caractéristiques" icon="abilities">
             <AbilitiesGrid
               abilities={character.abilities}
@@ -444,9 +505,9 @@ function GmSheetDrawerContent({
                 hideZero={testsHideZero}
                 onHideZeroChange={setTestsHideZero}
               />
-            ) : derivedInput ? (
+            ) : adjustedDerivedInput ? (
               <DerivedStatsGrid
-                input={derivedInput}
+                input={adjustedDerivedInput}
                 featureIds={modFeatureIds}
                 effectContext={effectCtx}
                 extraModSources={display.extraModSources}
@@ -466,6 +527,7 @@ function GmSheetDrawerContent({
                 rangedReplacingFormAttack={rangedReplacingFormAttack}
                 attackBonusDie={display.attackBonusDieSources}
                 boundWeaponAttackDie={display.boundWeaponAttackDie}
+                attackMalusDie={attackMalusDie}
               />
             ) : (
               <Typography variant="body2" color="text.secondary">
@@ -476,6 +538,17 @@ function GmSheetDrawerContent({
 
           {masterDerived && (
             <SheetSection title="État du personnage" icon="status">
+              {/* Mêmes états, même place que sur la fiche du joueur (PER-358) : au-dessus de la
+                  barre de vie, avec le delta agrégé. Le MJ voit donc ce que son joueur voit. */}
+              {appliedStatuses.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <ActiveStatusPanel
+                    statuses={appliedStatuses}
+                    impact={statusImpact}
+                    roundNumber={roundNumber}
+                  />
+                </Box>
+              )}
               <PlayerStatusPanel
                 depletion={character.depletion}
                 maxHp={character.overrides.maxHp ?? masterDerived.maxHp}
