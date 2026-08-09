@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -53,13 +53,17 @@ export function DemiElfeAncestryDialog({
   const [pathId, setPathId] = useState<string>(currentPathId ?? 'humain');
   const [elf, setElf] = useState<ElfAncestry>(currentElfAncestry ?? 'elfe-haut');
 
-  // Re-synchronise l'état local à chaque ouverture (le personnage a pu changer entre-temps).
-  useEffect(() => {
+  // Re-synchronise l'état local sur les valeurs du personnage à CHAQUE ouverture (il a pu changer
+  // entre-temps). Ajustement d'état AU RENDU sur transition de `open` (pattern recommandé React, sans
+  // effet : https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
       setPathId(currentPathId ?? 'humain');
       setElf(currentElfAncestry ?? 'elfe-haut');
     }
-  }, [open, currentPathId, currentElfAncestry]);
+  }
 
   const isCompanion = pathId === COMPANION_PATH_ID;
   const changed =
