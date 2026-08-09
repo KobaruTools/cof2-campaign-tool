@@ -16,8 +16,14 @@
  *    contact » (Protéger un allié p. 87). Cocher tout le camp y ferait dire au livre autre chose.
  *
  * Et le LANCEUR n'est pas toujours bénéficiaire : « ses alliés ET LUI » l'inclut, « tous vos alliés »
- * l'exclut (`excludesCarrier`). Un porteur exclu n'est pas coché d'avance en mode groupe, et n'est
- * pas proposé du tout en cible unique — le lui poser compterait deux fois un bonus qu'il a déjà.
+ * l'exclut (`excludesCarrier`). Un porteur exclu n'est PAS PROPOSÉ, dans les deux portées : la liste
+ * ne montre que ceux à qui la règle accorde le bonus.
+ *
+ * À ne pas confondre avec PER-314, qui traite le cas INVERSE — un porteur que la règle inclut bien,
+ * mais qui tient déjà le même bonus par l'interrupteur TEMPORAIRE de sa fiche (Chant des héros,
+ * Bénédiction) : là on lui pose l'état et c'est son interrupteur qu'on neutralise. `excludesCarrier`
+ * couvre ce que cette neutralisation ne peut pas voir, à savoir un bonus porteur PERMANENT
+ * (Argument de taille p. 79, où le barbare a déjà +FOR sur les trois mêmes domaines).
  *
  * Un seul « Appliquer » ⇒ **un seul état** en sortie (`applyStatusToKeys`), donc un seul upsert
  * `campaign_combat` et une seule diffusion Realtime : poser N fois de suite en produirait N.
@@ -115,18 +121,18 @@ function GroupBuffForm({
 }: Omit<GroupBuffDialogProps, 'open' | 'buffId'> & { buffId: BeneficialEffectId }) {
   const singleAlly = isSingleAllyScopedStatus(buffId);
   const excludesCarrier = statusExcludesCarrier(buffId);
-  // En CIBLE UNIQUE, le lanceur n'est pas même proposé : la règle vise « un allié », jamais lui.
-  const offered = singleAlly && excludesCarrier ? candidates.filter((c) => !c.carrier) : candidates;
+  // Un lanceur que la RÈGLE exclut n'est pas proposé du tout — ni en cible unique (« un allié »), ni
+  // en groupe (« tous vos alliés »). Le laisser cochable, fût-ce décoché d'avance, rouvrait le double
+  // compte de PER-314 par une autre porte : la neutralisation d'interrupteur ne vise que les effets
+  // TEMPORAIRES, or la part porteur d'Argument de taille (`brute-r1`) est PERMANENTE. Cocher le
+  // barbare lui aurait ajouté une seconde fois le bonus qu'il a déjà sur sa fiche.
+  const offered = excludesCarrier ? candidates.filter((c) => !c.carrier) : candidates;
 
   // Mode GROUPE : tous cochés par défaut — à la table, le cas courant est que tout le camp est à
-  // portée de voix, on décoche l'exception plutôt que de cocher la règle. Le LANCEUR échappe à ce
-  // pré-cochage quand la règle l'exclut du bénéfice (« tous vos alliés »), sans quoi on lui poserait
-  // un bonus qu'il n'a pas — ou, pire, qu'il a déjà par ailleurs.
+  // portée de voix, on décoche l'exception plutôt que de cocher la règle.
   // Mode CIBLE UNIQUE : rien de coché, c'est un choix que le MJ doit faire.
   const [selected, setSelected] = useState<Set<string>>(() =>
-    singleAlly
-      ? new Set<string>()
-      : new Set(offered.filter((c) => !(excludesCarrier && c.carrier)).map((c) => c.key)),
+    singleAlly ? new Set<string>() : new Set(offered.map((c) => c.key)),
   );
   // Durée en TOURS, saisie libre et VIDE par défaut (durée indéterminée). Chaîne et non nombre :
   // « vide » et « 0 » sont deux réponses différentes, un `number | null` les confondrait à la saisie.
@@ -187,7 +193,9 @@ function GroupBuffForm({
             </Typography>
             {offered.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                Aucun combattant dans ce camp.
+                {excludesCarrier && candidates.length > 0
+                  ? 'Aucun allié à qui poser cet effet : la règle en exclut le lanceur.'
+                  : 'Aucun combattant dans ce camp.'}
               </Typography>
             ) : (
               <Stack>
@@ -209,11 +217,12 @@ function GroupBuffForm({
                       label={
                         <Typography variant="body2">
                           {c.label}
+                          {/* Un porteur EXCLU n'arrive jamais ici (filtré d'`offered`) : la mention
+                              ne concerne donc que celui qui profite bien de son propre sort. */}
                           {c.carrier && (
                             <Typography component="span" variant="caption" color="text.secondary">
                               {' '}
                               — lance le sort
-                              {excludesCarrier && ' (n’en profite pas)'}
                             </Typography>
                           )}
                         </Typography>

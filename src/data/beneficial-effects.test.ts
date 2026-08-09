@@ -225,3 +225,83 @@ describe('PER-359 — buffs recensés', () => {
     }
   });
 });
+
+/* ---------------------------------------------------------------------------
+ * DOUBLE COMPTE CHEZ LE PORTEUR — l'invariant qui décide de `excludesCarrier`.
+ *
+ * Le porteur d'un buff a deux façons de tenir DÉJÀ le même chiffre sur sa fiche, et une seule des
+ * deux se voit à l'exécution :
+ *  - par un effet TEMPORAIRE (`conditional-stat-bonus`, un interrupteur : Chant des héros,
+ *    Bénédiction) — la séance le neutralise à la volée, cf. `supersededBuffToggles` (PER-314) ;
+ *  - par un effet PERMANENT (`test-bonus` : Argument de taille, où le barbare a déjà +FOR sur les
+ *    trois domaines sociaux) — RIEN ne peut le neutraliser, puisqu'il n'y a pas d'interrupteur à
+ *    éteindre. Le seul remède est de ne pas lui poser le buff du tout : `excludesCarrier`.
+ *
+ * D'où la règle vérifiée ici : dès qu'un buff par domaine recoupe un bonus PERMANENT de sa propre
+ * capacité porteuse, `excludesCarrier` est OBLIGATOIRE. Ce test est le garde-fou du recensement
+ * PER-359 — il rattrape tout buff ajouté plus tard qui rouvrirait le défaut de PER-314.
+ * --------------------------------------------------------------------------- */
+
+describe('PER-359 — aucun buff ne double le bonus PERMANENT de son porteur', () => {
+  /** Capacité qui confère le buff (`groupBuffIds`), telle que la palette la débloque. */
+  const carrierOf = (buffId: (typeof BENEFICIAL_EFFECT_IDS)[number]) =>
+    [...featureById.values()].find((f) => f.groupBuffIds?.includes(buffId));
+
+  it('un recoupement de domaines avec un `test-bonus` du porteur impose `excludesCarrier`', () => {
+    for (const id of BENEFICIAL_EFFECT_IDS) {
+      const buffDomains = BENEFICIAL_EFFECTS[id].modifiers?.testDomains?.domains;
+      if (!buffDomains) continue;
+      const carrier = carrierOf(id);
+      expect(carrier, `aucune capacité ne confère ${id}`).toBeDefined();
+      // `test-bonus` n'a ni `activation` ni durée : il vaut en permanence sur la fiche du porteur.
+      const permanent = (carrier?.effects ?? []).flatMap((e) =>
+        e.kind === 'test-bonus' ? e.domains : [],
+      );
+      const overlap = buffDomains.filter((d) => permanent.includes(d));
+      if (overlap.length > 0) {
+        expect(
+          BENEFICIAL_EFFECTS[id].excludesCarrier,
+          `${id} recoupe ${overlap.join(', ')} sur ${carrier?.id} : le porteur doit être exclu`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('Argument de taille est le cas qui motive la règle, Sans peur son contre-exemple', () => {
+    // Le barbare : mêmes domaines des deux côtés → exclu.
+    const brute = carrierOf('towering-argument');
+    expect(brute?.id).toBe('brute-r1');
+    expect(brute?.effects?.some((e) => e.kind === 'test-bonus')).toBe(true);
+    expect(BENEFICIAL_EFFECTS['towering-argument'].excludesCarrier).toBe(true);
+
+    // Le chevalier : son bonus permanent vise la tactique et le commandement, le buff la peur —
+    // aucun recoupement. S'il est exclu, c'est parce que le livre dit « tous ses ALLIÉS », et
+    // parce qu'il est de toute façon immunisé : deux raisons distinctes du double compte.
+    const knight = carrierOf('fearless-rally');
+    expect(knight?.id).toBe('meneur-d-hommes-r1');
+    const knightDomains = (knight?.effects ?? []).flatMap((e) =>
+      e.kind === 'test-bonus' ? e.domains : [],
+    );
+    expect(knightDomains).not.toContain('fear-resistance');
+    expect(knight?.effects?.some((e) => e.kind === 'immunity')).toBe(true);
+  });
+
+  it('un porteur que la règle INCLUT reste bénéficiaire, son interrupteur relevant de PER-314', () => {
+    // « ses alliés ET LUI » : ces deux-là ne s'excluent pas — les neutraliser priverait le barde et
+    // le prêtre d'un bonus que le livre leur accorde. Leur porteur n'a AUCUN `test-bonus` sur les
+    // tests visés par le buff (ses bonus permanents portent sur la musique / la théologie) : le seul
+    // recoupement est l'interrupteur temporaire, que la séance éteint.
+    for (const id of ['heroes-song', 'blessing'] as const) {
+      const entry = BENEFICIAL_EFFECTS[id];
+      expect(entry.effect, id).toContain('et lui');
+      expect(entry.excludesCarrier, id).toBeUndefined();
+      const carrier = carrierOf(id);
+      expect(
+        carrier?.effects?.some(
+          (e) => e.kind === 'conditional-stat-bonus' && e.activation.kind === 'temporary',
+        ),
+        `${id} : le porteur doit garder l'interrupteur que PER-314 neutralise`,
+      ).toBe(true);
+    }
+  });
+});
