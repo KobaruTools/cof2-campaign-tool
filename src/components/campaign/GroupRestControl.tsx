@@ -49,6 +49,7 @@ import { AppAlert } from '@/components/AppAlert';
 import { AppTooltip } from '@/components/AppTooltip';
 import { SourceRef } from '@/components/SourceRef';
 import { RestTallyList } from '@/components/session/RestTallyList';
+import { attentionPulseSx } from '@/lib/ui/attentionPulse';
 import { clearAllStatuses } from '@/lib/session/combatState';
 import {
   connectedRestParticipants,
@@ -178,21 +179,11 @@ export function GroupRestControl({
       // Teinte d'attente SUPERPOSÉE au style du contexte : sur l'écran de MJ, `buttonSx` fixe déjà
       // couleur, fond et bordure (bouton « verre » sur fond illustré) et l'emporterait sur une
       // simple prop `color`. Cette couche passe après, et fonctionne aussi sans `buttonSx`.
+      // Le halo BAT tant que la demande n'est pas arbitrée : ce bouton est toujours là, seule sa
+      // teinte changeait — un MJ en plein combat pouvait ne jamais voir qu'un joueur attendait.
       sx={[
         ...(Array.isArray(buttonSx) ? buttonSx : [buttonSx]),
-        ...(pendingRequests > 0
-          ? [
-              (theme: Theme) => ({
-                color: theme.palette.warning.light,
-                bgcolor: alpha(theme.palette.warning.main, 0.22),
-                borderColor: alpha(theme.palette.warning.main, 0.6),
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.warning.main, 0.32),
-                  borderColor: theme.palette.warning.light,
-                },
-              }),
-            ]
-          : []),
+        ...(pendingRequests > 0 ? [(theme: Theme) => attentionPulseSx(theme, 'warning')] : []),
       ]}
     >
       Repos de groupe

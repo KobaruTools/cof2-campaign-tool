@@ -29,6 +29,7 @@ import { SourceRef } from '@/components/SourceRef';
 import { buffRequestHeadline, type BuffRequest } from '@/lib/session/buffRequest';
 import { statusEntry } from '@/lib/character/statusEffects';
 import { statusLabel } from '@/lib/ui/statusPalette';
+import { attentionPulseSx } from '@/lib/ui/attentionPulse';
 import { useBuffRequestStore } from '@/stores/buffRequest';
 
 /**
@@ -73,17 +74,11 @@ export function BuffRequestsControl({ campaignId, onAdopt, buttonSx }: BuffReque
         onClick={() => setOpen(true)}
         // Teinte d'attente SUPERPOSÉE au style du contexte (bouton « verre » sur fond illustré) :
         // `buttonSx` fixe déjà couleur, fond et bordure et l'emporterait sur une simple prop `color`.
+        // Le halo bat tant que l'annonce n'est pas arbitrée : ce bouton SURGIT dans une barre déjà
+        // chargée, et un joueur attend au bout.
         sx={[
           ...(Array.isArray(buttonSx) ? buttonSx : [buttonSx]),
-          (theme: Theme) => ({
-            color: theme.palette.success.light,
-            bgcolor: alpha(theme.palette.success.main, 0.22),
-            borderColor: alpha(theme.palette.success.main, 0.6),
-            '&:hover': {
-              bgcolor: alpha(theme.palette.success.main, 0.32),
-              borderColor: theme.palette.success.light,
-            },
-          }),
+          (theme: Theme) => attentionPulseSx(theme, 'success'),
         ]}
       >
         {requests.length === 1 ? '1 effet annoncé' : `${requests.length} effets annoncés`}
