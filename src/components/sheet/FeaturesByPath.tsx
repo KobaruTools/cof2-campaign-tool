@@ -551,6 +551,7 @@ function BorrowedFeatureBlock({
   armorRestrictedMessage = null,
   noMana = false,
   noManaNote,
+  spellNoteOverride,
   actionTypesOverride,
   suppressTextMarker,
 }: {
@@ -607,6 +608,14 @@ function BorrowedFeatureBlock({
    * Absent avec `noMana` vrai → repli sur la notice du familier (comportement historique inchangé).
    */
   noManaNote?: ReactNode;
+  /**
+   * PER-324 — notice de SORT emprunté qui REMPLACE la notice par défaut (celle qui décrit le +1 PM au
+   * réservoir OU le mode `noMana`), quel que soit `noMana`. Sert à « Sang féerique » : le sort ne
+   * rapporte jamais de +1 PM, mais un lanceur PEUT le payer (goutte de PM affichée via `noMana={false}`)
+   * tandis qu'un non-lanceur ne l'incante que gratuitement — deux notices distinctes, badge de PM
+   * indépendant. Absent = notices par défaut inchangées (familier, cambion, emprunt ordinaire).
+   */
+  spellNoteOverride?: ReactNode;
   /**
    * PER-74 — type(s) d'action affiché(s) à la place de `feature.actionTypes` natifs (Bâton magique,
    * archimage r5 : le sort emprunté se lance normalement en (A), mais via le bâton c'est une action
@@ -729,10 +738,22 @@ function BorrowedFeatureBlock({
           <FeatureText feature={feature} abilities={abilities} level={level} pathRank={hostPathRank ?? feature.rank} />
         )}
       </Box>
+      {/* PER-324 — notice de sort emprunté FOURNIE par l'appelant (« Sang féerique ») : remplace les
+          notices par défaut ci-dessous, quel que soit `noMana` (le sort ne rapporte jamais de +1 PM,
+          mais la goutte de PM reste affichée pour un lanceur via `noMana={false}`). */}
+      {feature.isSpell && spellNoteOverride ? (
+        <Typography
+          variant="caption"
+          component="div"
+          sx={{ mt: 0.75, fontStyle: 'italic', color: (theme) => alpha(theme.palette.text.secondary, 0.85) }}
+        >
+          {spellNoteOverride}
+        </Typography>
+      ) : null}
       {/* Rappel des règles propres à un SORT emprunté (encadré « Appel à une autre capacité », p. 41) :
           coût en PM au rang habituel du sort, caractéristique de magie du profil d'origine (déjà reflétée
           par les formules ci-dessus, qui citent la carac d'origine), et +1 PM gagné au réservoir. */}
-      {feature.isSpell && !noMana && (
+      {feature.isSpell && !noMana && !spellNoteOverride && (
         <Typography
           variant="caption"
           component="div"
@@ -744,7 +765,7 @@ function BorrowedFeatureBlock({
       )}
       {/* PER-74 : sort APPRIS au rang 5 du familier — conféré sans coût en mana, plafonné par le
           compteur quotidien affiché sous ce bloc. */}
-      {feature.isSpell && noMana && (
+      {feature.isSpell && noMana && !spellNoteOverride && (
         <Typography
           variant="caption"
           component="div"
@@ -3236,9 +3257,9 @@ function PathBlock({
               borrowed &&
               (feature.id === FAMILIAR_LEARNED_SPELL_HOST ||
                 staffGrantedPrimary ||
-                // PER-324 : « Sang féerique » — pas de goutte de PM sur la carte compacte (incantations
-                // gratuites plafonnées par le compteur ; un lanceur dépense des PM, détaillé dans la modale).
-                feature.id === DEMI_ELFE_FEY_BLOOD_HOST)
+                // PER-324 : « Sang féerique » — goutte de PM masquée seulement pour un NON-lanceur
+                // (incantations gratuites sans PM) ; un LANCEUR voit le coût (rang du sort) pour payer.
+                (feature.id === DEMI_ELFE_FEY_BLOOD_HOST && !!character && !isSpellcaster(character)))
             ) && (
               <SpellManaBadge
                 feature={borrowed ?? feature}
@@ -3825,6 +3846,9 @@ function PathBlock({
                         const staffGranted = !!character && archmageStaffSpellGranted(character, borrowed);
                         const grant = grantForBorrowed(openFeature, borrowed.id);
                         const borrowedNoMana = noManaBorrowed.has(borrowed.id);
+                        // PER-324 — « Sang féerique » : un LANCEUR peut payer le sort en PM → on garde la
+                        // goutte de PM (noMana={false}) ; un non-lanceur ne l'incante que gratuitement.
+                        const caster = !!character && isSpellcaster(character);
                         return (
                           <BorrowedFeatureBlock
                             key={`${i}-${borrowed.id}`}
@@ -3836,7 +3860,7 @@ function PathBlock({
                             dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                             armorRestricted={isArmorRestricted(borrowed)}
                             armorRestrictedMessage={armorRestrictedMessage(borrowed)}
-                            noMana={openFeature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana || borrowedNoMana}
+                            noMana={openFeature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana || (borrowedNoMana && !caster)}
                             noManaNote={
                               staffGranted ? (
                                 <>
@@ -3845,10 +3869,9 @@ function PathBlock({
                                 </>
                               ) : grant?.noMana ? (
                                 CAMBION_NO_MANA_NOTE
-                              ) : borrowedNoMana ? (
-                                demiElfeFeyBloodNote(!!character && isSpellcaster(character))
                               ) : undefined
                             }
+                            spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
                             actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}
                             suppressTextMarker={
                               grant?.suppressTestBonus ? grant.suppressTextMarker : undefined
@@ -4302,6 +4325,9 @@ function PathBlock({
                       const staffGranted = !!character && archmageStaffSpellGranted(character, borrowed);
                       const grant = grantForBorrowed(feature, borrowed.id);
                       const borrowedNoMana = noManaBorrowed.has(borrowed.id);
+                      // PER-324 — « Sang féerique » : goutte de PM conservée pour un LANCEUR (paiement en PM
+                      // possible), masquée pour un non-lanceur (incantations gratuites seules).
+                      const caster = !!character && isSpellcaster(character);
                       return (
                         <BorrowedFeatureBlock
                           key={`${i}-${borrowed.id}`}
@@ -4313,7 +4339,7 @@ function PathBlock({
                           dominatedTestBonuses={dominatedTestBonusesFor(borrowed.id)}
                           armorRestricted={isArmorRestricted(borrowed)}
                           armorRestrictedMessage={armorRestrictedMessage(borrowed)}
-                          noMana={feature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana || borrowedNoMana}
+                          noMana={feature.id === FAMILIAR_LEARNED_SPELL_HOST || staffGranted || !!grant?.noMana || (borrowedNoMana && !caster)}
                           noManaNote={
                             staffGranted ? (
                               <>
@@ -4322,10 +4348,9 @@ function PathBlock({
                               </>
                             ) : grant?.noMana ? (
                               CAMBION_NO_MANA_NOTE
-                            ) : borrowedNoMana ? (
-                              demiElfeFeyBloodNote(!!character && isSpellcaster(character))
                             ) : undefined
                           }
+                          spellNoteOverride={borrowedNoMana ? demiElfeFeyBloodNote(caster) : undefined}
                           actionTypesOverride={staffGranted ? (['M'] as ActionType[]) : undefined}
                           suppressTextMarker={
                             grant?.suppressTestBonus ? grant.suppressTextMarker : undefined
